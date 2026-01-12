@@ -1281,6 +1281,10 @@
                 gap: 0.25rem;
             }
 
+            .attack-characters {
+                gap: 0.25rem;
+            }
+
             .attack-details-container {
                 padding: 1rem;
                 margin: 0.5rem;
@@ -1897,14 +1901,14 @@
         }
 
         .attack-characters {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
             gap: 0.5rem;
-            flex-wrap: wrap;
         }
 
         .attack-character-img {
-            width: 40px;
-            height: 40px;
+            width: 100%;
+            aspect-ratio: 1 / 1;
             border-radius: 6px;
             object-fit: cover;
             border: 2px solid var(--border-color);
