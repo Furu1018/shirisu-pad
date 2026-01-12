@@ -1152,6 +1152,7 @@
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 0.5rem;
+            max-width: 400px; /* PC版でアイコンが大きくなりすぎないように制限 */
         }
 
         .char-icon {
@@ -1184,6 +1185,14 @@
         /* Compact (Phone): 0-599dp */
         /* Medium (Tablet): 600-839dp */
         /* Expanded (Desktop): 840dp+ */
+
+        /* Compact devices (phones, up to 599px) */
+        @media (max-width: 599px) {
+            .character-icons,
+            .attack-characters {
+                max-width: 100%;
+            }
+        }
 
         /* Medium devices (tablets, 600px and up) */
         @media (min-width: 600px) {
@@ -1904,6 +1913,7 @@
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 0.5rem;
+            max-width: 400px; /* PC版でアイコンが大きくなりすぎないように制限 */
         }
 
         .attack-character-img {
@@ -4011,7 +4021,7 @@ function generateDistributionHTML() {
                             <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">${comp.player} (SLv ${comp.syncLevel})</div>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 400px;">
                         ${comp.characters.map(charUrl => {
                             if (typeof charUrl === 'string' && charUrl.includes('http') && !charUrl.includes('属性アイコン')) {
                                 return `<img src="${charUrl}" alt="キャラクター" style="width: 100%; aspect-ratio: 1/1; border-radius: 8px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.display='none'">`;
