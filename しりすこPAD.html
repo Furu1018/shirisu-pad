@@ -334,16 +334,32 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             background-image: url('./しりすこPADヘッダー.PNG');
-            background-size: cover;
+            background-size: contain;
             background-position: top center;
             background-repeat: no-repeat;
-            background-attachment: fixed;
+            background-attachment: scroll;
             background-color: var(--md-sys-color-background);
             color: var(--md-sys-color-on-background);
             line-height: 1.5;
             font-size: 16px;
             font-weight: 400;
             letter-spacing: 0.5px;
+        }
+
+        /* PC用: 背景を固定して大きく表示 */
+        @media (min-width: 769px) {
+            body {
+                background-size: cover;
+                background-attachment: fixed;
+            }
+        }
+
+        /* スマホ用: 背景を縮小して見やすく */
+        @media (max-width: 768px) {
+            body {
+                background-size: 100% auto;
+                background-attachment: scroll;
+            }
         }
 
         /* 背景画像を上部だけに表示するためのグラデーション */
@@ -355,19 +371,43 @@
             right: 0;
             bottom: 0;
             background: linear-gradient(to bottom,
-                rgba(255, 255, 255, 0.7) 0%,
-                rgba(255, 255, 255, 0.85) 400px,
-                var(--md-sys-color-background) 800px);
+                rgba(255, 255, 255, 0.2) 0%,
+                rgba(255, 255, 255, 0.4) 200px,
+                rgba(255, 255, 255, 0.7) 400px,
+                var(--md-sys-color-background) 700px);
             pointer-events: none;
             z-index: -1;
+        }
+
+        /* スマホ用: グラデーションを早めに適用して視認性向上 */
+        @media (max-width: 768px) {
+            body::before {
+                background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0.1) 0%,
+                    rgba(255, 255, 255, 0.5) 150px,
+                    rgba(255, 255, 255, 0.8) 300px,
+                    var(--md-sys-color-background) 500px);
+            }
         }
 
         /* ダークモード用の背景オーバーレイ */
         [data-theme="dark"] body::before {
             background: linear-gradient(to bottom,
-                rgba(28, 27, 31, 0.7) 0%,
-                rgba(28, 27, 31, 0.85) 400px,
-                var(--md-sys-color-background) 800px);
+                rgba(28, 27, 31, 0.2) 0%,
+                rgba(28, 27, 31, 0.4) 200px,
+                rgba(28, 27, 31, 0.7) 400px,
+                var(--md-sys-color-background) 700px);
+        }
+
+        /* ダークモード スマホ用 */
+        @media (max-width: 768px) {
+            [data-theme="dark"] body::before {
+                background: linear-gradient(to bottom,
+                    rgba(28, 27, 31, 0.1) 0%,
+                    rgba(28, 27, 31, 0.5) 150px,
+                    rgba(28, 27, 31, 0.8) 300px,
+                    var(--md-sys-color-background) 500px);
+            }
         }
 
         /* Material Design 3 Typography Scale */
@@ -2346,7 +2386,7 @@ table tr:hover {
 </head>
 <body>
     <div class="container">
-        <div class="header" style="background: transparent; position: relative; padding: 16px 24px;">
+        <div class="header" style="background: transparent; position: relative; padding: 16px 24px; min-height: 180px;">
             <div style="position: absolute; top: 1rem; right: 1rem; z-index: 10;">
                 <div class="theme-toggle" id="themeToggle">
                     <div class="theme-option active" data-theme="light">
