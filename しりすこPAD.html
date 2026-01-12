@@ -2743,36 +2743,37 @@ table tr:hover {
             </div>
 
             <!-- ダメージ/SLv 効率ランキング -->
-            <div class="card" style="margin-bottom: 24px;">
-                <h3 class="md-title-large" style="margin: 0 0 8px 0; padding: 24px 24px 8px 24px; color: var(--md-sys-color-on-surface);">🎯 育成効率ランキング</h3>
-                <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); padding: 0 24px 24px 24px; margin: 0;">
+            <div class="card" style="margin-bottom: 16px;">
+                <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">🎯 育成効率ランキング</h3>
+                <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
                     SLv1あたりのダメージ効率（育成・戦略の最適化指標）
                 </p>
-                <div class="data-table">
-                    <table id="slvEfficiencyTable">
-                        <thead>
-                            <tr>
-                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('rank')">
-                                    順位 <span id="slv-sort-rank"></span>
-                                </th>
-                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('name')">
-                                    プレイヤー <span id="slv-sort-name"></span>
-                                </th>
-                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('efficiency')">
-                                    ダメージ/SLv <span id="slv-sort-efficiency">▼</span>
-                                </th>
-                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('damage')">
-                                    総ダメージ <span id="slv-sort-damage"></span>
-                                </th>
-                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('slv')">
-                                    SLv <span id="slv-sort-slv"></span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="slvEfficiencyTableBody">
-                        </tbody>
-                    </table>
-                </div>
+            </div>
+
+            <div class="data-table">
+                <table id="slvEfficiencyTable">
+                    <thead>
+                        <tr>
+                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('rank')">
+                                順位 <span id="slv-sort-rank"></span>
+                            </th>
+                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('name')">
+                                プレイヤー <span id="slv-sort-name"></span>
+                            </th>
+                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('efficiency')">
+                                ダメージ/SLv <span id="slv-sort-efficiency">▼</span>
+                            </th>
+                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('damage')">
+                                総ダメージ <span id="slv-sort-damage"></span>
+                            </th>
+                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('slv')">
+                                SLv <span id="slv-sort-slv"></span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="slvEfficiencyTableBody">
+                    </tbody>
+                </table>
             </div>
         </div>
         <!-- /タブ2 -->
@@ -4366,28 +4367,25 @@ function generateDistributionHTML() {
                 const efficiencyFormatted = (player.efficiency / 1000000).toFixed(2) + 'M';
                 const damageFormatted = formatDamage(player.damage);
 
-                // トップ3にメダル
+                // タブ1と同じ順位表示形式
                 const rankDisplay = rank <= 3
-                    ? ['🥇', '🥈', '🥉'][rank - 1] + ' ' + rank
-                    : rank;
+                    ? ['🥇', '🥈', '🥉'][rank - 1]
+                    : '#' + rank;
 
                 return `
-                    <tr onclick="showPlayerDetails('${player.player}')" style="cursor: pointer;">
-                        <td style="text-align: center; font-weight: ${rank <= 3 ? 'bold' : 'normal'};">
+                    <tr class="player-row" onclick="showPlayerDetails('${player.player}')" data-player="${player.player}">
+                        <td class="rank rank-${rank <= 3 ? rank : 'other'}">
                             ${rankDisplay}
                         </td>
-                        <td style="font-weight: 500;">
-                            ${player.player}
+                        <td>
+                            <strong>${player.player}</strong>
+                            ${player.isUnion ? '<span class="badge badge-union">Union</span>' : ''}
                         </td>
                         <td style="text-align: right; font-weight: 600; color: var(--md-sys-color-primary);">
                             ${efficiencyFormatted}
                         </td>
-                        <td style="text-align: right;">
-                            ${damageFormatted}
-                        </td>
-                        <td style="text-align: center;">
-                            ${player.syncLevel}
-                        </td>
+                        <td>${damageFormatted}</td>
+                        <td>${player.syncLevel}</td>
                     </tr>
                 `;
             }).join('');
@@ -4459,26 +4457,23 @@ function generateDistributionHTML() {
                 const damageFormatted = formatDamage(player.damage);
 
                 const rankDisplay = rank <= 3
-                    ? ['🥇', '🥈', '🥉'][rank - 1] + ' ' + rank
-                    : rank;
+                    ? ['🥇', '🥈', '🥉'][rank - 1]
+                    : '#' + rank;
 
                 return `
-                    <tr onclick="showPlayerDetails('${player.player}')" style="cursor: pointer;">
-                        <td style="text-align: center; font-weight: ${rank <= 3 ? 'bold' : 'normal'};">
+                    <tr class="player-row" onclick="showPlayerDetails('${player.player}')" data-player="${player.player}">
+                        <td class="rank rank-${rank <= 3 ? rank : 'other'}">
                             ${rankDisplay}
                         </td>
-                        <td style="font-weight: 500;">
-                            ${player.player}
+                        <td>
+                            <strong>${player.player}</strong>
+                            ${player.isUnion ? '<span class="badge badge-union">Union</span>' : ''}
                         </td>
                         <td style="text-align: right; font-weight: 600; color: var(--md-sys-color-primary);">
                             ${efficiencyFormatted}
                         </td>
-                        <td style="text-align: right;">
-                            ${damageFormatted}
-                        </td>
-                        <td style="text-align: center;">
-                            ${player.syncLevel}
-                        </td>
+                        <td>${damageFormatted}</td>
+                        <td>${player.syncLevel}</td>
                     </tr>
                 `;
             }).join('');
