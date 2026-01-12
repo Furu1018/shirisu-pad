@@ -2632,7 +2632,10 @@ table tr:hover {
         <!-- タブナビゲーション -->
         <div class="tab-navigation">
             <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')">
-                <span>📊</span> プレイヤースコア
+                <span>📊</span> ダメージ基準スコア
+            </button>
+            <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')">
+                <span>⚡</span> SLv基準スコア
             </button>
             <button class="tab-button" data-tab="characters" onclick="switchTab('characters')">
                 <span>🎮</span> NIKKE編成
@@ -2657,19 +2660,6 @@ table tr:hover {
                     </p>
                     <div style="height: 400px; position: relative;">
                         <canvas id="attributeStackedChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SLv比較チャート -->
-            <div class="card" style="margin-bottom: 24px;">
-                <div style="padding: 24px;">
-                    <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">⚡ SLv vs スコア分析</h3>
-                    <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 24px;">
-                        Sync Levelに対するパフォーマンス比較
-                    </p>
-                    <div style="height: 400px; position: relative;">
-                        <canvas id="slvComparisonChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -2737,7 +2727,57 @@ table tr:hover {
         </div>
         <!-- /タブ1 -->
 
-        <!-- タブ2: キャラクター使用率分析 -->
+        <!-- タブ2: SLv基準スコア -->
+        <div id="tab-slv-ranking" class="tab-content">
+            <!-- SLv vs スコア分析グラフ -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div style="padding: 24px;">
+                    <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">⚡ SLv vs スコア分析</h3>
+                    <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 24px;">
+                        Sync Levelに対するパフォーマンス比較
+                    </p>
+                    <div style="height: 400px; position: relative;">
+                        <canvas id="slvComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ダメージ/SLv 効率ランキング -->
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 class="md-title-large" style="margin: 0 0 8px 0; padding: 24px 24px 8px 24px; color: var(--md-sys-color-on-surface);">🎯 育成効率ランキング</h3>
+                <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); padding: 0 24px 24px 24px; margin: 0;">
+                    SLv1あたりのダメージ効率（育成・戦略の最適化指標）
+                </p>
+                <div class="data-table">
+                    <table id="slvEfficiencyTable">
+                        <thead>
+                            <tr>
+                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('rank')">
+                                    順位 <span id="slv-sort-rank"></span>
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('name')">
+                                    プレイヤー <span id="slv-sort-name"></span>
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('efficiency')">
+                                    ダメージ/SLv <span id="slv-sort-efficiency">▼</span>
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('damage')">
+                                    総ダメージ <span id="slv-sort-damage"></span>
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortSlvEfficiency('slv')">
+                                    SLv <span id="slv-sort-slv"></span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="slvEfficiencyTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- /タブ2 -->
+
+        <!-- タブ3: キャラクター使用率分析 -->
         <div id="tab-characters" class="tab-content">
             <!-- 属性選択タブ -->
             <div class="card" style="margin-bottom: 24px;">
@@ -3576,14 +3616,17 @@ function switchTab(tabName) {
     if (tabName === 'ranking' && processedData && processedData.length > 0) {
         // Tab1: グラフ再描画
         createAttributeStackedBarChart(processedData);
+    } else if (tabName === 'slv-ranking' && processedData && processedData.length > 0) {
+        // Tab2: SLv基準スコア
         createSLvComparisonChart(processedData);
+        renderSlvEfficiencyRanking(processedData);
     } else if (tabName === 'characters') {
-        // Tab2: 編成一覧表示更新
+        // Tab3: 編成一覧表示更新
         if (typeof updateTeamCompositionsDisplay === 'function') {
             updateTeamCompositionsDisplay();
         }
     } else if (tabName === 'management') {
-        // Tab3: データ状況表示更新
+        // Tab4: データ状況表示更新
         if (typeof updateStorageInfo === 'function') {
             updateStorageInfo();
         }
@@ -3777,6 +3820,7 @@ function generateDistributionHTML() {
             if (processedData && processedData.length > 0) {
                 createAttributeStackedBarChart(processedData);
                 createSLvComparisonChart(processedData);
+                renderSlvEfficiencyRanking(processedData);
             }
 
             setupFilters();
@@ -4300,6 +4344,144 @@ function generateDistributionHTML() {
                     }
                 }
             });
+        }
+
+        // SLv効率ランキング表示
+        function renderSlvEfficiencyRanking(players) {
+            const tbody = document.getElementById('slvEfficiencyTableBody');
+            if (!tbody) return;
+
+            // SLvが0のプレイヤーを除外して効率を計算
+            const playersWithEfficiency = players
+                .filter(p => p.syncLevel && p.syncLevel > 0)
+                .map(p => ({
+                    ...p,
+                    efficiency: p.damage / p.syncLevel
+                }))
+                .sort((a, b) => b.efficiency - a.efficiency);
+
+            // テーブルを生成
+            tbody.innerHTML = playersWithEfficiency.map((player, index) => {
+                const rank = index + 1;
+                const efficiencyFormatted = (player.efficiency / 1000000).toFixed(2) + 'M';
+                const damageFormatted = formatDamage(player.damage);
+
+                // トップ3にメダル
+                const rankDisplay = rank <= 3
+                    ? ['🥇', '🥈', '🥉'][rank - 1] + ' ' + rank
+                    : rank;
+
+                return `
+                    <tr onclick="showPlayerDetails('${player.player}')" style="cursor: pointer;">
+                        <td style="text-align: center; font-weight: ${rank <= 3 ? 'bold' : 'normal'};">
+                            ${rankDisplay}
+                        </td>
+                        <td style="font-weight: 500;">
+                            ${player.player}
+                        </td>
+                        <td style="text-align: right; font-weight: 600; color: var(--md-sys-color-primary);">
+                            ${efficiencyFormatted}
+                        </td>
+                        <td style="text-align: right;">
+                            ${damageFormatted}
+                        </td>
+                        <td style="text-align: center;">
+                            ${player.syncLevel}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // SLv効率ランキングのソート
+        let currentSlvEfficiencySort = { column: 'efficiency', direction: 'desc' };
+
+        function sortSlvEfficiency(column) {
+            // ソート方向の切り替え
+            if (currentSlvEfficiencySort.column === column) {
+                currentSlvEfficiencySort.direction =
+                    currentSlvEfficiencySort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSlvEfficiencySort.column = column;
+                currentSlvEfficiencySort.direction = 'desc';
+            }
+
+            // ソートインジケーターを更新
+            document.querySelectorAll('[id^="slv-sort-"]').forEach(el => {
+                el.textContent = '';
+            });
+            const indicator = document.getElementById('slv-sort-' + column);
+            if (indicator) {
+                indicator.textContent = currentSlvEfficiencySort.direction === 'asc' ? '▲' : '▼';
+            }
+
+            // データをソート
+            const tbody = document.getElementById('slvEfficiencyTableBody');
+            if (!tbody || !processedData) return;
+
+            const playersWithEfficiency = processedData
+                .filter(p => p.syncLevel && p.syncLevel > 0)
+                .map(p => ({
+                    ...p,
+                    efficiency: p.damage / p.syncLevel
+                }));
+
+            // ソート
+            playersWithEfficiency.sort((a, b) => {
+                let aVal, bVal;
+
+                if (column === 'efficiency') {
+                    aVal = a.efficiency;
+                    bVal = b.efficiency;
+                } else if (column === 'damage') {
+                    aVal = a.damage;
+                    bVal = b.damage;
+                } else if (column === 'slv') {
+                    aVal = a.syncLevel;
+                    bVal = b.syncLevel;
+                } else if (column === 'name') {
+                    return currentSlvEfficiencySort.direction === 'asc'
+                        ? a.player.localeCompare(b.player)
+                        : b.player.localeCompare(a.player);
+                } else {
+                    return 0;
+                }
+
+                return currentSlvEfficiencySort.direction === 'asc'
+                    ? aVal - bVal
+                    : bVal - aVal;
+            });
+
+            // テーブルを再描画
+            tbody.innerHTML = playersWithEfficiency.map((player, index) => {
+                const rank = index + 1;
+                const efficiencyFormatted = (player.efficiency / 1000000).toFixed(2) + 'M';
+                const damageFormatted = formatDamage(player.damage);
+
+                const rankDisplay = rank <= 3
+                    ? ['🥇', '🥈', '🥉'][rank - 1] + ' ' + rank
+                    : rank;
+
+                return `
+                    <tr onclick="showPlayerDetails('${player.player}')" style="cursor: pointer;">
+                        <td style="text-align: center; font-weight: ${rank <= 3 ? 'bold' : 'normal'};">
+                            ${rankDisplay}
+                        </td>
+                        <td style="font-weight: 500;">
+                            ${player.player}
+                        </td>
+                        <td style="text-align: right; font-weight: 600; color: var(--md-sys-color-primary);">
+                            ${efficiencyFormatted}
+                        </td>
+                        <td style="text-align: right;">
+                            ${damageFormatted}
+                        </td>
+                        <td style="text-align: center;">
+                            ${player.syncLevel}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function updateChart() {
@@ -6447,6 +6629,9 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                     }
                     if (typeof createSLvComparisonChart === 'function') {
                         createSLvComparisonChart(processedData);
+                    }
+                    if (typeof renderSlvEfficiencyRanking === 'function') {
+                        renderSlvEfficiencyRanking(processedData);
                     }
                     if (typeof loadUnionRankData === 'function') {
                         loadUnionRankData();
