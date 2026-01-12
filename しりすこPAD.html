@@ -1151,7 +1151,9 @@
         .character-icons {
             display: flex;
             gap: 0.5rem;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .char-icon {
@@ -1161,6 +1163,7 @@
             border: 2px solid var(--border-color);
             transition: all 0.2s ease;
             object-fit: cover;
+            flex-shrink: 0;
         }
 
         .char-icon:hover {
@@ -1278,12 +1281,14 @@
             }
 
             .char-icon {
-                width: 36px;
-                height: 36px;
+                width: 60px;
+                height: 60px;
             }
 
             .character-icons {
                 gap: 0.25rem;
+                flex-wrap: wrap;
+                justify-content: flex-start;
             }
 
             .attack-details-container {
