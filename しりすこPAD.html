@@ -4011,10 +4011,10 @@ function generateDistributionHTML() {
                             <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">${comp.player} (SLv ${comp.syncLevel})</div>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
                         ${comp.characters.map(charUrl => {
                             if (typeof charUrl === 'string' && charUrl.includes('http') && !charUrl.includes('属性アイコン')) {
-                                return `<img src="${charUrl}" alt="キャラクター" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;" onerror="this.style.display='none'">`;
+                                return `<img src="${charUrl}" alt="キャラクター" style="width: 100%; aspect-ratio: 1/1; border-radius: 8px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.display='none'">`;
                             }
                             return '';
                         }).join('')}
