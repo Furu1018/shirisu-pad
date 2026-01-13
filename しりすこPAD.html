@@ -4023,7 +4023,7 @@ function generateDistributionHTML() {
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 400px;">
                         ${comp.characters.map(charUrl => {
-                            if (typeof charUrl === 'string' && charUrl.includes('http') && !charUrl.includes('属性アイコン')) {
+                            if (typeof charUrl === 'string' && charUrl && !charUrl.includes('属性アイコン')) {
                                 return `<img src="${charUrl}" alt="キャラクター" style="width: 100%; aspect-ratio: 1/1; border-radius: 8px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.display='none'">`;
                             }
                             return '';
@@ -5933,7 +5933,7 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                         // キャラクター画像を表示（charactersは文字列URLの配列）
                         characters.forEach(charUrl => {
                             // charUrlは文字列（画像URL）そのもの
-                            if (typeof charUrl === 'string' && charUrl.includes('http')) {
+                            if (typeof charUrl === 'string' && charUrl && !charUrl.includes('属性アイコン')) {
                                 html += `
                                     <img src="${charUrl}"
                                          alt="Character"

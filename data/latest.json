@@ -13,11 +13,11 @@
           "level": 2,
           "damage": 35575162157,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/lv-30/gm-38/2bb069ba8678aa438f728fdb3c73ac1f.webp"
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp"
           ]
         },
         {
@@ -27,11 +27,11 @@
           "level": 1,
           "damage": 18590118968,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/zi-41/od-26/a7454375ef26de7ab36031151ab2fe35.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/hq-69/xu-18/0077b0ff94f14da0b36953942e755b77.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp"
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/0077b0ff94f14da0b36953942e755b77.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
         },
         {
@@ -41,11 +41,11 @@
           "level": 1,
           "damage": 19540751080,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ik-73/fp-81/1535016705a53ae769ac8b37c6b2dd51.webp",
-            "https://sg-tools-cdn.blablalink.com/gr-60/he-25/d53975fb3ddd520d13aa07e5614ad59e.webp",
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/tr-83/pl-54/140184abd98aeb95a03860bd312949f8.webp",
-            "https://sg-tools-cdn.blablalink.com/jj-98/rs-72/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
           ]
         }
       ]
@@ -63,11 +63,11 @@
           "level": 2,
           "damage": 14513752913,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dc-42/yq-64/63d53b92567aba6aeb1368a2c6c5e420.webp",
-            "https://sg-tools-cdn.blablalink.com/ex-01/le-98/927af5cda6cfae85189931f40698b405.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/rb-27/lb-08/48e2d0b41848d524f651eee9e81b44da.webp",
-            "https://sg-tools-cdn.blablalink.com/kh-54/tt-51/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/48e2d0b41848d524f651eee9e81b44da.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
           ]
         },
         {
@@ -77,11 +77,11 @@
           "level": 2,
           "damage": 15676642834,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/ik-73/fp-81/1535016705a53ae769ac8b37c6b2dd51.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/if-77/sr-00/755dcf2aea00e99952a84bc6b9771f8a.webp"
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp"
           ]
         },
         {
@@ -91,11 +91,11 @@
           "level": 2,
           "damage": 21098022096,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         }
       ]
@@ -113,11 +113,11 @@
           "level": 1,
           "damage": 19472103161,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -127,11 +127,11 @@
           "level": 1,
           "damage": 12418665425,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/xu-44/cg-20/971525e4870d57187a646e92b31ee993.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/cn-33/ny-09/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
           ]
         },
         {
@@ -141,11 +141,11 @@
           "level": 1,
           "damage": 12362492170,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/qc-65/gx-93/d6e98762e28395fe639304f59f2515ab.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/ol-55/ke-27/b8c1242d8acfa0f29e89a76f58417af4.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/d6e98762e28395fe639304f59f2515ab.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/b8c1242d8acfa0f29e89a76f58417af4.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         }
       ]
@@ -163,11 +163,11 @@
           "level": 2,
           "damage": 12693499566,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         },
         {
@@ -177,11 +177,11 @@
           "level": 2,
           "damage": 13136706500,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ex-01/le-98/927af5cda6cfae85189931f40698b405.webp",
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/kh-54/tt-51/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
           ]
         },
         {
@@ -191,11 +191,11 @@
           "level": 2,
           "damage": 17414012120,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/le-20/af-98/3bbd011af06a42c324f937d5d931b4d2.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         }
       ]
@@ -213,11 +213,11 @@
           "level": 1,
           "damage": 14826457079,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/ik-73/fp-81/1535016705a53ae769ac8b37c6b2dd51.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/cn-33/ny-09/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
           ]
         },
         {
@@ -227,11 +227,11 @@
           "level": 1,
           "damage": 11182534046,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/se-05/xb-05/c22b550dab08af6aee1268daf75a311d.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp"
+            "./character-images/c22b550dab08af6aee1268daf75a311d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
           ]
         },
         {
@@ -241,11 +241,11 @@
           "level": 1,
           "damage": 16628601901,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         }
       ]
@@ -263,11 +263,11 @@
           "level": 1,
           "damage": 11773444787,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/fv-51/dl-10/f6707743db256def9f7cc01834d2b5f1.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp"
           ]
         },
         {
@@ -277,11 +277,11 @@
           "level": 1,
           "damage": 14578226235,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/rb-27/lb-08/48e2d0b41848d524f651eee9e81b44da.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp"
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/48e2d0b41848d524f651eee9e81b44da.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
           ]
         },
         {
@@ -291,11 +291,11 @@
           "level": 1,
           "damage": 15873193160,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/cn-33/ny-09/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
           ]
         }
       ]
@@ -313,11 +313,11 @@
           "level": 1,
           "damage": 14880426210,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/cy-23/lr-68/53bd5fb920553a158d80a170fbf36129.webp",
-            "https://sg-tools-cdn.blablalink.com/pi-34/bp-78/fdba16c60b497865d8f3130fc8466ae8.webp"
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/53bd5fb920553a158d80a170fbf36129.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
           ]
         },
         {
@@ -327,11 +327,11 @@
           "level": 1,
           "damage": 14810547415,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/fw-80/fb-66/a318393ea9779b93263dcb5e09b5f8a6.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp"
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp"
           ]
         },
         {
@@ -341,11 +341,11 @@
           "level": 1,
           "damage": 10525801331,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp",
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/vt-23/fp-65/1ab318713febb51ec0a59ecdf74d5961.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp",
-            "https://sg-tools-cdn.blablalink.com/or-38/mw-05/d79376caa8148ed88ae6daea0c3c8146.webp"
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/1ab318713febb51ec0a59ecdf74d5961.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp"
           ]
         }
       ]
@@ -363,11 +363,11 @@
           "level": 1,
           "damage": 12697793931,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/dg-90/ii-85/43259ee287732b15646a0a2068bcf564.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp"
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/43259ee287732b15646a0a2068bcf564.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
           ]
         },
         {
@@ -377,11 +377,11 @@
           "level": 1,
           "damage": 15631668262,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/lv-30/gm-38/2bb069ba8678aa438f728fdb3c73ac1f.webp",
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/jx-16/iz-11/7094b83a610d874a877afba6c0520445.webp",
-            "https://sg-tools-cdn.blablalink.com/wz-34/vj-24/8719439cdfadcf8b5748fcfc6079a00c.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -391,11 +391,11 @@
           "level": 1,
           "damage": 10790000168,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp"
           ]
         }
       ]
@@ -413,11 +413,11 @@
           "level": 1,
           "damage": 12078607784,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp",
-            "https://sg-tools-cdn.blablalink.com/vm-74/mh-11/4d9092159e78f8826997ae36be425eba.webp"
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp",
+            "./character-images/4d9092159e78f8826997ae36be425eba.webp"
           ]
         },
         {
@@ -427,11 +427,11 @@
           "level": 1,
           "damage": 9226508892,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/lv-30/gm-38/2bb069ba8678aa438f728fdb3c73ac1f.webp",
-            "https://sg-tools-cdn.blablalink.com/cs-23/ve-03/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/rq-60/ov-67/17f2cf990b5e85cef98eb8abc8db3c41.webp",
-            "https://sg-tools-cdn.blablalink.com/jj-98/rs-72/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
           ]
         },
         {
@@ -441,11 +441,11 @@
           "level": 1,
           "damage": 9901197458,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/fv-51/dl-10/f6707743db256def9f7cc01834d2b5f1.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -463,11 +463,11 @@
           "level": 1,
           "damage": 7270083707,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/zi-41/od-26/a7454375ef26de7ab36031151ab2fe35.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp"
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
         },
         {
@@ -477,11 +477,11 @@
           "level": 1,
           "damage": 10933149936,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         },
         {
@@ -491,11 +491,11 @@
           "level": 1,
           "damage": 12230988968,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         }
       ]
@@ -513,11 +513,11 @@
           "level": 1,
           "damage": 5791724860,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/dc-42/yq-64/63d53b92567aba6aeb1368a2c6c5e420.webp",
-            "https://sg-tools-cdn.blablalink.com/md-29/wy-38/4848d732d81d2344604b30e7f8288167.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp",
-            "https://sg-tools-cdn.blablalink.com/oj-18/dj-32/f4d49f875b1e112f42c2daf410aa7aac.webp"
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/4848d732d81d2344604b30e7f8288167.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp",
+            "./character-images/f4d49f875b1e112f42c2daf410aa7aac.webp"
           ]
         },
         {
@@ -527,11 +527,11 @@
           "level": 1,
           "damage": 12073157929,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/le-20/af-98/3bbd011af06a42c324f937d5d931b4d2.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -541,11 +541,11 @@
           "level": 1,
           "damage": 12309955879,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/pi-34/bp-78/fdba16c60b497865d8f3130fc8466ae8.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
           ]
         }
       ]
@@ -563,11 +563,11 @@
           "level": 1,
           "damage": 12240914466,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp"
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp"
           ]
         },
         {
@@ -577,11 +577,11 @@
           "level": 1,
           "damage": 7668316784,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/rq-60/ov-67/17f2cf990b5e85cef98eb8abc8db3c41.webp",
-            "https://sg-tools-cdn.blablalink.com/tr-83/pl-54/140184abd98aeb95a03860bd312949f8.webp"
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp"
           ]
         },
         {
@@ -591,11 +591,11 @@
           "level": 1,
           "damage": 9819988819,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ch-76/ob-71/d96d3a6d5c55ef7dd76f83181da11869.webp",
-            "https://sg-tools-cdn.blablalink.com/gr-60/he-25/d53975fb3ddd520d13aa07e5614ad59e.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/d96d3a6d5c55ef7dd76f83181da11869.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         }
       ]
@@ -613,11 +613,11 @@
           "level": 2,
           "damage": 10286597685,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/jx-90/tz-86/355c236e55ea995473b1b910849af65d.webp"
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/355c236e55ea995473b1b910849af65d.webp"
           ]
         },
         {
@@ -627,11 +627,11 @@
           "level": 2,
           "damage": 9800551682,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         },
         {
@@ -641,11 +641,11 @@
           "level": 1,
           "damage": 6278162347,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yt-24/wd-87/86a69907ae0feeb218eb98d10eb9a131.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -663,11 +663,11 @@
           "level": 1,
           "damage": 8492631414,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp"
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
         },
         {
@@ -677,11 +677,11 @@
           "level": 1,
           "damage": 11865158248,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -691,11 +691,11 @@
           "level": 1,
           "damage": 5699585639,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/fv-51/dl-10/f6707743db256def9f7cc01834d2b5f1.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -713,11 +713,11 @@
           "level": 2,
           "damage": 8462699176,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ex-01/le-98/927af5cda6cfae85189931f40698b405.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/cn-33/ny-09/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
           ]
         },
         {
@@ -727,11 +727,11 @@
           "level": 2,
           "damage": 9952750999,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/le-20/af-98/3bbd011af06a42c324f937d5d931b4d2.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -741,11 +741,11 @@
           "level": 1,
           "damage": 7453677293,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/jx-16/iz-11/7094b83a610d874a877afba6c0520445.webp",
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/rz-93/ko-45/e641c325ff3f6d6fb159fea2eb0a26f7.webp",
-            "https://sg-tools-cdn.blablalink.com/wz-34/vj-24/8719439cdfadcf8b5748fcfc6079a00c.webp"
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/e641c325ff3f6d6fb159fea2eb0a26f7.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp"
           ]
         }
       ]
@@ -763,11 +763,11 @@
           "level": 1,
           "damage": 4848604835,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/zi-41/od-26/a7454375ef26de7ab36031151ab2fe35.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/gv-09/qw-46/75b345c5e360f78e886b7daa5697e434.webp",
-            "https://sg-tools-cdn.blablalink.com/vm-74/mh-11/4d9092159e78f8826997ae36be425eba.webp"
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/4d9092159e78f8826997ae36be425eba.webp"
           ]
         },
         {
@@ -777,11 +777,11 @@
           "level": 1,
           "damage": 13445580993,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/le-20/af-98/3bbd011af06a42c324f937d5d931b4d2.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -791,11 +791,11 @@
           "level": 1,
           "damage": 6796836714,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yt-24/wd-87/86a69907ae0feeb218eb98d10eb9a131.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/yp-05/je-91/091b8ced66cbf8012b34b4750afcbf08.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/091b8ced66cbf8012b34b4750afcbf08.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -813,11 +813,11 @@
           "level": 1,
           "damage": 9980732882,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -827,11 +827,11 @@
           "level": 1,
           "damage": 6482204323,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/se-05/xb-05/c22b550dab08af6aee1268daf75a311d.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp"
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/c22b550dab08af6aee1268daf75a311d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
         },
         {
@@ -841,11 +841,11 @@
           "level": 1,
           "damage": 8029442148,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         }
       ]
@@ -863,11 +863,11 @@
           "level": 1,
           "damage": 7629943455,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp"
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp"
           ]
         },
         {
@@ -877,11 +877,11 @@
           "level": 1,
           "damage": 7870073810,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/xu-44/cg-20/971525e4870d57187a646e92b31ee993.webp",
-            "https://sg-tools-cdn.blablalink.com/rb-27/lb-08/48e2d0b41848d524f651eee9e81b44da.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/pa-72/ce-65/1675c806cc8f0bb7244a0d19b136d7e5.webp",
-            "https://sg-tools-cdn.blablalink.com/lh-97/pq-22/3d607bbfcefda8faba7ba237de1eed75.webp"
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/48e2d0b41848d524f651eee9e81b44da.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/1675c806cc8f0bb7244a0d19b136d7e5.webp",
+            "./character-images/3d607bbfcefda8faba7ba237de1eed75.webp"
           ]
         },
         {
@@ -891,11 +891,11 @@
           "level": 1,
           "damage": 7775352944,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/or-38/mw-05/d79376caa8148ed88ae6daea0c3c8146.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         }
       ]
@@ -913,11 +913,11 @@
           "level": 2,
           "damage": 8243881601,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/le-20/af-98/3bbd011af06a42c324f937d5d931b4d2.webp",
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -927,11 +927,11 @@
           "level": 1,
           "damage": 4758714942,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
           ]
         },
         {
@@ -941,11 +941,11 @@
           "level": 1,
           "damage": 5068742951,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/fv-51/dl-10/f6707743db256def9f7cc01834d2b5f1.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -963,11 +963,11 @@
           "level": 1,
           "damage": 4051660491,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/dc-42/yq-64/63d53b92567aba6aeb1368a2c6c5e420.webp",
-            "https://sg-tools-cdn.blablalink.com/gv-09/qw-46/75b345c5e360f78e886b7daa5697e434.webp",
-            "https://sg-tools-cdn.blablalink.com/ku-00/uv-71/b3f00938b271dc47a0309d8af5dfe07e.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp"
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/b3f00938b271dc47a0309d8af5dfe07e.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
         },
         {
@@ -977,11 +977,11 @@
           "level": 1,
           "damage": 5929636464,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/fv-51/dl-10/f6707743db256def9f7cc01834d2b5f1.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp",
-            "https://sg-tools-cdn.blablalink.com/lv-30/gm-38/2bb069ba8678aa438f728fdb3c73ac1f.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
           ]
         },
         {
@@ -991,11 +991,11 @@
           "level": 1,
           "damage": 7734026829,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/zg-20/tc-52/51b33eff74c04ceea8a13743c44d360b.webp",
-            "https://sg-tools-cdn.blablalink.com/ee-41/gs-43/b6c6f46752e61434f7bcbed790db025b.webp"
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/51b33eff74c04ceea8a13743c44d360b.webp",
+            "./character-images/b6c6f46752e61434f7bcbed790db025b.webp"
           ]
         }
       ]
@@ -1013,11 +1013,11 @@
           "level": 1,
           "damage": 5145095661,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         },
         {
@@ -1027,11 +1027,11 @@
           "level": 1,
           "damage": 6258775080,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/lv-30/gm-38/2bb069ba8678aa438f728fdb3c73ac1f.webp",
-            "https://sg-tools-cdn.blablalink.com/ob-42/gh-07/15f93b4073cd82430710c5d4105fa56d.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         },
         {
@@ -1041,11 +1041,11 @@
           "level": 1,
           "damage": 4653539730,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/vt-23/fp-65/1ab318713febb51ec0a59ecdf74d5961.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/rb-27/lb-08/48e2d0b41848d524f651eee9e81b44da.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp",
-            "https://sg-tools-cdn.blablalink.com/vm-74/mh-11/4d9092159e78f8826997ae36be425eba.webp"
+            "./character-images/1ab318713febb51ec0a59ecdf74d5961.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/48e2d0b41848d524f651eee9e81b44da.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp",
+            "./character-images/4d9092159e78f8826997ae36be425eba.webp"
           ]
         }
       ]
@@ -1063,11 +1063,11 @@
           "level": 2,
           "damage": 8648970249,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/lv-30/gm-38/2bb069ba8678aa438f728fdb3c73ac1f.webp"
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp"
           ]
         },
         {
@@ -1077,11 +1077,11 @@
           "level": 1,
           "damage": 564653164,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dj-77/ac-82/a26102dc0f5816931c09c85040b11993.webp",
-            "https://sg-tools-cdn.blablalink.com/gi-13/aa-28/af22d6d7756efe69915373651b429e11.webp",
-            "https://sg-tools-cdn.blablalink.com/ii-26/lj-97/b511b0f11e0ee358ee6b4f7a995d83db.webp",
-            "https://sg-tools-cdn.blablalink.com/ah-42/do-82/eab4a0b7e415389fb0b1921f1fcb2fb8.webp",
-            "https://sg-tools-cdn.blablalink.com/rz-09/kd-23/becc4bf55ffa66874b39c62a3a2b9771.webp"
+            "./character-images/a26102dc0f5816931c09c85040b11993.webp",
+            "./character-images/af22d6d7756efe69915373651b429e11.webp",
+            "./character-images/b511b0f11e0ee358ee6b4f7a995d83db.webp",
+            "./character-images/eab4a0b7e415389fb0b1921f1fcb2fb8.webp",
+            "./character-images/becc4bf55ffa66874b39c62a3a2b9771.webp"
           ]
         },
         {
@@ -1091,11 +1091,11 @@
           "level": 1,
           "damage": 4822288126,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ve-06/np-27/59035ecc65d2e661f612d9eea23dbe07.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -1113,11 +1113,11 @@
           "level": 2,
           "damage": 3419641779,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp",
-            "https://sg-tools-cdn.blablalink.com/ps-47/fm-98/1a1d148f4759a58ff864023b91a07169.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp"
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/1a1d148f4759a58ff864023b91a07169.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
         },
         {
@@ -1127,11 +1127,11 @@
           "level": 2,
           "damage": 6213849316,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/le-20/af-98/3bbd011af06a42c324f937d5d931b4d2.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/cn-33/ny-09/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
           ]
         },
         {
@@ -1141,11 +1141,11 @@
           "level": 2,
           "damage": 3255096228,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/fw-80/fb-66/a318393ea9779b93263dcb5e09b5f8a6.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/tf-41/zb-01/4844e4d5e35257607e7dfb58f7a666a9.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -1163,11 +1163,11 @@
           "level": 2,
           "damage": 4705815085,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/gr-60/he-25/d53975fb3ddd520d13aa07e5614ad59e.webp",
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp",
-            "https://sg-tools-cdn.blablalink.com/oj-18/dj-32/f4d49f875b1e112f42c2daf410aa7aac.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/f4d49f875b1e112f42c2daf410aa7aac.webp"
           ]
         },
         {
@@ -1177,11 +1177,11 @@
           "level": 2,
           "damage": 3984405791,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/pv-37/qv-38/2884d487616b8dbbc109232437e67eeb.webp"
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/2884d487616b8dbbc109232437e67eeb.webp"
           ]
         },
         {
@@ -1191,11 +1191,11 @@
           "level": 1,
           "damage": 3035821549,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yt-24/wd-87/86a69907ae0feeb218eb98d10eb9a131.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/lg-63/kj-44/f0c089e8bb85053339d41b2720f0a900.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp"
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/f0c089e8bb85053339d41b2720f0a900.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
         }
       ]
@@ -1213,11 +1213,11 @@
           "level": 1,
           "damage": 3071476894,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/dc-42/yq-64/63d53b92567aba6aeb1368a2c6c5e420.webp",
-            "https://sg-tools-cdn.blablalink.com/dg-90/ii-85/43259ee287732b15646a0a2068bcf564.webp",
-            "https://sg-tools-cdn.blablalink.com/vm-74/mh-11/4d9092159e78f8826997ae36be425eba.webp",
-            "https://sg-tools-cdn.blablalink.com/xp-17/dz-39/fc0882189da1463e533d328cee8d5a92.webp"
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/43259ee287732b15646a0a2068bcf564.webp",
+            "./character-images/4d9092159e78f8826997ae36be425eba.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
           ]
         },
         {
@@ -1227,11 +1227,11 @@
           "level": 1,
           "damage": 2061223472,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/wo-81/io-05/5f04f96984b134bd885b3b473a0efb5f.webp",
-            "https://sg-tools-cdn.blablalink.com/ig-12/xy-77/1335f36c55dbb22eb0975d407e8ca1a6.webp",
-            "https://sg-tools-cdn.blablalink.com/ob-42/gh-07/15f93b4073cd82430710c5d4105fa56d.webp",
-            "https://sg-tools-cdn.blablalink.com/cs-23/ve-03/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
-            "https://sg-tools-cdn.blablalink.com/vt-23/fp-65/1ab318713febb51ec0a59ecdf74d5961.webp"
+            "./character-images/5f04f96984b134bd885b3b473a0efb5f.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
+            "./character-images/1ab318713febb51ec0a59ecdf74d5961.webp"
           ]
         },
         {
@@ -1241,11 +1241,11 @@
           "level": 1,
           "damage": 6421588236,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/le-20/af-98/3bbd011af06a42c324f937d5d931b4d2.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         }
       ]
@@ -1263,11 +1263,11 @@
           "level": 1,
           "damage": 2801335535,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/tl-03/cp-59/dab693df5b0baaf29b8f2a1b254c7679.webp",
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         },
         {
@@ -1277,11 +1277,11 @@
           "level": 1,
           "damage": 3651249451,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yt-24/wd-87/86a69907ae0feeb218eb98d10eb9a131.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp",
-            "https://sg-tools-cdn.blablalink.com/bo-53/ny-94/9163759961bd6052bca348f719138ebe.webp",
-            "https://sg-tools-cdn.blablalink.com/lv-30/gm-38/2bb069ba8678aa438f728fdb3c73ac1f.webp"
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp"
           ]
         },
         {
@@ -1291,11 +1291,11 @@
           "level": 1,
           "damage": 1698881722,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/zi-41/od-26/a7454375ef26de7ab36031151ab2fe35.webp",
-            "https://sg-tools-cdn.blablalink.com/gr-60/he-25/d53975fb3ddd520d13aa07e5614ad59e.webp",
-            "https://sg-tools-cdn.blablalink.com/ob-42/gh-07/15f93b4073cd82430710c5d4105fa56d.webp",
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/dg-90/ii-85/43259ee287732b15646a0a2068bcf564.webp"
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/43259ee287732b15646a0a2068bcf564.webp"
           ]
         }
       ]
@@ -1313,11 +1313,11 @@
           "level": 1,
           "damage": 3098631742,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/zi-41/od-26/a7454375ef26de7ab36031151ab2fe35.webp",
-            "https://sg-tools-cdn.blablalink.com/gr-60/he-25/d53975fb3ddd520d13aa07e5614ad59e.webp",
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/gv-09/qw-46/75b345c5e360f78e886b7daa5697e434.webp",
-            "https://sg-tools-cdn.blablalink.com/ku-00/uv-71/b3f00938b271dc47a0309d8af5dfe07e.webp"
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/b3f00938b271dc47a0309d8af5dfe07e.webp"
           ]
         },
         {
@@ -1327,11 +1327,11 @@
           "level": 1,
           "damage": 907902737,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/rq-60/ov-67/17f2cf990b5e85cef98eb8abc8db3c41.webp",
-            "https://sg-tools-cdn.blablalink.com/cs-23/ve-03/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
-            "https://sg-tools-cdn.blablalink.com/wo-81/io-05/5f04f96984b134bd885b3b473a0efb5f.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
+            "./character-images/5f04f96984b134bd885b3b473a0efb5f.webp"
           ]
         },
         {
@@ -1341,11 +1341,11 @@
           "level": 1,
           "damage": 3084933817,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/gn-41/uf-29/0664c6b8c1367369612868307a225530.webp",
-            "https://sg-tools-cdn.blablalink.com/lh-97/pq-22/3d607bbfcefda8faba7ba237de1eed75.webp"
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/0664c6b8c1367369612868307a225530.webp",
+            "./character-images/3d607bbfcefda8faba7ba237de1eed75.webp"
           ]
         }
       ]
@@ -1363,11 +1363,11 @@
           "level": 1,
           "damage": 2148728221,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp",
-            "https://sg-tools-cdn.blablalink.com/gv-09/qw-46/75b345c5e360f78e886b7daa5697e434.webp",
-            "https://sg-tools-cdn.blablalink.com/vs-36/pv-69/befa427f703047af533d820a2cc42161.webp"
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
           ]
         },
         {
@@ -1377,11 +1377,11 @@
           "level": 1,
           "damage": 2012606910,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/ob-42/gh-07/15f93b4073cd82430710c5d4105fa56d.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp"
           ]
         },
         {
@@ -1391,11 +1391,11 @@
           "level": 1,
           "damage": 1428835245,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/sz-63/aa-44/7d0703cf96d9c966744d05e8ab8a5d6c.webp",
-            "https://sg-tools-cdn.blablalink.com/ii-26/lj-97/b511b0f11e0ee358ee6b4f7a995d83db.webp",
-            "https://sg-tools-cdn.blablalink.com/yt-24/wd-87/86a69907ae0feeb218eb98d10eb9a131.webp",
-            "https://sg-tools-cdn.blablalink.com/if-77/sr-00/755dcf2aea00e99952a84bc6b9771f8a.webp",
-            "https://sg-tools-cdn.blablalink.com/lg-63/kj-44/f0c089e8bb85053339d41b2720f0a900.webp"
+            "./character-images/7d0703cf96d9c966744d05e8ab8a5d6c.webp",
+            "./character-images/b511b0f11e0ee358ee6b4f7a995d83db.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/f0c089e8bb85053339d41b2720f0a900.webp"
           ]
         }
       ]
@@ -1413,11 +1413,11 @@
           "level": 2,
           "damage": 1263128336,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/rq-60/ov-67/17f2cf990b5e85cef98eb8abc8db3c41.webp",
-            "https://sg-tools-cdn.blablalink.com/pi-34/bp-78/fdba16c60b497865d8f3130fc8466ae8.webp",
-            "https://sg-tools-cdn.blablalink.com/vk-88/qh-05/f8c6e8785196351c009e61dbba27645d.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/gv-09/qw-46/75b345c5e360f78e886b7daa5697e434.webp"
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp"
           ]
         },
         {
@@ -1427,11 +1427,11 @@
           "level": 2,
           "damage": 1244041766,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp",
-            "https://sg-tools-cdn.blablalink.com/ai-34/wz-00/ce3b833cd35960c9bf06fce4351e8812.webp"
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
           ]
         },
         {
@@ -1441,11 +1441,11 @@
           "level": 2,
           "damage": 2479994698,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         }
       ]
@@ -1463,11 +1463,11 @@
           "level": 1,
           "damage": 1358846526,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/lg-63/kj-44/f0c089e8bb85053339d41b2720f0a900.webp",
-            "https://sg-tools-cdn.blablalink.com/jk-69/lz-70/8ce431b15458c35f7382e7d7d9d213b7.webp",
-            "https://sg-tools-cdn.blablalink.com/yt-24/wd-87/86a69907ae0feeb218eb98d10eb9a131.webp",
-            "https://sg-tools-cdn.blablalink.com/if-77/sr-00/755dcf2aea00e99952a84bc6b9771f8a.webp",
-            "https://sg-tools-cdn.blablalink.com/dj-77/ac-82/a26102dc0f5816931c09c85040b11993.webp"
+            "./character-images/f0c089e8bb85053339d41b2720f0a900.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/a26102dc0f5816931c09c85040b11993.webp"
           ]
         },
         {
@@ -1477,11 +1477,11 @@
           "level": 1,
           "damage": 252590547,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/po-10/wr-03/430fe2319b54b1569064001be1a93641.webp",
-            "https://sg-tools-cdn.blablalink.com/cs-23/ve-03/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
-            "https://sg-tools-cdn.blablalink.com/rq-60/ov-67/17f2cf990b5e85cef98eb8abc8db3c41.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/hn-05/ti-98/8eb1e9dd804ca8ac6788859d45a21432.webp"
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp"
           ]
         },
         {
@@ -1491,11 +1491,11 @@
           "level": 1,
           "damage": 3153656505,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/si-56/rh-20/2b99cf6d141638788d640b64cb84bf66.webp",
-            "https://sg-tools-cdn.blablalink.com/dl-88/pz-87/e3532447b3ca028770c2a5ee149e746e.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         }
       ]
@@ -1513,11 +1513,11 @@
           "level": 2,
           "damage": 964552755,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ch-76/ob-71/d96d3a6d5c55ef7dd76f83181da11869.webp",
-            "https://sg-tools-cdn.blablalink.com/if-77/sr-00/755dcf2aea00e99952a84bc6b9771f8a.webp",
-            "https://sg-tools-cdn.blablalink.com/ww-88/af-41/627884de8e4628efd7dbcb7a9e4ecf53.webp",
-            "https://sg-tools-cdn.blablalink.com/fw-80/fb-66/a318393ea9779b93263dcb5e09b5f8a6.webp",
-            "https://sg-tools-cdn.blablalink.com/tt-78/to-38/3870984ac10047733bc6b57502f3378c.webp"
+            "./character-images/d96d3a6d5c55ef7dd76f83181da11869.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
           ]
         },
         {
@@ -1527,11 +1527,11 @@
           "level": 2,
           "damage": 288121464,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/yz-07/yv-65/d2c988a262dd44579c299337d5658c40.webp",
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/rr-86/sx-09/42d9a7d53ad7c3871087d0f972f12ff9.webp",
-            "https://sg-tools-cdn.blablalink.com/rq-60/ov-67/17f2cf990b5e85cef98eb8abc8db3c41.webp",
-            "https://sg-tools-cdn.blablalink.com/oj-18/dj-32/f4d49f875b1e112f42c2daf410aa7aac.webp"
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/42d9a7d53ad7c3871087d0f972f12ff9.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/f4d49f875b1e112f42c2daf410aa7aac.webp"
           ]
         },
         {
@@ -1541,11 +1541,11 @@
           "level": 2,
           "damage": 1257528900,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/od-63/hl-27/f078b4261519b0d1f598b6c1e943469a.webp",
-            "https://sg-tools-cdn.blablalink.com/hy-50/yn-64/6045c557bca29bcd35a65c8c99745ff0.webp",
-            "https://sg-tools-cdn.blablalink.com/xa-21/ld-20/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
-            "https://sg-tools-cdn.blablalink.com/va-94/bv-67/b6bd2f152e9a7e05b72e65323e039063.webp"
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
           ]
         }
       ]
@@ -1563,11 +1563,11 @@
           "level": 1,
           "damage": 12809241514,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/ot-38/it-59/891bcbffffc5feae8545935ca6e6a4ea.webp",
-            "https://sg-tools-cdn.blablalink.com/vy-50/dw-46/830d9d8541fce0c485950e38050b1c6d.webp",
-            "https://sg-tools-cdn.blablalink.com/dg-90/ii-85/43259ee287732b15646a0a2068bcf564.webp",
-            "https://sg-tools-cdn.blablalink.com/pn-82/za-78/6bf2f9261d5b41c4659692a6eb78527a.webp",
-            "https://sg-tools-cdn.blablalink.com/be-35/mn-00/ec51dcc7846a88299df91a31ac5c41c2.webp"
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/43259ee287732b15646a0a2068bcf564.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
         },
         {
@@ -1577,11 +1577,11 @@
           "level": 1,
           "damage": 18492372883,
           "characters": [
-            "https://sg-tools-cdn.blablalink.com/pk-48/pa-98/04a73cd1bfa43f3a1078564107ad8336.webp",
-            "https://sg-tools-cdn.blablalink.com/rv-70/ht-44/68aa881ffdc137d2a50da839eaa1adb6.webp",
-            "https://sg-tools-cdn.blablalink.com/zd-30/bq-66/5b682cd738500f81044db096ba87c5e7.webp",
-            "https://sg-tools-cdn.blablalink.com/tr-83/pl-54/140184abd98aeb95a03860bd312949f8.webp",
-            "https://sg-tools-cdn.blablalink.com/ao-52/dx-84/886c1de7ac43d1f5b8aec1dcb8ab23c5.webp"
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/5b682cd738500f81044db096ba87c5e7.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp",
+            "./character-images/886c1de7ac43d1f5b8aec1dcb8ab23c5.webp"
           ]
         }
       ]
@@ -1592,7 +1592,8 @@
     "playerCount": 32,
     "totalDamage": 815827000000,
     "source": "BlaBlaLINK Chrome Extension",
-    "version": "2.2",
-    "hasDetailedAttacks": true
+    "version": "2.3",
+    "hasDetailedAttacks": true,
+    "imagesDownloaded": true
   }
 }
