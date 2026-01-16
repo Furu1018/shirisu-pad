@@ -2931,6 +2931,9 @@ table tr:hover {
                     <button onclick="exportMonthlyArchive()" class="btn btn-primary">
                         📅 月別データとして保存
                     </button>
+                    <button onclick="exportSharedHistory()" class="btn btn-primary">
+                        🔄 共有履歴を生成
+                    </button>
                     <button onclick="exportHistoryToJSON()" class="btn btn-outline">
                         💾 履歴をバックアップ
                     </button>
@@ -6505,9 +6508,119 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             }
         }
 
+        // ========================================
+        // Phase 3: 共有履歴システム (data/history.json)
+        // ========================================
+
+        // 共有履歴データを自動読み込み
+        async function autoLoadHistory() {
+            try {
+                const response = await fetch('./data/history.json');
+                if (response.ok) {
+                    const sharedHistory = await response.json();
+                    console.log('✅ 共有履歴データを読み込みました:', sharedHistory);
+
+                    // localStorageの履歴を読み込み
+                    const localHistoryJson = localStorage.getItem('nikke-analytics-history');
+                    let localHistory = {};
+                    if (localHistoryJson) {
+                        try {
+                            localHistory = JSON.parse(localHistoryJson);
+                        } catch (e) {
+                            console.warn('localStorage履歴の解析に失敗:', e);
+                        }
+                    }
+
+                    // 統合処理
+                    const mergedHistory = mergeHistoryData(sharedHistory.months || {}, localHistory);
+                    historyData = mergedHistory;
+
+                    // ユニオン順位履歴も統合
+                    if (sharedHistory.unionRankHistory) {
+                        unionRankHistory = {
+                            ...sharedHistory.unionRankHistory,
+                            ...unionRankHistory  // localStorageを優先
+                        };
+                    }
+
+                    // localStorageに保存
+                    localStorage.setItem('nikke-analytics-history', JSON.stringify(historyData));
+
+                    console.log('✅ 履歴を統合しました（shared + local）:', Object.keys(historyData).length, 'ヶ月');
+                } else {
+                    console.log('history.jsonが見つかりません（任意）');
+                }
+            } catch (error) {
+                console.log('history.json読み込みエラー（任意のため続行）:', error.message);
+            }
+        }
+
+        // 共有履歴とローカル履歴をマージ
+        function mergeHistoryData(sharedMonths, localMonths) {
+            const merged = { ...sharedMonths };
+
+            for (const [monthKey, localData] of Object.entries(localMonths)) {
+                if (merged[monthKey]) {
+                    // 既存の場合、日付を比較して新しい方を採用
+                    const sharedDate = getHistoryDate(merged[monthKey]);
+                    const localDate = getHistoryDate(localData);
+
+                    if (localDate > sharedDate) {
+                        console.log(`月 ${monthKey}: ローカルデータが新しいため採用`);
+                        merged[monthKey] = localData;
+                    } else {
+                        console.log(`月 ${monthKey}: 共有データが新しいため採用`);
+                    }
+                } else {
+                    // 新しい月の場合はそのまま追加
+                    merged[monthKey] = localData;
+                }
+            }
+
+            return merged;
+        }
+
+        // 履歴データから日付を取得
+        function getHistoryDate(data) {
+            if (Array.isArray(data) && data.length > 0) {
+                return new Date(data[0].date || '2000-01-01');
+            }
+            return new Date('2000-01-01');
+        }
+
+        // 共有履歴JSONを生成してダウンロード
+        function exportSharedHistory() {
+            if (Object.keys(historyData).length === 0) {
+                alert('履歴データがありません。先に「データ蓄積」を実行してください。');
+                return;
+            }
+
+            const sharedHistory = {
+                version: "1.0",
+                lastUpdated: new Date().toISOString(),
+                description: "しりすこPAD 共有履歴データ - メンバー全員で同じ履歴を共有できます",
+                months: historyData,
+                unionRankHistory: unionRankHistory
+            };
+
+            const json = JSON.stringify(sharedHistory, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = 'history.json';
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert('✅ history.jsonを生成しました！\n\nこのファイルを data/ フォルダに配置すると、\n全メンバーで履歴を共有できます。');
+        }
+
         // ページ読み込み時にユニオン順位データを読み込み
         document.addEventListener('DOMContentLoaded', function() {
             loadUnionRankData();
+            autoLoadHistory();     // 共有履歴を自動読み込み
 
             // URL経由でのJSON自動読み込み
             autoLoadJSONFromURL();
