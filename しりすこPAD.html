@@ -2488,6 +2488,49 @@ table tr:hover {
             </div>
         </div>
 
+        <!-- 月別アーカイブ保存モーダル (Phase 2) -->
+        <div id="monthlyArchiveModal" style="display: none;" class="modal" onclick="closeMonthlyArchiveModal()">
+            <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3>📅 月別データとして保存</h3>
+                    <button onclick="closeMonthlyArchiveModal()" class="close-btn">✕</button>
+                </div>
+
+                <div style="padding: 1.5rem 1rem;">
+                    <p style="text-align: center; margin-bottom: 1.5rem; color: var(--text-secondary);">
+                        現在読み込まれているlatest.jsonを<br>月別データとして保存します
+                    </p>
+
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 1rem;">
+                        <div style="text-align: center;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">年</label>
+                            <input type="number" id="archiveYearInput" min="2020" max="2030" class="year-month-input" value="2025">
+                        </div>
+                        <div style="font-size: 2rem; color: var(--text-secondary); padding-top: 1.5rem;">-</div>
+                        <div style="text-align: center;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">月</label>
+                            <input type="number" id="archiveMonthInput" min="1" max="12" class="year-month-input" value="1">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; padding: 12px; background: var(--md-sys-color-surface-variant); border-radius: 8px; font-size: 13px; color: var(--text-secondary);">
+                        💡 保存したファイルを <code>data/</code> フォルダに配置すると、<br>
+                        URL経由で読み込めるようになります<br>
+                        例: <code>?month=2025-01</code>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button onclick="confirmMonthlyArchive()" class="btn btn-primary">
+                        💾 保存する
+                    </button>
+                    <button onclick="closeMonthlyArchiveModal()" class="btn btn-outline">
+                        キャンセル
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- 使い方手順書モーダル -->
         <div id="guideModal" style="display: none;" class="modal" onclick="closeGuideModal()">
             <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 700px;">
@@ -2884,6 +2927,9 @@ table tr:hover {
                 <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
                     <button onclick="accumulateData()" class="btn btn-primary">
                         📈 現在のデータを蓄積
+                    </button>
+                    <button onclick="exportMonthlyArchive()" class="btn btn-primary">
+                        📅 月別データとして保存
                     </button>
                     <button onclick="exportHistoryToJSON()" class="btn btn-outline">
                         💾 履歴をバックアップ
@@ -6807,6 +6853,80 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
 
             closeExportMenu();
             alert('履歴データをバックアップしました！');
+        }
+
+        // ========================================
+        // Phase 2: 月別アーカイブ機能
+        // ========================================
+
+        function exportMonthlyArchive() {
+            if (!rawData || !processedData || processedData.length === 0) {
+                alert('データが読み込まれていません。先にJSONファイルを読み込んでください。');
+                return;
+            }
+            showMonthlyArchiveModal();
+        }
+
+        function showMonthlyArchiveModal() {
+            const modal = document.getElementById('monthlyArchiveModal');
+            modal.style.display = 'flex';
+
+            // デフォルト値を現在の日付に設定
+            const now = new Date();
+            document.getElementById('archiveYearInput').value = now.getFullYear();
+            document.getElementById('archiveMonthInput').value = now.getMonth() + 1;
+        }
+
+        function closeMonthlyArchiveModal() {
+            document.getElementById('monthlyArchiveModal').style.display = 'none';
+        }
+
+        function confirmMonthlyArchive() {
+            const year = parseInt(document.getElementById('archiveYearInput').value);
+            const month = parseInt(document.getElementById('archiveMonthInput').value);
+
+            // 入力値の検証
+            if (!year || year < 2020 || year > 2030) {
+                alert('正しい年を入力してください（2020-2030）');
+                return;
+            }
+            if (!month || month < 1 || month > 12) {
+                alert('正しい月を入力してください（1-12）');
+                return;
+            }
+
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+            // rawDataのコピーを作成してアーカイブメタデータを追加
+            const archiveData = JSON.parse(JSON.stringify(rawData));
+            if (!archiveData.metadata) {
+                archiveData.metadata = {};
+            }
+            archiveData.metadata.archiveMonth = monthKey;
+            archiveData.metadata.archivedAt = new Date().toISOString();
+
+            // ユニオン順位を含める（既にmetadataにある場合はそのまま、なければcurrentUnionRankから）
+            if (archiveData.metadata.unionRank === undefined || archiveData.metadata.unionRank === null) {
+                if (currentUnionRank) {
+                    archiveData.metadata.unionRank = currentUnionRank;
+                }
+            }
+
+            // JSONファイルとしてダウンロード
+            const json = JSON.stringify(archiveData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = `${monthKey}.json`;
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            closeMonthlyArchiveModal();
+
+            alert(`✅ ${monthKey}.json として保存しました！\n\nこのファイルを data/ フォルダに配置すると、\nURL経由で読み込めるようになります。\n\n例: ?month=${monthKey}`);
         }
 
         // ========================================
