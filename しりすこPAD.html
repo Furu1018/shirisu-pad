@@ -3409,10 +3409,10 @@ table tr:hover {
                         if (attack.characters && Array.isArray(attack.characters)) {
                             const validCharacters = [];
                             attack.characters.forEach((url, urlIndex) => {
-                                try {
-                                    new URL(url);
+                                // 文字列で、空でなければ有効とする（相対パスとHTTP URLの両方に対応）
+                                if (typeof url === 'string' && url.trim() !== '') {
                                     validCharacters.push(url);
-                                } catch (error) {
+                                } else {
                                     console.warn(`⚠️ 無効な画像URL: ${player.player}の攻撃${attackIndex + 1}、キャラ${urlIndex + 1}: ${url}`);
                                 }
                             });
@@ -4022,10 +4022,13 @@ function generateDistributionHTML() {
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 400px;">
-                        ${comp.characters.map(charUrl => {
+                        ${comp.characters.map((charUrl, idx) => {
+                            console.log(`[ランキング] Character ${idx}:`, charUrl, 'Type:', typeof charUrl);
                             if (typeof charUrl === 'string' && charUrl && !charUrl.includes('属性アイコン')) {
-                                return `<img src="${charUrl}" alt="キャラクター" style="width: 100%; aspect-ratio: 1/1; border-radius: 8px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.display='none'">`;
+                                console.log(`[ランキング] ✓ 画像表示:`, charUrl);
+                                return `<img src="${charUrl}" alt="キャラクター" style="width: 100%; aspect-ratio: 1/1; border-radius: 8px; object-fit: cover; border: 2px solid var(--border-color);" onerror="console.error('画像エラー:', '${charUrl}'); this.style.display='none';" onload="console.log('画像OK:', '${charUrl}')">`;
                             }
+                            console.log(`[ランキング] ✗ スキップ:`, charUrl);
                             return '';
                         }).join('')}
                     </div>
@@ -5931,15 +5934,20 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                         `;
 
                         // キャラクター画像を表示（charactersは文字列URLの配列）
-                        characters.forEach(charUrl => {
+                        characters.forEach((charUrl, idx) => {
+                            console.log(`[編成一覧] Character ${idx}:`, charUrl, 'Type:', typeof charUrl);
                             // charUrlは文字列（画像URL）そのもの
                             if (typeof charUrl === 'string' && charUrl && !charUrl.includes('属性アイコン')) {
+                                console.log(`[編成一覧] ✓ 画像表示:`, charUrl);
                                 html += `
                                     <img src="${charUrl}"
                                          alt="Character"
                                          class="attack-character-img"
-                                         onerror="this.style.display='none'">
+                                         onerror="console.error('画像エラー:', '${charUrl}'); this.style.display='none';"
+                                         onload="console.log('画像OK:', '${charUrl}')">
                                 `;
+                            } else {
+                                console.log(`[編成一覧] ✗ スキップ:`, charUrl);
                             }
                         });
 
