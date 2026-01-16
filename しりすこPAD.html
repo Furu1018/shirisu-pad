@@ -1671,6 +1671,28 @@
             }
         }
 
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+        }
+
         #fileInput {
             display: none;
         }
@@ -3417,6 +3439,7 @@ table tr:hover {
                 if (rawData.metadata.unionRank !== undefined && rawData.metadata.unionRank !== null) {
                     currentUnionRank = rawData.metadata.unionRank;
                     console.log('✅ latest.jsonからユニオン順位を読み込みました:', currentUnionRank);
+                    showNotification(`ユニオン順位を読み込みました: ${currentUnionRank}%`, 'success');
 
                     // localStorageに保存
                     localStorage.setItem('nikke-current-union-rank', currentUnionRank.toString());
@@ -3891,6 +3914,35 @@ function generateDistributionHTML() {
     }
 }
 
+        // ========================================
+        // Phase 4: 通知システム
+        // ========================================
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 16px 24px;
+                background: ${type === 'success' ? 'var(--md-sys-color-primary)' : type === 'error' ? '#ef4444' : 'var(--md-sys-color-secondary)'};
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideInRight 0.3s ease-out;
+                font-size: 14px;
+                max-width: 400px;
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
 
         function showResults() {
             errorArea.innerHTML = '';
@@ -6547,6 +6599,7 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                     localStorage.setItem('nikke-analytics-history', JSON.stringify(historyData));
 
                     console.log('✅ 履歴を統合しました（shared + local）:', Object.keys(historyData).length, 'ヶ月');
+                    showNotification(`共有履歴を読み込みました（${Object.keys(historyData).length}ヶ月）`, 'success');
                 } else {
                     console.log('history.jsonが見つかりません（任意）');
                 }
@@ -6614,7 +6667,7 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             link.click();
             document.body.removeChild(link);
 
-            alert('✅ history.jsonを生成しました！\n\nこのファイルを data/ フォルダに配置すると、\n全メンバーで履歴を共有できます。');
+            showNotification('history.json を生成しました！', 'success');
         }
 
         // ページ読み込み時にユニオン順位データを読み込み
@@ -7039,7 +7092,7 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
 
             closeMonthlyArchiveModal();
 
-            alert(`✅ ${monthKey}.json として保存しました！\n\nこのファイルを data/ フォルダに配置すると、\nURL経由で読み込めるようになります。\n\n例: ?month=${monthKey}`);
+            showNotification(`${monthKey}.json として保存しました！`, 'success');
         }
 
         // ========================================
