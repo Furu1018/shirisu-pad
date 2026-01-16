@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>しりすこPAD - データ選択</title>
+    <style>
+        /* Google Material Design 3 (Material You) */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Material Design 3 Color System - Light Theme */
+            --md-sys-color-primary: #6750A4;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-primary-container: #EADDFF;
+            --md-sys-color-on-primary-container: #21005D;
+
+            --md-sys-color-secondary: #625B71;
+            --md-sys-color-on-secondary: #FFFFFF;
+            --md-sys-color-secondary-container: #E8DEF8;
+            --md-sys-color-on-secondary-container: #1D192B;
+
+            --md-sys-color-tertiary: #7D5260;
+            --md-sys-color-on-tertiary: #FFFFFF;
+            --md-sys-color-tertiary-container: #FFD8E4;
+            --md-sys-color-on-tertiary-container: #31111D;
+
+            --md-sys-color-error: #B3261E;
+            --md-sys-color-on-error: #FFFFFF;
+            --md-sys-color-error-container: #F9DEDC;
+            --md-sys-color-on-error-container: #410E0B;
+
+            --md-sys-color-background: #FFFBFE;
+            --md-sys-color-on-background: #1C1B1F;
+            --md-sys-color-surface: #FFFBFE;
+            --md-sys-color-on-surface: #1C1B1F;
+            --md-sys-color-surface-variant: #E7E0EC;
+            --md-sys-color-on-surface-variant: #49454F;
+
+            --md-sys-color-outline: #79747E;
+            --md-sys-color-outline-variant: #CAC4D0;
+
+            --md-sys-color-surface-tint: #6750A4;
+            --md-sys-color-inverse-surface: #313033;
+            --md-sys-color-inverse-on-surface: #F4EFF4;
+            --md-sys-color-inverse-primary: #D0BCFF;
+
+            --md-sys-color-shadow: #000000;
+            --md-sys-color-scrim: #000000;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .logo {
+            font-size: 48px;
+            font-weight: 500;
+            color: var(--md-sys-color-primary);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--md-sys-color-on-surface-variant);
+            font-weight: 400;
+        }
+
+        .section {
+            background: var(--md-sys-color-surface);
+            border-radius: 28px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.16), 0 2px 4px rgba(0, 0, 0, 0.23);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title-icon {
+            font-size: 28px;
+        }
+
+        .card-button {
+            display: block;
+            width: 100%;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            border: none;
+            border-radius: 16px;
+            padding: 24px 32px;
+            font-size: 18px;
+            font-weight: 500;
+            font-family: 'Roboto', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: left;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .card-button:last-child {
+            margin-bottom: 0;
+        }
+
+        .card-button:hover {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(103, 80, 164, 0.3);
+        }
+
+        .card-button:active {
+            transform: translateY(0);
+        }
+
+        .card-button-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .card-button-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .card-button-secondary {
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface-variant);
+            padding: 20px 28px;
+        }
+
+        .card-button-secondary:hover {
+            background: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+            box-shadow: 0 4px 12px rgba(98, 91, 113, 0.3);
+        }
+
+        .card-button-secondary .card-button-title {
+            font-size: 18px;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--md-sys-color-outline-variant);
+            margin: 24px 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 48px;
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: var(--md-sys-color-primary);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--md-sys-color-tertiary-container);
+            color: var(--md-sys-color-on-tertiary-container);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 32px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .logo {
+                font-size: 36px;
+            }
+
+            .section {
+                padding: 24px;
+                border-radius: 20px;
+            }
+
+            .card-button {
+                padding: 20px 24px;
+            }
+
+            .card-button-title {
+                font-size: 18px;
+            }
+        }
+
+        /* Material Ripple Effect */
+        .card-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .card-button:active::before {
+            width: 300px;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">しりすこPAD</div>
+            <div class="subtitle">📊 見るデータを選択してください</div>
+        </div>
+
+        <!-- Latest Data Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <span class="section-title-icon">🌟</span>
+                最新データ
+            </h2>
+            <a href="./しりすこPAD.html" class="card-button">
+                <div class="card-button-title">
+                    最新のデータを見る
+                    <span class="badge">2026年1月度</span>
+                </div>
+                <div class="card-button-subtitle">
+                    最新のユニオンレイドデータを表示します
+                </div>
+            </a>
+        </div>
+
+        <!-- Archive Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <span class="section-title-icon">📂</span>
+                過去のデータ
+            </h2>
+
+            <div id="archiveList">
+                <!-- JavaScript will populate this -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Powered by <a href="https://github.com/Furu1018/shirisu-pad" target="_blank">しりすこPAD</a></p>
+        </div>
+    </div>
+
+    <script>
+        // データフォルダからアーカイブファイルを自動検出して表示
+        async function loadArchiveList() {
+            const archiveListEl = document.getElementById('archiveList');
+
+            // 既知のアーカイブファイルリスト（自動検出の代わり）
+            const archives = [
+                { file: '2026-01.json', year: 2026, month: 1, label: '2026年1月度' }
+            ];
+
+            // data/フォルダをチェックして利用可能なアーカイブを確認
+            const availableArchives = [];
+            for (const archive of archives) {
+                try {
+                    const response = await fetch(`./data/${archive.file}`);
+                    if (response.ok) {
+                        availableArchives.push(archive);
+                    }
+                } catch (error) {
+                    console.log(`${archive.file} not found`);
+                }
+            }
+
+            // アーカイブが存在する場合は表示
+            if (availableArchives.length > 0) {
+                archiveListEl.innerHTML = availableArchives.map(archive => `
+                    <a href="./しりすこPAD.html?month=${archive.file.replace('.json', '')}" class="card-button card-button-secondary">
+                        <div class="card-button-title">${archive.label}</div>
+                        <div class="card-button-subtitle">過去のデータを閲覧</div>
+                    </a>
+                `).join('');
+            } else {
+                // アーカイブがない場合
+                archiveListEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>過去のデータはまだありません</div>
+                    </div>
+                `;
+            }
+        }
+
+        // ページ読み込み時に実行
+        document.addEventListener('DOMContentLoaded', loadArchiveList);
+    </script>
+</body>
+</html>
