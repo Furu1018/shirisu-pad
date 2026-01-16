@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>画像表示テスト</title>
+</head>
+<body>
+    <h1>画像表示テスト</h1>
+
+    <h2>相対パス（./character-images/）</h2>
+    <img src="./character-images/e3532447b3ca028770c2a5ee149e746e.webp"
+         alt="Test 1"
+         style="width: 100px; height: 100px; border: 2px solid red;"
+         onerror="this.style.border='2px solid red'; this.alt='エラー: 読み込めません'">
+
+    <h2>相対パス（character-images/）</h2>
+    <img src="character-images/e3532447b3ca028770c2a5ee149e746e.webp"
+         alt="Test 2"
+         style="width: 100px; height: 100px; border: 2px solid blue;"
+         onerror="this.style.border='2px solid red'; this.alt='エラー: 読み込めません'">
+
+    <h2>JSONからの読み込みテスト</h2>
+    <div id="json-test"></div>
+
+    <script>
+        console.log('現在のURL:', window.location.href);
+        console.log('ベースURL:', window.location.origin);
+
+        // JSONからデータを読み込んでテスト
+        fetch('./data/latest.json')
+            .then(response => response.json())
+            .then(data => {
+                console.log('JSON読み込み成功');
+                const firstPlayer = data.players[0];
+                const firstCharUrl = firstPlayer.attacks[0].characters[0];
+                console.log('最初の画像URL:', firstCharUrl);
+
+                const img = document.createElement('img');
+                img.src = firstCharUrl;
+                img.style.width = '100px';
+                img.style.height = '100px';
+                img.style.border = '2px solid green';
+                img.onerror = function() {
+                    this.style.border = '2px solid red';
+                    console.error('画像読み込みエラー:', firstCharUrl);
+                };
+                img.onload = function() {
+                    console.log('画像読み込み成功:', firstCharUrl);
+                };
+                document.getElementById('json-test').appendChild(img);
+            })
+            .catch(err => {
+                console.error('JSON読み込みエラー:', err);
+                document.getElementById('json-test').textContent = 'JSONエラー: ' + err.message;
+            });
+    </script>
+</body>
+</html>

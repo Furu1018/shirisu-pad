@@ -1588,11 +1588,12 @@
     }
   ],
   "metadata": {
+    "unionRank": 5.2,
     "extractedAt": "2026-01-11T14:01:09.836Z",
     "playerCount": 32,
     "totalDamage": 815827000000,
     "source": "BlaBlaLINK Chrome Extension",
-    "version": "2.3",
+    "version": "2.4",
     "hasDetailedAttacks": true,
     "imagesDownloaded": true
   }

@@ -3363,6 +3363,29 @@ table tr:hover {
                 } else if (version >= 2.2) {
                     console.log('✅ 最新バージョンのデータ（v2.2+）- 全機能利用可能');
                 }
+
+                // ユニオン順位の自動読み込み（Phase 1: latest.jsonからのunionRank対応）
+                if (rawData.metadata.unionRank !== undefined && rawData.metadata.unionRank !== null) {
+                    currentUnionRank = rawData.metadata.unionRank;
+                    console.log('✅ latest.jsonからユニオン順位を読み込みました:', currentUnionRank);
+
+                    // localStorageに保存
+                    localStorage.setItem('nikke-current-union-rank', currentUnionRank.toString());
+
+                    // 履歴にも反映
+                    const currentMonth = getCurrentMonth();
+                    if (!unionRankHistory[currentMonth]) {
+                        unionRankHistory[currentMonth] = {};
+                    }
+                    unionRankHistory[currentMonth] = {
+                        rank: currentUnionRank,
+                        totalDamage: rawData.metadata.totalDamage || 0,
+                        date: rawData.metadata.extractedAt ? rawData.metadata.extractedAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
+                    };
+                    localStorage.setItem('nikke-union-rank-history', JSON.stringify(unionRankHistory));
+
+                    console.log('✅ ユニオン順位履歴を更新しました:', currentMonth, unionRankHistory[currentMonth]);
+                }
             }
 
             // v8.0形式（直接playersの配列）かv5.0形式（raidData.playersの構造）かを判定
@@ -3914,10 +3937,25 @@ function generateDistributionHTML() {
             `;
 
             // ユニオン順位カード（常に表示）
+            let unionRankSource = '';
+            if (currentUnionRank) {
+                if (rawData?.metadata?.unionRank !== undefined && rawData.metadata.unionRank !== null) {
+                    // latest.jsonから取得した場合
+                    const extractedDate = rawData.metadata.extractedAt
+                        ? new Date(rawData.metadata.extractedAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
+                        : '';
+                    unionRankSource = `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">✅ データから取得${extractedDate ? ' (' + extractedDate + ')' : ''}</div>`;
+                } else {
+                    // 手動設定の場合
+                    unionRankSource = '<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">✏️ 手動設定</div>';
+                }
+            }
+
             statsHTML += `
                 <div class="stat-card clickable-card" onclick="showUnionRankTrend()" title="クリックして順位推移を表示">
                     <h3>🏆 ユニオン順位</h3>
                     <div class="value">${currentUnionRank ? `${currentUnionRank}%` : '未設定'}</div>
+                    ${unionRankSource}
                     <div class="card-hint">推移を見る</div>
                 </div>
             `;
