@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-01-16T11:51:05.546Z",
+  "description": "しりすこPAD 共有履歴データ - メンバー全員で同じ履歴を共有できます",
+  "months": {
+    "2026-01": [
+      {
+        "date": "2026-01-15",
+        "players": [
+          {
+            "player": "かりん",
+            "damage": 73706000000,
+            "syncLevel": 710
+          },
+          {
+            "player": "LKA",
+            "damage": 51288000000,
+            "syncLevel": 601
+          },
+          {
+            "player": "まるちょ",
+            "damage": 44253000000,
+            "syncLevel": 605
+          },
+          {
+            "player": "みに",
+            "damage": 43244000000,
+            "syncLevel": 569
+          },
+          {
+            "player": "猫ロビン",
+            "damage": 42638000000,
+            "syncLevel": 568
+          },
+          {
+            "player": "ヤサイマシマシ",
+            "damage": 42225000000,
+            "syncLevel": 618
+          },
+          {
+            "player": "にま",
+            "damage": 40217000000,
+            "syncLevel": 626
+          },
+          {
+            "player": "翠秋めぐる",
+            "damage": 39119000000,
+            "syncLevel": 647
+          },
+          {
+            "player": "なべりうす",
+            "damage": 31302000000,
+            "syncLevel": 641
+          },
+          {
+            "player": "ニッサ",
+            "damage": 31206000000,
+            "syncLevel": 643
+          },
+          {
+            "player": "MIRIN",
+            "damage": 30434000000,
+            "syncLevel": 553
+          },
+          {
+            "player": "カンメイ",
+            "damage": 30175000000,
+            "syncLevel": 528
+          },
+          {
+            "player": "かずにゃん",
+            "damage": 29729000000,
+            "syncLevel": 587
+          },
+          {
+            "player": "あんず",
+            "damage": 26365000000,
+            "syncLevel": 525
+          },
+          {
+            "player": "ASAHI",
+            "damage": 26057000000,
+            "syncLevel": 485
+          },
+          {
+            "player": "るり",
+            "damage": 25869000000,
+            "syncLevel": 485
+          },
+          {
+            "player": "めいさ",
+            "damage": 25091000000,
+            "syncLevel": 564
+          },
+          {
+            "player": "ねむねこ",
+            "damage": 24492000000,
+            "syncLevel": 471
+          },
+          {
+            "player": "覆面仮面",
+            "damage": 23275000000,
+            "syncLevel": 550
+          },
+          {
+            "player": "ふるり",
+            "damage": 18071000000,
+            "syncLevel": 409
+          },
+          {
+            "player": "LUPI",
+            "damage": 17715000000,
+            "syncLevel": 549
+          },
+          {
+            "player": "DETロイ",
+            "damage": 16057000000,
+            "syncLevel": 479
+          },
+          {
+            "player": "はる",
+            "damage": 14036000000,
+            "syncLevel": 460
+          },
+          {
+            "player": "リン",
+            "damage": 12889000000,
+            "syncLevel": 440
+          },
+          {
+            "player": "むう",
+            "damage": 11726000000,
+            "syncLevel": 426
+          },
+          {
+            "player": "RYOSUKE",
+            "damage": 11554000000,
+            "syncLevel": 560
+          },
+          {
+            "player": "ぴーちゃま",
+            "damage": 8151000000,
+            "syncLevel": 480
+          },
+          {
+            "player": "うしでび",
+            "damage": 7091000000,
+            "syncLevel": 423
+          },
+          {
+            "player": "NAVI01",
+            "damage": 5590000000,
+            "syncLevel": 364
+          },
+          {
+            "player": "ほりっぴー",
+            "damage": 4987000000,
+            "syncLevel": 310
+          },
+          {
+            "player": "時雨",
+            "damage": 4765000000,
+            "syncLevel": 400
+          },
+          {
+            "player": "あちゃ",
+            "damage": 2510000000,
+            "syncLevel": 351
+          }
+        ],
+        "unionRank": 0.78,
+        "totalDamage": 815827000000
+      }
+    ]
+  },
+  "unionRankHistory": {
+    "2026-01": {
+      "rank": 5.2,
+      "totalDamage": 815827000000,
+      "date": "2026-01-11"
+    }
+  }
+}
