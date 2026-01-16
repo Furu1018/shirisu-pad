@@ -2715,6 +2715,9 @@ table tr:hover {
             <button class="tab-button" data-tab="characters" onclick="switchTab('characters')">
                 <span>🎮</span> NIKKE編成
             </button>
+            <button class="tab-button" data-tab="archive" onclick="switchTab('archive')">
+                <span>📂</span> 過去データ
+            </button>
             <button class="tab-button" data-tab="management" onclick="switchTab('management')">
                 <span>⚙️</span> データ管理
             </button>
@@ -2897,6 +2900,51 @@ table tr:hover {
                     <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">
                         データを読み込むと表示されます
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- タブ: 過去データ閲覧 -->
+        <div id="tab-archive" class="tab-content">
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    📂 過去データ閲覧
+                </h3>
+                <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 24px;">
+                    保存された過去の月別データを選択して閲覧できます
+                </p>
+
+                <!-- 月選択ドロップダウン -->
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--md-sys-color-on-surface);">
+                        📅 閲覧する月を選択
+                    </label>
+                    <select id="archiveMonthSelect"
+                            style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px; font-family: 'Roboto', sans-serif;">
+                        <option value="">月を選択してください</option>
+                    </select>
+                </div>
+
+                <!-- 読み込みボタン -->
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button onclick="loadArchiveData()" class="btn btn-primary">
+                        📥 選択した月のデータを読み込む
+                    </button>
+                    <button onclick="backToLatest()" class="btn btn-outline">
+                        🔄 最新データに戻る
+                    </button>
+                </div>
+
+                <!-- 読み込み状態表示 -->
+                <div id="archiveStatus" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;">
+                </div>
+            </div>
+
+            <!-- 現在表示中のデータ情報 -->
+            <div class="card">
+                <h3 style="margin-bottom: 16px;">📊 現在表示中のデータ</h3>
+                <div id="currentDataInfo" style="padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
+                    <p style="color: var(--md-sys-color-on-surface-variant);">データが読み込まれていません</p>
                 </div>
             </div>
         </div>
@@ -3962,6 +4010,9 @@ function generateDistributionHTML() {
 
             // 前月のユニオン順位を自動設定
             setPreviousUnionRank();
+
+            // 過去データタブの情報を更新
+            updateCurrentDataInfo();
         }
 
         // 前月のユニオン順位を自動設定
@@ -6674,9 +6725,11 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
         document.addEventListener('DOMContentLoaded', function() {
             loadUnionRankData();
             autoLoadHistory();     // 共有履歴を自動読み込み
+            loadAvailableArchives(); // 過去データタブ用: 利用可能なアーカイブを読み込み
 
             // URL経由でのJSON自動読み込み
             autoLoadJSONFromURL();
+            updateCurrentDataInfo(); // 現在表示中のデータ情報を更新
         });
 
         // URL経由でのJSON自動読み込み機能
@@ -6730,6 +6783,204 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                     showError('指定されたデータファイルの読み込みに失敗しました: ' + error.message);
                 }
             }
+        }
+
+        // ========================================
+        // 過去データ閲覧タブ機能
+        // ========================================
+
+        let availableArchives = [];
+        let currentDataSource = 'latest'; // 'latest' or アーカイブの月 (例: '2026-01')
+
+        // 利用可能なアーカイブファイルを検出
+        async function loadAvailableArchives() {
+            const select = document.getElementById('archiveMonthSelect');
+            if (!select) return;
+
+            // 既知のアーカイブパターン（2020年から2030年まで）
+            const archives = [];
+            for (let year = 2024; year <= 2026; year++) {
+                for (let month = 1; month <= 12; month++) {
+                    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                    archives.push({
+                        file: `${monthKey}.json`,
+                        year: year,
+                        month: month,
+                        label: `${year}年${month}月`
+                    });
+                }
+            }
+
+            // 実際に存在するアーカイブを確認
+            availableArchives = [];
+            for (const archive of archives) {
+                try {
+                    const response = await fetch(`./data/${archive.file}`, { method: 'HEAD' });
+                    if (response.ok) {
+                        availableArchives.push(archive);
+                    }
+                } catch (error) {
+                    // ファイルが存在しない場合はスキップ
+                }
+            }
+
+            // ドロップダウンに追加（新しい順）
+            availableArchives.sort((a, b) => b.year * 100 + b.month - (a.year * 100 + a.month));
+            select.innerHTML = '<option value="">月を選択してください</option>';
+            availableArchives.forEach(archive => {
+                const option = document.createElement('option');
+                option.value = archive.file.replace('.json', '');
+                option.textContent = archive.label;
+                select.appendChild(option);
+            });
+
+            console.log('利用可能なアーカイブ:', availableArchives.length, '件');
+        }
+
+        // アーカイブデータを読み込む
+        async function loadArchiveData() {
+            const select = document.getElementById('archiveMonthSelect');
+            const statusEl = document.getElementById('archiveStatus');
+            const monthKey = select.value;
+
+            if (!monthKey) {
+                alert('月を選択してください');
+                return;
+            }
+
+            try {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'var(--md-sys-color-secondary-container)';
+                statusEl.style.color = 'var(--md-sys-color-on-secondary-container)';
+                statusEl.textContent = '📥 データを読み込み中...';
+
+                const response = await fetch(`./data/${monthKey}.json`);
+                if (!response.ok) {
+                    throw new Error(`ファイルが見つかりません: ${monthKey}.json`);
+                }
+
+                const jsonText = await response.text();
+                rawData = JSON.parse(jsonText);
+
+                // データ処理と表示
+                processData();
+                showResults();
+
+                // 表示タブに切り替え
+                switchTab('ranking');
+
+                currentDataSource = monthKey;
+                updateCurrentDataInfo();
+
+                statusEl.style.background = 'var(--md-sys-color-primary-container)';
+                statusEl.style.color = 'var(--md-sys-color-on-primary-container)';
+                statusEl.textContent = `✅ ${monthKey} のデータを読み込みました`;
+
+                showNotification(`${monthKey} のデータを読み込みました`, 'success');
+
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                console.error('アーカイブ読み込みエラー:', error);
+                statusEl.style.background = 'var(--md-sys-color-error-container)';
+                statusEl.style.color = 'var(--md-sys-color-on-error-container)';
+                statusEl.textContent = `❌ エラー: ${error.message}`;
+                showNotification('データの読み込みに失敗しました', 'error');
+            }
+        }
+
+        // 最新データに戻る
+        async function backToLatest() {
+            try {
+                const statusEl = document.getElementById('archiveStatus');
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'var(--md-sys-color-secondary-container)';
+                statusEl.style.color = 'var(--md-sys-color-on-secondary-container)';
+                statusEl.textContent = '📥 最新データを読み込み中...';
+
+                const response = await fetch('./data/latest.json');
+                if (!response.ok) {
+                    throw new Error('latest.jsonが見つかりません');
+                }
+
+                const jsonText = await response.text();
+                rawData = JSON.parse(jsonText);
+
+                processData();
+                showResults();
+                switchTab('ranking');
+
+                currentDataSource = 'latest';
+                updateCurrentDataInfo();
+
+                statusEl.style.background = 'var(--md-sys-color-primary-container)';
+                statusEl.style.color = 'var(--md-sys-color-on-primary-container)';
+                statusEl.textContent = '✅ 最新データを読み込みました';
+
+                showNotification('最新データを読み込みました', 'success');
+
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                console.error('最新データ読み込みエラー:', error);
+                showNotification('最新データの読み込みに失敗しました', 'error');
+            }
+        }
+
+        // 現在表示中のデータ情報を更新
+        function updateCurrentDataInfo() {
+            const infoEl = document.getElementById('currentDataInfo');
+            if (!infoEl) return;
+
+            if (!rawData || !processedData || processedData.length === 0) {
+                infoEl.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant);">データが読み込まれていません</p>';
+                return;
+            }
+
+            const metadata = rawData.metadata || {};
+            const extractedDate = metadata.extractedAt ? new Date(metadata.extractedAt).toLocaleDateString('ja-JP') : '不明';
+            const playerCount = processedData.length;
+            const totalDamage = processedData.reduce((sum, p) => sum + p.damage, 0);
+            const unionRank = currentUnionRank ? `${currentUnionRank}%` : '未設定';
+
+            let dataSourceLabel = '';
+            if (currentDataSource === 'latest') {
+                dataSourceLabel = '<span style="background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">📊 最新データ</span>';
+            } else {
+                const archive = availableArchives.find(a => a.file.replace('.json', '') === currentDataSource);
+                const label = archive ? archive.label : currentDataSource;
+                dataSourceLabel = `<span style="background: var(--md-sys-color-secondary); color: var(--md-sys-color-on-secondary); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">📂 ${label}</span>`;
+            }
+
+            infoEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        ${dataSourceLabel}
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <div>
+                            <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">抽出日</div>
+                            <div style="font-size: 16px; font-weight: 500; color: var(--md-sys-color-on-surface);">${extractedDate}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">参加者数</div>
+                            <div style="font-size: 16px; font-weight: 500; color: var(--md-sys-color-on-surface);">${playerCount}人</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">総ダメージ</div>
+                            <div style="font-size: 16px; font-weight: 500; color: var(--md-sys-color-on-surface);">${formatDamage(totalDamage)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">ユニオン順位</div>
+                            <div style="font-size: 16px; font-weight: 500; color: var(--md-sys-color-on-surface);">${unionRank}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // 固定データHTML生成機能
