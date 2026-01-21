@@ -2257,20 +2257,30 @@ body {
     left: 16px;
     width: 48px;
     height: 48px;
-    background: var(--md-sys-color-surface-container);
-    border: none;
+    background: #FFFFFF;
+    border: 1px solid var(--md-sys-color-outline-variant);
     border-radius: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     z-index: 1100;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-theme="dark"] .menu-button {
+    background: #2B2B2B;
+    border-color: #3C3C3C;
 }
 
 .menu-button:hover {
     background: var(--md-sys-color-secondary-container);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.menu-button:active {
+    transform: scale(0.95);
 }
 
 .menu-button svg {
@@ -2660,18 +2670,6 @@ table tr:hover {
 
     <div class="container">
         <div class="header" style="background: transparent; position: relative; padding: 16px 24px; min-height: 180px;">
-            <div style="position: absolute; top: 1rem; right: 1rem; z-index: 10;">
-                <div class="theme-toggle" id="themeToggle">
-                    <div class="theme-option active" data-theme="light">
-                        <span>☀️</span>
-                        <span>ライト</span>
-                    </div>
-                    <div class="theme-option" data-theme="dark">
-                        <span>🌙</span>
-                        <span>ダーク</span>
-                    </div>
-                </div>
-            </div>
             <h1 style="opacity: 0; height: 0; margin: 0;">しりすこPAD</h1>
         </div>
 
