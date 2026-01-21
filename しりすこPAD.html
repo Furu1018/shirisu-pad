@@ -500,6 +500,13 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 32px 16px;
+            padding-bottom: calc(80px + 32px); /* ボトムナビゲーション分のスペース */
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                padding-bottom: 32px; /* PC版は通常のpadding */
+            }
         }
 
         /* Material Design 3 Top App Bar */
@@ -1263,7 +1270,7 @@
         /* Compact devices (phones) - override for mobile */
         @media (max-width: 599px) {
             .container {
-                padding: 16px 12px;
+                padding: 16px 12px calc(80px + 16px) 12px; /* ボトムナビゲーション分のスペース */
             }
 
             .header h1 {
@@ -2250,45 +2257,90 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Apple Segmented Control Style Tabs */
+/* Material Design 3 Bottom Navigation (Mobile) / Top Tabs (Desktop) */
 .tab-navigation {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 8px 0 0 0;
-    margin-bottom: 32px;
-    position: sticky;
-    top: 60px;
-    z-index: 100;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--md-sys-color-surface-container);
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 1000;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="dark"] .tab-navigation {
-    background: rgba(28, 28, 30, 0.8);
-    border-bottom-color: var(--border);
+    background: var(--md-sys-color-surface-container);
+    border-top-color: var(--md-sys-color-outline-variant);
 }
 
-/* Material Design 3 Primary Navigation Tab */
+/* PC版: 上部タブに変更 */
+@media (min-width: 768px) {
+    .tab-navigation {
+        position: sticky;
+        top: 60px;
+        bottom: auto;
+        border-top: none;
+        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        box-shadow: none;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        padding: 8px 0 0 0;
+        margin-bottom: 32px;
+        overflow-x: auto;
+    }
+
+    [data-theme="dark"] .tab-navigation {
+        background: rgba(28, 28, 30, 0.8);
+        border-bottom-color: var(--border);
+    }
+}
+
+/* Bottom Navigation Button (Mobile) */
 .tab-button {
     position: relative;
-    padding: 16px 16px 14px;
+    flex: 1;
+    max-width: 120px;
+    min-width: 64px;
+    padding: 12px 8px 8px;
     background: transparent;
     border: none;
-    border-bottom: 3px solid transparent;
     color: var(--md-sys-color-on-surface-variant);
     font-family: 'Roboto', sans-serif;
     font-weight: 500;
-    font-size: 14px;
-    letter-spacing: 0.1px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
     cursor: pointer;
-    transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-    white-space: nowrap;
-    display: inline-flex;
+    transition: color 200ms cubic-bezier(0.2, 0, 0, 1);
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-width: 90px;
+    gap: 4px;
     overflow: hidden;
+}
+
+/* タブラベルの表示制御 */
+.tab-label {
+    display: block;
+}
+
+.tab-label-short {
+    display: inline; /* モバイルでは短縮版を表示 */
+}
+
+.tab-label-full {
+    display: none; /* モバイルでは完全版を非表示 */
+}
+
+.tab-button span {
+    font-size: 24px;
+    display: block;
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .tab-button::before {
@@ -2298,6 +2350,7 @@ body {
     background-color: var(--md-sys-color-on-surface);
     opacity: 0;
     transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+    border-radius: 16px;
 }
 
 .tab-button:hover::before {
@@ -2306,7 +2359,10 @@ body {
 
 .tab-button.active {
     color: var(--md-sys-color-primary);
-    border-bottom-color: var(--md-sys-color-primary);
+}
+
+.tab-button.active span {
+    transform: scale(1.1);
 }
 
 .tab-button.active::before {
@@ -2316,7 +2372,45 @@ body {
 
 [data-theme="dark"] .tab-button.active {
     color: var(--md-sys-color-primary);
-    border-bottom-color: var(--md-sys-color-primary);
+}
+
+/* PC版: 横並びタブスタイル */
+@media (min-width: 768px) {
+    .tab-button {
+        flex: 0 0 auto;
+        max-width: none;
+        min-width: 90px;
+        padding: 16px 16px 14px;
+        flex-direction: row;
+        gap: 8px;
+        border-bottom: 3px solid transparent;
+        font-size: 14px;
+        letter-spacing: 0.1px;
+        transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+        white-space: nowrap;
+    }
+
+    .tab-button span {
+        font-size: 20px;
+        transform: none !important;
+    }
+
+    .tab-button.active {
+        border-bottom-color: var(--md-sys-color-primary);
+    }
+
+    .tab-button::before {
+        border-radius: 0;
+    }
+
+    /* PC版ではフルラベルを表示 */
+    .tab-label-short {
+        display: none;
+    }
+
+    .tab-label-full {
+        display: inline;
+    }
 }
 
 /* Tab Content */
@@ -2729,19 +2823,19 @@ table tr:hover {
         <!-- タブナビゲーション -->
         <div class="tab-navigation">
             <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')">
-                <span>📊</span> ダメージ基準スコア
+                <span>📊</span> <span class="tab-label"><span class="tab-label-short">スコア</span><span class="tab-label-full">ダメージ基準</span></span>
             </button>
             <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')">
-                <span>⚡</span> SLv基準スコア
+                <span>⚡</span> <span class="tab-label"><span class="tab-label-short">SLv</span><span class="tab-label-full">SLv基準</span></span>
             </button>
             <button class="tab-button" data-tab="characters" onclick="switchTab('characters')">
-                <span>🎮</span> NIKKE編成
+                <span>🎮</span> <span class="tab-label"><span class="tab-label-short">編成</span><span class="tab-label-full">NIKKE編成</span></span>
             </button>
             <button class="tab-button" data-tab="archive" onclick="switchTab('archive')">
-                <span>📂</span> 過去データ
+                <span>📂</span> <span class="tab-label"><span class="tab-label-short">履歴</span><span class="tab-label-full">過去データ</span></span>
             </button>
             <button class="tab-button" data-tab="management" onclick="switchTab('management')">
-                <span>⚙️</span> データ管理
+                <span>⚙️</span> <span class="tab-label"><span class="tab-label-short">設定</span><span class="tab-label-full">データ管理</span></span>
             </button>
         </div>
 
@@ -2764,38 +2858,6 @@ table tr:hover {
                 </div>
             </div>
 
-            <!-- Phase 2: フィルター＆ソート -->
-            <div class="card" style="margin-bottom: 16px;">
-                <h4 style="margin-bottom: 16px;">🔍 フィルター & ソート</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                    <div>
-                        <label style="font-size: 12px; display: block; margin-bottom: 4px;">プレイヤー検索</label>
-                        <input type="text" id="playerSearchInput" placeholder="名前で検索..." class="form-input" oninput="applyFilters()">
-                    </div>
-                    <div>
-                        <label style="font-size: 12px; display: block; margin-bottom: 4px;">最小ダメージ</label>
-                        <input type="number" id="minDamageInput" placeholder="0" class="form-input" oninput="applyFilters()">
-                    </div>
-                    <div>
-                        <label style="font-size: 12px; display: block; margin-bottom: 4px;">最小SLv</label>
-                        <input type="number" id="minSlvInput" placeholder="0" class="form-input" oninput="applyFilters()">
-                    </div>
-                    <div>
-                        <label style="font-size: 12px; display: block; margin-bottom: 4px;">ソート</label>
-                        <select id="sortSelect" class="form-select" onchange="applyFilters()">
-                            <option value="rank">順位順</option>
-                            <option value="damage">ダメージ順</option>
-                            <option value="growth">成長率順</option>
-                            <option value="slv">SLv順</option>
-                            <option value="name">名前順</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="margin-top: 12px; display: flex; gap: 8px;">
-                    <button onclick="resetFilters()" class="btn btn-text">フィルターをリセット</button>
-                    <span id="filterStatus" style="margin-left: auto; font-size: 12px; color: var(--md-sys-color-on-surface-variant); align-self: center;"></span>
-                </div>
-            </div>
 
             <div class="data-table">
                 <table id="resultsTable">
