@@ -895,20 +895,27 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
-            padding: 14px 24px;
-            background: var(--md-sys-color-surface-container);
-            border: 1px solid var(--md-sys-color-outline-variant);
+            padding: 16px 24px;
+            background: var(--md-sys-color-primary-container);
+            border: none;
             border-radius: 12px;
-            color: var(--md-sys-color-on-surface);
-            font-size: 14px;
-            font-weight: 500;
+            color: var(--md-sys-color-on-primary-container);
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .stats-toggle-btn {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
         }
 
         .stats-toggle-btn:hover {
-            background: var(--md-sys-color-secondary-container);
-            border-color: var(--md-sys-color-outline);
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
         }
 
         .stats-toggle-btn:active {
@@ -2485,9 +2492,13 @@ body {
         display: none;
     }
 
+    .container {
+        padding-top: 80px; /* ヘッダー分のスペースを確保 */
+    }
+
     .tab-navigation {
         position: sticky;
-        top: 60px;
+        top: 0;
         background: rgba(255, 255, 255, 0.8);
         backdrop-filter: saturate(180%) blur(20px);
         -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -3010,7 +3021,7 @@ table tr:hover {
             <div style="margin-bottom: 24px;">
                 <button onclick="toggleStats()" class="stats-toggle-btn">
                     <span id="stats-toggle-icon">📊</span>
-                    <span id="stats-toggle-text">統計を表示</span>
+                    <span id="stats-toggle-text">結果まとめを展開</span>
                     <span id="stats-toggle-arrow">▼</span>
                 </button>
                 <div id="statsGrid" class="stats-grid" style="display: none; margin-top: 16px;"></div>
@@ -4009,11 +4020,11 @@ function toggleStats() {
     if (statsGrid.style.display === 'none') {
         statsGrid.style.display = 'grid';
         arrow.classList.add('expanded');
-        text.textContent = '統計を非表示';
+        text.textContent = '結果まとめを折りたたむ';
     } else {
         statsGrid.style.display = 'none';
         arrow.classList.remove('expanded');
-        text.textContent = '統計を表示';
+        text.textContent = '結果まとめを展開';
     }
 }
 
