@@ -28,6 +28,59 @@
     <meta name="theme-color" content="#1976D2">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(var(--border))',
+                        input: 'hsl(var(--input))',
+                        ring: 'hsl(var(--ring))',
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        primary: {
+                            DEFAULT: 'hsl(var(--primary))',
+                            foreground: 'hsl(var(--primary-foreground))',
+                        },
+                        secondary: {
+                            DEFAULT: 'hsl(var(--secondary))',
+                            foreground: 'hsl(var(--secondary-foreground))',
+                        },
+                        destructive: {
+                            DEFAULT: 'hsl(var(--destructive))',
+                            foreground: 'hsl(var(--destructive-foreground))',
+                        },
+                        muted: {
+                            DEFAULT: 'hsl(var(--muted))',
+                            foreground: 'hsl(var(--muted-foreground))',
+                        },
+                        accent: {
+                            DEFAULT: 'hsl(var(--accent))',
+                            foreground: 'hsl(var(--accent-foreground))',
+                        },
+                        popover: {
+                            DEFAULT: 'hsl(var(--popover))',
+                            foreground: 'hsl(var(--popover-foreground))',
+                        },
+                        card: {
+                            DEFAULT: 'hsl(var(--card))',
+                            foreground: 'hsl(var(--card-foreground))',
+                        },
+                    },
+                    borderRadius: {
+                        lg: 'var(--radius)',
+                        md: 'calc(var(--radius) - 2px)',
+                        sm: 'calc(var(--radius) - 4px)',
+                    },
+                }
+            }
+        }
+    </script>
+
     <style>
         /* Google Material Design 3 (Material You) */
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
@@ -39,246 +92,178 @@
         }
 
         :root {
-            /* Material Design 3 Color System - Light Theme */
-            /* Primary - Main brand color (寒色系: ブルー) */
-            --md-sys-color-primary: #1976D2;
-            --md-sys-color-on-primary: #FFFFFF;
-            --md-sys-color-primary-container: #BBDEFB;
-            --md-sys-color-on-primary-container: #0D47A1;
+            /* shadcn/ui Color System - Light Theme */
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96.1%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96.1%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
 
-            /* Secondary - Accent color (寒色系: 青緑) */
-            --md-sys-color-secondary: #0097A7;
-            --md-sys-color-on-secondary: #FFFFFF;
-            --md-sys-color-secondary-container: #B2EBF2;
-            --md-sys-color-on-secondary-container: #006064;
+            /* Material Design compatibility aliases */
+            --md-sys-color-primary: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-on-primary: hsl(210 40% 98%);
+            --md-sys-color-primary-container: hsl(210 40% 96.1%);
+            --md-sys-color-on-primary-container: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-secondary: hsl(210 40% 96.1%);
+            --md-sys-color-on-secondary: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-secondary-container: hsl(210 40% 96.1%);
+            --md-sys-color-on-secondary-container: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-tertiary: hsl(210 40% 96.1%);
+            --md-sys-color-on-tertiary: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-tertiary-container: hsl(210 40% 96.1%);
+            --md-sys-color-on-tertiary-container: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-error: hsl(0 84.2% 60.2%);
+            --md-sys-color-on-error: hsl(210 40% 98%);
+            --md-sys-color-error-container: hsl(0 84.2% 60.2% / 0.1);
+            --md-sys-color-on-error-container: hsl(0 84.2% 60.2%);
+            --md-sys-color-background: hsl(0 0% 100%);
+            --md-sys-color-on-background: hsl(222.2 84% 4.9%);
+            --md-sys-color-surface: hsl(0 0% 100%);
+            --md-sys-color-on-surface: hsl(222.2 84% 4.9%);
+            --md-sys-color-surface-variant: hsl(210 40% 96.1%);
+            --md-sys-color-on-surface-variant: hsl(215.4 16.3% 46.9%);
+            --md-sys-color-outline: hsl(214.3 31.8% 91.4%);
+            --md-sys-color-outline-variant: hsl(214.3 31.8% 91.4%);
+            --md-sys-color-surface-container: hsl(0 0% 100%);
 
-            /* Tertiary - Additional accent (寒色系: 緑) */
-            --md-sys-color-tertiary: #388E3C;
-            --md-sys-color-on-tertiary: #FFFFFF;
-            --md-sys-color-tertiary-container: #C8E6C9;
-            --md-sys-color-on-tertiary-container: #1B5E20;
-
-            /* Error */
-            --md-sys-color-error: #B3261E;
-            --md-sys-color-on-error: #FFFFFF;
-            --md-sys-color-error-container: #F9DEDC;
-            --md-sys-color-on-error-container: #410E0B;
-
-            /* Background & Surface */
-            --md-sys-color-background: #FFFBFE;
-            --md-sys-color-on-background: #1C1B1F;
-            --md-sys-color-surface: #FFFBFE;
-            --md-sys-color-on-surface: #1C1B1F;
-            --md-sys-color-surface-variant: #E7E0EC;
-            --md-sys-color-on-surface-variant: #49454F;
-
-            /* Outline */
-            --md-sys-color-outline: #79747E;
-            --md-sys-color-outline-variant: #CAC4D0;
-
-            /* Surface Tints (寒色系) */
-            --md-sys-color-surface-tint: #1976D2;
-            --md-sys-color-inverse-surface: #313033;
-            --md-sys-color-inverse-on-surface: #F4EFF4;
-            --md-sys-color-inverse-primary: #64B5F6;
-
-            /* Shadows */
-            --md-sys-color-shadow: #000000;
-            --md-sys-color-scrim: #000000;
-
-            /* Material Design 3 Typography Scale */
-            /* Display - Largest text */
-            --md-sys-typescale-display-large-font: 'Roboto', sans-serif;
-            --md-sys-typescale-display-large-size: 57px;
-            --md-sys-typescale-display-large-weight: 400;
-            --md-sys-typescale-display-large-line-height: 64px;
-            --md-sys-typescale-display-large-tracking: -0.25px;
-
-            --md-sys-typescale-display-medium-size: 45px;
-            --md-sys-typescale-display-medium-line-height: 52px;
-
-            --md-sys-typescale-display-small-size: 36px;
-            --md-sys-typescale-display-small-line-height: 44px;
-
-            /* Headline */
-            --md-sys-typescale-headline-large-size: 32px;
-            --md-sys-typescale-headline-large-weight: 400;
-            --md-sys-typescale-headline-large-line-height: 40px;
-
-            --md-sys-typescale-headline-medium-size: 28px;
-            --md-sys-typescale-headline-medium-line-height: 36px;
-
-            --md-sys-typescale-headline-small-size: 24px;
-            --md-sys-typescale-headline-small-line-height: 32px;
-
-            /* Title */
-            --md-sys-typescale-title-large-size: 22px;
-            --md-sys-typescale-title-large-weight: 400;
-            --md-sys-typescale-title-large-line-height: 28px;
-
-            --md-sys-typescale-title-medium-size: 16px;
-            --md-sys-typescale-title-medium-weight: 500;
-            --md-sys-typescale-title-medium-line-height: 24px;
-            --md-sys-typescale-title-medium-tracking: 0.15px;
-
-            --md-sys-typescale-title-small-size: 14px;
-            --md-sys-typescale-title-small-weight: 500;
-            --md-sys-typescale-title-small-line-height: 20px;
-            --md-sys-typescale-title-small-tracking: 0.1px;
-
-            /* Body */
-            --md-sys-typescale-body-large-size: 16px;
-            --md-sys-typescale-body-large-weight: 400;
-            --md-sys-typescale-body-large-line-height: 24px;
-            --md-sys-typescale-body-large-tracking: 0.5px;
-
-            --md-sys-typescale-body-medium-size: 14px;
-            --md-sys-typescale-body-medium-weight: 400;
-            --md-sys-typescale-body-medium-line-height: 20px;
-            --md-sys-typescale-body-medium-tracking: 0.25px;
-
-            --md-sys-typescale-body-small-size: 12px;
-            --md-sys-typescale-body-small-weight: 400;
-            --md-sys-typescale-body-small-line-height: 16px;
-            --md-sys-typescale-body-small-tracking: 0.4px;
-
-            /* Label */
-            --md-sys-typescale-label-large-size: 14px;
-            --md-sys-typescale-label-large-weight: 500;
-            --md-sys-typescale-label-large-line-height: 20px;
-            --md-sys-typescale-label-large-tracking: 0.1px;
-
-            --md-sys-typescale-label-medium-size: 12px;
-            --md-sys-typescale-label-medium-weight: 500;
-            --md-sys-typescale-label-medium-line-height: 16px;
-            --md-sys-typescale-label-medium-tracking: 0.5px;
-
-            --md-sys-typescale-label-small-size: 11px;
-            --md-sys-typescale-label-small-weight: 500;
-            --md-sys-typescale-label-small-line-height: 16px;
-            --md-sys-typescale-label-small-tracking: 0.5px;
-
-            /* Legacy aliases for compatibility */
-            --background: #FFFBFE;
-            --background-secondary: #E7E0EC;
-            --background-tertiary: #CAC4D0;
-            --text-primary: #1C1B1F;
-            --text-secondary: #49454F;
-            --text-muted: #79747E;
-            --primary-color: #6750A4;
-            --secondary-color: #625B71;
-            --accent-color: #7D5260;
-            --success-color: #34C759;
-            --warning-color: #FF9500;
-            --accent-blue: #6750A4;
-            --accent-green: #34C759;
-            --accent-red: #B3261E;
-            --accent-orange: #FF9500;
-            --bg-primary: #FFFBFE;
-            --bg-secondary: #E7E0EC;
-            --bg-card: #FFFBFE;
-            --bg-highlight: #E7E0EC;
-            --bg-accent: #EADDFF;
-            --border: #79747E;
-            --border-color: #79747E;
-            --border-hover: #49454F;
-            --border-strong: #1C1B1F;
-            --shadow: rgba(0, 0, 0, 0.3);
-            --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-            --shadow-md: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
-            --shadow-lg: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
-            --chart-bg: #FFFBFE;
-            --chart-grid: #E7E0EC;
-            --chart-text: #1C1B1F;
+            /* Legacy aliases */
+            --background-secondary: hsl(210 40% 96.1%);
+            --background-tertiary: hsl(214.3 31.8% 91.4%);
+            --text-primary: hsl(222.2 84% 4.9%);
+            --text-secondary: hsl(215.4 16.3% 46.9%);
+            --text-muted: hsl(215.4 16.3% 46.9%);
+            --primary-color: hsl(222.2 47.4% 11.2%);
+            --secondary-color: hsl(210 40% 96.1%);
+            --accent-color: hsl(210 40% 96.1%);
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --accent-blue: hsl(222.2 47.4% 11.2%);
+            --accent-green: #22c55e;
+            --accent-red: hsl(0 84.2% 60.2%);
+            --accent-orange: #f59e0b;
+            --bg-primary: hsl(0 0% 100%);
+            --bg-secondary: hsl(210 40% 96.1%);
+            --bg-card: hsl(0 0% 100%);
+            --bg-highlight: hsl(210 40% 96.1%);
+            --bg-accent: hsl(210 40% 96.1%);
+            --border-color: hsl(214.3 31.8% 91.4%);
+            --border-hover: hsl(215.4 16.3% 46.9%);
+            --border-strong: hsl(222.2 84% 4.9%);
+            --shadow: rgba(0, 0, 0, 0.1);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --chart-bg: hsl(0 0% 100%);
+            --chart-grid: hsl(214.3 31.8% 91.4%);
+            --chart-text: hsl(222.2 84% 4.9%);
         }
 
-        /* Material Design 3 Dark Theme (寒色系) */
+        /* shadcn/ui Dark Theme */
         [data-theme="dark"] {
-            --md-sys-color-primary: #90CAF9;
-            --md-sys-color-on-primary: #0D47A1;
-            --md-sys-color-primary-container: #1565C0;
-            --md-sys-color-on-primary-container: #BBDEFB;
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 210 40% 98%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 212.7 26.8% 83.9%;
 
-            --md-sys-color-secondary: #80DEEA;
-            --md-sys-color-on-secondary: #006064;
-            --md-sys-color-secondary-container: #00838F;
-            --md-sys-color-on-secondary-container: #B2EBF2;
+            /* Material Design compatibility aliases */
+            --md-sys-color-primary: hsl(210 40% 98%);
+            --md-sys-color-on-primary: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-primary-container: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-on-primary-container: hsl(210 40% 98%);
+            --md-sys-color-secondary: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-on-secondary: hsl(210 40% 98%);
+            --md-sys-color-secondary-container: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-on-secondary-container: hsl(210 40% 98%);
+            --md-sys-color-tertiary: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-on-tertiary: hsl(210 40% 98%);
+            --md-sys-color-tertiary-container: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-on-tertiary-container: hsl(210 40% 98%);
+            --md-sys-color-error: hsl(0 62.8% 30.6%);
+            --md-sys-color-on-error: hsl(210 40% 98%);
+            --md-sys-color-error-container: hsl(0 62.8% 30.6% / 0.2);
+            --md-sys-color-on-error-container: hsl(0 62.8% 50%);
+            --md-sys-color-background: hsl(222.2 84% 4.9%);
+            --md-sys-color-on-background: hsl(210 40% 98%);
+            --md-sys-color-surface: hsl(222.2 84% 4.9%);
+            --md-sys-color-on-surface: hsl(210 40% 98%);
+            --md-sys-color-surface-variant: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-on-surface-variant: hsl(215 20.2% 65.1%);
+            --md-sys-color-outline: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-outline-variant: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-surface-container: hsl(222.2 84% 4.9%);
+            --md-sys-color-surface-1: hsl(217.2 32.6% 17.5%);
+            --md-sys-color-surface-2: hsl(217.2 32.6% 20%);
+            --md-sys-color-surface-3: hsl(217.2 32.6% 22%);
+            --md-sys-color-surface-4: hsl(217.2 32.6% 24%);
+            --md-sys-color-surface-5: hsl(217.2 32.6% 26%);
 
-            --md-sys-color-tertiary: #A5D6A7;
-            --md-sys-color-on-tertiary: #1B5E20;
-            --md-sys-color-tertiary-container: #2E7D32;
-            --md-sys-color-on-tertiary-container: #C8E6C9;
-
-            --md-sys-color-error: #F2B8B5;
-            --md-sys-color-on-error: #601410;
-            --md-sys-color-error-container: #8C1D18;
-            --md-sys-color-on-error-container: #F9DEDC;
-
-            --md-sys-color-background: #1C1B1F;
-            --md-sys-color-on-background: #E6E1E5;
-            --md-sys-color-surface: #1C1B1F;
-            --md-sys-color-on-surface: #E6E1E5;
-            --md-sys-color-surface-variant: #49454F;
-            --md-sys-color-on-surface-variant: #CAC4D0;
-
-            /* Elevated surfaces for better contrast */
-            --md-sys-color-surface-1: #2B2930;
-            --md-sys-color-surface-2: #322F37;
-            --md-sys-color-surface-3: #38353E;
-            --md-sys-color-surface-4: #3B3841;
-            --md-sys-color-surface-5: #3F3B45;
-
-            --md-sys-color-outline: #938F99;
-            --md-sys-color-outline-variant: #49454F;
-
-            --md-sys-color-surface-tint: #90CAF9;
-            --md-sys-color-inverse-surface: #E6E1E5;
-            --md-sys-color-inverse-on-surface: #313033;
-            --md-sys-color-inverse-primary: #1976D2;
-
-            --md-sys-color-shadow: #000000;
-            --md-sys-color-scrim: #000000;
-
-            /* Legacy aliases (寒色系) */
-            --background: #1C1B1F;
-            --background-secondary: #49454F;
-            --background-tertiary: #938F99;
-            --text-primary: #E6E1E5;
-            --text-secondary: #CAC4D0;
-            --text-muted: #938F99;
-            --primary-color: #90CAF9;
-            --secondary-color: #80DEEA;
-            --accent-color: #A5D6A7;
-            --success-color: #4CAF50;
-            --warning-color: #FF9F0A;
-            --accent-blue: #90CAF9;
-            --accent-green: #4CAF50;
-            --accent-red: #F2B8B5;
-            --accent-orange: #FF9F0A;
-            --bg-primary: #1C1B1F;
-            --bg-secondary: #49454F;
-            --bg-card: #1C1B1F;
-            --bg-highlight: #49454F;
-            --bg-accent: #1565C0;
-            --border: #938F99;
-            --border-color: #938F99;
-            --border-hover: #CAC4D0;
-            --border-strong: #E6E1E5;
+            /* Legacy aliases */
+            --background-secondary: hsl(217.2 32.6% 17.5%);
+            --background-tertiary: hsl(215 20.2% 65.1%);
+            --text-primary: hsl(210 40% 98%);
+            --text-secondary: hsl(215 20.2% 65.1%);
+            --text-muted: hsl(215 20.2% 65.1%);
+            --primary-color: hsl(210 40% 98%);
+            --secondary-color: hsl(217.2 32.6% 17.5%);
+            --accent-color: hsl(217.2 32.6% 17.5%);
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --accent-blue: hsl(210 40% 98%);
+            --accent-green: #22c55e;
+            --accent-red: hsl(0 62.8% 30.6%);
+            --accent-orange: #f59e0b;
+            --bg-primary: hsl(222.2 84% 4.9%);
+            --bg-secondary: hsl(217.2 32.6% 17.5%);
+            --bg-card: hsl(222.2 84% 4.9%);
+            --bg-highlight: hsl(217.2 32.6% 17.5%);
+            --bg-accent: hsl(217.2 32.6% 17.5%);
+            --border-color: hsl(217.2 32.6% 17.5%);
+            --border-hover: hsl(215 20.2% 65.1%);
+            --border-strong: hsl(210 40% 98%);
             --shadow: rgba(0, 0, 0, 0.5);
-            --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-            --shadow-md: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
-            --shadow-lg: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
-            --chart-bg: #1C1B1F;
-            --chart-grid: #49454F;
-            --chart-text: #E6E1E5;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+            --chart-bg: hsl(222.2 84% 4.9%);
+            --chart-grid: hsl(217.2 32.6% 17.5%);
+            --chart-text: hsl(210 40% 98%);
         }
 
-        /* Remove gaming effects from dark mode header */
-        /* Material Design 3 Dark Theme Top App Bar */
+        /* shadcn/ui Dark Theme Header */
         [data-theme="dark"] .header {
-            background: var(--md-sys-color-surface);
-            box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
-            border-bottom: none;
+            background: hsl(var(--background));
+            box-shadow: var(--shadow-sm);
+            border-bottom: 1px solid hsl(var(--border));
         }
 
         /* Material Design 3 dark theme uses the same elevation system */
@@ -502,29 +487,29 @@
             padding: 32px 16px;
         }
 
-        /* Material Design 3 Top App Bar */
+        /* shadcn/ui Header */
         .header {
             text-align: center;
             margin-bottom: 0;
             padding: 16px 24px;
-            background: var(--md-sys-color-surface);
-            color: var(--md-sys-color-on-surface);
-            border-bottom: none;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            border-bottom: 1px solid hsl(var(--border));
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
-            transition: box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: var(--shadow-sm);
+            transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
         }
 
         .header h1 {
             font-family: 'Roboto', sans-serif;
             font-size: 28px;
-            font-weight: 400;
+            font-weight: 600;
             line-height: 36px;
-            letter-spacing: 0;
+            letter-spacing: -0.5px;
             margin-bottom: 4px;
-            color: var(--md-sys-color-on-surface);
+            color: hsl(var(--foreground));
         }
 
         .header p {
@@ -532,32 +517,31 @@
             font-size: 14px;
             font-weight: 400;
             line-height: 20px;
-            letter-spacing: 0.25px;
-            opacity: 0.87;
-            color: var(--md-sys-color-on-surface-variant);
+            letter-spacing: 0;
+            color: hsl(var(--muted-foreground));
             margin-top: 0;
         }
 
-        /* Material Design 3 Elevated Card */
+        /* shadcn/ui Card */
         .card {
-            background: var(--md-sys-color-surface-1, var(--md-sys-color-surface));
-            color: var(--md-sys-color-on-surface);
-            border-radius: 12px;
+            background: hsl(var(--card));
+            color: hsl(var(--card-foreground));
+            border-radius: var(--radius);
             padding: 16px;
-            box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-            border: none;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid hsl(var(--border));
             margin-bottom: 16px;
-            transition: box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+            transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
             overflow: hidden;
         }
 
         .card:hover {
-            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--shadow-md);
         }
 
         .upload-area {
-            border: 2px dashed var(--md-sys-color-outline-variant);
-            border-radius: 12px;
+            border: 2px dashed hsl(var(--border));
+            border-radius: var(--radius);
             padding: 48px 32px;
             text-align: center;
             cursor: pointer;
@@ -618,38 +602,39 @@
             border: none;
         }
 
-        /* Filled Button (Primary - Highest emphasis) */
+        /* Primary Button (shadcn/ui style) */
         .btn-primary {
-            background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+            background-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            box-shadow: var(--shadow-sm);
         }
 
         .btn-primary:hover {
-            box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+            background-color: hsl(var(--primary) / 0.9);
+            box-shadow: var(--shadow-md);
         }
 
         .btn-primary::before {
             content: '';
             position: absolute;
             inset: 0;
-            background-color: var(--md-sys-color-on-primary);
+            background-color: hsl(var(--primary-foreground));
             opacity: 0;
             transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
         }
 
         .btn-primary:hover::before {
-            opacity: 0.08;
+            opacity: 0.1;
         }
 
         .btn-primary:active::before {
-            opacity: 0.12;
+            opacity: 0.2;
         }
 
-        /* Filled Tonal Button (Secondary - Medium emphasis) */
+        /* Secondary Button (shadcn/ui style) */
         .btn-secondary {
-            background-color: var(--md-sys-color-secondary-container);
-            color: var(--md-sys-color-on-secondary-container);
+            background-color: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
             box-shadow: none;
         }
 
@@ -657,41 +642,50 @@
             content: '';
             position: absolute;
             inset: 0;
-            background-color: var(--md-sys-color-on-secondary-container);
+            background-color: hsl(var(--secondary-foreground));
             opacity: 0;
             transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
         }
 
+        .btn-secondary:hover {
+            background-color: hsl(var(--secondary) / 0.8);
+        }
+
         .btn-secondary:hover::before {
-            opacity: 0.08;
+            opacity: 0.1;
         }
 
         .btn-secondary:active::before {
-            opacity: 0.12;
+            opacity: 0.2;
         }
 
-        /* Outlined Button (Medium-low emphasis) */
+        /* Outline Button (shadcn/ui style) */
         .btn-outline {
             background-color: transparent;
-            color: var(--md-sys-color-primary);
-            border: 1px solid var(--md-sys-color-outline);
+            color: hsl(var(--primary));
+            border: 1px solid hsl(var(--border));
         }
 
         .btn-outline::before {
             content: '';
             position: absolute;
             inset: 0;
-            background-color: var(--md-sys-color-primary);
+            background-color: hsl(var(--accent));
             opacity: 0;
             transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
         }
 
+        .btn-outline:hover {
+            background-color: hsl(var(--accent));
+            color: hsl(var(--accent-foreground));
+        }
+
         .btn-outline:hover::before {
-            opacity: 0.08;
+            opacity: 1;
         }
 
         .btn-outline:active::before {
-            opacity: 0.12;
+            opacity: 1;
         }
 
         /* Text Button (Lowest emphasis) */
@@ -888,34 +882,33 @@
             transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* 統計カード折りたたみボタン */
+        /* Stats Toggle Button - shadcn/ui */
         .stats-toggle-btn {
             width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            padding: 16px 24px;
-            background: var(--md-sys-color-primary-container);
-            border: none;
-            border-radius: 12px;
-            color: var(--md-sys-color-on-primary-container);
-            font-size: 15px;
+            padding: 12px 24px;
+            background: hsl(var(--secondary));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            color: hsl(var(--secondary-foreground));
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-sm);
         }
 
         [data-theme="dark"] .stats-toggle-btn {
-            background: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
         }
 
         .stats-toggle-btn:hover {
-            background: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            background: hsl(var(--secondary) / 0.8);
+            box-shadow: var(--shadow-md);
         }
 
         .stats-toggle-btn:active {
@@ -935,10 +928,10 @@
             transform: rotate(180deg);
         }
 
-        /* Material Design 3 Stat Card (Filled Card) */
+        /* shadcn/ui Stat Card */
         .stat-card {
-            background: var(--md-sys-color-surface-1, var(--md-sys-color-surface-variant));
-            color: var(--md-sys-color-on-surface);
+            background: hsl(var(--card));
+            color: hsl(var(--card-foreground));
             border-radius: 12px;
             padding: 24px;
             text-align: center;
@@ -1042,47 +1035,47 @@
         }
 
         .data-table {
-            background: var(--bg-card);
-            border-radius: 12px;
+            background: hsl(var(--card));
+            border-radius: var(--radius);
             overflow: hidden;
-            border: 1px solid var(--border-color);
+            border: 1px solid hsl(var(--border));
             box-shadow: var(--shadow-md);
         }
 
-        /* Apple Table Style */
+        /* shadcn/ui Table Style */
         table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            background: var(--background);
-            border-radius: 12px;
+            background: hsl(var(--background));
+            border-radius: var(--radius);
             overflow: hidden;
         }
 
         thead th {
-            background: var(--background-secondary);
+            background: hsl(var(--muted) / 0.5);
             padding: 12px 16px;
             text-align: left;
             font-weight: 600;
-            font-size: 13px;
-            color: var(--text-secondary);
+            font-size: 12px;
+            color: hsl(var(--muted-foreground));
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         tbody tr {
-            border-top: 1px solid var(--border);
+            border-top: 1px solid hsl(var(--border));
         }
 
         tbody td {
             padding: 16px;
-            font-size: 17px;
-            color: var(--text-primary);
+            font-size: 14px;
+            color: hsl(var(--foreground));
             font-variant-numeric: tabular-nums;
         }
 
         tbody tr:hover {
-            background: var(--background-secondary);
+            background: hsl(var(--muted) / 0.5);
         }
 
         .rank {
@@ -2317,13 +2310,13 @@ body {
 }
 
 [data-theme="dark"] .menu-button {
-    background: #2B2B2B;
-    border-color: #3C3C3C;
+    background: hsl(var(--muted));
+    border-color: hsl(var(--border));
 }
 
 .menu-button:hover {
-    background: var(--md-sys-color-secondary-container);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: hsl(var(--accent));
+    box-shadow: var(--shadow-md);
 }
 
 .menu-button:active {
@@ -2338,15 +2331,16 @@ body {
     stroke-linecap: round;
 }
 
-/* サイドドロワー */
+/* shadcn/ui Drawer */
 .drawer {
     position: fixed;
     top: 0;
     left: -280px;
     width: 280px;
     height: 100%;
-    background: var(--md-sys-color-surface);
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+    background: hsl(var(--background));
+    border-right: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-lg);
     z-index: 1050;
     transition: left 300ms cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
@@ -2357,7 +2351,7 @@ body {
 }
 
 [data-theme="dark"] .drawer {
-    background: var(--md-sys-color-surface);
+    background: hsl(var(--background));
 }
 
 /* ドロワーオーバーレイ */
@@ -2379,10 +2373,10 @@ body {
     pointer-events: all;
 }
 
-/* ドロワーヘッダー */
+/* Drawer Header */
 .drawer-header {
     padding: 24px 16px;
-    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    border-bottom: 1px solid hsl(var(--border));
 }
 
 .drawer-header h2 {
@@ -2420,8 +2414,25 @@ body {
     color: var(--md-sys-color-on-primary-container);
 }
 
-.drawer-menu-item span:first-child {
-    font-size: 24px;
+.drawer-menu-item .tab-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Tab Icon General Styles */
+.tab-icon {
+    transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.drawer-menu-item:hover .tab-icon {
+    transform: scale(1.1);
+}
+
+.drawer-menu-item.active .tab-icon {
+    stroke-width: 2.5;
 }
 
 /* ダークモード切り替えセクション */
@@ -2499,10 +2510,10 @@ body {
     .tab-navigation {
         position: sticky;
         top: 0;
-        background: rgba(255, 255, 255, 0.8);
+        background: hsl(var(--background) / 0.8);
         backdrop-filter: saturate(180%) blur(20px);
         -webkit-backdrop-filter: saturate(180%) blur(20px);
-        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        border-bottom: 1px solid hsl(var(--border));
         padding: 8px 0 0 0;
         margin-bottom: 32px;
         display: flex;
@@ -2512,8 +2523,8 @@ body {
     }
 
     [data-theme="dark"] .tab-navigation {
-        background: rgba(28, 28, 30, 0.8);
-        border-bottom-color: var(--border);
+        background: hsl(var(--background) / 0.8);
+        border-bottom-color: hsl(var(--border));
     }
 
     .tab-button {
@@ -2521,22 +2532,37 @@ body {
         padding: 12px 20px;
         background: transparent;
         border: none;
-        border-bottom: 3px solid transparent;
-        color: var(--md-sys-color-on-surface-variant);
+        border-bottom: 2px solid transparent;
+        color: hsl(var(--muted-foreground));
         cursor: pointer;
         transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
         display: flex;
         align-items: center;
         gap: 8px;
+        font-weight: 500;
     }
 
-    .tab-button span {
-        font-size: 24px;
+    .tab-button .tab-icon {
+        width: 20px;
+        height: 20px;
     }
 
     .tab-button.active {
-        color: var(--md-sys-color-primary);
-        border-bottom-color: var(--md-sys-color-primary);
+        color: hsl(var(--foreground));
+        border-bottom-color: hsl(var(--primary));
+    }
+
+    .tab-button:hover {
+        color: hsl(var(--foreground));
+        background: hsl(var(--accent) / 0.5);
+    }
+
+    .tab-button:hover .tab-icon {
+        transform: translateY(-2px);
+    }
+
+    .tab-button.active .tab-icon {
+        stroke-width: 2.5;
     }
 }
 
@@ -2560,35 +2586,35 @@ body {
 
 /* Button and Typography styles already defined in Material Design 3 section above */
 
-/* Material Design 3 Outlined Text Field */
+/* shadcn/ui Input Field */
 .form-input, .form-select {
-    border-radius: 4px;
-    border: 1px solid var(--md-sys-color-outline);
-    padding: 16px;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--input));
+    padding: 12px 16px;
     font-family: 'Roboto', sans-serif;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 400;
-    line-height: 24px;
-    letter-spacing: 0.5px;
+    line-height: 20px;
+    letter-spacing: 0;
     transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-    background: var(--md-sys-color-surface);
-    color: var(--md-sys-color-on-surface);
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
 }
 
 .form-input:hover, .form-select:hover {
-    border-color: var(--md-sys-color-on-surface);
+    border-color: hsl(var(--ring));
 }
 
 .form-input:focus, .form-select:focus {
     outline: none;
-    border-color: var(--md-sys-color-primary);
-    border-width: 2px;
-    padding: 15px;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
 }
 
 [data-theme="dark"] .form-input,
 [data-theme="dark"] .form-select {
-    border-color: var(--md-sys-color-outline);
+    border-color: hsl(var(--input));
+    background: hsl(var(--background));
 }
 
 /* テーブルのApple風スタイル */
@@ -2686,23 +2712,47 @@ table tr:hover {
 
         <nav class="drawer-menu">
             <button class="drawer-menu-item active" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
-                <span>📊</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"/>
+                    <path d="M18 17V9"/>
+                    <path d="M13 17V5"/>
+                    <path d="M8 17v-3"/>
+                </svg>
                 <span>ダメージ基準スコア</span>
             </button>
             <button class="drawer-menu-item" data-tab="slv-ranking" onclick="switchTabFromDrawer('slv-ranking')">
-                <span>⚡</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
                 <span>SLv基準スコア</span>
             </button>
             <button class="drawer-menu-item" data-tab="characters" onclick="switchTabFromDrawer('characters')">
-                <span>🎮</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
                 <span>NIKKE編成</span>
             </button>
+            <button class="drawer-menu-item" data-tab="guide" onclick="switchTabFromDrawer('guide')">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                <span>育成ガイド</span>
+            </button>
             <button class="drawer-menu-item" data-tab="archive" onclick="switchTabFromDrawer('archive')">
-                <span>📂</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
                 <span>過去データ</span>
             </button>
             <button class="drawer-menu-item" data-tab="management" onclick="switchTabFromDrawer('management')">
-                <span>⚙️</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m8.66-13.66l-4.24 4.24m-4.24 4.24l-4.24 4.24M23 12h-6m-6 0H1m19.66 8.66l-4.24-4.24m-4.24-4.24l-4.24-4.24"/>
+                </svg>
                 <span>データ管理</span>
             </button>
         </nav>
@@ -2998,19 +3048,42 @@ table tr:hover {
         <!-- タブナビゲーション -->
         <div class="tab-navigation">
             <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ基準スコア">
-                <span>📊</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"/>
+                    <path d="M18 17V9"/>
+                    <path d="M13 17V5"/>
+                    <path d="M8 17v-3"/>
+                </svg>
             </button>
             <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="SLv基準スコア">
-                <span>⚡</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
             </button>
             <button class="tab-button" data-tab="characters" onclick="switchTab('characters')" title="NIKKE編成">
-                <span>🎮</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </button>
+            <button class="tab-button" data-tab="guide" onclick="switchTab('guide')" title="育成ガイド">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
             </button>
             <button class="tab-button" data-tab="archive" onclick="switchTab('archive')" title="過去データ">
-                <span>📂</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
             </button>
             <button class="tab-button" data-tab="management" onclick="switchTab('management')" title="データ管理">
-                <span>⚙️</span>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m8.66-13.66l-4.24 4.24m-4.24 4.24l-4.24 4.24M23 12h-6m-6 0H1m19.66 8.66l-4.24-4.24m-4.24-4.24l-4.24-4.24"/>
+                </svg>
             </button>
         </div>
 
@@ -3167,6 +3240,160 @@ table tr:hover {
                     <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">
                         データを読み込むと表示されます
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- タブ: 育成ガイド -->
+        <div id="tab-guide" class="tab-content">
+            <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, var(--md-sys-color-primary-container) 0%, var(--md-sys-color-secondary-container) 100%);">
+                <div style="padding: 24px;">
+                    <div style="display: flex; align-items: start; gap: 16px;">
+                        <div style="flex-shrink: 0; font-size: 48px;">📖</div>
+                        <div style="flex: 1;">
+                            <h2 style="margin: 0 0 12px 0; color: var(--md-sys-color-on-primary-container); font-size: 28px; font-weight: 700;">ユニオンレイド育成ガイド</h2>
+                            <p style="margin: 0; color: var(--md-sys-color-on-primary-container); font-size: 16px; line-height: 1.6;">
+                                限られたリソースを最大効率で活用する上級者向け戦略
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 核心メッセージ -->
+            <div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--md-sys-color-primary);">
+                <div style="padding: 24px;">
+                    <h3 style="margin: 0 0 16px 0; color: var(--md-sys-color-primary); font-size: 20px; font-weight: 600;">⚡ 核心メッセージ</h3>
+                    <p style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface);">
+                        「編成を決める → その編成に必要なキャラ = 集中育成 → 無駄な厳選・スキル上げ避ける」
+                    </p>
+                    <p style="margin: 0; color: var(--md-sys-color-on-surface-variant); line-height: 1.6;">
+                        ユニオンレイドでは3部隊編成が基本。限られたスキルマニュアルとカスタムモジュールを効率的に使うため、属性・パーティー単位で育成方針を決定することが最重要です。
+                    </p>
+                </div>
+            </div>
+
+            <!-- アコーディオンセクション -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- セクション1: リソース管理 -->
+                <details class="card" style="overflow: hidden;">
+                    <summary style="padding: 20px; cursor: pointer; list-style: none; font-weight: 600; font-size: 18px; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px;">📊</span>
+                        <span style="flex: 1;">育成リソースの最適配分</span>
+                        <span style="font-size: 20px; color: var(--md-sys-color-on-surface-variant);">▼</span>
+                    </summary>
+                    <div style="padding: 0 20px 20px 20px; border-top: 1px solid var(--md-sys-color-outline-variant);">
+                        <p style="margin: 16px 0; color: var(--md-sys-color-on-surface-variant); line-height: 1.6;">
+                            スキルマニュアル、カスタムモジュール、強化素材は全キャラ育てるには圧倒的に不足します。
+                        </p>
+                        <div style="background: var(--md-sys-color-surface-variant); padding: 16px; border-radius: 8px; margin: 16px 0;">
+                            <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-primary);">✓ 基本方針</h4>
+                            <ul style="margin: 0; padding-left: 20px; line-height: 1.8; color: var(--md-sys-color-on-surface);">
+                                <li><strong style="color: var(--md-sys-color-primary);">属性・パーティー単位</strong>で育成方針を決定</li>
+                                <li>得意属性を決め、その編成に<strong style="color: var(--md-sys-color-primary);">集中投資</strong></li>
+                                <li>闇雲な育成を避け<strong style="color: var(--md-sys-color-primary);">編成を先に決めてから</strong>育成開始</li>
+                                <li>3～4属性を目安に対応できる体制を整える</li>
+                            </ul>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- セクション2: オーバーロード厳選 -->
+                <details class="card" style="overflow: hidden;">
+                    <summary style="padding: 20px; cursor: pointer; list-style: none; font-weight: 600; font-size: 18px; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px;">⚡</span>
+                        <span style="flex: 1;">オーバーロード厳選の優先順位</span>
+                        <span style="font-size: 20px; color: var(--md-sys-color-on-surface-variant);">▼</span>
+                    </summary>
+                    <div style="padding: 0 20px 20px 20px; border-top: 1px solid var(--md-sys-color-outline-variant);">
+                        <div style="background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(255, 53, 53, 0.05)); padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #ff6b35;">
+                            <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #ff6b35;">⭐ 最優先：メインアタッカー（8～12スロット厳選）</h4>
+                            <p style="margin: 0 0 12px 0; color: var(--md-sys-color-on-surface);">各属性で最も火力を出すキャラクターには、惜しみなくリソースを投入します。</p>
+                            <ul style="margin: 0; padding-left: 20px; line-height: 1.8; color: var(--md-sys-color-on-surface);">
+                                <li><strong>会心コード×4 + 攻撃力×4</strong> を最終濃度</li>
+                                <li>12スロット厳選は厳しいので、まずは8スロットを目標</li>
+                                <li>長期間使うキャラなので妥協せず厳選推奨</li>
+                            </ul>
+                        </div>
+                        <div style="background: var(--md-sys-color-surface-variant); padding: 16px; border-radius: 8px; margin: 16px 0;">
+                            <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">◆ 優先：サブアタッカー（軽めの厳選でOK）</h4>
+                            <p style="margin: 0; color: var(--md-sys-color-on-surface);">基本的に<strong>オーバーロードつけただけ</strong>でOK。深追いせず、会心コードを積む程度で十分。</p>
+                        </div>
+                        <div style="background: rgba(100, 100, 100, 0.1); padding: 16px; border-radius: 8px; margin: 16px 0;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface-variant);">○ 低優先：支援キャラ（基本は厳選不要）</h4>
+                            <p style="margin: 0; color: var(--md-sys-color-on-surface-variant);">バース1・2で使う支援系キャラは<strong>オーバーロードつけただけ</strong>で厳選不要。</p>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- セクション3: スキル育成 -->
+                <details class="card" style="overflow: hidden;">
+                    <summary style="padding: 20px; cursor: pointer; list-style: none; font-weight: 600; font-size: 18px; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px;">📚</span>
+                        <span style="flex: 1;">スキル育成の効率化</span>
+                        <span style="font-size: 20px; color: var(--md-sys-color-on-surface-variant);">▼</span>
+                    </summary>
+                    <div style="padding: 0 20px 20px 20px; border-top: 1px solid var(--md-sys-color-outline-variant);">
+                        <p style="margin: 16px 0; color: var(--md-sys-color-on-surface-variant); line-height: 1.6;">
+                            スキルマニュアルは非常に限られているため、<strong>使うスキルだけ選んで強化</strong>することが重要です。
+                        </p>
+                        <div style="background: var(--md-sys-color-surface-variant); padding: 16px; border-radius: 8px; margin: 16px 0;">
+                            <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-primary);">✓ スキル強化の基本方針</h4>
+                            <ul style="margin: 0; padding-left: 20px; line-height: 1.8; color: var(--md-sys-color-on-surface);">
+                                <li><strong style="color: var(--md-sys-color-primary);">編成を先に決定</strong>してから必要なスキルのみ強化</li>
+                                <li>全キャラのスキル1・2・バーストを全てMAXにする素材は<strong style="color: var(--md-sys-color-error);">絶対に足りない</strong></li>
+                                <li>使うスキル、発動頻度が高いスキルを優先</li>
+                                <li>ほぼ重要でないスキルは最小限に留める</li>
+                            </ul>
+                        </div>
+                        <div style="background: rgba(33, 150, 243, 0.1); padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #2196f3;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #2196f3;">💡 具体例：置物キャラの扱い</h4>
+                            <p style="margin: 0; color: var(--md-sys-color-on-surface);">
+                                バーストを撃たない置物キャラ（バース2などで場に出すだけのキャラ）は、<strong>バーストスキルを上げる必要がありません</strong>。スキル1・2だけ強化することで大幅に素材を節約できます。
+                            </p>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- セクション4: 相談・サポート -->
+                <details class="card" style="overflow: hidden;">
+                    <summary style="padding: 20px; cursor: pointer; list-style: none; font-weight: 600; font-size: 18px; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px;">💬</span>
+                        <span style="flex: 1;">相談・サポート</span>
+                        <span style="font-size: 20px; color: var(--md-sys-color-on-surface-variant);">▼</span>
+                    </summary>
+                    <div style="padding: 0 20px 20px 20px; border-top: 1px solid var(--md-sys-color-outline-variant);">
+                        <p style="margin: 16px 0; color: var(--md-sys-color-on-surface-variant); line-height: 1.6;">
+                            育成方針やキャラ選びで迷ったら気軽に相談してください。
+                        </p>
+                        <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 8px; margin: 16px 0;">
+                            <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #2196f3;">📢 こんな時は相談を</h4>
+                            <ul style="margin: 0; padding-left: 20px; line-height: 1.8; color: var(--md-sys-color-on-surface);">
+                                <li>どの属性を育てるべきか分からない</li>
+                                <li>手持ちキャラでどんな編成を組めるか知りたい</li>
+                                <li>オーバーロード厳選の対象キャラを決めたい</li>
+                                <li>スキル強化の優先順位を確認したい</li>
+                                <li>リソースの使い方で不安がある</li>
+                            </ul>
+                            <p style="margin: 16px 0 0 0; padding: 16px; background: var(--md-sys-color-primary-container); border-radius: 8px; font-weight: 600; color: var(--md-sys-color-on-primary-container);">
+                                💡 まずは編成の相談からお勧めします。編成が決まれば、どこにリソースを投入すべきか明確になり、無駄な育成を避けられます。
+                            </p>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- まとめ -->
+            <div class="card" style="margin-top: 24px; background: var(--md-sys-color-tertiary-container);">
+                <div style="padding: 24px;">
+                    <h3 style="margin: 0 0 16px 0; color: var(--md-sys-color-on-tertiary-container); font-size: 20px; font-weight: 600;">📝 まとめ</h3>
+                    <ul style="margin: 0; padding-left: 20px; line-height: 2; color: var(--md-sys-color-on-tertiary-container); font-size: 15px;">
+                        <li><strong>編成を先に決める</strong> - 闇雲な育成は避ける</li>
+                        <li><strong>属性・パーティー単位で考える</strong> - リソースを集中投入</li>
+                        <li><strong>アタッカーのオーバーロード厳選を最優先</strong> - 支援は基本的に厳選不要</li>
+                        <li><strong>スキルは使うものだけ上げる</strong> - 置物キャラのバーストは不要</li>
+                        <li><strong>迷ったら相談</strong> - 一緒に最適なプランを考えましょう</li>
+                    </ul>
                 </div>
             </div>
         </div>
