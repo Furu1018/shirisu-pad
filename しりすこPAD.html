@@ -5176,6 +5176,13 @@ function generateDistributionHTML() {
                 window.slvComparisonChartInstance.destroy();
             }
 
+            // ダークモード判定
+            const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+
+            // バーの色をダークモードに応じて変更
+            const barColor = isDarkMode ? 'rgba(200, 200, 210, 0.8)' : 'var(--md-sys-color-primary)';
+            const barBorderColor = isDarkMode ? 'rgba(220, 220, 230, 1)' : 'var(--md-sys-color-primary)';
+
             window.slvComparisonChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -5184,8 +5191,8 @@ function generateDistributionHTML() {
                         {
                             label: 'スコア',
                             data: sortedPlayers.map(p => p.damage),
-                            backgroundColor: 'var(--md-sys-color-primary)',
-                            borderColor: 'var(--md-sys-color-primary)',
+                            backgroundColor: barColor,
+                            borderColor: barBorderColor,
                             borderWidth: 1
                         }
                     ]
