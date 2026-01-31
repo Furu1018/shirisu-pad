@@ -2963,6 +2963,43 @@ table tr:hover {
             </div>
         </div>
 
+        <!-- パスワード入力モーダル -->
+        <div id="passwordModal" style="display: none;" class="modal">
+            <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h3>🔒 管理者パスワード</h3>
+                    <button onclick="closePasswordModal()" class="close-btn">✕</button>
+                </div>
+
+                <div style="padding: 1.5rem 1rem;">
+                    <p style="text-align: center; margin-bottom: 1.5rem; color: var(--text-secondary);">
+                        設定タブにアクセスするには<br>パスワードを入力してください
+                    </p>
+
+                    <div style="text-align: center;">
+                        <input
+                            type="password"
+                            id="passwordInput"
+                            class="year-month-input"
+                            placeholder="パスワード"
+                            style="width: 100%; max-width: 250px; text-align: center;"
+                            onkeypress="if(event.key === 'Enter') verifyPassword()"
+                        >
+                        <div id="passwordError" style="color: var(--md-sys-color-error); margin-top: 0.5rem; font-size: 14px; min-height: 20px;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button onclick="verifyPassword()" class="btn btn-primary">
+                        🔓 確認
+                    </button>
+                    <button onclick="closePasswordModal()" class="btn btn-outline">
+                        キャンセル
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- 使い方手順書モーダル -->
         <div id="guideModal" style="display: none;" class="modal" onclick="closeGuideModal()">
             <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 700px;">
@@ -3798,6 +3835,8 @@ table tr:hover {
         let currentUnionRank = null; // 現在のユニオン順位（％）
         let unionRankHistory = {}; // ユニオン順位履歴
         let isAutoExtracting = false; // 自動抽出中フラグ
+        let isPasswordVerified = false; // パスワード認証状態
+        let pendingTabSwitch = null; // パスワード認証待ちのタブ
 
         // キャラクター使用率（属性別）
         let characterUsageByAttribute = {
@@ -4422,7 +4461,78 @@ function togglePCTheme() {
     }
 }
 
+// パスワードモーダル関連関数
+function showPasswordModal() {
+    const modal = document.getElementById('passwordModal');
+    const input = document.getElementById('passwordInput');
+    const error = document.getElementById('passwordError');
+
+    if (modal) {
+        modal.style.display = 'flex';
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+        if (error) error.textContent = '';
+    }
+}
+
+function closePasswordModal() {
+    const modal = document.getElementById('passwordModal');
+    const input = document.getElementById('passwordInput');
+    const error = document.getElementById('passwordError');
+
+    if (modal) modal.style.display = 'none';
+    if (input) input.value = '';
+    if (error) error.textContent = '';
+
+    pendingTabSwitch = null;
+}
+
+function verifyPassword() {
+    const input = document.getElementById('passwordInput');
+    const error = document.getElementById('passwordError');
+    const correctPassword = 'shirisu'; // パスワード: shirisu
+
+    if (!input) return;
+
+    const enteredPassword = input.value.trim();
+
+    if (enteredPassword === '') {
+        if (error) error.textContent = 'パスワードを入力してください';
+        return;
+    }
+
+    if (enteredPassword === correctPassword) {
+        // パスワード正解
+        isPasswordVerified = true;
+        localStorage.setItem('nikke-password-verified', 'true');
+        closePasswordModal();
+
+        // 保留中のタブ切り替えを実行
+        if (pendingTabSwitch) {
+            const tabName = pendingTabSwitch;
+            pendingTabSwitch = null;
+            switchTab(tabName);
+        }
+    } else {
+        // パスワード不正解
+        if (error) error.textContent = 'パスワードが正しくありません';
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }
+}
+
 function switchTab(tabName) {
+    // 管理タブへのアクセスはパスワード認証が必要
+    if (tabName === 'management' && !isPasswordVerified) {
+        pendingTabSwitch = tabName;
+        showPasswordModal();
+        return;
+    }
+
     // ページトップにスクロール
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -7296,17 +7406,29 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             const savedRank = localStorage.getItem('nikke-current-union-rank');
             const savedHistory = localStorage.getItem('nikke-union-rank-history');
 
-            if (savedRank) {
-                currentUnionRank = parseFloat(savedRank);
-            }
-
             if (savedHistory) {
                 try {
                     unionRankHistory = JSON.parse(savedHistory);
+
+                    // 履歴から最新の順位を取得
+                    const sortedMonths = Object.keys(unionRankHistory).sort().reverse(); // 新しい順にソート
+                    if (sortedMonths.length > 0) {
+                        const latestMonth = sortedMonths[0];
+                        const latestRank = unionRankHistory[latestMonth]?.rank;
+                        if (latestRank) {
+                            currentUnionRank = latestRank;
+                            console.log(`✅ 最新のユニオン順位を履歴から取得: ${latestRank}% (${latestMonth})`);
+                        }
+                    }
                 } catch (error) {
                     console.error('ユニオン順位履歴の読み込みに失敗:', error);
                     unionRankHistory = {};
                 }
+            }
+
+            // 履歴がない場合のみ、savedRankから取得
+            if (!currentUnionRank && savedRank) {
+                currentUnionRank = parseFloat(savedRank);
             }
         }
 
@@ -7422,6 +7544,12 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
 
         // ページ読み込み時にユニオン順位データを読み込み
         document.addEventListener('DOMContentLoaded', function() {
+            // パスワード認証状態を復元
+            const savedAuth = localStorage.getItem('nikke-password-verified');
+            if (savedAuth === 'true') {
+                isPasswordVerified = true;
+            }
+
             loadUnionRankData();
             autoLoadHistory();     // 共有履歴を自動読み込み
             loadAvailableArchives(); // 過去データタブ用: 利用可能なアーカイブを読み込み
