@@ -5180,8 +5180,12 @@ function generateDistributionHTML() {
             const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
 
             // バーの色をダークモードに応じて変更
-            const barColor = isDarkMode ? 'rgba(200, 200, 210, 0.8)' : 'var(--md-sys-color-primary)';
-            const barBorderColor = isDarkMode ? 'rgba(220, 220, 230, 1)' : 'var(--md-sys-color-primary)';
+            const barColor = isDarkMode ? 'rgba(180, 180, 190, 0.8)' : 'var(--md-sys-color-primary)';
+            const barBorderColor = isDarkMode ? 'rgba(200, 200, 210, 1)' : 'var(--md-sys-color-primary)';
+
+            // 文字と線の色もダークモードに応じて変更（より濃く、バーより目立つ）
+            const textColor = isDarkMode ? 'rgba(240, 240, 250, 1)' : 'var(--md-sys-color-on-surface)';
+            const gridColor = isDarkMode ? 'rgba(160, 160, 170, 0.4)' : 'var(--md-sys-color-outline-variant)';
 
             window.slvComparisonChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -5203,32 +5207,32 @@ function generateDistributionHTML() {
                     scales: {
                         x: {
                             ticks: {
-                                color: 'var(--md-sys-color-on-surface)',
+                                color: textColor,
                                 font: { size: 11 },
                                 maxRotation: 45,
                                 minRotation: 45
                             },
                             grid: {
-                                color: 'var(--md-sys-color-outline-variant)',
+                                color: gridColor,
                                 display: false
                             }
                         },
                         y: {
                             ticks: {
-                                color: 'var(--md-sys-color-on-surface)',
+                                color: textColor,
                                 callback: function(value) {
                                     return (value / 1000000000).toFixed(1) + 'B';
                                 }
                             },
                             grid: {
-                                color: 'var(--md-sys-color-outline-variant)'
+                                color: gridColor
                             }
                         }
                     },
                     plugins: {
                         legend: {
                             labels: {
-                                color: 'var(--md-sys-color-on-surface)',
+                                color: textColor,
                                 font: { size: 13, weight: 500 }
                             }
                         },
