@@ -1,0 +1,1538 @@
+{
+  "players": [
+    {
+      "player": "めいでんさん",
+      "totalDamage": 136257000000,
+      "attackCount": 3,
+      "syncLevel": 861,
+      "attacks": [
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 59202352470,
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 35882874515,
+          "characters": [
+            "./character-images/af2657ff5ffb44f70ed2db8d5de8985a.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 41171413742,
+          "characters": [
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8503f8fcdf40b4c8051ff93f064ce511.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "なべりうす",
+      "totalDamage": 71071000000,
+      "attackCount": 3,
+      "syncLevel": 661,
+      "attacks": [
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 23189438993,
+          "characters": [
+            "./character-images/1383a61330140e2106f22a4806208a70.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 26794829852,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 21086555109,
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "PHANTOM",
+      "totalDamage": 70484000000,
+      "attackCount": 3,
+      "syncLevel": 701,
+      "attacks": [
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 29462557869,
+          "characters": [
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 23030433818,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp",
+            "./character-images/9008590c7bab78126e533fc33dd91987.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 17990656675,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "まるちょ",
+      "totalDamage": 51869000000,
+      "attackCount": 3,
+      "syncLevel": 613,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 12778633642,
+          "characters": [
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 16798223307,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 22292523097,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ニッサ",
+      "totalDamage": 50123000000,
+      "attackCount": 3,
+      "syncLevel": 650,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 17486814879,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 19779070360,
+          "characters": [
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 12856627184,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ヤサイマシマシ",
+      "totalDamage": 46397000000,
+      "attackCount": 3,
+      "syncLevel": 626,
+      "attacks": [
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15553083329,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp",
+            "./character-images/c22b550dab08af6aee1268daf75a311d.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14929515184,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15914471291,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/48e2d0b41848d524f651eee9e81b44da.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "猫ロビン",
+      "totalDamage": 45653000000,
+      "attackCount": 3,
+      "syncLevel": 579,
+      "attacks": [
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 13458102314,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/c22b550dab08af6aee1268daf75a311d.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 18427703123,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 13766716329,
+          "characters": [
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "みに",
+      "totalDamage": 43961000000,
+      "attackCount": 3,
+      "syncLevel": 583,
+      "attacks": [
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 12984199630,
+          "characters": [
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 15272152485,
+          "characters": [
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 15704339213,
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "かずにゃん",
+      "totalDamage": 43696000000,
+      "attackCount": 3,
+      "syncLevel": 600,
+      "attacks": [
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 16115045261,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 12365417483,
+          "characters": [
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15215974472,
+          "characters": [
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "MIRIN",
+      "totalDamage": 43249000000,
+      "attackCount": 3,
+      "syncLevel": 565,
+      "attacks": [
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14291642413,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11821322844,
+          "characters": [
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 17136518349,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるちゃ",
+      "totalDamage": 38506000000,
+      "attackCount": 3,
+      "syncLevel": 681,
+      "attacks": [
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11601412689,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14023826706,
+          "characters": [
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/886c1de7ac43d1f5b8aec1dcb8ab23c5.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 12881136928,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/75cd454109aa4e98bba1ce0c26354234.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "翠秋めぐる",
+      "totalDamage": 37957000000,
+      "attackCount": 3,
+      "syncLevel": 652,
+      "attacks": [
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7340639547,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 16611922275,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/5b682cd738500f81044db096ba87c5e7.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14004283722,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/29e8ef4e2d542947f8220ddf46aa38ef.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あんず",
+      "totalDamage": 34903000000,
+      "attackCount": 3,
+      "syncLevel": 530,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 8650702740,
+          "characters": [
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/355c236e55ea995473b1b910849af65d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 12173880595,
+          "characters": [
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 14078568817,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "カンメイ",
+      "totalDamage": 34840000000,
+      "attackCount": 3,
+      "syncLevel": 542,
+      "attacks": [
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 9605514403,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8503f8fcdf40b4c8051ff93f064ce511.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 10272085570,
+          "characters": [
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/1675c806cc8f0bb7244a0d19b136d7e5.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/48e2d0b41848d524f651eee9e81b44da.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 14961987913,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ねむねこ",
+      "totalDamage": 30281000000,
+      "attackCount": 3,
+      "syncLevel": 482,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 7890256780,
+          "characters": [
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 10419277490,
+          "characters": [
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11971151783,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ふるり",
+      "totalDamage": 24506000000,
+      "attackCount": 3,
+      "syncLevel": 425,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6276874812,
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7002593013,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11226878859,
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "るり",
+      "totalDamage": 24439000000,
+      "attackCount": 3,
+      "syncLevel": 500,
+      "attacks": [
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 6444278794,
+          "characters": [
+            "./character-images/af2657ff5ffb44f70ed2db8d5de8985a.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/e641c325ff3f6d6fb159fea2eb0a26f7.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 8698940777,
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 9295908220,
+          "characters": [
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ASAHI",
+      "totalDamage": 24238000000,
+      "attackCount": 3,
+      "syncLevel": 490,
+      "attacks": [
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 8352465838,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp",
+            "./character-images/8503f8fcdf40b4c8051ff93f064ce511.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6609930465,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 9275882496,
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "はる",
+      "totalDamage": 22748000000,
+      "attackCount": 3,
+      "syncLevel": 475,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 4608986114,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 6025108185,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/29e8ef4e2d542947f8220ddf46aa38ef.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 12114045663,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "覆面仮面",
+      "totalDamage": 22567000000,
+      "attackCount": 3,
+      "syncLevel": 560,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3920567956,
+          "characters": [
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/aac296d408a0fdadc6b6eeec73887c64.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8106786743,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 10540061207,
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "めいさ",
+      "totalDamage": 21270000000,
+      "attackCount": 3,
+      "syncLevel": 571,
+      "attacks": [
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 4051621676,
+          "characters": [
+            "./character-images/1383a61330140e2106f22a4806208a70.webp",
+            "./character-images/1675c806cc8f0bb7244a0d19b136d7e5.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/355c236e55ea995473b1b910849af65d.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8459060283,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/9008590c7bab78126e533fc33dd91987.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8758892305,
+          "characters": [
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "DETロイ",
+      "totalDamage": 18781000000,
+      "attackCount": 3,
+      "syncLevel": 490,
+      "attacks": [
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 4368578359,
+          "characters": [
+            "./character-images/1ab318713febb51ec0a59ecdf74d5961.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 5844288387,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8568103857,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/6d8fbc9751134275c50789db976d907d.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "リン",
+      "totalDamage": 16179000000,
+      "attackCount": 3,
+      "syncLevel": 460,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 5075256095,
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/1a1d148f4759a58ff864023b91a07169.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 5769803915,
+          "characters": [
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 5333973993,
+          "characters": [
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/d94d74825ae73e2124e324b6ccdfa5f1.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "LUPI",
+      "totalDamage": 16016000000,
+      "attackCount": 3,
+      "syncLevel": 555,
+      "attacks": [
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 2782500138,
+          "characters": [
+            "./character-images/c8881cbc768c564c3c64be013ab5d2e2.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/ff44690f97cd69303f35e110c88858d5.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7014397074,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6218863617,
+          "characters": [
+            "./character-images/d2050eed5ccc0192bbcb0e0cdcac2c3a.webp",
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/a7ee606492bb922a060c2c336bd43872.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "むう",
+      "totalDamage": 14562000000,
+      "attackCount": 3,
+      "syncLevel": 429,
+      "attacks": [
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 6806093734,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 4202772998,
+          "characters": [
+            "./character-images/5f04f96984b134bd885b3b473a0efb5f.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3552639750,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "うしでび",
+      "totalDamage": 14493000000,
+      "attackCount": 3,
+      "syncLevel": 428,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3668934298,
+          "characters": [
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3952889509,
+          "characters": [
+            "./character-images/d96d3a6d5c55ef7dd76f83181da11869.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6871464319,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/0664c6b8c1367369612868307a225530.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "時雨",
+      "totalDamage": 11670000000,
+      "attackCount": 3,
+      "syncLevel": 407,
+      "attacks": [
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 6075241212,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3272885962,
+          "characters": [
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/f0c089e8bb85053339d41b2720f0a900.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 2321971512,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "NAVI01",
+      "totalDamage": 9759000000,
+      "attackCount": 3,
+      "syncLevel": 373,
+      "attacks": [
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3124232069,
+          "characters": [
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp"
+          ]
+        },
+        {
+          "bossType": "グレイブディガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 2225747345,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/b8d876f051c25480985c999da5ae838a.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 4409079977,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ほりっぴー",
+      "totalDamage": 8984000000,
+      "attackCount": 3,
+      "syncLevel": 323,
+      "attacks": [
+        {
+          "bossType": "フィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 3303603414,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp"
+          ]
+        },
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 2309019472,
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3371757980,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あちゃ",
+      "totalDamage": 1938000000,
+      "attackCount": 3,
+      "syncLevel": 361,
+      "attacks": [
+        {
+          "bossType": "レイタンス",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 1027387088,
+          "characters": [
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/57a06e50778e4923c6c9806425020498.webp",
+            "./character-images/42d9a7d53ad7c3871087d0f972f12ff9.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f4d49f875b1e112f42c2daf410aa7aac.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 636337061,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp"
+          ]
+        },
+        {
+          "bossType": "ブラックスミス",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 274135862,
+          "characters": [
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/d96d3a6d5c55ef7dd76f83181da11869.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/53bd5fb920553a158d80a170fbf36129.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "にま",
+      "totalDamage": 14633000000,
+      "attackCount": 1,
+      "syncLevel": 631,
+      "attacks": [
+        {
+          "bossType": "リビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14632706839,
+          "characters": [
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp"
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "extractedAt": "2026-02-01T00:08:25.009Z",
+    "playerCount": 31,
+    "totalDamage": 1046030000000,
+    "source": "BlaBlaLINK Chrome Extension",
+    "version": "2.3",
+    "hasDetailedAttacks": true,
+    "imagesDownloaded": true,
+    "archiveMonth": "2026-02",
+    "archivedAt": "2026-02-01T00:37:28.549Z",
+    "unionRank": 0.59
+  }
+}
