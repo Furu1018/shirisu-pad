@@ -1054,7 +1054,7 @@
 
         thead th {
             background: hsl(var(--muted) / 0.5);
-            padding: 12px 16px;
+            padding: 12px 8px;
             text-align: left;
             font-weight: 600;
             font-size: 12px;
@@ -1069,7 +1069,7 @@
         }
 
         tbody td {
-            padding: 16px;
+            padding: 12px 8px;
             font-size: 14px;
             color: hsl(var(--foreground));
             font-variant-numeric: tabular-nums;
@@ -3251,10 +3251,7 @@ table tr:hover {
                                 プレイヤー <span id="sort-name"></span>
                             </th>
                             <th style="cursor: pointer;" onclick="sortBy('damage')">
-                                ダメージ <span id="sort-damage"></span>
-                            </th>
-                            <th style="cursor: pointer;" onclick="sortBy('slv')">
-                                SLv <span id="sort-slv"></span>
+                                ダメージ/SLv <span id="sort-damage"></span>
                             </th>
                             <th style="cursor: pointer;" onclick="sortBy('growth')">
                                 成長率 <span id="sort-growth"></span>
@@ -3305,10 +3302,7 @@ table tr:hover {
                                 ダメージ/SLv <span id="slv-sort-efficiency">▼</span>
                             </th>
                             <th style="cursor: pointer;" onclick="sortSlvEfficiency('damage')">
-                                総ダメージ <span id="slv-sort-damage"></span>
-                            </th>
-                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('slv')">
-                                SLv <span id="slv-sort-slv"></span>
+                                総ダメージ/SLv <span id="slv-sort-damage"></span>
                             </th>
                         </tr>
                     </thead>
@@ -4966,8 +4960,12 @@ function generateDistributionHTML() {
                         <strong>${player.player}</strong>
                         ${player.isUnion ? '<span class="badge badge-union">Union</span>' : ''}
                     </td>
-                    <td>${formatDamage(player.damage)}</td>
-                    <td>${player.syncLevel}</td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span>${formatDamage(player.damage)}</span>
+                            <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                        </div>
+                    </td>
                     <td>${growthInfo}</td>
                 </tr>
                 `;
@@ -5319,8 +5317,12 @@ function generateDistributionHTML() {
                         <td style="text-align: right; font-weight: 600; color: var(--md-sys-color-primary);">
                             ${efficiencyFormatted}
                         </td>
-                        <td>${damageFormatted}</td>
-                        <td>${player.syncLevel}</td>
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <span>${damageFormatted}</span>
+                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('');
