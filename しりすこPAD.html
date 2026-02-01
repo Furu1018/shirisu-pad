@@ -1061,6 +1061,7 @@
             color: hsl(var(--muted-foreground));
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            white-space: nowrap;
         }
 
         tbody tr {
@@ -1072,6 +1073,7 @@
             font-size: 14px;
             color: hsl(var(--foreground));
             font-variant-numeric: tabular-nums;
+            white-space: nowrap;
         }
 
         tbody tr:hover {
@@ -1335,6 +1337,26 @@
                 right: 12px;
                 width: 48px;
                 height: 48px;
+            }
+
+            /* テーブルのモバイル最適化 */
+            table {
+                font-size: 11px;
+            }
+
+            thead th {
+                padding: 8px 4px;
+                font-size: 9px;
+                letter-spacing: 0;
+            }
+
+            tbody td {
+                padding: 10px 4px;
+                font-size: 11px;
+            }
+
+            .rank {
+                font-size: 14px;
             }
         }
 
@@ -3193,7 +3215,6 @@ table tr:hover {
 
         <!-- タブ1コンテンツ: ランキング & パフォーマンス分析 -->
         <div id="tab-ranking" class="tab-content active">
-        <div id="results" class="results">
             <!-- 統計カード折りたたみ -->
             <div style="margin-bottom: 24px;">
                 <button onclick="toggleStats()" class="stats-toggle-btn">
@@ -3244,8 +3265,6 @@ table tr:hover {
                     </tbody>
                 </table>
             </div>
-        </div>
-    </div>
         </div>
         <!-- /タブ1 -->
 
@@ -4699,8 +4718,10 @@ function generateDistributionHTML() {
 
         function showResults() {
             errorArea.innerHTML = '';
-            results.style.display = 'block';
-            results.classList.add('animate-fade-in');
+            if (results) {
+                results.style.display = 'block';
+                results.classList.add('animate-fade-in');
+            }
             updateStats();
             updateTable();
 
