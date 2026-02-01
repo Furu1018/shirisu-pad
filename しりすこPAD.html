@@ -5290,12 +5290,14 @@ function generateDistributionHTML() {
             const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
 
             // バーの色をダークモードに応じて変更
-            const barColor = isDarkMode ? 'rgba(180, 180, 190, 0.8)' : 'var(--md-sys-color-primary)';
-            const barBorderColor = isDarkMode ? 'rgba(200, 200, 210, 1)' : 'var(--md-sys-color-primary)';
+            const barColor = isDarkMode ? 'rgba(180, 180, 190, 0.8)' : 'rgba(99, 102, 241, 0.8)';
+            const barBorderColor = isDarkMode ? 'rgba(200, 200, 210, 1)' : 'rgba(99, 102, 241, 1)';
 
-            // 文字と線の色もダークモードに応じて変更（より濃く、バーより目立つ）
-            const textColor = isDarkMode ? 'rgba(240, 240, 250, 1)' : 'var(--md-sys-color-on-surface)';
-            const gridColor = isDarkMode ? 'rgba(160, 160, 170, 0.4)' : 'var(--md-sys-color-outline-variant)';
+            // 文字と線の色もダークモードに応じて変更
+            // ライトモード: 濃い色（黒系）で視認性を確保
+            // ダークモード: 明るい色（白系）で視認性を確保
+            const textColor = isDarkMode ? 'rgba(240, 240, 250, 1)' : 'rgba(30, 30, 40, 0.9)';
+            const gridColor = isDarkMode ? 'rgba(160, 160, 170, 0.4)' : 'rgba(0, 0, 0, 0.1)';
 
             window.slvComparisonChartInstance = new Chart(ctx, {
                 type: 'bar',
