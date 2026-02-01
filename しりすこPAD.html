@@ -2331,6 +2331,11 @@ body {
     stroke-linecap: round;
 }
 
+/* ドロワーが開いた時、メニューボタンを右に移動 */
+.menu-button.drawer-open {
+    left: 296px; /* ドロワー幅280px + 元の位置16px */
+}
+
 /* shadcn/ui Drawer */
 .drawer {
     position: fixed;
@@ -4389,15 +4394,21 @@ function toggleStats() {
 function toggleDrawer() {
     const drawer = document.getElementById('drawer');
     const overlay = document.querySelector('.drawer-overlay');
+    const menuButton = document.querySelector('.menu-button');
+
     drawer.classList.toggle('open');
     overlay.classList.toggle('show');
+    menuButton.classList.toggle('drawer-open');
 }
 
 function closeDrawer() {
     const drawer = document.getElementById('drawer');
     const overlay = document.querySelector('.drawer-overlay');
+    const menuButton = document.querySelector('.menu-button');
+
     drawer.classList.remove('open');
     overlay.classList.remove('show');
+    menuButton.classList.remove('drawer-open');
 }
 
 // ドロワーからのタブ切り替え
@@ -7680,6 +7691,65 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             });
 
             console.log('利用可能なアーカイブ:', availableArchives.length, '件');
+
+            // ユニオンランク履歴を月別アーカイブから自動構築
+            await loadUnionRankHistoryFromArchives();
+        }
+
+        // 月別アーカイブからユニオンランク履歴を自動読み込み
+        async function loadUnionRankHistoryFromArchives() {
+            if (!availableArchives || availableArchives.length === 0) {
+                console.log('利用可能なアーカイブがありません');
+                return;
+            }
+
+            console.log('=== ユニオンランク履歴を月別アーカイブから読み込み開始 ===');
+            let updatedCount = 0;
+
+            for (const archive of availableArchives) {
+                try {
+                    const response = await fetch(`./data/${archive.file}`);
+                    if (!response.ok) continue;
+
+                    const data = await response.json();
+
+                    // metadata.unionRankが存在する場合、履歴に追加
+                    if (data.metadata && data.metadata.unionRank !== undefined && data.metadata.unionRank !== null) {
+                        const monthKey = archive.file.replace('.json', ''); // "2026-01"形式
+
+                        unionRankHistory[monthKey] = {
+                            rank: data.metadata.unionRank,
+                            totalDamage: data.metadata.totalDamage || 0,
+                            date: data.metadata.extractedAt ? data.metadata.extractedAt.slice(0, 10) : ''
+                        };
+
+                        updatedCount++;
+                        console.log(`✅ ${monthKey}: ${data.metadata.unionRank}%`);
+                    }
+                } catch (error) {
+                    console.error(`アーカイブ ${archive.file} の読み込みエラー:`, error);
+                }
+            }
+
+            if (updatedCount > 0) {
+                // localStorageに保存
+                localStorage.setItem('nikke-union-rank-history', JSON.stringify(unionRankHistory));
+                console.log(`✅ ユニオンランク履歴を更新: ${updatedCount}件`);
+
+                // 最新の順位を取得
+                const sortedMonths = Object.keys(unionRankHistory).sort().reverse();
+                if (sortedMonths.length > 0) {
+                    const latestMonth = sortedMonths[0];
+                    const latestRank = unionRankHistory[latestMonth]?.rank;
+                    if (latestRank && !currentUnionRank) {
+                        currentUnionRank = latestRank;
+                        localStorage.setItem('nikke-current-union-rank', currentUnionRank.toString());
+                        console.log(`✅ 最新のユニオン順位を設定: ${latestRank}% (${latestMonth})`);
+                    }
+                }
+            } else {
+                console.log('ユニオンランク情報を含むアーカイブが見つかりませんでした');
+            }
         }
 
         // アーカイブデータを読み込む
