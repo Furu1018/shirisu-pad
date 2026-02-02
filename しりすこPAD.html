@@ -5367,23 +5367,8 @@ function generateDistributionHTML() {
         let currentSlvEfficiencySort = { column: 'efficiency', direction: 'desc' };
 
         function sortSlvEfficiency(column) {
-            // ソート方向の切り替え
-            if (currentSlvEfficiencySort.column === column) {
-                currentSlvEfficiencySort.direction =
-                    currentSlvEfficiencySort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSlvEfficiencySort.column = column;
-                currentSlvEfficiencySort.direction = 'desc';
-            }
-
-            // ソートインジケーターを更新
-            document.querySelectorAll('[id^="slv-sort-"]').forEach(el => {
-                el.textContent = '';
-            });
-            const indicator = document.getElementById('slv-sort-' + column);
-            if (indicator) {
-                indicator.textContent = currentSlvEfficiencySort.direction === 'asc' ? '▲' : '▼';
-            }
+            // ソート機能は無効化されました
+            return;
 
             // データをソート
             const tbody = document.getElementById('slvEfficiencyTableBody');
@@ -8257,23 +8242,8 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
         }
 
         function sortBy(field) {
-            // Toggle sort order
-            if (currentSortField === field) {
-                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSortField = field;
-                currentSortOrder = 'asc';
-            }
-
-            // Update sort indicators
-            document.querySelectorAll('[id^="sort-"]').forEach(el => el.textContent = '');
-            document.getElementById(`sort-${field}`).textContent = currentSortOrder === 'asc' ? '▲' : '▼';
-
-            // Set the select to match
-            document.getElementById('sortSelect').value = field;
-
-            // Apply filters
-            applyFilters();
+            // ソート機能は無効化されました
+            return;
         }
 
         function displayFilteredData(data) {
