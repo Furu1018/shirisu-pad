@@ -3310,7 +3310,33 @@ table tr:hover {
 
         <!-- タブ2: SLv基準スコア -->
         <div id="tab-slv-ranking" class="tab-content">
-            <!-- SLv vs スコア分析グラフ -->
+            <!-- 工事中ページ -->
+            <div style="display: flex; align-items: center; justify-content: center; min-height: 60vh; padding: 24px;">
+                <div class="card" style="max-width: 480px; width: 100%; text-align: center; padding: 48px 32px; border-radius: 16px; border: 1px solid var(--md-sys-color-outline-variant);">
+                    <div style="width: 80px; height: 80px; margin: 0 auto 24px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                    </div>
+                    <h2 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 600; color: var(--md-sys-color-on-surface);">
+                        工事中です
+                    </h2>
+                    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: var(--md-sys-color-on-surface-variant);">
+                        このページは現在メンテナンス中です。<br>
+                        より良い機能を提供するため、改修作業を行っています。
+                    </p>
+                    <div style="padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 12px;">
+                        <p style="margin: 0; font-size: 13px; color: var(--md-sys-color-on-surface-variant);">
+                            しばらくお待ちください
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 工事中解除時は以下のコメントを外してください ===== -->
+            <!--
             <div class="card" style="margin-bottom: 24px;">
                 <div style="padding: 24px;">
                     <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">⚡ SLv vs スコア分析</h3>
@@ -3323,7 +3349,6 @@ table tr:hover {
                 </div>
             </div>
 
-            <!-- ダメージ/SLv 効率ランキング -->
             <div class="card" style="margin-bottom: 16px;">
                 <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">🎯 育成効率ランキング</h3>
                 <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
@@ -3345,6 +3370,8 @@ table tr:hover {
                     </tbody>
                 </table>
             </div>
+            -->
+            <!-- ===== /工事中解除時のコメント ===== -->
         </div>
         <!-- /タブ2 -->
 
