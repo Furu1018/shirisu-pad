@@ -3343,16 +3343,16 @@ table tr:hover {
                 <table id="slvEfficiencyTable">
                     <thead>
                         <tr>
-                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('rank')">
+                            <th style="text-align: center; cursor: pointer;" onclick="sortSlvEfficiency('rank')">
                                 順位 <span id="slv-sort-rank"></span>
                             </th>
-                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('name')">
+                            <th style="text-align: left; cursor: pointer;" onclick="sortSlvEfficiency('name')">
                                 プレイヤー <span id="slv-sort-name"></span>
                             </th>
-                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('efficiency')">
-                                ダメージ/SLv <span id="slv-sort-efficiency">▼</span>
+                            <th style="text-align: center;">
+                                ダメージ/SLv
                             </th>
-                            <th style="cursor: pointer;" onclick="sortSlvEfficiency('damage')">
+                            <th style="text-align: center; cursor: pointer;" onclick="sortSlvEfficiency('damage')">
                                 総ダメージ/SLv <span id="slv-sort-damage"></span>
                             </th>
                         </tr>
@@ -5358,18 +5358,18 @@ function generateDistributionHTML() {
 
                 return `
                     <tr class="player-row" onclick="showPlayerDetails('${player.player}')" data-player="${player.player}">
-                        <td class="rank rank-${rank <= 3 ? rank : 'other'}">
+                        <td class="rank rank-${rank <= 3 ? rank : 'other'}" style="text-align: center;">
                             ${rankDisplay}
                         </td>
-                        <td>
+                        <td style="text-align: left;">
                             <strong>${player.player}</strong>
                             ${player.isUnion ? '<span class="badge badge-union">Union</span>' : ''}
                         </td>
-                        <td style="text-align: right; font-weight: 600; color: var(--md-sys-color-primary);">
+                        <td style="text-align: center; font-weight: 600; color: var(--md-sys-color-primary);">
                             ${efficiencyFormatted}
                         </td>
-                        <td>
-                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <td style="text-align: center;">
+                            <div style="display: flex; flex-direction: column; gap: 2px; align-items: center;">
                                 <span>${damageFormatted}</span>
                                 <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
                             </div>
