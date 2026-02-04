@@ -5932,10 +5932,13 @@ function generateDistributionHTML() {
                                         size: 12
                                     },
                                     callback: function(value) {
-                                        if (value >= 10000) {
-                                            return (value / 10000).toFixed(0) + '億';
+                                        if (value >= 1000000000) {
+                                            return (value / 1000000000).toFixed(1) + ' B';
                                         }
-                                        return value.toFixed(0) + '万';
+                                        if (value >= 1000000) {
+                                            return (value / 1000000).toFixed(0) + ' M';
+                                        }
+                                        return value.toFixed(0);
                                     }
                                 }
                             }
@@ -6293,14 +6296,14 @@ function generateDistributionHTML() {
         }
 
         function formatDamage(damage) {
-            if (damage >= 1e8) {
-                return (damage / 1e8).toFixed(2) + '億';
+            if (damage >= 1e9) {
+                return (damage / 1e9).toFixed(3) + ' B';
             }
-            if (damage >= 1e4) {
-                return (damage / 1e4).toFixed(2) + '万';
+            if (damage >= 1e6) {
+                return (damage / 1e6).toFixed(2) + ' M';
             }
             if (damage >= 1e3) {
-                return (damage / 1e3).toFixed(1) + 'K';
+                return (damage / 1e3).toFixed(1) + ' K';
             }
             return damage.toString();
         }
