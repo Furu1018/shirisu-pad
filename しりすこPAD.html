@@ -3380,9 +3380,9 @@ table tr:hover {
                 <table id="fururiRankingTable">
                     <thead>
                         <tr>
-                            <th style="text-align: left;">プレイヤー</th>
-                            <th>ダメージ/SLv</th>
-                            <th>ふるり値</th>
+                            <th style="text-align: center;">プレイヤー</th>
+                            <th style="text-align: right;">ダメージ/SLv</th>
+                            <th style="text-align: center;">ふるり値</th>
                         </tr>
                     </thead>
                     <tbody id="fururiRankingBody">
@@ -7739,9 +7739,9 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
 
                 return `
                     <tr style="${rowStyle}">
-                        <td style="font-weight: 500;">${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}</td>
-                        <td>
-                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <td style="text-align: center; font-weight: 500;">${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}</td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
                                 <span style="font-variant-numeric: tabular-nums;">${damageB} B</span>
                                 <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
                             </div>
