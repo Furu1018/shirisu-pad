@@ -2871,7 +2871,7 @@ table tr:hover {
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                 </svg>
-                <span>SLv基準スコア</span>
+                <span>ふるり指標</span>
             </button>
             <button class="drawer-menu-item" data-tab="characters" onclick="switchTabFromDrawer('characters')">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -3230,7 +3230,7 @@ table tr:hover {
                     <path d="M8 17v-3"/>
                 </svg>
             </button>
-            <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="SLv基準スコア">
+            <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="ふるり指標">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                 </svg>
@@ -3319,70 +3319,59 @@ table tr:hover {
         </div>
         <!-- /タブ1 -->
 
-        <!-- タブ2: SLv基準スコア -->
+        <!-- タブ2: ふるり指標 -->
         <div id="tab-slv-ranking" class="tab-content">
-            <!-- 工事中ページ -->
-            <div style="display: flex; align-items: center; justify-content: center; min-height: 60vh; padding: 24px;">
-                <div class="card" style="max-width: 480px; width: 100%; text-align: center; padding: 48px 32px; border-radius: 16px; border: 1px solid var(--md-sys-color-outline-variant);">
-                    <div style="width: 80px; height: 80px; margin: 0 auto 24px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                            <line x1="12" y1="9" x2="12" y2="13"/>
-                            <line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
-                    </div>
-                    <h2 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 600; color: var(--md-sys-color-on-surface);">
-                        工事中です
-                    </h2>
-                    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: var(--md-sys-color-on-surface-variant);">
-                        このページは現在メンテナンス中です。<br>
-                        より良い機能を提供するため、改修作業を行っています。
+            <!-- ふるり指標ヘッダー -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div style="padding: 24px;">
+                    <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">📊 ふるり指標</h3>
+                    <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
+                        SLv.補正を考慮した公平な相対評価指標
                     </p>
-                    <div style="padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 12px;">
-                        <p style="margin: 0; font-size: 13px; color: var(--md-sys-color-on-surface-variant);">
-                            しばらくお待ちください
+                    <div style="padding: 12px 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
+                        <p style="margin: 0; font-size: 14px; color: var(--md-sys-color-on-surface);">
+                            <strong>基準者:</strong> <span id="fururiBaseInfo">読み込み中...</span>
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- ===== 工事中解除時は以下のコメントを外してください ===== -->
-            <!--
-            <div class="card" style="margin-bottom: 24px;">
-                <div style="padding: 24px;">
-                    <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">⚡ SLv vs スコア分析</h3>
-                    <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 24px;">
-                        Sync Levelに対するパフォーマンス比較
+            <!-- 注意書きアラート（shadcn Alert風） -->
+            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; margin-bottom: 24px; background: var(--md-sys-color-surface-variant); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div>
+                    <p style="margin: 0 0 8px 0; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface);">
+                        ふるり値は育成効率を可視化する参考指標です。属性担当・締め凸・戦闘時間などの条件差は考慮されません。
                     </p>
-                    <div style="height: 400px; position: relative;">
-                        <canvas id="slvComparisonChart"></canvas>
-                    </div>
+                    <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--md-sys-color-on-surface-variant);">
+                        この数値は他人との比較ではなく、過去の自分との比較に役立ててください。
+                    </p>
                 </div>
             </div>
 
-            <div class="card" style="margin-bottom: 16px;">
-                <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">🎯 育成効率ランキング</h3>
-                <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
-                    SLv1あたりのダメージ効率（育成・戦略の最適化指標）
-                </p>
-            </div>
-
+            <!-- ふるりランキングテーブル -->
             <div class="data-table">
-                <table id="slvEfficiencyTable">
+                <table id="fururiRankingTable">
                     <thead>
                         <tr>
-                            <th style="text-align: center;"></th>
+                            <th style="text-align: center; width: 60px;"></th>
                             <th style="text-align: left;">プレイヤー</th>
-                            <th style="text-align: center;">ダメージ/SLv</th>
-                            <th style="text-align: center;">総ダメージ/SLv</th>
+                            <th style="text-align: right;">ダメージ</th>
+                            <th style="text-align: center; width: 80px;">SLv.</th>
+                            <th style="text-align: center; width: 100px;">ふるり値</th>
                         </tr>
                     </thead>
-                    <tbody id="slvEfficiencyTableBody">
+                    <tbody id="fururiRankingBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 24px;">データを読み込み中...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
-            -->
-            <!-- ===== /工事中解除時のコメント ===== -->
         </div>
         <!-- /タブ2 -->
 
@@ -3668,6 +3657,25 @@ table tr:hover {
                 </div>
             </div>
 
+            <!-- ふるり指標設定 -->
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 16px;">📊 ふるり指標設定</h3>
+                <div style="padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <label style="color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">
+                            基準者:
+                        </label>
+                        <select id="fururiBasePlayerSelect"
+                                onchange="updateFururiBasePlayer()"
+                                style="padding: 8px 12px; border-radius: 4px; border: 1px solid var(--md-sys-color-outline); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px; min-width: 200px;">
+                            <option value="ふるり">ふるり（デフォルト）</option>
+                        </select>
+                    </div>
+                    <p style="margin: 12px 0 0 0; font-size: 13px; color: var(--md-sys-color-on-surface-variant);">
+                        基準者のダメージを1.0ふるりとして、他プレイヤーの相対評価を行います。
+                    </p>
+                </div>
+            </div>
 
             <!-- データ蓄積・履歴管理 -->
             <div class="card" style="margin-bottom: 24px;">
@@ -3899,6 +3907,13 @@ table tr:hover {
         let isAutoExtracting = false; // 自動抽出中フラグ
         let isPasswordVerified = false; // パスワード認証状態
         let pendingTabSwitch = null; // パスワード認証待ちのタブ
+
+        // ふるり指標関連
+        let slvRatioTable = null; // SLv補正テーブル
+        let fururiConfig = {
+            basePlayerName: "ふるり",  // 基準者名（デフォルト）
+            basePlayer: null           // 基準者データ（自動取得）
+        };
 
         // キャラクター使用率（属性別）
         let characterUsageByAttribute = {
@@ -4551,9 +4566,8 @@ function switchTab(tabName) {
         // Tab1: グラフ再描画
         createAttributeStackedBarChart(processedData);
     } else if (tabName === 'slv-ranking' && processedData && processedData.length > 0) {
-        // Tab2: SLv基準スコア
-        createSLvComparisonChart(processedData);
-        renderSlvEfficiencyRanking(processedData);
+        // Tab2: ふるり指標
+        renderFururiRanking();
     } else if (tabName === 'characters') {
         // Tab3: 編成一覧表示更新
         if (typeof updateTeamCompositionsDisplay === 'function') {
@@ -4795,8 +4809,8 @@ function generateDistributionHTML() {
             // 新しいグラフを描画
             if (processedData && processedData.length > 0) {
                 createAttributeStackedBarChart(processedData);
-                createSLvComparisonChart(processedData);
-                renderSlvEfficiencyRanking(processedData);
+                updateFururiBasePlayerSelect();
+                renderFururiRanking();
             }
 
             setupFilters();
@@ -7536,11 +7550,196 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             loadUnionRankData();
             autoLoadHistory();     // 共有履歴を自動読み込み
             loadAvailableArchives(); // 過去データタブ用: 利用可能なアーカイブを読み込み
+            loadSlvRatioTable();   // ふるり指標: SLv補正テーブルを読み込み
 
             // URL経由でのJSON自動読み込み
             autoLoadJSONFromURL();
             updateCurrentDataInfo(); // 現在表示中のデータ情報を更新
         });
+
+        // ふるり指標: SLv補正テーブル読み込み
+        async function loadSlvRatioTable() {
+            try {
+                const response = await fetch('./data/slv-ratio.json');
+                if (!response.ok) {
+                    console.warn('SLv補正テーブルの読み込みに失敗しました');
+                    return;
+                }
+                const data = await response.json();
+                slvRatioTable = data.data;
+                console.log('SLv補正テーブルを読み込みました:', Object.keys(slvRatioTable).length, '件');
+            } catch (error) {
+                console.error('SLv補正テーブルの読み込みエラー:', error);
+            }
+        }
+
+        // ふるり指標: 基準者を設定
+        function setFururiBasePlayer() {
+            if (!processedData || processedData.length === 0) return;
+
+            // localStorageから基準者名を取得（設定されている場合）
+            const savedBaseName = localStorage.getItem('fururiBasePlayerName');
+            if (savedBaseName) {
+                fururiConfig.basePlayerName = savedBaseName;
+            }
+
+            // 基準者をprocessedDataから検索
+            const basePlayer = processedData.find(p => p.player === fururiConfig.basePlayerName);
+            if (basePlayer && basePlayer.syncLevel > 0) {
+                fururiConfig.basePlayer = basePlayer;
+                console.log('ふるり基準者設定:', basePlayer.player, 'SLv:', basePlayer.syncLevel);
+            } else {
+                // 基準者が見つからない場合、最初のSLv > 0のプレイヤーを使用
+                const fallback = processedData.find(p => p.syncLevel > 0);
+                if (fallback) {
+                    fururiConfig.basePlayer = fallback;
+                    console.warn('基準者「' + fururiConfig.basePlayerName + '」が見つかりません。' + fallback.player + 'を使用します。');
+                }
+            }
+        }
+
+        // ふるり指標: 基準者プルダウンを更新
+        function updateFururiBasePlayerSelect() {
+            const select = document.getElementById('fururiBasePlayerSelect');
+            if (!select || !processedData || processedData.length === 0) return;
+
+            // 現在の選択を保持
+            const currentValue = select.value || fururiConfig.basePlayerName;
+
+            // プルダウンをクリア
+            select.innerHTML = '';
+
+            // SLv > 0 のプレイヤーのみ追加（ダメージ順）
+            const validPlayers = processedData
+                .filter(p => p.syncLevel > 0)
+                .sort((a, b) => b.damage - a.damage);
+
+            validPlayers.forEach(player => {
+                const option = document.createElement('option');
+                option.value = player.player;
+                option.textContent = `${player.player} (SLv ${player.syncLevel})`;
+                if (player.player === currentValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+
+            // 「ふるり」がリストにない場合はデフォルトを選択
+            if (!validPlayers.find(p => p.player === currentValue) && validPlayers.length > 0) {
+                select.value = validPlayers[0].player;
+            }
+        }
+
+        // ふるり指標: 基準者変更時の処理
+        function updateFururiBasePlayer() {
+            const select = document.getElementById('fururiBasePlayerSelect');
+            if (!select) return;
+
+            const selectedName = select.value;
+            fururiConfig.basePlayerName = selectedName;
+
+            // localStorageに保存
+            localStorage.setItem('fururiBasePlayerName', selectedName);
+
+            // 基準者を再設定してランキングを更新
+            setFururiBasePlayer();
+            renderFururiRanking();
+
+            console.log('ふるり基準者を変更:', selectedName);
+        }
+
+        // ふるり指標: ふるり値計算
+        function calculateFururiScore(playerDamage, playerSLv) {
+            if (!slvRatioTable || !fururiConfig.basePlayer) return null;
+            if (!playerSLv || playerSLv <= 0) return null;
+
+            const basePlayer = fururiConfig.basePlayer;
+            const baseRatio = slvRatioTable[String(basePlayer.syncLevel)];
+            const playerRatio = slvRatioTable[String(playerSLv)];
+
+            if (!baseRatio || !playerRatio) return null;
+
+            // 基準者が同じSLvだった場合の想定ダメージ
+            const baseScaledDamage = basePlayer.damage * playerRatio / baseRatio;
+
+            // ふるり値 = 実ダメージ / 想定ダメージ
+            return playerDamage / baseScaledDamage;
+        }
+
+        // ふるり指標: ランキングテーブルをレンダリング
+        function renderFururiRanking() {
+            const container = document.getElementById('fururiRankingBody');
+            if (!container) return;
+
+            if (!processedData || processedData.length === 0) {
+                container.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 24px;">データがありません</td></tr>';
+                return;
+            }
+
+            if (!slvRatioTable) {
+                container.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 24px;">SLv補正テーブルを読み込み中...</td></tr>';
+                return;
+            }
+
+            // 基準者を設定
+            setFururiBasePlayer();
+
+            if (!fururiConfig.basePlayer) {
+                container.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 24px;">基準者が見つかりません</td></tr>';
+                return;
+            }
+
+            // 基準者情報を表示
+            const baseInfoEl = document.getElementById('fururiBaseInfo');
+            if (baseInfoEl) {
+                const baseDamageB = (fururiConfig.basePlayer.damage / 1e9).toFixed(3);
+                baseInfoEl.textContent = `${fururiConfig.basePlayer.player} (SLv ${fururiConfig.basePlayer.syncLevel}, ${baseDamageB} B)`;
+            }
+
+            // ふるり値を計算してソート
+            const playersWithFururi = processedData
+                .filter(p => p.syncLevel > 0)
+                .map(p => ({
+                    ...p,
+                    fururiScore: calculateFururiScore(p.damage, p.syncLevel)
+                }))
+                .filter(p => p.fururiScore !== null)
+                .sort((a, b) => b.fururiScore - a.fururiScore);
+
+            // テーブルをレンダリング
+            container.innerHTML = playersWithFururi.map((player, index) => {
+                const rank = index + 1;
+                const damageB = (player.damage / 1e9).toFixed(3);
+                const fururiDisplay = player.fururiScore.toFixed(2);
+                const isBase = player.player === fururiConfig.basePlayer.player;
+
+                // 順位に応じたスタイル
+                let rankStyle = '';
+                let rankIcon = '';
+                if (rank === 1) {
+                    rankStyle = 'color: #FFD700; font-weight: bold;';
+                    rankIcon = '🥇';
+                } else if (rank === 2) {
+                    rankStyle = 'color: #C0C0C0; font-weight: bold;';
+                    rankIcon = '🥈';
+                } else if (rank === 3) {
+                    rankStyle = 'color: #CD7F32; font-weight: bold;';
+                    rankIcon = '🥉';
+                }
+
+                const rowStyle = isBase ? 'background: var(--md-sys-color-primary-container);' : '';
+
+                return `
+                    <tr style="${rowStyle}">
+                        <td style="text-align: center; ${rankStyle}">${rankIcon || rank}</td>
+                        <td style="font-weight: 500;">${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}</td>
+                        <td style="text-align: right; font-variant-numeric: tabular-nums;">${damageB} B</td>
+                        <td style="text-align: center;">${player.syncLevel}</td>
+                        <td style="text-align: center; font-weight: 600; font-variant-numeric: tabular-nums;">${fururiDisplay}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
 
         // URL経由でのJSON自動読み込み機能
         async function autoLoadJSONFromURL() {
@@ -8010,11 +8209,8 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                     if (typeof createAttributeStackedBarChart === 'function') {
                         createAttributeStackedBarChart(processedData);
                     }
-                    if (typeof createSLvComparisonChart === 'function') {
-                        createSLvComparisonChart(processedData);
-                    }
-                    if (typeof renderSlvEfficiencyRanking === 'function') {
-                        renderSlvEfficiencyRanking(processedData);
+                    if (typeof renderFururiRanking === 'function') {
+                        renderFururiRanking();
                     }
                     if (typeof loadUnionRankData === 'function') {
                         loadUnionRankData();
