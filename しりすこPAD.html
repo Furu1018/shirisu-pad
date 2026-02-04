@@ -3353,7 +3353,10 @@ table tr:hover {
             <!-- ふるり指標ヘッダー -->
             <div class="card" style="margin-bottom: 24px;">
                 <div style="padding: 24px;">
-                    <h3 class="md-title-large" style="margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">📊 ふるり指標</h3>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <h3 class="md-title-large" style="margin: 0; color: var(--md-sys-color-on-surface);">📊 ふるり指標</h3>
+                        <button onclick="openFururiHelpModal()" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--md-sys-color-primary); background: transparent; color: var(--md-sys-color-primary); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;" title="ふるり指標について">?</button>
+                    </div>
                     <p class="md-body-medium" style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px;">
                         SLv.補正を考慮した公平な相対評価指標
                     </p>
@@ -8812,6 +8815,157 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             document.getElementById('compareResults').style.display = 'block';
         }
 
+    </script>
+
+    <!-- ふるり指標ヘルプモーダル -->
+    <div id="fururiHelpModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;">
+        <!-- オーバーレイ -->
+        <div onclick="closeFururiHelpModal()" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);"></div>
+
+        <!-- モーダルコンテンツ -->
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 560px; max-height: 85vh; background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; overflow: hidden;">
+            <!-- ヘッダー -->
+            <div style="padding: 24px 24px 16px; border-bottom: 1px solid var(--md-sys-color-outline-variant); flex-shrink: 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h2 style="margin: 0; font-size: 20px; font-weight: 600; color: var(--md-sys-color-on-surface);">新指標「ふるり」について</h2>
+                    <button onclick="closeFururiHelpModal()" style="width: 32px; height: 32px; border: none; background: transparent; cursor: pointer; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--md-sys-color-on-surface-variant); transition: background 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- コンテンツ -->
+            <div style="padding: 24px; overflow-y: auto; flex: 1;">
+                <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                    今回のユニオンレイドから、新しく「ふるり」という単位でダメージ結果を共有しています。
+                </p>
+
+                <!-- ふるりとは？ -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">❓</span> ふるりとは？
+                    </h3>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        自分のSLv.に対してどれくらいダメージを出せているかを見るための指標です。
+                    </p>
+                    <p style="margin: 12px 0 0 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        基準となるプレイヤーのダメージを「1.0ふるり」とし、そこから相対的にどれだけダメージを出せているかを表しています。
+                    </p>
+                </div>
+
+                <!-- なぜこの指標を作ったのか -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">💡</span> なぜこの指標を作ったのか
+                    </h3>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        これまで「総ダメージ ÷ SLv.」という形で効率を見ていました。
+                    </p>
+                    <p style="margin: 12px 0 0 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        しかし、このゲームはSLv.が高くなるほど基礎攻撃力の伸びが大きくなる仕様があります。
+                    </p>
+                    <p style="margin: 12px 0 0 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        つまり、同じ育成内容でもSLv.が高いほどダメージが伸びやすく、単純な割り算では公平な比較ができませんでした。
+                    </p>
+                </div>
+
+                <!-- どうやって計算しているの？ -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">🔢</span> どうやって計算しているの？
+                    </h3>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        開発に協力してくれためいでんさんが、SLv.ごとの攻撃力成長データを作成してくれました。
+                    </p>
+                    <div style="margin: 16px 0; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; border-left: 4px solid var(--md-sys-color-primary);">
+                        <p style="margin: 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface); font-style: italic;">
+                            「もし基準プレイヤーがあなたと同じSLv.だったら、どれくらいダメージが出るか」
+                        </p>
+                    </div>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        を計算し、それと実際のダメージを比較してふるり値を算出しています。
+                    </p>
+                </div>
+
+                <!-- ただし、この数字がすべてではありません -->
+                <div style="margin-bottom: 24px; padding: 20px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%); border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">⚠️</span> ただし、この数字がすべてではありません
+                    </h3>
+                    <p style="margin: 0 0 12px 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface); font-weight: 500;">
+                        ここが一番大事です。
+                    </p>
+                    <p style="margin: 0 0 12px 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。
+                    </p>
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: var(--md-sys-color-on-surface-variant);">例えば：</p>
+                    <ul style="margin: 0 0 12px 0; padding-left: 20px; font-size: 14px; line-height: 1.8; color: var(--md-sys-color-on-surface-variant);">
+                        <li>得意属性を殴れたかどうか</li>
+                        <li>苦手属性を担当してくれたか</li>
+                        <li>締め凸で戦闘時間が短くなったか</li>
+                        <li>どこに育成素材を使ったか</li>
+                    </ul>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        これらによって数値は大きく変わります。
+                    </p>
+                    <p style="margin: 12px 0 0 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface);">
+                        ユニオンのために難しい役割を引き受けてくれている人の貢献は、数値では測れない大切なものだと思っています。
+                    </p>
+                </div>
+
+                <!-- このデータの使い方 -->
+                <div>
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">📖</span> このデータの使い方
+                    </h3>
+                    <p style="margin: 0 0 12px 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        この指標は「誰かと競うため」ではなく、自分のSLv.に対してどれくらいダメージを出せているかを知り、自分の課題を見つけるために使ってもらえたら嬉しいです。
+                    </p>
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: var(--md-sys-color-on-surface-variant);">もし、</p>
+                    <ul style="margin: 0 0 12px 0; padding-left: 20px; font-size: 14px; line-height: 1.8; color: var(--md-sys-color-on-surface-variant);">
+                        <li>どう育成すればいいか</li>
+                        <li>編成をどう組めばいいか</li>
+                        <li>ダメージを伸ばす方法</li>
+                    </ul>
+                    <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface-variant);">
+                        など悩みがあれば、Discordで気軽に相談してください。
+                    </p>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: var(--md-sys-color-on-surface); font-weight: 500;">
+                        みんなで助け合いながら、より良いユニオンを作っていきましょう。
+                    </p>
+                </div>
+            </div>
+
+            <!-- フッター -->
+            <div style="padding: 16px 24px; border-top: 1px solid var(--md-sys-color-outline-variant); flex-shrink: 0;">
+                <button onclick="closeFururiHelpModal()" style="width: 100%; padding: 12px 24px; background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.2s;">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ふるりヘルプモーダルの開閉
+        function openFururiHelpModal() {
+            document.getElementById('fururiHelpModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFururiHelpModal() {
+            document.getElementById('fururiHelpModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        // ESCキーでモーダルを閉じる
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFururiHelpModal();
+            }
+        });
     </script>
 </body>
 </html>
