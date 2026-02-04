@@ -1305,6 +1305,7 @@
         /* ふるり指標テーブル - デスクトップ用 */
         #fururiRankingTable {
             max-width: 700px;
+            margin: 0 auto;
         }
 
         /* Compact devices (phones) - override for mobile */
@@ -3386,7 +3387,7 @@ table tr:hover {
                     <thead>
                         <tr>
                             <th style="text-align: left; width: 35%;">プレイヤー</th>
-                            <th style="text-align: right; width: 35%;">ダメージ/SLv</th>
+                            <th style="text-align: left; width: 35%;">ダメージ/SLv</th>
                             <th style="text-align: center; width: 30%;">ふるり値</th>
                         </tr>
                     </thead>
@@ -7745,8 +7746,8 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                 return `
                     <tr style="${rowStyle}">
                         <td style="font-weight: 500;">${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}</td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
                                 <span style="font-variant-numeric: tabular-nums;">${damageB} B</span>
                                 <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
                             </div>
