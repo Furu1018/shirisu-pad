@@ -1395,6 +1395,35 @@
                 font-size: 11px;
             }
 
+            /* ふるり指標テーブル専用（5列対応） */
+            #fururiRankingTable thead th:nth-child(1),
+            #fururiRankingTable tbody td:nth-child(1) {
+                width: 5%;
+            }
+
+            #fururiRankingTable thead th:nth-child(2),
+            #fururiRankingTable tbody td:nth-child(2) {
+                width: 30%;
+                max-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            #fururiRankingTable thead th:nth-child(3),
+            #fururiRankingTable tbody td:nth-child(3) {
+                width: 25%;
+            }
+
+            #fururiRankingTable thead th:nth-child(4),
+            #fururiRankingTable tbody td:nth-child(4) {
+                width: 15%;
+            }
+
+            #fururiRankingTable thead th:nth-child(5),
+            #fururiRankingTable tbody td:nth-child(5) {
+                width: 25%;
+            }
+
             /* NIKKE編成タブの最適化 */
             #tab-characters .card {
                 padding: 12px;
