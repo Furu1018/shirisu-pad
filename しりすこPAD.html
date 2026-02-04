@@ -1395,27 +1395,22 @@
                 font-size: 11px;
             }
 
-            /* ふるり指標テーブル専用（4列対応：順位/プレイヤー/ダメージ・SLv/ふるり値） */
+            /* ふるり指標テーブル専用（3列対応：プレイヤー/ダメージ・SLv/ふるり値） */
             #fururiRankingTable thead th:nth-child(1),
             #fururiRankingTable tbody td:nth-child(1) {
-                width: 8%;
-            }
-
-            #fururiRankingTable thead th:nth-child(2),
-            #fururiRankingTable tbody td:nth-child(2) {
-                width: 32%;
+                width: 40%;
                 max-width: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
 
-            #fururiRankingTable thead th:nth-child(3),
-            #fururiRankingTable tbody td:nth-child(3) {
+            #fururiRankingTable thead th:nth-child(2),
+            #fururiRankingTable tbody td:nth-child(2) {
                 width: 35%;
             }
 
-            #fururiRankingTable thead th:nth-child(4),
-            #fururiRankingTable tbody td:nth-child(4) {
+            #fururiRankingTable thead th:nth-child(3),
+            #fururiRankingTable tbody td:nth-child(3) {
                 width: 25%;
             }
 
@@ -3385,7 +3380,6 @@ table tr:hover {
                 <table id="fururiRankingTable">
                     <thead>
                         <tr>
-                            <th style="text-align: center; width: 60px;"></th>
                             <th style="text-align: left;">プレイヤー</th>
                             <th style="text-align: right;">ダメージ/SLv</th>
                             <th style="text-align: center; width: 100px;">ふるり値</th>
@@ -3393,7 +3387,7 @@ table tr:hover {
                     </thead>
                     <tbody id="fururiRankingBody">
                         <tr>
-                            <td colspan="4" style="text-align: center; padding: 24px;">データを読み込み中...</td>
+                            <td colspan="3" style="text-align: center; padding: 24px;">データを読み込み中...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -7698,12 +7692,12 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             if (!container) return;
 
             if (!processedData || processedData.length === 0) {
-                container.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px;">データがありません</td></tr>';
+                container.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">データがありません</td></tr>';
                 return;
             }
 
             if (!slvRatioTable) {
-                container.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px;">SLv補正テーブルを読み込み中...</td></tr>';
+                container.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">SLv補正テーブルを読み込み中...</td></tr>';
                 return;
             }
 
@@ -7711,7 +7705,7 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
             setFururiBasePlayer();
 
             if (!fururiConfig.basePlayer) {
-                container.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px;">基準者が見つかりません</td></tr>';
+                container.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">基準者が見つかりません</td></tr>';
                 return;
             }
 
@@ -7733,31 +7727,15 @@ ${processedData.map(p => `<tr><td>${p.rank}</td><td>${p.player}</td><td>${format
                 .sort((a, b) => b.fururiScore - a.fururiScore);
 
             // テーブルをレンダリング
-            container.innerHTML = playersWithFururi.map((player, index) => {
-                const rank = index + 1;
+            container.innerHTML = playersWithFururi.map((player) => {
                 const damageB = (player.damage / 1e9).toFixed(3);
                 const fururiDisplay = player.fururiScore.toFixed(2);
                 const isBase = player.player === fururiConfig.basePlayer.player;
-
-                // 順位に応じたスタイル
-                let rankStyle = '';
-                let rankIcon = '';
-                if (rank === 1) {
-                    rankStyle = 'color: #FFD700; font-weight: bold;';
-                    rankIcon = '🥇';
-                } else if (rank === 2) {
-                    rankStyle = 'color: #C0C0C0; font-weight: bold;';
-                    rankIcon = '🥈';
-                } else if (rank === 3) {
-                    rankStyle = 'color: #CD7F32; font-weight: bold;';
-                    rankIcon = '🥉';
-                }
 
                 const rowStyle = isBase ? 'background: var(--md-sys-color-primary-container);' : '';
 
                 return `
                     <tr style="${rowStyle}">
-                        <td style="text-align: center; ${rankStyle}">${rankIcon || rank}</td>
                         <td style="font-weight: 500;">${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}</td>
                         <td>
                             <div style="display: flex; flex-direction: column; gap: 2px;">
