@@ -4198,6 +4198,13 @@ table tr:hover {
                     localStorage.setItem('nikke-union-rank-history', JSON.stringify(unionRankHistory));
 
                     console.log('✅ ユニオン順位履歴を更新しました:', currentMonth, unionRankHistory[currentMonth]);
+                } else {
+                    // unionRankがJSONに未設定の場合、同月の履歴から自動補完
+                    const archiveMonth = rawData.metadata.archiveMonth || getCurrentMonth();
+                    if (unionRankHistory[archiveMonth] && unionRankHistory[archiveMonth].rank) {
+                        currentUnionRank = unionRankHistory[archiveMonth].rank;
+                        console.log('📋 履歴からユニオン順位を補完しました:', archiveMonth, currentUnionRank);
+                    }
                 }
             }
 
@@ -4925,8 +4932,13 @@ function generateDistributionHTML() {
                         : '';
                     unionRankSource = `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">✅ データから取得${extractedDate ? ' (' + extractedDate + ')' : ''}</div>`;
                 } else {
-                    // 手動設定の場合
-                    unionRankSource = '<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">✏️ 手動設定</div>';
+                    // 履歴から自動補完された場合と手動設定の場合を区別
+                    const archiveMonth = rawData?.metadata?.archiveMonth || getCurrentMonth();
+                    if (unionRankHistory[archiveMonth] && unionRankHistory[archiveMonth].rank === currentUnionRank) {
+                        unionRankSource = '<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">📋 履歴から取得</div>';
+                    } else {
+                        unionRankSource = '<div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">✏️ 手動設定</div>';
+                    }
                 }
             }
 
