@@ -7,7 +7,7 @@
       "syncLevel": 681,
       "attacks": [
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 11,
@@ -21,7 +21,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 14,
@@ -33,6 +33,20 @@
             "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
             "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 32466590118,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
         }
       ]
     },
@@ -43,7 +57,7 @@
       "syncLevel": 736,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 24,
@@ -57,7 +71,21 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 29641206510,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp"
+          ]
+        },
+        {
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 21,
@@ -79,7 +107,21 @@
       "syncLevel": 712,
       "attacks": [
         {
-          "bossType": "ランドイーター",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 27268395878,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 1,
@@ -93,7 +135,7 @@
           ]
         },
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 1,
@@ -115,7 +157,7 @@
       "syncLevel": 598,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 2,
@@ -129,7 +171,21 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 22437783877,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 24,
@@ -151,7 +207,21 @@
       "syncLevel": 628,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 22348866620,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 15,
@@ -165,7 +235,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 1,
@@ -187,7 +257,7 @@
       "syncLevel": 602,
       "attacks": [
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 2,
@@ -201,7 +271,7 @@
           ]
         },
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 2,
@@ -213,6 +283,20 @@
             "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
             "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 22925384847,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
         }
       ]
     },
@@ -223,7 +307,7 @@
       "syncLevel": 671,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 15,
@@ -237,7 +321,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 16,
@@ -251,7 +335,7 @@
           ]
         },
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 1,
@@ -273,7 +357,21 @@
       "syncLevel": 583,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 19297542926,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 15,
@@ -287,7 +385,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 1,
@@ -309,7 +407,7 @@
       "syncLevel": 565,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 2,
@@ -323,7 +421,7 @@
           ]
         },
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 2,
@@ -335,6 +433,20 @@
             "./character-images/4848d732d81d2344604b30e7f8288167.webp",
             "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 18062427858,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
         }
       ]
     },
@@ -345,7 +457,21 @@
       "syncLevel": 610,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 19586591900,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 21,
@@ -359,7 +485,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 21,
@@ -381,7 +507,7 @@
       "syncLevel": 674,
       "attacks": [
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 1,
@@ -395,7 +521,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 11,
@@ -409,7 +535,7 @@
           ]
         },
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 14,
@@ -431,7 +557,21 @@
       "syncLevel": 591,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 18791686715,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 25,
@@ -445,7 +585,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 2,
@@ -467,7 +607,7 @@
       "syncLevel": 568,
       "attacks": [
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 15,
@@ -481,7 +621,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 12,
@@ -493,6 +633,20 @@
             "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
             "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 17821637206,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
         }
       ]
     },
@@ -503,7 +657,7 @@
       "syncLevel": 549,
       "attacks": [
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 15,
@@ -517,7 +671,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 15,
@@ -529,6 +683,20 @@
             "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
             "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14731174833,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
         }
       ]
     },
@@ -539,7 +707,7 @@
       "syncLevel": 642,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 2,
@@ -553,7 +721,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 1,
@@ -567,7 +735,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 15,
@@ -589,7 +757,7 @@
       "syncLevel": 500,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 2,
@@ -603,7 +771,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 12,
@@ -615,6 +783,20 @@
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
             "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 13488641876,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
         }
       ]
     },
@@ -625,7 +807,7 @@
       "syncLevel": 519,
       "attacks": [
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 21,
@@ -639,7 +821,7 @@
           ]
         },
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 23,
@@ -651,6 +833,20 @@
             "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
             "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 9466130417,
+          "characters": [
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp"
+          ]
         }
       ]
     },
@@ -661,7 +857,7 @@
       "syncLevel": 503,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 1,
@@ -675,7 +871,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 14,
@@ -689,7 +885,7 @@
           ]
         },
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 1,
@@ -711,7 +907,7 @@
       "syncLevel": 509,
       "attacks": [
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 1,
@@ -725,7 +921,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 11,
@@ -739,7 +935,7 @@
           ]
         },
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 13,
@@ -761,7 +957,7 @@
       "syncLevel": 452,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 1,
@@ -775,7 +971,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 1,
@@ -789,7 +985,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 1,
@@ -811,7 +1007,7 @@
       "syncLevel": 490,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 2,
@@ -825,7 +1021,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 22,
@@ -837,6 +1033,20 @@
             "./character-images/9163759961bd6052bca348f719138ebe.webp",
             "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 9276155013,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
         }
       ]
     },
@@ -847,7 +1057,7 @@
       "syncLevel": 568,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 11,
@@ -861,7 +1071,21 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7985732745,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 15,
@@ -883,7 +1107,7 @@
       "syncLevel": 449,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 26,
@@ -897,7 +1121,21 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 7487023620,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 24,
@@ -919,7 +1157,7 @@
       "syncLevel": 571,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 11,
@@ -933,7 +1171,21 @@
           ]
         },
         {
-          "bossType": "ポーター",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 9556175317,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/51b33eff74c04ceea8a13743c44d360b.webp",
+            "./character-images/b6c6f46752e61434f7bcbed790db025b.webp"
+          ]
+        },
+        {
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 11,
@@ -955,7 +1207,7 @@
       "syncLevel": 439,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 1,
@@ -969,7 +1221,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 11,
@@ -981,6 +1233,20 @@
             "./character-images/9770466ef17196f2489b791a7cd17207.webp",
             "./character-images/9163759961bd6052bca348f719138ebe.webp"
           ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7060703093,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/53bd5fb920553a158d80a170fbf36129.webp"
+          ]
         }
       ]
     },
@@ -991,7 +1257,7 @@
       "syncLevel": 422,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 1,
@@ -1005,7 +1271,21 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 7319863934,
+          "characters": [
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp"
+          ]
+        },
+        {
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 1,
@@ -1027,7 +1307,7 @@
       "syncLevel": 386,
       "attacks": [
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 12,
@@ -1041,7 +1321,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 1,
@@ -1055,7 +1335,7 @@
           ]
         },
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 14,
@@ -1077,7 +1357,7 @@
       "syncLevel": 460,
       "attacks": [
         {
-          "bossType": "ポーター",
+          "bossType": "Iポーター",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
           "level": 11,
@@ -1091,7 +1371,7 @@
           ]
         },
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 1,
@@ -1105,7 +1385,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 13,
@@ -1127,7 +1407,21 @@
       "syncLevel": 340,
       "attacks": [
         {
-          "bossType": "リビルドフィンガーズ",
+          "bossType": "VマテリアルH",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 2613638423,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
           "level": 11,
@@ -1141,7 +1435,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 13,
@@ -1163,7 +1457,7 @@
       "syncLevel": 377,
       "attacks": [
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 11,
@@ -1177,7 +1471,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 1,
@@ -1191,7 +1485,7 @@
           ]
         },
         {
-          "bossType": "プレート",
+          "bossType": "IIプレート",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
           "level": 1,
@@ -1213,7 +1507,7 @@
       "syncLevel": 649,
       "attacks": [
         {
-          "bossType": "ランドイーター",
+          "bossType": "IIIランドイーター",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
           "level": 14,
@@ -1230,7 +1524,7 @@
     }
   ],
   "metadata": {
-    "extractedAt": "2026-03-08T08:20:11.631Z",
+    "extractedAt": "2026-03-08T08:37:00.794Z",
     "playerCount": 31,
     "totalDamage": 1041697000000,
     "source": "BlaBlaLINK Chrome Extension",
