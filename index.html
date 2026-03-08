@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>しりすこPAD v2</title>
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icon.png">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="しりすこPAD">
+    <meta name="theme-color" content="#1976D2">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --border: 214.3 31.8% 91.4%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --radius: 0.5rem;
+            --md-sys-color-primary: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-on-primary: hsl(210 40% 98%);
+            --md-sys-color-primary-container: hsl(210 40% 96.1%);
+            --md-sys-color-on-primary-container: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-secondary-container: hsl(210 40% 96.1%);
+            --md-sys-color-on-secondary-container: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-background: hsl(0 0% 100%);
+            --md-sys-color-on-background: hsl(222.2 84% 4.9%);
+            --md-sys-color-surface: hsl(0 0% 100%);
+            --md-sys-color-on-surface: hsl(222.2 84% 4.9%);
+            --md-sys-color-surface-variant: hsl(210 40% 96.1%);
+            --md-sys-color-on-surface-variant: hsl(215.4 16.3% 46.9%);
+            --md-sys-color-outline: hsl(214.3 31.8% 91.4%);
+            --md-sys-color-outline-variant: hsl(214.3 31.8% 91.4%);
+            --md-sys-color-tertiary-container: hsl(210 40% 96.1%);
+            --md-sys-color-on-tertiary-container: hsl(222.2 47.4% 11.2%);
+            --border-color: hsl(214.3 31.8% 91.4%);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        [data-theme="dark"] {
+            --md-sys-color-primary: hsl(210 40% 98%);
+            --md-sys-color-on-primary: hsl(222.2 47.4% 11.2%);
+            --md-sys-color-primary-container: hsl(220 13% 32%);
+            --md-sys-color-on-primary-container: hsl(210 40% 98%);
+            --md-sys-color-secondary-container: hsl(220 13% 32%);
+            --md-sys-color-on-secondary-container: hsl(210 40% 98%);
+            --md-sys-color-background: hsl(220 15% 22%);
+            --md-sys-color-on-background: hsl(210 40% 98%);
+            --md-sys-color-surface: hsl(220 13% 26%);
+            --md-sys-color-on-surface: hsl(210 40% 98%);
+            --md-sys-color-surface-variant: hsl(220 13% 32%);
+            --md-sys-color-on-surface-variant: hsl(215 20.2% 75%);
+            --md-sys-color-outline: hsl(220 13% 35%);
+            --md-sys-color-outline-variant: hsl(220 13% 35%);
+            --md-sys-color-tertiary-container: hsl(220 13% 32%);
+            --md-sys-color-on-tertiary-container: hsl(210 40% 98%);
+            --border-color: hsl(220 13% 35%);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+        }
+
+        body {
+            font-family: 'Roboto', 'Noto Sans', sans-serif;
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            line-height: 1.5;
+            font-size: 16px;
+        }
+
+        /* ========== Header ========== */
+        .header {
+            text-align: center;
+            padding: 12px 16px;
+            background: var(--md-sys-color-surface);
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+
+        /* ========== Hamburger (mobile) ========== */
+        .hamburger-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .hamburger-btn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: var(--md-sys-color-on-surface);
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        @media (max-width: 767px) {
+            .hamburger-btn { display: flex; }
+            .pc-only { display: none !important; }
+        }
+
+        /* ========== Drawer (mobile) ========== */
+        .drawer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+        }
+
+        .drawer-overlay.open { display: block; }
+
+        .drawer {
+            position: fixed;
+            top: 0; left: -280px;
+            width: 280px;
+            height: 100%;
+            background: var(--md-sys-color-surface);
+            z-index: 201;
+            padding: 24px 16px;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .drawer.open { left: 0; }
+
+        .drawer-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .drawer-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            color: var(--md-sys-color-on-surface);
+            font-size: 15px;
+            text-align: left;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: background 0.2s;
+        }
+
+        .drawer-menu-item:hover,
+        .drawer-menu-item.active {
+            background: var(--md-sys-color-surface-variant);
+        }
+
+        .drawer-menu-item.active {
+            color: var(--md-sys-color-primary);
+            font-weight: 500;
+        }
+
+        /* ========== Tab Navigation ========== */
+        .tab-navigation {
+            background: var(--md-sys-color-surface);
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            position: sticky;
+            top: 57px;
+            z-index: 99;
+        }
+
+        .tab-buttons-wrapper {
+            display: flex;
+            gap: 4px;
+        }
+
+        .tab-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            color: var(--md-sys-color-on-surface-variant);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-button.active {
+            color: var(--md-sys-color-primary);
+            border-bottom-color: var(--md-sys-color-primary);
+        }
+
+        .tab-button:hover { background: var(--md-sys-color-surface-variant); }
+
+        .tab-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* ========== Tab Content ========== */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        /* ========== Card ========== */
+        .card {
+            background: var(--md-sys-color-surface);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        /* ========== Badge ========== */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+        }
+
+        /* ========== Table ========== */
+        .data-table {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface);
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        tbody td {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        tbody tr:last-child td { border-bottom: none; }
+
+        tbody tr:hover { background: var(--md-sys-color-surface-variant); cursor: pointer; }
+
+        .rank { text-align: center; font-weight: 700; }
+        .rank-1 { color: #FFD700; }
+        .rank-2 { color: #C0C0C0; }
+        .rank-3 { color: #CD7F32; }
+        .rank-other { color: var(--md-sys-color-on-surface-variant); }
+
+        .growth-positive { color: #22c55e; }
+        .growth-negative { color: #ef4444; }
+        .growth-neutral  { color: var(--md-sys-color-on-surface-variant); }
+
+        /* ========== Attribute tab buttons ========== */
+        .attribute-tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--md-sys-color-outline);
+            background: transparent;
+            color: var(--md-sys-color-on-surface);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .attribute-tab-btn:hover,
+        .attribute-tab-btn.active {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border-color: var(--md-sys-color-primary);
+        }
+
+        /* ========== Loading/Error ========== */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #loadingOverlay.show { display: flex; }
+
+        .loading-card {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            padding: 32px 40px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--md-sys-color-outline-variant);
+            border-top-color: var(--md-sys-color-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .error-banner {
+            display: none;
+            padding: 16px;
+            margin: 16px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-left: 4px solid #ef4444;
+            border-radius: 8px;
+            color: #991b1b;
+            font-size: 14px;
+        }
+
+        [data-theme="dark"] .error-banner {
+            background: rgba(239,68,68,0.1);
+            border-color: rgba(239,68,68,0.4);
+            color: #fca5a5;
+        }
+
+        /* ========== Player Modal ========== */
+        .player-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 300;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .player-modal.open { display: flex; }
+
+        .player-modal-content {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 640px;
+            margin: auto;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .player-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .player-modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .close-btn {
+            width: 32px; height: 32px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 20px;
+            color: var(--md-sys-color-on-surface-variant);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .close-btn:hover { background: var(--md-sys-color-surface-variant); }
+
+        .player-modal-body { padding: 20px 24px; }
+
+        .modal-damage-summary {
+            padding: 12px 16px;
+            background: var(--md-sys-color-surface-variant);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* ========== Composition Comparison ========== */
+        .comp-section {
+            margin-bottom: 20px;
+        }
+
+        .comp-boss-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .comp-boss-header img { width: 20px; height: 20px; }
+
+        .comp-boss-title { font-weight: 600; font-size: 14px; }
+
+        .comp-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .comp-side { text-align: center; }
+
+        .comp-label {
+            font-size: 11px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .comp-icons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+
+        .comp-icon-img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 2px solid var(--md-sys-color-outline-variant);
+        }
+
+        .comp-icon-placeholder {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 6px;
+            background: var(--md-sys-color-surface-variant);
+            border: 2px dashed var(--md-sys-color-outline-variant);
+        }
+
+        .comp-damage {
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 8px;
+            color: var(--md-sys-color-primary);
+        }
+
+        .comp-arrow {
+            font-size: 20px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .comp-diff-positive { color: #22c55e; }
+        .comp-diff-negative { color: #ef4444; }
+
+        .comp-no-data {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 12px;
+            background: var(--md-sys-color-surface-variant);
+            border-radius: 6px;
+            border: 1px dashed var(--md-sys-color-outline-variant);
+        }
+
+        /* ========== ふるり指標 ========== */
+        .fururi-help-btn {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--md-sys-color-primary);
+            background: transparent;
+            color: var(--md-sys-color-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* ========== Fururi Help Modal ========== */
+        .fururi-help-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 400;
+        }
+
+        .fururi-help-modal.open { display: block; }
+
+        .fururi-help-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+        }
+
+        .fururi-help-content {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 520px;
+            max-height: 85vh;
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .fururi-help-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .fururi-help-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .fururi-help-body h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin: 16px 0 8px;
+        }
+
+        .fururi-help-body p { margin-bottom: 12px; }
+
+        .fururi-help-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .fururi-help-footer button {
+            width: 100%;
+            padding: 12px;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* ========== Notification ========== */
+        .notification {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: hsl(222.2 47.4% 11.2%);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            z-index: 600;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .notification.show { transform: translateX(-50%) translateY(0); }
+
+        /* ========== Responsive ========== */
+        @media (max-width: 767px) {
+            .tab-navigation { display: none; }
+            .container { padding: 16px 12px; }
+
+            thead th { font-size: 11px; padding: 8px 10px; }
+            tbody td { font-size: 12px; padding: 8px 10px; }
+
+            .player-modal-body { padding: 16px; }
+            .player-modal-header { padding: 16px; }
+
+            .comp-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .comp-arrow { display: none; }
+        }
+
+        @media (min-width: 768px) {
+            .mobile-only { display: none !important; }
+        }
+
+        /* ========== Stats toggle ========== */
+        .stats-toggle-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--md-sys-color-surface-variant);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+            text-align: left;
+            transition: background 0.2s;
+        }
+
+        .stats-toggle-btn:hover { background: var(--md-sys-color-outline-variant); }
+
+        /* ========== Chart attribute toggle buttons ========== */
+        .chart-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            border: 2px solid var(--btn-color);
+            background: var(--btn-color);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s, background 0.2s;
+            opacity: 1;
+        }
+        .chart-toggle-btn.hidden {
+            background: transparent;
+            color: var(--btn-color);
+            opacity: 0.7;
+        }
+        .chart-toggle-btn:hover { opacity: 0.85; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .stat-card {
+            background: var(--md-sys-color-surface-variant);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .stat-label { font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px; }
+        .stat-value { font-size: 20px; font-weight: 600; color: var(--md-sys-color-on-surface); }
+
+        /* ========== Chart container ========== */
+        .chart-container {
+            position: relative;
+            height: 320px;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 599px) {
+            .chart-container { height: 240px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <p style="color: var(--md-sys-color-on-surface); font-size: 14px;">データを読み込み中...</p>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Drawer Overlay -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+    <!-- Drawer -->
+    <div class="drawer" id="drawer">
+        <div class="drawer-title">しりすこPAD</div>
+        <button class="drawer-menu-item active" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            ダメージ比較
+        </button>
+        <button class="drawer-menu-item" data-tab="slv-ranking" onclick="switchTabFromDrawer('slv-ranking')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            ふるり指標
+        </button>
+        <button class="drawer-menu-item" data-tab="characters" onclick="switchTabFromDrawer('characters')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            NIKKE編成
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="hamburger-btn mobile-only" onclick="openDrawer()">
+                <span></span><span></span><span></span>
+            </button>
+            <div>
+                <h1>しりすこPAD</h1>
+                <div class="header-subtitle" id="headerSubtitle">データ読み込み中...</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Error Banner -->
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- Tab Navigation (PC) -->
+    <nav class="tab-navigation pc-only">
+        <div class="tab-buttons-wrapper">
+            <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ比較">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                ダメージ比較
+            </button>
+            <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="ふるり指標">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                ふるり指標
+            </button>
+            <button class="tab-button" data-tab="characters" onclick="switchTab('characters')" title="NIKKE編成">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                NIKKE編成
+            </button>
+        </div>
+    </nav>
+
+    <!-- ========== Tab 1: ダメージ比較 ========== -->
+    <div id="tab-ranking" class="tab-content active">
+        <div class="container">
+            <!-- 統計カード -->
+            <div style="margin-bottom: 24px;">
+                <button onclick="toggleStats()" class="stats-toggle-btn">
+                    <span>📊</span>
+                    <span id="statsToggleText">結果まとめを展開</span>
+                    <span id="statsToggleArrow" style="margin-left: auto;">▼</span>
+                </button>
+                <div id="statsGrid" class="stats-grid" style="display: none;"></div>
+            </div>
+
+            <!-- 属性別積み上げ棒グラフ -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div style="padding: 8px 8px 0;">
+                    <h3 style="font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); margin-bottom: 4px;">属性別ダメージ分析</h3>
+                    <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 12px;">各プレイヤーの属性別ダメージ内訳</p>
+                    <!-- 属性トグルボタン -->
+                    <div id="chartAttributeToggle" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+                        <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;">
+                            <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width: 16px; height: 16px;">灼熱
+                        </button>
+                        <button onclick="toggleChartDataset(1)" data-chart-idx="1" class="chart-toggle-btn" style="--btn-color: #007AFF;">
+                            <img src="./属性アイコン/水冷.png" alt="水冷" style="width: 16px; height: 16px;">水冷
+                        </button>
+                        <button onclick="toggleChartDataset(2)" data-chart-idx="2" class="chart-toggle-btn" style="--btn-color: #8E44AD;">
+                            <img src="./属性アイコン/電撃.png" alt="電撃" style="width: 16px; height: 16px;">電撃
+                        </button>
+                        <button onclick="toggleChartDataset(3)" data-chart-idx="3" class="chart-toggle-btn" style="--btn-color: #FF9500;">
+                            <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width: 16px; height: 16px;">鉄甲
+                        </button>
+                        <button onclick="toggleChartDataset(4)" data-chart-idx="4" class="chart-toggle-btn" style="--btn-color: #34C759;">
+                            <img src="./属性アイコン/風圧.png" alt="風圧" style="width: 16px; height: 16px;">風圧
+                        </button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="attributeStackedChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 注意書き -->
+            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; margin-bottom: 24px; background: var(--md-sys-color-surface-variant); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <p style="margin: 0; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface);">このスコアはあくまで他人との比較は参考程度にして、過去の自分との比較に役立ててください</p>
+            </div>
+
+            <!-- ランキングテーブル -->
+            <div class="data-table">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"></th>
+                            <th>プレイヤー</th>
+                            <th>ダメージ / SLv</th>
+                            <th>前月比</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="4" style="text-align: center; padding: 32px; color: var(--md-sys-color-on-surface-variant);">データを読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Tab 2: ふるり指標 ========== -->
+    <div id="tab-slv-ranking" class="tab-content">
+        <div class="container">
+            <div class="card" style="margin-bottom: 24px;">
+                <div style="padding: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">📊 ふるり指標</h3>
+                        <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり指標について">?</button>
+                    </div>
+                    <p style="font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 12px;">SLv.補正を考慮した公平な相対評価指標</p>
+                    <div style="padding: 10px 14px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
+                        <p style="margin: 0; font-size: 14px; color: var(--md-sys-color-on-surface);">
+                            <strong>基準者:</strong> <span id="fururiBaseInfo">読み込み中...</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 注意書き -->
+            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; margin-bottom: 24px; background: var(--md-sys-color-surface-variant); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div>
+                    <p style="margin: 0 0 6px 0; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface);">ふるり値は育成効率を可視化する参考指標です。属性担当・締め凸・戦闘時間などの条件差は考慮されません。</p>
+                    <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--md-sys-color-on-surface-variant);">この数値は他人との比較ではなく、過去の自分との比較に役立ててください。</p>
+                </div>
+            </div>
+
+            <div class="data-table">
+                <table id="fururiRankingTable">
+                    <thead>
+                        <tr>
+                            <th style="text-align: center;">プレイヤー</th>
+                            <th style="text-align: right;">ダメージ/SLv</th>
+                            <th style="text-align: center;">ふるり値</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fururiRankingBody">
+                        <tr><td colspan="3" style="text-align: center; padding: 24px;">データを読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Tab 3: NIKKE編成 ========== -->
+    <div id="tab-characters" class="tab-content">
+        <div class="container">
+            <!-- 属性フィルタ -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div style="padding: 4px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--md-sys-color-on-surface);">属性別フィルタ</h3>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="attribute-tab-btn active" data-attribute="ALL" onclick="switchAttributeTab('ALL')">全属性統合</button>
+                        <button class="attribute-tab-btn" data-attribute="FIRE" onclick="switchAttributeTab('FIRE')">
+                            <img src="./属性アイコン/灼熱.png" style="width: 18px; height: 18px;">灼熱
+                        </button>
+                        <button class="attribute-tab-btn" data-attribute="WATER" onclick="switchAttributeTab('WATER')">
+                            <img src="./属性アイコン/水冷.png" style="width: 18px; height: 18px;">水冷
+                        </button>
+                        <button class="attribute-tab-btn" data-attribute="ELECTRIC" onclick="switchAttributeTab('ELECTRIC')">
+                            <img src="./属性アイコン/電撃.png" style="width: 18px; height: 18px;">電撃
+                        </button>
+                        <button class="attribute-tab-btn" data-attribute="IRON" onclick="switchAttributeTab('IRON')">
+                            <img src="./属性アイコン/鉄甲.png" style="width: 18px; height: 18px;">鉄甲
+                        </button>
+                        <button class="attribute-tab-btn" data-attribute="WIND" onclick="switchAttributeTab('WIND')">
+                            <img src="./属性アイコン/風圧.png" style="width: 18px; height: 18px;">風圧
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-bottom: 12px; font-size: 16px; font-weight: 600;">🎯 編成一覧</h3>
+                <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 16px; font-size: 14px;">各ボスに対する攻撃編成とダメージスコア</p>
+                <div id="teamCompositionsContainer">
+                    <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">データを読み込むと表示されます</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Player Composition Modal ========== -->
+    <div class="player-modal" id="playerModal">
+        <div class="player-modal-content">
+            <div class="player-modal-header">
+                <h2 id="playerModalTitle">編成比較</h2>
+                <button class="close-btn" onclick="hidePlayerDetails()">×</button>
+            </div>
+            <div class="player-modal-body">
+                <div class="modal-damage-summary" id="modalDamageSummary"></div>
+                <div id="playerCompContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Fururi Help Modal ========== -->
+    <div class="fururi-help-modal" id="fururiHelpModal">
+        <div class="fururi-help-overlay" onclick="closeFururiHelp()"></div>
+        <div class="fururi-help-content">
+            <div class="fururi-help-header">
+                <h2 style="font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">新指標「ふるり値」について</h2>
+                <button class="close-btn" onclick="closeFururiHelp()">×</button>
+            </div>
+            <div class="fururi-help-body">
+                <h3>❓ ふるり値とは？</h3>
+                <p>自分のSLv.に対してどれくらいダメージを出せているかを見るための指標です。</p>
+                <p>基準となるプレイヤーのダメージを「1.0ふるり値」とし、そこから相対的にどれだけダメージを出せているかを表しています。</p>
+
+                <h3>💡 なぜこの指標を作ったのか</h3>
+                <p>これまで「総ダメージ ÷ SLv.」という形で効率を見ていました。しかしこのゲームはSLv.が高くなるほど基礎攻撃力の伸びが大きくなる仕様があります。単純な割り算では公平な比較ができませんでした。</p>
+
+                <h3>🔢 どうやって計算しているの？</h3>
+                <p>「もし基準プレイヤーがあなたと同じSLv.だったら、どれくらいダメージが出るか」を計算し、それと実際のダメージを比較してふるり値を算出しています。</p>
+
+                <div style="padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; border-left: 4px solid #f59e0b; margin: 12px 0;">
+                    <p style="margin: 0; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface);">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
+                </div>
+
+                <h3>📖 このデータの使い方</h3>
+                <p>この指標は「誰かと競うため」ではなく、自分のSLv.に対してどれくらいダメージを出せているかを知り、自分の課題を見つけるために使ってもらえたら嬉しいです。</p>
+            </div>
+            <div class="fururi-help-footer">
+                <button onclick="closeFururiHelp()">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== BOSS Attributes ==========
+        const BOSS_ATTRIBUTES = {
+            'H.S.T.A.': { name: 'Hestia', nameJP: '灼熱ヘスティア', attribute: 'FIRE', attributeJP: '灼熱', color: '#FF3B30', icon: './属性アイコン/灼熱.png' },
+            'P.S.I.D.': { name: 'Poseidon', nameJP: '水冷ポセイドン', attribute: 'WATER', attributeJP: '水冷', color: '#007AFF', icon: './属性アイコン/水冷.png' },
+            'Z.E.U.S.': { name: 'Zeus', nameJP: '電撃ゼウス', attribute: 'ELECTRIC', attributeJP: '電撃', color: '#8E44AD', icon: './属性アイコン/電撃.png' },
+            'D.M.T.R.': { name: 'Demeter', nameJP: '鉄甲デメテル', attribute: 'IRON', attributeJP: '鉄甲', color: '#FF9500', icon: './属性アイコン/鉄甲.png' },
+            'A.N.M.I.': { name: 'Anemoi', nameJP: '風圧アネモイ', attribute: 'WIND', attributeJP: '風圧', color: '#34C759', icon: './属性アイコン/風圧.png' }
+        };
+
+        // ========== Global State ==========
+        let currentData = [];       // processed players from current month
+        let previousData = [];      // processed players from previous month
+        let currentMonthKey = null;
+        let previousMonthKey = null;
+        let slvRatioTable = null;
+        let fururiBasePlayerName = 'ふるり';
+        let teamCompositionsByAttribute = { ALL: [], FIRE: [], WATER: [], ELECTRIC: [], IRON: [], WIND: [] };
+        let currentAttribute = 'ALL';
+        let statsOpen = false;
+        let attributeChartInstance = null;
+
+        // ========== Utilities ==========
+        function formatDamage(v) {
+            if (v == null || isNaN(v)) return '-';
+            if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+            if (Math.abs(v) >= 1e8) return (v / 1e8).toFixed(1) + '億';
+            if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + '百万';
+            return v.toLocaleString();
+        }
+
+        function showNotification(msg) {
+            const el = document.getElementById('notification');
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorBanner');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function showLoading(visible) {
+            document.getElementById('loadingOverlay').classList.toggle('show', visible);
+        }
+
+
+        // ========== Drawer ==========
+        function openDrawer() {
+            document.getElementById('drawer').classList.add('open');
+            document.getElementById('drawerOverlay').classList.add('open');
+        }
+
+        function closeDrawer() {
+            document.getElementById('drawer').classList.remove('open');
+            document.getElementById('drawerOverlay').classList.remove('open');
+        }
+
+        function switchTabFromDrawer(tabName) {
+            switchTab(tabName);
+            closeDrawer();
+            document.querySelectorAll('.drawer-menu-item').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
+            });
+        }
+
+        // ========== Tabs ==========
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+            });
+            document.getElementById('tab-' + tabName).classList.add('active');
+
+            if (tabName === 'slv-ranking') renderFururiRanking();
+            if (tabName === 'characters') updateTeamCompositionsDisplay();
+        }
+
+        // ========== Data Loading ==========
+        async function autoLoadData() {
+            showLoading(true);
+
+            const candidates = [];
+            const d = new Date();
+            for (let i = 0; i < 5; i++) {
+                const dd = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
+                candidates.push(key);
+            }
+
+            const found = [];
+            for (const key of candidates) {
+                if (found.length >= 2) break;
+                try {
+                    const resp = await fetch(`./data/${key}.json`);
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        found.push({ key, json });
+                    }
+                } catch (e) { /* skip */ }
+            }
+
+            showLoading(false);
+
+            if (found.length === 0) {
+                showError('データファイルが見つかりません。data/フォルダにYYYY-MM.jsonを配置してください。');
+                return;
+            }
+
+            currentMonthKey = found[0].key;
+            currentData = processRawData(found[0].json);
+
+            if (found.length >= 2) {
+                previousMonthKey = found[1].key;
+                previousData = processRawData(found[1].json);
+            } else {
+                previousMonthKey = null;
+                previousData = [];
+            }
+
+            // Update header
+            const subtitle = previousMonthKey
+                ? `${previousMonthKey} → ${currentMonthKey} 比較`
+                : `${currentMonthKey}`;
+            document.getElementById('headerSubtitle').textContent = subtitle;
+
+            renderAll();
+            showNotification(`データを読み込みました (${currentMonthKey})`);
+        }
+
+        function processRawData(rawData) {
+            let players = [];
+            if (rawData.players && Array.isArray(rawData.players)) {
+                players = rawData.players;
+            } else if (rawData.raidData && rawData.raidData.players) {
+                players = rawData.raidData.players;
+            }
+
+            const processed = players.map((p, i) => {
+                const attacks = (p.attacks || []).map(a => {
+                    // Validate character URLs
+                    const validChars = (a.characters || []).filter(u => typeof u === 'string' && u.trim() !== '');
+                    return { ...a, characters: validChars };
+                });
+
+                return {
+                    player: p.player || `Player${i + 1}`,
+                    damage: p.totalDamage || p.damage || 0,
+                    syncLevel: p.syncLevel || 0,
+                    attacks,
+                    rank: 0
+                };
+            }).sort((a, b) => b.damage - a.damage);
+
+            processed.forEach((p, i) => p.rank = i + 1);
+            return processed;
+        }
+
+        function renderAll() {
+            updateTable();
+            analyzeTeamCompositions();
+            createAttributeStackedBarChart();
+            updateStats();
+        }
+
+        // ========== Ranking Table ==========
+        function updateTable() {
+            const tbody = document.getElementById('tableBody');
+
+            // Build previousData map for quick lookup
+            const prevMap = new Map(previousData.map(p => [p.player, p]));
+
+            tbody.innerHTML = currentData.map(player => {
+                const prev = prevMap.get(player.player);
+                let diffHtml = '<span style="color: var(--md-sys-color-on-surface-variant);">-</span>';
+
+                if (prev) {
+                    const diff = player.damage - prev.damage;
+                    const pct = prev.damage > 0 ? ((diff / prev.damage) * 100).toFixed(1) : '0.0';
+                    const cls = diff > 0 ? 'growth-positive' : diff < 0 ? 'growth-negative' : 'growth-neutral';
+                    const sign = diff >= 0 ? '+' : '';
+                    diffHtml = `
+                        <div class="${cls}" style="display: flex; flex-direction: column; gap: 2px;">
+                            <span style="font-size: 12px;">${sign}${formatDamage(diff)}</span>
+                            <span style="font-size: 11px; opacity: 0.8;">${sign}${pct}%</span>
+                        </div>`;
+                }
+
+                const rankDisp = player.rank <= 3
+                    ? ['🥇', '🥈', '🥉'][player.rank - 1]
+                    : `<span class="rank-other">#${player.rank}</span>`;
+
+                return `
+                    <tr onclick="showPlayerDetails('${player.player.replace(/'/g, "\\'")}')">
+                        <td class="rank rank-${player.rank <= 3 ? player.rank : 'other'}">${rankDisp}</td>
+                        <td><strong>${player.player}</strong></td>
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <span>${formatDamage(player.damage)}</span>
+                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                            </div>
+                        </td>
+                        <td>${diffHtml}</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        // ========== Stats ==========
+        function updateStats() {
+            const grid = document.getElementById('statsGrid');
+            const totalDmg = currentData.reduce((s, p) => s + p.damage, 0);
+            const avgDmg = currentData.length ? totalDmg / currentData.length : 0;
+            const maxDmg = currentData.length ? Math.max(...currentData.map(p => p.damage)) : 0;
+
+            grid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">参加人数</div>
+                    <div class="stat-value">${currentData.length}名</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">総ダメージ</div>
+                    <div class="stat-value">${formatDamage(totalDmg)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">平均ダメージ</div>
+                    <div class="stat-value">${formatDamage(avgDmg)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">最高ダメージ</div>
+                    <div class="stat-value">${formatDamage(maxDmg)}</div>
+                </div>
+                ${previousMonthKey ? `
+                <div class="stat-card">
+                    <div class="stat-label">比較期間</div>
+                    <div class="stat-value" style="font-size: 14px;">${previousMonthKey} → ${currentMonthKey}</div>
+                </div>` : ''}
+            `;
+        }
+
+        function toggleStats() {
+            statsOpen = !statsOpen;
+            document.getElementById('statsGrid').style.display = statsOpen ? 'grid' : 'none';
+            document.getElementById('statsToggleText').textContent = statsOpen ? '結果まとめを閉じる' : '結果まとめを展開';
+            document.getElementById('statsToggleArrow').textContent = statsOpen ? '▲' : '▼';
+        }
+
+        // ========== Chart dataset toggle ==========
+        function toggleChartDataset(index) {
+            if (!attributeChartInstance) return;
+            const isVisible = attributeChartInstance.isDatasetVisible(index);
+            attributeChartInstance.setDatasetVisibility(index, !isVisible);
+            attributeChartInstance.update();
+            const btn = document.querySelector(`[data-chart-idx="${index}"]`);
+            if (btn) btn.classList.toggle('hidden', isVisible);
+        }
+
+        // ========== Stacked Bar Chart ==========
+        function createAttributeStackedBarChart() {
+            const canvas = document.getElementById('attributeStackedChart');
+            if (!canvas || currentData.length === 0) return;
+
+            if (attributeChartInstance) {
+                attributeChartInstance.destroy();
+                attributeChartInstance = null;
+            }
+
+            const ctx = canvas.getContext('2d');
+            const sortedPlayers = [...currentData].sort((a, b) => b.damage - a.damage);
+            const attributeKeys = ['FIRE', 'WATER', 'ELECTRIC', 'IRON', 'WIND'];
+
+            const datasets = attributeKeys.map(attr => {
+                const sampleCode = Object.keys(BOSS_ATTRIBUTES).find(c => BOSS_ATTRIBUTES[c].attribute === attr);
+                const info = BOSS_ATTRIBUTES[sampleCode];
+                return {
+                    label: info.attributeJP,
+                    data: sortedPlayers.map(player => {
+                        if (!player.attacks || player.attacks.length === 0) return 0;
+                        return player.attacks
+                            .filter(a => BOSS_ATTRIBUTES[a.bossCode] && BOSS_ATTRIBUTES[a.bossCode].attribute === attr)
+                            .reduce((s, a) => s + (a.damage || 0), 0);
+                    }),
+                    backgroundColor: info.color,
+                    borderColor: info.color,
+                    borderWidth: 0
+                };
+            });
+
+            attributeChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: sortedPlayers.map(p => p.player), datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, ticks: { font: { size: 11 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
+                        y: { stacked: true, ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: 'var(--md-sys-color-outline-variant)' } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index', intersect: false,
+                            callbacks: {
+                                label: c => `${c.dataset.label}: ${(c.parsed.y / 1e9).toFixed(2)}B`,
+                                footer: items => '合計: ' + (items.reduce((s, i) => s + i.parsed.y, 0) / 1e9).toFixed(2) + 'B'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========== Player Detail Modal (Composition Comparison) ==========
+        function showPlayerDetails(playerName) {
+            const current = currentData.find(p => p.player === playerName);
+            if (!current) return;
+
+            const previous = previousData.find(p => p.player === playerName);
+
+            document.getElementById('playerModalTitle').textContent = playerName;
+
+            // Damage summary
+            const prevDmg = previous ? previous.damage : null;
+            const dmgDiff = prevDmg !== null ? current.damage - prevDmg : null;
+            const diffStr = dmgDiff !== null
+                ? `<span class="${dmgDiff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative'}" style="font-size: 15px; font-weight: 600; margin-left: 8px;">${dmgDiff >= 0 ? '+' : ''}${formatDamage(dmgDiff)}</span>`
+                : '';
+
+            document.getElementById('modalDamageSummary').innerHTML = `
+                <div>
+                    <div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">今月ダメージ</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--md-sys-color-primary);">${formatDamage(current.damage)}</div>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    ${diffStr || '<span style="color: var(--md-sys-color-on-surface-variant); font-size: 13px;">前月データなし</span>'}
+                </div>
+                <div style="margin-left: auto;">
+                    <div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv</div>
+                    <div style="font-size: 16px; font-weight: 600;">${current.syncLevel}</div>
+                </div>
+            `;
+
+            // Build attack maps keyed by bossCode
+            const currAttackMap = new Map();
+            current.attacks.forEach(a => {
+                const key = a.bossCode || a.bossType || '';
+                if (key && !currAttackMap.has(key)) currAttackMap.set(key, a);
+            });
+
+            const prevAttackMap = new Map();
+            if (previous) {
+                previous.attacks.forEach(a => {
+                    const key = a.bossCode || a.bossType || '';
+                    if (key && !prevAttackMap.has(key)) prevAttackMap.set(key, a);
+                });
+            }
+
+            // Collect all unique bossCodes from both months
+            const allBossCodes = new Set([...currAttackMap.keys(), ...prevAttackMap.keys()]);
+
+            // Group by attribute
+            const attributeOrder = ['FIRE', 'WATER', 'ELECTRIC', 'IRON', 'WIND'];
+            const attacksByAttr = {};
+            allBossCodes.forEach(bossCode => {
+                const info = BOSS_ATTRIBUTES[bossCode];
+                if (!info) return;
+                if (!attacksByAttr[info.attribute]) attacksByAttr[info.attribute] = [];
+                attacksByAttr[info.attribute].push(bossCode);
+            });
+
+            const sortedAttrs = attributeOrder.filter(attr => attacksByAttr[attr]);
+            let html = '';
+
+            if (sortedAttrs.length === 0) {
+                html = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 24px;">攻撃データがありません</p>';
+            }
+
+            const renderIcons = (chars) => {
+                if (!chars || chars.length === 0) {
+                    return Array(5).fill('<div class="comp-icon-placeholder"></div>').join('');
+                }
+                const slots = [];
+                for (let i = 0; i < 5; i++) {
+                    if (chars[i]) {
+                        slots.push(`<img class="comp-icon-img" src="${chars[i]}" alt="キャラ" onerror="this.style.opacity='0.3'">`);
+                    } else {
+                        slots.push('<div class="comp-icon-placeholder"></div>');
+                    }
+                }
+                return slots.join('');
+            };
+
+            sortedAttrs.forEach(attr => {
+                const bossCodes = attacksByAttr[attr];
+                const info = Object.values(BOSS_ATTRIBUTES).find(b => b.attribute === attr);
+
+                // Sort: entries with current data first, then prev-only; within each group by damage desc
+                bossCodes.sort((a, b) => {
+                    const hasCurrA = currAttackMap.has(a), hasCurrB = currAttackMap.has(b);
+                    if (hasCurrA !== hasCurrB) return hasCurrA ? -1 : 1;
+                    const dmgA = (currAttackMap.get(a) || prevAttackMap.get(a))?.damage || 0;
+                    const dmgB = (currAttackMap.get(b) || prevAttackMap.get(b))?.damage || 0;
+                    return dmgB - dmgA;
+                });
+
+                bossCodes.forEach(bossCode => {
+                    const currAtk = currAttackMap.get(bossCode) || null;
+                    const prevAtk = prevAttackMap.get(bossCode) || null;
+                    const refAtk = currAtk || prevAtk;
+                    const bossName = refAtk.bossType || (BOSS_ATTRIBUTES[bossCode] ? BOSS_ATTRIBUTES[bossCode].nameJP : bossCode);
+                    const diff = (currAtk && prevAtk) ? currAtk.damage - prevAtk.damage : null;
+                    const diffCls = diff !== null ? (diff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative') : '';
+                    const difficulty = currAtk?.difficulty || prevAtk?.difficulty || '';
+                    const level = currAtk?.level || prevAtk?.level || '';
+
+                    html += `
+                        <div class="comp-section">
+                            <div class="comp-boss-header">
+                                <img src="${info.icon}" alt="${info.attributeJP}">
+                                <span class="comp-boss-title">${bossName}</span>
+                                ${difficulty ? `<span class="badge">${difficulty} Lv.${level}</span>` : ''}
+                            </div>
+                            <div class="comp-row">
+                                <div class="comp-side">
+                                    <div class="comp-label">${previousMonthKey || '前月'}</div>
+                                    ${prevAtk
+                                        ? `<div class="comp-icons">${renderIcons(prevAtk.characters)}</div><div class="comp-damage">${formatDamage(prevAtk.damage)}</div>`
+                                        : `<div class="comp-no-data">前月なし</div>`
+                                    }
+                                </div>
+                                <div class="comp-arrow">→</div>
+                                <div class="comp-side">
+                                    <div class="comp-label">${currentMonthKey || '今月'}</div>
+                                    ${currAtk
+                                        ? `<div class="comp-icons">${renderIcons(currAtk.characters)}</div>
+                                           <div class="comp-damage">
+                                               ${formatDamage(currAtk.damage)}
+                                               ${diff !== null ? `<span class="${diffCls}" style="font-size: 12px; font-weight: 400;"> (${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>` : ''}
+                                           </div>`
+                                        : `<div class="comp-no-data">今回なし</div>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            document.getElementById('playerCompContainer').innerHTML = html;
+            document.getElementById('playerModal').classList.add('open');
+        }
+
+        function hidePlayerDetails() {
+            document.getElementById('playerModal').classList.remove('open');
+        }
+
+        // Click outside to close
+        document.getElementById('playerModal').addEventListener('click', function(e) {
+            if (e.target === this) hidePlayerDetails();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                hidePlayerDetails();
+                closeFururiHelp();
+            }
+        });
+
+        // ========== NIKKE Composition Tab ==========
+        function analyzeTeamCompositions() {
+            teamCompositionsByAttribute = { ALL: [], FIRE: [], WATER: [], ELECTRIC: [], IRON: [], WIND: [] };
+
+            currentData.forEach(player => {
+                if (!player.attacks || player.attacks.length === 0) return;
+                player.attacks.forEach(attack => {
+                    const bossCode = attack.bossCode || attack.boss;
+                    const bossInfo = bossCode ? BOSS_ATTRIBUTES[bossCode] : null;
+                    const attribute = bossInfo ? bossInfo.attribute : null;
+
+                    const comp = {
+                        player: player.player,
+                        syncLevel: player.syncLevel || 0,
+                        bossName: attack.bossType || (bossInfo ? bossInfo.nameJP : '不明'),
+                        bossCode,
+                        attribute,
+                        attributeIcon: bossInfo ? bossInfo.icon : '',
+                        attributeJP: bossInfo ? bossInfo.attributeJP : '',
+                        damage: attack.damage || 0,
+                        characters: attack.characters || [],
+                        difficulty: attack.difficulty || '',
+                        level: attack.level || 0
+                    };
+
+                    teamCompositionsByAttribute.ALL.push(comp);
+                    if (attribute && teamCompositionsByAttribute[attribute]) {
+                        teamCompositionsByAttribute[attribute].push(comp);
+                    }
+                });
+            });
+
+            updateTeamCompositionsDisplay();
+        }
+
+        function switchAttributeTab(attr) {
+            currentAttribute = attr;
+            document.querySelectorAll('.attribute-tab-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-attribute') === attr);
+            });
+            updateTeamCompositionsDisplay();
+        }
+
+        function updateTeamCompositionsDisplay() {
+            const container = document.getElementById('teamCompositionsContainer');
+            if (!container) return;
+
+            const comps = (teamCompositionsByAttribute[currentAttribute] || []).sort((a, b) => b.damage - a.damage);
+
+            if (comps.length === 0) {
+                container.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">この属性のデータがありません</p>';
+                return;
+            }
+
+            container.innerHTML = comps.map(comp => `
+                <div class="card" style="margin-bottom: 16px; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0;">
+                            ${comp.attributeIcon ? `<img src="${comp.attributeIcon}" alt="${comp.attributeJP}" style="width: 20px; height: 20px; flex-shrink: 0;">` : ''}
+                            <strong style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${comp.bossName}</strong>
+                            ${comp.difficulty ? `<span class="badge">${comp.difficulty} Lv.${comp.level}</span>` : ''}
+                        </div>
+                        <div style="text-align: right; flex-shrink: 0;">
+                            <div style="font-size: 16px; font-weight: 600; color: var(--md-sys-color-primary); white-space: nowrap;">${formatDamage(comp.damage)}</div>
+                            <div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;">${comp.player} (SLv ${comp.syncLevel})</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-width: 280px;">
+                        ${comp.characters.map(url =>
+                            typeof url === 'string' && url && !url.includes('属性アイコン')
+                                ? `<img src="${url}" alt="キャラ" style="width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.opacity='0.3'">`
+                                : ''
+                        ).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========== ふるり指標 ==========
+        async function loadSlvRatioTable() {
+            try {
+                const resp = await fetch('./data/slv-ratio.json');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                slvRatioTable = data.data;
+            } catch (e) {
+                console.warn('SLv補正テーブル読み込みエラー:', e);
+            }
+        }
+
+        function calculateFururiScore(playerDamage, playerSLv, basePlayer) {
+            if (!slvRatioTable || !basePlayer) return null;
+            if (!playerSLv || playerSLv <= 0) return null;
+            const baseRatio = slvRatioTable[String(basePlayer.syncLevel)];
+            const playerRatio = slvRatioTable[String(playerSLv)];
+            if (!baseRatio || !playerRatio) return null;
+            const baseScaled = basePlayer.damage * playerRatio / baseRatio;
+            return playerDamage / baseScaled;
+        }
+
+        function renderFururiRanking() {
+            const tbody = document.getElementById('fururiRankingBody');
+            if (!currentData || currentData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">データがありません</td></tr>';
+                return;
+            }
+            if (!slvRatioTable) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">SLv補正テーブルを読み込み中...</td></tr>';
+                return;
+            }
+
+            // Find base player
+            let basePlayer = currentData.find(p => p.player === fururiBasePlayerName && p.syncLevel > 0);
+            if (!basePlayer) basePlayer = currentData.find(p => p.syncLevel > 0);
+            if (!basePlayer) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">基準者が見つかりません</td></tr>';
+                return;
+            }
+
+            const baseInfoEl = document.getElementById('fururiBaseInfo');
+            if (baseInfoEl) {
+                baseInfoEl.textContent = `${basePlayer.player} (SLv ${basePlayer.syncLevel}, ${(basePlayer.damage / 1e9).toFixed(3)} B)`;
+            }
+
+            const ranked = currentData
+                .filter(p => p.syncLevel > 0)
+                .map(p => ({ ...p, fururiScore: calculateFururiScore(p.damage, p.syncLevel, basePlayer) }))
+                .filter(p => p.fururiScore !== null)
+                .sort((a, b) => b.fururiScore - a.fururiScore);
+
+            tbody.innerHTML = ranked.map(player => {
+                const isBase = player.player === basePlayer.player;
+                const rowStyle = isBase ? 'background: var(--md-sys-color-primary-container);' : '';
+                return `
+                    <tr style="${rowStyle}">
+                        <td style="text-align: center; font-weight: 500;">
+                            ${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+                                <span>${(player.damage / 1e9).toFixed(3)} B</span>
+                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                            </div>
+                        </td>
+                        <td style="text-align: center; font-weight: 600;">${player.fururiScore.toFixed(2)}</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        // ========== Fururi Help ==========
+        function openFururiHelp() {
+            document.getElementById('fururiHelpModal').classList.add('open');
+        }
+
+        function closeFururiHelp() {
+            document.getElementById('fururiHelpModal').classList.remove('open');
+        }
+
+        // ========== Initialize ==========
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadSlvRatioTable();
+            await autoLoadData();
+        });
+    </script>
+</body>
+</html>
