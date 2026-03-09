@@ -1036,10 +1036,8 @@
         // ========== Utilities ==========
         function formatDamage(v) {
             if (v == null || isNaN(v)) return '-';
-            if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(2) + 'B';
-            if (Math.abs(v) >= 1e8) return (v / 1e8).toFixed(1) + '億';
-            if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + '百万';
-            return v.toLocaleString();
+            const sign = v < 0 ? '-' : '';
+            return sign + (Math.abs(v) / 1e9).toFixed(2) + 'B';
         }
 
         function showNotification(msg) {
