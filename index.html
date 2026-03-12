@@ -774,6 +774,10 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             NIKKE編成
         </button>
+        <button class="drawer-menu-item" data-tab="simulator" onclick="switchTabFromDrawer('simulator')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+            シミュレータ
+        </button>
     </div>
 
     <!-- Header -->
@@ -806,6 +810,10 @@
             <button class="tab-button" data-tab="characters" onclick="switchTab('characters')" title="NIKKE編成">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 NIKKE編成
+            </button>
+            <button class="tab-button" data-tab="simulator" onclick="switchTab('simulator')" title="ダメージシミュレータ">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                シミュレータ
             </button>
         </div>
     </nav>
@@ -961,6 +969,53 @@
                 <div id="teamCompositionsContainer">
                     <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">データを読み込むと表示されます</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Tab 4: ダメージシミュレータ ========== -->
+    <div id="tab-simulator" class="tab-content">
+        <div class="container">
+            <!-- 設定カード -->
+            <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">ダメージシミュレータ</h3>
+                <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 20px;">目標SLvまで育成した場合の予測ダメージを他プレイヤーと比較します</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">プレイヤー選択</label>
+                        <select id="simPlayerSelect" onchange="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
+                            <option value="">-- 選択してください --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 400; color: var(--md-sys-color-on-surface-variant);"></span></label>
+                        <input id="simTargetSlv" type="number" min="1" max="1000" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;" placeholder="例: 160">
+                    </div>
+                </div>
+                <!-- 予測結果 -->
+                <div id="simResult" style="display: none; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 10px; border-left: 4px solid var(--md-sys-color-primary);">
+                    <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">予測ダメージ</div>
+                    <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+                        <span id="simPredictedDmg" style="font-size: 28px; font-weight: 700; color: var(--md-sys-color-primary);"></span>
+                        <span id="simDiff" style="font-size: 15px; font-weight: 600;"></span>
+                    </div>
+                    <div id="simCurrentDmgLabel" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;"></div>
+                </div>
+                <div id="simError" style="display: none; padding: 12px 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; color: var(--md-sys-color-on-surface-variant); font-size: 13px;"></div>
+            </div>
+            <!-- 比較テーブル -->
+            <div class="data-table" id="simTableWrapper" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"></th>
+                            <th>プレイヤー</th>
+                            <th>ダメージ</th>
+                            <th>あなたとの差</th>
+                        </tr>
+                    </thead>
+                    <tbody id="simTableBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -1174,6 +1229,7 @@
             analyzeTeamCompositions();
             createAttributeStackedBarChart();
             updateStats();
+            updateSimulatorPlayerList();
         }
 
         // ========== Ranking Table ==========
@@ -1477,6 +1533,126 @@
                 closeFururiHelp();
             }
         });
+
+        // ========== Damage Simulator ==========
+        function updateSimulatorPlayerList() {
+            const select = document.getElementById('simPlayerSelect');
+            if (!select) return;
+            const current = select.value;
+            select.innerHTML = '<option value="">-- 選択してください --</option>';
+            currentData.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.player;
+                opt.textContent = `${p.player}  (SLv ${p.syncLevel || '?'})`;
+                select.appendChild(opt);
+            });
+            if (current) select.value = current;
+            runSimulator();
+        }
+
+        function runSimulator() {
+            const select = document.getElementById('simPlayerSelect');
+            const targetSlvInput = document.getElementById('simTargetSlv');
+            const resultEl = document.getElementById('simResult');
+            const errorEl = document.getElementById('simError');
+            const tableWrapper = document.getElementById('simTableWrapper');
+            const slvLabel = document.getElementById('simCurrentSlvLabel');
+
+            const playerName = select ? select.value : '';
+            const targetSlv = parseInt(targetSlvInput ? targetSlvInput.value : '');
+
+            // 未選択時はリセット
+            if (!playerName) {
+                resultEl.style.display = 'none';
+                errorEl.style.display = 'none';
+                tableWrapper.style.display = 'none';
+                slvLabel.textContent = '';
+                return;
+            }
+
+            const player = currentData.find(p => p.player === playerName);
+            if (!player) return;
+
+            slvLabel.textContent = `(現在: ${player.syncLevel || '未設定'})`;
+
+            // SLvが未設定
+            if (!player.syncLevel || player.syncLevel <= 0) {
+                resultEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'このプレイヤーのSLvデータがないため計算できません。';
+                tableWrapper.style.display = 'none';
+                return;
+            }
+
+            // 目標SLv未入力
+            if (!targetSlv || targetSlv < 1 || targetSlv > 1000) {
+                resultEl.style.display = 'none';
+                errorEl.style.display = 'none';
+                tableWrapper.style.display = 'none';
+                return;
+            }
+
+            if (!slvRatioTable) {
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'SLv補正テーブルの読み込みに失敗しました。';
+                return;
+            }
+
+            const currentRatio = slvRatioTable[String(player.syncLevel)];
+            const targetRatio = slvRatioTable[String(targetSlv)];
+            if (!currentRatio || !targetRatio) {
+                errorEl.style.display = 'block';
+                errorEl.textContent = '指定されたSLvの補正データが見つかりません。';
+                return;
+            }
+
+            const predictedDamage = player.damage * (targetRatio / currentRatio);
+            const diff = predictedDamage - player.damage;
+            const pct = ((diff / player.damage) * 100).toFixed(1);
+
+            // 予測結果表示
+            errorEl.style.display = 'none';
+            resultEl.style.display = 'block';
+            document.getElementById('simPredictedDmg').textContent = formatDamage(predictedDamage);
+            const diffEl = document.getElementById('simDiff');
+            diffEl.textContent = `${diff >= 0 ? '+' : ''}${formatDamage(diff)} (${diff >= 0 ? '+' : ''}${pct}%)`;
+            diffEl.style.color = diff > 0 ? '#22c55e' : diff < 0 ? '#ef4444' : 'inherit';
+            document.getElementById('simCurrentDmgLabel').textContent = `現在: ${formatDamage(player.damage)}  SLv ${player.syncLevel} → ${targetSlv}`;
+
+            // 比較テーブル生成
+            const others = currentData.filter(p => p.player !== playerName);
+            const rows = others.map(p => ({ player: p.player, damage: p.damage, syncLevel: p.syncLevel, isYou: false }));
+            rows.push({ player: playerName, damage: predictedDamage, syncLevel: targetSlv, isYou: true });
+            rows.sort((a, b) => b.damage - a.damage);
+
+            const tbody = document.getElementById('simTableBody');
+            tbody.innerHTML = rows.map((row, i) => {
+                const rank = i + 1;
+                const rankDisp = rank <= 3
+                    ? ['🥇', '🥈', '🥉'][rank - 1]
+                    : `<span class="rank-other">#${rank}</span>`;
+                const vs = row.isYou ? '<span style="color: var(--md-sys-color-on-surface-variant); font-size: 12px;">基準</span>'
+                    : (() => {
+                        const d = predictedDamage - row.damage;
+                        const cls = d > 0 ? 'growth-positive' : d < 0 ? 'growth-negative' : 'growth-neutral';
+                        return `<span class="${cls}">${d >= 0 ? '+' : ''}${formatDamage(d)}</span>`;
+                    })();
+                const dmgLabel = row.isYou
+                    ? `<strong>${formatDamage(row.damage)}</strong> <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">予測</span>`
+                    : formatDamage(row.damage);
+                const rowStyle = row.isYou
+                    ? 'background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); font-weight: 600;'
+                    : '';
+                return `<tr style="${rowStyle}">
+                    <td style="text-align: center;">${rankDisp}</td>
+                    <td>${row.isYou ? '★ ' : ''}${row.player}</td>
+                    <td>${dmgLabel}</td>
+                    <td>${vs}</td>
+                </tr>`;
+            }).join('');
+
+            tableWrapper.style.display = 'block';
+        }
 
         // ========== NIKKE Composition Tab ==========
         function analyzeTeamCompositions() {
