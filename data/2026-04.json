@@ -1508,6 +1508,7 @@
     "source": "BlaBlaLINK Chrome Extension",
     "version": "2.3",
     "hasDetailedAttacks": true,
-    "imagesDownloaded": true
+    "imagesDownloaded": true,
+    "unionRank": 0.68
   }
 }
