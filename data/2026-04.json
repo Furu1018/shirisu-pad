@@ -1,0 +1,1513 @@
+{
+  "players": [
+    {
+      "player": "めいでんさん",
+      "totalDamage": 148269000000,
+      "attackCount": 3,
+      "syncLevel": 901,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 54417646479,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 54219558854,
+          "characters": [
+            "./character-images/af2657ff5ffb44f70ed2db8d5de8985a.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/9008590c7bab78126e533fc33dd91987.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 39632169221,
+          "characters": [
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/3ac85e36766abc5e052921bbe2b857ae.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "なべりうす",
+      "totalDamage": 85108000000,
+      "attackCount": 3,
+      "syncLevel": 701,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 22231055173,
+          "characters": [
+            "./character-images/1383a61330140e2106f22a4806208a70.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 30769508327,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 32107746777,
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "PHANTOM",
+      "totalDamage": 83627000000,
+      "attackCount": 3,
+      "syncLevel": 743,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 22106275575,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/3ac85e36766abc5e052921bbe2b857ae.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 28425073901,
+          "characters": [
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/9008590c7bab78126e533fc33dd91987.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 33095750108,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あおい",
+      "totalDamage": 71553000000,
+      "attackCount": 3,
+      "syncLevel": 650,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 23888199124,
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 24741696522,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 22923441575,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "にま",
+      "totalDamage": 58854000000,
+      "attackCount": 3,
+      "syncLevel": 664,
+      "attacks": [
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 19724678957,
+          "characters": [
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 24,
+          "damage": 17426834374,
+          "characters": [
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 21702831646,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるちゃ",
+      "totalDamage": 58047000000,
+      "attackCount": 3,
+      "syncLevel": 721,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 18236602258,
+          "characters": [
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/3d7915bccbc8fcad36e7b605d4861948.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 24246320878,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15563700525,
+          "characters": [
+            "./character-images/7a0c48465473578ff4ed2c707d49eff9.webp",
+            "./character-images/e4bc33b9c6f01f42e9b1ee8ddbabacb5.webp",
+            "./character-images/75cd454109aa4e98bba1ce0c26354234.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "まるちょ",
+      "totalDamage": 55244000000,
+      "attackCount": 3,
+      "syncLevel": 648,
+      "attacks": [
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 18682463475,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 13563721459,
+          "characters": [
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 22997946916,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ニッサ",
+      "totalDamage": 54133000000,
+      "attackCount": 3,
+      "syncLevel": 679,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 23256519361,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 19737649426,
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 16,
+          "damage": 11138535716,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "猫ロビン",
+      "totalDamage": 54004000000,
+      "attackCount": 3,
+      "syncLevel": 611,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 24,
+          "damage": 14316612739,
+          "characters": [
+            "./character-images/927af5cda6cfae85189931f40698b405.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/c22b550dab08af6aee1268daf75a311d.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 18103562129,
+          "characters": [
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 21583766635,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "みに",
+      "totalDamage": 53969000000,
+      "attackCount": 3,
+      "syncLevel": 621,
+      "attacks": [
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 18085609988,
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9008590c7bab78126e533fc33dd91987.webp",
+            "./character-images/ff44690f97cd69303f35e110c88858d5.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 14481792988,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 21401592273,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "翠秋めぐる",
+      "totalDamage": 47626000000,
+      "attackCount": 3,
+      "syncLevel": 681,
+      "attacks": [
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 24,
+          "damage": 18896321186,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/5b682cd738500f81044db096ba87c5e7.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 22505459435,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 6224055138,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/29e8ef4e2d542947f8220ddf46aa38ef.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "MIRIN",
+      "totalDamage": 46290000000,
+      "attackCount": 3,
+      "syncLevel": 599,
+      "attacks": [
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 17077890620,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 14553748872,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14658362412,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "カンメイ",
+      "totalDamage": 45120000000,
+      "attackCount": 3,
+      "syncLevel": 583,
+      "attacks": [
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 15067593541,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 15109519692,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 14943336851,
+          "characters": [
+            "./character-images/3ac85e36766abc5e052921bbe2b857ae.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/4848d732d81d2344604b30e7f8288167.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "かずにゃん",
+      "totalDamage": 40974000000,
+      "attackCount": 3,
+      "syncLevel": 621,
+      "attacks": [
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 16212318069,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 14550174063,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 10211679564,
+          "characters": [
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あんず",
+      "totalDamage": 35250000000,
+      "attackCount": 3,
+      "syncLevel": 566,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 23,
+          "damage": 10277899757,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 11870713545,
+          "characters": [
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/998706bd4e149311386045530b37041d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 13101293338,
+          "characters": [
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "めいさ",
+      "totalDamage": 34902000000,
+      "attackCount": 3,
+      "syncLevel": 609,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11356196579,
+          "characters": [
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 13,
+          "damage": 12099644833,
+          "characters": [
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11446183092,
+          "characters": [
+            "./character-images/ea134d0cd6c02ed9d3a02cec91d87dbd.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/b6c6f46752e61434f7bcbed790db025b.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "るり",
+      "totalDamage": 33834000000,
+      "attackCount": 3,
+      "syncLevel": 538,
+      "attacks": [
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 10740779504,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp",
+            "./character-images/e641c325ff3f6d6fb159fea2eb0a26f7.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 12700764134,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 25,
+          "damage": 10392239629,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ねむねこ",
+      "totalDamage": 32862000000,
+      "attackCount": 3,
+      "syncLevel": 514,
+      "attacks": [
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 7915167242,
+          "characters": [
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11275626091,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/3ac85e36766abc5e052921bbe2b857ae.webp",
+            "./character-images/d6e98762e28395fe639304f59f2515ab.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 13671543926,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ふるり",
+      "totalDamage": 28798000000,
+      "attackCount": 3,
+      "syncLevel": 475,
+      "attacks": [
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 10618556492,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 10487800334,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 7691297775,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/f6707743db256def9f7cc01834d2b5f1.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "覆面仮面",
+      "totalDamage": 26378000000,
+      "attackCount": 3,
+      "syncLevel": 590,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 12091118588,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6237044772,
+          "characters": [
+            "./character-images/88e9d12d692695aaae54b796a4e3d0a4.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/5b682cd738500f81044db096ba87c5e7.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/aac296d408a0fdadc6b6eeec73887c64.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8049626836,
+          "characters": [
+            "./character-images/d6e98762e28395fe639304f59f2515ab.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "DETロイ",
+      "totalDamage": 25170000000,
+      "attackCount": 3,
+      "syncLevel": 525,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 5650215319,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 13,
+          "damage": 11745893914,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/1ab318713febb51ec0a59ecdf74d5961.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 14,
+          "damage": 7774319840,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "リン",
+      "totalDamage": 21399000000,
+      "attackCount": 3,
+      "syncLevel": 501,
+      "attacks": [
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 6880483648,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/9008590c7bab78126e533fc33dd91987.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 13,
+          "damage": 6048984951,
+          "characters": [
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8469682542,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "はる",
+      "totalDamage": 20844000000,
+      "attackCount": 3,
+      "syncLevel": 502,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 26,
+          "damage": 6473436672,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/29e8ef4e2d542947f8220ddf46aa38ef.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 5020929562,
+          "characters": [
+            "./character-images/51b33eff74c04ceea8a13743c44d360b.webp",
+            "./character-images/ea134d0cd6c02ed9d3a02cec91d87dbd.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 9349236381,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "LUPI",
+      "totalDamage": 20730000000,
+      "attackCount": 3,
+      "syncLevel": 586,
+      "attacks": [
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 5807973082,
+          "characters": [
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/fdcbe4c90a314bb81ec130b4c825a06c.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 6294393671,
+          "characters": [
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/75b345c5e360f78e886b7daa5697e434.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8627374580,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/51b33eff74c04ceea8a13743c44d360b.webp",
+            "./character-images/b6c6f46752e61434f7bcbed790db025b.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "むう",
+      "totalDamage": 19086000000,
+      "attackCount": 3,
+      "syncLevel": 460,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 4188059809,
+          "characters": [
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/f0c089e8bb85053339d41b2720f0a900.webp",
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 8780737377,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 24,
+          "damage": 6117230350,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "うしでび",
+      "totalDamage": 14683000000,
+      "attackCount": 3,
+      "syncLevel": 452,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 4517065928,
+          "characters": [
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/9770466ef17196f2489b791a7cd17207.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6911864928,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/53bd5fb920553a158d80a170fbf36129.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 3253953842,
+          "characters": [
+            "./character-images/d96d3a6d5c55ef7dd76f83181da11869.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "時雨",
+      "totalDamage": 12057000000,
+      "attackCount": 3,
+      "syncLevel": 438,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 1988912999,
+          "characters": [
+            "./character-images/a26102dc0f5816931c09c85040b11993.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/f0c089e8bb85053339d41b2720f0a900.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/af22d6d7756efe69915373651b429e11.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 4123656027,
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 5944223108,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "NAVI01",
+      "totalDamage": 10969000000,
+      "attackCount": 3,
+      "syncLevel": 401,
+      "attacks": [
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 2239053918,
+          "characters": [
+            "./character-images/971525e4870d57187a646e92b31ee993.webp",
+            "./character-images/fa34347a9112fef4a27188b0cfd64e2b.webp",
+            "./character-images/48e2d0b41848d524f651eee9e81b44da.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/8b439391ad93e8bd3ae2a1f73fcd6c49.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 6063643532,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp"
+          ]
+        },
+        {
+          "bossType": "Vストームブリンガー",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 14,
+          "damage": 2666503801,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/6de32e492ff90a95075ec82e9b350fed.webp",
+            "./character-images/5b682cd738500f81044db096ba87c5e7.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ほりっぴー",
+      "totalDamage": 9305000000,
+      "attackCount": 3,
+      "syncLevel": 354,
+      "attacks": [
+        {
+          "bossType": "IVリビルドキューカンバー",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 1263489071,
+          "characters": [
+            "./character-images/a7454375ef26de7ab36031151ab2fe35.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 23,
+          "damage": 2948087218,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 5093430277,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あちゃ",
+      "totalDamage": 5731000000,
+      "attackCount": 3,
+      "syncLevel": 395,
+      "attacks": [
+        {
+          "bossType": "IIクリスタルアーマー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 523441281,
+          "characters": [
+            "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp",
+            "./character-images/42d9a7d53ad7c3871087d0f972f12ff9.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp"
+          ]
+        },
+        {
+          "bossType": "IIIクラーケン",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 2819045983,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp"
+          ]
+        },
+        {
+          "bossType": "Iスプレッド",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 2388957094,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "extractedAt": "2026-04-11T23:57:59.244Z",
+    "playerCount": 30,
+    "totalDamage": 1254816000000,
+    "source": "BlaBlaLINK Chrome Extension",
+    "version": "2.3",
+    "hasDetailedAttacks": true,
+    "imagesDownloaded": true
+  }
+}
