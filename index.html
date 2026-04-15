@@ -779,7 +779,7 @@
             シミュレータ
         </button>
         <button class="drawer-menu-item" data-tab="fururi-simulator" onclick="switchTabFromDrawer('fururi-simulator')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
             ふるり値シミュレータ
         </button>
     </div>
@@ -820,7 +820,7 @@
                 シミュレータ
             </button>
             <button class="tab-button" data-tab="fururi-simulator" onclick="switchTab('fururi-simulator')" title="ふるり値シミュレータ">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
                 ふるり値シミュレータ
             </button>
         </div>
@@ -1103,8 +1103,8 @@
                 <!-- ダメージ入力 -->
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">想定ダメージ</label>
-                    <input id="fsimDamage" type="number" min="0" oninput="runFururiSimulator()" placeholder="例: 30000000000" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
-                    <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--md-sys-color-on-surface-variant);">単位: 円 (例: 30B = 30000000000)</p>
+                    <input id="fsimDamage" type="number" min="0" oninput="onFsimDamageInput()" placeholder="例: 30000000000" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
+                    <p id="fsimDamagePreview" style="margin: 4px 0 0 0; font-size: 12px; color: var(--md-sys-color-on-surface-variant); min-height: 16px;">&nbsp;</p>
                 </div>
 
                 <!-- 結果 -->
@@ -1846,6 +1846,20 @@
             const v = parseInt(slvInput.value) || 0;
             const next = Math.max(1, Math.min(1000, v + delta));
             slvInput.value = next;
+            runFururiSimulator();
+        }
+
+        function onFsimDamageInput() {
+            const dmgInput = document.getElementById('fsimDamage');
+            const preview = document.getElementById('fsimDamagePreview');
+            const v = parseFloat(dmgInput.value);
+            if (!v || v <= 0) {
+                preview.innerHTML = '&nbsp;';
+            } else {
+                const formatted = v.toLocaleString('ja-JP');
+                const billions = (v / 1e9).toFixed(3);
+                preview.textContent = `≈ ${billions} B  (${formatted})`;
+            }
             runFururiSimulator();
         }
 
