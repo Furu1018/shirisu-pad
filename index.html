@@ -1890,49 +1890,61 @@
                 document.getElementById('fsimOcrDebugWrapper').style.display = 'block';
                 document.getElementById('fsimOcrDebug').textContent = text;
 
-                // "TOTAL DAMAGE" 以降の範囲を優先抽出（HP値などを除外するため）
-                const totalMatch = text.match(/TOTAL\s*DAMAGE/i);
-                const scope = totalMatch
-                    ? text.substring(totalMatch.index + totalMatch[0].length, totalMatch.index + totalMatch[0].length + 250)
-                    : text;
+                const lines = text.split('\n').map(l => l.trim());
 
-                // 寛容な数字抽出: 数字を含むトークン(数字+カンマ+空白)を順に拾い、
-                // 連続する数字トークン群を1つの数値として連結する。
-                // 例: "9,673,\nMM\n613,117" でも数字部分だけ繋げて 9673613117 にする
-                const pickFromScope = (src) => {
-                    // 行ごとに分割し、各行から数字グループ(>=1桁)を抽出
-                    const lines = src.split(/\n+/);
-                    let buffer = '';
-                    let bestSingle = '';
-                    for (const line of lines) {
-                        // 行内の数字グループ列を取得
-                        const groups = line.match(/[\d,]+/g);
-                        if (!groups || !groups.length) {
-                            // 数字を含まない行は連結バッファをリセット
-                            if (buffer.length > bestSingle.length) bestSingle = buffer;
-                            buffer = '';
+                // "TOTAL DAMAGE" 行を探す（"TOTAL"の誤読を許容: TQTAL/T0TAL等もOK）
+                const totalIdx = lines.findIndex(l => /T[OQ0]TAL\s*DAMA[GC]E/i.test(l) || /T[OQ0]TAL/i.test(l));
+
+                // 1行内の数字部分を抽出 (カンマ・空白・ピリオドを除去)
+                const lineDigits = (line) => {
+                    if (!line) return '';
+                    // ピリオド/カンマ/空白を区切りとして無視、数字だけ取り出す
+                    return line.replace(/[^\d]/g, '');
+                };
+                // HP行（"/"を含む）は除外
+                const isHpLine = (line) => /\//.test(line);
+                // 妥当な総ダメージ桁数（10億〜兆オーダー想定: 7〜13桁）
+                const isValidDamage = (digits) => digits.length >= 7 && digits.length <= 13;
+
+                let num = null;
+
+                if (totalIdx >= 0) {
+                    // TOTAL DAMAGE 行直後の最大5行を見て、HP行を除外しつつ数字を拾う
+                    // 数字が複数行に分かれている場合のみ連結（次行が数字のみ・"/"なし・短すぎる場合）
+                    const collected = [];
+                    for (let i = totalIdx + 1; i < Math.min(totalIdx + 6, lines.length); i++) {
+                        const line = lines[i];
+                        if (!line) continue;
+                        if (isHpLine(line)) continue;
+                        const d = lineDigits(line);
+                        if (!d) {
+                            if (collected.length) break; // 数字行が途切れたら終了
                             continue;
                         }
-                        // 同じ行内の数字部分はそのまま連結（カンマ除去）
-                        const lineDigits = groups.join('').replace(/[^\d]/g, '');
-                        if (lineDigits) buffer += lineDigits;
+                        // この行が「数字＋カンマ等のみ（他のテキストが少ない）」かを判定
+                        const nonDigit = line.replace(/[\d,.\s]/g, '').length;
+                        if (nonDigit > 3) {
+                            // ノイズ多め → 単独で完結している場合のみ採用
+                            if (isValidDamage(d) && !collected.length) { collected.push(d); break; }
+                            if (collected.length) break;
+                            continue;
+                        }
+                        collected.push(d);
+                        if (isValidDamage(collected.join(''))) break;
                     }
-                    if (buffer.length > bestSingle.length) bestSingle = buffer;
+                    const combined = collected.join('');
+                    if (isValidDamage(combined)) num = parseInt(combined, 10);
+                }
 
-                    // 全行同じ行内処理パターンも併用
-                    const inline = [...src.matchAll(/(?:\d{1,3}(?:[,\s\n]*\d{3})+|\d{7,})/g)]
-                        .map(x => x[0].replace(/[,\s\n]/g, ''))
-                        .filter(s => /^\d{7,}$/.test(s))
-                        .sort((a, b) => b.length - a.length)[0];
-
-                    const cands = [bestSingle, inline].filter(s => s && /^\d{7,}$/.test(s));
-                    if (!cands.length) return null;
-                    cands.sort((a, b) => b.length - a.length);
-                    return parseInt(cands[0], 10);
-                };
-
-                let num = pickFromScope(scope);
-                if (!num) num = pickFromScope(text);
+                // フォールバック: TOTAL DAMAGE が見つからない or 失敗時
+                // 全行から「"/"を含まない」「数字主体の行」を抜き出し、最後（下にあるほど画面下=ダメージの可能性大）
+                if (!num) {
+                    const damageLikeLines = lines.filter(l => l && !isHpLine(l) && (l.replace(/[\d,.\s]/g, '').length <= 3));
+                    for (let i = damageLikeLines.length - 1; i >= 0; i--) {
+                        const d = lineDigits(damageLikeLines[i]);
+                        if (isValidDamage(d)) { num = parseInt(d, 10); break; }
+                    }
+                }
                 if (!num || num <= 0) {
                     status.textContent = '数字を読み取れませんでした。「TOTAL DAMAGE」が映る範囲でトリミングして再度お試しください。';
                     return;
