@@ -2003,15 +2003,20 @@
             };
             Object.entries(STATIC_KEYWORDS).forEach(([code, kws]) => kws.forEach(k => addKw(code, k)));
 
+            // OCRが日本語を「ス ト ー ム」のように分割して返すケースに対応するため、
+            // 全角・半角空白と改行をすべて除去した文字列でも照合する
+            const normalize = (s) => (s || '').replace(/[\s\u3000]/g, '');
+            const normalizedText = normalize(text);
+
             // 長いキーワードから優先的にチェック (誤マッチ低減)
             const flat = [];
             Object.entries(codeToKeywords).forEach(([code, set]) => {
-                set.forEach(kw => flat.push({ code, kw }));
+                set.forEach(kw => flat.push({ code, kw: normalize(kw) }));
             });
             flat.sort((a, b) => b.kw.length - a.kw.length);
 
             for (const { code, kw } of flat) {
-                if (text.includes(kw)) return code;
+                if (kw && normalizedText.includes(kw)) return code;
             }
             return null;
         }
