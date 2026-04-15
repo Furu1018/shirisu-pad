@@ -2015,10 +2015,34 @@
             });
             flat.sort((a, b) => b.kw.length - a.kw.length);
 
+            // Step1: 完全一致
             for (const { code, kw } of flat) {
                 if (kw && normalizedText.includes(kw)) return code;
             }
-            return null;
+            // Step2: ファジーマッチ (トライグラム重なりスコア)
+            // OCR誤認識で1〜数文字欠けたり別字に化けるケースに対応
+            const triMatchRatio = (kw) => {
+                if (!kw || kw.length < 3) return 0;
+                let hit = 0;
+                const total = kw.length - 2;
+                for (let i = 0; i < total; i++) {
+                    if (normalizedText.includes(kw.substring(i, i + 3))) hit++;
+                }
+                return hit / total;
+            };
+            let bestCode = null, bestScore = 0, bestHits = 0;
+            for (const { code, kw } of flat) {
+                if (!kw || kw.length < 4) continue;
+                const ratio = triMatchRatio(kw);
+                const hits = Math.round(ratio * (kw.length - 2));
+                // 2トライグラム以上一致かつ一致率30%以上を候補とし、最もスコアの高いものを選ぶ
+                if (hits >= 2 && ratio >= 0.3 && (ratio > bestScore || (ratio === bestScore && hits > bestHits))) {
+                    bestScore = ratio;
+                    bestHits = hits;
+                    bestCode = code;
+                }
+            }
+            return bestCode;
         }
 
         function onFsimDamageInput() {
