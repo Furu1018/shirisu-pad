@@ -1454,20 +1454,22 @@
                 </div>
             `;
 
-            // Build attack maps keyed by bossCode
-            const currAttackMap = new Map();
-            current.attacks.forEach(a => {
-                const key = a.bossCode || a.bossType || '';
-                if (key && !currAttackMap.has(key)) currAttackMap.set(key, a);
-            });
-
-            const prevAttackMap = new Map();
-            if (previous) {
-                previous.attacks.forEach(a => {
+            // Build attack maps keyed by bossCode (arrays — same boss can be hit multiple times)
+            const groupByBoss = (attacks) => {
+                const m = new Map();
+                (attacks || []).forEach(a => {
                     const key = a.bossCode || a.bossType || '';
-                    if (key && !prevAttackMap.has(key)) prevAttackMap.set(key, a);
+                    if (!key) return;
+                    if (!m.has(key)) m.set(key, []);
+                    m.get(key).push(a);
                 });
-            }
+                // Sort each bucket by damage desc so highest-damage attacks pair across months
+                m.forEach(arr => arr.sort((x, y) => (y.damage || 0) - (x.damage || 0)));
+                return m;
+            };
+
+            const currAttackMap = groupByBoss(current.attacks);
+            const prevAttackMap = previous ? groupByBoss(previous.attacks) : new Map();
 
             // Collect all unique bossCodes from both months
             const allBossCodes = new Set([...currAttackMap.keys(), ...prevAttackMap.keys()]);
@@ -1508,55 +1510,63 @@
                 const bossCodes = attacksByAttr[attr];
                 const info = Object.values(BOSS_ATTRIBUTES).find(b => b.attribute === attr);
 
-                // Sort: entries with current data first, then prev-only; within each group by damage desc
+                // Sort: bossCodes with current data first, then prev-only; within each group by max current damage desc
                 bossCodes.sort((a, b) => {
                     const hasCurrA = currAttackMap.has(a), hasCurrB = currAttackMap.has(b);
                     if (hasCurrA !== hasCurrB) return hasCurrA ? -1 : 1;
-                    const dmgA = (currAttackMap.get(a) || prevAttackMap.get(a))?.damage || 0;
-                    const dmgB = (currAttackMap.get(b) || prevAttackMap.get(b))?.damage || 0;
+                    const dmgA = (currAttackMap.get(a)?.[0] || prevAttackMap.get(a)?.[0])?.damage || 0;
+                    const dmgB = (currAttackMap.get(b)?.[0] || prevAttackMap.get(b)?.[0])?.damage || 0;
                     return dmgB - dmgA;
                 });
 
                 bossCodes.forEach(bossCode => {
-                    const currAtk = currAttackMap.get(bossCode) || null;
-                    const prevAtk = prevAttackMap.get(bossCode) || null;
-                    const refAtk = currAtk || prevAtk;
-                    const bossName = refAtk.bossType || (BOSS_ATTRIBUTES[bossCode] ? BOSS_ATTRIBUTES[bossCode].nameJP : bossCode);
-                    const diff = (currAtk && prevAtk) ? currAtk.damage - prevAtk.damage : null;
-                    const diffCls = diff !== null ? (diff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative') : '';
-                    const difficulty = currAtk?.difficulty || prevAtk?.difficulty || '';
-                    const level = currAtk?.level || prevAtk?.level || '';
+                    const currList = currAttackMap.get(bossCode) || [];
+                    const prevList = prevAttackMap.get(bossCode) || [];
+                    const pairCount = Math.max(currList.length, prevList.length);
+                    const showIndex = pairCount > 1;
 
-                    html += `
-                        <div class="comp-section">
-                            <div class="comp-boss-header">
-                                <img src="${info.icon}" alt="${info.attributeJP}">
-                                <span class="comp-boss-title">${bossName}</span>
-                                ${difficulty ? `<span class="badge">${difficulty} Lv.${level}</span>` : ''}
-                            </div>
-                            <div class="comp-row">
-                                <div class="comp-side">
-                                    <div class="comp-label">${previousMonthKey || '前月'}</div>
-                                    ${prevAtk
-                                        ? `<div class="comp-icons">${renderIcons(prevAtk.characters)}</div><div class="comp-damage">${formatDamage(prevAtk.damage)}</div>`
-                                        : `<div class="comp-no-data">前月なし</div>`
-                                    }
+                    for (let i = 0; i < pairCount; i++) {
+                        const currAtk = currList[i] || null;
+                        const prevAtk = prevList[i] || null;
+                        const refAtk = currAtk || prevAtk;
+                        const bossName = refAtk.bossType || (BOSS_ATTRIBUTES[bossCode] ? BOSS_ATTRIBUTES[bossCode].nameJP : bossCode);
+                        const diff = (currAtk && prevAtk) ? currAtk.damage - prevAtk.damage : null;
+                        const diffCls = diff !== null ? (diff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative') : '';
+                        const difficulty = currAtk?.difficulty || prevAtk?.difficulty || '';
+                        const level = currAtk?.level || prevAtk?.level || '';
+                        const indexLabel = showIndex ? `<span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); margin-left: 4px;">(${i + 1}凸目)</span>` : '';
+
+                        html += `
+                            <div class="comp-section">
+                                <div class="comp-boss-header">
+                                    <img src="${info.icon}" alt="${info.attributeJP}">
+                                    <span class="comp-boss-title">${bossName}</span>${indexLabel}
+                                    ${difficulty ? `<span class="badge">${difficulty} Lv.${level}</span>` : ''}
                                 </div>
-                                <div class="comp-arrow">→</div>
-                                <div class="comp-side">
-                                    <div class="comp-label">${currentMonthKey || '今月'}</div>
-                                    ${currAtk
-                                        ? `<div class="comp-icons">${renderIcons(currAtk.characters)}</div>
-                                           <div class="comp-damage">
-                                               ${formatDamage(currAtk.damage)}
-                                               ${diff !== null ? `<span class="${diffCls}" style="font-size: 12px; font-weight: 400;"> (${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>` : ''}
-                                           </div>`
-                                        : `<div class="comp-no-data">今回なし</div>`
-                                    }
+                                <div class="comp-row">
+                                    <div class="comp-side">
+                                        <div class="comp-label">${previousMonthKey || '前月'}</div>
+                                        ${prevAtk
+                                            ? `<div class="comp-icons">${renderIcons(prevAtk.characters)}</div><div class="comp-damage">${formatDamage(prevAtk.damage)}</div>`
+                                            : `<div class="comp-no-data">前月なし</div>`
+                                        }
+                                    </div>
+                                    <div class="comp-arrow">→</div>
+                                    <div class="comp-side">
+                                        <div class="comp-label">${currentMonthKey || '今月'}</div>
+                                        ${currAtk
+                                            ? `<div class="comp-icons">${renderIcons(currAtk.characters)}</div>
+                                               <div class="comp-damage">
+                                                   ${formatDamage(currAtk.damage)}
+                                                   ${diff !== null ? `<span class="${diffCls}" style="font-size: 12px; font-weight: 400;"> (${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>` : ''}
+                                               </div>`
+                                            : `<div class="comp-no-data">今回なし</div>`
+                                        }
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
                 });
             });
 
