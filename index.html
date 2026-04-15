@@ -326,6 +326,11 @@
         .growth-negative { color: #ef4444; }
         .growth-neutral  { color: var(--md-sys-color-on-surface-variant); }
 
+        /* iOS Safari: 入力フォーカス時の自動ズームを防ぐため最低16pxを保証 */
+        @media (hover: none) and (pointer: coarse) {
+            input, select, textarea { font-size: 16px !important; }
+        }
+
         /* ========== Attribute tab buttons ========== */
         .attribute-tab-btn {
             display: inline-flex;
