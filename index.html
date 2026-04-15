@@ -1876,9 +1876,9 @@
                 status.textContent = 'OCRライブラリの読み込みに失敗しました。';
                 return;
             }
-            status.textContent = '画像を解析中... (初回はモデル読み込みで10秒前後かかります)';
+            status.textContent = '画像を解析中... (初回はモデル読み込みで20〜30秒程度かかります)';
             try {
-                const { data } = await Tesseract.recognize(file, 'eng', {
+                const { data } = await Tesseract.recognize(file, 'jpn+eng', {
                     logger: m => {
                         if (m.status === 'recognizing text' && m.progress) {
                             status.textContent = `解析中... ${Math.round(m.progress * 100)}%`;
@@ -1950,11 +1950,70 @@
                     return;
                 }
                 document.getElementById('fsimDamage').value = num;
-                status.textContent = `読み取り成功: ${num.toLocaleString('ja-JP')}`;
+
+                // ボス名検出 → PT属性自動選択
+                const detectedCode = detectBossCodeFromText(text);
+                let attrMsg = '';
+                if (detectedCode) {
+                    const ptAttr = BOSS_ATTRIBUTES[detectedCode].attribute;
+                    selectFururiSimAttr(ptAttr);
+                    attrMsg = ` / ${BOSS_ATTRIBUTES[detectedCode].bossAttributeJP}ボスを検出 → ${BOSS_ATTRIBUTES[detectedCode].attributeJP}PTを自動選択`;
+                }
+
+                status.textContent = `読み取り成功: ${num.toLocaleString('ja-JP')}${attrMsg}`;
                 onFsimDamageInput();
             } catch (e) {
                 status.textContent = 'OCRエラー: ' + (e.message || e);
             }
+        }
+
+        // OCRテキストからボスを検出してbossCodeを返す
+        function detectBossCodeFromText(text) {
+            if (!text) return null;
+            // 過去含む全データから boss名 → bossCode のキーワード辞書を構築
+            // 加えて nameJP の固有名詞部分 (例: 「灼熱ヘスティア」→「ヘスティア」) も使う
+            const codeToKeywords = {};
+            const addKw = (code, kw) => {
+                if (!kw) return;
+                if (!codeToKeywords[code]) codeToKeywords[code] = new Set();
+                codeToKeywords[code].add(kw);
+            };
+            // 当月以降の動的データ
+            currentData.forEach(p => {
+                (p.attacks || []).forEach(a => {
+                    if (!a.bossCode || !a.bossType) return;
+                    // ローマ数字接頭辞 + 任意ASCIIを除去し、カタカナ/漢字部分を取り出す
+                    const clean = a.bossType.replace(/^[IVX]+/, '').replace(/[\u0000-\u007F]/g, '');
+                    if (clean.length >= 3) addKw(a.bossCode, clean);
+                });
+            });
+            // 静的フォールバック (代表ボス名)
+            Object.entries(BOSS_ATTRIBUTES).forEach(([code, info]) => {
+                // nameJP "灼熱ヘスティア" → "ヘスティア" 部分を抽出
+                const m = info.nameJP.match(/[ァ-ヴー]+/g);
+                if (m) m.forEach(s => { if (s.length >= 3) addKw(code, s); });
+            });
+            // よく出るリビルド系・歴代名のハードコード補強
+            const STATIC_KEYWORDS = {
+                'H.S.T.A.': ['ヘスティア', 'スプレッド', 'プレート', 'ブラックスミス', 'ヘビーメタル'],
+                'P.S.I.D.': ['ポセイドン', 'クリスタルアーマー', 'ランドイーター', 'ドクター', 'ビッグトルソー'],
+                'Z.E.U.S.': ['ゼウス', 'ストームブリンガー', 'オベリスク', 'グレイブディガー', 'ポーター'],
+                'D.M.T.R.': ['デメテル', 'クラーケン', 'マテリアル'],
+                'A.N.M.I.': ['アネモイ', 'キューカンバー', 'モダニア', 'レイタンス'],
+            };
+            Object.entries(STATIC_KEYWORDS).forEach(([code, kws]) => kws.forEach(k => addKw(code, k)));
+
+            // 長いキーワードから優先的にチェック (誤マッチ低減)
+            const flat = [];
+            Object.entries(codeToKeywords).forEach(([code, set]) => {
+                set.forEach(kw => flat.push({ code, kw }));
+            });
+            flat.sort((a, b) => b.kw.length - a.kw.length);
+
+            for (const { code, kw } of flat) {
+                if (text.includes(kw)) return code;
+            }
+            return null;
         }
 
         function onFsimDamageInput() {
