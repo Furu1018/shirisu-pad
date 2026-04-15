@@ -1995,8 +1995,8 @@
             document.getElementById('fsimScore').textContent = score.toFixed(2);
             document.getElementById('fsimRankLabel').textContent = `${simRank}位 / ${allRows.length}人中`;
             const attrJP = BOSS_ATTRIBUTES[bossCode].attributeJP;
-            const bossName = BOSS_ATTRIBUTES[bossCode].nameJP;
-            document.getElementById('fsimDetail').textContent = `${attrJP}PT で ${bossName} に ${formatDamage(damage)} の場合（基準: ${formatDamage(baseEntry.damage)} @ SLv ${baseEntry.slv}）`;
+            const bossAttrJP = BOSS_ATTRIBUTES[bossCode].bossAttributeJP;
+            document.getElementById('fsimDetail').textContent = `${attrJP}PT で ${bossAttrJP} に ${formatDamage(damage)} の場合（基準: ${formatDamage(baseEntry.damage)} @ SLv ${baseEntry.slv}）`;
 
             // テーブル描画
             const tbody = document.getElementById('fsimTableBody');
