@@ -1119,6 +1119,10 @@
                     <input id="fsimDamage" type="number" min="0" oninput="onFsimDamageInput()" placeholder="例: 30000000000" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
                     <p id="fsimDamagePreview" style="margin: 4px 0 0 0; font-size: 12px; color: var(--md-sys-color-on-surface-variant); min-height: 16px;">&nbsp;</p>
                     <p id="fsimOcrStatus" style="margin: 4px 0 0 0; font-size: 12px; color: var(--md-sys-color-on-surface-variant); min-height: 16px;">&nbsp;</p>
+                    <details id="fsimOcrDebugWrapper" style="display: none; margin-top: 6px;">
+                        <summary style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); cursor: pointer;">OCR結果の詳細を見る</summary>
+                        <pre id="fsimOcrDebug" style="margin: 6px 0 0 0; padding: 8px; background: var(--md-sys-color-surface-variant); border-radius: 6px; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto;"></pre>
+                    </details>
                 </div>
 
                 <!-- 結果 -->
@@ -1882,29 +1886,53 @@
                     }
                 });
                 const text = data.text || '';
-                // 数字パターン: "1,234,567,890" / "1 234 567 890" / "1234567890" を許容
-                // 改行や空白でカンマ区切りグループが分断されていても1つの数字として再結合
-                const NUM_RE = /(?:\d{1,3}(?:[,\s\n]*\d{3})+|\d{7,})/g;
+                // デバッグ出力
+                document.getElementById('fsimOcrDebugWrapper').style.display = 'block';
+                document.getElementById('fsimOcrDebug').textContent = text;
 
                 // "TOTAL DAMAGE" 以降の範囲を優先抽出（HP値などを除外するため）
                 const totalMatch = text.match(/TOTAL\s*DAMAGE/i);
                 const scope = totalMatch
-                    ? text.substring(totalMatch.index + totalMatch[0].length, totalMatch.index + totalMatch[0].length + 200)
+                    ? text.substring(totalMatch.index + totalMatch[0].length, totalMatch.index + totalMatch[0].length + 250)
                     : text;
 
-                const pickLargest = (src) => {
-                    const candidates = [...src.matchAll(NUM_RE)]
+                // 寛容な数字抽出: 数字を含むトークン(数字+カンマ+空白)を順に拾い、
+                // 連続する数字トークン群を1つの数値として連結する。
+                // 例: "9,673,\nMM\n613,117" でも数字部分だけ繋げて 9673613117 にする
+                const pickFromScope = (src) => {
+                    // 行ごとに分割し、各行から数字グループ(>=1桁)を抽出
+                    const lines = src.split(/\n+/);
+                    let buffer = '';
+                    let bestSingle = '';
+                    for (const line of lines) {
+                        // 行内の数字グループ列を取得
+                        const groups = line.match(/[\d,]+/g);
+                        if (!groups || !groups.length) {
+                            // 数字を含まない行は連結バッファをリセット
+                            if (buffer.length > bestSingle.length) bestSingle = buffer;
+                            buffer = '';
+                            continue;
+                        }
+                        // 同じ行内の数字部分はそのまま連結（カンマ除去）
+                        const lineDigits = groups.join('').replace(/[^\d]/g, '');
+                        if (lineDigits) buffer += lineDigits;
+                    }
+                    if (buffer.length > bestSingle.length) bestSingle = buffer;
+
+                    // 全行同じ行内処理パターンも併用
+                    const inline = [...src.matchAll(/(?:\d{1,3}(?:[,\s\n]*\d{3})+|\d{7,})/g)]
                         .map(x => x[0].replace(/[,\s\n]/g, ''))
-                        .filter(s => /^\d{7,}$/.test(s));
-                    if (!candidates.length) return null;
-                    // 最大桁(最長)を採用、同桁なら数値の大きい方
-                    candidates.sort((a, b) => b.length - a.length || (BigInt(b) > BigInt(a) ? 1 : -1));
-                    return parseInt(candidates[0], 10);
+                        .filter(s => /^\d{7,}$/.test(s))
+                        .sort((a, b) => b.length - a.length)[0];
+
+                    const cands = [bestSingle, inline].filter(s => s && /^\d{7,}$/.test(s));
+                    if (!cands.length) return null;
+                    cands.sort((a, b) => b.length - a.length);
+                    return parseInt(cands[0], 10);
                 };
 
-                let num = pickLargest(scope);
-                // フォールバック: 全文から最大数字を採用
-                if (!num) num = pickLargest(text);
+                let num = pickFromScope(scope);
+                if (!num) num = pickFromScope(text);
                 if (!num || num <= 0) {
                     status.textContent = '数字を読み取れませんでした。「TOTAL DAMAGE」が映る範囲でトリミングして再度お試しください。';
                     return;
