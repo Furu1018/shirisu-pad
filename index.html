@@ -918,6 +918,31 @@
                 </div>
             </div>
 
+            <!-- 属性別フィルタ -->
+            <div class="card" style="margin-bottom: 16px;">
+                <div style="padding: 4px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--md-sys-color-on-surface);">属性別表示</h3>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体（3凸合計）</button>
+                        <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')">
+                            <img src="./属性アイコン/灼熱.png" style="width: 18px; height: 18px;">灼熱
+                        </button>
+                        <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')">
+                            <img src="./属性アイコン/水冷.png" style="width: 18px; height: 18px;">水冷
+                        </button>
+                        <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')">
+                            <img src="./属性アイコン/電撃.png" style="width: 18px; height: 18px;">電撃
+                        </button>
+                        <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')">
+                            <img src="./属性アイコン/鉄甲.png" style="width: 18px; height: 18px;">鉄甲
+                        </button>
+                        <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')">
+                            <img src="./属性アイコン/風圧.png" style="width: 18px; height: 18px;">風圧
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="data-table">
                 <table id="fururiRankingTable">
                     <thead>
@@ -1057,6 +1082,10 @@
                     <p style="margin: 0; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface);">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
                 </div>
 
+                <h3>🎨 属性別ふるり値</h3>
+                <p>「全体（3凸合計）」のほか、属性ごとの切り替えで1凸単位のふるり値も確認できます。属性によって有利不利があるため、属性別に見ることでより精密な比較ができます。</p>
+                <p>基準者が凸していない属性については、模擬戦闘のスコアを基準値として登録しています。</p>
+
                 <h3>📖 このデータの使い方</h3>
                 <p>この指標は「誰かと競うため」ではなく、自分のSLv.に対してどれくらいダメージを出せているかを知り、自分の課題を見つけるために使ってもらえたら嬉しいです。</p>
             </div>
@@ -1081,10 +1110,13 @@
         let previousData = [];      // processed players from previous month
         let currentMonthKey = null;
         let previousMonthKey = null;
+        let currentMetadata = null;
         let slvRatioTable = null;
         let fururiBasePlayerName = 'ふるり';
         let teamCompositionsByAttribute = { ALL: [], FIRE: [], WATER: [], ELECTRIC: [], IRON: [], WIND: [] };
         let currentAttribute = 'ALL';
+        let currentFururiBossCode = 'ALL';
+        let fururiBaseMap = null;
         let statsOpen = false;
         let attributeChartInstance = null;
 
@@ -1176,6 +1208,7 @@
             }
 
             currentMonthKey = found[0].key;
+            currentMetadata = found[0].json.metadata || null;
             currentData = processRawData(found[0].json);
 
             if (found.length >= 2) {
@@ -1226,6 +1259,7 @@
 
         function renderAll() {
             updateTable();
+            buildFururiBaseMap();
             analyzeTeamCompositions();
             createAttributeStackedBarChart();
             updateStats();
@@ -1708,7 +1742,12 @@
                 return;
             }
 
-            container.innerHTML = comps.map(comp => `
+            container.innerHTML = comps.map(comp => {
+                const fururi = calculatePerAttackFururi(comp.damage, comp.syncLevel, comp.bossCode);
+                const fururiHtml = fururi !== null
+                    ? `<div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;">ふるり値: <strong style="color: var(--md-sys-color-primary);">${fururi.toFixed(2)}</strong></div>`
+                    : '';
+                return `
                 <div class="card" style="margin-bottom: 16px; padding: 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0;">
@@ -1719,6 +1758,7 @@
                         <div style="text-align: right; flex-shrink: 0;">
                             <div style="font-size: 16px; font-weight: 600; color: var(--md-sys-color-primary); white-space: nowrap;">${formatDamage(comp.damage)}</div>
                             <div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;">${comp.player} (SLv ${comp.syncLevel})</div>
+                            ${fururiHtml}
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-width: 280px;">
@@ -1728,8 +1768,8 @@
                                 : ''
                         ).join('')}
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         // ========== ふるり指標 ==========
@@ -1752,6 +1792,49 @@
             if (!baseRatio || !playerRatio) return null;
             const baseScaled = basePlayer.damage * playerRatio / baseRatio;
             return playerDamage / baseScaled;
+        }
+
+        // 属性(bossCode)別ふるり値の基準マップを構築
+        // { bossCode: { damage, slv } } — ふるりの実凸 + metadata.fururiSimulationScores
+        function buildFururiBaseMap() {
+            fururiBaseMap = null;
+            if (!currentData || currentData.length === 0) return;
+            const basePlayer = currentData.find(p => p.player === fururiBasePlayerName && p.syncLevel > 0);
+            if (!basePlayer) return;
+            const map = {};
+            (basePlayer.attacks || []).forEach(a => {
+                if (!a.bossCode) return;
+                // 同一bossCodeを2回以上凸している場合は最大ダメージを基準に採用
+                if (!map[a.bossCode] || a.damage > map[a.bossCode].damage) {
+                    map[a.bossCode] = { damage: a.damage, slv: basePlayer.syncLevel };
+                }
+            });
+            const sim = (currentMetadata && currentMetadata.fururiSimulationScores) || {};
+            Object.keys(sim).forEach(code => {
+                if (!map[code] && typeof sim[code] === 'number') {
+                    map[code] = { damage: sim[code], slv: basePlayer.syncLevel };
+                }
+            });
+            fururiBaseMap = map;
+        }
+
+        function calculatePerAttackFururi(damage, playerSLv, bossCode) {
+            if (!fururiBaseMap || !bossCode || !fururiBaseMap[bossCode]) return null;
+            if (!slvRatioTable || !playerSLv || playerSLv <= 0) return null;
+            const base = fururiBaseMap[bossCode];
+            const baseRatio = slvRatioTable[String(base.slv)];
+            const playerRatio = slvRatioTable[String(playerSLv)];
+            if (!baseRatio || !playerRatio) return null;
+            const baseScaled = base.damage * playerRatio / baseRatio;
+            return damage / baseScaled;
+        }
+
+        function switchFururiBoss(code) {
+            currentFururiBossCode = code;
+            document.querySelectorAll('[data-fururi-boss]').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-fururi-boss') === code);
+            });
+            renderFururiRanking();
         }
 
         function renderFururiRanking() {
@@ -1778,27 +1861,78 @@
                 baseInfoEl.textContent = `${basePlayer.player} (SLv ${basePlayer.syncLevel}, ${(basePlayer.damage / 1e9).toFixed(3)} B)`;
             }
 
-            const ranked = currentData
-                .filter(p => p.syncLevel > 0)
-                .map(p => ({ ...p, fururiScore: calculateFururiScore(p.damage, p.syncLevel, basePlayer) }))
-                .filter(p => p.fururiScore !== null)
-                .sort((a, b) => b.fururiScore - a.fururiScore);
+            // 全体表示: 3凸合計ベース（既存挙動）
+            if (currentFururiBossCode === 'ALL') {
+                const ranked = currentData
+                    .filter(p => p.syncLevel > 0)
+                    .map(p => ({ ...p, fururiScore: calculateFururiScore(p.damage, p.syncLevel, basePlayer) }))
+                    .filter(p => p.fururiScore !== null)
+                    .sort((a, b) => b.fururiScore - a.fururiScore);
 
-            tbody.innerHTML = ranked.map(player => {
-                const isBase = player.player === basePlayer.player;
+                tbody.innerHTML = ranked.map(player => {
+                    const isBase = player.player === basePlayer.player;
+                    const rowStyle = isBase ? 'background: var(--md-sys-color-primary-container);' : '';
+                    return `
+                        <tr style="${rowStyle}">
+                            <td style="text-align: center; font-weight: 500;">
+                                ${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+                                    <span>${(player.damage / 1e9).toFixed(3)} B</span>
+                                    <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                                </div>
+                            </td>
+                            <td style="text-align: center; font-weight: 600;">${player.fururiScore.toFixed(2)}</td>
+                        </tr>`;
+                }).join('');
+                return;
+            }
+
+            // 属性別表示: 1凸=1行、同属性2凸は別行、その属性を凸していない人は非表示
+            const code = currentFururiBossCode;
+            const baseEntry = fururiBaseMap && fururiBaseMap[code];
+            if (!baseEntry) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">基準者がこの属性のスコアを未登録です</td></tr>';
+                return;
+            }
+
+            const rows = [];
+            currentData.forEach(p => {
+                if (!p.syncLevel || p.syncLevel <= 0) return;
+                (p.attacks || []).forEach((a, idx) => {
+                    if (a.bossCode !== code) return;
+                    const score = calculatePerAttackFururi(a.damage, p.syncLevel, code);
+                    if (score === null) return;
+                    // 同プレイヤーが同属性を複数凸している場合は番号付与
+                    const sameCount = (p.attacks || []).filter(x => x.bossCode === code).length;
+                    const sameIndex = (p.attacks || []).filter((x, i) => x.bossCode === code && i <= idx).length;
+                    const label = sameCount > 1 ? `${p.player} (${sameIndex}凸目)` : p.player;
+                    rows.push({ player: p.player, label, syncLevel: p.syncLevel, damage: a.damage, score });
+                });
+            });
+            rows.sort((a, b) => b.score - a.score);
+
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">この属性を凸したプレイヤーがいません</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rows.map(r => {
+                const isBase = r.player === basePlayer.player;
                 const rowStyle = isBase ? 'background: var(--md-sys-color-primary-container);' : '';
                 return `
                     <tr style="${rowStyle}">
                         <td style="text-align: center; font-weight: 500;">
-                            ${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}
+                            ${r.label}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}
                         </td>
                         <td style="text-align: right;">
                             <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
-                                <span>${(player.damage / 1e9).toFixed(3)} B</span>
-                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                                <span>${(r.damage / 1e9).toFixed(3)} B</span>
+                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${r.syncLevel}</span>
                             </div>
                         </td>
-                        <td style="text-align: center; font-weight: 600;">${player.fururiScore.toFixed(2)}</td>
+                        <td style="text-align: center; font-weight: 600;">${r.score.toFixed(2)}</td>
                     </tr>`;
             }).join('');
         }

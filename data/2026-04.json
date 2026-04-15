@@ -1509,6 +1509,10 @@
     "version": "2.3",
     "hasDetailedAttacks": true,
     "imagesDownloaded": true,
-    "unionRank": 0.68
+    "unionRank": 0.68,
+    "fururiSimulationScores": {
+      "D.M.T.R.": 9651000000,
+      "Z.E.U.S.": 9673000000
+    }
   }
 }
