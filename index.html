@@ -778,6 +778,10 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
             シミュレータ
         </button>
+        <button class="drawer-menu-item" data-tab="fururi-simulator" onclick="switchTabFromDrawer('fururi-simulator')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            ふるり値シミュレータ
+        </button>
     </div>
 
     <!-- Header -->
@@ -814,6 +818,10 @@
             <button class="tab-button" data-tab="simulator" onclick="switchTab('simulator')" title="ダメージシミュレータ">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
                 シミュレータ
+            </button>
+            <button class="tab-button" data-tab="fururi-simulator" onclick="switchTab('fururi-simulator')" title="ふるり値シミュレータ">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                ふるり値シミュレータ
             </button>
         </div>
     </nav>
@@ -1040,6 +1048,88 @@
                         </tr>
                     </thead>
                     <tbody id="simTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Tab 5: ふるり値シミュレータ ========== -->
+    <div id="tab-fururi-simulator" class="tab-content">
+        <div class="container">
+            <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">ふるり値シミュレータ</h3>
+                <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 20px;">本戦で凸しなかった属性のふるり値を試算し、ランキング上の位置を確認できます</p>
+
+                <!-- プレイヤー & SLv -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div>
+                        <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">プレイヤー</label>
+                        <select id="fsimPlayerSelect" onchange="onFururiSimPlayerChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
+                            <option value="">-- 選択してください --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">SLv <span id="fsimRaidSlvLabel" style="font-weight: 400; color: var(--md-sys-color-on-surface-variant);"></span></label>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button type="button" onclick="adjustFururiSimSlv(-1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px; cursor: pointer;">−</button>
+                            <input id="fsimSlv" type="number" min="1" max="1000" oninput="runFururiSimulator()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px; text-align: center;">
+                            <button type="button" onclick="adjustFururiSimSlv(1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px; cursor: pointer;">＋</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PT属性 -->
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">PT属性（凸する属性）</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="attribute-tab-btn" data-fsim-attr="FIRE" onclick="selectFururiSimAttr('FIRE')">
+                            <img src="./属性アイコン/灼熱.png" style="width: 18px; height: 18px;">灼熱
+                        </button>
+                        <button class="attribute-tab-btn" data-fsim-attr="WATER" onclick="selectFururiSimAttr('WATER')">
+                            <img src="./属性アイコン/水冷.png" style="width: 18px; height: 18px;">水冷
+                        </button>
+                        <button class="attribute-tab-btn" data-fsim-attr="ELECTRIC" onclick="selectFururiSimAttr('ELECTRIC')">
+                            <img src="./属性アイコン/電撃.png" style="width: 18px; height: 18px;">電撃
+                        </button>
+                        <button class="attribute-tab-btn" data-fsim-attr="IRON" onclick="selectFururiSimAttr('IRON')">
+                            <img src="./属性アイコン/鉄甲.png" style="width: 18px; height: 18px;">鉄甲
+                        </button>
+                        <button class="attribute-tab-btn" data-fsim-attr="WIND" onclick="selectFururiSimAttr('WIND')">
+                            <img src="./属性アイコン/風圧.png" style="width: 18px; height: 18px;">風圧
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ダメージ入力 -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">想定ダメージ</label>
+                    <input id="fsimDamage" type="number" min="0" oninput="runFururiSimulator()" placeholder="例: 30000000000" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
+                    <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--md-sys-color-on-surface-variant);">単位: 円 (例: 30B = 30000000000)</p>
+                </div>
+
+                <!-- 結果 -->
+                <div id="fsimResult" style="display: none; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 10px; border-left: 4px solid var(--md-sys-color-primary);">
+                    <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">算出ふるり値</div>
+                    <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+                        <span id="fsimScore" style="font-size: 32px; font-weight: 700; color: var(--md-sys-color-primary);"></span>
+                        <span id="fsimRankLabel" style="font-size: 14px; color: var(--md-sys-color-on-surface-variant);"></span>
+                    </div>
+                    <div id="fsimDetail" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 6px;"></div>
+                </div>
+                <div id="fsimError" style="display: none; padding: 12px 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; color: var(--md-sys-color-on-surface-variant); font-size: 13px;"></div>
+            </div>
+
+            <!-- ランキング表（シミュレーション行ハイライト） -->
+            <div class="data-table" id="fsimTableWrapper" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: center;">プレイヤー</th>
+                            <th style="text-align: right;">ダメージ/SLv</th>
+                            <th style="text-align: center;">ふるり値</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fsimTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -1276,6 +1366,7 @@
             createAttributeStackedBarChart();
             updateStats();
             updateSimulatorPlayerList();
+            updateFururiSimPlayerList();
         }
 
         // ========== Ranking Table ==========
@@ -1707,6 +1798,150 @@
                 </tr>`;
             }).join('');
 
+            tableWrapper.style.display = 'block';
+        }
+
+        // ========== ふるり値シミュレータ ==========
+        let fsimSelectedAttr = null;
+
+        function updateFururiSimPlayerList() {
+            const select = document.getElementById('fsimPlayerSelect');
+            if (!select) return;
+            const current = select.value;
+            select.innerHTML = '<option value="">-- 選択してください --</option>';
+            currentData.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.player;
+                opt.textContent = `${p.player}  (SLv ${p.syncLevel || '?'})`;
+                select.appendChild(opt);
+            });
+            if (current) select.value = current;
+            onFururiSimPlayerChange();
+        }
+
+        function onFururiSimPlayerChange() {
+            const select = document.getElementById('fsimPlayerSelect');
+            const slvInput = document.getElementById('fsimSlv');
+            const raidLabel = document.getElementById('fsimRaidSlvLabel');
+            const playerName = select ? select.value : '';
+            if (!playerName) {
+                slvInput.value = '';
+                raidLabel.textContent = '';
+                runFururiSimulator();
+                return;
+            }
+            const player = currentData.find(p => p.player === playerName);
+            if (player && player.syncLevel) {
+                slvInput.value = player.syncLevel;
+                raidLabel.textContent = `(本戦時: ${player.syncLevel})`;
+            } else {
+                slvInput.value = '';
+                raidLabel.textContent = '(本戦時SLv未設定)';
+            }
+            runFururiSimulator();
+        }
+
+        function adjustFururiSimSlv(delta) {
+            const slvInput = document.getElementById('fsimSlv');
+            const v = parseInt(slvInput.value) || 0;
+            const next = Math.max(1, Math.min(1000, v + delta));
+            slvInput.value = next;
+            runFururiSimulator();
+        }
+
+        function selectFururiSimAttr(attr) {
+            fsimSelectedAttr = attr;
+            document.querySelectorAll('[data-fsim-attr]').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-fsim-attr') === attr);
+            });
+            runFururiSimulator();
+        }
+
+        function runFururiSimulator() {
+            const select = document.getElementById('fsimPlayerSelect');
+            const slvInput = document.getElementById('fsimSlv');
+            const dmgInput = document.getElementById('fsimDamage');
+            const resultEl = document.getElementById('fsimResult');
+            const errorEl = document.getElementById('fsimError');
+            const tableWrapper = document.getElementById('fsimTableWrapper');
+
+            const playerName = select ? select.value : '';
+            const slv = parseInt(slvInput ? slvInput.value : '');
+            const damage = parseFloat(dmgInput ? dmgInput.value : '');
+
+            const reset = (msg) => {
+                resultEl.style.display = 'none';
+                tableWrapper.style.display = 'none';
+                if (msg) { errorEl.style.display = 'block'; errorEl.textContent = msg; }
+                else { errorEl.style.display = 'none'; }
+            };
+
+            if (!playerName || !fsimSelectedAttr || !slv || !damage || damage <= 0) {
+                reset('');
+                return;
+            }
+            if (!slvRatioTable) { reset('SLv補正テーブルの読み込みに失敗しました。'); return; }
+            if (!fururiBaseMap) { reset('属性別ふるり値の基準データが構築されていません。'); return; }
+
+            // PT属性 → bossCode（弱点を持つボス）
+            const bossCode = Object.keys(BOSS_ATTRIBUTES).find(c => BOSS_ATTRIBUTES[c].attribute === fsimSelectedAttr);
+            const baseEntry = bossCode && fururiBaseMap[bossCode];
+            if (!baseEntry) {
+                reset('この属性の基準スコア（基準者の本戦凸または模擬戦闘スコア）が未登録のため計算できません。');
+                return;
+            }
+            const baseRatio = slvRatioTable[String(baseEntry.slv)];
+            const playerRatio = slvRatioTable[String(slv)];
+            if (!baseRatio || !playerRatio) {
+                reset('指定されたSLvの補正データが見つかりません。');
+                return;
+            }
+            const baseScaled = baseEntry.damage * playerRatio / baseRatio;
+            const score = damage / baseScaled;
+
+            // 既存の同bossCode凸ランキングにシミュレーション行を挿入
+            const existingRows = [];
+            currentData.forEach(p => {
+                if (!p.syncLevel || p.syncLevel <= 0) return;
+                (p.attacks || []).forEach((a, idx) => {
+                    if (a.bossCode !== bossCode) return;
+                    const s = calculatePerAttackFururi(a.damage, p.syncLevel, bossCode);
+                    if (s === null) return;
+                    const sameCount = (p.attacks || []).filter(x => x.bossCode === bossCode).length;
+                    const sameIndex = (p.attacks || []).filter((x, i) => x.bossCode === bossCode && i <= idx).length;
+                    const label = sameCount > 1 ? `${p.player} (${sameIndex}凸目)` : p.player;
+                    existingRows.push({ label, syncLevel: p.syncLevel, damage: a.damage, score: s, isSim: false });
+                });
+            });
+            const simRow = { label: `${playerName} (シミュレーション)`, syncLevel: slv, damage, score, isSim: true };
+            const allRows = [...existingRows, simRow].sort((a, b) => b.score - a.score);
+            const simRank = allRows.findIndex(r => r === simRow) + 1;
+
+            // 結果表示
+            errorEl.style.display = 'none';
+            resultEl.style.display = 'block';
+            document.getElementById('fsimScore').textContent = score.toFixed(2);
+            document.getElementById('fsimRankLabel').textContent = `${simRank}位 / ${allRows.length}人中`;
+            const attrJP = BOSS_ATTRIBUTES[bossCode].attributeJP;
+            const bossName = BOSS_ATTRIBUTES[bossCode].nameJP;
+            document.getElementById('fsimDetail').textContent = `${attrJP}PT で ${bossName} に ${formatDamage(damage)} の場合（基準: ${formatDamage(baseEntry.damage)} @ SLv ${baseEntry.slv}）`;
+
+            // テーブル描画
+            const tbody = document.getElementById('fsimTableBody');
+            tbody.innerHTML = allRows.map(r => {
+                const rowStyle = r.isSim ? 'background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent); font-weight: 600;' : '';
+                return `
+                    <tr style="${rowStyle}">
+                        <td style="text-align: center;">${r.isSim ? '★ ' : ''}${r.label}</td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+                                <span>${(r.damage / 1e9).toFixed(3)} B</span>
+                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${r.syncLevel}</span>
+                            </div>
+                        </td>
+                        <td style="text-align: center;">${r.score.toFixed(2)}</td>
+                    </tr>`;
+            }).join('');
             tableWrapper.style.display = 'block';
         }
 
