@@ -924,19 +924,19 @@
                     <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--md-sys-color-on-surface);">属性別表示</h3>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体（3凸合計）</button>
-                        <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')">
+                        <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')">
                             <img src="./属性アイコン/灼熱.png" style="width: 18px; height: 18px;">灼熱
                         </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')">
+                        <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')">
                             <img src="./属性アイコン/水冷.png" style="width: 18px; height: 18px;">水冷
                         </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')">
+                        <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')">
                             <img src="./属性アイコン/電撃.png" style="width: 18px; height: 18px;">電撃
                         </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')">
+                        <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')">
                             <img src="./属性アイコン/鉄甲.png" style="width: 18px; height: 18px;">鉄甲
                         </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')">
+                        <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')">
                             <img src="./属性アイコン/風圧.png" style="width: 18px; height: 18px;">風圧
                         </button>
                     </div>
@@ -1097,12 +1097,24 @@
 
     <script>
         // ========== BOSS Attributes ==========
+        // attribute / attributeJP / icon / color はすべて「PT想定属性（ボスの弱点属性）」を表す
+        // ボス本来の属性は bossAttributeJP / bossAttributeIcon を参照
         const BOSS_ATTRIBUTES = {
-            'H.S.T.A.': { name: 'Hestia', nameJP: '灼熱ヘスティア', attribute: 'FIRE', attributeJP: '灼熱', color: '#FF3B30', icon: './属性アイコン/灼熱.png' },
-            'P.S.I.D.': { name: 'Poseidon', nameJP: '水冷ポセイドン', attribute: 'WATER', attributeJP: '水冷', color: '#007AFF', icon: './属性アイコン/水冷.png' },
-            'Z.E.U.S.': { name: 'Zeus', nameJP: '電撃ゼウス', attribute: 'ELECTRIC', attributeJP: '電撃', color: '#8E44AD', icon: './属性アイコン/電撃.png' },
-            'D.M.T.R.': { name: 'Demeter', nameJP: '鉄甲デメテル', attribute: 'IRON', attributeJP: '鉄甲', color: '#FF9500', icon: './属性アイコン/鉄甲.png' },
-            'A.N.M.I.': { name: 'Anemoi', nameJP: '風圧アネモイ', attribute: 'WIND', attributeJP: '風圧', color: '#34C759', icon: './属性アイコン/風圧.png' }
+            'H.S.T.A.': { name: 'Hestia', nameJP: '灼熱ヘスティア',
+                attribute: 'WATER', attributeJP: '水冷', color: '#007AFF', icon: './属性アイコン/水冷.png',
+                bossAttributeJP: '灼熱', bossAttributeIcon: './属性アイコン/灼熱.png' },
+            'P.S.I.D.': { name: 'Poseidon', nameJP: '水冷ポセイドン',
+                attribute: 'ELECTRIC', attributeJP: '電撃', color: '#8E44AD', icon: './属性アイコン/電撃.png',
+                bossAttributeJP: '水冷', bossAttributeIcon: './属性アイコン/水冷.png' },
+            'Z.E.U.S.': { name: 'Zeus', nameJP: '電撃ゼウス',
+                attribute: 'IRON', attributeJP: '鉄甲', color: '#FF9500', icon: './属性アイコン/鉄甲.png',
+                bossAttributeJP: '電撃', bossAttributeIcon: './属性アイコン/電撃.png' },
+            'D.M.T.R.': { name: 'Demeter', nameJP: '鉄甲デメテル',
+                attribute: 'WIND', attributeJP: '風圧', color: '#34C759', icon: './属性アイコン/風圧.png',
+                bossAttributeJP: '鉄甲', bossAttributeIcon: './属性アイコン/鉄甲.png' },
+            'A.N.M.I.': { name: 'Anemoi', nameJP: '風圧アネモイ',
+                attribute: 'FIRE', attributeJP: '灼熱', color: '#FF3B30', icon: './属性アイコン/灼熱.png',
+                bossAttributeJP: '風圧', bossAttributeIcon: './属性アイコン/風圧.png' }
         };
 
         // ========== Global State ==========
