@@ -549,7 +549,7 @@
             border: 1px dashed var(--md-sys-color-outline-variant);
         }
 
-        /* ========== ふるり指標 ========== */
+        /* ========== ふるり値 ========== */
         .fururi-help-btn {
             width: 24px; height: 24px;
             border-radius: 50%;
@@ -774,7 +774,7 @@
         </button>
         <button class="drawer-menu-item" data-tab="slv-ranking" onclick="switchTabFromDrawer('slv-ranking')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            ふるり指標
+            ふるり値
         </button>
         <button class="drawer-menu-item" data-tab="characters" onclick="switchTabFromDrawer('characters')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -813,9 +813,9 @@
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
                 ダメージ比較
             </button>
-            <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="ふるり指標">
+            <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="ふるり値">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                ふるり指標
+                ふるり値
             </button>
             <button class="tab-button" data-tab="characters" onclick="switchTab('characters')" title="NIKKE編成">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -902,14 +902,14 @@
         </div>
     </div>
 
-    <!-- ========== Tab 2: ふるり指標 ========== -->
+    <!-- ========== Tab 2: ふるり値 ========== -->
     <div id="tab-slv-ranking" class="tab-content">
         <div class="container">
             <div class="card" style="margin-bottom: 24px;">
                 <div style="padding: 8px;">
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">📊 ふるり指標</h3>
-                        <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり指標について">?</button>
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">📊 ふるり値</h3>
+                        <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり値について">?</button>
                     </div>
                     <p style="font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 12px;">SLv.補正を考慮した公平な相対評価指標</p>
                     <div style="padding: 10px 14px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
@@ -2239,7 +2239,7 @@
             }).join('');
         }
 
-        // ========== ふるり指標 ==========
+        // ========== ふるり値 ==========
         async function loadSlvRatioTable() {
             try {
                 const resp = await fetch('./data/slv-ratio.json');
