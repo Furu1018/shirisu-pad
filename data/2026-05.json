@@ -1594,6 +1594,11 @@
     "source": "BlaBlaLINK Chrome Extension",
     "version": "2.3",
     "hasDetailedAttacks": true,
-    "imagesDownloaded": true
+    "imagesDownloaded": true,
+    "unionRank": 0.41,
+    "fururiSimulationScores": {
+      "D.M.T.R.": 12124717267,
+      "Z.E.U.S.": 11433091111
+    }
   }
 }
