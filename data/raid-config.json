@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "description": "ユニオンレイド HARD難易度の基準HP（参考値）。bossClassByMonthでその月の各ボスのクラスを指定する。月ごとにHP値が変わる場合は hardLevelHpOverrideByMonth に該当月キーで追記すれば優先される。",
+  "lastUpdated": "2026-05-19",
+  "lastUpdatedSeason": "S40",
+  "hardLevelHp": {
+    "1": {
+      "tyrant": 99856279200,
+      "lord": 150841813600
+    },
+    "2": {
+      "tyrant": 149784418800,
+      "lord": 226262720400
+    },
+    "3": {
+      "tyrant": 292445295750,
+      "lord": 349230901500
+    }
+  },
+  "bossClassByMonth": {
+    "2026-05": {
+      "D.M.T.R.": "tyrant",
+      "H.S.T.A.": "tyrant",
+      "Z.E.U.S.": "tyrant",
+      "A.N.M.I.": "lord",
+      "P.S.I.D.": "lord"
+    }
+  },
+  "hardLevelHpOverrideByMonth": {}
+}
