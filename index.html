@@ -1723,11 +1723,11 @@
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : '';
                 const updated = rec?.updated_at ? formatDmgUpdatedAt(rec.updated_at) : '未登録';
                 return `
-                    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                    <div class="mydmg-row" data-row-attr="${a.key}" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                         <img src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${a.name}PT <span style="font-size:11px;font-weight:400;color:var(--md-sys-color-on-surface-variant);">対 ${a.bossJP}</span></div>
-                            <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${updated}</div>
+                            <div class="mydmg-updated" style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${updated}</div>
                         </div>
                         <input type="number" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
                             data-attr="${a.key}" value="${val}"
@@ -1771,9 +1771,9 @@
                     statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name || attr}PT を保存 (${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')})`;
                     statusEl.style.color = '#22c55e';
                 }
-                // 該当行の「更新:」表示を即更新
-                const row = input.closest('div').parentElement;
-                const upEl = row?.querySelector('div[style*="font-size:10px"]');
+                // 該当行の「更新:」表示を即更新（data-row-attr で正確に絞り込み）
+                const row = input.closest('.mydmg-row');
+                const upEl = row?.querySelector('.mydmg-updated');
                 if (upEl) upEl.textContent = formatDmgUpdatedAt(new Date().toISOString());
             } catch (e) {
                 if (statusEl) {
