@@ -984,6 +984,20 @@
             </div>
 
             <div class="card" style="padding:20px;margin-top:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                    <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">💥 属性別 出せるダメージ（PT属性）</h3>
+                    <span id="mypageDmgStatus" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
+                </div>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">
+                    各PT属性で出せる想定ダメージ（B単位）を登録。締め凸候補・最適凸プラン算出に使われます。<br>
+                    入力後フィールドからフォーカスを外す（タップ・Tab）と自動保存されます。
+                </p>
+                <div id="mypageDmgInputs">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると入力欄が表示されます。</p>
+                </div>
+            </div>
+
+            <div class="card" style="padding:20px;margin-top:20px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
                     <div>
                         <h3 style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚙️ メンバー管理</h3>
@@ -1641,12 +1655,15 @@
             const id = getCurrentIdentity();
             const nameEl = document.getElementById('mypageName');
             const statsEl = document.getElementById('mypageStats');
+            const dmgEl = document.getElementById('mypageDmgInputs');
             if (!id?.name) {
                 nameEl.textContent = '未選択';
                 statsEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">右上の <strong>👤 プレイヤー未選択</strong> から自分の名前を選んでください。</p>';
+                if (dmgEl) dmgEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると入力欄が表示されます。</p>';
                 return;
             }
             nameEl.textContent = id.name;
+            renderMyDamageInputs(id);
             // 最新シーズン (currentData) から該当プレイヤーを引く
             const me = (currentData || []).find(p => p.player === id.name);
             if (!me) {
@@ -1676,6 +1693,94 @@
                 <h4 style="font-size:13px;font-weight:600;margin:0 0 4px 0;color:var(--md-sys-color-on-surface);">凸履歴</h4>
                 <ul style="margin:0;padding-left:18px;font-size:13px;color:var(--md-sys-color-on-surface);">${attacksHtml}</ul>
             `;
+        }
+
+        // ========== マイページ: 属性別ダメージ登録 ==========
+        const PT_ATTRS = [
+            { key: 'fire',     name: '灼熱', icon: './属性アイコン/灼熱.png', bossJP: '風圧' },
+            { key: 'water',    name: '水冷', icon: './属性アイコン/水冷.png', bossJP: '灼熱' },
+            { key: 'electric', name: '電撃', icon: './属性アイコン/電撃.png', bossJP: '水冷' },
+            { key: 'iron',     name: '鉄甲', icon: './属性アイコン/鉄甲.png', bossJP: '電撃' },
+            { key: 'wind',     name: '風圧', icon: './属性アイコン/風圧.png', bossJP: '鉄甲' },
+        ];
+
+        async function renderMyDamageInputs(identity) {
+            const el = document.getElementById('mypageDmgInputs');
+            if (!el || !identity) return;
+            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+            let damages = [];
+            try {
+                damages = await window.supabaseLoadPlayerDamages(identity.id);
+            } catch (e) {
+                el.innerHTML = `<p style="color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                return;
+            }
+            const byAttr = new Map();
+            damages.forEach(d => byAttr.set(d.attribute, d));
+
+            el.innerHTML = PT_ATTRS.map(a => {
+                const rec = byAttr.get(a.key);
+                const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : '';
+                const updated = rec?.updated_at ? formatDmgUpdatedAt(rec.updated_at) : '未登録';
+                return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <img src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${a.name}PT <span style="font-size:11px;font-weight:400;color:var(--md-sys-color-on-surface-variant);">対 ${a.bossJP}</span></div>
+                            <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${updated}</div>
+                        </div>
+                        <input type="number" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
+                            data-attr="${a.key}" value="${val}"
+                            onblur="handleMyDamageBlur(this)"
+                            onkeydown="if(event.key==='Enter')this.blur()"
+                            style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
+                        <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                    </div>`;
+            }).join('');
+        }
+
+        function formatDmgUpdatedAt(ts) {
+            try {
+                const d = new Date(ts);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const h = String(d.getHours()).padStart(2, '0');
+                const mi = String(d.getMinutes()).padStart(2, '0');
+                return `更新: ${y}-${m}-${dd} ${h}:${mi}`;
+            } catch { return ''; }
+        }
+
+        async function handleMyDamageBlur(input) {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const attr = input.getAttribute('data-attr');
+            const raw = input.value.trim();
+            const statusEl = document.getElementById('mypageDmgStatus');
+            try {
+                const value = raw === '' ? 0 : Number(raw);
+                if (isNaN(value) || value < 0) throw new Error('0以上の数値で入力してください');
+                if (raw === '') {
+                    // 空欄なら 0 として保存（または削除でも良いが運用上0にしておく方がシンプル）
+                    await window.supabaseSavePlayerDamage(id.id, attr, 0);
+                } else {
+                    await window.supabaseSavePlayerDamage(id.id, attr, value);
+                }
+                if (statusEl) {
+                    const now = new Date();
+                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name || attr}PT を保存 (${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')})`;
+                    statusEl.style.color = '#22c55e';
+                }
+                // 該当行の「更新:」表示を即更新
+                const row = input.closest('div').parentElement;
+                const upEl = row?.querySelector('div[style*="font-size:10px"]');
+                if (upEl) upEl.textContent = formatDmgUpdatedAt(new Date().toISOString());
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.textContent = `❌ ${e?.message || e}`;
+                    statusEl.style.color = '#ef4444';
+                }
+            }
         }
 
         // モーダル外クリックで閉じる

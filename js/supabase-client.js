@@ -201,6 +201,41 @@ window.supabaseDeletePlayer = async function (playerId) {
     if (error) throw error;
 };
 
+// プレイヤーの属性別ダメージ登録を取得（5属性ぶん、未登録は欠落）
+window.supabaseLoadPlayerDamages = async function (playerId) {
+    const { data, error } = await supabase
+        .from('player_damages')
+        .select('attribute, damage_b, updated_at')
+        .eq('player_id', playerId);
+    if (error) throw error;
+    return data || [];
+};
+
+// プレイヤーの属性別ダメージを upsert (新規 or 上書き)
+window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB) {
+    const valid = ['fire','water','iron','electric','wind'];
+    if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
+    const value = Number(damageB);
+    if (isNaN(value) || value < 0) throw new Error('damageB は0以上の数値で指定');
+    const { error } = await supabase
+        .from('player_damages')
+        .upsert(
+            { player_id: playerId, attribute, damage_b: value, updated_at: new Date().toISOString() },
+            { onConflict: 'player_id,attribute' }
+        );
+    if (error) throw error;
+};
+
+// プレイヤーの属性別ダメージを1件削除
+window.supabaseDeletePlayerDamage = async function (playerId, attribute) {
+    const { error } = await supabase
+        .from('player_damages')
+        .delete()
+        .eq('player_id', playerId)
+        .eq('attribute', attribute);
+    if (error) throw error;
+};
+
 // プレイヤーを ID で取得（存在チェック用）
 window.supabaseGetPlayerById = async function (playerId) {
     const { data, error } = await supabase
