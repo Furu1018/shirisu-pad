@@ -50,10 +50,23 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
             if (x.players?.name) syncMap.set(x.players.name, x.sync_level);
         });
 
-        // 3) 凸記録 (ボス名・プレイヤー名つき)
+        // 3a) このシーズンのボス情報を別途取得 (boss_code -> name のマップを構築)
+        const { data: bossesRows, error: bErr } = await supabase
+            .from('bosses')
+            .select('boss_number, boss_code, name')
+            .eq('season_id', s.id);
+        if (bErr) throw bErr;
+        const bossNameByCode = new Map();
+        const bossNumberByCode = new Map();
+        (bossesRows || []).forEach(b => {
+            bossNameByCode.set(b.boss_code, b.name);
+            bossNumberByCode.set(b.boss_code, b.boss_number);
+        });
+
+        // 3b) 凸記録 (プレイヤー名のみネスト。bosses は複合FKのため別取得)
         const { data: atks, error: aErr } = await supabase
             .from('attacks')
-            .select('attack_number, damage_raw, level, characters, boss_code, boss_number, bosses(name), players(name)')
+            .select('attack_number, damage_raw, level, characters, boss_code, boss_number, players(name)')
             .eq('season_id', s.id)
             .order('attack_number', { ascending: true });
         if (aErr) throw aErr;
@@ -86,7 +99,7 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
             p.totalDamage += damage;
             p.attackCount += 1;
             p.attacks.push({
-                bossType: a.bosses?.name || a.boss_code,
+                bossType: bossNameByCode.get(a.boss_code) || a.boss_code,
                 bossCode: a.boss_code,
                 difficulty: 'HARD',
                 level: a.level || 1,

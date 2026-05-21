@@ -1346,6 +1346,7 @@
                 }
             } catch (err) {
                 console.warn('[autoLoadData] Supabase 読込失敗、JSONにフォールバック:', err);
+                console.warn('  message:', err?.message, '| code:', err?.code, '| details:', err?.details, '| hint:', err?.hint);
                 found = [];
             }
 
