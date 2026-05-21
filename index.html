@@ -471,24 +471,31 @@
         .player-select-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 8px;
+            gap: 10px;
             overflow-y: auto;
-            padding: 4px;
+            padding: 6px;
             max-height: 50vh;
+            align-content: start;
         }
         .player-select-item {
-            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 8px 12px;
             border-radius: 8px;
             border: 1px solid var(--md-sys-color-outline-variant);
             background: var(--md-sys-color-surface);
             color: var(--md-sys-color-on-surface);
             text-align: center;
             font-size: 13px;
+            line-height: 1.3;
             cursor: pointer;
             transition: all 0.15s;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-family: inherit;
         }
         .player-select-item:hover {
             background: var(--md-sys-color-primary-container);
