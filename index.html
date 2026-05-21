@@ -983,6 +983,16 @@
                 </div>
             </div>
 
+            <div class="card" style="padding:20px;margin-top:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <div>
+                        <h3 style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚙️ メンバー管理</h3>
+                        <p style="margin:0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">新規参加・脱退の管理（誰でも操作可・運営作業を分担）</p>
+                    </div>
+                    <button onclick="openMemberManageModal()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;white-space:nowrap;">開く</button>
+                </div>
+            </div>
+
             <div class="card" style="padding:20px;margin-top:20px;opacity:0.55;">
                 <h3 style="margin:0 0 8px 0;font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);">🔜 これから追加予定の機能</h3>
                 <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
@@ -1346,6 +1356,34 @@
         </div>
     </div>
 
+    <!-- ========== Member Management Modal ========== -->
+    <div class="player-select-modal" id="memberManageModal">
+        <div class="player-select-content" style="max-width:560px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>⚙️ メンバー管理</h2>
+                <button onclick="closeMemberManageModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">脱退者は過去データを残しつつ選択リストから非表示にできます。後から復活も可能です。</p>
+
+            <!-- 新規追加フォーム -->
+            <div style="display:flex;gap:6px;align-items:stretch;margin-bottom:6px;">
+                <input type="text" id="memberManageAddInput" placeholder="新メンバーの名前" class="player-select-search" style="flex:1;" onkeydown="if(event.key==='Enter')handleMemberManageAdd()">
+                <button onclick="handleMemberManageAdd()" style="padding:0 16px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">＋ 追加</button>
+            </div>
+            <p id="memberManageMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+
+            <!-- 表示切替 -->
+            <div style="display:flex;gap:6px;margin-bottom:4px;">
+                <button id="memberFilterActive" onclick="setMemberManageFilter('active')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;cursor:pointer;">アクティブ</button>
+                <button id="memberFilterArchived" onclick="setMemberManageFilter('archived')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">脱退済み</button>
+            </div>
+
+            <div id="memberManageList" style="overflow-y:auto;max-height:50vh;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;padding:6px;">
+                <div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== Player Select Modal (initial pick) ========== -->
     <div class="player-select-modal" id="playerSelectModal">
         <div class="player-select-content">
@@ -1643,11 +1681,150 @@
         // モーダル外クリックで閉じる
         document.addEventListener('click', e => {
             if (e.target?.id === 'playerSelectModal') closePlayerSelectModal();
+            if (e.target?.id === 'memberManageModal') closeMemberManageModal();
         });
-        // Esc で閉じる（既存の hidePlayerDetails と重複するが新モーダルも追加）
+        // Esc で閉じる
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closePlayerSelectModal();
+            if (e.key === 'Escape') {
+                closePlayerSelectModal();
+                closeMemberManageModal();
+            }
         });
+
+        // ========== メンバー管理 ==========
+        let memberManageFilter = 'active'; // 'active' | 'archived'
+        let memberManageCache = null;
+
+        async function openMemberManageModal() {
+            document.getElementById('memberManageModal').classList.add('open');
+            await reloadMemberManageList();
+        }
+        function closeMemberManageModal() {
+            document.getElementById('memberManageModal').classList.remove('open');
+            document.getElementById('memberManageMessage').textContent = '';
+        }
+
+        function setMemberManageFilter(mode) {
+            memberManageFilter = mode;
+            const activeBtn = document.getElementById('memberFilterActive');
+            const archivedBtn = document.getElementById('memberFilterArchived');
+            const on = 'background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);border:1px solid var(--md-sys-color-primary);';
+            const off = 'background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);border:1px solid var(--md-sys-color-outline-variant);';
+            const baseStyle = 'flex:1;padding:6px;border-radius:8px;font-size:12px;cursor:pointer;';
+            activeBtn.style.cssText = baseStyle + (mode === 'active' ? on : off);
+            archivedBtn.style.cssText = baseStyle + (mode === 'archived' ? on : off);
+            renderMemberManageList();
+        }
+
+        async function reloadMemberManageList() {
+            const listEl = document.getElementById('memberManageList');
+            listEl.innerHTML = '<div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>';
+            try {
+                memberManageCache = await window.supabaseLoadAllPlayers(true); // archived も含めて取得
+                // キャッシュ無効化（プレイヤー選択モーダル側）
+                _allPlayersCache = null;
+                renderMemberManageList();
+            } catch (e) {
+                listEl.innerHTML = `<div style="color:#ef4444;padding:24px;font-size:13px;">読み込みエラー: ${escapeHtml(e.message || String(e))}</div>`;
+            }
+        }
+
+        function renderMemberManageList() {
+            if (!memberManageCache) return;
+            const listEl = document.getElementById('memberManageList');
+            const filtered = memberManageCache.filter(p =>
+                memberManageFilter === 'archived' ? p.archived : !p.archived
+            );
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">${memberManageFilter === 'archived' ? '脱退済みメンバーはいません' : 'アクティブメンバーはいません'}</div>`;
+                return;
+            }
+            listEl.innerHTML = filtered.map(p => {
+                const isArchived = !!p.archived;
+                return `
+                    <div style="display:flex;align-items:center;gap:6px;padding:8px;border-radius:6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <span style="flex:1;font-size:14px;${isArchived ? 'color:var(--md-sys-color-on-surface-variant);text-decoration:line-through;' : ''}">${escapeHtml(p.name)}</span>
+                        ${isArchived
+                            ? `<button onclick="handleMemberUnarchive(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">復活</button>
+                               <button onclick="handleMemberDelete(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
+                            : `<button onclick="handleMemberRename(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">改名</button>
+                               <button onclick="handleMemberArchive(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #f59e0b;background:var(--md-sys-color-surface);color:#f59e0b;font-size:12px;cursor:pointer;">脱退</button>`
+                        }
+                    </div>`;
+            }).join('');
+        }
+
+        function setMemberManageMessage(text, isError = false) {
+            const el = document.getElementById('memberManageMessage');
+            el.textContent = text;
+            el.style.color = isError ? '#ef4444' : '#22c55e';
+            if (text) setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 4000);
+        }
+
+        async function handleMemberManageAdd() {
+            const input = document.getElementById('memberManageAddInput');
+            const name = input.value.trim();
+            if (!name) { setMemberManageMessage('名前を入力してください', true); return; }
+            try {
+                await window.supabaseAddPlayer(name);
+                input.value = '';
+                setMemberManageMessage(`✅ ${name} を追加しました`);
+                await reloadMemberManageList();
+            } catch (e) {
+                const msg = e?.message?.includes('duplicate') ? `「${name}」は既に存在します` : (e?.message || String(e));
+                setMemberManageMessage(`❌ ${msg}`, true);
+            }
+        }
+
+        async function handleMemberArchive(playerId, name) {
+            if (!confirm(`「${name}」を脱退扱いにしますか？\n(過去データは残り、選択リストや締め凸候補から非表示になります)`)) return;
+            try {
+                await window.supabaseArchivePlayer(playerId);
+                setMemberManageMessage(`✅ ${name} を脱退扱いにしました`);
+                await reloadMemberManageList();
+            } catch (e) {
+                setMemberManageMessage(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        async function handleMemberUnarchive(playerId, name) {
+            try {
+                await window.supabaseUnarchivePlayer(playerId);
+                setMemberManageMessage(`✅ ${name} を復活させました`);
+                await reloadMemberManageList();
+            } catch (e) {
+                setMemberManageMessage(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        async function handleMemberRename(playerId, name) {
+            const newName = prompt(`「${name}」の新しい名前を入力してください`, name);
+            if (!newName || newName.trim() === '' || newName.trim() === name) return;
+            try {
+                await window.supabaseRenamePlayer(playerId, newName.trim());
+                setMemberManageMessage(`✅ ${name} → ${newName.trim()} に改名しました`);
+                // 自分自身を改名した場合はlocalStorageも更新
+                const me = getCurrentIdentity();
+                if (me?.id === playerId) {
+                    setCurrentIdentity({ id: playerId, name: newName.trim() });
+                }
+                await reloadMemberManageList();
+            } catch (e) {
+                setMemberManageMessage(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        async function handleMemberDelete(playerId, name) {
+            if (!confirm(`⚠️ 「${name}」を完全削除しますか？\n過去の凸履歴・SLv記録も全て消えます。この操作は取り消せません。`)) return;
+            if (!confirm(`本当によろしいですか？「${name}」と打ってください、と言いたいところですが二段階確認で代替します。\n[OK]で削除実行`)) return;
+            try {
+                await window.supabaseDeletePlayer(playerId);
+                setMemberManageMessage(`🗑️ ${name} を完全削除しました`);
+                await reloadMemberManageList();
+            } catch (e) {
+                setMemberManageMessage(`❌ ${e?.message || e}`, true);
+            }
+        }
 
         // ========== Data Loading ==========
         async function autoLoadData() {

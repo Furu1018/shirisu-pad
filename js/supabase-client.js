@@ -135,15 +135,70 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
     return result;
 };
 
-// 全プレイヤー一覧を取得（is_temp=false のみ、name 昇順）
-window.supabaseLoadAllPlayers = async function () {
-    const { data, error } = await supabase
+// 全プレイヤー一覧を取得（脱退者除く、name 昇順）
+// includeArchived=true で脱退者も含める（メンバー管理画面用）
+window.supabaseLoadAllPlayers = async function (includeArchived = false) {
+    let query = supabase
         .from('players')
-        .select('id, name, is_temp')
-        .eq('is_temp', false)
+        .select('id, name, is_temp, archived')
         .order('name', { ascending: true });
+    if (!includeArchived) {
+        query = query.or('archived.is.null,archived.eq.false');
+    }
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
+};
+
+// 新規メンバー追加
+window.supabaseAddPlayer = async function (name) {
+    const cleaned = (name || '').trim();
+    if (!cleaned) throw new Error('名前が空です');
+    const { data, error } = await supabase
+        .from('players')
+        .insert({ name: cleaned })
+        .select('id, name')
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+// プレイヤーを脱退扱い (archived=true) にする
+window.supabaseArchivePlayer = async function (playerId) {
+    const { error } = await supabase
+        .from('players')
+        .update({ archived: true })
+        .eq('id', playerId);
+    if (error) throw error;
+};
+
+// 脱退扱いから復活
+window.supabaseUnarchivePlayer = async function (playerId) {
+    const { error } = await supabase
+        .from('players')
+        .update({ archived: false })
+        .eq('id', playerId);
+    if (error) throw error;
+};
+
+// プレイヤー名を変更
+window.supabaseRenamePlayer = async function (playerId, newName) {
+    const cleaned = (newName || '').trim();
+    if (!cleaned) throw new Error('名前が空です');
+    const { error } = await supabase
+        .from('players')
+        .update({ name: cleaned })
+        .eq('id', playerId);
+    if (error) throw error;
+};
+
+// プレイヤーを完全削除（過去の凸データもCASCADEで消える、危険操作）
+window.supabaseDeletePlayer = async function (playerId) {
+    const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId);
+    if (error) throw error;
 };
 
 // プレイヤーを ID で取得（存在チェック用）

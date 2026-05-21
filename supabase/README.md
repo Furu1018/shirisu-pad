@@ -89,11 +89,18 @@ Phase 1（既存ビューをSupabase経由に切り替え）に進みます。
 
 ```
 supabase/
-├── README.md            ← この手順書
-├── 01_schema.sql        ← テーブル定義 (CREATE TABLE)
-├── 02_rls.sql           ← 全テーブルにanon許可ポリシー
-├── 03_seed_data.sql     ← 既存JSONからの初期データ投入 (自動生成)
-└── generate_seed.py     ← 03_seed_data.sql の再生成スクリプト
+├── README.md                ← この手順書
+├── 01_schema.sql            ← テーブル定義 (CREATE TABLE)
+├── 02_rls.sql               ← 全テーブルにanon許可ポリシー
+├── 03_seed_data.sql         ← 既存JSONからの初期データ投入 (自動生成)
+├── 04_archived_column.sql   ← Phase 2a 追加: players.archived カラム
+└── generate_seed.py         ← 03_seed_data.sql の再生成スクリプト
 ```
+
+## 後から追加する移行SQL
+
+`04_archived_column.sql` のような番号付き SQL は順番に SQL Editor で実行してください。
+既存テーブルに対する `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` 形式なので
+何度実行しても安全です。
 
 データを更新したくなった場合: `python3 supabase/generate_seed.py` で再生成 → Supabaseで再実行。
