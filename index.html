@@ -1337,30 +1337,44 @@
         async function autoLoadData() {
             showLoading(true);
 
-            const candidates = [];
-            const d = new Date();
-            for (let i = 0; i < 5; i++) {
-                const dd = new Date(d.getFullYear(), d.getMonth() - i, 1);
-                const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
-                candidates.push(key);
+            // ----- Supabase をファースト試行 -----
+            let found = [];
+            let dataSource = 'supabase';
+            try {
+                if (typeof window.supabaseLoadLatestSeasons === 'function') {
+                    found = await window.supabaseLoadLatestSeasons(2);
+                }
+            } catch (err) {
+                console.warn('[autoLoadData] Supabase 読込失敗、JSONにフォールバック:', err);
+                found = [];
             }
 
-            const found = [];
-            for (const key of candidates) {
-                if (found.length >= 2) break;
-                try {
-                    const resp = await fetch(`./data/${key}.json`);
-                    if (resp.ok) {
-                        const json = await resp.json();
-                        found.push({ key, json });
-                    }
-                } catch (e) { /* skip */ }
+            // ----- フォールバック: ローカル JSON ファイル -----
+            if (found.length === 0) {
+                dataSource = 'json';
+                const candidates = [];
+                const d = new Date();
+                for (let i = 0; i < 5; i++) {
+                    const dd = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                    const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
+                    candidates.push(key);
+                }
+                for (const key of candidates) {
+                    if (found.length >= 2) break;
+                    try {
+                        const resp = await fetch(`./data/${key}.json`);
+                        if (resp.ok) {
+                            const json = await resp.json();
+                            found.push({ key, json });
+                        }
+                    } catch (e) { /* skip */ }
+                }
             }
 
             showLoading(false);
 
             if (found.length === 0) {
-                showError('データファイルが見つかりません。data/フォルダにYYYY-MM.jsonを配置してください。');
+                showError('データが見つかりません。Supabaseもローカルファイルも読めませんでした。');
                 return;
             }
 
@@ -1383,7 +1397,9 @@
             document.getElementById('headerSubtitle').textContent = subtitle;
 
             renderAll();
-            showNotification(`データを読み込みました (${currentMonthKey})`);
+            const srcLabel = dataSource === 'supabase' ? 'Supabase' : 'ローカルJSON';
+            console.log(`[autoLoadData] data source: ${srcLabel}`);
+            showNotification(`データを読み込みました (${currentMonthKey} via ${srcLabel})`);
         }
 
         function processRawData(rawData) {

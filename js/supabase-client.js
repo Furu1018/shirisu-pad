@@ -22,6 +22,106 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     },
 });
 
+// ----------------------------------------------------------------------------
+// データローダ: Supabase の正規化テーブルから既存JSON形式へ変換して返す
+// (autoLoadData() から呼び出される。JSONフォーマット互換のため processRawData
+// はそのまま再利用できる)
+// ----------------------------------------------------------------------------
+window.supabaseLoadLatestSeasons = async function (limit = 2) {
+    // 1) 最新シーズン (hard_date 降順)
+    const { data: seasons, error: sErr } = await supabase
+        .from('seasons')
+        .select('id, month_key, hard_date, union_rank, metadata')
+        .order('hard_date', { ascending: false })
+        .limit(limit);
+    if (sErr) throw sErr;
+    if (!seasons || seasons.length === 0) return [];
+
+    const result = [];
+    for (const s of seasons) {
+        // 2) SLv 履歴
+        const { data: syncs, error: slErr } = await supabase
+            .from('player_sync_levels')
+            .select('sync_level, players(name)')
+            .eq('season_id', s.id);
+        if (slErr) throw slErr;
+        const syncMap = new Map();
+        (syncs || []).forEach(x => {
+            if (x.players?.name) syncMap.set(x.players.name, x.sync_level);
+        });
+
+        // 3) 凸記録 (ボス名・プレイヤー名つき)
+        const { data: atks, error: aErr } = await supabase
+            .from('attacks')
+            .select('attack_number, damage_raw, level, characters, boss_code, boss_number, bosses(name), players(name)')
+            .eq('season_id', s.id)
+            .order('attack_number', { ascending: true });
+        if (aErr) throw aErr;
+
+        // 4) Fururi 模擬戦スコア
+        const { data: sims, error: simErr } = await supabase
+            .from('fururi_simulation_scores')
+            .select('boss_code, damage_raw')
+            .eq('season_id', s.id);
+        if (simErr) throw simErr;
+        const simScores = {};
+        (sims || []).forEach(x => { simScores[x.boss_code] = Number(x.damage_raw); });
+
+        // 5) プレイヤー単位に集約
+        const playersMap = new Map();
+        (atks || []).forEach(a => {
+            const name = a.players?.name;
+            if (!name) return;
+            if (!playersMap.has(name)) {
+                playersMap.set(name, {
+                    player: name,
+                    totalDamage: 0,
+                    attackCount: 0,
+                    syncLevel: syncMap.get(name) || 0,
+                    attacks: [],
+                });
+            }
+            const p = playersMap.get(name);
+            const damage = Number(a.damage_raw) || 0;
+            p.totalDamage += damage;
+            p.attackCount += 1;
+            p.attacks.push({
+                bossType: a.bosses?.name || a.boss_code,
+                bossCode: a.boss_code,
+                difficulty: 'HARD',
+                level: a.level || 1,
+                damage,
+                characters: Array.isArray(a.characters) ? a.characters : [],
+            });
+        });
+
+        // 凸ゼロでもSLv登録があれば player として含める
+        for (const [name, slv] of syncMap.entries()) {
+            if (!playersMap.has(name)) {
+                playersMap.set(name, {
+                    player: name,
+                    totalDamage: 0,
+                    attackCount: 0,
+                    syncLevel: slv,
+                    attacks: [],
+                });
+            }
+        }
+
+        const players = Array.from(playersMap.values());
+        const metadata = {
+            ...(s.metadata || {}),
+            unionRank: s.union_rank ?? (s.metadata && s.metadata.unionRank) ?? null,
+        };
+        if (Object.keys(simScores).length > 0) {
+            metadata.fururiSimulationScores = simScores;
+        }
+
+        result.push({ key: s.month_key, json: { players, metadata } });
+    }
+    return result;
+};
+
 // 接続テスト用ヘルパー: ブラウザコンソールで window.supabaseTest() を実行
 window.supabaseTest = async function () {
     console.group('🔌 Supabase 接続テスト');
