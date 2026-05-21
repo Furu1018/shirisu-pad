@@ -135,6 +135,28 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
     return result;
 };
 
+// 全プレイヤー一覧を取得（is_temp=false のみ、name 昇順）
+window.supabaseLoadAllPlayers = async function () {
+    const { data, error } = await supabase
+        .from('players')
+        .select('id, name, is_temp')
+        .eq('is_temp', false)
+        .order('name', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
+// プレイヤーを ID で取得（存在チェック用）
+window.supabaseGetPlayerById = async function (playerId) {
+    const { data, error } = await supabase
+        .from('players')
+        .select('id, name')
+        .eq('id', playerId)
+        .single();
+    if (error) return null;
+    return data;
+};
+
 // 接続テスト用ヘルパー: ブラウザコンソールで window.supabaseTest() を実行
 window.supabaseTest = async function () {
     console.group('🔌 Supabase 接続テスト');

@@ -405,6 +405,111 @@
             color: #fca5a5;
         }
 
+        /* ========== Identity Pill (header の現在のプレイヤー表示) ========== */
+        .identity-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface);
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            transition: background 0.15s;
+        }
+        .identity-pill:hover { background: var(--md-sys-color-primary-container); }
+        .identity-pill .name { font-weight: 600; }
+        .identity-pill .hint { opacity: 0.7; }
+
+        /* ========== Player Select Modal (initial pick) ========== */
+        .player-select-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .player-select-modal.open { display: flex; }
+        .player-select-content {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 480px;
+            width: 100%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+        }
+        .player-select-content h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+        .player-select-content .subtitle {
+            font-size: 13px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin: 0;
+        }
+        .player-select-search {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface);
+            font-size: 14px;
+            outline: none;
+        }
+        .player-select-search:focus { border-color: var(--md-sys-color-primary); }
+        .player-select-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            overflow-y: auto;
+            padding: 4px;
+            max-height: 50vh;
+        }
+        .player-select-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            text-align: center;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-select-item:hover {
+            background: var(--md-sys-color-primary-container);
+            border-color: var(--md-sys-color-primary);
+        }
+        .player-select-item.empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--md-sys-color-on-surface-variant);
+            background: transparent;
+            border: none;
+            cursor: default;
+            padding: 24px;
+        }
+        .player-select-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
         /* ========== Player Modal ========== */
         .player-modal {
             display: none;
@@ -770,6 +875,10 @@
     <!-- Drawer -->
     <div class="drawer" id="drawer">
         <div class="drawer-title">しりすこPAD</div>
+        <button class="drawer-menu-item" data-tab="mypage" onclick="switchTabFromDrawer('mypage')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            マイページ
+        </button>
         <button class="drawer-menu-item active" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
             ダメージ比較
@@ -803,6 +912,13 @@
                 <div class="header-subtitle" id="headerSubtitle">データ読み込み中...</div>
             </div>
         </div>
+        <div class="header-right" style="margin-left: auto; display: flex; align-items: center;">
+            <button class="identity-pill" id="identityPill" onclick="openPlayerSelectModal()" style="display:none;">
+                <span class="hint">👤</span>
+                <span class="name" id="identityName">未選択</span>
+                <span class="hint">▼</span>
+            </button>
+        </div>
     </header>
 
     <!-- Error Banner -->
@@ -811,6 +927,10 @@
     <!-- Tab Navigation (PC) -->
     <nav class="tab-navigation pc-only">
         <div class="tab-buttons-wrapper">
+            <button class="tab-button" data-tab="mypage" onclick="switchTab('mypage')" title="マイページ">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                マイページ
+            </button>
             <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ比較">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
                 ダメージ比較
@@ -833,6 +953,39 @@
             </button>
         </div>
     </nav>
+
+    <!-- ========== Tab: マイページ ========== -->
+    <div id="tab-mypage" class="tab-content">
+        <div class="container">
+            <div class="card" style="padding: 24px; margin-bottom: 20px;">
+                <div style="display:flex; align-items:center; gap:14px; margin-bottom:6px;">
+                    <div style="width:48px;height:48px;border-radius:50%;background:var(--md-sys-color-primary-container);display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">現在のプレイヤー</div>
+                        <div id="mypageName" style="font-size:20px;font-weight:700;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;">未選択</div>
+                    </div>
+                    <button onclick="openPlayerSelectModal()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">変更</button>
+                </div>
+                <p style="margin:8px 0 0 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">この設定はあなたのブラウザにのみ保存されます。別の端末では再度選択が必要です。</p>
+            </div>
+
+            <div class="card" style="padding:20px;">
+                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">📊 あなたの最新シーズン情報</h3>
+                <div id="mypageStats">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択するとここに最新シーズンの参加状況・凸履歴が表示されます。</p>
+                </div>
+            </div>
+
+            <div class="card" style="padding:20px;margin-top:20px;opacity:0.55;">
+                <h3 style="margin:0 0 8px 0;font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);">🔜 これから追加予定の機能</h3>
+                <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
+                    <li>属性別ダメージ登録（Phase 2b）</li>
+                    <li>凸報告（手動入力 / 画像OCR）（Phase 2c）</li>
+                    <li>締め凸通知のPush受信設定（Phase 6）</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- ========== Tab 1: ダメージ比較 ========== -->
     <div id="tab-ranking" class="tab-content active">
@@ -1186,6 +1339,22 @@
         </div>
     </div>
 
+    <!-- ========== Player Select Modal (initial pick) ========== -->
+    <div class="player-select-modal" id="playerSelectModal">
+        <div class="player-select-content">
+            <h2>👋 ようこそ しりすこPADへ</h2>
+            <p class="subtitle">あなたのプレイヤー名を選んでください。<br>選択内容はこの端末に保存され、次回以降は自動で開きます。</p>
+            <input type="text" class="player-select-search" id="playerSelectSearch" placeholder="🔍 名前で絞り込み" oninput="filterPlayerSelectList(this.value)">
+            <div class="player-select-list" id="playerSelectList">
+                <div class="player-select-item empty">読み込み中...</div>
+            </div>
+            <div class="player-select-footer">
+                <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">名前がない場合は運営に追加依頼してください</span>
+                <button onclick="closePlayerSelectModal()" id="playerSelectCancel" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== Player Composition Modal ========== -->
     <div class="player-modal" id="playerModal">
         <div class="player-modal-content">
@@ -1331,7 +1500,147 @@
 
             if (tabName === 'slv-ranking') renderFururiRanking();
             if (tabName === 'characters') updateTeamCompositionsDisplay();
+            if (tabName === 'mypage') renderMyPage();
         }
+
+        // ========== Player Identity (Phase 2a) ==========
+        const IDENTITY_KEY = 'shirisuPad.currentPlayer';
+
+        function getCurrentIdentity() {
+            try {
+                const raw = localStorage.getItem(IDENTITY_KEY);
+                if (!raw) return null;
+                return JSON.parse(raw);  // { id, name }
+            } catch { return null; }
+        }
+        function setCurrentIdentity(player) {
+            if (player) {
+                localStorage.setItem(IDENTITY_KEY, JSON.stringify({ id: player.id, name: player.name }));
+            } else {
+                localStorage.removeItem(IDENTITY_KEY);
+            }
+            updateIdentityHeader();
+            renderMyPage();
+        }
+
+        function updateIdentityHeader() {
+            const pill = document.getElementById('identityPill');
+            const nameEl = document.getElementById('identityName');
+            const id = getCurrentIdentity();
+            if (id?.name) {
+                pill.style.display = 'inline-flex';
+                nameEl.textContent = id.name;
+            } else {
+                pill.style.display = 'inline-flex';
+                nameEl.textContent = 'プレイヤー未選択';
+            }
+        }
+
+        // 全プレイヤーキャッシュ (モーダル表示の高速化用)
+        let _allPlayersCache = null;
+        async function ensureAllPlayersLoaded() {
+            if (_allPlayersCache) return _allPlayersCache;
+            if (typeof window.supabaseLoadAllPlayers !== 'function') return [];
+            try {
+                _allPlayersCache = await window.supabaseLoadAllPlayers();
+            } catch (e) {
+                console.warn('[identity] プレイヤー読み込み失敗:', e);
+                _allPlayersCache = [];
+            }
+            return _allPlayersCache;
+        }
+
+        async function openPlayerSelectModal() {
+            const modal = document.getElementById('playerSelectModal');
+            modal.classList.add('open');
+            const list = document.getElementById('playerSelectList');
+            list.innerHTML = '<div class="player-select-item empty">読み込み中...</div>';
+            const players = await ensureAllPlayersLoaded();
+            renderPlayerSelectList(players, '');
+            document.getElementById('playerSelectSearch').value = '';
+            document.getElementById('playerSelectSearch').focus();
+        }
+        function closePlayerSelectModal() {
+            document.getElementById('playerSelectModal').classList.remove('open');
+        }
+        function filterPlayerSelectList(query) {
+            if (!_allPlayersCache) return;
+            renderPlayerSelectList(_allPlayersCache, query || '');
+        }
+        function renderPlayerSelectList(players, query) {
+            const list = document.getElementById('playerSelectList');
+            const q = (query || '').toLowerCase().trim();
+            const filtered = q
+                ? players.filter(p => p.name.toLowerCase().includes(q))
+                : players;
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="player-select-item empty">該当するプレイヤーがいません</div>';
+                return;
+            }
+            const currentId = getCurrentIdentity()?.id;
+            list.innerHTML = filtered.map(p => {
+                const isCurrent = p.id === currentId;
+                return `<button class="player-select-item" onclick='selectPlayerFromModal(${p.id}, ${JSON.stringify(p.name)})' style="${isCurrent ? 'background:var(--md-sys-color-primary-container);border-color:var(--md-sys-color-primary);' : ''}">${escapeHtml(p.name)}${isCurrent ? ' ✓' : ''}</button>`;
+            }).join('');
+        }
+        function selectPlayerFromModal(id, name) {
+            setCurrentIdentity({ id, name });
+            closePlayerSelectModal();
+            showNotification(`プレイヤーを「${name}」に設定しました`);
+        }
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function renderMyPage() {
+            const id = getCurrentIdentity();
+            const nameEl = document.getElementById('mypageName');
+            const statsEl = document.getElementById('mypageStats');
+            if (!id?.name) {
+                nameEl.textContent = '未選択';
+                statsEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">右上の <strong>👤 プレイヤー未選択</strong> から自分の名前を選んでください。</p>';
+                return;
+            }
+            nameEl.textContent = id.name;
+            // 最新シーズン (currentData) から該当プレイヤーを引く
+            const me = (currentData || []).find(p => p.player === id.name);
+            if (!me) {
+                statsEl.innerHTML = `<p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">今月（${currentMonthKey || '?'}）のシーズンには参加データが登録されていません。</p>`;
+                return;
+            }
+            const attackCount = me.attacks.length;
+            const totalB = (me.damage / 1e9).toFixed(2);
+            const attacksHtml = me.attacks.length > 0
+                ? me.attacks.map((a, i) => `<li style="margin:4px 0;">${i+1}凸目: ${a.bossType || a.bossCode} — ${(a.damage/1e9).toFixed(2)}B</li>`).join('')
+                : '<li style="color:var(--md-sys-color-on-surface-variant);">凸記録なし</li>';
+            statsEl.innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+                    <div style="padding:10px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                        <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">凸数</div>
+                        <div style="font-size:18px;font-weight:700;">${attackCount}/3</div>
+                    </div>
+                    <div style="padding:10px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                        <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">合計ダメージ</div>
+                        <div style="font-size:18px;font-weight:700;">${totalB} B</div>
+                    </div>
+                    <div style="padding:10px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                        <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">SLv</div>
+                        <div style="font-size:18px;font-weight:700;">${me.syncLevel || '-'}</div>
+                    </div>
+                </div>
+                <h4 style="font-size:13px;font-weight:600;margin:0 0 4px 0;color:var(--md-sys-color-on-surface);">凸履歴</h4>
+                <ul style="margin:0;padding-left:18px;font-size:13px;color:var(--md-sys-color-on-surface);">${attacksHtml}</ul>
+            `;
+        }
+
+        // モーダル外クリックで閉じる
+        document.addEventListener('click', e => {
+            if (e.target?.id === 'playerSelectModal') closePlayerSelectModal();
+        });
+        // Esc で閉じる（既存の hidePlayerDetails と重複するが新モーダルも追加）
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closePlayerSelectModal();
+        });
 
         // ========== Data Loading ==========
         async function autoLoadData() {
@@ -2477,6 +2786,11 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadSlvRatioTable();
             await autoLoadData();
+            updateIdentityHeader();
+            // 初回訪問 (プレイヤー未選択) なら選択モーダルを自動で開く
+            if (!getCurrentIdentity()) {
+                openPlayerSelectModal();
+            }
         });
     </script>
 </body>
