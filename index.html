@@ -1953,7 +1953,7 @@
                     const ptInfo = PT_ATTRS.find(x => x.key === playerAttr);
                     return `
                         <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}"
-                            onclick="handleMyAttackBossPick(this, ${b.boss_number}, ${JSON.stringify(b.boss_code)})"
+                            onclick="handleMyAttackBossPick(this, ${b.boss_number})"
                             style="padding:10px 8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
                             ${ptInfo ? `<img src="${ptInfo.icon}" style="width:22px;height:22px;">` : ''}
                             <div style="font-weight:600;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</div>
@@ -1969,7 +1969,7 @@
             _myAttackSelectedBossNumber = null;
         }
 
-        function handleMyAttackBossPick(btn, bossNumber, bossCode) {
+        function handleMyAttackBossPick(btn, bossNumber) {
             _myAttackSelectedBossNumber = bossNumber;
             // 視覚的選択
             document.querySelectorAll('#myAttackBossButtons button').forEach(b => {
@@ -1978,7 +1978,6 @@
             });
             btn.style.borderColor = 'var(--md-sys-color-primary)';
             btn.style.background = 'var(--md-sys-color-primary-container)';
-            btn.dataset.codeSelected = '1';
         }
 
         async function handleMyAttackSave() {
