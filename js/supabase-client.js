@@ -358,6 +358,104 @@ window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode
     if (error) throw error;
 };
 
+// 新規シーズンを作成（既存アクティブシーズンは自動で非アクティブ化）
+// payload: { hardDate, monthKey, bosses: [{bossNumber, bossCode, name, tier}] }
+window.supabaseCreateSeason = async function (payload) {
+    if (!payload.hardDate) throw new Error('hardDate 必須');
+    if (!payload.monthKey) throw new Error('monthKey 必須');
+    if (!Array.isArray(payload.bosses) || payload.bosses.length !== 5) throw new Error('boss は5体必要');
+
+    const ATTR_FROM_CODE = { 'H.S.T.A.': 'fire', 'P.S.I.D.': 'water', 'D.M.T.R.': 'iron', 'Z.E.U.S.': 'electric', 'A.N.M.I.': 'wind' };
+    const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
+    const HARD_LV1_HP = { tyrant: 99856279200, lord: 150841813600 };
+
+    // 既存アクティブシーズンを is_active=false
+    const { error: deactivateErr } = await supabase
+        .from('seasons').update({ is_active: false }).eq('is_active', true);
+    if (deactivateErr) throw deactivateErr;
+
+    // シーズン挿入
+    const { data: season, error: sErr } = await supabase
+        .from('seasons')
+        .insert({
+            month_key: payload.monthKey,
+            hard_date: payload.hardDate,
+            current_level: 1,
+            is_active: true,
+            metadata: {},
+        })
+        .select('id, hard_date, month_key')
+        .single();
+    if (sErr) throw sErr;
+
+    // ボス5体挿入
+    const bossRows = payload.bosses.map(b => {
+        const attr = ATTR_FROM_CODE[b.bossCode];
+        if (!attr) throw new Error(`不明な bossCode: ${b.bossCode}`);
+        const tier = b.tier === 'tyrant' ? 'tyrant' : 'lord';
+        const hp = HARD_LV1_HP[tier];
+        return {
+            season_id: season.id,
+            boss_number: b.bossNumber,
+            boss_code: b.bossCode,
+            name: b.name || null,
+            attribute: attr,
+            weakness: COUNTER[attr],
+            tier,
+            total_hp_raw: hp,
+            remaining_hp_raw: hp,
+        };
+    });
+    const { error: bErr } = await supabase.from('bosses').insert(bossRows);
+    if (bErr) throw bErr;
+    return season;
+};
+
+// アクティブシーズンを終了 (is_active=false + unionRank保存)
+window.supabaseEndActiveSeason = async function (unionRank) {
+    const ur = (unionRank === '' || unionRank == null) ? null : Number(unionRank);
+    const { error } = await supabase
+        .from('seasons')
+        .update({ is_active: false, union_rank: ur })
+        .eq('is_active', true);
+    if (error) throw error;
+};
+
+// シーズンのレベルを変更し、ボスHPを新レベルのデフォルト値にリセット
+window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
+    const HARD_LEVEL_HP = {
+        1: { tyrant: 99856279200, lord: 150841813600 },
+        2: { tyrant: 149784418800, lord: 226262720400 },
+        3: { tyrant: 292445295750, lord: 349230901500 },
+    };
+    const hp = HARD_LEVEL_HP[newLevel];
+    if (!hp) throw new Error(`Lv${newLevel} のHPデフォルトが未定義です`);
+
+    // シーズンレベル更新
+    const { error: e1 } = await supabase
+        .from('seasons').update({ current_level: newLevel }).eq('id', seasonId);
+    if (e1) throw e1;
+
+    // ボスHPを階級ごとにリセット
+    for (const tier of ['tyrant', 'lord']) {
+        const { error } = await supabase
+            .from('bosses')
+            .update({ total_hp_raw: hp[tier], remaining_hp_raw: hp[tier], remaining_hp_percent: 100 })
+            .eq('season_id', seasonId)
+            .eq('tier', tier);
+        if (error) throw error;
+    }
+};
+
+// 全プレイヤーの属性別ダメージ登録を全削除
+window.supabaseResetAllDamages = async function () {
+    const { error } = await supabase
+        .from('player_damages')
+        .delete()
+        .gte('player_id', 0);  // 全件削除のため常にtrueの条件
+    if (error) throw error;
+};
+
 // 運営ダッシュボード用: 全アクティブメンバーを取得し、その人の各種関連情報を結合
 // 戻り値: [{ id, name, archived, damagesByAttr:{fire:N,...}, attacks:[{boss_number, damage_raw, ...}], attackCount }]
 window.supabaseLoadOpsDashboardData = async function () {

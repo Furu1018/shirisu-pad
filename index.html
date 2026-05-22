@@ -1072,21 +1072,34 @@
                 </div>
             </div>
 
-            <!-- 運営アクション -->
+            <!-- 運営アクション (戦闘中) -->
             <div class="card" style="padding:20px;margin-bottom:16px;">
-                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">⚙️ 運営アクション</h3>
+                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">⚙️ 戦闘中の運営アクション</h3>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     <button onclick="openOpsBossHpModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">⚔️ ボスHP更新</button>
                     <button onclick="openOpsProxyAttackModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">✏️ 代理凸を報告</button>
                     <button onclick="openOpsAttacksEditModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">📋 凸履歴・編集</button>
+                    <button onclick="handleOpsLevelUp()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">⬆️ レベルアップ</button>
+                </div>
+            </div>
+
+            <!-- シーズン制御 -->
+            <div class="card" style="padding:20px;margin-bottom:16px;">
+                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">🗓️ シーズン制御</h3>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">月次のレイドサイクル全体に関わる操作です。誤操作に注意してください。</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    <button onclick="openOpsSeasonCreateModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">📅 シーズン作成（次回用）</button>
+                    <button onclick="handleOpsEndSeason()" style="padding:10px 14px;border-radius:8px;border:1px solid #f59e0b;background:var(--md-sys-color-surface);color:#f59e0b;font-size:13px;cursor:pointer;">🏁 シーズン終了</button>
+                    <button onclick="handleOpsResetDamages()" style="padding:10px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🔄 ダメージ一括リセット</button>
                 </div>
             </div>
 
             <div class="card" style="padding:20px;opacity:0.55;">
                 <h3 style="margin:0 0 6px 0;font-size:15px;font-weight:600;">🔜 これから追加予定の運営機能</h3>
                 <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
-                    <li>シーズン作成 / 終了 / ダメージリセット（Phase 3c）</li>
                     <li>BlaBlaLINK 画像取り込み（Phase 4）</li>
+                    <li>Haiku を使った凸候補レコメンド（Phase 4-5）</li>
+                    <li>最適凸プラン算出（Phase 5）</li>
                 </ul>
             </div>
         </div>
@@ -1516,6 +1529,39 @@
                 <div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>
             </div>
             <p id="opsAttacksMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+        </div>
+    </div>
+
+    <!-- ========== 運営: シーズン作成モーダル ========== -->
+    <div class="player-select-modal" id="opsSeasonCreateModal">
+        <div class="player-select-content" style="max-width:620px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>📅 新シーズン作成</h2>
+                <button onclick="closeOpsSeasonCreateModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">ハード日 (Day2)</label>
+                    <input type="date" id="opsSeasonHardDate" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">月キー (YYYY-MM)</label>
+                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                </div>
+            </div>
+
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;">ボス構成（B1〜B5）</label>
+                <div id="opsSeasonBossRows"></div>
+            </div>
+
+            <p id="opsSeasonMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeOpsSeasonCreateModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsSeasonCreateSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">作成</button>
+            </div>
         </div>
     </div>
 
@@ -2612,6 +2658,140 @@
             }
         }
 
+        // ========== 運営: シーズン制御 (Phase 3c) ==========
+        const BOSS_CODES = ['H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.', 'D.M.T.R.', 'A.N.M.I.'];
+
+        function openOpsSeasonCreateModal() {
+            const modal = document.getElementById('opsSeasonCreateModal');
+            modal.classList.add('open');
+            document.getElementById('opsSeasonMessage').textContent = '';
+            // 日付デフォルト: 今日
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('opsSeasonHardDate').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('opsSeasonMonthKey').value = `${yyyy}-${mm}`;
+
+            // ボス5体の初期値 (前回シーズンを参考)
+            const defaults = (_activeSeasonCache?.bosses || []).map(b => ({
+                bossNumber: b.boss_number,
+                bossCode: b.boss_code,
+                name: '',
+                tier: b.tier,
+            }));
+            const rows = [];
+            for (let i = 1; i <= 5; i++) {
+                const d = defaults.find(x => x.bossNumber === i) || { bossNumber: i, bossCode: BOSS_CODES[i-1], name: '', tier: (i === 3 || i === 5) ? 'tyrant' : 'lord' };
+                rows.push(d);
+            }
+            renderOpsSeasonBossRows(rows);
+        }
+        function closeOpsSeasonCreateModal() {
+            document.getElementById('opsSeasonCreateModal').classList.remove('open');
+        }
+        function renderOpsSeasonBossRows(rows) {
+            const el = document.getElementById('opsSeasonBossRows');
+            el.innerHTML = rows.map(r => `
+                <div data-pos="${r.bossNumber}" style="display:grid;grid-template-columns:32px 1fr 80px 1.4fr;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                    <span style="font-size:13px;font-weight:600;">B${r.bossNumber}</span>
+                    <select class="ops-season-code" style="padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;">
+                        ${BOSS_CODES.map(c => `<option value="${c}" ${c === r.bossCode ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                    <select class="ops-season-tier" style="padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;">
+                        <option value="tyrant" ${r.tier === 'tyrant' ? 'selected' : ''}>タイラント</option>
+                        <option value="lord" ${r.tier === 'lord' ? 'selected' : ''}>ロード</option>
+                    </select>
+                    <input class="ops-season-name" type="text" placeholder="ボス名 (任意)" value="${escapeHtml(r.name)}" style="padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;">
+                </div>
+            `).join('');
+        }
+        async function handleOpsSeasonCreateSave() {
+            const hardDate = document.getElementById('opsSeasonHardDate').value;
+            const monthKey = document.getElementById('opsSeasonMonthKey').value.trim();
+            const msg = document.getElementById('opsSeasonMessage');
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+
+            if (!hardDate) { set('❌ ハード日を入力してください', true); return; }
+            if (!/^\d{4}-\d{2}$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式', true); return; }
+
+            // ボス情報を収集
+            const rows = Array.from(document.querySelectorAll('#opsSeasonBossRows > div'));
+            const bosses = rows.map(row => ({
+                bossNumber: parseInt(row.dataset.pos),
+                bossCode: row.querySelector('.ops-season-code').value,
+                tier: row.querySelector('.ops-season-tier').value,
+                name: row.querySelector('.ops-season-name').value.trim(),
+            }));
+            // bossCode 重複チェック
+            const codes = bosses.map(b => b.bossCode);
+            if (new Set(codes).size !== 5) { set('❌ ボスコードが重複しています (5種類すべて1回ずつ使ってください)', true); return; }
+
+            if (!confirm(`新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。`)) return;
+
+            try {
+                await window.supabaseCreateSeason({ hardDate, monthKey, bosses });
+                set(`✅ シーズン ${monthKey} を作成しました`);
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
+                setTimeout(() => closeOpsSeasonCreateModal(), 800);
+                renderOpsDashboard();
+            } catch (e) {
+                set(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        async function handleOpsLevelUp() {
+            const ctx = await ensureActiveSeasonLoaded();
+            if (!ctx?.season) { alert('アクティブシーズンがありません'); return; }
+            const current = ctx.season.current_level || 1;
+            const next = current + 1;
+            if (next > 4) {
+                alert('既に最大レベルです。');
+                return;
+            }
+            if (!confirm(`レベルアップ\nLv${current} → Lv${next}\nボスHPは新レベルの標準値にリセットされます。続けますか？`)) return;
+            try {
+                await window.supabaseLevelUpSeason(ctx.season.id, next);
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
+                showNotification(`Lv${current} → Lv${next} に更新しました`);
+                renderOpsDashboard();
+            } catch (e) {
+                alert(`レベルアップ失敗: ${e?.message || e}`);
+            }
+        }
+
+        async function handleOpsEndSeason() {
+            const ctx = await ensureActiveSeasonLoaded();
+            if (!ctx?.season) { alert('アクティブなシーズンがありません'); return; }
+            const ur = prompt(`シーズン ${ctx.season.month_key} を終了します。\nユニオン順位 (%) を入力してください (例: 0.41、不明なら空欄)`, '');
+            if (ur === null) return;
+            if (!confirm(`シーズン ${ctx.season.month_key} を終了して非アクティブ化します。\nよろしいですか？`)) return;
+            try {
+                await window.supabaseEndActiveSeason(ur);
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
+                showNotification(`シーズン ${ctx.season.month_key} を終了しました`);
+                renderOpsDashboard();
+            } catch (e) {
+                alert(`シーズン終了失敗: ${e?.message || e}`);
+            }
+        }
+
+        async function handleOpsResetDamages() {
+            if (!confirm('⚠️ 全メンバーの属性別ダメージ登録を一括リセットします。\nこの操作は取り消せません。よろしいですか？')) return;
+            if (!confirm('本当によろしいですか？全メンバーがマイページでダメージを再登録する必要があります。')) return;
+            try {
+                await window.supabaseResetAllDamages();
+                _opsDashboardCache = null;
+                showNotification('ダメージ登録を全件リセットしました');
+                renderOpsDashboard();
+            } catch (e) {
+                alert(`リセット失敗: ${e?.message || e}`);
+            }
+        }
+
         // モーダル外クリックで閉じる
         document.addEventListener('click', e => {
             if (e.target?.id === 'playerSelectModal') closePlayerSelectModal();
@@ -2620,6 +2800,7 @@
             if (e.target?.id === 'opsBossHpModal') closeOpsBossHpModal();
             if (e.target?.id === 'opsProxyAttackModal') closeOpsProxyAttackModal();
             if (e.target?.id === 'opsAttacksEditModal') closeOpsAttacksEditModal();
+            if (e.target?.id === 'opsSeasonCreateModal') closeOpsSeasonCreateModal();
         });
         // Esc で閉じる
         document.addEventListener('keydown', e => {
