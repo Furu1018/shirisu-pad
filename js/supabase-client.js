@@ -447,6 +447,55 @@ window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
     }
 };
 
+// ============================================================================
+// Edge Function: analyze-image (Anthropic Haiku Vision プロキシ)
+// ============================================================================
+// 画像 (data URL) と task を渡して構造化結果を受け取る
+// task: 'attack_result' / 'bla_progress' / 'season_announce'
+window.callAiVision = async function (imageDataUrl, task, options = {}) {
+    const { data, error } = await supabase.functions.invoke('analyze-image', {
+        body: { image: imageDataUrl, task, ...options },
+    });
+    if (error) {
+        throw new Error(`AI Vision呼び出し失敗: ${error.message || error}`);
+    }
+    if (!data?.ok) {
+        throw new Error(data?.error || 'AI Vision エラー');
+    }
+    return data;  // { ok, result, raw, parseError, usage }
+};
+
+// ファイル(File) を data URL に変換するヘルパー
+window.fileToDataUrl = function (file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+// 動作テスト用 (コンソールで window.supabaseTestAi() を実行)
+window.supabaseTestAi = async function () {
+    console.log('[AI Vision] テストするには画像ファイルを選んでください...');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const dataUrl = await window.fileToDataUrl(file);
+        console.log('[AI Vision] 解析中...');
+        try {
+            const res = await window.callAiVision(dataUrl, 'attack_result');
+            console.log('[AI Vision] 結果:', res);
+        } catch (e) {
+            console.error('[AI Vision] エラー:', e);
+        }
+    };
+    input.click();
+};
+
 // 全プレイヤーの属性別ダメージ登録を全削除
 window.supabaseResetAllDamages = async function () {
     const { error } = await supabase

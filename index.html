@@ -1574,6 +1574,17 @@
             </div>
             <p class="subtitle" id="myAttackModalHint">凸したボスとダメージを記録します。</p>
 
+            <!-- 画像取り込み -->
+            <div id="myAttackOcrSection" style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                    <span style="font-size:18px;">📷</span>
+                    <span style="flex:1;">凸結果のスクショから自動入力（AI画像認識）</span>
+                    <input type="file" id="myAttackOcrInput" accept="image/*" onchange="handleMyAttackOcrUpload(event)" style="display:none;">
+                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                </label>
+                <p id="myAttackOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            </div>
+
             <!-- ボス選択 -->
             <div>
                 <label style="display:block;font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);margin-bottom:6px;">対象ボス（タップで選択）</label>
@@ -2231,6 +2242,52 @@
 
         function handleMyAttackEdit(attackId, damageRaw) {
             openMyAttackModal(attackId, damageRaw);
+        }
+
+        // 凸報告モーダル: 画像から読み取り
+        async function handleMyAttackOcrUpload(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            const statusEl = document.getElementById('myAttackOcrStatus');
+            if (!file) return;
+            statusEl.textContent = '🔍 画像をAIで解析中... (10〜20秒)';
+            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            try {
+                const dataUrl = await window.fileToDataUrl(file);
+                const res = await window.callAiVision(dataUrl, 'attack_result');
+                const r = res.result;
+                if (!r || (!r.bossName && !r.totalDamage)) {
+                    throw new Error('解析結果が空です。画像を確認してください');
+                }
+                // ボス名 → 現シーズンのボスにマッチ
+                const ctx = await ensureActiveSeasonLoaded();
+                let matchedBoss = null;
+                if (r.bossName && ctx?.bosses) {
+                    const norm = (s) => String(s || '').replace(/\s+/g, '');
+                    const target = norm(r.bossName);
+                    matchedBoss = ctx.bosses.find(b => {
+                        const bn = norm(b.name || '');
+                        return bn && (bn.includes(target) || target.includes(bn));
+                    });
+                }
+                // 値を埋める
+                if (matchedBoss) {
+                    const btn = document.querySelector(`#myAttackBossButtons button[data-boss="${matchedBoss.boss_number}"]`);
+                    if (btn) handleMyAttackBossPick(btn, matchedBoss.boss_number);
+                }
+                if (r.totalDamage) {
+                    document.getElementById('myAttackDamageInput').value = (Number(r.totalDamage) / 1e9).toFixed(3);
+                }
+                const parts = [];
+                if (matchedBoss) parts.push(`ボス: ${matchedBoss.name || matchedBoss.boss_code}`);
+                else if (r.bossName) parts.push(`ボス: ${r.bossName} (一致なし)`);
+                if (r.totalDamage) parts.push(`ダメージ: ${(Number(r.totalDamage) / 1e9).toFixed(3)} B`);
+                statusEl.textContent = `✅ 読取: ${parts.join(' / ')}`;
+                statusEl.style.color = '#22c55e';
+            } catch (e) {
+                statusEl.textContent = `❌ ${e?.message || e}`;
+                statusEl.style.color = '#ef4444';
+            }
         }
 
         async function handleMyAttackDelete(attackId, attackNumber) {
