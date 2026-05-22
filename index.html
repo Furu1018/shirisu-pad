@@ -1879,7 +1879,18 @@
 
             const count = attacks.length;
             const remaining = Math.max(0, 3 - count);
-            if (btn) btn.disabled = remaining === 0;
+            // ボタン状態をシンプルに表現: 完凸時はボタン自体を「報告済み」表示にする
+            if (btn) {
+                if (remaining === 0) {
+                    btn.disabled = true;
+                    btn.textContent = '✅ 3凸 報告済み';
+                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #22c55e;background:transparent;color:#22c55e;font-size:13px;font-weight:600;cursor:not-allowed;opacity:0.85;';
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '＋ 凸を報告';
+                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;';
+                }
+            }
 
             const bossByCode = new Map(ctx.bosses.map(b => [b.boss_code, b]));
 
@@ -1905,14 +1916,22 @@
             }).join('');
 
             const summary = `
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
                     <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">シーズン:</span>
                     <strong style="font-size:13px;">${ctx.season.month_key}</strong>
                     <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-left:8px;">凸数:</span>
                     <strong style="font-size:13px;color:${remaining === 0 ? '#22c55e' : 'var(--md-sys-color-primary)'};">${count}/3</strong>
-                    ${remaining === 0 ? '<span style="font-size:12px;color:#22c55e;margin-left:6px;">🎉 完凸</span>' : ''}
+                    ${remaining === 0 ? '<span style="font-size:12px;color:#22c55e;margin-left:6px;">🎉 完凸 お疲れさまでした！</span>' : ''}
                 </div>`;
-            listEl.innerHTML = summary + (rows || '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px 0;">まだ凸が報告されていません。右上の「+ 凸を報告」から登録してください。</p>');
+            const doneBanner = remaining === 0 ? `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin:6px 0 12px 0;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#15803d;font-size:13px;">
+                    <span style="font-size:18px;">✅</span>
+                    <div>
+                        <div style="font-weight:600;">本日の戦闘結果報告は完了しています</div>
+                        <div style="font-size:11px;opacity:0.8;">追加で報告したい場合はまず該当する凸を「削除」してから再登録してください。</div>
+                    </div>
+                </div>` : '';
+            listEl.innerHTML = summary + doneBanner + (rows || '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px 0;">まだ凸が報告されていません。右上の「+ 凸を報告」から登録してください。</p>');
         }
 
         async function openMyAttackModal(editAttackId = null, initialDamageRaw = null) {
