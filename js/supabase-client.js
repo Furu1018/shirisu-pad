@@ -321,6 +321,56 @@ window.supabaseUpdateAttackDamage = async function (attackId, damageRaw) {
     if (error) throw error;
 };
 
+// 運営ダッシュボード用: 全アクティブメンバーを取得し、その人の各種関連情報を結合
+// 戻り値: [{ id, name, archived, damagesByAttr:{fire:N,...}, attacks:[{boss_number, damage_raw, ...}], attackCount }]
+window.supabaseLoadOpsDashboardData = async function () {
+    const ctx = await window.supabaseLoadActiveSeasonWithBosses();
+    const { season, bosses } = ctx || { season: null, bosses: [] };
+
+    // 1) アクティブメンバー
+    const { data: players, error: pErr } = await supabase
+        .from('players')
+        .select('id, name, archived')
+        .or('archived.is.null,archived.eq.false')
+        .order('name', { ascending: true });
+    if (pErr) throw pErr;
+
+    // 2) 全プレイヤーの player_damages を一括取得
+    const { data: dmgs, error: dErr } = await supabase
+        .from('player_damages')
+        .select('player_id, attribute, damage_b, updated_at');
+    if (dErr) throw dErr;
+    const dmgByPlayer = new Map();
+    (dmgs || []).forEach(d => {
+        if (!dmgByPlayer.has(d.player_id)) dmgByPlayer.set(d.player_id, {});
+        dmgByPlayer.get(d.player_id)[d.attribute] = Number(d.damage_b) || 0;
+    });
+
+    // 3) アクティブシーズンの全凸を一括取得
+    let attacksByPlayer = new Map();
+    if (season) {
+        const { data: atks, error: aErr } = await supabase
+            .from('attacks')
+            .select('id, player_id, attack_number, boss_number, boss_code, damage_raw, level')
+            .eq('season_id', season.id)
+            .eq('attack_date', season.hard_date);
+        if (aErr) throw aErr;
+        (atks || []).forEach(a => {
+            if (!attacksByPlayer.has(a.player_id)) attacksByPlayer.set(a.player_id, []);
+            attacksByPlayer.get(a.player_id).push(a);
+        });
+    }
+
+    const result = (players || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        damagesByAttr: dmgByPlayer.get(p.id) || {},
+        attacks: attacksByPlayer.get(p.id) || [],
+        attackCount: (attacksByPlayer.get(p.id) || []).length,
+    }));
+    return { season, bosses, players: result };
+};
+
 // プレイヤーを ID で取得（存在チェック用）
 window.supabaseGetPlayerById = async function (playerId) {
     const { data, error } = await supabase

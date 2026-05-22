@@ -886,6 +886,10 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             マイページ
         </button>
+        <button class="drawer-menu-item" data-tab="ops" onclick="switchTabFromDrawer('ops')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            運営
+        </button>
         <button class="drawer-menu-item active" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
             ダメージ比較
@@ -937,6 +941,10 @@
             <button class="tab-button" data-tab="mypage" onclick="switchTab('mypage')" title="マイページ">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 マイページ
+            </button>
+            <button class="tab-button" data-tab="ops" onclick="switchTab('ops')" title="運営">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                運営
             </button>
             <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ比較">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
@@ -1023,6 +1031,54 @@
                     <li>属性別ダメージ登録（Phase 2b）</li>
                     <li>凸報告（手動入力 / 画像OCR）（Phase 2c）</li>
                     <li>締め凸通知のPush受信設定（Phase 6）</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Tab: 運営 ========== -->
+    <div id="tab-ops" class="tab-content">
+        <div class="container">
+            <!-- アクティブシーズン情報 -->
+            <div class="card" style="padding:14px 18px;margin-bottom:16px;background:var(--md-sys-color-surface-variant);">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">アクティブシーズン:</span>
+                    <strong id="opsSeasonLabel" style="font-size:14px;">読み込み中...</strong>
+                    <span style="margin-left:auto;">
+                        <button onclick="reloadOpsDashboard()" style="padding:5px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 更新</button>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 残凸状況一覧 -->
+            <div class="card" style="padding:20px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                    <h3 style="margin:0;font-size:16px;font-weight:600;">📊 残凸状況一覧</h3>
+                    <span id="opsRemainingSummary" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
+                </div>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">残凸あるメンバーを残凸数別にグループ表示します。各属性の登録ダメージも一覧で見られます。</p>
+                <div id="opsRemainingList">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+                </div>
+            </div>
+
+            <!-- 締め凸候補検索 -->
+            <div class="card" style="padding:20px;margin-bottom:16px;">
+                <h3 style="margin:0 0 8px 0;font-size:16px;font-weight:600;">🎯 締め凸候補検索</h3>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">PT属性を選ぶと、対象ボスの残HPと登録ダメージを比較して候補を表示します。<br>残HP超過は ⚠️ で警告、3凸済みは除外。</p>
+                <div id="opsFinishAttrButtons" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+                <div id="opsFinishList">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">PT属性ボタンをタップしてください。</p>
+                </div>
+            </div>
+
+            <div class="card" style="padding:20px;opacity:0.55;">
+                <h3 style="margin:0 0 6px 0;font-size:15px;font-weight:600;">🔜 これから追加予定の運営機能</h3>
+                <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
+                    <li>代理凸 / 凸履歴編集（Phase 3b）</li>
+                    <li>ボスHP更新（Phase 3b）</li>
+                    <li>シーズン作成 / 終了 / ダメージリセット（Phase 3c）</li>
+                    <li>BlaBlaLINK 画像取り込み（Phase 4）</li>
                 </ul>
             </div>
         </div>
@@ -1607,6 +1663,7 @@
             if (tabName === 'slv-ranking') renderFururiRanking();
             if (tabName === 'characters') updateTeamCompositionsDisplay();
             if (tabName === 'mypage') renderMyPage();
+            if (tabName === 'ops') renderOpsDashboard();
         }
 
         // ========== Player Identity (Phase 2a) ==========
@@ -2058,6 +2115,165 @@
             } catch (e) {
                 alert(`削除失敗: ${e?.message || e}`);
             }
+        }
+
+        // ========== 運営ダッシュボード (Phase 3a) ==========
+        let _opsDashboardCache = null;
+        let _opsCurrentAttr = null;
+
+        async function renderOpsDashboard() {
+            const labelEl = document.getElementById('opsSeasonLabel');
+            const remListEl = document.getElementById('opsRemainingList');
+            const remSummaryEl = document.getElementById('opsRemainingSummary');
+            const finishAttrEl = document.getElementById('opsFinishAttrButtons');
+            const finishListEl = document.getElementById('opsFinishList');
+
+            labelEl.textContent = '読み込み中...';
+            remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+
+            try {
+                _opsDashboardCache = await window.supabaseLoadOpsDashboardData();
+            } catch (e) {
+                labelEl.textContent = '取得失敗';
+                remListEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                return;
+            }
+
+            const { season, bosses, players } = _opsDashboardCache;
+            if (!season) {
+                labelEl.textContent = '（アクティブシーズン無し）';
+                remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">運営がシーズンを作成するまで一覧表示できません。</p>';
+                finishAttrEl.innerHTML = '';
+                finishListEl.innerHTML = '';
+                return;
+            }
+            labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})`;
+            renderOpsRemainingList();
+            renderOpsFinishAttrButtons();
+            if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+            else finishListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">PT属性ボタンをタップしてください。</p>';
+        }
+
+        async function reloadOpsDashboard() {
+            _opsDashboardCache = null;
+            await renderOpsDashboard();
+        }
+
+        function renderOpsRemainingList() {
+            if (!_opsDashboardCache) return;
+            const { players } = _opsDashboardCache;
+            const listEl = document.getElementById('opsRemainingList');
+            const summaryEl = document.getElementById('opsRemainingSummary');
+
+            const remaining = players
+                .filter(p => p.attackCount < 3)
+                .map(p => ({ ...p, remain: 3 - p.attackCount }));
+            const totalRemain = remaining.reduce((s, p) => s + p.remain, 0);
+            summaryEl.textContent = `${remaining.length}名 / ${totalRemain}凸残`;
+
+            if (remaining.length === 0) {
+                listEl.innerHTML = '<p style="color:#22c55e;font-size:13px;font-weight:600;">🎉 全員凸完了！</p>';
+                return;
+            }
+            const groups = { 3: [], 2: [], 1: [] };
+            remaining.forEach(p => groups[p.remain]?.push(p));
+
+            const renderDmgRow = (p) => {
+                const dmgChips = PT_ATTRS.map(a => {
+                    const v = p.damagesByAttr[a.key];
+                    if (!v || v <= 0) return '';
+                    return `<span title="${a.name}PT" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;background:var(--md-sys-color-surface-variant);font-size:11px;"><img src="${a.icon}" style="width:12px;height:12px;">${Number(v).toFixed(1)}</span>`;
+                }).filter(Boolean).join(' ');
+                return dmgChips || '<span style="color:var(--md-sys-color-on-surface-variant);font-size:11px;">_(ダメ未登録)_</span>';
+            };
+
+            let html = '';
+            for (const n of [3, 2, 1]) {
+                if (groups[n].length === 0) continue;
+                const icon = n === 3 ? '🟢' : n === 2 ? '🟡' : '🔴';
+                html += `<div style="margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:4px;">${icon} ${n}凸残 (${groups[n].length}名)</div>`;
+                html += groups[n].map(p => `
+                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);flex-wrap:wrap;">
+                        <strong style="font-size:13px;min-width:80px;">${escapeHtml(p.name)}</strong>
+                        <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${p.attackCount}/3)</span>
+                        <div style="flex:1;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;">${renderDmgRow(p)}</div>
+                    </div>`).join('');
+                html += '</div>';
+            }
+            listEl.innerHTML = html;
+        }
+
+        function renderOpsFinishAttrButtons() {
+            if (!_opsDashboardCache) return;
+            const { bosses } = _opsDashboardCache;
+            const el = document.getElementById('opsFinishAttrButtons');
+            // PT属性 → 対応ボス (boss.weakness === PT属性)
+            el.innerHTML = PT_ATTRS.map(a => {
+                const boss = bosses.find(b => b.weakness === a.key);
+                const hpB = boss ? (boss.remaining_hp_raw || 0) / 1e9 : null;
+                const hint = boss
+                    ? `<br><span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">残HP ${hpB.toFixed(2)}B</span>`
+                    : '<br><span style="font-size:10px;color:#ef4444;">対象ボス無し</span>';
+                const isActive = _opsCurrentAttr === a.key;
+                const baseStyle = `padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:90px;`;
+                const onStyle = `border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);`;
+                const offStyle = `border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);`;
+                return `<button onclick="handleOpsFinishAttrPick('${a.key}')" style="${baseStyle}${isActive ? onStyle : offStyle}" ${boss ? '' : 'disabled'}>
+                    <span style="display:inline-flex;align-items:center;gap:4px;"><img src="${a.icon}" style="width:16px;height:16px;">${a.name}PT</span>
+                    ${hint}
+                </button>`;
+            }).join('');
+        }
+
+        function handleOpsFinishAttrPick(attrKey) {
+            _opsCurrentAttr = attrKey;
+            renderOpsFinishAttrButtons();
+            renderOpsFinishList(attrKey);
+        }
+
+        function renderOpsFinishList(attrKey) {
+            if (!_opsDashboardCache) return;
+            const { bosses, players } = _opsDashboardCache;
+            const ptInfo = PT_ATTRS.find(x => x.key === attrKey);
+            const boss = bosses.find(b => b.weakness === attrKey);
+            const listEl = document.getElementById('opsFinishList');
+            if (!boss) {
+                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">対象ボスが見つかりません。</p>';
+                return;
+            }
+            const remainingHpB = (boss.remaining_hp_raw || 0) / 1e9;
+
+            // 候補抽出: 3凸未満 かつ 該当属性ダメージ登録あり
+            const candidates = players
+                .filter(p => p.attackCount < 3)
+                .map(p => ({ ...p, dmg: Number(p.damagesByAttr[attrKey]) || 0 }))
+                .filter(p => p.dmg > 0)
+                .sort((a, b) => b.dmg - a.dmg);
+
+            const header = `
+                <div style="padding:8px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);margin-bottom:8px;font-size:13px;">
+                    対象: <img src="${ptInfo.icon}" style="width:14px;height:14px;vertical-align:middle;"> <strong>${ptInfo.name}PT</strong> → <strong>${escapeHtml(boss.name || boss.boss_code)}</strong> (残HP <strong>${remainingHpB.toFixed(2)}B</strong>)
+                </div>`;
+
+            if (candidates.length === 0) {
+                listEl.innerHTML = header + '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">この属性で凸できるメンバーがいません（ダメージ未登録か全員3凸済み）。</p>';
+                return;
+            }
+
+            const rows = candidates.map((p, i) => {
+                const over = p.dmg > remainingHpB;
+                const overTag = over ? `<span style="color:#f59e0b;font-size:11px;font-weight:600;">⚠️ +${(p.dmg - remainingHpB).toFixed(2)}B 超過</span>` : '';
+                return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <span style="min-width:24px;text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:12px;">${i + 1}.</span>
+                        <strong style="flex:1;font-size:14px;">${escapeHtml(p.name)}</strong>
+                        <span style="font-size:13px;font-weight:700;">${p.dmg.toFixed(2)} B</span>
+                        ${overTag}
+                        <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${p.attackCount}/3)</span>
+                    </div>`;
+            }).join('');
+            listEl.innerHTML = header + rows;
         }
 
         // モーダル外クリックで閉じる
