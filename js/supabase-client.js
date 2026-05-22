@@ -236,6 +236,91 @@ window.supabaseDeletePlayerDamage = async function (playerId, attribute) {
     if (error) throw error;
 };
 
+// アクティブシーズン + そのボス5体を取得
+window.supabaseLoadActiveSeasonWithBosses = async function () {
+    const { data: season, error: sErr } = await supabase
+        .from('seasons')
+        .select('id, month_key, hard_date, current_level, union_rank, is_active')
+        .eq('is_active', true)
+        .order('hard_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (sErr) throw sErr;
+    if (!season) return { season: null, bosses: [] };
+    const { data: bosses, error: bErr } = await supabase
+        .from('bosses')
+        .select('boss_number, boss_code, name, attribute, weakness, tier, total_hp_raw, remaining_hp_raw')
+        .eq('season_id', season.id)
+        .order('boss_number', { ascending: true });
+    if (bErr) throw bErr;
+    return { season, bosses: bosses || [] };
+};
+
+// プレイヤーの本日の凸記録を取得
+window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
+    const { data, error } = await supabase
+        .from('attacks')
+        .select('id, attack_number, boss_number, boss_code, damage_raw, level, characters, reported_at')
+        .eq('season_id', seasonId)
+        .eq('player_id', playerId)
+        .eq('attack_date', date)
+        .order('attack_number', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
+// 凸を1件追加
+window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bossNumber, bossCode, damageRaw, level, characters }) {
+    // attack_number は現在の凸数 + 1
+    const { data: existing, error: cErr } = await supabase
+        .from('attacks')
+        .select('attack_number')
+        .eq('season_id', seasonId)
+        .eq('player_id', playerId)
+        .eq('attack_date', attackDate);
+    if (cErr) throw cErr;
+    const used = (existing || []).map(x => x.attack_number);
+    let attackNumber = 1;
+    while (used.includes(attackNumber) && attackNumber <= 3) attackNumber++;
+    if (attackNumber > 3) throw new Error('既に3凸済みです');
+
+    const { data, error } = await supabase
+        .from('attacks')
+        .insert({
+            season_id: seasonId,
+            player_id: playerId,
+            attack_date: attackDate,
+            boss_number: bossNumber,
+            boss_code: bossCode,
+            damage_raw: Math.round(damageRaw),
+            attack_number: attackNumber,
+            level: level || 1,
+            characters: characters || [],
+        })
+        .select('id, attack_number')
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+// 凸を削除
+window.supabaseDeleteAttack = async function (attackId) {
+    const { error } = await supabase
+        .from('attacks')
+        .delete()
+        .eq('id', attackId);
+    if (error) throw error;
+};
+
+// 凸のダメージを更新
+window.supabaseUpdateAttackDamage = async function (attackId, damageRaw) {
+    const { error } = await supabase
+        .from('attacks')
+        .update({ damage_raw: Math.round(damageRaw) })
+        .eq('id', attackId);
+    if (error) throw error;
+};
+
 // プレイヤーを ID で取得（存在チェック用）
 window.supabaseGetPlayerById = async function (playerId) {
     const { data, error } = await supabase

@@ -998,6 +998,16 @@
             </div>
 
             <div class="card" style="padding:20px;margin-top:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+                    <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚔️ 今日の凸報告</h3>
+                    <button id="myAttackAddBtn" onclick="openMyAttackModal()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">＋ 凸を報告</button>
+                </div>
+                <div id="myAttackList">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択するとここに凸履歴が表示されます。</p>
+                </div>
+            </div>
+
+            <div class="card" style="padding:20px;margin-top:20px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
                     <div>
                         <h3 style="margin:0 0 4px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚙️ メンバー管理</h3>
@@ -1370,6 +1380,43 @@
         </div>
     </div>
 
+    <!-- ========== 凸報告モーダル ========== -->
+    <div class="player-select-modal" id="myAttackModal">
+        <div class="player-select-content" style="max-width:500px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2 id="myAttackModalTitle">⚔️ 凸報告</h2>
+                <button onclick="closeMyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle" id="myAttackModalHint">凸したボスとダメージを記録します。</p>
+
+            <!-- ボス選択 -->
+            <div>
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);margin-bottom:6px;">対象ボス（タップで選択）</label>
+                <div id="myAttackBossButtons" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+                    <div style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px;">アクティブシーズン情報を取得中...</div>
+                </div>
+            </div>
+
+            <!-- ダメージ入力 -->
+            <div>
+                <label style="display:block;font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);margin-bottom:6px;">出したダメージ（B単位）</label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <input type="number" id="myAttackDamageInput" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
+                        style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
+                    <span style="font-size:14px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                </div>
+                <p id="myAttackDamageHelp" style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</p>
+            </div>
+
+            <p id="myAttackMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeMyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="myAttackSaveBtn" onclick="handleMyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== Member Management Modal ========== -->
     <div class="player-select-modal" id="memberManageModal">
         <div class="player-select-content" style="max-width:560px;">
@@ -1664,6 +1711,7 @@
             }
             nameEl.textContent = id.name;
             renderMyDamageInputs(id);
+            renderMyAttacks(id);
             // 最新シーズン (currentData) から該当プレイヤーを引く
             const me = (currentData || []).find(p => p.player === id.name);
             if (!me) {
@@ -1783,16 +1831,229 @@
             }
         }
 
+        // ========== マイページ: 凸報告 ==========
+        let _activeSeasonCache = null;  // { season, bosses }
+        let _myTodayAttacksCache = null;
+        let _myAttackSelectedBossNumber = null;
+
+        // PT属性 → ボス側属性のマッピング（ふるりPAD全体で統一）
+        function attrToCounterBoss(playerAttr) {
+            return { fire: 'wind', water: 'fire', electric: 'water', iron: 'electric', wind: 'iron' }[playerAttr];
+        }
+        function bossAttrToPlayerAttr(bossAttr) {
+            return { wind: 'fire', fire: 'water', water: 'electric', electric: 'iron', iron: 'wind' }[bossAttr];
+        }
+
+        async function ensureActiveSeasonLoaded() {
+            if (_activeSeasonCache) return _activeSeasonCache;
+            if (typeof window.supabaseLoadActiveSeasonWithBosses !== 'function') return null;
+            try {
+                _activeSeasonCache = await window.supabaseLoadActiveSeasonWithBosses();
+            } catch (e) {
+                console.warn('[mypage] アクティブシーズン取得失敗:', e);
+                _activeSeasonCache = { season: null, bosses: [] };
+            }
+            return _activeSeasonCache;
+        }
+
+        async function renderMyAttacks(identity) {
+            const listEl = document.getElementById('myAttackList');
+            const btn = document.getElementById('myAttackAddBtn');
+            if (!listEl || !identity) return;
+            listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+
+            const ctx = await ensureActiveSeasonLoaded();
+            if (!ctx?.season) {
+                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">現在アクティブなシーズンがありません。運営にシーズン作成を依頼してください。</p>';
+                if (btn) btn.disabled = true;
+                return;
+            }
+            let attacks = [];
+            try {
+                attacks = await window.supabaseLoadMyAttacks(identity.id, ctx.season.id, ctx.season.hard_date);
+                _myTodayAttacksCache = attacks;
+            } catch (e) {
+                listEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                return;
+            }
+
+            const count = attacks.length;
+            const remaining = Math.max(0, 3 - count);
+            if (btn) btn.disabled = remaining === 0;
+
+            const bossByCode = new Map(ctx.bosses.map(b => [b.boss_code, b]));
+
+            const rows = attacks.map(a => {
+                const boss = bossByCode.get(a.boss_code);
+                const bossName = boss?.name || a.boss_code;
+                const bossAttr = boss?.attribute;
+                const playerAttr = bossAttr ? bossAttrToPlayerAttr(bossAttr) : null;
+                const ptInfo = PT_ATTRS.find(x => x.key === playerAttr);
+                const damageB = (Number(a.damage_raw) / 1e9).toFixed(2);
+                return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <div style="font-weight:700;color:var(--md-sys-color-primary);font-size:14px;min-width:46px;">${a.attack_number}凸目</div>
+                        ${ptInfo ? `<img src="${ptInfo.icon}" alt="${ptInfo.name}" style="width:20px;height:20px;flex-shrink:0;" title="${ptInfo.name}PT">` : ''}
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${escapeHtml(bossName)}</div>
+                            <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">Lv.${a.level || 1} ${ptInfo ? `／ ${ptInfo.name}PT` : ''}</div>
+                        </div>
+                        <div style="font-size:15px;font-weight:700;color:var(--md-sys-color-on-surface);white-space:nowrap;">${damageB} B</div>
+                        <button onclick="handleMyAttackEdit(${a.id}, ${a.damage_raw})" style="padding:5px 9px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">編集</button>
+                        <button onclick="handleMyAttackDelete(${a.id}, ${a.attack_number})" style="padding:5px 9px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
+                    </div>`;
+            }).join('');
+
+            const summary = `
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                    <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">シーズン:</span>
+                    <strong style="font-size:13px;">${ctx.season.month_key}</strong>
+                    <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-left:8px;">凸数:</span>
+                    <strong style="font-size:13px;color:${remaining === 0 ? '#22c55e' : 'var(--md-sys-color-primary)'};">${count}/3</strong>
+                    ${remaining === 0 ? '<span style="font-size:12px;color:#22c55e;margin-left:6px;">🎉 完凸</span>' : ''}
+                </div>`;
+            listEl.innerHTML = summary + (rows || '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px 0;">まだ凸が報告されていません。右上の「+ 凸を報告」から登録してください。</p>');
+        }
+
+        async function openMyAttackModal(editAttackId = null, initialDamageRaw = null) {
+            const id = getCurrentIdentity();
+            if (!id) { showNotification('まずプレイヤーを選択してください'); return; }
+            const modal = document.getElementById('myAttackModal');
+            const titleEl = document.getElementById('myAttackModalTitle');
+            const hintEl = document.getElementById('myAttackModalHint');
+            const dmgInput = document.getElementById('myAttackDamageInput');
+            const msgEl = document.getElementById('myAttackMessage');
+            const saveBtn = document.getElementById('myAttackSaveBtn');
+            msgEl.textContent = '';
+            _myAttackSelectedBossNumber = null;
+
+            modal.classList.add('open');
+
+            const ctx = await ensureActiveSeasonLoaded();
+            const bossButtonsEl = document.getElementById('myAttackBossButtons');
+            if (!ctx?.season || ctx.bosses.length === 0) {
+                bossButtonsEl.innerHTML = '<div style="grid-column:1/-1;color:#ef4444;font-size:13px;padding:8px;">アクティブシーズンが取得できません。</div>';
+                return;
+            }
+
+            // 編集モードか新規モードかでUI調整
+            if (editAttackId != null) {
+                titleEl.textContent = '✏️ 凸ダメージ編集';
+                hintEl.textContent = 'ダメージのみ修正できます（ボスは変更不可。変更したい場合は一度削除して再登録）。';
+                bossButtonsEl.innerHTML = '<div style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:12px;padding:6px;">編集モードのためボス変更は無効</div>';
+                dmgInput.value = initialDamageRaw != null ? (Number(initialDamageRaw) / 1e9).toFixed(2).replace(/\.?0+$/, '') : '';
+                saveBtn.dataset.editId = String(editAttackId);
+            } else {
+                titleEl.textContent = '⚔️ 凸報告';
+                hintEl.textContent = '凸したボスとダメージを記録します。';
+                dmgInput.value = '';
+                delete saveBtn.dataset.editId;
+                bossButtonsEl.innerHTML = ctx.bosses.map(b => {
+                    const playerAttr = bossAttrToPlayerAttr(b.attribute);
+                    const ptInfo = PT_ATTRS.find(x => x.key === playerAttr);
+                    return `
+                        <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}"
+                            onclick="handleMyAttackBossPick(this, ${b.boss_number}, ${JSON.stringify(b.boss_code)})"
+                            style="padding:10px 8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                            ${ptInfo ? `<img src="${ptInfo.icon}" style="width:22px;height:22px;">` : ''}
+                            <div style="font-weight:600;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</div>
+                            <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${ptInfo ? `${ptInfo.name}PTで凸` : ''}</div>
+                        </button>`;
+                }).join('');
+            }
+            setTimeout(() => dmgInput.focus(), 100);
+        }
+
+        function closeMyAttackModal() {
+            document.getElementById('myAttackModal').classList.remove('open');
+            _myAttackSelectedBossNumber = null;
+        }
+
+        function handleMyAttackBossPick(btn, bossNumber, bossCode) {
+            _myAttackSelectedBossNumber = bossNumber;
+            // 視覚的選択
+            document.querySelectorAll('#myAttackBossButtons button').forEach(b => {
+                b.style.borderColor = 'var(--md-sys-color-outline-variant)';
+                b.style.background = 'var(--md-sys-color-surface)';
+            });
+            btn.style.borderColor = 'var(--md-sys-color-primary)';
+            btn.style.background = 'var(--md-sys-color-primary-container)';
+            btn.dataset.codeSelected = '1';
+        }
+
+        async function handleMyAttackSave() {
+            const id = getCurrentIdentity();
+            if (!id) return;
+            const saveBtn = document.getElementById('myAttackSaveBtn');
+            const msgEl = document.getElementById('myAttackMessage');
+            const dmgRaw = document.getElementById('myAttackDamageInput').value.trim();
+            const dmgB = Number(dmgRaw);
+            const setMsg = (t, err = false) => { msgEl.textContent = t; msgEl.style.color = err ? '#ef4444' : '#22c55e'; };
+
+            if (!dmgRaw || isNaN(dmgB) || dmgB < 0) { setMsg('❌ ダメージを正しく入力してください', true); return; }
+            const damageRaw = Math.round(dmgB * 1e9);
+
+            const editId = saveBtn.dataset.editId;
+            try {
+                if (editId) {
+                    await window.supabaseUpdateAttackDamage(parseInt(editId), damageRaw);
+                    setMsg('✅ ダメージを更新しました');
+                } else {
+                    if (!_myAttackSelectedBossNumber) { setMsg('❌ ボスを選択してください', true); return; }
+                    const ctx = await ensureActiveSeasonLoaded();
+                    if (!ctx?.season) { setMsg('❌ アクティブシーズンが見つかりません', true); return; }
+                    const boss = ctx.bosses.find(b => b.boss_number === _myAttackSelectedBossNumber);
+                    if (!boss) { setMsg('❌ ボス情報が見つかりません', true); return; }
+                    await window.supabaseAddAttack({
+                        seasonId: ctx.season.id,
+                        playerId: id.id,
+                        attackDate: ctx.season.hard_date,
+                        bossNumber: boss.boss_number,
+                        bossCode: boss.boss_code,
+                        damageRaw,
+                        level: ctx.season.current_level || 1,
+                        characters: [],
+                    });
+                    setMsg('✅ 凸を報告しました');
+                }
+                // 一覧再読み込み
+                _myTodayAttacksCache = null;
+                await renderMyAttacks(id);
+                setTimeout(() => closeMyAttackModal(), 800);
+            } catch (e) {
+                setMsg(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        function handleMyAttackEdit(attackId, damageRaw) {
+            openMyAttackModal(attackId, damageRaw);
+        }
+
+        async function handleMyAttackDelete(attackId, attackNumber) {
+            if (!confirm(`${attackNumber}凸目を削除しますか？`)) return;
+            const id = getCurrentIdentity();
+            try {
+                await window.supabaseDeleteAttack(attackId);
+                _myTodayAttacksCache = null;
+                await renderMyAttacks(id);
+                showNotification(`${attackNumber}凸目を削除しました`);
+            } catch (e) {
+                alert(`削除失敗: ${e?.message || e}`);
+            }
+        }
+
         // モーダル外クリックで閉じる
         document.addEventListener('click', e => {
             if (e.target?.id === 'playerSelectModal') closePlayerSelectModal();
             if (e.target?.id === 'memberManageModal') closeMemberManageModal();
+            if (e.target?.id === 'myAttackModal') closeMyAttackModal();
         });
         // Esc で閉じる
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
                 closePlayerSelectModal();
                 closeMemberManageModal();
+                closeMyAttackModal();
             }
         });
 
