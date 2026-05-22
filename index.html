@@ -1072,11 +1072,19 @@
                 </div>
             </div>
 
+            <!-- 運営アクション -->
+            <div class="card" style="padding:20px;margin-bottom:16px;">
+                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">⚙️ 運営アクション</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    <button onclick="openOpsBossHpModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">⚔️ ボスHP更新</button>
+                    <button onclick="openOpsProxyAttackModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">✏️ 代理凸を報告</button>
+                    <button onclick="openOpsAttacksEditModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">📋 凸履歴・編集</button>
+                </div>
+            </div>
+
             <div class="card" style="padding:20px;opacity:0.55;">
                 <h3 style="margin:0 0 6px 0;font-size:15px;font-weight:600;">🔜 これから追加予定の運営機能</h3>
                 <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
-                    <li>代理凸 / 凸履歴編集（Phase 3b）</li>
-                    <li>ボスHP更新（Phase 3b）</li>
                     <li>シーズン作成 / 終了 / ダメージリセット（Phase 3c）</li>
                     <li>BlaBlaLINK 画像取り込み（Phase 4）</li>
                 </ul>
@@ -1433,6 +1441,81 @@
                     <tbody id="fsimTableBody"></tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- ========== 運営: ボスHP更新モーダル ========== -->
+    <div class="player-select-modal" id="opsBossHpModal">
+        <div class="player-select-content" style="max-width:560px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>⚔️ ボスHP更新</h2>
+                <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。<br>BlaBlaLINK連携後は画像から自動同期される予定 (Phase 4)。</p>
+            <div id="opsBossHpList">
+                <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+            </div>
+            <p id="opsBossHpMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+        </div>
+    </div>
+
+    <!-- ========== 運営: 代理凸モーダル ========== -->
+    <div class="player-select-modal" id="opsProxyAttackModal">
+        <div class="player-select-content" style="max-width:520px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2 id="opsProxyTitle">✏️ 代理凸報告</h2>
+                <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">他メンバーの代わりに凸を1件記録します。</p>
+
+            <div>
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">対象メンバー</label>
+                <select id="opsProxyMemberSelect" onchange="onOpsProxyMemberChange()" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                    <option value="">-- 選択してください --</option>
+                </select>
+                <p id="opsProxyMemberHint" style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</p>
+            </div>
+
+            <div>
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">対象ボス（タップで選択）</label>
+                <div id="opsProxyBossButtons" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+                    <div style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px;">読み込み中...</div>
+                </div>
+            </div>
+
+            <div>
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">ダメージ（B単位、不明なら 0 でも可）</label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <input type="number" id="opsProxyDamageInput" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
+                        style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
+                    <span style="font-size:14px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                </div>
+            </div>
+
+            <p id="opsProxyMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 運営: 凸履歴編集モーダル ========== -->
+    <div class="player-select-modal" id="opsAttacksEditModal">
+        <div class="player-select-content" style="max-width:720px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>📋 凸履歴・編集</h2>
+                <button onclick="closeOpsAttacksEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">アクティブシーズンの全凸を新しい順に表示します。ダメージ修正・凸削除が可能です。</p>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="opsAttacksFilter" placeholder="🔍 メンバー名で絞り込み" class="player-select-search" style="flex:1;" oninput="renderOpsAttacksList()">
+                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 更新</button>
+            </div>
+            <div id="opsAttacksList" style="overflow-y:auto;max-height:55vh;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;padding:4px;">
+                <div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>
+            </div>
+            <p id="opsAttacksMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
         </div>
     </div>
 
@@ -2276,11 +2359,267 @@
             listEl.innerHTML = header + rows;
         }
 
+        // ========== 運営: ボスHP更新モーダル (Phase 3b) ==========
+        async function openOpsBossHpModal() {
+            document.getElementById('opsBossHpModal').classList.add('open');
+            document.getElementById('opsBossHpMessage').textContent = '';
+            const listEl = document.getElementById('opsBossHpList');
+            listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+            const ctx = await ensureActiveSeasonLoaded();
+            _activeSeasonCache = null; // 次回開く時最新を取得するため
+            const fresh = await window.supabaseLoadActiveSeasonWithBosses();
+            if (!fresh.season) { listEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">アクティブシーズン無し</p>'; return; }
+            listEl.innerHTML = fresh.bosses.map(b => {
+                const playerAttr = bossAttrToPlayerAttr(b.attribute);
+                const pt = PT_ATTRS.find(x => x.key === playerAttr);
+                const totalB = (Number(b.total_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
+                const remB = (Number(b.remaining_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
+                return `
+                    <div data-boss-num="${b.boss_number}" style="padding:10px 6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                            <strong style="font-size:13px;flex:1;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
+                            ${pt ? `<img src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
+                            <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">tier: ${b.tier}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <label style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">残HP</label>
+                            <input class="ops-hp-rem" type="number" inputmode="decimal" step="0.01" min="0" value="${remB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;text-align:right;">
+                            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B / 総HP</span>
+                            <input class="ops-hp-total" type="number" inputmode="decimal" step="0.01" min="0" value="${totalB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;text-align:right;">
+                            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                            <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;cursor:pointer;">保存</button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+        function closeOpsBossHpModal() {
+            document.getElementById('opsBossHpModal').classList.remove('open');
+        }
+        async function handleOpsBossHpSave(seasonId, bossNumber, btn) {
+            const row = btn.closest('div[data-boss-num]');
+            const remB = parseFloat(row.querySelector('.ops-hp-rem').value);
+            const totalB = parseFloat(row.querySelector('.ops-hp-total').value);
+            const msg = document.getElementById('opsBossHpMessage');
+            if (isNaN(remB) || isNaN(totalB) || remB < 0 || totalB <= 0 || remB > totalB) {
+                msg.textContent = `❌ B${bossNumber}: 値が不正です (0 ≤ 残HP ≤ 総HP > 0)`;
+                msg.style.color = '#ef4444';
+                return;
+            }
+            try {
+                await window.supabaseUpdateBossHp(seasonId, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
+                msg.textContent = `✅ B${bossNumber} のHPを更新しました`;
+                msg.style.color = '#22c55e';
+                _opsDashboardCache = null;
+                _activeSeasonCache = null;
+                // 運営ダッシュボードの締め凸候補等を再描画
+                renderOpsDashboard();
+            } catch (e) {
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
+            }
+        }
+
+        // ========== 運営: 代理凸モーダル (Phase 3b) ==========
+        let _opsProxyBossNumber = null;
+
+        async function openOpsProxyAttackModal() {
+            document.getElementById('opsProxyAttackModal').classList.add('open');
+            document.getElementById('opsProxyMessage').textContent = '';
+            document.getElementById('opsProxyDamageInput').value = '';
+            _opsProxyBossNumber = null;
+
+            // メンバーセレクト
+            const sel = document.getElementById('opsProxyMemberSelect');
+            sel.innerHTML = '<option value="">-- 選択してください --</option>';
+            try {
+                const players = await window.supabaseLoadAllPlayers(false);
+                players.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = String(p.id);
+                    opt.textContent = p.name;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                console.warn('[opsProxy] members 読み込み失敗', e);
+            }
+
+            // ボスボタン
+            const ctx = await ensureActiveSeasonLoaded();
+            const bossEl = document.getElementById('opsProxyBossButtons');
+            if (!ctx?.season) {
+                bossEl.innerHTML = '<div style="grid-column:1/-1;color:#ef4444;font-size:13px;padding:8px;">アクティブシーズン無し</div>';
+                return;
+            }
+            bossEl.innerHTML = ctx.bosses.map(b => {
+                const playerAttr = bossAttrToPlayerAttr(b.attribute);
+                const pt = PT_ATTRS.find(x => x.key === playerAttr);
+                return `
+                    <button type="button" data-boss="${b.boss_number}"
+                        onclick="handleOpsProxyBossPick(this, ${b.boss_number})"
+                        style="padding:10px 8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                        ${pt ? `<img src="${pt.icon}" style="width:22px;height:22px;">` : ''}
+                        <div style="font-weight:600;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</div>
+                        <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${pt ? `${pt.name}PTで凸` : ''}</div>
+                    </button>`;
+            }).join('');
+        }
+        function closeOpsProxyAttackModal() {
+            document.getElementById('opsProxyAttackModal').classList.remove('open');
+            _opsProxyBossNumber = null;
+        }
+        function handleOpsProxyBossPick(btn, bossNumber) {
+            _opsProxyBossNumber = bossNumber;
+            document.querySelectorAll('#opsProxyBossButtons button').forEach(b => {
+                b.style.borderColor = 'var(--md-sys-color-outline-variant)';
+                b.style.background = 'var(--md-sys-color-surface)';
+            });
+            btn.style.borderColor = 'var(--md-sys-color-primary)';
+            btn.style.background = 'var(--md-sys-color-primary-container)';
+        }
+        async function onOpsProxyMemberChange() {
+            const sel = document.getElementById('opsProxyMemberSelect');
+            const hint = document.getElementById('opsProxyMemberHint');
+            const ctx = await ensureActiveSeasonLoaded();
+            if (!sel.value || !ctx?.season) { hint.textContent = ''; return; }
+            // 現在の凸数を表示
+            try {
+                const atks = await window.supabaseLoadMyAttacks(parseInt(sel.value), ctx.season.id, ctx.season.hard_date);
+                hint.textContent = `現在の凸数: ${atks.length}/3${atks.length >= 3 ? ' (既に3凸済みのため追加できません)' : ''}`;
+                hint.style.color = atks.length >= 3 ? '#ef4444' : 'var(--md-sys-color-on-surface-variant)';
+            } catch { hint.textContent = ''; }
+        }
+        async function handleOpsProxyAttackSave() {
+            const sel = document.getElementById('opsProxyMemberSelect');
+            const dmgInput = document.getElementById('opsProxyDamageInput');
+            const msg = document.getElementById('opsProxyMessage');
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+
+            const playerId = parseInt(sel.value);
+            if (!playerId) { set('❌ メンバーを選択してください', true); return; }
+            if (!_opsProxyBossNumber) { set('❌ ボスを選択してください', true); return; }
+            const dmgB = parseFloat(dmgInput.value);
+            if (isNaN(dmgB) || dmgB < 0) { set('❌ ダメージを正しく入力してください (不明なら 0)', true); return; }
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                const boss = ctx.bosses.find(b => b.boss_number === _opsProxyBossNumber);
+                await window.supabaseAddAttack({
+                    seasonId: ctx.season.id,
+                    playerId,
+                    attackDate: ctx.season.hard_date,
+                    bossNumber: boss.boss_number,
+                    bossCode: boss.boss_code,
+                    damageRaw: Math.round(dmgB * 1e9),
+                    level: ctx.season.current_level || 1,
+                    characters: [],
+                });
+                set(`✅ 代理凸を登録しました (${sel.options[sel.selectedIndex]?.text})`);
+                _opsDashboardCache = null;
+                setTimeout(() => closeOpsProxyAttackModal(), 800);
+                renderOpsDashboard();
+            } catch (e) {
+                set(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        // ========== 運営: 凸履歴・編集モーダル (Phase 3b) ==========
+        let _opsAttacksCache = null;
+
+        async function openOpsAttacksEditModal() {
+            document.getElementById('opsAttacksEditModal').classList.add('open');
+            document.getElementById('opsAttacksMessage').textContent = '';
+            document.getElementById('opsAttacksFilter').value = '';
+            await reloadOpsAttacksList();
+        }
+        function closeOpsAttacksEditModal() {
+            document.getElementById('opsAttacksEditModal').classList.remove('open');
+        }
+        async function reloadOpsAttacksList() {
+            const listEl = document.getElementById('opsAttacksList');
+            listEl.innerHTML = '<div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>';
+            const ctx = await ensureActiveSeasonLoaded();
+            if (!ctx?.season) { listEl.innerHTML = '<p style="color:#ef4444;font-size:13px;padding:8px;">アクティブシーズン無し</p>'; return; }
+            try {
+                _opsAttacksCache = await window.supabaseLoadAllAttacksForSeason(ctx.season.id, ctx.season.hard_date);
+                renderOpsAttacksList();
+            } catch (e) {
+                listEl.innerHTML = `<p style="color:#ef4444;font-size:13px;padding:8px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
+            }
+        }
+        function renderOpsAttacksList() {
+            const listEl = document.getElementById('opsAttacksList');
+            if (!_opsAttacksCache) return;
+            const q = (document.getElementById('opsAttacksFilter').value || '').toLowerCase().trim();
+            const ctx = _activeSeasonCache;
+            const bossByCode = new Map(ctx ? ctx.bosses.map(b => [b.boss_code, b]) : []);
+
+            const filtered = q
+                ? _opsAttacksCache.filter(a => (a.players?.name || '').toLowerCase().includes(q))
+                : _opsAttacksCache;
+            if (filtered.length === 0) {
+                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:12px;text-align:center;">該当する凸記録はありません</p>';
+                return;
+            }
+            listEl.innerHTML = filtered.map(a => {
+                const boss = bossByCode.get(a.boss_code);
+                const bossName = boss?.name || a.boss_code;
+                const playerAttr = boss?.attribute ? bossAttrToPlayerAttr(boss.attribute) : null;
+                const pt = playerAttr ? PT_ATTRS.find(x => x.key === playerAttr) : null;
+                const dmgB = (Number(a.damage_raw) / 1e9).toFixed(2);
+                return `
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <strong style="font-size:13px;min-width:90px;">${escapeHtml(a.players?.name || '不明')}</strong>
+                        <span style="font-weight:600;color:var(--md-sys-color-primary);font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
+                        ${pt ? `<img src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT">` : ''}
+                        <span style="flex:1;font-size:12px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
+                        <span style="font-size:13px;font-weight:700;white-space:nowrap;">${dmgB} B</span>
+                        <button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">編集</button>
+                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${JSON.stringify(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
+                    </div>`;
+            }).join('');
+        }
+        async function handleOpsAttackEditDmg(attackId, currentDamageRaw) {
+            const currentB = (Number(currentDamageRaw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
+            const input = prompt(`新しいダメージ (B単位) を入力\n現在: ${currentB} B`, currentB);
+            if (input == null) return;
+            const newB = parseFloat(input);
+            if (isNaN(newB) || newB < 0) { alert('数値が不正です'); return; }
+            const msg = document.getElementById('opsAttacksMessage');
+            try {
+                await window.supabaseUpdateAttackDamage(attackId, Math.round(newB * 1e9));
+                msg.textContent = `✅ ダメージを ${newB} B に更新しました`;
+                msg.style.color = '#22c55e';
+                _opsDashboardCache = null;
+                await reloadOpsAttacksList();
+                renderOpsDashboard();
+            } catch (e) {
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
+            }
+        }
+        async function handleOpsAttackDelete(attackId, attackNumber, playerName) {
+            if (!confirm(`${playerName} の ${attackNumber}凸目 を削除しますか？`)) return;
+            const msg = document.getElementById('opsAttacksMessage');
+            try {
+                await window.supabaseDeleteAttack(attackId);
+                msg.textContent = `🗑️ ${playerName} の ${attackNumber}凸目 を削除しました`;
+                msg.style.color = '#22c55e';
+                _opsDashboardCache = null;
+                await reloadOpsAttacksList();
+                renderOpsDashboard();
+            } catch (e) {
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
+            }
+        }
+
         // モーダル外クリックで閉じる
         document.addEventListener('click', e => {
             if (e.target?.id === 'playerSelectModal') closePlayerSelectModal();
             if (e.target?.id === 'memberManageModal') closeMemberManageModal();
             if (e.target?.id === 'myAttackModal') closeMyAttackModal();
+            if (e.target?.id === 'opsBossHpModal') closeOpsBossHpModal();
+            if (e.target?.id === 'opsProxyAttackModal') closeOpsProxyAttackModal();
+            if (e.target?.id === 'opsAttacksEditModal') closeOpsAttacksEditModal();
         });
         // Esc で閉じる
         document.addEventListener('keydown', e => {

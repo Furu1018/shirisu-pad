@@ -321,6 +321,43 @@ window.supabaseUpdateAttackDamage = async function (attackId, damageRaw) {
     if (error) throw error;
 };
 
+// ボスHPを更新（remaining / total を raw 値で）
+window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, remainingRaw) {
+    if (totalRaw < 0 || remainingRaw < 0) throw new Error('HP は0以上で指定');
+    if (remainingRaw > totalRaw) throw new Error('残HP は総HP を超えられません');
+    const { error } = await supabase
+        .from('bosses')
+        .update({
+            total_hp_raw: Math.round(totalRaw),
+            remaining_hp_raw: Math.round(remainingRaw),
+            remaining_hp_percent: totalRaw > 0 ? Math.round((remainingRaw / totalRaw) * 100) : 0,
+        })
+        .eq('season_id', seasonId)
+        .eq('boss_number', bossNumber);
+    if (error) throw error;
+};
+
+// 指定シーズン・日付の全凸を取得（プレイヤー名・ボス名つき）
+window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
+    const { data, error } = await supabase
+        .from('attacks')
+        .select('id, attack_number, boss_number, boss_code, damage_raw, level, reported_at, player_id, players(name)')
+        .eq('season_id', seasonId)
+        .eq('attack_date', attackDate)
+        .order('reported_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+};
+
+// 凸のボスを変更
+window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode) {
+    const { error } = await supabase
+        .from('attacks')
+        .update({ boss_number: bossNumber, boss_code: bossCode })
+        .eq('id', attackId);
+    if (error) throw error;
+};
+
 // 運営ダッシュボード用: 全アクティブメンバーを取得し、その人の各種関連情報を結合
 // 戻り値: [{ id, name, archived, damagesByAttr:{fire:N,...}, attacks:[{boss_number, damage_raw, ...}], attackCount }]
 window.supabaseLoadOpsDashboardData = async function () {
