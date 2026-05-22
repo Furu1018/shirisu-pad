@@ -5,15 +5,19 @@
 // で構造化抽出して返すプロキシ。ANTHROPIC_API_KEY は環境変数で参照するため、
 // クライアント側に絶対に漏れない。
 //
+// 新しい Supabase Edge Function ランタイム (withSupabase) を使用。
+// CORS プリフライトと auth は withSupabase が自動処理する。
+//
 // リクエスト例 (POST /analyze-image):
 //   { "image": "data:image/png;base64,iVBOR...", "task": "attack_result" }
 // レスポンス例:
 //   { "ok": true, "result": { "bossName": "ストームブリンガー", "totalDamage": 9673613117 } }
 // ============================================================================
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { withSupabase } from "jsr:@supabase/server@^1";
 
-const CORS_HEADERS = {
+const CORS_HEADERS: HeadersInit = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -42,21 +46,30 @@ const PROMPTS: Record<string, string> = {
     `JSON以外の文字は一切返さない。`,
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
+function jsonError(message: string, status = 500): Response {
+  return new Response(JSON.stringify({ ok: false, error: message }), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
+async function handleRequest(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: CORS_HEADERS });
+  }
 
   try {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) return jsonError("ANTHROPIC_API_KEY not set in Edge Function secrets", 500);
 
     const body = await req.json().catch(() => ({}));
-    const { image, task, prompt: customPrompt, model } = body;
+    // deno-lint-ignore no-explicit-any
+    const { image, task, prompt: customPrompt, model } = body as any;
     if (!image) return jsonError("image is required (base64 data URL)", 400);
 
     const promptText = customPrompt || PROMPTS[task as string];
     if (!promptText) return jsonError(`unknown task: ${task}`, 400);
 
-    // "data:image/png;base64,XXXX" 形式をパース
     const m = String(image).match(/^data:(image\/[a-z0-9+.-]+);base64,(.+)$/i);
     if (!m) return jsonError("invalid image data URL format", 400);
     const mediaType = m[1];
@@ -93,7 +106,6 @@ serve(async (req) => {
     const data = await ar.json();
     const text = (data?.content?.[0]?.text || "").trim();
 
-    // JSON パース試行 (コードフェンス除去)
     let parsed: unknown = null;
     let parseError: string | null = null;
     try {
@@ -115,11 +127,13 @@ serve(async (req) => {
   } catch (err) {
     return jsonError(String((err as Error)?.message || err), 500);
   }
-});
-
-function jsonError(message: string, status = 500) {
-  return new Response(JSON.stringify({ ok: false, error: message }), {
-    status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
 }
+
+// 新しい Supabase ランタイム: export default { fetch: withSupabase(...) }
+// withSupabase が auth (publishable/secret key 検証) と CORS プリフライトを処理する
+export default {
+  fetch: withSupabase(
+    { auth: ["publishable", "secret"] },
+    (req: Request) => handleRequest(req),
+  ),
+};
