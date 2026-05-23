@@ -67,3 +67,5 @@ self.addEventListener('notificationclick', (event) => {
         })
     );
 });
+
+// rebuild: 1779553127
