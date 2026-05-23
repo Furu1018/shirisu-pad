@@ -1,6 +1,9 @@
 // ============================================================================
-// Supabase Edge Function: analyze-image
-// Anthropic Haiku Vision プロキシ。Phase 4a 用。
+// Supabase Edge Function: analyze-image (Phase 4d拡張)
+// Anthropic Haiku Vision / Text プロキシ
+// ============================================================================
+// 画像解析 (task: attack_result / bla_progress / season_announce)
+// テキスト推論 (task: finish_recommend) の両方に対応
 // ============================================================================
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -11,7 +14,8 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const PROMPTS = {
+// ---- 画像系プロンプト ----
+const IMAGE_PROMPTS = {
   attack_result: [
     "画像はNIKKEのユニオンレイドの凸結果画面です。以下をJSONで抽出してください。",
     "- bossName: ボス名 (例 ストームブリンガー)。OPERATION COMPLETE や接頭辞 I/II/III/IV/V は除外",
@@ -38,6 +42,23 @@ const PROMPTS = {
   ].join("\n"),
 };
 
+// ---- テキスト推論系プロンプト (context をユーザーメッセージで渡す) ----
+const TEXT_PROMPTS = {
+  finish_recommend: [
+    "あなたはNIKKEユニオンレイドの戦況コーチです。",
+    "ユーザーが提供する状況 (対象ボス、残HP、PT属性、候補メンバーのリスト) から、",
+    "誰に締め凸をお願いするのが最適かを判断してください。",
+    "",
+    "判定基準:",
+    "1. 残HPちょうど削れる人を最優先（過剰ダメは無駄、超過0.5B以内が理想）",
+    "2. 同程度の候補が複数いるなら、凸残数が多い人を優先 (残2,3 > 残1)",
+    "3. 残HPを大きく下回るダメージしか出せない候補しかいない場合は最大ダメ候補を推薦",
+    "",
+    "出力はJSONのみ、コードフェンス禁止。",
+    '形式: {"recommendedName":"プレイヤー名","reason":"30文字程度の根拠"}',
+  ].join("\n"),
+};
+
 function jsonError(message, status) {
   return new Response(JSON.stringify({ ok: false, error: message }), {
     status: status || 500,
@@ -47,7 +68,6 @@ function jsonError(message, status) {
 
 export default {
   async fetch(req) {
-    // CORS preflight
     if (req.method === "OPTIONS") {
       return new Response("ok", { headers: CORS_HEADERS });
     }
@@ -62,69 +82,100 @@ export default {
       const image = body.image;
       const task = body.task;
       const customPrompt = body.prompt;
+      const context = body.context;
       const model = body.model;
 
-      if (!image) return jsonError("image is required", 400);
-
-      const promptText = customPrompt || PROMPTS[task];
-      if (!promptText) return jsonError("unknown task: " + String(task), 400);
-
-      const m = String(image).match(/^data:(image\/[a-z0-9+.\-]+);base64,(.+)$/i);
-      if (!m) return jsonError("invalid image data URL", 400);
-      const mediaType = m[1];
-      const base64Data = m[2];
-
-      const useModel = (typeof model === "string" && model.length > 0)
+      let useModel = (typeof model === "string" && model.length > 0)
         ? model
         : "claude-haiku-4-5";
 
-      const ar = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: useModel,
-          max_tokens: 1024,
-          messages: [{
-            role: "user",
-            content: [
-              { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
-              { type: "text", text: promptText },
-            ],
-          }],
-        }),
-      });
+      // ---- 画像モード ----
+      if (image) {
+        const promptText = customPrompt || IMAGE_PROMPTS[task];
+        if (!promptText) return jsonError("unknown image task: " + String(task), 400);
 
-      if (!ar.ok) {
-        const errText = await ar.text();
-        return jsonError("Anthropic API error (" + ar.status + "): " + errText, 502);
-      }
-      const data = await ar.json();
-      const text = (data && data.content && data.content[0] && data.content[0].text || "").trim();
+        const m = String(image).match(/^data:(image\/[a-z0-9+.\-]+);base64,(.+)$/i);
+        if (!m) return jsonError("invalid image data URL", 400);
+        const mediaType = m[1];
+        const base64Data = m[2];
 
-      let parsed = null;
-      let parseError = null;
-      try {
-        const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-        parsed = JSON.parse(cleaned);
-      } catch (e) {
-        parseError = String((e && e.message) || e);
+        const ar = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: useModel,
+            max_tokens: 1024,
+            messages: [{
+              role: "user",
+              content: [
+                { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+                { type: "text", text: promptText },
+              ],
+            }],
+          }),
+        });
+        return await respondFromAnthropic(ar);
       }
 
-      return new Response(JSON.stringify({
-        ok: true,
-        result: parsed,
-        raw: text,
-        parseError: parseError,
-        usage: data && data.usage,
-      }), {
-        headers: Object.assign({}, CORS_HEADERS, { "Content-Type": "application/json" }),
-      });
+      // ---- テキスト推論モード ----
+      if (context !== undefined) {
+        const systemPrompt = customPrompt || TEXT_PROMPTS[task];
+        if (!systemPrompt) return jsonError("unknown text task: " + String(task), 400);
+
+        const userText = (typeof context === "string") ? context : JSON.stringify(context);
+
+        const ar = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: useModel,
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [{ role: "user", content: userText }],
+          }),
+        });
+        return await respondFromAnthropic(ar);
+      }
+
+      return jsonError("image or context is required", 400);
     } catch (err) {
       return jsonError(String((err && err.message) || err), 500);
     }
   },
 };
+
+async function respondFromAnthropic(ar) {
+  if (!ar.ok) {
+    const errText = await ar.text();
+    return jsonError("Anthropic API error (" + ar.status + "): " + errText, 502);
+  }
+  const data = await ar.json();
+  const text = (data && data.content && data.content[0] && data.content[0].text || "").trim();
+
+  let parsed = null;
+  let parseError = null;
+  try {
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    parsed = JSON.parse(cleaned);
+  } catch (e) {
+    parseError = String((e && e.message) || e);
+  }
+
+  return new Response(JSON.stringify({
+    ok: true,
+    result: parsed,
+    raw: text,
+    parseError: parseError,
+    usage: data && data.usage,
+  }), {
+    headers: Object.assign({}, CORS_HEADERS, { "Content-Type": "application/json" }),
+  });
+}

@@ -475,6 +475,17 @@ window.fileToDataUrl = function (file) {
     });
 };
 
+// Anthropic Haiku テキスト推論 (Phase 4d): context をプロンプトに渡して結果取得
+// task: 'finish_recommend' などの定義済みタスク名
+window.callAiRecommend = async function (context, task, options = {}) {
+    const { data, error } = await supabase.functions.invoke('dynamic-service', {
+        body: { context, task, ...options },
+    });
+    if (error) throw new Error(`AI推論失敗: ${error.message || error}`);
+    if (!data?.ok) throw new Error(data?.error || 'AI推論エラー');
+    return data;
+};
+
 // 動作テスト用 (コンソールで window.supabaseTestAi() を実行)
 window.supabaseTestAi = async function () {
     console.log('[AI Vision] テストするには画像ファイルを選んでください...');
