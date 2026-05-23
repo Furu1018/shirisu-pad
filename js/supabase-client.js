@@ -453,7 +453,7 @@ window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
 // 画像 (data URL) と task を渡して構造化結果を受け取る
 // task: 'attack_result' / 'bla_progress' / 'season_announce'
 window.callAiVision = async function (imageDataUrl, task, options = {}) {
-    const { data, error } = await supabase.functions.invoke('analyze-image', {
+    const { data, error } = await supabase.functions.invoke('dynamic-service', {
         body: { image: imageDataUrl, task, ...options },
     });
     if (error) {
