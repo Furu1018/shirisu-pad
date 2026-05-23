@@ -1556,6 +1556,17 @@
             </div>
             <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
 
+            <!-- 公式アナウンス画像取り込み -->
+            <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                    <span style="font-size:18px;">📷</span>
+                    <span style="flex:1;">NIKKE公式アナウンス画像から自動入力（AI画像認識）</span>
+                    <input type="file" id="opsSeasonOcrInput" accept="image/*" onchange="handleOpsSeasonOcrUpload(event)" style="display:none;">
+                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                </label>
+                <p id="opsSeasonOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            </div>
+
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">ハード日 (Day2)</label>
@@ -2861,6 +2872,72 @@
                 </div>
             `).join('');
         }
+        // 公式アナウンス画像から自動入力
+        async function handleOpsSeasonOcrUpload(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            const statusEl = document.getElementById('opsSeasonOcrStatus');
+            if (!file) return;
+            statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
+            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+
+            try {
+                const dataUrl = await window.fileToDataUrl(file);
+                const res = await window.callAiVision(dataUrl, 'season_announce');
+                const r = res.result;
+                if (!r || !Array.isArray(r.bosses)) throw new Error('解析結果にbosses配列がありません');
+
+                // ハード日 = startDate + 1日 (公式は Day1=ノーマル日付。当PADはハード日で管理)
+                if (r.startDate && /^\d{4}-\d{2}-\d{2}$/.test(r.startDate)) {
+                    const d = new Date(r.startDate + 'T00:00:00');
+                    d.setDate(d.getDate() + 1);
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    document.getElementById('opsSeasonHardDate').value = `${yyyy}-${mm}-${dd}`;
+                    document.getElementById('opsSeasonMonthKey').value = `${yyyy}-${mm}`;
+                }
+
+                // 弱点属性 (PT想定) → ボス自身の属性 → bossCode マップ
+                const WEAK_TO_BOSS_CODE = {
+                    '灼熱': 'A.N.M.I.',  // 灼熱で削る = 風圧ボス
+                    '水冷': 'H.S.T.A.',  // 水冷で削る = 灼熱ボス
+                    '電撃': 'P.S.I.D.',  // 電撃で削る = 水冷ボス
+                    '鉄甲': 'Z.E.U.S.',  // 鉄甲で削る = 電撃ボス
+                    '風圧': 'D.M.T.R.',  // 風圧で削る = 鉄甲ボス
+                };
+
+                // 5行をAI結果で書き換え
+                const rows = [];
+                for (let i = 1; i <= 5; i++) {
+                    const ai = r.bosses.find(b => Number(b.position) === i);
+                    if (ai) {
+                        rows.push({
+                            bossNumber: i,
+                            bossCode: WEAK_TO_BOSS_CODE[ai.weakness] || BOSS_CODES[i - 1],
+                            name: ai.name || '',
+                            tier: (ai.tier === 'tyrant') ? 'tyrant' : 'lord',
+                        });
+                    } else {
+                        rows.push({
+                            bossNumber: i,
+                            bossCode: BOSS_CODES[i - 1],
+                            name: '',
+                            tier: (i === 3 || i === 5) ? 'tyrant' : 'lord',
+                        });
+                    }
+                }
+                renderOpsSeasonBossRows(rows);
+
+                const filled = r.bosses.length;
+                statusEl.textContent = `✅ ${filled}/5 ボスを自動入力 (ハード日 +1日補正済み)。内容を確認して「作成」をクリック`;
+                statusEl.style.color = '#22c55e';
+            } catch (e) {
+                statusEl.textContent = `❌ ${e?.message || e}`;
+                statusEl.style.color = '#ef4444';
+            }
+        }
+
         async function handleOpsSeasonCreateSave() {
             const hardDate = document.getElementById('opsSeasonHardDate').value;
             const monthKey = document.getElementById('opsSeasonMonthKey').value.trim();
