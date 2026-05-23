@@ -127,6 +127,17 @@ window.unsubscribeFromPush = async function () {
     } catch (e) { console.warn('unsubscribe db error', e); }
 };
 
+// Edge Function 'send-push' (slug は実デプロイ先に合わせる) で Push送信
+// 引数: { title, body, url?, tag?, playerIds?, requireInteraction? }
+// playerIds 未指定なら全購読者へ配信
+window.sendPushNotification = async function (payload, opts = {}) {
+    const slug = opts.functionName || 'send-push';
+    const { data, error } = await supabase.functions.invoke(slug, { body: payload });
+    if (error) throw new Error(`Push送信失敗: ${error.message || error}`);
+    if (!data?.ok) throw new Error(data?.error || 'Push送信エラー');
+    return data;
+};
+
 // 自身宛のテスト通知を直接表示 (Push経由ではないローカル通知)
 // VAPID鍵未設定でも動作確認に使える
 window.showLocalTestNotification = async function (title = 'しりすこPAD', body = 'テスト通知です') {

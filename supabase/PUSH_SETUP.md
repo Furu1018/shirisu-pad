@@ -44,7 +44,27 @@ Phase 6b で Edge Function から Push 送信する時に使います。
    (購読サービスへの連絡先、ダミーでもOK)
 5. Save
 
-## 4. (任意) PWA化: iPhoneでホーム画面追加→Push通知
+## 4. Edge Function `send-push` をデプロイ (Phase 6b)
+
+PADから実際に Push 通知を送るための Edge Function です。
+
+1. Supabase Dashboard → Edge Functions → **Deploy a new function**
+2. **Via Editor** を選択
+3. **Function name** に `send-push` を入力
+4. コード欄に下記URL の中身を全部コピー&ペースト:
+   ```
+   https://raw.githubusercontent.com/Furu1018/shirisu-pad/main/supabase/functions/send-push/index.ts
+   ```
+5. **Deploy function**
+6. デプロイ後、**Settings** タブで **「Verify JWT with legacy secret」を OFF** に
+
+⚠️ もし slug が `send-push` でなく別の名前で作られた場合は、フロント `js/supabase-client.js` の `sendPushNotification` の `slug` を実際の名前に合わせる必要があります。
+
+### 動作確認
+
+PAD → 運営タブ → 「📣 Push通知 一斉送信」 → タイトルと本文を入れて送信
+
+## 5. (任意) PWA化: iPhoneでホーム画面追加→Push通知
 
 iOS Safariは PWA でしか Push通知に対応しないため:
 

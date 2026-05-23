@@ -1109,6 +1109,13 @@
                 </div>
             </div>
 
+            <!-- Push通知 一斉送信 -->
+            <div class="card" style="padding:20px;margin-bottom:16px;">
+                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">📣 Push通知 一斉送信</h3>
+                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">購読者全員のスマホ/PCに通知を送ります。テスト用にも使えます。</p>
+                <button onclick="openOpsPushSendModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">通知を作成して送信</button>
+            </div>
+
             <!-- シーズン制御 -->
             <div class="card" style="padding:20px;margin-bottom:16px;">
                 <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">🗓️ シーズン制御</h3>
@@ -1570,6 +1577,33 @@
                 <div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>
             </div>
             <p id="opsAttacksMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+        </div>
+    </div>
+
+    <!-- ========== 運営: Push一斉送信モーダル ========== -->
+    <div class="player-select-modal" id="opsPushSendModal">
+        <div class="player-select-content" style="max-width:500px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>📣 Push通知 送信</h2>
+                <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">購読者全員に Push 通知を一斉配信します。</p>
+
+            <div>
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">タイトル</label>
+                <input id="opsPushTitle" type="text" maxlength="80" placeholder="例: 締め凸候補が出ました" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+            </div>
+            <div>
+                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">本文</label>
+                <textarea id="opsPushBody" rows="3" maxlength="200" placeholder="例: ヘビーメタル 残3.5B です" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;resize:vertical;"></textarea>
+            </div>
+
+            <p id="opsPushMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">📣 全員に送信</button>
+            </div>
         </div>
     </div>
 
@@ -3162,6 +3196,37 @@
             }
         }
 
+        // ========== 運営: Push一斉送信 (Phase 6b) ==========
+        function openOpsPushSendModal() {
+            document.getElementById('opsPushSendModal').classList.add('open');
+            document.getElementById('opsPushMessage').textContent = '';
+            document.getElementById('opsPushTitle').value = '';
+            document.getElementById('opsPushBody').value = '';
+            setTimeout(() => document.getElementById('opsPushTitle').focus(), 100);
+        }
+        function closeOpsPushSendModal() {
+            document.getElementById('opsPushSendModal').classList.remove('open');
+        }
+        async function handleOpsPushSend() {
+            const title = document.getElementById('opsPushTitle').value.trim();
+            const bodyText = document.getElementById('opsPushBody').value.trim();
+            const msg = document.getElementById('opsPushMessage');
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            if (!title && !bodyText) { set('❌ タイトルまたは本文を入力してください', true); return; }
+            try {
+                set('🔔 送信中...');
+                msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+                const res = await window.sendPushNotification({
+                    title: title || 'しりすこPAD',
+                    body: bodyText,
+                    url: './',
+                });
+                set(`✅ ${res.sent}/${res.target} 件 送信完了${res.removed ? ` (期限切れ${res.removed}件削除)` : ''}`);
+            } catch (e) {
+                set(`❌ ${e?.message || e}`, true);
+            }
+        }
+
         // ========== 運営: シーズン制御 (Phase 3c) ==========
         const BOSS_CODES = ['H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.', 'D.M.T.R.', 'A.N.M.I.'];
 
@@ -3371,6 +3436,7 @@
             if (e.target?.id === 'opsProxyAttackModal') closeOpsProxyAttackModal();
             if (e.target?.id === 'opsAttacksEditModal') closeOpsAttacksEditModal();
             if (e.target?.id === 'opsSeasonCreateModal') closeOpsSeasonCreateModal();
+            if (e.target?.id === 'opsPushSendModal') closeOpsPushSendModal();
         });
         // Esc で閉じる
         document.addEventListener('keydown', e => {
