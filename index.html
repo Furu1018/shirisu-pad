@@ -1464,9 +1464,24 @@
                 <h2>⚔️ ボスHP更新</h2>
                 <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。<br>BlaBlaLINK連携後は画像から自動同期される予定 (Phase 4)。</p>
+            <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。</p>
+
+            <!-- BlaBlaLINK 画像一括取り込み -->
+            <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                    <span style="font-size:18px;">📷</span>
+                    <span style="flex:1;">BlaBlaLINK 進捗画像から全ボスHPを一括取り込み（AI画像認識）</span>
+                    <input type="file" id="opsBossHpOcrInput" accept="image/*" onchange="handleOpsBossHpOcrUpload(event)" style="display:none;">
+                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                </label>
+                <p id="opsBossHpOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            </div>
+
             <div id="opsBossHpList">
                 <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+            </div>
+            <div style="display:flex;justify-content:flex-end;">
+                <button id="opsBossHpSaveAllBtn" onclick="handleOpsBossHpSaveAll()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">⏬ 全ボスを一括保存</button>
             </div>
             <p id="opsBossHpMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
         </div>
@@ -2498,6 +2513,89 @@
         function closeOpsBossHpModal() {
             document.getElementById('opsBossHpModal').classList.remove('open');
         }
+        // BlaBlaLINK画像から全ボスHPを一括取り込み
+        async function handleOpsBossHpOcrUpload(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            const statusEl = document.getElementById('opsBossHpOcrStatus');
+            if (!file) return;
+            statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
+            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+
+            try {
+                const dataUrl = await window.fileToDataUrl(file);
+                const res = await window.callAiVision(dataUrl, 'bla_progress');
+                const r = res.result;
+                if (!r || !Array.isArray(r.bosses)) {
+                    throw new Error('解析結果にbosses配列がありません');
+                }
+
+                // 現在開いてる行に AI結果をマッチして埋める
+                const norm = (s) => String(s || '').replace(/\s+/g, '');
+                const rows = document.querySelectorAll('#opsBossHpList > div[data-boss-num]');
+                let filled = 0;
+                rows.forEach(row => {
+                    const bossNum = parseInt(row.dataset.bossNum);
+                    const titleEl = row.querySelector('strong');
+                    const titleText = titleEl?.textContent || '';
+                    // タイトル例: "B1 Iドリアン"
+                    const rowBossName = titleText.replace(/^B\d+\s*/, '').trim();
+                    // AI結果から名前マッチ
+                    const matched = r.bosses.find(b => {
+                        const aname = norm(b.name);
+                        const rname = norm(rowBossName);
+                        return aname && rname && (aname.includes(rname) || rname.includes(aname));
+                    });
+                    if (matched && matched.currentHp != null && matched.maxHp != null) {
+                        const remB = (Number(matched.currentHp) / 1e9).toFixed(2).replace(/\.?0+$/, '');
+                        const totalB = (Number(matched.maxHp) / 1e9).toFixed(2).replace(/\.?0+$/, '');
+                        row.querySelector('.ops-hp-rem').value = remB;
+                        row.querySelector('.ops-hp-total').value = totalB;
+                        filled++;
+                    }
+                });
+
+                const lvText = r.level ? ` / レベル${r.level}検出` : '';
+                statusEl.textContent = `✅ ${filled}/${rows.length} ボスを自動入力${lvText}。確認後「全ボスを一括保存」をクリック`;
+                statusEl.style.color = '#22c55e';
+            } catch (e) {
+                statusEl.textContent = `❌ ${e?.message || e}`;
+                statusEl.style.color = '#ef4444';
+            }
+        }
+
+        // 全ボスを一括保存
+        async function handleOpsBossHpSaveAll() {
+            const ctx = await ensureActiveSeasonLoaded();
+            const fresh = await window.supabaseLoadActiveSeasonWithBosses();
+            if (!fresh.season) { alert('アクティブシーズン無し'); return; }
+            const rows = document.querySelectorAll('#opsBossHpList > div[data-boss-num]');
+            const msg = document.getElementById('opsBossHpMessage');
+            let ok = 0, fail = 0;
+            const errs = [];
+            for (const row of rows) {
+                const bossNumber = parseInt(row.dataset.bossNum);
+                const remB = parseFloat(row.querySelector('.ops-hp-rem').value);
+                const totalB = parseFloat(row.querySelector('.ops-hp-total').value);
+                if (isNaN(remB) || isNaN(totalB) || remB < 0 || totalB <= 0 || remB > totalB) {
+                    fail++; errs.push(`B${bossNumber}: 値不正`); continue;
+                }
+                try {
+                    await window.supabaseUpdateBossHp(fresh.season.id, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
+                    ok++;
+                } catch (e) {
+                    fail++; errs.push(`B${bossNumber}: ${e?.message || e}`);
+                }
+            }
+            msg.textContent = (fail === 0)
+                ? `✅ ${ok}ボス保存完了`
+                : `⚠️ ${ok}保存 / ${fail}失敗: ${errs.join(', ')}`;
+            msg.style.color = fail === 0 ? '#22c55e' : '#f59e0b';
+            _opsDashboardCache = null;
+            _activeSeasonCache = null;
+            renderOpsDashboard();
+        }
+
         async function handleOpsBossHpSave(seasonId, bossNumber, btn) {
             const row = btn.closest('div[data-boss-num]');
             const remB = parseFloat(row.querySelector('.ops-hp-rem').value);
