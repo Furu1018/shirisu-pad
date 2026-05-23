@@ -25,9 +25,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 // ============================================================================
 // Phase 6a: Web Push 通知
 // ============================================================================
-// VAPID公開鍵 (Phase 6a 完了後に手順に従って差し替え)
-// 値が空のままだと Push 購読UIは「未設定」状態になる
-window.SHIRISU_VAPID_PUBLIC_KEY = '';
+// VAPID公開鍵 (Phase 6a: vapidkeys.com で発行)
+// 公開しても安全な性質のキー。秘密鍵は Supabase Edge Function Secrets の
+// VAPID_PRIVATE_KEY / VAPID_SUBJECT に登録されている前提。
+window.SHIRISU_VAPID_PUBLIC_KEY = 'BI6_g-ZWfqkRGqSQRU5NgEmLmyv8EgvvwgPFv-DDQYv2PzC1SFH-ugNcWGpQHH8E-hoBLnnFy4Yl5XFa3rysNrI';
 
 function _urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
