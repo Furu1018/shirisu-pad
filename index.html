@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./icon.png">
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="しりすこPAD">
     <meta name="theme-color" content="#1976D2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1025,6 +1026,15 @@
                 </div>
             </div>
 
+            <!-- Push通知設定 -->
+            <div class="card" style="padding:20px;margin-top:20px;">
+                <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">🔔 Push通知設定</h3>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">締め凸候補や運営からのお知らせをスマホに通知。<br><strong>iPhoneの場合</strong>はSafariで開いて「ホーム画面に追加」してから設定が必要です。</p>
+                <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
+                <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+            </div>
+
             <div class="card" style="padding:20px;margin-top:20px;opacity:0.55;">
                 <h3 style="margin:0 0 8px 0;font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);">🔜 これから追加予定の機能</h3>
                 <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
@@ -1951,6 +1961,7 @@
             nameEl.textContent = id.name;
             renderMyDamageInputs(id);
             renderMyAttacks(id);
+            renderMyPushSettings(id);
             // 最新シーズン (currentData) から該当プレイヤーを引く
             const me = (currentData || []).find(p => p.player === id.name);
             if (!me) {
@@ -2067,6 +2078,80 @@
                     statusEl.textContent = `❌ ${e?.message || e}`;
                     statusEl.style.color = '#ef4444';
                 }
+            }
+        }
+
+        // ========== マイページ: Push通知設定 (Phase 6a) ==========
+        async function renderMyPushSettings(identity) {
+            const statusEl = document.getElementById('mypagePushStatus');
+            const actionsEl = document.getElementById('mypagePushActions');
+            const msgEl = document.getElementById('mypagePushMessage');
+            if (!statusEl || !actionsEl) return;
+            msgEl.textContent = '';
+
+            if (!window.isPushSupported || !window.isPushSupported()) {
+                statusEl.innerHTML = '<span style="color:var(--md-sys-color-on-surface-variant);">❌ この端末/ブラウザは Push 通知に非対応です</span>';
+                actionsEl.innerHTML = '';
+                return;
+            }
+
+            const s = await window.getPushSubscriptionStatus();
+            if (!s.vapidConfigured) {
+                statusEl.innerHTML = '<span style="color:#f59e0b;">⚠️ 運営側でVAPID公開鍵が未設定のため、まだ購読できません。</span>';
+                actionsEl.innerHTML = `
+                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'ローカル通知テスト')" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                `;
+                return;
+            }
+
+            if (s.permission === 'denied') {
+                statusEl.innerHTML = '<span style="color:#ef4444;">❌ 通知が拒否されています。ブラウザの設定でこのサイトの通知を「許可」に変更してください。</span>';
+                actionsEl.innerHTML = '';
+                return;
+            }
+
+            if (s.subscribed) {
+                statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み (この端末)</span>';
+                actionsEl.innerHTML = `
+                    <button onclick="handleMyPushUnsubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">通知を解除</button>
+                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'テスト通知です').then(()=>{document.getElementById(\\'mypagePushMessage\\').textContent='✅ ローカル通知を表示しました';document.getElementById(\\'mypagePushMessage\\').style.color='#22c55e';}).catch(e=>{document.getElementById(\\'mypagePushMessage\\').textContent='❌ '+(e?.message||e);document.getElementById(\\'mypagePushMessage\\').style.color='#ef4444';})" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                `;
+            } else {
+                statusEl.innerHTML = '<span style="color:var(--md-sys-color-on-surface-variant);">未購読</span>';
+                actionsEl.innerHTML = `
+                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">🔔 通知を有効にする</button>
+                `;
+            }
+        }
+
+        async function handleMyPushSubscribe() {
+            const msg = document.getElementById('mypagePushMessage');
+            const id = getCurrentIdentity();
+            if (!id?.id) { msg.textContent = '❌ プレイヤー未選択'; msg.style.color = '#ef4444'; return; }
+            try {
+                msg.textContent = '🔔 購読中...';
+                msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+                await window.subscribeToPush(id.id);
+                msg.textContent = '✅ Push通知を有効化しました';
+                msg.style.color = '#22c55e';
+                await renderMyPushSettings(id);
+            } catch (e) {
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
+            }
+        }
+
+        async function handleMyPushUnsubscribe() {
+            const msg = document.getElementById('mypagePushMessage');
+            const id = getCurrentIdentity();
+            try {
+                await window.unsubscribeFromPush();
+                msg.textContent = '🛑 Push通知を解除しました';
+                msg.style.color = '#22c55e';
+                if (id) await renderMyPushSettings(id);
+            } catch (e) {
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
             }
         }
 

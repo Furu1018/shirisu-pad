@@ -22,6 +22,128 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     },
 });
 
+// ============================================================================
+// Phase 6a: Web Push 通知
+// ============================================================================
+// VAPID公開鍵 (Phase 6a 完了後に手順に従って差し替え)
+// 値が空のままだと Push 購読UIは「未設定」状態になる
+window.SHIRISU_VAPID_PUBLIC_KEY = '';
+
+function _urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const output = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+    return output;
+}
+
+// 端末がPush対応か
+window.isPushSupported = function () {
+    return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window);
+};
+
+// SW登録 (idempotent)
+window.registerPushServiceWorker = async function () {
+    if (!window.isPushSupported()) throw new Error('この端末は Push 通知に非対応です');
+    const reg = await navigator.serviceWorker.register('./sw.js');
+    return reg;
+};
+
+// 現在の購読状態を取得
+window.getPushSubscriptionStatus = async function () {
+    if (!window.isPushSupported()) return { supported: false };
+    const perm = Notification.permission;  // 'default' | 'granted' | 'denied'
+    if (!navigator.serviceWorker.controller) {
+        try { await navigator.serviceWorker.register('./sw.js'); } catch {}
+    }
+    let sub = null;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        sub = await reg.pushManager.getSubscription();
+    } catch {}
+    return {
+        supported: true,
+        permission: perm,
+        subscribed: !!sub,
+        endpoint: sub?.endpoint || null,
+        vapidConfigured: !!(window.SHIRISU_VAPID_PUBLIC_KEY && window.SHIRISU_VAPID_PUBLIC_KEY.length > 0),
+    };
+};
+
+// Push通知を購読 (Notification許可も同時に取得)
+// 購読情報を push_subscriptions テーブルに保存
+window.subscribeToPush = async function (playerId) {
+    if (!window.isPushSupported()) throw new Error('この端末は Push 通知に非対応です');
+    if (!window.SHIRISU_VAPID_PUBLIC_KEY) throw new Error('VAPID公開鍵が未設定です (運営にお問い合わせ)');
+    if (!playerId) throw new Error('プレイヤー未選択です');
+
+    const reg = await window.registerPushServiceWorker();
+
+    // 通知許可リクエスト
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+        throw new Error('通知が許可されませんでした (ブラウザ設定で許可してください)');
+    }
+
+    // PushManager で購読
+    const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(window.SHIRISU_VAPID_PUBLIC_KEY),
+    });
+
+    const json = sub.toJSON();
+    const endpoint = sub.endpoint;
+    const p256dh = json.keys?.p256dh;
+    const auth = json.keys?.auth;
+    if (!endpoint || !p256dh || !auth) throw new Error('購読情報の取得に失敗');
+
+    // Supabaseに保存 (endpointユニーク前提)
+    const { error } = await supabase
+        .from('push_subscriptions')
+        .upsert({
+            player_id: playerId,
+            endpoint,
+            p256dh,
+            auth,
+            user_agent: navigator.userAgent.slice(0, 200),
+        }, { onConflict: 'endpoint' });
+    if (error) throw error;
+
+    return { endpoint };
+};
+
+// Push購読を解除 (端末側 + DB側両方)
+window.unsubscribeFromPush = async function () {
+    if (!window.isPushSupported()) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    const endpoint = sub.endpoint;
+    try { await sub.unsubscribe(); } catch (e) { console.warn('unsubscribe local error', e); }
+    try {
+        await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+    } catch (e) { console.warn('unsubscribe db error', e); }
+};
+
+// 自身宛のテスト通知を直接表示 (Push経由ではないローカル通知)
+// VAPID鍵未設定でも動作確認に使える
+window.showLocalTestNotification = async function (title = 'しりすこPAD', body = 'テスト通知です') {
+    if (!('Notification' in window)) throw new Error('Notification 非対応');
+    if (Notification.permission !== 'granted') {
+        const p = await Notification.requestPermission();
+        if (p !== 'granted') throw new Error('通知が許可されませんでした');
+    }
+    if ('serviceWorker' in navigator) {
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification(title, { body, icon: './icon.png', badge: './icon.png' });
+            return;
+        } catch {}
+    }
+    new Notification(title, { body, icon: './icon.png' });
+};
+
 // ----------------------------------------------------------------------------
 // データローダ: Supabase の正規化テーブルから既存JSON形式へ変換して返す
 // (autoLoadData() から呼び出される。JSONフォーマット互換のため processRawData
