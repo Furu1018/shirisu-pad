@@ -2625,7 +2625,43 @@
                         <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${p.attackCount}/3)</span>
                     </div>`;
             }).join('');
-            listEl.innerHTML = header + rows;
+
+            // 候補へのPush送信ボタン (Phase 6c)
+            const pushBtn = `
+                <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+                    <button onclick="handleOpsFinishPushSend()" style="padding:8px 14px;border-radius:8px;border:1px solid #8b5cf6;background:var(--md-sys-color-surface);color:#8b5cf6;font-size:13px;font-weight:600;cursor:pointer;">📣 この候補 ${candidates.length}名に Push通知</button>
+                    <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">${ptInfo?.name}PT / 残HP ${remainingHpB.toFixed(2)}B</span>
+                </div>`;
+
+            // 状態保存 (Push送信時に使う)
+            _opsFinishPushContext = {
+                attrKey,
+                boss,
+                ptInfo,
+                remainingHpB,
+                candidates,
+            };
+
+            listEl.innerHTML = header + rows + pushBtn;
+        }
+        let _opsFinishPushContext = null;
+
+        async function handleOpsFinishPushSend() {
+            const ctx = _opsFinishPushContext;
+            if (!ctx) { alert('候補データ無し'); return; }
+            const playerIds = ctx.candidates.map(c => c.id);
+            if (playerIds.length === 0) { alert('対象者がいません'); return; }
+            const title = `📣 ${ctx.ptInfo?.name}PT 締め凸候補`;
+            const bodyText = `${ctx.boss.name || ctx.boss.boss_code} 残HP ${ctx.remainingHpB.toFixed(2)}B → 凸お願いできる方いますか🙏`;
+            if (!confirm(`下記の通知を ${playerIds.length}名 に送ります:\n\nタイトル: ${title}\n本文: ${bodyText}\n\nよろしいですか？`)) return;
+            try {
+                const res = await window.sendPushNotification({
+                    title, body: bodyText, url: './?tab=ops', playerIds,
+                });
+                alert(`✅ ${res.sent}/${res.target} 件 送信完了${res.removed ? ` (期限切れ${res.removed}件削除)` : ''}`);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
         }
 
         // ========== Phase 5: 最適凸プラン算出 ==========
@@ -2976,7 +3012,58 @@
             msg.style.color = fail === 0 ? '#22c55e' : '#f59e0b';
             _opsDashboardCache = null;
             _activeSeasonCache = null;
-            renderOpsDashboard();
+            await renderOpsDashboard();
+
+            // Phase 6c: HP更新後、締め凸候補が出ているなら通知送信を提案
+            await offerFinishPushAfterHpUpdate();
+        }
+
+        // HP更新後: 締め凸候補が出ている属性があれば運営にPush送信を促す
+        async function offerFinishPushAfterHpUpdate() {
+            try {
+                if (!_opsDashboardCache) return;
+                const { bosses, players } = _opsDashboardCache;
+                // 各属性ごとに 残HP小さい順 で候補を出し、HP内で削れる人がいるものをピックアップ
+                const opportunities = [];
+                for (const ptKey of ['fire','water','iron','electric','wind']) {
+                    const boss = bosses.find(b => b.weakness === ptKey);
+                    if (!boss) continue;
+                    const remB = (boss.remaining_hp_raw || 0) / 1e9;
+                    if (remB <= 0) continue;
+                    const cands = players
+                        .filter(p => p.attackCount < 3)
+                        .map(p => ({ id: p.id, name: p.name, dmg: Number(p.damagesByAttr[ptKey]) || 0 }))
+                        .filter(c => c.dmg > 0 && c.dmg <= remB * 1.2)  // 残HP+20%以内
+                        .sort((a, b) => Math.abs(a.dmg - remB) - Math.abs(b.dmg - remB))
+                        .slice(0, 5);  // トップ5まで
+                    if (cands.length > 0) {
+                        const pt = PT_ATTRS.find(x => x.key === ptKey);
+                        opportunities.push({ ptKey, ptName: pt?.name, boss, remB, cands });
+                    }
+                }
+                if (opportunities.length === 0) return;
+                const summary = opportunities.map(o =>
+                    `・${o.ptName}PT (${o.boss.name || o.boss.boss_code} 残${o.remB.toFixed(2)}B): ${o.cands.slice(0,3).map(c => c.name).join('、')}${o.cands.length > 3 ? '…' : ''}`
+                ).join('\n');
+                if (!confirm(`HP更新により以下の候補が発生しました。\n\n${summary}\n\n各属性の候補にPush通知を送りますか？`)) return;
+                let totalSent = 0;
+                for (const o of opportunities) {
+                    try {
+                        const res = await window.sendPushNotification({
+                            title: `📣 ${o.ptName}PT 締め凸候補`,
+                            body: `${o.boss.name || o.boss.boss_code} 残HP ${o.remB.toFixed(2)}B → 凸お願いできる方🙏`,
+                            url: './?tab=ops',
+                            playerIds: o.cands.map(c => c.id),
+                        });
+                        totalSent += res.sent || 0;
+                    } catch (e) {
+                        console.warn(`[push offer] ${o.ptKey} 送信失敗`, e);
+                    }
+                }
+                showNotification(`📣 合計 ${totalSent} 件の通知を送信しました`);
+            } catch (e) {
+                console.warn('[offerFinishPushAfterHpUpdate] err', e);
+            }
         }
 
         async function handleOpsBossHpSave(seasonId, bossNumber, btn) {
