@@ -20,8 +20,9 @@
 // ============================================================================
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import webpush from "npm:web-push@3.6.7";
-import { createClient } from "npm:@supabase/supabase-js@2";
+// esm.sh の deno-next ターゲット指定でnpm互換問題を回避
+import webpush from "https://esm.sh/web-push@3.6.7?target=denonext";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4?target=denonext";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
