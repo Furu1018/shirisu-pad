@@ -2147,9 +2147,7 @@
             try {
                 slots = await window.supabaseLoadAvailability(identity.id);
                 if (slots.length === 0) {
-                    // 未登録 = 全部ON扱い
-                    slots = TIME_SLOTS.map(s => s.key);
-                    isFirstTime = true;
+                    isFirstTime = true;  // 初期は全部OFFのまま表示（オプトイン方式）
                 }
             } catch (e) {
                 groupEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
@@ -2168,8 +2166,12 @@
                         <span>${s.label}</span>
                     </label>`;
             }).join('');
-            if (isFirstTime) msgEl.textContent = 'ℹ️ 初期設定: 全時間帯ON。お好みでオフにできます。';
-            msgEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            if (isFirstTime) {
+                msgEl.textContent = 'ℹ️ 初期は全時間帯OFF。通知を受け取りたい時間帯にチェックを入れてください。';
+                msgEl.style.color = '#f59e0b';
+            } else {
+                msgEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            }
         }
 
         async function handleMyAvailToggle() {

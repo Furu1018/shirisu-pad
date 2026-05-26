@@ -83,7 +83,7 @@ export default {
       let filteredOutByAvail = 0;
 
       // availability フィルタ: 現在JST時刻に該当時間帯を許可しているプレイヤーのみ残す
-      // availability に1行も無いプレイヤーは「未設定=全部OK」として残す (後方互換)
+      // ★ オプトイン方式: availability に1行も無いプレイヤーは「全時間帯OFF」として除外
       if (!ignoreAvailability && filteredSubs.length > 0) {
         const currentSlot = (function () {
           const now = new Date();
@@ -104,18 +104,15 @@ export default {
           .select("player_id, time_slot")
           .in("player_id", targetPlayerIds);
 
-        // 「availability に1件以上ある」プレイヤー集合
-        const playersWithAvail = new Set();
         // 「現在 slot を許可している」プレイヤー集合
         const playersAllowingNow = new Set();
         (availRows || []).forEach(function (r) {
-          playersWithAvail.add(r.player_id);
           if (r.time_slot === currentSlot) playersAllowingNow.add(r.player_id);
         });
 
+        // 未設定者も含めて全員 opt-in 判定: playersAllowingNow に含まれていなければ除外
         const before = filteredSubs.length;
         filteredSubs = filteredSubs.filter(function (s) {
-          if (!playersWithAvail.has(s.player_id)) return true;  // 未設定は通す
           return playersAllowingNow.has(s.player_id);
         });
         filteredOutByAvail = before - filteredSubs.length;
