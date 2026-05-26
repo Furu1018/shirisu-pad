@@ -997,10 +997,22 @@
                     <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">💥 属性別 出せるダメージ（PT属性）</h3>
                     <span id="mypageDmgStatus" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
                 </div>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">
+                <p style="margin:0 0 8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">
                     各PT属性で出せる想定ダメージ（B単位）を登録。締め凸候補・最適凸プラン算出に使われます。<br>
                     入力後フィールドからフォーカスを外す（タップ・Tab）と自動保存されます。
                 </p>
+
+                <!-- 模擬戦/凸結果画像から自動登録 -->
+                <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);margin-bottom:10px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                        <span style="font-size:18px;">📷</span>
+                        <span style="flex:1;">模擬戦/凸結果のスクショから自動登録（AI画像認識）</span>
+                        <input type="file" id="mypageDmgOcrInput" accept="image/*" onchange="handleMyDamageOcrUpload(event)" style="display:none;">
+                        <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                    </label>
+                    <p id="mypageDmgOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+                </div>
+
                 <div id="mypageDmgInputs">
                     <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると入力欄が表示されます。</p>
                 </div>
@@ -2085,6 +2097,83 @@
                 const mi = String(d.getMinutes()).padStart(2, '0');
                 return `更新: ${y}-${m}-${dd} ${h}:${mi}`;
             } catch { return ''; }
+        }
+
+        // 画像から属性別ダメージを自動登録
+        async function handleMyDamageOcrUpload(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            const statusEl = document.getElementById('mypageDmgOcrStatus');
+            if (!file) return;
+            const id = getCurrentIdentity();
+            if (!id?.id) { statusEl.textContent = '❌ プレイヤー未選択'; statusEl.style.color = '#ef4444'; return; }
+
+            statusEl.textContent = '🔍 AIで解析中... (10〜20秒)';
+            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            try {
+                const dataUrl = await window.fileToDataUrl(file);
+                const res = await window.callAiVision(dataUrl, 'attack_result');
+                const r = res.result;
+                if (!r || !r.totalDamage) throw new Error('ダメージを読み取れませんでした');
+
+                // ボス名 → PT属性 検出
+                let ptAttr = await detectPtAttrFromBossName(r.bossName);
+                if (!ptAttr) {
+                    // 検出できなかったらユーザーに選んでもらう
+                    const choicesText = PT_ATTRS.map((a, i) => `${i + 1}. ${a.name}PT (対 ${a.bossJP})`).join('\n');
+                    const pickStr = prompt(`ボス名「${r.bossName || '?'}」のPT属性を判別できませんでした。\nどのPT属性のダメージか番号で選んでください:\n\n${choicesText}`);
+                    const pickIdx = parseInt(pickStr) - 1;
+                    if (isNaN(pickIdx) || pickIdx < 0 || pickIdx >= PT_ATTRS.length) {
+                        throw new Error('属性が選択されませんでした');
+                    }
+                    ptAttr = PT_ATTRS[pickIdx].key;
+                }
+
+                const damageB = Number(r.totalDamage) / 1e9;
+                const input = document.querySelector(`#mypageDmgInputs input[data-attr="${ptAttr}"]`);
+                if (!input) throw new Error('入力欄が見つかりません');
+                input.value = damageB.toFixed(2).replace(/\.?0+$/, '');
+                await handleMyDamageBlur(input);
+
+                const ptName = PT_ATTRS.find(x => x.key === ptAttr)?.name;
+                const bossInfo = r.bossName ? ` (${r.bossName})` : '';
+                statusEl.textContent = `✅ ${ptName}PT に ${damageB.toFixed(2)} B を登録しました${bossInfo}`;
+                statusEl.style.color = '#22c55e';
+            } catch (e) {
+                statusEl.textContent = `❌ ${e?.message || e}`;
+                statusEl.style.color = '#ef4444';
+            }
+        }
+
+        // ボス名(任意) から PT属性キーを推定
+        async function detectPtAttrFromBossName(bossName) {
+            if (!bossName) return null;
+            const norm = s => String(s || '').replace(/\s+/g, '');
+            const target = norm(bossName);
+            if (target.length < 2) return null;
+
+            // 1. 現シーズンの bosses 名と照合
+            const ctx = await ensureActiveSeasonLoaded();
+            if (ctx?.bosses) {
+                const b = ctx.bosses.find(b => {
+                    const bn = norm(b.name || '');
+                    return bn && (bn.includes(target) || target.includes(bn));
+                });
+                if (b) return b.weakness;
+            }
+
+            // 2. BOSS_ATTRIBUTES の固定名と照合（灼熱ヘスティア等）
+            const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
+            for (const [code, info] of Object.entries(BOSS_ATTRIBUTES)) {
+                const nameJp = norm(info.nameJP || '');
+                // 接頭辞 (灼熱/水冷/...) を剥がした固有部分でも照合
+                const shortName = nameJp.replace(/^(灼熱|水冷|電撃|鉄甲|風圧)/, '');
+                if ((nameJp.length >= 3 && (nameJp.includes(target) || target.includes(nameJp)))
+                    || (shortName.length >= 3 && (shortName.includes(target) || target.includes(shortName)))) {
+                    return COUNTER[info.attribute];
+                }
+            }
+            return null;
         }
 
         async function handleMyDamageBlur(input) {
