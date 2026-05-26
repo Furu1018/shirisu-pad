@@ -1980,6 +1980,10 @@
         function escapeHtml(s) {
             return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
+        // onclick="..." 内に安全に JSON 値を埋めるヘルパー（ダブルクォート HTML エンティティ化）
+        function jsonAttr(v) {
+            return JSON.stringify(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
 
         function renderMyPage() {
             const id = getCurrentIdentity();
@@ -3244,7 +3248,7 @@
                         <span style="flex:1;font-size:12px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
                         <span style="font-size:13px;font-weight:700;white-space:nowrap;">${dmgB} B</span>
                         <button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">編集</button>
-                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${JSON.stringify(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
+                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${jsonAttr(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
                     </div>`;
             }).join('');
         }
@@ -3588,10 +3592,10 @@
                     <div style="display:flex;align-items:center;gap:6px;padding:8px;border-radius:6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                         <span style="flex:1;font-size:14px;${isArchived ? 'color:var(--md-sys-color-on-surface-variant);text-decoration:line-through;' : ''}">${escapeHtml(p.name)}</span>
                         ${isArchived
-                            ? `<button onclick="handleMemberUnarchive(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">復活</button>
-                               <button onclick="handleMemberDelete(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
-                            : `<button onclick="handleMemberRename(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">改名</button>
-                               <button onclick="handleMemberArchive(${p.id}, ${JSON.stringify(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #f59e0b;background:var(--md-sys-color-surface);color:#f59e0b;font-size:12px;cursor:pointer;">脱退</button>`
+                            ? `<button onclick="handleMemberUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">復活</button>
+                               <button onclick="handleMemberDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
+                            : `<button onclick="handleMemberRename(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">改名</button>
+                               <button onclick="handleMemberArchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #f59e0b;background:var(--md-sys-color-surface);color:#f59e0b;font-size:12px;cursor:pointer;">脱退</button>`
                         }
                     </div>`;
             }).join('');
