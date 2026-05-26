@@ -68,6 +68,8 @@ export default {
       const tag = body.tag || undefined;
       const playerIds = Array.isArray(body.playerIds) ? body.playerIds : null;
       const requireInteraction = !!body.requireInteraction;
+      // ignoreAvailability=true (運営の「全員に送信」など) なら availability フィルタを無視
+      const ignoreAvailability = !!body.ignoreAvailability;
 
       // service_role で push_subscriptions を取得 (RLS 回避)
       const sb = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -77,8 +79,56 @@ export default {
       }
       const { data: subs, error: sErr } = await query;
       if (sErr) return jsonError("subscriptions fetch failed: " + sErr.message, 500);
-      if (!subs || subs.length === 0) {
-        return new Response(JSON.stringify({ ok: true, sent: 0, target: 0, results: [] }), {
+      let filteredSubs = subs || [];
+      let filteredOutByAvail = 0;
+
+      // availability フィルタ: 現在JST時刻に該当時間帯を許可しているプレイヤーのみ残す
+      // availability に1行も無いプレイヤーは「未設定=全部OK」として残す (後方互換)
+      if (!ignoreAvailability && filteredSubs.length > 0) {
+        const currentSlot = (function () {
+          const now = new Date();
+          // JST = UTC+9
+          const jstHour = (now.getUTCHours() + 9) % 24;
+          if (jstHour >= 5 && jstHour < 9) return "morning";
+          if (jstHour >= 9 && jstHour < 14) return "noon";
+          if (jstHour >= 14 && jstHour < 18) return "evening";
+          if (jstHour >= 18 && jstHour < 24) return "night";
+          return "latenight";
+        })();
+
+        const targetPlayerIds = Array.from(new Set(filteredSubs.map(function (s) { return s.player_id; })));
+
+        // 対象プレイヤーの availability を一括取得
+        const { data: availRows } = await sb
+          .from("availability")
+          .select("player_id, time_slot")
+          .in("player_id", targetPlayerIds);
+
+        // 「availability に1件以上ある」プレイヤー集合
+        const playersWithAvail = new Set();
+        // 「現在 slot を許可している」プレイヤー集合
+        const playersAllowingNow = new Set();
+        (availRows || []).forEach(function (r) {
+          playersWithAvail.add(r.player_id);
+          if (r.time_slot === currentSlot) playersAllowingNow.add(r.player_id);
+        });
+
+        const before = filteredSubs.length;
+        filteredSubs = filteredSubs.filter(function (s) {
+          if (!playersWithAvail.has(s.player_id)) return true;  // 未設定は通す
+          return playersAllowingNow.has(s.player_id);
+        });
+        filteredOutByAvail = before - filteredSubs.length;
+      }
+
+      if (filteredSubs.length === 0) {
+        return new Response(JSON.stringify({
+          ok: true,
+          sent: 0,
+          target: 0,
+          filteredOutByAvail,
+          results: [],
+        }), {
           headers: Object.assign({}, CORS_HEADERS, { "Content-Type": "application/json" }),
         });
       }
@@ -92,7 +142,7 @@ export default {
       });
 
       // 並列送信して結果集計
-      const results = await Promise.all(subs.map(async (sub) => {
+      const results = await Promise.all(filteredSubs.map(async (sub) => {
         const subscription = {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth },
@@ -117,7 +167,9 @@ export default {
       return new Response(JSON.stringify({
         ok: true,
         sent,
-        target: subs.length,
+        target: filteredSubs.length,
+        candidates: (subs || []).length,
+        filteredOutByAvail,
         removed,
         results,
       }), {

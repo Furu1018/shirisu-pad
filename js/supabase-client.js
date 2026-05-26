@@ -360,6 +360,35 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB) 
     if (error) throw error;
 };
 
+// プレイヤーの通知受信可能時間帯 (availability) を取得
+// 戻り値: ['morning','noon',...] (空配列なら未登録=全時間帯OK扱い)
+window.supabaseLoadAvailability = async function (playerId) {
+    const { data, error } = await supabase
+        .from('availability')
+        .select('time_slot')
+        .eq('player_id', playerId);
+    if (error) throw error;
+    return (data || []).map(d => d.time_slot);
+};
+
+// プレイヤーの availability を slots[] で上書き
+window.supabaseSaveAvailability = async function (playerId, slots) {
+    const valid = ['morning','noon','evening','night','latenight'];
+    const clean = (slots || []).filter(s => valid.includes(s));
+    // 一旦全削除して入れ直し
+    const { error: dErr } = await supabase
+        .from('availability')
+        .delete()
+        .eq('player_id', playerId);
+    if (dErr) throw dErr;
+    if (clean.length === 0) return;
+    const rows = clean.map(s => ({ player_id: playerId, time_slot: s }));
+    const { error: iErr } = await supabase
+        .from('availability')
+        .insert(rows);
+    if (iErr) throw iErr;
+};
+
 // プレイヤーの属性別ダメージを1件削除
 window.supabaseDeletePlayerDamage = async function (playerId, attribute) {
     const { error } = await supabase

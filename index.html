@@ -1016,6 +1016,14 @@
                 </div>
             </div>
 
+            <!-- 通知受信可能時間 -->
+            <div class="card" style="padding:20px;margin-top:20px;">
+                <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">🕐 通知受信可能時間</h3>
+                <p style="margin:0 0 8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">通知を受け取りたい時間帯を選択。締め凸候補通知などは指定した時間帯にいる人だけに配信されます。全部OFFにすると通知は来ません。<br>※運営が「全員に送信」した場合や緊急通知はこの設定を無視して届きます。</p>
+                <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:6px;"></div>
+                <p id="mypageAvailMessage" style="margin:6px 0 0 0;font-size:12px;min-height:14px;"></p>
+            </div>
+
             <!-- Push通知設定 -->
             <div class="card" style="padding:20px;margin-top:20px;">
                 <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">🔔 Push通知設定</h3>
@@ -1990,6 +1998,7 @@
             nameEl.textContent = id.name;
             renderMyDamageInputs(id);
             renderMyAttacks(id);
+            renderMyAvailabilitySettings(id);
             renderMyPushSettings(id);
             // 最新シーズン (currentData) から該当プレイヤーを引く
             const me = (currentData || []).find(p => p.player === id.name);
@@ -2107,6 +2116,81 @@
                     statusEl.textContent = `❌ ${e?.message || e}`;
                     statusEl.style.color = '#ef4444';
                 }
+            }
+        }
+
+        // ========== マイページ: 通知受信可能時間 ==========
+        const TIME_SLOTS = [
+            { key: 'morning',   label: '🌅 朝 (5-9時)' },
+            { key: 'noon',      label: '☀️ 昼 (9-14時)' },
+            { key: 'evening',   label: '🌇 夕 (14-18時)' },
+            { key: 'night',     label: '🌙 夜 (18-24時)' },
+            { key: 'latenight', label: '🌃 深夜 (0-5時)' },
+        ];
+        function getCurrentSlotJST() {
+            const h = new Date().getHours();  // 端末ローカル時刻
+            if (h >= 5 && h < 9) return 'morning';
+            if (h >= 9 && h < 14) return 'noon';
+            if (h >= 14 && h < 18) return 'evening';
+            if (h >= 18 && h < 24) return 'night';
+            return 'latenight';
+        }
+
+        async function renderMyAvailabilitySettings(identity) {
+            const groupEl = document.getElementById('mypageAvailGroup');
+            const msgEl = document.getElementById('mypageAvailMessage');
+            if (!groupEl) return;
+            msgEl.textContent = '';
+            groupEl.innerHTML = '<p style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">読み込み中...</p>';
+            let slots = [];
+            let isFirstTime = false;
+            try {
+                slots = await window.supabaseLoadAvailability(identity.id);
+                if (slots.length === 0) {
+                    // 未登録 = 全部ON扱い
+                    slots = TIME_SLOTS.map(s => s.key);
+                    isFirstTime = true;
+                }
+            } catch (e) {
+                groupEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                return;
+            }
+
+            const currentSlot = getCurrentSlotJST();
+            const isAvail = slots.includes(currentSlot);
+            const statusHtml = `<div style="padding:6px 10px;margin-bottom:8px;border-radius:6px;background:${isAvail ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${isAvail ? '#15803d' : '#ef4444'};font-size:12px;font-weight:600;">${isAvail ? '✅' : '🛑'} 現在は ${TIME_SLOTS.find(s => s.key === currentSlot)?.label} の時間帯 → 通知 ${isAvail ? '受信中' : 'OFF'}</div>`;
+
+            groupEl.innerHTML = statusHtml + TIME_SLOTS.map(s => {
+                const checked = slots.includes(s.key);
+                return `
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0;font-size:14px;">
+                        <input type="checkbox" data-slot="${s.key}" ${checked ? 'checked' : ''} onchange="handleMyAvailToggle(this)" style="width:18px;height:18px;cursor:pointer;">
+                        <span>${s.label}</span>
+                    </label>`;
+            }).join('');
+            if (isFirstTime) msgEl.textContent = 'ℹ️ 初期設定: 全時間帯ON。お好みでオフにできます。';
+            msgEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+        }
+
+        async function handleMyAvailToggle() {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const checks = document.querySelectorAll('#mypageAvailGroup input[type=checkbox]');
+            const slots = Array.from(checks).filter(c => c.checked).map(c => c.dataset.slot);
+            const msgEl = document.getElementById('mypageAvailMessage');
+            try {
+                await window.supabaseSaveAvailability(id.id, slots);
+                const cur = getCurrentSlotJST();
+                const ok = slots.includes(cur);
+                msgEl.textContent = slots.length === 0
+                    ? '⚠️ 全時間帯OFF: 通知は一切来ません'
+                    : `✅ 保存しました (現在は ${ok ? '受信ON' : '受信OFF'})`;
+                msgEl.style.color = slots.length === 0 ? '#f59e0b' : '#22c55e';
+                // ステータス行を再描画
+                await renderMyAvailabilitySettings(id);
+            } catch (e) {
+                msgEl.textContent = `❌ ${e?.message || e}`;
+                msgEl.style.color = '#ef4444';
             }
         }
 
@@ -3302,8 +3386,11 @@
                     title: title || 'しりすこPAD',
                     body: bodyText,
                     url: './',
+                    ignoreAvailability: true,  // 運営による全員配信は時間帯設定を無視
                 });
-                set(`✅ ${res.sent}/${res.target} 件 送信完了${res.removed ? ` (期限切れ${res.removed}件削除)` : ''}`);
+                const parts = [`✅ ${res.sent}/${res.target} 件 送信完了`];
+                if (res.removed) parts.push(`(期限切れ${res.removed}件削除)`);
+                set(parts.join(' '));
             } catch (e) {
                 set(`❌ ${e?.message || e}`, true);
             }
