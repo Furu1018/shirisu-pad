@@ -1110,7 +1110,7 @@
                     <h3 style="margin:0;font-size:16px;font-weight:600;">🎯 最適凸プラン算出</h3>
                     <button onclick="computeAndRenderOptimalPlan()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">プラン算出</button>
                 </div>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">残凸メンバーの登録ダメージから、各ボスをダメージ損失最小で削るベスト凸順番を提案します。</p>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。登録ダメージは1人1属性につき1回のみ使用。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
                 <div id="opsOptimalPlan">
                     <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">「プラン算出」を押して計算してください。</p>
                 </div>
@@ -2930,105 +2930,109 @@
             }
         }
 
-        // ========== Phase 5: 最適凸プラン算出 ==========
-        // ヒューリスティック貪欲法:
-        //  1. 各ボスを「残HP降順」で見て、1ラウンドにつき各ボス最大1凸ずつ割当
-        //  2. 各ボスの候補(member の damagesByAttr[weakness] > 0) からベストを選ぶ
-        //     - 残HP > 0 のうちは「残HP に近い」を最優先しつつ、過剰0.5B以内を理想
-        //     - HP割合70%超え状態なら最大ダメ候補を当てて削る
-        //  3. メンバーは1ボスに最大3凸まで（自分の残凸数の範囲内）
-        //  4. 全ボスHP=0 or 候補枯渇まで継続
+        // ========== Phase 5: 最適凸プラン算出 (Lv1-3 通し) ==========
+        // ルール: ①各レベル5体全撃破で次レベルへ ②同じ人の同属性ベスト火力は1回のみ(登録ダメ使い切り)
+        //         ③低レベルは低SLv、高レベルは高SLvを優先(高SLvを後半に温存) ④凸ごとに個別最適化
+        // 現在の残りHPから開始し、火力が尽きたレベルで停止して攻略可能範囲を示す。
         function computeOptimalPlan() {
             if (!_opsDashboardCache) return null;
             const { season, bosses, players } = _opsDashboardCache;
             if (!season || bosses.length === 0) return null;
 
-            // 作業用コピー
-            const bossState = bosses
-                .filter(b => (b.remaining_hp_raw || 0) > 0)
-                .map(b => ({
-                    bossNumber: b.boss_number,
-                    bossCode: b.boss_code,
-                    name: b.name || b.boss_code,
-                    weakness: b.weakness,
-                    initialHpB: (b.remaining_hp_raw || 0) / 1e9,
-                    remainingHpB: (b.remaining_hp_raw || 0) / 1e9,
-                    tier: b.tier,
-                    plannedAttacks: [],
-                }));
+            // レベル別ボスHP (B単位) ※ supabaseLevelUpSeason の定義と一致させること
+            const HARD_LEVEL_HP_B = {
+                1: { tyrant: 99.8562792, lord: 150.8418136 },
+                2: { tyrant: 149.7844188, lord: 226.2627204 },
+                3: { tyrant: 292.44529575, lord: 349.2309015 },
+            };
+            const startLevel = season.current_level || 1;
 
+            // メンバー状態: 残凸数 + 属性別の使い切りダメージ(>0) + SLv
             const memberState = players
                 .filter(p => p.attackCount < 3)
-                .map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    remainingAttacks: 3 - p.attackCount,
-                    damagesByAttr: { ...p.damagesByAttr },
-                }));
-
-            const pickBestAttack = (boss, memberPool) => {
-                // 候補抽出: 残凸あり & 該当属性ダメ登録あり
-                const cands = memberPool
-                    .filter(m => m.remainingAttacks > 0)
-                    .map(m => ({ member: m, dmg: Number(m.damagesByAttr[boss.weakness]) || 0 }))
-                    .filter(c => c.dmg > 0);
-                if (cands.length === 0) return null;
-
-                const rem = boss.remainingHpB;
-                cands.sort((a, b) => {
-                    const aIn = a.dmg <= rem + 0.5;  // 0.5B以内の超過まで「ピッタリ枠」
-                    const bIn = b.dmg <= rem + 0.5;
-                    if (aIn && !bIn) return -1;
-                    if (!aIn && bIn) return 1;
-                    if (aIn && bIn) {
-                        // ピッタリ枠同士なら 残HPに近い順 (= 大きい方優先)
-                        return b.dmg - a.dmg;
+                .map(p => {
+                    const avail = {};
+                    for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
+                        if (Number(v) > 0) avail[k] = Number(v);
                     }
-                    // どちらも超過なら 超過小さい順 (= 小さい方優先)
-                    return a.dmg - b.dmg;
+                    return {
+                        id: p.id,
+                        name: p.name,
+                        slv: p.syncLevel || 0,
+                        slvEstimated: !!p.syncLevelEstimated,
+                        remainingAttacks: 3 - p.attackCount,
+                        avail,
+                    };
                 });
-                return cands[0];
+
+            // SLv順位 (0=最低, 1=最高)。参加可能メンバー内で相対化。
+            const participants = memberState.filter(m => m.remainingAttacks > 0 && Object.keys(m.avail).length > 0);
+            const sortedBySlv = [...participants].sort((a, b) => a.slv - b.slv);
+            const np = sortedBySlv.length;
+            sortedBySlv.forEach((m, i) => { m.slvRank = np > 1 ? i / (np - 1) : 0.5; });
+
+            // 候補スコア(小さいほど良い): オーバーキル + SLvミスマッチ。
+            // SLv完全ミスマッチ(1.0) ≈ 5B のオーバーキルに相当する重み付け。
+            const W_OVER = 1.0, W_SLV = 5.0;
+            const scoreOf = (m, attr, rem, levelPos) => {
+                const dmg = m.avail[attr];
+                const overkill = Math.max(0, dmg - rem);
+                const slvPenalty = Math.abs((m.slvRank ?? 0.5) - levelPos);
+                return overkill * W_OVER + slvPenalty * W_SLV - Math.min(dmg, rem) * 0.001;
             };
 
-            // 最大100ラウンドで安全停止
-            const MAX_ROUNDS = 100;
-            for (let round = 0; round < MAX_ROUNDS; round++) {
-                // このラウンドで進展があったかチェック (なければ終了)
-                let progressed = false;
-                // 各ボスを残HP降順で見る
-                const aliveBosses = bossState.filter(b => b.remainingHpB > 0)
-                    .sort((a, b) => b.remainingHpB - a.remainingHpB);
-                for (const boss of aliveBosses) {
-                    const pick = pickBestAttack(boss, memberState);
-                    if (!pick) continue;
-                    pick.member.remainingAttacks--;
-                    const overflow = Math.max(0, pick.dmg - boss.remainingHpB);
-                    const used = Math.min(pick.dmg, boss.remainingHpB);
-                    boss.plannedAttacks.push({
-                        memberId: pick.member.id,
-                        memberName: pick.member.name,
-                        ptAttr: boss.weakness,
-                        plannedDmgB: pick.dmg,
-                        usedDmgB: used,
-                        overflowB: overflow,
+            const levels = [];
+            let fullyClearedThrough = startLevel - 1;  // 何レベルまで完全攻略できる想定か
+            for (let L = startLevel; L <= 3; L++) {
+                const levelPos = (L - 1) / 2;  // Lv1=0, Lv2=0.5, Lv3=1
+                const levelBosses = [];
+                let levelCleared = true;
+                for (const b of bosses) {
+                    const tierHp = HARD_LEVEL_HP_B[L]?.[b.tier] ?? ((b.total_hp_raw || 0) / 1e9);
+                    const targetHpB = (L === startLevel) ? ((b.remaining_hp_raw || 0) / 1e9) : tierHp;
+                    const attacks = [];
+                    let rem = targetHpB;
+                    while (rem > 0.0001) {
+                        let pick = null, pickScore = Infinity;
+                        for (const m of memberState) {
+                            if (m.remainingAttacks <= 0 || !(m.avail[b.weakness] > 0)) continue;
+                            const s = scoreOf(m, b.weakness, rem, levelPos);
+                            if (s < pickScore) { pickScore = s; pick = m; }
+                        }
+                        if (!pick) break;
+                        const dmg = pick.avail[b.weakness];
+                        attacks.push({
+                            memberId: pick.id, memberName: pick.name,
+                            slv: pick.slv, slvEstimated: pick.slvEstimated,
+                            dmgB: dmg, usedB: Math.min(dmg, rem), overflowB: Math.max(0, dmg - rem),
+                        });
+                        delete pick.avail[b.weakness];
+                        pick.remainingAttacks--;
+                        rem -= dmg;
+                    }
+                    const cleared = rem <= 0.0001;
+                    if (!cleared && targetHpB > 0) levelCleared = false;
+                    levelBosses.push({
+                        bossNumber: b.boss_number, name: b.name || b.boss_code,
+                        weakness: b.weakness, tier: b.tier,
+                        targetHpB, remainingHpB: Math.max(0, rem), cleared, attacks,
                     });
-                    boss.remainingHpB = Math.max(0, boss.remainingHpB - pick.dmg);
-                    progressed = true;
                 }
-                if (!progressed) break;
+                levels.push({ level: L, levelCleared, bosses: levelBosses });
+                if (levelCleared) fullyClearedThrough = L;
+                else break;  // このレベルを越えられないので以降は計画しない
             }
 
-            const unkilledBosses = bossState.filter(b => b.remainingHpB > 0);
-            const totalWaste = bossState.reduce((sum, b) =>
-                sum + b.plannedAttacks.reduce((s, a) => s + a.overflowB, 0), 0);
-            const totalAttacks = bossState.reduce((sum, b) => sum + b.plannedAttacks.length, 0);
-            const unusedAttacks = memberState.reduce((sum, m) => sum + m.remainingAttacks, 0);
-            const membersNoData = (_opsDashboardCache.players || [])
+            const allAttacks = levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks));
+            const totalAttacks = allAttacks.length;
+            const totalWaste = allAttacks.reduce((s, a) => s + a.overflowB, 0);
+            const unusedAttacks = memberState.reduce((s, m) => s + m.remainingAttacks, 0);
+            const membersNoData = players
                 .filter(p => p.attackCount < 3)
                 .filter(p => Object.values(p.damagesByAttr || {}).every(v => !v || v === 0))
                 .map(p => p.name);
 
-            return { bossState, unkilledBosses, totalWaste, totalAttacks, unusedAttacks, membersNoData };
+            return { startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste, unusedAttacks, membersNoData };
         }
 
         function computeAndRenderOptimalPlan() {
@@ -3042,57 +3046,72 @@
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">プラン算出に失敗しました。</p>';
                 return;
             }
-            if (plan.bossState.length === 0) {
-                el.innerHTML = '<p style="font-size:13px;color:#22c55e;font-weight:600;">🎉 全ボス撃破済みです！</p>';
-                return;
-            }
+
+            const reachedAll = plan.fullyClearedThrough >= 3;
+            const reachedSome = plan.fullyClearedThrough >= plan.startLevel;
+            const clearedLabel = reachedSome ? `Lv${plan.fullyClearedThrough} まで完全攻略想定` : `Lv${plan.startLevel} 完全攻略に届かない想定`;
+            const clearedColor = reachedAll ? '#15803d' : (reachedSome ? '#b45309' : '#ef4444');
+            const clearedBg = reachedSome ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.15)';
 
             const summary = `
                 <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;font-size:12px;">
-                    <div style="padding:6px 10px;border-radius:6px;background:var(--md-sys-color-surface-variant);">想定凸数: <strong>${plan.totalAttacks}</strong></div>
+                    <div style="padding:6px 10px;border-radius:6px;background:${clearedBg};color:${clearedColor};font-weight:700;">${clearedLabel}</div>
+                    <div style="padding:6px 10px;border-radius:6px;background:var(--md-sys-color-surface-variant);">想定総凸数: <strong>${plan.totalAttacks}</strong></div>
                     <div style="padding:6px 10px;border-radius:6px;background:var(--md-sys-color-surface-variant);">想定オーバーキル: <strong style="color:${plan.totalWaste > 5 ? '#f59e0b' : '#22c55e'};">${plan.totalWaste.toFixed(2)} B</strong></div>
                     <div style="padding:6px 10px;border-radius:6px;background:var(--md-sys-color-surface-variant);">未消化凸: <strong>${plan.unusedAttacks}</strong></div>
-                    ${plan.unkilledBosses.length > 0 ? `<div style="padding:6px 10px;border-radius:6px;background:rgba(239,68,68,0.15);color:#ef4444;font-weight:600;">⚠️ 残ボス: ${plan.unkilledBosses.length}</div>` : '<div style="padding:6px 10px;border-radius:6px;background:rgba(34,197,94,0.15);color:#15803d;font-weight:600;">✅ 全ボス撃破想定</div>'}
-                </div>
-            `;
+                </div>`;
 
-            const bossSections = plan.bossState.map(b => {
-                // PT属性 = ボスの弱点 = boss.weakness
-                const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
-                const headColor = b.remainingHpB > 0 ? '#ef4444' : '#22c55e';
-                const statusText = b.remainingHpB > 0
-                    ? `削り残し ${b.remainingHpB.toFixed(2)}B`
-                    : '✅ 撃破';
-                const attacksHtml = b.plannedAttacks.length === 0
-                    ? '<div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);padding:8px;">該当属性で凸できる候補がいません</div>'
-                    : b.plannedAttacks.map((a, i) => {
-                        const overTag = a.overflowB > 0 ? `<span style="color:#f59e0b;font-size:10px;">⚠️+${a.overflowB.toFixed(2)}B</span>` : '';
-                        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                            <span style="min-width:46px;font-weight:600;color:var(--md-sys-color-primary);font-size:12px;">${i+1}凸目</span>
-                            ${ptInfo ? `<img src="${ptInfo.icon}" style="width:14px;height:14px;">` : ''}
-                            <strong style="flex:1;font-size:13px;">${escapeHtml(a.memberName)}</strong>
-                            <span style="font-size:13px;font-weight:700;">${a.plannedDmgB.toFixed(2)} B</span>
-                            ${overTag}
+            const levelSections = plan.levels.map(lv => {
+                const lvStatus = lv.levelCleared
+                    ? '<span style="color:#15803d;font-weight:700;font-size:12px;">✅ 全撃破想定</span>'
+                    : '<span style="color:#ef4444;font-weight:700;font-size:12px;">⚠️ ここで火力不足（次レベルへ進めない想定）</span>';
+                const bossCards = lv.bosses.map(b => {
+                    const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
+                    const headColor = b.cleared ? '#22c55e' : '#ef4444';
+                    const statusText = b.targetHpB <= 0 ? '－' : (b.cleared ? '✅ 撃破' : `削り残し ${b.remainingHpB.toFixed(2)}B`);
+                    const attacksHtml = b.attacks.length === 0
+                        ? (b.targetHpB <= 0
+                            ? '<div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);padding:6px 8px;">既に撃破済み</div>'
+                            : '<div style="font-size:12px;color:#ef4444;padding:6px 8px;">この属性で凸できる候補がいません</div>')
+                        : b.attacks.map((a, i) => {
+                            const overTag = a.overflowB > 0 ? `<span style="color:#f59e0b;font-size:10px;">⚠️+${a.overflowB.toFixed(2)}B</span>` : '';
+                            const slvTag = `<span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);" title="${a.slvEstimated ? 'SLv推定値' : 'SLv'}">SLv${a.slv || '?'}${a.slvEstimated ? '推' : ''}</span>`;
+                            return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                                <span style="min-width:42px;font-weight:600;color:var(--md-sys-color-primary);font-size:12px;">${i + 1}凸目</span>
+                                <strong style="flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.memberName)}</strong>
+                                ${slvTag}
+                                <span style="font-size:13px;font-weight:700;">${a.dmgB.toFixed(2)} B</span>
+                                ${overTag}
+                            </div>`;
+                        }).join('');
+                    return `
+                        <div style="margin-bottom:10px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;overflow:hidden;">
+                            <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--md-sys-color-surface-variant);">
+                                <strong style="font-size:13px;">B${b.bossNumber} ${escapeHtml(b.name)}</strong>
+                                ${ptInfo ? `<img src="${ptInfo.icon}" style="width:14px;height:14px;" title="${ptInfo.name}PTで凸">` : ''}
+                                <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">${ptInfo?.name || ''}PT</span>
+                                <span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">目標 ${b.targetHpB.toFixed(1)}B</span>
+                                <span style="margin-left:auto;font-size:12px;color:${headColor};font-weight:600;">${statusText}</span>
+                            </div>
+                            ${attacksHtml}
                         </div>`;
-                    }).join('');
+                }).join('');
                 return `
-                    <div style="margin-bottom:14px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;overflow:hidden;">
-                        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--md-sys-color-surface-variant);">
-                            <strong style="font-size:13px;">B${b.bossNumber} ${escapeHtml(b.name)}</strong>
-                            ${ptInfo ? `<img src="${ptInfo.icon}" style="width:14px;height:14px;" title="${ptInfo.name}PTで凸">` : ''}
-                            <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">${ptInfo?.name}PT</span>
-                            <span style="margin-left:auto;font-size:12px;color:${headColor};font-weight:600;">${statusText}</span>
+                    <div style="margin-bottom:16px;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:6px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                            <strong style="font-size:15px;">Lv${lv.level}</strong>
+                            ${lvStatus}
                         </div>
-                        ${attacksHtml}
+                        ${bossCards}
                     </div>`;
             }).join('');
 
             const warnings = [];
-            if (plan.unkilledBosses.length > 0) {
-                warnings.push(`<li>削り残し ${plan.unkilledBosses.length} ボス: ${plan.unkilledBosses.map(b => `${b.name}(${b.remainingHpB.toFixed(2)}B)`).join('、')}</li>`);
+            if (plan.fullyClearedThrough < 3) {
+                warnings.push(`<li>現状の登録ダメージでは Lv3 完全攻略に火力が不足する想定です。火力(SLv/編成)の強化や凸の集中が必要。</li>`);
             }
             if (plan.unusedAttacks > 0) {
-                warnings.push(`<li>未消化凸 ${plan.unusedAttacks}凸: 削れるボスが無いor属性ダメ未登録のメンバー</li>`);
+                warnings.push(`<li>未消化凸 ${plan.unusedAttacks}凸: 攻略が止まったレベル以降で使われなかった凸（属性ダメ未登録 or 進行不能）。</li>`);
             }
             if (plan.membersNoData.length > 0) {
                 warnings.push(`<li>属性ダメ完全未登録 ${plan.membersNoData.length}名: ${plan.membersNoData.slice(0, 5).join('、')}${plan.membersNoData.length > 5 ? '...' : ''} (本人にマイページからの登録依頼を)</li>`);
@@ -3101,7 +3120,7 @@
                 ? `<div style="margin-top:10px;padding:10px;border-radius:8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);font-size:12px;"><strong>⚠️ 留意点</strong><ul style="margin:4px 0 0 18px;padding:0;">${warnings.join('')}</ul></div>`
                 : '';
 
-            el.innerHTML = summary + bossSections + warnHtml;
+            el.innerHTML = summary + levelSections + warnHtml;
         }
 
         // AI に締め凸ベスト候補を聞く (Phase 4d)

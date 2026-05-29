@@ -838,13 +838,53 @@ window.supabaseLoadOpsDashboardData = async function () {
         });
     }
 
-    const result = (players || []).map(p => ({
-        id: p.id,
-        name: p.name,
-        damagesByAttr: dmgByPlayer.get(p.id) || {},
-        attacks: attacksByPlayer.get(p.id) || [],
-        attackCount: (attacksByPlayer.get(p.id) || []).length,
-    }));
+    // 4) SLv: 直近の実シーズン(テスト除外)の player_sync_levels を取得。
+    //    最適プランで「低レベルは低SLv、高レベルは高SLv」の割当に使う。
+    const slvByPlayer = new Map();
+    const { data: latestReal } = await supabase
+        .from('seasons').select('id').eq('is_test', false)
+        .order('hard_date', { ascending: false }).limit(1).maybeSingle();
+    if (latestReal) {
+        const { data: slvs } = await supabase
+            .from('player_sync_levels')
+            .select('player_id, sync_level')
+            .eq('season_id', latestReal.id);
+        (slvs || []).forEach(s => slvByPlayer.set(s.player_id, Number(s.sync_level) || 0));
+    }
+
+    // 平均登録ダメージ(>0のみ)。新メンバーのSLv推定の手がかり。
+    const avgDmgOf = (pid) => {
+        const vals = Object.values(dmgByPlayer.get(pid) || {}).filter(v => v > 0);
+        return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+    };
+    // SLv既知 かつ ダメージありの (avgDmg, slv) ペア = 最新月の参照表。
+    const knownPairs = (players || [])
+        .filter(p => slvByPlayer.has(p.id) && avgDmgOf(p.id) > 0)
+        .map(p => ({ avgDmg: avgDmgOf(p.id), slv: slvByPlayer.get(p.id) }));
+    // ダメージ出力が最も近い既知メンバーのSLvを借りる(最近傍)。パワークリープのため最新月で推定。
+    const estimateSlv = (pid) => {
+        if (knownPairs.length === 0) return 0;
+        const a = avgDmgOf(pid);
+        if (a <= 0) return 0;
+        let best = knownPairs[0];
+        for (const k of knownPairs) {
+            if (Math.abs(k.avgDmg - a) < Math.abs(best.avgDmg - a)) best = k;
+        }
+        return best.slv;
+    };
+
+    const result = (players || []).map(p => {
+        const known = slvByPlayer.has(p.id);
+        return {
+            id: p.id,
+            name: p.name,
+            damagesByAttr: dmgByPlayer.get(p.id) || {},
+            attacks: attacksByPlayer.get(p.id) || [],
+            attackCount: (attacksByPlayer.get(p.id) || []).length,
+            syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),
+            syncLevelEstimated: !known,
+        };
+    });
     return { season, bosses, players: result };
 };
 
