@@ -2762,29 +2762,44 @@
             const groups = { 3: [], 2: [], 1: [] };
             remaining.forEach(p => groups[p.remain]?.push(p));
 
-            const renderDmgRow = (p) => {
-                const dmgChips = PT_ATTRS.map(a => {
+            const NAME_W = 120, ATTR_W = 52, GAP = 6;
+            const rowMinW = NAME_W + (ATTR_W + GAP) * PT_ATTRS.length;
+
+            const headerRow = () => `
+                <div style="display:flex;align-items:center;gap:${GAP}px;padding:0 0 4px 0;">
+                    <div style="width:${NAME_W}px;flex-shrink:0;"></div>
+                    ${PT_ATTRS.map(a => `<div title="${a.name}PT" style="width:${ATTR_W}px;flex-shrink:0;display:flex;justify-content:center;"><img src="${a.icon}" style="width:16px;height:16px;"></div>`).join('')}
+                </div>`;
+
+            const memberRow = (p) => {
+                const cells = PT_ATTRS.map(a => {
                     const v = p.damagesByAttr[a.key];
-                    if (!v || v <= 0) return '';
-                    return `<span title="${a.name}PT" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;background:var(--md-sys-color-surface-variant);font-size:11px;"><img src="${a.icon}" style="width:12px;height:12px;">${Number(v).toFixed(1)}</span>`;
-                }).filter(Boolean).join(' ');
-                return dmgChips || '<span style="color:var(--md-sys-color-on-surface-variant);font-size:11px;">_(ダメ未登録)_</span>';
+                    const inner = (v && v > 0)
+                        ? Number(v).toFixed(1)
+                        : '<span style="color:var(--md-sys-color-outline-variant);">–</span>';
+                    return `<div style="width:${ATTR_W}px;flex-shrink:0;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;">${inner}</div>`;
+                }).join('');
+                return `
+                    <div style="display:flex;align-items:center;gap:${GAP}px;padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <div style="width:${NAME_W}px;flex-shrink:0;display:flex;align-items:baseline;gap:5px;overflow:hidden;">
+                            <strong style="font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</strong>
+                            <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);flex-shrink:0;">(${p.attackCount}/3)</span>
+                        </div>
+                        ${cells}
+                    </div>`;
             };
 
-            let html = '';
+            let html = '<div style="overflow-x:auto;">';
             for (const n of [3, 2, 1]) {
                 if (groups[n].length === 0) continue;
                 const icon = n === 3 ? '🟢' : n === 2 ? '🟡' : '🔴';
-                html += `<div style="margin-bottom:12px;">
+                html += `<div style="margin-bottom:16px;min-width:${rowMinW}px;">
                     <div style="font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:4px;">${icon} ${n}凸残 (${groups[n].length}名)</div>`;
-                html += groups[n].map(p => `
-                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);flex-wrap:wrap;">
-                        <strong style="font-size:13px;min-width:80px;">${escapeHtml(p.name)}</strong>
-                        <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${p.attackCount}/3)</span>
-                        <div style="flex:1;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;">${renderDmgRow(p)}</div>
-                    </div>`).join('');
+                html += headerRow();
+                html += groups[n].map(memberRow).join('');
                 html += '</div>';
             }
+            html += '</div>';
             listEl.innerHTML = html;
         }
 
