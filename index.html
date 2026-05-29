@@ -2679,10 +2679,41 @@
                 return;
             }
             labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})`;
+
+            // テストシーズンならバナー表示
+            const bannerEl = document.getElementById('opsTestBanner');
+            if (season.is_test) {
+                bannerEl.style.display = 'block';
+                bannerEl.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.5);flex-wrap:wrap;">
+                        <span style="font-size:18px;">🧪</span>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:700;color:#b45309;font-size:13px;">テストシーズン中</div>
+                            <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">この期間の凸・ダメージ変更は記録用ではありません。終了すると元のシーズンとダメージ登録が復元されます。</div>
+                        </div>
+                        <button onclick="handleOpsDeleteTestSeason()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">🧪 テスト終了（削除して元に戻す）</button>
+                    </div>`;
+            } else {
+                bannerEl.style.display = 'none';
+            }
+
             renderOpsRemainingList();
             renderOpsFinishAttrButtons();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
             else finishListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">PT属性ボタンをタップしてください。</p>';
+        }
+
+        async function handleOpsDeleteTestSeason() {
+            if (!confirm('🧪 テストシーズンを削除して元の状態に戻します。\nテスト中の凸データは消え、ダメージ登録と元のシーズンが復元されます。よろしいですか？')) return;
+            try {
+                const r = await window.supabaseDeleteActiveTestSeason();
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
+                showNotification(`テストシーズンを削除しました${r.restoredKey ? ` (${r.restoredKey} を復元)` : ''}`);
+                await renderOpsDashboard();
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
         }
 
         async function reloadOpsDashboard() {
@@ -3636,14 +3667,22 @@
             const codes = bosses.map(b => b.bossCode);
             if (new Set(codes).size !== 5) { set('❌ ボスコードが重複しています (5種類すべて1回ずつ使ってください)', true); return; }
 
-            if (!confirm(`新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。`)) return;
+            const seedFromPrevious = document.getElementById('opsSeasonSeedPrev')?.checked;
+            const isTest = document.getElementById('opsSeasonIsTest')?.checked;
+
+            const confirmMsg = isTest
+                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録はバックアップされ、「テスト終了」で元に戻せます。`
+                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。`;
+            if (!confirm(confirmMsg)) return;
 
             try {
-                await window.supabaseCreateSeason({ hardDate, monthKey, bosses });
-                set(`✅ シーズン ${monthKey} を作成しました`);
+                set('作成中...'); msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+                const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest, seedFromPrevious });
+                const seedMsg = (r.seededCount > 0) ? ` / 前回実績から ${r.seededCount} 件のダメージを初期登録` : '';
+                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成${seedMsg}`);
                 _activeSeasonCache = null;
                 _opsDashboardCache = null;
-                setTimeout(() => closeOpsSeasonCreateModal(), 800);
+                setTimeout(() => closeOpsSeasonCreateModal(), 1200);
                 renderOpsDashboard();
             } catch (e) {
                 set(`❌ ${e?.message || e}`, true);

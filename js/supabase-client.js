@@ -403,7 +403,7 @@ window.supabaseDeletePlayerDamage = async function (playerId, attribute) {
 window.supabaseLoadActiveSeasonWithBosses = async function () {
     const { data: season, error: sErr } = await supabase
         .from('seasons')
-        .select('id, month_key, hard_date, current_level, union_rank, is_active')
+        .select('id, month_key, hard_date, current_level, union_rank, is_active, is_test')
         .eq('is_active', true)
         .order('hard_date', { ascending: false })
         .limit(1)
@@ -522,7 +522,7 @@ window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode
 };
 
 // 新規シーズンを作成（既存アクティブシーズンは自動で非アクティブ化）
-// payload: { hardDate, monthKey, bosses: [{bossNumber, bossCode, name, tier}] }
+// payload: { hardDate, monthKey, bosses: [...], isTest?, seedFromPrevious? }
 window.supabaseCreateSeason = async function (payload) {
     if (!payload.hardDate) throw new Error('hardDate 必須');
     if (!payload.monthKey) throw new Error('monthKey 必須');
@@ -531,6 +531,17 @@ window.supabaseCreateSeason = async function (payload) {
     const ATTR_FROM_CODE = { 'H.S.T.A.': 'fire', 'P.S.I.D.': 'water', 'D.M.T.R.': 'iron', 'Z.E.U.S.': 'electric', 'A.N.M.I.': 'wind' };
     const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
     const HARD_LV1_HP = { tyrant: 99856279200, lord: 150841813600 };
+
+    const isTest = !!payload.isTest;
+
+    // テストシーズンの場合: 現在の player_damages をスナップショットして metadata に保存
+    let metadata = {};
+    if (isTest) {
+        const { data: dmgs } = await supabase
+            .from('player_damages')
+            .select('player_id, attribute, damage_b');
+        metadata = { is_test: true, damages_snapshot: dmgs || [] };
+    }
 
     // 既存アクティブシーズンを is_active=false
     const { error: deactivateErr } = await supabase
@@ -545,9 +556,10 @@ window.supabaseCreateSeason = async function (payload) {
             hard_date: payload.hardDate,
             current_level: 1,
             is_active: true,
-            metadata: {},
+            is_test: isTest,
+            metadata,
         })
-        .select('id, hard_date, month_key')
+        .select('id, hard_date, month_key, is_test')
         .single();
     if (sErr) throw sErr;
 
@@ -571,7 +583,113 @@ window.supabaseCreateSeason = async function (payload) {
     });
     const { error: bErr } = await supabase.from('bosses').insert(bossRows);
     if (bErr) throw bErr;
-    return season;
+
+    // 前回レイド実績からダメージ初期登録
+    let seededCount = 0;
+    if (payload.seedFromPrevious) {
+        const r = await window.supabaseSeedDamagesFromPreviousSeason(season.id);
+        seededCount = r.seeded || 0;
+    }
+
+    return { ...season, seededCount };
+};
+
+// 前回レイドの実攻撃ダメージから各メンバーの属性別ダメージを初期登録
+// 同じPT属性に複数回凸している場合は「最大値」を採用
+// newSeasonId: 今作成したシーズン (除外用)
+window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
+    // 直近の前シーズン (新シーズンを除く、hard_date 降順で先頭)
+    const { data: seasons, error: sErr } = await supabase
+        .from('seasons')
+        .select('id, hard_date')
+        .neq('id', newSeasonId)
+        .order('hard_date', { ascending: false })
+        .limit(1);
+    if (sErr) throw sErr;
+    if (!seasons || seasons.length === 0) return { seeded: 0, reason: 'no_previous' };
+    const prevId = seasons[0].id;
+
+    // 前シーズンのボス boss_code -> weakness(=PT属性)
+    const { data: bosses } = await supabase
+        .from('bosses').select('boss_code, weakness').eq('season_id', prevId);
+    const weaknessByCode = new Map((bosses || []).map(b => [b.boss_code, b.weakness]));
+
+    // 前シーズンの全攻撃
+    const { data: atks } = await supabase
+        .from('attacks').select('player_id, boss_code, damage_raw').eq('season_id', prevId);
+
+    // (player_id, ptAttr) ごとに最大ダメージ
+    const maxMap = new Map();
+    (atks || []).forEach(a => {
+        const attr = weaknessByCode.get(a.boss_code);
+        if (!attr) return;
+        const key = `${a.player_id}:${attr}`;
+        const cur = maxMap.get(key) || 0;
+        const dmg = Number(a.damage_raw) || 0;
+        if (dmg > cur) maxMap.set(key, dmg);
+    });
+
+    const rows = [];
+    for (const [key, dmgRaw] of maxMap.entries()) {
+        const idx = key.lastIndexOf(':');
+        const pid = Number(key.slice(0, idx));
+        const attr = key.slice(idx + 1);
+        if (dmgRaw <= 0) continue;
+        rows.push({
+            player_id: pid,
+            attribute: attr,
+            damage_b: Number((dmgRaw / 1e9).toFixed(3)),
+            updated_at: new Date().toISOString(),
+        });
+    }
+    if (rows.length > 0) {
+        const { error } = await supabase
+            .from('player_damages')
+            .upsert(rows, { onConflict: 'player_id,attribute' });
+        if (error) throw error;
+    }
+    return { seeded: rows.length };
+};
+
+// アクティブなテストシーズンを削除し、player_damages と元のアクティブシーズンを復元
+window.supabaseDeleteActiveTestSeason = async function () {
+    const { data: season, error: sErr } = await supabase
+        .from('seasons')
+        .select('id, is_test, metadata, month_key')
+        .eq('is_active', true)
+        .eq('is_test', true)
+        .maybeSingle();
+    if (sErr) throw sErr;
+    if (!season) throw new Error('アクティブなテストシーズンがありません');
+
+    // player_damages をスナップショットから復元
+    const snapshot = season.metadata?.damages_snapshot;
+    if (Array.isArray(snapshot)) {
+        await supabase.from('player_damages').delete().gte('player_id', 0);
+        if (snapshot.length > 0) {
+            const rows = snapshot.map(s => ({
+                player_id: s.player_id,
+                attribute: s.attribute,
+                damage_b: s.damage_b,
+            }));
+            await supabase.from('player_damages').upsert(rows, { onConflict: 'player_id,attribute' });
+        }
+    }
+
+    // テストシーズン削除 (CASCADE で bosses / attacks も消える)
+    const { error: dErr } = await supabase.from('seasons').delete().eq('id', season.id);
+    if (dErr) throw dErr;
+
+    // 直近の非テストシーズンを再アクティブ化
+    const { data: prev } = await supabase
+        .from('seasons').select('id, month_key').eq('is_test', false)
+        .order('hard_date', { ascending: false }).limit(1);
+    let restoredKey = null;
+    if (prev && prev.length > 0) {
+        await supabase.from('seasons').update({ is_active: true }).eq('id', prev[0].id);
+        restoredKey = prev[0].month_key;
+    }
+    return { ok: true, restoredKey };
 };
 
 // アクティブシーズンを終了 (is_active=false + unionRank保存)
