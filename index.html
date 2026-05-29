@@ -2762,6 +2762,14 @@
             const groups = { 3: [], 2: [], 1: [] };
             remaining.forEach(p => groups[p.remain]?.push(p));
 
+            // 各グループ内は「登録済み属性ダメージの平均」降順。合計だと登録数が多い人、
+            // 特定属性だとその属性未登録の人が不利になるため、登録した属性の平均で比較する。
+            const avgAttrDmg = (p) => {
+                const vals = PT_ATTRS.map(a => Number(p.damagesByAttr[a.key]) || 0).filter(v => v > 0);
+                return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+            };
+            for (const n of [3, 2, 1]) groups[n].sort((a, b) => avgAttrDmg(b) - avgAttrDmg(a));
+
             const NAME_W = 120, ATTR_W = 52, GAP = 6;
             const rowMinW = NAME_W + (ATTR_W + GAP) * PT_ATTRS.length;
             // 属性色を薄く敷いて縦ストライプにし、スクロールしても列が分かるようにする
