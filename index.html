@@ -3621,6 +3621,11 @@
                 if (r.startDate && /^\d{4}-\d{2}-\d{2}$/.test(r.startDate)) {
                     const d = new Date(r.startDate + 'T00:00:00');
                     d.setDate(d.getDate() + 1);
+                    // アナウンス画像に年が無く AI が誤った年(例:2024)を返すため、現在年に補正。
+                    // 年末年始は補正後が大きく過去になるので翌年扱いにする。
+                    const now = new Date();
+                    d.setFullYear(now.getFullYear());
+                    if ((d - now) / 86400000 < -180) d.setFullYear(now.getFullYear() + 1);
                     const yyyy = d.getFullYear();
                     const mm = String(d.getMonth() + 1).padStart(2, '0');
                     const dd = String(d.getDate()).padStart(2, '0');
