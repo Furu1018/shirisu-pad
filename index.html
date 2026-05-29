@@ -1068,6 +1068,13 @@
                         <button onclick="reloadOpsDashboard()" style="padding:5px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 更新</button>
                     </span>
                 </div>
+                <div id="opsTestBanner" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span style="font-size:13px;font-weight:700;color:#b45309;">🧪 テストシーズン中</span>
+                        <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);flex:1;">この状態は記録用ではありません。動作確認が済んだら削除して元に戻してください。</span>
+                        <button onclick="handleOpsDeleteTestSeason()" style="padding:6px 12px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">テスト終了（削除して元に戻す）</button>
+                    </div>
+                </div>
             </div>
 
             <!-- 残凸状況一覧 -->
@@ -1652,6 +1659,17 @@
             <div>
                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;">ボス構成（B1〜B5）</label>
                 <div id="opsSeasonBossRows"></div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="opsSeasonSeedPrev" checked style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
+                    <span>前回レイドの実績ダメージを各メンバーの初期値として登録<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">模擬戦未提出の人にもベースが入る。同属性2凸は高い方を採用。</span></span>
+                </label>
+                <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="opsSeasonIsTest" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
+                    <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">あとで「削除して元に戻す」が可能。現在のダメージ登録も自動でバックアップ・復元されます。</span></span>
+                </label>
             </div>
 
             <p id="opsSeasonMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
@@ -2671,14 +2689,17 @@
             }
 
             const { season, bosses, players } = _opsDashboardCache;
+            const testBanner = document.getElementById('opsTestBanner');
             if (!season) {
                 labelEl.textContent = '（アクティブシーズン無し）';
                 remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">運営がシーズンを作成するまで一覧表示できません。</p>';
                 finishAttrEl.innerHTML = '';
                 finishListEl.innerHTML = '';
+                if (testBanner) testBanner.style.display = 'none';
                 return;
             }
-            labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})`;
+            labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})${season.is_test ? ' 🧪テスト' : ''}`;
+            if (testBanner) testBanner.style.display = season.is_test ? 'block' : 'none';
 
             // テストシーズンならバナー表示
             const bannerEl = document.getElementById('opsTestBanner');
@@ -3724,6 +3745,19 @@
                 renderOpsDashboard();
             } catch (e) {
                 alert(`シーズン終了失敗: ${e?.message || e}`);
+            }
+        }
+
+        async function handleOpsDeleteTestSeason() {
+            if (!confirm('🧪 テストシーズンを削除して、元のアクティブシーズンとダメージ登録を復元します。よろしいですか？')) return;
+            try {
+                const res = await window.supabaseDeleteActiveTestSeason();
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
+                showNotification(res.restoredKey ? `テスト終了。${res.restoredKey} を復元しました` : 'テストシーズンを削除しました');
+                renderOpsDashboard();
+            } catch (e) {
+                alert(`テスト削除失敗: ${e?.message || e}`);
             }
         }
 
