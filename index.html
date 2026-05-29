@@ -2064,11 +2064,11 @@
 
         // ========== マイページ: 属性別ダメージ登録 ==========
         const PT_ATTRS = [
-            { key: 'fire',     name: '灼熱', icon: './属性アイコン/灼熱.png', bossJP: '風圧' },
-            { key: 'water',    name: '水冷', icon: './属性アイコン/水冷.png', bossJP: '灼熱' },
-            { key: 'electric', name: '電撃', icon: './属性アイコン/電撃.png', bossJP: '水冷' },
-            { key: 'iron',     name: '鉄甲', icon: './属性アイコン/鉄甲.png', bossJP: '電撃' },
-            { key: 'wind',     name: '風圧', icon: './属性アイコン/風圧.png', bossJP: '鉄甲' },
+            { key: 'fire',     name: '灼熱', icon: './属性アイコン/灼熱.png', bossJP: '風圧', color: '#FF3B30' },
+            { key: 'water',    name: '水冷', icon: './属性アイコン/水冷.png', bossJP: '灼熱', color: '#007AFF' },
+            { key: 'electric', name: '電撃', icon: './属性アイコン/電撃.png', bossJP: '水冷', color: '#8E44AD' },
+            { key: 'iron',     name: '鉄甲', icon: './属性アイコン/鉄甲.png', bossJP: '電撃', color: '#FF9500' },
+            { key: 'wind',     name: '風圧', icon: './属性アイコン/風圧.png', bossJP: '鉄甲', color: '#34C759' },
         ];
 
         async function renderMyDamageInputs(identity) {
@@ -2764,24 +2764,30 @@
 
             const NAME_W = 120, ATTR_W = 52, GAP = 6;
             const rowMinW = NAME_W + (ATTR_W + GAP) * PT_ATTRS.length;
+            // 属性色を薄く敷いて縦ストライプにし、スクロールしても列が分かるようにする
+            const tint = (hex, a) => {
+                const n = parseInt(hex.slice(1), 16);
+                return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+            };
 
             const headerRow = () => `
-                <div style="display:flex;align-items:center;gap:${GAP}px;padding:0 0 4px 0;">
+                <div style="display:flex;align-items:stretch;gap:${GAP}px;">
                     <div style="width:${NAME_W}px;flex-shrink:0;"></div>
-                    ${PT_ATTRS.map(a => `<div title="${a.name}PT" style="width:${ATTR_W}px;flex-shrink:0;display:flex;justify-content:center;"><img src="${a.icon}" style="width:16px;height:16px;"></div>`).join('')}
+                    ${PT_ATTRS.map(a => `<div title="${a.name}PT" style="width:${ATTR_W}px;flex-shrink:0;display:flex;justify-content:center;align-items:center;padding:5px 0;background:${tint(a.color, 0.16)};border-radius:6px 6px 0 0;"><img src="${a.icon}" style="width:16px;height:16px;"></div>`).join('')}
                 </div>`;
 
-            const memberRow = (p) => {
+            const memberRow = (p, isLast) => {
                 const cells = PT_ATTRS.map(a => {
                     const v = p.damagesByAttr[a.key];
                     const inner = (v && v > 0)
                         ? Number(v).toFixed(1)
                         : '<span style="color:var(--md-sys-color-outline-variant);">–</span>';
-                    return `<div style="width:${ATTR_W}px;flex-shrink:0;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;">${inner}</div>`;
+                    const radius = isLast ? 'border-radius:0 0 6px 6px;' : '';
+                    return `<div style="width:${ATTR_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:6px 0;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;background:${tint(a.color, 0.09)};${radius}">${inner}</div>`;
                 }).join('');
                 return `
-                    <div style="display:flex;align-items:center;gap:${GAP}px;padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <div style="width:${NAME_W}px;flex-shrink:0;display:flex;align-items:baseline;gap:5px;overflow:hidden;">
+                    <div style="display:flex;align-items:stretch;gap:${GAP}px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <div style="width:${NAME_W}px;flex-shrink:0;display:flex;align-items:center;gap:5px;overflow:hidden;padding:6px 0;">
                             <strong style="font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</strong>
                             <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);flex-shrink:0;">(${p.attackCount}/3)</span>
                         </div>
@@ -2796,7 +2802,7 @@
                 html += `<div style="margin-bottom:16px;min-width:${rowMinW}px;">
                     <div style="font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:4px;">${icon} ${n}凸残 (${groups[n].length}名)</div>`;
                 html += headerRow();
-                html += groups[n].map(memberRow).join('');
+                html += groups[n].map((p, i) => memberRow(p, i === groups[n].length - 1)).join('');
                 html += '</div>';
             }
             html += '</div>';
