@@ -838,7 +838,17 @@ window.supabaseLoadOpsDashboardData = async function () {
         });
     }
 
-    // 4) SLv: 直近の実シーズン(テスト除外)の player_sync_levels を取得。
+    // 4) availability(凸可能時間帯): 「現在凸可能な人のみ」モードのフィルタ用。
+    const slotsByPlayer = new Map();
+    const { data: avSlots } = await supabase
+        .from('availability')
+        .select('player_id, time_slot');
+    (avSlots || []).forEach(s => {
+        if (!slotsByPlayer.has(s.player_id)) slotsByPlayer.set(s.player_id, []);
+        slotsByPlayer.get(s.player_id).push(s.time_slot);
+    });
+
+    // 5) SLv: 直近の実シーズン(テスト除外)の player_sync_levels を取得。
     //    最適プランで「低レベルは低SLv、高レベルは高SLv」の割当に使う。
     const slvByPlayer = new Map();
     const { data: latestReal } = await supabase
@@ -883,6 +893,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             attackCount: (attacksByPlayer.get(p.id) || []).length,
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),
             syncLevelEstimated: !known,
+            availableSlots: slotsByPlayer.get(p.id) || [],
         };
     });
     return { season, bosses, players: result };

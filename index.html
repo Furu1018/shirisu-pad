@@ -1003,6 +1003,27 @@
                     入力後フィールドからフォーカスを外す（タップ・Tab）と自動保存されます。
                 </p>
 
+                <!-- 5属性ふるり値レーダーチャート -->
+                <div id="mypageRadarWrap" style="margin:10px 0 14px 0;padding:12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                        <strong style="font-size:13px;">🕸️ あなたの属性別ふるり値</strong>
+                        <span id="mypageRadarMeta" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
+                    </div>
+                    <div style="position:relative;max-width:360px;margin:0 auto;">
+                        <canvas id="mypageRadarChart"></canvas>
+                    </div>
+                    <p id="mypageRadarHint" style="margin:8px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">プレイヤーを選択するとふるり値が表示されます。</p>
+                </div>
+
+                <!-- 締め凸時の手動最高スコア登録の案内 -->
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:10px;background:var(--md-sys-color-surface-variant);border-left:4px solid #f59e0b;border-radius:8px;">
+                    <span style="font-size:18px;flex-shrink:0;">💡</span>
+                    <p style="margin:0;font-size:12px;line-height:1.5;color:var(--md-sys-color-on-surface);">
+                        本番で <strong>締め凸</strong> を行った属性は、実ダメージが本来の出力より低く記録されることがあります。<br>
+                        その場合は、模擬戦などで出した <strong>本来のベスト出力</strong> を下の欄に上書きしてください。グラフと最適凸プランに反映されます。
+                    </p>
+                </div>
+
                 <!-- 模擬戦/凸結果画像から自動登録 -->
                 <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);margin-bottom:10px;">
                     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
@@ -1106,9 +1127,12 @@
 
             <!-- 最適凸プラン -->
             <div class="card" style="padding:20px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <h3 style="margin:0;font-size:16px;font-weight:600;">🎯 最適凸プラン算出</h3>
-                    <button onclick="computeAndRenderOptimalPlan()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">プラン算出</button>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;cursor:pointer;">👥 全員で算出</button>
+                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:8px 12px;border-radius:8px;border:1px solid #3b82f6;background:var(--md-sys-color-surface);color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer;">⏰ 現在凸可能のみ</button>
+                    </div>
                 </div>
                 <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。登録ダメージは1人1属性につき1回のみ使用。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
                 <div id="opsOptimalPlan">
@@ -1863,6 +1887,7 @@
         let fururiBaseMap = null;
         let statsOpen = false;
         let attributeChartInstance = null;
+        let mypageRadarChartInstance = null;
 
         // ========== Utilities ==========
         function formatDamage(v) {
@@ -2104,6 +2129,93 @@
                         <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
                     </div>`;
             }).join('');
+
+            // レーダーチャートも同時に更新
+            renderMyFururiRadar(identity, damages);
+        }
+
+        // PT属性キー → ボスコード (BOSS_ATTRIBUTES の逆引き) を1回だけ構築
+        const PT_ATTR_TO_BOSS_CODE = (() => {
+            const m = {};
+            Object.entries(BOSS_ATTRIBUTES).forEach(([code, info]) => {
+                if (info.attribute) m[info.attribute.toLowerCase()] = code;
+            });
+            return m;
+        })();
+
+        // 自分の5属性ふるり値レーダー描画。damages は supabaseLoadPlayerDamages の結果。
+        function renderMyFururiRadar(identity, damages) {
+            const canvas = document.getElementById('mypageRadarChart');
+            const metaEl = document.getElementById('mypageRadarMeta');
+            const hintEl = document.getElementById('mypageRadarHint');
+            if (!canvas || !identity) return;
+
+            // 自分のSLv: 最新実シーズン > 運営ダッシュボード(SLv推定込み)
+            let slv = 0, slvEstimated = false;
+            const fromCurrent = (currentData || []).find(p => p.player === identity.name);
+            if (fromCurrent && fromCurrent.syncLevel > 0) {
+                slv = fromCurrent.syncLevel;
+            } else if (_opsDashboardCache) {
+                const fromOps = (_opsDashboardCache.players || []).find(p => p.id === identity.id);
+                if (fromOps && fromOps.syncLevel > 0) {
+                    slv = fromOps.syncLevel;
+                    slvEstimated = !!fromOps.syncLevelEstimated;
+                }
+            }
+
+            const dmgByAttr = {};
+            (damages || []).forEach(d => { dmgByAttr[d.attribute] = Number(d.damage_b) || 0; });
+
+            const labels = PT_ATTRS.map(a => a.name);
+            const values = PT_ATTRS.map(a => {
+                const dmgB = dmgByAttr[a.key] || 0;
+                if (!slv || dmgB <= 0 || !fururiBaseMap) return 0;
+                const v = calculatePerAttackFururi(dmgB * 1e9, slv, PT_ATTR_TO_BOSS_CODE[a.key]);
+                return v == null ? 0 : Number(v);
+            });
+
+            if (metaEl) {
+                metaEl.textContent = slv
+                    ? `SLv ${slv}${slvEstimated ? '(推定)' : ''} / 基準: ${fururiBasePlayerName}`
+                    : 'SLv未登録';
+            }
+            if (hintEl) {
+                if (!slv) hintEl.textContent = '基準者(ふるり)との比較にあなたのSLvが必要です。次回シーズンで自動取得されます。';
+                else if (!fururiBaseMap) hintEl.textContent = 'ふるり値の基準データ読み込み中…「ダメージ比較」タブを開くと構築されます。';
+                else if (!values.some(v => v > 0)) hintEl.textContent = '属性ダメージを登録するとグラフに反映されます。';
+                else hintEl.textContent = '1.00 = 基準者(同SLv換算)と同等。高いほど得意属性。';
+            }
+
+            if (mypageRadarChartInstance) { mypageRadarChartInstance.destroy(); mypageRadarChartInstance = null; }
+            const maxV = Math.max(1.2, ...values);
+            mypageRadarChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'ふるり値',
+                        data: values,
+                        fill: true,
+                        backgroundColor: 'rgba(59,130,246,0.18)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        pointBackgroundColor: PT_ATTRS.map(a => a.color),
+                        pointBorderColor: '#fff',
+                        pointRadius: 4,
+                    }],
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            suggestedMin: 0, suggestedMax: maxV,
+                            ticks: { stepSize: 0.25, font: { size: 10 }, backdropColor: 'transparent' },
+                            pointLabels: { font: { size: 12, weight: '600' } },
+                        },
+                    },
+                    plugins: { legend: { display: false } },
+                },
+            });
         }
 
         function formatDmgUpdatedAt(ts) {
@@ -2219,6 +2331,11 @@
                 const row = input.closest('.mydmg-row');
                 const upEl = row?.querySelector('.mydmg-updated');
                 if (upEl) upEl.textContent = formatDmgUpdatedAt(new Date().toISOString());
+                // レーダーチャートも再描画
+                try {
+                    const fresh = await window.supabaseLoadPlayerDamages(id.id);
+                    renderMyFururiRadar(id, fresh);
+                } catch { /* graceful: chart stays at previous values */ }
             } catch (e) {
                 if (statusEl) {
                     statusEl.textContent = `❌ ${e?.message || e}`;
@@ -2934,10 +3051,12 @@
         // ルール: ①各レベル5体全撃破で次レベルへ ②同じ人の同属性ベスト火力は1回のみ(登録ダメ使い切り)
         //         ③低レベルは低SLv、高レベルは高SLvを優先(高SLvを後半に温存) ④凸ごとに個別最適化
         // 現在の残りHPから開始し、火力が尽きたレベルで停止して攻略可能範囲を示す。
-        function computeOptimalPlan() {
+        function computeOptimalPlan(options = {}) {
             if (!_opsDashboardCache) return null;
             const { season, bosses, players } = _opsDashboardCache;
             if (!season || bosses.length === 0) return null;
+            const onlyAvailableNow = !!options.onlyAvailableNow;
+            const currentSlot = getCurrentSlotJST();
 
             // レベル別ボスHP (B単位) ※ supabaseLevelUpSeason の定義と一致させること
             const HARD_LEVEL_HP_B = {
@@ -2948,8 +3067,10 @@
             const startLevel = season.current_level || 1;
 
             // メンバー状態: 残凸数 + 属性別の使い切りダメージ(>0) + SLv
+            // 「現在凸可能のみ」モードでは availability に現スロットを含む人だけを対象にする。
             const memberState = players
                 .filter(p => p.attackCount < 3)
+                .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(currentSlot))
                 .map(p => {
                     const avail = {};
                     for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
@@ -3032,16 +3153,17 @@
                 .filter(p => Object.values(p.damagesByAttr || {}).every(v => !v || v === 0))
                 .map(p => p.name);
 
-            return { startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste, unusedAttacks, membersNoData };
+            const candidateCount = memberState.length;
+            return { startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste, unusedAttacks, membersNoData, onlyAvailableNow, currentSlot, candidateCount };
         }
 
-        function computeAndRenderOptimalPlan() {
+        function computeAndRenderOptimalPlan(options = {}) {
             const el = document.getElementById('opsOptimalPlan');
             if (!_opsDashboardCache) {
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">運営ダッシュボードのデータが未取得です。「🔄 更新」を押してください。</p>';
                 return;
             }
-            const plan = computeOptimalPlan();
+            const plan = computeOptimalPlan(options);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">プラン算出に失敗しました。</p>';
                 return;
@@ -3052,9 +3174,14 @@
             const clearedLabel = reachedSome ? `Lv${plan.fullyClearedThrough} まで完全攻略想定` : `Lv${plan.startLevel} 完全攻略に届かない想定`;
             const clearedColor = reachedAll ? '#15803d' : (reachedSome ? '#b45309' : '#ef4444');
             const clearedBg = reachedSome ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.15)';
+            const slotLabel = TIME_SLOTS.find(s => s.key === plan.currentSlot)?.label || plan.currentSlot;
+            const modeBadge = plan.onlyAvailableNow
+                ? `<div style="padding:6px 10px;border-radius:6px;background:rgba(59,130,246,0.15);color:#1d4ed8;font-weight:700;">⏰ 現在凸可能のみ (${slotLabel} / ${plan.candidateCount}名)</div>`
+                : `<div style="padding:6px 10px;border-radius:6px;background:var(--md-sys-color-surface-variant);font-weight:700;">👥 全員対象 (${plan.candidateCount}名)</div>`;
 
             const summary = `
                 <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;font-size:12px;">
+                    ${modeBadge}
                     <div style="padding:6px 10px;border-radius:6px;background:${clearedBg};color:${clearedColor};font-weight:700;">${clearedLabel}</div>
                     <div style="padding:6px 10px;border-radius:6px;background:var(--md-sys-color-surface-variant);">想定総凸数: <strong>${plan.totalAttacks}</strong></div>
                     <div style="padding:6px 10px;border-radius:6px;background:var(--md-sys-color-surface-variant);">想定オーバーキル: <strong style="color:${plan.totalWaste > 5 ? '#f59e0b' : '#22c55e'};">${plan.totalWaste.toFixed(2)} B</strong></div>
