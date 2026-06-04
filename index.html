@@ -2166,11 +2166,16 @@
             const dmgByAttr = {};
             (damages || []).forEach(d => { dmgByAttr[d.attribute] = Number(d.damage_b) || 0; });
 
+            const isBasePlayer = identity.name === fururiBasePlayerName;
             const labels = PT_ATTRS.map(a => a.name);
             const values = PT_ATTRS.map(a => {
+                const bossCode = PT_ATTR_TO_BOSS_CODE[a.key];
+                if (!slv || !fururiBaseMap || !fururiBaseMap[bossCode]) return 0;
                 const dmgB = dmgByAttr[a.key] || 0;
-                if (!slv || dmgB <= 0 || !fururiBaseMap) return 0;
-                const v = calculatePerAttackFururi(dmgB * 1e9, slv, PT_ATTR_TO_BOSS_CODE[a.key]);
+                // 基準者本人で player_damages 未登録の属性は定義上 1.0 (基準値そのもの)
+                if (isBasePlayer && dmgB <= 0) return 1.0;
+                if (dmgB <= 0) return 0;
+                const v = calculatePerAttackFururi(dmgB * 1e9, slv, bossCode);
                 return v == null ? 0 : Number(v);
             });
 
