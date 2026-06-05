@@ -2818,7 +2818,10 @@
             { key: 'latenight', label: '🌃 深夜 (0-5時)' },
         ];
         function getCurrentSlotJST() {
-            const h = new Date().getHours();  // 端末ローカル時刻
+            // Asia/Tokyo の時刻を明示的に取得 (端末タイムゾーンに依存しない)
+            const hStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false });
+            // "24" を "0" に正規化 (一部実装で 24:xx を返す)
+            const h = parseInt(hStr, 10) % 24;
             if (h >= 5 && h < 9) return 'morning';
             if (h >= 9 && h < 14) return 'noon';
             if (h >= 14 && h < 18) return 'evening';

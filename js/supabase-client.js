@@ -528,7 +528,6 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
         .update({
             total_hp_raw: Math.round(totalRaw),
             remaining_hp_raw: Math.round(remainingRaw),
-            remaining_hp_percent: totalRaw > 0 ? Math.round((remainingRaw / totalRaw) * 100) : 0,
         })
         .eq('season_id', seasonId)
         .eq('boss_number', bossNumber);
@@ -633,11 +632,12 @@ window.supabaseCreateSeason = async function (payload) {
 // 同じPT属性に複数回凸している場合は「最大値」を採用
 // newSeasonId: 今作成したシーズン (除外用)
 window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
-    // 直近の前シーズン (新シーズンを除く、hard_date 降順で先頭)
+    // 直近の前シーズン (新シーズンを除く、テストシーズン除外、hard_date 降順で先頭)
     const { data: seasons, error: sErr } = await supabase
         .from('seasons')
         .select('id, hard_date')
         .neq('id', newSeasonId)
+        .eq('is_test', false)
         .order('hard_date', { ascending: false })
         .limit(1);
     if (sErr) throw sErr;
@@ -756,7 +756,7 @@ window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
     for (const tier of ['tyrant', 'lord']) {
         const { error } = await supabase
             .from('bosses')
-            .update({ total_hp_raw: hp[tier], remaining_hp_raw: hp[tier], remaining_hp_percent: 100 })
+            .update({ total_hp_raw: hp[tier], remaining_hp_raw: hp[tier] })
             .eq('season_id', seasonId)
             .eq('tier', tier);
         if (error) throw error;
