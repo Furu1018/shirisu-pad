@@ -1084,6 +1084,18 @@
                 </div>
             </div>
 
+            <!-- 受け取った通知 (Push通知履歴) -->
+            <div class="card" style="padding:20px;margin-top:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">📨 受け取った通知</h3>
+                    <button onclick="renderMyNotificationsInbox(getCurrentIdentity())" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 更新</button>
+                </div>
+                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">通知をスマホで開いたあとも、ここから本文を確認できます。自分宛または全員宛の通知が新しい順に並びます。</p>
+                <div id="mypageNotificationsInbox">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>
+                </div>
+            </div>
+
             <div class="card" style="padding:20px;margin-top:20px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
                     <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">💥 属性別 出せるダメージ（PT属性）</h3>
@@ -1856,6 +1868,11 @@
                         <h3>③ テストして動作確認</h3>
                         <p><strong>「🧪 ローカル通知テスト」</strong> を押すと、その場でテスト通知が出ます。
                             ここで通知が見えれば、運営からの本物の通知も受け取れる状態です。</p>
+
+                        <h3>📨 通知を後から確認する</h3>
+                        <p>スマホで通知を一度タップしてしまうと内容が消えてしまうことがあります。そんな時は
+                            マイページの <strong>「📨 受け取った通知」</strong> をご覧ください。
+                            自分宛・全員宛に送られた通知が新しい順に記録されており、本文も含めて読み返せます。</p>
                         <div class="help-callout tip">
                             <span class="ico">🎉</span>
                             <p>これで設定完了！ Discord通知と同じ感覚で運営からのお知らせ・締め凸依頼が届きます。
@@ -2498,6 +2515,7 @@
             renderMyAttacks(id);
             renderMyAvailabilitySettings(id);
             renderMyPushSettings(id);
+            renderMyNotificationsInbox(id);
             // 最新シーズン (currentData) から該当プレイヤーを引く
             const me = (currentData || []).find(p => p.player === id.name);
             if (!me) {
@@ -2869,6 +2887,42 @@
         }
 
         // ========== マイページ: Push通知設定 (Phase 6a) ==========
+        // 受け取った通知履歴 (Push通知の本文をあとから確認できる)
+        async function renderMyNotificationsInbox(identity) {
+            const el = document.getElementById('mypageNotificationsInbox');
+            if (!el) return;
+            if (!identity) {
+                el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>';
+                return;
+            }
+            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中…</p>';
+            let rows;
+            try {
+                rows = await window.supabaseLoadRecentNotifications(20, identity.id);
+            } catch (e) {
+                el.innerHTML = `<p style="font-size:12px;color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:var(--md-sys-color-on-surface-variant);">(マイグレーション 06_push_notifications_log.sql が未適用の可能性)</span></p>`;
+                return;
+            }
+            if (!rows || rows.length === 0) {
+                el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
+                return;
+            }
+            el.innerHTML = rows.map(n => {
+                const tag = n.target_kind === 'all'
+                    ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);">全員宛</span>'
+                    : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#1d4ed8;">あなた宛</span>';
+                return `
+                    <div style="padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);margin-bottom:8px;">
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
+                            ${tag}
+                            <strong style="font-size:13px;flex:1;min-width:0;">${escapeHtml(n.title || '(無題)')}</strong>
+                            <span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;">${SETTINGS_TS_FMT(n.sent_at)}</span>
+                        </div>
+                        <div style="font-size:12px;line-height:1.55;color:var(--md-sys-color-on-surface);white-space:pre-wrap;word-break:break-word;">${escapeHtml(n.body || '')}</div>
+                    </div>`;
+            }).join('');
+        }
+
         async function renderMyPushSettings(identity) {
             const statusEl = document.getElementById('mypagePushStatus');
             const actionsEl = document.getElementById('mypagePushActions');

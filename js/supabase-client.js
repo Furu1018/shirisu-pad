@@ -135,7 +135,41 @@ window.sendPushNotification = async function (payload, opts = {}) {
     const { data, error } = await supabase.functions.invoke(slug, { body: payload });
     if (error) throw new Error(`Push送信失敗: ${error.message || error}`);
     if (!data?.ok) throw new Error(data?.error || 'Push送信エラー');
+
+    // 履歴記録 (失敗してもメイン送信処理は止めない)
+    try {
+        const isSpecific = Array.isArray(payload.playerIds) && payload.playerIds.length > 0;
+        await supabase.from('push_notifications_log').insert({
+            title: payload.title || '',
+            body: payload.body || '',
+            url: payload.url || null,
+            target_kind: isSpecific ? 'specific' : 'all',
+            target_player_ids: isSpecific ? payload.playerIds : null,
+            sender_player_id: opts.senderPlayerId || null,
+            sent_count: Number(data.sent) || 0,
+            target_count: Number(data.target) || (isSpecific ? payload.playerIds.length : 0),
+        });
+    } catch (e) { console.warn('[push log] insert skipped:', e?.message || e); }
+
     return data;
+};
+
+// 通知履歴をロード。playerId 指定時は自分宛 (broadcast or 含まれる) のみ。
+window.supabaseLoadRecentNotifications = async function (limit = 30, playerId = null) {
+    const { data, error } = await supabase
+        .from('push_notifications_log')
+        .select('id, sent_at, title, body, url, target_kind, target_player_ids, sender_player_id, sent_count, target_count')
+        .order('sent_at', { ascending: false })
+        .limit(Math.max(limit * 2, 50));
+    if (error) throw error;
+    let rows = data || [];
+    if (playerId != null) {
+        rows = rows.filter(r =>
+            r.target_kind === 'all'
+            || (Array.isArray(r.target_player_ids) && r.target_player_ids.includes(playerId))
+        );
+    }
+    return rows.slice(0, limit);
 };
 
 // 自身宛のテスト通知を直接表示 (Push経由ではないローカル通知)
@@ -822,6 +856,19 @@ window.supabaseLoadRecentActivity = async function (limit = 50) {
         type: 'damage', ts: d.updated_at,
         text: `${d.players?.name || '?'} の ${d.attribute}PT ダメージ → ${Number(d.damage_b).toFixed(1)}B`,
     }));
+
+    // Push通知の送信履歴
+    try {
+        const { data: noti } = await supabase
+            .from('push_notifications_log')
+            .select('title, target_kind, target_count, sent_count, sent_at')
+            .order('sent_at', { ascending: false })
+            .limit(15);
+        (noti || []).forEach(n => events.push({
+            type: 'notification', ts: n.sent_at,
+            text: `📣 通知送信「${n.title}」 ${n.target_kind === 'all' ? '全員' : `${n.target_count}名宛`} (${n.sent_count}件配信)`,
+        }));
+    } catch { /* テーブル未作成時はスキップ */ }
 
     events.sort((a, b) => new Date(b.ts) - new Date(a.ts));
     return events.slice(0, limit);
