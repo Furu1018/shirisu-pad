@@ -356,6 +356,89 @@
             border-color: var(--md-sys-color-primary);
         }
 
+        /* ========== Simulator sub-mode buttons ========== */
+        .sim-mode-btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sim-mode-btn.active {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border-color: var(--md-sys-color-primary);
+        }
+
+        /* ========== Help tab ========== */
+        .help-layout { display: grid; grid-template-columns: 240px 1fr; gap: 24px; }
+        @media (max-width: 900px) { .help-layout { grid-template-columns: 1fr; } }
+        .help-toc {
+            position: sticky; top: 16px; align-self: start;
+            padding: 14px 12px; background: var(--md-sys-color-surface-variant);
+            border-radius: 12px; max-height: calc(100vh - 32px); overflow-y: auto;
+        }
+        @media (max-width: 900px) { .help-toc { position: static; max-height: none; } }
+        .help-toc-title { font-size: 12px; font-weight: 700; color: var(--md-sys-color-on-surface-variant); padding: 4px 8px 8px; }
+        .help-toc a {
+            display: block; padding: 7px 10px; font-size: 13px;
+            color: var(--md-sys-color-on-surface); text-decoration: none;
+            border-radius: 6px; line-height: 1.4;
+        }
+        .help-toc a:hover { background: var(--md-sys-color-surface); }
+        .help-section {
+            padding: 24px; border-radius: 12px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface); margin-bottom: 16px;
+            scroll-margin-top: 16px;
+        }
+        .help-section h2 {
+            margin: 0 0 12px 0; font-size: 20px; font-weight: 700;
+            color: var(--md-sys-color-on-surface);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .help-section h3 {
+            margin: 18px 0 6px 0; font-size: 15px; font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+        .help-section p, .help-section li {
+            font-size: 14px; line-height: 1.75;
+            color: var(--md-sys-color-on-surface);
+        }
+        .help-section ul, .help-section ol { padding-left: 22px; margin: 6px 0 10px 0; }
+        .help-section strong { color: var(--md-sys-color-on-surface); }
+        .help-callout {
+            display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px;
+            background: var(--md-sys-color-surface-variant);
+            border-left: 4px solid #3b82f6; margin: 12px 0;
+        }
+        .help-callout.warn { border-left-color: #f59e0b; }
+        .help-callout.tip { border-left-color: #22c55e; }
+        .help-callout.danger { border-left-color: #ef4444; }
+        .help-callout p { margin: 0; font-size: 13px; line-height: 1.65; }
+        .help-callout .ico { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+        .help-pill {
+            display: inline-block; padding: 1px 8px; border-radius: 6px;
+            background: var(--md-sys-color-surface-variant);
+            font-size: 12px; font-weight: 600;
+        }
+        .help-flow-step {
+            display: flex; gap: 10px; padding: 8px 0;
+            border-bottom: 1px dashed var(--md-sys-color-outline-variant);
+        }
+        .help-flow-step:last-child { border-bottom: none; }
+        .help-flow-num {
+            flex-shrink: 0; width: 26px; height: 26px;
+            border-radius: 50%; background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            font-size: 13px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+
         /* ========== Loading/Error ========== */
         #loadingOverlay {
             display: none;
@@ -908,9 +991,9 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
             シミュレータ
         </button>
-        <button class="drawer-menu-item" data-tab="fururi-simulator" onclick="switchTabFromDrawer('fururi-simulator')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-            ふるり値シミュレータ
+        <button class="drawer-menu-item" data-tab="help" onclick="switchTabFromDrawer('help')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            ヘルプ
         </button>
     </div>
 
@@ -964,9 +1047,9 @@
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
                 シミュレータ
             </button>
-            <button class="tab-button" data-tab="fururi-simulator" onclick="switchTab('fururi-simulator')" title="ふるり値シミュレータ">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-                ふるり値シミュレータ
+            <button class="tab-button" data-tab="help" onclick="switchTab('help')" title="ヘルプ">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                ヘルプ
             </button>
         </div>
     </nav>
@@ -1381,59 +1464,63 @@
         </div>
     </div>
 
-    <!-- ========== Tab 4: ダメージシミュレータ ========== -->
+    <!-- ========== Tab 4: シミュレータ (ダメージ予測 + ふるり値試算 統合) ========== -->
     <div id="tab-simulator" class="tab-content">
         <div class="container">
-            <!-- 設定カード -->
-            <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
-                <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">ダメージシミュレータ</h3>
-                <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 20px;">目標SLvまで育成した場合の予測ダメージを他プレイヤーと比較します</p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-                    <div>
-                        <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">プレイヤー選択</label>
-                        <select id="simPlayerSelect" onchange="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
-                            <option value="">-- 選択してください --</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 400; color: var(--md-sys-color-on-surface-variant);"></span></label>
-                        <input id="simTargetSlv" type="number" min="1" max="1000" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;" placeholder="例: 160">
-                    </div>
+            <div class="card" style="margin-bottom: 16px; padding: 20px 24px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">🧪 シミュレータ</h3>
+                <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin: 0 0 14px 0;">育成によるダメージ予測と、想定ダメージに対するふるり値の試算をここで行えます。</p>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="sim-mode-btn active" data-sim-mode="damage" onclick="switchSimMode('damage')">📈 ダメージ予測</button>
+                    <button class="sim-mode-btn" data-sim-mode="fururi" onclick="switchSimMode('fururi')">🎯 ふるり値試算</button>
                 </div>
-                <!-- 予測結果 -->
-                <div id="simResult" style="display: none; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 10px; border-left: 4px solid var(--md-sys-color-primary);">
-                    <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">予測ダメージ</div>
-                    <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
-                        <span id="simPredictedDmg" style="font-size: 28px; font-weight: 700; color: var(--md-sys-color-primary);"></span>
-                        <span id="simDiff" style="font-size: 15px; font-weight: 600;"></span>
-                    </div>
-                    <div id="simCurrentDmgLabel" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;"></div>
-                </div>
-                <div id="simError" style="display: none; padding: 12px 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; color: var(--md-sys-color-on-surface-variant); font-size: 13px;"></div>
             </div>
-            <!-- 比較テーブル -->
-            <div class="data-table" id="simTableWrapper" style="display: none;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 40px;"></th>
-                            <th>プレイヤー</th>
-                            <th>ダメージ</th>
-                            <th>あなたとの差</th>
-                        </tr>
-                    </thead>
-                    <tbody id="simTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 
-    <!-- ========== Tab 5: ふるり値シミュレータ ========== -->
-    <div id="tab-fururi-simulator" class="tab-content">
-        <div class="container">
-            <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">ふるり値シミュレータ</h3>
-                <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 20px;">本戦で凸しなかった属性のふるり値を試算し、ランキング上の位置を確認できます</p>
+            <!-- ===== Mode A: ダメージ予測 ===== -->
+            <div id="simModeDamage" class="sim-mode-panel">
+                <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
+                    <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin: 0 0 16px 0;">目標SLvまで育成した場合の予測ダメージを他プレイヤーと比較します。</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">プレイヤー選択</label>
+                            <select id="simPlayerSelect" onchange="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
+                                <option value="">-- 選択してください --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 400; color: var(--md-sys-color-on-surface-variant);"></span></label>
+                            <input id="simTargetSlv" type="number" min="1" max="1000" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;" placeholder="例: 160">
+                        </div>
+                    </div>
+                    <div id="simResult" style="display: none; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 10px; border-left: 4px solid var(--md-sys-color-primary);">
+                        <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">予測ダメージ</div>
+                        <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+                            <span id="simPredictedDmg" style="font-size: 28px; font-weight: 700; color: var(--md-sys-color-primary);"></span>
+                            <span id="simDiff" style="font-size: 15px; font-weight: 600;"></span>
+                        </div>
+                        <div id="simCurrentDmgLabel" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;"></div>
+                    </div>
+                    <div id="simError" style="display: none; padding: 12px 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; color: var(--md-sys-color-on-surface-variant); font-size: 13px;"></div>
+                </div>
+                <div class="data-table" id="simTableWrapper" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"></th>
+                                <th>プレイヤー</th>
+                                <th>ダメージ</th>
+                                <th>あなたとの差</th>
+                            </tr>
+                        </thead>
+                        <tbody id="simTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ===== Mode B: ふるり値試算 ===== -->
+            <div id="simModeFururi" class="sim-mode-panel" style="display: none;">
+                <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
+                    <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin: 0 0 16px 0;">本戦で凸しなかった属性のふるり値を試算し、ランキング上の位置を確認できます。</p>
 
                 <!-- プレイヤー & SLv -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
@@ -1529,6 +1616,237 @@
                     </thead>
                     <tbody id="fsimTableBody"></tbody>
                 </table>
+            </div>
+            </div><!-- /simModeFururi -->
+        </div><!-- /container -->
+    </div><!-- /tab-simulator -->
+
+    <!-- ========== Tab 5: ヘルプ ========== -->
+    <div id="tab-help" class="tab-content">
+        <div class="container">
+            <div class="help-layout">
+                <aside class="help-toc" id="helpToc">
+                    <div class="help-toc-title">目次</div>
+                    <a href="#help-overview">1. しりすこPAD とは</a>
+                    <a href="#help-raid-rules">2. ユニオンレイドの基本</a>
+                    <a href="#help-mypage">3. マイページの使い方</a>
+                    <a href="#help-mock">4. 模擬戦データの提出</a>
+                    <a href="#help-real">5. 本番スコアの提出</a>
+                    <a href="#help-finisher">6. 締め凸を行った場合</a>
+                    <a href="#help-fururi">7. ふるり値の見方</a>
+                    <a href="#help-plan">8. 最適凸プラン算出</a>
+                    <a href="#help-remaining">9. 残凸状況一覧</a>
+                    <a href="#help-finish-call">10. 締め凸候補</a>
+                    <a href="#help-notify">11. 通知の設定</a>
+                    <a href="#help-sim">12. シミュレータ</a>
+                    <a href="#help-ops">13. 運営機能</a>
+                    <a href="#help-data">14. データの流れ</a>
+                    <a href="#help-faq">15. よくある質問</a>
+                </aside>
+
+                <div>
+                    <section id="help-overview" class="help-section">
+                        <h2>📘 1. しりすこPAD とは</h2>
+                        <p>NIKKE のユニオンレイドを<strong>運営・参加</strong>の両面で支えるダッシュボード型 PWA です。
+                            各メンバーのダメージ出力・凸状況・最適な凸順を可視化し、ユニオン全体で最大の戦果を狙うことを目的としています。</p>
+                        <h3>主な機能</h3>
+                        <ul>
+                            <li><strong>マイページ</strong> — 自分の属性別ダメージ登録、属性別ふるり値レーダー、凸報告</li>
+                            <li><strong>運営</strong> — ボスHP管理、最適凸プラン算出、締め凸候補、メンバー管理</li>
+                            <li><strong>ダメージ比較 / ふるり値</strong> — ユニオン内の戦果ランキング</li>
+                            <li><strong>シミュレータ</strong> — 育成ダメージ予測・ふるり値試算</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-raid-rules" class="help-section">
+                        <h2>⚔️ 2. ユニオンレイドの基本</h2>
+                        <p>当PADで前提とするユニオンレイドのルールは次のとおりです。</p>
+                        <ul>
+                            <li><strong>5体のボス</strong>がいて、それぞれ弱点属性を持っています（弱点で凸すると大ダメージ）。</li>
+                            <li>各レベル<strong>5体すべてを倒すと次のレベル</strong>に進み、ボスHPが上がります（Lv1→Lv2→Lv3）。</li>
+                            <li>1人あたり<strong>3凸</strong>。一度出撃したキャラは同じレイド期間中再使用できません（＝同じ属性のベスト火力は1回まで）。</li>
+                        </ul>
+                        <div class="help-callout tip">
+                            <span class="ico">💡</span>
+                            <p>このルールゆえに、<strong>同じ属性に3凸するより3属性に1凸ずつ</strong>の方がトータル火力が伸びます。PADの最適プラン算出はこれを前提に組まれています。</p>
+                        </div>
+                    </section>
+
+                    <section id="help-mypage" class="help-section">
+                        <h2>👤 3. マイページの使い方</h2>
+                        <p>マイページはあなた自身のデータ入力ハブです。ここに正しい情報を入れるほど、全体の最適プランや締め凸候補の精度が上がります。</p>
+                        <h3>① プレイヤーの選択</h3>
+                        <p>初回は自分の名前を選んでください。ブラウザに保存されるので、次回以降は自動で復元されます（端末/ブラウザを変えると再選択が必要）。</p>
+                        <h3>② 5属性のダメージ登録</h3>
+                        <p>各PT属性で出せる「あなたのベストダメージ」を B（10億）単位で登録します。<span class="help-pill">手入力</span>または<span class="help-pill">📷 画像OCR</span>から登録できます。
+                            この値は、運営の<strong>残凸状況一覧</strong>・<strong>最適プラン</strong>・<strong>締め凸候補</strong>すべての基礎データです。</p>
+                        <h3>③ 5属性ふるり値レーダー</h3>
+                        <p>登録ダメージを基に、基準者（ふるり）との相対力を5角形で表示します（詳細は <a href="#help-fururi">§7</a>）。属性別の得意・不得意が一目で分かります。</p>
+                        <h3>④ 凸報告</h3>
+                        <p>本番の凸結果は「⚔️ 凸を報告」から入力します（OCR対応）。次月以降の初期値に使われるため、毎回しっかり記録しておくと運用が滑らかになります。</p>
+                    </section>
+
+                    <section id="help-mock" class="help-section">
+                        <h2>🎯 4. 模擬戦データの提出</h2>
+                        <p>模擬戦＝本戦と同じ編成・条件で出せる「あなたの最高ダメージ」のことです。<strong>マイページの属性別ダメージ欄に入力するだけ</strong>で提出完了です。</p>
+                        <div class="help-flow-step">
+                            <div class="help-flow-num">1</div>
+                            <div><strong>模擬戦を実施。</strong> 各PT属性で1回ずつ全力で殴ります（同属性2回出したら高い方を採用）。</div>
+                        </div>
+                        <div class="help-flow-step">
+                            <div class="help-flow-num">2</div>
+                            <div><strong>結果のスクショ</strong>を撮ります。ボス名とダメージが映っていればOK。</div>
+                        </div>
+                        <div class="help-flow-step">
+                            <div class="help-flow-num">3</div>
+                            <div>マイページの「📷 画像から自動登録」を押し、スクショを選ぶと AI が解析して該当属性に自動入力されます（手入力でもOK）。</div>
+                        </div>
+                        <div class="help-flow-step">
+                            <div class="help-flow-num">4</div>
+                            <div>入力欄からフォーカスを外せば自動保存。レーダーも即時に再描画されます。</div>
+                        </div>
+                        <div class="help-callout">
+                            <span class="ico">📝</span>
+                            <p>提出したダメージはあなたの「現在の最大出力」として扱われ、運営の最適プランで「あなたなら○○Bは出せるはず」という前提として使われます。</p>
+                        </div>
+                    </section>
+
+                    <section id="help-real" class="help-section">
+                        <h2>🗡️ 5. 本番スコアの提出</h2>
+                        <p>本番の凸が終わったら、マイページの<strong>「⚔️ 凸を報告」</strong>から提出してください。
+                            運営はこれを見てボスの残HPを管理し、誰がいつ何属性で何B出したかを記録します。</p>
+                        <ul>
+                            <li>1日3凸（仕様による）。各凸でボス・ダメージ・使用キャラを記録できます。</li>
+                            <li>スクショから OCR で自動入力できます（ダメージ・ボス自動判定）。</li>
+                            <li>本番ダメージは翌月のあなたの<strong>初期登録ダメージ</strong>として自動シードされます。</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-finisher" class="help-section">
+                        <h2>🏁 6. 締め凸を行った場合の特例</h2>
+                        <p><strong>締め凸</strong>＝ボスを倒し切る最後の凸。ゲーム上、残HPを削り切った時点でダメージカウントが止まるため、
+                            あなたの本当の出力より<strong>低い値</strong>が記録されます。</p>
+                        <div class="help-callout warn">
+                            <span class="ico">⚠️</span>
+                            <p>この状態のまま放置すると、運営は「この人の○○属性は△△Bまでしか出せない」と過小評価してしまいます。</p>
+                        </div>
+                        <h3>対処：本来の出力を手動で上書き</h3>
+                        <p>マイページのダメージ欄を、模擬戦で出した<strong>本来のベスト出力</strong>に書き直してください。レーダー・最適プラン・残凸表すべてに正しく反映されます。
+                            締め凸の自動検知はしていないので、対象属性は本人で把握する必要があります。</p>
+                    </section>
+
+                    <section id="help-fururi" class="help-section">
+                        <h2>📐 7. ふるり値の見方</h2>
+                        <p>ふるり値は「同SLvに換算したとき、基準者（ふるり）と比べてどれくらいダメージを出せるか」を表す指標です。</p>
+                        <ul>
+                            <li><strong>1.00</strong> = 同SLv換算で基準者と同等</li>
+                            <li><strong>1.20</strong> = 基準者より約20%高火力</li>
+                            <li><strong>0.80</strong> = 基準者より約20%低火力</li>
+                        </ul>
+                        <h3>基準データはどこから？</h3>
+                        <p>直近完了月の本戦凸3つ＋本戦で凸しなかった2属性の模擬戦スコアを基準としています。
+                            次のレイドが終わるまで<strong>基準は固定</strong>されるため、月途中で他メンバーが模擬戦を更新しても比較が公平に保たれます。</p>
+                        <h3>属性別の使い分け</h3>
+                        <ul>
+                            <li><strong>全体（3凸合計）</strong>: 1日のトータル火力比較</li>
+                            <li><strong>属性別</strong>: その属性1凸あたりの火力比較（同属性2凸は別行扱い）</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-plan" class="help-section">
+                        <h2>🎯 8. 最適凸プラン算出（運営）</h2>
+                        <p>現在の残りHPから Lv1〜Lv3 を通しで攻略する凸順を提案します。</p>
+                        <h3>計算ルール</h3>
+                        <ul>
+                            <li>各レベル5体撃破で次レベル。Lv3 まで火力が届かなければ届く所で停止し、攻略可能範囲を表示。</li>
+                            <li>登録ダメージは1人1属性につき1回のみ使用（キャラ使い回し不可の再現）。</li>
+                            <li>低レベルは低SLv、高レベルは高SLvを優先（高SLvを後半に温存）。</li>
+                            <li>SLv未登録の新メンバーは、登録ダメージが近い既知メンバーから推定。</li>
+                        </ul>
+                        <h3>2つのモード</h3>
+                        <ul>
+                            <li><strong>👥 全員で算出</strong> — 残凸あるメンバー全員を対象。</li>
+                            <li><strong>⏰ 現在凸可能のみ</strong> — マイページで「現在の時間帯」を ON にしている人だけで算出。<br>夜会・朝会など特定時間に向けた即時プランに便利です。</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-remaining" class="help-section">
+                        <h2>📊 9. 残凸状況一覧（運営）</h2>
+                        <p>残凸ある人を「3凸残 / 2凸残 / 1凸残」のグループ別に表示します。各属性の登録ダメージが縦の色別カラムで揃って表示されるので、声をかける順番を決めやすいです。</p>
+                        <ul>
+                            <li>カラム背景は属性色の薄いストライプ（灼熱=赤 / 水冷=青 / 電撃=紫 / 鉄甲=橙 / 風圧=緑）。</li>
+                            <li>未登録属性は「–」表示。</li>
+                            <li>グループ内は「登録した属性のダメージ平均」の降順。少ない属性しか登録していなくても、その火力が高ければ上位に出ます。</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-finish-call" class="help-section">
+                        <h2>🔔 10. 締め凸候補（運営）</h2>
+                        <p>ボスの残HPを指定すると、過剰ダメージを抑えつつ確実に削れる候補をリストアップします。AIによる推薦も可能で、結果は Push 通知で候補メンバーに直接依頼できます。</p>
+                    </section>
+
+                    <section id="help-notify" class="help-section">
+                        <h2>🔔 11. 通知の設定（マイページ）</h2>
+                        <p>「PUSH通知を受け取る」スイッチで購読を有効化したあと、<strong>受信時間帯</strong>を ON/OFF できます（オプトイン方式、初期は全OFF）。</p>
+                        <ul>
+                            <li>🌅 朝 (5-9時) / ☀️ 昼 (9-14時) / 🌇 夕 (14-18時) / 🌙 夜 (18-24時) / 🌃 深夜 (0-5時)</li>
+                            <li>運営が一斉送信した通知は「現在のスロット」が ON の人だけに届きます。</li>
+                            <li>最適プランの「現在凸可能のみ」モードも同じ判定を使います。</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-sim" class="help-section">
+                        <h2>🧪 12. シミュレータ</h2>
+                        <h3>📈 ダメージ予測</h3>
+                        <p>プレイヤーと目標SLvを指定すると、SLv補正係数に基づき到達時の予測ダメージを算出します。育成投資の見当付けに便利です。</p>
+                        <h3>🎯 ふるり値試算</h3>
+                        <p>PT属性 と 想定ダメージを指定すると、その値で出した場合のふるり値を試算します（OCR対応）。「次やったら基準のどれくらいになる？」を確認できます。</p>
+                    </section>
+
+                    <section id="help-ops" class="help-section">
+                        <h2>🛠️ 13. 運営機能（管理者向け）</h2>
+                        <ul>
+                            <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集</li>
+                            <li><strong>レベルアップ</strong> — 次レベルへ。ボスHPは標準値にリセット</li>
+                            <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録</li>
+                            <li><strong>シーズン作成</strong> — 次回シーズンを作成。前回実績ダメージを各メンバーの初期値に自動シード可</li>
+                            <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージをスナップショットし、「削除して元に戻す」で完全復元</li>
+                            <li><strong>メンバー管理</strong> — 改名・脱退・復活・完全削除</li>
+                            <li><strong>Push通知 一斉送信</strong> — 購読者全員に通知（受信時間帯フィルタ適用）</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-data" class="help-section">
+                        <h2>🔄 14. データの流れ</h2>
+                        <p>下記のように、入力されたデータは PAD 全体で連動して使われます。</p>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>本番凸</strong> → <span class="help-pill">attacks</span> テーブルに記録（マイページの凸報告）</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>模擬戦データ</strong> → <span class="help-pill">player_damages</span> に記録（マイページのダメージ入力）</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>レイド終了時</strong> → 該当月の JSON にスナップショット。これが次月の<strong>ふるり値基準</strong>になる</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div><strong>次月シーズン作成</strong> → 前月実績ダメージを各メンバーの初期 <span class="help-pill">player_damages</span> として自動シード</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">5</div><div>個人の<strong>レーダー</strong>・運営の<strong>最適プラン</strong>・<strong>残凸表</strong>・<strong>ふるり値ランキング</strong>すべてに即時反映</div></div>
+                        <div class="help-callout tip">
+                            <span class="ico">🔒</span>
+                            <p>ふるり値の<strong>基準</strong>は月途中で変わりません。誰かが模擬戦データを更新しても、その人個人のふるり値だけ動き、他人との比較が歪まないようにしています。</p>
+                        </div>
+                    </section>
+
+                    <section id="help-faq" class="help-section">
+                        <h2>❓ 15. よくある質問</h2>
+                        <h3>Q. 模擬戦で同じ属性に何度も挑戦しました。どれを提出？</h3>
+                        <p>一番高いダメージのものを提出してください（PAD側は最後に入れた値を保持します）。</p>
+                        <h3>Q. 締め凸でダメージが想定より低く記録されました</h3>
+                        <p>マイページのダメージ欄を本来のベスト出力に手動で上書きしてください（<a href="#help-finisher">§6</a>）。</p>
+                        <h3>Q. レーダーチャートに値が出ません</h3>
+                        <p>あなたの SLv が直近の実シーズンで未登録か、属性ダメージが未入力の可能性があります。
+                            未入力属性に値を入れる、または運営にユニオン参加時の SLv を登録してもらってください。</p>
+                        <h3>Q. 通知が来ません</h3>
+                        <p>① 「PUSH通知を受け取る」が ON か、② 現在の時間帯スロットが ON か、③ ブラウザの通知許可が「許可」になっているか、を確認してください。</p>
+                        <h3>Q. 最適プランで Lv3 まで届きません</h3>
+                        <p>現状の登録ダメージでは火力不足という想定です。各メンバーの育成 (SLv) や模擬戦スコアを最新化することで届く可能性があります。</p>
+                        <h3>Q. 新メンバーで SLv が分かりません</h3>
+                        <p>登録ダメージが近い既存メンバーの SLv を借りて推定計算します（最新月の値を使うのでパワークリープの影響を受けません）。</p>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
@@ -4551,6 +4869,17 @@
             });
             if (current) select.value = current;
             runSimulator();
+        }
+
+        // シミュレータタブ内の2モード切替 (ダメージ予測 / ふるり値試算)
+        function switchSimMode(mode) {
+            document.querySelectorAll('.sim-mode-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.simMode === mode);
+            });
+            const d = document.getElementById('simModeDamage');
+            const f = document.getElementById('simModeFururi');
+            if (d) d.style.display = mode === 'damage' ? '' : 'none';
+            if (f) f.style.display = mode === 'fururi' ? '' : 'none';
         }
 
         function runSimulator() {
