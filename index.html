@@ -2119,6 +2119,23 @@
         </div>
     </div>
 
+    <!-- ========== Push通知 送信プレビュー (全Push送信フロー共通) ========== -->
+    <div class="player-select-modal" id="pushPreviewModal">
+        <div class="player-select-content" style="max-width:600px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>📣 通知送信の最終確認</h2>
+                <button onclick="closePushPreview(false)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">以下の内容で Push 通知を送信します。受信者と本文を確認してから「送信する」を押してください。</p>
+            <div id="pushPreviewBody" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:4px;"></div>
+            <p id="pushPreviewMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid #8b5cf6;background:#8b5cf6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">📣 送信する</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== 運営: シーズン作成モーダル ========== -->
     <div class="player-select-modal" id="opsSeasonCreateModal">
         <div class="player-select-content" style="max-width:620px;">
@@ -3885,6 +3902,40 @@
                 ${sameNote}`;
         }
 
+        // ========== Push通知 送信プレビュー (全Push送信フロー共通) ==========
+        // groups: [{ title, body, recipients: [{id?, name}], allSubscribers?: bool }]
+        // 戻り値: ユーザーが「送信する」を押したら true、キャンセル/閉じるなら false
+        let _pushPreviewResolver = null;
+        function showPushPreview(groups) {
+            return new Promise(resolve => {
+                _pushPreviewResolver = resolve;
+                const bodyEl = document.getElementById('pushPreviewBody');
+                const msgEl = document.getElementById('pushPreviewMessage');
+                if (msgEl) msgEl.textContent = '';
+                if (!bodyEl) { resolve(false); return; }
+                bodyEl.innerHTML = (groups || []).map(g => {
+                    const recList = g.allSubscribers
+                        ? '<span style="color:var(--md-sys-color-on-surface-variant);">購読中の全メンバー（時間帯フィルタ無視）</span>'
+                        : (g.recipients && g.recipients.length > 0
+                            ? `<strong>${g.recipients.length}名</strong>: ${g.recipients.map(r => escapeHtml(r.name)).join('、')}`
+                            : '<span style="color:#ef4444;">受信者なし</span>');
+                    return `
+                        <div style="padding:12px;border:1px solid var(--md-sys-color-outline-variant);border-left:4px solid #8b5cf6;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                            <div style="font-size:13px;font-weight:700;color:var(--md-sys-color-on-surface);margin-bottom:4px;">📣 ${escapeHtml(g.title || '(無題)')}</div>
+                            <div style="font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:var(--md-sys-color-on-surface);margin-bottom:8px;">${escapeHtml(g.body || '')}</div>
+                            <div style="font-size:11px;color:var(--md-sys-color-on-surface);"><span style="color:var(--md-sys-color-on-surface-variant);">受信者: </span>${recList}</div>
+                        </div>`;
+                }).join('') || '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">送信対象がありません</p>';
+                document.getElementById('pushPreviewModal').classList.add('open');
+            });
+        }
+        function closePushPreview(confirmed) {
+            document.getElementById('pushPreviewModal').classList.remove('open');
+            const r = _pushPreviewResolver;
+            _pushPreviewResolver = null;
+            if (r) r(!!confirmed);
+        }
+
         async function handleOpsFinishPlanPush(kind) {
             const ctx = _opsFinishPlanContext;
             if (!ctx) return;
@@ -3895,10 +3946,11 @@
             const names = plan.members.map(m => m.name).join('、');
             const title = `📣 ${ctx.ptInfo?.name}PT 締め凸 (${kind === 'tight' ? 'ギリギリ' : '余裕'}プラン)`;
             const bodyText = `${ctx.boss.name || ctx.boss.boss_code} 残HP ${ctx.remHpB.toFixed(2)}B → ${names} さん、お願いできますか🙏 (合計 ${plan.total.toFixed(2)}B)`;
-            if (!confirm(`下記の通知を ${ids.length}名 (${names}) に送ります:\n\nタイトル: ${title}\n本文: ${bodyText}\n\nよろしいですか？`)) return;
+            const ok = await showPushPreview([{ title, body: bodyText, recipients: plan.members.map(m => ({ id: m.id, name: m.name })) }]);
+            if (!ok) return;
             try {
                 const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=ops', playerIds: ids });
-                alert(`✅ ${res.sent}/${res.target} 件 送信完了${res.removed ? ` (期限切れ${res.removed}件削除)` : ''}`);
+                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             }
@@ -3911,12 +3963,11 @@
             if (playerIds.length === 0) { alert('対象者がいません'); return; }
             const title = `📣 ${ctx.ptInfo?.name}PT 締め凸候補`;
             const bodyText = `${ctx.boss.name || ctx.boss.boss_code} 残HP ${ctx.remainingHpB.toFixed(2)}B → 凸お願いできる方いますか🙏`;
-            if (!confirm(`下記の通知を ${playerIds.length}名 に送ります:\n\nタイトル: ${title}\n本文: ${bodyText}\n\nよろしいですか？`)) return;
+            const ok = await showPushPreview([{ title, body: bodyText, recipients: ctx.candidates.map(c => ({ id: c.id, name: c.name })) }]);
+            if (!ok) return;
             try {
-                const res = await window.sendPushNotification({
-                    title, body: bodyText, url: './?tab=ops', playerIds,
-                });
-                alert(`✅ ${res.sent}/${res.target} 件 送信完了${res.removed ? ` (期限切れ${res.removed}件削除)` : ''}`);
+                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=ops', playerIds });
+                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             }
@@ -4301,6 +4352,11 @@
             _activeSeasonCache = null;
             await renderOpsDashboard();
 
+            // 失敗0なら自動でモーダルを閉じる
+            if (fail === 0) {
+                setTimeout(() => closeOpsBossHpModal(), 800);
+            }
+
             // Phase 6c: HP更新後、締め凸候補が出ているなら通知送信を提案
             await offerFinishPushAfterHpUpdate();
         }
@@ -4329,22 +4385,27 @@
                     }
                 }
                 if (opportunities.length === 0) return;
-                const summary = opportunities.map(o =>
-                    `・${o.ptName}PT (${o.boss.name || o.boss.boss_code} 残${o.remB.toFixed(2)}B): ${o.cands.slice(0,3).map(c => c.name).join('、')}${o.cands.length > 3 ? '…' : ''}`
-                ).join('\n');
-                if (!confirm(`HP更新により以下の候補が発生しました。\n\n${summary}\n\n各属性の候補にPush通知を送りますか？`)) return;
+                // プレビューモーダルで属性ごとの内容と受信者を確認
+                const groups = opportunities.map(o => ({
+                    title: `📣 ${o.ptName}PT 締め凸候補`,
+                    body: `${o.boss.name || o.boss.boss_code} 残HP ${o.remB.toFixed(2)}B → 凸お願いできる方🙏`,
+                    recipients: o.cands.map(c => ({ id: c.id, name: c.name })),
+                    _ptKey: o.ptKey,
+                }));
+                const ok = await showPushPreview(groups);
+                if (!ok) return;
                 let totalSent = 0;
-                for (const o of opportunities) {
+                for (const g of groups) {
                     try {
                         const res = await window.sendPushNotification({
-                            title: `📣 ${o.ptName}PT 締め凸候補`,
-                            body: `${o.boss.name || o.boss.boss_code} 残HP ${o.remB.toFixed(2)}B → 凸お願いできる方🙏`,
+                            title: g.title,
+                            body: g.body,
                             url: './?tab=ops',
-                            playerIds: o.cands.map(c => c.id),
+                            playerIds: g.recipients.map(r => r.id),
                         });
                         totalSent += res.sent || 0;
                     } catch (e) {
-                        console.warn(`[push offer] ${o.ptKey} 送信失敗`, e);
+                        console.warn(`[push offer] ${g._ptKey} 送信失敗`, e);
                     }
                 }
                 showNotification(`📣 合計 ${totalSent} 件の通知を送信しました`);
@@ -4582,16 +4643,19 @@
             document.getElementById('opsPushSendModal').classList.remove('open');
         }
         async function handleOpsPushSend() {
-            const title = document.getElementById('opsPushTitle').value.trim();
+            const titleRaw = document.getElementById('opsPushTitle').value.trim();
             const bodyText = document.getElementById('opsPushBody').value.trim();
             const msg = document.getElementById('opsPushMessage');
             const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
-            if (!title && !bodyText) { set('❌ タイトルまたは本文を入力してください', true); return; }
+            if (!titleRaw && !bodyText) { set('❌ タイトルまたは本文を入力してください', true); return; }
+            const title = titleRaw || 'しりすこPAD';
+            const ok = await showPushPreview([{ title, body: bodyText, allSubscribers: true }]);
+            if (!ok) return;
             try {
                 set('🔔 送信中...');
                 msg.style.color = 'var(--md-sys-color-on-surface-variant)';
                 const res = await window.sendPushNotification({
-                    title: title || 'しりすこPAD',
+                    title,
                     body: bodyText,
                     url: './',
                     ignoreAvailability: true,  // 運営による全員配信は時間帯設定を無視
