@@ -1207,12 +1207,18 @@
                 <h3 style="margin:0 0 8px 0;font-size:16px;font-weight:600;">🎯 締め凸候補検索</h3>
                 <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">PT属性を選ぶと、対象ボスの残HPと登録ダメージを比較して候補を表示します。<br>残HP超過は ⚠️ で警告、3凸済みは除外。</p>
                 <div id="opsFinishAttrButtons" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+                <div id="opsFinishPlans" style="margin-bottom:14px;"></div>
                 <div id="opsFinishList">
                     <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">PT属性ボタンをタップしてください。</p>
                 </div>
                 <div id="opsFinishAiArea" style="display:none;margin-top:10px;">
-                    <button id="opsFinishAiBtn" onclick="handleOpsFinishAiRecommend()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:13px;font-weight:600;cursor:pointer;">🤖 AIにベスト候補を聞く</button>
-                    <div id="opsFinishAiResult" style="margin-top:8px;"></div>
+                    <details>
+                        <summary style="cursor:pointer;font-size:12px;color:var(--md-sys-color-on-surface-variant);">🤖 AIに意見を聞く（任意・APIトークン消費）</summary>
+                        <div style="margin-top:8px;">
+                            <button id="opsFinishAiBtn" onclick="handleOpsFinishAiRecommend()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:13px;font-weight:600;cursor:pointer;">🤖 AIにベスト候補を聞く</button>
+                            <div id="opsFinishAiResult" style="margin-top:8px;"></div>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -3542,6 +3548,9 @@
             const ptInfo = PT_ATTRS.find(x => x.key === attrKey);
             const boss = bosses.find(b => b.weakness === attrKey);
             const listEl = document.getElementById('opsFinishList');
+            const plansEl = document.getElementById('opsFinishPlans');
+            if (plansEl) plansEl.innerHTML = '';
+            _opsFinishPlanContext = null;
             // AI推薦エリアを表示+リセット
             const aiArea = document.getElementById('opsFinishAiArea');
             const aiResult = document.getElementById('opsFinishAiResult');
@@ -3600,8 +3609,121 @@
             };
 
             listEl.innerHTML = header + rows + pushBtn;
+
+            // 推薦プラン (ギリギリ / 余裕) を計算して表示
+            renderOpsFinishPlans(attrKey, boss, ptInfo, remainingHpB, candidates);
         }
         let _opsFinishPushContext = null;
+        let _opsFinishPlanContext = null;
+
+        // 残HPを倒すための最適な1〜3凸の組合せを2パターン算出する。
+        // tight = オーバーキル最小、safe = 10%以上の余裕がある中で凸数最少。
+        function computeFinishPlans(candidates, remHP) {
+            if (remHP <= 0 || candidates.length === 0) return { tight: null, safe: null, cannotKill: false };
+            const all = [];
+            const N = candidates.length;
+            for (let i = 0; i < N; i++) {
+                if (candidates[i].dmg >= remHP) {
+                    all.push({ members: [candidates[i]], total: candidates[i].dmg, overkill: candidates[i].dmg - remHP, shots: 1 });
+                }
+            }
+            for (let i = 0; i < N; i++) {
+                for (let j = i + 1; j < N; j++) {
+                    const s = candidates[i].dmg + candidates[j].dmg;
+                    if (s >= remHP) all.push({ members: [candidates[i], candidates[j]], total: s, overkill: s - remHP, shots: 2 });
+                }
+            }
+            // 1/2凸で削れない時のみ3凸を探索 (パフォーマンス配慮: 候補多い場合はトップ12のみ)
+            if (all.length === 0) {
+                const top = candidates.slice(0, Math.min(12, N));
+                for (let i = 0; i < top.length; i++) {
+                    for (let j = i + 1; j < top.length; j++) {
+                        for (let k = j + 1; k < top.length; k++) {
+                            const s = top[i].dmg + top[j].dmg + top[k].dmg;
+                            if (s >= remHP) all.push({ members: [top[i], top[j], top[k]], total: s, overkill: s - remHP, shots: 3 });
+                        }
+                    }
+                }
+            }
+            if (all.length === 0) return { tight: null, safe: null, cannotKill: true };
+
+            // ギリギリ: オーバーキル昇順 → 凸数少ない順
+            const tight = [...all].sort((a, b) => a.overkill - b.overkill || a.shots - b.shots)[0];
+            // 余裕: 10%以上の余裕がある中で 凸数少ない → オーバーキル少ない
+            const margin = remHP * 0.10;
+            const safeCands = all.filter(p => p.overkill >= margin);
+            const safe = safeCands.length > 0
+                ? safeCands.sort((a, b) => a.shots - b.shots || a.overkill - b.overkill)[0]
+                : null;
+            return { tight, safe: (safe && safe !== tight) ? safe : null, cannotKill: false };
+        }
+
+        function renderOpsFinishPlans(attrKey, boss, ptInfo, remHpB, candidates) {
+            const el = document.getElementById('opsFinishPlans');
+            if (!el) return;
+            if (candidates.length === 0) { el.innerHTML = ''; return; }
+            const plans = computeFinishPlans(candidates, remHpB);
+            _opsFinishPlanContext = { attrKey, boss, ptInfo, remHpB, plans };
+            if (plans.cannotKill) {
+                el.innerHTML = `<div style="padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.10);border-left:4px solid #ef4444;font-size:12px;">⚠️ 候補のダメージ合計でも残HPに届きません (最大火力でも撃破不能)。</div>`;
+                return;
+            }
+            const card = (title, plan, kind) => {
+                if (!plan) return '';
+                const accent = kind === 'tight' ? '#22c55e' : '#3b82f6';
+                const bg = kind === 'tight' ? 'rgba(34,197,94,0.08)' : 'rgba(59,130,246,0.08)';
+                // 締め役は小さいダメージの人にして、書き残しを最小化
+                const ordered = [...plan.members].sort((a, b) => b.dmg - a.dmg);
+                const stepRows = ordered.map((m, i) => `
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-top:1px dashed var(--md-sys-color-outline-variant);">
+                        <span style="min-width:42px;font-weight:700;color:${accent};font-size:12px;">${i + 1}凸目</span>
+                        <strong style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(m.name)}</strong>
+                        <span style="font-size:13px;font-weight:700;">${m.dmg.toFixed(2)} B</span>
+                        <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${m.attackCount}/3)</span>
+                    </div>`).join('');
+                const overPct = (plan.overkill / Math.max(remHpB, 0.01) * 100);
+                const pushIds = plan.members.map(m => m.id);
+                return `
+                    <div style="flex:1 1 280px;border:1px solid var(--md-sys-color-outline-variant);border-left:4px solid ${accent};border-radius:10px;overflow:hidden;background:${bg};">
+                        <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--md-sys-color-surface);">
+                            <strong style="font-size:13px;color:${accent};">${title}</strong>
+                            <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">${plan.shots}凸 / 合計 ${plan.total.toFixed(2)}B / +${plan.overkill.toFixed(2)}B (${overPct.toFixed(1)}%)</span>
+                        </div>
+                        ${stepRows}
+                        <div style="padding:8px 10px;background:var(--md-sys-color-surface);">
+                            <button onclick="handleOpsFinishPlanPush('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:var(--md-sys-color-surface);color:${accent};font-size:12px;font-weight:600;cursor:pointer;">📣 このプランの ${pushIds.length}名 に Push通知</button>
+                        </div>
+                    </div>`;
+            };
+            const tightCard = card('🎯 ギリギリ (オーバーキル最小)', plans.tight, 'tight');
+            const safeCard = card('🛡️ 余裕 (10%以上のマージン)', plans.safe, 'safe');
+            const sameNote = (plans.tight && !plans.safe) ? `<p style="margin:6px 2px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">※ 余裕プランは ギリギリプランと同一のため省略しました。</p>` : '';
+            el.innerHTML = `
+                <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                    ${tightCard}
+                    ${safeCard}
+                </div>
+                ${sameNote}`;
+        }
+
+        async function handleOpsFinishPlanPush(kind) {
+            const ctx = _opsFinishPlanContext;
+            if (!ctx) return;
+            const plan = ctx.plans[kind];
+            if (!plan) return;
+            const ids = plan.members.map(m => m.id);
+            if (ids.length === 0) return;
+            const names = plan.members.map(m => m.name).join('、');
+            const title = `📣 ${ctx.ptInfo?.name}PT 締め凸 (${kind === 'tight' ? 'ギリギリ' : '余裕'}プラン)`;
+            const bodyText = `${ctx.boss.name || ctx.boss.boss_code} 残HP ${ctx.remHpB.toFixed(2)}B → ${names} さん、お願いできますか🙏 (合計 ${plan.total.toFixed(2)}B)`;
+            if (!confirm(`下記の通知を ${ids.length}名 (${names}) に送ります:\n\nタイトル: ${title}\n本文: ${bodyText}\n\nよろしいですか？`)) return;
+            try {
+                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=ops', playerIds: ids });
+                alert(`✅ ${res.sent}/${res.target} 件 送信完了${res.removed ? ` (期限切れ${res.removed}件削除)` : ''}`);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
 
         async function handleOpsFinishPushSend() {
             const ctx = _opsFinishPushContext;
