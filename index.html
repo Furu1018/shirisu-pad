@@ -1637,7 +1637,7 @@
                     <a href="#help-plan">8. 最適凸プラン算出</a>
                     <a href="#help-remaining">9. 残凸状況一覧</a>
                     <a href="#help-finish-call">10. 締め凸候補</a>
-                    <a href="#help-notify">11. 通知の設定</a>
+                    <a href="#help-notify">11. 通知を受け取る</a>
                     <a href="#help-sim">12. シミュレータ</a>
                     <a href="#help-ops">13. 運営機能</a>
                     <a href="#help-data">14. データの流れ</a>
@@ -1786,13 +1786,78 @@
                     </section>
 
                     <section id="help-notify" class="help-section">
-                        <h2>🔔 11. 通知の設定（マイページ）</h2>
-                        <p>「PUSH通知を受け取る」スイッチで購読を有効化したあと、<strong>受信時間帯</strong>を ON/OFF できます（オプトイン方式、初期は全OFF）。</p>
+                        <h2>🔔 11. 通知を受け取る — 全員むけ手順</h2>
+                        <p>運営からの「締め凸お願いします🙏」「レイド開始のお知らせ」などを、
+                            Discord通知のように<strong>スマホやPCに直接プッシュ</strong>できます。PADを開いていなくても届きます。
+                            セットアップは <strong>3ステップ</strong> です。</p>
+                        <div class="help-callout">
+                            <span class="ico">📲</span>
+                            <p>通知は<strong>端末ごとに1回</strong>のセットアップが必要です。スマホとPC両方で受け取りたい場合は、それぞれの端末で設定してください。</p>
+                        </div>
+
+                        <h3>🍎 iPhoneの方は最初に「ホーム画面に追加」</h3>
+                        <p>iPhone (iOS) は仕様上、<strong>ホーム画面から開いたアプリ</strong>でないと通知を受け取れません。
+                            Safariのタブのままだと「通知を有効にする」ボタンを押しても何も起きないので、必ず最初にホーム画面追加を済ませてください。</p>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>Safari</strong> で PAD を開く（Chrome や LINE内ブラウザは不可）</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>画面下の<strong>共有ボタン</strong>（□から↑が出ているマーク）をタップ</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>「ホーム画面に追加」</strong> → 「追加」</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>以降は<strong>ホーム画面のPADアイコン</strong>から開いてください（ブラウザ経由ではなく）</div></div>
+                        <div class="help-callout tip">
+                            <span class="ico">🤖</span>
+                            <p>Android（Chrome）/PC（Chrome / Edge / Firefox）は<strong>そのままでOK</strong>。ホーム画面追加は不要です。</p>
+                        </div>
+
+                        <h3>① マイページで「通知を有効にする」</h3>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>画面右上の <span class="help-pill">👤</span> をタップして<strong>自分の名前</strong>を選ぶ</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>マイページの <strong>「🔔 Push通知設定」</strong> までスクロール</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>「🔔 通知を有効にする」</strong> ボタンをタップ</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>ブラウザが「<strong>通知を許可しますか?</strong>」と聞いてくるので <strong>「許可」</strong> をタップ</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">5</div><div>「<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み (この端末)</span>」と出れば登録完了</div></div>
+                        <div class="help-callout warn">
+                            <span class="ico">⚠️</span>
+                            <p>もし「許可」を聞かれずに何も起こらない場合 → 以前に「不許可/ブロック」を押したまま記憶されています。<br>
+                                <strong>Chrome (PC)</strong>: アドレスバーの🔒アイコン → 通知 → 「許可」<br>
+                                <strong>iPhone (Safari)</strong>: 設定アプリ → 通知 → 「しりすこPAD」 → 通知を許可<br>
+                                <strong>Android (Chrome)</strong>: 設定 → サイト設定 → 通知 → 該当サイトを許可
+                            </p>
+                        </div>
+
+                        <h3>② 受信したい時間帯を選ぶ（とても重要）</h3>
+                        <p>初期設定は<strong>すべての時間帯がOFF</strong>になっています。<strong>最低1つはON</strong>にしないと通知は一切届きません。</p>
+                        <p>マイページの <strong>「🕐 通知受信可能時間」</strong>で、自分が見られる時間帯にチェックを入れてください。</p>
                         <ul>
-                            <li>🌅 朝 (5-9時) / ☀️ 昼 (9-14時) / 🌇 夕 (14-18時) / 🌙 夜 (18-24時) / 🌃 深夜 (0-5時)</li>
-                            <li>運営が一斉送信した通知は「現在のスロット」が ON の人だけに届きます。</li>
-                            <li>最適プランの「現在凸可能のみ」モードも同じ判定を使います。</li>
+                            <li>🌅 朝 (5-9時)</li>
+                            <li>☀️ 昼 (9-14時)</li>
+                            <li>🌇 夕 (14-18時)</li>
+                            <li>🌙 夜 (18-24時)</li>
+                            <li>🌃 深夜 (0-5時)</li>
                         </ul>
+                        <div class="help-callout">
+                            <span class="ico">⏰</span>
+                            <p>仕組み：通知が送信された時刻にちょうど<strong>その時間帯をONにしている人</strong>だけに届きます。
+                                夜会・朝会など、その時間に動ける人だけを呼び出せます。
+                                <br>※ 運営の「全員に送信」「緊急通知」はこの時間帯設定を無視して届きます。</p>
+                        </div>
+
+                        <h3>③ テストして動作確認</h3>
+                        <p><strong>「🧪 ローカル通知テスト」</strong> を押すと、その場でテスト通知が出ます。
+                            ここで通知が見えれば、運営からの本物の通知も受け取れる状態です。</p>
+                        <div class="help-callout tip">
+                            <span class="ico">🎉</span>
+                            <p>これで設定完了！ Discord通知と同じ感覚で運営からのお知らせ・締め凸依頼が届きます。
+                                緊急の締め凸も逃しません。</p>
+                        </div>
+
+                        <h3>🚫 通知が来ない時のチェックリスト</h3>
+                        <ol>
+                            <li>マイページの <strong>「🕐 通知受信可能時間」</strong> に1つでもチェックが入っているか?（全OFFだと永久に届きません）</li>
+                            <li>「<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み</span>」と表示されているか?</li>
+                            <li>ブラウザがこのサイトの通知を<strong>ブロック</strong>していないか? (上のWarn参照)</li>
+                            <li><strong>iPhoneの場合</strong>: ホーム画面のPADアイコンから開いているか? Safariタブからだと通知が動きません</li>
+                            <li>端末が<strong>サイレント/おやすみモード/集中モード</strong>になっていないか?</li>
+                            <li>「🧪 ローカル通知テスト」も見えない場合 → OSの通知設定でブラウザ/PADの通知が許可されているか確認</li>
+                            <li>機種変更/ブラウザ変更後 → 新しい端末で再度「通知を有効にする」が必要</li>
+                        </ol>
                     </section>
 
                     <section id="help-sim" class="help-section">
@@ -1840,7 +1905,7 @@
                         <p>あなたの SLv が直近の実シーズンで未登録か、属性ダメージが未入力の可能性があります。
                             未入力属性に値を入れる、または運営にユニオン参加時の SLv を登録してもらってください。</p>
                         <h3>Q. 通知が来ません</h3>
-                        <p>① 「PUSH通知を受け取る」が ON か、② 現在の時間帯スロットが ON か、③ ブラウザの通知許可が「許可」になっているか、を確認してください。</p>
+                        <p>初期設定では受信時間帯がすべてOFFのため、最低1つはONにする必要があります。詳細な手順とチェックリストは <a href="#help-notify">§11</a> をご覧ください。</p>
                         <h3>Q. 最適プランで Lv3 まで届きません</h3>
                         <p>現状の登録ダメージでは火力不足という想定です。各メンバーの育成 (SLv) や模擬戦スコアを最新化することで届く可能性があります。</p>
                         <h3>Q. 新メンバーで SLv が分かりません</h3>
