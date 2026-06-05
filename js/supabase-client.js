@@ -468,7 +468,7 @@ window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
 };
 
 // 凸を1件追加
-window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bossNumber, bossCode, damageRaw, level, characters }) {
+window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bossNumber, bossCode, damageRaw, level, characters }, opts = {}) {
     // attack_number は現在の凸数 + 1
     const { data: existing, error: cErr } = await supabase
         .from('attacks')
@@ -498,25 +498,102 @@ window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bos
         .select('id, attack_number')
         .single();
     if (error) throw error;
+
+    // ボス残HPを自動的に減算 (OCRで残HPを正確に書き換える場合は skipHpDecrement=true で skip)
+    if (!opts.skipHpDecrement && damageRaw > 0) {
+        try {
+            const { data: boss } = await supabase
+                .from('bosses')
+                .select('remaining_hp_raw')
+                .eq('season_id', seasonId)
+                .eq('boss_number', bossNumber)
+                .single();
+            if (boss) {
+                const newRem = Math.max(0, Number(boss.remaining_hp_raw || 0) - Math.round(damageRaw));
+                await supabase
+                    .from('bosses')
+                    .update({ remaining_hp_raw: newRem })
+                    .eq('season_id', seasonId)
+                    .eq('boss_number', bossNumber);
+            }
+        } catch (e) { console.warn('[boss hp auto-decrement] failed:', e?.message || e); }
+    }
+
     return data;
 };
 
-// 凸を削除
+// 凸を削除 (ボス残HPを復元: damage_raw 分を total_hp_raw で頭打ちにして加算)
 window.supabaseDeleteAttack = async function (attackId) {
+    const { data: old, error: oErr } = await supabase
+        .from('attacks')
+        .select('damage_raw, season_id, boss_number')
+        .eq('id', attackId)
+        .single();
+    if (oErr) throw oErr;
+
     const { error } = await supabase
         .from('attacks')
         .delete()
         .eq('id', attackId);
     if (error) throw error;
+
+    const dmg = Math.round(Number(old?.damage_raw) || 0);
+    if (dmg > 0 && old) {
+        try {
+            const { data: boss } = await supabase
+                .from('bosses')
+                .select('remaining_hp_raw, total_hp_raw')
+                .eq('season_id', old.season_id)
+                .eq('boss_number', old.boss_number)
+                .single();
+            if (boss) {
+                const newRem = Math.min(Number(boss.total_hp_raw || 0), Number(boss.remaining_hp_raw || 0) + dmg);
+                await supabase
+                    .from('bosses')
+                    .update({ remaining_hp_raw: newRem })
+                    .eq('season_id', old.season_id)
+                    .eq('boss_number', old.boss_number);
+            }
+        } catch (e) { console.warn('[boss hp restore on delete] failed:', e?.message || e); }
+    }
 };
 
-// 凸のダメージを更新
+// 凸のダメージを更新 (差分をボス残HPに反映)
 window.supabaseUpdateAttackDamage = async function (attackId, damageRaw) {
+    const { data: old, error: oErr } = await supabase
+        .from('attacks')
+        .select('damage_raw, season_id, boss_number')
+        .eq('id', attackId)
+        .single();
+    if (oErr) throw oErr;
+    const newDmg = Math.round(damageRaw);
+    const delta = newDmg - Math.round(Number(old?.damage_raw) || 0);
+
     const { error } = await supabase
         .from('attacks')
-        .update({ damage_raw: Math.round(damageRaw) })
+        .update({ damage_raw: newDmg })
         .eq('id', attackId);
     if (error) throw error;
+
+    if (delta !== 0 && old) {
+        try {
+            const { data: boss } = await supabase
+                .from('bosses')
+                .select('remaining_hp_raw, total_hp_raw')
+                .eq('season_id', old.season_id)
+                .eq('boss_number', old.boss_number)
+                .single();
+            if (boss) {
+                // 凸ダメージが増えた=残HP減る、減った=残HP戻る
+                const newRem = Math.max(0, Math.min(Number(boss.total_hp_raw || 0), Number(boss.remaining_hp_raw || 0) - delta));
+                await supabase
+                    .from('bosses')
+                    .update({ remaining_hp_raw: newRem })
+                    .eq('season_id', old.season_id)
+                    .eq('boss_number', old.boss_number);
+            }
+        } catch (e) { console.warn('[boss hp delta on update] failed:', e?.message || e); }
+    }
 };
 
 // ボスHPを更新（remaining / total を raw 値で）

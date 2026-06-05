@@ -1202,6 +1202,18 @@
                 </div>
             </div>
 
+            <!-- ボス状況サマリー (5体一覧) -->
+            <div class="card" style="padding:20px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <h3 style="margin:0;font-size:16px;font-weight:600;">🎯 ボス状況</h3>
+                    <span id="opsBossSummaryLevel" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);"></span>
+                </div>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">5体のボス状況です。✏️ で個別HP編集、💧 で締め凸候補へジャンプ。</p>
+                <div id="opsBossSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+                </div>
+            </div>
+
             <!-- 残凸状況一覧 -->
             <div class="card" style="padding:20px;margin-bottom:16px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
@@ -1217,11 +1229,10 @@
             <!-- 締め凸候補検索 -->
             <div class="card" style="padding:20px;margin-bottom:16px;">
                 <h3 style="margin:0 0 8px 0;font-size:16px;font-weight:600;">🎯 締め凸候補検索</h3>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">PT属性を選ぶと、対象ボスの残HPと登録ダメージを比較して候補を表示します。<br>残HP超過は ⚠️ で警告、3凸済みは除外。</p>
-                <div id="opsFinishAttrButtons" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">ボス状況カードの「PT属性で締め凸」ボタンから対象ボスを選ぶと、候補と推薦プランが表示されます。残HP超過は ⚠️ で警告、3凸済みは除外。</p>
                 <div id="opsFinishPlans" style="margin-bottom:14px;"></div>
                 <div id="opsFinishList">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">PT属性ボタンをタップしてください。</p>
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>
                 </div>
                 <div id="opsFinishAiArea" style="display:none;margin-top:10px;">
                     <details>
@@ -3017,6 +3028,7 @@
         let _activeSeasonCache = null;  // { season, bosses }
         let _myTodayAttacksCache = null;
         let _myAttackSelectedBossNumber = null;
+        let _myAttackOcrBossHp = null;  // 凸報告OCR で取れたボス最大/残HP (保存時に適用)
 
         // PT属性 → ボス側属性のマッピング（ふるりPAD全体で統一）
         function attrToCounterBoss(playerAttr) {
@@ -3127,6 +3139,7 @@
             const saveBtn = document.getElementById('myAttackSaveBtn');
             msgEl.textContent = '';
             _myAttackSelectedBossNumber = null;
+            _myAttackOcrBossHp = null;
 
             modal.classList.add('open');
 
@@ -3204,6 +3217,11 @@
                     if (!ctx?.season) { setMsg('❌ アクティブシーズンが見つかりません', true); return; }
                     const boss = ctx.bosses.find(b => b.boss_number === _myAttackSelectedBossNumber);
                     if (!boss) { setMsg('❌ ボス情報が見つかりません', true); return; }
+                    // OCR で残HPが取れている場合は自動減算をスキップして OCR値で書き換え
+                    const ocrApplies = _myAttackOcrBossHp
+                        && _myAttackOcrBossHp.seasonId === ctx.season.id
+                        && _myAttackOcrBossHp.bossNumber === boss.boss_number
+                        && _myAttackOcrBossHp.remainingHp != null;
                     await window.supabaseAddAttack({
                         seasonId: ctx.season.id,
                         playerId: id.id,
@@ -3213,9 +3231,18 @@
                         damageRaw,
                         level: ctx.season.current_level || 1,
                         characters: [],
-                    });
+                    }, { skipHpDecrement: ocrApplies });
+                    if (ocrApplies) {
+                        const totalRaw = _myAttackOcrBossHp.maxHp != null ? Number(_myAttackOcrBossHp.maxHp) : Number(boss.total_hp_raw || 0);
+                        const remRaw = Number(_myAttackOcrBossHp.remainingHp);
+                        try { await window.supabaseUpdateBossHp(ctx.season.id, boss.boss_number, totalRaw, remRaw); }
+                        catch (e) { console.warn('[ocr hp apply] failed:', e?.message || e); }
+                    }
                     setMsg('✅ 凸を報告しました');
                 }
+                _myAttackOcrBossHp = null;
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
                 // 一覧再読み込み
                 _myTodayAttacksCache = null;
                 await renderMyAttacks(id);
@@ -3233,6 +3260,7 @@
         async function handleMyAttackOcrUpload(event) {
             const file = event.target.files?.[0];
             event.target.value = '';
+            _myAttackOcrBossHp = null;  // 旧読取値を必ずクリアしてから始める
             const statusEl = document.getElementById('myAttackOcrStatus');
             if (!file) return;
             statusEl.textContent = '🔍 画像をAIで解析中... (10〜20秒)';
@@ -3263,10 +3291,21 @@
                 if (r.totalDamage) {
                     document.getElementById('myAttackDamageInput').value = (Number(r.totalDamage) / 1e9).toFixed(3);
                 }
+                // 結果画面に映ったボス最大HP・残HPがあれば後段の保存で反映
+                _myAttackOcrBossHp = null;
+                if (matchedBoss && (r.bossMaxHp != null || r.bossRemainingHp != null)) {
+                    _myAttackOcrBossHp = {
+                        seasonId: ctx.season.id,
+                        bossNumber: matchedBoss.boss_number,
+                        maxHp: r.bossMaxHp != null ? Number(r.bossMaxHp) : null,
+                        remainingHp: r.bossRemainingHp != null ? Number(r.bossRemainingHp) : null,
+                    };
+                }
                 const parts = [];
                 if (matchedBoss) parts.push(`ボス: ${matchedBoss.name || matchedBoss.boss_code}`);
                 else if (r.bossName) parts.push(`ボス: ${r.bossName} (一致なし)`);
                 if (r.totalDamage) parts.push(`ダメージ: ${(Number(r.totalDamage) / 1e9).toFixed(3)} B`);
+                if (_myAttackOcrBossHp?.remainingHp != null) parts.push(`残HP: ${(_myAttackOcrBossHp.remainingHp / 1e9).toFixed(2)} B`);
                 statusEl.textContent = `✅ 読取: ${parts.join(' / ')}`;
                 statusEl.style.color = '#22c55e';
             } catch (e) {
@@ -3281,6 +3320,8 @@
             try {
                 await window.supabaseDeleteAttack(attackId);
                 _myTodayAttacksCache = null;
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
                 await renderMyAttacks(id);
                 showNotification(`${attackNumber}凸目を削除しました`);
             } catch (e) {
@@ -3429,8 +3470,8 @@
             const labelEl = document.getElementById('opsSeasonLabel');
             const remListEl = document.getElementById('opsRemainingList');
             const remSummaryEl = document.getElementById('opsRemainingSummary');
-            const finishAttrEl = document.getElementById('opsFinishAttrButtons');
             const finishListEl = document.getElementById('opsFinishList');
+            const bossSummaryEl = document.getElementById('opsBossSummary');
 
             labelEl.textContent = '読み込み中...';
             remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
@@ -3448,7 +3489,7 @@
             if (!season) {
                 labelEl.textContent = '（アクティブシーズン無し）';
                 remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">運営がシーズンを作成するまで一覧表示できません。</p>';
-                finishAttrEl.innerHTML = '';
+                if (bossSummaryEl) bossSummaryEl.innerHTML = '';
                 finishListEl.innerHTML = '';
                 if (testBanner) testBanner.style.display = 'none';
                 return;
@@ -3473,10 +3514,10 @@
                 bannerEl.style.display = 'none';
             }
 
+            renderOpsBossSummary();
             renderOpsRemainingList();
-            renderOpsFinishAttrButtons();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
-            else finishListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">PT属性ボタンをタップしてください。</p>';
+            else finishListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
         }
 
         async function handleOpsDeleteTestSeason() {
@@ -3571,32 +3612,113 @@
             listEl.innerHTML = html;
         }
 
-        function renderOpsFinishAttrButtons() {
+        // ========== ボス状況サマリー (5体カード) ==========
+        // ボス属性 (boss.attribute) と弱点PT (boss.weakness) のアイコンを引くヘルパ
+        const BOSS_ATTR_ICON = { fire: './属性アイコン/灼熱.png', water: './属性アイコン/水冷.png', electric: './属性アイコン/電撃.png', iron: './属性アイコン/鉄甲.png', wind: './属性アイコン/風圧.png' };
+        const BOSS_ATTR_NAME = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
+        const TIER_LABEL = { tyrant: 'タイラント', lord: 'ロード' };
+        let _opsBossEditingNum = null;  // ✏️ HP編集 中のボス番号
+
+        function renderOpsBossSummary() {
             if (!_opsDashboardCache) return;
-            const { bosses } = _opsDashboardCache;
-            const el = document.getElementById('opsFinishAttrButtons');
-            // PT属性 → 対応ボス (boss.weakness === PT属性)
-            el.innerHTML = PT_ATTRS.map(a => {
-                const boss = bosses.find(b => b.weakness === a.key);
-                const hpB = boss ? (boss.remaining_hp_raw || 0) / 1e9 : null;
-                const hint = boss
-                    ? `<br><span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">残HP ${hpB.toFixed(2)}B</span>`
-                    : '<br><span style="font-size:10px;color:#ef4444;">対象ボス無し</span>';
-                const isActive = _opsCurrentAttr === a.key;
-                const baseStyle = `padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:90px;`;
-                const onStyle = `border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);`;
-                const offStyle = `border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);`;
-                return `<button onclick="handleOpsFinishAttrPick('${a.key}')" style="${baseStyle}${isActive ? onStyle : offStyle}" ${boss ? '' : 'disabled'}>
-                    <span style="display:inline-flex;align-items:center;gap:4px;"><img src="${a.icon}" style="width:16px;height:16px;">${a.name}PT</span>
-                    ${hint}
-                </button>`;
+            const { season, bosses } = _opsDashboardCache;
+            const el = document.getElementById('opsBossSummary');
+            const lvEl = document.getElementById('opsBossSummaryLevel');
+            if (!el) return;
+            if (lvEl) lvEl.textContent = season ? `現在 Lv${season.current_level || 1}` : '';
+
+            const sorted = [...(bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
+            el.innerHTML = sorted.map(b => {
+                const bossAttrIcon = BOSS_ATTR_ICON[b.attribute] || '';
+                const bossAttrName = BOSS_ATTR_NAME[b.attribute] || b.attribute;
+                const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
+                const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
+                const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
+                const pct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
+                const dead = pct <= 0.01;
+                const barColor = dead ? '#9ca3af' : (pct < 20 ? '#ef4444' : pct < 50 ? '#f59e0b' : '#22c55e');
+                const isActive = _opsCurrentAttr === b.weakness;
+                const editing = _opsBossEditingNum === b.boss_number;
+
+                const editPanel = editing
+                    ? `<div style="margin-top:10px;padding:8px;border-radius:8px;background:var(--md-sys-color-surface-variant);display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                        <label style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">残HP (B)
+                            <input type="number" step="0.01" min="0" id="opsBossEditRem-${b.boss_number}" value="${remB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);font-size:12px;text-align:right;">
+                        </label>
+                        <label style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">総HP (B)
+                            <input type="number" step="0.01" min="0" id="opsBossEditTotal-${b.boss_number}" value="${totalB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);font-size:12px;text-align:right;">
+                        </label>
+                        <div style="grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;">
+                            <button onclick="handleOpsBossSummaryEditCancel()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">キャンセル</button>
+                            <button onclick="handleOpsBossSummaryEditSave(${b.boss_number})" style="padding:5px 12px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:600;cursor:pointer;">保存</button>
+                        </div>
+                    </div>`
+                    : '';
+
+                return `
+                    <div style="padding:12px;border:${isActive ? '2px solid var(--md-sys-color-primary)' : '1px solid var(--md-sys-color-outline-variant)'};border-radius:10px;background:var(--md-sys-color-surface);${dead ? 'opacity:0.65;' : ''}">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+                            <strong style="font-size:13px;">B${b.boss_number}</strong>
+                            <span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);">${TIER_LABEL[b.tier] || b.tier}</span>
+                            ${dead ? '<span style="font-size:11px;color:#22c55e;font-weight:700;margin-left:auto;">💀 撃破</span>' : ''}
+                        </div>
+                        <div style="font-size:13px;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(b.name || b.boss_code)}</div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--md-sys-color-on-surface-variant);">
+                            <span style="display:inline-flex;align-items:center;gap:3px;">ボス: ${bossAttrIcon ? `<img src="${bossAttrIcon}" style="width:14px;height:14px;">` : ''}${bossAttrName}</span>
+                            <span style="display:inline-flex;align-items:center;gap:3px;">弱点: ${ptInfo ? `<img src="${ptInfo.icon}" style="width:14px;height:14px;">${ptInfo.name}PT` : '-'}</span>
+                        </div>
+                        <div style="height:8px;border-radius:4px;background:var(--md-sys-color-surface-variant);overflow:hidden;margin-bottom:4px;">
+                            <div style="width:${pct.toFixed(1)}%;height:100%;background:${barColor};transition:width 0.3s;"></div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:11px;font-variant-numeric:tabular-nums;color:var(--md-sys-color-on-surface);">
+                            <span>${remB.toFixed(2)}B / ${totalB.toFixed(2)}B</span>
+                            <span style="color:var(--md-sys-color-on-surface-variant);">${pct.toFixed(0)}%</span>
+                        </div>
+                        ${editPanel}
+                        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+                            <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" style="padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">✏️ HP編集</button>
+                            <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} style="flex:1;padding:5px 10px;border-radius:6px;border:1px solid ${ptInfo?.color || 'var(--md-sys-color-primary)'};background:${ptInfo?.color || 'var(--md-sys-color-primary)'};color:#fff;font-size:11px;font-weight:600;cursor:${dead ? 'not-allowed' : 'pointer'};${dead ? 'opacity:0.4;' : ''}">${ptInfo ? `${ptInfo.name}PTで締め凸` : '締め凸'}</button>
+                        </div>
+                    </div>`;
             }).join('');
+        }
+
+        function handleOpsBossSummaryEdit(bossNumber) {
+            _opsBossEditingNum = _opsBossEditingNum === bossNumber ? null : bossNumber;
+            renderOpsBossSummary();
+        }
+        function handleOpsBossSummaryEditCancel() {
+            _opsBossEditingNum = null;
+            renderOpsBossSummary();
+        }
+        async function handleOpsBossSummaryEditSave(bossNumber) {
+            const remEl = document.getElementById(`opsBossEditRem-${bossNumber}`);
+            const totalEl = document.getElementById(`opsBossEditTotal-${bossNumber}`);
+            const remB = parseFloat(remEl.value);
+            const totalB = parseFloat(totalEl.value);
+            if (isNaN(remB) || isNaN(totalB) || remB < 0 || totalB < 0) { alert('数値で入力してください'); return; }
+            if (remB > totalB) { alert('残HPが総HPを超えています'); return; }
+            try {
+                const ctx = await window.supabaseLoadActiveSeasonWithBosses();
+                if (!ctx?.season) throw new Error('アクティブシーズン無し');
+                await window.supabaseUpdateBossHp(ctx.season.id, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
+                _opsBossEditingNum = null;
+                _opsDashboardCache = null;
+                _activeSeasonCache = null;
+                await renderOpsDashboard();
+                showNotification('ボスHPを更新しました');
+            } catch (e) { alert(`HP更新失敗: ${e?.message || e}`); }
         }
 
         function handleOpsFinishAttrPick(attrKey) {
             _opsCurrentAttr = attrKey;
-            renderOpsFinishAttrButtons();
+            renderOpsBossSummary();
             renderOpsFinishList(attrKey);
+            // 締め凸候補カードへスムーススクロール
+            const target = document.getElementById('opsFinishList');
+            if (target) {
+                setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+            }
         }
 
         function renderOpsFinishList(attrKey) {

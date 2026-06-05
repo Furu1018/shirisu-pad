@@ -20,9 +20,11 @@ const IMAGE_PROMPTS = {
     "画像はNIKKEのユニオンレイドの凸結果画面です。以下をJSONで抽出してください。",
     "- bossName: ボス名 (例 ストームブリンガー)。OPERATION COMPLETE や接頭辞 I/II/III/IV/V は除外",
     "- totalDamage: TOTAL DAMAGE の整数値 (カンマ除去)",
+    "- bossMaxHp: 結果画面上部のボス最大HP整数値 (Bは10^9倍。判読不能なら null)",
+    "- bossRemainingHp: 凸後のボス残HP整数値 (Bは10^9倍。撃破で 0、判読不能なら null)",
     "",
     "出力はJSONのみ。コードフェンス禁止。",
-    '形式: {"bossName":"ストームブリンガー","totalDamage":9673613117}',
+    '形式: {"bossName":"ストームブリンガー","totalDamage":9673613117,"bossMaxHp":99856279200,"bossRemainingHp":42153117000}',
   ].join("\n"),
 
   bla_progress: [
