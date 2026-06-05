@@ -730,6 +730,104 @@ window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
 };
 
 // ============================================================================
+// 設定タブ用: メンバーの通知状況一覧
+// 戻り値: [{ id, name, subscribed, deviceCount, slotsOn, lastDmgUpdate }]
+// ============================================================================
+window.supabaseLoadMemberNotificationStatus = async function () {
+    const { data: players } = await supabase
+        .from('players')
+        .select('id, name, archived')
+        .or('archived.is.null,archived.eq.false')
+        .order('name', { ascending: true });
+    const { data: subs } = await supabase
+        .from('push_subscriptions')
+        .select('player_id, created_at');
+    const { data: avail } = await supabase
+        .from('availability')
+        .select('player_id, time_slot');
+    const { data: dmgs } = await supabase
+        .from('player_damages')
+        .select('player_id, updated_at');
+
+    const subsByPlayer = new Map();
+    (subs || []).forEach(s => {
+        if (!subsByPlayer.has(s.player_id)) subsByPlayer.set(s.player_id, 0);
+        subsByPlayer.set(s.player_id, subsByPlayer.get(s.player_id) + 1);
+    });
+    const slotsByPlayer = new Map();
+    (avail || []).forEach(s => {
+        if (!slotsByPlayer.has(s.player_id)) slotsByPlayer.set(s.player_id, 0);
+        slotsByPlayer.set(s.player_id, slotsByPlayer.get(s.player_id) + 1);
+    });
+    const lastDmgByPlayer = new Map();
+    (dmgs || []).forEach(d => {
+        const t = new Date(d.updated_at).getTime();
+        const cur = lastDmgByPlayer.get(d.player_id) || 0;
+        if (t > cur) lastDmgByPlayer.set(d.player_id, t);
+    });
+
+    return (players || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        subscribed: (subsByPlayer.get(p.id) || 0) > 0,
+        deviceCount: subsByPlayer.get(p.id) || 0,
+        slotsOn: slotsByPlayer.get(p.id) || 0,
+        lastDmgUpdate: lastDmgByPlayer.get(p.id) || null,
+    }));
+};
+
+// ============================================================================
+// 設定タブ用: 最近のアクティビティを集約
+// 既存テーブルの timestamps を集めて新しい順に並べる (新規スキーマ追加なし)
+// ============================================================================
+window.supabaseLoadRecentActivity = async function (limit = 50) {
+    const events = [];
+
+    const { data: atks } = await supabase
+        .from('attacks')
+        .select('attack_number, boss_code, damage_raw, reported_at, players(name)')
+        .order('reported_at', { ascending: false })
+        .limit(20);
+    (atks || []).forEach(a => events.push({
+        type: 'attack', ts: a.reported_at,
+        text: `${a.players?.name || '?'} が ${a.boss_code} に ${(Number(a.damage_raw) / 1e9).toFixed(2)}B 凸 (${a.attack_number}凸目)`,
+    }));
+
+    const { data: ses } = await supabase
+        .from('seasons')
+        .select('month_key, current_level, is_test, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+    (ses || []).forEach(s => events.push({
+        type: 'season', ts: s.created_at,
+        text: `シーズン ${s.month_key} (${s.is_test ? 'テスト' : 'Lv' + (s.current_level || 1)}) 作成`,
+    }));
+
+    const { data: subRows } = await supabase
+        .from('push_subscriptions')
+        .select('created_at, players(name)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+    (subRows || []).forEach(s => events.push({
+        type: 'subscribe', ts: s.created_at,
+        text: `${s.players?.name || '?'} が通知を有効化`,
+    }));
+
+    const { data: dmgRows } = await supabase
+        .from('player_damages')
+        .select('attribute, damage_b, updated_at, players(name)')
+        .order('updated_at', { ascending: false })
+        .limit(15);
+    (dmgRows || []).forEach(d => events.push({
+        type: 'damage', ts: d.updated_at,
+        text: `${d.players?.name || '?'} の ${d.attribute}PT ダメージ → ${Number(d.damage_b).toFixed(1)}B`,
+    }));
+
+    events.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    return events.slice(0, limit);
+};
+
+// ============================================================================
 // Edge Function: analyze-image (Anthropic Haiku Vision プロキシ)
 // ============================================================================
 // 画像 (data URL) と task を渡して構造化結果を受け取る
