@@ -1112,6 +1112,11 @@
                         <strong style="font-size:13px;">🕸️ あなたの属性別ふるり値</strong>
                         <span id="mypageRadarMeta" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
                     </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
+                        <button id="mypageRadarModeBtnClassic" onclick="switchMyRadarMode('classic')" class="sim-mode-btn active" style="padding:5px 10px;font-size:11px;">対ふるり</button>
+                        <button id="mypageRadarModeBtnMean" onclick="switchMyRadarMode('mean')" class="sim-mode-btn" style="padding:5px 10px;font-size:11px;">均整</button>
+                        <button id="mypageRadarModeBtnMedian" onclick="switchMyRadarMode('median')" class="sim-mode-btn" style="padding:5px 10px;font-size:11px;">中央</button>
+                    </div>
                     <div style="position:relative;max-width:360px;margin:0 auto;">
                         <canvas id="mypageRadarChart"></canvas>
                     </div>
@@ -1387,10 +1392,21 @@
                         <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり値について">?</button>
                     </div>
                     <p style="font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 12px;">SLv.補正を考慮した公平な相対評価指標</p>
-                    <div style="padding: 10px 14px; background: var(--md-sys-color-surface-variant); border-radius: 8px;">
+                    <div style="padding: 10px 14px; background: var(--md-sys-color-surface-variant); border-radius: 8px; margin-bottom: 12px;">
                         <p style="margin: 0; font-size: 14px; color: var(--md-sys-color-on-surface);">
                             <strong>基準者:</strong> <span id="fururiBaseInfo">読み込み中...</span>
                         </p>
+                    </div>
+                    <div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                            <strong style="font-size:13px;">基準モード</strong>
+                            <span id="fururiModeHint" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);"></span>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button id="fururiModeBtnClassic" onclick="switchFururiMode('classic')" class="sim-mode-btn active">対ふるり</button>
+                            <button id="fururiModeBtnMean" onclick="switchFururiMode('mean')" class="sim-mode-btn">均整 (ふるり平均)</button>
+                            <button id="fururiModeBtnMedian" onclick="switchFururiMode('median')" class="sim-mode-btn">中央 (ユニオン)</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1794,7 +1810,12 @@
                             <li><strong>全体（3凸合計）</strong>: 1日のトータル火力比較</li>
                             <li><strong>属性別</strong>: その属性1凸あたりの火力比較（同属性2凸は別行扱い）</li>
                         </ul>
-                    </section>
+                        <h3>3つの基準モード（タブとマイページレーダー両方で切替可）</h3>
+                        <ul>
+                            <li><strong>対ふるり（既定）</strong>: 基準者ふるり本人の各属性ダメージと直接比較。「ふるりとの相対力」。</li>
+                            <li><strong>均整（ふるり平均）</strong>: ふるりの5属性平均ダメージを全属性の共通基準に。<strong>ふるり自身の属性偏りを補正</strong>するので、育成バランスの指針として読みやすい。</li>
+                            <li><strong>中央（ユニオン中央値）</strong>: ユニオン全体の bossCode 別中央値を基準。「自分のユニオン内の位置」が分かる。月をまたぐ比較には不向き。</li>
+                        </ul></section>
 
                     <section id="help-plan" class="help-section">
                         <h2>🎯 8. 最適凸プラン算出（運営）</h2>
@@ -2637,12 +2658,27 @@
             return m;
         })();
 
+        // マイページレーダーの基準モード ('classic' | 'mean' | 'median')
+        let _myRadarMode = 'classic';
+        let _myRadarLastDamages = null;
+        let _myRadarLastIdentity = null;
+        function switchMyRadarMode(mode) {
+            _myRadarMode = mode;
+            ['classic', 'mean', 'median'].forEach(k => {
+                const b = document.getElementById('mypageRadarModeBtn' + k[0].toUpperCase() + k.slice(1));
+                if (b) b.classList.toggle('active', k === mode);
+            });
+            if (_myRadarLastIdentity) renderMyFururiRadar(_myRadarLastIdentity, _myRadarLastDamages);
+        }
+
         // 自分の5属性ふるり値レーダー描画。damages は supabaseLoadPlayerDamages の結果。
         function renderMyFururiRadar(identity, damages) {
             const canvas = document.getElementById('mypageRadarChart');
             const metaEl = document.getElementById('mypageRadarMeta');
             const hintEl = document.getElementById('mypageRadarHint');
             if (!canvas || !identity) return;
+            _myRadarLastIdentity = identity;
+            _myRadarLastDamages = damages;
 
             // 自分のSLv: 最新実シーズン > 運営ダッシュボード(SLv推定込み)
             let slv = 0, slvEstimated = false;
@@ -2661,27 +2697,33 @@
             (damages || []).forEach(d => { dmgByAttr[d.attribute] = Number(d.damage_b) || 0; });
 
             const isBasePlayer = identity.name === fururiBasePlayerName;
+            const baseMapForMode = getFururiBaseMapByMode(_myRadarMode);
             const labels = PT_ATTRS.map(a => a.name);
             const values = PT_ATTRS.map(a => {
                 const bossCode = PT_ATTR_TO_BOSS_CODE[a.key];
-                if (!slv || !fururiBaseMap || !fururiBaseMap[bossCode]) return 0;
+                if (!slv || !baseMapForMode || !baseMapForMode[bossCode]) return 0;
                 const dmgB = dmgByAttr[a.key] || 0;
-                // 基準者本人で player_damages 未登録の属性は定義上 1.0 (基準値そのもの)
-                if (isBasePlayer && dmgB <= 0) return 1.0;
+                // 基準者本人で player_damages 未登録の属性は classic モードでは定義上 1.0 (基準値そのもの)
+                if (_myRadarMode === 'classic' && isBasePlayer && dmgB <= 0) return 1.0;
                 if (dmgB <= 0) return 0;
-                const v = calculatePerAttackFururi(dmgB * 1e9, slv, bossCode);
+                const v = calculatePerAttackFururi(dmgB * 1e9, slv, bossCode, _myRadarMode);
                 return v == null ? 0 : Number(v);
             });
 
+            const modeLabel = _myRadarMode === 'mean' ? '均整(ふるり平均)'
+                : _myRadarMode === 'median' ? '中央(ユニオン)'
+                : `対 ${fururiBasePlayerName}`;
             if (metaEl) {
                 metaEl.textContent = slv
-                    ? `SLv ${slv}${slvEstimated ? '(推定)' : ''} / 基準: ${fururiBasePlayerName}`
+                    ? `SLv ${slv}${slvEstimated ? '(推定)' : ''} / 基準: ${modeLabel}`
                     : 'SLv未登録';
             }
             if (hintEl) {
                 if (!slv) hintEl.textContent = '基準者(ふるり)との比較にあなたのSLvが必要です。次回シーズンで自動取得されます。';
-                else if (!fururiBaseMap) hintEl.textContent = 'ふるり値の基準データ読み込み中…「ダメージ比較」タブを開くと構築されます。';
+                else if (!baseMapForMode) hintEl.textContent = 'ふるり値の基準データ読み込み中…「ダメージ比較」タブを開くと構築されます。';
                 else if (!values.some(v => v > 0)) hintEl.textContent = '属性ダメージを登録するとグラフに反映されます。';
+                else if (_myRadarMode === 'mean') hintEl.textContent = '1.00 = ふるりの5属性平均と同等(同SLv換算)。全属性同じ目安で「育成バランス」を見やすい。';
+                else if (_myRadarMode === 'median') hintEl.textContent = '1.00 = ユニオン中央値と同等。「自分のユニオン内位置」が分かる。';
                 else hintEl.textContent = '1.00 = 基準者(同SLv換算)と同等。高いほど得意属性。';
             }
 
@@ -6076,27 +6118,33 @@
             }
         }
 
-        function calculateFururiScore(playerDamage, playerSLv, basePlayer) {
+        function calculateFururiScore(playerDamage, playerSLv, basePlayer, mode = 'classic') {
             if (!slvRatioTable || !basePlayer) return null;
             if (!playerSLv || playerSLv <= 0) return null;
             const baseRatio = slvRatioTable[String(basePlayer.syncLevel)];
             const playerRatio = slvRatioTable[String(playerSLv)];
             if (!baseRatio || !playerRatio) return null;
-            const baseScaled = basePlayer.damage * playerRatio / baseRatio;
+            const baseTotal = getFururiBaseTotalsByMode(basePlayer, mode);
+            const baseScaled = baseTotal * playerRatio / baseRatio;
             return playerDamage / baseScaled;
         }
 
-        // 属性(bossCode)別ふるり値の基準マップを構築
-        // { bossCode: { damage, slv } } — ふるりの実凸 + metadata.fururiSimulationScores
+        // 属性(bossCode)別ふるり値の基準マップ群を構築
+        // - fururiBaseMap (classic)    : ふるり本人の bossCode別 ダメージ
+        // - fururiBaseMapMean (均整)   : ふるり本人の 5属性平均を全bossCodeに展開
+        // - fururiBaseMapMedian (中央) : ユニオン全体の bossCode別 中央値 (基準SLv換算)
         function buildFururiBaseMap() {
             fururiBaseMap = null;
+            window.fururiBaseMapMean = null;
+            window.fururiBaseMapMedian = null;
             if (!currentData || currentData.length === 0) return;
             const basePlayer = currentData.find(p => p.player === fururiBasePlayerName && p.syncLevel > 0);
             if (!basePlayer) return;
+
+            // --- classic: ふるりの bossCode別 max ---
             const map = {};
             (basePlayer.attacks || []).forEach(a => {
                 if (!a.bossCode) return;
-                // 同一bossCodeを2回以上凸している場合は最大ダメージを基準に採用
                 if (!map[a.bossCode] || a.damage > map[a.bossCode].damage) {
                     map[a.bossCode] = { damage: a.damage, slv: basePlayer.syncLevel };
                 }
@@ -6108,17 +6156,88 @@
                 }
             });
             fururiBaseMap = map;
+
+            // --- 均整: ふるりの5属性平均ダメージを全bossCodeで共通基準に ---
+            const vals = Object.values(map).map(v => v.damage).filter(v => v > 0);
+            if (vals.length > 0) {
+                const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+                const meanMap = {};
+                Object.keys(map).forEach(code => { meanMap[code] = { damage: mean, slv: basePlayer.syncLevel }; });
+                window.fururiBaseMapMean = meanMap;
+            }
+
+            // --- 中央: ユニオン全体の bossCode別中央値 (各凸を基準SLvに正規化してから中央値) ---
+            const baseSlv = basePlayer.syncLevel;
+            const baseRatio = slvRatioTable && slvRatioTable[String(baseSlv)];
+            if (baseRatio) {
+                const normByCode = {};
+                (currentData || []).forEach(p => {
+                    if (!p.syncLevel || p.syncLevel <= 0) return;
+                    const pr = slvRatioTable[String(p.syncLevel)];
+                    if (!pr) return;
+                    (p.attacks || []).forEach(a => {
+                        if (!a.bossCode || !(a.damage > 0)) return;
+                        const normalized = a.damage * baseRatio / pr;
+                        if (!normByCode[a.bossCode]) normByCode[a.bossCode] = [];
+                        normByCode[a.bossCode].push(normalized);
+                    });
+                });
+                const median = arr => {
+                    const s = [...arr].sort((a, b) => a - b);
+                    const n = s.length;
+                    return n === 0 ? 0 : (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2);
+                };
+                const medianMap = {};
+                Object.keys(map).forEach(code => {
+                    const arr = normByCode[code] || [];
+                    if (arr.length > 0) {
+                        medianMap[code] = { damage: median(arr), slv: baseSlv };
+                    } else {
+                        // 中央値が取れない属性は classic にフォールバック
+                        medianMap[code] = map[code];
+                    }
+                });
+                window.fururiBaseMapMedian = medianMap;
+            }
         }
 
-        function calculatePerAttackFururi(damage, playerSLv, bossCode) {
-            if (!fururiBaseMap || !bossCode || !fururiBaseMap[bossCode]) return null;
+        // mode: 'classic' (vs ふるり / 既定) | 'mean' (均整 vs ふるり平均) | 'median' (vs ユニオン中央値)
+        function getFururiBaseMapByMode(mode) {
+            if (mode === 'mean') return window.fururiBaseMapMean || fururiBaseMap;
+            if (mode === 'median') return window.fururiBaseMapMedian || fururiBaseMap;
+            return fururiBaseMap;
+        }
+
+        function calculatePerAttackFururi(damage, playerSLv, bossCode, mode = 'classic') {
+            const baseMap = getFururiBaseMapByMode(mode);
+            if (!baseMap || !bossCode || !baseMap[bossCode]) return null;
             if (!slvRatioTable || !playerSLv || playerSLv <= 0) return null;
-            const base = fururiBaseMap[bossCode];
+            const base = baseMap[bossCode];
             const baseRatio = slvRatioTable[String(base.slv)];
             const playerRatio = slvRatioTable[String(playerSLv)];
             if (!baseRatio || !playerRatio) return null;
             const baseScaled = base.damage * playerRatio / baseRatio;
             return damage / baseScaled;
+        }
+
+        // 全体（3凸合計）モードでも mode を反映するために basePlayer の合計ダメージを基準補正する
+        function getFururiBaseTotalsByMode(basePlayer, mode) {
+            if (mode === 'mean') {
+                // ふるりの3凸平均×3 = ふるり平均と同じ位置基準
+                const mp = window.fururiBaseMapMean;
+                if (mp) {
+                    const vals = Object.values(mp).map(v => v.damage);
+                    if (vals.length > 0) return vals[0] * 3;  // 全bossCode同値
+                }
+            } else if (mode === 'median') {
+                const mp = window.fururiBaseMapMedian;
+                if (mp) {
+                    // 5属性中央値の合計 (全攻撃可能属性が満点と仮定した上界)
+                    const totals = Object.values(mp).map(v => v.damage);
+                    if (totals.length > 0) return totals.reduce((a, b) => a + b, 0) * 3 / totals.length;
+                }
+            }
+            return basePlayer.damage;  // classic
         }
 
         function switchFururiBoss(code) {
@@ -6129,8 +6248,30 @@
             renderFururiRanking();
         }
 
+        // ふるり値の基準モード ('classic' | 'mean' | 'median')
+        let currentFururiMode = 'classic';
+        const FURURI_MODE_HINTS = {
+            classic: '基準者(ふるり)本人の各属性ダメージと直接比較。「ふるりとの相対力」を見る。',
+            mean: 'ふるりの5属性平均ダメージを全属性の共通基準に。属性ごとの偏りを補正し「育成バランス指針」として読む。',
+            median: 'ユニオン全体の bossCode 別 中央値を基準。「ユニオン内の自分の位置」が分かる。月をまたぐ比較には不向き。',
+        };
+        function switchFururiMode(mode) {
+            currentFururiMode = mode;
+            ['classic', 'mean', 'median'].forEach(k => {
+                const b = document.getElementById('fururiModeBtn' + k[0].toUpperCase() + k.slice(1));
+                if (b) b.classList.toggle('active', k === mode);
+            });
+            const hint = document.getElementById('fururiModeHint');
+            if (hint) hint.textContent = FURURI_MODE_HINTS[mode] || '';
+            renderFururiRanking();
+            // マイページのレーダーは別途トグル管理（共有しない: マイページにも独立のトグルを置く想定）
+        }
+
         function renderFururiRanking() {
             const tbody = document.getElementById('fururiRankingBody');
+            // モードヒントを毎回更新 (ページ初回も反映)
+            const hintEl = document.getElementById('fururiModeHint');
+            if (hintEl) hintEl.textContent = FURURI_MODE_HINTS[currentFururiMode] || '';
             if (!currentData || currentData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">データがありません</td></tr>';
                 return;
@@ -6153,11 +6294,11 @@
                 baseInfoEl.textContent = `${basePlayer.player} (SLv ${basePlayer.syncLevel}, ${(basePlayer.damage / 1e9).toFixed(3)} B)`;
             }
 
-            // 全体表示: 3凸合計ベース（既存挙動）
+            // 全体表示: 3凸合計ベース
             if (currentFururiBossCode === 'ALL') {
                 const ranked = currentData
                     .filter(p => p.syncLevel > 0)
-                    .map(p => ({ ...p, fururiScore: calculateFururiScore(p.damage, p.syncLevel, basePlayer) }))
+                    .map(p => ({ ...p, fururiScore: calculateFururiScore(p.damage, p.syncLevel, basePlayer, currentFururiMode) }))
                     .filter(p => p.fururiScore !== null)
                     .sort((a, b) => b.fururiScore - a.fururiScore);
 
@@ -6183,9 +6324,10 @@
 
             // 属性別表示: 1凸=1行、同属性2凸は別行、その属性を凸していない人は非表示
             const code = currentFururiBossCode;
-            const baseEntry = fururiBaseMap && fururiBaseMap[code];
+            const baseMap = getFururiBaseMapByMode(currentFururiMode);
+            const baseEntry = baseMap && baseMap[code];
             if (!baseEntry) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">基準者がこの属性のスコアを未登録です</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 24px;">この属性の基準が未構築です</td></tr>';
                 return;
             }
 
@@ -6194,7 +6336,7 @@
                 if (!p.syncLevel || p.syncLevel <= 0) return;
                 (p.attacks || []).forEach((a, idx) => {
                     if (a.bossCode !== code) return;
-                    const score = calculatePerAttackFururi(a.damage, p.syncLevel, code);
+                    const score = calculatePerAttackFururi(a.damage, p.syncLevel, code, currentFururiMode);
                     if (score === null) return;
                     // 同プレイヤーが同属性を複数凸している場合は番号付与
                     const sameCount = (p.attacks || []).filter(x => x.bossCode === code).length;
