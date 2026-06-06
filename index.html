@@ -1115,7 +1115,7 @@
                     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
                         <button id="mypageRadarModeBtnClassic" onclick="switchMyRadarMode('classic')" class="sim-mode-btn active" style="padding:5px 10px;font-size:11px;">対ふるり</button>
                         <button id="mypageRadarModeBtnMean" onclick="switchMyRadarMode('mean')" class="sim-mode-btn" style="padding:5px 10px;font-size:11px;">均整</button>
-                        <button id="mypageRadarModeBtnMedian" onclick="switchMyRadarMode('median')" class="sim-mode-btn" style="padding:5px 10px;font-size:11px;">中央</button>
+                        <button id="mypageRadarModeBtnMedian" onclick="switchMyRadarMode('median')" class="sim-mode-btn" style="padding:5px 10px;font-size:11px;">上位10名</button>
                     </div>
                     <div style="position:relative;max-width:360px;margin:0 auto;">
                         <canvas id="mypageRadarChart"></canvas>
@@ -1405,7 +1405,7 @@
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                             <button id="fururiModeBtnClassic" onclick="switchFururiMode('classic')" class="sim-mode-btn active">対ふるり</button>
                             <button id="fururiModeBtnMean" onclick="switchFururiMode('mean')" class="sim-mode-btn">均整 (ふるり平均)</button>
-                            <button id="fururiModeBtnMedian" onclick="switchFururiMode('median')" class="sim-mode-btn">中央 (ユニオン)</button>
+                            <button id="fururiModeBtnMedian" onclick="switchFururiMode('median')" class="sim-mode-btn">上位10名平均</button>
                         </div>
                     </div>
                 </div>
@@ -1814,7 +1814,7 @@
                         <ul>
                             <li><strong>対ふるり（既定）</strong>: 基準者ふるり本人の各属性ダメージと直接比較。「ふるりとの相対力」。</li>
                             <li><strong>均整（ふるり平均）</strong>: ふるりの5属性平均ダメージを全属性の共通基準に。<strong>ふるり自身の属性偏りを補正</strong>するので、育成バランスの指針として読みやすい。</li>
-                            <li><strong>中央（ユニオン中央値）</strong>: ユニオン全体の bossCode 別中央値を基準。「自分のユニオン内の位置」が分かる。月をまたぐ比較には不向き。</li>
+                            <li><strong>上位10名平均（ユニオン）</strong>: 各属性で <strong>SLv正規化済みダメージの上位10名平均</strong> を基準にする（プレイヤーごとに同属性最大値を採用）。未熟な属性や締め凸の頭打ちダメを排除し、「<strong>現実的に目指せる上限</strong>」を基準にできる。月をまたぐ比較には不向き。</li>
                         </ul></section>
 
                     <section id="help-plan" class="help-section">
@@ -2711,7 +2711,7 @@
             });
 
             const modeLabel = _myRadarMode === 'mean' ? '均整(ふるり平均)'
-                : _myRadarMode === 'median' ? '中央(ユニオン)'
+                : _myRadarMode === 'median' ? '上位10名平均(ユニオン)'
                 : `対 ${fururiBasePlayerName}`;
             if (metaEl) {
                 metaEl.textContent = slv
@@ -2723,7 +2723,7 @@
                 else if (!baseMapForMode) hintEl.textContent = 'ふるり値の基準データ読み込み中…「ダメージ比較」タブを開くと構築されます。';
                 else if (!values.some(v => v > 0)) hintEl.textContent = '属性ダメージを登録するとグラフに反映されます。';
                 else if (_myRadarMode === 'mean') hintEl.textContent = '1.00 = ふるりの5属性平均と同等(同SLv換算)。全属性同じ目安で「育成バランス」を見やすい。';
-                else if (_myRadarMode === 'median') hintEl.textContent = '1.00 = ユニオン中央値と同等。「自分のユニオン内位置」が分かる。';
+                else if (_myRadarMode === 'median') hintEl.textContent = '1.00 = ユニオン上位10名の平均と同等。「現実的に目指せる上限」に対する自分の位置。';
                 else hintEl.textContent = '1.00 = 基準者(同SLv換算)と同等。高いほど得意属性。';
             }
 
@@ -6166,11 +6166,14 @@
                 window.fururiBaseMapMean = meanMap;
             }
 
-            // --- 中央: ユニオン全体の bossCode別中央値 (各凸を基準SLvに正規化してから中央値) ---
+            // --- 上位10名平均: 各bossCodeで「SLv正規化済みダメージ」の上位10名平均を基準に。
+            //     未熟者や締め凸ダメで実力より低く出た凸を排除した「現実的な目安上限」。
+            //     プレイヤーごとに同bossCodeの最大ダメージのみを採用 (同属性2凸の低い方を排除)。
             const baseSlv = basePlayer.syncLevel;
             const baseRatio = slvRatioTable && slvRatioTable[String(baseSlv)];
+            const TOP_N = 10;
             if (baseRatio) {
-                const normByCode = {};
+                const bestPerPlayerByCode = {};  // {code: Map<playerName, normalized>}
                 (currentData || []).forEach(p => {
                     if (!p.syncLevel || p.syncLevel <= 0) return;
                     const pr = slvRatioTable[String(p.syncLevel)];
@@ -6178,30 +6181,30 @@
                     (p.attacks || []).forEach(a => {
                         if (!a.bossCode || !(a.damage > 0)) return;
                         const normalized = a.damage * baseRatio / pr;
-                        if (!normByCode[a.bossCode]) normByCode[a.bossCode] = [];
-                        normByCode[a.bossCode].push(normalized);
+                        if (!bestPerPlayerByCode[a.bossCode]) bestPerPlayerByCode[a.bossCode] = new Map();
+                        const prev = bestPerPlayerByCode[a.bossCode].get(p.player) || 0;
+                        if (normalized > prev) bestPerPlayerByCode[a.bossCode].set(p.player, normalized);
                     });
                 });
-                const median = arr => {
-                    const s = [...arr].sort((a, b) => a - b);
-                    const n = s.length;
-                    return n === 0 ? 0 : (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2);
+                const topNAvg = (mapByPlayer, n) => {
+                    const vals = [...(mapByPlayer?.values() || [])].sort((a, b) => b - a).slice(0, n);
+                    return vals.length === 0 ? 0 : vals.reduce((s, v) => s + v, 0) / vals.length;
                 };
-                const medianMap = {};
+                const topMap = {};
                 Object.keys(map).forEach(code => {
-                    const arr = normByCode[code] || [];
-                    if (arr.length > 0) {
-                        medianMap[code] = { damage: median(arr), slv: baseSlv };
+                    const mp = bestPerPlayerByCode[code];
+                    if (mp && mp.size > 0) {
+                        topMap[code] = { damage: topNAvg(mp, TOP_N), slv: baseSlv, sampleSize: Math.min(mp.size, TOP_N) };
                     } else {
-                        // 中央値が取れない属性は classic にフォールバック
-                        medianMap[code] = map[code];
+                        // データが無い属性は classic にフォールバック
+                        topMap[code] = map[code];
                     }
                 });
-                window.fururiBaseMapMedian = medianMap;
+                window.fururiBaseMapMedian = topMap;  // 変数名は互換性のため median のまま
             }
         }
 
-        // mode: 'classic' (vs ふるり / 既定) | 'mean' (均整 vs ふるり平均) | 'median' (vs ユニオン中央値)
+        // mode: 'classic' (vs ふるり / 既定) | 'mean' (均整 vs ふるり平均) | 'median' (vs ユニオン上位10名平均)
         function getFururiBaseMapByMode(mode) {
             if (mode === 'mean') return window.fururiBaseMapMean || fururiBaseMap;
             if (mode === 'median') return window.fururiBaseMapMedian || fururiBaseMap;
@@ -6232,7 +6235,7 @@
             } else if (mode === 'median') {
                 const mp = window.fururiBaseMapMedian;
                 if (mp) {
-                    // 5属性中央値の合計 (全攻撃可能属性が満点と仮定した上界)
+                    // 5属性 上位10名平均 の平均 × 3 を「ユニオン上位の典型的3凸合計」とする
                     const totals = Object.values(mp).map(v => v.damage);
                     if (totals.length > 0) return totals.reduce((a, b) => a + b, 0) * 3 / totals.length;
                 }
@@ -6253,7 +6256,7 @@
         const FURURI_MODE_HINTS = {
             classic: '基準者(ふるり)本人の各属性ダメージと直接比較。「ふるりとの相対力」を見る。',
             mean: 'ふるりの5属性平均ダメージを全属性の共通基準に。属性ごとの偏りを補正し「育成バランス指針」として読む。',
-            median: 'ユニオン全体の bossCode 別 中央値を基準。「ユニオン内の自分の位置」が分かる。月をまたぐ比較には不向き。',
+            median: 'ユニオン上位10名の平均（SLv正規化済み）を基準に。未熟者/締め凸ダメを排除した「現実的に目指せる上限」。月をまたぐ比較には不向き。',
         };
         function switchFururiMode(mode) {
             currentFururiMode = mode;
