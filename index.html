@@ -1235,11 +1235,17 @@
 
             <!-- 残凸状況一覧 -->
             <div class="card" style="padding:20px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <h3 style="margin:0;font-size:16px;font-weight:600;">📊 残凸状況一覧</h3>
-                    <span id="opsRemainingSummary" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <div style="display:flex;gap:4px;">
+                            <button id="opsRemFilterAll" onclick="handleOpsRemainingFilterPick('all')" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);">👥 全員</button>
+                            <button id="opsRemFilterNow" onclick="handleOpsRemainingFilterPick('available-now')" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);">⏰ 凸可能のみ</button>
+                        </div>
+                        <span id="opsRemainingSummary" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
+                    </div>
                 </div>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">残凸あるメンバーを残凸数別にグループ表示します。各属性の登録ダメージも一覧で見られます。</p>
+                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">残凸あるメンバーを残凸数別にグループ表示します。「⏰ 凸可能のみ」で現在の時間帯をONにしている人だけに絞れます。</p>
                 <div id="opsRemainingList">
                     <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
                 </div>
@@ -3555,20 +3561,52 @@
             await renderOpsDashboard();
         }
 
+        let _opsRemainingFilter = 'all';  // 'all' | 'available-now'
+
+        function handleOpsRemainingFilterPick(mode) {
+            _opsRemainingFilter = mode;
+            renderOpsRemainingList();
+        }
+
         function renderOpsRemainingList() {
             if (!_opsDashboardCache) return;
             const { players } = _opsDashboardCache;
             const listEl = document.getElementById('opsRemainingList');
             const summaryEl = document.getElementById('opsRemainingSummary');
 
-            const remaining = players
+            // フィルタボタンの active 状態を更新
+            const btnAll = document.getElementById('opsRemFilterAll');
+            const btnNow = document.getElementById('opsRemFilterNow');
+            const activeStyle = { bg: 'var(--md-sys-color-primary)', color: 'var(--md-sys-color-on-primary)', border: 'var(--md-sys-color-primary)' };
+            const idleStyle = { bg: 'var(--md-sys-color-surface)', color: 'var(--md-sys-color-on-surface)', border: 'var(--md-sys-color-outline-variant)' };
+            const applyStyle = (btn, on) => {
+                if (!btn) return;
+                const s = on ? activeStyle : idleStyle;
+                btn.style.background = s.bg;
+                btn.style.color = s.color;
+                btn.style.borderColor = s.border;
+            };
+            applyStyle(btnAll, _opsRemainingFilter === 'all');
+            applyStyle(btnNow, _opsRemainingFilter === 'available-now');
+
+            const currentSlot = getCurrentSlotJST();
+            const slotLabel = TIME_SLOTS.find(s => s.key === currentSlot)?.label || currentSlot;
+
+            const allRemaining = players
                 .filter(p => p.attackCount < 3)
                 .map(p => ({ ...p, remain: 3 - p.attackCount }));
+            const remaining = (_opsRemainingFilter === 'available-now')
+                ? allRemaining.filter(p => (p.availableSlots || []).includes(currentSlot))
+                : allRemaining;
             const totalRemain = remaining.reduce((s, p) => s + p.remain, 0);
-            summaryEl.textContent = `${remaining.length}名 / ${totalRemain}凸残`;
+            const modeBadge = _opsRemainingFilter === 'available-now' ? `⏰ ${slotLabel} / ` : '';
+            summaryEl.textContent = `${modeBadge}${remaining.length}名 / ${totalRemain}凸残`;
 
             if (remaining.length === 0) {
-                listEl.innerHTML = '<p style="color:#22c55e;font-size:13px;font-weight:600;">🎉 全員凸完了！</p>';
+                const msg = _opsRemainingFilter === 'available-now'
+                    ? `<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">🕓 ${slotLabel} に凸可能なメンバーがいません。<br><span style="font-size:11px;">「👥 全員」に切替で全体表示。</span></p>`
+                    : '<p style="color:#22c55e;font-size:13px;font-weight:600;">🎉 全員凸完了！</p>';
+                listEl.innerHTML = msg;
                 return;
             }
             const groups = { 3: [], 2: [], 1: [] };
