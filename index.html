@@ -1136,8 +1136,8 @@
                 <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);margin-bottom:10px;">
                     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                         <span style="font-size:18px;">📷</span>
-                        <span style="flex:1;">模擬戦/凸結果のスクショから自動登録（AI画像認識）</span>
-                        <input type="file" id="mypageDmgOcrInput" accept="image/*" onchange="handleMyDamageOcrUpload(event)" style="display:none;">
+                        <span style="flex:1;">模擬戦/凸結果のスクショから自動登録（複数枚OK: TOTAL DAMAGE画面と戦闘履歴を両方送ると編成まで取得・属性自動判別）</span>
+                        <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
                         <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
                     </label>
                     <p id="mypageDmgOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
@@ -2229,6 +2229,37 @@
         </div>
     </div>
 
+    <!-- ========== 編成編集モーダル (マイページの属性別ダメ行から開く) ========== -->
+    <div class="player-select-modal" id="myTeamEditModal">
+        <div class="player-select-content" style="max-width:480px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2 id="myTeamEditTitle">✏️ 編成編集</h2>
+                <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">この属性で使う5キャラを登録します。テキストで直接入力するか、戦闘履歴画像から OCR で自動入力できます。</p>
+
+            <!-- 画像取り込み -->
+            <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                    <span style="font-size:18px;">📷</span>
+                    <span style="flex:1;">戦闘履歴スクショから5キャラを自動入力（複数枚OK）</span>
+                    <input type="file" id="myTeamEditOcrInput" accept="image/*" multiple onchange="handleMyTeamEditOcr(event)" style="display:none;">
+                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                </label>
+                <p id="myTeamEditOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            </div>
+
+            <!-- 5キャラ入力欄 -->
+            <div id="myTeamEditFields" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+            <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== 凸報告モーダル ========== -->
     <div class="player-select-modal" id="myAttackModal">
         <div class="player-select-content" style="max-width:500px;">
@@ -2242,8 +2273,8 @@
             <div id="myAttackOcrSection" style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                     <span style="font-size:18px;">📷</span>
-                    <span style="flex:1;">凸結果のスクショから自動入力（AI画像認識）</span>
-                    <input type="file" id="myAttackOcrInput" accept="image/*" onchange="handleMyAttackOcrUpload(event)" style="display:none;">
+                    <span style="flex:1;">凸結果スクショから自動入力（複数枚OK: TOTAL DAMAGE画面と戦闘履歴を両方選ぶと編成まで取得）</span>
+                    <input type="file" id="myAttackOcrInput" accept="image/*" multiple onchange="handleMyAttackOcrUpload(event)" style="display:none;">
                     <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
                 </label>
                 <p id="myAttackOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
@@ -2671,40 +2702,94 @@
             renderMyFururiRadar(identity, damages);
         }
 
-        // 編成編集ハンドラ (MVP: prompt で5名カンマ区切り入力)
+        // 編成編集モーダル
+        let _myTeamEditAttr = null;
         async function handleMyTeamEdit(attrKey) {
             const id = getCurrentIdentity();
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
             const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || attrKey;
+            _myTeamEditAttr = attrKey;
             // 現在の編成を取得して初期表示
-            let current = [];
+            let current = ['', '', '', '', ''];
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
                 const row = (dmgs || []).find(d => d.attribute === attrKey);
-                current = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
+                const existing = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
+                for (let i = 0; i < 5; i++) current[i] = existing[i] || '';
             } catch { /* noop */ }
-            const initial = current.join(', ');
-            const input = prompt(
-                `${ptName}PT 編成の5キャラ名をカンマ区切りで入力\n例: アニス:スター, クラウン, ラピ:レッドフード, レッドフード, レイヴン`,
-                initial
-            );
-            if (input == null) return;  // cancel
-            const names = input.split(/[、,]/).map(s => s.trim()).filter(Boolean);
-            if (names.length === 0) {
-                if (!confirm('入力が空です。編成を削除しますか？')) return;
+            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成`;
+            document.getElementById('myTeamEditOcrStatus').textContent = '';
+            document.getElementById('myTeamEditMessage').textContent = '';
+            const fieldsEl = document.getElementById('myTeamEditFields');
+            fieldsEl.innerHTML = current.map((v, i) => `
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="min-width:24px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">${i + 1}.</span>
+                    <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                </div>`).join('');
+            // datalist: マスタから autocomplete
+            try {
+                const master = await window.supabaseLoadCharacterMaster();
+                if (master && master.length > 0) {
+                    let dl = document.getElementById('myTeamEditDataList');
+                    if (!dl) {
+                        dl = document.createElement('datalist');
+                        dl.id = 'myTeamEditDataList';
+                        document.body.appendChild(dl);
+                    }
+                    dl.innerHTML = master.slice(0, 200).map(m => `<option value="${escapeHtml(m.canonical_name)}">`).join('');
+                }
+            } catch { /* noop */ }
+            document.getElementById('myTeamEditModal').classList.add('open');
+        }
+        function closeMyTeamEditModal() {
+            document.getElementById('myTeamEditModal').classList.remove('open');
+            _myTeamEditAttr = null;
+        }
+
+        async function handleMyTeamEditOcr(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            const statusEl = document.getElementById('myTeamEditOcrStatus');
+            if (files.length === 0) return;
+            statusEl.textContent = `🔍 ${files.length}枚をAIで解析中... (1枚あたり10〜20秒)`;
+            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            try {
+                const r = await _ocrAttackMultiAndMerge(files);
+                if (!r.characters || r.characters.length === 0) throw new Error('キャラ名を読み取れませんでした');
+                const inputs = document.querySelectorAll('#myTeamEditFields input[data-team-idx]');
+                r.characters.slice(0, 5).forEach((name, i) => {
+                    if (inputs[i] && name) inputs[i].value = name;
+                });
+                statusEl.textContent = `✅ ${r.characters.length}キャラ取り込み`;
+                statusEl.style.color = '#22c55e';
+            } catch (e) {
+                statusEl.textContent = `❌ ${e?.message || e}`;
+                statusEl.style.color = '#ef4444';
             }
+        }
+
+        async function handleMyTeamEditSave() {
+            if (!_myTeamEditAttr) return;
+            const id = getCurrentIdentity();
+            if (!id?.id) { alert('プレイヤー未選択です'); return; }
+            const inputs = document.querySelectorAll('#myTeamEditFields input[data-team-idx]');
+            const names = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+            const msgEl = document.getElementById('myTeamEditMessage');
+            const setMsg = (t, err = false) => { msgEl.textContent = t; msgEl.style.color = err ? '#ef4444' : '#22c55e'; };
             try {
                 let canonical = names;
                 if (names.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
                     const reg = await window.supabaseRegisterOcrCharacters(names);
                     canonical = (reg.canonical || names).filter(Boolean);
                 }
-                await window.supabaseSaveTeamForAttribute(id.id, attrKey, canonical);
-                showNotification(`✅ ${ptName}PT の編成を更新しました`);
+                await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical);
+                const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
+                setMsg(`✅ ${ptName}PT の編成を更新しました`);
                 _opsDashboardCache = null;
                 await renderMyDamageInputs(id);
+                setTimeout(() => closeMyTeamEditModal(), 700);
             } catch (e) {
-                alert(`保存失敗: ${e?.message || e}`);
+                setMsg(`❌ 保存失敗: ${e?.message || e}`, true);
             }
         }
 
@@ -2832,43 +2917,59 @@
 
         // 画像から属性別ダメージを自動登録
         async function handleMyDamageOcrUpload(event) {
-            const file = event.target.files?.[0];
+            const files = Array.from(event.target.files || []);
             event.target.value = '';
             const statusEl = document.getElementById('mypageDmgOcrStatus');
-            if (!file) return;
+            if (files.length === 0) return;
             const id = getCurrentIdentity();
             if (!id?.id) { statusEl.textContent = '❌ プレイヤー未選択'; statusEl.style.color = '#ef4444'; return; }
 
-            statusEl.textContent = '🔍 AIで解析中... (10〜20秒)';
+            statusEl.textContent = `🔍 ${files.length}枚をAIで解析中... (1枚あたり10〜20秒)`;
             statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
             try {
-                const dataUrl = await window.fileToDataUrl(file);
-                const res = await window.callAiVision(dataUrl, 'attack_result');
-                const r = res.result;
-                if (!r || !r.totalDamage) throw new Error('ダメージを読み取れませんでした');
+                // 複数画像を「first non-null」マージ (TOTAL DAMAGE画面 + 戦闘履歴画面の合体)
+                const r = await _ocrAttackMultiAndMerge(files);
+                if (r.totalDamage == null && (!r.characters || r.characters.length === 0)) {
+                    throw new Error('ダメージも編成も読み取れませんでした');
+                }
 
-                // ボス名 → PT属性 検出
+                // ボス名 → PT属性 検出 (ダメージ更新用)
                 let ptAttr = await detectPtAttrFromBossName(r.bossName);
-                if (!ptAttr) {
-                    // 検出できなかったらユーザーに選んでもらう
+                if (!ptAttr && r.totalDamage != null) {
                     const choicesText = PT_ATTRS.map((a, i) => `${i + 1}. ${a.name}PT (対 ${a.bossJP})`).join('\n');
                     const pickStr = prompt(`ボス名「${r.bossName || '?'}」のPT属性を判別できませんでした。\nどのPT属性のダメージか番号で選んでください:\n\n${choicesText}`);
                     const pickIdx = parseInt(pickStr) - 1;
-                    if (isNaN(pickIdx) || pickIdx < 0 || pickIdx >= PT_ATTRS.length) {
-                        throw new Error('属性が選択されませんでした');
+                    if (!isNaN(pickIdx) && pickIdx >= 0 && pickIdx < PT_ATTRS.length) {
+                        ptAttr = PT_ATTRS[pickIdx].key;
                     }
-                    ptAttr = PT_ATTRS[pickIdx].key;
                 }
 
-                const damageB = Number(r.totalDamage) / 1e9;
-                const input = document.querySelector(`#mypageDmgInputs input[data-attr="${ptAttr}"]`);
-                if (!input) throw new Error('入力欄が見つかりません');
-                input.value = damageB.toFixed(2).replace(/\.?0+$/, '');
-                await handleMyDamageBlur(input);
-
-                const ptName = PT_ATTRS.find(x => x.key === ptAttr)?.name;
-                const bossInfo = r.bossName ? ` (${r.bossName})` : '';
-                statusEl.textContent = `✅ ${ptName}PT に ${damageB.toFixed(2)} B を登録しました${bossInfo}`;
+                const parts = [`${files.length}枚解析`];
+                // ダメージ反映 (属性確定時のみ)
+                if (ptAttr && r.totalDamage != null) {
+                    const damageB = Number(r.totalDamage) / 1e9;
+                    const input = document.querySelector(`#mypageDmgInputs input[data-attr="${ptAttr}"]`);
+                    if (input) {
+                        input.value = damageB.toFixed(2).replace(/\.?0+$/, '');
+                        await handleMyDamageBlur(input);
+                        parts.push(`${PT_ATTRS.find(x => x.key === ptAttr)?.name}PT: ${damageB.toFixed(2)} B`);
+                    }
+                }
+                // 編成も登録 (属性確定 & 5キャラ取得時)
+                if (ptAttr && Array.isArray(r.characters) && r.characters.length > 0
+                    && typeof window.supabaseRegisterOcrCharacters === 'function') {
+                    try {
+                        const reg = await window.supabaseRegisterOcrCharacters(r.characters);
+                        const canon = (reg.canonical || []).filter(Boolean);
+                        if (canon.length > 0) {
+                            await window.supabaseSaveTeamForAttribute(id.id, ptAttr, canon);
+                            parts.push(`編成${canon.length}名登録`);
+                            // 一覧再描画
+                            renderMyDamageInputs(id);
+                        }
+                    } catch (e) { console.warn('[mock team save]', e?.message || e); }
+                }
+                statusEl.textContent = `✅ ${parts.join(' / ')}`;
                 statusEl.style.color = '#22c55e';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
@@ -3396,20 +3497,47 @@
         }
 
         // 凸報告モーダル: 画像から読み取り
-        async function handleMyAttackOcrUpload(event) {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            _myAttackOcrBossHp = null;
-            _myAttackOcrCharacters = null;  // 旧読取値を必ずクリアしてから始める
-            const statusEl = document.getElementById('myAttackOcrStatus');
-            if (!file) return;
-            statusEl.textContent = '🔍 画像をAIで解析中... (10〜20秒)';
-            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
-            try {
+        // 複数画像を attack_result でOCRし、各画像の結果を「first non-null」でマージ。
+        // characters は length===5 の画像があればそれを優先、無ければ全画像の和集合を最大5要素で。
+        async function _ocrAttackMultiAndMerge(files) {
+            const results = [];
+            for (const file of files) {
                 const dataUrl = await window.fileToDataUrl(file);
                 const res = await window.callAiVision(dataUrl, 'attack_result');
-                const r = res.result;
-                if (!r || (!r.bossName && !r.totalDamage)) {
+                if (res?.result) results.push(res.result);
+            }
+            const pickFirst = (key) => results.map(r => r?.[key]).find(v => v != null && v !== '');
+            // characters: 5枚揃いの画像があれば優先採用、無ければ全画像の和集合 (順序保持・重複除去)
+            const fiveSet = results.find(r => Array.isArray(r?.characters) && r.characters.filter(c => typeof c === 'string' && c.trim()).length >= 5);
+            let characters;
+            if (fiveSet) {
+                characters = fiveSet.characters.filter(c => typeof c === 'string' && c.trim()).slice(0, 5);
+            } else {
+                const all = [];
+                results.forEach(r => (r?.characters || []).forEach(c => { if (typeof c === 'string' && c.trim() && !all.includes(c)) all.push(c); }));
+                characters = all.slice(0, 5);
+            }
+            return {
+                bossName: pickFirst('bossName') ?? null,
+                totalDamage: pickFirst('totalDamage') ?? null,
+                bossMaxHp: pickFirst('bossMaxHp') ?? null,
+                bossRemainingHp: pickFirst('bossRemainingHp') ?? null,
+                characters: characters.length > 0 ? characters : null,
+            };
+        }
+
+        async function handleMyAttackOcrUpload(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            _myAttackOcrBossHp = null;
+            _myAttackOcrCharacters = null;
+            const statusEl = document.getElementById('myAttackOcrStatus');
+            if (files.length === 0) return;
+            statusEl.textContent = `🔍 ${files.length}枚をAIで解析中... (1枚あたり10〜20秒)`;
+            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            try {
+                const r = await _ocrAttackMultiAndMerge(files);
+                if (!r.bossName && r.totalDamage == null && (!r.characters || r.characters.length === 0)) {
                     throw new Error('解析結果が空です。画像を確認してください');
                 }
                 // ボス名 → 現シーズンのボスにマッチ
@@ -3423,16 +3551,13 @@
                         return bn && (bn.includes(target) || target.includes(bn));
                     });
                 }
-                // 値を埋める
                 if (matchedBoss) {
                     const btn = document.querySelector(`#myAttackBossButtons button[data-boss="${matchedBoss.boss_number}"]`);
                     if (btn) handleMyAttackBossPick(btn, matchedBoss.boss_number);
                 }
-                if (r.totalDamage) {
+                if (r.totalDamage != null) {
                     document.getElementById('myAttackDamageInput').value = (Number(r.totalDamage) / 1e9).toFixed(3);
                 }
-                // 結果画面に映ったボス最大HP・残HPがあれば後段の保存で反映
-                _myAttackOcrBossHp = null;
                 if (matchedBoss && (r.bossMaxHp != null || r.bossRemainingHp != null)) {
                     _myAttackOcrBossHp = {
                         seasonId: ctx.season.id,
@@ -3441,18 +3566,16 @@
                         remainingHp: r.bossRemainingHp != null ? Number(r.bossRemainingHp) : null,
                     };
                 }
-                // 使用キャラがあれば後段の保存時に自動学習マスタに登録 + player_damages へ反映
-                _myAttackOcrCharacters = null;
-                if (Array.isArray(r.characters) && r.characters.some(c => typeof c === 'string' && c.trim())) {
-                    _myAttackOcrCharacters = r.characters.filter(c => typeof c === 'string' && c.trim());
+                if (Array.isArray(r.characters) && r.characters.length > 0) {
+                    _myAttackOcrCharacters = r.characters;
                 }
-                const parts = [];
+                const parts = [`${files.length}枚解析`];
                 if (matchedBoss) parts.push(`ボス: ${matchedBoss.name || matchedBoss.boss_code}`);
                 else if (r.bossName) parts.push(`ボス: ${r.bossName} (一致なし)`);
-                if (r.totalDamage) parts.push(`ダメージ: ${(Number(r.totalDamage) / 1e9).toFixed(3)} B`);
+                if (r.totalDamage != null) parts.push(`ダメージ: ${(Number(r.totalDamage) / 1e9).toFixed(3)} B`);
                 if (_myAttackOcrBossHp?.remainingHp != null) parts.push(`残HP: ${(_myAttackOcrBossHp.remainingHp / 1e9).toFixed(2)} B`);
                 if (_myAttackOcrCharacters) parts.push(`編成: ${_myAttackOcrCharacters.length}名取得`);
-                statusEl.textContent = `✅ 読取: ${parts.join(' / ')}`;
+                statusEl.textContent = `✅ ${parts.join(' / ')}`;
                 statusEl.style.color = '#22c55e';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
