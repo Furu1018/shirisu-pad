@@ -17,14 +17,17 @@ const CORS_HEADERS = {
 // ---- 画像系プロンプト ----
 const IMAGE_PROMPTS = {
   attack_result: [
-    "画像はNIKKEのユニオンレイドの凸結果画面です。以下をJSONで抽出してください。",
+    "画像はNIKKEのユニオンレイドの凸結果画面(または戦闘履歴画面)です。以下をJSONで抽出してください。",
     "- bossName: ボス名 (例 ストームブリンガー)。OPERATION COMPLETE や接頭辞 I/II/III/IV/V は除外",
     "- totalDamage: TOTAL DAMAGE の整数値 (カンマ除去)",
     "- bossMaxHp: 結果画面上部のボス最大HP整数値 (Bは10^9倍。判読不能なら null)",
     "- bossRemainingHp: 凸後のボス残HP整数値 (Bは10^9倍。撃破で 0、判読不能なら null)",
+    "- characters: 使用した5キャラの名前を順番に並べた配列。NIKKE名は日本語そのまま (例: \"ラピ:レッドフード\", \"アニス:スター\")。",
+    "    名前の前後の記号(I/II/III/A 等のバースト記号)は除外。コロンは半角 \":\" で統一。",
+    "    画面に映っていない/判読不能なキャラは null を含めて 5要素を維持。取れなければ characters: null。",
     "",
     "出力はJSONのみ。コードフェンス禁止。",
-    '形式: {"bossName":"ストームブリンガー","totalDamage":9673613117,"bossMaxHp":99856279200,"bossRemainingHp":42153117000}',
+    '形式: {"bossName":"ストームブリンガー","totalDamage":9673613117,"bossMaxHp":99856279200,"bossRemainingHp":42153117000,"characters":["アニス:スター","クラウン","ラピ:レッドフード","レッドフード","レイヴン"]}',
   ].join("\n"),
 
   bla_progress: [

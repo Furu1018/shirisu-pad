@@ -2021,6 +2021,17 @@
             </div>
 
             <div class="card" style="padding: 20px; margin-bottom: 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 600;">📚 キャラクターマスタ</h3>
+                    <span id="settingsCharSummary" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);"></span>
+                </div>
+                <p style="margin:0 0 10px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">OCRから自動学習されたキャラ名の一覧。3回以上見ると自動「確定」、未確定はOCRゆれの可能性があります。<br>類似名(50-85%)は手動で統合してマスタを綺麗に保てます。</p>
+                <div style="overflow-x:auto;">
+                    <div id="settingsCharList" style="font-size:12px;">読み込み中…</div>
+                </div>
+            </div>
+
+            <div class="card" style="padding: 20px; margin-bottom: 16px;">
                 <h3 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600;">📦 このブラウザの設定</h3>
                 <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">この端末・このブラウザに保存された情報の管理。</p>
                 <div id="settingsLocalInfo" style="font-size:13px;margin-bottom:10px;"></div>
@@ -2629,24 +2640,72 @@
                 const rec = byAttr.get(a.key);
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : '';
                 const updated = rec?.updated_at ? formatDmgUpdatedAt(rec.updated_at) : '未登録';
+                const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
+                const teamText = team.length > 0
+                    ? team.map(escapeHtml).join('、')
+                    : '<span style="color:var(--md-sys-color-outline-variant);">編成未登録</span>';
                 return `
-                    <div class="mydmg-row" data-row-attr="${a.key}" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <img src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${a.name}PT <span style="font-size:11px;font-weight:400;color:var(--md-sys-color-on-surface-variant);">対 ${a.bossJP}</span></div>
-                            <div class="mydmg-updated" style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${updated}</div>
+                    <div class="mydmg-row" data-row-attr="${a.key}" style="padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <img src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${a.name}PT <span style="font-size:11px;font-weight:400;color:var(--md-sys-color-on-surface-variant);">対 ${a.bossJP}</span></div>
+                                <div class="mydmg-updated" style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${updated}</div>
+                            </div>
+                            <input type="number" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
+                                data-attr="${a.key}" value="${val}"
+                                onblur="handleMyDamageBlur(this)"
+                                onkeydown="if(event.key==='Enter')this.blur()"
+                                style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
+                            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
                         </div>
-                        <input type="number" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
-                            data-attr="${a.key}" value="${val}"
-                            onblur="handleMyDamageBlur(this)"
-                            onkeydown="if(event.key==='Enter')this.blur()"
-                            style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
-                        <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding-left:34px;">
+                            <span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);flex-shrink:0;">編成:</span>
+                            <span style="flex:1;min-width:0;font-size:11px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${team.length > 0 ? team.map(escapeHtml).join('、') : '編成未登録'}">${teamText}</span>
+                            <button onclick="handleMyTeamEdit('${a.key}')" style="padding:3px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:10px;cursor:pointer;">✏️ 編集</button>
+                        </div>
                     </div>`;
             }).join('');
 
             // レーダーチャートも同時に更新
             renderMyFururiRadar(identity, damages);
+        }
+
+        // 編成編集ハンドラ (MVP: prompt で5名カンマ区切り入力)
+        async function handleMyTeamEdit(attrKey) {
+            const id = getCurrentIdentity();
+            if (!id?.id) { alert('プレイヤー未選択です'); return; }
+            const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || attrKey;
+            // 現在の編成を取得して初期表示
+            let current = [];
+            try {
+                const dmgs = await window.supabaseLoadPlayerDamages(id.id);
+                const row = (dmgs || []).find(d => d.attribute === attrKey);
+                current = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
+            } catch { /* noop */ }
+            const initial = current.join(', ');
+            const input = prompt(
+                `${ptName}PT 編成の5キャラ名をカンマ区切りで入力\n例: アニス:スター, クラウン, ラピ:レッドフード, レッドフード, レイヴン`,
+                initial
+            );
+            if (input == null) return;  // cancel
+            const names = input.split(/[、,]/).map(s => s.trim()).filter(Boolean);
+            if (names.length === 0) {
+                if (!confirm('入力が空です。編成を削除しますか？')) return;
+            }
+            try {
+                let canonical = names;
+                if (names.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
+                    const reg = await window.supabaseRegisterOcrCharacters(names);
+                    canonical = (reg.canonical || names).filter(Boolean);
+                }
+                await window.supabaseSaveTeamForAttribute(id.id, attrKey, canonical);
+                showNotification(`✅ ${ptName}PT の編成を更新しました`);
+                _opsDashboardCache = null;
+                await renderMyDamageInputs(id);
+            } catch (e) {
+                alert(`保存失敗: ${e?.message || e}`);
+            }
         }
 
         // PT属性キー → ボスコード (BOSS_ATTRIBUTES の逆引き) を1回だけ構築
@@ -3093,7 +3152,8 @@
         let _activeSeasonCache = null;  // { season, bosses }
         let _myTodayAttacksCache = null;
         let _myAttackSelectedBossNumber = null;
-        let _myAttackOcrBossHp = null;  // 凸報告OCR で取れたボス最大/残HP (保存時に適用)
+        let _myAttackOcrBossHp = null;        // 凸報告OCR で取れたボス最大/残HP (保存時に適用)
+        let _myAttackOcrCharacters = null;    // 凸報告OCR で取れた使用キャラ配列 (保存時に適用)
 
         // PT属性 → ボス側属性のマッピング（ふるりPAD全体で統一）
         function attrToCounterBoss(playerAttr) {
@@ -3282,11 +3342,19 @@
                     if (!ctx?.season) { setMsg('❌ アクティブシーズンが見つかりません', true); return; }
                     const boss = ctx.bosses.find(b => b.boss_number === _myAttackSelectedBossNumber);
                     if (!boss) { setMsg('❌ ボス情報が見つかりません', true); return; }
-                    // OCR で残HPが取れている場合は自動減算をスキップして OCR値で書き換え
+                    // OCRで残HPが取れている場合は自動減算をスキップしてOCR値で書き換え
                     const ocrApplies = _myAttackOcrBossHp
                         && _myAttackOcrBossHp.seasonId === ctx.season.id
                         && _myAttackOcrBossHp.bossNumber === boss.boss_number
                         && _myAttackOcrBossHp.remainingHp != null;
+                    // OCR で使用キャラが取れていたら正規化マスタに自動学習させ canonical名を取得
+                    let canonChars = [];
+                    if (_myAttackOcrCharacters && typeof window.supabaseRegisterOcrCharacters === 'function') {
+                        try {
+                            const reg = await window.supabaseRegisterOcrCharacters(_myAttackOcrCharacters);
+                            canonChars = (reg.canonical || []).filter(Boolean);
+                        } catch (e) { console.warn('[char register]', e?.message || e); }
+                    }
                     await window.supabaseAddAttack({
                         seasonId: ctx.season.id,
                         playerId: id.id,
@@ -3295,7 +3363,7 @@
                         bossCode: boss.boss_code,
                         damageRaw,
                         level: ctx.season.current_level || 1,
-                        characters: [],
+                        characters: canonChars,
                     }, { skipHpDecrement: ocrApplies });
                     if (ocrApplies) {
                         const totalRaw = _myAttackOcrBossHp.maxHp != null ? Number(_myAttackOcrBossHp.maxHp) : Number(boss.total_hp_raw || 0);
@@ -3303,9 +3371,15 @@
                         try { await window.supabaseUpdateBossHp(ctx.season.id, boss.boss_number, totalRaw, remRaw); }
                         catch (e) { console.warn('[ocr hp apply] failed:', e?.message || e); }
                     }
+                    // player_damages[me, 該当属性].characters に編成を反映 (プラン算出の衝突チェックに使用)
+                    if (canonChars.length > 0 && boss.weakness) {
+                        try { await window.supabaseSaveTeamForAttribute(id.id, boss.weakness, canonChars); }
+                        catch (e) { console.warn('[team save]', e?.message || e); }
+                    }
                     setMsg('✅ 凸を報告しました');
                 }
                 _myAttackOcrBossHp = null;
+                _myAttackOcrCharacters = null;
                 _activeSeasonCache = null;
                 _opsDashboardCache = null;
                 // 一覧再読み込み
@@ -3325,7 +3399,8 @@
         async function handleMyAttackOcrUpload(event) {
             const file = event.target.files?.[0];
             event.target.value = '';
-            _myAttackOcrBossHp = null;  // 旧読取値を必ずクリアしてから始める
+            _myAttackOcrBossHp = null;
+            _myAttackOcrCharacters = null;  // 旧読取値を必ずクリアしてから始める
             const statusEl = document.getElementById('myAttackOcrStatus');
             if (!file) return;
             statusEl.textContent = '🔍 画像をAIで解析中... (10〜20秒)';
@@ -3366,11 +3441,17 @@
                         remainingHp: r.bossRemainingHp != null ? Number(r.bossRemainingHp) : null,
                     };
                 }
+                // 使用キャラがあれば後段の保存時に自動学習マスタに登録 + player_damages へ反映
+                _myAttackOcrCharacters = null;
+                if (Array.isArray(r.characters) && r.characters.some(c => typeof c === 'string' && c.trim())) {
+                    _myAttackOcrCharacters = r.characters.filter(c => typeof c === 'string' && c.trim());
+                }
                 const parts = [];
                 if (matchedBoss) parts.push(`ボス: ${matchedBoss.name || matchedBoss.boss_code}`);
                 else if (r.bossName) parts.push(`ボス: ${r.bossName} (一致なし)`);
                 if (r.totalDamage) parts.push(`ダメージ: ${(Number(r.totalDamage) / 1e9).toFixed(3)} B`);
                 if (_myAttackOcrBossHp?.remainingHp != null) parts.push(`残HP: ${(_myAttackOcrBossHp.remainingHp / 1e9).toFixed(2)} B`);
+                if (_myAttackOcrCharacters) parts.push(`編成: ${_myAttackOcrCharacters.length}名取得`);
                 statusEl.textContent = `✅ 読取: ${parts.join(' / ')}`;
                 statusEl.style.color = '#22c55e';
             } catch (e) {
@@ -3415,7 +3496,55 @@
                 renderSettingsSystemInfo(),
                 renderSettingsNotifyStatus(),
                 renderSettingsActivity(),
+                renderSettingsCharMaster(),
             ]);
+        }
+
+        async function renderSettingsCharMaster() {
+            const listEl = document.getElementById('settingsCharList');
+            const sumEl = document.getElementById('settingsCharSummary');
+            if (!listEl) return;
+            listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">読み込み中…</p>';
+            let rows;
+            try {
+                rows = await window.supabaseLoadCharacterMaster();
+            } catch (e) {
+                listEl.innerHTML = `<p style="color:#ef4444;font-size:12px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:var(--md-sys-color-on-surface-variant);">(マイグレーション 07_nikke_characters... が未適用の可能性)</span></p>`;
+                return;
+            }
+            if (!rows || rows.length === 0) {
+                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">まだキャラデータがありません。凸報告OCRが回り始めると自動で蓄積されます。</p>';
+                if (sumEl) sumEl.textContent = '';
+                return;
+            }
+            const confirmed = rows.filter(r => r.is_confirmed).length;
+            if (sumEl) sumEl.textContent = `全 ${rows.length} 件 / 確定 ${confirmed} / 未確定 ${rows.length - confirmed}`;
+            const head = `
+                <div style="display:grid;grid-template-columns: minmax(140px, 1.5fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;background:var(--md-sys-color-surface-variant);border-radius:6px;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">
+                    <div>キャラ名 (canonical)</div>
+                    <div style="text-align:center;">出現</div>
+                    <div style="text-align:center;">状態</div>
+                    <div>エイリアス</div>
+                    <div style="text-align:right;">最終</div>
+                </div>`;
+            const body = rows.map(r => {
+                const status = r.is_confirmed
+                    ? '<span style="color:#22c55e;font-weight:700;">✅確定</span>'
+                    : '<span style="color:#f59e0b;font-weight:700;">⚠未確定</span>';
+                const aliases = Array.isArray(r.aliases) && r.aliases.length > 0
+                    ? escapeHtml(r.aliases.join(', '))
+                    : '<span style="color:var(--md-sys-color-outline-variant);">-</span>';
+                const last = r.last_seen ? SETTINGS_TS_FMT(r.last_seen) : '-';
+                return `
+                    <div style="display:grid;grid-template-columns: minmax(140px, 1.5fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;">
+                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.canonical_name)} (base: ${escapeHtml(r.base_name)})"><strong>${escapeHtml(r.canonical_name)}</strong><br><span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">base: ${escapeHtml(r.base_name)}</span></div>
+                        <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
+                        <div style="text-align:center;">${status}</div>
+                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--md-sys-color-on-surface-variant);">${aliases}</div>
+                        <div style="text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:11px;">${last}</div>
+                    </div>`;
+            }).join('');
+            listEl.innerHTML = `<div style="min-width:560px;">${head}${body}</div>`;
         }
 
         function renderSettingsLocalInfo() {
@@ -4089,6 +4218,9 @@
                         slvEstimated: !!p.syncLevelEstimated,
                         remainingAttacks: 3 - p.attackCount,
                         avail,
+                        teamsByAttr: p.teamsByAttr || {},   // 衝突チェック用編成
+                        usedChars: new Set(),               // すでに割当済みのキャラ
+                        anyTeamRegistered: Object.values(p.teamsByAttr || {}).some(arr => Array.isArray(arr) && arr.length > 0),
                     };
                 });
 
@@ -4123,16 +4255,28 @@
                         let pick = null, pickScore = Infinity;
                         for (const m of memberState) {
                             if (m.remainingAttacks <= 0 || !(m.avail[b.weakness] > 0)) continue;
+                            // キャラ衝突チェック: 同じ人がすでに割当済みのキャラと被るプランは除外
+                            // (編成データが全く無い人はチェック対象外。データ揃ってる人だけ厳密判定)
+                            const team = m.teamsByAttr[b.weakness];
+                            if (m.anyTeamRegistered && Array.isArray(team) && team.length > 0) {
+                                const conflict = team.some(c => c && m.usedChars.has(c));
+                                if (conflict) continue;
+                            }
                             const s = scoreOf(m, b.weakness, rem, levelPos);
                             if (s < pickScore) { pickScore = s; pick = m; }
                         }
                         if (!pick) break;
                         const dmg = pick.avail[b.weakness];
+                        const team = pick.teamsByAttr[b.weakness] || [];
+                        const teamRegistered = Array.isArray(team) && team.length > 0;
                         attacks.push({
                             memberId: pick.id, memberName: pick.name,
                             slv: pick.slv, slvEstimated: pick.slvEstimated,
                             dmgB: dmg, usedB: Math.min(dmg, rem), overflowB: Math.max(0, dmg - rem),
+                            team: teamRegistered ? team : null,  // 未登録は null マークで警告表示
                         });
+                        // 採用したキャラを使用済セットへ
+                        if (teamRegistered) team.forEach(c => { if (c) pick.usedChars.add(c); });
                         delete pick.avail[b.weakness];
                         pick.remainingAttacks--;
                         rem -= dmg;
@@ -4209,10 +4353,14 @@
                         : b.attacks.map((a, i) => {
                             const overTag = a.overflowB > 0 ? `<span style="color:#f59e0b;font-size:10px;">⚠️+${a.overflowB.toFixed(2)}B</span>` : '';
                             const slvTag = `<span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);" title="${a.slvEstimated ? 'SLv推定値' : 'SLv'}">SLv${a.slv || '?'}${a.slvEstimated ? '推' : ''}</span>`;
+                            const teamTag = a.team
+                                ? `<span style="font-size:10px;color:#22c55e;" title="編成: ${a.team.map(escapeHtml).join('、')}">🛡️</span>`
+                                : `<span style="font-size:10px;color:#f59e0b;" title="編成未登録 (衝突未検出)">⚠️未登録</span>`;
                             return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                                 <span style="min-width:42px;font-weight:600;color:var(--md-sys-color-primary);font-size:12px;">${i + 1}凸目</span>
                                 <strong style="flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.memberName)}</strong>
                                 ${slvTag}
+                                ${teamTag}
                                 <span style="font-size:13px;font-weight:700;">${a.dmgB.toFixed(2)} B</span>
                                 ${overTag}
                             </div>`;

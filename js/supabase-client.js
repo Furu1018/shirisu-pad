@@ -372,6 +372,14 @@ window.supabaseDeletePlayer = async function (playerId) {
 
 // プレイヤーの属性別ダメージ登録を取得（5属性ぶん、未登録は欠落）
 window.supabaseLoadPlayerDamages = async function (playerId) {
+    // characters カラム未マイグの環境でも壊れないよう2段階フォールバック
+    try {
+        const r = await supabase
+            .from('player_damages')
+            .select('attribute, damage_b, updated_at, characters')
+            .eq('player_id', playerId);
+        if (!r.error) return r.data || [];
+    } catch { /* fallthrough */ }
     const { data, error } = await supabase
         .from('player_damages')
         .select('attribute, damage_b, updated_at')
@@ -841,6 +849,161 @@ window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
 };
 
 // ============================================================================
+// NIKKE キャラクター自動学習マスタ
+// OCRから渡された生のキャラ名配列を、既存マスタとのファジィマッチで正規化し、
+// 新規/エイリアスを自動的に DB に書き込む。返り値は canonical_name の配列。
+// ============================================================================
+const _normalizeNikkeName = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    let s = raw.normalize('NFKC');       // 全角→半角、合成正規化
+    s = s.replace(/[：]/g, ':');          // 全角コロンを半角に
+    s = s.replace(/\s+/g, '');           // 空白除去
+    s = s.replace(/^[Ⅰ-ⅩⅠ-ⅩIVXⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩABC]+\b/, ''); // 先頭バースト記号
+    return s.length > 0 ? s : null;
+};
+const _levenshtein = (a, b) => {
+    if (a === b) return 0;
+    const m = a.length, n = b.length;
+    if (m === 0) return n; if (n === 0) return m;
+    const dp = new Array(n + 1);
+    for (let j = 0; j <= n; j++) dp[j] = j;
+    for (let i = 1; i <= m; i++) {
+        let prev = dp[0]; dp[0] = i;
+        for (let j = 1; j <= n; j++) {
+            const tmp = dp[j];
+            dp[j] = a[i - 1] === b[j - 1] ? prev : Math.min(prev, dp[j], dp[j - 1]) + 1;
+            prev = tmp;
+        }
+    }
+    return dp[n];
+};
+const _similarity = (a, b) => {
+    const dist = _levenshtein(a, b);
+    const longer = Math.max(a.length, b.length);
+    return longer === 0 ? 1 : 1 - dist / longer;
+};
+
+// OCRで取れたキャラ名配列を正規化 + 自動学習 + DB保存。
+// rawNames: string[] (null/undefined 含む可)
+// 戻り値: { canonical: string[], pending: string[] }
+window.supabaseRegisterOcrCharacters = async function (rawNames) {
+    const out = { canonical: [], pending: [] };
+    if (!Array.isArray(rawNames) || rawNames.length === 0) return out;
+
+    // 既存マスタを一括取得 (運用上は数十〜数百行なので軽い)
+    let master = [];
+    try {
+        const { data } = await supabase
+            .from('nikke_characters')
+            .select('canonical_name, base_name, aliases, sighting_count, is_confirmed');
+        master = data || [];
+    } catch { return out; }
+
+    // 正規化後文字列で検索しやすくする辞書
+    const normIndex = new Map();  // normalizedName -> canonical_name
+    master.forEach(m => {
+        normIndex.set(_normalizeNikkeName(m.canonical_name), m.canonical_name);
+        (m.aliases || []).forEach(al => {
+            const n = _normalizeNikkeName(al);
+            if (n) normIndex.set(n, m.canonical_name);
+        });
+    });
+
+    const nowIso = new Date().toISOString();
+    for (const raw of rawNames) {
+        const norm = _normalizeNikkeName(raw);
+        if (!norm) { out.canonical.push(null); continue; }
+
+        // 1) 既存と完全一致 (正規化後) → カウント++
+        if (normIndex.has(norm)) {
+            const canon = normIndex.get(norm);
+            try {
+                const existing = master.find(m => m.canonical_name === canon);
+                const newCount = (existing?.sighting_count || 0) + 1;
+                await supabase.from('nikke_characters').update({
+                    sighting_count: newCount,
+                    last_seen: nowIso,
+                    is_confirmed: existing?.is_confirmed || newCount >= 3,
+                }).eq('canonical_name', canon);
+            } catch { /* noop */ }
+            out.canonical.push(canon);
+            continue;
+        }
+
+        // 2) ファジィ最近傍 (>= 0.85 で自動エイリアス統合)
+        let best = null, bestScore = 0;
+        for (const m of master) {
+            const score = _similarity(norm, _normalizeNikkeName(m.canonical_name) || '');
+            if (score > bestScore) { bestScore = score; best = m; }
+        }
+        if (best && bestScore >= 0.85) {
+            try {
+                const aliases = Array.from(new Set([...(best.aliases || []), raw]));
+                const newCount = (best.sighting_count || 0) + 1;
+                await supabase.from('nikke_characters').update({
+                    aliases,
+                    sighting_count: newCount,
+                    last_seen: nowIso,
+                    is_confirmed: best.is_confirmed || newCount >= 3,
+                }).eq('canonical_name', best.canonical_name);
+                normIndex.set(norm, best.canonical_name);  // ローカル辞書にも反映
+            } catch { /* noop */ }
+            out.canonical.push(best.canonical_name);
+            continue;
+        }
+
+        // 3) どれにも該当しなければ新規追加
+        const baseName = raw.split(/[：:]/)[0].trim();
+        try {
+            await supabase.from('nikke_characters').insert({
+                canonical_name: raw,
+                base_name: baseName || raw,
+                aliases: [],
+                sighting_count: 1,
+                is_confirmed: false,
+                first_seen: nowIso,
+                last_seen: nowIso,
+            });
+            normIndex.set(norm, raw);
+            master.push({ canonical_name: raw, base_name: baseName, aliases: [], sighting_count: 1, is_confirmed: false });
+        } catch { /* noop: テーブル未作成時など */ }
+        out.canonical.push(raw);
+        // 0.50 〜 0.85 は運営レビュー候補として薄くマーク
+        if (best && bestScore >= 0.50) out.pending.push(`${raw} ≈ ${best.canonical_name} (${(bestScore*100|0)}%)`);
+    }
+    return out;
+};
+
+// player_damages の characters カラムを更新 (該当行が無ければ upsert で作成)
+// 同じ (player_id, attribute) は1行しか無い前提 (既存スキーマの onConflict ターゲット)
+window.supabaseSaveTeamForAttribute = async function (playerId, attribute, characters) {
+    if (!playerId || !attribute || !Array.isArray(characters)) return;
+    const cleaned = characters.filter(c => typeof c === 'string' && c.trim().length > 0);
+    try {
+        await supabase.from('player_damages').upsert({
+            player_id: playerId,
+            attribute,
+            characters: cleaned,
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'player_id,attribute' });
+    } catch (e) {
+        // characters カラム未マイグレーションのときは静かにスキップ
+        console.warn('[saveTeamForAttribute] skipped:', e?.message || e);
+    }
+};
+
+// nikke_characters の一覧取得 (運営UI 用)
+window.supabaseLoadCharacterMaster = async function () {
+    try {
+        const { data } = await supabase
+            .from('nikke_characters')
+            .select('*')
+            .order('sighting_count', { ascending: false });
+        return data || [];
+    } catch { return []; }
+};
+
+// ============================================================================
 // 設定タブ用: メンバーの通知状況一覧
 // 戻り値: [{ id, name, subscribed, deviceCount, slotsOn, lastDmgUpdate }]
 // ============================================================================
@@ -1034,15 +1197,29 @@ window.supabaseLoadOpsDashboardData = async function () {
         .order('name', { ascending: true });
     if (pErr) throw pErr;
 
-    // 2) 全プレイヤーの player_damages を一括取得
-    const { data: dmgs, error: dErr } = await supabase
-        .from('player_damages')
-        .select('player_id, attribute, damage_b, updated_at');
-    if (dErr) throw dErr;
+    // 2) 全プレイヤーの player_damages を一括取得 (characters 列はマイグ未適用なら無視)
+    let dmgs = null;
+    try {
+        const r = await supabase
+            .from('player_damages')
+            .select('player_id, attribute, damage_b, updated_at, characters');
+        dmgs = r.data;
+    } catch { /* characters 未追加 */ }
+    if (dmgs == null) {
+        const r2 = await supabase
+            .from('player_damages')
+            .select('player_id, attribute, damage_b, updated_at');
+        dmgs = r2.data;
+    }
     const dmgByPlayer = new Map();
+    const teamByPlayer = new Map();  // { player_id: { attr: [chars] } }
     (dmgs || []).forEach(d => {
         if (!dmgByPlayer.has(d.player_id)) dmgByPlayer.set(d.player_id, {});
         dmgByPlayer.get(d.player_id)[d.attribute] = Number(d.damage_b) || 0;
+        if (Array.isArray(d.characters) && d.characters.length > 0) {
+            if (!teamByPlayer.has(d.player_id)) teamByPlayer.set(d.player_id, {});
+            teamByPlayer.get(d.player_id)[d.attribute] = d.characters;
+        }
     });
 
     // 3) アクティブシーズンの全凸を一括取得
@@ -1111,6 +1288,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             id: p.id,
             name: p.name,
             damagesByAttr: dmgByPlayer.get(p.id) || {},
+            teamsByAttr: teamByPlayer.get(p.id) || {},
             attacks: attacksByPlayer.get(p.id) || [],
             attackCount: (attacksByPlayer.get(p.id) || []).length,
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),
