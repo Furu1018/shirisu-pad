@@ -2229,6 +2229,52 @@
         </div>
     </div>
 
+    <!-- ========== キャラマスタ編集モーダル (設定タブから開く) ========== -->
+    <div class="player-select-modal" id="charMasterEditModal">
+        <div class="player-select-content" style="max-width:560px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>📚 キャラ正規化</h2>
+                <button onclick="closeCharMasterEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">OCRで誤って取り込まれた名前を修正、または別エントリへ統合できます。</p>
+
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">正式名 (canonical)</label>
+                <input id="charEditCanonical" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">例: 「紅蓮：ブラックシャドウ」「リトルマーメイド」など正式名称に修正</p>
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">base 名 (スキン違いの統合キー)</label>
+                <input id="charEditBase" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">エイリアス (カンマ区切り)</label>
+                <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                <input id="charEditConfirmed" type="checkbox" style="width:18px;height:18px;">
+                <span>確定（is_confirmed） / 未チェックで未確定に戻す</span>
+            </label>
+
+            <hr style="border:none;border-top:1px solid var(--md-sys-color-outline-variant);margin:8px 0;">
+
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">📦 別エントリへ統合 (オプション)</label>
+                <input id="charEditMergeTarget" type="text" list="charEditMergeDataList" placeholder="統合先の正式名を入力 (空なら統合しない)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">指定すると、この行を統合先に吸収（sighting_count とエイリアスを合算してこの行を削除）</p>
+            </div>
+
+            <p id="charEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+            <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;">
+                <button onclick="handleCharMasterDelete()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🗑️ 完全削除</button>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="closeCharMasterEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== 編成編集モーダル (マイページの属性別ダメ行から開く) ========== -->
     <div class="player-select-modal" id="myTeamEditModal">
         <div class="player-select-content" style="max-width:480px;">
@@ -3658,8 +3704,9 @@
                     ? escapeHtml(r.aliases.join(', '))
                     : '<span style="color:var(--md-sys-color-outline-variant);">-</span>';
                 const last = r.last_seen ? SETTINGS_TS_FMT(r.last_seen) : '-';
+                const safeName = escapeHtml(r.canonical_name).replace(/'/g, "\\'");
                 return `
-                    <div style="display:grid;grid-template-columns: minmax(140px, 1.5fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;">
+                    <div onclick="openCharMasterEditModal('${safeName}')" style="cursor:pointer;display:grid;grid-template-columns: minmax(140px, 1.5fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
                         <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.canonical_name)} (base: ${escapeHtml(r.base_name)})"><strong>${escapeHtml(r.canonical_name)}</strong><br><span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">base: ${escapeHtml(r.base_name)}</span></div>
                         <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
                         <div style="text-align:center;">${status}</div>
@@ -3667,7 +3714,95 @@
                         <div style="text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:11px;">${last}</div>
                     </div>`;
             }).join('');
-            listEl.innerHTML = `<div style="min-width:560px;">${head}${body}</div>`;
+            listEl.innerHTML = `<div style="min-width:560px;"><p style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin:0 0 6px 0;">行をタップで編集 / 統合 / 削除</p>${head}${body}</div>`;
+        }
+
+        // キャラマスタ編集モーダル
+        let _charEditOriginal = null;
+        async function openCharMasterEditModal(canonicalName) {
+            _charEditOriginal = canonicalName;
+            // 現行データを取得
+            let entry;
+            try {
+                const all = await window.supabaseLoadCharacterMaster();
+                entry = (all || []).find(r => r.canonical_name === canonicalName);
+            } catch { /* noop */ }
+            if (!entry) { alert('該当エントリが見つかりません'); return; }
+            document.getElementById('charEditCanonical').value = entry.canonical_name || '';
+            document.getElementById('charEditBase').value = entry.base_name || '';
+            document.getElementById('charEditAliases').value = (entry.aliases || []).join(', ');
+            document.getElementById('charEditConfirmed').checked = !!entry.is_confirmed;
+            document.getElementById('charEditMergeTarget').value = '';
+            document.getElementById('charEditMessage').textContent = '';
+            // 統合先候補リストを更新
+            try {
+                const all = await window.supabaseLoadCharacterMaster();
+                let dl = document.getElementById('charEditMergeDataList');
+                if (!dl) {
+                    dl = document.createElement('datalist');
+                    dl.id = 'charEditMergeDataList';
+                    document.body.appendChild(dl);
+                }
+                dl.innerHTML = (all || [])
+                    .filter(r => r.canonical_name !== canonicalName)
+                    .map(r => `<option value="${escapeHtml(r.canonical_name)}">`).join('');
+            } catch { /* noop */ }
+            document.getElementById('charMasterEditModal').classList.add('open');
+        }
+        function closeCharMasterEditModal() {
+            document.getElementById('charMasterEditModal').classList.remove('open');
+            _charEditOriginal = null;
+        }
+
+        async function handleCharMasterSave() {
+            if (!_charEditOriginal) return;
+            const msg = document.getElementById('charEditMessage');
+            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const newCanonical = document.getElementById('charEditCanonical').value.trim();
+            const newBase = document.getElementById('charEditBase').value.trim();
+            const aliasesRaw = document.getElementById('charEditAliases').value;
+            const aliases = aliasesRaw.split(/[、,]/).map(s => s.trim()).filter(Boolean);
+            const isConfirmed = document.getElementById('charEditConfirmed').checked;
+            const mergeTarget = document.getElementById('charEditMergeTarget').value.trim();
+
+            if (!newCanonical) { setMsg('❌ 正式名は必須です', true); return; }
+
+            try {
+                // 統合モードが優先
+                if (mergeTarget) {
+                    if (!confirm(`「${_charEditOriginal}」を「${mergeTarget}」に統合します。\n統合先に sighting_count とエイリアスを合算してから、この行を削除します。`)) return;
+                    await window.supabaseMergeCharacterMasterEntry(_charEditOriginal, mergeTarget);
+                    setMsg('✅ 統合しました');
+                } else {
+                    await window.supabaseUpdateCharacterMasterEntry(_charEditOriginal, {
+                        canonical_name: newCanonical,
+                        base_name: newBase || newCanonical.split(/[：:]/)[0],
+                        aliases,
+                        is_confirmed: isConfirmed,
+                    });
+                    setMsg('✅ 保存しました');
+                }
+                await renderSettingsCharMaster();
+                setTimeout(() => closeCharMasterEditModal(), 700);
+            } catch (e) {
+                setMsg(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        async function handleCharMasterDelete() {
+            if (!_charEditOriginal) return;
+            if (!confirm(`「${_charEditOriginal}」を完全削除しますか？\n統合せずに削除すると、過去にこの名前が記録された凸の整合性が崩れる可能性があります。\n基本は統合を推奨。`)) return;
+            const msg = document.getElementById('charEditMessage');
+            try {
+                await window.supabaseDeleteCharacterMasterEntry(_charEditOriginal);
+                msg.textContent = '🗑️ 削除しました';
+                msg.style.color = '#22c55e';
+                await renderSettingsCharMaster();
+                setTimeout(() => closeCharMasterEditModal(), 700);
+            } catch (e) {
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
+            }
         }
 
         function renderSettingsLocalInfo() {

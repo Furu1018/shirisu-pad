@@ -1003,6 +1003,86 @@ window.supabaseLoadCharacterMaster = async function () {
     } catch { return []; }
 };
 
+// nikke_characters の1行を更新 (canonical_name の変更含む)
+// oldCanonical を別の正式名に rename する場合 = 旧行を delete し、新行を upsert + 既存の aliases/count をマージ
+window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch) {
+    if (!oldCanonical) throw new Error('oldCanonical 必須');
+    const newCanonical = (patch.canonical_name ?? oldCanonical).trim();
+    if (!newCanonical) throw new Error('canonical_name は空にできません');
+    const newBase = (patch.base_name ?? newCanonical.split(/[：:]/)[0]).trim();
+    const newAliases = Array.isArray(patch.aliases) ? patch.aliases.filter(Boolean) : null;
+    const isConfirmed = patch.is_confirmed;
+
+    // rename = canonical_name 変更時
+    if (newCanonical !== oldCanonical) {
+        // 旧行の情報を取得
+        const { data: old } = await supabase
+            .from('nikke_characters').select('*').eq('canonical_name', oldCanonical).maybeSingle();
+        if (!old) throw new Error('旧エントリが見つかりません');
+        // 新行を upsert (重複時はマージ)
+        const { data: existing } = await supabase
+            .from('nikke_characters').select('*').eq('canonical_name', newCanonical).maybeSingle();
+        const mergedAliases = Array.from(new Set([
+            ...(existing?.aliases || []),
+            ...(newAliases || old.aliases || []),
+            oldCanonical,  // 旧名もエイリアスに残す
+        ]));
+        const mergedCount = (existing?.sighting_count || 0) + (old.sighting_count || 0);
+        await supabase.from('nikke_characters').upsert({
+            canonical_name: newCanonical,
+            base_name: newBase || newCanonical,
+            aliases: mergedAliases,
+            sighting_count: mergedCount,
+            is_confirmed: (isConfirmed != null ? !!isConfirmed : (existing?.is_confirmed || old.is_confirmed)),
+            first_seen: old.first_seen,
+            last_seen: new Date().toISOString(),
+        });
+        // 旧行を削除
+        await supabase.from('nikke_characters').delete().eq('canonical_name', oldCanonical);
+        return { renamed: true, canonical_name: newCanonical };
+    }
+    // 通常更新
+    const update = {};
+    if (newAliases != null) update.aliases = newAliases;
+    if (newBase) update.base_name = newBase;
+    if (isConfirmed != null) update.is_confirmed = !!isConfirmed;
+    if (Object.keys(update).length === 0) return { unchanged: true };
+    const { error } = await supabase.from('nikke_characters').update(update).eq('canonical_name', oldCanonical);
+    if (error) throw error;
+    return { renamed: false, canonical_name: oldCanonical };
+};
+
+// 別エントリへ統合 (sourceCanonical を targetCanonical に吸収する)
+window.supabaseMergeCharacterMasterEntry = async function (sourceCanonical, targetCanonical) {
+    if (!sourceCanonical || !targetCanonical) throw new Error('source/target 必須');
+    if (sourceCanonical === targetCanonical) throw new Error('source と target が同じです');
+    const { data: src } = await supabase.from('nikke_characters').select('*').eq('canonical_name', sourceCanonical).maybeSingle();
+    const { data: tgt } = await supabase.from('nikke_characters').select('*').eq('canonical_name', targetCanonical).maybeSingle();
+    if (!src) throw new Error('source エントリが見つかりません');
+    if (!tgt) throw new Error('target エントリが見つかりません');
+    const mergedAliases = Array.from(new Set([
+        ...(tgt.aliases || []),
+        ...(src.aliases || []),
+        sourceCanonical,  // 旧名もエイリアスに残す
+    ]));
+    const mergedCount = (tgt.sighting_count || 0) + (src.sighting_count || 0);
+    await supabase.from('nikke_characters').update({
+        aliases: mergedAliases,
+        sighting_count: mergedCount,
+        is_confirmed: tgt.is_confirmed || src.is_confirmed || mergedCount >= 3,
+        last_seen: new Date().toISOString(),
+    }).eq('canonical_name', targetCanonical);
+    await supabase.from('nikke_characters').delete().eq('canonical_name', sourceCanonical);
+    return { merged: true };
+};
+
+// 行を完全削除 (誤登録の整理用)
+window.supabaseDeleteCharacterMasterEntry = async function (canonicalName) {
+    if (!canonicalName) throw new Error('canonical_name 必須');
+    const { error } = await supabase.from('nikke_characters').delete().eq('canonical_name', canonicalName);
+    if (error) throw error;
+};
+
 // ============================================================================
 // 設定タブ用: メンバーの通知状況一覧
 // 戻り値: [{ id, name, subscribed, deviceCount, slotsOn, lastDmgUpdate }]
