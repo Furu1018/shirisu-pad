@@ -703,14 +703,15 @@ window.supabaseCreateSeason = async function (payload) {
     const { error: bErr } = await supabase.from('bosses').insert(bossRows);
     if (bErr) throw bErr;
 
-    // 前回レイド実績からダメージ初期登録
-    let seededCount = 0;
+    // 前回レイド実績からダメージ + 編成 を初期登録
+    let seededCount = 0, charactersSeeded = 0;
     if (payload.seedFromPrevious) {
         const r = await window.supabaseSeedDamagesFromPreviousSeason(season.id);
         seededCount = r.seeded || 0;
+        charactersSeeded = r.charactersSeeded || 0;
     }
 
-    return { ...season, seededCount };
+    return { ...season, seededCount, charactersSeeded };
 };
 
 // 前回レイドの実攻撃ダメージから各メンバーの属性別ダメージを初期登録
@@ -734,41 +735,64 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
         .from('bosses').select('boss_code, weakness').eq('season_id', prevId);
     const weaknessByCode = new Map((bosses || []).map(b => [b.boss_code, b.weakness]));
 
-    // 前シーズンの全攻撃
-    const { data: atks } = await supabase
-        .from('attacks').select('player_id, boss_code, damage_raw').eq('season_id', prevId);
+    // 前シーズンの全攻撃 (characters カラム未マイグ環境ではフォールバック)
+    let atks = null;
+    try {
+        const r = await supabase
+            .from('attacks').select('player_id, boss_code, damage_raw, characters').eq('season_id', prevId);
+        if (!r.error) atks = r.data;
+    } catch { /* fallthrough */ }
+    if (atks == null) {
+        const r2 = await supabase
+            .from('attacks').select('player_id, boss_code, damage_raw').eq('season_id', prevId);
+        atks = r2.data;
+    }
 
-    // (player_id, ptAttr) ごとに最大ダメージ
+    // (player_id, ptAttr) ごとに「最大ダメージ凸の damage + characters」を保持
     const maxMap = new Map();
     (atks || []).forEach(a => {
         const attr = weaknessByCode.get(a.boss_code);
         if (!attr) return;
         const key = `${a.player_id}:${attr}`;
-        const cur = maxMap.get(key) || 0;
         const dmg = Number(a.damage_raw) || 0;
-        if (dmg > cur) maxMap.set(key, dmg);
+        const cur = maxMap.get(key);
+        if (!cur || dmg > cur.dmg) {
+            const chars = Array.isArray(a.characters) ? a.characters.filter(c => typeof c === 'string' && c.trim()) : [];
+            maxMap.set(key, { dmg, characters: chars });
+        }
     });
 
     const rows = [];
-    for (const [key, dmgRaw] of maxMap.entries()) {
+    for (const [key, v] of maxMap.entries()) {
         const idx = key.lastIndexOf(':');
         const pid = Number(key.slice(0, idx));
         const attr = key.slice(idx + 1);
-        if (dmgRaw <= 0) continue;
+        if (v.dmg <= 0) continue;
         rows.push({
             player_id: pid,
             attribute: attr,
-            damage_b: Number((dmgRaw / 1e9).toFixed(3)),
+            damage_b: Number((v.dmg / 1e9).toFixed(3)),
+            characters: v.characters,  // 最大ダメ凸の編成も一緒に引き継ぎ
             updated_at: new Date().toISOString(),
         });
     }
     if (rows.length > 0) {
-        const { error } = await supabase
+        // characters カラムが未マイグの環境では characters を抜いてリトライ
+        let err;
+        const r1 = await supabase
             .from('player_damages')
             .upsert(rows, { onConflict: 'player_id,attribute' });
-        if (error) throw error;
+        err = r1.error;
+        if (err) {
+            const fallbackRows = rows.map(({ characters, ...rest }) => rest);
+            const r2 = await supabase
+                .from('player_damages')
+                .upsert(fallbackRows, { onConflict: 'player_id,attribute' });
+            if (r2.error) throw r2.error;
+        }
     }
-    return { seeded: rows.length };
+    const charSeedCount = rows.filter(r => Array.isArray(r.characters) && r.characters.length > 0).length;
+    return { seeded: rows.length, charactersSeeded: charSeedCount };
 };
 
 // アクティブなテストシーズンを削除し、player_damages と元のアクティブシーズンを復元
@@ -855,11 +879,19 @@ window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
 // ============================================================================
 const _normalizeNikkeName = (raw) => {
     if (!raw || typeof raw !== 'string') return null;
-    let s = raw.normalize('NFKC');       // 全角→半角、合成正規化
-    s = s.replace(/[：]/g, ':');          // 全角コロンを半角に
-    s = s.replace(/\s+/g, '');           // 空白除去
-    s = s.replace(/^[Ⅰ-ⅩⅠ-ⅩIVXⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩABC]+\b/, ''); // 先頭バースト記号
+    let s = raw.normalize('NFKC');                          // 全角→半角、合成正規化
+    s = s.replace(/[：]/g, ':');                            // 全角コロンを半角に
+    s = s.replace(/\s+/g, '');                              // 空白除去
+    s = s.replace(/^[Ⅰ-ⅩⅠ-ⅩIVXⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩABC]+\b/, '');   // 先頭バースト記号
+    s = s.replace(/^[・…．\.,、…]+/, '');                  // 先頭の中黒・句読点
+    s = s.replace(/[・…．\.,、…\s]+$/, '');                // 末尾の中黒・句読点
     return s.length > 0 ? s : null;
+};
+// 一方が他方の接頭辞である関係 (OCR途中切れ/補完不足を許容)
+const _isPrefixMatch = (a, b, minLen = 4) => {
+    if (!a || !b || a.length < minLen || b.length < minLen) return false;
+    const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+    return longer.startsWith(shorter);
 };
 const _levenshtein = (a, b) => {
     if (a === b) return 0;
@@ -930,25 +962,59 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
             continue;
         }
 
-        // 2) ファジィ最近傍 (>= 0.85 で自動エイリアス統合)
+        // 2) ファジィ最近傍。接頭辞関係(=OCR途中切れ)は 0.92 にブーストして優先
         let best = null, bestScore = 0;
         for (const m of master) {
-            const score = _similarity(norm, _normalizeNikkeName(m.canonical_name) || '');
+            const mNorm = _normalizeNikkeName(m.canonical_name) || '';
+            const lev = _similarity(norm, mNorm);
+            const pre = _isPrefixMatch(norm, mNorm, 4) ? 0.92 : 0;
+            const score = Math.max(lev, pre);
             if (score > bestScore) { bestScore = score; best = m; }
         }
         if (best && bestScore >= 0.85) {
+            const bestNorm = _normalizeNikkeName(best.canonical_name) || '';
+            // 新しい raw が既存より長い接頭辞関係 → 既存を「短い表記」と判断し、canonical を新しい方に rename
+            const shouldPromoteToLonger = _isPrefixMatch(norm, bestNorm, 4) && norm.length > bestNorm.length;
             try {
-                const aliases = Array.from(new Set([...(best.aliases || []), raw]));
-                const newCount = (best.sighting_count || 0) + 1;
-                await supabase.from('nikke_characters').update({
-                    aliases,
-                    sighting_count: newCount,
-                    last_seen: nowIso,
-                    is_confirmed: best.is_confirmed || newCount >= 3,
-                }).eq('canonical_name', best.canonical_name);
-                normIndex.set(norm, best.canonical_name);  // ローカル辞書にも反映
-            } catch { /* noop */ }
-            out.canonical.push(best.canonical_name);
+                if (shouldPromoteToLonger) {
+                    const aliases = Array.from(new Set([
+                        ...(best.aliases || []),
+                        best.canonical_name,  // 旧短名をエイリアスに残す
+                    ]));
+                    const newCount = (best.sighting_count || 0) + 1;
+                    // PK 変更のため delete → insert
+                    await supabase.from('nikke_characters').delete().eq('canonical_name', best.canonical_name);
+                    await supabase.from('nikke_characters').insert({
+                        canonical_name: raw,
+                        base_name: raw.split(/[：:]/)[0].trim() || raw,
+                        aliases,
+                        sighting_count: newCount,
+                        first_seen: best.first_seen,
+                        last_seen: nowIso,
+                        is_confirmed: best.is_confirmed || newCount >= 3,
+                    });
+                    // ローカル辞書を更新 (旧短名→新長名)
+                    for (const [k, v] of normIndex.entries()) {
+                        if (v === best.canonical_name) normIndex.set(k, raw);
+                    }
+                    normIndex.set(norm, raw);
+                    out.canonical.push(raw);
+                } else {
+                    const aliases = Array.from(new Set([...(best.aliases || []), raw]));
+                    const newCount = (best.sighting_count || 0) + 1;
+                    await supabase.from('nikke_characters').update({
+                        aliases,
+                        sighting_count: newCount,
+                        last_seen: nowIso,
+                        is_confirmed: best.is_confirmed || newCount >= 3,
+                    }).eq('canonical_name', best.canonical_name);
+                    normIndex.set(norm, best.canonical_name);
+                    out.canonical.push(best.canonical_name);
+                }
+            } catch (e) {
+                console.warn('[char match update]', e?.message || e);
+                out.canonical.push(best.canonical_name);
+            }
             continue;
         }
 

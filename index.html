@@ -2213,7 +2213,7 @@
             <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
                     <input type="checkbox" id="opsSeasonSeedPrev" checked style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
-                    <span>前回レイドの実績ダメージを各メンバーの初期値として登録<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">模擬戦未提出の人にもベースが入る。同属性2凸は高い方を採用。</span></span>
+                    <span>前回レイドの実績ダメージ + 編成 を各メンバーの初期値として登録<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">模擬戦未提出の人にもベースが入る。同属性2凸は高い方を採用。最大ダメ凸時の編成も同時に引き継ぎ。</span></span>
                 </label>
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
                     <input type="checkbox" id="opsSeasonIsTest" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
@@ -5305,7 +5305,12 @@
             try {
                 set('作成中...'); msg.style.color = 'var(--md-sys-color-on-surface-variant)';
                 const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest, seedFromPrevious });
-                const seedMsg = (r.seededCount > 0) ? ` / 前回実績から ${r.seededCount} 件のダメージを初期登録` : '';
+                let seedMsg = '';
+                if (r.seededCount > 0) {
+                    seedMsg = ` / 前回実績から ${r.seededCount} 件のダメージ`;
+                    if (r.charactersSeeded > 0) seedMsg += ` + ${r.charactersSeeded} 件の編成`;
+                    seedMsg += ' を初期登録';
+                }
                 set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成${seedMsg}`);
                 _activeSeasonCache = null;
                 _opsDashboardCache = null;
