@@ -748,6 +748,18 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
         atks = r2.data;
     }
 
+    // 古いスキーマで attacks.characters に画像パス (./character-images/xxx.webp) が
+    // 保存されているケースを除外。本物のキャラ名だけを通す。
+    const _isLikelyCharName = (s) => {
+        if (typeof s !== 'string') return false;
+        const t = s.trim();
+        if (t.length === 0 || t.length > 40) return false;
+        if (t.includes('/') || t.includes('\\')) return false;        // ファイルパス
+        if (/\.(webp|png|jpg|jpeg|gif|svg)$/i.test(t)) return false;  // 画像拡張子
+        if (/^[a-fA-F0-9]{12,}$/.test(t)) return false;               // UUID/ハッシュ風
+        if (/^https?:\/\//i.test(t)) return false;                    // URL
+        return true;
+    };
     // (player_id, ptAttr) ごとに「最大ダメージ凸の damage + characters」を保持
     const maxMap = new Map();
     (atks || []).forEach(a => {
@@ -757,7 +769,9 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
         const dmg = Number(a.damage_raw) || 0;
         const cur = maxMap.get(key);
         if (!cur || dmg > cur.dmg) {
-            const chars = Array.isArray(a.characters) ? a.characters.filter(c => typeof c === 'string' && c.trim()) : [];
+            const chars = Array.isArray(a.characters)
+                ? a.characters.filter(_isLikelyCharName)  // ← ファイルパス等を除外
+                : [];
             maxMap.set(key, { dmg, characters: chars });
         }
     });
@@ -915,12 +929,27 @@ const _similarity = (a, b) => {
     return longer === 0 ? 1 : 1 - dist / longer;
 };
 
+// 文字列が本物のキャラ名らしいか判定 (ファイルパス・ハッシュ・URLは除外)
+const _looksLikeCharName = (s) => {
+    if (typeof s !== 'string') return false;
+    const t = s.trim();
+    if (t.length === 0 || t.length > 40) return false;
+    if (t.includes('/') || t.includes('\\')) return false;
+    if (/\.(webp|png|jpg|jpeg|gif|svg)$/i.test(t)) return false;
+    if (/^[a-fA-F0-9]{12,}$/.test(t)) return false;
+    if (/^https?:\/\//i.test(t)) return false;
+    return true;
+};
+
 // OCRで取れたキャラ名配列を正規化 + 自動学習 + DB保存。
 // rawNames: string[] (null/undefined 含む可)
 // 戻り値: { canonical: string[], pending: string[] }
 window.supabaseRegisterOcrCharacters = async function (rawNames) {
     const out = { canonical: [], pending: [] };
     if (!Array.isArray(rawNames) || rawNames.length === 0) return out;
+    // ファイルパス等のゴミを最初に除外 (旧スキーマ由来の混入対策)
+    rawNames = rawNames.filter(_looksLikeCharName);
+    if (rawNames.length === 0) return out;
 
     // 既存マスタを一括取得 (運用上は数十〜数百行なので軽い)
     let master = [];
