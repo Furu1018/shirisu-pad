@@ -2022,6 +2022,15 @@
 
             <div class="card" style="padding: 20px; margin-bottom: 16px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 600;">📷 画像からキャラ登録 (Bootstrap)</h3>
+                    <button onclick="handleIconBootstrapLoad()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;cursor:pointer;">前月JSONから読み込み</button>
+                </div>
+                <p style="margin:0 0 10px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">前月の凸データに含まれる **キャラアイコン画像** を一覧化。各アイコンに名前を入力して登録すると、マスタにアイコンとして紐づきます。スキン違いは同じ名前で登録すると複数アイコンに対応します。</p>
+                <div id="settingsIconBootstrap" style="font-size:12px;">「前月JSONから読み込み」をクリックしてください。</div>
+            </div>
+
+            <div class="card" style="padding: 20px; margin-bottom: 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <h3 style="margin: 0; font-size: 15px; font-weight: 600;">📚 キャラクターマスタ</h3>
                     <span id="settingsCharSummary" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);"></span>
                 </div>
@@ -2713,13 +2722,16 @@
             const byAttr = new Map();
             damages.forEach(d => byAttr.set(d.attribute, d));
 
+            // マスタキャッシュを事前ロードして編成にアイコン適用
+            await getNikkeCharsCache();
+
             el.innerHTML = PT_ATTRS.map(a => {
                 const rec = byAttr.get(a.key);
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : '';
                 const updated = rec?.updated_at ? formatDmgUpdatedAt(rec.updated_at) : '未登録';
                 const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
                 const teamText = team.length > 0
-                    ? team.map(escapeHtml).join('、')
+                    ? renderTeamSnippet(team, { size: 24 })
                     : '<span style="color:var(--md-sys-color-outline-variant);">編成未登録</span>';
                 return `
                     <div class="mydmg-row" data-row-attr="${a.key}" style="padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
@@ -2766,26 +2778,46 @@
             document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成`;
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
+            await getNikkeCharsCache();
             const fieldsEl = document.getElementById('myTeamEditFields');
-            fieldsEl.innerHTML = current.map((v, i) => `
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="min-width:24px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">${i + 1}.</span>
-                    <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
-                </div>`).join('');
+            const buildRow = (i, v) => {
+                const r = v ? resolveNikkeChar(v) : null;
+                const icon = r?.iconPath
+                    ? `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;">`
+                    : `<div style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--md-sys-color-outline-variant);">?</div>`;
+                return `
+                    <div style="display:flex;align-items:center;gap:8px;" data-team-row="${i}">
+                        <span style="min-width:24px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">${i + 1}.</span>
+                        ${icon}
+                        <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" oninput="updateMyTeamEditIcon(${i})" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                    </div>`;
+            };
+            fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
             // datalist: マスタから autocomplete
-            try {
-                const master = await window.supabaseLoadCharacterMaster();
-                if (master && master.length > 0) {
-                    let dl = document.getElementById('myTeamEditDataList');
-                    if (!dl) {
-                        dl = document.createElement('datalist');
-                        dl.id = 'myTeamEditDataList';
-                        document.body.appendChild(dl);
-                    }
-                    dl.innerHTML = master.slice(0, 200).map(m => `<option value="${escapeHtml(m.canonical_name)}">`).join('');
+            const master = _nikkeCharsCache || [];
+            if (master.length > 0) {
+                let dl = document.getElementById('myTeamEditDataList');
+                if (!dl) {
+                    dl = document.createElement('datalist');
+                    dl.id = 'myTeamEditDataList';
+                    document.body.appendChild(dl);
                 }
-            } catch { /* noop */ }
+                dl.innerHTML = master.slice(0, 200).map(m => `<option value="${escapeHtml(m.canonical_name)}">`).join('');
+            }
             document.getElementById('myTeamEditModal').classList.add('open');
+        }
+        // 入力中にアイコンプレビューを更新
+        function updateMyTeamEditIcon(idx) {
+            const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
+            const row = document.querySelector(`#myTeamEditFields [data-team-row="${idx}"]`);
+            if (!input || !row) return;
+            const r = resolveNikkeChar(input.value);
+            const iconEl = row.children[1];  // 2番目の子要素がアイコン
+            if (r?.iconPath) {
+                iconEl.outerHTML = `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;">`;
+            } else {
+                iconEl.outerHTML = `<div style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--md-sys-color-outline-variant);">?</div>`;
+            }
         }
         function closeMyTeamEditModal() {
             document.getElementById('myTeamEditModal').classList.remove('open');
@@ -3669,6 +3701,153 @@
             ]);
         }
 
+        // ========== キャラマスタのキャッシュ (アイコン参照用) ==========
+        let _nikkeCharsCache = null;
+        let _nikkeCharsByIconPath = new Map();
+        let _nikkeCharsByName = new Map();
+        async function getNikkeCharsCache() {
+            if (_nikkeCharsCache) return _nikkeCharsCache;
+            try {
+                _nikkeCharsCache = await window.supabaseLoadCharacterMaster();
+            } catch { _nikkeCharsCache = []; }
+            _nikkeCharsByIconPath = new Map();
+            _nikkeCharsByName = new Map();
+            (_nikkeCharsCache || []).forEach(c => {
+                _nikkeCharsByName.set(c.canonical_name, c);
+                (c.icon_paths || []).forEach(p => _nikkeCharsByIconPath.set(p, c));
+                (c.aliases || []).forEach(a => _nikkeCharsByName.set(a, c));
+            });
+            return _nikkeCharsCache;
+        }
+        function invalidateNikkeCharsCache() {
+            _nikkeCharsCache = null;
+            _nikkeCharsByIconPath = new Map();
+            _nikkeCharsByName = new Map();
+        }
+        // 名前 or 画像パス から最良の表示単位を返す
+        // { canonical: 'ナユタ', iconPath: './character-images/xxx.webp' or null, raw: 入力値 }
+        function resolveNikkeChar(input) {
+            if (typeof input !== 'string') return null;
+            const t = input.trim();
+            if (!t) return null;
+            // 画像パスか判定 → そのまま icon_path として返す or マスタから引く
+            const looksLikePath = t.includes('/') || /\.(webp|png|jpg|jpeg)$/i.test(t);
+            if (looksLikePath) {
+                const hit = _nikkeCharsByIconPath.get(t);
+                return { canonical: hit?.canonical_name || null, iconPath: t, raw: t };
+            }
+            // テキスト名 → マスタから icon_path 引く
+            const hit = _nikkeCharsByName.get(t);
+            const iconPath = hit && Array.isArray(hit.icon_paths) && hit.icon_paths.length > 0 ? hit.icon_paths[0] : null;
+            return { canonical: hit?.canonical_name || t, iconPath, raw: t };
+        }
+        // 編成1〜5キャラを HTML スニペットで描画
+        function renderTeamSnippet(team, opts = {}) {
+            if (!Array.isArray(team) || team.length === 0) return '<span style="color:var(--md-sys-color-outline-variant);">編成未登録</span>';
+            const size = opts.size || 22;
+            return team.map(c => {
+                const r = resolveNikkeChar(c);
+                if (!r) return '';
+                if (r.iconPath) {
+                    return `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || r.raw)}" title="${escapeHtml(r.canonical || r.raw)}" style="width:${size}px;height:${size}px;border-radius:4px;vertical-align:middle;margin-right:3px;">`;
+                }
+                return `<span style="font-size:11px;padding:1px 5px;border-radius:4px;background:var(--md-sys-color-surface-variant);margin-right:3px;">${escapeHtml(r.canonical || r.raw)}</span>`;
+            }).join('');
+        }
+
+        // ========== Bootstrap: 前月JSONからアイコン一覧抽出 + 登録 ==========
+        let _iconBootstrapPaths = [];
+        async function handleIconBootstrapLoad() {
+            const el = document.getElementById('settingsIconBootstrap');
+            if (!el) return;
+            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);">読み込み中…</p>';
+            // 前月JSON候補 (直近5ヶ月分を試行)
+            const now = new Date();
+            const tried = [];
+            let used = null, json = null;
+            for (let i = 1; i <= 5; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                tried.push(key);
+                try {
+                    const resp = await fetch(`./data/${key}.json`);
+                    if (resp.ok) {
+                        json = await resp.json();
+                        used = key;
+                        break;
+                    }
+                } catch { /* skip */ }
+            }
+            if (!json) {
+                el.innerHTML = `<p style="color:#ef4444;">JSONが見つかりません (試行: ${tried.join(', ')})</p>`;
+                return;
+            }
+            // ユニーク画像パスを抽出
+            const pathSet = new Set();
+            (json.players || []).forEach(p => {
+                (p.attacks || []).forEach(a => {
+                    (a.characters || []).forEach(c => {
+                        if (typeof c === 'string' && /\.(webp|png|jpg|jpeg)$/i.test(c)) {
+                            pathSet.add(c);
+                        }
+                    });
+                });
+            });
+            _iconBootstrapPaths = [...pathSet].sort();
+            // マスタを読んで登録済みをマーク
+            invalidateNikkeCharsCache();
+            await getNikkeCharsCache();
+            const renderItems = () => {
+                if (_iconBootstrapPaths.length === 0) {
+                    el.innerHTML = `<p style="color:var(--md-sys-color-on-surface-variant);">${used} のデータにキャラ画像が見つかりませんでした。</p>`;
+                    return;
+                }
+                el.innerHTML = `
+                    <p style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin:0 0 10px 0;">${used} から <strong>${_iconBootstrapPaths.length}</strong> 個のユニーク画像を抽出。各アイコンに名前を入力 → 「登録」をクリック。同じ名前で別画像を登録するとスキン違いとして配列に追加されます。</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
+                        ${_iconBootstrapPaths.map((p, i) => {
+                            const known = _nikkeCharsByIconPath.get(p);
+                            const knownTag = known
+                                ? `<div style="font-size:11px;color:#22c55e;font-weight:600;">✅ ${escapeHtml(known.canonical_name)}</div>`
+                                : `<input type="text" id="iconBoot-${i}" placeholder="例: ナユタ" list="iconBootDataList" style="width:100%;padding:5px 7px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);font-size:12px;">
+                                   <button onclick="handleIconBootstrapSave(${i})" style="margin-top:4px;width:100%;padding:5px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:600;cursor:pointer;">登録</button>`;
+                            return `
+                                <div style="padding:8px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;text-align:center;">
+                                    <img src="${escapeHtml(p)}" style="width:60px;height:60px;border-radius:6px;margin-bottom:6px;background:#222;" onerror="this.style.opacity='0.3';this.alt='画像未読込'">
+                                    ${knownTag}
+                                </div>`;
+                        }).join('')}
+                    </div>`;
+                // 既知マスタ名を autocomplete に
+                let dl = document.getElementById('iconBootDataList');
+                if (!dl) {
+                    dl = document.createElement('datalist');
+                    dl.id = 'iconBootDataList';
+                    document.body.appendChild(dl);
+                }
+                dl.innerHTML = (_nikkeCharsCache || []).map(c => `<option value="${escapeHtml(c.canonical_name)}">`).join('');
+            };
+            renderItems();
+            // 再描画用に handler から参照
+            window._iconBootstrapRerender = renderItems;
+        }
+
+        async function handleIconBootstrapSave(idx) {
+            const path = _iconBootstrapPaths[idx];
+            const input = document.getElementById(`iconBoot-${idx}`);
+            const name = input?.value.trim();
+            if (!name) { input?.focus(); return; }
+            try {
+                await window.supabaseRegisterCharacterWithIcon(name, path);
+                invalidateNikkeCharsCache();
+                await getNikkeCharsCache();
+                if (typeof window._iconBootstrapRerender === 'function') window._iconBootstrapRerender();
+                renderSettingsCharMaster();
+            } catch (e) {
+                alert(`登録失敗: ${e?.message || e}`);
+            }
+        }
+
         async function renderSettingsCharMaster() {
             const listEl = document.getElementById('settingsCharList');
             const sumEl = document.getElementById('settingsCharSummary');
@@ -3688,14 +3867,6 @@
             }
             const confirmed = rows.filter(r => r.is_confirmed).length;
             if (sumEl) sumEl.textContent = `全 ${rows.length} 件 / 確定 ${confirmed} / 未確定 ${rows.length - confirmed}`;
-            const head = `
-                <div style="display:grid;grid-template-columns: minmax(140px, 1.5fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;background:var(--md-sys-color-surface-variant);border-radius:6px;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">
-                    <div>キャラ名 (canonical)</div>
-                    <div style="text-align:center;">出現</div>
-                    <div style="text-align:center;">状態</div>
-                    <div>エイリアス</div>
-                    <div style="text-align:right;">最終</div>
-                </div>`;
             const body = rows.map(r => {
                 const status = r.is_confirmed
                     ? '<span style="color:#22c55e;font-weight:700;">✅確定</span>'
@@ -3705,8 +3876,12 @@
                     : '<span style="color:var(--md-sys-color-outline-variant);">-</span>';
                 const last = r.last_seen ? SETTINGS_TS_FMT(r.last_seen) : '-';
                 const safeName = escapeHtml(r.canonical_name).replace(/'/g, "\\'");
+                const icons = Array.isArray(r.icon_paths) && r.icon_paths.length > 0
+                    ? r.icon_paths.map(p => `<img src="${escapeHtml(p)}" style="width:22px;height:22px;border-radius:4px;margin-right:2px;" title="${escapeHtml(p)}">`).join('')
+                    : '<span style="font-size:10px;color:var(--md-sys-color-outline-variant);">no icon</span>';
                 return `
-                    <div onclick="openCharMasterEditModal('${safeName}')" style="cursor:pointer;display:grid;grid-template-columns: minmax(140px, 1.5fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
+                    <div onclick="openCharMasterEditModal('${safeName}')" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
+                        <div style="display:flex;align-items:center;gap:2px;">${icons}</div>
                         <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.canonical_name)} (base: ${escapeHtml(r.base_name)})"><strong>${escapeHtml(r.canonical_name)}</strong><br><span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">base: ${escapeHtml(r.base_name)}</span></div>
                         <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
                         <div style="text-align:center;">${status}</div>
@@ -3714,7 +3889,16 @@
                         <div style="text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:11px;">${last}</div>
                     </div>`;
             }).join('');
-            listEl.innerHTML = `<div style="min-width:560px;"><p style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin:0 0 6px 0;">行をタップで編集 / 統合 / 削除</p>${head}${body}</div>`;
+            const head2 = `
+                <div style="display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;background:var(--md-sys-color-surface-variant);border-radius:6px;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">
+                    <div>アイコン</div>
+                    <div>キャラ名 (canonical)</div>
+                    <div style="text-align:center;">出現</div>
+                    <div style="text-align:center;">状態</div>
+                    <div>エイリアス</div>
+                    <div style="text-align:right;">最終</div>
+                </div>`;
+            listEl.innerHTML = `<div style="min-width:620px;"><p style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin:0 0 6px 0;">行をタップで編集 / 統合 / 削除</p>${head2}${body}</div>`;
         }
 
         // キャラマスタ編集モーダル
@@ -3782,6 +3966,7 @@
                     });
                     setMsg('✅ 保存しました');
                 }
+                invalidateNikkeCharsCache();
                 await renderSettingsCharMaster();
                 setTimeout(() => closeCharMasterEditModal(), 700);
             } catch (e) {
@@ -3797,6 +3982,7 @@
                 await window.supabaseDeleteCharacterMasterEntry(_charEditOriginal);
                 msg.textContent = '🗑️ 削除しました';
                 msg.style.color = '#22c55e';
+                invalidateNikkeCharsCache();
                 await renderSettingsCharMaster();
                 setTimeout(() => closeCharMasterEditModal(), 700);
             } catch (e) {
@@ -4565,8 +4751,10 @@
             return { startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste, unusedAttacks, membersNoData, onlyAvailableNow, currentSlot, candidateCount };
         }
 
-        function computeAndRenderOptimalPlan(options = {}) {
+        async function computeAndRenderOptimalPlan(options = {}) {
             const el = document.getElementById('opsOptimalPlan');
+            // 編成アイコン表示のためマスタを先読み
+            await getNikkeCharsCache();
             if (!_opsDashboardCache) {
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">運営ダッシュボードのデータが未取得です。「🔄 更新」を押してください。</p>';
                 return;
@@ -4612,7 +4800,7 @@
                             const overTag = a.overflowB > 0 ? `<span style="color:#f59e0b;font-size:10px;">⚠️+${a.overflowB.toFixed(2)}B</span>` : '';
                             const slvTag = `<span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);" title="${a.slvEstimated ? 'SLv推定値' : 'SLv'}">SLv${a.slv || '?'}${a.slvEstimated ? '推' : ''}</span>`;
                             const teamTag = a.team
-                                ? `<span style="font-size:10px;color:#22c55e;" title="編成: ${a.team.map(escapeHtml).join('、')}">🛡️</span>`
+                                ? `<span style="font-size:10px;color:#22c55e;display:inline-flex;align-items:center;gap:2px;" title="編成: ${a.team.map(escapeHtml).join('、')}">🛡️${renderTeamSnippet(a.team, { size: 18 })}</span>`
                                 : `<span style="font-size:10px;color:#f59e0b;" title="編成未登録 (衝突未検出)">⚠️未登録</span>`;
                             return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                                 <span style="min-width:42px;font-weight:600;color:var(--md-sys-color-primary);font-size:12px;">${i + 1}凸目</span>

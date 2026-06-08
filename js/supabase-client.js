@@ -1098,6 +1098,60 @@ window.supabaseLoadCharacterMaster = async function () {
     } catch { return []; }
 };
 
+// 名前 + アイコン画像で登録/更新 (ブートストラップウィザード用)
+// 同一 canonical_name が既にあれば icon_paths に追加 (重複しないように)、無ければ新規 INSERT
+window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPath, opts = {}) {
+    if (!canonicalName || typeof canonicalName !== 'string') throw new Error('canonical_name 必須');
+    if (!iconPath || typeof iconPath !== 'string') throw new Error('icon_path 必須');
+    const name = canonicalName.trim();
+    if (!name) throw new Error('canonical_name 空不可');
+    const baseName = (opts.baseName || name.split(/[：:]/)[0]).trim() || name;
+
+    // 既存をチェック
+    const { data: existing } = await supabase
+        .from('nikke_characters')
+        .select('canonical_name, icon_paths, aliases, sighting_count, is_confirmed')
+        .eq('canonical_name', name)
+        .maybeSingle();
+
+    const nowIso = new Date().toISOString();
+    if (existing) {
+        const paths = Array.isArray(existing.icon_paths) ? [...existing.icon_paths] : [];
+        if (!paths.includes(iconPath)) paths.push(iconPath);
+        await supabase.from('nikke_characters').update({
+            icon_paths: paths,
+            is_confirmed: true,   // 運営が手動でひも付けたのは確定扱い
+            last_seen: nowIso,
+        }).eq('canonical_name', name);
+        return { canonical_name: name, updated: true, icon_count: paths.length };
+    }
+    // 新規登録
+    await supabase.from('nikke_characters').insert({
+        canonical_name: name,
+        base_name: baseName,
+        aliases: [],
+        icon_paths: [iconPath],
+        sighting_count: 0,
+        is_confirmed: true,
+        first_seen: nowIso,
+        last_seen: nowIso,
+    });
+    return { canonical_name: name, inserted: true, icon_count: 1 };
+};
+
+// 画像パスから canonical_name を逆引き
+window.supabaseFindCharacterByIconPath = async function (iconPath) {
+    if (!iconPath) return null;
+    try {
+        const { data } = await supabase
+            .from('nikke_characters')
+            .select('canonical_name')
+            .contains('icon_paths', [iconPath])
+            .maybeSingle();
+        return data?.canonical_name || null;
+    } catch { return null; }
+};
+
 // nikke_characters の1行を更新 (canonical_name の変更含む)
 // oldCanonical を別の正式名に rename する場合 = 旧行を delete し、新行を upsert + 既存の aliases/count をマージ
 window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch) {
@@ -1141,6 +1195,7 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
     if (newAliases != null) update.aliases = newAliases;
     if (newBase) update.base_name = newBase;
     if (isConfirmed != null) update.is_confirmed = !!isConfirmed;
+    if (Array.isArray(patch.icon_paths)) update.icon_paths = patch.icon_paths.filter(Boolean);
     if (Object.keys(update).length === 0) return { unchanged: true };
     const { error } = await supabase.from('nikke_characters').update(update).eq('canonical_name', oldCanonical);
     if (error) throw error;
