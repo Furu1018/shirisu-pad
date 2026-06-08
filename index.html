@@ -2253,10 +2253,6 @@
                 <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">例: 「紅蓮：ブラックシャドウ」「リトルマーメイド」など正式名称に修正</p>
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">base 名 (スキン違いの統合キー)</label>
-                <input id="charEditBase" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
-            </div>
-            <div>
                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">エイリアス (カンマ区切り)</label>
                 <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
             </div>
@@ -3882,7 +3878,7 @@
                 return `
                     <div onclick="openCharMasterEditModal('${safeName}')" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
                         <div style="display:flex;align-items:center;gap:2px;">${icons}</div>
-                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.canonical_name)} (base: ${escapeHtml(r.base_name)})"><strong>${escapeHtml(r.canonical_name)}</strong><br><span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">base: ${escapeHtml(r.base_name)}</span></div>
+                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.canonical_name)}"><strong>${escapeHtml(r.canonical_name)}</strong></div>
                         <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
                         <div style="text-align:center;">${status}</div>
                         <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--md-sys-color-on-surface-variant);">${aliases}</div>
@@ -3913,7 +3909,7 @@
             } catch { /* noop */ }
             if (!entry) { alert('該当エントリが見つかりません'); return; }
             document.getElementById('charEditCanonical').value = entry.canonical_name || '';
-            document.getElementById('charEditBase').value = entry.base_name || '';
+            /* base_name は削除済み */
             document.getElementById('charEditAliases').value = (entry.aliases || []).join(', ');
             document.getElementById('charEditConfirmed').checked = !!entry.is_confirmed;
             document.getElementById('charEditMergeTarget').value = '';
@@ -3943,7 +3939,6 @@
             const msg = document.getElementById('charEditMessage');
             const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
             const newCanonical = document.getElementById('charEditCanonical').value.trim();
-            const newBase = document.getElementById('charEditBase').value.trim();
             const aliasesRaw = document.getElementById('charEditAliases').value;
             const aliases = aliasesRaw.split(/[、,]/).map(s => s.trim()).filter(Boolean);
             const isConfirmed = document.getElementById('charEditConfirmed').checked;
@@ -3960,7 +3955,6 @@
                 } else {
                     await window.supabaseUpdateCharacterMasterEntry(_charEditOriginal, {
                         canonical_name: newCanonical,
-                        base_name: newBase || newCanonical.split(/[：:]/)[0],
                         aliases,
                         is_confirmed: isConfirmed,
                     });

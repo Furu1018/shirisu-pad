@@ -956,7 +956,7 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
     try {
         const { data } = await supabase
             .from('nikke_characters')
-            .select('canonical_name, base_name, aliases, sighting_count, is_confirmed');
+            .select('canonical_name, aliases, sighting_count, is_confirmed');
         master = data || [];
     } catch { return out; }
 
@@ -1015,7 +1015,6 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
                     await supabase.from('nikke_characters').delete().eq('canonical_name', best.canonical_name);
                     await supabase.from('nikke_characters').insert({
                         canonical_name: raw,
-                        base_name: raw.split(/[：:]/)[0].trim() || raw,
                         aliases,
                         sighting_count: newCount,
                         first_seen: best.first_seen,
@@ -1048,11 +1047,9 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
         }
 
         // 3) どれにも該当しなければ新規追加
-        const baseName = raw.split(/[：:]/)[0].trim();
         try {
             await supabase.from('nikke_characters').insert({
                 canonical_name: raw,
-                base_name: baseName || raw,
                 aliases: [],
                 sighting_count: 1,
                 is_confirmed: false,
@@ -1060,7 +1057,7 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
                 last_seen: nowIso,
             });
             normIndex.set(norm, raw);
-            master.push({ canonical_name: raw, base_name: baseName, aliases: [], sighting_count: 1, is_confirmed: false });
+            master.push({ canonical_name: raw, aliases: [], sighting_count: 1, is_confirmed: false });
         } catch { /* noop: テーブル未作成時など */ }
         out.canonical.push(raw);
         // 0.50 〜 0.85 は運営レビュー候補として薄くマーク
@@ -1100,12 +1097,11 @@ window.supabaseLoadCharacterMaster = async function () {
 
 // 名前 + アイコン画像で登録/更新 (ブートストラップウィザード用)
 // 同一 canonical_name が既にあれば icon_paths に追加 (重複しないように)、無ければ新規 INSERT
-window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPath, opts = {}) {
+window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPath) {
     if (!canonicalName || typeof canonicalName !== 'string') throw new Error('canonical_name 必須');
     if (!iconPath || typeof iconPath !== 'string') throw new Error('icon_path 必須');
     const name = canonicalName.trim();
     if (!name) throw new Error('canonical_name 空不可');
-    const baseName = (opts.baseName || name.split(/[：:]/)[0]).trim() || name;
 
     // 既存をチェック
     const { data: existing } = await supabase
@@ -1128,7 +1124,6 @@ window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPa
     // 新規登録
     await supabase.from('nikke_characters').insert({
         canonical_name: name,
-        base_name: baseName,
         aliases: [],
         icon_paths: [iconPath],
         sighting_count: 0,
@@ -1158,7 +1153,6 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
     if (!oldCanonical) throw new Error('oldCanonical 必須');
     const newCanonical = (patch.canonical_name ?? oldCanonical).trim();
     if (!newCanonical) throw new Error('canonical_name は空にできません');
-    const newBase = (patch.base_name ?? newCanonical.split(/[：:]/)[0]).trim();
     const newAliases = Array.isArray(patch.aliases) ? patch.aliases.filter(Boolean) : null;
     const isConfirmed = patch.is_confirmed;
 
@@ -1179,7 +1173,6 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
         const mergedCount = (existing?.sighting_count || 0) + (old.sighting_count || 0);
         await supabase.from('nikke_characters').upsert({
             canonical_name: newCanonical,
-            base_name: newBase || newCanonical,
             aliases: mergedAliases,
             sighting_count: mergedCount,
             is_confirmed: (isConfirmed != null ? !!isConfirmed : (existing?.is_confirmed || old.is_confirmed)),
@@ -1193,7 +1186,6 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
     // 通常更新
     const update = {};
     if (newAliases != null) update.aliases = newAliases;
-    if (newBase) update.base_name = newBase;
     if (isConfirmed != null) update.is_confirmed = !!isConfirmed;
     if (Array.isArray(patch.icon_paths)) update.icon_paths = patch.icon_paths.filter(Boolean);
     if (Object.keys(update).length === 0) return { unchanged: true };
