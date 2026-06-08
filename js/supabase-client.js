@@ -928,6 +928,30 @@ const _similarity = (a, b) => {
     const longer = Math.max(a.length, b.length);
     return longer === 0 ? 1 : 1 - dist / longer;
 };
+// 共通接頭辞長 (Longest Common Prefix)
+const _lcpLength = (a, b) => {
+    const len = Math.min(a.length, b.length);
+    for (let i = 0; i < len; i++) if (a[i] !== b[i]) return i;
+    return len;
+};
+// 強化版類似度: 基本Levenshtein + LCP/部分文字列ボーナス
+// 「ディーゼル:ウー」 vs 「ディーゼル:ウィンタースイーツ」のような共通接頭辞ケースを救済
+const _similarityEnhanced = (a, b) => {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    let score = _similarity(a, b);
+    // LCP bonus (共通接頭辞 5文字以上)
+    const lcp = _lcpLength(a, b);
+    if (lcp >= 5) {
+        const ratio = lcp / Math.min(a.length, b.length);
+        if (ratio >= 0.7) score = Math.max(score, 0.88);
+        else if (ratio >= 0.5) score = Math.max(score, 0.78);
+    }
+    // 部分文字列ボーナス (片方が他方に内包・5文字以上)
+    if (a.length >= 5 && b.includes(a)) score = Math.max(score, 0.92);
+    if (b.length >= 5 && a.includes(b)) score = Math.max(score, 0.92);
+    return score;
+};
 
 // 文字列が本物のキャラ名らしいか判定 (ファイルパス・ハッシュ・URLは除外)
 const _looksLikeCharName = (s) => {
@@ -991,16 +1015,18 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
             continue;
         }
 
-        // 2) ファジィ最近傍。接頭辞関係(=OCR途中切れ)は 0.92 にブーストして優先
+        // 2) ファジィ最近傍。閾値50%、LCP/部分文字列ボーナスで部分一致を救済
+        // 入力が短すぎる(<4文字)場合は誤マッチを避けるため自動マージしない
         let best = null, bestScore = 0;
         for (const m of master) {
             const mNorm = _normalizeNikkeName(m.canonical_name) || '';
-            const lev = _similarity(norm, mNorm);
+            const enh = _similarityEnhanced(norm, mNorm);
             const pre = _isPrefixMatch(norm, mNorm, 4) ? 0.92 : 0;
-            const score = Math.max(lev, pre);
+            const score = Math.max(enh, pre);
             if (score > bestScore) { bestScore = score; best = m; }
         }
-        if (best && bestScore >= 0.85) {
+        const minLenForMerge = 4;
+        if (best && bestScore >= 0.50 && norm.length >= minLenForMerge) {
             const bestNorm = _normalizeNikkeName(best.canonical_name) || '';
             // 新しい raw が既存より長い接頭辞関係 → 既存を「短い表記」と判断し、canonical を新しい方に rename
             const shouldPromoteToLonger = _isPrefixMatch(norm, bestNorm, 4) && norm.length > bestNorm.length;

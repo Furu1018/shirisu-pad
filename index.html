@@ -2854,13 +2854,29 @@
             document.getElementById('iconPickerModal').classList.remove('open');
             _iconPickerTargetIdx = null;
         }
-        // 簡易類似度 (Levenshtein 1 - dist/maxLen) + 接頭辞ボーナス
+        // 簡易類似度 (Levenshtein 1 - dist/maxLen) + LCP/部分文字列ボーナス
         function _simBetween(a, b) {
             if (!a || !b) return 0;
             const norm = s => s.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '');
             const A = norm(a), B = norm(b);
             if (A === B) return 1;
-            if (A.length >= 3 && B.length >= 3 && (B.startsWith(A) || A.startsWith(B))) return 0.9;
+            // 接頭辞関係 → 高信頼度
+            if (A.length >= 3 && B.length >= 3 && (B.startsWith(A) || A.startsWith(B))) return 0.92;
+            // 部分文字列 (片方が他方に内包・5文字以上)
+            if (A.length >= 5 && B.includes(A)) return 0.92;
+            if (B.length >= 5 && A.includes(B)) return 0.92;
+            // 共通接頭辞 LCP (5文字以上 かつ 短い方の70%以上)
+            const lcpLen = (() => {
+                const len = Math.min(A.length, B.length);
+                for (let i = 0; i < len; i++) if (A[i] !== B[i]) return i;
+                return len;
+            })();
+            if (lcpLen >= 5) {
+                const ratio = lcpLen / Math.min(A.length, B.length);
+                if (ratio >= 0.7) return 0.88;
+                if (ratio >= 0.5) return 0.78;
+            }
+            // 通常 Levenshtein
             const m = A.length, n = B.length;
             if (m === 0 || n === 0) return 0;
             const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
@@ -2870,6 +2886,25 @@
                 dp[i][j] = A[i-1] === B[j-1] ? dp[i-1][j-1] : Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]) + 1;
             }
             return 1 - dp[m][n] / Math.max(m, n);
+        }
+
+        // OCRが返した名前を 50% 以上の類似度でマスタの canonical_name に解決。
+        // 解決できなければ raw のまま返す。
+        function fuzzyResolveCharacter(rawName, threshold = 0.50) {
+            if (!rawName || typeof rawName !== 'string') return null;
+            const master = _nikkeCharsCache || [];
+            if (master.length === 0) return rawName;
+            // exact (name or alias) 優先
+            if (_nikkeCharsByName.has(rawName)) return _nikkeCharsByName.get(rawName).canonical_name;
+            const norm = s => s.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '');
+            const rNorm = norm(rawName);
+            if (rNorm.length < 3) return rawName;  // 短すぎは誤マッチ防止で raw のまま
+            let best = null, bestScore = 0;
+            for (const m of master) {
+                const score = _simBetween(rNorm, norm(m.canonical_name));
+                if (score > bestScore) { bestScore = score; best = m; }
+            }
+            return (best && bestScore >= threshold) ? best.canonical_name : rawName;
         }
         function renderIconPickerList() {
             const listEl = document.getElementById('iconPickerList');
@@ -2964,11 +2999,17 @@
             try {
                 const r = await _ocrAttackMultiAndMerge(files);
                 if (!r.characters || r.characters.length === 0) throw new Error('キャラ名を読み取れませんでした');
+                await getNikkeCharsCache();  // ファジィ解決のためマスタを準備
                 const inputs = document.querySelectorAll('#myTeamEditFields input[data-team-idx]');
-                r.characters.slice(0, 5).forEach((name, i) => {
-                    if (inputs[i] && name) inputs[i].value = name;
+                let matched = 0;
+                r.characters.slice(0, 5).forEach((rawName, i) => {
+                    if (!inputs[i] || !rawName) return;
+                    const resolved = fuzzyResolveCharacter(rawName);
+                    inputs[i].value = resolved || rawName;
+                    if (resolved && resolved !== rawName) matched++;
+                    updateMyTeamEditIcon(i);
                 });
-                statusEl.textContent = `✅ ${r.characters.length}キャラ取り込み`;
+                statusEl.textContent = `✅ ${r.characters.length}キャラ取り込み (うち${matched}件をマスタへ自動補正)`;
                 statusEl.style.color = '#22c55e';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
@@ -3656,11 +3697,13 @@
                         && _myAttackOcrBossHp.seasonId === ctx.season.id
                         && _myAttackOcrBossHp.bossNumber === boss.boss_number
                         && _myAttackOcrBossHp.remainingHp != null;
-                    // OCR で使用キャラが取れていたら正規化マスタに自動学習させ canonical名を取得
+                    // OCR で使用キャラが取れていたら、まず FE で fuzzy 解決 → 既存マスタに正確に紐付け
                     let canonChars = [];
                     if (_myAttackOcrCharacters && typeof window.supabaseRegisterOcrCharacters === 'function') {
                         try {
-                            const reg = await window.supabaseRegisterOcrCharacters(_myAttackOcrCharacters);
+                            await getNikkeCharsCache();
+                            const preResolved = _myAttackOcrCharacters.map(n => fuzzyResolveCharacter(n) || n);
+                            const reg = await window.supabaseRegisterOcrCharacters(preResolved);
                             canonChars = (reg.canonical || []).filter(Boolean);
                         } catch (e) { console.warn('[char register]', e?.message || e); }
                     }
