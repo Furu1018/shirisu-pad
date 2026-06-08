@@ -2280,6 +2280,26 @@
         </div>
     </div>
 
+    <!-- ========== アイコン選択ピッカー (編成編集の枠から開く) ========== -->
+    <div class="player-select-modal" id="iconPickerModal">
+        <div class="player-select-content" style="max-width:640px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2 id="iconPickerTitle">📚 アイコンを選択</h2>
+                <button onclick="closeIconPicker()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">入力されているテキストに近い候補を上位に並べています。画像をタップで選択。</p>
+
+            <input id="iconPickerSearch" type="text" placeholder="名前で絞り込み (例: ラピ)" oninput="renderIconPickerList()" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+
+            <div id="iconPickerList" style="max-height:55vh;overflow-y:auto;"></div>
+
+            <div id="iconPickerNew" style="border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;">
+                <p style="margin:0 0 6px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">候補に無い場合、入力中のテキストをそのまま新規キャラとしてマスタに登録できます。</p>
+                <button onclick="handleIconPickerNew()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:12px;font-weight:600;cursor:pointer;">＋ <span id="iconPickerNewLabel">この名前で新規登録</span></button>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== 編成編集モーダル (マイページの属性別ダメ行から開く) ========== -->
     <div class="player-select-modal" id="myTeamEditModal">
         <div class="player-select-content" style="max-width:480px;">
@@ -2779,8 +2799,8 @@
             const buildRow = (i, v) => {
                 const r = v ? resolveNikkeChar(v) : null;
                 const icon = r?.iconPath
-                    ? `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;">`
-                    : `<div style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--md-sys-color-outline-variant);">?</div>`;
+                    ? `<img onclick="openIconPicker(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`
+                    : `<div onclick="openIconPicker(${i})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
                 return `
                     <div style="display:flex;align-items:center;gap:8px;" data-team-row="${i}">
                         <span style="min-width:24px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">${i + 1}.</span>
@@ -2802,17 +2822,131 @@
             }
             document.getElementById('myTeamEditModal').classList.add('open');
         }
-        // 入力中にアイコンプレビューを更新
+        // 入力中にアイコンプレビューを更新 (?マークもクリックで Picker)
         function updateMyTeamEditIcon(idx) {
             const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
             const row = document.querySelector(`#myTeamEditFields [data-team-row="${idx}"]`);
             if (!input || !row) return;
             const r = resolveNikkeChar(input.value);
-            const iconEl = row.children[1];  // 2番目の子要素がアイコン
+            const iconEl = row.children[1];
             if (r?.iconPath) {
-                iconEl.outerHTML = `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;">`;
+                iconEl.outerHTML = `<img onclick="openIconPicker(${idx})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`;
             } else {
-                iconEl.outerHTML = `<div style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--md-sys-color-outline-variant);">?</div>`;
+                iconEl.outerHTML = `<div onclick="openIconPicker(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
+            }
+        }
+
+        // ========== アイコン選択ピッカー ==========
+        let _iconPickerTargetIdx = null;
+        function openIconPicker(idx) {
+            _iconPickerTargetIdx = idx;
+            const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
+            const current = input?.value.trim() || '';
+            document.getElementById('iconPickerTitle').textContent = `📚 アイコンを選択 (${idx + 1}枠目)`;
+            document.getElementById('iconPickerSearch').value = current;
+            document.getElementById('iconPickerNewLabel').textContent = current
+                ? `「${current}」を新規登録`
+                : '空欄では新規登録できません';
+            renderIconPickerList();
+            document.getElementById('iconPickerModal').classList.add('open');
+        }
+        function closeIconPicker() {
+            document.getElementById('iconPickerModal').classList.remove('open');
+            _iconPickerTargetIdx = null;
+        }
+        // 簡易類似度 (Levenshtein 1 - dist/maxLen) + 接頭辞ボーナス
+        function _simBetween(a, b) {
+            if (!a || !b) return 0;
+            const norm = s => s.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '');
+            const A = norm(a), B = norm(b);
+            if (A === B) return 1;
+            if (A.length >= 3 && B.length >= 3 && (B.startsWith(A) || A.startsWith(B))) return 0.9;
+            const m = A.length, n = B.length;
+            if (m === 0 || n === 0) return 0;
+            const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+            for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+                dp[i][j] = A[i-1] === B[j-1] ? dp[i-1][j-1] : Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]) + 1;
+            }
+            return 1 - dp[m][n] / Math.max(m, n);
+        }
+        function renderIconPickerList() {
+            const listEl = document.getElementById('iconPickerList');
+            const search = document.getElementById('iconPickerSearch').value.trim();
+            const master = _nikkeCharsCache || [];
+            // search でフィルタ (空ならall)
+            let pool = master;
+            if (search) {
+                const sNorm = search.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '').toLowerCase();
+                pool = master.filter(m => {
+                    const fields = [m.canonical_name, ...(m.aliases || [])].map(x => (x || '').normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '').toLowerCase());
+                    return fields.some(f => f.includes(sNorm));
+                });
+            }
+            // 類似度でソート (search ある時は降順、無い時は名前順)
+            if (search) {
+                pool = pool.map(m => ({ m, score: _simBetween(search, m.canonical_name) }))
+                    .sort((a, b) => b.score - a.score)
+                    .map(x => x.m);
+            } else {
+                pool = [...pool].sort((a, b) => a.canonical_name.localeCompare(b.canonical_name, 'ja'));
+            }
+            if (pool.length === 0) {
+                listEl.innerHTML = `<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:14px 0;">該当キャラなし。下の「新規登録」で追加できます。</p>`;
+                return;
+            }
+            const renderItem = c => {
+                const icon = (c.icon_paths && c.icon_paths[0])
+                    ? `<img src="${escapeHtml(c.icon_paths[0])}" style="width:48px;height:48px;border-radius:8px;background:#222;">`
+                    : `<div style="width:48px;height:48px;border-radius:8px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--md-sys-color-outline-variant);">?</div>`;
+                const safe = escapeHtml(c.canonical_name).replace(/'/g, "\\'");
+                return `
+                    <div onclick="pickIconForTeam('${safe}')" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background='var(--md-sys-color-surface)'">
+                        ${icon}
+                        <div style="font-size:11px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
+                    </div>`;
+            };
+            // 上位8件を「近い候補」、残りを「すべて」として表示
+            const topSize = search ? Math.min(8, pool.length) : 0;
+            const top = pool.slice(0, topSize);
+            const rest = pool.slice(topSize);
+            let html = '';
+            if (top.length > 0) {
+                html += `<div style="margin:10px 0 4px 0;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">近い候補</div>`;
+                html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">${top.map(renderItem).join('')}</div>`;
+            }
+            if (rest.length > 0) {
+                html += `<div style="margin:14px 0 4px 0;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">${search ? 'その他' : 'すべて'} (${rest.length}件)</div>`;
+                html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">${rest.map(renderItem).join('')}</div>`;
+            }
+            listEl.innerHTML = html;
+        }
+        function pickIconForTeam(canonicalName) {
+            if (_iconPickerTargetIdx == null) return;
+            const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${_iconPickerTargetIdx}"]`);
+            if (input) {
+                input.value = canonicalName;
+                updateMyTeamEditIcon(_iconPickerTargetIdx);
+            }
+            closeIconPicker();
+        }
+        // 「この名前で新規登録」: 入力テキストをマスタにアイコン無しで追加 → 自動的に枠にもセット
+        async function handleIconPickerNew() {
+            const name = document.getElementById('iconPickerSearch').value.trim();
+            if (!name) { alert('名前を入力してから新規登録してください'); return; }
+            if (_iconPickerTargetIdx == null) return;
+            try {
+                // canonical 既存なら何もしない、無ければ insert (icon_paths は空)
+                const existing = (_nikkeCharsCache || []).find(c => c.canonical_name === name);
+                if (!existing) {
+                    await window.supabaseRegisterOcrCharacters([name]);  // 自動学習経由でINSERT
+                    invalidateNikkeCharsCache();
+                    await getNikkeCharsCache();
+                }
+                pickIconForTeam(name);
+            } catch (e) {
+                alert(`新規登録失敗: ${e?.message || e}`);
             }
         }
         function closeMyTeamEditModal() {
