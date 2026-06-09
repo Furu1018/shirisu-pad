@@ -128,6 +128,10 @@ export default {
         const mediaType = m[1];
         const base64Data = m[2];
 
+        // プロンプトキャッシュ最適化:
+        // プロンプト本体(指示+登録キャラ一覧)はリクエスト間で同じなのでキャッシュ対象に。
+        // 画像は毎回違うので非キャッシュ。content順序は「テキスト先, 画像後」が必須
+        // (cache_control 付与ブロックより前の内容も含めてプレフィックスが一致する必要があるため)。
         const ar = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
@@ -141,8 +145,8 @@ export default {
             messages: [{
               role: "user",
               content: [
+                { type: "text", text: promptText, cache_control: { type: "ephemeral" } },
                 { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
-                { type: "text", text: promptText },
               ],
             }],
           }),
