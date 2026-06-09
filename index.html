@@ -2779,7 +2779,9 @@
                 const rec = byAttr.get(a.key);
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : '';
                 const updated = rec?.updated_at ? formatDmgUpdatedAt(rec.updated_at) : '未登録';
-                const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
+                const teamRaw = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
+                // 古い保存データを表示時にもファジィ解決 (ディーゼル:ウー → ディーゼル：ウィンタースイーツ 等)
+                const team = teamRaw.map(c => fuzzyResolveCharacter(c) || c);
                 const teamText = team.length > 0
                     ? renderTeamSnippet(team, { size: 24 })
                     : '<span style="color:var(--md-sys-color-outline-variant);">編成未登録</span>';
@@ -2829,6 +2831,9 @@
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
             await getNikkeCharsCache();
+            // 古い保存データを開いた瞬間にファジィ解決でクリーンアップ
+            // (例: 旧スキーマで「ディーゼル:ウー」と保存されていたら「ディーゼル：ウィンタースイーツ」に置換)
+            current = current.map(v => v ? (fuzzyResolveCharacter(v) || v) : '');
             const fieldsEl = document.getElementById('myTeamEditFields');
             const buildRow = (i, v) => {
                 const r = v ? resolveNikkeChar(v) : null;
