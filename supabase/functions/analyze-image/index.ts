@@ -104,8 +104,24 @@ export default {
 
       // ---- 画像モード ----
       if (image) {
-        const promptText = customPrompt || IMAGE_PROMPTS[task];
+        let promptText = customPrompt || IMAGE_PROMPTS[task];
         if (!promptText) return jsonError("unknown image task: " + String(task), 400);
+
+        // attack_result: 当ユニオン登録済みキャラリストを末尾に注入することで、
+        // 名前が見切れていても画像から識別 + リスト内の正式名にスナップしてもらう
+        if (task === "attack_result" && Array.isArray(body.known_characters) && body.known_characters.length > 0) {
+          const list = body.known_characters
+            .filter((s: unknown) => typeof s === "string" && (s as string).trim())
+            .slice(0, 200)
+            .map((s: string) => "  - " + s)
+            .join("\n");
+          if (list.length > 0) {
+            promptText += "\n\n【当ユニオン登録済みキャラ一覧】\n" + list + "\n";
+            promptText += "↑ 戦闘履歴に映っているキャラが上の一覧に該当しそうなら、必ずこの一覧の正式名をそのまま返してください。";
+            promptText += "テキストが見切れていても、横に表示されているアイコン画像を見て NIKKE キャラを識別し、上の一覧と照合してください。";
+            promptText += "アイコン画像とテキストで判断が食い違った場合、アイコン画像優先です。一覧に無いキャラはテキストで読み取った名前をそのまま返してください。";
+          }
+        }
 
         const m = String(image).match(/^data:(image\/[a-z0-9+.\-]+);base64,(.+)$/i);
         if (!m) return jsonError("invalid image data URL", 400);

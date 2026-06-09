@@ -3787,10 +3787,14 @@
         // 複数画像を attack_result でOCRし、各画像の結果を「first non-null」でマージ。
         // characters は length===5 の画像があればそれを優先、無ければ全画像の和集合を最大5要素で。
         async function _ocrAttackMultiAndMerge(files) {
+            // マスタの canonical_name 一覧を known_characters として AI に渡す。
+            // → 名前が画面で見切れていてもアイコン画像と照合してマスタに揃った正式名を返してくれる。
+            await getNikkeCharsCache();
+            const knownCharacters = (_nikkeCharsCache || []).map(c => c.canonical_name).filter(Boolean);
             const results = [];
             for (const file of files) {
                 const dataUrl = await window.fileToDataUrl(file);
-                const res = await window.callAiVision(dataUrl, 'attack_result');
+                const res = await window.callAiVision(dataUrl, 'attack_result', { known_characters: knownCharacters });
                 if (res?.result) results.push(res.result);
             }
             const pickFirst = (key) => results.map(r => r?.[key]).find(v => v != null && v !== '');
