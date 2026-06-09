@@ -2921,32 +2921,55 @@
                 renderMyAttackTeamSlots();
             }, `📚 凸報告 編成 (${idx + 1}枠目)`);
         }
-        // 簡易類似度 (Levenshtein 1 - dist/maxLen) + LCP/部分文字列ボーナス
+        // 共通の名前正規化 (NFKC + 全角コロン→半角 + 空白除去 + 先頭バースト記号除去)
+        function _normNameForMatch(s) {
+            if (typeof s !== 'string') return '';
+            let n = s.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '');
+            n = n.replace(/^(MAX|[IVXⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]{1,4})(?=[:぀-ヿ一-鿿])/, '');
+            return n;
+        }
+        // 簡易類似度 (Levenshtein) + LCP/LCS/部分文字列ボーナス
         function _simBetween(a, b) {
             if (!a || !b) return 0;
-            const norm = s => s.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '');
-            const A = norm(a), B = norm(b);
+            const A = _normNameForMatch(a), B = _normNameForMatch(b);
             if (A === B) return 1;
             // 接頭辞関係 → 高信頼度
             if (A.length >= 3 && B.length >= 3 && (B.startsWith(A) || A.startsWith(B))) return 0.92;
-            // 部分文字列 (片方が他方に内包・5文字以上)
+            // 部分文字列
             if (A.length >= 5 && B.includes(A)) return 0.92;
             if (B.length >= 5 && A.includes(B)) return 0.92;
-            // 共通接頭辞 LCP (5文字以上 かつ 短い方の70%以上)
+            const shortLen = Math.min(A.length, B.length);
+            // 共通接頭辞 LCP
             const lcpLen = (() => {
-                const len = Math.min(A.length, B.length);
-                for (let i = 0; i < len; i++) if (A[i] !== B[i]) return i;
-                return len;
+                for (let i = 0; i < shortLen; i++) if (A[i] !== B[i]) return i;
+                return shortLen;
             })();
             if (lcpLen >= 5) {
-                const ratio = lcpLen / Math.min(A.length, B.length);
+                const ratio = lcpLen / shortLen;
                 if (ratio >= 0.7) return 0.88;
                 if (ratio >= 0.5) return 0.78;
             }
-            // 通常 Levenshtein
+            // 最長共通部分列 LCS (先頭文字誤読を救済する重要ボーナス)
             const m = A.length, n = B.length;
             if (m === 0 || n === 0) return 0;
             const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
+            // dp は Levenshtein 用も兼ね、LCS は別途
+            let prev = new Array(n + 1).fill(0);
+            let curr = new Array(n + 1).fill(0);
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    curr[j] = (A[i-1] === B[j-1]) ? prev[j-1] + 1 : Math.max(prev[j], curr[j-1]);
+                }
+                const tmp = prev; prev = curr; curr = tmp;
+                curr.fill(0);
+            }
+            const lcs = prev[n];
+            if (lcs >= 5) {
+                const ratio = lcs / shortLen;
+                if (ratio >= 0.85) return 0.88;
+                if (ratio >= 0.7) return 0.78;
+            }
+            // 通常 Levenshtein
             for (let i = 0; i <= m; i++) dp[i][0] = i;
             for (let j = 0; j <= n; j++) dp[0][j] = j;
             for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
@@ -2963,12 +2986,11 @@
             if (master.length === 0) return rawName;
             // exact (name or alias) 優先
             if (_nikkeCharsByName.has(rawName)) return _nikkeCharsByName.get(rawName).canonical_name;
-            const norm = s => s.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '');
-            const rNorm = norm(rawName);
+            const rNorm = _normNameForMatch(rawName);
             if (rNorm.length < 3) return rawName;  // 短すぎは誤マッチ防止で raw のまま
             let best = null, bestScore = 0;
             for (const m of master) {
-                const score = _simBetween(rNorm, norm(m.canonical_name));
+                const score = _simBetween(rNorm, m.canonical_name);  // _simBetween 内で正規化
                 if (score > bestScore) { bestScore = score; best = m; }
             }
             return (best && bestScore >= threshold) ? best.canonical_name : rawName;

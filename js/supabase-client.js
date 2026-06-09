@@ -896,7 +896,8 @@ const _normalizeNikkeName = (raw) => {
     let s = raw.normalize('NFKC');                          // 全角→半角、合成正規化
     s = s.replace(/[：]/g, ':');                            // 全角コロンを半角に
     s = s.replace(/\s+/g, '');                              // 空白除去
-    s = s.replace(/^[Ⅰ-ⅩⅠ-ⅩIVXⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩABC]+\b/, '');   // 先頭バースト記号
+    // 先頭バースト記号 (I/II/III/IV/V + MAX) を、続きが日本語/コロンなら除去
+    s = s.replace(/^(MAX|[IVXⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]{1,4})(?=[:぀-ヿ一-鿿])/, '');
     s = s.replace(/^[・…．\.,、…]+/, '');                  // 先頭の中黒・句読点
     s = s.replace(/[・…．\.,、…\s]+$/, '');                // 末尾の中黒・句読点
     return s.length > 0 ? s : null;
@@ -934,20 +935,41 @@ const _lcpLength = (a, b) => {
     for (let i = 0; i < len; i++) if (a[i] !== b[i]) return i;
     return len;
 };
-// 強化版類似度: 基本Levenshtein + LCP/部分文字列ボーナス
-// 「ディーゼル:ウー」 vs 「ディーゼル:ウィンタースイーツ」のような共通接頭辞ケースを救済
+// 最長共通部分列長 (Longest Common Subsequence) - 順序保持・不連続OK
+// 例: "グリッド:サイ" と "ブリッド:サイレントトラック" の LCS = "リッド:サイ" (6)
+const _lcsLength = (a, b) => {
+    const m = a.length, n = b.length;
+    if (m === 0 || n === 0) return 0;
+    let prev = new Array(n + 1).fill(0);
+    let curr = new Array(n + 1).fill(0);
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            curr[j] = (a[i-1] === b[j-1]) ? prev[j-1] + 1 : Math.max(prev[j], curr[j-1]);
+        }
+        const tmp = prev; prev = curr; curr = tmp;
+        curr.fill(0);
+    }
+    return prev[n];
+};
+// 強化版類似度: 基本Levenshtein + LCP/LCS/部分文字列ボーナス
+// LCS により先頭文字誤読ケース (グリッド ↔ ブリッド) も救済
 const _similarityEnhanced = (a, b) => {
     if (!a || !b) return 0;
     if (a === b) return 1;
     let score = _similarity(a, b);
-    // LCP bonus (共通接頭辞 5文字以上)
+    const shortLen = Math.min(a.length, b.length);
     const lcp = _lcpLength(a, b);
     if (lcp >= 5) {
-        const ratio = lcp / Math.min(a.length, b.length);
+        const ratio = lcp / shortLen;
         if (ratio >= 0.7) score = Math.max(score, 0.88);
         else if (ratio >= 0.5) score = Math.max(score, 0.78);
     }
-    // 部分文字列ボーナス (片方が他方に内包・5文字以上)
+    const lcs = _lcsLength(a, b);
+    if (lcs >= 5) {
+        const ratio = lcs / shortLen;
+        if (ratio >= 0.85) score = Math.max(score, 0.88);
+        else if (ratio >= 0.7) score = Math.max(score, 0.78);
+    }
     if (a.length >= 5 && b.includes(a)) score = Math.max(score, 0.92);
     if (b.length >= 5 && a.includes(b)) score = Math.max(score, 0.92);
     return score;
