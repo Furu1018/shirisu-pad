@@ -46,6 +46,24 @@ const IMAGE_PROMPTS = {
     "HPはB表記でも整数で返す (Bは10^9倍)。出力はJSONのみ。",
   ].join("\n"),
 
+  bla_my_attacks: [
+    "画像はBlaBlaLINK拡張で表示される「メンバー個別のユニオンレイド凸結果一覧」です。",
+    "プレイヤー名の下に 1〜3個 の凸結果カードが縦に並んでいます。各カードを attacks 配列に順番に抽出してください。",
+    "",
+    "各凸の抽出内容:",
+    "- bossCode: ボス略称コードを以下から選択 (A.N.M.I. / H.S.T.A. / P.S.I.D. / Z.E.U.S. / D.M.T.R.)。",
+    "    ボス名と略称の対応は表記そのまま画像内に「ボス名「コード」」形式で書かれている。例: リビルドキューカンバー「A.N.M.I.」 → A.N.M.I.",
+    "- bossName: ボス名 (略称コードは除外、純粋にボス名のみ)。例: \"リビルドキューカンバー\"。",
+    "- level: HARD ラベル下の数値 (例: \"Level 2\" なら 2)。読めなければ null。",
+    "- totalDamage: 「ダメージ」ラベル右に表示される整数値 (カンマ除去)。",
+    "- characters: 各凸の編成5キャラの正式名配列。横並び5枚のアイコン画像を見て NIKKE キャラを識別。",
+    "    名前テキストが画面に書かれていない場合はアイコンから推定。",
+    "    画像が小さく判別困難なキャラは null を含めて5要素を維持。",
+    "",
+    "出力はJSONのみ。コードフェンス禁止。",
+    '形式: {"attacks":[{"bossCode":"A.N.M.I.","bossName":"リビルドキューカンバー","level":2,"totalDamage":10618556492,"characters":["A","B","C","D","E"]}, ...]}',
+  ].join("\n"),
+
   season_announce: [
     "画像はNIKKEのユニオンレイド開幕アナウンスです。以下をJSONで抽出してください。",
     "- startDate: 開始日 YYYY-MM-DD",
@@ -107,9 +125,9 @@ export default {
         let promptText = customPrompt || IMAGE_PROMPTS[task];
         if (!promptText) return jsonError("unknown image task: " + String(task), 400);
 
-        // attack_result: 当ユニオン登録済みキャラリストを末尾に注入することで、
-        // 名前が見切れていても画像から識別 + リスト内の正式名にスナップしてもらう
-        if (task === "attack_result" && Array.isArray(body.known_characters) && body.known_characters.length > 0) {
+        // attack_result / bla_my_attacks: 当ユニオン登録済みキャラリストを末尾に注入。
+        // 名前が見切れていてもアイコン画像 + リスト内の正式名で識別してもらう
+        if ((task === "attack_result" || task === "bla_my_attacks") && Array.isArray(body.known_characters) && body.known_characters.length > 0) {
           const list = body.known_characters
             .filter((s: unknown) => typeof s === "string" && (s as string).trim())
             .slice(0, 200)
