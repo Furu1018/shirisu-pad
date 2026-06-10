@@ -631,6 +631,17 @@ window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
     return data || [];
 };
 
+// シーズン全期間の凸 (全レベル・全日)。全体分析タブ用。
+window.supabaseLoadAllAttacksWholeSeason = async function (seasonId) {
+    const { data, error } = await supabase
+        .from('attacks')
+        .select('id, attack_date, attack_number, boss_number, boss_code, damage_raw, level, reported_at, player_id, players(name)')
+        .eq('season_id', seasonId)
+        .order('level', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
 // 凸のボスを変更
 window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode) {
     const { error } = await supabase
