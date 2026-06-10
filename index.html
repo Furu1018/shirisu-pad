@@ -979,10 +979,6 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
             ダメージ比較
         </button>
-        <button class="drawer-menu-item" data-tab="analysis" onclick="switchTabFromDrawer('analysis')">
-            <svg class="drawer-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-            <span>全体分析</span>
-        </button>
         <button class="drawer-menu-item" data-tab="slv-ranking" onclick="switchTabFromDrawer('slv-ranking')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             ふるり値
@@ -1042,10 +1038,6 @@
             <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ比較">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
                 ダメージ比較
-            </button>
-            <button class="tab-button" data-tab="analysis" onclick="switchTab('analysis')" title="全体分析">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                全体分析
             </button>
             <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="ふるり値">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -1394,35 +1386,6 @@
                     <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
                 <p style="margin: 0; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface);">このスコアはあくまで他人との比較は参考程度にして、過去の自分との比較に役立ててください</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========== Tab: 全体分析 (完了レイドの凸構成を可視化) ========== -->
-    <div id="tab-analysis" class="tab-content">
-        <div class="container">
-            <div class="card" style="margin-bottom: 16px;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
-                    <div>
-                        <h2 style="margin:0 0 4px 0;font-size:18px;font-weight:600;">📊 全体分析</h2>
-                        <p style="margin:0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">完了レイドの最終データ (月別 JSON) を元に、各レベル×各ボスの凸構成を SLv 帯別の色で可視化。同帯内で順位逆転しているメンバーは赤字で強調表示。</p>
-                    </div>
-                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                        <label style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">月:</label>
-                        <select id="analysisMonthSelect" onchange="renderAnalysisTab()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;">
-                            <option value="">読み込み中...</option>
-                        </select>
-                        <button onclick="renderAnalysisTab()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄</button>
-                    </div>
-                </div>
-
-                <!-- 凡例 -->
-                <div id="analysisLegend" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:12px;"></div>
-            </div>
-
-            <!-- 本体: 3レベル × 5ボス treemap -->
-            <div id="analysisBody" style="overflow-x:auto;">
-                <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:24px 0;">アクティブシーズン読み込み中...</p>
             </div>
         </div>
     </div>
@@ -2643,7 +2606,6 @@
             if (tabName === 'mypage') renderMyPage();
             if (tabName === 'ops') renderOpsDashboard();
             if (tabName === 'settings') renderSettingsTab();
-            if (tabName === 'analysis') renderAnalysisTab();
         }
 
         // ========== Player Identity (Phase 2a) ==========
@@ -4519,238 +4481,6 @@
                     <div style="flex:1;min-width:0;font-size:12px;line-height:1.5;">${escapeHtml(e.text)}</div>
                     <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;flex-shrink:0;">${SETTINGS_TS_FMT(e.ts)}</span>
                 </div>`).join('');
-        }
-
-        // ========== 全体分析タブ (ボス×レベルの凸スタック可視化) ==========
-        // SLv帯の定義 — 必要に応じてここで閾値変更
-        const ANALYSIS_BANDS = [
-            { id: 'outlier', label: '外れ値 (SLv 801+)', color: '#e9d5ff', min: 801, max: Infinity },
-            { id: 'high',    label: 'SLv 681-800',     color: '#fed7aa', min: 681, max: 800 },
-            { id: 'mid',     label: 'SLv 561-680',     color: '#bfdbfe', min: 561, max: 680 },
-            { id: 'low',     label: 'SLv 360-560',     color: '#bbf7d0', min: 0,   max: 560 },
-        ];
-        const _bandFor = (slv) => ANALYSIS_BANDS.find(b => slv >= b.min && slv <= b.max) || ANALYSIS_BANDS[ANALYSIS_BANDS.length - 1];
-
-        // 月別JSON + raid-config キャッシュ
-        let _analysisJsonCache = new Map();  // month → parsed JSON
-        let _analysisRaidConfig = null;
-
-        // 月別JSONの一覧を生成 (直近12ヶ月から fetch 試行) + セレクタ反映
-        async function _populateAnalysisMonthSelect() {
-            const sel = document.getElementById('analysisMonthSelect');
-            if (!sel) return [];
-            const now = new Date();
-            const candidates = [];
-            for (let i = 0; i < 12; i++) {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                candidates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-            }
-            const found = [];
-            for (const k of candidates) {
-                try {
-                    const r = await fetch(`./data/${k}.json`, { method: 'HEAD' });
-                    if (r.ok) found.push(k);
-                } catch { /* skip */ }
-            }
-            if (found.length === 0) {
-                sel.innerHTML = '<option value="">データ無し</option>';
-                return [];
-            }
-            sel.innerHTML = found.map((k, i) => `<option value="${k}"${i === 0 ? ' selected' : ''}>${k}</option>`).join('');
-            return found;
-        }
-
-        // bossType の先頭ローマ数字 → 1〜5
-        function _romanToInt(s) {
-            const map = { I: 1, V: 5, X: 10 };
-            let result = 0;
-            for (let i = 0; i < s.length; i++) {
-                const curr = map[s[i]] || 0;
-                const next = map[s[i + 1]] || 0;
-                result += (next > curr) ? -curr : curr;
-            }
-            return result;
-        }
-
-        async function renderAnalysisTab() {
-            const body = document.getElementById('analysisBody');
-            const legendEl = document.getElementById('analysisLegend');
-            const sel = document.getElementById('analysisMonthSelect');
-            if (!body) return;
-            body.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:24px 0;">読み込み中...</p>';
-
-            // 初回ロード時に月セレクタを構築
-            if (sel.options.length <= 1 || sel.value === '' || sel.value === '読み込み中...') {
-                await _populateAnalysisMonthSelect();
-            }
-            const monthKey = sel.value;
-            if (!monthKey) {
-                body.innerHTML = '<p style="color:#ef4444;padding:24px 0;">JSON ファイルが見つかりませんでした。data/YYYY-MM.json を配置してください。</p>';
-                return;
-            }
-
-            try {
-                // JSON 本体 + raid-config ロード
-                let json = _analysisJsonCache.get(monthKey);
-                if (!json) {
-                    const r = await fetch(`./data/${monthKey}.json`);
-                    if (!r.ok) throw new Error(`./data/${monthKey}.json が読めません`);
-                    json = await r.json();
-                    _analysisJsonCache.set(monthKey, json);
-                }
-                if (!_analysisRaidConfig) {
-                    try {
-                        const r2 = await fetch(`./data/raid-config.json`);
-                        if (r2.ok) _analysisRaidConfig = await r2.json();
-                    } catch { /* optional */ }
-                }
-
-                // 攻撃データの正規化
-                const flatAttacks = [];
-                (json.players || []).forEach(p => {
-                    const slv = Number(p.syncLevel) || 0;
-                    (p.attacks || []).forEach(a => {
-                        // JSON の level は 1/2/3 (clean) と 1X/2X/3X (再攻撃) の2形態あり。
-                        // どちらも先頭1桁が HARD LV を表す独自エンコード。
-                        const rawLevel = Number(a.level) || 0;
-                        if (rawLevel < 1) return;
-                        const lv = rawLevel >= 10 ? Math.floor(rawLevel / 10) : rawLevel;
-                        if (lv < 1 || lv > 3) return;
-                        const romanMatch = (a.bossType || '').match(/^([IVX]+)/);
-                        const bossNumber = romanMatch ? _romanToInt(romanMatch[1]) : 0;
-                        const bossName = (a.bossType || '').replace(/^[IVX]+/, '').trim();
-                        flatAttacks.push({
-                            playerName: p.player,
-                            slv,
-                            bossNumber,
-                            bossName,
-                            bossCode: a.bossCode || '',
-                            level: lv,
-                            damage: Number(a.damage) || 0,
-                        });
-                    });
-                });
-
-                // 凡例 (この月の参加者の SLv 分布)
-                const bandCounts = {};
-                (json.players || []).forEach(p => {
-                    const b = _bandFor(Number(p.syncLevel) || 0);
-                    bandCounts[b.id] = (bandCounts[b.id] || 0) + 1;
-                });
-                legendEl.innerHTML = ANALYSIS_BANDS.map(b => `
-                    <div style="display:inline-flex;align-items:center;gap:6px;">
-                        <span style="display:inline-block;width:18px;height:14px;background:${b.color};border:1px solid var(--md-sys-color-outline-variant);"></span>
-                        <span>${b.label}</span>
-                        <span style="color:var(--md-sys-color-on-surface-variant);">${bandCounts[b.id] || 0}名</span>
-                    </div>`).join('') + `
-                    <div style="display:inline-flex;align-items:center;gap:6px;">
-                        <span style="display:inline-block;width:18px;height:14px;background:#6b7280;"></span>残HP
-                    </div>`;
-
-                // ボスマップ: bossCode → { number, name, code }
-                const bossMap = new Map();
-                flatAttacks.forEach(a => {
-                    if (!a.bossCode) return;
-                    if (!bossMap.has(a.bossCode)) {
-                        bossMap.set(a.bossCode, { bossNumber: a.bossNumber, bossName: a.bossName, bossCode: a.bossCode });
-                    }
-                });
-                const bosses = [...bossMap.values()].sort((a, b) => a.bossNumber - b.bossNumber);
-                if (bosses.length === 0) {
-                    body.innerHTML = `<p style="color:#ef4444;padding:24px 0;">${monthKey}: ボス情報が抽出できませんでした。</p>`;
-                    return;
-                }
-
-                const bossClassMap = (_analysisRaidConfig?.bossClassByMonth?.[monthKey]) || {};
-                const hardLevelHp = _analysisRaidConfig?.hardLevelHp || {};
-                const hpOverride = (_analysisRaidConfig?.hardLevelHpOverrideByMonth?.[monthKey]) || {};
-
-                const levels = [1, 2, 3];
-                const STACK_HEIGHT = 360;  // 全列のグラフ部分の高さ (固定)
-                const COL_WIDTH = 96;
-
-                let html = '<div style="display:flex;gap:14px;align-items:flex-start;padding:8px 4px;min-width:max-content;">';
-                for (const lv of levels) {
-                    // 各レベルの基準HP = Lord HP (この値が STACK_HEIGHT に対応)
-                    const lordHpAtLv = hpOverride[lv]?.lord || hardLevelHp[lv]?.lord || 0;
-                    html += `<div style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:8px;background:var(--md-sys-color-surface);">`;
-                    html += `<div style="text-align:center;font-weight:700;font-size:14px;padding:2px 4px;">LV${lv}</div>`;
-                    html += `<div style="display:flex;gap:4px;align-items:flex-start;">`;
-                    for (const boss of bosses) {
-                        const cls = bossClassMap[boss.bossCode] || 'tyrant';
-                        const bossHp = hpOverride[lv]?.[cls] || hardLevelHp[lv]?.[cls] || null;
-                        // ボス本属性は BOSS_ATTRIBUTES から (bossCode 固定マッピング)
-                        const attrJp = BOSS_ATTRIBUTES[boss.bossCode]?.bossAttributeJP || null;
-                        html += _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, STACK_HEIGHT, COL_WIDTH, attrJp);
-                    }
-                    html += `</div></div>`;
-                }
-                html += '</div>';
-                body.innerHTML = html;
-            } catch (e) {
-                body.innerHTML = `<p style="color:#ef4444;padding:24px 0;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
-            }
-        }
-
-        function _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, stackHeight, colWidth, attrJp) {
-            // この (boss, level) の凸を抽出。ダメージ降順 (HTML上→下: 大→小)
-            // flex-direction: column では HTML順序のまま上→下に並ぶので、
-            // 「少ないダメージから積み上げ」を実現するために 降順 で HTMLを生成
-            // (黒・灰の下に最大ダメ、その下に2番目…、一番下に最小ダメ)
-            const colAttacks = flatAttacks
-                .filter(a => a.bossCode === boss.bossCode && a.level === lv)
-                .map(a => ({ ...a, _band: _bandFor(a.slv) }))
-                .sort((a, b) => b.damage - a.damage);
-
-            const totalDamage = colAttacks.reduce((s, a) => s + a.damage, 0);
-            const effectiveHp = bossHp || totalDamage || 1;
-            // この列の HP スケール (px per HP) — レベル内で全列共通
-            const maxHpAtLv = lordHpAtLv || effectiveHp;
-            const pxPerHp = maxHpAtLv > 0 ? stackHeight / maxHpAtLv : 0;
-
-            // 上部黒 (Lord HP との差を黒で埋める)
-            const gapHp = Math.max(0, maxHpAtLv - effectiveHp);
-            const blackHeight = gapHp * pxPerHp;
-            // 残HP灰色
-            const remainingHp = Math.max(0, effectiveHp - totalDamage);
-            const grayHeight = remainingHp * pxPerHp;
-
-            // ヘッダ (固定構造: アイコン / 名前 / コード / HP / 凸数)
-            const hpDisplay = bossHp ? `${(bossHp / 1e9).toFixed(3)} B` : (totalDamage > 0 ? `${(totalDamage / 1e9).toFixed(3)} B*` : '-');
-            const iconHtml = attrJp
-                ? `<img src="./属性アイコン/${escapeHtml(attrJp)}.png" alt="${escapeHtml(attrJp)}" title="${escapeHtml(attrJp)}属性" style="width:22px;height:22px;display:block;margin:0 auto 2px;">`
-                : `<div style="width:22px;height:22px;border-radius:50%;background:var(--md-sys-color-surface-variant);margin:0 auto 2px;"></div>`;
-            const header = `
-                <div style="text-align:center;padding:4px 2px;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;background:var(--md-sys-color-surface-variant);font-size:10px;line-height:1.4;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;">
-                    <div>
-                        ${iconHtml}
-                        <div style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(boss.bossName)} (${escapeHtml(boss.bossCode)})">${escapeHtml(boss.bossName || boss.bossCode || '?')}</div>
-                        <div style="font-size:9px;color:var(--md-sys-color-on-surface-variant);">${escapeHtml(boss.bossCode)}</div>
-                    </div>
-                    <div>
-                        <div style="font-weight:700;">${hpDisplay}</div>
-                        <div style="color:var(--md-sys-color-on-surface-variant);">${colAttacks.length} 凸</div>
-                    </div>
-                </div>`;
-
-            // スタック本体: 上から 黒(HP差) → 灰(残HP) → 最大ダメ → ... → 最小ダメ (一番下)
-            const blackHtml = blackHeight > 0 ? `<div style="height:${blackHeight}px;background:#1f2937;" title="HP差 (Tyrant級はLord級より低HP)"></div>` : '';
-            const grayHtml = grayHeight > 0 ? `<div style="height:${grayHeight}px;background:#6b7280;" title="残HP"></div>` : '';
-
-            let blocksHtml = '';
-            colAttacks.forEach(a => {
-                const h = Math.max(2, Math.round(a.damage * pxPerHp));
-                const tooltip = `${a.playerName} / ${(a.damage / 1e9).toFixed(3)}B / SLv${a.slv}`;
-                const showName = h >= 18;
-                const nameHtml = showName
-                    ? `<div style="font-size:10px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;padding:0 2px;">${escapeHtml(a.playerName)}</div>`
-                    : '';
-                blocksHtml += `<div title="${escapeHtml(tooltip)}" style="height:${h}px;background:${a._band.color};border-top:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${nameHtml}</div>`;
-            });
-
-            const stack = `<div style="width:100%;height:${stackHeight}px;display:flex;flex-direction:column;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;overflow:hidden;background:#f9fafb;">${blackHtml}${grayHtml}${blocksHtml}</div>`;
-
-            return `<div style="width:${colWidth}px;display:flex;flex-direction:column;gap:4px;">${header}${stack}</div>`;
         }
 
         // ========== 運営ダッシュボード (Phase 3a) ==========
