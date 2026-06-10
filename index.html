@@ -4662,7 +4662,6 @@
                 }
 
                 const bossClassMap = (_analysisRaidConfig?.bossClassByMonth?.[monthKey]) || {};
-                const weaknessMap = (_analysisRaidConfig?.bossWeaknessByMonth?.[monthKey]) || {};
                 const hardLevelHp = _analysisRaidConfig?.hardLevelHp || {};
                 const hpOverride = (_analysisRaidConfig?.hardLevelHpOverrideByMonth?.[monthKey]) || {};
 
@@ -4680,8 +4679,9 @@
                     for (const boss of bosses) {
                         const cls = bossClassMap[boss.bossCode] || 'tyrant';
                         const bossHp = hpOverride[lv]?.[cls] || hardLevelHp[lv]?.[cls] || null;
-                        const weakness = weaknessMap[boss.bossCode] || null;
-                        html += _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, STACK_HEIGHT, COL_WIDTH, weakness);
+                        // ボス本属性は BOSS_ATTRIBUTES から (bossCode 固定マッピング)
+                        const attrJp = BOSS_ATTRIBUTES[boss.bossCode]?.bossAttributeJP || null;
+                        html += _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, STACK_HEIGHT, COL_WIDTH, attrJp);
                     }
                     html += `</div></div>`;
                 }
@@ -4692,7 +4692,7 @@
             }
         }
 
-        function _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, stackHeight, colWidth, weakness) {
+        function _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, stackHeight, colWidth, attrJp) {
             // この (boss, level) の凸を抽出。ダメージ降順 (HTML上→下: 大→小)
             // flex-direction: column では HTML順序のまま上→下に並ぶので、
             // 「少ないダメージから積み上げ」を実現するために 降順 で HTMLを生成
@@ -4717,9 +4717,9 @@
 
             // ヘッダ (固定構造: アイコン / 名前 / コード / HP / 凸数)
             const hpDisplay = bossHp ? `${(bossHp / 1e9).toFixed(3)} B` : (totalDamage > 0 ? `${(totalDamage / 1e9).toFixed(3)} B*` : '-');
-            const iconHtml = weakness
-                ? `<img src="./属性アイコン/${escapeHtml(weakness)}.png" alt="${escapeHtml(weakness)}" style="width:22px;height:22px;display:block;margin:0 auto 2px;">`
-                : `<div style="width:22px;height:22px;border-radius:50%;background:var(--md-sys-color-surface-variant);border:1px dashed var(--md-sys-color-outline-variant);margin:0 auto 2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--md-sys-color-outline-variant);" title="raid-config.json の bossWeaknessByMonth に未設定">?</div>`;
+            const iconHtml = attrJp
+                ? `<img src="./属性アイコン/${escapeHtml(attrJp)}.png" alt="${escapeHtml(attrJp)}" title="${escapeHtml(attrJp)}属性" style="width:22px;height:22px;display:block;margin:0 auto 2px;">`
+                : `<div style="width:22px;height:22px;border-radius:50%;background:var(--md-sys-color-surface-variant);margin:0 auto 2px;"></div>`;
             const header = `
                 <div style="text-align:center;padding:4px 2px;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;background:var(--md-sys-color-surface-variant);font-size:10px;line-height:1.4;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;">
                     <div>
