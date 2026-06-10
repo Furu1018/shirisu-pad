@@ -4667,32 +4667,21 @@
                 const hpOverride = (_analysisRaidConfig?.hardLevelHpOverrideByMonth?.[monthKey]) || {};
 
                 const levels = [1, 2, 3];
-                // 全列のHPから最大値を取得 → 1B 当たりのpx数を全列共通にする
-                let maxHp = 0;
-                for (const lv of levels) {
-                    for (const boss of bosses) {
-                        const cls = bossClassMap[boss.bossCode] || 'tyrant';
-                        const hp = (hpOverride[lv]?.[cls]) || hardLevelHp[lv]?.[cls] || 0;
-                        if (hp > maxHp) maxHp = hp;
-                    }
-                }
-                const MAX_COL_PX = 480;  // 最大HPの列をこの px に
-                const MIN_COL_PX = 60;
-                const pxPerHp = maxHp > 0 ? MAX_COL_PX / maxHp : 0;
+                const STACK_HEIGHT = 360;  // 全列のグラフ部分の高さ (固定)
                 const COL_WIDTH = 96;
 
-                let html = '<div style="display:flex;gap:14px;align-items:stretch;padding:8px 4px;min-width:max-content;">';
+                let html = '<div style="display:flex;gap:14px;align-items:flex-start;padding:8px 4px;min-width:max-content;">';
                 for (const lv of levels) {
+                    // 各レベルの基準HP = Lord HP (この値が STACK_HEIGHT に対応)
+                    const lordHpAtLv = hpOverride[lv]?.lord || hardLevelHp[lv]?.lord || 0;
                     html += `<div style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:8px;background:var(--md-sys-color-surface);">`;
                     html += `<div style="text-align:center;font-weight:700;font-size:14px;padding:2px 4px;">LV${lv}</div>`;
-                    // 凸スタックは下揃え。各列の高さが違っても下基準で並ぶ
-                    html += `<div style="display:flex;gap:4px;align-items:flex-end;">`;
+                    html += `<div style="display:flex;gap:4px;align-items:flex-start;">`;
                     for (const boss of bosses) {
                         const cls = bossClassMap[boss.bossCode] || 'tyrant';
                         const bossHp = hpOverride[lv]?.[cls] || hardLevelHp[lv]?.[cls] || null;
-                        const colHeight = bossHp ? Math.max(MIN_COL_PX, bossHp * pxPerHp) : MIN_COL_PX;
                         const weakness = weaknessMap[boss.bossCode] || null;
-                        html += _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, colHeight, COL_WIDTH, weakness);
+                        html += _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, STACK_HEIGHT, COL_WIDTH, weakness);
                     }
                     html += `</div></div>`;
                 }
@@ -4703,59 +4692,63 @@
             }
         }
 
-        function _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, colHeight, colWidth, weakness) {
-            // この (boss, level) の凸を抽出 + ダメージ降順
+        function _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, lordHpAtLv, stackHeight, colWidth, weakness) {
+            // この (boss, level) の凸を抽出。ダメージ降順 (HTML上→下: 大→小)
+            // flex-direction: column では HTML順序のまま上→下に並ぶので、
+            // 「少ないダメージから積み上げ」を実現するために 降順 で HTMLを生成
+            // (黒・灰の下に最大ダメ、その下に2番目…、一番下に最小ダメ)
             const colAttacks = flatAttacks
                 .filter(a => a.bossCode === boss.bossCode && a.level === lv)
                 .map(a => ({ ...a, _band: _bandFor(a.slv) }))
                 .sort((a, b) => b.damage - a.damage);
 
             const totalDamage = colAttacks.reduce((s, a) => s + a.damage, 0);
-            // HP不明 → ダメ合計を採用 (過去ですべて消化前提)
             const effectiveHp = bossHp || totalDamage || 1;
+            // この列の HP スケール (px per HP) — レベル内で全列共通
+            const maxHpAtLv = lordHpAtLv || effectiveHp;
+            const pxPerHp = maxHpAtLv > 0 ? stackHeight / maxHpAtLv : 0;
 
-            // 順位逆転検出
-            colAttacks.forEach(curr => {
-                curr._exceeded = colAttacks.some(other =>
-                    other._band.min > curr._band.min && other.damage < curr.damage
-                );
-            });
+            // 上部黒 (Lord HP との差を黒で埋める)
+            const gapHp = Math.max(0, maxHpAtLv - effectiveHp);
+            const blackHeight = gapHp * pxPerHp;
+            // 残HP灰色
+            const remainingHp = Math.max(0, effectiveHp - totalDamage);
+            const grayHeight = remainingHp * pxPerHp;
 
+            // ヘッダ (固定構造: アイコン / 名前 / コード / HP / 凸数)
             const hpDisplay = bossHp ? `${(bossHp / 1e9).toFixed(3)} B` : (totalDamage > 0 ? `${(totalDamage / 1e9).toFixed(3)} B*` : '-');
-            const countDisplay = `${colAttacks.length} 凸`;
             const iconHtml = weakness
                 ? `<img src="./属性アイコン/${escapeHtml(weakness)}.png" alt="${escapeHtml(weakness)}" style="width:22px;height:22px;display:block;margin:0 auto 2px;">`
                 : `<div style="width:22px;height:22px;border-radius:50%;background:var(--md-sys-color-surface-variant);border:1px dashed var(--md-sys-color-outline-variant);margin:0 auto 2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--md-sys-color-outline-variant);" title="raid-config.json の bossWeaknessByMonth に未設定">?</div>`;
             const header = `
-                <div style="text-align:center;padding:4px 2px;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;background:var(--md-sys-color-surface-variant);font-size:10px;line-height:1.4;">
-                    ${iconHtml}
-                    <div style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(boss.bossName)} (${escapeHtml(boss.bossCode)})">${escapeHtml(boss.bossName || boss.bossCode || '?')}</div>
-                    <div style="font-size:9px;color:var(--md-sys-color-on-surface-variant);">${escapeHtml(boss.bossCode)}</div>
-                    <div style="font-weight:700;">${hpDisplay}</div>
-                    <div style="color:var(--md-sys-color-on-surface-variant);">${countDisplay}</div>
+                <div style="text-align:center;padding:4px 2px;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;background:var(--md-sys-color-surface-variant);font-size:10px;line-height:1.4;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                        ${iconHtml}
+                        <div style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(boss.bossName)} (${escapeHtml(boss.bossCode)})">${escapeHtml(boss.bossName || boss.bossCode || '?')}</div>
+                        <div style="font-size:9px;color:var(--md-sys-color-on-surface-variant);">${escapeHtml(boss.bossCode)}</div>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;">${hpDisplay}</div>
+                        <div style="color:var(--md-sys-color-on-surface-variant);">${colAttacks.length} 凸</div>
+                    </div>
                 </div>`;
 
-            // スタック本体
-            let stack = '';
-            if (colAttacks.length === 0) {
-                stack = `<div style="width:100%;height:${colHeight}px;background:repeating-linear-gradient(45deg,#e5e7eb,#e5e7eb 4px,#fff 4px,#fff 8px);border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;" title="未着手"></div>`;
-            } else {
-                let blocksHtml = '';
-                colAttacks.forEach(a => {
-                    const ratio = a.damage / effectiveHp;
-                    const h = Math.max(2, Math.round(ratio * colHeight));
-                    const tooltip = `${a.playerName} / ${(a.damage / 1e9).toFixed(3)}B / SLv${a.slv}${a._exceeded ? ' / 順位逆転' : ''}`;
-                    const showName = a._exceeded || h >= 22;
-                    const nameHtml = showName
-                        ? `<div style="font-size:10px;font-weight:${a._exceeded ? '700' : '600'};color:${a._exceeded ? '#dc2626' : 'var(--md-sys-color-on-surface)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;padding:0 2px;">${escapeHtml(a.playerName)}</div>`
-                        : '';
-                    blocksHtml += `<div title="${escapeHtml(tooltip)}" style="height:${h}px;background:${a._band.color};border-top:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${nameHtml}</div>`;
-                });
-                const remaining = Math.max(0, effectiveHp - totalDamage);
-                const remHeight = Math.round((remaining / effectiveHp) * colHeight);
-                const grayHtml = remHeight > 0 ? `<div style="height:${remHeight}px;background:#6b7280;" title="残HP"></div>` : '';
-                stack = `<div style="width:100%;height:${colHeight}px;display:flex;flex-direction:column-reverse;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;overflow:hidden;background:#f9fafb;">${blocksHtml}${grayHtml}</div>`;
-            }
+            // スタック本体: 上から 黒(HP差) → 灰(残HP) → 最大ダメ → ... → 最小ダメ (一番下)
+            const blackHtml = blackHeight > 0 ? `<div style="height:${blackHeight}px;background:#1f2937;" title="HP差 (Tyrant級はLord級より低HP)"></div>` : '';
+            const grayHtml = grayHeight > 0 ? `<div style="height:${grayHeight}px;background:#6b7280;" title="残HP"></div>` : '';
+
+            let blocksHtml = '';
+            colAttacks.forEach(a => {
+                const h = Math.max(2, Math.round(a.damage * pxPerHp));
+                const tooltip = `${a.playerName} / ${(a.damage / 1e9).toFixed(3)}B / SLv${a.slv}`;
+                const showName = h >= 18;
+                const nameHtml = showName
+                    ? `<div style="font-size:10px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;padding:0 2px;">${escapeHtml(a.playerName)}</div>`
+                    : '';
+                blocksHtml += `<div title="${escapeHtml(tooltip)}" style="height:${h}px;background:${a._band.color};border-top:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${nameHtml}</div>`;
+            });
+
+            const stack = `<div style="width:100%;height:${stackHeight}px;display:flex;flex-direction:column;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;overflow:hidden;background:#f9fafb;">${blackHtml}${grayHtml}${blocksHtml}</div>`;
 
             return `<div style="width:${colWidth}px;display:flex;flex-direction:column;gap:4px;">${header}${stack}</div>`;
         }
