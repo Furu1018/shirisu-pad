@@ -2295,7 +2295,7 @@
                 <h2>📷 BlaBlaLINK 3凸まとめ確認</h2>
                 <button onclick="closeMyBulkAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">画像から抽出した凸を確認・編集して一括登録します。アイコン無し枠はタップでマスタから選択できます。<br>⚠️ この方式ではボス残HPは更新されません。HP同期はユニレ管理の「ボスHP更新」からBlaBlaLINK進捗画像を取り込んでください。</p>
+            <p class="subtitle">画像から抽出した3凸を確認して一括登録します。<br>⚠️ ボス残HPは更新されません。HP同期は別途ユニレ管理の「ボスHP更新」から BlaBlaLINK 進捗画像で取り込んでください。<br>💡 編成キャラはこの画面では扱いません (消化済み凸のため衝突検知に使われないため)。</p>
 
             <div id="myBulkAttackPreview" style="display:flex;flex-direction:column;gap:10px;max-height:55vh;overflow-y:auto;padding-right:4px;"></div>
 
@@ -3872,7 +3872,9 @@
         }
 
         // ========== BlaBlaLINK 3凸まとめ報告 ==========
-        let _myBulkAttacks = [];  // [{ bossCode, bossName, level, totalDamage, characters[5] (canonical), bossNumber? }]
+        // 凸権限を消化済みのメンバー向け緊急用。キャラ衝突検知の用途は無いので
+        // キャラ認識・編成保存は行わない (boss / damage / level のみ抽出)。
+        let _myBulkAttacks = [];  // [{ bossCode, bossName, level, totalDamage, bossNumber? }]
         async function handleMyBulkAttackOcrUpload(event) {
             const file = event.target.files?.[0];
             event.target.value = '';
@@ -3881,26 +3883,15 @@
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
             try {
                 showNotification('🔍 BlaBlaLINK 画像を解析中...');
-                await getNikkeCharsCache();
-                const knownCharacters = (_nikkeCharsCache || []).map(c => c.canonical_name).filter(Boolean);
                 const dataUrl = await window.fileToDataUrl(file);
-                const res = await window.callAiVision(dataUrl, 'bla_my_attacks', { known_characters: knownCharacters });
+                const res = await window.callAiVision(dataUrl, 'bla_my_attacks');  // known_characters 不要
                 const r = res.result;
                 if (!r || !Array.isArray(r.attacks) || r.attacks.length === 0) {
                     throw new Error('凸データを読み取れませんでした。BlaBlaLINK の凸一覧画面のスクショか確認してください。');
                 }
-                // 各凸を編集可能形式に変換 + characters を fuzzy 解決
                 const ctx = await ensureActiveSeasonLoaded();
                 const bossByCode = new Map((ctx?.bosses || []).map(b => [b.boss_code, b]));
                 _myBulkAttacks = r.attacks.slice(0, 3).map(a => {
-                    const characters = ['', '', '', '', ''];
-                    if (Array.isArray(a.characters)) {
-                        a.characters.slice(0, 5).forEach((raw, i) => {
-                            if (typeof raw === 'string' && raw.trim()) {
-                                characters[i] = fuzzyResolveCharacter(raw) || raw;
-                            }
-                        });
-                    }
                     const boss = bossByCode.get(a.bossCode) || null;
                     return {
                         bossCode: a.bossCode || (boss?.boss_code) || '',
@@ -3908,7 +3899,6 @@
                         bossNumber: boss?.boss_number || null,
                         level: a.level || ctx?.season?.current_level || 1,
                         totalDamage: Number(a.totalDamage) || 0,
-                        characters,
                     };
                 });
                 renderMyBulkAttackPreview();
@@ -3929,34 +3919,16 @@
             if (_myBulkAttacks.length === 0) { el.innerHTML = '<p>抽出データなし</p>'; return; }
             el.innerHTML = _myBulkAttacks.map((a, idx) => {
                 const matched = a.bossNumber ? `<span style="color:#22c55e;font-size:11px;">✅ B${a.bossNumber}</span>` : '<span style="color:#ef4444;font-size:11px;">⚠️ 現シーズンのボスに一致せず</span>';
-                const slotsHtml = a.characters.map((name, i) => {
-                    const r = name ? resolveNikkeChar(name) : null;
-                    const icon = r?.iconPath
-                        ? `<img onclick="openIconPickerForBulkSlot(${idx},${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || name)}" title="${escapeHtml(r.canonical || name)}" style="width:36px;height:36px;border-radius:5px;background:#222;cursor:pointer;">`
-                        : `<div onclick="openIconPickerForBulkSlot(${idx},${i})" title="クリックで選択" style="width:36px;height:36px;border-radius:5px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">${name ? '⚠️' : '?'}</div>`;
-                    return `<div style="display:flex;flex-direction:column;align-items:center;gap:1px;">${icon}<div style="font-size:9px;max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? 'var(--md-sys-color-on-surface)' : '#f59e0b'};">${escapeHtml(r?.canonical || name || '')}</div></div>`;
-                }).join('');
                 return `
                     <div style="padding:10px 12px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;background:var(--md-sys-color-surface);">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <strong style="font-size:13px;">凸 ${idx + 1}</strong>
                             ${matched}
                             <span style="font-size:12px;">${escapeHtml(a.bossName || '?')} (${escapeHtml(a.bossCode || '?')}) Lv${a.level}</span>
                             <span style="margin-left:auto;font-size:13px;font-weight:700;">${(a.totalDamage / 1e9).toFixed(2)}B</span>
                         </div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;">${slotsHtml}</div>
                     </div>`;
             }).join('');
-        }
-
-        function openIconPickerForBulkSlot(attackIdx, slotIdx) {
-            const current = _myBulkAttacks[attackIdx]?.characters?.[slotIdx] || '';
-            openIconPicker(current, (name) => {
-                if (_myBulkAttacks[attackIdx]) {
-                    _myBulkAttacks[attackIdx].characters[slotIdx] = name;
-                    renderMyBulkAttackPreview();
-                }
-            }, `📚 凸${attackIdx + 1} 編成 (${slotIdx + 1}枠目)`);
         }
 
         async function handleMyBulkAttackSave() {
@@ -3974,16 +3946,8 @@
                 for (const a of _myBulkAttacks) {
                     if (!a.bossNumber || !a.bossCode) { fail++; continue; }
                     try {
-                        // characters の OCR自動学習 + canonical 取得
-                        const cleanChars = a.characters.filter(c => typeof c === 'string' && c.trim());
-                        let canonChars = cleanChars;
-                        if (cleanChars.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
-                            try {
-                                const reg = await window.supabaseRegisterOcrCharacters(cleanChars);
-                                canonChars = (reg.canonical || cleanChars).filter(Boolean);
-                            } catch { /* fallthrough with cleanChars */ }
-                        }
-                        // 凸を INSERT。HP は更新せず、別途BlaBla進捗から同期する想定
+                        // 凸を INSERT。characters は空 (消化済み凸なので衝突検知不要)。
+                        // HP も更新せず、別途BlaBla進捗から同期する想定。
                         await window.supabaseAddAttack({
                             seasonId: ctx.season.id,
                             playerId: id.id,
@@ -3992,14 +3956,8 @@
                             bossCode: a.bossCode,
                             damageRaw: Math.round(a.totalDamage),
                             level: a.level || ctx.season.current_level || 1,
-                            characters: canonChars,
+                            characters: [],
                         }, { skipHpDecrement: true });
-                        // player_damages.characters も最大値属性に反映 (boss.weakness経由)
-                        const boss = ctx.bosses.find(b => b.boss_number === a.bossNumber);
-                        if (boss?.weakness && canonChars.length > 0) {
-                            try { await window.supabaseSaveTeamForAttribute(id.id, boss.weakness, canonChars); }
-                            catch { /* noop */ }
-                        }
                         ok++;
                     } catch (e) {
                         fail++;

@@ -56,12 +56,10 @@ const IMAGE_PROMPTS = {
     "- bossName: ボス名 (略称コードは除外、純粋にボス名のみ)。例: \"リビルドキューカンバー\"。",
     "- level: HARD ラベル下の数値 (例: \"Level 2\" なら 2)。読めなければ null。",
     "- totalDamage: 「ダメージ」ラベル右に表示される整数値 (カンマ除去)。",
-    "- characters: 各凸の編成5キャラの正式名配列。横並び5枚のアイコン画像を見て NIKKE キャラを識別。",
-    "    名前テキストが画面に書かれていない場合はアイコンから推定。",
-    "    画像が小さく判別困難なキャラは null を含めて5要素を維持。",
     "",
+    "※ 編成キャラの抽出は不要 (このタスクは消化済み凸の報告で、キャラ衝突検知の用途がないため)。",
     "出力はJSONのみ。コードフェンス禁止。",
-    '形式: {"attacks":[{"bossCode":"A.N.M.I.","bossName":"リビルドキューカンバー","level":2,"totalDamage":10618556492,"characters":["A","B","C","D","E"]}, ...]}',
+    '形式: {"attacks":[{"bossCode":"A.N.M.I.","bossName":"リビルドキューカンバー","level":2,"totalDamage":10618556492}, ...]}',
   ].join("\n"),
 
   season_announce: [
@@ -125,9 +123,10 @@ export default {
         let promptText = customPrompt || IMAGE_PROMPTS[task];
         if (!promptText) return jsonError("unknown image task: " + String(task), 400);
 
-        // attack_result / bla_my_attacks: 当ユニオン登録済みキャラリストを末尾に注入。
+        // attack_result: 当ユニオン登録済みキャラリストを末尾に注入。
         // 名前が見切れていてもアイコン画像 + リスト内の正式名で識別してもらう
-        if ((task === "attack_result" || task === "bla_my_attacks") && Array.isArray(body.known_characters) && body.known_characters.length > 0) {
+        // (bla_my_attacks は characters 抽出を行わないため対象外)
+        if (task === "attack_result" && Array.isArray(body.known_characters) && body.known_characters.length > 0) {
           const list = body.known_characters
             .filter((s: unknown) => typeof s === "string" && (s as string).trim())
             .slice(0, 200)
