@@ -4610,8 +4610,12 @@
                 (json.players || []).forEach(p => {
                     const slv = Number(p.syncLevel) || 0;
                     (p.attacks || []).forEach(a => {
-                        const lv = Number(a.level) || 0;
-                        if (lv < 1 || lv > 3) return;  // LV1-3 以外は分析対象外
+                        // JSON の level は 1/2/3 (clean) と 1X/2X/3X (再攻撃) の2形態あり。
+                        // どちらも先頭1桁が HARD LV を表す独自エンコード。
+                        const rawLevel = Number(a.level) || 0;
+                        if (rawLevel < 1) return;
+                        const lv = rawLevel >= 10 ? Math.floor(rawLevel / 10) : rawLevel;
+                        if (lv < 1 || lv > 3) return;
                         const romanMatch = (a.bossType || '').match(/^([IVX]+)/);
                         const bossNumber = romanMatch ? _romanToInt(romanMatch[1]) : 0;
                         const bossName = (a.bossType || '').replace(/^[IVX]+/, '').trim();
@@ -4641,8 +4645,7 @@
                     </div>`).join('') + `
                     <div style="display:inline-flex;align-items:center;gap:6px;">
                         <span style="display:inline-block;width:18px;height:14px;background:#6b7280;"></span>残HP
-                    </div>
-                    <div style="display:inline-flex;align-items:center;gap:6px;color:#dc2626;font-weight:700;">＊＊＊ 順位逆転 (低SLv帯が上回り)</div>`;
+                    </div>`;
 
                 // ボスマップ: bossCode → { number, name, code }
                 const bossMap = new Map();
