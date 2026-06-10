@@ -26,5 +26,15 @@
       "P.S.I.D.": "lord"
     }
   },
+  "bossWeaknessByMonth": {
+    "_comment": "各月の bossCode → 弱点属性 (灼熱|水冷|電撃|鉄甲|風圧)。全体分析タブのアイコン表示に使用。null は未設定。",
+    "2026-05": {
+      "D.M.T.R.": null,
+      "H.S.T.A.": null,
+      "Z.E.U.S.": null,
+      "A.N.M.I.": null,
+      "P.S.I.D.": null
+    }
+  },
   "hardLevelHpOverrideByMonth": {}
 }

@@ -4662,23 +4662,37 @@
                 }
 
                 const bossClassMap = (_analysisRaidConfig?.bossClassByMonth?.[monthKey]) || {};
+                const weaknessMap = (_analysisRaidConfig?.bossWeaknessByMonth?.[monthKey]) || {};
                 const hardLevelHp = _analysisRaidConfig?.hardLevelHp || {};
                 const hpOverride = (_analysisRaidConfig?.hardLevelHpOverrideByMonth?.[monthKey]) || {};
 
                 const levels = [1, 2, 3];
-                const COL_HEIGHT = 360;
-                const COL_WIDTH = 90;
+                // 全列のHPから最大値を取得 → 1B 当たりのpx数を全列共通にする
+                let maxHp = 0;
+                for (const lv of levels) {
+                    for (const boss of bosses) {
+                        const cls = bossClassMap[boss.bossCode] || 'tyrant';
+                        const hp = (hpOverride[lv]?.[cls]) || hardLevelHp[lv]?.[cls] || 0;
+                        if (hp > maxHp) maxHp = hp;
+                    }
+                }
+                const MAX_COL_PX = 480;  // 最大HPの列をこの px に
+                const MIN_COL_PX = 60;
+                const pxPerHp = maxHp > 0 ? MAX_COL_PX / maxHp : 0;
+                const COL_WIDTH = 96;
 
                 let html = '<div style="display:flex;gap:14px;align-items:stretch;padding:8px 4px;min-width:max-content;">';
                 for (const lv of levels) {
                     html += `<div style="display:flex;flex-direction:column;gap:6px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:8px;background:var(--md-sys-color-surface);">`;
                     html += `<div style="text-align:center;font-weight:700;font-size:14px;padding:2px 4px;">LV${lv}</div>`;
-                    html += `<div style="display:flex;gap:4px;">`;
+                    // 凸スタックは下揃え。各列の高さが違っても下基準で並ぶ
+                    html += `<div style="display:flex;gap:4px;align-items:flex-end;">`;
                     for (const boss of bosses) {
-                        // ボスクラス → HP
                         const cls = bossClassMap[boss.bossCode] || 'tyrant';
-                        let bossHp = hpOverride[lv]?.[cls] || hardLevelHp[lv]?.[cls] || null;
-                        html += _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, COL_HEIGHT, COL_WIDTH);
+                        const bossHp = hpOverride[lv]?.[cls] || hardLevelHp[lv]?.[cls] || null;
+                        const colHeight = bossHp ? Math.max(MIN_COL_PX, bossHp * pxPerHp) : MIN_COL_PX;
+                        const weakness = weaknessMap[boss.bossCode] || null;
+                        html += _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, colHeight, COL_WIDTH, weakness);
                     }
                     html += `</div></div>`;
                 }
@@ -4689,7 +4703,7 @@
             }
         }
 
-        function _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, colHeight, colWidth) {
+        function _renderAnalysisColumn(boss, lv, flatAttacks, bossHp, colHeight, colWidth, weakness) {
             // この (boss, level) の凸を抽出 + ダメージ降順
             const colAttacks = flatAttacks
                 .filter(a => a.bossCode === boss.bossCode && a.level === lv)
@@ -4709,8 +4723,12 @@
 
             const hpDisplay = bossHp ? `${(bossHp / 1e9).toFixed(3)} B` : (totalDamage > 0 ? `${(totalDamage / 1e9).toFixed(3)} B*` : '-');
             const countDisplay = `${colAttacks.length} 凸`;
+            const iconHtml = weakness
+                ? `<img src="./属性アイコン/${escapeHtml(weakness)}.png" alt="${escapeHtml(weakness)}" style="width:22px;height:22px;display:block;margin:0 auto 2px;">`
+                : `<div style="width:22px;height:22px;border-radius:50%;background:var(--md-sys-color-surface-variant);border:1px dashed var(--md-sys-color-outline-variant);margin:0 auto 2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--md-sys-color-outline-variant);" title="raid-config.json の bossWeaknessByMonth に未設定">?</div>`;
             const header = `
                 <div style="text-align:center;padding:4px 2px;border:1px solid var(--md-sys-color-outline-variant);border-radius:6px;background:var(--md-sys-color-surface-variant);font-size:10px;line-height:1.4;">
+                    ${iconHtml}
                     <div style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(boss.bossName)} (${escapeHtml(boss.bossCode)})">${escapeHtml(boss.bossName || boss.bossCode || '?')}</div>
                     <div style="font-size:9px;color:var(--md-sys-color-on-surface-variant);">${escapeHtml(boss.bossCode)}</div>
                     <div style="font-weight:700;">${hpDisplay}</div>
