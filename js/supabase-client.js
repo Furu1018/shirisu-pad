@@ -196,11 +196,16 @@ window.showLocalTestNotification = async function (title = 'しりすこPAD', bo
 // はそのまま再利用できる)
 // ----------------------------------------------------------------------------
 window.supabaseLoadLatestSeasons = async function (limit = 2) {
-    // 1) 最新シーズン (hard_date 降順)。テストシーズンは比較・ふるり値の対象外。
+    // 1) 最新シーズン (hard_date 降順)。
+    // 比較・ふるり値の対象は「完了したレイド」のみ。
+    // - テストシーズン (is_test=true) は除外
+    // - 進行中のアクティブシーズン (is_active=true) も除外 (まだ凸データが揃っていないため)
+    //   → 🏁 シーズン終了ボタンで is_active=false にした時点で比較対象に組み込まれる
     const { data: seasons, error: sErr } = await supabase
         .from('seasons')
         .select('id, month_key, hard_date, union_rank, metadata')
         .eq('is_test', false)
+        .eq('is_active', false)
         .order('hard_date', { ascending: false })
         .limit(limit);
     if (sErr) throw sErr;
