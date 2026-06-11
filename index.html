@@ -948,25 +948,27 @@
         }
 
         /* ===== オンボーディングツアー ===== */
-        #tourOverlay { position: fixed; inset: 0; z-index: 10000; pointer-events: none; }
+        /* レイヤー: backdrop (10000) < highlight (10001) < popover (10002) */
+        #tourOverlay { position: fixed; inset: 0; pointer-events: none; }
         #tourOverlay .tour-backdrop {
-            position: absolute; inset: 0;
+            position: fixed; inset: 0; z-index: 10000;
             background: rgba(0, 0, 0, 0.55);
             pointer-events: auto;
             animation: tour-fade 0.2s ease-out;
         }
         @keyframes tour-fade { from { opacity: 0; } to { opacity: 1; } }
         #tourOverlay .tour-popover {
-            position: absolute; left: 50%; transform: translateX(-50%);
-            bottom: 24px; max-width: 420px; width: calc(100% - 32px);
+            position: fixed; z-index: 10002;
+            left: 50%; transform: translateX(-50%);
+            max-width: 420px; width: calc(100% - 32px);
             background: var(--md-sys-color-surface);
             color: var(--md-sys-color-on-surface);
             border-radius: 14px; padding: 18px 18px 14px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.1);
             pointer-events: auto;
             animation: tour-slide 0.25s ease-out;
         }
-        @keyframes tour-slide { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        @keyframes tour-slide { from { opacity: 0; } to { opacity: 1; } }
         #tourOverlay .tour-step-count { font-size: 11px; color: var(--md-sys-color-on-surface-variant); font-weight: 600; margin-bottom: 4px; }
         #tourOverlay .tour-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 700; }
         #tourOverlay .tour-body { margin: 0; font-size: 14px; line-height: 1.55; color: var(--md-sys-color-on-surface-variant); }
@@ -2757,13 +2759,38 @@
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
-            // ハイライト
+            // ハイライト + ポップオーバーをハイライトと被らない位置に
+            let targetEl = null;
             if (step.target) {
-                const targetEl = document.querySelector(step.target);
+                targetEl = document.querySelector(step.target);
                 if (targetEl) {
                     targetEl.classList.add('tour-highlight');
                     try { targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* noop */ }
                 }
+            }
+            // スクロール反映後に再計算 (300ms 待つ)
+            setTimeout(() => _positionTourPopover(overlay.querySelector('.tour-popover'), targetEl), 320);
+        }
+        function _positionTourPopover(popover, targetEl) {
+            if (!popover) return;
+            const vh = window.innerHeight;
+            const popH = popover.offsetHeight || 220;
+            // target が無い → 画面下部固定
+            if (!targetEl) {
+                popover.style.top = 'auto';
+                popover.style.bottom = '24px';
+                return;
+            }
+            const rect = targetEl.getBoundingClientRect();
+            const targetMid = rect.top + rect.height / 2;
+            // target の中央が画面上半分 → ポップオーバーを下半分に
+            // target の中央が画面下半分 → ポップオーバーを上半分に
+            if (targetMid < vh / 2) {
+                popover.style.top = 'auto';
+                popover.style.bottom = '24px';
+            } else {
+                popover.style.top = '24px';
+                popover.style.bottom = 'auto';
             }
         }
         function _nextTourStep() {
