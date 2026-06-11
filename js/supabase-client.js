@@ -662,7 +662,27 @@ window.supabaseCreateSeason = async function (payload) {
         metadata = { is_test: true, damages_snapshot: dmgs || [] };
     }
 
-    // 既存アクティブシーズンを is_active=false
+    // 同じ月キーの既存シーズン (終了済 = is_active:false) があれば、
+    // 凸記録が無い限り自動で削除して再作成可能にする
+    const { data: existing } = await supabase
+        .from('seasons')
+        .select('id, month_key, is_active')
+        .eq('month_key', payload.monthKey)
+        .maybeSingle();
+    if (existing) {
+        const { count: atkCount } = await supabase
+            .from('attacks')
+            .select('id', { count: 'exact', head: true })
+            .eq('season_id', existing.id);
+        if ((atkCount || 0) > 0) {
+            throw new Error(`月キー "${payload.monthKey}" のシーズンに既に ${atkCount} 件の凸記録があります。手動確認のため Supabase Dashboard で削除してください。`);
+        }
+        // 凸ゼロ → 安全に削除して再作成 (CASCADE で bosses も消える)
+        const { error: delErr } = await supabase.from('seasons').delete().eq('id', existing.id);
+        if (delErr) throw new Error(`既存の空シーズン削除に失敗: ${delErr.message}`);
+    }
+
+    // 残りのアクティブシーズンを is_active=false (同月以外で active のもの)
     const { error: deactivateErr } = await supabase
         .from('seasons').update({ is_active: false }).eq('is_active', true);
     if (deactivateErr) throw deactivateErr;
