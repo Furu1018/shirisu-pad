@@ -6325,40 +6325,48 @@
         async function autoLoadData() {
             showLoading(true);
 
-            // ----- Supabase をファースト試行 -----
-            let found = [];
-            let dataSource = 'supabase';
+            // 月キーごとに統合する Map
+            // ユーザーの運用フロー:
+            //   1) PAD で 🏁 シーズン終了 (Supabase の is_active=false)
+            //   2) BlaBlaLINK から正式 JSON を data/ に配置
+            // → JSON が「正式データ」、Supabase は「進行中・暫定」扱い
+            // よって同じ月キーで両方ある場合は JSON を優先する。
+            const byMonth = new Map();
+
+            // ----- Supabase (完了済みシーズンのみ、is_active=false / is_test=false) -----
             try {
                 if (typeof window.supabaseLoadLatestSeasons === 'function') {
-                    found = await window.supabaseLoadLatestSeasons(2);
+                    const sup = await window.supabaseLoadLatestSeasons(2);
+                    sup.forEach(s => byMonth.set(s.key, { key: s.key, json: s.json, source: 'supabase' }));
                 }
             } catch (err) {
-                console.warn('[autoLoadData] Supabase 読込失敗、JSONにフォールバック:', err);
+                console.warn('[autoLoadData] Supabase 読込失敗:', err);
                 console.warn('  message:', err?.message, '| code:', err?.code, '| details:', err?.details, '| hint:', err?.hint);
-                found = [];
             }
 
-            // ----- フォールバック: ローカル JSON ファイル -----
-            if (found.length === 0) {
-                dataSource = 'json';
-                const candidates = [];
-                const d = new Date();
-                for (let i = 0; i < 5; i++) {
-                    const dd = new Date(d.getFullYear(), d.getMonth() - i, 1);
-                    const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
-                    candidates.push(key);
-                }
-                for (const key of candidates) {
-                    if (found.length >= 2) break;
-                    try {
-                        const resp = await fetch(`./data/${key}.json`);
-                        if (resp.ok) {
-                            const json = await resp.json();
-                            found.push({ key, json });
-                        }
-                    } catch (e) { /* skip */ }
-                }
+            // ----- ローカル JSON (直近5か月を試行)。同月キーは JSON で上書き = 優先 -----
+            const d = new Date();
+            for (let i = 0; i < 5; i++) {
+                const dd = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
+                try {
+                    const resp = await fetch(`./data/${key}.json`);
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        byMonth.set(key, { key, json, source: 'json' });  // JSON 優先
+                    }
+                } catch (e) { /* skip */ }
             }
+
+            // 月キー降順で上位2件
+            const found = [...byMonth.values()]
+                .sort((a, b) => b.key.localeCompare(a.key))
+                .slice(0, 2);
+
+            const sources = new Set(found.map(f => f.source));
+            const dataSource = sources.size === 1
+                ? (sources.has('json') ? 'json' : 'supabase')
+                : 'mixed';
 
             showLoading(false);
 
@@ -6386,7 +6394,7 @@
             document.getElementById('headerSubtitle').textContent = subtitle;
 
             renderAll();
-            const srcLabel = dataSource === 'supabase' ? 'Supabase' : 'ローカルJSON';
+            const srcLabel = dataSource === 'supabase' ? 'Supabase' : dataSource === 'json' ? 'ローカルJSON' : 'Supabase + JSON';
             console.log(`[autoLoadData] data source: ${srcLabel}`);
             showNotification(`データを読み込みました (${currentMonthKey} via ${srcLabel})`);
         }
