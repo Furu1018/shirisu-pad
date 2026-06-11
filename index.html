@@ -6026,11 +6026,13 @@
                 for (let i = 1; i <= 5; i++) {
                     const ai = r.bosses.find(b => Number(b.position) === i);
                     if (ai) {
+                        // ヘレティック級はタイラント級と同じHP扱い
+                        const tier = (ai.tier === 'tyrant' || ai.tier === 'heretic') ? 'tyrant' : 'lord';
                         rows.push({
                             bossNumber: i,
                             bossCode: WEAK_TO_BOSS_CODE[ai.weakness] || BOSS_CODES[i - 1],
                             name: ai.name || '',
-                            tier: (ai.tier === 'tyrant') ? 'tyrant' : 'lord',
+                            tier,
                         });
                     } else {
                         rows.push({
