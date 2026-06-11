@@ -947,33 +947,44 @@
             .chart-container { height: 240px; }
         }
 
-        /* ===== オンボーディングツアー ===== */
-        /* レイヤー: backdrop (10000) < highlight (10001) < popover (10002) */
-        #tourOverlay { position: fixed; inset: 0; pointer-events: none; }
-        #tourOverlay .tour-backdrop {
+        /* ===== オンボーディングツアー (シンプル中央モーダル方式) ===== */
+        #tourOverlay {
             position: fixed; inset: 0; z-index: 10000;
-            background: rgba(0, 0, 0, 0.55);
-            pointer-events: auto;
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
             animation: tour-fade 0.2s ease-out;
         }
         @keyframes tour-fade { from { opacity: 0; } to { opacity: 1; } }
+        #tourOverlay .tour-backdrop {
+            position: absolute; inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+        }
         #tourOverlay .tour-popover {
-            position: fixed; z-index: 10002;
-            left: 50%; transform: translateX(-50%);
-            max-width: 420px; width: calc(100% - 32px);
+            position: relative; z-index: 1;
+            max-width: 500px; width: 100%;
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
             background: var(--md-sys-color-surface);
             color: var(--md-sys-color-on-surface);
-            border-radius: 14px; padding: 18px 18px 14px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.1);
-            pointer-events: auto;
+            border-radius: 16px;
+            padding: 24px 22px 18px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
             animation: tour-slide 0.25s ease-out;
         }
-        @keyframes tour-slide { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes tour-slide { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         #tourOverlay .tour-step-count { font-size: 11px; color: var(--md-sys-color-on-surface-variant); font-weight: 600; margin-bottom: 4px; }
-        #tourOverlay .tour-title { margin: 0 0 8px 0; font-size: 18px; font-weight: 700; }
-        #tourOverlay .tour-body { margin: 0; font-size: 14px; line-height: 1.55; color: var(--md-sys-color-on-surface-variant); }
+        #tourOverlay .tour-title { margin: 0 0 12px 0; font-size: 19px; font-weight: 700; line-height: 1.35; }
+        #tourOverlay .tour-body { margin: 0; font-size: 14px; line-height: 1.6; color: var(--md-sys-color-on-surface-variant); }
+        #tourOverlay .tour-body strong { color: var(--md-sys-color-on-surface); }
+        #tourOverlay .tour-tip {
+            margin: 14px 0 0 0; padding: 10px 12px;
+            background: var(--md-sys-color-surface-variant);
+            border-left: 3px solid #f59e0b;
+            border-radius: 0 6px 6px 0;
+            font-size: 12px;
+        }
         #tourOverlay .tour-buttons {
-            display: flex; gap: 6px; margin-top: 16px; justify-content: space-between; align-items: center;
+            display: flex; gap: 6px; margin-top: 20px; justify-content: space-between; align-items: center;
         }
         #tourOverlay .tour-buttons .left { display: flex; gap: 6px; }
         #tourOverlay .tour-buttons button {
@@ -986,15 +997,14 @@
             border-color: var(--md-sys-color-primary);
         }
         #tourOverlay .tour-buttons button.text-only { border: none; background: transparent; color: var(--md-sys-color-on-surface-variant); }
-        .tour-highlight {
-            position: relative; z-index: 10001 !important;
-            outline: 3px solid #f59e0b !important;
-            outline-offset: 4px;
-            border-radius: 10px;
-            box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.25), 0 0 32px 4px rgba(245, 158, 11, 0.4) !important;
-            animation: tour-pulse 1.6s ease-in-out infinite;
+        #tourOverlay .tour-progress {
+            height: 4px; background: var(--md-sys-color-surface-variant); border-radius: 2px;
+            overflow: hidden; margin: 0 0 14px 0;
         }
-        @keyframes tour-pulse { 0%, 100% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.25), 0 0 32px 4px rgba(245, 158, 11, 0.4); } 50% { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0.18), 0 0 40px 6px rgba(245, 158, 11, 0.55); } }
+        #tourOverlay .tour-progress-bar {
+            height: 100%; background: var(--md-sys-color-primary);
+            transition: width 0.3s ease-out;
+        }
         .tour-guide-launcher {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 14px; border-radius: 8px;
@@ -1213,7 +1223,7 @@
                     <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚔️ 今日の凸報告</h3>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button id="myAttackAddBtn" onclick="openMyAttackModal()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">＋ 凸を報告</button>
-                        <label data-tour="bulk" style="padding:8px 12px;border-radius:8px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+                        <label style="padding:8px 12px;border-radius:8px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
                             <span style="font-size:14px;">📷</span>
                             BlaBlaLINK 3凸まとめ報告
                             <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
@@ -1227,7 +1237,7 @@
             </div>
 
             <!-- 通知受信可能時間 -->
-            <div class="card" data-tour="availability" style="padding:20px;margin-top:20px;">
+            <div class="card" style="padding:20px;margin-top:20px;">
                 <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">🕐 通知受信可能時間</h3>
                 <p style="margin:0 0 8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">通知を受け取りたい時間帯を選択。締め凸候補通知などは指定した時間帯にいる人だけに配信されます。全部OFFにすると通知は来ません。<br>※運営が「全員に送信」した場合や緊急通知はこの設定を無視して届きます。</p>
                 <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -1235,7 +1245,7 @@
             </div>
 
             <!-- Push通知設定 -->
-            <div class="card" data-tour="push" style="padding:20px;margin-top:20px;">
+            <div class="card" style="padding:20px;margin-top:20px;">
                 <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">🔔 Push通知設定</h3>
                 <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">締め凸候補や運営からのお知らせをスマホに通知。<br><strong>iPhoneの場合</strong>はSafariで開いて「ホーム画面に追加」してから設定が必要です。</p>
                 <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
@@ -2659,67 +2669,59 @@
         }
 
         // ========== Tabs ==========
-        // ========== オンボーディングツアー ==========
+        // ========== オンボーディングツアー (シンプル中央モーダル方式) ==========
+        // ハイライトや位置取りは廃止。各ステップで「どこに何があるか」を文章で説明し、
+        // 必要なら「このタブに移動」ボタンで実際に該当タブを開ける。
         const TOUR_STEPS = [
             {
                 title: '👋 しりすこPADの使い方ガイド',
-                body: 'これから5〜10分で、メンバーが知っておきたい主要機能を一周紹介します。<br>途中で「スキップ」してもOK。後で「マイページ → 🎓 はじめての方ガイド」からいつでも再生できます。',
-                tab: 'mypage',
-                target: null,
+                body: 'これから5分で、メンバーが知っておきたい主要機能を文章でひととおり紹介します。<br><br>途中で「スキップ」してもOK。後で「マイページ → 🎓 はじめての方ガイド」からいつでも再生できます。',
+                tip: '読みながら気になった箇所は、ガイド終了後に実際に触ってみてください。',
             },
             {
                 title: '📱 ① アプリ化 (ホーム画面に追加)',
-                body: 'まずはホーム画面に追加してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有ボタン (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android Chrome</strong>: ⋮ メニュー → 「アプリをインストール」<br><br>⚠️ アプリ化しないと iPhone では通知が届きません。',
-                tab: 'mypage',
-                target: null,
+                body: 'まずはホーム画面に追加してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有ボタン (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android Chrome</strong>: ⋮ メニュー → 「アプリをインストール」',
+                tip: 'iPhone は <strong>アプリ化しないと通知が届きません</strong>。必ず最初にやってください。',
             },
             {
                 title: '🔔 ② Push通知を有効にする',
-                body: 'マイページの「🔔 Push通知設定」カードで <strong>「🔔 通知を有効にする」</strong> をタップ → 端末の許可ダイアログを許可。<br><br>有効化すると、運営から締め凸候補・緊急連絡などがロック画面に届きます。',
-                tab: 'mypage',
-                target: '[data-tour="push"]',
+                body: 'アプリ化が済んだら、<strong>マイページの「🔔 Push通知設定」</strong>カードを下までスクロール。<br><br>「🔔 通知を有効にする」ボタンをタップ → 端末の許可ダイアログで「許可」。<br><br>有効化すると、運営から締め凸候補・緊急連絡などがロック画面に届きます。',
+                jumpTo: { tab: 'mypage', label: 'マイページを開く' },
             },
             {
                 title: '🕐 ③ 通知受信可能時間を選ぶ',
-                body: '「🕐 通知受信可能時間」カードで、あなたが通知を受け取れる時間帯を選んでください。<br><br>運営の「締め凸候補」通知は、その時間帯にいるメンバーのみに送られます。複数選択OK。',
-                tab: 'mypage',
-                target: '[data-tour="availability"]',
+                body: '同じくマイページの<strong>「🕐 通知受信可能時間」</strong>カードで、あなたが通知を受け取れる時間帯にチェックを入れてください。<br><br>運営の「締め凸候補」通知は、その時間帯にいるメンバーのみに送られます。複数選択OK。',
+                tip: 'すべてOFFにすると通知が一切来なくなるので注意。',
             },
             {
                 title: '⚔️ ④ 模擬戦の報告 (属性別ダメージ)',
-                body: '各属性(灼熱/水冷/電撃/鉄甲/風圧)のPTで、ベスト時にどれだけダメージを出せるかを登録します。<br><br><strong>📝 手動入力</strong>: 各行の数値欄に直接入力 (22.5 → 22.5B)<br><strong>📷 画像入力</strong>: 戦闘履歴スクショを 📷 ボタンから送ると、ダメージと編成5キャラを自動抽出。',
-                tab: 'mypage',
-                target: '#mypageDmgInputs',
+                body: '各属性(灼熱/水冷/電撃/鉄甲/風圧)のPTで、ベスト時にどれだけダメージを出せるかを登録します。<br><br>📝 <strong>手動入力</strong>: 各属性行の右側の数値欄に直接入力 (例: <code>22.5</code> → 22.5B)<br><br>📷 <strong>画像入力</strong>: カード上部の「📷 画像を選ぶ」から戦闘履歴スクショを送ると、ダメージと編成5キャラをAIが自動抽出。',
+                jumpTo: { tab: 'mypage', label: 'マイページを開く' },
             },
             {
                 title: '✏️ ⑤ 編成キャラの登録',
-                body: '各属性の行に「編成」の5アイコンが並びます。<br><br>右側の「✏️ 編集」をタップで編集モーダル → テキスト入力 or 戦闘履歴画像からOCR。<br>?マークの枠はタップで <strong>マスタからキャラを選択</strong> できます。',
-                tab: 'mypage',
-                target: '#mypageDmgInputs',
+                body: '各属性の行に「編成: 🟦🟦🟦🟦🟦」の5アイコンが並びます。<br><br>右側の<strong>「✏️ 編集」</strong>をタップで編集モーダル → テキスト入力 or 戦闘履歴画像からOCR。<br><br>?マークの枠はタップで <strong>マスタからキャラを選択</strong> できます。',
+                tip: '編成はその属性で「ベスト火力時の5キャラ」を登録。最適凸プラン算出のキャラ衝突回避に使われます。',
             },
             {
                 title: '⚔️ ⑥ 凸を報告 (1凸ずつ)',
-                body: '通常の凸報告。<strong>「＋ 凸を報告」</strong> ボタンから。<br><br>「戦闘結果画面」と「戦闘履歴画面」の2枚スクショを送ると、ボス・ダメージ・残HP・編成5キャラを自動取り込み。手動でも入力可。',
-                tab: 'mypage',
-                target: '#myAttackAddBtn',
+                body: 'マイページの<strong>「⚔️ 今日の凸報告」</strong>カードの「<strong>＋ 凸を報告</strong>」ボタンから。<br><br>「戦闘結果画面」と「戦闘履歴画面」の2枚スクショを送ると、AIがボス・ダメージ・残HP・編成5キャラまで自動取り込み。手動入力も可。',
+                jumpTo: { tab: 'mypage', label: 'マイページを開く' },
             },
             {
                 title: '📷 ⑦ BlaBlaLINK 3凸まとめ報告 (緊急用)',
-                body: '凸結果スクショの撮り忘れ用の救済策。<br><br>BlaBlaLINK 拡張で自分の凸一覧画面をスクショ → このボタンから1枚で3凸分を一括登録。<br><br>※ ボス残HPは更新されません。別途ユニレ管理から BlaBla 進捗画像で同期してください。',
-                tab: 'mypage',
-                target: '[data-tour="bulk"]',
+                body: '凸結果スクショの<strong>撮り忘れ用の救済策</strong>。<br><br>BlaBlaLINK 拡張で自分の凸一覧画面を1枚スクショ → 「📷 BlaBlaLINK 3凸まとめ報告」ボタンから読み込み → 3凸分を一括登録。',
+                tip: 'この方法はボス残HPが更新されません。HP同期は別途ユニレ管理タブから BlaBla 進捗画像で取り込んでください。',
             },
             {
                 title: '🎯 ⑧ 最適凸プラン',
-                body: '「ユニレ管理」タブで自動算出される、誰がどの凸をすべきかの提案。<br><br><strong>ギリギリプラン</strong>: 残HPちょうど削れる人を最優先 / <strong>余裕プラン</strong>: 確実性重視。<br>同じキャラを2回使えないルール (キャラ衝突) も自動で考慮します。',
-                tab: 'ops',
-                target: '#opsOptimalPlan',
+                body: '<strong>「ユニレ管理」</strong>タブで自動算出される、誰がどの凸をすべきかの提案。<br><br>「<strong>ギリギリプラン</strong>」: 残HPちょうど削れる人を最優先（過剰ダメ最小化）<br>「<strong>余裕プラン</strong>」: 確実性重視で大ダメ出せる人優先<br><br>同じキャラを2回使えない「キャラ衝突」も自動で考慮します。',
+                jumpTo: { tab: 'ops', label: 'ユニレ管理を開く' },
             },
             {
                 title: '✨ おしまい！',
-                body: 'これでひととおりは大丈夫です。<br><br>困ったら「ヘルプ」タブを確認するか、運営に聞いてください。<br>このガイドは「マイページ → 🎓 はじめての方ガイド」からいつでも再生できます。',
-                tab: 'mypage',
-                target: null,
+                body: 'これでひととおりOKです。<br><br>困ったら「ヘルプ」タブを見るか、運営に聞いてください。<br><br>このガイドは <strong>マイページ → 🎓 はじめての方ガイド</strong> ボタンや、<strong>ヘルプタブ §1</strong> からいつでも再生できます。',
+                tip: 'まずはアプリ化と通知設定を済ませてから、模擬戦を1属性だけ登録してみるのがおすすめ。',
             },
         ];
         let _tourCurrentIdx = 0;
@@ -2729,27 +2731,28 @@
             _showTourStep();
         }
         function _showTourStep() {
-            _removeTourHighlight();
             const old = document.getElementById('tourOverlay');
             if (old) old.remove();
             const step = TOUR_STEPS[_tourCurrentIdx];
             if (!step) { _finishTour(); return; }
-            // タブ切替
-            if (step.tab) switchTab(step.tab);
-            // DOM 更新を待ってからハイライト
-            setTimeout(() => _renderTourOverlay(step), step.tab ? 180 : 0);
-        }
-        function _renderTourOverlay(step) {
             const total = TOUR_STEPS.length;
             const isLast = _tourCurrentIdx === total - 1;
+            const progress = Math.round(((_tourCurrentIdx + 1) / total) * 100);
+            const tipHtml = step.tip ? `<div class="tour-tip">💡 ${step.tip}</div>` : '';
+            const jumpHtml = step.jumpTo
+                ? `<div style="margin-top:14px;"><button onclick="_tourJumpAndContinue('${step.jumpTo.tab}')" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:12px;font-weight:600;cursor:pointer;">📍 ${step.jumpTo.label}</button></div>`
+                : '';
             const overlay = document.createElement('div');
             overlay.id = 'tourOverlay';
             overlay.innerHTML = `
                 <div class="tour-backdrop"></div>
                 <div class="tour-popover">
+                    <div class="tour-progress"><div class="tour-progress-bar" style="width:${progress}%;"></div></div>
                     <div class="tour-step-count">${_tourCurrentIdx + 1} / ${total}</div>
                     <h3 class="tour-title">${step.title}</h3>
-                    <p class="tour-body">${step.body}</p>
+                    <div class="tour-body">${step.body}</div>
+                    ${tipHtml}
+                    ${jumpHtml}
                     <div class="tour-buttons">
                         <div class="left">
                             <button class="text-only" onclick="_skipTour()">スキップ</button>
@@ -2759,39 +2762,11 @@
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
-            // ハイライト + ポップオーバーをハイライトと被らない位置に
-            let targetEl = null;
-            if (step.target) {
-                targetEl = document.querySelector(step.target);
-                if (targetEl) {
-                    targetEl.classList.add('tour-highlight');
-                    try { targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* noop */ }
-                }
-            }
-            // スクロール反映後に再計算 (300ms 待つ)
-            setTimeout(() => _positionTourPopover(overlay.querySelector('.tour-popover'), targetEl), 320);
         }
-        function _positionTourPopover(popover, targetEl) {
-            if (!popover) return;
-            const vh = window.innerHeight;
-            const popH = popover.offsetHeight || 220;
-            // target が無い → 画面下部固定
-            if (!targetEl) {
-                popover.style.top = 'auto';
-                popover.style.bottom = '24px';
-                return;
-            }
-            const rect = targetEl.getBoundingClientRect();
-            const targetMid = rect.top + rect.height / 2;
-            // target の中央が画面上半分 → ポップオーバーを下半分に
-            // target の中央が画面下半分 → ポップオーバーを上半分に
-            if (targetMid < vh / 2) {
-                popover.style.top = 'auto';
-                popover.style.bottom = '24px';
-            } else {
-                popover.style.top = '24px';
-                popover.style.bottom = 'auto';
-            }
+        function _tourJumpAndContinue(tabName) {
+            // タブを切り替えてからモーダルを閉じる (ユーザーが実際に画面を見て触れるように)
+            _finishTour();
+            try { switchTab(tabName); } catch { /* noop */ }
         }
         function _nextTourStep() {
             _tourCurrentIdx++;
@@ -2809,13 +2784,9 @@
             _finishTour();
         }
         function _finishTour() {
-            _removeTourHighlight();
             const overlay = document.getElementById('tourOverlay');
             if (overlay) overlay.remove();
             try { localStorage.setItem('shirisuPad.tourCompleted', '1'); } catch { /* noop */ }
-        }
-        function _removeTourHighlight() {
-            document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
         }
         // 初回起動時の自動表示 (localStorage に履歴がなければ)
         function _maybeAutoStartTour() {
