@@ -1,0 +1,1567 @@
+{
+  "players": [
+    {
+      "player": "めいでんさん",
+      "totalDamage": 224092000000,
+      "attackCount": 3,
+      "syncLevel": 941,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 34,
+          "damage": 106817981782,
+          "characters": [
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 59553641637,
+          "characters": [
+            "./character-images/59ff1496a418dc8ec5f1fc8f59641f88.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 57720304076,
+          "characters": [
+            "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "NOB",
+      "totalDamage": 114074000000,
+      "attackCount": 3,
+      "syncLevel": 761,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 28778076183,
+          "characters": [
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 36999765001,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 25,
+          "damage": 48295711020,
+          "characters": [
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/d6e98762e28395fe639304f59f2515ab.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるる",
+      "totalDamage": 111621000000,
+      "attackCount": 3,
+      "syncLevel": 721,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 30392841442,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 40762709444,
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 40465511876,
+          "characters": [
+            "./character-images/88e9d12d692695aaae54b796a4e3d0a4.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/c5bb437c654e1ffa560bfba7b1e3fe6f.webp",
+            "./character-images/a5c70b677371c1769e79a9bf47232734.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "なべりうす",
+      "totalDamage": 105392000000,
+      "attackCount": 3,
+      "syncLevel": 732,
+      "attacks": [
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 25,
+          "damage": 35899458683,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 32060126953,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 37432802422,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "PHANTOM",
+      "totalDamage": 99774000000,
+      "attackCount": 3,
+      "syncLevel": 771,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 33,
+          "damage": 25606493001,
+          "characters": [
+            "./character-images/3ac85e36766abc5e052921bbe2b857ae.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 39559929333,
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/9008590c7bab78126e533fc33dd91987.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 34607279898,
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "恆瑪",
+      "totalDamage": 90608000000,
+      "attackCount": 3,
+      "syncLevel": 711,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 23044159105,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 26219855723,
+          "characters": [
+            "./character-images/46f4ce5a484ae76c99a7d1d8b268c518.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 41344242003,
+          "characters": [
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "フブキ",
+      "totalDamage": 87259000000,
+      "attackCount": 3,
+      "syncLevel": 712,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 40342841829,
+          "characters": [
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 19537014738,
+          "characters": [
+            "./character-images/c14e02c226c6b3de726f47206d0651fe.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 27379624986,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "パン",
+      "totalDamage": 79896000000,
+      "attackCount": 3,
+      "syncLevel": 713,
+      "attacks": [
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 23316880250,
+          "characters": [
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 20867344226,
+          "characters": [
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 35711581140,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/d6e98762e28395fe639304f59f2515ab.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "翠秋めぐる",
+      "totalDamage": 79122000000,
+      "attackCount": 3,
+      "syncLevel": 717,
+      "attacks": [
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 26898781078,
+          "characters": [
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/f89d910cb50b1f5bf6b4d294101d8953.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 34,
+          "damage": 28431905971,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 23791155621,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "カイト伍長",
+      "totalDamage": 77531000000,
+      "attackCount": 3,
+      "syncLevel": 641,
+      "attacks": [
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 20457069825,
+          "characters": [
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 21690990607,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 35382877868,
+          "characters": [
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp",
+            "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "わからん",
+      "totalDamage": 77199000000,
+      "attackCount": 3,
+      "syncLevel": 641,
+      "attacks": [
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 32511107231,
+          "characters": [
+            "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 31,
+          "damage": 20872051820,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 23815671282,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "みに",
+      "totalDamage": 76168000000,
+      "attackCount": 3,
+      "syncLevel": 661,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 32363564569,
+          "characters": [
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 22353155737,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 21450895993,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ニッサ",
+      "totalDamage": 75892000000,
+      "attackCount": 3,
+      "syncLevel": 722,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 31,
+          "damage": 24590993113,
+          "characters": [
+            "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 29744003460,
+          "characters": [
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/57a06e50778e4923c6c9806425020498.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/9163759961bd6052bca348f719138ebe.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 21557300536,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "にま",
+      "totalDamage": 73344000000,
+      "attackCount": 3,
+      "syncLevel": 696,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 14,
+          "damage": 37763118449,
+          "characters": [
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp",
+            "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 19272619490,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/fdba16c60b497865d8f3130fc8466ae8.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 16308699356,
+          "characters": [
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "フーノI",
+      "totalDamage": 72397000000,
+      "attackCount": 3,
+      "syncLevel": 701,
+      "attacks": [
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 26490443680,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/af22d6d7756efe69915373651b429e11.webp",
+            "./character-images/a26102dc0f5816931c09c85040b11993.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 35,
+          "damage": 22318363603,
+          "characters": [
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 31,
+          "damage": 23587986548,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "銀狐リン",
+      "totalDamage": 68645000000,
+      "attackCount": 3,
+      "syncLevel": 735,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 20429554787,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 21268618755,
+          "characters": [
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp",
+            "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 26946899086,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるちゃ",
+      "totalDamage": 65918000000,
+      "attackCount": 3,
+      "syncLevel": 735,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 18319863174,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 26,
+          "damage": 32714457100,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14883886894,
+          "characters": [
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ルル",
+      "totalDamage": 60828000000,
+      "attackCount": 3,
+      "syncLevel": 686,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 10654445417,
+          "characters": [
+            "./character-images/1535016705a53ae769ac8b37c6b2dd51.webp",
+            "./character-images/f66c08b26047347b46420a769de04837.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 20503184949,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 29670168029,
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/f89d910cb50b1f5bf6b4d294101d8953.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "MIRIN",
+      "totalDamage": 54215000000,
+      "attackCount": 3,
+      "syncLevel": 630,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 16730018117,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 21695224626,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 15790065823,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "まるちょ",
+      "totalDamage": 52668000000,
+      "attackCount": 3,
+      "syncLevel": 674,
+      "attacks": [
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 17830907668,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/d6e98762e28395fe639304f59f2515ab.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 14533424601,
+          "characters": [
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 20303981400,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あんず",
+      "totalDamage": 50770000000,
+      "attackCount": 3,
+      "syncLevel": 601,
+      "attacks": [
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 33,
+          "damage": 10285758013,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
+            "./character-images/998706bd4e149311386045530b37041d.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 25263022098,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15220793788,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ねむねこ",
+      "totalDamage": 45508000000,
+      "attackCount": 3,
+      "syncLevel": 542,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 14783802773,
+          "characters": [
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11010679422,
+          "characters": [
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/3ac85e36766abc5e052921bbe2b857ae.webp",
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 19713727051,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/d6e98762e28395fe639304f59f2515ab.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "るり",
+      "totalDamage": 45317000000,
+      "attackCount": 3,
+      "syncLevel": 570,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 10933002744,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 23,
+          "damage": 19449618203,
+          "characters": [
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/7094b83a610d874a877afba6c0520445.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 14934533521,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ふるり",
+      "totalDamage": 42086000000,
+      "attackCount": 3,
+      "syncLevel": 521,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 11919787436,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp",
+            "./character-images/8719439cdfadcf8b5748fcfc6079a00c.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 17234853847,
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "Iシニスター",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 12931124737,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/6bf2f9261d5b41c4659692a6eb78527a.webp",
+            "./character-images/fc0882189da1463e533d328cee8d5a92.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "覆面仮面",
+      "totalDamage": 39868000000,
+      "attackCount": 3,
+      "syncLevel": 610,
+      "attacks": [
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 12018512922,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/15f93b4073cd82430710c5d4105fa56d.webp",
+            "./character-images/8dec662c020f93bc1ed3b8c7ead22f8d.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 16340536604,
+          "characters": [
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 11509314594,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/befa427f703047af533d820a2cc42161.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "DETロイ",
+      "totalDamage": 35936000000,
+      "attackCount": 3,
+      "syncLevel": 559,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 13363590142,
+          "characters": [
+            "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/7834f83cc5e968ef22c7d96d3ff9e5a7.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 33,
+          "damage": 15760359301,
+          "characters": [
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6d8fbc9751134275c50789db976d907d.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6812300013,
+          "characters": [
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/3870984ac10047733bc6b57502f3378c.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "はる",
+      "totalDamage": 33489000000,
+      "attackCount": 3,
+      "syncLevel": 531,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 9881011906,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/5b580b27ba41b9e03998860ce5e994ea.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 7962027753,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp",
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 15645592199,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "リン",
+      "totalDamage": 29533000000,
+      "attackCount": 3,
+      "syncLevel": 520,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 8677182231,
+          "characters": [
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 10067667207,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 10787831448,
+          "characters": [
+            "./character-images/2020306990ac4f6696c4674b536dca49.webp",
+            "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
+            "./character-images/31caa32129469999a8c011eba7fc1bac.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "時雨",
+      "totalDamage": 25830000000,
+      "attackCount": 3,
+      "syncLevel": 472,
+      "attacks": [
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 6603128737,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
+            "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp"
+          ]
+        },
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 8592648118,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 10633894692,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/140184abd98aeb95a03860bd312949f8.webp",
+            "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "NAVI01",
+      "totalDamage": 24065000000,
+      "attackCount": 3,
+      "syncLevel": 425,
+      "attacks": [
+        {
+          "bossType": "Vウルトラ",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 35,
+          "damage": 6945616304,
+          "characters": [
+            "./character-images/5f04f96984b134bd885b3b473a0efb5f.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/755dcf2aea00e99952a84bc6b9771f8a.webp",
+            "./character-images/17f2cf990b5e85cef98eb8abc8db3c41.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 6201655246,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp",
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドビッグトルソー",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 10917638839,
+          "characters": [
+            "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
+            "./character-images/86a69907ae0feeb218eb98d10eb9a131.webp",
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "むう",
+      "totalDamage": 21647000000,
+      "attackCount": 3,
+      "syncLevel": 480,
+      "attacks": [
+        {
+          "bossType": "レプリカ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 9252255967,
+          "characters": [
+            "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
+            "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
+            "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
+            "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
+            "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 4868880832,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/2884d487616b8dbbc109232437e67eeb.webp",
+            "./character-images/8eb1e9dd804ca8ac6788859d45a21432.webp",
+            "./character-images/d2c988a262dd44579c299337d5658c40.webp",
+            "./character-images/b6c6f46752e61434f7bcbed790db025b.webp"
+          ]
+        },
+        {
+          "bossType": "IIIニヒリスター",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7525941825,
+          "characters": [
+            "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
+            "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
+            "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
+            "./character-images/b901c8f631bb2bfc2f59022ab3c785ce.webp",
+            "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp"
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "extractedAt": "2026-06-13T21:21:14.034Z",
+    "playerCount": 31,
+    "totalDamage": 2140692000000,
+    "source": "BlaBlaLINK Chrome Extension",
+    "version": "2.3",
+    "hasDetailedAttacks": true,
+    "imagesDownloaded": true,
+    "fururiSimulationScores": {
+      "Z.E.U.S.": 17272374729,
+      "D.M.T.R.": 11318678091
+    }
+  }
+}
