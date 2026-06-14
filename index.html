@@ -3732,26 +3732,38 @@
 
         // ========== マイページ: Push通知設定 (Phase 6a) ==========
         // 受け取った通知履歴 (Push通知の本文をあとから確認できる)
-        async function renderMyNotificationsInbox(identity) {
+        // 既定 3件表示、「もっと見る」で全件展開、「閉じる」で 3件に戻す
+        const _NOTIF_INBOX_LIMIT = 3;
+        let _myNotificationsCache = null;     // ロード済の rows をキャッシュ (展開/折り畳みで再fetch不要)
+        let _myNotificationsExpanded = false;
+
+        async function renderMyNotificationsInbox(identity, useCache = false) {
             const el = document.getElementById('mypageNotificationsInbox');
             if (!el) return;
             if (!identity) {
+                _myNotificationsCache = null;
+                _myNotificationsExpanded = false;
                 el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>';
                 return;
             }
-            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中…</p>';
-            let rows;
-            try {
-                rows = await window.supabaseLoadRecentNotifications(20, identity.id);
-            } catch (e) {
-                el.innerHTML = `<p style="font-size:12px;color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:var(--md-sys-color-on-surface-variant);">(マイグレーション 06_push_notifications_log.sql が未適用の可能性)</span></p>`;
-                return;
+            // 初回 or 明示的に再取得指定された時のみ fetch。展開トグル時はキャッシュ使用。
+            if (!useCache || _myNotificationsCache == null) {
+                el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中…</p>';
+                try {
+                    _myNotificationsCache = await window.supabaseLoadRecentNotifications(20, identity.id);
+                    _myNotificationsExpanded = false;
+                } catch (e) {
+                    el.innerHTML = `<p style="font-size:12px;color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:var(--md-sys-color-on-surface-variant);">(マイグレーション 06_push_notifications_log.sql が未適用の可能性)</span></p>`;
+                    return;
+                }
             }
-            if (!rows || rows.length === 0) {
+            const rows = _myNotificationsCache || [];
+            if (rows.length === 0) {
                 el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
                 return;
             }
-            el.innerHTML = rows.map(n => {
+            const visible = _myNotificationsExpanded ? rows : rows.slice(0, _NOTIF_INBOX_LIMIT);
+            const cardsHtml = visible.map(n => {
                 const tag = n.target_kind === 'all'
                     ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);">全員宛</span>'
                     : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#1d4ed8;">あなた宛</span>';
@@ -3765,6 +3777,19 @@
                         <div style="font-size:12px;line-height:1.55;color:var(--md-sys-color-on-surface);white-space:pre-wrap;word-break:break-word;">${escapeHtml(n.body || '')}</div>
                     </div>`;
             }).join('');
+
+            let footerHtml = '';
+            if (rows.length > _NOTIF_INBOX_LIMIT) {
+                footerHtml = _myNotificationsExpanded
+                    ? `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface-variant);font-size:12px;cursor:pointer;">▲ 閉じる (最初の${_NOTIF_INBOX_LIMIT}件に戻す)</button>`
+                    : `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">▼ もっと見る (残り${rows.length - _NOTIF_INBOX_LIMIT}件)</button>`;
+            }
+            el.innerHTML = cardsHtml + footerHtml;
+        }
+
+        function toggleMyNotificationsInbox() {
+            _myNotificationsExpanded = !_myNotificationsExpanded;
+            renderMyNotificationsInbox(getCurrentIdentity(), true);   // キャッシュ使用で再描画
         }
 
         async function renderMyPushSettings(identity) {
