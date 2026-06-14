@@ -86,10 +86,12 @@ CREATE TABLE IF NOT EXISTS day_offs (
     PRIMARY KEY (player_id, date)
 );
 
--- ===== Availability (凸可能時間帯) =====
+-- ===== Availability (凸可能時間帯, 1時間刻み) =====
+-- time_slot は 'hXX' 形式 (h00〜h23)。0時=深夜0時。
+-- ユニオンレイドは AM5時開始のため FE 表示順は 5,6,..,23,0,..,4。
 CREATE TABLE IF NOT EXISTS availability (
     player_id BIGINT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-    time_slot TEXT NOT NULL CHECK (time_slot IN ('morning','noon','evening','night','latenight')),
+    time_slot TEXT NOT NULL CHECK (time_slot ~ '^h(0[0-9]|1[0-9]|2[0-3])$'),
     PRIMARY KEY (player_id, time_slot)
 );
 
