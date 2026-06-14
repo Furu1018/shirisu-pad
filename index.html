@@ -5182,10 +5182,65 @@
                 candidates,
             };
 
-            listEl.innerHTML = header + rows + pushBtn;
+            // 時間別ベスト候補のタイムライン (次の12時間)
+            const timelineHtml = _buildFinishTimeline(attrKey, candidates, remainingHpB);
+
+            listEl.innerHTML = header + rows + pushBtn + timelineHtml;
 
             // 推薦プラン (ギリギリ / 余裕) を計算して表示
             renderOpsFinishPlans(attrKey, boss, ptInfo, remainingHpB, candidates);
+        }
+
+        // 時間別ベスト候補タイムライン: 各時刻に「凸可能 (availableSlots に含む) かつ 残凸あり」な候補から
+        // ベスト1名を出す。リーダーが変わる時刻を強調して、運営の「何時まで待てば◯◯さんが凸できる」判断を支援。
+        function _buildFinishTimeline(attrKey, allCandidatesAtThisAttr, remainingHpB) {
+            // 現在時刻から24時間 (ユニレ周回1周) 分を順に走査
+            const curHourStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false });
+            const curHour = parseInt(curHourStr, 10) % 24;
+            const sequence = [];
+            for (let i = 0; i < 24; i++) sequence.push((curHour + i) % 24);
+
+            const slotKey = (h) => `h${String(h).padStart(2, '0')}`;
+            // 各候補は { name, dmg, availableSlots, attackCount } を持つ。
+            // 「凸残あり (attackCount < 3)」かつ「dmg > 0」のものはすでに allCandidatesAtThisAttr に入っている。
+            const rows = sequence.map(h => {
+                const sk = slotKey(h);
+                // availableSlots が空の人は「常時可」と扱う旧仕様だったが、今回は明示的に未設定=未参加で除外
+                const avail = allCandidatesAtThisAttr.filter(p => (p.availableSlots || []).includes(sk));
+                if (avail.length === 0) return { hour: h, best: null, count: 0 };
+                const best = avail.reduce((a, b) => (a.dmg >= b.dmg ? a : b));
+                return { hour: h, best, count: avail.length };
+            });
+
+            // リーダー変化点を検出
+            let prevBestName = null;
+            let leaderChanges = 0;
+            rows.forEach(r => {
+                if (r.best?.name && r.best.name !== prevBestName) {
+                    r.isLeaderChange = true;
+                    prevBestName = r.best.name;
+                    leaderChanges++;
+                }
+            });
+
+            if (leaderChanges <= 1) return '';   // 変化なしなら非表示 (現状で十分)
+
+            // 変化点のみピックアップして表示 (常時同じ人が最強なら省略)
+            const changes = rows.filter(r => r.isLeaderChange).slice(0, 8);
+            const itemsHtml = changes.map(r => {
+                const isCurrent = r.hour === curHour;
+                const hourLabel = isCurrent ? `<strong>現在 (${r.hour}時)</strong>` : `${r.hour}時`;
+                if (!r.best) return `<li>${hourLabel}: 候補なし</li>`;
+                const overTag = r.best.dmg > remainingHpB ? ' <span style="color:#f59e0b;font-size:11px;">(超過)</span>' : '';
+                return `<li>${hourLabel}: <strong>${escapeHtml(r.best.name)}</strong> ${r.best.dmg.toFixed(2)}B${overTag} <span style="color:var(--md-sys-color-on-surface-variant);font-size:11px;">(${r.count}名可)</span></li>`;
+            }).join('');
+
+            return `
+                <details style="margin-top:14px;padding:8px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                    <summary style="cursor:pointer;font-size:13px;font-weight:600;">🕐 何時まで待てば誰が最適？（時間別ベスト候補）</summary>
+                    <p style="margin:8px 0 4px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">通知受信可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
+                    <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.8;">${itemsHtml}</ul>
+                </details>`;
         }
         let _opsFinishPushContext = null;
         let _opsFinishPlanContext = null;
