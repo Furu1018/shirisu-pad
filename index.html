@@ -2167,12 +2167,12 @@
 
     <!-- ========== 運営: 代理凸モーダル ========== -->
     <div class="player-select-modal" id="opsProxyAttackModal">
-        <div class="player-select-content" style="max-width:520px;">
+        <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2 id="opsProxyTitle">✏️ 代理凸報告</h2>
                 <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">他メンバーの代わりに凸を1件記録します。</p>
+            <p class="subtitle">他メンバーの代わりに凸を記録します。<br><strong>ボス残HPは自動減算されません</strong> — HP同期はボスHP更新で別途行ってください。</p>
 
             <div>
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">対象メンバー</label>
@@ -2182,26 +2182,49 @@
                 <p id="opsProxyMemberHint" style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</p>
             </div>
 
-            <div>
-                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">対象ボス（タップで選択）</label>
-                <div id="opsProxyBossButtons" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
-                    <div style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px;">読み込み中...</div>
+            <!-- モード切替タブ -->
+            <div style="display:flex;border-bottom:2px solid var(--md-sys-color-outline-variant);margin-top:4px;">
+                <button id="opsProxyModeTabSimple" onclick="switchOpsProxyMode('simple')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid var(--md-sys-color-primary);margin-bottom:-2px;">✏️ 1件入力</button>
+                <button id="opsProxyModeTabBulk" onclick="switchOpsProxyMode('bulk')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;">📷 BlaBlaLINK 3凸取込</button>
+            </div>
+
+            <!-- 1件入力モード -->
+            <div id="opsProxySimpleSection">
+                <div>
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;margin-top:8px;">対象ボス（タップで選択）</label>
+                    <div id="opsProxyBossButtons" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+                        <div style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px;">読み込み中...</div>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">ダメージ（B単位、任意。0 でも可）</label>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <input type="number" id="opsProxyDamageInput" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5（不明なら空欄/0）"
+                            style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
+                        <span style="font-size:14px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                    </div>
+                    <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">凸権限消化のみ目的なら 0 でも OK（属性使用フラグとして記録されます）。</p>
                 </div>
             </div>
 
-            <div>
-                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">ダメージ（B単位、不明なら 0 でも可）</label>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <input type="number" id="opsProxyDamageInput" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
-                        style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
-                    <span style="font-size:14px;color:var(--md-sys-color-on-surface-variant);">B</span>
-                </div>
+            <!-- BlaBlaLINK 3凸取込モード -->
+            <div id="opsProxyBulkSection" style="display:none;">
+                <p style="margin:8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">対象メンバーの BlaBlaLINK 凸結果一覧スクショから 3凸分を一括登録します。</p>
+                <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed var(--md-sys-color-outline-variant);border-radius:8px;background:var(--md-sys-color-surface-variant);cursor:pointer;">
+                    <span style="font-size:18px;">📷</span>
+                    <span style="flex:1;font-size:13px;">BlaBlaLINK 凸一覧画像を選ぶ</span>
+                    <input type="file" id="opsProxyBulkOcrInput" accept="image/*" onchange="handleOpsProxyBulkOcrUpload(event)" style="display:none;">
+                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                </label>
+                <p id="opsProxyBulkStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+                <div id="opsProxyBulkPreview" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
             </div>
 
             <p id="opsProxyMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">保存</button>
+                <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 保存</button>
             </div>
         </div>
     </div>
@@ -5740,14 +5763,22 @@
             }
         }
 
-        // ========== 運営: 代理凸モーダル (Phase 3b) ==========
+        // ========== 運営: 代理凸モーダル (Phase 3b, 案C仕様) ==========
+        // 注意: 代理凸はボス残HPを **自動減算しません** (運営が別途ボスHP更新で同期)。
         let _opsProxyBossNumber = null;
+        let _opsProxyMode = 'simple';       // 'simple' | 'bulk'
+        let _opsProxyBulkAttacks = [];      // [{ bossCode, bossName, bossNumber, level, totalDamage }]
 
         async function openOpsProxyAttackModal() {
             document.getElementById('opsProxyAttackModal').classList.add('open');
             document.getElementById('opsProxyMessage').textContent = '';
             document.getElementById('opsProxyDamageInput').value = '';
             _opsProxyBossNumber = null;
+            _opsProxyBulkAttacks = [];
+            // モードを simple にリセット
+            switchOpsProxyMode('simple');
+            document.getElementById('opsProxyBulkStatus').textContent = ' ';
+            document.getElementById('opsProxyBulkPreview').innerHTML = '';
 
             // メンバーセレクト
             const sel = document.getElementById('opsProxyMemberSelect');
@@ -5809,33 +5840,137 @@
                 hint.style.color = atks.length >= 3 ? '#ef4444' : 'var(--md-sys-color-on-surface-variant)';
             } catch { hint.textContent = ''; }
         }
+        function switchOpsProxyMode(mode) {
+            _opsProxyMode = (mode === 'bulk') ? 'bulk' : 'simple';
+            const tabS = document.getElementById('opsProxyModeTabSimple');
+            const tabB = document.getElementById('opsProxyModeTabBulk');
+            const secS = document.getElementById('opsProxySimpleSection');
+            const secB = document.getElementById('opsProxyBulkSection');
+            const saveBtn = document.getElementById('opsProxySaveBtn');
+            if (_opsProxyMode === 'simple') {
+                tabS.style.borderBottomColor = 'var(--md-sys-color-primary)';
+                tabS.style.color = 'var(--md-sys-color-on-surface)';
+                tabB.style.borderBottomColor = 'transparent';
+                tabB.style.color = 'var(--md-sys-color-on-surface-variant)';
+                secS.style.display = '';
+                secB.style.display = 'none';
+                saveBtn.textContent = '💾 保存';
+            } else {
+                tabB.style.borderBottomColor = 'var(--md-sys-color-primary)';
+                tabB.style.color = 'var(--md-sys-color-on-surface)';
+                tabS.style.borderBottomColor = 'transparent';
+                tabS.style.color = 'var(--md-sys-color-on-surface-variant)';
+                secS.style.display = 'none';
+                secB.style.display = '';
+                saveBtn.textContent = '💾 3凸一括保存';
+            }
+            document.getElementById('opsProxyMessage').textContent = '';
+        }
+
+        async function handleOpsProxyBulkOcrUpload(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (!file) return;
+            const statusEl = document.getElementById('opsProxyBulkStatus');
+            const previewEl = document.getElementById('opsProxyBulkPreview');
+            statusEl.textContent = '🔍 BlaBlaLINK 画像を解析中... (10〜20秒)';
+            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            try {
+                const dataUrl = await window.fileToDataUrl(file);
+                const res = await window.callAiVision(dataUrl, 'bla_my_attacks');
+                const r = res.result;
+                if (!r || !Array.isArray(r.attacks) || r.attacks.length === 0) {
+                    throw new Error('凸データを読み取れませんでした');
+                }
+                const ctx = await ensureActiveSeasonLoaded();
+                const bossByCode = new Map((ctx?.bosses || []).map(b => [b.boss_code, b]));
+                _opsProxyBulkAttacks = r.attacks.slice(0, 3).map(a => {
+                    const boss = bossByCode.get(a.bossCode) || null;
+                    return {
+                        bossCode: a.bossCode || (boss?.boss_code) || '',
+                        bossName: a.bossName || (boss?.name) || '',
+                        bossNumber: boss?.boss_number || null,
+                        level: a.level || ctx?.season?.current_level || 1,
+                        totalDamage: Number(a.totalDamage) || 0,
+                    };
+                });
+                previewEl.innerHTML = _opsProxyBulkAttacks.map((a, i) => {
+                    const matched = a.bossNumber ? `<span style="color:#22c55e;font-size:11px;">✅ B${a.bossNumber}</span>` : '<span style="color:#ef4444;font-size:11px;">⚠️ ボス不一致</span>';
+                    return `
+                        <div style="padding:10px 12px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;background:var(--md-sys-color-surface);">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <strong style="font-size:13px;">凸 ${i + 1}</strong>
+                                ${matched}
+                                <span style="font-size:12px;">${escapeHtml(a.bossName || '?')} (${escapeHtml(a.bossCode || '?')}) Lv${a.level}</span>
+                                <span style="margin-left:auto;font-size:13px;font-weight:700;">${(a.totalDamage / 1e9).toFixed(2)}B</span>
+                            </div>
+                        </div>`;
+                }).join('');
+                statusEl.textContent = `✅ ${_opsProxyBulkAttacks.length}凸分を抽出。「3凸一括保存」で登録`;
+                statusEl.style.color = '#22c55e';
+            } catch (e) {
+                statusEl.textContent = `❌ ${e?.message || e}`;
+                statusEl.style.color = '#ef4444';
+                _opsProxyBulkAttacks = [];
+                previewEl.innerHTML = '';
+            }
+        }
+
         async function handleOpsProxyAttackSave() {
             const sel = document.getElementById('opsProxyMemberSelect');
-            const dmgInput = document.getElementById('opsProxyDamageInput');
             const msg = document.getElementById('opsProxyMessage');
             const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
 
             const playerId = parseInt(sel.value);
             if (!playerId) { set('❌ メンバーを選択してください', true); return; }
-            if (!_opsProxyBossNumber) { set('❌ ボスを選択してください', true); return; }
-            const dmgB = parseFloat(dmgInput.value);
-            if (isNaN(dmgB) || dmgB < 0) { set('❌ ダメージを正しく入力してください (不明なら 0)', true); return; }
+            const ctx = await ensureActiveSeasonLoaded();
+            if (!ctx?.season) { set('❌ アクティブシーズン無し', true); return; }
+
             try {
-                const ctx = await ensureActiveSeasonLoaded();
-                const boss = ctx.bosses.find(b => b.boss_number === _opsProxyBossNumber);
-                await window.supabaseAddAttack({
-                    seasonId: ctx.season.id,
-                    playerId,
-                    attackDate: ctx.season.hard_date,
-                    bossNumber: boss.boss_number,
-                    bossCode: boss.boss_code,
-                    damageRaw: Math.round(dmgB * 1e9),
-                    level: ctx.season.current_level || 1,
-                    characters: [],
-                });
-                set(`✅ 代理凸を登録しました (${sel.options[sel.selectedIndex]?.text})`);
+                if (_opsProxyMode === 'bulk') {
+                    if (_opsProxyBulkAttacks.length === 0) { set('❌ 先に BlaBlaLINK 画像を読み込んでください', true); return; }
+                    let ok = 0, fail = 0;
+                    for (const a of _opsProxyBulkAttacks) {
+                        if (!a.bossNumber || !a.bossCode) { fail++; continue; }
+                        try {
+                            await window.supabaseAddAttack({
+                                seasonId: ctx.season.id,
+                                playerId,
+                                attackDate: ctx.season.hard_date,
+                                bossNumber: a.bossNumber,
+                                bossCode: a.bossCode,
+                                damageRaw: Math.round(a.totalDamage),
+                                level: a.level || ctx.season.current_level || 1,
+                                characters: [],
+                            }, { skipHpDecrement: true });   // 代理凸: HP は別途運営が更新
+                            ok++;
+                        } catch (e) {
+                            fail++;
+                            console.warn('[ops proxy bulk]', e?.message || e);
+                        }
+                    }
+                    set(`✅ ${ok}凸登録${fail > 0 ? ` / ⚠️ ${fail}件失敗` : ''}`);
+                } else {
+                    // simple モード
+                    if (!_opsProxyBossNumber) { set('❌ ボスを選択してください', true); return; }
+                    const dmgInput = document.getElementById('opsProxyDamageInput');
+                    const dmgB = parseFloat(dmgInput.value);
+                    const dmgRaw = (isNaN(dmgB) || dmgB < 0) ? 0 : Math.round(dmgB * 1e9);
+                    const boss = ctx.bosses.find(b => b.boss_number === _opsProxyBossNumber);
+                    await window.supabaseAddAttack({
+                        seasonId: ctx.season.id,
+                        playerId,
+                        attackDate: ctx.season.hard_date,
+                        bossNumber: boss.boss_number,
+                        bossCode: boss.boss_code,
+                        damageRaw: dmgRaw,
+                        level: ctx.season.current_level || 1,
+                        characters: [],
+                    }, { skipHpDecrement: true });   // 代理凸: HP は別途運営が更新
+                    set(`✅ 代理凸を登録しました (${sel.options[sel.selectedIndex]?.text})`);
+                }
                 _opsDashboardCache = null;
-                setTimeout(() => closeOpsProxyAttackModal(), 800);
+                setTimeout(() => closeOpsProxyAttackModal(), 900);
                 renderOpsDashboard();
             } catch (e) {
                 set(`❌ ${e?.message || e}`, true);
