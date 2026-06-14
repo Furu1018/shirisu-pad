@@ -800,13 +800,24 @@ window.supabaseCreateSeason = async function (payload) {
 
     const isTest = !!payload.isTest;
 
-    // テストシーズン: 現在の player_damages + nikke_characters のキャノニカル名一覧を
-    // スナップショットして metadata に保存。テスト終了時に復元する。
+    // テストシーズン: 現在の player_damages (characters 含む) + nikke_characters の
+    // キャノニカル名一覧をスナップショットして metadata に保存。テスト終了時に復元する。
     let metadata = {};
     if (isTest) {
-        const { data: dmgs } = await supabase
-            .from('player_damages')
-            .select('player_id, attribute, damage_b');
+        // characters カラムは player_damages にあとから足したスキーマなので、無い環境でも壊れないように
+        let dmgs = null;
+        try {
+            const r = await supabase
+                .from('player_damages')
+                .select('player_id, attribute, damage_b, characters');
+            dmgs = r.data || [];
+        } catch { /* characters 列なし環境にフォールバック */ }
+        if (dmgs == null) {
+            const r2 = await supabase
+                .from('player_damages')
+                .select('player_id, attribute, damage_b');
+            dmgs = r2.data || [];
+        }
         // キャラマスタは canonical_name 一覧のみ保存 (sighting_count 等の細部はロールバック対象外)
         let charNames = [];
         try {
@@ -817,7 +828,7 @@ window.supabaseCreateSeason = async function (payload) {
         } catch { /* テーブル未マイグ環境では空配列のまま */ }
         metadata = {
             is_test: true,
-            damages_snapshot: dmgs || [],
+            damages_snapshot: dmgs,
             nikke_characters_snapshot: charNames,
         };
     }
@@ -882,6 +893,11 @@ window.supabaseCreateSeason = async function (payload) {
     });
     const { error: bErr } = await supabase.from('bosses').insert(bossRows);
     if (bErr) throw bErr;
+
+    // 模擬戦データ (player_damages) をクリア → メンバーが新シーズン期間中に再提出する運用
+    // テストシーズンの場合は metadata.damages_snapshot に保存済みなのでテスト終了時に復元される。
+    const { error: clrErr } = await supabase.from('player_damages').delete().gte('player_id', 0);
+    if (clrErr) console.warn('[createSeason] player_damages クリアに失敗:', clrErr?.message);
 
     return { ...season };
 };
@@ -1014,17 +1030,28 @@ window.supabaseDeleteActiveTestSeason = async function () {
     if (sErr) throw sErr;
     if (!season) throw new Error('アクティブなテストシーズンがありません');
 
-    // player_damages をスナップショットから復元
+    // player_damages をスナップショットから復元 (characters カラムも一緒に)
     const snapshot = season.metadata?.damages_snapshot;
     if (Array.isArray(snapshot)) {
         await supabase.from('player_damages').delete().gte('player_id', 0);
         if (snapshot.length > 0) {
-            const rows = snapshot.map(s => ({
+            // characters カラムが入っているかどうかで2回試行 (旧 snapshot との後方互換)
+            const rowsWithChars = snapshot.map(s => ({
                 player_id: s.player_id,
                 attribute: s.attribute,
                 damage_b: s.damage_b,
+                characters: Array.isArray(s.characters) ? s.characters : [],
             }));
-            await supabase.from('player_damages').upsert(rows, { onConflict: 'player_id,attribute' });
+            const r1 = await supabase.from('player_damages').upsert(rowsWithChars, { onConflict: 'player_id,attribute' });
+            if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
+                // characters 列が DB に存在しない環境にフォールバック
+                const rowsBasic = snapshot.map(s => ({
+                    player_id: s.player_id,
+                    attribute: s.attribute,
+                    damage_b: s.damage_b,
+                }));
+                await supabase.from('player_damages').upsert(rowsBasic, { onConflict: 'player_id,attribute' });
+            }
         }
     }
 
