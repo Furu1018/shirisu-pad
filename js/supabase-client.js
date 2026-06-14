@@ -800,6 +800,19 @@ window.supabaseCreateSeason = async function (payload) {
 
     const isTest = !!payload.isTest;
 
+    // テスト終了時に「テスト前の状態」へ正確に戻すため、テスト作成前に
+    // アクティブだったシーズンの ID を記録しておく (運用前に手動で 🏁 終了されている場合は null)
+    let previousActiveSeasonId = null;
+    if (isTest) {
+        const { data: prevActive } = await supabase
+            .from('seasons')
+            .select('id')
+            .eq('is_active', true)
+            .eq('is_test', false)
+            .maybeSingle();
+        previousActiveSeasonId = prevActive?.id || null;
+    }
+
     // テストシーズン: 現在の player_damages (characters 含む) + nikke_characters の
     // キャノニカル名一覧をスナップショットして metadata に保存。テスト終了時に復元する。
     let metadata = {};
@@ -830,6 +843,7 @@ window.supabaseCreateSeason = async function (payload) {
             is_test: true,
             damages_snapshot: dmgs,
             nikke_characters_snapshot: charNames,
+            previous_active_season_id: previousActiveSeasonId,
         };
     }
 
@@ -1081,14 +1095,19 @@ window.supabaseDeleteActiveTestSeason = async function () {
     const { error: dErr } = await supabase.from('seasons').delete().eq('id', season.id);
     if (dErr) throw dErr;
 
-    // 直近の非テストシーズンを再アクティブ化
-    const { data: prev } = await supabase
-        .from('seasons').select('id, month_key').eq('is_test', false)
-        .order('hard_date', { ascending: false }).limit(1);
+    // テスト作成前にアクティブだったシーズンのみ復活させる。
+    // 手動で 🏁 シーズン終了 していたなら restore せず、シーズン無しの状態に戻る。
     let restoredKey = null;
-    if (prev && prev.length > 0) {
-        await supabase.from('seasons').update({ is_active: true }).eq('id', prev[0].id);
-        restoredKey = prev[0].month_key;
+    const prevActiveId = season.metadata?.previous_active_season_id;
+    if (prevActiveId) {
+        const { data: prev } = await supabase
+            .from('seasons').select('id, month_key, is_active')
+            .eq('id', prevActiveId)
+            .maybeSingle();
+        if (prev) {
+            await supabase.from('seasons').update({ is_active: true }).eq('id', prev.id);
+            restoredKey = prev.month_key;
+        }
     }
     return { ok: true, restoredKey, charsRemoved };
 };
