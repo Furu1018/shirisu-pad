@@ -519,6 +519,8 @@
             padding: 16px;
         }
         .player-select-modal.open { display: flex; }
+        /* アイコンピッカーは他モーダルから呼ばれる「子」なので必ず上に出す */
+        #iconPickerModal { z-index: 600; }
         .player-select-content {
             background: var(--md-sys-color-surface);
             border-radius: 16px;
