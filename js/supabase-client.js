@@ -408,22 +408,46 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB) 
     if (error) throw error;
 };
 
+// 旧スロット (morning/noon/evening/night/latenight) → 新hXX に展開
+// 旧キーが残ったままでも自動展開してフィルタが動くようにする
+const _LEGACY_SLOT_TO_HOURS = {
+    morning:   ['h05','h06','h07','h08'],
+    noon:      ['h09','h10','h11','h12','h13'],
+    evening:   ['h14','h15','h16','h17'],
+    night:     ['h18','h19','h20','h21','h22','h23'],
+    latenight: ['h00','h01','h02','h03','h04'],
+};
+const _expandLegacySlots = (rawSlots) => {
+    const out = new Set();
+    (rawSlots || []).forEach(s => {
+        if (typeof s !== 'string') return;
+        if (s.startsWith('h') && s.length === 3) {
+            out.add(s);
+        } else if (_LEGACY_SLOT_TO_HOURS[s]) {
+            _LEGACY_SLOT_TO_HOURS[s].forEach(h => out.add(h));
+        }
+    });
+    return [...out];
+};
+const _isValidHourSlot = (s) => typeof s === 'string' && /^h(0[0-9]|1[0-9]|2[0-3])$/.test(s);
+
 // プレイヤーの通知受信可能時間帯 (availability) を取得
-// 戻り値: ['morning','noon',...] (空配列なら未登録=全時間帯OK扱い)
+// 戻り値: ['h05','h06',...] (空配列なら未登録)
+// 旧 morning/noon 等の値は自動的に hXX に展開して返す。
 window.supabaseLoadAvailability = async function (playerId) {
     const { data, error } = await supabase
         .from('availability')
         .select('time_slot')
         .eq('player_id', playerId);
     if (error) throw error;
-    return (data || []).map(d => d.time_slot);
+    const raw = (data || []).map(d => d.time_slot);
+    return _expandLegacySlots(raw);
 };
 
-// プレイヤーの availability を slots[] で上書き
+// プレイヤーの availability を slots[] で上書き (hXX 形式のみ)
 window.supabaseSaveAvailability = async function (playerId, slots) {
-    const valid = ['morning','noon','evening','night','latenight'];
-    const clean = (slots || []).filter(s => valid.includes(s));
-    // 一旦全削除して入れ直し
+    const clean = (slots || []).filter(_isValidHourSlot);
+    // 一旦全削除して入れ直し (旧キー も含めて全消去 → 新キーのみ保存される)
     const { error: dErr } = await supabase
         .from('availability')
         .delete()
@@ -1539,14 +1563,17 @@ window.supabaseLoadOpsDashboardData = async function () {
     }
 
     // 4) availability(凸可能時間帯): 「現在凸可能な人のみ」モードのフィルタ用。
+    //    旧 morning/noon 形式は読み込み時に hXX (時刻別) に自動展開。
     const slotsByPlayer = new Map();
     const { data: avSlots } = await supabase
         .from('availability')
         .select('player_id, time_slot');
+    const rawByPlayer = new Map();
     (avSlots || []).forEach(s => {
-        if (!slotsByPlayer.has(s.player_id)) slotsByPlayer.set(s.player_id, []);
-        slotsByPlayer.get(s.player_id).push(s.time_slot);
+        if (!rawByPlayer.has(s.player_id)) rawByPlayer.set(s.player_id, []);
+        rawByPlayer.get(s.player_id).push(s.time_slot);
     });
+    rawByPlayer.forEach((raws, pid) => slotsByPlayer.set(pid, _expandLegacySlots(raws)));
 
     // 5) SLv: 直近の実シーズン(テスト除外)の player_sync_levels を取得。
     //    最適プランで「低レベルは低SLv、高レベルは高SLv」の割当に使う。
