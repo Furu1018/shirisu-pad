@@ -1361,7 +1361,6 @@
                     <button onclick="openOpsBossHpModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">⚔️ ボスHP更新</button>
                     <button onclick="openOpsProxyAttackModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">✏️ 代理凸を報告</button>
                     <button onclick="openOpsAttacksEditModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">📋 凸履歴・編集</button>
-                    <button onclick="handleOpsLevelUp()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">⬆️ レベルアップ</button>
                     <button onclick="openMemberManageModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">👥 メンバー管理</button>
                 </div>
             </div>
@@ -2028,8 +2027,7 @@
                     <section id="help-ops" class="help-section">
                         <h2>🛠️ 13. ユニレ管理（管理者向け）</h2>
                         <ul>
-                            <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集</li>
-                            <li><strong>レベルアップ</strong> — 次レベルへ。ボスHPは標準値にリセット</li>
+                            <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
                             <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。前回実績ダメージを各メンバーの初期値に自動シード可</li>
                             <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージをスナップショットし、「削除して元に戻す」で完全復元</li>
@@ -5267,7 +5265,7 @@
             const onlyAvailableNow = !!options.onlyAvailableNow;
             const currentSlot = getCurrentSlotJST();
 
-            // レベル別ボスHP (B単位) ※ supabaseLevelUpSeason の定義と一致させること
+            // レベル別ボスHP (B単位) ※ supabase-client.js の _HARD_LEVEL_HP と一致させること
             const HARD_LEVEL_HP_B = {
                 1: { tyrant: 99.8562792, lord: 150.8418136 },
                 2: { tyrant: 149.7844188, lord: 226.2627204 },
@@ -6138,27 +6136,6 @@
                 renderOpsDashboard();
             } catch (e) {
                 set(`❌ ${e?.message || e}`, true);
-            }
-        }
-
-        async function handleOpsLevelUp() {
-            const ctx = await ensureActiveSeasonLoaded();
-            if (!ctx?.season) { alert('アクティブシーズンがありません'); return; }
-            const current = ctx.season.current_level || 1;
-            const next = current + 1;
-            if (next > 4) {
-                alert('既に最大レベルです。');
-                return;
-            }
-            if (!confirm(`レベルアップ\nLv${current} → Lv${next}\nボスHPは新レベルの標準値にリセットされます。続けますか？`)) return;
-            try {
-                await window.supabaseLevelUpSeason(ctx.season.id, next);
-                _activeSeasonCache = null;
-                _opsDashboardCache = null;
-                showNotification(`Lv${current} → Lv${next} に更新しました`);
-                renderOpsDashboard();
-            } catch (e) {
-                alert(`レベルアップ失敗: ${e?.message || e}`);
             }
         }
 

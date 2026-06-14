@@ -609,7 +609,24 @@ window.supabaseUpdateAttackDamage = async function (attackId, damageRaw) {
     }
 };
 
+// 各 HARD LV の標準HP (raw 値)。supabaseCreateSeason の HARD_LV1_HP と一致させること
+const _HARD_LEVEL_HP = {
+    1: { tyrant: 99856279200, lord: 150841813600 },
+    2: { tyrant: 149784418800, lord: 226262720400 },
+    3: { tyrant: 292445295750, lord: 349230901500 },
+};
+// total_hp_raw からどのLVかを判定 (±5%許容で標準値にマッチさせる)
+const _detectLevelFromHp = (tier, totalRaw, tolerance = 0.05) => {
+    for (const [lvStr, hps] of Object.entries(_HARD_LEVEL_HP)) {
+        const standard = hps[tier];
+        if (!standard) continue;
+        if (Math.abs(totalRaw - standard) / standard <= tolerance) return Number(lvStr);
+    }
+    return null;
+};
+
 // ボスHPを更新（remaining / total を raw 値で）
+// 副作用: total_hp_raw が標準LVに合致した場合、season.current_level を最大値へ昇格 (レベルアップ自動化)
 window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, remainingRaw) {
     if (totalRaw < 0 || remainingRaw < 0) throw new Error('HP は0以上で指定');
     if (remainingRaw > totalRaw) throw new Error('残HP は総HP を超えられません');
@@ -622,6 +639,21 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
         .eq('season_id', seasonId)
         .eq('boss_number', bossNumber);
     if (error) throw error;
+
+    // LV自動判定 → 必要なら current_level を昇格
+    try {
+        const { data: bossRow } = await supabase
+            .from('bosses').select('tier').eq('season_id', seasonId).eq('boss_number', bossNumber).maybeSingle();
+        const detected = bossRow?.tier ? _detectLevelFromHp(bossRow.tier, totalRaw) : null;
+        if (detected) {
+            const { data: seasonRow } = await supabase
+                .from('seasons').select('current_level').eq('id', seasonId).maybeSingle();
+            const currentLevel = Number(seasonRow?.current_level) || 1;
+            if (detected > currentLevel) {
+                await supabase.from('seasons').update({ current_level: detected }).eq('id', seasonId);
+            }
+        }
+    } catch (e) { console.warn('[updateBossHp] auto level detect failed:', e?.message || e); }
 };
 
 // 指定シーズン・日付の全凸を取得（プレイヤー名・ボス名つき）
@@ -883,32 +915,6 @@ window.supabaseEndActiveSeason = async function (unionRank) {
         .update({ is_active: false, union_rank: ur })
         .eq('is_active', true);
     if (error) throw error;
-};
-
-// シーズンのレベルを変更し、ボスHPを新レベルのデフォルト値にリセット
-window.supabaseLevelUpSeason = async function (seasonId, newLevel) {
-    const HARD_LEVEL_HP = {
-        1: { tyrant: 99856279200, lord: 150841813600 },
-        2: { tyrant: 149784418800, lord: 226262720400 },
-        3: { tyrant: 292445295750, lord: 349230901500 },
-    };
-    const hp = HARD_LEVEL_HP[newLevel];
-    if (!hp) throw new Error(`Lv${newLevel} のHPデフォルトが未定義です`);
-
-    // シーズンレベル更新
-    const { error: e1 } = await supabase
-        .from('seasons').update({ current_level: newLevel }).eq('id', seasonId);
-    if (e1) throw e1;
-
-    // ボスHPを階級ごとにリセット
-    for (const tier of ['tyrant', 'lord']) {
-        const { error } = await supabase
-            .from('bosses')
-            .update({ total_hp_raw: hp[tier], remaining_hp_raw: hp[tier] })
-            .eq('season_id', seasonId)
-            .eq('tier', tier);
-        if (error) throw error;
-    }
 };
 
 // ============================================================================
