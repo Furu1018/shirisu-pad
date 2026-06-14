@@ -4836,9 +4836,22 @@
 
         function renderOpsRemainingList() {
             if (!_opsDashboardCache) return;
-            const { players } = _opsDashboardCache;
+            const { players, bosses } = _opsDashboardCache;
             const listEl = document.getElementById('opsRemainingList');
             const summaryEl = document.getElementById('opsRemainingSummary');
+
+            // ボス番号 → 弱点(PT属性) のマップ。
+            // 各プレイヤーが使用済みPT属性は attacks から逆引きする。
+            const bossWeaknessByNum = new Map();
+            (bosses || []).forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
+            const usedAttrsFor = (p) => {
+                const set = new Set();
+                (p.attacks || []).forEach(a => {
+                    const w = bossWeaknessByNum.get(a.boss_number);
+                    if (w) set.add(w);
+                });
+                return set;
+            };
 
             // フィルタボタンの active 状態を更新
             const btnAll = document.getElementById('opsRemFilterAll');
@@ -4901,13 +4914,20 @@
                 </div>`;
 
             const memberRow = (p, isLast) => {
+                const used = usedAttrsFor(p);
                 const cells = PT_ATTRS.map(a => {
                     const v = p.damagesByAttr[a.key];
-                    const inner = (v && v > 0)
+                    const isUsed = used.has(a.key);
+                    const valueStr = (v && v > 0)
                         ? Number(v).toFixed(1)
                         : '<span style="color:var(--md-sys-color-outline-variant);">–</span>';
+                    const inner = isUsed
+                        ? `<span style="opacity:0.4;text-decoration:line-through;">${valueStr}</span>`
+                        : valueStr;
+                    const bgAlpha = isUsed ? 0.04 : 0.09;
                     const radius = isLast ? 'border-radius:0 0 6px 6px;' : '';
-                    return `<div style="width:${ATTR_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:6px 0;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;background:${tint(a.color, 0.09)};${radius}">${inner}</div>`;
+                    const titleAttr = isUsed ? `title="${a.name}PT 凸済み"` : '';
+                    return `<div ${titleAttr} style="width:${ATTR_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:6px 0;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;background:${tint(a.color, bgAlpha)};${radius}">${inner}</div>`;
                 }).join('');
                 return `
                     <div style="display:flex;align-items:stretch;gap:${GAP}px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
