@@ -491,6 +491,64 @@ window.supabaseLoadActiveSeasonWithBosses = async function () {
     return { season, bosses: bosses || [] };
 };
 
+// ============================================================================
+// 締め凸調整中アピール (#7) + リアルタイム協力可能ステータス (#8)
+// ============================================================================
+// 30分で自動失効。setMyFinishCoordination 呼び出し毎に expires_at が延長される。
+const _FINISH_COORD_TTL_MIN = 30;
+
+// 現在アクティブな調整中宣言を全件取得 (有効期限内のみ)
+// 戻り値: [{ player_id, name, boss_number, attribute, note, started_at, expires_at }]
+window.supabaseGetActiveFinishCoordinations = async function () {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+        .from('finish_coordinations')
+        .select('player_id, boss_number, attribute, note, started_at, expires_at, updated_at, players(name)')
+        .gt('expires_at', nowIso)
+        .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(r => ({
+        player_id: r.player_id,
+        name: r.players?.name || `id${r.player_id}`,
+        boss_number: r.boss_number,
+        attribute: r.attribute,
+        note: r.note,
+        started_at: r.started_at,
+        expires_at: r.expires_at,
+        updated_at: r.updated_at,
+    }));
+};
+
+// 自分の調整中宣言を ON / 更新 (upsert)。30分後に expires。
+// opts: { bossNumber?, attribute?, note? }
+window.supabaseSetMyFinishCoordination = async function (playerId, opts = {}) {
+    if (!playerId) throw new Error('playerId 必須');
+    const expires = new Date(Date.now() + _FINISH_COORD_TTL_MIN * 60_000).toISOString();
+    const row = {
+        player_id: playerId,
+        boss_number: opts.bossNumber || null,
+        attribute: opts.attribute || null,
+        note: (opts.note || '').slice(0, 120),
+        expires_at: expires,
+        updated_at: new Date().toISOString(),
+    };
+    // 既存があれば started_at は維持。ない場合は DEFAULT NOW() が入る。
+    const { error } = await supabase
+        .from('finish_coordinations')
+        .upsert(row, { onConflict: 'player_id' });
+    if (error) throw error;
+};
+
+// 自分の調整中宣言を解除 (即座に削除)
+window.supabaseClearMyFinishCoordination = async function (playerId) {
+    if (!playerId) return;
+    const { error } = await supabase
+        .from('finish_coordinations')
+        .delete()
+        .eq('player_id', playerId);
+    if (error) throw error;
+};
+
 // プレイヤーの本日の凸記録を取得
 window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
     const { data, error } = await supabase
