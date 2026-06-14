@@ -497,19 +497,34 @@ window.supabaseLoadActiveSeasonWithBosses = async function () {
 // 30分で自動失効。setMyFinishCoordination 呼び出し毎に expires_at が延長される。
 const _FINISH_COORD_TTL_MIN = 30;
 
-// 現在アクティブな調整中宣言を全件取得 (有効期限内のみ)
-// 戻り値: [{ player_id, name, boss_number, attribute, note, started_at, expires_at }]
+// 現在アクティブなステータスを全件取得 (有効期限内のみ)
+// status='available' (今オンライン) / 'coordinating' (締め凸調整中)
+// 戻り値: [{ player_id, name, status, boss_number, attribute, note, started_at, expires_at }]
 window.supabaseGetActiveFinishCoordinations = async function () {
     const nowIso = new Date().toISOString();
-    const { data, error } = await supabase
-        .from('finish_coordinations')
-        .select('player_id, boss_number, attribute, note, started_at, expires_at, updated_at, players(name)')
-        .gt('expires_at', nowIso)
-        .order('updated_at', { ascending: false });
-    if (error) throw error;
+    // status 列がまだ存在しない環境にも備える: 失敗時は select を縮退
+    let data, error;
+    try {
+        const r = await supabase
+            .from('finish_coordinations')
+            .select('player_id, status, boss_number, attribute, note, started_at, expires_at, updated_at, players(name)')
+            .gt('expires_at', nowIso)
+            .order('updated_at', { ascending: false });
+        data = r.data; error = r.error;
+    } catch (e) { error = e; }
+    if (error) {
+        const r2 = await supabase
+            .from('finish_coordinations')
+            .select('player_id, boss_number, attribute, note, started_at, expires_at, updated_at, players(name)')
+            .gt('expires_at', nowIso)
+            .order('updated_at', { ascending: false });
+        if (r2.error) throw r2.error;
+        data = r2.data;
+    }
     return (data || []).map(r => ({
         player_id: r.player_id,
         name: r.players?.name || `id${r.player_id}`,
+        status: r.status || 'coordinating',
         boss_number: r.boss_number,
         attribute: r.attribute,
         note: r.note,
@@ -519,15 +534,17 @@ window.supabaseGetActiveFinishCoordinations = async function () {
     }));
 };
 
-// 自分の調整中宣言を ON / 更新 (upsert)。30分後に expires。
-// opts: { bossNumber?, attribute?, note? }
+// 自分のステータスを ON / 更新 (upsert)。30分後に expires。
+// opts: { status: 'available'|'coordinating', bossNumber?, attribute?, note? }
 window.supabaseSetMyFinishCoordination = async function (playerId, opts = {}) {
     if (!playerId) throw new Error('playerId 必須');
     const expires = new Date(Date.now() + _FINISH_COORD_TTL_MIN * 60_000).toISOString();
+    const status = (opts.status === 'available') ? 'available' : 'coordinating';
     const row = {
         player_id: playerId,
-        boss_number: opts.bossNumber || null,
-        attribute: opts.attribute || null,
+        status,
+        boss_number: status === 'available' ? null : (opts.bossNumber || null),
+        attribute: status === 'available' ? null : (opts.attribute || null),
         note: (opts.note || '').slice(0, 120),
         expires_at: expires,
         updated_at: new Date().toISOString(),
@@ -536,7 +553,16 @@ window.supabaseSetMyFinishCoordination = async function (playerId, opts = {}) {
     const { error } = await supabase
         .from('finish_coordinations')
         .upsert(row, { onConflict: 'player_id' });
-    if (error) throw error;
+    if (error) {
+        // status 列が DB に未追加の環境では status を外して再試行
+        if (/column.*status/i.test(String(error?.message))) {
+            const { status: _drop, ...legacy } = row;
+            const r2 = await supabase.from('finish_coordinations').upsert(legacy, { onConflict: 'player_id' });
+            if (r2.error) throw r2.error;
+            return;
+        }
+        throw error;
+    }
 };
 
 // 自分の調整中宣言を解除 (即座に削除)

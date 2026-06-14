@@ -1241,18 +1241,18 @@
                 </div>
             </div>
 
-            <!-- 締め凸調整中アピール -->
+            <!-- 締め凸調整 / 協力可能 ステータス -->
             <div class="card" style="padding:20px;margin-top:20px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">📣 締め凸調整</h3>
+                    <h3 style="margin:0;font-size:16px;font-weight:600;">📣 ステータス (協力 / 調整)</h3>
                     <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">30分で自動失効</span>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">「私がこの属性/ボスをまとめて締めます」と表明する場所。他メンバーはこの一覧を見て競合を避けられます。</p>
+                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);"><strong>🎮 今オンライン</strong> = ゲーム起動中で締め凸に協力できます<br><strong>📣 調整中</strong> = 私がこの属性/ボスをまとめて締めます。他メンバーは下の一覧を見て競合を避けられます。</p>
                 <div id="mypageCoordSelf" style="margin-bottom:14px;">
                     <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
-                    <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface-variant);">📋 現在 調整中のメンバー</h4>
+                    <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface-variant);">📋 現在 オンライン / 調整中</h4>
                     <span id="mypageCoordRefresh" style="font-size:10px;color:var(--md-sys-color-outline-variant);">最終取得: -</span>
                 </div>
                 <div id="mypageCoordActiveList">
@@ -1340,12 +1340,13 @@
                 </div>
             </div>
 
-            <!-- 現在 調整中のメンバー (リアルタイム共有) -->
+            <!-- 現在 オンライン / 調整中 (リアルタイム共有) -->
             <div class="card" style="padding:16px 20px;margin-bottom:16px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">📣 現在 締め凸調整中</h3>
+                    <h3 style="margin:0;font-size:16px;font-weight:600;">📣 オンライン / 調整中 メンバー</h3>
                     <span id="opsCoordRefresh" style="font-size:10px;color:var(--md-sys-color-outline-variant);">10秒毎更新</span>
                 </div>
+                <p style="margin:0 0 8px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">🎮 オンライン = 今ゲーム起動中で協力可能。📣 調整中 = 締め凸をまとめている人。</p>
                 <div id="opsCoordActiveList">
                     <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
                 </div>
@@ -3894,45 +3895,68 @@
             const selfEl = document.getElementById('mypageCoordSelf');
             if (!selfEl) return;
             const me = _coordSelfCache;
-            // 属性プルダウン + ボスプルダウン + メモ入力 + ON/OFFボタン
+            const currentStatus = me?.status || 'off';   // 'off' | 'available' | 'coordinating'
+            const remainMin = me ? Math.max(0, Math.round((new Date(me.expires_at).getTime() - Date.now()) / 60000)) : 0;
             const attrOpts = ['<option value="">-- 任意 (属性) --</option>']
                 .concat(PT_ATTRS.map(a => `<option value="${a.key}"${me?.attribute === a.key ? ' selected' : ''}>${a.name}PT</option>`))
                 .join('');
-            const ctx = _activeSeasonCache;   // すでにロード済みなら活用
+            const ctx = _activeSeasonCache;
             const bossOpts = ['<option value="">-- 任意 (ボス) --</option>']
                 .concat((ctx?.bosses || []).map(b => `<option value="${b.boss_number}"${me?.boss_number === b.boss_number ? ' selected' : ''}>B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</option>`))
                 .join('');
             const noteValue = me?.note ? escapeHtml(me.note) : '';
 
-            if (me) {
-                const remainMin = Math.max(0, Math.round((new Date(me.expires_at).getTime() - Date.now()) / 60000));
-                selfEl.innerHTML = `
-                    <div style="padding:10px 12px;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid #22c55e;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <span style="font-size:16px;">✅</span>
-                        <strong style="font-size:14px;">調整中</strong>
-                        <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">残り 約${remainMin}分</span>
-                    </div>
+            // ステータス切替ボタン
+            const btnStyle = (active, color) => `flex:1;padding:8px 10px;border-radius:8px;border:2px solid ${active ? color : 'var(--md-sys-color-outline-variant)'};background:${active ? color : 'var(--md-sys-color-surface)'};color:${active ? '#fff' : 'var(--md-sys-color-on-surface)'};font-size:12px;font-weight:600;cursor:pointer;`;
+            const statusBtnsHtml = `
+                <div style="display:flex;gap:6px;margin-bottom:10px;">
+                    <button onclick="handleMyCoordSetStatus('off')" style="${btnStyle(currentStatus === 'off', '#6b7280')}">⚪ なし</button>
+                    <button onclick="handleMyCoordSetStatus('available')" style="${btnStyle(currentStatus === 'available', '#22c55e')}">🎮 今オンライン</button>
+                    <button onclick="handleMyCoordSetStatus('coordinating')" style="${btnStyle(currentStatus === 'coordinating', '#3b82f6')}">📣 調整中</button>
+                </div>`;
+
+            // 現状の表示バナー
+            let bannerHtml = '';
+            if (currentStatus === 'available') {
+                bannerHtml = `<div style="padding:8px 12px;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid #22c55e;margin-bottom:10px;font-size:13px;">🎮 <strong>今オンライン</strong> — 他メンバーが「協力可能」として参照できます (残り ${remainMin}分)</div>`;
+            } else if (currentStatus === 'coordinating') {
+                bannerHtml = `<div style="padding:8px 12px;border-radius:8px;background:rgba(59,130,246,0.12);border:1px solid #3b82f6;margin-bottom:10px;font-size:13px;">📣 <strong>締め凸 調整中</strong> — 残り ${remainMin}分</div>`;
+            }
+
+            // 詳細フォーム (調整中の時のみ詳細表示)
+            let detailsHtml = '';
+            if (currentStatus === 'coordinating') {
+                detailsHtml = `
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
                         <select id="mypageCoordAttrSel" style="padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;">${attrOpts}</select>
                         <select id="mypageCoordBossSel" style="padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;">${bossOpts}</select>
-                    </div>
-                    <input type="text" id="mypageCoordNote" maxlength="120" placeholder="メモ (例: 21:00集合します)" value="${noteValue}" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;margin-bottom:8px;">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button onclick="handleMyCoordUpdate()" style="flex:1;padding:9px 14px;border-radius:8px;border:1px solid #3b82f6;background:#3b82f6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">🔄 内容を更新 (+30分延長)</button>
-                        <button onclick="handleMyCoordClear()" style="flex:1;padding:9px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;">🛑 解除</button>
                     </div>`;
-            } else {
-                selfEl.innerHTML = `
-                    <div style="padding:10px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:16px;">⚪</span>
-                        <strong style="font-size:14px;color:var(--md-sys-color-on-surface-variant);">あなたは現在 調整していません</strong>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-                        <select id="mypageCoordAttrSel" style="padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;">${attrOpts}</select>
-                        <select id="mypageCoordBossSel" style="padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;">${bossOpts}</select>
-                    </div>
-                    <input type="text" id="mypageCoordNote" maxlength="120" placeholder="メモ (例: 21:00集合します)" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;margin-bottom:8px;">
-                    <button onclick="handleMyCoordStart()" style="width:100%;padding:9px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">📣 私が調整中にする (30分)</button>`;
+            }
+            if (currentStatus !== 'off') {
+                detailsHtml += `<input type="text" id="mypageCoordNote" maxlength="120" placeholder="メモ (任意 / 例: 21:00集合します)" value="${noteValue}" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;margin-bottom:8px;">
+                    <button onclick="handleMyCoordUpdate()" style="width:100%;padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 内容を更新 (+30分延長)</button>`;
+            }
+            selfEl.innerHTML = statusBtnsHtml + bannerHtml + detailsHtml;
+        }
+
+        async function handleMyCoordSetStatus(newStatus) {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            try {
+                if (newStatus === 'off') {
+                    await window.supabaseClearMyFinishCoordination(id.id);
+                    showNotification('🛑 ステータスを解除しました');
+                } else {
+                    // 「調整中」遷移なら属性/ボスを保持。「オンライン」なら null 化される (API側)
+                    const attr = document.getElementById('mypageCoordAttrSel')?.value || null;
+                    const bossNum = parseInt(document.getElementById('mypageCoordBossSel')?.value || '0') || null;
+                    const note = document.getElementById('mypageCoordNote')?.value || '';
+                    await window.supabaseSetMyFinishCoordination(id.id, { status: newStatus, attribute: attr, bossNumber: bossNum, note });
+                    showNotification(newStatus === 'available' ? '🎮 オンラインにしました (30分)' : '📣 調整中にしました (30分)');
+                }
+                await _refreshCoordOnce(id);
+            } catch (e) {
+                showNotification(`❌ ${e?.message || e}`);
             }
         }
 
@@ -3945,22 +3969,36 @@
             };
             const ptOf = (k) => PT_ATTRS.find(x => x.key === k);
             const emptyHtml = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">現在 調整中のメンバーはいません。</p>';
-            const rowsHtml = list.map(c => {
+            // 並び順: coordinating (上) → available (下)
+            const sorted = [...list].sort((a, b) => {
+                const rank = (s) => s === 'coordinating' ? 0 : 1;
+                return rank(a.status) - rank(b.status);
+            });
+            const rowsHtml = sorted.map(c => {
                 const isMe = c.player_id === identity?.id;
                 const remainMin = Math.max(0, Math.round((new Date(c.expires_at).getTime() - Date.now()) / 60000));
                 const elapsedMin = Math.max(0, Math.round((Date.now() - new Date(c.started_at).getTime()) / 60000));
+                const isCoord = c.status === 'coordinating';
+                const statusIcon = isCoord ? '📣' : '🎮';
+                const statusLabel = isCoord
+                    ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#1d4ed8;font-weight:600;">調整中</span>'
+                    : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(34,197,94,0.15);color:#15803d;font-weight:600;">オンライン</span>';
                 const pt = ptOf(c.attribute);
                 const bossLabel = c.boss_number ? bossName(c.boss_number) : '';
                 const ptLabel = pt
                     ? `<span style="display:inline-flex;align-items:center;gap:3px;"><img src="${pt.icon}" style="width:14px;height:14px;">${pt.name}PT</span>`
                     : '';
-                const tags = [ptLabel, bossLabel].filter(Boolean).join(' / ') || '<span style="color:var(--md-sys-color-outline-variant);">対象指定なし</span>';
+                const tags = isCoord
+                    ? ([ptLabel, bossLabel].filter(Boolean).join(' / ') || '<span style="color:var(--md-sys-color-outline-variant);">対象指定なし</span>')
+                    : '';
                 const noteHtml = c.note ? `<div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin-top:3px;">💬 ${escapeHtml(c.note)}</div>` : '';
+                const borderColor = isMe ? '#22c55e' : (isCoord ? '#3b82f6' : 'var(--md-sys-color-outline-variant)');
+                const bg = isMe ? 'rgba(34,197,94,0.06)' : (isCoord ? 'rgba(59,130,246,0.04)' : 'var(--md-sys-color-surface)');
                 return `
-                    <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${isMe ? '#22c55e' : 'var(--md-sys-color-outline-variant)'};border-radius:8px;background:${isMe ? 'rgba(34,197,94,0.06)' : 'var(--md-sys-color-surface)'};margin-bottom:6px;">
-                        <span style="font-size:14px;line-height:1.4;">${isMe ? '🟢' : '🔵'}</span>
+                    <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${borderColor};border-radius:8px;background:${bg};margin-bottom:6px;">
+                        <span style="font-size:14px;line-height:1.4;">${statusIcon}</span>
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;"><strong>${escapeHtml(c.name)}</strong>${isMe ? ' <span style="color:#22c55e;font-size:11px;">(あなた)</span>' : ''}: ${tags}</div>
+                            <div style="font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><strong>${escapeHtml(c.name)}</strong>${isMe ? '<span style="color:#22c55e;font-size:11px;">(あなた)</span>' : ''}${statusLabel}${tags ? `<span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">${tags}</span>` : ''}</div>
                             ${noteHtml}
                         </div>
                         <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;">${elapsedMin}分前〜<br>残${remainMin}分</span>
@@ -3973,40 +4011,17 @@
             if (opsListEl) opsListEl.innerHTML = html;
         }
 
-        async function handleMyCoordStart() {
-            const id = getCurrentIdentity();
-            if (!id?.id) return;
-            const attr = document.getElementById('mypageCoordAttrSel')?.value || null;
-            const bossNum = parseInt(document.getElementById('mypageCoordBossSel')?.value || '0') || null;
-            const note = document.getElementById('mypageCoordNote')?.value || '';
-            try {
-                await window.supabaseSetMyFinishCoordination(id.id, { attribute: attr, bossNumber: bossNum, note });
-                showNotification('📣 調整中にしました (30分有効)');
-                await _refreshCoordOnce(id);
-            } catch (e) {
-                showNotification(`❌ ${e?.message || e}`);
-            }
-        }
         async function handleMyCoordUpdate() {
             const id = getCurrentIdentity();
             if (!id?.id) return;
+            const me = _coordSelfCache;
+            if (!me) return;   // 「なし」状態では更新ボタンが出ないが念のため
             const attr = document.getElementById('mypageCoordAttrSel')?.value || null;
             const bossNum = parseInt(document.getElementById('mypageCoordBossSel')?.value || '0') || null;
             const note = document.getElementById('mypageCoordNote')?.value || '';
             try {
-                await window.supabaseSetMyFinishCoordination(id.id, { attribute: attr, bossNumber: bossNum, note });
+                await window.supabaseSetMyFinishCoordination(id.id, { status: me.status, attribute: attr, bossNumber: bossNum, note });
                 showNotification('🔄 内容を更新し、30分延長しました');
-                await _refreshCoordOnce(id);
-            } catch (e) {
-                showNotification(`❌ ${e?.message || e}`);
-            }
-        }
-        async function handleMyCoordClear() {
-            const id = getCurrentIdentity();
-            if (!id?.id) return;
-            try {
-                await window.supabaseClearMyFinishCoordination(id.id);
-                showNotification('🛑 調整中を解除しました');
                 await _refreshCoordOnce(id);
             } catch (e) {
                 showNotification(`❌ ${e?.message || e}`);
