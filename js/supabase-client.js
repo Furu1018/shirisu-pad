@@ -786,7 +786,9 @@ window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode
 };
 
 // 新規シーズンを作成（既存アクティブシーズンは自動で非アクティブ化）
-// payload: { hardDate, monthKey, bosses: [...], isTest?, seedFromPrevious? }
+// payload: { hardDate, monthKey, bosses: [...], isTest? }
+// 注意: 前回レイドのダメージ引継ぎ機能 (seedFromPrevious) は廃止しました。
+//       模擬戦提出は各メンバーがシーズン期間中に行う運用です。
 window.supabaseCreateSeason = async function (payload) {
     if (!payload.hardDate) throw new Error('hardDate 必須');
     if (!payload.monthKey) throw new Error('monthKey 必須');
@@ -798,13 +800,26 @@ window.supabaseCreateSeason = async function (payload) {
 
     const isTest = !!payload.isTest;
 
-    // テストシーズンの場合: 現在の player_damages をスナップショットして metadata に保存
+    // テストシーズン: 現在の player_damages + nikke_characters のキャノニカル名一覧を
+    // スナップショットして metadata に保存。テスト終了時に復元する。
     let metadata = {};
     if (isTest) {
         const { data: dmgs } = await supabase
             .from('player_damages')
             .select('player_id, attribute, damage_b');
-        metadata = { is_test: true, damages_snapshot: dmgs || [] };
+        // キャラマスタは canonical_name 一覧のみ保存 (sighting_count 等の細部はロールバック対象外)
+        let charNames = [];
+        try {
+            const { data: chars } = await supabase
+                .from('nikke_characters')
+                .select('canonical_name');
+            charNames = (chars || []).map(c => c.canonical_name);
+        } catch { /* テーブル未マイグ環境では空配列のまま */ }
+        metadata = {
+            is_test: true,
+            damages_snapshot: dmgs || [],
+            nikke_characters_snapshot: charNames,
+        };
     }
 
     // 同じ月キーの既存シーズン (終了済 = is_active:false) があれば、
@@ -868,15 +883,29 @@ window.supabaseCreateSeason = async function (payload) {
     const { error: bErr } = await supabase.from('bosses').insert(bossRows);
     if (bErr) throw bErr;
 
-    // 前回レイド実績からダメージ + 編成 を初期登録
-    let seededCount = 0, charactersSeeded = 0;
-    if (payload.seedFromPrevious) {
-        const r = await window.supabaseSeedDamagesFromPreviousSeason(season.id);
-        seededCount = r.seeded || 0;
-        charactersSeeded = r.charactersSeeded || 0;
-    }
+    return { ...season };
+};
 
-    return { ...season, seededCount, charactersSeeded };
+// 🧪 クイックテストシーズン: 1クリックで独立したテスト環境を作る
+// プレースホルダのボス (テストボス1〜5) + 既存5コードのローテーション + 標準ティア配分
+// 完全独立: 前回シーズンからのシードなし、終了時に player_damages と nikke_characters は復元される。
+window.supabaseQuickCreateTestSeason = async function () {
+    const codes = ['A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.'];
+    const tiers = ['lord', 'lord', 'tyrant', 'lord', 'tyrant'];   // B1,2,4=lord / B3,5=tyrant
+    const bosses = codes.map((code, i) => ({
+        bossNumber: i + 1,
+        bossCode: code,
+        name: `テストボス${i + 1}`,
+        tier: tiers[i],
+    }));
+    const now = new Date();
+    const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+    return window.supabaseCreateSeason({
+        hardDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
+        monthKey: `TEST-${ts}`,
+        bosses,
+        isTest: true,
+    });
 };
 
 // 前回レイドの実攻撃ダメージから各メンバーの属性別ダメージを初期登録
@@ -999,6 +1028,28 @@ window.supabaseDeleteActiveTestSeason = async function () {
         }
     }
 
+    // nikke_characters: テスト中に追加された行のみ削除 (canonical_name 集合差分)
+    let charsRemoved = 0;
+    const charSnap = season.metadata?.nikke_characters_snapshot;
+    if (Array.isArray(charSnap)) {
+        try {
+            const { data: nowChars } = await supabase
+                .from('nikke_characters')
+                .select('canonical_name');
+            const beforeSet = new Set(charSnap);
+            const addedDuringTest = (nowChars || [])
+                .map(c => c.canonical_name)
+                .filter(n => !beforeSet.has(n));
+            if (addedDuringTest.length > 0) {
+                const { error: cErr } = await supabase
+                    .from('nikke_characters')
+                    .delete()
+                    .in('canonical_name', addedDuringTest);
+                if (!cErr) charsRemoved = addedDuringTest.length;
+            }
+        } catch (e) { console.warn('[test cleanup] nikke_characters', e?.message || e); }
+    }
+
     // テストシーズン削除 (CASCADE で bosses / attacks も消える)
     const { error: dErr } = await supabase.from('seasons').delete().eq('id', season.id);
     if (dErr) throw dErr;
@@ -1012,7 +1063,7 @@ window.supabaseDeleteActiveTestSeason = async function () {
         await supabase.from('seasons').update({ is_active: true }).eq('id', prev[0].id);
         restoredKey = prev[0].month_key;
     }
-    return { ok: true, restoredKey };
+    return { ok: true, restoredKey, charsRemoved };
 };
 
 // アクティブシーズンを終了 (is_active=false + unionRank保存)

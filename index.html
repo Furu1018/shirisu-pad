@@ -1409,9 +1409,11 @@
                 <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">月次のレイドサイクル全体に関わる操作です。誤操作に注意してください。</p>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     <button onclick="openOpsSeasonCreateModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">📅 シーズン作成（次回用）</button>
+                    <button onclick="handleOpsQuickCreateTestSeason()" style="padding:10px 14px;border-radius:8px;border:1px dashed #b45309;background:var(--md-sys-color-surface);color:#b45309;font-size:13px;font-weight:600;cursor:pointer;">🧪 クイックテストシーズン</button>
                     <button onclick="handleOpsEndSeason()" style="padding:10px 14px;border-radius:8px;border:1px solid #f59e0b;background:var(--md-sys-color-surface);color:#f59e0b;font-size:13px;cursor:pointer;">🏁 シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" style="padding:10px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🔄 ダメージ一括リセット</button>
                 </div>
+                <p style="margin:8px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">🧪 クイックテストシーズンは「テストボス1〜5」のプレースホルダで即座に独立した検証環境を作ります。終了時に <code>player_damages</code> と <code>nikke_characters</code> が完全に復元されます。</p>
             </div>
 
             <div class="card" style="padding:20px;opacity:0.55;">
@@ -2059,7 +2061,9 @@
                             <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
                             <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。前回実績ダメージを各メンバーの初期値に自動シード可</li>
-                            <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージをスナップショットし、「削除して元に戻す」で完全復元</li>
+                            <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
+                            <li><strong>🧪 クイックテストシーズン</strong> — ワンクリックでテストボス1〜5の独立環境を生成。OCR/スクショ不要</li>
+                            <li><strong>📅 シーズン作成</strong> — 前回ダメージ引継ぎは廃止。各メンバーが期間中に模擬戦提出を行う運用</li>
                             <li><strong>メンバー管理</strong> — 改名・脱退・復活・完全削除</li>
                             <li><strong>Push通知 一斉送信</strong> — 購読者全員に通知（受信時間帯フィルタ適用）</li>
                         </ul>
@@ -2358,13 +2362,13 @@
             </div>
 
             <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
-                <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
-                    <input type="checkbox" id="opsSeasonSeedPrev" checked style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
-                    <span>前回レイドの実績ダメージ + 編成 を各メンバーの初期値として登録<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">模擬戦未提出の人にもベースが入る。同属性2凸は高い方を採用。最大ダメ凸時の編成も同時に引き継ぎ。</span></span>
-                </label>
+                <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;">
+                    🪞 <strong>模擬戦の提出はシーズン期間中に必須</strong>です。前回ダメ引継ぎは廃止しました。<br>
+                    新シーズンの最適プランや締め凸候補は、提出された模擬戦データに基づいて算出されます。
+                </div>
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
                     <input type="checkbox" id="opsSeasonIsTest" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
-                    <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">あとで「削除して元に戻す」が可能。現在のダメージ登録も自動でバックアップ・復元されます。</span></span>
+                    <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">あとで「削除して元に戻す」が可能。現在のダメージ登録とキャラマスタも自動でバックアップ・復元されます。</span></span>
                 </label>
             </div>
 
@@ -5092,13 +5096,27 @@
             else finishListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
         }
 
+        async function handleOpsQuickCreateTestSeason() {
+            if (!confirm('🧪 クイックテストシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・「🧪 テスト終了」で完全に元の状態へ復元')) return;
+            try {
+                const r = await window.supabaseQuickCreateTestSeason();
+                _activeSeasonCache = null;
+                _opsDashboardCache = null;
+                showNotification(`✅ ${r.month_key} を作成しました`);
+                renderOpsDashboard();
+            } catch (e) {
+                alert(`❌ クイックテスト作成失敗: ${e?.message || e}`);
+            }
+        }
+
         async function handleOpsDeleteTestSeason() {
-            if (!confirm('🧪 テストシーズンを削除して元の状態に戻します。\nテスト中の凸データは消え、ダメージ登録と元のシーズンが復元されます。よろしいですか？')) return;
+            if (!confirm('🧪 テストシーズンを削除して元の状態に戻します。\nテスト中の凸データ + 追加されたキャラマスタは消え、ダメージ登録と元のシーズンが復元されます。よろしいですか？')) return;
             try {
                 const r = await window.supabaseDeleteActiveTestSeason();
                 _activeSeasonCache = null;
                 _opsDashboardCache = null;
-                showNotification(`テストシーズンを削除しました${r.restoredKey ? ` (${r.restoredKey} を復元)` : ''}`);
+                const extra = r.charsRemoved > 0 ? ` / キャラマスタ ${r.charsRemoved}件 削除` : '';
+                showNotification(`テストシーズンを削除しました${r.restoredKey ? ` (${r.restoredKey} を復元)` : ''}${extra}`);
                 await renderOpsDashboard();
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
@@ -6605,24 +6623,17 @@
             const codes = bosses.map(b => b.bossCode);
             if (new Set(codes).size !== 5) { set('❌ ボスコードが重複しています (5種類すべて1回ずつ使ってください)', true); return; }
 
-            const seedFromPrevious = document.getElementById('opsSeasonSeedPrev')?.checked;
             const isTest = document.getElementById('opsSeasonIsTest')?.checked;
 
             const confirmMsg = isTest
-                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録はバックアップされ、「テスト終了」で元に戻せます。`
-                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。`;
+                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録とキャラマスタはバックアップされ、「テスト終了」で元に戻せます。`
+                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。`;
             if (!confirm(confirmMsg)) return;
 
             try {
                 set('作成中...'); msg.style.color = 'var(--md-sys-color-on-surface-variant)';
-                const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest, seedFromPrevious });
-                let seedMsg = '';
-                if (r.seededCount > 0) {
-                    seedMsg = ` / 前回実績から ${r.seededCount} 件のダメージ`;
-                    if (r.charactersSeeded > 0) seedMsg += ` + ${r.charactersSeeded} 件の編成`;
-                    seedMsg += ' を初期登録';
-                }
-                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成${seedMsg}`);
+                const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest });
+                set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました`);
                 _activeSeasonCache = null;
                 _opsDashboardCache = null;
                 setTimeout(() => closeOpsSeasonCreateModal(), 1200);
@@ -6646,19 +6657,6 @@
                 renderOpsDashboard();
             } catch (e) {
                 alert(`シーズン終了失敗: ${e?.message || e}`);
-            }
-        }
-
-        async function handleOpsDeleteTestSeason() {
-            if (!confirm('🧪 テストシーズンを削除して、元のアクティブシーズンとダメージ登録を復元します。よろしいですか？')) return;
-            try {
-                const res = await window.supabaseDeleteActiveTestSeason();
-                _activeSeasonCache = null;
-                _opsDashboardCache = null;
-                showNotification(res.restoredKey ? `テスト終了。${res.restoredKey} を復元しました` : 'テストシーズンを削除しました');
-                renderOpsDashboard();
-            } catch (e) {
-                alert(`テスト削除失敗: ${e?.message || e}`);
             }
         }
 
