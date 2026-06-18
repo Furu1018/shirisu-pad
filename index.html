@@ -1015,6 +1015,61 @@
             font-size: 13px; font-weight: 600; cursor: pointer;
         }
         .tour-guide-launcher:hover { background: var(--md-sys-color-surface-variant); }
+
+        /* ===== ボス戦闘中アニメーション (締め凸調整中の人がいる時) ===== */
+        .boss-in-combat {
+            position: relative;
+            border-color: #f59e0b !important;
+            animation: combat-glow 1.6s ease-in-out infinite;
+        }
+        @keyframes combat-glow {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(239,68,68,0.25), 0 0 10px 2px rgba(245,158,11,0.4); }
+            50% { box-shadow: 0 0 0 4px rgba(239,68,68,0.35), 0 0 18px 6px rgba(245,158,11,0.65); }
+        }
+        .boss-in-combat::before {
+            content: '🔥';
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            font-size: 22px;
+            z-index: 2;
+            animation: combat-flame 0.55s ease-in-out infinite alternate;
+            pointer-events: none;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+        }
+        @keyframes combat-flame {
+            0% { transform: translateY(0) rotate(-8deg) scale(1); opacity: 0.95; }
+            100% { transform: translateY(-3px) rotate(8deg) scale(1.12); opacity: 1; }
+        }
+        .boss-in-combat::after {
+            content: '⚔️';
+            position: absolute;
+            top: -6px;
+            right: -8px;
+            font-size: 18px;
+            z-index: 2;
+            animation: combat-sword 1.1s ease-in-out infinite;
+            pointer-events: none;
+            transform-origin: 50% 80%;
+        }
+        @keyframes combat-sword {
+            0%, 100% { transform: rotate(-22deg); }
+            50% { transform: rotate(22deg); }
+        }
+        /* 戦闘中バナー (カード内) */
+        .boss-in-combat-banner {
+            margin: 6px 0;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, rgba(239,68,68,0.12), rgba(245,158,11,0.12));
+            border-left: 3px solid #f59e0b;
+            font-size: 11px;
+            font-weight: 600;
+            color: #b45309;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
     </style>
 </head>
 <body>
@@ -3885,6 +3940,10 @@
                 _coordSelfCache = _coordActiveCache.find(c => c.player_id === identity?.id) || null;
                 _renderCoordSelf(identity);
                 _renderCoordActiveList(identity);
+                // ボス状況カードの「戦闘中」アニメも10秒毎に同期
+                if (typeof renderOpsBossSummary === 'function' && _opsDashboardCache) {
+                    renderOpsBossSummary();
+                }
                 const refreshEl = document.getElementById('mypageCoordRefresh');
                 if (refreshEl) {
                     const t = new Date();
@@ -4334,6 +4393,19 @@
                     if (!ctx?.season) { setMsg('❌ アクティブシーズンが見つかりません', true); return; }
                     const boss = ctx.bosses.find(b => b.boss_number === _myAttackSelectedBossNumber);
                     if (!boss) { setMsg('❌ ボス情報が見つかりません', true); return; }
+                    // === ソフトロック: このボスを別のメンバーが調整中なら確認ダイアログ ===
+                    const otherCoords = (_coordActiveCache || []).filter(c =>
+                        c.status === 'coordinating'
+                        && Number(c.boss_number) === Number(boss.boss_number)
+                        && c.player_id !== id.id
+                    );
+                    let forcedAgainst = null;
+                    if (otherCoords.length > 0) {
+                        const names = otherCoords.map(c => c.name).join(' / ');
+                        const ok = confirm(`⚠️ B${boss.boss_number} は現在 ${names} さんが締め凸調整中です。\n\n[OK] 強行して凸を報告する\n[キャンセル] やめる`);
+                        if (!ok) { setMsg('🛑 凸報告を中止しました', true); return; }
+                        forcedAgainst = otherCoords;   // あとで Push 通知
+                    }
                     // OCRで残HPが取れている場合は自動減算をスキップしてOCR値で書き換え
                     const ocrApplies = _myAttackOcrBossHp
                         && _myAttackOcrBossHp.seasonId === ctx.season.id
@@ -4368,7 +4440,30 @@
                         try { await window.supabaseSaveTeamForAttribute(id.id, boss.weakness, canonChars); }
                         catch (e) { console.warn('[team save]', e?.message || e); }
                     }
-                    setMsg('✅ 凸を報告しました');
+                    // === 自分の調整中が同じボスなら自動解除 ===
+                    try {
+                        const me = (_coordActiveCache || []).find(c => c.player_id === id.id);
+                        if (me?.status === 'coordinating' && Number(me.boss_number) === Number(boss.boss_number)) {
+                            await window.supabaseClearMyFinishCoordination(id.id);
+                            // ポーリングが拾うまで時間あるので即座にローカル反映
+                            _coordSelfCache = null;
+                            _coordActiveCache = (_coordActiveCache || []).filter(c => c.player_id !== id.id);
+                        }
+                    } catch (e) { console.warn('[coord auto-release]', e?.message || e); }
+                    // === 強行した場合、対象の本人(達)に Push 通知 ===
+                    if (forcedAgainst && forcedAgainst.length > 0) {
+                        try {
+                            const playerIds = forcedAgainst.map(c => c.player_id);
+                            const targetLabel = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
+                            await window.sendPushNotification({
+                                title: `⚠️ ${id.name} さんが ${targetLabel} を強行凸しました`,
+                                body: `あなたが調整中の ${targetLabel} に対し、${id.name} さんが先に凸報告しました (${dmgB.toFixed(2)}B)。`,
+                                playerIds,
+                                tag: 'finish-forced',
+                            }, { senderPlayerId: id.id });
+                        } catch (e) { console.warn('[force push]', e?.message || e); }
+                    }
+                    setMsg(forcedAgainst ? '⚠️ 強行で凸を報告しました (対象者へ通知済み)' : '✅ 凸を報告しました');
                 }
                 _myAttackOcrBossHp = null;
                 _myAttackOcrCharacters = null;
@@ -5269,8 +5364,18 @@
             if (!el) return;
             if (lvEl) lvEl.textContent = season ? `現在 Lv${season.current_level || 1}` : '';
 
+            // 戦闘中(調整中)のボス番号 → { name } を引けるマップ。複数人いれば全員列挙。
+            const coordsByBoss = new Map();
+            (_coordActiveCache || []).forEach(c => {
+                if (c.status !== 'coordinating' || !c.boss_number) return;
+                if (!coordsByBoss.has(c.boss_number)) coordsByBoss.set(c.boss_number, []);
+                coordsByBoss.get(c.boss_number).push(c.name);
+            });
+
             const sorted = [...(bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
             el.innerHTML = sorted.map(b => {
+                const inCombat = coordsByBoss.has(b.boss_number);
+                const combatNames = inCombat ? coordsByBoss.get(b.boss_number) : [];
                 const bossAttrIcon = BOSS_ATTR_ICON[b.attribute] || '';
                 const bossAttrName = BOSS_ATTR_NAME[b.attribute] || b.attribute;
                 const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
@@ -5297,14 +5402,20 @@
                     </div>`
                     : '';
 
+                const combatBanner = inCombat && !dead
+                    ? `<div class="boss-in-combat-banner">⚔️ 戦闘中: ${escapeHtml(combatNames.join(' / '))} さんが調整中</div>`
+                    : '';
+                const combatClass = inCombat && !dead ? ' boss-in-combat' : '';
+
                 return `
-                    <div style="padding:12px;border:${isActive ? '2px solid var(--md-sys-color-primary)' : '1px solid var(--md-sys-color-outline-variant)'};border-radius:10px;background:var(--md-sys-color-surface);${dead ? 'opacity:0.65;' : ''}">
+                    <div class="${combatClass.trim()}" style="padding:12px;border:${isActive ? '2px solid var(--md-sys-color-primary)' : '1px solid var(--md-sys-color-outline-variant)'};border-radius:10px;background:var(--md-sys-color-surface);${dead ? 'opacity:0.65;' : ''}">
                         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
                             <strong style="font-size:13px;">B${b.boss_number}</strong>
                             <span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);">${TIER_LABEL[b.tier] || b.tier}</span>
                             ${dead ? '<span style="font-size:11px;color:#22c55e;font-weight:700;margin-left:auto;">💀 撃破</span>' : ''}
                         </div>
                         <div style="font-size:13px;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(b.name || b.boss_code)}</div>
+                        ${combatBanner}
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--md-sys-color-on-surface-variant);">
                             <span style="display:inline-flex;align-items:center;gap:3px;">ボス: ${bossAttrIcon ? `<img src="${bossAttrIcon}" style="width:14px;height:14px;">` : ''}${bossAttrName}</span>
                             <span style="display:inline-flex;align-items:center;gap:3px;">弱点: ${ptInfo ? `<img src="${ptInfo.icon}" style="width:14px;height:14px;">${ptInfo.name}PT` : '-'}</span>
