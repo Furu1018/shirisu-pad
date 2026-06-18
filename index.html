@@ -1278,6 +1278,18 @@
                 </div>
             </div>
 
+            <!-- 🎯 次の凸 - ボスをタップして戦闘準備 -->
+            <div class="card" style="padding:20px;margin-top:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <h3 style="margin:0;font-size:16px;font-weight:600;">🎯 次の凸 (ボスをタップ)</h3>
+                    <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">タップ → 戦闘準備 → 終わったら報告</span>
+                </div>
+                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">凸を始める時にボスをタップしてください。他メンバーに「あなたが戦闘中」が共有され、二重凸を防ぎます。</p>
+                <div id="mypageNextAttackBosses" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;">
+                    <p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択するとボス一覧が表示されます。</p>
+                </div>
+            </div>
+
             <div class="card" style="padding:20px;margin-top:20px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚔️ 今日の凸報告</h3>
@@ -3075,6 +3087,7 @@
             renderMyPushSettings(id);
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
+            renderMyNextAttackBosses(id);
             _startCoordPolling();
             // 最新シーズン (currentData) から該当プレイヤーを引く
             const me = (currentData || []).find(p => p.player === id.name);
@@ -3944,6 +3957,10 @@
                 if (typeof renderOpsBossSummary === 'function' && _opsDashboardCache) {
                     renderOpsBossSummary();
                 }
+                // マイページの「次の凸」も同期
+                if (typeof renderMyNextAttackBosses === 'function') {
+                    renderMyNextAttackBosses(identity);
+                }
                 const refreshEl = document.getElementById('mypageCoordRefresh');
                 if (refreshEl) {
                     const t = new Date();
@@ -4222,6 +4239,138 @@
                 _activeSeasonCache = { season: null, bosses: [] };
             }
             return _activeSeasonCache;
+        }
+
+        // ========== マイページ: 次の凸 (ボスタップ起点フロー) ==========
+        // タップ → 戦闘準備(coordinating) → 戦闘 → 「📷 報告する」で凸報告モーダル
+        async function renderMyNextAttackBosses(identity) {
+            const el = document.getElementById('mypageNextAttackBosses');
+            if (!el) return;
+            if (!identity?.id) {
+                el.innerHTML = '<p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>';
+                return;
+            }
+            const ctx = await ensureActiveSeasonLoaded();
+            if (!ctx?.season) {
+                el.innerHTML = '<p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">アクティブシーズン無し</p>';
+                return;
+            }
+            const bosses = [...(ctx.bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
+
+            // 戦闘中マップ: boss_number → [name,...]
+            const coordsByBoss = new Map();
+            (_coordActiveCache || []).forEach(c => {
+                if (c.status !== 'coordinating' || !c.boss_number) return;
+                if (!coordsByBoss.has(c.boss_number)) coordsByBoss.set(c.boss_number, []);
+                coordsByBoss.get(c.boss_number).push({ player_id: c.player_id, name: c.name });
+            });
+
+            el.innerHTML = bosses.map(b => {
+                const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
+                const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
+                const pct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
+                const dead = pct <= 0.01;
+                const barColor = dead ? '#9ca3af' : (pct < 20 ? '#ef4444' : pct < 50 ? '#f59e0b' : '#22c55e');
+                const inCombat = coordsByBoss.has(b.boss_number);
+                const occupants = inCombat ? coordsByBoss.get(b.boss_number) : [];
+                const isMyCombat = occupants.some(o => o.player_id === identity.id);
+                const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
+
+                const occupantsLabel = inCombat
+                    ? occupants.map(o => o.player_id === identity.id ? `<strong>あなた</strong>` : escapeHtml(o.name)).join(' / ')
+                    : '';
+
+                // 動作ボタン: 自分が戦闘中なら 報告/解除、他人が戦闘中なら 強行注意、空きなら 戦闘準備
+                let actionHtml = '';
+                if (dead) {
+                    actionHtml = `<button disabled style="margin-top:6px;width:100%;padding:6px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);font-size:11px;">💀 撃破済</button>`;
+                } else if (isMyCombat) {
+                    actionHtml = `
+                        <div style="display:flex;gap:4px;margin-top:6px;">
+                            <button onclick="handleMyNextAttackReport(${b.boss_number})" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:700;cursor:pointer;">📷 報告</button>
+                            <button onclick="handleMyNextAttackRelease()" style="padding:6px 8px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">⏪</button>
+                        </div>`;
+                } else if (inCombat) {
+                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:6px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
+                } else {
+                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" style="margin-top:6px;width:100%;padding:7px;border-radius:6px;border:1px solid ${ptInfo?.color || 'var(--md-sys-color-primary)'};background:${ptInfo?.color || 'var(--md-sys-color-primary)'};color:#fff;font-size:12px;font-weight:600;cursor:pointer;">⚔️ 戦闘準備に入る</button>`;
+                }
+
+                const cardClass = inCombat && !dead ? 'boss-in-combat' : '';
+                return `
+                    <div class="${cardClass}" style="padding:10px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;background:var(--md-sys-color-surface);${dead ? 'opacity:0.5;' : ''}">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px;">
+                            <strong style="font-size:13px;">B${b.boss_number}</strong>
+                            ${ptInfo ? `<img src="${ptInfo.icon}" title="${ptInfo.name}PTで凸" style="width:18px;height:18px;">` : ''}
+                        </div>
+                        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;">${escapeHtml(b.name || b.boss_code)}</div>
+                        <div style="height:5px;border-radius:3px;background:var(--md-sys-color-surface-variant);overflow:hidden;margin-bottom:4px;">
+                            <div style="width:${pct.toFixed(1)}%;height:100%;background:${barColor};"></div>
+                        </div>
+                        <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);font-variant-numeric:tabular-nums;">残 ${remB.toFixed(2)}B</div>
+                        ${inCombat && !dead ? `<div style="margin-top:4px;font-size:10px;color:#b45309;font-weight:600;">⚔️ ${occupantsLabel}</div>` : ''}
+                        ${actionHtml}
+                    </div>`;
+            }).join('');
+        }
+
+        // ボスタップ起点: 戦闘準備に入る (= coordinating 状態にする)
+        async function handleMyNextAttackClaim(bossNumber, isForce) {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const ctx = await ensureActiveSeasonLoaded();
+            const boss = ctx?.bosses?.find(b => b.boss_number === bossNumber);
+            if (!boss) return;
+            const targetLabel = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
+            const msg = isForce
+                ? `⚠️ ${targetLabel} は他メンバーが戦闘中です。\n\n強行で戦闘準備に入りますか？`
+                : `${targetLabel} で戦闘準備に入りますか？\n\n他メンバーに「あなたが戦闘中」が共有され、30分で自動解除されます。`;
+            if (!confirm(msg)) return;
+            try {
+                await window.supabaseSetMyFinishCoordination(id.id, {
+                    status: 'coordinating',
+                    bossNumber: boss.boss_number,
+                    attribute: boss.weakness,
+                    note: '',
+                });
+                showNotification(`⚔️ ${targetLabel} の戦闘準備に入りました`);
+                await _refreshCoordOnce(id);
+            } catch (e) {
+                showNotification(`❌ ${e?.message || e}`);
+            }
+        }
+        // ボスタップ起点: 「📷 報告」 = 凸報告モーダルをボス事前選択で開く
+        async function handleMyNextAttackReport(bossNumber) {
+            const ctx = await ensureActiveSeasonLoaded();
+            const boss = ctx?.bosses?.find(b => b.boss_number === bossNumber);
+            if (!boss) return;
+            await openMyAttackModal();
+            // モーダルレンダ後に該当ボスボタンをプログラム選択
+            setTimeout(() => {
+                try {
+                    const btn = document.querySelector(`#myAttackBossButtons button[data-boss="${boss.boss_number}"]`);
+                    if (btn && typeof handleMyAttackBossPick === 'function') {
+                        handleMyAttackBossPick(btn, boss.boss_number);
+                    } else {
+                        _myAttackSelectedBossNumber = boss.boss_number;
+                    }
+                } catch { /* noop */ }
+            }, 120);
+        }
+        // ボスタップ起点: 「⏪ 解除」 = 自分の戦闘準備を消す
+        async function handleMyNextAttackRelease() {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            if (!confirm('戦闘準備を解除しますか？')) return;
+            try {
+                await window.supabaseClearMyFinishCoordination(id.id);
+                showNotification('⏪ 戦闘準備を解除しました');
+                _coordSelfCache = null;
+                _coordActiveCache = (_coordActiveCache || []).filter(c => c.player_id !== id.id);
+                await _refreshCoordOnce(id);
+            } catch (e) {
+                showNotification(`❌ ${e?.message || e}`);
+            }
         }
 
         async function renderMyAttacks(identity) {
@@ -5432,8 +5581,29 @@
                             <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" style="padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">✏️ HP編集</button>
                             <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} style="flex:1;padding:5px 10px;border-radius:6px;border:1px solid ${ptInfo?.color || 'var(--md-sys-color-primary)'};background:${ptInfo?.color || 'var(--md-sys-color-primary)'};color:#fff;font-size:11px;font-weight:600;cursor:${dead ? 'not-allowed' : 'pointer'};${dead ? 'opacity:0.4;' : ''}">${ptInfo ? `${ptInfo.name}PTで締め凸` : '締め凸'}</button>
                         </div>
+                        ${_renderBossCardTapActions(b, dead, combatNames)}
                     </div>`;
             }).join('');
+        }
+
+        // ボス状況カード下部に「あなたの凸アクション」を出す。マイページと同じハンドラ流用。
+        function _renderBossCardTapActions(b, dead, combatNames) {
+            if (dead) return '';
+            const id = getCurrentIdentity();
+            if (!id?.id) return '';
+            const myCoord = (_coordActiveCache || []).find(c => c.player_id === id.id && c.status === 'coordinating');
+            const isMyCombat = myCoord && Number(myCoord.boss_number) === Number(b.boss_number);
+            const someoneElse = (combatNames || []).length > 0 && !isMyCombat;
+            if (isMyCombat) {
+                return `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+                    <button onclick="handleMyNextAttackReport(${b.boss_number})" style="flex:1;padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:700;cursor:pointer;">📷 結果を報告</button>
+                    <button onclick="handleMyNextAttackRelease()" style="padding:5px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">⏪ 解除</button>
+                </div>`;
+            }
+            if (someoneElse) {
+                return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:5px 10px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
+            }
+            return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" style="margin-top:6px;width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:11px;font-weight:600;cursor:pointer;">⚔️ このボスで凸する (戦闘準備)</button>`;
         }
 
         function handleOpsBossSummaryEdit(bossNumber) {
