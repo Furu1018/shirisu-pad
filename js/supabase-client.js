@@ -312,15 +312,24 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
 // 全プレイヤー一覧を取得（脱退者除く、name 昇順）
 // includeArchived=true で脱退者も含める（メンバー管理画面用）
 window.supabaseLoadAllPlayers = async function (includeArchived = false) {
-    let query = supabase
-        .from('players')
-        .select('id, name, is_temp, archived')
-        .order('name', { ascending: true });
-    if (!includeArchived) {
-        query = query.or('archived.is.null,archived.eq.false');
-    }
-    const { data, error } = await query;
-    if (error) throw error;
+    // avatar_url / avatar_character は新規列 (migration 13)。未追加環境では SELECT が失敗するので
+    // try/catch でフォールバック (旧スキーマでもエラーにせず動く)。
+    const baseCols = 'id, name, is_temp, archived';
+    const fullCols = baseCols + ', avatar_url, avatar_character';
+    let data, error;
+    try {
+        let q = supabase.from('players').select(fullCols).order('name', { ascending: true });
+        if (!includeArchived) q = q.or('archived.is.null,archived.eq.false');
+        const r = await q;
+        data = r.data; error = r.error;
+    } catch (e) { error = e; }
+    if (error && /column .*avatar/i.test(String(error?.message))) {
+        let q2 = supabase.from('players').select(baseCols).order('name', { ascending: true });
+        if (!includeArchived) q2 = q2.or('archived.is.null,archived.eq.false');
+        const r2 = await q2;
+        if (r2.error) throw r2.error;
+        data = r2.data;
+    } else if (error) throw error;
     return data || [];
 };
 
@@ -364,6 +373,64 @@ window.supabaseRenamePlayer = async function (playerId, newName) {
         .update({ name: cleaned })
         .eq('id', playerId);
     if (error) throw error;
+};
+
+// ============================================================================
+// アバター: キャラ選択 or 独自アップロード
+// ============================================================================
+// 表示の優先度:
+//   avatar_url が入っていれば最優先 (アップロード画像)
+//   なければ avatar_character → nikke_characters.icon_paths[0] を参照
+//   どちらも無ければ デフォルト 👤
+// ============================================================================
+
+// アバターの設定 (キャラ指定 or URL 直接設定 or 両方クリア)
+// opts: { character?: string|null, url?: string|null }
+window.supabaseUpdatePlayerAvatar = async function (playerId, opts = {}) {
+    if (!playerId) throw new Error('playerId 必須');
+    const patch = {};
+    if ('character' in opts) patch.avatar_character = opts.character || null;
+    if ('url' in opts) patch.avatar_url = opts.url || null;
+    if (Object.keys(patch).length === 0) return;
+    const { error } = await supabase.from('players').update(patch).eq('id', playerId);
+    if (error) throw error;
+};
+
+// Supabase Storage の "avatars" バケットへ画像をアップロード。
+// 戻り値: public URL (avatar_url にそのまま使える)
+window.supabaseUploadAvatarImage = async function (playerId, file) {
+    if (!playerId) throw new Error('playerId 必須');
+    if (!file) throw new Error('ファイルが指定されていません');
+    if (!/^image\//.test(file.type || '')) throw new Error('画像ファイルを選んでください');
+    if (file.size > 5 * 1024 * 1024) throw new Error('5MB を超える画像は使えません');
+
+    const ext = (file.name?.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 4) || 'png';
+    const path = `${playerId}/${Date.now()}.${ext}`;
+
+    const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+    if (upErr) throw new Error(`アップロード失敗: ${upErr.message}`);
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const publicUrl = data?.publicUrl;
+    if (!publicUrl) throw new Error('公開URL取得に失敗');
+    return publicUrl;
+};
+
+// アバター URL を解決して返す (キャラ指定なら nikke_characters から icon_paths を引く)
+// avatarCharacter は canonical_name 文字列
+window.supabaseResolveAvatarUrl = async function ({ avatar_url, avatar_character }) {
+    if (avatar_url) return avatar_url;
+    if (!avatar_character) return null;
+    try {
+        const { data } = await supabase
+            .from('nikke_characters')
+            .select('icon_paths')
+            .eq('canonical_name', avatar_character)
+            .maybeSingle();
+        return Array.isArray(data?.icon_paths) && data.icon_paths.length > 0 ? data.icon_paths[0] : null;
+    } catch { return null; }
 };
 
 // プレイヤーを完全削除（過去の凸データもCASCADEで消える、危険操作）

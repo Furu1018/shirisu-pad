@@ -1272,7 +1272,11 @@
         <div class="container">
             <div class="card" style="padding: 24px; margin-bottom: 20px;">
                 <div style="display:flex; align-items:center; gap:14px; margin-bottom:6px;">
-                    <div style="width:48px;height:48px;border-radius:50%;background:var(--md-sys-color-primary-container);display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
+                    <div id="mypageAvatarFrame" onclick="openAvatarEditModal()" title="クリックでアバター変更" style="position:relative;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary),0 4px 12px rgba(236,79,147,0.25);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;overflow:hidden;flex-shrink:0;">
+                        <span id="mypageAvatarFallback">👤</span>
+                        <img id="mypageAvatarImg" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
+                        <span style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-radius:50%;background:var(--brand-primary);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.2);">✏️</span>
+                    </div>
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">現在のプレイヤー</div>
                         <div id="mypageName" style="font-size:20px;font-weight:700;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;">未選択</div>
@@ -1282,6 +1286,30 @@
                 <p style="margin:8px 0 0 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">この設定はあなたのブラウザにのみ保存されます。別の端末では再度選択が必要です。</p>
                 <div style="margin-top:12px;">
                     <button class="tour-guide-launcher" onclick="startTour()">🎓 はじめての方ガイド</button>
+                </div>
+            </div>
+
+            <!-- アバター編集モーダル -->
+            <div class="player-select-modal" id="avatarEditModal">
+                <div class="player-select-content" style="max-width:480px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2>🖼️ アバターを変更</h2>
+                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">アイコンをタップして変更します。キャラから選ぶか、画像をアップロード。</p>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
+                            <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;">👤</div>
+                            <div style="flex:1;font-size:13px;color:var(--md-sys-color-on-surface-variant);">現在のアバタープレビュー</div>
+                        </div>
+                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:14px;font-weight:600;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
+                        <label style="padding:12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface);font-size:14px;font-weight:600;cursor:pointer;text-align:center;">
+                            📤 自分の画像をアップロード (最大5MB)
+                            <input type="file" id="avatarUploadInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none;">
+                        </label>
+                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🗑️ アバターを削除 (デフォルトに戻す)</button>
+                        <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+                    </div>
                 </div>
             </div>
 
@@ -3085,6 +3113,21 @@
                 pill.style.display = 'inline-flex';
                 nameEl.textContent = 'プレイヤー未選択';
             }
+            // 識別ピル内の絵文字を実アバターに差し替え (非同期)
+            if (id?.id && _allPlayersCache) {
+                const me = _allPlayersCache.find(p => p.id === id.id);
+                if (me) {
+                    resolveAvatarFor(me).then(url => {
+                        const hintEl = pill?.querySelector('.hint');
+                        if (!hintEl) return;
+                        if (url) {
+                            hintEl.innerHTML = `<img src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
+                        } else {
+                            hintEl.textContent = '👤';
+                        }
+                    });
+                }
+            }
         }
 
         // 全プレイヤーキャッシュ (モーダル表示の高速化用)
@@ -3147,6 +3190,116 @@
             return JSON.stringify(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         }
 
+        // ========== アバター: 表示 + 編集 ==========
+        const _avatarCache = new Map();      // player_id → resolved URL (null=なし)
+        async function resolveAvatarFor(player) {
+            if (!player) return null;
+            const key = player.id || `name:${player.name}`;
+            if (_avatarCache.has(key)) return _avatarCache.get(key);
+            try {
+                const url = await window.supabaseResolveAvatarUrl({
+                    avatar_url: player.avatar_url,
+                    avatar_character: player.avatar_character,
+                });
+                _avatarCache.set(key, url);
+                return url;
+            } catch { _avatarCache.set(key, null); return null; }
+        }
+        function _invalidateAvatarCache(playerId) {
+            if (playerId) _avatarCache.delete(playerId);
+            else _avatarCache.clear();
+        }
+
+        async function applyMyAvatarToHeader(playerId) {
+            if (!playerId) return;
+            // ensureAllPlayersLoaded で最新の avatar 列を取り直す
+            _allPlayersCache = null;
+            const players = await ensureAllPlayersLoaded();
+            const me = (players || []).find(p => p.id === playerId);
+            if (!me) return;
+            const url = await resolveAvatarFor(me);
+            const img = document.getElementById('mypageAvatarImg');
+            const fb = document.getElementById('mypageAvatarFallback');
+            const preview = document.getElementById('avatarEditPreview');
+            if (img && fb) {
+                if (url) { img.src = url; img.style.display = 'block'; fb.style.display = 'none'; }
+                else { img.style.display = 'none'; fb.style.display = 'inline'; img.src = ''; }
+            }
+            if (preview) {
+                if (url) preview.innerHTML = `<img src="${escapeHtml(url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+                else preview.innerHTML = '👤';
+            }
+            // 識別ピルにも反映
+            updateIdentityHeader();
+        }
+
+        function openAvatarEditModal() {
+            const id = getCurrentIdentity();
+            if (!id?.id) { alert('プレイヤーを選択してください'); return; }
+            document.getElementById('avatarEditModal').classList.add('open');
+            document.getElementById('avatarEditMessage').textContent = '';
+            applyMyAvatarToHeader(id.id);
+        }
+        function closeAvatarEditModal() {
+            document.getElementById('avatarEditModal').classList.remove('open');
+        }
+        function openIconPickerForAvatar() {
+            openIconPicker('', async (canonicalName) => {
+                const id = getCurrentIdentity();
+                if (!id?.id || !canonicalName) return;
+                try {
+                    await window.supabaseUpdatePlayerAvatar(id.id, { character: canonicalName, url: null });
+                    _invalidateAvatarCache(id.id);
+                    await applyMyAvatarToHeader(id.id);
+                    const msg = document.getElementById('avatarEditMessage');
+                    msg.textContent = '✅ アバターを変更しました';
+                    msg.style.color = '#22c55e';
+                } catch (e) {
+                    const msg = document.getElementById('avatarEditMessage');
+                    msg.textContent = `❌ ${e?.message || e}`;
+                    msg.style.color = '#ef4444';
+                }
+            }, '📚 キャラから選ぶ');
+        }
+        async function handleAvatarUpload(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (!file) return;
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const msg = document.getElementById('avatarEditMessage');
+            msg.textContent = '⏳ アップロード中...';
+            msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+            try {
+                const publicUrl = await window.supabaseUploadAvatarImage(id.id, file);
+                await window.supabaseUpdatePlayerAvatar(id.id, { url: publicUrl, character: null });
+                _invalidateAvatarCache(id.id);
+                await applyMyAvatarToHeader(id.id);
+                msg.textContent = '✅ アバターを変更しました';
+                msg.style.color = '#22c55e';
+            } catch (e) {
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
+            }
+        }
+        async function handleAvatarClear() {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            if (!confirm('アバターをデフォルトに戻しますか？')) return;
+            try {
+                await window.supabaseUpdatePlayerAvatar(id.id, { url: null, character: null });
+                _invalidateAvatarCache(id.id);
+                await applyMyAvatarToHeader(id.id);
+                const msg = document.getElementById('avatarEditMessage');
+                msg.textContent = '🗑️ アバターを削除しました';
+                msg.style.color = '#22c55e';
+            } catch (e) {
+                const msg = document.getElementById('avatarEditMessage');
+                msg.textContent = `❌ ${e?.message || e}`;
+                msg.style.color = '#ef4444';
+            }
+        }
+
         function renderMyPage() {
             const id = getCurrentIdentity();
             const nameEl = document.getElementById('mypageName');
@@ -3166,6 +3319,7 @@
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
             renderMyNextAttackBosses(id);
+            applyMyAvatarToHeader(id.id);
             _startCoordPolling();
             // 最新シーズン (currentData) から該当プレイヤーを引く
             const me = (currentData || []).find(p => p.player === id.name);
