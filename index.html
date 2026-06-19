@@ -112,10 +112,15 @@
         body {
             font-family: var(--font-body);
             background:
-                radial-gradient(900px 500px at 100% 0%, #f3f7fa 0%, transparent 60%),
-                radial-gradient(700px 420px at 0% 80%, #eef3f6 0%, transparent 60%),
+                /* マーブルの脈動 (淡水色) */
+                radial-gradient(800px 500px at 100% 0%, #eaf2f5 0%, transparent 55%),
+                radial-gradient(700px 420px at 0% 80%, #eef3f6 0%, transparent 55%),
+                radial-gradient(500px 300px at 50% 50%, rgba(212, 216, 220, 0.15) 0%, transparent 60%),
+                /* 銀のラメ感を SVG ノイズで添える */
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.82  0 0 0 0 0.85  0 0 0 0 0.88  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
                 var(--md-sys-color-background);
             background-attachment: fixed;
+            background-size: auto, auto, auto, 280px 280px, auto;
             color: var(--md-sys-color-on-background);
             line-height: 1.55;
             font-size: 15px;
@@ -349,6 +354,90 @@
         }
         /* Outline button hover: 淡シルバー背景 */
         button[style*="--md-sys-color-surface"]:hover:not(:disabled) { background: var(--brand-primary-soft) !important; }
+
+        /* ========== Elegant Button (マーブル黒ラベル) ========== */
+        .btn-elegant {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border: 1px solid #2a2a2a;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(180deg, #2a2a2a 0%, #0e0e0e 100%);
+            color: #fff;
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            box-shadow: var(--shadow-btn);
+            transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            position: relative;
+        }
+        .btn-elegant::before {
+            /* 上端の細い銀ライン (高級感) */
+            content: '';
+            position: absolute; left: 8%; right: 8%; top: 1px; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .btn-elegant:hover:not(:disabled) { filter: brightness(1.1); }
+        .btn-elegant:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.18); }
+        .btn-elegant:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-elegant.is-light {
+            background: linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%);
+            color: var(--brand-primary);
+            border-color: var(--brand-silver);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 10px -4px rgba(112,144,168,0.20);
+        }
+        .btn-elegant.is-light::before { background: linear-gradient(90deg, transparent, rgba(112,144,168,0.25), transparent); }
+
+        /* ========== Elegant Badge (黒ピル/銀ピル) ========== */
+        .badge-elegant {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 10px;
+            border-radius: var(--radius-pill);
+            background: #1a1a1a;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .badge-elegant.is-silver {
+            background: linear-gradient(135deg, #f4f6f8, #d4d8dc);
+            color: #1a1a1a;
+            border: 1px solid var(--brand-silver);
+        }
+        .badge-elegant.is-attr-fire    { background: var(--attr-fire);     }
+        .badge-elegant.is-attr-water   { background: var(--attr-water);    }
+        .badge-elegant.is-attr-electric{ background: var(--attr-electric); }
+        .badge-elegant.is-attr-iron    { background: var(--attr-iron);     }
+        .badge-elegant.is-attr-wind    { background: var(--attr-wind);     }
+
+        /* ========== カードの銀のコーナーアクセント ========== */
+        .card {
+            position: relative;
+        }
+        /* 標準カードに 左上 と 右下 の小さな三角飾り (募集ポスター3 のスタイル) */
+        .card::before,
+        .card::after {
+            content: '';
+            position: absolute;
+            width: 10px; height: 10px;
+            border-color: var(--brand-silver);
+            border-style: solid;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .card::before {
+            top: 6px; left: 6px;
+            border-width: 1px 0 0 1px;
+        }
+        .card::after {
+            right: 6px; bottom: 6px;
+            border-width: 0 1px 1px 0;
+        }
 
         /* ========== Badge ========== */
         .badge {
