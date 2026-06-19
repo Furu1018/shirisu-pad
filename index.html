@@ -192,8 +192,63 @@
         }
 
         @media (max-width: 767px) {
-            .hamburger-btn { display: flex; }
+            .hamburger-btn { display: none; }   /* モバイルでは下メニューに統一 */
             .pc-only { display: none !important; }
+            body { padding-bottom: 68px; }       /* 下メニューぶんの余白 */
+        }
+
+        /* ========== Bottom Navigation (mobile) ========== */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            z-index: 90;
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,251,253,0.98));
+            backdrop-filter: saturate(180%) blur(12px);
+            -webkit-backdrop-filter: saturate(180%) blur(12px);
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+            box-shadow: 0 -2px 16px -8px rgba(112, 144, 168, 0.30);
+            padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+            justify-content: space-around;
+        }
+        @media (max-width: 767px) {
+            .bottom-nav { display: flex; }
+        }
+        .bottom-nav-btn {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            border: none;
+            padding: 6px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.1;
+            border-radius: 8px;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+        .bottom-nav-btn svg { width: 22px; height: 22px; stroke-width: 2; }
+        .bottom-nav-btn:hover { background: var(--brand-primary-soft); }
+        .bottom-nav-btn.active { color: var(--brand-primary); }
+        .bottom-nav-btn.active::after {
+            content: '';
+            display: block;
+            width: 4px; height: 4px;
+            border-radius: 999px;
+            background: var(--brand-primary);
+            margin-top: -2px;
+        }
+
+        /* タブ切替のフェード (横スワイプ補助) */
+        .tab-content.active { animation: tab-fade-in 0.22s ease-out; }
+        @keyframes tab-fade-in {
+            from { opacity: 0; transform: translateX(8px); }
+            to   { opacity: 1; transform: translateX(0); }
         }
 
         /* ========== Drawer (mobile) ========== */
@@ -391,6 +446,17 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 10px -4px rgba(112,144,168,0.20);
         }
         .btn-elegant.is-light::before { background: linear-gradient(90deg, transparent, rgba(112,144,168,0.25), transparent); }
+        /* 5属性 戦闘準備 派生: 黒地 + 属性色のリム */
+        .btn-elegant.attr-fire    { border-color: var(--attr-fire);     box-shadow: inset 0 0 0 1px var(--attr-fire),     0 0 0 2px rgba(255,91,107,0.18),  var(--shadow-btn); }
+        .btn-elegant.attr-water   { border-color: var(--attr-water);    box-shadow: inset 0 0 0 1px var(--attr-water),    0 0 0 2px rgba(44,182,255,0.18),  var(--shadow-btn); }
+        .btn-elegant.attr-electric{ border-color: var(--attr-electric); box-shadow: inset 0 0 0 1px var(--attr-electric), 0 0 0 2px rgba(178,119,245,0.18), var(--shadow-btn); }
+        .btn-elegant.attr-iron    { border-color: var(--attr-iron);     box-shadow: inset 0 0 0 1px var(--attr-iron),     0 0 0 2px rgba(255,150,60,0.18),  var(--shadow-btn); }
+        .btn-elegant.attr-wind    { border-color: var(--attr-wind);     box-shadow: inset 0 0 0 1px var(--attr-wind),     0 0 0 2px rgba(63,201,127,0.18),  var(--shadow-btn); }
+        .btn-elegant.attr-fire::before    { background: linear-gradient(90deg, transparent, var(--attr-fire),     transparent); opacity: 0.7; }
+        .btn-elegant.attr-water::before   { background: linear-gradient(90deg, transparent, var(--attr-water),    transparent); opacity: 0.7; }
+        .btn-elegant.attr-electric::before{ background: linear-gradient(90deg, transparent, var(--attr-electric), transparent); opacity: 0.7; }
+        .btn-elegant.attr-iron::before    { background: linear-gradient(90deg, transparent, var(--attr-iron),     transparent); opacity: 0.7; }
+        .btn-elegant.attr-wind::before    { background: linear-gradient(90deg, transparent, var(--attr-wind),     transparent); opacity: 0.7; }
 
         /* ========== Elegant Badge (黒ピル/銀ピル) ========== */
         .badge-elegant {
@@ -1518,6 +1584,16 @@
                 <div id="mypageCoordActiveList">
                     <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
                 </div>
+            </div>
+
+            <!-- 得意属性 -->
+            <div class="card" style="padding:20px;margin-top:20px;">
+                <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚔️ 得意属性</h3>
+                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
+                <div id="mypageStrongAttrs" style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>
+                </div>
+                <p id="mypageStrongAttrsMessage" style="margin:6px 0 0 0;font-size:12px;min-height:14px;"></p>
             </div>
 
             <!-- 通知受信可能時間 -->
@@ -3340,6 +3416,24 @@
             const url = resolveAvatarUrlSync(player);
             return _renderAvatarCircle(url, size);
         }
+        // メンバーの得意属性 アイコンを並べた HTML (アバター隣で使う)
+        function renderStrongAttrsHtml(playerOrIdOrName, size = 14) {
+            let p = null;
+            if (playerOrIdOrName && typeof playerOrIdOrName === 'object') p = playerOrIdOrName;
+            else if (_allPlayersCache) {
+                if (typeof playerOrIdOrName === 'number') p = _allPlayersCache.find(x => x.id === playerOrIdOrName);
+                else if (typeof playerOrIdOrName === 'string') p = _allPlayersCache.find(x => x.name === playerOrIdOrName);
+            }
+            const attrs = (p?.strong_attributes) || [];
+            if (attrs.length === 0) return '';
+            const icons = attrs
+                .map(k => PT_ATTRS.find(a => a.key === k))
+                .filter(Boolean)
+                .map(a => `<img src="${a.icon}" alt="${a.name}" title="${a.name}が得意" style="width:${size}px;height:${size}px;vertical-align:middle;">`)
+                .join('');
+            return `<span style="display:inline-flex;align-items:center;gap:2px;flex-shrink:0;">${icons}</span>`;
+        }
+
         function _renderAvatarCircle(url, size) {
             if (url) {
                 return `<img src="${escapeHtml(url)}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;background:var(--brand-primary-soft);flex-shrink:0;vertical-align:middle;">`;
@@ -3475,6 +3569,7 @@
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
             renderMyNextAttackBosses(id);
+            renderMyStrongAttrs(id);
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
             // 最新シーズン (currentData) から該当プレイヤーを引く
@@ -4141,6 +4236,47 @@
             }
         }
 
+        // ========== マイページ: 得意属性 ==========
+        async function renderMyStrongAttrs(identity) {
+            const el = document.getElementById('mypageStrongAttrs');
+            if (!el) return;
+            if (!identity?.id) { el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>'; return; }
+            // 最新情報を取得 (cache を一度バイパス)
+            _allPlayersCache = null;
+            const list = await ensureAllPlayersLoaded();
+            const me = (list || []).find(p => p.id === identity.id);
+            const cur = new Set((me?.strong_attributes) || []);
+            el.innerHTML = PT_ATTRS.map(a => {
+                const on = cur.has(a.key);
+                const style = on
+                    ? `background:${a.color};color:#fff;border-color:${a.color};font-weight:700;`
+                    : `background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);border-color:var(--md-sys-color-outline-variant);`;
+                return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:2px solid var(--md-sys-color-outline-variant);${style}font-size:13px;cursor:pointer;transition:all 0.18s ease;">
+                    <img src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}
+                </button>`;
+            }).join('');
+        }
+        async function handleMyStrongAttrToggle(attrKey) {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            // 現在の状態は cache から
+            const me = (_allPlayersCache || []).find(p => p.id === id.id);
+            const cur = new Set((me?.strong_attributes) || []);
+            if (cur.has(attrKey)) cur.delete(attrKey); else cur.add(attrKey);
+            const next = [...cur];
+            const msg = document.getElementById('mypageStrongAttrsMessage');
+            try {
+                await window.supabaseUpdatePlayerStrongAttrs(id.id, next);
+                // ローカル cache を反映
+                if (me) me.strong_attributes = next;
+                _opsDashboardCache = null;
+                if (msg) { msg.textContent = `✅ 得意属性 ${next.length} 件で保存しました`; msg.style.color = '#22c55e'; }
+                renderMyStrongAttrs(id);
+            } catch (e) {
+                if (msg) { msg.textContent = `❌ ${e?.message || e}`; msg.style.color = '#ef4444'; }
+            }
+        }
+
         // ========== マイページ: 通知受信可能時間 (1時間単位、AM5時開始) ==========
         // ユニオンレイドは AM 5:00 開始 → 翌 AM 5:00 終了。
         // 表示順は 5, 6, ..., 23, 0, 1, 2, 3, 4 (24スロット)。
@@ -4688,7 +4824,7 @@
                 } else if (inCombat) {
                     actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:6px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
                 } else {
-                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" style="margin-top:6px;width:100%;padding:7px;border-radius:6px;border:1px solid ${ptInfo?.color || 'var(--md-sys-color-primary)'};background:${ptInfo?.color || 'var(--md-sys-color-primary)'};color:#fff;font-size:12px;font-weight:600;cursor:pointer;">⚔️ 戦闘準備に入る</button>`;
+                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" class="btn-elegant attr-${b.weakness || 'fire'}" style="margin-top:6px;width:100%;padding:8px 10px;font-size:12px;">⚔️ 戦闘準備に入る</button>`;
                 }
 
                 const cardClass = inCombat && !dead ? 'boss-in-combat' : '';
@@ -5874,6 +6010,7 @@
                         <div style="width:${NAME_W}px;flex-shrink:0;display:flex;align-items:center;gap:6px;overflow:hidden;padding:6px 0;">
                             ${renderAvatarHtml(p, 24)}
                             <strong style="font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</strong>
+                            ${renderStrongAttrsHtml(p, 13)}
                             <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);flex-shrink:0;">(${p.attackCount}/3)</span>
                         </div>
                         ${cells}
@@ -6003,7 +6140,7 @@
             if (someoneElse) {
                 return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:5px 10px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
             }
-            return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" style="margin-top:6px;width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:11px;font-weight:600;cursor:pointer;">⚔️ このボスで凸する (戦闘準備)</button>`;
+            return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" class="btn-elegant attr-${b.weakness || 'fire'}" style="margin-top:6px;width:100%;padding:7px 10px;font-size:11px;">⚔️ このボスで凸する (戦闘準備)</button>`;
         }
 
         function handleOpsBossSummaryEdit(bossNumber) {
@@ -7430,7 +7567,7 @@
                 return `
                     <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                         ${renderAvatarHtml(p, 28)}
-                        <span style="flex:1;font-size:14px;${isArchived ? 'color:var(--md-sys-color-on-surface-variant);text-decoration:line-through;' : ''}">${escapeHtml(p.name)}</span>
+                        <span style="flex:1;font-size:14px;display:flex;align-items:center;gap:6px;${isArchived ? 'color:var(--md-sys-color-on-surface-variant);text-decoration:line-through;' : ''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${escapeHtml(p.name)}</span>${renderStrongAttrsHtml(p, 14)}</span>
                         ${isArchived
                             ? `<button onclick="handleMemberUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">復活</button>
                                <button onclick="handleMemberDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
@@ -8795,6 +8932,82 @@
                 openPlayerSelectModal();
             }
         });
+
+        // ========== Bottom Navigation (mobile) + 横スワイプ切替 ==========
+        const _BOTTOM_TAB_ORDER = ['mypage', 'ops', 'ranking', 'slv-ranking', 'help', 'settings'];
+        function _syncBottomNavActive(tabName) {
+            document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+        }
+        // 既存 switchTab をラップして bottom nav の active も同期
+        (function () {
+            const orig = window.switchTab;
+            if (typeof orig === 'function') {
+                window.switchTab = function (tabName) {
+                    orig(tabName);
+                    _syncBottomNavActive(tabName);
+                };
+            }
+        })();
+
+        // 横スワイプでタブ切替 (モバイルでのみ)
+        const _SWIPE_TABS = ['mypage', 'ops', 'ranking', 'slv-ranking', 'characters', 'simulator', 'help', 'settings'];
+        let _swipeStartX = 0, _swipeStartY = 0, _swipeActive = false, _swipeTarget = null;
+        document.addEventListener('touchstart', (e) => {
+            if (window.innerWidth > 767) return;
+            const t = e.target;
+            // フォーム要素・モーダル内・横スクロール領域はスキップ
+            if (t.closest('input, textarea, select, button, a, .player-select-modal.open, [data-no-swipe], .data-table, .chart-container, .help-toc')) return;
+            if (e.touches.length !== 1) return;
+            _swipeStartX = e.touches[0].clientX;
+            _swipeStartY = e.touches[0].clientY;
+            _swipeActive = true;
+            _swipeTarget = t;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (!_swipeActive) return;
+            _swipeActive = false;
+            const dx = e.changedTouches[0].clientX - _swipeStartX;
+            const dy = e.changedTouches[0].clientY - _swipeStartY;
+            // 横移動 ≥ 80px、縦移動 < 50px のみ採用 (誤反応防止)
+            if (Math.abs(dx) < 80 || Math.abs(dy) > 50) return;
+            const active = document.querySelector('.tab-content.active');
+            const tabName = active ? active.id.replace('tab-', '') : null;
+            const idx = _SWIPE_TABS.indexOf(tabName);
+            if (idx < 0) return;
+            const next = dx < 0 ? idx + 1 : idx - 1;
+            if (next < 0 || next >= _SWIPE_TABS.length) return;
+            switchTab(_SWIPE_TABS[next]);
+        }, { passive: true });
     </script>
+
+    <!-- ========== Bottom Navigation (mobile) ========== -->
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="bottom-nav-btn active" data-tab="mypage" onclick="switchTab('mypage')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>マイページ</span>
+        </button>
+        <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+            <span>ユニレ管理</span>
+        </button>
+        <button class="bottom-nav-btn" data-tab="ranking" onclick="switchTab('ranking')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span>比較</span>
+        </button>
+        <button class="bottom-nav-btn" data-tab="slv-ranking" onclick="switchTab('slv-ranking')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>ふるり値</span>
+        </button>
+        <button class="bottom-nav-btn" data-tab="help" onclick="switchTab('help')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>ヘルプ</span>
+        </button>
+        <button class="bottom-nav-btn" data-tab="settings" onclick="switchTab('settings')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>設定</span>
+        </button>
+    </nav>
 </body>
 </html>

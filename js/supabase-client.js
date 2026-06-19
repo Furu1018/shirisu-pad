@@ -312,25 +312,38 @@ window.supabaseLoadLatestSeasons = async function (limit = 2) {
 // 全プレイヤー一覧を取得（脱退者除く、name 昇順）
 // includeArchived=true で脱退者も含める（メンバー管理画面用）
 window.supabaseLoadAllPlayers = async function (includeArchived = false) {
-    // avatar_url / avatar_character は新規列 (migration 13)。未追加環境では SELECT が失敗するので
-    // try/catch でフォールバック (旧スキーマでもエラーにせず動く)。
-    const baseCols = 'id, name, is_temp, archived';
-    const fullCols = baseCols + ', avatar_url, avatar_character';
+    // avatar_url / avatar_character (mig 13) + strong_attributes (mig 15) は新規列。
+    // 列未追加環境用に段階的に落ちるフォールバック。
+    const minCols = 'id, name, is_temp, archived';
+    const fullCols = minCols + ', avatar_url, avatar_character, strong_attributes';
+    const midCols = minCols + ', avatar_url, avatar_character';
     let data, error;
-    try {
-        let q = supabase.from('players').select(fullCols).order('name', { ascending: true });
+    const tryQuery = async (cols) => {
+        let q = supabase.from('players').select(cols).order('name', { ascending: true });
         if (!includeArchived) q = q.or('archived.is.null,archived.eq.false');
-        const r = await q;
-        data = r.data; error = r.error;
-    } catch (e) { error = e; }
-    if (error && /column .*avatar/i.test(String(error?.message))) {
-        let q2 = supabase.from('players').select(baseCols).order('name', { ascending: true });
-        if (!includeArchived) q2 = q2.or('archived.is.null,archived.eq.false');
-        const r2 = await q2;
-        if (r2.error) throw r2.error;
-        data = r2.data;
-    } else if (error) throw error;
-    return data || [];
+        return await q;
+    };
+    let r = await tryQuery(fullCols);
+    if (r.error && /column .*strong_attributes/i.test(String(r.error?.message))) {
+        r = await tryQuery(midCols);
+    }
+    if (r.error && /column .*avatar/i.test(String(r.error?.message))) {
+        r = await tryQuery(minCols);
+    }
+    if (r.error) throw r.error;
+    return (r.data || []).map(p => ({ strong_attributes: [], ...p }));
+};
+
+// 得意属性を上書き更新
+window.supabaseUpdatePlayerStrongAttrs = async function (playerId, attrs) {
+    if (!playerId) throw new Error('playerId 必須');
+    const valid = new Set(['fire','water','electric','iron','wind']);
+    const cleaned = (attrs || []).filter(a => valid.has(a));
+    const { error } = await supabase
+        .from('players')
+        .update({ strong_attributes: cleaned })
+        .eq('id', playerId);
+    if (error) throw error;
 };
 
 // 新規メンバー追加
@@ -1762,23 +1775,24 @@ window.supabaseLoadOpsDashboardData = async function () {
     const ctx = await window.supabaseLoadActiveSeasonWithBosses();
     const { season, bosses } = ctx || { season: null, bosses: [] };
 
-    // 1) アクティブメンバー (avatar 列も同時取得、列未追加環境にはフォールバック)
+    // 1) アクティブメンバー (avatar + strong_attributes も同時取得、列未追加環境にはフォールバック)
     let players, pErr;
     {
-        const r = await supabase
-            .from('players')
-            .select('id, name, archived, avatar_url, avatar_character')
-            .or('archived.is.null,archived.eq.false')
-            .order('name', { ascending: true });
-        players = r.data; pErr = r.error;
-        if (pErr && /column.*avatar/i.test(String(pErr?.message))) {
-            const r2 = await supabase
+        const tryQuery = async (cols) => {
+            return await supabase
                 .from('players')
-                .select('id, name, archived')
+                .select(cols)
                 .or('archived.is.null,archived.eq.false')
                 .order('name', { ascending: true });
-            players = r2.data; pErr = r2.error;
+        };
+        let r = await tryQuery('id, name, archived, avatar_url, avatar_character, strong_attributes');
+        if (r.error && /column .*strong_attributes/i.test(String(r.error?.message))) {
+            r = await tryQuery('id, name, archived, avatar_url, avatar_character');
         }
+        if (r.error && /column.*avatar/i.test(String(r.error?.message))) {
+            r = await tryQuery('id, name, archived');
+        }
+        players = r.data; pErr = r.error;
     }
     if (pErr) throw pErr;
 
@@ -1877,6 +1891,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             name: p.name,
             avatar_url: p.avatar_url || null,
             avatar_character: p.avatar_character || null,
+            strong_attributes: Array.isArray(p.strong_attributes) ? p.strong_attributes : [],
             damagesByAttr: dmgByPlayer.get(p.id) || {},
             teamsByAttr: teamByPlayer.get(p.id) || {},
             attacks: attacksByPlayer.get(p.id) || [],
