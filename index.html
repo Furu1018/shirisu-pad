@@ -16,40 +16,73 @@
     <!-- Supabase クライアント (Phase 0: 接続確認のみ。既存ロジックは未変更) -->
     <script type="module" src="./js/supabase-client.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --background: 0 0% 100%;
-            --foreground: 222.2 84% 4.9%;
+            /* === C案ブランドトークン (新規) === */
+            --brand-primary: #ec4f93;            /* メインピンク */
+            --brand-primary-soft: #fce7f0;        /* 淡ピンク背景 */
+            --brand-primary-deep: #d63b7d;        /* プレス時 */
+            --brand-secondary: #b67aff;           /* ラベンダー */
+            --brand-success: #4ade80;             /* グリーン */
+            --brand-warning: #f59e0b;             /* アンバー */
+            --brand-danger: #ef4444;              /* レッド */
+            --brand-info: #38bdf8;                /* サイアン */
+            /* NIKKE 5属性アクセント (ネオン寄り) */
+            --attr-fire: #ff5b6b;
+            --attr-water: #2cb6ff;
+            --attr-electric: #b277f5;
+            --attr-iron: #ff963c;
+            --attr-wind: #3fc97f;
+            /* タイポ */
+            --font-display: 'Manrope', 'Space Grotesk', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+            /* 半径 / 影 / 余白 */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-pill: 999px;
+            --space-1: 4px; --space-2: 8px; --space-3: 12px;
+            --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+            --shadow-card: 0 1px 2px rgba(236, 79, 147, 0.06), 0 8px 24px -12px rgba(236, 79, 147, 0.10);
+            --shadow-card-hover: 0 2px 4px rgba(236, 79, 147, 0.08), 0 16px 32px -8px rgba(236, 79, 147, 0.18);
+            --shadow-btn: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px -4px rgba(236, 79, 147, 0.25);
+
+            /* === 既存 shadcn 互換 トークン (C案に上書き) === */
+            --background: 350 100% 99%;
+            --foreground: 340 25% 18%;
             --card: 0 0% 100%;
-            --card-foreground: 222.2 84% 4.9%;
-            --muted: 210 40% 96.1%;
-            --muted-foreground: 215.4 16.3% 46.9%;
-            --border: 214.3 31.8% 91.4%;
-            --primary: 222.2 47.4% 11.2%;
-            --primary-foreground: 210 40% 98%;
-            --radius: 0.5rem;
-            --md-sys-color-primary: hsl(222.2 47.4% 11.2%);
-            --md-sys-color-on-primary: hsl(210 40% 98%);
-            --md-sys-color-primary-container: hsl(210 40% 96.1%);
-            --md-sys-color-on-primary-container: hsl(222.2 47.4% 11.2%);
-            --md-sys-color-secondary-container: hsl(210 40% 96.1%);
-            --md-sys-color-on-secondary-container: hsl(222.2 47.4% 11.2%);
-            --md-sys-color-background: hsl(0 0% 100%);
-            --md-sys-color-on-background: hsl(222.2 84% 4.9%);
-            --md-sys-color-surface: hsl(0 0% 100%);
-            --md-sys-color-on-surface: hsl(222.2 84% 4.9%);
-            --md-sys-color-surface-variant: hsl(210 40% 96.1%);
-            --md-sys-color-on-surface-variant: hsl(215.4 16.3% 46.9%);
-            --md-sys-color-outline: hsl(214.3 31.8% 91.4%);
-            --md-sys-color-outline-variant: hsl(214.3 31.8% 91.4%);
-            --md-sys-color-tertiary-container: hsl(210 40% 96.1%);
-            --md-sys-color-on-tertiary-container: hsl(222.2 47.4% 11.2%);
-            --border-color: hsl(214.3 31.8% 91.4%);
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --card-foreground: 340 25% 18%;
+            --muted: 345 60% 96%;
+            --muted-foreground: 340 12% 48%;
+            --border: 345 30% 92%;
+            --primary: 332 78% 62%;
+            --primary-foreground: 0 0% 100%;
+            --radius: 1rem;
+            /* === Material-3 互換トークン (C案に上書き) === */
+            --md-sys-color-primary: var(--brand-primary);
+            --md-sys-color-on-primary: #ffffff;
+            --md-sys-color-primary-container: #ffd9e8;
+            --md-sys-color-on-primary-container: #4a0f29;
+            --md-sys-color-secondary-container: #f3e8ff;
+            --md-sys-color-on-secondary-container: #3b1f5a;
+            --md-sys-color-background: #fffafc;
+            --md-sys-color-on-background: #2a1726;
+            --md-sys-color-surface: #ffffff;
+            --md-sys-color-on-surface: #2a1726;
+            --md-sys-color-surface-variant: #fbf2f5;
+            --md-sys-color-on-surface-variant: #6e5b65;
+            --md-sys-color-outline: #f0d6df;
+            --md-sys-color-outline-variant: #f5e1e9;
+            --md-sys-color-tertiary-container: #fff1f5;
+            --md-sys-color-on-tertiary-container: #4a0f29;
+            --border-color: #f0d6df;
+            --shadow-sm: 0 1px 2px 0 rgba(236, 79, 147, 0.05);
+            --shadow-md: var(--shadow-card);
         }
 
         [data-theme="dark"] {
@@ -75,23 +108,33 @@
         }
 
         body {
-            font-family: 'Roboto', 'Noto Sans', sans-serif;
-            background-color: var(--md-sys-color-background);
+            font-family: var(--font-body);
+            background:
+                radial-gradient(1100px 600px at 100% 0%, #fff2f7 0%, transparent 55%),
+                radial-gradient(900px 500px at 0% 80%, #f5e8ff 0%, transparent 55%),
+                var(--md-sys-color-background);
+            background-attachment: fixed;
             color: var(--md-sys-color-on-background);
-            line-height: 1.5;
-            font-size: 16px;
+            line-height: 1.55;
+            font-size: 15px;
+            font-feature-settings: 'cv11', 'ss01', 'ss02';
         }
+        /* 見出しと数字は表示用フォントへ */
+        h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em; }
+        .tabular, [data-numeric] { font-feature-settings: 'tnum' 1; font-variant-numeric: tabular-nums; }
 
         /* ========== Header ========== */
         .header {
             text-align: center;
             padding: 12px 16px;
-            background: var(--md-sys-color-surface);
+            background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,250,252,0.85));
+            backdrop-filter: saturate(180%) blur(10px);
+            -webkit-backdrop-filter: saturate(180%) blur(10px);
             border-bottom: 1px solid var(--md-sys-color-outline-variant);
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 2px 12px -8px rgba(236, 79, 147, 0.18);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -104,9 +147,14 @@
         }
 
         .header h1 {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--md-sys-color-on-surface);
+            font-size: 22px;
+            font-weight: 800;
+            font-family: var(--font-display);
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.02em;
         }
 
         .header-subtitle {
@@ -244,9 +292,20 @@
         .tab-button.active {
             color: var(--md-sys-color-primary);
             border-bottom-color: var(--md-sys-color-primary);
+            font-weight: 700;
         }
-
-        .tab-button:hover { background: var(--md-sys-color-surface-variant); }
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 2px;
+            width: 14px;
+            height: 3px;
+            border-radius: 999px;
+            background: var(--brand-primary);
+            transform: translateX(-50%);
+        }
+        .tab-button:hover { background: var(--brand-primary-soft); }
 
         .tab-icon {
             width: 20px;
@@ -263,16 +322,35 @@
             padding: 24px 16px;
         }
 
-        /* ========== Card ========== */
+        /* ========== Card (C案: 大きめ角丸 + 桜色の柔らかい影) ========== */
         .card {
             background: var(--md-sys-color-surface);
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: var(--shadow-sm);
+            border-radius: var(--radius-lg);
+            padding: var(--space-5);
+            box-shadow: var(--shadow-card);
             border: 1px solid var(--md-sys-color-outline-variant);
-            margin-bottom: 16px;
+            margin-bottom: var(--space-4);
             overflow: hidden;
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
         }
+        .card:hover { box-shadow: var(--shadow-card-hover); }
+
+        /* ========== Button base (ブランド統一) ========== */
+        button {
+            font-family: var(--font-body);
+        }
+        button:not(:disabled):active { transform: translateY(1px); }
+        /* Primary CTA: ピンクのフィル + 軽い影 */
+        .btn-primary,
+        button[style*="--md-sys-color-primary"][style*="background"],
+        button[style*="background:var(--md-sys-color-primary)"] {
+            background: linear-gradient(180deg, #f06aa3 0%, var(--brand-primary) 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: var(--shadow-btn);
+        }
+        /* Outline button hover: 淡い桜色背景 */
+        button[style*="--md-sys-color-surface"]:hover:not(:disabled) { background: var(--brand-primary-soft) !important; }
 
         /* ========== Badge ========== */
         .badge {
