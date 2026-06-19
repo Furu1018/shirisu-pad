@@ -244,6 +244,36 @@
             margin-top: -2px;
         }
 
+        /* ========== Image Buttons (モックアップ用に書き出した PNG ボタン) ========== */
+        /* 各画像は 2172x724 (3:1)。aspect-ratio で正確に表示 */
+        .btn-img {
+            display: block;
+            background: transparent center / 100% 100% no-repeat;
+            border: 0;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            color: transparent !important;
+            text-shadow: none !important;
+            font-size: 0;
+            line-height: 0;
+            user-select: none;
+            transition: filter 0.18s ease, transform 0.12s ease;
+            aspect-ratio: 2172 / 724;
+            width: 100%;
+        }
+        .btn-img > * { visibility: hidden; }
+        .btn-img:hover:not(:disabled) { filter: brightness(1.08); }
+        .btn-img:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.88); }
+        .btn-img:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.5); }
+        .btn-img-prepare       { background-image: url('./assets/buttons/btn-prepare.png'); }
+        .btn-img-report        { background-image: url('./assets/buttons/btn-report.png'); }
+        .btn-img-release       { background-image: url('./assets/buttons/btn-release.png'); }
+        .btn-img-coordinating  { background-image: url('./assets/buttons/btn-coordinating.png'); }
+        .btn-img-online        { background-image: url('./assets/buttons/btn-online.png'); }
+        .btn-img-attack-report { background-image: url('./assets/buttons/btn-attack-report.png'); }
+        .btn-img-blabla        { background-image: url('./assets/buttons/btn-blabla.png'); }
+
         /* タブ切替のフェード (横スワイプ補助) */
         .tab-content.active { animation: tab-fade-in 0.22s ease-out; }
         @keyframes tab-fade-in {
@@ -1552,14 +1582,13 @@
             <div class="card" style="padding:20px;margin-top:20px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚔️ 今日の凸報告</h3>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button id="myAttackAddBtn" onclick="openMyAttackModal()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">＋ 凸を報告</button>
-                        <label style="padding:8px 12px;border-radius:8px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
-                            <span style="font-size:14px;">📷</span>
-                            BlaBlaLINK 3凸まとめ報告
-                            <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
-                        </label>
-                    </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                    <button id="myAttackAddBtn" onclick="openMyAttackModal()" aria-label="凸を報告" class="btn-img btn-img-attack-report" style="flex:1;min-width:160px;max-width:280px;">＋ 凸を報告</button>
+                    <label aria-label="BlaBlaLINK 3凸まとめ報告" class="btn-img btn-img-blabla" style="flex:1;min-width:160px;max-width:280px;cursor:pointer;display:block;">
+                        BlaBlaLINK 3凸まとめ報告
+                        <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
+                    </label>
                 </div>
                 <p style="margin:0 0 8px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">📷 緊急用: BlaBlaLINK 拡張の「自分の凸一覧画面」スクショから3凸分を一括登録。<br>※ボス残HPはリアルタイム同期されません。別途BlaBlaLINK 進捗画像をユニレ管理から取り込んでください。</p>
                 <div id="myAttackList">
@@ -4817,14 +4846,14 @@
                     actionHtml = `<button disabled style="margin-top:6px;width:100%;padding:6px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);font-size:11px;">💀 撃破済</button>`;
                 } else if (isMyCombat) {
                     actionHtml = `
-                        <div style="display:flex;gap:4px;margin-top:6px;">
-                            <button onclick="handleMyNextAttackReport(${b.boss_number})" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:700;cursor:pointer;">📷 報告</button>
-                            <button onclick="handleMyNextAttackRelease()" style="padding:6px 8px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">⏪</button>
+                        <div style="display:flex;gap:6px;margin-top:6px;align-items:stretch;">
+                            <button onclick="handleMyNextAttackReport(${b.boss_number})" aria-label="結果を報告" class="btn-img btn-img-report" style="flex:3;">📷 報告</button>
+                            <button onclick="handleMyNextAttackRelease()" aria-label="戦闘準備を解除" class="btn-img btn-img-release" style="flex:2;">⏪ 解除</button>
                         </div>`;
                 } else if (inCombat) {
                     actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:6px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
                 } else {
-                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" class="btn-elegant attr-${b.weakness || 'fire'}" style="margin-top:6px;width:100%;padding:8px 10px;font-size:12px;">⚔️ 戦闘準備に入る</button>`;
+                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" aria-label="戦闘準備に入る" class="btn-img btn-img-prepare" style="margin-top:6px;">⚔️ 戦闘準備に入る</button>`;
                 }
 
                 const cardClass = inCombat && !dead ? 'boss-in-combat' : '';
@@ -4927,16 +4956,20 @@
 
             const count = attacks.length;
             const remaining = Math.max(0, 3 - count);
-            // ボタン状態をシンプルに表現: 完凸時はボタン自体を「報告済み」表示にする
+            // ボタン状態: 完凸時は画像を外して完了バッジに、未完凸は画像ボタンに戻す
             if (btn) {
                 if (remaining === 0) {
                     btn.disabled = true;
+                    btn.classList.remove('btn-img', 'btn-img-attack-report');
                     btn.textContent = '✅ 3凸 報告済み';
-                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #22c55e;background:transparent;color:#22c55e;font-size:13px;font-weight:600;cursor:not-allowed;opacity:0.85;';
+                    btn.style.cssText = 'padding:10px 16px;border-radius:8px;border:1px solid #22c55e;background:rgba(34,197,94,0.08);color:#22c55e;font-size:13px;font-weight:700;cursor:not-allowed;flex:1;min-width:160px;max-width:280px;';
+                    btn.setAttribute('aria-label', '3凸 報告済み');
                 } else {
                     btn.disabled = false;
+                    btn.classList.add('btn-img', 'btn-img-attack-report');
                     btn.textContent = '＋ 凸を報告';
-                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;';
+                    btn.style.cssText = 'flex:1;min-width:160px;max-width:280px;';
+                    btn.setAttribute('aria-label', '凸を報告');
                 }
             }
 
@@ -6132,15 +6165,15 @@
             const isMyCombat = myCoord && Number(myCoord.boss_number) === Number(b.boss_number);
             const someoneElse = (combatNames || []).length > 0 && !isMyCombat;
             if (isMyCombat) {
-                return `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-                    <button onclick="handleMyNextAttackReport(${b.boss_number})" style="flex:1;padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:700;cursor:pointer;">📷 結果を報告</button>
-                    <button onclick="handleMyNextAttackRelease()" style="padding:5px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">⏪ 解除</button>
+                return `<div style="display:flex;gap:6px;margin-top:6px;align-items:stretch;">
+                    <button onclick="handleMyNextAttackReport(${b.boss_number})" aria-label="結果を報告" class="btn-img btn-img-report" style="flex:3;">📷 結果を報告</button>
+                    <button onclick="handleMyNextAttackRelease()" aria-label="戦闘準備を解除" class="btn-img btn-img-release" style="flex:2;">⏪ 解除</button>
                 </div>`;
             }
             if (someoneElse) {
                 return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:5px 10px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
             }
-            return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" class="btn-elegant attr-${b.weakness || 'fire'}" style="margin-top:6px;width:100%;padding:7px 10px;font-size:11px;">⚔️ このボスで凸する (戦闘準備)</button>`;
+            return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" aria-label="戦闘準備に入る" class="btn-img btn-img-prepare" style="margin-top:6px;">⚔️ このボスで凸する</button>`;
         }
 
         function handleOpsBossSummaryEdit(bossNumber) {
