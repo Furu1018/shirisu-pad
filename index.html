@@ -3172,7 +3172,7 @@
             const currentId = getCurrentIdentity()?.id;
             list.innerHTML = filtered.map(p => {
                 const isCurrent = p.id === currentId;
-                return `<button class="player-select-item" onclick='selectPlayerFromModal(${p.id}, ${JSON.stringify(p.name)})' style="${isCurrent ? 'background:var(--md-sys-color-primary-container);border-color:var(--md-sys-color-primary);' : ''}">${escapeHtml(p.name)}${isCurrent ? ' ✓' : ''}</button>`;
+                return `<button class="player-select-item" onclick='selectPlayerFromModal(${p.id}, ${JSON.stringify(p.name)})' style="display:flex;align-items:center;gap:10px;text-align:left;${isCurrent ? 'background:var(--md-sys-color-primary-container);border-color:var(--md-sys-color-primary);' : ''}">${renderAvatarHtml(p, 32)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</span>${isCurrent ? '<span>✓</span>' : ''}</button>`;
             }).join('');
         }
         function selectPlayerFromModal(id, name) {
@@ -3190,6 +3190,51 @@
 
         // ========== アバター: 表示 + 編集 ==========
         const _avatarCache = new Map();      // player_id → resolved URL (null=なし)
+
+        // 同期版: cache + nikke_characters cache から即座に解決。リスト描画で多数呼ばれるため軽量に。
+        // 引数は player オブジェクト ({avatar_url, avatar_character}) または playerId / playerName
+        function resolveAvatarUrlSync(playerOrId, fallbackName) {
+            let p = null;
+            if (playerOrId && typeof playerOrId === 'object') p = playerOrId;
+            else {
+                const list = _allPlayersCache || [];
+                if (typeof playerOrId === 'number') p = list.find(x => x.id === playerOrId);
+                else if (fallbackName) p = list.find(x => x.name === fallbackName);
+            }
+            if (!p) return null;
+            if (p.avatar_url) return p.avatar_url;
+            if (p.avatar_character && _nikkeCharsByName) {
+                const c = _nikkeCharsByName.get(p.avatar_character);
+                if (c?.icon_paths?.length > 0) return c.icon_paths[0];
+            }
+            return null;
+        }
+
+        // 小さなアバター円を描画する HTML を返す。size は px。クリックハンドラ無し
+        function renderAvatarHtml(playerOrIdOrName, sizeOrFallback = 24, sizeArg) {
+            let size = 24;
+            let player = playerOrIdOrName;
+            if (typeof sizeOrFallback === 'string') {
+                // (id, name, size) 形式
+                player = playerOrIdOrName;
+                const fbName = sizeOrFallback;
+                size = sizeArg || 24;
+                const url = resolveAvatarUrlSync(player, fbName);
+                return _renderAvatarCircle(url, size);
+            }
+            // (player, size) 形式
+            size = sizeOrFallback || 24;
+            const url = resolveAvatarUrlSync(player);
+            return _renderAvatarCircle(url, size);
+        }
+        function _renderAvatarCircle(url, size) {
+            if (url) {
+                return `<img src="${escapeHtml(url)}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;background:var(--brand-primary-soft);flex-shrink:0;vertical-align:middle;">`;
+            }
+            const emojiFs = Math.max(10, Math.floor(size * 0.55));
+            return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:50%;background:var(--brand-primary-soft);align-items:center;justify-content:center;font-size:${emojiFs}px;color:var(--brand-primary);flex-shrink:0;vertical-align:middle;">👤</span>`;
+        }
+
         async function resolveAvatarFor(player) {
             if (!player) return null;
             const key = player.id || `name:${player.name}`;
@@ -4307,6 +4352,7 @@
                 return `
                     <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${borderColor};border-radius:8px;background:${bg};margin-bottom:6px;">
                         <span style="font-size:14px;line-height:1.4;">${statusIcon}</span>
+                        ${renderAvatarHtml(c.player_id, c.name, 28)}
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><strong>${escapeHtml(c.name)}</strong>${isMe ? '<span style="color:#22c55e;font-size:11px;">(あなた)</span>' : ''}${statusLabel}${tags ? `<span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">${tags}</span>` : ''}</div>
                             ${noteHtml}
@@ -4494,6 +4540,8 @@
                 if (!coordsByBoss.has(c.boss_number)) coordsByBoss.set(c.boss_number, []);
                 coordsByBoss.get(c.boss_number).push({ player_id: c.player_id, name: c.name });
             });
+            // 既存プレイヤー一覧キャッシュをロード (アバター描画用)
+            if (typeof ensureAllPlayersLoaded === 'function') { try { await ensureAllPlayersLoaded(); } catch { /* noop */ } }
 
             el.innerHTML = bosses.map(b => {
                 const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
@@ -4507,7 +4555,11 @@
                 const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
 
                 const occupantsLabel = inCombat
-                    ? occupants.map(o => o.player_id === identity.id ? `<strong>あなた</strong>` : escapeHtml(o.name)).join(' / ')
+                    ? occupants.map(o => {
+                        const av = renderAvatarHtml(o.player_id, o.name, 16);
+                        const label = o.player_id === identity.id ? '<strong>あなた</strong>' : escapeHtml(o.name);
+                        return `<span style="display:inline-flex;align-items:center;gap:3px;">${av}${label}</span>`;
+                      }).join(' / ')
                     : '';
 
                 // 動作ボタン: 自分が戦闘中なら 報告/解除、他人が戦闘中なら 強行注意、空きなら 戦闘準備
@@ -5706,7 +5758,8 @@
                 }).join('');
                 return `
                     <div style="display:flex;align-items:stretch;gap:${GAP}px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <div style="width:${NAME_W}px;flex-shrink:0;display:flex;align-items:center;gap:5px;overflow:hidden;padding:6px 0;">
+                        <div style="width:${NAME_W}px;flex-shrink:0;display:flex;align-items:center;gap:6px;overflow:hidden;padding:6px 0;">
+                            ${renderAvatarHtml(p, 24)}
                             <strong style="font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</strong>
                             <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);flex-shrink:0;">(${p.attackCount}/3)</span>
                         </div>
@@ -5743,18 +5796,19 @@
             if (!el) return;
             if (lvEl) lvEl.textContent = season ? `現在 Lv${season.current_level || 1}` : '';
 
-            // 戦闘中(調整中)のボス番号 → { name } を引けるマップ。複数人いれば全員列挙。
+            // 戦闘中(調整中)のボス番号 → [{ name, player_id }] のマップ。
             const coordsByBoss = new Map();
             (_coordActiveCache || []).forEach(c => {
                 if (c.status !== 'coordinating' || !c.boss_number) return;
                 if (!coordsByBoss.has(c.boss_number)) coordsByBoss.set(c.boss_number, []);
-                coordsByBoss.get(c.boss_number).push(c.name);
+                coordsByBoss.get(c.boss_number).push({ name: c.name, player_id: c.player_id });
             });
 
             const sorted = [...(bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
             el.innerHTML = sorted.map(b => {
                 const inCombat = coordsByBoss.has(b.boss_number);
-                const combatNames = inCombat ? coordsByBoss.get(b.boss_number) : [];
+                const combatList = inCombat ? coordsByBoss.get(b.boss_number) : [];
+                const combatNames = combatList.map(x => x.name);
                 const bossAttrIcon = BOSS_ATTR_ICON[b.attribute] || '';
                 const bossAttrName = BOSS_ATTR_NAME[b.attribute] || b.attribute;
                 const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
@@ -5781,8 +5835,11 @@
                     </div>`
                     : '';
 
+                const combatAvatars = inCombat && !dead
+                    ? combatList.map(x => renderAvatarHtml(x.player_id, x.name, 20)).join('')
+                    : '';
                 const combatBanner = inCombat && !dead
-                    ? `<div class="boss-in-combat-banner">⚔️ 戦闘中: ${escapeHtml(combatNames.join(' / '))} さんが調整中</div>`
+                    ? `<div class="boss-in-combat-banner"><span>⚔️ 戦闘中:</span> ${combatAvatars} <span>${escapeHtml(combatNames.join(' / '))} 調整中</span></div>`
                     : '';
                 const combatClass = inCombat && !dead ? ' boss-in-combat' : '';
 
@@ -5916,7 +5973,8 @@
                 const overTag = over ? `<span style="color:#f59e0b;font-size:11px;font-weight:600;">⚠️ +${(p.dmg - remainingHpB).toFixed(2)}B 超過</span>` : '';
                 return `
                     <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <span style="min-width:24px;text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:12px;">${i + 1}.</span>
+                        <span style="min-width:22px;text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:12px;">${i + 1}.</span>
+                        ${renderAvatarHtml(p, 28)}
                         <strong style="flex:1;font-size:14px;">${escapeHtml(p.name)}</strong>
                         <span style="font-size:13px;font-weight:700;">${p.dmg.toFixed(2)} B</span>
                         ${overTag}
@@ -6908,9 +6966,11 @@
                 const playerAttr = boss?.attribute ? bossAttrToPlayerAttr(boss.attribute) : null;
                 const pt = playerAttr ? PT_ATTRS.find(x => x.key === playerAttr) : null;
                 const dmgB = (Number(a.damage_raw) / 1e9).toFixed(2);
+                const playerName = a.players?.name || '不明';
                 return `
                     <div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <strong style="font-size:13px;min-width:90px;">${escapeHtml(a.players?.name || '不明')}</strong>
+                        ${renderAvatarHtml(a.player_id, playerName, 24)}
+                        <strong style="font-size:13px;min-width:74px;">${escapeHtml(playerName)}</strong>
                         <span style="font-weight:600;color:var(--md-sys-color-primary);font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
                         ${pt ? `<img src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT">` : ''}
                         <span style="flex:1;font-size:12px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
@@ -7255,7 +7315,8 @@
             listEl.innerHTML = filtered.map(p => {
                 const isArchived = !!p.archived;
                 return `
-                    <div style="display:flex;align-items:center;gap:6px;padding:8px;border-radius:6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                        ${renderAvatarHtml(p, 28)}
                         <span style="flex:1;font-size:14px;${isArchived ? 'color:var(--md-sys-color-on-surface-variant);text-decoration:line-through;' : ''}">${escapeHtml(p.name)}</span>
                         ${isArchived
                             ? `<button onclick="handleMemberUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">復活</button>

@@ -1762,12 +1762,24 @@ window.supabaseLoadOpsDashboardData = async function () {
     const ctx = await window.supabaseLoadActiveSeasonWithBosses();
     const { season, bosses } = ctx || { season: null, bosses: [] };
 
-    // 1) アクティブメンバー
-    const { data: players, error: pErr } = await supabase
-        .from('players')
-        .select('id, name, archived')
-        .or('archived.is.null,archived.eq.false')
-        .order('name', { ascending: true });
+    // 1) アクティブメンバー (avatar 列も同時取得、列未追加環境にはフォールバック)
+    let players, pErr;
+    {
+        const r = await supabase
+            .from('players')
+            .select('id, name, archived, avatar_url, avatar_character')
+            .or('archived.is.null,archived.eq.false')
+            .order('name', { ascending: true });
+        players = r.data; pErr = r.error;
+        if (pErr && /column.*avatar/i.test(String(pErr?.message))) {
+            const r2 = await supabase
+                .from('players')
+                .select('id, name, archived')
+                .or('archived.is.null,archived.eq.false')
+                .order('name', { ascending: true });
+            players = r2.data; pErr = r2.error;
+        }
+    }
     if (pErr) throw pErr;
 
     // 2) 全プレイヤーの player_damages を一括取得 (characters 列はマイグ未適用なら無視)
@@ -1863,6 +1875,8 @@ window.supabaseLoadOpsDashboardData = async function () {
         return {
             id: p.id,
             name: p.name,
+            avatar_url: p.avatar_url || null,
+            avatar_character: p.avatar_character || null,
             damagesByAttr: dmgByPlayer.get(p.id) || {},
             teamsByAttr: teamByPlayer.get(p.id) || {},
             attacks: attacksByPlayer.get(p.id) || [],
