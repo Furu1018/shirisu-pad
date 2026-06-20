@@ -1987,14 +1987,8 @@
                 </div>
             </div>
 
-            <!-- テストシーズンバナー (既存) -->
-            <div id="opsTestBanner" style="display:none;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                    <span style="font-size:13px;font-weight:700;color:#b45309;">🧪 テストシーズン中</span>
-                    <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);flex:1;">この状態は記録用ではありません。動作確認が済んだら削除して元に戻してください。</span>
-                    <button onclick="handleOpsDeleteTestSeason()" style="padding:6px 12px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">テスト終了（削除して元に戻す）</button>
-                </div>
-            </div>
+            <!-- テストシーズンバナー (細ピル, JS で中身を描画) -->
+            <div id="opsTestBanner" style="display:none;align-items:center;gap:8px;"></div>
 
             <!-- ① ステータス概況 (オンライン / 模擬中 / 戦闘中) -->
             <div style="display:flex;gap:10px;">
@@ -6428,19 +6422,19 @@
             labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})${season.is_test ? ' 🧪テスト' : ''}`;
             if (testBanner) testBanner.style.display = season.is_test ? 'block' : 'none';
 
-            // テストシーズンならバナー表示
+            // テストシーズンなら細いピル状バナーを表示
             const bannerEl = document.getElementById('opsTestBanner');
             if (season.is_test) {
-                bannerEl.style.display = 'block';
+                bannerEl.style.display = 'flex';
+                bannerEl.style.padding = '0';
+                bannerEl.style.background = 'transparent';
+                bannerEl.style.border = 'none';
                 bannerEl.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.5);flex-wrap:wrap;">
-                        <span style="font-size:18px;">🧪</span>
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-weight:700;color:#b45309;font-size:13px;">テストシーズン中</div>
-                            <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">この期間の凸・ダメージ変更は記録用ではありません。終了すると元のシーズンとダメージ登録が復元されます。</div>
-                        </div>
-                        <button onclick="handleOpsDeleteTestSeason()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">🧪 テスト終了（削除して元に戻す）</button>
-                    </div>`;
+                    <div title="この期間の凸・ダメージは記録用ではありません" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);font-size:11px;font-weight:700;color:#b45309;">
+                        <span style="font-size:12px;">🧪</span>テスト稼働中
+                    </div>
+                    <button onclick="handleOpsDeleteTestSeason()" style="margin-left:auto;padding:4px 10px;border-radius:999px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.08);color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✕ 終了</button>
+                `;
             } else {
                 bannerEl.style.display = 'none';
             }
