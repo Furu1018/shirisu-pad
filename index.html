@@ -2174,22 +2174,36 @@
         </div>
     </div>
 
-    <!-- ========== Tab 1: ダメージ比較 ========== -->
+    <!-- ========== Tab 1: ダメージ比較 (完了済シーズンの分析) ========== -->
     <div id="tab-ranking" class="tab-content active">
         <div class="container">
-            <!-- ① グラフ + 統計 (集約) -->
+            <!-- ページヘッダー -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
+                <div>
+                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ダメージ比較</div>
+                    <div id="rankingPageSubtitle" style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">読み込み中...</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:#18C26B;"></span>完了</div>
+                    <div id="rankingComparisonLabel" style="font-size:10px;font-weight:700;color:#A4AAB0;font-variant-numeric:tabular-nums;letter-spacing:0.2px;">&nbsp;</div>
+                </div>
+            </div>
+
+            <!-- ① グラフ + 統計 -->
             <div class="dc-card">
-                <!-- ヘッダー行 -->
-                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">属性別ダメージ分析</div>
-                    <button onclick="toggleStats()" id="statsToggleInline" style="border:none;background:transparent;font-size:11px;font-weight:700;color:#8A9097;cursor:pointer;padding:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:8px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">属性別ダメージ分析</div>
+                        <div style="font-size:10.5px;color:#A4AAB0;margin-top:2px;">各プレイヤーの本番3凸の属性内訳</div>
+                    </div>
+                    <button onclick="toggleStats()" id="statsToggleInline" style="border:none;background:#F1F2F4;font-size:11px;font-weight:800;color:#6B7178;cursor:pointer;padding:6px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;">
                         📊 <span id="statsToggleText">結果まとめ</span> <span id="statsToggleArrow">▼</span>
                     </button>
                 </div>
                 <!-- 統計 (折り畳み) -->
                 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
                 <!-- 属性トグル -->
-                <div id="chartAttributeToggle" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;margin-bottom:10px;">
+                <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
                     <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;">
                         <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;">灼熱
                     </button>
@@ -2208,6 +2222,14 @@
                 </div>
                 <div class="chart-container">
                     <canvas id="attributeStackedChart"></canvas>
+                </div>
+                <!-- 凡例 -->
+                <div style="display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:14px;padding-top:13px;border-top:1px solid #F0F1F3;">
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#FF3B30;display:inline-block;"></span>灼熱</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#007AFF;display:inline-block;"></span>水冷</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#8E44AD;display:inline-block;"></span>電撃</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#FF9500;display:inline-block;"></span>鉄甲</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#34C759;display:inline-block;"></span>風圧</div>
                 </div>
             </div>
 
@@ -2232,6 +2254,13 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- シーズン切替 -->
+            <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 8px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;">
+                <button id="rankingSeasonPrev" onclick="rankingSeasonNav(-1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:#C9CED3;cursor:not-allowed;padding:6px 8px;"><span style="font-size:13px;">‹</span> 過去シーズン</button>
+                <div id="rankingSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">— <span style="font-size:9.5px;font-weight:700;color:#A4AAB0;">(最新)</span></div>
+                <button id="rankingSeasonNext" onclick="rankingSeasonNav(1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:#C9CED3;cursor:not-allowed;padding:6px 8px;">次へ <span style="font-size:13px;">›</span></button>
             </div>
 
             <!-- 注意書き (インライン) -->
@@ -8356,11 +8385,21 @@
                 previousData = [];
             }
 
-            // Update header
+            // Update global header subtitle (旧仕様)
             const subtitle = previousMonthKey
                 ? `${previousMonthKey} → ${currentMonthKey} 比較`
                 : `${currentMonthKey}`;
             document.getElementById('headerSubtitle').textContent = subtitle;
+
+            // 比較ページ専用ヘッダー
+            const participantCount = (currentData || []).length;
+            const pageSub = document.getElementById('rankingPageSubtitle');
+            if (pageSub) pageSub.textContent = `${currentMonthKey} シーズン結果 · ${participantCount}名参加`;
+            const compLabel = document.getElementById('rankingComparisonLabel');
+            if (compLabel) compLabel.textContent = previousMonthKey ? `${currentMonthKey} → ${previousMonthKey} 比較` : `${currentMonthKey}`;
+            // シーズン切替バー
+            const seasonCur = document.getElementById('rankingSeasonCurrent');
+            if (seasonCur) seasonCur.innerHTML = `${currentMonthKey} <span style="font-size:9.5px;font-weight:700;color:#A4AAB0;">(最新)</span>`;
 
             renderAll();
             const srcLabel = dataSource === 'supabase' ? 'Supabase' : dataSource === 'json' ? 'ローカルJSON' : 'Supabase + JSON';
@@ -8539,6 +8578,19 @@
                 };
             });
 
+            // ME highlight: 自分のバーだけ黒アウトラインを引く
+            const myIdentity = (typeof getCurrentIdentity === 'function') ? getCurrentIdentity() : null;
+            const myName = myIdentity?.name || null;
+            const meIndex = myName ? sortedPlayers.findIndex(p => p.player === myName) : -1;
+            if (meIndex !== -1) {
+                datasets.forEach(ds => {
+                    const baseColor = ds.backgroundColor;
+                    const N = sortedPlayers.length;
+                    ds.borderColor = Array.from({ length: N }, (_, i) => i === meIndex ? '#14161A' : baseColor);
+                    ds.borderWidth = Array.from({ length: N }, (_, i) => i === meIndex ? 2 : 0);
+                });
+            }
+
             attributeChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: { labels: sortedPlayers.map(p => p.player), datasets },
@@ -8547,7 +8599,7 @@
                     maintainAspectRatio: false,
                     scales: {
                         x: { stacked: true, ticks: { font: { size: 11 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
-                        y: { stacked: true, ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: 'var(--md-sys-color-outline-variant)' } }
+                        y: { stacked: true, ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: '#EFF0F2' } }
                     },
                     plugins: {
                         legend: { display: false },
@@ -8561,6 +8613,11 @@
                     }
                 }
             });
+        }
+
+        // シーズン切替バー: 過去シーズンへのナビゲーション (現状は最新のみ表示なので無効化)
+        function rankingSeasonNav(/* delta */) {
+            showNotification('過去シーズンの閲覧は近日対応予定です');
         }
 
         // ========== Player Detail Modal (Composition Comparison) ==========
