@@ -1117,6 +1117,13 @@
 
         .notification.show { transform: translateX(-50%) translateY(0); }
 
+        /* 下部メニューが表示される端末では、メニュー (~56px + 安全領域) より上に出す */
+        @media (max-width: 767px) {
+            .notification {
+                bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+            }
+        }
+
         /* ========== Responsive ========== */
         @media (max-width: 767px) {
             .tab-navigation { display: none; }
