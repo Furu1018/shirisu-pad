@@ -1288,8 +1288,9 @@
             75%     { opacity:.95; transform:scaleY(1.08) }
         }
 
-        /* tab-mypage 専用 マーブル背景 */
-        #tab-mypage.tab-content.active {
+        /* tab-mypage / tab-ops 共通 マーブル背景 */
+        #tab-mypage.tab-content.active,
+        #tab-ops.tab-content.active {
             background:
                 radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
                 radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
@@ -1297,10 +1298,100 @@
                 radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
             min-height: 100vh;
         }
-        #tab-mypage .container {
+        #tab-mypage .container, #tab-ops .container {
             display: flex; flex-direction: column; gap: 14px;
             padding: 16px 16px 80px;
         }
+
+        /* === Ops: ステータス概況 3カード === */
+        .dc-stat-card {
+            flex: 1;
+            background: #fff;
+            border-radius: 16px;
+            padding: 14px 12px;
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 10px 26px rgba(20,22,26,0.06);
+            border: 1px solid rgba(20,22,26,0.045);
+        }
+        .dc-stat-label {
+            font-size: 10.5px; font-weight: 800; color: #9AA0A6; letter-spacing: 0.3px;
+        }
+        .dc-stat-value {
+            font-size: 28px; font-weight: 900; color: #14161A;
+            font-variant-numeric: tabular-nums; margin-top: 6px; line-height: 1;
+        }
+
+        /* === Ops: ボス状況カード (横スクロール) === */
+        .dc-boss-card {
+            flex: none; width: 156px; box-sizing: border-box; scroll-snap-align: start;
+            background: #F9FAFB; border-radius: 14px; padding: 14px;
+            border: 1px solid rgba(20,22,26,0.05);
+            position: relative;
+        }
+        .dc-boss-card.has-combat { border-color: var(--_attr-c, #FF3D44) 33; }
+        .dc-boss-chip {
+            width: 34px; height: 34px; flex: none; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; font-weight: 900;
+        }
+        .dc-boss-bar {
+            height: 100%; border-radius: 99px; transform-origin: left;
+            animation: dcGrowBar .5s cubic-bezier(.2,.9,.2,1);
+        }
+        @keyframes dcGrowBar { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+        .dc-boss-status-tag {
+            display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.3px;
+            padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+        }
+
+        /* === Ops: ピルフィルタ === */
+        .dc-pill-filter {
+            font-family: inherit; cursor: pointer;
+            font-size: 12px; font-weight: 800; letter-spacing: 0.2px;
+            padding: 7px 13px; border-radius: 999px;
+            background: #F1F2F4; color: #9AA0A6;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .dc-pill-filter[data-on="1"] {
+            background: #14161A; color: #fff;
+        }
+        .dc-pill-attr {
+            font-family: inherit; cursor: pointer;
+            font-size: 12px; font-weight: 800; letter-spacing: 0.2px;
+            min-width: 38px;
+            padding: 6px 10px; border-radius: 999px;
+            background: var(--attr-c-soft, #F1F2F4); color: var(--attr-c, #9AA0A6);
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .dc-pill-attr[data-attr-filter=""]:not([data-on="1"]) { background: #F1F2F4; color: #9AA0A6; }
+        .dc-pill-attr:not([data-attr-filter=""]):not([data-on="1"]) {
+            background: color-mix(in srgb, var(--attr-c) 12%, transparent);
+            color: var(--attr-c);
+        }
+        .dc-pill-attr[data-on="1"]:not([data-attr-filter=""]) {
+            background: var(--attr-c, #14161A); color: #fff;
+            box-shadow: 0 3px 8px color-mix(in srgb, var(--attr-c) 35%, transparent);
+        }
+        .dc-pill-attr[data-on="1"][data-attr-filter=""] {
+            background: #14161A; color: #fff;
+        }
+
+        /* === Ops: アクションボタン === */
+        .dc-ops-action {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 12px 10px; border-radius: 10px;
+            border: none;
+            background: #F1F2F4; color: #14161A;
+            font-size: 13px; font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.15s ease;
+        }
+        .dc-ops-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(20,22,26,0.08);
+        }
+        .dc-ops-action:active { transform: translateY(0); }
         .dc-card {
             background: #fff;
             border-radius: 16px;
@@ -1878,49 +1969,66 @@
     <!-- ========== Tab: 運営 ========== -->
     <div id="tab-ops" class="tab-content">
         <div class="container">
-            <!-- アクティブシーズン情報 -->
-            <div class="card" style="padding:14px 18px;margin-bottom:16px;background:var(--md-sys-color-surface-variant);">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                    <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">アクティブシーズン:</span>
-                    <strong id="opsSeasonLabel" style="font-size:14px;">読み込み中...</strong>
-                    <span style="margin-left:auto;">
-                        <button onclick="reloadOpsDashboard()" style="padding:5px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 更新</button>
-                    </span>
+            <!-- ヘッダー: アクティブシーズン + 同期インジ -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
+                <div>
+                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ユニレ管理</div>
+                    <div style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">アクティブ: <strong id="opsSeasonLabel" style="font-weight:800;color:#14161A;">読み込み中...</strong></div>
                 </div>
-                <div id="opsTestBanner" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);">
-                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                        <span style="font-size:13px;font-weight:700;color:#b45309;">🧪 テストシーズン中</span>
-                        <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);flex:1;">この状態は記録用ではありません。動作確認が済んだら削除して元に戻してください。</span>
-                        <button onclick="handleOpsDeleteTestSeason()" style="padding:6px 12px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">テスト終了（削除して元に戻す）</button>
-                    </div>
+                <div onclick="reloadOpsDashboard()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;">
+                    <span style="width:6px;height:6px;border-radius:50%;background:#18C26B;animation:dcLivePulse 1.6s ease-in-out infinite;"></span>同期
                 </div>
             </div>
 
-            <!-- ボス状況サマリー (5体一覧) -->
-            <div class="card" style="padding:20px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">🎯 ボス状況</h3>
-                    <span id="opsBossSummaryLevel" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);"></span>
+            <!-- テストシーズンバナー (既存) -->
+            <div id="opsTestBanner" style="display:none;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-size:13px;font-weight:700;color:#b45309;">🧪 テストシーズン中</span>
+                    <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);flex:1;">この状態は記録用ではありません。動作確認が済んだら削除して元に戻してください。</span>
+                    <button onclick="handleOpsDeleteTestSeason()" style="padding:6px 12px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">テスト終了（削除して元に戻す）</button>
                 </div>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">5体のボス状況です。「✏️ HP編集」で残HP/総HPを直接編集、「[属性]PTで締め凸」ボタンで締め凸候補の検索結果へジャンプします。</p>
-                <div id="opsBossSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+            </div>
+
+            <!-- ① ステータス概況 (オンライン / 模擬中 / 戦闘中) -->
+            <div style="display:flex;gap:10px;">
+                <div class="dc-stat-card">
+                    <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#18C26B;"></span><span class="dc-stat-label">オンライン</span></div>
+                    <div id="opsStatOnline" class="dc-stat-value">—</div>
+                </div>
+                <div class="dc-stat-card">
+                    <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#2E8BFF;"></span><span class="dc-stat-label">模擬中</span></div>
+                    <div id="opsStatPracticing" class="dc-stat-value">—</div>
+                </div>
+                <div class="dc-stat-card">
+                    <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#FF3D44;"></span><span class="dc-stat-label">戦闘中</span></div>
+                    <div id="opsStatBattle" class="dc-stat-value">—</div>
+                </div>
+            </div>
+
+            <!-- ② ボス状況 (横スクロール) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ボス状況</div>
+                    <span id="opsBossSummaryLevel" style="font-size:10.5px;color:#B6BBC1;"></span>
+                </div>
+                <div id="opsBossSummary" style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 8px;-webkit-overflow-scrolling:touch;">
+                    <p style="color:#A4AAB0;font-size:12px;padding:14px;">読み込み中...</p>
                 </div>
             </div>
 
             <!-- 締め凸候補検索 -->
-            <div class="card" style="padding:20px;margin-bottom:16px;">
-                <h3 style="margin:0 0 8px 0;font-size:16px;font-weight:600;">🎯 締め凸候補検索</h3>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">ボス状況カードの「PT属性で締め凸」ボタンから対象ボスを選ぶと、候補と推薦プランが表示されます。残HP超過は ⚠️ で警告、3凸済みは除外。</p>
+            <div class="dc-card">
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:8px;">締め凸候補検索</div>
+                <p style="margin:0 0 12px 0;font-size:11px;color:#A4AAB0;">ボス状況カードの「PT属性 締め凸」ボタンから対象ボスを選ぶと、候補と推薦プランが表示されます。残HP超過は ⚠️ で警告、3凸済みは除外。</p>
                 <div id="opsFinishPlans" style="margin-bottom:14px;"></div>
                 <div id="opsFinishList">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>
+                    <p style="color:#A4AAB0;font-size:12px;">ボス状況カードから対象ボスをタップしてください。</p>
                 </div>
                 <div id="opsFinishAiArea" style="display:none;margin-top:10px;">
                     <details>
-                        <summary style="cursor:pointer;font-size:12px;color:var(--md-sys-color-on-surface-variant);">🤖 AIに意見を聞く（任意・APIトークン消費）</summary>
+                        <summary style="cursor:pointer;font-size:11px;color:#A4AAB0;">🤖 AIに意見を聞く（任意・APIトークン消費）</summary>
                         <div style="margin-top:8px;">
-                            <button id="opsFinishAiBtn" onclick="handleOpsFinishAiRecommend()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:13px;font-weight:600;cursor:pointer;">🤖 AIにベスト候補を聞く</button>
+                            <button id="opsFinishAiBtn" onclick="handleOpsFinishAiRecommend()" style="padding:8px 14px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🤖 AIにベスト候補を聞く</button>
                             <div id="opsFinishAiResult" style="margin-top:8px;"></div>
                         </div>
                     </details>
@@ -1928,88 +2036,93 @@
             </div>
 
             <!-- 現在 オンライン / 調整中 (リアルタイム共有) -->
-            <div class="card" style="padding:16px 20px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">📣 オンライン / 調整中 メンバー</h3>
-                    <span id="opsCoordRefresh" style="font-size:10px;color:var(--md-sys-color-outline-variant);">10秒毎更新</span>
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">オンライン / 調整中 メンバー</div>
+                    <span id="opsCoordRefresh" style="font-size:10px;color:#B6BBC1;">10秒毎更新</span>
                 </div>
-                <p style="margin:0 0 8px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">🎮 オンライン = 今ゲーム起動中で協力可能。📣 調整中 = 締め凸をまとめている人。</p>
+                <p style="margin:0 0 8px 0;font-size:11px;color:#A4AAB0;">🎮 オンライン = ゲーム起動中で協力可能。📣 調整中 = 締め凸をまとめている人。</p>
                 <div id="opsCoordActiveList">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+                    <p style="color:#A4AAB0;font-size:12px;">読み込み中...</p>
                 </div>
             </div>
 
-            <!-- 残凸状況一覧 -->
-            <div class="card" style="padding:20px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">📊 残凸状況一覧</h3>
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <div style="display:flex;gap:4px;">
-                            <button id="opsRemFilterAll" onclick="handleOpsRemainingFilterPick('all')" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);">👥 全員</button>
-                            <button id="opsRemFilterNow" onclick="handleOpsRemainingFilterPick('available-now')" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);">⏰ 凸可能のみ</button>
-                        </div>
-                        <span id="opsRemainingSummary" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
-                    </div>
+            <!-- ③ 残り戦闘可能メンバー (残凸状況一覧 + フィルタ拡張) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">残り戦闘可能メンバー</div>
+                    <span id="opsRemainingSummary" style="font-size:10.5px;color:#B6BBC1;">&nbsp;</span>
                 </div>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">残凸あるメンバーを残凸数別にグループ表示します。「⏰ 凸可能のみ」で現在の時間帯をONにしている人だけに絞れます。</p>
-                <div id="opsRemainingList">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+                <p style="margin:0 0 10px 0;font-size:11px;color:#A4AAB0;">タブで絞り込み: 全員 / オンライン / 凸可能時間 / 属性別 (使える人のみ)</p>
+                <!-- ベースフィルタ -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                    <button class="dc-pill-filter" data-base-filter="all"     onclick="handleOpsRemainingFilterPick('all')">👥 全員</button>
+                    <button class="dc-pill-filter" data-base-filter="online"  onclick="handleOpsRemainingFilterPick('online')">🎮 オンライン</button>
+                    <button class="dc-pill-filter" data-base-filter="available-now" onclick="handleOpsRemainingFilterPick('available-now')">⏰ 凸可能時間</button>
+                </div>
+                <!-- 属性別フィルタ -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="dc-pill-attr" data-attr-filter=""        onclick="handleOpsRemainingAttrPick('')">全属性</button>
+                    <button class="dc-pill-attr" data-attr-filter="fire"     onclick="handleOpsRemainingAttrPick('fire')"     style="--attr-c:#FF3D44;">火</button>
+                    <button class="dc-pill-attr" data-attr-filter="water"    onclick="handleOpsRemainingAttrPick('water')"    style="--attr-c:#2E8BFF;">水</button>
+                    <button class="dc-pill-attr" data-attr-filter="electric" onclick="handleOpsRemainingAttrPick('electric')" style="--attr-c:#9B4DFF;">電</button>
+                    <button class="dc-pill-attr" data-attr-filter="iron"     onclick="handleOpsRemainingAttrPick('iron')"     style="--attr-c:#FF8A2B;">鉄</button>
+                    <button class="dc-pill-attr" data-attr-filter="wind"     onclick="handleOpsRemainingAttrPick('wind')"     style="--attr-c:#18C26B;">風</button>
+                </div>
+                <div id="opsRemainingList" style="margin-top:12px;">
+                    <p style="color:#A4AAB0;font-size:12px;">読み込み中...</p>
                 </div>
             </div>
 
             <!-- 最適凸プラン -->
-            <div class="card" style="padding:20px;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">🎯 最適凸プラン算出</h3>
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最適凸プラン算出</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;cursor:pointer;">👥 全員で算出</button>
-                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:8px 12px;border-radius:8px;border:1px solid #3b82f6;background:var(--md-sys-color-surface);color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer;">⏰ 現在凸可能のみ</button>
+                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">👥 全員</button>
+                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                     </div>
                 </div>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。登録ダメージは1人1属性につき1回のみ使用。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
+                <p style="margin:0 0 12px 0;font-size:11px;color:#A4AAB0;line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
                 <div id="opsOptimalPlan">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">「プラン算出」を押して計算してください。</p>
+                    <p style="color:#A4AAB0;font-size:12px;">「プラン算出」を押して計算してください。</p>
                 </div>
             </div>
 
             <!-- 運営アクション (戦闘中) -->
-            <div class="card" style="padding:20px;margin-bottom:16px;">
-                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">⚙️ 戦闘中の運営アクション</h3>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                    <button onclick="openOpsBossHpModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">⚔️ ボスHP更新</button>
-                    <button onclick="openOpsProxyAttackModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">✏️ 代理凸を報告</button>
-                    <button onclick="openOpsAttacksEditModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">📋 凸履歴・編集</button>
-                    <button onclick="openMemberManageModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">👥 メンバー管理</button>
+            <div class="dc-card">
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:12px;">戦闘中の運営アクション</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <button onclick="openOpsBossHpModal()" class="dc-ops-action">⚔️ ボスHP更新</button>
+                    <button onclick="openOpsProxyAttackModal()" class="dc-ops-action">✏️ 代理凸を報告</button>
+                    <button onclick="openOpsAttacksEditModal()" class="dc-ops-action">📋 凸履歴・編集</button>
+                    <button onclick="openMemberManageModal()" class="dc-ops-action">👥 メンバー管理</button>
                 </div>
             </div>
 
             <!-- Push通知 一斉送信 -->
-            <div class="card" style="padding:20px;margin-bottom:16px;">
-                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">📣 Push通知 一斉送信</h3>
-                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">購読者全員のスマホ/PCに通知を送ります。テスト用にも使えます。</p>
-                <button onclick="openOpsPushSendModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">通知を作成して送信</button>
+            <div class="dc-card">
+                <div style="display:flex;align-items:center;gap:11px;">
+                    <div style="width:40px;height:40px;flex:none;border-radius:11px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;font-size:18px;">📢</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:14px;font-weight:800;color:#14161A;">一斉通知</div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:2px;">メンバー全員へPushを送信</div>
+                    </div>
+                </div>
+                <button onclick="openOpsPushSendModal()" style="margin-top:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:13px;background:linear-gradient(180deg,#23262C,#14161A);color:#fff;font-size:15px;font-weight:800;letter-spacing:0.4px;cursor:pointer;border:none;box-shadow:0 8px 18px rgba(20,22,26,0.2);">通知を作成</button>
             </div>
 
             <!-- シーズン制御 -->
-            <div class="card" style="padding:20px;margin-bottom:16px;">
-                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;">🗓️ シーズン制御</h3>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">月次のレイドサイクル全体に関わる操作です。誤操作に注意してください。</p>
+            <div class="dc-card">
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:6px;">シーズン制御</div>
+                <p style="margin:0 0 12px 0;font-size:11px;color:#A4AAB0;">月次のレイドサイクル全体に関わる操作です。誤操作に注意してください。</p>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                    <button onclick="openOpsSeasonCreateModal()" style="padding:10px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">📅 シーズン作成（次回用）</button>
-                    <button onclick="handleOpsQuickCreateTestSeason()" style="padding:10px 14px;border-radius:8px;border:1px dashed #b45309;background:var(--md-sys-color-surface);color:#b45309;font-size:13px;font-weight:600;cursor:pointer;">🧪 クイックテストシーズン</button>
-                    <button onclick="handleOpsEndSeason()" style="padding:10px 14px;border-radius:8px;border:1px solid #f59e0b;background:var(--md-sys-color-surface);color:#f59e0b;font-size:13px;cursor:pointer;">🏁 シーズン終了</button>
-                    <button onclick="handleOpsResetDamages()" style="padding:10px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🔄 ダメージ一括リセット</button>
+                    <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" style="background:#14161A;color:#fff;">📅 シーズン作成</button>
+                    <button onclick="handleOpsQuickCreateTestSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;border:1px dashed rgba(245,158,11,0.4);">🧪 クイックテスト</button>
+                    <button onclick="handleOpsEndSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;">🏁 シーズン終了</button>
+                    <button onclick="handleOpsResetDamages()" class="dc-ops-action" style="background:rgba(239,68,68,0.10);color:#dc2626;">🔄 ダメージリセット</button>
                 </div>
-                <p style="margin:8px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">🧪 クイックテストシーズンは「テストボス1〜5」のプレースホルダで即座に独立した検証環境を作ります。終了時に <code>player_damages</code> と <code>nikke_characters</code> が完全に復元されます。</p>
-            </div>
-
-            <div class="card" style="padding:20px;opacity:0.55;">
-                <h3 style="margin:0 0 6px 0;font-size:15px;font-weight:600;">🔜 これから追加予定の運営機能</h3>
-                <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
-                    <li>BlaBlaLINK 画像取り込み（Phase 4）</li>
-                    <li>Haiku を使った凸候補レコメンド（Phase 4-5）</li>
-                    <li>最適凸プラン算出（Phase 5）</li>
-                </ul>
+                <p style="margin:8px 0 0 0;font-size:10px;color:#B6BBC1;">🧪 クイックテストは「テストボス1〜5」のプレースホルダで独立した検証環境を作ります。終了時にデータが完全に復元されます。</p>
             </div>
         </div>
     </div>
@@ -6363,10 +6476,15 @@
             await renderOpsDashboard();
         }
 
-        let _opsRemainingFilter = 'all';  // 'all' | 'available-now'
+        let _opsRemainingFilter = 'all';  // 'all' | 'online' | 'available-now'
+        let _opsRemainingAttr = '';        // '' | 'fire' | 'water' | 'electric' | 'iron' | 'wind'
 
         function handleOpsRemainingFilterPick(mode) {
             _opsRemainingFilter = mode;
+            renderOpsRemainingList();
+        }
+        function handleOpsRemainingAttrPick(attr) {
+            _opsRemainingAttr = attr;
             renderOpsRemainingList();
         }
 
@@ -6377,7 +6495,6 @@
             const summaryEl = document.getElementById('opsRemainingSummary');
 
             // ボス番号 → 弱点(PT属性) のマップ。
-            // 各プレイヤーが使用済みPT属性は attacks から逆引きする。
             const bossWeaknessByNum = new Map();
             (bosses || []).forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
             const usedAttrsFor = (p) => {
@@ -6389,7 +6506,14 @@
                 return set;
             };
 
-            // フィルタボタンの active 状態を更新
+            // ピル active 状態 (新スタイル)
+            document.querySelectorAll('.dc-pill-filter[data-base-filter]').forEach(btn => {
+                btn.dataset.on = (btn.dataset.baseFilter === _opsRemainingFilter) ? '1' : '0';
+            });
+            document.querySelectorAll('.dc-pill-attr[data-attr-filter]').forEach(btn => {
+                btn.dataset.on = (btn.dataset.attrFilter === _opsRemainingAttr) ? '1' : '0';
+            });
+            // 旧ピル (まだ DOM にある場合) も active 状態維持
             const btnAll = document.getElementById('opsRemFilterAll');
             const btnNow = document.getElementById('opsRemFilterNow');
             const activeStyle = { bg: 'var(--md-sys-color-primary)', color: 'var(--md-sys-color-on-primary)', border: 'var(--md-sys-color-primary)' };
@@ -6407,20 +6531,58 @@
             const currentSlot = getCurrentSlotJST();
             const slotLabel = TIME_SLOTS.find(s => s.key === currentSlot)?.label || currentSlot;
 
-            const allRemaining = players
+            // オンラインメンバーID set (status='available' or 'practicing'のみ=ゲーム起動中扱い)
+            // ※ coordinating(戦闘中) は除外: 「使える人」ではないため
+            const onlineIds = new Set(
+                (_coordActiveCache || [])
+                    .filter(c => c.status === 'available' || c.status === 'practicing')
+                    .map(c => c.player_id)
+            );
+
+            let allRemaining = players
                 .filter(p => p.attackCount < 3)
                 .map(p => ({ ...p, remain: 3 - p.attackCount }));
-            const remaining = (_opsRemainingFilter === 'available-now')
-                ? allRemaining.filter(p => (p.availableSlots || []).includes(currentSlot))
-                : allRemaining;
+
+            // base filter
+            let remaining;
+            if (_opsRemainingFilter === 'available-now') {
+                remaining = allRemaining.filter(p => (p.availableSlots || []).includes(currentSlot));
+            } else if (_opsRemainingFilter === 'online') {
+                remaining = allRemaining.filter(p => onlineIds.has(p.id));
+            } else {
+                remaining = allRemaining;
+            }
+
+            // attribute filter: その属性が「未消費」 かつ ダメージ登録ありの人だけ
+            if (_opsRemainingAttr) {
+                remaining = remaining.filter(p => {
+                    const used = usedAttrsFor(p);
+                    if (used.has(_opsRemainingAttr)) return false;
+                    const v = Number(p.damagesByAttr?.[_opsRemainingAttr]) || 0;
+                    return v > 0;
+                });
+            }
+
             const totalRemain = remaining.reduce((s, p) => s + p.remain, 0);
-            const modeBadge = _opsRemainingFilter === 'available-now' ? `⏰ ${slotLabel} / ` : '';
-            summaryEl.textContent = `${modeBadge}${remaining.length}名 / ${totalRemain}凸残`;
+            const baseBadges = {
+                'all': '',
+                'online': '🎮 オンライン / ',
+                'available-now': `⏰ ${slotLabel} / `,
+            };
+            const attrBadge = _opsRemainingAttr ? `${PT_ATTRS.find(a => a.key === _opsRemainingAttr)?.name || _opsRemainingAttr}PT / ` : '';
+            summaryEl.textContent = `${baseBadges[_opsRemainingFilter] || ''}${attrBadge}${remaining.length}名 / ${totalRemain}凸残`;
 
             if (remaining.length === 0) {
-                const msg = _opsRemainingFilter === 'available-now'
-                    ? `<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">🕓 ${slotLabel} に凸可能なメンバーがいません。<br><span style="font-size:11px;">「👥 全員」に切替で全体表示。</span></p>`
-                    : '<p style="color:#22c55e;font-size:13px;font-weight:600;">🎉 全員凸完了！</p>';
+                let msg;
+                if (_opsRemainingAttr) {
+                    msg = `<p style="color:#A4AAB0;font-size:12px;">該当する人がいません。属性フィルタを「全属性」に戻すと全件表示。</p>`;
+                } else if (_opsRemainingFilter === 'available-now') {
+                    msg = `<p style="color:#A4AAB0;font-size:12px;">🕓 ${slotLabel} に凸可能なメンバーがいません。</p>`;
+                } else if (_opsRemainingFilter === 'online') {
+                    msg = `<p style="color:#A4AAB0;font-size:12px;">🎮 現在オンラインのメンバーがいません。</p>`;
+                } else {
+                    msg = '<p style="color:#18C26B;font-size:13px;font-weight:700;">🎉 全員凸完了！</p>';
+                }
                 listEl.innerHTML = msg;
                 return;
             }
@@ -6498,15 +6660,29 @@
         const TIER_LABEL = { tyrant: 'タイラント', lord: 'ロード' };
         let _opsBossEditingNum = null;  // ✏️ HP編集 中のボス番号
 
+        // ========== Ops: ステータス概況 (オンライン/模擬中/戦闘中) ==========
+        function renderOpsStatusOverview() {
+            const counts = { available: 0, practicing: 0, coordinating: 0 };
+            (_coordActiveCache || []).forEach(c => {
+                if (counts[c.status] != null) counts[c.status]++;
+            });
+            const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            set('opsStatOnline', counts.available);
+            set('opsStatPracticing', counts.practicing);
+            set('opsStatBattle', counts.coordinating);
+        }
+
+        // ========== Ops: ボス状況 (デザイン準拠 横スクロール) ==========
         function renderOpsBossSummary() {
+            renderOpsStatusOverview();   // ボス状況更新と同タイミングで概況も更新
             if (!_opsDashboardCache) return;
             const { season, bosses } = _opsDashboardCache;
             const el = document.getElementById('opsBossSummary');
             const lvEl = document.getElementById('opsBossSummaryLevel');
             if (!el) return;
-            if (lvEl) lvEl.textContent = season ? `現在 Lv${season.current_level || 1}` : '';
+            if (lvEl) lvEl.textContent = season ? `Lv${season.current_level || 1} · 5体` : '';
 
-            // 戦闘中(調整中)のボス番号 → [{ name, player_id }] のマップ。
+            // 戦闘中(調整中)のボス番号 → 人リスト
             const coordsByBoss = new Map();
             (_coordActiveCache || []).forEach(c => {
                 if (c.status !== 'coordinating' || !c.boss_number) return;
@@ -6518,89 +6694,75 @@
             el.innerHTML = sorted.map(b => {
                 const inCombat = coordsByBoss.has(b.boss_number);
                 const combatList = inCombat ? coordsByBoss.get(b.boss_number) : [];
-                const combatNames = combatList.map(x => x.name);
-                const bossAttrIcon = BOSS_ATTR_ICON[b.attribute] || '';
-                const bossAttrName = BOSS_ATTR_NAME[b.attribute] || b.attribute;
                 const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
                 const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
                 const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
-                const pct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
-                const dead = pct <= 0.01;
-                const barColor = dead ? '#9ca3af' : (pct < 20 ? '#ef4444' : pct < 50 ? '#f59e0b' : '#22c55e');
-                const isActive = _opsCurrentAttr === b.weakness;
+                const remainPct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
+                const dead = remainPct <= 0.01;
+                const c = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
+                const label = DC_ATTR_LABELS[b.weakness] || (b.weakness || '?').charAt(0).toUpperCase();
+                const active = inCombat && !dead;
                 const editing = _opsBossEditingNum === b.boss_number;
 
+                // チップ
+                const chipStyle = active || dead
+                    ? `background:${c};color:#fff;box-shadow:0 3px 8px ${c}4D,inset 0 1px 0 rgba(255,255,255,0.3);`
+                    : `background:${c}1F;color:${c};`;
+                // ステータス バッジ
+                const statusTag = dead
+                    ? `<span class="dc-boss-status-tag" style="color:#18C26B;background:rgba(24,194,107,0.12);">💀 撃破済</span>`
+                    : active
+                        ? `<span class="dc-boss-status-tag" style="color:${c};background:${c}26;">${combatList.length}名 交戦中</span>`
+                        : `<span class="dc-boss-status-tag" style="color:#A4AAB0;background:#F1F2F4;">待機中</span>`;
+                // 進捗バー: 残HP % を表示 (デザイン: 残=色付き)
+                const barColor = dead ? '#18C26B' : c;
+                // 戦闘中メンバーのアバター (重なり表示)
+                const avatarsHtml = active
+                    ? combatList.slice(0, 4).map((x, i) => {
+                        const av = renderAvatarHtml(x.player_id, x.name, 24);
+                        return `<span style="margin-left:${i === 0 ? 0 : -6}px;position:relative;z-index:${10 - i};display:inline-block;border:2px solid #fff;border-radius:50%;">${av}</span>`;
+                      }).join('')
+                    : '<span style="font-size:11px;font-weight:600;color:#B6BBC1;">交戦者なし</span>';
+
+                // HP編集パネル (折り畳み)
                 const editPanel = editing
-                    ? `<div style="margin-top:10px;padding:8px;border-radius:8px;background:var(--md-sys-color-surface-variant);display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                        <label style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">残HP (B)
-                            <input type="number" step="0.01" min="0" id="opsBossEditRem-${b.boss_number}" value="${remB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);font-size:12px;text-align:right;">
+                    ? `<div style="margin-top:10px;padding:8px;border-radius:8px;background:#F1F2F4;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                        <label style="font-size:10px;color:#A4AAB0;">残HP (B)
+                            <input type="number" step="0.01" min="0" id="opsBossEditRem-${b.boss_number}" value="${remB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;text-align:right;">
                         </label>
-                        <label style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">総HP (B)
-                            <input type="number" step="0.01" min="0" id="opsBossEditTotal-${b.boss_number}" value="${totalB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);font-size:12px;text-align:right;">
+                        <label style="font-size:10px;color:#A4AAB0;">総HP (B)
+                            <input type="number" step="0.01" min="0" id="opsBossEditTotal-${b.boss_number}" value="${totalB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;text-align:right;">
                         </label>
                         <div style="grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;">
-                            <button onclick="handleOpsBossSummaryEditCancel()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">キャンセル</button>
-                            <button onclick="handleOpsBossSummaryEditSave(${b.boss_number})" style="padding:5px 12px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:600;cursor:pointer;">保存</button>
+                            <button onclick="handleOpsBossSummaryEditCancel()" style="padding:5px 10px;border-radius:6px;border:none;background:#fff;color:#6B7178;font-size:11px;cursor:pointer;">取消</button>
+                            <button onclick="handleOpsBossSummaryEditSave(${b.boss_number})" style="padding:5px 12px;border-radius:6px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">保存</button>
                         </div>
                     </div>`
                     : '';
 
-                const combatAvatars = inCombat && !dead
-                    ? combatList.map(x => renderAvatarHtml(x.player_id, x.name, 20)).join('')
-                    : '';
-                const combatBanner = inCombat && !dead
-                    ? `<div class="boss-in-combat-banner"><span>⚔️ 戦闘中:</span> ${combatAvatars} <span>${escapeHtml(combatNames.join(' / '))} 調整中</span></div>`
-                    : '';
-                const combatClass = inCombat && !dead ? ' boss-in-combat' : '';
-
                 return `
-                    <div class="${combatClass.trim()}" style="padding:12px;border:${isActive ? '2px solid var(--md-sys-color-primary)' : '1px solid var(--md-sys-color-outline-variant)'};border-radius:10px;background:var(--md-sys-color-surface);${dead ? 'opacity:0.65;' : ''}">
-                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
-                            <strong style="font-size:13px;">B${b.boss_number}</strong>
-                            <span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);">${TIER_LABEL[b.tier] || b.tier}</span>
-                            ${dead ? '<span style="font-size:11px;color:#22c55e;font-weight:700;margin-left:auto;">💀 撃破</span>' : ''}
+                    <div class="dc-boss-card ${active ? 'has-combat' : ''}" style="--_attr-c:${c};${dead ? 'opacity:0.65;' : ''}">
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+                            <div class="dc-boss-chip" style="${chipStyle}">${label}</div>
+                            <div style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3')};">${dead ? '撃破' : `${remainPct.toFixed(0)}%`}</div>
                         </div>
-                        <div style="font-size:13px;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(b.name || b.boss_code)}</div>
-                        ${combatBanner}
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--md-sys-color-on-surface-variant);">
-                            <span style="display:inline-flex;align-items:center;gap:3px;">ボス: ${bossAttrIcon ? `<img src="${bossAttrIcon}" style="width:14px;height:14px;">` : ''}${bossAttrName}</span>
-                            <span style="display:inline-flex;align-items:center;gap:3px;">弱点: ${ptInfo ? `<img src="${ptInfo.icon}" style="width:14px;height:14px;">${ptInfo.name}PT` : '-'}</span>
+                        <div style="display:flex;align-items:center;gap:7px;margin-top:11px;">
+                            <span style="font-size:17px;font-weight:900;color:#14161A;letter-spacing:0.4px;">B${b.boss_number}</span>
                         </div>
-                        <div style="height:8px;border-radius:4px;background:var(--md-sys-color-surface-variant);overflow:hidden;margin-bottom:4px;">
-                            <div style="width:${pct.toFixed(1)}%;height:100%;background:${barColor};transition:width 0.3s;"></div>
+                        <div style="font-size:10px;color:#A4AAB0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(b.name || b.boss_code)}">${escapeHtml(b.name || b.boss_code)}</div>
+                        <div style="margin-top:7px;">${statusTag}</div>
+                        <div style="margin-top:11px;height:6px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
+                            <div class="dc-boss-bar" style="background:${barColor};width:${remainPct}%;"></div>
                         </div>
-                        <div style="display:flex;justify-content:space-between;font-size:11px;font-variant-numeric:tabular-nums;color:var(--md-sys-color-on-surface);">
-                            <span>${remB.toFixed(2)}B / ${totalB.toFixed(2)}B</span>
-                            <span style="color:var(--md-sys-color-on-surface-variant);">${pct.toFixed(0)}%</span>
-                        </div>
+                        <div style="font-size:10px;font-variant-numeric:tabular-nums;color:#9AA0A6;margin-top:4px;">${remB.toFixed(2)} / ${totalB.toFixed(2)} B</div>
+                        <div style="margin-top:10px;display:flex;align-items:center;min-height:24px;">${avatarsHtml}</div>
                         ${editPanel}
-                        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-                            <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" style="padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">✏️ HP編集</button>
-                            <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} style="flex:1;padding:5px 10px;border-radius:6px;border:1px solid ${ptInfo?.color || 'var(--md-sys-color-primary)'};background:${ptInfo?.color || 'var(--md-sys-color-primary)'};color:#fff;font-size:11px;font-weight:600;cursor:${dead ? 'not-allowed' : 'pointer'};${dead ? 'opacity:0.4;' : ''}">${ptInfo ? `${ptInfo.name}PTで締め凸` : '締め凸'}</button>
+                        <div style="display:flex;gap:6px;margin-top:10px;">
+                            <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">✏️</button>
+                            <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${dead ? '#F1F2F4' : c};color:${dead ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${dead ? 'not-allowed' : 'pointer'};">${ptInfo ? `${ptInfo.name}PT 締め凸` : '締め凸'}</button>
                         </div>
-                        ${_renderBossCardTapActions(b, dead, combatNames)}
                     </div>`;
             }).join('');
-        }
-
-        // ボス状況カード下部に「あなたの凸アクション」を出す。マイページと同じハンドラ流用。
-        function _renderBossCardTapActions(b, dead, combatNames) {
-            if (dead) return '';
-            const id = getCurrentIdentity();
-            if (!id?.id) return '';
-            const myCoord = (_coordActiveCache || []).find(c => c.player_id === id.id && c.status === 'coordinating');
-            const isMyCombat = myCoord && Number(myCoord.boss_number) === Number(b.boss_number);
-            const someoneElse = (combatNames || []).length > 0 && !isMyCombat;
-            if (isMyCombat) {
-                return `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-                    <button onclick="handleMyNextAttackReport(${b.boss_number})" style="flex:1;padding:5px 10px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:700;cursor:pointer;">📷 結果を報告</button>
-                    <button onclick="handleMyNextAttackRelease()" style="padding:5px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">⏪ 解除</button>
-                </div>`;
-            }
-            if (someoneElse) {
-                return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:5px 10px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
-            }
-            return `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" class="btn-elegant attr-${b.weakness || 'fire'}" style="margin-top:6px;width:100%;padding:7px 10px;font-size:11px;">⚔️ このボスで凸する (戦闘準備)</button>`;
         }
 
         function handleOpsBossSummaryEdit(bossNumber) {
