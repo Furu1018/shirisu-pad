@@ -1295,9 +1295,11 @@
             75%     { opacity:.95; transform:scaleY(1.08) }
         }
 
-        /* tab-mypage / tab-ops 共通 マーブル背景 */
+        /* マーブル背景: 主要4タブ共通 */
         #tab-mypage.tab-content.active,
-        #tab-ops.tab-content.active {
+        #tab-ops.tab-content.active,
+        #tab-ranking.tab-content.active,
+        #tab-slv-ranking.tab-content.active {
             background:
                 radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
                 radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
@@ -1305,7 +1307,8 @@
                 radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
             min-height: 100vh;
         }
-        #tab-mypage .container, #tab-ops .container {
+        #tab-mypage .container, #tab-ops .container,
+        #tab-ranking .container, #tab-slv-ranking .container {
             display: flex; flex-direction: column; gap: 14px;
             padding: 16px 16px 80px;
         }
@@ -1383,6 +1386,49 @@
         .dc-pill-attr[data-on="1"][data-attr-filter=""] {
             background: #14161A; color: #fff;
         }
+
+        /* === 共通: 詰めカード + テーブル === */
+        .dc-card-tight { padding: 12px 14px; }
+        .dc-table-wrap {
+            margin: 0 -14px -12px;
+            border-radius: 0 0 16px 16px;
+            overflow-x: auto;
+        }
+        .dc-card-tight .dc-table-wrap { margin: 0 -14px -12px; }
+        .dc-table {
+            width: 100%; border-collapse: separate; border-spacing: 0;
+            font-size: 13px;
+        }
+        .dc-table thead th {
+            background: #F7F8F9;
+            color: #9AA0A6;
+            padding: 9px 12px;
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-align: left;
+            border-bottom: 1px solid #F0F1F3;
+            text-transform: uppercase;
+            position: sticky; top: 0;
+        }
+        .dc-table tbody td {
+            padding: 9px 12px;
+            border-bottom: 1px solid #F4F5F7;
+            font-size: 13px;
+            color: #14161A;
+            vertical-align: middle;
+            line-height: 1.3;
+        }
+        .dc-table tbody tr:last-child td { border-bottom: none; }
+        .dc-table tbody tr { transition: background 0.15s ease; }
+        .dc-table tbody tr:hover { background: #FAFBFC; cursor: pointer; }
+        /* Top-3 行ハイライト (#列の rank-1/2/3 を持つ tr) */
+        .dc-table tbody tr.rank-row-1 td { background: rgba(255, 215, 0, 0.06); }
+        .dc-table tbody tr.rank-row-2 td { background: rgba(192, 192, 192, 0.06); }
+        .dc-table tbody tr.rank-row-3 td { background: rgba(205, 127, 50, 0.06); }
+        .dc-table tbody tr.rank-row-1:hover td,
+        .dc-table tbody tr.rank-row-2:hover td,
+        .dc-table tbody tr.rank-row-3:hover td { background: #FAFBFC; }
 
         /* === Ops: アクションボタン === */
         .dc-ops-action {
@@ -2131,163 +2177,134 @@
     <!-- ========== Tab 1: ダメージ比較 ========== -->
     <div id="tab-ranking" class="tab-content active">
         <div class="container">
-            <!-- 統計カード -->
-            <div style="margin-bottom: 24px;">
-                <button onclick="toggleStats()" class="stats-toggle-btn">
-                    <span>📊</span>
-                    <span id="statsToggleText">結果まとめを展開</span>
-                    <span id="statsToggleArrow" style="margin-left: auto;">▼</span>
-                </button>
-                <div id="statsGrid" class="stats-grid" style="display: none;"></div>
-            </div>
-
-            <!-- 属性別積み上げ棒グラフ -->
-            <div class="card" style="margin-bottom: 24px;">
-                <div style="padding: 8px 8px 0;">
-                    <h3 style="font-size: 16px; font-weight: 600; color: var(--md-sys-color-on-surface); margin-bottom: 4px;">属性別ダメージ分析</h3>
-                    <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 12px;">各プレイヤーの属性別ダメージ内訳</p>
-                    <!-- 属性トグルボタン -->
-                    <div id="chartAttributeToggle" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
-                        <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;">
-                            <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width: 16px; height: 16px;">灼熱
-                        </button>
-                        <button onclick="toggleChartDataset(1)" data-chart-idx="1" class="chart-toggle-btn" style="--btn-color: #007AFF;">
-                            <img src="./属性アイコン/水冷.png" alt="水冷" style="width: 16px; height: 16px;">水冷
-                        </button>
-                        <button onclick="toggleChartDataset(2)" data-chart-idx="2" class="chart-toggle-btn" style="--btn-color: #8E44AD;">
-                            <img src="./属性アイコン/電撃.png" alt="電撃" style="width: 16px; height: 16px;">電撃
-                        </button>
-                        <button onclick="toggleChartDataset(3)" data-chart-idx="3" class="chart-toggle-btn" style="--btn-color: #FF9500;">
-                            <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width: 16px; height: 16px;">鉄甲
-                        </button>
-                        <button onclick="toggleChartDataset(4)" data-chart-idx="4" class="chart-toggle-btn" style="--btn-color: #34C759;">
-                            <img src="./属性アイコン/風圧.png" alt="風圧" style="width: 16px; height: 16px;">風圧
-                        </button>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="attributeStackedChart"></canvas>
-                    </div>
+            <!-- ① グラフ + 統計 (集約) -->
+            <div class="dc-card">
+                <!-- ヘッダー行 -->
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">属性別ダメージ分析</div>
+                    <button onclick="toggleStats()" id="statsToggleInline" style="border:none;background:transparent;font-size:11px;font-weight:700;color:#8A9097;cursor:pointer;padding:0;">
+                        📊 <span id="statsToggleText">結果まとめ</span> <span id="statsToggleArrow">▼</span>
+                    </button>
+                </div>
+                <!-- 統計 (折り畳み) -->
+                <div id="statsGrid" class="stats-grid" style="display:none;"></div>
+                <!-- 属性トグル -->
+                <div id="chartAttributeToggle" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;margin-bottom:10px;">
+                    <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;">
+                        <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;">灼熱
+                    </button>
+                    <button onclick="toggleChartDataset(1)" data-chart-idx="1" class="chart-toggle-btn" style="--btn-color: #007AFF;">
+                        <img src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;">水冷
+                    </button>
+                    <button onclick="toggleChartDataset(2)" data-chart-idx="2" class="chart-toggle-btn" style="--btn-color: #8E44AD;">
+                        <img src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;">電撃
+                    </button>
+                    <button onclick="toggleChartDataset(3)" data-chart-idx="3" class="chart-toggle-btn" style="--btn-color: #FF9500;">
+                        <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;">鉄甲
+                    </button>
+                    <button onclick="toggleChartDataset(4)" data-chart-idx="4" class="chart-toggle-btn" style="--btn-color: #34C759;">
+                        <img src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;">風圧
+                    </button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="attributeStackedChart"></canvas>
                 </div>
             </div>
 
-            <!-- ランキングテーブル -->
-            <div class="data-table">
-                <table id="resultsTable">
-                    <thead>
-                        <tr>
-                            <th style="width: 40px;"></th>
-                            <th>プレイヤー</th>
-                            <th>ダメージ / SLv</th>
-                            <th>前月比</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr><td colspan="4" style="text-align: center; padding: 32px; color: var(--md-sys-color-on-surface-variant);">データを読み込み中...</td></tr>
-                    </tbody>
-                </table>
+            <!-- ② ランキングテーブル -->
+            <div class="dc-card dc-card-tight">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ランキング</div>
+                    <span style="font-size:10.5px;color:#B6BBC1;">前月比あり</span>
+                </div>
+                <div class="dc-table-wrap">
+                    <table id="resultsTable" class="dc-table">
+                        <thead>
+                            <tr>
+                                <th style="width:36px;text-align:center;">#</th>
+                                <th>プレイヤー</th>
+                                <th style="text-align:right;">ダメージ / SLv</th>
+                                <th style="text-align:right;">前月比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr><td colspan="4" style="text-align:center;padding:24px;color:#A4AAB0;">データを読み込み中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <!-- 注意書き（ページ末尾） -->
-            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; margin-top: 24px; background: var(--md-sys-color-surface-variant); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; border-left: 4px solid #f59e0b;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                <p style="margin: 0; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface);">このスコアはあくまで他人との比較は参考程度にして、過去の自分との比較に役立ててください</p>
-            </div>
+            <!-- 注意書き (インライン) -->
+            <p style="margin:4px 2px 0 2px;font-size:11px;color:#A4AAB0;line-height:1.5;">⚠️ 他人との比較は参考程度に。過去の自分との比較に役立ててください。</p>
         </div>
     </div>
 
     <!-- ========== Tab 2: ふるり値 ========== -->
     <div id="tab-slv-ranking" class="tab-content">
         <div class="container">
-            <div class="card" style="margin-bottom: 24px;">
-                <div style="padding: 8px;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">📊 ふるり値</h3>
+            <!-- ① ヘッダ + モード + 属性別フィルタ (集約) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ふるり値</div>
                         <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり値について">?</button>
                     </div>
-                    <p style="font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 12px;">SLv.補正を考慮した公平な相対評価指標</p>
-                    <div style="padding: 10px 14px; background: var(--md-sys-color-surface-variant); border-radius: 8px; margin-bottom: 12px;">
-                        <p style="margin: 0; font-size: 14px; color: var(--md-sys-color-on-surface);">
-                            <strong>基準者:</strong> <span id="fururiBaseInfo">読み込み中...</span>
-                        </p>
-                    </div>
-                    <div>
-                        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-                            <strong style="font-size:13px;">基準モード</strong>
-                            <span id="fururiModeHint" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);"></span>
-                        </div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                            <button id="fururiModeBtnClassic" onclick="switchFururiMode('classic')" class="sim-mode-btn active">対ふるり</button>
-                            <button id="fururiModeBtnMean" onclick="switchFururiMode('mean')" class="sim-mode-btn">均整 (ふるり平均)</button>
-                            <button id="fururiModeBtnMedian" onclick="switchFururiMode('median')" class="sim-mode-btn">上位10名平均</button>
-                        </div>
-                    </div>
+                    <div style="font-size:11px;color:#A4AAB0;"><strong style="color:#5A6068;font-weight:700;">基準:</strong> <span id="fururiBaseInfo">読み込み中...</span></div>
                 </div>
-            </div>
-
-            <!-- 属性別フィルタ -->
-            <div class="card" style="margin-bottom: 16px;">
-                <div style="padding: 4px;">
-                    <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--md-sys-color-on-surface);">属性別表示</h3>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体（3凸合計）</button>
+                <p style="font-size:11px;color:#A4AAB0;margin:0 0 10px 0;line-height:1.5;">SLv.補正を考慮した公平な相対評価指標</p>
+                <!-- モード切替 -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                    <button id="fururiModeBtnClassic" onclick="switchFururiMode('classic')" class="sim-mode-btn active">対ふるり</button>
+                    <button id="fururiModeBtnMean" onclick="switchFururiMode('mean')" class="sim-mode-btn">均整</button>
+                    <button id="fururiModeBtnMedian" onclick="switchFururiMode('median')" class="sim-mode-btn">上位10名</button>
+                    <span id="fururiModeHint" style="font-size:10.5px;color:#B6BBC1;margin-left:auto;align-self:center;"></span>
+                </div>
+                <!-- 属性別フィルタ -->
+                <div style="border-top:1px solid #F0F1F3;padding-top:8px;">
+                    <div style="font-size:9.5px;font-weight:800;letter-spacing:1.4px;color:#B6BBC1;margin-bottom:6px;">属性別表示</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体</button>
                         <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')">
-                            <img src="./属性アイコン/灼熱.png" style="width: 18px; height: 18px;">灼熱PT
-                            <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/風圧.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/灼熱.png" style="width:14px;height:14px;">灼熱
                         </button>
                         <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')">
-                            <img src="./属性アイコン/水冷.png" style="width: 18px; height: 18px;">水冷PT
-                            <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/灼熱.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/水冷.png" style="width:14px;height:14px;">水冷
                         </button>
                         <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')">
-                            <img src="./属性アイコン/電撃.png" style="width: 18px; height: 18px;">電撃PT
-                            <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/水冷.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/電撃.png" style="width:14px;height:14px;">電撃
                         </button>
                         <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')">
-                            <img src="./属性アイコン/鉄甲.png" style="width: 18px; height: 18px;">鉄甲PT
-                            <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/電撃.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/鉄甲.png" style="width:14px;height:14px;">鉄甲
                         </button>
                         <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')">
-                            <img src="./属性アイコン/風圧.png" style="width: 18px; height: 18px;">風圧PT
-                            <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/鉄甲.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/風圧.png" style="width:14px;height:14px;">風圧
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div class="data-table">
-                <table id="fururiRankingTable">
-                    <thead>
-                        <tr>
-                            <th style="text-align: center;">プレイヤー</th>
-                            <th style="text-align: right;">ダメージ/SLv</th>
-                            <th style="text-align: center;">ふるり値</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fururiRankingBody">
-                        <tr><td colspan="3" style="text-align: center; padding: 24px;">データを読み込み中...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 注意書き（ページ末尾） -->
-            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; margin-top: 24px; background: var(--md-sys-color-surface-variant); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; border-left: 4px solid #f59e0b;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                <div>
-                    <p style="margin: 0 0 6px 0; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface);">ふるり値は育成効率を可視化する参考指標です。属性担当・締め凸・戦闘時間などの条件差は考慮されません。</p>
-                    <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--md-sys-color-on-surface-variant);">この数値は他人との比較ではなく、過去の自分との比較に役立ててください。</p>
+            <!-- ② ランキングテーブル -->
+            <div class="dc-card dc-card-tight">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ランキング</div>
+                </div>
+                <div class="dc-table-wrap">
+                    <table id="fururiRankingTable" class="dc-table">
+                        <thead>
+                            <tr>
+                                <th>プレイヤー</th>
+                                <th style="text-align:right;">ダメージ/SLv</th>
+                                <th style="text-align:right;">ふるり値</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fururiRankingBody">
+                            <tr><td colspan="3" style="text-align:center;padding:24px;color:#A4AAB0;">データを読み込み中...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
+
+            <p style="margin:4px 2px 0 2px;font-size:11px;color:#A4AAB0;line-height:1.5;">⚠️ ふるり値は育成効率を可視化する参考指標です。属性担当・締め凸・戦闘時間などの条件差は考慮されません。過去の自分との比較に役立ててください。</p>
         </div>
     </div>
 
@@ -8425,9 +8442,10 @@
                 const rankDisp = player.rank <= 3
                     ? ['🥇', '🥈', '🥉'][player.rank - 1]
                     : `<span class="rank-other">#${player.rank}</span>`;
+                const rankRowClass = player.rank <= 3 ? `rank-row-${player.rank}` : '';
 
                 return `
-                    <tr onclick="showPlayerDetails('${player.player.replace(/'/g, "\\'")}')">
+                    <tr class="${rankRowClass}" onclick="showPlayerDetails('${player.player.replace(/'/g, "\\'")}')">
                         <td class="rank rank-${player.rank <= 3 ? player.rank : 'other'}">${rankDisp}</td>
                         <td><strong>${player.player}</strong></td>
                         <td>
@@ -8476,7 +8494,7 @@
         function toggleStats() {
             statsOpen = !statsOpen;
             document.getElementById('statsGrid').style.display = statsOpen ? 'grid' : 'none';
-            document.getElementById('statsToggleText').textContent = statsOpen ? '結果まとめを閉じる' : '結果まとめを展開';
+            document.getElementById('statsToggleText').textContent = statsOpen ? '結果まとめ' : '結果まとめ';
             document.getElementById('statsToggleArrow').textContent = statsOpen ? '▲' : '▼';
         }
 
