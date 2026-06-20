@@ -619,12 +619,13 @@ window.supabaseGetActiveFinishCoordinations = async function () {
 window.supabaseSetMyFinishCoordination = async function (playerId, opts = {}) {
     if (!playerId) throw new Error('playerId 必須');
     const expires = new Date(Date.now() + _FINISH_COORD_TTL_MIN * 60_000).toISOString();
-    const status = (opts.status === 'available') ? 'available' : 'coordinating';
+    const valid = new Set(['available', 'practicing', 'coordinating']);
+    const status = valid.has(opts.status) ? opts.status : 'coordinating';
     const row = {
         player_id: playerId,
         status,
-        boss_number: status === 'available' ? null : (opts.bossNumber || null),
-        attribute: status === 'available' ? null : (opts.attribute || null),
+        boss_number: status === 'coordinating' ? (opts.bossNumber || null) : null,
+        attribute: status === 'coordinating' ? (opts.attribute || null) : null,
         note: (opts.note || '').slice(0, 120),
         expires_at: expires,
         updated_at: new Date().toISOString(),

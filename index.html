@@ -1277,6 +1277,189 @@
         }
         .tour-guide-launcher:hover { background: var(--md-sys-color-surface-variant); }
 
+        /* ===== ClaudeDesign 準拠 マイページ ===== */
+        @keyframes dcLivePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
+        @keyframes dcFadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes dcSheetUp { from{transform:translateY(102%)} to{transform:translateY(0)} }
+        @keyframes dcFlameFlicker {
+            0%,100% { opacity:.5;  transform:scaleY(1)    }
+            25%     { opacity:.9;  transform:scaleY(1.12) }
+            50%     { opacity:.45; transform:scaleY(.94)  }
+            75%     { opacity:.95; transform:scaleY(1.08) }
+        }
+
+        /* tab-mypage 専用 マーブル背景 */
+        #tab-mypage.tab-content.active {
+            background:
+                radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
+                radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
+                linear-gradient(125deg, transparent 45%, rgba(20,22,26,0.022) 47%, transparent 49%),
+                radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
+            min-height: 100vh;
+        }
+        #tab-mypage .container {
+            display: flex; flex-direction: column; gap: 14px;
+            padding: 16px 16px 80px;
+        }
+        .dc-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 10px 26px rgba(20,22,26,0.06);
+            border: 1px solid rgba(20,22,26,0.045);
+        }
+        .dc-profile-card { position: relative; }
+
+        /* ステータス切替 3ボタン (soft-fill) */
+        .dc-status-btn {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            gap: 6px; height: 44px; border-radius: 12px; cursor: pointer;
+            font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.3px;
+            border: 1px solid transparent; background: #F1F2F4; color: #A4AAB0;
+            -webkit-tap-highlight-color: transparent;
+            transition: all .15s ease;
+        }
+        .dc-status-btn[data-active="1"] {
+            background: var(--_color, #14161A) 14;     /* fallback handled via JS */
+        }
+        .dc-status-btn[disabled] { opacity: .9; cursor: not-allowed; }
+
+        /* MY設定 行 */
+        .dc-setting-row {
+            display: flex; align-items: center; gap: 13px;
+            padding: 13px 8px; cursor: pointer; border-top: 1px solid #F0F1F3;
+            -webkit-tap-highlight-color: transparent;
+            transition: background .12s ease;
+        }
+        .dc-setting-row:hover { background: #FAFBFC; }
+        .dc-setting-icon {
+            width: 34px; height: 34px; border-radius: 9px;
+            background: #F1F2F4; display: flex; align-items: center; justify-content: center; font-size: 16px;
+            flex: none;
+        }
+
+        /* マイページ専用 模擬戦パネル */
+        .dc-dmg-panel {
+            flex: 1; min-width: 0;
+            display: flex; flex-direction: column; align-items: center; gap: 7px;
+            padding: 4px 2px;
+            cursor: pointer;
+            background: transparent; border: none;
+            transition: transform 0.1s ease;
+        }
+        .dc-dmg-panel:hover { transform: translateY(-1px); }
+        .dc-dmg-chip {
+            width: 24px; height: 24px; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 900; color: #fff;
+        }
+        .dc-dmg-value {
+            font-size: 13px; font-weight: 800; color: #14161A;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.3px;
+        }
+        .dc-dmg-value.empty { color: #C9CED3; font-size: 14px; }
+        .dc-dmg-unit { font-size: 9px; color: #A4AAB0; margin-left: 1px; }
+
+        /* マイページ ボスタイル (戦闘) */
+        .dc-boss-tile {
+            flex: 1; min-width: 0; position: relative; cursor: pointer;
+            height: 72px; border-radius: 13px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 6px;
+            background: #F1F2F4; border: 1.5px solid transparent;
+            color: #A4AAB0;
+            transition: all .18s ease; overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dc-boss-tile[data-selected="1"] {
+            background: #FFF5F5; border-color: #FF3D44; color: #14161A;
+            box-shadow: 0 8px 18px rgba(255,61,68,0.20);
+            transform: translateY(-3px);
+        }
+        .dc-boss-tile[data-fighting="1"]::before {
+            content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 50px;
+            background: radial-gradient(58% 100% at 50% 100%, rgba(255,170,40,0.95), rgba(255,61,68,0.55) 46%, transparent 76%);
+            filter: blur(2px); transform-origin: bottom;
+            animation: dcFlameFlicker .85s ease-in-out infinite; z-index: 1;
+        }
+
+        /* ボトムシート モーダル (マイページ専用モーダル群) */
+        #myAvailModal.player-select-modal.open,
+        #myPushModal.player-select-modal.open,
+        #myStrongAttrsModal.player-select-modal.open {
+            align-items: flex-end !important;
+            padding: 0 !important;
+        }
+        #myAvailModal .player-select-content,
+        #myPushModal .player-select-content,
+        #myStrongAttrsModal .player-select-content {
+            border-radius: 24px 24px 0 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            max-height: 82vh !important;
+            padding: 8px 18px 40px !important;
+            box-shadow: 0 -10px 44px rgba(0,0,0,0.22) !important;
+            animation: dcSheetUp .3s cubic-bezier(.2,.9,.2,1);
+        }
+        #myAvailModal .player-select-content::before,
+        #myPushModal .player-select-content::before,
+        #myStrongAttrsModal .player-select-content::before {
+            content: ""; display: block;
+            width: 40px; height: 5px; border-radius: 99px;
+            background: #E1E3E7;
+            margin: 6px auto 14px;
+        }
+
+        /* ===== マイページ: ステータス切替 3ボタン ===== */
+        #mypageStatusSwitcher button.status-btn {
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+        }
+        #mypageStatusSwitcher button.status-btn:not([disabled]):hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        #mypageStatusSwitcher button.status-btn[disabled] {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        /* ===== マイページ: 模擬戦データ 5属性パネル ===== */
+        .dmg-panel:hover {
+            transform: translateY(-2px);
+            border-color: var(--brand-primary) !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+        }
+        .dmg-panel:active { transform: translateY(0); }
+
+        /* ===== マイページ: MY設定 ボタン ===== */
+        .my-setting-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 12px 14px; border-radius: 10px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+        }
+        .my-setting-btn:hover {
+            background: var(--md-sys-color-surface-variant);
+            border-color: var(--brand-primary);
+            transform: translateY(-1px);
+        }
+        .my-setting-btn:active { transform: translateY(0); }
+
+        /* ===== details の三角マーカーを置き換え ===== */
+        details > summary { user-select: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .details-marker { transform: rotate(90deg); }
+        .details-marker {
+            display: inline-block;
+            transition: transform 0.15s ease;
+            font-size: 10px;
+            color: var(--brand-primary);
+        }
+
         /* ===== ボス戦闘中アニメーション (締め凸調整中の人がいる時) ===== */
         .boss-in-combat {
             position: relative;
@@ -1450,26 +1633,53 @@
         </div>
     </nav>
 
-    <!-- ========== Tab: マイページ ========== -->
+    <!-- ========== Tab: マイページ (再構築版) ========== -->
     <div id="tab-mypage" class="tab-content">
         <div class="container">
-            <div class="card" style="padding: 24px; margin-bottom: 20px;">
-                <div style="display:flex; align-items:center; gap:14px; margin-bottom:6px;">
-                    <div id="mypageAvatarFrame" onclick="openAvatarEditModal()" title="クリックでアバター変更" style="position:relative;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary),0 4px 12px rgba(112,144,168,0.25);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;overflow:hidden;flex-shrink:0;">
-                        <span id="mypageAvatarFallback">👤</span>
-                        <img id="mypageAvatarImg" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
-                        <span style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-radius:50%;background:var(--brand-primary);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.2);">✏️</span>
+            <!-- ① プロフィール: ClaudeDesign 準拠 (シルバーリング + 名前/Lv + 得意属性チップ + 編集ピル + soft-fill 切替) -->
+            <div class="dc-card dc-profile-card">
+                <div style="display:flex;gap:14px;align-items:flex-start;position:relative;">
+                    <!-- avatar (gradient silver ring) -->
+                    <div id="mypageAvatarFrame" onclick="openAvatarEditModal()" title="クリックでアバター変更" style="position:relative;flex:none;width:78px;height:78px;cursor:pointer;">
+                        <div style="width:78px;height:78px;border-radius:50%;padding:3px;box-sizing:border-box;background:linear-gradient(140deg,#fcfdfe,#bfc4cc 48%,#eef1f4);box-shadow:0 3px 10px rgba(20,22,26,0.16);">
+                            <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, #565c64, #2a2e34);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                                <span id="mypageAvatarFallback" style="font-size:26px;color:#fff;">👤</span>
+                                <img id="mypageAvatarImg" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+                            </div>
+                        </div>
+                        <span style="position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);background:#14161A;color:#fff;font-size:9px;font-weight:800;letter-spacing:0.4px;padding:3px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 7px rgba(0,0,0,0.28);">変更</span>
                     </div>
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">現在のプレイヤー</div>
-                        <div id="mypageName" style="font-size:20px;font-weight:700;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;">未選択</div>
+                    <!-- info -->
+                    <div style="flex:1;min-width:0;padding-top:1px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div id="mypageName" style="font-size:19px;font-weight:900;letter-spacing:0.2px;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">未選択</div>
+                            <div id="mypageLevelChip" style="font-size:11px;font-weight:800;color:#9AA0A6;display:none;">Lv.—</div>
+                        </div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:2px;letter-spacing:0.2px;">指揮官</div>
+                        <div style="margin-top:12px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                <div style="font-size:9.5px;font-weight:800;letter-spacing:1.4px;color:#B6BBC1;">得意属性</div>
+                                <button onclick="openMyStrongAttrsModal()" style="border:none;background:transparent;font-size:11px;font-weight:700;color:#8A9097;cursor:pointer;padding:0;">編集</button>
+                            </div>
+                            <div id="mypageStrongAttrsDisplay" style="display:flex;gap:7px;"></div>
+                        </div>
                     </div>
-                    <button onclick="openPlayerSelectModal()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">変更</button>
+                    <!-- top-right 編集 pill (player select) -->
+                    <div onclick="openPlayerSelectModal()" title="プレイヤー変更" style="position:absolute;top:0;right:0;display:flex;align-items:center;gap:4px;background:#F1F2F4;color:#6B7178;font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;cursor:pointer;"><span style="font-size:12px;">👤</span> 切替</div>
                 </div>
-                <p style="margin:8px 0 0 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">この設定はあなたのブラウザにのみ保存されます。別の端末では再度選択が必要です。</p>
-                <div style="margin-top:12px;">
-                    <button class="tour-guide-launcher" onclick="startTour()">🎓 はじめての方ガイド</button>
+                <!-- ステータス切替 3ボタン (soft-fill) -->
+                <div id="mypageStatusSwitcher" style="display:flex;gap:8px;margin-top:18px;">
+                    <button data-status="available"    data-color="#18C26B" onclick="handleMyStatusSwitch('available')"    class="dc-status-btn">
+                        <span style="font-size:14px;">🎮</span> オンライン
+                    </button>
+                    <button data-status="practicing"   data-color="#2E8BFF" onclick="handleMyStatusSwitch('practicing')"   class="dc-status-btn">
+                        <span style="font-size:14px;">⚔</span> 模擬中
+                    </button>
+                    <button data-status="coordinating" data-color="#FF3D44" onclick="handleMyStatusSwitch('coordinating')" class="dc-status-btn" disabled title="戦闘中はボス選択時に自動でONになります">
+                        <span style="font-size:14px;">🛡</span> 戦闘中
+                    </button>
                 </div>
+                <p id="mypageStatusHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;">プレイヤーを選択してください。</p>
             </div>
 
             <!-- アバター編集モーダル -->
@@ -1496,40 +1706,25 @@
                 </div>
             </div>
 
-            <div class="card" style="padding:20px;">
-                <h3 style="margin:0 0 12px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">📊 あなたの最新シーズン情報</h3>
-                <div id="mypageStats">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択するとここに最新シーズンの参加状況・凸履歴が表示されます。</p>
+            <!-- ② 模擬戦データ (横一列 5属性パネル + 折りたたみレーダー) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:15px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">模擬戦データ</div>
+                    <label style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#B6BBC1;cursor:pointer;font-weight:700;">
+                        📷 OCR
+                        <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
+                    </label>
                 </div>
-            </div>
+                <div id="mypageDmgPanels" style="display:flex;gap:6px;">
+                    <p style="flex:1;color:#A4AAB0;font-size:12px;text-align:center;padding:14px 0;">プレイヤーを選択すると表示されます。</p>
+                </div>
+                <p id="mypageDmgOcrStatus" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;">&nbsp;</p>
 
-            <!-- 受け取った通知 (Push通知履歴) -->
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">📨 受け取った通知</h3>
-                    <button onclick="renderMyNotificationsInbox(getCurrentIdentity())" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 更新</button>
-                </div>
-                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">通知をスマホで開いたあとも、ここから本文を確認できます。自分宛または全員宛の通知が新しい順に並びます。</p>
-                <div id="mypageNotificationsInbox">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>
-                </div>
-            </div>
-
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">💥 属性別 出せるダメージ（PT属性）</h3>
-                    <span id="mypageDmgStatus" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
-                </div>
-                <p style="margin:0 0 8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">
-                    各PT属性で出せる想定ダメージ（B単位）を登録。締め凸候補・最適凸プラン算出に使われます。<br>
-                    入力後フィールドからフォーカスを外す（タップ・Tab）と自動保存されます。
-                </p>
-
-                <!-- 5属性ふるり値レーダーチャート -->
-                <div id="mypageRadarWrap" style="margin:10px 0 14px 0;padding:12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
+                <div onclick="toggleMypageRadar()" id="mypageRadarToggle" style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ レーダーチャートを表示</div>
+                <div id="mypageRadarWrap" style="display:none;margin-top:10px;padding:12px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.03);">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                        <strong style="font-size:13px;">🕸️ あなたの属性別ふるり値</strong>
-                        <span id="mypageRadarMeta" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</span>
+                        <strong style="font-size:13px;color:#14161A;">あなたの属性別ふるり値</strong>
+                        <span id="mypageRadarMeta" style="font-size:11px;color:#A4AAB0;">&nbsp;</span>
                     </div>
                     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
                         <button id="mypageRadarModeBtnClassic" onclick="switchMyRadarMode('classic')" class="sim-mode-btn active" style="padding:5px 10px;font-size:11px;">対ふるり</button>
@@ -1539,117 +1734,143 @@
                     <div style="position:relative;max-width:360px;margin:0 auto;">
                         <canvas id="mypageRadarChart"></canvas>
                     </div>
-                    <p id="mypageRadarHint" style="margin:8px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">プレイヤーを選択するとふるり値が表示されます。</p>
+                    <p id="mypageRadarHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;">プレイヤーを選択するとふるり値が表示されます。</p>
                 </div>
-
-                <!-- 締め凸時の手動最高スコア登録の案内 -->
-                <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:10px;background:var(--md-sys-color-surface-variant);border-left:4px solid #f59e0b;border-radius:8px;">
-                    <span style="font-size:18px;flex-shrink:0;">💡</span>
-                    <p style="margin:0;font-size:12px;line-height:1.5;color:var(--md-sys-color-on-surface);">
-                        本番で <strong>締め凸</strong> を行った属性は、実ダメージが本来の出力より低く記録されることがあります。<br>
-                        その場合は、模擬戦などで出した <strong>本来のベスト出力</strong> を下の欄に上書きしてください。グラフと最適凸プランに反映されます。
-                    </p>
-                </div>
-
-                <!-- 模擬戦/凸結果画像から自動登録 -->
-                <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);margin-bottom:10px;">
-                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                        <span style="font-size:18px;">📷</span>
-                        <span style="flex:1;">模擬戦/凸結果のスクショから自動登録（複数枚OK: TOTAL DAMAGE画面と戦闘履歴を両方送ると編成まで取得・属性自動判別）</span>
-                        <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
-                        <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
-                    </label>
-                    <p id="mypageDmgOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
-                </div>
-
-                <div id="mypageDmgInputs">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると入力欄が表示されます。</p>
-                </div>
+                <div id="mypageDmgInputs" style="display:none;"></div>
             </div>
 
-            <!-- 🎯 次の凸 - ボスをタップして戦闘準備 -->
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">🎯 次の凸 (ボスをタップ)</h3>
-                    <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">タップ → 戦闘準備 → 終わったら報告</span>
+            <!-- ③ 戦闘 (ゲート → ボス選択 → 戦闘中) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">戦闘</div>
+                    <div id="mypageBattleLive" style="display:none;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#FF3D44;">
+                        <span style="width:7px;height:7px;border-radius:50%;background:#FF3D44;animation:dcLivePulse 1s ease-in-out infinite;"></span>LIVE
+                    </div>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">凸を始める時にボスをタップしてください。他メンバーに「あなたが戦闘中」が共有され、二重凸を防ぎます。</p>
-                <div id="mypageNextAttackBosses" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;">
-                    <p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択するとボス一覧が表示されます。</p>
-                </div>
-            </div>
 
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚔️ 今日の凸報告</h3>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button id="myAttackAddBtn" onclick="openMyAttackModal()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">＋ 凸を報告</button>
-                        <label style="padding:8px 12px;border-radius:8px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
-                            <span style="font-size:14px;">📷</span>
-                            BlaBlaLINK 3凸まとめ報告
+                <!-- Gate -->
+                <div id="mypageBattleGate" onclick="enterBattleGate()" style="display:flex;align-items:center;justify-content:center;gap:9px;height:54px;border-radius:14px;background:linear-gradient(180deg,#23262C,#14161A);color:#fff;font-size:16px;font-weight:800;letter-spacing:0.5px;cursor:pointer;box-shadow:0 8px 20px rgba(20,22,26,0.22);">
+                    <span style="color:#FF6B70;font-size:18px;">⚔</span> 戦闘に入る
+                </div>
+
+                <!-- Boss grid (hidden until gate is opened) -->
+                <div id="mypageBattleExpanded" style="display:none;">
+                    <div style="font-size:11px;color:#9AA0A6;font-weight:700;margin-bottom:9px;letter-spacing:0.3px;">ボスを選択</div>
+                    <div id="mypageNextAttackBosses" style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <p style="flex:1;color:#A4AAB0;font-size:12px;text-align:center;">プレイヤーを選択するとボス一覧が表示されます。</p>
+                    </div>
+                    <div id="mypageBattleInProgressBar" style="display:none;margin-top:14px;align-items:center;gap:9px;background:rgba(255,61,68,0.06);border:1px solid rgba(255,61,68,0.22);color:#E23036;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:800;">
+                        <span style="font-size:15px;">🔥</span><span id="mypageBattleTargetLabel">B? と交戦中</span>
+                    </div>
+                    <div id="mypageBattleActions" style="display:none;gap:8px;margin-top:12px;">
+                        <button onclick="openMyAttackModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:50px;border-radius:13px;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;border:none;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span style="font-size:15px;">📷</span> 結果を報告</button>
+                        <button onclick="releaseBattleGate()" style="flex:none;width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:50px;border-radius:13px;background:#F1F2F4;color:#6B7178;font-size:14px;font-weight:800;cursor:pointer;border:none;"><span style="font-size:14px;">⏪</span> 解除</button>
+                    </div>
+                    <div id="mypageBattleCloseBar" style="display:flex;justify-content:flex-end;margin-top:10px;">
+                        <button onclick="releaseBattleGate()" style="border:none;background:transparent;color:#9AA0A6;font-size:11px;font-weight:700;cursor:pointer;padding:4px 8px;">× 閉じる</button>
+                    </div>
+                </div>
+
+                <!-- 凸報告履歴 -->
+                <div id="myAttackListWrap" style="margin-top:14px;border-top:1px solid #F0F1F3;padding-top:12px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">本日の凸履歴</div>
+                        <label style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#B6BBC1;cursor:pointer;font-weight:700;">
+                            📷 BlaBlaLINK 3凸
                             <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
                         </label>
                     </div>
-                </div>
-                <p style="margin:0 0 8px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">📷 緊急用: BlaBlaLINK 拡張の「自分の凸一覧画面」スクショから3凸分を一括登録。<br>※ボス残HPはリアルタイム同期されません。別途BlaBlaLINK 進捗画像をユニレ管理から取り込んでください。</p>
-                <div id="myAttackList">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択するとここに凸履歴が表示されます。</p>
-                </div>
-            </div>
-
-            <!-- 締め凸調整 / 協力可能 ステータス -->
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin:0;font-size:16px;font-weight:600;">📣 ステータス (協力 / 調整)</h3>
-                    <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">30分で自動失効</span>
-                </div>
-                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);"><strong>🎮 今オンライン</strong> = ゲーム起動中で締め凸に協力できます<br><strong>📣 調整中</strong> = 私がこの属性/ボスをまとめて締めます。他メンバーは下の一覧を見て競合を避けられます。</p>
-                <div id="mypageCoordSelf" style="margin-bottom:14px;">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
-                    <h4 style="margin:0;font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface-variant);">📋 現在 オンライン / 調整中</h4>
-                    <span id="mypageCoordRefresh" style="font-size:10px;color:var(--md-sys-color-outline-variant);">最終取得: -</span>
-                </div>
-                <div id="mypageCoordActiveList">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+                    <div id="myAttackList">
+                        <p style="color:#A4AAB0;font-size:12px;">凸報告履歴がここに表示されます。</p>
+                    </div>
+                    <button id="myAttackAddBtn" onclick="openMyAttackModal()" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;border:1px dashed rgba(20,22,26,0.15);background:transparent;color:#6B7178;font-size:12px;font-weight:700;cursor:pointer;">＋ 手動で凸を報告</button>
                 </div>
             </div>
 
-            <!-- 得意属性 -->
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">⚔️ 得意属性</h3>
-                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
-                <div id="mypageStrongAttrs" style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>
+            <!-- ④ 受け取った通知 -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📨 受け取った通知</div>
+                    <button onclick="renderMyNotificationsInbox(getCurrentIdentity())" style="background:transparent;border:none;font-size:11px;font-weight:700;color:#8A9097;cursor:pointer;">🔄 更新</button>
                 </div>
-                <p id="mypageStrongAttrsMessage" style="margin:6px 0 0 0;font-size:12px;min-height:14px;"></p>
+                <div id="mypageNotificationsInbox">
+                    <p style="color:#A4AAB0;font-size:12px;">プレイヤーを選択すると履歴が表示されます。</p>
+                </div>
             </div>
 
-            <!-- 通知受信可能時間 -->
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">🕐 通知受信可能時間</h3>
-                <p style="margin:0 0 8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">通知を受け取りたい時間帯を選択。締め凸候補通知などは指定した時間帯にいる人だけに配信されます。全部OFFにすると通知は来ません。<br>※運営が「全員に送信」した場合や緊急通知はこの設定を無視して届きます。</p>
-                <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:6px;"></div>
-                <p id="mypageAvailMessage" style="margin:6px 0 0 0;font-size:12px;min-height:14px;"></p>
+            <!-- ⑤ MY設定 (リスト行スタイル) -->
+            <div class="dc-card" style="padding:8px 8px 6px;">
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
+                <div onclick="openMyAvailModal()" class="dc-setting-row">
+                    <div class="dc-setting-icon">🕐</div>
+                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">通知受信可能時間</div>
+                    <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
+                </div>
+                <div onclick="openMyPushModal()" class="dc-setting-row">
+                    <div class="dc-setting-icon">🔔</div>
+                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">Push通知設定</div>
+                    <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
+                </div>
+                <div onclick="openMyStrongAttrsModal()" class="dc-setting-row">
+                    <div class="dc-setting-icon">⚔</div>
+                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">得意属性</div>
+                    <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
+                </div>
+                <div onclick="openAvatarEditModal()" class="dc-setting-row">
+                    <div class="dc-setting-icon">🖼</div>
+                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">アバターを変更</div>
+                    <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
+                </div>
+                <div onclick="startTour()" class="dc-setting-row">
+                    <div class="dc-setting-icon">🎓</div>
+                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">はじめての方ガイド</div>
+                    <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
+                </div>
             </div>
 
-            <!-- Push通知設定 -->
-            <div class="card" style="padding:20px;margin-top:20px;">
-                <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">🔔 Push通知設定</h3>
-                <p style="margin:0 0 12px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">締め凸候補や運営からのお知らせをスマホに通知。<br><strong>iPhoneの場合</strong>はSafariで開いて「ホーム画面に追加」してから設定が必要です。</p>
-                <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
-                <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-                <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+            <!-- 後方互換 (描画しない隠し要素): 旧 ID 参照を保護 -->
+            <div id="mypageStats" style="display:none;"></div>
+            <div id="mypageCoordSelf" style="display:none;"></div>
+            <div id="mypageCoordActiveList" style="display:none;"></div>
+            <div id="mypageStrongAttrs" style="display:none;"></div>
+            <p id="mypageStrongAttrsMessage" style="display:none;"></p>
+
+            <!-- MY設定 内容用のモーダル群 -->
+            <div class="player-select-modal" id="myAvailModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2>🕐 通知受信可能時間</h2>
+                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">通知を受け取りたい時間帯を選択。締め凸候補通知などは指定した時間帯にいる人だけに配信されます。<br>※運営の「全員に送信」「緊急通知」はこの設定を無視して届きます。</p>
+                    <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
             </div>
 
-            <div class="card" style="padding:20px;margin-top:20px;opacity:0.55;">
-                <h3 style="margin:0 0 8px 0;font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);">🔜 これから追加予定の機能</h3>
-                <ul style="margin:6px 0 0 18px;padding:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.7;">
-                    <li>属性別ダメージ登録（Phase 2b）</li>
-                    <li>凸報告（手動入力 / 画像OCR）（Phase 2c）</li>
-                    <li>締め凸通知のPush受信設定（Phase 6）</li>
-                </ul>
+            <div class="player-select-modal" id="myPushModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2>🔔 Push通知設定</h2>
+                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">締め凸候補や運営からのお知らせをスマホに通知。<strong>iPhone</strong>の場合は Safari で「ホーム画面に追加」してから設定が必要です。</p>
+                    <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
+                    <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                    <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
+            </div>
+
+            <div class="player-select-modal" id="myStrongAttrsModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2>⚔ 得意属性</h2>
+                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
+                    <div id="mypageStrongAttrsModalBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+                    <p id="mypageStrongAttrsModalMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
             </div>
         </div>
     </div>
@@ -2852,7 +3073,14 @@
                 <h2 id="myTeamEditTitle">✏️ 編成編集</h2>
                 <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">この属性で使う5キャラを登録します。テキストで直接入力するか、戦闘履歴画像から OCR で自動入力できます。</p>
+            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。</p>
+
+            <!-- ダメージ入力 -->
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
+                <label for="myTeamEditDamage" style="font-size:13px;font-weight:600;flex:1;">💥 ベストダメージ (B)</label>
+                <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
+                <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
+            </div>
 
             <!-- 画像取り込み -->
             <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
@@ -3583,54 +3811,162 @@
         function renderMyPage() {
             const id = getCurrentIdentity();
             const nameEl = document.getElementById('mypageName');
-            const statsEl = document.getElementById('mypageStats');
-            const dmgEl = document.getElementById('mypageDmgInputs');
+            const hintEl = document.getElementById('mypageStatusHint');
             if (!id?.name) {
                 nameEl.textContent = '未選択';
-                statsEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">右上の <strong>👤 プレイヤー未選択</strong> から自分の名前を選んでください。</p>';
-                if (dmgEl) dmgEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると入力欄が表示されます。</p>';
+                if (hintEl) hintEl.textContent = '右上の 👤 プレイヤー未選択 から自分の名前を選んでください。';
+                renderMypageStrongAttrsBadge(null);
+                renderMyDamagePanels(null);
+                _refreshMyStatusSwitcher(null);
                 return;
             }
             nameEl.textContent = id.name;
-            renderMyDamageInputs(id);
+            renderMyDamagePanels(id);
             renderMyAttacks(id);
-            renderMyAvailabilitySettings(id);
-            renderMyPushSettings(id);
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
             renderMyNextAttackBosses(id);
-            renderMyStrongAttrs(id);
+            renderMypageStrongAttrsBadge(id);
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
-            // 最新シーズン (currentData) から該当プレイヤーを引く
-            const me = (currentData || []).find(p => p.player === id.name);
-            if (!me) {
-                statsEl.innerHTML = `<p style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">今月（${currentMonthKey || '?'}）のシーズンには参加データが登録されていません。</p>`;
-                return;
+        }
+
+        // ========== プロフィール: 得意属性 5チップ (ON=色塗り / OFF=ソフト色) ==========
+        // ClaudeDesign 仕様: 5属性すべて表示し、得意な属性は塗り、それ以外はソフト
+        const DC_ATTR_LABELS = { fire:'火', water:'水', electric:'電', iron:'鉄', wind:'風' };
+        const DC_ATTR_COLORS = { fire:'#FF3D44', water:'#2E8BFF', electric:'#9B4DFF', iron:'#FF8A2B', wind:'#18C26B' };
+        async function renderMypageStrongAttrsBadge(identity) {
+            const el = document.getElementById('mypageStrongAttrsDisplay');
+            if (!el) return;
+            const attrs = new Set();
+            if (identity?.id) {
+                try {
+                    const list = await ensureAllPlayersLoaded();
+                    const me = (list || []).find(p => p.id === identity.id);
+                    (me?.strong_attributes || []).forEach(a => attrs.add(a));
+                } catch { /* noop */ }
             }
-            const attackCount = me.attacks.length;
-            const totalB = (me.damage / 1e9).toFixed(2);
-            const attacksHtml = me.attacks.length > 0
-                ? me.attacks.map((a, i) => `<li style="margin:4px 0;">${i+1}凸目: ${a.bossType || a.bossCode} — ${(a.damage/1e9).toFixed(2)}B</li>`).join('')
-                : '<li style="color:var(--md-sys-color-on-surface-variant);">凸記録なし</li>';
-            statsEl.innerHTML = `
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
-                    <div style="padding:10px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
-                        <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">凸数</div>
-                        <div style="font-size:18px;font-weight:700;">${attackCount}/3</div>
-                    </div>
-                    <div style="padding:10px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
-                        <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">合計ダメージ</div>
-                        <div style="font-size:18px;font-weight:700;">${totalB} B</div>
-                    </div>
-                    <div style="padding:10px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
-                        <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">SLv</div>
-                        <div style="font-size:18px;font-weight:700;">${me.syncLevel || '-'}</div>
-                    </div>
-                </div>
-                <h4 style="font-size:13px;font-weight:600;margin:0 0 4px 0;color:var(--md-sys-color-on-surface);">凸履歴</h4>
-                <ul style="margin:0;padding-left:18px;font-size:13px;color:var(--md-sys-color-on-surface);">${attacksHtml}</ul>
-            `;
+            el.innerHTML = PT_ATTRS.map(a => {
+                const on = attrs.has(a.key);
+                const c = DC_ATTR_COLORS[a.key] || '#A4AAB0';
+                const label = DC_ATTR_LABELS[a.key] || a.name.charAt(0);
+                if (on) {
+                    return `<div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;background:${c};box-shadow:0 3px 8px ${c}59,inset 0 1px 0 rgba(255,255,255,0.3);">${label}</div>`;
+                }
+                return `<div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:${c};background:${c}1F;">${label}</div>`;
+            }).join('');
+        }
+
+        // ========== プロフィール: ステータス切替 (3ボタン) ==========
+        async function handleMyStatusSwitch(targetStatus) {
+            const id = getCurrentIdentity();
+            if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
+            const hintEl = document.getElementById('mypageStatusHint');
+            try {
+                const cur = _coordSelfCache?.status || null;
+                // 同じ状態をもう一度押したら解除
+                if (cur === targetStatus) {
+                    await window.supabaseClearMyFinishCoordination(id.id);
+                    showNotification('🛑 ステータスを解除しました');
+                } else if (targetStatus === 'coordinating') {
+                    // 戦闘中はボス選択経由で自動的に入るので、ここでは「戦闘」セクションへ誘導
+                    if (hintEl) hintEl.textContent = '⬇ 戦闘セクションでボスをタップしてください';
+                    return;
+                } else {
+                    await window.supabaseSetMyFinishCoordination(id.id, { status: targetStatus });
+                    showNotification(targetStatus === 'available' ? '🎮 オンラインにしました (30分)' : '⚔ 模擬中にしました (30分)');
+                }
+                await _refreshCoordOnce(id);
+            } catch (e) {
+                showNotification(`❌ ${e?.message || e}`);
+            }
+        }
+
+        // 切替ボタンに「選択中」スタイルを当てる + ヒント文を更新 (ClaudeDesign soft-fill)
+        function _refreshMyStatusSwitcher(identity) {
+            const buttons = document.querySelectorAll('#mypageStatusSwitcher button.dc-status-btn');
+            const me = _coordSelfCache;
+            const cur = me?.status || null;
+            buttons.forEach(btn => {
+                const st = btn.dataset.status;
+                const c = btn.dataset.color || '#14161A';
+                const active = (cur === st);
+                if (active) {
+                    btn.style.background = c + '14';                // soft fill (8% alpha)
+                    btn.style.color = c;
+                    btn.style.border = '1px solid ' + c + '4D';
+                    btn.style.boxShadow = 'inset 0 0 0 1px ' + c + '1F';
+                } else {
+                    btn.style.background = '#F1F2F4';
+                    btn.style.color = '#A4AAB0';
+                    btn.style.border = '1px solid transparent';
+                    btn.style.boxShadow = 'none';
+                }
+            });
+            // 戦闘中ライブインジケーター
+            const liveEl = document.getElementById('mypageBattleLive');
+            if (liveEl) liveEl.style.display = (cur === 'coordinating') ? 'flex' : 'none';
+            // 戦闘中ならゲートを自動展開
+            if (cur === 'coordinating') {
+                const gate = document.getElementById('mypageBattleGate');
+                const expanded = document.getElementById('mypageBattleExpanded');
+                if (gate) gate.style.display = 'none';
+                if (expanded) expanded.style.display = 'block';
+            }
+
+            const hintEl = document.getElementById('mypageStatusHint');
+            if (!hintEl) return;
+            if (!identity?.id) {
+                hintEl.textContent = 'プレイヤーを選択してください。';
+            } else if (cur === 'coordinating') {
+                const ctx = _activeSeasonCache;
+                const b = (ctx?.bosses || []).find(x => x.boss_number === me?.boss_number);
+                const bossLabel = b ? `B${b.boss_number} ${b.name || b.boss_code}` : '戦闘中';
+                hintEl.textContent = `🛡 ${bossLabel} に挑戦中`;
+            } else if (cur === 'practicing') {
+                hintEl.textContent = '⚔ 模擬中 — 他メンバーから「練習中」が見えます';
+            } else if (cur === 'available') {
+                hintEl.textContent = '🎮 オンライン — 締め凸の協力依頼が届きます';
+            } else {
+                hintEl.textContent = 'タップでステータスを切り替え (もう一度押すと解除)';
+            }
+        }
+
+        // ========== マイページ: MY設定 ==========
+        // ⚙ アイコンタップ: ページ末尾の「MY設定」ボタン群にスムーススクロール
+        function openMySettingsModal() {
+            const buttons = document.querySelectorAll('#tab-mypage .my-setting-btn');
+            if (buttons.length > 0) {
+                buttons[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                buttons[0].focus({ preventScroll: true });
+            }
+        }
+        function openMyAvailModal() {
+            const id = getCurrentIdentity();
+            if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
+            document.getElementById('myAvailModal').classList.add('open');
+            renderMyAvailabilitySettings(id);
+        }
+        function closeMyAvailModal() { document.getElementById('myAvailModal').classList.remove('open'); }
+
+        function openMyPushModal() {
+            const id = getCurrentIdentity();
+            if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
+            document.getElementById('myPushModal').classList.add('open');
+            renderMyPushSettings(id);
+        }
+        function closeMyPushModal() { document.getElementById('myPushModal').classList.remove('open'); }
+
+        function openMyStrongAttrsModal() {
+            const id = getCurrentIdentity();
+            if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
+            document.getElementById('myStrongAttrsModal').classList.add('open');
+            renderMyStrongAttrs(id);
+        }
+        function closeMyStrongAttrsModal() {
+            document.getElementById('myStrongAttrsModal').classList.remove('open');
+            // 閉じたタイミングでプロフィール側のバッジを更新
+            renderMypageStrongAttrsBadge(getCurrentIdentity());
         }
 
         // ========== マイページ: 属性別ダメージ登録 ==========
@@ -3641,6 +3977,56 @@
             { key: 'iron',     name: '鉄甲', icon: './属性アイコン/鉄甲.png', bossJP: '電撃', color: '#FF9500' },
             { key: 'wind',     name: '風圧', icon: './属性アイコン/風圧.png', bossJP: '鉄甲', color: '#34C759' },
         ];
+
+        // 横一列 5属性パネル: タップで編成 + ダメージ編集モーダルを開く
+        async function renderMyDamagePanels(identity) {
+            const el = document.getElementById('mypageDmgPanels');
+            if (!el) return;
+            if (!identity?.id) {
+                el.innerHTML = '<p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると表示されます。</p>';
+                return;
+            }
+            let damages = [];
+            try {
+                damages = await window.supabaseLoadPlayerDamages(identity.id);
+            } catch (e) {
+                el.innerHTML = `<p style="grid-column:1/-1;color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                return;
+            }
+            const byAttr = new Map();
+            damages.forEach(d => byAttr.set(d.attribute, d));
+            await getNikkeCharsCache();
+            el.innerHTML = PT_ATTRS.map(a => {
+                const rec = byAttr.get(a.key);
+                const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
+                const hasVal = val !== null;
+                const c = DC_ATTR_COLORS[a.key] || '#14161A';
+                const label = DC_ATTR_LABELS[a.key] || a.name.charAt(0);
+                return `
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}')" class="dc-dmg-panel">
+                        <div class="dc-dmg-chip" style="background:${c};">${label}</div>
+                        ${hasVal
+                            ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
+                            : `<div class="dc-dmg-value empty">—</div>`}
+                    </button>`;
+            }).join('');
+            renderMyFururiRadar(identity, damages);
+        }
+
+        // レーダー チャート 開閉トグル (ClaudeDesign 仕様の独立ボタン)
+        function toggleMypageRadar() {
+            const wrap = document.getElementById('mypageRadarWrap');
+            const btn = document.getElementById('mypageRadarToggle');
+            if (!wrap || !btn) return;
+            const open = wrap.style.display !== 'none';
+            if (open) {
+                wrap.style.display = 'none';
+                btn.textContent = '▼ レーダーチャートを表示';
+            } else {
+                wrap.style.display = 'block';
+                btn.textContent = '▲ レーダーチャートを閉じる';
+            }
+        }
 
         async function renderMyDamageInputs(identity) {
             const el = document.getElementById('mypageDmgInputs');
@@ -3703,17 +4089,21 @@
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
             const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || attrKey;
             _myTeamEditAttr = attrKey;
-            // 現在の編成を取得して初期表示
+            // 現在の編成・ダメージを取得して初期表示
             let current = ['', '', '', '', ''];
+            let curDamage = '';
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
                 const row = (dmgs || []).find(d => d.attribute === attrKey);
                 const existing = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
                 for (let i = 0; i < 5; i++) current[i] = existing[i] || '';
+                if (row?.damage_b != null) curDamage = Number(row.damage_b).toFixed(2).replace(/\.?0+$/, '');
             } catch { /* noop */ }
-            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成`;
+            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成・ダメージ`;
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
+            const dmgInput = document.getElementById('myTeamEditDamage');
+            if (dmgInput) dmgInput.value = curDamage;
             await getNikkeCharsCache();
             // 古い保存データを開いた瞬間にファジィ解決でクリーンアップ
             // (例: 旧スキーマで「ディーゼル:ウー」と保存されていたら「ディーゼル：ウィンタースイーツ」に置換)
@@ -3997,17 +4387,29 @@
             const names = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
             const msgEl = document.getElementById('myTeamEditMessage');
             const setMsg = (t, err = false) => { msgEl.textContent = t; msgEl.style.color = err ? '#ef4444' : '#22c55e'; };
+            const dmgRaw = (document.getElementById('myTeamEditDamage')?.value || '').trim();
+            const dmgVal = dmgRaw === '' ? null : parseFloat(dmgRaw);
+            if (dmgVal !== null && (Number.isNaN(dmgVal) || dmgVal < 0 || dmgVal > 999)) {
+                setMsg('❌ ダメージは 0〜999 (B単位) で入力してください', true);
+                return;
+            }
             try {
                 let canonical = names;
                 if (names.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
                     const reg = await window.supabaseRegisterOcrCharacters(names);
                     canonical = (reg.canonical || names).filter(Boolean);
                 }
+                const parts = [];
+                if (dmgVal !== null) {
+                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, dmgVal);
+                    parts.push(`💥 ${dmgVal}B`);
+                }
                 await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical);
+                if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                 const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
-                setMsg(`✅ ${ptName}PT の編成を更新しました`);
+                setMsg(`✅ ${ptName}PT を更新: ${parts.join(' / ') || '空'}`);
                 _opsDashboardCache = null;
-                await renderMyDamageInputs(id);
+                await renderMyDamagePanels(id);
                 setTimeout(() => closeMyTeamEditModal(), 700);
             } catch (e) {
                 setMsg(`❌ 保存失敗: ${e?.message || e}`, true);
@@ -4186,7 +4588,7 @@
                             await window.supabaseSaveTeamForAttribute(id.id, ptAttr, canon);
                             parts.push(`編成${canon.length}名登録`);
                             // 一覧再描画
-                            renderMyDamageInputs(id);
+                            renderMyDamagePanels(id);
                         }
                     } catch (e) { console.warn('[mock team save]', e?.message || e); }
                 }
@@ -4268,15 +4670,21 @@
 
         // ========== マイページ: 得意属性 ==========
         async function renderMyStrongAttrs(identity) {
-            const el = document.getElementById('mypageStrongAttrs');
-            if (!el) return;
-            if (!identity?.id) { el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>'; return; }
-            // 最新情報を取得 (cache を一度バイパス)
+            // 旧 HTML の隠し要素 + モーダル中身の両方に描画 (どちらも存在すれば)
+            const targets = [
+                document.getElementById('mypageStrongAttrsModalBody'),
+                document.getElementById('mypageStrongAttrs'),
+            ].filter(Boolean);
+            if (targets.length === 0) return;
+            if (!identity?.id) {
+                targets.forEach(t => t.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>');
+                return;
+            }
             _allPlayersCache = null;
             const list = await ensureAllPlayersLoaded();
             const me = (list || []).find(p => p.id === identity.id);
             const cur = new Set((me?.strong_attributes) || []);
-            el.innerHTML = PT_ATTRS.map(a => {
+            const html = PT_ATTRS.map(a => {
                 const on = cur.has(a.key);
                 const style = on
                     ? `background:${a.color};color:#fff;border-color:${a.color};font-weight:700;`
@@ -4285,23 +4693,23 @@
                     <img src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}
                 </button>`;
             }).join('');
+            targets.forEach(t => t.innerHTML = html);
         }
         async function handleMyStrongAttrToggle(attrKey) {
             const id = getCurrentIdentity();
             if (!id?.id) return;
-            // 現在の状態は cache から
             const me = (_allPlayersCache || []).find(p => p.id === id.id);
             const cur = new Set((me?.strong_attributes) || []);
             if (cur.has(attrKey)) cur.delete(attrKey); else cur.add(attrKey);
             const next = [...cur];
-            const msg = document.getElementById('mypageStrongAttrsMessage');
+            const msg = document.getElementById('mypageStrongAttrsModalMsg') || document.getElementById('mypageStrongAttrsMessage');
             try {
                 await window.supabaseUpdatePlayerStrongAttrs(id.id, next);
-                // ローカル cache を反映
                 if (me) me.strong_attributes = next;
                 _opsDashboardCache = null;
                 if (msg) { msg.textContent = `✅ 得意属性 ${next.length} 件で保存しました`; msg.style.color = '#22c55e'; }
                 renderMyStrongAttrs(id);
+                renderMypageStrongAttrsBadge(id);   // プロフィール側バッジも即時同期
             } catch (e) {
                 if (msg) { msg.textContent = `❌ ${e?.message || e}`; msg.style.color = '#ef4444'; }
             }
@@ -4526,6 +4934,8 @@
         }
 
         function _renderCoordSelf(identity) {
+            // 新マイページの 3ボタン スイッチャーへ反映
+            _refreshMyStatusSwitcher(identity);
             const selfEl = document.getElementById('mypageCoordSelf');
             if (!selfEl) return;
             const me = _coordSelfCache;
@@ -4822,57 +5232,77 @@
             // 既存プレイヤー一覧キャッシュをロード (アバター描画用)
             if (typeof ensureAllPlayersLoaded === 'function') { try { await ensureAllPlayersLoaded(); } catch { /* noop */ } }
 
+            // ClaudeDesign 仕様: 横一列のボスタイル (B1〜B5)。タップで戦闘準備、自分戦闘中はハイライト+炎。
+            const myCoord = (_coordActiveCache || []).find(c => c.player_id === identity.id && c.status === 'coordinating');
+            const myBossNum = myCoord?.boss_number || null;
+
             el.innerHTML = bosses.map(b => {
                 const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
                 const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
                 const pct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
                 const dead = pct <= 0.01;
-                const barColor = dead ? '#9ca3af' : (pct < 20 ? '#ef4444' : pct < 50 ? '#f59e0b' : '#22c55e');
                 const inCombat = coordsByBoss.has(b.boss_number);
-                const occupants = inCombat ? coordsByBoss.get(b.boss_number) : [];
-                const isMyCombat = occupants.some(o => o.player_id === identity.id);
-                const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
-
-                const occupantsLabel = inCombat
-                    ? occupants.map(o => {
-                        const av = renderAvatarHtml(o.player_id, o.name, 16);
-                        const label = o.player_id === identity.id ? '<strong>あなた</strong>' : escapeHtml(o.name);
-                        return `<span style="display:inline-flex;align-items:center;gap:3px;">${av}${label}</span>`;
-                      }).join(' / ')
-                    : '';
-
-                // 動作ボタン: 自分が戦闘中なら 報告/解除、他人が戦闘中なら 強行注意、空きなら 戦闘準備
-                let actionHtml = '';
-                if (dead) {
-                    actionHtml = `<button disabled style="margin-top:6px;width:100%;padding:6px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);font-size:11px;">💀 撃破済</button>`;
-                } else if (isMyCombat) {
-                    actionHtml = `
-                        <div style="display:flex;gap:4px;margin-top:6px;">
-                            <button onclick="handleMyNextAttackReport(${b.boss_number})" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:700;cursor:pointer;">📷 報告</button>
-                            <button onclick="handleMyNextAttackRelease()" style="padding:6px 8px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">⏪</button>
-                        </div>`;
-                } else if (inCombat) {
-                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, true)" style="margin-top:6px;width:100%;padding:6px;border-radius:6px;border:1px dashed #f59e0b;background:var(--md-sys-color-surface);color:#b45309;font-size:11px;cursor:pointer;">⚠️ 戦闘中 — 強行する場合</button>`;
-                } else {
-                    actionHtml = `<button onclick="handleMyNextAttackClaim(${b.boss_number}, false)" class="btn-elegant attr-${b.weakness || 'fire'}" style="margin-top:6px;width:100%;padding:8px 10px;font-size:12px;">⚔️ 戦闘準備に入る</button>`;
-                }
-
-                const cardClass = inCombat && !dead ? 'boss-in-combat' : '';
+                const isMyCombat = b.boss_number === myBossNum;
+                const c = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
+                const onClick = dead
+                    ? ''
+                    : isMyCombat
+                        ? `onclick="handleMyNextAttackReport(${b.boss_number})"`
+                        : inCombat
+                            ? `onclick="handleMyNextAttackClaim(${b.boss_number}, true)"`
+                            : `onclick="handleMyNextAttackClaim(${b.boss_number}, false)"`;
                 return `
-                    <div class="${cardClass}" style="padding:10px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;background:var(--md-sys-color-surface);${dead ? 'opacity:0.5;' : ''}">
-                        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px;">
-                            <strong style="font-size:13px;">B${b.boss_number}</strong>
-                            ${ptInfo ? `<img src="${ptInfo.icon}" title="${ptInfo.name}PTで凸" style="width:18px;height:18px;">` : ''}
-                        </div>
-                        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px;">${escapeHtml(b.name || b.boss_code)}</div>
-                        <div style="height:5px;border-radius:3px;background:var(--md-sys-color-surface-variant);overflow:hidden;margin-bottom:4px;">
-                            <div style="width:${pct.toFixed(1)}%;height:100%;background:${barColor};"></div>
-                        </div>
-                        <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);font-variant-numeric:tabular-nums;">残 ${remB.toFixed(2)}B</div>
-                        ${inCombat && !dead ? `<div style="margin-top:4px;font-size:10px;color:#b45309;font-weight:600;">⚔️ ${occupantsLabel}</div>` : ''}
-                        ${actionHtml}
+                    <div class="dc-boss-tile" ${onClick}
+                         data-selected="${isMyCombat ? '1' : '0'}"
+                         data-fighting="${isMyCombat ? '1' : '0'}"
+                         style="${dead ? 'opacity:0.4;' : ''}">
+                        <div style="width:7px;height:7px;border-radius:99px;background:${c};position:relative;z-index:2;${isMyCombat ? `box-shadow:0 0 7px ${c};` : ''}"></div>
+                        <div style="font-size:19px;font-weight:900;letter-spacing:0.5px;position:relative;z-index:2;font-variant-numeric:tabular-nums;">B${b.boss_number}</div>
+                        ${dead ? '<div style="font-size:9px;color:#9ca3af;position:relative;z-index:2;">💀</div>' : ''}
                     </div>`;
             }).join('');
+
+            // 戦闘中バーの表示制御 (③カード内)
+            const inProgress = document.getElementById('mypageBattleInProgressBar');
+            const actions = document.getElementById('mypageBattleActions');
+            const closeBar = document.getElementById('mypageBattleCloseBar');
+            const targetLabel = document.getElementById('mypageBattleTargetLabel');
+            const myBoss = myBossNum ? bosses.find(x => x.boss_number === myBossNum) : null;
+            if (myBoss) {
+                if (inProgress) inProgress.style.display = 'flex';
+                if (actions) actions.style.display = 'flex';
+                if (closeBar) closeBar.style.display = 'none';
+                if (targetLabel) targetLabel.textContent = `B${myBoss.boss_number} ${myBoss.name || myBoss.boss_code} と交戦中`;
+            } else {
+                if (inProgress) inProgress.style.display = 'none';
+                if (actions) actions.style.display = 'none';
+                if (closeBar) closeBar.style.display = 'flex';
+            }
+        }
+
+        // ===== 戦闘ゲート (collapsed/expanded) 制御 =====
+        function enterBattleGate() {
+            const gate = document.getElementById('mypageBattleGate');
+            const expanded = document.getElementById('mypageBattleExpanded');
+            if (gate) gate.style.display = 'none';
+            if (expanded) expanded.style.display = 'block';
+            const id = getCurrentIdentity();
+            if (id?.id) renderMyNextAttackBosses(id);
+        }
+        async function releaseBattleGate() {
+            // 戦闘中の場合は coordination をクリア
+            const id = getCurrentIdentity();
+            const myCoord = (_coordActiveCache || []).find(c => c.player_id === id?.id && c.status === 'coordinating');
+            if (myCoord) {
+                if (!confirm('戦闘準備を解除しますか？')) return;
+                try { await window.supabaseClearMyFinishCoordination(id.id); }
+                catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
+                await _refreshCoordOnce(id);
+            }
+            const gate = document.getElementById('mypageBattleGate');
+            const expanded = document.getElementById('mypageBattleExpanded');
+            if (gate) gate.style.display = 'flex';
+            if (expanded) expanded.style.display = 'none';
         }
 
         // ボスタップ起点: 戦闘準備に入る (= coordinating 状態にする)
