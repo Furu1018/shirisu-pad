@@ -2268,54 +2268,61 @@
         </div>
     </div>
 
-    <!-- ========== Tab 2: ふるり値 ========== -->
+    <!-- ========== Tab 2: ふるり値 (完了済シーズンの SLv 補正スコア) ========== -->
     <div id="tab-slv-ranking" class="tab-content">
         <div class="container">
-            <!-- ① ヘッダ + モード + 属性別フィルタ (集約) -->
-            <div class="dc-card">
-                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <!-- ページヘッダー -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
+                <div>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ふるり値</div>
+                        <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ふるり値</div>
                         <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり値について">?</button>
                     </div>
-                    <div style="font-size:11px;color:#A4AAB0;"><strong style="color:#5A6068;font-weight:700;">基準:</strong> <span id="fururiBaseInfo">読み込み中...</span></div>
+                    <div id="fururiPageSubtitle" style="font-size:11px;color:#A4AAB0;margin-top:4px;letter-spacing:0.2px;">SLv補正スコア</div>
                 </div>
-                <p style="font-size:11px;color:#A4AAB0;margin:0 0 10px 0;line-height:1.5;">SLv.補正を考慮した公平な相対評価指標</p>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+                    <div id="fururiSeasonBadge" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.4px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:#18C26B;"></span>完了 · シーズン結果</div>
+                    <div style="text-align:right;font-size:10.5px;color:#A4AAB0;line-height:1.5;"><span style="color:#5A6068;font-weight:700;">基準:</span> <span id="fururiBaseInfo">読み込み中...</span></div>
+                </div>
+            </div>
+
+            <!-- ① モード + 属性別フィルタ -->
+            <div class="dc-card">
+                <div style="font-size:12px;color:#8A9097;line-height:1.6;margin-bottom:13px;">SLv.補正を考慮した公平な相対評価指標</div>
                 <!-- モード切替 -->
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                <div style="display:flex;gap:8px;">
                     <button id="fururiModeBtnClassic" onclick="switchFururiMode('classic')" class="sim-mode-btn active">対ふるり</button>
                     <button id="fururiModeBtnMean" onclick="switchFururiMode('mean')" class="sim-mode-btn">均整</button>
                     <button id="fururiModeBtnMedian" onclick="switchFururiMode('median')" class="sim-mode-btn">上位10名</button>
-                    <span id="fururiModeHint" style="font-size:10.5px;color:#B6BBC1;margin-left:auto;align-self:center;"></span>
                 </div>
-                <!-- 属性別フィルタ -->
-                <div style="border-top:1px solid #F0F1F3;padding-top:8px;">
-                    <div style="font-size:9.5px;font-weight:800;letter-spacing:1.4px;color:#B6BBC1;margin-bottom:6px;">属性別表示</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体</button>
-                        <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')">
-                            <img src="./属性アイコン/灼熱.png" style="width:14px;height:14px;">灼熱
-                        </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')">
-                            <img src="./属性アイコン/水冷.png" style="width:14px;height:14px;">水冷
-                        </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')">
-                            <img src="./属性アイコン/電撃.png" style="width:14px;height:14px;">電撃
-                        </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')">
-                            <img src="./属性アイコン/鉄甲.png" style="width:14px;height:14px;">鉄甲
-                        </button>
-                        <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')">
-                            <img src="./属性アイコン/風圧.png" style="width:14px;height:14px;">風圧
-                        </button>
-                    </div>
+                <p id="fururiModeHint" style="font-size:10.5px;color:#B6BBC1;margin:6px 0 0 0;min-height:14px;"></p>
+                <div style="height:1px;background:#F0F1F3;margin:14px 0 12px;"></div>
+                <div style="font-size:9.5px;font-weight:800;letter-spacing:1.4px;color:#B6BBC1;margin-bottom:9px;">属性別表示</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体</button>
+                    <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')">
+                        <img src="./属性アイコン/灼熱.png" style="width:14px;height:14px;">灼熱
+                    </button>
+                    <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')">
+                        <img src="./属性アイコン/水冷.png" style="width:14px;height:14px;">水冷
+                    </button>
+                    <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')">
+                        <img src="./属性アイコン/電撃.png" style="width:14px;height:14px;">電撃
+                    </button>
+                    <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')">
+                        <img src="./属性アイコン/鉄甲.png" style="width:14px;height:14px;">鉄甲
+                    </button>
+                    <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')">
+                        <img src="./属性アイコン/風圧.png" style="width:14px;height:14px;">風圧
+                    </button>
                 </div>
             </div>
 
             <!-- ② ランキングテーブル -->
             <div class="dc-card dc-card-tight">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ランキング</div>
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ふるり値ランキング</div>
+                    <div id="fururiActiveAttrLabel" style="font-size:10.5px;color:#B6BBC1;">全体</div>
                 </div>
                 <div class="dc-table-wrap">
                     <table id="fururiRankingTable" class="dc-table">
@@ -2331,6 +2338,13 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- シーズン切替 -->
+            <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 8px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;">
+                <button onclick="rankingSeasonNav(-1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:#C9CED3;cursor:not-allowed;padding:6px 8px;"><span style="font-size:13px;">‹</span> 過去シーズン</button>
+                <div id="fururiSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">— <span style="font-size:9.5px;font-weight:700;color:#A4AAB0;">(最新)</span></div>
+                <button onclick="rankingSeasonNav(1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:#C9CED3;cursor:not-allowed;padding:6px 8px;">次へ <span style="font-size:13px;">›</span></button>
             </div>
 
             <p style="margin:4px 2px 0 2px;font-size:11px;color:#A4AAB0;line-height:1.5;">⚠️ ふるり値は育成効率を可視化する参考指標です。属性担当・締め凸・戦闘時間などの条件差は考慮されません。過去の自分との比較に役立ててください。</p>
@@ -8397,9 +8411,16 @@
             if (pageSub) pageSub.textContent = `${currentMonthKey} シーズン結果 · ${participantCount}名参加`;
             const compLabel = document.getElementById('rankingComparisonLabel');
             if (compLabel) compLabel.textContent = previousMonthKey ? `${currentMonthKey} → ${previousMonthKey} 比較` : `${currentMonthKey}`;
-            // シーズン切替バー
             const seasonCur = document.getElementById('rankingSeasonCurrent');
             if (seasonCur) seasonCur.innerHTML = `${currentMonthKey} <span style="font-size:9.5px;font-weight:700;color:#A4AAB0;">(最新)</span>`;
+
+            // ふるり値ページ専用ヘッダー
+            const fururiSub = document.getElementById('fururiPageSubtitle');
+            if (fururiSub) fururiSub.textContent = `${currentMonthKey} SLv補正スコア`;
+            const fururiBadge = document.getElementById('fururiSeasonBadge');
+            if (fururiBadge) fururiBadge.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:#18C26B;"></span>完了 · ${currentMonthKey} シーズン結果`;
+            const fururiSeasonCur = document.getElementById('fururiSeasonCurrent');
+            if (fururiSeasonCur) fururiSeasonCur.innerHTML = `${currentMonthKey} <span style="font-size:9.5px;font-weight:700;color:#A4AAB0;">(最新)</span>`;
 
             renderAll();
             const srcLabel = dataSource === 'supabase' ? 'Supabase' : dataSource === 'json' ? 'ローカルJSON' : 'Supabase + JSON';
@@ -9480,11 +9501,21 @@
             return basePlayer.damage;  // classic
         }
 
+        const FURURI_BOSS_TO_LABEL = {
+            'ALL': '全体',
+            'A.N.M.I.': '灼熱PT',
+            'H.S.T.A.': '水冷PT',
+            'P.S.I.D.': '電撃PT',
+            'Z.E.U.S.': '鉄甲PT',
+            'D.M.T.R.': '風圧PT',
+        };
         function switchFururiBoss(code) {
             currentFururiBossCode = code;
             document.querySelectorAll('[data-fururi-boss]').forEach(b => {
                 b.classList.toggle('active', b.getAttribute('data-fururi-boss') === code);
             });
+            const labelEl = document.getElementById('fururiActiveAttrLabel');
+            if (labelEl) labelEl.textContent = FURURI_BOSS_TO_LABEL[code] || '全体';
             renderFururiRanking();
         }
 
