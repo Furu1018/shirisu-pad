@@ -2244,11 +2244,11 @@
                 <!-- 属性別フィルタ (6ピル, 排他選択) -->
                 <div style="display:flex;gap:5px;margin-top:8px;">
                     <button class="dc-rem-attr" data-attr-filter=""         onclick="handleOpsRemainingAttrPick('')"         style="--attr-c:#14161A;flex:1.4;">全属性</button>
-                    <button class="dc-rem-attr" data-attr-filter="fire"     onclick="handleOpsRemainingAttrPick('fire')"     style="--attr-c:#FF3D44;">火</button>
-                    <button class="dc-rem-attr" data-attr-filter="water"    onclick="handleOpsRemainingAttrPick('water')"    style="--attr-c:#2E8BFF;">水</button>
-                    <button class="dc-rem-attr" data-attr-filter="electric" onclick="handleOpsRemainingAttrPick('electric')" style="--attr-c:#9B4DFF;">電</button>
-                    <button class="dc-rem-attr" data-attr-filter="iron"     onclick="handleOpsRemainingAttrPick('iron')"     style="--attr-c:#FF8A2B;">鉄</button>
-                    <button class="dc-rem-attr" data-attr-filter="wind"     onclick="handleOpsRemainingAttrPick('wind')"     style="--attr-c:#18C26B;">風</button>
+                    <button class="dc-rem-attr" data-attr-filter="fire"     onclick="handleOpsRemainingAttrPick('fire')"     style="--attr-c:#FF3D44;" title="灼熱"><img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="water"    onclick="handleOpsRemainingAttrPick('water')"    style="--attr-c:#2E8BFF;" title="水冷"><img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="electric" onclick="handleOpsRemainingAttrPick('electric')" style="--attr-c:#9B4DFF;" title="電撃"><img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="iron"     onclick="handleOpsRemainingAttrPick('iron')"     style="--attr-c:#FF8A2B;" title="鉄甲"><img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="wind"     onclick="handleOpsRemainingAttrPick('wind')"     style="--attr-c:#18C26B;" title="風圧"><img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;vertical-align:middle;"></button>
                 </div>
                 <!-- 要約バナー -->
                 <div id="opsRemainingSummaryBanner" style="display:flex;align-items:center;justify-content:space-between;margin-top:13px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;padding:10px 13px;">
@@ -2343,32 +2343,32 @@
                 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
                 <!-- 属性トグル -->
                 <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
-                    <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;">
-                        <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;">灼熱
+                    <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;" title="灼熱">
+                        <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                     </button>
-                    <button onclick="toggleChartDataset(1)" data-chart-idx="1" class="chart-toggle-btn" style="--btn-color: #007AFF;">
-                        <img src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;">水冷
+                    <button onclick="toggleChartDataset(1)" data-chart-idx="1" class="chart-toggle-btn" style="--btn-color: #007AFF;" title="水冷">
+                        <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                     </button>
-                    <button onclick="toggleChartDataset(2)" data-chart-idx="2" class="chart-toggle-btn" style="--btn-color: #8E44AD;">
-                        <img src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;">電撃
+                    <button onclick="toggleChartDataset(2)" data-chart-idx="2" class="chart-toggle-btn" style="--btn-color: #8E44AD;" title="電撃">
+                        <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                     </button>
-                    <button onclick="toggleChartDataset(3)" data-chart-idx="3" class="chart-toggle-btn" style="--btn-color: #FF9500;">
-                        <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;">鉄甲
+                    <button onclick="toggleChartDataset(3)" data-chart-idx="3" class="chart-toggle-btn" style="--btn-color: #FF9500;" title="鉄甲">
+                        <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                     </button>
-                    <button onclick="toggleChartDataset(4)" data-chart-idx="4" class="chart-toggle-btn" style="--btn-color: #34C759;">
-                        <img src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;">風圧
+                    <button onclick="toggleChartDataset(4)" data-chart-idx="4" class="chart-toggle-btn" style="--btn-color: #34C759;" title="風圧">
+                        <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                     </button>
                 </div>
                 <div class="chart-container">
                     <canvas id="attributeStackedChart"></canvas>
                 </div>
-                <!-- 凡例 -->
+                <!-- 凡例: アイコンのみ -->
                 <div style="display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:14px;padding-top:13px;border-top:1px solid #F0F1F3;">
-                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#FF3B30;display:inline-block;"></span>灼熱</div>
-                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#007AFF;display:inline-block;"></span>水冷</div>
-                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#8E44AD;display:inline-block;"></span>電撃</div>
-                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#FF9500;display:inline-block;"></span>鉄甲</div>
-                    <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#34C759;display:inline-block;"></span>風圧</div>
+                    <img src="./属性アイコン/灼熱.png" alt="灼熱" title="灼熱" style="width:18px;height:18px;">
+                    <img src="./属性アイコン/水冷.png" alt="水冷" title="水冷" style="width:18px;height:18px;">
+                    <img src="./属性アイコン/電撃.png" alt="電撃" title="電撃" style="width:18px;height:18px;">
+                    <img src="./属性アイコン/鉄甲.png" alt="鉄甲" title="鉄甲" style="width:18px;height:18px;">
+                    <img src="./属性アイコン/風圧.png" alt="風圧" title="風圧" style="width:18px;height:18px;">
                 </div>
             </div>
 
@@ -2439,20 +2439,20 @@
                 <div style="font-size:9.5px;font-weight:800;letter-spacing:1.4px;color:#B6BBC1;margin-bottom:9px;">属性別表示</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体</button>
-                    <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')">
-                        <img src="./属性アイコン/灼熱.png" style="width:14px;height:14px;">灼熱
+                    <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')" title="灼熱">
+                        <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                     </button>
-                    <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')">
-                        <img src="./属性アイコン/水冷.png" style="width:14px;height:14px;">水冷
+                    <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')" title="水冷">
+                        <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                     </button>
-                    <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')">
-                        <img src="./属性アイコン/電撃.png" style="width:14px;height:14px;">電撃
+                    <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')" title="電撃">
+                        <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                     </button>
-                    <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')">
-                        <img src="./属性アイコン/鉄甲.png" style="width:14px;height:14px;">鉄甲
+                    <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')" title="鉄甲">
+                        <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                     </button>
-                    <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')">
-                        <img src="./属性アイコン/風圧.png" style="width:14px;height:14px;">風圧
+                    <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')" title="風圧">
+                        <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                     </button>
                 </div>
             </div>
@@ -2499,30 +2499,30 @@
                     <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--md-sys-color-on-surface);">属性別フィルタ</h3>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="attribute-tab-btn active" data-attribute="ALL" onclick="switchAttributeTab('ALL')">全PT属性</button>
-                        <button class="attribute-tab-btn" data-attribute="FIRE" onclick="switchAttributeTab('FIRE')">
-                            <img src="./属性アイコン/灼熱.png" style="width: 18px; height: 18px;">灼熱PT
+                        <button class="attribute-tab-btn" data-attribute="FIRE" onclick="switchAttributeTab('FIRE')" title="灼熱PT 対 風圧">
+                            <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/風圧.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-attribute="WATER" onclick="switchAttributeTab('WATER')">
-                            <img src="./属性アイコン/水冷.png" style="width: 18px; height: 18px;">水冷PT
+                        <button class="attribute-tab-btn" data-attribute="WATER" onclick="switchAttributeTab('WATER')" title="水冷PT 対 灼熱">
+                            <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/灼熱.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-attribute="ELECTRIC" onclick="switchAttributeTab('ELECTRIC')">
-                            <img src="./属性アイコン/電撃.png" style="width: 18px; height: 18px;">電撃PT
+                        <button class="attribute-tab-btn" data-attribute="ELECTRIC" onclick="switchAttributeTab('ELECTRIC')" title="電撃PT 対 水冷">
+                            <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/水冷.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-attribute="IRON" onclick="switchAttributeTab('IRON')">
-                            <img src="./属性アイコン/鉄甲.png" style="width: 18px; height: 18px;">鉄甲PT
+                        <button class="attribute-tab-btn" data-attribute="IRON" onclick="switchAttributeTab('IRON')" title="鉄甲PT 対 電撃">
+                            <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/電撃.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-attribute="WIND" onclick="switchAttributeTab('WIND')">
-                            <img src="./属性アイコン/風圧.png" style="width: 18px; height: 18px;">風圧PT
+                        <button class="attribute-tab-btn" data-attribute="WIND" onclick="switchAttributeTab('WIND')" title="風圧PT 対 鉄甲">
+                            <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/鉄甲.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;opacity:0.7;">
                         </button>
                     </div>
                 </div>
@@ -2619,30 +2619,30 @@
                     <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">PT属性（自分の編成属性）</label>
                     <p style="margin: 0 0 6px 0; font-size: 11px; color: var(--md-sys-color-on-surface-variant);">表記の「対 XX」は弱点となるボス属性を示します</p>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="attribute-tab-btn" data-fsim-attr="FIRE" onclick="selectFururiSimAttr('FIRE')">
-                            <img src="./属性アイコン/灼熱.png" style="width: 18px; height: 18px;">灼熱PT
+                        <button class="attribute-tab-btn" data-fsim-attr="FIRE" onclick="selectFururiSimAttr('FIRE')" title="灼熱PT 対 風圧">
+                            <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/風圧.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-fsim-attr="WATER" onclick="selectFururiSimAttr('WATER')">
-                            <img src="./属性アイコン/水冷.png" style="width: 18px; height: 18px;">水冷PT
+                        <button class="attribute-tab-btn" data-fsim-attr="WATER" onclick="selectFururiSimAttr('WATER')" title="水冷PT 対 灼熱">
+                            <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/灼熱.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-fsim-attr="ELECTRIC" onclick="selectFururiSimAttr('ELECTRIC')">
-                            <img src="./属性アイコン/電撃.png" style="width: 18px; height: 18px;">電撃PT
+                        <button class="attribute-tab-btn" data-fsim-attr="ELECTRIC" onclick="selectFururiSimAttr('ELECTRIC')" title="電撃PT 対 水冷">
+                            <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/水冷.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-fsim-attr="IRON" onclick="selectFururiSimAttr('IRON')">
-                            <img src="./属性アイコン/鉄甲.png" style="width: 18px; height: 18px;">鉄甲PT
+                        <button class="attribute-tab-btn" data-fsim-attr="IRON" onclick="selectFururiSimAttr('IRON')" title="鉄甲PT 対 電撃">
+                            <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/電撃.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;opacity:0.7;">
                         </button>
-                        <button class="attribute-tab-btn" data-fsim-attr="WIND" onclick="selectFururiSimAttr('WIND')">
-                            <img src="./属性アイコン/風圧.png" style="width: 18px; height: 18px;">風圧PT
+                        <button class="attribute-tab-btn" data-fsim-attr="WIND" onclick="selectFururiSimAttr('WIND')" title="風圧PT 対 鉄甲">
+                            <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                             <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                            <img src="./属性アイコン/鉄甲.png" style="width: 14px; height: 14px; opacity:0.7;">
+                            <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;opacity:0.7;">
                         </button>
                     </div>
                 </div>
@@ -4209,6 +4209,21 @@
         // ClaudeDesign 仕様: 5属性すべて表示し、得意な属性は塗り、それ以外はソフト
         const DC_ATTR_LABELS = { fire:'火', water:'水', electric:'電', iron:'鉄', wind:'風' };
         const DC_ATTR_COLORS = { fire:'#FF3D44', water:'#2E8BFF', electric:'#9B4DFF', iron:'#FF8A2B', wind:'#18C26B' };
+        // 属性アイコン (ゲーム内) パス
+        const DC_ATTR_ICONS = {
+            fire: './属性アイコン/灼熱.png',
+            water: './属性アイコン/水冷.png',
+            electric: './属性アイコン/電撃.png',
+            iron: './属性アイコン/鉄甲.png',
+            wind: './属性アイコン/風圧.png',
+        };
+        // 共通: 属性アイコンを <img> で返す (テキストラベルなし)
+        function renderAttrIcon(key, size = 18, opts = {}) {
+            const src = DC_ATTR_ICONS[key] || '';
+            const name = opts.title || (key || '');
+            const style = `width:${size}px;height:${size}px;${opts.style || ''}`;
+            return `<img src="${src}" alt="${name}" title="${name}" style="${style}">`;
+        }
         async function renderMypageStrongAttrsBadge(identity) {
             const el = document.getElementById('mypageStrongAttrsDisplay');
             if (!el) return;
@@ -4220,14 +4235,14 @@
                     (me?.strong_attributes || []).forEach(a => attrs.add(a));
                 } catch { /* noop */ }
             }
+            // 得意属性: 全5属性のアイコン (ONは塗りリング、OFFは半透明)
             el.innerHTML = PT_ATTRS.map(a => {
                 const on = attrs.has(a.key);
                 const c = DC_ATTR_COLORS[a.key] || '#A4AAB0';
-                const label = DC_ATTR_LABELS[a.key] || a.name.charAt(0);
                 if (on) {
-                    return `<div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;background:${c};box-shadow:0 3px 8px ${c}59,inset 0 1px 0 rgba(255,255,255,0.3);">${label}</div>`;
+                    return `<div title="${a.name}PT 得意" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${c};box-shadow:0 3px 8px ${c}59;"><img src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;"></div>`;
                 }
-                return `<div style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:${c};background:${c}1F;">${label}</div>`;
+                return `<div title="${a.name}PT" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${c}1F;opacity:0.55;"><img src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;"></div>`;
             }).join('');
         }
 
@@ -4375,10 +4390,9 @@
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const c = DC_ATTR_COLORS[a.key] || '#14161A';
-                const label = DC_ATTR_LABELS[a.key] || a.name.charAt(0);
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}')" class="dc-dmg-panel">
-                        <div class="dc-dmg-chip" style="background:${c};">${label}</div>
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}')" class="dc-dmg-panel" title="${a.name}PT">
+                        <div class="dc-dmg-chip" style="background:${c}1A;"><img src="${a.icon}" alt="${a.name}" style="width:20px;height:20px;"></div>
                         ${hasVal
                             ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
                             : `<div class="dc-dmg-value empty">—</div>`}
@@ -5064,8 +5078,8 @@
                 const style = on
                     ? `background:${a.color};color:#fff;border-color:${a.color};font-weight:700;`
                     : `background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);border-color:var(--md-sys-color-outline-variant);`;
-                return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:2px solid var(--md-sys-color-outline-variant);${style}font-size:13px;cursor:pointer;transition:all 0.18s ease;">
-                    <img src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}
+                return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" title="${a.name}PT" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;border:2px solid var(--md-sys-color-outline-variant);${style}font-size:13px;cursor:pointer;transition:all 0.18s ease;">
+                    <img src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;">
                 </button>`;
             }).join('');
             targets.forEach(t => t.innerHTML = html);
@@ -5619,6 +5633,7 @@
                 const inCombat = coordsByBoss.has(b.boss_number);
                 const isMyCombat = b.boss_number === myBossNum;
                 const c = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
+                const iconSrc = DC_ATTR_ICONS[b.weakness] || '';
                 const onClick = dead
                     ? ''
                     : isMyCombat
@@ -5626,12 +5641,15 @@
                         : inCombat
                             ? `onclick="handleMyNextAttackClaim(${b.boss_number}, true)"`
                             : `onclick="handleMyNextAttackClaim(${b.boss_number}, false)"`;
+                const iconBox = iconSrc
+                    ? `<img src="${iconSrc}" alt="" style="width:18px;height:18px;position:relative;z-index:2;${isMyCombat ? `filter:drop-shadow(0 0 4px ${c});` : ''}">`
+                    : `<div style="width:7px;height:7px;border-radius:99px;background:${c};position:relative;z-index:2;"></div>`;
                 return `
                     <div class="dc-boss-tile" ${onClick}
                          data-selected="${isMyCombat ? '1' : '0'}"
                          data-fighting="${isMyCombat ? '1' : '0'}"
                          style="${dead ? 'opacity:0.4;' : ''}">
-                        <div style="width:7px;height:7px;border-radius:99px;background:${c};position:relative;z-index:2;${isMyCombat ? `box-shadow:0 0 7px ${c};` : ''}"></div>
+                        ${iconBox}
                         <div style="font-size:19px;font-weight:900;letter-spacing:0.5px;position:relative;z-index:2;font-variant-numeric:tabular-nums;">B${b.boss_number}</div>
                         ${dead ? '<div style="font-size:9px;color:#9ca3af;position:relative;z-index:2;">💀</div>' : ''}
                     </div>`;
@@ -7010,7 +7028,7 @@
                 <div class="dc-rem-attr-header">
                     <div style="flex:1;min-width:0;font-size:9px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">メンバー</div>
                     <div style="display:flex;gap:2px;flex:none;">
-                        ${PT_ATTRS.map(a => `<div class="dc-rem-attr-header-chip" style="color:${a.color};background:${a.color}1A;" title="${a.name}PT">${(DC_ATTR_LABELS[a.key] || a.name.charAt(0))}</div>`).join('')}
+                        ${PT_ATTRS.map(a => `<div class="dc-rem-attr-header-chip" style="background:${a.color}1A;" title="${a.name}PT"><img src="${a.icon}" alt="${a.name}" style="width:18px;height:18px;"></div>`).join('')}
                     </div>
                 </div>`;
 
@@ -7034,7 +7052,7 @@
                 const favChips = PT_ATTRS
                     .filter(a => favSet.has(a.key))
                     .slice(0, 3)
-                    .map(a => `<div class="dc-rem-fav-chip" style="background:${a.color};" title="${a.name}PT 得意">${DC_ATTR_LABELS[a.key] || a.name.charAt(0)}</div>`)
+                    .map(a => `<img src="${a.icon}" alt="${a.name}" title="${a.name}PT 得意" class="dc-rem-fav-chip" style="width:14px;height:14px;background:transparent;">`)
                     .join('');
                 return `
                     <div class="dc-rem-row">
@@ -7125,14 +7143,15 @@
                 const remainPct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
                 const dead = remainPct <= 0.01;
                 const c = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
-                const label = DC_ATTR_LABELS[b.weakness] || (b.weakness || '?').charAt(0).toUpperCase();
+                const iconSrc = DC_ATTR_ICONS[b.weakness] || '';
+                const iconAlt = ptInfo?.name || (b.weakness || '');
                 const active = inCombat && !dead;
                 const editing = _opsBossEditingNum === b.boss_number;
 
-                // チップ
+                // チップ (ゲーム内の属性アイコンを使用)
                 const chipStyle = active || dead
-                    ? `background:${c};color:#fff;box-shadow:0 3px 8px ${c}4D,inset 0 1px 0 rgba(255,255,255,0.3);`
-                    : `background:${c}1F;color:${c};`;
+                    ? `background:${c};box-shadow:0 3px 8px ${c}4D,inset 0 1px 0 rgba(255,255,255,0.3);`
+                    : `background:${c}1F;`;
                 // ステータス バッジ
                 const statusTag = dead
                     ? `<span class="dc-boss-status-tag" style="color:#18C26B;background:rgba(24,194,107,0.12);">💀 撃破済</span>`
@@ -7168,7 +7187,7 @@
                 return `
                     <div class="dc-boss-card ${active ? 'has-combat' : ''}" style="--_attr-c:${c};${dead ? 'opacity:0.65;' : ''}">
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                            <div class="dc-boss-chip" style="${chipStyle}">${label}</div>
+                            <div class="dc-boss-chip" style="${chipStyle}" title="${escapeHtml(iconAlt)}PT 弱点">${iconSrc ? `<img src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : ''}</div>
                             <div style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3')};">${dead ? '撃破' : `${remainPct.toFixed(0)}%`}</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:7px;margin-top:11px;">
