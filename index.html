@@ -287,6 +287,8 @@
 
         /* タブ切替のフェード (横スワイプ補助) */
         .tab-content.active { animation: tab-fade-in 0.22s ease-out; }
+        /* 横スワイプ確定直後は再フェードしない (一瞬の点滅対策) */
+        .tab-content.swipe-no-anim.active { animation: none !important; }
         @keyframes tab-fade-in {
             from { opacity: 0; transform: translateX(8px); }
             to   { opacity: 1; transform: translateX(0); }
@@ -9691,34 +9693,192 @@
             }
         })();
 
-        // 横スワイプでタブ切替 (モバイルでのみ)
+        // ========== 横スワイプ タブ切替 (指追随ドラッグ + スナップ) ==========
         const _SWIPE_TABS = ['mypage', 'ops', 'ranking', 'slv-ranking', 'characters', 'simulator', 'help', 'settings'];
-        let _swipeStartX = 0, _swipeStartY = 0, _swipeActive = false, _swipeTarget = null;
+        const _SWIPE_THRESHOLD_PX = 80;        // 切替確定 px
+        const _SWIPE_VEL_THRESHOLD = 0.45;      // px/ms 速度で切替
+        const _SWIPE_EDGE_RESIST = 2.6;         // 端での抵抗 (大きいほど重い)
+        const _SWIPE_DIR_LOCK_PX = 8;           // 方向確定の最小移動
+        const _swipe = {
+            startX: 0, startY: 0, startTime: 0,
+            curEl: null, prevEl: null, nextEl: null,
+            dir: null,        // 'h' | 'v' | null
+            active: false,    // touchstart で捕捉中
+            tracking: false,  // 横ドラッグ中 (transform 適用中)
+            width: 0,
+        };
+        const _findTabEl = (key) => document.getElementById('tab-' + key);
+        const _resetTabTransform = (el) => {
+            if (!el) return;
+            el.style.transition = '';
+            el.style.transform = '';
+            el.style.willChange = '';
+            el.style.zIndex = '';
+        };
+        const _setupNeighbor = (el, side, width) => {
+            if (!el) return;
+            // 隣のタブを表示できるように一時的に display:block して配置
+            el.style.display = 'block';
+            el.style.position = 'fixed';
+            el.style.left = '0'; el.style.right = '0';
+            el.style.top = (document.querySelector('header.header')?.offsetHeight || 0) + 'px';
+            el.style.bottom = '0';
+            el.style.overflowY = 'auto';
+            el.style.transform = `translate3d(${side === 'next' ? width : -width}px, 0, 0)`;
+            el.style.willChange = 'transform';
+            el.style.zIndex = '5';
+            el.dataset._neighbor = side;
+        };
+        const _cleanupNeighbor = (el) => {
+            if (!el?.dataset?._neighbor) return;
+            el.style.display = '';
+            el.style.position = '';
+            el.style.left = ''; el.style.right = '';
+            el.style.top = '';
+            el.style.bottom = '';
+            el.style.overflowY = '';
+            el.style.transform = '';
+            el.style.willChange = '';
+            el.style.zIndex = '';
+            delete el.dataset._neighbor;
+        };
+
         document.addEventListener('touchstart', (e) => {
             if (window.innerWidth > 767) return;
             const t = e.target;
-            // フォーム要素・モーダル内・横スクロール領域はスキップ
             if (t.closest('input, textarea, select, button, a, .player-select-modal.open, [data-no-swipe], .data-table, .chart-container, .help-toc')) return;
             if (e.touches.length !== 1) return;
-            _swipeStartX = e.touches[0].clientX;
-            _swipeStartY = e.touches[0].clientY;
-            _swipeActive = true;
-            _swipeTarget = t;
-        }, { passive: true });
-        document.addEventListener('touchend', (e) => {
-            if (!_swipeActive) return;
-            _swipeActive = false;
-            const dx = e.changedTouches[0].clientX - _swipeStartX;
-            const dy = e.changedTouches[0].clientY - _swipeStartY;
-            // 横移動 ≥ 80px、縦移動 < 50px のみ採用 (誤反応防止)
-            if (Math.abs(dx) < 80 || Math.abs(dy) > 50) return;
             const active = document.querySelector('.tab-content.active');
-            const tabName = active ? active.id.replace('tab-', '') : null;
+            const tabName = active?.id?.replace('tab-', '');
             const idx = _SWIPE_TABS.indexOf(tabName);
             if (idx < 0) return;
-            const next = dx < 0 ? idx + 1 : idx - 1;
-            if (next < 0 || next >= _SWIPE_TABS.length) return;
-            switchTab(_SWIPE_TABS[next]);
+            _swipe.startX = e.touches[0].clientX;
+            _swipe.startY = e.touches[0].clientY;
+            _swipe.startTime = (typeof performance !== 'undefined' ? performance.now() : 0);
+            _swipe.curEl = active;
+            _swipe.prevEl = idx > 0 ? _findTabEl(_SWIPE_TABS[idx - 1]) : null;
+            _swipe.nextEl = idx < _SWIPE_TABS.length - 1 ? _findTabEl(_SWIPE_TABS[idx + 1]) : null;
+            _swipe.dir = null;
+            _swipe.active = true;
+            _swipe.tracking = false;
+            _swipe.width = window.innerWidth;
+        }, { passive: true });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!_swipe.active) return;
+            const dx = e.touches[0].clientX - _swipe.startX;
+            const dy = e.touches[0].clientY - _swipe.startY;
+            // 方向確定 (最初の数px で h/v ロック)
+            if (!_swipe.dir) {
+                if (Math.abs(dx) < _SWIPE_DIR_LOCK_PX && Math.abs(dy) < _SWIPE_DIR_LOCK_PX) return;
+                _swipe.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+                if (_swipe.dir === 'v') { _swipe.active = false; return; }
+                // 横ドラッグ開始: 隣のタブを setup
+                _swipe.tracking = true;
+                if (_swipe.curEl) {
+                    _swipe.curEl.style.transition = 'none';
+                    _swipe.curEl.style.willChange = 'transform';
+                    _swipe.curEl.style.zIndex = '6';
+                }
+                if (_swipe.prevEl) _setupNeighbor(_swipe.prevEl, 'prev', _swipe.width);
+                if (_swipe.nextEl) _setupNeighbor(_swipe.nextEl, 'next', _swipe.width);
+            }
+            if (!_swipe.tracking) return;
+            // 端での抵抗
+            let effective = dx;
+            const atLeftEdge = !_swipe.prevEl && dx > 0;
+            const atRightEdge = !_swipe.nextEl && dx < 0;
+            if (atLeftEdge || atRightEdge) effective = dx / _SWIPE_EDGE_RESIST;
+            // 縦スクロールを止める
+            if (e.cancelable) e.preventDefault();
+            _swipe.curEl.style.transform = `translate3d(${effective}px, 0, 0)`;
+            if (_swipe.prevEl) _swipe.prevEl.style.transform = `translate3d(${-_swipe.width + effective}px, 0, 0)`;
+            if (_swipe.nextEl) _swipe.nextEl.style.transform = `translate3d(${_swipe.width + effective}px, 0, 0)`;
+        }, { passive: false });
+
+        document.addEventListener('touchend', (e) => {
+            if (!_swipe.active && !_swipe.tracking) return;
+            const wasTracking = _swipe.tracking;
+            _swipe.active = false;
+            _swipe.tracking = false;
+            if (!wasTracking) return;
+            const dx = e.changedTouches[0].clientX - _swipe.startX;
+            const dt = ((typeof performance !== 'undefined' ? performance.now() : 0) - _swipe.startTime) || 1;
+            const vx = Math.abs(dx / dt);
+            const distOk = Math.abs(dx) >= _SWIPE_THRESHOLD_PX;
+            const velOk = vx >= _SWIPE_VEL_THRESHOLD && Math.abs(dx) > 20;
+            const wantsNext = dx < 0 && _swipe.nextEl;
+            const wantsPrev = dx > 0 && _swipe.prevEl;
+            const commit = (distOk || velOk) && (wantsNext || wantsPrev);
+
+            const W = _swipe.width;
+            const TR = 'transform 0.28s cubic-bezier(.2,.9,.2,1)';
+            const cur = _swipe.curEl;
+            const targetEl = wantsNext ? _swipe.nextEl : (wantsPrev ? _swipe.prevEl : null);
+            const otherNeighbor = wantsNext ? _swipe.prevEl : _swipe.nextEl;
+
+            if (commit && targetEl) {
+                // 切替確定: cur を ±W へ、target を 0 へ
+                cur.style.transition = TR;
+                targetEl.style.transition = TR;
+                cur.style.transform = `translate3d(${wantsNext ? -W : W}px, 0, 0)`;
+                targetEl.style.transform = 'translate3d(0px, 0, 0)';
+                if (otherNeighbor) otherNeighbor.style.transition = TR; // ただし非ターゲットは消える
+                // 終了処理 (transitionend)
+                const finish = () => {
+                    const targetName = targetEl.id.replace('tab-', '');
+                    // 先にタブ切替 (フェードは抑制)
+                    targetEl.classList.add('swipe-no-anim');
+                    if (typeof switchTab === 'function') switchTab(targetName);
+                    // 後でインラインスタイルを全クリア
+                    _resetTabTransform(cur);
+                    _cleanupNeighbor(targetEl);
+                    _resetTabTransform(targetEl);
+                    if (otherNeighbor) _cleanupNeighbor(otherNeighbor);
+                    setTimeout(() => targetEl.classList.remove('swipe-no-anim'), 50);
+                };
+                let fired = false;
+                const onEnd = () => { if (fired) return; fired = true; cur.removeEventListener('transitionend', onEnd); finish(); };
+                cur.addEventListener('transitionend', onEnd);
+                setTimeout(onEnd, 320);   // フォールバック
+            } else {
+                // スナップバック
+                cur.style.transition = TR;
+                cur.style.transform = 'translate3d(0px, 0, 0)';
+                if (_swipe.prevEl) {
+                    _swipe.prevEl.style.transition = TR;
+                    _swipe.prevEl.style.transform = `translate3d(${-W}px, 0, 0)`;
+                }
+                if (_swipe.nextEl) {
+                    _swipe.nextEl.style.transition = TR;
+                    _swipe.nextEl.style.transform = `translate3d(${W}px, 0, 0)`;
+                }
+                let fired = false;
+                const onEnd = () => {
+                    if (fired) return; fired = true;
+                    cur.removeEventListener('transitionend', onEnd);
+                    _resetTabTransform(cur);
+                    if (_swipe.prevEl) _cleanupNeighbor(_swipe.prevEl);
+                    if (_swipe.nextEl) _cleanupNeighbor(_swipe.nextEl);
+                };
+                cur.addEventListener('transitionend', onEnd);
+                setTimeout(onEnd, 320);
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchcancel', () => {
+            if (!_swipe.tracking) { _swipe.active = false; return; }
+            _swipe.active = false;
+            _swipe.tracking = false;
+            const W = _swipe.width;
+            const TR = 'transform 0.2s ease-out';
+            if (_swipe.curEl) {
+                _swipe.curEl.style.transition = TR;
+                _swipe.curEl.style.transform = 'translate3d(0px, 0, 0)';
+                setTimeout(() => _resetTabTransform(_swipe.curEl), 220);
+            }
+            if (_swipe.prevEl) { _swipe.prevEl.style.transition = TR; _swipe.prevEl.style.transform = `translate3d(${-W}px, 0, 0)`; setTimeout(() => _cleanupNeighbor(_swipe.prevEl), 220); }
+            if (_swipe.nextEl) { _swipe.nextEl.style.transition = TR; _swipe.nextEl.style.transform = `translate3d(${W}px, 0, 0)`; setTimeout(() => _cleanupNeighbor(_swipe.nextEl), 220); }
         }, { passive: true });
     </script>
 
