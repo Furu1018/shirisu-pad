@@ -7269,7 +7269,7 @@
                         ${editPanel}
                         <div style="display:flex;gap:6px;margin-top:10px;">
                             <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">✏️</button>
-                            <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${dead ? '#F1F2F4' : c};color:${dead ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${dead ? 'not-allowed' : 'pointer'};">${ptInfo ? `${ptInfo.name}PT 締め凸` : '締め凸'}</button>
+                            <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} title="${ptInfo ? `${ptInfo.name}PT で締め凸候補を検索` : '締め凸候補を検索'}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${dead ? '#F1F2F4' : c};color:${dead ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${dead ? 'not-allowed' : 'pointer'};">締凸検索</button>
                         </div>
                     </div>`;
             }).join('');
@@ -7333,9 +7333,25 @@
             }
             const remainingHpB = (boss.remaining_hp_raw || 0) / 1e9;
 
-            // 候補抽出: 3凸未満 かつ 該当属性ダメージ登録あり
+            // ボス番号 → 弱点(PT属性) のマップ。各メンバーが既に使った属性は attacks から逆引きする。
+            const bossWeaknessByNum = new Map();
+            (bosses || []).forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
+            const usedAttrsFor = (p) => {
+                const set = new Set();
+                (p.attacks || []).forEach(a => {
+                    const w = bossWeaknessByNum.get(a.boss_number);
+                    if (w) set.add(w);
+                });
+                return set;
+            };
+
+            // 候補抽出:
+            //   1) 3凸未満 (まだ残凸あり)
+            //   2) 該当属性のダメージ登録あり
+            //   3) 該当属性をまだ使っていない (既に[attr]PTで凸済みは候補から除外)
             const candidates = players
                 .filter(p => p.attackCount < 3)
+                .filter(p => !usedAttrsFor(p).has(attrKey))
                 .map(p => ({ ...p, dmg: Number(p.damagesByAttr[attrKey]) || 0 }))
                 .filter(p => p.dmg > 0)
                 .sort((a, b) => b.dmg - a.dmg);
@@ -7623,15 +7639,29 @@
             };
             const startLevel = season.current_level || 1;
 
+            // ボス番号 → 弱点(PT属性) のマップ。各メンバーの使用済み属性は attacks から逆引きする。
+            const bossWeaknessByNum = new Map();
+            (bosses || []).forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
+            const usedAttrsFor = (p) => {
+                const set = new Set();
+                (p.attacks || []).forEach(a => {
+                    const w = bossWeaknessByNum.get(a.boss_number);
+                    if (w) set.add(w);
+                });
+                return set;
+            };
+
             // メンバー状態: 残凸数 + 属性別の使い切りダメージ(>0) + SLv
             // 「現在凸可能のみ」モードでは availability に現スロットを含む人だけを対象にする。
+            // 既に[attr]PT で凸済みの属性は avail から除外 (二重割当防止)
             const memberState = players
                 .filter(p => p.attackCount < 3)
                 .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(currentSlot))
                 .map(p => {
+                    const used = usedAttrsFor(p);
                     const avail = {};
                     for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
-                        if (Number(v) > 0) avail[k] = Number(v);
+                        if (Number(v) > 0 && !used.has(k)) avail[k] = Number(v);
                     }
                     return {
                         id: p.id,
@@ -7840,8 +7870,21 @@
             if (!boss) return;
             const remainingHpB = (boss.remaining_hp_raw || 0) / 1e9;
 
+            // 既に該当属性を使ったメンバーを除外するためのマップ
+            const bossWeaknessByNum = new Map();
+            (bosses || []).forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
+            const usedAttrsFor = (p) => {
+                const set = new Set();
+                (p.attacks || []).forEach(a => {
+                    const w = bossWeaknessByNum.get(a.boss_number);
+                    if (w) set.add(w);
+                });
+                return set;
+            };
+
             const candidates = players
                 .filter(p => p.attackCount < 3)
+                .filter(p => !usedAttrsFor(p).has(attrKey))
                 .map(p => ({
                     name: p.name,
                     dmg_B: Number(p.damagesByAttr[attrKey]) || 0,
@@ -8019,6 +8062,17 @@
                 if (!_opsDashboardCache) return;
                 const { bosses, players } = _opsDashboardCache;
                 // 各属性ごとに 残HP小さい順 で候補を出し、HP内で削れる人がいるものをピックアップ
+                // ボス番号 → 弱点(PT属性) のマップ。各メンバーの使用済み属性を判定
+                const bossWeaknessByNum = new Map();
+                (bosses || []).forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
+                const usedAttrsFor = (p) => {
+                    const set = new Set();
+                    (p.attacks || []).forEach(a => {
+                        const w = bossWeaknessByNum.get(a.boss_number);
+                        if (w) set.add(w);
+                    });
+                    return set;
+                };
                 const opportunities = [];
                 for (const ptKey of ['fire','water','iron','electric','wind']) {
                     const boss = bosses.find(b => b.weakness === ptKey);
@@ -8027,6 +8081,7 @@
                     if (remB <= 0) continue;
                     const cands = players
                         .filter(p => p.attackCount < 3)
+                        .filter(p => !usedAttrsFor(p).has(ptKey))
                         .map(p => ({ id: p.id, name: p.name, dmg: Number(p.damagesByAttr[ptKey]) || 0 }))
                         .filter(c => c.dmg > 0 && c.dmg <= remB * 1.2)  // 残HP+20%以内
                         .sort((a, b) => Math.abs(a.dmg - remB) - Math.abs(b.dmg - remB))
