@@ -1305,11 +1305,12 @@
             75%     { opacity:.95; transform:scaleY(1.08) }
         }
 
-        /* マーブル背景: 主要4タブ共通 */
+        /* マーブル背景: 主要5タブ共通 */
         #tab-mypage.tab-content.active,
         #tab-ops.tab-content.active,
         #tab-ranking.tab-content.active,
-        #tab-slv-ranking.tab-content.active {
+        #tab-slv-ranking.tab-content.active,
+        #tab-settings.tab-content.active {
             background:
                 radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
                 radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
@@ -1318,7 +1319,8 @@
             min-height: 100vh;
         }
         #tab-mypage .container, #tab-ops .container,
-        #tab-ranking .container, #tab-slv-ranking .container {
+        #tab-ranking .container, #tab-slv-ranking .container,
+        #tab-settings .container {
             display: flex; flex-direction: column; gap: 14px;
             padding: 16px 16px 80px;
         }
@@ -1515,6 +1517,56 @@
         .dc-table tbody tr.rank-row-1:hover td,
         .dc-table tbody tr.rank-row-2:hover td,
         .dc-table tbody tr.rank-row-3:hover td { background: #FAFBFC; }
+
+        /* === 設定タブ: システム状態チップ === */
+        .dc-status-chip {
+            flex: 1; min-width: 0;
+            border-radius: 12px; padding: 11px 9px;
+            background: #F7F8F9;
+            border: 1px solid rgba(20,22,26,0.05);
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dc-status-chip:hover { background: #F1F2F4; }
+        .dc-status-chip:active { transform: translateY(1px); }
+        .dc-status-chip.error {
+            background: rgba(255,61,68,0.06);
+            border-color: rgba(255,61,68,0.22);
+        }
+        .dc-status-dot {
+            width: 7px; height: 7px; border-radius: 50%; flex: none;
+            background: #18C26B;
+        }
+        .dc-status-chip.error .dc-status-dot { background: #FF3D44; }
+        .dc-status-chip.neutral .dc-status-dot { background: #9AA0A6; }
+        .dc-status-label {
+            font-size: 9px; font-weight: 800; color: #9AA0A6;
+            letter-spacing: 0.2px; white-space: nowrap;
+        }
+        .dc-status-val {
+            font-size: 14px; font-weight: 900;
+            margin-top: 6px; letter-spacing: 0.2px;
+            color: #14161A;
+            font-variant-numeric: tabular-nums;
+        }
+        .dc-status-chip.error .dc-status-val { color: #E23036; }
+
+        /* === 設定タブ: デンジャーゾーン ボタン === */
+        .dc-danger-btn {
+            display: flex; align-items: center; gap: 9px;
+            height: 46px; padding: 0 13px;
+            border-radius: 11px;
+            background: #fff;
+            border: 1px solid rgba(255,61,68,0.28);
+            color: #E23036;
+            font-size: 12.5px; font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dc-danger-btn:hover { background: rgba(255,61,68,0.04); }
 
         /* === Ops: アクションボタン === */
         .dc-ops-action {
@@ -2970,66 +3022,127 @@
         </div>
     </div>
 
-    <!-- ========== Tab 6: 設定 (システム + メンバー通知状況 + 最近アクティビティ) ========== -->
+    <!-- ========== Tab 6: 設定 (ClaudeDesign 準拠) ========== -->
     <div id="tab-settings" class="tab-content">
         <div class="container">
-            <div class="card" style="padding: 20px 24px; margin-bottom: 16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <!-- ヘッダ -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
+                <div>
+                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">設定</div>
+                    <div style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">PADのシステム状態 · 通知 · データ管理</div>
+                </div>
+                <div onclick="renderSettingsTab()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;">
+                    <span style="width:6px;height:6px;border-radius:50%;background:#18C26B;animation:dcLivePulse 1.6s ease-in-out infinite;"></span>同期
+                </div>
+            </div>
+
+            <!-- ① システム状態 -->
+            <div class="dc-card">
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:13px;">システム状態</div>
+                <div id="settingsStatusChips" style="display:flex;gap:7px;">
+                    <div class="dc-status-chip"><div style="display:flex;align-items:center;gap:5px;"><span class="dc-status-dot"></span><span class="dc-status-label">読み込み中</span></div><div class="dc-status-val">—</div></div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding-top:12px;border-top:1px solid #F0F1F3;">
+                    <div style="font-size:10.5px;color:#A4AAB0;">最終同期: <span id="settingsLastSync" style="font-weight:700;color:#8A9097;">—</span></div>
+                    <div style="font-size:10.5px;color:#A4AAB0;">データソース: <span id="settingsDataSource" style="font-weight:700;color:#8A9097;">—</span></div>
+                </div>
+                <!-- 旧 ID: 詳細を後方互換のため非表示で保持 -->
+                <div id="settingsSystemInfo" style="display:none;"></div>
+            </div>
+
+            <!-- ② メンバーの通知状況 -->
+            <div class="dc-card dc-card-tight">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">メンバーの通知状況</div>
+                    <div id="settingsNotifySummary" style="font-size:10.5px;color:#B6BBC1;">—</div>
+                </div>
+                <div id="settingsNotifyTable" style="padding:0 4px;">
+                    <p style="color:#A4AAB0;font-size:12px;padding:14px 0;">読み込み中…</p>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:7px;padding:11px 6px 4px;font-size:10.5px;line-height:1.5;color:#A4AAB0;"><span style="flex:none;">⚠️</span><span>OFF が多いメンバーには声かけを</span></div>
+            </div>
+
+            <!-- ③ 最近のアクティビティ -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最近のアクティビティ</div>
+                    <div style="font-size:10.5px;color:#B6BBC1;">30件まで表示</div>
+                </div>
+                <div id="settingsActivityList">
+                    <p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>
+                </div>
+            </div>
+
+            <!-- ④ キャラクターマスタ管理 (折り畳み) -->
+            <div class="dc-card">
+                <div onclick="toggleSettingsMaster()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
-                        <h3 style="margin: 0 0 4px 0; font-size: 18px; font-weight: 600;">⚙️ 設定 / 状態</h3>
-                        <p style="margin:0;font-size: 12px; color: var(--md-sys-color-on-surface-variant);">PADのシステム状態、メンバーの通知状況、最近のアクティビティを確認できます。</p>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">キャラクターマスタ管理</div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;">OCR学習されたキャラ名の確認・修正</div>
                     </div>
-                    <button onclick="renderSettingsTab()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;">🔄 更新</button>
+                    <div id="settingsMasterCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
+                </div>
+                <div id="settingsMasterBody" style="display:none;animation:dcFadeIn 0.2s ease;margin-top:14px;">
+                    <!-- 旧 設定内容: 画像からキャラ登録 (Bootstrap) -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">画像からキャラ登録 (Bootstrap)</div>
+                        <button onclick="handleIconBootstrapLoad()" style="padding:6px 12px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">前月JSONから読み込み</button>
+                    </div>
+                    <div id="settingsIconBootstrap" style="font-size:11px;color:#A4AAB0;">「前月JSONから読み込み」をクリックしてください。</div>
+                    <!-- マスタ一覧 -->
+                    <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">マスタ一覧</div>
+                        <span id="settingsCharSummary" style="font-size:10.5px;color:#A4AAB0;"></span>
+                    </div>
+                    <div style="overflow-x:auto;margin-top:8px;">
+                        <div id="settingsCharList" style="font-size:12px;color:#A4AAB0;">読み込み中…</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="card" style="padding: 20px; margin-bottom: 16px;">
-                <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">🛰️ システム情報</h3>
-                <div id="settingsSystemInfo" style="font-size:13px;line-height:1.8;">読み込み中…</div>
-            </div>
+            <!-- ⑤ このブラウザの設定 (デンジャーゾーン) -->
+            <div class="dc-card">
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">このブラウザの設定</div>
+                <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.6;">この端末・ブラウザに保存された情報の管理</div>
 
-            <div class="card" style="padding: 20px; margin-bottom: 16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-                    <h3 style="margin: 0; font-size: 15px; font-weight: 600;">📡 メンバーの通知状況</h3>
-                    <div id="settingsNotifySummary" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);"></div>
+                <!-- 現在プレイヤー カード -->
+                <div id="settingsLocalInfo" style="display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px 13px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:12px;">
+                    <div style="width:34px;height:34px;flex:none;border-radius:50%;padding:2px;box-sizing:border-box;background:linear-gradient(140deg,#fcfdfe,#c4c9d0 50%,#eef1f4);">
+                        <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, #5a6068, #2a2e34);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900;">—</div>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:10px;font-weight:800;color:#B6BBC1;letter-spacing:0.3px;">現在のプレイヤー</div>
+                        <div style="font-size:14px;font-weight:900;color:#14161A;margin-top:1px;">未選択</div>
+                    </div>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">Push購読の有無、受信時間帯ON数、最終ダメージ更新を一覧表示。OFFが多いメンバーには声かけを。</p>
-                <div style="overflow-x:auto;">
-                    <div id="settingsNotifyTable" style="font-size:13px;">読み込み中…</div>
-                </div>
-            </div>
 
-            <div class="card" style="padding: 20px; margin-bottom: 16px;">
-                <h3 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600;">🕒 最近のアクティビティ</h3>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">凸報告、ダメージ更新、シーズン作成、通知購読など、PAD上の主な操作を新しい順に表示。トラブル時の原因切り分けに役立ちます。</p>
-                <div id="settingsActivityList" style="font-size:13px;">読み込み中…</div>
-            </div>
-
-            <div class="card" style="padding: 20px; margin-bottom: 16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin: 0; font-size: 15px; font-weight: 600;">📷 画像からキャラ登録 (Bootstrap)</h3>
-                    <button onclick="handleIconBootstrapLoad()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;cursor:pointer;">前月JSONから読み込み</button>
+                <!-- ストレージ使用量 -->
+                <div style="margin-top:14px;">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                        <span style="font-size:11px;font-weight:800;color:#8A9097;">ストレージ使用量</span>
+                        <span id="settingsStorageTotal" style="font-size:11px;font-weight:800;color:#14161A;font-variant-numeric:tabular-nums;">—</span>
+                    </div>
+                    <div id="settingsStorageBar" style="display:flex;height:8px;border-radius:99px;overflow:hidden;background:#F1F2F4;">
+                        <div style="width:0%;background:#2E8BFF;"></div>
+                        <div style="width:0%;background:#9B4DFF;"></div>
+                        <div style="width:0%;background:#FF8A2B;"></div>
+                    </div>
+                    <div id="settingsStorageLegend" style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;">
+                        <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#2E8BFF;"></span>localStorage <span id="settingsStorageLocal">—</span></div>
+                        <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#9B4DFF;"></span>Cache <span id="settingsStorageCache">—</span></div>
+                        <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:#8A9097;"><span style="width:8px;height:8px;border-radius:2px;background:#FF8A2B;"></span>Service Worker <span id="settingsStorageSw">—</span></div>
+                    </div>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">前月の凸データに含まれる **キャラアイコン画像** を一覧化。各アイコンに名前を入力して登録すると、マスタにアイコンとして紐づきます。スキン違いは同じ名前で登録すると複数アイコンに対応します。</p>
-                <div id="settingsIconBootstrap" style="font-size:12px;">「前月JSONから読み込み」をクリックしてください。</div>
-            </div>
 
-            <div class="card" style="padding: 20px; margin-bottom: 16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <h3 style="margin: 0; font-size: 15px; font-weight: 600;">📚 キャラクターマスタ</h3>
-                    <span id="settingsCharSummary" style="font-size:11px;color:var(--md-sys-color-on-surface-variant);"></span>
+                <!-- デンジャーゾーン -->
+                <div style="margin-top:16px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button onclick="handleSettingsClearIdentity()" class="dc-danger-btn"><span style="font-size:15px;">👤</span><span style="flex:1;text-align:left;">プレイヤー選択をリセット</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                        <button onclick="handleSettingsClearCache()" class="dc-danger-btn"><span style="font-size:15px;">🗑</span><span style="flex:1;text-align:left;">キャッシュをクリア</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                        <button onclick="location.reload()" class="dc-danger-btn"><span style="font-size:15px;">🔄</span><span style="flex:1;text-align:left;">全データを再読み込み</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                    </div>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">OCRから自動学習されたキャラ名の一覧。3回以上見ると自動「確定」、未確定はOCRゆれの可能性があります。<br>類似名(50-85%)は手動で統合してマスタを綺麗に保てます。</p>
-                <div style="overflow-x:auto;">
-                    <div id="settingsCharList" style="font-size:12px;">読み込み中…</div>
-                </div>
-            </div>
-
-            <div class="card" style="padding: 20px; margin-bottom: 16px;">
-                <h3 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600;">📦 このブラウザの設定</h3>
-                <p style="margin:0 0 10px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">この端末・このブラウザに保存された情報の管理。</p>
-                <div id="settingsLocalInfo" style="font-size:13px;margin-bottom:10px;"></div>
-                <button onclick="handleSettingsClearIdentity()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">👤 プレイヤー選択をリセット</button>
+                <div style="font-size:10px;color:#A4AAB0;margin-top:10px;line-height:1.5;text-align:center;">これらの操作は他端末には影響しません</div>
             </div>
         </div>
     </div>
@@ -6124,7 +6237,7 @@
         };
 
         async function renderSettingsTab() {
-            renderSettingsLocalInfo();
+            renderSettingsBrowserCard();   // 新: アバター + ストレージ
             await Promise.all([
                 renderSettingsSystemInfo(),
                 renderSettingsNotifyStatus(),
@@ -6438,21 +6551,27 @@
 
         async function renderSettingsSystemInfo() {
             const el = document.getElementById('settingsSystemInfo');
-            if (!el) return;
+            const chipsEl = document.getElementById('settingsStatusChips');
             const lines = [];
-            // アクティブシーズン
+            // チップ用に各サービスの状態を集める
+            let supabaseOk = null, edgeFnOk = null, pushOk = null, pushDetail = '';
+            let activeSeason = null;
             try {
                 const ctx = await window.supabaseLoadActiveSeasonWithBosses();
-                if (ctx?.season) {
-                    const s = ctx.season;
-                    lines.push(`アクティブシーズン: <strong>${escapeHtml(s.month_key)}</strong> (Lv${s.current_level || 1})${s.is_test ? ' <span style="color:#b45309;font-weight:700;">🧪テスト</span>' : ''}`);
+                supabaseOk = true;
+                activeSeason = ctx?.season || null;
+                if (activeSeason) {
+                    lines.push(`アクティブシーズン: <strong>${escapeHtml(activeSeason.month_key)}</strong> (Lv${activeSeason.current_level || 1})${activeSeason.is_test ? ' <span style="color:#b45309;font-weight:700;">🧪テスト</span>' : ''}`);
                 } else {
                     lines.push(`アクティブシーズン: <span style="color:#ef4444;">なし</span>`);
                 }
             } catch (e) {
+                supabaseOk = false;
                 lines.push(`アクティブシーズン取得エラー: ${escapeHtml(e?.message || String(e))}`);
             }
-            // Push 設定
+            // Edge Function (簡易チェック: VAPID 公開鍵が利用できれば config-public が取れた = OK)
+            edgeFnOk = !!window.SHIRISU_VAPID_PUBLIC_KEY;
+            // Push
             const pushSupported = !!(window.isPushSupported && window.isPushSupported());
             lines.push(`Push通知 対応端末: ${pushSupported ? '✅' : '❌'}`);
             lines.push(`VAPID公開鍵: ${window.SHIRISU_VAPID_PUBLIC_KEY ? '✅ 設定済み' : '<span style="color:#ef4444;">未設定</span>'}`);
@@ -6460,8 +6579,114 @@
                 const s = await window.getPushSubscriptionStatus();
                 lines.push(`この端末のブラウザ許可: ${s.permission === 'granted' ? '✅ 許可' : s.permission === 'denied' ? '<span style="color:#ef4444;">❌ ブロック</span>' : '⏳ 未確認'}`);
                 lines.push(`この端末の購読: ${s.subscribed ? '✅ 購読中' : '未購読'}`);
+                pushOk = pushSupported && (s.permission === 'granted' || s.permission === 'default');
+                pushDetail = s.subscribed ? '購読中' : (s.permission === 'denied' ? 'ブロック' : '未購読');
+            } catch { pushOk = pushSupported; pushDetail = '不明'; }
+            if (el) el.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+
+            // 4チップを描画
+            if (chipsEl) {
+                const chipDefs = [
+                    { label: 'Supabase',     value: supabaseOk ? '正常' : '応答なし', ok: !!supabaseOk },
+                    { label: 'Edge Func',    value: edgeFnOk ? '正常' : '未設定',     ok: !!edgeFnOk },
+                    { label: 'Push 通知',     value: pushDetail || (pushOk ? '利用可' : '未対応'), ok: !!pushOk },
+                    { label: 'PADバージョン', value: 'v' + (window.SHIRISU_PAD_VERSION || '0.42'), ok: true, neutral: true },
+                ];
+                chipsEl.innerHTML = chipDefs.map(c => `
+                    <div class="dc-status-chip${c.ok ? (c.neutral ? ' neutral' : '') : ' error'}">
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <span class="dc-status-dot"></span>
+                            <span class="dc-status-label">${escapeHtml(c.label)}</span>
+                        </div>
+                        <div class="dc-status-val">${escapeHtml(c.value)}</div>
+                    </div>`).join('');
+            }
+
+            // 最終同期 / データソース
+            const lastSync = document.getElementById('settingsLastSync');
+            const dataSource = document.getElementById('settingsDataSource');
+            if (lastSync) lastSync.textContent = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (dataSource) dataSource.textContent = activeSeason ? (activeSeason.month_key + ' を取得済') : '—';
+        }
+
+        // ⑤ 折りたたみ: キャラクターマスタ
+        function toggleSettingsMaster() {
+            const body = document.getElementById('settingsMasterBody');
+            const caret = document.getElementById('settingsMasterCaret');
+            if (!body) return;
+            const open = body.style.display !== 'none';
+            if (open) {
+                body.style.display = 'none';
+                if (caret) caret.textContent = '▼';
+            } else {
+                body.style.display = 'block';
+                if (caret) caret.textContent = '▲';
+            }
+        }
+
+        // ⑤ ストレージ使用量 + 現在プレイヤー表示
+        async function renderSettingsBrowserCard() {
+            // 現在のプレイヤー
+            const localInfoEl = document.getElementById('settingsLocalInfo');
+            if (localInfoEl) {
+                const id = (typeof getCurrentIdentity === 'function') ? getCurrentIdentity() : null;
+                const initial = id?.name ? id.name.charAt(0) : '—';
+                const name = id?.name || '未選択';
+                localInfoEl.innerHTML = `
+                    <div style="width:34px;height:34px;flex:none;border-radius:50%;padding:2px;box-sizing:border-box;background:linear-gradient(140deg,#fcfdfe,#c4c9d0 50%,#eef1f4);">
+                        <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, #5a6068, #2a2e34);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900;">${escapeHtml(initial)}</div>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:10px;font-weight:800;color:#B6BBC1;letter-spacing:0.3px;">現在のプレイヤー</div>
+                        <div style="font-size:14px;font-weight:900;color:#14161A;margin-top:1px;">${escapeHtml(name)}</div>
+                    </div>`;
+            }
+            // ストレージ使用量
+            try {
+                if (!navigator.storage || !navigator.storage.estimate) return;
+                const est = await navigator.storage.estimate();
+                const total = est.usage || 0;
+                const usageEl = document.getElementById('settingsStorageTotal');
+                if (usageEl) usageEl.textContent = formatBytes(total);
+                // localStorage 概算
+                let lsBytes = 0;
+                try { for (const k in localStorage) { if (localStorage.hasOwnProperty(k)) lsBytes += (k.length + (localStorage.getItem(k) || '').length) * 2; } } catch { /* noop */ }
+                // 他は est.usageDetails があれば内訳取得 (Chrome のみ)
+                const det = est.usageDetails || {};
+                const cacheBytes = det.caches || 0;
+                const swBytes = Math.max(0, total - lsBytes - cacheBytes);
+                const setText = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = formatBytes(v); };
+                setText('settingsStorageLocal', lsBytes);
+                setText('settingsStorageCache', cacheBytes);
+                setText('settingsStorageSw', swBytes);
+                const bar = document.getElementById('settingsStorageBar');
+                if (bar && total > 0) {
+                    const cls = bar.children;
+                    if (cls[0]) cls[0].style.width = `${(lsBytes / total * 100).toFixed(1)}%`;
+                    if (cls[1]) cls[1].style.width = `${(cacheBytes / total * 100).toFixed(1)}%`;
+                    if (cls[2]) cls[2].style.width = `${(swBytes / total * 100).toFixed(1)}%`;
+                }
             } catch { /* noop */ }
-            el.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+        }
+        function formatBytes(n) {
+            if (!n) return '0 B';
+            if (n < 1024) return n + ' B';
+            if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+            return (n / 1024 / 1024).toFixed(1) + ' MB';
+        }
+
+        async function handleSettingsClearCache() {
+            if (!confirm('Service Worker のキャッシュをクリアします。次回再読み込みで再取得されます。続行しますか？')) return;
+            try {
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                }
+                showNotification('🗑 キャッシュをクリアしました');
+                renderSettingsBrowserCard();
+            } catch (e) {
+                showNotification('❌ ' + (e?.message || e));
+            }
         }
 
         async function renderSettingsNotifyStatus() {
@@ -6482,52 +6707,91 @@
             if (summary) {
                 summary.innerHTML = `全 <strong>${total}</strong>名 / 購読 <strong style="color:#22c55e;">${subbed}</strong>名 / 購読済みだが時間帯全OFF <strong style="color:#f59e0b;">${allOff}</strong>名`;
             }
-            // テーブル
+            // ClaudeDesign 準拠: sticky ヘッダ + 行 (アバター/名前 + Push 🔔 + 時間帯 N/24 + バー + 最終更新)
             const head = `
-                <div style="display:grid;grid-template-columns: minmax(110px, 1.2fr) 70px 90px 110px;gap:6px;padding:6px 8px;background:var(--md-sys-color-surface-variant);border-radius:6px;font-size:12px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">
-                    <div>プレイヤー</div><div style="text-align:center;">購読</div><div style="text-align:center;">時間帯ON</div><div style="text-align:right;">最終ダメ更新</div>
+                <div style="position:sticky;top:0;z-index:10;display:flex;align-items:center;background:#fff;padding:8px 2px 7px;border-bottom:1px solid #EDEEF0;font-size:9px;font-weight:800;letter-spacing:0.5px;color:#B6BBC1;">
+                    <div style="flex:1;min-width:0;">メンバー</div>
+                    <div style="width:40px;flex:none;text-align:center;">Push</div>
+                    <div style="width:74px;flex:none;text-align:center;">時間帯ON</div>
+                    <div style="width:52px;flex:none;text-align:right;">最終更新</div>
                 </div>`;
             const body = rows.map(r => {
-                const subTag = r.subscribed
-                    ? `<span style="color:#22c55e;font-weight:700;">✅${r.deviceCount > 1 ? `×${r.deviceCount}` : ''}</span>`
-                    : `<span style="color:#ef4444;">❌</span>`;
-                const slotsTag = r.subscribed && r.slotsOn === 0
-                    ? `<span style="color:#f59e0b;font-weight:700;">0/24 ⚠</span>`
-                    : `${r.slotsOn}/24`;
-                const last = r.lastDmgUpdate ? SETTINGS_TS_FMT(new Date(r.lastDmgUpdate).toISOString()) : '<span style="color:var(--md-sys-color-outline-variant);">-</span>';
+                const lowWindow = r.subscribed && r.slotsOn <= 6;
+                const flagged = !r.subscribed || lowWindow;
+                const pushIconBg = r.subscribed ? 'rgba(24,194,107,0.14)' : '#EDEEF0';
+                const pushIcon = r.subscribed ? '🔔' : '🔕';
+                const barColor = lowWindow ? '#FF8A2B' : '#18C26B';
+                const barPct = Math.min(100, (r.slotsOn / 24) * 100);
+                const last = r.lastDmgUpdate ? SETTINGS_TS_FMT(new Date(r.lastDmgUpdate).toISOString()) : '—';
                 return `
-                    <div style="display:grid;grid-template-columns: minmax(110px, 1.2fr) 70px 90px 110px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;">
-                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.name)}</div>
-                        <div style="text-align:center;">${subTag}</div>
-                        <div style="text-align:center;">${slotsTag}</div>
-                        <div style="text-align:right;color:var(--md-sys-color-on-surface-variant);">${last}</div>
+                    <div style="display:flex;align-items:center;height:46px;border-bottom:1px solid #F4F5F6;padding:0 6px;margin:0 -6px;background:${flagged ? 'rgba(255,138,43,0.06)' : 'transparent'};">
+                        <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;">
+                            <div style="width:28px;height:28px;flex:none;border-radius:50%;padding:2px;box-sizing:border-box;background:linear-gradient(140deg,#fcfdfe,#c4c9d0 50%,#eef1f4);">
+                                <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, #5a6068, #2a2e34);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:900;">${escapeHtml((r.name || '?').charAt(0))}</div>
+                            </div>
+                            <span style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:#A4AAB0;">×${r.deviceCount}</span>` : ''}</span>
+                        </div>
+                        <div style="width:40px;flex:none;display:flex;justify-content:center;">
+                            <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:${pushIconBg};${r.subscribed ? '' : 'filter:grayscale(1);opacity:0.7;'}">${pushIcon}</div>
+                        </div>
+                        <div style="width:74px;flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                            <span style="font-size:10px;font-weight:800;color:#5A6068;font-variant-numeric:tabular-nums;">${r.slotsOn}/24</span>
+                            <div style="width:48px;height:5px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
+                                <div style="height:100%;width:${barPct}%;border-radius:99px;background:${barColor};"></div>
+                            </div>
+                        </div>
+                        <div style="width:52px;flex:none;text-align:right;font-size:10px;color:#A4AAB0;">${last}</div>
                     </div>`;
             }).join('');
-            el.innerHTML = `<div style="min-width:420px;">${head}${body}</div>`;
+            el.innerHTML = head + body;
         }
 
         async function renderSettingsActivity() {
             const el = document.getElementById('settingsActivityList');
             if (!el) return;
-            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">読み込み中…</p>';
+            el.innerHTML = '<p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>';
             let events;
             try {
-                events = await window.supabaseLoadRecentActivity(60);
+                events = await window.supabaseLoadRecentActivity(30);
             } catch (e) {
-                el.innerHTML = `<p style="color:#ef4444;font-size:12px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                el.innerHTML = `<p style="color:#FF3D44;font-size:12px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
             if (events.length === 0) {
-                el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">記録がありません。</p>';
+                el.innerHTML = '<p style="color:#A4AAB0;font-size:12px;">記録がありません。</p>';
                 return;
             }
-            const ICONS = { attack: '⚔️', damage: '💥', season: '📅', subscribe: '🔔', levelup: '⬆️' };
-            el.innerHTML = events.map(e => `
-                <div style="display:flex;gap:10px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);align-items:baseline;">
-                    <span style="font-size:14px;flex-shrink:0;">${ICONS[e.type] || '•'}</span>
-                    <div style="flex:1;min-width:0;font-size:12px;line-height:1.5;">${escapeHtml(e.text)}</div>
-                    <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;flex-shrink:0;">${SETTINGS_TS_FMT(e.ts)}</span>
-                </div>`).join('');
+            // ClaudeDesign 準拠 タイムライン (左に縦線、各イベント丸ドット + タグピル + 内容)
+            const TAG = {
+                attack:    { label: '凸報告',   color: '#FF3D44' },
+                damage:    { label: '模擬戦',   color: '#2E8BFF' },
+                season:    { label: 'シーズン', color: '#9B4DFF' },
+                subscribe: { label: '通知',     color: '#18C26B' },
+                levelup:   { label: 'レベル',   color: '#FF8A2B' },
+            };
+            const fmtTime = (ts) => {
+                try {
+                    const d = new Date(ts);
+                    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                } catch { return ''; }
+            };
+            const rows = events.map(e => {
+                const t = TAG[e.type] || { label: 'その他', color: '#9AA0A6' };
+                return `
+                    <div style="position:relative;padding-bottom:16px;">
+                        <div style="position:absolute;left:-20px;top:2px;width:9px;height:9px;border-radius:50%;background:${t.color};box-shadow:0 0 0 3px #fff;"></div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;">
+                            <span style="font-size:11px;font-weight:800;color:#A4AAB0;font-variant-numeric:tabular-nums;">${fmtTime(e.ts)}</span>
+                            <span style="font-size:9px;font-weight:800;letter-spacing:0.3px;padding:2px 8px;border-radius:999px;color:${t.color};background:${t.color}16;">${t.label}</span>
+                        </div>
+                        <div style="font-size:12.5px;font-weight:600;color:#14161A;line-height:1.5;">${escapeHtml(e.text)}</div>
+                    </div>`;
+            }).join('');
+            el.innerHTML = `
+                <div style="position:relative;padding-left:20px;">
+                    <div style="position:absolute;left:4px;top:4px;bottom:14px;width:1.5px;background:#EDEEF0;"></div>
+                    ${rows}
+                </div>`;
         }
 
         // ========== 運営ダッシュボード (Phase 3a) ==========
