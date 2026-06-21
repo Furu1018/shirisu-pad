@@ -7325,10 +7325,19 @@
             renderOpsBossSummary();
             renderOpsFinishList(attrKey);
             // 締め凸候補カードへスムーススクロール
+            // ※ レイアウト確定後に絶対座標で算出 (scrollIntoView は smooth 中に body
+            //    高さが変動すると目標位置がずれて overshoot していたため)
             const target = document.getElementById('opsFinishList');
-            if (target) {
-                setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-            }
+            if (!target) return;
+            // 2フレーム待つことで描画 (innerHTML + サブカード描画) のレイアウトを確定
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const rect = target.getBoundingClientRect();
+                    const headerH = document.querySelector('header.header')?.offsetHeight || 0;
+                    const targetY = Math.max(0, window.scrollY + rect.top - headerH - 8);
+                    window.scrollTo({ top: targetY, behavior: 'smooth' });
+                });
+            });
         }
 
         function renderOpsFinishList(attrKey) {
