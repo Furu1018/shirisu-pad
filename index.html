@@ -215,33 +215,59 @@
             .bottom-nav { display: flex; }
         }
         .bottom-nav-btn {
+            position: relative;
             flex: 1;
             min-width: 0;
             background: transparent;
             border: none;
-            padding: 6px 4px;
+            padding: 8px 4px 6px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 3px;
+            gap: 4px;
             cursor: pointer;
-            color: var(--md-sys-color-on-surface-variant);
+            color: #9AA0A6;
             font-size: 10px;
             font-weight: 600;
             line-height: 1.1;
-            border-radius: 8px;
-            transition: color 0.2s ease, background 0.2s ease;
+            border-radius: 10px;
+            transition: color 0.18s ease;
+            -webkit-tap-highlight-color: transparent;
         }
-        .bottom-nav-btn svg { width: 22px; height: 22px; stroke-width: 2; }
-        .bottom-nav-btn:hover { background: var(--brand-primary-soft); }
-        .bottom-nav-btn.active { color: var(--brand-primary); }
-        .bottom-nav-btn.active::after {
-            content: '';
-            display: block;
-            width: 4px; height: 4px;
+        /* アクティブ時に色付きピル背景に座らせるアイコン枠 */
+        .bottom-nav-btn .nav-icon-wrap {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px; height: 26px;
             border-radius: 999px;
-            background: var(--brand-primary);
-            margin-top: -2px;
+            background: transparent;
+            transition: background 0.18s ease, transform 0.18s ease;
+        }
+        .bottom-nav-btn svg { width: 22px; height: 22px; stroke-width: 2; transition: transform 0.18s ease; }
+        .bottom-nav-btn:hover { color: #14161A; }
+        .bottom-nav-btn:hover .nav-icon-wrap { background: rgba(20,22,26,0.04); }
+
+        /* ===== アクティブ状態 (大幅強化) ===== */
+        .bottom-nav-btn.active {
+            color: #14161A;
+            font-weight: 800;
+        }
+        .bottom-nav-btn.active .nav-icon-wrap {
+            background: rgba(20,22,26,0.10);   /* 黒のソフト塗り (iOS native 風) */
+            transform: scale(1.02);
+        }
+        .bottom-nav-btn.active svg { transform: scale(1.06); }
+        /* 上部に細い アクセントバー */
+        .bottom-nav-btn.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 28px; height: 3px;
+            border-radius: 0 0 3px 3px;
+            background: #14161A;
         }
 
         /* ========== Image Buttons (モックアップ用に書き出した PNG ボタン) ========== */
@@ -9714,27 +9740,27 @@
     <!-- ========== Bottom Navigation (mobile) ========== -->
     <nav class="bottom-nav" id="bottomNav">
         <button class="bottom-nav-btn active" data-tab="mypage" onclick="switchTab('mypage')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
             <span>マイページ</span>
         </button>
         <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span>
             <span>ユニレ管理</span>
         </button>
         <button class="bottom-nav-btn" data-tab="ranking" onclick="switchTab('ranking')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>
             <span>比較</span>
         </button>
         <button class="bottom-nav-btn" data-tab="slv-ranking" onclick="switchTab('slv-ranking')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
             <span>ふるり値</span>
         </button>
         <button class="bottom-nav-btn" data-tab="help" onclick="switchTab('help')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
             <span>ヘルプ</span>
         </button>
         <button class="bottom-nav-btn" data-tab="settings" onclick="switchTab('settings')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
             <span>設定</span>
         </button>
     </nav>
