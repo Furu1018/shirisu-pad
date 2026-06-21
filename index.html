@@ -3967,15 +3967,19 @@
             });
             document.getElementById('tab-' + tabName).classList.add('active');
 
+            // 3) 同期 scrollTo: クラス変更と同じフレームで適用するためペイント前に確定させる
+            //    (rAF だと一瞬「先頭」が見えてしまう)
+            const y = Object.prototype.hasOwnProperty.call(_tabScrollY, tabName) ? _tabScrollY[tabName] : 0;
+            window.scrollTo(0, y);
+
+            // 4) コンテンツ描画 (非同期で内部更新する関数もあるが、初期レイアウトは既存DOMで決定)
             if (tabName === 'slv-ranking') renderFururiRanking();
             if (tabName === 'characters') updateTeamCompositionsDisplay();
             if (tabName === 'mypage') renderMyPage();
             if (tabName === 'ops') renderOpsDashboard();
             if (tabName === 'settings') renderSettingsTab();
 
-            // 3) 新タブの scroll 位置を復元 (記憶があれば前回位置、なければ先頭)
-            //    rAF: クラス付替 + ハンドラ内のクリーンアップ後に確実に走らせる
-            const y = Object.prototype.hasOwnProperty.call(_tabScrollY, tabName) ? _tabScrollY[tabName] : 0;
+            // 5) 描画で body 高さが変わるケースのためバックアップで rAF 再適用
             requestAnimationFrame(() => { window.scrollTo(0, y); });
         }
 
@@ -10246,6 +10250,10 @@
             el.style.willChange = 'transform';
             el.style.zIndex = '5';
             el.dataset._neighbor = side;
+            // 隣のタブも前回のスクロール位置から見せる (スワイプ中も滑らかに)
+            const tabName = el.id.replace('tab-', '');
+            const savedY = Object.prototype.hasOwnProperty.call(_tabScrollY, tabName) ? _tabScrollY[tabName] : 0;
+            el.scrollTop = savedY;
         };
         const _cleanupNeighbor = (el) => {
             if (!el?.dataset?._neighbor) return;
@@ -10345,13 +10353,16 @@
                 // 終了処理 (transitionend)
                 const finish = () => {
                     const targetName = targetEl.id.replace('tab-', '');
-                    // 先にタブ切替 (フェードは抑制)
                     targetEl.classList.add('swipe-no-anim');
-                    if (typeof switchTab === 'function') switchTab(targetName);
-                    // 後でインラインスタイルを全クリア
-                    _resetTabTransform(cur);
+                    // 1) 先に隣のタブのインラインスタイルをクリア (position:fixed 解除)
+                    //    これで target が通常フローに戻り (display:none CSS が効く)、
+                    //    switchTab 内の同期 scrollTo が正しい body 高さで動作できる
                     _cleanupNeighbor(targetEl);
                     _resetTabTransform(targetEl);
+                    // 2) タブ切替 (active クラス入替 + 同期 scrollTo)
+                    if (typeof switchTab === 'function') switchTab(targetName);
+                    // 3) 旧タブの transform を解除 (この時点で旧タブは display:none なので非表示)
+                    _resetTabTransform(cur);
                     if (otherNeighbor) _cleanupNeighbor(otherNeighbor);
                     setTimeout(() => targetEl.classList.remove('swipe-no-anim'), 50);
                 };
