@@ -3931,6 +3931,8 @@
                 if (typeof _nikkeCharsCache !== 'undefined') _nikkeCharsCache = null;
                 if (typeof _analysisJsonCache !== 'undefined' && _analysisJsonCache?.clear) _analysisJsonCache.clear();
                 if (typeof _analysisRaidConfig !== 'undefined') _analysisRaidConfig = null;
+                // タブ描画キャッシュも全クリア (強制再描画)
+                _invalidateTabRenderCache();
                 // データを再ロード (JSON + Supabase)
                 await autoLoadData();
                 // 現在のタブを再描画
@@ -3951,6 +3953,39 @@
 
         // タブ毎のスクロール位置を記憶 (初回 = 先頭 / 再訪 = 前回位置)
         const _tabScrollY = {};
+        // タブ毎の最終レンダリング時刻 — しきい値内ならスキップして「更新感」を出さない
+        const _tabRenderedAt = {};
+        const _TAB_RENDER_THRESHOLD_MS = {
+            mypage: 30_000,      // 30秒
+            ops: 15_000,         // 15秒 (ボス HP/coord はポーリングで別途更新済)
+            ranking: 300_000,    // 5分 (月末のみ変動)
+            'slv-ranking': 300_000,
+            characters: 60_000,
+            settings: 30_000,
+        };
+        function _shouldSkipRender(name) {
+            const last = _tabRenderedAt[name];
+            if (!last) return false;
+            const th = _TAB_RENDER_THRESHOLD_MS[name] ?? 30_000;
+            return (Date.now() - last) < th;
+        }
+        function _markTabRendered(name) {
+            _tabRenderedAt[name] = Date.now();
+        }
+        // 明示的なキャッシュ無効化 (ヘッダーリロード/プレイヤー変更時に使う)
+        function _invalidateTabRenderCache(name) {
+            if (name) delete _tabRenderedAt[name];
+            else Object.keys(_tabRenderedAt).forEach(k => delete _tabRenderedAt[k]);
+        }
+        function _renderTabContent(name) {
+            if (name === 'slv-ranking') renderFururiRanking();
+            else if (name === 'characters') updateTeamCompositionsDisplay();
+            else if (name === 'mypage') renderMyPage();
+            else if (name === 'ops') renderOpsDashboard();
+            else if (name === 'settings') renderSettingsTab();
+            else return;
+            _markTabRendered(name);
+        }
         function switchTab(tabName) {
             // 1) 現在のタブの scroll 位置を保存
             const prevEl = document.querySelector('.tab-content.active');
@@ -3971,12 +4006,12 @@
             const y = Object.prototype.hasOwnProperty.call(_tabScrollY, tabName) ? _tabScrollY[tabName] : 0;
             window.scrollTo(0, y);
 
-            // 4) コンテンツ描画 (非同期で内部更新する関数もあるが、初期レイアウトは既存DOMで決定)
-            if (tabName === 'slv-ranking') renderFururiRanking();
-            if (tabName === 'characters') updateTeamCompositionsDisplay();
-            if (tabName === 'mypage') renderMyPage();
-            if (tabName === 'ops') renderOpsDashboard();
-            if (tabName === 'settings') renderSettingsTab();
+            // 4) コンテンツ描画 — しきい値内ならスキップ (前回描画 DOM を使い回す)
+            //    ※ ops の coord 関連はポーリング (10秒毎) で別途更新されるので、ここを
+            //    スキップしても古い情報にはなりにくい
+            if (!_shouldSkipRender(tabName)) {
+                _renderTabContent(tabName);
+            }
 
             // 5) 描画で body 高さが変わるケースのためバックアップで rAF 再適用
             requestAnimationFrame(() => { window.scrollTo(0, y); });
@@ -3999,7 +4034,13 @@
                 localStorage.removeItem(IDENTITY_KEY);
             }
             updateIdentityHeader();
+            // プレイヤー固有データを使うタブのキャッシュを無効化
+            if (typeof _invalidateTabRenderCache === 'function') {
+                _invalidateTabRenderCache('mypage');
+                _invalidateTabRenderCache('ops');
+            }
             renderMyPage();
+            if (typeof _markTabRendered === 'function') _markTabRendered('mypage');
         }
 
         function updateIdentityHeader() {
@@ -10195,11 +10236,7 @@
             const initialTab = document.querySelector('.tab-content.active');
             const initialName = initialTab?.id?.replace('tab-', '');
             const renderTab = (name) => {
-                if (name === 'mypage')           renderMyPage();
-                else if (name === 'ops')         renderOpsDashboard();
-                else if (name === 'slv-ranking') renderFururiRanking();
-                else if (name === 'characters')  updateTeamCompositionsDisplay();
-                else if (name === 'settings')    renderSettingsTab();
+                _renderTabContent(name);   // 描画 + _markTabRendered を内部で行う
             };
             renderTab(initialName);
             // 初回訪問 (プレイヤー未選択) なら選択モーダルを自動で開く
