@@ -1114,27 +1114,24 @@
         /* ========== Notification ========== */
         .notification {
             position: fixed;
-            bottom: 24px;
+            top: calc(env(safe-area-inset-top, 0px) + 12px);
             left: 50%;
-            transform: translateX(-50%) translateY(100px);
+            transform: translateX(-50%) translateY(-180%);
             background: hsl(222.2 47.4% 11.2%);
             color: #fff;
             padding: 12px 24px;
             border-radius: 24px;
             font-size: 14px;
-            z-index: 600;
-            transition: transform 0.3s ease;
+            z-index: 700;            /* ヘッダー (sticky) より上 */
+            transition: transform 0.3s ease, opacity 0.25s ease;
             pointer-events: none;
             white-space: nowrap;
+            opacity: 0;
+            box-shadow: 0 10px 28px rgba(20,22,26,0.28);
         }
-
-        .notification.show { transform: translateX(-50%) translateY(0); }
-
-        /* 下部メニューが表示される端末では、メニュー (~56px + 安全領域) より上に出す */
-        @media (max-width: 767px) {
-            .notification {
-                bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-            }
+        .notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
         }
 
         /* ========== Responsive ========== */
@@ -1867,7 +1864,7 @@
     </nav>
 
     <!-- ========== Tab: マイページ (再構築版) ========== -->
-    <div id="tab-mypage" class="tab-content">
+    <div id="tab-mypage" class="tab-content active">
         <div class="container">
             <!-- ① プロフィール: ClaudeDesign 準拠 (シルバーリング + 名前/Lv + 得意属性チップ + 編集ピル + soft-fill 切替) -->
             <div class="dc-card dc-profile-card">
@@ -2265,7 +2262,7 @@
     </div>
 
     <!-- ========== Tab 1: ダメージ比較 (完了済シーズンの分析) ========== -->
-    <div id="tab-ranking" class="tab-content active">
+    <div id="tab-ranking" class="tab-content">
         <div class="container">
             <!-- ページヘッダー -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
