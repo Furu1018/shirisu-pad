@@ -10185,14 +10185,34 @@
             // switchTab を経由しないと renderMyPage が呼ばれないため、ここで明示的に。
             const initialTab = document.querySelector('.tab-content.active');
             const initialName = initialTab?.id?.replace('tab-', '');
-            if (initialName === 'mypage') renderMyPage();
-            else if (initialName === 'ops') renderOpsDashboard();
-            else if (initialName === 'slv-ranking') renderFururiRanking();
-            else if (initialName === 'characters') updateTeamCompositionsDisplay();
-            else if (initialName === 'settings') renderSettingsTab();
+            const renderTab = (name) => {
+                if (name === 'mypage')           renderMyPage();
+                else if (name === 'ops')         renderOpsDashboard();
+                else if (name === 'slv-ranking') renderFururiRanking();
+                else if (name === 'characters')  updateTeamCompositionsDisplay();
+                else if (name === 'settings')    renderSettingsTab();
+            };
+            renderTab(initialName);
             // 初回訪問 (プレイヤー未選択) なら選択モーダルを自動で開く
             if (!getCurrentIdentity()) {
                 openPlayerSelectModal();
+            }
+
+            // 起動後、スワイプ可能な主要タブを裏でプリレンダーしておく:
+            // - 各タブの DOM/画像をウォームアップ → スワイプで隣に流れた時にちらつき軽減
+            // - 重い処理は requestIdleCallback / setTimeout で分散
+            const _prerender = (name) => {
+                if (name === initialName) return;          // 初期タブは既に描画済
+                try { renderTab(name); } catch (e) { console.warn('[prerender]', name, e?.message || e); }
+            };
+            const swipeable = ['mypage', 'ops', 'ranking', 'slv-ranking'];
+            const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
+            // 隣接タブを優先、その後残りを順に
+            const order = swipeable.filter(t => t !== initialName);
+            let delay = 0;
+            for (const t of order) {
+                setTimeout(() => idle(() => _prerender(t)), delay);
+                delay += 200;
             }
         });
 
