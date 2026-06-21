@@ -3950,7 +3950,17 @@
             }
         }
 
+        // タブ毎のスクロール位置を記憶 (初回 = 先頭 / 再訪 = 前回位置)
+        const _tabScrollY = {};
         function switchTab(tabName) {
+            // 1) 現在のタブの scroll 位置を保存
+            const prevEl = document.querySelector('.tab-content.active');
+            const prevName = prevEl?.id?.replace('tab-', '');
+            if (prevName) {
+                _tabScrollY[prevName] = window.scrollY || document.documentElement.scrollTop || 0;
+            }
+
+            // 2) タブ切替
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
@@ -3962,6 +3972,11 @@
             if (tabName === 'mypage') renderMyPage();
             if (tabName === 'ops') renderOpsDashboard();
             if (tabName === 'settings') renderSettingsTab();
+
+            // 3) 新タブの scroll 位置を復元 (記憶があれば前回位置、なければ先頭)
+            //    rAF: クラス付替 + ハンドラ内のクリーンアップ後に確実に走らせる
+            const y = Object.prototype.hasOwnProperty.call(_tabScrollY, tabName) ? _tabScrollY[tabName] : 0;
+            requestAnimationFrame(() => { window.scrollTo(0, y); });
         }
 
         // ========== Player Identity (Phase 2a) ==========
