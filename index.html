@@ -1518,6 +1518,70 @@
         .dc-table tbody tr.rank-row-2:hover td,
         .dc-table tbody tr.rank-row-3:hover td { background: #FAFBFC; }
 
+        /* === NIKKE ゲーム内風 アクションボタン (六角クリップ + グラデ + ストライプ) === */
+        .btn-nikke {
+            display: block; padding: 3px; cursor: pointer;
+            background: #14161A;
+            border: none;
+            -webkit-tap-highlight-color: transparent;
+            clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0 50%);
+            transition: transform 0.1s ease, filter 0.15s ease;
+        }
+        .btn-nikke:active { transform: translateY(1px) scale(0.995); filter: brightness(1.05); }
+        .btn-nikke-inner {
+            position: relative; overflow: hidden;
+            clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%);
+            text-align: center;
+        }
+        .btn-nikke-inner::before {
+            content: ''; position: absolute; inset: 0;
+            background: repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 7px, transparent 7px 15px);
+            pointer-events: none;
+        }
+        .btn-nikke-inner::after {
+            content: ''; position: absolute; left: 0; right: 0; top: 0;
+            height: 46%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.32), transparent);
+            pointer-events: none;
+        }
+        .btn-nikke-title {
+            position: relative; font-weight: 900; color: #fff;
+            line-height: 1.1;
+        }
+        .btn-nikke-sub {
+            position: relative; font-weight: 800;
+            color: rgba(255,255,255,0.94);
+            margin-top: 4px;
+        }
+        /* 青: 模擬戦データ提出 */
+        .btn-nikke-blue { box-shadow: 0 7px 18px rgba(46,139,255,0.30); }
+        .btn-nikke-blue .btn-nikke-inner {
+            background: linear-gradient(180deg,#46A0FF,#1E78F0);
+            padding: 11px 12px 10px;
+        }
+        .btn-nikke-blue .btn-nikke-title {
+            font-size: 17px; letter-spacing: 0.6px;
+            text-shadow: 0 2px 3px rgba(0,40,90,0.4);
+        }
+        .btn-nikke-blue .btn-nikke-sub {
+            font-size: 10.5px; letter-spacing: 0.4px;
+            text-shadow: 0 1px 2px rgba(0,40,90,0.35);
+        }
+        /* 赤: 戦闘に入る */
+        .btn-nikke-red { box-shadow: 0 9px 22px rgba(232,38,31,0.32); }
+        .btn-nikke-red .btn-nikke-inner {
+            background: linear-gradient(180deg,#FF5A52,#E8261F);
+            padding: 13px 12px 12px;
+        }
+        .btn-nikke-red .btn-nikke-title {
+            font-size: 20px; letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(80,0,0,0.4);
+        }
+        .btn-nikke-red .btn-nikke-sub {
+            font-size: 11px; letter-spacing: 0.6px;
+            text-shadow: 0 1px 2px rgba(80,0,0,0.35);
+        }
+
         /* === 設定タブ: システム状態チップ === */
         .dc-status-chip {
             flex: 1; min-width: 0;
@@ -1988,21 +2052,26 @@
                 </div>
             </div>
 
-            <!-- ② 模擬戦データ (横一列 5属性パネル + 折りたたみレーダー) -->
+            <!-- ② 模擬戦データ (横一列 5属性パネル + NIKKE風 提出ボタン + 折りたたみレーダー) -->
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:15px;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">模擬戦データ</div>
-                    <label style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#B6BBC1;cursor:pointer;font-weight:700;">
-                        📷 OCR
-                        <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
-                    </label>
+                    <span id="mypageDmgOcrStatus" style="font-size:10.5px;color:#A4AAB0;min-height:14px;">&nbsp;</span>
                 </div>
                 <div id="mypageDmgPanels" style="display:flex;gap:6px;">
                     <p style="flex:1;color:#A4AAB0;font-size:12px;text-align:center;padding:14px 0;">プレイヤーを選択すると表示されます。</p>
                 </div>
-                <p id="mypageDmgOcrStatus" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;">&nbsp;</p>
 
-                <div onclick="toggleMypageRadar()" id="mypageRadarToggle" style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ レーダーチャートを表示</div>
+                <!-- NIKKE風 模擬戦提出ボタン (青) -->
+                <label class="btn-nikke btn-nikke-blue" style="margin-top:15px;">
+                    <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
+                    <div class="btn-nikke-inner">
+                        <div class="btn-nikke-title"><span style="margin-right:4px;">⚔</span>模擬戦データを提出</div>
+                        <div class="btn-nikke-sub">スクショからダメージを記録</div>
+                    </div>
+                </label>
+
+                <div onclick="toggleMypageRadar()" id="mypageRadarToggle" style="margin-top:9px;display:flex;align-items:center;justify-content:center;gap:6px;height:32px;color:#9AA0A6;font-size:11.5px;font-weight:700;cursor:pointer;user-select:none;">▼ レーダーチャートを表示</div>
                 <div id="mypageRadarWrap" style="display:none;margin-top:10px;padding:12px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.03);">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                         <strong style="font-size:13px;color:#14161A;">あなたの属性別ふるり値</strong>
@@ -2030,9 +2099,12 @@
                     </div>
                 </div>
 
-                <!-- Gate -->
-                <div id="mypageBattleGate" onclick="enterBattleGate()" style="display:flex;align-items:center;justify-content:center;gap:9px;height:54px;border-radius:14px;background:linear-gradient(180deg,#23262C,#14161A);color:#fff;font-size:16px;font-weight:800;letter-spacing:0.5px;cursor:pointer;box-shadow:0 8px 20px rgba(20,22,26,0.22);">
-                    <span style="color:#FF6B70;font-size:18px;">⚔</span> 戦闘に入る
+                <!-- NIKKE風 戦闘に入る ゲート (赤) -->
+                <div id="mypageBattleGate" onclick="enterBattleGate()" class="btn-nikke btn-nikke-red">
+                    <div class="btn-nikke-inner">
+                        <div class="btn-nikke-title"><span style="margin-right:6px;">⚔</span>戦闘に入る</div>
+                        <div class="btn-nikke-sub">進行中のレイドに参加</div>
+                    </div>
                 </div>
 
                 <!-- Boss grid (hidden until gate is opened) -->
@@ -5694,7 +5766,7 @@
             }
             const gate = document.getElementById('mypageBattleGate');
             const expanded = document.getElementById('mypageBattleExpanded');
-            if (gate) gate.style.display = 'flex';
+            if (gate) gate.style.display = 'block';
             if (expanded) expanded.style.display = 'none';
         }
 
