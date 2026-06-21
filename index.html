@@ -10108,6 +10108,15 @@
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
+            // 初期アクティブタブ (マイページ) のコンテンツを描画
+            // switchTab を経由しないと renderMyPage が呼ばれないため、ここで明示的に。
+            const initialTab = document.querySelector('.tab-content.active');
+            const initialName = initialTab?.id?.replace('tab-', '');
+            if (initialName === 'mypage') renderMyPage();
+            else if (initialName === 'ops') renderOpsDashboard();
+            else if (initialName === 'slv-ranking') renderFururiRanking();
+            else if (initialName === 'characters') updateTeamCompositionsDisplay();
+            else if (initialName === 'settings') renderSettingsTab();
             // 初回訪問 (プレイヤー未選択) なら選択モーダルを自動で開く
             if (!getCurrentIdentity()) {
                 openPlayerSelectModal();
