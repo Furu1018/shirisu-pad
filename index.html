@@ -5029,14 +5029,15 @@
                 }
 
                 const parts = [`${files.length}枚解析`];
-                // ダメージ反映 (属性確定時のみ)
+                // ダメージ反映 (属性確定時のみ) — マイページ再構築後は input 要素が無いので直接保存
                 if (ptAttr && r.totalDamage != null) {
                     const damageB = Number(r.totalDamage) / 1e9;
-                    const input = document.querySelector(`#mypageDmgInputs input[data-attr="${ptAttr}"]`);
-                    if (input) {
-                        input.value = damageB.toFixed(2).replace(/\.?0+$/, '');
-                        await handleMyDamageBlur(input);
+                    try {
+                        await window.supabaseSavePlayerDamage(id.id, ptAttr, damageB);
                         parts.push(`${PT_ATTRS.find(x => x.key === ptAttr)?.name}PT: ${damageB.toFixed(2)} B`);
+                    } catch (e) {
+                        console.warn('[OCR damage save]', e?.message || e);
+                        parts.push(`❌ 保存失敗 (${e?.message || e})`);
                     }
                 }
                 // 編成も登録 (属性確定 & 5キャラ取得時)
@@ -5055,6 +5056,8 @@
                 }
                 statusEl.textContent = `✅ ${parts.join(' / ')}`;
                 statusEl.style.color = '#22c55e';
+                // 保存後に必ずパネル再描画 (ダメージのみ更新ケースもカバー)
+                if (ptAttr && r.totalDamage != null) renderMyDamagePanels(id);
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
                 statusEl.style.color = '#ef4444';
