@@ -1400,6 +1400,82 @@
             background: #14161A; color: #fff;
         }
 
+        /* === 残り戦闘可能メンバー: ベースフィルタ (3ピル, 黒塗りアクティブ) === */
+        .dc-rem-base {
+            flex: 1; min-width: 0;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+            height: 36px; border-radius: 10px; border: none;
+            font-size: 11.5px; font-weight: 800; white-space: nowrap; cursor: pointer;
+            background: #F1F2F4; color: #9AA0A6;
+            transition: background 0.15s ease, color 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            font-family: inherit;
+        }
+        .dc-rem-base[data-on="1"] { background: #14161A; color: #fff; }
+
+        /* === 残り戦闘可能メンバー: 属性フィルタ (6ピル, soft塗り) === */
+        .dc-rem-attr {
+            flex: 1; min-width: 0;
+            text-align: center; height: 32px; line-height: 32px;
+            border-radius: 9px; border: none;
+            font-size: 11.5px; font-weight: 900; cursor: pointer;
+            background: color-mix(in srgb, var(--attr-c) 10%, transparent);
+            color: var(--attr-c);
+            transition: background 0.15s ease, color 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            font-family: inherit;
+        }
+        .dc-rem-attr[data-on="1"] {
+            background: var(--attr-c);
+            color: #fff;
+            box-shadow: 0 3px 8px color-mix(in srgb, var(--attr-c) 35%, transparent);
+        }
+        .dc-rem-attr[data-attr-filter=""][data-on="1"] { background: #14161A; box-shadow: none; }
+
+        /* === 残り戦闘可能メンバー: 表領域 === */
+        .dc-rem-attr-header {
+            position: sticky; top: 0; z-index: 10;
+            display: flex; align-items: center; gap: 9px;
+            background: #fff; padding: 6px 0 7px;
+            border-bottom: 1px solid #EDEEF0;
+        }
+        .dc-rem-attr-header-chip {
+            width: 30px; height: 22px; flex: none; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 900;
+        }
+        .dc-rem-section-head {
+            display: flex; align-items: center; gap: 8px;
+            padding: 11px 2px 9px; cursor: pointer;
+            border-bottom: 1px solid #F4F5F6;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .dc-rem-section-head:hover { background: #FAFBFC; }
+        .dc-rem-section-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+        .dc-rem-row {
+            display: flex; align-items: center; gap: 9px;
+            height: 46px; border-bottom: 1px solid #F4F5F6;
+            cursor: default;
+        }
+        .dc-rem-cell {
+            width: 30px; height: 30px; flex: none; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+        }
+        .dc-rem-cell.used {
+            color: #B6BBC1; background: transparent;
+            text-decoration: line-through; opacity: 0.5; font-weight: 700;
+        }
+        .dc-rem-cell.unset {
+            color: #C9CED3; font-weight: 900; background: transparent;
+        }
+        .dc-rem-fav-chip {
+            width: 14px; height: 14px; border-radius: 4px; flex: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 900; color: #fff;
+        }
+
         /* === 共通: 詰めカード + テーブル === */
         .dc-card-tight { padding: 12px 14px; }
         .dc-table-wrap {
@@ -2107,27 +2183,28 @@
                 </div>
             </div>
 
-            <!-- ③ 残り戦闘可能メンバー (残凸状況一覧 + フィルタ拡張) -->
+            <!-- ③ 残り戦闘可能メンバー (ClaudeDesign 準拠の優先度セクション + 5属性 grid 行) -->
             <div class="dc-card">
-                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">残り戦闘可能メンバー</div>
-                    <span id="opsRemainingSummary" style="font-size:10.5px;color:#B6BBC1;">&nbsp;</span>
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:13px;">残り戦闘可能メンバー</div>
+                <!-- ベースフィルタ (3ピル, 排他選択) -->
+                <div style="display:flex;gap:6px;">
+                    <button class="dc-rem-base" data-base-filter="all"            onclick="handleOpsRemainingFilterPick('all')"><span style="font-size:13px;">👥</span> 全員</button>
+                    <button class="dc-rem-base" data-base-filter="online"         onclick="handleOpsRemainingFilterPick('online')"><span style="font-size:13px;">🎮</span> オンライン</button>
+                    <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:13px;">⏰</span> 凸可能時間</button>
                 </div>
-                <p style="margin:0 0 10px 0;font-size:11px;color:#A4AAB0;">タブで絞り込み: 全員 / オンライン / 凸可能時間 / 属性別 (使える人のみ)</p>
-                <!-- ベースフィルタ -->
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
-                    <button class="dc-pill-filter" data-base-filter="all"     onclick="handleOpsRemainingFilterPick('all')">👥 全員</button>
-                    <button class="dc-pill-filter" data-base-filter="online"  onclick="handleOpsRemainingFilterPick('online')">🎮 オンライン</button>
-                    <button class="dc-pill-filter" data-base-filter="available-now" onclick="handleOpsRemainingFilterPick('available-now')">⏰ 凸可能時間</button>
+                <!-- 属性別フィルタ (6ピル, 排他選択) -->
+                <div style="display:flex;gap:5px;margin-top:8px;">
+                    <button class="dc-rem-attr" data-attr-filter=""         onclick="handleOpsRemainingAttrPick('')"         style="--attr-c:#14161A;flex:1.4;">全属性</button>
+                    <button class="dc-rem-attr" data-attr-filter="fire"     onclick="handleOpsRemainingAttrPick('fire')"     style="--attr-c:#FF3D44;">火</button>
+                    <button class="dc-rem-attr" data-attr-filter="water"    onclick="handleOpsRemainingAttrPick('water')"    style="--attr-c:#2E8BFF;">水</button>
+                    <button class="dc-rem-attr" data-attr-filter="electric" onclick="handleOpsRemainingAttrPick('electric')" style="--attr-c:#9B4DFF;">電</button>
+                    <button class="dc-rem-attr" data-attr-filter="iron"     onclick="handleOpsRemainingAttrPick('iron')"     style="--attr-c:#FF8A2B;">鉄</button>
+                    <button class="dc-rem-attr" data-attr-filter="wind"     onclick="handleOpsRemainingAttrPick('wind')"     style="--attr-c:#18C26B;">風</button>
                 </div>
-                <!-- 属性別フィルタ -->
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button class="dc-pill-attr" data-attr-filter=""        onclick="handleOpsRemainingAttrPick('')">全属性</button>
-                    <button class="dc-pill-attr" data-attr-filter="fire"     onclick="handleOpsRemainingAttrPick('fire')"     style="--attr-c:#FF3D44;">火</button>
-                    <button class="dc-pill-attr" data-attr-filter="water"    onclick="handleOpsRemainingAttrPick('water')"    style="--attr-c:#2E8BFF;">水</button>
-                    <button class="dc-pill-attr" data-attr-filter="electric" onclick="handleOpsRemainingAttrPick('electric')" style="--attr-c:#9B4DFF;">電</button>
-                    <button class="dc-pill-attr" data-attr-filter="iron"     onclick="handleOpsRemainingAttrPick('iron')"     style="--attr-c:#FF8A2B;">鉄</button>
-                    <button class="dc-pill-attr" data-attr-filter="wind"     onclick="handleOpsRemainingAttrPick('wind')"     style="--attr-c:#18C26B;">風</button>
+                <!-- 要約バナー -->
+                <div id="opsRemainingSummaryBanner" style="display:flex;align-items:center;justify-content:space-between;margin-top:13px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;padding:10px 13px;">
+                    <div id="opsRemainingSummaryLeft" style="font-size:14px;font-weight:900;color:#14161A;letter-spacing:0.2px;font-variant-numeric:tabular-nums;">—</div>
+                    <div id="opsRemainingSummary" style="font-size:11px;font-weight:700;color:#8A9097;">読み込み中...</div>
                 </div>
                 <div id="opsRemainingList" style="margin-top:12px;">
                     <p style="color:#A4AAB0;font-size:12px;">読み込み中...</p>
@@ -6552,6 +6629,7 @@
 
         let _opsRemainingFilter = 'all';  // 'all' | 'online' | 'available-now'
         let _opsRemainingAttr = '';        // '' | 'fire' | 'water' | 'electric' | 'iron' | 'wind'
+        let _opsRemainingOpenSections = { '3': true, '2': true, '1': true };
 
         function handleOpsRemainingFilterPick(mode) {
             _opsRemainingFilter = mode;
@@ -6559,6 +6637,10 @@
         }
         function handleOpsRemainingAttrPick(attr) {
             _opsRemainingAttr = attr;
+            renderOpsRemainingList();
+        }
+        function handleOpsRemainingToggleSection(rem) {
+            _opsRemainingOpenSections[rem] = !_opsRemainingOpenSections[rem];
             renderOpsRemainingList();
         }
 
@@ -6580,27 +6662,13 @@
                 return set;
             };
 
-            // ピル active 状態 (新スタイル)
-            document.querySelectorAll('.dc-pill-filter[data-base-filter]').forEach(btn => {
+            // ピル active 状態 (dc-rem-base / dc-rem-attr)
+            document.querySelectorAll('.dc-rem-base[data-base-filter]').forEach(btn => {
                 btn.dataset.on = (btn.dataset.baseFilter === _opsRemainingFilter) ? '1' : '0';
             });
-            document.querySelectorAll('.dc-pill-attr[data-attr-filter]').forEach(btn => {
+            document.querySelectorAll('.dc-rem-attr[data-attr-filter]').forEach(btn => {
                 btn.dataset.on = (btn.dataset.attrFilter === _opsRemainingAttr) ? '1' : '0';
             });
-            // 旧ピル (まだ DOM にある場合) も active 状態維持
-            const btnAll = document.getElementById('opsRemFilterAll');
-            const btnNow = document.getElementById('opsRemFilterNow');
-            const activeStyle = { bg: 'var(--md-sys-color-primary)', color: 'var(--md-sys-color-on-primary)', border: 'var(--md-sys-color-primary)' };
-            const idleStyle = { bg: 'var(--md-sys-color-surface)', color: 'var(--md-sys-color-on-surface)', border: 'var(--md-sys-color-outline-variant)' };
-            const applyStyle = (btn, on) => {
-                if (!btn) return;
-                const s = on ? activeStyle : idleStyle;
-                btn.style.background = s.bg;
-                btn.style.color = s.color;
-                btn.style.borderColor = s.border;
-            };
-            applyStyle(btnAll, _opsRemainingFilter === 'all');
-            applyStyle(btnNow, _opsRemainingFilter === 'available-now');
 
             const currentSlot = getCurrentSlotJST();
             const slotLabel = TIME_SLOTS.find(s => s.key === currentSlot)?.label || currentSlot;
@@ -6638,24 +6706,27 @@
             }
 
             const totalRemain = remaining.reduce((s, p) => s + p.remain, 0);
-            const baseBadges = {
-                'all': '',
-                'online': '🎮 オンライン / ',
-                'available-now': `⏰ ${slotLabel} / `,
-            };
-            const attrBadge = _opsRemainingAttr ? `${PT_ATTRS.find(a => a.key === _opsRemainingAttr)?.name || _opsRemainingAttr}PT / ` : '';
-            summaryEl.textContent = `${baseBadges[_opsRemainingFilter] || ''}${attrBadge}${remaining.length}名 / ${totalRemain}凸残`;
+            const summaryLeftEl = document.getElementById('opsRemainingSummaryLeft');
+            if (summaryLeftEl) summaryLeftEl.textContent = `${remaining.length}名 / ${totalRemain}凸残`;
+            const baseShort = { 'all': '全員', 'online': '🎮 オンライン', 'available-now': `⏰ ${slotLabel}` }[_opsRemainingFilter];
+            const attrName = _opsRemainingAttr ? (PT_ATTRS.find(a => a.key === _opsRemainingAttr)?.name || _opsRemainingAttr) + '属性' : '';
+            summaryEl.textContent = baseShort + (attrName ? ` · ${attrName}` : '');
 
             if (remaining.length === 0) {
                 let msg;
-                if (_opsRemainingAttr) {
-                    msg = `<p style="color:#A4AAB0;font-size:12px;">該当する人がいません。属性フィルタを「全属性」に戻すと全件表示。</p>`;
-                } else if (_opsRemainingFilter === 'available-now') {
-                    msg = `<p style="color:#A4AAB0;font-size:12px;">🕓 ${slotLabel} に凸可能なメンバーがいません。</p>`;
-                } else if (_opsRemainingFilter === 'online') {
-                    msg = `<p style="color:#A4AAB0;font-size:12px;">🎮 現在オンラインのメンバーがいません。</p>`;
+                if (_opsRemainingFilter === 'all' && !_opsRemainingAttr) {
+                    msg = `
+                        <div style="text-align:center;padding:26px 10px 18px;">
+                            <div style="font-size:30px;">🎉</div>
+                            <div style="font-size:14px;font-weight:900;color:#18C26B;margin-top:8px;">全員凸完了！</div>
+                            <div style="font-size:11px;color:#A4AAB0;margin-top:4px;">残っている戦闘可能メンバーはいません</div>
+                        </div>`;
                 } else {
-                    msg = '<p style="color:#18C26B;font-size:13px;font-weight:700;">🎉 全員凸完了！</p>';
+                    let hint;
+                    if (_opsRemainingAttr) hint = `${attrName}を使えるメンバーがいません。属性フィルタを変更してみてください。`;
+                    else if (_opsRemainingFilter === 'available-now') hint = `🕓 ${slotLabel} に凸可能なメンバーがいません。`;
+                    else if (_opsRemainingFilter === 'online') hint = `🎮 現在オンラインのメンバーがいません。`;
+                    msg = `<div style="text-align:center;padding:20px 10px 14px;font-size:12px;color:#A4AAB0;">${hint || '該当なし'}</div>`;
                 }
                 listEl.innerHTML = msg;
                 return;
@@ -6671,59 +6742,77 @@
             };
             for (const n of [3, 2, 1]) groups[n].sort((a, b) => avgAttrDmg(b) - avgAttrDmg(a));
 
-            const NAME_W = 120, ATTR_W = 52, GAP = 6;
-            const rowMinW = NAME_W + (ATTR_W + GAP) * PT_ATTRS.length;
-            // 属性色を薄く敷いて縦ストライプにし、スクロールしても列が分かるようにする
-            const tint = (hex, a) => {
-                const n = parseInt(hex.slice(1), 16);
-                return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-            };
-
-            const headerRow = () => `
-                <div style="display:flex;align-items:stretch;gap:${GAP}px;">
-                    <div style="width:${NAME_W}px;flex-shrink:0;"></div>
-                    ${PT_ATTRS.map(a => `<div title="${a.name}PT" style="width:${ATTR_W}px;flex-shrink:0;display:flex;justify-content:center;align-items:center;padding:5px 0;background:${tint(a.color, 0.16)};border-radius:6px 6px 0 0;"><img src="${a.icon}" style="width:16px;height:16px;"></div>`).join('')}
+            // ===== ClaudeDesign 準拠 レイアウト =====
+            // sticky 属性ヘッダ + 優先度別セクション + 5属性 grid 行
+            const attrHeaderHtml = `
+                <div class="dc-rem-attr-header">
+                    <div style="flex:1;min-width:0;font-size:9px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">メンバー</div>
+                    <div style="display:flex;gap:2px;flex:none;">
+                        ${PT_ATTRS.map(a => `<div class="dc-rem-attr-header-chip" style="color:${a.color};background:${a.color}1A;" title="${a.name}PT">${(DC_ATTR_LABELS[a.key] || a.name.charAt(0))}</div>`).join('')}
+                    </div>
                 </div>`;
 
-            const memberRow = (p, isLast) => {
+            const SECTION_DEFS = [
+                { rem: 3, label: '3凸残', dot: '#18C26B' },
+                { rem: 2, label: '2凸残', dot: '#F5A623' },
+                { rem: 1, label: '1凸残', dot: '#FF3D44' },
+            ];
+            const renderCell = (p, attr, used) => {
+                const v = p.damagesByAttr?.[attr.key];
+                if (v == null || v <= 0) return `<div class="dc-rem-cell unset">─</div>`;
+                if (used.has(attr.key)) {
+                    return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${Number(v).toFixed(1)}</div>`;
+                }
+                return `<div class="dc-rem-cell" style="color:#14161A;background:${attr.color}1A;" title="${attr.name}PT ${Number(v).toFixed(1)}B">${Number(v).toFixed(1)}</div>`;
+            };
+            const renderMemberRow = (p) => {
                 const used = usedAttrsFor(p);
-                const cells = PT_ATTRS.map(a => {
-                    const v = p.damagesByAttr[a.key];
-                    const isUsed = used.has(a.key);
-                    const valueStr = (v && v > 0)
-                        ? Number(v).toFixed(1)
-                        : '<span style="color:var(--md-sys-color-outline-variant);">–</span>';
-                    const inner = isUsed
-                        ? `<span style="opacity:0.4;text-decoration:line-through;">${valueStr}</span>`
-                        : valueStr;
-                    const bgAlpha = isUsed ? 0.04 : 0.09;
-                    const radius = isLast ? 'border-radius:0 0 6px 6px;' : '';
-                    const titleAttr = isUsed ? `title="${a.name}PT 凸済み"` : '';
-                    return `<div ${titleAttr} style="width:${ATTR_W}px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:6px 0;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;background:${tint(a.color, bgAlpha)};${radius}">${inner}</div>`;
-                }).join('');
+                const cells = PT_ATTRS.map(a => renderCell(p, a, used)).join('');
+                const favSet = new Set(p.strong_attributes || []);
+                const favChips = PT_ATTRS
+                    .filter(a => favSet.has(a.key))
+                    .slice(0, 3)
+                    .map(a => `<div class="dc-rem-fav-chip" style="background:${a.color};" title="${a.name}PT 得意">${DC_ATTR_LABELS[a.key] || a.name.charAt(0)}</div>`)
+                    .join('');
                 return `
-                    <div style="display:flex;align-items:stretch;gap:${GAP}px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <div style="width:${NAME_W}px;flex-shrink:0;display:flex;align-items:center;gap:6px;overflow:hidden;padding:6px 0;">
-                            ${renderAvatarHtml(p, 24)}
-                            <strong style="font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</strong>
-                            ${renderStrongAttrsHtml(p, 13)}
-                            <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);flex-shrink:0;">(${p.attackCount}/3)</span>
+                    <div class="dc-rem-row">
+                        <div style="flex:none;width:28px;height:28px;">${renderAvatarHtml(p, 28)}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:5px;">
+                                <span style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</span>
+                                <div style="display:flex;gap:2px;flex:none;">${favChips}</div>
+                            </div>
+                            <div style="font-size:9.5px;color:#A4AAB0;margin-top:1px;font-variant-numeric:tabular-nums;">残 ${p.remain}/3</div>
                         </div>
-                        ${cells}
+                        <div style="display:flex;gap:2px;flex:none;">${cells}</div>
                     </div>`;
             };
 
-            let html = '<div style="overflow-x:auto;">';
-            for (const n of [3, 2, 1]) {
-                if (groups[n].length === 0) continue;
-                const icon = n === 3 ? '🟢' : n === 2 ? '🟡' : '🔴';
-                html += `<div style="margin-bottom:16px;min-width:${rowMinW}px;">
-                    <div style="font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:4px;">${icon} ${n}凸残 (${groups[n].length}名)</div>`;
-                html += headerRow();
-                html += groups[n].map((p, i) => memberRow(p, i === groups[n].length - 1)).join('');
-                html += '</div>';
+            let html = attrHeaderHtml;
+            for (const sec of SECTION_DEFS) {
+                const list = groups[sec.rem];
+                if (list.length === 0) continue;
+                const open = _opsRemainingOpenSections[String(sec.rem)] !== false;
+                html += `
+                    <div>
+                        <div class="dc-rem-section-head" onclick="handleOpsRemainingToggleSection('${sec.rem}')">
+                            <span class="dc-rem-section-dot" style="background:${sec.dot};"></span>
+                            <span style="font-size:12.5px;font-weight:900;color:#14161A;">${sec.label}</span>
+                            <span style="font-size:11px;font-weight:700;color:#A4AAB0;">(${list.length}名)</span>
+                            <span style="flex:1;"></span>
+                            <span style="font-size:10px;color:#C9CED3;">${open ? '▲' : '▼'}</span>
+                        </div>
+                        ${open ? list.map(renderMemberRow).join('') : ''}
+                    </div>`;
             }
-            html += '</div>';
+
+            html += `
+                <div style="display:flex;flex-wrap:wrap;gap:9px 14px;margin-top:13px;padding-top:11px;border-top:1px solid #F0F1F3;">
+                    <div style="display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:#FF3D441A;display:inline-block;"></span>凸可能</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;color:#A4AAB0;"><span style="font-size:11px;text-decoration:line-through;opacity:0.5;">12.5</span>使用済</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;color:#A4AAB0;"><span style="color:#C9CED3;font-weight:900;">─</span>未登録</div>
+                </div>`;
+
             listEl.innerHTML = html;
         }
 
