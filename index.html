@@ -4888,6 +4888,7 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: true,
+                    animation: false,            // 初回描画の拡大アニメを無効化
                     scales: {
                         r: {
                             suggestedMin: 0, suggestedMax: maxV,
@@ -8981,6 +8982,9 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: false,           // 初回描画の左上拡大アニメを無効化 (display:none タブ初期化対策)
+                    animations: { colors: false, x: false, y: false },
+                    transitions: { active: { animation: { duration: 0 } } },
                     scales: {
                         x: { stacked: true, ticks: { font: { size: 11 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
                         y: { stacked: true, ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: '#EFF0F2' } }
