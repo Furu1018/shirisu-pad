@@ -1297,6 +1297,8 @@
         /* ===== ClaudeDesign 準拠 マイページ ===== */
         @keyframes dcLivePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
         @keyframes dcFadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes dcSavePulse { 0%{background:rgba(31,195,110,0.22)} 70%{background:rgba(31,195,110,0.10)} 100%{background:transparent} }
+        @keyframes dcSlideInUp { from{opacity:0; transform:translateY(9px)} to{opacity:1; transform:translateY(0)} }
         @keyframes dcSheetUp { from{transform:translateY(102%)} to{transform:translateY(0)} }
         @keyframes dcFlameFlicker {
             0%,100% { opacity:.5;  transform:scaleY(1)    }
@@ -1683,27 +1685,61 @@
             flex: none;
         }
 
-        /* マイページ専用 模擬戦パネル */
+        /* マイページ専用 模擬戦パネル (横スクロール scroll-snap カード) */
         .dc-dmg-panel {
-            flex: 1; min-width: 0;
-            display: flex; flex-direction: column; align-items: center; gap: 7px;
-            padding: 4px 2px;
+            flex: none; width: 156px; box-sizing: border-box;
+            scroll-snap-align: start;
+            background: #F9FAFB; border-radius: 14px; padding: 14px;
+            border: 1px solid rgba(20,22,26,0.05);
+            display: block;
             cursor: pointer;
-            background: transparent; border: none;
-            transition: transform 0.1s ease;
+            text-align: left;
+            font-family: inherit;
+            transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.4s ease;
         }
-        .dc-dmg-panel:hover { transform: translateY(-1px); }
+        .dc-dmg-panel:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
+        .dc-dmg-panel:active { transform: translateY(0); }
+        .dc-dmg-panel.saved { animation: dcSavePulse 1.2s ease-out; }
         .dc-dmg-chip {
-            width: 24px; height: 24px; border-radius: 7px;
+            width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 900; color: #fff;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
         }
         .dc-dmg-value {
-            font-size: 13px; font-weight: 800; color: #14161A;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.3px;
+            font-size: 17px; font-weight: 900; color: #14161A;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1;
+            padding-top: 4px;
         }
-        .dc-dmg-value.empty { color: #C9CED3; font-size: 14px; }
-        .dc-dmg-unit { font-size: 9px; color: #A4AAB0; margin-left: 1px; }
+        .dc-dmg-value.empty { color: #C9CED3; }
+        .dc-dmg-unit { font-size: 10px; color: #A4AAB0; font-weight: 800; margin-left: 1px; }
+
+        /* 編成 5キャラチップ (パネル内、被り検出枠付き) */
+        .dc-dmg-chars-row {
+            display: flex; gap: 4px;
+            margin-top: 11px;
+        }
+        .dc-dmg-char {
+            width: 24px; height: 24px; flex: 1; min-width: 0; max-width: 26px;
+            border-radius: 6px;
+            background: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 800; color: #6B7178;
+            overflow: hidden;
+            border: 2px solid transparent;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 0 1px rgba(20,22,26,0.08);
+        }
+        .dc-dmg-char img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .dc-dmg-char.empty {
+            background: #EDEEF0; color: #C9CED3;
+        }
+        .dc-dmg-char.dup-1 { border-color: #F5B400; box-shadow: 0 0 0 1px #F5B400, inset 0 0 0 1px rgba(255,255,255,0.3); }
+        .dc-dmg-char.dup-2 { border-color: #E91E63; box-shadow: 0 0 0 1px #E91E63, inset 0 0 0 1px rgba(255,255,255,0.3); }
+        .dc-dmg-char.dup-3 { border-color: #00BCD4; box-shadow: 0 0 0 1px #00BCD4, inset 0 0 0 1px rgba(255,255,255,0.3); }
+        .dc-dmg-char.dup-4 { border-color: #9B4DFF; box-shadow: 0 0 0 1px #9B4DFF, inset 0 0 0 1px rgba(255,255,255,0.3); }
+        .dc-dmg-char.dup-5 { border-color: #FF8A2B; box-shadow: 0 0 0 1px #FF8A2B, inset 0 0 0 1px rgba(255,255,255,0.3); }
 
         /* マイページ ボスタイル (戦闘) */
         .dc-boss-tile {
@@ -2051,7 +2087,7 @@
                 </div>
             </div>
 
-            <!-- ② 模擬戦データ (横一列 5属性パネル + NIKKE風 提出ピル + 折りたたみレーダー) -->
+            <!-- ② 模擬戦データ (横スクロール scroll-snap パネル + 解析バナー + キャラ被り凡例) -->
             <div class="dc-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px;">
                     <div>
@@ -2066,9 +2102,21 @@
                         </div>
                     </label>
                 </div>
-                <div id="mypageDmgPanels" style="display:flex;gap:6px;">
-                    <p style="flex:1;color:#A4AAB0;font-size:12px;text-align:center;padding:14px 0;">プレイヤーを選択すると表示されます。</p>
+
+                <!-- OCR 解析中バナー (display:none で初期化、解析時に表示) -->
+                <div id="mypageDmgAnalyzing" style="display:none;align-items:center;gap:10px;background:#14161A;border-radius:12px;padding:11px 13px;margin-bottom:12px;animation:dcFadeIn 0.2s ease;">
+                    <div style="width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.22);border-top-color:#46A0FF;border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
+                    <div style="font-size:11px;font-weight:900;color:#fff;letter-spacing:0.2px;flex:none;">📷 解析中…</div>
+                    <div id="mypageDmgAnalyzedNames" style="flex:1;min-width:0;font-size:11px;font-weight:700;color:#8A9097;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">&nbsp;</div>
                 </div>
+
+                <!-- 5属性パネル (横スクロール + scroll-snap) -->
+                <div id="mypageDmgPanels" data-no-swipe style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 10px;-webkit-overflow-scrolling:touch;">
+                    <p style="color:#A4AAB0;font-size:12px;text-align:center;padding:14px 0;flex:1;">プレイヤーを選択すると表示されます。</p>
+                </div>
+
+                <!-- キャラ被り凡例 -->
+                <div id="mypageDmgDupLegend" style="display:none;flex-wrap:wrap;gap:7px 14px;padding:8px 2px 2px;"></div>
 
                 <div onclick="toggleMypageRadar()" id="mypageRadarToggle" style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ レーダーチャートを表示</div>
                 <div id="mypageRadarWrap" style="display:none;margin-top:10px;padding:12px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.03);">
@@ -2222,6 +2270,41 @@
                     <p class="subtitle">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
                     <div id="mypageStrongAttrsModalBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
                     <p id="mypageStrongAttrsModalMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
+            </div>
+
+            <!-- OCR 提出後プレビュー (ボトムシート) -->
+            <div class="player-select-modal" id="myDmgPreviewModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
+                        <h2 style="margin:0;">📷 解析結果</h2>
+                        <button onclick="closeMyDmgPreviewModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
+                    </div>
+                    <!-- 認識した属性 + ダメージ -->
+                    <div id="myDmgPreviewSummary" style="display:flex;align-items:center;gap:11px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);border-radius:14px;padding:13px 14px;margin-bottom:14px;">
+                        <p style="color:#A4AAB0;font-size:12px;">解析中...</p>
+                    </div>
+                    <!-- 認識した編成 5キャラ -->
+                    <div>
+                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:11px;">認識した編成 5キャラ</div>
+                        <div id="myDmgPreviewChars" style="display:flex;gap:6px;"></div>
+                    </div>
+                    <!-- 警告 (属性未判定など) -->
+                    <div id="myDmgPreviewWarn" style="display:none;align-items:center;gap:7px;margin-top:12px;background:rgba(245,180,0,0.1);border:1px solid rgba(245,180,0,0.35);border-radius:10px;padding:8px 11px;">
+                        <span style="width:9px;height:9px;border-radius:50%;background:#F5B400;flex:none;"></span>
+                        <span id="myDmgPreviewWarnText" style="font-size:11px;font-weight:700;color:#8A7000;line-height:1.5;"></span>
+                    </div>
+                    <!-- 属性手動選択 (属性が判別不能だった場合) -->
+                    <div id="myDmgPreviewAttrPicker" style="display:none;margin-top:12px;">
+                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:8px;">対象属性を選択</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+                    </div>
+                    <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
+                    <div style="display:flex;gap:8px;margin-top:18px;">
+                        <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);">💾 保存</button>
+                        <button onclick="handleMyDmgPreviewRetry()" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;">📷 再撮影</button>
+                    </div>
+                    <p id="myDmgPreviewMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
             </div>
         </div>
@@ -4492,34 +4575,109 @@
         // 横一列 5属性パネル: タップで編成 + ダメージ編集モーダルを開く
         async function renderMyDamagePanels(identity) {
             const el = document.getElementById('mypageDmgPanels');
+            const legendEl = document.getElementById('mypageDmgDupLegend');
             if (!el) return;
             if (!identity?.id) {
-                el.innerHTML = '<p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると表示されます。</p>';
+                el.innerHTML = '<p style="color:#A4AAB0;font-size:12px;text-align:center;padding:14px 0;flex:1;">プレイヤーを選択すると表示されます。</p>';
+                if (legendEl) legendEl.style.display = 'none';
                 return;
             }
             let damages = [];
             try {
                 damages = await window.supabaseLoadPlayerDamages(identity.id);
             } catch (e) {
-                el.innerHTML = `<p style="grid-column:1/-1;color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+                el.innerHTML = `<p style="color:#ef4444;font-size:12px;flex:1;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
             const byAttr = new Map();
             damages.forEach(d => byAttr.set(d.attribute, d));
             await getNikkeCharsCache();
+
+            // 5属性編成のキャラ → 出現属性キー[] のマップ
+            const charToAttrs = new Map();
+            PT_ATTRS.forEach(a => {
+                const rec = byAttr.get(a.key);
+                const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
+                team.forEach(name => {
+                    const norm = fuzzyResolveCharacter(name) || name;
+                    if (!charToAttrs.has(norm)) charToAttrs.set(norm, []);
+                    charToAttrs.get(norm).push(a.key);
+                });
+            });
+            // 2 属性以上に出現するキャラ = 被り。被りグループ番号を割り当て
+            const DUP_COLORS = ['#F5B400', '#E91E63', '#00BCD4', '#9B4DFF', '#FF8A2B'];
+            const dupGroup = new Map();   // 正規化キャラ名 → グループ番号 (1〜5)
+            const dupPairs = new Map();   // グループ番号 → 属性キーSet
+            let dupGroupCounter = 0;
+            charToAttrs.forEach((attrs, name) => {
+                if (attrs.length >= 2) {
+                    dupGroupCounter++;
+                    if (dupGroupCounter > 5) return;
+                    dupGroup.set(name, dupGroupCounter);
+                    dupPairs.set(dupGroupCounter, new Set(attrs));
+                }
+            });
+
+            const renderCharCell = (charName, dupCls) => {
+                if (!charName) {
+                    return `<div class="dc-dmg-char empty">?</div>`;
+                }
+                const resolved = fuzzyResolveCharacter(charName) || charName;
+                const r = resolveNikkeChar(resolved);
+                const icon = r?.iconPath ? `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || resolved)}">` : escapeHtml((r?.canonical || resolved || '?').charAt(0));
+                return `<div class="dc-dmg-char${dupCls ? ' ' + dupCls : ''}" title="${escapeHtml(r?.canonical || resolved)}">${icon}</div>`;
+            };
+
             el.innerHTML = PT_ATTRS.map(a => {
                 const rec = byAttr.get(a.key);
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const c = DC_ATTR_COLORS[a.key] || '#14161A';
+                const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
+                // 5キャラ分のセル (空きは ? プレースホルダ)
+                const cells = Array.from({ length: 5 }).map((_, i) => {
+                    const name = team[i] || '';
+                    const norm = name ? (fuzzyResolveCharacter(name) || name) : '';
+                    const g = norm ? dupGroup.get(norm) : null;
+                    const dupCls = g ? `dup-${g}` : '';
+                    return renderCharCell(name, dupCls);
+                }).join('');
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}')" class="dc-dmg-panel" title="${a.name}PT">
-                        <div class="dc-dmg-chip" style="background:${c}1A;"><img src="${a.icon}" alt="${a.name}" style="width:20px;height:20px;"></div>
-                        ${hasVal
-                            ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
-                            : `<div class="dc-dmg-value empty">—</div>`}
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}')" class="dc-dmg-panel" title="${a.name}PT" data-attr="${a.key}">
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+                            <div class="dc-dmg-chip" style="background:${c};">
+                                <img src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;">
+                            </div>
+                            ${hasVal
+                                ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
+                                : `<div class="dc-dmg-value empty">—</div>`}
+                        </div>
+                        <div style="font-size:13px;font-weight:900;color:#14161A;letter-spacing:0.4px;margin-top:9px;">${a.name}PT</div>
+                        <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
             }).join('');
+
+            // 被り凡例
+            if (legendEl) {
+                if (dupPairs.size === 0) {
+                    legendEl.style.display = 'none';
+                    legendEl.innerHTML = '';
+                } else {
+                    const items = [];
+                    dupPairs.forEach((attrSet, gNum) => {
+                        const color = DUP_COLORS[gNum - 1] || '#9AA0A6';
+                        const attrs = [...attrSet].map(k => PT_ATTRS.find(x => x.key === k)?.name || k).join('⇔');
+                        items.push(`
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 0 1.5px ${color}33;flex:none;"></span>
+                                <span style="font-size:10.5px;font-weight:700;color:#8A9097;white-space:nowrap;">${escapeHtml(attrs)} で被り</span>
+                            </div>`);
+                    });
+                    legendEl.innerHTML = items.join('');
+                    legendEl.style.display = 'flex';
+                }
+            }
+
             renderMyFururiRadar(identity, damages);
         }
 
@@ -5050,67 +5208,198 @@
         }
 
         // 画像から属性別ダメージを自動登録
+        // OCR 結果を一時保持して preview モーダルで使う
+        let _myDmgPreviewData = null;
+
         async function handleMyDamageOcrUpload(event) {
             const files = Array.from(event.target.files || []);
             event.target.value = '';
             const statusEl = document.getElementById('mypageDmgOcrStatus');
+            const analyzeBanner = document.getElementById('mypageDmgAnalyzing');
+            const analyzeNames = document.getElementById('mypageDmgAnalyzedNames');
             if (files.length === 0) return;
             const id = getCurrentIdentity();
             if (!id?.id) { statusEl.textContent = '❌ プレイヤー未選択'; statusEl.style.color = '#ef4444'; return; }
 
-            statusEl.textContent = `🔍 ${files.length}枚をAIで解析中... (1枚あたり10〜20秒)`;
-            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            // 解析中バナーを表示
+            if (analyzeBanner) analyzeBanner.style.display = 'flex';
+            if (analyzeNames) analyzeNames.textContent = `${files.length}枚を解析中... (1枚あたり10〜20秒)`;
+            statusEl.textContent = '';
+
             try {
-                // 複数画像を「first non-null」マージ (TOTAL DAMAGE画面 + 戦闘履歴画面の合体)
                 const r = await _ocrAttackMultiAndMerge(files);
                 if (r.totalDamage == null && (!r.characters || r.characters.length === 0)) {
                     throw new Error('ダメージも編成も読み取れませんでした');
                 }
-
-                // ボス名 → PT属性 検出 (ダメージ更新用)
-                let ptAttr = await detectPtAttrFromBossName(r.bossName);
-                if (!ptAttr && r.totalDamage != null) {
-                    const choicesText = PT_ATTRS.map((a, i) => `${i + 1}. ${a.name}PT (対 ${a.bossJP})`).join('\n');
-                    const pickStr = prompt(`ボス名「${r.bossName || '?'}」のPT属性を判別できませんでした。\nどのPT属性のダメージか番号で選んでください:\n\n${choicesText}`);
-                    const pickIdx = parseInt(pickStr) - 1;
-                    if (!isNaN(pickIdx) && pickIdx >= 0 && pickIdx < PT_ATTRS.length) {
-                        ptAttr = PT_ATTRS[pickIdx].key;
-                    }
+                // ボス名 → PT属性
+                const ptAttr = await detectPtAttrFromBossName(r.bossName);
+                // 抽出キャラ名を解析バナーに表示
+                if (analyzeNames && Array.isArray(r.characters) && r.characters.length > 0) {
+                    analyzeNames.textContent = '✓ ' + r.characters.slice(0, 5).join(', ');
                 }
-
-                const parts = [`${files.length}枚解析`];
-                // ダメージ反映 (属性確定時のみ) — マイページ再構築後は input 要素が無いので直接保存
-                if (ptAttr && r.totalDamage != null) {
-                    const damageB = Number(r.totalDamage) / 1e9;
-                    try {
-                        await window.supabaseSavePlayerDamage(id.id, ptAttr, damageB);
-                        parts.push(`${PT_ATTRS.find(x => x.key === ptAttr)?.name}PT: ${damageB.toFixed(2)} B`);
-                    } catch (e) {
-                        console.warn('[OCR damage save]', e?.message || e);
-                        parts.push(`❌ 保存失敗 (${e?.message || e})`);
-                    }
-                }
-                // 編成も登録 (属性確定 & 5キャラ取得時)
-                if (ptAttr && Array.isArray(r.characters) && r.characters.length > 0
-                    && typeof window.supabaseRegisterOcrCharacters === 'function') {
-                    try {
-                        const reg = await window.supabaseRegisterOcrCharacters(r.characters);
-                        const canon = (reg.canonical || []).filter(Boolean);
-                        if (canon.length > 0) {
-                            await window.supabaseSaveTeamForAttribute(id.id, ptAttr, canon);
-                            parts.push(`編成${canon.length}名登録`);
-                            // 一覧再描画
-                            renderMyDamagePanels(id);
-                        }
-                    } catch (e) { console.warn('[mock team save]', e?.message || e); }
-                }
-                statusEl.textContent = `✅ ${parts.join(' / ')}`;
-                statusEl.style.color = '#22c55e';
-                // 保存後に必ずパネル再描画 (ダメージのみ更新ケースもカバー)
-                if (ptAttr && r.totalDamage != null) renderMyDamagePanels(id);
+                // 解析完了 → preview モーダルを開く
+                _myDmgPreviewData = {
+                    files,
+                    totalDamage: r.totalDamage,
+                    bossName: r.bossName,
+                    characters: Array.isArray(r.characters) ? r.characters : [],
+                    ptAttr,                 // 自動判定 (null なら未確定 → 手動選択UI を表示)
+                    selectedAttr: ptAttr,   // 保存時に使う実際の属性
+                };
+                openMyDmgPreviewModal();
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
                 statusEl.style.color = '#ef4444';
+            } finally {
+                if (analyzeBanner) analyzeBanner.style.display = 'none';
+            }
+        }
+
+        function openMyDmgPreviewModal() {
+            const d = _myDmgPreviewData;
+            if (!d) return;
+            const modal = document.getElementById('myDmgPreviewModal');
+            const summary = document.getElementById('myDmgPreviewSummary');
+            const charsEl = document.getElementById('myDmgPreviewChars');
+            const warn = document.getElementById('myDmgPreviewWarn');
+            const warnText = document.getElementById('myDmgPreviewWarnText');
+            const picker = document.getElementById('myDmgPreviewAttrPicker');
+            const saveBtn = document.getElementById('myDmgPreviewSaveBtn');
+            const msg = document.getElementById('myDmgPreviewMsg');
+            if (msg) msg.textContent = '';
+
+            // 属性 + ダメージ サマリ
+            const attr = d.selectedAttr ? PT_ATTRS.find(a => a.key === d.selectedAttr) : null;
+            const dmgB = d.totalDamage != null ? (Number(d.totalDamage) / 1e9).toFixed(2).replace(/\.?0+$/, '') : null;
+            const attrChip = attr
+                ? `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:${DC_ATTR_COLORS[attr.key]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);"><img src="${attr.icon}" alt="${attr.name}" style="width:26px;height:26px;"></div>`
+                : `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:#F1F2F4;color:#9AA0A6;font-size:20px;font-weight:900;">?</div>`;
+            summary.innerHTML = `
+                ${attrChip}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:9.5px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">認識した属性</div>
+                    <div style="font-size:15px;font-weight:900;color:#14161A;margin-top:1px;">${attr ? attr.name + 'PT' : '未判定'}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:9.5px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">ダメージ</div>
+                    <div style="font-size:23px;font-weight:900;color:${dmgB ? '#14161A' : '#C9CED3'};font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB || '—'}${dmgB ? '<span style="font-size:11px;color:#A4AAB0;margin-left:2px;">B</span>' : ''}</div>
+                </div>`;
+
+            // 5 キャラ
+            const cells = Array.from({ length: 5 }).map((_, i) => {
+                const name = d.characters[i] || '';
+                if (!name) {
+                    return `
+                        <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
+                            <div style="width:44px;height:44px;border-radius:9px;background:#EDEEF0;color:#C9CED3;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;">?</div>
+                            <div style="font-size:10px;font-weight:700;color:#B6BBC1;">未認識</div>
+                        </div>`;
+                }
+                const norm = fuzzyResolveCharacter(name) || name;
+                const r = resolveNikkeChar(norm);
+                const icon = r?.iconPath
+                    ? `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || norm)}" style="width:44px;height:44px;border-radius:9px;object-fit:cover;background:#222;">`
+                    : `<div style="width:44px;height:44px;border-radius:9px;background:#F1F2F4;color:#5A6068;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;">${escapeHtml((r?.canonical || norm).charAt(0))}</div>`;
+                return `
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
+                        ${icon}
+                        <div style="font-size:10px;font-weight:700;color:#6B7178;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(r?.canonical || norm)}</div>
+                    </div>`;
+            }).join('');
+            charsEl.innerHTML = cells;
+
+            // 警告
+            const warns = [];
+            if (!attr) warns.push('属性が判別できませんでした。下のボタンから選んでください');
+            if (d.totalDamage == null) warns.push('ダメージ値が読めませんでした');
+            if (warns.length > 0) {
+                warn.style.display = 'flex';
+                warnText.textContent = warns.join(' / ');
+            } else {
+                warn.style.display = 'none';
+            }
+
+            // 属性手動選択 UI (自動判別失敗時)
+            if (!attr) {
+                picker.style.display = 'block';
+                const pickerBtns = picker.querySelector('div:last-child');
+                pickerBtns.innerHTML = PT_ATTRS.map(a => {
+                    const c = DC_ATTR_COLORS[a.key];
+                    return `<button type="button" onclick="handleMyDmgPreviewPickAttr('${a.key}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:none;background:${c}1F;color:${c};font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;"><img src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}PT</button>`;
+                }).join('');
+            } else {
+                picker.style.display = 'none';
+            }
+
+            // 保存ボタン: 属性 + ダメージがあれば有効、なければ無効
+            const canSave = !!attr && d.totalDamage != null;
+            saveBtn.disabled = !canSave;
+            saveBtn.style.opacity = canSave ? '1' : '0.5';
+            saveBtn.style.cursor = canSave ? 'pointer' : 'not-allowed';
+
+            modal.classList.add('open');
+        }
+
+        function closeMyDmgPreviewModal() {
+            document.getElementById('myDmgPreviewModal').classList.remove('open');
+            _myDmgPreviewData = null;
+        }
+
+        function handleMyDmgPreviewPickAttr(key) {
+            if (!_myDmgPreviewData) return;
+            _myDmgPreviewData.selectedAttr = key;
+            openMyDmgPreviewModal();  // 再描画
+        }
+
+        function handleMyDmgPreviewRetry() {
+            closeMyDmgPreviewModal();
+            // ファイル選択を再度開く
+            const input = document.getElementById('mypageDmgOcrInput');
+            if (input) input.click();
+        }
+
+        async function handleMyDmgPreviewSave() {
+            const d = _myDmgPreviewData;
+            if (!d) return;
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const msg = document.getElementById('myDmgPreviewMsg');
+            const statusEl = document.getElementById('mypageDmgOcrStatus');
+            const attr = d.selectedAttr;
+            if (!attr || d.totalDamage == null) {
+                if (msg) { msg.textContent = '❌ 属性とダメージの両方が必要です'; msg.style.color = '#ef4444'; }
+                return;
+            }
+            try {
+                const damageB = Number(d.totalDamage) / 1e9;
+                await window.supabaseSavePlayerDamage(id.id, attr, damageB);
+                // 編成 (5キャラ) も登録
+                if (Array.isArray(d.characters) && d.characters.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
+                    try {
+                        const reg = await window.supabaseRegisterOcrCharacters(d.characters);
+                        const canon = (reg.canonical || []).filter(Boolean);
+                        if (canon.length > 0) {
+                            await window.supabaseSaveTeamForAttribute(id.id, attr, canon);
+                        }
+                    } catch (e) { console.warn('[preview save team]', e?.message || e); }
+                }
+                if (statusEl) {
+                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で保存しました`;
+                    statusEl.style.color = '#22c55e';
+                }
+                closeMyDmgPreviewModal();
+                await renderMyDamagePanels(id);
+                // 該当パネルに保存パルスアニメ
+                requestAnimationFrame(() => {
+                    const panel = document.querySelector(`#mypageDmgPanels .dc-dmg-panel[data-attr="${attr}"]`);
+                    if (panel) {
+                        panel.classList.remove('saved');
+                        void panel.offsetWidth;
+                        panel.classList.add('saved');
+                    }
+                });
+            } catch (e) {
+                if (msg) { msg.textContent = `❌ 保存失敗: ${e?.message || e}`; msg.style.color = '#ef4444'; }
             }
         }
 
