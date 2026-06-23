@@ -1617,6 +1617,21 @@
         }
         .dc-status-chip.error .dc-status-val { color: #E23036; }
 
+        /* === 設定タブ: ガイドチャプター 行 === */
+        .dc-guide-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 2px;
+            border: none; background: transparent;
+            border-bottom: 1px solid #F0F1F3;
+            text-align: left;
+            font-family: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.12s ease;
+        }
+        .dc-guide-row:hover { background: #FAFBFC; }
+        .dc-guide-row:active { background: #F4F5F7; }
+
         /* === 設定タブ: デンジャーゾーン ボタン === */
         .dc-danger-btn {
             display: flex; align-items: center; gap: 9px;
@@ -3177,6 +3192,53 @@
                 </div>
                 <div onclick="renderSettingsTab()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;">
                     <span style="width:6px;height:6px;border-radius:50%;background:#18C26B;animation:dcLivePulse 1.6s ease-in-out infinite;"></span>同期
+                </div>
+            </div>
+
+            <!-- ⓪ ガイド / チュートリアル (折り畳み, デフォルト開) -->
+            <div class="dc-card">
+                <div onclick="toggleSettingsGuide()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                    <div>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ガイド / チュートリアル</div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;">PADの使い方を確認</div>
+                    </div>
+                    <div id="settingsGuideCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▲</div>
+                </div>
+                <div id="settingsGuideBody" style="display:block;animation:dcFadeIn 0.2s ease;margin-top:14px;">
+                    <!-- メインアクション: ヘルプ全文へ -->
+                    <button onclick="openHelpFromSettings()" style="position:relative;width:100%;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:repeating-linear-gradient(45deg,#F1F2F4,#F1F2F4 11px,#EAECEF 11px,#EAECEF 22px);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-family:inherit;padding:0;">
+                        <div style="width:54px;height:54px;border-radius:50%;background:#14161A;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,22,26,0.3);"><div style="width:0;height:0;border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:4px;"></div></div>
+                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:#A4AAB0;letter-spacing:0.5px;">PAD_GUIDE</div>
+                        <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.7);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">📖 開く</div>
+                    </button>
+                    <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
+                    <div style="display:flex;flex-direction:column;margin-top:6px;">
+                        <button onclick="openHelpFromSettings('help-overview')" class="dc-guide-row">
+                            <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">01</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">PADの全体像</div>
+                            <div style="font-size:11px;color:#B6BBC1;">›</div>
+                        </button>
+                        <button onclick="openHelpFromSettings('help-mypage')" class="dc-guide-row">
+                            <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">02</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">マイページとデータ入力</div>
+                            <div style="font-size:11px;color:#B6BBC1;">›</div>
+                        </button>
+                        <button onclick="openHelpFromSettings('help-real')" class="dc-guide-row">
+                            <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">03</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">本番レイド (凸の流れ・報告)</div>
+                            <div style="font-size:11px;color:#B6BBC1;">›</div>
+                        </button>
+                        <button onclick="openHelpFromSettings('help-notify')" class="dc-guide-row">
+                            <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">04</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">通知の設定</div>
+                            <div style="font-size:11px;color:#B6BBC1;">›</div>
+                        </button>
+                        <button onclick="openHelpFromSettings('help-finish-call')" class="dc-guide-row" style="border-bottom:none;">
+                            <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">05</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">締め凸候補 / ソフトロック</div>
+                            <div style="font-size:11px;color:#B6BBC1;">›</div>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -7056,6 +7118,38 @@
             }
         }
 
+        // ⓪ ガイド / チュートリアル トグル
+        function toggleSettingsGuide() {
+            const body = document.getElementById('settingsGuideBody');
+            const caret = document.getElementById('settingsGuideCaret');
+            if (!body) return;
+            const open = body.style.display !== 'none';
+            if (open) {
+                body.style.display = 'none';
+                if (caret) caret.textContent = '▼';
+            } else {
+                body.style.display = 'block';
+                if (caret) caret.textContent = '▲';
+            }
+        }
+
+        // ヘルプタブへジャンプ + 任意のセクション ID へスムーススクロール
+        function openHelpFromSettings(sectionId) {
+            if (typeof switchTab === 'function') switchTab('help');
+            if (!sectionId) return;
+            // ヘルプタブの DOM が描画されてからスクロール
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const el = document.getElementById(sectionId);
+                    if (!el) return;
+                    const rect = el.getBoundingClientRect();
+                    const headerH = document.querySelector('header.header')?.offsetHeight || 0;
+                    const targetY = Math.max(0, window.scrollY + rect.top - headerH - 8);
+                    window.scrollTo({ top: targetY, behavior: 'smooth' });
+                });
+            });
+        }
+
         // ⑤ ストレージ使用量 + 現在プレイヤー表示
         async function renderSettingsBrowserCard() {
             // 現在のプレイヤー
@@ -7204,7 +7298,9 @@
             const fmtTime = (ts) => {
                 try {
                     const d = new Date(ts);
-                    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                    const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                    const time = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                    return `${date} ${time}`;
                 } catch { return ''; }
             };
             const rows = events.map(e => {
