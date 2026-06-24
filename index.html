@@ -1227,64 +1227,159 @@
             .chart-container { height: 240px; }
         }
 
-        /* ===== オンボーディングツアー (シンプル中央モーダル方式) ===== */
+        /* ===== オンボーディングツアー (ClaudeDesign Tutorial.dc.html 準拠) ===== */
+        @keyframes tour-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes tour-slide-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes tour-float1 { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes tour-float2 { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes tour-pulse-dot { 0%,100% { opacity: .45; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
+        @keyframes tour-glow {
+            0%,100% { box-shadow: 0 6px 16px rgba(46,160,255,0.32); }
+            50%     { box-shadow: 0 6px 16px rgba(46,160,255,0.32), 0 0 0 6px rgba(46,160,255,0.14); }
+        }
         #tourOverlay {
             position: fixed; inset: 0; z-index: 10000;
+            display: flex; flex-direction: column;
+            font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
+            color: #14161A;
+            animation: tour-fade 0.22s ease-out;
+            background:
+                radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
+                radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
+                radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
+        }
+        #tourOverlay .tour-topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: calc(env(safe-area-inset-top, 10px) + 12px) 18px 12px;
+            flex: none;
+        }
+        #tourOverlay .tour-skip {
+            font-size: 12px; font-weight: 800; color: #8A9097;
+            letter-spacing: 0.2px; cursor: pointer; padding: 6px 10px;
+            background: transparent; border: none; font-family: inherit;
+        }
+        #tourOverlay .tour-dots { display: flex; gap: 6px; align-items: center; }
+        #tourOverlay .tour-dot {
+            height: 6px; border-radius: 999px; background: #E4E6E9;
+            transition: width 0.25s ease, background 0.25s ease;
+        }
+        #tourOverlay .tour-dot.done { background: #C2C7CC; }
+        #tourOverlay .tour-dot.current { width: 22px; }
+        #tourOverlay .tour-dot:not(.current) { width: 6px; }
+
+        #tourOverlay .tour-card {
+            margin: 0 14px calc(env(safe-area-inset-bottom, 10px) + 14px);
+            flex: 1; min-height: 0;
+            background: #fff; border-radius: 20px;
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 14px 38px rgba(20,22,26,0.10);
+            border: 1px solid rgba(20,22,26,0.045);
+            display: flex; flex-direction: column; overflow: hidden;
+            animation: tour-slide-up 0.28s cubic-bezier(.2,.9,.2,1);
+            max-width: 460px; width: calc(100% - 28px); align-self: center;
+        }
+        #tourOverlay .tour-hero {
+            position: relative; flex: none; height: 218px; overflow: hidden;
             display: flex; align-items: center; justify-content: center;
-            padding: 16px;
-            animation: tour-fade 0.2s ease-out;
         }
-        @keyframes tour-fade { from { opacity: 0; } to { opacity: 1; } }
-        #tourOverlay .tour-backdrop {
-            position: absolute; inset: 0;
-            background: rgba(0, 0, 0, 0.6);
+        #tourOverlay .tour-hero-deco1 {
+            position: absolute; top: -30px; right: -30px;
+            width: 140px; height: 140px; border-radius: 50%;
+            background: rgba(255,255,255,0.18);
+            animation: tour-float1 4s ease-in-out infinite;
         }
-        #tourOverlay .tour-popover {
-            position: relative; z-index: 1;
-            max-width: 500px; width: 100%;
-            max-height: calc(100vh - 32px);
-            overflow-y: auto;
-            background: var(--md-sys-color-surface);
-            color: var(--md-sys-color-on-surface);
-            border-radius: 16px;
-            padding: 24px 22px 18px;
-            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-            animation: tour-slide 0.25s ease-out;
+        #tourOverlay .tour-hero-deco2 {
+            position: absolute; bottom: -40px; left: -20px;
+            width: 100px; height: 100px; border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            animation: tour-float2 5s ease-in-out infinite;
         }
-        @keyframes tour-slide { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        #tourOverlay .tour-step-count { font-size: 11px; color: var(--md-sys-color-on-surface-variant); font-weight: 600; margin-bottom: 4px; }
-        #tourOverlay .tour-title { margin: 0 0 12px 0; font-size: 19px; font-weight: 700; line-height: 1.35; }
-        #tourOverlay .tour-body { margin: 0; font-size: 14px; line-height: 1.6; color: var(--md-sys-color-on-surface-variant); }
-        #tourOverlay .tour-body strong { color: var(--md-sys-color-on-surface); }
+        #tourOverlay .tour-hero-inner {
+            position: relative; z-index: 2; text-align: center; padding: 0 24px;
+        }
+        #tourOverlay .tour-hero-emoji {
+            font-size: 64px; line-height: 1; margin-bottom: 14px;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.18));
+        }
+        #tourOverlay .tour-hero-label {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 5px 13px; border-radius: 999px;
+            background: rgba(255,255,255,0.22);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            font-size: 10.5px; font-weight: 900; color: #fff; letter-spacing: 1.5px;
+        }
+        #tourOverlay .tour-hero-label-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: #fff;
+            animation: tour-pulse-dot 1.4s ease-in-out infinite;
+        }
+        #tourOverlay .tour-mini-screen {
+            position: absolute; right: 18px; bottom: 18px;
+            width: 118px; padding: 10px 11px;
+            background: #fff; border-radius: 11px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+            transform: rotate(2deg);
+        }
+        #tourOverlay .tour-mini-row { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+        #tourOverlay .tour-mini-avatar {
+            width: 18px; height: 18px; border-radius: 50%;
+            background: linear-gradient(140deg, #46A0FF, #1E78F0);
+        }
+        #tourOverlay .tour-mini-bar { flex: 1; height: 6px; background: #F1F2F4; border-radius: 3px; }
+        #tourOverlay .tour-mini-tiles { display: flex; gap: 4px; margin-bottom: 7px; }
+        #tourOverlay .tour-mini-tile { flex: 1; height: 36px; border-radius: 7px; }
+        #tourOverlay .tour-text-zone { padding: 22px 22px 8px; flex: none; }
+        #tourOverlay .tour-chapter-tag {
+            font-size: 10.5px; font-weight: 900; letter-spacing: 1.4px;
+            margin-bottom: 6px;
+        }
+        #tourOverlay .tour-title {
+            margin: 0 0 11px 0; font-size: 22px; font-weight: 900;
+            letter-spacing: 0.2px; line-height: 1.3; color: #14161A;
+            white-space: pre-line;
+        }
+        #tourOverlay .tour-body-scroll {
+            flex: 1; min-height: 0; overflow-y: auto;
+            padding: 0 22px 16px;
+            font-size: 14px; line-height: 1.7; color: #5A6068;
+        }
+        #tourOverlay .tour-body-scroll strong { color: #14161A; font-weight: 700; }
         #tourOverlay .tour-tip {
-            margin: 14px 0 0 0; padding: 10px 12px;
-            background: var(--md-sys-color-surface-variant);
-            border-left: 3px solid #f59e0b;
-            border-radius: 0 6px 6px 0;
-            font-size: 12px;
+            display: flex; align-items: flex-start; gap: 9px;
+            margin-top: 14px; padding: 11px 13px; border-radius: 11px;
+            background: #F7F8F9; border: 1px solid rgba(20,22,26,0.05);
+            border-left: 3px solid #F5B400;
+        }
+        #tourOverlay .tour-tip-emoji { font-size: 14px; flex: none; margin-top: 1px; }
+        #tourOverlay .tour-tip-text { font-size: 12.5px; font-weight: 700; color: #6B7178; line-height: 1.55; }
+        #tourOverlay .tour-jump {
+            display: flex; align-items: center; justify-content: center;
+            gap: 7px; margin-top: 13px; padding: 11px 14px;
+            border-radius: 11px; background: rgba(46,160,255,0.04);
+            font-size: 12.5px; font-weight: 900; cursor: pointer;
         }
         #tourOverlay .tour-buttons {
-            display: flex; gap: 6px; margin-top: 20px; justify-content: space-between; align-items: center;
+            padding: 14px 18px calc(env(safe-area-inset-bottom, 8px) + 18px);
+            border-top: 1px solid #F0F1F3;
+            display: flex; align-items: center; gap: 10px; flex: none;
         }
-        #tourOverlay .tour-buttons .left { display: flex; gap: 6px; }
-        #tourOverlay .tour-buttons button {
-            padding: 8px 14px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface);
-            font-size: 13px; font-weight: 600; cursor: pointer;
+        #tourOverlay .tour-back-btn {
+            padding: 11px 16px; border-radius: 11px; cursor: pointer;
+            font-size: 13px; font-weight: 800; color: #6B7178;
+            background: #F1F2F4; border: 1px solid rgba(20,22,26,0.06);
+            white-space: nowrap; font-family: inherit;
         }
-        #tourOverlay .tour-buttons button.primary {
-            background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
-            border-color: var(--md-sys-color-primary);
+        #tourOverlay .tour-next-btn {
+            position: relative; overflow: hidden;
+            padding: 12px 22px; border-radius: 11px; cursor: pointer;
+            font-size: 13.5px; font-weight: 900; color: #fff;
+            border: none; letter-spacing: 0.3px; font-family: inherit;
+            animation: tour-glow 2.6s ease-in-out infinite;
         }
-        #tourOverlay .tour-buttons button.text-only { border: none; background: transparent; color: var(--md-sys-color-on-surface-variant); }
-        #tourOverlay .tour-progress {
-            height: 4px; background: var(--md-sys-color-surface-variant); border-radius: 2px;
-            overflow: hidden; margin: 0 0 14px 0;
+        #tourOverlay .tour-next-btn::after {
+            content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.30), transparent);
+            pointer-events: none;
         }
-        #tourOverlay .tour-progress-bar {
-            height: 100%; background: var(--md-sys-color-primary);
-            transition: width 0.3s ease-out;
-        }
+        #tourOverlay .tour-next-btn > span { position: relative; z-index: 1; }
         .tour-guide-launcher {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 14px; border-radius: 8px;
@@ -3304,11 +3399,19 @@
                     <div id="settingsGuideCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▲</div>
                 </div>
                 <div id="settingsGuideBody" style="display:block;animation:dcFadeIn 0.2s ease;margin-top:14px;">
-                    <!-- メインアクション: ヘルプ全文へ -->
-                    <button onclick="openHelpFromSettings()" style="position:relative;width:100%;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:repeating-linear-gradient(45deg,#F1F2F4,#F1F2F4 11px,#EAECEF 11px,#EAECEF 22px);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-family:inherit;padding:0;">
-                        <div style="width:54px;height:54px;border-radius:50%;background:#14161A;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,22,26,0.3);"><div style="width:0;height:0;border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:4px;"></div></div>
-                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:#A4AAB0;letter-spacing:0.5px;">PAD_GUIDE</div>
-                        <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.7);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">📖 開く</div>
+                    <!-- メインアクション: 6章チュートリアルを開始 -->
+                    <button onclick="startTour()" style="position:relative;width:100%;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:radial-gradient(120% 90% at 30% 20%, #46A0FF, #1E78F0 65%, #1E78F0);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-family:inherit;padding:0;">
+                        <!-- 装飾円 -->
+                        <div style="position:absolute;top:-20px;right:-20px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
+                        <div style="position:absolute;bottom:-26px;left:-12px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.10);"></div>
+                        <!-- 中央 再生ボタン -->
+                        <div style="position:relative;z-index:2;text-align:center;">
+                            <div style="width:54px;height:54px;margin:0 auto 8px;border-radius:50%;background:rgba(255,255,255,0.96);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,0.25);"><div style="width:0;height:0;border-left:16px solid #1E78F0;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:4px;"></div></div>
+                            <div style="font-size:12px;font-weight:900;color:#fff;letter-spacing:1.5px;text-shadow:0 1px 4px rgba(0,40,90,0.4);">CHAPTER GUIDE</div>
+                        </div>
+                        <!-- 下部ラベル -->
+                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">6 CHAPTERS · 5 min</div>
+                        <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.75);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">▶ 再生</div>
                     </button>
                     <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
@@ -4037,65 +4140,70 @@
         }
 
         // ========== Tabs ==========
-        // ========== オンボーディングツアー (シンプル中央モーダル方式) ==========
-        // ハイライトや位置取りは廃止。各ステップで「どこに何があるか」を文章で説明し、
-        // 必要なら「このタブに移動」ボタンで実際に該当タブを開ける。
+        // ========== オンボーディングツアー (ClaudeDesign Tutorial.dc.html 準拠) ==========
+        // 6 チャプター構成、ヒーロー画像付きスライド型。
+        // チャプターごとにアクセントカラーと絵文字、必要に応じて「タブを開いて試す」ジャンプボタン。
         const TOUR_STEPS = [
             {
-                title: '👋 しりすこPADの使い方ガイド',
-                body: 'これから5分で、メンバーが知っておきたい主要機能を文章でひととおり紹介します。<br><br>途中で「スキップ」してもOK。後で「マイページ → 🎓 はじめての方ガイド」からいつでも再生できます。',
+                emoji: '👋',
+                chapterTag: 'はじめに',
+                stepLabel: 'CHAPTER 01',
+                title: 'しりすこPADへ\nようこそ',
+                body: 'これから5分で、メンバーが知っておきたい主要機能を <strong>6つのステップ</strong> でご紹介します。<br><br>途中で「スキップ」してもOK。後で <strong>設定タブ → ガイド</strong> からいつでも再生できます。',
                 tip: '読みながら気になった箇所は、ガイド終了後に実際に触ってみてください。',
+                accentColor: '#46A0FF', accentDark: '#1E78F0',
+                showMiniScreen: true,
             },
             {
-                title: '📱 ① アプリ化 (ホーム画面に追加)',
-                body: 'まずはホーム画面に追加してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有ボタン (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android Chrome</strong>: ⋮ メニュー → 「アプリをインストール」',
-                tip: 'iPhone は <strong>アプリ化しないと通知が届きません</strong>。必ず最初にやってください。',
+                emoji: '📱',
+                chapterTag: '① 最初に',
+                stepLabel: 'CHAPTER 02',
+                title: 'アプリ化と\nPush通知',
+                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>その後 <strong>マイページの 🔔 Push通知設定</strong> から通知を有効化。',
+                tip: 'iPhone はアプリ化しないと通知が届きません。必ず最初に。',
+                accentColor: '#9B4DFF', accentDark: '#7C3AED',
+                jumpTo: { tab: 'mypage', label: 'マイページを開いて試す' },
             },
             {
-                title: '🔔 ② Push通知を有効にする',
-                body: 'アプリ化が済んだら、<strong>マイページの「🔔 Push通知設定」</strong>カードを下までスクロール。<br><br>「🔔 通知を有効にする」ボタンをタップ → 端末の許可ダイアログで「許可」。<br><br>有効化すると、運営から締め凸候補・緊急連絡などがロック画面に届きます。',
-                jumpTo: { tab: 'mypage', label: 'マイページを開く' },
+                emoji: '⚔️',
+                chapterTag: '② データ提出',
+                stepLabel: 'CHAPTER 03',
+                title: '模擬戦データを\n提出する',
+                body: '各属性 (灼熱/水冷/電撃/鉄甲/風圧) のPTで、ベストダメージと編成5キャラを登録します。<br><br>📝 <strong>手動入力</strong>: 数値欄に直接入力<br>📷 <strong>画像入力</strong>: 戦闘履歴スクショから AI が自動抽出 (ダメージ + 編成5キャラ)<br><br>編成は「ベスト火力時の5キャラ」を入れてください。最適凸プランのキャラ衝突回避に使われます。',
+                tip: '画像入力なら 30 秒で全属性入力できます。',
+                accentColor: '#FF3D44', accentDark: '#D02830',
+                jumpTo: { tab: 'mypage', label: 'マイページで提出する' },
+                showMiniScreen: true,
             },
             {
-                title: '🕐 ③ 通知受信可能時間を選ぶ',
-                body: '同じくマイページの<strong>「🕐 通知受信可能時間」</strong>カードで、あなたが通知を受け取れる時間帯にチェックを入れてください。<br><br>運営の「締め凸候補」通知は、その時間帯にいるメンバーのみに送られます。複数選択OK。',
-                tip: 'すべてOFFにすると通知が一切来なくなるので注意。',
+                emoji: '🎯',
+                chapterTag: '③ 本番の凸',
+                stepLabel: 'CHAPTER 04',
+                title: '凸の流れを\nマスターする',
+                body: '<strong>1) ボスをタップ</strong> → 「戦闘準備」に入る (他メンバーに共有 → 二重凸防止)<br><br><strong>2) 戦闘 → 結果報告</strong>: 「📷 報告」から戦闘結果画像 + 戦闘履歴画像で AI 自動取り込み<br><br><strong>3) 撮り忘れたら</strong> BlaBlaLINK 3凸まとめ画像で一括登録',
+                tip: '他メンバーが戦闘中のボスは ⚠️ 警告が出ます。譲るか強行 (通知が飛びます)。',
+                accentColor: '#FF8A2B', accentDark: '#E0701F',
+                jumpTo: { tab: 'mypage', label: 'マイページで試す' },
             },
             {
-                title: '⚔️ ④ 模擬戦の報告 (属性別ダメージ)',
-                body: '各属性(灼熱/水冷/電撃/鉄甲/風圧)のPTで、ベスト時にどれだけダメージを出せるかを登録します。<br><br>📝 <strong>手動入力</strong>: 各属性行の右側の数値欄に直接入力 (例: <code>22.5</code> → 22.5B)<br><br>📷 <strong>画像入力</strong>: カード上部の「📷 画像を選ぶ」から戦闘履歴スクショを送ると、ダメージと編成5キャラをAIが自動抽出。',
-                jumpTo: { tab: 'mypage', label: 'マイページを開く' },
+                emoji: '📊',
+                chapterTag: '④ 運営機能',
+                stepLabel: 'CHAPTER 05',
+                title: '最適凸プラン &\nふるり値',
+                body: '<strong>ユニレ管理タブ</strong> では、誰がどの凸をすべきかの提案 (ギリギリ / 余裕プラン) と、ボスHP更新が行えます。<br><br><strong>比較タブ・ふるり値タブ</strong> では、メンバー間の火力比較と SLv 補正済みの公平な指標が見られます。',
+                tip: 'キャラ衝突 (同じキャラを2回使えない) も自動で考慮されます。',
+                accentColor: '#18C26B', accentDark: '#0EA055',
+                jumpTo: { tab: 'ops', label: 'ユニレ管理を見る' },
+                showMiniScreen: true,
             },
             {
-                title: '✏️ ⑤ 編成キャラの登録',
-                body: '各属性の行に「編成: 🟦🟦🟦🟦🟦」の5アイコンが並びます。<br><br>右側の<strong>「✏️ 編集」</strong>をタップで編集モーダル → テキスト入力 or 戦闘履歴画像からOCR。<br><br>?マークの枠はタップで <strong>マスタからキャラを選択</strong> できます。',
-                tip: '編成はその属性で「ベスト火力時の5キャラ」を登録。最適凸プラン算出のキャラ衝突回避に使われます。',
-            },
-            {
-                title: '🎯 ⑥ 次の凸 - ボスをタップして戦闘準備',
-                body: 'マイページの<strong>「🎯 次の凸 (ボスをタップ)」</strong>セクションで、これから凸るボスをタップしてください。<br><br>タップ → 「戦闘準備に入りますか?」で OK → そのボスが <strong>「戦闘中」</strong> として他メンバーに共有されます。これで二重凸が防げます。<br><br>戦闘が終わったら同じボスに出る <strong>「📷 報告」</strong> ボタンで凸報告へ。',
-                tip: '他メンバーが戦闘中のボスは ⚠️ 警告が出ます。譲るか、本当に必要なら「強行」 (相手に通知が飛ぶ)。',
-                jumpTo: { tab: 'mypage', label: 'マイページを開く' },
-            },
-            {
-                title: '⚔️ ⑦ 凸を報告 (画像 or 手動)',
-                body: '戦闘準備ボタンから 「📷 報告」 を押すか、マイページ上部の <strong>「＋ 凸を報告」</strong> ボタンから。<br><br>「戦闘結果画面」と「戦闘履歴画面」の2枚スクショを送ると、AIがボス・ダメージ・残HP・編成5キャラまで自動取り込み。手動入力も可。<br><br>報告完了で 戦闘準備 が自動解除されます。',
-                jumpTo: { tab: 'mypage', label: 'マイページを開く' },
-            },
-            {
-                title: '📷 ⑧ BlaBlaLINK 3凸まとめ報告 (緊急用)',
-                body: '凸結果スクショの<strong>撮り忘れ用の救済策</strong>。<br><br>BlaBlaLINK 拡張で自分の凸一覧画面を1枚スクショ → 「📷 BlaBlaLINK 3凸まとめ報告」ボタンから読み込み → 3凸分を一括登録。',
-                tip: 'この方法はボス残HPが更新されません。HP同期は別途ユニレ管理タブから BlaBla 進捗画像で取り込んでください。',
-            },
-            {
-                title: '🎯 ⑨ 最適凸プラン',
-                body: '<strong>「ユニレ管理」</strong>タブで自動算出される、誰がどの凸をすべきかの提案。<br><br>「<strong>ギリギリプラン</strong>」: 残HPちょうど削れる人を最優先（過剰ダメ最小化）<br>「<strong>余裕プラン</strong>」: 確実性重視で大ダメ出せる人優先<br><br>同じキャラを2回使えない「キャラ衝突」も自動で考慮します。',
-                jumpTo: { tab: 'ops', label: 'ユニレ管理を開く' },
-            },
-            {
-                title: '✨ おしまい！',
-                body: 'これでひととおりOKです。<br><br>困ったら「ヘルプ」タブを見るか、運営に聞いてください。<br><br>このガイドは <strong>マイページ → 🎓 はじめての方ガイド</strong> ボタンや、<strong>ヘルプタブ §1</strong> からいつでも再生できます。',
-                tip: 'まずはアプリ化と通知設定を済ませてから、模擬戦を1属性だけ登録してみるのがおすすめ。',
+                emoji: '✨',
+                chapterTag: '完了',
+                stepLabel: 'CHAPTER 06',
+                title: 'おしまい！\n楽しんでください',
+                body: 'これでひととおり OK です。<br><br>困ったら <strong>設定タブ → ガイド/チュートリアル</strong> から各章の詳細解説に飛べます。<br><br>このガイドは <strong>設定タブ → ガイド → 📖 開く</strong> からいつでも再生できます。',
+                tip: 'まずはアプリ化と通知設定を済ませて、模擬戦を1属性だけ登録してみるのがおすすめ。',
+                accentColor: '#14161A', accentDark: '#000000',
             },
         ];
         let _tourCurrentIdx = 0;
@@ -4111,28 +4219,80 @@
             if (!step) { _finishTour(); return; }
             const total = TOUR_STEPS.length;
             const isLast = _tourCurrentIdx === total - 1;
-            const progress = Math.round(((_tourCurrentIdx + 1) / total) * 100);
-            const tipHtml = step.tip ? `<div class="tour-tip">💡 ${step.tip}</div>` : '';
-            const jumpHtml = step.jumpTo
-                ? `<div style="margin-top:14px;"><button onclick="_tourJumpAndContinue('${step.jumpTo.tab}')" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:12px;font-weight:600;cursor:pointer;">📍 ${step.jumpTo.label}</button></div>`
+            const accent = step.accentColor || '#46A0FF';
+            const accentDark = step.accentDark || '#1E78F0';
+
+            const dotsHtml = TOUR_STEPS.map((_, i) => {
+                const cls = i === _tourCurrentIdx ? 'tour-dot current' : (i < _tourCurrentIdx ? 'tour-dot done' : 'tour-dot');
+                const bg = i === _tourCurrentIdx ? accent : (i < _tourCurrentIdx ? '#C2C7CC' : '#E4E6E9');
+                return `<div class="${cls}" style="background:${bg};"></div>`;
+            }).join('');
+
+            const miniScreenHtml = step.showMiniScreen ? `
+                <div class="tour-mini-screen">
+                    <div class="tour-mini-row">
+                        <div class="tour-mini-avatar"></div>
+                        <div class="tour-mini-bar"></div>
+                    </div>
+                    <div class="tour-mini-tiles">
+                        <div class="tour-mini-tile" style="background:linear-gradient(180deg,#FF3D44,#E03036);"></div>
+                        <div class="tour-mini-tile" style="background:linear-gradient(180deg,#2E8BFF,#1E78F0);"></div>
+                        <div class="tour-mini-tile" style="background:linear-gradient(180deg,#9B4DFF,#7C3AED);"></div>
+                    </div>
+                    <div style="height:5px;background:#F1F2F4;border-radius:3px;width:78%;"></div>
+                </div>` : '';
+
+            const tipHtml = step.tip ? `
+                <div class="tour-tip">
+                    <span class="tour-tip-emoji">💡</span>
+                    <span class="tour-tip-text">${step.tip}</span>
+                </div>` : '';
+
+            const jumpHtml = step.jumpTo ? `
+                <div class="tour-jump" onclick="_tourJumpAndContinue('${step.jumpTo.tab}')" style="border:1.5px dashed ${accent};color:${accent};">
+                    <span>📍</span><span>${step.jumpTo.label}</span>
+                </div>` : '';
+
+            const backHtml = _tourCurrentIdx > 0
+                ? `<button class="tour-back-btn" onclick="_prevTourStep()">← 前へ</button>`
                 : '';
+
             const overlay = document.createElement('div');
             overlay.id = 'tourOverlay';
             overlay.innerHTML = `
-                <div class="tour-backdrop"></div>
-                <div class="tour-popover">
-                    <div class="tour-progress"><div class="tour-progress-bar" style="width:${progress}%;"></div></div>
-                    <div class="tour-step-count">${_tourCurrentIdx + 1} / ${total}</div>
-                    <h3 class="tour-title">${step.title}</h3>
-                    <div class="tour-body">${step.body}</div>
-                    ${tipHtml}
-                    ${jumpHtml}
-                    <div class="tour-buttons">
-                        <div class="left">
-                            <button class="text-only" onclick="_skipTour()">スキップ</button>
-                            ${_tourCurrentIdx > 0 ? '<button onclick="_prevTourStep()">前へ</button>' : ''}
+                <div class="tour-topbar">
+                    <button class="tour-skip" onclick="_skipTour()">スキップ</button>
+                    <div class="tour-dots">${dotsHtml}</div>
+                    <div style="width:50px;"></div>
+                </div>
+                <div class="tour-card">
+                    <div class="tour-hero" style="background:radial-gradient(120% 90% at 30% 20%, ${accent}, ${accentDark} 65%, ${accentDark});">
+                        <div class="tour-hero-deco1"></div>
+                        <div class="tour-hero-deco2"></div>
+                        <div class="tour-hero-inner">
+                            <div class="tour-hero-emoji">${step.emoji}</div>
+                            <div class="tour-hero-label">
+                                <div class="tour-hero-label-dot"></div>
+                                <span>${step.stepLabel}</span>
+                            </div>
                         </div>
-                        <button class="primary" onclick="_nextTourStep()">${isLast ? '完了' : '次へ ▶'}</button>
+                        ${miniScreenHtml}
+                    </div>
+                    <div class="tour-text-zone">
+                        <div class="tour-chapter-tag" style="color:${accent};">${step.chapterTag}</div>
+                        <h2 class="tour-title">${step.title}</h2>
+                    </div>
+                    <div class="tour-body-scroll">
+                        <div>${step.body}</div>
+                        ${tipHtml}
+                        ${jumpHtml}
+                    </div>
+                    <div class="tour-buttons">
+                        ${backHtml}
+                        <div style="flex:1;"></div>
+                        <button class="tour-next-btn" onclick="_nextTourStep()" style="background:linear-gradient(180deg, ${accent}, ${accentDark});">
+                            <span>${isLast ? '完了 ✓' : '次へ ▶'}</span>
+                        </button>
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
@@ -4154,7 +4314,7 @@
             }
         }
         function _skipTour() {
-            if (!confirm('ガイドをスキップしますか？\n後でマイページの「🎓 はじめての方ガイド」から再生できます。')) return;
+            if (!confirm('ガイドをスキップしますか？\n後で 設定タブ → ガイド/チュートリアル から再生できます。')) return;
             _finishTour();
         }
         function _finishTour() {
