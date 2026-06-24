@@ -3238,6 +3238,24 @@
                 <div style="display:flex;align-items:flex-start;gap:7px;padding:11px 6px 4px;font-size:10.5px;line-height:1.5;color:#A4AAB0;"><span style="flex:none;">⚠️</span><span>OFF が多いメンバーには声かけを</span></div>
             </div>
 
+            <!-- ②' メンバー管理 -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">メンバー管理</div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.5;">新規追加・改名・脱退・復活・完全削除</div>
+                    </div>
+                    <div id="settingsMemberCount" style="font-size:10.5px;color:#B6BBC1;font-variant-numeric:tabular-nums;white-space:nowrap;">— 名</div>
+                </div>
+                <button onclick="openMemberManageModal()" style="width:100%;padding:2px;background:#14161A;border-radius:11px;box-shadow:0 4px 12px rgba(46,139,255,0.28);cursor:pointer;border:none;font-family:inherit;">
+                    <div style="position:relative;overflow:hidden;border-radius:9px;background:linear-gradient(180deg,#46A0FF,#1E78F0);padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:7px;">
+                        <div style="position:absolute;inset:0;background:repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 13px);pointer-events:none;"></div>
+                        <div style="position:absolute;left:0;right:0;top:0;height:48%;background:linear-gradient(180deg, rgba(255,255,255,0.34), transparent);pointer-events:none;"></div>
+                        <span style="position:relative;font-size:13px;font-weight:900;color:#fff;letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,40,90,0.4);">👥 メンバー管理を開く</span>
+                    </div>
+                </button>
+            </div>
+
             <!-- ③ 最近のアクティビティ -->
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
@@ -6702,12 +6720,30 @@
 
         async function renderSettingsTab() {
             renderSettingsBrowserCard();   // 新: アバター + ストレージ
+            renderSettingsMemberCount();
             await Promise.all([
                 renderSettingsSystemInfo(),
                 renderSettingsNotifyStatus(),
                 renderSettingsActivity(),
                 renderSettingsCharMaster(),
             ]);
+        }
+
+        // メンバー管理: 件数サマリを表示
+        async function renderSettingsMemberCount() {
+            const el = document.getElementById('settingsMemberCount');
+            if (!el) return;
+            try {
+                if (typeof window.supabaseLoadAllPlayers !== 'function') return;
+                const list = await window.supabaseLoadAllPlayers(true);
+                const active = list.filter(p => !p.archived).length;
+                const archived = list.filter(p => p.archived).length;
+                el.textContent = archived > 0
+                    ? `アクティブ ${active} · 脱退 ${archived}`
+                    : `アクティブ ${active}名`;
+            } catch (e) {
+                el.textContent = '— 名';
+            }
         }
 
         // ========== キャラマスタのキャッシュ (アイコン参照用) ==========
@@ -9180,6 +9216,8 @@
                 // キャッシュ無効化（プレイヤー選択モーダル側）
                 _allPlayersCache = null;
                 renderMemberManageList();
+                // 設定タブの件数サマリも同期
+                if (typeof renderSettingsMemberCount === 'function') renderSettingsMemberCount();
             } catch (e) {
                 listEl.innerHTML = `<div style="color:#ef4444;padding:24px;font-size:13px;">読み込みエラー: ${escapeHtml(e.message || String(e))}</div>`;
             }
