@@ -1673,11 +1673,7 @@
             position: relative; overflow: hidden;
             text-align: center;
         }
-        .btn-nikke-inner::before {
-            content: ''; position: absolute; inset: 0;
-            background: repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 13px);
-            pointer-events: none;
-        }
+        /* ::before はストライプ用だったが ClaudeDesign に合わせて撤去 (shimmer のみ残す) */
         .btn-nikke-inner::after {
             content: ''; position: absolute; left: 0; right: 0; top: 0;
             height: 48%;
@@ -1724,9 +1720,6 @@
             background: linear-gradient(180deg,#FF5A52,#E8261F);
             padding: 16px 0;
             border-radius: 11px;
-        }
-        .btn-nikke-red .btn-nikke-inner::before {
-            background: repeating-linear-gradient(125deg, rgba(255,255,255,0.15) 0 9px, transparent 9px 18px);
         }
         .btn-nikke-red .btn-nikke-inner::after {
             height: 48%;
