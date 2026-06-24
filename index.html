@@ -1650,6 +1650,18 @@
         .dc-table tbody tr.rank-row-3:hover td { background: #FAFBFC; }
 
         /* === NIKKE ゲーム内風 アクションボタン (角丸 + グラデ + 斜めストライプ) === */
+        @keyframes btnNikkeRedGlow {
+            0%,100% { box-shadow: 0 9px 22px rgba(232,38,31,0.32), 0 0 0 0 rgba(255,80,60,0.0); }
+            50%     { box-shadow: 0 11px 26px rgba(232,38,31,0.42), 0 0 22px 4px rgba(255,90,60,0.45); }
+        }
+        @keyframes btnNikkeBlueGlow {
+            0%,100% { box-shadow: 0 4px 11px rgba(46,139,255,0.30), 0 0 0 0 rgba(70,160,255,0.0); }
+            50%     { box-shadow: 0 5px 15px rgba(46,139,255,0.42), 0 0 16px 3px rgba(70,160,255,0.5); }
+        }
+        @keyframes btnNikkeShimmer {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(220%); }
+        }
         .btn-nikke {
             display: inline-block; padding: 2px; cursor: pointer;
             background: #14161A; border: none;
@@ -1672,13 +1684,25 @@
             background: linear-gradient(180deg, rgba(255,255,255,0.34), transparent);
             pointer-events: none;
         }
+        .btn-nikke-shimmer-wrap {
+            position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+            border-radius: inherit;
+        }
+        .btn-nikke-shimmer {
+            position: absolute; top: 0; bottom: 0; width: 55%;
+            background: linear-gradient(95deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: btnNikkeShimmer 2.8s ease-in-out infinite;
+        }
         .btn-nikke-title {
             position: relative; font-weight: 900; color: #fff;
             line-height: 1.1;
         }
 
         /* 青: 模擬戦データ提出 (コンパクトピル, タイトル行に配置) */
-        .btn-nikke-blue { border-radius: 8px; box-shadow: 0 4px 11px rgba(46,139,255,0.28); }
+        .btn-nikke-blue {
+            border-radius: 8px;
+            animation: btnNikkeBlueGlow 2.4s ease-in-out infinite;
+        }
         .btn-nikke-blue .btn-nikke-inner {
             background: linear-gradient(180deg,#46A0FF,#1E78F0);
             padding: 7px 12px;
@@ -1694,7 +1718,7 @@
         .btn-nikke-red {
             display: block; width: 100%;
             border-radius: 13px;
-            box-shadow: 0 9px 22px rgba(232,38,31,0.32);
+            animation: btnNikkeRedGlow 2.2s ease-in-out infinite;
         }
         .btn-nikke-red .btn-nikke-inner {
             background: linear-gradient(180deg,#FF5A52,#E8261F);
@@ -2294,6 +2318,7 @@
                     <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
                         <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
                         <div class="btn-nikke-inner">
+                            <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
                             <span class="btn-nikke-title">データ提出</span>
                         </div>
                     </label>
@@ -2345,6 +2370,7 @@
                 <!-- NIKKE風 戦闘に入る ゲート (赤) -->
                 <div id="mypageBattleGate" onclick="enterBattleGate()" class="btn-nikke btn-nikke-red">
                     <div class="btn-nikke-inner">
+                        <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
                         <div class="btn-nikke-title">戦闘に入る</div>
                     </div>
                 </div>
