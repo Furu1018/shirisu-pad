@@ -1937,67 +1937,38 @@
             margin: 6px auto 14px;
         }
 
-        /* ===== BlaBlaLINK 3凸取込 CTA (BlaBla サインイン風) ===== */
-        @keyframes blablaGoldGlow {
-            0%,100% { box-shadow: 0 0 0 0 rgba(255,180,30,0.0), 0 0 18px 4px rgba(255,180,30,0.45), 0 6px 18px rgba(220,80,30,0.35); }
-            50%     { box-shadow: 0 0 0 4px rgba(255,180,30,0.18), 0 0 26px 6px rgba(255,200,50,0.65), 0 8px 22px rgba(220,80,30,0.45); }
-        }
+        /* ===== BlaBlaLINK 3凸取込 ピル (BlaBla サインイン風・小型) ===== */
         @keyframes blablaShimmer {
             0%   { transform: translateX(-100%); }
             100% { transform: translateX(220%); }
         }
-        .blabla-cta {
-            position: relative; display: block; width: 100%;
-            cursor: pointer; padding: 3px; border-radius: 16px; border: none;
-            background: linear-gradient(180deg, #FFD680, #FFA01E 40%, #C85410);
-            animation: blablaGoldGlow 2.4s ease-in-out infinite;
-            font-family: inherit; -webkit-tap-highlight-color: transparent;
-        }
-        .blabla-cta-inner {
-            position: relative; overflow: hidden;
-            padding: 14px 16px 14px 14px; border-radius: 13px;
+        .blabla-pill {
+            position: relative; overflow: hidden; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 7px 13px; border-radius: 999px;
             background: linear-gradient(180deg, #F1601E, #C8341A);
-            display: flex; align-items: center; gap: 13px;
+            box-shadow: 0 0 0 1.5px #E8B048, 0 3px 8px rgba(220,80,30,0.28);
+            font-family: inherit; -webkit-tap-highlight-color: transparent;
+            border: none;
         }
-        .blabla-cta-shimmer-wrap {
-            position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-        }
-        .blabla-cta-shimmer {
-            position: absolute; top: 0; bottom: 0; width: 60%;
-            background: linear-gradient(95deg, transparent, rgba(255,255,255,0.32), transparent);
-            animation: blablaShimmer 2.8s ease-in-out infinite;
-        }
-        .blabla-cta-hl {
-            position: absolute; left: 0; right: 0; top: 0; height: 42%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.22), transparent);
+        .blabla-pill::before {
+            content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.30), transparent);
             pointer-events: none;
         }
-        .blabla-cta-icon {
-            position: relative; flex: none; width: 48px; height: 48px; border-radius: 13px;
-            background: rgba(255,255,255,0.16);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
-            display: flex; align-items: center; justify-content: center;
+        .blabla-pill-shimmer-wrap {
+            position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: 999px;
         }
-        .blabla-cta-text { position: relative; flex: 1; min-width: 0; text-align: left; }
-        .blabla-cta-tagline {
-            font-size: 10px; font-weight: 800; letter-spacing: 1.4px;
-            color: rgba(255,255,255,0.85); margin-bottom: 2px;
+        .blabla-pill-shimmer {
+            position: absolute; top: 0; bottom: 0; width: 55%;
+            background: linear-gradient(95deg, transparent, rgba(255,255,255,0.32), transparent);
+            animation: blablaShimmer 4.2s ease-in-out infinite;
         }
-        .blabla-cta-title {
-            font-size: 18px; font-weight: 900; color: #fff;
-            letter-spacing: 0.5px; text-shadow: 0 1px 3px rgba(120,30,0,0.45);
-            line-height: 1.15;
-        }
-        .blabla-cta-sub {
-            font-size: 10.5px; font-weight: 700;
-            color: rgba(255,255,255,0.78); margin-top: 3px;
-        }
-        .blabla-cta-arrow {
-            position: relative; flex: none; width: 28px; height: 28px;
-            border-radius: 50%; background: rgba(255,255,255,0.22);
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 14px; font-weight: 900;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+        .blabla-pill svg { position: relative; }
+        .blabla-pill-label {
+            position: relative; font-size: 11.5px; font-weight: 900; color: #fff;
+            letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(120,30,0,0.4);
+            white-space: nowrap;
         }
 
         /* ===== 通知受信可能時間: タイムライン (なぞって選択) ===== */
@@ -2398,26 +2369,16 @@
 
                 <!-- 凸報告履歴 -->
                 <div id="myAttackListWrap" style="margin-top:14px;border-top:1px solid #F0F1F3;padding-top:12px;">
-                    <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;margin-bottom:10px;">本日の凸履歴</div>
-
-                    <!-- BlaBlaLINK 3凸まとめ CTA (BlaBla サインイン風) -->
-                    <label for="myBulkAttackOcrInput" class="blabla-cta" style="margin-bottom:12px;">
-                        <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
-                        <div class="blabla-cta-inner">
-                            <div class="blabla-cta-shimmer-wrap"><div class="blabla-cta-shimmer"></div></div>
-                            <div class="blabla-cta-hl"></div>
-                            <div class="blabla-cta-icon">
-                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            </div>
-                            <div class="blabla-cta-text">
-                                <div class="blabla-cta-tagline">3凸まとめて</div>
-                                <div class="blabla-cta-title">BlaBlaLINK 取込</div>
-                                <div class="blabla-cta-sub">凸結果の一覧スクショから一括登録</div>
-                            </div>
-                            <div class="blabla-cta-arrow">›</div>
-                        </div>
-                    </label>
-
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">本日の凸履歴</div>
+                        <!-- BlaBlaLINK 3凸まとめ (小型ピル · 緊急用) -->
+                        <label for="myBulkAttackOcrInput" class="blabla-pill" title="BlaBlaLINK 凸一覧スクショから 3凸 を一括登録">
+                            <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
+                            <div class="blabla-pill-shimmer-wrap"><div class="blabla-pill-shimmer"></div></div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            <span class="blabla-pill-label">BlaBlaLINK 3凸</span>
+                        </label>
+                    </div>
                     <div id="myAttackList">
                         <p style="color:#A4AAB0;font-size:12px;">凸報告履歴がここに表示されます。</p>
                     </div>
