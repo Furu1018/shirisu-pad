@@ -1694,10 +1694,10 @@
             line-height: 1.1;
         }
 
-        /* 青: 模擬戦データ提出 (コンパクトピル, タイトル行に配置) */
+        /* 青: 模擬戦データ提出 (コンパクトピル, タイトル行に配置 / 静的 — 戦闘ボタンの脈動を引き立てる) */
         .btn-nikke-blue {
             border-radius: 8px;
-            animation: btnNikkeBlueGlow 2.4s ease-in-out infinite;
+            box-shadow: 0 4px 11px rgba(46,139,255,0.28);
         }
         .btn-nikke-blue .btn-nikke-inner {
             background: linear-gradient(180deg,#46A0FF,#1E78F0);
@@ -1708,6 +1708,11 @@
         .btn-nikke-blue .btn-nikke-title {
             font-size: 11.5px; letter-spacing: 0.3px;
             text-shadow: 0 1px 2px rgba(0,40,90,0.4);
+        }
+        /* 青ボタンの shimmer は弱く・遅く (主導線でないことを示す) */
+        .btn-nikke-blue .btn-nikke-shimmer {
+            background: linear-gradient(95deg, transparent, rgba(255,255,255,0.22), transparent);
+            animation-duration: 4.8s;
         }
 
         /* 赤: 戦闘に入る (フル幅) */
