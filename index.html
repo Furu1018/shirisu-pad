@@ -1937,6 +1937,111 @@
             margin: 6px auto 14px;
         }
 
+        /* ===== BlaBlaLINK 3凸取込 CTA (BlaBla サインイン風) ===== */
+        @keyframes blablaGoldGlow {
+            0%,100% { box-shadow: 0 0 0 0 rgba(255,180,30,0.0), 0 0 18px 4px rgba(255,180,30,0.45), 0 6px 18px rgba(220,80,30,0.35); }
+            50%     { box-shadow: 0 0 0 4px rgba(255,180,30,0.18), 0 0 26px 6px rgba(255,200,50,0.65), 0 8px 22px rgba(220,80,30,0.45); }
+        }
+        @keyframes blablaShimmer {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(220%); }
+        }
+        .blabla-cta {
+            position: relative; display: block; width: 100%;
+            cursor: pointer; padding: 3px; border-radius: 16px; border: none;
+            background: linear-gradient(180deg, #FFD680, #FFA01E 40%, #C85410);
+            animation: blablaGoldGlow 2.4s ease-in-out infinite;
+            font-family: inherit; -webkit-tap-highlight-color: transparent;
+        }
+        .blabla-cta-inner {
+            position: relative; overflow: hidden;
+            padding: 14px 16px 14px 14px; border-radius: 13px;
+            background: linear-gradient(180deg, #F1601E, #C8341A);
+            display: flex; align-items: center; gap: 13px;
+        }
+        .blabla-cta-shimmer-wrap {
+            position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+        }
+        .blabla-cta-shimmer {
+            position: absolute; top: 0; bottom: 0; width: 60%;
+            background: linear-gradient(95deg, transparent, rgba(255,255,255,0.32), transparent);
+            animation: blablaShimmer 2.8s ease-in-out infinite;
+        }
+        .blabla-cta-hl {
+            position: absolute; left: 0; right: 0; top: 0; height: 42%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.22), transparent);
+            pointer-events: none;
+        }
+        .blabla-cta-icon {
+            position: relative; flex: none; width: 48px; height: 48px; border-radius: 13px;
+            background: rgba(255,255,255,0.16);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .blabla-cta-text { position: relative; flex: 1; min-width: 0; text-align: left; }
+        .blabla-cta-tagline {
+            font-size: 10px; font-weight: 800; letter-spacing: 1.4px;
+            color: rgba(255,255,255,0.85); margin-bottom: 2px;
+        }
+        .blabla-cta-title {
+            font-size: 18px; font-weight: 900; color: #fff;
+            letter-spacing: 0.5px; text-shadow: 0 1px 3px rgba(120,30,0,0.45);
+            line-height: 1.15;
+        }
+        .blabla-cta-sub {
+            font-size: 10.5px; font-weight: 700;
+            color: rgba(255,255,255,0.78); margin-top: 3px;
+        }
+        .blabla-cta-arrow {
+            position: relative; flex: none; width: 28px; height: 28px;
+            border-radius: 50%; background: rgba(255,255,255,0.22);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 14px; font-weight: 900;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        /* ===== 通知受信可能時間: タイムライン (なぞって選択) ===== */
+        @keyframes availPulseDot {
+            0%,100% { opacity: .45; transform: translateX(-50%) scale(1); }
+            50%     { opacity: 1;   transform: translateX(-50%) scale(1.15); }
+        }
+        .avail-cells {
+            position: relative; display: grid; grid-template-columns: repeat(24, 1fr);
+            gap: 2px; padding: 6px 0; user-select: none; -webkit-user-select: none;
+            touch-action: pan-y; /* 縦スクロールは生かしつつ横はカスタムジェスチャ */
+        }
+        .avail-cell {
+            position: relative; height: 46px; border-radius: 4px; cursor: pointer;
+            transition: background .12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .avail-cell[data-on="1"] {
+            background: #18C26B;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .avail-cell[data-on="0"] {
+            background: #E4E6E9;
+            box-shadow: inset 0 1px 0 rgba(0,0,0,0.05);
+        }
+        .avail-cell-current::before {
+            content: ''; position: absolute; left: 50%; top: -8px;
+            transform: translateX(-50%); width: 6px; height: 6px;
+            border-radius: 50%; background: #F59E0B;
+            animation: availPulseDot 1.2s ease-in-out infinite;
+        }
+        .avail-cell-daybreak::after {
+            content: ''; position: absolute; left: -2px; top: -4px; bottom: -4px;
+            width: 2px; background: #F59E0B; border-radius: 1px;
+        }
+        .avail-preset-pill {
+            padding: 7px 11px; border-radius: 999px; cursor: pointer;
+            font-size: 11px; font-weight: 800; letter-spacing: 0.2px;
+            background: #F1F2F4; color: #6B7178;
+            border: 1px solid rgba(20,22,26,0.06); white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .avail-preset-pill:hover { background: #E9EBEE; }
+
         /* ===== マイページ: ステータス切替 3ボタン ===== */
         #mypageStatusSwitcher button.status-btn {
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
@@ -2293,13 +2398,26 @@
 
                 <!-- 凸報告履歴 -->
                 <div id="myAttackListWrap" style="margin-top:14px;border-top:1px solid #F0F1F3;padding-top:12px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">本日の凸履歴</div>
-                        <label style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#B6BBC1;cursor:pointer;font-weight:700;">
-                            📷 BlaBlaLINK 3凸
-                            <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
-                        </label>
-                    </div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;margin-bottom:10px;">本日の凸履歴</div>
+
+                    <!-- BlaBlaLINK 3凸まとめ CTA (BlaBla サインイン風) -->
+                    <label for="myBulkAttackOcrInput" class="blabla-cta" style="margin-bottom:12px;">
+                        <input type="file" id="myBulkAttackOcrInput" accept="image/*" onchange="handleMyBulkAttackOcrUpload(event)" style="display:none;">
+                        <div class="blabla-cta-inner">
+                            <div class="blabla-cta-shimmer-wrap"><div class="blabla-cta-shimmer"></div></div>
+                            <div class="blabla-cta-hl"></div>
+                            <div class="blabla-cta-icon">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </div>
+                            <div class="blabla-cta-text">
+                                <div class="blabla-cta-tagline">3凸まとめて</div>
+                                <div class="blabla-cta-title">BlaBlaLINK 取込</div>
+                                <div class="blabla-cta-sub">凸結果の一覧スクショから一括登録</div>
+                            </div>
+                            <div class="blabla-cta-arrow">›</div>
+                        </div>
+                    </label>
+
                     <div id="myAttackList">
                         <p style="color:#A4AAB0;font-size:12px;">凸報告履歴がここに表示されます。</p>
                     </div>
@@ -2357,8 +2475,8 @@
                         <h2>🕐 通知受信可能時間</h2>
                         <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
-                    <p class="subtitle">通知を受け取りたい時間帯を選択。締め凸候補通知などは指定した時間帯にいる人だけに配信されます。<br>※運営の「全員に送信」「緊急通知」はこの設定を無視して届きます。</p>
-                    <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    <p class="subtitle">なぞって選択 · 24時間タイムライン。締め凸候補などはこの時間帯にいる人だけに配信されます。<br>※運営の「全員に送信」「緊急通知」はこの設定を無視して届きます。</p>
+                    <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
                     <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
             </div>
@@ -5874,77 +5992,301 @@
             return _hourKey(h);
         }
 
+        // ===== 通知受信可能時間: タイムライン型 (なぞって選択) =====
+        // state: HOUR_ORDER と同じ並び順の 24 個 bool 配列
+        const _availUI = {
+            slots: new Array(24).fill(false),
+            dragging: false,
+            dragMode: null,  // true = paint-on, false = paint-off
+            saveTimer: null,
+            saving: false,
+        };
+
         async function renderMyAvailabilitySettings(identity) {
             const groupEl = document.getElementById('mypageAvailGroup');
             const msgEl = document.getElementById('mypageAvailMessage');
             if (!groupEl) return;
             msgEl.textContent = '';
             groupEl.innerHTML = '<p style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">読み込み中...</p>';
-            let slots = [];
+            let serverSlots = [];
             let isFirstTime = false;
             try {
-                slots = await window.supabaseLoadAvailability(identity.id);
-                if (slots.length === 0) {
-                    isFirstTime = true;  // 初期は全部OFFのまま表示（オプトイン方式）
-                }
+                serverSlots = await window.supabaseLoadAvailability(identity.id);
+                if (serverSlots.length === 0) isFirstTime = true;
             } catch (e) {
                 groupEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
-
-            const currentSlot = getCurrentSlotJST();
-            const isAvail = slots.includes(currentSlot);
-            const curLabel = TIME_SLOTS.find(s => s.key === currentSlot)?.label || currentSlot;
-            const statusHtml = `<div style="padding:6px 10px;margin-bottom:10px;border-radius:6px;background:${isAvail ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${isAvail ? '#15803d' : '#ef4444'};font-size:12px;font-weight:600;">${isAvail ? '✅' : '🛑'} 現在 ${curLabel}台 → 通知 ${isAvail ? '受信中' : 'OFF'}</div>`;
-
-            // 24時間グリッド: AM5時スタート → 翌AM4時。0-4時の前に薄い区切り線
-            const helpHtml = `<p style="margin:0 0 6px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">タップで ON/OFF。<strong>AM5時</strong>スタートで時計回り。橙線=日付変わり目</p>`;
-            const gridHtml = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));gap:4px;">` +
-                TIME_SLOTS.map(s => {
-                    const checked = slots.includes(s.key);
-                    const isCurrent = s.key === currentSlot;
-                    const sep = (s.hour === 0) ? 'border-left:3px solid #f59e0b;' : '';   // 日付変わり目マーカー
-                    const bg = checked ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-surface)';
-                    const fg = checked ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface)';
-                    const border = isCurrent ? '2px solid #f59e0b' : '1px solid var(--md-sys-color-outline-variant)';
-                    const subscript = s.isNextDay ? `<sub style="font-size:8px;opacity:0.7;">翌</sub>` : '';
-                    const ringMark = isCurrent ? `<span style="position:absolute;top:1px;right:3px;font-size:8px;color:#f59e0b;">●</span>` : '';
-                    return `<button type="button" data-slot="${s.key}" data-checked="${checked ? '1' : '0'}" onclick="handleMyAvailHourToggle(this)" style="position:relative;padding:8px 4px;border-radius:6px;border:${border};background:${bg};color:${fg};font-size:13px;font-weight:600;cursor:pointer;${sep}">${ringMark}${s.hour}${subscript}</button>`;
-                }).join('') +
-                `</div>`;
-            groupEl.innerHTML = statusHtml + helpHtml + gridHtml;
+            const set = new Set(serverSlots);
+            _availUI.slots = HOUR_ORDER.map(h => set.has(_hourKey(h)));
+            _renderAvailUI();
             if (isFirstTime) {
-                msgEl.textContent = 'ℹ️ 初期は全時間帯OFF。通知を受け取りたい時間帯にチェックを入れてください。';
+                msgEl.textContent = 'ℹ️ 初期は全時間帯OFF。通知を受け取りたい時間帯をなぞって ON にしてください。';
                 msgEl.style.color = '#f59e0b';
             } else {
                 msgEl.style.color = 'var(--md-sys-color-on-surface-variant)';
             }
         }
 
-        // 1時間ボタン (24個グリッド) のON/OFFトグル → 即保存
-        async function handleMyAvailHourToggle(btn) {
+        function _renderAvailUI() {
+            const groupEl = document.getElementById('mypageAvailGroup');
+            if (!groupEl) return;
+            const slots = _availUI.slots;
+            const currentSlot = getCurrentSlotJST();
+            const currentIdx = HOUR_ORDER.findIndex(h => _hourKey(h) === currentSlot);
+            const isNowOn = currentIdx >= 0 && slots[currentIdx];
+            const totalHours = slots.filter(Boolean).length;
+            const curHour = HOUR_ORDER[currentIdx] ?? new Date().getHours();
+            const nowLabel = `${curHour}:00台`;
+
+            // 代表時刻ラベル (5, 9, 13, 17, 21, 0)
+            const labelIndices = [0, 4, 8, 12, 16, 19];
+            const labelsHtml = labelIndices.map(i => {
+                const left = ((i + 0.5) / 24 * 100).toFixed(3);
+                return `<div style="position:absolute;left:${left}%;transform:translateX(-50%);font-size:9.5px;font-weight:800;letter-spacing:0.2px;color:#B6BBC1;font-variant-numeric:tabular-nums;white-space:nowrap;">${HOUR_ORDER[i]}時</div>`;
+            }).join('');
+
+            // セル
+            const cellsHtml = HOUR_ORDER.map((h, i) => {
+                const on = slots[i];
+                const isCurrent = h === curHour;
+                const isDayBreak = h === 0;
+                const cls = `avail-cell${isCurrent ? ' avail-cell-current' : ''}${isDayBreak ? ' avail-cell-daybreak' : ''}`;
+                return `<div class="${cls}" data-idx="${i}" data-on="${on ? '1' : '0'}"></div>`;
+            }).join('');
+
+            // 下のブロック (朝/昼/夕/夜) - 横並び flex
+            const blocks = [
+                { label: '朝',   span: 6,  color: '#2E8BFF' },  // 5-10
+                { label: '昼',   span: 6,  color: '#FF8A2B' },  // 11-16
+                { label: '夕',   span: 4,  color: '#9B4DFF' },  // 17-20
+                { label: '夜',   span: 8,  color: '#14161A' },  // 21-4
+            ];
+            const blocksHtml = blocks.map(b =>
+                `<div style="flex:${b.span};height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:900;letter-spacing:0.6px;color:${b.color};background:${b.color}12;">${b.label}</div>`
+            ).join('');
+
+            // プリセット
+            const presets = [
+                { label: '⏰ 起きてる時間 (7-23時)', value: 'awake' },
+                { label: '🌙 深夜以外 (5-1時)',     value: 'except-late' },
+                { label: '☑️ すべて ON',           value: 'all-on' },
+                { label: '🛑 すべて OFF',           value: 'all-off' },
+            ];
+            const presetsHtml = presets.map(p =>
+                `<div class="avail-preset-pill" onclick="_availApplyPreset('${p.value}')">${p.label}</div>`
+            ).join('');
+
+            // ON な連続区間を抽出 (HOUR_ORDER 順)
+            const ranges = _availExtractRanges(slots);
+            const rangesHtml = ranges.length === 0
+                ? `<div style="display:flex;align-items:center;gap:9px;padding:13px 10px;border-radius:11px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.22);"><span style="font-size:16px;">⚠️</span><span style="font-size:11.5px;font-weight:700;color:#B0750A;line-height:1.5;">時間帯が未設定です。Push通知は届きません。</span></div>`
+                : ranges.map((r, ri) => `
+                    <div style="display:flex;align-items:center;gap:11px;padding:11px 6px;${ri === 0 ? '' : 'border-top:1px solid #F0F1F3;'}">
+                        <div style="width:34px;height:34px;flex:none;border-radius:9px;background:rgba(24,194,107,0.10);color:#0E8F4D;display:flex;align-items:center;justify-content:center;font-size:14px;">⏰</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:15px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;letter-spacing:0.2px;">${r.fromH}:00 → ${r.toH}:00</div>
+                            <div style="font-size:10.5px;color:#A4AAB0;margin-top:1px;">${r.len} 時間</div>
+                        </div>
+                        <div onclick="_availRemoveRange(${r.fromIdx}, ${r.toIdx})" style="padding:6px 12px;border-radius:8px;background:#F1F2F4;color:#6B7178;font-size:11px;font-weight:800;cursor:pointer;border:1px solid rgba(20,22,26,0.06);">解除</div>
+                    </div>`).join('');
+
+            const groupEl_full = `
+                <!-- (1) 現状ステータス -->
+                <div style="background:#fff;border-radius:14px;padding:12px 14px;border:1px solid rgba(20,22,26,0.05);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:38px;height:38px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:${isNowOn ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${isNowOn ? '#0E8F4D' : '#D32630'};">${isNowOn ? '🔔' : '🔕'}</div>
+                        <div style="flex:1;">
+                            <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">現在 ${nowLabel}</div>
+                            <div style="font-size:14px;font-weight:900;color:#14161A;margin-top:2px;">${isNowOn ? '通知 受信中' : '通知 OFF (時間帯外)'}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">合計</div>
+                            <div style="font-size:14px;font-weight:900;color:#14161A;margin-top:2px;font-variant-numeric:tabular-nums;">${totalHours} <span style="font-size:10px;font-weight:800;color:#A4AAB0;">時間</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- (2) タイムライン本体 -->
+                <div style="background:#fff;border-radius:14px;padding:14px;border:1px solid rgba(20,22,26,0.05);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+                        <div style="font-size:13px;font-weight:800;color:#14161A;letter-spacing:0.2px;">タイムライン</div>
+                        <div style="font-size:10.5px;color:#B6BBC1;">AM 5時 → 翌 AM 4時</div>
+                    </div>
+                    <div style="position:relative;height:14px;margin-bottom:5px;">${labelsHtml}</div>
+                    <div id="availCells" class="avail-cells">${cellsHtml}</div>
+                    <div style="display:flex;gap:2px;margin-top:5px;">${blocksHtml}</div>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;padding:7px 10px;border-radius:9px;background:#F7F8F9;font-size:11px;font-weight:700;color:#8A9097;letter-spacing:0.3px;">
+                        <span style="font-size:13px;">👆</span><span>タップで ON/OFF · なぞるとまとめて選択</span>
+                    </div>
+                </div>
+
+                <!-- (3) プリセット -->
+                <div style="background:#fff;border-radius:14px;padding:12px 14px;border:1px solid rgba(20,22,26,0.05);">
+                    <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;margin-bottom:9px;">プリセット</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">${presetsHtml}</div>
+                </div>
+
+                <!-- (4) 選択中の範囲リスト -->
+                <div style="background:#fff;border-radius:14px;padding:12px 14px;border:1px solid rgba(20,22,26,0.05);">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
+                        <div style="font-size:13px;font-weight:800;color:#14161A;letter-spacing:0.2px;">通知が届く時間帯</div>
+                        <div style="font-size:10.5px;color:#B6BBC1;font-variant-numeric:tabular-nums;">${ranges.length} 区間</div>
+                    </div>
+                    ${rangesHtml}
+                </div>`;
+            groupEl.innerHTML = groupEl_full;
+            _availAttachInteraction();
+        }
+
+        // ドラッグ操作の取付 (touch + mouse 統一)
+        function _availAttachInteraction() {
+            const container = document.getElementById('availCells');
+            if (!container) return;
+
+            const cellFromEvent = (clientX, clientY) => {
+                const el = document.elementFromPoint(clientX, clientY);
+                if (!el || !el.classList) return null;
+                const cell = el.closest('.avail-cell');
+                if (!cell || !container.contains(cell)) return null;
+                return cell;
+            };
+
+            const setCellOn = (cell, on) => {
+                const idx = parseInt(cell.dataset.idx, 10);
+                if (Number.isNaN(idx)) return;
+                if (_availUI.slots[idx] === on) return;
+                _availUI.slots[idx] = on;
+                cell.dataset.on = on ? '1' : '0';
+            };
+
+            const onStart = (clientX, clientY, evt) => {
+                const cell = cellFromEvent(clientX, clientY);
+                if (!cell) return;
+                evt.preventDefault();
+                const idx = parseInt(cell.dataset.idx, 10);
+                _availUI.dragging = true;
+                _availUI.dragMode = !_availUI.slots[idx];   // クリックしたセルの逆方向に塗る
+                setCellOn(cell, _availUI.dragMode);
+            };
+            const onMove = (clientX, clientY, evt) => {
+                if (!_availUI.dragging) return;
+                const cell = cellFromEvent(clientX, clientY);
+                if (!cell) return;
+                evt.preventDefault();
+                setCellOn(cell, _availUI.dragMode);
+            };
+            const onEnd = () => {
+                if (!_availUI.dragging) return;
+                _availUI.dragging = false;
+                _availScheduleSave();
+            };
+
+            // ポインタイベントを優先 (touch + mouse 両対応)
+            container.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('.avail-cell')) {
+                    onStart(e.clientX, e.clientY, e);
+                    try { container.setPointerCapture(e.pointerId); } catch {}
+                }
+            });
+            container.addEventListener('pointermove', (e) => onMove(e.clientX, e.clientY, e));
+            container.addEventListener('pointerup', onEnd);
+            container.addEventListener('pointercancel', onEnd);
+            container.addEventListener('pointerleave', onEnd);
+        }
+
+        function _availScheduleSave() {
+            clearTimeout(_availUI.saveTimer);
+            _availUI.saveTimer = setTimeout(_availDoSave, 250);
+        }
+
+        async function _availDoSave() {
             const id = getCurrentIdentity();
             if (!id?.id) return;
-            // localState: checked-ish 表現を data 属性で保持
-            const cur = btn.dataset.checked === '1';
-            btn.dataset.checked = cur ? '0' : '1';
-            // 全ボタンから現在のONリストを構築
-            const all = document.querySelectorAll('#mypageAvailGroup button[data-slot]');
-            const slots = Array.from(all).filter(b => b.dataset.checked === '1').map(b => b.dataset.slot);
-            // 視覚は再描画で揃える (border / bg のため)
             const msgEl = document.getElementById('mypageAvailMessage');
+            const slots = HOUR_ORDER
+                .map((h, i) => _availUI.slots[i] ? _hourKey(h) : null)
+                .filter(Boolean);
+            _availUI.saving = true;
             try {
                 await window.supabaseSaveAvailability(id.id, slots);
-                msgEl.style.color = slots.length === 0 ? '#f59e0b' : '#22c55e';
-                msgEl.textContent = slots.length === 0
-                    ? '⚠️ 全時間帯OFF: 通知は一切来ません'
-                    : `✅ 保存しました (${slots.length}/24)`;
-                await renderMyAvailabilitySettings(id);
+                if (msgEl) {
+                    msgEl.style.color = slots.length === 0 ? '#f59e0b' : '#22c55e';
+                    msgEl.textContent = slots.length === 0
+                        ? '⚠️ 全時間帯OFF: 通知は一切来ません'
+                        : `✅ 保存しました (${slots.length}/24)`;
+                }
+                // 範囲リストとステータスを再描画 (タイムライン自体は data 属性が既に正しい)
+                _renderAvailUI();
             } catch (e) {
-                msgEl.textContent = `❌ ${e?.message || e}`;
-                msgEl.style.color = '#ef4444';
+                if (msgEl) {
+                    msgEl.textContent = `❌ ${e?.message || e}`;
+                    msgEl.style.color = '#ef4444';
+                }
+            } finally {
+                _availUI.saving = false;
             }
         }
+
+        function _availApplyPreset(preset) {
+            let slots;
+            if (preset === 'all-on')        slots = new Array(24).fill(true);
+            else if (preset === 'all-off')  slots = new Array(24).fill(false);
+            else if (preset === 'awake')    slots = HOUR_ORDER.map(h => h >= 7 && h < 23);
+            else if (preset === 'except-late') {
+                // 5時〜翌1時 を ON、翌2-4時のみ OFF
+                const onSet = new Set([5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1]);
+                slots = HOUR_ORDER.map(h => onSet.has(h));
+            } else return;
+            _availUI.slots = slots;
+            _renderAvailUI();
+            _availScheduleSave();
+        }
+
+        function _availRemoveRange(fromIdx, toIdx) {
+            // HOUR_ORDER 内の連続区間 (fromIdx..toIdx inclusive、配列の境界を跨ぐ場合あり)
+            const slots = _availUI.slots.slice();
+            if (fromIdx <= toIdx) {
+                for (let i = fromIdx; i <= toIdx; i++) slots[i] = false;
+            } else {
+                for (let i = fromIdx; i < 24; i++) slots[i] = false;
+                for (let i = 0; i <= toIdx; i++) slots[i] = false;
+            }
+            _availUI.slots = slots;
+            _renderAvailUI();
+            _availScheduleSave();
+        }
+
+        // HOUR_ORDER 順で ON の連続ブロックを抽出 (配列の wrap は跨がない)
+        function _availExtractRanges(slots) {
+            const result = [];
+            let start = null;
+            for (let i = 0; i < slots.length; i++) {
+                if (slots[i]) {
+                    if (start === null) start = i;
+                } else if (start !== null) {
+                    result.push({
+                        fromIdx: start, toIdx: i - 1,
+                        fromH: HOUR_ORDER[start],
+                        toH: (HOUR_ORDER[i - 1] + 1) % 24,
+                        len: i - start,
+                    });
+                    start = null;
+                }
+            }
+            if (start !== null) {
+                result.push({
+                    fromIdx: start, toIdx: slots.length - 1,
+                    fromH: HOUR_ORDER[start],
+                    toH: (HOUR_ORDER[slots.length - 1] + 1) % 24,
+                    len: slots.length - start,
+                });
+            }
+            return result;
+        }
+        // window 公開 (HTML onclick 用)
+        window._availApplyPreset = _availApplyPreset;
+        window._availRemoveRange = _availRemoveRange;
 
         async function handleMyAvailToggle() {
             const id = getCurrentIdentity();
