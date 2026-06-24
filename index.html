@@ -1307,12 +1307,13 @@
             75%     { opacity:.95; transform:scaleY(1.08) }
         }
 
-        /* マーブル背景: 主要5タブ共通 */
+        /* マーブル背景: 主要5タブ + メンバー管理サブページ共通 */
         #tab-mypage.tab-content.active,
         #tab-ops.tab-content.active,
         #tab-ranking.tab-content.active,
         #tab-slv-ranking.tab-content.active,
-        #tab-settings.tab-content.active {
+        #tab-settings.tab-content.active,
+        #tab-member-admin.tab-content.active {
             background:
                 radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
                 radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
@@ -1322,10 +1323,44 @@
         }
         #tab-mypage .container, #tab-ops .container,
         #tab-ranking .container, #tab-slv-ranking .container,
-        #tab-settings .container {
+        #tab-settings .container, #tab-member-admin .container {
             display: flex; flex-direction: column; gap: 14px;
             padding: 16px 16px 80px;
         }
+
+        /* === メンバー管理ページ専用 === */
+        @keyframes maExpand { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes maSlideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes maDangerPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,61,68,0.0)} 50%{box-shadow:0 0 0 4px rgba(255,61,68,0.10)} }
+        .ma-row { transition: background .12s; }
+        .ma-row:hover { background: #FAFBFC; }
+        .ma-grad-btn {
+            position:relative; overflow:hidden; border:none; cursor:pointer;
+            padding:11px 16px; border-radius:11px;
+            background:linear-gradient(180deg,#46A0FF,#1E78F0);
+            box-shadow:0 4px 12px rgba(46,139,255,0.26);
+            color:#fff; font-size:12.5px; font-weight:900; letter-spacing:0.3px;
+            font-family:inherit; text-shadow:0 1px 2px rgba(0,40,90,0.4);
+        }
+        .ma-grad-btn::before {
+            content:''; position:absolute; inset:0;
+            background:repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 13px);
+            pointer-events:none;
+        }
+        .ma-grad-btn::after {
+            content:''; position:absolute; left:0; right:0; top:0; height:48%;
+            background:linear-gradient(180deg, rgba(255,255,255,0.34), transparent);
+            pointer-events:none;
+        }
+        .ma-grad-btn span { position:relative; z-index:1; }
+        .ma-input {
+            box-sizing:border-box; border-radius:11px;
+            border:1px solid rgba(20,22,26,0.08);
+            background:#F7F8F9; color:#14161A;
+            font-size:14px; font-family:inherit; outline:none;
+            padding:11px 13px;
+        }
+        .ma-input:focus { border-color:#46A0FF; background:#fff; }
 
         /* === Ops: ステータス概況 3カード === */
         .dc-stat-card {
@@ -2420,7 +2455,7 @@
                     <button onclick="openOpsBossHpModal()" class="dc-ops-action">⚔️ ボスHP更新</button>
                     <button onclick="openOpsProxyAttackModal()" class="dc-ops-action">✏️ 代理凸を報告</button>
                     <button onclick="openOpsAttacksEditModal()" class="dc-ops-action">📋 凸履歴・編集</button>
-                    <button onclick="openMemberManageModal()" class="dc-ops-action">👥 メンバー管理</button>
+                    <button onclick="switchTab('member-admin')" class="dc-ops-action">👥 メンバー管理</button>
                 </div>
             </div>
 
@@ -3151,6 +3186,100 @@
         </div>
     </div>
 
+    <!-- ========== Tab: メンバー管理 (設定からの遷移先専用) ========== -->
+    <div id="tab-member-admin" class="tab-content">
+        <div class="container">
+            <!-- ヘッダ -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
+                <div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div onclick="switchTab('settings')" style="width:30px;height:30px;border-radius:9px;background:#F1F2F4;color:#6B7178;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;cursor:pointer;">‹</div>
+                        <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">メンバー管理</div>
+                    </div>
+                    <div id="maHeaderSub" style="font-size:11px;color:#A4AAB0;margin-top:4px;letter-spacing:0.2px;padding-left:38px;">ユニオン</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                    <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#2E8BFF;background:rgba(46,139,255,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:#2E8BFF;"></span>管理者</div>
+                    <div id="maHeaderSeason" style="font-size:10px;font-weight:700;color:#A4AAB0;font-variant-numeric:tabular-nums;letter-spacing:0.2px;">—</div>
+                </div>
+            </div>
+
+            <!-- (1) 概要 STATS -->
+            <div class="dc-card" style="padding:14px;">
+                <div id="maStatsRow" style="display:flex;gap:6px;">
+                    <div style="flex:1;min-width:0;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;padding:11px 8px;text-align:center;">
+                        <div style="font-size:9px;font-weight:800;letter-spacing:0.4px;color:#B6BBC1;">読み込み中…</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- (2) 新規追加 -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">＋ 新メンバー追加</div>
+                    <div id="maSlotsLabel" style="font-size:10.5px;color:#B6BBC1;font-variant-numeric:tabular-nums;">—</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:stretch;">
+                    <input id="maAddInput" type="text" placeholder="新メンバーの名前" oninput="maOnAddInput()" onkeydown="if(event.key==='Enter')maHandleAdd()" class="ma-input" style="flex:1;min-width:0;">
+                    <button onclick="maHandleAdd()" class="ma-grad-btn" style="flex:none;display:flex;align-items:center;"><span>＋ 追加</span></button>
+                </div>
+                <div id="maDupWarning" style="display:none;align-items:center;gap:7px;margin-top:9px;padding:8px 11px;border-radius:9px;background:#F1F2F4;border:1px solid rgba(20,22,26,0.05);font-size:11.5px;font-weight:700;color:#8A9097;animation:dcFadeIn 0.15s ease;">
+                    <span style="font-size:13px;">⚠️</span><span id="maDupWarningText">同名のメンバーが既に存在します</span>
+                </div>
+                <div id="maMessage" style="display:none;margin-top:9px;padding:8px 11px;border-radius:9px;font-size:11.5px;font-weight:700;animation:dcFadeIn 0.2s ease;"></div>
+            </div>
+
+            <!-- (3) フィルタ + 検索 -->
+            <div class="dc-card" style="padding:14px;">
+                <div id="maFilterTabs" style="display:flex;gap:6px;margin-bottom:11px;">
+                    <div style="flex:1;min-width:0;height:38px;display:flex;align-items:center;justify-content:center;color:#6B7178;font-size:12.5px;">読み込み中…</div>
+                </div>
+                <div style="position:relative;">
+                    <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:#B6BBC1;pointer-events:none;">🔍</span>
+                    <input id="maSearchInput" type="text" oninput="maOnSearchInput()" placeholder="名前で絞り込み" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 33px;border-radius:10px;border:1px solid rgba(20,22,26,0.06);background:#F7F8F9;color:#14161A;font-size:13px;font-family:inherit;outline:none;">
+                </div>
+            </div>
+
+            <!-- (4) メンバーリスト -->
+            <div class="dc-card" style="padding:8px 8px 6px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px 9px;gap:10px;">
+                    <div style="display:flex;align-items:baseline;gap:8px;min-width:0;">
+                        <div id="maListTitle" style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">アクティブメンバー</div>
+                        <div id="maListCount" style="font-size:10.5px;color:#B6BBC1;font-variant-numeric:tabular-nums;">— / — 名</div>
+                    </div>
+                    <div id="maSelectToggle" onclick="maToggleSelectMode()" style="display:none;padding:6px 13px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;letter-spacing:0.2px;flex:none;color:#6B7178;background:#F1F2F4;border:1px solid rgba(20,22,26,0.06);">選択</div>
+                </div>
+
+                <div id="maSortContainer" style="display:none;align-items:center;gap:6px;padding:0 10px 11px;">
+                    <span style="font-size:10px;font-weight:800;letter-spacing:0.6px;color:#C2C7CC;flex:none;">並び替え</span>
+                    <div id="maSortPills" style="display:flex;gap:5px;flex:1;"></div>
+                </div>
+
+                <div id="maArchivedWarning" style="display:none;align-items:center;gap:9px;margin:0 6px 9px;padding:10px 12px;border-radius:11px;background:linear-gradient(180deg, rgba(255,61,68,0.07), rgba(255,61,68,0.04));border:1px solid rgba(255,61,68,0.22);">
+                    <div style="width:24px;height:24px;flex:none;border-radius:7px;background:#FF3D44;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 3px 8px rgba(255,61,68,0.35);">⚠</div>
+                    <div style="font-size:11px;line-height:1.5;color:#C42830;font-weight:700;"><strong style="color:#A81F26;">完全削除は元に戻せません。</strong>ダメージ履歴・凸記録もすべて消去されます。</div>
+                </div>
+
+                <div id="maList">
+                    <div style="text-align:center;padding:32px 12px;font-size:12.5px;color:#A4AAB0;">読み込み中…</div>
+                </div>
+            </div>
+
+            <!-- footer note -->
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:2px 6px 4px;font-size:11px;line-height:1.6;color:#A4AAB0;">
+                <span style="flex:none;">ℹ️</span>
+                <span><strong style="color:#6B7178;">脱退</strong> は過去データを残しつつ選択リストから非表示、<strong style="color:#6B7178;">復活</strong> で再表示できます。<strong style="color:#E23036;">完全削除</strong> は脱退済みからのみ可能で、すべてのダメージ履歴も削除されます。</span>
+            </div>
+        </div>
+
+        <!-- bulk action bar -->
+        <div id="maBulkBar" style="display:none;position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom, 20px) + 84px);z-index:56;align-items:center;gap:11px;padding:11px 12px 11px 16px;background:#14161A;border-radius:15px;box-shadow:0 12px 30px rgba(20,22,26,0.32);animation:maSlideUp 0.22s ease;">
+            <div style="flex:1;min-width:0;font-size:13px;font-weight:800;color:#fff;"><span id="maSelectedCount">0</span>名を選択中</div>
+            <div onclick="maClearSelection()" style="padding:8px 12px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:800;color:#C2C7CC;background:rgba(255,255,255,0.08);">解除</div>
+            <div onclick="maBulkArchive()" style="padding:8px 15px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:900;color:#14161A;background:#F59E0B;box-shadow:0 4px 12px rgba(245,158,11,0.4);white-space:nowrap;">まとめて脱退</div>
+        </div>
+    </div>
+
     <!-- ========== Tab 6: 設定 (ClaudeDesign 準拠) ========== -->
     <div id="tab-settings" class="tab-content">
         <div class="container">
@@ -3247,7 +3376,7 @@
                     </div>
                     <div id="settingsMemberCount" style="font-size:10.5px;color:#B6BBC1;font-variant-numeric:tabular-nums;white-space:nowrap;">— 名</div>
                 </div>
-                <button onclick="openMemberManageModal()" style="width:100%;padding:2px;background:#14161A;border-radius:11px;box-shadow:0 4px 12px rgba(46,139,255,0.28);cursor:pointer;border:none;font-family:inherit;">
+                <button onclick="switchTab('member-admin')" style="width:100%;padding:2px;background:#14161A;border-radius:11px;box-shadow:0 4px 12px rgba(46,139,255,0.28);cursor:pointer;border:none;font-family:inherit;">
                     <div style="position:relative;overflow:hidden;border-radius:9px;background:linear-gradient(180deg,#46A0FF,#1E78F0);padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:7px;">
                         <div style="position:absolute;inset:0;background:repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 13px);pointer-events:none;"></div>
                         <div style="position:absolute;left:0;right:0;top:0;height:48%;background:linear-gradient(180deg, rgba(255,255,255,0.34), transparent);pointer-events:none;"></div>
@@ -4115,6 +4244,7 @@
             else if (name === 'mypage') renderMyPage();
             else if (name === 'ops') renderOpsDashboard();
             else if (name === 'settings') renderSettingsTab();
+            else if (name === 'member-admin') renderMemberAdminPage();
             else return;
             _markTabRendered(name);
         }
@@ -9320,6 +9450,431 @@
                 setMemberManageMessage(`❌ ${e?.message || e}`, true);
             }
         }
+
+        // ========== メンバー管理: 専用ページ (ClaudeDesign MemberAdmin.dc.html 準拠) ==========
+        const _MA_ATTR_COLOR = { fire:'#FF3D44', water:'#2E8BFF', electric:'#9B4DFF', iron:'#FF8A2B', wind:'#18C26B' };
+        const _MA_ATTR_CHAR  = { fire:'火', water:'水', electric:'電', iron:'鉄', wind:'風' };
+        const _MA_MAX_SLOTS  = 30;
+        const _memberAdmin = {
+            filter: 'active',       // 'active' | 'archived'
+            sort: 'name',           // 'name' | 'added' | 'attrs'
+            search: '',
+            expanded: null,         // player id
+            selectMode: false,
+            selected: new Set(),    // player ids
+            confirmDelete: null,    // player id
+            cache: null,            // players list (archived 含む)
+        };
+
+        async function renderMemberAdminPage() {
+            // 初回 or キャッシュ無い場合は load
+            await maReload(false);
+        }
+
+        async function maReload(silent) {
+            const listEl = document.getElementById('maList');
+            if (!silent && listEl) {
+                listEl.innerHTML = '<div style="text-align:center;padding:32px 12px;font-size:12.5px;color:#A4AAB0;">読み込み中…</div>';
+            }
+            try {
+                _memberAdmin.cache = await window.supabaseLoadAllPlayers(true);
+                _allPlayersCache = null; // プレイヤー選択モーダル側キャッシュ無効化
+                memberManageCache = _memberAdmin.cache; // 旧モーダルとも共有
+                _maRenderAll();
+                if (typeof renderSettingsMemberCount === 'function') renderSettingsMemberCount();
+            } catch (e) {
+                if (listEl) listEl.innerHTML = `<div style="color:#ef4444;padding:24px;text-align:center;font-size:12.5px;">読み込みエラー: ${escapeHtml(e.message || String(e))}</div>`;
+            }
+        }
+
+        function _maRenderAll() {
+            const cache = _memberAdmin.cache || [];
+            const activeCount   = cache.filter(p => !p.archived).length;
+            const archivedCount = cache.filter(p =>  p.archived).length;
+            _maRenderStats(activeCount, archivedCount);
+            _maRenderSlots(activeCount);
+            _maRenderFilters(activeCount, archivedCount);
+            _maRenderSortPills();
+            _maRenderList();
+            _maRenderHeader();
+        }
+
+        function _maRenderHeader() {
+            const sub  = document.getElementById('maHeaderSub');
+            const seas = document.getElementById('maHeaderSeason');
+            const me = (typeof getCurrentIdentity === 'function') ? getCurrentIdentity() : null;
+            if (sub)  sub.textContent  = me?.name ? `操作者: ${me.name}` : 'ユニオン';
+            if (seas) seas.textContent = (_activeSeasonCache?.season?.month_key) || (typeof currentMonthKey !== 'undefined' && currentMonthKey) || '';
+        }
+
+        function _maRenderStats(active, archived) {
+            const row = document.getElementById('maStatsRow');
+            if (!row) return;
+            const cells = [
+                { label: 'アクティブ', value: active,   unit: '名' },
+                { label: '得意属性あり', value: (_memberAdmin.cache || []).filter(p => !p.archived && (p.strong_attributes || []).length > 0).length, unit: '名' },
+                { label: '脱退済み',  value: archived,  unit: '名' },
+            ];
+            row.innerHTML = cells.map(c => `
+                <div style="flex:1;min-width:0;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;padding:11px 8px;text-align:center;">
+                    <div style="font-size:9px;font-weight:800;letter-spacing:0.4px;color:#B6BBC1;white-space:nowrap;">${c.label}</div>
+                    <div style="display:flex;align-items:baseline;justify-content:center;gap:3px;margin-top:5px;">
+                        <span style="font-size:20px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1;">${c.value}</span>
+                        <span style="font-size:10px;font-weight:800;color:#A4AAB0;">${c.unit}</span>
+                    </div>
+                </div>`).join('');
+        }
+
+        function _maRenderSlots(activeCount) {
+            const el = document.getElementById('maSlotsLabel');
+            if (el) el.textContent = `${activeCount} / ${_MA_MAX_SLOTS} 名`;
+        }
+
+        function _maRenderFilters(active, archived) {
+            const el = document.getElementById('maFilterTabs');
+            if (!el) return;
+            const items = [
+                { key: 'active',   label: 'アクティブ', count: active },
+                { key: 'archived', label: '脱退済み',   count: archived },
+            ];
+            el.innerHTML = items.map(it => {
+                const on = _memberAdmin.filter === it.key;
+                const bg = on ? '#14161A' : '#F1F2F4';
+                const fg = on ? '#fff' : '#6B7178';
+                const bgChip = on ? 'rgba(255,255,255,0.18)' : 'rgba(20,22,26,0.06)';
+                const fgChip = on ? '#fff' : '#8A9097';
+                return `<div onclick="maSetFilter('${it.key}')" style="flex:1;min-width:0;height:38px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;font-weight:900;letter-spacing:0.2px;color:${fg};background:${bg};transition:all .15s;">
+                    <span>${it.label}</span>
+                    <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:${bgChip};color:${fgChip};font-variant-numeric:tabular-nums;">${it.count}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function _maRenderSortPills() {
+            const wrap = document.getElementById('maSortContainer');
+            const pillEl = document.getElementById('maSortPills');
+            const isActiveFilter = _memberAdmin.filter === 'active';
+            if (!wrap || !pillEl) return;
+            wrap.style.display = isActiveFilter ? 'flex' : 'none';
+            if (!isActiveFilter) return;
+            const sorts = [
+                { key: 'name',  label: '名前' },
+                { key: 'added', label: '追加順' },
+                { key: 'attrs', label: '属性' },
+            ];
+            pillEl.innerHTML = sorts.map(so => {
+                const on = _memberAdmin.sort === so.key;
+                const bg = on ? '#fff' : 'transparent';
+                const fg = on ? '#14161A' : '#9AA0A6';
+                const bd = on ? 'rgba(20,22,26,0.10)' : 'rgba(20,22,26,0.05)';
+                const sh = on ? '0 1px 3px rgba(20,22,26,0.06)' : 'none';
+                return `<div onclick="maSetSort('${so.key}')" style="flex:1;min-width:0;height:30px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.2px;color:${fg};background:${bg};border:1px solid ${bd};box-shadow:${sh};transition:all .12s;">${so.label}</div>`;
+            }).join('');
+        }
+
+        function _maGetFiltered() {
+            const cache = _memberAdmin.cache || [];
+            const isActive = _memberAdmin.filter === 'active';
+            const search = (_memberAdmin.search || '').trim().toLowerCase();
+            let arr = cache.filter(p => isActive ? !p.archived : p.archived);
+            if (search) arr = arr.filter(p => (p.name || '').toLowerCase().indexOf(search) >= 0);
+            if (isActive) {
+                if (_memberAdmin.sort === 'name')   arr = arr.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+                else if (_memberAdmin.sort === 'added') arr = arr.slice().sort((a, b) => b.id - a.id);
+                else if (_memberAdmin.sort === 'attrs') arr = arr.slice().sort((a, b) => (b.strong_attributes?.length || 0) - (a.strong_attributes?.length || 0) || (a.name || '').localeCompare(b.name || '', 'ja'));
+            }
+            return arr;
+        }
+
+        function _maRenderList() {
+            const isActive = _memberAdmin.filter === 'active';
+            const filtered = _maGetFiltered();
+            const titleEl = document.getElementById('maListTitle');
+            const countEl = document.getElementById('maListCount');
+            const warnEl  = document.getElementById('maArchivedWarning');
+            const selTog  = document.getElementById('maSelectToggle');
+            const listEl  = document.getElementById('maList');
+            const cache = _memberAdmin.cache || [];
+            const totalForFilter = (isActive ? cache.filter(p => !p.archived).length : cache.filter(p => p.archived).length);
+            if (titleEl) titleEl.textContent = isActive ? 'アクティブメンバー' : '脱退済みメンバー';
+            if (countEl) countEl.textContent = `${filtered.length} / ${totalForFilter} 名`;
+            if (warnEl)  warnEl.style.display = (!isActive && filtered.length > 0) ? 'flex' : 'none';
+            if (selTog) {
+                selTog.style.display = isActive ? 'block' : 'none';
+                const sm = _memberAdmin.selectMode;
+                selTog.textContent = sm ? '完了' : '選択';
+                selTog.style.color = sm ? '#fff' : '#6B7178';
+                selTog.style.background = sm ? '#2E8BFF' : '#F1F2F4';
+                selTog.style.border = '1px solid ' + (sm ? '#2E8BFF' : 'rgba(20,22,26,0.06)');
+            }
+            if (filtered.length === 0) {
+                if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:32px 12px;font-size:12.5px;color:#A4AAB0;">${isActive ? 'アクティブメンバーはいません' : '脱退済みメンバーはいません'}</div>`;
+            } else if (listEl) {
+                listEl.innerHTML = filtered.map((p, i) => _maRenderRow(p, i)).join('');
+            }
+            _maRenderBulkBar();
+        }
+
+        function _maRenderRow(p, idx) {
+            const isArchived = !!p.archived;
+            const isExpanded = _memberAdmin.expanded === p.id;
+            const isConfirming = _memberAdmin.confirmDelete === p.id;
+            const selectable = _memberAdmin.selectMode && !isArchived;
+            const isSelected = _memberAdmin.selected.has(p.id);
+            const attrs = (p.strong_attributes || []).filter(a => _MA_ATTR_COLOR[a]);
+            const primary = attrs[0];
+            const baseColor = _MA_ATTR_COLOR[primary] || '#6B7178';
+            const isMe = (() => { const me = getCurrentIdentity?.(); return me?.id === p.id; })();
+            const meta = isArchived ? '脱退済み' : (isMe ? 'あなた' : '');
+
+            const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(p, 36) : `<div style="width:36px;height:36px;border-radius:50%;background:${baseColor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;">${escapeHtml((p.name || '?').charAt(0))}</div>`;
+            const avatarWrap = `<div onclick="maToggleExpand(${p.id})" style="position:relative;width:36px;height:36px;flex:none;border-radius:50%;cursor:pointer;${isArchived ? 'filter:grayscale(0.55);' : ''}">${avatar}</div>`;
+
+            const checkbox = selectable ? `
+                <div onclick="maToggleSelect(${p.id})" style="width:22px;height:22px;flex:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;background:${isSelected ? '#2E8BFF' : '#fff'};border:2px solid ${isSelected ? '#2E8BFF' : 'rgba(20,22,26,0.16)'};transition:all .12s;">${isSelected ? '✓' : ''}</div>` : '';
+
+            const attrChips = attrs.map(a => `<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:5px;flex:none;font-size:10px;font-weight:900;color:#fff;background:${_MA_ATTR_COLOR[a]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);">${_MA_ATTR_CHAR[a]}</span>`).join('');
+
+            const caret = `<span style="font-size:8px;color:#C2C7CC;flex:none;margin-left:1px;">${isExpanded ? '▲' : '▼'}</span>`;
+
+            // アクションボタン
+            let actionsHtml;
+            if (isConfirming) {
+                actionsHtml = `
+                    <div style="display:flex;align-items:center;gap:6px;flex:none;animation:dcFadeIn .15s ease;">
+                        <div onclick="maCancelDelete()" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:#F1F2F4;color:#6B7178;border:1px solid rgba(20,22,26,0.06);white-space:nowrap;">取消</div>
+                        <div onclick="maConfirmDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 13px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:900;background:#FF3D44;color:#fff;border:1px solid #FF3D44;box-shadow:0 4px 12px rgba(255,61,68,0.4);white-space:nowrap;animation:maDangerPulse 1.4s ease infinite;">削除する</div>
+                    </div>`;
+            } else if (isArchived) {
+                actionsHtml = `
+                    <div style="display:flex;align-items:center;gap:6px;flex:none;">
+                        <div onclick="maHandleUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:#18C26B;color:#fff;border:1px solid #18C26B;white-space:nowrap;">復活</div>
+                        <div onclick="maRequestDelete(${p.id})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:rgba(255,61,68,0.10);color:#D32630;border:1px solid #FF3D44;white-space:nowrap;">🗑 完全削除</div>
+                    </div>`;
+            } else {
+                actionsHtml = `
+                    <div style="display:flex;align-items:center;gap:6px;flex:none;">
+                        <div onclick="maHandleRename(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:#F1F2F4;color:#6B7178;border:1px solid rgba(20,22,26,0.06);white-space:nowrap;">改名</div>
+                        <div onclick="maHandleArchive(${p.id}, ${jsonAttr(p.name)})" style="padding:7px 11px;border-radius:9px;cursor:pointer;font-size:11.5px;font-weight:800;background:rgba(245,158,11,0.10);color:#B0750A;border:1px solid #F59E0B;white-space:nowrap;">脱退</div>
+                    </div>`;
+            }
+
+            const detail = isExpanded ? `
+                <div style="margin:0 6px 10px 53px;padding:13px 14px;border-radius:13px;background:#F8F9FA;border:1px solid rgba(20,22,26,0.05);animation:maExpand .2s ease;">
+                    <div style="display:flex;gap:7px;">
+                        <div style="flex:1;text-align:center;background:#fff;border:1px solid rgba(20,22,26,0.05);border-radius:10px;padding:9px 6px;">
+                            <div style="font-size:9px;font-weight:800;letter-spacing:0.4px;color:#B6BBC1;white-space:nowrap;">得意属性</div>
+                            <div style="font-size:14px;font-weight:900;color:#14161A;margin-top:5px;">${attrs.length || '—'}</div>
+                        </div>
+                        <div style="flex:1;text-align:center;background:#fff;border:1px solid rgba(20,22,26,0.05);border-radius:10px;padding:9px 6px;">
+                            <div style="font-size:9px;font-weight:800;letter-spacing:0.4px;color:#B6BBC1;white-space:nowrap;">アバター</div>
+                            <div style="font-size:11px;font-weight:800;color:#14161A;margin-top:5px;">${p.avatar_character || (p.avatar_url ? 'アップ済' : '未設定')}</div>
+                        </div>
+                        <div style="flex:1;text-align:center;background:#fff;border:1px solid rgba(20,22,26,0.05);border-radius:10px;padding:9px 6px;">
+                            <div style="font-size:9px;font-weight:800;letter-spacing:0.4px;color:#B6BBC1;white-space:nowrap;">状態</div>
+                            <div style="font-size:11px;font-weight:800;color:${isArchived ? '#B0750A' : '#0E8F4D'};margin-top:5px;">${isArchived ? '脱退済' : 'アクティブ'}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:7px;margin-top:11px;padding:0 2px;font-size:10.5px;color:#A4AAB0;font-weight:700;">
+                        <span style="flex:none;">ℹ️</span>
+                        <span>詳細なダメージ履歴・凸記録はマイページから確認できます。</span>
+                    </div>
+                </div>` : '';
+
+            const bgRow = isSelected ? 'rgba(46,139,255,0.05)' : 'transparent';
+            const opacity = isArchived ? 0.82 : 1;
+            return `
+                <div style="border-top:${idx === 0 ? 'none' : '1px solid #F0F1F3'};">
+                    <div class="ma-row" style="display:flex;align-items:center;gap:11px;padding:11px 10px;background:${bgRow};opacity:${opacity};">
+                        ${checkbox}
+                        ${avatarWrap}
+                        <div onclick="maToggleExpand(${p.id})" style="flex:1;min-width:0;cursor:pointer;">
+                            <div style="display:flex;align-items:center;gap:7px;min-width:0;">
+                                <span style="font-size:14px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isArchived ? 'text-decoration:line-through;' : ''}">${escapeHtml(p.name || '')}</span>
+                                ${attrChips}
+                                ${caret}
+                            </div>
+                            ${meta ? `<div style="display:flex;align-items:center;gap:7px;margin-top:3px;font-size:10.5px;color:#A4AAB0;font-weight:700;letter-spacing:0.2px;"><span>${meta}</span></div>` : ''}
+                        </div>
+                        ${actionsHtml}
+                    </div>
+                    ${detail}
+                </div>`;
+        }
+
+        function _maRenderBulkBar() {
+            const bar = document.getElementById('maBulkBar');
+            const cnt = document.getElementById('maSelectedCount');
+            const visible = _memberAdmin.selectMode && _memberAdmin.filter === 'active' && _memberAdmin.selected.size > 0;
+            if (bar) bar.style.display = visible ? 'flex' : 'none';
+            if (cnt) cnt.textContent = String(_memberAdmin.selected.size);
+        }
+
+        // ---- イベントハンドラ ----
+        function maSetFilter(key) {
+            _memberAdmin.filter = key;
+            _memberAdmin.expanded = null;
+            _memberAdmin.selectMode = false;
+            _memberAdmin.selected.clear();
+            _memberAdmin.confirmDelete = null;
+            _maRenderFilters(
+                (_memberAdmin.cache || []).filter(p => !p.archived).length,
+                (_memberAdmin.cache || []).filter(p => p.archived).length
+            );
+            _maRenderSortPills();
+            _maRenderList();
+        }
+        function maSetSort(key) {
+            _memberAdmin.sort = key;
+            _maRenderSortPills();
+            _maRenderList();
+        }
+        function maOnSearchInput() {
+            const v = document.getElementById('maSearchInput')?.value || '';
+            _memberAdmin.search = v;
+            _maRenderList();
+        }
+        function maOnAddInput() {
+            const v = document.getElementById('maAddInput')?.value?.trim() || '';
+            const cache = _memberAdmin.cache || [];
+            const dup = !!v && cache.some(p => (p.name || '') === v);
+            const w = document.getElementById('maDupWarning');
+            const t = document.getElementById('maDupWarningText');
+            if (w) w.style.display = dup ? 'flex' : 'none';
+            if (dup && t) t.textContent = `同名のメンバー「${v}」が既に存在します`;
+        }
+        function maToggleExpand(playerId) {
+            _memberAdmin.expanded = (_memberAdmin.expanded === playerId) ? null : playerId;
+            _memberAdmin.confirmDelete = null;
+            _maRenderList();
+        }
+        function maToggleSelectMode() {
+            _memberAdmin.selectMode = !_memberAdmin.selectMode;
+            if (!_memberAdmin.selectMode) _memberAdmin.selected.clear();
+            _maRenderList();
+        }
+        function maToggleSelect(playerId) {
+            if (_memberAdmin.selected.has(playerId)) _memberAdmin.selected.delete(playerId);
+            else _memberAdmin.selected.add(playerId);
+            _maRenderList();
+        }
+        function maClearSelection() {
+            _memberAdmin.selected.clear();
+            _maRenderList();
+        }
+        function maRequestDelete(playerId) {
+            _memberAdmin.confirmDelete = playerId;
+            _maRenderList();
+        }
+        function maCancelDelete() {
+            _memberAdmin.confirmDelete = null;
+            _maRenderList();
+        }
+        async function maConfirmDelete(playerId, name) {
+            try {
+                await window.supabaseDeletePlayer(playerId);
+                _maFlash(`🗑 ${name} を完全削除しました`, true);
+                _memberAdmin.confirmDelete = null;
+                await maReload(true);
+            } catch (e) {
+                _maFlash(`❌ ${e?.message || e}`, false);
+            }
+        }
+        async function maHandleAdd() {
+            const input = document.getElementById('maAddInput');
+            const name = (input?.value || '').trim();
+            if (!name) { _maFlash('名前を入力してください', false); return; }
+            const cache = _memberAdmin.cache || [];
+            if (cache.some(p => (p.name || '') === name)) { _maFlash(`「${name}」は既に存在します`, false); return; }
+            try {
+                await window.supabaseAddPlayer(name);
+                if (input) input.value = '';
+                const w = document.getElementById('maDupWarning'); if (w) w.style.display = 'none';
+                _maFlash(`✅ ${name} を追加しました`, true);
+                await maReload(true);
+            } catch (e) {
+                const msg = e?.message?.includes('duplicate') ? `「${name}」は既に存在します` : (e?.message || String(e));
+                _maFlash(`❌ ${msg}`, false);
+            }
+        }
+        async function maHandleArchive(playerId, name) {
+            if (!confirm(`「${name}」を脱退扱いにしますか？\n(過去データは残り、選択リストや締め凸候補から非表示になります)`)) return;
+            try {
+                await window.supabaseArchivePlayer(playerId);
+                _maFlash(`✅ ${name} を脱退扱いにしました`, true);
+                await maReload(true);
+            } catch (e) {
+                _maFlash(`❌ ${e?.message || e}`, false);
+            }
+        }
+        async function maHandleUnarchive(playerId, name) {
+            try {
+                await window.supabaseUnarchivePlayer(playerId);
+                _maFlash(`✅ ${name} を復活させました`, true);
+                await maReload(true);
+            } catch (e) {
+                _maFlash(`❌ ${e?.message || e}`, false);
+            }
+        }
+        async function maHandleRename(playerId, name) {
+            const newName = prompt(`「${name}」の新しい名前を入力してください`, name);
+            if (!newName || newName.trim() === '' || newName.trim() === name) return;
+            try {
+                await window.supabaseRenamePlayer(playerId, newName.trim());
+                _maFlash(`✅ ${name} → ${newName.trim()} に改名しました`, true);
+                const me = getCurrentIdentity();
+                if (me?.id === playerId) {
+                    setCurrentIdentity({ id: playerId, name: newName.trim() });
+                }
+                await maReload(true);
+            } catch (e) {
+                _maFlash(`❌ ${e?.message || e}`, false);
+            }
+        }
+        async function maBulkArchive() {
+            const ids = Array.from(_memberAdmin.selected);
+            if (ids.length === 0) return;
+            const cache = _memberAdmin.cache || [];
+            const names = ids.map(id => cache.find(p => p.id === id)?.name || `ID:${id}`);
+            if (!confirm(`${ids.length}名を脱退扱いにしますか？\n対象: ${names.join(', ')}`)) return;
+            let ok = 0, ng = 0;
+            for (const id of ids) {
+                try { await window.supabaseArchivePlayer(id); ok++; }
+                catch (e) { ng++; console.warn('[maBulkArchive]', id, e?.message || e); }
+            }
+            _memberAdmin.selected.clear();
+            _memberAdmin.selectMode = false;
+            _maFlash(`✅ ${ok}名を脱退扱いにしました${ng ? `（失敗 ${ng}件）` : ''}`, ng === 0);
+            await maReload(true);
+        }
+        function _maFlash(text, ok) {
+            const el = document.getElementById('maMessage');
+            if (!el) return;
+            el.textContent = text;
+            el.style.display = 'block';
+            el.style.color = ok ? '#0E8F4D' : '#E23036';
+            el.style.background = ok ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)';
+            el.style.border = '1px solid ' + (ok ? 'rgba(24,194,107,0.25)' : 'rgba(255,61,68,0.22)');
+            clearTimeout(_maFlash._t);
+            _maFlash._t = setTimeout(() => { if (el.textContent === text) el.style.display = 'none'; }, 3500);
+        }
+        // 公開 (HTML onclick から呼ばれる)
+        window.maSetFilter = maSetFilter;
+        window.maSetSort = maSetSort;
+        window.maOnSearchInput = maOnSearchInput;
+        window.maOnAddInput = maOnAddInput;
+        window.maToggleExpand = maToggleExpand;
+        window.maToggleSelectMode = maToggleSelectMode;
+        window.maToggleSelect = maToggleSelect;
+        window.maClearSelection = maClearSelection;
+        window.maRequestDelete = maRequestDelete;
+        window.maCancelDelete = maCancelDelete;
+        window.maConfirmDelete = maConfirmDelete;
+        window.maHandleAdd = maHandleAdd;
+        window.maHandleArchive = maHandleArchive;
+        window.maHandleUnarchive = maHandleUnarchive;
+        window.maHandleRename = maHandleRename;
+        window.maBulkArchive = maBulkArchive;
 
         // ========== Data Loading ==========
         async function autoLoadData() {
