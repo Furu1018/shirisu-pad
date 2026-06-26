@@ -7418,9 +7418,9 @@
                 : `<span style="font-size:30px;">⚔️</span>`;
             bossIcon.style.background = `linear-gradient(180deg, ${bossV.color}, ${bossV.dark})`;
             bossIcon.style.boxShadow = `0 4px 10px ${bossV.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`;
-            bossAttrNameEl.textContent = bossV.name;
+            bossAttrNameEl.textContent = `B${boss.boss_number}`;
             bossAttrNameEl.style.color = bossV.color;
-            bossLabelEl.textContent = `B${boss.boss_number} ${boss.name || boss.boss_code || ''}`;
+            bossLabelEl.textContent = boss.name || boss.boss_code || '';
             bossRow.style.background = `linear-gradient(180deg, ${bossV.color}10, ${bossV.color}04)`;
             bossRow.style.borderColor = `${bossV.color}50`;
 
