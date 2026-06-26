@@ -1960,118 +1960,143 @@
         }
 
         /* === 凸報告モーダル (AttackReport.dc.html 準拠) === */
-        @keyframes arBlueGlow {
-            0%,100% { box-shadow: 0 4px 12px rgba(46,139,255,0.30); }
-            50%     { box-shadow: 0 6px 18px rgba(46,139,255,0.45), 0 0 18px 3px rgba(70,160,255,0.45); }
-        }
-        @keyframes arGreenGlow {
-            0%,100% { box-shadow: 0 4px 12px rgba(24,194,107,0.28); }
-            50%     { box-shadow: 0 6px 18px rgba(24,194,107,0.40), 0 0 18px 3px rgba(40,210,120,0.42); }
-        }
         @keyframes arShimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(220%)} }
         @keyframes arSlideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
-        .ar-card {
+        @keyframes arGrowBar { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+        @keyframes arArrowFlow { 0%,100%{opacity:.4;transform:translateY(0)} 50%{opacity:1;transform:translateY(-2px)} }
+        @keyframes arSoftGlow {
+            0%,100% { box-shadow: 0 3px 10px rgba(46,139,255,0.18); }
+            50%     { box-shadow: 0 5px 14px rgba(46,139,255,0.30); }
+        }
+        /* マッチアップカード */
+        .ar-matchup {
+            position: relative;
+            padding: 14px 12px 12px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, #F8F9FB, #EFF1F4);
+            border: 1px solid rgba(20,22,26,0.05);
+            box-shadow: 0 1px 2px rgba(20,22,26,0.03);
+        }
+        .ar-matchup-row {
+            display: flex; align-items: center; gap: 11px;
+            padding: 11px 12px; border-radius: 13px;
             position: relative; overflow: hidden;
-            padding: 16px 14px; border-radius: 14px;
-            background: linear-gradient(180deg,#46A0FF,#1E78F0);
-            animation: arBlueGlow 2.4s ease-in-out infinite;
         }
-        .ar-card[data-view="imported"] {
-            background: linear-gradient(180deg,#1FC36E,#16A85D);
-            animation: arGreenGlow 3s ease-in-out infinite;
+        .ar-matchup-icon {
+            position: relative; width: 54px; height: 54px; flex: none;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
         }
-        .ar-card[data-view="partial"] {
-            background: linear-gradient(180deg,#F8A638,#E07720);
-            animation: none;
+        .ar-matchup-icon > span,
+        .ar-matchup-icon > img {
+            width: 38px; height: 38px; line-height: 1;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25));
         }
-        .ar-card[data-view="analyzing"] {
-            animation: none;
+        .ar-matchup-arrow {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 6px 0 2px;
         }
-        .ar-card-shimmer-wrap {
-            position:absolute; top:0; bottom:0; left:0; right:0;
-            pointer-events:none; overflow:hidden; border-radius:14px;
+        .ar-matchup-arrow-tri {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
         }
-        .ar-card-shimmer {
-            position:absolute; top:0; bottom:0; width:55%;
-            background:linear-gradient(95deg, transparent, rgba(255,255,255,0.32), transparent);
-            animation:arShimmer 2.8s ease-in-out infinite;
+        .ar-matchup-arrow-tri > div:nth-child(1) {
+            font-size: 11px; line-height: 1; color: #A4AAB0;
+            animation: arArrowFlow 1.4s ease-in-out infinite;
         }
-        .ar-card[data-view="imported"] .ar-card-shimmer-wrap,
-        .ar-card[data-view="partial"] .ar-card-shimmer-wrap,
-        .ar-card[data-view="analyzing"] .ar-card-shimmer-wrap { display: none; }
-        .ar-card-hl {
-            position:absolute; left:0; right:0; top:0; height:48%;
-            background:linear-gradient(180deg, rgba(255,255,255,0.30), transparent);
-            pointer-events:none; border-radius:14px 14px 0 0;
+        .ar-matchup-arrow-tri > div:nth-child(2) {
+            font-size: 9.5px; line-height: 1; color: #C2C7CC;
+            animation: arArrowFlow 1.4s 0.2s ease-in-out infinite;
         }
-        .ar-slot-wrap {
-            flex:1; min-width:0; padding:9px; border-radius:9px;
-            background:rgba(255,255,255,0.14);
-            border:1px dashed rgba(255,255,255,0.4);
-            cursor:pointer; -webkit-tap-highlight-color: transparent;
+        .ar-matchup-arrow-label {
+            font-size: 9px; font-weight: 900; letter-spacing: 1.5px;
+            color: #A4AAB0; margin-top: 2px;
         }
-        .ar-slot-illust {
-            position:relative; aspect-ratio:16/10; border-radius:6px;
-            background:linear-gradient(135deg, rgba(20,22,26,0.42), rgba(20,22,26,0.66));
-            display:flex; flex-direction:column; align-items:center; justify-content:center;
-            gap:3px; overflow:hidden;
+        .ar-matchup-change {
+            position: absolute; top: 8px; right: 8px;
+            padding: 4px 10px; border-radius: 7px;
+            background: #fff; border: 1px solid rgba(20,22,26,0.08);
+            color: #6B7178; font-size: 10px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
-        .ar-slot-illust-team {
-            justify-content: flex-start; padding: 6px; align-items: stretch;
+        .ar-hpbar {
+            position: relative; height: 8px; border-radius: 99px;
+            background: rgba(20,22,26,0.08); overflow: hidden;
         }
-        .ar-slot-illust-tag {
-            position:absolute; top:4px; left:5px;
-            font-size:8.5px; font-weight:900;
-            color:rgba(255,255,255,0.65);
-            background:rgba(255,255,255,0.18);
-            padding:1px 5px; border-radius:3px; letter-spacing:0.6px;
+        .ar-hpbar-fill {
+            position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px;
+            transform-origin: left center; animation: arGrowBar .5s ease-out;
         }
-        .ar-slot-photo {
-            position:relative; aspect-ratio:16/10; border-radius:6px;
-            overflow:hidden;
-            background-size: cover; background-position: center;
+        .ar-prediction-bar {
+            position: relative; height: 14px; border-radius: 99px;
+            background: #EAECEF; overflow: hidden;
         }
-        .ar-slot-photo-badge {
-            position:absolute; top:4px; right:4px;
-            display:inline-flex; align-items:center; gap:3px;
-            padding:2px 7px; border-radius:999px;
-            font-size:9px; font-weight:900; color:#fff;
-            box-shadow:0 2px 5px rgba(0,0,0,0.22);
+        .ar-prediction-rem {
+            position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px;
+            background: linear-gradient(90deg, rgba(180,184,190,0.85), rgba(140,144,150,0.85));
         }
-        .ar-slot-photo-spinner {
-            position:absolute; inset:0; background:rgba(0,0,0,0.32);
-            display:flex; align-items:center; justify-content:center;
+        .ar-prediction-damage {
+            position: absolute; top: 0; bottom: 0; border-radius: 99px;
         }
-        .ar-slot-photo-spinner > div {
-            width:18px; height:18px; border:2.5px solid rgba(255,255,255,0.24);
-            border-top-color:#fff; border-radius:50%;
-            animation:spin .7s linear infinite;
+        .ar-prediction-label {
+            position: absolute; inset: 0; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 9.5px; font-weight: 900; color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4); letter-spacing: 0.3px;
+            pointer-events: none;
         }
-        .ar-slot-empty {
-            position:relative; aspect-ratio:16/10; border-radius:6px;
-            background:rgba(255,255,255,0.08);
-            border:1.5px dashed rgba(255,255,255,0.5);
-            display:flex; align-items:center; justify-content:center;
-            font-size:22px; color:rgba(255,255,255,0.7);
-        }
-        .ar-slot-label {
-            font-size:10px; font-weight:800; color:#fff;
-            margin-top:5px; text-align:center;
-        }
-        .ar-cta {
-            position:relative; margin-top:11px;
-            display:flex; align-items:center; justify-content:center; gap:7px;
-            padding:11px; border-radius:10px; cursor:pointer;
-            background:rgba(255,255,255,0.96);
-            box-shadow:0 4px 10px rgba(0,40,90,0.18);
+        /* ピックボタン (シンプル 1 ボタン) */
+        .ar-pick-btn {
+            display: flex; align-items: center; gap: 11px;
+            padding: 14px; border-radius: 13px;
+            background: linear-gradient(180deg, #46A0FF, #1E78F0);
+            cursor: pointer; box-shadow: 0 4px 12px rgba(46,139,255,0.30);
+            animation: arSoftGlow 2.4s ease-in-out infinite;
+            position: relative; overflow: hidden;
+            border: none; width: 100%; font-family: inherit;
             -webkit-tap-highlight-color: transparent;
         }
-        .ar-extracted {
-            position:relative;
-            display:flex; align-items:center; gap:10px;
-            padding:11px 12px; margin-top:13px;
-            background:rgba(255,255,255,0.96); border-radius:10px;
-            box-shadow:0 4px 10px rgba(0,40,90,0.18);
+        .ar-pick-btn::before {
+            content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.28), transparent);
+            pointer-events: none;
+        }
+        .ar-pick-btn-shimmer {
+            position: absolute; top: 0; bottom: 0; width: 55%;
+            background: linear-gradient(95deg, transparent, rgba(255,255,255,0.28), transparent);
+            animation: arShimmer 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+        /* 手動入力リンク (控えめ) */
+        .ar-manual-link {
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 10px; margin-top: 9px; cursor: pointer;
+            background: transparent; border: none; width: 100%;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* サムネカード (アップ後) */
+        .ar-thumbs-card {
+            padding: 13px; border-radius: 13px;
+            animation: arSlideDown 0.22s ease;
+        }
+        .ar-thumb {
+            position: relative; aspect-ratio: 16/10; border-radius: 8px;
+            overflow: hidden; background-size: cover; background-position: center;
+        }
+        .ar-thumb-badge {
+            position: absolute; top: 4px; right: 4px;
+            padding: 2px 7px; border-radius: 999px;
+            font-size: 9px; font-weight: 900; color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.22);
+        }
+        .ar-thumb-spinner {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.32);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .ar-thumb-spinner > div {
+            width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.24);
+            border-top-color: #fff; border-radius: 50%;
+            animation: spin .7s linear infinite;
         }
 
         /* ===== BlaBlaLINK 3凸取込 ピル (BlaBla サインイン風・小型) ===== */
@@ -4129,17 +4154,76 @@
                 <div onclick="closeMyAttackModal()" style="width:30px;height:30px;border-radius:50%;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;">✕</div>
             </div>
 
-            <!-- ボス確認バナー -->
-            <div id="myAttackBossBanner" style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:13px;background:linear-gradient(180deg, rgba(255,61,68,0.06), rgba(255,61,68,0.02));border:1px solid rgba(255,61,68,0.18);margin-bottom:14px;">
-                <div id="myAttackBossBannerTile" style="position:relative;width:42px;height:42px;flex:none;border-radius:11px;background:linear-gradient(180deg,#FF5A52,#E8261F);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;letter-spacing:0.5px;box-shadow:0 3px 8px rgba(232,38,31,0.35), inset 0 1px 0 rgba(255,255,255,0.3);">
-                    B?
-                    <div id="myAttackBossBannerEmoji" style="position:absolute;bottom:-3px;right:-3px;width:18px;height:18px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.18);"><span style="font-size:13px;">⚔️</span></div>
+            <!-- マッチアップカード (ボス vs 自分のPT) -->
+            <div id="myAttackMatchup" class="ar-matchup" style="margin-bottom:14px;">
+                <!-- 上段: ボス -->
+                <div id="myAttackBossRow" class="ar-matchup-row" style="background:linear-gradient(180deg, rgba(180,180,180,0.06), rgba(180,180,180,0.02));border:1.5px solid rgba(20,22,26,0.10);">
+                    <div id="myAttackBossIcon" class="ar-matchup-icon" style="background:linear-gradient(180deg,#8A9097,#5A6068);box-shadow:0 4px 10px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.3);">
+                        <span>⚔️</span>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:baseline;gap:6px;">
+                            <span id="myAttackBossAttrName" style="font-size:18px;font-weight:900;color:#14161A;letter-spacing:0.5px;">ボス未選択</span>
+                            <span id="myAttackBossLabel" style="font-size:11px;font-weight:800;color:#A4AAB0;letter-spacing:0.3px;"></span>
+                        </div>
+                        <div id="myAttackBossHpWrap" style="margin-top:8px;display:none;">
+                            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+                                <span style="font-size:9.5px;font-weight:800;letter-spacing:0.8px;color:#8A9097;">残HP</span>
+                                <span style="font-size:11px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">
+                                    <span id="myAttackBossHpRem">—</span><span style="font-size:9px;color:#A4AAB0;margin:0 2px;">/</span><span id="myAttackBossHpMax" style="font-size:9.5px;color:#A4AAB0;font-weight:700;">—</span>
+                                </span>
+                            </div>
+                            <div class="ar-hpbar"><div id="myAttackBossHpFill" class="ar-hpbar-fill" style="width:0%;background:#8A9097;"></div></div>
+                        </div>
+                    </div>
                 </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:10px;font-weight:800;letter-spacing:1.4px;color:#A4AAB0;">凸報告中のボス</div>
-                    <div id="myAttackBossBannerLabel" style="font-size:15px;font-weight:900;color:#14161A;margin-top:1px;">ボス未選択</div>
+
+                <!-- 矢印 -->
+                <div class="ar-matchup-arrow">
+                    <div class="ar-matchup-arrow-tri"><div>▲</div><div>▲</div></div>
+                    <div class="ar-matchup-arrow-label">で攻撃</div>
                 </div>
-                <div onclick="toggleMyAttackBossPicker()" style="padding:7px 12px;border-radius:9px;background:#fff;border:1px solid rgba(20,22,26,0.10);color:#6B7178;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">変更</div>
+
+                <!-- 下段: 自分の PT -->
+                <div id="myAttackPtRow" class="ar-matchup-row" style="background:linear-gradient(180deg, rgba(180,180,180,0.06), rgba(180,180,180,0.02));border:1.5px solid rgba(20,22,26,0.10);">
+                    <div id="myAttackPtIcon" class="ar-matchup-icon" style="background:linear-gradient(180deg,#8A9097,#5A6068);box-shadow:0 4px 10px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.3);">
+                        <span>⚔️</span>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:baseline;gap:6px;">
+                            <span id="myAttackPtAttrName" style="font-size:16px;font-weight:900;color:#14161A;letter-spacing:0.4px;">—</span>
+                            <span style="font-size:10px;font-weight:800;color:#A4AAB0;letter-spacing:0.3px;">模擬戦より</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:9px;margin-top:7px;">
+                            <div id="myAttackPtChars" style="display:flex;gap:3px;flex:1;"></div>
+                            <div style="text-align:right;flex:none;">
+                                <div style="font-size:9px;font-weight:800;letter-spacing:0.8px;color:#A4AAB0;">登録</div>
+                                <div style="font-size:15px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;letter-spacing:-0.3px;line-height:1.1;">
+                                    <span id="myAttackPtDmg">—</span><span style="font-size:9px;color:#A4AAB0;font-weight:800;margin-left:1px;">B</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 削り想定バー -->
+                <div id="myAttackPredictionWrap" style="display:none;margin-top:11px;padding:9px 11px;border-radius:11px;background:rgba(255,255,255,0.7);border:1px solid rgba(20,22,26,0.06);">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
+                        <span style="font-size:9.5px;font-weight:800;letter-spacing:0.8px;color:#8A9097;">この凸の想定削り</span>
+                        <span id="myAttackPredictionPct" style="font-size:11.5px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">—</span>
+                    </div>
+                    <div class="ar-prediction-bar">
+                        <div id="myAttackPredictionRem" class="ar-prediction-rem" style="width:0%;"></div>
+                        <div id="myAttackPredictionDamage" class="ar-prediction-damage" style="width:0%;right:0%;background:#8A9097;"></div>
+                        <div id="myAttackPredictionLabel" class="ar-prediction-label">—</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:11px;margin-top:5px;padding:0 1px;">
+                        <div style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:linear-gradient(90deg,#B4B8BE,#8C9096);"></span><span style="font-size:9px;font-weight:800;color:#A4AAB0;letter-spacing:0.2px;">残HP</span></div>
+                        <div style="display:flex;align-items:center;gap:4px;"><span id="myAttackPredictionLegend" style="width:8px;height:8px;border-radius:2px;background:#8A9097;"></span><span style="font-size:9px;font-weight:800;color:#A4AAB0;letter-spacing:0.2px;">あなたの想定</span></div>
+                    </div>
+                </div>
+
+                <div onclick="toggleMyAttackBossPicker()" class="ar-matchup-change">変更</div>
             </div>
 
             <!-- ボス再選択 (折り畳み) -->
@@ -4150,62 +4234,54 @@
                 </div>
             </div>
 
-            <!-- ① 画像から自動入力 (青/緑/橙のカード) -->
-            <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;">
+            <!-- 推奨ラベル -->
+            <div id="myAttackRecommendWrap" style="display:flex;align-items:center;gap:7px;margin-bottom:9px;">
                 <div id="myAttackRecommendLabel" style="font-size:11px;font-weight:900;color:#1E78F0;letter-spacing:0.8px;">推奨</div>
                 <div style="flex:1;height:1px;background:linear-gradient(90deg, rgba(46,139,255,0.32), transparent);"></div>
             </div>
-            <div id="myAttackCard" class="ar-card" data-view="fresh">
-                <div class="ar-card-shimmer-wrap"><div class="ar-card-shimmer"></div></div>
-                <div class="ar-card-hl"></div>
-                <div style="position:relative;display:flex;align-items:flex-start;gap:13px;">
-                    <div style="width:42px;height:42px;flex:none;border-radius:11px;background:rgba(255,255,255,0.18);box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;">
-                        <span id="myAttackCardEmoji" style="font-size:22px;">📷</span>
-                    </div>
-                    <div style="flex:1;min-width:0;">
-                        <div id="myAttackCardTitle" style="font-size:15px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,40,90,0.45);letter-spacing:0.4px;">画像から自動入力</div>
-                        <div id="myAttackCardSubtitle" style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.85);margin-top:3px;line-height:1.45;">ダメージ + 編成 5 キャラを AI で自動抽出</div>
-                    </div>
+
+            <!-- 画像アップロード (シンプル 1 ボタン) -->
+            <label for="myAttackOcrInput" id="myAttackPickBtn" class="ar-pick-btn">
+                <input type="file" id="myAttackOcrInput" accept="image/*" multiple onchange="handleMyAttackOcrUpload(event)" style="display:none;">
+                <div class="ar-pick-btn-shimmer"></div>
+                <div style="position:relative;width:38px;height:38px;flex:none;border-radius:10px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                 </div>
-                <!-- 2 スロット (イラスト or 実画像) -->
-                <div id="myAttackSlots" style="position:relative;display:flex;gap:9px;margin-top:13px;"></div>
-                <!-- 抽出結果 (アップ後のみ表示) -->
-                <div id="myAttackExtracted" class="ar-extracted" style="display:none;">
+                <div style="position:relative;flex:1;text-align:left;">
+                    <div id="myAttackPickBtnLabel" style="font-size:15px;font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,40,90,0.4);letter-spacing:0.3px;">画像から自動入力</div>
+                    <div id="myAttackPickBtnSub" style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.85);margin-top:2px;">TOTAL DAMAGE + 戦闘履歴 の 2 枚をまとめて選ぶ</div>
+                </div>
+                <div style="position:relative;font-size:16px;font-weight:900;color:#fff;">›</div>
+            </label>
+
+            <!-- アップ後: サムネカード + ステータス -->
+            <div id="myAttackThumbsCard" class="ar-thumbs-card" style="display:none;background:rgba(46,139,255,0.06);border:1px solid rgba(46,139,255,0.22);">
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
+                    <div id="myAttackStatusIcon" style="width:26px;height:26px;flex:none;border-radius:8px;background:#1E78F0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;box-shadow:0 2px 6px rgba(46,139,255,0.5);">🔍</div>
+                    <div style="flex:1;min-width:0;">
+                        <div id="myAttackStatusTitle" style="font-size:13.5px;font-weight:900;color:#1E78F0;">画像を解析中…</div>
+                        <div id="myAttackStatusSub" style="font-size:10.5px;font-weight:700;color:#1E78F0;opacity:0.75;margin-top:1px;">通常 10〜20 秒で完了</div>
+                    </div>
+                    <label for="myAttackOcrInput" style="padding:6px 11px;border-radius:9px;background:#fff;border:1px solid rgba(20,22,26,0.08);color:#6B7178;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">🔄 選び直す</label>
+                </div>
+                <div id="myAttackThumbs" style="display:flex;gap:8px;"></div>
+                <div id="myAttackExtracted" style="display:none;align-items:center;gap:10px;padding:10px 12px;margin-top:11px;background:#fff;border-radius:10px;border:1px solid rgba(20,22,26,0.05);">
                     <div style="flex:1;">
-                        <div id="myAttackExtractedLabel" style="font-size:9.5px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">ダメージ</div>
-                        <div style="font-size:22px;font-weight:900;color:#14161A;margin-top:2px;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;">
-                            <span id="myAttackExtractedDmg">—</span><span style="font-size:13px;color:#A4AAB0;margin-left:2px;">B</span>
+                        <div id="myAttackExtractedLabel" style="font-size:9.5px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">読み取ったダメージ</div>
+                        <div style="font-size:20px;font-weight:900;color:#14161A;margin-top:1px;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;">
+                            <span id="myAttackExtractedDmg">—</span><span style="font-size:12px;color:#A4AAB0;margin-left:2px;">B</span>
                         </div>
                     </div>
-                    <div id="myAttackExtractedChars" style="display:flex;gap:4px;"></div>
+                    <div id="myAttackExtractedChars" style="display:flex;gap:3px;"></div>
                 </div>
-                <!-- メイン CTA -->
-                <label for="myAttackOcrInput" id="myAttackPickBtn" class="ar-cta">
-                    <input type="file" id="myAttackOcrInput" accept="image/*" multiple onchange="handleMyAttackOcrUpload(event)" style="display:none;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E78F0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <span id="myAttackPickBtnLabel" style="font-size:13px;font-weight:900;color:#1E78F0;letter-spacing:0.3px;">画像を選ぶ (最大 2 枚)</span>
-                </label>
-                <div id="myAttackCardHint" style="position:relative;margin-top:9px;font-size:10.5px;color:rgba(255,255,255,0.85);line-height:1.5;text-align:center;">💡 2 枚同時に選ぶとダメージ + 編成まで自動取得</div>
             </div>
 
-            <!-- 区切り「または」 -->
-            <div id="myAttackOrDivider" style="display:flex;align-items:center;gap:9px;margin:14px 4px;">
-                <div style="flex:1;height:1px;background:#E4E6E9;"></div>
-                <span style="font-size:10.5px;font-weight:800;color:#B6BBC1;letter-spacing:1px;">または</span>
-                <div style="flex:1;height:1px;background:#E4E6E9;"></div>
-            </div>
-
-            <!-- ② 手動入力トグル -->
-            <div id="myAttackManualToggle" onclick="toggleMyAttackManual()" style="display:flex;align-items:center;gap:9px;padding:13px 14px;border-radius:13px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
-                <div style="width:34px;height:34px;flex:none;border-radius:9px;background:#fff;border:1px solid rgba(20,22,26,0.06);display:flex;align-items:center;justify-content:center;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7178" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:13.5px;font-weight:800;color:#14161A;">手動で入力する</div>
-                    <div style="font-size:10.5px;font-weight:700;color:#A4AAB0;margin-top:2px;">画像がない時はこちら</div>
-                </div>
-                <div id="myAttackManualCaret" style="font-size:12px;color:#B6BBC1;">▼</div>
-            </div>
+            <!-- 手動入力リンク (控えめ) -->
+            <button id="myAttackManualToggle" onclick="toggleMyAttackManual()" class="ar-manual-link" type="button">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A9097" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                <span style="font-size:12px;font-weight:800;color:#8A9097;letter-spacing:0.2px;">画像がないときは手動で入力</span>
+                <span id="myAttackManualCaret" style="font-size:10px;color:#B6BBC1;">▼</span>
+            </button>
 
             <!-- 手動入力フォーム (折り畳み) -->
             <div id="myAttackManualForm" style="display:none;margin-top:12px;padding:14px;border-radius:13px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);animation:arSlideDown .2s ease;">
@@ -7102,13 +7178,15 @@
             extracted: null,      // { damageRaw, characters[], hpInfo }
             manualOpen: false,
             editAttackId: null,
+            myDamages: null,      // { [attribute]: { damage_b, characters[] } }
         };
-        const PT_ATTR_BANNER = {
-            FIRE:     { color:'#FF3D44', dark:'#E8261F', emoji:'🔥', name:'灼熱' },
-            WATER:    { color:'#2E8BFF', dark:'#1E78F0', emoji:'💧', name:'水冷' },
-            ELECTRIC: { color:'#9B4DFF', dark:'#7C3AED', emoji:'⚡', name:'電撃' },
-            IRON:     { color:'#FF8A2B', dark:'#E0701F', emoji:'🛡', name:'鉄甲' },
-            WIND:     { color:'#18C26B', dark:'#0EA055', emoji:'🌪', name:'風圧' },
+        // 属性 → アイコンファイル + 色 (PT_ATTRS と整合)
+        const ATTR_VISUAL = {
+            fire:     { color:'#FF3D44', dark:'#D02830', name:'灼熱', icon:'./属性アイコン/灼熱.png' },
+            water:    { color:'#2E8BFF', dark:'#1E78F0', name:'水冷', icon:'./属性アイコン/水冷.png' },
+            electric: { color:'#9B4DFF', dark:'#7C3AED', name:'電撃', icon:'./属性アイコン/電撃.png' },
+            iron:     { color:'#FF8A2B', dark:'#E0701F', name:'鉄甲', icon:'./属性アイコン/鉄甲.png' },
+            wind:     { color:'#18C26B', dark:'#0EA055', name:'風圧', icon:'./属性アイコン/風圧.png' },
         };
 
         async function openMyAttackModal(editAttackId = null, initialDamageRaw = null) {
@@ -7137,6 +7215,8 @@
             document.getElementById('myAttackBossPicker').style.display = 'none';
             document.getElementById('myAttackManualForm').style.display = 'none';
             document.getElementById('myAttackManualCaret').textContent = '▼';
+            document.getElementById('myAttackThumbsCard').style.display = 'none';
+            document.getElementById('myAttackPickBtn').style.display = 'flex';
             dmgInput.value = '';
 
             const ctx = await ensureActiveSeasonLoaded();
@@ -7146,40 +7226,56 @@
                 return;
             }
 
+            // 自分の模擬戦データを取得 (キャッシュなしの場合はロード)
+            try {
+                if (typeof window.supabaseLoadPlayerDamages === 'function') {
+                    const rows = await window.supabaseLoadPlayerDamages(id.id);
+                    const byAttr = {};
+                    (rows || []).forEach(r => {
+                        byAttr[r.attribute] = {
+                            damage_b: Number(r.damage_b) || 0,
+                            characters: Array.isArray(r.characters) ? r.characters : [],
+                        };
+                    });
+                    _attackReport.myDamages = byAttr;
+                }
+            } catch (e) {
+                console.warn('[attack-modal] 模擬戦データ取得失敗:', e?.message || e);
+                _attackReport.myDamages = {};
+            }
+
             // 編集モード / 新規モード
             if (editAttackId != null) {
                 titleEl.textContent = '✏️ 凸ダメージ編集';
                 if (stepEl) stepEl.style.display = 'none';
-                document.getElementById('myAttackCard').style.display = 'none';
-                document.getElementById('myAttackOrDivider').style.display = 'none';
+                document.getElementById('myAttackPickBtn').style.display = 'none';
+                document.getElementById('myAttackThumbsCard').style.display = 'none';
                 document.getElementById('myAttackManualToggle').style.display = 'none';
                 document.getElementById('myAttackManualForm').style.display = 'block';
                 _attackReport.manualOpen = true;
                 dmgInput.value = initialDamageRaw != null ? (Number(initialDamageRaw) / 1e9).toFixed(2).replace(/\.?0+$/, '') : '';
                 saveBtn.dataset.editId = String(editAttackId);
-                document.getElementById('myAttackRecommendLabel').parentElement.style.display = 'none';
+                document.getElementById('myAttackRecommendWrap').style.display = 'none';
             } else {
                 titleEl.textContent = '⚔️ 凸報告';
                 if (stepEl) stepEl.style.display = 'inline-block';
-                document.getElementById('myAttackCard').style.display = 'block';
-                document.getElementById('myAttackOrDivider').style.display = 'flex';
+                document.getElementById('myAttackPickBtn').style.display = 'flex';
                 document.getElementById('myAttackManualToggle').style.display = 'flex';
                 document.getElementById('myAttackManualForm').style.display = 'none';
                 delete saveBtn.dataset.editId;
-                document.getElementById('myAttackRecommendLabel').parentElement.style.display = 'flex';
+                document.getElementById('myAttackRecommendWrap').style.display = 'flex';
             }
 
             // ボスボタン生成 (折り畳みグリッド内)
             bossButtonsEl.innerHTML = ctx.bosses.map(b => {
                 const playerAttr = bossAttrToPlayerAttr(b.attribute);
-                const ptInfo = PT_ATTRS.find(x => x.key === playerAttr);
-                const banner = PT_ATTR_BANNER[playerAttr] || { color:'#8A9097' };
+                const bossVisual = ATTR_VISUAL[b.attribute] || { color:'#8A9097', name:'?', icon:'' };
                 return `
-                    <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}" data-attr="${playerAttr}"
+                    <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}" data-attr="${b.attribute}" data-pt="${playerAttr}"
                         onclick="handleMyAttackBossPick(this, ${b.boss_number})"
-                        style="padding:11px 4px;border-radius:10px;border:1.5px solid ${banner.color};background:#fff;color:${banner.color};font-size:11px;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:all .12s;">
-                        <div style="font-size:13px;font-weight:900;">B${b.boss_number}</div>
-                        <div style="font-size:9.5px;font-weight:700;margin-top:2px;opacity:0.85;">${ptInfo ? ptInfo.name : ''}</div>
+                        style="padding:11px 4px;border-radius:10px;border:1.5px solid ${bossVisual.color};background:#fff;color:${bossVisual.color};font-size:11px;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:all .12s;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                        ${bossVisual.icon ? `<img src="${bossVisual.icon}" style="width:22px;height:22px;">` : `<div style="font-size:18px;">⚔️</div>`}
+                        <div style="font-size:11px;font-weight:900;">B${b.boss_number}</div>
                     </button>`;
             }).join('');
 
@@ -7195,10 +7291,9 @@
                     if (btn) handleMyAttackBossPick(btn, prefillBoss);
                 }, 50);
             } else {
-                _renderAttackBossBanner(null);
+                _renderMatchupCard(null);
             }
 
-            _renderAttackSlots();
             _renderAttackCardState();
             updateMyAttackSaveBtn();
         }
@@ -7215,24 +7310,19 @@
         function handleMyAttackBossPick(btn, bossNumber) {
             _myAttackSelectedBossNumber = bossNumber;
             document.querySelectorAll('#myAttackBossButtons button').forEach(b => {
-                const c = b.style.borderColor || '';
-                b.style.background = '#fff';
-                b.style.color = c.replace('rgb(', '').replace(')', '') || '';
-                // 色は data-attr から復元
                 const attr = b.dataset.attr;
-                const banner = PT_ATTR_BANNER[attr] || { color:'#8A9097' };
+                const v = ATTR_VISUAL[attr] || { color:'#8A9097' };
                 b.style.background = '#fff';
-                b.style.color = banner.color;
+                b.style.color = v.color;
                 b.style.boxShadow = 'none';
             });
             const attr = btn.dataset.attr;
-            const banner = PT_ATTR_BANNER[attr] || { color:'#8A9097' };
-            btn.style.background = banner.color;
+            const v = ATTR_VISUAL[attr] || { color:'#8A9097' };
+            btn.style.background = v.color;
             btn.style.color = '#fff';
-            btn.style.boxShadow = `0 3px 8px ${banner.color}40`;
+            btn.style.boxShadow = `0 3px 8px ${v.color}40`;
 
-            // バナー更新 + ピッカーを閉じる
-            _renderAttackBossBanner(bossNumber);
+            _renderMatchupCard(bossNumber);
             document.getElementById('myAttackBossPicker').style.display = 'none';
             updateMyAttackSaveBtn();
         }
@@ -7254,159 +7344,244 @@
             updateMyAttackSaveBtn();
         }
 
-        function _renderAttackBossBanner(bossNumber) {
-            const tileEl = document.getElementById('myAttackBossBannerTile');
-            const labelEl = document.getElementById('myAttackBossBannerLabel');
-            const emojiEl = document.getElementById('myAttackBossBannerEmoji');
-            const bannerEl = document.getElementById('myAttackBossBanner');
+        function _renderMatchupCard(bossNumber) {
             const ctx = _activeSeasonCache;
             const boss = bossNumber && ctx?.bosses ? ctx.bosses.find(b => b.boss_number === bossNumber) : null;
+
+            const bossRow = document.getElementById('myAttackBossRow');
+            const bossIcon = document.getElementById('myAttackBossIcon');
+            const bossAttrNameEl = document.getElementById('myAttackBossAttrName');
+            const bossLabelEl = document.getElementById('myAttackBossLabel');
+            const bossHpWrap = document.getElementById('myAttackBossHpWrap');
+            const bossHpFill = document.getElementById('myAttackBossHpFill');
+            const bossHpRem = document.getElementById('myAttackBossHpRem');
+            const bossHpMax = document.getElementById('myAttackBossHpMax');
+
+            const ptRow = document.getElementById('myAttackPtRow');
+            const ptIcon = document.getElementById('myAttackPtIcon');
+            const ptAttrNameEl = document.getElementById('myAttackPtAttrName');
+            const ptCharsEl = document.getElementById('myAttackPtChars');
+            const ptDmgEl = document.getElementById('myAttackPtDmg');
+
+            const predWrap = document.getElementById('myAttackPredictionWrap');
+            const predRem = document.getElementById('myAttackPredictionRem');
+            const predDmg = document.getElementById('myAttackPredictionDamage');
+            const predLabel = document.getElementById('myAttackPredictionLabel');
+            const predPct = document.getElementById('myAttackPredictionPct');
+            const predLegend = document.getElementById('myAttackPredictionLegend');
+
             if (!boss) {
-                tileEl.firstChild.nodeValue = 'B?';   // textNode 不安定なので innerHTML 経由が安全
-                tileEl.innerHTML = `B?<div id="myAttackBossBannerEmoji" style="position:absolute;bottom:-3px;right:-3px;width:18px;height:18px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.18);"><span style="font-size:13px;">⚔️</span></div>`;
-                tileEl.style.background = 'linear-gradient(180deg,#8A9097,#5A6068)';
-                tileEl.style.boxShadow = '0 3px 8px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.3)';
-                labelEl.textContent = 'ボス未選択';
-                bannerEl.style.background = '#F7F8F9';
-                bannerEl.style.borderColor = 'rgba(20,22,26,0.08)';
+                bossIcon.innerHTML = '<span style="font-size:30px;">⚔️</span>';
+                bossIcon.style.background = 'linear-gradient(180deg,#8A9097,#5A6068)';
+                bossAttrNameEl.textContent = 'ボス未選択';
+                bossAttrNameEl.style.color = '#14161A';
+                bossLabelEl.textContent = '';
+                bossRow.style.background = 'linear-gradient(180deg, rgba(180,180,180,0.06), rgba(180,180,180,0.02))';
+                bossRow.style.borderColor = 'rgba(20,22,26,0.10)';
+                bossHpWrap.style.display = 'none';
+                ptIcon.innerHTML = '<span style="font-size:30px;">⚔️</span>';
+                ptIcon.style.background = 'linear-gradient(180deg,#8A9097,#5A6068)';
+                ptAttrNameEl.textContent = '—';
+                ptAttrNameEl.style.color = '#14161A';
+                ptCharsEl.innerHTML = '';
+                ptDmgEl.textContent = '—';
+                ptRow.style.background = 'linear-gradient(180deg, rgba(180,180,180,0.06), rgba(180,180,180,0.02))';
+                ptRow.style.borderColor = 'rgba(20,22,26,0.10)';
+                predWrap.style.display = 'none';
                 return;
             }
-            const playerAttr = bossAttrToPlayerAttr(boss.attribute);
-            const banner = PT_ATTR_BANNER[playerAttr] || { color:'#8A9097', dark:'#5A6068', emoji:'⚔️', name:'?' };
-            tileEl.innerHTML = `B${boss.boss_number}<div id="myAttackBossBannerEmoji" style="position:absolute;bottom:-3px;right:-3px;width:18px;height:18px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.18);"><span style="font-size:13px;">${banner.emoji}</span></div>`;
-            tileEl.style.background = `linear-gradient(180deg,${banner.color},${banner.dark})`;
-            tileEl.style.boxShadow = `0 3px 8px ${banner.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`;
-            labelEl.textContent = `B${boss.boss_number} · ${banner.name}PT で凸`;
-            bannerEl.style.background = `linear-gradient(180deg, ${banner.color}10, ${banner.color}05)`;
-            bannerEl.style.borderColor = `${banner.color}38`;
+
+            // ボス側
+            const bossV = ATTR_VISUAL[boss.attribute] || { color:'#8A9097', dark:'#5A6068', name:'?', icon:'' };
+            bossIcon.innerHTML = bossV.icon
+                ? `<img src="${bossV.icon}" alt="${bossV.name}">`
+                : `<span style="font-size:30px;">⚔️</span>`;
+            bossIcon.style.background = `linear-gradient(180deg, ${bossV.color}, ${bossV.dark})`;
+            bossIcon.style.boxShadow = `0 4px 10px ${bossV.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`;
+            bossAttrNameEl.textContent = bossV.name;
+            bossAttrNameEl.style.color = bossV.color;
+            bossLabelEl.textContent = `B${boss.boss_number} ${boss.name || boss.boss_code || ''}`;
+            bossRow.style.background = `linear-gradient(180deg, ${bossV.color}10, ${bossV.color}04)`;
+            bossRow.style.borderColor = `${bossV.color}50`;
+
+            // HP バー
+            const maxHp = Number(boss.max_hp) || 0;
+            const remHp = boss.remaining_hp != null ? Number(boss.remaining_hp) : maxHp;
+            if (maxHp > 0) {
+                bossHpWrap.style.display = 'block';
+                const pct = Math.max(0, Math.min(100, (remHp / maxHp) * 100));
+                bossHpFill.style.width = pct.toFixed(1) + '%';
+                bossHpFill.style.background = `linear-gradient(90deg, ${bossV.color}, ${bossV.dark})`;
+                bossHpRem.textContent = (remHp / 1e9).toFixed(1) + 'B';
+                bossHpMax.textContent = (maxHp / 1e9).toFixed(0) + 'B';
+            } else {
+                bossHpWrap.style.display = 'none';
+            }
+
+            // PT 側 (弱点属性)
+            const ptAttr = bossAttrToPlayerAttr(boss.attribute);
+            const ptV = ATTR_VISUAL[ptAttr] || { color:'#8A9097', dark:'#5A6068', name:'?', icon:'' };
+            ptIcon.innerHTML = ptV.icon
+                ? `<img src="${ptV.icon}" alt="${ptV.name}">`
+                : `<span style="font-size:30px;">⚔️</span>`;
+            ptIcon.style.background = `linear-gradient(180deg, ${ptV.color}, ${ptV.dark})`;
+            ptIcon.style.boxShadow = `0 4px 10px ${ptV.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`;
+            ptAttrNameEl.textContent = `${ptV.name}PT`;
+            ptAttrNameEl.style.color = ptV.color;
+            ptRow.style.background = `linear-gradient(180deg, ${ptV.color}10, ${ptV.color}04)`;
+            ptRow.style.borderColor = `${ptV.color}50`;
+
+            // 模擬戦データから 5 キャラ + ダメージ取得
+            const myDmg = (_attackReport.myDamages || {})[ptAttr];
+            const chars = (myDmg?.characters || []).slice(0, 5);
+            const dmgB = myDmg?.damage_b ? Number(myDmg.damage_b) : 0;
+
+            ptCharsEl.innerHTML = chars.length
+                ? chars.map((c, i) => {
+                    const name = String(c || '').slice(0, 1) || '?';
+                    let h = 0; for (let k = 0; k < (c || '').length; k++) h = (h * 31 + (c || '').charCodeAt(k)) % 360;
+                    return `<div style="width:20px;height:20px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;background:linear-gradient(140deg, oklch(0.72 0.07 ${h}), oklch(0.5 0.09 ${h}));box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">${escapeHtml(name)}</div>`;
+                }).join('')
+                : `<div style="font-size:10.5px;font-weight:700;color:#A4AAB0;letter-spacing:0.2px;">編成未登録</div>`;
+
+            ptDmgEl.textContent = dmgB > 0 ? dmgB.toFixed(1) : '—';
+
+            // 削り想定
+            if (maxHp > 0 && dmgB > 0) {
+                const dmgRaw = dmgB * 1e9;
+                const remAfter = Math.max(0, remHp - dmgRaw);
+                const bossHpPct = (remHp / maxHp) * 100;
+                const damagePct = remHp > 0 ? Math.min(100, (dmgRaw / remHp) * 100) : 0;
+                const dmgWidthPct = Math.min(bossHpPct, (dmgRaw / maxHp) * 100);
+                const dmgRightOffset = 100 - bossHpPct;
+
+                predWrap.style.display = 'block';
+                predRem.style.width = bossHpPct.toFixed(1) + '%';
+                predDmg.style.width = dmgWidthPct.toFixed(1) + '%';
+                predDmg.style.right = dmgRightOffset.toFixed(1) + '%';
+                predDmg.style.background = `linear-gradient(90deg, ${ptV.color}, ${ptV.dark})`;
+                predDmg.style.boxShadow = `0 0 8px ${ptV.color}66`;
+                predLabel.textContent = `残 ${(remAfter / 1e9).toFixed(1)}B`;
+                predPct.style.color = ptV.color;
+                predPct.textContent = `${damagePct.toFixed(0)}% 削減`;
+                predLegend.style.background = `linear-gradient(90deg, ${ptV.color}, ${ptV.dark})`;
+            } else {
+                predWrap.style.display = 'none';
+            }
         }
 
         function _renderAttackSlots() {
-            const el = document.getElementById('myAttackSlots');
+            // サムネカード内の 2 スロット (実画像のみ、初期は非表示)
+            const el = document.getElementById('myAttackThumbs');
             if (!el) return;
             const view = _attackReport.view;
             const previews = _attackReport.previews || [];
-            const slots = [];
-            if (view === 'fresh' || view === 'manual') {
-                slots.push({ kind: 'illust-damage', label: '結果画面 (TOTAL DAMAGE)' });
-                slots.push({ kind: 'illust-team',   label: '戦闘履歴 (編成 5 キャラ)' });
-            } else {
-                // analyzing / imported / partial: 実画像 (足りなければ illust)
-                const labels = ['結果画面', '戦闘履歴'];
-                for (let i = 0; i < 2; i++) {
-                    if (previews[i]) {
-                        slots.push({ kind:'real', label: labels[i], preview: previews[i] });
-                    } else if (view === 'analyzing') {
-                        slots.push({ kind:'empty', label: labels[i] });
-                    } else {
-                        slots.push({ kind: i === 0 ? 'illust-damage' : 'illust-team', label: labels[i] });
-                    }
-                }
-            }
-            const okBadge = '<span class="ar-slot-photo-badge" style="background:#18C26B;">✓ 取得</span>';
-            const ngBadge = '<span class="ar-slot-photo-badge" style="background:#FF3D44;">⚠ 未認識</span>';
-            const spinBadge = '<span class="ar-slot-photo-badge" style="background:#8A9097;">解析中…</span>';
-            el.innerHTML = slots.map((slot) => {
-                let inner = '';
-                if (slot.kind === 'illust-damage') {
-                    inner = `<div class="ar-slot-illust">
-                        <div class="ar-slot-illust-tag">例</div>
-                        <div style="font-size:10px;font-weight:900;color:#FFD680;letter-spacing:1.5px;text-shadow:0 1px 3px rgba(0,0,0,0.5);">TOTAL DAMAGE</div>
-                        <div style="font-size:14px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,0.6);">22,548,231,...</div>
-                    </div>`;
-                } else if (slot.kind === 'illust-team') {
-                    inner = `<div class="ar-slot-illust ar-slot-illust-team">
-                        <div class="ar-slot-illust-tag">例</div>
-                        <div style="display:flex;gap:2px;margin-top:12px;">
-                            <div style="flex:1;height:8px;border-radius:2px;background:linear-gradient(135deg,#FF5550,#B82018);"></div>
-                            <div style="flex:1;height:8px;border-radius:2px;background:linear-gradient(135deg,#58AAFF,#1E78F0);"></div>
-                            <div style="flex:1;height:8px;border-radius:2px;background:linear-gradient(135deg,#B070FF,#7C3AED);"></div>
-                            <div style="flex:1;height:8px;border-radius:2px;background:linear-gradient(135deg,#FFB060,#E0701F);"></div>
-                            <div style="flex:1;height:8px;border-radius:2px;background:linear-gradient(135deg,#5BD89A,#0EA055);"></div>
-                        </div>
-                        <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.85);margin-top:auto;">編成 5 キャラ</div>
-                    </div>`;
-                } else if (slot.kind === 'real') {
-                    let badge = '';
-                    if (view === 'analyzing') badge = spinBadge;
-                    else if (view === 'imported') badge = okBadge;
-                    else if (view === 'partial') badge = okBadge;  // 個別判定は後段で差し替え
-                    const spinner = view === 'analyzing' ? '<div class="ar-slot-photo-spinner"><div></div></div>' : '';
-                    inner = `<div class="ar-slot-photo" style="background-image:url('${slot.preview}');">${badge}${spinner}</div>`;
-                } else if (slot.kind === 'empty') {
-                    inner = `<div class="ar-slot-empty">＋</div>`;
-                }
-                return `<label for="myAttackOcrInput" class="ar-slot-wrap">${inner}<div class="ar-slot-label">${slot.label}</div></label>`;
+            const labels = ['結果画面', '戦闘履歴'];
+            const extracted = _attackReport.extracted || {};
+            const dmgOk = extracted.damageRaw != null;
+            const charsOk = Array.isArray(extracted.characters) && extracted.characters.length > 0;
+            // 各サムネのバッジ判定
+            const badges = [
+                view === 'analyzing'
+                    ? { bg:'#8A9097', text:'解析中…' }
+                    : (dmgOk ? { bg:'#18C26B', text:'✓ ダメージ' } : { bg:'#FF3D44', text:'⚠ 未認識' }),
+                view === 'analyzing'
+                    ? { bg:'#8A9097', text:'解析中…' }
+                    : (charsOk ? { bg:'#18C26B', text:`✓ 編成 ${Math.min(5, extracted.characters.length)}/5` } : { bg:'#FF3D44', text:'⚠ 未認識' }),
+            ];
+            const fallbackBg = [
+                'linear-gradient(160deg, #2a1810 0%, #5a2a18 30%, #8a3a18 65%, #c85410 100%)',
+                'linear-gradient(170deg, #1a1a2a 0%, #2a2a4a 40%, #3a4a6a 80%)',
+            ];
+            el.innerHTML = labels.map((label, i) => {
+                const bg = previews[i] ? `background-image:url('${previews[i]}');background-size:cover;background-position:center;` : `background:${fallbackBg[i]};`;
+                const badge = `<span class="ar-thumb-badge" style="background:${badges[i].bg};">${badges[i].text}</span>`;
+                const spinner = view === 'analyzing' ? '<div class="ar-thumb-spinner"><div></div></div>' : '';
+                return `<div style="flex:1;min-width:0;"><div class="ar-thumb" style="${bg}">${badge}${spinner}</div><div style="font-size:9.5px;font-weight:800;color:#6B7178;margin-top:4px;text-align:center;">${label}</div></div>`;
             }).join('');
         }
 
         function _renderAttackCardState() {
-            const card = document.getElementById('myAttackCard');
             const view = _attackReport.view;
-            card.dataset.view = view;
-
-            const emojiEl = document.getElementById('myAttackCardEmoji');
-            const titleEl = document.getElementById('myAttackCardTitle');
-            const subEl = document.getElementById('myAttackCardSubtitle');
-            const hintEl = document.getElementById('myAttackCardHint');
             const recommendEl = document.getElementById('myAttackRecommendLabel');
-            const pickLabel = document.getElementById('myAttackPickBtnLabel');
-            const pickSvg = document.querySelector('#myAttackPickBtn svg');
-            const extractedEl = document.getElementById('myAttackExtracted');
             const stepEl = document.getElementById('myAttackStepLabel');
-
-            const presets = {
-                fresh: { emoji:'📷', title:'画像から自動入力', sub:'ダメージ + 編成 5 キャラを AI で自動抽出', hint:'💡 2 枚同時に選ぶとダメージ + 編成まで自動取得', recommend:'推奨', recommendColor:'#1E78F0', cta:'画像を選ぶ (最大 2 枚)', ctaColor:'#1E78F0', step:'STEP 1 / 2' },
-                analyzing: { emoji:'🔍', title:'画像を解析中…', sub:'ダメージ + 編成 5 キャラを取得しています', hint:'通常 10〜20 秒で完了します', recommend:'解析中', recommendColor:'#1E78F0', cta:'画像を選び直す', ctaColor:'#1E78F0', step:'STEP 1 / 2' },
-                imported: { emoji:'✓', title:'取り込み完了', sub:'内容を確認して保存してください', hint:'内容に間違いがあれば「選び直す」で再アップロード', recommend:'完了', recommendColor:'#16A85D', cta:'🔄 画像を選び直す', ctaColor:'#16A85D', step:'STEP 2 / 2' },
-                partial: { emoji:'⚠', title:'一部だけ取得できました', sub:'編成が読み取れなかったので、戦闘履歴を撮り直すか手動で入力', hint:'保存しても問題ありませんが、編成は別途登録できます', recommend:'注意', recommendColor:'#E0701F', cta:'🔄 戦闘履歴を撮り直す', ctaColor:'#E0701F', step:'STEP 2 / 2' },
-                manual: { emoji:'📷', title:'画像から自動入力', sub:'ダメージ + 編成 5 キャラを AI で自動抽出', hint:'💡 2 枚同時に選ぶとダメージ + 編成まで自動取得', recommend:'推奨', recommendColor:'#1E78F0', cta:'画像を選ぶ (最大 2 枚)', ctaColor:'#1E78F0', step:'STEP 1 / 2' },
-            };
-            const p = presets[view] || presets.fresh;
-            emojiEl.textContent = p.emoji;
-            titleEl.textContent = p.title;
-            subEl.textContent = p.sub;
-            hintEl.textContent = p.hint;
-            recommendEl.textContent = p.recommend;
-            recommendEl.style.color = p.recommendColor;
-            pickLabel.textContent = p.cta;
-            pickLabel.style.color = p.ctaColor;
-            if (pickSvg) pickSvg.setAttribute('stroke', p.ctaColor);
-            if (stepEl && _attackReport.editAttackId == null) stepEl.textContent = p.step;
-
-            // 抽出結果の表示
-            if (view === 'imported' || view === 'partial') {
-                extractedEl.style.display = 'flex';
-                const ex = _attackReport.extracted || {};
-                const dmgEl = document.getElementById('myAttackExtractedDmg');
-                const labelEl = document.getElementById('myAttackExtractedLabel');
-                const charsEl = document.getElementById('myAttackExtractedChars');
-                if (ex.damageRaw != null) {
-                    dmgEl.textContent = (Number(ex.damageRaw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
-                } else {
-                    dmgEl.textContent = '—';
-                }
-                labelEl.textContent = view === 'partial' && (!ex.characters || ex.characters.length === 0)
-                    ? 'ダメージのみ取得' : 'ダメージ';
-                const chars = Array.isArray(ex.characters) ? ex.characters.slice(0, 5) : [];
-                charsEl.innerHTML = chars.map((c, i) => {
-                    const initial = (c || '?').slice(0, 1);
-                    let h = 0; for (let k = 0; k < (c || '').length; k++) h = (h * 31 + (c || '').charCodeAt(k)) % 360;
-                    return `<div style="width:26px;height:26px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;background:linear-gradient(140deg, oklch(0.72 0.07 ${h}), oklch(0.5 0.09 ${h}));box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">${escapeHtml(initial)}</div>`;
-                }).join('');
-            } else {
-                extractedEl.style.display = 'none';
-            }
-
-            // 区切り / 手動入力トグルの表示
-            const divider = document.getElementById('myAttackOrDivider');
+            const pickBtn = document.getElementById('myAttackPickBtn');
+            const thumbsCard = document.getElementById('myAttackThumbsCard');
+            const statusIcon = document.getElementById('myAttackStatusIcon');
+            const statusTitle = document.getElementById('myAttackStatusTitle');
+            const statusSub = document.getElementById('myAttackStatusSub');
+            const extractedEl = document.getElementById('myAttackExtracted');
             const manualToggle = document.getElementById('myAttackManualToggle');
             const form = document.getElementById('myAttackManualForm');
-            const showOption = view !== 'imported' && view !== 'partial';
-            if (divider) divider.style.display = showOption ? 'flex' : 'none';
-            if (manualToggle) manualToggle.style.display = showOption ? 'flex' : 'none';
-            // 完了/部分: 手動フォームを自動展開 (値の確認・編集用)
-            if (!showOption) {
+
+            const presets = {
+                fresh:     { recommend:'推奨', color:'#1E78F0', step:'STEP 1 / 2',
+                             title:'画像を解析中…', sub:'通常 10〜20 秒で完了', emoji:'🔍',
+                             cardBg:'rgba(46,139,255,0.06)', cardBorder:'rgba(46,139,255,0.22)', iconBg:'#1E78F0' },
+                analyzing: { recommend:'解析中', color:'#1E78F0', step:'STEP 1 / 2',
+                             title:'画像を解析中…', sub:'通常 10〜20 秒で完了', emoji:'🔍',
+                             cardBg:'rgba(46,139,255,0.06)', cardBorder:'rgba(46,139,255,0.22)', iconBg:'#1E78F0' },
+                imported:  { recommend:'完了',   color:'#16A85D', step:'STEP 2 / 2',
+                             title:'取り込み完了', sub:'内容を確認して保存してください', emoji:'✓',
+                             cardBg:'rgba(24,194,107,0.08)', cardBorder:'rgba(24,194,107,0.30)', iconBg:'#18C26B' },
+                partial:   { recommend:'注意',   color:'#E0701F', step:'STEP 2 / 2',
+                             title:'一部だけ取得できました', sub:'編成は手動で入力または撮り直し', emoji:'⚠',
+                             cardBg:'rgba(245,158,11,0.06)', cardBorder:'rgba(245,158,11,0.28)', iconBg:'#F59E0B' },
+                manual:    { recommend:'手動',   color:'#1E78F0', step:'STEP 1 / 2',
+                             title:'画像を解析中…', sub:'通常 10〜20 秒で完了', emoji:'🔍',
+                             cardBg:'rgba(46,139,255,0.06)', cardBorder:'rgba(46,139,255,0.22)', iconBg:'#1E78F0' },
+            };
+            const p = presets[view] || presets.fresh;
+            if (recommendEl) { recommendEl.textContent = p.recommend; recommendEl.style.color = p.color; }
+            if (stepEl && _attackReport.editAttackId == null) stepEl.textContent = p.step;
+
+            // fresh/manual: ピックボタン表示, サムネカード非表示
+            // analyzing/imported/partial: ピックボタン非表示, サムネカード表示
+            const showThumbs = view === 'analyzing' || view === 'imported' || view === 'partial';
+            if (pickBtn) pickBtn.style.display = showThumbs ? 'none' : 'flex';
+            if (thumbsCard) {
+                thumbsCard.style.display = showThumbs ? 'block' : 'none';
+                if (showThumbs) {
+                    thumbsCard.style.background = p.cardBg;
+                    thumbsCard.style.borderColor = p.cardBorder;
+                    if (statusIcon) {
+                        statusIcon.textContent = p.emoji;
+                        statusIcon.style.background = p.iconBg;
+                        statusIcon.style.boxShadow = `0 2px 6px ${p.iconBg}66`;
+                    }
+                    if (statusTitle) { statusTitle.textContent = p.title; statusTitle.style.color = p.color; }
+                    if (statusSub) { statusSub.textContent = p.sub; statusSub.style.color = p.color; }
+                }
+            }
+
+            // 抽出結果の表示
+            if (extractedEl) {
+                if (view === 'imported' || view === 'partial') {
+                    extractedEl.style.display = 'flex';
+                    const ex = _attackReport.extracted || {};
+                    const dmgEl = document.getElementById('myAttackExtractedDmg');
+                    const labelEl = document.getElementById('myAttackExtractedLabel');
+                    const charsEl = document.getElementById('myAttackExtractedChars');
+                    if (ex.damageRaw != null) {
+                        dmgEl.textContent = (Number(ex.damageRaw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
+                    } else { dmgEl.textContent = '—'; }
+                    labelEl.textContent = view === 'partial' && (!ex.characters || ex.characters.length === 0)
+                        ? 'ダメージのみ取得' : '読み取ったダメージ';
+                    const chars = Array.isArray(ex.characters) ? ex.characters.slice(0, 5) : [];
+                    charsEl.innerHTML = chars.map((c, i) => {
+                        const initial = (c || '?').slice(0, 1);
+                        let h = 0; for (let k = 0; k < (c || '').length; k++) h = (h * 31 + (c || '').charCodeAt(k)) % 360;
+                        return `<div style="width:22px;height:22px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;background:linear-gradient(140deg, oklch(0.72 0.07 ${h}), oklch(0.5 0.09 ${h}));box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">${escapeHtml(initial)}</div>`;
+                    }).join('');
+                } else {
+                    extractedEl.style.display = 'none';
+                }
+            }
+
+            // 手動入力: 完了/部分はフォームを自動展開
+            const showManualLink = view !== 'imported';
+            if (manualToggle) manualToggle.style.display = showManualLink ? 'flex' : 'none';
+            if (view === 'imported' || view === 'partial') {
                 if (form) form.style.display = 'block';
                 _attackReport.manualOpen = true;
             }
@@ -7727,7 +7902,7 @@
                 if (matchedBoss) {
                     const btn = document.querySelector(`#myAttackBossButtons button[data-boss="${matchedBoss.boss_number}"]`);
                     if (btn) handleMyAttackBossPick(btn, matchedBoss.boss_number);
-                    else { _myAttackSelectedBossNumber = matchedBoss.boss_number; _renderAttackBossBanner(matchedBoss.boss_number); }
+                    else { _myAttackSelectedBossNumber = matchedBoss.boss_number; _renderMatchupCard(matchedBoss.boss_number); }
                 }
                 if (r.totalDamage != null) {
                     document.getElementById('myAttackDamageInput').value = (Number(r.totalDamage) / 1e9).toFixed(3);
