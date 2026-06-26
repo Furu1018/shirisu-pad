@@ -12376,7 +12376,82 @@
         }
 
         // ========== Initialize ==========
+        // ========== ボトムシート: ハンドルを掴んで下スワイプで閉じる ==========
+        // 対象は player-select-content がボトムシート化された主要モーダル群。
+        // 上部ハンドル付近、または内部スクロールが先頭のときだけドラッグを引き受け、
+        // 通常のスクロールを邪魔しない。閾値を超えたら閉じる。
+        const _SHEET_DISMISS = [
+            ['myAvailModal', () => closeMyAvailModal()],
+            ['myPushModal', () => closeMyPushModal()],
+            ['myStrongAttrsModal', () => closeMyStrongAttrsModal()],
+            ['myAttackModal', () => closeMyAttackModal()],
+        ];
+        function _enableSheetSwipeDismiss(modalId, closeFn) {
+            const modal = document.getElementById(modalId);
+            const content = modal?.querySelector('.player-select-content');
+            if (!content) return;
+            const HANDLE_ZONE = 56;   // 上端からこの距離以内ならハンドル掴みとみなす
+            const THRESHOLD = 110;    // この距離を超えてドラッグしたら閉じる
+            let startX = 0, startY = 0, dy = 0, active = false, engaged = false;
+
+            const reset = (animate) => {
+                content.style.transition = animate ? 'transform .26s cubic-bezier(.2,.9,.2,1)' : '';
+                content.style.transform = '';
+                modal.style.background = '';
+            };
+
+            content.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) { active = false; return; }
+                const t = e.touches[0];
+                const offsetY = t.clientY - content.getBoundingClientRect().top;
+                // ハンドル付近、または内部が一番上までスクロール済みのときだけ受ける
+                if (offsetY <= HANDLE_ZONE || content.scrollTop <= 0) {
+                    startX = t.clientX; startY = t.clientY;
+                    dy = 0; active = true; engaged = false;
+                    content.style.transition = 'none';
+                } else {
+                    active = false;
+                }
+            }, { passive: true });
+
+            content.addEventListener('touchmove', (e) => {
+                if (!active) return;
+                const t = e.touches[0];
+                const dx = t.clientX - startX;
+                dy = t.clientY - startY;
+                if (!engaged) {
+                    if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;   // まだ方向が定まらない
+                    if (dy < 0 || Math.abs(dx) > Math.abs(dy)) { active = false; reset(false); return; } // 上方向/横方向はスクロールに委ねる
+                    engaged = true;
+                }
+                if (content.scrollTop > 0) { active = false; reset(false); return; }
+                e.preventDefault();   // 背面スクロールを抑止
+                content.style.transform = `translateY(${dy}px)`;
+                const pct = Math.min(1, dy / (content.offsetHeight || 600));
+                modal.style.background = `rgba(0,0,0,${(0.7 * (1 - pct * 0.55)).toFixed(3)})`;
+            }, { passive: false });
+
+            const end = () => {
+                if (!active) return;
+                active = false;
+                if (engaged && dy > THRESHOLD) {
+                    content.style.transition = 'transform .24s cubic-bezier(.3,.0,.4,1)';
+                    content.style.transform = `translateY(${content.offsetHeight}px)`;
+                    modal.style.background = 'rgba(0,0,0,0)';
+                    setTimeout(() => { reset(false); closeFn(); }, 220);
+                } else {
+                    reset(true);   // 戻す
+                }
+            };
+            content.addEventListener('touchend', end);
+            content.addEventListener('touchcancel', end);
+        }
+        function _initSheetSwipeDismiss() {
+            _SHEET_DISMISS.forEach(([id, fn]) => _enableSheetSwipeDismiss(id, fn));
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
+            _initSheetSwipeDismiss();
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
