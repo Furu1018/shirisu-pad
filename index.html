@@ -1481,7 +1481,11 @@
             border: 1px solid rgba(20,22,26,0.05);
             position: relative;
         }
-        .dc-boss-card.has-combat { border-color: var(--_attr-c, #FF3D44) 33; }
+        .dc-boss-card.has-combat {
+            border-color: var(--_attr-c, #FF3D44);
+            box-shadow: 0 0 0 1px var(--_attr-c, #FF3D44),
+                        0 6px 16px -4px color-mix(in srgb, var(--_attr-c, #FF3D44) 50%, transparent);
+        }
         .dc-boss-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
@@ -1492,8 +1496,22 @@
             transition: width 0.3s ease-out;
         }
         .dc-boss-status-tag {
-            display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 0.3px;
+            display: inline-flex; align-items: center; font-size: 10px; font-weight: 800; letter-spacing: 0.3px;
             padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+        }
+        .dc-boss-status-tag.is-combat { font-weight: 900; }
+        .dc-combat-dot {
+            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+            margin-right: 5px; background: currentColor;
+            animation: dc-combat-pulse 1.25s ease-in-out infinite;
+        }
+        @keyframes dc-combat-pulse {
+            0%   { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); opacity: 1; }
+            70%  { box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 0%, transparent); opacity: 0.6; }
+            100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 0%, transparent); opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .dc-combat-dot { animation: none; }
         }
 
         /* === Ops: ピルフィルタ === */
@@ -8985,7 +9003,7 @@
                 const statusTag = dead
                     ? `<span class="dc-boss-status-tag" style="color:#18C26B;background:rgba(24,194,107,0.12);">💀 撃破済</span>`
                     : active
-                        ? `<span class="dc-boss-status-tag" style="color:${c};background:${c}26;">${combatList.length}名 交戦中</span>`
+                        ? `<span class="dc-boss-status-tag is-combat" style="color:${c};background:${c}26;"><span class="dc-combat-dot"></span>${combatList.length}名 交戦中</span>`
                         : `<span class="dc-boss-status-tag" style="color:#A4AAB0;background:#F1F2F4;">待機中</span>`;
                 // 進捗バー: 残HP % を表示 (デザイン: 残=色付き)
                 const barColor = dead ? '#18C26B' : c;
