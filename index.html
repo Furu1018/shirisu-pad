@@ -7209,7 +7209,9 @@
             _attackReport.extracted = null;
             _attackReport.manualOpen = false;
             _attackReport.editAttackId = editAttackId;
-            getNikkeCharsCache().then(() => renderMyAttackTeamSlots()).catch(() => renderMyAttackTeamSlots());
+            // NIKKE キャラマスタを await して、マッチアップのアイコン表示まで間に合わせる
+            try { await getNikkeCharsCache(); } catch { /* noop */ }
+            renderMyAttackTeamSlots();
 
             modal.classList.add('open');
             document.getElementById('myAttackBossPicker').style.display = 'none';
@@ -7344,6 +7346,24 @@
             updateMyAttackSaveBtn();
         }
 
+        // 模擬戦の使用キャラ 5枠を icon_paths のアイコン画像で表示 (なければファジィ解決 → 名前の頭文字)
+        function _renderMatchupCharAvatar(rawName, size = 22) {
+            if (!rawName) return '';
+            let c = _nikkeCharsByName ? _nikkeCharsByName.get(rawName) : null;
+            if (!c && typeof fuzzyResolveCharacter === 'function') {
+                const canonical = fuzzyResolveCharacter(rawName);
+                if (canonical && _nikkeCharsByName) c = _nikkeCharsByName.get(canonical);
+            }
+            const icon = c?.icon_paths?.[0];
+            if (icon) {
+                return `<img src="${escapeHtml(icon)}" alt="${escapeHtml(c.canonical_name || rawName)}" style="width:${size}px;height:${size}px;flex:none;border-radius:6px;object-fit:cover;background:#222;box-shadow:0 1px 3px rgba(0,0,0,0.15);">`;
+            }
+            // フォールバック: 名前の頭文字
+            const initial = String(rawName).slice(0, 1) || '?';
+            let h = 0; for (let k = 0; k < rawName.length; k++) h = (h * 31 + rawName.charCodeAt(k)) % 360;
+            return `<div style="width:${size}px;height:${size}px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size * 0.4)}px;font-weight:900;color:#fff;background:linear-gradient(140deg, oklch(0.72 0.07 ${h}), oklch(0.5 0.09 ${h}));box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">${escapeHtml(initial)}</div>`;
+        }
+
         function _renderMatchupCard(bossNumber) {
             const ctx = _activeSeasonCache;
             const boss = bossNumber && ctx?.bosses ? ctx.bosses.find(b => b.boss_number === bossNumber) : null;
@@ -7404,9 +7424,9 @@
             bossRow.style.background = `linear-gradient(180deg, ${bossV.color}10, ${bossV.color}04)`;
             bossRow.style.borderColor = `${bossV.color}50`;
 
-            // HP バー
-            const maxHp = Number(boss.max_hp) || 0;
-            const remHp = boss.remaining_hp != null ? Number(boss.remaining_hp) : maxHp;
+            // HP バー (boss テーブルは total_hp_raw / remaining_hp_raw)
+            const maxHp = Number(boss.total_hp_raw) || 0;
+            const remHp = boss.remaining_hp_raw != null ? Number(boss.remaining_hp_raw) : maxHp;
             if (maxHp > 0) {
                 bossHpWrap.style.display = 'block';
                 const pct = Math.max(0, Math.min(100, (remHp / maxHp) * 100));
@@ -7437,11 +7457,7 @@
             const dmgB = myDmg?.damage_b ? Number(myDmg.damage_b) : 0;
 
             ptCharsEl.innerHTML = chars.length
-                ? chars.map((c, i) => {
-                    const name = String(c || '').slice(0, 1) || '?';
-                    let h = 0; for (let k = 0; k < (c || '').length; k++) h = (h * 31 + (c || '').charCodeAt(k)) % 360;
-                    return `<div style="width:20px;height:20px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;background:linear-gradient(140deg, oklch(0.72 0.07 ${h}), oklch(0.5 0.09 ${h}));box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">${escapeHtml(name)}</div>`;
-                }).join('')
+                ? chars.map((c) => _renderMatchupCharAvatar(c, 26)).join('')
                 : `<div style="font-size:10.5px;font-weight:700;color:#A4AAB0;letter-spacing:0.2px;">編成未登録</div>`;
 
             ptDmgEl.textContent = dmgB > 0 ? dmgB.toFixed(1) : '—';
