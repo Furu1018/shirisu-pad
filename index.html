@@ -6985,8 +6985,9 @@
                 const dead = pct <= 0.01;
                 const inCombat = coordsByBoss.has(b.boss_number);
                 const isMyCombat = b.boss_number === myBossNum;
-                const c = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
-                const iconSrc = DC_ATTR_ICONS[b.weakness] || '';
+                // ボス本来の属性 (attribute) で表示。weakness=持っていくPT属性 とは別物。
+                const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
                 const onClick = dead
                     ? ''
                     : isMyCombat
@@ -8984,14 +8985,15 @@
             el.innerHTML = sorted.map(b => {
                 const inCombat = coordsByBoss.has(b.boss_number);
                 const combatList = inCombat ? coordsByBoss.get(b.boss_number) : [];
-                const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
+                const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);   // 締め凸で持っていくPT属性 (弱点)
                 const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
                 const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
                 const remainPct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
                 const dead = remainPct <= 0.01;
-                const c = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
-                const iconSrc = DC_ATTR_ICONS[b.weakness] || '';
-                const iconAlt = ptInfo?.name || (b.weakness || '');
+                // チップ表示はボス本来の属性 (attribute)。weakness は締め凸ボタン側だけで使う。
+                const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
+                const iconAlt = ATTR_VISUAL[b.attribute]?.name || (b.attribute || '');
                 const active = inCombat && !dead;
                 const editing = _opsBossEditingNum === b.boss_number;
 
@@ -9034,7 +9036,7 @@
                 return `
                     <div class="dc-boss-card ${active ? 'has-combat' : ''}" style="--_attr-c:${c};${dead ? 'opacity:0.65;' : ''}">
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                            <div class="dc-boss-chip" style="${chipStyle}" title="${escapeHtml(iconAlt)}PT 弱点">${iconSrc ? `<img src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : ''}</div>
+                            <div class="dc-boss-chip" style="${chipStyle}" title="${escapeHtml(iconAlt)}ボス${ptInfo ? ` / 弱点 ${escapeHtml(ptInfo.name)}PT` : ''}">${iconSrc ? `<img src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : ''}</div>
                             <div style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3')};">${dead ? '撃破' : `${remainPct.toFixed(0)}%`}</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:7px;margin-top:11px;">
