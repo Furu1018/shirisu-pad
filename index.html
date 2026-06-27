@@ -1389,6 +1389,45 @@
         }
         .tour-guide-launcher:hover { background: var(--md-sys-color-surface-variant); }
 
+        /* インタラクティブ フロー (順番に光る 3 ステップ) */
+        @keyframes tour-flow-cycle {
+            0%   { background: var(--fc-on); border-color: var(--fc); box-shadow: 0 8px 18px var(--fc-sh); transform: scale(1.02); }
+            25%  { background: var(--fc-on); border-color: var(--fc); box-shadow: 0 8px 18px var(--fc-sh); transform: scale(1.02); }
+            34%  { background: #F7F8F9; border-color: rgba(20,22,26,0.05); box-shadow: none; transform: scale(1); }
+            100% { background: #F7F8F9; border-color: rgba(20,22,26,0.05); box-shadow: none; transform: scale(1); }
+        }
+        @keyframes tour-flow-num-cycle {
+            0%,25%   { background: var(--fc); color: #fff; transform: scale(1.1); }
+            34%,100% { background: #E4E6E9; color: #9AA0A6; transform: scale(1); }
+        }
+        @keyframes tour-flow-arrow { 0%,100% { opacity: .3; transform: translateY(-1px); } 50% { opacity: 1; transform: translateY(1px); } }
+        #tourOverlay .tour-flow { display: flex; flex-direction: column; margin-top: 16px; }
+        #tourOverlay .tour-flow-step {
+            display: flex; align-items: flex-start; gap: 11px;
+            padding: 12px 13px; border-radius: 14px;
+            background: #F7F8F9; border: 1px solid rgba(20,22,26,0.05);
+            animation: tour-flow-cycle 3.9s ease-in-out infinite;
+        }
+        #tourOverlay .tour-flow-num {
+            width: 27px; height: 27px; flex: none; border-radius: 50%;
+            background: #E4E6E9; color: #9AA0A6;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12.5px; font-weight: 900;
+            animation: tour-flow-num-cycle 3.9s ease-in-out infinite;
+        }
+        #tourOverlay .tour-flow-title { font-size: 13.5px; font-weight: 900; color: #14161A; letter-spacing: 0.2px; }
+        #tourOverlay .tour-flow-desc { font-size: 12px; font-weight: 600; color: #6B7178; line-height: 1.5; margin-top: 3px; }
+        #tourOverlay .tour-flow-arrow {
+            align-self: center; margin: 2px 0; font-size: 12px; line-height: 1;
+            color: var(--fc, #8A9097);
+            animation: tour-flow-arrow 1.8s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #tourOverlay .tour-flow-step,
+            #tourOverlay .tour-flow-num,
+            #tourOverlay .tour-flow-arrow { animation: none; }
+        }
+
         /* ===== ClaudeDesign 準拠 マイページ ===== */
         @keyframes dcLivePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
         @keyframes dcFadeIn { from{opacity:0} to{opacity:1} }
@@ -3654,7 +3693,7 @@
                     <div id="settingsGuideCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▲</div>
                 </div>
                 <div id="settingsGuideBody" style="display:block;animation:dcFadeIn 0.2s ease;margin-top:14px;">
-                    <!-- メインアクション: 6章チュートリアルを開始 -->
+                    <!-- メインアクション: 7章チュートリアルを開始 -->
                     <button onclick="startTour()" style="position:relative;width:100%;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:radial-gradient(120% 90% at 30% 20%, #46A0FF, #1E78F0 65%, #1E78F0);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-family:inherit;padding:0;">
                         <!-- 装飾円 -->
                         <div style="position:absolute;top:-20px;right:-20px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,0.15);"></div>
@@ -3665,7 +3704,7 @@
                             <div style="font-size:12px;font-weight:900;color:#fff;letter-spacing:1.5px;text-shadow:0 1px 4px rgba(0,40,90,0.4);">CHAPTER GUIDE</div>
                         </div>
                         <!-- 下部ラベル -->
-                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">6 CHAPTERS · 5 min</div>
+                        <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">7 CHAPTERS · 6 min</div>
                         <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.75);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">▶ 再生</div>
                     </button>
                     <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
@@ -3687,7 +3726,7 @@
                         </button>
                         <button onclick="openHelpFromSettings('help-notify')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">04</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">通知の設定</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">通知・凸可能時間の設定</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-finish-call')" class="dc-guide-row" style="border-bottom:none;">
@@ -4517,7 +4556,7 @@
 
         // ========== Tabs ==========
         // ========== オンボーディングツアー (ClaudeDesign Tutorial.dc.html 準拠) ==========
-        // 6 チャプター構成、ヒーロー画像付きスライド型。
+        // 7 チャプター構成、ヒーロー画像付きスライド型。
         // チャプターごとにアクセントカラーと絵文字、必要に応じて「タブを開いて試す」ジャンプボタン。
         const TOUR_STEPS = [
             {
@@ -4525,7 +4564,7 @@
                 chapterTag: 'はじめに',
                 stepLabel: 'CHAPTER 01',
                 title: 'しりすこPADへ\nようこそ',
-                body: 'これから5分で、メンバーが知っておきたい主要機能を <strong>6つのステップ</strong> でご紹介します。<br><br>途中で「スキップ」してもOK。後で <strong>設定タブ → ガイド</strong> からいつでも再生できます。',
+                body: 'これから数分で、メンバーが知っておきたい主要機能を <strong>7つのステップ</strong> でご紹介します。<br><br>途中で「スキップ」してもOK。後で <strong>設定タブ → ガイド</strong> からいつでも再生できます。',
                 tip: '読みながら気になった箇所は、ガイド終了後に実際に触ってみてください。',
                 accentColor: '#46A0FF', accentDark: '#1E78F0',
                 showMiniScreen: true,
@@ -4541,30 +4580,45 @@
                 jumpTo: { tab: 'mypage', label: 'マイページを開いて試す' },
             },
             {
-                emoji: '⚔️',
-                chapterTag: '② データ提出',
+                emoji: '⏰',
+                chapterTag: '② 凸できる時間',
                 stepLabel: 'CHAPTER 03',
+                title: '通知できる時間 =\n凸できる時間',
+                body: 'マイページの <strong>🔔 通知受信可能時間</strong> を、24時間タイムラインで<strong>なぞって設定</strong>します。<br><br>ここで塗った時間帯が「<strong>あなたが凸に動ける時間</strong>」として運営に共有され、<br>・締め凸候補のお願い<br>・「⏰ 現在凸可能のみ」の最適プラン<br>に使われます。',
+                tip: '寝てる時間・仕事中などを外しておくと、動けない時間に通知が来なくなります。こまめな更新がおすすめ。',
+                accentColor: '#F59E0B', accentDark: '#D97706',
+                jumpTo: { tab: 'mypage', label: '通知可能時間を設定する' },
+            },
+            {
+                emoji: '⚔️',
+                chapterTag: '③ データ提出',
+                stepLabel: 'CHAPTER 04',
                 title: '模擬戦データを\n提出する',
-                body: '各属性 (灼熱/水冷/電撃/鉄甲/風圧) のPTで、ベストダメージと編成5キャラを登録します。<br><br>📝 <strong>手動入力</strong>: 数値欄に直接入力<br>📷 <strong>画像入力</strong>: 戦闘履歴スクショから AI が自動抽出 (ダメージ + 編成5キャラ)<br><br>編成は「ベスト火力時の5キャラ」を入れてください。最適凸プランのキャラ衝突回避に使われます。',
-                tip: '画像入力なら 30 秒で全属性入力できます。',
+                body: '各属性 (灼熱/水冷/電撃/鉄甲/風圧) のPTで、ベストダメージと編成5キャラを登録します。<br><br>📝 <strong>手動入力</strong>: 数値欄に直接入力<br>📷 <strong>画像入力</strong>: 戦闘履歴スクショから AI が自動抽出 (ダメージ + 編成5キャラ)<br><br>編成は「ベスト火力時の5キャラ」を。最適凸プランのキャラ衝突回避に使われます。',
+                tip: '画像入力なら 30 秒で全属性入力できます。データが正確なほど最適プランの精度が上がります。',
                 accentColor: '#FF3D44', accentDark: '#D02830',
                 jumpTo: { tab: 'mypage', label: 'マイページで提出する' },
                 showMiniScreen: true,
             },
             {
                 emoji: '🎯',
-                chapterTag: '③ 本番の凸',
-                stepLabel: 'CHAPTER 04',
-                title: '凸の流れを\nマスターする',
-                body: '<strong>1) ボスをタップ</strong> → 「戦闘準備」に入る (他メンバーに共有 → 二重凸防止)<br><br><strong>2) 戦闘 → 結果報告</strong>: 「📷 報告」から戦闘結果画像 + 戦闘履歴画像で AI 自動取り込み<br><br><strong>3) 撮り忘れたら</strong> BlaBlaLINK 3凸まとめ画像で一括登録',
-                tip: '他メンバーが戦闘中のボスは ⚠️ 警告が出ます。譲るか強行 (通知が飛びます)。',
+                chapterTag: '④ 本番の凸',
+                stepLabel: 'CHAPTER 05',
+                title: '凸は\n3ステップ',
+                body: '本番の凸は次の <strong>3 ステップ</strong>。順番に光る流れのとおりに動けば OK です。',
+                flow: [
+                    { title: '⚔️ 戦闘に入る', desc: 'ボスをタップ →「戦闘準備」へ。"今このボスをやってます" が全員に共有され、二重凸を防ぎます。' },
+                    { title: '📣 交戦中をアピール', desc: '準備中はあなたのアイコンがそのボスに表示。他メンバーは譲るか、強行すると本人に通知が飛びます。' },
+                    { title: '📷 結果を提出', desc: '戦闘後「報告」から 結果画像＋戦闘履歴 を選ぶと AI が自動取り込み。撮り忘れは BlaBlaLINK 画像で一括登録。' },
+                ],
+                tip: '他メンバーが戦闘中のボスをタップすると ⚠️ 警告が出ます。被りを避けるための仕組みです。',
                 accentColor: '#FF8A2B', accentDark: '#E0701F',
                 jumpTo: { tab: 'mypage', label: 'マイページで試す' },
             },
             {
                 emoji: '📊',
-                chapterTag: '④ 運営機能',
-                stepLabel: 'CHAPTER 05',
+                chapterTag: '⑤ 運営機能',
+                stepLabel: 'CHAPTER 06',
                 title: '最適凸プラン &\nふるり値',
                 body: '<strong>ユニレ管理タブ</strong> では、誰がどの凸をすべきかの提案 (ギリギリ / 余裕プラン) と、ボスHP更新が行えます。<br><br><strong>比較タブ・ふるり値タブ</strong> では、メンバー間の火力比較と SLv 補正済みの公平な指標が見られます。',
                 tip: 'キャラ衝突 (同じキャラを2回使えない) も自動で考慮されます。',
@@ -4575,10 +4629,10 @@
             {
                 emoji: '✨',
                 chapterTag: '完了',
-                stepLabel: 'CHAPTER 06',
+                stepLabel: 'CHAPTER 07',
                 title: 'おしまい！\n楽しんでください',
-                body: 'これでひととおり OK です。<br><br>困ったら <strong>設定タブ → ガイド/チュートリアル</strong> から各章の詳細解説に飛べます。<br><br>このガイドは <strong>設定タブ → ガイド → 📖 開く</strong> からいつでも再生できます。',
-                tip: 'まずはアプリ化と通知設定を済ませて、模擬戦を1属性だけ登録してみるのがおすすめ。',
+                body: 'これでひととおり OK です。<br><br>困ったら <strong>設定タブ → ガイド/チュートリアル</strong> から各章の詳細解説に飛べます。<br><br>このガイドは <strong>設定タブ → ガイド → ▶ 再生</strong> からいつでも見返せます。',
+                tip: 'まずは ①アプリ化&通知 → ②凸可能時間 → ③模擬戦を1属性 の順で済ませるのがおすすめ。',
                 accentColor: '#14161A', accentDark: '#000000',
             },
         ];
@@ -4616,6 +4670,24 @@
                         <div class="tour-mini-tile" style="background:linear-gradient(180deg,#9B4DFF,#7C3AED);"></div>
                     </div>
                     <div style="height:5px;background:#F1F2F4;border-radius:3px;width:78%;"></div>
+                </div>` : '';
+
+            // インタラクティブ フロー (順番に光る 3 ステップ)
+            const flowHtml = (Array.isArray(step.flow) && step.flow.length) ? `
+                <div class="tour-flow">
+                    ${step.flow.map((f, i) => {
+                        const delay = (i * 1.3).toFixed(2);
+                        const stepEl = `
+                            <div class="tour-flow-step" style="--fc:${accent};--fc-on:${accent}14;--fc-sh:${accent}33;animation-delay:${delay}s;">
+                                <div class="tour-flow-num" style="animation-delay:${delay}s;">${i + 1}</div>
+                                <div style="flex:1;min-width:0;">
+                                    <div class="tour-flow-title">${f.title}</div>
+                                    <div class="tour-flow-desc">${f.desc}</div>
+                                </div>
+                            </div>`;
+                        const arrow = i < step.flow.length - 1 ? `<div class="tour-flow-arrow" style="--fc:${accent};">▼</div>` : '';
+                        return stepEl + arrow;
+                    }).join('')}
                 </div>` : '';
 
             const tipHtml = step.tip ? `
@@ -4660,6 +4732,7 @@
                     </div>
                     <div class="tour-body-scroll">
                         <div>${step.body}</div>
+                        ${flowHtml}
                         ${tipHtml}
                         ${jumpHtml}
                     </div>
