@@ -2479,7 +2479,10 @@
                     <div style="flex:1;min-width:0;padding-top:1px;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div id="mypageName" style="font-size:19px;font-weight:900;letter-spacing:0.2px;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">未選択</div>
-                            <div id="mypageLevelChip" style="font-size:11px;font-weight:800;color:#9AA0A6;display:none;">Lv.—</div>
+                            <div id="mypageSlvChip" onclick="openMySlvModal()" title="SLvを変更" style="display:none;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.10);padding:4px 9px;border-radius:999px;cursor:pointer;white-space:nowrap;">
+                                <span id="mypageSlvValue">SLv —</span>
+                                <span style="font-size:10px;opacity:0.65;">✏️</span>
+                            </div>
                         </div>
                         <div style="margin-top:12px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -2680,6 +2683,24 @@
             <p id="mypageStrongAttrsMessage" style="display:none;"></p>
 
             <!-- MY設定 内容用のモーダル群 -->
+            <!-- SLv 編集モーダル -->
+            <div class="player-select-modal" id="mySlvModal" onclick="if(event.target===this)closeMySlvModal()">
+                <div class="player-select-content" style="max-width:330px;gap:0;text-align:center;padding:22px 20px;">
+                    <div style="font-size:16px;font-weight:900;color:#14161A;letter-spacing:0.2px;">SLv (シンクロレベル)</div>
+                    <div style="font-size:11px;color:#A4AAB0;margin-top:5px;line-height:1.5;">基本は前回の値を引き継ぎます。<br>前回のレイド以降に上げたら更新してください。</div>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0;">
+                        <button onclick="adjustMySlv(-1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#F1F2F4;color:#14161A;font-size:22px;font-weight:900;cursor:pointer;">−</button>
+                        <input id="mySlvInput" type="number" min="0" max="999" inputmode="numeric" placeholder="—" style="width:108px;padding:8px 6px;border-radius:12px;border:1.5px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:30px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;outline:none;">
+                        <button onclick="adjustMySlv(1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#F1F2F4;color:#14161A;font-size:22px;font-weight:900;cursor:pointer;">＋</button>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="closeMySlvModal()" style="flex:none;width:96px;padding:12px;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#fff;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;">取消</button>
+                        <button onclick="handleMySlvSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#14161A;color:#fff;font-size:13px;font-weight:900;cursor:pointer;">保存</button>
+                    </div>
+                    <p id="mySlvMessage" style="margin:10px 0 0 0;font-size:11px;min-height:14px;color:#A4AAB0;"></p>
+                </div>
+            </div>
+
             <div class="player-select-modal" id="myAvailModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -5217,12 +5238,14 @@
             if (!id?.name) {
                 nameEl.textContent = '未選択';
                 if (hintEl) hintEl.textContent = '右上の 👤 プレイヤー未選択 から自分の名前を選んでください。';
+                renderMySlvChip(null);
                 renderMypageStrongAttrsBadge(null);
                 renderMyDamagePanels(null);
                 _refreshMyStatusSwitcher(null);
                 return;
             }
             nameEl.textContent = id.name;
+            renderMySlvChip(id);
             renderMyDamagePanels(id);
             renderMyAttacks(id);
             renderMyNotificationsInbox(id);
@@ -5231,6 +5254,75 @@
             renderMypageStrongAttrsBadge(id);
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
+        }
+
+        // ========== SLv (シンクロレベル) 表示 + 手動更新 ==========
+        let _mySlvSeasonId = null;
+        let _mySlvCurrent = 0;
+
+        async function renderMySlvChip(identity) {
+            const chip = document.getElementById('mypageSlvChip');
+            const valEl = document.getElementById('mypageSlvValue');
+            if (!chip || !valEl) return;
+            if (!identity?.id) { chip.style.display = 'none'; return; }
+            try {
+                const { syncLevel, seasonId } = await window.supabaseLoadSyncLevel(identity.id);
+                _mySlvCurrent = syncLevel || 0;
+                _mySlvSeasonId = seasonId;
+                valEl.textContent = _mySlvCurrent > 0 ? `SLv ${_mySlvCurrent}` : 'SLv 未設定';
+                chip.style.display = 'inline-flex';
+            } catch (e) {
+                console.warn('[SLv] load failed:', e?.message || e);
+                chip.style.display = 'none';
+            }
+        }
+
+        function openMySlvModal() {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const input = document.getElementById('mySlvInput');
+            const msg = document.getElementById('mySlvMessage');
+            if (msg) msg.textContent = '';
+            if (input) input.value = _mySlvCurrent > 0 ? String(_mySlvCurrent) : '';
+            document.getElementById('mySlvModal').classList.add('open');
+            setTimeout(() => { try { input?.focus(); input?.select(); } catch { /* noop */ } }, 50);
+        }
+        function closeMySlvModal() {
+            document.getElementById('mySlvModal').classList.remove('open');
+        }
+        function adjustMySlv(delta) {
+            const input = document.getElementById('mySlvInput');
+            if (!input) return;
+            input.value = String(Math.max(0, Math.min(999, (parseInt(input.value) || 0) + delta)));
+        }
+        async function handleMySlvSave() {
+            const id = getCurrentIdentity();
+            const input = document.getElementById('mySlvInput');
+            const msg = document.getElementById('mySlvMessage');
+            if (!id?.id) return;
+            const val = Math.max(0, Math.min(999, parseInt(input?.value) || 0));
+            if (!val) { if (msg) { msg.style.color = '#FF3D44'; msg.textContent = 'SLv を入力してください'; } return; }
+            if (!_mySlvSeasonId) { if (msg) { msg.style.color = '#FF3D44'; msg.textContent = 'アクティブシーズンが見つかりません'; } return; }
+            try {
+                await window.supabaseUpsertSyncLevel(_mySlvSeasonId, id.id, val);
+                _mySlvCurrent = val;
+                const valEl = document.getElementById('mypageSlvValue');
+                if (valEl) valEl.textContent = `SLv ${val}`;
+                // 既存キャッシュにも反映 (最適プラン/レーダー/ランキングへ即時反映)
+                const cd = (typeof currentData !== 'undefined' ? currentData : []).find(p => p.player === id.name);
+                if (cd) cd.syncLevel = val;
+                if (_opsDashboardCache) {
+                    const op = (_opsDashboardCache.players || []).find(p => p.id === id.id);
+                    if (op) { op.syncLevel = val; op.syncLevelEstimated = false; }
+                }
+                closeMySlvModal();
+                showNotification(`⚡ SLv を ${val} に更新しました`);
+                if (_myRadarLastIdentity && typeof renderMyFururiRadar === 'function') {
+                    try { renderMyFururiRadar(_myRadarLastIdentity, _myRadarLastDamages); } catch { /* noop */ }
+                }
+            } catch (e) {
+                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+            }
         }
 
         // ========== プロフィール: 得意属性 5チップ (ON=色塗り / OFF=ソフト色) ==========

@@ -845,6 +845,43 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
     } catch (e) { console.warn('[updateBossHp] auto level detect failed:', e?.message || e); }
 };
 
+// ===== SLv (シンクロレベル) =====
+// 読み込み: そのメンバーの「最新シーズン」の sync_level を引き継いで返す。
+//   優先順位は アクティブシーズン → hard_date が新しい順。
+//   どのシーズンにも登録が無ければ syncLevel:0 (未設定) を返す。
+//   seasonId は「書き込み先(=アクティブシーズン)」を併せて返す。
+window.supabaseLoadSyncLevel = async function (playerId) {
+    const { data: seasons } = await supabase
+        .from('seasons').select('id, hard_date, is_active')
+        .order('hard_date', { ascending: false });
+    const ordered = [...(seasons || [])].sort((a, b) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
+    const activeId = (seasons || []).find(s => s.is_active)?.id || ordered[0]?.id || null;
+    if (!playerId || !ordered.length) return { syncLevel: 0, seasonId: activeId };
+    const rank = new Map(ordered.map((s, i) => [s.id, i]));
+    const { data: slvs } = await supabase
+        .from('player_sync_levels')
+        .select('sync_level, season_id')
+        .eq('player_id', playerId)
+        .in('season_id', [...rank.keys()]);
+    let best = Infinity, val = 0;
+    (slvs || []).forEach(s => {
+        const r = rank.get(s.season_id);
+        if (r != null && r < best) { best = r; val = Number(s.sync_level) || 0; }
+    });
+    return { syncLevel: val, seasonId: activeId };
+};
+
+// 書き込み: アクティブシーズンに sync_level を upsert (手動更新)。
+window.supabaseUpsertSyncLevel = async function (seasonId, playerId, syncLevel) {
+    if (!seasonId || !playerId) throw new Error('シーズン/プレイヤーが不明です');
+    const lvl = Math.max(0, Math.min(999, Math.round(Number(syncLevel) || 0)));
+    const { error } = await supabase
+        .from('player_sync_levels')
+        .upsert({ season_id: seasonId, player_id: playerId, sync_level: lvl }, { onConflict: 'season_id,player_id' });
+    if (error) throw error;
+    return lvl;
+};
+
 // 指定シーズン・日付の全凸を取得（プレイヤー名・ボス名つき）
 window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
     const { data, error } = await supabase
@@ -1850,18 +1887,31 @@ window.supabaseLoadOpsDashboardData = async function () {
     });
     rawByPlayer.forEach((raws, pid) => slotsByPlayer.set(pid, _expandLegacySlots(raws)));
 
-    // 5) SLv: 直近の実シーズン(テスト除外)の player_sync_levels を取得。
+    // 5) SLv: 各メンバーの「最新シーズン」の sync_level を引き継ぐ (前月引き継ぎ)。
+    //    優先順位は アクティブシーズン → hard_date が新しい順。
+    //    アクティブシーズンで手動更新した値が最優先になる。
     //    最適プランで「低レベルは低SLv、高レベルは高SLv」の割当に使う。
     const slvByPlayer = new Map();
-    const { data: latestReal } = await supabase
-        .from('seasons').select('id').eq('is_test', false)
-        .order('hard_date', { ascending: false }).limit(1).maybeSingle();
-    if (latestReal) {
+    const { data: slvSeasons } = await supabase
+        .from('seasons').select('id, hard_date, is_active')
+        .order('hard_date', { ascending: false });
+    // アクティブを先頭に寄せる (同 hard_date でも active を優先)
+    const slvOrdered = [...(slvSeasons || [])].sort((a, b) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
+    const slvSeasonRank = new Map(slvOrdered.map((s, i) => [s.id, i]));  // 0 = 最優先(最新)
+    if (slvSeasonRank.size) {
         const { data: slvs } = await supabase
             .from('player_sync_levels')
-            .select('player_id, sync_level')
-            .eq('season_id', latestReal.id);
-        (slvs || []).forEach(s => slvByPlayer.set(s.player_id, Number(s.sync_level) || 0));
+            .select('player_id, sync_level, season_id')
+            .in('season_id', [...slvSeasonRank.keys()]);
+        const bestRank = new Map();  // player_id -> これまでで一番新しいランク
+        (slvs || []).forEach(s => {
+            const r = slvSeasonRank.get(s.season_id);
+            if (r == null) return;
+            if (!bestRank.has(s.player_id) || r < bestRank.get(s.player_id)) {
+                bestRank.set(s.player_id, r);
+                slvByPlayer.set(s.player_id, Number(s.sync_level) || 0);
+            }
+        });
     }
 
     // 平均登録ダメージ(>0のみ)。新メンバーのSLv推定の手がかり。
