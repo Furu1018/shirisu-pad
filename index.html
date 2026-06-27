@@ -883,7 +883,7 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(20,22,26,0.55);
             z-index: 300;
             align-items: flex-start;
             justify-content: center;
@@ -894,27 +894,31 @@
         .player-modal.open { display: flex; }
 
         .player-modal-content {
-            background: var(--md-sys-color-surface);
-            border-radius: 16px;
+            background: #fff;
+            border-radius: 20px;
             width: 100%;
-            max-width: 640px;
+            max-width: 560px;
             margin: auto;
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 1px 2px rgba(20,22,26,0.05), 0 18px 44px rgba(20,22,26,0.14);
+            border: 1px solid rgba(20,22,26,0.05);
             overflow: hidden;
+            font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
+            animation: dcSlideInUp .26s cubic-bezier(.2,.9,.2,1);
         }
 
         .player-modal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 24px 16px;
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            padding: 16px 18px 13px;
         }
 
         .player-modal-header h2 {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--md-sys-color-on-surface);
+            font-size: 17px;
+            font-weight: 900;
+            letter-spacing: 0.2px;
+            color: #14161A;
+            display: flex; align-items: center; gap: 9px;
         }
 
         .close-btn {
@@ -930,55 +934,81 @@
 
         .close-btn:hover { background: var(--md-sys-color-surface-variant); }
 
-        .player-modal-body { padding: 20px 24px; }
+        /* playerModal の × は ClaudeDesign の丸ボタンに */
+        .player-modal .close-btn {
+            width: 30px; height: 30px; flex: none;
+            border-radius: 50%; background: #F1F2F4; color: #8A9097; font-size: 15px;
+        }
+        .player-modal .close-btn:hover { background: #E7E9EC; }
+
+        .player-modal-body { padding: 0 18px 20px; }
 
         .modal-damage-summary {
-            padding: 12px 16px;
-            background: var(--md-sys-color-surface-variant);
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 14px 15px;
+            background: linear-gradient(180deg, #F7F8F9, #F1F3F5);
+            border: 1px solid rgba(20,22,26,0.05);
+            border-radius: 15px;
+            margin-bottom: 18px;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
-        /* ========== Composition Comparison ========== */
+        /* ========== 編成比較 (ClaudeDesign) ========== */
         .comp-section {
-            margin-bottom: 20px;
+            margin-bottom: 11px;
+            border-radius: 14px;
+            border: 1px solid var(--comp-c, rgba(20,22,26,0.06));
+            overflow: hidden;
+            background: #fff;
         }
 
         .comp-boss-header {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 7px;
+            padding: 9px 12px;
+            background: linear-gradient(180deg, var(--comp-bg, #F7F8F9), transparent);
         }
 
-        .comp-boss-header img { width: 20px; height: 20px; }
+        .comp-boss-header img { width: 18px; height: 18px; }
 
-        .comp-boss-title { font-weight: 600; font-size: 14px; }
+        .comp-boss-title { font-weight: 900; font-size: 13px; color: #14161A; }
 
         .comp-row {
             display: grid;
             grid-template-columns: 1fr auto 1fr;
-            gap: 12px;
-            align-items: center;
+            gap: 9px;
+            align-items: stretch;
+            padding: 11px 12px 13px;
         }
 
-        .comp-side { text-align: center; }
+        .comp-side {
+            text-align: center;
+            padding: 9px 8px;
+            border-radius: 11px;
+            background: #F7F8F9;
+            border: 1px solid rgba(20,22,26,0.04);
+        }
+
+        .comp-side.is-current {
+            background: var(--comp-bg, rgba(30,120,240,0.06));
+            border-color: var(--comp-c, rgba(30,120,240,0.22));
+        }
 
         .comp-label {
-            font-size: 11px;
-            color: var(--md-sys-color-on-surface-variant);
-            margin-bottom: 8px;
-            font-weight: 500;
+            font-size: 9.5px;
+            color: #A4AAB0;
+            margin-bottom: 7px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
         }
 
         .comp-icons {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
+            gap: 3px;
         }
 
         .comp-icon-img {
@@ -986,42 +1016,47 @@
             aspect-ratio: 1/1;
             border-radius: 6px;
             object-fit: cover;
-            border: 2px solid var(--md-sys-color-outline-variant);
+            background: #222;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
         }
 
         .comp-icon-placeholder {
             width: 100%;
             aspect-ratio: 1/1;
             border-radius: 6px;
-            background: var(--md-sys-color-surface-variant);
-            border: 2px dashed var(--md-sys-color-outline-variant);
+            background: #EDEEF0;
+            border: 1px dashed #D5D9DD;
         }
 
         .comp-damage {
             font-size: 13px;
-            font-weight: 600;
+            font-weight: 900;
             margin-top: 8px;
-            color: var(--md-sys-color-primary);
+            color: #14161A;
+            font-variant-numeric: tabular-nums;
         }
 
         .comp-arrow {
-            font-size: 20px;
-            color: var(--md-sys-color-on-surface-variant);
+            align-self: center;
+            font-size: 15px;
+            font-weight: 900;
+            color: #C9CED3;
         }
 
-        .comp-diff-positive { color: #22c55e; }
-        .comp-diff-negative { color: #ef4444; }
+        .comp-diff-positive { color: #18C26B; }
+        .comp-diff-negative { color: #FF3D44; }
 
         .comp-no-data {
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 60px;
-            color: var(--md-sys-color-on-surface-variant);
-            font-size: 12px;
-            background: var(--md-sys-color-surface-variant);
-            border-radius: 6px;
-            border: 1px dashed var(--md-sys-color-outline-variant);
+            min-height: 58px;
+            color: #B6BBC1;
+            font-size: 11px;
+            font-weight: 700;
+            background: #F7F8F9;
+            border-radius: 9px;
+            border: 1px dashed #E1E3E7;
         }
 
         /* ========== ふるり値 ========== */
@@ -11503,21 +11538,25 @@
             // Damage summary
             const prevDmg = previous ? previous.damage : null;
             const dmgDiff = prevDmg !== null ? current.damage - prevDmg : null;
-            const diffStr = dmgDiff !== null
-                ? `<span class="${dmgDiff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative'}" style="font-size: 15px; font-weight: 600; margin-left: 8px;">${dmgDiff >= 0 ? '+' : ''}${formatDamage(dmgDiff)}</span>`
+            const diffPill = dmgDiff !== null
+                ? `<span style="display:inline-flex;align-items:center;gap:2px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:900;font-variant-numeric:tabular-nums;${dmgDiff >= 0 ? 'color:#18C26B;background:rgba(24,194,107,0.12);' : 'color:#FF3D44;background:rgba(255,61,68,0.10);'}">${dmgDiff >= 0 ? '▲' : '▼'} ${dmgDiff >= 0 ? '+' : ''}${formatDamage(dmgDiff)}</span>`
                 : '';
+            const monthLabel = previousMonthKey
+                ? `${previousMonthKey} → ${currentMonthKey}`
+                : '前月データなし';
 
             document.getElementById('modalDamageSummary').innerHTML = `
-                <div>
-                    <div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">今月ダメージ</div>
-                    <div style="font-size: 18px; font-weight: 700; color: var(--md-sys-color-primary);">${formatDamage(current.damage)}</div>
+                <div style="flex:1;min-width:130px;">
+                    <div style="font-size:9.5px;font-weight:800;letter-spacing:0.5px;color:#A4AAB0;">今月ダメージ</div>
+                    <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px;flex-wrap:wrap;">
+                        <span style="font-size:22px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;">${formatDamage(current.damage)}</span>
+                        ${diffPill}
+                    </div>
+                    <div style="font-size:9.5px;font-weight:700;color:#B6BBC1;margin-top:4px;">${monthLabel}</div>
                 </div>
-                <div style="display: flex; align-items: center;">
-                    ${diffStr || '<span style="color: var(--md-sys-color-on-surface-variant); font-size: 13px;">前月データなし</span>'}
-                </div>
-                <div style="margin-left: auto;">
-                    <div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv</div>
-                    <div style="font-size: 16px; font-weight: 600;">${current.syncLevel}</div>
+                <div style="text-align:right;flex:none;">
+                    <div style="font-size:9.5px;font-weight:800;letter-spacing:0.5px;color:#A4AAB0;">SLv</div>
+                    <div style="font-size:18px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;margin-top:1px;">${current.syncLevel}</div>
                 </div>
             `;
 
@@ -11555,7 +11594,7 @@
             let html = '';
 
             if (sortedAttrs.length === 0) {
-                html = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 24px;">攻撃データがありません</p>';
+                html = '<p style="color:#B6BBC1;font-size:12px;font-weight:700;text-align:center;padding:28px 0;">攻撃データがありません</p>';
             }
 
             const renderIcons = (chars) => {
@@ -11576,6 +11615,7 @@
             sortedAttrs.forEach(attr => {
                 const bossCodes = attacksByAttr[attr];
                 const info = Object.values(BOSS_ATTRIBUTES).find(b => b.attribute === attr);
+                const accentC = DC_ATTR_COLORS[attr.toLowerCase()] || '#A4AAB0';
 
                 // Sort: bossCodes with current data first, then prev-only; within each group by max current damage desc
                 bossCodes.sort((a, b) => {
@@ -11601,16 +11641,19 @@
                         const diffCls = diff !== null ? (diff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative') : '';
                         const difficulty = currAtk?.difficulty || prevAtk?.difficulty || '';
                         const level = currAtk?.level || prevAtk?.level || '';
-                        const indexLabel = showIndex ? `<span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); margin-left: 4px;">(${i + 1}凸目)</span>` : '';
+                        const indexLabel = showIndex ? `<span style="font-size:10px;font-weight:800;color:#B6BBC1;margin-left:3px;">${i + 1}凸目</span>` : '';
+                        const diffBadge = diff !== null
+                            ? `<span class="${diffCls}" style="display:inline-block;font-size:10.5px;font-weight:900;margin-left:4px;">(${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>`
+                            : '';
 
                         html += `
-                            <div class="comp-section">
+                            <div class="comp-section" style="--comp-c:${accentC}40;--comp-bg:${accentC}12;">
                                 <div class="comp-boss-header">
                                     <img src="${info.icon}" alt="${info.attributeJP}PT" title="${info.attributeJP}PT">
-                                    <span style="opacity:0.6; font-size:11px;">対</span>
-                                    <img src="${info.bossAttributeIcon}" alt="${info.bossAttributeJP}" title="${info.bossAttributeJP}ボス" style="width:16px; height:16px; opacity:0.85;">
+                                    <span style="opacity:0.5; font-size:10px;">対</span>
+                                    <img src="${info.bossAttributeIcon}" alt="${info.bossAttributeJP}" title="${info.bossAttributeJP}ボス" style="width:15px; height:15px; opacity:0.85;">
                                     <span class="comp-boss-title">${bossName}</span>${indexLabel}
-                                    ${difficulty ? `<span class="badge">${difficulty} Lv.${level}</span>` : ''}
+                                    ${difficulty ? `<span style="margin-left:auto;font-size:9.5px;font-weight:800;color:${accentC};background:${accentC}1A;padding:2px 8px;border-radius:999px;white-space:nowrap;">${difficulty} Lv.${level}</span>` : ''}
                                 </div>
                                 <div class="comp-row">
                                     <div class="comp-side">
@@ -11621,14 +11664,11 @@
                                         }
                                     </div>
                                     <div class="comp-arrow">→</div>
-                                    <div class="comp-side">
-                                        <div class="comp-label">${currentMonthKey || '今月'}</div>
+                                    <div class="comp-side is-current">
+                                        <div class="comp-label" style="color:${accentC};">${currentMonthKey || '今月'}</div>
                                         ${currAtk
                                             ? `<div class="comp-icons">${renderIcons(currAtk.characters)}</div>
-                                               <div class="comp-damage">
-                                                   ${formatDamage(currAtk.damage)}
-                                                   ${diff !== null ? `<span class="${diffCls}" style="font-size: 12px; font-weight: 400;"> (${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>` : ''}
-                                               </div>`
+                                               <div class="comp-damage">${formatDamage(currAtk.damage)}${diffBadge}</div>`
                                             : `<div class="comp-no-data">今回なし</div>`
                                         }
                                     </div>
