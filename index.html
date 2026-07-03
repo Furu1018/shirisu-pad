@@ -3778,6 +3778,18 @@
                 <div id="settingsSystemInfo" style="display:none;"></div>
             </div>
 
+            <!-- ①' バックアップ -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">バックアップ</div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.5;">全データを JSON ファイルでダウンロード。レイド前後に取っておくと事故時に復元できます。</div>
+                    </div>
+                </div>
+                <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;">💾 バックアップをダウンロード</button>
+                <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;"></p>
+            </div>
+
             <!-- ② メンバーの通知状況 -->
             <div class="dc-card dc-card-tight">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
@@ -8597,6 +8609,37 @@
             } else {
                 body.style.display = 'block';
                 if (caret) caret.textContent = '▲';
+            }
+        }
+
+        // ①' バックアップ: 全テーブルを JSON でダウンロード
+        async function handleSettingsBackup() {
+            const btn = document.getElementById('settingsBackupBtn');
+            const msg = document.getElementById('settingsBackupMsg');
+            if (!btn || btn.disabled) return;
+            btn.disabled = true;
+            btn.style.opacity = '0.55';
+            try {
+                const dump = await window.supabaseExportAllData((table, i, total) => {
+                    if (msg) msg.textContent = `取得中… ${table} (${i + 1}/${total})`;
+                });
+                const rowCount = Object.values(dump.tables)
+                    .reduce((s, v) => s + (Array.isArray(v) ? v.length : 0), 0);
+                const stamp = dump.exportedAt.slice(0, 16).replace(/[T:]/g, '-');
+                const blob = new Blob([JSON.stringify(dump, null, 1)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `shirisuko-pad-backup-${stamp}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+                if (msg) { msg.style.color = '#18C26B'; msg.textContent = `✅ ${rowCount} 行をエクスポートしました`; }
+            } catch (e) {
+                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `エクスポート失敗: ${e?.message || e}`; }
+            } finally {
+                btn.disabled = false;
+                btn.style.opacity = '';
             }
         }
 

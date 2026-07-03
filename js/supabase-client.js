@@ -845,6 +845,37 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
     } catch (e) { console.warn('[updateBossHp] auto level detect failed:', e?.message || e); }
 };
 
+// ===== バックアップ: 全テーブル JSON エクスポート =====
+// RLS が anon 全許可の内輪運用のため、誤操作・事故に備えた手動バックアップ手段。
+// Supabase の行数上限(1000)を超えるテーブルに備えてページネーションで全件取得する。
+const _BACKUP_TABLES = [
+    'players', 'player_damages', 'seasons', 'bosses', 'player_sync_levels',
+    'attacks', 'day_offs', 'availability', 'finish_claims', 'finish_coordinations',
+    'fururi_simulation_scores', 'push_subscriptions', 'push_notifications_log',
+    'nikke_characters',
+];
+window.supabaseExportAllData = async function (onProgress) {
+    const PAGE = 1000;
+    const dump = { exportedAt: new Date().toISOString(), tables: {} };
+    for (let i = 0; i < _BACKUP_TABLES.length; i++) {
+        const t = _BACKUP_TABLES[i];
+        if (typeof onProgress === 'function') onProgress(t, i, _BACKUP_TABLES.length);
+        const rows = [];
+        for (let from = 0; ; from += PAGE) {
+            const { data, error } = await supabase.from(t).select('*').range(from, from + PAGE - 1);
+            if (error) {
+                // テーブル未作成環境 (SQL未適用) はスキップして続行
+                console.warn(`[backup] ${t}: ${error.message}`);
+                dump.tables[t] = { error: error.message };
+                break;
+            }
+            rows.push(...(data || []));
+            if (!data || data.length < PAGE) { dump.tables[t] = rows; break; }
+        }
+    }
+    return dump;
+};
+
 // ===== SLv (シンクロレベル) =====
 // 読み込み: そのメンバーの「最新シーズン」の sync_level を引き継いで返す。
 //   優先順位は アクティブシーズン → hard_date が新しい順。
