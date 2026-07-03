@@ -206,6 +206,108 @@ test('3凸済みメンバーは候補に含まれない', () => {
     assert.equal(plan.levels[0].bosses[0].attacks.length, 0);
 });
 
+// ---- 時間考慮モード (timeAware) ------------------------------------------------
+console.log('\ntimeAware:');
+
+const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, players, opts), timeAware: true });
+
+test('凸は「そのレベルが開いてから最も早い凸可能時間帯」に割り当てられる', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('夜の人', { fire: 12 }, { availableSlots: ['h21', 'h22'] })],
+        { currentSlot: 'h14' },
+    ));
+    const atk = plan.levels[0].bosses[0].attacks[0];
+    assert.equal(atk.hourLabel, '21時');
+    assert.equal(plan.levels[0].clearHourLabel, '21時');
+});
+
+test('レベル依存: Lv2 の凸は Lv1 のクリア想定時刻以降に割り当てられる', () => {
+    // Lv1 は21時の人しか凸できない → Lv2 は21時以降。
+    // 「朝だけの人」は火力があっても Lv2 に時間的に参加できない。
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 5 })],
+        [
+            player('夜の人', { fire: 10 }, { availableSlots: ['h21'] }),
+            player('朝だけの人', { fire: 300 }, { availableSlots: ['h09'] }),
+            player('深夜の人', { fire: 300 }, { availableSlots: ['h23'] }),
+        ],
+        { currentSlot: 'h14' },
+    ));
+    // Lv1: 律速抑制ペナルティ込みでも「夜の人」(10B, オーバーキル5B) より
+    // 朝だけの人は 14時時点で h09 が過ぎており時間対象外。
+    const lv1 = plan.levels[0];
+    assert.equal(lv1.levelCleared, true);
+    // Lv2: openIdx = Lv1 クリア時刻。朝だけの人は参加不可、深夜の人 (23時) のみ。
+    const lv2 = plan.levels[1];
+    const names = lv2.bosses[0].attacks.map(a => a.memberName);
+    assert.ok(!names.includes('朝だけの人'), 'Lv2 に朝だけの人が入ってはいけない');
+    if (lv2.levelCleared) {
+        assert.equal(lv2.clearHourLabel, '23時');
+    }
+});
+
+test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 20 })],
+        [
+            player('早い人', { fire: 15 }, { availableSlots: ['h15'] }),
+            player('遅い人', { fire: 15 }, { availableSlots: ['h23'] }),
+        ],
+        { currentSlot: 'h14' },
+    ));
+    const atks = plan.levels[0].bosses[0].attacks;
+    const slow = atks.find(a => a.memberName === '遅い人');
+    const fast = atks.find(a => a.memberName === '早い人');
+    assert.equal(slow.isBottleneck, true);
+    assert.equal(fast.isBottleneck, false);
+});
+
+test('時間不足: 火力はあるのに時間内に凸できないと timeConstrained が立つ', () => {
+    // 現在22時。凸可能が「過ぎた時間」しかない人だけ → 時間不足
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('もう寝た人', { fire: 100 }, { availableSlots: ['h09', 'h10'] })],
+        { currentSlot: 'h22' },
+    ));
+    const b1 = plan.levels[0].bosses[0];
+    assert.equal(b1.cleared, false);
+    assert.equal(b1.timeConstrained, true, '火力不足ではなく時間不足の判定になるはず');
+    assert.equal(plan.anyTimeConstrained, true);
+});
+
+test('凸可能時間 未登録のメンバーは「いつでも可」+ timeUnknown フラグ', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('未登録さん', { fire: 12 })],
+        { currentSlot: 'h14' },
+    ));
+    const atk = plan.levels[0].bosses[0].attacks[0];
+    assert.equal(atk.hourLabel, '14時', '開いた時間帯に即割当');
+    assert.equal(atk.timeUnknown, true);
+    assert.deepEqual(plan.membersTimeUnknown, ['未登録さん']);
+});
+
+test('翌0-4時は「翌N時」ラベルになり、リセットまでの残り時間が出る', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('深夜組', { fire: 12 }, { availableSlots: ['h02'] })],
+        { currentSlot: 'h23' },
+    ));
+    assert.equal(plan.levels[0].bosses[0].attacks[0].hourLabel, '翌2時');
+    assert.equal(plan.hoursUntilReset, 6);  // 23,0,1,2,3,4 の6枠
+});
+
+test('timeAware=false では従来と同じ出力 (時間フィールドは null)', () => {
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('A', { fire: 12 }, { availableSlots: ['h21'] })],
+    ));
+    assert.equal(plan.timeAware, false);
+    assert.equal(plan.levels[0].bosses[0].attacks[0].hourIdx, null);
+    assert.equal(plan.levels[0].clearHourLabel, null);
+});
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
