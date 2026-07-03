@@ -66,24 +66,25 @@
             --primary: 220 15% 14%;
             --primary-foreground: 0 0% 100%;
             --radius: 0.75rem;
-            /* === Material-3 互換トークン (マーブル系へ上書き) === */
+            /* === Material-3 互換トークン (ClaudeDesign ニュートラルへ統一) ===
+               旧 Material 表面が残る画面もこのトークン経由で CD パレットに揃う */
             --md-sys-color-primary: var(--brand-primary);
             --md-sys-color-on-primary: #ffffff;
-            --md-sys-color-primary-container: #e9eef3;
-            --md-sys-color-on-primary-container: #1a1a1a;
-            --md-sys-color-secondary-container: #eef5f7;
-            --md-sys-color-on-secondary-container: #2a3a48;
-            --md-sys-color-background: #fbfcfd;
-            --md-sys-color-on-background: #1a1d21;
+            --md-sys-color-primary-container: #F1F2F4;
+            --md-sys-color-on-primary-container: #14161A;
+            --md-sys-color-secondary-container: #EDF4FE;
+            --md-sys-color-on-secondary-container: #1E4E8F;
+            --md-sys-color-background: #F5F6F8;
+            --md-sys-color-on-background: #14161A;
             --md-sys-color-surface: #ffffff;
-            --md-sys-color-on-surface: #1a1d21;
-            --md-sys-color-surface-variant: #f4f6f8;
-            --md-sys-color-on-surface-variant: #5b6470;
-            --md-sys-color-outline: #d4dae0;
-            --md-sys-color-outline-variant: #e5eaef;
-            --md-sys-color-tertiary-container: #eaf4f7;
-            --md-sys-color-on-tertiary-container: #1a1a1a;
-            --border-color: #d4dae0;
+            --md-sys-color-on-surface: #14161A;
+            --md-sys-color-surface-variant: #F7F8F9;
+            --md-sys-color-on-surface-variant: #6B7178;
+            --md-sys-color-outline: rgba(20,22,26,0.14);
+            --md-sys-color-outline-variant: rgba(20,22,26,0.08);
+            --md-sys-color-tertiary-container: #EDF4FE;
+            --md-sys-color-on-tertiary-container: #14161A;
+            --border-color: rgba(20,22,26,0.10);
             --shadow-sm: 0 1px 2px 0 rgba(112, 144, 168, 0.08);
             --shadow-md: var(--shadow-card);
         }
@@ -499,43 +500,25 @@
         .card {
             position: relative;
         }
-        /* 標準カードに 左上 と 右下 の小さな三角飾り (募集ポスター3 のスタイル) */
-        .card::before,
-        .card::after {
-            content: '';
-            position: absolute;
-            width: 10px; height: 10px;
-            border-color: var(--brand-silver);
-            border-style: solid;
-            opacity: 0.7;
-            pointer-events: none;
-        }
-        .card::before {
-            top: 6px; left: 6px;
-            border-width: 1px 0 0 1px;
-        }
-        .card::after {
-            right: 6px; bottom: 6px;
-            border-width: 0 1px 1px 0;
-        }
 
-        /* ========== Badge ========== */
+        /* ========== Badge (ClaudeDesign ピル) ========== */
         .badge {
             display: inline-flex;
             align-items: center;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            background: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+            background: #F1F2F4;
+            color: #6B7178;
         }
 
-        /* ========== Table ========== */
+        /* ========== Table (ClaudeDesign) ========== */
         .data-table {
             overflow-x: auto;
-            border-radius: 8px;
-            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 13px;
+            border: 1px solid rgba(20,22,26,0.06);
         }
 
         table {
@@ -544,35 +527,37 @@
         }
 
         thead th {
-            background: var(--md-sys-color-surface-variant);
-            color: var(--md-sys-color-on-surface);
-            padding: 12px 16px;
-            font-size: 13px;
-            font-weight: 600;
+            background: #F7F8F9;
+            color: #9AA0A6;
+            padding: 10px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
             text-align: left;
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            border-bottom: 1px solid #F0F1F3;
         }
 
         tbody td {
-            padding: 10px 16px;
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
-            font-size: 14px;
-            color: var(--md-sys-color-on-surface);
+            padding: 10px 14px;
+            border-bottom: 1px solid #F4F5F7;
+            font-size: 13px;
+            color: #14161A;
         }
 
         tbody tr:last-child td { border-bottom: none; }
 
-        tbody tr:hover { background: var(--md-sys-color-surface-variant); cursor: pointer; }
+        tbody tr { transition: background 0.15s ease; }
+        tbody tr:hover { background: #FAFBFC; cursor: pointer; }
 
-        .rank { text-align: center; font-weight: 700; }
-        .rank-1 { color: #FFD700; }
-        .rank-2 { color: #C0C0C0; }
-        .rank-3 { color: #CD7F32; }
-        .rank-other { color: var(--md-sys-color-on-surface-variant); }
+        .rank { text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .rank-1 { color: #E8A400; }
+        .rank-2 { color: #9AA0A6; }
+        .rank-3 { color: #C97B3D; }
+        .rank-other { color: #A4AAB0; }
 
-        .growth-positive { color: #22c55e; }
-        .growth-negative { color: #ef4444; }
-        .growth-neutral  { color: var(--md-sys-color-on-surface-variant); }
+        .growth-positive { color: #18C26B; }
+        .growth-negative { color: #FF3D44; }
+        .growth-neutral  { color: #A4AAB0; }
 
         /* iOS Safari: 入力フォーカス時の自動ズームを防ぐため最低16pxを保証 */
         @media (hover: none) and (pointer: coarse) {
@@ -636,51 +621,51 @@
         }
         .help-toc a:hover { background: var(--md-sys-color-surface); }
         .help-section {
-            padding: 24px; border-radius: 12px;
-            border: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface); margin-bottom: 16px;
+            padding: 22px; border-radius: 15px;
+            border: 1px solid rgba(20,22,26,0.05);
+            background: #fff; margin-bottom: 14px;
+            box-shadow: 0 1px 2px rgba(20,22,26,0.03);
             scroll-margin-top: 16px;
         }
         .help-section h2 {
-            margin: 0 0 12px 0; font-size: 20px; font-weight: 700;
-            color: var(--md-sys-color-on-surface);
+            margin: 0 0 12px 0; font-size: 18px; font-weight: 900; letter-spacing: 0.2px;
+            color: #14161A;
             display: flex; align-items: center; gap: 8px;
         }
         .help-section h3 {
-            margin: 18px 0 6px 0; font-size: 15px; font-weight: 600;
-            color: var(--md-sys-color-on-surface);
+            margin: 18px 0 6px 0; font-size: 14px; font-weight: 800;
+            color: #14161A;
         }
         .help-section p, .help-section li {
-            font-size: 14px; line-height: 1.75;
-            color: var(--md-sys-color-on-surface);
+            font-size: 13.5px; line-height: 1.75;
+            color: #5A6068;
         }
         .help-section ul, .help-section ol { padding-left: 22px; margin: 6px 0 10px 0; }
-        .help-section strong { color: var(--md-sys-color-on-surface); }
+        .help-section strong { color: #14161A; font-weight: 700; }
         .help-callout {
-            display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px;
-            background: var(--md-sys-color-surface-variant);
-            border-left: 4px solid #3b82f6; margin: 12px 0;
+            display: flex; gap: 10px; padding: 12px 14px; border-radius: 11px;
+            background: #F7F8F9; border: 1px solid rgba(20,22,26,0.05);
+            border-left: 3px solid #1E78F0; margin: 12px 0;
         }
-        .help-callout.warn { border-left-color: #f59e0b; }
-        .help-callout.tip { border-left-color: #22c55e; }
-        .help-callout.danger { border-left-color: #ef4444; }
-        .help-callout p { margin: 0; font-size: 13px; line-height: 1.65; }
+        .help-callout.warn { border-left-color: #F59E0B; }
+        .help-callout.tip { border-left-color: #18C26B; }
+        .help-callout.danger { border-left-color: #FF3D44; }
+        .help-callout p { margin: 0; font-size: 12.5px; line-height: 1.65; }
         .help-callout .ico { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
         .help-pill {
-            display: inline-block; padding: 1px 8px; border-radius: 6px;
-            background: var(--md-sys-color-surface-variant);
-            font-size: 12px; font-weight: 600;
+            display: inline-block; padding: 2px 9px; border-radius: 999px;
+            background: #F1F2F4; color: #6B7178;
+            font-size: 11px; font-weight: 800;
         }
         .help-flow-step {
             display: flex; gap: 10px; padding: 8px 0;
-            border-bottom: 1px dashed var(--md-sys-color-outline-variant);
+            border-bottom: 1px dashed rgba(20,22,26,0.08);
         }
         .help-flow-step:last-child { border-bottom: none; }
         .help-flow-num {
             flex-shrink: 0; width: 26px; height: 26px;
-            border-radius: 50%; background: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            font-size: 13px; font-weight: 700;
+            border-radius: 50%; background: #14161A; color: #fff;
+            font-size: 13px; font-weight: 900;
             display: flex; align-items: center; justify-content: center;
         }
 
@@ -767,9 +752,9 @@
         /* アイコンピッカーは他モーダルから呼ばれる「子」なので必ず上に出す */
         #iconPickerModal { z-index: 600; }
         .player-select-content {
-            background: var(--md-sys-color-surface);
-            border-radius: 16px;
-            padding: 24px;
+            background: #fff;
+            border-radius: 20px;
+            padding: 22px;
             max-width: 480px;
             width: 100%;
             max-height: 85vh;
@@ -777,17 +762,22 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-            border: 1px solid var(--md-sys-color-outline-variant);
+            border: 1px solid rgba(20,22,26,0.05);
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 18px 44px rgba(20,22,26,0.13);
+            font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
+            animation: dcSlideInUp .24s cubic-bezier(.2,.9,.2,1);
         }
         .player-select-content h2 {
             margin: 0;
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--md-sys-color-on-surface);
+            font-size: 17px;
+            font-weight: 900;
+            letter-spacing: 0.2px;
+            color: #14161A;
         }
         .player-select-content .subtitle {
-            font-size: 13px;
-            color: var(--md-sys-color-on-surface-variant);
+            font-size: 12px;
+            line-height: 1.6;
+            color: #8A9097;
             margin: 0;
         }
         .player-select-search {
@@ -1066,35 +1056,37 @@
             width: 90%;
             max-width: 520px;
             max-height: 85vh;
-            background: var(--md-sys-color-surface);
-            border-radius: 16px;
+            background: #fff;
+            border-radius: 20px;
+            border: 1px solid rgba(20,22,26,0.05);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 18px 44px rgba(20,22,26,0.13);
+            font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
         }
 
         .fururi-help-header {
-            padding: 20px 24px 16px;
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            padding: 17px 20px 13px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
+        .fururi-help-header h2 { font-size: 17px !important; font-weight: 900 !important; letter-spacing: 0.2px; color: #14161A !important; }
 
         .fururi-help-body {
-            padding: 20px 24px;
+            padding: 4px 20px 20px;
             overflow-y: auto;
             flex: 1;
-            font-size: 14px;
+            font-size: 13.5px;
             line-height: 1.7;
-            color: var(--md-sys-color-on-surface-variant);
+            color: #5A6068;
         }
 
         .fururi-help-body h3 {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--md-sys-color-on-surface);
+            font-size: 14px;
+            font-weight: 800;
+            color: #14161A;
             margin: 16px 0 8px;
         }
 
@@ -1108,13 +1100,15 @@
         .fururi-help-footer button {
             width: 100%;
             padding: 12px;
-            background: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
+            background: #14161A;
+            color: #fff;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.3px;
             cursor: pointer;
+            font-family: inherit;
         }
 
         /* ========== Notification ========== */
@@ -1170,18 +1164,19 @@
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
-            background: var(--md-sys-color-surface-variant);
-            border: 1px solid var(--md-sys-color-outline-variant);
-            border-radius: 8px;
+            background: #F7F8F9;
+            border: 1px solid rgba(20,22,26,0.06);
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--md-sys-color-on-surface);
+            font-size: 13px;
+            font-weight: 800;
+            color: #14161A;
             text-align: left;
             transition: background 0.2s;
+            font-family: inherit;
         }
 
-        .stats-toggle-btn:hover { background: var(--md-sys-color-outline-variant); }
+        .stats-toggle-btn:hover { background: #F1F2F4; }
 
         /* ========== Chart attribute toggle buttons ========== */
         .chart-toggle-btn {
@@ -1214,13 +1209,14 @@
         }
 
         .stat-card {
-            background: var(--md-sys-color-surface-variant);
-            border-radius: 8px;
-            padding: 16px;
+            background: #F7F8F9;
+            border: 1px solid rgba(20,22,26,0.04);
+            border-radius: 13px;
+            padding: 14px 16px;
         }
 
-        .stat-label { font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px; }
-        .stat-value { font-size: 20px; font-weight: 600; color: var(--md-sys-color-on-surface); }
+        .stat-label { font-size: 9.5px; font-weight: 800; letter-spacing: 0.6px; color: #A4AAB0; margin-bottom: 5px; }
+        .stat-value { font-size: 20px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
 
         /* ========== Chart container ========== */
         .chart-container {
