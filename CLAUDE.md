@@ -1,86 +1,65 @@
 # しりすこPAD プロジェクトガイド
 
-## デザインシステム: shadcn/ui 準拠
+NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け PWA。
 
-このプロジェクトのUIコンポーネントはshadcn/uiのデザイン原則に従います。
+## アーキテクチャ
 
-### 基本原則
+- **index.html**(約13,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成
+- **js/supabase-client.js** — Supabase への読み書きを `window.supabaseXxx` 関数として公開
+- **js/optimal-plan.js** — 最適凸プランのソルバー (純関数、単体テストあり)
+- **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)
+- **sw.js** — Web Push 専用 Service Worker (キャッシュなし)
+- 認証なし。プレイヤーは自己申告で選択 (localStorage)
 
-- **シンプルで洗練されたデザイン**: 過度な装飾を避け、機能性を重視
-- **一貫性のあるスペーシング**: 8pxグリッドシステム（8px, 16px, 24px, 32px, 48px）
-- **アクセシビリティ**: コントラスト比を確保し、フォーカス状態を明示
+## テスト
 
-### カラーパレット
-
-```
-プライマリ: var(--md-sys-color-primary)
-背景: var(--md-sys-color-surface)
-テキスト: var(--md-sys-color-on-surface)
-サブテキスト: var(--md-sys-color-on-surface-variant)
-ボーダー: var(--md-sys-color-outline-variant)
+```sh
+node tests/run-tests.mjs   # 最適凸プランソルバーの単体テスト
 ```
 
-### コンポーネントスタイル
+UI はテストなし。変更後は `node --check` でJS構文を確認し、実機 (GitHub Pages) で目視確認する運用。
+index.html 内の script は `python3` で抜き出して `node --check` に通せる。
 
-#### Alert / 注意書き
-```html
-<div style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; margin-bottom: 24px; background: var(--md-sys-color-surface-variant); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; border-left: 4px solid #f59e0b;">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
-    </svg>
-    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: var(--md-sys-color-on-surface);">
-        メッセージテキスト
-    </p>
-</div>
+## デザインシステム: ClaudeDesign
+
+**注意: 旧 Material (--md-sys-color-*) から ClaudeDesign へ移行済み。新規UIは以下に従うこと。**
+一部の古いモーダル・ヘルプには Material トークンが残っているが、触るときに ClaudeDesign へ寄せる。
+
+### トーン
+
+- 白カード + 大きめ角丸 + ソフトシャドウ。フォントは Noto Sans JP、見出しは font-weight 900
+- 属性カラーを機能的に使う (枠線・ピル・バー・アイコン背景)
+
+### カラー
+
+```js
+// 属性 (DC_ATTR_COLORS)
+fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C26B'
+// 状態
+成功/撃破: #18C26B   警告: #F59E0B   エラー/交戦: #FF3D44   アクセント青: #1E78F0
+// ニュートラル
+文字: #14161A  サブ: #6B7178 / #8A9097  薄文字: #A4AAB0 / #B6BBC1  背景: #F7F8F9 / #F1F2F4
 ```
 
-#### Card
-```html
-<div class="card" style="padding: 24px; border-radius: 12px; border: 1px solid var(--md-sys-color-outline-variant);">
-    <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">タイトル</h3>
-    <p style="margin: 0; font-size: 14px; color: var(--md-sys-color-on-surface-variant);">説明文</p>
-</div>
-```
+### 頻出パターン
 
-#### 工事中ページ
-```html
-<div style="display: flex; align-items: center; justify-content: center; min-height: 60vh; padding: 24px;">
-    <div class="card" style="max-width: 480px; width: 100%; text-align: center; padding: 48px 32px; border-radius: 16px; border: 1px solid var(--md-sys-color-outline-variant);">
-        <div style="width: 80px; height: 80px; margin: 0 auto 24px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-            <!-- アイコンSVG -->
-        </div>
-        <h2 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 600; color: var(--md-sys-color-on-surface);">タイトル</h2>
-        <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: var(--md-sys-color-on-surface-variant);">説明文</p>
-    </div>
-</div>
-```
+- **ピル**: `border-radius:999px; font-size:10-11px; font-weight:800-900; padding:3px 9px; color:{色}; background:{色}1A`
+- **カード**: `.dc-card` / 白背景 + `border-radius:13-15px` + `border:1px solid rgba(20,22,26,0.05)`
+- **ボトムシート**: `player-select-modal` 系。ハンドル(::before) + 下スワイプで閉じる (`_enableSheetSwipeDismiss`)
+- **ボタン**: 黒 `#14161A` が主ボタン、`#F1F2F4` がサブ。青グラデ (`#46A0FF→#1E78F0`) は誘導ボタン
+- 16進カラー+alpha は `${c}1A` `${c}33` 形式の連結を多用
 
-### アラートカラーバリエーション
+## データモデルの要注意ポイント
 
-| タイプ | ボーダー左色 | アイコン色 |
-|--------|--------------|------------|
-| Warning（警告） | #f59e0b | #f59e0b |
-| Error（エラー） | #ef4444 | #ef4444 |
-| Success（成功） | #22c55e | #22c55e |
-| Info（情報） | #3b82f6 | #3b82f6 |
+- **`bosses.attribute` = ボス自身の属性 / `bosses.weakness` = 弱点(持っていくPT属性)**。
+  表示は attribute 基準に統一済み。「○○PTで凸」の文脈だけ weakness を使う。混同しやすいので注意
+- **SLv (`player_sync_levels`)**: シーズン別履歴。読み込みは「最新シーズン(アクティブ優先→hard_date順)から引き継ぎ」、
+  書き込みはマイページのSLvチップ → アクティブシーズンへ upsert
+- ダメージは `_raw` (生値) と B単位 (10億=1B) が混在。表示はほぼ B 単位
+- 比較・ふるり値タブの対象は「完了した実シーズン」のみ (is_test=false, is_active=false)
 
-### border-radius
+## デプロイ
 
-- 小さい要素: 6px
-- カード・ボタン: 8px
-- 大きいカード: 12px
-- モーダル・特殊: 16px
-
-### フォントサイズ
-
-- 見出し1: 24px, font-weight: 600
-- 見出し2: 18px, font-weight: 600
-- 本文: 14px-15px, font-weight: 400
-- 補足: 13px, font-weight: 400
-
-### GitHub Pages公開
-
-リポジトリ: https://github.com/Furu1018/shirisu-pad
-公開URL: https://furu1018.github.io/shirisu-pad/
+- リポジトリ: https://github.com/Furu1018/shirisu-pad
+- 公開URL: https://furu1018.github.io/shirisu-pad/ (GitHub Pages, main へ push で反映)
+- ローカルでは Supabase データが無いと大半のタブが空になる → 実機確認はユーザーに依頼する

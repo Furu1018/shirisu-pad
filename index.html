@@ -255,36 +255,6 @@
             box-shadow: 0 6px 14px rgba(20,22,26,0.28);
         }
 
-        /* ========== Image Buttons (モックアップ用に書き出した PNG ボタン) ========== */
-        /* 各画像は 2172x724 (3:1)。aspect-ratio で正確に表示 */
-        .btn-img {
-            display: block;
-            background: transparent center / 100% 100% no-repeat;
-            border: 0;
-            padding: 0;
-            margin: 0;
-            cursor: pointer;
-            color: transparent !important;
-            text-shadow: none !important;
-            font-size: 0;
-            line-height: 0;
-            user-select: none;
-            transition: filter 0.18s ease, transform 0.12s ease;
-            aspect-ratio: 2172 / 724;
-            width: 100%;
-        }
-        .btn-img > * { visibility: hidden; }
-        .btn-img:hover:not(:disabled) { filter: brightness(1.08); }
-        .btn-img:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.88); }
-        .btn-img:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.5); }
-        .btn-img-prepare       { background-image: url('./assets/buttons/btn-prepare.png'); }
-        .btn-img-report        { background-image: url('./assets/buttons/btn-report.png'); }
-        .btn-img-release       { background-image: url('./assets/buttons/btn-release.png'); }
-        .btn-img-coordinating  { background-image: url('./assets/buttons/btn-coordinating.png'); }
-        .btn-img-online        { background-image: url('./assets/buttons/btn-online.png'); }
-        .btn-img-attack-report { background-image: url('./assets/buttons/btn-attack-report.png'); }
-        .btn-img-blabla        { background-image: url('./assets/buttons/btn-blabla.png'); }
-
         /* タブ切替のフェード (横スワイプ補助) */
         .tab-content.active { animation: tab-fade-in 0.22s ease-out; }
         /* 横スワイプ確定直後は再フェードしない (一瞬の点滅対策) */
