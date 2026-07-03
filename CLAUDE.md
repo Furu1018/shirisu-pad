@@ -7,7 +7,8 @@ NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け
 - **index.html**(約13,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成
 - **js/supabase-client.js** — Supabase への読み書きを `window.supabaseXxx` 関数として公開
 - **js/optimal-plan.js** — 最適凸プランのソルバー (純関数、単体テストあり)
-- **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)
+- **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
+  バックアップ復元 (設定タブ) は `12_restore_helpers.sql` の RPC が SQL Editor で適用済みであること
 - **sw.js** — Web Push 専用 Service Worker (キャッシュなし)
 - 認証なし。プレイヤーは自己申告で選択 (localStorage)
 

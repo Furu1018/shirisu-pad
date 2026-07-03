@@ -876,6 +876,69 @@ window.supabaseExportAllData = async function (onProgress) {
     return dump;
 };
 
+// ===== バックアップ復元: バックアップ時点へ全テーブルを巻き戻す =====
+// 削除は子テーブル→親テーブルの順、投入は親→子の順で外部キー違反を避ける。
+// [テーブル名, 全行マッチ用のNOT NULL列, 型('num'|'text')] を定義。
+const _RESTORE_TABLES = [
+    // [name, filterCol, kind]  ※ 配列順 = 投入順 (親が先)。削除はこの逆順。
+    ['players', 'id', 'num'],
+    ['seasons', 'id', 'num'],
+    ['nikke_characters', 'canonical_name', 'text'],
+    ['bosses', 'season_id', 'num'],
+    ['player_damages', 'player_id', 'num'],
+    ['player_sync_levels', 'season_id', 'num'],
+    ['attacks', 'id', 'num'],
+    ['day_offs', 'player_id', 'num'],
+    ['availability', 'player_id', 'num'],
+    ['finish_claims', 'season_id', 'num'],
+    ['fururi_simulation_scores', 'season_id', 'num'],
+    ['finish_coordinations', 'player_id', 'num'],
+    ['push_subscriptions', 'id', 'num'],
+    ['push_notifications_log', 'id', 'num'],
+];
+window.supabaseRestoreAllData = async function (dump, onProgress) {
+    if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');
+    const notify = (phase, table) => { if (typeof onProgress === 'function') onProgress(phase, table); };
+    const warnings = [];
+    const inDump = ([name]) => Array.isArray(dump.tables[name]);
+
+    // 1) 削除 (子→親)。dump に含まれるテーブルだけを対象にする
+    //    (古いバックアップに無いテーブルまで消さない)
+    const targets = _RESTORE_TABLES.filter(inDump);
+    for (const [name, col, kind] of [...targets].reverse()) {
+        notify('削除', name);
+        const q = supabase.from(name).delete();
+        const { error } = kind === 'num' ? await q.gte(col, -1) : await q.gte(col, '');
+        if (error) throw new Error(`${name} の削除に失敗: ${error.message}`);
+    }
+
+    // 2) 投入 (親→子)。ペイロード上限対策で500行ずつチャンク
+    const CHUNK = 500;
+    let inserted = 0;
+    for (const [name] of targets) {
+        const rows = dump.tables[name];
+        notify('投入', name);
+        for (let i = 0; i < rows.length; i += CHUNK) {
+            const { error } = await supabase.from(name).insert(rows.slice(i, i + CHUNK));
+            if (error) throw new Error(`${name} の投入に失敗 (${i}行目〜): ${error.message}`);
+        }
+        inserted += rows.length;
+    }
+
+    // 3) 連番シーケンスを MAX(id)+1 に修正 (players/seasons/attacks 等)。
+    //    supabase/12_restore_helpers.sql の RPC が必要。未適用なら警告のみ。
+    notify('仕上げ', 'シーケンス修正');
+    try {
+        const { error } = await supabase.rpc('restore_fix_sequences');
+        if (error) throw error;
+    } catch (e) {
+        warnings.push('ID採番の修正 (restore_fix_sequences) が実行できませんでした。' +
+            'supabase/12_restore_helpers.sql を SQL Editor で適用してください。' +
+            '未適用のままだと新規メンバー追加や凸報告が一時的にIDエラーになることがあります。');
+    }
+    return { inserted, warnings };
+};
+
 // ===== SLv (シンクロレベル) =====
 // 読み込み: そのメンバーの「最新シーズン」の sync_level を引き継いで返す。
 //   優先順位は アクティブシーズン → hard_date が新しい順。

@@ -3779,18 +3779,6 @@
                 <div id="settingsSystemInfo" style="display:none;"></div>
             </div>
 
-            <!-- ①' バックアップ -->
-            <div class="dc-card">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
-                    <div>
-                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">バックアップ</div>
-                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.5;">全データを JSON ファイルでダウンロード。レイド前後に取っておくと事故時に復元できます。</div>
-                    </div>
-                </div>
-                <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;">💾 バックアップをダウンロード</button>
-                <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;"></p>
-            </div>
-
             <!-- ② メンバーの通知状況 -->
             <div class="dc-card dc-card-tight">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
@@ -3902,6 +3890,23 @@
                     </div>
                 </div>
                 <div style="font-size:10px;color:#A4AAB0;margin-top:10px;line-height:1.5;text-align:center;">これらの操作は他端末には影響しません</div>
+            </div>
+
+            <!-- ⑥ バックアップ / 復元 (運営向け · 最下部配置で誤操作防止) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">バックアップ / 復元</div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.5;">運営向け。全データの JSON 保存と、バックアップ時点への巻き戻し。レイド前後に保存推奨。</div>
+                    </div>
+                </div>
+                <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;">💾 バックアップをダウンロード</button>
+                <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
+                    <div style="font-size:10.5px;font-weight:800;color:#C42830;margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
+                    <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
+                    <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span style="font-size:15px;">📥</span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                </div>
+                <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;"></p>
             </div>
         </div>
     </div>
@@ -8626,21 +8631,86 @@
                 });
                 const rowCount = Object.values(dump.tables)
                     .reduce((s, v) => s + (Array.isArray(v) ? v.length : 0), 0);
-                const stamp = dump.exportedAt.slice(0, 16).replace(/[T:]/g, '-');
-                const blob = new Blob([JSON.stringify(dump, null, 1)], { type: 'application/json' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `shirisuko-pad-backup-${stamp}.json`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+                _downloadBackupJson(dump, 'shirisuko-pad-backup');
                 if (msg) { msg.style.color = '#18C26B'; msg.textContent = `✅ ${rowCount} 行をエクスポートしました`; }
             } catch (e) {
                 if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `エクスポート失敗: ${e?.message || e}`; }
             } finally {
                 btn.disabled = false;
                 btn.style.opacity = '';
+            }
+        }
+
+        // ⑥ 復元: JSON を検証 → 二重確認 → 復元前バックアップ → 巻き戻し
+        function _downloadBackupJson(dump, prefix) {
+            const stamp = dump.exportedAt.slice(0, 16).replace(/[T:]/g, '-');
+            const blob = new Blob([JSON.stringify(dump, null, 1)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${prefix}-${stamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        }
+        async function handleSettingsRestore(event) {
+            const fileInput = event.target;
+            const file = fileInput.files?.[0];
+            fileInput.value = '';   // 同じファイルを再選択できるように
+            if (!file) return;
+            const msg = document.getElementById('settingsBackupMsg');
+            const btn = document.getElementById('settingsRestoreBtn');
+            const setMsg = (t, color) => { if (msg) { msg.style.color = color || '#A4AAB0'; msg.textContent = t; } };
+
+            // 1) 検証
+            let dump;
+            try {
+                dump = JSON.parse(await file.text());
+                if (!dump || typeof dump.tables !== 'object' || !dump.exportedAt) throw new Error('形式不一致');
+            } catch {
+                setMsg('このファイルは しりすこPAD のバックアップ形式ではありません', '#FF3D44');
+                return;
+            }
+            const counts = Object.entries(dump.tables)
+                .filter(([, v]) => Array.isArray(v))
+                .map(([k, v]) => [k, v.length]);
+            const totalRows = counts.reduce((s, [, n]) => s + n, 0);
+            const pick = (name) => counts.find(([k]) => k === name)?.[1] ?? 0;
+
+            // 2) 二重確認
+            const summary =
+                `バックアップ時点へ全データを巻き戻します。\n\n` +
+                `📅 バックアップ日時: ${dump.exportedAt.slice(0, 19).replace('T', ' ')}\n` +
+                `📦 合計 ${totalRows} 行 (メンバー ${pick('players')} 名 / 凸報告 ${pick('attacks')} 件 / シーズン ${pick('seasons')} 件)\n\n` +
+                `⚠️ この時点より後の凸報告・SLv更新・設定変更はすべて消えます。\n` +
+                `⚠️ 全メンバーに影響します。実行中は他の人の操作を止めてください。`;
+            if (!confirm(summary)) { setMsg('復元を中止しました'); return; }
+            if (prompt('確認のため「復元」と入力してください') !== '復元') {
+                setMsg('入力が一致しなかったため中止しました');
+                return;
+            }
+
+            if (btn) { btn.disabled = true; btn.style.opacity = '0.55'; }
+            try {
+                // 3) 復元前の現状も自動バックアップ (復元のやり直し用)
+                setMsg('復元前の現状をバックアップ中…');
+                const current = await window.supabaseExportAllData(() => {});
+                _downloadBackupJson(current, 'shirisuko-pad-before-restore');
+
+                // 4) 巻き戻し
+                const result = await window.supabaseRestoreAllData(dump, (phase, table) => {
+                    setMsg(`${phase}中… ${table}`);
+                });
+                if (result.warnings.length) {
+                    alert(`復元は完了しましたが注意があります:\n\n${result.warnings.join('\n')}`);
+                }
+                setMsg(`✅ ${result.inserted} 行を復元しました。再読み込みします…`, '#18C26B');
+                showNotification('✅ バックアップから復元しました');
+                setTimeout(() => location.reload(), 1200);
+            } catch (e) {
+                setMsg(`復元失敗: ${e?.message || e}`, '#FF3D44');
+                alert(`❌ 復元に失敗しました: ${e?.message || e}\n\n途中で失敗した場合、データが不完全な可能性があります。\n直前に自動ダウンロードされた before-restore ファイルで復元をやり直せます。`);
+                if (btn) { btn.disabled = false; btn.style.opacity = ''; }
             }
         }
 
