@@ -2856,6 +2856,7 @@
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">👥 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
+                        <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📸 共有画像</button>
                     </div>
                 </div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#A4AAB0;line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
@@ -9697,6 +9698,224 @@
         // ルール: ①各レベル5体全撃破で次レベルへ ②同じ人の同属性ベスト火力は1回のみ(登録ダメ使い切り)
         //         ③低レベルは低SLv、高レベルは高SLvを優先(高SLvを後半に温存) ④凸ごとに個別最適化
         // 現在の残りHPから開始し、火力が尽きたレベルで停止して攻略可能範囲を示す。
+        let _opsLastPlan = null;   // 直近の算出結果 (共有画像用)
+
+        // ========== 凸プラン 共有画像 (Canvas 直描き → PNG) ==========
+        // Discord 共有向け: 固定幅 1080px、白背景、外部依存なしで安定レイアウト。
+        async function handleOpsPlanImageExport() {
+            if (!_opsLastPlan) {
+                showNotification('先に「👥 全員」か「⏰ 凸可能のみ」でプランを算出してください');
+                return;
+            }
+            try {
+                const blob = await _renderPlanToImage(_opsLastPlan);
+                const dateStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+                const file = new File([blob], `shirisuko-plan-${dateStr}.png`, { type: 'image/png' });
+                // モバイルは共有シート (そのまま Discord へ)、不可なら DL
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({ files: [file], title: 'しりすこPAD 凸プラン' });
+                        return;
+                    } catch (e) {
+                        if (e?.name === 'AbortError') return;   // ユーザーキャンセル
+                        /* 共有失敗 → DL にフォールバック */
+                    }
+                }
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+                showNotification('📸 プラン画像を保存しました');
+            } catch (e) {
+                showNotification(`❌ 画像生成失敗: ${e?.message || e}`);
+            }
+        }
+
+        function _renderPlanToImage(plan) {
+            const W = 1080, PAD = 46;
+            const COL = {
+                text: '#14161A', sub: '#6B7178', faint: '#A4AAB0',
+                bg: '#FFFFFF', card: '#F7F8F9', line: 'rgba(20,22,26,0.07)',
+                green: '#18C26B', red: '#FF3D44', amber: '#F59E0B', blue: '#1E78F0',
+            };
+            const attrColor = (attr) => DC_ATTR_COLORS[attr] || '#A4AAB0';
+            const f = (px, w = 700) => `${w} ${px}px 'Noto Sans JP', -apple-system, sans-serif`;
+            const ROW_H = 46, BOSS_HEAD_H = 62, LV_HEAD_H = 64, CARD_GAP = 14;
+
+            // ---- 高さの事前計測 ----
+            let height = PAD + 108;   // ヘッダー
+            for (const lv of plan.levels) {
+                height += LV_HEAD_H;
+                for (const b of lv.bosses) {
+                    height += BOSS_HEAD_H + Math.max(1, b.attacks.length) * ROW_H + CARD_GAP;
+                }
+                height += 8;
+            }
+            height += 52 + PAD;   // フッター
+
+            const canvas = document.createElement('canvas');
+            canvas.width = W * 2; canvas.height = height * 2;   // Retina 2x
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2, 2);
+            const rr = (x, y, w, h, r) => {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+            };
+            const pillDraw = (label, x, y, color, bg, size = 15) => {
+                ctx.font = f(size, 800);
+                const w = ctx.measureText(label).width + 24;
+                rr(x, y, w, size + 15, (size + 15) / 2);
+                ctx.fillStyle = bg; ctx.fill();
+                ctx.fillStyle = color;
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, x + 12, y + (size + 15) / 2 + 1);
+                return w;
+            };
+
+            // ---- 背景 & ヘッダー ----
+            ctx.fillStyle = COL.bg;
+            ctx.fillRect(0, 0, W, height);
+            ctx.textBaseline = 'alphabetic';
+            let y = PAD + 16;
+            ctx.fillStyle = COL.text;
+            ctx.font = f(30, 900);
+            ctx.fillText('⚔️ 凸プラン', PAD, y + 10);
+            const dateStr = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'long', day: 'numeric', weekday: 'short' });
+            ctx.font = f(16, 700);
+            ctx.fillStyle = COL.faint;
+            ctx.fillText(`しりすこPAD · ${dateStr}${plan.nowHourLabel ? ` · ${plan.nowHourLabel}時点` : ''}`, PAD + 200, y + 8);
+            y += 34;
+            // 到達サマリー ピル列
+            const reached = plan.fullyClearedThrough >= plan.startLevel;
+            let px = PAD;
+            px += pillDraw(
+                reached ? `Lv${plan.fullyClearedThrough} まで完全攻略想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}` : `Lv${plan.startLevel} 攻略に届かない想定`,
+                px, y, '#fff', reached ? COL.green : COL.red, 16) + 10;
+            px += pillDraw(plan.onlyAvailableNow ? `⏰ 現在凸可能のみ ${plan.candidateCount}名` : `👥 全員対象 ${plan.candidateCount}名`, px, y, COL.sub, '#F1F2F4', 15) + 10;
+            pillDraw(`総凸数 ${plan.totalAttacks} · 未消化 ${plan.unusedAttacks}`, px, y, COL.sub, '#F1F2F4', 15);
+            y += 58;
+
+            // ---- レベルごと ----
+            for (const lv of plan.levels) {
+                ctx.fillStyle = COL.text;
+                ctx.font = f(24, 900);
+                ctx.fillText(`Lv${lv.level}`, PAD, y + 24);
+                let lx = PAD + 74;
+                lx += pillDraw(
+                    lv.levelCleared ? `全撃破想定${lv.clearHourLabel ? ` ⏱${lv.clearHourLabel}` : ''}` : (lv.bosses.some(b => b.timeConstrained) ? '時間不足でストップ' : '火力不足でストップ'),
+                    lx, y + 2, lv.levelCleared ? COL.green : COL.red,
+                    lv.levelCleared ? 'rgba(24,194,107,0.12)' : 'rgba(255,61,68,0.10)', 15) + 8;
+                if (plan.timeAware && lv.openHourLabel && lv.level > plan.startLevel) {
+                    pillDraw(`${lv.openHourLabel}〜開放`, lx, y + 2, COL.faint, '#F7F8F9', 14);
+                }
+                y += LV_HEAD_H - 14;
+
+                for (const b of lv.bosses) {
+                    const c = attrColor(b.attribute);
+                    const cardH = BOSS_HEAD_H + Math.max(1, b.attacks.length) * ROW_H;
+                    // カード枠
+                    rr(PAD, y, W - PAD * 2, cardH, 16);
+                    ctx.fillStyle = COL.bg; ctx.fill();
+                    ctx.strokeStyle = c + '4D'; ctx.lineWidth = 1.5; ctx.stroke();
+                    // ヘッダー帯
+                    rr(PAD, y, W - PAD * 2, BOSS_HEAD_H, 16);
+                    ctx.save(); ctx.clip();
+                    ctx.fillStyle = c + '14';
+                    ctx.fillRect(PAD, y, W - PAD * 2, BOSS_HEAD_H);
+                    ctx.restore();
+                    // 属性チップ
+                    rr(PAD + 14, y + 13, 36, 36, 10);
+                    ctx.fillStyle = c; ctx.fill();
+                    // ボス名 + 弱点PT
+                    ctx.fillStyle = COL.text;
+                    ctx.font = f(19, 900);
+                    ctx.fillText(`B${b.bossNumber} ${b.name}`, PAD + 62, y + 30);
+                    const ptName = (PT_ATTRS.find(x => x.key === b.weakness)?.name || '');
+                    ctx.font = f(14, 800);
+                    ctx.fillStyle = c;
+                    ctx.fillText(`${ptName}PTで凸 · 目標 ${b.targetHpB.toFixed(1)}B`, PAD + 62, y + 51);
+                    // ステータス (右端)
+                    const statusLabel = b.targetHpB <= 0 ? '撃破済'
+                        : b.cleared ? `✅ 撃破想定${b.clearHourLabel ? ` ⏱${b.clearHourLabel}` : ''}`
+                        : b.timeConstrained ? `⏰ 時間不足 残${b.remainingHpB.toFixed(1)}B`
+                        : `残 ${b.remainingHpB.toFixed(1)}B`;
+                    ctx.font = f(15, 900);
+                    const stW = ctx.measureText(statusLabel).width;
+                    ctx.fillStyle = b.cleared || b.targetHpB <= 0 ? COL.green : (b.timeConstrained ? COL.amber : COL.red);
+                    ctx.fillText(statusLabel, W - PAD - stW - 16, y + 38);
+                    // 凸行
+                    let ry = y + BOSS_HEAD_H;
+                    if (b.attacks.length === 0) {
+                        ctx.font = f(15, 700);
+                        ctx.fillStyle = COL.faint;
+                        ctx.fillText(b.targetHpB <= 0 ? '既に撃破済み' : (b.timeConstrained ? '火力はあるが時間内に凸できる人がいない' : '凸できる候補なし'), PAD + 20, ry + 29);
+                    } else {
+                        b.attacks.forEach((a, i) => {
+                            if (i > 0) {
+                                ctx.strokeStyle = COL.line; ctx.lineWidth = 1;
+                                ctx.beginPath(); ctx.moveTo(PAD + 14, ry); ctx.lineTo(W - PAD - 14, ry); ctx.stroke();
+                            }
+                            const cy = ry + ROW_H / 2;
+                            ctx.textBaseline = 'middle';
+                            // n凸 チップ
+                            rr(PAD + 14, cy - 13, 46, 26, 8);
+                            ctx.fillStyle = c + '1A'; ctx.fill();
+                            ctx.font = f(13, 900); ctx.fillStyle = c;
+                            ctx.fillText(`${i + 1}凸`, PAD + 24, cy + 1);
+                            // 時間帯
+                            if (a.hourLabel) {
+                                ctx.font = f(15, a.isBottleneck ? 900 : 800);
+                                ctx.fillStyle = a.isBottleneck ? COL.red : COL.sub;
+                                ctx.fillText(`🕐${a.hourLabel}${a.timeUnknown ? '?' : ''}${a.isBottleneck ? ' ⏱律速' : ''}`, PAD + 74, cy + 1);
+                            }
+                            // 名前
+                            ctx.font = f(17, 800);
+                            ctx.fillStyle = COL.text;
+                            ctx.fillText(String(a.memberName).slice(0, 12), PAD + 74 + (a.hourLabel ? 150 : 0), cy + 1);
+                            // SLv
+                            ctx.font = f(13, 700);
+                            ctx.fillStyle = COL.faint;
+                            ctx.fillText(`SLv${a.slv || '?'}${a.slvEstimated ? '推' : ''}`, W - PAD - 250, cy + 1);
+                            // ダメージ (右寄せ)
+                            const dmgTxt = `${a.dmgB.toFixed(2)}B`;
+                            ctx.font = f(18, 900);
+                            const dW = ctx.measureText(dmgTxt).width;
+                            ctx.fillStyle = COL.text;
+                            ctx.fillText(dmgTxt, W - PAD - dW - 16, cy + 1);
+                            if (a.overflowB > 0) {
+                                ctx.font = f(12, 800);
+                                ctx.fillStyle = COL.amber;
+                                ctx.fillText(`+${a.overflowB.toFixed(1)}`, W - PAD - dW - 16, cy + 17);
+                            }
+                            ctx.textBaseline = 'alphabetic';
+                            ry += ROW_H;
+                        });
+                    }
+                    y += cardH + CARD_GAP;
+                }
+                y += 8;
+            }
+
+            // ---- フッター ----
+            ctx.strokeStyle = COL.line; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(PAD, y + 6); ctx.lineTo(W - PAD, y + 6); ctx.stroke();
+            ctx.font = f(13, 700);
+            ctx.fillStyle = COL.faint;
+            ctx.fillText('Generated by しりすこPAD · 時刻は凸可能時間からの想定です', PAD, y + 32);
+
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
+            });
+        }
+
         // 中核ロジックは js/optimal-plan.js の computeOptimalPlanCore (純関数・単体テストあり)
         function computeOptimalPlan(options = {}) {
             if (!_opsDashboardCache) return null;
@@ -9722,6 +9941,7 @@
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">プラン算出に失敗しました。</p>';
                 return;
             }
+            _opsLastPlan = plan;   // 📸 共有画像エクスポート用に保持
 
             // ===== ClaudeDesign 準拠レンダリング =====
             const esc = escapeHtml;
