@@ -5329,10 +5329,10 @@
                 <p style="margin:0 0 9px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">運営が配信した凸プランです。配信時点の残HP・提出データに基づく想定のため、最新状況とはズレることがあります。</p>
                 <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">あなたの凸予定</div>
                 ${mineHtml}
-                <details style="margin-top:10px;">
+                <details id="myPublishedPlanDetails" style="margin-top:10px;">
                     <summary style="cursor:pointer;font-size:11.5px;font-weight:800;color:#1E78F0;">📊 全体プランを見る</summary>
                     <div style="margin-top:9px;">
-                        ${_planTimetableHtml(plan, { highlightPlayerId: identity.id })}
+                        ${_planTimetableHtml(plan, { highlightPlayerId: identity.id, filterKey: 'my' })}
                     </div>
                 </details>`;
             card.style.display = '';
@@ -10459,7 +10459,7 @@
             const teamsBtn = `<button onclick="toggleOpsPlanTeams()" title="時間割チップに編成5キャラを表示 (共有画像にも反映)" style="flex:none;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;${_opsPlanShowTeams ? 'background:#1E78F0;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">👥 編成</button>`;
             const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${teamsBtn}</div>`;
             const bodyHtml = _opsPlanViewMode === 'timetable'
-                ? _planTimetableHtml(plan, { highlightPlayerId: _myId, showTeams: _opsPlanShowTeams })
+                ? _planTimetableHtml(plan, { highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops' })
                 : levelSections;
             el.innerHTML = summary + viewToggle + bodyHtml + warnHtml;
         }
@@ -10530,21 +10530,63 @@
             return { bosses, sections };
         }
 
-        // 🗓 属性×時間 時間割表示: 横=5ボス(固定) / 縦=時間。モバイル縦画面と相性が良い
+        // ===== 時間割のボス絞り込み (画面ごとに独立: ops=ユニレ管理 / my=マイページ) =====
+        // null = 全ボス表示。配列 = 表示するボス番号のリスト。
+        const _planBossFilters = { ops: null, my: null };
+        function togglePlanBossFilter(key, bossNumber) {
+            const cur = _planBossFilters[key];
+            if (cur === null) {
+                _planBossFilters[key] = [bossNumber];          // 全表示中にタップ → そのボスだけ表示
+            } else if (cur.includes(bossNumber)) {
+                const next = cur.filter(n => n !== bossNumber); // 表示中をタップ → 外す (空なら全表示に戻す)
+                _planBossFilters[key] = next.length ? next : null;
+            } else {
+                const next = [...cur, bossNumber];              // 非表示をタップ → 追加 (全部揃ったら全表示扱い)
+                _planBossFilters[key] = next.length >= 5 ? null : next;
+            }
+            if (key === 'ops') {
+                if (_opsLastPlan) renderOpsPlanView();
+            } else {
+                renderMyPublishedPlan(getCurrentIdentity());
+                // 再描画で <details> が閉じるので開き直す (フィルタ操作は details 内で行うため)
+                setTimeout(() => document.getElementById('myPublishedPlanDetails')?.setAttribute('open', ''), 0);
+            }
+        }
+
+        // 🗓 属性×時間 時間割表示: 横=ボス / 縦=時間。表の中だけ横スクロール (data-no-swipe)
         function _planTimetableHtml(plan, opts = {}) {
             const esc = escapeHtml;
             const model = _planTimetableModel(plan);
             if (!model) return '<p style="font-size:12px;color:#A4AAB0;">時間データがないため時間割表示できません。再度プランを算出してください。</p>';
             const nowIdx = _planNowIdx(plan);
+            const filterKey = opts.filterKey || null;
+            const filter = filterKey ? _planBossFilters[filterKey] : null;
+            const visible = model.bosses
+                .map((bm, ci) => ({ bm, ci }))
+                .filter(({ bm }) => !filter || filter.includes(bm.bossNumber));
+            const nCols = Math.max(1, visible.length);
+
+            // ボス絞り込みボタン行 (スクロールの外・常に全ボス表示。OFF は薄く)
+            const filterRow = filterKey ? `
+                <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;">
+                    ${model.bosses.map(bm => {
+                        const c = DC_ATTR_COLORS[bm.attribute] || '#A4AAB0';
+                        const on = !filter || filter.includes(bm.bossNumber);
+                        const attrName = ATTR_VISUAL[bm.attribute]?.name || '';
+                        return `<button onclick="togglePlanBossFilter('${filterKey}', ${bm.bossNumber})" title="タップで B${bm.bossNumber} の表示を切替 (全表示中は単独表示に)" style="flex:1;min-width:56px;padding:5px 4px;border-radius:999px;border:none;cursor:pointer;font-size:10px;font-weight:900;letter-spacing:0.2px;white-space:nowrap;transition:all .15s;${on ? `background:${c};color:#fff;box-shadow:0 2px 6px ${c}55;` : 'background:#F1F2F4;color:#B6BBC1;'}">B${bm.bossNumber} ${esc(attrName)}</button>`;
+                    }).join('')}
+                </div>` : '';
+
             const cells = [];
-            // ヘッダー行: 5ボス
+            // ヘッダー行: 表示中のボスのみ (タップでも絞り込み可)
             cells.push('<div></div>');
-            for (const bm of model.bosses) {
+            for (const { bm } of visible) {
                 const c = DC_ATTR_COLORS[bm.attribute] || '#A4AAB0';
                 const bIcon = DC_ATTR_ICONS[bm.attribute] || '';
                 const attrName = ATTR_VISUAL[bm.attribute]?.name || '';
                 const ptName = PT_ATTRS.find(x => x.key === bm.weakness)?.name || '';
-                cells.push(`<div style="min-width:0;overflow:hidden;margin:0 2px;padding:5px 2px;border-radius:9px;background:${c};text-align:center;">
+                const click = filterKey ? `onclick="togglePlanBossFilter('${filterKey}', ${bm.bossNumber})" ` : '';
+                cells.push(`<div ${click}style="min-width:0;overflow:hidden;margin:0 2px;padding:5px 2px;border-radius:9px;background:${c};text-align:center;${filterKey ? 'cursor:pointer;' : ''}">
                     <div style="display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;"><span style="flex:none;display:${bIcon ? 'inline' : 'none'};">${bIcon ? `<img src="${esc(bIcon)}" style="width:12px;height:12px;vertical-align:-2px;">` : ''}</span><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${bm.bossNumber} ${esc(attrName)}</span></div>
                     <div style="font-size:8.5px;font-weight:800;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(ptName)}PTで凸</div>
                 </div>`);
@@ -10553,29 +10595,30 @@
                 const bandText = sec.cleared
                     ? `Lv${sec.level} ─ ${sec.openHourLabel}開始 → 💀${sec.clearHourLabel} 全撃破想定`
                     : `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'}でストップ`;
-                // 横スクロール中も帯テキストが読めるよう sticky なインライン要素にする
-                cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 0;border-radius:8px;background:${sec.cleared ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${sec.cleared ? '#0E9455' : '#E23036'};font-size:10.5px;font-weight:900;letter-spacing:0.3px;"><span style="position:sticky;left:9px;display:inline-block;padding:0 9px;">${bandText}</span></div>`);
+                cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${sec.cleared ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${sec.cleared ? '#0E9455' : '#E23036'};font-size:10.5px;font-weight:900;letter-spacing:0.3px;white-space:nowrap;">${bandText}</div>`);
                 for (const r of sec.rows) {
                     if (r.gap) {
-                        cells.push('<div style="grid-column:1/-1;color:#C9CED3;font-size:10px;font-weight:900;line-height:1;padding:2px 0;"><span style="position:sticky;left:0;display:inline-block;width:44px;text-align:center;">⋯</span></div>');
+                        cells.push('<div style="grid-column:1/-1;text-align:center;color:#C9CED3;font-size:10px;font-weight:900;line-height:1;padding:2px 0;">⋯</div>');
                         continue;
                     }
                     const isNow = r.hourIdx === nowIdx;
-                    cells.push(`<div style="position:sticky;left:0;z-index:2;background:#fff;font-size:9.5px;font-weight:900;color:${isNow ? '#1E78F0' : '#A4AAB0'};text-align:right;padding:7px 4px 0 0;border-top:1px solid rgba(20,22,26,0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
-                    r.cells.forEach((cell, ci) => {
-                        const c = DC_ATTR_COLORS[model.bosses[ci].attribute] || '#A4AAB0';
+                    cells.push(`<div style="font-size:9.5px;font-weight:900;color:${isNow ? '#1E78F0' : '#A4AAB0'};text-align:right;padding:7px 4px 0 0;border-top:1px solid rgba(20,22,26,0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
+                    for (const { bm, ci } of visible) {
+                        const cell = r.cells[ci];
+                        const c = DC_ATTR_COLORS[bm.attribute] || '#A4AAB0';
                         const chips = cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
                         const clearMark = cell.clears ? '<div style="font-size:9px;font-weight:900;color:#18C26B;text-align:center;">💀撃破</div>' : '';
                         cells.push(`<div style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(20,22,26,0.05);${isNow ? 'background:rgba(30,120,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
-                    });
+                    }
                 }
             }
-            // ボス状況カードと同じ「コンテナ内 横スクロール」方式。
-            // data-no-swipe でタブ横スワイプと衝突させず、時間列 (左端) は sticky で固定。
-            return `<div data-no-swipe style="border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px 6px;background:#fff;overflow-x:auto;-webkit-overflow-scrolling:touch;">
-                    <div style="display:grid;grid-template-columns:44px repeat(5,minmax(104px,1fr));min-width:580px;">${cells.join('')}</div>
+            // ボス状況カードと同じ「コンテナ内 横スクロール」方式 (表全体が一緒に動く)。
+            // data-no-swipe でタブ横スワイプと衝突させない。絞り込み時は列数に応じて幅が縮む。
+            const minW = 44 + nCols * 104;
+            return `${filterRow}<div data-no-swipe style="border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px 6px;background:#fff;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+                    <div style="display:grid;grid-template-columns:44px repeat(${nCols},minmax(104px,1fr));min-width:${minW}px;">${cells.join('')}</div>
                 </div>
-                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">↔ 表は横にスクロールできます (時間列は固定)。赤枠⏱=律速 / 青枠👈=あなた / ?=凸可能時間 未登録 / ▼=現在時刻 / ⋯=凸のない時間帯を省略。📸 共有画像もこの形で出力されます。</p>`;
+                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替) / ' : ''}↔ 表は横にスクロールできます。赤枠⏱=律速 / 青枠👈=あなた / ?=凸可能時間 未登録 / ▼=現在時刻 / ⋯=凸のない時間帯を省略。📸 共有画像もこの形で出力されます。</p>`;
         }
 
         // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのマイページに表示
