@@ -1430,6 +1430,32 @@
             #tourOverlay .tour-flow-arrow { animation: none; }
         }
 
+        /* 体験デモ (実UIのモックアップを触って学ぶゾーン) */
+        @keyframes tour-demo-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes tour-demo-ping { 0% { box-shadow: 0 0 0 0 rgba(255,61,68,0.45); } 100% { box-shadow: 0 0 0 12px rgba(255,61,68,0); } }
+        @keyframes tour-demo-hp { from { width: var(--hp-from, 100%); } to { width: var(--hp-to, 82%); } }
+        #tourOverlay .tour-demo {
+            margin-top: 14px; padding: 13px;
+            border-radius: 15px; background: #F7F8F9;
+            border: 1.5px dashed rgba(20,22,26,0.13);
+        }
+        #tourOverlay .tour-demo-tag {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 9.5px; font-weight: 900; letter-spacing: 1px; color: #8A9097;
+            margin-bottom: 9px;
+        }
+        #tourOverlay .tour-demo-card {
+            background: #fff; border-radius: 13px; padding: 12px;
+            border: 1px solid rgba(20,22,26,0.05);
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04);
+            animation: tour-demo-pop .22s ease;
+        }
+        #tourOverlay .tour-demo-note {
+            font-size: 11px; font-weight: 700; color: #6B7178; line-height: 1.6;
+            margin-top: 9px; min-height: 16px;
+        }
+        #tourOverlay .tour-demo button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+
         /* ===== ClaudeDesign 準拠 マイページ ===== */
         @keyframes dcLivePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
         @keyframes dcFadeIn { from{opacity:0} to{opacity:1} }
@@ -4675,34 +4701,31 @@
                 chapterTag: '② 戦闘可能時間',
                 stepLabel: 'CHAPTER 03',
                 title: '戦闘できる時間を\n教えてください',
-                body: 'マイページの <strong>⚔️ 戦闘可能時間</strong> を、24時間タイムラインで<strong>なぞって設定</strong>します。<br><br>塗った時間帯は<br>・<strong>凸プランの時間割当</strong> (あなたの凸が何時ごろかの想定)<br>・<strong>締め凸候補などの通知</strong> (時間外には届きません)<br>に使われます。<br><br>⏳ 当日いつ動けるか読めない人は「<strong>隙間時間型</strong>」を、時間外でも通知を見たい人は「<strong>🔔 いつでも受け取る</strong>」をONに。',
-                tip: '寝てる時間・仕事中などを外しておくと、動けない時間に通知が鳴りません。こまめな更新がおすすめ。',
+                body: 'マイページの <strong>⚔️ 戦闘可能時間</strong> で、自分が動ける時間帯を塗ります。下のデモで実際に触ってみてください👇',
+                demo: 'avail',
+                tip: '⏳ 当日いつ動けるか読めない人は「隙間時間型」、時間外でも通知を見たい人は「🔔 いつでも受け取る」をONに (設定画面にあります)。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
-                jumpTo: { tab: 'mypage', label: '戦闘可能時間を設定する' },
+                jumpTo: { tab: 'mypage', label: '本物の戦闘可能時間を設定する' },
             },
             {
                 emoji: '⚔️',
                 chapterTag: '③ データ提出',
                 stepLabel: 'CHAPTER 04',
                 title: '模擬戦データを\n提出する',
-                body: '各属性 (灼熱/水冷/電撃/鉄甲/風圧) のPTで、ベストダメージと編成5キャラを登録します。<br><br>📝 <strong>手動入力</strong>: 数値欄に直接入力<br>📷 <strong>画像入力</strong>: 戦闘履歴スクショから AI が自動抽出 (ダメージ + 編成5キャラ)<br><br>編成は「ベスト火力時の5キャラ」を。最適凸プランのキャラ衝突回避に使われます。',
-                tip: '画像入力なら 30 秒で全属性入力できます。データが正確なほど最適プランの精度が上がります。',
+                body: '各属性のPTで出せる<strong>ベストダメージ</strong>を登録します。この数値があなたの火力として最適凸プランの計算に使われます。下のデモで提出の流れを体験👇',
+                demo: 'mock',
+                tip: '実物は 📷 戦闘履歴スクショから AI が自動入力 (ダメージ+編成5キャラ、30秒で全属性)。編成はキャラ衝突回避に使われます。',
                 accentColor: '#FF3D44', accentDark: '#D02830',
                 jumpTo: { tab: 'mypage', label: 'マイページで提出する' },
-                showMiniScreen: true,
             },
             {
                 emoji: '🎯',
                 chapterTag: '④ 本番の凸',
                 stepLabel: 'CHAPTER 05',
-                title: '凸は\n3ステップ',
-                body: '本番の凸は次の <strong>3 ステップ</strong>。順番に光る流れのとおりに動けば OK です。',
-                flow: [
-                    { title: '⚔️ 戦闘に入る', desc: 'ボスをタップ →「戦闘準備」へ。"今このボスをやってます" が全員に共有され、二重凸を防ぎます。' },
-                    { title: '📣 交戦中をアピール', desc: '準備中はあなたのアイコンがそのボスに表示。他メンバーは譲るか、強行すると本人に通知が飛びます。' },
-                    { title: '📷 結果を提出', desc: '戦闘後「報告」から 結果画像＋戦闘履歴 を選ぶと AI が自動取り込み。撮り忘れは BlaBlaLINK 画像で一括登録。' },
-                ],
-                tip: '他メンバーが戦闘中のボスをタップすると ⚠️ 警告が出ます。被りを避けるための仕組みです。',
+                title: '凸の流れを\n体験してみよう',
+                body: '本番の凸は <strong>①ボスを選ぶ → ②周りに自動で周知 → ③結果を報告</strong> の3ステップ。下のデモで最後まで体験してみてください👇',
+                demo: 'battle',
+                tip: '撮り忘れたら BlaBlaLINK の3凸まとめ画像で一括登録もできます。',
                 accentColor: '#FF8A2B', accentDark: '#E0701F',
                 jumpTo: { tab: 'mypage', label: 'マイページで試す' },
             },
@@ -4729,6 +4752,185 @@
         ];
         let _tourCurrentIdx = 0;
 
+        // ========== 体験デモ: 実UIのモックアップを触って学ぶ ==========
+        // 実データには一切触れないサンドボックス。ステップ表示のたびに初期化される。
+        let _tourDemo = null;
+        const _TOUR_DEMO_BOSSES = [
+            { n: 1, attr: 'wind' }, { n: 2, attr: 'iron' }, { n: 3, attr: 'fire' },
+            { n: 4, attr: 'water' }, { n: 5, attr: 'electric' },
+        ];
+        const _TOUR_DEMO_DMG = { fire: '22.5', water: '18.0', electric: '15.2', iron: '19.8', wind: '21.1' };
+
+        function _tourDemoInit(kind) {
+            if (kind === 'avail') _tourDemo = { kind, on: [false, false, false, false, false, false, true, true, true, false, false, false] };
+            else if (kind === 'mock') _tourDemo = { kind, picked: null, submitted: [] };
+            else if (kind === 'battle') _tourDemo = { kind, phase: 'pick', boss: null };
+            else _tourDemo = null;
+        }
+        function _tourDemoRefresh() {
+            const zone = document.getElementById('tourDemoZone');
+            if (zone && _tourDemo) zone.innerHTML = _tourDemoBody();
+        }
+        function _tourDemoHtml() {
+            return `<div class="tour-demo">
+                <div class="tour-demo-tag">👇 触ってみる — 本物と同じ操作 (データには保存されません)</div>
+                <div id="tourDemoZone">${_tourDemoBody()}</div>
+            </div>`;
+        }
+        function _tourDemoBody() {
+            const d = _tourDemo;
+            if (!d) return '';
+            if (d.kind === 'avail') return _tourDemoAvailBody(d);
+            if (d.kind === 'mock') return _tourDemoMockBody(d);
+            if (d.kind === 'battle') return _tourDemoBattleBody(d);
+            return '';
+        }
+
+        // --- デモA: 戦闘可能時間 (2時間刻み12マスをタップでON/OFF) ---
+        const _TOUR_AVAIL_HOURS = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 1, 3];
+        function _tourDemoAvailBody(d) {
+            const cells = d.on.map((on, i) => `
+                <div onclick="_tourDemoAvailTap(${i})" style="flex:1;height:34px;border-radius:7px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:800;
+                    ${on ? 'background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;box-shadow:0 2px 6px rgba(46,139,255,0.4);' : 'background:#EDEEF0;color:#B6BBC1;'}">${_TOUR_AVAIL_HOURS[i]}</div>`).join('');
+            const ranges = [];
+            const fmtStart = (idx) => { const h = _TOUR_AVAIL_HOURS[idx]; return h < 5 ? `翌${h}` : `${h}`; };
+            const fmtEnd = (idx) => {
+                const h = _TOUR_AVAIL_HOURS[idx];
+                const eh = h + 2;
+                if (h < 5) return `翌${eh}`;         // 翌1時マス→翌3, 翌3時マス→翌5
+                if (eh >= 24) return `翌${eh - 24}`; // 23時マス→翌1
+                return `${eh}`;
+            };
+            let start = null;
+            for (let i = 0; i <= d.on.length; i++) {
+                if (d.on[i] && start === null) start = i;
+                if ((!d.on[i] || i === d.on.length) && start !== null) {
+                    ranges.push(`${fmtStart(start)}〜${fmtEnd(i - 1)}時`);
+                    start = null;
+                }
+            }
+            const totalOn = d.on.filter(Boolean).length * 2;
+            return `<div class="tour-demo-card">
+                    <div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:8px;">⚔️ 戦闘可能時間 <span style="font-weight:700;color:#A4AAB0;">マスをタップ</span></div>
+                    <div style="display:flex;gap:3px;">${cells}</div>
+                </div>
+                <div class="tour-demo-note">${totalOn > 0
+                    ? `✅ <strong style="color:#1E78F0;">${ranges.join(' / ')}</strong> が戦闘可能に。凸プランはこの時間帯に割当てられ、通知もこの間だけ届きます (計${totalOn}時間)`
+                    : '⚠️ 全部OFFだと通知が届かず、プランにも時間が付きません'}</div>`;
+        }
+        function _tourDemoAvailTap(i) {
+            if (!_tourDemo || _tourDemo.kind !== 'avail') return;
+            _tourDemo.on[i] = !_tourDemo.on[i];
+            _tourDemoRefresh();
+        }
+
+        // --- デモB: 模擬戦データ提出 (属性を選ぶ → 提出) ---
+        function _tourDemoMockBody(d) {
+            const chips = PT_ATTRS.map(a => {
+                const done = d.submitted.includes(a.key);
+                const active = d.picked === a.key;
+                return `<div onclick="_tourDemoMockPick('${a.key}')" style="flex:1;min-width:52px;padding:7px 2px;border-radius:10px;cursor:pointer;text-align:center;transition:all .15s;border:1.5px solid ${active ? DC_ATTR_COLORS[a.key] : 'transparent'};
+                    background:${done ? DC_ATTR_COLORS[a.key] : '#F1F2F4'};">
+                    <img src="${a.icon}" style="width:18px;height:18px;display:block;margin:0 auto 2px;">
+                    <span style="font-size:9px;font-weight:900;color:${done ? '#fff' : '#6B7178'};">${done ? '✓提出済' : a.name}</span>
+                </div>`;
+            }).join('');
+            let detail = '';
+            if (d.picked && !d.submitted.includes(d.picked)) {
+                const a = PT_ATTRS.find(x => x.key === d.picked);
+                detail = `<div class="tour-demo-card" style="margin-top:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="flex:1;">
+                            <div style="font-size:9px;font-weight:800;color:#A4AAB0;letter-spacing:0.5px;">${a.name}PT ベストダメージ</div>
+                            <div style="font-size:20px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${_TOUR_DEMO_DMG[d.picked]}<span style="font-size:11px;color:#A4AAB0;"> B</span></div>
+                        </div>
+                        <button onclick="_tourDemoMockSubmit()" style="padding:10px 16px;border-radius:11px;border:none;background:#14161A;color:#fff;font-size:12px;font-weight:900;cursor:pointer;">提出</button>
+                    </div>
+                    <div style="font-size:10px;color:#A4AAB0;margin-top:6px;">実物は 📷 スクショから AI が自動入力します (手入力もOK)</div>
+                </div>`;
+            }
+            const doneN = d.submitted.length;
+            return `<div class="tour-demo-card">
+                    <div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:8px;">⚔️ 属性をタップして提出してみる</div>
+                    <div style="display:flex;gap:4px;">${chips}</div>
+                </div>${detail}
+                <div class="tour-demo-note">${doneN === 0 ? 'この数値が「あなたの出せる火力」として最適凸プランの計算に使われます'
+                    : doneN >= 5 ? '🎉 全属性そろうとプランの精度が最大に!'
+                    : `✅ ${doneN}/5 属性 提出済み。レーダーと最適プランに即反映されます`}</div>`;
+        }
+        function _tourDemoMockPick(key) {
+            if (!_tourDemo || _tourDemo.kind !== 'mock') return;
+            if (_tourDemo.submitted.includes(key)) return;
+            _tourDemo.picked = key;
+            _tourDemoRefresh();
+        }
+        function _tourDemoMockSubmit() {
+            if (!_tourDemo || _tourDemo.kind !== 'mock' || !_tourDemo.picked) return;
+            _tourDemo.submitted.push(_tourDemo.picked);
+            _tourDemo.picked = null;
+            _tourDemoRefresh();
+        }
+
+        // --- デモC: 戦闘フロー (ボスを選ぶ → みんなに周知 → 結果報告) ---
+        function _tourDemoBattleBody(d) {
+            const tiles = _TOUR_DEMO_BOSSES.map(b => {
+                const c = DC_ATTR_COLORS[b.attr];
+                const mine = d.boss === b.n && d.phase !== 'pick';
+                return `<div onclick="_tourDemoBattleTap(${b.n})" style="flex:1;padding:9px 2px;border-radius:11px;cursor:pointer;text-align:center;transition:all .15s;position:relative;
+                    border:1.5px solid ${mine ? c : 'rgba(20,22,26,0.06)'};background:${mine ? `${c}14` : '#fff'};${mine ? `animation:tour-demo-ping 1.2s ease-out infinite;` : ''}">
+                    ${mine ? '<span style="position:absolute;top:-7px;right:-3px;font-size:12px;">🔥</span>' : ''}
+                    <img src="${DC_ATTR_ICONS[b.attr] || ''}" style="width:16px;height:16px;display:block;margin:0 auto 2px;">
+                    <span style="font-size:11px;font-weight:900;color:${mine ? c : '#14161A'};">B${b.n}</span>
+                </div>`;
+            }).join('');
+            let stage = '';
+            if (d.phase === 'pick') {
+                stage = `<div class="tour-demo-note">1️⃣ 凸したいボスをタップ → <strong>戦闘準備</strong> に入ります</div>`;
+            } else if (d.phase === 'prep') {
+                const c = DC_ATTR_COLORS[_TOUR_DEMO_BOSSES[d.boss - 1].attr];
+                stage = `
+                    <div class="tour-demo-card" style="margin-top:8px;border-left:3px solid ${c};">
+                        <div style="font-size:10px;font-weight:800;color:#A4AAB0;letter-spacing:0.5px;margin-bottom:5px;">📱 他のメンバーの画面 (自動で共有されます)</div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="width:26px;height:26px;flex:none;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%,#5a6068,#2a2e34);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;">あ</span>
+                            <span style="flex:1;font-size:12px;font-weight:800;color:#14161A;">あなたが <strong style="color:${c};">B${d.boss}</strong> と交戦中 🔥</span>
+                        </div>
+                        <div style="font-size:10px;color:#B45309;background:rgba(245,158,11,0.10);border-radius:8px;padding:6px 9px;margin-top:7px;">⚠️ 他の人が同じボスを選ぼうとすると警告が出ます (二重凸防止)</div>
+                    </div>
+                    <button onclick="_tourDemoBattleReport()" style="width:100%;margin-top:8px;padding:12px;border-radius:12px;border:none;background:#14161A;color:#fff;font-size:12.5px;font-weight:900;cursor:pointer;">⚔️ 戦闘した → 📷 結果を報告する</button>
+                    <div class="tour-demo-note">2️⃣ ゲームで戦闘したら、結果画像で報告します</div>`;
+            } else {
+                stage = `
+                    <div class="tour-demo-card" style="margin-top:8px;">
+                        <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
+                            <span style="width:24px;height:24px;flex:none;border-radius:8px;background:#18C26B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;">✓</span>
+                            <span style="font-size:12.5px;font-weight:900;color:#18C26B;">凸報告 完了! ボスのHPに反映されました</span>
+                        </div>
+                        <div style="height:7px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
+                            <div style="height:100%;border-radius:99px;background:linear-gradient(90deg,#FF6B71,#FF3D44);--hp-from:100%;--hp-to:78%;animation:tour-demo-hp 1s ease-out forwards;"></div>
+                        </div>
+                        <div style="font-size:10px;color:#A4AAB0;margin-top:6px;">実物は 結果画像+戦闘履歴 の2枚から AI が自動入力。戦闘準備も自動解除されます</div>
+                    </div>
+                    <button onclick="_tourDemoInit('battle');_tourDemoRefresh()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(20,22,26,0.08);background:#fff;color:#6B7178;font-size:11px;font-weight:800;cursor:pointer;">🔄 もう一度試す</button>`;
+            }
+            return `<div class="tour-demo-card">
+                    <div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:8px;">🎯 本番の凸の流れ</div>
+                    <div style="display:flex;gap:5px;">${tiles}</div>
+                </div>${stage}`;
+        }
+        function _tourDemoBattleTap(n) {
+            if (!_tourDemo || _tourDemo.kind !== 'battle') return;
+            if (_tourDemo.phase === 'reported') return;
+            _tourDemo.boss = n;
+            _tourDemo.phase = 'prep';
+            _tourDemoRefresh();
+        }
+        function _tourDemoBattleReport() {
+            if (!_tourDemo || _tourDemo.kind !== 'battle') return;
+            _tourDemo.phase = 'reported';
+            _tourDemoRefresh();
+        }
+
         function startTour() {
             _tourCurrentIdx = 0;
             _showTourStep();
@@ -4738,6 +4940,7 @@
             if (old) old.remove();
             const step = TOUR_STEPS[_tourCurrentIdx];
             if (!step) { _finishTour(); return; }
+            _tourDemoInit(step.demo || null);   // 体験デモの状態をステップごとに初期化
             const total = TOUR_STEPS.length;
             const isLast = _tourCurrentIdx === total - 1;
             const accent = step.accentColor || '#46A0FF';
@@ -4823,6 +5026,7 @@
                     </div>
                     <div class="tour-body-scroll">
                         <div>${step.body}</div>
+                        ${step.demo ? _tourDemoHtml() : ''}
                         ${flowHtml}
                         ${tipHtml}
                         ${jumpHtml}
