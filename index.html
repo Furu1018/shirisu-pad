@@ -2352,7 +2352,7 @@
     <!-- Drawer -->
     <div class="drawer" id="drawer">
         <div class="drawer-title">しりすこPAD</div>
-        <button class="drawer-menu-item" data-tab="mypage" onclick="switchTabFromDrawer('mypage')">
+        <button class="drawer-menu-item active" data-tab="mypage" onclick="switchTabFromDrawer('mypage')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             マイページ
         </button>
@@ -2360,7 +2360,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
             ユニレ管理
         </button>
-        <button class="drawer-menu-item active" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
+        <button class="drawer-menu-item" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
             ダメージ比較
         </button>
@@ -2403,7 +2403,7 @@
     <!-- Tab Navigation (PC) -->
     <nav class="tab-navigation pc-only">
         <div class="tab-buttons-wrapper">
-            <button class="tab-button" data-tab="mypage" onclick="switchTab('mypage')" title="マイページ">
+            <button class="tab-button active" data-tab="mypage" onclick="switchTab('mypage')" title="マイページ">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 マイページ
             </button>
@@ -2411,7 +2411,7 @@
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
                 ユニレ管理
             </button>
-            <button class="tab-button active" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ比較">
+            <button class="tab-button" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ比較">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
                 ダメージ比較
             </button>
@@ -13458,6 +13458,13 @@
                 _renderTabContent(name);   // 描画 + _markTabRendered を内部で行う
             };
             renderTab(initialName);
+            // ナビの active をコンテンツの active に同期 (HTML側のハードコードずれ対策)
+            if (initialName) {
+                document.querySelectorAll('.tab-button, .drawer-menu-item').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === initialName);
+                });
+                _syncBottomNavActive(initialName);
+            }
             // 初回訪問 (プレイヤー未選択) なら選択モーダルを自動で開く
             if (!getCurrentIdentity()) {
                 openPlayerSelectModal();
