@@ -1129,15 +1129,22 @@ window.supabaseCreateSeason = async function (payload) {
 
     // テストシーズンのみ: 模擬戦データをテスト用にシード (本番は空スタートを維持)
     let mockSeed = null;
+    let attackSeed = null;
     if (isTest) {
         try {
             mockSeed = await window.supabaseSeedTestMockDamages(season.id, metadata.damages_snapshot || []);
         } catch (e) {
             console.warn('[createSeason] テスト用模擬戦データのシードに失敗:', e?.message || e);
         }
+        // レイド中盤らしい状態: ランダムな数名を凸済みに (登録値を基準に使うので模擬戦シードの後)
+        try {
+            attackSeed = await window.supabaseSeedTestMockAttacks(season.id, season.hard_date);
+        } catch (e) {
+            console.warn('[createSeason] テスト用凸データのシードに失敗:', e?.message || e);
+        }
     }
 
-    return { ...season, mockSeed };
+    return { ...season, mockSeed, attackSeed };
 };
 
 // 🧪 クイックテストシーズン: 1クリックで独立したテスト環境を作る
@@ -1343,6 +1350,71 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
         }
     }
     return { fromPrevious, randomFilled: rows.length };
+};
+
+// 🧪 テストシーズン専用: レイド中盤らしい状態を作るため、ランダムな数名を凸済みにする
+// - メンバーの 30〜60% が 1〜3凸済み (1凸が多め)
+// - ダメージは本人の登録模擬戦値の 85〜110% → ボス残HPにも反映 (削れた/倒れたボスができる)
+// 本番シーズンでは呼ばないこと。supabaseSeedTestMockDamages の後に呼ぶ (登録値を基準に使うため)。
+window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
+    const { data: bosses, error: bErr } = await supabase
+        .from('bosses')
+        .select('boss_number, boss_code, weakness, remaining_hp_raw')
+        .eq('season_id', seasonId);
+    if (bErr) throw bErr;
+    if (!bosses || bosses.length === 0) return { players: 0, attacks: 0 };
+
+    const { data: players, error: pErr } = await supabase.from('players').select('id');
+    if (pErr) throw pErr;
+    const { data: dmgs } = await supabase
+        .from('player_damages')
+        .select('player_id, attribute, damage_b');
+    const dmgOf = new Map();   // 'pid:attr' -> B
+    (dmgs || []).forEach(d => dmgOf.set(`${d.player_id}:${d.attribute}`, Number(d.damage_b) || 0));
+
+    // 30〜60% のメンバーを凸済みに。1凸:45% / 2凸:35% / 3凸:20%
+    const ratio = 0.3 + Math.random() * 0.3;
+    const chosen = (players || []).filter(() => Math.random() < ratio);
+    const rows = [];
+    const bossDamage = new Map();   // boss_number -> 合計 raw
+    for (const p of chosen) {
+        const roll = Math.random();
+        const nAtk = roll < 0.45 ? 1 : (roll < 0.8 ? 2 : 3);
+        const pool = [...bosses].sort(() => Math.random() - 0.5).slice(0, nAtk);
+        pool.forEach((b, i) => {
+            const base = dmgOf.get(`${p.id}:${b.weakness}`) || (12 + Math.random() * 12);
+            const dmgB = base * (0.85 + Math.random() * 0.25);
+            const raw = Math.max(1, Math.round(dmgB * 1e9));
+            rows.push({
+                season_id: seasonId,
+                player_id: p.id,
+                attack_date: hardDate,
+                boss_number: b.boss_number,
+                boss_code: b.boss_code,
+                damage_raw: raw,
+                attack_number: i + 1,
+                level: 1,
+                characters: [],
+            });
+            bossDamage.set(b.boss_number, (bossDamage.get(b.boss_number) || 0) + raw);
+        });
+    }
+    if (rows.length === 0) return { players: 0, attacks: 0 };
+
+    const { error: aErr } = await supabase.from('attacks').insert(rows);
+    if (aErr) throw aErr;
+
+    // ボス残HPに反映 (0 まで削れたボスは撃破扱いになる)
+    for (const b of bosses) {
+        const dealt = bossDamage.get(b.boss_number);
+        if (!dealt) continue;
+        const rem = Math.max(0, Number(b.remaining_hp_raw) - dealt);
+        await supabase.from('bosses')
+            .update({ remaining_hp_raw: rem })
+            .eq('season_id', seasonId)
+            .eq('boss_number', b.boss_number);
+    }
+    return { players: chosen.length, attacks: rows.length };
 };
 
 // ============ 凸プラン配信 ============

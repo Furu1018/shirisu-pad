@@ -9099,13 +9099,14 @@
         }
 
         async function handleOpsQuickCreateTestSeason() {
-            if (!confirm('🧪 クイックテストシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元')) return;
+            if (!confirm('🧪 クイックテストシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・レイド中盤を再現: ランダムな数名が凸済みの状態から開始\n・「🧪 テスト終了」で完全に元の状態へ復元')) return;
             try {
                 const r = await window.supabaseQuickCreateTestSeason();
                 _activeSeasonCache = null;
                 _opsDashboardCache = null;
                 const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
-                showNotification(`✅ ${r.month_key} を作成しました${seedTotal > 0 ? ` (模擬戦 ${seedTotal}件シード)` : ''}`);
+                const atkInfo = r.attackSeed?.attacks > 0 ? ` / ${r.attackSeed.players}名が計${r.attackSeed.attacks}凸済み` : '';
+                showNotification(`✅ ${r.month_key} を作成しました${seedTotal > 0 ? ` (模擬戦 ${seedTotal}件シード${atkInfo})` : ''}`);
                 renderOpsDashboard();
             } catch (e) {
                 alert(`❌ クイックテスト作成失敗: ${e?.message || e}`);
