@@ -3462,7 +3462,7 @@
                         <h3>表示モードとオプション</h3>
                         <ul>
                             <li><strong>📋 リスト</strong> — レベル→ボス→凸順の縦リスト。凸ごとの詳細（SLv・編成・オーバーキル）を確認するのに向いています。</li>
-                            <li><strong>🗓 時間割</strong> — 横に5ボス（固定）、縦に時間を並べた時間割形式。スマホ縦画面でも横スクロールなしで収まります。凸のない時間帯は「⋯」で省略。</li>
+                            <li><strong>🗓 時間割</strong> — 横に5ボス、縦に時間を並べた時間割形式。スマホでは表の中だけを横スクロールできます（時間列は固定）。凸のない時間帯は「⋯」で省略。</li>
                             <li><strong>👥 編成</strong> — ONにすると時間割の各凸チップに編成5キャラのアイコンが付きます（共有画像にも反映）。OFFですっきり表示。</li>
                             <li>どちらの表示でも<strong>自分の凸は青くハイライト</strong>されます（右上の 👤 で選択中のプレイヤーが「あなた」）。</li>
                         </ul>
@@ -10553,14 +10553,15 @@
                 const bandText = sec.cleared
                     ? `Lv${sec.level} ─ ${sec.openHourLabel}開始 → 💀${sec.clearHourLabel} 全撃破想定`
                     : `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'}でストップ`;
-                cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${sec.cleared ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${sec.cleared ? '#0E9455' : '#E23036'};font-size:10.5px;font-weight:900;letter-spacing:0.3px;">${bandText}</div>`);
+                // 横スクロール中も帯テキストが読めるよう sticky なインライン要素にする
+                cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 0;border-radius:8px;background:${sec.cleared ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${sec.cleared ? '#0E9455' : '#E23036'};font-size:10.5px;font-weight:900;letter-spacing:0.3px;"><span style="position:sticky;left:9px;display:inline-block;padding:0 9px;">${bandText}</span></div>`);
                 for (const r of sec.rows) {
                     if (r.gap) {
-                        cells.push('<div style="grid-column:1/-1;text-align:center;color:#C9CED3;font-size:10px;font-weight:900;line-height:1;padding:2px 0;">⋯</div>');
+                        cells.push('<div style="grid-column:1/-1;color:#C9CED3;font-size:10px;font-weight:900;line-height:1;padding:2px 0;"><span style="position:sticky;left:0;display:inline-block;width:44px;text-align:center;">⋯</span></div>');
                         continue;
                     }
                     const isNow = r.hourIdx === nowIdx;
-                    cells.push(`<div style="font-size:9.5px;font-weight:900;color:${isNow ? '#1E78F0' : '#A4AAB0'};text-align:right;padding:7px 4px 0 0;border-top:1px solid rgba(20,22,26,0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
+                    cells.push(`<div style="position:sticky;left:0;z-index:2;background:#fff;font-size:9.5px;font-weight:900;color:${isNow ? '#1E78F0' : '#A4AAB0'};text-align:right;padding:7px 4px 0 0;border-top:1px solid rgba(20,22,26,0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
                     r.cells.forEach((cell, ci) => {
                         const c = DC_ATTR_COLORS[model.bosses[ci].attribute] || '#A4AAB0';
                         const chips = cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
@@ -10569,10 +10570,12 @@
                     });
                 }
             }
-            return `<div style="border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px 6px;background:#fff;overflow:hidden;">
-                    <div style="display:grid;grid-template-columns:40px repeat(5,minmax(0,1fr));">${cells.join('')}</div>
+            // ボス状況カードと同じ「コンテナ内 横スクロール」方式。
+            // data-no-swipe でタブ横スワイプと衝突させず、時間列 (左端) は sticky で固定。
+            return `<div data-no-swipe style="border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px 6px;background:#fff;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+                    <div style="display:grid;grid-template-columns:44px repeat(5,minmax(104px,1fr));min-width:580px;">${cells.join('')}</div>
                 </div>
-                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">赤枠⏱=律速 / 青枠👈=あなた / ?=凸可能時間 未登録 / ▼=現在時刻 / ⋯=凸のない時間帯を省略。📸 共有画像もこの形で出力されます。</p>`;
+                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">↔ 表は横にスクロールできます (時間列は固定)。赤枠⏱=律速 / 青枠👈=あなた / ?=凸可能時間 未登録 / ▼=現在時刻 / ⋯=凸のない時間帯を省略。📸 共有画像もこの形で出力されます。</p>`;
         }
 
         // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのマイページに表示
