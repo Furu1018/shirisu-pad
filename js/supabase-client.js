@@ -1345,6 +1345,46 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
     return { fromPrevious, randomFilled: rows.length };
 };
 
+// ============ 凸プラン配信 ============
+// 運営が算出したプランを published_plans に保存 → 全メンバーのマイページに表示。
+// テーブルは supabase/17_published_plans.sql を SQL Editor で適用しておくこと。
+window.supabasePublishPlan = async function (planObj, publishedBy, publishedByName) {
+    const { data: season, error: sErr } = await supabase
+        .from('seasons').select('id').eq('is_active', true).maybeSingle();
+    if (sErr) throw sErr;
+    if (!season) throw new Error('アクティブなシーズンがありません');
+    const { data, error } = await supabase
+        .from('published_plans')
+        .insert({
+            season_id: season.id,
+            plan: planObj,
+            published_by: publishedBy || null,
+            published_by_name: publishedByName || null,
+        })
+        .select('id, published_at')
+        .single();
+    if (error) throw error;
+    // 同一シーズンの古い配信は削除して最新1件だけ残す
+    await supabase.from('published_plans').delete().eq('season_id', season.id).neq('id', data.id);
+    return data;
+};
+
+// アクティブシーズンの最新配信プランを取得 (無ければ null)
+window.supabaseGetPublishedPlan = async function () {
+    const { data: season } = await supabase
+        .from('seasons').select('id, month_key').eq('is_active', true).maybeSingle();
+    if (!season) return null;
+    const { data, error } = await supabase
+        .from('published_plans')
+        .select('id, plan, published_by, published_by_name, published_at')
+        .eq('season_id', season.id)
+        .order('published_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (error) throw error;
+    return data ? { ...data, month_key: season.month_key } : null;
+};
+
 // アクティブなテストシーズンを削除し、player_damages と元のアクティブシーズンを復元
 window.supabaseDeleteActiveTestSeason = async function () {
     const { data: season, error: sErr } = await supabase

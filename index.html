@@ -2477,6 +2477,15 @@
                 <p id="mypageStatusHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;">プレイヤーを選択してください。</p>
             </div>
 
+            <!-- 📤 配信された凸プラン (運営が配信したときだけ表示) -->
+            <div class="dc-card" id="myPublishedPlanCard" style="display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📤 配信された凸プラン</div>
+                    <span id="myPublishedPlanMeta" style="font-size:10px;font-weight:700;color:#A4AAB0;"></span>
+                </div>
+                <div id="myPublishedPlanBody"></div>
+            </div>
+
             <!-- アバター編集モーダル -->
             <div class="player-select-modal" id="avatarEditModal">
                 <div class="player-select-content" style="max-width:480px;">
@@ -2853,6 +2862,7 @@
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">👥 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                         <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📸 共有画像</button>
+                        <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのマイページにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#2ED97F,#18C26B);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);">📤 配信</button>
                     </div>
                 </div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#A4AAB0;line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
@@ -3449,6 +3459,14 @@
                             <span class="ico">⏱</span>
                             <p><strong>律速と締め凸は別物です。</strong>締め凸は「残HPを削り切るトドメの凸（火力の話）」、律速は「進行を遅らせている凸（時間の話）」。律速マークの人がもっと早い時間に凸できると、そのレベルのクリアが前倒しになり、翌レベルの開放も早まります。</p>
                         </div>
+                        <h3>3つの表示モード</h3>
+                        <ul>
+                            <li><strong>📋 リスト</strong> — レベル→ボス→凸順の縦リスト（スマホ向き）。</li>
+                            <li><strong>📊 ボス×時間</strong> — 横に時間軸、縦にボスを並べた工程表（PC向き）。どの時間に誰の凸が入り、いつ各レベルが終わるかを俯瞰できます。律速の凸は赤枠で強調。</li>
+                            <li><strong>👤 メンバー×時間</strong> — 縦にメンバーを並べたシフト表。「誰がいつ・どのボスに凸するか」を人単位で追えます。</li>
+                        </ul>
+                        <h3>📤 プランの配信</h3>
+                        <p>算出したプランは「📤 配信」ボタンで保存でき、全メンバーの<strong>マイページに「配信された凸プラン」カード</strong>として表示されます（Push通知は飛びません）。各メンバーは自分の凸予定（どのボスに・何時ごろ・何B想定）と全体表を確認できます。配信時点のデータに基づくため、状況が大きく動いたら再算出→再配信してください。</p>
                     </section>
 
                     <section id="help-remaining" class="help-section">
@@ -5240,6 +5258,7 @@
                 renderMypageStrongAttrsBadge(null);
                 renderMyDamagePanels(null);
                 _refreshMyStatusSwitcher(null);
+                renderMyPublishedPlan(null);
                 return;
             }
             nameEl.textContent = id.name;
@@ -5250,8 +5269,74 @@
             renderMyFinishCoord(id);
             renderMyNextAttackBosses(id);
             renderMypageStrongAttrsBadge(id);
+            renderMyPublishedPlan(id);
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
+        }
+
+        // ========== 📤 配信された凸プラン (マイページ) ==========
+        // 運営が「📤 配信」したプランを表示。自分の凸予定を先頭に、全体はシフト/ガント表で。
+        async function renderMyPublishedPlan(identity) {
+            const card = document.getElementById('myPublishedPlanCard');
+            if (!card) return;
+            const body = document.getElementById('myPublishedPlanBody');
+            const metaEl = document.getElementById('myPublishedPlanMeta');
+            if (!identity?.id) { card.style.display = 'none'; return; }
+            let pub = null;
+            try {
+                pub = await window.supabaseGetPublishedPlan();
+            } catch (e) {
+                // テーブル未作成環境などは静かに非表示
+                console.warn('[配信プラン] 取得失敗:', e?.message || e);
+                card.style.display = 'none';
+                return;
+            }
+            if (!pub?.plan) { card.style.display = 'none'; return; }
+            const plan = pub.plan;
+            const esc = escapeHtml;
+
+            const mine = [];
+            (plan.levels || []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+                if (a.memberId === identity.id) mine.push({ ...a, level: lv.level, bossNumber: b.bossNumber, attribute: b.attribute, weakness: b.weakness });
+            })));
+            mine.sort((a, b) => (a.hourIdx ?? 99) - (b.hourIdx ?? 99));
+
+            if (metaEl) {
+                let when = '';
+                try {
+                    when = new Date(pub.published_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                } catch { /* noop */ }
+                metaEl.textContent = `${when} 配信${pub.published_by_name ? ` · ${pub.published_by_name}` : ''}`;
+            }
+
+            const mineHtml = mine.length === 0
+                ? '<p style="margin:0;font-size:12px;font-weight:700;color:#8A9097;">このプランであなたへの凸割当はありません (凸済み、またはデータ未提出の可能性)。</p>'
+                : mine.map((a, i) => {
+                    const c = DC_ATTR_COLORS[a.attribute] || '#A4AAB0';
+                    const ptName = PT_ATTRS.find(x => x.key === a.weakness)?.name || '';
+                    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid ${c}33;border-radius:11px;background:${c}0A;${i > 0 ? 'margin-top:6px;' : ''}">
+                        <span style="flex:none;font-size:11px;font-weight:900;color:${c};">Lv${a.level}·B${a.bossNumber}</span>
+                        <span style="flex:1;min-width:0;font-size:12px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(ptName)}PTで凸</span>
+                        ${a.isBottleneck ? '<span title="あなたの凸がこのレベルのクリア時刻を決めています" style="flex:none;font-size:9.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:2px 7px;border-radius:999px;">⏱律速</span>' : ''}
+                        <span style="flex:none;font-size:11px;font-weight:900;color:#1E78F0;">🕐${a.hourLabel ? `${a.hourLabel}ごろ` : '未定'}${a.timeUnknown ? '?' : ''}</span>
+                        <span style="flex:none;font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${a.dmgB.toFixed(1)}B</span>
+                    </div>`;
+                }).join('');
+
+            body.innerHTML = `
+                <p style="margin:0 0 9px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">運営が配信した凸プランです。配信時点の残HP・提出データに基づく想定のため、最新状況とはズレることがあります。</p>
+                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">あなたの凸予定</div>
+                ${mineHtml}
+                <details style="margin-top:10px;">
+                    <summary style="cursor:pointer;font-size:11.5px;font-weight:800;color:#1E78F0;">📊 全体プランを見る</summary>
+                    <div style="margin-top:9px;">
+                        <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:5px;">メンバー×時間</div>
+                        ${_planShiftHtml(plan, { highlightPlayerId: identity.id })}
+                        <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin:11px 0 5px;">ボス×時間</div>
+                        ${_planGanttHtml(plan, { highlightPlayerId: identity.id })}
+                    </div>
+                </details>`;
+            card.style.display = '';
         }
 
         // ========== SLv (シンクロレベル) 表示 + 手動更新 ==========
@@ -9951,7 +10036,22 @@
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">プラン算出に失敗しました。</p>';
                 return;
             }
-            _opsLastPlan = plan;   // 📸 共有画像エクスポート用に保持
+            _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
+            renderOpsPlanView();
+        }
+
+        // ===== プラン表示モード: list(縦リスト) / gantt(ボス×時間) / shift(メンバー×時間) =====
+        let _opsPlanViewMode = localStorage.getItem('shirisuko_plan_view') || 'list';
+        function setOpsPlanViewMode(mode) {
+            _opsPlanViewMode = mode;
+            try { localStorage.setItem('shirisuko_plan_view', mode); } catch { /* noop */ }
+            if (_opsLastPlan) renderOpsPlanView();
+        }
+
+        function renderOpsPlanView() {
+            const el = document.getElementById('opsOptimalPlan');
+            const plan = _opsLastPlan;
+            if (!el || !plan) return;
 
             // ===== ClaudeDesign 準拠レンダリング =====
             const esc = escapeHtml;
@@ -10117,7 +10217,158 @@
                    </div>`
                 : '';
 
-            el.innerHTML = summary + levelSections + warnHtml;
+            const viewBtn = (mode, icon, label) => `<button onclick="setOpsPlanViewMode('${mode}')" style="flex:1;padding:7px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;letter-spacing:0.2px;${_opsPlanViewMode === mode ? 'background:#14161A;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">${icon} ${label}</button>`;
+            const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('gantt', '📊', 'ボス×時間')}${viewBtn('shift', '👤', 'メンバー×時間')}</div>`;
+            const bodyHtml = _opsPlanViewMode === 'gantt' ? _planGanttHtml(plan)
+                : _opsPlanViewMode === 'shift' ? _planShiftHtml(plan)
+                    : levelSections;
+            el.innerHTML = summary + viewToggle + bodyHtml + warnHtml;
+        }
+
+        // ===== 横表示 (ガント/シフト) 共通ヘルパー =====
+        // 時間軸の描画範囲: プラン中の最初の開放時刻〜最後の凸時刻+1
+        function _planTimeRange(plan) {
+            let min = Infinity, max = -Infinity;
+            (plan.levels || []).forEach(lv => {
+                if (lv.openHourIdx != null) { min = Math.min(min, lv.openHourIdx); max = Math.max(max, lv.openHourIdx); }
+                if (lv.clearHourIdx != null) max = Math.max(max, lv.clearHourIdx);
+                lv.bosses.forEach(b => b.attacks.forEach(a => {
+                    if (a.hourIdx != null) { min = Math.min(min, a.hourIdx); max = Math.max(max, a.hourIdx); }
+                }));
+            });
+            if (!isFinite(min) || !isFinite(max)) return null;
+            return { start: min, end: Math.min(max + 1, HOUR_ORDER.length - 1) };
+        }
+        function _planNowIdx(plan) {
+            const h = parseInt(String(plan.currentSlot || '').replace('h', ''), 10);
+            return Number.isFinite(h) ? HOUR_ORDER.indexOf(h) : -1;
+        }
+        function _planHourHeadLabel(idx) {
+            const h = HOUR_ORDER[idx];
+            return (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`;
+        }
+        // 凸チップ (両ビュー共通)。opts.highlightPlayerId の凸は青ハイライト
+        function _planChipHtml(a, color, opts = {}) {
+            const esc = escapeHtml;
+            const hl = opts.highlightPlayerId != null && a.memberId === opts.highlightPlayerId;
+            const border = a.isBottleneck ? '1.5px solid #FF3D44' : (a.timeUnknown ? '1px dashed #F59E0B' : `1px solid ${color}44`);
+            const bg = hl ? 'rgba(30,120,240,0.14)' : `${color}12`;
+            const mark = a.isBottleneck ? '<span style="color:#E23036;">⏱</span>' : (a.timeUnknown ? '<span style="color:#B45309;">?</span>' : '');
+            const label = opts.label || esc(a.memberName);
+            const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeUnknown ? ' (凸可能時間 未登録)' : ''}`;
+            return `<div title="${esc(tip)}" style="display:flex;align-items:center;gap:3px;border:${border};background:${bg};border-radius:7px;padding:2px 5px;font-size:9.5px;font-weight:800;color:#14161A;white-space:nowrap;max-width:100%;overflow:hidden;">${mark}<span style="overflow:hidden;text-overflow:ellipsis;">${label}</span><span style="flex:none;color:#6B7178;font-weight:900;font-variant-numeric:tabular-nums;">${a.dmgB.toFixed(1)}</span></div>`;
+        }
+
+        // 📊 ボス×時間 ガント表示: 横=時間帯 / 縦=レベルごとの5ボス
+        function _planGanttHtml(plan, opts = {}) {
+            const esc = escapeHtml;
+            const range = plan.timeAware ? _planTimeRange(plan) : null;
+            if (!range) return '<p style="font-size:12px;color:#A4AAB0;">時間データがないため横表示できません。再度プランを算出してください。</p>';
+            const nCols = range.end - range.start + 1;
+            const nowIdx = _planNowIdx(plan);
+            const cells = [];
+            // ヘッダー行 (時間軸)
+            cells.push('<div style="position:sticky;left:0;z-index:2;background:#fff;"></div>');
+            for (let i = range.start; i <= range.end; i++) {
+                const isNow = i === nowIdx;
+                cells.push(`<div style="text-align:center;padding:4px 2px;font-size:10px;font-weight:900;color:${isNow ? '#1E78F0' : '#A4AAB0'};">${isNow ? '▼' : ''}${_planHourHeadLabel(i)}</div>`);
+            }
+            for (const lv of plan.levels) {
+                const ok = lv.levelCleared;
+                const bandText = ok
+                    ? `Lv${lv.level} ─ ${lv.openHourLabel}開始 → 💀${lv.clearHourLabel} 全撃破想定`
+                    : `Lv${lv.level} ─ ${lv.bosses.some(b => b.timeConstrained) ? '時間不足' : '火力不足'}でストップ`;
+                cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${ok ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${ok ? '#0E9455' : '#E23036'};font-size:10.5px;font-weight:900;letter-spacing:0.3px;">${bandText}</div>`);
+                for (const b of lv.bosses) {
+                    const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                    const bIcon = DC_ATTR_ICONS[b.attribute] || '';
+                    const ptName = PT_ATTRS.find(x => x.key === b.weakness)?.name || '';
+                    const assigned = b.attacks.reduce((s, a) => s + a.usedB, 0);
+                    const pct = b.targetHpB > 0 ? Math.min(100, (assigned / b.targetHpB) * 100) : 100;
+                    const hpNote = b.targetHpB <= 0 ? '撃破済'
+                        : (b.cleared ? `💀${b.clearHourLabel || ''}` : `残${b.remainingHpB.toFixed(1)}B`);
+                    cells.push(`<div style="position:sticky;left:0;z-index:1;background:#fff;padding:5px 7px 5px 0;border-top:1px solid rgba(20,22,26,0.05);">
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            <span style="width:20px;height:20px;flex:none;border-radius:6px;background:${c};display:flex;align-items:center;justify-content:center;">${bIcon ? `<img src="${esc(bIcon)}" style="width:13px;height:13px;">` : ''}</span>
+                            <span style="font-size:11px;font-weight:900;color:#14161A;">B${b.bossNumber}</span>
+                            <span style="font-size:9px;font-weight:800;color:${c};">${esc(ptName)}PT</span>
+                        </div>
+                        <div style="margin-top:4px;height:3px;border-radius:2px;background:#EDEEF0;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${b.cleared ? '#18C26B' : c};"></div></div>
+                        <div style="margin-top:2px;font-size:8.5px;font-weight:800;color:${b.targetHpB <= 0 ? '#A4AAB0' : (b.cleared ? '#18C26B' : '#E23036')};">${hpNote}</div>
+                    </div>`);
+                    for (let i = range.start; i <= range.end; i++) {
+                        const isNow = i === nowIdx;
+                        const chips = b.attacks.filter(a => a.hourIdx === i).map(a => _planChipHtml(a, c, opts)).join('');
+                        cells.push(`<div style="padding:4px 3px;border-top:1px solid rgba(20,22,26,0.05);border-left:1px solid ${isNow ? 'rgba(30,120,240,0.35)' : 'rgba(20,22,26,0.04)'};${isNow ? 'background:rgba(30,120,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:26px;">${chips}</div>`);
+                    }
+                }
+            }
+            return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px;background:#fff;">
+                    <div style="display:grid;grid-template-columns:132px repeat(${nCols},minmax(72px,1fr));min-width:${132 + nCols * 72}px;">${cells.join('')}</div>
+                </div>
+                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">赤枠⏱=律速 (このレベルのクリア時刻を決める凸) / ?=凸可能時間 未登録 / ▼=現在時刻。横にスクロールできます。</p>`;
+        }
+
+        // 👤 メンバー×時間 シフト表示: 横=時間帯 / 縦=メンバー (自分の行は先頭+青ハイライト)
+        function _planShiftHtml(plan, opts = {}) {
+            const esc = escapeHtml;
+            const range = plan.timeAware ? _planTimeRange(plan) : null;
+            if (!range) return '<p style="font-size:12px;color:#A4AAB0;">時間データがないため横表示できません。再度プランを算出してください。</p>';
+            const nCols = range.end - range.start + 1;
+            const nowIdx = _planNowIdx(plan);
+            const byMember = new Map();
+            plan.levels.forEach(lv => lv.bosses.forEach(b => b.attacks.forEach(a => {
+                const r = byMember.get(a.memberId) || { id: a.memberId, name: a.memberName, attacks: [] };
+                r.attacks.push({ ...a, level: lv.level, bossNumber: b.bossNumber, attribute: b.attribute });
+                byMember.set(a.memberId, r);
+            })));
+            const firstHour = m => Math.min(...m.attacks.map(a => a.hourIdx ?? 99));
+            const rows = [...byMember.values()].sort((x, y) => firstHour(x) - firstHour(y));
+            if (opts.highlightPlayerId != null) {
+                rows.sort((x, y) => (y.id === opts.highlightPlayerId ? 1 : 0) - (x.id === opts.highlightPlayerId ? 1 : 0));
+            }
+            if (rows.length === 0) return '<p style="font-size:12px;color:#A4AAB0;">割当された凸がありません。</p>';
+            const cells = [];
+            cells.push('<div style="position:sticky;left:0;z-index:2;background:#fff;"></div>');
+            for (let i = range.start; i <= range.end; i++) {
+                const isNow = i === nowIdx;
+                cells.push(`<div style="text-align:center;padding:4px 2px;font-size:10px;font-weight:900;color:${isNow ? '#1E78F0' : '#A4AAB0'};">${isNow ? '▼' : ''}${_planHourHeadLabel(i)}</div>`);
+            }
+            for (const m of rows) {
+                const hl = opts.highlightPlayerId != null && m.id === opts.highlightPlayerId;
+                const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(m.id, m.name, 22) : '';
+                cells.push(`<div style="position:sticky;left:0;z-index:1;background:${hl ? '#EAF3FF' : '#fff'};display:flex;align-items:center;gap:6px;padding:5px 7px 5px ${hl ? '5px' : '0'};border-top:1px solid rgba(20,22,26,0.05);${hl ? 'border-left:3px solid #1E78F0;' : ''}">
+                    ${avatar}<span style="font-size:11px;font-weight:${hl ? 900 : 800};color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(m.name)}${hl ? ' 👈' : ''}</span>
+                </div>`);
+                for (let i = range.start; i <= range.end; i++) {
+                    const isNow = i === nowIdx;
+                    const chips = m.attacks.filter(a => a.hourIdx === i).map(a => {
+                        const c = DC_ATTR_COLORS[a.attribute] || '#A4AAB0';
+                        return _planChipHtml(a, c, { ...opts, label: `Lv${a.level}·B${a.bossNumber}` });
+                    }).join('');
+                    cells.push(`<div style="padding:4px 3px;border-top:1px solid rgba(20,22,26,0.05);border-left:1px solid ${isNow ? 'rgba(30,120,240,0.35)' : 'rgba(20,22,26,0.04)'};${isNow ? 'background:rgba(30,120,240,0.04);' : (hl ? 'background:rgba(30,120,240,0.03);' : '')}display:flex;flex-direction:column;gap:3px;min-height:26px;">${chips}</div>`);
+                }
+            }
+            return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px;background:#fff;">
+                    <div style="display:grid;grid-template-columns:132px repeat(${nCols},minmax(72px,1fr));min-width:${132 + nCols * 72}px;">${cells.join('')}</div>
+                </div>
+                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">チップ=Lv·ボス番号と想定ダメージ。赤枠⏱=律速 / ?=凸可能時間 未登録 / ▼=現在時刻。横にスクロールできます。</p>`;
+        }
+
+        // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのマイページに表示
+        async function handleOpsPublishPlan() {
+            if (!_opsLastPlan) {
+                showNotification('先に「👥 全員」か「⏰ 凸可能のみ」でプランを算出してください');
+                return;
+            }
+            if (!confirm('📤 現在表示中のプランを全メンバーに配信しますか？\n各メンバーのマイページに「配信された凸プラン」として表示されます (Push通知は送りません)。')) return;
+            try {
+                const me = getCurrentIdentity();
+                await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null);
+                showNotification('✅ プランを配信しました');
+            } catch (e) {
+                alert(`❌ 配信失敗: ${e?.message || e}\n\n初回は supabase/17_published_plans.sql を SQL Editor で実行してください。`);
+            }
         }
 
         // AI に締め凸ベスト候補を聞く (Phase 4d)
