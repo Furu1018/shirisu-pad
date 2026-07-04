@@ -999,8 +999,10 @@ window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode
 
 // 新規シーズンを作成（既存アクティブシーズンは自動で非アクティブ化）
 // payload: { hardDate, monthKey, bosses: [...], isTest? }
-// 注意: 前回レイドのダメージ引継ぎ機能 (seedFromPrevious) は廃止しました。
+// 注意: 本番シーズンの前回ダメージ引継ぎは廃止しました (空スタートが正しい挙動)。
 //       模擬戦提出は各メンバーがシーズン期間中に行う運用です。
+//       テストシーズン (isTest=true) のみ、動作確認・入力練習用に模擬戦データを
+//       自動シードします (前回実績 + ランダム補完 / 終了時にスナップショットから復元)。
 window.supabaseCreateSeason = async function (payload) {
     if (!payload.hardDate) throw new Error('hardDate 必須');
     if (!payload.monthKey) throw new Error('monthKey 必須');
@@ -1125,7 +1127,17 @@ window.supabaseCreateSeason = async function (payload) {
     const { error: clrErr } = await supabase.from('player_damages').delete().gte('player_id', 0);
     if (clrErr) console.warn('[createSeason] player_damages クリアに失敗:', clrErr?.message);
 
-    return { ...season };
+    // テストシーズンのみ: 模擬戦データをテスト用にシード (本番は空スタートを維持)
+    let mockSeed = null;
+    if (isTest) {
+        try {
+            mockSeed = await window.supabaseSeedTestMockDamages(season.id, metadata.damages_snapshot || []);
+        } catch (e) {
+            console.warn('[createSeason] テスト用模擬戦データのシードに失敗:', e?.message || e);
+        }
+    }
+
+    return { ...season, mockSeed };
 };
 
 // 🧪 クイックテストシーズン: 1クリックで独立したテスト環境を作る
@@ -1153,36 +1165,49 @@ window.supabaseQuickCreateTestSeason = async function () {
 // 前回レイドの実攻撃ダメージから各メンバーの属性別ダメージを初期登録
 // 同じPT属性に複数回凸している場合は「最大値」を採用
 // newSeasonId: 今作成したシーズン (除外用)
+// ※本番シーズンの引継ぎ運用は廃止済み。現在はテストシーズンのシード
+//   (supabaseSeedTestMockDamages) からのみ呼ばれる。
 window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
-    // 直近の前シーズン (新シーズンを除く、テストシーズン除外、hard_date 降順で先頭)
+    // 直近の本番シーズン候補 (新シーズンを除く、テストシーズン除外、hard_date 降順)
     const { data: seasons, error: sErr } = await supabase
         .from('seasons')
         .select('id, hard_date')
         .neq('id', newSeasonId)
         .eq('is_test', false)
         .order('hard_date', { ascending: false })
-        .limit(1);
+        .limit(6);
     if (sErr) throw sErr;
     if (!seasons || seasons.length === 0) return { seeded: 0, reason: 'no_previous' };
-    const prevId = seasons[0].id;
+
+    // 凸記録のあるシーズンが見つかるまで新しい順に遡る
+    // (作成直後で凸ゼロの本番シーズンなどはスキップ)
+    let prevId = null;
+    let atks = null;
+    for (const s of seasons) {
+        let rows = null;
+        try {
+            const r = await supabase
+                .from('attacks').select('player_id, boss_code, damage_raw, characters').eq('season_id', s.id);
+            if (!r.error) rows = r.data;
+        } catch { /* fallthrough */ }
+        if (rows == null) {
+            // characters カラム未マイグ環境ではフォールバック
+            const r2 = await supabase
+                .from('attacks').select('player_id, boss_code, damage_raw').eq('season_id', s.id);
+            rows = r2.data;
+        }
+        if (Array.isArray(rows) && rows.length > 0) {
+            prevId = s.id;
+            atks = rows;
+            break;
+        }
+    }
+    if (!prevId) return { seeded: 0, reason: 'no_attacks' };
 
     // 前シーズンのボス boss_code -> weakness(=PT属性)
     const { data: bosses } = await supabase
         .from('bosses').select('boss_code, weakness').eq('season_id', prevId);
     const weaknessByCode = new Map((bosses || []).map(b => [b.boss_code, b.weakness]));
-
-    // 前シーズンの全攻撃 (characters カラム未マイグ環境ではフォールバック)
-    let atks = null;
-    try {
-        const r = await supabase
-            .from('attacks').select('player_id, boss_code, damage_raw, characters').eq('season_id', prevId);
-        if (!r.error) atks = r.data;
-    } catch { /* fallthrough */ }
-    if (atks == null) {
-        const r2 = await supabase
-            .from('attacks').select('player_id, boss_code, damage_raw').eq('season_id', prevId);
-        atks = r2.data;
-    }
 
     // 古いスキーマで attacks.characters に画像パス (./character-images/xxx.webp) が
     // 保存されているケースを除外。本物のキャラ名だけを通す。
@@ -1243,6 +1268,81 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
     }
     const charSeedCount = rows.filter(r => Array.isArray(r.characters) && r.characters.length > 0).length;
     return { seeded: rows.length, charactersSeeded: charSeedCount };
+};
+
+// 🧪 テストシーズン専用: 模擬戦データ (player_damages) をテスト用にシードする
+// 1) 直近の凸記録がある本番シーズンから引き継ぎ (supabaseSeedDamagesFromPreviousSeason)
+// 2) それでも埋まらない (プレイヤー × 属性) はランダム値で補完
+//    基準値はそのプレイヤーの実績平均 → 無ければテスト直前の提出値 (snapshotRows) → 全体平均
+// 本番シーズンでは呼ばないこと (空スタートが正しい挙動)。
+window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) {
+    const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
+
+    // 1) 前回本番の凸結果ベースで引き継ぎ
+    let fromPrevious = 0;
+    try {
+        const r = await window.supabaseSeedDamagesFromPreviousSeason(newSeasonId);
+        fromPrevious = r?.seeded || 0;
+    } catch (e) {
+        console.warn('[testSeed] 前回シーズンからの引き継ぎに失敗:', e?.message || e);
+    }
+
+    // 2) 全プレイヤー × 5属性 の不足分をランダム補完
+    const { data: players, error: pErr } = await supabase.from('players').select('id');
+    if (pErr) throw pErr;
+    const { data: existing } = await supabase
+        .from('player_damages')
+        .select('player_id, attribute, damage_b');
+
+    const have = new Set((existing || []).map(d => `${d.player_id}:${d.attribute}`));
+
+    // プレイヤーごとの基準値: 引継ぎ済みの実績 + テスト直前の提出値 (スナップショット) の平均
+    const sums = new Map();
+    const addToSums = (d) => {
+        const v = Number(d.damage_b) || 0;
+        if (v <= 0) return;
+        const s = sums.get(d.player_id) || { total: 0, n: 0 };
+        s.total += v; s.n++;
+        sums.set(d.player_id, s);
+    };
+    (existing || []).forEach(addToSums);
+    (Array.isArray(snapshotRows) ? snapshotRows : []).forEach(addToSums);
+
+    let globalTotal = 0, globalN = 0;
+    for (const s of sums.values()) { globalTotal += s.total; globalN += s.n; }
+    const globalAvg = globalN > 0 ? globalTotal / globalN : 20;  // 実績ゼロ環境のフォールバック (B単位)
+
+    const rows = [];
+    (players || []).forEach(p => {
+        const s = sums.get(p.id);
+        const base = s && s.n > 0 ? s.total / s.n : globalAvg;
+        ATTRS.forEach(attr => {
+            if (have.has(`${p.id}:${attr}`)) return;
+            const dmg = base * (0.7 + Math.random() * 0.6);  // 基準値の 70〜130% でばらつかせる
+            rows.push({
+                player_id: p.id,
+                attribute: attr,
+                damage_b: Number(dmg.toFixed(3)),
+                characters: [],
+                updated_at: new Date().toISOString(),
+            });
+        });
+    });
+
+    if (rows.length > 0) {
+        const r1 = await supabase
+            .from('player_damages')
+            .upsert(rows, { onConflict: 'player_id,attribute' });
+        if (r1.error) {
+            // characters カラム未マイグ環境ではフォールバック
+            const basicRows = rows.map(({ characters, ...rest }) => rest);
+            const r2 = await supabase
+                .from('player_damages')
+                .upsert(basicRows, { onConflict: 'player_id,attribute' });
+            if (r2.error) throw r2.error;
+        }
+    }
+    return { fromPrevious, randomFilled: rows.length };
 };
 
 // アクティブなテストシーズンを削除し、player_damages と元のアクティブシーズンを復元

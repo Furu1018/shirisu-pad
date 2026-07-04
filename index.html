@@ -3555,7 +3555,7 @@
                             <li><strong>ボス状況カード</strong> — 5体ボスの残HP/凸数/戦闘中メンバーを俯瞰。各ボスに <strong>「⚔️ このボスで凸する」</strong>（戦闘準備）、戦闘中なら <strong>「📷 結果を報告」/「⏪ 解除」</strong> も追加表示</li>
                             <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
                             <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。HP は自動減算されない (別途ボスHP更新で同期)</li>
-                            <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用</li>
+                            <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
                             <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
                             <li><strong>🧪 クイックテストシーズン</strong> — ワンクリックでテストボス1〜5の独立環境を生成。OCR/スクショ不要</li>
                             <li><strong>📣 オンライン / 調整中 メンバー</strong> — リアルタイム共有 (10秒毎ポーリング)。アバター付きで誰が何をしているか即把握</li>
@@ -9002,12 +9002,13 @@
         }
 
         async function handleOpsQuickCreateTestSeason() {
-            if (!confirm('🧪 クイックテストシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・「🧪 テスト終了」で完全に元の状態へ復元')) return;
+            if (!confirm('🧪 クイックテストシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元')) return;
             try {
                 const r = await window.supabaseQuickCreateTestSeason();
                 _activeSeasonCache = null;
                 _opsDashboardCache = null;
-                showNotification(`✅ ${r.month_key} を作成しました`);
+                const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
+                showNotification(`✅ ${r.month_key} を作成しました${seedTotal > 0 ? ` (模擬戦 ${seedTotal}件シード)` : ''}`);
                 renderOpsDashboard();
             } catch (e) {
                 alert(`❌ クイックテスト作成失敗: ${e?.message || e}`);
@@ -10882,7 +10883,7 @@
             const isTest = document.getElementById('opsSeasonIsTest')?.checked;
 
             const confirmMsg = isTest
-                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録とキャラマスタはバックアップされ、「テスト終了」で元に戻せます。`
+                ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録とキャラマスタはバックアップされ、「テスト終了」で元に戻せます。\n模擬戦データはテスト用に自動シードされます (前回実績 + ランダム補完)。`
                 : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。`;
             if (!confirm(confirmMsg)) return;
 
