@@ -34,6 +34,7 @@ function player(name, damagesByAttr, opts = {}) {
         teamsByAttr: opts.teamsByAttr || {},
         attacks: opts.attacks || [],
         availableSlots: opts.availableSlots || [],
+        flexTime: !!opts.flexTime,
     };
 }
 
@@ -296,6 +297,48 @@ test('翌0-4時は「翌N時」ラベルになり、リセットまでの残り�
     ));
     assert.equal(plan.levels[0].bosses[0].attacks[0].hourLabel, '翌2時');
     assert.equal(plan.hoursUntilReset, 6);  // 23,0,1,2,3,4 の6枠
+});
+
+test('⏳隙間時間型: 時刻を割り当てず (hourLabel=null, flex=true)、律速にもならない', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 20 })],
+        [
+            player('隙間さん', { fire: 15 }, { flexTime: true }),
+            player('夜の人', { fire: 15 }, { availableSlots: ['h23'] }),
+        ],
+        { currentSlot: 'h14' },
+    ));
+    const atks = plan.levels[0].bosses[0].attacks;
+    const flex = atks.find(a => a.memberName === '隙間さん');
+    const timed = atks.find(a => a.memberName === '夜の人');
+    assert.equal(flex.flex, true);
+    assert.equal(flex.hourLabel, null, '隙間凸に時刻ラベルを付けない');
+    assert.equal(flex.isBottleneck, false, '隙間凸は律速にしない');
+    assert.equal(timed.isBottleneck, true, '時刻の読める凸が律速になる');
+    assert.equal(plan.levels[0].bosses[0].hasFlex, true);
+    assert.deepEqual(plan.membersFlex, ['隙間さん']);
+});
+
+test('⏳隙間時間型は「時間未登録」の注意対象に含めない', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('隙間さん', { fire: 12 }, { flexTime: true })],
+        { currentSlot: 'h14' },
+    ));
+    assert.deepEqual(plan.membersTimeUnknown, []);
+    assert.equal(plan.levels[0].bosses[0].attacks[0].timeUnknown, false);
+});
+
+test('⏳隙間凸だけで削るボスのクリア時刻は開放時刻扱い (hasFlex で目安と分かる)', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('隙間さん', { fire: 12 }, { flexTime: true })],
+        { currentSlot: 'h14' },
+    ));
+    const b1 = plan.levels[0].bosses[0];
+    assert.equal(b1.cleared, true);
+    assert.equal(b1.clearHourLabel, '14時');
+    assert.equal(plan.levels[0].hasFlex, true);
 });
 
 test('timeAware=false では従来と同じ出力 (時間フィールドは null)', () => {

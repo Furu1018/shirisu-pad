@@ -2129,7 +2129,11 @@ window.supabaseLoadOpsDashboardData = async function () {
                 .or('archived.is.null,archived.eq.false')
                 .order('name', { ascending: true });
         };
-        let r = await tryQuery('id, name, archived, avatar_url, avatar_character, strong_attributes');
+        let r = await tryQuery('id, name, archived, avatar_url, avatar_character, strong_attributes, flex_time, notify_all_hours');
+        if (r.error && /column .*(flex_time|notify_all_hours)/i.test(String(r.error?.message))) {
+            // 18_availability_prefs.sql 未適用環境
+            r = await tryQuery('id, name, archived, avatar_url, avatar_character, strong_attributes');
+        }
         if (r.error && /column .*strong_attributes/i.test(String(r.error?.message))) {
             r = await tryQuery('id, name, archived, avatar_url, avatar_character');
         }
@@ -2256,9 +2260,40 @@ window.supabaseLoadOpsDashboardData = async function () {
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),
             syncLevelEstimated: !known,
             availableSlots: slotsByPlayer.get(p.id) || [],
+            flexTime: !!p.flex_time,           // ⏳ 隙間時間型 (時間指示なしで3凸する人)
+            notifyAllHours: !!p.notify_all_hours,   // 🔔 通知はいつでも受け取る
         };
     });
     return { season, bosses, players: result };
+};
+
+// 戦闘可能時間の運用オプション (⏳隙間時間型 / 🔔いつでも通知) を保存
+// 18_availability_prefs.sql 未適用環境ではエラーメッセージで適用を促す
+window.supabaseUpdateAvailabilityPrefs = async function (playerId, { flexTime, notifyAllHours }) {
+    if (!playerId) throw new Error('プレイヤー未選択');
+    const patch = {};
+    if (flexTime !== undefined) patch.flex_time = !!flexTime;
+    if (notifyAllHours !== undefined) patch.notify_all_hours = !!notifyAllHours;
+    if (Object.keys(patch).length === 0) return;
+    const { error } = await supabase.from('players').update(patch).eq('id', playerId);
+    if (error) {
+        if (/column .*(flex_time|notify_all_hours)/i.test(String(error.message))) {
+            throw new Error('supabase/18_availability_prefs.sql を SQL Editor で適用してください');
+        }
+        throw error;
+    }
+};
+
+// 自分の運用オプションを取得 (未適用環境では両方 false)
+window.supabaseLoadAvailabilityPrefs = async function (playerId) {
+    if (!playerId) return { flexTime: false, notifyAllHours: false };
+    const { data, error } = await supabase
+        .from('players')
+        .select('flex_time, notify_all_hours')
+        .eq('id', playerId)
+        .maybeSingle();
+    if (error) return { flexTime: false, notifyAllHours: false };
+    return { flexTime: !!data?.flex_time, notifyAllHours: !!data?.notify_all_hours };
 };
 
 // プレイヤーを ID で取得（存在チェック用）

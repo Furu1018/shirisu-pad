@@ -84,11 +84,13 @@ export default {
 
       // availability フィルタ: 現在JST時刻に該当時間帯を許可しているプレイヤーのみ残す
       // ★ オプトイン方式: availability に1行も無いプレイヤーは「全時間帯OFF」として除外
+      // ★ notify_all_hours / flex_time のプレイヤーは時間帯に関係なく受け取る
       if (!ignoreAvailability && filteredSubs.length > 0) {
-        const currentSlot = (function () {
-          const now = new Date();
-          // JST = UTC+9
-          const jstHour = (now.getUTCHours() + 9) % 24;
+        const jstHour = (new Date().getUTCHours() + 9) % 24;
+        // 現行の時間別形式 (h00〜h23)
+        const currentSlot = "h" + String(jstHour).padStart(2, "0");
+        // 旧5区分形式のデータが残っている環境への後方互換
+        const legacySlot = (function () {
           if (jstHour >= 5 && jstHour < 9) return "morning";
           if (jstHour >= 9 && jstHour < 14) return "noon";
           if (jstHour >= 14 && jstHour < 18) return "evening";
@@ -104,11 +106,23 @@ export default {
           .select("player_id, time_slot")
           .in("player_id", targetPlayerIds);
 
-        // 「現在 slot を許可している」プレイヤー集合
+        // 「現在 slot を許可している」プレイヤー集合 (hXX / 旧形式 どちらでも可)
         const playersAllowingNow = new Set();
         (availRows || []).forEach(function (r) {
-          if (r.time_slot === currentSlot) playersAllowingNow.add(r.player_id);
+          if (r.time_slot === currentSlot || r.time_slot === legacySlot) playersAllowingNow.add(r.player_id);
         });
+
+        // 🔔 いつでも受け取る / ⏳ 隙間時間型 は時間帯フィルタを通過させる
+        // (18_availability_prefs.sql 未適用環境では列が無いのでスキップ)
+        try {
+          const { data: prefRows } = await sb
+            .from("players")
+            .select("id, notify_all_hours, flex_time")
+            .in("id", targetPlayerIds);
+          (prefRows || []).forEach(function (p) {
+            if (p.notify_all_hours || p.flex_time) playersAllowingNow.add(p.id);
+          });
+        } catch (_e) { /* 列未追加環境 */ }
 
         // 未設定者も含めて全員 opt-in 判定: playersAllowingNow に含まれていなければ除外
         const before = filteredSubs.length;

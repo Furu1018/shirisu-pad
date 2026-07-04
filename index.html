@@ -2186,7 +2186,7 @@
             white-space: nowrap;
         }
 
-        /* ===== 通知受信可能時間: タイムライン (なぞって選択) ===== */
+        /* ===== 戦闘可能時間: タイムライン (なぞって選択) ===== */
         @keyframes availPulseDot {
             0%,100% { opacity: .45; transform: translateX(-50%) scale(1); }
             50%     { opacity: 1;   transform: translateX(-50%) scale(1.15); }
@@ -2630,8 +2630,8 @@
             <div class="dc-card" style="padding:8px 8px 6px;">
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
                 <div onclick="openMyAvailModal()" class="dc-setting-row">
-                    <div class="dc-setting-icon">🕐</div>
-                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">通知受信可能時間</div>
+                    <div class="dc-setting-icon">⚔️</div>
+                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">戦闘可能時間 <span style="font-size:10px;color:#A4AAB0;font-weight:700;">(通知の受信時間)</span></div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openMyPushModal()" class="dc-setting-row">
@@ -2680,11 +2680,28 @@
             <div class="player-select-modal" id="myAvailModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2>🕐 通知受信可能時間</h2>
+                        <h2>⚔️ 戦闘可能時間</h2>
                         <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
-                    <p class="subtitle">なぞって選択 · 24時間タイムライン。締め凸候補などはこの時間帯にいる人だけに配信されます。<br>※運営の「全員に送信」「緊急通知」はこの設定を無視して届きます。</p>
+                    <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
+                    <!-- 運用オプション -->
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
+                            <input type="checkbox" id="myAvailFlexTime" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:#F59E0B;flex:none;">
+                            <span style="flex:1;">
+                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;">⏳ 隙間時間型 (時間の約束はできないが3凸はする)</span>
+                                <span style="display:block;font-size:11px;color:#8A9097;line-height:1.55;margin-top:2px;">当日多忙で時間が読めない人向け。凸プランではボスの割当だけ受け取り、時間帯の指示は付きません (律速にもなりません)。通知は時間帯に関係なく届きます。</span>
+                            </span>
+                        </label>
+                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
+                            <input type="checkbox" id="myAvailNotifyAll" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:#1E78F0;flex:none;">
+                            <span style="flex:1;">
+                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;">🔔 通知はいつでも受け取る</span>
+                                <span style="display:block;font-size:11px;color:#8A9097;line-height:1.55;margin-top:2px;">戦闘可能時間の外でも締め凸候補などの通知が届きます (情報として見たい人向け)。</span>
+                            </span>
+                        </label>
+                    </div>
                     <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
             </div>
@@ -2833,7 +2850,7 @@
                 <div style="display:flex;gap:6px;">
                     <button class="dc-rem-base" data-base-filter="all"            onclick="handleOpsRemainingFilterPick('all')"><span style="font-size:13px;">👥</span> 全員</button>
                     <button class="dc-rem-base" data-base-filter="online"         onclick="handleOpsRemainingFilterPick('online')"><span style="font-size:13px;">🎮</span> オンライン</button>
-                    <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:13px;">⏰</span> 凸可能時間</button>
+                    <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:13px;">⏰</span> 戦闘可能時間</button>
                 </div>
                 <!-- 属性別フィルタ (6ピル, 排他選択) -->
                 <div style="display:flex;gap:5px;margin-top:8px;">
@@ -3449,10 +3466,10 @@
                             <li><strong>⏰ 現在凸可能のみ</strong> — マイページで「現在の時間帯」を ON にしている人だけで算出。<br>夜会・朝会など特定時間に向けた即時プランに便利です。</li>
                         </ul>
                         <h3>時間帯スケジュールの見方</h3>
-                        <p>各メンバーの<strong>凸可能時間</strong>をもとに、それぞれの凸を「何時ごろ打つ想定か」に割り当てて表示します。</p>
+                        <p>各メンバーの<strong>戦闘可能時間</strong>をもとに、それぞれの凸を「何時ごろ打つ想定か」に割り当てて表示します。</p>
                         <ul>
                             <li><strong>🕐 時刻ラベル</strong> — その凸を打つ想定の時間帯。「翌2時」は日付をまたいだ深夜帯（リセット前）の意味です。</li>
-                            <li><strong>🕐 時刻?</strong> — 凸可能時間が未登録のメンバー。「いつでも凸できる」とみなして計算しています。マイページで凸可能時間を登録すると精度が上がります。</li>
+                            <li><strong>🕐 時刻?</strong> — 戦闘可能時間が未登録のメンバー。「いつでも凸できる」とみなして計算しています。マイページで戦闘可能時間を登録すると精度が上がります。</li>
                             <li><strong>⏱ 律速（りっそく）</strong> — そのレベルの中で<strong>一番遅い時間帯に割り当てられた凸</strong>に付く赤い目印です。「律速」はボトルネックという意味で、<strong>この凸が終わるまで次のレベルに進めない＝レベルのクリア時刻を決めている凸</strong>を指します。</li>
                         </ul>
                         <div class="help-callout tip">
@@ -3533,7 +3550,7 @@
 
                         <h3>② 受信したい時間帯を選ぶ（とても重要）</h3>
                         <p>初期設定は<strong>すべての時間帯がOFF</strong>になっています。<strong>最低1つはON</strong>にしないと通知は一切届きません。</p>
-                        <p>マイページの <strong>「🕐 通知受信可能時間」</strong>で、自分が通知を受けられる時間帯をタップして ON にしてください。</p>
+                        <p>マイページの <strong>「🕐 戦闘可能時間」</strong>で、自分が通知を受けられる時間帯をタップして ON にしてください。</p>
                         <ul>
                             <li>AM 5時〜翌 AM 5時の <strong>24時間ぶんを1時間単位</strong>で個別に ON/OFF できます (24スロット)</li>
                             <li>橙色の縦線が日付の変わり目 (24時→0時)</li>
@@ -3562,7 +3579,7 @@
 
                         <h3>🚫 通知が来ない時のチェックリスト</h3>
                         <ol>
-                            <li>マイページの <strong>「🕐 通知受信可能時間」</strong> に1つでもチェックが入っているか?（全OFFだと永久に届きません）</li>
+                            <li>マイページの <strong>「🕐 戦闘可能時間」</strong> に1つでもチェックが入っているか?（全OFFだと永久に届きません）</li>
                             <li>「<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み</span>」と表示されているか?</li>
                             <li>ブラウザがこのサイトの通知を<strong>ブロック</strong>していないか? (上のWarn参照)</li>
                             <li><strong>iPhoneの場合</strong>: ホーム画面のPADアイコンから開いているか? Safariタブからだと通知が動きません</li>
@@ -3783,7 +3800,7 @@
                         </button>
                         <button onclick="openHelpFromSettings('help-notify')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">04</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">通知・凸可能時間の設定</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">通知・戦闘可能時間の設定</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-finish-call')" class="dc-guide-row" style="border-bottom:none;">
@@ -4655,13 +4672,13 @@
             },
             {
                 emoji: '⏰',
-                chapterTag: '② 凸できる時間',
+                chapterTag: '② 戦闘可能時間',
                 stepLabel: 'CHAPTER 03',
-                title: '通知できる時間 =\n凸できる時間',
-                body: 'マイページの <strong>🔔 通知受信可能時間</strong> を、24時間タイムラインで<strong>なぞって設定</strong>します。<br><br>ここで塗った時間帯が「<strong>あなたが凸に動ける時間</strong>」として運営に共有され、<br>・締め凸候補のお願い<br>・「⏰ 現在凸可能のみ」の最適プラン<br>に使われます。',
-                tip: '寝てる時間・仕事中などを外しておくと、動けない時間に通知が来なくなります。こまめな更新がおすすめ。',
+                title: '戦闘できる時間を\n教えてください',
+                body: 'マイページの <strong>⚔️ 戦闘可能時間</strong> を、24時間タイムラインで<strong>なぞって設定</strong>します。<br><br>塗った時間帯は<br>・<strong>凸プランの時間割当</strong> (あなたの凸が何時ごろかの想定)<br>・<strong>締め凸候補などの通知</strong> (時間外には届きません)<br>に使われます。<br><br>⏳ 当日いつ動けるか読めない人は「<strong>隙間時間型</strong>」を、時間外でも通知を見たい人は「<strong>🔔 いつでも受け取る</strong>」をONに。',
+                tip: '寝てる時間・仕事中などを外しておくと、動けない時間に通知が鳴りません。こまめな更新がおすすめ。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
-                jumpTo: { tab: 'mypage', label: '通知可能時間を設定する' },
+                jumpTo: { tab: 'mypage', label: '戦闘可能時間を設定する' },
             },
             {
                 emoji: '⚔️',
@@ -4706,7 +4723,7 @@
                 stepLabel: 'CHAPTER 07',
                 title: 'おしまい！\n楽しんでください',
                 body: 'これでひととおり OK です。<br><br>困ったら <strong>設定タブ → ガイド/チュートリアル</strong> から各章の詳細解説に飛べます。<br><br>このガイドは <strong>設定タブ → ガイド → ▶ 再生</strong> からいつでも見返せます。',
-                tip: 'まずは ①アプリ化&通知 → ②凸可能時間 → ③模擬戦を1属性 の順で済ませるのがおすすめ。',
+                tip: 'まずは ①アプリ化&通知 → ②戦闘可能時間 → ③模擬戦を1属性 の順で済ませるのがおすすめ。',
                 accentColor: '#14161A', accentDark: '#000000',
             },
         ];
@@ -5320,7 +5337,7 @@
                         <span style="flex:none;font-size:11px;font-weight:900;color:${c};">Lv${a.level}·B${a.bossNumber}</span>
                         <span style="flex:1;min-width:0;font-size:12px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(ptName)}PTで凸</span>
                         ${a.isBottleneck ? '<span title="あなたの凸がこのレベルのクリア時刻を決めています" style="flex:none;font-size:9.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:2px 7px;border-radius:999px;">⏱律速</span>' : ''}
-                        <span style="flex:none;font-size:11px;font-weight:900;color:#1E78F0;">🕐${a.hourLabel ? `${a.hourLabel}ごろ` : '未定'}${a.timeUnknown ? '?' : ''}</span>
+                        <span style="flex:none;font-size:11px;font-weight:900;color:${a.flex ? '#B45309' : '#1E78F0'};">${a.flex ? '⏳隙間時間で' : `🕐${a.hourLabel ? `${a.hourLabel}ごろ` : '未定'}${a.timeUnknown ? '?' : ''}`}</span>
                         <span style="flex:none;font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${a.dmgB.toFixed(1)}B</span>
                     </div>`;
                 }).join('');
@@ -5537,8 +5554,34 @@
             if (!id?.id) { showNotification('プレイヤー未選択です'); return; }
             document.getElementById('myAvailModal').classList.add('open');
             renderMyAvailabilitySettings(id);
+            _loadAvailPrefsUI(id.id);
         }
         function closeMyAvailModal() { document.getElementById('myAvailModal').classList.remove('open'); }
+
+        // 運用オプション (⏳隙間時間型 / 🔔いつでも通知) の読み込みと即時保存
+        async function _loadAvailPrefsUI(playerId) {
+            try {
+                const prefs = await window.supabaseLoadAvailabilityPrefs(playerId);
+                const flexEl = document.getElementById('myAvailFlexTime');
+                const allEl = document.getElementById('myAvailNotifyAll');
+                if (flexEl) flexEl.checked = prefs.flexTime;
+                if (allEl) allEl.checked = prefs.notifyAllHours;
+            } catch { /* 未適用環境では両方 OFF のまま */ }
+        }
+        async function handleAvailPrefChange() {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const msg = document.getElementById('mypageAvailMessage');
+            const flexTime = !!document.getElementById('myAvailFlexTime')?.checked;
+            const notifyAllHours = !!document.getElementById('myAvailNotifyAll')?.checked;
+            try {
+                await window.supabaseUpdateAvailabilityPrefs(id.id, { flexTime, notifyAllHours });
+                _opsDashboardCache = null;   // プラン算出に即反映
+                if (msg) { msg.style.color = '#18C26B'; msg.textContent = '✅ 設定を保存しました'; }
+            } catch (e) {
+                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+            }
+        }
 
         function openMyPushModal() {
             const id = getCurrentIdentity();
@@ -6515,7 +6558,7 @@
             }
         }
 
-        // ========== マイページ: 通知受信可能時間 (1時間単位、AM5時開始) ==========
+        // ========== マイページ: 戦闘可能時間 (1時間単位、AM5時開始) ==========
         // ユニオンレイドは AM 5:00 開始 → 翌 AM 5:00 終了。
         // 表示順は 5, 6, ..., 23, 0, 1, 2, 3, 4 (24スロット)。
         const HOUR_ORDER = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
@@ -6532,7 +6575,7 @@
             return _hourKey(h);
         }
 
-        // ===== 通知受信可能時間: タイムライン型 (なぞって選択) =====
+        // ===== 戦闘可能時間: タイムライン型 (なぞって選択) =====
         // state: HOUR_ORDER と同じ並び順の 24 個 bool 配列
         const _availUI = {
             slots: new Array(24).fill(false),
@@ -9621,7 +9664,7 @@
             return `
                 <details style="margin-top:14px;padding:8px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
                     <summary style="cursor:pointer;font-size:13px;font-weight:600;">🕐 何時まで待てば誰が最適？（時間別ベスト候補）</summary>
-                    <p style="margin:8px 0 4px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">通知受信可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
+                    <p style="margin:8px 0 4px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">戦闘可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
                     <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.8;">${itemsHtml}</ul>
                 </details>`;
         }
@@ -9969,7 +10012,11 @@
                             ctx.font = f(13, 900); ctx.fillStyle = c;
                             ctx.fillText(`${i + 1}凸`, PAD + 24, cy + 1);
                             // 時間帯
-                            if (a.hourLabel) {
+                            if (a.flex) {
+                                ctx.font = f(15, 800);
+                                ctx.fillStyle = COL.amber;
+                                ctx.fillText('⏳隙間', PAD + 74, cy + 1);
+                            } else if (a.hourLabel) {
                                 ctx.font = f(15, a.isBottleneck ? 900 : 800);
                                 ctx.fillStyle = a.isBottleneck ? COL.red : COL.sub;
                                 ctx.fillText(`🕐${a.hourLabel}${a.timeUnknown ? '?' : ''}${a.isBottleneck ? ' ⏱律速' : ''}`, PAD + 74, cy + 1);
@@ -9977,7 +10024,7 @@
                             // 名前
                             ctx.font = f(17, 800);
                             ctx.fillStyle = COL.text;
-                            ctx.fillText(String(a.memberName).slice(0, 12), PAD + 74 + (a.hourLabel ? 150 : 0), cy + 1);
+                            ctx.fillText(String(a.memberName).slice(0, 12), PAD + 74 + ((a.hourLabel || a.flex) ? 150 : 0), cy + 1);
                             // SLv
                             ctx.font = f(13, 700);
                             ctx.fillStyle = COL.faint;
@@ -10007,7 +10054,7 @@
             ctx.beginPath(); ctx.moveTo(PAD, y + 6); ctx.lineTo(W - PAD, y + 6); ctx.stroke();
             ctx.font = f(13, 700);
             ctx.fillStyle = COL.faint;
-            ctx.fillText('Generated by しりすこPAD · 時刻は凸可能時間からの想定です', PAD, y + 32);
+            ctx.fillText('Generated by しりすこPAD · 時刻は戦闘可能時間からの想定です', PAD, y + 32);
 
             return new Promise((resolve, reject) => {
                 canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
@@ -10234,7 +10281,7 @@
             ctx.beginPath(); ctx.moveTo(PAD, y + 6); ctx.lineTo(W - PAD, y + 6); ctx.stroke();
             ctx.font = f(13, 700);
             ctx.fillStyle = COL.faint;
-            ctx.fillText('Generated by しりすこPAD · 赤枠⏱=律速 / ?=凸可能時間 未登録 / ⋯=凸のない時間帯を省略', PAD, y + 32);
+            ctx.fillText('Generated by しりすこPAD · 赤枠⏱=律速 / ?=戦闘可能時間 未登録 / ⋯=凸のない時間帯を省略', PAD, y + 32);
 
             return new Promise((resolve, reject) => {
                 canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
@@ -10249,7 +10296,7 @@
                 season, bosses, players,
                 currentSlot: getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
-                timeAware: true,   // 凸可能時間からレベル進行の実現可能性をスケジュール
+                timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
             });
         }
 
@@ -10381,10 +10428,12 @@
                                 ? renderTeamSnippet(a.team, { size: 18 })
                                 : `<span style="font-size:9.5px;font-weight:800;color:#F59E0B;" title="編成未登録 (衝突未検出)">⚠未登録</span>`;
                             const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(a.memberId, a.memberName, 26) : '';
-                            const timeChip = a.hourLabel
+                            const timeChip = a.flex
+                                ? `<span style="flex:none;font-size:9.5px;font-weight:800;color:#B45309;background:rgba(245,158,11,0.10);padding:2px 7px;border-radius:999px;white-space:nowrap;" title="隙間時間型: 時間帯は本人の都合次第 (3凸は行う)">⏳隙間</span>`
+                                : a.hourLabel
                                 ? (a.isBottleneck
                                     ? `<span title="この凸がこのレベルのクリア時刻を決めています" style="flex:none;display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:2px 7px;border-radius:999px;white-space:nowrap;">⏱${a.hourLabel} 律速</span>`
-                                    : `<span style="flex:none;font-size:9.5px;font-weight:800;color:${a.timeUnknown ? '#B45309' : '#6B7178'};background:${a.timeUnknown ? 'rgba(245,158,11,0.10)' : '#F1F2F4'};padding:2px 7px;border-radius:999px;white-space:nowrap;" title="${a.timeUnknown ? '凸可能時間 未登録 (いつでも可として扱い)' : '凸予定の時間帯'}">🕐${a.hourLabel}${a.timeUnknown ? '?' : ''}</span>`)
+                                    : `<span style="flex:none;font-size:9.5px;font-weight:800;color:${a.timeUnknown ? '#B45309' : '#6B7178'};background:${a.timeUnknown ? 'rgba(245,158,11,0.10)' : '#F1F2F4'};padding:2px 7px;border-radius:999px;white-space:nowrap;" title="${a.timeUnknown ? '戦闘可能時間 未登録 (いつでも可として扱い)' : '凸予定の時間帯'}">🕐${a.hourLabel}${a.timeUnknown ? '?' : ''}</span>`)
                                 : '';
                             return `<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;${i > 0 ? 'border-top:1px solid rgba(20,22,26,0.05);' : ''}${isMe ? 'background:rgba(30,120,240,0.07);box-shadow:inset 3px 0 0 #1E78F0;' : ''}">
                                 <span style="flex:none;width:30px;height:22px;border-radius:7px;background:${c}1A;color:${c};font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;">${i + 1}凸</span>
@@ -10435,10 +10484,10 @@
 
             const warnings = [];
             if (plan.anyTimeConstrained) {
-                warnings.push('⏰ 火力はあるのに凸可能時間が合わず削り切れないボスがあります。該当時間帯のメンバーへの声かけか、凸可能時間の更新依頼を。');
+                warnings.push('⏰ 火力はあるのに戦闘可能時間が合わず削り切れないボスがあります。該当時間帯のメンバーへの声かけか、戦闘可能時間の更新依頼を。');
             }
             if (plan.membersTimeUnknown.length > 0) {
-                warnings.push(`凸可能時間 未登録 ${plan.membersTimeUnknown.length}名: ${plan.membersTimeUnknown.slice(0, 5).map(esc).join('、')}${plan.membersTimeUnknown.length > 5 ? '...' : ''}（「いつでも可」として計算中。時間の精度を上げるには登録依頼を）`);
+                warnings.push(`戦闘可能時間 未登録 ${plan.membersTimeUnknown.length}名: ${plan.membersTimeUnknown.slice(0, 5).map(esc).join('、')}${plan.membersTimeUnknown.length > 5 ? '...' : ''}（「いつでも可」として計算中。時間の精度を上げるには登録依頼を）`);
             }
             if (plan.fullyClearedThrough < 3 && !plan.anyTimeConstrained) {
                 warnings.push('現状の登録ダメージでは Lv3 完全攻略に火力が不足する想定です。火力(SLv/編成)の強化や凸の集中が必要。');
@@ -10480,12 +10529,14 @@
             const hl = opts.highlightPlayerId != null && a.memberId === opts.highlightPlayerId;
             const border = a.isBottleneck ? '1.5px solid #FF3D44' : (a.timeUnknown ? '1px dashed #F59E0B' : `1px solid ${color}44`);
             const bg = hl ? 'rgba(30,120,240,0.14)' : `${color}12`;
-            const mark = a.isBottleneck ? '<span style="flex:none;color:#E23036;">⏱</span>' : (a.timeUnknown ? '<span style="flex:none;color:#B45309;">?</span>' : '');
+            const mark = a.isBottleneck ? '<span style="flex:none;color:#E23036;">⏱</span>'
+                : (a.flex ? '<span style="flex:none;color:#B45309;" title="隙間時間型">⏳</span>'
+                : (a.timeUnknown ? '<span style="flex:none;color:#B45309;">?</span>' : ''));
             const label = opts.label || esc(a.memberName);
             const avatar = (typeof renderAvatarHtml === 'function') ? `<span style="flex:none;display:inline-flex;">${renderAvatarHtml(a.memberId, a.memberName, 15)}</span>` : '';
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
                 ? `<div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:2px;margin-top:2px;min-width:0;">${renderTeamSnippet(a.team, { size: 13 })}</div>` : '';
-            const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeUnknown ? ' (凸可能時間 未登録)' : ''}`;
+            const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeUnknown ? ' (戦闘可能時間 未登録)' : ''}`;
             return `<div title="${esc(tip)}" style="display:flex;flex-direction:column;border:${border};background:${bg};border-radius:7px;padding:2px 5px;max-width:100%;overflow:hidden;${hl ? 'box-shadow:0 0 0 1.5px #1E78F0;' : ''}">
                 <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;">${mark}${avatar}<span style="overflow:hidden;text-overflow:ellipsis;">${label}${hl ? ' <span style="color:#1E78F0;">👈</span>' : ''}</span><span style="flex:none;margin-left:auto;color:#6B7178;font-weight:900;font-variant-numeric:tabular-nums;">${a.dmgB.toFixed(1)}</span></div>
                 ${teamRow}
@@ -10502,9 +10553,21 @@
             const sections = plan.levels.map(lv => {
                 const byBoss = new Map(lv.bosses.map(b => [b.bossNumber, b]));
                 const hourSet = new Set();
-                lv.bosses.forEach(b => b.attacks.forEach(a => { if (a.hourIdx != null) hourSet.add(a.hourIdx); }));
+                lv.bosses.forEach(b => b.attacks.forEach(a => { if (a.hourIdx != null && !a.flex) hourSet.add(a.hourIdx); }));
                 const hours = [...hourSet].sort((x, y) => x - y);
                 const rows = [];
+                // ⏳ 隙間時間型の凸は時刻を約束しないので、セクション先頭の専用行にまとめる
+                const hasFlexAttacks = lv.bosses.some(b => (b.attacks || []).some(a => a.flex));
+                if (hasFlexAttacks) {
+                    rows.push({
+                        flexRow: true,
+                        label: '⏳隙間',
+                        cells: bosses.map(bm => {
+                            const b = byBoss.get(bm.bossNumber);
+                            return { attacks: (b?.attacks || []).filter(a => a.flex), clears: false };
+                        }),
+                    });
+                }
                 let prev = null;
                 for (const h of hours) {
                     if (prev != null && h - prev > 1) rows.push({ gap: true });
@@ -10514,7 +10577,7 @@
                         cells: bosses.map(bm => {
                             const b = byBoss.get(bm.bossNumber);
                             return {
-                                attacks: (b?.attacks || []).filter(a => a.hourIdx === h),
+                                attacks: (b?.attacks || []).filter(a => a.hourIdx === h && !a.flex),
                                 clears: b?.clearHourIdx === h,
                             };
                         }),
@@ -10524,6 +10587,7 @@
                 return {
                     level: lv.level, cleared: lv.levelCleared,
                     openHourLabel: lv.openHourLabel, clearHourLabel: lv.clearHourLabel,
+                    hasFlex: !!lv.hasFlex,
                     timeConstrained: lv.bosses.some(b => b.timeConstrained),
                     rows,
                 };
@@ -10594,7 +10658,7 @@
             }
             for (const sec of model.sections) {
                 const bandText = sec.cleared
-                    ? `Lv${sec.level} ─ ${sec.openHourLabel}開始 → 💀${sec.clearHourLabel} 全撃破想定`
+                    ? `Lv${sec.level} ─ ${sec.openHourLabel}開始 → 💀${sec.clearHourLabel} 全撃破想定${sec.hasFlex ? ' (⏳含む·目安)' : ''}`
                     : `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'}でストップ`;
                 cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${sec.cleared ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${sec.cleared ? '#0E9455' : '#E23036'};font-size:10.5px;font-weight:900;letter-spacing:0.3px;white-space:nowrap;">${bandText}</div>`);
                 for (const r of sec.rows) {
@@ -10603,7 +10667,8 @@
                         continue;
                     }
                     const isNow = r.hourIdx === nowIdx;
-                    cells.push(`<div style="font-size:9.5px;font-weight:900;color:${isNow ? '#1E78F0' : '#A4AAB0'};text-align:right;padding:7px 4px 0 0;border-top:1px solid rgba(20,22,26,0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
+                    const labelColor = r.flexRow ? '#B45309' : (isNow ? '#1E78F0' : '#A4AAB0');
+                    cells.push(`<div title="${r.flexRow ? '隙間時間型: 時間帯は本人の都合次第' : ''}" style="font-size:9.5px;font-weight:900;color:${labelColor};text-align:right;padding:7px 4px 0 0;border-top:1px solid rgba(20,22,26,0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
                     for (const { bm, ci } of visible) {
                         const cell = r.cells[ci];
                         const c = DC_ATTR_COLORS[bm.attribute] || '#A4AAB0';
@@ -10619,7 +10684,7 @@
             return `${filterRow}<div data-no-swipe style="border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px 6px;background:#fff;overflow-x:auto;-webkit-overflow-scrolling:touch;">
                     <div style="display:grid;grid-template-columns:44px repeat(${nCols},minmax(104px,1fr));min-width:${minW}px;">${cells.join('')}</div>
                 </div>
-                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替) / ' : ''}↔ 表は横にスクロールできます。赤枠⏱=律速 / 青枠👈=あなた / ?=凸可能時間 未登録 / ▼=現在時刻 / ⋯=凸のない時間帯を省略。📸 共有画像もこの形で出力されます。</p>`;
+                <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替) / ' : ''}↔ 表は横にスクロールできます。赤枠⏱=律速 / 青枠👈=あなた / ?=戦闘可能時間 未登録 / ▼=現在時刻 / ⋯=凸のない時間帯を省略。📸 共有画像もこの形で出力されます。</p>`;
         }
 
         // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのマイページに表示

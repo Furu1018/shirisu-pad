@@ -84,7 +84,9 @@
                     .map(k => IDX_BY_KEY.get(k))
                     .filter(i => i != null && i >= nowIdx)
                     .sort((a, b) => a - b);
-                const timeUnknown = (p.availableSlots || []).length === 0;
+                // ⏳ 隙間時間型: 時間は約束できないが3凸はする人。時間未登録(データ不足)とは区別する
+                const flexTime = !!p.flexTime;
+                const timeUnknown = !flexTime && (p.availableSlots || []).length === 0;
                 return {
                     id: p.id,
                     name: p.name,
@@ -95,8 +97,9 @@
                     teamsByAttr: p.teamsByAttr || {},   // 衝突チェック用編成
                     usedChars: new Set(),               // すでに割当済みのキャラ
                     anyTeamRegistered: Object.values(p.teamsByAttr || {}).some(arr => Array.isArray(arr) && arr.length > 0),
-                    hourIdxs: timeUnknown ? null : rawSlots,   // null = いつでも可
+                    hourIdxs: (flexTime || timeUnknown) ? null : rawSlots,   // null = いつでも可
                     timeUnknown,
+                    flexTime,
                 };
             });
 
@@ -165,7 +168,9 @@
                         dmgB: dmg, usedB: Math.min(dmg, rem), overflowB: Math.max(0, dmg - rem),
                         team: teamRegistered ? team : null,  // 未登録は null マークで警告表示
                         hourIdx: timeAware ? pickHour : null,
-                        hourLabel: timeAware ? hourLabelOf(pickHour) : null,
+                        // ⏳ 隙間時間型は時刻を約束しない: hourLabel は付けず flex マークで表示
+                        hourLabel: (timeAware && !pick.flexTime) ? hourLabelOf(pickHour) : null,
+                        flex: timeAware ? pick.flexTime : false,
                         timeUnknown: timeAware ? pick.timeUnknown : false,
                         isBottleneck: false,                 // レベル確定後に付与
                     });
@@ -177,8 +182,12 @@
                 }
                 const cleared = rem <= 0.0001;
                 if (!cleared && targetHpB > 0) levelCleared = false;
+                // クリア想定時刻は「時刻が読める凸」だけから算出。⏳隙間凸しか無いボスは
+                // 開放時刻扱いにしつつ hasFlex で不確実さを表示側へ伝える
+                const timedIdxs = attacks.filter(a => !a.flex).map(a => a.hourIdx);
                 const bossClearIdx = (timeAware && cleared && attacks.length)
-                    ? Math.max(...attacks.map(a => a.hourIdx)) : null;
+                    ? (timedIdxs.length ? Math.max(...timedIdxs) : openIdx) : null;
+                const hasFlex = attacks.some(a => a.flex);
                 if (cleared && bossClearIdx !== null) levelClearIdx = Math.max(levelClearIdx, bossClearIdx);
                 levelBosses.push({
                     bossNumber: b.boss_number, name: b.name || b.boss_code,
@@ -186,15 +195,17 @@
                     targetHpB, remainingHpB: Math.max(0, rem), cleared, attacks,
                     clearHourIdx: bossClearIdx,
                     clearHourLabel: bossClearIdx !== null ? hourLabelOf(bossClearIdx) : null,
+                    hasFlex,
                     // 火力不足ではなく時間不足で削り切れなかったボスの区別
                     timeConstrained: timeAware && !cleared && targetHpB > 0 && sawTimeExcluded,
                 });
             }
-            // 律速マーク: レベルのクリア時刻を決めている凸 (最も遅い時間帯の凸)
+            // 律速マーク: レベルのクリア時刻を決めている凸 (最も遅い時間帯の凸)。
+            // ⏳隙間凸は時刻を約束していないので律速にしない
             if (timeAware && levelCleared) {
                 levelBosses.forEach(b => {
                     b.attacks.forEach(a => {
-                        if (a.hourIdx === levelClearIdx && levelClearIdx > openIdx) a.isBottleneck = true;
+                        if (!a.flex && a.hourIdx === levelClearIdx && levelClearIdx > openIdx) a.isBottleneck = true;
                     });
                 });
             }
@@ -204,6 +215,7 @@
                 openHourLabel: timeAware ? hourLabelOf(openIdx) : null,
                 clearHourIdx: (timeAware && levelCleared) ? levelClearIdx : null,
                 clearHourLabel: (timeAware && levelCleared) ? hourLabelOf(levelClearIdx) : null,
+                hasFlex: levelBosses.some(b => b.hasFlex),   // ⏳隙間凸を含む (クリア時刻は目安)
             });
             if (levelCleared) fullyClearedThrough = L;
             else break;  // このレベルを越えられないので以降は計画しない
@@ -218,9 +230,11 @@
             .filter(p => p.attackCount < 3)
             .filter(p => Object.values(p.damagesByAttr || {}).every(v => !v || v === 0))
             .map(p => p.name);
+        // ⏳隙間時間型は意図的な選択なので「時間未登録」の注意対象から外す
         const membersTimeUnknown = timeAware
-            ? memberState.filter(m => m.timeUnknown && Object.keys(m.avail).length + (3 - m.remainingAttacks) > 0).map(m => m.name)
+            ? memberState.filter(m => m.timeUnknown && !m.flexTime && Object.keys(m.avail).length + (3 - m.remainingAttacks) > 0).map(m => m.name)
             : [];
+        const membersFlex = timeAware ? memberState.filter(m => m.flexTime).map(m => m.name) : [];
         const anyTimeConstrained = levels.some(lv => lv.bosses.some(b => b.timeConstrained));
 
         const candidateCount = memberState.length;
@@ -232,6 +246,7 @@
             nowHourLabel: timeAware ? hourLabelOf(nowIdx) : null,
             finalClearHourLabel: (timeAware && lastLv?.levelCleared) ? lastLv.clearHourLabel : null,
             membersTimeUnknown,
+            membersFlex,
             anyTimeConstrained,
             hoursUntilReset: timeAware ? (LAST_IDX - nowIdx + 1) : null,
         };
