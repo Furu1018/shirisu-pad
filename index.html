@@ -10483,7 +10483,7 @@
             const label = opts.label || esc(a.memberName);
             const avatar = (typeof renderAvatarHtml === 'function') ? `<span style="flex:none;display:inline-flex;">${renderAvatarHtml(a.memberId, a.memberName, 15)}</span>` : '';
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
-                ? `<div style="display:flex;align-items:center;margin-top:2px;overflow:hidden;">${renderTeamSnippet(a.team, { size: 13 })}</div>` : '';
+                ? `<div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:2px;margin-top:2px;min-width:0;">${renderTeamSnippet(a.team, { size: 13 })}</div>` : '';
             const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeUnknown ? ' (凸可能時間 未登録)' : ''}`;
             return `<div title="${esc(tip)}" style="display:flex;flex-direction:column;border:${border};background:${bg};border-radius:7px;padding:2px 5px;max-width:100%;overflow:hidden;${hl ? 'box-shadow:0 0 0 1.5px #1E78F0;' : ''}">
                 <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;">${mark}${avatar}<span style="overflow:hidden;text-overflow:ellipsis;">${label}${hl ? ' <span style="color:#1E78F0;">👈</span>' : ''}</span><span style="flex:none;margin-left:auto;color:#6B7178;font-weight:900;font-variant-numeric:tabular-nums;">${a.dmgB.toFixed(1)}</span></div>
@@ -10544,9 +10544,9 @@
                 const bIcon = DC_ATTR_ICONS[bm.attribute] || '';
                 const attrName = ATTR_VISUAL[bm.attribute]?.name || '';
                 const ptName = PT_ATTRS.find(x => x.key === bm.weakness)?.name || '';
-                cells.push(`<div style="margin:0 2px;padding:5px 2px;border-radius:9px;background:${c};text-align:center;">
-                    <div style="display:flex;align-items:center;justify-content:center;gap:3px;">${bIcon ? `<img src="${esc(bIcon)}" style="width:12px;height:12px;">` : ''}<span style="font-size:10.5px;font-weight:900;color:#fff;">B${bm.bossNumber} ${esc(attrName)}</span></div>
-                    <div style="font-size:8.5px;font-weight:800;color:rgba(255,255,255,0.85);">${esc(ptName)}PTで凸</div>
+                cells.push(`<div style="min-width:0;overflow:hidden;margin:0 2px;padding:5px 2px;border-radius:9px;background:${c};text-align:center;">
+                    <div style="display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;"><span style="flex:none;display:${bIcon ? 'inline' : 'none'};">${bIcon ? `<img src="${esc(bIcon)}" style="width:12px;height:12px;vertical-align:-2px;">` : ''}</span><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${bm.bossNumber} ${esc(attrName)}</span></div>
+                    <div style="font-size:8.5px;font-weight:800;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(ptName)}PTで凸</div>
                 </div>`);
             }
             for (const sec of model.sections) {
@@ -10565,12 +10565,12 @@
                         const c = DC_ATTR_COLORS[model.bosses[ci].attribute] || '#A4AAB0';
                         const chips = cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
                         const clearMark = cell.clears ? '<div style="font-size:9px;font-weight:900;color:#18C26B;text-align:center;">💀撃破</div>' : '';
-                        cells.push(`<div style="padding:4px 2px;border-top:1px solid rgba(20,22,26,0.05);${isNow ? 'background:rgba(30,120,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
+                        cells.push(`<div style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(20,22,26,0.05);${isNow ? 'background:rgba(30,120,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
                     });
                 }
             }
-            return `<div style="border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px 6px;background:#fff;">
-                    <div style="display:grid;grid-template-columns:44px repeat(5,1fr);">${cells.join('')}</div>
+            return `<div style="border:1px solid rgba(20,22,26,0.06);border-radius:12px;padding:8px 6px;background:#fff;overflow:hidden;">
+                    <div style="display:grid;grid-template-columns:40px repeat(5,minmax(0,1fr));">${cells.join('')}</div>
                 </div>
                 <p style="margin:7px 0 0 0;font-size:10px;color:#A4AAB0;">赤枠⏱=律速 / 青枠👈=あなた / ?=凸可能時間 未登録 / ▼=現在時刻 / ⋯=凸のない時間帯を省略。📸 共有画像もこの形で出力されます。</p>`;
         }
