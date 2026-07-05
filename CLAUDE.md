@@ -2,6 +2,10 @@
 
 NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け PWA。
 
+`.claude/skills/` に作業手順スキルあり (git 同期・どのPC/モデルでも共通):
+`shirisu-verify-ship` (検証→デプロイ) / `shirisu-supabase-migration` (SQL追加) /
+`shirisu-mobile-ui` (UIの落とし穴) / `evidence-first-dev` (進め方の型)。該当作業の前に読むこと。
+
 ## アーキテクチャ
 
 - **index.html**(約13,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成
