@@ -3790,9 +3790,9 @@
                         <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ガイド / チュートリアル</div>
                         <div style="font-size:11px;color:#A4AAB0;margin-top:3px;">PADの使い方を確認</div>
                     </div>
-                    <div id="settingsGuideCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▲</div>
+                    <div id="settingsGuideCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
-                <div id="settingsGuideBody" style="display:block;animation:dcFadeIn 0.2s ease;margin-top:14px;">
+                <div id="settingsGuideBody" style="display:none;animation:dcFadeIn 0.2s ease;margin-top:14px;">
                     <!-- メインアクション: 7章チュートリアルを開始 -->
                     <button onclick="startTour()" style="position:relative;width:100%;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:radial-gradient(120% 90% at 30% 20%, #46A0FF, #1E78F0 65%, #1E78F0);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;font-family:inherit;padding:0;">
                         <!-- 装飾円 -->
@@ -4694,7 +4694,6 @@
                 body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>その後 <strong>マイページの 🔔 Push通知設定</strong> から通知を有効化。',
                 tip: 'iPhone はアプリ化しないと通知が届きません。必ず最初に。',
                 accentColor: '#9B4DFF', accentDark: '#7C3AED',
-                jumpTo: { tab: 'mypage', label: 'マイページを開いて試す' },
             },
             {
                 emoji: '⏰',
@@ -4705,7 +4704,6 @@
                 demo: 'avail',
                 tip: '⏳ 当日いつ動けるか読めない人は「隙間時間型」、時間外でも通知を見たい人は「🔔 いつでも受け取る」をONに (設定画面にあります)。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
-                jumpTo: { tab: 'mypage', label: '本物の戦闘可能時間を設定する' },
             },
             {
                 emoji: '⚔️',
@@ -4716,7 +4714,6 @@
                 demo: 'mock',
                 tip: '実物は 📷 戦闘履歴スクショから AI が自動入力 (ダメージ+編成5キャラ、30秒で全属性)。編成はキャラ衝突回避に使われます。',
                 accentColor: '#FF3D44', accentDark: '#D02830',
-                jumpTo: { tab: 'mypage', label: 'マイページで提出する' },
             },
             {
                 emoji: '🎯',
@@ -4727,7 +4724,6 @@
                 demo: 'battle',
                 tip: '撮り忘れたら BlaBlaLINK の3凸まとめ画像で一括登録もできます。',
                 accentColor: '#FF8A2B', accentDark: '#E0701F',
-                jumpTo: { tab: 'mypage', label: 'マイページで試す' },
             },
             {
                 emoji: '📊',
@@ -4737,7 +4733,6 @@
                 body: '<strong>ユニレ管理タブ</strong> では、誰がどの凸をすべきかの提案 (ギリギリ / 余裕プラン) と、ボスHP更新が行えます。<br><br><strong>比較タブ・ふるり値タブ</strong> では、メンバー間の火力比較と SLv 補正済みの公平な指標が見られます。',
                 tip: 'キャラ衝突 (同じキャラを2回使えない) も自動で考慮されます。',
                 accentColor: '#18C26B', accentDark: '#0EA055',
-                jumpTo: { tab: 'ops', label: 'ユニレ管理を見る' },
                 showMiniScreen: true,
             },
             {
@@ -9184,8 +9179,12 @@
             let rows;
             try {
                 rows = await window.supabaseLoadMemberNotificationStatus();
-                // アバター解決用にプレイヤーキャッシュ (avatar_url/avatar_character) を準備
-                try { await ensureAllPlayersLoaded(); } catch { /* アバターは頭文字にフォールバック */ }
+                // アバター解決用のキャッシュを準備:
+                //   プレイヤー (avatar_url/avatar_character) + キャラマスタ (キャラ名→アイコン画像)
+                try {
+                    await ensureAllPlayersLoaded();
+                    await getNikkeCharsCache();
+                } catch { /* アバターは頭文字にフォールバック */ }
             } catch (e) {
                 el.innerHTML = `<p style="color:#ef4444;font-size:12px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
