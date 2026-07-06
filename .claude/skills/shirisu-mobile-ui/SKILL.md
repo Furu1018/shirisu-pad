@@ -17,6 +17,15 @@ description: しりすこPADのUI実装で踏んだ落とし穴と定石。モ�
   スワイプハンドラが `[data-no-swipe]` 内のタッチを無視する (既存例: mypageDmgPanels, opsBossSummary)
 - これを忘れると「スクロールしたいのにタブが切り替わる」クレームになる
 
+スワイプエンジン自体の設計判断 (壊さないこと):
+- **button/a の上からでもスワイプは発動する**。方向ロック(8px超の横移動)で初めてドラッグ扱いに
+  なるためタップと共存できる。除外は入力系 (input/textarea/select)・開いたモーダル・
+  data-no-swipe 系・ナビだけ。ドラッグ後のゴーストクリックは touchend で capture 抑止している
+- **切替アニメ中は `_swipe.animating` フラグで新規タッチを拒否** (再グラブで状態が壊れるため)
+- 方向ロックは「1.2倍明確に勝った軸」だけ。曖昧な斜めは縦 (スクロール優先) に倒す
+- transform 更新は **rAF で1フレーム1回に間引く** (120Hz 端末対策)。touchmove で直接書かない
+- `html, body { overscroll-behavior-x: none; }` でブラウザの横オーバースクロールを抑止済み
+
 ## CSSグリッド `1fr` のはみ出し (実際に踏んだバグ)
 
 `1fr` は**中身の min-content より縮まない**。折り返し禁止 (white-space:nowrap) の
