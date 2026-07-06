@@ -7230,34 +7230,85 @@
                 el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
                 return;
             }
-            const visible = _myNotificationsExpanded ? rows : rows.slice(0, _NOTIF_INBOX_LIMIT);
+            // 既読管理 (端末ローカル): 既読は既定で非表示にして「見たやつだった」を防ぐ
+            const readSet = _notifReadSet();
+            const isRead = (n) => n.id != null && readSet.has(n.id);
+            const unreadRows = rows.filter(n => !isRead(n));
+            const readRows = rows.filter(isRead);
+
+            const controlsHtml = `
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap;">
+                    <span style="font-size:11px;font-weight:900;color:${unreadRows.length > 0 ? '#1E78F0' : '#A4AAB0'};">${unreadRows.length > 0 ? `🔵 未読 ${unreadRows.length}件` : '未読なし'}</span>
+                    ${unreadRows.length > 0 ? '<button onclick="markAllMyNotificationsRead()" style="padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10.5px;font-weight:800;cursor:pointer;">✔ すべて既読にする</button>' : ''}
+                    <button onclick="toggleMyNotifShowRead()" style="margin-left:auto;padding:5px 11px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:10.5px;font-weight:800;cursor:pointer;">${_myNotifShowRead ? '既読を隠す' : `既読も表示 (${readRows.length})`}</button>
+                </div>`;
+
+            const listRows = _myNotifShowRead ? rows : unreadRows;
+            if (listRows.length === 0) {
+                el.innerHTML = controlsHtml + '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12.5px;padding:6px 0;">✅ すべて確認済みです。新しい通知が届くとここに表示されます。</p>';
+                return;
+            }
+            const visible = _myNotificationsExpanded ? listRows : listRows.slice(0, _NOTIF_INBOX_LIMIT);
             const cardsHtml = visible.map(n => {
+                const read = isRead(n);
                 const tag = n.target_kind === 'all'
                     ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);">全員宛</span>'
                     : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#1d4ed8;">あなた宛</span>';
+                const readBtn = (!read && n.id != null)
+                    ? `<button onclick="markMyNotificationRead(${n.id})" title="既読にして非表示" style="flex:none;padding:4px 9px;border-radius:999px;border:none;background:rgba(30,120,240,0.10);color:#1E78F0;font-size:10px;font-weight:800;cursor:pointer;">✔ 既読</button>`
+                    : '';
                 return `
-                    <div style="padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);margin-bottom:8px;">
+                    <div style="padding:10px 12px;border-radius:8px;border:1px solid ${read ? 'var(--md-sys-color-outline-variant)' : 'rgba(30,120,240,0.30)'};margin-bottom:8px;${read ? 'opacity:0.6;' : 'box-shadow:inset 3px 0 0 #1E78F0;'}">
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
                             ${tag}
                             <strong style="font-size:13px;flex:1;min-width:0;">${escapeHtml(n.title || '(無題)')}</strong>
                             <span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;">${SETTINGS_TS_FMT(n.sent_at)}</span>
+                            ${readBtn}
                         </div>
                         <div style="font-size:12px;line-height:1.55;color:var(--md-sys-color-on-surface);white-space:pre-wrap;word-break:break-word;">${escapeHtml(n.body || '')}</div>
                     </div>`;
             }).join('');
 
             let footerHtml = '';
-            if (rows.length > _NOTIF_INBOX_LIMIT) {
+            if (listRows.length > _NOTIF_INBOX_LIMIT) {
                 footerHtml = _myNotificationsExpanded
                     ? `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface-variant);font-size:12px;cursor:pointer;">▲ 閉じる (最初の${_NOTIF_INBOX_LIMIT}件に戻す)</button>`
-                    : `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">▼ もっと見る (残り${rows.length - _NOTIF_INBOX_LIMIT}件)</button>`;
+                    : `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">▼ もっと見る (残り${listRows.length - _NOTIF_INBOX_LIMIT}件)</button>`;
             }
-            el.innerHTML = cardsHtml + footerHtml;
+            el.innerHTML = controlsHtml + cardsHtml + footerHtml;
         }
 
         function toggleMyNotificationsInbox() {
             _myNotificationsExpanded = !_myNotificationsExpanded;
             renderMyNotificationsInbox(getCurrentIdentity(), true);   // キャッシュ使用で再描画
+        }
+
+        // ===== 通知の既読管理 (端末ローカル / push_notifications_log は全員共有のため削除はしない) =====
+        const _NOTIF_READ_KEY = 'shirisuko_notif_read';
+        let _myNotifShowRead = false;
+        function _notifReadSet() {
+            try { return new Set(JSON.parse(localStorage.getItem(_NOTIF_READ_KEY) || '[]')); }
+            catch { return new Set(); }
+        }
+        function _notifSaveRead(set) {
+            try { localStorage.setItem(_NOTIF_READ_KEY, JSON.stringify([...set].slice(-300))); }
+            catch { /* noop */ }
+        }
+        function markMyNotificationRead(id) {
+            const set = _notifReadSet();
+            set.add(id);
+            _notifSaveRead(set);
+            renderMyNotificationsInbox(getCurrentIdentity(), true);
+        }
+        function markAllMyNotificationsRead() {
+            const set = _notifReadSet();
+            (_myNotificationsCache || []).forEach(n => { if (n.id != null) set.add(n.id); });
+            _notifSaveRead(set);
+            renderMyNotificationsInbox(getCurrentIdentity(), true);
+        }
+        function toggleMyNotifShowRead() {
+            _myNotifShowRead = !_myNotifShowRead;
+            renderMyNotificationsInbox(getCurrentIdentity(), true);
         }
 
         // ========== 締め凸調整中アピール (#7) + 共通ポーリング (#7/#8) ==========
