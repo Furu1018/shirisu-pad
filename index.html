@@ -4047,7 +4047,7 @@
                 <h2 id="opsProxyTitle">✏️ 代理凸報告</h2>
                 <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">他メンバーの代わりに凸を記録します。<br><strong>ボス残HPは自動減算されません</strong> — HP同期はボスHP更新で別途行ってください。</p>
+            <p class="subtitle">他メンバーの代わりに凸を記録します。入力者名がログに残ります。</p>
 
             <div>
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">対象メンバー</label>
@@ -4096,6 +4096,11 @@
                 <div id="opsProxyBulkPreview" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
             </div>
 
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--md-sys-color-on-surface);cursor:pointer;">
+                <input type="checkbox" id="opsProxyHpDecrement" checked style="width:17px;height:17px;flex:none;">
+                ボス残HPもダメージ分減算する
+            </label>
+            <p style="margin:-6px 0 0 25px;font-size:10.5px;color:var(--md-sys-color-on-surface-variant);">スクショから「ボスHP更新」(絶対値で書き換え) を別途行う場合はOFFでもOK。忘れると残HPが実際よりズレます。</p>
             <p id="opsProxyMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
@@ -7460,7 +7465,7 @@
             const msg = document.getElementById('mypagePushMessage');
             const id = getCurrentIdentity();
             try {
-                await window.unsubscribeFromPush();
+                await window.unsubscribeFromPush(id?.id || null);
                 msg.textContent = '🛑 Push通知を解除しました';
                 msg.style.color = '#22c55e';
                 if (id) await renderMyPushSettings(id);
@@ -8213,6 +8218,14 @@
                     if (!ctx?.season) { setMsg('❌ アクティブシーズンが見つかりません', true); return; }
                     const boss = ctx.bosses.find(b => b.boss_number === _myAttackSelectedBossNumber);
                     if (!boss) { setMsg('❌ ボス情報が見つかりません', true); return; }
+                    // === 二重報告ガード: 同じボスへの凸が既に登録済み (運営の代理入力と重複するケース) ===
+                    try {
+                        const mine = await window.supabaseLoadMyAttacks(id.id, ctx.season.id, ctx.season.hard_date);
+                        if ((mine || []).some(a => Number(a.boss_number) === Number(boss.boss_number))) {
+                            const okDup = confirm(`⚠️ B${boss.boss_number} への凸は既に登録されています。\n運営が代理入力した可能性があります — 重複でないか確認してください。\n\n[OK] 別の凸としてもう1件登録する\n[キャンセル] やめる`);
+                            if (!okDup) { setMsg('🛑 重複の可能性があるため中止しました', true); return; }
+                        }
+                    } catch { /* noop */ }
                     // === ソフトロック: このボスを別のメンバーが調整中なら確認ダイアログ ===
                     const otherCoords = (_coordActiveCache || []).filter(c =>
                         c.status === 'coordinating'
@@ -9258,10 +9271,118 @@
             el.innerHTML = head + body;
         }
 
+        // ========== 設定タブ: アクティビティログ (activity_log / 種別・人別フィルタ + 並び替え) ==========
+        const _SETLOG_TYPES = {
+            attack:       { label: '凸報告',       color: '#FF3D44' },
+            proxy_attack: { label: '代理凸',       color: '#FF8A2B' },
+            mock_submit:  { label: '模擬戦',       color: '#2E8BFF' },
+            notify_on:    { label: '通知ON',       color: '#18C26B' },
+            notify_off:   { label: '通知OFF',      color: '#8A9097' },
+            avail_change: { label: '戦闘可能時間', color: '#9B4DFF' },
+            ops:          { label: '運営',         color: '#14161A' },
+        };
+        const _SETLOG_FILTERS = [
+            { key: 'all',    label: 'すべて',      types: null },
+            { key: 'attack', label: '⚔️ 凸報告',   types: ['attack'] },
+            { key: 'proxy',  label: '✏️ 代理凸',   types: ['proxy_attack'] },
+            { key: 'mock',   label: '🪞 模擬戦',   types: ['mock_submit'] },
+            { key: 'notify', label: '🔔 通知',     types: ['notify_on', 'notify_off'] },
+            { key: 'avail',  label: '🕐 時間',     types: ['avail_change'] },
+            { key: 'ops',    label: '🛠 運営',     types: ['ops'] },
+        ];
+        let _setLogState = { filter: 'all', player: 'all', asc: false, events: null };
+        function setSettingsLogFilter(key) { _setLogState.filter = key; _renderSettingsLogList(); }
+        function setSettingsLogPlayer(v) { _setLogState.player = v; _renderSettingsLogList(); }
+        function toggleSettingsLogOrder() { _setLogState.asc = !_setLogState.asc; _renderSettingsLogList(); }
+
         async function renderSettingsActivity() {
             const el = document.getElementById('settingsActivityList');
             if (!el) return;
             el.innerHTML = '<p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>';
+            const rows = await window.supabaseLoadActivityLog({ limit: 200 });
+            if (rows === null) {
+                // activity_log 未適用環境: 従来の導出フィードにフォールバック
+                await _renderSettingsActivityLegacy(el);
+                return;
+            }
+            _setLogState.events = rows.map(r => ({
+                type: r.event_type,
+                ts: r.created_at,
+                player: r.players?.name || r.player_name || null,
+                actor: r.actor_name || null,
+                text: r.detail || '',
+            }));
+            const chips = _SETLOG_FILTERS.map(f =>
+                `<button data-setlog-filter="${f.key}" onclick="setSettingsLogFilter('${f.key}')" style="padding:5px 10px;border-radius:999px;border:none;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;"></button>`).join('');
+            const playerNames = [...new Set(_setLogState.events.map(e => e.player).filter(Boolean))].sort();
+            el.innerHTML = `
+                <div data-no-swipe style="display:flex;gap:5px;overflow-x:auto;padding-bottom:6px;margin-bottom:4px;-webkit-overflow-scrolling:touch;">${chips}</div>
+                <div style="display:flex;gap:6px;margin-bottom:10px;">
+                    <select id="setlogPlayerSel" onchange="setSettingsLogPlayer(this.value)" style="flex:1;min-width:0;padding:7px 9px;border-radius:9px;border:1px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:12px;font-weight:700;">
+                        <option value="all">👥 全メンバー</option>
+                        ${playerNames.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
+                    </select>
+                    <button id="setlogOrderBtn" onclick="toggleSettingsLogOrder()" style="flex:none;padding:7px 11px;border-radius:9px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;"></button>
+                </div>
+                <div id="setlogList"></div>`;
+            _renderSettingsLogList();
+        }
+
+        function _renderSettingsLogList() {
+            const list = document.getElementById('setlogList');
+            if (!list || !_setLogState.events) return;
+            // フィルタチップの active 表示
+            document.querySelectorAll('[data-setlog-filter]').forEach(btn => {
+                const f = _SETLOG_FILTERS.find(x => x.key === btn.dataset.setlogFilter);
+                const on = btn.dataset.setlogFilter === _setLogState.filter;
+                btn.style.background = on ? '#14161A' : '#F1F2F4';
+                btn.style.color = on ? '#fff' : '#5A6068';
+                btn.textContent = f?.label || '';
+            });
+            const orderBtn = document.getElementById('setlogOrderBtn');
+            if (orderBtn) orderBtn.textContent = _setLogState.asc ? '↑ 古い順' : '↓ 新しい順';
+            const def = _SETLOG_FILTERS.find(f => f.key === _setLogState.filter);
+            let events = _setLogState.events;
+            if (def?.types) events = events.filter(e => def.types.includes(e.type));
+            if (_setLogState.player !== 'all') events = events.filter(e => e.player === _setLogState.player);
+            events = [...events].sort((a, b) => _setLogState.asc ? (new Date(a.ts) - new Date(b.ts)) : (new Date(b.ts) - new Date(a.ts)));
+            if (events.length === 0) {
+                list.innerHTML = '<p style="color:#A4AAB0;font-size:12px;padding:8px 0;">該当する記録がありません。</p>';
+                return;
+            }
+            const fmtTime = (ts) => {
+                try {
+                    const d = new Date(ts);
+                    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
+                } catch { return ''; }
+            };
+            const rowsHtml = events.slice(0, 120).map(e => {
+                const t = _SETLOG_TYPES[e.type] || { label: 'その他', color: '#9AA0A6' };
+                const who = e.player ? `<strong>${escapeHtml(e.player)}</strong> ` : '';
+                const actor = e.actor ? ` <span style="font-size:10px;font-weight:800;color:#FF8A2B;">(入力: ${escapeHtml(e.actor)})</span>` : '';
+                const pillStyle = t.color === '#14161A'
+                    ? `color:#fff;background:#14161A;`
+                    : `color:${t.color};background:${t.color}16;`;
+                return `
+                    <div style="position:relative;padding-bottom:15px;">
+                        <div style="position:absolute;left:-20px;top:2px;width:9px;height:9px;border-radius:50%;background:${t.color};box-shadow:0 0 0 3px #fff;"></div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;">
+                            <span style="font-size:11px;font-weight:800;color:#A4AAB0;font-variant-numeric:tabular-nums;">${fmtTime(e.ts)}</span>
+                            <span style="font-size:10px;font-weight:800;letter-spacing:0.3px;padding:2px 8px;border-radius:999px;${pillStyle}">${t.label}</span>
+                        </div>
+                        <div style="font-size:12.5px;font-weight:600;color:#14161A;line-height:1.5;">${who}${escapeHtml(e.text)}${actor}</div>
+                    </div>`;
+            }).join('');
+            list.innerHTML = `
+                <div style="position:relative;padding-left:20px;">
+                    <div style="position:absolute;left:4px;top:4px;bottom:14px;width:1.5px;background:#EDEEF0;"></div>
+                    ${rowsHtml}
+                </div>
+                ${events.length > 120 ? `<p style="font-size:10.5px;color:#A4AAB0;">最新120件を表示中 (${events.length}件ヒット)</p>` : ''}`;
+        }
+
+        // activity_log 未適用環境のフォールバック (従来の導出フィード / フィルタなし)
+        async function _renderSettingsActivityLegacy(el) {
             let events;
             try {
                 events = await window.supabaseLoadRecentActivity(30);
@@ -9302,6 +9423,7 @@
                     </div>`;
             }).join('');
             el.innerHTML = `
+                <p style="margin:0 0 10px 0;padding:8px 11px;border-radius:10px;background:rgba(245,158,11,0.08);font-size:11px;color:#8A6A2A;line-height:1.5;">💡 supabase/19_activity_log.sql を SQL Editor で適用すると、模擬戦提出・通知/戦闘可能時間の変更・代理凸まで記録される詳細ログ (種別・人別フィルタ付き) に切り替わります。</p>
                 <div style="position:relative;padding-left:20px;">
                     <div style="position:absolute;left:4px;top:4px;bottom:14px;width:1.5px;background:#EDEEF0;"></div>
                     ${rows}
@@ -9562,6 +9684,7 @@
                             <div style="font-size:.5px;color:#A4AAB0;margin-top:1px;font-variant-numeric:tabular-nums;">残 ${p.remain}/3</div>
                         </div>
                         <div style="display:flex;gap:2px;flex:none;">${cells}</div>
+                        <button onclick="openOpsProxyAttackModal(${p.id})" title="${escapeHtml(p.name)} の代理凸を入力" style="flex:none;width:28px;height:28px;margin-left:2px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✏️</button>
                     </div>`;
             };
 
@@ -11225,7 +11348,7 @@
         let _opsProxyMode = 'simple';       // 'simple' | 'bulk'
         let _opsProxyBulkAttacks = [];      // [{ bossCode, bossName, bossNumber, level, totalDamage }]
 
-        async function openOpsProxyAttackModal() {
+        async function openOpsProxyAttackModal(prefillPlayerId = null) {
             document.getElementById('opsProxyAttackModal').classList.add('open');
             document.getElementById('opsProxyMessage').textContent = '';
             document.getElementById('opsProxyDamageInput').value = '';
@@ -11247,6 +11370,11 @@
                     opt.textContent = p.name;
                     sel.appendChild(opt);
                 });
+                // 残凸一覧などからの遷移: 対象メンバーをプリフィル
+                if (prefillPlayerId != null) {
+                    sel.value = String(prefillPlayerId);
+                    onOpsProxyMemberChange();
+                }
             } catch (e) {
                 console.warn('[opsProxy] members 読み込み失敗', e);
             }
@@ -11382,12 +11510,26 @@
             const ctx = await ensureActiveSeasonLoaded();
             if (!ctx?.season) { set('❌ アクティブシーズン無し', true); return; }
 
+            // HP減算オプション + 代理マーク (入力者名をログに残す)
+            const hpDecrement = !!document.getElementById('opsProxyHpDecrement')?.checked;
+            const actorName = getCurrentIdentity()?.name || null;
+            const proxyOpts = { skipHpDecrement: !hpDecrement, isProxy: true, actorName };
+            const memberName = sel.options[sel.selectedIndex]?.text || '?';
+
+            // 重複ガード用: 対象メンバーの登録済み凸
+            let existingAtks = [];
+            try {
+                existingAtks = await window.supabaseLoadMyAttacks(playerId, ctx.season.id, ctx.season.hard_date) || [];
+            } catch { /* noop */ }
+
             try {
                 if (_opsProxyMode === 'bulk') {
                     if (_opsProxyBulkAttacks.length === 0) { set('❌ 先に BlaBlaLINK 画像を読み込んでください', true); return; }
-                    let ok = 0, fail = 0;
+                    let ok = 0, fail = 0, skipped = 0;
                     for (const a of _opsProxyBulkAttacks) {
                         if (!a.bossNumber || !a.bossCode) { fail++; continue; }
+                        // 同一ボスへの凸が既に登録済みならスキップ (本人提出との二重計上防止)
+                        if (existingAtks.some(x => Number(x.boss_number) === Number(a.bossNumber))) { skipped++; continue; }
                         try {
                             await window.supabaseAddAttack({
                                 seasonId: ctx.season.id,
@@ -11398,14 +11540,14 @@
                                 damageRaw: Math.round(a.totalDamage),
                                 level: a.level || ctx.season.current_level || 1,
                                 characters: [],
-                            }, { skipHpDecrement: true });   // 代理凸: HP は別途運営が更新
+                            }, proxyOpts);
                             ok++;
                         } catch (e) {
                             fail++;
                             console.warn('[ops proxy bulk]', e?.message || e);
                         }
                     }
-                    set(`✅ ${ok}凸登録${fail > 0 ? ` / ⚠️ ${fail}件失敗` : ''}`);
+                    set(`✅ ${ok}凸登録${skipped > 0 ? ` / ⏭️ ${skipped}件は同一ボス登録済みでスキップ` : ''}${fail > 0 ? ` / ⚠️ ${fail}件失敗` : ''}`);
                 } else {
                     // simple モード
                     if (!_opsProxyBossNumber) { set('❌ ボスを選択してください', true); return; }
@@ -11413,6 +11555,11 @@
                     const dmgB = parseFloat(dmgInput.value);
                     const dmgRaw = (isNaN(dmgB) || dmgB < 0) ? 0 : Math.round(dmgB * 1e9);
                     const boss = ctx.bosses.find(b => b.boss_number === _opsProxyBossNumber);
+                    // 同一ボスへの凸が既にあれば確認 (本人提出との二重計上防止)
+                    if (existingAtks.some(x => Number(x.boss_number) === Number(boss.boss_number))) {
+                        const cont = confirm(`⚠️ ${memberName} さんは B${boss.boss_number} への凸が既に登録されています。\n本人の報告と重複していませんか？\n\n[OK] それでも登録する\n[キャンセル] やめる`);
+                        if (!cont) { set('🛑 重複の可能性があるため中止しました', true); return; }
+                    }
                     await window.supabaseAddAttack({
                         seasonId: ctx.season.id,
                         playerId,
@@ -11422,8 +11569,8 @@
                         damageRaw: dmgRaw,
                         level: ctx.season.current_level || 1,
                         characters: [],
-                    }, { skipHpDecrement: true });   // 代理凸: HP は別途運営が更新
-                    set(`✅ 代理凸を登録しました (${sel.options[sel.selectedIndex]?.text})`);
+                    }, proxyOpts);
+                    set(`✅ 代理凸を登録しました (${memberName})${hpDecrement ? '' : ' — HPは減算していません。ボスHP更新を忘れずに'}`);
                 }
                 _opsDashboardCache = null;
                 setTimeout(() => closeOpsProxyAttackModal(), 900);

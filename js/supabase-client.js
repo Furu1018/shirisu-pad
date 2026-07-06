@@ -111,11 +111,12 @@ window.subscribeToPush = async function (playerId) {
         }, { onConflict: 'endpoint' });
     if (error) throw error;
 
+    window.supabaseLogActivity?.('notify_on', '通知を有効化', { playerId });
     return { endpoint };
 };
 
-// Push購読を解除 (端末側 + DB側両方)
-window.unsubscribeFromPush = async function () {
+// Push購読を解除 (端末側 + DB側両方)。playerId は任意 (ログ記録用)
+window.unsubscribeFromPush = async function (playerId = null) {
     if (!window.isPushSupported()) return;
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
@@ -125,6 +126,7 @@ window.unsubscribeFromPush = async function () {
     try {
         await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
     } catch (e) { console.warn('unsubscribe db error', e); }
+    window.supabaseLogActivity?.('notify_off', '通知を解除', { playerId });
 };
 
 // Edge Function 'send-push' (slug は実デプロイ先に合わせる) で Push送信
@@ -486,6 +488,8 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB) 
             { onConflict: 'player_id,attribute' }
         );
     if (error) throw error;
+    const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
+    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出`, { playerId });
 };
 
 // 旧スロット (morning/noon/evening/night/latenight) → 新hXX に展開
@@ -533,6 +537,7 @@ window.supabaseSaveAvailability = async function (playerId, slots) {
         .delete()
         .eq('player_id', playerId);
     if (dErr) throw dErr;
+    window.supabaseLogActivity?.('avail_change', `戦闘可能時間を更新 (${clean.length}枠)`, { playerId });
     if (clean.length === 0) return;
     const rows = clean.map(s => ({ player_id: playerId, time_slot: s }));
     const { error: iErr } = await supabase
@@ -720,6 +725,13 @@ window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bos
             }
         } catch (e) { console.warn('[boss hp auto-decrement] failed:', e?.message || e); }
     }
+
+    // アクティビティログ (代理入力は proxy_attack + 入力者名を記録)
+    window.supabaseLogActivity?.(
+        opts.isProxy ? 'proxy_attack' : 'attack',
+        `B${bossNumber} (${bossCode}) に ${(Math.round(damageRaw) / 1e9).toFixed(2)}B 凸 (${attackNumber}凸目)`,
+        { playerId, actorName: opts.actorName || null }
+    );
 
     return data;
 };
@@ -1127,6 +1139,8 @@ window.supabaseCreateSeason = async function (payload) {
     const { error: clrErr } = await supabase.from('player_damages').delete().gte('player_id', 0);
     if (clrErr) console.warn('[createSeason] player_damages クリアに失敗:', clrErr?.message);
 
+    window.supabaseLogActivity?.('ops', `シーズン ${payload.monthKey} を作成${isTest ? ' (テスト)' : ''}`);
+
     // テストシーズンのみ: 模擬戦データをテスト用にシード (本番は空スタートを維持)
     let mockSeed = null;
     let attackSeed = null;
@@ -1438,6 +1452,7 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
     if (error) throw error;
     // 同一シーズンの古い配信は削除して最新1件だけ残す
     await supabase.from('published_plans').delete().eq('season_id', season.id).neq('id', data.id);
+    window.supabaseLogActivity?.('ops', '凸プランを配信', { actorName: publishedByName || null });
     return data;
 };
 
@@ -1981,7 +1996,40 @@ window.supabaseLoadMemberNotificationStatus = async function () {
 };
 
 // ============================================================================
-// 設定タブ用: 最近のアクティビティを集約
+// アクティビティログ (INSERT 専用 / supabase/19_activity_log.sql が前提)
+// 失敗しても呼び出し元の処理は止めない (fire-and-forget)
+// ============================================================================
+window.supabaseLogActivity = async function (eventType, detail, opts = {}) {
+    try {
+        await supabase.from('activity_log').insert({
+            event_type: eventType,
+            player_id: opts.playerId || null,
+            player_name: opts.playerName || null,
+            actor_name: opts.actorName || null,
+            detail: String(detail || ''),
+        });
+    } catch (e) {
+        console.warn('[activityLog] skipped:', e?.message || e);
+    }
+};
+
+// アクティビティログ取得。テーブル未作成環境では null を返す (呼び出し側でフォールバック)
+window.supabaseLoadActivityLog = async function ({ limit = 200 } = {}) {
+    try {
+        const { data, error } = await supabase
+            .from('activity_log')
+            .select('id, event_type, player_id, player_name, actor_name, detail, created_at, players(name)')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return data || [];
+    } catch {
+        return null;
+    }
+};
+
+// ============================================================================
+// 設定タブ用: 最近のアクティビティを集約 (activity_log 未適用環境のフォールバック)
 // 既存テーブルの timestamps を集めて新しい順に並べる (新規スキーマ追加なし)
 // ============================================================================
 window.supabaseLoadRecentActivity = async function (limit = 50) {
