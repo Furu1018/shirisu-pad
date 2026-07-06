@@ -1328,8 +1328,8 @@
             max-width: 460px; width: calc(100% - 28px); align-self: center;
         }
         #tourOverlay .tour-hero {
-            /* 画面が低い端末では縮む (本文がスクロール必須にならないように) */
-            position: relative; flex: none; height: clamp(92px, 19vh, 160px); overflow: hidden;
+            /* 絵文字アイコン+ラベルの横並びスリムバナー (本文を主役にする) */
+            position: relative; flex: none; height: clamp(52px, 8vh, 76px); overflow: hidden;
             display: flex; align-items: center; justify-content: center;
         }
         #tourOverlay .tour-hero-deco1 {
@@ -1346,10 +1346,11 @@
         }
         #tourOverlay .tour-hero-inner {
             position: relative; z-index: 2; text-align: center; padding: 0 24px;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         #tourOverlay .tour-hero-emoji {
-            font-size: clamp(34px, 7vh, 52px); line-height: 1; margin-bottom: 8px;
-            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.18));
+            font-size: clamp(24px, 4vh, 32px); line-height: 1; margin-bottom: 0;
+            filter: drop-shadow(0 3px 8px rgba(0,0,0,0.18));
         }
         #tourOverlay .tour-hero-label {
             display: inline-flex; align-items: center; gap: 7px;
@@ -1363,11 +1364,8 @@
             animation: tour-pulse-dot 1.4s ease-in-out infinite;
         }
         #tourOverlay .tour-mini-screen {
-            position: absolute; right: 12px; bottom: 12px;
-            width: 92px; padding: 8px 9px;
-            background: #fff; border-radius: 11px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.18);
-            transform: rotate(2deg);
+            /* スリムバナー化に伴い装飾ミニスクリーンは非表示 */
+            display: none;
         }
         #tourOverlay .tour-mini-row { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
         #tourOverlay .tour-mini-avatar {
