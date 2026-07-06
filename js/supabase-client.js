@@ -1512,6 +1512,17 @@ window.supabaseLoadMockSubmissionStatus = async function () {
     }));
 };
 
+// 模擬提出のうち編成つきの行を取得 (人気編成の集計用)。attribute 省略で全属性
+window.supabaseLoadTeamSubmissions = async function (attribute = null) {
+    let q = supabase
+        .from('player_damages')
+        .select('player_id, attribute, damage_b, characters, players(name)');
+    if (attribute) q = q.eq('attribute', attribute);
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data || []).filter(r => Array.isArray(r.characters) && r.characters.filter(Boolean).length > 0);
+};
+
 // シーズンの戦況 (凸/ボスHP) が最後に動いた時刻 (配信プランの陳腐化検知用)
 window.supabaseGetSeasonLastChange = async function (seasonId) {
     let latest = null;

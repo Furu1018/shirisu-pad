@@ -2617,14 +2617,9 @@
 
                 <div onclick="toggleMypageRadar()" id="mypageRadarToggle" style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ レーダーチャートを表示</div>
                 <div id="mypageRadarWrap" style="display:none;margin-top:10px;padding:12px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.03);">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                        <strong style="font-size:13px;color:#14161A;">あなたの属性別ふるり値</strong>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                        <strong style="font-size:13px;color:#14161A;">あなたの模擬ふるり値 <span style="font-size:10px;font-weight:800;color:#1E78F0;background:rgba(30,120,240,0.10);padding:2px 8px;border-radius:999px;vertical-align:1px;">今シーズン</span></strong>
                         <span id="mypageRadarMeta" style="font-size:11px;color:#A4AAB0;">&nbsp;</span>
-                    </div>
-                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
-                        <button id="mypageRadarModeBtnClassic" onclick="switchMyRadarMode('classic')" class="sim-mode-btn active" style="padding:5px 10px;font-size:11px;">対ふるり</button>
-                        <button id="mypageRadarModeBtnMean" onclick="switchMyRadarMode('mean')" class="sim-mode-btn" style="padding:5px 10px;font-size:11px;">均整</button>
-                        <button id="mypageRadarModeBtnMedian" onclick="switchMyRadarMode('median')" class="sim-mode-btn" style="padding:5px 10px;font-size:11px;">上位10名</button>
                     </div>
                     <div style="position:relative;max-width:360px;margin:0 auto;">
                         <canvas id="mypageRadarChart"></canvas>
@@ -2632,6 +2627,16 @@
                     <p id="mypageRadarHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;">プレイヤーを選択するとふるり値が表示されます。</p>
                 </div>
                 <div id="mypageDmgInputs" style="display:none;"></div>
+            </div>
+
+            <!-- 📚 人気編成 (みんなの模擬提出から集計 / NIKKE知識ゼロの純統計) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📚 人気編成</div>
+                    <span style="font-size:10.5px;color:#A4AAB0;">みんなの模擬提出から集計</span>
+                </div>
+                <div id="popularTeamsTabs" style="display:flex;gap:5px;margin-bottom:10px;"></div>
+                <div id="popularTeamsBody"><p style="margin:0;font-size:12px;color:#A4AAB0;">プレイヤーを選択すると表示されます。</p></div>
             </div>
 
             <!-- ③ 戦闘 (ゲート → ボス選択 → 戦闘中) -->
@@ -3438,8 +3443,8 @@
                         <h3>② 5属性のダメージ登録</h3>
                         <p>各PT属性で出せる「あなたのベストダメージ」を B（10億）単位で登録します。<span class="help-pill">手入力</span>または<span class="help-pill">📷 画像OCR</span>から登録できます。
                             この値は、運営の<strong>残凸状況一覧</strong>・<strong>最適プラン</strong>・<strong>締め凸候補</strong>すべての基礎データです。</p>
-                        <h3>③ 5属性ふるり値レーダー</h3>
-                        <p>登録ダメージを基に、基準者（ふるり）との相対力を5角形で表示します（詳細は <a href="#help-fururi">§7</a>）。属性別の得意・不得意が一目で分かります。</p>
+                        <h3>③ 5属性 模擬ふるり値レーダー（今シーズン）</h3>
+                        <p>あなたの<strong>今季の模擬戦データ</strong>を、基準者（ふるり）の<strong>今季模擬 + SLv換算</strong>と比べて5角形で表示します。1.00 = ふるりと同等。本戦は3凸までなので本戦ベースでは5属性が揃いませんが、模擬同士の比較なら<strong>5属性提出すれば誰でも形が完成</strong>します。属性別の得意・不得意が一目で分かります（確定ふるり値は <a href="#help-fururi">§7</a> のタブで）。</p>
                         <h3>④ 次の凸 (ボスタップ起点)</h3>
                         <p><strong>「🎯 次の凸 (ボスをタップ)」</strong> セクションで、これから凸るボスをタップすると <strong>戦闘準備</strong> 状態になり、他メンバーに「あなたが戦闘中」が共有されます。これで二重凸を防止できます。</p>
                         <ul>
@@ -3518,7 +3523,7 @@
                             <li><strong>全体（3凸合計）</strong>: 1日のトータル火力比較</li>
                             <li><strong>属性別</strong>: その属性1凸あたりの火力比較（同属性2凸は別行扱い）</li>
                         </ul>
-                        <h3>3つの基準モード（タブとマイページレーダー両方で切替可）</h3>
+                        <h3>3つの基準モード（ふるり値タブで切替可）</h3>
                         <ul>
                             <li><strong>対ふるり（既定）</strong>: 基準者ふるり本人の各属性ダメージと直接比較。「ふるりとの相対力」。</li>
                             <li><strong>均整（ふるり平均）</strong>: ふるりの5属性平均ダメージを全属性の共通基準に。<strong>ふるり自身の属性偏りを補正</strong>するので、育成バランスの指針として読みやすい。</li>
@@ -4402,6 +4407,9 @@
 
             <!-- 5キャラ入力欄 -->
             <div id="myTeamEditFields" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+            <!-- 人気編成の参考 (みんなの模擬提出の統計) -->
+            <div id="myTeamEditPopular" style="display:none;padding:10px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);"></div>
 
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -5584,6 +5592,7 @@
             renderMyNextAttackBosses(id);
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
+            renderPopularTeamsCard(true);
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
         }
@@ -6147,6 +6156,17 @@
                 dl.innerHTML = master.slice(0, 200).map(m => `<option value="${escapeHtml(m.canonical_name)}">`).join('');
             }
             document.getElementById('myTeamEditModal').classList.add('open');
+
+            // 📚 みんなの人気編成を非同期で表示 (編成を組むのが苦手な人の参考 + ワンタップコピー)
+            const popEl = document.getElementById('myTeamEditPopular');
+            if (popEl) {
+                popEl.style.display = 'none';
+                _loadTeamSubs(true).then(() => {
+                    if (_myTeamEditAttr !== attrKey) return;   // モーダルが別属性に切り替わっていたら破棄
+                    popEl.innerHTML = `<div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:7px;">📚 みんなの${ptName}PT編成</div>` + _popularTeamsHtml(attrKey, { copyable: true });
+                    popEl.style.display = 'block';
+                }).catch(() => { /* noop */ });
+            }
         }
         // 凸報告モーダルの使用キャラ5枠を描画
         function renderMyAttackTeamSlots() {
@@ -6177,6 +6197,98 @@
             } else {
                 iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
             }
+        }
+
+        // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========
+        let _teamSubsCache = null;        // 全属性の編成つき提出
+        let _popularBestTeams = {};       // attrKey -> 最高ダメ編成 (コピー用)
+        let _popularTeamsAttr = 'fire';
+        async function _loadTeamSubs(force = false) {
+            if (_teamSubsCache && !force) return _teamSubsCache;
+            try {
+                _teamSubsCache = await window.supabaseLoadTeamSubmissions();
+            } catch (e) {
+                console.warn('[人気編成] 読込失敗:', e?.message || e);
+                _teamSubsCache = [];
+            }
+            return _teamSubsCache;
+        }
+        function _teamStatsFor(rows) {
+            const charCount = new Map();
+            rows.forEach(r => {
+                new Set(r.characters.filter(Boolean).map(c => fuzzyResolveCharacter(c) || c)).forEach(c => {
+                    charCount.set(c, (charCount.get(c) || 0) + 1);
+                });
+            });
+            const top = [...charCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const best = [...rows].sort((a, b) => (Number(b.damage_b) || 0) - (Number(a.damage_b) || 0))[0] || null;
+            return { total: rows.length, top, best };
+        }
+        function _charIconHtml(name, size = 26) {
+            const r = resolveNikkeChar(name);
+            if (r?.iconPath) return `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" title="${escapeHtml(r.canonical || name)}" style="width:${size}px;height:${size}px;border-radius:7px;background:#222;flex:none;">`;
+            return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:7px;background:#F1F2F4;font-size:${Math.round(size * 0.45)}px;font-weight:800;color:#8A9097;flex:none;" title="${escapeHtml(name)}">${escapeHtml(String(name).slice(0, 1))}</span>`;
+        }
+        // 属性1つ分の人気編成HTML。opts.copyable=true で「この編成をコピー」ボタン付き
+        function _popularTeamsHtml(attrKey, opts = {}) {
+            const rows = (_teamSubsCache || []).filter(r => r.attribute === attrKey);
+            const a = PT_ATTRS.find(x => x.key === attrKey);
+            if (!a) return '';
+            if (rows.length === 0) return `<p style="margin:0;font-size:11.5px;color:#A4AAB0;">${a.name}PT の編成つき模擬提出はまだありません。模擬戦データに編成を付けて提出すると、ここに集計されます。</p>`;
+            const st = _teamStatsFor(rows);
+            const topHtml = st.top.map(([c, n]) => `
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;">
+                    ${_charIconHtml(c, 34)}
+                    <span style="font-size:10px;font-weight:800;color:#5A6068;" title="${escapeHtml(c)} — ${n}/${st.total}件で採用">${Math.round(n / st.total * 100)}%</span>
+                </div>`).join('');
+            const bestTeam = (st.best?.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
+            _popularBestTeams[attrKey] = bestTeam;
+            const bestHtml = st.best ? `
+                <div style="margin-top:10px;padding:9px 10px;border-radius:11px;background:${a.color}0D;border:1px solid ${a.color}33;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                        <span style="font-size:10px;font-weight:900;color:${a.color};">🏆 最高ダメ編成</span>
+                        <span style="font-size:10.5px;font-weight:800;color:#14161A;">${escapeHtml(st.best.players?.name || '?')} · ${Number(st.best.damage_b).toFixed(1)}B</span>
+                        ${opts.copyable ? `<button onclick="applyPopularTeamFromAttr('${attrKey}')" style="margin-left:auto;flex:none;padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️ この編成をコピー</button>` : ''}
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">${bestTeam.map(c => _charIconHtml(c, 30)).join('')}</div>
+                </div>` : '';
+            return `
+                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">採用率 TOP${st.top.length}（${st.total}件の提出から）</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">${topHtml}</div>
+                ${bestHtml}`;
+        }
+        // 最高ダメ編成を編成編集モーダルの5枠へ流し込む
+        function applyPopularTeamFromAttr(attrKey) {
+            const team = _popularBestTeams[attrKey] || [];
+            for (let i = 0; i < 5; i++) {
+                const inp = document.querySelector(`#myTeamEditFields input[data-team-idx="${i}"]`);
+                if (inp) {
+                    inp.value = team[i] || '';
+                    if (typeof updateMyTeamEditIcon === 'function') updateMyTeamEditIcon(i);
+                }
+            }
+            const msg = document.getElementById('myTeamEditMessage');
+            if (msg) {
+                msg.textContent = '⬇️ 人気編成をコピーしました。ダメージ欄は自分の模擬結果に合わせて入力してください';
+                msg.style.color = '#1E78F0';
+            }
+        }
+        // マイページの独立カード (属性タブ切替)
+        async function renderPopularTeamsCard(refetch = false) {
+            const tabsEl = document.getElementById('popularTeamsTabs');
+            const bodyEl = document.getElementById('popularTeamsBody');
+            if (!tabsEl || !bodyEl) return;
+            try { await getNikkeCharsCache(); } catch { /* noop */ }
+            await _loadTeamSubs(refetch);
+            tabsEl.innerHTML = PT_ATTRS.map(a => {
+                const on = a.key === _popularTeamsAttr;
+                return `<button onclick="switchPopularTeamsAttr('${a.key}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;border-radius:9px;border:none;cursor:pointer;font-size:11px;font-weight:800;${on ? `background:${a.color};color:#fff;` : `background:${a.color}14;color:${a.color};`}"><img loading="lazy" decoding="async" src="${a.icon}" style="width:14px;height:14px;">${a.name}</button>`;
+            }).join('');
+            bodyEl.innerHTML = _popularTeamsHtml(_popularTeamsAttr, { copyable: false });
+        }
+        function switchPopularTeamsAttr(k) {
+            _popularTeamsAttr = k;
+            renderPopularTeamsCard(false);
         }
 
         // ========== アイコン選択ピッカー (コールバック方式: 複数のフローから利用可) ==========
@@ -6438,21 +6550,39 @@
             return m;
         })();
 
-        // マイページレーダーの基準モード ('classic' | 'mean' | 'median')
-        let _myRadarMode = 'classic';
+        // ========== マイページ: 模擬ふるり値レーダー (今シーズンの模擬同士のライブ比較) ==========
+        // 基準: ふるり(基準者)の今季模擬5属性 + SLv。自分: 今季模擬 + 自己申告SLv。
+        // 確定ふるり値 (完了シーズン・本戦3凸ベース) はふるり値タブが担当する — ここは今季専用。
+        // ユニレは3凸までなので本戦ベースでは5属性が揃わないが、模擬同士なら全員が形を完成できる。
         let _myRadarLastDamages = null;
         let _myRadarLastIdentity = null;
-        function switchMyRadarMode(mode) {
-            _myRadarMode = mode;
-            ['classic', 'mean', 'median'].forEach(k => {
-                const b = document.getElementById('mypageRadarModeBtn' + k[0].toUpperCase() + k.slice(1));
-                if (b) b.classList.toggle('active', k === mode);
-            });
-            if (_myRadarLastIdentity) renderMyFururiRadar(_myRadarLastIdentity, _myRadarLastDamages);
+        let _mockRadarBase = null;   // { slv, dmgByAttr, missing: [属性名] }
+        async function _loadMockRadarBase(force = false) {
+            if (_mockRadarBase && !force) return _mockRadarBase;
+            try {
+                const players = await window.supabaseLoadAllPlayers(false);
+                const base = (players || []).find(p => p.name === fururiBasePlayerName);
+                if (!base) return null;
+                const [dmgs, slvRes] = await Promise.all([
+                    window.supabaseLoadPlayerDamages(base.id),
+                    window.supabaseLoadSyncLevel(base.id),
+                ]);
+                const dmgByAttr = {};
+                (dmgs || []).forEach(d => { if (Number(d.damage_b) > 0) dmgByAttr[d.attribute] = Number(d.damage_b); });
+                _mockRadarBase = {
+                    slv: slvRes?.syncLevel || 0,
+                    dmgByAttr,
+                    missing: PT_ATTRS.filter(a => !(dmgByAttr[a.key] > 0)).map(a => a.name),
+                };
+                return _mockRadarBase;
+            } catch (e) {
+                console.warn('[mockRadar] 基準読込失敗:', e?.message || e);
+                return null;
+            }
         }
 
-        // 自分の5属性ふるり値レーダー描画。damages は supabaseLoadPlayerDamages の結果。
-        function renderMyFururiRadar(identity, damages) {
+        // 自分の5属性 模擬ふるり値レーダー描画。damages は supabaseLoadPlayerDamages の結果。
+        async function renderMyFururiRadar(identity, damages) {
             const canvas = document.getElementById('mypageRadarChart');
             const metaEl = document.getElementById('mypageRadarMeta');
             const hintEl = document.getElementById('mypageRadarHint');
@@ -6460,51 +6590,57 @@
             _myRadarLastIdentity = identity;
             _myRadarLastDamages = damages;
 
-            // 自分のSLv: 最新実シーズン > 運営ダッシュボード(SLv推定込み)
-            let slv = 0, slvEstimated = false;
-            const fromCurrent = (currentData || []).find(p => p.player === identity.name);
-            if (fromCurrent && fromCurrent.syncLevel > 0) {
-                slv = fromCurrent.syncLevel;
-            } else if (_opsDashboardCache) {
-                const fromOps = (_opsDashboardCache.players || []).find(p => p.id === identity.id);
-                if (fromOps && fromOps.syncLevel > 0) {
-                    slv = fromOps.syncLevel;
-                    slvEstimated = !!fromOps.syncLevelEstimated;
+            // 自分のSLv: マイページの自己申告 (アクティブシーズン) を最優先 → 実シーズン → 推定
+            let slv = _mySlvCurrent > 0 ? _mySlvCurrent : 0;
+            let slvEstimated = false;
+            if (!slv) {
+                const fromCurrent = (currentData || []).find(p => p.player === identity.name);
+                if (fromCurrent && fromCurrent.syncLevel > 0) {
+                    slv = fromCurrent.syncLevel;
+                } else if (_opsDashboardCache) {
+                    const fromOps = (_opsDashboardCache.players || []).find(p => p.id === identity.id);
+                    if (fromOps && fromOps.syncLevel > 0) {
+                        slv = fromOps.syncLevel;
+                        slvEstimated = !!fromOps.syncLevelEstimated;
+                    }
                 }
             }
+
+            const isBasePlayer = identity.name === fururiBasePlayerName;
+            // 基準者本人の閲覧時は毎回リロード (自分の提出が即座に基準へ反映されるように)
+            const base = await _loadMockRadarBase(isBasePlayer);
 
             const dmgByAttr = {};
             (damages || []).forEach(d => { dmgByAttr[d.attribute] = Number(d.damage_b) || 0; });
 
-            const isBasePlayer = identity.name === fururiBasePlayerName;
-            const baseMapForMode = getFururiBaseMapByMode(_myRadarMode);
             const labels = PT_ATTRS.map(a => a.name);
             const values = PT_ATTRS.map(a => {
-                const bossCode = PT_ATTR_TO_BOSS_CODE[a.key];
-                if (!slv || !baseMapForMode || !baseMapForMode[bossCode]) return 0;
-                const dmgB = dmgByAttr[a.key] || 0;
-                // 基準者本人で player_damages 未登録の属性は classic モードでは定義上 1.0 (基準値そのもの)
-                if (_myRadarMode === 'classic' && isBasePlayer && dmgB <= 0) return 1.0;
-                if (dmgB <= 0) return 0;
-                const v = calculatePerAttackFururi(dmgB * 1e9, slv, bossCode, _myRadarMode);
-                return v == null ? 0 : Number(v);
+                if (!slv || !base?.slv || !slvRatioTable) return 0;
+                const baseDmg = base.dmgByAttr[a.key];
+                const myDmg = dmgByAttr[a.key] || 0;
+                if (!(baseDmg > 0)) return 0;                      // 基準者がこの属性を未提出
+                if (isBasePlayer) return myDmg > 0 ? 1.0 : 0;      // 基準者本人は定義上 1.0
+                if (myDmg <= 0) return 0;
+                const baseRatio = slvRatioTable[String(base.slv)];
+                const myRatio = slvRatioTable[String(slv)];
+                if (!baseRatio || !myRatio) return 0;
+                const baseScaled = baseDmg * myRatio / baseRatio;  // 基準者が自分と同SLvなら出せる想定値
+                return baseScaled > 0 ? myDmg / baseScaled : 0;
             });
 
-            const modeLabel = _myRadarMode === 'mean' ? '均整(ふるり平均)'
-                : _myRadarMode === 'median' ? '上位10名平均(ユニオン)'
-                : `対 ${fururiBasePlayerName}`;
             if (metaEl) {
                 metaEl.textContent = slv
-                    ? `SLv ${slv}${slvEstimated ? '(推定)' : ''} / 基準: ${modeLabel}`
+                    ? `SLv ${slv}${slvEstimated ? '(推定)' : ''} / 基準: ${fururiBasePlayerName} 今季模擬${base?.slv ? ` (SLv ${base.slv})` : ''}`
                     : 'SLv未登録';
             }
             if (hintEl) {
-                if (!slv) hintEl.textContent = '基準者(ふるり)との比較にあなたのSLvが必要です。次回シーズンで自動取得されます。';
-                else if (!baseMapForMode) hintEl.textContent = 'ふるり値の基準データ読み込み中…「ダメージ比較」タブを開くと構築されます。';
-                else if (!values.some(v => v > 0)) hintEl.textContent = '属性ダメージを登録するとグラフに反映されます。';
-                else if (_myRadarMode === 'mean') hintEl.textContent = '1.00 = ふるりの5属性平均と同等(同SLv換算)。全属性同じ目安で「育成バランス」を見やすい。';
-                else if (_myRadarMode === 'median') hintEl.textContent = '1.00 = ユニオン上位10名の平均と同等。「現実的に目指せる上限」に対する自分の位置。';
-                else hintEl.textContent = '1.00 = 基準者(同SLv換算)と同等。高いほど得意属性。';
+                if (!slv) hintEl.textContent = 'マイページ上部の SLv チップからシンクロレベルを設定するとレーダーが描けます。';
+                else if (!base) hintEl.textContent = `基準者(${fururiBasePlayerName})のデータを読み込めませんでした。`;
+                else if (!base.slv) hintEl.textContent = `基準者(${fururiBasePlayerName})の SLv が未設定のため計算できません。`;
+                else if (base.missing.length >= 5) hintEl.textContent = `基準者(${fururiBasePlayerName})の今季模擬が未提出です。提出されると全員のレーダーが使えるようになります。`;
+                else if (base.missing.length > 0) hintEl.textContent = `⚠️ 基準者の ${base.missing.join('・')}PT が未提出のため、その軸は0表示。1.00 = ふるり(同SLv換算)と同等。`;
+                else if (!values.some(v => v > 0)) hintEl.textContent = '模擬戦データを提出するとグラフに反映されます。5属性提出すれば形が完成します。';
+                else hintEl.textContent = '1.00 = ふるり(同SLv換算)と同等。今季の模擬同士の比較 — 5属性提出で形が完成します。';
             }
 
             if (mypageRadarChartInstance) { mypageRadarChartInstance.destroy(); mypageRadarChartInstance = null; }
