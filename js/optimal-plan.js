@@ -84,7 +84,9 @@
                     .map(k => IDX_BY_KEY.get(k))
                     .filter(i => i != null && i >= nowIdx)
                     .sort((a, b) => a - b);
-                // ⏳ 隙間時間型: 時間は約束できないが3凸はする人。時間未登録(データ不足)とは区別する
+                // ⏳ 隙間時間型: 時間は約束できないが3凸はする人。時間未登録(データ不足)とは区別する。
+                // 時間も登録している隙間型 = ハイブリッド:
+                //   登録時間内は「確約」として通常割当、時間外は ⏳隙間 (ベストエフォート) 扱い。
                 const flexTime = !!p.flexTime;
                 const timeUnknown = !flexTime && (p.availableSlots || []).length === 0;
                 return {
@@ -97,17 +99,20 @@
                     teamsByAttr: p.teamsByAttr || {},   // 衝突チェック用編成
                     usedChars: new Set(),               // すでに割当済みのキャラ
                     anyTeamRegistered: Object.values(p.teamsByAttr || {}).some(arr => Array.isArray(arr) && arr.length > 0),
-                    hourIdxs: (flexTime || timeUnknown) ? null : rawSlots,   // null = いつでも可
+                    hourIdxs: (timeUnknown || (flexTime && rawSlots.length === 0)) ? null : rawSlots,   // null = いつでも可
                     timeUnknown,
                     flexTime,
                 };
             });
 
-        // openIdx 以降でそのメンバーが凸できる最も早い時間帯 (null = 時間的に不可)
+        // openIdx 以降でそのメンバーが凸できる最も早い時間帯を返す。
+        // 戻り値: { idx, flex } / null = 時間的に不可。
+        //   flex=true は「時刻を約束しない ⏳隙間 割当」(純粋な隙間型、またはハイブリッドの登録時間外)
         const earliestHourFor = (m, openIdx) => {
-            if (!timeAware) return openIdx;
-            if (m.hourIdxs === null) return openIdx;   // 時間不明 → 開いた瞬間に可能とみなす
-            for (const i of m.hourIdxs) if (i >= openIdx) return i;
+            if (!timeAware) return { idx: openIdx, flex: false };
+            if (m.hourIdxs === null) return { idx: openIdx, flex: m.flexTime };   // 時間不明/純隙間型
+            for (const i of m.hourIdxs) if (i >= openIdx) return { idx: i, flex: false };   // 登録時間内 = 確約
+            if (m.flexTime) return { idx: openIdx, flex: true };   // ハイブリッド: 時間外は隙間でやる
             return null;
         };
 
@@ -119,13 +124,16 @@
 
         // 候補スコア(小さいほど良い): オーバーキル + SLvミスマッチ + 遅い時間ペナルティ。
         // SLv完全ミスマッチ(1.0) ≈ 5B のオーバーキル、1時間の遅れ ≈ 0.2B のオーバーキル相当。
-        const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2;
-        const scoreOf = (m, attr, rem, levelPos, hourIdx, openIdx) => {
+        // ⏳隙間割当は時刻を確約しない分の不確実性ペナルティ (2時間の遅れ相当) を課し、
+        // 「時刻を確約できる人」が僅差なら優先されるようにする。
+        const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2, FLEX_PENALTY = 2 * W_TIME;
+        const scoreOf = (m, attr, rem, levelPos, hourIdx, openIdx, isFlex) => {
             const dmg = m.avail[attr];
             const overkill = Math.max(0, dmg - rem);
             const slvPenalty = Math.abs((m.slvRank ?? 0.5) - levelPos);
             const timePenalty = timeAware ? (hourIdx - openIdx) : 0;
-            return overkill * W_OVER + slvPenalty * W_SLV + timePenalty * W_TIME - Math.min(dmg, rem) * 0.001;
+            const flexPenalty = (timeAware && isFlex) ? FLEX_PENALTY : 0;
+            return overkill * W_OVER + slvPenalty * W_SLV + timePenalty * W_TIME + flexPenalty - Math.min(dmg, rem) * 0.001;
         };
 
         const levels = [];
@@ -143,7 +151,7 @@
                 let rem = targetHpB;
                 let sawTimeExcluded = false;   // 火力はあるが時間で弾かれた候補がいたか
                 while (rem > 0.0001) {
-                    let pick = null, pickScore = Infinity, pickHour = openIdx;
+                    let pick = null, pickScore = Infinity, pickHour = openIdx, pickFlex = false;
                     for (const m of memberState) {
                         if (m.remainingAttacks <= 0 || !(m.avail[b.weakness] > 0)) continue;
                         // キャラ衝突チェック: 同じ人がすでに割当済みのキャラと被るプランは除外
@@ -153,10 +161,10 @@
                             const conflict = team.some(c => c && m.usedChars.has(c));
                             if (conflict) continue;
                         }
-                        const hourIdx = earliestHourFor(m, openIdx);
-                        if (hourIdx === null) { sawTimeExcluded = true; continue; }
-                        const s = scoreOf(m, b.weakness, rem, levelPos, hourIdx, openIdx);
-                        if (s < pickScore) { pickScore = s; pick = m; pickHour = hourIdx; }
+                        const slot = earliestHourFor(m, openIdx);
+                        if (slot === null) { sawTimeExcluded = true; continue; }
+                        const s = scoreOf(m, b.weakness, rem, levelPos, slot.idx, openIdx, slot.flex);
+                        if (s < pickScore) { pickScore = s; pick = m; pickHour = slot.idx; pickFlex = slot.flex; }
                     }
                     if (!pick) break;
                     const dmg = pick.avail[b.weakness];
@@ -168,9 +176,10 @@
                         dmgB: dmg, usedB: Math.min(dmg, rem), overflowB: Math.max(0, dmg - rem),
                         team: teamRegistered ? team : null,  // 未登録は null マークで警告表示
                         hourIdx: timeAware ? pickHour : null,
-                        // ⏳ 隙間時間型は時刻を約束しない: hourLabel は付けず flex マークで表示
-                        hourLabel: (timeAware && !pick.flexTime) ? hourLabelOf(pickHour) : null,
-                        flex: timeAware ? pick.flexTime : false,
+                        // ⏳隙間割当 (純隙間型 or ハイブリッドの登録時間外) は時刻を約束しない:
+                        // hourLabel は付けず flex マークで表示。登録時間内なら通常の時刻付き割当
+                        hourLabel: (timeAware && !pickFlex) ? hourLabelOf(pickHour) : null,
+                        flex: timeAware ? pickFlex : false,
                         timeUnknown: timeAware ? pick.timeUnknown : false,
                         isBottleneck: false,                 // レベル確定後に付与
                     });

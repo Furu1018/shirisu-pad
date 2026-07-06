@@ -341,6 +341,51 @@ test('⏳隙間凸だけで削るボスのクリア時刻は開放時刻扱い (
     assert.equal(plan.levels[0].hasFlex, true);
 });
 
+test('ハイブリッド隙間型: 登録時間内は通常の時刻付き割当 (確約=律速にもなる)', () => {
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('ハイブリッドさん', { fire: 12 }, { flexTime: true, availableSlots: ['h21'] })],
+        { currentSlot: 'h14' },
+    ));
+    const atk = plan.levels[0].bosses[0].attacks[0];
+    assert.equal(atk.flex, false, '登録時間内は隙間扱いにしない');
+    assert.equal(atk.hourLabel, '21時');
+    assert.equal(atk.isBottleneck, true, '確約した時刻はレベルの律速になり得る');
+});
+
+test('ハイブリッド隙間型: 登録時間外のレベルは ⏳隙間フォールバック (時間切れにならない)', () => {
+    // Lv1 を21時の人がクリア → Lv2 開放は21時。ハイブリッドさんの登録は h15 のみ (過ぎている)
+    // → 時間切れ除外ではなく ⏳隙間として割当てられる
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 5 })],
+        [
+            player('夜の人', { fire: 10 }, { availableSlots: ['h21'] }),
+            player('ハイブリッドさん', { fire: 300 }, { flexTime: true, availableSlots: ['h15'] }),
+        ],
+        { currentSlot: 'h14' },
+    ));
+    const lv2 = plan.levels[1];
+    const atk = lv2.bosses[0].attacks.find(a => a.memberName === 'ハイブリッドさん');
+    assert.ok(atk, 'Lv2 に割当てられるはず');
+    assert.equal(atk.flex, true, '登録時間外なので隙間扱い');
+    assert.equal(atk.hourLabel, null);
+    assert.equal(atk.isBottleneck, false);
+    assert.equal(lv2.bosses[0].timeConstrained, false);
+});
+
+test('ハイブリッド隙間型: 登録時間があるうちは確約割当を優先 (隙間フォールバックしない)', () => {
+    // Lv1 が h14 開放でハイブリッドさんの登録は h21 → 「今すぐ隙間で」ではなく
+    // 確約できる 21時 に時刻付きで割当てられる (保守的で共有しやすいプランになる)
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('ハイブリッドさん', { fire: 12 }, { flexTime: true, availableSlots: ['h21'] })],
+        { currentSlot: 'h14' },
+    ));
+    const atk = plan.levels[0].bosses[0].attacks[0];
+    assert.equal(atk.flex, false);
+    assert.equal(atk.hourLabel, '21時');
+});
+
 test('timeAware=false では従来と同じ出力 (時間フィールドは null)', () => {
     const plan = compute(makeInput(
         [boss(1, 'fire', { remainingB: 10 })],
