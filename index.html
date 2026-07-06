@@ -276,6 +276,28 @@
         }
         @keyframes ptr-spin { to { transform: rotate(360deg); } }
         #ptrIcon.spin { display: inline-block; animation: ptr-spin .8s linear infinite; }
+        /* 画像取り込みの統一スタイル (BlaBlaLINK/OCR 系はすべてこれを使う) */
+        .dc-upload {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 13px; cursor: pointer;
+            border: 1.5px dashed rgba(20,22,26,0.14);
+            border-radius: 12px; background: #F7F8F9;
+        }
+        .dc-upload .dc-upload-ico { font-size: 18px; flex: none; }
+        .dc-upload .dc-upload-text { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: #14161A; }
+        .dc-upload .dc-upload-btn {
+            flex: none; padding: 7px 13px; border-radius: 999px;
+            background: linear-gradient(180deg, #46A0FF, #1E78F0); color: #fff;
+            font-size: 11px; font-weight: 800; box-shadow: 0 2px 6px rgba(46,139,255,0.35);
+        }
+        /* ops タブ: セクションジャンプ + 運営モード */
+        .dc-nav-chip {
+            flex: none; padding: 7px 12px; border-radius: 999px;
+            border: 1px solid rgba(20,22,26,0.06); background: #fff; color: #5A6068;
+            font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap;
+        }
+        #tab-ops .dc-card { scroll-margin-top: 64px; }
+        body:not(.ops-mode) [data-ops-only] { display: none !important; }
         /* ④ タップ当たり判定の拡大: 見た目はそのまま、指の周囲4pxまで反応を広げる
            (::before を装飾に使うボタンは除外して衝突を回避) */
         @media (pointer: coarse) {
@@ -2489,7 +2511,7 @@
                         <div style="width:78px;height:78px;border-radius:50%;padding:3px;box-sizing:border-box;background:linear-gradient(140deg,#fcfdfe,#bfc4cc 48%,#eef1f4);box-shadow:0 3px 10px rgba(20,22,26,0.16);">
                             <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, #565c64, #2a2e34);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
                                 <span id="mypageAvatarFallback" style="font-size:26px;color:#fff;">👤</span>
-                                <img id="mypageAvatarImg" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+                                <img loading="lazy" decoding="async" id="mypageAvatarImg" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
                             </div>
                         </div>
                         <span style="position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);background:#14161A;color:#fff;font-size:10px;font-weight:800;letter-spacing:0.4px;padding:3px 8px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 7px rgba(0,0,0,0.28);">変更</span>
@@ -2907,11 +2929,11 @@
                 <!-- 属性別フィルタ (6ピル, 排他選択) -->
                 <div style="display:flex;gap:5px;margin-top:8px;">
                     <button class="dc-rem-attr" data-attr-filter=""         onclick="handleOpsRemainingAttrPick('')"         style="--attr-c:#14161A;flex:1.4;">全属性</button>
-                    <button class="dc-rem-attr" data-attr-filter="fire"     onclick="handleOpsRemainingAttrPick('fire')"     style="--attr-c:#FF3D44;" title="灼熱"><img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;vertical-align:middle;"></button>
-                    <button class="dc-rem-attr" data-attr-filter="water"    onclick="handleOpsRemainingAttrPick('water')"    style="--attr-c:#2E8BFF;" title="水冷"><img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;vertical-align:middle;"></button>
-                    <button class="dc-rem-attr" data-attr-filter="electric" onclick="handleOpsRemainingAttrPick('electric')" style="--attr-c:#9B4DFF;" title="電撃"><img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;vertical-align:middle;"></button>
-                    <button class="dc-rem-attr" data-attr-filter="iron"     onclick="handleOpsRemainingAttrPick('iron')"     style="--attr-c:#FF8A2B;" title="鉄甲"><img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;vertical-align:middle;"></button>
-                    <button class="dc-rem-attr" data-attr-filter="wind"     onclick="handleOpsRemainingAttrPick('wind')"     style="--attr-c:#18C26B;" title="風圧"><img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="fire"     onclick="handleOpsRemainingAttrPick('fire')"     style="--attr-c:#FF3D44;" title="灼熱"><img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="water"    onclick="handleOpsRemainingAttrPick('water')"    style="--attr-c:#2E8BFF;" title="水冷"><img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="electric" onclick="handleOpsRemainingAttrPick('electric')" style="--attr-c:#9B4DFF;" title="電撃"><img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="iron"     onclick="handleOpsRemainingAttrPick('iron')"     style="--attr-c:#FF8A2B;" title="鉄甲"><img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;vertical-align:middle;"></button>
+                    <button class="dc-rem-attr" data-attr-filter="wind"     onclick="handleOpsRemainingAttrPick('wind')"     style="--attr-c:#18C26B;" title="風圧"><img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;vertical-align:middle;"></button>
                 </div>
                 <!-- 要約バナー -->
                 <div id="opsRemainingSummaryBanner" style="display:flex;align-items:center;justify-content:space-between;margin-top:13px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;padding:10px 13px;">
@@ -2948,6 +2970,7 @@
                     <button onclick="openOpsProxyAttackModal()" class="dc-ops-action">✏️ 代理凸を報告</button>
                     <button onclick="openOpsAttacksEditModal()" class="dc-ops-action">📋 凸履歴・編集</button>
                     <button onclick="openOpsAuditModal()" class="dc-ops-action">🔍 提出漏れチェック</button>
+                    <button onclick="openOpsMockAuditModal()" class="dc-ops-action">🪞 模擬提出チェック</button>
                     <button onclick="switchTab('member-admin')" class="dc-ops-action">👥 メンバー管理</button>
                 </div>
             </div>
@@ -3010,19 +3033,19 @@
                 <!-- 属性トグル -->
                 <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
                     <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;" title="灼熱">
-                        <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                     </button>
                     <button onclick="toggleChartDataset(1)" data-chart-idx="1" class="chart-toggle-btn" style="--btn-color: #007AFF;" title="水冷">
-                        <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                     </button>
                     <button onclick="toggleChartDataset(2)" data-chart-idx="2" class="chart-toggle-btn" style="--btn-color: #8E44AD;" title="電撃">
-                        <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                     </button>
                     <button onclick="toggleChartDataset(3)" data-chart-idx="3" class="chart-toggle-btn" style="--btn-color: #FF9500;" title="鉄甲">
-                        <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                     </button>
                     <button onclick="toggleChartDataset(4)" data-chart-idx="4" class="chart-toggle-btn" style="--btn-color: #34C759;" title="風圧">
-                        <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                     </button>
                 </div>
                 <div class="chart-container">
@@ -3076,29 +3099,29 @@
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="attribute-tab-btn active" data-attribute="ALL" onclick="switchAttributeTab('ALL')">全PT属性</button>
                             <button class="attribute-tab-btn" data-attribute="FIRE" onclick="switchAttributeTab('FIRE')" title="灼熱PT 対 風圧">
-                                <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                                 <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                <img src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;opacity:0.7;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;opacity:0.7;">
                             </button>
                             <button class="attribute-tab-btn" data-attribute="WATER" onclick="switchAttributeTab('WATER')" title="水冷PT 対 灼熱">
-                                <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                                 <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;opacity:0.7;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;opacity:0.7;">
                             </button>
                             <button class="attribute-tab-btn" data-attribute="ELECTRIC" onclick="switchAttributeTab('ELECTRIC')" title="電撃PT 対 水冷">
-                                <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                                 <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                <img src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;opacity:0.7;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;opacity:0.7;">
                             </button>
                             <button class="attribute-tab-btn" data-attribute="IRON" onclick="switchAttributeTab('IRON')" title="鉄甲PT 対 電撃">
-                                <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                                 <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                <img src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;opacity:0.7;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;opacity:0.7;">
                             </button>
                             <button class="attribute-tab-btn" data-attribute="WIND" onclick="switchAttributeTab('WIND')" title="風圧PT 対 鉄甲">
-                                <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                                 <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;opacity:0.7;">
+                                <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;opacity:0.7;">
                             </button>
                         </div>
                     </div>
@@ -3148,19 +3171,19 @@
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体</button>
                     <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')" title="灼熱">
-                        <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                     </button>
                     <button class="attribute-tab-btn" data-fururi-boss="H.S.T.A." onclick="switchFururiBoss('H.S.T.A.')" title="水冷">
-                        <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                     </button>
                     <button class="attribute-tab-btn" data-fururi-boss="P.S.I.D." onclick="switchFururiBoss('P.S.I.D.')" title="電撃">
-                        <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                     </button>
                     <button class="attribute-tab-btn" data-fururi-boss="Z.E.U.S." onclick="switchFururiBoss('Z.E.U.S.')" title="鉄甲">
-                        <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                     </button>
                     <button class="attribute-tab-btn" data-fururi-boss="D.M.T.R." onclick="switchFururiBoss('D.M.T.R.')" title="風圧">
-                        <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
+                        <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                     </button>
                 </div>
             </div>
@@ -3274,29 +3297,29 @@
                             <p style="margin: 0 0 6px 0; font-size: 11px; color: var(--md-sys-color-on-surface-variant);">表記の「対 XX」は弱点となるボス属性を示します</p>
                             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 <button class="attribute-tab-btn" data-fsim-attr="FIRE" onclick="selectFururiSimAttr('FIRE')" title="灼熱PT 対 風圧">
-                                    <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
                                     <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;opacity:0.7;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;opacity:0.7;">
                                 </button>
                                 <button class="attribute-tab-btn" data-fsim-attr="WATER" onclick="selectFururiSimAttr('WATER')" title="水冷PT 対 灼熱">
-                                    <img src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
                                     <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;opacity:0.7;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;opacity:0.7;">
                                 </button>
                                 <button class="attribute-tab-btn" data-fsim-attr="ELECTRIC" onclick="selectFururiSimAttr('ELECTRIC')" title="電撃PT 対 水冷">
-                                    <img src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
                                     <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;opacity:0.7;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;opacity:0.7;">
                                 </button>
                                 <button class="attribute-tab-btn" data-fsim-attr="IRON" onclick="selectFururiSimAttr('IRON')" title="鉄甲PT 対 電撃">
-                                    <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
                                     <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;opacity:0.7;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;opacity:0.7;">
                                 </button>
                                 <button class="attribute-tab-btn" data-fsim-attr="WIND" onclick="selectFururiSimAttr('WIND')" title="風圧PT 対 鉄甲">
-                                    <img src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
                                     <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;opacity:0.7;">
+                                    <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;opacity:0.7;">
                                 </button>
                             </div>
                         </div>
@@ -3657,6 +3680,9 @@
                             <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
                             <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。同一ボスへの重複は警告/スキップされ、HP減算はチェックボックスで選択 (OFFなら別途ボスHP更新で同期)。入力者名がログに残る</li>
                             <li><strong>🔍 提出漏れチェック</strong> — BlaBlaLINK のユニオン全体スクショから各メンバーの凸消化数を読み取り、PADの登録数と突き合わせ。未提出者には 📣 催促Push を一斉送信でき、✏️ からそのまま代理凸へ。全体画面にはボスが写らないため登録は個人スクショで行う役割分担</li>
+                            <li><strong>🪞 模擬提出チェック</strong> — 前日運用向け。今シーズンの模擬戦データ提出状況 (未提出/一部/5属性) を一覧し、未提出者へ催促Pushを一斉送信</li>
+                            <li><strong>🛠 運営モード</strong> — ユニレ管理タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。運営メンバーは一度ONにすれば端末に記憶される</li>
+                            <li><strong>HP鮮度</strong> — ボス状況の見出しに「HP更新 ○分前」を表示 (30分以上で⚠️)。ボスHPは30秒毎に自動再取得される</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
                             <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
                             <li><strong>🧪 クイックテストシーズン</strong> — ワンクリックでテストボス1〜5の独立環境を生成。OCR/スクショ不要</li>
@@ -4022,7 +4048,7 @@
             <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。</p>
 
             <!-- BlaBlaLINK 画像一括取り込み -->
-            <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
+            <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(20,22,26,0.14);background:#F7F8F9;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                     <span style="font-size:18px;">📷</span>
                     <span style="flex:1;">BlaBlaLINK 進捗画像から全ボスHPを一括取り込み（AI画像認識）</span>
@@ -4088,11 +4114,11 @@
             <!-- BlaBlaLINK 3凸取込モード -->
             <div id="opsProxyBulkSection" style="display:none;">
                 <p style="margin:8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">対象メンバーの BlaBlaLINK 凸結果一覧スクショから 3凸分を一括登録します。</p>
-                <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed var(--md-sys-color-outline-variant);border-radius:8px;background:var(--md-sys-color-surface-variant);cursor:pointer;">
-                    <span style="font-size:18px;">📷</span>
-                    <span style="flex:1;font-size:13px;">BlaBlaLINK 凸一覧画像を選ぶ</span>
+                <label class="dc-upload">
+                    <span class="dc-upload-ico">📷</span>
+                    <span class="dc-upload-text">BlaBlaLINK 凸一覧画像を選ぶ</span>
                     <input type="file" id="opsProxyBulkOcrInput" accept="image/*" onchange="handleOpsProxyBulkOcrUpload(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                    <span class="dc-upload-btn">画像を選ぶ</span>
                 </label>
                 <p id="opsProxyBulkStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
                 <div id="opsProxyBulkPreview" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
@@ -4119,16 +4145,32 @@
                 <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">BlaBlaLINK の<strong>「ユニオンレイド参加状況」スクショ</strong>から各メンバーの参加回数を読み取り、PADの登録数と突き合わせます。<br>📌 撮影前に<strong>当日 (HARD) の Day タブ</strong>を表示してください。スマホはスクロールしながら3〜4枚に分けてOK (まとめて選択、重複行は自動で統合)。</p>
-            <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed var(--md-sys-color-outline-variant);border-radius:8px;background:var(--md-sys-color-surface-variant);cursor:pointer;">
-                <span style="font-size:18px;">📷</span>
-                <span style="flex:1;font-size:13px;">ユニオン全体のスクショを選ぶ (複数可)</span>
+            <label class="dc-upload">
+                <span class="dc-upload-ico">📷</span>
+                <span class="dc-upload-text">ユニオン全体のスクショを選ぶ (複数可)</span>
                 <input type="file" id="opsAuditFileInput" accept="image/*" multiple onchange="handleOpsAuditUpload(event)" style="display:none;">
-                <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                <span class="dc-upload-btn">画像を選ぶ</span>
             </label>
             <p id="opsAuditStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
             <div id="opsAuditResult" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
                 <button onclick="handleOpsAuditPushRemind()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📣 未提出者に催促Push</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 運営: 模擬提出チェックモーダル ========== -->
+    <div class="player-select-modal" id="opsMockAuditModal">
+        <div class="player-select-content" style="max-width:560px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>🪞 模擬提出チェック</h2>
+                <button onclick="closeOpsMockAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">今シーズンの模擬戦データ提出状況です (シーズン作成時にリセットされるため、表示されている提出はすべて今シーズン分)。未提出者には催促Pushを送れます。</p>
+            <p id="opsMockAuditStatus" style="margin:0;font-size:11.5px;font-weight:700;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            <div id="opsMockAuditList" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div id="opsMockAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
+                <button onclick="handleOpsMockAuditPush()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📣 未提出者に催促Push</button>
             </div>
         </div>
     </div>
@@ -4206,7 +4248,7 @@
             <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
 
             <!-- 公式アナウンス画像取り込み -->
-            <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
+            <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(20,22,26,0.14);background:#F7F8F9;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                     <span style="font-size:18px;">📷</span>
                     <span style="flex:1;">NIKKE公式アナウンス画像から自動入力（AI画像認識）</span>
@@ -4349,7 +4391,7 @@
             </div>
 
             <!-- 画像取り込み -->
-            <div style="padding:10px 12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);">
+            <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(20,22,26,0.14);background:#F7F8F9;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
                     <span style="font-size:18px;">📷</span>
                     <span style="flex:1;">戦闘履歴スクショから5キャラを自動入力（複数枚OK）</span>
@@ -4881,7 +4923,7 @@
                 const active = d.picked === a.key;
                 return `<div onclick="_tourDemoMockPick('${a.key}')" style="flex:1;min-width:52px;padding:7px 2px;border-radius:10px;cursor:pointer;text-align:center;transition:all .15s;border:1.5px solid ${active ? DC_ATTR_COLORS[a.key] : 'transparent'};
                     background:${done ? DC_ATTR_COLORS[a.key] : '#F1F2F4'};">
-                    <img src="${a.icon}" style="width:18px;height:18px;display:block;margin:0 auto 2px;">
+                    <img loading="lazy" decoding="async" src="${a.icon}" style="width:18px;height:18px;display:block;margin:0 auto 2px;">
                     <span style="font-size:10px;font-weight:900;color:${done ? '#fff' : '#6B7178'};">${done ? '✓提出済' : a.name}</span>
                 </div>`;
             }).join('');
@@ -4929,7 +4971,7 @@
                 return `<div onclick="_tourDemoBattleTap(${b.n})" style="flex:1;padding:9px 2px;border-radius:11px;cursor:pointer;text-align:center;transition:all .15s;position:relative;
                     border:1.5px solid ${mine ? c : 'rgba(20,22,26,0.06)'};background:${mine ? `${c}14` : '#fff'};${mine ? `animation:tour-demo-ping 1.2s ease-out infinite;` : ''}">
                     ${mine ? '<span style="position:absolute;top:-7px;right:-3px;font-size:12px;">🔥</span>' : ''}
-                    <img src="${DC_ATTR_ICONS[b.attr] || ''}" style="width:16px;height:16px;display:block;margin:0 auto 2px;">
+                    <img loading="lazy" decoding="async" src="${DC_ATTR_ICONS[b.attr] || ''}" style="width:16px;height:16px;display:block;margin:0 auto 2px;">
                     <span style="font-size:11px;font-weight:900;color:${mine ? c : '#14161A'};">B${b.n}</span>
                 </div>`;
             }).join('');
@@ -5278,7 +5320,7 @@
                         const hintEl = pill?.querySelector('.hint');
                         if (!hintEl) return;
                         if (url) {
-                            hintEl.innerHTML = `<img src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
+                            hintEl.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
                         } else {
                             hintEl.textContent = '👤';
                         }
@@ -5399,14 +5441,14 @@
             const icons = attrs
                 .map(k => PT_ATTRS.find(a => a.key === k))
                 .filter(Boolean)
-                .map(a => `<img src="${a.icon}" alt="${a.name}" title="${a.name}が得意" style="width:${size}px;height:${size}px;vertical-align:middle;">`)
+                .map(a => `<img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" title="${a.name}が得意" style="width:${size}px;height:${size}px;vertical-align:middle;">`)
                 .join('');
             return `<span style="display:inline-flex;align-items:center;gap:2px;flex-shrink:0;">${icons}</span>`;
         }
 
         function _renderAvatarCircle(url, size) {
             if (url) {
-                return `<img src="${escapeHtml(url)}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;background:var(--brand-primary-soft);flex-shrink:0;vertical-align:middle;">`;
+                return `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;background:var(--brand-primary-soft);flex-shrink:0;vertical-align:middle;">`;
             }
             const emojiFs = Math.max(10, Math.floor(size * 0.55));
             return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:50%;background:var(--brand-primary-soft);align-items:center;justify-content:center;font-size:${emojiFs}px;color:var(--brand-primary);flex-shrink:0;vertical-align:middle;">👤</span>`;
@@ -5446,7 +5488,7 @@
                 else { img.style.display = 'none'; fb.style.display = 'inline'; img.src = ''; }
             }
             if (preview) {
-                if (url) preview.innerHTML = `<img src="${escapeHtml(url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+                if (url) preview.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
                 else preview.innerHTML = '👤';
             }
             // 識別ピルにも反映
@@ -5596,7 +5638,17 @@
                     </div>`;
                 }).join('');
 
+            // 陳腐化検知: 配信後に凸/ボスHPが動いていたら注意を出す
+            let stale = false;
+            try {
+                if (pub.season_id && typeof window.supabaseGetSeasonLastChange === 'function') {
+                    const last = await window.supabaseGetSeasonLastChange(pub.season_id);
+                    if (last && new Date(last).getTime() > new Date(pub.published_at).getTime() + 60000) stale = true;
+                }
+            } catch { /* noop */ }
+
             body.innerHTML = `
+                ${stale ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:#B45309;">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
                 <p style="margin:0 0 9px 0;font-size:10.5px;color:#8A9097;line-height:1.5;">運営が配信した凸プランです。配信時点の残HP・提出データに基づく想定のため、最新状況とはズレることがあります。</p>
                 <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">あなたの凸予定</div>
                 ${mineHtml}
@@ -5695,7 +5747,7 @@
             const src = DC_ATTR_ICONS[key] || '';
             const name = opts.title || (key || '');
             const style = `width:${size}px;height:${size}px;${opts.style || ''}`;
-            return `<img src="${src}" alt="${name}" title="${name}" style="${style}">`;
+            return `<img loading="lazy" decoding="async" src="${src}" alt="${name}" title="${name}" style="${style}">`;
         }
         async function renderMypageStrongAttrsBadge(identity) {
             const el = document.getElementById('mypageStrongAttrsDisplay');
@@ -5713,9 +5765,9 @@
                 const on = attrs.has(a.key);
                 const c = DC_ATTR_COLORS[a.key] || '#A4AAB0';
                 if (on) {
-                    return `<div title="${a.name}PT 得意" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${c};box-shadow:0 3px 8px ${c}59;"><img src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;"></div>`;
+                    return `<div title="${a.name}PT 得意" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${c};box-shadow:0 3px 8px ${c}59;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;"></div>`;
                 }
-                return `<div title="${a.name}PT" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${c}1F;opacity:0.55;"><img src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;"></div>`;
+                return `<div title="${a.name}PT" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${c}1F;opacity:0.55;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;"></div>`;
             }).join('');
         }
 
@@ -5918,7 +5970,7 @@
                 }
                 const resolved = fuzzyResolveCharacter(charName) || charName;
                 const r = resolveNikkeChar(resolved);
-                const icon = r?.iconPath ? `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || resolved)}">` : escapeHtml((r?.canonical || resolved || '?').charAt(0));
+                const icon = r?.iconPath ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || resolved)}">` : escapeHtml((r?.canonical || resolved || '?').charAt(0));
                 return `<div class="dc-dmg-char${dupCls ? ' ' + dupCls : ''}" title="${escapeHtml(r?.canonical || resolved)}">${icon}</div>`;
             };
 
@@ -5940,7 +5992,7 @@
                     <button type="button" onclick="handleMyTeamEdit('${a.key}')" class="dc-dmg-panel" title="${a.name}PT" data-attr="${a.key}">
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
-                                <img src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;">
+                                <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;">
                             </div>
                             ${hasVal
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
@@ -6020,7 +6072,7 @@
                 return `
                     <div class="mydmg-row" data-row-attr="${a.key}" style="padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                         <div style="display:flex;align-items:center;gap:10px;">
-                            <img src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
+                            <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
                             <div style="flex:1;min-width:0;">
                                 <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${a.name}PT <span style="font-size:11px;font-weight:400;color:var(--md-sys-color-on-surface-variant);">対 ${a.bossJP}</span></div>
                                 <div class="mydmg-updated" style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${updated}</div>
@@ -6074,7 +6126,7 @@
             const buildRow = (i, v) => {
                 const r = v ? resolveNikkeChar(v) : null;
                 const icon = r?.iconPath
-                    ? `<img onclick="openIconPickerForTeamEdit(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`
+                    ? `<img loading="lazy" decoding="async" onclick="openIconPickerForTeamEdit(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`
                     : `<div onclick="openIconPickerForTeamEdit(${i})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
                 return `
                     <div style="display:flex;align-items:center;gap:8px;" data-team-row="${i}">
@@ -6105,7 +6157,7 @@
             el.innerHTML = slots.map((name, i) => {
                 const r = name ? resolveNikkeChar(name) : null;
                 const icon = r?.iconPath
-                    ? `<img onclick="openIconPickerForAttackSlot(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || name)}" title="${escapeHtml(r.canonical || name)} - クリックで変更" style="width:44px;height:44px;border-radius:6px;background:#222;cursor:pointer;">`
+                    ? `<img loading="lazy" decoding="async" onclick="openIconPickerForAttackSlot(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || name)}" title="${escapeHtml(r.canonical || name)} - クリックで変更" style="width:44px;height:44px;border-radius:6px;background:#222;cursor:pointer;">`
                     : `<div onclick="openIconPickerForAttackSlot(${i})" title="クリックでマスタから選択" style="width:44px;height:44px;border-radius:6px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:18px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">${name ? '⚠️' : '?'}</div>`;
                 const label = name
                     ? `<div style="font-size:10px;text-align:center;line-height:1.1;max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? 'var(--md-sys-color-on-surface)' : '#f59e0b'};">${escapeHtml(r?.canonical || name)}</div>`
@@ -6122,7 +6174,7 @@
             const r = resolveNikkeChar(input.value);
             const iconEl = row.children[1];
             if (r?.iconPath) {
-                iconEl.outerHTML = `<img onclick="openIconPickerForTeamEdit(${idx})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`;
+                iconEl.outerHTML = `<img loading="lazy" decoding="async" onclick="openIconPickerForTeamEdit(${idx})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`;
             } else {
                 iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
             }
@@ -6263,7 +6315,7 @@
             }
             const renderItem = c => {
                 const icon = (c.icon_paths && c.icon_paths[0])
-                    ? `<img src="${escapeHtml(c.icon_paths[0])}" style="width:48px;height:48px;border-radius:8px;background:#222;">`
+                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(c.icon_paths[0])}" style="width:48px;height:48px;border-radius:8px;background:#222;">`
                     : `<div style="width:48px;height:48px;border-radius:8px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--md-sys-color-outline-variant);">?</div>`;
                 const safe = escapeHtml(c.canonical_name).replace(/'/g, "\\'");
                 return `
@@ -6566,7 +6618,7 @@
             const attr = d.selectedAttr ? PT_ATTRS.find(a => a.key === d.selectedAttr) : null;
             const dmgB = d.totalDamage != null ? (Number(d.totalDamage) / 1e9).toFixed(2).replace(/\.?0+$/, '') : null;
             const attrChip = attr
-                ? `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:${DC_ATTR_COLORS[attr.key]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);"><img src="${attr.icon}" alt="${attr.name}" style="width:26px;height:26px;"></div>`
+                ? `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:${DC_ATTR_COLORS[attr.key]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);"><img loading="lazy" decoding="async" src="${attr.icon}" alt="${attr.name}" style="width:26px;height:26px;"></div>`
                 : `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:#F1F2F4;color:#9AA0A6;font-size:20px;font-weight:900;">?</div>`;
             summary.innerHTML = `
                 ${attrChip}
@@ -6592,7 +6644,7 @@
                 const norm = fuzzyResolveCharacter(name) || name;
                 const r = resolveNikkeChar(norm);
                 const icon = r?.iconPath
-                    ? `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || norm)}" style="width:44px;height:44px;border-radius:9px;object-fit:cover;background:#222;">`
+                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || norm)}" style="width:44px;height:44px;border-radius:9px;object-fit:cover;background:#222;">`
                     : `<div style="width:44px;height:44px;border-radius:9px;background:#F1F2F4;color:#5A6068;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;">${escapeHtml((r?.canonical || norm).charAt(0))}</div>`;
                 return `
                     <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
@@ -6619,7 +6671,7 @@
                 const pickerBtns = picker.querySelector('div:last-child');
                 pickerBtns.innerHTML = PT_ATTRS.map(a => {
                     const c = DC_ATTR_COLORS[a.key];
-                    return `<button type="button" onclick="handleMyDmgPreviewPickAttr('${a.key}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:none;background:${c}1F;color:${c};font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;"><img src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}PT</button>`;
+                    return `<button type="button" onclick="handleMyDmgPreviewPickAttr('${a.key}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:none;background:${c}1F;color:${c};font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}PT</button>`;
                 }).join('');
             } else {
                 picker.style.display = 'none';
@@ -6787,7 +6839,7 @@
                     ? `background:${a.color};color:#fff;border-color:${a.color};font-weight:700;`
                     : `background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);border-color:var(--md-sys-color-outline-variant);`;
                 return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" title="${a.name}PT" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;border:2px solid var(--md-sys-color-outline-variant);${style}font-size:13px;cursor:pointer;transition:all 0.18s ease;">
-                    <img src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;">
+                    <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;">
                 </button>`;
             }).join('');
             targets.forEach(t => t.innerHTML = html);
@@ -7351,7 +7403,7 @@
                 const pt = ptOf(c.attribute);
                 const bossLabel = c.boss_number ? bossName(c.boss_number) : '';
                 const ptLabel = pt
-                    ? `<span style="display:inline-flex;align-items:center;gap:3px;"><img src="${pt.icon}" style="width:14px;height:14px;">${pt.name}PT</span>`
+                    ? `<span style="display:inline-flex;align-items:center;gap:3px;"><img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;">${pt.name}PT</span>`
                     : '';
                 const tags = isCoord
                     ? ([ptLabel, bossLabel].filter(Boolean).join(' / ') || '<span style="color:var(--md-sys-color-outline-variant);">対象指定なし</span>')
@@ -7395,6 +7447,8 @@
         }
 
         // ポーリング: 10秒毎に再取得。タブ非表示中は停止 (Page Visibility API)。
+        // 3回に1回 (30秒毎) はボスHPも再取得して、当日のボス状況カードをライブに保つ。
+        let _coordPollTick = 0;
         function _startCoordPolling() {
             _stopCoordPolling();
             if (document.hidden) return;
@@ -7402,6 +7456,16 @@
                 const id = getCurrentIdentity();
                 if (!id?.id) return;
                 _refreshCoordOnce(id);
+                _coordPollTick = (_coordPollTick + 1) % 3;
+                if (_coordPollTick === 0 && _opsDashboardCache?.season) {
+                    window.supabaseLoadActiveSeasonWithBosses().then(r => {
+                        if (r?.season && _opsDashboardCache?.season && r.season.id === _opsDashboardCache.season.id) {
+                            _opsDashboardCache.bosses = r.bosses;
+                            if (_activeSeasonCache?.season?.id === r.season.id) _activeSeasonCache.bosses = r.bosses;
+                            renderOpsBossSummary();
+                        }
+                    }).catch(() => { /* noop */ });
+                }
             }, _COORD_POLL_INTERVAL_MS);
         }
         function _stopCoordPolling() {
@@ -7575,7 +7639,7 @@
                             ? `onclick="handleMyNextAttackClaim(${b.boss_number}, true)"`
                             : `onclick="handleMyNextAttackClaim(${b.boss_number}, false)"`;
                 const iconBox = iconSrc
-                    ? `<img src="${iconSrc}" alt="" style="width:18px;height:18px;position:relative;z-index:2;${isMyCombat ? `filter:drop-shadow(0 0 4px ${c});` : ''}">`
+                    ? `<img loading="lazy" decoding="async" src="${iconSrc}" alt="" style="width:18px;height:18px;position:relative;z-index:2;${isMyCombat ? `filter:drop-shadow(0 0 4px ${c});` : ''}">`
                     : `<div style="width:7px;height:7px;border-radius:99px;background:${c};position:relative;z-index:2;"></div>`;
                 return `
                     <div class="dc-boss-tile" ${onClick}
@@ -7738,7 +7802,7 @@
                 return `
                     <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                         <div style="font-weight:700;color:var(--md-sys-color-primary);font-size:14px;min-width:46px;">${a.attack_number}凸目</div>
-                        ${ptInfo ? `<img src="${ptInfo.icon}" alt="${ptInfo.name}" style="width:20px;height:20px;flex-shrink:0;" title="${ptInfo.name}PT">` : ''}
+                        ${ptInfo ? `<img loading="lazy" decoding="async" src="${ptInfo.icon}" alt="${ptInfo.name}" style="width:20px;height:20px;flex-shrink:0;" title="${ptInfo.name}PT">` : ''}
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${escapeHtml(bossName)}</div>
                             <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">Lv.${a.level || 1} ${ptInfo ? `／ ${ptInfo.name}PT` : ''}</div>
@@ -7874,7 +7938,7 @@
                     <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}" data-attr="${b.attribute}" data-pt="${playerAttr}"
                         onclick="handleMyAttackBossPick(this, ${b.boss_number})"
                         style="padding:11px 4px;border-radius:10px;border:1.5px solid ${bossVisual.color};background:#fff;color:${bossVisual.color};font-size:11px;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:all .12s;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                        ${bossVisual.icon ? `<img src="${bossVisual.icon}" style="width:22px;height:22px;">` : `<div style="font-size:18px;">⚔️</div>`}
+                        ${bossVisual.icon ? `<img loading="lazy" decoding="async" src="${bossVisual.icon}" style="width:22px;height:22px;">` : `<div style="font-size:18px;">⚔️</div>`}
                         <div style="font-size:11px;font-weight:900;">B${b.boss_number}</div>
                     </button>`;
             }).join('');
@@ -7954,7 +8018,7 @@
             }
             const icon = c?.icon_paths?.[0];
             if (icon) {
-                return `<img src="${escapeHtml(icon)}" alt="${escapeHtml(c.canonical_name || rawName)}" style="width:${size}px;height:${size}px;flex:none;border-radius:6px;object-fit:cover;background:#222;box-shadow:0 1px 3px rgba(0,0,0,0.15);">`;
+                return `<img loading="lazy" decoding="async" src="${escapeHtml(icon)}" alt="${escapeHtml(c.canonical_name || rawName)}" style="width:${size}px;height:${size}px;flex:none;border-radius:6px;object-fit:cover;background:#222;box-shadow:0 1px 3px rgba(0,0,0,0.15);">`;
             }
             // フォールバック: 名前の頭文字
             const initial = String(rawName).slice(0, 1) || '?';
@@ -8012,7 +8076,7 @@
             // ボス側
             const bossV = ATTR_VISUAL[boss.attribute] || { color:'#8A9097', dark:'#5A6068', name:'?', icon:'' };
             bossIcon.innerHTML = bossV.icon
-                ? `<img src="${bossV.icon}" alt="${bossV.name}">`
+                ? `<img loading="lazy" decoding="async" src="${bossV.icon}" alt="${bossV.name}">`
                 : `<span style="font-size:30px;">⚔️</span>`;
             bossIcon.style.background = `linear-gradient(180deg, ${bossV.color}, ${bossV.dark})`;
             bossIcon.style.boxShadow = `0 4px 10px ${bossV.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`;
@@ -8040,7 +8104,7 @@
             const ptAttr = bossAttrToPlayerAttr(boss.attribute);
             const ptV = ATTR_VISUAL[ptAttr] || { color:'#8A9097', dark:'#5A6068', name:'?', icon:'' };
             ptIcon.innerHTML = ptV.icon
-                ? `<img src="${ptV.icon}" alt="${ptV.name}">`
+                ? `<img loading="lazy" decoding="async" src="${ptV.icon}" alt="${ptV.name}">`
                 : `<span style="font-size:30px;">⚔️</span>`;
             ptIcon.style.background = `linear-gradient(180deg, ${ptV.color}, ${ptV.dark})`;
             ptIcon.style.boxShadow = `0 4px 10px ${ptV.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`;
@@ -8687,7 +8751,7 @@
                 const r = resolveNikkeChar(c);
                 if (!r) return '';
                 if (r.iconPath) {
-                    return `<img src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || r.raw)}" title="${escapeHtml(r.canonical || r.raw)}" style="width:${size}px;height:${size}px;border-radius:4px;vertical-align:middle;margin-right:3px;">`;
+                    return `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || r.raw)}" title="${escapeHtml(r.canonical || r.raw)}" style="width:${size}px;height:${size}px;border-radius:4px;vertical-align:middle;margin-right:3px;">`;
                 }
                 return `<span style="font-size:11px;padding:1px 5px;border-radius:4px;background:var(--md-sys-color-surface-variant);margin-right:3px;">${escapeHtml(r.canonical || r.raw)}</span>`;
             }).join('');
@@ -8751,7 +8815,7 @@
                                    <button onclick="handleIconBootstrapSave(${i})" style="margin-top:4px;width:100%;padding:5px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:600;cursor:pointer;">登録</button>`;
                             return `
                                 <div style="padding:8px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;text-align:center;">
-                                    <img src="${escapeHtml(p)}" style="width:60px;height:60px;border-radius:6px;margin-bottom:6px;background:#222;" onerror="this.style.opacity='0.3';this.alt='画像未読込'">
+                                    <img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:60px;height:60px;border-radius:6px;margin-bottom:6px;background:#222;" onerror="this.style.opacity='0.3';this.alt='画像未読込'">
                                     ${knownTag}
                                 </div>`;
                         }).join('')}
@@ -8815,7 +8879,7 @@
                 const last = r.last_seen ? SETTINGS_TS_FMT(r.last_seen) : '-';
                 const safeName = escapeHtml(r.canonical_name).replace(/'/g, "\\'");
                 const icons = Array.isArray(r.icon_paths) && r.icon_paths.length > 0
-                    ? r.icon_paths.map(p => `<img src="${escapeHtml(p)}" style="width:22px;height:22px;border-radius:4px;margin-right:2px;" title="${escapeHtml(p)}">`).join('')
+                    ? r.icon_paths.map(p => `<img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:22px;height:22px;border-radius:4px;margin-right:2px;" title="${escapeHtml(p)}">`).join('')
                     : '<span style="font-size:10px;color:var(--md-sys-color-outline-variant);">no icon</span>';
                 return `
                     <div onclick="openCharMasterEditModal('${safeName}')" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
@@ -9671,7 +9735,7 @@
                 <div class="dc-rem-attr-header">
                     <div style="flex:1;min-width:0;font-size:10px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">メンバー</div>
                     <div style="display:flex;gap:2px;flex:none;">
-                        ${PT_ATTRS.map(a => `<div class="dc-rem-attr-header-chip" style="background:${a.color}1A;" title="${a.name}PT"><img src="${a.icon}" alt="${a.name}" style="width:18px;height:18px;"></div>`).join('')}
+                        ${PT_ATTRS.map(a => `<div class="dc-rem-attr-header-chip" style="background:${a.color}1A;" title="${a.name}PT"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:18px;height:18px;"></div>`).join('')}
                     </div>
                 </div>`;
 
@@ -9695,7 +9759,7 @@
                 const favChips = PT_ATTRS
                     .filter(a => favSet.has(a.key))
                     .slice(0, 3)
-                    .map(a => `<img src="${a.icon}" alt="${a.name}" title="${a.name}PT 得意" class="dc-rem-fav-chip" style="width:14px;height:14px;background:transparent;">`)
+                    .map(a => `<img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" title="${a.name}PT 得意" class="dc-rem-fav-chip" style="width:14px;height:14px;background:transparent;">`)
                     .join('');
                 return `
                     <div class="dc-rem-row">
@@ -9766,7 +9830,18 @@
             const el = document.getElementById('opsBossSummary');
             const lvEl = document.getElementById('opsBossSummaryLevel');
             if (!el) return;
-            if (lvEl) lvEl.textContent = season ? `Lv${season.current_level || 1} · 5体` : '';
+            if (lvEl) {
+                // HP鮮度: 最後にHPが動いた時刻 (20_bosses_updated_at.sql 適用後のみ)
+                let freshTxt = '';
+                const upds = (bosses || []).map(b => b.updated_at).filter(Boolean);
+                if (season && upds.length > 0) {
+                    const latest = Math.max(...upds.map(t => new Date(t).getTime()));
+                    const min = Math.floor((Date.now() - latest) / 60000);
+                    const warn = min >= 30;
+                    freshTxt = ` · <span style="font-weight:800;color:${warn ? '#B45309' : '#B6BBC1'};" title="ボスHPが最後に更新された時刻">HP更新 ${min < 1 ? 'たった今' : (min < 60 ? `${min}分前` : `${Math.floor(min / 60)}時間前`)}${warn ? ' ⚠️' : ''}</span>`;
+                }
+                lvEl.innerHTML = season ? `Lv${season.current_level || 1} · 5体${freshTxt}` : '';
+            }
 
             // 戦闘中(調整中)のボス番号 → 人リスト
             const coordsByBoss = new Map();
@@ -9831,7 +9906,7 @@
                 return `
                     <div class="dc-boss-card ${active ? 'has-combat' : ''}" style="--_attr-c:${c};${dead ? 'opacity:0.65;' : ''}">
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                            <div class="dc-boss-chip" style="${chipStyle}" title="${escapeHtml(iconAlt)}ボス${ptInfo ? ` / 弱点 ${escapeHtml(ptInfo.name)}PT` : ''}">${iconSrc ? `<img src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : ''}</div>
+                            <div class="dc-boss-chip" style="${chipStyle}" title="${escapeHtml(iconAlt)}ボス${ptInfo ? ` / 弱点 ${escapeHtml(ptInfo.name)}PT` : ''}">${iconSrc ? `<img loading="lazy" decoding="async" src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : ''}</div>
                             <div style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3')};">${dead ? '撃破' : `${remainPct.toFixed(0)}%`}</div>
                         </div>
                         <div style="display:flex;align-items:center;gap:7px;margin-top:11px;">
@@ -9945,7 +10020,7 @@
 
             const header = `
                 <div style="padding:8px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);margin-bottom:8px;font-size:13px;">
-                    対象: <img src="${ptInfo.icon}" style="width:14px;height:14px;vertical-align:middle;"> <strong>${ptInfo.name}PT</strong> → <strong>${escapeHtml(boss.name || boss.boss_code)}</strong> (残HP <strong>${remainingHpB.toFixed(2)}B</strong>)
+                    対象: <img loading="lazy" decoding="async" src="${ptInfo.icon}" style="width:14px;height:14px;vertical-align:middle;"> <strong>${ptInfo.name}PT</strong> → <strong>${escapeHtml(boss.name || boss.boss_code)}</strong> (残HP <strong>${remainingHpB.toFixed(2)}B</strong>)
                 </div>`;
 
             if (candidates.length === 0) {
@@ -10827,14 +10902,14 @@
                     return `
                         <div style="border:1px solid ${c}33;border-radius:13px;overflow:hidden;margin-bottom:9px;background:#fff;">
                             <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:linear-gradient(180deg, ${c}0F, ${c}05);">
-                                <div style="width:30px;height:30px;flex:none;border-radius:9px;background:${c};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px ${c}55;">${bIcon ? `<img src="${esc(bIcon)}" alt="${esc(bName)}" style="width:19px;height:19px;">` : ''}</div>
+                                <div style="width:30px;height:30px;flex:none;border-radius:9px;background:${c};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px ${c}55;">${bIcon ? `<img loading="lazy" decoding="async" src="${esc(bIcon)}" alt="${esc(bName)}" style="width:19px;height:19px;">` : ''}</div>
                                 <div style="flex:1;min-width:0;">
                                     <div style="display:flex;align-items:center;gap:6px;">
                                         <span style="font-size:13.5px;font-weight:900;color:#14161A;">B${b.bossNumber}</span>
                                         <span style="font-size:11px;font-weight:700;color:#8A9097;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(b.name)}</span>
                                     </div>
                                     <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
-                                        ${ptInfo ? `<img src="${esc(ptInfo.icon)}" style="width:12px;height:12px;" title="${esc(ptInfo.name)}PTで凸">` : ''}
+                                        ${ptInfo ? `<img loading="lazy" decoding="async" src="${esc(ptInfo.icon)}" style="width:12px;height:12px;" title="${esc(ptInfo.name)}PTで凸">` : ''}
                                         <span style="font-size:10.5px;font-weight:800;color:${c};letter-spacing:0.2px;">${ptInfo?.name || ''}PTで凸</span>
                                         <span style="font-size:10.5px;font-weight:700;color:#D5D9DD;">·</span>
                                         <span style="font-size:10.5px;font-weight:700;color:#A4AAB0;">目標 ${b.targetHpB.toFixed(1)}B</span>
@@ -11027,7 +11102,7 @@
                 const ptName = PT_ATTRS.find(x => x.key === bm.weakness)?.name || '';
                 const click = filterKey ? `onclick="togglePlanBossFilter('${filterKey}', ${bm.bossNumber})" ` : '';
                 cells.push(`<div ${click}style="min-width:0;overflow:hidden;margin:0 2px;padding:5px 2px;border-radius:9px;background:${c};text-align:center;${filterKey ? 'cursor:pointer;' : ''}">
-                    <div style="display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;"><span style="flex:none;display:${bIcon ? 'inline' : 'none'};">${bIcon ? `<img src="${esc(bIcon)}" style="width:12px;height:12px;vertical-align:-2px;">` : ''}</span><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${bm.bossNumber} ${esc(attrName)}</span></div>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;"><span style="flex:none;display:${bIcon ? 'inline' : 'none'};">${bIcon ? `<img loading="lazy" decoding="async" src="${esc(bIcon)}" style="width:12px;height:12px;vertical-align:-2px;">` : ''}</span><span style="font-size:10px;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${bm.bossNumber} ${esc(attrName)}</span></div>
                     <div style="font-size:10.5px;font-weight:800;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(ptName)}PTで凸</div>
                 </div>`);
             }
@@ -11168,7 +11243,7 @@
                     <div data-boss-num="${b.boss_number}" style="padding:10px 6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                             <strong style="font-size:13px;flex:1;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
-                            ${pt ? `<img src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
+                            ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
                             <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">tier: ${b.tier}</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -11416,7 +11491,7 @@
                     <button type="button" data-boss="${b.boss_number}"
                         onclick="handleOpsProxyBossPick(this, ${b.boss_number})"
                         style="padding:10px 8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                        ${pt ? `<img src="${pt.icon}" style="width:22px;height:22px;">` : ''}
+                        ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:22px;height:22px;">` : ''}
                         <div style="font-weight:600;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</div>
                         <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${pt ? `${pt.name}PTで凸` : ''}</div>
                     </button>`;
@@ -11758,6 +11833,76 @@
             }
         }
 
+        // ========== 運営: 模擬提出チェック (前日運用) ==========
+        let _opsMockAuditRows = [];
+        async function openOpsMockAuditModal() {
+            document.getElementById('opsMockAuditModal').classList.add('open');
+            const listEl = document.getElementById('opsMockAuditList');
+            const statusEl = document.getElementById('opsMockAuditStatus');
+            const actionsEl = document.getElementById('opsMockAuditActions');
+            listEl.innerHTML = '<p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>';
+            actionsEl.style.display = 'none';
+            try {
+                _opsMockAuditRows = await window.supabaseLoadMockSubmissionStatus();
+                _opsMockAuditRows.sort((a, b) => (a.attrCount - b.attrCount) || a.name.localeCompare(b.name, 'ja'));
+                const none = _opsMockAuditRows.filter(r => r.attrCount === 0);
+                const partial = _opsMockAuditRows.filter(r => r.attrCount > 0 && r.attrCount < 5);
+                const full = _opsMockAuditRows.length - none.length - partial.length;
+                statusEl.innerHTML = `<span style="color:#E23036;">⚠️ 未提出 ${none.length}名</span> · <span style="color:#B45309;">🔶 一部 ${partial.length}名</span> · <span style="color:#18C26B;">✅ 5属性 ${full}名</span>`;
+                const fmtD = (ts) => {
+                    try {
+                        const d = new Date(ts);
+                        return `${d.getMonth() + 1}/${d.getDate()} ${d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
+                    } catch { return ''; }
+                };
+                listEl.innerHTML = _opsMockAuditRows.map(r => {
+                    let badge, border;
+                    if (r.attrCount === 0) {
+                        badge = '<span style="font-size:10px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:3px 8px;border-radius:999px;">⚠️ 未提出</span>';
+                        border = 'rgba(255,61,68,0.35)';
+                    } else if (r.attrCount < 5) {
+                        badge = `<span style="font-size:10px;font-weight:900;color:#B45309;background:rgba(245,158,11,0.12);padding:3px 8px;border-radius:999px;">🔶 ${r.attrCount}/5属性</span>`;
+                        border = 'rgba(245,158,11,0.35)';
+                    } else {
+                        badge = '<span style="font-size:10px;font-weight:900;color:#18C26B;background:rgba(24,194,107,0.12);padding:3px 8px;border-radius:999px;">✅ 5属性</span>';
+                        border = 'rgba(24,194,107,0.25)';
+                    }
+                    return `
+                        <div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid ${border};border-radius:11px;background:#fff;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.name)}</div>
+                                <div style="font-size:10px;color:#A4AAB0;margin-top:1px;">${r.lastUpdated ? `最終提出 ${fmtD(r.lastUpdated)}` : '提出記録なし'}</div>
+                            </div>
+                            ${badge}
+                        </div>`;
+                }).join('');
+                actionsEl.style.display = none.length > 0 ? 'flex' : 'none';
+            } catch (e) {
+                listEl.innerHTML = `<p style="color:#FF3D44;font-size:12px;">❌ ${escapeHtml(e?.message || String(e))}</p>`;
+            }
+        }
+        function closeOpsMockAuditModal() {
+            document.getElementById('opsMockAuditModal').classList.remove('open');
+        }
+        async function handleOpsMockAuditPush() {
+            const targets = _opsMockAuditRows.filter(r => r.attrCount === 0);
+            if (targets.length === 0) { showNotification('未提出のメンバーはいません'); return; }
+            const title = '🪞 模擬戦データ提出のお願い';
+            const bodyText = '今シーズンの模擬戦データが未提出です。マイページの「模擬戦データ」から提出お願いします🙏';
+            const ok = await showPushPreview([{ title, body: bodyText, recipients: targets.map(r => ({ id: r.id, name: r.name })) }]);
+            if (!ok) return;
+            try {
+                const res = await window.sendPushNotification({
+                    title, body: bodyText,
+                    url: './?tab=mypage',
+                    playerIds: targets.map(r => r.id),
+                });
+                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+
         // ========== 運営: 凸履歴・編集モーダル (Phase 3b) ==========
         let _opsAttacksCache = null;
 
@@ -11808,7 +11953,7 @@
                         ${renderAvatarHtml(a.player_id, playerName, 24)}
                         <strong style="font-size:13px;min-width:74px;">${escapeHtml(playerName)}</strong>
                         <span style="font-weight:600;color:var(--md-sys-color-primary);font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
-                        ${pt ? `<img src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT">` : ''}
+                        ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT">` : ''}
                         <span style="flex:1;font-size:12px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
                         <span style="font-size:13px;font-weight:700;white-space:nowrap;">${dmgB} B</span>
                         <button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">編集</button>
@@ -13052,7 +13197,7 @@
                 const slots = [];
                 for (let i = 0; i < 5; i++) {
                     if (chars[i]) {
-                        slots.push(`<img class="comp-icon-img" src="${chars[i]}" alt="キャラ" onerror="this.style.opacity='0.3'">`);
+                        slots.push(`<img loading="lazy" decoding="async" class="comp-icon-img" src="${chars[i]}" alt="キャラ" onerror="this.style.opacity='0.3'">`);
                     } else {
                         slots.push('<div class="comp-icon-placeholder"></div>');
                     }
@@ -13097,9 +13242,9 @@
                         html += `
                             <div class="comp-section" style="--comp-c:${accentC}40;--comp-bg:${accentC}12;">
                                 <div class="comp-boss-header">
-                                    <img src="${info.icon}" alt="${info.attributeJP}PT" title="${info.attributeJP}PT">
+                                    <img loading="lazy" decoding="async" src="${info.icon}" alt="${info.attributeJP}PT" title="${info.attributeJP}PT">
                                     <span style="opacity:0.5; font-size:10px;">対</span>
-                                    <img src="${info.bossAttributeIcon}" alt="${info.bossAttributeJP}" title="${info.bossAttributeJP}ボス" style="width:15px; height:15px; opacity:0.85;">
+                                    <img loading="lazy" decoding="async" src="${info.bossAttributeIcon}" alt="${info.bossAttributeJP}" title="${info.bossAttributeJP}ボス" style="width:15px; height:15px; opacity:0.85;">
                                     <span class="comp-boss-title">${bossName}</span>${indexLabel}
                                     ${difficulty ? `<span style="margin-left:auto;font-size:10.5px;font-weight:800;color:${accentC};background:${accentC}1A;padding:2px 8px;border-radius:999px;white-space:nowrap;">${difficulty} Lv.${level}</span>` : ''}
                                 </div>
@@ -13674,12 +13819,12 @@
                     ? `<div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;">ふるり値: <strong style="color: var(--md-sys-color-primary);">${fururi.toFixed(2)}</strong></div>`
                     : '';
                 const bossInfo = comp.bossCode ? BOSS_ATTRIBUTES[comp.bossCode] : null;
-                const bossIconHtml = bossInfo ? `<img src="${bossInfo.bossAttributeIcon}" alt="${bossInfo.bossAttributeJP}" style="width: 16px; height: 16px; flex-shrink: 0; opacity:0.85;">` : '';
+                const bossIconHtml = bossInfo ? `<img loading="lazy" decoding="async" src="${bossInfo.bossAttributeIcon}" alt="${bossInfo.bossAttributeJP}" style="width: 16px; height: 16px; flex-shrink: 0; opacity:0.85;">` : '';
                 return `
                 <div class="card" style="margin-bottom: 16px; padding: 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0;">
-                            ${comp.attributeIcon ? `<img src="${comp.attributeIcon}" alt="${comp.attributeJP}PT" style="width: 20px; height: 20px; flex-shrink: 0;">` : ''}
+                            ${comp.attributeIcon ? `<img loading="lazy" decoding="async" src="${comp.attributeIcon}" alt="${comp.attributeJP}PT" style="width: 20px; height: 20px; flex-shrink: 0;">` : ''}
                             <span style="opacity:0.6; font-size:11px;">対</span>
                             ${bossIconHtml}
                             <strong style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${comp.bossName}</strong>
@@ -13694,7 +13839,7 @@
                     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; max-width: 280px;">
                         ${comp.characters.map(url =>
                             typeof url === 'string' && url && !url.includes('属性アイコン')
-                                ? `<img src="${url}" alt="キャラ" style="width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.opacity='0.3'">`
+                                ? `<img loading="lazy" decoding="async" src="${url}" alt="キャラ" style="width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; border: 2px solid var(--border-color);" onerror="this.style.opacity='0.3'">`
                                 : ''
                         ).join('')}
                     </div>
@@ -14415,12 +14560,22 @@
             _ptrEl.style.opacity = '0';
         }
         const _PTR_KNOWN_TABS = ['slv-ranking', 'characters', 'mypage', 'ops', 'settings', 'member-admin'];
-        function _ptrRefresh() {
+        async function _ptrRefresh() {
             const name = document.querySelector('.tab-content.active')?.id?.replace('tab-', '');
             const icon = document.getElementById('ptrIcon');
             const label = document.getElementById('ptrLabel');
             if (icon) { icon.textContent = '🔄'; icon.classList.add('spin'); }
             if (label) label.textContent = '更新中…';
+            if (name === 'ranking') {
+                // 比較タブ: 月次データを再フェッチして再描画 (フルリロード不要)
+                try { await autoLoadData(); } catch (e) { console.warn('[PTR ranking]', e?.message || e); }
+                setTimeout(() => {
+                    _ptrHide();
+                    if (icon) icon.classList.remove('spin');
+                    _ptr.busy = false;
+                }, 650);
+                return;
+            }
             if (!name || !_PTR_KNOWN_TABS.includes(name)) {
                 location.reload();   // 個別更新経路が無いタブはフルリロード (PWA の更新手段も兼ねる)
                 return;
@@ -14491,6 +14646,74 @@
             if (_ptr.engaged) _ptrHide();
             _ptr.active = false; _ptr.engaged = false;
         }, { passive: true });
+
+        // ========== ops タブ: セクションジャンプナビ + 運営モード折りたたみ ==========
+        // 運営モードOFF (既定) では操作系カードを非表示にして、メンバーが見る画面をすっきりさせる。
+        // カードの特定は タイトル文字列 で行い、HTML の改変を最小化する。
+        const _OPS_SECTION_DEFS = [
+            { id: 'opsSecBoss',      title: 'ボス状況',            opsOnly: false },
+            { id: 'opsSecCoord',     title: 'オンライン / 調整中', opsOnly: false },
+            { id: 'opsSecRemaining', title: '残り戦闘可能メンバー', opsOnly: false },
+            { id: 'opsSecFinish',    title: '締め凸候補検索',       opsOnly: true },
+            { id: 'opsSecPlan',      title: '最適凸プラン算出',     opsOnly: true },
+            { id: 'opsSecActions',   title: '戦闘中の運営アクション', opsOnly: true },
+            { id: 'opsSecPush',      title: '一斉通知',             opsOnly: true },
+            { id: 'opsSecSeason',    title: 'シーズン制御',         opsOnly: true },
+        ];
+        let _opsMode = localStorage.getItem('shirisuko_ops_mode') === '1';
+        function _opsJump(id) {
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        function _applyOpsMode() {
+            document.body.classList.toggle('ops-mode', _opsMode);
+            const b = document.getElementById('opsModeBtn');
+            if (b) {
+                b.textContent = _opsMode ? '🛠 運営 ON' : '🛠 運営';
+                b.style.background = _opsMode ? '#14161A' : '#fff';
+                b.style.color = _opsMode ? '#fff' : '#5A6068';
+            }
+        }
+        function toggleOpsMode() {
+            _opsMode = !_opsMode;
+            try { localStorage.setItem('shirisuko_ops_mode', _opsMode ? '1' : '0'); } catch { /* noop */ }
+            _applyOpsMode();
+            showNotification(_opsMode ? '🛠 運営モードON — 操作パネルを表示します' : '運営モードOFF — 操作パネルを隠しました');
+        }
+        function _initOpsTabStructure() {
+            // 1) カードに id と data-ops-only をタグ付け
+            const cards = document.querySelectorAll('#tab-ops .dc-card');
+            _OPS_SECTION_DEFS.forEach(def => {
+                for (const card of cards) {
+                    if (card.dataset._secTagged) continue;
+                    if ((card.textContent || '').includes(def.title)) {
+                        card.id = card.id || def.id;
+                        card.dataset._secTagged = '1';
+                        if (def.opsOnly) card.setAttribute('data-ops-only', '');
+                        break;
+                    }
+                }
+            });
+            // 2) ジャンプナビを ops タブ先頭に挿入
+            const container = document.querySelector('#tab-ops .container');
+            if (container && !document.getElementById('opsQuickNav')) {
+                const nav = document.createElement('div');
+                nav.id = 'opsQuickNav';
+                nav.setAttribute('data-no-swipe', '');
+                const hdrH = document.querySelector('.header')?.offsetHeight || 50;
+                nav.style.cssText = `position:sticky;top:${hdrH}px;z-index:30;display:flex;gap:6px;overflow-x:auto;padding:8px 2px;margin:-2px 0 8px;background:linear-gradient(180deg,#F5F6F8 78%,rgba(245,246,248,0));-webkit-overflow-scrolling:touch;`;
+                nav.innerHTML = `
+                    <button class="dc-nav-chip" onclick="_opsJump('opsSecBoss')">🐙 ボス</button>
+                    <button class="dc-nav-chip" onclick="_opsJump('opsSecCoord')">📣 状況</button>
+                    <button class="dc-nav-chip" onclick="_opsJump('opsSecRemaining')">🎯 残凸</button>
+                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecFinish')">🔔 締め</button>
+                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecPlan')">🧠 プラン</button>
+                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecActions')">🛠 操作</button>
+                    <button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()" style="margin-left:auto;"></button>`;
+                container.prepend(nav);
+            }
+            _applyOpsMode();
+        }
+        document.addEventListener('DOMContentLoaded', _initOpsTabStructure);
     </script>
 
     <!-- ========== Bottom Navigation (mobile) ========== -->

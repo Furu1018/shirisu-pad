@@ -567,12 +567,25 @@ window.supabaseLoadActiveSeasonWithBosses = async function () {
         .maybeSingle();
     if (sErr) throw sErr;
     if (!season) return { season: null, bosses: [] };
-    const { data: bosses, error: bErr } = await supabase
-        .from('bosses')
-        .select('boss_number, boss_code, name, attribute, weakness, tier, total_hp_raw, remaining_hp_raw')
-        .eq('season_id', season.id)
-        .order('boss_number', { ascending: true });
-    if (bErr) throw bErr;
+    // updated_at (HP鮮度表示用) は 20_bosses_updated_at.sql 適用後のみ存在 → 未適用環境はフォールバック
+    let bosses = null;
+    try {
+        const r = await supabase
+            .from('bosses')
+            .select('boss_number, boss_code, name, attribute, weakness, tier, total_hp_raw, remaining_hp_raw, updated_at')
+            .eq('season_id', season.id)
+            .order('boss_number', { ascending: true });
+        if (!r.error) bosses = r.data;
+    } catch { /* fallthrough */ }
+    if (bosses == null) {
+        const { data, error: bErr } = await supabase
+            .from('bosses')
+            .select('boss_number, boss_code, name, attribute, weakness, tier, total_hp_raw, remaining_hp_raw')
+            .eq('season_id', season.id)
+            .order('boss_number', { ascending: true });
+        if (bErr) throw bErr;
+        bosses = data;
+    }
     return { season, bosses: bosses || [] };
 };
 
@@ -1474,6 +1487,54 @@ window.supabaseLoadSeasonAttackStats = async function (seasonId) {
     return stats;
 };
 
+// 模擬戦の提出状況 (前日運用): プレイヤーごとの提出属性数と最終更新
+// シーズン作成時に player_damages はクリアされるため、存在する行 = 今シーズンの提出
+window.supabaseLoadMockSubmissionStatus = async function () {
+    const [pRes, dRes] = await Promise.all([
+        supabase.from('players').select('id, name').order('name'),
+        supabase.from('player_damages').select('player_id, attribute, damage_b, updated_at'),
+    ]);
+    if (pRes.error) throw pRes.error;
+    if (dRes.error) throw dRes.error;
+    const byPlayer = new Map();
+    (dRes.data || []).forEach(d => {
+        if (!(Number(d.damage_b) > 0)) return;
+        const s = byPlayer.get(d.player_id) || { attrs: 0, last: null };
+        s.attrs++;
+        if (!s.last || d.updated_at > s.last) s.last = d.updated_at;
+        byPlayer.set(d.player_id, s);
+    });
+    return (pRes.data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        attrCount: byPlayer.get(p.id)?.attrs || 0,
+        lastUpdated: byPlayer.get(p.id)?.last || null,
+    }));
+};
+
+// シーズンの戦況 (凸/ボスHP) が最後に動いた時刻 (配信プランの陳腐化検知用)
+window.supabaseGetSeasonLastChange = async function (seasonId) {
+    let latest = null;
+    try {
+        const { data } = await supabase
+            .from('attacks').select('reported_at')
+            .eq('season_id', seasonId)
+            .order('reported_at', { ascending: false })
+            .limit(1).maybeSingle();
+        if (data?.reported_at) latest = data.reported_at;
+    } catch { /* noop */ }
+    try {
+        const { data } = await supabase
+            .from('bosses').select('updated_at')
+            .eq('season_id', seasonId)
+            .order('updated_at', { ascending: false })
+            .limit(1);
+        const ts = data?.[0]?.updated_at;
+        if (ts && (!latest || ts > latest)) latest = ts;
+    } catch { /* updated_at 未マイグ環境 */ }
+    return latest;
+};
+
 // アクティブシーズンの最新配信プランを取得 (無ければ null)
 window.supabaseGetPublishedPlan = async function () {
     const { data: season } = await supabase
@@ -1481,7 +1542,7 @@ window.supabaseGetPublishedPlan = async function () {
     if (!season) return null;
     const { data, error } = await supabase
         .from('published_plans')
-        .select('id, plan, published_by, published_by_name, published_at')
+        .select('id, season_id, plan, published_by, published_by_name, published_at')
         .eq('season_id', season.id)
         .order('published_at', { ascending: false })
         .limit(1)
