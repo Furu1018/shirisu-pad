@@ -1456,6 +1456,24 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
     return data;
 };
 
+// シーズンの凸をプレイヤー別に集計 (提出漏れチェック用)
+// 戻り値: { [playerId]: { count, damageRaw } }
+window.supabaseLoadSeasonAttackStats = async function (seasonId) {
+    const { data, error } = await supabase
+        .from('attacks')
+        .select('player_id, damage_raw')
+        .eq('season_id', seasonId);
+    if (error) throw error;
+    const stats = {};
+    (data || []).forEach(a => {
+        const s = stats[a.player_id] || { count: 0, damageRaw: 0 };
+        s.count++;
+        s.damageRaw += Number(a.damage_raw) || 0;
+        stats[a.player_id] = s;
+    });
+    return stats;
+};
+
 // アクティブシーズンの最新配信プランを取得 (無ければ null)
 window.supabaseGetPublishedPlan = async function () {
     const { data: season } = await supabase

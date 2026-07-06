@@ -2947,6 +2947,7 @@
                     <button onclick="openOpsBossHpModal()" class="dc-ops-action">⚔️ ボスHP更新</button>
                     <button onclick="openOpsProxyAttackModal()" class="dc-ops-action">✏️ 代理凸を報告</button>
                     <button onclick="openOpsAttacksEditModal()" class="dc-ops-action">📋 凸履歴・編集</button>
+                    <button onclick="openOpsAuditModal()" class="dc-ops-action">🔍 提出漏れチェック</button>
                     <button onclick="switchTab('member-admin')" class="dc-ops-action">👥 メンバー管理</button>
                 </div>
             </div>
@@ -3654,7 +3655,8 @@
                         <ul>
                             <li><strong>ボス状況カード</strong> — 5体ボスの残HP/凸数/戦闘中メンバーを俯瞰。各ボスに <strong>「⚔️ このボスで凸する」</strong>（戦闘準備）、戦闘中なら <strong>「📷 結果を報告」/「⏪ 解除」</strong> も追加表示</li>
                             <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
-                            <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。HP は自動減算されない (別途ボスHP更新で同期)</li>
+                            <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。同一ボスへの重複は警告/スキップされ、HP減算はチェックボックスで選択 (OFFなら別途ボスHP更新で同期)。入力者名がログに残る</li>
+                            <li><strong>🔍 提出漏れチェック</strong> — BlaBlaLINK のユニオン全体スクショから各メンバーの凸消化数を読み取り、PADの登録数と突き合わせ。未提出者には 📣 催促Push を一斉送信でき、✏️ からそのまま代理凸へ。全体画面にはボスが写らないため登録は個人スクショで行う役割分担</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
                             <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
                             <li><strong>🧪 クイックテストシーズン</strong> — ワンクリックでテストボス1〜5の独立環境を生成。OCR/スクショ不要</li>
@@ -4105,6 +4107,28 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
                 <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 運営: 提出漏れチェックモーダル ========== -->
+    <div class="player-select-modal" id="opsAuditModal">
+        <div class="player-select-content" style="max-width:640px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>🔍 提出漏れチェック</h2>
+                <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">BlaBlaLINK の<strong>ユニオン全体の参加状況スクショ</strong>から各メンバーの凸消化数を読み取り、PADの登録数と突き合わせます。メンバーが多い場合はスクロールして複数枚に分けてもOK (まとめて選択)。</p>
+            <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed var(--md-sys-color-outline-variant);border-radius:8px;background:var(--md-sys-color-surface-variant);cursor:pointer;">
+                <span style="font-size:18px;">📷</span>
+                <span style="flex:1;font-size:13px;">ユニオン全体のスクショを選ぶ (複数可)</span>
+                <input type="file" id="opsAuditFileInput" accept="image/*" multiple onchange="handleOpsAuditUpload(event)" style="display:none;">
+                <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+            </label>
+            <p id="opsAuditStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            <div id="opsAuditResult" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div id="opsAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
+                <button onclick="handleOpsAuditPushRemind()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📣 未提出者に催促Push</button>
             </div>
         </div>
     </div>
@@ -11577,6 +11601,147 @@
                 renderOpsDashboard();
             } catch (e) {
                 set(`❌ ${e?.message || e}`, true);
+            }
+        }
+
+        // ========== 運営: 提出漏れチェック (BlaBlaLINK 全体スクショ × PAD登録の突き合わせ) ==========
+        // 全体画面はボスが写らないため凸登録には使わず「検出」専用。
+        // 登録は ✏️ から個人スクショ (ボスが写る) の代理凸で行う役割分担。
+        let _opsAuditRows = [];
+        const _OPS_AUDIT_PROMPT = [
+            '画像は BlaBlaLINK 拡張のユニオンレイド「メンバー別の参加状況一覧」です。',
+            '各行にメンバー名・凸消化数 (例 2/3)・合計ダメージが並んでいます。',
+            '画像内に表示されている全メンバー分を members 配列で抽出してください。',
+            '- name: メンバー名 (前後のランク数字や記号は除く)',
+            '- attackCount: 消化済み凸数の整数 (「2/3」なら 2、「3/3」なら 3)',
+            '- totalDamage: 合計ダメージの整数 (カンマ除去。B表記なら10^9倍)。読めなければ 0',
+            '行が上下に見切れているメンバーは含めない。出力はJSONのみ。コードフェンス禁止。',
+            '形式: {"members":[{"name":"ふるり","attackCount":3,"totalDamage":95210000000}]}',
+        ].join('\n');
+
+        function openOpsAuditModal() {
+            document.getElementById('opsAuditModal').classList.add('open');
+            document.getElementById('opsAuditStatus').textContent = ' ';
+            document.getElementById('opsAuditResult').innerHTML = '';
+            document.getElementById('opsAuditActions').style.display = 'none';
+            _opsAuditRows = [];
+        }
+        function closeOpsAuditModal() {
+            document.getElementById('opsAuditModal').classList.remove('open');
+        }
+
+        async function handleOpsAuditUpload(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            if (files.length === 0) return;
+            const statusEl = document.getElementById('opsAuditStatus');
+            const resultEl = document.getElementById('opsAuditResult');
+            const actionsEl = document.getElementById('opsAuditActions');
+            actionsEl.style.display = 'none';
+            resultEl.innerHTML = '';
+            try {
+                // 1) 全スクショをOCR (名前重複は凸数が大きい方を採用)
+                const gameMembers = new Map();
+                for (let i = 0; i < files.length; i++) {
+                    statusEl.textContent = `🔍 解析中... (${i + 1}/${files.length}枚)`;
+                    statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+                    const dataUrl = await window.fileToDataUrl(files[i]);
+                    const res = await window.callAiVision(dataUrl, 'bla_union_overview', { prompt: _OPS_AUDIT_PROMPT });
+                    (res.result?.members || []).forEach(m => {
+                        const name = String(m?.name || '').trim();
+                        if (!name) return;
+                        const cur = { attackCount: Math.max(0, Math.min(3, Number(m.attackCount) || 0)), totalDamage: Number(m.totalDamage) || 0 };
+                        const prev = gameMembers.get(name);
+                        if (!prev || cur.attackCount > prev.attackCount) gameMembers.set(name, cur);
+                    });
+                }
+                if (gameMembers.size === 0) throw new Error('メンバー行を読み取れませんでした');
+
+                // 2) PAD側の登録数を集計
+                statusEl.textContent = '📊 PADの登録と突き合わせ中...';
+                const ctx = await ensureActiveSeasonLoaded();
+                if (!ctx?.season) throw new Error('アクティブシーズンがありません');
+                const [players, stats] = await Promise.all([
+                    window.supabaseLoadAllPlayers(false),
+                    window.supabaseLoadSeasonAttackStats(ctx.season.id),
+                ]);
+                const norm = s => String(s || '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+                const byNorm = new Map(players.map(p => [norm(p.name), p]));
+
+                _opsAuditRows = [...gameMembers.entries()].map(([name, g]) => {
+                    const p = byNorm.get(norm(name)) || null;
+                    const st = p ? (stats[p.id] || { count: 0, damageRaw: 0 }) : null;
+                    const padCount = st ? st.count : 0;
+                    const missing = p ? Math.max(0, g.attackCount - padCount) : 0;
+                    const dmgGap = (p && g.totalDamage > 0 && g.attackCount === padCount)
+                        ? Math.abs(g.totalDamage - st.damageRaw) / 1e9 : 0;
+                    return {
+                        name, playerId: p?.id ?? null, matched: !!p,
+                        gameCount: g.attackCount, gameDamageB: g.totalDamage / 1e9,
+                        padCount, padDamageB: (st?.damageRaw || 0) / 1e9,
+                        missing, dmgGap,
+                    };
+                });
+                // 未提出が多い順 → ダメージずれ → 名前
+                _opsAuditRows.sort((a, b) => (b.missing - a.missing) || (b.dmgGap - a.dmgGap) || a.name.localeCompare(b.name, 'ja'));
+
+                const missingRows = _opsAuditRows.filter(r => r.missing > 0 && r.matched);
+                const unmatchedRows = _opsAuditRows.filter(r => !r.matched);
+                statusEl.textContent = `✅ ${gameMembers.size}名を照合: ⚠️未提出 ${missingRows.length}名 / ❓名前不一致 ${unmatchedRows.length}名`;
+                statusEl.style.color = missingRows.length > 0 ? '#F59E0B' : '#22c55e';
+
+                resultEl.innerHTML = _opsAuditRows.map(r => {
+                    let badge, border;
+                    if (!r.matched) {
+                        badge = '<span style="font-size:10px;font-weight:900;color:#8A9097;background:#F1F2F4;padding:3px 8px;border-radius:999px;">❓ PADに同名なし</span>';
+                        border = 'rgba(20,22,26,0.08)';
+                    } else if (r.missing > 0) {
+                        badge = `<span style="font-size:10px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:3px 8px;border-radius:999px;">⚠️ ${r.missing}件未提出</span>`;
+                        border = 'rgba(255,61,68,0.35)';
+                    } else if (r.dmgGap > 1) {
+                        badge = `<span style="font-size:10px;font-weight:900;color:#B45309;background:rgba(245,158,11,0.12);padding:3px 8px;border-radius:999px;">💠 ダメージずれ ${r.dmgGap.toFixed(1)}B</span>`;
+                        border = 'rgba(245,158,11,0.35)';
+                    } else {
+                        badge = '<span style="font-size:10px;font-weight:900;color:#18C26B;background:rgba(24,194,107,0.12);padding:3px 8px;border-radius:999px;">✅ 一致</span>';
+                        border = 'rgba(24,194,107,0.25)';
+                    }
+                    const proxyBtn = (r.matched && r.missing > 0)
+                        ? `<button onclick="closeOpsAuditModal();openOpsProxyAttackModal(${r.playerId})" title="代理凸を入力" style="flex:none;padding:6px 10px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">✏️ 代理凸</button>`
+                        : '';
+                    return `
+                        <div style="display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid ${border};border-radius:11px;background:#fff;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.name)}</div>
+                                <div style="font-size:10.5px;color:#8A9097;font-variant-numeric:tabular-nums;margin-top:1px;">ゲーム ${r.gameCount}凸 ${r.gameDamageB > 0 ? `(${r.gameDamageB.toFixed(1)}B)` : ''} / PAD ${r.matched ? `${r.padCount}件 (${r.padDamageB.toFixed(1)}B)` : '—'}</div>
+                            </div>
+                            ${badge}
+                            ${proxyBtn}
+                        </div>`;
+                }).join('');
+                actionsEl.style.display = missingRows.length > 0 ? 'flex' : 'none';
+            } catch (e) {
+                statusEl.textContent = `❌ ${e?.message || e}`;
+                statusEl.style.color = '#ef4444';
+            }
+        }
+
+        // 未提出者へ催促Push (購読者のみ届く)
+        async function handleOpsAuditPushRemind() {
+            const targets = _opsAuditRows.filter(r => r.matched && r.missing > 0 && r.playerId != null);
+            if (targets.length === 0) { showNotification('未提出のメンバーはいません'); return; }
+            const title = '📝 凸報告のお願い';
+            const bodyText = 'ゲーム内の凸がPADに未提出のようです。マイページ → ⚔️ 凸報告 から提出お願いします🙏';
+            const ok = await showPushPreview([{ title, body: bodyText, recipients: targets.map(r => ({ id: r.playerId, name: r.name })) }]);
+            if (!ok) return;
+            try {
+                const res = await window.sendPushNotification({
+                    title, body: bodyText,
+                    url: './?tab=mypage',
+                    playerIds: targets.map(r => r.playerId),
+                });
+                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
             }
         }
 
