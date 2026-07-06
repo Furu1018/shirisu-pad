@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>しりすこPAD — X宣伝動画ジェネレータ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+    body { margin:0; background:#F5F6F8; font-family:'Noto Sans JP',sans-serif; color:#14161A;
+           display:flex; flex-direction:column; align-items:center; gap:14px; padding:24px 14px; }
+    h1 { font-size:16px; font-weight:900; margin:0; }
+    p.note { font-size:12px; color:#8A9097; margin:0; text-align:center; line-height:1.7; }
+    canvas { width:100%; max-width:840px; border-radius:14px; box-shadow:0 10px 34px rgba(20,22,26,0.14); background:#fff; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+    button { padding:12px 22px; border-radius:999px; border:none; cursor:pointer;
+             font-size:14px; font-weight:800; font-family:inherit; }
+    #playBtn { background:#14161A; color:#fff; }
+    #recBtn { background:linear-gradient(180deg,#46A0FF,#1E78F0); color:#fff;
+              box-shadow:0 3px 10px rgba(46,139,255,0.35); }
+    button:disabled { opacity:0.5; cursor:default; }
+    #status { font-size:12.5px; font-weight:800; color:#5A6068; min-height:18px; }
+</style>
+</head>
+<body>
+<h1>🎬 しりすこPAD — X宣伝動画 (1280×720 / 約30秒)</h1>
+<canvas id="mv" width="1280" height="720"></canvas>
+<div class="row">
+    <button id="playBtn" onclick="playPreview()">▶️ プレビュー再生</button>
+    <button id="recBtn" onclick="exportVideo()">⏺ 動画を書き出す (約30秒)</button>
+</div>
+<p id="status">&nbsp;</p>
+<p class="note">書き出しは実時間 (約30秒) かかります。ブラウザが対応していれば mp4、
+それ以外は webm で保存されます (X へは mp4 推奨。webm になった場合は変換してから投稿してください)。<br>
+音声はありません — X のタイムラインは無音自動再生のため、字幕型の構成にしています。</p>
+
+<script>
+const W = 1280, H = 720, DUR = 30;
+const canvas = document.getElementById('mv');
+const ctx = canvas.getContext('2d');
+
+/* ===== ClaudeDesign トークン ===== */
+const CD = {
+    text: '#14161A', sub: '#6B7178', faint: '#A4AAB0',
+    bg: '#F7F8F9', green: '#18C26B', red: '#FF3D44', blue: '#1E78F0',
+    attr: { fire: '#FF3D44', water: '#2E8BFF', electric: '#9B4DFF', iron: '#FF8A2B', wind: '#18C26B' },
+};
+const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
+const ATTR_JP = ['灼熱', '水冷', '電撃', '鉄甲', '風圧'];
+const f = (px, w = 800) => `${w} ${px}px 'Noto Sans JP', sans-serif`;
+const clamp01 = (v) => v < 0 ? 0 : (v > 1 ? 1 : v);
+const ease = (t) => { t = clamp01(t); return (1 - Math.cos(Math.PI * t)) / 2; };            // ふわっと
+const pop = (t) => { t = clamp01(t); return 1 + 0.18 * Math.sin(Math.PI * t) * (1 - t); };  // ぽん
+const rr = (x, y, w, h, r) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+};
+const centerText = (txt, x, y, font, color) => {
+    ctx.font = font; ctx.fillStyle = color;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(txt, x, y);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+};
+
+/* ===== 背景 ===== */
+function drawBg(t) {
+    ctx.fillStyle = CD.bg; ctx.fillRect(0, 0, W, H);
+    const glow = (x, y, r, c) => {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, c); g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    };
+    const sway = Math.sin(t * 0.5) * 24;
+    glow(1140 + sway, 90, 460, 'rgba(46,139,255,0.10)');
+    glow(140 - sway, 660, 420, 'rgba(24,194,107,0.08)');
+    glow(1180, 660, 340, 'rgba(255,61,68,0.06)');
+}
+
+/* ===== シーン1 (0-4s): タイトル ===== */
+function sceneTitle(p, t) {
+    const a = ease(p * 3);                       // フェードイン
+    ctx.globalAlpha = a;
+    const s = pop(p * 2.2);
+    ctx.save();
+    ctx.translate(W / 2, H / 2 - 40);
+    ctx.scale(s, s);
+    rr(-44, -44, 88, 88, 24);
+    ctx.fillStyle = CD.text; ctx.fill();
+    centerText('⚔️', 0, 2, f(46, 900), '#fff');
+    ctx.restore();
+    centerText('しりすこPAD', W / 2, H / 2 + 74, f(58, 900), CD.text);
+    ctx.globalAlpha = a * ease((p - 0.35) * 3);
+    centerText('NIKKE ユニオンレイド運営 PWA', W / 2, H / 2 + 128, f(20, 800), CD.blue);
+    ctx.globalAlpha = 1;
+}
+
+/* ===== シーン2 (4-9s): 課題 → 解決 ===== */
+function sceneProblem(p) {
+    const a1 = ease(p * 4) * (1 - ease((p - 0.42) * 5));
+    if (a1 > 0) {
+        ctx.globalAlpha = a1;
+        centerText('凸報告の集計、', W / 2, H / 2 - 46, f(50, 900), CD.sub);
+        centerText('まだ手作業ですか？', W / 2, H / 2 + 22, f(50, 900), CD.sub);
+        ctx.globalAlpha = 1;
+    }
+    const a2 = ease((p - 0.5) * 4);
+    if (a2 > 0) {
+        ctx.globalAlpha = a2;
+        centerText('しりすこPADなら、', W / 2, H / 2 - 46, f(52, 900), CD.text);
+        centerText('ぜんぶ自動。', W / 2, H / 2 + 30, f(64, 900), CD.blue);
+        ctx.globalAlpha = 1;
+    }
+}
+
+/* ===== シーン3 (9-17s): 時間割が組み上がる ===== */
+function sceneTimetable(p, t) {
+    const a = ease(p * 4);
+    ctx.globalAlpha = a;
+    centerText('🗓 最適凸プランを自動算出 → 全員に配信', W / 2, 92, f(30, 900), CD.text);
+
+    const CW = 760, CH = 460, CX = (W - CW) / 2, CY = 140;
+    const s = 0.96 + 0.04 * ease(p * 3);
+    ctx.save();
+    ctx.translate(CX + CW / 2, CY + CH / 2); ctx.scale(s, s); ctx.translate(-(CX + CW / 2), -(CY + CH / 2));
+    rr(CX, CY, CW, CH, 24);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = 'rgba(20,22,26,0.07)'; ctx.lineWidth = 2; ctx.stroke();
+
+    const colW = (CW - 120) / 5;
+    // 5ボスヘッダー (順にぽん)
+    ATTRS.forEach((atr, i) => {
+        const hp = ease((p - 0.06 - i * 0.035) * 9);
+        if (hp <= 0) return;
+        const x = CX + 90 + i * colW;
+        ctx.save();
+        ctx.translate(x + colW / 2 - 4, CY + 62);
+        ctx.scale(pop(hp) * hp, pop(hp) * hp);
+        rr(-(colW - 12) / 2, -26, colW - 12, 52, 13);
+        ctx.fillStyle = CD.attr[atr]; ctx.fill();
+        centerText('B' + (i + 1), 0, -9, f(17, 900), '#fff');
+        centerText(ATTR_JP[i], 0, 13, f(13, 800), 'rgba(255,255,255,0.9)');
+        ctx.restore();
+    });
+
+    // 時間ラベル
+    const hours = ['20時', '21時', '22時'];
+    hours.forEach((hh, r) => {
+        const hp = ease((p - 0.2 - r * 0.03) * 8);
+        if (hp <= 0) return;
+        ctx.globalAlpha = a * hp;
+        ctx.font = f(15, 900); ctx.fillStyle = r === 1 ? CD.blue : CD.faint;
+        ctx.textAlign = 'right';
+        ctx.fillText((r === 1 ? '▼' : '') + hh, CX + 78, CY + 132 + r * 92);
+        ctx.textAlign = 'left';
+        ctx.strokeStyle = 'rgba(20,22,26,0.06)';
+        ctx.beginPath(); ctx.moveTo(CX + 20, CY + 108 + r * 92); ctx.lineTo(CX + CW - 20, CY + 108 + r * 92); ctx.stroke();
+        ctx.globalAlpha = a;
+    });
+
+    // チップ (順にぽん)
+    const chips = [
+        { c: 0, r: 0, n: 'ふるり 28.5B' }, { c: 2, r: 0, n: 'NOB 30.1B' },
+        { c: 1, r: 1, n: 'あなた 25.0B', me: true }, { c: 3, r: 1, n: 'にま 21.4B' },
+        { c: 4, r: 1, n: 'パン 24.8B' }, { c: 0, r: 2, n: '⏱MIRIN 19.2B', bn: true },
+    ];
+    chips.forEach((cdef, i) => {
+        const cp = ease((p - 0.3 - i * 0.055) * 8);
+        if (cp <= 0) return;
+        const atr = ATTRS[cdef.c];
+        const x = CX + 90 + cdef.c * colW, y = CY + 116 + cdef.r * 92;
+        ctx.save();
+        ctx.translate(x + (colW - 10) / 2, y + 21);
+        ctx.scale(pop(cp), pop(cp));
+        ctx.globalAlpha = a * cp;
+        rr(-(colW - 14) / 2, -21, colW - 14, 42, 11);
+        ctx.fillStyle = cdef.me ? 'rgba(30,120,240,0.14)' : CD.attr[atr] + '1F';
+        ctx.fill();
+        const blink = cdef.bn ? (0.6 + 0.4 * Math.sin(t * 6)) : 1;
+        ctx.strokeStyle = cdef.bn ? `rgba(255,61,68,${blink})` : (cdef.me ? CD.blue : CD.attr[atr] + '66');
+        ctx.lineWidth = cdef.bn || cdef.me ? 3 : 1.5;
+        ctx.stroke();
+        centerText(cdef.n, 0, 1, f(14, 800), cdef.bn ? '#E23036' : CD.text);
+        ctx.restore();
+        ctx.globalAlpha = a;
+    });
+
+    // 💀撃破スタンプ
+    const kp = ease((p - 0.72) * 7);
+    if (kp > 0) {
+        ctx.save();
+        const x = CX + 90 + 2 * colW + (colW - 10) / 2, y = CY + 116 + 2 * 92 + 21;
+        ctx.translate(x, y);
+        ctx.scale(pop(kp) * 1.1, pop(kp) * 1.1);
+        ctx.globalAlpha = a * kp;
+        centerText('💀 撃破!', 0, 0, f(24, 900), CD.green);
+        ctx.restore();
+        ctx.globalAlpha = a;
+    }
+    // レベル帯
+    const lp = ease((p - 0.82) * 7);
+    if (lp > 0) {
+        ctx.globalAlpha = a * lp;
+        rr(CX + 20, CY + CH - 62, CW - 40, 42, 12);
+        ctx.fillStyle = 'rgba(24,194,107,0.10)'; ctx.fill();
+        centerText('Lv2 ─ 22時開始 → 💀 翌1時 全撃破想定 🏆', CX + CW / 2, CY + CH - 41, f(19, 900), '#0E9455');
+        ctx.globalAlpha = a;
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+}
+
+/* ===== シーン4 (17-21.5s): Push通知 ===== */
+function sceneNotify(p) {
+    const a = ease(p * 4);
+    ctx.globalAlpha = a;
+    centerText('🔔 声かけも、Push通知でワンタップ', W / 2, 110, f(30, 900), CD.text);
+    ctx.globalAlpha = 1;
+    const cards = [
+        ['🔔 締め凸お願いします🙏', 'B3 残HP 4.2B → あなたなら1凸で削れます'],
+        ['📝 凸報告のお願い', 'ゲーム内の凸が PAD に未提出のようです'],
+        ['🪞 模擬戦データ提出のお願い', '今シーズンの模擬戦データが未提出です'],
+    ];
+    cards.forEach((c, i) => {
+        const cp = ease((p - 0.12 - i * 0.16) * 5);
+        if (cp <= 0) return;
+        const y = 180 + i * 128;
+        const x = W / 2 - 300 + (1 - cp) * 320;
+        ctx.globalAlpha = cp;
+        ctx.save();
+        ctx.shadowColor = 'rgba(20,22,26,0.22)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+        rr(x, y, 600, 100, 20);
+        ctx.fillStyle = '#14161A'; ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#fff'; ctx.font = f(21, 900);
+        ctx.fillText(c[0], x + 26, y + 42);
+        ctx.fillStyle = 'rgba(255,255,255,0.72)'; ctx.font = f(16, 700);
+        ctx.fillText(c[1], x + 26, y + 74);
+        ctx.globalAlpha = 1;
+    });
+}
+
+/* ===== シーン5 (21.5-26.5s): 機能一覧 ===== */
+function sceneFeatures(p) {
+    const a = ease(p * 4);
+    ctx.globalAlpha = a;
+    centerText('できること、ぜんぶ。', W / 2, 116, f(34, 900), CD.text);
+    ctx.globalAlpha = 1;
+    const feats = [
+        ['🧠', '最適凸プラン自動算出', CD.blue],
+        ['📷', 'スクショOCRで凸報告10秒', CD.attr.iron],
+        ['🗓', '時間割をスマホに配信', CD.attr.electric],
+        ['🔔', '締め凸Push・催促Push', CD.red],
+        ['📊', 'ふるり値で成長分析', CD.green],
+        ['🛠', '代理提出・監査ログ', CD.sub],
+    ];
+    feats.forEach((ft, i) => {
+        const fp = ease((p - 0.1 - i * 0.09) * 6);
+        if (fp <= 0) return;
+        const col = i % 2, row = (i / 2) | 0;
+        const x = W / 2 - 520 + col * 540, y = 176 + row * 122 + (1 - fp) * 30;
+        ctx.globalAlpha = fp;
+        rr(x, y, 500, 96, 20);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = ft[2] + '44'; ctx.lineWidth = 2; ctx.stroke();
+        rr(x + 18, y + 22, 52, 52, 14);
+        ctx.fillStyle = ft[2] + '1A'; ctx.fill();
+        centerText(ft[0], x + 44, y + 50, f(27, 800), CD.text);
+        ctx.fillStyle = CD.text; ctx.font = f(23, 900);
+        ctx.fillText(ft[1], x + 88, y + 58);
+        ctx.globalAlpha = 1;
+    });
+}
+
+/* ===== シーン6 (26.5-30s): CTA ===== */
+function sceneCta(p, t) {
+    const a = ease(p * 3);
+    ctx.globalAlpha = a;
+    const s = pop(p * 1.6);
+    ctx.save();
+    ctx.translate(W / 2, H / 2 - 100);
+    ctx.scale(s, s);
+    rr(-38, -38, 76, 76, 21);
+    ctx.fillStyle = CD.text; ctx.fill();
+    centerText('⚔️', 0, 2, f(40, 900), '#fff');
+    ctx.restore();
+    centerText('しりすこPAD', W / 2, H / 2 - 2, f(48, 900), CD.text);
+    const bp = 1 + 0.03 * Math.sin(t * 3);
+    ctx.save();
+    ctx.translate(W / 2, H / 2 + 82);
+    ctx.scale(bp, bp);
+    const url = '🔗 furu1018.github.io/shirisu-pad';
+    ctx.font = f(24, 900);
+    const uw = ctx.measureText(url).width + 64;
+    const grad = ctx.createLinearGradient(0, -33, 0, 33);
+    grad.addColorStop(0, '#46A0FF'); grad.addColorStop(1, '#1E78F0');
+    rr(-uw / 2, -33, uw, 66, 33);
+    ctx.fillStyle = grad; ctx.fill();
+    centerText(url, 0, 1, f(24, 900), '#fff');
+    ctx.restore();
+    ctx.globalAlpha = a * ease((p - 0.3) * 4);
+    centerText('#NIKKE  #ユニオンレイド', W / 2, H / 2 + 172, f(18, 800), CD.faint);
+    ctx.globalAlpha = 1;
+}
+
+/* ===== タイムライン ===== */
+const SCENES = [
+    { from: 0.0,  to: 4.0,  fn: sceneTitle },
+    { from: 4.0,  to: 9.0,  fn: sceneProblem },
+    { from: 9.0,  to: 17.0, fn: sceneTimetable },
+    { from: 17.0, to: 21.5, fn: sceneNotify },
+    { from: 21.5, to: 26.5, fn: sceneFeatures },
+    { from: 26.5, to: 30.0, fn: sceneCta },
+];
+function drawFrame(t) {
+    drawBg(t);
+    for (const sc of SCENES) {
+        if (t < sc.from || t >= sc.to) continue;
+        const p = (t - sc.from) / (sc.to - sc.from);
+        // シーン末尾 0.35s でフェードアウト (最終シーンは残す)
+        const fadeOut = sc.to >= DUR ? 1 : clamp01((sc.to - t) / 0.35);
+        ctx.globalAlpha = fadeOut;
+        sc.fn(p, t);
+        ctx.globalAlpha = 1;
+    }
+}
+
+/* ===== 再生 / 書き出し ===== */
+let rafId = null;
+function playTimeline(onDone) {
+    if (rafId) cancelAnimationFrame(rafId);
+    const start = performance.now();
+    const loop = (now) => {
+        const t = (now - start) / 1000;
+        if (t >= DUR) {
+            drawFrame(DUR - 0.001);
+            rafId = null;
+            if (onDone) onDone();
+            return;
+        }
+        drawFrame(t);
+        rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+}
+function playPreview() { playTimeline(null); }
+
+function pickMime() {
+    const cands = [
+        'video/mp4;codecs=avc1.640028', 'video/mp4',
+        'video/webm;codecs=vp9', 'video/webm',
+    ];
+    for (const m of cands) {
+        try { if (MediaRecorder.isTypeSupported(m)) return m; } catch { /* noop */ }
+    }
+    return '';
+}
+function exportVideo() {
+    const status = document.getElementById('status');
+    const recBtn = document.getElementById('recBtn');
+    const playBtn = document.getElementById('playBtn');
+    if (typeof MediaRecorder === 'undefined') {
+        status.textContent = '❌ このブラウザは動画書き出し非対応です (Chrome/Edge/Safari を使ってください)';
+        return;
+    }
+    const mime = pickMime();
+    const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+    const stream = canvas.captureStream(60);
+    const rec = new MediaRecorder(stream, { mimeType: mime || undefined, videoBitsPerSecond: 8_000_000 });
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    rec.onstop = () => {
+        const blob = new Blob(chunks, { type: mime || 'video/webm' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `shirisuko-pad-x-video.${ext}`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        status.textContent = `✅ 保存しました (${ext}${ext === 'webm' ? ' — Xに投稿する場合は mp4 へ変換してください' : ''})`;
+        recBtn.disabled = false; playBtn.disabled = false;
+    };
+    recBtn.disabled = true; playBtn.disabled = true;
+    status.textContent = `⏺ 書き出し中… 約${DUR}秒お待ちください (${ext} 形式)`;
+    rec.start();
+    playTimeline(() => setTimeout(() => rec.stop(), 300));
+}
+
+/* 初期表示: フォント読込後にタイトルフレームを描画 */
+if (document.fonts?.ready) {
+    document.fonts.load("900 58px 'Noto Sans JP'").then(() => document.fonts.ready).then(() => drawFrame(2));
+    setTimeout(() => drawFrame(2), 1500);
+} else {
+    setTimeout(() => drawFrame(2), 600);
+}
+</script>
+</body>
+</html>
