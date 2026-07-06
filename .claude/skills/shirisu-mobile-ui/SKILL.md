@@ -24,7 +24,21 @@ description: しりすこPADのUI実装で踏んだ落とし穴と定石。モ�
 - **切替アニメ中は `_swipe.animating` フラグで新規タッチを拒否** (再グラブで状態が壊れるため)
 - 方向ロックは「1.2倍明確に勝った軸」だけ。曖昧な斜めは縦 (スクロール優先) に倒す
 - transform 更新は **rAF で1フレーム1回に間引く** (120Hz 端末対策)。touchmove で直接書かない
-- `html, body { overscroll-behavior-x: none; }` でブラウザの横オーバースクロールを抑止済み
+- `html, body` は overscroll-behavior-x:none (横) + overscroll-behavior-y:contain
+  (自前プルリフレッシュのためネイティブPTRを無効化) 済み
+
+## その他の操作系インフラ (壊さないこと)
+
+- **戻る操作でモーダルを閉じる**: `.player-select-modal / .fururi-help-modal / .player-modal / .drawer`
+  の `.open` クラスを MutationObserver で監視し history state を積んでいる。
+  新しいモーダルを作るときは `.player-select-modal` クラス + `.open` 方式に従えば自動で対象になる
+- **プル・トゥ・リフレッシュ**: scrollY=0 から28px以上引くと発動。タブ別の更新経路は
+  `_PTR_KNOWN_TABS` + `_renderTabContent`。新タブを追加したらここに登録する
+  (未登録タブは location.reload にフォールバック)
+- **タップ当たり判定**: `@media (pointer:coarse)` で button の ::before を -4px 拡張している。
+  ボタン装飾に ::before を使う新クラスを作ったら除外リスト (:not) に追加すること
+- **極小フォント禁止**: 情報テキストは 10px 以上 + 注釈は #8A9097 (#A4AAB0 は薄すぎる)。
+  9.5px 以下は 2026-07 に全て +1px 底上げ済み。新規UIでも 9px 台を書かない
 
 ## CSSグリッド `1fr` のはみ出し (実際に踏んだバグ)
 
