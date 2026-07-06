@@ -4118,7 +4118,7 @@
                 <h2>🔍 提出漏れチェック</h2>
                 <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">BlaBlaLINK の<strong>ユニオン全体の参加状況スクショ</strong>から各メンバーの凸消化数を読み取り、PADの登録数と突き合わせます。メンバーが多い場合はスクロールして複数枚に分けてもOK (まとめて選択)。</p>
+            <p class="subtitle">BlaBlaLINK の<strong>「ユニオンレイド参加状況」スクショ</strong>から各メンバーの参加回数を読み取り、PADの登録数と突き合わせます。<br>📌 撮影前に<strong>当日 (HARD) の Day タブ</strong>を表示してください。スマホはスクロールしながら3〜4枚に分けてOK (まとめて選択、重複行は自動で統合)。</p>
             <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed var(--md-sys-color-outline-variant);border-radius:8px;background:var(--md-sys-color-surface-variant);cursor:pointer;">
                 <span style="font-size:18px;">📷</span>
                 <span style="flex:1;font-size:13px;">ユニオン全体のスクショを選ぶ (複数可)</span>
@@ -11609,14 +11609,17 @@
         // 登録は ✏️ から個人スクショ (ボスが写る) の代理凸で行う役割分担。
         let _opsAuditRows = [];
         const _OPS_AUDIT_PROMPT = [
-            '画像は BlaBlaLINK 拡張のユニオンレイド「メンバー別の参加状況一覧」です。',
-            '各行にメンバー名・凸消化数 (例 2/3)・合計ダメージが並んでいます。',
-            '画像内に表示されている全メンバー分を members 配列で抽出してください。',
-            '- name: メンバー名 (前後のランク数字や記号は除く)',
-            '- attackCount: 消化済み凸数の整数 (「2/3」なら 2、「3/3」なら 3)',
-            '- totalDamage: 合計ダメージの整数 (カンマ除去。B表記なら10^9倍)。読めなければ 0',
-            '行が上下に見切れているメンバーは含めない。出力はJSONのみ。コードフェンス禁止。',
-            '形式: {"members":[{"name":"ふるり","attackCount":3,"totalDamage":95210000000}]}',
+            '画像は BlaBlaLINK 拡張の「ユニオンレイド参加状況」画面です。',
+            '表の列は左から No. / メンバー / 参加回数 / 総ダメージ です。',
+            '画像内に行全体が完全に表示されているメンバーを全て members 配列で抽出してください。',
+            '- name: メンバー列の名前を表記どおりに (前後の記号・虫めがねアイコンは除く)',
+            '- attackCount: 参加回数列の整数 (0〜3)',
+            '- totalDamage: 総ダメージ列を整数に変換。"224.092B" のような B 表記は 10^9 倍する',
+            '    (例: "224.092B" → 224092000000、"45.317B" → 45317000000)。読めなければ 0',
+            '上下に見切れて名前や数値が完全に読めない行は含めない (次のスクショで完全な形で写るため)。',
+            'ヘッダー行・ユニオン名・タブ (Day 1 / Day 2 / boss) は無視する。',
+            '出力はJSONのみ。コードフェンス禁止。',
+            '形式: {"members":[{"name":"めいでんさん","attackCount":3,"totalDamage":224092000000}]}',
         ].join('\n');
 
         function openOpsAuditModal() {
@@ -11718,6 +11721,17 @@
                             ${proxyBtn}
                         </div>`;
                 }).join('');
+                // スクショに写っていない PAD メンバー (0凸で一覧に載らない or 撮影範囲外の可能性)
+                const seenIds = new Set(_opsAuditRows.filter(r => r.playerId != null).map(r => r.playerId));
+                const notInShot = players.filter(p => !seenIds.has(p.id));
+                if (notInShot.length > 0) {
+                    resultEl.innerHTML += `
+                        <div style="padding:9px 11px;border-radius:11px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);">
+                            <div style="font-size:10.5px;font-weight:900;color:#8A9097;margin-bottom:3px;">📷 スクショに写っていない PAD メンバー (${notInShot.length}名)</div>
+                            <div style="font-size:11px;color:#5A6068;line-height:1.7;">${notInShot.map(p => `${escapeHtml(p.name)}${(stats[p.id]?.count || 0) > 0 ? ` <span style="color:#A4AAB0;">(PAD ${stats[p.id].count}件)</span>` : ''}`).join('、')}</div>
+                            <div style="font-size:10px;color:#A4AAB0;margin-top:4px;">0凸のため一覧に載っていないか、撮影範囲に入っていない可能性があります。</div>
+                        </div>`;
+                }
                 actionsEl.style.display = missingRows.length > 0 ? 'flex' : 'none';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
