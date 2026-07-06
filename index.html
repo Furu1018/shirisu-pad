@@ -9368,9 +9368,12 @@
             }
             const total = rows.length;
             const subbed = rows.filter(r => r.subscribed).length;
-            const allOff = rows.filter(r => r.subscribed && r.slotsOn === 0).length;
+            const flexN = rows.filter(r => r.flexTime).length;
+            const allOff = rows.filter(r => r.subscribed && r.slotsOn === 0 && !r.flexTime).length;
             if (summary) {
-                summary.innerHTML = `全 <strong>${total}</strong>名 / 購読 <strong style="color:#22c55e;">${subbed}</strong>名 / 購読済みだが時間帯全OFF <strong style="color:#f59e0b;">${allOff}</strong>名`;
+                summary.innerHTML = `全 <strong>${total}</strong>名 / 購読 <strong style="color:#22c55e;">${subbed}</strong>名`
+                    + (flexN > 0 ? ` / ⏳隙間 <strong style="color:#B45309;">${flexN}</strong>名` : '')
+                    + ` / 時間帯全OFF <strong style="color:#f59e0b;">${allOff}</strong>名`;
             }
             // ClaudeDesign 準拠: sticky ヘッダ + 行 (アバター/名前 + Push 🔔 + 時間帯 N/24 + バー + 最終更新)
             const head = `
@@ -9381,7 +9384,7 @@
                     <div style="width:52px;flex:none;text-align:right;">最終更新</div>
                 </div>`;
             const body = rows.map(r => {
-                const lowWindow = r.subscribed && r.slotsOn <= 6;
+                const lowWindow = r.subscribed && r.slotsOn <= 6 && !r.flexTime;   // ⏳隙間時間型は時間帯0でも意図的
                 const flagged = !r.subscribed || lowWindow;
                 const pushIconBg = r.subscribed ? 'rgba(24,194,107,0.14)' : '#EDEEF0';
                 const pushIcon = r.subscribed ? '🔔' : '🔕';
@@ -9392,16 +9395,18 @@
                     <div style="display:flex;align-items:center;height:46px;border-bottom:1px solid #F4F5F6;padding:0 6px;margin:0 -6px;background:${flagged ? 'rgba(255,138,43,0.06)' : 'transparent'};">
                         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;">
                             <div style="flex:none;">${renderAvatarHtml(r.id, r.name, 28)}</div>
-                            <span style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:#A4AAB0;">×${r.deviceCount}</span>` : ''}</span>
+                            <span style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:#A4AAB0;">×${r.deviceCount}</span>` : ''}${r.notifyAllHours ? ' <span title="通知はいつでも受け取る設定" style="font-size:10px;">🔔</span>' : ''}</span>
                         </div>
                         <div style="width:40px;flex:none;display:flex;justify-content:center;">
                             <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:${pushIconBg};${r.subscribed ? '' : 'filter:grayscale(1);opacity:0.7;'}">${pushIcon}</div>
                         </div>
                         <div style="width:74px;flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                            <span style="font-size:10px;font-weight:800;color:#5A6068;font-variant-numeric:tabular-nums;">${r.slotsOn}/24</span>
+                            ${r.flexTime
+                                ? `<span title="隙間時間型: 時間の約束はできないが3凸はする (時間帯0でも正常)" style="font-size:9.5px;font-weight:900;color:#B45309;background:rgba(245,158,11,0.12);padding:3px 9px;border-radius:999px;white-space:nowrap;">⏳隙間型</span>`
+                                : `<span style="font-size:10px;font-weight:800;color:#5A6068;font-variant-numeric:tabular-nums;">${r.slotsOn}/24</span>
                             <div style="width:48px;height:5px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
                                 <div style="height:100%;width:${barPct}%;border-radius:99px;background:${barColor};"></div>
-                            </div>
+                            </div>`}
                         </div>
                         <div style="width:52px;flex:none;text-align:right;font-size:10px;color:#A4AAB0;">${last}</div>
                     </div>`;

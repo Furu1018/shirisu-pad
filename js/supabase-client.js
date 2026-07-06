@@ -2032,11 +2032,23 @@ window.supabaseDeleteCharacterMasterEntry = async function (canonicalName) {
 // 戻り値: [{ id, name, subscribed, deviceCount, slotsOn, lastDmgUpdate }]
 // ============================================================================
 window.supabaseLoadMemberNotificationStatus = async function () {
-    const { data: players } = await supabase
-        .from('players')
-        .select('id, name, archived')
-        .or('archived.is.null,archived.eq.false')
-        .order('name', { ascending: true });
+    // flex_time/notify_all_hours は 18_availability_prefs.sql 適用後のみ存在 → フォールバック
+    let players;
+    {
+        let r = await supabase
+            .from('players')
+            .select('id, name, archived, flex_time, notify_all_hours')
+            .or('archived.is.null,archived.eq.false')
+            .order('name', { ascending: true });
+        if (r.error) {
+            r = await supabase
+                .from('players')
+                .select('id, name, archived')
+                .or('archived.is.null,archived.eq.false')
+                .order('name', { ascending: true });
+        }
+        players = r.data;
+    }
     const { data: subs } = await supabase
         .from('push_subscriptions')
         .select('player_id, created_at');
@@ -2070,6 +2082,8 @@ window.supabaseLoadMemberNotificationStatus = async function () {
         subscribed: (subsByPlayer.get(p.id) || 0) > 0,
         deviceCount: subsByPlayer.get(p.id) || 0,
         slotsOn: slotsByPlayer.get(p.id) || 0,
+        flexTime: !!p.flex_time,             // ⏳ 隙間時間型 (時間帯0でも意図的)
+        notifyAllHours: !!p.notify_all_hours,   // 🔔 通知はいつでも受け取る
         lastDmgUpdate: lastDmgByPlayer.get(p.id) || null,
     }));
 };
