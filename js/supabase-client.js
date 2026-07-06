@@ -990,6 +990,30 @@ window.supabaseLoadSyncLevel = async function (playerId) {
     return { syncLevel: val, seasonId: activeId };
 };
 
+// 全プレイヤーの最新SLvを一括取得 (人気編成のふるり値トップ算出用)
+// 戻り値: { [playerId]: syncLevel } — アクティブ優先 → hard_date 新しい順で引き継ぎ
+window.supabaseLoadAllSyncLevels = async function () {
+    const { data: seasons } = await supabase
+        .from('seasons').select('id, hard_date, is_active')
+        .order('hard_date', { ascending: false });
+    const ordered = [...(seasons || [])].sort((a, b) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
+    if (!ordered.length) return {};
+    const rank = new Map(ordered.map((s, i) => [s.id, i]));
+    const { data: slvs } = await supabase
+        .from('player_sync_levels')
+        .select('player_id, sync_level, season_id');
+    const best = {};   // playerId -> { r, val }
+    (slvs || []).forEach(s => {
+        const r = rank.get(s.season_id);
+        if (r == null) return;
+        const cur = best[s.player_id];
+        if (!cur || r < cur.r) best[s.player_id] = { r, val: Number(s.sync_level) || 0 };
+    });
+    const out = {};
+    Object.entries(best).forEach(([pid, v]) => { out[pid] = v.val; });
+    return out;
+};
+
 // 書き込み: アクティブシーズンに sync_level を upsert (手動更新)。
 window.supabaseUpsertSyncLevel = async function (seasonId, playerId, syncLevel) {
     if (!seasonId || !playerId) throw new Error('シーズン/プレイヤーが不明です');

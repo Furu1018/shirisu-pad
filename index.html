@@ -2629,14 +2629,17 @@
                 <div id="mypageDmgInputs" style="display:none;"></div>
             </div>
 
-            <!-- 📚 人気編成 (みんなの模擬提出から集計 / NIKKE知識ゼロの純統計) -->
+            <!-- 📚 人気編成 (みんなの模擬提出から集計 / NIKKE知識ゼロの純統計 / 既定は折りたたみ) -->
             <div class="dc-card">
-                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📚 人気編成</div>
                     <span style="font-size:10.5px;color:#A4AAB0;">みんなの模擬提出から集計</span>
                 </div>
-                <div id="popularTeamsTabs" style="display:flex;gap:5px;margin-bottom:10px;"></div>
-                <div id="popularTeamsBody"><p style="margin:0;font-size:12px;color:#A4AAB0;">プレイヤーを選択すると表示されます。</p></div>
+                <div onclick="togglePopularTeams()" id="popularTeamsToggle" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ 人気編成を表示</div>
+                <div id="popularTeamsContent" style="display:none;margin-top:10px;">
+                    <div id="popularTeamsTabs" style="display:flex;gap:5px;margin-bottom:10px;"></div>
+                    <div id="popularTeamsBody"><p style="margin:0;font-size:12px;color:#A4AAB0;">読み込み中…</p></div>
+                </div>
             </div>
 
             <!-- ③ 戦闘 (ゲート → ボス選択 → 戦闘中) -->
@@ -4408,7 +4411,8 @@
             <!-- 5キャラ入力欄 -->
             <div id="myTeamEditFields" style="display:flex;flex-direction:column;gap:6px;"></div>
 
-            <!-- 人気編成の参考 (みんなの模擬提出の統計) -->
+            <!-- 人気編成の参考 (みんなの模擬提出の統計 / 既定は折りたたみ) -->
+            <div onclick="toggleTeamEditPopular()" id="myTeamEditPopularToggle" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">📚 みんなの人気編成を見る ▼</div>
             <div id="myTeamEditPopular" style="display:none;padding:10px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);"></div>
 
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
@@ -5592,7 +5596,6 @@
             renderMyNextAttackBosses(id);
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
-            renderPopularTeamsCard(true);
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
         }
@@ -6157,15 +6160,35 @@
             }
             document.getElementById('myTeamEditModal').classList.add('open');
 
-            // 📚 みんなの人気編成を非同期で表示 (編成を組むのが苦手な人の参考 + ワンタップコピー)
+            // 📚 人気編成の参考は折りたたみリセット (開いたときにロード)
             const popEl = document.getElementById('myTeamEditPopular');
-            if (popEl) {
+            const popToggle = document.getElementById('myTeamEditPopularToggle');
+            if (popEl) { popEl.style.display = 'none'; popEl.innerHTML = ''; }
+            if (popToggle) popToggle.textContent = '📚 みんなの人気編成を見る ▼';
+        }
+
+        // 編成編集モーダル内の人気編成トグル (初回展開時にロード)
+        async function toggleTeamEditPopular() {
+            const popEl = document.getElementById('myTeamEditPopular');
+            const popToggle = document.getElementById('myTeamEditPopularToggle');
+            if (!popEl || !popToggle) return;
+            const open = popEl.style.display !== 'none';
+            if (open) {
                 popEl.style.display = 'none';
-                _loadTeamSubs(true).then(() => {
-                    if (_myTeamEditAttr !== attrKey) return;   // モーダルが別属性に切り替わっていたら破棄
-                    popEl.innerHTML = `<div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:7px;">📚 みんなの${ptName}PT編成</div>` + _popularTeamsHtml(attrKey, { copyable: true });
-                    popEl.style.display = 'block';
-                }).catch(() => { /* noop */ });
+                popToggle.textContent = '📚 みんなの人気編成を見る ▼';
+                return;
+            }
+            const attrKey = _myTeamEditAttr;
+            const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || '';
+            popEl.innerHTML = '<p style="margin:0;font-size:11.5px;color:#A4AAB0;">読み込み中…</p>';
+            popEl.style.display = 'block';
+            popToggle.textContent = '📚 人気編成を閉じる ▲';
+            try {
+                await Promise.all([_loadTeamSubs(true), _loadMockRadarBase()]);
+                if (_myTeamEditAttr !== attrKey) return;   // モーダルが別属性に切り替わっていたら破棄
+                popEl.innerHTML = `<div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:7px;">📚 みんなの${ptName}PT編成</div>` + _popularTeamsHtml(attrKey, { copyable: true });
+            } catch (e) {
+                popEl.innerHTML = `<p style="margin:0;font-size:11.5px;color:#FF3D44;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
             }
         }
         // 凸報告モーダルの使用キャラ5枠を描画
@@ -6201,19 +6224,27 @@
 
         // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========
         let _teamSubsCache = null;        // 全属性の編成つき提出
-        let _popularBestTeams = {};       // attrKey -> 最高ダメ編成 (コピー用)
+        let _teamSlvCache = null;         // playerId -> 最新SLv (ふるり値トップ算出用)
+        let _popularBestTeams = {};       // attrKey -> { dmg: [], fururi: [] } (コピー用)
         let _popularTeamsAttr = 'fire';
         async function _loadTeamSubs(force = false) {
-            if (_teamSubsCache && !force) return _teamSubsCache;
-            try {
-                _teamSubsCache = await window.supabaseLoadTeamSubmissions();
-            } catch (e) {
-                console.warn('[人気編成] 読込失敗:', e?.message || e);
-                _teamSubsCache = [];
+            if (!_teamSubsCache || force) {
+                try {
+                    const [subs, slvs] = await Promise.all([
+                        window.supabaseLoadTeamSubmissions(),
+                        window.supabaseLoadAllSyncLevels(),
+                    ]);
+                    _teamSubsCache = subs;
+                    _teamSlvCache = slvs || {};
+                } catch (e) {
+                    console.warn('[人気編成] 読込失敗:', e?.message || e);
+                    _teamSubsCache = _teamSubsCache || [];
+                    _teamSlvCache = _teamSlvCache || {};
+                }
             }
             return _teamSubsCache;
         }
-        function _teamStatsFor(rows) {
+        function _teamStatsFor(rows, attrKey) {
             const charCount = new Map();
             rows.forEach(r => {
                 new Set(r.characters.filter(Boolean).map(c => fuzzyResolveCharacter(c) || c)).forEach(c => {
@@ -6221,8 +6252,30 @@
                 });
             });
             const top = [...charCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-            const best = [...rows].sort((a, b) => (Number(b.damage_b) || 0) - (Number(a.damage_b) || 0))[0] || null;
-            return { total: rows.length, top, best };
+            const bestDmg = [...rows].sort((a, b) => (Number(b.damage_b) || 0) - (Number(a.damage_b) || 0))[0] || null;
+            // ふるり値トップ: SLv補正後スコアの最大 (基準: ふるりの今季模擬 + SLv)
+            // ダメージトップはSLvが高い人に偏るが、こちらはSLvに関わらず全員にチャンスがある
+            const baseDmg = _mockRadarBase?.dmgByAttr?.[attrKey];
+            const baseSlv = _mockRadarBase?.slv;
+            const scoreOf = (r) => {
+                const slv = Number(_teamSlvCache?.[r.player_id]) || 0;
+                if (!slv || !(baseDmg > 0) || !baseSlv || !slvRatioTable) return null;
+                const br = slvRatioTable[String(baseSlv)];
+                const pr = slvRatioTable[String(slv)];
+                if (!br || !pr) return null;
+                const baseScaled = baseDmg * pr / br;
+                return baseScaled > 0 ? (Number(r.damage_b) || 0) / baseScaled : null;
+            };
+            let bestFururi = null, bestFururiScore = 0, bestFururiSlv = 0;
+            rows.forEach(r => {
+                const s = scoreOf(r);
+                if (s != null && s > bestFururiScore) {
+                    bestFururiScore = s;
+                    bestFururi = r;
+                    bestFururiSlv = Number(_teamSlvCache?.[r.player_id]) || 0;
+                }
+            });
+            return { total: rows.length, top, bestDmg, bestFururi, bestFururiScore, bestFururiSlv };
         }
         function _charIconHtml(name, size = 26) {
             const r = resolveNikkeChar(name);
@@ -6235,31 +6288,50 @@
             const a = PT_ATTRS.find(x => x.key === attrKey);
             if (!a) return '';
             if (rows.length === 0) return `<p style="margin:0;font-size:11.5px;color:#A4AAB0;">${a.name}PT の編成つき模擬提出はまだありません。模擬戦データに編成を付けて提出すると、ここに集計されます。</p>`;
-            const st = _teamStatsFor(rows);
+            const st = _teamStatsFor(rows, attrKey);
             const topHtml = st.top.map(([c, n]) => `
                 <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;">
                     ${_charIconHtml(c, 34)}
                     <span style="font-size:10px;font-weight:800;color:#5A6068;" title="${escapeHtml(c)} — ${n}/${st.total}件で採用">${Math.round(n / st.total * 100)}%</span>
                 </div>`).join('');
-            const bestTeam = (st.best?.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
-            _popularBestTeams[attrKey] = bestTeam;
-            const bestHtml = st.best ? `
-                <div style="margin-top:10px;padding:9px 10px;border-radius:11px;background:${a.color}0D;border:1px solid ${a.color}33;">
+
+            const cleanTeam = (row) => (row?.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
+            const sameTop = st.bestFururi && st.bestDmg && st.bestFururi === st.bestDmg;
+            _popularBestTeams[attrKey] = { dmg: cleanTeam(st.bestDmg), fururi: cleanTeam(st.bestFururi) };
+
+            // トップ編成ブロック (ダメージ / ふるり値 の2系統)
+            const bestBlock = (row, kind, labelHtml, detailHtml) => row ? `
+                <div style="margin-top:9px;padding:9px 10px;border-radius:11px;background:${a.color}0D;border:1px solid ${a.color}33;">
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-                        <span style="font-size:10px;font-weight:900;color:${a.color};">🏆 最高ダメ編成</span>
-                        <span style="font-size:10.5px;font-weight:800;color:#14161A;">${escapeHtml(st.best.players?.name || '?')} · ${Number(st.best.damage_b).toFixed(1)}B</span>
-                        ${opts.copyable ? `<button onclick="applyPopularTeamFromAttr('${attrKey}')" style="margin-left:auto;flex:none;padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️ この編成をコピー</button>` : ''}
+                        ${labelHtml}
+                        <span style="font-size:10.5px;font-weight:800;color:#14161A;">${escapeHtml(row.players?.name || '?')}${detailHtml}</span>
+                        ${opts.copyable ? `<button onclick="applyPopularTeamFromAttr('${attrKey}', '${kind}')" style="margin-left:auto;flex:none;padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️ コピー</button>` : ''}
                     </div>
-                    <div style="display:flex;gap:4px;flex-wrap:wrap;">${bestTeam.map(c => _charIconHtml(c, 30)).join('')}</div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">${cleanTeam(row).map(c => _charIconHtml(c, 30)).join('')}</div>
                 </div>` : '';
+
+            const dmgLabel = sameTop
+                ? `<span style="font-size:10px;font-weight:900;color:${a.color};">🏆 ダメージ & ⚖️ ふるり値 両トップ</span>`
+                : `<span style="font-size:10px;font-weight:900;color:${a.color};">🏆 ダメージトップ</span>`;
+            const dmgHtml = bestBlock(st.bestDmg, 'dmg', dmgLabel,
+                ` · ${Number(st.bestDmg?.damage_b || 0).toFixed(1)}B${sameTop && st.bestFururiScore ? ` · ふるり値 ${st.bestFururiScore.toFixed(2)}` : ''}`);
+            // ふるり値トップ: SLv補正後の比較 — SLvに関わらず全員にトップの可能性がある
+            const fururiHtml = (!sameTop && st.bestFururi) ? bestBlock(st.bestFururi, 'fururi',
+                `<span style="font-size:10px;font-weight:900;color:#1E78F0;">⚖️ ふるり値トップ <span style="font-weight:800;color:#8A9097;">(SLv補正)</span></span>`,
+                ` · ふるり値 ${st.bestFururiScore.toFixed(2)} · SLv ${st.bestFururiSlv} · ${Number(st.bestFururi.damage_b).toFixed(1)}B`) : '';
+            const fururiNote = (!st.bestFururi && st.bestDmg)
+                ? `<p style="margin:8px 0 0 0;font-size:10px;color:#A4AAB0;">⚖️ ふるり値トップは基準者(${fururiBasePlayerName})の${a.name}PT模擬と提出者のSLvが揃うと表示されます。</p>` : '';
+
             return `
                 <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">採用率 TOP${st.top.length}（${st.total}件の提出から）</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">${topHtml}</div>
-                ${bestHtml}`;
+                ${dmgHtml}
+                ${fururiHtml}
+                ${fururiNote}`;
         }
-        // 最高ダメ編成を編成編集モーダルの5枠へ流し込む
-        function applyPopularTeamFromAttr(attrKey) {
-            const team = _popularBestTeams[attrKey] || [];
+        // トップ編成を編成編集モーダルの5枠へ流し込む (kind: 'dmg' | 'fururi')
+        function applyPopularTeamFromAttr(attrKey, kind = 'dmg') {
+            const team = (_popularBestTeams[attrKey] || {})[kind] || [];
             for (let i = 0; i < 5; i++) {
                 const inp = document.querySelector(`#myTeamEditFields input[data-team-idx="${i}"]`);
                 if (inp) {
@@ -6273,13 +6345,27 @@
                 msg.style.color = '#1E78F0';
             }
         }
-        // マイページの独立カード (属性タブ切替)
+        // マイページの独立カード (既定は折りたたみ / 初回展開時にロード)
+        function togglePopularTeams() {
+            const content = document.getElementById('popularTeamsContent');
+            const btn = document.getElementById('popularTeamsToggle');
+            if (!content || !btn) return;
+            const open = content.style.display !== 'none';
+            if (open) {
+                content.style.display = 'none';
+                btn.textContent = '▼ 人気編成を表示';
+            } else {
+                content.style.display = 'block';
+                btn.textContent = '▲ 人気編成を閉じる';
+                renderPopularTeamsCard(true);
+            }
+        }
         async function renderPopularTeamsCard(refetch = false) {
             const tabsEl = document.getElementById('popularTeamsTabs');
             const bodyEl = document.getElementById('popularTeamsBody');
             if (!tabsEl || !bodyEl) return;
             try { await getNikkeCharsCache(); } catch { /* noop */ }
-            await _loadTeamSubs(refetch);
+            await Promise.all([_loadTeamSubs(refetch), _loadMockRadarBase(refetch)]);
             tabsEl.innerHTML = PT_ATTRS.map(a => {
                 const on = a.key === _popularTeamsAttr;
                 return `<button onclick="switchPopularTeamsAttr('${a.key}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;border-radius:9px;border:none;cursor:pointer;font-size:11px;font-weight:800;${on ? `background:${a.color};color:#fff;` : `background:${a.color}14;color:${a.color};`}"><img loading="lazy" decoding="async" src="${a.icon}" style="width:14px;height:14px;">${a.name}</button>`;
