@@ -457,39 +457,70 @@ window.supabaseDeletePlayer = async function (playerId) {
     if (error) throw error;
 };
 
-// プレイヤーの属性別ダメージ登録を取得（5属性ぶん、未登録は欠落）
+// ---- player_damages 書き込みヘルパー (21_player_damages_slots.sql の slot 対応) ----
+// 適用後は主キーが (player_id, attribute, slot) になるため onConflict を切り替える。
+// 未適用環境では slot 列を外して旧形式で再試行 (slot=2 の保存は適用が必須)。
+async function _upsertPlayerDamages(rows) {
+    const withSlot = rows.map(r => ({ slot: 1, ...r }));
+    let res = await supabase.from('player_damages')
+        .upsert(withSlot, { onConflict: 'player_id,attribute,slot' });
+    if (!res.error) return res;
+    if (/column .*characters/i.test(String(res.error?.message))) return res;   // characters 起因は呼び出し元で処理
+    if (withSlot.some(r => r.slot === 2)) {
+        throw new Error('2編成目の保存には supabase/21_player_damages_slots.sql の適用が必要です');
+    }
+    const legacy = withSlot.map(({ slot, ...rest }) => rest);
+    return await supabase.from('player_damages')
+        .upsert(legacy, { onConflict: 'player_id,attribute' });
+}
+
+// プレイヤーの属性別ダメージ登録を取得（1属性最大2編成、未登録は欠落。slot 昇順）
 window.supabaseLoadPlayerDamages = async function (playerId) {
-    // characters カラム未マイグの環境でも壊れないよう2段階フォールバック
-    try {
-        const r = await supabase
-            .from('player_damages')
-            .select('attribute, damage_b, updated_at, characters')
-            .eq('player_id', playerId);
-        if (!r.error) return r.data || [];
-    } catch { /* fallthrough */ }
-    const { data, error } = await supabase
-        .from('player_damages')
-        .select('attribute, damage_b, updated_at')
-        .eq('player_id', playerId);
-    if (error) throw error;
-    return data || [];
+    // slot / characters カラム未マイグの環境でも壊れないよう多段フォールバック
+    const selects = [
+        'attribute, damage_b, updated_at, characters, slot',
+        'attribute, damage_b, updated_at, characters',
+        'attribute, damage_b, updated_at',
+    ];
+    for (const sel of selects) {
+        try {
+            const r = await supabase
+                .from('player_damages')
+                .select(sel)
+                .eq('player_id', playerId);
+            if (!r.error) {
+                return (r.data || [])
+                    .map(d => ({ ...d, slot: d.slot || 1 }))
+                    .sort((a, b) => a.slot - b.slot);
+            }
+        } catch { /* fallthrough */ }
+    }
+    return [];
 };
 
-// プレイヤーの属性別ダメージを upsert (新規 or 上書き)
-window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB) {
+// プレイヤーの属性別ダメージを upsert (新規 or 上書き)。slot=2 で2編成目
+window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1) {
     const valid = ['fire','water','iron','electric','wind'];
     if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
     const value = Number(damageB);
     if (isNaN(value) || value < 0) throw new Error('damageB は0以上の数値で指定');
-    const { error } = await supabase
-        .from('player_damages')
-        .upsert(
-            { player_id: playerId, attribute, damage_b: value, updated_at: new Date().toISOString() },
-            { onConflict: 'player_id,attribute' }
-        );
+    const { error } = await _upsertPlayerDamages([
+        { player_id: playerId, attribute, damage_b: value, slot, updated_at: new Date().toISOString() },
+    ]);
     if (error) throw error;
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
-    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出`, { playerId });
+    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${slot === 2 ? ' (2編成目)' : ''}`, { playerId });
+};
+
+// 2編成目の削除 (slot=2 の行のみ)
+window.supabaseDeletePlayerDamageSlot = async function (playerId, attribute, slot) {
+    const { error } = await supabase
+        .from('player_damages')
+        .delete()
+        .eq('player_id', playerId)
+        .eq('attribute', attribute)
+        .eq('slot', slot);
+    if (error) throw error;
 };
 
 // 旧スロット (morning/noon/evening/night/latenight) → 新hXX に展開
@@ -1082,18 +1113,17 @@ window.supabaseCreateSeason = async function (payload) {
     if (isTest) {
         // characters カラムは player_damages にあとから足したスキーマなので、無い環境でも壊れないように
         let dmgs = null;
-        try {
-            const r = await supabase
-                .from('player_damages')
-                .select('player_id, attribute, damage_b, characters');
-            dmgs = r.data || [];
-        } catch { /* characters 列なし環境にフォールバック */ }
-        if (dmgs == null) {
-            const r2 = await supabase
-                .from('player_damages')
-                .select('player_id, attribute, damage_b');
-            dmgs = r2.data || [];
+        for (const sel of [
+            'player_id, attribute, damage_b, characters, slot',
+            'player_id, attribute, damage_b, characters',
+            'player_id, attribute, damage_b',
+        ]) {
+            try {
+                const r = await supabase.from('player_damages').select(sel);
+                if (!r.error) { dmgs = r.data || []; break; }
+            } catch { /* fallthrough */ }
         }
+        dmgs = dmgs || [];
         // キャラマスタは canonical_name 一覧のみ保存 (sighting_count 等の細部はロールバック対象外)
         let charNames = [];
         try {
@@ -1311,16 +1341,10 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
     }
     if (rows.length > 0) {
         // characters カラムが未マイグの環境では characters を抜いてリトライ
-        let err;
-        const r1 = await supabase
-            .from('player_damages')
-            .upsert(rows, { onConflict: 'player_id,attribute' });
-        err = r1.error;
-        if (err) {
+        const r1 = await _upsertPlayerDamages(rows);
+        if (r1.error) {
             const fallbackRows = rows.map(({ characters, ...rest }) => rest);
-            const r2 = await supabase
-                .from('player_damages')
-                .upsert(fallbackRows, { onConflict: 'player_id,attribute' });
+            const r2 = await _upsertPlayerDamages(fallbackRows);
             if (r2.error) throw r2.error;
         }
     }
@@ -1388,15 +1412,11 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
     });
 
     if (rows.length > 0) {
-        const r1 = await supabase
-            .from('player_damages')
-            .upsert(rows, { onConflict: 'player_id,attribute' });
+        const r1 = await _upsertPlayerDamages(rows);
         if (r1.error) {
             // characters カラム未マイグ環境ではフォールバック
             const basicRows = rows.map(({ characters, ...rest }) => rest);
-            const r2 = await supabase
-                .from('player_damages')
-                .upsert(basicRows, { onConflict: 'player_id,attribute' });
+            const r2 = await _upsertPlayerDamages(basicRows);
             if (r2.error) throw r2.error;
         }
     }
@@ -1523,15 +1543,15 @@ window.supabaseLoadMockSubmissionStatus = async function () {
     const byPlayer = new Map();
     (dRes.data || []).forEach(d => {
         if (!(Number(d.damage_b) > 0)) return;
-        const s = byPlayer.get(d.player_id) || { attrs: 0, last: null };
-        s.attrs++;
+        const s = byPlayer.get(d.player_id) || { attrs: new Set(), last: null };
+        s.attrs.add(d.attribute);   // slot 2重複を数えない (属性の種類数)
         if (!s.last || d.updated_at > s.last) s.last = d.updated_at;
         byPlayer.set(d.player_id, s);
     });
     return (pRes.data || []).map(p => ({
         id: p.id,
         name: p.name,
-        attrCount: byPlayer.get(p.id)?.attrs || 0,
+        attrCount: byPlayer.get(p.id)?.attrs.size || 0,
         lastUpdated: byPlayer.get(p.id)?.last || null,
     }));
 };
@@ -1607,17 +1627,19 @@ window.supabaseDeleteActiveTestSeason = async function () {
                 player_id: s.player_id,
                 attribute: s.attribute,
                 damage_b: s.damage_b,
+                slot: s.slot || 1,
                 characters: Array.isArray(s.characters) ? s.characters : [],
             }));
-            const r1 = await supabase.from('player_damages').upsert(rowsWithChars, { onConflict: 'player_id,attribute' });
+            const r1 = await _upsertPlayerDamages(rowsWithChars);
             if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
                 // characters 列が DB に存在しない環境にフォールバック
                 const rowsBasic = snapshot.map(s => ({
                     player_id: s.player_id,
                     attribute: s.attribute,
                     damage_b: s.damage_b,
+                    slot: s.slot || 1,
                 }));
-                await supabase.from('player_damages').upsert(rowsBasic, { onConflict: 'player_id,attribute' });
+                await _upsertPlayerDamages(rowsBasic);
             }
         }
     }
@@ -1905,16 +1927,17 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
 
 // player_damages の characters カラムを更新 (該当行が無ければ upsert で作成)
 // 同じ (player_id, attribute) は1行しか無い前提 (既存スキーマの onConflict ターゲット)
-window.supabaseSaveTeamForAttribute = async function (playerId, attribute, characters) {
+window.supabaseSaveTeamForAttribute = async function (playerId, attribute, characters, slot = 1) {
     if (!playerId || !attribute || !Array.isArray(characters)) return;
     const cleaned = characters.filter(c => typeof c === 'string' && c.trim().length > 0);
     try {
-        await supabase.from('player_damages').upsert({
+        await _upsertPlayerDamages([{
             player_id: playerId,
             attribute,
+            slot,
             characters: cleaned,
             updated_at: new Date().toISOString(),
-        }, { onConflict: 'player_id,attribute' });
+        }]);
     } catch (e) {
         // characters カラム未マイグレーションのときは静かにスキップ
         console.warn('[saveTeamForAttribute] skipped:', e?.message || e);
@@ -2322,26 +2345,36 @@ window.supabaseLoadOpsDashboardData = async function () {
 
     // 2) 全プレイヤーの player_damages を一括取得 (characters 列はマイグ未適用なら無視)
     let dmgs = null;
-    try {
-        const r = await supabase
-            .from('player_damages')
-            .select('player_id, attribute, damage_b, updated_at, characters');
-        dmgs = r.data;
-    } catch { /* characters 未追加 */ }
-    if (dmgs == null) {
-        const r2 = await supabase
-            .from('player_damages')
-            .select('player_id, attribute, damage_b, updated_at');
-        dmgs = r2.data;
+    for (const sel of [
+        'player_id, attribute, damage_b, updated_at, characters, slot',
+        'player_id, attribute, damage_b, updated_at, characters',
+        'player_id, attribute, damage_b, updated_at',
+    ]) {
+        try {
+            const r = await supabase.from('player_damages').select(sel);
+            if (!r.error) { dmgs = r.data; break; }
+        } catch { /* fallthrough */ }
     }
-    const dmgByPlayer = new Map();
-    const teamByPlayer = new Map();  // { player_id: { attr: [chars] } }
+    const dmgByPlayer = new Map();     // { player_id: { attr: 最大ダメージ } } (既存консюмер用)
+    const teamByPlayer = new Map();    // { player_id: { attr: [chars] } } (slot1優先)
+    const loadoutsByPlayer = new Map();// { player_id: { attr: [{dmgB, team, slot}] } } (ソルバーの2編成対応用)
     (dmgs || []).forEach(d => {
+        const v = Number(d.damage_b) || 0;
+        const slot = d.slot || 1;
+        const team = (Array.isArray(d.characters) && d.characters.length > 0) ? d.characters : [];
         if (!dmgByPlayer.has(d.player_id)) dmgByPlayer.set(d.player_id, {});
-        dmgByPlayer.get(d.player_id)[d.attribute] = Number(d.damage_b) || 0;
-        if (Array.isArray(d.characters) && d.characters.length > 0) {
+        const dm = dmgByPlayer.get(d.player_id);
+        if (v > (dm[d.attribute] || 0)) dm[d.attribute] = v;
+        if (team.length > 0) {
             if (!teamByPlayer.has(d.player_id)) teamByPlayer.set(d.player_id, {});
-            teamByPlayer.get(d.player_id)[d.attribute] = d.characters;
+            const tm = teamByPlayer.get(d.player_id);
+            if (!tm[d.attribute] || slot === 1) tm[d.attribute] = team;
+        }
+        if (v > 0) {
+            if (!loadoutsByPlayer.has(d.player_id)) loadoutsByPlayer.set(d.player_id, {});
+            const lm = loadoutsByPlayer.get(d.player_id);
+            if (!lm[d.attribute]) lm[d.attribute] = [];
+            lm[d.attribute].push({ dmgB: v, team, slot });
         }
     });
 
@@ -2431,6 +2464,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             strong_attributes: Array.isArray(p.strong_attributes) ? p.strong_attributes : [],
             damagesByAttr: dmgByPlayer.get(p.id) || {},
             teamsByAttr: teamByPlayer.get(p.id) || {},
+            loadoutsByAttr: loadoutsByPlayer.get(p.id) || {},   // 1属性最大2編成 (ソルバー用)
             attacks: attacksByPlayer.get(p.id) || [],
             attackCount: (attacksByPlayer.get(p.id) || []).length,
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),

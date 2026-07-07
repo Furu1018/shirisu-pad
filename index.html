@@ -299,6 +299,26 @@
         }
         #tab-ops .dc-card { scroll-margin-top: 64px; }
         body:not(.ops-mode) [data-ops-only] { display: none !important; }
+        /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
+        .dc-dmg-panel.stacked {
+            box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14);
+        }
+        .dc-dmg-slotbadge {
+            position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 2px;
+            padding: 3px 8px; border-radius: 999px;
+            background: #14161A; color: #fff;
+            font-size: 10px; font-weight: 900; cursor: pointer; z-index: 2;
+            box-shadow: 0 2px 6px rgba(20,22,26,0.25);
+        }
+        @keyframes dmg-swap-out {
+            to { transform: translateY(12px) rotate(2deg) scale(0.96); opacity: 0; }
+        }
+        .dc-dmg-panel.swap-out { animation: dmg-swap-out 0.14s ease forwards; }
+        @keyframes dmg-swap-in {
+            from { transform: translateY(-12px) rotate(-2deg) scale(0.96); opacity: 0; }
+        }
+        .dc-dmg-panel.swap-in { animation: dmg-swap-in 0.2s ease; }
         /* ④ タップ当たり判定の拡大: 見た目はそのまま、指の周囲4pxまで反応を広げる
            (::before を装飾に使うボタンは除外して衝突を回避) */
         @media (pointer: coarse) {
@@ -3547,7 +3567,8 @@
                         <h3>計算ルール</h3>
                         <ul>
                             <li>各レベル5体撃破で次レベル。Lv3 まで火力が届かなければ届く所で停止し、攻略可能範囲を表示。</li>
-                            <li>登録ダメージは1人1属性につき1回のみ使用（キャラ使い回し不可の再現）。</li>
+                            <li>登録ダメージは1編成につき1回のみ使用（キャラ使い回し不可の再現）。<strong>編成②を提出した属性はキャラが被らなければ同属性2凸</strong>も提案されます。</li>
+                            <li><strong>得意属性</strong>を設定している人はそれが優先されます: 1〜3個選択でその属性を必ず消化（残り枠は自由）、4個選択ならその中からのみ選出。</li>
                             <li>低レベルは低SLv、高レベルは高SLvを優先（高SLvを後半に温存）。</li>
                             <li>SLv未登録の新メンバーは、登録ダメージが近い既知メンバーから推定。</li>
                         </ul>
@@ -4396,7 +4417,10 @@
                 <h2 id="myTeamEditTitle">✏️ 編成編集</h2>
                 <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。</p>
+            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成②を追加すると同属性2凸のプラン提案が可能になります。</p>
+
+            <!-- 編成スロット切替 (① / ② 同属性2凸用) -->
+            <div id="myTeamEditSlotTabs" style="display:flex;gap:6px;"></div>
 
             <!-- ダメージ入力 -->
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
@@ -6009,6 +6033,19 @@
         ];
 
         // 横一列 5属性パネル: タップで編成 + ダメージ編集モーダルを開く
+        // 模擬パネルの表示スロット (attr -> 1|2)。②があるカードは ①⇄② を入れ替えられる
+        let _myDmgPanelSlots = {};
+        function flipMyDmgPanel(attrKey) {
+            const id = getCurrentIdentity();
+            const panel = document.querySelector(`.dc-dmg-panel[data-attr="${attrKey}"]`);
+            if (panel) panel.classList.add('swap-out');
+            _myDmgPanelSlots[attrKey] = _myDmgPanelSlots[attrKey] === 2 ? 1 : 2;
+            setTimeout(async () => {
+                await renderMyDamagePanels(id);
+                document.querySelector(`.dc-dmg-panel[data-attr="${attrKey}"]`)?.classList.add('swap-in');
+            }, 140);
+        }
+
         async function renderMyDamagePanels(identity) {
             const el = document.getElementById('mypageDmgPanels');
             const legendEl = document.getElementById('mypageDmgDupLegend');
@@ -6025,19 +6062,22 @@
                 el.innerHTML = `<p style="color:#ef4444;font-size:12px;flex:1;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
+            // 1属性2編成 (slot) 対応: attr -> { 1: row, 2: row }
             const byAttr = new Map();
-            damages.forEach(d => byAttr.set(d.attribute, d));
+            damages.forEach(d => {
+                if (!byAttr.has(d.attribute)) byAttr.set(d.attribute, {});
+                byAttr.get(d.attribute)[d.slot || 1] = d;
+            });
             await getNikkeCharsCache();
 
-            // 5属性編成のキャラ → 出現属性キー[] のマップ
+            // 全編成 (slot1/2 両方) のキャラ → 出現属性キーSet のマップ
             const charToAttrs = new Map();
-            PT_ATTRS.forEach(a => {
-                const rec = byAttr.get(a.key);
-                const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
+            damages.forEach(d => {
+                const team = Array.isArray(d.characters) ? d.characters.filter(Boolean) : [];
                 team.forEach(name => {
                     const norm = fuzzyResolveCharacter(name) || name;
-                    if (!charToAttrs.has(norm)) charToAttrs.set(norm, []);
-                    charToAttrs.get(norm).push(a.key);
+                    if (!charToAttrs.has(norm)) charToAttrs.set(norm, new Set());
+                    charToAttrs.get(norm).add(d.attribute);
                 });
             });
             // 2 属性以上に出現するキャラ = 被り。被りグループ番号を割り当て
@@ -6046,7 +6086,7 @@
             const dupPairs = new Map();   // グループ番号 → 属性キーSet
             let dupGroupCounter = 0;
             charToAttrs.forEach((attrs, name) => {
-                if (attrs.length >= 2) {
+                if (attrs.size >= 2) {
                     dupGroupCounter++;
                     if (dupGroupCounter > 5) return;
                     dupGroup.set(name, dupGroupCounter);
@@ -6065,7 +6105,10 @@
             };
 
             el.innerHTML = PT_ATTRS.map(a => {
-                const rec = byAttr.get(a.key);
+                const slots = byAttr.get(a.key) || {};
+                const hasSlot2 = !!slots[2];
+                const activeSlot = (hasSlot2 && _myDmgPanelSlots[a.key] === 2) ? 2 : 1;
+                const rec = slots[activeSlot] || slots[1] || slots[2];
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const c = DC_ATTR_COLORS[a.key] || '#14161A';
@@ -6078,8 +6121,13 @@
                     const dupCls = g ? `dup-${g}` : '';
                     return renderCharCell(name, dupCls);
                 }).join('');
+                // 2編成目があるカードは「重なり」+ ①⇄② 入れ替えバッジ
+                const slotBadge = hasSlot2
+                    ? `<div class="dc-dmg-slotbadge" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="編成①⇄②を入れ替え">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
+                    : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}')" class="dc-dmg-panel" title="${a.name}PT" data-attr="${a.key}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
+                        ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
                                 <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;">
@@ -6186,24 +6234,57 @@
             renderMyFururiRadar(identity, damages);
         }
 
-        // 編成編集モーダル
+        // 編成編集モーダル (slot: 1=メイン編成 / 2=同属性2凸用の2編成目)
         let _myTeamEditAttr = null;
-        async function handleMyTeamEdit(attrKey) {
+        let _myTeamEditSlot = 1;
+        function _renderTeamEditSlotTabs(hasSlot2) {
+            const el = document.getElementById('myTeamEditSlotTabs');
+            if (!el) return;
+            const btn = (slot, label) => `<button onclick="switchMyTeamEditSlot(${slot})" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:800;${_myTeamEditSlot === slot ? 'background:#14161A;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">${label}</button>`;
+            el.innerHTML = btn(1, '編成 ①')
+                + btn(2, hasSlot2 ? '編成 ②' : '＋ 編成②を追加')
+                + ((_myTeamEditSlot === 2 && hasSlot2)
+                    ? `<button onclick="handleMyTeamEditDeleteSlot2()" title="編成②を削除" style="flex:none;padding:8px 12px;border-radius:9px;border:none;background:rgba(255,61,68,0.10);color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑</button>`
+                    : '');
+        }
+        function switchMyTeamEditSlot(slot) {
+            if (slot === _myTeamEditSlot || !_myTeamEditAttr) return;
+            handleMyTeamEdit(_myTeamEditAttr, slot);
+        }
+        async function handleMyTeamEditDeleteSlot2() {
+            const id = getCurrentIdentity();
+            if (!id?.id || !_myTeamEditAttr) return;
+            if (!confirm('編成② (2編成目) を削除しますか？')) return;
+            try {
+                await window.supabaseDeletePlayerDamageSlot(id.id, _myTeamEditAttr, 2);
+                _opsDashboardCache = null;
+                _myDmgPanelSlots[_myTeamEditAttr] = 1;
+                await renderMyDamagePanels(id);
+                handleMyTeamEdit(_myTeamEditAttr, 1);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+        async function handleMyTeamEdit(attrKey, slot = 1) {
             const id = getCurrentIdentity();
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
             const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || attrKey;
             _myTeamEditAttr = attrKey;
+            _myTeamEditSlot = slot === 2 ? 2 : 1;
             // 現在の編成・ダメージを取得して初期表示
             let current = ['', '', '', '', ''];
             let curDamage = '';
+            let hasSlot2 = false;
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
-                const row = (dmgs || []).find(d => d.attribute === attrKey);
+                const row = (dmgs || []).find(d => d.attribute === attrKey && (d.slot || 1) === _myTeamEditSlot);
+                hasSlot2 = (dmgs || []).some(d => d.attribute === attrKey && (d.slot || 1) === 2);
                 const existing = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
                 for (let i = 0; i < 5; i++) current[i] = existing[i] || '';
                 if (row?.damage_b != null) curDamage = Number(row.damage_b).toFixed(2).replace(/\.?0+$/, '');
             } catch { /* noop */ }
-            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成・ダメージ`;
+            _renderTeamEditSlotTabs(hasSlot2);
+            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成${_myTeamEditSlot === 2 ? '②' : '①'}・ダメージ`;
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
             const dmgInput = document.getElementById('myTeamEditDamage');
@@ -6802,13 +6883,13 @@
                 }
                 const parts = [];
                 if (dmgVal !== null) {
-                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, dmgVal);
+                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, dmgVal, _myTeamEditSlot);
                     parts.push(`💥 ${dmgVal}B`);
                 }
-                await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical);
+                await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
                 if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                 const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
-                setMsg(`✅ ${ptName}PT を更新: ${parts.join(' / ') || '空'}`);
+                setMsg(`✅ ${ptName}PT 編成${_myTeamEditSlot === 2 ? '②' : '①'} を更新: ${parts.join(' / ') || '空'}`);
                 _opsDashboardCache = null;
                 await renderMyDamagePanels(id);
                 setTimeout(() => closeMyTeamEditModal(), 700);
@@ -6886,23 +6967,37 @@
             // 基準者本人の閲覧時は毎回リロード (自分の提出が即座に基準へ反映されるように)
             const base = await _loadMockRadarBase(isBasePlayer);
 
-            const dmgByAttr = {};
-            (damages || []).forEach(d => { dmgByAttr[d.attribute] = Number(d.damage_b) || 0; });
+            // 1属性2編成 (slot) 対応: 最大値を主系列、2編成目があれば副系列 (破線) に
+            const dmgByAttr = {};      // 属性 -> ベスト値
+            const dmgAltByAttr = {};   // 属性 -> 2編成目の値 (2件提出時のみ)
+            (damages || []).forEach(d => {
+                const v = Number(d.damage_b) || 0;
+                if (v <= 0) return;
+                const k = d.attribute;
+                if (v > (dmgByAttr[k] || 0)) {
+                    if (dmgByAttr[k]) dmgAltByAttr[k] = dmgByAttr[k];
+                    dmgByAttr[k] = v;
+                } else {
+                    dmgAltByAttr[k] = Math.max(dmgAltByAttr[k] || 0, v);
+                }
+            });
 
-            const labels = PT_ATTRS.map(a => a.name);
-            const values = PT_ATTRS.map(a => {
+            // 基準者(同SLv換算)との比 — 基準者本人は自分のベスト=基準なので自然に 1.0 になる
+            const calcVal = (k, myDmg) => {
                 if (!slv || !base?.slv || !slvRatioTable) return 0;
-                const baseDmg = base.dmgByAttr[a.key];
-                const myDmg = dmgByAttr[a.key] || 0;
-                if (!(baseDmg > 0)) return 0;                      // 基準者がこの属性を未提出
-                if (isBasePlayer) return myDmg > 0 ? 1.0 : 0;      // 基準者本人は定義上 1.0
-                if (myDmg <= 0) return 0;
+                const baseDmg = base.dmgByAttr[k];
+                if (!(baseDmg > 0) || !(myDmg > 0)) return 0;
                 const baseRatio = slvRatioTable[String(base.slv)];
                 const myRatio = slvRatioTable[String(slv)];
                 if (!baseRatio || !myRatio) return 0;
-                const baseScaled = baseDmg * myRatio / baseRatio;  // 基準者が自分と同SLvなら出せる想定値
+                const baseScaled = baseDmg * myRatio / baseRatio;
                 return baseScaled > 0 ? myDmg / baseScaled : 0;
-            });
+            };
+            const labels = PT_ATTRS.map(a => a.name);
+            const values = PT_ATTRS.map(a => calcVal(a.key, dmgByAttr[a.key] || 0));
+            const hasDual = PT_ATTRS.some(a => dmgAltByAttr[a.key] > 0);
+            // 副系列: 2編成目がある属性はその値、無い属性は主系列と同じ (形を保つ)
+            const values2 = PT_ATTRS.map((a, i) => dmgAltByAttr[a.key] > 0 ? calcVal(a.key, dmgAltByAttr[a.key]) : values[i]);
 
             if (metaEl) {
                 metaEl.textContent = slv
@@ -6921,21 +7016,36 @@
 
             if (mypageRadarChartInstance) { mypageRadarChartInstance.destroy(); mypageRadarChartInstance = null; }
             const maxV = Math.max(1.2, ...values);
+            const datasets = [{
+                label: '模擬ふるり値 (ベスト編成)',
+                data: values,
+                fill: true,
+                backgroundColor: 'rgba(59,130,246,0.18)',
+                borderColor: '#3b82f6',
+                borderWidth: 2,
+                pointBackgroundColor: PT_ATTRS.map(a => a.color),
+                pointBorderColor: '#fff',
+                pointRadius: 4,
+            }];
+            if (hasDual) {
+                // 2編成目 (破線): 2枚提出した属性だけ点を打ち、他は主系列に沿わせて形を保つ
+                datasets.push({
+                    label: '編成②',
+                    data: values2,
+                    fill: false,
+                    borderColor: 'rgba(30,120,240,0.55)',
+                    borderDash: [5, 4],
+                    borderWidth: 1.5,
+                    pointRadius: PT_ATTRS.map(a => dmgAltByAttr[a.key] > 0 ? 3 : 0),
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(30,120,240,0.8)',
+                });
+            }
             mypageRadarChartInstance = new Chart(canvas.getContext('2d'), {
                 type: 'radar',
                 data: {
                     labels,
-                    datasets: [{
-                        label: 'ふるり値',
-                        data: values,
-                        fill: true,
-                        backgroundColor: 'rgba(59,130,246,0.18)',
-                        borderColor: '#3b82f6',
-                        borderWidth: 2,
-                        pointBackgroundColor: PT_ATTRS.map(a => a.color),
-                        pointBorderColor: '#fff',
-                        pointRadius: 4,
-                    }],
+                    datasets,
                 },
                 options: {
                     responsive: true, maintainAspectRatio: true,
@@ -8358,8 +8468,11 @@
                     const rows = await window.supabaseLoadPlayerDamages(id.id);
                     const byAttr = {};
                     (rows || []).forEach(r => {
+                        const v = Number(r.damage_b) || 0;
+                        // 1属性2編成のときはベスト値の行を採用
+                        if (byAttr[r.attribute] && byAttr[r.attribute].damage_b >= v) return;
                         byAttr[r.attribute] = {
-                            damage_b: Number(r.damage_b) || 0,
+                            damage_b: v,
                             characters: Array.isArray(r.characters) ? r.characters : [],
                         };
                     });

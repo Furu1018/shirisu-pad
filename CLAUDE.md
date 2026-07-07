@@ -16,7 +16,9 @@ NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け
   凸プラン配信 (📤) は `17_published_plans.sql`、戦闘可能時間の運用オプション
   (⏳隙間時間型 / 🔔いつでも通知) は `18_availability_prefs.sql`、
   設定タブの詳細アクティビティログは `19_activity_log.sql`、
-  ボスHP鮮度表示 (HP更新 ○分前) は `20_bosses_updated_at.sql` の適用が前提。
+  ボスHP鮮度表示 (HP更新 ○分前) は `20_bosses_updated_at.sql`、
+  模擬の1属性2編成 (同属性2凸) は `21_player_damages_slots.sql` の適用が前提
+  (主キーが (player_id, attribute, slot) に変わる — upsert は _upsertPlayerDamages 経由必須)。
   通知の時間帯フィルタは Edge Function `send-push` (サーバ側) — 変更時は再デプロイが必要
 - **sw.js** — Web Push 専用 Service Worker (キャッシュなし)
 - 認証なし。プレイヤーは自己申告で選択 (localStorage)

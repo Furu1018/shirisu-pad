@@ -448,6 +448,52 @@ test('得意属性なし: 従来どおり制約なく選出される', () => {
     assert.deepEqual(attrs, ['electric', 'fire', 'water']);
 });
 
+// ---- 1属性2編成 (dual loadout) ------------------------------------------------
+console.log('\ndualLoadout:');
+
+test('1属性2編成: 別編成なら同じ属性に2回凸できる', () => {
+    const p = player('A', { fire: 10 });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 10, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 8, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 15 })], [p]));
+    const b1 = plan.levels[0].bosses[0];
+    assert.equal(b1.cleared, true);
+    assert.equal(b1.attacks.length, 2, `2凸のはず: ${b1.attacks.length}`);
+    assert.equal(b1.attacks[0].dmgB, 10);
+    assert.equal(b1.attacks[1].dmgB, 8);
+    assert.equal(b1.attacks[1].loadoutSlot, 2);
+});
+
+test('2編成目がキャラ被りなら同属性2凸はしない', () => {
+    const p = player('A', { fire: 10 });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 10, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 8, team: ['a', 'x', 'y', 'z', 'w'], slot: 2 },   // 'a' が被る
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 15 })], [p]));
+    const b1 = plan.levels[0].bosses[0];
+    assert.equal(b1.cleared, false);
+    assert.equal(b1.attacks.length, 1, '被り編成は2凸目に使えないはず');
+});
+
+test('既に1凸済みの属性は上位ロードアウトから消費済み扱い', () => {
+    const p = player('A', { fire: 10 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 1 }],   // boss1 (fire) に1凸済み
+    });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 10, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 8, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 7 })], [p]));
+    const b1 = plan.levels[0].bosses[0];
+    assert.equal(b1.cleared, true);
+    assert.equal(b1.attacks.length, 1);
+    assert.equal(b1.attacks[0].dmgB, 8, '残っているのは2編成目 (8B) のはず');
+});
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

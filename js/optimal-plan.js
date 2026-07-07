@@ -56,16 +56,16 @@
         const nowIdx = timeAware ? (IDX_BY_KEY.get(currentSlot) ?? 0) : 0;
         const LAST_IDX = HOUR_ORDER.length - 1;
 
-        // ボス番号 → 弱点(PT属性) のマップ。各メンバーの使用済み属性は attacks から逆引きする。
+        // ボス番号 → 弱点(PT属性) のマップ。各メンバーの属性別凸回数は attacks から逆引きする。
         const bossWeaknessByNum = new Map();
         bosses.forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
-        const usedAttrsFor = (p) => {
-            const set = new Set();
+        const usedCountFor = (p) => {
+            const map = new Map();
             (p.attacks || []).forEach(a => {
                 const w = bossWeaknessByNum.get(a.boss_number);
-                if (w) set.add(w);
+                if (w) map.set(w, (map.get(w) || 0) + 1);
             });
-            return set;
+            return map;
         };
 
         // メンバー状態: 残凸数 + 属性別の使い切りダメージ(>0) + SLv + 凸可能時間
@@ -75,10 +75,28 @@
             .filter(p => p.attackCount < 3)
             .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(currentSlot))
             .map(p => {
-                const used = usedAttrsFor(p);
+                const usedCount = usedCountFor(p);
+                // avail: 属性 -> 使用可能な編成 (ロードアウト) リスト、ダメージ降順。
+                // 1属性2編成 (player_damages.slot) に対応し、別編成なら同属性2凸を提案できる。
+                // 既にその属性へ凸した回数ぶん、上位ロードアウトから消費済みとして除外。
                 const avail = {};
-                for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
-                    if (Number(v) > 0 && !used.has(k)) avail[k] = Number(v);
+                const loadouts = (p.loadoutsByAttr && Object.keys(p.loadoutsByAttr).length > 0) ? p.loadoutsByAttr : null;
+                if (loadouts) {
+                    for (const [k, list] of Object.entries(loadouts)) {
+                        const clean = (list || [])
+                            .filter(lo => Number(lo.dmgB) > 0)
+                            .map(lo => ({ dmg: Number(lo.dmgB), team: Array.isArray(lo.team) ? lo.team : [], slot: lo.slot || 1 }))
+                            .sort((a, b) => b.dmg - a.dmg)
+                            .slice(usedCount.get(k) || 0);
+                        if (clean.length > 0) avail[k] = clean;
+                    }
+                } else {
+                    // 旧入力形式 (damagesByAttr のみ) のフォールバック: 1属性1編成
+                    for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
+                        if (Number(v) > 0 && !(usedCount.get(k) > 0)) {
+                            avail[k] = [{ dmg: Number(v), team: (p.teamsByAttr || {})[k] || [], slot: 1 }];
+                        }
+                    }
                 }
                 // 得意属性 (strong_attributes) の選出制約:
                 //   1〜3個選択 → その属性は必ず消化 (残りの凸枠だけ自由選出)
@@ -94,7 +112,7 @@
                     }
                 }
                 const mandatory = (strong.length >= 1 && strong.length <= 3)
-                    ? new Set(strong.filter(k => avail[k] > 0))
+                    ? new Set(strong.filter(k => (avail[k] || []).length > 0))
                     : new Set();
                 // 凸可能時間 → 現在以降の時間帯インデックス集合 (昇順)。未登録は「いつでも可」
                 const rawSlots = (p.availableSlots || [])
@@ -113,9 +131,9 @@
                     slvEstimated: !!p.syncLevelEstimated,
                     remainingAttacks: 3 - p.attackCount,
                     avail,
-                    teamsByAttr: p.teamsByAttr || {},   // 衝突チェック用編成
                     usedChars: new Set(),               // すでに割当済みのキャラ
-                    anyTeamRegistered: Object.values(p.teamsByAttr || {}).some(arr => Array.isArray(arr) && arr.length > 0),
+                    anyTeamRegistered: Object.values(avail).some(list => list.some(lo => lo.team.length > 0))
+                        || Object.values(p.teamsByAttr || {}).some(arr => Array.isArray(arr) && arr.length > 0),
                     hourIdxs: (timeUnknown || (flexTime && rawSlots.length === 0)) ? null : rawSlots,   // null = いつでも可
                     timeUnknown,
                     flexTime,
@@ -146,8 +164,7 @@
         // ⏳隙間割当は時刻を確約しない分の不確実性ペナルティ (2時間の遅れ相当) を課し、
         // 「時刻を確約できる人」が僅差なら優先されるようにする。
         const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2, FLEX_PENALTY = 2 * W_TIME, W_STRONG = 2.5;
-        const scoreOf = (m, attr, rem, levelPos, hourIdx, openIdx, isFlex) => {
-            const dmg = m.avail[attr];
+        const scoreOf = (m, attr, dmg, rem, levelPos, hourIdx, openIdx, isFlex) => {
             const overkill = Math.max(0, dmg - rem);
             const slvPenalty = Math.abs((m.slvRank ?? 0.5) - levelPos);
             const timePenalty = timeAware ? (hourIdx - openIdx) : 0;
@@ -172,27 +189,30 @@
                 let rem = targetHpB;
                 let sawTimeExcluded = false;   // 火力はあるが時間で弾かれた候補がいたか
                 while (rem > 0.0001) {
-                    let pick = null, pickScore = Infinity, pickHour = openIdx, pickFlex = false;
+                    let pick = null, pickScore = Infinity, pickHour = openIdx, pickFlex = false, pickLo = null;
                     for (const m of memberState) {
-                        if (m.remainingAttacks <= 0 || !(m.avail[b.weakness] > 0)) continue;
+                        const list = m.avail[b.weakness];
+                        if (m.remainingAttacks <= 0 || !list || list.length === 0) continue;
                         // 得意属性の必須消化: 自由枠が尽きたら必須属性以外には出さない
                         if (m.mandatory.size > 0 && !m.mandatory.has(b.weakness) && m.freeSlots <= 0) continue;
-                        // キャラ衝突チェック: 同じ人がすでに割当済みのキャラと被るプランは除外
+                        // キャラ衝突チェック: 割当済みキャラと被らない最初 (=最大ダメージ) のロードアウトを選ぶ
                         // (編成データが全く無い人はチェック対象外。データ揃ってる人だけ厳密判定)
-                        const team = m.teamsByAttr[b.weakness];
-                        if (m.anyTeamRegistered && Array.isArray(team) && team.length > 0) {
-                            const conflict = team.some(c => c && m.usedChars.has(c));
-                            if (conflict) continue;
+                        let lo = null;
+                        for (const cand of list) {
+                            if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(c))) continue;
+                            lo = cand;
+                            break;
                         }
+                        if (!lo) continue;
                         const slot = earliestHourFor(m, openIdx);
                         if (slot === null) { sawTimeExcluded = true; continue; }
-                        const s = scoreOf(m, b.weakness, rem, levelPos, slot.idx, openIdx, slot.flex);
-                        if (s < pickScore) { pickScore = s; pick = m; pickHour = slot.idx; pickFlex = slot.flex; }
+                        const s = scoreOf(m, b.weakness, lo.dmg, rem, levelPos, slot.idx, openIdx, slot.flex);
+                        if (s < pickScore) { pickScore = s; pick = m; pickHour = slot.idx; pickFlex = slot.flex; pickLo = lo; }
                     }
                     if (!pick) break;
-                    const dmg = pick.avail[b.weakness];
-                    const team = pick.teamsByAttr[b.weakness] || [];
-                    const teamRegistered = Array.isArray(team) && team.length > 0;
+                    const dmg = pickLo.dmg;
+                    const team = pickLo.team;
+                    const teamRegistered = team.length > 0;
                     attacks.push({
                         memberId: pick.id, memberName: pick.name,
                         slv: pick.slv, slvEstimated: pick.slvEstimated,
@@ -204,11 +224,15 @@
                         hourLabel: (timeAware && !pickFlex) ? hourLabelOf(pickHour) : null,
                         flex: timeAware ? pickFlex : false,
                         timeUnknown: timeAware ? pick.timeUnknown : false,
+                        loadoutSlot: pickLo.slot,            // 2編成目なら 2 (表示用)
                         isBottleneck: false,                 // レベル確定後に付与
                     });
                     // 採用したキャラを使用済セットへ
                     if (teamRegistered) team.forEach(c => { if (c) pick.usedChars.add(c); });
-                    delete pick.avail[b.weakness];
+                    // 使用したロードアウトを除去 (同属性の別編成が残っていれば2凸目も提案可)
+                    const loIdx = pick.avail[b.weakness].indexOf(pickLo);
+                    if (loIdx >= 0) pick.avail[b.weakness].splice(loIdx, 1);
+                    if (pick.avail[b.weakness].length === 0) delete pick.avail[b.weakness];
                     pick.remainingAttacks--;
                     // 得意属性の消化管理: 必須を消化 or 自由枠を消費
                     if (pick.mandatory.has(b.weakness)) pick.mandatory.delete(b.weakness);
