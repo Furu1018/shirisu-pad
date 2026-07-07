@@ -20,7 +20,8 @@ NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け
   模擬の1属性2編成 (同属性2凸) は `21_player_damages_slots.sql` の適用が前提
   (主キーが (player_id, attribute, slot) に変わる — upsert は _upsertPlayerDamages 経由必須)。
   通知の時間帯フィルタは Edge Function `send-push` (サーバ側) — 変更時は再デプロイが必要
-- **sw.js** — Web Push 専用 Service Worker (キャッシュなし)
+- **sw.js** — Web Push 用 Service Worker。キャッシュは実質不変の画像のみ
+  (character-images/属性アイコン)。HTML/JS/データは即時反映のため非キャッシュ
 - 認証なし。プレイヤーは自己申告で選択 (localStorage)
 
 ## テスト

@@ -3,15 +3,51 @@
 // ----------------------------------------------------------------------------
 // - Web Push 通知の受信ハンドラ
 // - 通知タップで PAD を開く
-// - キャッシュは現状なし（純粋に通知用）
+// - キャッシュは「実質不変の画像のみ」(キャラ/属性アイコン)。
+//   HTML/JS/データは main push 即反映の方針を守るためキャッシュしない
 // ============================================================================
+
+const IMG_CACHE = 'shirisu-img-v1';
 
 self.addEventListener('install', () => {
     self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil((async () => {
+        // 旧バージョンの画像キャッシュを掃除
+        const keys = await caches.keys();
+        await Promise.all(keys
+            .filter(k => k.startsWith('shirisu-img-') && k !== IMG_CACHE)
+            .map(k => caches.delete(k)));
+        await self.clients.claim();
+    })());
+});
+
+// ---- 画像キャッシュ (cache-first) ----
+// 対象: character-images/ と 属性アイコン/ と icon.png のみ。
+// ファイル名がハッシュ or 内容固定のため stale の心配がなく、
+// 再訪問時の大量アイコン読み込みをネットワークゼロにできる。
+self.addEventListener('fetch', (event) => {
+    const req = event.request;
+    if (req.method !== 'GET') return;
+    let url;
+    try { url = new URL(req.url); } catch { return; }
+    if (url.origin !== self.location.origin) return;
+    const path = decodeURIComponent(url.pathname);
+    const isImg = path.includes('/character-images/')
+        || path.includes('/属性アイコン/')
+        || path.endsWith('/icon.png');
+    if (!isImg) return;
+    event.respondWith(
+        caches.open(IMG_CACHE).then(async (cache) => {
+            const hit = await cache.match(req);
+            if (hit) return hit;
+            const resp = await fetch(req);
+            if (resp && resp.ok) cache.put(req, resp.clone());
+            return resp;
+        })
+    );
 });
 
 // Push受信
@@ -68,4 +104,4 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// rebuild: 1779553127
+// rebuild: 1779553200

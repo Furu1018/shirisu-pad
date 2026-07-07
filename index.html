@@ -11,13 +11,20 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="しりすこPAD">
     <meta name="theme-color" content="#fbfcfd">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- 接続の先行確立 (CDN / Supabase / フォント) -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://djahnbzwupxcekneydid.supabase.co" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- フォントは @import (発見が遅い) をやめて link で先行取得 -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap">
+    <!-- Chart.js は描画関数内でのみ使用 → defer で初期パースをブロックしない。
+         tesseract.js (重量級OCR) はシミュレータOCRの初回利用時に遅延ロード (_ensureTesseract) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Supabase クライアント (Phase 0: 接続確認のみ。既存ロジックは未変更) -->
     <script type="module" src="./js/supabase-client.js"></script>
-    <script src="./js/optimal-plan.js"></script>
+    <script defer src="./js/optimal-plan.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -12805,6 +12812,23 @@
             }
         }
 
+        // tesseract.js はシミュレータOCRでしか使わない重量級ライブラリのため、
+        // 起動時には読み込まず初回利用時に遅延ロードする (初期表示の高速化)
+        let _tessLoading = null;
+        function _ensureTesseract() {
+            if (typeof Tesseract !== 'undefined') return Promise.resolve(true);
+            if (!_tessLoading) {
+                _tessLoading = new Promise((resolve) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+                    s.onload = () => resolve(typeof Tesseract !== 'undefined');
+                    s.onerror = () => { _tessLoading = null; resolve(false); };
+                    document.head.appendChild(s);
+                });
+            }
+            return _tessLoading;
+        }
+
         // モーダル外クリックで閉じる
         document.addEventListener('click', e => {
             if (e.target?.id === 'playerSelectModal') closePlayerSelectModal();
@@ -13400,30 +13424,36 @@
             // よって同じ月キーで両方ある場合は JSON を優先する。
             const byMonth = new Map();
 
-            // ----- Supabase (完了済みシーズンのみ、is_active=false / is_test=false) -----
-            try {
-                if (typeof window.supabaseLoadLatestSeasons === 'function') {
-                    const sup = await window.supabaseLoadLatestSeasons(2);
-                    sup.forEach(s => byMonth.set(s.key, { key: s.key, json: s.json, source: 'supabase' }));
-                }
-            } catch (err) {
-                console.warn('[autoLoadData] Supabase 読込失敗:', err);
-                console.warn('  message:', err?.message, '| code:', err?.code, '| details:', err?.details, '| hint:', err?.hint);
-            }
-
-            // ----- ローカル JSON (直近5か月を試行)。同月キーは JSON で上書き = 優先 -----
+            // ----- Supabase (完了済みシーズン) と ローカルJSON (直近5か月) を並列取得 -----
+            // 以前は直列 (Supabase → JSON×5 を順に await) で初回表示のボトルネックだった
             const d = new Date();
-            for (let i = 0; i < 5; i++) {
+            const monthKeys = Array.from({ length: 5 }, (_, i) => {
                 const dd = new Date(d.getFullYear(), d.getMonth() - i, 1);
-                const key = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
-                try {
-                    const resp = await fetch(`./data/${key}.json`);
-                    if (resp.ok) {
-                        const json = await resp.json();
-                        byMonth.set(key, { key, json, source: 'json' });  // JSON 優先
+                return `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}`;
+            });
+            const [supRows, ...jsonRows] = await Promise.all([
+                (async () => {
+                    try {
+                        if (typeof window.supabaseLoadLatestSeasons === 'function') {
+                            return await window.supabaseLoadLatestSeasons(2);
+                        }
+                    } catch (err) {
+                        console.warn('[autoLoadData] Supabase 読込失敗:', err);
+                        console.warn('  message:', err?.message, '| code:', err?.code, '| details:', err?.details, '| hint:', err?.hint);
                     }
-                } catch (e) { /* skip */ }
-            }
+                    return [];
+                })(),
+                ...monthKeys.map(async (key) => {
+                    try {
+                        const resp = await fetch(`./data/${key}.json`);
+                        if (resp.ok) return { key, json: await resp.json() };
+                    } catch { /* skip */ }
+                    return null;
+                }),
+            ]);
+            (supRows || []).forEach(s => byMonth.set(s.key, { key: s.key, json: s.json, source: 'supabase' }));
+            // 同月キーは JSON で上書き = 正式データ優先
+            jsonRows.filter(Boolean).forEach(({ key, json }) => byMonth.set(key, { key, json, source: 'json' }));
 
             // 月キー降順で上位2件
             const found = [...byMonth.values()]
@@ -14056,8 +14086,9 @@
             const status = document.getElementById('fsimOcrStatus');
             event.target.value = '';
             if (!file) return;
-            if (typeof Tesseract === 'undefined') {
-                status.textContent = 'OCRライブラリの読み込みに失敗しました。';
+            status.textContent = 'OCRライブラリを読み込み中…';
+            if (!(await _ensureTesseract())) {
+                status.textContent = 'OCRライブラリの読み込みに失敗しました。通信環境を確認してください。';
                 return;
             }
             status.textContent = '画像を解析中... (初回はモデル読み込みで20〜30秒程度かかります)';
