@@ -2464,7 +2464,7 @@
                 <svg id="headerReloadIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.5s;"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
             </button>
             <button class="identity-pill" id="identityPill" onclick="openPlayerSelectModal()" style="display:none;">
-                <span class="hint">👤</span>
+                <span class="hint" data-sp-icon="user" data-sp-size="16"></span>
                 <span class="name" id="identityName">未選択</span>
                 <span class="hint">▼</span>
             </button>
@@ -2510,7 +2510,7 @@
                     <div id="mypageAvatarFrame" onclick="openAvatarEditModal()" title="クリックでアバター変更" style="position:relative;flex:none;width:78px;height:78px;cursor:pointer;">
                         <div style="width:78px;height:78px;border-radius:50%;padding:3px;box-sizing:border-box;background:linear-gradient(140deg,#fcfdfe,#bfc4cc 48%,#eef1f4);box-shadow:0 3px 10px rgba(20,22,26,0.16);">
                             <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, #565c64, #2a2e34);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                                <span id="mypageAvatarFallback" style="font-size:26px;color:#fff;">👤</span>
+                                <span id="mypageAvatarFallback" style="color:#fff;display:inline-flex;" data-sp-icon="user" data-sp-size="26"></span>
                                 <img loading="lazy" decoding="async" id="mypageAvatarImg" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
                             </div>
                         </div>
@@ -2522,7 +2522,7 @@
                             <div id="mypageName" style="font-size:19px;font-weight:900;letter-spacing:0.2px;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">未選択</div>
                             <div id="mypageSlvChip" onclick="openMySlvModal()" title="SLvを変更" style="display:none;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.10);padding:4px 9px;border-radius:999px;cursor:pointer;white-space:nowrap;">
                                 <span id="mypageSlvValue">SLv —</span>
-                                <span style="font-size:10px;opacity:0.65;">✏️</span>
+                                <span style="opacity:0.65;" data-sp-icon="pencil" data-sp-size="10"></span>
                             </div>
                         </div>
                         <div style="margin-top:12px;">
@@ -2534,7 +2534,7 @@
                         </div>
                     </div>
                     <!-- top-right 編集 pill (player select) -->
-                    <div onclick="openPlayerSelectModal()" title="プレイヤー変更" style="position:absolute;top:0;right:0;display:flex;align-items:center;gap:4px;background:#F1F2F4;color:#6B7178;font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;cursor:pointer;"><span style="font-size:12px;">👤</span> 切替</div>
+                    <div onclick="openPlayerSelectModal()" title="プレイヤー変更" style="position:absolute;top:0;right:0;display:flex;align-items:center;gap:4px;background:#F1F2F4;color:#6B7178;font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;cursor:pointer;"><span data-sp-icon="user" data-sp-size="12"></span> 切替</div>
                 </div>
                 <!-- ステータス切替 3ボタン (soft-fill) -->
                 <div id="mypageStatusSwitcher" style="display:flex;gap:8px;margin-top:18px;">
@@ -2570,7 +2570,7 @@
                     <p class="subtitle">アイコンをタップして変更します。キャラから選ぶか、画像をアップロード。</p>
                     <div style="display:flex;flex-direction:column;gap:12px;">
                         <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
-                            <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;">👤</div>
+                            <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;"><span data-sp-icon="user" data-sp-size="30"></span></div>
                             <div style="flex:1;font-size:13px;color:var(--md-sys-color-on-surface-variant);">現在のアバタープレビュー</div>
                         </div>
                         <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:14px;font-weight:600;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
@@ -2578,7 +2578,7 @@
                             📤 自分の画像をアップロード (最大5MB)
                             <input type="file" id="avatarUploadInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none;">
                         </label>
-                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🗑️ アバターを削除 (デフォルトに戻す)</button>
+                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
                         <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
                     </div>
                 </div>
@@ -2604,7 +2604,7 @@
                 <!-- OCR 解析中バナー (display:none で初期化、解析時に表示) -->
                 <div id="mypageDmgAnalyzing" style="display:none;align-items:center;gap:10px;background:#14161A;border-radius:12px;padding:11px 13px;margin-bottom:12px;animation:dcFadeIn 0.2s ease;">
                     <div style="width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.22);border-top-color:#46A0FF;border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
-                    <div style="font-size:11px;font-weight:900;color:#fff;letter-spacing:0.2px;flex:none;">📷 解析中…</div>
+                    <div style="font-size:11px;font-weight:900;color:#fff;letter-spacing:0.2px;flex:none;"><span data-sp-icon="camera" data-sp-size="12"></span> 解析中…</div>
                     <div id="mypageDmgAnalyzedNames" style="flex:1;min-width:0;font-size:11px;font-weight:700;color:#8A9097;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">&nbsp;</div>
                 </div>
 
@@ -2674,7 +2674,7 @@
                         <p style="flex:1;color:#A4AAB0;font-size:12px;text-align:center;">プレイヤーを選択するとボス一覧が表示されます。</p>
                     </div>
                     <div id="mypageBattleInProgressBar" style="display:none;margin-top:14px;align-items:center;gap:9px;background:rgba(255,61,68,0.06);border:1px solid rgba(255,61,68,0.22);color:#E23036;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:800;">
-                        <span style="font-size:15px;">🔥</span><span id="mypageBattleTargetLabel">B? と交戦中</span>
+                        <span data-sp-icon="flame" data-sp-size="15"></span><span id="mypageBattleTargetLabel">B? と交戦中</span>
                     </div>
                     <div id="mypageBattleActions" style="display:none;gap:8px;margin-top:12px;">
                         <button onclick="openMyAttackModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:50px;border-radius:13px;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;border:none;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="camera" data-sp-size="15"></span> 結果を報告</button>
@@ -2708,7 +2708,7 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📨 受け取った通知</div>
-                    <button onclick="renderMyNotificationsInbox(getCurrentIdentity())" style="background:transparent;border:none;font-size:11px;font-weight:700;color:#8A9097;cursor:pointer;">🔄 更新</button>
+                    <button onclick="renderMyNotificationsInbox(getCurrentIdentity())" style="background:transparent;border:none;font-size:11px;font-weight:700;color:#8A9097;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="11"></span> 更新</button>
                 </div>
                 <div id="mypageNotificationsInbox">
                     <p style="color:#A4AAB0;font-size:12px;">プレイヤーを選択すると履歴が表示されます。</p>
@@ -2769,7 +2769,7 @@
             <div class="player-select-modal" id="myAvailModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2>⚔️ 戦闘可能時間</h2>
+                        <h2><span data-sp-icon="swords" data-sp-size="17"></span> 戦闘可能時間</h2>
                         <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
@@ -2786,7 +2786,7 @@
                         <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
                             <input type="checkbox" id="myAvailNotifyAll" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:#1E78F0;flex:none;">
                             <span style="flex:1;">
-                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;">🔔 通知はいつでも受け取る</span>
+                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;"><span data-sp-icon="bell" data-sp-size="13"></span> 通知はいつでも受け取る</span>
                                 <span style="display:block;font-size:11px;color:#8A9097;line-height:1.55;margin-top:2px;">戦闘可能時間の外でも締め凸候補などの通知が届きます (情報として見たい人向け)。</span>
                             </span>
                         </label>
@@ -2798,7 +2798,7 @@
             <div class="player-select-modal" id="myPushModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2>🔔 Push通知設定</h2>
+                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> Push通知設定</h2>
                         <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">締め凸候補や運営からのお知らせをスマホに通知。<strong>iPhone</strong>の場合は Safari で「ホーム画面に追加」してから設定が必要です。</p>
@@ -2824,7 +2824,7 @@
             <div class="player-select-modal" id="myDmgPreviewModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
-                        <h2 style="margin:0;">📷 解析結果</h2>
+                        <h2 style="margin:0;"><span data-sp-icon="camera" data-sp-size="17"></span> 解析結果</h2>
                         <button onclick="closeMyDmgPreviewModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
                     </div>
                     <!-- 認識した属性 + ダメージ -->
@@ -2848,8 +2848,8 @@
                     </div>
                     <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
                     <div style="display:flex;gap:8px;margin-top:18px;">
-                        <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);">💾 保存</button>
-                        <button onclick="handleMyDmgPreviewRetry()" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;">📷 再撮影</button>
+                        <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                        <button onclick="handleMyDmgPreviewRetry()" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
                     </div>
                     <p id="myDmgPreviewMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
@@ -2937,8 +2937,8 @@
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:13px;">残り戦闘可能メンバー</div>
                 <!-- ベースフィルタ (3ピル, 排他選択) -->
                 <div style="display:flex;gap:6px;">
-                    <button class="dc-rem-base" data-base-filter="all"            onclick="handleOpsRemainingFilterPick('all')"><span style="font-size:13px;">👥</span> 全員</button>
-                    <button class="dc-rem-base" data-base-filter="online"         onclick="handleOpsRemainingFilterPick('online')"><span style="font-size:13px;">🎮</span> オンライン</button>
+                    <button class="dc-rem-base" data-base-filter="all"            onclick="handleOpsRemainingFilterPick('all')"><span data-sp-icon="users" data-sp-size="13"></span> 全員</button>
+                    <button class="dc-rem-base" data-base-filter="online"         onclick="handleOpsRemainingFilterPick('online')"><span data-sp-icon="gamepad" data-sp-size="13"></span> オンライン</button>
                     <button class="dc-rem-base" data-base-filter="available-now"  onclick="handleOpsRemainingFilterPick('available-now')"><span style="font-size:13px;">⏰</span> 戦闘可能時間</button>
                 </div>
                 <!-- 属性別フィルタ (6ピル, 排他選択) -->
@@ -2965,7 +2965,7 @@
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最適凸プラン算出</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">👥 全員</button>
+                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;"><span data-sp-icon="users" data-sp-size="12"></span> 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                         <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
                         <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのマイページにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#2ED97F,#18C26B);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);"><span data-sp-icon="send" data-sp-size="13"></span> 配信</button>
@@ -3007,10 +3007,10 @@
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:6px;">シーズン制御</div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#A4AAB0;">月次のレイドサイクル全体に関わる操作です。誤操作に注意してください。</p>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                    <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" style="background:#14161A;color:#fff;">📅 シーズン作成</button>
-                    <button onclick="handleOpsQuickCreateTestSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;border:1px dashed rgba(245,158,11,0.4);">🧪 クイックテスト</button>
-                    <button onclick="handleOpsEndSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;">🏁 シーズン終了</button>
-                    <button onclick="handleOpsResetDamages()" class="dc-ops-action" style="background:rgba(239,68,68,0.10);color:#dc2626;">🔄 ダメージリセット</button>
+                    <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" style="background:#14161A;color:#fff;"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
+                    <button onclick="handleOpsQuickCreateTestSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;border:1px dashed rgba(245,158,11,0.4);"><span data-sp-icon="flask" data-sp-size="14"></span> クイックテスト</button>
+                    <button onclick="handleOpsEndSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
+                    <button onclick="handleOpsResetDamages()" class="dc-ops-action" style="background:rgba(239,68,68,0.10);color:#dc2626;"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
                 <p style="margin:8px 0 0 0;font-size:10px;color:#B6BBC1;">🧪 クイックテストは「テストボス1〜5」のプレースホルダで独立した検証環境を作ります。終了時にデータが完全に復元されます。</p>
             </div>
@@ -3040,7 +3040,7 @@
                         <div style="font-size:10.5px;color:#A4AAB0;margin-top:2px;">各プレイヤーの本番3凸の属性内訳</div>
                     </div>
                     <button onclick="toggleStats()" id="statsToggleInline" style="border:none;background:#F1F2F4;font-size:11px;font-weight:800;color:#6B7178;cursor:pointer;padding:6px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;">
-                        📊 <span id="statsToggleText">結果まとめ</span> <span id="statsToggleArrow">▼</span>
+                        <span data-sp-icon="chart" data-sp-size="14"></span> <span id="statsToggleText">結果まとめ</span> <span id="statsToggleArrow">▼</span>
                     </button>
                 </div>
                 <!-- 統計 (折り畳み) -->
@@ -3236,7 +3236,7 @@
             <div class="dc-card">
                 <div onclick="toggleSimulatorSection()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
-                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">🧪 シミュレータ</div>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="flask" data-sp-size="15"></span> シミュレータ</div>
                         <div style="font-size:11px;color:#A4AAB0;margin-top:3px;">育成によるダメージ予測と、想定ダメージのふるり値試算</div>
                     </div>
                     <div id="simulatorSectionCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
@@ -3244,7 +3244,7 @@
                 <div id="simulatorSectionBody" style="display:none;margin-top:14px;animation:dcFadeIn 0.2s ease;">
                     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
                         <button class="sim-mode-btn active" data-sim-mode="damage" onclick="switchSimMode('damage')">📈 ダメージ予測</button>
-                        <button class="sim-mode-btn" data-sim-mode="fururi" onclick="switchSimMode('fururi')">🎯 ふるり値試算</button>
+                        <button class="sim-mode-btn" data-sim-mode="fururi" onclick="switchSimMode('fururi')"><span data-sp-icon="target" data-sp-size="13"></span> ふるり値試算</button>
                     </div>
 
                     <!-- ===== Mode A: ダメージ予測 ===== -->
@@ -3433,7 +3433,7 @@
                     </section>
 
                     <section id="help-raid-rules" class="help-section">
-                        <h2>⚔️ 2. ユニオンレイドの基本</h2>
+                        <h2><span data-sp-icon="swords" data-sp-size="17"></span> 2. ユニオンレイドの基本</h2>
                         <p>当PADで前提とするユニオンレイドのルールは次のとおりです。</p>
                         <ul>
                             <li><strong>5体のボス</strong>がいて、それぞれ弱点属性を持っています（弱点で凸すると大ダメージ）。</li>
@@ -3447,7 +3447,7 @@
                     </section>
 
                     <section id="help-mypage" class="help-section">
-                        <h2>👤 3. マイページの使い方</h2>
+                        <h2><span data-sp-icon="user" data-sp-size="17"></span> 3. マイページの使い方</h2>
                         <p>マイページはあなた自身のデータ入力ハブです。ここに正しい情報を入れるほど、全体の最適プランや締め凸候補の精度が上がります。</p>
                         <h3>① プレイヤーの選択</h3>
                         <p>初回は自分の名前を選んでください。ブラウザに保存されるので、次回以降は自動で復元されます（端末/ブラウザを変えると再選択が必要）。</p>
@@ -3470,7 +3470,7 @@
                     </section>
 
                     <section id="help-mock" class="help-section">
-                        <h2>🎯 4. 模擬戦データの提出</h2>
+                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 4. 模擬戦データの提出</h2>
                         <p>模擬戦＝本戦と同じ編成・条件で出せる「あなたの最高ダメージ」のことです。<strong>マイページの属性別ダメージ欄に入力するだけ</strong>で提出完了です。</p>
                         <div class="help-flow-step">
                             <div class="help-flow-num">1</div>
@@ -3506,7 +3506,7 @@
                     </section>
 
                     <section id="help-finisher" class="help-section">
-                        <h2>🏁 6. 締め凸を行った場合の特例</h2>
+                        <h2><span data-sp-icon="flag" data-sp-size="17"></span> 6. 締め凸を行った場合の特例</h2>
                         <p><strong>締め凸</strong>＝ボスを倒し切る最後の凸。ゲーム上、残HPを削り切った時点でダメージカウントが止まるため、
                             あなたの本当の出力より<strong>低い値</strong>が記録されます。</p>
                         <div class="help-callout warn">
@@ -3542,7 +3542,7 @@
                         </ul></section>
 
                     <section id="help-plan" class="help-section">
-                        <h2>🎯 8. 最適凸プラン算出（運営）</h2>
+                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 8. 最適凸プラン算出（運営）</h2>
                         <p>現在の残りHPから Lv1〜Lv3 を通しで攻略する凸順を提案します。</p>
                         <h3>計算ルール</h3>
                         <ul>
@@ -3580,7 +3580,7 @@
                     </section>
 
                     <section id="help-remaining" class="help-section">
-                        <h2>📊 9. 残凸状況一覧（運営）</h2>
+                        <h2><span data-sp-icon="chart" data-sp-size="17"></span> 9. 残凸状況一覧（運営）</h2>
                         <p>残凸ある人を「3凸残 / 2凸残 / 1凸残」のグループ別に表示します。各属性の登録ダメージが縦の色別カラムで揃って表示されるので、声をかける順番を決めやすいです。</p>
                         <ul>
                             <li>カラム背景は属性色の薄いストライプ（灼熱=赤 / 水冷=青 / 電撃=紫 / 鉄甲=橙 / 風圧=緑）。</li>
@@ -3590,7 +3590,7 @@
                     </section>
 
                     <section id="help-finish-call" class="help-section">
-                        <h2>🔔 10. 締め凸候補（運営）+ ソフトロック</h2>
+                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> 10. 締め凸候補（運営）+ ソフトロック</h2>
                         <p>ボスの残HPを指定すると、過剰ダメージを抑えつつ確実に削れる候補をリストアップします。AIによる推薦も可能で、結果は Push 通知で候補メンバーに直接依頼できます。</p>
                         <h3>戦闘準備 (ソフトロック)</h3>
                         <p>マイページの「🎯 次の凸」やユニレ管理のボスカードからボスをタップすると、そのメンバーが <strong>戦闘準備</strong> 状態になります。同じボスを別メンバーが凸ろうとすると <strong>⚠️ 警告</strong> が出て、強行すると <strong>調整中の本人に Push 通知</strong> が飛びます。</p>
@@ -3603,7 +3603,7 @@
                     </section>
 
                     <section id="help-notify" class="help-section">
-                        <h2>🔔 11. 通知を受け取る — 全員むけ手順</h2>
+                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> 11. 通知を受け取る — 全員むけ手順</h2>
                         <p>運営からの「締め凸お願いします🙏」「レイド開始のお知らせ」などを、
                             Discord通知のように<strong>スマホやPCに直接プッシュ</strong>できます。PADを開いていなくても届きます。
                             セットアップは <strong>3ステップ</strong> です。</p>
@@ -3681,7 +3681,7 @@
                     </section>
 
                     <section id="help-sim" class="help-section">
-                        <h2>🧪 12. シミュレータ</h2>
+                        <h2><span data-sp-icon="flask" data-sp-size="17"></span> 12. シミュレータ</h2>
                         <h3>📈 ダメージ予測</h3>
                         <p>プレイヤーと目標SLvを指定すると、SLv補正係数に基づき到達時の予測ダメージを算出します。育成投資の見当付けに便利です。</p>
                         <h3>🎯 ふるり値試算</h3>
@@ -3689,7 +3689,7 @@
                     </section>
 
                     <section id="help-ops" class="help-section">
-                        <h2>🛠️ 13. ユニレ管理（管理者向け）</h2>
+                        <h2><span data-sp-icon="wrench" data-sp-size="17"></span> 13. ユニレ管理（管理者向け）</h2>
                         <ul>
                             <li><strong>ボス状況カード</strong> — 5体ボスの残HP/凸数/戦闘中メンバーを俯瞰。各ボスに <strong>「⚔️ このボスで凸する」</strong>（戦闘準備）、戦闘中なら <strong>「📷 結果を報告」/「⏪ 解除」</strong> も追加表示</li>
                             <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
@@ -3708,7 +3708,7 @@
                     </section>
 
                     <section id="help-data" class="help-section">
-                        <h2>🔄 14. データの流れ</h2>
+                        <h2><span data-sp-icon="refresh" data-sp-size="17"></span> 14. データの流れ</h2>
                         <p>下記のように、入力されたデータは PAD 全体で連動して使われます。</p>
                         <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>本番凸</strong> → <span class="help-pill">attacks</span> テーブルに記録（マイページの凸報告）</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>模擬戦データ</strong> → <span class="help-pill">player_damages</span> に記録（マイページのダメージ入力）</div></div>
@@ -3793,7 +3793,7 @@
                     <div style="flex:1;min-width:0;height:38px;display:flex;align-items:center;justify-content:center;color:#6B7178;font-size:12.5px;">読み込み中…</div>
                 </div>
                 <div style="position:relative;">
-                    <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:#B6BBC1;pointer-events:none;">🔍</span>
+                    <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:#B6BBC1;pointer-events:none;" data-sp-icon="search" data-sp-size="14"></span>
                     <input id="maSearchInput" type="text" oninput="maOnSearchInput()" placeholder="名前で絞り込み" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 33px;border-radius:10px;border:1px solid rgba(20,22,26,0.06);background:#F7F8F9;color:#14161A;font-size:13px;font-family:inherit;outline:none;">
                 </div>
             </div>
@@ -3946,7 +3946,7 @@
                     <div style="position:relative;overflow:hidden;border-radius:9px;background:linear-gradient(180deg,#46A0FF,#1E78F0);padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:7px;">
                         <div style="position:absolute;inset:0;background:repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 13px);pointer-events:none;"></div>
                         <div style="position:absolute;left:0;right:0;top:0;height:48%;background:linear-gradient(180deg, rgba(255,255,255,0.34), transparent);pointer-events:none;"></div>
-                        <span style="position:relative;font-size:13px;font-weight:900;color:#fff;letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,40,90,0.4);">👥 メンバー管理を開く</span>
+                        <span style="position:relative;font-size:13px;font-weight:900;color:#fff;letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,40,90,0.4);"><span data-sp-icon="users" data-sp-size="14"></span> メンバー管理を開く</span>
                     </div>
                 </button>
             </div>
@@ -4026,9 +4026,9 @@
                 <!-- デンジャーゾーン -->
                 <div style="margin-top:16px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <button onclick="handleSettingsClearIdentity()" class="dc-danger-btn"><span style="font-size:15px;">👤</span><span style="flex:1;text-align:left;">プレイヤー選択をリセット</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
-                        <button onclick="handleSettingsClearCache()" class="dc-danger-btn"><span style="font-size:15px;">🗑</span><span style="flex:1;text-align:left;">キャッシュをクリア</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
-                        <button onclick="location.reload()" class="dc-danger-btn"><span style="font-size:15px;">🔄</span><span style="flex:1;text-align:left;">全データを再読み込み</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                        <button onclick="handleSettingsClearIdentity()" class="dc-danger-btn"><span data-sp-icon="user" data-sp-size="15"></span><span style="flex:1;text-align:left;">プレイヤー選択をリセット</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                        <button onclick="handleSettingsClearCache()" class="dc-danger-btn"><span data-sp-icon="trash" data-sp-size="15"></span><span style="flex:1;text-align:left;">キャッシュをクリア</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                        <button onclick="location.reload()" class="dc-danger-btn"><span data-sp-icon="refresh" data-sp-size="15"></span><span style="flex:1;text-align:left;">全データを再読み込み</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
                     </div>
                 </div>
                 <div style="font-size:10px;color:#A4AAB0;margin-top:10px;line-height:1.5;text-align:center;">これらの操作は他端末には影響しません</div>
@@ -4057,7 +4057,7 @@
     <div class="player-select-modal" id="opsBossHpModal">
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2>⚔️ ボスHP更新</h2>
+                <h2><span data-sp-icon="hexTarget" data-sp-size="17"></span> ボスHP更新</h2>
                 <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。</p>
@@ -4065,7 +4065,7 @@
             <!-- BlaBlaLINK 画像一括取り込み -->
             <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(20,22,26,0.14);background:#F7F8F9;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                    <span style="font-size:18px;">📷</span>
+                    <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">BlaBlaLINK 進捗画像から全ボスHPを一括取り込み（AI画像認識）</span>
                     <input type="file" id="opsBossHpOcrInput" accept="image/*" onchange="handleOpsBossHpOcrUpload(event)" style="display:none;">
                     <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
@@ -4087,7 +4087,7 @@
     <div class="player-select-modal" id="opsProxyAttackModal">
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2 id="opsProxyTitle">✏️ 代理凸報告</h2>
+                <h2 id="opsProxyTitle"><span data-sp-icon="pencil" data-sp-size="16"></span> 代理凸報告</h2>
                 <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">他メンバーの代わりに凸を記録します。入力者名がログに残ります。</p>
@@ -4102,8 +4102,8 @@
 
             <!-- モード切替タブ -->
             <div style="display:flex;border-bottom:2px solid var(--md-sys-color-outline-variant);margin-top:4px;">
-                <button id="opsProxyModeTabSimple" onclick="switchOpsProxyMode('simple')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid var(--md-sys-color-primary);margin-bottom:-2px;">✏️ 1件入力</button>
-                <button id="opsProxyModeTabBulk" onclick="switchOpsProxyMode('bulk')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;">📷 BlaBlaLINK 3凸取込</button>
+                <button id="opsProxyModeTabSimple" onclick="switchOpsProxyMode('simple')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid var(--md-sys-color-primary);margin-bottom:-2px;"><span data-sp-icon="pencil" data-sp-size="13"></span> 1件入力</button>
+                <button id="opsProxyModeTabBulk" onclick="switchOpsProxyMode('bulk')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;"><span data-sp-icon="camera" data-sp-size="13"></span> BlaBlaLINK 3凸取込</button>
             </div>
 
             <!-- 1件入力モード -->
@@ -4130,7 +4130,7 @@
             <div id="opsProxyBulkSection" style="display:none;">
                 <p style="margin:8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">対象メンバーの BlaBlaLINK 凸結果一覧スクショから 3凸分を一括登録します。</p>
                 <label class="dc-upload">
-                    <span class="dc-upload-ico">📷</span>
+                    <span class="dc-upload-ico" data-sp-icon="camera" data-sp-size="18"></span>
                     <span class="dc-upload-text">BlaBlaLINK 凸一覧画像を選ぶ</span>
                     <input type="file" id="opsProxyBulkOcrInput" accept="image/*" onchange="handleOpsProxyBulkOcrUpload(event)" style="display:none;">
                     <span class="dc-upload-btn">画像を選ぶ</span>
@@ -4147,7 +4147,7 @@
             <p id="opsProxyMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 保存</button>
+                <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
     </div>
@@ -4156,12 +4156,12 @@
     <div class="player-select-modal" id="opsAuditModal">
         <div class="player-select-content" style="max-width:640px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2>🔍 提出漏れチェック</h2>
+                <h2><span data-sp-icon="search" data-sp-size="17"></span> 提出漏れチェック</h2>
                 <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">BlaBlaLINK の<strong>「ユニオンレイド参加状況」スクショ</strong>から各メンバーの参加回数を読み取り、PADの登録数と突き合わせます。<br>📌 撮影前に<strong>当日 (HARD) の Day タブ</strong>を表示してください。スマホはスクロールしながら3〜4枚に分けてOK (まとめて選択、重複行は自動で統合)。</p>
             <label class="dc-upload">
-                <span class="dc-upload-ico">📷</span>
+                <span class="dc-upload-ico" data-sp-icon="camera" data-sp-size="18"></span>
                 <span class="dc-upload-text">ユニオン全体のスクショを選ぶ (複数可)</span>
                 <input type="file" id="opsAuditFileInput" accept="image/*" multiple onchange="handleOpsAuditUpload(event)" style="display:none;">
                 <span class="dc-upload-btn">画像を選ぶ</span>
@@ -4169,7 +4169,7 @@
             <p id="opsAuditStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
             <div id="opsAuditResult" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
-                <button onclick="handleOpsAuditPushRemind()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📣 未提出者に催促Push</button>
+                <button onclick="handleOpsAuditPushRemind()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="megaphone" data-sp-size="13"></span> 未提出者に催促Push</button>
             </div>
         </div>
     </div>
@@ -4178,14 +4178,14 @@
     <div class="player-select-modal" id="opsMockAuditModal">
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2>🪞 模擬提出チェック</h2>
+                <h2><span data-sp-icon="clipboardCheck" data-sp-size="17"></span> 模擬提出チェック</h2>
                 <button onclick="closeOpsMockAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">今シーズンの模擬戦データ提出状況です (シーズン作成時にリセットされるため、表示されている提出はすべて今シーズン分)。未提出者には催促Pushを送れます。</p>
             <p id="opsMockAuditStatus" style="margin:0;font-size:11.5px;font-weight:700;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
             <div id="opsMockAuditList" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsMockAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
-                <button onclick="handleOpsMockAuditPush()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📣 未提出者に催促Push</button>
+                <button onclick="handleOpsMockAuditPush()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="megaphone" data-sp-size="13"></span> 未提出者に催促Push</button>
             </div>
         </div>
     </div>
@@ -4200,7 +4200,7 @@
             <p class="subtitle">アクティブシーズンの全凸を新しい順に表示します。ダメージ修正・凸削除が可能です。</p>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <input type="text" id="opsAttacksFilter" placeholder="🔍 メンバー名で絞り込み" class="player-select-search" style="flex:1;" oninput="renderOpsAttacksList()">
-                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 更新</button>
+                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="12"></span> 更新</button>
             </div>
             <div id="opsAttacksList" style="overflow-y:auto;max-height:55vh;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;padding:4px;">
                 <div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>
@@ -4213,7 +4213,7 @@
     <div class="player-select-modal" id="opsPushSendModal">
         <div class="player-select-content" style="max-width:500px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2>📣 Push通知 送信</h2>
+                <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> Push通知 送信</h2>
                 <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">購読者全員に Push 通知を一斉配信します。</p>
@@ -4231,7 +4231,7 @@
 
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">📣 全員に送信</button>
+                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
             </div>
         </div>
     </div>
@@ -4240,7 +4240,7 @@
     <div class="player-select-modal" id="pushPreviewModal">
         <div class="player-select-content" style="max-width:600px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2>📣 通知送信の最終確認</h2>
+                <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> 通知送信の最終確認</h2>
                 <button onclick="closePushPreview(false)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">以下の内容で Push 通知を送信します。受信者と本文を確認してから「送信する」を押してください。</p>
@@ -4248,7 +4248,7 @@
             <p id="pushPreviewMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid #8b5cf6;background:#8b5cf6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">📣 送信する</button>
+                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid #8b5cf6;background:#8b5cf6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
             </div>
         </div>
     </div>
@@ -4257,7 +4257,7 @@
     <div class="player-select-modal" id="opsSeasonCreateModal">
         <div class="player-select-content" style="max-width:620px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2>📅 新シーズン作成</h2>
+                <h2><span data-sp-icon="calendar" data-sp-size="17"></span> 新シーズン作成</h2>
                 <button onclick="closeOpsSeasonCreateModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
@@ -4265,7 +4265,7 @@
             <!-- 公式アナウンス画像取り込み -->
             <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(20,22,26,0.14);background:#F7F8F9;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                    <span style="font-size:18px;">📷</span>
+                    <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">NIKKE公式アナウンス画像から自動入力（AI画像認識）</span>
                     <input type="file" id="opsSeasonOcrInput" accept="image/*" onchange="handleOpsSeasonOcrUpload(event)" style="display:none;">
                     <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
@@ -4344,7 +4344,7 @@
                 <button onclick="handleCharMasterDelete()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🗑️ 完全削除</button>
                 <div style="display:flex;gap:8px;">
                     <button onclick="closeCharMasterEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 保存</button>
+                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
                 </div>
             </div>
         </div>
@@ -4408,7 +4408,7 @@
             <!-- 画像取り込み -->
             <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(20,22,26,0.14);background:#F7F8F9;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                    <span style="font-size:18px;">📷</span>
+                    <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">戦闘履歴スクショから5キャラを自動入力（複数枚OK）</span>
                     <input type="file" id="myTeamEditOcrInput" accept="image/*" multiple onchange="handleMyTeamEditOcr(event)" style="display:none;">
                     <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
@@ -4426,7 +4426,7 @@
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 保存</button>
+                <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
     </div>
@@ -5341,7 +5341,7 @@
                         if (url) {
                             hintEl.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
                         } else {
-                            hintEl.textContent = '👤';
+                            hintEl.innerHTML = spIcon('user', 16);
                         }
                     });
                 }
@@ -5508,7 +5508,7 @@
             }
             if (preview) {
                 if (url) preview.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
-                else preview.innerHTML = '👤';
+                else preview.innerHTML = spIcon('user', 30);
             }
             // 識別ピルにも反映
             updateIdentityHeader();
@@ -5784,6 +5784,18 @@
             refresh: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
             arrowDown: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
             arrowUp: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
+            save: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
+            calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/>',
+            flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+            flask: '<path d="M10 2v7.31"/><path d="M14 9.3V2"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/>',
+            chart: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+            wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+            target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+            trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+            scale: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+            trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+            user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+            flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
         };
         function spIcon(name, size = 16, opts = {}) {
             const body = SP_ICONS[name];
@@ -5791,10 +5803,23 @@
             return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${opts.color || 'currentColor'}" stroke-width="${opts.strokeWidth || 2}" stroke-linecap="round" stroke-linejoin="round" style="flex:none;vertical-align:-2px;${opts.style || ''}">${body}</svg>`;
         }
         function initSpIcons(root = document) {
-            root.querySelectorAll('[data-sp-icon]').forEach(el => {
+            const fill = (el) => {
+                if (el.querySelector(':scope > svg')) return;   // 適用済み
                 const svg = spIcon(el.dataset.spIcon, Number(el.dataset.spSize) || 16);
                 if (svg) el.innerHTML = svg;
-            });
+            };
+            if (root instanceof Element && root.hasAttribute('data-sp-icon')) fill(root);
+            (root.querySelectorAll ? root.querySelectorAll('[data-sp-icon]') : []).forEach(fill);
+        }
+        // 動的に差し込まれた HTML (innerHTML 再描画) 内の data-sp-icon も自動で埋める
+        function _watchSpIcons() {
+            new MutationObserver(muts => {
+                for (const m of muts) {
+                    for (const n of m.addedNodes) {
+                        if (n.nodeType === 1) initSpIcons(n);
+                    }
+                }
+            }).observe(document.body, { childList: true, subtree: true });
         }
 
         const DC_ATTR_LABELS = { fire:'火', water:'水', electric:'電', iron:'鉄', wind:'風' };
@@ -6381,13 +6406,13 @@
                 </div>` : '';
 
             const dmgLabel = sameTop
-                ? `<span style="font-size:10px;font-weight:900;color:${a.color};">🏆 ダメージ & ⚖️ ふるり値 両トップ</span>`
-                : `<span style="font-size:10px;font-weight:900;color:${a.color};">🏆 ダメージトップ</span>`;
+                ? `<span style="font-size:10px;font-weight:900;color:${a.color};">${spIcon('trophy', 11)} ダメージ & ${spIcon('scale', 11)} ふるり値 両トップ</span>`
+                : `<span style="font-size:10px;font-weight:900;color:${a.color};">${spIcon('trophy', 11)} ダメージトップ</span>`;
             const dmgHtml = bestBlock(st.bestDmg, 'dmg', dmgLabel,
                 ` · ${Number(st.bestDmg?.damage_b || 0).toFixed(1)}B${sameTop && st.bestFururiScore ? ` · ふるり値 ${st.bestFururiScore.toFixed(2)}` : ''}`);
             // ふるり値トップ: SLv補正後の比較 — SLvに関わらず全員にトップの可能性がある
             const fururiHtml = (!sameTop && st.bestFururi) ? bestBlock(st.bestFururi, 'fururi',
-                `<span style="font-size:10px;font-weight:900;color:#1E78F0;">⚖️ ふるり値トップ <span style="font-weight:800;color:#8A9097;">(SLv補正)</span></span>`,
+                `<span style="font-size:10px;font-weight:900;color:#1E78F0;">${spIcon('scale', 11)} ふるり値トップ <span style="font-weight:800;color:#8A9097;">(SLv補正)</span></span>`,
                 ` · ふるり値 ${st.bestFururiScore.toFixed(2)} · SLv ${st.bestFururiSlv} · ${Number(st.bestFururi.damage_b).toFixed(1)}B`) : '';
             const fururiNote = (!st.bestFururi && st.bestDmg)
                 ? `<p style="margin:8px 0 0 0;font-size:10px;color:#A4AAB0;">⚖️ ふるり値トップは基準者(${fururiBasePlayerName})の${a.name}PT模擬と提出者のSLvが揃うと表示されます。</p>` : '';
@@ -8347,7 +8372,7 @@
 
             // 編集モード / 新規モード
             if (editAttackId != null) {
-                titleEl.textContent = '✏️ 凸ダメージ編集';
+                titleEl.innerHTML = spIcon('pencil', 15) + ' 凸ダメージ編集';
                 if (stepEl) stepEl.style.display = 'none';
                 document.getElementById('myAttackPickBtn').style.display = 'none';
                 document.getElementById('myAttackThumbsCard').style.display = 'none';
@@ -8358,7 +8383,7 @@
                 saveBtn.dataset.editId = String(editAttackId);
                 document.getElementById('myAttackRecommendWrap').style.display = 'none';
             } else {
-                titleEl.textContent = '⚔️ 凸報告';
+                titleEl.innerHTML = spIcon('swords', 15) + ' 凸報告';
                 if (stepEl) stepEl.style.display = 'inline-block';
                 document.getElementById('myAttackPickBtn').style.display = 'flex';
                 document.getElementById('myAttackManualToggle').style.display = 'flex';
@@ -10363,7 +10388,7 @@
                         <div style="margin-top:10px;display:flex;align-items:center;min-height:24px;">${avatarsHtml}</div>
                         ${editPanel}
                         <div style="display:flex;gap:6px;margin-top:10px;">
-                            <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">✏️</button>
+                            <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
                             <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} title="${ptInfo ? `${ptInfo.name}PT で締め凸候補を検索` : '締め凸候補を検索'}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${dead ? '#F1F2F4' : c};color:${dead ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${dead ? 'not-allowed' : 'pointer'};">締凸検索</button>
                         </div>
                     </div>`;
@@ -14654,6 +14679,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
             initSpIcons();   // data-sp-icon の SVG 流し込み
+            _watchSpIcons();  // 以後の動的描画分も自動適用
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
