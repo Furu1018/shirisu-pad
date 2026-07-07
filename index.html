@@ -2639,6 +2639,13 @@
                 <div id="popularTeamsContent" style="display:none;margin-top:10px;">
                     <div id="popularTeamsTabs" style="display:flex;gap:5px;margin-bottom:10px;"></div>
                     <div id="popularTeamsBody"><p style="margin:0;font-size:12px;color:#A4AAB0;">読み込み中…</p></div>
+                    <!-- 🧩 3属性まとめ選び: キャラ被りなしで両立できる人気PTの組み合わせ提案 -->
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #F0F1F3;">
+                        <div style="font-size:11.5px;font-weight:900;color:#14161A;">🧩 3属性まとめ選び</div>
+                        <p style="margin:3px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">凸する3属性を選ぶと、キャラ被りなしで両立できる人気PTの組み合わせを提案します (同じキャラは1日1回まで)。</p>
+                        <div id="popularComboTabs" style="display:flex;gap:5px;margin-bottom:9px;"></div>
+                        <div id="popularComboBody"></div>
+                    </div>
                 </div>
             </div>
 
@@ -6244,9 +6251,11 @@
             }
             return _teamSubsCache;
         }
-        function _teamStatsFor(rows, attrKey) {
-            // PT単位の使用率集計: ゲーム仕様上 キャラ単体よりPT5人のシナジーが本体なので、
-            // 「同じ5人の組み合わせ (順不同)」をひとつの編成として数える。
+        // PT単位の使用率集計: ゲーム仕様上 キャラ単体よりPT5人のシナジーが本体なので、
+        // 「同じ5人の組み合わせ (順不同)」をひとつの編成として数える。
+        // 戻り値: { total, list } — list は 使用数 → 同数ならベストダメージ順
+        function _teamGroupsFor(attrKey) {
+            const rows = (_teamSubsCache || []).filter(r => r.attribute === attrKey);
             const groups = new Map();   // 正規化キー (ソート済みキャラ名結合) -> { team, count, bestDmgB }
             rows.forEach(r => {
                 const team = (r.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
@@ -6257,10 +6266,11 @@
                 g.bestDmgB = Math.max(g.bestDmgB, Number(r.damage_b) || 0);
                 groups.set(key, g);
             });
-            // 使用数 → 同数ならそのPTのベストダメージ順
-            const topTeams = [...groups.values()]
-                .sort((a, b) => b.count - a.count || b.bestDmgB - a.bestDmgB)
-                .slice(0, 3);
+            const list = [...groups.values()].sort((a, b) => b.count - a.count || b.bestDmgB - a.bestDmgB);
+            return { total: rows.length, list };
+        }
+        function _teamStatsFor(rows, attrKey) {
+            const topTeams = _teamGroupsFor(attrKey).list.slice(0, 2);   // たくさん見せても迷うのでベスト2
             const bestDmg = [...rows].sort((a, b) => (Number(b.damage_b) || 0) - (Number(a.damage_b) || 0))[0] || null;
             // ふるり値トップ: SLv補正後スコアの最大 (基準: ふるりの今季模擬 + SLv)
             // ダメージトップはSLvが高い人に偏るが、こちらはSLvに関わらず全員にチャンスがある
@@ -6388,10 +6398,101 @@
                 return `<button onclick="switchPopularTeamsAttr('${a.key}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 2px;border-radius:9px;border:none;cursor:pointer;font-size:11px;font-weight:800;${on ? `background:${a.color};color:#fff;` : `background:${a.color}14;color:${a.color};`}"><img loading="lazy" decoding="async" src="${a.icon}" style="width:14px;height:14px;">${a.name}</button>`;
             }).join('');
             bodyEl.innerHTML = _popularTeamsHtml(_popularTeamsAttr, { copyable: false });
+            renderPopularCombos();
         }
         function switchPopularTeamsAttr(k) {
             _popularTeamsAttr = k;
             renderPopularTeamsCard(false);
+        }
+
+        // ========== 🧩 3属性まとめ選び ==========
+        // 選んだ3属性それぞれの人気PT (上位5候補) から、キャラ被りのない
+        // 1属性1PT の組み合わせを総当たりし、使用数合計 → ベストダメ合計 順で上位2つを提案。
+        let _popularComboAttrs = [];
+        let _popularComboSets = [];   // 反映用: [{ attr, team }, ×3][]
+        function togglePopularComboAttr(key) {
+            const i = _popularComboAttrs.indexOf(key);
+            if (i >= 0) _popularComboAttrs.splice(i, 1);
+            else {
+                _popularComboAttrs.push(key);
+                if (_popularComboAttrs.length > 3) _popularComboAttrs.shift();   // 4つ目は最古を外す
+            }
+            renderPopularCombos();
+        }
+        function renderPopularCombos() {
+            const tabsEl = document.getElementById('popularComboTabs');
+            const bodyEl = document.getElementById('popularComboBody');
+            if (!tabsEl || !bodyEl) return;
+            tabsEl.innerHTML = PT_ATTRS.map(a => {
+                const on = _popularComboAttrs.includes(a.key);
+                return `<button onclick="togglePopularComboAttr('${a.key}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:3px;padding:7px 2px;border-radius:9px;border:1.5px solid ${on ? a.color : 'transparent'};cursor:pointer;font-size:11px;font-weight:800;${on ? `background:${a.color};color:#fff;` : `background:#F1F2F4;color:#8A9097;`}">${on ? '✓' : ''}<img loading="lazy" decoding="async" src="${a.icon}" style="width:13px;height:13px;">${a.name}</button>`;
+            }).join('');
+            if (_popularComboAttrs.length !== 3) {
+                bodyEl.innerHTML = `<p style="margin:0;font-size:11px;color:#A4AAB0;">あと ${3 - _popularComboAttrs.length} 属性選んでください (${_popularComboAttrs.length}/3)</p>`;
+                _popularComboSets = [];
+                return;
+            }
+            const attrs = [..._popularComboAttrs];
+            const cand = attrs.map(k => ({ key: k, list: _teamGroupsFor(k).list.slice(0, 5) }));
+            const empty = cand.filter(c => c.list.length === 0);
+            if (empty.length > 0) {
+                const names = empty.map(c => PT_ATTRS.find(a => a.key === c.key)?.name || c.key).join('・');
+                bodyEl.innerHTML = `<p style="margin:0;font-size:11px;color:#A4AAB0;">${names} の編成つき模擬提出がまだないため提案できません。</p>`;
+                _popularComboSets = [];
+                return;
+            }
+            const combos = [];
+            for (const g0 of cand[0].list) for (const g1 of cand[1].list) for (const g2 of cand[2].list) {
+                const all = [...g0.team, ...g1.team, ...g2.team];
+                if (new Set(all).size !== all.length) continue;   // キャラ被り → 3凸で両立不可
+                combos.push({
+                    teams: [g0, g1, g2],
+                    uses: g0.count + g1.count + g2.count,
+                    dmg: g0.bestDmgB + g1.bestDmgB + g2.bestDmgB,
+                });
+            }
+            combos.sort((a, b) => b.uses - a.uses || b.dmg - a.dmg);
+            const top = combos.slice(0, 2);
+            if (top.length === 0) {
+                bodyEl.innerHTML = '<p style="margin:0;font-size:11px;color:#B45309;">⚠️ 人気PT同士でキャラが被っていて、被りなしの組み合わせが見つかりませんでした。編成編集で一部キャラの入れ替えを検討してください。</p>';
+                _popularComboSets = [];
+                return;
+            }
+            _popularComboSets = top.map(c => c.teams.map((g, i) => ({ attr: attrs[i], team: g.team })));
+            bodyEl.innerHTML = top.map((c, ci) => `
+                <div style="padding:9px 10px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);${ci > 0 ? 'margin-top:7px;' : ''}">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                        <span style="font-size:11px;font-weight:900;color:${ci === 0 ? '#1E78F0' : '#B6BBC1'};">${ci === 0 ? '🥇 おすすめ' : '🥈 次点'}</span>
+                        <span style="font-size:10px;font-weight:800;color:#A4AAB0;">計${c.uses}件の提出で使用 · キャラ被りなし ✓</span>
+                        <button onclick="applyPopularCombo(${ci})" title="3属性の編成枠にまとめて反映" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️ まとめて反映</button>
+                    </div>
+                    ${c.teams.map((g, i) => {
+                        const a = PT_ATTRS.find(x => x.key === attrs[i]);
+                        return `<div style="display:flex;align-items:center;gap:6px;${i > 0 ? 'margin-top:4px;' : ''}">
+                            <img loading="lazy" decoding="async" src="${a.icon}" title="${a.name}PT" style="width:16px;height:16px;flex:none;">
+                            <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;">${g.team.map(ch => _charIconHtml(ch, 26)).join('')}</div>
+                            <span style="flex:none;font-size:9.5px;font-weight:800;color:#A4AAB0;">${g.count}人使用</span>
+                        </div>`;
+                    }).join('')}
+                </div>`).join('');
+        }
+        // 提案された3PTを自分の編成 (player_damages.characters) にまとめて保存
+        async function applyPopularCombo(idx) {
+            const id = getCurrentIdentity();
+            if (!id?.id) { showNotification('プレイヤーを選択してください'); return; }
+            const set = _popularComboSets[idx];
+            if (!set) return;
+            const names = set.map(s => PT_ATTRS.find(a => a.key === s.attr)?.name).join('・');
+            if (!confirm(`${names} の3属性に、この組み合わせの編成を反映しますか？\n(各属性の編成5キャラが上書きされます。ダメージ値はそのまま)`)) return;
+            try {
+                for (const s of set) {
+                    await window.supabaseSaveTeamForAttribute(id.id, s.attr, s.team);
+                }
+                showNotification(`✅ ${names} の編成に反映しました`);
+                if (typeof renderMyDamagePanels === 'function') renderMyDamagePanels(id);
+            } catch (e) {
+                showNotification(`❌ 反映失敗: ${e?.message || e}`);
+            }
         }
 
         // ========== アイコン選択ピッカー (コールバック方式: 複数のフローから利用可) ==========
