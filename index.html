@@ -2936,15 +2936,6 @@
                 <div id="opsFinishList">
                     <p style="color:#A4AAB0;font-size:12px;">ボス状況カードから対象ボスをタップしてください。</p>
                 </div>
-                <div id="opsFinishAiArea" style="display:none;margin-top:10px;">
-                    <details>
-                        <summary style="cursor:pointer;font-size:11px;color:#A4AAB0;">🤖 AIに意見を聞く（任意・APIトークン消費）</summary>
-                        <div style="margin-top:8px;">
-                            <button id="opsFinishAiBtn" onclick="handleOpsFinishAiRecommend()" style="padding:8px 14px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🤖 AIにベスト候補を聞く</button>
-                            <div id="opsFinishAiResult" style="margin-top:8px;"></div>
-                        </div>
-                    </details>
-                </div>
             </div>
 
             <!-- 現在 オンライン / 調整中 (リアルタイム共有) -->
@@ -3619,7 +3610,7 @@
 
                     <section id="help-finish-call" class="help-section">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 10. 締め凸候補（運営）+ ソフトロック</h2>
-                        <p>ボスの残HPを指定すると、過剰ダメージを抑えつつ確実に削れる候補をリストアップします。AIによる推薦も可能で、結果は Push 通知で候補メンバーに直接依頼できます。</p>
+                        <p>ボスの残HPを指定すると、過剰ダメージを抑えつつ確実に削れる候補をリストアップします（同ダメージなら凸残数が多い人を優先）。結果は Push 通知で候補メンバーに直接依頼できます。</p>
                         <h3>戦闘準備 (ソフトロック)</h3>
                         <p>マイページの「🎯 次の凸」やユニレ管理のボスカードからボスをタップすると、そのメンバーが <strong>戦闘準備</strong> 状態になります。同じボスを別メンバーが凸ろうとすると <strong>⚠️ 警告</strong> が出て、強行すると <strong>調整中の本人に Push 通知</strong> が飛びます。</p>
                         <ul>
@@ -10571,11 +10562,6 @@
             const plansEl = document.getElementById('opsFinishPlans');
             if (plansEl) plansEl.innerHTML = '';
             _opsFinishPlanContext = null;
-            // AI推薦エリアを表示+リセット
-            const aiArea = document.getElementById('opsFinishAiArea');
-            const aiResult = document.getElementById('opsFinishAiResult');
-            if (aiArea) aiArea.style.display = boss ? 'block' : 'none';
-            if (aiResult) aiResult.innerHTML = '';
             if (!boss) {
                 listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">対象ボスが見つかりません。</p>';
                 return;
@@ -10603,7 +10589,8 @@
                 .filter(p => !usedAttrsFor(p).has(attrKey))
                 .map(p => ({ ...p, dmg: Number(p.damagesByAttr[attrKey]) || 0 }))
                 .filter(p => p.dmg > 0)
-                .sort((a, b) => b.dmg - a.dmg);
+                // ダメージ降順。同ダメージなら凸残数が多い人を優先 (旧AI推薦のルール②をシステム側に吸収)
+                .sort((a, b) => (b.dmg - a.dmg) || ((3 - b.attackCount) - (3 - a.attackCount)));
 
             const header = `
                 <div style="padding:8px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);margin-bottom:8px;font-size:13px;">
@@ -11737,77 +11724,6 @@
                 showNotification('✅ プランを配信しました');
             } catch (e) {
                 alert(`❌ 配信失敗: ${e?.message || e}\n\n初回は supabase/17_published_plans.sql を SQL Editor で実行してください。`);
-            }
-        }
-
-        // AI に締め凸ベスト候補を聞く (Phase 4d)
-        async function handleOpsFinishAiRecommend() {
-            if (!_opsDashboardCache || !_opsCurrentAttr) return;
-            const { bosses, players } = _opsDashboardCache;
-            const attrKey = _opsCurrentAttr;
-            const ptInfo = PT_ATTRS.find(x => x.key === attrKey);
-            const boss = bosses.find(b => b.weakness === attrKey);
-            const btn = document.getElementById('opsFinishAiBtn');
-            const resultEl = document.getElementById('opsFinishAiResult');
-            if (!boss) return;
-            const remainingHpB = (boss.remaining_hp_raw || 0) / 1e9;
-
-            // 既に該当属性を使ったメンバーを除外するためのマップ
-            const bossWeaknessByNum = new Map();
-            (bosses || []).forEach(b => { if (b.weakness) bossWeaknessByNum.set(b.boss_number, b.weakness); });
-            const usedAttrsFor = (p) => {
-                const set = new Set();
-                (p.attacks || []).forEach(a => {
-                    const w = bossWeaknessByNum.get(a.boss_number);
-                    if (w) set.add(w);
-                });
-                return set;
-            };
-
-            const candidates = players
-                .filter(p => p.attackCount < 3)
-                .filter(p => !usedAttrsFor(p).has(attrKey))
-                .map(p => ({
-                    name: p.name,
-                    dmg_B: Number(p.damagesByAttr[attrKey]) || 0,
-                    remainingAttacks: 3 - p.attackCount,
-                }))
-                .filter(p => p.dmg_B > 0)
-                .sort((a, b) => b.dmg_B - a.dmg_B);
-
-            if (candidates.length === 0) {
-                resultEl.innerHTML = '<p style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">候補がいないためAI推薦できません。</p>';
-                return;
-            }
-
-            const context = {
-                bossName: boss.name || boss.boss_code,
-                remainingHp_B: remainingHpB,
-                ptAttribute: ptInfo?.name + 'PT',
-                candidates,
-            };
-
-            const oldText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '🔍 AIに問い合わせ中...';
-            resultEl.innerHTML = '';
-
-            try {
-                const res = await window.callAiRecommend(context, 'finish_recommend');
-                const r = res.result || {};
-                const name = r.recommendedName || '(該当なし)';
-                const reason = r.reason || '';
-                resultEl.innerHTML = `
-                    <div style="padding:12px 14px;border-radius:10px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-surface);font-size:13px;">
-                        <div style="font-weight:700;margin-bottom:4px;">🤖 推薦: <span style="color:var(--md-sys-color-primary);">${escapeHtml(name)}</span></div>
-                        <div style="font-size:12px;opacity:0.9;">${escapeHtml(reason)}</div>
-                        ${res.usage ? `<div style="font-size:10px;opacity:0.5;margin-top:4px;">tokens: in ${res.usage.input_tokens} / out ${res.usage.output_tokens}</div>` : ''}
-                    </div>`;
-            } catch (e) {
-                resultEl.innerHTML = `<p style="color:#ef4444;font-size:12px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
-            } finally {
-                btn.disabled = false;
-                btn.textContent = oldText;
             }
         }
 
