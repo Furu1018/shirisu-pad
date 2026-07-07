@@ -10108,6 +10108,7 @@
         // ========== 運営ダッシュボード (Phase 3a) ==========
         let _opsDashboardCache = null;
         let _opsCurrentAttr = null;
+        let _opsDashboardCacheAt = 0;   // プラン算出の鮮度保証用 (最終取得時刻)
 
         async function renderOpsDashboard() {
             const labelEl = document.getElementById('opsSeasonLabel');
@@ -10125,6 +10126,7 @@
 
             try {
                 _opsDashboardCache = await window.supabaseLoadOpsDashboardData();
+                _opsDashboardCacheAt = Date.now();
             } catch (e) {
                 labelEl.textContent = '取得失敗';
                 remListEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
@@ -11348,9 +11350,18 @@
             const el = document.getElementById('opsOptimalPlan');
             // 編成アイコン表示のためマスタを先読み
             await getNikkeCharsCache();
-            if (!_opsDashboardCache) {
-                el.innerHTML = '<p style="font-size:13px;color:#ef4444;">運営ダッシュボードのデータが未取得です。「🔄 更新」を押してください。</p>';
-                return;
+            // 鮮度保証: プランは常に「押した時点」の盤面で組む。
+            // キャッシュが60秒より古ければ、凸・ボスHP・メンバー状態を取り直してから算出する
+            // (当日の不測の事態→再算出、の流れで古い盤面を使わないための保険)
+            if (!_opsDashboardCache || (Date.now() - _opsDashboardCacheAt) > 60_000) {
+                el.innerHTML = '<p style="font-size:12px;color:#8A9097;">📡 最新の盤面を取得中…</p>';
+                try {
+                    _opsDashboardCache = await window.supabaseLoadOpsDashboardData();
+                    _opsDashboardCacheAt = Date.now();
+                } catch (e) {
+                    el.innerHTML = `<p style="font-size:13px;color:#ef4444;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
+                    return;
+                }
             }
             const plan = computeOptimalPlan(options);
             if (!plan) {
