@@ -35,6 +35,7 @@ function player(name, damagesByAttr, opts = {}) {
         attacks: opts.attacks || [],
         availableSlots: opts.availableSlots || [],
         flexTime: !!opts.flexTime,
+        strong_attributes: opts.strong || [],
     };
 }
 
@@ -394,6 +395,57 @@ test('timeAware=false では従来と同じ出力 (時間フィールドは null
     assert.equal(plan.timeAware, false);
     assert.equal(plan.levels[0].bosses[0].attacks[0].hourIdx, null);
     assert.equal(plan.levels[0].clearHourLabel, null);
+});
+
+// ---- 得意属性の必須選出 -------------------------------------------------------
+console.log('\nstrongAttrs:');
+
+test('得意属性2つ: その2属性は必ず消化、自由枠は1つだけ', () => {
+    const bs = [
+        boss(1, 'fire', { remainingB: 5 }), boss(2, 'water', { remainingB: 5 }),
+        boss(3, 'electric', { remainingB: 5 }), boss(4, 'iron', { remainingB: 5 }),
+        boss(5, 'wind', { remainingB: 5 }),
+    ];
+    const plan = compute(makeInput(bs, [
+        player('A', { fire: 10, water: 10, electric: 10, iron: 10, wind: 10 }, { strong: ['electric', 'wind'] }),
+    ]));
+    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness));
+    assert.equal(attrs.length, 3, `3凸のはず: ${attrs}`);
+    assert.ok(attrs.includes('electric') && attrs.includes('wind'), `得意2属性を含むはず: ${attrs}`);
+});
+
+test('得意属性4つ: その4属性の中からのみ選出 (5属性目には出さない)', () => {
+    const bs = [
+        boss(1, 'wind', { remainingB: 5 }), boss(2, 'fire', { remainingB: 5 }),
+        boss(3, 'water', { remainingB: 5 }), boss(4, 'electric', { remainingB: 5 }),
+    ];
+    const plan = compute(makeInput(bs, [
+        player('A', { fire: 10, water: 10, electric: 10, iron: 10, wind: 10 }, { strong: ['fire', 'water', 'electric', 'iron'] }),
+    ]));
+    assert.equal(plan.levels[0].bosses[0].attacks.length, 0, 'wind ボスには出ないはず');
+    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness)).sort();
+    assert.deepEqual(attrs, ['electric', 'fire', 'water']);
+});
+
+test('得意属性でもダメージ未提出なら強制しない (提出済みの得意属性のみ必須)', () => {
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 5 }), boss(2, 'electric', { remainingB: 5 })],
+        [player('A', { fire: 10, electric: 10 }, { strong: ['electric', 'wind'] })],
+    ));
+    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness)).sort();
+    assert.deepEqual(attrs, ['electric', 'fire'], 'wind 未提出でも fire は自由枠で選出されるはず');
+});
+
+test('得意属性なし: 従来どおり制約なく選出される', () => {
+    const bs = [
+        boss(1, 'fire', { remainingB: 5 }), boss(2, 'water', { remainingB: 5 }),
+        boss(3, 'electric', { remainingB: 5 }),
+    ];
+    const plan = compute(makeInput(bs, [
+        player('A', { fire: 10, water: 10, electric: 10 }),
+    ]));
+    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness)).sort();
+    assert.deepEqual(attrs, ['electric', 'fire', 'water']);
 });
 
 // ---- 結果 --------------------------------------------------------------------

@@ -10,7 +10,8 @@
 //   bosses:  [{ boss_number, boss_code, name, attribute, weakness, tier,
 //               total_hp_raw, remaining_hp_raw }],
 //   players: [{ id, name, attackCount, syncLevel, syncLevelEstimated,
-//               damagesByAttr, teamsByAttr, attacks, availableSlots }],
+//               damagesByAttr, teamsByAttr, attacks, availableSlots,
+//               strong_attributes }],   // 得意属性: 1-3個=必ず消化 / 4個=その中からのみ / 0・5個=制約なし
 //   currentSlot: 'h21' など (onlyAvailableNow 時のフィルタに使用),
 //   onlyAvailableNow: boolean,
 //   timeAware: boolean,       // true なら凸可能時間を使って時間帯スケジュールを組む
@@ -79,6 +80,22 @@
                 for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
                     if (Number(v) > 0 && !used.has(k)) avail[k] = Number(v);
                 }
+                // 得意属性 (strong_attributes) の選出制約:
+                //   1〜3個選択 → その属性は必ず消化 (残りの凸枠だけ自由選出)
+                //   4個選択   → その4属性の中からのみ選出
+                //   0個 / 5個 → 制約なし (従来どおり)
+                // ※ ダメージ未提出・凸済みの得意属性は強制対象から外す (avail に無いものは選べない)
+                const strong = Array.isArray(p.strong_attributes)
+                    ? p.strong_attributes.filter(k => typeof k === 'string' && k.length > 0)
+                    : [];
+                if (strong.length === 4) {
+                    for (const k of Object.keys(avail)) {
+                        if (!strong.includes(k)) delete avail[k];
+                    }
+                }
+                const mandatory = (strong.length >= 1 && strong.length <= 3)
+                    ? new Set(strong.filter(k => avail[k] > 0))
+                    : new Set();
                 // 凸可能時間 → 現在以降の時間帯インデックス集合 (昇順)。未登録は「いつでも可」
                 const rawSlots = (p.availableSlots || [])
                     .map(k => IDX_BY_KEY.get(k))
@@ -102,6 +119,8 @@
                     hourIdxs: (timeUnknown || (flexTime && rawSlots.length === 0)) ? null : rawSlots,   // null = いつでも可
                     timeUnknown,
                     flexTime,
+                    mandatory,                                                    // 未消化の必須得意属性
+                    freeSlots: Math.max(0, (3 - p.attackCount) - mandatory.size), // 必須以外に使える凸枠
                 };
             });
 
@@ -126,14 +145,16 @@
         // SLv完全ミスマッチ(1.0) ≈ 5B のオーバーキル、1時間の遅れ ≈ 0.2B のオーバーキル相当。
         // ⏳隙間割当は時刻を確約しない分の不確実性ペナルティ (2時間の遅れ相当) を課し、
         // 「時刻を確約できる人」が僅差なら優先されるようにする。
-        const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2, FLEX_PENALTY = 2 * W_TIME;
+        const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2, FLEX_PENALTY = 2 * W_TIME, W_STRONG = 2.5;
         const scoreOf = (m, attr, rem, levelPos, hourIdx, openIdx, isFlex) => {
             const dmg = m.avail[attr];
             const overkill = Math.max(0, dmg - rem);
             const slvPenalty = Math.abs((m.slvRank ?? 0.5) - levelPos);
             const timePenalty = timeAware ? (hourIdx - openIdx) : 0;
             const flexPenalty = (timeAware && isFlex) ? FLEX_PENALTY : 0;
-            return overkill * W_OVER + slvPenalty * W_SLV + timePenalty * W_TIME + flexPenalty - Math.min(dmg, rem) * 0.001;
+            // 必須得意属性は早めに消化 (ボス撃破後に強制枠が余って無駄になるのを防ぐ)
+            const strongBonus = m.mandatory.has(attr) ? W_STRONG : 0;
+            return overkill * W_OVER + slvPenalty * W_SLV + timePenalty * W_TIME + flexPenalty - strongBonus - Math.min(dmg, rem) * 0.001;
         };
 
         const levels = [];
@@ -154,6 +175,8 @@
                     let pick = null, pickScore = Infinity, pickHour = openIdx, pickFlex = false;
                     for (const m of memberState) {
                         if (m.remainingAttacks <= 0 || !(m.avail[b.weakness] > 0)) continue;
+                        // 得意属性の必須消化: 自由枠が尽きたら必須属性以外には出さない
+                        if (m.mandatory.size > 0 && !m.mandatory.has(b.weakness) && m.freeSlots <= 0) continue;
                         // キャラ衝突チェック: 同じ人がすでに割当済みのキャラと被るプランは除外
                         // (編成データが全く無い人はチェック対象外。データ揃ってる人だけ厳密判定)
                         const team = m.teamsByAttr[b.weakness];
@@ -187,6 +210,9 @@
                     if (teamRegistered) team.forEach(c => { if (c) pick.usedChars.add(c); });
                     delete pick.avail[b.weakness];
                     pick.remainingAttacks--;
+                    // 得意属性の消化管理: 必須を消化 or 自由枠を消費
+                    if (pick.mandatory.has(b.weakness)) pick.mandatory.delete(b.weakness);
+                    else if (pick.mandatory.size > 0) pick.freeSlots--;
                     rem -= dmg;
                 }
                 const cleared = rem <= 0.0001;
