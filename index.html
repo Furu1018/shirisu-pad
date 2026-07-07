@@ -3724,6 +3724,15 @@
                             <li><strong>メンバー管理</strong> — 改名・脱退・復活・完全削除。アバター付きで判別しやすい</li>
                             <li><strong>Push通知 一斉送信</strong> — 購読者全員に通知（受信時間帯フィルタ適用）</li>
                         </ul>
+                        <h3>🗓 当日運用チェックリスト</h3>
+                        <ul>
+                            <li><strong>開始前</strong> — 🪞模擬提出チェックで未提出ゼロを確認 → プラン算出 → 📤配信 + <strong>📸画像をDiscordにも貼っておく</strong>（サーバ障害時のバックアップになる）</li>
+                            <li><strong>進行中 (1〜2時間ごと)</strong> — 🔍提出漏れチェック → 催促Push or 代理凸。「HP更新 ○分前」が⚠️になっていたらボスHP更新</li>
+                            <li><strong>戦況が動いたら</strong> — プラン再算出 → 再配信（古い配信はメンバー側に⚠️が自動表示される）</li>
+                            <li><strong>障害時</strong> — Supabase/GitHub Pagesが落ちても、事前に貼った📸画像とDiscordで手動運用に切替。復旧後に代理凸でまとめて登録すればデータは追いつく</li>
+                            <li><strong>凍結</strong> — レイド当日はアプリの改修（mainへのpush）をしない。緊急修正のみ</li>
+                            <li><strong>禁止</strong> — 当日の「シーズン作成」ボタンは触らない（模擬戦データが全クリアされる。誤操作時は件数つき警告が出る）</li>
+                        </ul>
                     </section>
 
                     <section id="help-data" class="help-section">
@@ -10586,8 +10595,19 @@
             //   3) 該当属性をまだ使っていない (既に[attr]PTで凸済みは候補から除外)
             const candidates = players
                 .filter(p => p.attackCount < 3)
-                .filter(p => !usedAttrsFor(p).has(attrKey))
-                .map(p => ({ ...p, dmg: Number(p.damagesByAttr[attrKey]) || 0 }))
+                .map(p => {
+                    // 1属性2編成対応: この属性への凸回数ぶん上位ロードアウトを消費済みとし、
+                    // 編成②が残っていれば「同属性2凸での締め」も候補に含める
+                    const usedN = (p.attacks || []).filter(a => bossWeaknessByNum.get(a.boss_number) === attrKey).length;
+                    const los = (p.loadoutsByAttr?.[attrKey] || [])
+                        .filter(lo => Number(lo.dmgB) > 0)
+                        .sort((x, y) => Number(y.dmgB) - Number(x.dmgB))
+                        .slice(usedN);
+                    const dmg = los.length > 0
+                        ? Number(los[0].dmgB)
+                        : (usedN > 0 ? 0 : Number(p.damagesByAttr[attrKey]) || 0);
+                    return { ...p, dmg, viaSlot2: usedN > 0 && los.length > 0 };
+                })
                 .filter(p => p.dmg > 0)
                 // ダメージ降順。同ダメージなら凸残数が多い人を優先 (旧AI推薦のルール②をシステム側に吸収)
                 .sort((a, b) => (b.dmg - a.dmg) || ((3 - b.attackCount) - (3 - a.attackCount)));
@@ -10609,7 +10629,7 @@
                     <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
                         <span style="min-width:22px;text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:12px;">${i + 1}.</span>
                         ${renderAvatarHtml(p, 28)}
-                        <strong style="flex:1;font-size:14px;">${escapeHtml(p.name)}</strong>
+                        <strong style="flex:1;font-size:14px;">${escapeHtml(p.name)}${p.viaSlot2 ? ' <span title="同属性2凸目 (編成②) での締め" style="font-size:10px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.10);padding:1px 6px;border-radius:999px;">②</span>' : ''}</strong>
                         <span style="font-size:13px;font-weight:700;">${p.dmg.toFixed(2)} B</span>
                         ${overTag}
                         <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${p.attackCount}/3)</span>
@@ -12680,9 +12700,20 @@
 
             const isTest = document.getElementById('opsSeasonIsTest')?.checked;
 
+            // 本番シーズン作成は模擬戦データを全クリアする (仕様)。
+            // 前日に全員が提出済みの状態で誤って作り直すと30人分が警告なしで消えるため、
+            // 提出件数を明示して確認する。
+            let mockWarn = '';
+            if (!isTest) {
+                try {
+                    const st = await window.supabaseLoadMockSubmissionStatus();
+                    const n = (st || []).filter(r => r.attrCount > 0).length;
+                    if (n > 0) mockWarn = `\n\n⚠️ 現在 ${n}名分の模擬戦データが提出済みです。シーズン作成で全てクリアされ、復元できません。本当に作成しますか？`;
+                } catch { /* noop */ }
+            }
             const confirmMsg = isTest
                 ? `🧪 テストシーズン (${monthKey}) を作成しますか？\n現在のダメージ登録とキャラマスタはバックアップされ、「テスト終了」で元に戻せます。\n模擬戦データはテスト用に自動シードされます (前回実績 + ランダム補完)。`
-                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。`;
+                : `新シーズン (${monthKey}, ${hardDate}) を作成しますか？\n既存のアクティブシーズンは非アクティブ化されます。\n模擬戦の提出は期間中に各メンバーが個別に行ってください (前回引継ぎは廃止)。${mockWarn}`;
             if (!confirm(confirmMsg)) return;
 
             try {

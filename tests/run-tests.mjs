@@ -494,6 +494,33 @@ test('既に1凸済みの属性は上位ロードアウトから消費済み扱�
     assert.equal(b1.attacks[0].dmgB, 8, '残っているのは2編成目 (8B) のはず');
 });
 
+test('凸済みの得意属性は再強制しない (編成②が残っていても満足済み扱い)', () => {
+    // fire に1凸済み。fire の編成②が残っていても mandatory は water だけになり、
+    // 残り1枠は自由に electric へ使えるはず (旧バグ: fire 再強制で electric が選出不能)
+    const p = player('A', { fire: 10, water: 9, electric: 8 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 1 }],   // boss1 (fire) に凸済み
+        strong: ['fire', 'water'],
+    });
+    p.loadoutsByAttr = {
+        fire: [
+            { dmgB: 10, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+            { dmgB: 7, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+        ],
+        water: [{ dmgB: 9, team: [], slot: 1 }],
+        electric: [{ dmgB: 8, team: [], slot: 1 }],
+    };
+    // fire ボスは既に撃破済み (残HP 0)。ボスリストには居るので凸履歴→属性の逆引きは可能
+    const bs = [
+        boss(1, 'fire', { remainingB: 0 }),
+        boss(2, 'water', { remainingB: 5 }),
+        boss(3, 'electric', { remainingB: 5 }),
+    ];
+    const plan = compute(makeInput(bs, [p]));
+    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness)).sort();
+    assert.deepEqual(attrs, ['electric', 'water'], `water(必須)+electric(自由枠) のはず: ${attrs}`);
+});
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

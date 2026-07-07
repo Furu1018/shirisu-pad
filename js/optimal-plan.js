@@ -111,8 +111,11 @@
                         if (!strong.includes(k)) delete avail[k];
                     }
                 }
+                // 「必ず消化」は最低1回の意味 — 既に凸済みの得意属性は満足済みとして除外する
+                // (2編成対応後は凸済みでも編成②が avail に残るため、avail 存在だけで判定すると
+                //  同属性2凸目を強制して自由枠を不当に奪ってしまう)
                 const mandatory = (strong.length >= 1 && strong.length <= 3)
-                    ? new Set(strong.filter(k => (avail[k] || []).length > 0))
+                    ? new Set(strong.filter(k => (avail[k] || []).length > 0 && !(usedCount.get(k) > 0)))
                     : new Set();
                 // 凸可能時間 → 現在以降の時間帯インデックス集合 (昇順)。未登録は「いつでも可」
                 const rawSlots = (p.availableSlots || [])
