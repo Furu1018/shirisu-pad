@@ -6245,13 +6245,22 @@
             return _teamSubsCache;
         }
         function _teamStatsFor(rows, attrKey) {
-            const charCount = new Map();
+            // PT単位の使用率集計: ゲーム仕様上 キャラ単体よりPT5人のシナジーが本体なので、
+            // 「同じ5人の組み合わせ (順不同)」をひとつの編成として数える。
+            const groups = new Map();   // 正規化キー (ソート済みキャラ名結合) -> { team, count, bestDmgB }
             rows.forEach(r => {
-                new Set(r.characters.filter(Boolean).map(c => fuzzyResolveCharacter(c) || c)).forEach(c => {
-                    charCount.set(c, (charCount.get(c) || 0) + 1);
-                });
+                const team = (r.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
+                if (team.length === 0) return;
+                const key = [...new Set(team)].sort().join('|');
+                const g = groups.get(key) || { team, count: 0, bestDmgB: 0 };
+                g.count++;
+                g.bestDmgB = Math.max(g.bestDmgB, Number(r.damage_b) || 0);
+                groups.set(key, g);
             });
-            const top = [...charCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+            // 使用数 → 同数ならそのPTのベストダメージ順
+            const topTeams = [...groups.values()]
+                .sort((a, b) => b.count - a.count || b.bestDmgB - a.bestDmgB)
+                .slice(0, 3);
             const bestDmg = [...rows].sort((a, b) => (Number(b.damage_b) || 0) - (Number(a.damage_b) || 0))[0] || null;
             // ふるり値トップ: SLv補正後スコアの最大 (基準: ふるりの今季模擬 + SLv)
             // ダメージトップはSLvが高い人に偏るが、こちらはSLvに関わらず全員にチャンスがある
@@ -6275,7 +6284,7 @@
                     bestFururiSlv = Number(_teamSlvCache?.[r.player_id]) || 0;
                 }
             });
-            return { total: rows.length, top, bestDmg, bestFururi, bestFururiScore, bestFururiSlv };
+            return { total: rows.length, topTeams, bestDmg, bestFururi, bestFururiScore, bestFururiSlv };
         }
         function _charIconHtml(name, size = 26) {
             const r = resolveNikkeChar(name);
@@ -6289,15 +6298,19 @@
             if (!a) return '';
             if (rows.length === 0) return `<p style="margin:0;font-size:11.5px;color:#A4AAB0;">${a.name}PT の編成つき模擬提出はまだありません。模擬戦データに編成を付けて提出すると、ここに集計されます。</p>`;
             const st = _teamStatsFor(rows, attrKey);
-            const topHtml = st.top.map(([c, n]) => `
-                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:52px;">
-                    ${_charIconHtml(c, 34)}
-                    <span style="font-size:10px;font-weight:800;color:#5A6068;" title="${escapeHtml(c)} — ${n}/${st.total}件で採用">${Math.round(n / st.total * 100)}%</span>
+            // 人気PT: 同じ5人 (順不同) を使っている提出をまとめて使用率順に表示
+            const allUnique = st.topTeams.length > 0 && st.topTeams.every(g => g.count === 1);
+            const topHtml = st.topTeams.map((g, i) => `
+                <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:11px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);${i > 0 ? 'margin-top:5px;' : ''}">
+                    <span style="flex:none;width:20px;font-size:11px;font-weight:900;color:${i === 0 ? a.color : '#B6BBC1'};">#${i + 1}</span>
+                    <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;">${g.team.map(c => _charIconHtml(c, 28)).join('')}</div>
+                    <span style="flex:none;font-size:10px;font-weight:800;color:#5A6068;text-align:right;line-height:1.3;" title="このPTを${g.count}/${st.total}件の提出が使用">${g.count}人使用<br><span style="color:#A4AAB0;">${Math.round(g.count / st.total * 100)}%</span></span>
+                    ${opts.copyable ? `<button onclick="applyPopularTeamFromAttr('${attrKey}', 'pt${i}')" title="このPTを編成枠にコピー" style="flex:none;padding:5px 9px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️</button>` : ''}
                 </div>`).join('');
 
             const cleanTeam = (row) => (row?.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
             const sameTop = st.bestFururi && st.bestDmg && st.bestFururi === st.bestDmg;
-            _popularBestTeams[attrKey] = { dmg: cleanTeam(st.bestDmg), fururi: cleanTeam(st.bestFururi) };
+            _popularBestTeams[attrKey] = { dmg: cleanTeam(st.bestDmg), fururi: cleanTeam(st.bestFururi), pts: st.topTeams.map(g => g.team) };
 
             // トップ編成ブロック (ダメージ / ふるり値 の2系統)
             const bestBlock = (row, kind, labelHtml, detailHtml) => row ? `
@@ -6323,15 +6336,19 @@
                 ? `<p style="margin:8px 0 0 0;font-size:10px;color:#A4AAB0;">⚖️ ふるり値トップは基準者(${fururiBasePlayerName})の${a.name}PT模擬と提出者のSLvが揃うと表示されます。</p>` : '';
 
             return `
-                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">採用率 TOP${st.top.length}（${st.total}件の提出から）</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">${topHtml}</div>
+                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">人気PT TOP${st.topTeams.length}（${st.total}件の提出から · 5人の組み合わせで集計/並び順不問）</div>
+                ${topHtml}
+                ${allUnique ? '<p style="margin:5px 0 0 0;font-size:10px;color:#A4AAB0;">まだ同じPTを使う人がいないため、ダメージ順に表示しています。</p>' : ''}
                 ${dmgHtml}
                 ${fururiHtml}
                 ${fururiNote}`;
         }
-        // トップ編成を編成編集モーダルの5枠へ流し込む (kind: 'dmg' | 'fururi')
+        // トップ編成を編成編集モーダルの5枠へ流し込む (kind: 'dmg' | 'fururi' | 'pt0'〜'pt2')
         function applyPopularTeamFromAttr(attrKey, kind = 'dmg') {
-            const team = (_popularBestTeams[attrKey] || {})[kind] || [];
+            const entry = _popularBestTeams[attrKey] || {};
+            const team = kind.startsWith('pt')
+                ? (entry.pts || [])[Number(kind.slice(2))] || []
+                : entry[kind] || [];
             for (let i = 0; i < 5; i++) {
                 const inp = document.querySelector(`#myTeamEditFields input[data-team-idx="${i}"]`);
                 if (inp) {
