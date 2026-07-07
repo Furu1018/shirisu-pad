@@ -18,8 +18,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- フォントは @import (発見が遅い) をやめて link で先行取得 -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap">
-    <!-- Chart.js は描画関数内でのみ使用 → defer で初期パースをブロックしない。
-         tesseract.js (重量級OCR) はシミュレータOCRの初回利用時に遅延ロード (_ensureTesseract) -->
+    <!-- Chart.js は描画関数内でのみ使用 → defer で初期パースをブロックしない -->
+
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Supabase クライアント (Phase 0: 接続確認のみ。既存ロジックは未変更) -->
     <script type="module" src="./js/supabase-client.js"></script>
@@ -12728,23 +12728,6 @@
             }
         }
 
-        // tesseract.js はシミュレータOCRでしか使わない重量級ライブラリのため、
-        // 起動時には読み込まず初回利用時に遅延ロードする (初期表示の高速化)
-        let _tessLoading = null;
-        function _ensureTesseract() {
-            if (typeof Tesseract !== 'undefined') return Promise.resolve(true);
-            if (!_tessLoading) {
-                _tessLoading = new Promise((resolve) => {
-                    const s = document.createElement('script');
-                    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-                    s.onload = () => resolve(typeof Tesseract !== 'undefined');
-                    s.onerror = () => { _tessLoading = null; resolve(false); };
-                    document.head.appendChild(s);
-                });
-            }
-            return _tessLoading;
-        }
-
         // モーダル外クリックで閉じる
         document.addEventListener('click', e => {
             if (e.target?.id === 'playerSelectModal') closePlayerSelectModal();
@@ -13997,85 +13980,31 @@
             runFururiSimulator();
         }
 
+        // シミュレータOCR: 旧 tesseract.js (端末内OCR) は初回20〜30秒のモデルDLと
+        // ゲームUIでの誤読が多かったため、他のスクショ取込と同じ Haiku Vision に統一した
+        const _FSIM_OCR_PROMPT = [
+            '画像はNIKKEのユニオンレイド凸結果(または戦闘履歴)画面です。以下をJSONで抽出してください。',
+            '- bossName: ボス名 (接頭辞 I/II/III/IV/V や OPERATION COMPLETE は除外)。読めなければ null',
+            '- totalDamage: TOTAL DAMAGE の整数値 (カンマ除去)。読めなければ null',
+            '出力はJSONのみ。コードフェンス禁止。',
+            '形式: {"bossName":"ストームブリンガー","totalDamage":9673613117}',
+        ].join('\n');
+
         async function fsimOcrUpload(event) {
             const file = event.target.files && event.target.files[0];
             const status = document.getElementById('fsimOcrStatus');
             event.target.value = '';
             if (!file) return;
-            status.textContent = 'OCRライブラリを読み込み中…';
-            if (!(await _ensureTesseract())) {
-                status.textContent = 'OCRライブラリの読み込みに失敗しました。通信環境を確認してください。';
-                return;
-            }
-            status.textContent = '画像を解析中... (初回はモデル読み込みで20〜30秒程度かかります)';
+            status.textContent = '🔍 画像を解析中... (数秒)';
             try {
-                const { data } = await Tesseract.recognize(file, 'jpn+eng', {
-                    logger: m => {
-                        if (m.status === 'recognizing text' && m.progress) {
-                            status.textContent = `解析中... ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
-                });
-                const text = data.text || '';
-                // デバッグ出力
+                const dataUrl = await window.fileToDataUrl(file);
+                const res = await window.callAiVision(dataUrl, 'fsim_score', { prompt: _FSIM_OCR_PROMPT });
+                const r = res.result || {};
+                // デバッグ出力 (AIの生応答)
                 document.getElementById('fsimOcrDebugWrapper').style.display = 'block';
-                document.getElementById('fsimOcrDebug').textContent = text;
+                document.getElementById('fsimOcrDebug').textContent = res.raw || JSON.stringify(r);
 
-                const lines = text.split('\n').map(l => l.trim());
-
-                // "TOTAL DAMAGE" 行を探す（"TOTAL"の誤読を許容: TQTAL/T0TAL等もOK）
-                const totalIdx = lines.findIndex(l => /T[OQ0]TAL\s*DAMA[GC]E/i.test(l) || /T[OQ0]TAL/i.test(l));
-
-                // 1行内の数字部分を抽出 (カンマ・空白・ピリオドを除去)
-                const lineDigits = (line) => {
-                    if (!line) return '';
-                    // ピリオド/カンマ/空白を区切りとして無視、数字だけ取り出す
-                    return line.replace(/[^\d]/g, '');
-                };
-                // HP行（"/"を含む）は除外
-                const isHpLine = (line) => /\//.test(line);
-                // 妥当な総ダメージ桁数（10億〜兆オーダー想定: 7〜13桁）
-                const isValidDamage = (digits) => digits.length >= 7 && digits.length <= 13;
-
-                let num = null;
-
-                if (totalIdx >= 0) {
-                    // TOTAL DAMAGE 行直後の最大5行を見て、HP行を除外しつつ数字を拾う
-                    // 数字が複数行に分かれている場合のみ連結（次行が数字のみ・"/"なし・短すぎる場合）
-                    const collected = [];
-                    for (let i = totalIdx + 1; i < Math.min(totalIdx + 6, lines.length); i++) {
-                        const line = lines[i];
-                        if (!line) continue;
-                        if (isHpLine(line)) continue;
-                        const d = lineDigits(line);
-                        if (!d) {
-                            if (collected.length) break; // 数字行が途切れたら終了
-                            continue;
-                        }
-                        // この行が「数字＋カンマ等のみ（他のテキストが少ない）」かを判定
-                        const nonDigit = line.replace(/[\d,.\s]/g, '').length;
-                        if (nonDigit > 3) {
-                            // ノイズ多め → 単独で完結している場合のみ採用
-                            if (isValidDamage(d) && !collected.length) { collected.push(d); break; }
-                            if (collected.length) break;
-                            continue;
-                        }
-                        collected.push(d);
-                        if (isValidDamage(collected.join(''))) break;
-                    }
-                    const combined = collected.join('');
-                    if (isValidDamage(combined)) num = parseInt(combined, 10);
-                }
-
-                // フォールバック: TOTAL DAMAGE が見つからない or 失敗時
-                // 全行から「"/"を含まない」「数字主体の行」を抜き出し、最後（下にあるほど画面下=ダメージの可能性大）
-                if (!num) {
-                    const damageLikeLines = lines.filter(l => l && !isHpLine(l) && (l.replace(/[\d,.\s]/g, '').length <= 3));
-                    for (let i = damageLikeLines.length - 1; i >= 0; i--) {
-                        const d = lineDigits(damageLikeLines[i]);
-                        if (isValidDamage(d)) { num = parseInt(d, 10); break; }
-                    }
-                }
+                const num = Math.round(Number(r.totalDamage) || 0);
                 if (!num || num <= 0) {
                     status.textContent = '数字を読み取れませんでした。「TOTAL DAMAGE」が映る範囲でトリミングして再度お試しください。';
                     return;
@@ -14083,7 +14012,7 @@
                 document.getElementById('fsimDamage').value = num;
 
                 // ボス名検出 → PT属性自動選択
-                const detectedCode = detectBossCodeFromText(text);
+                const detectedCode = detectBossCodeFromText(r.bossName || '');
                 let attrMsg = '';
                 if (detectedCode) {
                     const ptAttr = BOSS_ATTRIBUTES[detectedCode].attribute;
