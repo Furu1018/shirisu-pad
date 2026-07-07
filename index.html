@@ -2538,13 +2538,13 @@
                 <!-- ステータス切替 3ボタン (soft-fill) -->
                 <div id="mypageStatusSwitcher" style="display:flex;gap:8px;margin-top:18px;">
                     <button data-status="available"    data-color="#18C26B" onclick="handleMyStatusSwitch('available')"    class="dc-status-btn">
-                        <span style="font-size:14px;">🎮</span> オンライン
+                        <span data-sp-icon="gamepad" data-sp-size="15"></span> オンライン
                     </button>
                     <button data-status="practicing"   data-color="#2E8BFF" onclick="handleMyStatusSwitch('practicing')"   class="dc-status-btn">
-                        <span style="font-size:14px;">⚔</span> 模擬中
+                        <span data-sp-icon="sword" data-sp-size="14"></span> 模擬中
                     </button>
                     <button data-status="coordinating" data-color="#FF3D44" onclick="handleMyStatusSwitch('coordinating')" class="dc-status-btn" disabled title="戦闘中はボス選択時に自動でONになります">
-                        <span style="font-size:14px;">🛡</span> 戦闘中
+                        <span data-sp-icon="shield" data-sp-size="14"></span> 戦闘中
                     </button>
                 </div>
                 <p id="mypageStatusHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;">プレイヤーを選択してください。</p>
@@ -2553,7 +2553,7 @@
             <!-- 📤 配信された凸プラン (運営が配信したときだけ表示) -->
             <div class="dc-card" id="myPublishedPlanCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📤 配信された凸プラン</div>
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="inbox" data-sp-size="15"></span> 配信された凸プラン</div>
                     <span id="myPublishedPlanMeta" style="font-size:10px;font-weight:700;color:#A4AAB0;"></span>
                 </div>
                 <div id="myPublishedPlanBody"></div>
@@ -2632,7 +2632,7 @@
             <!-- 📚 人気編成 (みんなの模擬提出から集計 / NIKKE知識ゼロの純統計 / 既定は折りたたみ) -->
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📚 人気編成</div>
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="bookOpen" data-sp-size="15"></span> 人気編成</div>
                     <span style="font-size:10.5px;color:#A4AAB0;">みんなの模擬提出から集計</span>
                 </div>
                 <div onclick="togglePopularTeams()" id="popularTeamsToggle" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ 人気編成を表示</div>
@@ -2641,7 +2641,7 @@
                     <div id="popularTeamsBody"><p style="margin:0;font-size:12px;color:#A4AAB0;">読み込み中…</p></div>
                     <!-- 🧩 3属性まとめ選び: キャラ被りなしで両立できる人気PTの組み合わせ提案 -->
                     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #F0F1F3;">
-                        <div style="font-size:11.5px;font-weight:900;color:#14161A;">🧩 3属性まとめ選び</div>
+                        <div style="font-size:11.5px;font-weight:900;color:#14161A;"><span data-sp-icon="blocks" data-sp-size="13"></span> 3属性まとめ選び</div>
                         <p style="margin:3px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">凸する3属性を選ぶと、キャラ被りなしで両立できる人気PTの組み合わせを提案します (同じキャラは1日1回まで)。</p>
                         <div id="popularComboTabs" style="display:flex;gap:5px;margin-bottom:9px;"></div>
                         <div id="popularComboBody"></div>
@@ -2676,7 +2676,7 @@
                         <span style="font-size:15px;">🔥</span><span id="mypageBattleTargetLabel">B? と交戦中</span>
                     </div>
                     <div id="mypageBattleActions" style="display:none;gap:8px;margin-top:12px;">
-                        <button onclick="openMyAttackModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:50px;border-radius:13px;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;border:none;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span style="font-size:15px;">📷</span> 結果を報告</button>
+                        <button onclick="openMyAttackModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:50px;border-radius:13px;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;border:none;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="camera" data-sp-size="15"></span> 結果を報告</button>
                         <button onclick="releaseBattleGate()" style="flex:none;width:104px;display:flex;align-items:center;justify-content:center;gap:6px;height:50px;border-radius:13px;background:#F1F2F4;color:#6B7178;font-size:14px;font-weight:800;cursor:pointer;border:none;"><span style="font-size:14px;">⏪</span> 解除</button>
                     </div>
                     <div id="mypageBattleCloseBar" style="display:flex;justify-content:flex-end;margin-top:10px;">
@@ -2718,22 +2718,22 @@
             <div class="dc-card" style="padding:8px 8px 6px;">
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
                 <div onclick="openMyAvailModal()" class="dc-setting-row">
-                    <div class="dc-setting-icon">⚔️</div>
+                    <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
                     <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">戦闘可能時間 <span style="font-size:10px;color:#A4AAB0;font-weight:700;">(通知の受信時間)</span></div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openMyPushModal()" class="dc-setting-row">
-                    <div class="dc-setting-icon">🔔</div>
+                    <div class="dc-setting-icon" data-sp-icon="bell" data-sp-size="17"></div>
                     <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">Push通知設定</div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openMyStrongAttrsModal()" class="dc-setting-row">
-                    <div class="dc-setting-icon">⚔</div>
+                    <div class="dc-setting-icon" data-sp-icon="sword" data-sp-size="17"></div>
                     <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">得意属性</div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openAvatarEditModal()" class="dc-setting-row">
-                    <div class="dc-setting-icon">🖼</div>
+                    <div class="dc-setting-icon" data-sp-icon="image" data-sp-size="17"></div>
                     <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">アバターを変更</div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
@@ -2966,8 +2966,8 @@
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">👥 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
-                        <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);">📸 共有画像</button>
-                        <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのマイページにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#2ED97F,#18C26B);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);">📤 配信</button>
+                        <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
+                        <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのマイページにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#2ED97F,#18C26B);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);"><span data-sp-icon="send" data-sp-size="13"></span> 配信</button>
                     </div>
                 </div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#8A9097;line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
@@ -2980,19 +2980,19 @@
             <div class="dc-card">
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:12px;">戦闘中の運営アクション</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <button onclick="openOpsBossHpModal()" class="dc-ops-action">⚔️ ボスHP更新</button>
-                    <button onclick="openOpsProxyAttackModal()" class="dc-ops-action">✏️ 代理凸を報告</button>
-                    <button onclick="openOpsAttacksEditModal()" class="dc-ops-action">📋 凸履歴・編集</button>
-                    <button onclick="openOpsAuditModal()" class="dc-ops-action">🔍 提出漏れチェック</button>
-                    <button onclick="openOpsMockAuditModal()" class="dc-ops-action">🪞 模擬提出チェック</button>
-                    <button onclick="switchTab('member-admin')" class="dc-ops-action">👥 メンバー管理</button>
+                    <button onclick="openOpsBossHpModal()" class="dc-ops-action"><span data-sp-icon="hexTarget" data-sp-size="14"></span> ボスHP更新</button>
+                    <button onclick="openOpsProxyAttackModal()" class="dc-ops-action"><span data-sp-icon="pencil" data-sp-size="14"></span> 代理凸を報告</button>
+                    <button onclick="openOpsAttacksEditModal()" class="dc-ops-action"><span data-sp-icon="clipboard" data-sp-size="14"></span> 凸履歴・編集</button>
+                    <button onclick="openOpsAuditModal()" class="dc-ops-action"><span data-sp-icon="search" data-sp-size="14"></span> 提出漏れチェック</button>
+                    <button onclick="openOpsMockAuditModal()" class="dc-ops-action"><span data-sp-icon="clipboardCheck" data-sp-size="14"></span> 模擬提出チェック</button>
+                    <button onclick="switchTab('member-admin')" class="dc-ops-action"><span data-sp-icon="users" data-sp-size="14"></span> メンバー管理</button>
                 </div>
             </div>
 
             <!-- Push通知 一斉送信 -->
             <div class="dc-card">
                 <div style="display:flex;align-items:center;gap:11px;">
-                    <div style="width:40px;height:40px;flex:none;border-radius:11px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;font-size:18px;">📢</div>
+                    <div style="width:40px;height:40px;flex:none;border-radius:11px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;" data-sp-icon="megaphone" data-sp-size="19"></div>
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:14px;font-weight:800;color:#14161A;">一斉通知</div>
                         <div style="font-size:11px;color:#A4AAB0;margin-top:2px;">メンバー全員へPushを送信</div>
@@ -4041,11 +4041,11 @@
                         <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.5;">運営向け。全データの JSON 保存と、バックアップ時点への巻き戻し。レイド前後に保存推奨。</div>
                     </div>
                 </div>
-                <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;">💾 バックアップをダウンロード</button>
+                <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;"><span data-sp-icon="download" data-sp-size="14"></span> バックアップをダウンロード</button>
                 <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
                     <div style="font-size:10.5px;font-weight:800;color:#C42830;margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
                     <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
-                    <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span style="font-size:15px;">📥</span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                    <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span data-sp-icon="upload" data-sp-size="15"></span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
                 </div>
                 <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;"></p>
             </div>
@@ -5750,6 +5750,50 @@
 
         // ========== プロフィール: 得意属性 5チップ (ON=色塗り / OFF=ソフト色) ==========
         // ClaudeDesign 仕様: 5属性すべて表示し、得意な属性は塗り、それ以外はソフト
+        // ========== しりすこPAD アイコン (ClaudeDesign ライン + BlaBlaLINK 六角オマージュ) ==========
+        // タブアイコンと同じ 24x24 ストローク系。HTML 側は <span data-sp-icon="名前" data-sp-size="16"> と
+        // 宣言するだけで、initSpIcons() が SVG を流し込む (実体はここで一元管理)。
+        const SP_ICONS = {
+            // 戦闘系
+            swords: '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/>',
+            sword: '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/>',
+            shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+            // BlaBlaLINK オマージュ: 六角フレーム + HUD レティクル (NIKKE の六角モチーフ)
+            hexTarget: '<path d="M12 2.7 20.1 7.35v9.3L12 21.3 3.9 16.65v-9.3Z"/><circle cx="12" cy="12" r="3.2"/><path d="M12 6.5v2.3M12 15.2v2.3M6.5 12h2.3M15.2 12h2.3"/>',
+            // 状態
+            gamepad: '<line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="11" y2="11"/><rect x="2" y="6" width="20" height="12" rx="2"/>',
+            hourglass: '<path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>',
+            // 通知・共有
+            bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+            megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+            camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+            send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+            inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+            image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            // データ・運営
+            bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+            blocks: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7M14 17.5h7"/>',
+            pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+            clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+            clipboardCheck: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+            search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+            users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+            download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="3" y2="15"/>',
+            upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+            refresh: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+        };
+        function spIcon(name, size = 16, opts = {}) {
+            const body = SP_ICONS[name];
+            if (!body) return '';
+            return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${opts.color || 'currentColor'}" stroke-width="${opts.strokeWidth || 2}" stroke-linecap="round" stroke-linejoin="round" style="flex:none;vertical-align:-2px;${opts.style || ''}">${body}</svg>`;
+        }
+        function initSpIcons(root = document) {
+            root.querySelectorAll('[data-sp-icon]').forEach(el => {
+                const svg = spIcon(el.dataset.spIcon, Number(el.dataset.spSize) || 16);
+                if (svg) el.innerHTML = svg;
+            });
+        }
+
         const DC_ATTR_LABELS = { fire:'火', water:'水', electric:'電', iron:'鉄', wind:'風' };
         const DC_ATTR_COLORS = { fire:'#FF3D44', water:'#2E8BFF', electric:'#9B4DFF', iron:'#FF8A2B', wind:'#18C26B' };
         // 属性アイコン (ゲーム内) パス
@@ -14606,6 +14650,7 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
+            initSpIcons();   // data-sp-icon の SVG 流し込み
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
