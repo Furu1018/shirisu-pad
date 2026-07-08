@@ -53,6 +53,17 @@ RLS は anon 全許可 (認証なしの内輪運用という設計判断。変�
   内輪ツールなので整合性より読み出しの単純さを優先する
 - 「最新1件だけ保持」型のテーブルは insert 後に旧行 delete で掃除する
 
+## 主キー変更を伴うマイグレーション (21_player_damages_slots の実例)
+
+player_damages の PK を (player_id, attribute) → (player_id, attribute, slot) に変えた際の教訓:
+
+- PK/unique が変わると **既存の upsert の onConflict が全滅する**
+  (conflict target は unique 制約と一致していないと PostgREST がエラーを返す)
+- 対策: そのテーブルへの書き込みを1つのヘルパーに集約し (`_upsertPlayerDamages`)、
+  新 onConflict → 失敗したら旧 onConflict にフォールバック。SQL適用とクライアント更新を同一デプロイで出す
+- 「同じテーブルに書く別経路」(スナップショット復元・テストシード・前回引継ぎなど) を
+  grep で全部洗い出してからやること。1箇所でも旧 onConflict が残ると適用後に壊れる
+
 ## Edge Function を触ったとき
 
 `supabase/functions/` の変更は push しても反映されない。**再デプロイが必要**なことを
