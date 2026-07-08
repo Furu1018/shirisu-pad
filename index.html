@@ -6040,6 +6040,24 @@
         ];
 
         // 横一列 5属性パネル: タップで編成 + ダメージ編集モーダルを開く
+        // シーズンのボス順 (B1→B5) に対応した PT属性順を返す (照合しやすさ優先)。
+        // ボス情報が無ければ従来の固定順。各要素に bossNumber を付与 (無ければ null)。
+        function _orderAttrsByBosses(bosses) {
+            if (!Array.isArray(bosses) || bosses.length === 0) {
+                return PT_ATTRS.map(a => ({ ...a, bossNumber: null }));
+            }
+            const order = [...bosses]
+                .sort((x, y) => x.boss_number - y.boss_number)
+                .map(b => {
+                    const a = PT_ATTRS.find(x => x.key === b.weakness);
+                    return a ? { ...a, bossNumber: b.boss_number } : null;
+                })
+                .filter(Boolean);
+            // 異常データで5属性揃わない場合は不足分を末尾に補完
+            PT_ATTRS.forEach(a => { if (!order.some(o => o.key === a.key)) order.push({ ...a, bossNumber: null }); });
+            return order;
+        }
+
         // 模擬パネルの表示スロット (attr -> 1|2)。②があるカードは ①⇄② を入れ替えられる
         let _myDmgPanelSlots = {};
         function flipMyDmgPanel(attrKey) {
@@ -6077,6 +6095,13 @@
             });
             await getNikkeCharsCache();
 
+            // シーズン中は B1→B5 のボス順に対応する属性順で並べる
+            let panelAttrs = PT_ATTRS.map(a => ({ ...a, bossNumber: null }));
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                panelAttrs = _orderAttrsByBosses(ctx?.bosses);
+            } catch { /* シーズン無し → 固定順 */ }
+
             // 全編成 (slot1/2 両方) のキャラ → 出現属性キーSet のマップ
             const charToAttrs = new Map();
             damages.forEach(d => {
@@ -6111,7 +6136,7 @@
                 return `<div class="dc-dmg-char${dupCls ? ' ' + dupCls : ''}" title="${escapeHtml(r?.canonical || resolved)}">${icon}</div>`;
             };
 
-            el.innerHTML = PT_ATTRS.map(a => {
+            el.innerHTML = panelAttrs.map(a => {
                 const slots = byAttr.get(a.key) || {};
                 const hasSlot2 = !!slots[2];
                 const activeSlot = (hasSlot2 && _myDmgPanelSlots[a.key] === 2) ? 2 : 1;
@@ -6143,7 +6168,7 @@
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
                                 : `<div class="dc-dmg-value empty">—</div>`}
                         </div>
-                        <div style="font-size:13px;font-weight:900;color:#14161A;letter-spacing:0.4px;margin-top:9px;">${a.name}PT</div>
+                        <div style="font-size:13px;font-weight:900;color:#14161A;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${a.bossNumber ? ` <span style="font-size:9px;font-weight:800;color:#A4AAB0;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}</div>
                         <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
             }).join('');
@@ -10225,6 +10250,17 @@
             const { players, bosses } = _opsDashboardCache;
             const listEl = document.getElementById('opsRemainingList');
             const summaryEl = document.getElementById('opsRemainingSummary');
+            // シーズンのボス順 (B1→B5) に対応する属性順で列を並べる (ボス状況カードと照合しやすく)
+            const ATTRS = _orderAttrsByBosses(bosses);
+            // 属性フィルタピルも同じ順に並べ替え (DOM 移動)
+            const firstPill = document.querySelector('.dc-rem-attr[data-attr-filter]');
+            if (firstPill?.parentElement) {
+                const wrap = firstPill.parentElement;
+                ATTRS.forEach(a => {
+                    const el = wrap.querySelector(`[data-attr-filter="${a.key}"]`);
+                    if (el) wrap.appendChild(el);
+                });
+            }
 
             // ボス番号 → 弱点(PT属性) のマップ。
             const bossWeaknessByNum = new Map();
@@ -10324,7 +10360,7 @@
                 <div class="dc-rem-attr-header">
                     <div style="flex:1;min-width:0;font-size:10px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">メンバー</div>
                     <div style="display:flex;gap:2px;flex:none;">
-                        ${PT_ATTRS.map(a => `<div class="dc-rem-attr-header-chip" style="background:${a.color}1A;" title="${a.name}PT"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:18px;height:18px;"></div>`).join('')}
+                        ${ATTRS.map(a => `<div class="dc-rem-attr-header-chip" style="background:${a.color}1A;position:relative;" title="${a.name}PT${a.bossNumber ? ` (B${a.bossNumber})` : ''}"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:18px;height:18px;">${a.bossNumber ? `<span style="position:absolute;top:-6px;right:-2px;font-size:8px;font-weight:900;color:#8A9097;">B${a.bossNumber}</span>` : ''}</div>`).join('')}
                     </div>
                 </div>`;
 
@@ -10343,9 +10379,9 @@
             };
             const renderMemberRow = (p) => {
                 const used = usedAttrsFor(p);
-                const cells = PT_ATTRS.map(a => renderCell(p, a, used)).join('');
+                const cells = ATTRS.map(a => renderCell(p, a, used)).join('');
                 const favSet = new Set(p.strong_attributes || []);
-                const favChips = PT_ATTRS
+                const favChips = ATTRS
                     .filter(a => favSet.has(a.key))
                     .slice(0, 3)
                     .map(a => `<img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" title="${a.name}PT 得意" class="dc-rem-fav-chip" style="width:14px;height:14px;background:transparent;">`)
