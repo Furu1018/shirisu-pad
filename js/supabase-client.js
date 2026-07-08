@@ -1021,6 +1021,43 @@ window.supabaseLoadSyncLevel = async function (playerId) {
     return { syncLevel: val, seasonId: activeId };
 };
 
+// 月次JSON (レイド終了後の正式データ) の確定SLvを player_sync_levels へ同期する。
+// - 対象シーズン: month_key が一致する行 (無ければスキップ)
+// - 値が既存と同じ行は書かない (冪等 — どのクライアントから何度呼んでも安全)
+// - マイページのSLvは「最新シーズンの値を引き継ぐ」ため、同期後は自動で確定値が表示される
+window.supabaseSyncSlvFromJson = async function (monthKey, jsonPlayers) {
+    if (!monthKey || !Array.isArray(jsonPlayers) || jsonPlayers.length === 0) return { synced: 0, reason: 'no_input' };
+    const { data: season } = await supabase
+        .from('seasons').select('id')
+        .eq('month_key', monthKey)
+        .maybeSingle();
+    if (!season) return { synced: 0, reason: 'no_season' };
+
+    const [pRes, eRes] = await Promise.all([
+        supabase.from('players').select('id, name'),
+        supabase.from('player_sync_levels').select('player_id, sync_level').eq('season_id', season.id),
+    ]);
+    const idByName = new Map((pRes.data || []).map(p => [String(p.name).trim(), p.id]));
+    const curById = new Map((eRes.data || []).map(r => [r.player_id, Number(r.sync_level) || 0]));
+
+    const rows = [];
+    jsonPlayers.forEach(p => {
+        const slv = Math.round(Number(p.syncLevel) || 0);
+        if (slv <= 0) return;
+        const pid = idByName.get(String(p.player || '').trim());
+        if (!pid) return;                        // PAD未登録の名前はスキップ
+        if (curById.get(pid) === slv) return;    // 変化なし
+        rows.push({ season_id: season.id, player_id: pid, sync_level: slv });
+    });
+    if (rows.length === 0) return { synced: 0, reason: 'up_to_date' };
+    const { error } = await supabase
+        .from('player_sync_levels')
+        .upsert(rows, { onConflict: 'season_id,player_id' });
+    if (error) throw error;
+    window.supabaseLogActivity?.('ops', `シーズン ${monthKey} の確定SLvをJSONから同期 (${rows.length}名)`);
+    return { synced: rows.length };
+};
+
 // 全プレイヤーの最新SLvを一括取得 (人気編成のふるり値トップ算出用)
 // 戻り値: { [playerId]: syncLevel } — アクティブ優先 → hard_date 新しい順で引き継ぎ
 window.supabaseLoadAllSyncLevels = async function () {

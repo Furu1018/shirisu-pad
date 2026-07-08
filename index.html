@@ -3750,7 +3750,7 @@
                         <p>下記のように、入力されたデータは PAD 全体で連動して使われます。</p>
                         <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>本番凸</strong> → <span class="help-pill">attacks</span> テーブルに記録（マイページの凸報告）</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>模擬戦データ</strong> → <span class="help-pill">player_damages</span> に記録（マイページのダメージ入力）</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>レイド終了時</strong> → 該当月の JSON にスナップショット。これが次月の<strong>ふるり値基準</strong>になる</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>レイド終了時</strong> → 該当月の JSON にスナップショット。これが次月の<strong>ふるり値基準</strong>になる。JSON到着時には<strong>確定SLvが自動でマイページに同期</strong>される (手動更新不要)</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div><strong>次月シーズン作成</strong> → 前月実績ダメージを各メンバーの初期 <span class="help-pill">player_damages</span> として自動シード</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div>個人の<strong>レーダー</strong>・運営の<strong>最適プラン</strong>・<strong>残凸表</strong>・<strong>ふるり値ランキング</strong>すべてに即時反映</div></div>
                         <div class="help-callout tip">
@@ -13555,6 +13555,25 @@
             } else {
                 previousMonthKey = null;
                 previousData = [];
+            }
+
+            // ----- 最新JSON到着時: 確定SLvを player_sync_levels へ自動同期 -----
+            // マイページのSLvは「最新シーズンの値」を引き継ぐため、これで全員が確定値に更新される。
+            // 端末ごとに月1回だけ試行 (成功時マーカー)。サーバ側は差分のみ書くので多重実行も安全。
+            if (found[0].source === 'json') {
+                const markKey = `shirisuko_slv_synced_${found[0].key}`;
+                if (!localStorage.getItem(markKey) && typeof window.supabaseSyncSlvFromJson === 'function') {
+                    const rawPlayers = found[0].json.players || found[0].json.raidData?.players || [];
+                    window.supabaseSyncSlvFromJson(found[0].key, rawPlayers).then(r => {
+                        try { localStorage.setItem(markKey, '1'); } catch { /* noop */ }
+                        if (r?.synced > 0) {
+                            console.log(`[SLv同期] ${found[0].key}: ${r.synced}名を確定値に更新`);
+                            // 表示中のマイページSLvチップにも即反映
+                            const id = typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null;
+                            if (id && typeof renderMySlvChip === 'function') renderMySlvChip(id);
+                        }
+                    }).catch(e => console.warn('[SLv同期] 失敗 (次回起動時に再試行):', e?.message || e));
+                }
             }
 
             // Update global header subtitle (旧仕様)

@@ -68,7 +68,8 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
 - **`bosses.attribute` = ボス自身の属性 / `bosses.weakness` = 弱点(持っていくPT属性)**。
   表示は attribute 基準に統一済み。「○○PTで凸」の文脈だけ weakness を使う。混同しやすいので注意
 - **SLv (`player_sync_levels`)**: シーズン別履歴。読み込みは「最新シーズン(アクティブ優先→hard_date順)から引き継ぎ」、
-  書き込みはマイページのSLvチップ → アクティブシーズンへ upsert
+  書き込みはマイページのSLvチップ → アクティブシーズンへ upsert。
+  さらに月次JSON到着時に確定SLvを該当シーズンへ自動同期 (supabaseSyncSlvFromJson、差分のみ・冪等)
 - ダメージは `_raw` (生値) と B単位 (10億=1B) が混在。表示はほぼ B 単位
 - 比較・ふるり値タブの対象は「完了した実シーズン」のみ (is_test=false, is_active=false)
 - **BlaBlaLINK スクショの情報量**: ユニオン全体画面は「メンバー別の凸回数と合計ダメージ」のみで
