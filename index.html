@@ -14936,6 +14936,50 @@
             _SHEET_DISMISS.forEach(([id, fn]) => _enableSheetSwipeDismiss(id, fn));
         }
 
+        // ========== 共通 AI解析スピナー ==========
+        // すべての画像認識は window.callAiVision を通るため、ここで一括ラップして
+        // どの入口 (模擬提出/編集/凸報告/BlaBla取込/ボスHP/シーズン作成/監査...) でも
+        // 同じ「グルグル + AI解析中…」オーバーレイが出るようにする。
+        let _aiSpinCount = 0;
+        let _aiSpinHideTimer = null;
+        function _aiSpinShow() {
+            _aiSpinCount++;
+            if (_aiSpinHideTimer) { clearTimeout(_aiSpinHideTimer); _aiSpinHideTimer = null; }
+            if (document.getElementById('aiSpinOverlay')) return;
+            const o = document.createElement('div');
+            o.id = 'aiSpinOverlay';
+            o.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(20,22,26,0.45);display:flex;align-items:center;justify-content:center;animation:dcFadeIn .15s ease;';
+            o.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;background:#14161A;border-radius:16px;padding:16px 20px;box-shadow:0 12px 36px rgba(0,0,0,0.4);">
+                    <div style="width:22px;height:22px;border:3px solid rgba(255,255,255,0.22);border-top-color:#46A0FF;border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
+                    <div>
+                        <div style="font-size:13px;font-weight:900;color:#fff;letter-spacing:0.2px;">${spIcon('camera', 13)} AI解析中…</div>
+                        <div style="font-size:10.5px;font-weight:700;color:#8A9097;margin-top:2px;">1枚あたり10〜20秒かかります</div>
+                    </div>
+                </div>`;
+            document.body.appendChild(o);
+        }
+        function _aiSpinHide() {
+            _aiSpinCount = Math.max(0, _aiSpinCount - 1);
+            if (_aiSpinCount > 0) return;
+            // 複数枚の連続解析で消えたり出たりしないよう、少し待ってから消す
+            _aiSpinHideTimer = setTimeout(() => {
+                if (_aiSpinCount === 0) document.getElementById('aiSpinOverlay')?.remove();
+            }, 250);
+        }
+        function _wrapAiVisionSpinner() {
+            const orig = window.callAiVision;
+            if (typeof orig !== 'function') { setTimeout(_wrapAiVisionSpinner, 400); return; }   // モジュール読込待ち
+            if (orig._spinWrapped) return;
+            const wrapped = async function (...args) {
+                _aiSpinShow();
+                try { return await orig.apply(this, args); }
+                finally { _aiSpinHide(); }
+            };
+            wrapped._spinWrapped = true;
+            window.callAiVision = wrapped;
+        }
+
         // supabase-client.js (ESモジュール) が CDN 障害などで読み込めないと
         // 全 supabaseXxx 関数が未定義になり各所で赤エラーになる。
         // 10秒待っても読み込まれない場合は原因と対処が分かるバナーを出す。
@@ -14961,6 +15005,7 @@
             initSpIcons();   // data-sp-icon の SVG 流し込み
             _watchSpIcons();  // 以後の動的描画分も自動適用
             _watchSupabaseModule();   // サーバー接続モジュールの読込失敗を検知してバナー表示
+            _wrapAiVisionSpinner();   // 全画像認識に共通の解析中スピナーを付ける
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
