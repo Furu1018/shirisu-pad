@@ -10,7 +10,16 @@
 //   const { data, error } = await supabase.from('players').select('*');
 // ============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// CDN 二段フォールバック: 一部の回線/端末で esm.sh がブロック・失敗すると
+// モジュール全体が死んで「supabaseXxx is not a function」になるため、
+// 失敗時は jsDelivr から読み直す (top-level await はモジュールなので使用可)。
+let createClient;
+try {
+    ({ createClient } = await import('https://esm.sh/@supabase/supabase-js@2'));
+} catch (e) {
+    console.warn('[supabase] esm.sh 読み込み失敗 → jsDelivr にフォールバック:', e?.message || e);
+    ({ createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'));
+}
 
 const SUPABASE_URL = 'https://djahnbzwupxcekneydid.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_UHIiSKofk_9Ck56Jrhi7fA__YjZS3pJ';
@@ -2029,6 +2038,31 @@ window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPa
         last_seen: nowIso,
     });
     return { canonical_name: name, inserted: true, icon_count: 1 };
+};
+
+// ➕ 新キャラの事前登録: 正式名だけ先にマスタへ入れておく (アイコンは後から自動学習)
+// 実装直後の新キャラを OCR が誤解決しないよう、運営が名前を先回りで登録する用途。
+window.supabaseRegisterNikkeCharName = async function (name) {
+    const clean = (name || '').trim();
+    if (!clean) throw new Error('キャラ名が空です');
+    const { data: existing } = await supabase
+        .from('nikke_characters')
+        .select('canonical_name')
+        .eq('canonical_name', clean)
+        .maybeSingle();
+    if (existing) return { canonical_name: clean, exists: true };
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase.from('nikke_characters').insert({
+        canonical_name: clean,
+        aliases: [],
+        icon_paths: [],
+        sighting_count: 0,
+        is_confirmed: true,   // 運営の手動登録は確定扱い
+        first_seen: nowIso,
+        last_seen: nowIso,
+    });
+    if (error) throw error;
+    return { canonical_name: clean, inserted: true };
 };
 
 // 画像パスから canonical_name を逆引き

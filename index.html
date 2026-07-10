@@ -4016,6 +4016,16 @@
                         <button onclick="handleIconBootstrapLoad()" style="padding:6px 12px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;">最新JSONから読み込み</button>
                     </div>
                     <div id="settingsIconBootstrap" style="font-size:11px;color:#A4AAB0;">「最新JSONから読み込み」をクリックしてください。</div>
+                    <!-- 新キャラの事前登録 -->
+                    <div style="margin-top:18px;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">➕ 新キャラの事前登録</div>
+                        <p style="margin:5px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">実装されたばかりの新キャラ名を先に登録しておくと、メンバーの画像認識時に正しくこの名前へ解決されます (アイコンは提出画像から自動学習)。</p>
+                        <div style="display:flex;gap:7px;">
+                            <input id="settingsNewCharName" type="text" placeholder="正式名 (例: 紅蓮：ブラックシャドウ)" style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:13px;outline:none;">
+                            <button onclick="handleSettingsAddNewChar()" style="flex:none;padding:10px 16px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12px;font-weight:900;cursor:pointer;">登録</button>
+                        </div>
+                        <p id="settingsNewCharMsg" style="margin:6px 0 0 0;font-size:11px;min-height:14px;color:#A4AAB0;"></p>
+                    </div>
                     <!-- マスタ一覧 -->
                     <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;">
                         <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">マスタ一覧</div>
@@ -6092,6 +6102,9 @@
             }
             let damages = [];
             try {
+                if (typeof window.supabaseLoadPlayerDamages !== 'function') {
+                    throw new Error('サーバー接続の読み込みに失敗しています。電波の良い場所で再読み込みしてください');
+                }
                 damages = await window.supabaseLoadPlayerDamages(identity.id);
             } catch (e) {
                 el.innerHTML = `<p style="color:#ef4444;font-size:12px;flex:1;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
@@ -6722,6 +6735,16 @@
                 if (!_myAttackTeamSlots) _myAttackTeamSlots = ['', '', '', '', ''];
                 _myAttackTeamSlots[idx] = name;
                 renderMyAttackTeamSlots();
+                // 取り込み完了カードの表示にも反映 (保存は _myAttackTeamSlots が正)
+                if (_attackReport?.extracted?.characters) {
+                    _attackReport.extracted.characters[idx] = name;
+                    const charsEl = document.getElementById('myAttackExtractedChars');
+                    if (charsEl) {
+                        const chars = _attackReport.extracted.characters.slice(0, 5);
+                        charsEl.innerHTML = chars.map((c, i) =>
+                            `<span onclick="openIconPickerForAttackSlot(${i})" title="タップでキャラを修正" style="cursor:pointer;display:inline-flex;">${_renderMatchupCharAvatar(c, 24)}</span>`).join('');
+                    }
+                }
             }, `📚 凸報告 編成 (${idx + 1}枠目)`);
         }
         // 共通の名前正規化 (NFKC + 全角コロン→半角 + 空白除去 + 先頭バースト記号除去)
@@ -7164,6 +7187,17 @@
             }
         }
 
+        // 解析結果のキャラを保存前に修正 (アイコンピッカーで選び直し)
+        function editMyDmgPreviewChar(i) {
+            const d = _myDmgPreviewData;
+            if (!d) return;
+            const current = d.characters[i] ? (fuzzyResolveCharacter(d.characters[i]) || d.characters[i]) : '';
+            openIconPicker(current, (name) => {
+                d.characters[i] = name;
+                openMyDmgPreviewModal();   // 再描画 (モーダルは開いたまま)
+            }, `📚 編成の修正 (${i + 1}枠目)`);
+        }
+
         function openMyDmgPreviewModal() {
             const d = _myDmgPreviewData;
             if (!d) return;
@@ -7194,13 +7228,13 @@
                     <div style="font-size:23px;font-weight:900;color:${dmgB ? '#14161A' : '#C9CED3'};font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB || '—'}${dmgB ? '<span style="font-size:11px;color:#A4AAB0;margin-left:2px;">B</span>' : ''}</div>
                 </div>`;
 
-            // 5 キャラ
+            // 5 キャラ (タップで保存前に修正できる)
             const cells = Array.from({ length: 5 }).map((_, i) => {
                 const name = d.characters[i] || '';
                 if (!name) {
                     return `
-                        <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
-                            <div style="width:44px;height:44px;border-radius:9px;background:#EDEEF0;color:#C9CED3;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;">?</div>
+                        <div onclick="editMyDmgPreviewChar(${i})" title="タップでキャラを選択" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
+                            <div style="width:44px;height:44px;border-radius:9px;background:#EDEEF0;color:#C9CED3;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;border:1px dashed #C9CED3;">?</div>
                             <div style="font-size:10px;font-weight:700;color:#B6BBC1;">未認識</div>
                         </div>`;
                 }
@@ -7210,12 +7244,13 @@
                     ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || norm)}" style="width:44px;height:44px;border-radius:9px;object-fit:cover;background:#222;">`
                     : `<div style="width:44px;height:44px;border-radius:9px;background:#F1F2F4;color:#5A6068;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;">${escapeHtml((r?.canonical || norm).charAt(0))}</div>`;
                 return `
-                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <div onclick="editMyDmgPreviewChar(${i})" title="タップでキャラを修正" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
                         ${icon}
                         <div style="font-size:10px;font-weight:700;color:#6B7178;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(r?.canonical || norm)}</div>
                     </div>`;
             }).join('');
-            charsEl.innerHTML = cells;
+            charsEl.innerHTML = cells + `<div style="flex-basis:100%;font-size:9.5px;color:#A4AAB0;text-align:center;margin-top:2px;">認識ミスはアイコンをタップして修正できます</div>`;
+            charsEl.style.flexWrap = 'wrap';
 
             // 警告
             const warns = [];
@@ -8864,7 +8899,8 @@
                         ? 'ダメージのみ取得' : '読み取ったダメージ';
                     const chars = Array.isArray(ex.characters) ? ex.characters.slice(0, 5) : [];
                     // 認識したキャラを icon_paths のアイコン画像で表示 (解決できなければ頭文字にフォールバック)
-                    charsEl.innerHTML = chars.map((c) => _renderMatchupCharAvatar(c, 24)).join('');
+                    charsEl.innerHTML = chars.map((c, i) =>
+                        `<span onclick="openIconPickerForAttackSlot(${i})" title="タップでキャラを修正" style="cursor:pointer;display:inline-flex;">${_renderMatchupCharAvatar(c, 24)}</span>`).join('');
                 } else {
                     extractedEl.style.display = 'none';
                 }
@@ -9464,6 +9500,26 @@
                 renderSettingsCharMaster();
             } catch (e) {
                 alert(`登録失敗: ${e?.message || e}`);
+            }
+        }
+
+        // ➕ 新キャラの事前登録 (運営): OCR前に正式名だけ先に登録しておく
+        async function handleSettingsAddNewChar() {
+            const input = document.getElementById('settingsNewCharName');
+            const msg = document.getElementById('settingsNewCharMsg');
+            const name = (input?.value || '').trim();
+            const setMsg = (t, c) => { if (msg) { msg.style.color = c || '#A4AAB0'; msg.textContent = t; } };
+            if (!name) { setMsg('キャラ名を入力してください', '#FF3D44'); return; }
+            try {
+                const r = await window.supabaseRegisterNikkeCharName(name);
+                if (r.exists) { setMsg(`「${name}」は既にマスタに登録されています`, '#B45309'); return; }
+                if (input) input.value = '';
+                setMsg(`✅ 「${name}」を登録しました。画像認識でこの名前に解決されます`, '#18C26B');
+                _nikkeCharsCache = null;                 // キャッシュ再構築 (fuzzy解決に即反映)
+                await getNikkeCharsCache();
+                renderSettingsCharMaster();
+            } catch (e) {
+                setMsg(`登録失敗: ${e?.message || e}`, '#FF3D44');
             }
         }
 
@@ -14858,10 +14914,31 @@
             _SHEET_DISMISS.forEach(([id, fn]) => _enableSheetSwipeDismiss(id, fn));
         }
 
+        // supabase-client.js (ESモジュール) が CDN 障害などで読み込めないと
+        // 全 supabaseXxx 関数が未定義になり各所で赤エラーになる。
+        // 10秒待っても読み込まれない場合は原因と対処が分かるバナーを出す。
+        function _watchSupabaseModule() {
+            let waited = 0;
+            const timer = setInterval(() => {
+                if (typeof window.supabaseLoadPlayerDamages === 'function') { clearInterval(timer); return; }
+                waited += 1000;
+                if (waited >= 10000) {
+                    clearInterval(timer);
+                    if (document.getElementById('sbLoadErrorBanner')) return;
+                    const b = document.createElement('div');
+                    b.id = 'sbLoadErrorBanner';
+                    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom, 8px) + 74px);z-index:9998;background:#14161A;color:#fff;border-radius:14px;padding:13px 15px;font-size:12px;font-weight:700;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;';
+                    b.innerHTML = `<span style="flex:1;">⚠️ サーバー接続の読み込みに失敗しました。電波の良い場所か Wi-Fi で再読み込みしてください。<br><span style="font-weight:600;color:rgba(255,255,255,0.7);">(コンテンツブロッカーをお使いの場合は、このサイトで無効にしてみてください)</span></span><button onclick="location.reload()" style="flex:none;padding:9px 14px;border-radius:10px;border:none;background:#fff;color:#14161A;font-size:12px;font-weight:900;cursor:pointer;">再読み込み</button>`;
+                    document.body.appendChild(b);
+                }
+            }, 1000);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
             initSpIcons();   // data-sp-icon の SVG 流し込み
             _watchSpIcons();  // 以後の動的描画分も自動適用
+            _watchSupabaseModule();   // サーバー接続モジュールの読込失敗を検知してバナー表示
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
