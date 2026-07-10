@@ -318,6 +318,44 @@
         const membersFlex = timeAware ? memberState.filter(m => m.flexTime).map(m => m.name) : [];
         const anyTimeConstrained = levels.some(lv => lv.bosses.some(b => b.timeConstrained));
 
+        // ===== 未使用凸の理由診断 =====
+        // 「63凸あるのに50凸しか使われない」の内訳を可視化する。
+        // 判定は最後に計画したレベルの状態に対して行う (優先度順に1つ)。
+        const lastPlanned = levels[levels.length - 1];
+        const lastAliveWeak = new Set(
+            (lastPlanned?.bosses || []).filter(b => b.targetHpB > 0.0001).map(b => b.weakness)
+        );
+        const planFullyCleared = fullyClearedThrough >= 3;
+        const unusedDetail = memberState
+            .filter(m => m.remainingAttacks > 0)
+            .map(m => {
+                const attrs = Object.keys(m.avail);
+                let reason;
+                if (attrs.length === 0) {
+                    reason = '出せる属性の残りなし (提出属性を使い切り)';
+                } else if (planFullyCleared) {
+                    reason = 'Lv3まで完走想定のため出番なし (余剰戦力)';
+                } else if (timeAware && earliestHourFor(m, openIdx) === null) {
+                    reason = '停止レベルの開放時刻以降に戦闘可能時間がない';
+                } else {
+                    // 停止レベルの生存ボスに対して実際に出せるか判定
+                    let conflictOnly = true;
+                    let anyAliveAttr = false;
+                    for (const k of attrs) {
+                        if (!lastAliveWeak.has(k)) continue;
+                        anyAliveAttr = true;
+                        const usable = m.avail[k].some(lo =>
+                            !(m.anyTeamRegistered && lo.team.length > 0 && lo.team.some(c => c && m.usedChars.has(c))));
+                        if (usable) { conflictOnly = false; break; }
+                    }
+                    if (!anyAliveAttr) reason = '残っている生存ボスの属性を未提出';
+                    else if (conflictOnly) reason = 'キャラ被り (同キャラは1日1回) で出せる編成なし';
+                    else if (m.mandatory.size > 0 && (m.remainingAttacks - m.lockedNow) <= 0) reason = '得意属性の必須枠を温存中';
+                    else reason = 'ボスHPが尽きた (割当先なし)';
+                }
+                return { name: m.name, remaining: m.remainingAttacks, reason };
+            });
+
         const candidateCount = memberState.length;
         const lastLv = levels[levels.length - 1];
         return {
@@ -329,6 +367,7 @@
             membersTimeUnknown,
             membersFlex,
             anyTimeConstrained,
+            unusedDetail,
             hoursUntilReset: timeAware ? (LAST_IDX - nowIdx + 1) : null,
         };
     }

@@ -11747,7 +11747,13 @@
                 warnings.push('現状の登録ダメージでは Lv3 完全攻略に火力が不足する想定です。火力(SLv/編成)の強化や凸の集中が必要。');
             }
             if (plan.unusedAttacks > 0) {
-                warnings.push(`未消化凸 ${plan.unusedAttacks}凸: 攻略が止まったレベル以降で使われなかった凸（属性ダメ未登録 or 進行不能）。`);
+                const detail = Array.isArray(plan.unusedDetail) ? plan.unusedDetail : [];
+                const detailHtml = detail.length > 0
+                    ? `<details style="margin-top:4px;"><summary style="cursor:pointer;font-weight:800;color:#8A6A2A;">内訳を見る (${detail.length}名)</summary>` +
+                      detail.map(d => `<div style="display:flex;gap:6px;margin-top:3px;padding-left:8px;"><span style="flex:none;font-weight:800;">${esc(d.name)}</span><span style="flex:none;color:#B45309;">残${d.remaining}凸</span><span style="flex:1;">— ${esc(d.reason)}</span></div>`).join('') +
+                      `</details>`
+                    : '';
+                warnings.push(`未消化凸 ${plan.unusedAttacks}凸。${detailHtml}`);
             }
             if (plan.membersNoData.length > 0) {
                 warnings.push(`属性ダメ未登録 ${plan.membersNoData.length}名: ${plan.membersNoData.slice(0, 5).map(esc).join('、')}${plan.membersNoData.length > 5 ? '...' : ''}（本人にマイページからの登録依頼を）`);
