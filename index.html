@@ -15051,12 +15051,28 @@
             }, 1000);
         }
 
+        // Supabase モジュールの準備待ち。
+        // supabase-client.js は CDN フォールバックのため top-level await を含み、
+        // Safari/WebKit は TLA モジュールの完了を DOMContentLoaded が待たない。
+        // そのまま autoLoadData() すると supabaseXxx が未定義のレースになり
+        // 「起動時に3回に1回読み込み失敗 (手動更新で直る)」の症状が出るため、
+        // ready になるまで最大8秒ポーリングしてから起動処理を進める。
+        async function _waitSupabaseReady(maxMs = 8000) {
+            const t0 = Date.now();
+            while (typeof window.supabaseLoadLatestSeasons !== 'function') {
+                if (Date.now() - t0 > maxMs) return false;   // 真の読込失敗 → 従来フォールバック + バナー
+                await new Promise(r => setTimeout(r, 120));
+            }
+            return true;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
             initSpIcons();   // data-sp-icon の SVG 流し込み
             _watchSpIcons();  // 以後の動的描画分も自動適用
             _watchSupabaseModule();   // サーバー接続モジュールの読込失敗を検知してバナー表示
             _wrapAiVisionSpinner();   // 全画像認識に共通の解析中スピナーを付ける
+            await _waitSupabaseReady();   // ← モジュール読込との起動レースを防ぐ
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
