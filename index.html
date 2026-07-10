@@ -2986,6 +2986,7 @@
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最適凸プラン算出</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button id="opsPlanStartModeBtn" onclick="toggleOpsPlanStartMode()" title="プランの起点時刻: 当日中は「今から」、前日の準備は「朝5時から」でレイド日フルのプランを組めます" style="padding:7px 11px;border-radius:8px;border:1px dashed rgba(20,22,26,0.18);background:#fff;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">🕐 今から</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;"><span data-sp-icon="users" data-sp-size="12"></span> 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                         <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
@@ -11510,12 +11511,32 @@
         }
 
         // 中核ロジックは js/optimal-plan.js の computeOptimalPlanCore (純関数・単体テストあり)
+        // プランの起点時刻モード:
+        //   'now' = 現在時刻から (当日運用)
+        //   'day' = 朝5時(リセット直後)から — 前日の夜に翌日フルのプランを準備できる
+        let _opsPlanStartMode = 'now';
+        function toggleOpsPlanStartMode() {
+            _opsPlanStartMode = _opsPlanStartMode === 'now' ? 'day' : 'now';
+            const btn = document.getElementById('opsPlanStartModeBtn');
+            if (btn) {
+                const day = _opsPlanStartMode === 'day';
+                btn.textContent = day ? '🌅 朝5時から' : '🕐 今から';
+                btn.style.background = day ? 'rgba(245,158,11,0.10)' : '#fff';
+                btn.style.color = day ? '#B45309' : '#5A6068';
+                btn.style.borderColor = day ? 'rgba(245,158,11,0.45)' : 'rgba(20,22,26,0.18)';
+            }
+            if (_opsLastPlan) {
+                // 直前と同じ対象範囲で再算出
+                computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
+            }
+        }
         function computeOptimalPlan(options = {}) {
             if (!_opsDashboardCache) return null;
             const { season, bosses, players } = _opsDashboardCache;
             return window.computeOptimalPlanCore({
                 season, bosses, players,
-                currentSlot: getCurrentSlotJST(),
+                // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン
+                currentSlot: _opsPlanStartMode === 'day' ? 'h05' : getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
                 timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
             });
