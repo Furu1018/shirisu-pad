@@ -10471,7 +10471,6 @@
                 const favSet = new Set(p.strong_attributes || []);
                 const favChips = ATTRS
                     .filter(a => favSet.has(a.key))
-                    .slice(0, 3)
                     .map(a => `<img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" title="${a.name}PT 得意" class="dc-rem-fav-chip" style="width:14px;height:14px;background:transparent;">`)
                     .join('');
                 return `
