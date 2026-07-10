@@ -261,9 +261,9 @@ test('凸は「そのレベルが開いてから最も早い凸可能時間帯�
     assert.equal(plan.levels[0].clearHourLabel, '21時');
 });
 
-test('レベル依存: Lv2 の凸は Lv1 のクリア想定時刻以降に割り当てられる', () => {
-    // Lv1 は21時の人しか凸できない → Lv2 は21時以降。
-    // 「朝だけの人」は火力があっても Lv2 に時間的に参加できない。
+test('レベル依存: 時間外の人も ⏳ミスマッチとして組み込まれる (除外しない)', () => {
+    // Lv1 は21時の人しか時間内に凸できない。「朝だけの人」(h09) は
+    // 14時時点で希望時間を過ぎているが、除外せずベストエフォートで組み込む。
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 5 })],
         [
@@ -273,16 +273,18 @@ test('レベル依存: Lv2 の凸は Lv1 のクリア想定時刻以降に割り
         ],
         { currentSlot: 'h14' },
     ));
-    // Lv1: 律速抑制ペナルティ込みでも「夜の人」(10B, オーバーキル5B) より
-    // 朝だけの人は 14時時点で h09 が過ぎており時間対象外。
-    const lv1 = plan.levels[0];
-    assert.equal(lv1.levelCleared, true);
-    // Lv2: openIdx = Lv1 クリア時刻。朝だけの人は参加不可、深夜の人 (23時) のみ。
-    const lv2 = plan.levels[1];
-    const names = lv2.bosses[0].attacks.map(a => a.memberName);
-    assert.ok(!names.includes('朝だけの人'), 'Lv2 に朝だけの人が入ってはいけない');
-    if (lv2.levelCleared) {
-        assert.equal(lv2.clearHourLabel, '23時');
+    assert.equal(plan.levels[0].levelCleared, true);
+    // 朝だけの人がどこかのレベルで使われた場合、必ず ⏳ミスマッチ扱いで
+    // 時刻ラベルなし・律速にならない
+    const all = plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks));
+    const asa = all.filter(a => a.memberName === '朝だけの人');
+    assert.ok(asa.length > 0, '朝だけの人も計画に組み込まれるはず');
+    for (const a of asa) {
+        assert.equal(a.timeMismatch, true);
+        assert.equal(a.flex, true);
+        assert.equal(a.hourLabel, null);
+        assert.equal(a.isBottleneck, false);
+        assert.equal(a.nearestHourLabel, '9時');
     }
 });
 
@@ -302,17 +304,20 @@ test('律速マーク: レベルのクリア時刻を決める凸に isBottlenec
     assert.equal(fast.isBottleneck, false);
 });
 
-test('時間不足: 火力はあるのに時間内に凸できないと timeConstrained が立つ', () => {
-    // 現在22時。凸可能が「過ぎた時間」しかない人だけ → 時間不足
+test('時間が合わない人も最寄り扱いで必ず組み込まれる (⏳ミスマッチ)', () => {
+    // 現在22時。凸可能が「過ぎた時間」しかない人でも、除外せず組み込む
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 10 })],
         [player('もう寝た人', { fire: 100 }, { availableSlots: ['h09', 'h10'] })],
         { currentSlot: 'h22' },
     ));
     const b1 = plan.levels[0].bosses[0];
-    assert.equal(b1.cleared, false);
-    assert.equal(b1.timeConstrained, true, '火力不足ではなく時間不足の判定になるはず');
-    assert.equal(plan.anyTimeConstrained, true);
+    assert.equal(b1.cleared, true, '時間外でもベストエフォートで削り切る想定になる');
+    const atk = b1.attacks[0];
+    assert.equal(atk.memberName, 'もう寝た人');
+    assert.equal(atk.timeMismatch, true);
+    assert.equal(atk.nearestHourLabel, '10時');
+    assert.equal(b1.timeConstrained, false);
 });
 
 test('凸可能時間 未登録のメンバーは「いつでも可」+ timeUnknown フラグ', () => {

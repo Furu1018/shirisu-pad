@@ -11487,7 +11487,7 @@
                     ctx.textAlign = 'left';
                     let cx = PAD + TW;
                     r.cells.forEach((cell, ci) => {
-                        const c = attrColor(model.bosses[ci].attribute);
+                        const c = attrColor(model.bosses[ci].weakness);   // チップは持っていくPT属性の色
                         let cy0 = y + 6;
                         cell.attacks.forEach(a => { drawChip(a, cx + 4, cy0, BW - 8, c); cy0 += chipUnit(a); });
                         if (cell.clears) {
@@ -11931,7 +11931,9 @@
                     cells.push(`<div title="${r.flexRow ? '隙間時間型: 時間帯は本人の都合次第' : ''}" style="font-size:10.5px;font-weight:900;color:${labelColor};text-align:right;padding:7px 4px 0 0;border-top:1px solid rgba(20,22,26,0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
                     for (const { bm, ci } of visible) {
                         const cell = r.cells[ci];
-                        const c = DC_ATTR_COLORS[bm.attribute] || '#A4AAB0';
+                        // メンバーチップは「持っていくPT属性 (弱点)」の色にする:
+                        // 灼熱ボスの列でも中の人は水冷PTで凸るので青、が直感に合う
+                        const c = DC_ATTR_COLORS[bm.weakness] || '#A4AAB0';
                         const chips = cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
                         const clearMark = cell.clears ? '<div style="font-size:10px;font-weight:900;color:#18C26B;text-align:center;">💀撃破</div>' : '';
                         cells.push(`<div style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(20,22,26,0.05);${isNow ? 'background:rgba(30,120,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
