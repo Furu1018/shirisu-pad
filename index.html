@@ -2952,7 +2952,10 @@
 
             <!-- ③ 残り戦闘可能メンバー (ClaudeDesign 準拠の優先度セクション + 5属性 grid 行) -->
             <div class="dc-card">
-                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:13px;">残り戦闘可能メンバー</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">残り戦闘可能メンバー</div>
+                    <button id="opsRemModeBtn" onclick="handleOpsRemainingModeToggle()" title="各属性の数値表示を ダメージ(B) ⇄ ふるり値 (SLv補正・基準者比) で切り替え" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:10.5px;font-weight:800;cursor:pointer;">⚖️ ふるり値で見る</button>
+                </div>
                 <!-- ベースフィルタ (3ピル, 排他選択) -->
                 <div style="display:flex;gap:6px;">
                     <button class="dc-rem-base" data-base-filter="all"            onclick="handleOpsRemainingFilterPick('all')"><span data-sp-icon="users" data-sp-size="13"></span> 全員</button>
@@ -10333,6 +10336,29 @@
             renderOpsRemainingList();
         }
 
+        // 残凸一覧の数値モード: ダメージ(B) ⇄ ふるり値 (SLv補正で基準者と比較した相対値)
+        let _opsRemainingMode = 'dmg';
+        async function handleOpsRemainingModeToggle() {
+            if (_opsRemainingMode === 'dmg') {
+                const base = await _loadMockRadarBase();
+                if (!base || !slvRatioTable) {
+                    showNotification(`❌ ふるり値の基準データ (${fururiBasePlayerName}の模擬提出とSLv) が読み込めませんでした`);
+                    return;
+                }
+                _opsRemainingMode = 'fururi';
+            } else {
+                _opsRemainingMode = 'dmg';
+            }
+            const btn = document.getElementById('opsRemModeBtn');
+            if (btn) {
+                const fururi = _opsRemainingMode === 'fururi';
+                btn.textContent = fururi ? '💥 ダメージで見る' : '⚖️ ふるり値で見る';
+                btn.style.background = fururi ? '#1E78F0' : '#F1F2F4';
+                btn.style.color = fururi ? '#fff' : '#5A6068';
+            }
+            renderOpsRemainingList();
+        }
+
         function renderOpsRemainingList() {
             if (!_opsDashboardCache) return;
             const { players, bosses } = _opsDashboardCache;
@@ -10457,13 +10483,39 @@
                 { rem: 2, label: '2凸残', dot: '#F5A623' },
                 { rem: 1, label: '1凸残', dot: '#FF3D44' },
             ];
+            // ふるり値: 基準者の同属性模擬ダメージを自分のSLvにスケールした値との比。
+            // 1.00 = 基準者相当。基準データ or SLv が無い属性は '—'
+            const fururiOf = (p, attrKey, dmgB) => {
+                const base = _mockRadarBase;
+                const slv = Number(p.syncLevel) || 0;
+                const baseDmg = base?.dmgByAttr?.[attrKey];
+                const baseSlv = base?.slv;
+                if (!slv || !(baseDmg > 0) || !baseSlv || !slvRatioTable) return null;
+                const br = slvRatioTable[String(baseSlv)];
+                const pr = slvRatioTable[String(slv)];
+                if (!br || !pr) return null;
+                const scaled = baseDmg * pr / br;
+                return scaled > 0 ? dmgB / scaled : null;
+            };
+            const fururiMode = _opsRemainingMode === 'fururi';
             const renderCell = (p, attr, used) => {
                 const v = p.damagesByAttr?.[attr.key];
                 if (v == null || v <= 0) return `<div class="dc-rem-cell unset">─</div>`;
-                if (used.has(attr.key)) {
-                    return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${Number(v).toFixed(1)}</div>`;
+                let text, tip;
+                if (fururiMode) {
+                    const s = fururiOf(p, attr.key, Number(v));
+                    text = s != null ? s.toFixed(2) : '—';
+                    tip = s != null
+                        ? `${attr.name}PT ふるり値 ${s.toFixed(2)} (ダメージ ${Number(v).toFixed(1)}B / SLv${p.syncLevel || '?'})`
+                        : `${attr.name}PT ふるり値算出不可 (基準データかSLv不足)`;
+                } else {
+                    text = Number(v).toFixed(1);
+                    tip = `${attr.name}PT ${Number(v).toFixed(1)}B`;
                 }
-                return `<div class="dc-rem-cell" style="color:#14161A;background:${attr.color}1A;" title="${attr.name}PT ${Number(v).toFixed(1)}B">${Number(v).toFixed(1)}</div>`;
+                if (used.has(attr.key)) {
+                    return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${text}</div>`;
+                }
+                return `<div class="dc-rem-cell" style="color:#14161A;background:${attr.color}1A;" title="${tip}">${text}</div>`;
             };
             const renderMemberRow = (p) => {
                 const used = usedAttrsFor(p);
