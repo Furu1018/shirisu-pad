@@ -11237,7 +11237,11 @@
                             ctx.font = f(13, 900); ctx.fillStyle = c;
                             ctx.fillText(`${i + 1}凸`, PAD + 24, cy + 1);
                             // 時間帯
-                            if (a.flex) {
+                            if (a.timeMismatch) {
+                                ctx.font = f(15, 800);
+                                ctx.fillStyle = COL.amber;
+                                ctx.fillText(`⚠希望${a.nearestHourLabel || '?'}`, PAD + 74, cy + 1);
+                            } else if (a.flex) {
                                 ctx.font = f(15, 800);
                                 ctx.fillStyle = COL.amber;
                                 ctx.fillText('⏳隙間', PAD + 74, cy + 1);
@@ -11682,7 +11686,9 @@
                                 ? renderTeamSnippet(a.team, { size: 18 })
                                 : `<span style="font-size:10.5px;font-weight:800;color:#F59E0B;" title="編成未登録 (衝突未検出)">⚠未登録</span>`;
                             const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(a.memberId, a.memberName, 26) : '';
-                            const timeChip = a.flex
+                            const timeChip = a.timeMismatch
+                                ? `<span style="flex:none;font-size:10.5px;font-weight:800;color:#B45309;background:rgba(245,158,11,0.14);padding:2px 7px;border-radius:999px;white-space:nowrap;" title="戦闘可能時間がレベル開放と合わないため、最寄りの希望時間ベースで組み込み (本人と時間調整を)">⚠時間外·希望${a.nearestHourLabel || '?'}</span>`
+                                : a.flex
                                 ? `<span style="flex:none;font-size:10.5px;font-weight:800;color:#B45309;background:rgba(245,158,11,0.10);padding:2px 7px;border-radius:999px;white-space:nowrap;" title="隙間時間型: 時間帯は本人の都合次第 (3凸は行う)">⏳隙間</span>`
                                 : a.hourLabel
                                 ? (a.isBottleneck
@@ -11790,8 +11796,9 @@
             const border = a.isBottleneck ? '1.5px solid #FF3D44' : (a.timeUnknown ? '1px dashed #F59E0B' : `1px solid ${color}44`);
             const bg = hl ? 'rgba(30,120,240,0.14)' : `${color}12`;
             const mark = a.isBottleneck ? '<span style="flex:none;color:#E23036;">⏱</span>'
+                : (a.timeMismatch ? `<span style="flex:none;color:#B45309;" title="戦闘可能時間がレベル開放と合わないため最寄り扱い (希望: ${a.nearestHourLabel || '?'})">⚠</span>`
                 : (a.flex ? '<span style="flex:none;color:#B45309;" title="隙間時間型">⏳</span>'
-                : (a.timeUnknown ? '<span style="flex:none;color:#B45309;">?</span>' : ''));
+                : (a.timeUnknown ? '<span style="flex:none;color:#B45309;">?</span>' : '')));
             const label = opts.label || esc(a.memberName);
             const avatar = (typeof renderAvatarHtml === 'function') ? `<span style="flex:none;display:inline-flex;">${renderAvatarHtml(a.memberId, a.memberName, 15)}</span>` : '';
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
