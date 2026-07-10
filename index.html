@@ -2670,7 +2670,7 @@
                     <!-- 🧩 3属性まとめ選び: キャラ被りなしで両立できる人気PTの組み合わせ提案 -->
                     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #F0F1F3;">
                         <div style="font-size:11.5px;font-weight:900;color:#14161A;"><span data-sp-icon="blocks" data-sp-size="13"></span> 3属性まとめ選び</div>
-                        <p style="margin:3px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">凸する3属性を選ぶと、キャラ被りなしで両立できる人気PTの組み合わせを提案します (同じキャラは1日1回まで)。</p>
+                        <p style="margin:3px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">凸する3属性を選ぶと、キャラ被りなしで両立できる人気PTの組み合わせを提案します (同じキャラは1日1回まで)。気に入った編成は「反映」で1属性ずつ自分の編成に取り込めます。</p>
                         <div id="popularComboTabs" style="display:flex;gap:5px;margin-bottom:9px;"></div>
                         <div id="popularComboBody"></div>
                     </div>
@@ -6523,7 +6523,9 @@
                     <span style="flex:none;width:20px;font-size:11px;font-weight:900;color:${i === 0 ? a.color : '#B6BBC1'};">#${i + 1}</span>
                     <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;">${g.team.map(c => _charIconHtml(c, 28)).join('')}</div>
                     <span style="flex:none;font-size:10px;font-weight:800;color:#5A6068;text-align:right;line-height:1.3;" title="このPTを${g.count}/${st.total}件の提出が使用">${g.count}人使用<br><span style="color:#A4AAB0;">${Math.round(g.count / st.total * 100)}%</span></span>
-                    ${opts.copyable ? `<button onclick="applyPopularTeamFromAttr('${attrKey}', 'pt${i}')" title="このPTを編成枠にコピー" style="flex:none;padding:5px 9px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️</button>` : ''}
+                    ${opts.copyable
+                        ? `<button onclick="applyPopularTeamFromAttr('${attrKey}', 'pt${i}')" title="このPTを編成枠にコピー" style="flex:none;padding:5px 9px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️</button>`
+                        : `<button onclick="applyPopularTeamToSelf('${attrKey}', 'pt${i}')" title="このPTを自分の${a.name}PT編成①に反映" style="flex:none;padding:5px 9px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">反映</button>`}
                 </div>`).join('');
 
             const cleanTeam = (row) => (row?.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
@@ -6536,7 +6538,9 @@
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
                         ${labelHtml}
                         <span style="font-size:10.5px;font-weight:800;color:#14161A;">${escapeHtml(row.players?.name || '?')}${detailHtml}</span>
-                        ${opts.copyable ? `<button onclick="applyPopularTeamFromAttr('${attrKey}', '${kind}')" style="margin-left:auto;flex:none;padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️ コピー</button>` : ''}
+                        ${opts.copyable
+                            ? `<button onclick="applyPopularTeamFromAttr('${attrKey}', '${kind}')" style="margin-left:auto;flex:none;padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️ コピー</button>`
+                            : `<button onclick="applyPopularTeamToSelf('${attrKey}', '${kind}')" title="この編成を自分の編成①に反映" style="margin-left:auto;flex:none;padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">反映</button>`}
                     </div>
                     <div style="display:flex;gap:4px;flex-wrap:wrap;">${cleanTeam(row).map(c => _charIconHtml(c, 30)).join('')}</div>
                 </div>` : '';
@@ -6560,6 +6564,25 @@
                 ${dmgHtml}
                 ${fururiHtml}
                 ${fururiNote}`;
+        }
+        // 人気編成を自分の編成① (player_damages.characters slot=1) に直接反映 (マイページ用)
+        async function applyPopularTeamToSelf(attrKey, kind) {
+            const id = getCurrentIdentity();
+            if (!id?.id) { showNotification('プレイヤーを選択してください'); return; }
+            const entry = _popularBestTeams[attrKey] || {};
+            const team = kind.startsWith('pt')
+                ? (entry.pts || [])[Number(kind.slice(2))] || []
+                : entry[kind] || [];
+            if (team.length === 0) { showNotification('編成データがありません'); return; }
+            const a = PT_ATTRS.find(x => x.key === attrKey);
+            if (!confirm(`${a?.name || attrKey}PT の編成①に反映しますか？\n${team.join(' / ')}\n(ダメージ値はそのまま。編成のみ上書き)`)) return;
+            try {
+                await window.supabaseSaveTeamForAttribute(id.id, attrKey, team, 1);
+                showNotification(`✅ ${a?.name || attrKey}PT の編成に反映しました`);
+                if (typeof renderMyDamagePanels === 'function') renderMyDamagePanels(id);
+            } catch (e) {
+                showNotification(`❌ 反映失敗: ${e?.message || e}`);
+            }
         }
         // トップ編成を編成編集モーダルの5枠へ流し込む (kind: 'dmg' | 'fururi' | 'pt0'〜'pt2')
         function applyPopularTeamFromAttr(attrKey, kind = 'dmg') {
@@ -6672,7 +6695,7 @@
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
                         <span style="font-size:11px;font-weight:900;color:${ci === 0 ? '#1E78F0' : '#B6BBC1'};">${ci === 0 ? '🥇 おすすめ' : '🥈 次点'}</span>
                         <span style="font-size:10px;font-weight:800;color:#A4AAB0;">計${c.uses}件の提出で使用 · キャラ被りなし ✓</span>
-                        <button onclick="applyPopularCombo(${ci})" title="3属性の編成枠にまとめて反映" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️ まとめて反映</button>
+
                     </div>
                     ${c.teams.map((g, i) => {
                         const a = PT_ATTRS.find(x => x.key === attrs[i]);
@@ -6680,23 +6703,22 @@
                             <img loading="lazy" decoding="async" src="${a.icon}" title="${a.name}PT" style="width:16px;height:16px;flex:none;">
                             <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;">${g.team.map(ch => _charIconHtml(ch, 26)).join('')}</div>
                             <span style="flex:none;font-size:9.5px;font-weight:800;color:#A4AAB0;">${g.count}人使用</span>
+                            <button onclick="applyPopularComboRow(${ci}, ${i})" title="この編成を自分の${a.name}PT編成①に反映" style="flex:none;padding:4px 8px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:9.5px;font-weight:800;cursor:pointer;">反映</button>
                         </div>`;
                     }).join('')}
                 </div>`).join('');
         }
-        // 提案された3PTを自分の編成 (player_damages.characters) にまとめて保存
-        async function applyPopularCombo(idx) {
+        // 提案コンボのうち1属性ぶんだけを自分の編成①に反映 (1編成ずつ選べる方が使いやすい)
+        async function applyPopularComboRow(comboIdx, rowIdx) {
             const id = getCurrentIdentity();
             if (!id?.id) { showNotification('プレイヤーを選択してください'); return; }
-            const set = _popularComboSets[idx];
-            if (!set) return;
-            const names = set.map(s => PT_ATTRS.find(a => a.key === s.attr)?.name).join('・');
-            if (!confirm(`${names} の3属性に、この組み合わせの編成を反映しますか？\n(各属性の編成5キャラが上書きされます。ダメージ値はそのまま)`)) return;
+            const s = (_popularComboSets[comboIdx] || [])[rowIdx];
+            if (!s) return;
+            const a = PT_ATTRS.find(x => x.key === s.attr);
+            if (!confirm(`${a?.name || s.attr}PT の編成①に反映しますか？\n${s.team.join(' / ')}\n(ダメージ値はそのまま。編成のみ上書き)`)) return;
             try {
-                for (const s of set) {
-                    await window.supabaseSaveTeamForAttribute(id.id, s.attr, s.team);
-                }
-                showNotification(`✅ ${names} の編成に反映しました`);
+                await window.supabaseSaveTeamForAttribute(id.id, s.attr, s.team, 1);
+                showNotification(`✅ ${a?.name || s.attr}PT の編成に反映しました`);
                 if (typeof renderMyDamagePanels === 'function') renderMyDamagePanels(id);
             } catch (e) {
                 showNotification(`❌ 反映失敗: ${e?.message || e}`);
