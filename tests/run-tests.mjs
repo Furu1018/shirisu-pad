@@ -93,7 +93,7 @@ test('火力不足だとそのレベルで停止し、以降のレベルは計�
 });
 
 test('Lv1〜3 を通しで攻略できると fullyClearedThrough=3', () => {
-    // Lv1 残5B / Lv2 lord=226.26B / Lv3 lord=349.23B。各レベル1人が一撃で処理。
+    // Lv1 残5B / Lv2 lord=149.78B / Lv3 lord=292.45B。各レベル1人が一撃で処理。
     const plan = compute(makeInput(
         [boss(1, 'fire', { remainingB: 5 })],
         [
@@ -178,7 +178,7 @@ test('onlyAvailableNow: 現スロットに居ないメンバーは対象外', ()
 
 test('current_level=2 開始時は Lv2 の残HPが目標になる', () => {
     const plan = compute(makeInput(
-        [boss(1, 'fire', { remainingB: 50, totalB: 226.2627204 })],
+        [boss(1, 'fire', { remainingB: 50, totalB: 149.7844188 })],
         [player('A', { fire: 60 })],
         { currentLevel: 2 },
     ));

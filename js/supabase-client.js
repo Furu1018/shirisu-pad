@@ -864,10 +864,11 @@ window.supabaseUpdateAttackDamage = async function (attackId, damageRaw) {
 };
 
 // 各 HARD LV の標準HP (raw 値)。supabaseCreateSeason の HARD_LV1_HP と一致させること
+// lord (B1/B2/B4) が低HP、tyrant (B3/B5) が高HP
 const _HARD_LEVEL_HP = {
-    1: { tyrant: 99856279200, lord: 150841813600 },
-    2: { tyrant: 149784418800, lord: 226262720400 },
-    3: { tyrant: 292445295750, lord: 349230901500 },
+    1: { lord: 99856279200, tyrant: 150841813600 },
+    2: { lord: 149784418800, tyrant: 226262720400 },
+    3: { lord: 292445295750, tyrant: 349230901500 },
 };
 // total_hp_raw からどのLVかを判定 (±5%許容で標準値にマッチさせる)
 const _detectLevelFromHp = (tier, totalRaw, tolerance = 0.05) => {
@@ -1136,7 +1137,7 @@ window.supabaseCreateSeason = async function (payload) {
 
     const ATTR_FROM_CODE = { 'H.S.T.A.': 'fire', 'P.S.I.D.': 'water', 'D.M.T.R.': 'iron', 'Z.E.U.S.': 'electric', 'A.N.M.I.': 'wind' };
     const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
-    const HARD_LV1_HP = { tyrant: 99856279200, lord: 150841813600 };
+    const HARD_LV1_HP = { lord: 99856279200, tyrant: 150841813600 };   // lord=低HP / tyrant=高HP
 
     const isTest = !!payload.isTest;
 

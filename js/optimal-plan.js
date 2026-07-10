@@ -30,10 +30,12 @@
     'use strict';
 
     // レベル別ボスHP (B単位) ※ supabase-client.js の _HARD_LEVEL_HP と一致させること
+    // lord (B1/B2/B4) が低HP、tyrant (B3/B5) が高HP。
+    // ※ 過去に lord/tyrant の値が逆に定義されていた事故があるため、変更時は本番の実測と照合すること
     const HARD_LEVEL_HP_B = {
-        1: { tyrant: 99.8562792, lord: 150.8418136 },
-        2: { tyrant: 149.7844188, lord: 226.2627204 },
-        3: { tyrant: 292.44529575, lord: 349.2309015 },
+        1: { lord: 99.8562792, tyrant: 150.8418136 },
+        2: { lord: 149.7844188, tyrant: 226.2627204 },
+        3: { lord: 292.44529575, tyrant: 349.2309015 },
     };
 
     // レイド日の時間帯 (AM5時起点)。index.html の HOUR_ORDER と一致させること。
