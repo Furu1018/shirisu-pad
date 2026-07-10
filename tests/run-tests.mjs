@@ -208,6 +208,43 @@ test('3凸済みメンバーは候補に含まれない', () => {
     assert.equal(plan.levels[0].bosses[0].attacks.length, 0);
 });
 
+// ---- 得意属性の必須消化 ----------------------------------------------------------
+test('得意属性のボスが全滅済みでも他ボスに出せる (予約ロックアウト回帰)', () => {
+    // NOB: 得意3属性 (fire/water/electric) のボスは全て撃破済み。
+    // wind のボスだけ生存していて wind ダメージも提出済み → wind に出せるべき。
+    // 旧実装は 自由枠 = 3 - 必須3 = 0 で wind をスキップし、一切使われなかった。
+    const plan = compute(makeInput(
+        [
+            boss(1, 'fire', { remainingB: 0, totalB: 100 }),
+            boss(2, 'water', { remainingB: 0, totalB: 100 }),
+            boss(3, 'electric', { remainingB: 0, totalB: 100 }),
+            boss(4, 'wind', { remainingB: 10 }),
+        ],
+        [player('NOB', { fire: 20, water: 20, electric: 20, wind: 15 }, {
+            strong: ['fire', 'water', 'electric'],
+        })],
+    ));
+    const b4 = plan.levels[0].bosses.find(b => b.bossNumber === 4);
+    assert.equal(b4.cleared, true, 'wind ボスに割当てられるはず');
+    assert.equal(b4.attacks[0].memberName, 'NOB');
+});
+
+test('得意属性のボスが生きている間は枠が予約される (必須消化の本来動作)', () => {
+    // 得意 fire のボスが生存 → 残凸1のとき water には出さず fire に温存する
+    const plan = compute(makeInput(
+        [boss(1, 'water', { remainingB: 10 }), boss(2, 'fire', { remainingB: 10 })],
+        [player('A', { fire: 15, water: 15 }, {
+            strong: ['fire'],
+            attackCount: 2,               // 残凸1
+            attacks: [{ boss_number: 99 }, { boss_number: 98 }],   // 属性未消費扱いのダミー
+        })],
+    ));
+    const water = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    const fire = plan.levels[0].bosses.find(b => b.bossNumber === 2);
+    assert.equal(water.attacks.length, 0, '残り1凸は必須の fire に温存されるはず');
+    assert.equal(fire.attacks[0]?.memberName, 'A');
+});
+
 // ---- 時間考慮モード (timeAware) ------------------------------------------------
 console.log('\ntimeAware:');
 

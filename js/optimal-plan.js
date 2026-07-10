@@ -142,8 +142,8 @@
                     hourIdxs: (timeUnknown || (flexTime && rawSlots.length === 0)) ? null : rawSlots,   // null = いつでも可
                     timeUnknown,
                     flexTime,
-                    mandatory,                                                    // 未消化の必須得意属性
-                    freeSlots: Math.max(0, (3 - p.attackCount) - mandatory.size), // 必須以外に使える凸枠
+                    mandatory,      // 未消化の必須得意属性
+                    lockedNow: 0,   // このレベルで実際に予約する枠数 (レベルごとに再計算)
                 };
             });
 
@@ -187,6 +187,18 @@
             const levelBosses = [];
             let levelCleared = true;
             let levelClearIdx = openIdx;   // このレベルの想定クリア時間帯 (最も遅い凸)
+            // 必須得意属性の枠予約は「このレベルで生きているボスの弱点」に限る。
+            // 撃破済みボスの属性まで予約すると、得意属性が全滅済みのメンバーが
+            // 自由枠0で他ボスにも出せず、模擬提出があるのに一切使われなくなる。
+            const aliveWeakThisLevel = new Set();
+            for (const b of bosses) {
+                const t = (L === startLevel) ? ((b.remaining_hp_raw || 0) / 1e9)
+                    : (HARD_LEVEL_HP_B[L]?.[b.tier] ?? ((b.total_hp_raw || 0) / 1e9));
+                if (t > 0.0001 && b.weakness) aliveWeakThisLevel.add(b.weakness);
+            }
+            memberState.forEach(m => {
+                m.lockedNow = [...m.mandatory].filter(k => aliveWeakThisLevel.has(k)).length;
+            });
             for (const b of bosses) {
                 const tierHp = HARD_LEVEL_HP_B[L]?.[b.tier] ?? ((b.total_hp_raw || 0) / 1e9);
                 const targetHpB = (L === startLevel) ? ((b.remaining_hp_raw || 0) / 1e9) : tierHp;
@@ -198,8 +210,10 @@
                     for (const m of memberState) {
                         const list = m.avail[b.weakness];
                         if (m.remainingAttacks <= 0 || !list || list.length === 0) continue;
-                        // 得意属性の必須消化: 自由枠が尽きたら必須属性以外には出さない
-                        if (m.mandatory.size > 0 && !m.mandatory.has(b.weakness) && m.freeSlots <= 0) continue;
+                        // 得意属性の必須消化: 予約枠 (このレベルで消化可能な必須) を除いた
+                        // 自由枠が尽きたら、必須属性以外には出さない
+                        if (m.mandatory.size > 0 && !m.mandatory.has(b.weakness)
+                            && (m.remainingAttacks - m.lockedNow) <= 0) continue;
                         // キャラ衝突チェック: 割当済みキャラと被らない最初 (=最大ダメージ) のロードアウトを選ぶ
                         // (編成データが全く無い人はチェック対象外。データ揃ってる人だけ厳密判定)
                         let lo = null;
@@ -239,9 +253,12 @@
                     if (loIdx >= 0) pick.avail[b.weakness].splice(loIdx, 1);
                     if (pick.avail[b.weakness].length === 0) delete pick.avail[b.weakness];
                     pick.remainingAttacks--;
-                    // 得意属性の消化管理: 必須を消化 or 自由枠を消費
-                    if (pick.mandatory.has(b.weakness)) pick.mandatory.delete(b.weakness);
-                    else if (pick.mandatory.size > 0) pick.freeSlots--;
+                    // 得意属性の消化管理: 必須を消化したら予約も1つ解放
+                    // (自由枠の消費は remainingAttacks の減少で自然に反映される)
+                    if (pick.mandatory.has(b.weakness)) {
+                        pick.mandatory.delete(b.weakness);
+                        pick.lockedNow = Math.max(0, pick.lockedNow - 1);
+                    }
                     rem -= dmg;
                 }
                 const cleared = rem <= 0.0001;
