@@ -226,9 +226,9 @@
             content: '';
             position: absolute; inset: 0;
             z-index: -1;
-            background: rgba(255,255,255,0.94);
-            backdrop-filter: saturate(180%) blur(24px);
-            -webkit-backdrop-filter: saturate(180%) blur(24px);
+            /* backdrop-filter は iOS Safari で fixed 要素がスクロールに追従する
+               バグの引き金になるため使用しない (ほぼ不透過の白で代替) */
+            background: rgba(255,255,255,0.97);
         }
         @media (max-width: 767px) {
             .bottom-nav { display: flex; }
@@ -3969,6 +3969,7 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding-top:12px;border-top:1px solid #F0F1F3;">
                     <div style="font-size:10.5px;color:#A4AAB0;">最終同期: <span id="settingsLastSync" style="font-weight:700;color:#8A9097;">—</span></div>
                     <div style="font-size:10.5px;color:#A4AAB0;">データソース: <span id="settingsDataSource" style="font-weight:700;color:#8A9097;">—</span></div>
+                    <div style="font-size:10.5px;color:#A4AAB0;">ビルド: <span id="settingsBuildId" style="font-weight:700;color:#8A9097;font-family:ui-monospace,monospace;">—</span></div>
                 </div>
                 <!-- 旧 ID: 詳細を後方互換のため非表示で保持 -->
                 <div id="settingsSystemInfo" style="display:none;"></div>
@@ -15155,6 +15156,9 @@
             _watchSpIcons();  // 以後の動的描画分も自動適用
             _watchSupabaseModule();   // サーバー接続モジュールの読込失敗を検知してバナー表示
             _watchAppVersion();       // 古いキャッシュHTMLで起動した場合の検知 → 更新バナー
+            // 設定タブのビルドID表示 (どの版で動いているかの確認用)
+            const buildEl = document.getElementById('settingsBuildId');
+            if (buildEl) buildEl.textContent = document.querySelector('meta[name="app-build"]')?.content || 'dev';
             _wrapAiVisionSpinner();   // 全画像認識に共通の解析中スピナーを付ける
             await _waitSupabaseReady();   // ← モジュール読込との起動レースを防ぐ
             await loadSlvRatioTable();
