@@ -882,6 +882,44 @@ const _detectLevelFromHp = (tier, totalRaw, tolerance = 0.05) => {
 
 // ボスHPを更新（remaining / total を raw 値で）
 // 副作用: total_hp_raw が標準LVに合致した場合、season.current_level を最大値へ昇格 (レベルアップ自動化)
+// ===== 締め凸依頼のステータス管理 (22_finish_requests.sql が前提) =====
+// 依頼バッチの記録: 同ボスの旧依頼は入れ替え (最後に送った相手だけ追跡)
+window.supabaseSetFinishRequests = async function (seasonId, bossNumber, playerIds) {
+    if (!seasonId || !bossNumber || !Array.isArray(playerIds) || playerIds.length === 0) return;
+    await supabase.from('finish_requests').delete()
+        .eq('season_id', seasonId).eq('boss_number', bossNumber);
+    const { error } = await supabase.from('finish_requests').insert(
+        playerIds.map(pid => ({ season_id: seasonId, boss_number: bossNumber, player_id: pid }))
+    );
+    if (error) {
+        if (/finish_requests/.test(String(error.message))) {
+            throw new Error('supabase/22_finish_requests.sql を SQL Editor で適用してください');
+        }
+        throw error;
+    }
+};
+// シーズンの依頼一覧 (プレイヤー名つき)
+window.supabaseLoadFinishRequests = async function (seasonId) {
+    if (!seasonId) return [];
+    try {
+        const { data, error } = await supabase
+            .from('finish_requests')
+            .select('id, boss_number, player_id, status, requested_at, players(name)')
+            .eq('season_id', seasonId)
+            .order('requested_at', { ascending: true });
+        if (error) throw error;
+        return (data || []).map(r => ({ ...r, name: r.players?.name || '?' }));
+    } catch { return []; }   // テーブル未適用環境では空扱い
+};
+// 依頼への返答 (メンバー本人)
+window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, playerId, status) {
+    const { error } = await supabase
+        .from('finish_requests')
+        .update({ status, responded_at: new Date().toISOString() })
+        .eq('season_id', seasonId).eq('boss_number', bossNumber).eq('player_id', playerId);
+    if (error) throw error;
+};
+
 // ボス名の変更 (運営のボス編集パネルから)
 window.supabaseUpdateBossName = async function (seasonId, bossNumber, name) {
     const clean = (name || '').trim();
