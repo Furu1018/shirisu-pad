@@ -4758,7 +4758,7 @@
 
                 <h3>🎨 属性別ふるり値</h3>
                 <p>「全体（3凸合計）」のほか、属性ごとの切り替えで1凸単位のふるり値も確認できます。属性によって有利不利があるため、属性別に見ることでより精密な比較ができます。</p>
-                <p>基準者が凸していない属性については、模擬戦闘のスコアを基準値として登録しています。</p>
+                <p>基準者が凸していない属性や、締め凸で実ダメージが頭打ちになった属性については、模擬戦闘のスコアを基準値として登録しています (登録がある属性は実凸より模擬値を優先)。</p>
 
                 <h3>📝 属性表記について</h3>
                 <p>本サイトでは属性を「<strong>PT属性</strong>」基準で表記しています。例えば「灼熱PT 対 風圧」は、灼熱属性のPTで風圧属性のボス（A.N.M.I.）に挑むことを意味します。</p>
@@ -14845,9 +14845,12 @@
                     map[a.bossCode] = { damage: a.damage, slv: basePlayer.syncLevel };
                 }
             });
+            // 模擬スコア (fururi_simulation_scores) は登録があれば実凸より優先する。
+            // 基準者が締め凸をした属性は実凸ダメージが頭打ちで基準にならないため、
+            // 運営が模擬値を登録して差し替えられるようにする (未登録の属性の補完も兼ねる)
             const sim = (currentMetadata && currentMetadata.fururiSimulationScores) || {};
             Object.keys(sim).forEach(code => {
-                if (!map[code] && typeof sim[code] === 'number') {
+                if (typeof sim[code] === 'number' && sim[code] > 0) {
                     map[code] = { damage: sim[code], slv: basePlayer.syncLevel };
                 }
             });
