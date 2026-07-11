@@ -13831,8 +13831,17 @@
                 }),
             ]);
             (supRows || []).forEach(s => byMonth.set(s.key, { key: s.key, json: s.json, source: 'supabase' }));
-            // 同月キーは JSON で上書き = 正式データ優先
-            jsonRows.filter(Boolean).forEach(({ key, json }) => byMonth.set(key, { key, json, source: 'json' }));
+            // 同月キーは JSON で上書き = 正式データ優先。
+            // ただし Supabase 側にしか無い metadata (ふるり値の模擬スコア fururiSimulationScores、
+            // ユニオン順位 unionRank など) は JSON に引き継ぐ — BlaBlaLINK 出力の JSON には
+            // これらが含まれないため、上書きで消えると基準未構築や順位消失になる
+            jsonRows.filter(Boolean).forEach(({ key, json }) => {
+                const sup = byMonth.get(key);
+                if (sup?.source === 'supabase') {
+                    json.metadata = { ...(sup.json?.metadata || {}), ...(json.metadata || {}) };
+                }
+                byMonth.set(key, { key, json, source: 'json' });
+            });
 
             // 月キー降順で上位2件
             const found = [...byMonth.values()]
