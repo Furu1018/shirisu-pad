@@ -2966,6 +2966,7 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">残り戦闘可能メンバー</div>
+                    <button id="opsRemSortBtn" data-ops-only onclick="handleOpsRemainingSortToggle()" title="各セクション内の並びを 火力順 ⇄ 戦闘可能時間の早い順 で切り替え (運営モード限定)" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:10.5px;font-weight:800;cursor:pointer;">⏰ 時間順</button>
                     <button id="opsRemModeBtn" onclick="handleOpsRemainingModeToggle()" title="各属性の数値表示を ダメージ(B) ⇄ ふるり値 (SLv補正・基準者比) で切り替え" style="flex:none;padding:6px 11px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:10.5px;font-weight:800;cursor:pointer;">⚖️ ふるり値で見る</button>
                 </div>
                 <!-- ベースフィルタ (3ピル, 排他選択) -->
@@ -10417,6 +10418,19 @@
             renderOpsRemainingList();
         }
 
+        // 残凸一覧の並び順: dmg=火力順 / time=戦闘可能時間の早い順 (運営モード用)
+        let _opsRemainingSort = 'dmg';
+        function handleOpsRemainingSortToggle() {
+            _opsRemainingSort = _opsRemainingSort === 'dmg' ? 'time' : 'dmg';
+            const btn = document.getElementById('opsRemSortBtn');
+            if (btn) {
+                const t = _opsRemainingSort === 'time';
+                btn.textContent = t ? '💥 火力順' : '⏰ 時間順';
+                btn.style.background = t ? '#9B4DFF' : '#F1F2F4';
+                btn.style.color = t ? '#fff' : '#5A6068';
+            }
+            renderOpsRemainingList();
+        }
         // 残凸一覧の数値モード: ダメージ(B) ⇄ ふるり値 (SLv補正で基準者と比較した相対値)
         let _opsRemainingMode = 'dmg';
         async function handleOpsRemainingModeToggle() {
@@ -10547,7 +10561,42 @@
                 const vals = PT_ATTRS.map(a => Number(p.damagesByAttr[a.key]) || 0).filter(v => v > 0);
                 return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
             };
-            for (const n of [3, 2, 1]) groups[n].sort((a, b) => avgAttrDmg(b) - avgAttrDmg(a));
+            // ===== 戦闘可能時間 (運営モードの表示/ソート用) =====
+            const slotIdxsOf = (p) => (p.availableSlots || [])
+                .map(k => HOUR_ORDER.indexOf(parseInt(String(k).replace('h', ''), 10)))
+                .filter(i => i >= 0)
+                .sort((x, y) => x - y);
+            const firstIdxOf = (p) => {
+                const idxs = slotIdxsOf(p);
+                if (idxs.length > 0) return idxs[0];
+                return p.flexTime ? 900 : 999;   // ⏳隙間型 → 時間指定の後ろ、未登録 → 最後
+            };
+            const lastIdxOf = (p) => {
+                const idxs = slotIdxsOf(p);
+                return idxs.length > 0 ? idxs[idxs.length - 1] : 999;
+            };
+            // 「18〜23時 / 翌1〜3時」形式のレンジ文字列 (終端は排他 = その時刻まで可)
+            const availRangesOf = (p) => {
+                const idxs = slotIdxsOf(p);
+                if (idxs.length === 0) return '';
+                const fmt = (i) => { const h = HOUR_ORDER[i % 24]; return (h >= 0 && h <= 4) ? `翌${h}` : `${h}`; };
+                const fmtEnd = (i) => { const nx = i + 1; if (nx >= 24) return '翌5'; return fmt(nx); };
+                const ranges = [];
+                let s = idxs[0], prev = idxs[0];
+                for (let k = 1; k <= idxs.length; k++) {
+                    const cur = idxs[k];
+                    if (cur !== prev + 1) { ranges.push(`${fmt(s)}〜${fmtEnd(prev)}時`); s = cur; }
+                    prev = cur;
+                }
+                return ranges.join(' / ');
+            };
+            if (_opsRemainingSort === 'time') {
+                // 戦闘可能時間の早い順 (開始が同じなら終了が早い順 → 火力順)
+                for (const n of [3, 2, 1]) groups[n].sort((a, b) =>
+                    firstIdxOf(a) - firstIdxOf(b) || lastIdxOf(a) - lastIdxOf(b) || avgAttrDmg(b) - avgAttrDmg(a));
+            } else {
+                for (const n of [3, 2, 1]) groups[n].sort((a, b) => avgAttrDmg(b) - avgAttrDmg(a));
+            }
 
             // ===== ClaudeDesign 準拠 レイアウト =====
             // sticky 属性ヘッダ + 優先度別セクション + 5属性 grid 行
@@ -10614,6 +10663,10 @@
                             <div style="display:flex;align-items:center;gap:5px;margin-top:1px;">
                                 <span style="font-size:10px;color:#A4AAB0;font-variant-numeric:tabular-nums;flex:none;">残 ${p.remain}/3</span>
                                 <div style="display:flex;gap:2px;flex:none;">${favChips}</div>
+                            </div>
+                            <div data-ops-only style="display:flex;align-items:center;gap:4px;margin-top:2px;" title="${escapeHtml(availRangesOf(p) || (p.flexTime ? '隙間時間型 (時間指定なし)' : '戦闘可能時間 未登録'))}">
+                                <div style="display:flex;gap:1px;flex:none;">${HOUR_ORDER.map((h, i) => `<span style="width:2.5px;height:8px;border-radius:1px;background:${slotIdxsOf(p).includes(i) ? '#1E78F0' : '#E7E9EC'};"></span>`).join('')}</div>
+                                <span style="font-size:9px;font-weight:700;color:${p.flexTime && slotIdxsOf(p).length === 0 ? '#B45309' : '#8A9097'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${escapeHtml(p.flexTime && slotIdxsOf(p).length === 0 ? '⏳隙間型' : (availRangesOf(p) || '未登録'))}${p.flexTime && slotIdxsOf(p).length > 0 ? ' +⏳' : ''}</span>
                             </div>
                         </div>
                         <div style="display:flex;gap:2px;flex:none;">${cells}</div>
