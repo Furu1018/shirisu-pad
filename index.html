@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
+<!-- app-build はデプロイ時に GitHub Actions がコミットSHAへ置換する -->
 <head>
     <meta charset="UTF-8">
+    <meta name="app-build" content="dev">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>しりすこPAD</title>
     <link rel="icon" type="image/png" href="./icon.png">
@@ -212,12 +214,21 @@
             position: fixed;
             left: 0; right: 0; bottom: 0;
             z-index: 90;
-            background: rgba(255,255,255,0.94);
-            backdrop-filter: saturate(180%) blur(24px);
-            -webkit-backdrop-filter: saturate(180%) blur(24px);
             border-top: 1px solid rgba(20,22,26,0.06);
             padding: 10px 8px calc(env(safe-area-inset-bottom, 20px) + 8px);
             gap: 2px;
+            /* iOS Safari: fixed 要素に直接 backdrop-filter を付けると
+               リロード直後などにスクロールへ追従してしまう既知バグがあるため、
+               ブラーは ::before の別レイヤーに分離し、自身は合成レイヤーに固定する */
+            transform: translateZ(0);
+        }
+        .bottom-nav::before {
+            content: '';
+            position: absolute; inset: 0;
+            z-index: -1;
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: saturate(180%) blur(24px);
+            -webkit-backdrop-filter: saturate(180%) blur(24px);
         }
         @media (max-width: 767px) {
             .bottom-nav { display: flex; }
@@ -10664,6 +10675,9 @@
                         <label style="font-size:10px;color:#A4AAB0;">総HP (B)
                             <input type="number" step="0.01" min="0" id="opsBossEditTotal-${b.boss_number}" value="${totalB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;text-align:right;">
                         </label>
+                        <label style="grid-column:1/-1;font-size:10px;color:#A4AAB0;">ボス名
+                            <input type="text" id="opsBossEditName-${b.boss_number}" value="${escapeHtml(b.name || '')}" placeholder="例: モダニア" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;">
+                        </label>
                         <div style="grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;">
                             <button onclick="handleOpsBossSummaryEditCancel()" style="padding:5px 10px;border-radius:6px;border:none;background:#fff;color:#6B7178;font-size:11px;cursor:pointer;">取消</button>
                             <button onclick="handleOpsBossSummaryEditSave(${b.boss_number})" style="padding:5px 12px;border-radius:6px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">保存</button>
@@ -10707,6 +10721,7 @@
         async function handleOpsBossSummaryEditSave(bossNumber) {
             const remEl = document.getElementById(`opsBossEditRem-${bossNumber}`);
             const totalEl = document.getElementById(`opsBossEditTotal-${bossNumber}`);
+            const nameEl = document.getElementById(`opsBossEditName-${bossNumber}`);
             const remB = parseFloat(remEl.value);
             const totalB = parseFloat(totalEl.value);
             if (isNaN(remB) || isNaN(totalB) || remB < 0 || totalB < 0) { alert('数値で入力してください'); return; }
@@ -10715,12 +10730,18 @@
                 const ctx = await window.supabaseLoadActiveSeasonWithBosses();
                 if (!ctx?.season) throw new Error('アクティブシーズン無し');
                 await window.supabaseUpdateBossHp(ctx.season.id, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
+                // ボス名の変更 (空欄なら据え置き)
+                const newName = (nameEl?.value || '').trim();
+                const oldName = ctx.bosses?.find(x => x.boss_number === bossNumber)?.name || '';
+                if (newName && newName !== oldName) {
+                    await window.supabaseUpdateBossName(ctx.season.id, bossNumber, newName);
+                }
                 _opsBossEditingNum = null;
                 _opsDashboardCache = null;
                 _activeSeasonCache = null;
                 await renderOpsDashboard();
-                showNotification('ボスHPを更新しました');
-            } catch (e) { alert(`HP更新失敗: ${e?.message || e}`); }
+                showNotification('ボス情報を更新しました');
+            } catch (e) { alert(`更新失敗: ${e?.message || e}`); }
         }
 
         function handleOpsFinishAttrPick(attrKey) {
@@ -15070,6 +15091,29 @@
             window.callAiVision = wrapped;
         }
 
+        // ホーム画面PWA は start URL の HTML を強くキャッシュするため、
+        // まれに旧バージョンのページで起動することがある。
+        // 起動時に最新の index.html のビルドIDを no-store で取得して照合し、
+        // 自分が古ければ「更新」バナーを出す (クエリ付き遷移でキャッシュを回避)。
+        async function _watchAppVersion() {
+            try {
+                const mine = document.querySelector('meta[name="app-build"]')?.content || 'dev';
+                if (mine === 'dev') return;   // ローカル/未置換ビルドでは何もしない
+                const res = await fetch(`./index.html?vchk=${Date.now()}`, { cache: 'no-store' });
+                if (!res.ok) return;
+                const head = (await res.text()).slice(0, 4000);
+                const m = head.match(/name="app-build" content="([^"]+)"/);
+                const latest = m?.[1];
+                if (!latest || latest === 'dev' || latest === mine) return;
+                if (document.getElementById('appUpdateBanner')) return;
+                const b = document.createElement('div');
+                b.id = 'appUpdateBanner';
+                b.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top, 8px) + 8px);z-index:9998;background:#14161A;color:#fff;border-radius:14px;padding:12px 15px;font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;animation:dcFadeIn .2s ease;';
+                b.innerHTML = `<span style="flex:1;">✨ 新しいバージョンがあります (古いキャッシュで起動しています)</span><button onclick="location.href='./?u='+Date.now()" style="flex:none;padding:8px 14px;border-radius:10px;border:none;background:#fff;color:#14161A;font-size:12px;font-weight:900;cursor:pointer;">更新</button>`;
+                document.body.appendChild(b);
+            } catch { /* オフライン等は無視 */ }
+        }
+
         // supabase-client.js (ESモジュール) が CDN 障害などで読み込めないと
         // 全 supabaseXxx 関数が未定義になり各所で赤エラーになる。
         // 10秒待っても読み込まれない場合は原因と対処が分かるバナーを出す。
@@ -15110,6 +15154,7 @@
             initSpIcons();   // data-sp-icon の SVG 流し込み
             _watchSpIcons();  // 以後の動的描画分も自動適用
             _watchSupabaseModule();   // サーバー接続モジュールの読込失敗を検知してバナー表示
+            _watchAppVersion();       // 古いキャッシュHTMLで起動した場合の検知 → 更新バナー
             _wrapAiVisionSpinner();   // 全画像認識に共通の解析中スピナーを付ける
             await _waitSupabaseReady();   // ← モジュール読込との起動レースを防ぐ
             await loadSlvRatioTable();

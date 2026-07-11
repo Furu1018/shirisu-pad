@@ -30,6 +30,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Inject build id
+        # 旧キャッシュHTML検知用: <meta name="app-build" content="dev"> をコミットSHAへ置換
+        run: sed -i "s/name=\"app-build\" content=\"dev\"/name=\"app-build\" content=\"${GITHUB_SHA::12}\"/" index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

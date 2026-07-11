@@ -882,6 +882,18 @@ const _detectLevelFromHp = (tier, totalRaw, tolerance = 0.05) => {
 
 // ボスHPを更新（remaining / total を raw 値で）
 // 副作用: total_hp_raw が標準LVに合致した場合、season.current_level を最大値へ昇格 (レベルアップ自動化)
+// ボス名の変更 (運営のボス編集パネルから)
+window.supabaseUpdateBossName = async function (seasonId, bossNumber, name) {
+    const clean = (name || '').trim();
+    if (!seasonId || !bossNumber || !clean) return;
+    const { error } = await supabase
+        .from('bosses')
+        .update({ name: clean })
+        .eq('season_id', seasonId)
+        .eq('boss_number', bossNumber);
+    if (error) throw error;
+};
+
 window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, remainingRaw) {
     if (totalRaw < 0 || remainingRaw < 0) throw new Error('HP は0以上で指定');
     if (remainingRaw > totalRaw) throw new Error('残HP は総HP を超えられません');
