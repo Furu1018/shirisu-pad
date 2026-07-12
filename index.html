@@ -11207,7 +11207,7 @@
             if (!ok) return;
             try {
                 const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds: ids });
-                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
+                showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
                 // 依頼ステータスの追跡を開始 (確認中として記録 → ボスカードに表示)
                 try {
                     const seasonId = _opsDashboardCache?.season?.id;
@@ -11233,7 +11233,7 @@
             if (!ok) return;
             try {
                 const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds });
-                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
+                showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
                 // 依頼ステータスの追跡を開始
                 try {
                     const seasonId = _opsDashboardCache?.season?.id;
@@ -12766,7 +12766,7 @@
                     url: './?tab=mypage',
                     playerIds: targets.map(r => r.playerId),
                 });
-                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
+                showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             }
@@ -12836,7 +12836,7 @@
                     url: './?tab=mypage',
                     playerIds: targets.map(r => r.id),
                 });
-                showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
+                showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             }
@@ -12964,7 +12964,7 @@
                     url: './',
                     ignoreAvailability: true,  // 運営による全員配信は時間帯設定を無視
                 });
-                const parts = [`✅ ${res.sent}/${res.target} 件 送信完了`];
+                const parts = [`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`];
                 if (res.removed) parts.push(`(期限切れ${res.removed}件削除)`);
                 set(parts.join(' '));
             } catch (e) {
