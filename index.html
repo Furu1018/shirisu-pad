@@ -10655,40 +10655,47 @@
                     .filter(a => favSet.has(a.key))
                     .map(a => `<img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" title="${a.name}PT 得意" class="dc-rem-fav-chip" style="width:14px;height:14px;background:transparent;">`)
                     .join('');
-                return `
-                    <div class="dc-rem-row">
-                        <div style="flex:none;width:28px;height:28px;">${renderAvatarHtml(p, 28)}</div>
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</div>
-                            <div style="display:flex;align-items:center;gap:5px;margin-top:1px;">
-                                <span style="font-size:10px;color:#A4AAB0;font-variant-numeric:tabular-nums;flex:none;">残 ${p.remain}/3</span>
-                                <div style="display:flex;gap:2px;flex:none;">${favChips}</div>
-                            </div>
-                            ${(() => {
-                                // メーター表示 (運営モード): 時間テキストは廃止し、
-                                // 目盛り (5/12/18/翌0) 付きの大きめメーターだけで判読できるようにする。
-                                // 複数の時間群 (例: 7〜10時と19〜22時) もそのまま全て見える。
-                                const idxSet = new Set(slotIdxsOf(p));
-                                if (idxSet.size === 0) {
-                                    const t = p.flexTime ? '⏳隙間型 (時間指定なし)' : '戦闘可能時間 未登録';
-                                    return `<div data-ops-only style="margin-top:2px;font-size:9px;font-weight:800;color:${p.flexTime ? '#B45309' : '#B6BBC1'};">${p.flexTime ? '⏳隙間型' : '未登録'}</div>`;
-                                }
-                                const SEGS = [[0, 7, '5'], [7, 13, '12'], [13, 19, '18'], [19, 24, '翌0']];   // 6時間区切り (5時起点)
-                                const CELL = 5, GAP = 1, SEGGAP = 4;
-                                const meter = SEGS.map(([s, e]) =>
-                                    `<div style="display:flex;gap:${GAP}px;">${HOUR_ORDER.slice(s, e).map((h, k) =>
-                                        `<span style="width:${CELL}px;height:10px;border-radius:1.5px;background:${idxSet.has(s + k) ? '#1E78F0' : '#E7E9EC'};"></span>`).join('')}</div>`
-                                ).join(`<div style="width:${SEGGAP}px;flex:none;"></div>`);
-                                const axis = SEGS.map(([s, e, label]) =>
-                                    `<span style="width:${(e - s) * (CELL + GAP) - GAP}px;font-size:7.5px;font-weight:700;color:#C9CED3;line-height:1;">${label}</span>`
-                                ).join(`<span style="width:${SEGGAP}px;flex:none;"></span>`);
-                                return `<div data-ops-only style="margin-top:3px;" title="${escapeHtml(availRangesOf(p))}${p.flexTime ? ' (+⏳時間外も隙間で対応)' : ''}">
-                                    <div style="display:flex;align-items:center;">${meter}${p.flexTime ? '<span style="font-size:9px;margin-left:4px;" title="時間外も隙間で対応">⏳</span>' : ''}</div>
-                                    <div style="display:flex;margin-top:1px;">${axis}</div>
-                                </div>`;
-                            })()}
+                // ===== 戦闘可能時間ストリップ (運営モードの2段目 / ClaudeDesign モック準拠) =====
+                // 行の2段目に全幅の連続トラック + レンジバー。1時間 ≈ 全幅の1/24 なので
+                // 時間群が複数に分かれてもすべて正確に読める。目盛りは 5/12/18/翌0/翌5。
+                const strip = (() => {
+                    const idxs = slotIdxsOf(p);
+                    if (idxs.length === 0) {
+                        if (p.flexTime) return `<div data-ops-only style="margin:5px 0 0 37px;"><span style="font-size:9.5px;font-weight:800;color:#B45309;background:rgba(245,158,11,0.12);border-radius:999px;padding:2px 8px;">⏳ 隙間型 — 時間指定なしで3凸対応</span></div>`;
+                        return `<div data-ops-only style="margin:5px 0 0 37px;font-size:9.5px;font-weight:800;color:#B6BBC1;">戦闘可能時間 未登録</div>`;
+                    }
+                    const runs = [];
+                    let s = idxs[0], prev = idxs[0];
+                    for (let k = 1; k <= idxs.length; k++) {
+                        const cur = idxs[k];
+                        if (cur !== prev + 1) { runs.push([s, prev + 1]); s = cur; }
+                        prev = cur;
+                    }
+                    const pct = (i) => (i / 24 * 100).toFixed(2);
+                    const bars = runs.map(([a, b]) => `<span style="position:absolute;top:0;bottom:0;border-radius:3px;background:#1E78F0;left:${pct(a)}%;width:${pct(b - a)}%;"></span>`).join('');
+                    const ticks = [7, 13, 19].map(i => `<span style="position:absolute;top:-2px;bottom:-2px;width:1px;background:#D9DDE2;left:${pct(i)}%;"></span>`).join('');
+                    const axisLabel = (leftPct, text, tf) => `<span style="position:absolute;left:${leftPct};${tf ? `transform:${tf};` : ''}font-size:8px;font-weight:700;color:#B6BBC1;line-height:1;">${text}</span>`;
+                    return `<div data-ops-only style="margin:6px ${p.flexTime ? '18px' : '2px'} 0 37px;" title="${escapeHtml(availRangesOf(p))}${p.flexTime ? ' (+⏳時間外も隙間で対応)' : ''}">
+                        <div style="position:relative;height:6px;border-radius:3px;background:#EDEFF2;">${ticks}${bars}${p.flexTime ? '<span style="position:absolute;right:-16px;top:-5px;font-size:10px;" title="時間外も隙間で対応">⏳</span>' : ''}</div>
+                        <div style="position:relative;height:10px;margin-top:3px;">
+                            ${axisLabel('0', '5時')}${axisLabel(pct(7) + '%', '12', 'translateX(-50%)')}${axisLabel(pct(13) + '%', '18', 'translateX(-50%)')}${axisLabel(pct(19) + '%', '翌0', 'translateX(-50%)')}${axisLabel('100%', '翌5', 'translateX(-100%)')}
                         </div>
-                        <div style="display:flex;gap:2px;flex:none;">${cells}</div>
+                    </div>`;
+                })();
+                return `
+                    <div style="border-bottom:1px solid #F4F5F6;padding:6px 0 7px;">
+                        <div style="display:flex;align-items:center;gap:9px;height:34px;">
+                            <div style="flex:none;width:28px;height:28px;">${renderAvatarHtml(p, 28)}</div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</div>
+                                <div style="display:flex;align-items:center;gap:5px;margin-top:1px;">
+                                    <span style="font-size:10px;color:#A4AAB0;font-variant-numeric:tabular-nums;flex:none;">残 ${p.remain}/3</span>
+                                    <div style="display:flex;gap:2px;flex:none;">${favChips}</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:2px;flex:none;">${cells}</div>
+                        </div>
+                        ${strip}
                     </div>`;
             };
 
