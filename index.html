@@ -10768,7 +10768,23 @@
         }
 
         // ========== Ops: ボス状況 (デザイン準拠 横スクロール) ==========
+        // ユーザーが入力中かどうか (ポーリング再描画による入力破壊の防止用)
+        function _userIsTyping() {
+            const el = document.activeElement;
+            if (!el) return false;
+            return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable === true;
+        }
+
         function renderOpsBossSummary() {
+            // ガード: ボス編集パネルが開いて描画済みの間は再描画しない。
+            // 10秒ポーリング (coord / 締凸依頼) がこの関数を定期的に呼ぶため、
+            // ガードなしでは HP・ボス名の入力欄が数秒ごとに DOM ごと破壊され
+            // 「5文字打つと入力が解除される」状態になる。
+            // (編集パネルを開く操作自体の描画は、パネル未描画なので素通りする)
+            if (_opsBossEditingNum !== null && document.getElementById(`opsBossEditRem-${_opsBossEditingNum}`)) return;
+            // 将来の入力要素への保険: カード内にフォーカスがある間も再描画しない
+            const sumEl = document.getElementById('opsBossSummary');
+            if (sumEl && _userIsTyping() && sumEl.contains(document.activeElement)) return;
             renderOpsStatusOverview();   // ボス状況更新と同タイミングで概況も更新
             if (!_opsDashboardCache) return;
             const { season, bosses } = _opsDashboardCache;
