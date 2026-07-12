@@ -10664,10 +10664,29 @@
                                 <span style="font-size:10px;color:#A4AAB0;font-variant-numeric:tabular-nums;flex:none;">残 ${p.remain}/3</span>
                                 <div style="display:flex;gap:2px;flex:none;">${favChips}</div>
                             </div>
-                            <div data-ops-only style="display:flex;align-items:center;gap:4px;margin-top:2px;" title="${escapeHtml(availRangesOf(p) || (p.flexTime ? '隙間時間型 (時間指定なし)' : '戦闘可能時間 未登録'))}">
-                                <div style="display:flex;gap:1px;flex:none;">${HOUR_ORDER.map((h, i) => `<span style="width:2.5px;height:8px;border-radius:1px;background:${slotIdxsOf(p).includes(i) ? '#1E78F0' : '#E7E9EC'};"></span>`).join('')}</div>
-                                <span style="font-size:9px;font-weight:700;color:${p.flexTime && slotIdxsOf(p).length === 0 ? '#B45309' : '#8A9097'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${escapeHtml(p.flexTime && slotIdxsOf(p).length === 0 ? '⏳隙間型' : (availRangesOf(p) || '未登録'))}${p.flexTime && slotIdxsOf(p).length > 0 ? ' +⏳' : ''}</span>
-                            </div>
+                            ${(() => {
+                                // メーター表示 (運営モード): 時間テキストは廃止し、
+                                // 目盛り (5/12/18/翌0) 付きの大きめメーターだけで判読できるようにする。
+                                // 複数の時間群 (例: 7〜10時と19〜22時) もそのまま全て見える。
+                                const idxSet = new Set(slotIdxsOf(p));
+                                if (idxSet.size === 0) {
+                                    const t = p.flexTime ? '⏳隙間型 (時間指定なし)' : '戦闘可能時間 未登録';
+                                    return `<div data-ops-only style="margin-top:2px;font-size:9px;font-weight:800;color:${p.flexTime ? '#B45309' : '#B6BBC1'};">${p.flexTime ? '⏳隙間型' : '未登録'}</div>`;
+                                }
+                                const SEGS = [[0, 7, '5'], [7, 13, '12'], [13, 19, '18'], [19, 24, '翌0']];   // 6時間区切り (5時起点)
+                                const CELL = 5, GAP = 1, SEGGAP = 4;
+                                const meter = SEGS.map(([s, e]) =>
+                                    `<div style="display:flex;gap:${GAP}px;">${HOUR_ORDER.slice(s, e).map((h, k) =>
+                                        `<span style="width:${CELL}px;height:10px;border-radius:1.5px;background:${idxSet.has(s + k) ? '#1E78F0' : '#E7E9EC'};"></span>`).join('')}</div>`
+                                ).join(`<div style="width:${SEGGAP}px;flex:none;"></div>`);
+                                const axis = SEGS.map(([s, e, label]) =>
+                                    `<span style="width:${(e - s) * (CELL + GAP) - GAP}px;font-size:7.5px;font-weight:700;color:#C9CED3;line-height:1;">${label}</span>`
+                                ).join(`<span style="width:${SEGGAP}px;flex:none;"></span>`);
+                                return `<div data-ops-only style="margin-top:3px;" title="${escapeHtml(availRangesOf(p))}${p.flexTime ? ' (+⏳時間外も隙間で対応)' : ''}">
+                                    <div style="display:flex;align-items:center;">${meter}${p.flexTime ? '<span style="font-size:9px;margin-left:4px;" title="時間外も隙間で対応">⏳</span>' : ''}</div>
+                                    <div style="display:flex;margin-top:1px;">${axis}</div>
+                                </div>`;
+                            })()}
                         </div>
                         <div style="display:flex;gap:2px;flex:none;">${cells}</div>
                     </div>`;
