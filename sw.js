@@ -90,9 +90,11 @@ self.addEventListener('notificationclick', (event) => {
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // 既に開いていれば fokus
+            // 既に開いていればフォーカスし、アプリ側に遷移先を伝える
+            // (focus だけでは通知の url に移動しないため postMessage で誘導)
             for (const client of clientList) {
                 if (client.url.endsWith(url) || client.url.includes('shirisu-pad')) {
+                    client.postMessage({ type: 'navigate', url });
                     return client.focus();
                 }
             }
@@ -104,4 +106,4 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// rebuild: 1779553200
+// rebuild: 1783900000

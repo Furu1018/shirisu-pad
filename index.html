@@ -11206,7 +11206,7 @@
             const ok = await showPushPreview([{ title, body: bodyText, recipients: plan.members.map(m => ({ id: m.id, name: m.name })) }]);
             if (!ok) return;
             try {
-                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=ops', playerIds: ids });
+                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds: ids });
                 showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
                 // 依頼ステータスの追跡を開始 (確認中として記録 → ボスカードに表示)
                 try {
@@ -11232,7 +11232,7 @@
             const ok = await showPushPreview([{ title, body: bodyText, recipients: ctx.candidates.map(c => ({ id: c.id, name: c.name })) }]);
             if (!ok) return;
             try {
-                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=ops', playerIds });
+                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds });
                 showNotification(`✅ ${res.sent}/${res.target} 件 送信完了`);
                 // 依頼ステータスの追跡を開始
                 try {
@@ -15335,6 +15335,44 @@
             return true;
         }
 
+        // 通知タップからの画面誘導: ?tab=xxx でタブ切替、&focus=finishreq で
+        // 締め凸依頼の応答バナーへスクロール+ハイライト。
+        // コールド起動 (URLクエリ) と、起動中のアプリへの SW postMessage の両方から呼ばれる。
+        function _handleNavParams(search) {
+            let params;
+            try { params = new URLSearchParams(search || ''); } catch { return; }
+            const tab = params.get('tab');
+            if (tab && document.getElementById(`tab-${tab}`)) {
+                try { switchTab(tab); } catch { /* noop */ }
+            }
+            if (params.get('focus') === 'finishreq') {
+                // バナーは依頼データの取得後に描画されるため、出現を最大6秒待って誘導
+                const t0 = Date.now();
+                const timer = setInterval(() => {
+                    const area = document.getElementById('myFinishRequestArea');
+                    const hasBanner = area && area.firstElementChild;
+                    if (hasBanner) {
+                        clearInterval(timer);
+                        area.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        area.style.transition = 'box-shadow .3s ease';
+                        area.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.55)';
+                        area.style.borderRadius = '15px';
+                        setTimeout(() => { area.style.boxShadow = 'none'; }, 2600);
+                    } else if (Date.now() - t0 > 6000) {
+                        clearInterval(timer);
+                    }
+                }, 250);
+            }
+        }
+        // 起動中のアプリが通知タップされたとき (SW からの誘導メッセージ)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (e) => {
+                if (e.data?.type === 'navigate' && typeof e.data.url === 'string') {
+                    try { _handleNavParams(new URL(e.data.url, location.href).search); } catch { /* noop */ }
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
             initSpIcons();   // data-sp-icon の SVG 流し込み
@@ -15357,6 +15395,7 @@
                 _renderTabContent(name);   // 描画 + _markTabRendered を内部で行う
             };
             renderTab(initialName);
+            _handleNavParams(location.search);   // 通知タップからのコールド起動誘導 (?tab=&focus=)
             // ナビの active をコンテンツの active に同期 (HTML側のハードコードずれ対策)
             if (initialName) {
                 document.querySelectorAll('.tab-button, .drawer-menu-item').forEach(btn => {
