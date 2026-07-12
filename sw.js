@@ -88,22 +88,26 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const url = (event.notification.data && event.notification.data.url) || './';
 
-    event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // 既に開いていればフォーカスし、アプリ側に遷移先を伝える
-            // (focus だけでは通知の url に移動しないため postMessage で誘導)
-            for (const client of clientList) {
-                if (client.url.endsWith(url) || client.url.includes('shirisu-pad')) {
-                    client.postMessage({ type: 'navigate', url });
-                    return client.focus();
-                }
+    event.waitUntil((async () => {
+        // 遷移予約を Cache に書く:
+        // iOS はバックグラウンドで凍結した PWA への postMessage を取り落とすため、
+        // アプリが前面化したときに自分で読み取れる持続的な置き場が必要。
+        try {
+            const c = await caches.open('sp-nav');
+            await c.put('pending-nav', new Response(JSON.stringify({ url, ts: Date.now() })));
+        } catch (e) { /* noop */ }
+
+        const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        for (const client of clientList) {
+            if (client.url.endsWith(url) || client.url.includes('shirisu-pad')) {
+                client.postMessage({ type: 'navigate', url });   // 起きている場合の速報用
+                return client.focus();
             }
-            // なければ新規タブで開く
-            if (self.clients.openWindow) {
-                return self.clients.openWindow(url);
-            }
-        })
-    );
+        }
+        if (self.clients.openWindow) {
+            return self.clients.openWindow(url);
+        }
+    })());
 });
 
-// rebuild: 1783900000
+// rebuild: 1783906000

@@ -15364,7 +15364,7 @@
                 }, 250);
             }
         }
-        // 起動中のアプリが通知タップされたとき (SW からの誘導メッセージ)
+        // 起動中のアプリが通知タップされたとき (SW からの誘導メッセージ = 速報経路)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (e) => {
                 if (e.data?.type === 'navigate' && typeof e.data.url === 'string') {
@@ -15372,6 +15372,24 @@
                 }
             });
         }
+        // 遷移予約の回収 (確実経路): SW が Cache に書いた通知タップの遷移先を、
+        // アプリが前面化・起動したタイミングで読み取って消費する。
+        // iOS は凍結中の postMessage を取り落とすため、こちらが本命。
+        async function _consumePendingNav() {
+            try {
+                const c = await caches.open('sp-nav');
+                const res = await c.match('pending-nav');
+                if (!res) return;
+                await c.delete('pending-nav');
+                const { url, ts } = JSON.parse(await res.text());
+                if (!url || (Date.now() - (ts || 0)) > 2 * 60 * 1000) return;   // 2分超の古い予約は無視
+                _handleNavParams(new URL(url, location.href).search);
+            } catch { /* noop */ }
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') _consumePendingNav();
+        });
+        window.addEventListener('pageshow', () => _consumePendingNav());
 
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
@@ -15396,6 +15414,7 @@
             };
             renderTab(initialName);
             _handleNavParams(location.search);   // 通知タップからのコールド起動誘導 (?tab=&focus=)
+            _consumePendingNav();                // iOS で openWindow のクエリが落ちた場合の保険
             // ナビの active をコンテンツの active に同期 (HTML側のハードコードずれ対策)
             if (initialName) {
                 document.querySelectorAll('.tab-button, .drawer-menu-item').forEach(btn => {
