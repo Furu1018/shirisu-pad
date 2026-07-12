@@ -1532,7 +1532,7 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
     if (bErr) throw bErr;
     if (!bosses || bosses.length === 0) return { players: 0, attacks: 0 };
 
-    const { data: players, error: pErr } = await supabase.from('players').select('id');
+    const { data: players, error: pErr } = await supabase.from('players').select('id, name');
     if (pErr) throw pErr;
     const { data: dmgs } = await supabase
         .from('player_damages')
@@ -1541,8 +1541,11 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
     (dmgs || []).forEach(d => dmgOf.set(`${d.player_id}:${d.attribute}`, Number(d.damage_b) || 0));
 
     // 30〜60% のメンバーを凸済みに。1凸:45% / 2凸:35% / 3凸:20%
+    // ※ 基準者 (ふるり) はテストで締め凸依頼フローを自分宛てに確認できるよう
+    //    常に凸済みシードから除外し、3凸フル残し = 締凸候補に必ず入る状態にする
+    const baseName = globalThis.fururiBasePlayerName || 'ふるり';
     const ratio = 0.3 + Math.random() * 0.3;
-    const chosen = (players || []).filter(() => Math.random() < ratio);
+    const chosen = (players || []).filter(p => p.name !== baseName && Math.random() < ratio);
     const rows = [];
     const bossDamage = new Map();   // boss_number -> 合計 raw
     for (const p of chosen) {
