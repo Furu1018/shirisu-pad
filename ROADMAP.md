@@ -58,6 +58,13 @@
      スマホファースト、ClaudeDesign 準拠
    - PAD内シミュレータの属性セレクタは 2026-07-13 に CD 刷新済み (fsim-attr-btn) —
      独立版はこれを出発点にデザインを発展させる
+   - GitHub セットアップ手順 (gh は Furu1018 で認証済み、全てCLIで可能):
+     1. `gh repo create Furu1018/<リポジトリ名> --public --clone` (Desktop 配下にクローン)
+     2. shirisu-pad の `.github/workflows/pages.yml` をコピーして Actions デプロイ方式に
+     3. `gh api -X POST repos/Furu1018/<リポジトリ名>/pages -f build_type=workflow`
+        (失敗時は Settings→Pages→Source=GitHub Actions を手動で1クリック)
+     4. 計算ロジックの移植元: index.html の runFururiSimulator / calculatePerAttackFururi /
+        slvRatioTable (data/slv-ratio.json) / 基準値は最新月JSONから静的生成
 3. Supabase Realtime 化 — ボスHP/凸/締め凸依頼のポーリングを購読に置き換え
 3. Material 残骸の細部統一 — 色はトークン再マップ済み。旧モーダルの形状のみ残り
 4. 通知既読のDB化 — 端末間で既読同期 (テーブル追加が必要)
