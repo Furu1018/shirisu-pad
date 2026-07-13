@@ -673,6 +673,32 @@
             border-color: var(--md-sys-color-primary);
         }
 
+        /* ふるり値シミュレータ: PT属性セレクタ (ClaudeDesign 縦カード型)
+           上段=自分のPT (主役)、下段=⚔ 相手ボス。--fa / --fa-soft は各ボタンの inline style で注入 */
+        .fsim-attr-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 3px;
+            padding: 9px 2px 7px; border-radius: 12px; cursor: pointer;
+            border: 1.5px solid transparent;
+            background: var(--fa-soft);
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            min-width: 0;
+        }
+        .fsim-attr-btn .fsim-attr-ico { width: 24px; height: 24px; }
+        .fsim-attr-btn .fsim-attr-name { font-size: 11px; font-weight: 900; color: var(--fa); letter-spacing: 0.2px; white-space: nowrap; }
+        .fsim-attr-btn .fsim-attr-vs {
+            display: inline-flex; align-items: center; gap: 2px;
+            font-size: 9px; font-weight: 800; color: #8A9097; white-space: nowrap;
+        }
+        .fsim-attr-btn .fsim-attr-vs img { width: 11px; height: 11px; opacity: 0.85; }
+        .fsim-attr-btn.active {
+            background: var(--fa); border-color: var(--fa);
+            box-shadow: 0 4px 12px rgba(20, 22, 26, 0.18);
+        }
+        .fsim-attr-btn.active .fsim-attr-name { color: #fff; }
+        .fsim-attr-btn.active .fsim-attr-vs { color: rgba(255, 255, 255, 0.88); }
+        .fsim-attr-btn.active .fsim-attr-vs img { opacity: 1; }
+
         /* ========== Simulator sub-mode buttons ========== */
         .sim-mode-btn {
             padding: 8px 14px;
@@ -3353,33 +3379,33 @@
                         </div>
 
                         <div style="margin-bottom: 16px;">
-                            <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">PT属性（自分の編成属性）</label>
-                            <p style="margin: 0 0 6px 0; font-size: 11px; color: var(--md-sys-color-on-surface-variant);">表記の「対 XX」は弱点となるボス属性を示します</p>
-                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <button class="attribute-tab-btn" data-fsim-attr="FIRE" onclick="selectFururiSimAttr('FIRE')" title="灼熱PT 対 風圧">
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
-                                    <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:14px;height:14px;opacity:0.7;">
+                            <label style="display: block; font-size: 13px; font-weight: 700; color: #14161A; margin-bottom: 4px;">あなたのPT属性</label>
+                            <p style="margin: 0 0 8px 0; font-size: 11px; color: #8A9097;">試算したい編成の属性を選択。⚔ の後ろは<strong>そのPTで殴る相手ボス</strong>です</p>
+                            <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px;">
+                                <button class="fsim-attr-btn" data-fsim-attr="FIRE" style="--fa:#FF3D44;--fa-soft:#FF3D4414;" onclick="selectFururiSimAttr('FIRE')" title="灼熱PTのダメージを試算 (相手は風圧ボス)">
+                                    <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/灼熱.png" alt="灼熱">
+                                    <span class="fsim-attr-name">灼熱PT</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="">風圧ボス</span>
                                 </button>
-                                <button class="attribute-tab-btn" data-fsim-attr="WATER" onclick="selectFururiSimAttr('WATER')" title="水冷PT 対 灼熱">
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:20px;height:20px;">
-                                    <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:14px;height:14px;opacity:0.7;">
+                                <button class="fsim-attr-btn" data-fsim-attr="WATER" style="--fa:#2E8BFF;--fa-soft:#2E8BFF14;" onclick="selectFururiSimAttr('WATER')" title="水冷PTのダメージを試算 (相手は灼熱ボス)">
+                                    <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/水冷.png" alt="水冷">
+                                    <span class="fsim-attr-name">水冷PT</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="">灼熱ボス</span>
                                 </button>
-                                <button class="attribute-tab-btn" data-fsim-attr="ELECTRIC" onclick="selectFururiSimAttr('ELECTRIC')" title="電撃PT 対 水冷">
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:20px;height:20px;">
-                                    <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="水冷" style="width:14px;height:14px;opacity:0.7;">
+                                <button class="fsim-attr-btn" data-fsim-attr="ELECTRIC" style="--fa:#9B4DFF;--fa-soft:#9B4DFF14;" onclick="selectFururiSimAttr('ELECTRIC')" title="電撃PTのダメージを試算 (相手は水冷ボス)">
+                                    <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/電撃.png" alt="電撃">
+                                    <span class="fsim-attr-name">電撃PT</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/水冷.png" alt="">水冷ボス</span>
                                 </button>
-                                <button class="attribute-tab-btn" data-fsim-attr="IRON" onclick="selectFururiSimAttr('IRON')" title="鉄甲PT 対 電撃">
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:20px;height:20px;">
-                                    <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="電撃" style="width:14px;height:14px;opacity:0.7;">
+                                <button class="fsim-attr-btn" data-fsim-attr="IRON" style="--fa:#FF8A2B;--fa-soft:#FF8A2B14;" onclick="selectFururiSimAttr('IRON')" title="鉄甲PTのダメージを試算 (相手は電撃ボス)">
+                                    <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/鉄甲.png" alt="鉄甲">
+                                    <span class="fsim-attr-name">鉄甲PT</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/電撃.png" alt="">電撃ボス</span>
                                 </button>
-                                <button class="attribute-tab-btn" data-fsim-attr="WIND" onclick="selectFururiSimAttr('WIND')" title="風圧PT 対 鉄甲">
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/風圧.png" alt="風圧" style="width:20px;height:20px;">
-                                    <span style="opacity:0.6; font-size:11px; margin:0 2px;">対</span>
-                                    <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="鉄甲" style="width:14px;height:14px;opacity:0.7;">
+                                <button class="fsim-attr-btn" data-fsim-attr="WIND" style="--fa:#18C26B;--fa-soft:#18C26B14;" onclick="selectFururiSimAttr('WIND')" title="風圧PTのダメージを試算 (相手は鉄甲ボス)">
+                                    <img loading="lazy" decoding="async" class="fsim-attr-ico" src="./属性アイコン/風圧.png" alt="風圧">
+                                    <span class="fsim-attr-name">風圧PT</span>
+                                    <span class="fsim-attr-vs">⚔ <img loading="lazy" decoding="async" src="./属性アイコン/鉄甲.png" alt="">鉄甲ボス</span>
                                 </button>
                             </div>
                         </div>
