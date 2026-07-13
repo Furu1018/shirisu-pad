@@ -20,6 +20,7 @@ NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け
   ボスHP鮮度表示 (HP更新 ○分前) は `20_bosses_updated_at.sql`、
   模擬の1属性2編成 (同属性2凸) は `21_player_damages_slots.sql` の適用が前提
   (主キーが (player_id, attribute, slot) に変わる — upsert は _upsertPlayerDamages 経由必須)。
+  締め凸依頼のステータス追跡 (pending/accepted/declined) は `22_finish_requests.sql` が前提。
   通知の時間帯フィルタは Edge Function `send-push` (サーバ側) — 変更時は再デプロイが必要
 - **sw.js** — Web Push 用 Service Worker。キャッシュは実質不変の画像のみ
   (character-images/属性アイコン)。HTML/JS/データは即時反映のため非キャッシュ
