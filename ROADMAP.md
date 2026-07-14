@@ -51,8 +51,8 @@
 
 1. **2026-07 レイドの運用振り返りから出る改善** — ユーザー(ふるり)へのヒアリングが最優先
 2. **ふるり値シミュレータの独立サイト化** → **2026-07-14 公開済み** (別リポジトリで継続開発)
-   - リポジトリ: https://github.com/Furu1018/shirisu-pad-global (Desktop\shirisu-pad-global)
-   - 公開URL: https://furu1018.github.io/shirisu-pad-global/ (名前は仮「しりすこPADグローバル」)
+   - リポジトリ: https://github.com/shirisuko-pad-GB/shirisuko-pad-gb.github.io (Desktop\shirisu-pad-global)
+   - 公開URL: https://shirisuko-pad-gb.github.io/ (組織 shirisuko-pad-GB に移管済み・名前「しりすこPAD GB」)
    - 実装済み: スタンドアロン計算 (基準値2026-07を静的同梱)・編成ピッカー (PADキャラ画像流用 +
      使用率TOP編成プリセット)・シェアカード生成・OGP・単体テスト9件
    - **残タスク (あちら側のREADME参照)**: ユーザーが Supabase 新規プロジェクトを作成 →
