@@ -50,21 +50,15 @@
 ## 機能候補 (優先度順)
 
 1. **2026-07 レイドの運用振り返りから出る改善** — ユーザー(ふるり)へのヒアリングが最優先
-2. **ふるり値シミュレータの独立サイト化** (ユーザー構想・新しい会話で着手推奨)
-   - 目的: ユニオン広告としてSNSで広く使ってもらう。PADとは別URL
-   - 推奨: 別リポジトリ + 独自の GitHub Pages (プロダクトとして独立した見た目/OGP)
-   - 要件メモ: SNS共有前提 (OGP画像・結果のシェアカード生成)、PADのSupabaseに依存しない
-     スタンドアロン計算 (slv-ratio テーブルとふるり基準値を静的データとして同梱)、
-     スマホファースト、ClaudeDesign 準拠
-   - PAD内シミュレータの属性セレクタは 2026-07-13 に CD 刷新済み (fsim-attr-btn) —
-     独立版はこれを出発点にデザインを発展させる
-   - GitHub セットアップ手順 (gh は Furu1018 で認証済み、全てCLIで可能):
-     1. `gh repo create Furu1018/<リポジトリ名> --public --clone` (Desktop 配下にクローン)
-     2. shirisu-pad の `.github/workflows/pages.yml` をコピーして Actions デプロイ方式に
-     3. `gh api -X POST repos/Furu1018/<リポジトリ名>/pages -f build_type=workflow`
-        (失敗時は Settings→Pages→Source=GitHub Actions を手動で1クリック)
-     4. 計算ロジックの移植元: index.html の runFururiSimulator / calculatePerAttackFururi /
-        slvRatioTable (data/slv-ratio.json) / 基準値は最新月JSONから静的生成
+2. **ふるり値シミュレータの独立サイト化** → **2026-07-14 公開済み** (別リポジトリで継続開発)
+   - リポジトリ: https://github.com/Furu1018/shirisu-pad-global (Desktop\shirisu-pad-global)
+   - 公開URL: https://furu1018.github.io/shirisu-pad-global/ (名前は仮「しりすこPADグローバル」)
+   - 実装済み: スタンドアロン計算 (基準値2026-07を静的同梱)・編成ピッカー (PADキャラ画像流用 +
+     使用率TOP編成プリセット)・シェアカード生成・OGP・単体テスト9件
+   - **残タスク (あちら側のREADME参照)**: ユーザーが Supabase 新規プロジェクトを作成 →
+     supabase/01_schema.sql 実行 → js/backend.js にキー設定で「送信→分布表示」が開通。
+     それまで分布なしで動作
+   - 月次メンテ: レイド終了ごとに基準値更新が必要 (手順は shirisu-pad-global/README.md)
 3. Supabase Realtime 化 — ボスHP/凸/締め凸依頼のポーリングを購読に置き換え
 3. Material 残骸の細部統一 — 色はトークン再マップ済み。旧モーダルの形状のみ残り
 4. 通知既読のDB化 — 端末間で既読同期 (テーブル追加が必要)
