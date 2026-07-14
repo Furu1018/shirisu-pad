@@ -53,11 +53,12 @@
 2. **ふるり値シミュレータの独立サイト化** → **2026-07-14 公開済み** (別リポジトリで継続開発)
    - リポジトリ: https://github.com/shirisuko-pad-GB/shirisuko-pad-gb.github.io (Desktop\shirisu-pad-global)
    - 公開URL: https://shirisuko-pad-gb.github.io/ (組織 shirisuko-pad-GB に移管済み・名前「しりすこPAD GB」)
-   - 実装済み: スタンドアロン計算 (基準値2026-07を静的同梱)・編成ピッカー (PADキャラ画像流用 +
-     使用率TOP編成プリセット)・シェアカード生成・OGP・単体テスト9件
-   - **残タスク (あちら側のREADME参照)**: ユーザーが Supabase 新規プロジェクトを作成 →
-     supabase/01_schema.sql 実行 → js/backend.js にキー設定で「送信→分布表示」が開通。
-     それまで分布なしで動作
+   - 実装済み: スタンドアロン計算 (基準値2026-07を静的同梱)・編成ピッカー (バースト枠
+     B1/B2/B3/BΛ 対応・キャラ名表示 + 使用率TOP編成プリセット)・シェアカード生成・OGP・単体テスト14件
+   - **Supabase 開通済み** (2026-07-14 確認): 送信→サーバー計算→スコア受領が本番稼働中。
+     分布表示は解禁ゲート待ち (属性別 n≥100 / 同一編成 n≥30)
+   - キャラのバースト区分は data/burst-map.json (あちら側) が唯一のソース。
+     新キャラは build-characters.mjs の未分類警告 → burst-map 追記で対応
    - 月次メンテ: レイド終了ごとに基準値更新が必要 (手順は shirisu-pad-global/README.md)
 3. Supabase Realtime 化 — ボスHP/凸/締め凸依頼のポーリングを購読に置き換え
 3. Material 残骸の細部統一 — 色はトークン再マップ済み。旧モーダルの形状のみ残り
