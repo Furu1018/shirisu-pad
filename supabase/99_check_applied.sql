@@ -66,7 +66,9 @@ SELECT * FROM (
     UNION ALL SELECT '10_availability_hourly',
         EXISTS (SELECT 1 FROM pg_constraint
                 WHERE conname = 'availability_time_slot_check'
-                  AND pg_get_constraintdef(oid) LIKE '%h23%'),
+                  -- 10 は制約を正規表現 CHECK (time_slot ~ '^h(...)$') で張り直す。
+                  -- 'h23' の文字列は定義に現れないため、正規表現の署名で判定する
+                  AND pg_get_constraintdef(oid) LIKE '%^h(%'),
         'availability を1時間刻み (h00〜h23) に移行'
 
     UNION ALL SELECT '11_finish_coordinations',
