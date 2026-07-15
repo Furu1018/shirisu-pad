@@ -127,6 +127,10 @@ SELECT * FROM (
         to_regproc('public.restore_fix_sequences') IS NOT NULL,
         'バックアップ復元用 RPC (設定タブの復元機能に必須)'
 
+    UNION ALL SELECT '24_nikke_burst',
+        EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'burst'),
+        'nikke_characters.burst (キャラのバースト区分 B1/B2/B3/BΛ)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

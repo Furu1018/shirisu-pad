@@ -2057,11 +2057,13 @@ window.supabaseLoadCharacterMaster = async function () {
 
 // 名前 + アイコン画像で登録/更新 (ブートストラップウィザード用)
 // 同一 canonical_name が既にあれば icon_paths に追加 (重複しないように)、無ければ新規 INSERT
-window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPath) {
+window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPath, burst = null) {
     if (!canonicalName || typeof canonicalName !== 'string') throw new Error('canonical_name 必須');
     if (!iconPath || typeof iconPath !== 'string') throw new Error('icon_path 必須');
     const name = canonicalName.trim();
     if (!name) throw new Error('canonical_name 空不可');
+    // burst は選択されたときだけ書く (未選択なら列に触れない = burst未マイグレ環境でも動く)
+    const burstPatch = burst ? { burst } : {};
 
     // 既存をチェック
     const { data: existing } = await supabase
@@ -2078,6 +2080,7 @@ window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPa
             icon_paths: paths,
             is_confirmed: true,   // 運営が手動でひも付けたのは確定扱い
             last_seen: nowIso,
+            ...burstPatch,
         }).eq('canonical_name', name);
         return { canonical_name: name, updated: true, icon_count: paths.length };
     }
@@ -2090,13 +2093,14 @@ window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPa
         is_confirmed: true,
         first_seen: nowIso,
         last_seen: nowIso,
+        ...burstPatch,
     });
     return { canonical_name: name, inserted: true, icon_count: 1 };
 };
 
 // ➕ 新キャラの事前登録: 正式名だけ先にマスタへ入れておく (アイコンは後から自動学習)
 // 実装直後の新キャラを OCR が誤解決しないよう、運営が名前を先回りで登録する用途。
-window.supabaseRegisterNikkeCharName = async function (name) {
+window.supabaseRegisterNikkeCharName = async function (name, burst = null) {
     const clean = (name || '').trim();
     if (!clean) throw new Error('キャラ名が空です');
     const { data: existing } = await supabase
@@ -2114,6 +2118,7 @@ window.supabaseRegisterNikkeCharName = async function (name) {
         is_confirmed: true,   // 運営の手動登録は確定扱い
         first_seen: nowIso,
         last_seen: nowIso,
+        ...(burst ? { burst } : {}),   // 選択時のみ書く
     });
     if (error) throw error;
     return { canonical_name: clean, inserted: true };
@@ -2156,6 +2161,8 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
             oldCanonical,  // 旧名もエイリアスに残す
         ]));
         const mergedCount = (existing?.sighting_count || 0) + (old.sighting_count || 0);
+        // burst は patch指定を優先、なければ新旧行の値を保持
+        const mergedBurst = (patch.burst !== undefined) ? (patch.burst || null) : (existing?.burst ?? old.burst ?? null);
         await supabase.from('nikke_characters').upsert({
             canonical_name: newCanonical,
             aliases: mergedAliases,
@@ -2163,6 +2170,7 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
             is_confirmed: (isConfirmed != null ? !!isConfirmed : (existing?.is_confirmed || old.is_confirmed)),
             first_seen: old.first_seen,
             last_seen: new Date().toISOString(),
+            ...(mergedBurst ? { burst: mergedBurst } : {}),
         });
         // 旧行を削除
         await supabase.from('nikke_characters').delete().eq('canonical_name', oldCanonical);
@@ -2173,6 +2181,7 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
     if (newAliases != null) update.aliases = newAliases;
     if (isConfirmed != null) update.is_confirmed = !!isConfirmed;
     if (Array.isArray(patch.icon_paths)) update.icon_paths = patch.icon_paths.filter(Boolean);
+    if (patch.burst !== undefined) update.burst = patch.burst || null;   // '' → null で未設定に戻せる
     if (Object.keys(update).length === 0) return { unchanged: true };
     const { error } = await supabase.from('nikke_characters').update(update).eq('canonical_name', oldCanonical);
     if (error) throw error;

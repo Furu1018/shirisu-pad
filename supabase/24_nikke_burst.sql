@@ -68,3 +68,5 @@ update public.nikke_characters set burst='B2' where canonical_name='レム';
 update public.nikke_characters set burst='B3' where canonical_name='水着マルチャーナ';
 update public.nikke_characters set burst='B3' where canonical_name='紅蓮';
 update public.nikke_characters set burst='B3' where canonical_name='紅蓮：ブラックシャドウ';
+
+notify pgrst, 'reload schema';   -- API にカラムを即認識させる

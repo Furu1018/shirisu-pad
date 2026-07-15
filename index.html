@@ -4418,6 +4418,11 @@
                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">エイリアス (カンマ区切り)</label>
                 <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
             </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">バースト</label>
+                <div id="charEditBurstSlot"></div>
+                <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">B1/B2/B3/BΛ。未設定でもOK (どのバースト枠でも選べる扱い)</p>
+            </div>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
                 <input id="charEditConfirmed" type="checkbox" style="width:18px;height:18px;">
                 <span>確定（is_confirmed） / 未チェックで未確定に戻す</span>
@@ -9598,7 +9603,8 @@
                             const knownTag = known
                                 ? `<div style="font-size:11px;color:#22c55e;font-weight:600;">✅ ${escapeHtml(known.canonical_name)}</div>`
                                 : `<input type="text" id="iconBoot-${i}" placeholder="例: ナユタ" list="iconBootDataList" style="width:100%;padding:5px 7px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);font-size:12px;">
-                                   <button onclick="handleIconBootstrapSave(${i})" style="margin-top:4px;width:100%;padding:5px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:600;cursor:pointer;">登録</button>`;
+                                   <div style="margin-top:5px;display:flex;justify-content:center;">${_burstPickerHtml('iconBoot-' + i, '')}</div>
+                                   <button onclick="handleIconBootstrapSave(${i})" style="margin-top:5px;width:100%;padding:5px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:600;cursor:pointer;">登録</button>`;
                             return `
                                 <div style="padding:8px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;text-align:center;">
                                     <img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:60px;height:60px;border-radius:6px;margin-bottom:6px;background:#222;" onerror="this.style.opacity='0.3';this.alt='画像未読込'">
@@ -9626,7 +9632,7 @@
             const name = input?.value.trim();
             if (!name) { input?.focus(); return; }
             try {
-                await window.supabaseRegisterCharacterWithIcon(name, path);
+                await window.supabaseRegisterCharacterWithIcon(name, path, _readBurst('iconBoot-' + idx));
                 invalidateNikkeCharsCache();
                 await getNikkeCharsCache();
                 if (typeof window._iconBootstrapRerender === 'function') window._iconBootstrapRerender();
@@ -9687,10 +9693,14 @@
                 const icons = Array.isArray(r.icon_paths) && r.icon_paths.length > 0
                     ? r.icon_paths.map(p => `<img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:22px;height:22px;border-radius:4px;margin-right:2px;" title="${escapeHtml(p)}">`).join('')
                     : '<span style="font-size:10px;color:var(--md-sys-color-outline-variant);">no icon</span>';
+                const bc = r.burst ? (_BURST_COLOR[r.burst] || '#8A9097') : null;
+                const burstBadge = bc
+                    ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${bc};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
+                    : `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:#A4AAB0;background:#F1F2F4;">—</span>`;
                 return `
                     <div onclick="openCharMasterEditModal('${safeName}')" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
                         <div style="display:flex;align-items:center;gap:2px;">${icons}</div>
-                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.canonical_name)}"><strong>${escapeHtml(r.canonical_name)}</strong></div>
+                        <div style="display:flex;align-items:center;gap:5px;overflow:hidden;" title="${escapeHtml(r.canonical_name)}">${burstBadge}<strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.canonical_name)}</strong></div>
                         <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
                         <div style="text-align:center;">${status}</div>
                         <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--md-sys-color-on-surface-variant);">${aliases}</div>
@@ -9711,6 +9721,41 @@
 
         // キャラマスタ編集モーダル
         let _charEditOriginal = null;
+        // ---------- バースト選択ピル (キャラ登録/編集で共用) ----------
+        // 単一選択。'' = 未設定 (null)。groupId ごとに状態を保持。
+        const _BURST_COLOR = { B1: '#1E78F0', B2: '#18C26B', B3: '#FF3D44', 'BΛ': '#9B4DFF' };
+        const _burstState = {};
+        function _burstPillStyle(color, on) {
+            return `padding:5px 12px;border-radius:999px;border:1.5px solid ${on ? color : 'transparent'};`
+                + `font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;`
+                + (on ? `background:${color};color:#fff;` : `background:${color}1A;color:${color};`);
+        }
+        function _burstPickerHtml(groupId, current) {
+            _burstState[groupId] = current || '';
+            const opts = [
+                { v: 'B1' }, { v: 'B2' }, { v: 'B3' }, { v: 'BΛ' }, { v: '', label: '未設定', color: '#8A9097' },
+            ];
+            const btns = opts.map(o => {
+                const color = o.color || _BURST_COLOR[o.v] || '#8A9097';
+                const on = (_burstState[groupId] || '') === o.v;
+                return `<button type="button" data-burst-btn data-burst-val="${o.v}"`
+                    + ` onclick="_selectBurst('${groupId}', this.getAttribute('data-burst-val'))"`
+                    + ` style="${_burstPillStyle(color, on)}">${o.label || o.v}</button>`;
+            }).join('');
+            return `<div id="burstPicker-${groupId}" style="display:flex;gap:6px;flex-wrap:wrap;">${btns}</div>`;
+        }
+        function _selectBurst(groupId, val) {
+            _burstState[groupId] = val || '';
+            const box = document.getElementById('burstPicker-' + groupId);
+            if (!box) return;
+            box.querySelectorAll('[data-burst-btn]').forEach(b => {
+                const v = b.getAttribute('data-burst-val');
+                const color = v ? (_BURST_COLOR[v] || '#8A9097') : '#8A9097';
+                b.style.cssText = _burstPillStyle(color, v === (val || ''));
+            });
+        }
+        function _readBurst(groupId) { return _burstState[groupId] || ''; }
+
         async function openCharMasterEditModal(canonicalName) {
             _charEditOriginal = canonicalName;
             // 現行データを取得
@@ -9723,6 +9768,7 @@
             document.getElementById('charEditCanonical').value = entry.canonical_name || '';
             /* base_name は削除済み */
             document.getElementById('charEditAliases').value = (entry.aliases || []).join(', ');
+            document.getElementById('charEditBurstSlot').innerHTML = _burstPickerHtml('charEdit', entry.burst || '');
             document.getElementById('charEditConfirmed').checked = !!entry.is_confirmed;
             document.getElementById('charEditMergeTarget').value = '';
             document.getElementById('charEditMessage').textContent = '';
@@ -9769,6 +9815,7 @@
                         canonical_name: newCanonical,
                         aliases,
                         is_confirmed: isConfirmed,
+                        burst: _readBurst('charEdit'),   // '' なら未設定(null)に戻す
                     });
                     setMsg('✅ 保存しました');
                 }
