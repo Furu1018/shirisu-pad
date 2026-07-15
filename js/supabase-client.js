@@ -1042,14 +1042,14 @@ window.supabaseRestoreAllData = async function (dump, onProgress) {
     }
 
     // 3) 連番シーケンスを MAX(id)+1 に修正 (players/seasons/attacks 等)。
-    //    supabase/12_restore_helpers.sql の RPC が必要。未適用なら警告のみ。
+    //    supabase/23_restore_helpers.sql の RPC が必要。未適用なら警告のみ。
     notify('仕上げ', 'シーケンス修正');
     try {
         const { error } = await supabase.rpc('restore_fix_sequences');
         if (error) throw error;
     } catch (e) {
         warnings.push('ID採番の修正 (restore_fix_sequences) が実行できませんでした。' +
-            'supabase/12_restore_helpers.sql を SQL Editor で適用してください。' +
+            'supabase/23_restore_helpers.sql を SQL Editor で適用してください。' +
             '未適用のままだと新規メンバー追加や凸報告が一時的にIDエラーになることがあります。');
     }
     return { inserted, warnings };

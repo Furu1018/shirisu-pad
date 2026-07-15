@@ -43,6 +43,12 @@ RLS は anon 全許可 (認証なしの内輪運用という設計判断。変�
 2. クライアント側は未適用環境で**静かに劣化**させる — 機能ボタンの catch で
    「初回は supabase/NN_xxx.sql を SQL Editor で実行してください」と案内する
 3. CLAUDE.md の「supabase/」の項に前提SQLとして追記する
+4. **`99_check_applied.sql` に判定行を1行追加する** (カタログのみ参照:
+   テーブルは `to_regclass`、カラムは `information_schema.columns`、
+   CHECK制約は `pg_constraint` + `pg_get_constraintdef`、関数は `to_regproc`)。
+   これで「SQL Editor で99を1回実行 → 未適用が一覧で見える」が保たれる
+
+番号は既存の最大+1 (現在 23 まで使用済み。過去に 12 が重複した事故あり — `ls supabase/` で確認してから採番)
 
 ## クライアント関数の慣習 (js/supabase-client.js)
 

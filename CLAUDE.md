@@ -9,11 +9,11 @@ NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け
 
 ## アーキテクチャ
 
-- **index.html**(約13,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成
+- **index.html**(約16,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成
 - **js/supabase-client.js** — Supabase への読み書きを `window.supabaseXxx` 関数として公開
 - **js/optimal-plan.js** — 最適凸プランのソルバー (純関数、単体テストあり)
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
-  バックアップ復元 (設定タブ) は `12_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
+  バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
   凸プラン配信 (📤) は `17_published_plans.sql`、戦闘可能時間の運用オプション
   (⏳隙間時間型 / 🔔いつでも通知) は `18_availability_prefs.sql`、
   設定タブの詳細アクティビティログは `19_activity_log.sql`、
@@ -21,7 +21,8 @@ NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け
   模擬の1属性2編成 (同属性2凸) は `21_player_damages_slots.sql` の適用が前提
   (主キーが (player_id, attribute, slot) に変わる — upsert は _upsertPlayerDamages 経由必須)。
   締め凸依頼のステータス追跡 (pending/accepted/declined) は `22_finish_requests.sql` が前提。
-  通知の時間帯フィルタは Edge Function `send-push` (サーバ側) — 変更時は再デプロイが必要
+  通知の時間帯フィルタは Edge Function `send-push` (サーバ側) — 変更時は再デプロイが必要。
+  **`99_check_applied.sql` を SQL Editor で実行すると未適用マイグレーションを一覧検出できる** (新環境・別PC時の必須チェック)
 - **sw.js** — Web Push 用 Service Worker。キャッシュは実質不変の画像のみ
   (character-images/属性アイコン)。HTML/JS/データは即時反映のため非キャッシュ
 - 認証なし。プレイヤーは自己申告で選択 (localStorage)
