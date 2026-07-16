@@ -4423,6 +4423,11 @@
                 <div id="charEditBurstSlot"></div>
                 <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">B1/B2/B3/BΛ。未設定でもOK (どのバースト枠でも選べる扱い)</p>
             </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">サブバースト (任意)</label>
+                <div id="charEditBurstAltSlot"></div>
+                <p id="charEditBurstAltHint" style="margin:4px 0 0 0;font-size:11px;color:#8A9097;">主バースト以外の枠でも使えるキャラだけ設定します (例: ラピ:レッドフード = 表示B3・B1枠でも可)</p>
+            </div>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
                 <input id="charEditConfirmed" type="checkbox" style="width:18px;height:18px;">
                 <span>確定（is_confirmed） / 未チェックで未確定に戻す</span>
@@ -4471,17 +4476,21 @@
         <div class="player-select-content" style="max-width:640px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2 id="iconPickerTitle">📚 アイコンを選択</h2>
-                <button onclick="closeIconPicker()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeIconPicker()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.1);background:#F1F2F4;color:#14161A;font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">入力されているテキストに近い候補を上位に並べています。画像をタップで選択。</p>
+            <p class="subtitle">バーストで絞り込むか、名前で検索して選べます。画像をタップで選択。</p>
 
-            <input id="iconPickerSearch" type="text" placeholder="名前で絞り込み (例: ラピ)" oninput="renderIconPickerList()" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+            <input id="iconPickerSearch" type="text" placeholder="名前で絞り込み (例: ラピ)" oninput="renderIconPickerList()" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid rgba(20,22,26,0.12);background:#fff;color:#14161A;font-size:14px;">
 
-            <div id="iconPickerList" style="max-height:55vh;overflow-y:auto;"></div>
+            <!-- バースト絞り込み (renderIconPickerList が中身を描く) -->
+            <div id="iconPickerBurstFilter" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+            <p id="iconPickerHint" style="margin:0;font-size:11px;font-weight:700;color:#1E78F0;display:none;"></p>
 
-            <div id="iconPickerNew" style="border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;">
-                <p style="margin:0 0 6px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">候補に無い場合、入力中のテキストをそのまま新規キャラとしてマスタに登録できます。</p>
-                <button onclick="handleIconPickerNew()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:12px;font-weight:600;cursor:pointer;">＋ <span id="iconPickerNewLabel">この名前で新規登録</span></button>
+            <div id="iconPickerList" style="max-height:48vh;overflow-y:auto;"></div>
+
+            <div id="iconPickerNew" style="border-top:1px solid rgba(20,22,26,0.08);padding-top:10px;">
+                <p style="margin:0 0 6px 0;font-size:11px;color:#8A9097;">候補に無い場合、入力中のテキストをそのまま新規キャラとしてマスタに登録できます。</p>
+                <button onclick="handleIconPickerNew()" style="padding:8px 14px;border-radius:999px;border:1px solid rgba(20,22,26,0.12);background:#fff;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">＋ <span id="iconPickerNewLabel">この名前で新規登録</span></button>
             </div>
         </div>
     </div>
@@ -4518,6 +4527,9 @@
 
             <!-- 5キャラ入力欄 -->
             <div id="myTeamEditFields" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+            <!-- バーストチェーン成立チェック (renderTeamEditChainRow が中身を描く) -->
+            <div id="myTeamEditChain"></div>
 
             <!-- 人気編成の参考 (みんなの模擬提出の統計 / 既定は折りたたみ) -->
             <div onclick="toggleTeamEditPopular()" id="myTeamEditPopularToggle" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">📚 みんなの人気編成を見る ▼</div>
@@ -6454,6 +6466,7 @@
                     </div>`;
             };
             fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
+            renderTeamEditChainRow();
             // datalist: マスタから autocomplete
             const master = _nikkeCharsCache || [];
             if (master.length > 0) {
@@ -6515,6 +6528,35 @@
             }).join('');
         }
 
+        // 編成編集モーダルの「バーストチェーン成立してる?」行
+        function renderTeamEditChainRow() {
+            const el = document.getElementById('myTeamEditChain');
+            if (!el) return;
+            const names = _teamEditNames();
+            if (names.every(n => !n)) { el.innerHTML = ''; return; }   // 空編成では黙る
+            const st = _burstChainStatus(names);
+            const pills = _CHAIN_SLOTS.map(s => {
+                const on = !st.missing.includes(s);
+                const c = _BURST_COLOR[s];
+                return `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:3px 9px;`
+                    + (on ? `color:${c};background:${c}1A;` : `color:#B6BBC1;background:#F1F2F4;border:1px dashed #D5D8DC;`)
+                    + `">${s}${on ? '' : ' なし'}</span>`;
+            }).join('');
+            const notes = [];
+            if (st.noBurst > 0) notes.push(`バースト未設定 ${st.noBurst}体は判定から除外 (設定タブ → キャラ管理 で登録できます)`);
+            if (st.unresolved > 0) notes.push(`マスタに無い名前 ${st.unresolved}件は判定から除外`);
+            const msg = st.ok
+                ? `<span style="font-size:11.5px;font-weight:900;color:#18C26B;">✅ チェーン成立</span>`
+                : `<span style="font-size:11.5px;font-weight:900;color:#F59E0B;">⚠️ ${st.missing.join('・')} が不足</span>`;
+            el.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);">
+                    <span style="font-size:11px;font-weight:900;color:#6B7178;">🔗 バーストチェーン</span>
+                    <span style="display:flex;gap:5px;flex-wrap:wrap;">${pills}</span>
+                    ${msg}
+                    ${notes.length ? `<div style="width:100%;font-size:10.5px;color:#8A9097;">${notes.map(escapeHtml).join(' / ')}</div>` : ''}
+                </div>`;
+        }
+
         // 入力中にアイコンプレビューを更新 (?マークもクリックで Picker)
         function updateMyTeamEditIcon(idx) {
             const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
@@ -6527,6 +6569,7 @@
             } else {
                 iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
             }
+            renderTeamEditChainRow();
         }
 
         // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========
@@ -6817,34 +6860,128 @@
             }
         }
 
+        // ========== バースト枠モデル (ピッカー・チェーン判定・キャラ管理で共有) ==========
+        const _BURST_COLOR = { B1: '#1E78F0', B2: '#18C26B', B3: '#FF3D44', 'BΛ': '#9B4DFF' };
+        const _BURST_ORDER = ['B1', 'B2', 'B3', 'BΛ'];
+        const _CHAIN_SLOTS = ['B1', 'B2', 'B3'];   // フルバーストに必要な3枠
+
+        // このキャラが埋められるバースト枠の一覧。
+        // burst = 表示上の主バースト / burst_alt = サブ (例: ラピ:レッドフードは表示B3・B1でも使える)
+        // burst 未設定は「判定不能」なので空配列を返す (ピッカーでは別セクションに出して選択可能に保つ)
+        function _burstsOf(entry) {
+            if (!entry) return [];
+            return Array.from(new Set([entry.burst, entry.burst_alt].filter(Boolean)));
+        }
+        // BΛ (レッドフード) はワイルドカード: どのチェーン枠にも入れる
+        function _isBurstWild(entry) { return _burstsOf(entry).includes('BΛ'); }
+        function _burstSatisfies(entry, want) {
+            const b = _burstsOf(entry);
+            return b.includes('BΛ') || b.includes(want);
+        }
+        // 名前 → マスタ行 (エイリアス・ファジィ解決も通す)。未解決なら null
+        function _burstEntryOf(name) {
+            const nm = (name || '').trim();
+            if (!nm) return null;
+            const hit = _nikkeCharsByName.get(nm);
+            if (hit) return hit;
+            const canon = fuzzyResolveCharacter(nm);
+            return (canon && _nikkeCharsByName.get(canon)) || null;
+        }
+
+        // 編成の名前配列 → バーストチェーン (B1/B2/B3 を1体ずつ) の充足状況。
+        // BΛ・サブバースト持ちをどの枠に割り当てるかは最大二部マッチングで解く。
+        // (貪欲だと「BΛをB1に置いたせいでB3が埋まらない」のような取りこぼしが出る)
+        function _burstChainStatus(names) {
+            const usable = [];
+            let unresolved = 0, noBurst = 0;
+            (names || []).forEach(n => {
+                if (!(n || '').trim()) return;
+                const e = _burstEntryOf(n);
+                if (!e) { unresolved++; return; }
+                if (_burstsOf(e).length === 0) { noBurst++; return; }
+                usable.push(e);
+            });
+            const cand = usable.map(e => _CHAIN_SLOTS.filter(s => _burstSatisfies(e, s)));
+            const slotToChar = {};   // slot -> usable の index
+            const assign = (ci, seen) => {
+                for (const s of cand[ci]) {
+                    if (seen.has(s)) continue;
+                    seen.add(s);
+                    if (slotToChar[s] === undefined || assign(slotToChar[s], seen)) { slotToChar[s] = ci; return true; }
+                }
+                return false;
+            };
+            for (let ci = 0; ci < usable.length; ci++) assign(ci, new Set());
+            const missing = _CHAIN_SLOTS.filter(s => slotToChar[s] === undefined);
+            return { missing, ok: missing.length === 0, unresolved, noBurst };
+        }
+
+        // バーストのピル (一覧カード・チェーン行で共通)
+        function _burstBadgeHtml(entry) {
+            if (!entry || !entry.burst) {
+                return `<span title="バースト未設定" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:#A4AAB0;background:#F1F2F4;">?</span>`;
+            }
+            const c1 = _BURST_COLOR[entry.burst] || '#8A9097';
+            let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${c1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
+            if (entry.burst_alt) {
+                const c2 = _BURST_COLOR[entry.burst_alt] || '#8A9097';
+                html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${c2};background:transparent;border:1px solid ${c2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
+            }
+            return html;
+        }
+
         // ========== アイコン選択ピッカー (コールバック方式: 複数のフローから利用可) ==========
         let _iconPickerCallback = null;
-        function openIconPicker(initialSearch, callback, title = '📚 アイコンを選択') {
+        let _iconPickerBurst = '';    // '' = すべて / 'B1'..'BΛ' / '__none' = 未設定のみ
+        let _iconPickerHint = '';     // 自動絞り込みの理由 (ユーザーがピルを触ったら消す)
+        // opts.otherNames: この枠以外に既に入っているキャラ名。渡すと不足バーストを初期フィルタにする
+        function openIconPicker(initialSearch, callback, title = '📚 アイコンを選択', opts = {}) {
             _iconPickerCallback = callback;
             document.getElementById('iconPickerTitle').textContent = title;
             document.getElementById('iconPickerSearch').value = initialSearch || '';
             document.getElementById('iconPickerNewLabel').textContent = initialSearch
                 ? `「${initialSearch}」を新規登録`
                 : '空欄では新規登録できません';
+            // 他の枠を見て足りないバーストがあれば、そこに絞った状態で開く。
+            // 検索語を持って開いたときは名前で探したい意図が明確なので絞らない。
+            _iconPickerBurst = '';
+            _iconPickerHint = '';
+            if (!initialSearch && Array.isArray(opts.otherNames)) {
+                const st = _burstChainStatus(opts.otherNames);
+                if (st.missing.length > 0) {
+                    _iconPickerBurst = st.missing[0];
+                    _iconPickerHint = `他の枠に ${st.missing.join('・')} がいません → ${_iconPickerBurst} で絞り込み中 (「すべて」で解除)`;
+                }
+            }
+            _ensureIconPickerDelegation();
             renderIconPickerList();
             document.getElementById('iconPickerModal').classList.add('open');
         }
         function closeIconPicker() {
             document.getElementById('iconPickerModal').classList.remove('open');
             _iconPickerCallback = null;
+            _iconPickerHint = '';
+        }
+        // 編成編集モーダルの5枠から、idx 以外に入っている名前を集める
+        function _teamEditNames() {
+            return Array.from(document.querySelectorAll('#myTeamEditFields input[data-team-idx]'))
+                .map(el => el.value.trim());
         }
         // 編成編集モーダル用
         function openIconPickerForTeamEdit(idx) {
             const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
             const current = input?.value.trim() || '';
+            const others = _teamEditNames().filter((_, i) => i !== idx);
             openIconPicker(current, (name) => {
                 if (input) input.value = name;
                 updateMyTeamEditIcon(idx);
-            }, `📚 編成編集 (${idx + 1}枠目)`);
+                renderTeamEditChainRow();
+            }, `📚 編成編集 (${idx + 1}枠目)`, { otherNames: others });
         }
         // 凸報告モーダル用
         function openIconPickerForAttackSlot(idx) {
             const current = (_myAttackTeamSlots && _myAttackTeamSlots[idx]) || '';
+            const others = (_myAttackTeamSlots || []).filter((_, i) => i !== idx);
             openIconPicker(current, (name) => {
                 if (!_myAttackTeamSlots) _myAttackTeamSlots = ['', '', '', '', ''];
                 _myAttackTeamSlots[idx] = name;
@@ -6859,7 +6996,7 @@
                             `<span onclick="openIconPickerForAttackSlot(${i})" title="タップでキャラを修正" style="cursor:pointer;display:inline-flex;">${_renderMatchupCharAvatar(c, 24)}</span>`).join('');
                     }
                 }
-            }, `📚 凸報告 編成 (${idx + 1}枠目)`);
+            }, `📚 凸報告 編成 (${idx + 1}枠目)`, { otherNames: others });
         }
         // 共通の名前正規化 (NFKC + 全角コロン→半角 + 空白除去 + 先頭バースト記号除去)
         function _normNameForMatch(s) {
@@ -6935,6 +7072,25 @@
             }
             return (best && bestScore >= threshold) ? best.canonical_name : rawName;
         }
+        // 一覧のクリックは委譲で拾う (中身は毎キーストローク再描画されるので1回だけ張る)。
+        // dataset はHTMLデコード済みの生文字列を返すため、名前がどんな文字を含んでも安全。
+        let _iconPickerDelegated = false;
+        function _ensureIconPickerDelegation() {
+            if (_iconPickerDelegated) return;
+            const listEl = document.getElementById('iconPickerList');
+            if (!listEl) return;
+            listEl.addEventListener('click', (ev) => {
+                const card = ev.target.closest('[data-pick-name]');
+                if (card && listEl.contains(card)) pickIconForTeam(card.dataset.pickName);
+            });
+            _iconPickerDelegated = true;
+        }
+        // バースト絞り込みピルのクリック
+        function setIconPickerBurst(v) {
+            _iconPickerBurst = v || '';
+            _iconPickerHint = '';   // 手動で触った時点で自動絞り込みの説明は用済み
+            renderIconPickerList();
+        }
         function renderIconPickerList() {
             const listEl = document.getElementById('iconPickerList');
             const search = document.getElementById('iconPickerSearch').value.trim();
@@ -6956,33 +7112,87 @@
             } else {
                 pool = [...pool].sort((a, b) => a.canonical_name.localeCompare(b.canonical_name, 'ja'));
             }
+
+            // --- バースト絞り込みピル (件数は検索結果ベース) ---
+            const bf = _iconPickerBurst;
+            const countOf = v => v === '__none'
+                ? pool.filter(c => _burstsOf(c).length === 0).length
+                : pool.filter(c => _burstsOf(c).includes(v)).length;
+            const filterOpts = [
+                { v: '', label: 'すべて', color: '#6B7178', n: pool.length },
+                ..._BURST_ORDER.map(v => ({ v, label: v, color: _BURST_COLOR[v], n: countOf(v) })),
+                { v: '__none', label: '未設定', color: '#8A9097', n: countOf('__none') },
+            ];
+            const filterEl = document.getElementById('iconPickerBurstFilter');
+            if (filterEl) {
+                filterEl.innerHTML = filterOpts.map(o => {
+                    const on = bf === o.v;
+                    const dim = o.n === 0 && !on;
+                    return `<button type="button" onclick="setIconPickerBurst('${o.v}')"`
+                        + ` style="padding:5px 11px;border-radius:999px;border:1.5px solid ${on ? o.color : 'transparent'};`
+                        + `font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;`
+                        + (on ? `background:${o.color};color:#fff;` : `background:${o.color}1A;color:${o.color};`)
+                        + (dim ? 'opacity:0.4;' : '')
+                        + `">${o.label} <span style="font-weight:800;opacity:0.75;">${o.n}</span></button>`;
+                }).join('');
+            }
+            const hintEl = document.getElementById('iconPickerHint');
+            if (hintEl) {
+                hintEl.textContent = _iconPickerHint || '';
+                hintEl.style.display = _iconPickerHint ? 'block' : 'none';
+            }
+
             if (pool.length === 0) {
-                listEl.innerHTML = `<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:14px 0;">該当キャラなし。下の「新規登録」で追加できます。</p>`;
+                listEl.innerHTML = `<p style="color:#8A9097;font-size:13px;padding:14px 0;">該当キャラなし。下の「新規登録」で追加できます。</p>`;
                 return;
             }
+
             const renderItem = c => {
                 const icon = (c.icon_paths && c.icon_paths[0])
                     ? `<img loading="lazy" decoding="async" src="${escapeHtml(c.icon_paths[0])}" style="width:48px;height:48px;border-radius:8px;background:#222;">`
-                    : `<div style="width:48px;height:48px;border-radius:8px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--md-sys-color-outline-variant);">?</div>`;
-                const safe = escapeHtml(c.canonical_name).replace(/'/g, "\\'");
+                    : `<div style="width:48px;height:48px;border-radius:8px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;font-size:18px;color:#B6BBC1;">?</div>`;
+                // 名前は data 属性で渡し、クリックは委譲で拾う (インライン onclick に名前を
+                // 埋めると escapeHtml 済みでも属性のHTMLデコード後に ' で脱出されXSSになる)
                 return `
-                    <div onclick="pickIconForTeam('${safe}')" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background='var(--md-sys-color-surface)'">
+                    <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border-radius:12px;border:1px solid rgba(20,22,26,0.06);background:#fff;" onmouseover="this.style.background='#F7F8F9'" onmouseout="this.style.background='#fff'">
                         ${icon}
+                        <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">${_burstBadgeHtml(c)}</div>
                         <div style="font-size:11px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
                     </div>`;
             };
-            // 上位8件を「近い候補」、残りを「すべて」として表示
-            const topSize = search ? Math.min(8, pool.length) : 0;
-            const top = pool.slice(0, topSize);
-            const rest = pool.slice(topSize);
+            const grid = items => `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">${items.map(renderItem).join('')}</div>`;
+            const head = t => `<div style="margin:12px 0 4px 0;font-size:11px;font-weight:900;color:#6B7178;">${t}</div>`;
+
             let html = '';
-            if (top.length > 0) {
-                html += `<div style="margin:10px 0 4px 0;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">近い候補</div>`;
-                html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">${top.map(renderItem).join('')}</div>`;
-            }
-            if (rest.length > 0) {
-                html += `<div style="margin:14px 0 4px 0;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">${search ? 'その他' : 'すべて'} (${rest.length}件)</div>`;
-                html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">${rest.map(renderItem).join('')}</div>`;
+            if (bf === '__none') {
+                const only = pool.filter(c => _burstsOf(c).length === 0);
+                html = only.length
+                    ? head(`バースト未設定 (${only.length}件)`) + grid(only)
+                    : `<p style="color:#8A9097;font-size:13px;padding:14px 0;">未設定のキャラはいません。</p>`;
+            } else if (bf) {
+                // 主 or サブが一致するキャラが本命。BΛ (ワイルドカード) と 未設定 は
+                // 「その枠に置けるかもしれない」ので、混ぜずに下の別セクションへ逃がす。
+                const main = pool.filter(c => _burstsOf(c).includes(bf));
+                const wild = bf === 'BΛ' ? [] : pool.filter(c => _isBurstWild(c) && !_burstsOf(c).includes(bf));
+                const unset = bf === 'BΛ' ? [] : pool.filter(c => _burstsOf(c).length === 0);
+                if (main.length) html += head(`${bf} (${main.length}件)`) + grid(main);
+                else html += `<p style="color:#8A9097;font-size:13px;padding:14px 0 4px 0;">${bf} に該当するキャラがいません。</p>`;
+                if (wild.length) html += head(`🃏 BΛ ワイルドカード — どの枠でも可 (${wild.length}件)`) + grid(wild);
+                if (unset.length) html += head(`❓ バースト未設定 (${unset.length}件)`) + grid(unset);
+            } else if (search) {
+                // 従来どおり: 上位8件を「近い候補」、残りを「その他」
+                const top = pool.slice(0, Math.min(8, pool.length));
+                const rest = pool.slice(top.length);
+                if (top.length) html += head('近い候補') + grid(top);
+                if (rest.length) html += head(`その他 (${rest.length}件)`) + grid(rest);
+            } else {
+                // 検索も絞り込みも無いときはバースト別に並べる (チェーンを組む視点で見やすい)
+                _BURST_ORDER.forEach(b => {
+                    const items = pool.filter(c => c.burst === b);
+                    if (items.length) html += head(`${b} (${items.length}件)`) + grid(items);
+                });
+                const unset = pool.filter(c => !c.burst);
+                if (unset.length) html += head(`❓ バースト未設定 (${unset.length}件)`) + grid(unset);
             }
             listEl.innerHTML = html;
         }
@@ -9689,16 +9899,21 @@
                     ? escapeHtml(r.aliases.join(', '))
                     : '<span style="color:var(--md-sys-color-outline-variant);">-</span>';
                 const last = r.last_seen ? SETTINGS_TS_FMT(r.last_seen) : '-';
-                const safeName = escapeHtml(r.canonical_name).replace(/'/g, "\\'");
+                // onclick に埋めるので jsonAttr (escapeHtml だと ' が &#39; → デコード後に脱出される)
+                const safeName = jsonAttr(r.canonical_name);
                 const icons = Array.isArray(r.icon_paths) && r.icon_paths.length > 0
                     ? r.icon_paths.map(p => `<img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:22px;height:22px;border-radius:4px;margin-right:2px;" title="${escapeHtml(p)}">`).join('')
                     : '<span style="font-size:10px;color:var(--md-sys-color-outline-variant);">no icon</span>';
                 const bc = r.burst ? (_BURST_COLOR[r.burst] || '#8A9097') : null;
-                const burstBadge = bc
+                let burstBadge = bc
                     ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${bc};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
                     : `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:#A4AAB0;background:#F1F2F4;">—</span>`;
+                if (r.burst_alt) {
+                    const ac = _BURST_COLOR[r.burst_alt] || '#8A9097';
+                    burstBadge += `<span title="${escapeHtml(r.burst_alt)}枠としても使える" style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 5px;border-radius:999px;color:${ac};background:transparent;border:1px solid ${ac}66;">+${escapeHtml(r.burst_alt)}</span>`;
+                }
                 return `
-                    <div onclick="openCharMasterEditModal('${safeName}')" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
+                    <div onclick="openCharMasterEditModal(${safeName})" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
                         <div style="display:flex;align-items:center;gap:2px;">${icons}</div>
                         <div style="display:flex;align-items:center;gap:5px;overflow:hidden;" title="${escapeHtml(r.canonical_name)}">${burstBadge}<strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.canonical_name)}</strong></div>
                         <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
@@ -9723,17 +9938,16 @@
         let _charEditOriginal = null;
         // ---------- バースト選択ピル (キャラ登録/編集で共用) ----------
         // 単一選択。'' = 未設定 (null)。groupId ごとに状態を保持。
-        const _BURST_COLOR = { B1: '#1E78F0', B2: '#18C26B', B3: '#FF3D44', 'BΛ': '#9B4DFF' };
         const _burstState = {};
         function _burstPillStyle(color, on) {
             return `padding:5px 12px;border-radius:999px;border:1.5px solid ${on ? color : 'transparent'};`
                 + `font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;`
                 + (on ? `background:${color};color:#fff;` : `background:${color}1A;color:${color};`);
         }
-        function _burstPickerHtml(groupId, current) {
+        function _burstPickerHtml(groupId, current, emptyLabel = '未設定') {
             _burstState[groupId] = current || '';
             const opts = [
-                { v: 'B1' }, { v: 'B2' }, { v: 'B3' }, { v: 'BΛ' }, { v: '', label: '未設定', color: '#8A9097' },
+                { v: 'B1' }, { v: 'B2' }, { v: 'B3' }, { v: 'BΛ' }, { v: '', label: emptyLabel, color: '#8A9097' },
             ];
             const btns = opts.map(o => {
                 const color = o.color || _BURST_COLOR[o.v] || '#8A9097';
@@ -9744,17 +9958,38 @@
             }).join('');
             return `<div id="burstPicker-${groupId}" style="display:flex;gap:6px;flex-wrap:wrap;">${btns}</div>`;
         }
+        const _burstChangeHooks = {};   // groupId -> 選択が変わったときに呼ぶ関数
         function _selectBurst(groupId, val) {
             _burstState[groupId] = val || '';
             const box = document.getElementById('burstPicker-' + groupId);
-            if (!box) return;
-            box.querySelectorAll('[data-burst-btn]').forEach(b => {
-                const v = b.getAttribute('data-burst-val');
-                const color = v ? (_BURST_COLOR[v] || '#8A9097') : '#8A9097';
-                b.style.cssText = _burstPillStyle(color, v === (val || ''));
-            });
+            if (box) {
+                box.querySelectorAll('[data-burst-btn]').forEach(b => {
+                    const v = b.getAttribute('data-burst-val');
+                    const color = v ? (_BURST_COLOR[v] || '#8A9097') : '#8A9097';
+                    b.style.cssText = _burstPillStyle(color, v === (val || ''));
+                });
+            }
+            if (typeof _burstChangeHooks[groupId] === 'function') _burstChangeHooks[groupId](val || '');
         }
         function _readBurst(groupId) { return _burstState[groupId] || ''; }
+
+        // サブバースト欄の説明文 (主バースト未設定のときは設定できない旨を出す)
+        function _renderCharEditAltHint() {
+            const el = document.getElementById('charEditBurstAltHint');
+            if (!el) return;
+            const main = _readBurst('charEdit');
+            const alt = _readBurst('charEditAlt');
+            if (!main) {
+                el.textContent = 'サブを設定するには先に主バーストを選んでください';
+                el.style.color = '#A4AAB0';
+            } else if (alt) {
+                el.textContent = `一覧では ${main} 表示のまま、${alt} 枠の候補にも出るようになります`;
+                el.style.color = '#1E78F0';
+            } else {
+                el.textContent = '主バースト以外の枠でも使えるキャラだけ設定します (例: ラピ:レッドフード = 表示B3・B1枠でも可)';
+                el.style.color = '#8A9097';
+            }
+        }
 
         async function openCharMasterEditModal(canonicalName) {
             _charEditOriginal = canonicalName;
@@ -9769,6 +10004,15 @@
             /* base_name は削除済み */
             document.getElementById('charEditAliases').value = (entry.aliases || []).join(', ');
             document.getElementById('charEditBurstSlot').innerHTML = _burstPickerHtml('charEdit', entry.burst || '');
+            // burst_alt は 25_nikke_burst_alt.sql 未適用だと undefined → 「なし」で描画されるだけ (壊れない)
+            document.getElementById('charEditBurstAltSlot').innerHTML = _burstPickerHtml('charEditAlt', entry.burst_alt || '', 'なし');
+            // 主バーストを変えたら、無意味になったサブ (主と同値 / 主が未設定) は自動で外す
+            _burstChangeHooks['charEdit'] = (v) => {
+                if (!v || _readBurst('charEditAlt') === v) _selectBurst('charEditAlt', '');
+                _renderCharEditAltHint();
+            };
+            _burstChangeHooks['charEditAlt'] = () => _renderCharEditAltHint();
+            _renderCharEditAltHint();
             document.getElementById('charEditConfirmed').checked = !!entry.is_confirmed;
             document.getElementById('charEditMergeTarget').value = '';
             document.getElementById('charEditMessage').textContent = '';
@@ -9804,6 +10048,11 @@
 
             if (!newCanonical) { setMsg('❌ 正式名は必須です', true); return; }
 
+            const burst = _readBurst('charEdit');
+            const burstAlt = _readBurst('charEditAlt');
+            if (burstAlt && !burst) { setMsg('❌ サブバーストを設定するには主バーストが必要です', true); return; }
+            if (burstAlt && burstAlt === burst) { setMsg('❌ 主バーストとサブバーストが同じです', true); return; }
+
             try {
                 // 統合モードが優先
                 if (mergeTarget) {
@@ -9815,7 +10064,8 @@
                         canonical_name: newCanonical,
                         aliases,
                         is_confirmed: isConfirmed,
-                        burst: _readBurst('charEdit'),   // '' なら未設定(null)に戻す
+                        burst,          // '' なら未設定(null)に戻す
+                        burst_alt: burstAlt,
                     });
                     setMsg('✅ 保存しました');
                 }
@@ -14165,7 +14415,7 @@
                 const rankRowClass = player.rank <= 3 ? `rank-row-${player.rank}` : '';
 
                 return `
-                    <tr class="${rankRowClass}" onclick="showPlayerDetails('${player.player.replace(/'/g, "\\'")}')">
+                    <tr class="${rankRowClass}" onclick="showPlayerDetails(${jsonAttr(player.player)})">
                         <td class="rank rank-${player.rank <= 3 ? player.rank : 'other'}">${rankDisp}</td>
                         <td><strong>${player.player}</strong></td>
                         <td>

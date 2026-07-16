@@ -38,6 +38,10 @@ rm -f .claude/hooks/.codex-on      # OFF
   模擬の1属性2編成 (同属性2凸) は `21_player_damages_slots.sql` の適用が前提
   (主キーが (player_id, attribute, slot) に変わる — upsert は _upsertPlayerDamages 経由必須)。
   締め凸依頼のステータス追跡 (pending/accepted/declined) は `22_finish_requests.sql` が前提。
+  キャラのバースト区分は `24_nikke_burst.sql` (burst) + `25_nikke_burst_alt.sql` (burst_alt =
+  複数バーストで使えるキャラのサブ枠。例: ラピ:レッドフード は表示B3・B1枠でも可)。
+  編成ピッカーのバースト絞り込み・チェーン判定がこれを読む。25未適用でも読みは静かに劣化する
+  (サブ無し扱い) が、サブの保存だけはエラーで案内する。
   通知の時間帯フィルタは Edge Function `send-push` (サーバ側) — 変更時は再デプロイが必要。
   **`99_check_applied.sql` を SQL Editor で実行すると未適用マイグレーションを一覧検出できる** (新環境・別PC時の必須チェック)
 - **sw.js** — Web Push 用 Service Worker。キャッシュは実質不変の画像のみ

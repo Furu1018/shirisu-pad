@@ -131,6 +131,10 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'burst'),
         'nikke_characters.burst (キャラのバースト区分 B1/B2/B3/BΛ)'
 
+    UNION ALL SELECT '25_nikke_burst_alt',
+        EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'burst_alt'),
+        'nikke_characters.burst_alt (複数バースト対応キャラのサブバースト)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

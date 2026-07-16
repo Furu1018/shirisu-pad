@@ -2062,30 +2062,34 @@ window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPa
     if (!iconPath || typeof iconPath !== 'string') throw new Error('icon_path 必須');
     const name = canonicalName.trim();
     if (!name) throw new Error('canonical_name 空不可');
-    // burst は選択されたときだけ書く (未選択なら列に触れない = burst未マイグレ環境でも動く)
-    const burstPatch = burst ? { burst } : {};
-
-    // 既存をチェック
+    // 既存をチェック ('*' なので burst_alt 未マイグレ環境では単に生えてこないだけ)
     const { data: existing } = await supabase
         .from('nikke_characters')
-        .select('canonical_name, icon_paths, aliases, sighting_count, is_confirmed')
+        .select('*')
         .eq('canonical_name', name)
         .maybeSingle();
+
+    // burst は選択されたときだけ書く (未選択なら列に触れない = burst未マイグレ環境でも動く)
+    const burstPatch = burst ? { burst } : {};
+    // 新しい主バーストが既存のサブと同値になるとサブが無意味 & 25 の CHECK 制約に違反する → 落とす
+    if (burst && existing?.burst_alt && existing.burst_alt === burst) burstPatch.burst_alt = null;
 
     const nowIso = new Date().toISOString();
     if (existing) {
         const paths = Array.isArray(existing.icon_paths) ? [...existing.icon_paths] : [];
         if (!paths.includes(iconPath)) paths.push(iconPath);
-        await supabase.from('nikke_characters').update({
+        // error を握り潰すと「登録できた」と表示したまま実際は保存されない → 必ず投げる
+        const { error: updErr } = await supabase.from('nikke_characters').update({
             icon_paths: paths,
             is_confirmed: true,   // 運営が手動でひも付けたのは確定扱い
             last_seen: nowIso,
             ...burstPatch,
         }).eq('canonical_name', name);
+        if (updErr) throw updErr;
         return { canonical_name: name, updated: true, icon_count: paths.length };
     }
     // 新規登録
-    await supabase.from('nikke_characters').insert({
+    const { error: insErr } = await supabase.from('nikke_characters').insert({
         canonical_name: name,
         aliases: [],
         icon_paths: [iconPath],
@@ -2095,6 +2099,7 @@ window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPa
         last_seen: nowIso,
         ...burstPatch,
     });
+    if (insErr) throw insErr;
     return { canonical_name: name, inserted: true, icon_count: 1 };
 };
 
@@ -2137,6 +2142,16 @@ window.supabaseFindCharacterByIconPath = async function (iconPath) {
     } catch { return null; }
 };
 
+// PostgREST が「そんな列は無い」と言っているかの判定 (25_nikke_burst_alt.sql 未適用環境の検出用)
+function _isMissingColumnErr(error, col) {
+    if (!error || !col) return false;
+    const blob = `${error.code || ''} ${error.message || ''} ${error.details || ''} ${error.hint || ''}`;
+    if (!blob.includes(col)) return false;
+    // 制約違反 (23514: 制約名に burst_alt を含む) を「列が無い」と誤読しないよう文言は絞る
+    return error.code === 'PGRST204' || error.code === '42703'
+        || /could not find .*column|column .* does not exist|schema cache/i.test(blob);
+}
+
 // nikke_characters の1行を更新 (canonical_name の変更含む)
 // oldCanonical を別の正式名に rename する場合 = 旧行を delete し、新行を upsert + 既存の aliases/count をマージ
 window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch) {
@@ -2163,7 +2178,10 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
         const mergedCount = (existing?.sighting_count || 0) + (old.sighting_count || 0);
         // burst は patch指定を優先、なければ新旧行の値を保持
         const mergedBurst = (patch.burst !== undefined) ? (patch.burst || null) : (existing?.burst ?? old.burst ?? null);
-        await supabase.from('nikke_characters').upsert({
+        const rawAlt = (patch.burst_alt !== undefined) ? (patch.burst_alt || null) : (existing?.burst_alt ?? old.burst_alt ?? null);
+        // サブは「主があって、主と別値」のときだけ有効 (25 の CHECK 制約に合わせる)
+        const mergedAlt = (mergedBurst && rawAlt && rawAlt !== mergedBurst) ? rawAlt : null;
+        const row = {
             canonical_name: newCanonical,
             aliases: mergedAliases,
             sighting_count: mergedCount,
@@ -2171,7 +2189,15 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
             first_seen: old.first_seen,
             last_seen: new Date().toISOString(),
             ...(mergedBurst ? { burst: mergedBurst } : {}),
-        });
+            ...(mergedAlt ? { burst_alt: mergedAlt } : {}),
+        };
+        const { error: upErr } = await supabase.from('nikke_characters').upsert(row);
+        // 未マイグレ環境では引き継ぎ元の burst_alt も undefined なので、ここでこのエラーが出るのは
+        // 「呼び出し側が明示的にサブを保存しようとした」ときだけ。黙って捨てず案内する
+        if (upErr && mergedAlt && _isMissingColumnErr(upErr, 'burst_alt')) {
+            throw new Error('サブバーストの保存には supabase/25_nikke_burst_alt.sql の適用が必要です (Supabase → SQL Editor で実行してください)');
+        }
+        if (upErr) throw upErr;
         // 旧行を削除
         await supabase.from('nikke_characters').delete().eq('canonical_name', oldCanonical);
         return { renamed: true, canonical_name: newCanonical };
@@ -2182,8 +2208,39 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
     if (isConfirmed != null) update.is_confirmed = !!isConfirmed;
     if (Array.isArray(patch.icon_paths)) update.icon_paths = patch.icon_paths.filter(Boolean);
     if (patch.burst !== undefined) update.burst = patch.burst || null;   // '' → null で未設定に戻せる
+    if (patch.burst_alt !== undefined) update.burst_alt = patch.burst_alt || null;
+
+    // 主・サブの整合を取る (25 の CHECK: サブは「主があって、主と別値」のときだけ許される)。
+    // 片方だけ更新する呼び出しだと据え置き側と衝突して制約違反で落ちうるので、現在値を読んで潰す。
+    // 例: burst だけ B1 に変える → 既存 burst_alt='B1' が同値になり違反 → サブを null にする
+    if (('burst' in update) || ('burst_alt' in update)) {
+        let cur = null;
+        if (('burst' in update) !== ('burst_alt' in update)) {
+            // 片方だけの更新 → 据え置き側の現在値が要る (両方来ているなら読む必要はない)
+            try {
+                const { data } = await supabase.from('nikke_characters')
+                    .select('*').eq('canonical_name', oldCanonical).maybeSingle();
+                cur = data || null;
+            } catch { /* 読めなければ整合チェックは諦め、DB の CHECK 制約に委ねる */ }
+        }
+        // 未マイグレ環境では cur.burst_alt が undefined → null 扱いになり、何も足さない
+        const finalBurst = ('burst' in update) ? update.burst : (cur?.burst ?? null);
+        const finalAlt = ('burst_alt' in update) ? update.burst_alt : (cur?.burst_alt ?? null);
+        const okAlt = (finalBurst && finalAlt && finalAlt !== finalBurst) ? finalAlt : null;
+        if (okAlt !== finalAlt) update.burst_alt = okAlt;   // 無効化が必要なときだけ明示的に書く
+    }
     if (Object.keys(update).length === 0) return { unchanged: true };
-    const { error } = await supabase.from('nikke_characters').update(update).eq('canonical_name', oldCanonical);
+    let { error } = await supabase.from('nikke_characters').update(update).eq('canonical_name', oldCanonical);
+    if (error && 'burst_alt' in update && _isMissingColumnErr(error, 'burst_alt')) {
+        // 25_nikke_burst_alt.sql 未適用。サブを実際に設定しようとしたなら黙って捨てず案内する
+        if (update.burst_alt) {
+            throw new Error('サブバーストの保存には supabase/25_nikke_burst_alt.sql の適用が必要です (Supabase → SQL Editor で実行してください)');
+        }
+        // 空のサブを消そうとしただけ → 列抜きでリトライ
+        const { burst_alt: _drop, ...rest } = update;
+        if (Object.keys(rest).length === 0) return { unchanged: true };
+        ({ error } = await supabase.from('nikke_characters').update(rest).eq('canonical_name', oldCanonical));
+    }
     if (error) throw error;
     return { renamed: false, canonical_name: oldCanonical };
 };
