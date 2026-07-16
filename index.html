@@ -7304,18 +7304,19 @@
 
             const renderItem = c => {
                 const icon = (c.icon_paths && c.icon_paths[0])
-                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(c.icon_paths[0])}" style="width:48px;height:48px;border-radius:8px;background:#222;">`
-                    : `<div style="width:48px;height:48px;border-radius:8px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;font-size:18px;color:#B6BBC1;">?</div>`;
+                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(c.icon_paths[0])}" style="width:100%;max-width:46px;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#222;">`
+                    : `<div style="width:100%;max-width:46px;aspect-ratio:1/1;border-radius:8px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;font-size:17px;color:#B6BBC1;">?</div>`;
                 // 名前は data 属性で渡し、クリックは委譲で拾う (インライン onclick に名前を
                 // 埋めると escapeHtml 済みでも属性のHTMLデコード後に ' で脱出されXSSになる)
                 return `
-                    <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border-radius:12px;border:1px solid rgba(20,22,26,0.06);background:#fff;" onmouseover="this.style.background='#F7F8F9'" onmouseout="this.style.background='#fff'">
+                    <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;border-radius:10px;border:1px solid rgba(20,22,26,0.06);background:#fff;min-width:0;" onmouseover="this.style.background='#F7F8F9'" onmouseout="this.style.background='#fff'">
                         ${icon}
                         <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">${_burstBadgeHtml(c)}${useBadgeHtml(c)}</div>
-                        <div style="font-size:11px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
+                        <div style="font-size:10px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
                     </div>`;
             };
-            const grid = items => `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">${items.map(renderItem).join('')}</div>`;
+            // 最小幅を 110→76px に。モバイル(幅~300px)で 2列→4列前後に増え、PC はさらに横に並ぶ。
+            const grid = items => `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:5px;">${items.map(renderItem).join('')}</div>`;
             const head = t => `<div style="margin:12px 0 4px 0;font-size:11px;font-weight:900;color:#6B7178;">${t}</div>`;
             // 採用率順に並んでいるときは上位だけ出して残りを畳む (下に行くほど選ばれないので
             // 全部出しても縦に長いだけ)。検索中は探しに来ているので畳まない
