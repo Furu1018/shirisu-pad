@@ -5767,12 +5767,6 @@
             const plan = pub.plan;
             const esc = escapeHtml;
 
-            const mine = [];
-            (plan.levels || []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
-                if (a.memberId === identity.id) mine.push({ ...a, level: lv.level, bossNumber: b.bossNumber, attribute: b.attribute, weakness: b.weakness });
-            })));
-            mine.sort((a, b) => (a.hourIdx ?? 99) - (b.hourIdx ?? 99));
-
             if (metaEl) {
                 let when = '';
                 try {
@@ -5781,19 +5775,28 @@
                 metaEl.textContent = `${when} 配信${pub.published_by_name ? ` · ${pub.published_by_name}` : ''}`;
             }
 
-            const mineHtml = mine.length === 0
-                ? '<p style="margin:0;font-size:12px;font-weight:700;color:#8A9097;">このプランであなたへの凸割当はありません (凸済み、またはデータ未提出の可能性)。</p>'
-                : mine.map((a, i) => {
-                    const c = DC_ATTR_COLORS[a.attribute] || '#A4AAB0';
-                    const ptName = PT_ATTRS.find(x => x.key === a.weakness)?.name || '';
-                    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid ${c}33;border-radius:11px;background:${c}0A;${i > 0 ? 'margin-top:6px;' : ''}">
-                        <span style="flex:none;font-size:11px;font-weight:900;color:${c};">Lv${a.level}·B${a.bossNumber}</span>
-                        <span style="flex:1;min-width:0;font-size:12px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(ptName)}PTで凸</span>
-                        ${a.isBottleneck ? '<span title="あなたの凸がこのレベルのクリア時刻を決めています" style="flex:none;font-size:10.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:2px 7px;border-radius:999px;">⏱律速</span>' : ''}
-                        <span style="flex:none;font-size:11px;font-weight:900;color:${a.flex ? '#B45309' : '#1E78F0'};">${a.flex ? '⏳隙間時間で' : `🕐${a.hourLabel ? `${a.hourLabel}ごろ` : '未定'}${a.timeUnknown ? '?' : ''}`}</span>
-                        <span style="flex:none;font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${a.dmgB.toFixed(1)}B</span>
-                    </div>`;
-                }).join('');
+            // 「報告済み ✓」判定用に、自分がこのシーズンで既に凸したボス番号ごとの件数を集める。
+            // (プランは配信時点の残り凸の想定 → 実際に報告した回数ぶんだけ予定行を消し込む。
+            //  同一ボスへ複数予定があるとき、1報告で全部✓にならないよう件数で照合する)
+            // done判定は「Lv:ボス番号」の複合キー + 配信後に報告された凸に限る。
+            // (attacks は level と reported_at を持つ。配信前の凸は元々プラン算出から除外済み)
+            const doneCounts = new Map();
+            let liveLevel = Number(plan.startLevel) || 1;
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                if (ctx?.season?.current_level) liveLevel = Number(ctx.season.current_level) || liveLevel;
+                if (ctx?.season?.id && typeof window.supabaseLoadMyAttacks === 'function') {
+                    const atks = await window.supabaseLoadMyAttacks(identity.id, ctx.season.id, ctx.season.hard_date);
+                    const pubAt = new Date(pub.published_at).getTime();
+                    (atks || []).forEach(a => {
+                        if (a.boss_number == null) return;
+                        const rt = a.reported_at ? new Date(a.reported_at).getTime() : null;
+                        if (rt != null && Number.isFinite(pubAt) && rt <= pubAt) return;   // 配信前の凸は数えない
+                        const key = `${Number(a.level) || 1}:${Number(a.boss_number)}`;
+                        doneCounts.set(key, (doneCounts.get(key) || 0) + 1);
+                    });
+                }
+            } catch { /* 取れなくても ✓無しで表示 */ }
 
             // 陳腐化検知: 配信後に凸/ボスHPが動いていたら注意を出す
             let stale = false;
@@ -5804,18 +5807,164 @@
                 }
             } catch { /* noop */ }
 
+            // 編成アイコン描画用にマスタを先読み
+            if (typeof getNikkeCharsCache === 'function') { try { await getNikkeCharsCache(); } catch { /* noop */ } }
+
+            _myPubState = { plan, viewerId: identity.id, doneCounts, stale, liveLevel };
+            _renderMyPubBody();
+            card.style.display = '';
+        }
+
+        // ===== メンバー向け配信プラン: 3モード (🙋わたしの凸 / 🗺全体 / 🗓時間割) =====
+        let _myPlanViewMode = 'mine';
+        try { _myPlanViewMode = localStorage.getItem('shirisuko_myplan_view') || 'mine'; } catch { /* storage無効環境でも動くように */ }
+        if (!['mine', 'overview', 'timetable'].includes(_myPlanViewMode)) _myPlanViewMode = 'mine';
+        let _myPubState = null;   // { plan, viewerId, doneCounts:Map, stale }
+
+        function setMyPlanViewMode(mode) {
+            _myPlanViewMode = mode;
+            try { localStorage.setItem('shirisuko_myplan_view', mode); } catch { /* noop */ }
+            _renderMyPubBody();
+        }
+
+        // 「報告する ▶」→ 凸報告モーダルを開いて対象ボスをプリセット
+        async function _planReportBoss(bossNumber) {
+            const n = Number(bossNumber);
+            if (!Number.isFinite(n) || typeof openMyAttackModal !== 'function') return;
+            await openMyAttackModal();
+            const btn = document.querySelector(`#myAttackBossButtons button[data-boss="${n}"]`);
+            if (btn && typeof handleMyAttackBossPick === 'function') handleMyAttackBossPick(btn, n);
+        }
+
+        function _renderMyPubBody() {
+            const body = document.getElementById('myPublishedPlanBody');
+            if (!body || !_myPubState) return;
+            const { plan, viewerId, doneCounts, stale, liveLevel } = _myPubState;
+            const tab = (mode, icon, label) => `<button onclick="setMyPlanViewMode('${mode}')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:11.5px;font-weight:800;font-family:inherit;${_myPlanViewMode === mode ? 'background:#fff;color:#14161A;box-shadow:0 1px 3px rgba(20,22,26,0.14);' : 'background:transparent;color:#8A9097;'}">${icon} ${label}</button>`;
+            const tabs = `<div style="display:flex;gap:3px;background:#E7E9EC;border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}</div>`;
+            let inner;
+            try {
+                if (_myPlanViewMode === 'overview') inner = _planOverviewHtml(plan, viewerId);
+                else if (_myPlanViewMode === 'timetable') inner = _planTimetableHtml(plan, { highlightPlayerId: viewerId, filterKey: 'my' });
+                else inner = _planMineHtml(plan, viewerId, doneCounts, liveLevel);
+            } catch (e) {
+                console.warn('[配信プラン] 描画失敗:', e);
+                inner = '<p style="font-size:12px;color:#FF3D44;font-weight:700;">プランの表示に失敗しました。運営に再配信を依頼してください。</p>';
+            }
             body.innerHTML = `
                 ${stale ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:#B45309;">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
-                <p style="margin:0 0 9px 0;font-size:10.5px;color:#8A9097;line-height:1.5;">運営が配信した凸プランです。配信時点の残HP・提出データに基づく想定のため、最新状況とはズレることがあります。</p>
-                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">あなたの凸予定</div>
-                ${mineHtml}
-                <details id="myPublishedPlanDetails" style="margin-top:10px;">
-                    <summary style="cursor:pointer;font-size:11.5px;font-weight:800;color:#1E78F0;">📊 全体プランを見る</summary>
-                    <div style="margin-top:9px;">
-                        ${_planTimetableHtml(plan, { highlightPlayerId: identity.id, filterKey: 'my' })}
+                ${tabs}
+                ${inner}`;
+        }
+
+        // 🙋 わたしの凸: 自分の割当をチェックリスト。報告済みは ✓ + 薄く、未報告(現在Lv)は「報告する ▶」
+        function _planMineHtml(plan, viewerId, doneCounts, liveLevel) {
+            const esc = escapeHtml;
+            const curLevel = Number(liveLevel) || Number(plan.startLevel) || 1;   // ライブの current_level 優先
+            const mine = [];
+            (Array.isArray(plan.levels) ? plan.levels : []).forEach(lv => {
+                (Array.isArray(lv.bosses) ? lv.bosses : []).forEach(b => {
+                    (Array.isArray(b.attacks) ? b.attacks : []).forEach(a => {
+                        if (a.memberId === viewerId) mine.push({ ...a, level: Number(lv.level) || 1, bossNumber: Number(b.bossNumber), bossName: b.name, attribute: b.attribute, weakness: b.weakness });
+                    });
+                });
+            });
+            mine.sort((a, b) => (a.hourIdx ?? 99) - (b.hourIdx ?? 99));
+            if (mine.length === 0) return '<p style="margin:0;font-size:12px;font-weight:700;color:#8A9097;">このプランであなたへの凸割当はありません (凸済み、またはデータ未提出の可能性)。</p>';
+            // 実際に報告した件数ぶんだけ、上から予定行を「済」に消し込む (同一ボスの二重✓防止)
+            const remain = new Map(doneCounts || []);
+            let doneCount = 0;
+            const rows = mine.map(a => {
+                const bn = Number(a.bossNumber);   // インライン onclick へは数値化して埋める (XSS遮断)
+                const key = `${a.level}:${bn}`;    // Lv:ボス で照合 (別Lvの同ボスを取り違えない)
+                const rem = remain.get(key) || 0;
+                const done = rem > 0;
+                if (done) { remain.set(key, rem - 1); doneCount++; }
+                const reportable = !done && a.level === curLevel;   // 報告は現在開いているLvの割当だけ
+                const c = DC_ATTR_COLORS[a.attribute] || '#A4AAB0';
+                const ptc = DC_ATTR_COLORS[a.weakness] || '#A4AAB0';
+                const ptName = PT_ATTRS.find(x => x.key === a.weakness)?.name || '';
+                const timeHtml = a.flex
+                    ? '<span style="font-size:12px;font-weight:900;color:#B45309;">⏳隙間</span>'
+                    : `<span style="font-size:15px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${a.hourLabel ? esc(String(a.hourLabel)) : '未定'}</span>`;
+                const team = a.team ? renderTeamSnippet(a.team, { size: 18 }) : '';
+                const dmgHtml = `<span style="font-size:13px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:9px;color:#A4AAB0;">B</span></span>`;
+                let right;
+                if (done) right = `<span style="flex:none;">${dmgHtml}</span>`;
+                else if (reportable) right = `<button onclick="_planReportBoss(${bn})" style="flex:none;font-size:10.5px;font-weight:900;color:#fff;background:linear-gradient(180deg,#46A0FF,#1E78F0);border:none;padding:7px 12px;border-radius:999px;cursor:pointer;font-family:inherit;">報告する ▶</button>`;
+                else right = `<div style="flex:none;text-align:right;">${dmgHtml}<div style="font-size:8.5px;font-weight:800;color:#B6BBC1;margin-top:1px;">Lv${a.level}開放後</div></div>`;
+                return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(20,22,26,0.05);${done ? 'opacity:0.55;' : ''}">
+                    <span style="flex:none;width:24px;height:24px;border-radius:8px;${done ? 'background:#18C26B;' : 'border:2px dashed #B6BBC1;'}display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;">${done ? '✓' : ''}</span>
+                    <div style="width:48px;flex:none;text-align:center;">${timeHtml}<div style="font-size:9px;font-weight:800;color:#A4AAB0;margin-top:1px;">Lv${a.level}</div></div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="width:9px;height:9px;border-radius:3px;background:${c};flex:none;"></span><span style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(String(a.bossName || ('B' + bn)))}</span><span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PTで</span>${a.isBottleneck ? '<span style="flex:none;font-size:9.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:1px 6px;border-radius:999px;">律速</span>' : ''}</div>
+                        ${team ? `<div style="margin-top:5px;">${team}</div>` : ''}
                     </div>
-                </details>`;
-            card.style.display = '';
+                    ${right}
+                </div>`;
+            }).join('');
+            return `<div style="display:flex;align-items:center;gap:8px;padding:2px 4px 4px;">
+                    <span style="font-size:13px;font-weight:900;color:#14161A;">あなたの凸</span>
+                    <span style="margin-left:auto;font-size:11px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.12);padding:3px 10px;border-radius:999px;">${doneCount} / ${mine.length} 報告済み</span>
+                </div>${rows}
+                <p style="margin:10px 4px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.5;">✓ が付くのは <b>マイページ → 戦闘報告</b> を完了したとき。「報告する ▶」で報告画面へ直行できます。</p>`;
+        }
+
+        // 🗺 全体の流れ: 総括ヒーロー + Lvステッパー + ボス1行概観 (攻撃メンバーのアバター重ね)
+        function _planOverviewHtml(plan, viewerId) {
+            const esc = escapeHtml;
+            const clearedThrough = Number(plan.fullyClearedThrough) || 0;
+            const startLevel = Number(plan.startLevel) || 1;
+            const reachedAll = clearedThrough >= 3;
+            const reachedSome = clearedThrough >= startLevel;
+            const heroColor = reachedAll ? '#18C26B' : (reachedSome ? '#F59E0B' : '#FF3D44');
+            const heroBg = reachedAll ? 'rgba(24,194,107,0.10)' : (reachedSome ? 'rgba(245,158,11,0.10)' : 'rgba(255,61,68,0.10)');
+            const heroTitle = reachedSome ? `Lv${clearedThrough} まで完全攻略想定` : `Lv${startLevel} に火力が届かない想定`;
+            const timeSuffix = plan.finalClearHourLabel ? ` · ${esc(String(plan.finalClearHourLabel))}クリア想定` : '';
+            const levelsArr = Array.isArray(plan.levels) ? plan.levels : [];
+            const clearLabelByLv = new Map(levelsArr.map(lv => [Number(lv.level), lv.clearHourLabel]));
+            const stepper = [1, 2, 3].map(L => {
+                const inScope = L >= startLevel;
+                const done = clearedThrough >= L;
+                const bg = !inScope ? '#F1F2F4' : (done ? '#18C26B' : 'rgba(255,61,68,0.12)');
+                const col = !inScope ? '#C9CED3' : (done ? '#fff' : '#FF3D44');
+                const lbl = clearLabelByLv.get(L);
+                const t = done && lbl ? `<div style="font-size:9px;font-weight:800;opacity:.9;">⏱${esc(String(lbl))}</div>` : '';
+                return `<span style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:11px;font-weight:900;background:${bg};color:${col};line-height:1.2;">Lv${L}${done ? ' ✓' : ''}${t}</span>`;
+            }).join('');
+            const lvSections = levelsArr.map(lv => {
+                const bossesArr = Array.isArray(lv.bosses) ? lv.bosses : [];
+                const rows = bossesArr.filter(b => (Number(b.targetHpB) || 0) > 0.0001 || (Array.isArray(b.attacks) && b.attacks.length)).map(b => {
+                    const atks = Array.isArray(b.attacks) ? b.attacks : [];
+                    const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                    const ptName = PT_ATTRS.find(x => x.key === b.weakness)?.name || '';
+                    const attrName = ATTR_VISUAL[b.attribute]?.name || '?';
+                    const avatars = atks.slice(0, 5).map((a, i) => {
+                        const me = a.memberId === viewerId;
+                        const av = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(a.memberId, a.memberName, 22) : '';
+                        return `<span style="margin-left:${i > 0 ? '-7px' : '0'};display:inline-flex;border-radius:50%;box-shadow:0 0 0 2px ${me ? '#1E78F0' : '#fff'};">${av}</span>`;
+                    }).join('');
+                    const clearHtml = (Number(b.targetHpB) || 0) <= 0 ? '<span style="font-size:10px;font-weight:800;color:#A4AAB0;">撃破済</span>'
+                        : b.cleared ? `<span style="font-size:11px;font-weight:900;color:#18C26B;">${b.clearHourLabel ? esc(String(b.clearHourLabel)) : '撃破'}</span>`
+                            : `<span style="font-size:10px;font-weight:900;color:#FF3D44;">残${(Number(b.remainingHpB) || 0).toFixed(1)}B</span>`;
+                    return `<div style="display:flex;align-items:center;gap:9px;padding:9px 4px;border-top:1px solid rgba(20,22,26,0.05);">
+                        <span style="flex:none;width:30px;height:30px;border-radius:9px;background:${c};color:#fff;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;">${esc(String(attrName).slice(0, 1))}</span>
+                        <div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(String(b.name || ('B' + Number(b.bossNumber))))}</div><div style="font-size:9.5px;font-weight:700;color:#A4AAB0;">${esc(ptName)}PTで凸 · ${atks.length}人</div></div>
+                        <span style="flex:none;display:inline-flex;">${avatars}</span>
+                        <span style="flex:none;width:46px;text-align:right;">${clearHtml}</span>
+                    </div>`;
+                }).join('');
+                const badge = lv.levelCleared
+                    ? `<span style="font-size:10px;font-weight:800;color:#18C26B;background:rgba(24,194,107,0.12);padding:2px 9px;border-radius:999px;">全撃破${lv.clearHourLabel ? ` ⏱${esc(String(lv.clearHourLabel))}` : ''}</span>`
+                    : `<span style="font-size:10px;font-weight:800;color:#FF3D44;background:rgba(255,61,68,0.10);padding:2px 9px;border-radius:999px;">ストップ</span>`;
+                return `<div style="padding:12px 4px 2px;display:flex;align-items:center;gap:8px;"><span style="font-size:12px;font-weight:900;color:#14161A;">Lv${Number(lv.level) || '?'}</span>${badge}</div>${rows}`;
+            }).join('');
+            return `<div style="border-radius:15px;background:${heroBg};border:1px solid ${heroColor}33;padding:13px 14px;">
+                    <div style="font-size:14px;font-weight:900;color:#14161A;">${reachedAll ? '🏆 ' : (reachedSome ? '⚔️ ' : '⚠️ ')}${heroTitle}</div>
+                    <div style="font-size:11px;font-weight:700;color:#8A9097;margin-top:1px;">${reachedAll ? '理論上フル攻略できる想定' : 'この先はSLv・編成の底上げが必要'}${timeSuffix}</div>
+                    <div style="display:flex;gap:5px;margin-top:11px;">${stepper}</div>
+                </div>${lvSections}
+                <p style="margin:10px 4px 0;font-size:10px;color:#A4AAB0;text-align:center;">🔵青枠＝あなた · 数字＝そのボスへ入る人数</p>`;
         }
 
         // ========== 締め凸依頼への応答 (マイページ) ==========
