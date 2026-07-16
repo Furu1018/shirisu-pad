@@ -245,10 +245,52 @@ test('得意属性のボスが生きている間は枠が予約される (必須
     assert.equal(fire.attacks[0]?.memberName, 'A');
 });
 
+test('必須属性のボスがレベル途中で他メンバーに撃破されたら予約を解放して他ボスに出せる (Codex監査 #4)', () => {
+    // A: 得意 fire (必須) + water も出せる、残凸1。fire は大幅オーバーキル(火力過剰)。
+    // B: fire を低オーバーキルで撃破 → A より fire に適する。
+    // 期待: B が fire を撃破 → A の必須 fire は満たせなくなるので予約を解放し、A は water に出る。
+    // 修正前は A の lockedNow が握られたまま水ボスで除外され、A の1凸が丸ごと未使用だった。
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'water', { remainingB: 10 })],
+        [
+            player('A', { fire: 100, water: 15 }, {
+                strong: ['fire'], attackCount: 2,               // 残凸1
+                attacks: [{ boss_number: 98 }, { boss_number: 99 }],
+            }),
+            player('B', { fire: 11 }),
+        ],
+    ));
+    const fire = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    const water = plan.levels[0].bosses.find(b => b.bossNumber === 2);
+    assert.equal(fire.attacks[0]?.memberName, 'B', 'fire は低オーバーキルの B が撃破するはず');
+    assert.equal(water.cleared, true, 'A の予約が解放され water も撃破されるはず');
+    assert.equal(water.attacks[0]?.memberName, 'A', 'A が余った1凸を water に使うはず');
+});
+
 // ---- 時間考慮モード (timeAware) ------------------------------------------------
 console.log('\ntimeAware:');
 
 const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, players, opts), timeAware: true });
+
+test('時間外(ミスマッチ)割当は MISMATCH_PENALTY で正規時間の人より後回しになる (Codex監査 #6)', () => {
+    // X: 火力はやや上(オーバーキル小)だが凸可能時間が過去(h05)のみ → 現在h21ではミスマッチ。
+    // Y: オーバーキルはやや大きいが h21 に正規で凸できる。
+    // MISMATCH_PENALTY が効いていれば、多少の火力差より「時間を確約できる Y」が優先される。
+    // 括弧バグがあると X の罰が FLEX 分(0.4)だけになり X が選ばれてしまう。
+    // Lv2 を対象にする (levelPos=0.5 → 2人の SLv 順位ペナルティが両者 0.5 で相殺され、
+    // 時間ミスマッチ罰だけが勝敗を分ける状態を作る)。
+    const plan = compute(timeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [
+            player('X時間外', { fire: 11 }, { availableSlots: ['h05'] }),
+            player('Y正規', { fire: 12 }, { availableSlots: ['h21'] }),
+        ],
+        { currentSlot: 'h21', currentLevel: 2 },
+    ));
+    const atk = plan.levels[0].bosses[0].attacks[0];
+    assert.equal(atk.memberName, 'Y正規', '時間を確約できる Y が優先されるはず');
+    assert.equal(atk.timeMismatch, false);
+});
 
 test('凸は「そのレベルが開いてから最も早い凸可能時間帯」に割り当てられる', () => {
     const plan = compute(timeInput(

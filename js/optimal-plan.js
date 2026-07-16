@@ -181,7 +181,10 @@
             const overkill = Math.max(0, dmg - rem);
             const slvPenalty = Math.abs((m.slvRank ?? 0.5) - levelPos);
             const timePenalty = timeAware ? (hourIdx - openIdx) : 0;
-            const flexPenalty = (timeAware && isFlex) ? FLEX_PENALTY : 0
+            // ⚠ 括弧必須: ?: は + より優先度が低いため、括弧が無いと
+            // 「isFlex ? FLEX : (0 + mismatch分)」と解釈され、mismatch は常に flex=true で
+            // 来るので MISMATCH_PENALTY が一度も加算されなくなる (Opus/Codex 監査で確認)。
+            const flexPenalty = ((timeAware && isFlex) ? FLEX_PENALTY : 0)
                 + ((timeAware && isMismatch) ? MISMATCH_PENALTY : 0);
             // 必須得意属性は早めに消化 (ボス撃破後に強制枠が余って無駄になるのを防ぐ)
             const strongBonus = m.mandatory.has(attr) ? W_STRONG : 0;
@@ -291,6 +294,23 @@
                     hasFlex,
                     // 火力不足ではなく時間不足で削り切れなかったボスの区別
                     timeConstrained: timeAware && !cleared && targetHpB > 0 && sawTimeExcluded,
+                });
+                // === 必須予約(mandatory)の途中解放 ===
+                // lockedNow はレベル開始時点の生存弱点で固定していたため、必須属性のボスが
+                // 「このレベルの途中で他メンバーに撃破」されても枠が握られたままになり、
+                // 当該メンバーが自由枠に出られず1凸まるごと未使用になっていた (Opus/Codex 監査)。
+                // ボスを1体削り終えるたびに、まだ弱点が生存しているレベル内ボスを数え直して
+                // lockedNow を更新する (処理済み=残HP / 未処理=満タンで生存扱い)。
+                const aliveWeakLeft = new Set();
+                levelBosses.forEach(pb => { if (pb.remainingHpB > 0.0001 && pb.weakness) aliveWeakLeft.add(pb.weakness); });
+                for (let bi = levelBosses.length; bi < bosses.length; bi++) {
+                    const nb = bosses[bi];
+                    const nbTarget = (L === startLevel) ? ((nb.remaining_hp_raw || 0) / 1e9)
+                        : (HARD_LEVEL_HP_B[L]?.[nb.tier] ?? ((nb.total_hp_raw || 0) / 1e9));
+                    if (nbTarget > 0.0001 && nb.weakness) aliveWeakLeft.add(nb.weakness);
+                }
+                memberState.forEach(m => {
+                    if (m.mandatory.size > 0) m.lockedNow = [...m.mandatory].filter(k => aliveWeakLeft.has(k)).length;
                 });
             }
             // 律速マーク: レベルのクリア時刻を決めている凸 (最も遅い時間帯の凸)。
