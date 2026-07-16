@@ -874,6 +874,7 @@
             width: 100%;
             max-height: 85vh;
             overflow-y: auto;
+            overflow-x: hidden;   /* overflow-y:auto は overflow-x も暗黙 auto にする → 横スクロール暴発を止める */
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -4507,7 +4508,7 @@
             <div id="iconPickerBurstFilter" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
             <p id="iconPickerHint" style="margin:0;font-size:11px;font-weight:700;color:#1E78F0;display:none;"></p>
 
-            <div id="iconPickerList" style="max-height:48vh;overflow-y:auto;"></div>
+            <div id="iconPickerList" style="max-height:48vh;overflow-y:auto;overflow-x:hidden;"></div>
 
             <div id="iconPickerNew" style="border-top:1px solid rgba(20,22,26,0.08);padding-top:10px;">
                 <p style="margin:0 0 6px 0;font-size:11px;color:#8A9097;">候補に無い場合、入力中のテキストをそのまま新規キャラとしてマスタに登録できます。</p>
