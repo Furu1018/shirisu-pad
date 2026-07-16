@@ -21,3 +21,4 @@ Desktop.ini
 
 # Claude Code フックのテストログ (コミットしない)
 .claude/hooks/_fired.log
+.claude/hooks/.codex-on

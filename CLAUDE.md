@@ -7,6 +7,23 @@ NIKKE ユニオンレイド運営ツール。約30名の内輪ユニオン向け
 `shirisu-mobile-ui` (UIの落とし穴) / `evidence-first-dev` (進め方の型)。該当作業の前に読むこと。
 現状サマリー・実戦検証タスク・既知の穴・機能候補は **ROADMAP.md** に集約されている。
 
+## Codex 併用レビュー (トグル・既定OFF)
+
+ユーザーが「**Codexも併用して**」(同義の依頼含む) と言ったら:
+```sh
+touch .claude/hooks/.codex-on      # ON
+```
+以降、**作業を終えるたびに Stop フック (`.claude/hooks/codex-review.sh`) が未pushの差分を
+Codex CLI にレビューさせる**。バグ・境界条件・セキュリティの指摘があれば Stop がブロックされ
+stderr に指摘が返るので、**対応してから作業を終えること**。
+
+「**Codexオフ**」等で解除:
+```sh
+rm -f .claude/hooks/.codex-on      # OFF
+```
+既定は OFF (フックは即終了するので無負荷)。ON中は毎ターン10〜60秒 + APIコストがかかる。
+前提: `codex` CLI が PATH 上にあること。レビュー実行の記録は `.claude/hooks/_fired.log`。
+
 ## アーキテクチャ
 
 - **index.html**(約16,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成
