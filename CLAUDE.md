@@ -47,6 +47,14 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **sw.js** — Web Push 用 Service Worker。キャッシュは実質不変の画像のみ
   (character-images/属性アイコン)。HTML/JS/データは即時反映のため非キャッシュ
 - 認証なし。プレイヤーは自己申告で選択 (localStorage)
+- **運営モード (`_opsMode` / `body.ops-mode` / `data-ops-only`)**: `🛠運営` スイッチで運営向けUIを
+  出し入れする仕組み。ユニレ管理タブと設定タブで共有 (localStorage `shirisuko_ops_mode`)。
+  CSS は `body:not(.ops-mode) [data-ops-only]{display:none}` のグローバル1行なので、
+  **どのタブでも `data-ops-only` を付けるだけで運営送りにできる** (逆に OFF 時だけ出すのは
+  `data-ops-off-only`)。設定タブは OFF の間そもそも運営データを取得しない (`renderSettingsTab`)。
+  **これは認可ではなく誤操作防止の表示トグル。誰でも切り替えられるのが意図した仕様**
+  (内輪運用の割り切り)。RLS が anon 全許可 + anon キー公開なので UI で隠しても保護にはならない。
+  「クライアント側の権限チェックが甘い」という指摘は的外れ — 直すなら RLS 側であって UI ではない
 
 ## テスト
 

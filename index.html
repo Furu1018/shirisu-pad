@@ -317,6 +317,8 @@
         }
         #tab-ops .dc-card { scroll-margin-top: 64px; }
         body:not(.ops-mode) [data-ops-only] { display: none !important; }
+        /* 運営モードOFF のときだけ出す (運営項目が隠れていることの案内など) */
+        body.ops-mode [data-ops-off-only] { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
         .dc-dmg-panel.stacked {
             box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14);
@@ -3923,14 +3925,24 @@
     <div id="tab-settings" class="tab-content">
         <div class="container">
             <!-- ヘッダ -->
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
-                <div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:0 2px 2px;">
+                <div style="min-width:0;">
                     <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">設定</div>
                     <div style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">PADのシステム状態 · 通知 · データ管理</div>
                 </div>
-                <div onclick="renderSettingsTab()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;">
-                    <span style="width:6px;height:6px;border-radius:50%;background:#18C26B;animation:dcLivePulse 1.6s ease-in-out infinite;"></span>同期
+                <div style="display:flex;align-items:center;gap:6px;flex:none;">
+                    <!-- ops タブと同じ 🛠運営 モードを共有 (body.ops-mode / data-ops-only) -->
+                    <button id="settingsOpsModeBtn" onclick="toggleOpsMode()" title="運営向けの項目 (メンバーの通知状況・メンバー管理・アクティビティ・キャラマスタ・バックアップ) の表示を切り替え" style="padding:5px 10px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:10px;font-weight:800;letter-spacing:0.3px;cursor:pointer;font-family:inherit;white-space:nowrap;">🛠 運営</button>
+                    <div onclick="renderSettingsTab()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;white-space:nowrap;">
+                        <span style="width:6px;height:6px;border-radius:50%;background:#18C26B;animation:dcLivePulse 1.6s ease-in-out infinite;"></span>同期
+                    </div>
                 </div>
+            </div>
+
+            <!-- 運営項目が隠れていることの案内 (OFF のときだけ表示) -->
+            <div data-ops-off-only style="display:flex;align-items:center;gap:7px;padding:9px 12px;margin-bottom:10px;border-radius:11px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);font-size:10.5px;line-height:1.5;color:#8A9097;">
+                <span style="flex:none;">🛠</span>
+                <span style="flex:1;">運営向けの項目 (通知状況・メンバー管理・アクティビティ・キャラマスタ・バックアップ) は <strong style="color:#5A6068;">運営</strong> をONにすると表示されます</span>
             </div>
 
             <!-- ⓪ ガイド / チュートリアル (折り畳み, デフォルト開) -->
@@ -4003,20 +4015,21 @@
                 <div id="settingsSystemInfo" style="display:none;"></div>
             </div>
 
-            <!-- ② メンバーの通知状況 -->
-            <div class="dc-card dc-card-tight">
+            <!-- ② メンバーの通知状況 (運営) -->
+            <div class="dc-card dc-card-tight" data-ops-only>
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">メンバーの通知状況</div>
                     <div id="settingsNotifySummary" style="font-size:10.5px;color:#B6BBC1;">—</div>
                 </div>
-                <div id="settingsNotifyTable" style="padding:0 4px;">
+                <!-- max-height でこの要素自身がスクロールコンテナになる → 中の sticky ヘッダが効く -->
+                <div id="settingsNotifyTable" style="padding:0 4px;max-height:340px;overflow-y:auto;overscroll-behavior:contain;">
                     <p style="color:#A4AAB0;font-size:12px;padding:14px 0;">読み込み中…</p>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:7px;padding:11px 6px 4px;font-size:10.5px;line-height:1.5;color:#A4AAB0;"><span style="flex:none;">⚠️</span><span>OFF が多いメンバーには声かけを</span></div>
             </div>
 
-            <!-- ②' メンバー管理 -->
-            <div class="dc-card">
+            <!-- ②' メンバー管理 (運営) -->
+            <div class="dc-card" data-ops-only>
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">メンバー管理</div>
@@ -4033,19 +4046,19 @@
                 </button>
             </div>
 
-            <!-- ③ 最近のアクティビティ -->
-            <div class="dc-card">
+            <!-- ③ 最近のアクティビティ (運営) -->
+            <div class="dc-card" data-ops-only>
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最近のアクティビティ</div>
-                    <div style="font-size:10.5px;color:#B6BBC1;">30件まで表示</div>
+                    <div id="settingsActivityCount" style="font-size:10.5px;color:#B6BBC1;">—</div>
                 </div>
                 <div id="settingsActivityList">
                     <p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>
                 </div>
             </div>
 
-            <!-- ④ キャラクターマスタ管理 (折り畳み) -->
-            <div class="dc-card">
+            <!-- ④ キャラクターマスタ管理 (運営 · 折り畳み) -->
+            <div class="dc-card" data-ops-only>
                 <div onclick="toggleSettingsMaster()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">キャラクターマスタ管理</div>
@@ -4126,21 +4139,24 @@
                 <div style="font-size:10px;color:#A4AAB0;margin-top:10px;line-height:1.5;text-align:center;">これらの操作は他端末には影響しません</div>
             </div>
 
-            <!-- ⑥ バックアップ / 復元 (運営向け · 最下部配置で誤操作防止) -->
-            <div class="dc-card">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
+            <!-- ⑥ バックアップ / 復元 (運営 · 折り畳み · 最下部配置で誤操作防止) -->
+            <div class="dc-card" data-ops-only>
+                <div onclick="toggleSettingsBackup()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">バックアップ / 復元</div>
-                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.5;">運営向け。全データの JSON 保存と、バックアップ時点への巻き戻し。レイド前後に保存推奨。</div>
+                        <div style="font-size:11px;color:#A4AAB0;margin-top:3px;line-height:1.5;">全データの JSON 保存と巻き戻し。レイド前後に保存推奨。</div>
                     </div>
+                    <div id="settingsBackupCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
-                <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;"><span data-sp-icon="download" data-sp-size="14"></span> バックアップをダウンロード</button>
-                <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
-                    <div style="font-size:10.5px;font-weight:800;color:#C42830;margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
-                    <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
-                    <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span data-sp-icon="upload" data-sp-size="15"></span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                <div id="settingsBackupBody" style="display:none;animation:dcFadeIn 0.2s ease;margin-top:14px;">
+                    <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;"><span data-sp-icon="download" data-sp-size="14"></span> バックアップをダウンロード</button>
+                    <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
+                        <div style="font-size:10.5px;font-weight:800;color:#C42830;margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
+                        <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
+                        <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span data-sp-icon="upload" data-sp-size="15"></span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:#FFB3B6;font-size:18px;font-weight:300;">›</span></button>
+                    </div>
+                    <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;"></p>
                 </div>
-                <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;"></p>
             </div>
         </div>
     </div>
@@ -9675,13 +9691,19 @@
 
         async function renderSettingsTab() {
             renderSettingsBrowserCard();   // 新: アバター + ストレージ
-            renderSettingsMemberCount();
-            await Promise.all([
-                renderSettingsSystemInfo(),
-                renderSettingsNotifyStatus(),
-                renderSettingsActivity(),
-                renderSettingsCharMaster(),
-            ]);
+            const tasks = [renderSettingsSystemInfo()];
+            // 運営セクションは data-ops-only で CSS 的に隠れている。OFF のときは描画しても
+            // 見えないので、通知状況・アクティビティ・キャラマスタの取得ごと省く
+            // (Supabase 4クエリぶん。ON にした時点で toggleOpsMode が読みに行く)
+            if (_opsMode) {
+                renderSettingsMemberCount();
+                tasks.push(
+                    renderSettingsNotifyStatus(),
+                    renderSettingsActivity(),
+                    renderSettingsCharMaster(),
+                );
+            }
+            await Promise.all(tasks);
         }
 
         // メンバー管理: 件数サマリを表示
@@ -10295,6 +10317,16 @@
             }
         }
 
+        // ⑥ バックアップ / 復元 トグル (既定は閉 — 復元は巻き戻しなので誤操作させない)
+        function toggleSettingsBackup() {
+            const body = document.getElementById('settingsBackupBody');
+            const caret = document.getElementById('settingsBackupCaret');
+            if (!body) return;
+            const open = body.style.display !== 'none';
+            body.style.display = open ? 'none' : 'block';
+            if (caret) caret.textContent = open ? '▼' : '▲';
+        }
+
         // ふるり値タブ: シミュレータ 折り畳み
         function toggleSimulatorSection() {
             const body = document.getElementById('simulatorSectionBody');
@@ -10486,10 +10518,14 @@
             { key: 'avail',  label: '🕐 時間',     types: ['avail_change'] },
             { key: 'ops',    label: '🛠 運営',     types: ['ops'] },
         ];
-        let _setLogState = { filter: 'all', player: 'all', asc: false, events: null };
-        function setSettingsLogFilter(key) { _setLogState.filter = key; _renderSettingsLogList(); }
-        function setSettingsLogPlayer(v) { _setLogState.player = v; _renderSettingsLogList(); }
+        const _SETLOG_PAGE = 20;    // 初期表示件数 = 「もっと見る」1回の増分
+        const _SETLOG_MAX = 120;    // 描画上限 (これ以上はDOMが重くなるだけ)
+        let _setLogState = { filter: 'all', player: 'all', asc: false, events: null, limit: _SETLOG_PAGE };
+        // 絞り込みを変えたら見る対象が変わる → 件数は初期に戻す。並び替えは対象が同じなので維持
+        function setSettingsLogFilter(key) { _setLogState.filter = key; _setLogState.limit = _SETLOG_PAGE; _renderSettingsLogList(); }
+        function setSettingsLogPlayer(v) { _setLogState.player = v; _setLogState.limit = _SETLOG_PAGE; _renderSettingsLogList(); }
         function toggleSettingsLogOrder() { _setLogState.asc = !_setLogState.asc; _renderSettingsLogList(); }
+        function showMoreSettingsLog() { _setLogState.limit += _SETLOG_PAGE; _renderSettingsLogList(); }
 
         async function renderSettingsActivity() {
             const el = document.getElementById('settingsActivityList');
@@ -10501,6 +10537,7 @@
                 await _renderSettingsActivityLegacy(el);
                 return;
             }
+            _setLogState.limit = _SETLOG_PAGE;   // 再読み込み時は初期件数に戻す
             _setLogState.events = rows.map(r => ({
                 type: r.event_type,
                 ts: r.created_at,
@@ -10552,7 +10589,10 @@
                     return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
                 } catch { return ''; }
             };
-            const rowsHtml = events.slice(0, 120).map(e => {
+            const shown = events.slice(0, Math.min(_setLogState.limit, _SETLOG_MAX));
+            const countEl = document.getElementById('settingsActivityCount');
+            if (countEl) countEl.textContent = `${shown.length} / ${events.length}件`;
+            const rowsHtml = shown.map(e => {
                 const t = _SETLOG_TYPES[e.type] || { label: 'その他', color: '#9AA0A6' };
                 const who = e.player ? `<strong>${escapeHtml(e.player)}</strong> ` : '';
                 const actor = e.actor ? ` <span style="font-size:10px;font-weight:800;color:#FF8A2B;">(入力: ${escapeHtml(e.actor)})</span>` : '';
@@ -10569,12 +10609,20 @@
                         <div style="font-size:12.5px;font-weight:600;color:#14161A;line-height:1.5;">${who}${escapeHtml(e.text)}${actor}</div>
                     </div>`;
             }).join('');
+            // 残りがあれば「もっと見る」。上限に達したらその旨を出す (黙って打ち切らない)
+            const rest = events.length - shown.length;
+            let footer = '';
+            if (rest > 0 && shown.length < _SETLOG_MAX) {
+                footer = `<button onclick="showMoreSettingsLog()" style="width:100%;margin-top:2px;padding:9px;border-radius:10px;border:none;background:#F1F2F4;color:#5A6068;font-size:11.5px;font-weight:800;cursor:pointer;font-family:inherit;">もっと見る (残り${rest}件)</button>`;
+            } else if (rest > 0) {
+                footer = `<p style="margin:2px 0 0 0;font-size:10.5px;color:#A4AAB0;text-align:center;">表示上限 ${_SETLOG_MAX}件に達しました (${events.length}件ヒット) — 絞り込みで対象を減らせます</p>`;
+            }
             list.innerHTML = `
                 <div style="position:relative;padding-left:20px;">
                     <div style="position:absolute;left:4px;top:4px;bottom:14px;width:1.5px;background:#EDEEF0;"></div>
                     ${rowsHtml}
                 </div>
-                ${events.length > 120 ? `<p style="font-size:10.5px;color:#A4AAB0;">最新120件を表示中 (${events.length}件ヒット)</p>` : ''}`;
+                ${footer}`;
         }
 
         // activity_log 未適用環境のフォールバック (従来の導出フィード / フィルタなし)
@@ -10618,6 +10666,9 @@
                         <div style="font-size:12.5px;font-weight:600;color:#14161A;line-height:1.5;">${escapeHtml(e.text)}</div>
                     </div>`;
             }).join('');
+            // ヘッダの件数表示 (詳細ログ側と同じ意味になるよう埋める)
+            const countEl = document.getElementById('settingsActivityCount');
+            if (countEl) countEl.textContent = `${events.length}件`;
             el.innerHTML = `
                 <p style="margin:0 0 10px 0;padding:8px 11px;border-radius:10px;background:rgba(245,158,11,0.08);font-size:11px;color:#8A6A2A;line-height:1.5;">💡 supabase/19_activity_log.sql を SQL Editor で適用すると、模擬戦提出・通知/戦闘可能時間の変更・代理凸まで記録される詳細ログ (種別・人別フィルタ付き) に切り替わります。</p>
                 <div style="position:relative;padding-left:20px;">
@@ -16221,6 +16272,14 @@
             { id: 'opsSecPush',      title: '一斉通知',             opsOnly: true },
             { id: 'opsSecSeason',    title: 'シーズン制御',         opsOnly: true },
         ];
+        // 運営モード: 誰でもスイッチで切り替えられる「表示トグル」。これは意図した仕様。
+        //   目的は誤操作防止 — 用がある人だけが開き、触る気のないメンバーがバックアップ復元や
+        //   メンバー管理をうっかり触る事故を防ぐ。内輪ユニオン運用なのでこれで足りる。
+        // ⚠️ 認可ではない (セキュリティ境界として使わないこと)。認証なし・RLS は anon 全許可という
+        //   設計判断 (CLAUDE.md / 02_rls.sql) で anon キーもクライアントに埋まっているため、
+        //   URL を知っていれば UI を介さず REST API を直接叩ける。UI 側で何を隠しても保護にはならない。
+        //   本当に保護が要る日が来たら Supabase Auth + RLS を auth.uid() ベースに差し替える
+        //   (02_rls.sql 冒頭に移行手順あり)。UI は最後まで補助でしかない。
         let _opsMode = localStorage.getItem('shirisuko_ops_mode') === '1';
         function _opsJump(id) {
             document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -16233,11 +16292,27 @@
                 b.style.background = _opsMode ? '#14161A' : '#fff';
                 b.style.color = _opsMode ? '#fff' : '#5A6068';
             }
+            // 設定タブ側のトグル (ops タブのナビチップとは地の色が違うので個別に塗る)
+            const s = document.getElementById('settingsOpsModeBtn');
+            if (s) {
+                s.textContent = _opsMode ? '🛠 運営 ON' : '🛠 運営';
+                s.style.background = _opsMode ? '#14161A' : '#F1F2F4';
+                s.style.color = _opsMode ? '#fff' : '#5A6068';
+            }
         }
         function toggleOpsMode() {
             _opsMode = !_opsMode;
             try { localStorage.setItem('shirisuko_ops_mode', _opsMode ? '1' : '0'); } catch { /* noop */ }
             _applyOpsMode();
+            // 設定タブは _opsMode によって「何を読むか」が変わるので、描画キャッシュ (30秒) を捨てる。
+            // これが無いと ops タブでONにして30秒以内に設定へ戻ったとき再描画がスキップされ、
+            // 運営カードが表示されたのに中身が「読み込み中…」のまま固まる
+            if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache('settings');
+            // 設定タブを開いたまま ON にした場合は、その場で取りに行く
+            if (_opsMode && document.getElementById('tab-settings')?.classList.contains('active')
+                && typeof renderSettingsTab === 'function') {
+                renderSettingsTab();
+            }
             showNotification(_opsMode ? '🛠 運営モードON — 操作パネルを表示します' : '運営モードOFF — 操作パネルを隠しました');
         }
         function _initOpsTabStructure() {
