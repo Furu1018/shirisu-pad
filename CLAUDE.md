@@ -23,6 +23,7 @@ rm -f .claude/hooks/.codex-on      # OFF
 ```
 既定は OFF (フックは即終了するので無負荷)。ON中は毎ターン10〜60秒 + APIコストがかかる。
 前提: `codex` CLI が PATH 上にあること。レビュー実行の記録は `.claude/hooks/_fired.log`。
+**フラグは .gitignore 済み = PCごとの設定**。別PCに移ったら ON にし直すこと (APIコストが出るので同期しない)。
 
 ## アーキテクチャ
 
