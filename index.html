@@ -4046,14 +4046,19 @@
                 </button>
             </div>
 
-            <!-- ③ 最近のアクティビティ (運営) -->
+            <!-- ③ 最近のアクティビティ (運営 · 折り畳み) -->
             <div class="dc-card" data-ops-only>
-                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最近のアクティビティ</div>
-                    <div id="settingsActivityCount" style="font-size:10.5px;color:#B6BBC1;">—</div>
+                <div onclick="toggleSettingsActivity()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                    <div style="display:flex;align-items:baseline;gap:8px;">
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最近のアクティビティ</div>
+                        <div id="settingsActivityCount" style="font-size:10.5px;color:#B6BBC1;">—</div>
+                    </div>
+                    <div id="settingsActivityCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:#F1F2F4;color:#8A9097;display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
-                <div id="settingsActivityList">
-                    <p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>
+                <div id="settingsActivityBody" style="display:none;animation:dcFadeIn 0.2s ease;margin-top:14px;">
+                    <div id="settingsActivityList">
+                        <p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>
+                    </div>
                 </div>
             </div>
 
@@ -4540,6 +4545,9 @@
                 </label>
                 <p id="myTeamEditOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
             </div>
+
+            <!-- みんながよく使う「実キャラ5人編成」をワンタップ (提出が溜まると出る) -->
+            <div id="myTeamEditTopTeams"></div>
 
             <!-- よく使われるバースト構成 (ユニオンの提出から算出 / 提出が無い間は非表示) -->
             <div id="myTeamEditBurstPresets"></div>
@@ -6489,11 +6497,15 @@
             _myTeamEditBursts = current.map(v => (v ? (_burstEntryOf(v)?.burst || '') : ''));
             fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
             renderTeamEditChainRow();
-            // 構成プリセットはユニオン全体の提出が要る → 届き次第そっと出す (モーダルを待たせない)
+            // 人気編成・構成プリセットはユニオン全体の提出が要る → 届き次第そっと出す (モーダルを待たせない)
+            _renderTeamEditTopTeams();
             _renderTeamEditBurstPresets();
             if (!_teamSubsCache) {
                 _loadTeamSubs().then(() => {
-                    if (document.getElementById('myTeamEditModal')?.classList.contains('open')) _renderTeamEditBurstPresets();
+                    if (document.getElementById('myTeamEditModal')?.classList.contains('open')) {
+                        _renderTeamEditTopTeams();
+                        _renderTeamEditBurstPresets();
+                    }
                 }).catch(() => { /* 提出が取れなければプリセット無しで従来どおり */ });
             }
             // datalist: マスタから autocomplete
@@ -6610,6 +6622,56 @@
                 _myTeamEditBursts[i] = n ? (_burstEntryOf(n)?.burst || '') : (remaining.shift() || '');
             });
             _renderTeamEditBurstChips();
+        }
+        // みんながよく使う「実キャラ5人編成」をワンタップで5枠へ。
+        // バースト枠プリセット (_renderTeamEditBurstPresets) が「枠だけ」を埋めるのに対し、
+        // こちらはキャラそのものを埋める = 定番編成を丸ごと1タップで採用できる。
+        // 提出が無い間は何も出さない (コールドスタート)。
+        function _renderTeamEditTopTeams() {
+            const el = document.getElementById('myTeamEditTopTeams');
+            if (!el) return;
+            if (!_myTeamEditAttr) { el.innerHTML = ''; return; }
+            const { total, list } = _teamGroupsFor(_myTeamEditAttr);
+            const top = list.slice(0, 2);   // 迷わせないようベスト2
+            if (top.length === 0) { el.innerHTML = ''; return; }
+            const a = PT_ATTRS.find(x => x.key === _myTeamEditAttr);
+            const ptName = a?.name || '';
+            const color = a?.color || '#1E78F0';
+            const cards = top.map((g, i) => {
+                const pct = total ? Math.round(g.count / total * 100) : 0;
+                const icons = g.team.map(c => _charIconHtml(c, 30)).join('');
+                return `
+                    <button type="button" onclick="applyTeamEditTopTeam(${i})" title="この編成を5枠に入れる"
+                        style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:8px 10px;border-radius:11px;border:1px solid ${color}33;background:${color}0D;cursor:pointer;font-family:inherit;${i > 0 ? 'margin-top:6px;' : ''}">
+                        <span style="flex:none;width:20px;font-size:11px;font-weight:900;color:${i === 0 ? color : '#B6BBC1'};">#${i + 1}</span>
+                        <span style="flex:1;display:flex;gap:3px;flex-wrap:wrap;">${icons}</span>
+                        <span style="flex:none;font-size:10px;font-weight:800;color:#5A6068;text-align:right;line-height:1.3;" title="${g.count}/${total}件が使用">${g.count}人<br><span style="color:#A4AAB0;">${pct}%</span></span>
+                        <span style="flex:none;padding:6px 11px;border-radius:999px;background:#14161A;color:#fff;font-size:11px;font-weight:800;">使う</span>
+                    </button>`;
+            }).join('');
+            el.innerHTML = `
+                <div style="padding:10px 12px;border-radius:12px;background:#fff;border:1px solid rgba(20,22,26,0.06);">
+                    <div style="font-size:10.5px;font-weight:900;color:${color};margin-bottom:7px;">⭐ ${escapeHtml(ptName)}PT でみんながよく使う編成 — タップで5枠に入る</div>
+                    ${cards}
+                </div>`;
+        }
+        // 上位編成をそのまま編集モーダルの5枠へ (ワンタップ)
+        function applyTeamEditTopTeam(idx) {
+            const { list } = _teamGroupsFor(_myTeamEditAttr);
+            const team = (list[idx]?.team) || [];
+            if (team.length === 0) return;
+            for (let i = 0; i < 5; i++) {
+                const inp = document.querySelector(`#myTeamEditFields input[data-team-idx="${i}"]`);
+                if (inp) {
+                    inp.value = team[i] || '';
+                    if (typeof updateMyTeamEditIcon === 'function') updateMyTeamEditIcon(i);
+                }
+            }
+            const msg = document.getElementById('myTeamEditMessage');
+            if (msg) {
+                msg.textContent = '⭐ よく使う編成を入れました。ダメージ欄は自分の模擬結果を入力してください';
+                msg.style.color = '#1E78F0';
+            }
         }
         // ユニオンの提出から算出した「よく使われる構成」。提出が無い間は何も出さない
         // (コールドスタート: 提出が溜まるほど使えるようになる)
@@ -10385,6 +10447,15 @@
         }
 
         // ⑤ 折りたたみ: キャラクターマスタ
+        // 最近のアクティビティの折り畳み。中身は renderSettingsActivity が既に描いてあるので開閉のみ。
+        function toggleSettingsActivity() {
+            const body = document.getElementById('settingsActivityBody');
+            const caret = document.getElementById('settingsActivityCaret');
+            if (!body) return;
+            const open = body.style.display !== 'none';
+            body.style.display = open ? 'none' : 'block';
+            if (caret) caret.textContent = open ? '▼' : '▲';
+        }
         function toggleSettingsMaster() {
             const body = document.getElementById('settingsMasterBody');
             const caret = document.getElementById('settingsMasterCaret');
@@ -16473,7 +16544,9 @@
         //   URL を知っていれば UI を介さず REST API を直接叩ける。UI 側で何を隠しても保護にはならない。
         //   本当に保護が要る日が来たら Supabase Auth + RLS を auth.uid() ベースに差し替える
         //   (02_rls.sql 冒頭に移行手順あり)。UI は最後まで補助でしかない。
-        let _opsMode = localStorage.getItem('shirisuko_ops_mode') === '1';
+        // 運営モードは常に OFF で起動する (前回 ON でも引き継がない = 誤操作防止 + 通常メンバーの初期表示をすっきり)。
+        // セッション中の切り替えは _opsMode 変数だけで保持し、localStorage には残さない。
+        let _opsMode = false;
         function _opsJump(id) {
             document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -16495,7 +16568,7 @@
         }
         function toggleOpsMode() {
             _opsMode = !_opsMode;
-            try { localStorage.setItem('shirisuko_ops_mode', _opsMode ? '1' : '0'); } catch { /* noop */ }
+            // 永続化しない: 次回起動は必ず OFF から (誤操作防止)
             _applyOpsMode();
             // 設定タブは _opsMode によって「何を読むか」が変わるので、描画キャッシュ (30秒) を捨てる。
             // これが無いと ops タブでONにして30秒以内に設定へ戻ったとき再描画がスキップされ、
