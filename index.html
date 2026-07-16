@@ -4728,7 +4728,7 @@
                         <label style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">使用キャラ</label>
                         <span style="font-size:10px;font-weight:800;color:#8A9097;background:#F1F2F4;padding:2px 7px;border-radius:999px;">任意</span>
                     </div>
-                    <div id="myAttackTeamSlots" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+                    <div id="myAttackTeamSlots" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;"></div>
                     <p style="margin:6px 2px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">タップしてマスタから選択。空欄でもOK (キャラ衝突検知に影響)</p>
                 </div>
             </div>
@@ -6551,13 +6551,15 @@
             const slots = _myAttackTeamSlots || ['', '', '', '', ''];
             el.innerHTML = slots.map((name, i) => {
                 const r = name ? resolveNikkeChar(name) : null;
+                // アイコンはセル幅(1fr)に追従して縮む → 5枠が常に1行に収まり、
+                // 折り返し(モバイルで2列化)も横スクロールも起きない。max-width で PC で巨大化しない。
                 const icon = r?.iconPath
-                    ? `<img loading="lazy" decoding="async" onclick="openIconPickerForAttackSlot(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || name)}" title="${escapeHtml(r.canonical || name)} - クリックで変更" style="width:44px;height:44px;border-radius:6px;background:#222;cursor:pointer;">`
-                    : `<div onclick="openIconPickerForAttackSlot(${i})" title="クリックでマスタから選択" style="width:44px;height:44px;border-radius:6px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:18px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">${name ? '⚠️' : '?'}</div>`;
+                    ? `<img loading="lazy" decoding="async" onclick="openIconPickerForAttackSlot(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || name)}" title="${escapeHtml(r.canonical || name)} - クリックで変更" style="width:100%;max-width:46px;aspect-ratio:1/1;object-fit:cover;border-radius:7px;background:#222;cursor:pointer;">`
+                    : `<div onclick="openIconPickerForAttackSlot(${i})" title="クリックでマスタから選択" style="width:100%;max-width:46px;aspect-ratio:1/1;border-radius:7px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:17px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">${name ? '⚠️' : '?'}</div>`;
                 const label = name
-                    ? `<div style="font-size:10px;text-align:center;line-height:1.1;max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? 'var(--md-sys-color-on-surface)' : '#f59e0b'};">${escapeHtml(r?.canonical || name)}</div>`
+                    ? `<div style="font-size:9.5px;text-align:center;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? 'var(--md-sys-color-on-surface)' : '#f59e0b'};">${escapeHtml(r?.canonical || name)}</div>`
                     : `<div style="font-size:10px;text-align:center;color:var(--md-sys-color-outline-variant);">${i + 1}</div>`;
-                return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">${icon}${label}</div>`;
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;">${icon}${label}</div>`;
             }).join('');
         }
 
