@@ -18,3 +18,6 @@ Desktop.ini
 # Temporary files
 *.tmp
 *.bak
+
+# Claude Code フックのテストログ (コミットしない)
+.claude/hooks/_fired.log
