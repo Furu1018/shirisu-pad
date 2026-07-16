@@ -2657,12 +2657,12 @@
                         <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">模擬戦データ</div>
                         <div id="mypageDmgOcrStatus" style="font-size:10.5px;color:#B6BBC1;margin-top:2px;min-height:14px;">&nbsp;</div>
                     </div>
-                    <!-- NIKKE風 データ提出 ピル (青) -->
+                    <!-- NIKKE風 画像で提出 ピル (青)。手動入力は各属性カードをタップ = 別の入り口 -->
                     <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
                         <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
                         <div class="btn-nikke-inner">
                             <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
-                            <span class="btn-nikke-title">データ提出</span>
+                            <span class="btn-nikke-title">画像で提出</span>
                         </div>
                     </label>
                 </div>
@@ -4540,6 +4540,9 @@
                 </label>
                 <p id="myTeamEditOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
             </div>
+
+            <!-- よく使われるバースト構成 (ユニオンの提出から算出 / 提出が無い間は非表示) -->
+            <div id="myTeamEditBurstPresets"></div>
 
             <!-- 5キャラ入力欄 -->
             <div id="myTeamEditFields" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -6475,14 +6478,24 @@
                     ? `<img loading="lazy" decoding="async" onclick="openIconPickerForTeamEdit(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`
                     : `<div onclick="openIconPickerForTeamEdit(${i})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
                 return `
-                    <div style="display:flex;align-items:center;gap:8px;" data-team-row="${i}">
-                        <span style="min-width:24px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">${i + 1}.</span>
+                    <div style="display:flex;align-items:center;gap:7px;" data-team-row="${i}">
+                        <span style="min-width:14px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">${i + 1}</span>
+                        ${_teamBurstChipHtml(i, v)}
                         ${icon}
-                        <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" oninput="updateMyTeamEditIcon(${i})" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                        <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" oninput="updateMyTeamEditIcon(${i})" style="flex:1;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
                     </div>`;
             };
+            // 枠のバーストは今入っているキャラから復元 (空き枠は未指定)
+            _myTeamEditBursts = current.map(v => (v ? (_burstEntryOf(v)?.burst || '') : ''));
             fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
             renderTeamEditChainRow();
+            // 構成プリセットはユニオン全体の提出が要る → 届き次第そっと出す (モーダルを待たせない)
+            _renderTeamEditBurstPresets();
+            if (!_teamSubsCache) {
+                _loadTeamSubs().then(() => {
+                    if (document.getElementById('myTeamEditModal')?.classList.contains('open')) _renderTeamEditBurstPresets();
+                }).catch(() => { /* 提出が取れなければプリセット無しで従来どおり */ });
+            }
             // datalist: マスタから autocomplete
             const master = _nikkeCharsCache || [];
             if (master.length > 0) {
@@ -6544,6 +6557,83 @@
             }).join('');
         }
 
+        // ========== 編成編集: 枠ごとのバースト指定 ==========
+        // 「先にバースト枠を決めて、そこからキャラを選ぶ」ための状態。
+        // キャラが入っている枠はそのキャラの実バーストが正 (チップが嘘をつかないようにする)。
+        let _myTeamEditBursts = ['', '', '', '', ''];
+
+        // name は必ず呼び出し側から渡す。ここで DOM を読むと buildRow (innerHTML 代入前に走る)
+        // から呼んだとき入力欄がまだ無い/前回の値を拾い、キャラ入りの枠が「空き枠」に化ける
+        function _teamBurstChipHtml(i, name) {
+            name = String(name || '').trim();
+            if (name) {
+                // 埋まっている枠: 実際のキャラのバーストを出す (編集不可)
+                const e = _burstEntryOf(name);
+                const b = e?.burst || '';
+                const c = b ? (_BURST_COLOR[b] || '#8A9097') : '#B6BBC1';
+                return `<span id="teamBurstChip-${i}" title="${escapeHtml(e?.canonical_name || name)} のバースト" style="flex:none;min-width:30px;text-align:center;font-size:10px;font-weight:900;padding:4px 7px;border-radius:999px;color:${c};background:${b ? c + '1A' : '#F1F2F4'};">${escapeHtml(b || '?')}</span>`;
+            }
+            // 空き枠: タップでこの枠のバーストを指定 → ピッカーがそれで絞り込まれて開く
+            const b = _myTeamEditBursts[i] || '';
+            const c = b ? (_BURST_COLOR[b] || '#8A9097') : '#B6BBC1';
+            return `<button type="button" id="teamBurstChip-${i}" onclick="cycleTeamEditBurst(${i})" title="タップでこの枠のバーストを変更 (指定するとその枠の候補だけが出ます)" style="flex:none;min-width:30px;font-size:10px;font-weight:900;padding:4px 7px;border-radius:999px;border:1px dashed ${b ? c : '#D5D8DC'};background:${b ? c + '1A' : '#fff'};color:${b ? c : '#B6BBC1'};cursor:pointer;font-family:inherit;">${escapeHtml(b || '枠')}</button>`;
+        }
+        // 描画後の更新用: このタイミングなら入力欄が正なので DOM から読んで渡す
+        function _renderTeamEditBurstChips() {
+            for (let i = 0; i < 5; i++) {
+                const el = document.getElementById('teamBurstChip-' + i);
+                if (!el) continue;
+                const name = document.querySelector(`#myTeamEditFields input[data-team-idx="${i}"]`)?.value || '';
+                el.outerHTML = _teamBurstChipHtml(i, name);
+            }
+        }
+        // なし → B1 → B2 → B3 → BΛ → なし (5値なので巡回で足りる。ポップアップは大げさ)
+        function cycleTeamEditBurst(i) {
+            const seq = ['', ..._BURST_ORDER];
+            const cur = _myTeamEditBursts[i] || '';
+            _myTeamEditBursts[i] = seq[(seq.indexOf(cur) + 1) % seq.length];
+            _renderTeamEditBurstChips();
+        }
+        // 構成プリセットの適用: 既に入っているキャラのバーストを構成から差し引いてから、
+        // 残りを空き枠へ順に配る。位置で機械的に上書きすると
+        // (例: 構成B1B2B3B3B3 / 1枠目に既にB3がいる) B1 が消えて意図が壊れる
+        function applyTeamEditBurstLayout(layoutStr) {
+            const remaining = String(layoutStr || '').split(',').filter(Boolean);
+            const names = _teamEditNames();
+            names.forEach(n => {
+                if (!n) return;
+                const b = _burstEntryOf(n)?.burst;
+                const k = b ? remaining.indexOf(b) : -1;
+                if (k >= 0) remaining.splice(k, 1);
+            });
+            names.forEach((n, i) => {
+                _myTeamEditBursts[i] = n ? (_burstEntryOf(n)?.burst || '') : (remaining.shift() || '');
+            });
+            _renderTeamEditBurstChips();
+        }
+        // ユニオンの提出から算出した「よく使われる構成」。提出が無い間は何も出さない
+        // (コールドスタート: 提出が溜まるほど使えるようになる)
+        function _renderTeamEditBurstPresets() {
+            const el = document.getElementById('myTeamEditBurstPresets');
+            if (!el) return;
+            if (!_myTeamEditAttr) { el.innerHTML = ''; return; }
+            const layouts = _burstLayoutsFor(_myTeamEditAttr).slice(0, 3);
+            if (layouts.length === 0) { el.innerHTML = ''; return; }
+            const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || '';
+            const btns = layouts.map(l => {
+                const pills = l.layout.map(b => {
+                    const c = _BURST_COLOR[b] || '#8A9097';
+                    return `<span style="font-size:10px;font-weight:900;color:${c};background:${c}1A;border-radius:5px;padding:1px 5px;">${escapeHtml(b)}</span>`;
+                }).join('');
+                return `<button type="button" onclick="applyTeamEditBurstLayout('${l.layout.join(',')}')" title="空き枠のバーストをこの構成で埋める" style="display:flex;align-items:center;gap:3px;padding:6px 9px;border-radius:999px;border:1px solid rgba(20,22,26,0.08);background:#fff;cursor:pointer;font-family:inherit;">${pills}<span style="margin-left:2px;font-size:10px;font-weight:900;color:#1E78F0;">${l.count}人</span></button>`;
+            }).join('');
+            el.innerHTML = `
+                <div style="padding:10px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);">
+                    <div style="font-size:10.5px;font-weight:800;color:#8A9097;margin-bottom:6px;">🔥 ${escapeHtml(ptName)}PT でよく使われている構成 — タップで空き枠のバーストを埋める</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">${btns}</div>
+                </div>`;
+        }
+
         // 編成編集モーダルの「バーストチェーン成立してる?」行
         function renderTeamEditChainRow() {
             const el = document.getElementById('myTeamEditChain');
@@ -6586,6 +6676,7 @@
                 iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
             }
             renderTeamEditChainRow();
+            _renderTeamEditBurstChips();   // 手入力/OCRでキャラが変わっても枠の表示を実体に合わせる
         }
 
         // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========
@@ -6932,6 +7023,44 @@
             return { missing, ok: missing.length === 0, unresolved, noBurst };
         }
 
+        // ========== ユニオン内の採用率 (模擬提出 player_damages.characters が材料) ==========
+        // player_damages はシーズン作成時にリセットされる → 自然に「今シーズンの採用率」になる。
+        // 既存の _teamGroupsFor は「5人の組み合わせ」を PT単位 で数える (シナジーが本体のため) が、
+        // ピッカーは1枠ずつ選ぶのでキャラ単体で数える必要がある。用途が違うので別集計にする。
+        // 戻り値: { total: 提出数, count: Map(canonical_name -> 採用した提出数) }
+        function _charUsageFor(attrKey) {
+            const rows = (_teamSubsCache || []).filter(r => r.attribute === attrKey);
+            const count = new Map();
+            rows.forEach(r => {
+                // 1提出で同じキャラを二重に数えない + 表記ゆれはマスタ名に寄せる
+                const team = [...new Set((r.characters || []).filter(Boolean)
+                    .map(c => fuzzyResolveCharacter(c) || c))];
+                team.forEach(n => count.set(n, (count.get(n) || 0) + 1));
+            });
+            return { total: rows.length, count };
+        }
+        // 属性ごとの「実際によく使われているバースト構成」。NIKKE のメタをコードに埋めず
+        // ユニオンの提出から算出するので、メタが変わっても自動で追従する。
+        // 5人全員のバーストが判明している提出だけを数える (1人でも未設定だと構成が確定しないため)
+        // 戻り値: [{ layout: ['B1','B2','B3','B3','B3'], count }] — 多い順
+        function _burstLayoutsFor(attrKey) {
+            const rows = (_teamSubsCache || []).filter(r => r.attribute === attrKey);
+            const groups = new Map();
+            rows.forEach(r => {
+                const team = (r.characters || []).filter(Boolean);
+                if (team.length !== 5) return;
+                const bursts = team.map(c => _burstEntryOf(c)?.burst || null);
+                if (bursts.some(b => !b)) return;   // 1人でも不明なら構成を確定できない
+                const layout = bursts.slice().sort(
+                    (a, b) => _BURST_ORDER.indexOf(a) - _BURST_ORDER.indexOf(b));
+                const key = layout.join('');
+                const g = groups.get(key) || { layout, count: 0 };
+                g.count++;
+                groups.set(key, g);
+            });
+            return [...groups.values()].sort((a, b) => b.count - a.count);
+        }
+
         // バーストのピル (一覧カード・チェーン行で共通)
         function _burstBadgeHtml(entry) {
             if (!entry || !entry.burst) {
@@ -6950,9 +7079,16 @@
         let _iconPickerCallback = null;
         let _iconPickerBurst = '';    // '' = すべて / 'B1'..'BΛ' / '__none' = 未設定のみ
         let _iconPickerHint = '';     // 自動絞り込みの理由 (ユーザーがピルを触ったら消す)
+        let _iconPickerAttr = null;   // 採用率をどの属性で数えるか (null = 採用率を使わない)
+        let _iconPickerExpanded = {}; // セクションキー -> 全件表示するか (TOP以外は既定で畳む)
+        const _ICON_PICKER_TOP = 6;   // 各セクションで先に見せる件数 (モバイル3列 × 2行)
         // opts.otherNames: この枠以外に既に入っているキャラ名。渡すと不足バーストを初期フィルタにする
+        // opts.attr:       PT属性。渡すとユニオン内の採用率で並べ替え + 採用数バッジを出す
+        // opts.burst:      この枠のバースト。渡すと最初からそれで絞る (otherNames の推定より優先)
         function openIconPicker(initialSearch, callback, title = '📚 アイコンを選択', opts = {}) {
             _iconPickerCallback = callback;
+            _iconPickerAttr = opts.attr || null;
+            _iconPickerExpanded = {};   // 開くたびに畳み直す
             document.getElementById('iconPickerTitle').textContent = title;
             document.getElementById('iconPickerSearch').value = initialSearch || '';
             document.getElementById('iconPickerNewLabel').textContent = initialSearch
@@ -6962,7 +7098,11 @@
             // 検索語を持って開いたときは名前で探したい意図が明確なので絞らない。
             _iconPickerBurst = '';
             _iconPickerHint = '';
-            if (!initialSearch && Array.isArray(opts.otherNames)) {
+            if (!initialSearch && opts.burst) {
+                // 枠のバーストが決まっている (編成編集のバーストチップ) → それが最優先
+                _iconPickerBurst = opts.burst;
+                _iconPickerHint = `${opts.burst} の枠として絞り込み中 (「すべて」で解除)`;
+            } else if (!initialSearch && Array.isArray(opts.otherNames)) {
                 const st = _burstChainStatus(opts.otherNames);
                 if (st.missing.length > 0) {
                     _iconPickerBurst = st.missing[0];
@@ -6972,6 +7112,13 @@
             _ensureIconPickerDelegation();
             renderIconPickerList();
             document.getElementById('iconPickerModal').classList.add('open');
+            // 採用率はユニオン全体の提出が要る。取得は非同期なので、まず上を描いてから
+            // 届き次第そっと並べ替える (待たせない)
+            if (_iconPickerAttr && !_teamSubsCache) {
+                _loadTeamSubs().then(() => {
+                    if (document.getElementById('iconPickerModal').classList.contains('open')) renderIconPickerList();
+                }).catch(() => { /* 採用率なしで従来どおり名前順 */ });
+            }
         }
         function closeIconPicker() {
             document.getElementById('iconPickerModal').classList.remove('open');
@@ -6990,14 +7137,26 @@
             const others = _teamEditNames().filter((_, i) => i !== idx);
             openIconPicker(current, (name) => {
                 if (input) input.value = name;
+                // 選んだキャラの実バーストで枠を上書き (チップと中身を食い違わせない)
+                _myTeamEditBursts[idx] = _burstEntryOf(name)?.burst || '';
                 updateMyTeamEditIcon(idx);
                 renderTeamEditChainRow();
-            }, `📚 編成編集 (${idx + 1}枠目)`, { otherNames: others });
+                _renderTeamEditBurstChips();
+            }, `📚 編成編集 (${idx + 1}枠目)`, {
+                otherNames: others,
+                attr: _myTeamEditAttr,                    // 採用率をこの属性で数える
+                burst: _myTeamEditBursts[idx] || '',      // 枠のバーストが決まっていればそれで絞る
+            });
         }
         // 凸報告モーダル用
         function openIconPickerForAttackSlot(idx) {
             const current = (_myAttackTeamSlots && _myAttackTeamSlots[idx]) || '';
             const others = (_myAttackTeamSlots || []).filter((_, i) => i !== idx);
+            // 採用率は「持っていくPT属性」で数える = ボスの weakness
+            // (bosses.attribute はボス自身の属性なので取り違えないこと — CLAUDE.md 参照)
+            const boss = (_activeSeasonCache?.bosses || [])
+                .find(b => b.boss_number === _myAttackSelectedBossNumber);
+            const attr = boss?.weakness || null;
             openIconPicker(current, (name) => {
                 if (!_myAttackTeamSlots) _myAttackTeamSlots = ['', '', '', '', ''];
                 _myAttackTeamSlots[idx] = name;
@@ -7012,7 +7171,7 @@
                             `<span onclick="openIconPickerForAttackSlot(${i})" title="タップでキャラを修正" style="cursor:pointer;display:inline-flex;">${_renderMatchupCharAvatar(c, 24)}</span>`).join('');
                     }
                 }
-            }, `📚 凸報告 編成 (${idx + 1}枠目)`, { otherNames: others });
+            }, `📚 凸報告 編成 (${idx + 1}枠目)`, { otherNames: others, attr });
         }
         // 共通の名前正規化 (NFKC + 全角コロン→半角 + 空白除去 + 先頭バースト記号除去)
         function _normNameForMatch(s) {
@@ -7096,6 +7255,8 @@
             const listEl = document.getElementById('iconPickerList');
             if (!listEl) return;
             listEl.addEventListener('click', (ev) => {
+                const more = ev.target.closest('[data-expand-key]');
+                if (more && listEl.contains(more)) { expandIconPickerSection(more.dataset.expandKey); return; }
                 const card = ev.target.closest('[data-pick-name]');
                 if (card && listEl.contains(card)) pickIconForTeam(card.dataset.pickName);
             });
@@ -7105,6 +7266,12 @@
         function setIconPickerBurst(v) {
             _iconPickerBurst = v || '';
             _iconPickerHint = '';   // 手動で触った時点で自動絞り込みの説明は用済み
+            _iconPickerExpanded = {};
+            renderIconPickerList();
+        }
+        // セクションの「他N件」展開
+        function expandIconPickerSection(key) {
+            _iconPickerExpanded[key] = true;
             renderIconPickerList();
         }
         function renderIconPickerList() {
@@ -7120,11 +7287,24 @@
                     return fields.some(f => f.includes(sNorm));
                 });
             }
-            // 類似度でソート (search ある時は降順、無い時は名前順)
+            // 並べ替え: 検索中は類似度優先。それ以外は「ユニオンでよく使われている順」
+            // (属性が渡っていて提出が1件でもあるときだけ。無ければ従来どおり名前順)
+            const usage = _iconPickerAttr ? _charUsageFor(_iconPickerAttr) : null;
+            const useCount = (usage && usage.total > 0) ? usage.count : null;
+            const usedBy = c => (useCount?.get(c.canonical_name)) || 0;
+            // 採用数は実数で出す (母数が少ないうちに % を出すと 3件中2件=67% のように大げさに見える)
+            const useBadgeHtml = c => {
+                const n = usedBy(c);
+                if (!n) return '';
+                return `<span title="この属性の提出 ${usage.total}件のうち ${n}件がこのキャラを採用" style="font-size:10px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.10);border-radius:999px;padding:2px 6px;">${n}人</span>`;
+            };
             if (search) {
                 pool = pool.map(m => ({ m, score: _simBetween(search, m.canonical_name) }))
                     .sort((a, b) => b.score - a.score)
                     .map(x => x.m);
+            } else if (useCount) {
+                pool = [...pool].sort((a, b) =>
+                    usedBy(b) - usedBy(a) || a.canonical_name.localeCompare(b.canonical_name, 'ja'));
             } else {
                 pool = [...pool].sort((a, b) => a.canonical_name.localeCompare(b.canonical_name, 'ja'));
             }
@@ -7172,18 +7352,33 @@
                 return `
                     <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border-radius:12px;border:1px solid rgba(20,22,26,0.06);background:#fff;" onmouseover="this.style.background='#F7F8F9'" onmouseout="this.style.background='#fff'">
                         ${icon}
-                        <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">${_burstBadgeHtml(c)}</div>
+                        <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">${_burstBadgeHtml(c)}${useBadgeHtml(c)}</div>
                         <div style="font-size:11px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
                     </div>`;
             };
             const grid = items => `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;">${items.map(renderItem).join('')}</div>`;
             const head = t => `<div style="margin:12px 0 4px 0;font-size:11px;font-weight:900;color:#6B7178;">${t}</div>`;
+            // 採用率順に並んでいるときは上位だけ出して残りを畳む (下に行くほど選ばれないので
+            // 全部出しても縦に長いだけ)。検索中は探しに来ているので畳まない
+            const section = (key, title, items) => {
+                if (items.length === 0) return '';
+                const collapsible = !search && items.length > _ICON_PICKER_TOP;
+                if (!collapsible || _iconPickerExpanded[key]) return head(`${title} (${items.length}件)`) + grid(items);
+                const rest = items.length - _ICON_PICKER_TOP;
+                return head(`${title} (${items.length}件)`)
+                    + grid(items.slice(0, _ICON_PICKER_TOP))
+                    + `<button type="button" data-expand-key="${escapeHtml(key)}" style="width:100%;margin-top:6px;padding:8px;border-radius:10px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;">他 ${rest}件を表示</button>`;
+            };
 
-            let html = '';
+            // 採用率で並んでいるかを見出しに出す (数字の出所が分からないと信用できないため)
+            const srcNote = (!search && useCount)
+                ? `<div style="margin:2px 0 0 0;font-size:10.5px;color:#8A9097;">ユニオンの${PT_ATTRS.find(a => a.key === _iconPickerAttr)?.name || ''}PT提出 ${usage.total}件でよく使われている順</div>`
+                : '';
+            let html = srcNote;
             if (bf === '__none') {
                 const only = pool.filter(c => _burstsOf(c).length === 0);
-                html = only.length
-                    ? head(`バースト未設定 (${only.length}件)`) + grid(only)
+                html += only.length
+                    ? section('none', 'バースト未設定', only)
                     : `<p style="color:#8A9097;font-size:13px;padding:14px 0;">未設定のキャラはいません。</p>`;
             } else if (bf) {
                 // 主 or サブが一致するキャラが本命。BΛ (ワイルドカード) と 未設定 は
@@ -7191,10 +7386,10 @@
                 const main = pool.filter(c => _burstsOf(c).includes(bf));
                 const wild = bf === 'BΛ' ? [] : pool.filter(c => _isBurstWild(c) && !_burstsOf(c).includes(bf));
                 const unset = bf === 'BΛ' ? [] : pool.filter(c => _burstsOf(c).length === 0);
-                if (main.length) html += head(`${bf} (${main.length}件)`) + grid(main);
+                if (main.length) html += section(`b:${bf}`, bf, main);
                 else html += `<p style="color:#8A9097;font-size:13px;padding:14px 0 4px 0;">${bf} に該当するキャラがいません。</p>`;
-                if (wild.length) html += head(`🃏 BΛ ワイルドカード — どの枠でも可 (${wild.length}件)`) + grid(wild);
-                if (unset.length) html += head(`❓ バースト未設定 (${unset.length}件)`) + grid(unset);
+                html += section('wild', '🃏 BΛ ワイルドカード — どの枠でも可', wild);
+                html += section('unset', '❓ バースト未設定', unset);
             } else if (search) {
                 // 従来どおり: 上位8件を「近い候補」、残りを「その他」
                 const top = pool.slice(0, Math.min(8, pool.length));
@@ -7204,11 +7399,9 @@
             } else {
                 // 検索も絞り込みも無いときはバースト別に並べる (チェーンを組む視点で見やすい)
                 _BURST_ORDER.forEach(b => {
-                    const items = pool.filter(c => c.burst === b);
-                    if (items.length) html += head(`${b} (${items.length}件)`) + grid(items);
+                    html += section(`b:${b}`, b, pool.filter(c => c.burst === b));
                 });
-                const unset = pool.filter(c => !c.burst);
-                if (unset.length) html += head(`❓ バースト未設定 (${unset.length}件)`) + grid(unset);
+                html += section('unset', '❓ バースト未設定', pool.filter(c => !c.burst));
             }
             listEl.innerHTML = html;
         }
