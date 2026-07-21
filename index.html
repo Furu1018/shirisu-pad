@@ -3125,9 +3125,9 @@
                 <!-- 統計 (折り畳み) -->
                 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
                 <!-- グラフモード切替: SLv×ダメージ散布図 (SLvの割に出てる人が分かる) ⇄ 属性内訳の積み上げ棒 -->
-                <div style="display:flex;gap:6px;margin-top:8px;">
-                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="flex:1;padding:7px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;font-family:inherit;">📈 SLv×ダメージ</button>
-                    <button id="rankChartModeBtnAttr" onclick="setRankChartMode('attr')" style="flex:1;padding:7px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;font-family:inherit;">📊 属性内訳</button>
+                <div style="display:flex;gap:2px;margin-top:8px;background:#F1F2F4;border-radius:9px;padding:2px;width:fit-content;max-width:100%;">
+                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-size:10.5px;font-weight:700;font-family:inherit;white-space:nowrap;">📈 SLv×ダメージ</button>
+                    <button id="rankChartModeBtnAttr" onclick="setRankChartMode('attr')" style="padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-size:10.5px;font-weight:700;font-family:inherit;white-space:nowrap;">📊 属性内訳</button>
                 </div>
                 <!-- 属性トグル (属性内訳モードのみ表示) -->
                 <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
@@ -5428,7 +5428,13 @@
             }
 
             // 2) タブ切替
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            //    swipe-no-anim は「非対象タブ」からだけ解除する。対象タブに付いていれば残す
+            //    (スワイプ確定時は finish() が対象へ付与済み → フェードを鳴らさず、ちらつきを防ぐ)。
+            //    非対象は解除しておくことで、次にボタンで開いたときはフェードが復活する。
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+                if (el.id !== 'tab-' + tabName) el.classList.remove('swipe-no-anim');
+            });
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
             });
@@ -14971,10 +14977,12 @@
         // モードに応じて描画を振り分け (renderAll から呼ばれる入口)
         function createRankingChart() {
             const slv = _rankChartMode === 'slv';
+            // セグメント型の控えめトグル: 選択中だけ白く浮かせる
             const styleModeBtn = (btn, on) => {
                 if (!btn) return;
-                btn.style.background = on ? '#14161A' : '#F1F2F4';
-                btn.style.color = on ? '#fff' : '#5A6068';
+                btn.style.background = on ? '#fff' : 'transparent';
+                btn.style.color = on ? '#14161A' : '#8A9097';
+                btn.style.boxShadow = on ? '0 1px 3px rgba(20,22,26,0.12)' : 'none';
             };
             styleModeBtn(document.getElementById('rankChartModeBtnSlv'), slv);
             styleModeBtn(document.getElementById('rankChartModeBtnAttr'), !slv);
@@ -14984,6 +14992,42 @@
             if (note) note.textContent = '';
             if (slv) createSlvScatterChart();
             else createAttributeStackedBarChart();
+        }
+
+        // 散布図の各点をプレイヤーのアバターで描く。丸く切り抜いた canvas を Chart.js の pointStyle に使う。
+        const _scatterIconCache = new Map();     // key: `${url}|${me?1:0}` -> canvas | null(失敗/なし)
+        const _scatterIconPending = new Map();   // key -> [done, ...] 同一URLの多重ロードを1本に集約
+        let _scatterCachesTried = false;
+        function _buildScatterIcon(url, isMe, done) {
+            const key = `${url}|${isMe ? 1 : 0}`;
+            if (_scatterIconCache.has(key)) { done(_scatterIconCache.get(key)); return; }
+            if (_scatterIconPending.has(key)) { _scatterIconPending.get(key).push(done); return; }
+            _scatterIconPending.set(key, [done]);
+            const finish = (val) => {
+                if (_scatterIconCache.size >= 240) _scatterIconCache.clear();   // 上限: 署名URL更新等で無制限に増えるのを防ぐ
+                _scatterIconCache.set(key, val);
+                const cbs = _scatterIconPending.get(key) || [];
+                _scatterIconPending.delete(key);
+                cbs.forEach(cb => { try { cb(val); } catch { /* noop */ } });
+            };
+            const img = new Image();
+            img.crossOrigin = 'anonymous';   // canvas taint 回避 (CORS非対応画像は onerror→丸点)。src より前に指定
+            img.onload = () => {
+                try {
+                    const S = isMe ? 40 : 30, r = S / 2, bw = isMe ? 3 : 1.5;
+                    const cvs = document.createElement('canvas'); cvs.width = S; cvs.height = S;
+                    const cx = cvs.getContext('2d');
+                    cx.save();
+                    cx.beginPath(); cx.arc(r, r, r - bw, 0, Math.PI * 2); cx.closePath(); cx.clip();
+                    cx.drawImage(img, bw, bw, S - bw * 2, S - bw * 2);
+                    cx.restore();
+                    cx.beginPath(); cx.arc(r, r, r - bw / 2, 0, Math.PI * 2);
+                    cx.lineWidth = bw; cx.strokeStyle = isMe ? '#1E78F0' : 'rgba(30,120,240,0.55)'; cx.stroke();
+                    finish(cvs);
+                } catch { finish(null); }
+            };
+            img.onerror = () => finish(null);
+            img.src = url;
         }
 
         // 📈 SLv×ダメージ散布図: 「SLvの割にダメージが出ている人」を可視化する。
@@ -15025,11 +15069,17 @@
 
             // 自分は黒フチ + 大きめの点
             const myName = (typeof getCurrentIdentity === 'function') ? (getCurrentIdentity()?.name || null) : null;
+            // 各点のアバターURL (名前→プレイヤー) を引く。未ロードのキャッシュは丸点で先に描画し、揃い次第差し替える。
+            const urlByName = new Map();
+            pts.forEach(p => { const u = (typeof resolveAvatarUrlSync === 'function') ? resolveAvatarUrlSync(null, p.name) : null; if (u) urlByName.set(p.name, u); });
+            const iconFor = (p) => { const u = urlByName.get(p.name); if (!u) return null; return _scatterIconCache.get(`${u}|${p.name === myName ? 1 : 0}`) || null; };
             const datasets = [{
                 type: 'scatter',
                 data: pts,
+                pointStyle: pts.map(p => iconFor(p) || 'circle'),   // アバター画像 (未ロードは丸)
                 pointRadius: pts.map(p => p.name === myName ? 7 : 4.5),
                 pointHoverRadius: pts.map(p => p.name === myName ? 9 : 7),
+                pointHitRadius: pts.map(p => p.name === myName ? 22 : 16),   // アイコンぶんタップ判定を広げる
                 backgroundColor: pts.map(p => p.name === myName ? '#1E78F0' : 'rgba(30,120,240,0.55)'),
                 borderColor: pts.map(p => p.name === myName ? '#14161A' : 'rgba(30,120,240,0.8)'),
                 borderWidth: pts.map(p => p.name === myName ? 2 : 1),
@@ -15089,6 +15139,33 @@
                     },
                 },
             });
+
+            // アバター画像を非同期で丸く整形 → 揃い次第 pointStyle を差し替えて再描画。
+            // chart 参照を捕まえておき、コールバック時に「今もこのチャートか」を確認してから更新する
+            // (途中で属性内訳へ切替 → destroy されている / 別チャートに作り替わっている場合は捨てる)。
+            const chartRef = attributeChartInstance;
+            let _pend = 0;
+            pts.forEach(p => {
+                const u = urlByName.get(p.name); if (!u) return;
+                if (_scatterIconCache.has(`${u}|${p.name === myName ? 1 : 0}`)) return;   // 済み
+                _pend++;
+                _buildScatterIcon(u, p.name === myName, () => {
+                    _pend--;
+                    if (_pend === 0 && attributeChartInstance === chartRef && _rankChartMode === 'slv') {
+                        chartRef.data.datasets[0].pointStyle = pts.map(pp => iconFor(pp) || 'circle');
+                        chartRef.update('none');
+                    }
+                });
+            });
+            // アイコンに必要なキャッシュ (プレイヤー一覧 / キャラアイコン) が未ロードなら、取得後に一度だけ描き直す。
+            // _nikkeCharsByName は空 Map で常に truthy なので、配列キャッシュ _nikkeCharsCache の有無で判定する。
+            if (!_scatterCachesTried && (!_allPlayersCache || !_nikkeCharsCache)) {
+                _scatterCachesTried = true;
+                Promise.all([
+                    (typeof ensureAllPlayersLoaded === 'function') ? ensureAllPlayersLoaded() : null,
+                    (typeof getNikkeCharsCache === 'function') ? getNikkeCharsCache() : null,
+                ]).then(() => { if (_rankChartMode === 'slv') createSlvScatterChart(); }).catch(() => { /* noop */ });
+            }
         }
 
         // ========== Stacked Bar Chart ==========
@@ -16616,7 +16693,9 @@
                     _resetTabTransform(cur);
                     if (otherNeighbor) _cleanupNeighbor(otherNeighbor);
                     _swipe.animating = false;
-                    setTimeout(() => targetEl.classList.remove('swipe-no-anim'), 50);
+                    // swipe-no-anim は付けたまま (フェード再発火=ちらつきを防ぐ)。
+                    // 次に別タブへ移った時 switchTab がこのタブから解除するので、
+                    // ボタンで開き直したときはフェードが復活する。
                 };
                 let fired = false;
                 const onEnd = () => { if (fired) return; fired = true; cur.removeEventListener('transitionend', onEnd); finish(); };
