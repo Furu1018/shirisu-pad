@@ -25,6 +25,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Supabase クライアント (Phase 0: 接続確認のみ。既存ロジックは未変更) -->
     <script type="module" src="./js/supabase-client.js"></script>
+    <script defer src="./js/domain/attributes.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
     <style>
 
@@ -8034,14 +8035,17 @@
             }
 
             // 2. BOSS_ATTRIBUTES の固定名と照合（灼熱ヘスティア等）
-            const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
             for (const [code, info] of Object.entries(BOSS_ATTRIBUTES)) {
                 const nameJp = norm(info.nameJP || '');
                 // 接頭辞 (灼熱/水冷/...) を剥がした固有部分でも照合
                 const shortName = nameJp.replace(/^(灼熱|水冷|電撃|鉄甲|風圧)/, '');
                 if ((nameJp.length >= 3 && (nameJp.includes(target) || target.includes(nameJp)))
                     || (shortName.length >= 3 && (shortName.includes(target) || target.includes(shortName)))) {
-                    return COUNTER[info.attribute];
+                    // BOSS_ATTRIBUTES[].attribute は「持っていくPT属性」を大文字で持つ (ボス属性ではない)。
+                    // 旧実装はこれをさらに相性表 COUNTER で変換していたが、①既にPT属性なので変換は
+                    // 二重変換であり ②大文字キーは小文字キーの表に無く常に undefined だった (潜在バグ)。
+                    // 正しくは正規化して返すだけでよい (リアーキ ステップ1 監査 C7)
+                    return normalizeAttrKey(info.attribute);
                 }
             }
             return null;
@@ -8910,13 +8914,10 @@
         let _myAttackOcrCharacters = null;    // OCR生キャラ配列 (デバッグ参照のみ、保存はスロット経由)
         let _myAttackTeamSlots = ['', '', '', '', ''];  // 凸報告モーダルの使用キャラ5枠 (canonical_name)
 
-        // PT属性 → ボス側属性のマッピング（ふるりPAD全体で統一）
-        function attrToCounterBoss(playerAttr) {
-            return { fire: 'wind', water: 'fire', electric: 'water', iron: 'electric', wind: 'iron' }[playerAttr];
-        }
-        function bossAttrToPlayerAttr(bossAttr) {
-            return { wind: 'fire', fire: 'water', water: 'electric', electric: 'iron', iron: 'wind' }[bossAttr];
-        }
+        // 属性の相性変換は js/domain/attributes.js に一元化した (リアーキ ステップ1)。
+        // 画面側は weaknessPtOf(boss) / bossAttributeOf(boss) を使う — 相性表をここに再定義しないこと。
+        // (旧 attrToCounterBoss は呼び出しゼロの死にコード、旧 bossAttrToPlayerAttr は
+        //  DB保存済みの boss.weakness を相性表で再計算していた冗長ヘルパー。どちらも撤去済み)
 
         async function ensureActiveSeasonLoaded() {
             if (_activeSeasonCache) return _activeSeasonCache;
@@ -9050,7 +9051,9 @@
                 await window.supabaseSetMyFinishCoordination(id.id, {
                     status: 'coordinating',
                     bossNumber: boss.boss_number,
-                    attribute: boss.weakness,
+                    // DB列 finish_coordinations.attribute の中身は「持っていくPT属性」= weakness。
+                    // 列名が実態とねじれているが、列改名はDBマイグレーションになるためコメントで固定 (監査 C6)
+                    attribute: weaknessPtOf(boss),
                     note: '',
                 });
                 showNotification(`⚔️ ${targetLabel} の戦闘準備に入りました`);
@@ -9135,7 +9138,7 @@
                 const boss = bossByCode.get(a.boss_code);
                 const bossName = boss?.name || a.boss_code;
                 const bossAttr = boss?.attribute;
-                const playerAttr = bossAttr ? bossAttrToPlayerAttr(bossAttr) : null;
+                const playerAttr = weaknessPtOf(boss);
                 const ptInfo = PT_ATTRS.find(x => x.key === playerAttr);
                 const damageB = (Number(a.damage_raw) / 1e9).toFixed(2);
                 return `
@@ -9274,7 +9277,7 @@
 
             // ボスボタン生成 (折り畳みグリッド内)
             bossButtonsEl.innerHTML = ctx.bosses.map(b => {
-                const playerAttr = bossAttrToPlayerAttr(b.attribute);
+                const playerAttr = weaknessPtOf(b);
                 const bossVisual = ATTR_VISUAL[b.attribute] || { color:'#8A9097', name:'?', icon:'' };
                 return `
                     <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}" data-attr="${b.attribute}" data-pt="${playerAttr}"
@@ -9443,7 +9446,7 @@
             }
 
             // PT 側 (弱点属性)
-            const ptAttr = bossAttrToPlayerAttr(boss.attribute);
+            const ptAttr = weaknessPtOf(boss);
             const ptV = ATTR_VISUAL[ptAttr] || { color:'#8A9097', dark:'#5A6068', name:'?', icon:'' };
             ptIcon.innerHTML = ptV.icon
                 ? `<img loading="lazy" decoding="async" src="${ptV.icon}" alt="${ptV.name}">`
@@ -13016,7 +13019,7 @@
             const fresh = await window.supabaseLoadActiveSeasonWithBosses();
             if (!fresh.season) { listEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">アクティブシーズン無し</p>'; return; }
             listEl.innerHTML = fresh.bosses.map(b => {
-                const playerAttr = bossAttrToPlayerAttr(b.attribute);
+                const playerAttr = weaknessPtOf(b);
                 const pt = PT_ATTRS.find(x => x.key === playerAttr);
                 const totalB = (Number(b.total_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
                 const remB = (Number(b.remaining_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
@@ -13266,7 +13269,7 @@
                 return;
             }
             bossEl.innerHTML = ctx.bosses.map(b => {
-                const playerAttr = bossAttrToPlayerAttr(b.attribute);
+                const playerAttr = weaknessPtOf(b);
                 const pt = PT_ATTRS.find(x => x.key === playerAttr);
                 return `
                     <button type="button" data-boss="${b.boss_number}"
@@ -13725,7 +13728,7 @@
             listEl.innerHTML = filtered.map(a => {
                 const boss = bossByCode.get(a.boss_code);
                 const bossName = boss?.name || a.boss_code;
-                const playerAttr = boss?.attribute ? bossAttrToPlayerAttr(boss.attribute) : null;
+                const playerAttr = weaknessPtOf(boss);
                 const pt = playerAttr ? PT_ATTRS.find(x => x.key === playerAttr) : null;
                 const dmgB = (Number(a.damage_raw) / 1e9).toFixed(2);
                 const playerName = a.players?.name || '不明';

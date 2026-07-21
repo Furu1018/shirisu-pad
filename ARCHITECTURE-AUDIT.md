@@ -8,6 +8,10 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
 - これは**構造/保守性の監査**。`AUDIT.md`（2026-07-15のセキュリティ/機能監査）とは別物。
 - **リアーキのアプローチと着手順はこの文書では確定させない**。この文書を土台に、着手時に改めて方針を決める。「決めるための材料」であり実装着手の合意ではない。
 
+> **【決定 2026-07-22】ユーザー承認により B (段階的モジュール分割) で着手。**
+> レイドまで日程に余裕があることを確認済み。推奨順どおり**ステップ1 (ドメイン境界の固定) から開始**。
+> 進捗はこの文書の §4 各ステップに ✅ と完了日を追記していく。
+
 ---
 
 ## 1. 結論：スパゲッティか？ → **はい（単に巨大なだけでなく、真に絡み合っている）**
@@ -88,9 +92,16 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
 
 > **順序の考え方**: 依存が少なく低リスクな「土台」から入れる。痛んでいるタブ/スワイプ(ステップ5)は依存が最も多いので本来最後だが、痛みが強ければ前倒しも選べる（着手時に再決定）。
 
-1. **ドメイン境界を固定する（型/変換の分離）**
+1. **ドメイン境界を固定する（型/変換の分離）** — **✅ 属性変換の分離 完了 (2026-07-22)**
    `Boss` の `bossAttribute` と `weaknessPt` を別名・別変換関数にし、画面からの相性逆算を追放。JSDoc(または段階的TS)で `plan`/`player`/`attack` の形を固定。
    **完了条件**: PT選択は全て `weaknessPt` を読み、属性変換の単体テストが通る。
+   > 実施内容: `js/domain/attributes.js` 新設 (`weaknessPtOf`/`bossAttributeOf`/`normalizeAttrKey`、
+   > JSDoc typedef、単体テスト5件)。画面側の相性逆算 `bossAttrToPlayerAttr` 6箇所を
+   > `weaknessPtOf(boss)` (DB保存値の直読) に置換して撤去、死にコード `attrToCounterBoss` 削除。
+   > 潜在バグ修正: `detectPtAttrFromBossName` の `COUNTER[大文字キー]` が常に undefined だった
+   > 二重変換 (監査C7)。DB書き込み境界 (supabaseCreateSeason) と相互参照コメントで結線。
+   > **残**: `plan`/`player`/`attack` の JSDoc typedef 化 (optimal-plan.js ヘッダーは
+   > コメント形式のまま)、大文字ドメイン (BOSS_ATTRIBUTES/比較タブ島) の境界明示は次回。
 
 2. **未テストの純ロジックを `js/` へ抽出＋テスト化**
    ふるり値計算(`calculateFururiScore`/`buildFururiBaseMap` ほか)、OCR後処理(`fuzzyResolveCharacter`/`_ocrAttackMultiAndMerge`/`detectBossCodeFromText`)、候補選別・ダメージ整形をDOM非依存に。

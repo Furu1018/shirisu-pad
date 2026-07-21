@@ -3,9 +3,11 @@
 //   node tests/run-tests.mjs
 // ============================================================================
 import assert from 'node:assert/strict';
-import '../js/optimal-plan.js';   // globalThis.computeOptimalPlanCore を定義する
+import '../js/optimal-plan.js';        // globalThis.computeOptimalPlanCore を定義する
+import '../js/domain/attributes.js';   // globalThis.weaknessPtOf 等 (リアーキ ステップ1)
 
 const compute = globalThis.computeOptimalPlanCore;
+const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS } = globalThis;
 
 // ---- テストデータ ヘルパー -------------------------------------------------
 const B = 1e9;   // 1B = 10億
@@ -985,6 +987,55 @@ test('フロンティアの手前のレベルは従来どおり撃破する', ()
     assert.ok(lv2Attacks.length > 0, 'フロンティアでも凸は計画される');
     assert.ok(lv2Attacks.every(a => a.overflowB === 0), 'プールが大きいのでオーバーキルなし');
     assert.ok(lv2.bosses.every(b => b.absorbedB != null), '吸収量が出力される');
+});
+
+// ---- ドメイン: 属性変換 (js/domain/attributes.js — リアーキ ステップ1) --------
+console.log('\ndomain/attributes:');
+
+test('normalizeAttrKey: 大文字・空白・未知値を正規化する', () => {
+    assert.equal(normalizeAttrKey('WATER'), 'water');       // 比較タブ系の大文字ドメイン境界
+    assert.equal(normalizeAttrKey(' Fire '), 'fire');
+    assert.equal(normalizeAttrKey('fire'), 'fire');
+    assert.equal(normalizeAttrKey('FIRE PT'), null);        // 未知の表記は素通しせず null
+    assert.equal(normalizeAttrKey(''), null);
+    assert.equal(normalizeAttrKey(null), null);
+    assert.equal(normalizeAttrKey(undefined), null);
+    assert.equal(normalizeAttrKey(42), null);
+});
+
+test('相性写像はゲーム仕様と一致し、往復で元に戻る', () => {
+    // ゲーム仕様: 風ボス→火PT / 火ボス→水PT / 水ボス→電PT / 電ボス→鉄PT / 鉄ボス→風PT
+    const expect = { wind: 'fire', fire: 'water', water: 'electric', electric: 'iron', iron: 'wind' };
+    for (const [bossAttr, pt] of Object.entries(expect)) {
+        assert.equal(weaknessPtOf({ attribute: bossAttr }), pt, `${bossAttr}ボスの弱点`);
+        // 逆写像: weakness から ボス属性を戻せる (往復一致 = 写像が全単射)
+        assert.equal(bossAttributeOf({ weakness: pt }), bossAttr, `${pt}PTが刺さるボス`);
+    }
+    assert.equal(ATTR_KEYS.length, 5);
+});
+
+test('weaknessPtOf: DB保存済みの weakness を最優先し、相性の再計算はしない', () => {
+    // weakness と attribute が矛盾する行 (手入力事故など) では weakness が勝つ —
+    // 相性表による上書きをしないことが「画面からの逆算追放」の意味
+    assert.equal(weaknessPtOf({ attribute: 'fire', weakness: 'wind' }), 'wind');
+    // 大文字で入っていても正規化される
+    assert.equal(weaknessPtOf({ weakness: 'WIND' }), 'wind');
+});
+
+test('weaknessPtOf: weakness の無い旧データ行は attribute から導出、両方無ければ null', () => {
+    assert.equal(weaknessPtOf({ attribute: 'wind' }), 'fire');
+    assert.equal(weaknessPtOf({ attribute: 'wind', weakness: null }), 'fire');
+    assert.equal(weaknessPtOf({}), null);
+    assert.equal(weaknessPtOf(null), null);
+    assert.equal(weaknessPtOf(undefined), null);
+    assert.equal(weaknessPtOf({ attribute: '謎属性' }), null);
+});
+
+test('bossAttributeOf: attribute 優先・weakness から逆算・両方無ければ null', () => {
+    assert.equal(bossAttributeOf({ attribute: 'iron', weakness: 'fire' }), 'iron');
+    assert.equal(bossAttributeOf({ weakness: 'electric' }), 'water');
+    assert.equal(bossAttributeOf({}), null);
+    assert.equal(bossAttributeOf(null), null);
 });
 
 // ---- 結果 --------------------------------------------------------------------

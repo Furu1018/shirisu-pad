@@ -1186,6 +1186,9 @@ window.supabaseCreateSeason = async function (payload) {
     if (!Array.isArray(payload.bosses) || payload.bosses.length !== 5) throw new Error('boss は5体必要');
 
     const ATTR_FROM_CODE = { 'H.S.T.A.': 'fire', 'P.S.I.D.': 'water', 'D.M.T.R.': 'iron', 'Z.E.U.S.': 'electric', 'A.N.M.I.': 'wind' };
+    // bosses.weakness の唯一の発生源 (シーズン作成時にここで確定し、以降は不変)。
+    // 画面側はこの値を再計算せず boss.weakness / weaknessPtOf() を読むこと
+    // (js/domain/attributes.js の WEAKNESS_BY_BOSS_ATTR と同一写像 — リアーキ ステップ1)
     const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
     const HARD_LV1_HP = { lord: 99856279200, tyrant: 150841813600 };   // lord=低HP / tyrant=高HP
 

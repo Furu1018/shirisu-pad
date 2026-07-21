@@ -27,9 +27,14 @@ rm -f .claude/hooks/.codex-on      # OFF
 
 ## アーキテクチャ
 
-- **index.html**(約16,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成
+- **index.html**(約17,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成。
+  **リアーキ進行中** (ARCHITECTURE-AUDIT.md — B:段階的モジュール分割を2026-07-22に承認・着手)
 - **js/supabase-client.js** — Supabase への読み書きを `window.supabaseXxx` 関数として公開
 - **js/optimal-plan.js** — 最適凸プランのソルバー (純関数、単体テストあり)
+- **js/domain/attributes.js** — 属性ドメイン (リアーキ ステップ1)。ボス属性⇄弱点PT属性の変換は
+  ここが唯一の置き場所。画面側は `weaknessPtOf(boss)` / `bossAttributeOf(boss)` /
+  `normalizeAttrKey(v)` を使う — **相性表を画面に再定義しないこと** (DB書き込み側の発生源は
+  supabaseCreateSeason の COUNTER のみ)
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
   バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
   凸プラン配信 (📤) は `17_published_plans.sql`、戦闘可能時間の運用オプション
