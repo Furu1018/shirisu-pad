@@ -70,10 +70,29 @@
             return map;
         };
 
+        // openIdx 以降でそのメンバーが凸できる最も早い時間帯を返す。
+        // 戻り値: { idx, flex } / null = 時間的に不可。
+        //   flex=true は「時刻を約束しない ⏳隙間 割当」(純粋な隙間型、またはハイブリッドの登録時間外)
+        const earliestHourFor = (m, openIdx) => {
+            if (!timeAware) return { idx: openIdx, flex: false };
+            if (m.hourIdxs === null) return { idx: openIdx, flex: m.flexTime };   // 時間不明/純隙間型
+            for (const i of m.hourIdxs) if (i >= openIdx) return { idx: i, flex: false };   // 登録時間内 = 確約
+            if (m.flexTime) return { idx: openIdx, flex: true };   // ハイブリッド: 時間外は隙間でやる
+            // 戦闘可能時間がレベル開放と合わない人も除外はせず、
+            // 「希望時間に一番近い形 (ベストエフォート)」として必ず計画に組み込む。
+            // 時刻は確約できないので ⏳扱い + mismatch マーク。ペナルティで正規の時間の人を優先。
+            // 最寄り = 開放時刻に一番近い宣言時間 (残っていれば直前の枠、全て過去なら宣言の最終枠)
+            const pool = m.hourIdxs.length > 0 ? m.hourIdxs : (m.allHourIdxs || []);
+            const nearest = pool.length > 0 ? pool[pool.length - 1] : openIdx;
+            return { idx: openIdx, flex: true, mismatch: true, nearestIdx: nearest };
+        };
+
         // メンバー状態: 残凸数 + 属性別の使い切りダメージ(>0) + SLv + 凸可能時間
         // 「現在凸可能のみ」モードでは availability に現スロットを含む人だけを対象にする。
         // 既に[attr]PT で凸済みの属性は avail から除外 (二重割当防止)
-        const memberState = (players || [])
+        // ※ 温存パス (Phase B) がまっさらな状態からやり直せるよう関数化してある —
+        //    パス間で avail/usedChars/remainingAttacks の消費を持ち越さないこと
+        const buildMemberState = () => (players || [])
             .filter(p => p.attackCount < 3)
             .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(currentSlot))
             .map(p => {
@@ -149,28 +168,13 @@
                 };
             });
 
-        // openIdx 以降でそのメンバーが凸できる最も早い時間帯を返す。
-        // 戻り値: { idx, flex } / null = 時間的に不可。
-        //   flex=true は「時刻を約束しない ⏳隙間 割当」(純粋な隙間型、またはハイブリッドの登録時間外)
-        const earliestHourFor = (m, openIdx) => {
-            if (!timeAware) return { idx: openIdx, flex: false };
-            if (m.hourIdxs === null) return { idx: openIdx, flex: m.flexTime };   // 時間不明/純隙間型
-            for (const i of m.hourIdxs) if (i >= openIdx) return { idx: i, flex: false };   // 登録時間内 = 確約
-            if (m.flexTime) return { idx: openIdx, flex: true };   // ハイブリッド: 時間外は隙間でやる
-            // 戦闘可能時間がレベル開放と合わない人も除外はせず、
-            // 「希望時間に一番近い形 (ベストエフォート)」として必ず計画に組み込む。
-            // 時刻は確約できないので ⏳扱い + mismatch マーク。ペナルティで正規の時間の人を優先。
-            // 最寄り = 開放時刻に一番近い宣言時間 (残っていれば直前の枠、全て過去なら宣言の最終枠)
-            const pool = m.hourIdxs.length > 0 ? m.hourIdxs : (m.allHourIdxs || []);
-            const nearest = pool.length > 0 ? pool[pool.length - 1] : openIdx;
-            return { idx: openIdx, flex: true, mismatch: true, nearestIdx: nearest };
+        // SLv順位 (0=最低, 1=最高) を参加可能メンバー内で相対化して付与
+        const assignSlvRanks = (memberState) => {
+            const participants = memberState.filter(m => m.remainingAttacks > 0 && Object.keys(m.avail).length > 0);
+            const sortedBySlv = [...participants].sort((a, b) => a.slv - b.slv);
+            const np = sortedBySlv.length;
+            sortedBySlv.forEach((m, i) => { m.slvRank = np > 1 ? i / (np - 1) : 0.5; });
         };
-
-        // SLv順位 (0=最低, 1=最高)。参加可能メンバー内で相対化。
-        const participants = memberState.filter(m => m.remainingAttacks > 0 && Object.keys(m.avail).length > 0);
-        const sortedBySlv = [...participants].sort((a, b) => a.slv - b.slv);
-        const np = sortedBySlv.length;
-        sortedBySlv.forEach((m, i) => { m.slvRank = np > 1 ? i / (np - 1) : 0.5; });
 
         // 候補スコア(小さいほど良い): オーバーキル + SLvミスマッチ + 遅い時間ペナルティ。
         // SLv完全ミスマッチ(1.0) ≈ 5B のオーバーキル、1時間の遅れ ≈ 0.2B のオーバーキル相当。
@@ -191,14 +195,20 @@
             return overkill * W_OVER + slvPenalty * W_SLV + timePenalty * W_TIME + flexPenalty - strongBonus - Math.min(dmg, rem) * 0.001;
         };
 
-        const levels = [];
-        let fullyClearedThrough = startLevel - 1;  // 何レベルまで完全攻略できる想定か
-        let openIdx = nowIdx;                       // このレベルの凸を開始できる時間帯
-        for (let L = startLevel; L <= 3; L++) {
+        // ===== 1パスぶんの割当実行 (Lv1〜3 の有限ボス) =====
+        // opts.oppCostOf(m, attr, lo): 候補スコアへの加算項 (B単位)。「この凸を有限ボスに使うと
+        //   ボス5(無限) で入るはずだったダメージをいくら失うか」の機会費用 (Phase B 温存パス)。
+        // opts.lv4Mandatory: { attr, canAfter(m) } — この属性の必須消化は Lv4 で満たせる前提で
+        //   枠予約 (lockedNow) から除外する (canAfter な人のみ)。
+        const runPass = (opts = {}) => {
+            const memberState = buildMemberState();
+            assignSlvRanks(memberState);
+            const levels = [];
+            let fullyClearedThrough = startLevel - 1;  // 何レベルまで完全攻略できる想定か
+            let openIdx = nowIdx;                       // このレベルの凸を開始できる時間帯
+            let frontierLevel = null;                   // 踏破できず吸収割当に切り替えたレベル
+            for (let L = startLevel; L <= 3; L++) {
             const levelPos = (L - 1) / 2;  // Lv1=0, Lv2=0.5, Lv3=1
-            const levelBosses = [];
-            let levelCleared = true;
-            let levelClearIdx = openIdx;   // このレベルの想定クリア時間帯 (最も遅い凸)
             // 必須得意属性の枠予約は「このレベルで生きているボスの弱点」に限る。
             // 撃破済みボスの属性まで予約すると、得意属性が全滅済みのメンバーが
             // 自由枠0で他ボスにも出せず、模擬提出があるのに一切使われなくなる。
@@ -209,45 +219,92 @@
                 if (t > 0.0001 && b.weakness) aliveWeakThisLevel.add(b.weakness);
             }
             memberState.forEach(m => {
-                m.lockedNow = [...m.mandatory].filter(k => aliveWeakThisLevel.has(k)).length;
+                m.lockedNow = [...m.mandatory].filter(k => aliveWeakThisLevel.has(k)
+                    // 温存パス: ボス5弱点が得意属性の人は Lv4 で消化できる (全額計上で本人にも最良) ため
+                    // 有限レベルでは枠予約しない。ただし Lv4 開放時刻に出られない人は従来どおり予約する
+                    && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))).length;
             });
-            for (const b of bosses) {
-                const tierHp = HARD_LEVEL_HP_B[L]?.[b.tier] ?? ((b.total_hp_raw || 0) / 1e9);
-                const targetHpB = (L === startLevel) ? ((b.remaining_hp_raw || 0) / 1e9) : tierHp;
-                const attacks = [];
-                let rem = targetHpB;
-                let sawTimeExcluded = false;   // 火力はあるが時間で弾かれた候補がいたか
-                while (rem > 0.0001) {
+            // メンバー状態のスナップショット — 踏破モードで失敗したら吸収モードでやり直すため
+            const snapshot = memberState.map(m => ({
+                remainingAttacks: m.remainingAttacks,
+                avail: Object.fromEntries(Object.entries(m.avail).map(([k, v]) => [k, [...v]])),
+                usedChars: new Set(m.usedChars),
+                mandatory: new Set(m.mandatory),
+                lockedNow: m.lockedNow,
+            }));
+            const restoreSnapshot = () => memberState.forEach((m, i) => {
+                const s = snapshot[i];
+                m.remainingAttacks = s.remainingAttacks;
+                m.avail = Object.fromEntries(Object.entries(s.avail).map(([k, v]) => [k, [...v]]));
+                m.usedChars = new Set(s.usedChars);
+                m.mandatory = new Set(s.mandatory);
+                m.lockedNow = s.lockedNow;
+            });
+
+            // このレベルの割当を1回実行する。
+            // absorbMode=false: 従来どおりボスごとに削り切りを狙う (踏破モード)
+            // absorbMode=true : 踏破できないレベル (フロンティア) 用。全ボスを横断して
+            //   スコア最小の凸を選び続ける。撃破は狙わない — 次レベルが開かない以上
+            //   撃破しても与ダメは増えず、残HP < ダメージ のボスへの凸はオーバーキルで
+            //   credited を減らすだけ。オーバーキル項が「残HPに収まるボス優先」を自然に選ぶ
+            const runLevel = (absorbMode) => {
+                const targets = bosses.map(b => {
+                    const tierHp = HARD_LEVEL_HP_B[L]?.[b.tier] ?? ((b.total_hp_raw || 0) / 1e9);
+                    const targetHpB = (L === startLevel) ? ((b.remaining_hp_raw || 0) / 1e9) : tierHp;
+                    return { b, targetHpB, rem: targetHpB, attacks: [], sawTimeExcluded: false };
+                });
+                // === 必須予約(mandatory)の途中解放 (Opus/Codex 監査 #4) ===
+                // lockedNow をレベル開始時点で固定すると、必須属性のボスがレベル途中で
+                // 他メンバーに撃破されても枠が握られたままになり、当該メンバーの1凸が
+                // 丸ごと未使用になる。ボスが撃破されるたびに生存弱点を数え直して解放する。
+                // targets は未処理ボスも満タン残HPで持つので、1回の走査で生存判定できる。
+                // 温存パス (lv4Mandatory) の除外条件も同じ式に含める — 含めないと
+                // レベル開始時に外した予約が途中の数え直しで復活してしまう
+                const recountLocked = () => {
+                    const aliveWeakLeft = new Set();
+                    targets.forEach(t => { if (t.rem > 0.0001 && t.b.weakness) aliveWeakLeft.add(t.b.weakness); });
+                    memberState.forEach(m => {
+                        if (m.mandatory.size === 0) { m.lockedNow = 0; return; }
+                        m.lockedNow = [...m.mandatory].filter(k => aliveWeakLeft.has(k)
+                            && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))).length;
+                    });
+                };
+                // t のボスに出せる最良 (スコア最小) の候補を探す
+                const pickFor = (t) => {
                     let pick = null, pickScore = Infinity, pickHour = openIdx, pickFlex = false, pickLo = null, pickSlot = null;
                     for (const m of memberState) {
-                        const list = m.avail[b.weakness];
+                        const list = m.avail[t.b.weakness];
                         if (m.remainingAttacks <= 0 || !list || list.length === 0) continue;
                         // 得意属性の必須消化: 予約枠 (このレベルで消化可能な必須) を除いた
                         // 自由枠が尽きたら、必須属性以外には出さない
-                        if (m.mandatory.size > 0 && !m.mandatory.has(b.weakness)
+                        if (m.mandatory.size > 0 && !m.mandatory.has(t.b.weakness)
                             && (m.remainingAttacks - m.lockedNow) <= 0) continue;
-                        // キャラ衝突チェック: 割当済みキャラと被らない最初 (=最大ダメージ) のロードアウトを選ぶ
-                        // (編成データが全く無い人はチェック対象外。データ揃ってる人だけ厳密判定)
-                        let lo = null;
+                        const slot = earliestHourFor(m, openIdx);
+                        if (slot === null) { t.sawTimeExcluded = true; continue; }
+                        // キャラ衝突しないロードアウトを全て候補としてスコアリングする。
+                        // 残HPが小さいボスには 2編成目 (低火力) の方がオーバーキルが小さい・
+                        // 温存の機会費用が安いことがある (編成データが全く無い人は衝突チェック対象外)
                         for (const cand of list) {
                             if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(c))) continue;
-                            lo = cand;
-                            break;
+                            let s = scoreOf(m, t.b.weakness, cand.dmg, t.rem, levelPos, slot.idx, openIdx, slot.flex, slot.mismatch);
+                            // 温存パス: ボス5で入るはずの与ダメを失う機会費用 (B) を加算。
+                            // オーバーキルと同じ単位なので W_OVER=1.0 と自然に比較される
+                            if (opts.oppCostOf) s += opts.oppCostOf(m, t.b.weakness, cand);
+                            if (s < pickScore) { pickScore = s; pick = m; pickHour = slot.idx; pickFlex = slot.flex; pickLo = cand; pickSlot = slot; }
                         }
-                        if (!lo) continue;
-                        const slot = earliestHourFor(m, openIdx);
-                        if (slot === null) { sawTimeExcluded = true; continue; }
-                        const s = scoreOf(m, b.weakness, lo.dmg, rem, levelPos, slot.idx, openIdx, slot.flex, slot.mismatch);
-                        if (s < pickScore) { pickScore = s; pick = m; pickHour = slot.idx; pickFlex = slot.flex; pickLo = lo; pickSlot = slot; }
                     }
-                    if (!pick) break;
+                    return pick ? { pick, pickScore, pickHour, pickFlex, pickLo, pickSlot } : null;
+                };
+                // 候補を採用: 凸行を追加し、メンバー状態とボス残HPを更新する
+                const applyPick = (t, c) => {
+                    const { pick, pickHour, pickFlex, pickLo, pickSlot } = c;
                     const dmg = pickLo.dmg;
                     const team = pickLo.team;
                     const teamRegistered = team.length > 0;
-                    attacks.push({
+                    t.attacks.push({
                         memberId: pick.id, memberName: pick.name,
                         slv: pick.slv, slvEstimated: pick.slvEstimated,
-                        dmgB: dmg, usedB: Math.min(dmg, rem), overflowB: Math.max(0, dmg - rem),
+                        dmgB: dmg, usedB: Math.min(dmg, t.rem), overflowB: Math.max(0, dmg - t.rem),
                         team: teamRegistered ? team : null,  // 未登録は null マークで警告表示
                         hourIdx: timeAware ? pickHour : null,
                         // ⏳隙間割当 (純隙間型 or ハイブリッドの登録時間外) は時刻を約束しない:
@@ -262,57 +319,84 @@
                         isBottleneck: false,                 // レベル確定後に付与
                     });
                     // 採用したキャラを使用済セットへ
-                    if (teamRegistered) team.forEach(c => { if (c) pick.usedChars.add(c); });
+                    if (teamRegistered) team.forEach(ch => { if (ch) pick.usedChars.add(ch); });
                     // 使用したロードアウトを除去 (同属性の別編成が残っていれば2凸目も提案可)
-                    const loIdx = pick.avail[b.weakness].indexOf(pickLo);
-                    if (loIdx >= 0) pick.avail[b.weakness].splice(loIdx, 1);
-                    if (pick.avail[b.weakness].length === 0) delete pick.avail[b.weakness];
+                    const loIdx = pick.avail[t.b.weakness].indexOf(pickLo);
+                    if (loIdx >= 0) pick.avail[t.b.weakness].splice(loIdx, 1);
+                    if (pick.avail[t.b.weakness].length === 0) delete pick.avail[t.b.weakness];
                     pick.remainingAttacks--;
                     // 得意属性の消化管理: 必須を消化したら予約も1つ解放
                     // (自由枠の消費は remainingAttacks の減少で自然に反映される)
-                    if (pick.mandatory.has(b.weakness)) {
-                        pick.mandatory.delete(b.weakness);
+                    if (pick.mandatory.has(t.b.weakness)) {
+                        pick.mandatory.delete(t.b.weakness);
                         pick.lockedNow = Math.max(0, pick.lockedNow - 1);
                     }
-                    rem -= dmg;
+                    t.rem -= dmg;
+                };
+                if (!absorbMode) {
+                    // 踏破モード: ボスごとに残HPを削り切るまで投入
+                    for (const t of targets) {
+                        while (t.rem > 0.0001) {
+                            const c = pickFor(t);
+                            if (!c) break;
+                            applyPick(t, c);
+                        }
+                        recountLocked();   // このボスが撃破されたら必須予約を解放 (#4)
+                    }
+                } else {
+                    // 吸収モード: 生きている全ボスを横断して、常に全体スコア最小の凸を選ぶ
+                    while (true) {
+                        let best = null, bestT = null;
+                        for (const t of targets) {
+                            if (t.rem <= 0.0001) continue;   // 削り切ったボスに足すのはオーバーキル純増
+                            const c = pickFor(t);
+                            if (c && (!best || c.pickScore < best.pickScore)) { best = c; bestT = t; }
+                        }
+                        if (!best) break;
+                        applyPick(bestT, best);
+                        if (bestT.rem <= 0.0001) recountLocked();   // 撃破が起きたら必須予約を解放 (#4)
+                    }
                 }
-                const cleared = rem <= 0.0001;
-                if (!cleared && targetHpB > 0) levelCleared = false;
-                // クリア想定時刻は「時刻が読める凸」だけから算出。⏳隙間凸しか無いボスは
-                // 開放時刻扱いにしつつ hasFlex で不確実さを表示側へ伝える
-                const timedIdxs = attacks.filter(a => !a.flex).map(a => a.hourIdx);
-                const bossClearIdx = (timeAware && cleared && attacks.length)
-                    ? (timedIdxs.length ? Math.max(...timedIdxs) : openIdx) : null;
-                const hasFlex = attacks.some(a => a.flex);
-                if (cleared && bossClearIdx !== null) levelClearIdx = Math.max(levelClearIdx, bossClearIdx);
-                levelBosses.push({
-                    bossNumber: b.boss_number, name: b.name || b.boss_code,
-                    weakness: b.weakness, attribute: b.attribute, tier: b.tier,
-                    targetHpB, remainingHpB: Math.max(0, rem), cleared, attacks,
-                    clearHourIdx: bossClearIdx,
-                    clearHourLabel: bossClearIdx !== null ? hourLabelOf(bossClearIdx) : null,
-                    hasFlex,
-                    // 火力不足ではなく時間不足で削り切れなかったボスの区別
-                    timeConstrained: timeAware && !cleared && targetHpB > 0 && sawTimeExcluded,
-                });
-                // === 必須予約(mandatory)の途中解放 ===
-                // lockedNow はレベル開始時点の生存弱点で固定していたため、必須属性のボスが
-                // 「このレベルの途中で他メンバーに撃破」されても枠が握られたままになり、
-                // 当該メンバーが自由枠に出られず1凸まるごと未使用になっていた (Opus/Codex 監査)。
-                // ボスを1体削り終えるたびに、まだ弱点が生存しているレベル内ボスを数え直して
-                // lockedNow を更新する (処理済み=残HP / 未処理=満タンで生存扱い)。
-                const aliveWeakLeft = new Set();
-                levelBosses.forEach(pb => { if (pb.remainingHpB > 0.0001 && pb.weakness) aliveWeakLeft.add(pb.weakness); });
-                for (let bi = levelBosses.length; bi < bosses.length; bi++) {
-                    const nb = bosses[bi];
-                    const nbTarget = (L === startLevel) ? ((nb.remaining_hp_raw || 0) / 1e9)
-                        : (HARD_LEVEL_HP_B[L]?.[nb.tier] ?? ((nb.total_hp_raw || 0) / 1e9));
-                    if (nbTarget > 0.0001 && nb.weakness) aliveWeakLeft.add(nb.weakness);
+                // 集計: ボスごとの結果を組み立てる
+                const levelBosses = [];
+                let levelCleared = true;
+                let levelClearIdx = openIdx;
+                for (const t of targets) {
+                    const { b, targetHpB, attacks } = t;
+                    const rem = t.rem;
+                    const cleared = rem <= 0.0001;
+                    if (!cleared && targetHpB > 0) levelCleared = false;
+                    // クリア想定時刻は「時刻が読める凸」だけから算出。⏳隙間凸しか無いボスは
+                    // 開放時刻扱いにしつつ hasFlex で不確実さを表示側へ伝える
+                    const timedIdxs = attacks.filter(a => !a.flex).map(a => a.hourIdx);
+                    const bossClearIdx = (timeAware && cleared && attacks.length)
+                        ? (timedIdxs.length ? Math.max(...timedIdxs) : openIdx) : null;
+                    const hasFlex = attacks.some(a => a.flex);
+                    if (cleared && bossClearIdx !== null) levelClearIdx = Math.max(levelClearIdx, bossClearIdx);
+                    levelBosses.push({
+                        bossNumber: b.boss_number, name: b.name || b.boss_code,
+                        weakness: b.weakness, attribute: b.attribute, tier: b.tier,
+                        targetHpB, remainingHpB: Math.max(0, rem), cleared, attacks,
+                        clearHourIdx: bossClearIdx,
+                        clearHourLabel: bossClearIdx !== null ? hourLabelOf(bossClearIdx) : null,
+                        hasFlex,
+                        // 火力不足ではなく時間不足で削り切れなかったボスの区別
+                        timeConstrained: timeAware && !cleared && targetHpB > 0 && t.sawTimeExcluded,
+                        // 吸収モードでは「削った量」が成果 (撃破は目的ではない)
+                        ...(absorbMode ? { absorbedB: Math.max(0, targetHpB - Math.max(0, rem)) } : {}),
+                    });
                 }
-                memberState.forEach(m => {
-                    if (m.mandatory.size > 0) m.lockedNow = [...m.mandatory].filter(k => aliveWeakLeft.has(k)).length;
-                });
+                return { levelBosses, levelCleared, levelClearIdx };
+            };
+
+            let levelResult = runLevel(false);
+            if (!levelResult.levelCleared) {
+                // フロンティア (踏破できないレベル): 撃破狙いをやめて吸収割当でやり直す
+                restoreSnapshot();
+                levelResult = runLevel(true);
+                if (!levelResult.levelCleared) frontierLevel = L;
             }
+            const { levelBosses, levelCleared, levelClearIdx } = levelResult;
             // 律速マーク: レベルのクリア時刻を決めている凸 (最も遅い時間帯の凸)。
             // ⏳隙間凸は時刻を約束していないので律速にしない
             if (timeAware && levelCleared) {
@@ -330,10 +414,155 @@
                 clearHourLabel: (timeAware && levelCleared) ? hourLabelOf(levelClearIdx) : null,
                 hasFlex: levelBosses.some(b => b.hasFlex),   // ⏳隙間凸を含む (クリア時刻は目安)
             });
-            if (levelCleared) fullyClearedThrough = L;
-            else break;  // このレベルを越えられないので以降は計画しない
-            openIdx = levelClearIdx;   // 次レベルはこのレベルのクリア想定時刻から
+                if (levelCleared) fullyClearedThrough = L;
+                else break;  // このレベルを越えられないので以降は計画しない
+                openIdx = levelClearIdx;   // 次レベルはこのレベルのクリア想定時刻から
+            }
+            return { memberState, levels, fullyClearedThrough, openIdx, frontierLevel };
+        };
+
+        // ===== Lv4: ボス5のみ・HP無限 (Lv3踏破で即日開放) =====
+        // ランキングは累計与ダメージで、無限ボスへの凸は全額計上される (オーバーキルが無い)。
+        // Lv3 まで踏破できる想定なら、残っている凸のうちボス5の弱点属性で出せるものを全て割り当てる。
+        // 数値は Infinity を使わず 0 + infinite フラグで表現する — 📤配信は JSONB 保存であり、
+        // JSON.stringify(Infinity) は null になって旧クライアントの .toFixed() を壊すため。
+        const boss5 = bosses.find(b => b.boss_number === 5);
+        const assignLv4 = (pass) => {
+            const lv4Weak = boss5.weakness;
+            const lv4OpenIdx = pass.openIdx;   // ループ後の openIdx = Lv3 クリア想定時刻
+            const memberState = pass.memberState;
+            const lv4Attacks = [];
+            for (const m of memberState) {
+                // 同一人物でも別編成 (loadout slot) なら同属性に複数凸できる — 残凸数まで dmg 降順で割当。
+                // 有限ボスはもう残っていないので、得意属性の枠予約 (lockedNow) はここでは考慮しない
+                // (温存する先が存在しない。凸を余らせるより全額入るボス5へ出す方が常に良い)
+                while (m.remainingAttacks > 0) {
+                    const list = m.avail[lv4Weak];
+                    if (!list || list.length === 0) break;
+                    let lo = null;
+                    for (const cand of list) {
+                        if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(c))) continue;
+                        lo = cand;
+                        break;
+                    }
+                    if (!lo) break;   // キャラ被りで出せる編成なし
+                    // 開放時刻に出られない人も除外せずベストエフォート ⏳ で組み込む (有限ボスと同じ哲学)
+                    const slot = earliestHourFor(m, lv4OpenIdx);
+                    const teamRegistered = lo.team.length > 0;
+                    lv4Attacks.push({
+                        memberId: m.id, memberName: m.name,
+                        slv: m.slv, slvEstimated: m.slvEstimated,
+                        dmgB: lo.dmg, usedB: lo.dmg, overflowB: 0,   // 無限HP: 全額計上
+                        team: teamRegistered ? lo.team : null,
+                        hourIdx: timeAware ? slot.idx : null,
+                        hourLabel: (timeAware && !slot.flex) ? hourLabelOf(slot.idx) : null,
+                        flex: timeAware ? slot.flex : false,
+                        timeUnknown: timeAware ? m.timeUnknown : false,
+                        timeMismatch: !!(timeAware && slot.mismatch),
+                        nearestHourLabel: (timeAware && slot.mismatch && slot.nearestIdx != null) ? hourLabelOf(slot.nearestIdx) : null,
+                        loadoutSlot: lo.slot,
+                        isBottleneck: false,
+                    });
+                    if (teamRegistered) lo.team.forEach(c => { if (c) m.usedChars.add(c); });
+                    const loIdx = list.indexOf(lo);
+                    if (loIdx >= 0) list.splice(loIdx, 1);
+                    if (list.length === 0) delete m.avail[lv4Weak];
+                    m.remainingAttacks--;
+                    if (m.mandatory.has(lv4Weak)) {
+                        m.mandatory.delete(lv4Weak);
+                        m.lockedNow = Math.max(0, m.lockedNow - 1);
+                    }
+                }
+            }
+            const lv4HasFlex = lv4Attacks.some(a => a.flex);
+            pass.levels.push({
+                level: 4, infinite: true,
+                levelCleared: true,   // 旧クライアントの表示分岐で無害な値に倒す
+                bosses: [{
+                    bossNumber: boss5.boss_number, name: boss5.name || boss5.boss_code,
+                    weakness: lv4Weak, attribute: boss5.attribute, tier: boss5.tier,
+                    infinite: true, targetHpB: 0, remainingHpB: 0, cleared: true,
+                    creditedB: lv4Attacks.reduce((s, a) => s + a.usedB, 0),
+                    attacks: lv4Attacks,
+                    clearHourIdx: null, clearHourLabel: null,
+                    hasFlex: lv4HasFlex, timeConstrained: false,
+                }],
+                openHourIdx: timeAware ? lv4OpenIdx : null,
+                openHourLabel: timeAware ? hourLabelOf(lv4OpenIdx) : null,
+                clearHourIdx: null, clearHourLabel: null,   // 無限ボスに「クリア」は無い
+                hasFlex: lv4HasFlex,
+            });
+        };
+        const sumCreditedOf = (pass) =>
+            pass.levels.reduce((s, lv) => s + lv.bosses.reduce((t, b) => t + b.attacks.reduce((u, a) => u + a.usedB, 0), 0), 0);
+
+        // ===== パス実行: probe (温存なし・現行アルゴリズム) → 温存パス (Lv4 が見える時のみ) =====
+        const probe = runPass();
+        const lv4Open = probe.fullyClearedThrough >= 3 && !!(boss5 && boss5.weakness);
+        let chosen = probe;
+        let reservePassUsed = false;
+        if (lv4Open) {
+            const lv4Weak = boss5.weakness;
+            const T3 = probe.openIdx;   // probe が見積もった Lv3 クリア想定時刻 (温存可否の判断に使う)
+            // T3 以降に「確約」で出られる人だけ温存させる。時間未登録/純⏳隙間型はいつでも可、
+            // ハイブリッドは時間外を隙間で対応できるので可。mismatch になる人は温存させない
+            // (Lv4 開放時刻に実際は出られず、約束できない凸に大火力を賭けることになるため)
+            const canAttackAfterT3 = (m) => {
+                if (!timeAware) return true;
+                if (m.hourIdxs === null) return true;
+                if (m.hourIdxs.some(i => i >= T3)) return true;
+                return !!m.flexTime;
+            };
+            // ボス5で見込める与ダメ: 弱点属性の残ロードアウト (dmg降順) 上位 min(残凸, 編成数) 件の合計。
+            // キャラ被りは概算では無視する (厳密には Lv4 割当時に判定される)
+            const potentialOf = (list, slots) => {
+                if (!list || slots <= 0) return 0;
+                let s = 0;
+                const n = Math.min(slots, list.length);
+                for (let i = 0; i < n; i++) s += list[i].dmg;
+                return s;
+            };
+            // 機会費用 = この凸を有限ボスに使うことで減る「ボス5で入るはずだった与ダメ」。
+            // 弱点属性の凸は編成そのものを失い、他属性の凸もスロット逼迫時
+            // (残凸数 <= 弱点属性の編成数) にはボス5に入れる回数を1つ失う。
+            // どちらも potential の差分として1つの式で正しく出る
+            const oppCostOf = (m, attr, lo) => {
+                if (!canAttackAfterT3(m)) return 0;
+                const list = m.avail[lv4Weak];
+                const before = potentialOf(list, m.remainingAttacks);
+                const after = (attr === lv4Weak)
+                    ? potentialOf((list || []).filter(x => x !== lo), m.remainingAttacks - 1)
+                    : potentialOf(list, m.remainingAttacks - 1);
+                return Math.max(0, before - after);
+            };
+            const reserved = runPass({
+                oppCostOf,
+                lv4Mandatory: { attr: lv4Weak, canAfter: canAttackAfterT3 },
+            });
+            assignLv4(probe);
+            // 温存パスは「踏破が崩れない」かつ「credited が実際に増える」ときだけ採用する。
+            // 貪欲近似なので、機会費用を入れた方が悪化するケースは probe に倒す (安全側)
+            if (reserved.fullyClearedThrough >= 3) {
+                assignLv4(reserved);
+                if (sumCreditedOf(reserved) > sumCreditedOf(probe) + 1e-9) {
+                    chosen = reserved;
+                    reservePassUsed = true;
+                }
+            }
         }
+        const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited
+        // 温存マーク: probe では有限ボスに使われていた弱点属性の凸が、温存パスでボス5に回った人
+        if (reservePassUsed) {
+            const probeFiniteX = new Set(probe.levels
+                .filter(lv => !lv.infinite)
+                .flatMap(lv => lv.bosses.filter(b => b.weakness === boss5.weakness).flatMap(b => b.attacks.map(a => a.memberId))));
+            chosen.levels.filter(lv => lv.infinite).forEach(lv =>
+                lv.bosses.forEach(b => b.attacks.forEach(a => {
+                    if (probeFiniteX.has(a.memberId)) a.reserved = true;
+                })));
+        }
+        const { memberState, levels, fullyClearedThrough } = chosen;
+        const openIdx = chosen.openIdx;
 
         const allAttacks = levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks));
         const totalAttacks = allAttacks.length;
@@ -364,7 +593,14 @@
                 const attrs = Object.keys(m.avail);
                 let reason;
                 if (attrs.length === 0) {
-                    reason = '出せる属性の残りなし (提出属性を使い切り)';
+                    reason = lv4Open
+                        ? 'ボス5(無限)の弱点属性の編成が残っていない (未提出 or 使い切り)'
+                        : '出せる属性の残りなし (提出属性を使い切り)';
+                } else if (lv4Open) {
+                    // Lv4 割当後も凸が残る = 弱点属性は avail に有るがキャラ被りで出せなかった
+                    reason = attrs.includes(boss5.weakness)
+                        ? 'キャラ被り (同キャラは1日1回) でボス5に出せる編成なし'
+                        : 'ボス5(無限)の弱点属性が未提出 (提出すれば全額スコアに入る)';
                 } else if (planFullyCleared) {
                     reason = 'Lv3まで完走想定のため出番なし (余剰戦力)';
                 } else if (timeAware && earliestHourFor(m, openIdx) === null) {
@@ -389,18 +625,32 @@
             });
 
         const candidateCount = memberState.length;
-        const lastLv = levels[levels.length - 1];
+        // 「完了想定時刻」は最後の有限レベルから取る (Lv4 は無限なのでクリア時刻を持たない)
+        const lastFinite = [...levels].reverse().find(lv => !lv.infinite);
+        // 総与ダメ想定 (credited): 有限ボスは min(dmg, 残HP)、ボス5(無限) は全額
+        const totalCreditedB = allAttacks.reduce((s, a) => s + a.usedB, 0);
+        const lv4Level = levels.find(lv => lv.infinite);
+        const lv4CreditedB = lv4Level ? lv4Level.bosses[0].creditedB : 0;
         return {
             startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste,
             unusedAttacks, membersNoData, onlyAvailableNow, currentSlot, candidateCount,
             timeAware,
             nowHourLabel: timeAware ? hourLabelOf(nowIdx) : null,
-            finalClearHourLabel: (timeAware && lastLv?.levelCleared) ? lastLv.clearHourLabel : null,
+            finalClearHourLabel: (timeAware && lastFinite?.levelCleared) ? lastFinite.clearHourLabel : null,
             membersTimeUnknown,
             membersFlex,
             anyTimeConstrained,
             unusedDetail,
             hoursUntilReset: timeAware ? (LAST_IDX - nowIdx + 1) : null,
+            lv4Open,
+            lv4Weakness: lv4Open ? boss5.weakness : null,
+            frontierLevel: chosen.frontierLevel,   // 踏破できず吸収割当に切り替えたレベル (null = 全踏破)
+            totalCreditedB,
+            lv4CreditedB,
+            // 温存の効果測定: baseline = 温存なし (probe) の credited。gain = 温存で増えた分
+            baselineCreditedB,
+            reserveGainB: baselineCreditedB != null ? Math.max(0, totalCreditedB - baselineCreditedB) : 0,
+            reservePassUsed,
         };
     }
 

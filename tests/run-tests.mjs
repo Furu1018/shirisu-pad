@@ -605,6 +605,338 @@ test('凸済みの得意属性は再強制しない (編成②が残っていて
     assert.deepEqual(attrs, ['electric', 'water'], `water(必須)+electric(自由枠) のはず: ${attrs}`);
 });
 
+// ---- Lv4: ボス5・HP無限 (Lv3踏破で即日開放) ----------------------------------
+console.log('\nlv4:');
+
+// 5属性フルセット (tier 配置は supabase-client.js の ['lord','lord','tyrant','lord','tyrant'] 準拠)
+const fiveBosses = (opts = {}) => [
+    boss(1, 'fire', { tier: 'lord', remainingB: opts.b1 ?? 5 }),
+    boss(2, 'water', { tier: 'lord', remainingB: opts.b2 ?? 5 }),
+    boss(3, 'electric', { tier: 'tyrant', remainingB: opts.b3 ?? 5 }),
+    boss(4, 'iron', { tier: 'lord', remainingB: opts.b4 ?? 5 }),
+    boss(5, 'wind', { tier: 'tyrant', remainingB: opts.b5 ?? 5 }),
+];
+// Lv3 開始 (current_level=3) にすると標準HP定数に依存せず踏破シナリオを組める
+const lv3Input = (bosses, players, opts = {}) => makeInput(bosses, players, { currentLevel: 3, ...opts });
+
+test('Lv3踏破で Lv4 (ボス5・無限) が末尾に追加され、余剰凸が全額計上で割当てられる', () => {
+    const plan = compute(lv3Input(fiveBosses(), [
+        player('P1', { fire: 10, water: 10, wind: 10 }),
+        player('P2', { electric: 10, iron: 10, wind: 10 }),
+    ]));
+    assert.equal(plan.fullyClearedThrough, 3);
+    assert.equal(plan.lv4Open, true);
+    assert.equal(plan.lv4Weakness, 'wind');
+    const lv4 = plan.levels[plan.levels.length - 1];
+    assert.equal(lv4.level, 4);
+    assert.equal(lv4.infinite, true);
+    assert.equal(lv4.bosses.length, 1);
+    const b5 = lv4.bosses[0];
+    assert.equal(b5.bossNumber, 5);
+    assert.equal(b5.infinite, true);
+    // P1: fire+water+wind消化はLv3で3凸使い切り or wind温存なし (PhaseAは素直に割当)。
+    // 5ボス撃破に5凸 → 残り1凸が wind ならボス5へ。割当詳細ではなく全額計上則を検証する
+    for (const a of b5.attacks) {
+        assert.equal(a.usedB, a.dmgB, 'ボス5への凸は全額計上');
+        assert.equal(a.overflowB, 0, 'ボス5にオーバーキルは存在しない');
+    }
+    // credited 検算: 有限ボスは残HPぶん (5B×5)、ボス5は全額
+    const finiteUsed = 25;
+    assert.ok(Math.abs(plan.totalCreditedB - (finiteUsed + plan.lv4CreditedB)) < 1e-6);
+});
+
+test('Lv4-live 盤面 (Lv3全滅済み) では即ボス5へ割当てられる', () => {
+    const plan = compute(lv3Input(fiveBosses({ b1: 0, b2: 0, b3: 0, b4: 0, b5: 0 }), [
+        player('P1', { wind: 20 }),
+        player('P2', { wind: 15 }),
+    ]));
+    assert.equal(plan.lv4Open, true);
+    const b5 = plan.levels[plan.levels.length - 1].bosses[0];
+    assert.equal(b5.attacks.length, 2, '2人とも wind 1編成ずつ');
+    assert.equal(plan.lv4CreditedB, 35);
+    assert.equal(plan.totalCreditedB, 35);
+    assert.equal(plan.totalWaste, 0);
+});
+
+test('wind 2編成の人はボス5に2凸できる (dmg降順・全額計上)', () => {
+    const p = player('A', { wind: 20 });
+    p.loadoutsByAttr = { wind: [
+        { dmgB: 20, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 15, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+    ] };
+    const plan = compute(lv3Input(fiveBosses({ b1: 0, b2: 0, b3: 0, b4: 0, b5: 0 }), [p]));
+    const b5 = plan.levels[plan.levels.length - 1].bosses[0];
+    assert.equal(b5.attacks.length, 2, '別編成なら同属性2凸');
+    assert.equal(b5.attacks[0].dmgB, 20);
+    assert.equal(b5.attacks[1].dmgB, 15);
+    assert.equal(b5.attacks[1].loadoutSlot, 2);
+    assert.equal(plan.lv4CreditedB, 35);
+});
+
+test('wind 2編成でもキャラ被りならボス5への2凸目は不可', () => {
+    const p = player('A', { wind: 20 });
+    p.loadoutsByAttr = { wind: [
+        { dmgB: 20, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 15, team: ['a', 'x', 'y', 'z', 'w'], slot: 2 },   // 'a' 被り
+    ] };
+    const plan = compute(lv3Input(fiveBosses({ b1: 0, b2: 0, b3: 0, b4: 0, b5: 0 }), [p]));
+    const b5 = plan.levels[plan.levels.length - 1].bosses[0];
+    assert.equal(b5.attacks.length, 1);
+    // 診断: 残凸はあるが被りで出せない
+    const detail = plan.unusedDetail.find(d => d.name === 'A');
+    assert.ok(detail && /キャラ被り/.test(detail.reason), `被り理由のはず: ${detail?.reason}`);
+});
+
+test('boss_number=5 が入力に無ければ Lv4 は追加されない', () => {
+    const plan = compute(lv3Input(
+        [boss(1, 'fire', { remainingB: 5 })],
+        [player('P1', { fire: 10, wind: 10 })],
+    ));
+    assert.equal(plan.lv4Open, false);
+    assert.ok(plan.levels.every(lv => !lv.infinite));
+    assert.equal(plan.lv4CreditedB, 0);
+});
+
+test('踏破できない場合は Lv4 を計画しない', () => {
+    const plan = compute(lv3Input(fiveBosses({ b5: 500 }), [
+        player('P1', { wind: 10 }),
+    ]));
+    assert.equal(plan.fullyClearedThrough, 2);
+    assert.equal(plan.lv4Open, false);
+    assert.ok(plan.levels.every(lv => !lv.infinite));
+});
+
+test('プランのJSON往復で Infinity/NaN が混入しない (📤配信のJSONB保存対策)', () => {
+    const plan = compute(lv3Input(fiveBosses(), [
+        player('P1', { fire: 10, water: 10, electric: 10 }),
+        player('P2', { iron: 10, wind: 10 }),
+    ]));
+    assert.equal(plan.lv4Open, true);
+    const walk = (v, path) => {
+        if (typeof v === 'number') assert.ok(Number.isFinite(v), `非有限数値: ${path} = ${v}`);
+        else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`));
+        else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => walk(x, `${path}.${k}`));
+    };
+    walk(plan, 'plan');
+    // JSON 往復でも同一 (undefined 脱落以外の変質なし)
+    const rt = JSON.parse(JSON.stringify(plan));
+    assert.equal(rt.levels[rt.levels.length - 1].bosses[0].infinite, true);
+});
+
+test('timeAware: ボス5への凸は Lv3 クリア想定時刻以降に割当てられる', () => {
+    const plan = compute(timeInput(fiveBosses(), [
+        // 踏破役: 夜しか出られない → Lv3 クリアは h22
+        player('夜の人', { fire: 10, water: 10, electric: 10 }, { availableSlots: ['h22'] }),
+        player('夜の人2', { iron: 10, wind: 10 }, { availableSlots: ['h22'] }),
+        // ボス5要員: 全時間帯OK — だが開放は h22 以降
+        player('いつでも', { wind: 30 }, { availableSlots: ['h21', 'h22', 'h23'] }),
+    ], { currentLevel: 3, currentSlot: 'h21' }));
+    assert.equal(plan.lv4Open, true);
+    const lv4 = plan.levels[plan.levels.length - 1];
+    const clearIdx = plan.levels.find(lv => lv.level === 3).clearHourIdx;
+    assert.equal(lv4.openHourIdx, clearIdx, 'Lv4 開放 = Lv3 クリア想定時刻');
+    for (const a of lv4.bosses[0].attacks) {
+        if (!a.flex) assert.ok(a.hourIdx >= clearIdx, `ボス5の凸は開放時刻以降のはず: ${a.hourIdx} >= ${clearIdx}`);
+    }
+});
+
+test('wind 未提出の人の余剰凸は「弱点属性が未提出」と診断される', () => {
+    const plan = compute(lv3Input(fiveBosses(), [
+        player('踏破役', { fire: 10, water: 10, electric: 10 }),
+        player('鉄だけ', { iron: 10 }),
+        player('風あり', { wind: 10 }),
+    ]));
+    assert.equal(plan.lv4Open, true);
+    const detail = plan.unusedDetail.find(d => d.name === '鉄だけ');
+    assert.ok(detail, '鉄だけ は凸が余るはず');
+    assert.ok(/未提出|残っていない/.test(detail.reason), `ボス5系の理由のはず: ${detail.reason}`);
+});
+
+// ---- Lv4 温存 (probe + 機会費用の2パス) ---------------------------------------
+console.log('\nlv4Reserve:');
+
+test('大火力の wind 凸は有限ボスに使わずボス5へ温存される', () => {
+    // Lv3 boss5 残30B。probe は SLv 相性で大火力(25B)を有限ボス5に使うが、
+    // 温存パスなら小火力2人(16B×2)で踏破して 25B をボス5(無限)へ回せる (+9B)
+    const plan = compute(lv3Input(fiveBosses({ b5: 30 }), [
+        player('小火力1', { wind: 16 }, { slv: 400 }),
+        player('小火力2', { wind: 16 }, { slv: 401 }),
+        player('火担当', { fire: 5 }, { slv: 450 }),
+        player('水担当', { water: 5 }, { slv: 460 }),
+        player('電担当', { electric: 5 }, { slv: 470 }),
+        player('鉄担当', { iron: 5 }, { slv: 480 }),
+        player('大火力', { wind: 25 }, { slv: 800 }),   // slv最高 = Lv3帯でSLvペナルティ0
+    ]));
+    assert.equal(plan.lv4Open, true);
+    assert.equal(plan.fullyClearedThrough, 3, '温存しても踏破は崩れない');
+    const finiteB5 = plan.levels.find(lv => lv.level === 3).bosses.find(b => b.bossNumber === 5);
+    assert.ok(!finiteB5.attacks.some(a => a.memberName === '大火力'),
+        `大火力は有限ボス5に使われないはず: ${finiteB5.attacks.map(a => a.memberName)}`);
+    const lv4 = plan.levels[plan.levels.length - 1].bosses[0];
+    const big = lv4.attacks.find(a => a.memberName === '大火力');
+    assert.ok(big, '大火力はボス5(無限)に割当てられるはず');
+    assert.equal(big.reserved, true, 'probe から移動した凸には温存マーク');
+    assert.equal(plan.reservePassUsed, true);
+    assert.ok(Math.abs(plan.reserveGainB - 9) < 1e-6, `温存で+9Bのはず: ${plan.reserveGainB}`);
+    assert.ok(plan.totalCreditedB > plan.baselineCreditedB);
+});
+
+test('Lv4開放時刻より前にしか出られない大火力は温存されない (踏破に使う)', () => {
+    const plan = compute(timeInput(fiveBosses({ b5: 30 }), [
+        player('小火力1', { wind: 16 }, { slv: 400, availableSlots: ['h22', 'h23'] }),
+        player('小火力2', { wind: 16 }, { slv: 401, availableSlots: ['h22', 'h23'] }),
+        player('火担当', { fire: 5 }, { slv: 450, availableSlots: ['h22'] }),
+        player('水担当', { water: 5 }, { slv: 460, availableSlots: ['h22'] }),
+        player('電担当', { electric: 5 }, { slv: 470, availableSlots: ['h22'] }),
+        player('鉄担当', { iron: 5 }, { slv: 480, availableSlots: ['h22'] }),
+        // h21 しか出られない → Lv3クリア想定 (h22) 以降に確約枠がない → 温存対象外
+        player('大火力', { wind: 25 }, { slv: 800, availableSlots: ['h21'] }),
+    ], { currentLevel: 3, currentSlot: 'h21' }));
+    assert.equal(plan.lv4Open, true);
+    const finiteB5 = plan.levels.find(lv => lv.level === 3).bosses.find(b => b.bossNumber === 5);
+    assert.ok(finiteB5.attacks.some(a => a.memberName === '大火力'),
+        '時間的に温存できない大火力は従来どおり有限ボスへ');
+    assert.equal(plan.reservePassUsed, false, '温存で credited が増えないので probe を採用');
+});
+
+test('スロット逼迫: wind2編成持ちの2つ目の他属性凸は機会費用がかかり、他の人に譲る', () => {
+    const m = player('二刀流', { wind: 20, fire: 10, water: 10 }, { slv: 800 });
+    m.loadoutsByAttr = {
+        wind: [
+            { dmgB: 20, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+            { dmgB: 18, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+        ],
+        fire: [{ dmgB: 10, team: ['k', 'l', 'm', 'n', 'o'], slot: 1 }],
+        water: [{ dmgB: 10, team: ['p', 'q', 'r', 's', 't'], slot: 1 }],
+    };
+    const plan = compute(lv3Input(fiveBosses({ b1: 10, b2: 10 }), [
+        m,
+        player('水番', { water: 12 }, { slv: 500 }),
+        player('風小', { wind: 6 }, { slv: 400 }),
+        player('電担当', { electric: 5 }, { slv: 450 }),
+        player('鉄担当', { iron: 5 }, { slv: 460 }),
+    ]));
+    assert.equal(plan.lv4Open, true);
+    assert.equal(plan.reservePassUsed, true, '温存パスが採用されるはず');
+    const lv3 = plan.levels.find(lv => lv.level === 3);
+    const fireAtk = lv3.bosses.find(b => b.weakness === 'fire').attacks;
+    const waterAtk = lv3.bosses.find(b => b.weakness === 'water').attacks;
+    // 1回目の他属性凸 (fire) はコスト0なので二刀流が出す
+    assert.ok(fireAtk.some(a => a.memberName === '二刀流'), 'fire は二刀流 (スロット残2でもwind2編成入る)');
+    // 2回目 (water) は wind 2凸目の枠を失うコスト18 > 水番のオーバーキル2 → 水番に譲る
+    assert.ok(waterAtk.every(a => a.memberName !== '二刀流'), `water は水番のはず: ${waterAtk.map(a => a.memberName)}`);
+    const lv4 = plan.levels[plan.levels.length - 1].bosses[0];
+    const mine = lv4.attacks.filter(a => a.memberName === '二刀流');
+    assert.equal(mine.length, 2, `二刀流は wind 2編成ともボス5へ: ${lv4.attacks.map(a => a.memberName)}`);
+    assert.deepEqual(mine.map(a => a.dmgB), [20, 18]);
+});
+
+test('残HPの小さい有限ボスには2編成目(低火力)を回し、1編成目をボス5へ温存する', () => {
+    const m = player('二編成', { wind: 20 }, { slv: 500 });
+    m.loadoutsByAttr = { wind: [
+        { dmgB: 20, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 6, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+    ] };
+    const plan = compute(lv3Input(fiveBosses({ b5: 6 }), [
+        m,
+        player('火担当', { fire: 5 }), player('水担当', { water: 5 }),
+        player('電担当', { electric: 5 }), player('鉄担当', { iron: 5 }),
+    ]));
+    assert.equal(plan.lv4Open, true);
+    const finiteB5 = plan.levels.find(lv => lv.level === 3).bosses.find(b => b.bossNumber === 5);
+    assert.equal(finiteB5.attacks.length, 1);
+    assert.equal(finiteB5.attacks[0].dmgB, 6, '有限ボスにはオーバーキルの小さい2編成目');
+    assert.equal(finiteB5.attacks[0].loadoutSlot, 2);
+    const lv4 = plan.levels[plan.levels.length - 1].bosses[0];
+    assert.deepEqual(lv4.attacks.filter(a => a.memberName === '二編成').map(a => a.dmgB), [20],
+        '1編成目(20B)はボス5(無限)へ');
+});
+
+test('得意属性が wind の人は Lv4 (ボス5) への割当で必須消化を満たす', () => {
+    const plan = compute(lv3Input(fiveBosses({ b1: 10 }), [
+        player('風得意', { wind: 20, fire: 10 }, { slv: 500, strong: ['wind'] }),
+        player('風小', { wind: 6 }, { slv: 400 }),
+        player('水担当', { water: 5 }), player('電担当', { electric: 5 }), player('鉄担当', { iron: 5 }),
+    ]));
+    assert.equal(plan.lv4Open, true);
+    const lv4 = plan.levels[plan.levels.length - 1].bosses[0];
+    assert.ok(lv4.attacks.some(a => a.memberName === '風得意'), '得意属性はボス5で消化 (全額計上で本人にも最良)');
+    const lv3 = plan.levels.find(lv => lv.level === 3);
+    assert.ok(lv3.bosses.find(b => b.weakness === 'fire').attacks.some(a => a.memberName === '風得意'),
+        '必須枠の予約で fire への自由凸がブロックされない');
+    // 温存が絡んでも必須未消化の警告対象にならない
+    const detail = plan.unusedDetail.find(d => d.name === '風得意');
+    assert.ok(!detail || !/必須枠を温存中/.test(detail.reason));
+});
+
+test('reserveGainB は常に0以上 (悪化するなら probe に倒す)', () => {
+    // 温存の余地がないケース (wind 1人だけ) でも壊れない
+    const plan = compute(lv3Input(fiveBosses(), [
+        player('唯一風', { wind: 10 }, { slv: 500 }),
+        player('他全部', { fire: 10, water: 10, electric: 10, iron: 10 }, { slv: 600 }),
+    ]));
+    assert.ok(plan.reserveGainB >= 0);
+    assert.ok(plan.totalCreditedB >= plan.baselineCreditedB - 1e-9);
+});
+
+// ---- フロンティア吸収 (踏破できないレベルの与ダメ最大化) ----------------------
+console.log('\nfrontier:');
+
+test('踏破できないレベルでは残スロットをオーバーキル最小の配り方にする (ボス順に縛られない)', () => {
+    // 残1凸の人が fire(残5B) と water(残50B) を持つ。ボス順の逐次投入だと fire に
+    // 出してオーバーキル5B (credited 5) だが、吸収割当なら water へ出して credited 10
+    const plan = compute(lv3Input([
+        boss(1, 'fire', { remainingB: 5 }),
+        boss(2, 'water', { remainingB: 50 }),
+        boss(3, 'electric', { remainingB: 0 }),
+        boss(4, 'iron', { remainingB: 0 }),
+        boss(5, 'wind', { tier: 'tyrant', remainingB: 0 }),
+    ], [
+        player('残り1凸', { fire: 10, water: 10 }, { attackCount: 2, attacks: [{ boss_number: 3 }, { boss_number: 4 }] }),
+    ]));
+    assert.equal(plan.fullyClearedThrough, 2, 'Lv3 は踏破できない');
+    assert.equal(plan.frontierLevel, 3);
+    const lv3 = plan.levels.find(lv => lv.level === 3);
+    const fire = lv3.bosses.find(b => b.weakness === 'fire');
+    const water = lv3.bosses.find(b => b.weakness === 'water');
+    assert.equal(fire.attacks.length, 0, 'オーバーキルになる fire には出さない');
+    assert.equal(water.attacks.length, 1, '全額入る water に出す');
+    assert.equal(plan.totalWaste, 0);
+    assert.ok(Math.abs(plan.totalCreditedB - 10) < 1e-6, `credited=10 のはず: ${plan.totalCreditedB}`);
+    assert.ok(Math.abs(water.absorbedB - 10) < 1e-6);
+    assert.equal(fire.cleared, false, '無理に倒さない');
+});
+
+test('フロンティアの手前のレベルは従来どおり撃破する', () => {
+    // Lv1 は残5B×5 で踏破可能、Lv2 は標準HP (149B/226B) で踏破不能 → Lv2 が吸収レベル。
+    // P火 は fire 2編成なので Lv1 で1つ使っても Lv2 に出せる凸が残る
+    const pf = player('P火', { fire: 10 });
+    pf.loadoutsByAttr = { fire: [
+        { dmgB: 10, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 9, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+    ] };
+    const plan = compute(makeInput(fiveBosses(), [
+        pf, player('P水', { water: 10 }),
+        player('P電', { electric: 10 }), player('P鉄', { iron: 10 }),
+        player('P風', { wind: 10 }),
+    ]));
+    assert.equal(plan.fullyClearedThrough, 1);
+    assert.equal(plan.frontierLevel, 2);
+    const lv1 = plan.levels.find(lv => lv.level === 1);
+    assert.ok(lv1.levelCleared, 'Lv1 は撃破想定');
+    assert.ok(lv1.bosses.every(b => b.cleared));
+    // Lv1 の fire ボス (残5B) にはオーバーキルの小さい2編成目 (9B) が使われる
+    const lv1Fire = lv1.bosses.find(b => b.weakness === 'fire');
+    assert.equal(lv1Fire.attacks[0].dmgB, 9);
+    const lv2 = plan.levels.find(lv => lv.level === 2);
+    assert.ok(!lv2.levelCleared);
+    // 吸収モード: 残った fire 1編成目 (10B) は Lv2 の fire ボスへ全額入る
+    const lv2Attacks = lv2.bosses.flatMap(b => b.attacks);
+    assert.ok(lv2Attacks.length > 0, 'フロンティアでも凸は計画される');
+    assert.ok(lv2Attacks.every(a => a.overflowB === 0), 'プールが大きいのでオーバーキルなし');
+    assert.ok(lv2.bosses.every(b => b.absorbedB != null), '吸収量が出力される');
+});
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

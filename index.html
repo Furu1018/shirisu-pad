@@ -12085,10 +12085,17 @@
             const reached = plan.fullyClearedThrough >= plan.startLevel;
             let px = PAD;
             px += pillDraw(
-                reached ? `Lv${plan.fullyClearedThrough} まで完全攻略想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}` : `Lv${plan.startLevel} 攻略に届かない想定`,
+                plan.lv4Open ? `Lv3踏破 → B5♾️ 突入想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}`
+                    : reached ? `Lv${plan.fullyClearedThrough} まで完全攻略想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}` : `Lv${plan.startLevel} 攻略に届かない想定`,
                 px, y, '#fff', reached ? COL.green : COL.red, 16) + 10;
             px += pillDraw(plan.onlyAvailableNow ? `⏰ 現在凸可能のみ ${plan.candidateCount}名` : `👥 全員対象 ${plan.candidateCount}名`, px, y, COL.sub, '#F1F2F4', 15) + 10;
-            pillDraw(`総凸数 ${plan.totalAttacks} · 未消化 ${plan.unusedAttacks}`, px, y, COL.sub, '#F1F2F4', 15);
+            px += pillDraw(`総凸数 ${plan.totalAttacks} · 未消化 ${plan.unusedAttacks}`, px, y, COL.sub, '#F1F2F4', 15) + 10;
+            if (plan.totalCreditedB != null) {
+                px += pillDraw(`総与ダメ想定 ${plan.totalCreditedB.toFixed(1)}B`, px, y, COL.blue, 'rgba(30,120,240,0.10)', 15) + 10;
+            }
+            if (plan.reserveGainB > 0) {
+                pillDraw(`🔒温存 +${plan.reserveGainB.toFixed(1)}B`, px, y, COL.green, 'rgba(24,194,107,0.12)', 15);
+            }
             y += 58;
 
             // ---- レベルごと ----
@@ -12096,11 +12103,15 @@
                 ctx.fillStyle = COL.text;
                 ctx.font = f(24, 900);
                 ctx.fillText(`Lv${lv.level}`, PAD, y + 24);
+                const lvFrontier = plan.frontierLevel === lv.level;
                 let lx = PAD + 74;
                 lx += pillDraw(
-                    lv.levelCleared ? `全撃破想定${lv.clearHourLabel ? ` ⏱${lv.clearHourLabel}` : ''}` : (lv.bosses.some(b => b.timeConstrained) ? '時間不足でストップ' : '火力不足でストップ'),
-                    lx, y + 2, lv.levelCleared ? COL.green : COL.red,
-                    lv.levelCleared ? 'rgba(24,194,107,0.12)' : 'rgba(255,61,68,0.10)', 15) + 8;
+                    lv.infinite ? '♾️ HP無限 · 与ダメ全額計上'
+                        : lv.levelCleared ? `全撃破想定${lv.clearHourLabel ? ` ⏱${lv.clearHourLabel}` : ''}`
+                        : lvFrontier ? `${lv.bosses.some(b => b.timeConstrained) ? '時間不足' : '火力不足'} · 与ダメ吸収`
+                        : (lv.bosses.some(b => b.timeConstrained) ? '時間不足でストップ' : '火力不足でストップ'),
+                    lx, y + 2, lv.infinite ? COL.blue : (lv.levelCleared ? COL.green : (lvFrontier ? COL.amber : COL.red)),
+                    lv.infinite ? 'rgba(30,120,240,0.10)' : (lv.levelCleared ? 'rgba(24,194,107,0.12)' : (lvFrontier ? 'rgba(245,158,11,0.12)' : 'rgba(255,61,68,0.10)')), 15) + 8;
                 if (plan.timeAware && lv.openHourLabel && lv.level > plan.startLevel) {
                     pillDraw(`${lv.openHourLabel}〜開放`, lx, y + 2, COL.faint, '#F7F8F9', 14);
                 }
@@ -12129,22 +12140,24 @@
                     const ptName = (PT_ATTRS.find(x => x.key === b.weakness)?.name || '');
                     ctx.font = f(14, 800);
                     ctx.fillStyle = c;
-                    ctx.fillText(`${ptName}PTで凸 · 目標 ${b.targetHpB.toFixed(1)}B`, PAD + 62, y + 51);
+                    ctx.fillText(`${ptName}PTで凸 · ${b.infinite ? '目標 ∞ (全額計上)' : `目標 ${b.targetHpB.toFixed(1)}B`}`, PAD + 62, y + 51);
                     // ステータス (右端)
-                    const statusLabel = b.targetHpB <= 0 ? '撃破済'
+                    const statusLabel = b.infinite ? `♾️ ${b.attacks.length}凸 · ${(b.creditedB || 0).toFixed(1)}B`
+                        : b.targetHpB <= 0 ? '撃破済'
                         : b.cleared ? `✅ 撃破想定${b.clearHourLabel ? ` ⏱${b.clearHourLabel}` : ''}`
+                        : b.absorbedB > 0 ? `吸収 ${b.absorbedB.toFixed(1)}B`
                         : b.timeConstrained ? `⏰ 時間不足 残${b.remainingHpB.toFixed(1)}B`
                         : `残 ${b.remainingHpB.toFixed(1)}B`;
                     ctx.font = f(15, 900);
                     const stW = ctx.measureText(statusLabel).width;
-                    ctx.fillStyle = b.cleared || b.targetHpB <= 0 ? COL.green : (b.timeConstrained ? COL.amber : COL.red);
+                    ctx.fillStyle = b.infinite ? COL.blue : (b.cleared || b.targetHpB <= 0 ? COL.green : (b.timeConstrained ? COL.amber : COL.red));
                     ctx.fillText(statusLabel, W - PAD - stW - 16, y + 38);
                     // 凸行
                     let ry = y + BOSS_HEAD_H;
                     if (b.attacks.length === 0) {
                         ctx.font = f(15, 700);
                         ctx.fillStyle = COL.faint;
-                        ctx.fillText(b.targetHpB <= 0 ? '既に撃破済み' : (b.timeConstrained ? '火力はあるが時間内に凸できる人がいない' : '凸できる候補なし'), PAD + 20, ry + 29);
+                        ctx.fillText(b.infinite ? '出せる候補なし (弱点属性の残凸なし)' : (b.targetHpB <= 0 ? '既に撃破済み' : (b.timeConstrained ? '火力はあるが時間内に凸できる人がいない' : '凸できる候補なし')), PAD + 20, ry + 29);
                     } else {
                         b.attacks.forEach((a, i) => {
                             if (i > 0) {
@@ -12172,10 +12185,10 @@
                                 ctx.fillStyle = a.isBottleneck ? COL.red : COL.sub;
                                 ctx.fillText(`🕐${a.hourLabel}${a.timeUnknown ? '?' : ''}${a.isBottleneck ? ' ⏱律速' : ''}`, PAD + 74, cy + 1);
                             }
-                            // 名前
+                            // 名前 (🔒 = ボス5温存)
                             ctx.font = f(17, 800);
                             ctx.fillStyle = COL.text;
-                            ctx.fillText(String(a.memberName).slice(0, 12), PAD + 74 + ((a.hourLabel || a.flex) ? 150 : 0), cy + 1);
+                            ctx.fillText(`${a.reserved ? '🔒' : ''}${String(a.memberName).slice(0, 12)}`, PAD + 74 + ((a.hourLabel || a.flex) ? 150 : 0), cy + 1);
                             // SLv
                             ctx.font = f(13, 700);
                             ctx.fillStyle = COL.faint;
@@ -12358,10 +12371,17 @@
             const reached = plan.fullyClearedThrough >= plan.startLevel;
             let px = PAD;
             px += pillDraw(
-                reached ? `Lv${plan.fullyClearedThrough} まで完全攻略想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}` : `Lv${plan.startLevel} 攻略に届かない想定`,
+                plan.lv4Open ? `Lv3踏破 → B5♾️ 突入想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}`
+                    : reached ? `Lv${plan.fullyClearedThrough} まで完全攻略想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}` : `Lv${plan.startLevel} 攻略に届かない想定`,
                 px, y, '#fff', reached ? COL.green : COL.red, 16) + 10;
             px += pillDraw(plan.onlyAvailableNow ? `⏰ 現在凸可能のみ ${plan.candidateCount}名` : `👥 全員対象 ${plan.candidateCount}名`, px, y, COL.sub, '#F1F2F4', 15) + 10;
-            pillDraw(`総凸数 ${plan.totalAttacks} · 未消化 ${plan.unusedAttacks}`, px, y, COL.sub, '#F1F2F4', 15);
+            px += pillDraw(`総凸数 ${plan.totalAttacks} · 未消化 ${plan.unusedAttacks}`, px, y, COL.sub, '#F1F2F4', 15) + 10;
+            if (plan.totalCreditedB != null) {
+                px += pillDraw(`総与ダメ想定 ${plan.totalCreditedB.toFixed(1)}B`, px, y, COL.blue, 'rgba(30,120,240,0.10)', 15) + 10;
+            }
+            if (plan.reserveGainB > 0) {
+                pillDraw(`🔒温存 +${plan.reserveGainB.toFixed(1)}B`, px, y, COL.green, 'rgba(24,194,107,0.12)', 15);
+            }
             y += 58;
 
             // ---- ボス見出し行 (5列) ----
@@ -12382,15 +12402,19 @@
 
             // ---- レベルごとの時間行 ----
             for (const sec of model.sections) {
-                const bandText = sec.cleared
+                const bandText = sec.infinite
+                    ? `Lv4 ─ ${sec.openHourLabel ? `${sec.openHourLabel}〜 ` : ''}ボス5 ♾️HP無限 · 与ダメ全額計上 (${(sec.creditedB || 0).toFixed(1)}B 想定)`
+                    : sec.cleared
                     ? `Lv${sec.level} ─ ${sec.openHourLabel}開始 → 💀${sec.clearHourLabel} 全撃破想定`
+                    : sec.frontier
+                    ? `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'} · 撃破は狙わず与ダメ吸収 (${sec.absorbedB.toFixed(1)}B)`
                     : `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'}でストップ`;
                 rr(PAD, y + 4, W - PAD * 2, 34, 9);
-                ctx.fillStyle = sec.cleared ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)';
+                ctx.fillStyle = sec.infinite ? 'rgba(30,120,240,0.08)' : (sec.cleared ? 'rgba(24,194,107,0.10)' : (sec.frontier ? 'rgba(245,158,11,0.10)' : 'rgba(255,61,68,0.08)'));
                 ctx.fill();
                 ctx.textBaseline = 'middle';
                 ctx.font = f(15, 900);
-                ctx.fillStyle = sec.cleared ? '#0E9455' : '#E23036';
+                ctx.fillStyle = sec.infinite ? COL.blue : (sec.cleared ? '#0E9455' : (sec.frontier ? '#B45309' : '#E23036'));
                 ctx.fillText(bandText, PAD + 13, y + 22);
                 ctx.textBaseline = 'alphabetic';
                 y += 44;
@@ -12527,13 +12551,15 @@
             const slotLabel = TIME_SLOTS.find(s => s.key === plan.currentSlot)?.label || plan.currentSlot;
             const heroColor = reachedAll ? '#18C26B' : (reachedSome ? '#F59E0B' : '#FF3D44');
             const heroBg = reachedAll ? 'rgba(24,194,107,0.10)' : (reachedSome ? 'rgba(245,158,11,0.10)' : 'rgba(255,61,68,0.10)');
-            const heroTitle = reachedSome ? `Lv${plan.fullyClearedThrough} まで完全攻略想定` : `Lv${plan.startLevel} に火力が届かない想定`;
+            const heroTitle = plan.lv4Open ? 'Lv3踏破 → ボス5(♾️無限) 突入想定'
+                : (reachedSome ? `Lv${plan.fullyClearedThrough} まで完全攻略想定` : `Lv${plan.startLevel} に火力が届かない想定`);
             const timeSuffix = plan.finalClearHourLabel ? ` · ${plan.finalClearHourLabel}クリア想定` : '';
-            const heroSub = reachedAll ? `🎉 理論上フル攻略できる想定です${timeSuffix}`
+            const heroSub = plan.lv4Open ? `🎉 踏破後の凸は全てボス5へ — オーバーキルなしで全額スコアに入ります${timeSuffix}`
+                : (reachedAll ? `🎉 理論上フル攻略できる想定です${timeSuffix}`
                 : (reachedSome ? `これ以降のレベルは${plan.anyTimeConstrained ? '時間か火力' : '火力'}の強化が必要${timeSuffix}`
-                    : (plan.anyTimeConstrained ? '時間内に凸できるメンバーが不足しています' : 'SLv・編成の底上げか凸の集中が必要'));
+                    : (plan.anyTimeConstrained ? '時間内に凸できるメンバーが不足しています' : 'SLv・編成の底上げか凸の集中が必要')));
 
-            // Lv ステッパー (startLevel〜3)。時間考慮時はクリア想定時刻を併記
+            // Lv ステッパー (startLevel〜3 + ボス5無限が開くなら Lv4♾️)。時間考慮時はクリア想定時刻を併記
             const clearLabelByLv = new Map(plan.levels.map(lv => [lv.level, lv.clearHourLabel]));
             const lvStepper = [1, 2, 3].map(L => {
                 const inScope = L >= plan.startLevel;
@@ -12543,7 +12569,11 @@
                 const timeLabel = done && clearLabelByLv.get(L)
                     ? `<div style="font-size:10px;font-weight:800;opacity:0.85;margin-top:1px;">⏱${clearLabelByLv.get(L)}</div>` : '';
                 return `<span style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:11px;font-weight:900;letter-spacing:0.3px;background:${bg};color:${col};line-height:1.2;">Lv${L}${done ? ' ✓' : ''}${timeLabel}</span>`;
-            }).join('<span style="align-self:center;color:#C9CED3;font-size:11px;margin:0 1px;">›</span>');
+            }).join('<span style="align-self:center;color:#C9CED3;font-size:11px;margin:0 1px;">›</span>')
+            + (plan.lv4Open
+                ? `<span style="align-self:center;color:#C9CED3;font-size:11px;margin:0 1px;">›</span>`
+                  + `<span title="ボス5はHP無限 — 与えたダメージが全額スコアに入る" style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:11px;font-weight:900;letter-spacing:0.3px;background:#1E78F0;color:#fff;line-height:1.2;">Lv4 ♾️<div style="font-size:10px;font-weight:800;opacity:0.85;margin-top:1px;">B5 無限</div></span>`
+                : '');
 
             const modePill = plan.onlyAvailableNow
                 ? pill(`⏰ 現在凸可能のみ · ${esc(slotLabel)} · ${plan.candidateCount}名`, '#1E78F0', 'rgba(30,120,240,0.10)')
@@ -12570,6 +12600,8 @@
                     <div style="display:flex;gap:5px;margin-top:13px;">${lvStepper}</div>
                     <div style="margin-top:11px;display:flex;gap:6px;flex-wrap:wrap;">${modePill}${timePill}</div>
                     <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;">
+                        ${plan.totalCreditedB != null ? statChip('総与ダメ想定', plan.totalCreditedB.toFixed(1) + ' B', '#1E78F0') : ''}
+                        ${plan.reserveGainB > 0 ? statChip('🔒温存で増加', '+' + plan.reserveGainB.toFixed(1) + ' B', '#18C26B') : ''}
                         ${statChip('想定総凸数', plan.totalAttacks)}
                         ${statChip('オーバーキル', plan.totalWaste.toFixed(2) + ' B', plan.totalWaste > 5 ? '#F59E0B' : '#18C26B')}
                         ${statChip('未消化凸', plan.unusedAttacks, plan.unusedAttacks > 0 ? '#F59E0B' : '#8A9097')}
@@ -12578,8 +12610,12 @@
 
             const levelSections = plan.levels.map(lv => {
                 const lvTimeConstrained = lv.bosses.some(b => b.timeConstrained);
-                const lvBadge = lv.levelCleared
+                const lvBadge = lv.infinite
+                    ? pill('♾️ HP無限 · 与ダメ全額計上', '#1E78F0', 'rgba(30,120,240,0.10)')
+                    : lv.levelCleared
                     ? pill(`全撃破想定${lv.clearHourLabel ? ` · ⏱${lv.clearHourLabel}` : ''}`, '#18C26B', 'rgba(24,194,107,0.12)')
+                    : plan.frontierLevel === lv.level
+                    ? pill(`${lvTimeConstrained ? '時間不足' : '火力不足'} → 撃破は狙わず与ダメ優先で配分`, '#F59E0B', 'rgba(245,158,11,0.12)')
                     : pill(lvTimeConstrained ? '時間不足でストップ' : '火力不足でストップ', '#FF3D44', 'rgba(255,61,68,0.10)');
                 const lvOpenLabel = (plan.timeAware && lv.openHourLabel && lv.level > plan.startLevel)
                     ? `<span style="font-size:10px;font-weight:800;color:#A4AAB0;">${lv.openHourLabel}〜 開放見込み</span>` : '';
@@ -12589,20 +12625,26 @@
                     const bName = ATTR_VISUAL[b.attribute]?.name || '';
                     const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
                     const remPct = b.targetHpB > 0 ? Math.max(0, Math.min(100, (b.remainingHpB / b.targetHpB) * 100)) : 0;
-                    const statusPill = b.targetHpB <= 0
+                    const statusPill = b.infinite
+                        ? pill(`♾️ ${b.attacks.length}凸 · ${(b.creditedB || 0).toFixed(1)}B 全額計上`, '#1E78F0', 'rgba(30,120,240,0.10)')
+                        : b.targetHpB <= 0
                         ? pill('撃破済', '#8A9097', '#F1F2F4')
                         : (b.cleared ? pill(`✅ 撃破想定${b.clearHourLabel ? ` ⏱${b.clearHourLabel}` : ''}`, '#18C26B', 'rgba(24,194,107,0.12)')
-                            : (b.timeConstrained
+                            : (b.absorbedB > 0
+                                ? pill(`与ダメ ${b.absorbedB.toFixed(2)}B 吸収 (撃破は狙わない)`, '#F59E0B', 'rgba(245,158,11,0.12)')
+                                : (b.timeConstrained
                                 ? pill(`⏰ 時間不足 残${b.remainingHpB.toFixed(2)}B`, '#F59E0B', 'rgba(245,158,11,0.12)')
-                                : pill(`削り残し ${b.remainingHpB.toFixed(2)}B`, '#FF3D44', 'rgba(255,61,68,0.10)')));
+                                : pill(`削り残し ${b.remainingHpB.toFixed(2)}B`, '#FF3D44', 'rgba(255,61,68,0.10)'))));
 
-                    const emptyMsg = b.targetHpB <= 0 ? '既に撃破済み'
+                    const emptyMsg = b.infinite ? 'ボス5の弱点属性で出せる候補がいません (残凸なし or 未提出)'
+                        : b.targetHpB <= 0 ? '既に撃破済み'
                         : (b.timeConstrained ? '火力はありますが、時間内に凸できるメンバーがいません' : 'この属性で凸できる候補がいません');
                     const attacksHtml = b.attacks.length === 0
                         ? `<div style="padding:10px 12px;font-size:11.5px;font-weight:700;color:${b.targetHpB <= 0 ? '#A4AAB0' : (b.timeConstrained ? '#B45309' : '#FF3D44')};">${emptyMsg}</div>`
                         : b.attacks.map((a, i) => {
                             const isMe = _myId != null && a.memberId === _myId;
                             const over = a.overflowB > 0 ? `<span style="font-size:10.5px;font-weight:800;color:#F59E0B;margin-left:3px;" title="オーバーキル">+${a.overflowB.toFixed(2)}</span>` : '';
+                            const reservedTag = a.reserved ? `<span style="font-size:10px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.10);padding:1px 6px;border-radius:999px;" title="踏破には使わずボス5(無限)へ温存 — 全額スコアに入る">🔒温存</span>` : '';
                             const slvTag = `<span style="font-size:10.5px;font-weight:800;color:#A4AAB0;" title="${a.slvEstimated ? 'SLv推定値' : 'SLv'}">SLv${a.slv || '?'}${a.slvEstimated ? '推' : ''}</span>`;
                             const team = a.team
                                 ? renderTeamSnippet(a.team, { size: 18 })
@@ -12622,7 +12664,7 @@
                                 ${avatar}
                                 <div style="flex:1;min-width:0;">
                                     <div style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.memberName)}${isMe ? '<span style="font-size:10px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.12);padding:1px 6px;border-radius:999px;margin-left:5px;vertical-align:1px;">あなた</span>' : ''}</div>
-                                    <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">${slvTag}${team}</div>
+                                    <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">${reservedTag}${slvTag}${team}</div>
                                 </div>
                                 ${timeChip}
                                 <div style="text-align:right;flex:none;">
@@ -12644,7 +12686,7 @@
                                         ${ptInfo ? `<img loading="lazy" decoding="async" src="${esc(ptInfo.icon)}" style="width:12px;height:12px;" title="${esc(ptInfo.name)}PTで凸">` : ''}
                                         <span style="font-size:10.5px;font-weight:800;color:${c};letter-spacing:0.2px;">${ptInfo?.name || ''}PTで凸</span>
                                         <span style="font-size:10.5px;font-weight:700;color:#D5D9DD;">·</span>
-                                        <span style="font-size:10.5px;font-weight:700;color:#A4AAB0;">目標 ${b.targetHpB.toFixed(1)}B</span>
+                                        <span style="font-size:10.5px;font-weight:700;color:#A4AAB0;">${b.infinite ? '目標 ∞ (何を入れても全額)' : `目標 ${b.targetHpB.toFixed(1)}B`}</span>
                                     </div>
                                 </div>
                                 ${statusPill}
@@ -12672,7 +12714,8 @@
                 warnings.push(`戦闘可能時間 未登録 ${plan.membersTimeUnknown.length}名: ${plan.membersTimeUnknown.slice(0, 5).map(esc).join('、')}${plan.membersTimeUnknown.length > 5 ? '...' : ''}（「いつでも可」として計算中。時間の精度を上げるには登録依頼を）`);
             }
             if (plan.fullyClearedThrough < 3 && !plan.anyTimeConstrained) {
-                warnings.push('現状の登録ダメージでは Lv3 完全攻略に火力が不足する想定です。火力(SLv/編成)の強化や凸の集中が必要。');
+                warnings.push('現状の登録ダメージでは Lv3 完全攻略に火力が不足する想定です。火力(SLv/編成)の強化や凸の集中が必要。'
+                    + (plan.frontierLevel ? ` 止まった Lv${plan.frontierLevel} には撃破を狙わず総与ダメ最大の割当をしています。` : ''));
             }
             if (plan.unusedAttacks > 0) {
                 const detail = Array.isArray(plan.unusedDetail) ? plan.unusedDetail : [];
@@ -12722,11 +12765,11 @@
             // 律速の赤枠は最優先 (あなたの律速凸でも赤枠を残す — 凡例の「赤枠=律速」と一致させる)
             if (a.isBottleneck) { border = '1.5px solid #FF3D44'; if (!hl) dmgColor = '#FF3D44'; }
             const mark = a.isBottleneck ? '⏱'
-                : (a.timeMismatch ? '⚠' : (a.flex ? '⏳' : (a.timeUnknown ? '?' : '')));
+                : (a.timeMismatch ? '⚠' : (a.flex ? '⏳' : (a.timeUnknown ? '?' : (a.reserved ? '🔒' : ''))));
             const label = opts.label || esc(a.memberName);
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
                 ? `<div style="display:flex;flex-wrap:wrap;justify-content:center;row-gap:2px;margin-top:2px;">${renderTeamSnippet(a.team, { size: 12 })}</div>` : '';
-            const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeMismatch ? ` (時間外·希望${a.nearestHourLabel || '?'})` : ''}${a.flex ? ' (隙間時間型)' : ''}${a.timeUnknown ? ' (戦闘可能時間 未登録)' : ''}`;
+            const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeMismatch ? ` (時間外·希望${a.nearestHourLabel || '?'})` : ''}${a.flex ? ' (隙間時間型)' : ''}${a.timeUnknown ? ' (戦闘可能時間 未登録)' : ''}${a.reserved ? ' (🔒踏破に使わずボス5温存)' : ''}`;
             return `<div title="${esc(tip)}" style="background:${bg};border:${border};border-radius:6px;padding:2px 3px;overflow:hidden;">
                 <div style="font-size:9px;font-weight:800;color:${nameColor};line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${mark ? mark + ' ' : ''}${label}</div>
                 <div style="font-size:9px;font-weight:900;color:${dmgColor};text-align:center;font-variant-numeric:tabular-nums;line-height:1.15;">${a.dmgB.toFixed(1)}</div>
@@ -12777,6 +12820,10 @@
                 }
                 return {
                     level: lv.level, cleared: lv.levelCleared,
+                    infinite: !!lv.infinite,
+                    creditedB: lv.infinite ? (lv.bosses[0]?.creditedB || 0) : null,
+                    frontier: plan.frontierLevel === lv.level,
+                    absorbedB: lv.bosses.reduce((s, b) => s + (b.absorbedB || 0), 0),
                     openHourLabel: lv.openHourLabel, clearHourLabel: lv.clearHourLabel,
                     hasFlex: !!lv.hasFlex,
                     timeConstrained: lv.bosses.some(b => b.timeConstrained),
@@ -12848,10 +12895,16 @@
                 </div>`);
             }
             for (const sec of model.sections) {
-                const bandText = sec.cleared
+                const bandText = sec.infinite
+                    ? `Lv4 ─ ${sec.openHourLabel ? `${sec.openHourLabel}〜 ` : ''}ボス5 ♾️HP無限 · 与ダメ全額計上 (${(sec.creditedB || 0).toFixed(1)}B 想定)${sec.hasFlex ? ' (⏳含む)' : ''}`
+                    : sec.cleared
                     ? `Lv${sec.level} ─ ${sec.openHourLabel}開始 → 💀${sec.clearHourLabel} 全撃破想定${sec.hasFlex ? ' (⏳含む·目安)' : ''}`
+                    : sec.frontier
+                    ? `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'} · 撃破は狙わず与ダメ吸収 (${sec.absorbedB.toFixed(1)}B)`
                     : `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'}でストップ`;
-                cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${sec.cleared ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${sec.cleared ? '#0E9455' : '#E23036'};font-size:10px;font-weight:900;letter-spacing:0.2px;line-height:1.35;">${bandText}</div>`);
+                const bandBg = sec.infinite ? 'rgba(30,120,240,0.08)' : (sec.cleared ? 'rgba(24,194,107,0.10)' : (sec.frontier ? 'rgba(245,158,11,0.10)' : 'rgba(255,61,68,0.08)'));
+                const bandCol = sec.infinite ? '#1E78F0' : (sec.cleared ? '#0E9455' : (sec.frontier ? '#B45309' : '#E23036'));
+                cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${bandBg};color:${bandCol};font-size:10px;font-weight:900;letter-spacing:0.2px;line-height:1.35;">${bandText}</div>`);
                 for (const r of sec.rows) {
                     if (r.gap) {
                         cells.push('<div style="grid-column:1/-1;text-align:center;color:#C9CED3;font-size:10px;font-weight:900;line-height:1;padding:2px 0;">⋯</div>');
