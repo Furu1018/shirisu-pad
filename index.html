@@ -3126,8 +3126,8 @@
                 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
                 <!-- グラフモード切替: SLv×ダメージ散布図 (SLvの割に出てる人が分かる) ⇄ 属性内訳の積み上げ棒 -->
                 <div style="display:flex;gap:2px;margin-top:8px;background:#F1F2F4;border-radius:9px;padding:2px;width:fit-content;max-width:100%;">
-                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-size:10.5px;font-weight:700;font-family:inherit;white-space:nowrap;">📈 SLv×ダメージ</button>
                     <button id="rankChartModeBtnAttr" onclick="setRankChartMode('attr')" style="padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-size:10.5px;font-weight:700;font-family:inherit;white-space:nowrap;">📊 属性内訳</button>
+                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="padding:5px 11px;border-radius:7px;border:none;cursor:pointer;font-size:10.5px;font-weight:700;font-family:inherit;white-space:nowrap;">📈 SLv×ダメージ</button>
                 </div>
                 <!-- 属性トグル (属性内訳モードのみ表示) -->
                 <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
@@ -15014,15 +15014,17 @@
             img.crossOrigin = 'anonymous';   // canvas taint 回避 (CORS非対応画像は onerror→丸点)。src より前に指定
             img.onload = () => {
                 try {
-                    const S = isMe ? 40 : 30, r = S / 2, bw = isMe ? 3 : 1.5;
+                    // 小さめ + 白フチ: 密集して重なっても隣と分離して見える。自分は青フチで目立たせる。
+                    // ※ Chart.js は canvas を intrinsic サイズ=表示px で描くので、拡大せず実寸で作る。
+                    const S = isMe ? 32 : 22, ring = 2, r = S / 2;
                     const cvs = document.createElement('canvas'); cvs.width = S; cvs.height = S;
                     const cx = cvs.getContext('2d');
                     cx.save();
-                    cx.beginPath(); cx.arc(r, r, r - bw, 0, Math.PI * 2); cx.closePath(); cx.clip();
-                    cx.drawImage(img, bw, bw, S - bw * 2, S - bw * 2);
+                    cx.beginPath(); cx.arc(r, r, r - ring, 0, Math.PI * 2); cx.closePath(); cx.clip();
+                    cx.drawImage(img, ring, ring, S - ring * 2, S - ring * 2);
                     cx.restore();
-                    cx.beginPath(); cx.arc(r, r, r - bw / 2, 0, Math.PI * 2);
-                    cx.lineWidth = bw; cx.strokeStyle = isMe ? '#1E78F0' : 'rgba(30,120,240,0.55)'; cx.stroke();
+                    cx.beginPath(); cx.arc(r, r, r - ring / 2, 0, Math.PI * 2);
+                    cx.lineWidth = ring; cx.strokeStyle = isMe ? '#1E78F0' : '#ffffff'; cx.stroke();
                     finish(cvs);
                 } catch { finish(null); }
             };
@@ -15069,6 +15071,7 @@
 
             // 自分は黒フチ + 大きめの点
             const myName = (typeof getCurrentIdentity === 'function') ? (getCurrentIdentity()?.name || null) : null;
+            if (myName) pts.sort((a, b) => (a.name === myName ? 1 : 0) - (b.name === myName ? 1 : 0));   // 自分を最後=最前面に描く
             // 各点のアバターURL (名前→プレイヤー) を引く。未ロードのキャッシュは丸点で先に描画し、揃い次第差し替える。
             const urlByName = new Map();
             pts.forEach(p => { const u = (typeof resolveAvatarUrlSync === 'function') ? resolveAvatarUrlSync(null, p.name) : null; if (u) urlByName.set(p.name, u); });
