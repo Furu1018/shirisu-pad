@@ -3119,7 +3119,12 @@
                 </div>
                 <!-- 統計 (折り畳み) -->
                 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
-                <!-- 属性トグル -->
+                <!-- グラフモード切替: SLv×ダメージ散布図 (SLvの割に出てる人が分かる) ⇄ 属性内訳の積み上げ棒 -->
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button id="rankChartModeBtnSlv" onclick="setRankChartMode('slv')" style="flex:1;padding:7px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;font-family:inherit;">📈 SLv×ダメージ</button>
+                    <button id="rankChartModeBtnAttr" onclick="setRankChartMode('attr')" style="flex:1;padding:7px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;font-family:inherit;">📊 属性内訳</button>
+                </div>
+                <!-- 属性トグル (属性内訳モードのみ表示) -->
                 <div id="chartAttributeToggle" style="display:flex;gap:6px;margin-top:8px;margin-bottom:14px;">
                     <button onclick="toggleChartDataset(0)" data-chart-idx="0" class="chart-toggle-btn" style="--btn-color: #FF3B30;" title="灼熱">
                         <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
@@ -3140,6 +3145,7 @@
                 <div class="chart-container">
                     <canvas id="attributeStackedChart"></canvas>
                 </div>
+                <p id="rankChartNote" style="margin:6px 0 0 0;font-size:10.5px;color:#8A9097;min-height:14px;"></p>
             </div>
 
             <!-- ② ランキングテーブル -->
@@ -4029,7 +4035,9 @@
                     <div id="settingsNotifySummary" style="font-size:10.5px;color:#B6BBC1;">—</div>
                 </div>
                 <!-- max-height でこの要素自身がスクロールコンテナになる → 中の sticky ヘッダが効く -->
-                <div id="settingsNotifyTable" style="padding:0 4px;max-height:340px;overflow-y:auto;overscroll-behavior:contain;">
+                <!-- overflow-x:hidden 必須: overflow-y だけ指定すると overflow-x が auto に計算され、
+                     行の負マージン (margin:0 -6px) ぶんの1〜数px で横スクロールが生まれてしまう -->
+                <div id="settingsNotifyTable" style="padding:0 4px;max-height:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;">
                     <p style="color:#A4AAB0;font-size:12px;padding:14px 0;">読み込み中…</p>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:7px;padding:11px 6px 4px;font-size:10.5px;line-height:1.5;color:#A4AAB0;"><span style="flex:none;">⚠️</span><span>OFF が多いメンバーには声かけを</span></div>
@@ -14828,7 +14836,7 @@
             updateTable();
             buildFururiBaseMap();
             analyzeTeamCompositions();
-            createAttributeStackedBarChart();
+            createRankingChart();   // モード (SLv散布図 / 属性内訳) に応じて振り分け
             updateStats();
             updateSimulatorPlayerList();
             updateFururiSimPlayerList();
@@ -14928,12 +14936,144 @@
 
         // ========== Chart dataset toggle ==========
         function toggleChartDataset(index) {
-            if (!attributeChartInstance) return;
+            if (!attributeChartInstance || _rankChartMode !== 'attr') return;   // 散布図モードでは属性トグル無効
             const isVisible = attributeChartInstance.isDatasetVisible(index);
             attributeChartInstance.setDatasetVisibility(index, !isVisible);
             attributeChartInstance.update();
             const btn = document.querySelector(`[data-chart-idx="${index}"]`);
             if (btn) btn.classList.toggle('hidden', isVisible);
+        }
+
+        // ===== グラフモード: SLv×ダメージ散布図 (既定) ⇄ 属性内訳の積み上げ棒 =====
+        let _rankChartMode = 'slv';
+        try { _rankChartMode = localStorage.getItem('shirisuko_rank_chart') || 'slv'; } catch { /* noop */ }
+        if (!['slv', 'attr'].includes(_rankChartMode)) _rankChartMode = 'slv';
+        function setRankChartMode(mode) {
+            _rankChartMode = mode;
+            try { localStorage.setItem('shirisuko_rank_chart', mode); } catch { /* noop */ }
+            createRankingChart();
+        }
+        // モードに応じて描画を振り分け (renderAll から呼ばれる入口)
+        function createRankingChart() {
+            const slv = _rankChartMode === 'slv';
+            const styleModeBtn = (btn, on) => {
+                if (!btn) return;
+                btn.style.background = on ? '#14161A' : '#F1F2F4';
+                btn.style.color = on ? '#fff' : '#5A6068';
+            };
+            styleModeBtn(document.getElementById('rankChartModeBtnSlv'), slv);
+            styleModeBtn(document.getElementById('rankChartModeBtnAttr'), !slv);
+            const attrToggle = document.getElementById('chartAttributeToggle');
+            if (attrToggle) attrToggle.style.display = slv ? 'none' : 'flex';
+            const note = document.getElementById('rankChartNote');
+            if (note) note.textContent = '';
+            if (slv) createSlvScatterChart();
+            else createAttributeStackedBarChart();
+        }
+
+        // 📈 SLv×ダメージ散布図: 「SLvの割にダメージが出ている人」を可視化する。
+        // 破線はユニオン全体の傾向線 (最小二乗)。線より上 = SLv比で火力が出ている
+        function createSlvScatterChart() {
+            const canvas = document.getElementById('attributeStackedChart');
+            if (!canvas || currentData.length === 0) return;
+            if (attributeChartInstance) {
+                attributeChartInstance.destroy();
+                attributeChartInstance = null;
+            }
+            const pts = currentData
+                .filter(p => (Number(p.syncLevel) || 0) > 0)
+                .map(p => ({ x: Number(p.syncLevel), y: p.damage, name: p.player }));
+            const excluded = currentData.length - pts.length;
+            const note = document.getElementById('rankChartNote');
+            if (note) {
+                note.textContent = (excluded > 0 ? `SLv未登録のため非表示: ${excluded}名 · ` : '')
+                    + '破線=ユニオンの傾向線。線より上ほど「SLvの割にダメージが出ている」';
+            }
+            if (pts.length === 0) return;
+
+            // 傾向線 (最小二乗)。2点未満や SLv が全員同じ場合は引かない
+            let trend = null;
+            if (pts.length >= 2) {
+                const n = pts.length;
+                const sx = pts.reduce((s, p) => s + p.x, 0), sy = pts.reduce((s, p) => s + p.y, 0);
+                const sxx = pts.reduce((s, p) => s + p.x * p.x, 0), sxy = pts.reduce((s, p) => s + p.x * p.y, 0);
+                const den = n * sxx - sx * sx;
+                if (Math.abs(den) > 1e-9) {
+                    const b = (n * sxy - sx * sy) / den;
+                    const a = (sy - b * sx) / n;
+                    trend = { a, b };
+                }
+            }
+            const xs = pts.map(p => p.x);
+            const minX = Math.min(...xs), maxX = Math.max(...xs);
+            const pad = Math.max(2, Math.round((maxX - minX) * 0.06));
+
+            // 自分は黒フチ + 大きめの点
+            const myName = (typeof getCurrentIdentity === 'function') ? (getCurrentIdentity()?.name || null) : null;
+            const datasets = [{
+                type: 'scatter',
+                data: pts,
+                pointRadius: pts.map(p => p.name === myName ? 7 : 4.5),
+                pointHoverRadius: pts.map(p => p.name === myName ? 9 : 7),
+                backgroundColor: pts.map(p => p.name === myName ? '#1E78F0' : 'rgba(30,120,240,0.55)'),
+                borderColor: pts.map(p => p.name === myName ? '#14161A' : 'rgba(30,120,240,0.8)'),
+                borderWidth: pts.map(p => p.name === myName ? 2 : 1),
+                order: 1,
+            }];
+            if (trend) {
+                datasets.push({
+                    type: 'line',
+                    data: [
+                        { x: minX - pad, y: trend.a + trend.b * (minX - pad) },
+                        { x: maxX + pad, y: trend.a + trend.b * (maxX + pad) },
+                    ],
+                    borderColor: '#B6BBC1', borderWidth: 1.5, borderDash: [6, 5],
+                    pointRadius: 0, pointHitRadius: 0, fill: false, order: 2,
+                });
+            }
+            attributeChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'scatter',   // 混在チャート: 傾向線側の dataset だけ type:'line' で上書き
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    animations: { colors: false, x: false, y: false },
+                    transitions: { active: { animation: { duration: 0 } } },
+                    scales: {
+                        x: {
+                            type: 'linear', min: minX - pad, max: maxX + pad,
+                            title: { display: true, text: 'SLv', font: { size: 11, weight: 800 }, color: '#8A9097' },
+                            ticks: { font: { size: 11 } }, grid: { color: '#EFF0F2' },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: '#EFF0F2' },
+                        },
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            displayColors: false,
+                            callbacks: {
+                                label: (c) => {
+                                    const p = c.raw;
+                                    if (p?.name == null) return null;   // 傾向線は無言
+                                    const lines = [`${p.name} — SLv${p.x} · ${(p.y / 1e9).toFixed(2)}B`];
+                                    if (trend) {
+                                        const expect = trend.a + trend.b * p.x;
+                                        if (expect > 1e-9) {
+                                            const ratio = p.y / expect;
+                                            lines.push(`傾向比 ×${ratio.toFixed(2)} (${ratio >= 1 ? 'SLvの割に出てる↑' : '伸びしろあり↓'})`);
+                                        }
+                                    }
+                                    return lines;
+                                },
+                            },
+                        },
+                    },
+                },
+            });
         }
 
         // ========== Stacked Bar Chart ==========
