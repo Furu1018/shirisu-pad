@@ -290,6 +290,12 @@
                             // 温存パス: ボス5で入るはずの与ダメを失う機会費用 (B) を加算。
                             // オーバーキルと同じ単位なので W_OVER=1.0 と自然に比較される
                             if (opts.oppCostOf) s += opts.oppCostOf(m, t.b.weakness, cand);
+                            if (absorbMode) {
+                                // 吸収モードの目的は credited 最大化そのもの。SLv 公平性や時間の
+                                // ペナルティを何Bもの与ダメと交換しない — オーバーキル最小・
+                                // 与ダメ大を主項にし、通常スコアはタイブレークに格下げする
+                                s = Math.max(0, cand.dmg - t.rem) - Math.min(cand.dmg, t.rem) * 0.01 + s * 0.001;
+                            }
                             if (s < pickScore) { pickScore = s; pick = m; pickHour = slot.idx; pickFlex = slot.flex; pickLo = cand; pickSlot = slot; }
                         }
                     }
@@ -503,7 +509,7 @@
         let reservePassUsed = false;
         if (lv4Open) {
             const lv4Weak = boss5.weakness;
-            const T3 = probe.openIdx;   // probe が見積もった Lv3 クリア想定時刻 (温存可否の判断に使う)
+            let T3 = probe.openIdx;   // Lv3 クリア想定時刻 (温存可否の判断に使う)。収束ループで更新される
             // T3 以降に「確約」で出られる人だけ温存させる。時間未登録/純⏳隙間型はいつでも可、
             // ハイブリッドは時間外を隙間で対応できるので可。mismatch になる人は温存させない
             // (Lv4 開放時刻に実際は出られず、約束できない凸に大火力を賭けることになるため)
@@ -535,14 +541,24 @@
                     : potentialOf(list, m.remainingAttacks - 1);
                 return Math.max(0, before - after);
             };
-            const reserved = runPass({
-                oppCostOf,
-                lv4Mandatory: { attr: lv4Weak, canAfter: canAttackAfterT3 },
-            });
+            // 温存で大火力を踏破から外すと Lv3 クリア時刻が後ろにずれることがある。
+            // 前提にした T3 より実際の開放が遅いと「開放時刻に出られない人」を誤って温存して
+            // しまうため、実クリア時刻が前提以下に収まるまで T3 を引き上げて引き直す
+            // (T3 は単調増加・時間帯は有限なので必ず止まるが、安全のため3回で打ち切り)
+            let reserved = null;
+            for (let iter = 0; iter < 3; iter++) {
+                const attempt = runPass({
+                    oppCostOf,
+                    lv4Mandatory: { attr: lv4Weak, canAfter: canAttackAfterT3 },
+                });
+                if (attempt.fullyClearedThrough < 3) { reserved = null; break; }   // 温存で踏破が崩れた
+                if (attempt.openIdx <= T3) { reserved = attempt; break; }          // 前提どおり → 採用候補
+                T3 = attempt.openIdx;   // 実際の開放が遅い → 前提を更新して引き直し
+            }
             assignLv4(probe);
             // 温存パスは「踏破が崩れない」かつ「credited が実際に増える」ときだけ採用する。
             // 貪欲近似なので、機会費用を入れた方が悪化するケースは probe に倒す (安全側)
-            if (reserved.fullyClearedThrough >= 3) {
+            if (reserved) {
                 assignLv4(reserved);
                 if (sumCreditedOf(reserved) > sumCreditedOf(probe) + 1e-9) {
                     chosen = reserved;
@@ -551,14 +567,17 @@
             }
         }
         const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited
-        // 温存マーク: probe では有限ボスに使われていた弱点属性の凸が、温存パスでボス5に回った人
+        // 温存マーク: probe では有限ボスに使われていた凸 (人+編成) が、温存パスでボス5に回ったもの。
+        // memberId だけで判定すると、2編成持ちの「元からボス5行きだった方の編成」にも
+        // 誤って 🔒 が付くため、loadoutSlot 込みで特定する
         if (reservePassUsed) {
+            const loKey = (a) => `${a.memberId}|${a.loadoutSlot}`;
             const probeFiniteX = new Set(probe.levels
                 .filter(lv => !lv.infinite)
-                .flatMap(lv => lv.bosses.filter(b => b.weakness === boss5.weakness).flatMap(b => b.attacks.map(a => a.memberId))));
+                .flatMap(lv => lv.bosses.filter(b => b.weakness === boss5.weakness).flatMap(b => b.attacks.map(loKey))));
             chosen.levels.filter(lv => lv.infinite).forEach(lv =>
                 lv.bosses.forEach(b => b.attacks.forEach(a => {
-                    if (probeFiniteX.has(a.memberId)) a.reserved = true;
+                    if (probeFiniteX.has(loKey(a))) a.reserved = true;
                 })));
         }
         const { memberState, levels, fullyClearedThrough } = chosen;

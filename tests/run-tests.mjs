@@ -879,6 +879,56 @@ test('reserveGainB は常に0以上 (悪化するなら probe に倒す)', () =>
     assert.ok(plan.totalCreditedB >= plan.baselineCreditedB - 1e-9);
 });
 
+test('温存で Lv3 クリアが遅れて開放時刻に出られなくなる人は、引き直しで温存対象から外れる', () => {
+    // probe は大火力(h22のみ)がボス5(残25B)を1撃で締めて T3=h22。
+    // 温存パス1回目は T3=h22 前提で大火力を温存するが、小火力(h23のみ)で締め直すと
+    // クリアが h23 にずれ、大火力は h23 以降に出られない → T3 を h23 に引き上げて引き直し、
+    // 大火力は結局踏破に使う (= probe と同じ) に収束する
+    const plan = compute(timeInput(fiveBosses({ b5: 25 }), [
+        player('小火力1', { wind: 16 }, { slv: 400, availableSlots: ['h23'] }),
+        player('小火力2', { wind: 16 }, { slv: 401, availableSlots: ['h23'] }),
+        player('火担当', { fire: 5 }, { slv: 450, availableSlots: ['h22'] }),
+        player('水担当', { water: 5 }, { slv: 460, availableSlots: ['h22'] }),
+        player('電担当', { electric: 5 }, { slv: 470, availableSlots: ['h22'] }),
+        player('鉄担当', { iron: 5 }, { slv: 480, availableSlots: ['h22'] }),
+        player('大火力', { wind: 25 }, { slv: 800, availableSlots: ['h22'] }),
+    ], { currentLevel: 3, currentSlot: 'h21' }));
+    assert.equal(plan.lv4Open, true);
+    assert.equal(plan.reservePassUsed, false, '幻の温存は採用しない');
+    const finiteB5 = plan.levels.find(lv => lv.level === 3).bosses.find(b => b.bossNumber === 5);
+    assert.ok(finiteB5.attacks.some(a => a.memberName === '大火力'), '大火力は踏破に使う');
+    const lv4 = plan.levels[plan.levels.length - 1].bosses[0];
+    assert.ok(!lv4.attacks.some(a => a.reserved), '温存マークなし');
+    assert.ok(!lv4.attacks.some(a => a.memberName === '大火力'), '出られない時間の幻凸をボス5に計上しない');
+});
+
+test('温存マークは編成単位: 元からボス5行きだった2編成目には付かない', () => {
+    // probe: 大火力の編成① (25B) が有限ボス5を締め、編成② (22B) はボス5(無限)へ。
+    // 温存パス: 小火力2人で締め直し、編成①②とも無限へ。🔒 は probe から移動した①だけ
+    const big = player('大火力', { wind: 25 }, { slv: 800 });
+    big.loadoutsByAttr = { wind: [
+        { dmgB: 25, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
+        { dmgB: 22, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
+    ] };
+    const plan = compute(lv3Input(fiveBosses({ b5: 30 }), [
+        player('小火力1', { wind: 16 }, { slv: 400 }),
+        player('小火力2', { wind: 16 }, { slv: 401 }),
+        player('火担当', { fire: 5 }, { slv: 450 }),
+        player('水担当', { water: 5 }, { slv: 460 }),
+        player('電担当', { electric: 5 }, { slv: 470 }),
+        player('鉄担当', { iron: 5 }, { slv: 480 }),
+        big,
+    ]));
+    assert.equal(plan.reservePassUsed, true);
+    const lv4 = plan.levels[plan.levels.length - 1].bosses[0];
+    const mine = lv4.attacks.filter(a => a.memberName === '大火力');
+    assert.equal(mine.length, 2, `編成①②ともボス5へ: ${lv4.attacks.map(a => `${a.memberName}#${a.loadoutSlot}`)}`);
+    const s1 = mine.find(a => a.loadoutSlot === 1);
+    const s2 = mine.find(a => a.loadoutSlot === 2);
+    assert.equal(s1.reserved, true, '編成① (probe では有限ボス行き) に 🔒');
+    assert.ok(!s2.reserved, '編成② (元からボス5行き) には付かない');
+});
+
 // ---- フロンティア吸収 (踏破できないレベルの与ダメ最大化) ----------------------
 console.log('\nfrontier:');
 
