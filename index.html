@@ -136,6 +136,11 @@
             line-height: 1.55;
             font-size: 15px;
             font-feature-settings: 'cv11', 'ss01', 'ss02';
+            /* 横方向のはみ出しをクリップ: タブ横スワイプ中に現在タブを translate すると
+               はみ出しが横スクロール/モバイルの自動縮小を誘発し「プルプル拡大縮小」になる。
+               clip は hidden と違い overflow-y を auto に強制しない (縦スクロール/stickyを壊さない)。
+               data-no-swipe の内側コンテナは自前の overflow-x:auto を持つので横スクロールは維持される。 */
+            overflow-x: clip;
         }
         /* 見出しと数字は表示用フォントへ */
         h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em; }
@@ -14945,9 +14950,19 @@
         }
 
         // ===== グラフモード: SLv×ダメージ散布図 (既定) ⇄ 属性内訳の積み上げ棒 =====
-        let _rankChartMode = 'slv';
-        try { _rankChartMode = localStorage.getItem('shirisuko_rank_chart') || 'slv'; } catch { /* noop */ }
-        if (!['slv', 'attr'].includes(_rankChartMode)) _rankChartMode = 'slv';
+        // 既定は属性内訳 (通常モードで見やすい)。SLv×ダメージ散布図は明示的に選んだ時だけ。
+        // 旧既定は散布図(slv)で、それを保存済みの端末は既定変更だけでは切り替わらない。
+        // そのため一度だけ全端末を属性内訳へ寄せる移行を入れる (v2フラグ以降の手動選択は尊重)。
+        let _rankChartMode = 'attr';
+        try {
+            if (!localStorage.getItem('shirisuko_rank_chart_v2')) {
+                localStorage.removeItem('shirisuko_rank_chart');       // 旧保存値を破棄 → 新既定 attr に寄せる
+                localStorage.setItem('shirisuko_rank_chart_v2', '1');
+            } else {
+                _rankChartMode = localStorage.getItem('shirisuko_rank_chart') || 'attr';
+            }
+        } catch { /* noop */ }
+        if (!['slv', 'attr'].includes(_rankChartMode)) _rankChartMode = 'attr';
         function setRankChartMode(mode) {
             _rankChartMode = mode;
             try { localStorage.setItem('shirisuko_rank_chart', mode); } catch { /* noop */ }
