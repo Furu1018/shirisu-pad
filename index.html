@@ -3641,7 +3641,7 @@
                         <p>各メンバーの<strong>戦闘可能時間</strong>をもとに、それぞれの凸を「何時ごろ打つ想定か」に割り当てて表示します。</p>
                         <ul>
                             <li><strong>🕐 時刻ラベル</strong> — その凸を打つ想定の時間帯。「翌2時」は日付をまたいだ深夜帯（リセット前）の意味です。</li>
-                            <li><strong>🕐 時刻?</strong> — 戦闘可能時間が未登録のメンバー。「いつでも凸できる」とみなして計算しています。マイページで戦闘可能時間を登録すると精度が上がります。</li>
+                            <li><strong>「未登録」バッジ</strong> — 戦闘可能時間が未登録のメンバー。「いつでも凸できる」とみなして開放後の最速枠に仮置きしているだけで、<strong>表示された時刻に居られる保証はありません</strong>。マイページで戦闘可能時間を登録すると精度が上がります (時間割の狭いマスでは ? マークで表現)。</li>
                             <li><strong>⏱ 律速（りっそく）</strong> — そのレベルの中で<strong>一番遅い時間帯に割り当てられた凸</strong>に付く赤い目印です。「律速」はボトルネックという意味で、<strong>この凸が終わるまで次のレベルに進めない＝レベルのクリア時刻を決めている凸</strong>を指します。</li>
                         </ul>
                         <div class="help-callout tip">
@@ -12189,7 +12189,19 @@
                             } else if (a.hourLabel) {
                                 ctx.font = f(15, a.isBottleneck ? 900 : 800);
                                 ctx.fillStyle = a.isBottleneck ? COL.red : COL.sub;
-                                ctx.fillText(`🕐${a.hourLabel}${a.timeUnknown ? '?' : ''}${a.isBottleneck ? ' ⏱律速' : ''}`, PAD + 74, cy + 1);
+                                const timeTxt = `🕐${a.hourLabel}${a.isBottleneck ? ' ⏱律速' : ''}`;
+                                ctx.fillText(timeTxt, PAD + 74, cy + 1);
+                                // 「未登録」は時刻と混ぜずバッジで描く (画面のリスト表示と同じバッジ式)
+                                if (a.timeUnknown && !a.isBottleneck) {
+                                    const tw = ctx.measureText(timeTxt).width;
+                                    ctx.font = f(11, 900);
+                                    const bw = ctx.measureText('未登録').width + 12;
+                                    rr(PAD + 74 + tw + 6, cy - 9, bw, 18, 9);
+                                    ctx.fillStyle = 'rgba(245,158,11,0.14)';
+                                    ctx.fill();
+                                    ctx.fillStyle = COL.amber;
+                                    ctx.fillText('未登録', PAD + 74 + tw + 12, cy + 1);
+                                }
                             }
                             // 名前 (🔒 = ボス5温存)
                             ctx.font = f(17, 800);
@@ -12661,9 +12673,10 @@
                                 : a.flex
                                 ? `<div style="width:54px;flex:none;text-align:center;" title="隙間時間型: 時間帯は本人の都合次第 (3凸は行う)"><div style="font-size:12px;font-weight:900;color:#B45309;">⏳隙間</div></div>`
                                 : a.hourLabel
-                                ? `<div style="width:54px;flex:none;text-align:center;" title="${a.isBottleneck ? 'この凸がこのレベルのクリア時刻を決めています (律速)' : (a.timeUnknown ? '戦闘可能時間 未登録 (いつでも可として扱い)' : '凸予定の時間帯')}">
-                                        <div style="font-size:14px;font-weight:900;color:${a.isBottleneck ? '#E23036' : '#14161A'};font-variant-numeric:tabular-nums;">${esc(a.hourLabel)}${a.timeUnknown ? '<span style="color:#B45309;">?</span>' : ''}</div>
-                                        ${a.isBottleneck ? '<div style="font-size:10px;font-weight:900;color:#E23036;margin-top:1px;">⏱律速</div>' : (a.timeUnknown ? '<div style="font-size:10px;font-weight:800;color:#B45309;margin-top:1px;">未登録</div>' : '')}
+                                ? `<div style="width:54px;flex:none;text-align:center;" title="${a.isBottleneck ? 'この凸がこのレベルのクリア時刻を決めています (律速)' : ''}${a.timeUnknown ? '戦闘可能時間が未登録のため、開放後の最速枠に仮置き (この時刻に居られる保証はない)' : (a.isBottleneck ? '' : '凸予定の時間帯')}">
+                                        <div style="font-size:14px;font-weight:900;color:${a.isBottleneck ? '#E23036' : '#14161A'};font-variant-numeric:tabular-nums;">${esc(a.hourLabel)}</div>
+                                        ${a.isBottleneck ? '<div style="font-size:10px;font-weight:900;color:#E23036;margin-top:1px;">⏱律速</div>' : ''}
+                                        ${a.timeUnknown ? '<div style="margin-top:2px;"><span style="display:inline-block;font-size:10px;font-weight:900;color:#B45309;background:rgba(245,158,11,0.14);border-radius:999px;padding:1px 7px;">未登録</span></div>' : ''}
                                    </div>`
                                 : `<div style="width:54px;flex:none;"></div>`;
                             const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(a.memberId, a.memberName, 26) : '';
