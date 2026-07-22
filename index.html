@@ -11424,22 +11424,154 @@
             return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable === true;
         }
 
+        // ボスカード1枚ぶんの表示値を計算 (フルレンダーとターゲット更新の共通部品 — 二重実装禁止)
+        function _opsBossCardParts(b, coordsByBoss) {
+            const inCombat = coordsByBoss.has(b.boss_number);
+            const combatList = inCombat ? coordsByBoss.get(b.boss_number) : [];
+            const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);   // 締め凸で持っていくPT属性 (弱点)
+            const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
+            const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
+            const remainPct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
+            const dead = remainPct <= 0.01;
+            // チップ表示はボス本来の属性 (attribute)。weakness は締め凸ボタン側だけで使う。
+            const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+            const active = inCombat && !dead;
+            const statusTag = dead
+                ? `<span class="dc-boss-status-tag" style="color:#18C26B;background:rgba(24,194,107,0.12);">💀 撃破済</span>`
+                : active
+                    ? `<span class="dc-boss-status-tag is-combat" style="color:${c};background:${c}26;"><span class="dc-combat-dot"></span>${combatList.length}名 交戦中</span>`
+                    : `<span class="dc-boss-status-tag" style="color:#A4AAB0;background:#F1F2F4;">待機中</span>`;
+            const avatarsHtml = active
+                ? combatList.slice(0, 4).map((x, i) => {
+                    const av = renderAvatarHtml(x.player_id, x.name, 24);
+                    return `<span style="margin-left:${i === 0 ? 0 : -6}px;position:relative;z-index:${10 - i};display:inline-block;border:2px solid #fff;border-radius:50%;">${av}</span>`;
+                  }).join('')
+                : '<span style="font-size:11px;font-weight:600;color:#B6BBC1;">交戦者なし</span>';
+            const reqs = (!dead && (_finishReqCache || []).some(r => r.boss_number === b.boss_number))
+                ? `<div style="margin-top:8px;padding:7px 9px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);">
+                        <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:4px;">📣 締凸依頼中</div>
+                        ${(_finishReqCache || []).filter(r => r.boss_number === b.boss_number).map(r => {
+                            const st = _FINISH_REQ_STATUS[r.status] || _FINISH_REQ_STATUS.pending;
+                            return `<div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+                                <span style="flex:1;min-width:0;font-size:10.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.name)}</span>
+                                <span style="flex:none;font-size:10px;font-weight:900;color:${st.color};background:${st.bg};padding:2px 7px;border-radius:999px;">${st.label}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>`
+                : '';
+            return {
+                ptInfo, totalB, remB, remainPct, dead, active, c,
+                pctText: dead ? '撃破' : `${remainPct.toFixed(0)}%`,
+                pctColor: dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3'),
+                statusTag,
+                barColor: dead ? '#18C26B' : c,
+                hpText: `${remB.toFixed(2)} / ${totalB.toFixed(2)} B`,
+                avatarsHtml, reqs,
+            };
+        }
+
+        function _opsBossCardHtml(b, coordsByBoss) {
+            const P = _opsBossCardParts(b, coordsByBoss);
+            const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
+            const iconAlt = ATTR_VISUAL[b.attribute]?.name || (b.attribute || '');
+            const editing = _opsBossEditingNum === b.boss_number;
+            const chipStyle = P.active || P.dead
+                ? `background:${P.c};box-shadow:0 3px 8px ${P.c}4D,inset 0 1px 0 rgba(255,255,255,0.3);`
+                : `background:${P.c}1F;`;
+            // HP編集パネル (折り畳み)。ボタンは data-action (コンテナの委譲リスナーが拾う)
+            const editPanel = editing
+                ? `<div style="margin-top:10px;padding:8px;border-radius:8px;background:#F1F2F4;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <label style="font-size:10px;color:#A4AAB0;">残HP (B)
+                        <input type="number" step="0.01" min="0" id="opsBossEditRem-${b.boss_number}" value="${P.remB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;text-align:right;">
+                    </label>
+                    <label style="font-size:10px;color:#A4AAB0;">総HP (B)
+                        <input type="number" step="0.01" min="0" id="opsBossEditTotal-${b.boss_number}" value="${P.totalB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;text-align:right;">
+                    </label>
+                    <label style="grid-column:1/-1;font-size:10px;color:#A4AAB0;">ボス名
+                        <input type="text" id="opsBossEditName-${b.boss_number}" value="${escapeHtml(b.name || '')}" placeholder="例: モダニア" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;">
+                    </label>
+                    <div style="grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;">
+                        <button data-action="boss-edit-cancel" style="padding:5px 10px;border-radius:6px;border:none;background:#fff;color:#6B7178;font-size:11px;cursor:pointer;">取消</button>
+                        <button data-action="boss-edit-save" data-boss="${b.boss_number}" style="padding:5px 12px;border-radius:6px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">保存</button>
+                    </div>
+                </div>`
+                : '';
+            return `
+                <div class="dc-boss-card ${P.active ? 'has-combat' : ''}" data-boss-card="${b.boss_number}" style="--_attr-c:${P.c};${P.dead ? 'opacity:0.65;' : ''}">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+                        <div class="dc-boss-chip" style="${chipStyle}" title="${escapeHtml(iconAlt)}ボス${P.ptInfo ? ` / 弱点 ${escapeHtml(P.ptInfo.name)}PT` : ''}">${iconSrc ? `<img loading="lazy" decoding="async" src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : ''}</div>
+                        <div class="js-pct" style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${P.pctColor};">${P.pctText}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:7px;margin-top:11px;">
+                        <span style="font-size:17px;font-weight:900;color:#14161A;letter-spacing:0.4px;">B${b.boss_number}</span>
+                    </div>
+                    <div style="font-size:10px;color:#A4AAB0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(b.name || b.boss_code)}">${escapeHtml(b.name || b.boss_code)}</div>
+                    <div class="js-status" style="margin-top:7px;">${P.statusTag}</div>
+                    <div style="margin-top:11px;height:6px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
+                        <div class="dc-boss-bar js-bar" style="background:${P.barColor};width:${P.remainPct}%;"></div>
+                    </div>
+                    <div class="js-hptext" style="font-size:10px;font-variant-numeric:tabular-nums;color:#9AA0A6;margin-top:4px;">${P.hpText}</div>
+                    <div class="js-avatars" style="margin-top:10px;display:flex;align-items:center;min-height:24px;">${P.avatarsHtml}</div>
+                    ${editPanel}
+                    <div style="display:flex;gap:6px;margin-top:10px;">
+                        <button data-action="boss-edit" data-boss="${b.boss_number}" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
+                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.dead ? 'disabled' : ''} title="${P.ptInfo ? `${P.ptInfo.name}PT で締め凸候補を検索` : '締め凸候補を検索'}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.dead ? '#F1F2F4' : P.c};color:${P.dead ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${P.dead ? 'not-allowed' : 'pointer'};">締凸検索</button>
+                    </div>
+                    <div class="js-reqs">${P.reqs}</div>
+                </div>`;
+        }
+
+        // 入力中のターゲット更新: カードの DOM を壊さず、表示領域 (%・状態・バー・HP・アバター・
+        // 依頼状況・締凸ボタン) だけを書き換える。編集パネルの input には一切触れない →
+        // 10秒ポーリング中でもフォーカス・入力値・カーソル位置が保たれる (リアーキ ステップ4)
+        function _patchOpsBossCard(el, b, coordsByBoss) {
+            const card = el.querySelector(`[data-boss-card="${b.boss_number}"]`);
+            if (!card) return;
+            const P = _opsBossCardParts(b, coordsByBoss);
+            card.classList.toggle('has-combat', P.active);
+            card.style.opacity = P.dead ? '0.65' : '';
+            const pct = card.querySelector('.js-pct');
+            if (pct) { pct.textContent = P.pctText; pct.style.color = P.pctColor; }
+            const status = card.querySelector('.js-status');
+            if (status) status.innerHTML = P.statusTag;
+            const bar = card.querySelector('.js-bar');
+            if (bar) { bar.style.width = `${P.remainPct}%`; bar.style.background = P.barColor; }
+            const hp = card.querySelector('.js-hptext');
+            if (hp) hp.textContent = P.hpText;
+            const av = card.querySelector('.js-avatars');
+            if (av) av.innerHTML = P.avatarsHtml;
+            const reqs = card.querySelector('.js-reqs');
+            if (reqs) reqs.innerHTML = P.reqs;
+            const fin = card.querySelector('.js-finish');
+            if (fin) {
+                fin.disabled = P.dead;
+                fin.style.background = P.dead ? '#F1F2F4' : P.c;
+                fin.style.color = P.dead ? '#C9CED3' : '#fff';
+                fin.style.cursor = P.dead ? 'not-allowed' : 'pointer';
+            }
+        }
+
         function renderOpsBossSummary() {
-            // ガード: ボス編集パネルが開いて描画済みの間は再描画しない。
-            // 10秒ポーリング (coord / 締凸依頼) がこの関数を定期的に呼ぶため、
-            // ガードなしでは HP・ボス名の入力欄が数秒ごとに DOM ごと破壊され
-            // 「5文字打つと入力が解除される」状態になる。
-            // (編集パネルを開く操作自体の描画は、パネル未描画なので素通りする)
-            if (_opsBossEditingNum !== null && document.getElementById(`opsBossEditRem-${_opsBossEditingNum}`)) return;
-            // 将来の入力要素への保険: カード内にフォーカスがある間も再描画しない
-            const sumEl = document.getElementById('opsBossSummary');
-            if (sumEl && _userIsTyping() && sumEl.contains(document.activeElement)) return;
-            renderOpsStatusOverview();   // ボス状況更新と同タイミングで概況も更新
+            renderOpsStatusOverview();   // 概況チップは入力と無関係なので常に更新
             if (!opsStore.get()) return;
             const { season, bosses } = opsStore.get();
             const el = document.getElementById('opsBossSummary');
             const lvEl = document.getElementById('opsBossSummaryLevel');
             if (!el) return;
+            // ボタン類はインライン onclick をやめ、コンテナ1箇所のクリック委譲で受ける
+            // (innerHTML 再描画でもリスナーが生き続ける。リアーキ ステップ4)
+            if (!el.dataset.delegated) {
+                el.dataset.delegated = '1';
+                el.addEventListener('click', (ev) => {
+                    const btn = ev.target.closest('[data-action]');
+                    if (!btn || !el.contains(btn) || btn.disabled) return;
+                    const action = btn.dataset.action;
+                    if (action === 'boss-edit') handleOpsBossSummaryEdit(Number(btn.dataset.boss));
+                    else if (action === 'boss-edit-cancel') handleOpsBossSummaryEditCancel();
+                    else if (action === 'boss-edit-save') handleOpsBossSummaryEditSave(Number(btn.dataset.boss));
+                    else if (action === 'finish-pick') handleOpsFinishAttrPick(btn.dataset.weakness);
+                });
+            }
             if (lvEl) {
                 // HP鮮度: 最後にHPが動いた時刻 (20_bosses_updated_at.sql 適用後のみ)
                 let freshTxt = '';
@@ -11460,96 +11592,18 @@
                 if (!coordsByBoss.has(c.boss_number)) coordsByBoss.set(c.boss_number, []);
                 coordsByBoss.get(c.boss_number).push({ name: c.name, player_id: c.player_id });
             });
-
             const sorted = [...(bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
-            el.innerHTML = sorted.map(b => {
-                const inCombat = coordsByBoss.has(b.boss_number);
-                const combatList = inCombat ? coordsByBoss.get(b.boss_number) : [];
-                const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);   // 締め凸で持っていくPT属性 (弱点)
-                const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
-                const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
-                const remainPct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
-                const dead = remainPct <= 0.01;
-                // チップ表示はボス本来の属性 (attribute)。weakness は締め凸ボタン側だけで使う。
-                const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
-                const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
-                const iconAlt = ATTR_VISUAL[b.attribute]?.name || (b.attribute || '');
-                const active = inCombat && !dead;
-                const editing = _opsBossEditingNum === b.boss_number;
 
-                // チップ (ゲーム内の属性アイコンを使用)
-                const chipStyle = active || dead
-                    ? `background:${c};box-shadow:0 3px 8px ${c}4D,inset 0 1px 0 rgba(255,255,255,0.3);`
-                    : `background:${c}1F;`;
-                // ステータス バッジ
-                const statusTag = dead
-                    ? `<span class="dc-boss-status-tag" style="color:#18C26B;background:rgba(24,194,107,0.12);">💀 撃破済</span>`
-                    : active
-                        ? `<span class="dc-boss-status-tag is-combat" style="color:${c};background:${c}26;"><span class="dc-combat-dot"></span>${combatList.length}名 交戦中</span>`
-                        : `<span class="dc-boss-status-tag" style="color:#A4AAB0;background:#F1F2F4;">待機中</span>`;
-                // 進捗バー: 残HP % を表示 (デザイン: 残=色付き)
-                const barColor = dead ? '#18C26B' : c;
-                // 戦闘中メンバーのアバター (重なり表示)
-                const avatarsHtml = active
-                    ? combatList.slice(0, 4).map((x, i) => {
-                        const av = renderAvatarHtml(x.player_id, x.name, 24);
-                        return `<span style="margin-left:${i === 0 ? 0 : -6}px;position:relative;z-index:${10 - i};display:inline-block;border:2px solid #fff;border-radius:50%;">${av}</span>`;
-                      }).join('')
-                    : '<span style="font-size:11px;font-weight:600;color:#B6BBC1;">交戦者なし</span>';
-
-                // HP編集パネル (折り畳み)
-                const editPanel = editing
-                    ? `<div style="margin-top:10px;padding:8px;border-radius:8px;background:#F1F2F4;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                        <label style="font-size:10px;color:#A4AAB0;">残HP (B)
-                            <input type="number" step="0.01" min="0" id="opsBossEditRem-${b.boss_number}" value="${remB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;text-align:right;">
-                        </label>
-                        <label style="font-size:10px;color:#A4AAB0;">総HP (B)
-                            <input type="number" step="0.01" min="0" id="opsBossEditTotal-${b.boss_number}" value="${totalB.toFixed(2)}" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;text-align:right;">
-                        </label>
-                        <label style="grid-column:1/-1;font-size:10px;color:#A4AAB0;">ボス名
-                            <input type="text" id="opsBossEditName-${b.boss_number}" value="${escapeHtml(b.name || '')}" placeholder="例: モダニア" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #E1E3E7;background:#fff;font-size:12px;">
-                        </label>
-                        <div style="grid-column:1/-1;display:flex;gap:6px;justify-content:flex-end;">
-                            <button onclick="handleOpsBossSummaryEditCancel()" style="padding:5px 10px;border-radius:6px;border:none;background:#fff;color:#6B7178;font-size:11px;cursor:pointer;">取消</button>
-                            <button onclick="handleOpsBossSummaryEditSave(${b.boss_number})" style="padding:5px 12px;border-radius:6px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">保存</button>
-                        </div>
-                    </div>`
-                    : '';
-
-                return `
-                    <div class="dc-boss-card ${active ? 'has-combat' : ''}" style="--_attr-c:${c};${dead ? 'opacity:0.65;' : ''}">
-                        <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                            <div class="dc-boss-chip" style="${chipStyle}" title="${escapeHtml(iconAlt)}ボス${ptInfo ? ` / 弱点 ${escapeHtml(ptInfo.name)}PT` : ''}">${iconSrc ? `<img loading="lazy" decoding="async" src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : ''}</div>
-                            <div style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3')};">${dead ? '撃破' : `${remainPct.toFixed(0)}%`}</div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:7px;margin-top:11px;">
-                            <span style="font-size:17px;font-weight:900;color:#14161A;letter-spacing:0.4px;">B${b.boss_number}</span>
-                        </div>
-                        <div style="font-size:10px;color:#A4AAB0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(b.name || b.boss_code)}">${escapeHtml(b.name || b.boss_code)}</div>
-                        <div style="margin-top:7px;">${statusTag}</div>
-                        <div style="margin-top:11px;height:6px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
-                            <div class="dc-boss-bar" style="background:${barColor};width:${remainPct}%;"></div>
-                        </div>
-                        <div style="font-size:10px;font-variant-numeric:tabular-nums;color:#9AA0A6;margin-top:4px;">${remB.toFixed(2)} / ${totalB.toFixed(2)} B</div>
-                        <div style="margin-top:10px;display:flex;align-items:center;min-height:24px;">${avatarsHtml}</div>
-                        ${editPanel}
-                        <div style="display:flex;gap:6px;margin-top:10px;">
-                            <button onclick="handleOpsBossSummaryEdit(${b.boss_number})" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
-                            <button onclick="handleOpsFinishAttrPick('${b.weakness}')" ${dead ? 'disabled' : ''} title="${ptInfo ? `${ptInfo.name}PT で締め凸候補を検索` : '締め凸候補を検索'}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${dead ? '#F1F2F4' : c};color:${dead ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${dead ? 'not-allowed' : 'pointer'};">締凸検索</button>
-                        </div>
-                        ${(!dead && (_finishReqCache || []).some(r => r.boss_number === b.boss_number)) ? `
-                        <div style="margin-top:8px;padding:7px 9px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);">
-                            <div style="font-size:9px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:4px;">📣 締凸依頼中</div>
-                            ${(_finishReqCache || []).filter(r => r.boss_number === b.boss_number).map(r => {
-                                const st = _FINISH_REQ_STATUS[r.status] || _FINISH_REQ_STATUS.pending;
-                                return `<div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
-                                    <span style="flex:1;min-width:0;font-size:10.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.name)}</span>
-                                    <span style="flex:none;font-size:9px;font-weight:900;color:${st.color};background:${st.bg};padding:2px 7px;border-radius:999px;">${st.label}</span>
-                                </div>`;
-                            }).join('')}
-                        </div>` : ''}
-                    </div>`;
-            }).join('');
+            // 入力保護: 編集パネルが開いている / カード内で入力中 は innerHTML 全置換をやめ、
+            // 表示領域だけのターゲット更新に切り替える。旧実装はここで完全スキップしていた
+            // (= 編集中は盤面が固まる) が、ステップ4で「入力は守りつつ表示は更新」に改善
+            const editingPanelAlive = _opsBossEditingNum !== null && document.getElementById(`opsBossEditRem-${_opsBossEditingNum}`);
+            const typingInside = _userIsTyping() && el.contains(document.activeElement);
+            if (editingPanelAlive || typingInside) {
+                sorted.forEach(b => _patchOpsBossCard(el, b, coordsByBoss));
+                return;
+            }
+            el.innerHTML = sorted.map(b => _opsBossCardHtml(b, coordsByBoss)).join('');
         }
 
         function handleOpsBossSummaryEdit(bossNumber) {
