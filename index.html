@@ -5560,7 +5560,9 @@
             const currentId = getCurrentIdentity()?.id;
             list.innerHTML = filtered.map(p => {
                 const isCurrent = p.id === currentId;
-                return `<button class="player-select-item" onclick='selectPlayerFromModal(${p.id}, ${JSON.stringify(p.name)})' style="display:flex;align-items:center;gap:10px;text-align:left;${isCurrent ? 'background:var(--md-sys-color-primary-container);border-color:var(--md-sys-color-primary);' : ''}">${renderAvatarHtml(p, 32)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</span>${isCurrent ? '<span>✓</span>' : ''}</button>`;
+                // ⚠ onclick はダブルクォート属性 + jsonAttr 必須。旧実装はシングルクォート属性に
+                // 生の JSON.stringify を埋めており、名前に ' を含むと属性を脱出できた (保存型XSS/P0)
+                return `<button class="player-select-item" onclick="selectPlayerFromModal(${Number(p.id)}, ${jsonAttr(p.name)})" style="display:flex;align-items:center;gap:10px;text-align:left;${isCurrent ? 'background:var(--md-sys-color-primary-container);border-color:var(--md-sys-color-primary);' : ''}">${renderAvatarHtml(p, 32)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</span>${isCurrent ? '<span>✓</span>' : ''}</button>`;
             }).join('');
         }
         function selectPlayerFromModal(id, name) {
@@ -14424,7 +14426,7 @@
                         </div>
                         <div style="flex:1;text-align:center;background:#fff;border:1px solid rgba(20,22,26,0.05);border-radius:10px;padding:9px 6px;">
                             <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:#B6BBC1;white-space:nowrap;">アバター</div>
-                            <div style="font-size:11px;font-weight:800;color:#14161A;margin-top:5px;">${p.avatar_character || (p.avatar_url ? 'アップ済' : '未設定')}</div>
+                            <div style="font-size:11px;font-weight:800;color:#14161A;margin-top:5px;">${escapeHtml(p.avatar_character || (p.avatar_url ? 'アップ済' : '未設定'))}</div>
                         </div>
                         <div style="flex:1;text-align:center;background:#fff;border:1px solid rgba(20,22,26,0.05);border-radius:10px;padding:9px 6px;">
                             <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:#B6BBC1;white-space:nowrap;">状態</div>
