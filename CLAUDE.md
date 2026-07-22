@@ -40,6 +40,12 @@ rm -f .claude/hooks/.codex-on      # OFF
   ここが唯一の置き場所。画面側は `weaknessPtOf(boss)` / `bossAttributeOf(boss)` /
   `normalizeAttrKey(v)` を使う — **相性表を画面に再定義しないこと** (DB書き込み側の発生源は
   supabaseCreateSeason の COUNTER のみ)
+- **js/domain/** (fururi/ocr/finish/format) — ふるり値計算・OCR後処理・締め凸候補選別・
+  ダメージ整形の純ロジック (リアーキ ステップ2)。全て引数渡し・テストあり。
+  該当領域の計算式を index.html に書き足さないこと
+- **js/state/opsStore.js** — 運営ダッシュボード盤面 {season,bosses,players} の単一ストア
+  (リアーキ ステップ3)。**直接代入・部分書き換え禁止** — get/load/isStale/invalidate/
+  patchBosses/patchPlayer を使う。TTL等の不変条件はファイル冒頭に記載
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
   バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
   凸プラン配信 (📤) は `17_published_plans.sql`、戦闘可能時間の運用オプション

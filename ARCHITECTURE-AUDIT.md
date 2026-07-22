@@ -124,9 +124,20 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > 「触った機会に formatDomain へ寄せる + 新規は必ず formatDomain」の方針
    > (一括置換は差分が大きく表示退行リスクに見合わない)。
 
-3. **`_opsDashboardCache` を単一ストア＋Repositoryへ置換**
+3. **`_opsDashboardCache` を単一ストア＋Repositoryへ置換** — **✅ 完了 (2026-07-22)**
    `load/refresh/invalidate` と更新イベントを一箇所に集約。画面はselector経由で読む、書き手はミューテーション経由のみ。
    **完了条件**: `_opsDashboardCache` への直接代入・直接部分更新がゼロになる。
+   > 実施内容: `js/state/opsStore.js` 新設 (get / load / isStale / invalidate /
+   > patchBosses / patchPlayer)。旧 `_opsDashboardCache`/`_opsDashboardCacheAt` の
+   > 全52箇所を移行し**出現ゼロを機械確認** (無効化21 / 読み取り17 / 全量ロード2 /
+   > ポーリング部分更新1 / SLv即時反映1 / 宣言 / TTL判定)。
+   > 移行前に全50行の使用箇所調査を行い**不変条件9つ**を特定して保存
+   > (opsタブは毎回全量ロード / プランのみ60秒TTL / patchBosses はTTL時刻を進めない /
+   > load失敗時は旧データ保持 / 入力中ガードは描画層に残置 等 — opsStore.js 冒頭に記載)。
+   > ストア契約はテスト5件で固定 (81 passed)。
+   > **残 (意図的スコープ外)**: subscribe/セレクタによる更新イベント層は見送り —
+   > 現行は「invalidate → 明示的に再描画呼び出し」の定型で挙動維持を優先した。
+   > `_activeSeasonCache` (二重キャッシュ・無効化12/21箇所のみ連動) の統合は次の課題。
 
 4. **運営画面をイベント委譲＋ターゲット更新へ**
    `onclick`文字列をコンテナのclickハンドラ(`data-action`)へ寄せ、入力中カードは全置換せず値・表示領域だけ更新。

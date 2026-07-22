@@ -30,6 +30,7 @@
     <script defer src="./js/domain/ocr.js"></script>
     <script defer src="./js/domain/finish.js"></script>
     <script defer src="./js/domain/format.js"></script>
+    <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
     <style>
 
@@ -5362,7 +5363,7 @@
             try {
                 // 主要キャッシュをクリア
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 _myTodayAttacksCache = null;
                 if (typeof _allPlayersCache !== 'undefined') _allPlayersCache = null;
                 if (typeof _nikkeCharsCache !== 'undefined') _nikkeCharsCache = null;
@@ -6095,10 +6096,7 @@
                 // 既存キャッシュにも反映 (最適プラン/レーダー/ランキングへ即時反映)
                 const cd = (typeof currentData !== 'undefined' ? currentData : []).find(p => p.player === id.name);
                 if (cd) cd.syncLevel = val;
-                if (_opsDashboardCache) {
-                    const op = (_opsDashboardCache.players || []).find(p => p.id === id.id);
-                    if (op) { op.syncLevel = val; op.syncLevelEstimated = false; }
-                }
+                opsStore.patchPlayer(id.id, { syncLevel: val, syncLevelEstimated: false });
                 closeMySlvModal();
                 showNotification(`⚡ SLv を ${val} に更新しました`);
                 if (_myRadarLastIdentity && typeof renderMyFururiRadar === 'function') {
@@ -6332,7 +6330,7 @@
             const notifyAllHours = !!document.getElementById('myAvailNotifyAll')?.checked;
             try {
                 await window.supabaseUpdateAvailabilityPrefs(id.id, { flexTime, notifyAllHours });
-                _opsDashboardCache = null;   // プラン算出に即反映
+                opsStore.invalidate();   // プラン算出に即反映
                 if (msg) { msg.style.color = '#18C26B'; msg.textContent = '✅ 設定を保存しました'; }
             } catch (e) {
                 if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
@@ -6621,7 +6619,7 @@
             if (!confirm('編成② (2編成目) を削除しますか？')) return;
             try {
                 await window.supabaseDeletePlayerDamageSlot(id.id, _myTeamEditAttr, 2);
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 _myDmgPanelSlots[_myTeamEditAttr] = 1;
                 await renderMyDamagePanels(id);
                 handleMyTeamEdit(_myTeamEditAttr, 1);
@@ -7569,7 +7567,7 @@
                 if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                 const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
                 setMsg(`✅ ${ptName}PT 編成${_myTeamEditSlot === 2 ? '②' : '①'} を更新: ${parts.join(' / ') || '空'}`);
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 await renderMyDamagePanels(id);
                 setTimeout(() => closeMyTeamEditModal(), 700);
             } catch (e) {
@@ -7636,8 +7634,8 @@
                 const fromCurrent = (currentData || []).find(p => p.player === identity.name);
                 if (fromCurrent && fromCurrent.syncLevel > 0) {
                     slv = fromCurrent.syncLevel;
-                } else if (_opsDashboardCache) {
-                    const fromOps = (_opsDashboardCache.players || []).find(p => p.id === identity.id);
+                } else if (opsStore.get()) {
+                    const fromOps = (opsStore.get().players || []).find(p => p.id === identity.id);
                     if (fromOps && fromOps.syncLevel > 0) {
                         slv = fromOps.syncLevel;
                         slvEstimated = !!fromOps.syncLevelEstimated;
@@ -8073,7 +8071,7 @@
             try {
                 await window.supabaseUpdatePlayerStrongAttrs(id.id, next);
                 if (me) me.strong_attributes = next;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 if (msg) { msg.textContent = `✅ 得意属性 ${next.length} 件で保存しました`; msg.style.color = '#22c55e'; }
                 renderMyStrongAttrs(id);
                 renderMypageStrongAttrsBadge(id);   // プロフィール側バッジも即時同期
@@ -8558,7 +8556,7 @@
                 _renderCoordSelf(identity);
                 _renderCoordActiveList(identity);
                 // ボス状況カードの「戦闘中」アニメも10秒毎に同期
-                if (typeof renderOpsBossSummary === 'function' && _opsDashboardCache) {
+                if (typeof renderOpsBossSummary === 'function' && opsStore.get()) {
                     renderOpsBossSummary();
                 }
                 // マイページの「次の凸」も同期
@@ -8741,16 +8739,17 @@
                 _refreshFinishRequests().then(() => {
                     const myId = getCurrentIdentity();
                     if (myId?.id && typeof renderMyFinishRequestBanner === 'function') renderMyFinishRequestBanner(myId);
-                    if (document.getElementById('tab-ops')?.classList.contains('active') && _opsDashboardCache) renderOpsBossSummary();
+                    if (document.getElementById('tab-ops')?.classList.contains('active') && opsStore.get()) renderOpsBossSummary();
                 });
                 const id = getCurrentIdentity();
                 if (!id?.id) return;
                 _refreshCoordOnce(id);
                 _coordPollTick = (_coordPollTick + 1) % 3;
-                if (_coordPollTick === 0 && _opsDashboardCache?.season) {
+                if (_coordPollTick === 0 && opsStore.get()?.season) {
                     window.supabaseLoadActiveSeasonWithBosses().then(r => {
-                        if (r?.season && _opsDashboardCache?.season && r.season.id === _opsDashboardCache.season.id) {
-                            _opsDashboardCache.bosses = r.bosses;
+                        // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
+                        // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
+                        if (r?.season && opsStore.patchBosses(r.season.id, r.bosses)) {
                             if (_activeSeasonCache?.season?.id === r.season.id) _activeSeasonCache.bosses = r.bosses;
                             renderOpsBossSummary();
                         }
@@ -9683,7 +9682,7 @@
                 _myAttackOcrCharacters = null;
                 _myAttackTeamSlots = ['', '', '', '', ''];
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 // 一覧再読み込み
                 _myTodayAttacksCache = null;
                 await renderMyAttacks(id);
@@ -9813,7 +9812,7 @@
                 setMsg(`✅ ${ok}凸登録${fail > 0 ? ` / ⚠️ ${fail}件失敗` : ''}`);
                 _myTodayAttacksCache = null;
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 await renderMyAttacks(id);
                 setTimeout(() => closeMyBulkAttackModal(), 1200);
             } catch (e) {
@@ -9931,7 +9930,7 @@
                 await window.supabaseDeleteAttack(attackId);
                 _myTodayAttacksCache = null;
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 await renderMyAttacks(id);
                 showNotification(`${attackNumber}凸目を削除しました`);
             } catch (e) {
@@ -10952,9 +10951,9 @@
         }
 
         // ========== 運営ダッシュボード (Phase 3a) ==========
-        let _opsDashboardCache = null;
+        // 盤面キャッシュ { season, bosses, players } は js/state/opsStore.js に移行 (リアーキ ステップ3)。
+        // 直接代入・部分書き換えは禁止 — get/load/isStale/invalidate/patchBosses/patchPlayer を使う
         let _opsCurrentAttr = null;
-        let _opsDashboardCacheAt = 0;   // プラン算出の鮮度保証用 (最終取得時刻)
 
         async function renderOpsDashboard() {
             const labelEl = document.getElementById('opsSeasonLabel');
@@ -10971,15 +10970,14 @@
             remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
 
             try {
-                _opsDashboardCache = await window.supabaseLoadOpsDashboardData();
-                _opsDashboardCacheAt = Date.now();
+                await opsStore.load();
             } catch (e) {
                 labelEl.textContent = '取得失敗';
                 remListEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
 
-            const { season, bosses, players } = _opsDashboardCache;
+            const { season, bosses, players } = opsStore.get();
             const testBanner = document.getElementById('opsTestBanner');
             if (!season) {
                 labelEl.textContent = '（アクティブシーズン無し）';
@@ -11020,7 +11018,7 @@
             try {
                 const r = await window.supabaseQuickCreateTestSeason();
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
                 const atkInfo = r.attackSeed?.attacks > 0 ? ` / ${r.attackSeed.players}名が計${r.attackSeed.attacks}凸済み` : '';
                 showNotification(`✅ ${r.month_key} を作成しました${seedTotal > 0 ? ` (模擬戦 ${seedTotal}件シード${atkInfo})` : ''}`);
@@ -11035,7 +11033,7 @@
             try {
                 const r = await window.supabaseDeleteActiveTestSeason();
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 const extra = r.charsRemoved > 0 ? ` / キャラマスタ ${r.charsRemoved}件 削除` : '';
                 showNotification(`テストシーズンを削除しました${r.restoredKey ? ` (${r.restoredKey} を復元)` : ''}${extra}`);
                 await renderOpsDashboard();
@@ -11045,7 +11043,7 @@
         }
 
         async function reloadOpsDashboard() {
-            _opsDashboardCache = null;
+            opsStore.invalidate();
             await renderOpsDashboard();
         }
 
@@ -11103,8 +11101,8 @@
         }
 
         function renderOpsRemainingList() {
-            if (!_opsDashboardCache) return;
-            const { players, bosses } = _opsDashboardCache;
+            if (!opsStore.get()) return;
+            const { players, bosses } = opsStore.get();
             const listEl = document.getElementById('opsRemainingList');
             const summaryEl = document.getElementById('opsRemainingSummary');
             // シーズンのボス順 (B1→B5) に対応する属性順で列を並べる (ボス状況カードと照合しやすく)
@@ -11434,8 +11432,8 @@
             const sumEl = document.getElementById('opsBossSummary');
             if (sumEl && _userIsTyping() && sumEl.contains(document.activeElement)) return;
             renderOpsStatusOverview();   // ボス状況更新と同タイミングで概況も更新
-            if (!_opsDashboardCache) return;
-            const { season, bosses } = _opsDashboardCache;
+            if (!opsStore.get()) return;
+            const { season, bosses } = opsStore.get();
             const el = document.getElementById('opsBossSummary');
             const lvEl = document.getElementById('opsBossSummaryLevel');
             if (!el) return;
@@ -11578,7 +11576,7 @@
                     await window.supabaseUpdateBossName(ctx.season.id, bossNumber, newName);
                 }
                 _opsBossEditingNum = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 _activeSeasonCache = null;
                 await renderOpsDashboard();
                 showNotification('ボス情報を更新しました');
@@ -11607,8 +11605,8 @@
         }
 
         function renderOpsFinishList(attrKey) {
-            if (!_opsDashboardCache) return;
-            const { bosses, players } = _opsDashboardCache;
+            if (!opsStore.get()) return;
+            const { bosses, players } = opsStore.get();
             const ptInfo = PT_ATTRS.find(x => x.key === attrKey);
             const boss = bosses.find(b => b.weakness === attrKey);
             const listEl = document.getElementById('opsFinishList');
@@ -11844,7 +11842,7 @@
                 showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
                 // 依頼ステータスの追跡を開始 (確認中として記録 → ボスカードに表示)
                 try {
-                    const seasonId = _opsDashboardCache?.season?.id;
+                    const seasonId = opsStore.get()?.season?.id;
                     if (seasonId) {
                         await window.supabaseSetFinishRequests(seasonId, ctx.boss.boss_number, ids);
                         await _refreshFinishRequests();
@@ -11870,7 +11868,7 @@
                 showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
                 // 依頼ステータスの追跡を開始
                 try {
-                    const seasonId = _opsDashboardCache?.season?.id;
+                    const seasonId = opsStore.get()?.season?.id;
                     if (seasonId) {
                         await window.supabaseSetFinishRequests(seasonId, ctx.boss.boss_number, playerIds);
                         await _refreshFinishRequests();
@@ -12402,8 +12400,8 @@
             }
         }
         function computeOptimalPlan(options = {}) {
-            if (!_opsDashboardCache) return null;
-            const { season, bosses, players } = _opsDashboardCache;
+            if (!opsStore.get()) return null;
+            const { season, bosses, players } = opsStore.get();
             return window.computeOptimalPlanCore({
                 season, bosses, players,
                 // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン
@@ -12420,11 +12418,10 @@
             // 鮮度保証: プランは常に「押した時点」の盤面で組む。
             // キャッシュが60秒より古ければ、凸・ボスHP・メンバー状態を取り直してから算出する
             // (当日の不測の事態→再算出、の流れで古い盤面を使わないための保険)
-            if (!_opsDashboardCache || (Date.now() - _opsDashboardCacheAt) > 60_000) {
+            if (opsStore.isStale(60_000)) {
                 el.innerHTML = '<p style="font-size:12px;color:#8A9097;">📡 最新の盤面を取得中…</p>';
                 try {
-                    _opsDashboardCache = await window.supabaseLoadOpsDashboardData();
-                    _opsDashboardCacheAt = Date.now();
+                    await opsStore.load();
                 } catch (e) {
                     el.innerHTML = `<p style="font-size:13px;color:#ef4444;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
                     return;
@@ -12997,7 +12994,7 @@
                 ? `✅ ${ok}ボス保存完了`
                 : `⚠️ ${ok}保存 / ${fail}失敗: ${errs.join(', ')}`;
             msg.style.color = fail === 0 ? '#22c55e' : '#f59e0b';
-            _opsDashboardCache = null;
+            opsStore.invalidate();
             _activeSeasonCache = null;
             await renderOpsDashboard();
 
@@ -13013,8 +13010,8 @@
         // HP更新後: 締め凸候補が出ている属性があれば運営にPush送信を促す
         async function offerFinishPushAfterHpUpdate() {
             try {
-                if (!_opsDashboardCache) return;
-                const { bosses, players } = _opsDashboardCache;
+                if (!opsStore.get()) return;
+                const { bosses, players } = opsStore.get();
                 // 各属性ごとに 残HP小さい順 で候補を出し、HP内で削れる人がいるものをピックアップ
                 // ボス番号 → 弱点(PT属性) のマップ。各メンバーの使用済み属性を判定
                 const bossWeaknessByNum = new Map();
@@ -13089,7 +13086,7 @@
                 await window.supabaseUpdateBossHp(seasonId, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
                 msg.textContent = `✅ B${bossNumber} のHPを更新しました`;
                 msg.style.color = '#22c55e';
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 _activeSeasonCache = null;
                 // 運営ダッシュボードの締め凸候補等を再描画
                 renderOpsDashboard();
@@ -13329,7 +13326,7 @@
                     }, proxyOpts);
                     set(`✅ 代理凸を登録しました (${memberName})${hpDecrement ? '' : ' — HPは減算していません。ボスHP更新を忘れずに'}`);
                 }
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 setTimeout(() => closeOpsProxyAttackModal(), 900);
                 renderOpsDashboard();
             } catch (e) {
@@ -13631,7 +13628,7 @@
                 await window.supabaseUpdateAttackDamage(attackId, Math.round(newB * 1e9));
                 msg.textContent = `✅ ダメージを ${newB} B に更新しました`;
                 msg.style.color = '#22c55e';
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 await reloadOpsAttacksList();
                 renderOpsDashboard();
             } catch (e) {
@@ -13646,7 +13643,7 @@
                 await window.supabaseDeleteAttack(attackId);
                 msg.textContent = `🗑️ ${playerName} の ${attackNumber}凸目 を削除しました`;
                 msg.style.color = '#22c55e';
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 await reloadOpsAttacksList();
                 renderOpsDashboard();
             } catch (e) {
@@ -13943,7 +13940,7 @@
                 const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest });
                 set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました`);
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 setTimeout(() => closeOpsSeasonCreateModal(), 1200);
                 renderOpsDashboard();
             } catch (e) {
@@ -13960,7 +13957,7 @@
             try {
                 await window.supabaseEndActiveSeason(ur);
                 _activeSeasonCache = null;
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 showNotification(`シーズン ${ctx.season.month_key} を終了しました`);
                 renderOpsDashboard();
             } catch (e) {
@@ -13973,7 +13970,7 @@
             if (!confirm('本当によろしいですか？全メンバーがマイページでダメージを再登録する必要があります。')) return;
             try {
                 await window.supabaseResetAllDamages();
-                _opsDashboardCache = null;
+                opsStore.invalidate();
                 showNotification('ダメージ登録を全件リセットしました');
                 renderOpsDashboard();
             } catch (e) {
@@ -16568,7 +16565,7 @@
             }
             try {
                 if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache(name);
-                if (name === 'ops') { _activeSeasonCache = null; _opsDashboardCache = null; }
+                if (name === 'ops') { _activeSeasonCache = null; opsStore.invalidate(); }
                 _renderTabContent(name);
             } catch (e) { console.warn('[PTR]', e?.message || e); }
             setTimeout(() => {

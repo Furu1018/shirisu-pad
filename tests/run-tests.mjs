@@ -9,6 +9,7 @@ import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ 
 import '../js/domain/ocr.js';          // globalThis.ocrDomain (リアーキ ステップ2)
 import '../js/domain/finish.js';       // globalThis.finishDomain (リアーキ ステップ2)
 import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ ステップ2)
+import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 
 const compute = globalThis.computeOptimalPlanCore;
 const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain, ocrDomain, finishDomain, formatDomain } = globalThis;
@@ -1288,6 +1289,85 @@ test('rawToB / formatDamageRaw / trimZeroB', () => {
     assert.equal(formatDomain.trimZeroB(0), '0');
     assert.equal(formatDomain.trimZeroB(null), '');
 });
+
+// ---- 状態ストア: opsStore (js/state/opsStore.js — リアーキ ステップ3) ----------
+console.log('\nstate/opsStore:');
+
+// 非同期テスト用の小さなランナー (既存 test() は同期専用のため)
+async function testAsync(name, fn) {
+    try {
+        await fn();
+        passed++;
+        console.log(`  ✅ ${name}`);
+    } catch (e) {
+        failed++;
+        console.error(`  ❌ ${name}`);
+        console.error(`     ${e.message}`);
+    }
+}
+
+const opsStore = globalThis.opsStore;
+await testAsync('load/get/invalidate: 基本契約 (未ロードは null・invalidate 後も null)', async () => {
+    let calls = 0;
+    opsStore.configure({ load: async () => { calls++; return { season: { id: 1 }, bosses: [], players: [] }; } });
+    opsStore.invalidate();
+    assert.equal(opsStore.get(), null, '未ロードは null (例外を投げない)');
+    const d = await opsStore.load();
+    assert.equal(d.season.id, 1);
+    assert.equal(opsStore.get(), d);
+    opsStore.invalidate();
+    assert.equal(opsStore.get(), null);
+    assert.equal(calls, 1);
+});
+
+await testAsync('isStale: 60秒TTL 相当の判定 (未ロード=常に古い / 部分patchでは若返らない)', async () => {
+    opsStore.configure({ load: async () => ({ season: { id: 7 }, bosses: [{ n: 1 }], players: [] }) });
+    opsStore.invalidate();
+    assert.equal(opsStore.isStale(60_000), true, '未ロードは stale');
+    await opsStore.load();
+    const now = Date.now();
+    assert.equal(opsStore.isStale(60_000, now + 1_000), false, 'ロード直後は fresh');
+    assert.equal(opsStore.isStale(60_000, now + 61_000), true, '60秒超で stale');
+    // 不変条件4: patchBosses は全量ロード時刻を進めない → stale 判定は変わらない
+    assert.equal(opsStore.patchBosses(7, [{ n: 2 }]), true);
+    assert.equal(opsStore.get().bosses[0].n, 2, 'bosses は差し替わる');
+    assert.equal(opsStore.isStale(60_000, now + 61_000), true, 'patch してもプランTTLは古いまま');
+});
+
+await testAsync('patchBosses: シーズン不一致・未ロードでは何もしない', async () => {
+    opsStore.configure({ load: async () => ({ season: { id: 7 }, bosses: [{ n: 1 }], players: [] }) });
+    opsStore.invalidate();
+    assert.equal(opsStore.patchBosses(7, [{ n: 9 }]), false, '未ロード時は false');
+    await opsStore.load();
+    assert.equal(opsStore.patchBosses(8, [{ n: 9 }]), false, '別シーズンは差し替えない');
+    assert.equal(opsStore.get().bosses[0].n, 1, '中身は不変');
+});
+
+await testAsync('patchPlayer: 該当者のみ部分更新・未ロード/不在は false', async () => {
+    opsStore.configure({ load: async () => ({ season: { id: 1 }, bosses: [], players: [{ id: 'a', syncLevel: 100 }, { id: 'b', syncLevel: 200 }] }) });
+    opsStore.invalidate();
+    assert.equal(opsStore.patchPlayer('a', { syncLevel: 500 }), false, '未ロード時は false');
+    await opsStore.load();
+    assert.equal(opsStore.patchPlayer('a', { syncLevel: 500, syncLevelEstimated: false }), true);
+    assert.equal(opsStore.get().players[0].syncLevel, 500);
+    assert.equal(opsStore.get().players[1].syncLevel, 200, '他は不変');
+    assert.equal(opsStore.patchPlayer('zzz', { syncLevel: 1 }), false);
+});
+
+await testAsync('load 失敗時は既存データを保持する (旧実装と同じ: 代入前に throw)', async () => {
+    let fail = false;
+    opsStore.configure({ load: async () => { if (fail) throw new Error('network'); return { season: { id: 1 }, bosses: [], players: [] }; } });
+    opsStore.invalidate();
+    await opsStore.load();
+    fail = true;
+    await assert.rejects(() => opsStore.load());
+    assert.ok(opsStore.get(), '失敗しても前回の盤面が残る');
+    assert.equal(opsStore.get().season.id, 1);
+});
+
+// 後続テストが本物のローダに触らないよう既定へ戻す
+opsStore.configure({});
+opsStore.invalidate();
 
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
