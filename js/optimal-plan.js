@@ -5,17 +5,104 @@
 // DOM・Supabase・グローバル状態に依存しないため node で単体テストできる:
 //   node tests/run-tests.mjs
 //
-// 入力: {
-//   season:  { current_level },
-//   bosses:  [{ boss_number, boss_code, name, attribute, weakness, tier,
-//               total_hp_raw, remaining_hp_raw }],
-//   players: [{ id, name, attackCount, syncLevel, syncLevelEstimated,
-//               damagesByAttr, teamsByAttr, attacks, availableSlots,
-//               strong_attributes }],   // 得意属性: 1-3個=必ず消化 / 4個=その中からのみ / 0・5個=制約なし
-//   currentSlot: 'h21' など (onlyAvailableNow 時のフィルタに使用),
-//   onlyAvailableNow: boolean,
-//   timeAware: boolean,       // true なら凸可能時間を使って時間帯スケジュールを組む
-// }
+// 入出力の形は下記 typedef が正 (リアーキ ステップ1 — ARCHITECTURE-AUDIT.md §4-1)。
+// フィールドを足し引きしたら typedef も必ず更新し、tests/run-tests.mjs で固定すること。
+//
+/**
+ * @typedef {Object} BossRow                DB bosses 行 (supabaseLoadActiveSeasonWithBosses が供給)
+ * @property {number} boss_number           1..5
+ * @property {string} boss_code
+ * @property {string=} name
+ * @property {string} attribute             ボス自身の属性 (表示基準 — js/domain/attributes.js 参照)
+ * @property {string} weakness              弱点 = 持っていくPT属性 (凸・編成基準)
+ * @property {'lord'|'tyrant'} tier         lord=低HP(B1/B2/B4) / tyrant=高HP(B3/B5)。heretic は呼び出し側で tyrant に正規化済み
+ * @property {number} total_hp_raw          raw値 (1B = 1e9)
+ * @property {number} remaining_hp_raw
+ *
+ * @typedef {Object} PlayerInput
+ * @property {*} id
+ * @property {string} name
+ * @property {number} attackCount           本日の消化済み凸数 (0..3)
+ * @property {number=} syncLevel
+ * @property {boolean=} syncLevelEstimated  SLv が近傍推定値なら true
+ * @property {Object<string, number>} damagesByAttr    PT属性→ベストダメージ(B)。旧形式フォールバック
+ * @property {Object<string, string[]>=} teamsByAttr   PT属性→編成5キャラ名
+ * @property {Object<string, {dmgB:number, team:string[], slot:number}[]>=} loadoutsByAttr  1属性2編成 (slot=1|2)
+ * @property {{boss_number:number}[]=} attacks         本日の凸履歴 (属性消費の逆引き用)
+ * @property {string[]=} availableSlots     戦闘可能時間 'h05'..'h28'
+ * @property {boolean=} flexTime            ⏳隙間時間型
+ * @property {string[]=} strong_attributes  得意属性: 1-3個=必ず消化 / 4個=その中からのみ / 0・5個=制約なし
+ *
+ * @typedef {Object} PlanInput
+ * @property {{current_level:number}} season
+ * @property {BossRow[]} bosses
+ * @property {PlayerInput[]} players
+ * @property {string=} currentSlot          'h21' など (時間起点 / onlyAvailableNow のフィルタ)
+ * @property {boolean=} onlyAvailableNow
+ * @property {boolean=} timeAware
+ *
+ * @typedef {Object} PlanAttack             プラン内の1凸 (出力)
+ * @property {*} memberId
+ * @property {string} memberName
+ * @property {number} slv
+ * @property {boolean} slvEstimated
+ * @property {number} dmgB                  この編成のベストダメージ (B)
+ * @property {number} usedB                 実際にスコアへ入る分 = min(dmgB, 残HP)。無限ボスは dmgB 全額
+ * @property {number} overflowB             オーバーキル (usedB との差)
+ * @property {string[]|null} team           編成5キャラ (未登録なら null = 衝突未検出の警告表示)
+ * @property {number|null} hourIdx          凸予定の時間帯 index (timeAware時)
+ * @property {string|null} hourLabel        '21時' 等。⏳flex は時刻を約束しないので null
+ * @property {boolean} flex                 ⏳隙間割当 (時刻未確約)
+ * @property {boolean} timeUnknown          戦闘可能時間 未登録
+ * @property {boolean} timeMismatch         開放時刻に出られずベストエフォート組み込み
+ * @property {string|null} nearestHourLabel timeMismatch 時の最寄り希望時刻
+ * @property {number} loadoutSlot           使用編成 (1|2)
+ * @property {boolean} isBottleneck         レベルのクリア時刻を決める律速凸
+ * @property {boolean=} reserved            🔒温存 (踏破に使わずボス5(無限)へ回した)
+ *
+ * @typedef {Object} PlanBoss
+ * @property {number} bossNumber
+ * @property {string} name
+ * @property {string} weakness
+ * @property {string} attribute
+ * @property {string} tier
+ * @property {boolean=} infinite            Lv4 ボス5 (HP無限・全額計上)
+ * @property {number} targetHpB             目標HP (B)。infinite は 0 (Infinity は📤配信のJSONBで壊れるため使わない)
+ * @property {number} remainingHpB          割当後の残 (B)
+ * @property {boolean} cleared
+ * @property {number=} creditedB            infinite: 入る与ダメ合計
+ * @property {number=} absorbedB            フロンティア吸収レベル: 削った量 (撃破は狙わない)
+ * @property {PlanAttack[]} attacks
+ * @property {number|null} clearHourIdx
+ * @property {string|null} clearHourLabel
+ * @property {boolean} hasFlex
+ * @property {boolean} timeConstrained      火力はあるが時間内に凸できる人がいない
+ *
+ * @typedef {Object} PlanLevel
+ * @property {number} level                 1..3 / 4=ボス5無限
+ * @property {boolean=} infinite
+ * @property {boolean} levelCleared
+ * @property {PlanBoss[]} bosses
+ * @property {number|null} openHourIdx      このレベルが開く想定時間帯
+ * @property {string|null} openHourLabel
+ * @property {number|null} clearHourIdx
+ * @property {string|null} clearHourLabel
+ * @property {boolean} hasFlex
+ *
+ * @typedef {Object} Plan                   computeOptimalPlanCore の戻り値 (📤配信でJSONBにそのまま保存される
+ *                                          — 数値は必ず有限に保つこと。他フィールドは末尾 return 文を参照)
+ * @property {number} startLevel
+ * @property {number} fullyClearedThrough   何レベルまで完全攻略想定か (最大3 — Lv4 は lv4Open で表現)
+ * @property {PlanLevel[]} levels
+ * @property {boolean} lv4Open              Lv3踏破 → ボス5(無限) が開く想定
+ * @property {string|null} lv4Weakness
+ * @property {number|null} frontierLevel    踏破できず吸収割当に切替えたレベル
+ * @property {number} totalCreditedB        総与ダメ想定 (credited)
+ * @property {number} lv4CreditedB
+ * @property {number|null} baselineCreditedB 温存なし(probe)の credited
+ * @property {number} reserveGainB          温存で増えた分
+ * @property {boolean} reservePassUsed
+ */
 //
 // === 時間考慮モード (timeAware) の考え方 ===
 // レイド日は AM5時〜翌AM5時。レベル L+1 は レベル L の5体全滅後にしか殴れない。
