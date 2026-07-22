@@ -12,7 +12,10 @@
 //     {season:null, bosses:[]} を**キャッシュして**返す (次の invalidate まで再試行しない)
 //  2. supabase モジュール未ロード (関数未定義) のときは null を返し、キャッシュしない
 //  3. ポーリングの patchBosses はシーズン一致時のみ・部分差し替え
-//  4. invalidate() は進行中の ensure() の結果も破棄する (opsStore と同じ世代ガード)
+//  4. invalidate() は進行中の ensure() の結果を破棄し、**最新世代で取り直してから返す**
+//     (古いシーズンを呼び出し元に渡さない — 凸書き込みの宛先になるため。
+//      opsStore.load() の「スナップショットを返す」契約とは意図的に異なる: あちらの
+//      呼び出し元は描画のみで、無効化した側が必ず再描画を呼ぶ定型があるため)
 //
 // optimal-plan.js と同じ規約: IIFE + root 直付け。DOM 非依存で node からテスト可能:
 //   node tests/run-tests.mjs
@@ -32,22 +35,32 @@
         /**
          * キャッシュがあれば返し、無ければロードする (旧 ensureActiveSeasonLoaded と同一挙動)。
          * 失敗時は {season:null,bosses:[]} をキャッシュ (不変条件1)。ローダ未定義なら null (同2)。
+         * 応答待ち中に invalidate されたら、古い結果は呼び出し元にも渡さず**最新世代で取り直す**
+         * (Codex レビュー指摘: ensure() の呼び出し元はシーズンIDで凸を書き込むため、
+         *  無効化前のシーズンを返すと古いシーズンへの書き込みになり得る)。
          */
         async ensure() {
-            if (data) return data;
             const fn = loadFn || root.supabaseLoadActiveSeasonWithBosses;
-            if (typeof fn !== 'function') return null;
-            const gen = generation;
-            let fresh;
-            try {
-                fresh = await fn();
-            } catch (e) {
-                if (typeof console !== 'undefined') console.warn('[seasonStore] アクティブシーズン取得失敗:', e);
-                fresh = { season: null, bosses: [] };
+            // 取り直しは実用上1〜2回で収束する (invalidate はユーザー操作起点)。
+            // 上限は無限ループ保険で、超えたら「取得不能」として null (呼び出し側は ?.season ガード済み)
+            for (let attempt = 0; attempt < 5; attempt++) {
+                if (data) return data;
+                if (typeof fn !== 'function') return null;
+                const gen = generation;
+                let fresh;
+                try {
+                    fresh = await fn();
+                } catch (e) {
+                    if (typeof console !== 'undefined') console.warn('[seasonStore] アクティブシーズン取得失敗:', e);
+                    fresh = { season: null, bosses: [] };
+                }
+                if (gen === generation) {
+                    if (!data) data = fresh;
+                    return data;
+                }
+                // 世代が進んだ = 応答待ち中に書き込み操作があった → 古い結果は捨てて取り直し
             }
-            // 応答待ち中に invalidate された場合は保存しない (無効化済みシーズンの復活防止)
-            if (gen === generation && !data) data = fresh;
-            return data || fresh;
+            return null;
         },
 
         /** 書き込み操作 (凸報告・HP更新・シーズン切替) 後の無効化 */

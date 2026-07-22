@@ -1434,20 +1434,30 @@ await testAsync('ensure: ローダ未定義なら null を返しキャッシュ�
     assert.equal(seasonStore.get(), null, 'キャッシュされない');
 });
 
-await testAsync('patchBosses / invalidate 中の ensure 破棄 (opsStore と同じ世代ガード)', async () => {
-    let release;
-    const gate = new Promise(r => { release = r; });
-    seasonStore.configure({ load: async () => { await gate; return { season: { id: 9 }, bosses: [{ n: 1 }] }; } });
+await testAsync('レース: invalidate 中の ensure は古い結果を返さず最新世代で取り直す', async () => {
+    // 呼び出し元はシーズンIDで凸を書き込むため、無効化前のシーズンを返してはいけない
+    // (Codex レビュー指摘)。opsStore.load() の「スナップショット返し」とは意図的に違う契約
+    const releases = [];
+    let calls = 0;
+    seasonStore.configure({ load: () => new Promise(r => { const id = ++calls; releases.push(() => r({ season: { id }, bosses: [] })); }) });
     seasonStore.invalidate();
-    const p = seasonStore.ensure();
-    seasonStore.invalidate();            // 応答待ち中に書き込み操作
-    release();
-    await p;
-    assert.equal(seasonStore.get(), null, '無効化済みシーズンは復活しない');
-    // patchBosses: シーズン一致のみ
+    const p = seasonStore.ensure();      // 1回目のロードが応答待ちに入る
+    seasonStore.invalidate();            // その間に書き込み操作 (シーズン切替など)
+    releases[0]();                       // 古いロードが完了 → 破棄され、取り直しが走るはず
+    while (releases.length < 2) await new Promise(r => setTimeout(r, 0));
+    releases[1]();                       // 取り直し (最新世代) が完了
+    const result = await p;
+    assert.equal(calls, 2, '最新世代で取り直している');
+    assert.equal(result.season.id, 2, '呼び出し元に返るのは取り直した最新の結果');
+    assert.equal(seasonStore.get().season.id, 2, 'ストアも最新世代');
+});
+
+await testAsync('patchBosses: シーズン一致のみ差し替え', async () => {
     seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });
+    seasonStore.invalidate();
     await seasonStore.ensure();
     assert.equal(seasonStore.patchBosses(8, [{ n: 9 }]), false);
+    assert.equal(seasonStore.get().bosses[0].n, 1, '不一致では触らない');
     assert.equal(seasonStore.patchBosses(9, [{ n: 2 }]), true);
     assert.equal(seasonStore.get().bosses[0].n, 2);
 });
