@@ -157,9 +157,21 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > **残**: 他の運営コンポーネント (残凸リスト・締め凸候補・代理凸・凸履歴等) の委譲化は
    > 個別に。入力を持たないため優先度は低い (触る機会に data-action へ寄せる)。
 
-5. **タブコントローラとジェスチャーを分離**
+5. **タブコントローラとジェスチャーを分離** — **🔄 進行中 (2026-07-22 Stage0 完了)**
    タブ状態・スクロール復元を1つのcontrollerに。スワイプ/PTR/bottom-navは「遷移要求」だけを出す。viewportに `maximum-scale=1` 等を入れてプルプルを構造的に封じ、`data-no-swipe` 必須を不変条件で担保。
    **完了条件**: タブ追加が「タブ定義1箇所への追加」だけで、CSS/スワイプ/PTRの個別修正なしに動く。
+   > 着手前に全容調査を実施 (switchTab の5責務とラッパ / タブ定義の散在14箇所 /
+   > スワイプ状態機械 / PTR / CSS結合点 / 不変条件10 / 4段階の刻み方 — 調査記録は本節末尾※)。
+   > **Stage0 完了**: タブ定義を `TAB_REGISTRY` (index.html 内・8タブ×6属性) に一元化。
+   > 5本の重複配列 (_SWIPE_TABS / _PTR_KNOWN_TABS / _TAB_RENDER_THRESHOLD_MS /
+   > プリレンダー / _BOTTOM_TAB_ORDER=参照ゼロで削除) と _renderTabContent の分岐を
+   > registry からの導出に置換。**全導出が旧リテラルと一致することを機械検証済み** (挙動不変)。
+   > **残 Stage**: 1=TabController 抽出 (switchTab+ラッパ+swipe-no-anim所有権の集約) /
+   > 2=ジェスチャ層を遷移要求のみに (fixed/transform の後始末一元化 + visibilitychange リーク防御) /
+   > 3=viewport maximum-scale + CSS のタブ列挙を属性セレクタ化 + data-no-swipe の dev assert。
+   > ※不変条件の要点: 除外セレクタはスワイプ/PTRで別物 / body overflow-x:clip にスワイプが依存
+   > (0170c7d) / swipe-no-anim は付与=finish・解除=switchTab非対象限定 (c8c208d) /
+   > switchTab の同期 scrollTo は同フレーム必須 / bottom-nav 同期は window.switchTab ラッパ経由のみ。
 
 **重要**: 1〜5はいずれも一括リライトではなく漸進切り出しで着手できる。各ステップ後もアプリは動く。既存の防御(`_myPubRenderSeq`, `chartRef`ガード, `_userIsTyping`)は正しいが横展開されていない＝ステップ3/4がそれを機構化する。
 

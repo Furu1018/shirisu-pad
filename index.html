@@ -5394,14 +5394,32 @@
         const _tabScrollY = {};
         // タブ毎の最終レンダリング時刻 — しきい値内ならスキップして「更新感」を出さない
         const _tabRenderedAt = {};
-        const _TAB_RENDER_THRESHOLD_MS = {
-            mypage: 30_000,      // 30秒
-            ops: 15_000,         // 15秒 (ボス HP/coord はポーリングで別途更新済)
-            ranking: 300_000,    // 5分 (月末のみ変動)
-            'slv-ranking': 300_000,
-            characters: 60_000,
-            settings: 30_000,
-        };
+
+        // ================= タブの単一定義 (リアーキ ステップ5 Stage0) =================
+        // タブの属性はここが唯一の置き場所。旧来 5本の配列 (_SWIPE_TABS / _PTR_KNOWN_TABS /
+        // _TAB_RENDER_THRESHOLD_MS / プリレンダー / _BOTTOM_TAB_ORDER) と _renderTabContent の
+        // 分岐に散在していたものを集約 — 派生配列は全てここから導出する。
+        //   name        : tab-content の id (tab-XXX) / data-tab と一致
+        //   render      : タブ表示時の描画関数 (null = 静的タブ or 専用経路)。サンクで遅延解決
+        //   swipe       : 横スワイプ切替の対象か (**この配列内の並び順がスワイプの隣接順**)
+        //   prerender   : 起動時ウォームアップの対象か
+        //   ptr         : プル・トゥ・リフレッシュで個別再描画するか (false = location.reload)
+        //   renderTtlMs : 再描画スキップのしきい値 (null = 既定30秒)
+        // ※ タブ追加時に必要な残作業 (HTML: tab-content div / bottom-nav / tab-button / drawer、
+        //    CSS: マーブル背景・.container 列挙) は Stage3 で削減予定 — 現状は併せて追加すること
+        const TAB_REGISTRY = [
+            { name: 'mypage',       render: () => renderMyPage(),                  swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },
+            { name: 'ops',          render: () => renderOpsDashboard(),            swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 15_000 },   // ボスHP/coordはポーリングで別途更新
+            { name: 'ranking',      render: null,                                  swipe: true,  prerender: true,  ptr: false, renderTtlMs: 300_000 },  // 描画/PTRとも専用経路 (autoLoadData)
+            { name: 'slv-ranking',  render: () => renderFururiRanking(),           swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 300_000 },
+            { name: 'characters',   render: () => updateTeamCompositionsDisplay(), swipe: false, prerender: false, ptr: true,  renderTtlMs: 60_000 },
+            { name: 'help',         render: null,                                  swipe: false, prerender: false, ptr: false, renderTtlMs: null },     // 静的
+            { name: 'member-admin', render: () => renderMemberAdminPage(),         swipe: false, prerender: false, ptr: true,  renderTtlMs: null },
+            { name: 'settings',     render: () => renderSettingsTab(),             swipe: true,  prerender: false, ptr: true,  renderTtlMs: 30_000 },
+        ];
+        const _tabDef = (name) => TAB_REGISTRY.find(t => t.name === name);
+        const _TAB_RENDER_THRESHOLD_MS = Object.fromEntries(
+            TAB_REGISTRY.filter(t => t.renderTtlMs != null).map(t => [t.name, t.renderTtlMs]));
         function _shouldSkipRender(name) {
             const last = _tabRenderedAt[name];
             if (!last) return false;
@@ -5417,13 +5435,9 @@
             else Object.keys(_tabRenderedAt).forEach(k => delete _tabRenderedAt[k]);
         }
         function _renderTabContent(name) {
-            if (name === 'slv-ranking') renderFururiRanking();
-            else if (name === 'characters') updateTeamCompositionsDisplay();
-            else if (name === 'mypage') renderMyPage();
-            else if (name === 'ops') renderOpsDashboard();
-            else if (name === 'settings') renderSettingsTab();
-            else if (name === 'member-admin') renderMemberAdminPage();
-            else return;
+            const def = _tabDef(name);
+            if (!def?.render) return;   // render を持たないタブ (静的/専用経路) は何もしない
+            def.render();
             _markTabRendered(name);
         }
         function switchTab(tabName) {
@@ -16295,7 +16309,7 @@
                 if (name === initialName) return;          // 初期タブは既に描画済
                 try { renderTab(name); } catch (e) { console.warn('[prerender]', name, e?.message || e); }
             };
-            const swipeable = ['mypage', 'ops', 'ranking', 'slv-ranking'];
+            const swipeable = TAB_REGISTRY.filter(t => t.prerender).map(t => t.name);   // 定義は TAB_REGISTRY
             const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
             // 隣接タブを優先、その後残りを順に
             const order = swipeable.filter(t => t !== initialName);
@@ -16307,7 +16321,6 @@
         });
 
         // ========== Bottom Navigation (mobile) + 横スワイプ切替 ==========
-        const _BOTTOM_TAB_ORDER = ['mypage', 'ops', 'ranking', 'slv-ranking', 'settings'];
         function _syncBottomNavActive(tabName) {
             document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tabName);
@@ -16325,7 +16338,7 @@
         })();
 
         // ========== 横スワイプ タブ切替 (指追随ドラッグ + スナップ) ==========
-        const _SWIPE_TABS = ['mypage', 'ops', 'ranking', 'slv-ranking', 'settings'];
+        const _SWIPE_TABS = TAB_REGISTRY.filter(t => t.swipe).map(t => t.name);   // 並び順 = TAB_REGISTRY の定義順
         const _SWIPE_THRESHOLD_PX = 80;        // 切替確定 px
         const _SWIPE_VEL_THRESHOLD = 0.45;      // px/ms 速度で切替
         const _SWIPE_EDGE_RESIST = 2.6;         // 端での抵抗 (大きいほど重い)
@@ -16615,7 +16628,7 @@
             _ptrEl.style.transform = 'translate(-50%, -70px)';
             _ptrEl.style.opacity = '0';
         }
-        const _PTR_KNOWN_TABS = ['slv-ranking', 'characters', 'mypage', 'ops', 'settings', 'member-admin'];
+        const _PTR_KNOWN_TABS = TAB_REGISTRY.filter(t => t.ptr).map(t => t.name);   // 定義は TAB_REGISTRY (includes 判定のみ)
         async function _ptrRefresh() {
             const name = document.querySelector('.tab-content.active')?.id?.replace('tab-', '');
             const icon = document.getElementById('ptrIcon');
