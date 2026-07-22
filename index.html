@@ -5573,7 +5573,13 @@
         function escapeHtml(s) {
             return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
-        // onclick="..." 内に安全に JSON 値を埋めるヘルパー（ダブルクォート HTML エンティティ化）
+        // onclick="..." 内に安全に JSON 値を埋めるヘルパー（ダブルクォート HTML エンティティ化）。
+        // 契約: **ダブルクォート属性 (onclick="...") 専用**。シングルクォート属性には使えない
+        // (' をエスケープしないため)。エンティティ化しても JS リテラルとして壊れない理由:
+        // ブラウザは JS 実行前に属性値のエンティティを復号するので、&quot;A&amp;B&quot; は
+        // JS エンジン到達時点で "A&B" という正当な JSON リテラルに戻る。
+        // 敵対的コーパス12件 (', ", &, <, JS注入, 二重エンコード風, \n, \\, ` 等) の
+        // 往復一致を検証済み (2026-07-22 Codex レビュー対応)。
         function jsonAttr(v) {
             return JSON.stringify(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         }
