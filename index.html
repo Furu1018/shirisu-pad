@@ -27,6 +27,7 @@
     <script type="module" src="./js/supabase-client.js"></script>
     <script defer src="./js/domain/attributes.js"></script>
     <script defer src="./js/domain/fururi.js"></script>
+    <script defer src="./js/domain/ocr.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
     <style>
 
@@ -7310,79 +7311,19 @@
                 }
             }, `📚 凸報告 編成 (${idx + 1}枠目)`, { otherNames: others, attr });
         }
-        // 共通の名前正規化 (NFKC + 全角コロン→半角 + 空白除去 + 先頭バースト記号除去)
-        function _normNameForMatch(s) {
-            if (typeof s !== 'string') return '';
-            let n = s.normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '');
-            n = n.replace(/^(MAX|[IVXⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]{1,4})(?=[:぀-ヿ一-鿿])/, '');
-            return n;
-        }
-        // 簡易類似度 (Levenshtein) + LCP/LCS/部分文字列ボーナス
-        function _simBetween(a, b) {
-            if (!a || !b) return 0;
-            const A = _normNameForMatch(a), B = _normNameForMatch(b);
-            if (A === B) return 1;
-            // 接頭辞関係 → 高信頼度
-            if (A.length >= 3 && B.length >= 3 && (B.startsWith(A) || A.startsWith(B))) return 0.92;
-            // 部分文字列
-            if (A.length >= 5 && B.includes(A)) return 0.92;
-            if (B.length >= 5 && A.includes(B)) return 0.92;
-            const shortLen = Math.min(A.length, B.length);
-            // 共通接頭辞 LCP
-            const lcpLen = (() => {
-                for (let i = 0; i < shortLen; i++) if (A[i] !== B[i]) return i;
-                return shortLen;
-            })();
-            if (lcpLen >= 5) {
-                const ratio = lcpLen / shortLen;
-                if (ratio >= 0.7) return 0.88;
-                if (ratio >= 0.5) return 0.78;
-            }
-            // 最長共通部分列 LCS (先頭文字誤読を救済する重要ボーナス)
-            const m = A.length, n = B.length;
-            if (m === 0 || n === 0) return 0;
-            const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
-            // dp は Levenshtein 用も兼ね、LCS は別途
-            let prev = new Array(n + 1).fill(0);
-            let curr = new Array(n + 1).fill(0);
-            for (let i = 1; i <= m; i++) {
-                for (let j = 1; j <= n; j++) {
-                    curr[j] = (A[i-1] === B[j-1]) ? prev[j-1] + 1 : Math.max(prev[j], curr[j-1]);
-                }
-                const tmp = prev; prev = curr; curr = tmp;
-                curr.fill(0);
-            }
-            const lcs = prev[n];
-            if (lcs >= 5) {
-                const ratio = lcs / shortLen;
-                if (ratio >= 0.85) return 0.88;
-                if (ratio >= 0.7) return 0.78;
-            }
-            // 通常 Levenshtein
-            for (let i = 0; i <= m; i++) dp[i][0] = i;
-            for (let j = 0; j <= n; j++) dp[0][j] = j;
-            for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
-                dp[i][j] = A[i-1] === B[j-1] ? dp[i-1][j-1] : Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]) + 1;
-            }
-            return 1 - dp[m][n] / Math.max(m, n);
-        }
+        // ==== 名前正規化・類似度・ファジィ解決の本体は js/domain/ocr.js に抽出済み (リアーキ ステップ2) ====
+        // 以下は薄いアダプタ。実行は必ずランタイム (ocrDomain は defer 読込のためトップレベルでは未定義)
+        function _normNameForMatch(s) { return ocrDomain.normNameForMatch(s); }
+        function _simBetween(a, b) { return ocrDomain.simBetween(a, b); }
 
         // OCRが返した名前を 50% 以上の類似度でマスタの canonical_name に解決。
         // 解決できなければ raw のまま返す。
         function fuzzyResolveCharacter(rawName, threshold = 0.50) {
-            if (!rawName || typeof rawName !== 'string') return null;
-            const master = _nikkeCharsCache || [];
-            if (master.length === 0) return rawName;
-            // exact (name or alias) 優先
-            if (_nikkeCharsByName.has(rawName)) return _nikkeCharsByName.get(rawName).canonical_name;
-            const rNorm = _normNameForMatch(rawName);
-            if (rNorm.length < 3) return rawName;  // 短すぎは誤マッチ防止で raw のまま
-            let best = null, bestScore = 0;
-            for (const m of master) {
-                const score = _simBetween(rNorm, m.canonical_name);  // _simBetween 内で正規化
-                if (score > bestScore) { bestScore = score; best = m; }
-            }
-            return (best && bestScore >= threshold) ? best.canonical_name : rawName;
+            return ocrDomain.fuzzyResolveCharacter({
+                rawName, threshold,
+                master: _nikkeCharsCache || [],
+                exactByName: _nikkeCharsByName,
+            });
         }
         // 一覧のクリックは委譲で拾う (中身は毎キーストローク再描画されるので1回だけ張る)。
         // dataset はHTMLデコード済みの生文字列を返すため、名前がどんな文字を含んでも安全。
@@ -9762,6 +9703,7 @@
         async function _ocrAttackMultiAndMerge(files) {
             // マスタの canonical_name 一覧を known_characters として AI に渡す。
             // → 名前が画面で見切れていてもアイコン画像と照合してマスタに揃った正式名を返してくれる。
+            // I/O (画像変換・AI呼び出し) だけここに残し、結果の統合則は ocrDomain 側 (テスト済み)
             await getNikkeCharsCache();
             const knownCharacters = (_nikkeCharsCache || []).map(c => c.canonical_name).filter(Boolean);
             const results = [];
@@ -9770,24 +9712,7 @@
                 const res = await window.callAiVision(dataUrl, 'attack_result', { known_characters: knownCharacters });
                 if (res?.result) results.push(res.result);
             }
-            const pickFirst = (key) => results.map(r => r?.[key]).find(v => v != null && v !== '');
-            // characters: 5枚揃いの画像があれば優先採用、無ければ全画像の和集合 (順序保持・重複除去)
-            const fiveSet = results.find(r => Array.isArray(r?.characters) && r.characters.filter(c => typeof c === 'string' && c.trim()).length >= 5);
-            let characters;
-            if (fiveSet) {
-                characters = fiveSet.characters.filter(c => typeof c === 'string' && c.trim()).slice(0, 5);
-            } else {
-                const all = [];
-                results.forEach(r => (r?.characters || []).forEach(c => { if (typeof c === 'string' && c.trim() && !all.includes(c)) all.push(c); }));
-                characters = all.slice(0, 5);
-            }
-            return {
-                bossName: pickFirst('bossName') ?? null,
-                totalDamage: pickFirst('totalDamage') ?? null,
-                bossMaxHp: pickFirst('bossMaxHp') ?? null,
-                bossRemainingHp: pickFirst('bossRemainingHp') ?? null,
-                characters: characters.length > 0 ? characters : null,
-            };
+            return ocrDomain.mergeOcrAttackResults(results);
         }
 
         // ========== BlaBlaLINK 3凸まとめ報告 ==========
@@ -15655,81 +15580,18 @@
         }
 
         // OCRテキストからボスを検出してbossCodeを返す
+        // ボスコード推定の本体は js/domain/ocr.js に抽出済み (リアーキ ステップ2)。
+        // ここでは動的キーワード源 (当月データのボス名) と静的辞書 (BOSS_ATTRIBUTES) を集めて渡すだけ
         function detectBossCodeFromText(text) {
-            if (!text) return null;
-            // 過去含む全データから boss名 → bossCode のキーワード辞書を構築
-            // 加えて nameJP の固有名詞部分 (例: 「灼熱ヘスティア」→「ヘスティア」) も使う
-            const codeToKeywords = {};
-            const addKw = (code, kw) => {
-                if (!kw) return;
-                if (!codeToKeywords[code]) codeToKeywords[code] = new Set();
-                codeToKeywords[code].add(kw);
-            };
-            // 当月以降の動的データ
-            currentData.forEach(p => {
+            const dynamicBossNames = [];
+            (currentData || []).forEach(p => {
                 (p.attacks || []).forEach(a => {
-                    if (!a.bossCode || !a.bossType) return;
-                    // ローマ数字接頭辞 + 任意ASCIIを除去し、カタカナ/漢字部分を取り出す
-                    const clean = a.bossType.replace(/^[IVX]+/, '').replace(/[\u0000-\u007F]/g, '');
-                    if (clean.length >= 3) addKw(a.bossCode, clean);
+                    if (a.bossCode && a.bossType) dynamicBossNames.push({ code: a.bossCode, name: a.bossType });
                 });
             });
-            // 静的フォールバック (代表ボス名)
-            Object.entries(BOSS_ATTRIBUTES).forEach(([code, info]) => {
-                // nameJP "灼熱ヘスティア" → "ヘスティア" 部分を抽出
-                const m = info.nameJP.match(/[ァ-ヴー]+/g);
-                if (m) m.forEach(s => { if (s.length >= 3) addKw(code, s); });
-            });
-            // よく出るリビルド系・歴代名のハードコード補強
-            const STATIC_KEYWORDS = {
-                'H.S.T.A.': ['ヘスティア', 'スプレッド', 'プレート', 'ブラックスミス', 'ヘビーメタル'],
-                'P.S.I.D.': ['ポセイドン', 'クリスタルアーマー', 'ランドイーター', 'ドクター', 'ビッグトルソー'],
-                'Z.E.U.S.': ['ゼウス', 'ストームブリンガー', 'オベリスク', 'グレイブディガー', 'ポーター'],
-                'D.M.T.R.': ['デメテル', 'クラーケン', 'マテリアル'],
-                'A.N.M.I.': ['アネモイ', 'キューカンバー', 'モダニア', 'レイタンス'],
-            };
-            Object.entries(STATIC_KEYWORDS).forEach(([code, kws]) => kws.forEach(k => addKw(code, k)));
-
-            // OCRが日本語を「ス ト ー ム」のように分割して返すケースに対応するため、
-            // 全角・半角空白と改行をすべて除去した文字列でも照合する
-            const normalize = (s) => (s || '').replace(/[\s\u3000]/g, '');
-            const normalizedText = normalize(text);
-
-            // 長いキーワードから優先的にチェック (誤マッチ低減)
-            const flat = [];
-            Object.entries(codeToKeywords).forEach(([code, set]) => {
-                set.forEach(kw => flat.push({ code, kw: normalize(kw) }));
-            });
-            flat.sort((a, b) => b.kw.length - a.kw.length);
-
-            // Step1: 完全一致
-            for (const { code, kw } of flat) {
-                if (kw && normalizedText.includes(kw)) return code;
-            }
-            // Step2: ファジーマッチ (トライグラム重なりスコア)
-            // OCR誤認識で1〜数文字欠けたり別字に化けるケースに対応
-            const triMatchRatio = (kw) => {
-                if (!kw || kw.length < 3) return 0;
-                let hit = 0;
-                const total = kw.length - 2;
-                for (let i = 0; i < total; i++) {
-                    if (normalizedText.includes(kw.substring(i, i + 3))) hit++;
-                }
-                return hit / total;
-            };
-            let bestCode = null, bestScore = 0, bestHits = 0;
-            for (const { code, kw } of flat) {
-                if (!kw || kw.length < 4) continue;
-                const ratio = triMatchRatio(kw);
-                const hits = Math.round(ratio * (kw.length - 2));
-                // 2トライグラム以上一致かつ一致率30%以上を候補とし、最もスコアの高いものを選ぶ
-                if (hits >= 2 && ratio >= 0.3 && (ratio > bestScore || (ratio === bestScore && hits > bestHits))) {
-                    bestScore = ratio;
-                    bestHits = hits;
-                    bestCode = code;
-                }
-            }
-            return bestCode;
+            const nameJpByCode = {};
+            Object.entries(BOSS_ATTRIBUTES).forEach(([code, info]) => { nameJpByCode[code] = info.nameJP; });
+            return ocrDomain.detectBossCode(text, { dynamicBossNames, nameJpByCode });
         }
 
         function onFsimDamageInput() {

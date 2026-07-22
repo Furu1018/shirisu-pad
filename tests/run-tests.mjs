@@ -6,9 +6,10 @@ import assert from 'node:assert/strict';
 import '../js/optimal-plan.js';        // globalThis.computeOptimalPlanCore を定義する
 import '../js/domain/attributes.js';   // globalThis.weaknessPtOf 等 (リアーキ ステップ1)
 import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ ステップ2)
+import '../js/domain/ocr.js';          // globalThis.ocrDomain (リアーキ ステップ2)
 
 const compute = globalThis.computeOptimalPlanCore;
-const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain } = globalThis;
+const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain, ocrDomain } = globalThis;
 
 // ---- テストデータ ヘルパー -------------------------------------------------
 const B = 1e9;   // 1B = 10億
@@ -1139,6 +1140,82 @@ test('fururiBaseTotalsByMode: mean=平均×3 / median=5属性平均×3 / classic
     assert.equal(fururiDomain.fururiBaseTotalsByMode({ basePlayer, mode: 'classic', maps }), 33);
     // マップ未構築のモードは classic (基準者合計) に落ちる
     assert.equal(fururiDomain.fururiBaseTotalsByMode({ basePlayer, mode: 'mean', maps: { classic: {}, mean: null, median: null } }), 33);
+});
+
+// ---- ドメイン: OCR後処理 (js/domain/ocr.js — リアーキ ステップ2) --------------
+console.log('\ndomain/ocr:');
+
+test('normNameForMatch: NFKC・全角コロン・空白・バーストレベル接頭辞を正規化', () => {
+    assert.equal(ocrDomain.normNameForMatch('アニス：スター'), 'アニス:スター');
+    assert.equal(ocrDomain.normNameForMatch(' ラピ  '), 'ラピ');
+    assert.equal(ocrDomain.normNameForMatch('MAXアニス'), 'アニス', '画面のバーストLv表記 MAX を剥がす');
+    assert.equal(ocrDomain.normNameForMatch('Ⅲラピ'), 'ラピ', 'ローマ数字接頭辞も剥がす');
+    assert.equal(ocrDomain.normNameForMatch('マクスウェル'), 'マクスウェル', 'かな直前以外は剥がさない');
+    assert.equal(ocrDomain.normNameForMatch(null), '');
+});
+
+test('simBetween: OCR誤読パターン別の段階スコア', () => {
+    assert.equal(ocrDomain.simBetween('アニス：スター', 'アニス:スター'), 1, '正規化後の完全一致');
+    assert.equal(ocrDomain.simBetween('アニス', 'アニス:スター'), 0.92, '見切れ (接頭辞関係)');
+    assert.equal(ocrDomain.simBetween('レッドフード', 'ラピ:レッドフード'), 0.92, '部分文字列');
+    // 1文字違いの Levenshtein: 距離1/長さ3 → 1 - 1/3
+    assert.ok(Math.abs(ocrDomain.simBetween('カカカ', 'カカタ') - (1 - 1 / 3)) < 1e-9);
+    assert.equal(ocrDomain.simBetween('', 'ラピ'), 0);
+});
+
+test('fuzzyResolveCharacter: 完全一致(エイリアス含む)優先 → ファジィ → raw 温存', () => {
+    const master = [{ canonical_name: 'ラピ:レッドフード' }, { canonical_name: 'アニス:スター' }];
+    const byName = new Map([
+        ['ラピ:レッドフード', master[0]], ['赤ずきん', master[0]],   // エイリアス
+        ['アニス:スター', master[1]],
+    ]);
+    const args = { master, exactByName: byName };
+    assert.equal(ocrDomain.fuzzyResolveCharacter({ ...args, rawName: '赤ずきん' }), 'ラピ:レッドフード', 'エイリアス完全一致');
+    assert.equal(ocrDomain.fuzzyResolveCharacter({ ...args, rawName: 'ラピレッドフード' }), 'ラピ:レッドフード', 'コロン欠落もファジィで解決');
+    assert.equal(ocrDomain.fuzzyResolveCharacter({ ...args, rawName: 'まったく別の何か' }), 'まったく別の何か', '閾値未満は raw のまま');
+    assert.equal(ocrDomain.fuzzyResolveCharacter({ ...args, rawName: 'ラピ' }), 'ラピ', '3文字未満は誤マッチ防止で raw (正規化後2文字)');
+    assert.equal(ocrDomain.fuzzyResolveCharacter({ master: [], rawName: 'ラピ' }), 'ラピ', 'マスタ空は raw');
+    assert.equal(ocrDomain.fuzzyResolveCharacter({ ...args, rawName: '' }), null);
+});
+
+test('mergeOcrAttackResults: 5枚揃い優先・和集合の順序保持・最初の有効値採用', () => {
+    // 5枚揃いが無い → 和集合 (順序保持・重複除去・5件まで)
+    const union = ocrDomain.mergeOcrAttackResults([
+        { characters: ['A', 'B'], bossName: '', totalDamage: null },
+        null,
+        { characters: ['B', 'C', 'D'], bossName: 'ゼウス', totalDamage: 123 },
+        { characters: ['E', 'F'] },
+    ]);
+    assert.deepEqual(union.characters, ['A', 'B', 'C', 'D', 'E'], '順序保持・重複除去・5件まで');
+    assert.equal(union.bossName, 'ゼウス', "空文字は飛ばして最初の有効値");
+    assert.equal(union.totalDamage, 123);
+    // 5枚揃いがある → その画像を丸ごと優先
+    const five = ocrDomain.mergeOcrAttackResults([
+        { characters: ['X'] },
+        { characters: ['P', 'Q', 'R', 'S', 'T', 'U'] },
+    ]);
+    assert.deepEqual(five.characters, ['P', 'Q', 'R', 'S', 'T'], '5枚揃い画像を優先し5件に切る');
+    // 全部空
+    const empty = ocrDomain.mergeOcrAttackResults([]);
+    assert.equal(empty.characters, null);
+    assert.equal(empty.bossName, null);
+});
+
+test('detectBossCode: 完全一致 → 空白分割OCR → トライグラムファジィの3段', () => {
+    assert.equal(ocrDomain.detectBossCode('ゼウスが出現', {}), 'Z.E.U.S.', '静的キーワード辞書');
+    assert.equal(ocrDomain.detectBossCode('ス トーム ブリ ンガー', {}), 'Z.E.U.S.', 'OCRの空白分割に耐える');
+    // 動的データ由来 (ローマ数字接頭辞 + ASCII を除去して照合)
+    assert.equal(ocrDomain.detectBossCode('クラーケンEX戦', {
+        dynamicBossNames: [{ code: 'D.M.T.R.', name: 'IIIクラーケンEX' }],
+    }), 'D.M.T.R.');
+    // nameJP からのカタカナ抽出
+    assert.equal(ocrDomain.detectBossCode('本日の相手はヘスティア', {
+        nameJpByCode: { 'H.S.T.A.': '灼熱ヘスティア' },
+    }), 'H.S.T.A.');
+    // トライグラム: 1文字化けても引き当てる
+    assert.equal(ocrDomain.detectBossCode('ストーAブリンガー', {}), 'Z.E.U.S.', '1文字誤認識をファジィ救済');
+    assert.equal(ocrDomain.detectBossCode('無関係なテキスト', {}), null);
+    assert.equal(ocrDomain.detectBossCode('', {}), null);
 });
 
 // ---- 結果 --------------------------------------------------------------------

@@ -113,8 +113,11 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > calcPerAttackFururi / fururiBaseTotalsByMode — 全て引数渡しの純関数、テスト6件)。
    > index.html 側は同名アダプタがグローバル (currentData/slvRatioTable/fururiBaseMap 系) を
    > 集めて渡すだけに縮小。既存のグローバル契約 (fururiBaseMap 等) は読者が多いため維持。
-   > **残**: OCR後処理 (fuzzyResolveCharacter/_ocrAttackMultiAndMerge/detectBossCodeFromText)、
-   > 候補選別・ダメージ整形。
+   > 実施済み (同日2): `js/domain/ocr.js` 新設 — normNameForMatch / simBetween /
+   > fuzzyResolveCharacter / mergeOcrAttackResults / detectBossCode (テスト5件)。
+   > _ocrAttackMultiAndMerge は I/O (画像変換・AI呼び出し) だけ index.html に残し統合則をドメインへ。
+   > **旧実装との差分テスト497ケース全一致で等価移植を確認** (地雷処理の塊のため)。
+   > **残**: 候補選別・ダメージ整形の抽出。
 
 3. **`_opsDashboardCache` を単一ストア＋Repositoryへ置換**
    `load/refresh/invalidate` と更新イベントを一箇所に集約。画面はselector経由で読む、書き手はミューテーション経由のみ。
