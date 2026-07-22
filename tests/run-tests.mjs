@@ -5,9 +5,10 @@
 import assert from 'node:assert/strict';
 import '../js/optimal-plan.js';        // globalThis.computeOptimalPlanCore を定義する
 import '../js/domain/attributes.js';   // globalThis.weaknessPtOf 等 (リアーキ ステップ1)
+import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ ステップ2)
 
 const compute = globalThis.computeOptimalPlanCore;
-const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS } = globalThis;
+const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain } = globalThis;
 
 // ---- テストデータ ヘルパー -------------------------------------------------
 const B = 1e9;   // 1B = 10億
@@ -1036,6 +1037,108 @@ test('bossAttributeOf: attribute 優先・weakness から逆算・両方無け�
     assert.equal(bossAttributeOf({ weakness: 'electric' }), 'water');
     assert.equal(bossAttributeOf({}), null);
     assert.equal(bossAttributeOf(null), null);
+});
+
+// ---- ドメイン: ふるり値計算 (js/domain/fururi.js — リアーキ ステップ2) --------
+console.log('\ndomain/fururi:');
+
+// 共通フィクスチャ: SLv500 を基準に 600=1.2倍 / 700=1.4倍
+const RATIO = { '500': 1.0, '600': 1.2, '700': 1.4 };
+const fpl = (name, slv, totalDamage, attacks) => ({ player: name, syncLevel: slv, damage: totalDamage, attacks });
+
+test('buildFururiBaseMaps: classic は基準者の bossCode別max、模擬スコアは実凸より優先', () => {
+    const maps = fururiDomain.buildFururiBaseMaps({
+        players: [
+            fpl('ふるり', 500, 30, [
+                { bossCode: 'A', damage: 10 }, { bossCode: 'A', damage: 12 },   // max=12
+                { bossCode: 'B', damage: 8 },
+            ]),
+        ],
+        basePlayerName: 'ふるり',
+        simulationScores: { B: 9, C: 7, D: 0 },   // B=差し替え / C=未凸補完 / D=0は無効
+        slvRatioTable: RATIO,
+    });
+    assert.equal(maps.classic.A.damage, 12, '同bossCodeはmax採用');
+    assert.equal(maps.classic.B.damage, 9, '模擬スコアが実凸(8)を差し替える');
+    assert.equal(maps.classic.C.damage, 7, '未凸属性は模擬で補完');
+    assert.equal(maps.classic.D, undefined, '0以下の模擬値は無視');
+    // mean: (12+9+7)/3 が全コード共通
+    const meanVal = (12 + 9 + 7) / 3;
+    for (const code of ['A', 'B', 'C']) assert.ok(Math.abs(maps.mean[code].damage - meanVal) < 1e-9);
+});
+
+test('buildFururiBaseMaps: 基準者が居ない/SLv無しなら全マップ null', () => {
+    const noBase = fururiDomain.buildFururiBaseMaps({
+        players: [fpl('別人', 600, 10, [])], basePlayerName: 'ふるり', slvRatioTable: RATIO,
+    });
+    assert.equal(noBase.classic, null);
+    assert.equal(noBase.mean, null);
+    assert.equal(noBase.median, null);
+    const slvZero = fururiDomain.buildFururiBaseMaps({
+        players: [fpl('ふるり', 0, 10, [{ bossCode: 'A', damage: 5 }])], basePlayerName: 'ふるり', slvRatioTable: RATIO,
+    });
+    assert.equal(slvZero.classic, null, 'SLv 0 の基準者は不採用');
+});
+
+test('buildFururiBaseMaps: 上位N平均は SLv正規化し、同一人物は最大1件、データ無し属性は classic へフォールバック', () => {
+    const maps = fururiDomain.buildFururiBaseMaps({
+        players: [
+            fpl('ふるり', 500, 30, [{ bossCode: 'A', damage: 10 }, { bossCode: 'X', damage: 5 }]),
+            // SLv700 (1.4倍) の 14 は 基準SLv換算で 14*1.0/1.4 = 10
+            fpl('強い人', 700, 30, [{ bossCode: 'A', damage: 14 }, { bossCode: 'A', damage: 7 }]),   // 同人物は max のみ
+            fpl('弱い人', 600, 30, [{ bossCode: 'A', damage: 6 }]),                                   // 6/1.2 = 5
+        ],
+        basePlayerName: 'ふるり', slvRatioTable: RATIO, topN: 2,
+    });
+    // A の上位2名 (正規化後): ふるり10, 強い人10 → 平均10 (弱い人5 は topN=2 で切られる)
+    assert.ok(Math.abs(maps.median.A.damage - 10) < 1e-9, `上位2名平均=10 のはず: ${maps.median.A.damage}`);
+    assert.equal(maps.median.A.sampleSize, 2);
+    // X は基準者しか凸していない → その1名で平均
+    assert.ok(Math.abs(maps.median.X.damage - 5) < 1e-9);
+});
+
+test('calcFururiScore: SLv換算込みの全体ふるり値 (基準者と同等火力なら1.0)', () => {
+    const basePlayer = fpl('ふるり', 500, 30, []);
+    const args = { basePlayer, maps: { classic: {}, mean: null, median: null }, slvRatioTable: RATIO };
+    // SLv600 の人が基準合計30の1.2倍=36 を出せば 1.0
+    assert.ok(Math.abs(fururiDomain.calcFururiScore({ ...args, playerDamage: 36, playerSLv: 600, mode: 'classic' }) - 1.0) < 1e-9);
+    // 半分しか出なければ 0.5
+    assert.ok(Math.abs(fururiDomain.calcFururiScore({ ...args, playerDamage: 18, playerSLv: 600, mode: 'classic' }) - 0.5) < 1e-9);
+    // 計算不能条件は null (テーブル未ロード / SLv不明 / テーブルに無いSLv)
+    assert.equal(fururiDomain.calcFururiScore({ ...args, playerDamage: 36, playerSLv: 600, slvRatioTable: null }), null);
+    assert.equal(fururiDomain.calcFururiScore({ ...args, playerDamage: 36, playerSLv: 0 }), null);
+    assert.equal(fururiDomain.calcFururiScore({ ...args, playerDamage: 36, playerSLv: 999 }), null);
+});
+
+test('calcPerAttackFururi: 凸単位のふるり値と mode 別基準の切替', () => {
+    const maps = {
+        classic: { A: { damage: 10, slv: 500 } },
+        mean: { A: { damage: 20, slv: 500 } },
+        median: null,   // median 未構築時は classic に落ちる
+    };
+    const args = { playerSLv: 600, bossCode: 'A', maps, slvRatioTable: RATIO };
+    // classic: 基準10×1.2=12 に対し 12 → 1.0
+    assert.ok(Math.abs(fururiDomain.calcPerAttackFururi({ ...args, damage: 12, mode: 'classic' }) - 1.0) < 1e-9);
+    // mean: 基準20×1.2=24 に対し 12 → 0.5
+    assert.ok(Math.abs(fururiDomain.calcPerAttackFururi({ ...args, damage: 12, mode: 'mean' }) - 0.5) < 1e-9);
+    // median 未構築 → classic フォールバックで 1.0
+    assert.ok(Math.abs(fururiDomain.calcPerAttackFururi({ ...args, damage: 12, mode: 'median' }) - 1.0) < 1e-9);
+    // 基準マップに無い bossCode は null
+    assert.equal(fururiDomain.calcPerAttackFururi({ ...args, damage: 12, bossCode: 'Z' }), null);
+});
+
+test('fururiBaseTotalsByMode: mean=平均×3 / median=5属性平均×3 / classic=基準者の合計', () => {
+    const basePlayer = fpl('ふるり', 500, 33, []);
+    const maps = {
+        classic: {},
+        mean: { A: { damage: 10 }, B: { damage: 10 } },
+        median: { A: { damage: 8 }, B: { damage: 12 } },
+    };
+    assert.equal(fururiDomain.fururiBaseTotalsByMode({ basePlayer, mode: 'mean', maps }), 30);
+    assert.equal(fururiDomain.fururiBaseTotalsByMode({ basePlayer, mode: 'median', maps }), 30);   // (8+12)*3/2
+    assert.equal(fururiDomain.fururiBaseTotalsByMode({ basePlayer, mode: 'classic', maps }), 33);
+    // マップ未構築のモードは classic (基準者合計) に落ちる
+    assert.equal(fururiDomain.fururiBaseTotalsByMode({ basePlayer, mode: 'mean', maps: { classic: {}, mean: null, median: null } }), 33);
 });
 
 // ---- 結果 --------------------------------------------------------------------

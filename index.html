@@ -26,6 +26,7 @@
     <!-- Supabase クライアント (Phase 0: 接続確認のみ。既存ロジックは未変更) -->
     <script type="module" src="./js/supabase-client.js"></script>
     <script defer src="./js/domain/attributes.js"></script>
+    <script defer src="./js/domain/fururi.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
     <style>
 
@@ -7633,7 +7634,10 @@
             }
         }
 
-        // PT属性キー → ボスコード (BOSS_ATTRIBUTES の逆引き) を1回だけ構築
+        // PT属性キー → ボスコード (BOSS_ATTRIBUTES の逆引き) を1回だけ構築。
+        // ⚠ ここは大文字ドメイン (BOSS_ATTRIBUTES/比較タブ系 = 'WATER') → 小文字正規形の境界。
+        // normalizeAttrKey (js/domain/attributes.js) は defer 読込のため、トップレベル即時評価の
+        // この場所ではまだ存在しない — toLowerCase 直書きを許す数少ない例外 (キーは固定値で安全)
         const PT_ATTR_TO_BOSS_CODE = (() => {
             const m = {};
             Object.entries(BOSS_ATTRIBUTES).forEach(([code, info]) => {
@@ -15339,7 +15343,8 @@
             sortedAttrs.forEach(attr => {
                 const bossCodes = attacksByAttr[attr];
                 const info = Object.values(BOSS_ATTRIBUTES).find(b => b.attribute === attr);
-                const accentC = DC_ATTR_COLORS[attr.toLowerCase()] || '#A4AAB0';
+                // 大文字ドメイン ('WATER') → 小文字正規形の境界は normalizeAttrKey を通す
+                const accentC = DC_ATTR_COLORS[normalizeAttrKey(attr)] || '#A4AAB0';
 
                 // Sort: bossCodes with current data first, then prev-only; within each group by max current damage desc
                 bossCodes.sort((a, b) => {
@@ -15937,136 +15942,53 @@
             }
         }
 
-        function calculateFururiScore(playerDamage, playerSLv, basePlayer, mode = 'classic') {
-            if (!slvRatioTable || !basePlayer) return null;
-            if (!playerSLv || playerSLv <= 0) return null;
-            const baseRatio = slvRatioTable[String(basePlayer.syncLevel)];
-            const playerRatio = slvRatioTable[String(playerSLv)];
-            if (!baseRatio || !playerRatio) return null;
-            const baseTotal = getFururiBaseTotalsByMode(basePlayer, mode);
-            const baseScaled = baseTotal * playerRatio / baseRatio;
-            return playerDamage / baseScaled;
+        // ==== ふるり値の計算本体は js/domain/fururi.js に抽出済み (リアーキ ステップ2) ====
+        // 以下はグローバル状態 (currentData / slvRatioTable / fururiBaseMap 等) を集めて
+        // ドメイン関数へ渡す薄いアダプタ。計算式をここに書き足さないこと。
+        // fururiBaseMap / window.fururiBaseMapMean / window.fururiBaseMapMedian という
+        // 既存のグローバル契約は読者が多いため維持している。
+        function _fururiMaps() {
+            return { classic: fururiBaseMap, mean: window.fururiBaseMapMean, median: window.fururiBaseMapMedian };
         }
 
-        // 属性(bossCode)別ふるり値の基準マップ群を構築
-        // - fururiBaseMap (classic)    : ふるり本人の bossCode別 ダメージ
+        function calculateFururiScore(playerDamage, playerSLv, basePlayer, mode = 'classic') {
+            return fururiDomain.calcFururiScore({
+                playerDamage, playerSLv, basePlayer, mode,
+                maps: _fururiMaps(), slvRatioTable,
+            });
+        }
+
+        // 属性(bossCode)別ふるり値の基準マップ群を構築 (計算はドメイン、書き戻しだけここ)
+        // - fururiBaseMap (classic)    : ふるり本人の bossCode別 ダメージ (模擬スコアで補完/差し替え)
         // - fururiBaseMapMean (均整)   : ふるり本人の 5属性平均を全bossCodeに展開
-        // - fururiBaseMapMedian (中央) : ユニオン全体の bossCode別 中央値 (基準SLv換算)
+        // - fururiBaseMapMedian        : ユニオン全体の bossCode別 上位10名平均 (基準SLv換算)
         function buildFururiBaseMap() {
-            fururiBaseMap = null;
-            window.fururiBaseMapMean = null;
-            window.fururiBaseMapMedian = null;
-            if (!currentData || currentData.length === 0) return;
-            const basePlayer = currentData.find(p => p.player === fururiBasePlayerName && p.syncLevel > 0);
-            if (!basePlayer) return;
-
-            // --- classic: ふるりの bossCode別 max ---
-            const map = {};
-            (basePlayer.attacks || []).forEach(a => {
-                if (!a.bossCode) return;
-                if (!map[a.bossCode] || a.damage > map[a.bossCode].damage) {
-                    map[a.bossCode] = { damage: a.damage, slv: basePlayer.syncLevel };
-                }
+            const r = fururiDomain.buildFururiBaseMaps({
+                players: currentData || [],
+                basePlayerName: fururiBasePlayerName,
+                simulationScores: (currentMetadata && currentMetadata.fururiSimulationScores) || {},
+                slvRatioTable,
             });
-            // 模擬スコア (fururi_simulation_scores) の運用ルール:
-            //   通常   : 基準者が本番で戦った3属性は実凸ダメージをそのまま基準に使う。
-            //            模擬スコアを登録するのは「未凸の2属性」の補完のみ。
-            //   例外   : 基準者が締め凸をして最大ダメージを出せなかった場合のみ、
-            //            本人の申告に基づき運営がその属性の模擬値を登録して差し替える。
-            // 実装上は「登録がある boss_code は模擬値を採用」— 戦った属性には
-            // 登録しないのが通常運用なので、実凸がそのまま生きる。
-            const sim = (currentMetadata && currentMetadata.fururiSimulationScores) || {};
-            Object.keys(sim).forEach(code => {
-                if (typeof sim[code] === 'number' && sim[code] > 0) {
-                    map[code] = { damage: sim[code], slv: basePlayer.syncLevel };
-                }
-            });
-            fururiBaseMap = map;
-
-            // --- 均整: ふるりの5属性平均ダメージを全bossCodeで共通基準に ---
-            const vals = Object.values(map).map(v => v.damage).filter(v => v > 0);
-            if (vals.length > 0) {
-                const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
-                const meanMap = {};
-                Object.keys(map).forEach(code => { meanMap[code] = { damage: mean, slv: basePlayer.syncLevel }; });
-                window.fururiBaseMapMean = meanMap;
-            }
-
-            // --- 上位10名平均: 各bossCodeで「SLv正規化済みダメージ」の上位10名平均を基準に。
-            //     未熟者や締め凸ダメで実力より低く出た凸を排除した「現実的な目安上限」。
-            //     プレイヤーごとに同bossCodeの最大ダメージのみを採用 (同属性2凸の低い方を排除)。
-            const baseSlv = basePlayer.syncLevel;
-            const baseRatio = slvRatioTable && slvRatioTable[String(baseSlv)];
-            const TOP_N = 10;
-            if (baseRatio) {
-                const bestPerPlayerByCode = {};  // {code: Map<playerName, normalized>}
-                (currentData || []).forEach(p => {
-                    if (!p.syncLevel || p.syncLevel <= 0) return;
-                    const pr = slvRatioTable[String(p.syncLevel)];
-                    if (!pr) return;
-                    (p.attacks || []).forEach(a => {
-                        if (!a.bossCode || !(a.damage > 0)) return;
-                        const normalized = a.damage * baseRatio / pr;
-                        if (!bestPerPlayerByCode[a.bossCode]) bestPerPlayerByCode[a.bossCode] = new Map();
-                        const prev = bestPerPlayerByCode[a.bossCode].get(p.player) || 0;
-                        if (normalized > prev) bestPerPlayerByCode[a.bossCode].set(p.player, normalized);
-                    });
-                });
-                const topNAvg = (mapByPlayer, n) => {
-                    const vals = [...(mapByPlayer?.values() || [])].sort((a, b) => b - a).slice(0, n);
-                    return vals.length === 0 ? 0 : vals.reduce((s, v) => s + v, 0) / vals.length;
-                };
-                const topMap = {};
-                Object.keys(map).forEach(code => {
-                    const mp = bestPerPlayerByCode[code];
-                    if (mp && mp.size > 0) {
-                        topMap[code] = { damage: topNAvg(mp, TOP_N), slv: baseSlv, sampleSize: Math.min(mp.size, TOP_N) };
-                    } else {
-                        // データが無い属性は classic にフォールバック
-                        topMap[code] = map[code];
-                    }
-                });
-                window.fururiBaseMapMedian = topMap;  // 変数名は互換性のため median のまま
-            }
+            fururiBaseMap = r.classic;
+            window.fururiBaseMapMean = r.mean;
+            window.fururiBaseMapMedian = r.median;
         }
 
         // mode: 'classic' (vs ふるり / 既定) | 'mean' (均整 vs ふるり平均) | 'median' (vs ユニオン上位10名平均)
         function getFururiBaseMapByMode(mode) {
-            if (mode === 'mean') return window.fururiBaseMapMean || fururiBaseMap;
-            if (mode === 'median') return window.fururiBaseMapMedian || fururiBaseMap;
-            return fururiBaseMap;
+            return fururiDomain.fururiBaseMapByMode(_fururiMaps(), mode);
         }
 
         function calculatePerAttackFururi(damage, playerSLv, bossCode, mode = 'classic') {
-            const baseMap = getFururiBaseMapByMode(mode);
-            if (!baseMap || !bossCode || !baseMap[bossCode]) return null;
-            if (!slvRatioTable || !playerSLv || playerSLv <= 0) return null;
-            const base = baseMap[bossCode];
-            const baseRatio = slvRatioTable[String(base.slv)];
-            const playerRatio = slvRatioTable[String(playerSLv)];
-            if (!baseRatio || !playerRatio) return null;
-            const baseScaled = base.damage * playerRatio / baseRatio;
-            return damage / baseScaled;
+            return fururiDomain.calcPerAttackFururi({
+                damage, playerSLv, bossCode, mode,
+                maps: _fururiMaps(), slvRatioTable,
+            });
         }
 
         // 全体（3凸合計）モードでも mode を反映するために basePlayer の合計ダメージを基準補正する
         function getFururiBaseTotalsByMode(basePlayer, mode) {
-            if (mode === 'mean') {
-                // ふるりの3凸平均×3 = ふるり平均と同じ位置基準
-                const mp = window.fururiBaseMapMean;
-                if (mp) {
-                    const vals = Object.values(mp).map(v => v.damage);
-                    if (vals.length > 0) return vals[0] * 3;  // 全bossCode同値
-                }
-            } else if (mode === 'median') {
-                const mp = window.fururiBaseMapMedian;
-                if (mp) {
-                    // 5属性 上位10名平均 の平均 × 3 を「ユニオン上位の典型的3凸合計」とする
-                    const totals = Object.values(mp).map(v => v.damage);
-                    if (totals.length > 0) return totals.reduce((a, b) => a + b, 0) * 3 / totals.length;
-                }
-            }
-            return basePlayer.damage;  // classic
+            return fururiDomain.fururiBaseTotalsByMode({ basePlayer, mode, maps: _fururiMaps() });
         }
 
         const FURURI_BOSS_TO_LABEL = {

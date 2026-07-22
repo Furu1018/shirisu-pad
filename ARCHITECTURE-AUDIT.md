@@ -92,7 +92,7 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
 
 > **順序の考え方**: 依存が少なく低リスクな「土台」から入れる。痛んでいるタブ/スワイプ(ステップ5)は依存が最も多いので本来最後だが、痛みが強ければ前倒しも選べる（着手時に再決定）。
 
-1. **ドメイン境界を固定する（型/変換の分離）** — **✅ 属性変換の分離 完了 (2026-07-22)**
+1. **ドメイン境界を固定する（型/変換の分離）** — **✅ 完了 (2026-07-22)**
    `Boss` の `bossAttribute` と `weaknessPt` を別名・別変換関数にし、画面からの相性逆算を追放。JSDoc(または段階的TS)で `plan`/`player`/`attack` の形を固定。
    **完了条件**: PT選択は全て `weaknessPt` を読み、属性変換の単体テストが通る。
    > 実施内容: `js/domain/attributes.js` 新設 (`weaknessPtOf`/`bossAttributeOf`/`normalizeAttrKey`、
@@ -100,12 +100,21 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > `weaknessPtOf(boss)` (DB保存値の直読) に置換して撤去、死にコード `attrToCounterBoss` 削除。
    > 潜在バグ修正: `detectPtAttrFromBossName` の `COUNTER[大文字キー]` が常に undefined だった
    > 二重変換 (監査C7)。DB書き込み境界 (supabaseCreateSeason) と相互参照コメントで結線。
-   > **残**: `plan`/`player`/`attack` の JSDoc typedef 化 (optimal-plan.js ヘッダーは
-   > コメント形式のまま)、大文字ドメイン (BOSS_ATTRIBUTES/比較タブ島) の境界明示は次回。
+   > 追記 (同日): `plan`/`player`/`attack`/`boss` を optimal-plan.js ヘッダーで JSDoc typedef 化
+   > (BossRow/PlayerInput/PlanInput/PlanAttack/PlanBoss/PlanLevel/Plan)。大文字ドメイン
+   > (BOSS_ATTRIBUTES島) の境界2箇所に normalizeAttrKey / 境界コメントを付与。
+   > ⚠ 注意: PT_ATTR_TO_BOSS_CODE はトップレベル即時評価のため defer 読込の
+   > normalizeAttrKey が使えない (toLowerCase 直書きを許す例外として文書化済み)。
 
-2. **未テストの純ロジックを `js/` へ抽出＋テスト化**
+2. **未テストの純ロジックを `js/` へ抽出＋テスト化** — **🔄 進行中 (2026-07-22 ふるり値計算 完了)**
    ふるり値計算(`calculateFururiScore`/`buildFururiBaseMap` ほか)、OCR後処理(`fuzzyResolveCharacter`/`_ocrAttackMultiAndMerge`/`detectBossCodeFromText`)、候補選別・ダメージ整形をDOM非依存に。
    **完了条件**: 抽出済みロジックがNodeテストで固定され、index.htmlは入出力変換だけを担う。
+   > 実施済み: `js/domain/fururi.js` 新設 (buildFururiBaseMaps / calcFururiScore /
+   > calcPerAttackFururi / fururiBaseTotalsByMode — 全て引数渡しの純関数、テスト6件)。
+   > index.html 側は同名アダプタがグローバル (currentData/slvRatioTable/fururiBaseMap 系) を
+   > 集めて渡すだけに縮小。既存のグローバル契約 (fururiBaseMap 等) は読者が多いため維持。
+   > **残**: OCR後処理 (fuzzyResolveCharacter/_ocrAttackMultiAndMerge/detectBossCodeFromText)、
+   > 候補選別・ダメージ整形。
 
 3. **`_opsDashboardCache` を単一ストア＋Repositoryへ置換**
    `load/refresh/invalidate` と更新イベントを一箇所に集約。画面はselector経由で読む、書き手はミューテーション経由のみ。
