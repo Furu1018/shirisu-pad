@@ -106,7 +106,7 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > ⚠ 注意: PT_ATTR_TO_BOSS_CODE はトップレベル即時評価のため defer 読込の
    > normalizeAttrKey が使えない (toLowerCase 直書きを許す例外として文書化済み)。
 
-2. **未テストの純ロジックを `js/` へ抽出＋テスト化** — **🔄 進行中 (2026-07-22 ふるり値計算 完了)**
+2. **未テストの純ロジックを `js/` へ抽出＋テスト化** — **✅ 完了 (2026-07-22)**
    ふるり値計算(`calculateFururiScore`/`buildFururiBaseMap` ほか)、OCR後処理(`fuzzyResolveCharacter`/`_ocrAttackMultiAndMerge`/`detectBossCodeFromText`)、候補選別・ダメージ整形をDOM非依存に。
    **完了条件**: 抽出済みロジックがNodeテストで固定され、index.htmlは入出力変換だけを担う。
    > 実施済み: `js/domain/fururi.js` 新設 (buildFururiBaseMaps / calcFururiScore /
@@ -117,7 +117,12 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > fuzzyResolveCharacter / mergeOcrAttackResults / detectBossCode (テスト5件)。
    > _ocrAttackMultiAndMerge は I/O (画像変換・AI呼び出し) だけ index.html に残し統合則をドメインへ。
    > **旧実装との差分テスト497ケース全一致で等価移植を確認** (地雷処理の塊のため)。
-   > **残**: 候補選別・ダメージ整形の抽出。
+   > 実施済み (同日3): `js/domain/finish.js` (締め凸候補: computeFinishPlans の1〜3凸
+   > 組合せ探索 + buildFinishLeaderTimeline の時間帯別リーダー変化点 — 時刻は引数渡し) と
+   > `js/domain/format.js` (rawToB / formatDamageRaw / trimZeroB) を新設、テスト5件。
+   > ※ ダメージ整形のインライン散在 (`Number(x)/1e9` 等 約20箇所) は一括置換せず
+   > 「触った機会に formatDomain へ寄せる + 新規は必ず formatDomain」の方針
+   > (一括置換は差分が大きく表示退行リスクに見合わない)。
 
 3. **`_opsDashboardCache` を単一ストア＋Repositoryへ置換**
    `load/refresh/invalidate` と更新イベントを一箇所に集約。画面はselector経由で読む、書き手はミューテーション経由のみ。

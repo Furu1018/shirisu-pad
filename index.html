@@ -28,6 +28,8 @@
     <script defer src="./js/domain/attributes.js"></script>
     <script defer src="./js/domain/fururi.js"></script>
     <script defer src="./js/domain/ocr.js"></script>
+    <script defer src="./js/domain/finish.js"></script>
+    <script defer src="./js/domain/format.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
     <style>
 
@@ -4903,10 +4905,10 @@
         let mypageRadarChartInstance = null;
 
         // ========== Utilities ==========
+        // ダメージ整形の本体は js/domain/format.js (リアーキ ステップ2)。
+        // raw→B 変換や末尾ゼロ落としを新規に書くときは formatDomain (rawToB/trimZeroB) を使うこと
         function formatDamage(v) {
-            if (v == null || isNaN(v)) return '-';
-            const sign = v < 0 ? '-' : '';
-            return sign + (Math.abs(v) / 1e9).toFixed(2) + 'B';
+            return formatDomain.formatDamageRaw(v);
         }
 
         function showNotification(msg) {
@@ -11706,33 +11708,13 @@
         // 時間別ベスト候補タイムライン: 各時刻に「凸可能 (availableSlots に含む) かつ 残凸あり」な候補から
         // ベスト1名を出す。リーダーが変わる時刻を強調して、運営の「何時まで待てば◯◯さんが凸できる」判断を支援。
         function _buildFinishTimeline(attrKey, allCandidatesAtThisAttr, remainingHpB) {
-            // 現在時刻から24時間 (ユニレ周回1周) 分を順に走査
-            const curHourStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false });
-            const curHour = parseInt(curHourStr, 10) % 24;
-            const sequence = [];
-            for (let i = 0; i < 24; i++) sequence.push((curHour + i) % 24);
-
-            const slotKey = (h) => `h${String(h).padStart(2, '0')}`;
+            // 計算 (時間帯別ベスト・リーダー変化点) は finishDomain 側。ここは時刻取得とHTML化のみ。
             // 各候補は { name, dmg, availableSlots, attackCount } を持つ。
             // 「凸残あり (attackCount < 3)」かつ「dmg > 0」のものはすでに allCandidatesAtThisAttr に入っている。
-            const rows = sequence.map(h => {
-                const sk = slotKey(h);
-                // availableSlots が空の人は「常時可」と扱う旧仕様だったが、今回は明示的に未設定=未参加で除外
-                const avail = allCandidatesAtThisAttr.filter(p => (p.availableSlots || []).includes(sk));
-                if (avail.length === 0) return { hour: h, best: null, count: 0 };
-                const best = avail.reduce((a, b) => (a.dmg >= b.dmg ? a : b));
-                return { hour: h, best, count: avail.length };
-            });
-
-            // リーダー変化点を検出
-            let prevBestName = null;
-            let leaderChanges = 0;
-            rows.forEach(r => {
-                if (r.best?.name && r.best.name !== prevBestName) {
-                    r.isLeaderChange = true;
-                    prevBestName = r.best.name;
-                    leaderChanges++;
-                }
+            const curHourStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false });
+            const curHour = parseInt(curHourStr, 10) % 24;
+            const { rows, leaderChanges } = finishDomain.buildFinishLeaderTimeline({
+                candidates: allCandidatesAtThisAttr, curHour,
             });
 
             if (leaderChanges <= 1) return '';   // 変化なしなら非表示 (現状で十分)
@@ -11758,45 +11740,9 @@
         let _opsFinishPlanContext = null;
 
         // 残HPを倒すための最適な1〜3凸の組合せを2パターン算出する。
-        // tight = オーバーキル最小、safe = 10%以上の余裕がある中で凸数最少。
+        // 本体は js/domain/finish.js (リアーキ ステップ2 — テスト済み)。
         function computeFinishPlans(candidates, remHP) {
-            if (remHP <= 0 || candidates.length === 0) return { tight: null, safe: null, cannotKill: false };
-            const all = [];
-            const N = candidates.length;
-            for (let i = 0; i < N; i++) {
-                if (candidates[i].dmg >= remHP) {
-                    all.push({ members: [candidates[i]], total: candidates[i].dmg, overkill: candidates[i].dmg - remHP, shots: 1 });
-                }
-            }
-            for (let i = 0; i < N; i++) {
-                for (let j = i + 1; j < N; j++) {
-                    const s = candidates[i].dmg + candidates[j].dmg;
-                    if (s >= remHP) all.push({ members: [candidates[i], candidates[j]], total: s, overkill: s - remHP, shots: 2 });
-                }
-            }
-            // 1/2凸で削れない時のみ3凸を探索 (パフォーマンス配慮: 候補多い場合はトップ12のみ)
-            if (all.length === 0) {
-                const top = candidates.slice(0, Math.min(12, N));
-                for (let i = 0; i < top.length; i++) {
-                    for (let j = i + 1; j < top.length; j++) {
-                        for (let k = j + 1; k < top.length; k++) {
-                            const s = top[i].dmg + top[j].dmg + top[k].dmg;
-                            if (s >= remHP) all.push({ members: [top[i], top[j], top[k]], total: s, overkill: s - remHP, shots: 3 });
-                        }
-                    }
-                }
-            }
-            if (all.length === 0) return { tight: null, safe: null, cannotKill: true };
-
-            // ギリギリ: オーバーキル昇順 → 凸数少ない順
-            const tight = [...all].sort((a, b) => a.overkill - b.overkill || a.shots - b.shots)[0];
-            // 余裕: 10%以上の余裕がある中で 凸数少ない → オーバーキル少ない
-            const margin = remHP * 0.10;
-            const safeCands = all.filter(p => p.overkill >= margin);
-            const safe = safeCands.length > 0
-                ? safeCands.sort((a, b) => a.shots - b.shots || a.overkill - b.overkill)[0]
-                : null;
-            return { tight, safe: (safe && safe !== tight) ? safe : null, cannotKill: false };
+            return finishDomain.computeFinishPlans(candidates, remHP);
         }
 
         function renderOpsFinishPlans(attrKey, boss, ptInfo, remHpB, candidates) {

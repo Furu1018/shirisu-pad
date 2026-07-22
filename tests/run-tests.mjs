@@ -7,9 +7,11 @@ import '../js/optimal-plan.js';        // globalThis.computeOptimalPlanCore を�
 import '../js/domain/attributes.js';   // globalThis.weaknessPtOf 等 (リアーキ ステップ1)
 import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ ステップ2)
 import '../js/domain/ocr.js';          // globalThis.ocrDomain (リアーキ ステップ2)
+import '../js/domain/finish.js';       // globalThis.finishDomain (リアーキ ステップ2)
+import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ ステップ2)
 
 const compute = globalThis.computeOptimalPlanCore;
-const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain, ocrDomain } = globalThis;
+const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain, ocrDomain, finishDomain, formatDomain } = globalThis;
 
 // ---- テストデータ ヘルパー -------------------------------------------------
 const B = 1e9;   // 1B = 10億
@@ -1216,6 +1218,75 @@ test('detectBossCode: 完全一致 → 空白分割OCR → トライグラムフ
     assert.equal(ocrDomain.detectBossCode('ストーAブリンガー', {}), 'Z.E.U.S.', '1文字誤認識をファジィ救済');
     assert.equal(ocrDomain.detectBossCode('無関係なテキスト', {}), null);
     assert.equal(ocrDomain.detectBossCode('', {}), null);
+});
+
+// ---- ドメイン: 締め凸候補の選別 (js/domain/finish.js — リアーキ ステップ2) -----
+console.log('\ndomain/finish:');
+
+test('computeFinishPlans: 1凸で足りるなら tight は1凸、同一プランは safe に重複させない', () => {
+    const r = finishDomain.computeFinishPlans([{ name: 'A', dmg: 10 }], 8);
+    assert.equal(r.cannotKill, false);
+    assert.equal(r.tight.shots, 1);
+    assert.ok(Math.abs(r.tight.overkill - 2) < 1e-9);
+    assert.equal(r.safe, null, 'tight と同一の組合せは safe として出さない');
+});
+
+test('computeFinishPlans: tight=オーバーキル最小 / safe=10%余裕の中で凸数最少→OK最小', () => {
+    const A = { name: 'A', dmg: 10.5 }, B = { name: 'B', dmg: 6 }, C = { name: 'C', dmg: 5 };
+    const r = finishDomain.computeFinishPlans([A, B, C], 10);
+    assert.deepEqual(r.tight.members.map(m => m.name), ['A'], 'ギリギリはオーバーキル0.5のA単騎');
+    assert.deepEqual(r.safe.members.map(m => m.name), ['B', 'C'], '余裕(=残HP10%以上)ではB+C (over 1.0)');
+});
+
+test('computeFinishPlans: 1/2凸で届かない時だけ3凸を探索、3人でも届かなければ cannotKill', () => {
+    const three = finishDomain.computeFinishPlans(
+        [{ name: 'A', dmg: 4 }, { name: 'B', dmg: 4 }, { name: 'C', dmg: 4 }], 10);
+    assert.equal(three.tight.shots, 3);
+    assert.ok(Math.abs(three.tight.overkill - 2) < 1e-9);
+    const cant = finishDomain.computeFinishPlans([{ name: 'A', dmg: 3 }, { name: 'B', dmg: 3 }], 10);
+    assert.equal(cant.cannotKill, true);
+    assert.equal(cant.tight, null);
+    // 残HP 0 以下は「締め不要」であって cannotKill ではない
+    const dead = finishDomain.computeFinishPlans([{ name: 'A', dmg: 3 }], 0);
+    assert.equal(dead.cannotKill, false);
+    assert.equal(dead.tight, null);
+});
+
+test('buildFinishLeaderTimeline: 現在時から24時間走査・時間帯フィルタ・リーダー変化点', () => {
+    const A = { name: 'A', dmg: 10, availableSlots: ['h22', 'h00'] };
+    const B = { name: 'B', dmg: 20, availableSlots: ['h23'] };
+    const noSlot = { name: 'C', dmg: 99, availableSlots: [] };   // 未設定=未参加で除外
+    const { rows, leaderChanges } = finishDomain.buildFinishLeaderTimeline({
+        candidates: [A, B, noSlot], curHour: 22,
+    });
+    assert.equal(rows[0].hour, 22, '現在時が先頭');
+    assert.equal(rows[1].hour, 23);
+    assert.equal(rows[2].hour, 0, '日付をまたいで一周する');
+    assert.equal(rows[0].best.name, 'A');
+    assert.equal(rows[1].best.name, 'B');
+    assert.equal(rows[2].best.name, 'A');
+    assert.equal(rows[3].best, null, '誰も居ない時間帯は null');
+    assert.equal(leaderChanges, 3, 'A→B→A で3回変化 (時間未設定のCは現れない)');
+    assert.ok(rows[0].isLeaderChange && rows[1].isLeaderChange && rows[2].isLeaderChange);
+});
+
+// ---- ドメイン: ダメージ整形 (js/domain/format.js — リアーキ ステップ2) ---------
+console.log('\ndomain/format:');
+
+test('rawToB / formatDamageRaw / trimZeroB', () => {
+    assert.equal(formatDomain.rawToB(1e9), 1);
+    assert.equal(formatDomain.rawToB('2000000000'), 2);
+    assert.equal(formatDomain.rawToB(null), 0);
+    assert.equal(formatDomain.rawToB('abc'), 0);
+    assert.equal(formatDomain.formatDamageRaw(1234567890), '1.23B');
+    assert.equal(formatDomain.formatDamageRaw(-1.5e9), '-1.50B', '負値は符号つき (旧 formatDamage 互換)');
+    assert.equal(formatDomain.formatDamageRaw(null), '-');
+    assert.equal(formatDomain.formatDamageRaw(NaN), '-');
+    assert.equal(formatDomain.trimZeroB(22.5), '22.5');
+    assert.equal(formatDomain.trimZeroB(5), '5');
+    assert.equal(formatDomain.trimZeroB(5.25), '5.25');
+    assert.equal(formatDomain.trimZeroB(0), '0');
+    assert.equal(formatDomain.trimZeroB(null), '');
 });
 
 // ---- 結果 --------------------------------------------------------------------
