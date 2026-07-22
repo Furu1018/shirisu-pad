@@ -5451,6 +5451,12 @@
         //   → スワイプ確定直後はフェードを鳴らさず、ボタンで開き直すとフェード復活 (c8c208d の挙動)
         const TabController = {
             activate(tabName, opts = {}) {
+                // 0) 存在確認は**一切の状態変更より前** (Codex レビュー指摘)。
+                //    active 解除後に return すると「表示中タブが消えて画面が空になる」壊れ方をする
+                //    (旧実装は途中で例外 = 同じ壊れた中間状態で止まっていた — ここで構造的に解消)
+                const target = document.getElementById('tab-' + tabName);
+                if (!target) { console.warn('[TabController] 未知のタブ名:', tabName); return; }
+
                 // 1) 現在のタブの scroll 位置を保存
                 const prevEl = document.querySelector('.tab-content.active');
                 const prevName = prevEl?.id?.replace('tab-', '');
@@ -5463,8 +5469,6 @@
                     el.classList.remove('active');
                     if (el.id !== 'tab-' + tabName) el.classList.remove('swipe-no-anim');
                 });
-                const target = document.getElementById('tab-' + tabName);
-                if (!target) return;   // 未知のタブ名 (旧実装はここで例外 — 防御に変更、挙動上の差はエラーの出方のみ)
                 if (opts.animate === false) target.classList.add('swipe-no-anim');
                 document.querySelectorAll('.tab-button').forEach(btn => {
                     btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
