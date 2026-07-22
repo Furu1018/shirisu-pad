@@ -10969,15 +10969,18 @@
             labelEl.textContent = '読み込み中...';
             remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
 
+            // load() の戻り値を使う (get() ではなく)。応答待ち中に invalidate が走った場合、
+            // ストアは結果を破棄する (get()=null) が、この描画自体はフェッチ結果で行ってよい
+            let snapshot;
             try {
-                await opsStore.load();
+                snapshot = await opsStore.load();
             } catch (e) {
                 labelEl.textContent = '取得失敗';
                 remListEl.innerHTML = `<p style="color:#ef4444;font-size:13px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
 
-            const { season, bosses, players } = opsStore.get();
+            const { season, bosses, players } = snapshot;
             const testBanner = document.getElementById('opsTestBanner');
             if (!season) {
                 labelEl.textContent = '（アクティブシーズン無し）';

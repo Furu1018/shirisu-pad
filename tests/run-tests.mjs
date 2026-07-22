@@ -1365,6 +1365,34 @@ await testAsync('load 失敗時は既存データを保持する (旧実装と�
     assert.equal(opsStore.get().season.id, 1);
 });
 
+await testAsync('レース: 進行中の load は invalidate で破棄される (無効化済み盤面が復活しない)', async () => {
+    let release;
+    const gate = new Promise(r => { release = r; });
+    opsStore.configure({ load: async () => { await gate; return { season: { id: 'stale' }, bosses: [], players: [] }; } });
+    opsStore.invalidate();
+    const p = opsStore.load();           // 応答待ちに入る
+    opsStore.invalidate();               // その間に書き込み操作が発生
+    release();
+    const fetched = await p;
+    assert.equal(fetched.season.id, 'stale', '呼び出し元にはフェッチ結果が返る (描画には使える)');
+    assert.equal(opsStore.get(), null, 'ストアには保存されない — 無効化が勝つ');
+});
+
+await testAsync('レース: 並行 load では遅い古の応答が新しい応答を上書きしない', async () => {
+    const gates = [];
+    let n = 0;
+    opsStore.configure({ load: () => new Promise(r => { const id = ++n; gates.push(() => r({ season: { id }, bosses: [], players: [] })); }) });
+    opsStore.invalidate();
+    const p1 = opsStore.load();          // 古い load (遅い)
+    const p2 = opsStore.load();          // 新しい load (速い)
+    gates[1]();                          // 新しい方が先に完了
+    await p2;
+    assert.equal(opsStore.get().season.id, 2);
+    gates[0]();                          // 古い方が遅れて完了
+    await p1;
+    assert.equal(opsStore.get().season.id, 2, '古い応答はストアを上書きしない');
+});
+
 // 後続テストが本物のローダに触らないよう既定へ戻す
 opsStore.configure({});
 opsStore.invalidate();

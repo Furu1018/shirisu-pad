@@ -25,13 +25,24 @@
     let data = null;
     let loadedAt = 0;                 // 最終「全量」ロード時刻 (部分patchでは更新しない)
     let loadFn = null;                // テスト用に差し替え可。既定は supabase ローダ (遅延解決)
+    let generation = 0;               // 世代番号: load開始/invalidate で進む (Codex監査指摘のレース対策)
 
     async function doLoad() {
         const fn = loadFn || root.supabaseLoadOpsDashboardData;
+        // 世代ガード: 応答待ちの間に invalidate() (書き込み操作) や新しい load() が起きたら、
+        // このロードの結果は「古い盤面」なのでストアには保存しない。
+        //  - invalidate 後に保存すると、無効化したはずの盤面が復活する
+        //  - 並行 load では遅い古の応答が新しい応答を上書きする
+        // 旧実装 (_opsDashboardCache = await ...) から存在したレースで、集約を機に修正。
+        // 呼び出し元にはフェッチ結果をそのまま返す (その画面の描画には使ってよい —
+        // ストアが持つのは常に最新世代だけ、という契約)
+        const gen = ++generation;
         const fresh = await fn();     // throw 時は data を触らない (不変条件5)
-        data = fresh;
-        loadedAt = Date.now();
-        return data;
+        if (gen === generation) {
+            data = fresh;
+            loadedAt = Date.now();
+        }
+        return fresh;
     }
 
     const opsStore = {
@@ -46,8 +57,8 @@
             return !data || (nowMs - loadedAt) > ttlMs;
         },
 
-        /** 書き込み操作後の無効化。次の load() まで get() は null */
-        invalidate() { data = null; },
+        /** 書き込み操作後の無効化。次の load() まで get() は null。進行中の load の結果も破棄する */
+        invalidate() { generation++; data = null; },
 
         /**
          * ポーリングの軽量差し替え: シーズンが一致するときだけ bosses を差し替える。
