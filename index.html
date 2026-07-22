@@ -5440,42 +5440,60 @@
             def.render();
             _markTabRendered(name);
         }
-        function switchTab(tabName) {
-            // 1) 現在のタブの scroll 位置を保存
-            const prevEl = document.querySelector('.tab-content.active');
-            const prevName = prevEl?.id?.replace('tab-', '');
-            if (prevName) {
-                _tabScrollY[prevName] = window.scrollY || document.documentElement.scrollTop || 0;
-            }
+        // ================= TabController (リアーキ ステップ5 Stage1) =================
+        // タブ遷移の唯一の実行者。スクロール保存/復元・active/swipe-no-anim のクラス所有権・
+        // 描画キャッシュ判定・bottom-nav 同期をここに集約する。
+        // 呼び出し口:
+        //   - ボタン/ドロワー/URL誘導: switchTab(name) (後方互換の外皮 — inline onclick が多数残る)
+        //   - スワイプ確定: TabController.activate(name, { animate: false })
+        // swipe-no-anim の契約 (旧: 付与=スワイプ finish / 解除=switchTab と2関数に分裂 → 一元化):
+        //   animate:false で対象に付与 / 非対象タブからは常に解除 / 対象タブの既存付与は温存。
+        //   → スワイプ確定直後はフェードを鳴らさず、ボタンで開き直すとフェード復活 (c8c208d の挙動)
+        const TabController = {
+            activate(tabName, opts = {}) {
+                // 1) 現在のタブの scroll 位置を保存
+                const prevEl = document.querySelector('.tab-content.active');
+                const prevName = prevEl?.id?.replace('tab-', '');
+                if (prevName) {
+                    _tabScrollY[prevName] = window.scrollY || document.documentElement.scrollTop || 0;
+                }
 
-            // 2) タブ切替
-            //    swipe-no-anim は「非対象タブ」からだけ解除する。対象タブに付いていれば残す
-            //    (スワイプ確定時は finish() が対象へ付与済み → フェードを鳴らさず、ちらつきを防ぐ)。
-            //    非対象は解除しておくことで、次にボタンで開いたときはフェードが復活する。
-            document.querySelectorAll('.tab-content').forEach(el => {
-                el.classList.remove('active');
-                if (el.id !== 'tab-' + tabName) el.classList.remove('swipe-no-anim');
-            });
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
-            });
-            document.getElementById('tab-' + tabName).classList.add('active');
+                // 2) タブ切替 (active / swipe-no-anim / ヘッダタブボタン)
+                document.querySelectorAll('.tab-content').forEach(el => {
+                    el.classList.remove('active');
+                    if (el.id !== 'tab-' + tabName) el.classList.remove('swipe-no-anim');
+                });
+                const target = document.getElementById('tab-' + tabName);
+                if (!target) return;   // 未知のタブ名 (旧実装はここで例外 — 防御に変更、挙動上の差はエラーの出方のみ)
+                if (opts.animate === false) target.classList.add('swipe-no-anim');
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+                });
+                target.classList.add('active');
 
-            // 3) 同期 scrollTo: クラス変更と同じフレームで適用するためペイント前に確定させる
-            //    (rAF だと一瞬「先頭」が見えてしまう)
-            const y = Object.prototype.hasOwnProperty.call(_tabScrollY, tabName) ? _tabScrollY[tabName] : 0;
-            window.scrollTo(0, y);
+                // 3) 同期 scrollTo: クラス変更と同じフレームで適用するためペイント前に確定させる
+                //    (rAF だと一瞬「先頭」が見えてしまう)
+                const y = Object.prototype.hasOwnProperty.call(_tabScrollY, tabName) ? _tabScrollY[tabName] : 0;
+                window.scrollTo(0, y);
 
-            // 4) コンテンツ描画 — しきい値内ならスキップ (前回描画 DOM を使い回す)
-            //    ※ ops の coord 関連はポーリング (10秒毎) で別途更新されるので、ここを
-            //    スキップしても古い情報にはなりにくい
-            if (!_shouldSkipRender(tabName)) {
-                _renderTabContent(tabName);
-            }
+                // 4) コンテンツ描画 — しきい値内ならスキップ (前回描画 DOM を使い回す)
+                //    ※ ops の coord 関連はポーリング (10秒毎) で別途更新されるので、ここを
+                //    スキップしても古い情報にはなりにくい
+                if (!_shouldSkipRender(tabName)) {
+                    _renderTabContent(tabName);
+                }
 
-            // 5) 描画で body 高さが変わるケースのためバックアップで rAF 再適用
-            requestAnimationFrame(() => { window.scrollTo(0, y); });
-        }
+                // 5) 描画で body 高さが変わるケースのためバックアップで rAF 再適用
+                requestAnimationFrame(() => { window.scrollTo(0, y); });
+
+                // 6) bottom-nav の active 同期
+                //    (旧: window.switchTab のラッパでのみ実施 = 直接呼び出し経路では同期漏れの穴。
+                //     全遷移がここを通るようになったため controller 本体へ移動 — 監査 §4-5 不変条件8)
+                _syncBottomNavActive(tabName);
+            },
+        };
+        // 後方互換の外皮: inline onclick (bottom-nav/tab-button/drawer 等) と既存呼び出しはこのまま
+        function switchTab(tabName) { TabController.activate(tabName); }
 
         // ========== Player Identity (Phase 2a) ==========
         const IDENTITY_KEY = 'shirisuPad.currentPlayer';
@@ -16326,16 +16344,9 @@
                 btn.classList.toggle('active', btn.dataset.tab === tabName);
             });
         }
-        // 既存 switchTab をラップして bottom nav の active も同期
-        (function () {
-            const orig = window.switchTab;
-            if (typeof orig === 'function') {
-                window.switchTab = function (tabName) {
-                    orig(tabName);
-                    _syncBottomNavActive(tabName);
-                };
-            }
-        })();
+        // bottom-nav の同期は TabController.activate 内 (手順6) に移動済み (リアーキ ステップ5 Stage1)。
+        // 旧: window.switchTab をラップして同期していたが、ラッパを通らない直接呼び出しで
+        // 同期漏れする穴があった — controller 集約で全経路が同期を通る。
 
         // ========== 横スワイプ タブ切替 (指追随ドラッグ + スナップ) ==========
         const _SWIPE_TABS = TAB_REGISTRY.filter(t => t.swipe).map(t => t.name);   // 並び順 = TAB_REGISTRY の定義順
@@ -16500,21 +16511,18 @@
                 // 終了処理 (transitionend)
                 const finish = () => {
                     const targetName = targetEl.id.replace('tab-', '');
-                    targetEl.classList.add('swipe-no-anim');
                     // 1) 先に隣のタブのインラインスタイルをクリア (position:fixed 解除)
                     //    これで target が通常フローに戻り (display:none CSS が効く)、
-                    //    switchTab 内の同期 scrollTo が正しい body 高さで動作できる
+                    //    activate 内の同期 scrollTo が正しい body 高さで動作できる
                     _cleanupNeighbor(targetEl);
                     _resetTabTransform(targetEl);
-                    // 2) タブ切替 (active クラス入替 + 同期 scrollTo)
-                    if (typeof switchTab === 'function') switchTab(targetName);
+                    // 2) タブ切替。animate:false で swipe-no-anim の付与ごと TabController に委ねる
+                    //    (フェード抑止と解除タイミングの契約は controller 側に一元化 — Stage1)
+                    TabController.activate(targetName, { animate: false });
                     // 3) 旧タブの transform を解除 (この時点で旧タブは display:none なので非表示)
                     _resetTabTransform(cur);
                     if (otherNeighbor) _cleanupNeighbor(otherNeighbor);
                     _swipe.animating = false;
-                    // swipe-no-anim は付けたまま (フェード再発火=ちらつきを防ぐ)。
-                    // 次に別タブへ移った時 switchTab がこのタブから解除するので、
-                    // ボタンで開き直したときはフェードが復活する。
                 };
                 let fired = false;
                 const onEnd = () => { if (fired) return; fired = true; cur.removeEventListener('transitionend', onEnd); finish(); };

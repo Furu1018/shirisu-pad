@@ -166,9 +166,17 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > 5本の重複配列 (_SWIPE_TABS / _PTR_KNOWN_TABS / _TAB_RENDER_THRESHOLD_MS /
    > プリレンダー / _BOTTOM_TAB_ORDER=参照ゼロで削除) と _renderTabContent の分岐を
    > registry からの導出に置換。**全導出が旧リテラルと一致することを機械検証済み** (挙動不変)。
-   > **残 Stage**: 1=TabController 抽出 (switchTab+ラッパ+swipe-no-anim所有権の集約) /
-   > 2=ジェスチャ層を遷移要求のみに (fixed/transform の後始末一元化 + visibilitychange リーク防御) /
-   > 3=viewport maximum-scale + CSS のタブ列挙を属性セレクタ化 + data-no-swipe の dev assert。
+   > **Stage1 完了 (同日)**: `TabController.activate(name, {animate})` を新設し、switchTab の
+   > 5責務 + bottom-nav 同期 + swipe-no-anim の付与/解除を1箇所に集約。
+   > - swipe-no-anim の所有権分裂 (付与=スワイプfinish / 解除=switchTab) を解消 —
+   >   触るのは activate 内の2行のみになったことを grep で確認
+   > - bottom-nav 同期の window.switchTab ラッパを撤去 (ラッパを通らない直接呼び出しで
+   >   同期漏れする穴 = 不変条件8 を封鎖)。起動時の初期同期のみ activate 外 (正当な例外)
+   > - switchTab は後方互換の外皮として温存 (inline onclick 多数のため)。
+   >   スワイプ finish は activate(name, {animate:false}) を呼ぶだけに
+   > **残 Stage**: 2=ジェスチャ層を遷移要求のみに (fixed/transform の後始末一元化 +
+   > visibilitychange リーク防御) / 3=viewport maximum-scale + CSS のタブ列挙を
+   > 属性セレクタ化 + data-no-swipe の dev assert。
    > ※不変条件の要点: 除外セレクタはスワイプ/PTRで別物 / body overflow-x:clip にスワイプが依存
    > (0170c7d) / swipe-no-anim は付与=finish・解除=switchTab非対象限定 (c8c208d) /
    > switchTab の同期 scrollTo は同フレーム必須 / bottom-nav 同期は window.switchTab ラッパ経由のみ。
