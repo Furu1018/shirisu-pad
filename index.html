@@ -5490,6 +5490,9 @@
                 //    (旧: window.switchTab のラッパでのみ実施 = 直接呼び出し経路では同期漏れの穴。
                 //     全遷移がここを通るようになったため controller 本体へ移動 — 監査 §4-5 不変条件8)
                 _syncBottomNavActive(tabName);
+
+                // 7) スワイプ除外漏れの監査を再スケジュール (動的生成された横スクロール要素を拾う)
+                if (typeof _scheduleNoSwipeAudit === 'function') _scheduleNoSwipeAudit();
             },
         };
         // 後方互換の外皮: inline onclick (bottom-nav/tab-button/drawer 等) と既存呼び出しはこのまま
@@ -16361,9 +16364,14 @@
             active: false,    // touchstart で捕捉中
             tracking: false,  // 横ドラッグ中 (transform 適用中)
             animating: false, // 切替/スナップバックのアニメ中 (再グラブ禁止)
+            gen: 0,           // ジェスチャ世代: _swipeHardReset で進め、残存タイマー/リスナーを無効化する
             width: 0,
         };
         let _swipeRaf = 0, _swipePendingDx = 0;   // transform 更新は rAF で1フレーム1回に間引く
+        // スワイプ除外セレクタ (touchstart 判定と data-no-swipe 監査が同じ定義を共有する)。
+        // .dc-table-wrap は Codex 監査で発覚した除外漏れ (CSSクラス由来の横スクロールで、
+        // インライン style 走査にも引っかからなかった) — クラスごと除外に追加
+        const _SWIPE_EXCLUDE_SEL = 'input, textarea, select, .player-select-modal.open, [data-no-swipe], .data-table, .dc-table-wrap, .chart-container, .help-toc, .bottom-nav, header.header';
         const _findTabEl = (key) => document.getElementById('tab-' + key);
         const _resetTabTransform = (el) => {
             if (!el) return;
@@ -16411,7 +16419,7 @@
             // 除外は入力系・開いたモーダル・横スクロール系・ナビだけ。button/a は除外しない:
             // 方向ロック(8px)を超えて横に動いた時だけスワイプになるため、タップは阻害されず、
             // 「ボタンの上から始めるとスワイプが効かない」ムラを無くせる (ゴーストクリックは touchend で抑止)
-            if (t.closest('input, textarea, select, .player-select-modal.open, [data-no-swipe], .data-table, .chart-container, .help-toc, .bottom-nav, header.header')) return;
+            if (t.closest(_SWIPE_EXCLUDE_SEL)) return;
             if (e.touches.length !== 1) return;
             const active = document.querySelector('.tab-content.active');
             const tabName = active?.id?.replace('tab-', '');
@@ -16525,7 +16533,13 @@
                     _swipe.animating = false;
                 };
                 let fired = false;
-                const onEnd = () => { if (fired) return; fired = true; cur.removeEventListener('transitionend', onEnd); finish(); };
+                const gen = _swipe.gen;   // 世代ガード: ハードリセット後に残ったタイマー/リスナーを無効化
+                const onEnd = () => {
+                    if (fired) return; fired = true;
+                    cur.removeEventListener('transitionend', onEnd);
+                    if (_swipe.gen !== gen) return;   // バックグラウンド化等でリセット済み → 何もしない
+                    finish();
+                };
                 cur.addEventListener('transitionend', onEnd);
                 setTimeout(onEnd, 320);   // フォールバック
             } else {
@@ -16542,9 +16556,11 @@
                     _swipe.nextEl.style.transform = `translate3d(${W}px, 0, 0)`;
                 }
                 let fired = false;
+                const gen = _swipe.gen;   // 世代ガード (finish 側と同じ)
                 const onEnd = () => {
                     if (fired) return; fired = true;
                     cur.removeEventListener('transitionend', onEnd);
+                    if (_swipe.gen !== gen) return;
                     _resetTabTransform(cur);
                     if (_swipe.prevEl) _cleanupNeighbor(_swipe.prevEl);
                     if (_swipe.nextEl) _cleanupNeighbor(_swipe.nextEl);
@@ -16561,16 +16577,18 @@
             _swipe.tracking = false;
             if (_swipeRaf) { cancelAnimationFrame(_swipeRaf); _swipeRaf = 0; }
             _swipe.animating = true;
-            setTimeout(() => { _swipe.animating = false; }, 240);
+            const gen = _swipe.gen;   // 世代ガード: リセット後の残存タイマーが新しいジェスチャ状態を壊さないように
+            setTimeout(() => { if (_swipe.gen === gen) _swipe.animating = false; }, 240);
             const W = _swipe.width;
             const TR = 'transform 0.2s ease-out';
             if (_swipe.curEl) {
-                _swipe.curEl.style.transition = TR;
-                _swipe.curEl.style.transform = 'translate3d(0px, 0, 0)';
-                setTimeout(() => _resetTabTransform(_swipe.curEl), 220);
+                const el = _swipe.curEl;
+                el.style.transition = TR;
+                el.style.transform = 'translate3d(0px, 0, 0)';
+                setTimeout(() => { if (_swipe.gen === gen) _resetTabTransform(el); }, 220);
             }
-            if (_swipe.prevEl) { _swipe.prevEl.style.transition = TR; _swipe.prevEl.style.transform = `translate3d(${-W}px, 0, 0)`; setTimeout(() => _cleanupNeighbor(_swipe.prevEl), 220); }
-            if (_swipe.nextEl) { _swipe.nextEl.style.transition = TR; _swipe.nextEl.style.transform = `translate3d(${W}px, 0, 0)`; setTimeout(() => _cleanupNeighbor(_swipe.nextEl), 220); }
+            if (_swipe.prevEl) { const el = _swipe.prevEl; el.style.transition = TR; el.style.transform = `translate3d(${-W}px, 0, 0)`; setTimeout(() => { if (_swipe.gen === gen) _cleanupNeighbor(el); }, 220); }
+            if (_swipe.nextEl) { const el = _swipe.nextEl; el.style.transition = TR; el.style.transform = `translate3d(${W}px, 0, 0)`; setTimeout(() => { if (_swipe.gen === gen) _cleanupNeighbor(el); }, 220); }
         }, { passive: true });
 
         // ジェスチャ後始末の一括リセット (リアーキ ステップ5 Stage2 — 監査 不変条件6)。
@@ -16578,6 +16596,7 @@
         // 隣タブの position:fixed + transform が残留して画面が壊れたままになる経路があった。
         // アニメなしで即座に全アーティファクトを撤去する (_cleanupNeighbor は冪等なので安全)
         function _swipeHardReset() {
+            _swipe.gen++;   // 残存中の transitionend/setTimeout 完了処理を全て無効化 (Codex監査対応)
             if (_swipeRaf) { cancelAnimationFrame(_swipeRaf); _swipeRaf = 0; }
             [_swipe.curEl, _swipe.prevEl, _swipe.nextEl].forEach(el => {
                 if (!el) return;
@@ -16592,19 +16611,33 @@
             if (document.hidden && (_swipe.active || _swipe.tracking || _swipe.animating)) _swipeHardReset();
         });
 
-        // data-no-swipe 付け忘れ検出 (リアーキ ステップ5 Stage3 — 監査 不変条件2 の担保)。
-        // 横スクロール要素に data-no-swipe が無いと「スクロールしたいのにタブが切り替わる」
-        // 事故になる (過去に複数回発生)。このアプリの横スクロールは全てインライン style なので、
-        // 起動時に1回だけ属性セレクタで走査して console.warn する (本番でも無害・コンソールのみ)
+        // スワイプ除外漏れの検出 (リアーキ ステップ5 Stage3 → Codex監査で強化 — 不変条件2 の担保)。
+        // 横スクロール要素が除外されていないと「スクロールしたいのにタブが切り替わる」事故になる。
+        // 旧実装はインライン style の文字列一致だけで、CSSクラス由来 (.dc-table-wrap 等) や
+        // 起動後に生成される要素を見逃した → computed style で判定し、タブ切替のたびに
+        // アクティブタブを再走査する。保護判定は実際のスワイプ除外 (_SWIPE_EXCLUDE_SEL) と同一定義
+        const _noSwipeWarnedEls = new WeakSet();
         function _auditNoSwipeMarkers() {
-            const scrollers = document.querySelectorAll('[style*="overflow-x:auto"], [style*="overflow-x: auto"]');
-            scrollers.forEach(el => {
-                if (!el.closest('[data-no-swipe]') && el.closest('.tab-content')) {
-                    console.warn('[swipe監査] 横スクロール要素に data-no-swipe がありません — タブスワイプと衝突します:', el.id || el.className || el);
-                }
+            const root = document.querySelector('.tab-content.active');
+            if (!root) return;
+            root.querySelectorAll('*').forEach(el => {
+                if (_noSwipeWarnedEls.has(el)) return;
+                if (el.scrollWidth <= el.clientWidth + 1) return;   // 実際に横スクロールしない要素は無視
+                const ox = getComputedStyle(el).overflowX;
+                if (ox !== 'auto' && ox !== 'scroll') return;
+                if (el.closest(_SWIPE_EXCLUDE_SEL)) return;
+                _noSwipeWarnedEls.add(el);
+                console.warn('[swipe監査] 横スクロール要素がスワイプ除外されていません — data-no-swipe を付けてください:', el.id || el.className || el);
             });
         }
-        (window.requestIdleCallback || ((cb) => setTimeout(cb, 1500)))(() => { try { _auditNoSwipeMarkers(); } catch { /* noop */ } });
+        let _noSwipeAuditTimer = 0;
+        function _scheduleNoSwipeAudit() {
+            clearTimeout(_noSwipeAuditTimer);
+            _noSwipeAuditTimer = setTimeout(() => {
+                (window.requestIdleCallback || ((cb) => setTimeout(cb, 300)))(() => { try { _auditNoSwipeMarkers(); } catch { /* noop */ } });
+            }, 1200);
+        }
+        _scheduleNoSwipeAudit();   // 初回 (タブ切替時は TabController.activate が再スケジュール)
 
         // ========== ② Android の戻る操作でモーダル/ドロワーを閉じる (history 連携) ==========
         // モーダルが開いたら history state を1つ積み、戻る操作でその state が pop されたら
