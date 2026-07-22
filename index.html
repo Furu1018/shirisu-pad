@@ -16511,6 +16511,11 @@
             if (commit && targetEl) {
                 // 切替確定: cur を ±W へ、target を 0 へ
                 _swipe.animating = true;
+                // 下部ナビは確定が決まった瞬間に先行同期する (タブ本体の切替はスライドアニメ
+                // 完了後の activate だが、ナビまで一緒に待つと「ワンテンポ遅れ」に見える)。
+                // activate 側の同期は冪等なので二重実行しても無害。
+                // ※ ハードリセットで finish が破棄された場合は _swipeHardReset が実タブへ同期し直す
+                _syncBottomNavActive(targetEl.id.replace('tab-', ''));
                 cur.style.transition = TR;
                 targetEl.style.transition = TR;
                 cur.style.transform = `translate3d(${wantsNext ? -W : W}px, 0, 0)`;
@@ -16606,6 +16611,10 @@
             _swipe.active = false;
             _swipe.tracking = false;
             _swipe.animating = false;
+            // 確定時に先行同期した下部ナビを実際のアクティブタブへ戻す
+            // (finish が世代ガードで破棄された場合、ナビだけ切替先を指したままになるため)
+            const activeName = document.querySelector('.tab-content.active')?.id?.replace('tab-', '');
+            if (activeName) _syncBottomNavActive(activeName);
         }
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && (_swipe.active || _swipe.tracking || _swipe.animating)) _swipeHardReset();
