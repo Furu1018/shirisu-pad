@@ -47,8 +47,11 @@
    基準者固定・SLv補正の説明を固定表示 / 当日残凸一覧の概念 (オンライン/残凸フィルタ) を混ぜない
 3. **Stage 3**: ホーム⇄戦況の当日導線の相互リンク・仕上げ (移設はしない)
 
-移行時の注意 (Codex 指摘): タブ機構は TAB_REGISTRY/TabController に一元化済みだが、
-**画面外導線 (ヘルプ15章・URL パラメータ・Push 遷移先) は自動追随しない** — 各Stageで棚卸し必須。
+移行時の注意 (Codex 指摘): タブのロジック面 (swipe/PTR/CSS/描画分岐) は TAB_REGISTRY/
+TabController に集約済みだが、**タブの追加・改称には registry 1行に加えて「自タブのHTML +
+ナビHTML 3箇所 (bottom-nav/ヘッダ/drawer)」の手修正が必要** (ARCHITECTURE-AUDIT.md §4
+ステップ5「完了条件との差分」参照)。さらに**画面外導線 (ヘルプ15章・URL パラメータ・
+Push 遷移先) も自動追随しない** — 各Stageで棚卸し必須。
 
 ## 不採用の代替案 (再燃したとき用)
 
