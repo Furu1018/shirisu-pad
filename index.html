@@ -1597,12 +1597,10 @@
         }
 
         /* マーブル背景: 主要5タブ + メンバー管理サブページ共通 */
-        #tab-mypage.tab-content.active,
-        #tab-ops.tab-content.active,
-        #tab-ranking.tab-content.active,
-        #tab-slv-ranking.tab-content.active,
-        #tab-settings.tab-content.active,
-        #tab-member-admin.tab-content.active {
+        /* マーブル背景 + 標準レイアウトは .tab-page マーカーで適用 (リアーキ ステップ5 Stage3)。
+           タブ追加時は自分の tab-content div に tab-page クラスを付けるだけ — このCSSは触らない。
+           (help / characters は意図的に非対象なので付けていない) */
+        .tab-page.tab-content.active {
             background:
                 radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
                 radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
@@ -1610,9 +1608,7 @@
                 radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
             min-height: 100vh;
         }
-        #tab-mypage .container, #tab-ops .container,
-        #tab-ranking .container, #tab-slv-ranking .container,
-        #tab-settings .container, #tab-member-admin .container {
+        .tab-page .container {
             display: flex; flex-direction: column; gap: 14px;
             padding: 16px 16px 80px;
         }
@@ -2580,7 +2576,7 @@
     </nav>
 
     <!-- ========== Tab: マイページ (再構築版) ========== -->
-    <div id="tab-mypage" class="tab-content active">
+    <div id="tab-mypage" class="tab-content tab-page active">
         <div class="container">
             <!-- ① プロフィール: ClaudeDesign 準拠 (シルバーリング + 名前/Lv + 得意属性チップ + 編集ピル + soft-fill 切替) -->
             <div class="dc-card dc-profile-card">
@@ -2938,7 +2934,7 @@
     </div>
 
     <!-- ========== Tab: 運営 ========== -->
-    <div id="tab-ops" class="tab-content">
+    <div id="tab-ops" class="tab-content tab-page">
         <div class="container">
             <!-- ヘッダー: アクティブシーズン + 同期インジ -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
@@ -3104,7 +3100,7 @@
     </div>
 
     <!-- ========== Tab 1: ダメージ比較 (完了済シーズンの分析) ========== -->
-    <div id="tab-ranking" class="tab-content">
+    <div id="tab-ranking" class="tab-content tab-page">
         <div class="container">
             <!-- ページヘッダー -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
@@ -3246,7 +3242,7 @@
     </div>
 
     <!-- ========== Tab 2: ふるり値 (完了済シーズンの SLv 補正スコア) ========== -->
-    <div id="tab-slv-ranking" class="tab-content">
+    <div id="tab-slv-ranking" class="tab-content tab-page">
         <div class="container">
             <!-- ページヘッダー -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
@@ -3853,7 +3849,7 @@
     </div>
 
     <!-- ========== Tab: メンバー管理 (設定からの遷移先専用) ========== -->
-    <div id="tab-member-admin" class="tab-content">
+    <div id="tab-member-admin" class="tab-content tab-page">
         <div class="container">
             <!-- ヘッダ -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
@@ -3947,7 +3943,7 @@
     </div>
 
     <!-- ========== Tab 6: 設定 (ClaudeDesign 準拠) ========== -->
-    <div id="tab-settings" class="tab-content">
+    <div id="tab-settings" class="tab-content tab-page">
         <div class="container">
             <!-- ヘッダ -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:0 2px 2px;">
@@ -16576,6 +16572,39 @@
             if (_swipe.prevEl) { _swipe.prevEl.style.transition = TR; _swipe.prevEl.style.transform = `translate3d(${-W}px, 0, 0)`; setTimeout(() => _cleanupNeighbor(_swipe.prevEl), 220); }
             if (_swipe.nextEl) { _swipe.nextEl.style.transition = TR; _swipe.nextEl.style.transform = `translate3d(${W}px, 0, 0)`; setTimeout(() => _cleanupNeighbor(_swipe.nextEl), 220); }
         }, { passive: true });
+
+        // ジェスチャ後始末の一括リセット (リアーキ ステップ5 Stage2 — 監査 不変条件6)。
+        // スワイプ途中でページがバックグラウンド化すると touchcancel の発火が保証されず、
+        // 隣タブの position:fixed + transform が残留して画面が壊れたままになる経路があった。
+        // アニメなしで即座に全アーティファクトを撤去する (_cleanupNeighbor は冪等なので安全)
+        function _swipeHardReset() {
+            if (_swipeRaf) { cancelAnimationFrame(_swipeRaf); _swipeRaf = 0; }
+            [_swipe.curEl, _swipe.prevEl, _swipe.nextEl].forEach(el => {
+                if (!el) return;
+                _cleanupNeighbor(el);
+                _resetTabTransform(el);
+            });
+            _swipe.active = false;
+            _swipe.tracking = false;
+            _swipe.animating = false;
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && (_swipe.active || _swipe.tracking || _swipe.animating)) _swipeHardReset();
+        });
+
+        // data-no-swipe 付け忘れ検出 (リアーキ ステップ5 Stage3 — 監査 不変条件2 の担保)。
+        // 横スクロール要素に data-no-swipe が無いと「スクロールしたいのにタブが切り替わる」
+        // 事故になる (過去に複数回発生)。このアプリの横スクロールは全てインライン style なので、
+        // 起動時に1回だけ属性セレクタで走査して console.warn する (本番でも無害・コンソールのみ)
+        function _auditNoSwipeMarkers() {
+            const scrollers = document.querySelectorAll('[style*="overflow-x:auto"], [style*="overflow-x: auto"]');
+            scrollers.forEach(el => {
+                if (!el.closest('[data-no-swipe]') && el.closest('.tab-content')) {
+                    console.warn('[swipe監査] 横スクロール要素に data-no-swipe がありません — タブスワイプと衝突します:', el.id || el.className || el);
+                }
+            });
+        }
+        (window.requestIdleCallback || ((cb) => setTimeout(cb, 1500)))(() => { try { _auditNoSwipeMarkers(); } catch { /* noop */ } });
 
         // ========== ② Android の戻る操作でモーダル/ドロワーを閉じる (history 連携) ==========
         // モーダルが開いたら history state を1つ積み、戻る操作でその state が pop されたら

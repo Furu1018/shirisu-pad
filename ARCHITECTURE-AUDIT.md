@@ -174,9 +174,19 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    >   同期漏れする穴 = 不変条件8 を封鎖)。起動時の初期同期のみ activate 外 (正当な例外)
    > - switchTab は後方互換の外皮として温存 (inline onclick 多数のため)。
    >   スワイプ finish は activate(name, {animate:false}) を呼ぶだけに
-   > **残 Stage**: 2=ジェスチャ層を遷移要求のみに (fixed/transform の後始末一元化 +
-   > visibilitychange リーク防御) / 3=viewport maximum-scale + CSS のタブ列挙を
-   > 属性セレクタ化 + data-no-swipe の dev assert。
+   > **Stage2/3 完了 (同日) — ステップ5 実質完了**:
+   > - Stage2: `_swipeHardReset()` 新設 + visibilitychange でスワイプ中のバックグラウンド化時に
+   >   fixed/transform を即時撤去 (touchcancel 非保証環境での残留リーク防御 — 不変条件6)
+   > - Stage3: CSS のタブ列挙 (マーブル背景/.container ×6タブ) を `.tab-page` マーカークラスに
+   >   置換 — タブ追加時にCSSを触らない。data-no-swipe 付け忘れの起動時1回スキャン
+   >   (console.warn) を追加 (不変条件2 の担保)
+   > - **viewport maximum-scale=1 は意図的に見送り**: プルプルは 0170c7d の body overflow-x:clip
+   >   で既に構造的に封じられており、maximum-scale はロービジョンユーザーのピンチズームを
+   >   奪うアクセシビリティコストがある。プルプルが再発した場合のみ再検討
+   > - **完了条件との差分 (正直な現状)**: タブ追加は「registry 1行 + 自タブのHTML (tab-content
+   >   div に tab-page 付与) + ナビHTML 3箇所 (bottom-nav/ヘッダ/drawer)」。ナビ3箇所の
+   >   registry からの自動生成はSVGアイコン持ちで工数対効果が薄く見送り — swipe/PTR/CSS/
+   >   描画分岐/しきい値の個別修正は撲滅済みで、監査の意図 (全域個別修正の解消) は達成。
    > ※不変条件の要点: 除外セレクタはスワイプ/PTRで別物 / body overflow-x:clip にスワイプが依存
    > (0170c7d) / swipe-no-anim は付与=finish・解除=switchTab非対象限定 (c8c208d) /
    > switchTab の同期 scrollTo は同フレーム必須 / bottom-nav 同期は window.switchTab ラッパ経由のみ。
