@@ -137,7 +137,12 @@ Fable（Claude）＋Codex(gpt-5.6-sol) を併用し、**4本の独立監査**（
    > ストア契約はテスト5件で固定 (81 passed)。
    > **残 (意図的スコープ外)**: subscribe/セレクタによる更新イベント層は見送り —
    > 現行は「invalidate → 明示的に再描画呼び出し」の定型で挙動維持を優先した。
-   > `_activeSeasonCache` (二重キャッシュ・無効化12/21箇所のみ連動) の統合は次の課題。
+   > 追記 (同日): `_activeSeasonCache` も `js/state/seasonStore.js` へ移行完了 (全30箇所→0)。
+   > opsStore とは意図的に別ストア ({season,bosses} の軽量キャッシュ / マイページ高頻度読者用)。
+   > 旧 ensureActiveSeasonLoaded の挙動 (失敗結果もキャッシュ / supabase未ロード時 null) を
+   > 不変条件として保存し、世代ガード (invalidate 中の ensure 破棄) を追加。テスト4件 (87 passed)。
+   > 無効化の連動 (ボスHP/凸系=両ストア / マイページ模擬系=opsStore のみ) は呼び出し側の
+   > 責務のまま — セマンティクスが異なるため機械的統合はしない。
 
 4. **運営画面をイベント委譲＋ターゲット更新へ** — **🔄 進行中 (2026-07-22 ボス状況カード 完了)**
    `onclick`文字列をコンテナのclickハンドラ(`data-action`)へ寄せ、入力中カードは全置換せず値・表示領域だけ更新。

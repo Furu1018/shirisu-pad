@@ -10,6 +10,7 @@ import '../js/domain/ocr.js';          // globalThis.ocrDomain (リアーキ ス
 import '../js/domain/finish.js';       // globalThis.finishDomain (リアーキ ステップ2)
 import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ ステップ2)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
+import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
 const compute = globalThis.computeOptimalPlanCore;
 const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain, ocrDomain, finishDomain, formatDomain } = globalThis;
@@ -1396,6 +1397,64 @@ await testAsync('レース: 並行 load では遅い古の応答が新しい応�
 // 後続テストが本物のローダに触らないよう既定へ戻す
 opsStore.configure({});
 opsStore.invalidate();
+
+// ---- 状態ストア: seasonStore (js/state/seasonStore.js) ------------------------
+console.log('\nstate/seasonStore:');
+
+const seasonStore = globalThis.seasonStore;
+await testAsync('ensure: キャッシュ優先・無ければ1回だけロード', async () => {
+    let calls = 0;
+    seasonStore.configure({ load: async () => { calls++; return { season: { id: 5 }, bosses: [{ n: 1 }] }; } });
+    seasonStore.invalidate();
+    const a = await seasonStore.ensure();
+    const b = await seasonStore.ensure();
+    assert.equal(a.season.id, 5);
+    assert.equal(a, b, '2回目はキャッシュを返す');
+    assert.equal(calls, 1, 'ロードは1回だけ');
+});
+
+await testAsync('ensure: 取得失敗は {season:null,bosses:[]} をキャッシュ (invalidate まで再試行しない)', async () => {
+    let calls = 0;
+    seasonStore.configure({ load: async () => { calls++; throw new Error('network'); } });
+    seasonStore.invalidate();
+    const a = await seasonStore.ensure();
+    assert.equal(a.season, null);
+    assert.deepEqual(a.bosses, []);
+    await seasonStore.ensure();
+    assert.equal(calls, 1, '失敗結果もキャッシュされ再試行しない (旧実装と同一)');
+    seasonStore.invalidate();
+    await seasonStore.ensure().catch(() => {});
+    assert.equal(calls, 2, 'invalidate 後は再試行する');
+});
+
+await testAsync('ensure: ローダ未定義なら null を返しキャッシュしない (supabase未ロード時)', async () => {
+    seasonStore.configure({});           // 既定に戻す (node 環境では supabase 関数が存在しない)
+    seasonStore.invalidate();
+    assert.equal(await seasonStore.ensure(), null);
+    assert.equal(seasonStore.get(), null, 'キャッシュされない');
+});
+
+await testAsync('patchBosses / invalidate 中の ensure 破棄 (opsStore と同じ世代ガード)', async () => {
+    let release;
+    const gate = new Promise(r => { release = r; });
+    seasonStore.configure({ load: async () => { await gate; return { season: { id: 9 }, bosses: [{ n: 1 }] }; } });
+    seasonStore.invalidate();
+    const p = seasonStore.ensure();
+    seasonStore.invalidate();            // 応答待ち中に書き込み操作
+    release();
+    await p;
+    assert.equal(seasonStore.get(), null, '無効化済みシーズンは復活しない');
+    // patchBosses: シーズン一致のみ
+    seasonStore.configure({ load: async () => ({ season: { id: 9 }, bosses: [{ n: 1 }] }) });
+    await seasonStore.ensure();
+    assert.equal(seasonStore.patchBosses(8, [{ n: 9 }]), false);
+    assert.equal(seasonStore.patchBosses(9, [{ n: 2 }]), true);
+    assert.equal(seasonStore.get().bosses[0].n, 2);
+});
+
+// 後続テストが本物のローダに触らないよう既定へ戻す
+seasonStore.configure({});
+seasonStore.invalidate();
 
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);

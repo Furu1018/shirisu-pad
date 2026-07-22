@@ -31,6 +31,7 @@
     <script defer src="./js/domain/finish.js"></script>
     <script defer src="./js/domain/format.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
+    <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
     <style>
 
@@ -5362,7 +5363,7 @@
             if (icon) icon.style.transform = 'rotate(360deg)';
             try {
                 // 主要キャッシュをクリア
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 _myTodayAttacksCache = null;
                 if (typeof _allPlayersCache !== 'undefined') _allPlayersCache = null;
@@ -6014,7 +6015,7 @@
             if (!identity?.id) { area.innerHTML = ''; return; }
             const mine = (_finishReqCache || []).filter(r => r.player_id === identity.id && r.status === 'pending');
             if (mine.length === 0) { area.innerHTML = ''; return; }
-            const bosses = _activeSeasonCache?.bosses || [];
+            const bosses = seasonStore.get()?.bosses || [];
             area.innerHTML = mine.map(r => {
                 const boss = bosses.find(b => b.boss_number === r.boss_number);
                 if (boss && Number(boss.remaining_hp_raw) <= 0) return '';   // 既に撃破済みなら出さない
@@ -6289,7 +6290,7 @@
             if (!identity?.id) {
                 hintEl.textContent = 'プレイヤーを選択してください。';
             } else if (cur === 'coordinating') {
-                const ctx = _activeSeasonCache;
+                const ctx = seasonStore.get();
                 const b = (ctx?.bosses || []).find(x => x.boss_number === me?.boss_number);
                 const bossLabel = b ? `B${b.boss_number} ${b.name || b.boss_code}` : '戦闘中';
                 hintEl.textContent = `🛡 ${bossLabel} に挑戦中`;
@@ -7300,7 +7301,7 @@
             const others = (_myAttackTeamSlots || []).filter((_, i) => i !== idx);
             // 採用率は「持っていくPT属性」で数える = ボスの weakness
             // (bosses.attribute はボス自身の属性なので取り違えないこと — CLAUDE.md 参照)
-            const boss = (_activeSeasonCache?.bosses || [])
+            const boss = (seasonStore.get()?.bosses || [])
                 .find(b => b.boss_number === _myAttackSelectedBossNumber);
             const attr = boss?.weakness || null;
             openIconPicker(current, (name) => {
@@ -8592,7 +8593,7 @@
             const attrOpts = ['<option value="">-- 任意 (属性) --</option>']
                 .concat(PT_ATTRS.map(a => `<option value="${a.key}"${me?.attribute === a.key ? ' selected' : ''}>${a.name}PT</option>`))
                 .join('');
-            const ctx = _activeSeasonCache;
+            const ctx = seasonStore.get();
             const bossOpts = ['<option value="">-- 任意 (ボス) --</option>']
                 .concat((ctx?.bosses || []).map(b => `<option value="${b.boss_number}"${me?.boss_number === b.boss_number ? ' selected' : ''}>B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</option>`))
                 .join('');
@@ -8654,7 +8655,7 @@
 
         function _renderCoordActiveList(identity) {
             const list = _coordActiveCache || [];
-            const ctx = _activeSeasonCache;
+            const ctx = seasonStore.get();
             const bossName = (n) => {
                 const b = (ctx?.bosses || []).find(x => x.boss_number === n);
                 return b ? `B${b.boss_number} ${b.name || b.boss_code}` : (n ? `B${n}` : '');
@@ -8758,7 +8759,7 @@
                         // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
                         // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
                         if (r?.season && opsStore.patchBosses(r.season.id, r.bosses)) {
-                            if (_activeSeasonCache?.season?.id === r.season.id) _activeSeasonCache.bosses = r.bosses;
+                            seasonStore.patchBosses(r.season.id, r.bosses);
                             renderOpsBossSummary();
                         }
                     }).catch(() => { /* noop */ });
@@ -8861,7 +8862,8 @@
         }
 
         // ========== マイページ: 凸報告 ==========
-        let _activeSeasonCache = null;  // { season, bosses }
+        // アクティブシーズンのキャッシュは js/state/seasonStore.js に移行 (リアーキ ステップ3宿題)。
+        // 直接代入・部分書き換えは禁止 — ensure/get/invalidate/patchBosses を使う
         let _myTodayAttacksCache = null;
         let _myAttackSelectedBossNumber = null;
         let _myAttackOcrBossHp = null;        // 凸報告OCR で取れたボス最大/残HP (保存時に適用)
@@ -8874,15 +8876,7 @@
         //  DB保存済みの boss.weakness を相性表で再計算していた冗長ヘルパー。どちらも撤去済み)
 
         async function ensureActiveSeasonLoaded() {
-            if (_activeSeasonCache) return _activeSeasonCache;
-            if (typeof window.supabaseLoadActiveSeasonWithBosses !== 'function') return null;
-            try {
-                _activeSeasonCache = await window.supabaseLoadActiveSeasonWithBosses();
-            } catch (e) {
-                console.warn('[mypage] アクティブシーズン取得失敗:', e);
-                _activeSeasonCache = { season: null, bosses: [] };
-            }
-            return _activeSeasonCache;
+            return seasonStore.ensure();   // 本体は js/state/seasonStore.js (挙動は同一・世代ガード付き)
         }
 
         // ========== マイページ: 次の凸 (ボスタップ起点フロー) ==========
@@ -9326,7 +9320,7 @@
         }
 
         function _renderMatchupCard(bossNumber) {
-            const ctx = _activeSeasonCache;
+            const ctx = seasonStore.get();
             const boss = bossNumber && ctx?.bosses ? ctx.bosses.find(b => b.boss_number === bossNumber) : null;
 
             const bossRow = document.getElementById('myAttackBossRow');
@@ -9689,7 +9683,7 @@
                 _myAttackOcrBossHp = null;
                 _myAttackOcrCharacters = null;
                 _myAttackTeamSlots = ['', '', '', '', ''];
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 // 一覧再読み込み
                 _myTodayAttacksCache = null;
@@ -9819,7 +9813,7 @@
                 }
                 setMsg(`✅ ${ok}凸登録${fail > 0 ? ` / ⚠️ ${fail}件失敗` : ''}`);
                 _myTodayAttacksCache = null;
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 await renderMyAttacks(id);
                 setTimeout(() => closeMyBulkAttackModal(), 1200);
@@ -9937,7 +9931,7 @@
             try {
                 await window.supabaseDeleteAttack(attackId);
                 _myTodayAttacksCache = null;
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 await renderMyAttacks(id);
                 showNotification(`${attackNumber}凸目を削除しました`);
@@ -11028,7 +11022,7 @@
             if (!confirm('🧪 クイックテストシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・レイド中盤を再現: ランダムな数名が凸済みの状態から開始\n・「🧪 テスト終了」で完全に元の状態へ復元')) return;
             try {
                 const r = await window.supabaseQuickCreateTestSeason();
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
                 const atkInfo = r.attackSeed?.attacks > 0 ? ` / ${r.attackSeed.players}名が計${r.attackSeed.attacks}凸済み` : '';
@@ -11043,7 +11037,7 @@
             if (!confirm('🧪 テストシーズンを削除して元の状態に戻します。\nテスト中の凸データ + 追加されたキャラマスタは消え、ダメージ登録と元のシーズンが復元されます。よろしいですか？')) return;
             try {
                 const r = await window.supabaseDeleteActiveTestSeason();
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 const extra = r.charsRemoved > 0 ? ` / キャラマスタ ${r.charsRemoved}件 削除` : '';
                 showNotification(`テストシーズンを削除しました${r.restoredKey ? ` (${r.restoredKey} を復元)` : ''}${extra}`);
@@ -11656,7 +11650,7 @@
                 }
                 _opsBossEditingNum = null;
                 opsStore.invalidate();
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 await renderOpsDashboard();
                 showNotification('ボス情報を更新しました');
             } catch (e) { alert(`更新失敗: ${e?.message || e}`); }
@@ -12966,7 +12960,7 @@
             const listEl = document.getElementById('opsBossHpList');
             listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
             const ctx = await ensureActiveSeasonLoaded();
-            _activeSeasonCache = null; // 次回開く時最新を取得するため
+            seasonStore.invalidate(); // 次回開く時最新を取得するため
             const fresh = await window.supabaseLoadActiveSeasonWithBosses();
             if (!fresh.season) { listEl.innerHTML = '<p style="color:#ef4444;font-size:13px;">アクティブシーズン無し</p>'; return; }
             listEl.innerHTML = fresh.bosses.map(b => {
@@ -13074,7 +13068,7 @@
                 : `⚠️ ${ok}保存 / ${fail}失敗: ${errs.join(', ')}`;
             msg.style.color = fail === 0 ? '#22c55e' : '#f59e0b';
             opsStore.invalidate();
-            _activeSeasonCache = null;
+            seasonStore.invalidate();
             await renderOpsDashboard();
 
             // 失敗0なら自動でモーダルを閉じる
@@ -13166,7 +13160,7 @@
                 msg.textContent = `✅ B${bossNumber} のHPを更新しました`;
                 msg.style.color = '#22c55e';
                 opsStore.invalidate();
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 // 運営ダッシュボードの締め凸候補等を再描画
                 renderOpsDashboard();
             } catch (e) {
@@ -13666,7 +13660,7 @@
             const listEl = document.getElementById('opsAttacksList');
             if (!_opsAttacksCache) return;
             const q = (document.getElementById('opsAttacksFilter').value || '').toLowerCase().trim();
-            const ctx = _activeSeasonCache;
+            const ctx = seasonStore.get();
             const bossByCode = new Map(ctx ? ctx.bosses.map(b => [b.boss_code, b]) : []);
 
             const filtered = q
@@ -13870,7 +13864,7 @@
             document.getElementById('opsSeasonMonthKey').value = `${yyyy}-${mm}`;
 
             // ボス5体の初期値 (前回シーズンを参考)
-            const defaults = (_activeSeasonCache?.bosses || []).map(b => ({
+            const defaults = (seasonStore.get()?.bosses || []).map(b => ({
                 bossNumber: b.boss_number,
                 bossCode: b.boss_code,
                 name: '',
@@ -14018,7 +14012,7 @@
                 set('作成中...'); msg.style.color = 'var(--md-sys-color-on-surface-variant)';
                 const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest });
                 set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました`);
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 setTimeout(() => closeOpsSeasonCreateModal(), 1200);
                 renderOpsDashboard();
@@ -14035,7 +14029,7 @@
             if (!confirm(`シーズン ${ctx.season.month_key} を終了して非アクティブ化します。\nよろしいですか？`)) return;
             try {
                 await window.supabaseEndActiveSeason(ur);
-                _activeSeasonCache = null;
+                seasonStore.invalidate();
                 opsStore.invalidate();
                 showNotification(`シーズン ${ctx.season.month_key} を終了しました`);
                 renderOpsDashboard();
@@ -14268,7 +14262,7 @@
             const seas = document.getElementById('maHeaderSeason');
             const me = (typeof getCurrentIdentity === 'function') ? getCurrentIdentity() : null;
             if (sub)  sub.textContent  = me?.name ? `操作者: ${me.name}` : 'ユニオン';
-            if (seas) seas.textContent = (_activeSeasonCache?.season?.month_key) || (typeof currentMonthKey !== 'undefined' && currentMonthKey) || '';
+            if (seas) seas.textContent = (seasonStore.get()?.season?.month_key) || (typeof currentMonthKey !== 'undefined' && currentMonthKey) || '';
         }
 
         function _maRenderStats(active, archived) {
@@ -16644,7 +16638,7 @@
             }
             try {
                 if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache(name);
-                if (name === 'ops') { _activeSeasonCache = null; opsStore.invalidate(); }
+                if (name === 'ops') { seasonStore.invalidate(); opsStore.invalidate(); }
                 _renderTabContent(name);
             } catch (e) { console.warn('[PTR]', e?.message || e); }
             setTimeout(() => {
