@@ -4626,7 +4626,7 @@
         <div class="player-select-content" style="max-width:480px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2 id="myTeamEditTitle">✏️ 編成編集</h2>
-                <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成②を追加すると同属性2凸のプラン提案が可能になります。</p>
 
@@ -4634,10 +4634,10 @@
             <div id="myTeamEditSlotTabs" style="display:flex;gap:6px;"></div>
 
             <!-- ダメージ入力 -->
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#F7F8F9;">
                 <label for="myTeamEditDamage" style="font-size:13px;font-weight:600;flex:1;">💥 ベストダメージ (B)</label>
-                <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
-                <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;text-align:right;">
+                <span style="font-size:12px;color:#8A9097;">B</span>
             </div>
 
             <!-- 画像取り込み -->
@@ -4646,9 +4646,9 @@
                     <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">戦闘履歴スクショから5キャラを自動入力（複数枚OK）</span>
                     <input type="file" id="myTeamEditOcrInput" accept="image/*" multiple onchange="handleMyTeamEditOcr(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                    <span style="padding:6px 12px;border-radius:6px;background:#1E78F0;color:#fff;font-size:12px;font-weight:800;">画像を選ぶ</span>
                 </label>
-                <p id="myTeamEditOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+                <p id="myTeamEditOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#8A9097;min-height:14px;">&nbsp;</p>
             </div>
 
             <!-- みんながよく使う「実キャラ5人編成」をワンタップ (提出が溜まると出る) -->
@@ -4666,8 +4666,8 @@
 
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:10px;border:none;background:#F1F2F4;color:#14161A;font-size:12.5px;font-weight:800;cursor:pointer;">キャンセル</button>
+                <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 10px rgba(20,22,26,0.24);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
     </div>
@@ -6960,12 +6960,12 @@
                 const r = v ? resolveNikkeChar(v) : null;
                 const icon = r?.iconPath
                     ? `<img loading="lazy" decoding="async" onclick="openIconPickerForTeamEdit(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`
-                    : `<div onclick="openIconPickerForTeamEdit(${i})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
+                    : `<div onclick="openIconPickerForTeamEdit(${i})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:#F1F2F4;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#F59E0B;cursor:pointer;border:1.5px dashed #F59E0B;">?</div>`;
                 return `
                     <div style="display:flex;align-items:center;gap:7px;" data-team-row="${i}">
-                        <span style="min-width:14px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">${i + 1}</span>
+                        <span style="min-width:14px;font-size:12px;font-weight:700;color:#8A9097;">${i + 1}</span>
                         ${icon}
-                        <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" oninput="updateMyTeamEditIcon(${i})" style="flex:1;min-width:0;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                        <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" oninput="updateMyTeamEditIcon(${i})" style="flex:1;min-width:0;padding:8px 10px;border-radius:9px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;">
                     </div>`;
             };
             fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
@@ -7134,7 +7134,7 @@
             if (r?.iconPath) {
                 iconEl.outerHTML = `<img loading="lazy" decoding="async" onclick="openIconPickerForTeamEdit(${idx})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || '')}" title="クリックで別キャラに変更" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;background:#222;cursor:pointer;">`;
             } else {
-                iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:var(--md-sys-color-surface-variant);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">?</div>`;
+                iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:#F1F2F4;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#F59E0B;cursor:pointer;border:1.5px dashed #F59E0B;">?</div>`;
             }
             renderTeamEditChainRow();
         }
