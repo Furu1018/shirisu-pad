@@ -9970,15 +9970,23 @@
             // マスタの canonical_name 一覧を known_characters として AI に渡す。
             // → 名前が画面で見切れていてもアイコン画像と照合してマスタに揃った正式名を返してくれる。
             // I/O (画像変換・AI呼び出し) だけここに残し、結果の統合則は ocrDomain 側 (テスト済み)
-            await getNikkeCharsCache();
-            const knownCharacters = (_nikkeCharsCache || []).map(c => c.canonical_name).filter(Boolean);
-            const results = [];
-            for (const file of files) {
-                const dataUrl = await window.fileToDataUrl(file);
-                const res = await window.callAiVision(dataUrl, 'attack_result', { known_characters: knownCharacters });
-                if (res?.result) results.push(res.result);
+            // バッチ全体でスピナーのカウントを1つ握る: スピナーは callAiVision 1回ごとに
+            // 表示/消灯するため、画像→dataURL 変換中 (大きいスクショで数秒) と複数枚の合間に
+            // カウントが0になり「解析中」が消えて見える谷があった (実機フィードバック)
+            if (typeof _aiSpinShow === 'function') _aiSpinShow();
+            try {
+                await getNikkeCharsCache();
+                const knownCharacters = (_nikkeCharsCache || []).map(c => c.canonical_name).filter(Boolean);
+                const results = [];
+                for (const file of files) {
+                    const dataUrl = await window.fileToDataUrl(file);
+                    const res = await window.callAiVision(dataUrl, 'attack_result', { known_characters: knownCharacters });
+                    if (res?.result) results.push(res.result);
+                }
+                return ocrDomain.mergeOcrAttackResults(results);
+            } finally {
+                if (typeof _aiSpinHide === 'function') _aiSpinHide();
             }
-            return ocrDomain.mergeOcrAttackResults(results);
         }
 
         // ========== BlaBlaLINK 3凸まとめ報告 ==========
