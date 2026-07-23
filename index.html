@@ -2841,39 +2841,6 @@
             </div>
 
             <!-- OCR 提出後プレビュー (ボトムシート) -->
-            <div class="player-select-modal" id="myDmgPreviewModal">
-                <div class="player-select-content" style="max-width:520px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
-                        <h2 style="margin:0;"><span data-sp-icon="camera" data-sp-size="17"></span> 解析結果</h2>
-                        <button onclick="closeMyDmgPreviewModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
-                    </div>
-                    <!-- 認識した属性 + ダメージ -->
-                    <div id="myDmgPreviewSummary" style="display:flex;align-items:center;gap:11px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);border-radius:14px;padding:13px 14px;margin-bottom:14px;">
-                        <p style="color:#A4AAB0;font-size:12px;">解析中...</p>
-                    </div>
-                    <!-- 認識した編成 5キャラ -->
-                    <div>
-                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:11px;">認識した編成 5キャラ</div>
-                        <div id="myDmgPreviewChars" style="display:flex;gap:6px;"></div>
-                    </div>
-                    <!-- 警告 (属性未判定など) -->
-                    <div id="myDmgPreviewWarn" style="display:none;align-items:center;gap:7px;margin-top:12px;background:rgba(245,180,0,0.1);border:1px solid rgba(245,180,0,0.35);border-radius:10px;padding:8px 11px;">
-                        <span style="width:9px;height:9px;border-radius:50%;background:#F5B400;flex:none;"></span>
-                        <span id="myDmgPreviewWarnText" style="font-size:11px;font-weight:700;color:#8A7000;line-height:1.5;"></span>
-                    </div>
-                    <!-- 属性手動選択 (属性が判別不能だった場合) -->
-                    <div id="myDmgPreviewAttrPicker" style="display:none;margin-top:12px;">
-                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:8px;">対象属性を選択</div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-                    </div>
-                    <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
-                    <div style="display:flex;gap:8px;margin-top:18px;">
-                        <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
-                        <button onclick="handleMyDmgPreviewRetry()" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
-                    </div>
-                    <p id="myDmgPreviewMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -4535,6 +4502,44 @@
     </div>
 
     <!-- ========== BlaBlaLINK 3凸まとめ報告プレビューモーダル ========== -->
+    <!-- OCR読み取り結果の確認モーダル (模擬タブの画像提出フロー)。
+         ⚠ タブコンテナ内に置かないこと — 旧位置 (tab-mypage 内) では模擬タブ表示中に
+         非アクティブタブごと display:none になり開けなかった (Stage2 移設で顕在化した実バグ)。
+         モーダルは必ずこのグローバル群 (タブ外) に置く -->
+    <div class="player-select-modal" id="myDmgPreviewModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
+                        <h2 style="margin:0;"><span data-sp-icon="camera" data-sp-size="17"></span> 解析結果</h2>
+                        <button onclick="closeMyDmgPreviewModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
+                    </div>
+                    <!-- 認識した属性 + ダメージ -->
+                    <div id="myDmgPreviewSummary" style="display:flex;align-items:center;gap:11px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);border-radius:14px;padding:13px 14px;margin-bottom:14px;">
+                        <p style="color:#A4AAB0;font-size:12px;">解析中...</p>
+                    </div>
+                    <!-- 認識した編成 5キャラ -->
+                    <div>
+                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:11px;">認識した編成 5キャラ</div>
+                        <div id="myDmgPreviewChars" style="display:flex;gap:6px;"></div>
+                    </div>
+                    <!-- 警告 (属性未判定など) -->
+                    <div id="myDmgPreviewWarn" style="display:none;align-items:center;gap:7px;margin-top:12px;background:rgba(245,180,0,0.1);border:1px solid rgba(245,180,0,0.35);border-radius:10px;padding:8px 11px;">
+                        <span style="width:9px;height:9px;border-radius:50%;background:#F5B400;flex:none;"></span>
+                        <span id="myDmgPreviewWarnText" style="font-size:11px;font-weight:700;color:#8A7000;line-height:1.5;"></span>
+                    </div>
+                    <!-- 属性手動選択 (属性が判別不能だった場合) -->
+                    <div id="myDmgPreviewAttrPicker" style="display:none;margin-top:12px;">
+                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:8px;">対象属性を選択</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+                    </div>
+                    <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
+                    <div style="display:flex;gap:8px;margin-top:18px;">
+                        <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                        <button onclick="handleMyDmgPreviewRetry()" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
+                    </div>
+                    <p id="myDmgPreviewMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
+            </div>
+
     <div class="player-select-modal" id="myBulkAttackModal">
         <div class="player-select-content" style="max-width:680px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
