@@ -9,6 +9,7 @@ import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ 
 import '../js/domain/ocr.js';          // globalThis.ocrDomain (リアーキ ステップ2)
 import '../js/domain/finish.js';       // globalThis.finishDomain (リアーキ ステップ2)
 import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ ステップ2)
+import '../js/domain/mockCompare.js';  // globalThis.mockCompareDomain (UI再設計 Stage2)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -1465,6 +1466,95 @@ await testAsync('patchBosses: シーズン一致のみ差し替え', async () =>
 // 後続テストが本物のローダに触らないよう既定へ戻す
 seasonStore.configure({});
 seasonStore.invalidate();
+
+// ---- ドメイン: ユニオン事前比較 (js/domain/mockCompare.js — UI再設計 Stage2) ----
+console.log('\ndomain/mockCompare:');
+{
+    const { buildMockComparison } = globalThis.mockCompareDomain;
+    // フィクスチャ: 基準者 SLv500・灼熱模擬 10B。RATIO は fururi テストと同じ意味 (500=1.0, 600=1.2)
+    const MC_RATIO = { '500': 1.0, '600': 1.2, '700': 1.4 };
+    const MC_BASE = { slv: 500, dmgByAttr: { fire: 10 } };
+    const mcPlayers = [
+        { id: 1, name: 'あさひ', slv: 500 },
+        { id: 2, name: 'かえで', slv: 600 },
+        { id: 3, name: 'さつき', slv: null },   // SLv 未登録
+        { id: 4, name: 'たまき', slv: 500 },    // 未提出
+    ];
+    const mcDamages = [
+        { player_id: 1, attribute: 'fire', slot: 1, damage_b: 8 },
+        { player_id: 1, attribute: 'fire', slot: 2, damage_b: 9 },    // 2編成目の方が高い
+        { player_id: 2, attribute: 'fire', slot: 1, damage_b: 9 },
+        { player_id: 3, attribute: 'fire', slot: 1, damage_b: 6 },
+        { player_id: 1, attribute: 'water', slot: 1, damage_b: 99 },  // 他属性は無関係
+    ];
+
+    test('mockCompare: damage モードは2編成の高い方を採用し slot を返す', () => {
+        const r = buildMockComparison({ attribute: 'fire', mode: 'damage', players: mcPlayers, damages: mcDamages, base: null, slvRatioTable: null });
+        const asahi = r.rows.find(x => x.playerId === 1);
+        assert.equal(asahi.value, 9, '高い方 (slot2=9B) を採用');
+        assert.equal(asahi.slot, 2, '採用した slot=2 を返す');
+    });
+
+    test('mockCompare: 未提出者は missing に分離される', () => {
+        const r = buildMockComparison({ attribute: 'fire', mode: 'damage', players: mcPlayers, damages: mcDamages, base: null, slvRatioTable: null });
+        assert.deepEqual(r.missing.map(m => m.playerId), [4]);
+        assert.ok(!r.rows.some(x => x.playerId === 4));
+    });
+
+    test('mockCompare: 同値は同順位 (1,2,2,4 方式)', () => {
+        const r = buildMockComparison({ attribute: 'fire', mode: 'damage', players: mcPlayers, damages: mcDamages, base: null, slvRatioTable: null });
+        // 値: あさひ9 / かえで9 / さつき6 → rank 1,1,3
+        assert.deepEqual(r.rows.map(x => x.rank), [1, 1, 3]);
+        assert.equal(r.rows[2].playerId, 3);
+    });
+
+    test('mockCompare: fururi モードはレーダーと同じ SLv 換算 (calcPerAttackFururi 再利用)', () => {
+        const r = buildMockComparison({ attribute: 'fire', mode: 'fururi', players: mcPlayers, damages: mcDamages, base: MC_BASE, slvRatioTable: MC_RATIO });
+        const asahi = r.rows.find(x => x.playerId === 1);   // SLv500: 9 / 10 = 0.9
+        const kaede = r.rows.find(x => x.playerId === 2);   // SLv600: 9 / (10*1.2) = 0.75
+        assert.ok(Math.abs(asahi.value - 0.9) < 1e-9);
+        assert.ok(Math.abs(kaede.value - 0.75) < 1e-9);
+        assert.equal(asahi.damageB, 9, '元ダメージも保持 (表示用)');
+    });
+
+    test('mockCompare: fururi モードで SLv 無しは noSlv に分離 (missing とは別枠)', () => {
+        const r = buildMockComparison({ attribute: 'fire', mode: 'fururi', players: mcPlayers, damages: mcDamages, base: MC_BASE, slvRatioTable: MC_RATIO });
+        assert.deepEqual(r.noSlv.map(m => m.playerId), [3], '提出はあるが SLv 無し');
+        assert.deepEqual(r.missing.map(m => m.playerId), [4], '未提出は missing のまま');
+    });
+
+    test('mockCompare: 基準者の当該属性模擬が無い場合は baseMissing=true で行を出さない', () => {
+        const r = buildMockComparison({ attribute: 'iron', mode: 'fururi', players: mcPlayers, damages: mcDamages, base: MC_BASE, slvRatioTable: MC_RATIO });
+        assert.equal(r.meta.baseMissing, true);
+        assert.equal(r.rows.length, 0);
+    });
+
+    test('mockCompare: 入力配列・オブジェクトを変異させない', () => {
+        const snapPlayers = JSON.stringify(mcPlayers);
+        const snapDamages = JSON.stringify(mcDamages);
+        buildMockComparison({ attribute: 'fire', mode: 'damage', players: mcPlayers, damages: mcDamages, base: MC_BASE, slvRatioTable: MC_RATIO });
+        buildMockComparison({ attribute: 'fire', mode: 'fururi', players: mcPlayers, damages: mcDamages, base: MC_BASE, slvRatioTable: MC_RATIO });
+        assert.equal(JSON.stringify(mcPlayers), snapPlayers);
+        assert.equal(JSON.stringify(mcDamages), snapDamages);
+    });
+
+    test('mockCompare: 空入力・不正入力は安全に空を返す', () => {
+        const r = buildMockComparison({ attribute: 'fire', mode: 'damage', players: null, damages: undefined, base: null, slvRatioTable: null });
+        assert.deepEqual(r.rows, []);
+        assert.deepEqual(r.missing, []);
+        assert.equal(r.meta.count, 0);
+    });
+
+    test('mockCompare: damage_b が 0 以下の行は未提出扱い', () => {
+        const r = buildMockComparison({
+            attribute: 'fire', mode: 'damage',
+            players: [{ id: 9, name: 'ぜろ', slv: 500 }],
+            damages: [{ player_id: 9, attribute: 'fire', slot: 1, damage_b: 0 }],
+            base: null, slvRatioTable: null,
+        });
+        assert.deepEqual(r.missing.map(m => m.playerId), [9]);
+    });
+}
 
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);

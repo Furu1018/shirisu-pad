@@ -30,6 +30,7 @@
     <script defer src="./js/domain/ocr.js"></script>
     <script defer src="./js/domain/finish.js"></script>
     <script defer src="./js/domain/format.js"></script>
+    <script defer src="./js/domain/mockCompare.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -2063,7 +2064,7 @@
             flex: none;
         }
 
-        /* マイページ専用 模擬戦パネル (横スクロール scroll-snap カード) */
+        /* 模擬タブ (旧マイページ) 模擬戦パネル (横スクロール scroll-snap カード) */
         .dc-dmg-panel {
             flex: none; width: 156px; box-sizing: border-box;
             scroll-snap-align: start;
@@ -2396,7 +2397,7 @@
             cursor: not-allowed;
         }
 
-        /* ===== マイページ: 模擬戦データ 5属性パネル ===== */
+        /* ===== 模擬タブ: 模擬戦データ 5属性パネル (Stage2でマイページから移設) ===== */
         .dmg-panel:hover {
             transform: translateY(-2px);
             border-color: var(--brand-primary) !important;
@@ -2511,6 +2512,10 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             マイページ
         </button>
+        <button class="drawer-menu-item" data-tab="mock" onclick="switchTabFromDrawer('mock')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
+            模擬
+        </button>
         <button class="drawer-menu-item" data-tab="ops" onclick="switchTabFromDrawer('ops')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
             戦況
@@ -2557,6 +2562,10 @@
             <button class="tab-button active" data-tab="mypage" onclick="switchTab('mypage')" title="マイページ">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 マイページ
+            </button>
+            <button class="tab-button" data-tab="mock" onclick="switchTab('mock')" title="模擬">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
+                模擬
             </button>
             <button class="tab-button" data-tab="ops" onclick="switchTab('ops')" title="戦況">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
@@ -2653,72 +2662,6 @@
                         </label>
                         <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
                         <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ② 模擬戦データ (横スクロール scroll-snap パネル + 解析バナー + キャラ被り凡例) -->
-            <div class="dc-card">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px;">
-                    <div>
-                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">模擬戦データ</div>
-                        <div id="mypageDmgOcrStatus" style="font-size:10.5px;color:#B6BBC1;margin-top:2px;min-height:14px;">&nbsp;</div>
-                    </div>
-                    <!-- NIKKE風 画像で提出 ピル (青)。手動入力は各属性カードをタップ = 別の入り口 -->
-                    <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
-                        <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
-                        <div class="btn-nikke-inner">
-                            <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
-                            <span class="btn-nikke-title">画像で提出</span>
-                        </div>
-                    </label>
-                </div>
-
-                <!-- OCR 解析中バナー (display:none で初期化、解析時に表示) -->
-                <div id="mypageDmgAnalyzing" style="display:none;align-items:center;gap:10px;background:#14161A;border-radius:12px;padding:11px 13px;margin-bottom:12px;animation:dcFadeIn 0.2s ease;">
-                    <div style="width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.22);border-top-color:#46A0FF;border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
-                    <div style="font-size:11px;font-weight:900;color:#fff;letter-spacing:0.2px;flex:none;"><span data-sp-icon="camera" data-sp-size="12"></span> 解析中…</div>
-                    <div id="mypageDmgAnalyzedNames" style="flex:1;min-width:0;font-size:11px;font-weight:700;color:#8A9097;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">&nbsp;</div>
-                </div>
-
-                <!-- 5属性パネル (横スクロール + scroll-snap) -->
-                <div id="mypageDmgPanels" data-no-swipe style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 10px;-webkit-overflow-scrolling:touch;">
-                    <p style="color:#A4AAB0;font-size:12px;text-align:center;padding:14px 0;flex:1;">プレイヤーを選択すると表示されます。</p>
-                </div>
-
-                <!-- キャラ被り凡例 -->
-                <div id="mypageDmgDupLegend" style="display:none;flex-wrap:wrap;gap:7px 14px;padding:8px 2px 2px;"></div>
-
-                <div onclick="toggleMypageRadar()" id="mypageRadarToggle" style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ レーダーチャートを表示</div>
-                <div id="mypageRadarWrap" style="display:none;margin-top:10px;padding:12px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.03);">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-                        <strong style="font-size:13px;color:#14161A;">あなたの模擬ふるり値 <span style="font-size:10px;font-weight:800;color:#1E78F0;background:rgba(30,120,240,0.10);padding:2px 8px;border-radius:999px;vertical-align:1px;">今シーズン</span></strong>
-                        <span id="mypageRadarMeta" style="font-size:11px;color:#A4AAB0;">&nbsp;</span>
-                    </div>
-                    <div style="position:relative;max-width:360px;margin:0 auto;">
-                        <canvas id="mypageRadarChart"></canvas>
-                    </div>
-                    <p id="mypageRadarHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;">プレイヤーを選択するとふるり値が表示されます。</p>
-                </div>
-                <div id="mypageDmgInputs" style="display:none;"></div>
-            </div>
-
-            <!-- 📚 人気編成 (みんなの模擬提出から集計 / NIKKE知識ゼロの純統計 / 既定は折りたたみ) -->
-            <div class="dc-card">
-                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="bookOpen" data-sp-size="15"></span> 人気編成</div>
-                    <span style="font-size:10.5px;color:#A4AAB0;">みんなの模擬提出から集計</span>
-                </div>
-                <div onclick="togglePopularTeams()" id="popularTeamsToggle" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ 人気編成を表示</div>
-                <div id="popularTeamsContent" style="display:none;margin-top:10px;">
-                    <div id="popularTeamsTabs" style="display:flex;gap:5px;margin-bottom:10px;"></div>
-                    <div id="popularTeamsBody"><p style="margin:0;font-size:12px;color:#A4AAB0;">読み込み中…</p></div>
-                    <!-- 🧩 3属性まとめ選び: キャラ被りなしで両立できる人気PTの組み合わせ提案 -->
-                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #F0F1F3;">
-                        <div style="font-size:11.5px;font-weight:900;color:#14161A;"><span data-sp-icon="blocks" data-sp-size="13"></span> 3属性まとめ選び</div>
-                        <p style="margin:3px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">凸する3属性を選ぶと、キャラ被りなしで両立できる人気PTの組み合わせを提案します (同じキャラは1日1回まで)。気に入った編成は「反映」で1属性ずつ自分の編成に取り込めます。</p>
-                        <div id="popularComboTabs" style="display:flex;gap:5px;margin-bottom:9px;"></div>
-                        <div id="popularComboBody"></div>
                     </div>
                 </div>
             </div>
@@ -2932,6 +2875,88 @@
     </div>
 
     <!-- ========== Tab: 運営 ========== -->
+    <!-- ========== Tab: 模擬 (2026-07-23 Stage2 新設 — 準備期のハブ。模擬提出・人気編成はマイページから移設) ========== -->
+    <div id="tab-mock" class="tab-content tab-page">
+        <div class="container">
+            <!-- ページヘッダー -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
+                <div>
+                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">模擬戦</div>
+                    <div style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">本番前にダメージを提出して、みんなと比べて編成を磨く</div>
+                </div>
+            </div>
+
+            <!-- ① 模擬戦データ (横スクロール scroll-snap パネル + 解析バナー + キャラ被り凡例) — Stage2でマイページから移設 -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">模擬戦データ</div>
+                        <div id="mypageDmgOcrStatus" style="font-size:10.5px;color:#B6BBC1;margin-top:2px;min-height:14px;">&nbsp;</div>
+                    </div>
+                    <!-- NIKKE風 画像で提出 ピル (青)。手動入力は各属性カードをタップ = 別の入り口 -->
+                    <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
+                        <input type="file" id="mypageDmgOcrInput" accept="image/*" multiple onchange="handleMyDamageOcrUpload(event)" style="display:none;">
+                        <div class="btn-nikke-inner">
+                            <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
+                            <span class="btn-nikke-title">画像で提出</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- OCR 解析中バナー (display:none で初期化、解析時に表示) -->
+                <div id="mypageDmgAnalyzing" style="display:none;align-items:center;gap:10px;background:#14161A;border-radius:12px;padding:11px 13px;margin-bottom:12px;animation:dcFadeIn 0.2s ease;">
+                    <div style="width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.22);border-top-color:#46A0FF;border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
+                    <div style="font-size:11px;font-weight:900;color:#fff;letter-spacing:0.2px;flex:none;"><span data-sp-icon="camera" data-sp-size="12"></span> 解析中…</div>
+                    <div id="mypageDmgAnalyzedNames" style="flex:1;min-width:0;font-size:11px;font-weight:700;color:#8A9097;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">&nbsp;</div>
+                </div>
+
+                <!-- 5属性パネル (横スクロール + scroll-snap) -->
+                <div id="mypageDmgPanels" data-no-swipe style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:2px 16px 10px;-webkit-overflow-scrolling:touch;">
+                    <p style="color:#A4AAB0;font-size:12px;text-align:center;padding:14px 0;flex:1;">プレイヤーを選択すると表示されます。</p>
+                </div>
+
+                <!-- キャラ被り凡例 -->
+                <div id="mypageDmgDupLegend" style="display:none;flex-wrap:wrap;gap:7px 14px;padding:8px 2px 2px;"></div>
+
+                <div onclick="toggleMypageRadar()" id="mypageRadarToggle" style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ レーダーチャートを表示</div>
+                <div id="mypageRadarWrap" style="display:none;margin-top:10px;padding:12px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.03);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                        <strong style="font-size:13px;color:#14161A;">あなたの模擬ふるり値 <span style="font-size:10px;font-weight:800;color:#1E78F0;background:rgba(30,120,240,0.10);padding:2px 8px;border-radius:999px;vertical-align:1px;">今シーズン</span></strong>
+                        <span id="mypageRadarMeta" style="font-size:11px;color:#A4AAB0;">&nbsp;</span>
+                    </div>
+                    <div style="position:relative;max-width:360px;margin:0 auto;">
+                        <canvas id="mypageRadarChart"></canvas>
+                    </div>
+                    <p id="mypageRadarHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;">プレイヤーを選択するとふるり値が表示されます。</p>
+                </div>
+                <div id="mypageDmgInputs" style="display:none;"></div>
+            </div>
+
+            <!-- 📚 人気編成 (みんなの模擬提出から集計 / NIKKE知識ゼロの純統計 / 既定は折りたたみ) -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="bookOpen" data-sp-size="15"></span> 人気編成</div>
+                    <span style="font-size:10.5px;color:#A4AAB0;">みんなの模擬提出から集計</span>
+                </div>
+                <div onclick="togglePopularTeams()" id="popularTeamsToggle" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ 人気編成を表示</div>
+                <div id="popularTeamsContent" style="display:none;margin-top:10px;">
+                    <div id="popularTeamsTabs" style="display:flex;gap:5px;margin-bottom:10px;"></div>
+                    <div id="popularTeamsBody"><p style="margin:0;font-size:12px;color:#A4AAB0;">読み込み中…</p></div>
+                    <!-- 🧩 3属性まとめ選び: キャラ被りなしで両立できる人気PTの組み合わせ提案 -->
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #F0F1F3;">
+                        <div style="font-size:11.5px;font-weight:900;color:#14161A;"><span data-sp-icon="blocks" data-sp-size="13"></span> 3属性まとめ選び</div>
+                        <p style="margin:3px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">凸する3属性を選ぶと、キャラ被りなしで両立できる人気PTの組み合わせを提案します (同じキャラは1日1回まで)。気に入った編成は「反映」で1属性ずつ自分の編成に取り込めます。</p>
+                        <div id="popularComboTabs" style="display:flex;gap:5px;margin-bottom:9px;"></div>
+                        <div id="popularComboBody"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ② ユニオン事前比較 (Stage2 新設 — js/domain/mockCompare.js を消費。UIの組込は後続コミット) -->
+            <div class="dc-card" id="mockCompareCard" style="display:none;"></div>
+        </div>
+    </div>
+
     <div id="tab-ops" class="tab-content tab-page">
         <div class="container">
             <!-- ヘッダー: アクティブシーズン + 同期インジ -->
@@ -3522,7 +3547,8 @@
                             各メンバーのダメージ出力・凸状況・最適な凸順を可視化し、ユニオン全体で最大の戦果を狙うことを目的としています。</p>
                         <h3>主な機能</h3>
                         <ul>
-                            <li><strong>マイページ</strong> — 自分の属性別ダメージ登録、属性別ふるり値レーダー、凸報告</li>
+                            <li><strong>マイページ</strong> — 凸報告、配信プランの確認、通知、個人設定</li>
+                            <li><strong>模擬</strong> — 属性別の模擬ダメージ提出 (画像OCR/手動)、模擬ふるり値レーダー、人気編成</li>
                             <li><strong>運営</strong> — ボスHP管理、最適凸プラン算出、締め凸候補、メンバー管理</li>
                             <li><strong>分析 (実績 / ふるり値)</strong> — ユニオン内の戦果ランキング</li>
                             <li><strong>シミュレータ</strong> — 育成ダメージ予測・ふるり値試算</li>
@@ -3548,10 +3574,10 @@
                         <p>マイページはあなた自身のデータ入力ハブです。ここに正しい情報を入れるほど、全体の最適プランや締め凸候補の精度が上がります。</p>
                         <h3>① プレイヤーの選択</h3>
                         <p>初回は自分の名前を選んでください。ブラウザに保存されるので、次回以降は自動で復元されます（端末/ブラウザを変えると再選択が必要）。</p>
-                        <h3>② 5属性のダメージ登録</h3>
+                        <h3>② 5属性のダメージ登録（→ 模擬タブに移動しました）</h3>
                         <p>各PT属性で出せる「あなたのベストダメージ」を B（10億）単位で登録します。<span class="help-pill">手入力</span>または<span class="help-pill">📷 画像OCR</span>から登録できます。
                             この値は、運営の<strong>残凸状況一覧</strong>・<strong>最適プラン</strong>・<strong>締め凸候補</strong>すべての基礎データです。</p>
-                        <h3>③ 5属性 模擬ふるり値レーダー（今シーズン）</h3>
+                        <h3>③ 5属性 模擬ふるり値レーダー（→ 模擬タブに移動しました）</h3>
                         <p>あなたの<strong>今季の模擬戦データ</strong>を、基準者（ふるり）の<strong>今季模擬 + SLv換算</strong>と比べて5角形で表示します。1.00 = ふるりと同等。本戦は3凸までなので本戦ベースでは5属性が揃いませんが、模擬同士の比較なら<strong>5属性提出すれば誰でも形が完成</strong>します。属性別の得意・不得意が一目で分かります（確定ふるり値は <a href="#help-fururi">§7</a> のタブで）。</p>
                         <h3>④ 次の凸 (ボスタップ起点)</h3>
                         <p><strong>「🎯 次の凸 (ボスをタップ)」</strong> セクションで、これから凸るボスをタップすると <strong>戦闘準備</strong> 状態になり、他メンバーに「あなたが戦闘中」が共有されます。これで二重凸を防止できます。</p>
@@ -3568,7 +3594,7 @@
 
                     <section id="help-mock" class="help-section">
                         <h2><span data-sp-icon="target" data-sp-size="17"></span> 4. 模擬戦データの提出</h2>
-                        <p>模擬戦＝本戦と同じ編成・条件で出せる「あなたの最高ダメージ」のことです。<strong>マイページの属性別ダメージ欄に入力するだけ</strong>で提出完了です。</p>
+                        <p>模擬戦＝本戦と同じ編成・条件で出せる「あなたの最高ダメージ」のことです。<strong>模擬タブの属性別ダメージ欄に入力するだけ</strong>で提出完了です。</p>
                         <div class="help-flow-step">
                             <div class="help-flow-num">1</div>
                             <div><strong>模擬戦を実施。</strong> 各PT属性で1回ずつ全力で殴ります（同属性2回出したら高い方を採用）。</div>
@@ -3611,7 +3637,7 @@
                             <p>この状態のまま放置すると、運営は「この人の○○属性は△△Bまでしか出せない」と過小評価してしまいます。</p>
                         </div>
                         <h3>対処：本来の出力を手動で上書き</h3>
-                        <p>マイページのダメージ欄を、模擬戦で出した<strong>本来のベスト出力</strong>に書き直してください。レーダー・最適プラン・残凸表すべてに正しく反映されます。
+                        <p>模擬タブのダメージ欄を、模擬戦で出した<strong>本来のベスト出力</strong>に書き直してください。レーダー・最適プラン・残凸表すべてに正しく反映されます。
                             締め凸の自動検知はしていないので、対象属性は本人で把握する必要があります。</p>
                     </section>
 
@@ -3824,7 +3850,7 @@
                         <h2><span data-sp-icon="refresh" data-sp-size="17"></span> 14. データの流れ</h2>
                         <p>下記のように、入力されたデータは PAD 全体で連動して使われます。</p>
                         <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>本番凸</strong> → <span class="help-pill">attacks</span> テーブルに記録（マイページの凸報告）</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>模擬戦データ</strong> → <span class="help-pill">player_damages</span> に記録（マイページのダメージ入力）</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>模擬戦データ</strong> → <span class="help-pill">player_damages</span> に記録（模擬タブのダメージ入力）</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>レイド終了時</strong> → 該当月の JSON にスナップショット。これが次月の<strong>ふるり値基準</strong>になる。JSON到着時には<strong>確定SLvが自動でマイページに同期</strong>される (手動更新不要)</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div><strong>次月シーズン作成</strong> → 前月実績ダメージを各メンバーの初期 <span class="help-pill">player_damages</span> として自動シード</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div>個人の<strong>レーダー</strong>・運営の<strong>最適プラン</strong>・<strong>残凸表</strong>・<strong>ふるり値ランキング</strong>すべてに即時反映</div></div>
@@ -5418,6 +5444,7 @@
         //    CSS: マーブル背景・.container 列挙) は Stage3 で削減予定 — 現状は併せて追加すること
         const TAB_REGISTRY = [
             { name: 'mypage',       render: () => renderMyPage(),                  swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },
+            { name: 'mock',         render: () => renderMockTab(),                 swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },   // 模擬 (Stage2 新設)
             { name: 'ops',          render: () => renderOpsDashboard(),            swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 15_000 },   // ボスHP/coordはポーリングで別途更新
             { name: 'ranking',      render: null,                                  swipe: true,  prerender: true,  ptr: false, renderTtlMs: 300_000 },  // 描画/PTRとも専用経路 (autoLoadData)
             { name: 'slv-ranking',  render: () => renderFururiRanking(),           swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 300_000, navTab: 'ranking' },
@@ -5532,10 +5559,16 @@
             // プレイヤー固有データを使うタブのキャッシュを無効化
             if (typeof _invalidateTabRenderCache === 'function') {
                 _invalidateTabRenderCache('mypage');
+                _invalidateTabRenderCache('mock');   // 模擬提出パネルは Stage2 で模擬タブへ移設
                 _invalidateTabRenderCache('ops');
             }
             renderMyPage();
             if (typeof _markTabRendered === 'function') _markTabRendered('mypage');
+            // 模擬タブを開いたまま切り替えた場合は即時再描画 (他タブなら次回 activate 時に描画される)
+            if (document.querySelector('.tab-content.active')?.id === 'tab-mock') {
+                renderMockTab();
+                if (typeof _markTabRendered === 'function') _markTabRendered('mock');
+            }
         }
 
         function updateIdentityHeader() {
@@ -5807,6 +5840,103 @@
             }
         }
 
+        // ========== 模擬タブ (Stage2 新設) ==========
+        // 模擬戦データ提出パネル (renderMyDamagePanels) と人気編成はマイページから移設。
+        // 各要素の id は移設前と同一なので、OCRフロー・編集シート等の既存ハンドラは無変更で動く。
+        function renderMockTab() {
+            const id = getCurrentIdentity();
+            renderMyDamagePanels(id?.name ? id : null);
+            renderMockCompare();
+        }
+
+        // ---- ユニオン事前比較 (Stage2 新機能) ----
+        // 純ロジックは js/domain/mockCompare.js (buildMockComparison)。ここはデータ収集と描画のみ。
+        // データ: 盤面は opsStore (残凸一覧と同じ damagesByAttr/loadoutsByAttr/syncLevel)、
+        // ふるり基準はレーダーと共有の _loadMockRadarBase (基準固定の公平性ルールも共通)。
+        let _mockCmpAttr = 'fire';
+        let _mockCmpMode = 'damage';   // 'damage' | 'fururi'
+        let _mockCmpSeq = 0;           // 世代ガード: 取得中にタブ/属性が切り替わったら古い結果を捨てる
+        function _setMockCmpAttr(k) { _mockCmpAttr = k; renderMockCompare(); }
+        function _setMockCmpMode(m) { _mockCmpMode = m; renderMockCompare(); }
+        async function renderMockCompare() {
+            const card = document.getElementById('mockCompareCard');
+            if (!card) return;
+            const seq = ++_mockCmpSeq;
+            card.style.display = '';
+            if (!card.dataset.loaded) {
+                card.innerHTML = '<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:10px 0;">読み込み中…</p>';
+            }
+            let data = null, base = null;
+            try {
+                data = await opsStore.load();
+                if (_mockCmpMode === 'fururi') base = await _loadMockRadarBase();
+            } catch (e) {
+                console.warn('[mockCompare] 読込失敗:', e?.message || e);
+            }
+            if (seq !== _mockCmpSeq) return;   // 古い取得結果で DOM を触らない
+            const players = (data?.players || []).map(p => ({ id: p.id, name: p.name, slv: Number(p.syncLevel) || 0, estimated: !!p.syncLevelEstimated }));
+            // loadoutsByAttr {attr:[{dmgB,slot}]} → 純関数の行形式へ (2編成の採用判定はドメイン側)
+            const damages = [];
+            (data?.players || []).forEach(p => {
+                Object.entries(p.loadoutsByAttr || {}).forEach(([attr, arr]) => {
+                    (arr || []).forEach(lo => damages.push({ player_id: p.id, attribute: attr, slot: lo.slot || 1, damage_b: Number(lo.dmgB) || 0 }));
+                });
+                // loadouts が無い旧データは damagesByAttr (ベスト値のみ) でフォールバック
+                if (!p.loadoutsByAttr || Object.keys(p.loadoutsByAttr).length === 0) {
+                    Object.entries(p.damagesByAttr || {}).forEach(([attr, v]) => {
+                        if (Number(v) > 0) damages.push({ player_id: p.id, attribute: attr, slot: 1, damage_b: Number(v) });
+                    });
+                }
+            });
+            const model = mockCompareDomain.buildMockComparison({
+                attribute: _mockCmpAttr, mode: _mockCmpMode,
+                players, damages, base, slvRatioTable,
+            });
+            const myId = getCurrentIdentity()?.id;
+            const attrDef = PT_ATTRS.find(a => a.key === _mockCmpAttr) || PT_ATTRS[0];
+            const color = DC_ATTR_COLORS[_mockCmpAttr] || '#1E78F0';
+            const maxVal = model.rows.length ? model.rows[0].value : 0;
+            const isDmg = model.meta.mode === 'damage';
+            const fmtVal = (r) => isDmg ? `${r.value.toFixed(1)}<small style="font-size:9px;color:#8A9097;"> B</small>`
+                                        : r.value.toFixed(2);
+            const rowsHtml = model.rows.map(r => {
+                const mine = myId != null && String(r.playerId) === String(myId);
+                const w = maxVal > 0 ? Math.max(4, Math.round(r.value / maxVal * 100)) : 0;
+                return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px ${mine ? '8px' : '0'};${mine ? 'background:rgba(30,120,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
+                    <div style="font-size:11px;font-weight:900;color:#A4AAB0;text-align:center;font-variant-numeric:tabular-nums;">${r.rank}</div>
+                    <div style="min-width:0;">
+                        <div style="font-size:12px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}${r.slot === 2 ? ' <span style="font-size:9px;font-weight:800;color:#8A9097;">編成②</span>' : ''}</div>
+                        <div style="height:6px;border-radius:4px;margin-top:4px;width:${w}%;background:${color};"></div>
+                    </div>
+                    <div style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${fmtVal(r)}</div>
+                </div>`;
+            }).join('');
+            const attrChips = PT_ATTRS.map(a => {
+                const on = a.key === _mockCmpAttr;
+                const c = DC_ATTR_COLORS[a.key];
+                return `<button type="button" onclick="_setMockCmpAttr('${a.key}')" style="flex:none;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${c};"></span>${a.name}</button>`;
+            }).join('');
+            const notes = [];
+            if (model.meta.baseMissing) notes.push(`基準者の${attrDef.name}模擬が未提出のため、ふるり値を計算できません (ダメージ表示は可能)。`);
+            if (model.noSlv.length) notes.push(`SLv未登録のため計算対象外: ${model.noSlv.length}人`);
+            notes.push(`未提出 ${model.missing.length}人はランキング対象外。ふるり値の基準は月初固定 — 月途中に誰かが模擬を更新しても他人との比較は歪みません。`);
+            card.dataset.loaded = '1';
+            card.innerHTML = `
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:11px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="trophy" data-sp-size="15"></span> ユニオン事前比較</div>
+                    <span style="font-size:10.5px;color:#A4AAB0;">今シーズンの模擬同士</span>
+                </div>
+                <div data-no-swipe style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:9px;-webkit-overflow-scrolling:touch;">${attrChips}</div>
+                <div class="ana-seg" style="margin:0 0 10px;">
+                    <button type="button" class="${isDmg ? 'active' : ''}" onclick="_setMockCmpMode('damage')">模擬ダメージ</button>
+                    <button type="button" class="${isDmg ? '' : 'active'}" onclick="_setMockCmpMode('fururi')">模擬ふるり値</button>
+                </div>
+                ${model.rows.length ? rowsHtml : `<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:12px 0;">${attrDef.name}の提出がまだありません。</p>`}
+                <div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${notes.map(escapeHtml).join('<br>')}</div>`;
+                if (typeof initSpIcons === 'function') initSpIcons(card);
+        }
+
         function renderMyPage() {
             const id = getCurrentIdentity();
             const nameEl = document.getElementById('mypageName');
@@ -5816,7 +5946,6 @@
                 if (hintEl) hintEl.textContent = '右上の 👤 プレイヤー未選択 から自分の名前を選んでください。';
                 renderMySlvChip(null);
                 renderMypageStrongAttrsBadge(null);
-                renderMyDamagePanels(null);
                 _refreshMyStatusSwitcher(null);
                 renderMyPublishedPlan(null);
                 return;
@@ -5824,7 +5953,6 @@
             nameEl.textContent = id.name;
             _refreshFinishRequests().then(() => renderMyFinishRequestBanner(id));
             renderMySlvChip(id);
-            renderMyDamagePanels(id);
             renderMyAttacks(id);
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
@@ -7645,7 +7773,7 @@
             return m;
         })();
 
-        // ========== マイページ: 模擬ふるり値レーダー (今シーズンの模擬同士のライブ比較) ==========
+        // ========== 模擬タブ: 模擬ふるり値レーダー (今シーズンの模擬同士のライブ比較 — Stage2でマイページから移設) ==========
         // 基準: ふるり(基準者)の今季模擬5属性 + SLv。自分: 今季模擬 + 自己申告SLv。
         // 確定ふるり値 (完了シーズン・本戦3凸ベース) は分析タブ (ふるり値ビュー) が担当する — ここは今季専用。
         // ユニレは3凸までなので本戦ベースでは5属性が揃わないが、模擬同士なら全員が形を完成できる。
@@ -16922,6 +17050,10 @@
         <button class="bottom-nav-btn active" data-tab="mypage" onclick="switchTab('mypage')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
             <span>マイページ</span>
+        </button>
+        <button class="bottom-nav-btn" data-tab="mock" onclick="switchTab('mock')">
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg></span>
+            <span>模擬</span>
         </button>
         <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span>
