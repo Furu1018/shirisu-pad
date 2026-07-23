@@ -11729,7 +11729,10 @@
         function isLv4LiveBoard(season, bosses) {
             if (!season || Number(season.current_level) < 3) return false;
             const list = bosses || [];
-            if (list.length === 0 || !list.some(x => Number(x.boss_number) === 5)) return false;
+            // B1〜B5 が全員そろっていることを先に確認 — 部分的な bosses 配列 (取得途中や
+            // 欠損データ) だと every が素通りして誤って Lv4 表示になる (Codex指摘)
+            const nums = new Set(list.map(x => Number(x.boss_number)));
+            if (![1, 2, 3, 4, 5].every(n => nums.has(n))) return false;
             return list.every(x => {
                 const total = Number(x.total_hp_raw) || 0;
                 const rem = Number(x.remaining_hp_raw) || 0;
