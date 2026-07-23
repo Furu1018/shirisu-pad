@@ -7816,7 +7816,7 @@
             const statusEl = document.getElementById('myTeamEditOcrStatus');
             if (files.length === 0) return;
             statusEl.textContent = `🔍 ${files.length}枚をAIで解析中... (1枚あたり10〜20秒)`;
-            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
             try {
                 const r = await _ocrAttackMultiAndMerge(files);
                 if (!r.characters || r.characters.length === 0) throw new Error('キャラ名を読み取れませんでした');
@@ -13403,7 +13403,7 @@
             const statusEl = document.getElementById('opsBossHpOcrStatus');
             if (!file) return;
             statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
-            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
 
             try {
                 const dataUrl = await window.fileToDataUrl(file);
@@ -13692,7 +13692,7 @@
             const statusEl = document.getElementById('opsProxyBulkStatus');
             const previewEl = document.getElementById('opsProxyBulkPreview');
             statusEl.textContent = '🔍 BlaBlaLINK 画像を解析中... (10〜20秒)';
-            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
             try {
                 const dataUrl = await window.fileToDataUrl(file);
                 const res = await window.callAiVision(dataUrl, 'bla_my_attacks');
@@ -13857,7 +13857,7 @@
                 const gameMembers = new Map();
                 for (let i = 0; i < files.length; i++) {
                     statusEl.textContent = `🔍 解析中... (${i + 1}/${files.length}枚)`;
-                    statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+                    statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
                     const dataUrl = await window.fileToDataUrl(files[i]);
                     const res = await window.callAiVision(dataUrl, 'bla_union_overview', { prompt: _OPS_AUDIT_PROMPT });
                     (res.result?.members || []).forEach(m => {
@@ -14310,7 +14310,7 @@
             const statusEl = document.getElementById('opsSeasonOcrStatus');
             if (!file) return;
             statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
-            statusEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
 
             try {
                 const dataUrl = await window.fileToDataUrl(file);
@@ -17227,6 +17227,12 @@
             _opsMode = !_opsMode;
             // 永続化しない: 次回起動は必ず OFF から (誤操作防止)
             _applyOpsMode();
+            // OFF にしたらボスHP編集パネルを閉じる — ボタン行 (data-ops-only) だけ隠れて
+            // 開きっぱなしの編集パネルから保存できてしまう穴を塞ぐ (Codex 指摘)
+            if (!_opsMode && typeof _opsBossEditingNum !== 'undefined' && _opsBossEditingNum !== null) {
+                _opsBossEditingNum = null;
+                if (typeof renderOpsBossSummary === 'function') renderOpsBossSummary();
+            }
             // 設定タブは _opsMode によって「何を読むか」が変わるので、描画キャッシュ (30秒) を捨てる。
             // これが無いと ops タブでONにして30秒以内に設定へ戻ったとき再描画がスキップされ、
             // 運営カードが表示されたのに中身が「読み込み中…」のまま固まる
