@@ -8093,10 +8093,12 @@
                 ? `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:${DC_ATTR_COLORS[attr.key]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);"><img loading="lazy" decoding="async" src="${attr.icon}" alt="${attr.name}" style="width:26px;height:26px;"></div>`
                 : `<div style="width:36px;height:36px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;background:#F1F2F4;color:#9AA0A6;font-size:20px;font-weight:900;">?</div>`;
             summary.innerHTML = `
+                <div onclick="toggleMyDmgPreviewAttrPicker()" title="タップで属性を選び直す" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;">
                 ${attrChip}
                 <div style="flex:1;min-width:0;">
-                    <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">認識した属性</div>
+                    <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">${attr ? '属性 ✏️ タップで変更' : '認識した属性'}</div>
                     <div style="font-size:15px;font-weight:900;color:#14161A;margin-top:1px;">${attr ? attr.name + 'PT' : '未判定'}</div>
+                </div>
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:#B6BBC1;">ダメージ</div>
@@ -8138,13 +8140,15 @@
                 warn.style.display = 'none';
             }
 
-            // 属性手動選択 UI (自動判別失敗時)
-            if (!attr) {
+            // 属性手動選択 UI: 自動判別失敗時は常時表示。判別済みでも属性チップのタップで
+            // 開いて選び直せる (実機フィードバック: 一度選ぶと再選択できず誤選択を直せなかった)
+            if (!attr || d.pickerOpen) {
                 picker.style.display = 'block';
                 const pickerBtns = picker.querySelector('div:last-child');
                 pickerBtns.innerHTML = PT_ATTRS.map(a => {
                     const c = DC_ATTR_COLORS[a.key];
-                    return `<button type="button" onclick="handleMyDmgPreviewPickAttr('${a.key}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:none;background:${c}1F;color:${c};font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}PT</button>`;
+                    const on = d.selectedAttr === a.key;
+                    return `<button type="button" onclick="handleMyDmgPreviewPickAttr('${a.key}')" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:2px solid ${on ? c : 'transparent'};background:${c}1F;color:${c};font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:16px;height:16px;">${a.name}PT${on ? ' ✓' : ''}</button>`;
                 }).join('');
             } else {
                 picker.style.display = 'none';
@@ -8167,6 +8171,14 @@
         function handleMyDmgPreviewPickAttr(key) {
             if (!_myDmgPreviewData) return;
             _myDmgPreviewData.selectedAttr = key;
+            _myDmgPreviewData.pickerOpen = false;   // 選んだら畳む (チップのタップで再度開ける)
+            openMyDmgPreviewModal();  // 再描画
+        }
+
+        // 属性チップのタップで選び直しピッカーを開閉する
+        function toggleMyDmgPreviewAttrPicker() {
+            if (!_myDmgPreviewData) return;
+            _myDmgPreviewData.pickerOpen = !_myDmgPreviewData.pickerOpen;
             openMyDmgPreviewModal();  // 再描画
         }
 
