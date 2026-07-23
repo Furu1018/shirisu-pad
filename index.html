@@ -1584,7 +1584,7 @@
         }
         #tourOverlay .tour-demo button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
 
-        /* ===== ClaudeDesign 準拠 マイページ ===== */
+        /* ===== ClaudeDesign 準拠 ホーム ===== */
         @keyframes dcLivePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
         @keyframes dcFadeIn { from{opacity:0} to{opacity:1} }
         @keyframes dcSavePulse { 0%{background:rgba(31,195,110,0.22)} 70%{background:rgba(31,195,110,0.10)} 100%{background:transparent} }
@@ -2064,7 +2064,7 @@
             flex: none;
         }
 
-        /* 模擬タブ (旧マイページ) 模擬戦パネル (横スクロール scroll-snap カード) */
+        /* 模擬タブ (旧ホーム) 模擬戦パネル (横スクロール scroll-snap カード) */
         .dc-dmg-panel {
             flex: none; width: 156px; box-sizing: border-box;
             scroll-snap-align: start;
@@ -2120,7 +2120,7 @@
         .dc-dmg-char.dup-4 { border-color: #9B4DFF; box-shadow: 0 0 0 1px #9B4DFF, inset 0 0 0 1px rgba(255,255,255,0.3); }
         .dc-dmg-char.dup-5 { border-color: #FF8A2B; box-shadow: 0 0 0 1px #FF8A2B, inset 0 0 0 1px rgba(255,255,255,0.3); }
 
-        /* マイページ ボスタイル (戦闘) */
+        /* ホーム ボスタイル (戦闘) */
         .dc-boss-tile {
             flex: 1; min-width: 0; position: relative; cursor: pointer;
             height: 72px; border-radius: 13px;
@@ -2143,7 +2143,7 @@
             animation: dcFlameFlicker .85s ease-in-out infinite; z-index: 1;
         }
 
-        /* ボトムシート モーダル (マイページ専用モーダル群) */
+        /* ボトムシート モーダル (ホーム専用モーダル群) */
         #myAvailModal.player-select-modal.open,
         #myPushModal.player-select-modal.open,
         #myStrongAttrsModal.player-select-modal.open,
@@ -2384,7 +2384,7 @@
         }
         .avail-preset-pill:hover { background: #E9EBEE; }
 
-        /* ===== マイページ: ステータス切替 3ボタン ===== */
+        /* ===== ホーム: ステータス切替 3ボタン ===== */
         #mypageStatusSwitcher button.status-btn {
             transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
         }
@@ -2397,7 +2397,7 @@
             cursor: not-allowed;
         }
 
-        /* ===== 模擬タブ: 模擬戦データ 5属性パネル (Stage2でマイページから移設) ===== */
+        /* ===== 模擬タブ: 模擬戦データ 5属性パネル (Stage2でホームから移設) ===== */
         .dmg-panel:hover {
             transform: translateY(-2px);
             border-color: var(--brand-primary) !important;
@@ -2405,7 +2405,7 @@
         }
         .dmg-panel:active { transform: translateY(0); }
 
-        /* ===== マイページ: MY設定 ボタン ===== */
+        /* ===== ホーム: MY設定 ボタン ===== */
         .my-setting-btn {
             display: inline-flex; align-items: center; justify-content: center; gap: 6px;
             padding: 12px 14px; border-radius: 10px;
@@ -2510,7 +2510,7 @@
         <div class="drawer-title">しりすこPAD</div>
         <button class="drawer-menu-item active" data-tab="mypage" onclick="switchTabFromDrawer('mypage')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            マイページ
+            ホーム
         </button>
         <button class="drawer-menu-item" data-tab="mock" onclick="switchTabFromDrawer('mock')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
@@ -2559,9 +2559,9 @@
     <!-- Tab Navigation (PC) -->
     <nav class="tab-navigation pc-only">
         <div class="tab-buttons-wrapper">
-            <button class="tab-button active" data-tab="mypage" onclick="switchTab('mypage')" title="マイページ">
+            <button class="tab-button active" data-tab="mypage" onclick="switchTab('mypage')" title="ホーム">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                マイページ
+                ホーム
             </button>
             <button class="tab-button" data-tab="mock" onclick="switchTab('mock')" title="模擬">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
@@ -2582,7 +2582,7 @@
         </div>
     </nav>
 
-    <!-- ========== Tab: マイページ (再構築版) ========== -->
+    <!-- ========== Tab: ホーム (再構築版) ========== -->
     <div id="tab-mypage" class="tab-content tab-page active">
         <div class="container">
             <!-- ① プロフィール: ClaudeDesign 準拠 (シルバーリング + 名前/Lv + 得意属性チップ + 編集ピル + soft-fill 切替) -->
@@ -2665,6 +2665,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 📌 次にやること (Stage2 ホーム化: 時期依存の主行動を1件だけ提示。詳細は renderMyNextAction) -->
+            <div class="dc-card" id="myNextActionCard" style="display:none;border-left:4px solid #1E78F0;"></div>
 
             <!-- ③ 戦闘 (ゲート → ボス選択 → 戦闘中) -->
             <div class="dc-card">
@@ -2875,7 +2878,7 @@
     </div>
 
     <!-- ========== Tab: 運営 ========== -->
-    <!-- ========== Tab: 模擬 (2026-07-23 Stage2 新設 — 準備期のハブ。模擬提出・人気編成はマイページから移設) ========== -->
+    <!-- ========== Tab: 模擬 (2026-07-23 Stage2 新設 — 準備期のハブ。模擬提出・人気編成はホームから移設) ========== -->
     <div id="tab-mock" class="tab-content tab-page">
         <div class="container">
             <!-- ページヘッダー -->
@@ -2886,7 +2889,7 @@
                 </div>
             </div>
 
-            <!-- ① 模擬戦データ (横スクロール scroll-snap パネル + 解析バナー + キャラ被り凡例) — Stage2でマイページから移設 -->
+            <!-- ① 模擬戦データ (横スクロール scroll-snap パネル + 解析バナー + キャラ被り凡例) — Stage2でホームから移設 -->
             <div class="dc-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px;">
                     <div>
@@ -3063,7 +3066,7 @@
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;"><span data-sp-icon="users" data-sp-size="12"></span> 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                         <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
-                        <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのマイページにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#2ED97F,#18C26B);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);"><span data-sp-icon="send" data-sp-size="13"></span> 配信</button>
+                        <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのホームにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#2ED97F,#18C26B);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);"><span data-sp-icon="send" data-sp-size="13"></span> 配信</button>
                     </div>
                 </div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#8A9097;line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
@@ -3520,7 +3523,7 @@
                     <div class="help-toc-title">目次</div>
                     <a href="#help-overview">1. しりすこPAD とは</a>
                     <a href="#help-raid-rules">2. ユニオンレイドの基本</a>
-                    <a href="#help-mypage">3. マイページの使い方</a>
+                    <a href="#help-mypage">3. ホームの使い方</a>
                     <a href="#help-mock">4. 模擬戦データの提出</a>
                     <a href="#help-real">5. 本番スコアの提出</a>
                     <a href="#help-finisher">6. 締め凸を行った場合</a>
@@ -3547,7 +3550,7 @@
                             各メンバーのダメージ出力・凸状況・最適な凸順を可視化し、ユニオン全体で最大の戦果を狙うことを目的としています。</p>
                         <h3>主な機能</h3>
                         <ul>
-                            <li><strong>マイページ</strong> — 凸報告、配信プランの確認、通知、個人設定</li>
+                            <li><strong>ホーム</strong> — 凸報告、配信プランの確認、通知、個人設定</li>
                             <li><strong>模擬</strong> — 属性別の模擬ダメージ提出 (画像OCR/手動)、模擬ふるり値レーダー、人気編成</li>
                             <li><strong>運営</strong> — ボスHP管理、最適凸プラン算出、締め凸候補、メンバー管理</li>
                             <li><strong>分析 (実績 / ふるり値)</strong> — ユニオン内の戦果ランキング</li>
@@ -3570,8 +3573,8 @@
                     </section>
 
                     <section id="help-mypage" class="help-section">
-                        <h2><span data-sp-icon="user" data-sp-size="17"></span> 3. マイページの使い方</h2>
-                        <p>マイページはあなた自身のデータ入力ハブです。ここに正しい情報を入れるほど、全体の最適プランや締め凸候補の精度が上がります。</p>
+                        <h2><span data-sp-icon="user" data-sp-size="17"></span> 3. ホームの使い方</h2>
+                        <p>ホームはあなた自身のデータ入力ハブです。ここに正しい情報を入れるほど、全体の最適プランや締め凸候補の精度が上がります。</p>
                         <h3>① プレイヤーの選択</h3>
                         <p>初回は自分の名前を選んでください。ブラウザに保存されるので、次回以降は自動で復元されます（端末/ブラウザを変えると再選択が必要）。</p>
                         <h3>② 5属性のダメージ登録（→ 模擬タブに移動しました）</h3>
@@ -3605,7 +3608,7 @@
                         </div>
                         <div class="help-flow-step">
                             <div class="help-flow-num">3</div>
-                            <div>マイページの「📷 画像から自動登録」を押し、スクショを選ぶと AI が解析して該当属性に自動入力されます（手入力でもOK）。</div>
+                            <div>ホームの「📷 画像から自動登録」を押し、スクショを選ぶと AI が解析して該当属性に自動入力されます（手入力でもOK）。</div>
                         </div>
                         <div class="help-flow-step">
                             <div class="help-flow-num">4</div>
@@ -3619,7 +3622,7 @@
 
                     <section id="help-real" class="help-section">
                         <h2>🗡️ 5. 本番スコアの提出</h2>
-                        <p>本番の凸が終わったら、マイページの<strong>「⚔️ 凸を報告」</strong>から提出してください。
+                        <p>本番の凸が終わったら、ホームの<strong>「⚔️ 凸を報告」</strong>から提出してください。
                             運営はこれを見てボスの残HPを管理し、誰がいつ何属性で何B出したかを記録します。</p>
                         <ul>
                             <li>1日3凸（仕様による）。各凸でボス・ダメージ・使用キャラを記録できます。</li>
@@ -3684,13 +3687,13 @@
                         <h3>2つのモード</h3>
                         <ul>
                             <li><strong>👥 全員で算出</strong> — 残凸あるメンバー全員を対象。</li>
-                            <li><strong>⏰ 現在凸可能のみ</strong> — マイページで「現在の時間帯」を ON にしている人だけで算出。<br>夜会・朝会など特定時間に向けた即時プランに便利です。</li>
+                            <li><strong>⏰ 現在凸可能のみ</strong> — ホームで「現在の時間帯」を ON にしている人だけで算出。<br>夜会・朝会など特定時間に向けた即時プランに便利です。</li>
                         </ul>
                         <h3>時間帯スケジュールの見方</h3>
                         <p>各メンバーの<strong>戦闘可能時間</strong>をもとに、それぞれの凸を「何時ごろ打つ想定か」に割り当てて表示します。</p>
                         <ul>
                             <li><strong>🕐 時刻ラベル</strong> — その凸を打つ想定の時間帯。「翌2時」は日付をまたいだ深夜帯（リセット前）の意味です。</li>
-                            <li><strong>「未登録」バッジ</strong> — 戦闘可能時間が未登録のメンバー。「いつでも凸できる」とみなして開放後の最速枠に仮置きしているだけで、<strong>表示された時刻に居られる保証はありません</strong>。マイページで戦闘可能時間を登録すると精度が上がります (時間割の狭いマスでは ? マークで表現)。</li>
+                            <li><strong>「未登録」バッジ</strong> — 戦闘可能時間が未登録のメンバー。「いつでも凸できる」とみなして開放後の最速枠に仮置きしているだけで、<strong>表示された時刻に居られる保証はありません</strong>。ホームで戦闘可能時間を登録すると精度が上がります (時間割の狭いマスでは ? マークで表現)。</li>
                             <li><strong>⏱ 律速（りっそく）</strong> — そのレベルの中で<strong>一番遅い時間帯に割り当てられた凸</strong>に付く赤い目印です。「律速」はボトルネックという意味で、<strong>この凸が終わるまで次のレベルに進めない＝レベルのクリア時刻を決めている凸</strong>を指します。</li>
                         </ul>
                         <div class="help-callout tip">
@@ -3706,7 +3709,7 @@
                         </ul>
                         <p>📸 共有画像は表示モードに連動します: <strong>🗓 時間割</strong>を選んでいるときは正方形に近い時間割レイアウト、📋 リストのときは従来の縦リストレイアウトで生成されます。</p>
                         <h3>📤 プランの配信</h3>
-                        <p>算出したプランは「📤 配信」ボタンで保存でき、全メンバーの<strong>マイページに「配信された凸プラン」カード</strong>として表示されます（Push通知は飛びません）。各メンバーは自分の凸予定（どのボスに・何時ごろ・何B想定）と全体表を確認できます。配信時点のデータに基づくため、状況が大きく動いたら再算出→再配信してください。</p>
+                        <p>算出したプランは「📤 配信」ボタンで保存でき、全メンバーの<strong>ホームに「配信された凸プラン」カード</strong>として表示されます（Push通知は飛びません）。各メンバーは自分の凸予定（どのボスに・何時ごろ・何B想定）と全体表を確認できます。配信時点のデータに基づくため、状況が大きく動いたら再算出→再配信してください。</p>
                     </section>
 
                     <section id="help-remaining" class="help-section">
@@ -3723,12 +3726,12 @@
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 10. 締め凸候補（運営）+ ソフトロック</h2>
                         <p>ボスの残HPを指定すると、過剰ダメージを抑えつつ確実に削れる候補をリストアップします（同ダメージなら凸残数が多い人を優先）。結果は Push 通知で候補メンバーに直接依頼できます。</p>
                         <h3>戦闘準備 (ソフトロック)</h3>
-                        <p>マイページの「🎯 次の凸」や戦況タブのボスカードからボスをタップすると、そのメンバーが <strong>戦闘準備</strong> 状態になります。同じボスを別メンバーが凸ろうとすると <strong>⚠️ 警告</strong> が出て、強行すると <strong>調整中の本人に Push 通知</strong> が飛びます。</p>
+                        <p>ホームの「🎯 次の凸」や戦況タブのボスカードからボスをタップすると、そのメンバーが <strong>戦闘準備</strong> 状態になります。同じボスを別メンバーが凸ろうとすると <strong>⚠️ 警告</strong> が出て、強行すると <strong>調整中の本人に Push 通知</strong> が飛びます。</p>
                         <ul>
                             <li>戦闘準備は <strong>30分で自動失効</strong>。凸報告で自動解除</li>
                             <li>「⏪ 解除」 で手動キャンセル</li>
                             <li>ボスカードは <strong>戦闘中アニメ</strong>（🔥 + ⚔️ スイング）で視覚的に共有</li>
-                            <li>マイページ/戦況タブどちらからでも同じフローでタップ可能</li>
+                            <li>ホーム/戦況タブどちらからでも同じフローでタップ可能</li>
                         </ul>
                     </section>
 
@@ -3754,9 +3757,9 @@
                             <p>Android（Chrome）/PC（Chrome / Edge / Firefox）は<strong>そのままでOK</strong>。ホーム画面追加は不要です。</p>
                         </div>
 
-                        <h3>① マイページで「通知を有効にする」</h3>
+                        <h3>① ホームで「通知を有効にする」</h3>
                         <div class="help-flow-step"><div class="help-flow-num">1</div><div>画面右上の <span class="help-pill">👤</span> をタップして<strong>自分の名前</strong>を選ぶ</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>マイページの <strong>「🔔 Push通知設定」</strong> までスクロール</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>ホームの <strong>「🔔 Push通知設定」</strong> までスクロール</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>「🔔 通知を有効にする」</strong> ボタンをタップ</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div>ブラウザが「<strong>通知を許可しますか?</strong>」と聞いてくるので <strong>「許可」</strong> をタップ</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div>「<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み (この端末)</span>」と出れば登録完了</div></div>
@@ -3771,7 +3774,7 @@
 
                         <h3>② 受信したい時間帯を選ぶ（とても重要）</h3>
                         <p>初期設定は<strong>すべての時間帯がOFF</strong>になっています。<strong>最低1つはON</strong>にしないと通知は一切届きません。</p>
-                        <p>マイページの <strong>「🕐 戦闘可能時間」</strong>で、自分が通知を受けられる時間帯をタップして ON にしてください。</p>
+                        <p>ホームの <strong>「🕐 戦闘可能時間」</strong>で、自分が通知を受けられる時間帯をタップして ON にしてください。</p>
                         <ul>
                             <li>AM 5時〜翌 AM 5時の <strong>24時間ぶんを1時間単位</strong>で個別に ON/OFF できます (24スロット)</li>
                             <li>橙色の縦線が日付の変わり目 (24時→0時)</li>
@@ -3790,7 +3793,7 @@
 
                         <h3>📨 通知を後から確認する</h3>
                         <p>スマホで通知を一度タップしてしまうと内容が消えてしまうことがあります。そんな時は
-                            マイページの <strong>「📨 受け取った通知」</strong> をご覧ください。
+                            ホームの <strong>「📨 受け取った通知」</strong> をご覧ください。
                             自分宛・全員宛に送られた通知が新しい順に記録されており、本文も含めて読み返せます。</p>
                         <div class="help-callout tip">
                             <span class="ico">🎉</span>
@@ -3800,7 +3803,7 @@
 
                         <h3>🚫 通知が来ない時のチェックリスト</h3>
                         <ol>
-                            <li>マイページの <strong>「🕐 戦闘可能時間」</strong> に1つでもチェックが入っているか?（全OFFだと永久に届きません）</li>
+                            <li>ホームの <strong>「🕐 戦闘可能時間」</strong> に1つでもチェックが入っているか?（全OFFだと永久に届きません）</li>
                             <li>「<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み</span>」と表示されているか?</li>
                             <li>ブラウザがこのサイトの通知を<strong>ブロック</strong>していないか? (上のWarn参照)</li>
                             <li><strong>iPhoneの場合</strong>: ホーム画面のPADアイコンから開いているか? Safariタブからだと通知が動きません</li>
@@ -3849,9 +3852,9 @@
                     <section id="help-data" class="help-section">
                         <h2><span data-sp-icon="refresh" data-sp-size="17"></span> 14. データの流れ</h2>
                         <p>下記のように、入力されたデータは PAD 全体で連動して使われます。</p>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>本番凸</strong> → <span class="help-pill">attacks</span> テーブルに記録（マイページの凸報告）</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>本番凸</strong> → <span class="help-pill">attacks</span> テーブルに記録（ホームの凸報告）</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>模擬戦データ</strong> → <span class="help-pill">player_damages</span> に記録（模擬タブのダメージ入力）</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>レイド終了時</strong> → 該当月の JSON にスナップショット。これが次月の<strong>ふるり値基準</strong>になる。JSON到着時には<strong>確定SLvが自動でマイページに同期</strong>される (手動更新不要)</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>レイド終了時</strong> → 該当月の JSON にスナップショット。これが次月の<strong>ふるり値基準</strong>になる。JSON到着時には<strong>確定SLvが自動でホームに同期</strong>される (手動更新不要)</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div><strong>次月シーズン作成</strong> → 前月実績ダメージを各メンバーの初期 <span class="help-pill">player_damages</span> として自動シード</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div>個人の<strong>レーダー</strong>・運営の<strong>最適プラン</strong>・<strong>残凸表</strong>・<strong>ふるり値ランキング</strong>すべてに即時反映</div></div>
                         <div class="help-callout tip">
@@ -3865,7 +3868,7 @@
                         <h3>Q. 模擬戦で同じ属性に何度も挑戦しました。どれを提出？</h3>
                         <p>一番高いダメージのものを提出してください（PAD側は最後に入れた値を保持します）。</p>
                         <h3>Q. 締め凸でダメージが想定より低く記録されました</h3>
-                        <p>マイページのダメージ欄を本来のベスト出力に手動で上書きしてください（<a href="#help-finisher">§6</a>）。</p>
+                        <p>ホームのダメージ欄を本来のベスト出力に手動で上書きしてください（<a href="#help-finisher">§6</a>）。</p>
                         <h3>Q. レーダーチャートに値が出ません</h3>
                         <p>あなたの SLv が直近の実シーズンで未登録か、属性ダメージが未入力の可能性があります。
                             未入力属性に値を入れる、または運営にユニオン参加時の SLv を登録してもらってください。</p>
@@ -4034,7 +4037,7 @@
                         </button>
                         <button onclick="openHelpFromSettings('help-mypage')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">02</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">マイページとデータ入力</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">ホームとデータ入力</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-real')" class="dc-guide-row">
@@ -4574,7 +4577,7 @@
         </div>
     </div>
 
-    <!-- ========== 編成編集モーダル (マイページの属性別ダメ行から開く) ========== -->
+    <!-- ========== 編成編集モーダル (ホームの属性別ダメ行から開く) ========== -->
     <div class="player-select-modal" id="myTeamEditModal">
         <div class="player-select-content" style="max-width:480px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -5001,7 +5004,7 @@
                 chapterTag: '① 最初に',
                 stepLabel: 'CHAPTER 02',
                 title: 'アプリ化と\nPush通知',
-                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>その後 <strong>マイページの 🔔 Push通知設定</strong> から通知を有効化。',
+                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>その後 <strong>ホームの 🔔 Push通知設定</strong> から通知を有効化。',
                 tip: 'iPhone はアプリ化しないと通知が届きません。必ず最初に。',
                 accentColor: '#9B4DFF', accentDark: '#7C3AED',
             },
@@ -5010,7 +5013,7 @@
                 chapterTag: '② 戦闘可能時間',
                 stepLabel: 'CHAPTER 03',
                 title: '戦闘できる時間を\n教えてください',
-                body: 'マイページの <strong>⚔️ 戦闘可能時間</strong> で、自分が動ける時間帯を塗ります。下のデモで実際に触ってみてください👇',
+                body: 'ホームの <strong>⚔️ 戦闘可能時間</strong> で、自分が動ける時間帯を塗ります。下のデモで実際に触ってみてください👇',
                 demo: 'avail',
                 tip: '⏳ 当日いつ動けるか読めない人は「隙間時間型」、時間外でも通知を見たい人は「🔔 いつでも受け取る」をONに (設定画面にあります)。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
@@ -5376,7 +5379,7 @@
             try {
                 if (localStorage.getItem('shirisuPad.tourCompleted')) return;
             } catch { return; }
-            // データ読み込み完了 + マイページが表示されてから 1秒後
+            // データ読み込み完了 + ホームが表示されてから 1秒後
             setTimeout(() => {
                 if (document.getElementById('tab-mypage')?.classList.contains('active')) {
                     startTour();
@@ -5840,8 +5843,59 @@
             }
         }
 
+        // ---- 📌 次にやること (Stage2 ホーム化) ----
+        // 時期依存の主行動を1件だけ出す誘導カード。判定はシーズン状態から:
+        //   アクティブ + hard_date=今日 → 当日 (戦況へ) / アクティブ → 準備期 (模擬提出の進捗) /
+        //   なし → 事後 (分析へ)。重い盤面は読まず seasonStore + 自分の提出だけで判定する。
+        // 凸割当の詳細は配信プランカード (renderMyPublishedPlan) の役割 — ここでは重複させない。
+        let _nextActionSeq = 0;
+        async function renderMyNextAction(identity) {
+            const card = document.getElementById('myNextActionCard');
+            if (!card) return;
+            const seq = ++_nextActionSeq;
+            if (!identity?.id) { card.style.display = 'none'; return; }
+            let season = null, submitted = null;
+            try {
+                const ctx = await seasonStore.ensure();
+                season = ctx?.season || null;
+                if (season && typeof window.supabaseLoadPlayerDamages === 'function') {
+                    const rows = await window.supabaseLoadPlayerDamages(identity.id);
+                    submitted = new Set((rows || []).filter(r => Number(r.damage_b) > 0).map(r => r.attribute)).size;
+                }
+            } catch (e) { console.warn('[次にやること] 読込失敗:', e?.message || e); }
+            if (seq !== _nextActionSeq) return;
+            const d = new Date();
+            const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            let lead, why, cta;
+            if (season && season.hard_date === todayStr) {
+                lead = '🔥 きょうはレイド当日!';
+                why = 'ボスの残HPと交戦状況を戦況タブで確認して、下の「戦闘」から凸を報告しましょう。配信プランが届いていれば、このすぐ下に自分の割当が出ています。';
+                cta = `<button onclick="switchTab('ops')" style="width:100%;border:none;border-radius:12px;padding:13px;font:inherit;font-size:13px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#46A0FF,#1E78F0);box-shadow:0 5px 14px rgba(30,120,240,0.32);">⚔️ 戦況を見る</button>`;
+            } else if (season) {
+                const n = submitted ?? 0;
+                if (n >= 5) {
+                    lead = '✅ 模擬 5属性 提出済み!';
+                    why = 'レーダーが完成しています。模擬タブのユニオン事前比較で立ち位置を確認したり、編成を調整してさらに更新を狙えます。';
+                } else {
+                    lead = `📸 模擬の提出 あと${5 - n}属性`;
+                    why = `現在 ${n}/5属性。提出するとレーダーが完成し、あなたの火力が凸プランの計算に正しく反映されます。スクショから30秒で提出できます。`;
+                }
+                cta = `<button onclick="switchTab('mock')" style="width:100%;border:none;border-radius:12px;padding:13px;font:inherit;font-size:13px;font-weight:900;color:#fff;cursor:pointer;background:#14161A;box-shadow:0 4px 12px rgba(20,22,26,0.25);">🧪 模擬タブへ</button>`;
+            } else {
+                lead = '📊 シーズンはお休み中';
+                why = '前回の結果は分析タブで見られます。実績・ふるり値・編成分析でユニオンの振り返りをどうぞ。';
+                cta = `<button onclick="switchTab('ranking')" style="width:100%;border:none;border-radius:12px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;cursor:pointer;background:#F1F2F4;">📈 分析タブへ</button>`;
+            }
+            card.style.display = '';
+            card.innerHTML = `
+                <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:#1E78F0;margin-bottom:6px;">📌 次にやること</div>
+                <div style="font-size:14px;font-weight:900;color:#14161A;line-height:1.5;margin-bottom:4px;">${lead}</div>
+                <div style="font-size:11.5px;color:#6B7178;line-height:1.65;margin-bottom:11px;">${why}</div>
+                ${cta}`;
+        }
+
         // ========== 模擬タブ (Stage2 新設) ==========
-        // 模擬戦データ提出パネル (renderMyDamagePanels) と人気編成はマイページから移設。
+        // 模擬戦データ提出パネル (renderMyDamagePanels) と人気編成はホームから移設。
         // 各要素の id は移設前と同一なので、OCRフロー・編集シート等の既存ハンドラは無変更で動く。
         function renderMockTab() {
             const id = getCurrentIdentity();
@@ -5926,7 +5980,7 @@
             const notes = [];
             if (model.meta.baseMissing) notes.push(`基準者の${attrDef.name}模擬が未提出のため、ふるり値を計算できません (ダメージ表示は可能)。`);
             if (model.noSlv.length) notes.push(`SLv未登録のため計算対象外: ${model.noSlv.length}人`);
-            if (estShown > 0) notes.push(`「SLv推定」は自己申告SLvが無く出力の近いメンバーから借用した暫定値 — マイページで登録すると確定します。`);
+            if (estShown > 0) notes.push(`「SLv推定」は自己申告SLvが無く出力の近いメンバーから借用した暫定値 — ホームで登録すると確定します。`);
             notes.push(`未提出 ${model.missing.length}人はランキング対象外。ふるり値の基準は月初固定 — 月途中に誰かが模擬を更新しても他人との比較は歪みません。`);
             card.dataset.loaded = '1';
             card.innerHTML = `
@@ -5955,11 +6009,13 @@
                 renderMypageStrongAttrsBadge(null);
                 _refreshMyStatusSwitcher(null);
                 renderMyPublishedPlan(null);
+                renderMyNextAction(null);
                 return;
             }
             nameEl.textContent = id.name;
             _refreshFinishRequests().then(() => renderMyFinishRequestBanner(id));
             renderMySlvChip(id);
+            renderMyNextAction(id);
             renderMyAttacks(id);
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
@@ -5970,7 +6026,7 @@
             _startCoordPolling();
         }
 
-        // ========== 📤 配信された凸プラン (マイページ) ==========
+        // ========== 📤 配信された凸プラン (ホーム) ==========
         // 運営が「📤 配信」したプランを表示。自分の凸予定を先頭に、全体はシフト/ガント表で。
         async function renderMyPublishedPlan(identity) {
             const mySeq = ++_myPubRenderSeq;   // 早期 return より前で採番: 未ログイン呼び出し(カード非表示)でも in-flight の先行取得を無効化する
@@ -6132,7 +6188,7 @@
                     <span style="font-size:13px;font-weight:900;color:#14161A;">あなたの凸</span>
                     <span style="margin-left:auto;font-size:11px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.12);padding:3px 10px;border-radius:999px;">${doneCount} / ${mine.length} 報告済み</span>
                 </div>${rows}
-                <p style="margin:10px 4px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.5;">✓ が付くのは <b>マイページ → 戦闘報告</b> を完了したとき。「報告する ▶」で報告画面へ直行できます。</p>`;
+                <p style="margin:10px 4px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.5;">✓ が付くのは <b>ホーム → 戦闘報告</b> を完了したとき。「報告する ▶」で報告画面へ直行できます。</p>`;
         }
 
         // 🗺 全体の流れ: 総括ヒーロー + Lvステッパー + ボス1行概観 (攻撃メンバーのアバター重ね)
@@ -6192,7 +6248,7 @@
                 <p style="margin:10px 4px 0;font-size:10px;color:#A4AAB0;text-align:center;">🔵青枠＝あなた · 数字＝そのボスへ入る人数</p>`;
         }
 
-        // ========== 締め凸依頼への応答 (マイページ) ==========
+        // ========== 締め凸依頼への応答 (ホーム) ==========
         function renderMyFinishRequestBanner(identity) {
             const area = document.getElementById('myFinishRequestArea');
             if (!area) return;
@@ -6487,7 +6543,7 @@
             }
         }
 
-        // ========== マイページ: MY設定 ==========
+        // ========== ホーム: MY設定 ==========
         // ⚙ アイコンタップ: ページ末尾の「MY設定」ボタン群にスムーススクロール
         function openMySettingsModal() {
             const buttons = document.querySelectorAll('#tab-mypage .my-setting-btn');
@@ -6550,7 +6606,7 @@
             renderMypageStrongAttrsBadge(getCurrentIdentity());
         }
 
-        // ========== マイページ: 属性別ダメージ登録 ==========
+        // ========== ホーム: 属性別ダメージ登録 ==========
         const PT_ATTRS = [
             { key: 'fire',     name: '灼熱', icon: './属性アイコン/灼熱.png', bossJP: '風圧', color: '#FF3B30' },
             { key: 'water',    name: '水冷', icon: './属性アイコン/水冷.png', bossJP: '灼熱', color: '#007AFF' },
@@ -7160,7 +7216,7 @@
                 ${fururiHtml}
                 ${fururiNote}`;
         }
-        // 人気編成を自分の編成① (player_damages.characters slot=1) に直接反映 (マイページ用)
+        // 人気編成を自分の編成① (player_damages.characters slot=1) に直接反映 (ホーム用)
         async function applyPopularTeamToSelf(attrKey, kind) {
             const id = getCurrentIdentity();
             if (!id?.id) { showNotification('プレイヤーを選択してください'); return; }
@@ -7198,7 +7254,7 @@
                 msg.style.color = '#1E78F0';
             }
         }
-        // マイページの独立カード (既定は折りたたみ / 初回展開時にロード)
+        // ホームの独立カード (既定は折りたたみ / 初回展開時にロード)
         function togglePopularTeams() {
             const content = document.getElementById('popularTeamsContent');
             const btn = document.getElementById('popularTeamsToggle');
@@ -7780,7 +7836,7 @@
             return m;
         })();
 
-        // ========== 模擬タブ: 模擬ふるり値レーダー (今シーズンの模擬同士のライブ比較 — Stage2でマイページから移設) ==========
+        // ========== 模擬タブ: 模擬ふるり値レーダー (今シーズンの模擬同士のライブ比較 — Stage2でホームから移設) ==========
         // 基準: ふるり(基準者)の今季模擬5属性 + SLv。自分: 今季模擬 + 自己申告SLv。
         // 確定ふるり値 (完了シーズン・本戦3凸ベース) は分析タブ (ふるり値ビュー) が担当する — ここは今季専用。
         // ユニレは3凸までなので本戦ベースでは5属性が揃わないが、模擬同士なら全員が形を完成できる。
@@ -7826,7 +7882,7 @@
             _myRadarLastIdentity = identity;
             _myRadarLastDamages = damages;
 
-            // 自分のSLv: マイページの自己申告 (アクティブシーズン) を最優先 → 実シーズン → 推定
+            // 自分のSLv: ホームの自己申告 (アクティブシーズン) を最優先 → 実シーズン → 推定
             let slv = _mySlvCurrent > 0 ? _mySlvCurrent : 0;
             let slvEstimated = false;
             if (!slv) {
@@ -7884,7 +7940,7 @@
                     : 'SLv未登録';
             }
             if (hintEl) {
-                if (!slv) hintEl.textContent = 'マイページ上部の SLv チップからシンクロレベルを設定するとレーダーが描けます。';
+                if (!slv) hintEl.textContent = 'ホーム上部の SLv チップからシンクロレベルを設定するとレーダーが描けます。';
                 else if (!base) hintEl.textContent = `基準者(${fururiBasePlayerName})のデータを読み込めませんでした。`;
                 else if (!base.slv) hintEl.textContent = `基準者(${fururiBasePlayerName})の SLv が未設定のため計算できません。`;
                 else if (base.missing.length >= 5) hintEl.textContent = `基準者(${fururiBasePlayerName})の今季模擬が未提出です。提出されると全員のレーダーが使えるようになります。`;
@@ -8232,7 +8288,7 @@
             }
         }
 
-        // ========== マイページ: 得意属性 ==========
+        // ========== ホーム: 得意属性 ==========
         async function renderMyStrongAttrs(identity) {
             // 旧 HTML の隠し要素 + モーダル中身の両方に描画 (どちらも存在すれば)
             const targets = [
@@ -8279,7 +8335,7 @@
             }
         }
 
-        // ========== マイページ: 戦闘可能時間 (1時間単位、AM5時開始) ==========
+        // ========== ホーム: 戦闘可能時間 (1時間単位、AM5時開始) ==========
         // ユニオンレイドは AM 5:00 開始 → 翌 AM 5:00 終了。
         // 表示順は 5, 6, ..., 23, 0, 1, 2, 3, 4 (24スロット)。
         const HOUR_ORDER = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
@@ -8614,7 +8670,7 @@
             }
         }
 
-        // ========== マイページ: Push通知設定 (Phase 6a) ==========
+        // ========== ホーム: Push通知設定 (Phase 6a) ==========
         // 受け取った通知履歴 (Push通知の本文をあとから確認できる)
         // 既定 3件表示、「もっと見る」で全件展開、「閉じる」で 3件に戻す
         const _NOTIF_INBOX_LIMIT = 3;
@@ -8758,7 +8814,7 @@
                 if (typeof renderOpsBossSummary === 'function' && opsStore.get()) {
                     renderOpsBossSummary();
                 }
-                // マイページの「次の凸」も同期
+                // ホームの「次の凸」も同期
                 if (typeof renderMyNextAttackBosses === 'function') {
                     renderMyNextAttackBosses(identity);
                 }
@@ -8773,7 +8829,7 @@
         }
 
         function _renderCoordSelf(identity) {
-            // 新マイページの 3ボタン スイッチャーへ反映
+            // 新ホームの 3ボタン スイッチャーへ反映
             _refreshMyStatusSwitcher(identity);
             const selfEl = document.getElementById('mypageCoordSelf');
             if (!selfEl) return;
@@ -8934,7 +8990,7 @@
             _stopCoordPolling();
             if (document.hidden) return;
             _coordPollingTimer = setInterval(() => {
-                // 締め凸依頼ステータスも同じ周期で更新 (マイページ応答UI / ops表示)
+                // 締め凸依頼ステータスも同じ周期で更新 (ホーム応答UI / ops表示)
                 _refreshFinishRequests().then(() => {
                     const myId = getCurrentIdentity();
                     if (myId?.id && typeof renderMyFinishRequestBanner === 'function') renderMyFinishRequestBanner(myId);
@@ -9051,7 +9107,7 @@
             }
         }
 
-        // ========== マイページ: 凸報告 ==========
+        // ========== ホーム: 凸報告 ==========
         // アクティブシーズンのキャッシュは js/state/seasonStore.js に移行 (リアーキ ステップ3宿題)。
         // 直接代入・部分書き換えは禁止 — ensure/get/invalidate/patchBosses を使う
         let _myTodayAttacksCache = null;
@@ -9069,7 +9125,7 @@
             return seasonStore.ensure();   // 本体は js/state/seasonStore.js (挙動は同一・世代ガード付き)
         }
 
-        // ========== マイページ: 次の凸 (ボスタップ起点フロー) ==========
+        // ========== ホーム: 次の凸 (ボスタップ起点フロー) ==========
         // タップ → 戦闘準備(coordinating) → 戦闘 → 「📷 報告する」で凸報告モーダル
         async function renderMyNextAttackBosses(identity) {
             const el = document.getElementById('mypageNextAttackBosses');
@@ -12914,7 +12970,7 @@
                 warnings.push(`未消化凸 ${plan.unusedAttacks}凸。${detailHtml}`);
             }
             if (plan.membersNoData.length > 0) {
-                warnings.push(`属性ダメ未登録 ${plan.membersNoData.length}名: ${plan.membersNoData.slice(0, 5).map(esc).join('、')}${plan.membersNoData.length > 5 ? '...' : ''}（本人にマイページからの登録依頼を）`);
+                warnings.push(`属性ダメ未登録 ${plan.membersNoData.length}名: ${plan.membersNoData.slice(0, 5).map(esc).join('、')}${plan.membersNoData.length > 5 ? '...' : ''}（本人にホームからの登録依頼を）`);
             }
             const warnHtml = warnings.length > 0
                 ? `<div style="padding:11px 13px;border-radius:12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);">
@@ -13025,7 +13081,7 @@
             return { bosses, sections };
         }
 
-        // ===== 時間割のボス絞り込み (画面ごとに独立: ops=戦況 / my=マイページ) =====
+        // ===== 時間割のボス絞り込み (画面ごとに独立: ops=戦況 / my=ホーム) =====
         // null = 全ボス表示。配列 = 表示するボス番号のリスト。
         const _planBossFilters = { ops: null, my: null };
         function togglePlanBossFilter(key, bossNumber) {
@@ -13127,13 +13183,13 @@
                 <p style="margin:7px 0 0 0;font-size:10.5px;color:#8A9097;">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替)。' : ''}<span style="color:#1E78F0;font-weight:800;">青</span>=あなた · <span style="color:#FF3D44;font-weight:800;">赤枠</span>=律速 · <span style="color:#B45309;font-weight:800;">グレー破線</span>=時間未確定 (⏳隙間/⚠時間外/?未登録) · ▼=現在時刻 · ⋯=凸のない時間を省略。📸共有画像もこの形。</p>`;
         }
 
-        // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのマイページに表示
+        // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのホームに表示
         async function handleOpsPublishPlan() {
             if (!_opsLastPlan) {
                 showNotification('先に「👥 全員」か「⏰ 凸可能のみ」でプランを算出してください');
                 return;
             }
-            if (!confirm('📤 現在表示中のプランを全メンバーに配信しますか？\n各メンバーのマイページに「配信された凸プラン」として表示されます (Push通知は送りません)。')) return;
+            if (!confirm('📤 現在表示中のプランを全メンバーに配信しますか？\n各メンバーのホームに「配信された凸プラン」として表示されます (Push通知は送りません)。')) return;
             try {
                 const me = getCurrentIdentity();
                 await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null);
@@ -13737,7 +13793,7 @@
             const targets = _opsAuditRows.filter(r => r.matched && r.missing > 0 && r.playerId != null);
             if (targets.length === 0) { showNotification('未提出のメンバーはいません'); return; }
             const title = '📝 凸報告のお願い';
-            const bodyText = 'ゲーム内の凸がPADに未提出のようです。マイページ → ⚔️ 凸報告 から提出お願いします🙏';
+            const bodyText = 'ゲーム内の凸がPADに未提出のようです。ホーム → ⚔️ 凸報告 から提出お願いします🙏';
             const ok = await showPushPreview([{ title, body: bodyText, recipients: targets.map(r => ({ id: r.playerId, name: r.name })) }]);
             if (!ok) return;
             try {
@@ -13807,7 +13863,7 @@
             const targets = _opsMockAuditRows.filter(r => r.attrCount === 0);
             if (targets.length === 0) { showNotification('未提出のメンバーはいません'); return; }
             const title = '🪞 模擬戦データ提出のお願い';
-            const bodyText = '今シーズンの模擬戦データが未提出です。マイページの「模擬戦データ」から提出お願いします🙏';
+            const bodyText = '今シーズンの模擬戦データが未提出です。ホームの「模擬戦データ」から提出お願いします🙏';
             const ok = await showPushPreview([{ title, body: bodyText, recipients: targets.map(r => ({ id: r.id, name: r.name })) }]);
             if (!ok) return;
             try {
@@ -13964,20 +14020,20 @@
 ✨ **得意属性を設定すると、凸プランで必ずその属性に選ばれます。**「好きじゃない属性に回された…」がなくなる!
 ✨ **1属性に2編成登録OK** — 同属性2凸したい属性特化勢に対応。カードが2枚重なってめくれます
 ✨ **📚人気編成** — みんなの模擬から「その属性の人気キャラ・最高ダメ編成」が見れて、**ワンタップで自分の編成にコピー**できます。編成組むの苦手な人はこれ使って!
-✨ 当日は**運営から凸プランがマイページに配信**されます。自分が「いつ・どのボスに・何B」出せばいいか一目で分かる
+✨ 当日は**運営から凸プランがホームに配信**されます。自分が「いつ・どのボスに・何B」出せばいいか一目で分かる
 
 ━━━━━━━━━━━━━━
 📅 **前日までに(まだの人だけ)**
 ━━━━━━━━━━━━━━
 1. PADをホーム画面に追加(アプリ化)→ 🔔通知ON ※iPhoneはアプリ化しないと通知が来ません
-2. マイページで **SLvを設定**(上の方のSLvチップをタップ)
+2. ホームで **SLvを設定**(上の方のSLvチップをタップ)
 3. **戦闘可能時間**を塗る(時間が読めない人は「⏳隙間時間型」をONでOK)
 4. お好みで**得意属性**を設定(ここで選んだ属性に必ず出られます)
 
 ━━━━━━━━━━━━━━
 🪞 **前日(模擬デー)にやること**
 ━━━━━━━━━━━━━━
-**模擬戦をやって、マイページの「模擬戦データ」に提出!**
+**模擬戦をやって、ホームの「模擬戦データ」に提出!**
 ・スクショを投げるだけでAIが読み取ります(手入力なら10秒)
 ・**5属性全部出すとレーダーチャート完成**の特典つき✨ 最低でも3属性はお願いします
 ・SLv設定済みなら、SLvが低くても**「ふるり値トップ」**に載るチャンスあり(補正されるので全員にトップの可能性があります)
@@ -13986,7 +14042,7 @@
 ━━━━━━━━━━━━━━
 ⚔️ **当日にやること(3つだけ)**
 ━━━━━━━━━━━━━━
-1. **マイページの「配信された凸プラン」を見る** → 自分の凸予定(時間・ボス・想定ダメージ)が書いてあります
+1. **ホームの「配信された凸プラン」を見る** → 自分の凸予定(時間・ボス・想定ダメージ)が書いてあります
 2. 凸する前にボスをタップして**戦闘準備**(被り防止)→ 凸したら**すぐ凸報告**(結果スクショを投げるだけ)。報告が早いほどプランの精度が上がります!
 3. **🔔締め凸のお願い通知**が来たら協力お願いします🙏
 
@@ -14009,7 +14065,7 @@
 6. **時間も込みで組みます** — あなたの戦闘可能時間の中で、そのレベルが開く時刻以降の一番早い枠に割り当て。レベルのクリア時刻を決めている凸には「⏱律速」マークが付きます(その人が早く動けると全体が前倒しになる目印)。⏳隙間型の人は時刻を約束しない「できるとき枠」として扱います
 
 **🔄 途中で状況が変わったら?**
-運営が再計算ボタンを押すと、**その時点の残HP・消化済みの凸・残り時間だけ**から組み直して再配信します。あなたのマイページのプランに⚠️が付いていたら「新しいのが来るまで目安として見てね」の合図です。
+運営が再計算ボタンを押すと、**その時点の残HP・消化済みの凸・残り時間だけ**から組み直して再配信します。あなたのホームのプランに⚠️が付いていたら「新しいのが来るまで目安として見てね」の合図です。
 
 **🙋 よくある疑問**
 ・**「自分の凸が入ってない」** → 模擬未提出の属性には割り当てられません。あと3凸済みの人は当然出てきません
@@ -14230,7 +14286,7 @@
 
         async function handleOpsResetDamages() {
             if (!confirm('⚠️ 全メンバーの属性別ダメージ登録を一括リセットします。\nこの操作は取り消せません。よろしいですか？')) return;
-            if (!confirm('本当によろしいですか？全メンバーがマイページでダメージを再登録する必要があります。')) return;
+            if (!confirm('本当によろしいですか？全メンバーがホームでダメージを再登録する必要があります。')) return;
             try {
                 await window.supabaseResetAllDamages();
                 opsStore.invalidate();
@@ -14625,7 +14681,7 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:7px;margin-top:11px;padding:0 2px;font-size:10.5px;color:#A4AAB0;font-weight:700;">
                         <span style="flex:none;">ℹ️</span>
-                        <span>詳細なダメージ履歴・凸記録はマイページから確認できます。</span>
+                        <span>詳細なダメージ履歴・凸記録はホームから確認できます。</span>
                     </div>
                 </div>` : '';
 
@@ -14906,7 +14962,7 @@
             }
 
             // ----- 最新JSON到着時: 確定SLvを player_sync_levels へ自動同期 -----
-            // マイページのSLvは「最新シーズンの値」を引き継ぐため、これで全員が確定値に更新される。
+            // ホームのSLvは「最新シーズンの値」を引き継ぐため、これで全員が確定値に更新される。
             // 端末ごとに月1回だけ試行 (成功時マーカー)。サーバ側は差分のみ書くので多重実行も安全。
             if (found[0].source === 'json') {
                 const markKey = `shirisuko_slv_synced_${found[0].key}`;
@@ -14916,7 +14972,7 @@
                         try { localStorage.setItem(markKey, '1'); } catch { /* noop */ }
                         if (r?.synced > 0) {
                             console.log(`[SLv同期] ${found[0].key}: ${r.synced}名を確定値に更新`);
-                            // 表示中のマイページSLvチップにも即反映
+                            // 表示中のホームSLvチップにも即反映
                             const id = typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null;
                             if (id && typeof renderMySlvChip === 'function') renderMySlvChip(id);
                         }
@@ -16093,7 +16149,7 @@
             const hint = document.getElementById('fururiModeHint');
             if (hint) hint.textContent = FURURI_MODE_HINTS[mode] || '';
             renderFururiRanking();
-            // マイページのレーダーは別途トグル管理（共有しない: マイページにも独立のトグルを置く想定）
+            // ホームのレーダーは別途トグル管理（共有しない: ホームにも独立のトグルを置く想定）
         }
 
         function renderFururiRanking() {
@@ -16456,7 +16512,7 @@
             await loadSlvRatioTable();
             await autoLoadData();
             updateIdentityHeader();
-            // 初期アクティブタブ (マイページ) のコンテンツを描画
+            // 初期アクティブタブ (ホーム) のコンテンツを描画
             // switchTab を経由しないと renderMyPage が呼ばれないため、ここで明示的に。
             const initialTab = document.querySelector('.tab-content.active');
             const initialName = initialTab?.id?.replace('tab-', '');
@@ -16469,7 +16525,7 @@
             // ナビの active をコンテンツの active に同期 (HTML側のハードコードずれ対策)。
             // ⚠ initialName ではなく「今の active」を読む — 直前の _handleNavParams が
             //   deep link (?tab=ops 等) でタブを切り替えた場合、古い initialName で
-            //   同期するとナビだけマイページに戻る (Codex 指摘のコールド起動バグ)。
+            //   同期するとナビだけホームに戻る (Codex 指摘のコールド起動バグ)。
             //   ナビ判定は navTab グループ解決 (_navTabOf) を通す。
             const activeName = document.querySelector('.tab-content.active')?.id?.replace('tab-', '') || initialName;
             if (activeName) {
@@ -17062,7 +17118,7 @@
     <nav class="bottom-nav" id="bottomNav">
         <button class="bottom-nav-btn active" data-tab="mypage" onclick="switchTab('mypage')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-            <span>マイページ</span>
+            <span>ホーム</span>
         </button>
         <button class="bottom-nav-btn" data-tab="mock" onclick="switchTab('mock')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg></span>
