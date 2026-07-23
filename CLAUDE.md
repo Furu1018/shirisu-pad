@@ -65,7 +65,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   (character-images/属性アイコン)。HTML/JS/データは即時反映のため非キャッシュ
 - 認証なし。プレイヤーは自己申告で選択 (localStorage)
 - **運営モード (`_opsMode` / `body.ops-mode` / `data-ops-only`)**: `🛠運営` スイッチで運営向けUIを
-  出し入れする仕組み。ユニレ管理タブと設定タブで共有 (localStorage `shirisuko_ops_mode`)。
+  出し入れする仕組み。戦況タブ (旧ユニレ管理) と設定タブで共有 (localStorage `shirisuko_ops_mode`)。
   CSS は `body:not(.ops-mode) [data-ops-only]{display:none}` のグローバル1行なので、
   **どのタブでも `data-ops-only` を付けるだけで運営送りにできる** (逆に OFF 時だけ出すのは
   `data-ops-off-only`)。設定タブは OFF の間そもそも運営データを取得しない (`renderSettingsTab`)。

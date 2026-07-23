@@ -1596,10 +1596,16 @@
             75%     { opacity:.95; transform:scaleY(1.08) }
         }
 
+        /* 分析タブ: 実績⇄ふるり値 セグメント (見た目1タブ・実体2タブの切替UI — TAB_REGISTRY の navTab 参照) */
+        .ana-seg { display:flex; gap:2px; background:#F1F2F4; border-radius:11px; padding:3px; width:fit-content; margin:2px 2px 12px; }
+        .ana-seg button { border:none; background:transparent; color:#6B7178; font-family:inherit;
+            font-size:11.5px; font-weight:800; padding:7px 18px; border-radius:8px; cursor:pointer; white-space:nowrap; }
+        .ana-seg button.active { background:#FFFFFF; color:#14161A; box-shadow:0 1px 3px rgba(20,22,26,0.12); }
+
         /* マーブル背景: 主要5タブ + メンバー管理サブページ共通 */
         /* マーブル背景 + 標準レイアウトは .tab-page マーカーで適用 (リアーキ ステップ5 Stage3)。
            タブ追加時は自分の tab-content div に tab-page クラスを付けるだけ — このCSSは触らない。
-           (help / characters は意図的に非対象なので付けていない) */
+           (help は意図的に非対象なので付けていない) */
         .tab-page.tab-content.active {
             background:
                 radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
@@ -2507,15 +2513,11 @@
         </button>
         <button class="drawer-menu-item" data-tab="ops" onclick="switchTabFromDrawer('ops')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
-            ユニレ管理
+            戦況
         </button>
         <button class="drawer-menu-item" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-            ダメージ比較
-        </button>
-        <button class="drawer-menu-item" data-tab="slv-ranking" onclick="switchTabFromDrawer('slv-ranking')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            ふるり値
+            分析
         </button>
         <button class="drawer-menu-item" data-tab="settings" onclick="switchTabFromDrawer('settings')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -2556,17 +2558,13 @@
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 マイページ
             </button>
-            <button class="tab-button" data-tab="ops" onclick="switchTab('ops')" title="ユニレ管理">
+            <button class="tab-button" data-tab="ops" onclick="switchTab('ops')" title="戦況">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
-                ユニレ管理
+                戦況
             </button>
-            <button class="tab-button" data-tab="ranking" onclick="switchTab('ranking')" title="ダメージ比較">
+            <button class="tab-button" data-tab="ranking" onclick="switchTab('ranking')" title="分析">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                ダメージ比較
-            </button>
-            <button class="tab-button" data-tab="slv-ranking" onclick="switchTab('slv-ranking')" title="ふるり値">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                ふるり値
+                分析
             </button>
             <button class="tab-button" data-tab="settings" onclick="switchTab('settings')" title="設定">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -2939,7 +2937,7 @@
             <!-- ヘッダー: アクティブシーズン + 同期インジ -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
                 <div>
-                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ユニレ管理</div>
+                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">戦況</div>
                     <div style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">アクティブ: <strong id="opsSeasonLabel" style="font-weight:800;color:#14161A;">読み込み中...</strong></div>
                 </div>
                 <div onclick="reloadOpsDashboard()" title="再同期" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 9px;border-radius:999px;cursor:pointer;">
@@ -3099,19 +3097,25 @@
         </div>
     </div>
 
-    <!-- ========== Tab 1: ダメージ比較 (完了済シーズンの分析) ========== -->
+    <!-- ========== Tab: 分析·実績 (旧ダメージ比較 — 完了済シーズンの分析。分析グループの既定ビュー) ========== -->
     <div id="tab-ranking" class="tab-content tab-page">
         <div class="container">
             <!-- ページヘッダー -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
                 <div>
-                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ダメージ比較</div>
+                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">分析</div>
                     <div id="rankingPageSubtitle" style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">読み込み中...</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
                     <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:#18C26B;"></span>完了</div>
                     <div id="rankingComparisonLabel" style="font-size:10px;font-weight:700;color:#A4AAB0;font-variant-numeric:tabular-nums;letter-spacing:0.2px;">&nbsp;</div>
                 </div>
+            </div>
+
+            <!-- 分析セグメント: 実績 (このタブ) ⇄ ふるり値 (tab-slv-ranking) — ナビ上は同じ「分析」ボタン -->
+            <div class="ana-seg">
+                <button class="active" type="button">📊 実績</button>
+                <button type="button" onclick="switchTab('slv-ranking')">⚡ ふるり値</button>
             </div>
 
             <!-- ① グラフ + 統計 -->
@@ -3241,14 +3245,14 @@
         </div>
     </div>
 
-    <!-- ========== Tab 2: ふるり値 (完了済シーズンの SLv 補正スコア) ========== -->
+    <!-- ========== Tab: 分析·ふるり値 (旧ふるり値タブ — 完了済シーズンの SLv 補正スコア) ========== -->
     <div id="tab-slv-ranking" class="tab-content tab-page">
         <div class="container">
             <!-- ページヘッダー -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ふるり値</div>
+                        <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">分析</div>
                         <button class="fururi-help-btn" onclick="openFururiHelp()" title="ふるり値について">?</button>
                     </div>
                     <div id="fururiPageSubtitle" style="font-size:11px;color:#A4AAB0;margin-top:4px;letter-spacing:0.2px;">SLv補正スコア</div>
@@ -3257,6 +3261,12 @@
                     <div id="fururiSeasonBadge" style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.4px;color:#18C26B;background:rgba(24,194,107,0.10);padding:5px 10px;border-radius:999px;"><span style="width:6px;height:6px;border-radius:50%;background:#18C26B;"></span>完了 · シーズン結果</div>
                     <div style="text-align:right;font-size:10.5px;color:#A4AAB0;line-height:1.5;"><span style="color:#5A6068;font-weight:700;">基準:</span> <span id="fururiBaseInfo">読み込み中...</span></div>
                 </div>
+            </div>
+
+            <!-- 分析セグメント: 実績 (tab-ranking) ⇄ ふるり値 (このタブ) — ナビ上は同じ「分析」ボタン -->
+            <div class="ana-seg">
+                <button type="button" onclick="switchTab('ranking')">📊 実績</button>
+                <button class="active" type="button">⚡ ふるり値</button>
             </div>
 
             <!-- ① モード + 属性別フィルタ -->
@@ -3475,8 +3485,7 @@
         </div>
     </div>
 
-    <!-- ========== Tab 3: NIKKE編成 (removed - merged into 比較) ========== -->
-    <div id="tab-characters" class="tab-content" style="display:none;"></div>
+    <!-- ========== (旧 Tab: NIKKE編成 — 分析·実績内の折りたたみへ統合済み。characters タブは 2026-07-23 レジストリからも廃止) ========== -->
 
     <!-- ========== Tab 5: ヘルプ ========== -->
     <div id="tab-help" class="tab-content">
@@ -3496,7 +3505,7 @@
                     <a href="#help-finish-call">10. 締め凸候補</a>
                     <a href="#help-notify">11. 通知を受け取る</a>
                     <a href="#help-sim">12. シミュレータ</a>
-                    <a href="#help-ops">13. ユニレ管理</a>
+                    <a href="#help-ops">13. 戦況（運営モード）</a>
                     <a href="#help-data">14. データの流れ</a>
                     <a href="#help-faq">15. よくある質問</a>
                 </aside>
@@ -3515,7 +3524,7 @@
                         <ul>
                             <li><strong>マイページ</strong> — 自分の属性別ダメージ登録、属性別ふるり値レーダー、凸報告</li>
                             <li><strong>運営</strong> — ボスHP管理、最適凸プラン算出、締め凸候補、メンバー管理</li>
-                            <li><strong>ダメージ比較 / ふるり値</strong> — ユニオン内の戦果ランキング</li>
+                            <li><strong>分析 (実績 / ふるり値)</strong> — ユニオン内の戦果ランキング</li>
                             <li><strong>シミュレータ</strong> — 育成ダメージ予測・ふるり値試算</li>
                         </ul>
                     </section>
@@ -3622,7 +3631,7 @@
                             <li><strong>全体（3凸合計）</strong>: 1日のトータル火力比較</li>
                             <li><strong>属性別</strong>: その属性1凸あたりの火力比較（同属性2凸は別行扱い）</li>
                         </ul>
-                        <h3>3つの基準モード（ふるり値タブで切替可）</h3>
+                        <h3>3つの基準モード（分析タブ ＞ ふるり値 で切替可）</h3>
                         <ul>
                             <li><strong>対ふるり（既定）</strong>: 基準者ふるり本人の各属性ダメージと直接比較。「ふるりとの相対力」。</li>
                             <li><strong>均整（ふるり平均）</strong>: ふるりの5属性平均ダメージを全属性の共通基準に。<strong>ふるり自身の属性偏りを補正</strong>するので、育成バランスの指針として読みやすい。</li>
@@ -3688,12 +3697,12 @@
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> 10. 締め凸候補（運営）+ ソフトロック</h2>
                         <p>ボスの残HPを指定すると、過剰ダメージを抑えつつ確実に削れる候補をリストアップします（同ダメージなら凸残数が多い人を優先）。結果は Push 通知で候補メンバーに直接依頼できます。</p>
                         <h3>戦闘準備 (ソフトロック)</h3>
-                        <p>マイページの「🎯 次の凸」やユニレ管理のボスカードからボスをタップすると、そのメンバーが <strong>戦闘準備</strong> 状態になります。同じボスを別メンバーが凸ろうとすると <strong>⚠️ 警告</strong> が出て、強行すると <strong>調整中の本人に Push 通知</strong> が飛びます。</p>
+                        <p>マイページの「🎯 次の凸」や戦況タブのボスカードからボスをタップすると、そのメンバーが <strong>戦闘準備</strong> 状態になります。同じボスを別メンバーが凸ろうとすると <strong>⚠️ 警告</strong> が出て、強行すると <strong>調整中の本人に Push 通知</strong> が飛びます。</p>
                         <ul>
                             <li>戦闘準備は <strong>30分で自動失効</strong>。凸報告で自動解除</li>
                             <li>「⏪ 解除」 で手動キャンセル</li>
                             <li>ボスカードは <strong>戦闘中アニメ</strong>（🔥 + ⚔️ スイング）で視覚的に共有</li>
-                            <li>マイページ/ユニレ管理どちらからでも同じフローでタップ可能</li>
+                            <li>マイページ/戦況タブどちらからでも同じフローでタップ可能</li>
                         </ul>
                     </section>
 
@@ -3784,14 +3793,14 @@
                     </section>
 
                     <section id="help-ops" class="help-section">
-                        <h2><span data-sp-icon="wrench" data-sp-size="17"></span> 13. ユニレ管理（管理者向け）</h2>
+                        <h2><span data-sp-icon="wrench" data-sp-size="17"></span> 13. 戦況タブ（運営モード）</h2>
                         <ul>
                             <li><strong>ボス状況カード</strong> — 5体ボスの残HP/凸数/戦闘中メンバーを俯瞰。各ボスに <strong>「⚔️ このボスで凸する」</strong>（戦闘準備）、戦闘中なら <strong>「📷 結果を報告」/「⏪ 解除」</strong> も追加表示</li>
                             <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
                             <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。同一ボスへの重複は警告/スキップされ、HP減算はチェックボックスで選択 (OFFなら別途ボスHP更新で同期)。入力者名がログに残る</li>
                             <li><strong>🔍 提出漏れチェック</strong> — BlaBlaLINK のユニオン全体スクショから各メンバーの凸消化数を読み取り、PADの登録数と突き合わせ。未提出者には 📣 催促Push を一斉送信でき、✏️ からそのまま代理凸へ。全体画面にはボスが写らないため登録は個人スクショで行う役割分担</li>
                             <li><strong>🪞 模擬提出チェック</strong> — 前日運用向け。今シーズンの模擬戦データ提出状況 (未提出/一部/5属性) を一覧し、未提出者へ催促Pushを一斉送信</li>
-                            <li><strong>🛠 運営モード</strong> — ユニレ管理タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。運営メンバーは一度ONにすれば端末に記憶される</li>
+                            <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。運営メンバーは一度ONにすれば端末に記憶される</li>
                             <li><strong>HP鮮度</strong> — ボス状況の見出しに「HP更新 ○分前」を表示 (30分以上で⚠️)。ボスHPは30秒毎に自動再取得される</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
                             <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
@@ -4503,7 +4512,7 @@
                 <h2>📷 BlaBlaLINK 3凸まとめ確認</h2>
                 <button onclick="closeMyBulkAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">画像から抽出した3凸を確認して一括登録します。<br>⚠️ ボス残HPは更新されません。HP同期は別途ユニレ管理の「ボスHP更新」から BlaBlaLINK 進捗画像で取り込んでください。<br>💡 編成キャラはこの画面では扱いません (消化済み凸のため衝突検知に使われないため)。</p>
+            <p class="subtitle">画像から抽出した3凸を確認して一括登録します。<br>⚠️ ボス残HPは更新されません。HP同期は別途戦況タブ (運営モード) の「ボスHP更新」から BlaBlaLINK 進捗画像で取り込んでください。<br>💡 編成キャラはこの画面では扱いません (消化済み凸のため衝突検知に使われないため)。</p>
 
             <div id="myBulkAttackPreview" style="display:flex;flex-direction:column;gap:10px;max-height:55vh;overflow-y:auto;padding-right:4px;"></div>
 
@@ -4942,7 +4951,7 @@
             switchTab(tabName);
             closeDrawer();
             document.querySelectorAll('.drawer-menu-item').forEach(b => {
-                b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
+                b.classList.toggle('active', b.getAttribute('data-tab') === _navTabOf(tabName));
             });
         }
 
@@ -5005,7 +5014,7 @@
                 chapterTag: '⑤ 運営機能',
                 stepLabel: 'CHAPTER 06',
                 title: '最適凸プラン &\nふるり値',
-                body: '<strong>ユニレ管理タブ</strong> では、誰がどの凸をすべきかの提案 (ギリギリ / 余裕プラン) と、ボスHP更新が行えます。<br><br><strong>比較タブ・ふるり値タブ</strong> では、メンバー間の火力比較と SLv 補正済みの公平な指標が見られます。',
+                body: '<strong>戦況タブ</strong> では、ボスの残HP・交戦状況と、運営モードでは凸プランの算出・配信やボスHP更新が行えます。<br><br><strong>分析タブ</strong> では、メンバー間の火力比較 (実績) と SLv 補正済みの公平な指標 (ふるり値) が見られます。',
                 tip: 'キャラ衝突 (同じキャラを2回使えない) も自動で考慮されます。',
                 accentColor: '#18C26B', accentDark: '#0EA055',
                 showMiniScreen: true,
@@ -5401,19 +5410,24 @@
         //   prerender   : 起動時ウォームアップの対象か
         //   ptr         : プル・トゥ・リフレッシュで個別再描画するか (false = location.reload)
         //   renderTtlMs : 再描画スキップのしきい値 (null = 既定30秒)
+        //   navTab      : ナビ上の所属ボタン (省略時 = 自分)。「見た目1タブ・実体複数タブ」の
+        //                 グループ化に使う — 例: slv-ranking は ranking と共に「分析」1ボタンに属し、
+        //                 タブ内セグメントで相互遷移する (UI-REDESIGN.md Stage1)。
+        //                 ナビ (bottom-nav / tab-button / drawer) の active 判定は _navTabOf() を通ること
         // ※ タブ追加時に必要な残作業 (HTML: tab-content div / bottom-nav / tab-button / drawer、
         //    CSS: マーブル背景・.container 列挙) は Stage3 で削減予定 — 現状は併せて追加すること
         const TAB_REGISTRY = [
             { name: 'mypage',       render: () => renderMyPage(),                  swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },
             { name: 'ops',          render: () => renderOpsDashboard(),            swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 15_000 },   // ボスHP/coordはポーリングで別途更新
             { name: 'ranking',      render: null,                                  swipe: true,  prerender: true,  ptr: false, renderTtlMs: 300_000 },  // 描画/PTRとも専用経路 (autoLoadData)
-            { name: 'slv-ranking',  render: () => renderFururiRanking(),           swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 300_000 },
-            { name: 'characters',   render: () => updateTeamCompositionsDisplay(), swipe: false, prerender: false, ptr: true,  renderTtlMs: 60_000 },
+            { name: 'slv-ranking',  render: () => renderFururiRanking(),           swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 300_000, navTab: 'ranking' },
             { name: 'help',         render: null,                                  swipe: false, prerender: false, ptr: false, renderTtlMs: null },     // 静的
             { name: 'member-admin', render: () => renderMemberAdminPage(),         swipe: false, prerender: false, ptr: true,  renderTtlMs: null },
             { name: 'settings',     render: () => renderSettingsTab(),             swipe: true,  prerender: false, ptr: true,  renderTtlMs: 30_000 },
         ];
         const _tabDef = (name) => TAB_REGISTRY.find(t => t.name === name);
+        // ナビ上の所属ボタン解決: 「分析」のような見た目1タブ・実体複数タブの active 判定用
+        const _navTabOf = (name) => _tabDef(name)?.navTab || name;
         const _TAB_RENDER_THRESHOLD_MS = Object.fromEntries(
             TAB_REGISTRY.filter(t => t.renderTtlMs != null).map(t => [t.name, t.renderTtlMs]));
         function _shouldSkipRender(name) {
@@ -5467,7 +5481,7 @@
                 });
                 if (opts.animate === false) target.classList.add('swipe-no-anim');
                 document.querySelectorAll('.tab-button').forEach(btn => {
-                    btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+                    btn.classList.toggle('active', btn.getAttribute('data-tab') === _navTabOf(tabName));
                 });
                 target.classList.add('active');
 
@@ -7620,7 +7634,7 @@
         }
 
         // PT属性キー → ボスコード (BOSS_ATTRIBUTES の逆引き) を1回だけ構築。
-        // ⚠ ここは大文字ドメイン (BOSS_ATTRIBUTES/比較タブ系 = 'WATER') → 小文字正規形の境界。
+        // ⚠ ここは大文字ドメイン (BOSS_ATTRIBUTES/分析·実績系 = 'WATER') → 小文字正規形の境界。
         // normalizeAttrKey (js/domain/attributes.js) は defer 読込のため、トップレベル即時評価の
         // この場所ではまだ存在しない — toLowerCase 直書きを許す数少ない例外 (キーは固定値で安全)
         const PT_ATTR_TO_BOSS_CODE = (() => {
@@ -7633,7 +7647,7 @@
 
         // ========== マイページ: 模擬ふるり値レーダー (今シーズンの模擬同士のライブ比較) ==========
         // 基準: ふるり(基準者)の今季模擬5属性 + SLv。自分: 今季模擬 + 自己申告SLv。
-        // 確定ふるり値 (完了シーズン・本戦3凸ベース) はふるり値タブが担当する — ここは今季専用。
+        // 確定ふるり値 (完了シーズン・本戦3凸ベース) は分析タブ (ふるり値ビュー) が担当する — ここは今季専用。
         // ユニレは3凸までなので本戦ベースでは5属性が揃わないが、模擬同士なら全員が形を完成できる。
         let _myRadarLastDamages = null;
         let _myRadarLastIdentity = null;
@@ -10637,7 +10651,7 @@
             if (caret) caret.textContent = open ? '▼' : '▲';
         }
 
-        // ふるり値タブ: シミュレータ 折り畳み
+        // 分析·ふるり値 (tab-slv-ranking): シミュレータ 折り畳み
         function toggleSimulatorSection() {
             const body = document.getElementById('simulatorSectionBody');
             const caret = document.getElementById('simulatorSectionCaret');
@@ -10647,7 +10661,7 @@
             if (caret) caret.textContent = open ? '▼' : '▲';
         }
 
-        // 比較タブ: NIKKE編成 折り畳み
+        // 分析·実績 (tab-ranking): NIKKE編成 折り畳み
         function toggleCharactersSection() {
             const body = document.getElementById('charactersSectionBody');
             const caret = document.getElementById('charactersSectionCaret');
@@ -12870,7 +12884,7 @@
             return { bosses, sections };
         }
 
-        // ===== 時間割のボス絞り込み (画面ごとに独立: ops=ユニレ管理 / my=マイページ) =====
+        // ===== 時間割のボス絞り込み (画面ごとに独立: ops=戦況 / my=マイページ) =====
         // null = 全ボス表示。配列 = 表示するボス番号のリスト。
         const _planBossFilters = { ops: null, my: null };
         function togglePlanBossFilter(key, bossNumber) {
@@ -16311,12 +16325,17 @@
             renderTab(initialName);
             _handleNavParams(location.search);   // 通知タップからのコールド起動誘導 (?tab=&focus=)
             _consumePendingNav();                // iOS で openWindow のクエリが落ちた場合の保険
-            // ナビの active をコンテンツの active に同期 (HTML側のハードコードずれ対策)
-            if (initialName) {
+            // ナビの active をコンテンツの active に同期 (HTML側のハードコードずれ対策)。
+            // ⚠ initialName ではなく「今の active」を読む — 直前の _handleNavParams が
+            //   deep link (?tab=ops 等) でタブを切り替えた場合、古い initialName で
+            //   同期するとナビだけマイページに戻る (Codex 指摘のコールド起動バグ)。
+            //   ナビ判定は navTab グループ解決 (_navTabOf) を通す。
+            const activeName = document.querySelector('.tab-content.active')?.id?.replace('tab-', '') || initialName;
+            if (activeName) {
                 document.querySelectorAll('.tab-button, .drawer-menu-item').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.tab === initialName);
+                    btn.classList.toggle('active', btn.dataset.tab === _navTabOf(activeName));
                 });
-                _syncBottomNavActive(initialName);
+                _syncBottomNavActive(activeName);
             }
             // 初回訪問 (プレイヤー未選択) なら選択モーダルを自動で開く
             if (!getCurrentIdentity()) {
@@ -16343,8 +16362,9 @@
 
         // ========== Bottom Navigation (mobile) + 横スワイプ切替 ==========
         function _syncBottomNavActive(tabName) {
+            const navTab = _navTabOf(tabName);   // slv-ranking など「分析」グループは ranking ボタンを点灯
             document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === tabName);
+                btn.classList.toggle('active', btn.dataset.tab === navTab);
             });
         }
         // bottom-nav の同期は TabController.activate 内 (手順6) に移動済み (リアーキ ステップ5 Stage1)。
@@ -16719,7 +16739,7 @@
             if (icon) { icon.dataset.icon = 'refresh'; icon.innerHTML = spIcon('refresh', 14); icon.classList.add('spin'); }
             if (label) label.textContent = '更新中…';
             if (name === 'ranking') {
-                // 比較タブ: 月次データを再フェッチして再描画 (フルリロード不要)
+                // 分析·実績 (tab-ranking): 月次データを再フェッチして再描画 (フルリロード不要)
                 try { await autoLoadData(); } catch (e) { console.warn('[PTR ranking]', e?.message || e); }
                 setTimeout(() => {
                     _ptrHide();
@@ -16905,15 +16925,11 @@
         </button>
         <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span>
-            <span>ユニレ管理</span>
+            <span>戦況</span>
         </button>
         <button class="bottom-nav-btn" data-tab="ranking" onclick="switchTab('ranking')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>
-            <span>比較</span>
-        </button>
-        <button class="bottom-nav-btn" data-tab="slv-ranking" onclick="switchTab('slv-ranking')">
-            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
-            <span>ふるり値</span>
+            <span>分析</span>
         </button>
         <button class="bottom-nav-btn" data-tab="settings" onclick="switchTab('settings')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
