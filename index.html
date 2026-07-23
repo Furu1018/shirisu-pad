@@ -9172,11 +9172,14 @@
             const myCoord = (_coordActiveCache || []).find(c => c.player_id === identity.id && c.status === 'coordinating');
             const myBossNum = myCoord?.boss_number || null;
 
+            // Lv4-live (Lv3踏破後): B5 のみ ♾️ で凸可能、B1〜B4 は暗転して選択不可 (ゲーム仕様)
+            const lv4Live = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(ctx.season, bosses);
             el.innerHTML = bosses.map(b => {
                 const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
                 const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
                 const pct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
-                const dead = pct <= 0.01;
+                const lv4B5 = lv4Live && b.boss_number === 5;
+                const dead = !lv4B5 && pct <= 0.01;
                 const inCombat = coordsByBoss.has(b.boss_number);
                 const isMyCombat = b.boss_number === myBossNum;
                 // ボス本来の属性 (attribute) で表示。weakness=持っていくPT属性 とは別物。
@@ -9196,10 +9199,11 @@
                     <div class="dc-boss-tile" ${onClick}
                          data-selected="${isMyCombat ? '1' : '0'}"
                          data-fighting="${isMyCombat ? '1' : '0'}"
-                         style="${dead ? 'opacity:0.4;' : ''}">
+                         ${lv4B5 ? 'title="Lv4: HP無限のスコアレース — ここに全員で凸"' : ''}
+                         style="${dead ? 'opacity:0.4;' : ''}${lv4B5 ? 'border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#9B4DFF,#46A0FF) border-box;' : ''}">
                         ${iconBox}
                         <div style="font-size:19px;font-weight:900;letter-spacing:0.5px;position:relative;z-index:2;font-variant-numeric:tabular-nums;">B${b.boss_number}</div>
-                        ${dead ? '<div style="font-size:10px;color:#9ca3af;position:relative;z-index:2;">💀</div>' : ''}
+                        ${lv4B5 ? '<div style="font-size:10px;font-weight:900;color:#7A5BD6;position:relative;z-index:2;">♾️</div>' : (dead ? '<div style="font-size:10px;color:#9ca3af;position:relative;z-index:2;">💀</div>' : '')}
                     </div>`;
             }).join('');
 
@@ -11698,22 +11702,38 @@
         }
 
         // ボスカード1枚ぶんの表示値を計算 (フルレンダーとターゲット更新の共通部品 — 二重実装禁止)
-        function _opsBossCardParts(b, coordsByBoss) {
+        // Lv4-live 判定: current_level>=3 かつ 全ボス撃破 かつ B5 が存在。
+        // ゲーム仕様 (2025-05-30 改修): Lv3踏破で即日 Lv4 = ボス5のみ・HP無限・与ダメ全額計上。
+        // ソルバー (js/optimal-plan.js) の Lv4 検知と同じルールの表示側実装 — 戦況カードと
+        // ホームのボスタイルがこれを読む。閾値 1e7 (=0.01B) はカード側の dead 判定と同義
+        function isLv4LiveBoard(season, bosses) {
+            if (!season || Number(season.current_level) < 3) return false;
+            const list = bosses || [];
+            if (list.length === 0 || !list.some(x => Number(x.boss_number) === 5)) return false;
+            return list.every(x => (Number(x.remaining_hp_raw) || 0) <= 1e7);
+        }
+
+        function _opsBossCardParts(b, coordsByBoss, lv4Live = false) {
             const inCombat = coordsByBoss.has(b.boss_number);
             const combatList = inCombat ? coordsByBoss.get(b.boss_number) : [];
             const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);   // 締め凸で持っていくPT属性 (弱点)
             const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
             const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
-            const remainPct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
-            const dead = remainPct <= 0.01;
+            const lv4B5 = lv4Live && Number(b.boss_number) === 5;   // ♾️ スコアレースの主役
+            const remainPct = lv4B5 ? 100 : (totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0);
+            const dead = !lv4B5 && remainPct <= 0.01;
             // チップ表示はボス本来の属性 (attribute)。weakness は締め凸ボタン側だけで使う。
             const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
             const active = inCombat && !dead;
-            const statusTag = dead
-                ? `<span class="dc-boss-status-tag" style="color:#18C26B;background:rgba(24,194,107,0.12);">💀 撃破済</span>`
-                : active
-                    ? `<span class="dc-boss-status-tag is-combat" style="color:${c};background:${c}26;"><span class="dc-combat-dot"></span>${combatList.length}名 交戦中</span>`
-                    : `<span class="dc-boss-status-tag" style="color:#A4AAB0;background:#F1F2F4;">待機中</span>`;
+            const statusTag = lv4B5
+                ? `<span class="dc-boss-status-tag" style="color:#7A5BD6;background:rgba(123,91,214,0.12);">🏁 スコアレース中${active ? ` · ${combatList.length}名` : ''}</span>`
+                : dead
+                    ? (lv4Live
+                        ? `<span class="dc-boss-status-tag" style="color:#B6BBC1;background:#F1F2F4;">Lv4 · 凸対象外</span>`
+                        : `<span class="dc-boss-status-tag" style="color:#18C26B;background:rgba(24,194,107,0.12);">💀 撃破済</span>`)
+                    : active
+                        ? `<span class="dc-boss-status-tag is-combat" style="color:${c};background:${c}26;"><span class="dc-combat-dot"></span>${combatList.length}名 交戦中</span>`
+                        : `<span class="dc-boss-status-tag" style="color:#A4AAB0;background:#F1F2F4;">待機中</span>`;
             const avatarsHtml = active
                 ? combatList.slice(0, 4).map((x, i) => {
                     const av = renderAvatarHtml(x.player_id, x.name, 24);
@@ -11735,12 +11755,16 @@
             const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
             const iconAlt = ATTR_VISUAL[b.attribute]?.name || (b.attribute || '');
             return {
-                ptInfo, totalB, remB, remainPct, dead, active, c,
-                pctText: dead ? '撃破' : `${remainPct.toFixed(0)}%`,
-                pctColor: dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3'),
+                ptInfo, totalB, remB, remainPct, dead, active, c, lv4B5,
+                // カードの薄化: 撃破済は 0.65 / Lv4中の凸対象外 (B1〜B4) はさらに薄く
+                cardOpacity: lv4B5 ? '' : (dead ? (lv4Live ? '0.45' : '0.65') : ''),
+                // 締凸検索: 撃破済は無効。♾️ボスも「残HPぴったり」の概念が無いので無効
+                finDisabled: dead || lv4B5,
+                pctText: lv4B5 ? '♾️' : (dead ? '撃破' : `${remainPct.toFixed(0)}%`),
+                pctColor: lv4B5 ? '#7A5BD6' : (dead ? '#18C26B' : (active ? '#14161A' : '#C9CED3')),
                 statusTag,
-                barColor: dead ? '#18C26B' : c,
-                hpText: `${remB.toFixed(2)} / ${totalB.toFixed(2)} B`,
+                barColor: lv4B5 ? 'linear-gradient(90deg,#9B4DFF,#46A0FF)' : (dead ? '#18C26B' : c),
+                hpText: lv4B5 ? 'HP無限 — 与ダメ全額計上' : `${remB.toFixed(2)} / ${totalB.toFixed(2)} B`,
                 avatarsHtml, reqs,
                 // チップ・ボス名・締凸ボタンもターゲット更新の対象 (別の運営者による
                 // 名前変更やシーズン編集が、編集パネルを開いている人の画面にも反映されるように)
@@ -11750,12 +11774,13 @@
                     : `background:${c}1F;`,
                 chipTitle: `${iconAlt}ボス${ptInfo ? ` / 弱点 ${ptInfo.name}PT` : ''}`,
                 chipIconHtml: iconSrc ? `<img loading="lazy" decoding="async" src="${iconSrc}" alt="${escapeHtml(iconAlt)}" style="width:24px;height:24px;">` : '',
-                finTitle: ptInfo ? `${ptInfo.name}PT で締め凸候補を検索` : '締め凸候補を検索',
+                finTitle: lv4B5 ? '♾️ HP無限のため締め凸は不要'
+                    : (ptInfo ? `${ptInfo.name}PT で締め凸候補を検索` : '締め凸候補を検索'),
             };
         }
 
-        function _opsBossCardHtml(b, coordsByBoss) {
-            const P = _opsBossCardParts(b, coordsByBoss);
+        function _opsBossCardHtml(b, coordsByBoss, lv4Live = false) {
+            const P = _opsBossCardParts(b, coordsByBoss, lv4Live);
             const editing = _opsBossEditingNum === b.boss_number;
             // HP編集パネル (折り畳み)。ボタンは data-action (コンテナの委譲リスナーが拾う)
             const editPanel = editing
@@ -11776,7 +11801,7 @@
                 </div>`
                 : '';
             return `
-                <div class="dc-boss-card ${P.active ? 'has-combat' : ''}" data-boss-card="${b.boss_number}" style="--_attr-c:${P.c};${P.dead ? 'opacity:0.65;' : ''}">
+                <div class="dc-boss-card ${P.active ? 'has-combat' : ''}" data-boss-card="${b.boss_number}" style="--_attr-c:${P.c};${P.cardOpacity ? `opacity:${P.cardOpacity};` : ''}">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                         <div class="dc-boss-chip js-chip" style="${P.chipStyle}" title="${escapeHtml(P.chipTitle)}">${P.chipIconHtml}</div>
                         <div class="js-pct" style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${P.pctColor};">${P.pctText}</div>
@@ -11794,7 +11819,7 @@
                     ${editPanel}
                     <div style="display:flex;gap:6px;margin-top:10px;">
                         <button data-action="boss-edit" data-boss="${b.boss_number}" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
-                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.dead ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.dead ? '#F1F2F4' : P.c};color:${P.dead ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${P.dead ? 'not-allowed' : 'pointer'};">締凸検索</button>
+                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.finDisabled ? '#F1F2F4' : P.c};color:${P.finDisabled ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">締凸検索</button>
                     </div>
                     <div class="js-reqs">${P.reqs}</div>
                 </div>`;
@@ -11803,12 +11828,12 @@
         // 入力中のターゲット更新: カードの DOM を壊さず、表示領域 (%・状態・バー・HP・アバター・
         // 依頼状況・締凸ボタン) だけを書き換える。編集パネルの input には一切触れない →
         // 10秒ポーリング中でもフォーカス・入力値・カーソル位置が保たれる (リアーキ ステップ4)
-        function _patchOpsBossCard(el, b, coordsByBoss) {
+        function _patchOpsBossCard(el, b, coordsByBoss, lv4Live = false) {
             const card = el.querySelector(`[data-boss-card="${b.boss_number}"]`);
             if (!card) return;
-            const P = _opsBossCardParts(b, coordsByBoss);
+            const P = _opsBossCardParts(b, coordsByBoss, lv4Live);
             card.classList.toggle('has-combat', P.active);
-            card.style.opacity = P.dead ? '0.65' : '';
+            card.style.opacity = P.cardOpacity || '';
             card.style.setProperty('--_attr-c', P.c);
             // ボス名・属性チップも更新 (別の運営者による名前変更・シーズン編集を編集中の画面にも反映)
             const chip = card.querySelector('.js-chip');
@@ -11829,12 +11854,12 @@
             if (reqs) reqs.innerHTML = P.reqs;
             const fin = card.querySelector('.js-finish');
             if (fin) {
-                fin.disabled = P.dead;
+                fin.disabled = P.finDisabled;
                 fin.dataset.weakness = b.weakness || '';   // 弱点変更が締凸検索の対象に反映されるように
                 fin.title = P.finTitle;
-                fin.style.background = P.dead ? '#F1F2F4' : P.c;
-                fin.style.color = P.dead ? '#C9CED3' : '#fff';
-                fin.style.cursor = P.dead ? 'not-allowed' : 'pointer';
+                fin.style.background = P.finDisabled ? '#F1F2F4' : P.c;
+                fin.style.color = P.finDisabled ? '#C9CED3' : '#fff';
+                fin.style.cursor = P.finDisabled ? 'not-allowed' : 'pointer';
             }
         }
 
@@ -11884,13 +11909,28 @@
             // 入力保護: 編集パネルが開いている / カード内で入力中 は innerHTML 全置換をやめ、
             // 表示領域だけのターゲット更新に切り替える。旧実装はここで完全スキップしていた
             // (= 編集中は盤面が固まる) が、ステップ4で「入力は守りつつ表示は更新」に改善
+            const lv4Live = isLv4LiveBoard(season, bosses);
+            _syncOpsLv4Banner(lv4Live, el);
             const editingPanelAlive = _opsBossEditingNum !== null && document.getElementById(`opsBossEditRem-${_opsBossEditingNum}`);
             const typingInside = _userIsTyping() && el.contains(document.activeElement);
             if (editingPanelAlive || typingInside) {
-                sorted.forEach(b => _patchOpsBossCard(el, b, coordsByBoss));
+                sorted.forEach(b => _patchOpsBossCard(el, b, coordsByBoss, lv4Live));
                 return;
             }
-            el.innerHTML = sorted.map(b => _opsBossCardHtml(b, coordsByBoss)).join('');
+            el.innerHTML = sorted.map(b => _opsBossCardHtml(b, coordsByBoss, lv4Live)).join('');
+        }
+
+        // Lv4開幕バナー: ボスカード列 (横スクロール行) の外側・直前に置く。
+        // カード列の中に入れると flex アイテムとして横に並んでしまうため兄弟要素で管理する
+        function _syncOpsLv4Banner(lv4Live, bossRowEl) {
+            let banner = document.getElementById('opsLv4Banner');
+            if (!lv4Live) { banner?.remove(); return; }
+            if (banner) return;
+            banner = document.createElement('div');
+            banner.id = 'opsLv4Banner';
+            banner.style.cssText = 'display:flex;align-items:center;gap:8px;border-radius:12px;padding:10px 13px;margin:0 0 10px;font-size:11.5px;font-weight:900;color:#fff;line-height:1.5;background:linear-gradient(135deg,#9B4DFF,#1E78F0);box-shadow:0 4px 14px rgba(123,91,214,0.3);';
+            banner.innerHTML = '🏁 Lv3踏破! Lv4 は <b style="margin:0 3px;">B5のみ</b> 凸可能 — HP無限・与ダメ全額計上のスコアレース';
+            bossRowEl.parentElement?.insertBefore(banner, bossRowEl);
         }
 
         function handleOpsBossSummaryEdit(bossNumber) {
