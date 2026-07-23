@@ -17134,6 +17134,19 @@
                     <button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()" style="margin-left:auto;"></button>`;
                 container.prepend(nav);
             }
+            // 3) ホームへの当日導線 (UI再設計 Stage3): 残凸カード直後に相互リンクを置く。
+            //    運営ONの人には不要 (画面が長くなるだけ) なので OFF時のみ表示
+            const rem = document.getElementById('opsSecRemaining');
+            if (rem && !document.getElementById('opsHomeCrosslink')) {
+                const link = document.createElement('button');
+                link.id = 'opsHomeCrosslink';
+                link.type = 'button';
+                link.setAttribute('data-ops-off-only', '');
+                link.onclick = () => switchTab('mypage');
+                link.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%;border:none;font-family:inherit;background:rgba(30,120,240,0.07);border-radius:12px;padding:12px 14px;margin:0 0 12px;font-size:11.5px;font-weight:800;color:#1E78F0;cursor:pointer;';
+                link.innerHTML = `✍️ 自分の凸報告・戦闘開始は<b style="margin:0 3px;">ホーム</b>から<span style="font-weight:900;">→</span>`;
+                rem.insertAdjacentElement('afterend', link);
+            }
             _applyOpsMode();
         }
         document.addEventListener('DOMContentLoaded', _initOpsTabStructure);
