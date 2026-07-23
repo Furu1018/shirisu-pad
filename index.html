@@ -11705,12 +11705,17 @@
         // Lv4-live 判定: current_level>=3 かつ 全ボス撃破 かつ B5 が存在。
         // ゲーム仕様 (2025-05-30 改修): Lv3踏破で即日 Lv4 = ボス5のみ・HP無限・与ダメ全額計上。
         // ソルバー (js/optimal-plan.js) の Lv4 検知と同じルールの表示側実装 — 戦況カードと
-        // ホームのボスタイルがこれを読む。閾値 1e7 (=0.01B) はカード側の dead 判定と同義
+        // ホームのボスタイルがこれを読む。撃破判定はカード側と同一条件 (残HP率 0.01% 以下) に
+        // 揃える — 絶対値閾値だと「カードはまだ生存表示なのに Lv4 扱い」の不整合が起きる (Codex指摘)
         function isLv4LiveBoard(season, bosses) {
             if (!season || Number(season.current_level) < 3) return false;
             const list = bosses || [];
             if (list.length === 0 || !list.some(x => Number(x.boss_number) === 5)) return false;
-            return list.every(x => (Number(x.remaining_hp_raw) || 0) <= 1e7);
+            return list.every(x => {
+                const total = Number(x.total_hp_raw) || 0;
+                const rem = Number(x.remaining_hp_raw) || 0;
+                return total > 0 ? (rem / total) * 100 <= 0.01 : rem <= 0;
+            });
         }
 
         function _opsBossCardParts(b, coordsByBoss, lv4Live = false) {
@@ -11921,16 +11926,20 @@
         }
 
         // Lv4開幕バナー: ボスカード列 (横スクロール行) の外側・直前に置く。
-        // カード列の中に入れると flex アイテムとして横に並んでしまうため兄弟要素で管理する
+        // カード列の中に入れると flex アイテムとして横に並んでしまうため兄弟要素で管理する。
+        // グローバルIDではなく「対象行の親コンテナ直下のマーカー属性」で探す —
+        // 複数コンテナが同時に存在しても他所のバナーを誤って再利用/削除しない (Codex指摘)
         function _syncOpsLv4Banner(lv4Live, bossRowEl) {
-            let banner = document.getElementById('opsLv4Banner');
+            const parent = bossRowEl?.parentElement;
+            if (!parent) return;
+            let banner = parent.querySelector(':scope > [data-lv4-banner]');
             if (!lv4Live) { banner?.remove(); return; }
             if (banner) return;
             banner = document.createElement('div');
-            banner.id = 'opsLv4Banner';
+            banner.setAttribute('data-lv4-banner', '');
             banner.style.cssText = 'display:flex;align-items:center;gap:8px;border-radius:12px;padding:10px 13px;margin:0 0 10px;font-size:11.5px;font-weight:900;color:#fff;line-height:1.5;background:linear-gradient(135deg,#9B4DFF,#1E78F0);box-shadow:0 4px 14px rgba(123,91,214,0.3);';
             banner.innerHTML = '🏁 Lv3踏破! Lv4 は <b style="margin:0 3px;">B5のみ</b> 凸可能 — HP無限・与ダメ全額計上のスコアレース';
-            bossRowEl.parentElement?.insertBefore(banner, bossRowEl);
+            parent.insertBefore(banner, bossRowEl);
         }
 
         function handleOpsBossSummaryEdit(bossNumber) {
