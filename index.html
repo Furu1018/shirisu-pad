@@ -5897,15 +5897,21 @@
             const color = DC_ATTR_COLORS[_mockCmpAttr] || '#1E78F0';
             const maxVal = model.rows.length ? model.rows[0].value : 0;
             const isDmg = model.meta.mode === 'damage';
+            // ふるり値は SLv に依存する — 推定SLv (自己申告なし・出力近傍者から借用) の行は
+            // 「SLv推定」を明示する (Codex レビュー指摘: 無印だと確定値と誤読される)
+            const estimatedIds = new Set(players.filter(p => p.estimated && p.slv > 0).map(p => String(p.id)));
             const fmtVal = (r) => isDmg ? `${r.value.toFixed(1)}<small style="font-size:9px;color:#8A9097;"> B</small>`
                                         : r.value.toFixed(2);
+            let estShown = 0;
             const rowsHtml = model.rows.map(r => {
                 const mine = myId != null && String(r.playerId) === String(myId);
+                const est = !isDmg && estimatedIds.has(String(r.playerId));
+                if (est) estShown++;
                 const w = maxVal > 0 ? Math.max(4, Math.round(r.value / maxVal * 100)) : 0;
                 return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px ${mine ? '8px' : '0'};${mine ? 'background:rgba(30,120,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
                     <div style="font-size:11px;font-weight:900;color:#A4AAB0;text-align:center;font-variant-numeric:tabular-nums;">${r.rank}</div>
                     <div style="min-width:0;">
-                        <div style="font-size:12px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}${r.slot === 2 ? ' <span style="font-size:9px;font-weight:800;color:#8A9097;">編成②</span>' : ''}</div>
+                        <div style="font-size:12px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}${r.slot === 2 ? ' <span style="font-size:9px;font-weight:800;color:#8A9097;">編成②</span>' : ''}${est ? ' <span style="font-size:9px;font-weight:800;color:#B45309;background:rgba(245,158,11,0.12);border-radius:999px;padding:1px 6px;">SLv推定</span>' : ''}</div>
                         <div style="height:6px;border-radius:4px;margin-top:4px;width:${w}%;background:${color};"></div>
                     </div>
                     <div style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${fmtVal(r)}</div>
@@ -5920,6 +5926,7 @@
             const notes = [];
             if (model.meta.baseMissing) notes.push(`基準者の${attrDef.name}模擬が未提出のため、ふるり値を計算できません (ダメージ表示は可能)。`);
             if (model.noSlv.length) notes.push(`SLv未登録のため計算対象外: ${model.noSlv.length}人`);
+            if (estShown > 0) notes.push(`「SLv推定」は自己申告SLvが無く出力の近いメンバーから借用した暫定値 — マイページで登録すると確定します。`);
             notes.push(`未提出 ${model.missing.length}人はランキング対象外。ふるり値の基準は月初固定 — 月途中に誰かが模擬を更新しても他人との比較は歪みません。`);
             card.dataset.loaded = '1';
             card.innerHTML = `
@@ -7790,8 +7797,14 @@
                     window.supabaseLoadPlayerDamages(base.id),
                     window.supabaseLoadSyncLevel(base.id),
                 ]);
+                // 属性ごとの最大値を採用 — 1属性2編成 (slot) 環境では同属性が複数行返るため、
+                // 単純代入だと後方の低い編成②が基準を上書きし、全員のふるり値が過大評価される
+                // (Codex レビュー指摘。比較・レーダー両方の基準に効く)
                 const dmgByAttr = {};
-                (dmgs || []).forEach(d => { if (Number(d.damage_b) > 0) dmgByAttr[d.attribute] = Number(d.damage_b); });
+                (dmgs || []).forEach(d => {
+                    const v = Number(d.damage_b) || 0;
+                    if (v > (dmgByAttr[d.attribute] || 0)) dmgByAttr[d.attribute] = v;
+                });
                 _mockRadarBase = {
                     slv: slvRes?.syncLevel || 0,
                     dmgByAttr,
