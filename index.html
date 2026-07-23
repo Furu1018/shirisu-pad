@@ -734,21 +734,25 @@
         .fsim-attr-btn.active .fsim-attr-vs img { opacity: 1; }
 
         /* ========== Simulator sub-mode buttons ========== */
+        /* ClaudeDesign: モード切替ボタン (ふるり値3モード/シミュレータ)。
+           黒 #14161A が選択中 = 主ボタン規約。.ana-seg (白ピル on グレー溝) と役割で使い分け:
+           溝に収まる2択は ana-seg、独立した並列ボタンはこちら */
         .sim-mode-btn {
             padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface);
-            color: var(--md-sys-color-on-surface);
-            font-size: 13px;
-            font-weight: 600;
+            border-radius: 10px;
+            border: none;
+            background: #F1F2F4;
+            color: #6B7178;
+            font-size: 12px;
+            font-weight: 800;
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s ease;
         }
         .sim-mode-btn.active {
-            background: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            border-color: var(--md-sys-color-primary);
+            background: #14161A;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(20,22,26,0.24);
         }
 
         /* ========== Help tab ========== */
@@ -2604,6 +2608,14 @@
     <!-- ========== Tab: ホーム (再構築版) ========== -->
     <div id="tab-mypage" class="tab-content tab-page active">
         <div class="container">
+            <!-- ページヘッダー (他タブと同じ 20px/900 + サブタイトル。統一感のため ClaudeDesign 磨きで追加) -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
+                <div>
+                    <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ホーム</div>
+                    <div id="homePageSubtitle" style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">&nbsp;</div>
+                </div>
+            </div>
+
             <!-- ① プロフィール: ClaudeDesign 準拠 (シルバーリング + 名前/Lv + 得意属性チップ + 編集ピル + soft-fill 切替) -->
             <div class="dc-card dc-profile-card">
                 <div style="display:flex;gap:14px;align-items:flex-start;position:relative;">
@@ -3361,28 +3373,28 @@
 
                     <!-- ===== Mode A: ダメージ予測 ===== -->
                     <div id="simModeDamage" class="sim-mode-panel">
-                        <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin: 0 0 16px 0;">目標SLvまで育成した場合の予測ダメージを他プレイヤーと比較します。</p>
+                        <p style="font-size: 13px; color: #8A9097; margin: 0 0 16px 0;">目標SLvまで育成した場合の予測ダメージを他プレイヤーと比較します。</p>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                             <div>
-                                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">プレイヤー選択</label>
-                                <select id="simPlayerSelect" onchange="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
+                                <label style="display: block; font-size: 12px; font-weight: 800; color: #6B7178; margin-bottom: 6px;">プレイヤー選択</label>
+                                <select id="simPlayerSelect" onchange="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px;">
                                     <option value="">-- 選択してください --</option>
                                 </select>
                             </div>
                             <div>
-                                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 400; color: var(--md-sys-color-on-surface-variant);"></span></label>
-                                <input id="simTargetSlv" type="number" min="1" max="1000" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;" placeholder="例: 160">
+                                <label style="display: block; font-size: 12px; font-weight: 800; color: #6B7178; margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 700; color: #A4AAB0;"></span></label>
+                                <input id="simTargetSlv" type="number" min="1" max="1000" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px;" placeholder="例: 160">
                             </div>
                         </div>
-                        <div id="simResult" style="display: none; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 10px; border-left: 4px solid var(--md-sys-color-primary);">
-                            <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">予測ダメージ</div>
+                        <div id="simResult" style="display: none; padding: 16px; background: #F7F8F9; border-radius: 12px; border-left: 4px solid #1E78F0;">
+                            <div style="font-size: 12px; color: #8A9097; margin-bottom: 4px;">予測ダメージ</div>
                             <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
-                                <span id="simPredictedDmg" style="font-size: 28px; font-weight: 700; color: var(--md-sys-color-primary);"></span>
+                                <span id="simPredictedDmg" style="font-size: 28px; font-weight: 700; color: #1E78F0;"></span>
                                 <span id="simDiff" style="font-size: 15px; font-weight: 600;"></span>
                             </div>
-                            <div id="simCurrentDmgLabel" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;"></div>
+                            <div id="simCurrentDmgLabel" style="font-size: 12px; color: #8A9097; margin-top: 4px;"></div>
                         </div>
-                        <div id="simError" style="display: none; padding: 12px 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; color: var(--md-sys-color-on-surface-variant); font-size: 13px;"></div>
+                        <div id="simError" style="display: none; padding: 12px 16px; background: #F7F8F9; border-radius: 10px; color: #8A9097; font-size: 13px;"></div>
                         <div class="data-table" id="simTableWrapper" style="display: none; margin-top: 16px;">
                             <table>
                                 <thead>
@@ -3400,21 +3412,21 @@
 
                     <!-- ===== Mode B: ふるり値試算 ===== -->
                     <div id="simModeFururi" class="sim-mode-panel" style="display: none;">
-                        <p style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin: 0 0 16px 0;">本戦で凸しなかった属性のふるり値を試算し、ランキング上の位置を確認できます。</p>
+                        <p style="font-size: 13px; color: #8A9097; margin: 0 0 16px 0;">本戦で凸しなかった属性のふるり値を試算し、ランキング上の位置を確認できます。</p>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                             <div>
-                                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">プレイヤー</label>
-                                <select id="fsimPlayerSelect" onchange="onFururiSimPlayerChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
+                                <label style="display: block; font-size: 12px; font-weight: 800; color: #6B7178; margin-bottom: 6px;">プレイヤー</label>
+                                <select id="fsimPlayerSelect" onchange="onFururiSimPlayerChange()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px;">
                                     <option value="">-- 選択してください --</option>
                                 </select>
                             </div>
                             <div>
-                                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;">SLv <span id="fsimRaidSlvLabel" style="font-weight: 400; color: var(--md-sys-color-on-surface-variant);"></span></label>
+                                <label style="display: block; font-size: 12px; font-weight: 800; color: #6B7178; margin-bottom: 6px;">SLv <span id="fsimRaidSlvLabel" style="font-weight: 700; color: #A4AAB0;"></span></label>
                                 <div style="display: flex; gap: 6px; align-items: center;">
-                                    <button type="button" onclick="adjustFururiSimSlv(-1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px; cursor: pointer;">−</button>
-                                    <input id="fsimSlv" type="number" min="1" max="1000" oninput="runFururiSimulator()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px; text-align: center;">
-                                    <button type="button" onclick="adjustFururiSimSlv(1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px; cursor: pointer;">＋</button>
+                                    <button type="button" onclick="adjustFururiSimSlv(-1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 16px; cursor: pointer;">−</button>
+                                    <input id="fsimSlv" type="number" min="1" max="1000" oninput="runFururiSimulator()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px; text-align: center;">
+                                    <button type="button" onclick="adjustFururiSimSlv(1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 16px; cursor: pointer;">＋</button>
                                 </div>
                             </div>
                         </div>
@@ -3453,31 +3465,31 @@
 
                         <div style="margin-bottom: 20px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; flex-wrap: wrap;">
-                                <label style="font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">想定ダメージ</label>
-                                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 12px; cursor: pointer;">
+                                <label style="font-size: 12px; font-weight: 800; color: #6B7178;">想定ダメージ</label>
+                                <label style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 12px; cursor: pointer;">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                                     画像から読み取り
                                     <input id="fsimOcrFile" type="file" accept="image/*" onchange="fsimOcrUpload(event)" style="display: none;">
                                 </label>
                             </div>
-                            <input id="fsimDamage" type="number" min="0" oninput="onFsimDamageInput()" placeholder="例: 30000000000" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 14px;">
-                            <p id="fsimDamagePreview" style="margin: 4px 0 0 0; font-size: 12px; color: var(--md-sys-color-on-surface-variant); min-height: 16px;">&nbsp;</p>
-                            <p id="fsimOcrStatus" style="margin: 4px 0 0 0; font-size: 12px; color: var(--md-sys-color-on-surface-variant); min-height: 16px;">&nbsp;</p>
+                            <input id="fsimDamage" type="number" min="0" oninput="onFsimDamageInput()" placeholder="例: 30000000000" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px;">
+                            <p id="fsimDamagePreview" style="margin: 4px 0 0 0; font-size: 12px; color: #8A9097; min-height: 16px;">&nbsp;</p>
+                            <p id="fsimOcrStatus" style="margin: 4px 0 0 0; font-size: 12px; color: #8A9097; min-height: 16px;">&nbsp;</p>
                             <details id="fsimOcrDebugWrapper" style="display: none; margin-top: 6px;">
-                                <summary style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); cursor: pointer;">OCR結果の詳細を見る</summary>
-                                <pre id="fsimOcrDebug" style="margin: 6px 0 0 0; padding: 8px; background: var(--md-sys-color-surface-variant); border-radius: 6px; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto;"></pre>
+                                <summary style="font-size: 11px; color: #8A9097; cursor: pointer;">OCR結果の詳細を見る</summary>
+                                <pre id="fsimOcrDebug" style="margin: 6px 0 0 0; padding: 8px; background: #F1F2F4; border-radius: 8px; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto;"></pre>
                             </details>
                         </div>
 
-                        <div id="fsimResult" style="display: none; padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 10px; border-left: 4px solid var(--md-sys-color-primary);">
-                            <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">算出ふるり値</div>
+                        <div id="fsimResult" style="display: none; padding: 16px; background: #F7F8F9; border-radius: 12px; border-left: 4px solid #1E78F0;">
+                            <div style="font-size: 12px; color: #8A9097; margin-bottom: 4px;">算出ふるり値</div>
                             <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
-                                <span id="fsimScore" style="font-size: 32px; font-weight: 700; color: var(--md-sys-color-primary);"></span>
-                                <span id="fsimRankLabel" style="font-size: 14px; color: var(--md-sys-color-on-surface-variant);"></span>
+                                <span id="fsimScore" style="font-size: 32px; font-weight: 700; color: #1E78F0;"></span>
+                                <span id="fsimRankLabel" style="font-size: 14px; color: #8A9097;"></span>
                             </div>
-                            <div id="fsimDetail" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 6px;"></div>
+                            <div id="fsimDetail" style="font-size: 12px; color: #8A9097; margin-top: 6px;"></div>
                         </div>
-                        <div id="fsimError" style="display: none; padding: 12px 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; color: var(--md-sys-color-on-surface-variant); font-size: 13px;"></div>
+                        <div id="fsimError" style="display: none; padding: 12px 16px; background: #F7F8F9; border-radius: 10px; color: #8A9097; font-size: 13px;"></div>
 
                         <div class="data-table" id="fsimTableWrapper" style="display: none; margin-top: 16px;">
                             <table>
@@ -5890,6 +5902,13 @@
             if (seq !== _nextActionSeq) return;
             const d = new Date();
             const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            // ページヘッダーのサブタイトルも季節状態で更新 (ヘッダーは他タブとの統一感のための静的枠)
+            const subEl = document.getElementById('homePageSubtitle');
+            if (subEl) {
+                subEl.textContent = season
+                    ? `${season.month_key || ''} シーズン${season.hard_date === todayStr ? ' — レイド当日!' : '開催中'}${season.is_test ? ' 🧪' : ''}`
+                    : 'シーズンはお休み中';
+            }
             let lead, why, cta;
             if (season && season.hard_date === todayStr) {
                 lead = '🔥 きょうはレイド当日!';
