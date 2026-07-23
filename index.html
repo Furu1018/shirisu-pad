@@ -11902,9 +11902,11 @@
                     <div class="js-hptext" style="font-size:10px;font-variant-numeric:tabular-nums;color:#9AA0A6;margin-top:4px;">${P.hpText}</div>
                     <div class="js-avatars" style="margin-top:10px;display:flex;align-items:center;min-height:24px;">${P.avatarsHtml}</div>
                     ${editPanel}
-                    <div style="display:flex;gap:6px;margin-top:10px;">
+                    <!-- 操作ボタン行は運営専用: OFF時に「押せるのに何も起きない」を防ぐ (実機FB)。
+                         押した先の締め凸候補検索カード自体が data-ops-only のため -->
+                    <div data-ops-only style="display:flex;gap:6px;margin-top:10px;">
                         <button data-action="boss-edit" data-boss="${b.boss_number}" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:#F1F2F4;color:#6B7178;font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
-                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.finDisabled ? '#F1F2F4' : P.c};color:${P.finDisabled ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">締凸検索</button>
+                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.finDisabled ? '#F1F2F4' : P.c};color:${P.finDisabled ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">${P.lv4B5 ? '♾️ 締め凸不要' : '締凸検索'}</button>
                     </div>
                     <div class="js-reqs">${P.reqs}</div>
                 </div>`;
@@ -11942,6 +11944,7 @@
                 fin.disabled = P.finDisabled;
                 fin.dataset.weakness = b.weakness || '';   // 弱点変更が締凸検索の対象に反映されるように
                 fin.title = P.finTitle;
+                fin.textContent = P.lv4B5 ? '♾️ 締め凸不要' : '締凸検索';
                 fin.style.background = P.finDisabled ? '#F1F2F4' : P.c;
                 fin.style.color = P.finDisabled ? '#C9CED3' : '#fff';
                 fin.style.cursor = P.finDisabled ? 'not-allowed' : 'pointer';
@@ -12057,6 +12060,10 @@
         }
 
         function handleOpsFinishAttrPick(attrKey) {
+            // 保険: 運営OFFでは締め凸候補カードが非表示 (data-ops-only) のため、描画しても
+            // 何も見えず「押したのに動かない」に見える。ボタン自体もOFF時は隠しているが、
+            // 別経路で呼ばれた場合に無言で終わらないよう案内を出す
+            if (!_opsMode) { showNotification('🛠 締め凸検索は運営モードON中に使えます (右上の 🛠運営)'); return; }
             _opsCurrentAttr = attrKey;
             renderOpsBossSummary();
             renderOpsFinishList(attrKey);
