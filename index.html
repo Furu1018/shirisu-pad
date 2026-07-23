@@ -288,6 +288,25 @@
             box-shadow: 0 6px 14px rgba(20,22,26,0.28);
         }
 
+        /* ===== センターホーム (常時浮かせた黒丸 — よくあるアプリのセンターボタン型) =====
+           並びは 模擬·戦況·[ホーム]·分析·設定。アクティブ時は青グラデで「今ホーム」を示す。
+           ⚠ ナビの並び順を変えるときは TAB_REGISTRY の定義順 (=スワイプ隣接順) も揃えること */
+        .bottom-nav-btn.nav-home .nav-icon-wrap {
+            width: 54px; height: 54px; border-radius: 50%;
+            background: #14161A; color: #fff;
+            margin-top: -26px;                 /* ナビ上端から浮かせる */
+            border: 4px solid #fff;            /* 背景と切る白リング */
+            box-shadow: 0 6px 16px rgba(20,22,26,0.30);
+        }
+        .bottom-nav-btn.nav-home svg { width: 25px; height: 25px; }
+        .bottom-nav-btn.nav-home:hover .nav-icon-wrap { background: #14161A; color: #fff; }
+        .bottom-nav-btn.nav-home.active { color: #1E78F0; }
+        .bottom-nav-btn.nav-home.active .nav-icon-wrap {
+            background: linear-gradient(135deg, #46A0FF, #1E78F0);
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(30,120,240,0.40);
+        }
+
         /* タブ切替のフェード (横スワイプ補助) */
         .tab-content.active { animation: tab-fade-in 0.22s ease-out; }
         /* 横スワイプ確定直後は再フェードしない (一瞬の点滅対策) */
@@ -2508,10 +2527,6 @@
     <!-- Drawer -->
     <div class="drawer" id="drawer">
         <div class="drawer-title">しりすこPAD</div>
-        <button class="drawer-menu-item active" data-tab="mypage" onclick="switchTabFromDrawer('mypage')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            ホーム
-        </button>
         <button class="drawer-menu-item" data-tab="mock" onclick="switchTabFromDrawer('mock')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
             模擬
@@ -2519,6 +2534,10 @@
         <button class="drawer-menu-item" data-tab="ops" onclick="switchTabFromDrawer('ops')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
             戦況
+        </button>
+        <button class="drawer-menu-item active" data-tab="mypage" onclick="switchTabFromDrawer('mypage')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-5h-4v5H5a1 1 0 0 1-1-1z"/></svg>
+            ホーム
         </button>
         <button class="drawer-menu-item" data-tab="ranking" onclick="switchTabFromDrawer('ranking')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
@@ -2559,10 +2578,6 @@
     <!-- Tab Navigation (PC) -->
     <nav class="tab-navigation pc-only">
         <div class="tab-buttons-wrapper">
-            <button class="tab-button active" data-tab="mypage" onclick="switchTab('mypage')" title="ホーム">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                ホーム
-            </button>
             <button class="tab-button" data-tab="mock" onclick="switchTab('mock')" title="模擬">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
                 模擬
@@ -2570,6 +2585,10 @@
             <button class="tab-button" data-tab="ops" onclick="switchTab('ops')" title="戦況">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
                 戦況
+            </button>
+            <button class="tab-button active" data-tab="mypage" onclick="switchTab('mypage')" title="ホーム">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-5h-4v5H5a1 1 0 0 1-1-1z"/></svg>
+                ホーム
             </button>
             <button class="tab-button" data-tab="ranking" onclick="switchTab('ranking')" title="分析">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
@@ -5451,9 +5470,9 @@
         // ※ タブ追加時に必要な残作業 (HTML: tab-content div / bottom-nav / tab-button / drawer、
         //    CSS: マーブル背景・.container 列挙) は Stage3 で削減予定 — 現状は併せて追加すること
         const TAB_REGISTRY = [
-            { name: 'mypage',       render: () => renderMyPage(),                  swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },
             { name: 'mock',         render: () => renderMockTab(),                 swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },   // 模擬 (Stage2 新設)
             { name: 'ops',          render: () => renderOpsDashboard(),            swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 15_000 },   // ボスHP/coordはポーリングで別途更新
+            { name: 'mypage',       render: () => renderMyPage(),                  swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },
             { name: 'ranking',      render: null,                                  swipe: true,  prerender: true,  ptr: false, renderTtlMs: 300_000 },  // 描画/PTRとも専用経路 (autoLoadData)
             { name: 'slv-ranking',  render: () => renderFururiRanking(),           swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 300_000, navTab: 'ranking' },
             { name: 'help',         render: null,                                  swipe: false, prerender: false, ptr: false, renderTtlMs: null },     // 静的
@@ -17203,10 +17222,6 @@
 
     <!-- ========== Bottom Navigation (mobile) ========== -->
     <nav class="bottom-nav" id="bottomNav">
-        <button class="bottom-nav-btn active" data-tab="mypage" onclick="switchTab('mypage')">
-            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-            <span>ホーム</span>
-        </button>
         <button class="bottom-nav-btn" data-tab="mock" onclick="switchTab('mock')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg></span>
             <span>模擬</span>
@@ -17214,6 +17229,10 @@
         <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span>
             <span>戦況</span>
+        </button>
+        <button class="bottom-nav-btn nav-home active" data-tab="mypage" onclick="switchTab('mypage')" aria-label="ホーム">
+            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-5h-4v5H5a1 1 0 0 1-1-1z"/></svg></span>
+            <span>ホーム</span>
         </button>
         <button class="bottom-nav-btn" data-tab="ranking" onclick="switchTab('ranking')">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>

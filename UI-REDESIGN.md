@@ -20,8 +20,9 @@
     コメントで足りる。2つ目のグループが生まれたら Codex 案 (NAV_GROUPS 表 + activateNavView) に昇格する
   - セグメントの遷移は必ず switchTab() (=TabController.activate) 経由 — DOM表示切替で済ませない
     (スクロール保存・TTL・active同期が崩れるため)
-  - Stage 2 のスワイプ順は **registry 定義順 = mypage → mock(新設) → ops → ranking →
-    slv-ranking → settings** とする (分析グループ内の 実績→ふるり値 も1スワイプ)
+  - スワイプ順は **registry 定義順 = ナビの並び順**。2026-07-23 ユーザー要望で
+    センターホーム型 (模擬 → 戦況 → [ホーム] → 分析 → ふるり値 → 設定) に変更 —
+    下部ナビの中央にホームの浮きボタン (黒丸/アクティブ時青グラデ)。起動タブはホームのまま
   - 副産物: コールド起動 deep link (?tab=xxx) 後にナビ active が initialName で上書きされる
     既存バグを発見・修正 (Codex 指摘)
 
