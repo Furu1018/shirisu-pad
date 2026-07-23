@@ -1626,6 +1626,9 @@
         .ana-seg button { border:none; background:transparent; color:#6B7178; font-family:inherit;
             font-size:11.5px; font-weight:800; padding:7px 18px; border-radius:8px; cursor:pointer; white-space:nowrap; }
         .ana-seg button.active { background:#FFFFFF; color:#14161A; box-shadow:0 1px 3px rgba(20,22,26,0.12); }
+        /* 分析タブのビュー切替は hidden 属性で行う — style.display の付け外しだと
+           シーズン切替行などの inline display:flex を消してしまう (Codex 指摘) */
+        #tab-slv-ranking [data-slv-view][hidden] { display: none !important; }
 
         /* マーブル背景: 主要5タブ + メンバー管理サブページ共通 */
         /* マーブル背景 + 標準レイアウトは .tab-page マーカーで適用 (リアーキ ステップ5 Stage3)。
@@ -3362,7 +3365,7 @@
             </div>
 
             <!-- ③ シミュレータ (シミュレータビュー — 旧折り畳みから格上げ。既定は非表示、_setSlvView('sim') で表示) -->
-            <div class="dc-card" data-slv-view="sim" style="display:none;">
+            <div class="dc-card" data-slv-view="sim" hidden>
                 <div id="simulatorSectionHeader" onclick="toggleSimulatorSection()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="flask" data-sp-size="15"></span> シミュレータ</div>
@@ -10938,7 +10941,8 @@
         function _setSlvView(view) {
             _slvView = view === 'sim' ? 'sim' : 'fururi';
             document.querySelectorAll('#tab-slv-ranking [data-slv-view]').forEach(el => {
-                el.style.display = el.dataset.slvView === _slvView ? '' : 'none';
+                // hidden 属性で切替 (style.display だと inline の display:flex を壊す — Codex 指摘)
+                el.hidden = el.dataset.slvView !== _slvView;
             });
             document.querySelectorAll('#tab-slv-ranking .ana-seg button[data-view]').forEach(b => {
                 b.classList.toggle('active', b.dataset.view === _slvView);
