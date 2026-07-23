@@ -2064,7 +2064,7 @@
             flex: none;
         }
 
-        /* 模擬タブ (旧ホーム) 模擬戦パネル (横スクロール scroll-snap カード) */
+        /* 模擬タブ 模擬戦パネル (横スクロール scroll-snap カード) — Stage2でホーム(旧マイページ)から移設 */
         .dc-dmg-panel {
             flex: none; width: 156px; box-sizing: border-box;
             scroll-snap-align: start;
@@ -3868,7 +3868,7 @@
                         <h3>Q. 模擬戦で同じ属性に何度も挑戦しました。どれを提出？</h3>
                         <p>一番高いダメージのものを提出してください（PAD側は最後に入れた値を保持します）。</p>
                         <h3>Q. 締め凸でダメージが想定より低く記録されました</h3>
-                        <p>ホームのダメージ欄を本来のベスト出力に手動で上書きしてください（<a href="#help-finisher">§6</a>）。</p>
+                        <p>模擬タブのダメージ欄を本来のベスト出力に手動で上書きしてください（<a href="#help-finisher">§6</a>）。</p>
                         <h3>Q. レーダーチャートに値が出ません</h3>
                         <p>あなたの SLv が直近の実シーズンで未登録か、属性ダメージが未入力の可能性があります。
                             未入力属性に値を入れる、または運営にユニオン参加時の SLv を登録してもらってください。</p>
@@ -6606,7 +6606,7 @@
             renderMypageStrongAttrsBadge(getCurrentIdentity());
         }
 
-        // ========== ホーム: 属性別ダメージ登録 ==========
+        // ========== 模擬タブ: 属性別ダメージ登録 (Stage2でホームから移設 — 要素IDは旧mypage系のまま) ==========
         const PT_ATTRS = [
             { key: 'fire',     name: '灼熱', icon: './属性アイコン/灼熱.png', bossJP: '風圧', color: '#FF3B30' },
             { key: 'water',    name: '水冷', icon: './属性アイコン/水冷.png', bossJP: '灼熱', color: '#007AFF' },
@@ -13863,7 +13863,7 @@
             const targets = _opsMockAuditRows.filter(r => r.attrCount === 0);
             if (targets.length === 0) { showNotification('未提出のメンバーはいません'); return; }
             const title = '🪞 模擬戦データ提出のお願い';
-            const bodyText = '今シーズンの模擬戦データが未提出です。ホームの「模擬戦データ」から提出お願いします🙏';
+            const bodyText = '今シーズンの模擬戦データが未提出です。模擬タブの「模擬戦データ」から提出お願いします🙏';
             const ok = await showPushPreview([{ title, body: bodyText, recipients: targets.map(r => ({ id: r.id, name: r.name })) }]);
             if (!ok) return;
             try {
@@ -14033,7 +14033,7 @@
 ━━━━━━━━━━━━━━
 🪞 **前日(模擬デー)にやること**
 ━━━━━━━━━━━━━━
-**模擬戦をやって、ホームの「模擬戦データ」に提出!**
+**模擬戦をやって、模擬タブの「模擬戦データ」に提出!**
 ・スクショを投げるだけでAIが読み取ります(手入力なら10秒)
 ・**5属性全部出すとレーダーチャート完成**の特典つき✨ 最低でも3属性はお願いします
 ・SLv設定済みなら、SLvが低くても**「ふるり値トップ」**に載るチャンスあり(補正されるので全員にトップの可能性があります)
@@ -16149,7 +16149,7 @@
             const hint = document.getElementById('fururiModeHint');
             if (hint) hint.textContent = FURURI_MODE_HINTS[mode] || '';
             renderFururiRanking();
-            // ホームのレーダーは別途トグル管理（共有しない: ホームにも独立のトグルを置く想定）
+            // 模擬タブのレーダーは別途トグル管理（共有しない: あちらは独立のトグル）
         }
 
         function renderFururiRanking() {
