@@ -83,50 +83,11 @@
             --primary: 220 15% 14%;
             --primary-foreground: 0 0% 100%;
             --radius: 0.75rem;
-            /* === Material-3 互換トークン (ClaudeDesign ニュートラルへ統一) ===
-               旧 Material 表面が残る画面もこのトークン経由で CD パレットに揃う */
-            --md-sys-color-primary: var(--brand-primary);
-            --md-sys-color-on-primary: #ffffff;
-            --md-sys-color-primary-container: #F1F2F4;
-            --md-sys-color-on-primary-container: #14161A;
-            --md-sys-color-secondary-container: #EDF4FE;
-            --md-sys-color-on-secondary-container: #1E4E8F;
-            --md-sys-color-background: #F5F6F8;
-            --md-sys-color-on-background: #14161A;
-            --md-sys-color-surface: #ffffff;
-            --md-sys-color-on-surface: #14161A;
-            --md-sys-color-surface-variant: #F7F8F9;
-            --md-sys-color-on-surface-variant: #6B7178;
-            --md-sys-color-outline: rgba(20,22,26,0.14);
-            --md-sys-color-outline-variant: rgba(20,22,26,0.08);
-            --md-sys-color-tertiary-container: #EDF4FE;
-            --md-sys-color-on-tertiary-container: #14161A;
             --border-color: rgba(20,22,26,0.10);
             --shadow-sm: 0 1px 2px 0 rgba(112, 144, 168, 0.08);
             --shadow-md: var(--shadow-card);
         }
 
-        [data-theme="dark"] {
-            --md-sys-color-primary: hsl(210 40% 98%);
-            --md-sys-color-on-primary: hsl(222.2 47.4% 11.2%);
-            --md-sys-color-primary-container: hsl(220 13% 32%);
-            --md-sys-color-on-primary-container: hsl(210 40% 98%);
-            --md-sys-color-secondary-container: hsl(220 13% 32%);
-            --md-sys-color-on-secondary-container: hsl(210 40% 98%);
-            --md-sys-color-background: hsl(220 15% 22%);
-            --md-sys-color-on-background: hsl(210 40% 98%);
-            --md-sys-color-surface: hsl(220 13% 26%);
-            --md-sys-color-on-surface: hsl(210 40% 98%);
-            --md-sys-color-surface-variant: hsl(220 13% 32%);
-            --md-sys-color-on-surface-variant: hsl(215 20.2% 75%);
-            --md-sys-color-outline: hsl(220 13% 35%);
-            --md-sys-color-outline-variant: hsl(220 13% 35%);
-            --md-sys-color-tertiary-container: hsl(220 13% 32%);
-            --md-sys-color-on-tertiary-container: hsl(210 40% 98%);
-            --border-color: hsl(220 13% 35%);
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
-        }
 
         body {
             font-family: var(--font-body);
@@ -137,10 +98,10 @@
                 radial-gradient(500px 300px at 50% 50%, rgba(212, 216, 220, 0.15) 0%, transparent 60%),
                 /* 銀のラメ感を SVG ノイズで添える */
                 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.82  0 0 0 0 0.85  0 0 0 0 0.88  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
-                var(--md-sys-color-background);
+                #F5F6F8;
             background-attachment: fixed;
             background-size: auto, auto, auto, 280px 280px, auto;
-            color: var(--md-sys-color-on-background);
+            color: #14161A;
             line-height: 1.55;
             font-size: 15px;
             font-feature-settings: 'cv11', 'ss01', 'ss02';
@@ -161,7 +122,7 @@
             background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,251,253,0.88));
             backdrop-filter: saturate(180%) blur(10px);
             -webkit-backdrop-filter: saturate(180%) blur(10px);
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            border-bottom: 1px solid rgba(20,22,26,0.08);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -187,7 +148,7 @@
 
         .header-subtitle {
             font-size: 12px;
-            color: var(--md-sys-color-on-surface-variant);
+            color: #6B7178;
         }
 
 
@@ -210,7 +171,7 @@
             display: block;
             width: 20px;
             height: 2px;
-            background: var(--md-sys-color-on-surface);
+            background: #14161A;
             border-radius: 2px;
             transition: all 0.3s;
         }
@@ -404,7 +365,7 @@
             top: 0; left: -280px;
             width: 280px;
             height: 100%;
-            background: var(--md-sys-color-surface);
+            background: #ffffff;
             z-index: 201;
             padding: 24px 16px;
             transition: left 0.3s ease;
@@ -416,10 +377,10 @@
         .drawer-title {
             font-size: 18px;
             font-weight: 600;
-            color: var(--md-sys-color-on-surface);
+            color: #14161A;
             margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            border-bottom: 1px solid rgba(20,22,26,0.08);
         }
 
         .drawer-menu-item {
@@ -430,7 +391,7 @@
             padding: 12px 16px;
             border: none;
             background: transparent;
-            color: var(--md-sys-color-on-surface);
+            color: #14161A;
             font-size: 15px;
             text-align: left;
             border-radius: 8px;
@@ -441,18 +402,18 @@
 
         .drawer-menu-item:hover,
         .drawer-menu-item.active {
-            background: var(--md-sys-color-surface-variant);
+            background: #F7F8F9;
         }
 
         .drawer-menu-item.active {
-            color: var(--md-sys-color-primary);
+            color: #14161A;
             font-weight: 500;
         }
 
         /* ========== Tab Navigation ========== */
         .tab-navigation {
-            background: var(--md-sys-color-surface);
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            background: #ffffff;
+            border-bottom: 1px solid rgba(20,22,26,0.08);
             display: flex;
             align-items: center;
             padding: 0 16px;
@@ -474,7 +435,7 @@
             padding: 10px 16px;
             border: none;
             background: transparent;
-            color: var(--md-sys-color-on-surface-variant);
+            color: #6B7178;
             cursor: pointer;
             font-size: 12px;
             font-weight: 500;
@@ -519,11 +480,11 @@
 
         /* ========== Card (C案: 大きめ角丸 + 桜色の柔らかい影) ========== */
         .card {
-            background: var(--md-sys-color-surface);
+            background: #ffffff;
             border-radius: var(--radius-lg);
             padding: var(--space-5);
             box-shadow: var(--shadow-card);
-            border: 1px solid var(--md-sys-color-outline-variant);
+            border: 1px solid rgba(20,22,26,0.08);
             margin-bottom: var(--space-4);
             overflow: hidden;
             transition: box-shadow 0.25s ease, transform 0.25s ease;
@@ -535,17 +496,21 @@
             font-family: var(--font-body);
         }
         button:not(:disabled):active { transform: translateY(1px); }
-        /* Primary CTA: 黒ラベル風のフィル + 控えめな影 */
+        /* Primary CTA: 黒ラベル風のフィル + 控えめな影。
+           Material トークン一括リテラル化 (2026-07-24) に伴い、旧 --md-sys-color-primary の
+           属性一致は #14161A の空白あり/なし両表記の一致に置き換え (対象ボタンは不変) */
         .btn-primary,
-        button[style*="--md-sys-color-primary"][style*="background"],
-        button[style*="background:var(--md-sys-color-primary)"] {
+        button[style*="background:#14161A"],
+        button[style*="background: #14161A"] {
             background: linear-gradient(180deg, #2a2a2a 0%, var(--brand-primary) 100%) !important;
             color: #fff !important;
             border: none !important;
             box-shadow: var(--shadow-btn);
         }
-        /* Outline button hover: 淡シルバー背景 */
-        button[style*="--md-sys-color-surface"]:hover:not(:disabled) { background: var(--brand-primary-soft) !important; }
+        /* Outline button hover: 淡シルバー背景 (旧 --md-sys-color-surface 一致の後継)。
+           #ffffff 長表記は旧Material由来のみ (置換前は0件) — CD既存の #fff/#F7F8F9 には広げない */
+        button[style*="background:#ffffff"]:hover:not(:disabled),
+        button[style*="background: #ffffff"]:hover:not(:disabled) { background: var(--brand-primary-soft) !important; }
 
         /* ========== Elegant Button (マーブル黒ラベル) ========== */
         .btn-elegant {
@@ -693,9 +658,9 @@
             gap: 4px;
             padding: 6px 14px;
             border-radius: 20px;
-            border: 1px solid var(--md-sys-color-outline);
+            border: 1px solid rgba(20,22,26,0.14);
             background: transparent;
-            color: var(--md-sys-color-on-surface);
+            color: #14161A;
             font-size: 13px;
             cursor: pointer;
             transition: all 0.2s;
@@ -703,9 +668,9 @@
 
         .attribute-tab-btn:hover,
         .attribute-tab-btn.active {
-            background: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            border-color: var(--md-sys-color-primary);
+            background: #14161A;
+            color: #ffffff;
+            border-color: #14161A;
         }
 
         /* ふるり値シミュレータ: PT属性セレクタ (ClaudeDesign 縦カード型)
@@ -761,17 +726,17 @@
         @media (max-width: 900px) { .help-layout { grid-template-columns: 1fr; } }
         .help-toc {
             position: sticky; top: 16px; align-self: start;
-            padding: 14px 12px; background: var(--md-sys-color-surface-variant);
+            padding: 14px 12px; background: #F7F8F9;
             border-radius: 12px; max-height: calc(100vh - 32px); overflow-y: auto;
         }
         @media (max-width: 900px) { .help-toc { position: static; max-height: none; } }
-        .help-toc-title { font-size: 12px; font-weight: 700; color: var(--md-sys-color-on-surface-variant); padding: 4px 8px 8px; }
+        .help-toc-title { font-size: 12px; font-weight: 700; color: #6B7178; padding: 4px 8px 8px; }
         .help-toc a {
             display: block; padding: 7px 10px; font-size: 13px;
-            color: var(--md-sys-color-on-surface); text-decoration: none;
+            color: #14161A; text-decoration: none;
             border-radius: 6px; line-height: 1.4;
         }
-        .help-toc a:hover { background: var(--md-sys-color-surface); }
+        .help-toc a:hover { background: #ffffff; }
         .help-section {
             padding: 22px; border-radius: 15px;
             border: 1px solid rgba(20,22,26,0.05);
@@ -835,7 +800,7 @@
         #loadingOverlay.show { display: flex; }
 
         .loading-card {
-            background: var(--md-sys-color-surface);
+            background: #ffffff;
             border-radius: 16px;
             padding: 32px 40px;
             text-align: center;
@@ -844,8 +809,8 @@
 
         .spinner {
             width: 40px; height: 40px;
-            border: 4px solid var(--md-sys-color-outline-variant);
-            border-top-color: var(--md-sys-color-primary);
+            border: 4px solid rgba(20,22,26,0.08);
+            border-top-color: #14161A;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 16px;
@@ -865,11 +830,6 @@
             font-size: 14px;
         }
 
-        [data-theme="dark"] .error-banner {
-            background: rgba(239,68,68,0.1);
-            border-color: rgba(239,68,68,0.4);
-            color: #fca5a5;
-        }
 
         /* ========== Identity Pill (header の現在のプレイヤー表示) ========== */
         .identity-pill {
@@ -878,14 +838,14 @@
             gap: 6px;
             padding: 4px 12px;
             border-radius: 999px;
-            background: var(--md-sys-color-surface-variant);
-            color: var(--md-sys-color-on-surface);
+            background: #F7F8F9;
+            color: #14161A;
             font-size: 12px;
             cursor: pointer;
-            border: 1px solid var(--md-sys-color-outline-variant);
+            border: 1px solid rgba(20,22,26,0.08);
             transition: background 0.15s;
         }
-        .identity-pill:hover { background: var(--md-sys-color-primary-container); }
+        .identity-pill:hover { background: #F1F2F4; }
         .identity-pill .name { font-weight: 600; }
         .identity-pill .hint { opacity: 0.7; }
 
@@ -936,13 +896,13 @@
         .player-select-search {
             padding: 10px 14px;
             border-radius: 10px;
-            border: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface-variant);
-            color: var(--md-sys-color-on-surface);
+            border: 1px solid rgba(20,22,26,0.08);
+            background: #F7F8F9;
+            color: #14161A;
             font-size: 14px;
             outline: none;
         }
-        .player-select-search:focus { border-color: var(--md-sys-color-primary); }
+        .player-select-search:focus { border-color: #14161A; }
         .player-select-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -959,9 +919,9 @@
             min-height: 44px;
             padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface);
-            color: var(--md-sys-color-on-surface);
+            border: 1px solid rgba(20,22,26,0.08);
+            background: #ffffff;
+            color: #14161A;
             text-align: center;
             font-size: 13px;
             line-height: 1.3;
@@ -973,13 +933,13 @@
             font-family: inherit;
         }
         .player-select-item:hover {
-            background: var(--md-sys-color-primary-container);
-            border-color: var(--md-sys-color-primary);
+            background: #F1F2F4;
+            border-color: #14161A;
         }
         .player-select-item.empty {
             grid-column: 1 / -1;
             text-align: center;
-            color: var(--md-sys-color-on-surface-variant);
+            color: #6B7178;
             background: transparent;
             border: none;
             cursor: default;
@@ -1042,11 +1002,11 @@
             cursor: pointer;
             border-radius: 8px;
             font-size: 20px;
-            color: var(--md-sys-color-on-surface-variant);
+            color: #6B7178;
             display: flex; align-items: center; justify-content: center;
         }
 
-        .close-btn:hover { background: var(--md-sys-color-surface-variant); }
+        .close-btn:hover { background: #F7F8F9; }
 
         /* playerModal の × は ClaudeDesign の丸ボタンに */
         .player-modal .close-btn {
@@ -1177,9 +1137,9 @@
         .fururi-help-btn {
             width: 24px; height: 24px;
             border-radius: 50%;
-            border: 2px solid var(--md-sys-color-primary);
+            border: 2px solid #14161A;
             background: transparent;
-            color: var(--md-sys-color-primary);
+            color: #14161A;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
@@ -1247,7 +1207,7 @@
 
         .fururi-help-footer {
             padding: 16px 24px;
-            border-top: 1px solid var(--md-sys-color-outline-variant);
+            border-top: 1px solid rgba(20,22,26,0.08);
         }
 
         .fururi-help-footer button {
@@ -1537,11 +1497,11 @@
         .tour-guide-launcher {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 14px; border-radius: 8px;
-            border: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface);
+            border: 1px solid rgba(20,22,26,0.08);
+            background: #ffffff; color: #14161A;
             font-size: 13px; font-weight: 600; cursor: pointer;
         }
-        .tour-guide-launcher:hover { background: var(--md-sys-color-surface-variant); }
+        .tour-guide-launcher:hover { background: #F7F8F9; }
 
         /* インタラクティブ フロー (順番に光る 3 ステップ) */
         @keyframes tour-flow-cycle {
@@ -2436,14 +2396,14 @@
         .my-setting-btn {
             display: inline-flex; align-items: center; justify-content: center; gap: 6px;
             padding: 12px 14px; border-radius: 10px;
-            border: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface);
-            color: var(--md-sys-color-on-surface);
+            border: 1px solid rgba(20,22,26,0.08);
+            background: #ffffff;
+            color: #14161A;
             font-size: 13px; font-weight: 600; cursor: pointer;
             transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
         }
         .my-setting-btn:hover {
-            background: var(--md-sys-color-surface-variant);
+            background: #F7F8F9;
             border-color: var(--brand-primary);
             transform: translateY(-1px);
         }
@@ -2522,7 +2482,7 @@
     <div id="loadingOverlay">
         <div class="loading-card">
             <div class="spinner"></div>
-            <p style="color: var(--md-sys-color-on-surface); font-size: 14px;">データを読み込み中...</p>
+            <p style="color: #14161A; font-size: 14px;">データを読み込み中...</p>
         </div>
     </div>
 
@@ -2569,7 +2529,7 @@
             </div>
         </div>
         <div class="header-right" style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
-            <button id="headerReloadBtn" onclick="handleHeaderReload()" title="データを再読み込み" aria-label="再読み込み" style="background:transparent;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--md-sys-color-on-surface);">
+            <button id="headerReloadBtn" onclick="handleHeaderReload()" title="データを再読み込み" aria-label="再読み込み" style="background:transparent;border:1px solid rgba(20,22,26,0.08);border-radius:8px;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#14161A;">
                 <svg id="headerReloadIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.5s;"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
             </button>
             <button class="identity-pill" id="identityPill" onclick="openPlayerSelectModal()" style="display:none;">
@@ -2682,20 +2642,20 @@
                 <div class="player-select-content" style="max-width:480px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2>🖼️ アバターを変更</h2>
-                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">アイコンをタップして変更します。キャラから選ぶか、画像をアップロード。</p>
                     <div style="display:flex;flex-direction:column;gap:12px;">
-                        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--md-sys-color-surface-variant);">
+                        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:#F7F8F9;">
                             <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;"><span data-sp-icon="user" data-sp-size="30"></span></div>
-                            <div style="flex:1;font-size:13px;color:var(--md-sys-color-on-surface-variant);">現在のアバタープレビュー</div>
+                            <div style="flex:1;font-size:13px;color:#6B7178;">現在のアバタープレビュー</div>
                         </div>
-                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface);color:var(--md-sys-color-primary);font-size:14px;font-weight:600;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
-                        <label style="padding:12px;border-radius:10px;border:1px dashed var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface);font-size:14px;font-weight:600;cursor:pointer;text-align:center;">
+                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid #14161A;background:#ffffff;color:#14161A;font-size:14px;font-weight:600;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
+                        <label style="padding:12px;border-radius:10px;border:1px dashed rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:14px;font-weight:600;cursor:pointer;text-align:center;">
                             📤 自分の画像をアップロード (最大5MB)
                             <input type="file" id="avatarUploadInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none;">
                         </label>
-                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
+                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
                         <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
                     </div>
                 </div>
@@ -2825,7 +2785,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> 戦闘可能時間</h2>
-                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
@@ -2854,7 +2814,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> Push通知設定</h2>
-                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">締め凸候補や運営からのお知らせをスマホに通知。<strong>iPhone</strong>の場合は Safari で「ホーム画面に追加」してから設定が必要です。</p>
                     <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
@@ -2867,7 +2827,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2>⚔ 得意属性</h2>
-                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
                     <div id="mypageStrongAttrsModalBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
@@ -3266,7 +3226,7 @@
 
                     <!-- 編成一覧 -->
                     <div id="teamCompositionsContainer">
-                        <p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 24px; font-size: 13px;">データを読み込むと表示されます</p>
+                        <p style="color: #6B7178; text-align: center; padding: 24px; font-size: 13px;">データを読み込むと表示されます</p>
                     </div>
                 </div>
             </div>
@@ -3547,7 +3507,7 @@
                 <div>
                     <section id="help-overview" class="help-section">
                         <h2>📘 1. しりすこPAD とは</h2>
-                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--md-sys-color-primary-container);border-radius:8px;margin-bottom:14px;">
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:#F1F2F4;border-radius:8px;margin-bottom:14px;">
                             <span style="font-size:18px;">🎓</span>
                             <span style="flex:1;font-size:13px;">主要機能の使い方を5〜10分で巡るインタラクティブガイドがあります</span>
                             <button class="tour-guide-launcher" onclick="startTour()">ガイドを開始</button>
@@ -4238,7 +4198,7 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="hexTarget" data-sp-size="17"></span> ボスHP更新</h2>
-                <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。</p>
 
@@ -4248,16 +4208,16 @@
                     <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">BlaBlaLINK 進捗画像から全ボスHPを一括取り込み（AI画像認識）</span>
                     <input type="file" id="opsBossHpOcrInput" accept="image/*" onchange="handleOpsBossHpOcrUpload(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                    <span style="padding:6px 12px;border-radius:6px;background:#14161A;color:#ffffff;font-size:12px;font-weight:600;">画像を選ぶ</span>
                 </label>
-                <p id="opsBossHpOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+                <p id="opsBossHpOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
             </div>
 
             <div id="opsBossHpList">
-                <p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>
+                <p style="color:#6B7178;font-size:13px;">読み込み中...</p>
             </div>
             <div style="display:flex;justify-content:flex-end;">
-                <button id="opsBossHpSaveAllBtn" onclick="handleOpsBossHpSaveAll()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">⏬ 全ボスを一括保存</button>
+                <button id="opsBossHpSaveAllBtn" onclick="handleOpsBossHpSaveAll()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">⏬ 全ボスを一括保存</button>
             </div>
             <p id="opsBossHpMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
         </div>
@@ -4268,22 +4228,22 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2 id="opsProxyTitle"><span data-sp-icon="pencil" data-sp-size="16"></span> 代理凸報告</h2>
-                <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">他メンバーの代わりに凸を記録します。入力者名がログに残ります。</p>
 
             <div>
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">対象メンバー</label>
-                <select id="opsProxyMemberSelect" onchange="onOpsProxyMemberChange()" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                <select id="opsProxyMemberSelect" onchange="onOpsProxyMemberChange()" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
                     <option value="">-- 選択してください --</option>
                 </select>
-                <p id="opsProxyMemberHint" style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">&nbsp;</p>
+                <p id="opsProxyMemberHint" style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">&nbsp;</p>
             </div>
 
             <!-- モード切替タブ -->
-            <div style="display:flex;border-bottom:2px solid var(--md-sys-color-outline-variant);margin-top:4px;">
-                <button id="opsProxyModeTabSimple" onclick="switchOpsProxyMode('simple')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid var(--md-sys-color-primary);margin-bottom:-2px;"><span data-sp-icon="pencil" data-sp-size="13"></span> 1件入力</button>
-                <button id="opsProxyModeTabBulk" onclick="switchOpsProxyMode('bulk')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;"><span data-sp-icon="camera" data-sp-size="13"></span> BlaBlaLINK 3凸取込</button>
+            <div style="display:flex;border-bottom:2px solid rgba(20,22,26,0.08);margin-top:4px;">
+                <button id="opsProxyModeTabSimple" onclick="switchOpsProxyMode('simple')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:#14161A;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid #14161A;margin-bottom:-2px;"><span data-sp-icon="pencil" data-sp-size="13"></span> 1件入力</button>
+                <button id="opsProxyModeTabBulk" onclick="switchOpsProxyMode('bulk')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:#6B7178;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;"><span data-sp-icon="camera" data-sp-size="13"></span> BlaBlaLINK 3凸取込</button>
             </div>
 
             <!-- 1件入力モード -->
@@ -4291,7 +4251,7 @@
                 <div>
                     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;margin-top:8px;">対象ボス（タップで選択）</label>
                     <div id="opsProxyBossButtons" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
-                        <div style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px;">読み込み中...</div>
+                        <div style="grid-column:1/-1;color:#6B7178;font-size:13px;padding:8px;">読み込み中...</div>
                     </div>
                 </div>
 
@@ -4299,35 +4259,35 @@
                     <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">ダメージ（B単位、任意。0 でも可）</label>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <input type="number" id="opsProxyDamageInput" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5（不明なら空欄/0）"
-                            style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
-                        <span style="font-size:14px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                            style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;text-align:right;">
+                        <span style="font-size:14px;color:#6B7178;">B</span>
                     </div>
-                    <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">凸権限消化のみ目的なら 0 でも OK（属性使用フラグとして記録されます）。</p>
+                    <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">凸権限消化のみ目的なら 0 でも OK（属性使用フラグとして記録されます）。</p>
                 </div>
             </div>
 
             <!-- BlaBlaLINK 3凸取込モード -->
             <div id="opsProxyBulkSection" style="display:none;">
-                <p style="margin:8px 0;font-size:12px;color:var(--md-sys-color-on-surface-variant);">対象メンバーの BlaBlaLINK 凸結果一覧スクショから 3凸分を一括登録します。</p>
+                <p style="margin:8px 0;font-size:12px;color:#6B7178;">対象メンバーの BlaBlaLINK 凸結果一覧スクショから 3凸分を一括登録します。</p>
                 <label class="dc-upload">
                     <span class="dc-upload-ico" data-sp-icon="camera" data-sp-size="18"></span>
                     <span class="dc-upload-text">BlaBlaLINK 凸一覧画像を選ぶ</span>
                     <input type="file" id="opsProxyBulkOcrInput" accept="image/*" onchange="handleOpsProxyBulkOcrUpload(event)" style="display:none;">
                     <span class="dc-upload-btn">画像を選ぶ</span>
                 </label>
-                <p id="opsProxyBulkStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+                <p id="opsProxyBulkStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
                 <div id="opsProxyBulkPreview" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
             </div>
 
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--md-sys-color-on-surface);cursor:pointer;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#14161A;cursor:pointer;">
                 <input type="checkbox" id="opsProxyHpDecrement" checked style="width:17px;height:17px;flex:none;">
                 ボス残HPもダメージ分減算する
             </label>
-            <p style="margin:-6px 0 0 25px;font-size:10.5px;color:var(--md-sys-color-on-surface-variant);">スクショから「ボスHP更新」(絶対値で書き換え) を別途行う場合はOFFでもOK。忘れると残HPが実際よりズレます。</p>
+            <p style="margin:-6px 0 0 25px;font-size:10.5px;color:#6B7178;">スクショから「ボスHP更新」(絶対値で書き換え) を別途行う場合はOFFでもOK。忘れると残HPが実際よりズレます。</p>
             <p id="opsProxyMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
     </div>
@@ -4337,7 +4297,7 @@
         <div class="player-select-content" style="max-width:640px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="search" data-sp-size="17"></span> 提出漏れチェック</h2>
-                <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">BlaBlaLINK の<strong>「ユニオンレイド参加状況」スクショ</strong>から各メンバーの参加回数を読み取り、PADの登録数と突き合わせます。<br>📌 撮影前に<strong>当日 (HARD) の Day タブ</strong>を表示してください。スマホはスクロールしながら3〜4枚に分けてOK (まとめて選択、重複行は自動で統合)。</p>
             <label class="dc-upload">
@@ -4346,7 +4306,7 @@
                 <input type="file" id="opsAuditFileInput" accept="image/*" multiple onchange="handleOpsAuditUpload(event)" style="display:none;">
                 <span class="dc-upload-btn">画像を選ぶ</span>
             </label>
-            <p id="opsAuditStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            <p id="opsAuditStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
             <div id="opsAuditResult" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
                 <button onclick="handleOpsAuditPushRemind()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="megaphone" data-sp-size="13"></span> 未提出者に催促Push</button>
@@ -4359,10 +4319,10 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="clipboardCheck" data-sp-size="17"></span> 模擬提出チェック</h2>
-                <button onclick="closeOpsMockAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsMockAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">今シーズンの模擬戦データ提出状況です (シーズン作成時にリセットされるため、表示されている提出はすべて今シーズン分)。未提出者には催促Pushを送れます。</p>
-            <p id="opsMockAuditStatus" style="margin:0;font-size:11.5px;font-weight:700;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+            <p id="opsMockAuditStatus" style="margin:0;font-size:11.5px;font-weight:700;color:#6B7178;min-height:14px;">&nbsp;</p>
             <div id="opsMockAuditList" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsMockAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
                 <button onclick="handleOpsMockAuditPush()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#46A0FF,#1E78F0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(46,139,255,0.35);"><span data-sp-icon="megaphone" data-sp-size="13"></span> 未提出者に催促Push</button>
@@ -4375,15 +4335,15 @@
         <div class="player-select-content" style="max-width:720px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📋 凸履歴・編集</h2>
-                <button onclick="closeOpsAttacksEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsAttacksEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">アクティブシーズンの全凸を新しい順に表示します。ダメージ修正・凸削除が可能です。</p>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <input type="text" id="opsAttacksFilter" placeholder="🔍 メンバー名で絞り込み" class="player-select-search" style="flex:1;" oninput="renderOpsAttacksList()">
-                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="12"></span> 更新</button>
+                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="12"></span> 更新</button>
             </div>
-            <div id="opsAttacksList" style="overflow-y:auto;max-height:55vh;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;padding:4px;">
-                <div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>
+            <div id="opsAttacksList" style="overflow-y:auto;max-height:55vh;border:1px solid rgba(20,22,26,0.08);border-radius:8px;padding:4px;">
+                <div style="text-align:center;color:#6B7178;padding:24px;font-size:13px;">読み込み中...</div>
             </div>
             <p id="opsAttacksMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
         </div>
@@ -4394,24 +4354,24 @@
         <div class="player-select-content" style="max-width:500px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> Push通知 送信</h2>
-                <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">購読者全員に Push 通知を一斉配信します。</p>
 
             <div>
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">タイトル</label>
-                <input id="opsPushTitle" type="text" maxlength="80" placeholder="例: 締め凸候補が出ました" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                <input id="opsPushTitle" type="text" maxlength="80" placeholder="例: 締め凸候補が出ました" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
             </div>
             <div>
                 <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">本文</label>
-                <textarea id="opsPushBody" rows="3" maxlength="200" placeholder="例: ヘビーメタル 残3.5B です" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;resize:vertical;"></textarea>
+                <textarea id="opsPushBody" rows="3" maxlength="200" placeholder="例: ヘビーメタル 残3.5B です" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;resize:vertical;"></textarea>
             </div>
 
             <p id="opsPushMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
 
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
+                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
             </div>
         </div>
     </div>
@@ -4421,13 +4381,13 @@
         <div class="player-select-content" style="max-width:600px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> 通知送信の最終確認</h2>
-                <button onclick="closePushPreview(false)" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closePushPreview(false)" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">以下の内容で Push 通知を送信します。受信者と本文を確認してから「送信する」を押してください。</p>
             <div id="pushPreviewBody" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:4px;"></div>
             <p id="pushPreviewMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
                 <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid #8b5cf6;background:#8b5cf6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
             </div>
         </div>
@@ -4438,7 +4398,7 @@
         <div class="player-select-content" style="max-width:620px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="calendar" data-sp-size="17"></span> 新シーズン作成</h2>
-                <button onclick="closeOpsSeasonCreateModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsSeasonCreateModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
 
@@ -4448,19 +4408,19 @@
                     <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">NIKKE公式アナウンス画像から自動入力（AI画像認識）</span>
                     <input type="file" id="opsSeasonOcrInput" accept="image/*" onchange="handleOpsSeasonOcrUpload(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;">画像を選ぶ</span>
+                    <span style="padding:6px 12px;border-radius:6px;background:#14161A;color:#ffffff;font-size:12px;font-weight:600;">画像を選ぶ</span>
                 </label>
-                <p id="opsSeasonOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);min-height:14px;">&nbsp;</p>
+                <p id="opsSeasonOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">ハード日 (Day2)</label>
-                    <input type="date" id="opsSeasonHardDate" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                    <input type="date" id="opsSeasonHardDate" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
                 </div>
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">月キー (YYYY-MM)</label>
-                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
                 </div>
             </div>
 
@@ -4469,21 +4429,21 @@
                 <div id="opsSeasonBossRows"></div>
             </div>
 
-            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
-                <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:8px;background:#F7F8F9;">
+                <div style="font-size:12px;color:#6B7178;line-height:1.5;">
                     🪞 <strong>模擬戦の提出はシーズン期間中に必須</strong>です。前回ダメ引継ぎは廃止しました。<br>
                     新シーズンの最適プランや締め凸候補は、提出された模擬戦データに基づいて算出されます。
                 </div>
                 <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
                     <input type="checkbox" id="opsSeasonIsTest" style="width:18px;height:18px;margin-top:1px;cursor:pointer;">
-                    <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">あとで「削除して元に戻す」が可能。現在のダメージ登録とキャラマスタも自動でバックアップ・復元されます。</span></span>
+                    <span>🧪 テストシーズンとして作成<br><span style="font-size:11px;color:#6B7178;">あとで「削除して元に戻す」が可能。現在のダメージ登録とキャラマスタも自動でバックアップ・復元されます。</span></span>
                 </label>
             </div>
 
             <p id="opsSeasonMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsSeasonCreateModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsSeasonCreateSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">作成</button>
+                <button onclick="closeOpsSeasonCreateModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsSeasonCreateSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">作成</button>
             </div>
         </div>
     </div>
@@ -4493,26 +4453,26 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📚 キャラ正規化</h2>
-                <button onclick="closeCharMasterEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeCharMasterEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">OCRで誤って取り込まれた名前を修正、または別エントリへ統合できます。</p>
 
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">正式名 (canonical)</label>
-                <input id="charEditCanonical" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
-                <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">例: 「紅蓮：ブラックシャドウ」「リトルマーメイド」など正式名称に修正</p>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">正式名 (canonical)</label>
+                <input id="charEditCanonical" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">例: 「紅蓮：ブラックシャドウ」「リトルマーメイド」など正式名称に修正</p>
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">エイリアス (カンマ区切り)</label>
-                <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">エイリアス (カンマ区切り)</label>
+                <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">バースト</label>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">バースト</label>
                 <div id="charEditBurstSlot"></div>
-                <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">B1/B2/B3/BΛ。未設定でもOK (どのバースト枠でも選べる扱い)</p>
+                <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">B1/B2/B3/BΛ。未設定でもOK (どのバースト枠でも選べる扱い)</p>
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">サブバースト (任意)</label>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">サブバースト (任意)</label>
                 <div id="charEditBurstAltSlot"></div>
                 <p id="charEditBurstAltHint" style="margin:4px 0 0 0;font-size:11px;color:#8A9097;">主バースト以外の枠でも使えるキャラだけ設定します (例: ラピ:レッドフード = 表示B3・B1枠でも可)</p>
             </div>
@@ -4521,20 +4481,20 @@
                 <span>確定（is_confirmed） / 未チェックで未確定に戻す</span>
             </label>
 
-            <hr style="border:none;border-top:1px solid var(--md-sys-color-outline-variant);margin:8px 0;">
+            <hr style="border:none;border-top:1px solid rgba(20,22,26,0.08);margin:8px 0;">
 
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-surface-variant);">📦 別エントリへ統合 (オプション)</label>
-                <input id="charEditMergeTarget" type="text" list="charEditMergeDataList" placeholder="統合先の正式名を入力 (空なら統合しない)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;">
-                <p style="margin:4px 0 0 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">指定すると、この行を統合先に吸収（sighting_count とエイリアスを合算してこの行を削除）</p>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">📦 別エントリへ統合 (オプション)</label>
+                <input id="charEditMergeTarget" type="text" list="charEditMergeDataList" placeholder="統合先の正式名を入力 (空なら統合しない)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">指定すると、この行を統合先に吸収（sighting_count とエイリアスを合算してこの行を削除）</p>
             </div>
 
             <p id="charEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;">
-                <button onclick="handleCharMasterDelete()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">🗑️ 完全削除</button>
+                <button onclick="handleCharMasterDelete()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;">🗑️ 完全削除</button>
                 <div style="display:flex;gap:8px;">
-                    <button onclick="closeCharMasterEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                    <button onclick="closeCharMasterEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
                 </div>
             </div>
         </div>
@@ -4583,7 +4543,7 @@
         <div class="player-select-content" style="max-width:680px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📷 BlaBlaLINK 3凸まとめ確認</h2>
-                <button onclick="closeMyBulkAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeMyBulkAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">画像から抽出した3凸を確認して一括登録します。<br>⚠️ ボス残HPは更新されません。HP同期は別途戦況タブ (運営モード) の「ボスHP更新」から BlaBlaLINK 進捗画像で取り込んでください。<br>💡 編成キャラはこの画面では扱いません (消化済み凸のため衝突検知に使われないため)。</p>
 
@@ -4591,8 +4551,8 @@
 
             <p id="myBulkAttackMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeMyBulkAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="myBulkAttackSaveBtn" onclick="handleMyBulkAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">💾 一括登録</button>
+                <button onclick="closeMyBulkAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="myBulkAttackSaveBtn" onclick="handleMyBulkAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">💾 一括登録</button>
             </div>
         </div>
     </div>
@@ -4853,25 +4813,25 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>⚙️ メンバー管理</h2>
-                <button onclick="closeMemberManageModal()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeMemberManageModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">脱退者は過去データを残しつつ選択リストから非表示にできます。後から復活も可能です。</p>
 
             <!-- 新規追加フォーム -->
             <div style="display:flex;gap:6px;align-items:stretch;margin-bottom:6px;">
                 <input type="text" id="memberManageAddInput" placeholder="新メンバーの名前" class="player-select-search" style="flex:1;" onkeydown="if(event.key==='Enter')handleMemberManageAdd()">
-                <button onclick="handleMemberManageAdd()" style="padding:0 16px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">＋ 追加</button>
+                <button onclick="handleMemberManageAdd()" style="padding:0 16px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">＋ 追加</button>
             </div>
             <p id="memberManageMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
 
             <!-- 表示切替 -->
             <div style="display:flex;gap:6px;margin-bottom:4px;">
-                <button id="memberFilterActive" onclick="setMemberManageFilter('active')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;cursor:pointer;">アクティブ</button>
-                <button id="memberFilterArchived" onclick="setMemberManageFilter('archived')" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">脱退済み</button>
+                <button id="memberFilterActive" onclick="setMemberManageFilter('active')" style="flex:1;padding:6px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12px;cursor:pointer;">アクティブ</button>
+                <button id="memberFilterArchived" onclick="setMemberManageFilter('archived')" style="flex:1;padding:6px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">脱退済み</button>
             </div>
 
-            <div id="memberManageList" style="overflow-y:auto;max-height:50vh;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;padding:6px;">
-                <div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>
+            <div id="memberManageList" style="overflow-y:auto;max-height:50vh;border:1px solid rgba(20,22,26,0.08);border-radius:8px;padding:6px;">
+                <div style="text-align:center;color:#6B7178;padding:24px;font-size:13px;">読み込み中...</div>
             </div>
         </div>
     </div>
@@ -4886,8 +4846,8 @@
                 <div class="player-select-item empty">読み込み中...</div>
             </div>
             <div class="player-select-footer">
-                <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">名前がない場合は運営に追加依頼してください</span>
-                <button onclick="closePlayerSelectModal()" id="playerSelectCancel" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">キャンセル</button>
+                <span style="font-size:11px;color:#6B7178;">名前がない場合は運営に追加依頼してください</span>
+                <button onclick="closePlayerSelectModal()" id="playerSelectCancel" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
             </div>
         </div>
     </div>
@@ -4911,7 +4871,7 @@
         <div class="fururi-help-overlay" onclick="closeFururiHelp()"></div>
         <div class="fururi-help-content">
             <div class="fururi-help-header">
-                <h2 style="font-size: 18px; font-weight: 600; color: var(--md-sys-color-on-surface);">新指標「ふるり値」について</h2>
+                <h2 style="font-size: 18px; font-weight: 600; color: #14161A;">新指標「ふるり値」について</h2>
                 <button class="close-btn" onclick="closeFururiHelp()">×</button>
             </div>
             <div class="fururi-help-body">
@@ -4925,8 +4885,8 @@
                 <h3>🔢 どうやって計算しているの？</h3>
                 <p>「もし基準プレイヤーがあなたと同じSLv.だったら、どれくらいダメージが出るか」を計算し、それと実際のダメージを比較してふるり値を算出しています。</p>
 
-                <div style="padding: 16px; background: var(--md-sys-color-surface-variant); border-radius: 8px; border-left: 4px solid #f59e0b; margin: 12px 0;">
-                    <p style="margin: 0; font-size: 13px; font-weight: 500; color: var(--md-sys-color-on-surface);">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
+                <div style="padding: 16px; background: #F7F8F9; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 12px 0;">
+                    <p style="margin: 0; font-size: 13px; font-weight: 500; color: #14161A;">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
                 </div>
 
                 <h3>🎨 属性別ふるり値</h3>
@@ -5692,7 +5652,7 @@
                 const isCurrent = p.id === currentId;
                 // ⚠ onclick はダブルクォート属性 + jsonAttr 必須。旧実装はシングルクォート属性に
                 // 生の JSON.stringify を埋めており、名前に ' を含むと属性を脱出できた (保存型XSS/P0)
-                return `<button class="player-select-item" onclick="selectPlayerFromModal(${Number(p.id)}, ${jsonAttr(p.name)})" style="display:flex;align-items:center;gap:10px;text-align:left;${isCurrent ? 'background:var(--md-sys-color-primary-container);border-color:var(--md-sys-color-primary);' : ''}">${renderAvatarHtml(p, 32)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</span>${isCurrent ? '<span>✓</span>' : ''}</button>`;
+                return `<button class="player-select-item" onclick="selectPlayerFromModal(${Number(p.id)}, ${jsonAttr(p.name)})" style="display:flex;align-items:center;gap:10px;text-align:left;${isCurrent ? 'background:#F1F2F4;border-color:#14161A;' : ''}">${renderAvatarHtml(p, 32)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</span>${isCurrent ? '<span>✓</span>' : ''}</button>`;
             }).join('');
         }
         function selectPlayerFromModal(id, name) {
@@ -5856,7 +5816,7 @@
             if (!id?.id) return;
             const msg = document.getElementById('avatarEditMessage');
             msg.textContent = '⏳ アップロード中...';
-            msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+            msg.style.color = '#6B7178';
             try {
                 const publicUrl = await window.supabaseUploadAvatarImage(id.id, file);
                 await window.supabaseUpdatePlayerAvatar(id.id, { url: publicUrl, character: null });
@@ -6845,7 +6805,7 @@
         async function renderMyDamageInputs(identity) {
             const el = document.getElementById('mypageDmgInputs');
             if (!el || !identity) return;
-            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+            el.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中...</p>';
             let damages = [];
             try {
                 damages = await window.supabaseLoadPlayerDamages(identity.id);
@@ -6868,26 +6828,26 @@
                 const team = teamRaw.map(c => fuzzyResolveCharacter(c) || c);
                 const teamText = team.length > 0
                     ? renderTeamSnippet(team, { size: 24 })
-                    : '<span style="color:var(--md-sys-color-outline-variant);">編成未登録</span>';
+                    : '<span style="color:rgba(20,22,26,0.08);">編成未登録</span>';
                 return `
-                    <div class="mydmg-row" data-row-attr="${a.key}" style="padding:8px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                    <div class="mydmg-row" data-row-attr="${a.key}" style="padding:8px 0;border-bottom:1px solid rgba(20,22,26,0.08);">
                         <div style="display:flex;align-items:center;gap:10px;">
                             <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
                             <div style="flex:1;min-width:0;">
-                                <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${a.name}PT <span style="font-size:11px;font-weight:400;color:var(--md-sys-color-on-surface-variant);">対 ${a.bossJP}</span></div>
-                                <div class="mydmg-updated" style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${updated}</div>
+                                <div style="font-size:13px;font-weight:600;color:#14161A;">${a.name}PT <span style="font-size:11px;font-weight:400;color:#6B7178;">対 ${a.bossJP}</span></div>
+                                <div class="mydmg-updated" style="font-size:10px;color:#6B7178;">${updated}</div>
                             </div>
                             <input type="number" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
                                 data-attr="${a.key}" value="${val}"
                                 onblur="handleMyDamageBlur(this)"
                                 onkeydown="if(event.key==='Enter')this.blur()"
-                                style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;text-align:right;">
-                            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
+                                style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;text-align:right;">
+                            <span style="font-size:12px;color:#6B7178;">B</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding-left:34px;">
-                            <span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);flex-shrink:0;">編成:</span>
-                            <span style="flex:1;min-width:0;font-size:11px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${team.length > 0 ? team.map(escapeHtml).join('、') : '編成未登録'}">${teamText}</span>
-                            <button onclick="handleMyTeamEdit('${a.key}')" style="padding:3px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:10px;cursor:pointer;">✏️ 編集</button>
+                            <span style="font-size:10px;color:#6B7178;flex-shrink:0;">編成:</span>
+                            <span style="flex:1;min-width:0;font-size:11px;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${team.length > 0 ? team.map(escapeHtml).join('、') : '編成未登録'}">${teamText}</span>
+                            <button onclick="handleMyTeamEdit('${a.key}')" style="padding:3px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:10px;cursor:pointer;">✏️ 編集</button>
                         </div>
                     </div>`;
             }).join('');
@@ -7034,10 +6994,10 @@
                 // 折り返し(モバイルで2列化)も横スクロールも起きない。max-width で PC で巨大化しない。
                 const icon = r?.iconPath
                     ? `<img loading="lazy" decoding="async" onclick="openIconPickerForAttackSlot(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || name)}" title="${escapeHtml(r.canonical || name)} - クリックで変更" style="width:100%;max-width:46px;aspect-ratio:1/1;object-fit:cover;border-radius:7px;background:#222;cursor:pointer;">`
-                    : `<div onclick="openIconPickerForAttackSlot(${i})" title="クリックでマスタから選択" style="width:100%;max-width:46px;aspect-ratio:1/1;border-radius:7px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;font-size:17px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">${name ? '⚠️' : '?'}</div>`;
+                    : `<div onclick="openIconPickerForAttackSlot(${i})" title="クリックでマスタから選択" style="width:100%;max-width:46px;aspect-ratio:1/1;border-radius:7px;background:#F7F8F9;display:flex;align-items:center;justify-content:center;font-size:17px;color:#f59e0b;cursor:pointer;border:1px dashed #f59e0b;">${name ? '⚠️' : '?'}</div>`;
                 const label = name
-                    ? `<div style="font-size:9.5px;text-align:center;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? 'var(--md-sys-color-on-surface)' : '#f59e0b'};">${escapeHtml(r?.canonical || name)}</div>`
-                    : `<div style="font-size:10px;text-align:center;color:var(--md-sys-color-outline-variant);">${i + 1}</div>`;
+                    ? `<div style="font-size:9.5px;text-align:center;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? '#14161A' : '#f59e0b'};">${escapeHtml(r?.canonical || name)}</div>`
+                    : `<div style="font-size:10px;text-align:center;color:rgba(20,22,26,0.08);">${i + 1}</div>`;
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;">${icon}${label}</div>`;
             }).join('');
         }
@@ -8360,7 +8320,7 @@
             ].filter(Boolean);
             if (targets.length === 0) return;
             if (!identity?.id) {
-                targets.forEach(t => t.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>');
+                targets.forEach(t => t.innerHTML = '<p style="color:#6B7178;font-size:13px;">プレイヤーを選択してください。</p>');
                 return;
             }
             _allPlayersCache = null;
@@ -8371,8 +8331,8 @@
                 const on = cur.has(a.key);
                 const style = on
                     ? `background:${a.color};color:#fff;border-color:${a.color};font-weight:700;`
-                    : `background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);border-color:var(--md-sys-color-outline-variant);`;
-                return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" title="${a.name}PT" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;border:2px solid var(--md-sys-color-outline-variant);${style}font-size:13px;cursor:pointer;transition:all 0.18s ease;">
+                    : `background:#ffffff;color:#14161A;border-color:rgba(20,22,26,0.08);`;
+                return `<button onclick="handleMyStrongAttrToggle('${a.key}')" data-strong="${a.key}" title="${a.name}PT" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:999px;border:2px solid rgba(20,22,26,0.08);${style}font-size:13px;cursor:pointer;transition:all 0.18s ease;">
                     <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;">
                 </button>`;
             }).join('');
@@ -8430,7 +8390,7 @@
             const msgEl = document.getElementById('mypageAvailMessage');
             if (!groupEl) return;
             msgEl.textContent = '';
-            groupEl.innerHTML = '<p style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">読み込み中...</p>';
+            groupEl.innerHTML = '<p style="font-size:12px;color:#6B7178;">読み込み中...</p>';
             let serverSlots = [];
             let isFirstTime = false;
             try {
@@ -8447,7 +8407,7 @@
                 msgEl.textContent = 'ℹ️ 初期は全時間帯OFF。通知を受け取りたい時間帯をなぞって ON にしてください。';
                 msgEl.style.color = '#f59e0b';
             } else {
-                msgEl.style.color = 'var(--md-sys-color-on-surface-variant)';
+                msgEl.style.color = '#6B7178';
             }
         }
 
@@ -8746,23 +8706,23 @@
             if (!identity) {
                 _myNotificationsCache = null;
                 _myNotificationsExpanded = false;
-                el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>';
+                el.innerHTML = '<p style="color:#6B7178;font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>';
                 return;
             }
             // 初回 or 明示的に再取得指定された時のみ fetch。展開トグル時はキャッシュ使用。
             if (!useCache || _myNotificationsCache == null) {
-                el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中…</p>';
+                el.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中…</p>';
                 try {
                     _myNotificationsCache = await window.supabaseLoadRecentNotifications(20, identity.id);
                     _myNotificationsExpanded = false;
                 } catch (e) {
-                    el.innerHTML = `<p style="font-size:12px;color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:var(--md-sys-color-on-surface-variant);">(マイグレーション 06_push_notifications_log.sql が未適用の可能性)</span></p>`;
+                    el.innerHTML = `<p style="font-size:12px;color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:#6B7178;">(マイグレーション 06_push_notifications_log.sql が未適用の可能性)</span></p>`;
                     return;
                 }
             }
             const rows = _myNotificationsCache || [];
             if (rows.length === 0) {
-                el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
+                el.innerHTML = '<p style="color:#6B7178;font-size:13px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
                 return;
             }
             // 既読管理 (端末ローカル): 既読は既定で非表示にして「見たやつだった」を防ぐ
@@ -8780,35 +8740,35 @@
 
             const listRows = _myNotifShowRead ? rows : unreadRows;
             if (listRows.length === 0) {
-                el.innerHTML = controlsHtml + '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12.5px;padding:6px 0;">✅ すべて確認済みです。新しい通知が届くとここに表示されます。</p>';
+                el.innerHTML = controlsHtml + '<p style="color:#6B7178;font-size:12.5px;padding:6px 0;">✅ すべて確認済みです。新しい通知が届くとここに表示されます。</p>';
                 return;
             }
             const visible = _myNotificationsExpanded ? listRows : listRows.slice(0, _NOTIF_INBOX_LIMIT);
             const cardsHtml = visible.map(n => {
                 const read = isRead(n);
                 const tag = n.target_kind === 'all'
-                    ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--md-sys-color-surface-variant);color:var(--md-sys-color-on-surface-variant);">全員宛</span>'
+                    ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:#F7F8F9;color:#6B7178;">全員宛</span>'
                     : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#1d4ed8;">あなた宛</span>';
                 const readBtn = (!read && n.id != null)
                     ? `<button onclick="markMyNotificationRead(${n.id})" title="既読にして非表示" style="flex:none;padding:4px 9px;border-radius:999px;border:none;background:rgba(30,120,240,0.10);color:#1E78F0;font-size:10px;font-weight:800;cursor:pointer;">✔ 既読</button>`
                     : '';
                 return `
-                    <div style="padding:10px 12px;border-radius:8px;border:1px solid ${read ? 'var(--md-sys-color-outline-variant)' : 'rgba(30,120,240,0.30)'};margin-bottom:8px;${read ? 'opacity:0.6;' : 'box-shadow:inset 3px 0 0 #1E78F0;'}">
+                    <div style="padding:10px 12px;border-radius:8px;border:1px solid ${read ? 'rgba(20,22,26,0.08)' : 'rgba(30,120,240,0.30)'};margin-bottom:8px;${read ? 'opacity:0.6;' : 'box-shadow:inset 3px 0 0 #1E78F0;'}">
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
                             ${tag}
                             <strong style="font-size:13px;flex:1;min-width:0;">${escapeHtml(n.title || '(無題)')}</strong>
-                            <span style="font-size:10px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;">${SETTINGS_TS_FMT(n.sent_at)}</span>
+                            <span style="font-size:10px;color:#6B7178;white-space:nowrap;">${SETTINGS_TS_FMT(n.sent_at)}</span>
                             ${readBtn}
                         </div>
-                        <div style="font-size:12px;line-height:1.55;color:var(--md-sys-color-on-surface);white-space:pre-wrap;word-break:break-word;">${escapeHtml(n.body || '')}</div>
+                        <div style="font-size:12px;line-height:1.55;color:#14161A;white-space:pre-wrap;word-break:break-word;">${escapeHtml(n.body || '')}</div>
                     </div>`;
             }).join('');
 
             let footerHtml = '';
             if (listRows.length > _NOTIF_INBOX_LIMIT) {
                 footerHtml = _myNotificationsExpanded
-                    ? `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface-variant);font-size:12px;cursor:pointer;">▲ 閉じる (最初の${_NOTIF_INBOX_LIMIT}件に戻す)</button>`
-                    : `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">▼ もっと見る (残り${listRows.length - _NOTIF_INBOX_LIMIT}件)</button>`;
+                    ? `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#6B7178;font-size:12px;cursor:pointer;">▲ 閉じる (最初の${_NOTIF_INBOX_LIMIT}件に戻す)</button>`
+                    : `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">▼ もっと見る (残り${listRows.length - _NOTIF_INBOX_LIMIT}件)</button>`;
             }
             el.innerHTML = controlsHtml + cardsHtml + footerHtml;
         }
@@ -8858,8 +8818,8 @@
             const refreshEl = document.getElementById('mypageCoordRefresh');
             if (!selfEl || !listEl) return;
             if (!identity?.id) {
-                selfEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>';
-                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>';
+                selfEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">プレイヤーを選択してください。</p>';
+                listEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">プレイヤーを選択してください。</p>';
                 return;
             }
             await _refreshCoordOnce(identity);
@@ -8909,7 +8869,7 @@
             const noteValue = me?.note ? escapeHtml(me.note) : '';
 
             // ステータス切替ボタン
-            const btnStyle = (active, color) => `flex:1;padding:8px 10px;border-radius:8px;border:2px solid ${active ? color : 'var(--md-sys-color-outline-variant)'};background:${active ? color : 'var(--md-sys-color-surface)'};color:${active ? '#fff' : 'var(--md-sys-color-on-surface)'};font-size:12px;font-weight:600;cursor:pointer;`;
+            const btnStyle = (active, color) => `flex:1;padding:8px 10px;border-radius:8px;border:2px solid ${active ? color : 'rgba(20,22,26,0.08)'};background:${active ? color : '#ffffff'};color:${active ? '#fff' : '#14161A'};font-size:12px;font-weight:600;cursor:pointer;`;
             const statusBtnsHtml = `
                 <div style="display:flex;gap:6px;margin-bottom:10px;">
                     <button onclick="handleMyCoordSetStatus('off')" style="${btnStyle(currentStatus === 'off', '#6b7280')}">⚪ なし</button>
@@ -8930,13 +8890,13 @@
             if (currentStatus === 'coordinating') {
                 detailsHtml = `
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-                        <select id="mypageCoordAttrSel" style="padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;">${attrOpts}</select>
-                        <select id="mypageCoordBossSel" style="padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;">${bossOpts}</select>
+                        <select id="mypageCoordAttrSel" style="padding:8px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;">${attrOpts}</select>
+                        <select id="mypageCoordBossSel" style="padding:8px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;">${bossOpts}</select>
                     </div>`;
             }
             if (currentStatus !== 'off') {
-                detailsHtml += `<input type="text" id="mypageCoordNote" maxlength="120" placeholder="メモ (任意 / 例: 21:00集合します)" value="${noteValue}" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;margin-bottom:8px;">
-                    <button onclick="handleMyCoordUpdate()" style="width:100%;padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🔄 内容を更新 (+30分延長)</button>`;
+                detailsHtml += `<input type="text" id="mypageCoordNote" maxlength="120" placeholder="メモ (任意 / 例: 21:00集合します)" value="${noteValue}" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;margin-bottom:8px;">
+                    <button onclick="handleMyCoordUpdate()" style="width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">🔄 内容を更新 (+30分延長)</button>`;
             }
             selfEl.innerHTML = statusBtnsHtml + bannerHtml + detailsHtml;
         }
@@ -8970,7 +8930,7 @@
                 return b ? `B${b.boss_number} ${b.name || b.boss_code}` : (n ? `B${n}` : '');
             };
             const ptOf = (k) => PT_ATTRS.find(x => x.key === k);
-            const emptyHtml = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">現在 調整中のメンバーはいません。</p>';
+            const emptyHtml = '<p style="color:#6B7178;font-size:13px;">現在 調整中のメンバーはいません。</p>';
             // 並び順: coordinating (上) → available (下)
             const sorted = [...list].sort((a, b) => {
                 const rank = (s) => s === 'coordinating' ? 0 : 1;
@@ -8991,20 +8951,20 @@
                     ? `<span style="display:inline-flex;align-items:center;gap:3px;"><img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;">${pt.name}PT</span>`
                     : '';
                 const tags = isCoord
-                    ? ([ptLabel, bossLabel].filter(Boolean).join(' / ') || '<span style="color:var(--md-sys-color-outline-variant);">対象指定なし</span>')
+                    ? ([ptLabel, bossLabel].filter(Boolean).join(' / ') || '<span style="color:rgba(20,22,26,0.08);">対象指定なし</span>')
                     : '';
-                const noteHtml = c.note ? `<div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin-top:3px;">💬 ${escapeHtml(c.note)}</div>` : '';
-                const borderColor = isMe ? '#22c55e' : (isCoord ? '#3b82f6' : 'var(--md-sys-color-outline-variant)');
-                const bg = isMe ? 'rgba(34,197,94,0.06)' : (isCoord ? 'rgba(59,130,246,0.04)' : 'var(--md-sys-color-surface)');
+                const noteHtml = c.note ? `<div style="font-size:11px;color:#6B7178;margin-top:3px;">💬 ${escapeHtml(c.note)}</div>` : '';
+                const borderColor = isMe ? '#22c55e' : (isCoord ? '#3b82f6' : 'rgba(20,22,26,0.08)');
+                const bg = isMe ? 'rgba(34,197,94,0.06)' : (isCoord ? 'rgba(59,130,246,0.04)' : '#ffffff');
                 return `
                     <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${borderColor};border-radius:8px;background:${bg};margin-bottom:6px;">
                         <span style="font-size:14px;line-height:1.4;">${statusIcon}</span>
                         ${renderAvatarHtml(c.player_id, c.name, 28)}
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><strong>${escapeHtml(c.name)}</strong>${isMe ? '<span style="color:#22c55e;font-size:11px;">(あなた)</span>' : ''}${statusLabel}${tags ? `<span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">${tags}</span>` : ''}</div>
+                            <div style="font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><strong>${escapeHtml(c.name)}</strong>${isMe ? '<span style="color:#22c55e;font-size:11px;">(あなた)</span>' : ''}${statusLabel}${tags ? `<span style="font-size:12px;color:#6B7178;">${tags}</span>` : ''}</div>
                             ${noteHtml}
                         </div>
-                        <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);white-space:nowrap;">${elapsedMin}分前〜<br>残${remainMin}分</span>
+                        <span style="font-size:11px;color:#6B7178;white-space:nowrap;">${elapsedMin}分前〜<br>残${remainMin}分</span>
                     </div>`;
             }).join('');
             const html = list.length === 0 ? emptyHtml : rowsHtml;
@@ -9091,7 +9051,7 @@
             msgEl.textContent = '';
 
             if (!window.isPushSupported || !window.isPushSupported()) {
-                statusEl.innerHTML = '<span style="color:var(--md-sys-color-on-surface-variant);">❌ この端末/ブラウザは Push 通知に非対応です</span>';
+                statusEl.innerHTML = '<span style="color:#6B7178;">❌ この端末/ブラウザは Push 通知に非対応です</span>';
                 actionsEl.innerHTML = '';
                 return;
             }
@@ -9100,7 +9060,7 @@
             if (!s.vapidConfigured) {
                 statusEl.innerHTML = '<span style="color:#f59e0b;">⚠️ 運営側でVAPID公開鍵が未設定のため、まだ購読できません。</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'ローカル通知テスト')" style="padding:8px 12px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'ローカル通知テスト')" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">🧪 ローカル通知テスト</button>
                 `;
                 return;
             }
@@ -9114,13 +9074,13 @@
             if (s.subscribed) {
                 statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み (この端末)</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="handleMyPushUnsubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:13px;cursor:pointer;">通知を解除</button>
-                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                    <button onclick="handleMyPushUnsubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;">通知を解除</button>
+                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">🧪 ローカル通知テスト</button>
                 `;
             } else {
-                statusEl.innerHTML = '<span style="color:var(--md-sys-color-on-surface-variant);">未購読</span>';
+                statusEl.innerHTML = '<span style="color:#6B7178;">未購読</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;">🔔 通知を有効にする</button>
+                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">🔔 通知を有効にする</button>
                 `;
             }
         }
@@ -9128,7 +9088,7 @@
         async function handleMyLocalTestNotification() {
             const msg = document.getElementById('mypagePushMessage');
             msg.textContent = '🔔 通知を呼び出し中...';
-            msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+            msg.style.color = '#6B7178';
             try {
                 await window.showLocalTestNotification('しりすこPAD', 'ローカル通知テストです🧪');
                 msg.textContent = '✅ ローカル通知を表示しました (見えない場合は OS/ブラウザの通知設定を確認)';
@@ -9145,7 +9105,7 @@
             if (!id?.id) { msg.textContent = '❌ プレイヤー未選択'; msg.style.color = '#ef4444'; return; }
             try {
                 msg.textContent = '🔔 購読中...';
-                msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+                msg.style.color = '#6B7178';
                 await window.subscribeToPush(id.id);
                 msg.textContent = '✅ Push通知を有効化しました';
                 msg.style.color = '#22c55e';
@@ -9194,12 +9154,12 @@
             const el = document.getElementById('mypageNextAttackBosses');
             if (!el) return;
             if (!identity?.id) {
-                el.innerHTML = '<p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">プレイヤーを選択してください。</p>';
+                el.innerHTML = '<p style="grid-column:1/-1;color:#6B7178;font-size:13px;">プレイヤーを選択してください。</p>';
                 return;
             }
             const ctx = await ensureActiveSeasonLoaded();
             if (!ctx?.season) {
-                el.innerHTML = '<p style="grid-column:1/-1;color:var(--md-sys-color-on-surface-variant);font-size:13px;">アクティブシーズン無し</p>';
+                el.innerHTML = '<p style="grid-column:1/-1;color:#6B7178;font-size:13px;">アクティブシーズン無し</p>';
                 return;
             }
             const bosses = [...(ctx.bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
@@ -9361,11 +9321,11 @@
             const listEl = document.getElementById('myAttackList');
             const btn = document.getElementById('myAttackAddBtn');
             if (!listEl || !identity) return;
-            listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+            listEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中...</p>';
 
             const ctx = await ensureActiveSeasonLoaded();
             if (!ctx?.season) {
-                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">現在アクティブなシーズンがありません。運営にシーズン作成を依頼してください。</p>';
+                listEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">現在アクティブなシーズンがありません。運営にシーズン作成を依頼してください。</p>';
                 if (btn) btn.disabled = true;
                 return;
             }
@@ -9389,7 +9349,7 @@
                 } else {
                     btn.disabled = false;
                     btn.textContent = '＋ 凸を報告';
-                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;';
+                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;';
                 }
             }
 
@@ -9403,25 +9363,25 @@
                 const ptInfo = PT_ATTRS.find(x => x.key === playerAttr);
                 const damageB = (Number(a.damage_raw) / 1e9).toFixed(2);
                 return `
-                    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <div style="font-weight:700;color:var(--md-sys-color-primary);font-size:14px;min-width:46px;">${a.attack_number}凸目</div>
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(20,22,26,0.08);">
+                        <div style="font-weight:700;color:#14161A;font-size:14px;min-width:46px;">${a.attack_number}凸目</div>
                         ${ptInfo ? `<img loading="lazy" decoding="async" src="${ptInfo.icon}" alt="${ptInfo.name}" style="width:20px;height:20px;flex-shrink:0;" title="${ptInfo.name}PT">` : ''}
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">${escapeHtml(bossName)}</div>
-                            <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">Lv.${a.level || 1} ${ptInfo ? `／ ${ptInfo.name}PT` : ''}</div>
+                            <div style="font-size:13px;font-weight:600;color:#14161A;">${escapeHtml(bossName)}</div>
+                            <div style="font-size:11px;color:#6B7178;">Lv.${a.level || 1} ${ptInfo ? `／ ${ptInfo.name}PT` : ''}</div>
                         </div>
-                        <div style="font-size:15px;font-weight:700;color:var(--md-sys-color-on-surface);white-space:nowrap;">${damageB} B</div>
-                        <button onclick="handleMyAttackEdit(${a.id}, ${a.damage_raw})" style="padding:5px 9px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">編集</button>
-                        <button onclick="handleMyAttackDelete(${a.id}, ${a.attack_number})" style="padding:5px 9px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
+                        <div style="font-size:15px;font-weight:700;color:#14161A;white-space:nowrap;">${damageB} B</div>
+                        <button onclick="handleMyAttackEdit(${a.id}, ${a.damage_raw})" style="padding:5px 9px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:11px;cursor:pointer;">編集</button>
+                        <button onclick="handleMyAttackDelete(${a.id}, ${a.attack_number})" style="padding:5px 9px;border-radius:6px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
                     </div>`;
             }).join('');
 
             const summary = `
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-                    <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">シーズン:</span>
+                    <span style="font-size:13px;color:#6B7178;">シーズン:</span>
                     <strong style="font-size:13px;">${ctx.season.month_key}</strong>
-                    <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-left:8px;">凸数:</span>
-                    <strong style="font-size:13px;color:${remaining === 0 ? '#22c55e' : 'var(--md-sys-color-primary)'};">${count}/3</strong>
+                    <span style="font-size:13px;color:#6B7178;margin-left:8px;">凸数:</span>
+                    <strong style="font-size:13px;color:${remaining === 0 ? '#22c55e' : '#14161A'};">${count}/3</strong>
                     ${remaining === 0 ? '<span style="font-size:12px;color:#22c55e;margin-left:6px;">🎉 完凸 お疲れさまでした！</span>' : ''}
                 </div>`;
             const doneBanner = remaining === 0 ? `
@@ -9432,7 +9392,7 @@
                         <div style="font-size:11px;opacity:0.8;">追加で報告したい場合はまず該当する凸を「削除」してから再登録してください。</div>
                     </div>
                 </div>` : '';
-            listEl.innerHTML = summary + doneBanner + (rows || '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:8px 0;">まだ凸が報告されていません。右上の「+ 凸を報告」から登録してください。</p>');
+            listEl.innerHTML = summary + doneBanner + (rows || '<p style="color:#6B7178;font-size:13px;padding:8px 0;">まだ凸が報告されていません。右上の「+ 凸を報告」から登録してください。</p>');
         }
 
         // ===== 凸報告モーダル: ステート機械 (fresh/analyzing/imported/partial) =====
@@ -10088,7 +10048,7 @@
             el.innerHTML = _myBulkAttacks.map((a, idx) => {
                 const matched = a.bossNumber ? `<span style="color:#22c55e;font-size:11px;">✅ B${a.bossNumber}</span>` : '<span style="color:#ef4444;font-size:11px;">⚠️ 現シーズンのボスに一致せず</span>';
                 return `
-                    <div style="padding:10px 12px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;background:var(--md-sys-color-surface);">
+                    <div style="padding:10px 12px;border:1px solid rgba(20,22,26,0.08);border-radius:10px;background:#ffffff;">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <strong style="font-size:13px;">凸 ${idx + 1}</strong>
                             ${matched}
@@ -10352,7 +10312,7 @@
         }
         // 編成1〜5キャラを HTML スニペットで描画
         function renderTeamSnippet(team, opts = {}) {
-            if (!Array.isArray(team) || team.length === 0) return '<span style="color:var(--md-sys-color-outline-variant);">編成未登録</span>';
+            if (!Array.isArray(team) || team.length === 0) return '<span style="color:rgba(20,22,26,0.08);">編成未登録</span>';
             const size = opts.size || 22;
             return team.map(c => {
                 const r = resolveNikkeChar(c);
@@ -10372,7 +10332,7 @@
         async function handleIconBootstrapLoad() {
             const el = document.getElementById('settingsIconBootstrap');
             if (!el) return;
-            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);">読み込み中…</p>';
+            el.innerHTML = '<p style="color:#6B7178;">読み込み中…</p>';
             // JSON候補 (今月を含む直近6ヶ月分を試行、最新の月を採用)
             const now = new Date();
             const tried = [];
@@ -10411,21 +10371,21 @@
             await getNikkeCharsCache();
             const renderItems = () => {
                 if (_iconBootstrapPaths.length === 0) {
-                    el.innerHTML = `<p style="color:var(--md-sys-color-on-surface-variant);">${used} のデータにキャラ画像が見つかりませんでした。</p>`;
+                    el.innerHTML = `<p style="color:#6B7178;">${used} のデータにキャラ画像が見つかりませんでした。</p>`;
                     return;
                 }
                 el.innerHTML = `
-                    <p style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin:0 0 10px 0;">${used} から <strong>${_iconBootstrapPaths.length}</strong> 個のユニーク画像を抽出。各アイコンに名前を入力 → 「登録」をクリック。同じ名前で別画像を登録するとスキン違いとして配列に追加されます。</p>
+                    <p style="font-size:11px;color:#6B7178;margin:0 0 10px 0;">${used} から <strong>${_iconBootstrapPaths.length}</strong> 個のユニーク画像を抽出。各アイコンに名前を入力 → 「登録」をクリック。同じ名前で別画像を登録するとスキン違いとして配列に追加されます。</p>
                     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">
                         ${_iconBootstrapPaths.map((p, i) => {
                             const known = _nikkeCharsByIconPath.get(p);
                             const knownTag = known
                                 ? `<div style="font-size:11px;color:#22c55e;font-weight:600;">✅ ${escapeHtml(known.canonical_name)}</div>`
-                                : `<input type="text" id="iconBoot-${i}" placeholder="例: ナユタ" list="iconBootDataList" style="width:100%;padding:5px 7px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);font-size:12px;">
+                                : `<input type="text" id="iconBoot-${i}" placeholder="例: ナユタ" list="iconBootDataList" style="width:100%;padding:5px 7px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;font-size:12px;">
                                    <div style="margin-top:5px;display:flex;justify-content:center;">${_burstPickerHtml('iconBoot-' + i, '')}</div>
-                                   <button onclick="handleIconBootstrapSave(${i})" style="margin-top:5px;width:100%;padding:5px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:600;cursor:pointer;">登録</button>`;
+                                   <button onclick="handleIconBootstrapSave(${i})" style="margin-top:5px;width:100%;padding:5px;border-radius:6px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:11px;font-weight:600;cursor:pointer;">登録</button>`;
                             return `
-                                <div style="padding:8px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;text-align:center;">
+                                <div style="padding:8px;border:1px solid rgba(20,22,26,0.08);border-radius:8px;text-align:center;">
                                     <img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:60px;height:60px;border-radius:6px;margin-bottom:6px;background:#222;" onerror="this.style.opacity='0.3';this.alt='画像未読込'">
                                     ${knownTag}
                                 </div>`;
@@ -10485,16 +10445,16 @@
             const listEl = document.getElementById('settingsCharList');
             const sumEl = document.getElementById('settingsCharSummary');
             if (!listEl) return;
-            listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">読み込み中…</p>';
+            listEl.innerHTML = '<p style="color:#6B7178;font-size:12px;">読み込み中…</p>';
             let rows;
             try {
                 rows = await window.supabaseLoadCharacterMaster();
             } catch (e) {
-                listEl.innerHTML = `<p style="color:#ef4444;font-size:12px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:var(--md-sys-color-on-surface-variant);">(マイグレーション 07_nikke_characters... が未適用の可能性)</span></p>`;
+                listEl.innerHTML = `<p style="color:#ef4444;font-size:12px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:#6B7178;">(マイグレーション 07_nikke_characters... が未適用の可能性)</span></p>`;
                 return;
             }
             if (!rows || rows.length === 0) {
-                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">まだキャラデータがありません。凸報告OCRが回り始めると自動で蓄積されます。</p>';
+                listEl.innerHTML = '<p style="color:#6B7178;font-size:12px;">まだキャラデータがありません。凸報告OCRが回り始めると自動で蓄積されます。</p>';
                 if (sumEl) sumEl.textContent = '';
                 return;
             }
@@ -10506,13 +10466,13 @@
                     : '<span style="color:#f59e0b;font-weight:700;">⚠未確定</span>';
                 const aliases = Array.isArray(r.aliases) && r.aliases.length > 0
                     ? escapeHtml(r.aliases.join(', '))
-                    : '<span style="color:var(--md-sys-color-outline-variant);">-</span>';
+                    : '<span style="color:rgba(20,22,26,0.08);">-</span>';
                 const last = r.last_seen ? SETTINGS_TS_FMT(r.last_seen) : '-';
                 // onclick に埋めるので jsonAttr (escapeHtml だと ' が &#39; → デコード後に脱出される)
                 const safeName = jsonAttr(r.canonical_name);
                 const icons = Array.isArray(r.icon_paths) && r.icon_paths.length > 0
                     ? r.icon_paths.map(p => `<img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:22px;height:22px;border-radius:4px;margin-right:2px;" title="${escapeHtml(p)}">`).join('')
-                    : '<span style="font-size:10px;color:var(--md-sys-color-outline-variant);">no icon</span>';
+                    : '<span style="font-size:10px;color:rgba(20,22,26,0.08);">no icon</span>';
                 const bc = r.burst ? (_BURST_COLOR[r.burst] || '#8A9097') : null;
                 let burstBadge = bc
                     ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${bc};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
@@ -10522,17 +10482,17 @@
                     burstBadge += `<span title="${escapeHtml(r.burst_alt)}枠としても使える" style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 5px;border-radius:999px;color:${ac};background:transparent;border:1px solid ${ac}66;">+${escapeHtml(r.burst_alt)}</span>`;
                 }
                 return `
-                    <div onclick="openCharMasterEditModal(${safeName})" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background=''">
+                    <div onclick="openCharMasterEditModal(${safeName})" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid rgba(20,22,26,0.08);font-size:12px;align-items:center;" onmouseover="this.style.background='#F7F8F9'" onmouseout="this.style.background=''">
                         <div style="display:flex;align-items:center;gap:2px;">${icons}</div>
                         <div style="display:flex;align-items:center;gap:5px;overflow:hidden;" title="${escapeHtml(r.canonical_name)}">${burstBadge}<strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.canonical_name)}</strong></div>
                         <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
                         <div style="text-align:center;">${status}</div>
-                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--md-sys-color-on-surface-variant);">${aliases}</div>
-                        <div style="text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:11px;">${last}</div>
+                        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#6B7178;">${aliases}</div>
+                        <div style="text-align:right;color:#6B7178;font-size:11px;">${last}</div>
                     </div>`;
             }).join('');
             const head2 = `
-                <div style="display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;background:var(--md-sys-color-surface-variant);border-radius:6px;font-size:11px;font-weight:700;color:var(--md-sys-color-on-surface-variant);">
+                <div style="display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;background:#F7F8F9;border-radius:6px;font-size:11px;font-weight:700;color:#6B7178;">
                     <div>アイコン</div>
                     <div>キャラ名 (canonical)</div>
                     <div style="text-align:center;">出現</div>
@@ -10540,7 +10500,7 @@
                     <div>エイリアス</div>
                     <div style="text-align:right;">最終</div>
                 </div>`;
-            listEl.innerHTML = `<div style="min-width:620px;"><p style="font-size:11px;color:var(--md-sys-color-on-surface-variant);margin:0 0 6px 0;">行をタップで編集 / 統合 / 削除</p>${head2}${body}</div>`;
+            listEl.innerHTML = `<div style="min-width:620px;"><p style="font-size:11px;color:#6B7178;margin:0 0 6px 0;">行をタップで編集 / 統合 / 削除</p>${head2}${body}</div>`;
         }
 
         // キャラマスタ編集モーダル
@@ -10709,7 +10669,7 @@
             const me = getCurrentIdentity();
             el.innerHTML = `
                 <div>選択中のプレイヤー: <strong>${me ? escapeHtml(me.name) : '(未選択)'}</strong></div>
-                <div style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">この情報は localStorage に保存されています。端末/ブラウザを変えると未選択に戻ります。</div>
+                <div style="font-size:11px;color:#6B7178;">この情報は localStorage に保存されています。端末/ブラウザを変えると未選択に戻ります。</div>
             `;
         }
         function handleSettingsClearIdentity() {
@@ -11064,7 +11024,7 @@
             const el = document.getElementById('settingsNotifyTable');
             const summary = document.getElementById('settingsNotifySummary');
             if (!el) return;
-            el.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">読み込み中…</p>';
+            el.innerHTML = '<p style="color:#6B7178;font-size:12px;">読み込み中…</p>';
             let rows;
             try {
                 rows = await window.supabaseLoadMemberNotificationStatus();
@@ -11321,7 +11281,7 @@
             if (id?.id) { _refreshCoordOnce(id); _startCoordPolling(); }
 
             labelEl.textContent = '読み込み中...';
-            remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+            remListEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中...</p>';
 
             // load() の戻り値を使う (get() ではなく)。応答待ち中に invalidate が走った場合、
             // ストアは結果を破棄する (get()=null) が、この描画自体はフェッチ結果で行ってよい
@@ -11338,7 +11298,7 @@
             const testBanner = document.getElementById('opsTestBanner');
             if (!season) {
                 labelEl.textContent = '（アクティブシーズン無し）';
-                remListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">運営がシーズンを作成するまで一覧表示できません。</p>';
+                remListEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">運営がシーズンを作成するまで一覧表示できません。</p>';
                 if (bossSummaryEl) bossSummaryEl.innerHTML = '';
                 finishListEl.innerHTML = '';
                 if (testBanner) testBanner.style.display = 'none';
@@ -11367,7 +11327,7 @@
             renderOpsBossSummary();
             renderOpsRemainingList();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
-            else finishListEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
+            else finishListEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
         }
 
         async function handleOpsQuickCreateTestSeason() {
@@ -12094,7 +12054,7 @@
             if (plansEl) plansEl.innerHTML = '';
             _opsFinishPlanContext = null;
             if (!boss) {
-                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">対象ボスが見つかりません。</p>';
+                listEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">対象ボスが見つかりません。</p>';
                 return;
             }
             const remainingHpB = (boss.remaining_hp_raw || 0) / 1e9;
@@ -12135,12 +12095,12 @@
                 .sort((a, b) => (b.dmg - a.dmg) || ((3 - b.attackCount) - (3 - a.attackCount)));
 
             const header = `
-                <div style="padding:8px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);margin-bottom:8px;font-size:13px;">
+                <div style="padding:8px 12px;border-radius:8px;background:#F7F8F9;margin-bottom:8px;font-size:13px;">
                     対象: <img loading="lazy" decoding="async" src="${ptInfo.icon}" style="width:14px;height:14px;vertical-align:middle;"> <strong>${ptInfo.name}PT</strong> → <strong>${escapeHtml(boss.name || boss.boss_code)}</strong> (残HP <strong>${remainingHpB.toFixed(2)}B</strong>)
                 </div>`;
 
             if (candidates.length === 0) {
-                listEl.innerHTML = header + '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">この属性で凸できるメンバーがいません（ダメージ未登録か全員3凸済み）。</p>';
+                listEl.innerHTML = header + '<p style="color:#6B7178;font-size:13px;">この属性で凸できるメンバーがいません（ダメージ未登録か全員3凸済み）。</p>';
                 return;
             }
 
@@ -12148,21 +12108,21 @@
                 const over = p.dmg > remainingHpB;
                 const overTag = over ? `<span style="color:#f59e0b;font-size:11px;font-weight:600;">⚠️ +${(p.dmg - remainingHpB).toFixed(2)}B 超過</span>` : '';
                 return `
-                    <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
-                        <span style="min-width:22px;text-align:right;color:var(--md-sys-color-on-surface-variant);font-size:12px;">${i + 1}.</span>
+                    <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid rgba(20,22,26,0.08);">
+                        <span style="min-width:22px;text-align:right;color:#6B7178;font-size:12px;">${i + 1}.</span>
                         ${renderAvatarHtml(p, 28)}
                         <strong style="flex:1;font-size:14px;">${escapeHtml(p.name)}${p.viaSlot2 ? ' <span title="同属性2凸目 (編成②) での締め" style="font-size:10px;font-weight:900;color:#1E78F0;background:rgba(30,120,240,0.10);padding:1px 6px;border-radius:999px;">②</span>' : ''}</strong>
                         <span style="font-size:13px;font-weight:700;">${p.dmg.toFixed(2)} B</span>
                         ${overTag}
-                        <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${p.attackCount}/3)</span>
+                        <span style="font-size:11px;color:#6B7178;">(${p.attackCount}/3)</span>
                     </div>`;
             }).join('');
 
             // 候補へのPush送信ボタン (Phase 6c)
             const pushBtn = `
                 <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
-                    <button onclick="handleOpsFinishPushSend()" style="padding:8px 14px;border-radius:8px;border:1px solid #8b5cf6;background:var(--md-sys-color-surface);color:#8b5cf6;font-size:13px;font-weight:600;cursor:pointer;">📣 この候補 ${candidates.length}名に Push通知</button>
-                    <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">${ptInfo?.name}PT / 残HP ${remainingHpB.toFixed(2)}B</span>
+                    <button onclick="handleOpsFinishPushSend()" style="padding:8px 14px;border-radius:8px;border:1px solid #8b5cf6;background:#ffffff;color:#8b5cf6;font-size:13px;font-weight:600;cursor:pointer;">📣 この候補 ${candidates.length}名に Push通知</button>
+                    <span style="font-size:11px;color:#6B7178;">${ptInfo?.name}PT / 残HP ${remainingHpB.toFixed(2)}B</span>
                 </div>`;
 
             // 状態保存 (Push送信時に使う)
@@ -12204,13 +12164,13 @@
                 const hourLabel = isCurrent ? `<strong>現在 (${r.hour}時)</strong>` : `${r.hour}時`;
                 if (!r.best) return `<li>${hourLabel}: 候補なし</li>`;
                 const overTag = r.best.dmg > remainingHpB ? ' <span style="color:#f59e0b;font-size:11px;">(超過)</span>' : '';
-                return `<li>${hourLabel}: <strong>${escapeHtml(r.best.name)}</strong> ${r.best.dmg.toFixed(2)}B${overTag} <span style="color:var(--md-sys-color-on-surface-variant);font-size:11px;">(${r.count}名可)</span></li>`;
+                return `<li>${hourLabel}: <strong>${escapeHtml(r.best.name)}</strong> ${r.best.dmg.toFixed(2)}B${overTag} <span style="color:#6B7178;font-size:11px;">(${r.count}名可)</span></li>`;
             }).join('');
 
             return `
-                <details style="margin-top:14px;padding:8px 12px;border-radius:8px;background:var(--md-sys-color-surface-variant);">
+                <details style="margin-top:14px;padding:8px 12px;border-radius:8px;background:#F7F8F9;">
                     <summary style="cursor:pointer;font-size:13px;font-weight:600;">🕐 何時まで待てば誰が最適？（時間別ベスト候補）</summary>
-                    <p style="margin:8px 0 4px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">戦闘可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
+                    <p style="margin:8px 0 4px 0;font-size:11px;color:#6B7178;">戦闘可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
                     <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.8;">${itemsHtml}</ul>
                 </details>`;
         }
@@ -12240,29 +12200,29 @@
                 // 締め役は小さいダメージの人にして、書き残しを最小化
                 const ordered = [...plan.members].sort((a, b) => b.dmg - a.dmg);
                 const stepRows = ordered.map((m, i) => `
-                    <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-top:1px dashed var(--md-sys-color-outline-variant);">
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-top:1px dashed rgba(20,22,26,0.08);">
                         <span style="min-width:42px;font-weight:700;color:${accent};font-size:12px;">${i + 1}凸目</span>
                         <strong style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(m.name)}</strong>
                         <span style="font-size:13px;font-weight:700;">${m.dmg.toFixed(2)} B</span>
-                        <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">(${m.attackCount}/3)</span>
+                        <span style="font-size:11px;color:#6B7178;">(${m.attackCount}/3)</span>
                     </div>`).join('');
                 const overPct = (plan.overkill / Math.max(remHpB, 0.01) * 100);
                 const pushIds = plan.members.map(m => m.id);
                 return `
-                    <div style="flex:1 1 280px;border:1px solid var(--md-sys-color-outline-variant);border-left:4px solid ${accent};border-radius:10px;overflow:hidden;background:${bg};">
-                        <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--md-sys-color-surface);">
+                    <div style="flex:1 1 280px;border:1px solid rgba(20,22,26,0.08);border-left:4px solid ${accent};border-radius:10px;overflow:hidden;background:${bg};">
+                        <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#ffffff;">
                             <strong style="font-size:13px;color:${accent};">${title}</strong>
-                            <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">${plan.shots}凸 / 合計 ${plan.total.toFixed(2)}B / +${plan.overkill.toFixed(2)}B (${overPct.toFixed(1)}%)</span>
+                            <span style="font-size:11px;color:#6B7178;">${plan.shots}凸 / 合計 ${plan.total.toFixed(2)}B / +${plan.overkill.toFixed(2)}B (${overPct.toFixed(1)}%)</span>
                         </div>
                         ${stepRows}
-                        <div style="padding:8px 10px;background:var(--md-sys-color-surface);">
-                            <button onclick="handleOpsFinishPlanPush('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:var(--md-sys-color-surface);color:${accent};font-size:12px;font-weight:600;cursor:pointer;">📣 このプランの ${pushIds.length}名 に Push通知</button>
+                        <div style="padding:8px 10px;background:#ffffff;">
+                            <button onclick="handleOpsFinishPlanPush('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:#ffffff;color:${accent};font-size:12px;font-weight:600;cursor:pointer;">📣 このプランの ${pushIds.length}名 に Push通知</button>
                         </div>
                     </div>`;
             };
             const tightCard = card('🎯 ギリギリ (オーバーキル最小)', plans.tight, 'tight');
             const safeCard = card('🛡️ 余裕 (10%以上のマージン)', plans.safe, 'safe');
-            const sameNote = (plans.tight && !plans.safe) ? `<p style="margin:6px 2px 0;font-size:11px;color:var(--md-sys-color-on-surface-variant);">※ 余裕プランは ギリギリプランと同一のため省略しました。</p>` : '';
+            const sameNote = (plans.tight && !plans.safe) ? `<p style="margin:6px 2px 0;font-size:11px;color:#6B7178;">※ 余裕プランは ギリギリプランと同一のため省略しました。</p>` : '';
             el.innerHTML = `
                 <div style="display:flex;flex-wrap:wrap;gap:10px;">
                     ${tightCard}
@@ -12284,17 +12244,17 @@
                 if (!bodyEl) { resolve(false); return; }
                 bodyEl.innerHTML = (groups || []).map(g => {
                     const recList = g.allSubscribers
-                        ? '<span style="color:var(--md-sys-color-on-surface-variant);">購読中の全メンバー（時間帯フィルタ無視）</span>'
+                        ? '<span style="color:#6B7178;">購読中の全メンバー（時間帯フィルタ無視）</span>'
                         : (g.recipients && g.recipients.length > 0
                             ? `<strong>${g.recipients.length}名</strong>: ${g.recipients.map(r => escapeHtml(r.name)).join('、')}`
                             : '<span style="color:#ef4444;">受信者なし</span>');
                     return `
-                        <div style="padding:12px;border:1px solid var(--md-sys-color-outline-variant);border-left:4px solid #8b5cf6;border-radius:8px;background:var(--md-sys-color-surface-variant);">
-                            <div style="font-size:13px;font-weight:700;color:var(--md-sys-color-on-surface);margin-bottom:4px;">📣 ${escapeHtml(g.title || '(無題)')}</div>
-                            <div style="font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:var(--md-sys-color-on-surface);margin-bottom:8px;">${escapeHtml(g.body || '')}</div>
-                            <div style="font-size:11px;color:var(--md-sys-color-on-surface);"><span style="color:var(--md-sys-color-on-surface-variant);">受信者: </span>${recList}</div>
+                        <div style="padding:12px;border:1px solid rgba(20,22,26,0.08);border-left:4px solid #8b5cf6;border-radius:8px;background:#F7F8F9;">
+                            <div style="font-size:13px;font-weight:700;color:#14161A;margin-bottom:4px;">📣 ${escapeHtml(g.title || '(無題)')}</div>
+                            <div style="font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:#14161A;margin-bottom:8px;">${escapeHtml(g.body || '')}</div>
+                            <div style="font-size:11px;color:#14161A;"><span style="color:#6B7178;">受信者: </span>${recList}</div>
                         </div>`;
-                }).join('') || '<p style="color:var(--md-sys-color-on-surface-variant);font-size:12px;">送信対象がありません</p>';
+                }).join('') || '<p style="color:#6B7178;font-size:12px;">送信対象がありません</p>';
                 document.getElementById('pushPreviewModal').classList.add('open');
             });
         }
@@ -13365,7 +13325,7 @@
             document.getElementById('opsBossHpModal').classList.add('open');
             document.getElementById('opsBossHpMessage').textContent = '';
             const listEl = document.getElementById('opsBossHpList');
-            listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;">読み込み中...</p>';
+            listEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中...</p>';
             const ctx = await ensureActiveSeasonLoaded();
             seasonStore.invalidate(); // 次回開く時最新を取得するため
             const fresh = await window.supabaseLoadActiveSeasonWithBosses();
@@ -13376,19 +13336,19 @@
                 const totalB = (Number(b.total_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
                 const remB = (Number(b.remaining_hp_raw) / 1e9).toFixed(2).replace(/\.?0+$/, '');
                 return `
-                    <div data-boss-num="${b.boss_number}" style="padding:10px 6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                    <div data-boss-num="${b.boss_number}" style="padding:10px 6px;border-bottom:1px solid rgba(20,22,26,0.08);">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                             <strong style="font-size:13px;flex:1;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</strong>
                             ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT で凸する想定">` : ''}
-                            <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">tier: ${b.tier}</span>
+                            <span style="font-size:11px;color:#6B7178;">tier: ${b.tier}</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                            <label style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">残HP</label>
-                            <input class="ops-hp-rem" type="number" inputmode="decimal" step="0.01" min="0" value="${remB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;text-align:right;">
-                            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B / 総HP</span>
-                            <input class="ops-hp-total" type="number" inputmode="decimal" step="0.01" min="0" value="${totalB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:13px;text-align:right;">
-                            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">B</span>
-                            <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid var(--md-sys-color-primary);background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:12px;font-weight:600;cursor:pointer;">保存</button>
+                            <label style="font-size:12px;color:#6B7178;">残HP</label>
+                            <input class="ops-hp-rem" type="number" inputmode="decimal" step="0.01" min="0" value="${remB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;text-align:right;">
+                            <span style="font-size:12px;color:#6B7178;">B / 総HP</span>
+                            <input class="ops-hp-total" type="number" inputmode="decimal" step="0.01" min="0" value="${totalB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;text-align:right;">
+                            <span style="font-size:12px;color:#6B7178;">B</span>
+                            <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;">保存</button>
                         </div>
                     </div>`;
             }).join('');
@@ -13626,10 +13586,10 @@
                 return `
                     <button type="button" data-boss="${b.boss_number}"
                         onclick="handleOpsProxyBossPick(this, ${b.boss_number})"
-                        style="padding:10px 8px;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                        style="padding:10px 8px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
                         ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:22px;height:22px;">` : ''}
                         <div style="font-weight:600;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</div>
-                        <div style="font-size:10px;color:var(--md-sys-color-on-surface-variant);">${pt ? `${pt.name}PTで凸` : ''}</div>
+                        <div style="font-size:10px;color:#6B7178;">${pt ? `${pt.name}PTで凸` : ''}</div>
                     </button>`;
             }).join('');
         }
@@ -13640,11 +13600,11 @@
         function handleOpsProxyBossPick(btn, bossNumber) {
             _opsProxyBossNumber = bossNumber;
             document.querySelectorAll('#opsProxyBossButtons button').forEach(b => {
-                b.style.borderColor = 'var(--md-sys-color-outline-variant)';
-                b.style.background = 'var(--md-sys-color-surface)';
+                b.style.borderColor = 'rgba(20,22,26,0.08)';
+                b.style.background = '#ffffff';
             });
-            btn.style.borderColor = 'var(--md-sys-color-primary)';
-            btn.style.background = 'var(--md-sys-color-primary-container)';
+            btn.style.borderColor = '#14161A';
+            btn.style.background = '#F1F2F4';
         }
         async function onOpsProxyMemberChange() {
             const sel = document.getElementById('opsProxyMemberSelect');
@@ -13655,7 +13615,7 @@
             try {
                 const atks = await window.supabaseLoadMyAttacks(parseInt(sel.value), ctx.season.id, ctx.season.hard_date);
                 hint.textContent = `現在の凸数: ${atks.length}/3${atks.length >= 3 ? ' (既に3凸済みのため追加できません)' : ''}`;
-                hint.style.color = atks.length >= 3 ? '#ef4444' : 'var(--md-sys-color-on-surface-variant)';
+                hint.style.color = atks.length >= 3 ? '#ef4444' : '#6B7178';
             } catch { hint.textContent = ''; }
         }
         function switchOpsProxyMode(mode) {
@@ -13666,18 +13626,18 @@
             const secB = document.getElementById('opsProxyBulkSection');
             const saveBtn = document.getElementById('opsProxySaveBtn');
             if (_opsProxyMode === 'simple') {
-                tabS.style.borderBottomColor = 'var(--md-sys-color-primary)';
-                tabS.style.color = 'var(--md-sys-color-on-surface)';
+                tabS.style.borderBottomColor = '#14161A';
+                tabS.style.color = '#14161A';
                 tabB.style.borderBottomColor = 'transparent';
-                tabB.style.color = 'var(--md-sys-color-on-surface-variant)';
+                tabB.style.color = '#6B7178';
                 secS.style.display = '';
                 secB.style.display = 'none';
                 saveBtn.textContent = '💾 保存';
             } else {
-                tabB.style.borderBottomColor = 'var(--md-sys-color-primary)';
-                tabB.style.color = 'var(--md-sys-color-on-surface)';
+                tabB.style.borderBottomColor = '#14161A';
+                tabB.style.color = '#14161A';
                 tabS.style.borderBottomColor = 'transparent';
-                tabS.style.color = 'var(--md-sys-color-on-surface-variant)';
+                tabS.style.color = '#6B7178';
                 secS.style.display = 'none';
                 secB.style.display = '';
                 saveBtn.textContent = '💾 3凸一括保存';
@@ -13715,7 +13675,7 @@
                 previewEl.innerHTML = _opsProxyBulkAttacks.map((a, i) => {
                     const matched = a.bossNumber ? `<span style="color:#22c55e;font-size:11px;">✅ B${a.bossNumber}</span>` : '<span style="color:#ef4444;font-size:11px;">⚠️ ボス不一致</span>';
                     return `
-                        <div style="padding:10px 12px;border:1px solid var(--md-sys-color-outline-variant);border-radius:8px;background:var(--md-sys-color-surface);">
+                        <div style="padding:10px 12px;border:1px solid rgba(20,22,26,0.08);border-radius:8px;background:#ffffff;">
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                                 <strong style="font-size:13px;">凸 ${i + 1}</strong>
                                 ${matched}
@@ -14053,7 +14013,7 @@
         }
         async function reloadOpsAttacksList() {
             const listEl = document.getElementById('opsAttacksList');
-            listEl.innerHTML = '<div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>';
+            listEl.innerHTML = '<div style="text-align:center;color:#6B7178;padding:24px;font-size:13px;">読み込み中...</div>';
             const ctx = await ensureActiveSeasonLoaded();
             if (!ctx?.season) { listEl.innerHTML = '<p style="color:#ef4444;font-size:13px;padding:8px;">アクティブシーズン無し</p>'; return; }
             try {
@@ -14074,7 +14034,7 @@
                 ? _opsAttacksCache.filter(a => (a.players?.name || '').toLowerCase().includes(q))
                 : _opsAttacksCache;
             if (filtered.length === 0) {
-                listEl.innerHTML = '<p style="color:var(--md-sys-color-on-surface-variant);font-size:13px;padding:12px;text-align:center;">該当する凸記録はありません</p>';
+                listEl.innerHTML = '<p style="color:#6B7178;font-size:13px;padding:12px;text-align:center;">該当する凸記録はありません</p>';
                 return;
             }
             listEl.innerHTML = filtered.map(a => {
@@ -14085,15 +14045,15 @@
                 const dmgB = (Number(a.damage_raw) / 1e9).toFixed(2);
                 const playerName = a.players?.name || '不明';
                 return `
-                    <div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(20,22,26,0.08);">
                         ${renderAvatarHtml(a.player_id, playerName, 24)}
                         <strong style="font-size:13px;min-width:74px;">${escapeHtml(playerName)}</strong>
-                        <span style="font-weight:600;color:var(--md-sys-color-primary);font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
+                        <span style="font-weight:600;color:#14161A;font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
                         ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT">` : ''}
-                        <span style="flex:1;font-size:12px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
+                        <span style="flex:1;font-size:12px;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
                         <span style="font-size:13px;font-weight:700;white-space:nowrap;">${dmgB} B</span>
-                        <button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:11px;cursor:pointer;">編集</button>
-                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${jsonAttr(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
+                        <button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:11px;cursor:pointer;">編集</button>
+                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${jsonAttr(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
                     </div>`;
             }).join('');
         }
@@ -14154,7 +14114,7 @@
             if (!ok) return;
             try {
                 set('🔔 送信中...');
-                msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+                msg.style.color = '#6B7178';
                 const res = await window.sendPushNotification({
                     title,
                     body: bodyText,
@@ -14290,16 +14250,16 @@
         function renderOpsSeasonBossRows(rows) {
             const el = document.getElementById('opsSeasonBossRows');
             el.innerHTML = rows.map(r => `
-                <div data-pos="${r.bossNumber}" style="display:grid;grid-template-columns:32px 1fr 80px 1.4fr;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                <div data-pos="${r.bossNumber}" style="display:grid;grid-template-columns:32px 1fr 80px 1.4fr;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(20,22,26,0.08);">
                     <span style="font-size:13px;font-weight:600;">B${r.bossNumber}</span>
-                    <select class="ops-season-code" style="padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;">
+                    <select class="ops-season-code" style="padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;">
                         ${BOSS_CODES.map(c => `<option value="${c}" ${c === r.bossCode ? 'selected' : ''}>${c}</option>`).join('')}
                     </select>
-                    <select class="ops-season-tier" style="padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;">
+                    <select class="ops-season-tier" style="padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;">
                         <option value="tyrant" ${r.tier === 'tyrant' ? 'selected' : ''}>タイラント</option>
                         <option value="lord" ${r.tier === 'lord' ? 'selected' : ''}>ロード</option>
                     </select>
-                    <input class="ops-season-name" type="text" placeholder="ボス名 (任意)" value="${escapeHtml(r.name)}" style="padding:6px 8px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;">
+                    <input class="ops-season-name" type="text" placeholder="ボス名 (任意)" value="${escapeHtml(r.name)}" style="padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;">
                 </div>
             `).join('');
         }
@@ -14416,7 +14376,7 @@
             if (!confirm(confirmMsg)) return;
 
             try {
-                set('作成中...'); msg.style.color = 'var(--md-sys-color-on-surface-variant)';
+                set('作成中...'); msg.style.color = '#6B7178';
                 const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest });
                 set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました`);
                 seasonStore.invalidate();
@@ -14495,8 +14455,8 @@
             memberManageFilter = mode;
             const activeBtn = document.getElementById('memberFilterActive');
             const archivedBtn = document.getElementById('memberFilterArchived');
-            const on = 'background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);border:1px solid var(--md-sys-color-primary);';
-            const off = 'background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);border:1px solid var(--md-sys-color-outline-variant);';
+            const on = 'background:#14161A;color:#ffffff;border:1px solid #14161A;';
+            const off = 'background:#ffffff;color:#14161A;border:1px solid rgba(20,22,26,0.08);';
             const baseStyle = 'flex:1;padding:6px;border-radius:8px;font-size:12px;cursor:pointer;';
             activeBtn.style.cssText = baseStyle + (mode === 'active' ? on : off);
             archivedBtn.style.cssText = baseStyle + (mode === 'archived' ? on : off);
@@ -14505,7 +14465,7 @@
 
         async function reloadMemberManageList() {
             const listEl = document.getElementById('memberManageList');
-            listEl.innerHTML = '<div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">読み込み中...</div>';
+            listEl.innerHTML = '<div style="text-align:center;color:#6B7178;padding:24px;font-size:13px;">読み込み中...</div>';
             try {
                 memberManageCache = await window.supabaseLoadAllPlayers(true); // archived も含めて取得
                 // キャッシュ無効化（プレイヤー選択モーダル側）
@@ -14525,20 +14485,20 @@
                 memberManageFilter === 'archived' ? p.archived : !p.archived
             );
             if (filtered.length === 0) {
-                listEl.innerHTML = `<div style="text-align:center;color:var(--md-sys-color-on-surface-variant);padding:24px;font-size:13px;">${memberManageFilter === 'archived' ? '脱退済みメンバーはいません' : 'アクティブメンバーはいません'}</div>`;
+                listEl.innerHTML = `<div style="text-align:center;color:#6B7178;padding:24px;font-size:13px;">${memberManageFilter === 'archived' ? '脱退済みメンバーはいません' : 'アクティブメンバーはいません'}</div>`;
                 return;
             }
             listEl.innerHTML = filtered.map(p => {
                 const isArchived = !!p.archived;
                 return `
-                    <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;border-bottom:1px solid rgba(20,22,26,0.08);">
                         ${renderAvatarHtml(p, 28)}
-                        <span style="flex:1;font-size:14px;display:flex;align-items:center;gap:6px;${isArchived ? 'color:var(--md-sys-color-on-surface-variant);text-decoration:line-through;' : ''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${escapeHtml(p.name)}</span>${renderStrongAttrsHtml(p, 14)}</span>
+                        <span style="flex:1;font-size:14px;display:flex;align-items:center;gap:6px;${isArchived ? 'color:#6B7178;text-decoration:line-through;' : ''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${escapeHtml(p.name)}</span>${renderStrongAttrsHtml(p, 14)}</span>
                         ${isArchived
-                            ? `<button onclick="handleMemberUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">復活</button>
-                               <button onclick="handleMemberDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #ef4444;background:var(--md-sys-color-surface);color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
-                            : `<button onclick="handleMemberRename(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:12px;cursor:pointer;">改名</button>
-                               <button onclick="handleMemberArchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #f59e0b;background:var(--md-sys-color-surface);color:#f59e0b;font-size:12px;cursor:pointer;">脱退</button>`
+                            ? `<button onclick="handleMemberUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">復活</button>
+                               <button onclick="handleMemberDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
+                            : `<button onclick="handleMemberRename(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">改名</button>
+                               <button onclick="handleMemberArchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #f59e0b;background:#ffffff;color:#f59e0b;font-size:12px;cursor:pointer;">脱退</button>`
                         }
                     </div>`;
             }).join('');
@@ -15217,7 +15177,7 @@
 
             tbody.innerHTML = currentData.map(player => {
                 const prev = prevMap.get(player.player);
-                let diffHtml = '<span style="color: var(--md-sys-color-on-surface-variant);">-</span>';
+                let diffHtml = '<span style="color: #6B7178;">-</span>';
 
                 if (prev) {
                     const diff = player.damage - prev.damage;
@@ -15231,7 +15191,7 @@
                     const slvCls = slvDiff > 0 ? 'growth-positive' : (slvDiff < 0 ? 'growth-negative' : 'growth-neutral');
                     const slvHtml = (prev.syncLevel > 0 && player.syncLevel > 0)
                         ? `<span class="${slvCls}" style="font-size:10px;opacity:0.9;">SLv ${slvSign}${slvDiff}</span>`
-                        : `<span style="font-size:10px;color:var(--md-sys-color-outline-variant);">SLv -</span>`;
+                        : `<span style="font-size:10px;color:rgba(20,22,26,0.08);">SLv -</span>`;
 
                     diffHtml = `
                         <div class="${cls}" style="display: flex; flex-direction: column; gap: 2px;">
@@ -15253,7 +15213,7 @@
                         <td>
                             <div style="display: flex; flex-direction: column; gap: 2px;">
                                 <span>${formatDamage(player.damage)}</span>
-                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                                <span style="font-size: 11px; color: #6B7178;">SLv: ${player.syncLevel}</span>
                             </div>
                         </td>
                         <td>${diffHtml}</td>
@@ -15884,17 +15844,17 @@
                 const rankDisp = rank <= 3
                     ? ['🥇', '🥈', '🥉'][rank - 1]
                     : `<span class="rank-other">#${rank}</span>`;
-                const vs = row.isYou ? '<span style="color: var(--md-sys-color-on-surface-variant); font-size: 12px;">基準</span>'
+                const vs = row.isYou ? '<span style="color: #6B7178; font-size: 12px;">基準</span>'
                     : (() => {
                         const d = predictedDamage - row.damage;
                         const cls = d > 0 ? 'growth-positive' : d < 0 ? 'growth-negative' : 'growth-neutral';
                         return `<span class="${cls}">${d >= 0 ? '+' : ''}${formatDamage(d)}</span>`;
                     })();
                 const dmgLabel = row.isYou
-                    ? `<strong>${formatDamage(row.damage)}</strong> <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">予測</span>`
+                    ? `<strong>${formatDamage(row.damage)}</strong> <span style="font-size: 11px; color: #6B7178;">予測</span>`
                     : formatDamage(row.damage);
                 const rowStyle = row.isYou
-                    ? 'background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); font-weight: 600;'
+                    ? 'background: color-mix(in srgb, #14161A 8%, transparent); font-weight: 600;'
                     : '';
                 return `<tr style="${rowStyle}">
                     <td style="text-align: center;">${rankDisp}</td>
@@ -16111,14 +16071,14 @@
             // テーブル描画
             const tbody = document.getElementById('fsimTableBody');
             tbody.innerHTML = allRows.map(r => {
-                const rowStyle = r.isSim ? 'background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent); font-weight: 600;' : '';
+                const rowStyle = r.isSim ? 'background: color-mix(in srgb, #14161A 12%, transparent); font-weight: 600;' : '';
                 return `
                     <tr style="${rowStyle}">
                         <td style="text-align: center;">${r.isSim ? '★ ' : ''}${r.label}</td>
                         <td style="text-align: right;">
                             <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
                                 <span>${(r.damage / 1e9).toFixed(3)} B</span>
-                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${r.syncLevel}</span>
+                                <span style="font-size: 11px; color: #6B7178;">SLv: ${r.syncLevel}</span>
                             </div>
                         </td>
                         <td style="text-align: center;">${r.score.toFixed(2)}</td>
@@ -16177,14 +16137,14 @@
             const comps = (teamCompositionsByAttribute[currentAttribute] || []).sort((a, b) => b.damage - a.damage);
 
             if (comps.length === 0) {
-                container.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); text-align: center; padding: 32px;">この属性のデータがありません</p>';
+                container.innerHTML = '<p style="color: #6B7178; text-align: center; padding: 32px;">この属性のデータがありません</p>';
                 return;
             }
 
             container.innerHTML = comps.map(comp => {
                 const fururi = calculatePerAttackFururi(comp.damage, comp.syncLevel, comp.bossCode);
                 const fururiHtml = fururi !== null
-                    ? `<div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;">ふるり値: <strong style="color: var(--md-sys-color-primary);">${fururi.toFixed(2)}</strong></div>`
+                    ? `<div style="font-size: 11px; color: #6B7178; white-space: nowrap;">ふるり値: <strong style="color: #14161A;">${fururi.toFixed(2)}</strong></div>`
                     : '';
                 const bossInfo = comp.bossCode ? BOSS_ATTRIBUTES[comp.bossCode] : null;
                 const bossIconHtml = bossInfo ? `<img loading="lazy" decoding="async" src="${bossInfo.bossAttributeIcon}" alt="${bossInfo.bossAttributeJP}" style="width: 16px; height: 16px; flex-shrink: 0; opacity:0.85;">` : '';
@@ -16199,8 +16159,8 @@
                             ${comp.difficulty ? `<span class="badge">${comp.difficulty} Lv.${comp.level}</span>` : ''}
                         </div>
                         <div style="text-align: right; flex-shrink: 0;">
-                            <div style="font-size: 16px; font-weight: 600; color: var(--md-sys-color-primary); white-space: nowrap;">${formatDamage(comp.damage)}</div>
-                            <div style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;">${comp.player} (SLv ${comp.syncLevel})</div>
+                            <div style="font-size: 16px; font-weight: 600; color: #14161A; white-space: nowrap;">${formatDamage(comp.damage)}</div>
+                            <div style="font-size: 11px; color: #6B7178; white-space: nowrap;">${comp.player} (SLv ${comp.syncLevel})</div>
                             ${fururiHtml}
                         </div>
                     </div>
@@ -16350,16 +16310,16 @@
 
                 tbody.innerHTML = ranked.map(player => {
                     const isBase = player.player === basePlayer.player;
-                    const rowStyle = isBase ? 'background: var(--md-sys-color-primary-container);' : '';
+                    const rowStyle = isBase ? 'background: #F1F2F4;' : '';
                     return `
                         <tr style="${rowStyle}">
                             <td style="text-align: center; font-weight: 500;">
-                                ${player.player}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}
+                                ${player.player}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}
                             </td>
                             <td style="text-align: right;">
                                 <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
                                     <span>${(player.damage / 1e9).toFixed(3)} B</span>
-                                    <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${player.syncLevel}</span>
+                                    <span style="font-size: 11px; color: #6B7178;">SLv: ${player.syncLevel}</span>
                                 </div>
                             </td>
                             <td style="text-align: center; font-weight: 600;">${player.fururiScore.toFixed(2)}</td>
@@ -16400,16 +16360,16 @@
 
             tbody.innerHTML = rows.map(r => {
                 const isBase = r.player === basePlayer.player;
-                const rowStyle = isBase ? 'background: var(--md-sys-color-primary-container);' : '';
+                const rowStyle = isBase ? 'background: #F1F2F4;' : '';
                 return `
                     <tr style="${rowStyle}">
                         <td style="text-align: center; font-weight: 500;">
-                            ${r.label}${isBase ? ' <span style="font-size: 11px; color: var(--md-sys-color-primary);">(基準)</span>' : ''}
+                            ${r.label}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}
                         </td>
                         <td style="text-align: right;">
                             <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
                                 <span>${(r.damage / 1e9).toFixed(3)} B</span>
-                                <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant);">SLv: ${r.syncLevel}</span>
+                                <span style="font-size: 11px; color: #6B7178;">SLv: ${r.syncLevel}</span>
                             </div>
                         </td>
                         <td style="text-align: center; font-weight: 600;">${r.score.toFixed(2)}</td>
