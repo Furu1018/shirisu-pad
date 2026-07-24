@@ -101,7 +101,7 @@ index.html 内の script は `python3` で抜き出して `node --check` に通�
 // 属性 (DC_ATTR_COLORS)
 fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C26B'
 // 状態
-成功/撃破: #18C26B   警告: #F59E0B   エラー/交戦: #FF3D44   アクセント青: #1E78F0
+成功/撃破: #18C26B   警告: #F59E0B   エラー/交戦: #FF3D44   アクセント紫: #6C42F0 (2026-07-24 HomeMind基調で旧青 #1E78F0 から刷新)
 // ニュートラル
 文字: #14161A  サブ: #6B7178 / #8A9097  薄文字: #A4AAB0 / #B6BBC1  背景: #F7F8F9 / #F1F2F4
 ```
@@ -111,7 +111,7 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
 - **ピル**: `border-radius:999px; font-size:10-11px; font-weight:800-900; padding:3px 9px; color:{色}; background:{色}1A`
 - **カード**: `.dc-card` / 白背景 + `border-radius:13-15px` + `border:1px solid rgba(20,22,26,0.05)`
 - **ボトムシート**: `player-select-modal` 系。ハンドル(::before) + 下スワイプで閉じる (`_enableSheetSwipeDismiss`)
-- **ボタン**: 黒 `#14161A` が主ボタン、`#F1F2F4` がサブ。青グラデ (`#46A0FF→#1E78F0`) は誘導ボタン
+- **ボタン**: 黒 `#14161A` が主ボタン、`#F1F2F4` がサブ。紫グラデ (`#7A5AF8→#5B2BE0`) は誘導ボタン
 - 16進カラー+alpha は `${c}1A` `${c}33` 形式の連結を多用
 
 ## データモデルの要注意ポイント
