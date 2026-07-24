@@ -2576,12 +2576,17 @@
     <!-- ========== Tab: ホーム (再構築版) ========== -->
     <div id="tab-mypage" class="tab-content tab-page active">
         <div class="container">
-            <!-- ページヘッダー (他タブと同じ 20px/900 + サブタイトル。統一感のため ClaudeDesign 磨きで追加) -->
+            <!-- ページヘッダー (他タブと同じ 20px/900 + サブタイトル) + 🔔通知ベル (ホーム再構成 H3) -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:0 2px 2px;">
                 <div>
                     <div style="font-size:20px;font-weight:900;letter-spacing:0.4px;color:#14161A;">ホーム</div>
                     <div id="homePageSubtitle" style="font-size:11px;color:#A4AAB0;margin-top:3px;letter-spacing:0.2px;">&nbsp;</div>
                 </div>
+                <button id="homeNotifBell" onclick="_gotoNotifications()" aria-label="通知" title="通知"
+                    style="position:relative;flex:none;width:40px;height:40px;border-radius:50%;border:none;background:#fff;box-shadow:0 2px 8px rgba(20,22,26,0.10);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#5A6068;">
+                    <span data-sp-icon="bell" data-sp-size="18"></span>
+                    <span id="homeNotifBadge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;border-radius:999px;background:#FF3D44;color:#fff;font-size:9.5px;font-weight:900;line-height:17px;padding:0 4px;text-align:center;box-shadow:0 1px 4px rgba(255,61,68,0.4);">0</span>
+                </button>
             </div>
 
             <!-- ① プロフィール: ClaudeDesign 準拠 (シルバーリング + 名前/Lv + 得意属性チップ + 編集ピル + soft-fill 切替) -->
@@ -2727,8 +2732,8 @@
                 <div id="myPublishedPlanBody"></div>
             </div>
 
-            <!-- ④ 受け取った通知 -->
-            <div class="dc-card">
+            <!-- ④ 受け取った通知 (id はヘッダー🔔のスクロール先) -->
+            <div class="dc-card" id="myNotificationsCard">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">📨 受け取った通知</div>
                     <button onclick="renderMyNotificationsInbox(getCurrentIdentity())" style="background:transparent;border:none;font-size:11px;font-weight:700;color:#8A9097;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="11"></span> 更新</button>
@@ -8683,35 +8688,62 @@
         let _myNotificationsCache = null;     // ロード済の rows をキャッシュ (展開/折り畳みで再fetch不要)
         let _myNotificationsExpanded = false;
 
+        // 世代ガード: プレイヤー切替中に古い取得結果でリスト/🔔バッジを塗らない (ホーム再構成 H3 —
+        // Codex 指摘のガード欠落対応。renderMyNextAction の _nextActionSeq と同じパターン)
+        let _notifRenderSeq = 0;
+        // ヘッダー🔔の未読バッジ更新 (通知リストと同じデータ源・同じ更新タイミング)
+        function _updateNotifBadge(unreadCount) {
+            const badge = document.getElementById('homeNotifBadge');
+            if (!badge) return;
+            const n = Number(unreadCount) || 0;
+            badge.style.display = n > 0 ? 'block' : 'none';
+            badge.textContent = n > 99 ? '99+' : String(n);
+        }
+        // ヘッダー🔔タップ: 通知カードへスクロール + 一瞬ハイライト
+        function _gotoNotifications() {
+            const card = document.getElementById('myNotificationsCard');
+            if (!card) return;
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            card.classList.remove('dc-gate-highlight');
+            requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('dc-gate-highlight')));
+        }
         async function renderMyNotificationsInbox(identity, useCache = false) {
             const el = document.getElementById('mypageNotificationsInbox');
             if (!el) return;
+            const seq = ++_notifRenderSeq;
             if (!identity) {
                 _myNotificationsCache = null;
                 _myNotificationsExpanded = false;
                 el.innerHTML = '<p style="color:#6B7178;font-size:13px;">プレイヤーを選択すると履歴が表示されます。</p>';
+                _updateNotifBadge(0);
                 return;
             }
             // 初回 or 明示的に再取得指定された時のみ fetch。展開トグル時はキャッシュ使用。
             if (!useCache || _myNotificationsCache == null) {
                 el.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中…</p>';
                 try {
-                    _myNotificationsCache = await window.supabaseLoadRecentNotifications(20, identity.id);
+                    const fetched = await window.supabaseLoadRecentNotifications(20, identity.id);
+                    if (seq !== _notifRenderSeq) return;   // 取得中に別プレイヤーの描画が始まっていたら破棄
+                    _myNotificationsCache = fetched;
                     _myNotificationsExpanded = false;
                 } catch (e) {
+                    if (seq !== _notifRenderSeq) return;
                     el.innerHTML = `<p style="font-size:12px;color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:#6B7178;">(マイグレーション 06_push_notifications_log.sql が未適用の可能性)</span></p>`;
                     return;
                 }
             }
+            if (seq !== _notifRenderSeq) return;
             const rows = _myNotificationsCache || [];
             if (rows.length === 0) {
                 el.innerHTML = '<p style="color:#6B7178;font-size:13px;">まだ通知履歴はありません。今後送信された通知がここに記録されます。</p>';
+                _updateNotifBadge(0);
                 return;
             }
             // 既読管理 (端末ローカル): 既読は既定で非表示にして「見たやつだった」を防ぐ
             const readSet = _notifReadSet();
             const isRead = (n) => n.id != null && readSet.has(n.id);
             const unreadRows = rows.filter(n => !isRead(n));
+            _updateNotifBadge(unreadRows.length);   // ヘッダー🔔バッジも同じ計算で同期
             const readRows = rows.filter(isRead);
 
             const controlsHtml = `
