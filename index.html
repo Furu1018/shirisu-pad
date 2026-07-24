@@ -1637,15 +1637,25 @@
         /* === Ops: ボス状況カード (横スクロール) === */
         .dc-boss-card {
             flex: none; width: 156px; box-sizing: border-box; scroll-snap-align: start;
-            background: #F9FAFB; border-radius: 14px; padding: 14px;
+            background: #F9FAFB; border-radius: 16px; padding: 14px;
             border: 1px solid rgba(20,22,26,0.05);
             position: relative;
         }
+        /* HomeMind基調 (2026-07-24): 交戦中 = 黒カード (アクティブの対比表現)。
+           テンプレートのインライン色に勝つため !important — 状態はポーリング中の
+           _patchOpsBossCard の class 切替だけで色が追随する */
         .dc-boss-card.has-combat {
-            border-color: var(--_attr-c, #FF3D44);
+            background: #101114;
+            border-color: transparent;
             box-shadow: 0 0 0 1px var(--_attr-c, #FF3D44),
-                        0 6px 16px -4px color-mix(in srgb, var(--_attr-c, #FF3D44) 50%, transparent);
+                        0 8px 20px -4px color-mix(in srgb, var(--_attr-c, #FF3D44) 45%, transparent);
         }
+        .dc-boss-card.has-combat .js-bnum { color: #fff !important; }
+        .dc-boss-card.has-combat .js-name { color: rgba(255,255,255,0.55) !important; }
+        .dc-boss-card.has-combat .js-pct { color: #fff !important; }
+        .dc-boss-card.has-combat .js-hptext { color: rgba(255,255,255,0.55) !important; }
+        .dc-boss-card.has-combat .js-bartrack { background: rgba(255,255,255,0.16) !important; }
+        .dc-boss-card.has-combat [data-action="boss-edit"] { background: #2A2B31 !important; color: #C9CED3 !important; }
         .dc-boss-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
@@ -11774,11 +11784,11 @@
                         <div class="js-pct" style="font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.4px;line-height:1;padding-top:4px;color:${P.pctColor};">${P.pctText}</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:7px;margin-top:11px;">
-                        <span style="font-size:17px;font-weight:900;color:#14161A;letter-spacing:0.4px;">B${b.boss_number}</span>
+                        <span class="js-bnum" style="font-size:17px;font-weight:900;color:#14161A;letter-spacing:0.4px;">B${b.boss_number}</span>
                     </div>
                     <div class="js-name" style="font-size:10px;color:#A4AAB0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(P.nameText)}">${escapeHtml(P.nameText)}</div>
                     <div class="js-status" style="margin-top:7px;">${P.statusTag}</div>
-                    <div style="margin-top:11px;height:6px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
+                    <div class="js-bartrack" style="margin-top:11px;height:6px;border-radius:99px;background:#EDEEF0;overflow:hidden;">
                         <div class="dc-boss-bar js-bar" style="background:${P.barColor};width:${P.remainPct}%;"></div>
                     </div>
                     <div class="js-hptext" style="font-size:10px;font-variant-numeric:tabular-nums;color:#9AA0A6;margin-top:4px;">${P.hpText}</div>
