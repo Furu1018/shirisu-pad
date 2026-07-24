@@ -8721,6 +8721,7 @@
             // 初回 or 明示的に再取得指定された時のみ fetch。展開トグル時はキャッシュ使用。
             if (!useCache || _myNotificationsCache == null) {
                 el.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中…</p>';
+                _updateNotifBadge(0);   // 前プレイヤーの未読数を残さない (取得成功時に正しい値で再設定)
                 try {
                     const fetched = await window.supabaseLoadRecentNotifications(20, identity.id);
                     if (seq !== _notifRenderSeq) return;   // 取得中に別プレイヤーの描画が始まっていたら破棄
@@ -8728,6 +8729,7 @@
                     _myNotificationsExpanded = false;
                 } catch (e) {
                     if (seq !== _notifRenderSeq) return;
+                    _updateNotifBadge(0);   // 取得失敗時もバッジを残さない (Codex レビュー対応)
                     el.innerHTML = `<p style="font-size:12px;color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}<br><span style="color:#6B7178;">(マイグレーション 06_push_notifications_log.sql が未適用の可能性)</span></p>`;
                     return;
                 }
