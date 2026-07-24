@@ -477,7 +477,9 @@
         button {
             font-family: var(--font-body);
         }
-        button:not(:disabled):active { transform: translateY(1px); }
+        /* 旧: :active { translateY(1px) } は「ぽよん」(dcPoyon) が押下表現を代替するため撤去 —
+           残すと dcPoyon の transform 競合ガード (computed transform チェック) に全ボタンが
+           引っかかり、ぽよんが一切発火しなくなる */
         /* Primary CTA: 黒ラベル風のフィル + 控えめな影。
            Material トークン一括リテラル化 (2026-07-24) に伴い、旧 --md-sys-color-primary の
            属性一致は #14161A の空白あり/なし両表記の一致に置き換え (対象ボタンは不変) */
@@ -6899,10 +6901,12 @@
                 opsStore.invalidate();
                 _myDmgPanelSlots[_myTeamEditAttr] = 1;
                 await renderMyDamagePanels(id);
-                // 属性にまだ編成が残っていればモーダルを開き直し、空になったら閉じる
+                // 属性にまだ編成が残っていれば「残っているスロット」を開き直し、空になったら閉じる
+                // (①削除で②だけ残ったのに①を開くと削除済みの空画面になる — Codex指摘)
                 const rest = await window.supabaseLoadPlayerDamages(id.id);
-                const remain = (rest || []).some(d => d.attribute === _myTeamEditAttr && Number(d.damage_b) > 0);
-                if (remain) handleMyTeamEdit(_myTeamEditAttr, 1);
+                const slots = (rest || []).filter(d => d.attribute === _myTeamEditAttr && Number(d.damage_b) > 0)
+                    .map(d => d.slot || 1).sort();
+                if (slots.length > 0) handleMyTeamEdit(_myTeamEditAttr, slots[0]);
                 else { closeMyTeamEditModal(); showNotification(`🗑 ${ptName}PT の提出を削除しました`); }
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
@@ -16734,9 +16738,13 @@
         // 拾って dcPoyon アニメを付ける。capture + passive でタップ判定に干渉しない。
         // 除外は data-no-poyon (要素または祖先)。
         const _POYON_SEL = 'button:not(:disabled), .dc-boss-tile, .dc-nav-chip, [data-action], .drawer-menu-item, .attribute-tab-btn, label.btn-nikke';
+        const _poyonReduced = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
         document.addEventListener('pointerdown', (e) => {
+            if (_poyonReduced.matches) return;   // reduced-motion: animation:none で animationend が来ずクラスが残るため付与自体をしない (Codex指摘)
             const el = e.target.closest?.(_POYON_SEL);
             if (!el || el.closest('[data-no-poyon]')) return;
+            // transform を持つ要素 (translate 配置など) はアニメが transform を上書きして跳ねるためスキップ (Codex指摘)
+            try { if (getComputedStyle(el).transform !== 'none') return; } catch { return; }
             el.classList.remove('dc-poyon');
             void el.offsetWidth;   // reflow を挟んで連打でもアニメを再発火させる
             el.classList.add('dc-poyon');
