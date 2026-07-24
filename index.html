@@ -5524,7 +5524,12 @@
                 }
 
                 // 5) 描画で body 高さが変わるケースのためバックアップで rAF 再適用
-                requestAnimationFrame(() => { window.scrollTo(0, y); });
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, y);
+                    // 重いタブでは rAF が squelch 窓 (300ms) を過ぎてから走ることがあり、
+                    // この復元スクロールで自動隠しが誤発動する → 抑止を張り直す (Codex レビュー P1)
+                    if (typeof _navShowNow === 'function') _navShowNow();
+                });
 
                 // 6) bottom-nav の active 同期
                 //    (旧: window.switchTab のラッパでのみ実施 = 直接呼び出し経路では同期漏れの穴。
@@ -16637,9 +16642,13 @@
             _navAuto.lastY = Math.max(0, window.scrollY || 0);
             _navSetHidden(false);
         }
+        // モーダル/ドロワー/シートが開いている間は判定しない (背面スクロールでナビ状態を
+        // 変えない — 戻る操作監視と同じセレクタ群。Codex レビュー P2)
+        const _NAV_OVERLAY_SEL = '.player-select-modal.open, .fururi-help-modal.open, .player-modal.open, .drawer.open';
         window.addEventListener('scroll', () => {
             const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
             if (Date.now() < _navAuto.squelchUntil) { _navAuto.lastY = y; return; }
+            if (document.querySelector(_NAV_OVERLAY_SEL)) { _navAuto.lastY = y; _navAuto.acc = 0; return; }
             const dy = y - _navAuto.lastY;
             _navAuto.lastY = y;
             if (y < 80) { _navAuto.acc = 0; _navSetHidden(false); return; }   // 上端付近は常に表示
