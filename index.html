@@ -2014,6 +2014,18 @@
             border: 1px solid rgba(20,22,26,0.045);
         }
         .dc-profile-card { position: relative; }
+        /* HomeMind ヒーローカード: 「今やるべき1アクションがあるとき」だけ黒 (ホーム再構成 H2)。
+           黒の意味論 = 行動要求/アクティブ (交戦中ボスカードと同じ) */
+        .dc-card.dc-hero {
+            background: #101114;
+            border-color: transparent;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.25);
+        }
+        @keyframes dcGatePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(108,66,240,0); }
+            40%      { box-shadow: 0 0 0 5px rgba(108,66,240,0.45); }
+        }
+        .dc-gate-highlight { animation: dcGatePulse 0.9s ease-in-out 2; border-radius: 14px; }
 
         /* ステータス切替 3ボタン (soft-fill) */
         .dc-status-btn {
@@ -5881,32 +5893,53 @@
                     ? `${season.month_key || ''} シーズン${season.hard_date === todayStr ? ' — レイド当日!' : '開催中'}${season.is_test ? ' 🧪' : ''}`
                     : 'シーズンはお休み中';
             }
-            let lead, why, cta;
+            // ヒーロー判定 (ホーム再構成 H2): 「今やるべき1アクションがあるとき」だけ黒カード。
+            //   当日 = 戦闘に入る / 準備期で未提出あり = 模擬提出。それ以外は白のまま
+            let lead, why, cta, hero = false, subLink = '';
             if (season && season.hard_date === todayStr) {
+                hero = true;
                 lead = '🔥 きょうはレイド当日!';
-                why = 'ボスの残HPと交戦状況を戦況タブで確認して、下の「戦闘」から凸を報告しましょう。配信プランが届いていれば、このすぐ下に自分の割当が出ています。';
-                cta = `<button onclick="switchTab('ops')" style="width:100%;border:none;border-radius:12px;padding:13px;font:inherit;font-size:13px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 5px 14px rgba(108,66,240,0.32);">⚔️ 戦況を見る</button>`;
+                why = '下の「戦闘」からボスを選んで凸開始。終わったらそのまま凸報告。配信プランが届いていれば、自分の割当は下の配信プランカードで確認できます。';
+                cta = `<button onclick="_heroGotoBattle()" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:13.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 5px 16px rgba(108,66,240,0.4);">⚔️ 戦闘に入る</button>`;
+                subLink = `<button onclick="switchTab('ops')" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:11.5px;font-weight:800;color:#C9CEFF;cursor:pointer;background:rgba(255,255,255,0.08);">👀 戦況を見る (ボス残HP・交戦状況)</button>`;
             } else if (season) {
                 const n = submitted ?? 0;
                 if (n >= 5) {
                     lead = '✅ 模擬 5属性 提出済み!';
                     why = 'レーダーが完成しています。模擬タブのユニオン事前比較で立ち位置を確認したり、編成を調整してさらに更新を狙えます。';
+                    cta = `<button onclick="switchTab('mock')" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;cursor:pointer;background:#F1F2F4;">🏆 みんなと見比べる</button>`;
                 } else {
+                    hero = true;   // 未提出が残る間だけ黒 (提出が済めば白に戻る = 行動要求の意味論)
                     lead = `📸 模擬の提出 あと${5 - n}属性`;
                     why = `現在 ${n}/5属性。提出するとレーダーが完成し、あなたの火力が凸プランの計算に正しく反映されます。スクショから30秒で提出できます。`;
+                    cta = `<button onclick="switchTab('mock')" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:13.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 5px 16px rgba(108,66,240,0.4);">📸 模擬タブで提出する</button>`;
                 }
-                cta = `<button onclick="switchTab('mock')" style="width:100%;border:none;border-radius:12px;padding:13px;font:inherit;font-size:13px;font-weight:900;color:#fff;cursor:pointer;background:#14161A;box-shadow:0 4px 12px rgba(20,22,26,0.25);">🧪 模擬タブへ</button>`;
             } else {
                 lead = '📊 シーズンはお休み中';
                 why = '前回の結果は分析タブで見られます。実績・ふるり値・編成分析でユニオンの振り返りをどうぞ。';
-                cta = `<button onclick="switchTab('ranking')" style="width:100%;border:none;border-radius:12px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;cursor:pointer;background:#F1F2F4;">📈 分析タブへ</button>`;
+                cta = `<button onclick="switchTab('ranking')" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;cursor:pointer;background:#F1F2F4;">📈 分析タブへ</button>`;
             }
             card.style.display = '';
+            card.classList.toggle('dc-hero', hero);
+            card.style.borderLeft = hero ? 'none' : '4px solid #6C42F0';   // 白バリアントだけ紫の左帯
+            const ink = hero ? '#fff' : '#14161A';
+            const sub = hero ? 'rgba(255,255,255,0.62)' : '#6B7178';
+            const label = hero ? '#A99CFF' : '#6C42F0';
             card.innerHTML = `
-                <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:#6C42F0;margin-bottom:6px;">📌 次にやること</div>
-                <div style="font-size:14px;font-weight:900;color:#14161A;line-height:1.5;margin-bottom:4px;">${lead}</div>
-                <div style="font-size:11.5px;color:#6B7178;line-height:1.65;margin-bottom:11px;">${why}</div>
-                ${cta}`;
+                <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:${label};margin-bottom:6px;">📌 次にやること</div>
+                <div style="font-size:${hero ? '15px' : '14px'};font-weight:900;color:${ink};line-height:1.5;margin-bottom:4px;">${lead}</div>
+                <div style="font-size:11.5px;color:${sub};line-height:1.65;margin-bottom:11px;">${why}</div>
+                ${cta}${subLink}`;
+        }
+
+        // ヒーローの主CTA: 戦闘カードのゲートへスクロールして一瞬ハイライト (H2)
+        function _heroGotoBattle() {
+            const gate = document.getElementById('mypageBattleGate');
+            if (!gate) return;
+            gate.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            gate.classList.remove('dc-gate-highlight');
+            // アニメ再発火のため1フレーム置いてから付け直す
+            requestAnimationFrame(() => requestAnimationFrame(() => gate.classList.add('dc-gate-highlight')));
         }
 
         // ========== 模擬タブ (Stage2 新設) ==========
