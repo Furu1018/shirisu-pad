@@ -200,6 +200,12 @@
             box-shadow: 0 10px 26px rgba(0,0,0,0.30);
             /* iOS Safari の fixed + backdrop-filter バグ回避の名残: 合成レイヤー固定は維持 */
             transform: translateZ(0);
+            transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        /* スクロール方向連動の自動隠し: 下スクロールで画面外へ、少し戻すと出現 (_initNavAutoHide) */
+        .bottom-nav.nav-hidden {
+            transform: translateY(calc(100% + 64px)) translateZ(0);   /* 🏠の張り出し+セーフエリアぶん余分に */
         }
         @media (max-width: 767px) {
             .bottom-nav { display: flex; }
@@ -5524,6 +5530,9 @@
                 //    (旧: window.switchTab のラッパでのみ実施 = 直接呼び出し経路では同期漏れの穴。
                 //     全遷移がここを通るようになったため controller 本体へ移動 — 監査 §4-5 不変条件8)
                 _syncBottomNavActive(tabName);
+                // タブ切替時はナビを必ず表示 + スクロール復元 (手順3/5のプログラムスクロール) で
+                // 自動隠しが誤発動しないよう squelch (自動隠しの実装は _navAuto 一式)
+                if (typeof _navShowNow === 'function') _navShowNow();
 
                 // 7) スワイプ除外漏れの監査を再スケジュール (動的生成された横スクロール要素を拾う)
                 if (typeof _scheduleNoSwipeAudit === 'function') _scheduleNoSwipeAudit();
@@ -16611,6 +16620,37 @@
         });
 
         // ========== Bottom Navigation (mobile) + 横スワイプ切替 ==========
+        // ===== 下部ナビの自動隠し (スクロール方向連動) =====
+        // 下へスクロール = 閲覧に集中 → ナビを画面外へ / 少し上へ戻す = 操作意図 → すぐ出す。
+        // 上端付近では常に表示。タブ切替のスクロール復元 (プログラム由来) では反応しないよう
+        // squelch 窓を設ける (TabController.activate が _navShowNow を呼ぶ)。
+        const _navAuto = { lastY: 0, acc: 0, hidden: false, squelchUntil: 0 };
+        function _navSetHidden(hide) {
+            if (_navAuto.hidden === hide) return;
+            _navAuto.hidden = hide;
+            document.getElementById('bottomNav')?.classList.toggle('nav-hidden', hide);
+        }
+        function _navShowNow() {
+            // タブ切替直後の復元スクロールで隠れないよう、しばらくスクロール判定を止めて表示に倒す
+            _navAuto.squelchUntil = Date.now() + 300;
+            _navAuto.acc = 0;
+            _navAuto.lastY = Math.max(0, window.scrollY || 0);
+            _navSetHidden(false);
+        }
+        window.addEventListener('scroll', () => {
+            const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+            if (Date.now() < _navAuto.squelchUntil) { _navAuto.lastY = y; return; }
+            const dy = y - _navAuto.lastY;
+            _navAuto.lastY = y;
+            if (y < 80) { _navAuto.acc = 0; _navSetHidden(false); return; }   // 上端付近は常に表示
+            if (dy === 0) return;
+            // 方向が変わったら蓄積をリセット。同方向の移動量がしきい値を超えたら切替 (ジッタ防止)
+            if ((dy > 0) !== (_navAuto.acc > 0)) _navAuto.acc = 0;
+            _navAuto.acc += dy;
+            if (_navAuto.acc > 28) _navSetHidden(true);          // 下へ28px超 → 隠す
+            else if (_navAuto.acc < -14) _navSetHidden(false);   // 上へ14px超 → 出す (出す方を軽く)
+        }, { passive: true });
+
         function _syncBottomNavActive(tabName) {
             const navTab = _navTabOf(tabName);   // slv-ranking など「分析」グループは ranking ボタンを点灯
             document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
