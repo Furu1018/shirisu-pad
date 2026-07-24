@@ -5931,12 +5931,14 @@
         // 5分キャッシュ — renderMyPage は高頻度なので毎回問い合わせない。設定変更時は
         // _invalidateSetupNeeds() で即無効化。判定失敗は「未了扱いにしない」(誤った黒要求を出さない)
         let _setupNeedsCache = null;
-        function _invalidateSetupNeeds() { _setupNeedsCache = null; }
+        let _setupNeedsGen = 0;   // 世代番号: 設定変更で進める — 先行フェッチの古い結果をキャッシュに書き戻させない (Codex指摘)
+        function _invalidateSetupNeeds() { _setupNeedsGen++; _setupNeedsCache = null; }
         async function _getMySetupNeeds(playerId) {
             const now = Date.now();
             if (_setupNeedsCache && _setupNeedsCache.pid === playerId && (now - _setupNeedsCache.ts) < 5 * 60 * 1000) {
                 return _setupNeedsCache;
             }
+            const gen = _setupNeedsGen;
             let needPush = false, needTime = false;
             try {
                 const st = await window.getPushSubscriptionStatus?.();
@@ -5948,8 +5950,9 @@
                 try { flex = !!(await window.supabaseLoadAvailabilityPrefs(playerId))?.flexTime; } catch { /* 18未適用環境 */ }
                 needTime = (slots || []).length === 0 && !flex;
             } catch { needTime = false; }
-            _setupNeedsCache = { pid: playerId, ts: now, needPush, needTime };
-            return _setupNeedsCache;
+            const result = { pid: playerId, ts: now, needPush, needTime };
+            if (gen === _setupNeedsGen) _setupNeedsCache = result;   // 取得中に無効化されたら保存しない (返り値は使い捨て)
+            return result;
         }
         async function renderMyNextAction(identity) {
             const card = document.getElementById('myNextActionCard');
