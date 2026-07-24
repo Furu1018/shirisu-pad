@@ -153,7 +153,8 @@ ARCHITECTURE-AUDIT.md のB案 (段階的モジュール分割) を1日で完走�
      新キャラは build-characters.mjs の未分類警告 → burst-map 追記で対応
    - 月次メンテ: レイド終了ごとに基準値更新が必要 (手順は shirisu-pad-global/README.md)
 3. Supabase Realtime 化 — ボスHP/凸/締め凸依頼のポーリングを購読に置き換え
-3. Material 残骸の細部統一 — 色はトークン再マップ済み。旧モーダルの形状のみ残り
+3. ~~Material 残骸の細部統一~~ → **色は 2026-07-24 に全廃完了** (d9031a6)。残るは旧Material
+   「形状」(細枠・ウェイト) が一部モーダルにあるのみ — 実機で気になった画面から都度磨く
 4. 通知既読のDB化 — 端末間で既読同期 (テーブル追加が必要)
 4. ダークモード対応 — **現状は未実装** (テーマ切替UI・data-theme 設定経路・prefers-color-scheme
    参照のいずれも存在しないことを 2026-07-24 に全ファイル grep で確認済み)。旧 Material の

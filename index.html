@@ -6802,60 +6802,6 @@
             }
         }
 
-        async function renderMyDamageInputs(identity) {
-            const el = document.getElementById('mypageDmgInputs');
-            if (!el || !identity) return;
-            el.innerHTML = '<p style="color:#6B7178;font-size:13px;">読み込み中...</p>';
-            let damages = [];
-            try {
-                damages = await window.supabaseLoadPlayerDamages(identity.id);
-            } catch (e) {
-                el.innerHTML = `<p style="color:#ef4444;font-size:13px;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
-                return;
-            }
-            const byAttr = new Map();
-            damages.forEach(d => byAttr.set(d.attribute, d));
-
-            // マスタキャッシュを事前ロードして編成にアイコン適用
-            await getNikkeCharsCache();
-
-            el.innerHTML = PT_ATTRS.map(a => {
-                const rec = byAttr.get(a.key);
-                const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : '';
-                const updated = rec?.updated_at ? formatDmgUpdatedAt(rec.updated_at) : '未登録';
-                const teamRaw = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
-                // 古い保存データを表示時にもファジィ解決 (ディーゼル:ウー → ディーゼル：ウィンタースイーツ 等)
-                const team = teamRaw.map(c => fuzzyResolveCharacter(c) || c);
-                const teamText = team.length > 0
-                    ? renderTeamSnippet(team, { size: 24 })
-                    : '<span style="color:rgba(20,22,26,0.08);">編成未登録</span>';
-                return `
-                    <div class="mydmg-row" data-row-attr="${a.key}" style="padding:8px 0;border-bottom:1px solid rgba(20,22,26,0.08);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;flex-shrink:0;">
-                            <div style="flex:1;min-width:0;">
-                                <div style="font-size:13px;font-weight:600;color:#14161A;">${a.name}PT <span style="font-size:11px;font-weight:400;color:#6B7178;">対 ${a.bossJP}</span></div>
-                                <div class="mydmg-updated" style="font-size:10px;color:#6B7178;">${updated}</div>
-                            </div>
-                            <input type="number" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5"
-                                data-attr="${a.key}" value="${val}"
-                                onblur="handleMyDamageBlur(this)"
-                                onkeydown="if(event.key==='Enter')this.blur()"
-                                style="width:90px;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;text-align:right;">
-                            <span style="font-size:12px;color:#6B7178;">B</span>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding-left:34px;">
-                            <span style="font-size:10px;color:#6B7178;flex-shrink:0;">編成:</span>
-                            <span style="flex:1;min-width:0;font-size:11px;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${team.length > 0 ? team.map(escapeHtml).join('、') : '編成未登録'}">${teamText}</span>
-                            <button onclick="handleMyTeamEdit('${a.key}')" style="padding:3px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:10px;cursor:pointer;">✏️ 編集</button>
-                        </div>
-                    </div>`;
-            }).join('');
-
-            // レーダーチャートも同時に更新
-            renderMyFururiRadar(identity, damages);
-        }
-
         // 編成編集モーダル (slot: 1=メイン編成 / 2=同属性2凸用の2編成目)
         let _myTeamEditAttr = null;
         let _myTeamEditSlot = 1;
