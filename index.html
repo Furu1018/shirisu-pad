@@ -2027,6 +2027,19 @@
         }
         .dc-gate-highlight { animation: dcGatePulse 0.9s ease-in-out 2; border-radius: 14px; }
 
+        /* タップの「ぽよん」フィードバック (ゲームアプリ風 — ユーザー要望 2026-07-24)。
+           押せる要素にグローバルで付与 (_initTapPoyon)。transform を持つ要素とは
+           アニメ中だけ競合するが復帰値は scale(1) なので実害なし。
+           除外したい要素には data-no-poyon を付ける */
+        @keyframes dcPoyon {
+            0%   { transform: scale(1); }
+            35%  { transform: scale(0.93); }
+            70%  { transform: scale(1.04); }
+            100% { transform: scale(1); }
+        }
+        .dc-poyon { animation: dcPoyon 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @media (prefers-reduced-motion: reduce) { .dc-poyon { animation: none; } }
+
         /* ステータス切替 3ボタン (soft-fill) */
         .dc-status-btn {
             flex: 1; display: flex; align-items: center; justify-content: center;
@@ -4638,7 +4651,8 @@
             <div id="myTeamEditPopular" style="display:none;padding:10px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);"></div>
 
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+                <button onclick="handleMyTeamEditDeleteCurrent()" title="表示中の編成の提出 (ダメージ+編成) を削除" style="margin-right:auto;padding:9px 13px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.4);background:#fff;color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑 削除</button>
                 <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:10px;border:none;background:#F1F2F4;color:#14161A;font-size:12.5px;font-weight:800;cursor:pointer;">キャンセル</button>
                 <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 10px rgba(20,22,26,0.24);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
@@ -6862,15 +6876,34 @@
             handleMyTeamEdit(_myTeamEditAttr, slot);
         }
         async function handleMyTeamEditDeleteSlot2() {
+            return _deleteMyTeamEditSlot(2);
+        }
+        // 表示中の編成 (① or ②) を削除 — 編成編集モーダル下部の 🗑 から (ユーザー要望 2026-07-24)
+        async function handleMyTeamEditDeleteCurrent() {
+            return _deleteMyTeamEditSlot(_myTeamEditSlot === 2 ? 2 : 1);
+        }
+        async function _deleteMyTeamEditSlot(slot) {
             const id = getCurrentIdentity();
             if (!id?.id || !_myTeamEditAttr) return;
-            if (!confirm('編成② (2編成目) を削除しますか？')) return;
+            const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
+            let hasSlot2 = false;
             try {
-                await window.supabaseDeletePlayerDamageSlot(id.id, _myTeamEditAttr, 2);
+                const dmgs = await window.supabaseLoadPlayerDamages(id.id);
+                hasSlot2 = (dmgs || []).some(d => d.attribute === _myTeamEditAttr && (d.slot || 1) === 2);
+            } catch { /* noop — 確認文言の補足が出ないだけ */ }
+            const note = (slot === 1 && hasSlot2) ? '\n(編成②は②のまま残ります)' : '';
+            if (!confirm(`${ptName}PT 編成${slot === 2 ? '②' : '①'}を削除しますか？\nダメージと編成キャラの提出が消えます。${note}`)) return;
+            try {
+                await window.supabaseDeletePlayerDamageSlot(id.id, _myTeamEditAttr, slot);
+                window.supabaseLogActivity?.('mock_delete', `${ptName}PT 模擬 編成${slot === 2 ? '②' : '①'}を削除`, { playerId: id.id });
                 opsStore.invalidate();
                 _myDmgPanelSlots[_myTeamEditAttr] = 1;
                 await renderMyDamagePanels(id);
-                handleMyTeamEdit(_myTeamEditAttr, 1);
+                // 属性にまだ編成が残っていればモーダルを開き直し、空になったら閉じる
+                const rest = await window.supabaseLoadPlayerDamages(id.id);
+                const remain = (rest || []).some(d => d.attribute === _myTeamEditAttr && Number(d.damage_b) > 0);
+                if (remain) handleMyTeamEdit(_myTeamEditAttr, 1);
+                else { closeMyTeamEditModal(); showNotification(`🗑 ${ptName}PT の提出を削除しました`); }
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             }
@@ -16696,6 +16729,22 @@
         });
 
         // ========== Bottom Navigation (mobile) + 横スワイプ切替 ==========
+        // ===== タップの「ぽよん」フィードバック (ゲームアプリ風) =====
+        // 押せる要素 (ボタン・ボスタイル・チップ・data-action・行アイテム) を pointerdown で
+        // 拾って dcPoyon アニメを付ける。capture + passive でタップ判定に干渉しない。
+        // 除外は data-no-poyon (要素または祖先)。
+        const _POYON_SEL = 'button:not(:disabled), .dc-boss-tile, .dc-nav-chip, [data-action], .drawer-menu-item, .attribute-tab-btn, label.btn-nikke';
+        document.addEventListener('pointerdown', (e) => {
+            const el = e.target.closest?.(_POYON_SEL);
+            if (!el || el.closest('[data-no-poyon]')) return;
+            el.classList.remove('dc-poyon');
+            void el.offsetWidth;   // reflow を挟んで連打でもアニメを再発火させる
+            el.classList.add('dc-poyon');
+        }, { passive: true, capture: true });
+        document.addEventListener('animationend', (e) => {
+            if (e.animationName === 'dcPoyon') e.target.classList.remove('dc-poyon');
+        }, true);
+
         // ===== 下部ナビの自動隠し (スクロール方向連動) =====
         // 下へスクロール = 閲覧に集中 → ナビを画面外へ / 少し上へ戻す = 操作意図 → すぐ出す。
         // 上端付近では常に表示。タブ切替のスクロール復元 (プログラム由来) では反応しないよう
