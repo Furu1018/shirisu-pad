@@ -179,94 +179,70 @@
         @media (max-width: 767px) {
             .hamburger-btn { display: none; }   /* モバイルでは下メニューに統一 */
             .pc-only { display: none !important; }
-            body { padding-bottom: 68px; }       /* 下メニューぶんの余白 */
+            body { padding-bottom: 112px; }      /* 浮きナビ + センター🏠の張り出しぶんの余白 */
         }
 
-        /* ========== Bottom Navigation (mobile) ========== */
+        /* ========== Bottom Navigation (mobile) — HomeMind 黒ブロブ (2026-07-24 基調刷新) ==========
+           黒いピル型の浮きナビ + 丸ボタン。選択中だけアクセント紫の丸 = 全ボタン同一の色ルール。
+           ラベルは持たない (HomeMind 準拠 / aria-label・title で代替)。
+           ⚠ ナビの並び順を変えるときは TAB_REGISTRY の定義順 (=スワイプ隣接順) も揃えること */
         .bottom-nav {
             display: none;
             position: fixed;
-            left: 0; right: 0; bottom: 0;
+            left: 12px; right: 12px;
+            bottom: calc(env(safe-area-inset-bottom, 12px) + 10px);
             z-index: 90;
-            border-top: 1px solid rgba(20,22,26,0.06);
-            padding: 10px 8px calc(env(safe-area-inset-bottom, 20px) + 8px);
-            gap: 2px;
-            /* iOS Safari: fixed 要素に直接 backdrop-filter を付けると
-               リロード直後などにスクロールへ追従してしまう既知バグがあるため、
-               ブラーは ::before の別レイヤーに分離し、自身は合成レイヤーに固定する */
+            background: #101114;
+            border-radius: 999px;
+            align-items: center;
+            justify-content: space-around;
+            padding: 7px 10px;
+            box-shadow: 0 10px 26px rgba(0,0,0,0.30);
+            /* iOS Safari の fixed + backdrop-filter バグ回避の名残: 合成レイヤー固定は維持 */
             transform: translateZ(0);
-        }
-        .bottom-nav::before {
-            content: '';
-            position: absolute; inset: 0;
-            z-index: -1;
-            /* backdrop-filter は iOS Safari で fixed 要素がスクロールに追従する
-               バグの引き金になるため使用しない (ほぼ不透過の白で代替) */
-            background: rgba(255,255,255,0.97);
         }
         @media (max-width: 767px) {
             .bottom-nav { display: flex; }
         }
         .bottom-nav-btn {
-            flex: 1;
-            min-width: 0;
+            flex: none;
             background: transparent;
             border: none;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
             cursor: pointer;
-            color: #9AA0A6;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-            line-height: 1;
-            transition: color 0.18s ease;
+            color: #fff;
             -webkit-tap-highlight-color: transparent;
-            white-space: nowrap;
         }
-        /* アイコンを包むピル枠 (アクティブ時は黒塗り + 浮きシャドウ) */
         .bottom-nav-btn .nav-icon-wrap {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 52px; height: 32px;
-            border-radius: 999px;
-            background: transparent;
-            color: #9AA0A6;
-            transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            background: #1D1E23;
+            color: #fff;
+            transition: background 0.15s ease, box-shadow 0.15s ease;
         }
-        .bottom-nav-btn svg { width: 22px; height: 22px; stroke-width: 2; }
-        .bottom-nav-btn:hover .nav-icon-wrap { background: rgba(20,22,26,0.06); color: #14161A; }
-
-        /* ===== アクティブ状態 (iOS / M3 風 黒塗りピル) ===== */
-        .bottom-nav-btn.active { color: #14161A; font-weight: 800; }
+        .bottom-nav-btn svg { width: 21px; height: 21px; stroke-width: 2; }
+        .bottom-nav-btn:hover .nav-icon-wrap { background: #2A2B31; }
         .bottom-nav-btn.active .nav-icon-wrap {
-            background: #14161A;
+            background: #6C42F0;
             color: #ffffff;
-            box-shadow: 0 6px 14px rgba(20,22,26,0.28);
+            box-shadow: 0 4px 14px rgba(108,66,240,0.42);
         }
-
-        /* ===== センターホーム (常時浮かせた黒丸 — よくあるアプリのセンターボタン型) =====
-           並びは 模擬·戦況·[ホーム]·分析·設定。アクティブ時は青グラデで「今ホーム」を示す。
-           ⚠ ナビの並び順を変えるときは TAB_REGISTRY の定義順 (=スワイプ隣接順) も揃えること */
-        /* 色の意味は他ボタンと同じ「選択=黒/非選択=無彩色」に統一 (実機フィードバック:
-           ホームだけ 非選択=黒/選択=青 だと意味が逆転して分かりにくい) */
+        /* センターホーム: 浮き大丸。idle黒/選択アクセント = 他ボタンと同じ色ルール */
         .bottom-nav-btn.nav-home .nav-icon-wrap {
-            width: 54px; height: 54px; border-radius: 50%;
-            background: #fff; color: #8A9097;
+            width: 60px; height: 60px;
             margin-top: -26px;                 /* ナビ上端から浮かせる */
-            border: 1.5px solid #E3E5E8;
-            box-shadow: 0 4px 12px rgba(20,22,26,0.14);
+            background: #101114;
+            border: 4px solid #F5F6F8;         /* 背景と切るリング */
+            box-shadow: 0 6px 16px rgba(0,0,0,0.28);
         }
-        .bottom-nav-btn.nav-home svg { width: 25px; height: 25px; }
-        .bottom-nav-btn.nav-home:hover .nav-icon-wrap { background: #fff; color: #14161A; }
+        .bottom-nav-btn.nav-home svg { width: 26px; height: 26px; }
+        .bottom-nav-btn.nav-home:hover .nav-icon-wrap { background: #1D1E23; }
         .bottom-nav-btn.nav-home.active .nav-icon-wrap {
-            background: #14161A; color: #fff;
-            border-color: #fff;
-            box-shadow: 0 6px 16px rgba(20,22,26,0.32);
+            background: #6C42F0;
+            box-shadow: 0 6px 18px rgba(108,66,240,0.45);
         }
 
         /* タブ切替のフェード (横スワイプ補助) */
@@ -17202,25 +17178,20 @@
 
     <!-- ========== Bottom Navigation (mobile) ========== -->
     <nav class="bottom-nav" id="bottomNav">
-        <button class="bottom-nav-btn" data-tab="mock" onclick="switchTab('mock')">
+        <button class="bottom-nav-btn" data-tab="mock" onclick="switchTab('mock')" aria-label="模擬" title="模擬">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg></span>
-            <span>模擬</span>
         </button>
-        <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')">
+        <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')" aria-label="戦況" title="戦況">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span>
-            <span>戦況</span>
         </button>
         <button class="bottom-nav-btn nav-home active" data-tab="mypage" onclick="switchTab('mypage')" aria-label="ホーム">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-5h-4v5H5a1 1 0 0 1-1-1z"/></svg></span>
-            <span>ホーム</span>
         </button>
-        <button class="bottom-nav-btn" data-tab="ranking" onclick="switchTab('ranking')">
+        <button class="bottom-nav-btn" data-tab="ranking" onclick="switchTab('ranking')" aria-label="分析" title="分析">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>
-            <span>分析</span>
         </button>
-        <button class="bottom-nav-btn" data-tab="settings" onclick="switchTab('settings')">
+        <button class="bottom-nav-btn" data-tab="settings" onclick="switchTab('settings')" aria-label="設定" title="設定">
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
-            <span>設定</span>
         </button>
     </nav>
 </body>
