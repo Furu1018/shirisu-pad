@@ -5900,29 +5900,81 @@
             }
         }
 
-        // ---- 📌 次にやること (Stage2 ホーム化) ----
-        // 時期依存の主行動を1件だけ出す誘導カード。判定はシーズン状態から:
-        //   アクティブ + hard_date=今日 → 当日 (戦況へ) / アクティブ → 準備期 (模擬提出の進捗) /
-        //   なし → 事後 (分析へ)。重い盤面は読まず seasonStore + 自分の提出だけで判定する。
+        // ---- 📌 次にやること (Stage2 ホーム化 / 2026-07-24 v2: 状態マシン精査) ----
+        // 「黒カード = 今やるべき行動要求 (常に1件だけ)」の優先チェーン:
+        //   当日残凸 > 前日部隊不足 > 模擬ゼロ/部隊不足 > 🔔通知未設定 > ⏰時間未登録 > 白の案内。
+        // 模擬の要求はゲームの実要件ベース: 3凸 = キャラ被りなしの3部隊 (属性数5は任意の上乗せ)。
         // 凸割当の詳細は配信プランカード (renderMyPublishedPlan) の役割 — ここでは重複させない。
         let _nextActionSeq = 0;
+
+        // 被りなしで選べる部隊数の最大 (0〜3で十分)。編成キャラ未登録の部隊は被りなし扱い
+        // (緩い側に倒す — ユーザー決定 2026-07-24)。squads: [{attr, chars[]}] (正規化済みキャラ名)
+        function _maxDisjointSquads(squads) {
+            const n = squads.length;
+            if (n === 0) return 0;
+            const compat = (a, b) => a.chars.length === 0 || b.chars.length === 0
+                || !a.chars.some(c => b.chars.includes(c));
+            let best = 1;
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    if (!compat(squads[i], squads[j])) continue;
+                    best = Math.max(best, 2);
+                    for (let k = j + 1; k < n; k++) {
+                        if (compat(squads[i], squads[k]) && compat(squads[j], squads[k])) return 3;
+                    }
+                }
+            }
+            return best;
+        }
+
+        // セットアップ未了の判定 (S1: Push購読なし / S2: 戦闘可能時間未登録)。
+        // 5分キャッシュ — renderMyPage は高頻度なので毎回問い合わせない。設定変更時は
+        // _invalidateSetupNeeds() で即無効化。判定失敗は「未了扱いにしない」(誤った黒要求を出さない)
+        let _setupNeedsCache = null;
+        function _invalidateSetupNeeds() { _setupNeedsCache = null; }
+        async function _getMySetupNeeds(playerId) {
+            const now = Date.now();
+            if (_setupNeedsCache && _setupNeedsCache.pid === playerId && (now - _setupNeedsCache.ts) < 5 * 60 * 1000) {
+                return _setupNeedsCache;
+            }
+            let needPush = false, needTime = false;
+            try {
+                const st = await window.getPushSubscriptionStatus?.();
+                needPush = !!(st && st.supported && st.vapidConfigured && !st.subscribed);
+            } catch { /* 判定不能なら促さない */ }
+            try {
+                const slots = await window.supabaseLoadAvailability(playerId);
+                let flex = false;
+                try { flex = !!(await window.supabaseLoadAvailabilityPrefs(playerId))?.flexTime; } catch { /* 18未適用環境 */ }
+                needTime = (slots || []).length === 0 && !flex;
+            } catch { needTime = false; }
+            _setupNeedsCache = { pid: playerId, ts: now, needPush, needTime };
+            return _setupNeedsCache;
+        }
         async function renderMyNextAction(identity) {
             const card = document.getElementById('myNextActionCard');
             if (!card) return;
             const seq = ++_nextActionSeq;
             if (!identity?.id) { card.style.display = 'none'; return; }
-            let season = null, submitted = null;
+            let season = null, squads = [], attrs = 0;
             try {
                 const ctx = await seasonStore.ensure();
                 season = ctx?.season || null;
                 if (season && typeof window.supabaseLoadPlayerDamages === 'function') {
                     const rows = await window.supabaseLoadPlayerDamages(identity.id);
-                    submitted = new Set((rows || []).filter(r => Number(r.damage_b) > 0).map(r => r.attribute)).size;
+                    squads = (rows || []).filter(r => Number(r.damage_b) > 0).map(r => ({
+                        attr: r.attribute,
+                        chars: (Array.isArray(r.characters) ? r.characters : []).filter(Boolean)
+                            .map(c => (typeof fuzzyResolveCharacter === 'function' && fuzzyResolveCharacter(c)) || c),
+                    }));
+                    attrs = new Set(squads.map(s => s.attr)).size;
                 }
             } catch (e) { console.warn('[次にやること] 読込失敗:', e?.message || e); }
             if (seq !== _nextActionSeq) return;
+            const fmtDate = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
             const d = new Date();
-            const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const todayStr = fmtDate(d);
+            const tomorrowStr = fmtDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
             // ページヘッダーのサブタイトルも季節状態で更新 (ヘッダーは他タブとの統一感のための静的枠)
             const subEl = document.getElementById('homePageSubtitle');
             if (subEl) {
@@ -5930,31 +5982,98 @@
                     ? `${season.month_key || ''} シーズン${season.hard_date === todayStr ? ' — レイド当日!' : '開催中'}${season.is_test ? ' 🧪' : ''}`
                     : 'シーズンはお休み中';
             }
-            // ヒーロー判定 (ホーム再構成 H2): 「今やるべき1アクションがあるとき」だけ黒カード。
-            //   当日 = 戦闘に入る / 準備期で未提出あり = 模擬提出。それ以外は白のまま
+            // ---- 状態マシン (承認済みプラン 2026-07-24 の状態表 A/B/C/D + S) ----
+            // 黒 (hero) = 行動要求は常に1件だけ。CTA部品:
+            const heroBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:13.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 5px 16px rgba(108,66,240,0.4);">${label}</button>`;
+            const softBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;cursor:pointer;background:#F1F2F4;">${label}</button>`;
+            const heroSub = (onclick, label) => `<button onclick="${onclick}" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:11.5px;font-weight:800;color:#C9CEFF;cursor:pointer;background:rgba(255,255,255,0.08);">${label}</button>`;
+
+            const maxPick = _maxDisjointSquads(squads);
+            const canForm3 = maxPick >= 3;
+            const lack = 3 - maxPick;   // 3凸に足りない部隊数
             let lead, why, cta, hero = false, subLink = '';
+
             if (season && season.hard_date === todayStr) {
+                // A: 当日 — 凸の消化状況を反映 (キャッシュ優先・無ければ取得)
+                let atkCount = null;
+                try {
+                    let atks = _myTodayAttacksCache;
+                    if (!Array.isArray(atks) && typeof window.supabaseLoadMyAttacks === 'function') {
+                        atks = await window.supabaseLoadMyAttacks(identity.id, season.id, season.hard_date);
+                        _myTodayAttacksCache = atks;
+                    }
+                    if (Array.isArray(atks)) atkCount = atks.length;
+                } catch { /* 不明なら残凸ありとして扱う */ }
+                if (seq !== _nextActionSeq) return;
+                if (atkCount != null && atkCount >= 3) {
+                    // A2: 全凸消化
+                    lead = '✅ 3凸おつかれさまでした!';
+                    why = 'きょうの凸はすべて消化済みです。結果はレイド終了後の集計で分析タブに反映されます。';
+                    cta = softBtn("switchTab('ops')", '👀 戦況を見る');
+                } else {
+                    // A1: 残凸あり
+                    hero = true;
+                    lead = atkCount != null ? `🔥 レイド当日! 残り${3 - atkCount}凸` : '🔥 きょうはレイド当日!';
+                    why = '下の「戦闘」からボスを選んで凸開始。終わったらそのまま凸報告。自分の割当は下の配信プランカードで確認できます。';
+                    cta = heroBtn('_heroGotoBattle()', '⚔️ 戦闘に入る');
+                    subLink = heroSub("switchTab('ops')", '👀 戦況を見る (ボス残HP・交戦状況)');
+                }
+            } else if (season && !canForm3 && season.hard_date === tomorrowStr) {
+                // B1: 前日・部隊不足 (前日でも模擬は可能 — ユーザー決定)
                 hero = true;
-                lead = '🔥 きょうはレイド当日!';
-                why = '下の「戦闘」からボスを選んで凸開始。終わったらそのまま凸報告。配信プランが届いていれば、自分の割当は下の配信プランカードで確認できます。';
-                cta = `<button onclick="_heroGotoBattle()" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:13.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 5px 16px rgba(108,66,240,0.4);">⚔️ 戦闘に入る</button>`;
-                subLink = `<button onclick="switchTab('ops')" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:11.5px;font-weight:800;color:#C9CEFF;cursor:pointer;background:rgba(255,255,255,0.08);">👀 戦況を見る (ボス残HP・交戦状況)</button>`;
-            } else if (season) {
-                const n = submitted ?? 0;
-                if (n >= 5) {
+                lead = `⏰ 明日が本番! 部隊があと${lack}つ足りません`;
+                why = `本番は3回凸でき、同じキャラは1日1回まで。いまの提出ではキャラ被りなしで${maxPick}部隊しか組めません。模擬をあと${lack}部隊ぶん提出しておきましょう。`;
+                cta = heroBtn("switchTab('mock')", '📸 模擬タブで提出する');
+            } else if (season && squads.length === 0) {
+                // C0: 提出ゼロ
+                hero = true;
+                lead = '📸 模擬を提出しよう';
+                why = '模擬戦のスクショから30秒で提出できます。提出するとあなたの火力が凸プランの計算に反映され、当日の割当が正確になります。';
+                cta = heroBtn("switchTab('mock')", '📸 模擬タブで提出する');
+            } else if (season && !canForm3) {
+                // C1: 部隊不足
+                hero = true;
+                lead = `📸 3凸ぶんの部隊があと${lack}つ`;
+                why = `本番は3回凸でき、同じキャラは1日1回まで。いまの提出ではキャラ被りなしで${maxPick}部隊 — 別のキャラで組んだ部隊をあと${lack}つ提出しましょう (同じ属性の2編成目でもOK)。`;
+                cta = heroBtn("switchTab('mock')", '📸 模擬タブで提出する');
+            } else {
+                // 模擬・当日の黒要求なし → セットアップ促進 (S1/S2) を挟む (新メンバー案内)
+                let setup = null;
+                try { setup = await _getMySetupNeeds(identity.id); } catch { setup = null; }
+                if (seq !== _nextActionSeq) return;
+                if (setup?.needPush) {
+                    // S1: 通知未設定
+                    hero = true;
+                    lead = '🔔 通知を設定しよう';
+                    why = '凸プランの配信・締め凸依頼・レベル開放などの連絡が届くようになります。iPhone は先に「ホーム画面に追加」でアプリ化してから設定してください。';
+                    cta = heroBtn('openMyPushModal()', '🔔 通知を設定する');
+                } else if (setup?.needTime) {
+                    // S2: 戦闘可能時間 未登録
+                    hero = true;
+                    lead = '⏰ 戦闘できる時間帯を教えてください';
+                    why = 'レイド当日にあなたが動ける時間帯です。凸プランの割当と通知のタイミングに使われます。読めない人は「⏳隙間時間型」を選べばOK。';
+                    cta = heroBtn('openMyAvailModal()', '⏰ 時間帯を登録する');
+                } else if (season && season.hard_date === tomorrowStr) {
+                    // B2: 前日・準備OK
+                    lead = '⏰ 明日が本番です';
+                    why = `凸に使う部隊は揃っています (被りなし3部隊OK・${attrs}属性提出済み)。属性を足すと当日プランの選択肢がさらに増えます。`;
+                    cta = softBtn("switchTab('mock')", '🏆 模擬タブで最終確認');
+                } else if (season && attrs >= 5) {
+                    // C3: 5属性コンプ
                     lead = '✅ 模擬 5属性 提出済み!';
                     why = 'レーダーが完成しています。模擬タブのユニオン事前比較で立ち位置を確認したり、編成を調整してさらに更新を狙えます。';
-                    cta = `<button onclick="switchTab('mock')" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;cursor:pointer;background:#F1F2F4;">🏆 みんなと見比べる</button>`;
+                    cta = softBtn("switchTab('mock')", '🏆 みんなと見比べる');
+                } else if (season) {
+                    // C2: 3部隊OK・5属性未満 — 要求は解除し、上乗せは軽い案内に留める
+                    lead = '✅ 凸に必要な部隊は揃いました!';
+                    why = `キャラ被りなしで3部隊組めるので本番の3凸はOKです (いま${attrs}属性)。属性を足すと凸プランの選択肢が増え、5属性提出でレーダーが完成します。`;
+                    cta = softBtn("switchTab('mock')", '🏆 模擬タブを見る');
                 } else {
-                    hero = true;   // 未提出が残る間だけ黒 (提出が済めば白に戻る = 行動要求の意味論)
-                    lead = `📸 模擬の提出 あと${5 - n}属性`;
-                    why = `現在 ${n}/5属性。提出するとレーダーが完成し、あなたの火力が凸プランの計算に正しく反映されます。スクショから30秒で提出できます。`;
-                    cta = `<button onclick="switchTab('mock')" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:13.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 5px 16px rgba(108,66,240,0.4);">📸 模擬タブで提出する</button>`;
+                    // D: シーズンなし
+                    lead = '📊 シーズンはお休み中';
+                    why = '前回の結果は分析タブで見られます。実績・ふるり値・編成分析でユニオンの振り返りをどうぞ。';
+                    cta = softBtn("switchTab('ranking')", '📈 分析タブへ');
                 }
-            } else {
-                lead = '📊 シーズンはお休み中';
-                why = '前回の結果は分析タブで見られます。実績・ふるり値・編成分析でユニオンの振り返りをどうぞ。';
-                cta = `<button onclick="switchTab('ranking')" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;cursor:pointer;background:#F1F2F4;">📈 分析タブへ</button>`;
             }
             card.style.display = '';
             card.classList.toggle('dc-hero', hero);
@@ -6665,6 +6784,7 @@
             try {
                 await window.supabaseUpdateAvailabilityPrefs(id.id, { flexTime, notifyAllHours });
                 opsStore.invalidate();   // プラン算出に即反映
+                _invalidateSetupNeeds(); renderMyNextAction(id);   // ⏳隙間型ONでS2解除に追随
                 if (msg) { msg.style.color = '#18C26B'; msg.textContent = '✅ 設定を保存しました'; }
             } catch (e) {
                 if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
@@ -8634,6 +8754,7 @@
             _availUI.saving = true;
             try {
                 await window.supabaseSaveAvailability(id.id, slots);
+                _invalidateSetupNeeds(); renderMyNextAction(id);   // 📌次にやることのS2を即解除
                 if (msgEl) {
                     msgEl.style.color = slots.length === 0 ? '#f59e0b' : '#22c55e';
                     msgEl.textContent = slots.length === 0
@@ -9180,6 +9301,7 @@
                 msg.textContent = '✅ Push通知を有効化しました';
                 msg.style.color = '#22c55e';
                 await renderMyPushSettings(id);
+                _invalidateSetupNeeds(); renderMyNextAction(id);   // 📌次にやることのS1を即解除
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
                 msg.style.color = '#ef4444';
