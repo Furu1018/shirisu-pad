@@ -2620,15 +2620,6 @@
                 <p id="mypageStatusHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;">プレイヤーを選択してください。</p>
             </div>
 
-            <!-- 📤 配信された凸プラン (運営が配信したときだけ表示) -->
-            <div class="dc-card" id="myPublishedPlanCard" style="display:none;">
-                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="inbox" data-sp-size="15"></span> 配信された凸プラン</div>
-                    <span id="myPublishedPlanMeta" style="font-size:10px;font-weight:700;color:#A4AAB0;"></span>
-                </div>
-                <div id="myPublishedPlanBody"></div>
-            </div>
-
             <!-- アバター編集モーダル -->
             <div class="player-select-modal" id="avatarEditModal">
                 <div class="player-select-content" style="max-width:480px;">
@@ -2653,6 +2644,10 @@
                 </div>
             </div>
 
+            <!-- 🤝 締め凸依頼バナー (来ているときだけの割込み — ホーム再構成 H1 で戦闘カード内から独立。
+                 ID は focus=finishreq の誘導先なので変更禁止) -->
+            <div id="myFinishRequestArea"></div>
+
             <!-- 📌 次にやること (Stage2 ホーム化: 時期依存の主行動を1件だけ提示。詳細は renderMyNextAction) -->
             <div class="dc-card" id="myNextActionCard" style="display:none;border-left:4px solid #6C42F0;"></div>
 
@@ -2666,7 +2661,6 @@
                 </div>
 
                 <!-- NIKKE風 戦闘に入る ゲート (赤) -->
-                <div id="myFinishRequestArea"></div>
                 <div id="mypageBattleGate" onclick="enterBattleGate()" class="btn-nikke btn-nikke-red">
                     <div class="btn-nikke-inner">
                         <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
@@ -2709,6 +2703,16 @@
                     </div>
                     <button id="myAttackAddBtn" onclick="openMyAttackModal()" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;border:1px dashed rgba(20,22,26,0.15);background:transparent;color:#6B7178;font-size:12px;font-weight:700;cursor:pointer;">＋ 手動で凸を報告</button>
                 </div>
+            </div>
+
+            <!-- 📤 配信された凸プラン (運営が配信したときだけ表示 — ホーム再構成 H1 で主行動群の下へ降格。
+                 遅延ロードのレイアウトシフトが主行動を押し下げない位置) -->
+            <div class="dc-card" id="myPublishedPlanCard" style="display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="inbox" data-sp-size="15"></span> 配信された凸プラン</div>
+                    <span id="myPublishedPlanMeta" style="font-size:10px;font-weight:700;color:#A4AAB0;"></span>
+                </div>
+                <div id="myPublishedPlanBody"></div>
             </div>
 
             <!-- ④ 受け取った通知 -->
