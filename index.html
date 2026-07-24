@@ -2042,6 +2042,22 @@
         .dc-poyon { animation: dcPoyon 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @media (prefers-reduced-motion: reduce) { .dc-poyon { animation: none; } }
 
+        /* タップ地点の波紋 (リップル — ユーザー要望 2026-07-24)。画面のどこをタップしても
+           指の位置からグレーの円がふわっと広がって消える。pointer-events:none で操作に非干渉 */
+        .dc-tap-ripple {
+            position: fixed; left: 0; top: 0;
+            width: 38px; height: 38px; margin: -19px 0 0 -19px;
+            border-radius: 50%;
+            background: rgba(20,22,26,0.12);
+            pointer-events: none;
+            z-index: 99999;
+            animation: dcTapRipple 0.45s ease-out forwards;
+        }
+        @keyframes dcTapRipple {
+            0%   { transform: scale(0.35); opacity: 0.6; }
+            100% { transform: scale(2.2);  opacity: 0; }
+        }
+
         /* ステータス切替 3ボタン (soft-fill) */
         .dc-status-btn {
             flex: 1; display: flex; align-items: center; justify-content: center;
@@ -16752,6 +16768,21 @@
         document.addEventListener('animationend', (e) => {
             if (e.animationName === 'dcPoyon') e.target.classList.remove('dc-poyon');
         }, true);
+
+        // ===== タップ地点の波紋 (リップル) =====
+        // どこをタップしても指の位置から波紋。要素に紐づかないオーバーレイ方式なので
+        // レイアウト・クリック判定に一切干渉しない。多点タッチもポインタごとに発生
+        document.addEventListener('pointerdown', (e) => {
+            if (_poyonReduced.matches) return;
+            if (!e.isTrusted) return;
+            const r = document.createElement('span');
+            r.className = 'dc-tap-ripple';
+            r.style.left = e.clientX + 'px';
+            r.style.top = e.clientY + 'px';
+            document.body.appendChild(r);
+            r.addEventListener('animationend', () => r.remove(), { once: true });
+            setTimeout(() => r.remove(), 700);   // animationend が来ない環境の保険
+        }, { passive: true, capture: true });
 
         // ===== 下部ナビの自動隠し (スクロール方向連動) =====
         // 下へスクロール = 閲覧に集中 → ナビを画面外へ / 少し上へ戻す = 操作意図 → すぐ出す。
