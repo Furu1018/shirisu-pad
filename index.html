@@ -2101,6 +2101,18 @@
         .dc-dmg-panel:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
         .dc-dmg-panel:active { transform: translateY(0); }
         .dc-dmg-panel.saved { animation: dcSavePulse 1.2s ease-out; }
+        .dc-dmg-name { color: #14161A; }      /* 色はクラス側で持つ (submitted の反転が inline に勝てるように) */
+        .dc-dmg-bossnum { color: #A4AAB0; }
+        /* HomeMind基調 B4b (2026-07-25): 提出済み=黒カード (ON状態の対比 — 交戦中ボスカードと同じ意味論)。
+           未提出パネルは白のまま = 「まだ」が一目で分かる */
+        .dc-dmg-panel.submitted { background: #101114; border-color: transparent; }
+        .dc-dmg-panel.submitted:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.28); }
+        .dc-dmg-panel.submitted .dc-dmg-value { color: #fff; }
+        .dc-dmg-panel.submitted .dc-dmg-unit { color: rgba(255,255,255,0.45); }
+        .dc-dmg-panel.submitted .dc-dmg-name { color: #fff; }
+        .dc-dmg-panel.submitted .dc-dmg-bossnum { color: rgba(255,255,255,0.5); }
+        .dc-dmg-panel.submitted .dc-dmg-char { background: #1D1E23; color: #9AA0A6; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); }
+        .dc-dmg-panel.submitted .dc-dmg-char.empty { background: #1D1E23; color: #5A6068; }
         .dc-dmg-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
@@ -6945,7 +6957,7 @@
                     ? `<div class="dc-dmg-slotbadge" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="編成①⇄②を入れ替え">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${hasVal ? ' submitted' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
@@ -6955,7 +6967,7 @@
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
                                 : `<div class="dc-dmg-value empty">—</div>`}
                         </div>
-                        <div style="font-size:13px;font-weight:900;color:#14161A;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${a.bossNumber ? ` <span style="font-size:9px;font-weight:800;color:#A4AAB0;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}</div>
+                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}</div>
                         <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
             }).join('');
