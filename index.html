@@ -1556,6 +1556,7 @@
         @keyframes dcLivePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
         @keyframes dcFadeIn { from{opacity:0} to{opacity:1} }
         @keyframes dcSavePulse { 0%{background:rgba(31,195,110,0.22)} 70%{background:rgba(31,195,110,0.10)} 100%{background:transparent} }
+        @keyframes dcSavePulseDark { 0%{box-shadow:inset 0 0 0 999px rgba(31,195,110,0.30)} 100%{box-shadow:inset 0 0 0 999px rgba(31,195,110,0)} }
         @keyframes dcSlideInUp { from{opacity:0; transform:translateY(9px)} to{opacity:1; transform:translateY(0)} }
         @keyframes dcSheetUp { from{transform:translateY(102%)} to{transform:translateY(0)} }
         @keyframes dcFlameFlicker {
@@ -2101,6 +2102,8 @@
         .dc-dmg-panel:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
         .dc-dmg-panel:active { transform: translateY(0); }
         .dc-dmg-panel.saved { animation: dcSavePulse 1.2s ease-out; }
+        /* 黒カード (submitted) の保存パルス: background を動かすと黒地が消えるので inset 影で表現 */
+        .dc-dmg-panel.submitted.saved { animation: dcSavePulseDark 1.2s ease-out; }
         .dc-dmg-name { color: #14161A; }      /* 色はクラス側で持つ (submitted の反転が inline に勝てるように) */
         .dc-dmg-bossnum { color: #A4AAB0; }
         /* HomeMind基調 B4b (2026-07-25): 提出済み=黒カード (ON状態の対比 — 交戦中ボスカードと同じ意味論)。
@@ -2112,7 +2115,16 @@
         .dc-dmg-panel.submitted .dc-dmg-name { color: #fff; }
         .dc-dmg-panel.submitted .dc-dmg-bossnum { color: rgba(255,255,255,0.5); }
         .dc-dmg-panel.submitted .dc-dmg-char { background: #1D1E23; color: #9AA0A6; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); }
-        .dc-dmg-panel.submitted .dc-dmg-char.empty { background: #1D1E23; color: #5A6068; }
+        .dc-dmg-panel.submitted .dc-dmg-char.empty { background: #1D1E23; color: #9AA0A6; }
+        /* 2編成重ねの背面カードも黒に (両スロット提出済みの黒カードの背後に白が残ると
+           「白=未提出」の意味付けと矛盾する — Codex 指摘) */
+        .dc-dmg-panel.submitted.stacked { box-shadow: 5px 6px 0 -2px #101114, 5px 6px 0 -1px rgba(255,255,255,0.22); }
+        /* dup-N の外周色枠は黒カードでも維持 (詳細度で .submitted .dc-dmg-char に負けないよう再宣言) */
+        .dc-dmg-panel.submitted .dc-dmg-char.dup-1 { box-shadow: 0 0 0 1px #F5B400, inset 0 0 0 1px rgba(255,255,255,0.12); }
+        .dc-dmg-panel.submitted .dc-dmg-char.dup-2 { box-shadow: 0 0 0 1px #E91E63, inset 0 0 0 1px rgba(255,255,255,0.12); }
+        .dc-dmg-panel.submitted .dc-dmg-char.dup-3 { box-shadow: 0 0 0 1px #00BCD4, inset 0 0 0 1px rgba(255,255,255,0.12); }
+        .dc-dmg-panel.submitted .dc-dmg-char.dup-4 { box-shadow: 0 0 0 1px #9B4DFF, inset 0 0 0 1px rgba(255,255,255,0.12); }
+        .dc-dmg-panel.submitted .dc-dmg-char.dup-5 { box-shadow: 0 0 0 1px #FF8A2B, inset 0 0 0 1px rgba(255,255,255,0.12); }
         .dc-dmg-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
@@ -6942,6 +6954,7 @@
                 const rec = slots[activeSlot] || slots[1] || slots[2];
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
+                const submitted = Number(rec?.damage_b) > 0;   // 黒カード判定 (0B保存は白のまま — Codex 指摘)
                 const c = DC_ATTR_COLORS[a.key] || '#14161A';
                 const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
                 // 5キャラ分のセル (空きは ? プレースホルダ)
@@ -6957,7 +6970,7 @@
                     ? `<div class="dc-dmg-slotbadge" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="編成①⇄②を入れ替え">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${hasVal ? ' submitted' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
