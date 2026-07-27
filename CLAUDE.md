@@ -86,10 +86,9 @@ index.html 内の script は `python3` で抜き出して `node --check` に通�
 
 ## デザインシステム: ClaudeDesign
 
-**注意: 旧 Material (--md-sys-color-*) は 2026-07-24 に全廃済み** (usage 483箇所をリテラル化し
-定義も削除 — d9031a6)。新規UIは以下に従うこと。`var(--md-sys-color-*)` を書くと未定義参照に
-なるので絶対に使わない。旧Material「形状」(細枠ボタン・font-weight:500等) は一部モーダルに
-残っており、触るときに ClaudeDesign の形状へ寄せる。
+**注意: 旧 Material は色 (2026-07-24 全廃 d9031a6)・形状 (2026-07-25 一括変換) とも撤去済み**。
+`var(--md-sys-color-*)` を書くと未定義参照になるので絶対に使わない。
+新規UIは以下に従うこと (font-weight は 700 以上・細枠アウトラインボタンは使わない)。
 
 ### トーン
 

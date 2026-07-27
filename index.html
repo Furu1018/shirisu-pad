@@ -358,7 +358,7 @@
 
         .drawer-title {
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 700;
             color: #14161A;
             margin-bottom: 24px;
             padding-bottom: 16px;
@@ -389,7 +389,7 @@
 
         .drawer-menu-item.active {
             color: #14161A;
-            font-weight: 500;
+            font-weight: 700;
         }
 
         /* ========== Tab Navigation ========== */
@@ -420,7 +420,7 @@
             color: #6B7178;
             cursor: pointer;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 700;
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
             white-space: nowrap;
@@ -830,7 +830,7 @@
             transition: background 0.15s;
         }
         .identity-pill:hover { background: #F1F2F4; }
-        .identity-pill .name { font-weight: 600; }
+        .identity-pill .name { font-weight: 700; }
         .identity-pill .hint { opacity: 0.7; }
 
         /* ========== Player Select Modal (initial pick) ========== */
@@ -1125,7 +1125,7 @@
             background: transparent;
             color: #14161A;
             font-size: 13px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
@@ -1286,7 +1286,7 @@
             background: var(--btn-color);
             color: #fff;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 700;
             cursor: pointer;
             transition: opacity 0.2s, background 0.2s;
             opacity: 1;
@@ -1483,7 +1483,7 @@
             padding: 8px 14px; border-radius: 8px;
             border: 1px solid rgba(20,22,26,0.08);
             background: #ffffff; color: #14161A;
-            font-size: 13px; font-weight: 600; cursor: pointer;
+            font-size: 13px; font-weight: 700; cursor: pointer;
         }
         .tour-guide-launcher:hover { background: #F7F8F9; }
 
@@ -1514,7 +1514,7 @@
             animation: tour-flow-num-cycle 3.9s ease-in-out infinite;
         }
         #tourOverlay .tour-flow-title { font-size: 13.5px; font-weight: 900; color: #14161A; letter-spacing: 0.2px; }
-        #tourOverlay .tour-flow-desc { font-size: 12px; font-weight: 600; color: #6B7178; line-height: 1.5; margin-top: 3px; }
+        #tourOverlay .tour-flow-desc { font-size: 12px; font-weight: 700; color: #6B7178; line-height: 1.5; margin-top: 3px; }
         #tourOverlay .tour-flow-arrow {
             align-self: center; margin: 2px 0; font-size: 12px; line-height: 1;
             color: var(--fc, #8A9097);
@@ -2458,7 +2458,7 @@
             border: 1px solid rgba(20,22,26,0.08);
             background: #ffffff;
             color: #14161A;
-            font-size: 13px; font-weight: 600; cursor: pointer;
+            font-size: 13px; font-weight: 700; cursor: pointer;
             transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
         }
         .my-setting-btn:hover {
@@ -2527,7 +2527,7 @@
             background: linear-gradient(90deg, rgba(239,68,68,0.12), rgba(245,158,11,0.12));
             border-left: 3px solid #f59e0b;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             color: #b45309;
             display: flex;
             align-items: center;
@@ -2697,7 +2697,7 @@
                 <div class="player-select-content" style="max-width:480px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2>🖼️ アバターを変更</h2>
-                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">アイコンをタップして変更します。キャラから選ぶか、画像をアップロード。</p>
                     <div style="display:flex;flex-direction:column;gap:12px;">
@@ -2705,12 +2705,12 @@
                             <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;"><span data-sp-icon="user" data-sp-size="30"></span></div>
                             <div style="flex:1;font-size:13px;color:#6B7178;">現在のアバタープレビュー</div>
                         </div>
-                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid #14161A;background:#ffffff;color:#14161A;font-size:14px;font-weight:600;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
-                        <label style="padding:12px;border-radius:10px;border:1px dashed rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:14px;font-weight:600;cursor:pointer;text-align:center;">
+                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid #14161A;background:#ffffff;color:#14161A;font-size:14px;font-weight:700;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
+                        <label style="padding:12px;border-radius:10px;border:1px dashed rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:14px;font-weight:700;cursor:pointer;text-align:center;">
                             📤 自分の画像をアップロード (最大5MB)
                             <input type="file" id="avatarUploadInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none;">
                         </label>
-                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
+                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
                         <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
                     </div>
                 </div>
@@ -2803,22 +2803,22 @@
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
                 <div onclick="openMyAvailModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
-                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">戦闘可能時間 <span style="font-size:10px;color:#A4AAB0;font-weight:700;">(通知の受信時間)</span></div>
+                    <div style="flex:1;font-size:14px;font-weight:700;color:#14161A;">戦闘可能時間 <span style="font-size:10px;color:#A4AAB0;font-weight:700;">(通知の受信時間)</span></div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openMyPushModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="bell" data-sp-size="17"></div>
-                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">Push通知設定</div>
+                    <div style="flex:1;font-size:14px;font-weight:700;color:#14161A;">Push通知設定</div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openMyStrongAttrsModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="sword" data-sp-size="17"></div>
-                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">得意属性</div>
+                    <div style="flex:1;font-size:14px;font-weight:700;color:#14161A;">得意属性</div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openAvatarEditModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="image" data-sp-size="17"></div>
-                    <div style="flex:1;font-size:14px;font-weight:600;color:#14161A;">アバターを変更</div>
+                    <div style="flex:1;font-size:14px;font-weight:700;color:#14161A;">アバターを変更</div>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
             </div>
@@ -2853,7 +2853,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> 戦闘可能時間</h2>
-                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
@@ -2882,7 +2882,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2><span data-sp-icon="bell" data-sp-size="17"></span> Push通知設定</h2>
-                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">締め凸候補や運営からのお知らせをスマホに通知。<strong>iPhone</strong>の場合は Safari で「ホーム画面に追加」してから設定が必要です。</p>
                     <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
@@ -2895,7 +2895,7 @@
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <h2>⚔ 得意属性</h2>
-                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
                     <p class="subtitle">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
                     <div id="mypageStrongAttrsModalBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
@@ -3426,7 +3426,7 @@
                             <div style="font-size: 12px; color: #8A9097; margin-bottom: 4px;">予測ダメージ</div>
                             <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
                                 <span id="simPredictedDmg" style="font-size: 28px; font-weight: 700; color: #6C42F0;"></span>
-                                <span id="simDiff" style="font-size: 15px; font-weight: 600;"></span>
+                                <span id="simDiff" style="font-size: 15px; font-weight: 700;"></span>
                             </div>
                             <div id="simCurrentDmgLabel" style="font-size: 12px; color: #8A9097; margin-top: 4px;"></div>
                         </div>
@@ -3796,7 +3796,7 @@
                         <div class="help-flow-step"><div class="help-flow-num">2</div><div>ホームの <strong>「🔔 Push通知設定」</strong> までスクロール</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>「🔔 通知を有効にする」</strong> ボタンをタップ</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div>ブラウザが「<strong>通知を許可しますか?</strong>」と聞いてくるので <strong>「許可」</strong> をタップ</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">5</div><div>「<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み (この端末)</span>」と出れば登録完了</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">5</div><div>「<span style="color:#22c55e;font-weight:700;">✅ Push通知を有効化済み (この端末)</span>」と出れば登録完了</div></div>
                         <div class="help-callout warn">
                             <span class="ico">⚠️</span>
                             <p>もし「許可」を聞かれずに何も起こらない場合 → 以前に「不許可/ブロック」を押したまま記憶されています。<br>
@@ -3838,7 +3838,7 @@
                         <h3>🚫 通知が来ない時のチェックリスト</h3>
                         <ol>
                             <li>ホームの <strong>「🕐 戦闘可能時間」</strong> に1つでもチェックが入っているか?（全OFFだと永久に届きません）</li>
-                            <li>「<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み</span>」と表示されているか?</li>
+                            <li>「<span style="color:#22c55e;font-weight:700;">✅ Push通知を有効化済み</span>」と表示されているか?</li>
                             <li>ブラウザがこのサイトの通知を<strong>ブロック</strong>していないか? (上のWarn参照)</li>
                             <li><strong>iPhoneの場合</strong>: ホーム画面のPADアイコンから開いているか? Safariタブからだと通知が動きません</li>
                             <li>端末が<strong>サイレント/おやすみモード/集中モード</strong>になっていないか?</li>
@@ -4066,27 +4066,27 @@
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
                         <button onclick="openHelpFromSettings('help-overview')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">01</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">PADの全体像</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:#14161A;">PADの全体像</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-mypage')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">02</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">ホームとデータ入力</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:#14161A;">ホームとデータ入力</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-real')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">03</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">本番レイド (凸の流れ・報告)</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:#14161A;">本番レイド (凸の流れ・報告)</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-notify')" class="dc-guide-row">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">04</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">通知・戦闘可能時間の設定</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:#14161A;">通知・戦闘可能時間の設定</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                         <button onclick="openHelpFromSettings('help-finish-call')" class="dc-guide-row" style="border-bottom:none;">
                             <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#B6BBC1;">05</div>
-                            <div style="flex:1;font-size:13.5px;font-weight:600;color:#14161A;">締め凸候補 / ソフトロック</div>
+                            <div style="flex:1;font-size:13.5px;font-weight:700;color:#14161A;">締め凸候補 / ソフトロック</div>
                             <div style="font-size:11px;color:#B6BBC1;">›</div>
                         </button>
                     </div>
@@ -4266,7 +4266,7 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="hexTarget" data-sp-size="17"></span> ボスHP更新</h2>
-                <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsBossHpModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">各ボスの 残HP / 総HP (B単位) を編集して保存できます。</p>
 
@@ -4276,7 +4276,7 @@
                     <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">BlaBlaLINK 進捗画像から全ボスHPを一括取り込み（AI画像認識）</span>
                     <input type="file" id="opsBossHpOcrInput" accept="image/*" onchange="handleOpsBossHpOcrUpload(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:#14161A;color:#ffffff;font-size:12px;font-weight:600;">画像を選ぶ</span>
+                    <span style="padding:6px 12px;border-radius:6px;background:#14161A;color:#ffffff;font-size:12px;font-weight:700;">画像を選ぶ</span>
                 </label>
                 <p id="opsBossHpOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
             </div>
@@ -4285,7 +4285,7 @@
                 <p style="color:#6B7178;font-size:13px;">読み込み中...</p>
             </div>
             <div style="display:flex;justify-content:flex-end;">
-                <button id="opsBossHpSaveAllBtn" onclick="handleOpsBossHpSaveAll()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">⏬ 全ボスを一括保存</button>
+                <button id="opsBossHpSaveAllBtn" onclick="handleOpsBossHpSaveAll()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;">⏬ 全ボスを一括保存</button>
             </div>
             <p id="opsBossHpMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
         </div>
@@ -4296,13 +4296,13 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2 id="opsProxyTitle"><span data-sp-icon="pencil" data-sp-size="16"></span> 代理凸報告</h2>
-                <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsProxyAttackModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">他メンバーの代わりに凸を記録します。入力者名がログに残ります。</p>
 
             <div>
-                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">対象メンバー</label>
-                <select id="opsProxyMemberSelect" onchange="onOpsProxyMemberChange()" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;">対象メンバー</label>
+                <select id="opsProxyMemberSelect" onchange="onOpsProxyMemberChange()" style="width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
                     <option value="">-- 選択してください --</option>
                 </select>
                 <p id="opsProxyMemberHint" style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">&nbsp;</p>
@@ -4310,24 +4310,24 @@
 
             <!-- モード切替タブ -->
             <div style="display:flex;border-bottom:2px solid rgba(20,22,26,0.08);margin-top:4px;">
-                <button id="opsProxyModeTabSimple" onclick="switchOpsProxyMode('simple')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:#14161A;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid #14161A;margin-bottom:-2px;"><span data-sp-icon="pencil" data-sp-size="13"></span> 1件入力</button>
-                <button id="opsProxyModeTabBulk" onclick="switchOpsProxyMode('bulk')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:#6B7178;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;"><span data-sp-icon="camera" data-sp-size="13"></span> BlaBlaLINK 3凸取込</button>
+                <button id="opsProxyModeTabSimple" onclick="switchOpsProxyMode('simple')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:#14161A;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid #14161A;margin-bottom:-2px;"><span data-sp-icon="pencil" data-sp-size="13"></span> 1件入力</button>
+                <button id="opsProxyModeTabBulk" onclick="switchOpsProxyMode('bulk')" style="flex:1;padding:10px 12px;border:none;background:transparent;color:#6B7178;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;"><span data-sp-icon="camera" data-sp-size="13"></span> BlaBlaLINK 3凸取込</button>
             </div>
 
             <!-- 1件入力モード -->
             <div id="opsProxySimpleSection">
                 <div>
-                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;margin-top:8px;">対象ボス（タップで選択）</label>
+                    <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;margin-top:8px;">対象ボス（タップで選択）</label>
                     <div id="opsProxyBossButtons" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
                         <div style="grid-column:1/-1;color:#6B7178;font-size:13px;padding:8px;">読み込み中...</div>
                     </div>
                 </div>
 
                 <div>
-                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">ダメージ（B単位、任意。0 でも可）</label>
+                    <label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px;">ダメージ（B単位、任意。0 でも可）</label>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <input type="number" id="opsProxyDamageInput" inputmode="decimal" step="0.1" min="0" max="999" placeholder="例: 22.5（不明なら空欄/0）"
-                            style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;text-align:right;">
+                            style="flex:1;padding:10px 12px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;text-align:right;">
                         <span style="font-size:14px;color:#6B7178;">B</span>
                     </div>
                     <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">凸権限消化のみ目的なら 0 でも OK（属性使用フラグとして記録されます）。</p>
@@ -4347,15 +4347,15 @@
                 <div id="opsProxyBulkPreview" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
             </div>
 
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#14161A;cursor:pointer;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:#14161A;cursor:pointer;">
                 <input type="checkbox" id="opsProxyHpDecrement" checked style="width:17px;height:17px;flex:none;">
                 ボス残HPもダメージ分減算する
             </label>
             <p style="margin:-6px 0 0 25px;font-size:10.5px;color:#6B7178;">スクショから「ボスHP更新」(絶対値で書き換え) を別途行う場合はOFFでもOK。忘れると残HPが実際よりズレます。</p>
             <p id="opsProxyMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                <button onclick="closeOpsProxyAttackModal()" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="opsProxySaveBtn" onclick="handleOpsProxyAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
     </div>
@@ -4365,7 +4365,7 @@
         <div class="player-select-content" style="max-width:640px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="search" data-sp-size="17"></span> 提出漏れチェック</h2>
-                <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsAuditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">BlaBlaLINK の<strong>「ユニオンレイド参加状況」スクショ</strong>から各メンバーの参加回数を読み取り、PADの登録数と突き合わせます。<br>📌 撮影前に<strong>当日 (HARD) の Day タブ</strong>を表示してください。スマホはスクロールしながら3〜4枚に分けてOK (まとめて選択、重複行は自動で統合)。</p>
             <label class="dc-upload">
@@ -4387,7 +4387,7 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="clipboardCheck" data-sp-size="17"></span> 模擬提出チェック</h2>
-                <button onclick="closeOpsMockAuditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsMockAuditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">今シーズンの模擬戦データ提出状況です (シーズン作成時にリセットされるため、表示されている提出はすべて今シーズン分)。未提出者には催促Pushを送れます。</p>
             <p id="opsMockAuditStatus" style="margin:0;font-size:11.5px;font-weight:700;color:#6B7178;min-height:14px;">&nbsp;</p>
@@ -4403,12 +4403,12 @@
         <div class="player-select-content" style="max-width:720px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📋 凸履歴・編集</h2>
-                <button onclick="closeOpsAttacksEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsAttacksEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">アクティブシーズンの全凸を新しい順に表示します。ダメージ修正・凸削除が可能です。</p>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                 <input type="text" id="opsAttacksFilter" placeholder="🔍 メンバー名で絞り込み" class="player-select-search" style="flex:1;" oninput="renderOpsAttacksList()">
-                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="12"></span> 更新</button>
+                <button onclick="reloadOpsAttacksList()" style="padding:8px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="12"></span> 更新</button>
             </div>
             <div id="opsAttacksList" style="overflow-y:auto;max-height:55vh;border:1px solid rgba(20,22,26,0.08);border-radius:8px;padding:4px;">
                 <div style="text-align:center;color:#6B7178;padding:24px;font-size:13px;">読み込み中...</div>
@@ -4422,24 +4422,24 @@
         <div class="player-select-content" style="max-width:500px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> Push通知 送信</h2>
-                <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">購読者全員に Push 通知を一斉配信します。</p>
 
             <div>
-                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">タイトル</label>
-                <input id="opsPushTitle" type="text" maxlength="80" placeholder="例: 締め凸候補が出ました" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;">タイトル</label>
+                <input id="opsPushTitle" type="text" maxlength="80" placeholder="例: 締め凸候補が出ました" style="width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
             </div>
             <div>
-                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">本文</label>
-                <textarea id="opsPushBody" rows="3" maxlength="200" placeholder="例: ヘビーメタル 残3.5B です" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;resize:vertical;"></textarea>
+                <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;">本文</label>
+                <textarea id="opsPushBody" rows="3" maxlength="200" placeholder="例: ヘビーメタル 残3.5B です" style="width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;resize:vertical;"></textarea>
             </div>
 
             <p id="opsPushMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
 
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
+                <button onclick="closeOpsPushSendModal()" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsPushSend()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 全員に送信</button>
             </div>
         </div>
     </div>
@@ -4449,14 +4449,14 @@
         <div class="player-select-content" style="max-width:600px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> 通知送信の最終確認</h2>
-                <button onclick="closePushPreview(false)" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closePushPreview(false)" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">以下の内容で Push 通知を送信します。受信者と本文を確認してから「送信する」を押してください。</p>
             <div id="pushPreviewBody" style="display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;padding-right:4px;"></div>
             <p id="pushPreviewMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid #8b5cf6;background:#8b5cf6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
+                <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid #8b5cf6;background:#8b5cf6;color:#fff;font-size:13px;font-weight:700;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
             </div>
         </div>
     </div>
@@ -4466,7 +4466,7 @@
         <div class="player-select-content" style="max-width:620px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2><span data-sp-icon="calendar" data-sp-size="17"></span> 新シーズン作成</h2>
-                <button onclick="closeOpsSeasonCreateModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeOpsSeasonCreateModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">次回シーズンの情報を登録します。確定すると既存のアクティブシーズンは自動的に非アクティブ化されます。</p>
 
@@ -4476,24 +4476,24 @@
                     <span data-sp-icon="camera" data-sp-size="18"></span>
                     <span style="flex:1;">NIKKE公式アナウンス画像から自動入力（AI画像認識）</span>
                     <input type="file" id="opsSeasonOcrInput" accept="image/*" onchange="handleOpsSeasonOcrUpload(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:#14161A;color:#ffffff;font-size:12px;font-weight:600;">画像を選ぶ</span>
+                    <span style="padding:6px 12px;border-radius:6px;background:#14161A;color:#ffffff;font-size:12px;font-weight:700;">画像を選ぶ</span>
                 </label>
                 <p id="opsSeasonOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">ハード日 (Day2)</label>
-                    <input type="date" id="opsSeasonHardDate" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                    <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">ハード日 (Day2)</label>
+                    <input type="date" id="opsSeasonHardDate" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
                 </div>
                 <div>
-                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">月キー (YYYY-MM)</label>
-                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                    <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">月キー (YYYY-MM)</label>
+                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
                 </div>
             </div>
 
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;">ボス構成（B1〜B5）</label>
+                <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;">ボス構成（B1〜B5）</label>
                 <div id="opsSeasonBossRows"></div>
             </div>
 
@@ -4510,8 +4510,8 @@
 
             <p id="opsSeasonMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeOpsSeasonCreateModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
-                <button onclick="handleOpsSeasonCreateSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">作成</button>
+                <button onclick="closeOpsSeasonCreateModal()" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsSeasonCreateSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;">作成</button>
             </div>
         </div>
     </div>
@@ -4521,26 +4521,26 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📚 キャラ正規化</h2>
-                <button onclick="closeCharMasterEditModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeCharMasterEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">OCRで誤って取り込まれた名前を修正、または別エントリへ統合できます。</p>
 
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">正式名 (canonical)</label>
-                <input id="charEditCanonical" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:#6B7178;">正式名 (canonical)</label>
+                <input id="charEditCanonical" type="text" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
                 <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">例: 「紅蓮：ブラックシャドウ」「リトルマーメイド」など正式名称に修正</p>
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">エイリアス (カンマ区切り)</label>
-                <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:#6B7178;">エイリアス (カンマ区切り)</label>
+                <input id="charEditAliases" type="text" placeholder="例: ブラックシャ, ：ブラックシャ" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">バースト</label>
+                <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:#6B7178;">バースト</label>
                 <div id="charEditBurstSlot"></div>
                 <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">B1/B2/B3/BΛ。未設定でもOK (どのバースト枠でも選べる扱い)</p>
             </div>
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">サブバースト (任意)</label>
+                <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:#6B7178;">サブバースト (任意)</label>
                 <div id="charEditBurstAltSlot"></div>
                 <p id="charEditBurstAltHint" style="margin:4px 0 0 0;font-size:11px;color:#8A9097;">主バースト以外の枠でも使えるキャラだけ設定します (例: ラピ:レッドフード = 表示B3・B1枠でも可)</p>
             </div>
@@ -4552,17 +4552,17 @@
             <hr style="border:none;border-top:1px solid rgba(20,22,26,0.08);margin:8px 0;">
 
             <div>
-                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#6B7178;">📦 別エントリへ統合 (オプション)</label>
-                <input id="charEditMergeTarget" type="text" list="charEditMergeDataList" placeholder="統合先の正式名を入力 (空なら統合しない)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:14px;">
+                <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:#6B7178;">📦 別エントリへ統合 (オプション)</label>
+                <input id="charEditMergeTarget" type="text" list="charEditMergeDataList" placeholder="統合先の正式名を入力 (空なら統合しない)" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
                 <p style="margin:4px 0 0 0;font-size:11px;color:#6B7178;">指定すると、この行を統合先に吸収（sighting_count とエイリアスを合算してこの行を削除）</p>
             </div>
 
             <p id="charEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;">
-                <button onclick="handleCharMasterDelete()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;">🗑️ 完全削除</button>
+                <button onclick="handleCharMasterDelete()" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;">🗑️ 完全削除</button>
                 <div style="display:flex;gap:8px;">
-                    <button onclick="closeCharMasterEditModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
-                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+                    <button onclick="closeCharMasterEditModal()" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                    <button onclick="handleCharMasterSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
                 </div>
             </div>
         </div>
@@ -4611,7 +4611,7 @@
         <div class="player-select-content" style="max-width:680px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>📷 BlaBlaLINK 3凸まとめ確認</h2>
-                <button onclick="closeMyBulkAttackModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeMyBulkAttackModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">画像から抽出した3凸を確認して一括登録します。<br>⚠️ ボス残HPは更新されません。HP同期は別途戦況タブ (運営モード) の「ボスHP更新」から BlaBlaLINK 進捗画像で取り込んでください。<br>💡 編成キャラはこの画面では扱いません (消化済み凸のため衝突検知に使われないため)。</p>
 
@@ -4619,8 +4619,8 @@
 
             <p id="myBulkAttackMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button onclick="closeMyBulkAttackModal()" style="padding:10px 16px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
-                <button id="myBulkAttackSaveBtn" onclick="handleMyBulkAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">💾 一括登録</button>
+                <button onclick="closeMyBulkAttackModal()" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="myBulkAttackSaveBtn" onclick="handleMyBulkAttackSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;">💾 一括登録</button>
             </div>
         </div>
     </div>
@@ -4663,7 +4663,7 @@
 
             <!-- ダメージ入力 -->
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#F7F8F9;">
-                <label for="myTeamEditDamage" style="font-size:13px;font-weight:600;flex:1;">💥 ベストダメージ (B)</label>
+                <label for="myTeamEditDamage" style="font-size:13px;font-weight:700;flex:1;">💥 ベストダメージ (B)</label>
                 <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;text-align:right;">
                 <span style="font-size:12px;color:#8A9097;">B</span>
             </div>
@@ -4882,21 +4882,21 @@
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                 <h2>⚙️ メンバー管理</h2>
-                <button onclick="closeMemberManageModal()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                <button onclick="closeMemberManageModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">脱退者は過去データを残しつつ選択リストから非表示にできます。後から復活も可能です。</p>
 
             <!-- 新規追加フォーム -->
             <div style="display:flex;gap:6px;align-items:stretch;margin-bottom:6px;">
                 <input type="text" id="memberManageAddInput" placeholder="新メンバーの名前" class="player-select-search" style="flex:1;" onkeydown="if(event.key==='Enter')handleMemberManageAdd()">
-                <button onclick="handleMemberManageAdd()" style="padding:0 16px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">＋ 追加</button>
+                <button onclick="handleMemberManageAdd()" style="padding:0 16px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;">＋ 追加</button>
             </div>
             <p id="memberManageMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
 
             <!-- 表示切替 -->
             <div style="display:flex;gap:6px;margin-bottom:4px;">
                 <button id="memberFilterActive" onclick="setMemberManageFilter('active')" style="flex:1;padding:6px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12px;cursor:pointer;">アクティブ</button>
-                <button id="memberFilterArchived" onclick="setMemberManageFilter('archived')" style="flex:1;padding:6px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">脱退済み</button>
+                <button id="memberFilterArchived" onclick="setMemberManageFilter('archived')" style="flex:1;padding:6px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;">脱退済み</button>
             </div>
 
             <div id="memberManageList" style="overflow-y:auto;max-height:50vh;border:1px solid rgba(20,22,26,0.08);border-radius:8px;padding:6px;">
@@ -4916,7 +4916,7 @@
             </div>
             <div class="player-select-footer">
                 <span style="font-size:11px;color:#6B7178;">名前がない場合は運営に追加依頼してください</span>
-                <button onclick="closePlayerSelectModal()" id="playerSelectCancel" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="closePlayerSelectModal()" id="playerSelectCancel" style="padding:8px 14px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
             </div>
         </div>
     </div>
@@ -4940,7 +4940,7 @@
         <div class="fururi-help-overlay" onclick="closeFururiHelp()"></div>
         <div class="fururi-help-content">
             <div class="fururi-help-header">
-                <h2 style="font-size: 18px; font-weight: 600; color: #14161A;">新指標「ふるり値」について</h2>
+                <h2 style="font-size: 18px; font-weight: 700; color: #14161A;">新指標「ふるり値」について</h2>
                 <button class="close-btn" onclick="closeFururiHelp()">×</button>
             </div>
             <div class="fururi-help-body">
@@ -4955,7 +4955,7 @@
                 <p>「もし基準プレイヤーがあなたと同じSLv.だったら、どれくらいダメージが出るか」を計算し、それと実際のダメージを比較してふるり値を算出しています。</p>
 
                 <div style="padding: 16px; background: #F7F8F9; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 12px 0;">
-                    <p style="margin: 0; font-size: 13px; font-weight: 500; color: #14161A;">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
+                    <p style="margin: 0; font-size: 13px; font-weight: 700; color: #14161A;">⚠️ ふるり値は育成効率を見る参考指標であって、ユニオン貢献度をすべて表すものではありません。得意属性・担当・締め凸などの条件差は考慮されません。</p>
                 </div>
 
                 <h3>🎨 属性別ふるり値</h3>
@@ -8987,7 +8987,7 @@
             if (listRows.length > _NOTIF_INBOX_LIMIT) {
                 footerHtml = _myNotificationsExpanded
                     ? `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#6B7178;font-size:12px;cursor:pointer;">▲ 閉じる (最初の${_NOTIF_INBOX_LIMIT}件に戻す)</button>`
-                    : `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">▼ もっと見る (残り${listRows.length - _NOTIF_INBOX_LIMIT}件)</button>`;
+                    : `<button onclick="toggleMyNotificationsInbox()" style="width:100%;padding:8px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;">▼ もっと見る (残り${listRows.length - _NOTIF_INBOX_LIMIT}件)</button>`;
             }
             el.innerHTML = controlsHtml + cardsHtml + footerHtml;
         }
@@ -9088,7 +9088,7 @@
             const noteValue = me?.note ? escapeHtml(me.note) : '';
 
             // ステータス切替ボタン
-            const btnStyle = (active, color) => `flex:1;padding:8px 10px;border-radius:8px;border:2px solid ${active ? color : 'rgba(20,22,26,0.08)'};background:${active ? color : '#ffffff'};color:${active ? '#fff' : '#14161A'};font-size:12px;font-weight:600;cursor:pointer;`;
+            const btnStyle = (active, color) => `flex:1;padding:8px 10px;border-radius:8px;border:2px solid ${active ? color : 'rgba(20,22,26,0.08)'};background:${active ? color : '#ffffff'};color:${active ? '#fff' : '#14161A'};font-size:12px;font-weight:700;cursor:pointer;`;
             const statusBtnsHtml = `
                 <div style="display:flex;gap:6px;margin-bottom:10px;">
                     <button onclick="handleMyCoordSetStatus('off')" style="${btnStyle(currentStatus === 'off', '#6b7280')}">⚪ なし</button>
@@ -9109,13 +9109,13 @@
             if (currentStatus === 'coordinating') {
                 detailsHtml = `
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-                        <select id="mypageCoordAttrSel" style="padding:8px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;">${attrOpts}</select>
-                        <select id="mypageCoordBossSel" style="padding:8px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;">${bossOpts}</select>
+                        <select id="mypageCoordAttrSel" style="padding:8px 10px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:13px;">${attrOpts}</select>
+                        <select id="mypageCoordBossSel" style="padding:8px 10px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:13px;">${bossOpts}</select>
                     </div>`;
             }
             if (currentStatus !== 'off') {
-                detailsHtml += `<input type="text" id="mypageCoordNote" maxlength="120" placeholder="メモ (任意 / 例: 21:00集合します)" value="${noteValue}" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;margin-bottom:8px;">
-                    <button onclick="handleMyCoordUpdate()" style="width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">🔄 内容を更新 (+30分延長)</button>`;
+                detailsHtml += `<input type="text" id="mypageCoordNote" maxlength="120" placeholder="メモ (任意 / 例: 21:00集合します)" value="${noteValue}" style="width:100%;padding:8px 10px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:13px;margin-bottom:8px;">
+                    <button onclick="handleMyCoordUpdate()" style="width:100%;padding:8px 14px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;">🔄 内容を更新 (+30分延長)</button>`;
             }
             selfEl.innerHTML = statusBtnsHtml + bannerHtml + detailsHtml;
         }
@@ -9162,8 +9162,8 @@
                 const isCoord = c.status === 'coordinating';
                 const statusIcon = isCoord ? '📣' : '🎮';
                 const statusLabel = isCoord
-                    ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#1d4ed8;font-weight:600;">調整中</span>'
-                    : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(34,197,94,0.15);color:#15803d;font-weight:600;">オンライン</span>';
+                    ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#1d4ed8;font-weight:700;">調整中</span>'
+                    : '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(34,197,94,0.15);color:#15803d;font-weight:700;">オンライン</span>';
                 const pt = ptOf(c.attribute);
                 const bossLabel = c.boss_number ? bossName(c.boss_number) : '';
                 const ptLabel = pt
@@ -9279,7 +9279,7 @@
             if (!s.vapidConfigured) {
                 statusEl.innerHTML = '<span style="color:#f59e0b;">⚠️ 運営側でVAPID公開鍵が未設定のため、まだ購読できません。</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'ローカル通知テスト')" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                    <button onclick="window.showLocalTestNotification('しりすこPAD', 'ローカル通知テスト')" style="padding:8px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;">🧪 ローカル通知テスト</button>
                 `;
                 return;
             }
@@ -9291,15 +9291,15 @@
             }
 
             if (s.subscribed) {
-                statusEl.innerHTML = '<span style="color:#22c55e;font-weight:600;">✅ Push通知を有効化済み (この端末)</span>';
+                statusEl.innerHTML = '<span style="color:#22c55e;font-weight:700;">✅ Push通知を有効化済み (この端末)</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="handleMyPushUnsubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;">通知を解除</button>
-                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                    <button onclick="handleMyPushUnsubscribe()" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;">通知を解除</button>
+                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">🧪 ローカル通知テスト</button>
                 `;
             } else {
                 statusEl.innerHTML = '<span style="color:#6B7178;">未購読</span>';
                 actionsEl.innerHTML = `
-                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;">🔔 通知を有効にする</button>
+                    <button onclick="handleMyPushSubscribe()" style="padding:8px 14px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;">🔔 通知を有効にする</button>
                 `;
             }
         }
@@ -9565,11 +9565,11 @@
                 if (remaining === 0) {
                     btn.disabled = true;
                     btn.textContent = '✅ 3凸 報告済み';
-                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #22c55e;background:transparent;color:#22c55e;font-size:13px;font-weight:600;cursor:not-allowed;opacity:0.85;';
+                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #22c55e;background:transparent;color:#22c55e;font-size:13px;font-weight:700;cursor:not-allowed;opacity:0.85;';
                 } else {
                     btn.disabled = false;
                     btn.textContent = '＋ 凸を報告';
-                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:13px;font-weight:600;cursor:pointer;';
+                    btn.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;';
                 }
             }
 
@@ -9587,12 +9587,12 @@
                         <div style="font-weight:700;color:#14161A;font-size:14px;min-width:46px;">${a.attack_number}凸目</div>
                         ${ptInfo ? `<img loading="lazy" decoding="async" src="${ptInfo.icon}" alt="${ptInfo.name}" style="width:20px;height:20px;flex-shrink:0;" title="${ptInfo.name}PT">` : ''}
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;font-weight:600;color:#14161A;">${escapeHtml(bossName)}</div>
+                            <div style="font-size:13px;font-weight:700;color:#14161A;">${escapeHtml(bossName)}</div>
                             <div style="font-size:11px;color:#6B7178;">Lv.${a.level || 1} ${ptInfo ? `／ ${ptInfo.name}PT` : ''}</div>
                         </div>
                         <div style="font-size:15px;font-weight:700;color:#14161A;white-space:nowrap;">${damageB} B</div>
-                        <button onclick="handleMyAttackEdit(${a.id}, ${a.damage_raw})" style="padding:5px 9px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:11px;cursor:pointer;">編集</button>
-                        <button onclick="handleMyAttackDelete(${a.id}, ${a.attack_number})" style="padding:5px 9px;border-radius:6px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
+                        <button onclick="handleMyAttackEdit(${a.id}, ${a.damage_raw})" style="padding:5px 9px;border-radius:6px;border:none;background:#F1F2F4;color:#14161A;font-size:11px;cursor:pointer;">編集</button>
+                        <button onclick="handleMyAttackDelete(${a.id}, ${a.attack_number})" style="padding:5px 9px;border-radius:6px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
                     </div>`;
             }).join('');
 
@@ -9608,7 +9608,7 @@
                 <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin:6px 0 12px 0;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.4);color:#15803d;font-size:13px;">
                     <span style="font-size:18px;">✅</span>
                     <div>
-                        <div style="font-weight:600;">本日の戦闘結果報告は完了しています</div>
+                        <div style="font-weight:700;">本日の戦闘結果報告は完了しています</div>
                         <div style="font-size:11px;opacity:0.8;">追加で報告したい場合はまず該当する凸を「削除」してから再登録してください。</div>
                     </div>
                 </div>` : '';
@@ -10600,10 +10600,10 @@
                         ${_iconBootstrapPaths.map((p, i) => {
                             const known = _nikkeCharsByIconPath.get(p);
                             const knownTag = known
-                                ? `<div style="font-size:11px;color:#22c55e;font-weight:600;">✅ ${escapeHtml(known.canonical_name)}</div>`
+                                ? `<div style="font-size:11px;color:#22c55e;font-weight:700;">✅ ${escapeHtml(known.canonical_name)}</div>`
                                 : `<input type="text" id="iconBoot-${i}" placeholder="例: ナユタ" list="iconBootDataList" style="width:100%;padding:5px 7px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;font-size:12px;">
                                    <div style="margin-top:5px;display:flex;justify-content:center;">${_burstPickerHtml('iconBoot-' + i, '')}</div>
-                                   <button onclick="handleIconBootstrapSave(${i})" style="margin-top:5px;width:100%;padding:5px;border-radius:6px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:11px;font-weight:600;cursor:pointer;">登録</button>`;
+                                   <button onclick="handleIconBootstrapSave(${i})" style="margin-top:5px;width:100%;padding:5px;border-radius:6px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:11px;font-weight:700;cursor:pointer;">登録</button>`;
                             return `
                                 <div style="padding:8px;border:1px solid rgba(20,22,26,0.08);border-radius:8px;text-align:center;">
                                     <img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:60px;height:60px;border-radius:6px;margin-bottom:6px;background:#222;" onerror="this.style.opacity='0.3';this.alt='画像未読込'">
@@ -11413,7 +11413,7 @@
                             <span style="font-size:11px;font-weight:800;color:#A4AAB0;font-variant-numeric:tabular-nums;">${fmtTime(e.ts)}</span>
                             <span style="font-size:10px;font-weight:800;letter-spacing:0.3px;padding:2px 8px;border-radius:999px;${pillStyle}">${t.label}</span>
                         </div>
-                        <div style="font-size:12.5px;font-weight:600;color:#14161A;line-height:1.5;">${who}${escapeHtml(e.text)}${actor}</div>
+                        <div style="font-size:12.5px;font-weight:700;color:#14161A;line-height:1.5;">${who}${escapeHtml(e.text)}${actor}</div>
                     </div>`;
             }).join('');
             // 残りがあれば「もっと見る」。上限に達したらその旨を出す (黙って打ち切らない)
@@ -11470,7 +11470,7 @@
                             <span style="font-size:11px;font-weight:800;color:#A4AAB0;font-variant-numeric:tabular-nums;">${fmtTime(e.ts)}</span>
                             <span style="font-size:10px;font-weight:800;letter-spacing:0.3px;padding:2px 8px;border-radius:999px;color:${t.color};background:${t.color}16;">${t.label}</span>
                         </div>
-                        <div style="font-size:12.5px;font-weight:600;color:#14161A;line-height:1.5;">${escapeHtml(e.text)}</div>
+                        <div style="font-size:12.5px;font-weight:700;color:#14161A;line-height:1.5;">${escapeHtml(e.text)}</div>
                     </div>`;
             }).join('');
             // ヘッダの件数表示 (詳細ログ側と同じ意味になるよう埋める)
@@ -12004,7 +12004,7 @@
                     const av = renderAvatarHtml(x.player_id, x.name, 24);
                     return `<span style="margin-left:${i === 0 ? 0 : -6}px;position:relative;z-index:${10 - i};display:inline-block;border:2px solid #fff;border-radius:50%;">${av}</span>`;
                   }).join('')
-                : '<span style="font-size:11px;font-weight:600;color:#B6BBC1;">交戦者なし</span>';
+                : '<span style="font-size:11px;font-weight:700;color:#B6BBC1;">交戦者なし</span>';
             const reqs = (!dead && (_finishReqCache || []).some(r => r.boss_number === b.boss_number))
                 ? `<div style="margin-top:8px;padding:7px 9px;border-radius:10px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);">
                         <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:4px;">📣 締凸依頼中</div>
@@ -12326,7 +12326,7 @@
 
             const rows = candidates.map((p, i) => {
                 const over = p.dmg > remainingHpB;
-                const overTag = over ? `<span style="color:#f59e0b;font-size:11px;font-weight:600;">⚠️ +${(p.dmg - remainingHpB).toFixed(2)}B 超過</span>` : '';
+                const overTag = over ? `<span style="color:#f59e0b;font-size:11px;font-weight:700;">⚠️ +${(p.dmg - remainingHpB).toFixed(2)}B 超過</span>` : '';
                 return `
                     <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid rgba(20,22,26,0.08);">
                         <span style="min-width:22px;text-align:right;color:#6B7178;font-size:12px;">${i + 1}.</span>
@@ -12341,7 +12341,7 @@
             // 候補へのPush送信ボタン (Phase 6c)
             const pushBtn = `
                 <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
-                    <button onclick="handleOpsFinishPushSend()" style="padding:8px 14px;border-radius:8px;border:1px solid #8b5cf6;background:#ffffff;color:#8b5cf6;font-size:13px;font-weight:600;cursor:pointer;">📣 この候補 ${candidates.length}名に Push通知</button>
+                    <button onclick="handleOpsFinishPushSend()" style="padding:8px 14px;border-radius:8px;border:1px solid #8b5cf6;background:#ffffff;color:#8b5cf6;font-size:13px;font-weight:700;cursor:pointer;">📣 この候補 ${candidates.length}名に Push通知</button>
                     <span style="font-size:11px;color:#6B7178;">${ptInfo?.name}PT / 残HP ${remainingHpB.toFixed(2)}B</span>
                 </div>`;
 
@@ -12389,7 +12389,7 @@
 
             return `
                 <details style="margin-top:14px;padding:8px 12px;border-radius:8px;background:#F7F8F9;">
-                    <summary style="cursor:pointer;font-size:13px;font-weight:600;">🕐 何時まで待てば誰が最適？（時間別ベスト候補）</summary>
+                    <summary style="cursor:pointer;font-size:13px;font-weight:700;">🕐 何時まで待てば誰が最適？（時間別ベスト候補）</summary>
                     <p style="margin:8px 0 4px 0;font-size:11px;color:#6B7178;">戦闘可能時間に基づいた予測。リーダー (一番ダメ出せる人) が変わる時刻のみ表示。</p>
                     <ul style="margin:0;padding:0 0 0 18px;font-size:13px;line-height:1.8;">${itemsHtml}</ul>
                 </details>`;
@@ -12436,7 +12436,7 @@
                         </div>
                         ${stepRows}
                         <div style="padding:8px 10px;background:#ffffff;">
-                            <button onclick="handleOpsFinishPlanPush('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:#ffffff;color:${accent};font-size:12px;font-weight:600;cursor:pointer;">📣 このプランの ${pushIds.length}名 に Push通知</button>
+                            <button onclick="handleOpsFinishPlanPush('${kind}')" style="padding:6px 12px;border-radius:6px;border:1px solid ${accent};background:#ffffff;color:${accent};font-size:12px;font-weight:700;cursor:pointer;">📣 このプランの ${pushIds.length}名 に Push通知</button>
                         </div>
                     </div>`;
             };
@@ -13564,11 +13564,11 @@
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                             <label style="font-size:12px;color:#6B7178;">残HP</label>
-                            <input class="ops-hp-rem" type="number" inputmode="decimal" step="0.01" min="0" value="${remB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;text-align:right;">
+                            <input class="ops-hp-rem" type="number" inputmode="decimal" step="0.01" min="0" value="${remB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:13px;text-align:right;">
                             <span style="font-size:12px;color:#6B7178;">B / 総HP</span>
-                            <input class="ops-hp-total" type="number" inputmode="decimal" step="0.01" min="0" value="${totalB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:13px;text-align:right;">
+                            <input class="ops-hp-total" type="number" inputmode="decimal" step="0.01" min="0" value="${totalB}" style="width:90px;padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:13px;text-align:right;">
                             <span style="font-size:12px;color:#6B7178;">B</span>
-                            <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12px;font-weight:600;cursor:pointer;">保存</button>
+                            <button onclick="handleOpsBossHpSave(${fresh.season.id}, ${b.boss_number}, this)" style="margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12px;font-weight:700;cursor:pointer;">保存</button>
                         </div>
                     </div>`;
             }).join('');
@@ -13806,9 +13806,9 @@
                 return `
                     <button type="button" data-boss="${b.boss_number}"
                         onclick="handleOpsProxyBossPick(this, ${b.boss_number})"
-                        style="padding:10px 8px;border-radius:8px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                        style="padding:10px 8px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;">
                         ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:22px;height:22px;">` : ''}
-                        <div style="font-weight:600;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</div>
+                        <div style="font-weight:700;">B${b.boss_number} ${escapeHtml(b.name || b.boss_code)}</div>
                         <div style="font-size:10px;color:#6B7178;">${pt ? `${pt.name}PTで凸` : ''}</div>
                     </button>`;
             }).join('');
@@ -14268,12 +14268,12 @@
                     <div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(20,22,26,0.08);">
                         ${renderAvatarHtml(a.player_id, playerName, 24)}
                         <strong style="font-size:13px;min-width:74px;">${escapeHtml(playerName)}</strong>
-                        <span style="font-weight:600;color:#14161A;font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
+                        <span style="font-weight:700;color:#14161A;font-size:12px;min-width:36px;">${a.attack_number}凸目</span>
                         ${pt ? `<img loading="lazy" decoding="async" src="${pt.icon}" style="width:14px;height:14px;" title="${pt.name}PT">` : ''}
                         <span style="flex:1;font-size:12px;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">B${a.boss_number} ${escapeHtml(bossName)}</span>
                         <span style="font-size:13px;font-weight:700;white-space:nowrap;">${dmgB} B</span>
-                        <button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:11px;cursor:pointer;">編集</button>
-                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${jsonAttr(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
+                        <button onclick="handleOpsAttackEditDmg(${a.id}, ${a.damage_raw})" style="padding:4px 8px;border-radius:6px;border:none;background:#F1F2F4;color:#14161A;font-size:11px;cursor:pointer;">編集</button>
+                        <button onclick="handleOpsAttackDelete(${a.id}, ${a.attack_number}, ${jsonAttr(a.players?.name || '')})" style="padding:4px 8px;border-radius:6px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:11px;cursor:pointer;">削除</button>
                     </div>`;
             }).join('');
         }
@@ -14471,15 +14471,15 @@
             const el = document.getElementById('opsSeasonBossRows');
             el.innerHTML = rows.map(r => `
                 <div data-pos="${r.bossNumber}" style="display:grid;grid-template-columns:32px 1fr 80px 1.4fr;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(20,22,26,0.08);">
-                    <span style="font-size:13px;font-weight:600;">B${r.bossNumber}</span>
-                    <select class="ops-season-code" style="padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;">
+                    <span style="font-size:13px;font-weight:700;">B${r.bossNumber}</span>
+                    <select class="ops-season-code" style="padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12px;">
                         ${BOSS_CODES.map(c => `<option value="${c}" ${c === r.bossCode ? 'selected' : ''}>${c}</option>`).join('')}
                     </select>
-                    <select class="ops-season-tier" style="padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;">
+                    <select class="ops-season-tier" style="padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12px;">
                         <option value="tyrant" ${r.tier === 'tyrant' ? 'selected' : ''}>タイラント</option>
                         <option value="lord" ${r.tier === 'lord' ? 'selected' : ''}>ロード</option>
                     </select>
-                    <input class="ops-season-name" type="text" placeholder="ボス名 (任意)" value="${escapeHtml(r.name)}" style="padding:6px 8px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;">
+                    <input class="ops-season-name" type="text" placeholder="ボス名 (任意)" value="${escapeHtml(r.name)}" style="padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12px;">
                 </div>
             `).join('');
         }
@@ -14715,9 +14715,9 @@
                         ${renderAvatarHtml(p, 28)}
                         <span style="flex:1;font-size:14px;display:flex;align-items:center;gap:6px;${isArchived ? 'color:#6B7178;text-decoration:line-through;' : ''}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${escapeHtml(p.name)}</span>${renderStrongAttrsHtml(p, 14)}</span>
                         ${isArchived
-                            ? `<button onclick="handleMemberUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">復活</button>
-                               <button onclick="handleMemberDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #ef4444;background:#ffffff;color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
-                            : `<button onclick="handleMemberRename(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid rgba(20,22,26,0.08);background:#ffffff;color:#14161A;font-size:12px;cursor:pointer;">改名</button>
+                            ? `<button onclick="handleMemberUnarchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;">復活</button>
+                               <button onclick="handleMemberDelete(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:12px;cursor:pointer;">完全削除</button>`
+                            : `<button onclick="handleMemberRename(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;cursor:pointer;">改名</button>
                                <button onclick="handleMemberArchive(${p.id}, ${jsonAttr(p.name)})" style="padding:6px 10px;border-radius:6px;border:1px solid #f59e0b;background:#ffffff;color:#f59e0b;font-size:12px;cursor:pointer;">脱退</button>`
                         }
                     </div>`;
@@ -16074,7 +16074,7 @@
                     ? `<strong>${formatDamage(row.damage)}</strong> <span style="font-size: 11px; color: #6B7178;">予測</span>`
                     : formatDamage(row.damage);
                 const rowStyle = row.isYou
-                    ? 'background: color-mix(in srgb, #14161A 8%, transparent); font-weight: 600;'
+                    ? 'background: color-mix(in srgb, #14161A 8%, transparent); font-weight: 700;'
                     : '';
                 return `<tr style="${rowStyle}">
                     <td style="text-align: center;">${rankDisp}</td>
@@ -16291,7 +16291,7 @@
             // テーブル描画
             const tbody = document.getElementById('fsimTableBody');
             tbody.innerHTML = allRows.map(r => {
-                const rowStyle = r.isSim ? 'background: color-mix(in srgb, #14161A 12%, transparent); font-weight: 600;' : '';
+                const rowStyle = r.isSim ? 'background: color-mix(in srgb, #14161A 12%, transparent); font-weight: 700;' : '';
                 return `
                     <tr style="${rowStyle}">
                         <td style="text-align: center;">${r.isSim ? '★ ' : ''}${r.label}</td>
@@ -16379,7 +16379,7 @@
                             ${comp.difficulty ? `<span class="badge">${comp.difficulty} Lv.${comp.level}</span>` : ''}
                         </div>
                         <div style="text-align: right; flex-shrink: 0;">
-                            <div style="font-size: 16px; font-weight: 600; color: #14161A; white-space: nowrap;">${formatDamage(comp.damage)}</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #14161A; white-space: nowrap;">${formatDamage(comp.damage)}</div>
                             <div style="font-size: 11px; color: #6B7178; white-space: nowrap;">${comp.player} (SLv ${comp.syncLevel})</div>
                             ${fururiHtml}
                         </div>
@@ -16533,7 +16533,7 @@
                     const rowStyle = isBase ? 'background: #F1F2F4;' : '';
                     return `
                         <tr style="${rowStyle}">
-                            <td style="text-align: center; font-weight: 500;">
+                            <td style="text-align: center; font-weight: 700;">
                                 ${player.player}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}
                             </td>
                             <td style="text-align: right;">
@@ -16542,7 +16542,7 @@
                                     <span style="font-size: 11px; color: #6B7178;">SLv: ${player.syncLevel}</span>
                                 </div>
                             </td>
-                            <td style="text-align: center; font-weight: 600;">${player.fururiScore.toFixed(2)}</td>
+                            <td style="text-align: center; font-weight: 700;">${player.fururiScore.toFixed(2)}</td>
                         </tr>`;
                 }).join('');
                 return;
@@ -16583,7 +16583,7 @@
                 const rowStyle = isBase ? 'background: #F1F2F4;' : '';
                 return `
                     <tr style="${rowStyle}">
-                        <td style="text-align: center; font-weight: 500;">
+                        <td style="text-align: center; font-weight: 700;">
                             ${r.label}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}
                         </td>
                         <td style="text-align: right;">
@@ -16592,7 +16592,7 @@
                                 <span style="font-size: 11px; color: #6B7178;">SLv: ${r.syncLevel}</span>
                             </div>
                         </td>
-                        <td style="text-align: center; font-weight: 600;">${r.score.toFixed(2)}</td>
+                        <td style="text-align: center; font-weight: 700;">${r.score.toFixed(2)}</td>
                     </tr>`;
             }).join('');
         }
@@ -16762,7 +16762,7 @@
                     const b = document.createElement('div');
                     b.id = 'sbLoadErrorBanner';
                     b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom, 8px) + 74px);z-index:9998;background:#14161A;color:#fff;border-radius:14px;padding:13px 15px;font-size:12px;font-weight:700;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;';
-                    b.innerHTML = `<span style="flex:1;">⚠️ サーバー接続の読み込みに失敗しました。電波の良い場所か Wi-Fi で再読み込みしてください。<br><span style="font-weight:600;color:rgba(255,255,255,0.7);">(コンテンツブロッカーをお使いの場合は、このサイトで無効にしてみてください)</span></span><button onclick="location.reload()" style="flex:none;padding:9px 14px;border-radius:10px;border:none;background:#fff;color:#14161A;font-size:12px;font-weight:900;cursor:pointer;">再読み込み</button>`;
+                    b.innerHTML = `<span style="flex:1;">⚠️ サーバー接続の読み込みに失敗しました。電波の良い場所か Wi-Fi で再読み込みしてください。<br><span style="font-weight:700;color:rgba(255,255,255,0.7);">(コンテンツブロッカーをお使いの場合は、このサイトで無効にしてみてください)</span></span><button onclick="location.reload()" style="flex:none;padding:9px 14px;border-radius:10px;border:none;background:#fff;color:#14161A;font-size:12px;font-weight:900;cursor:pointer;">再読み込み</button>`;
                     document.body.appendChild(b);
                 }
             }, 1000);
