@@ -9715,18 +9715,22 @@
                 document.getElementById('myAttackRecommendWrap').style.display = 'flex';
             }
 
-            // ボスボタン生成 (折り畳みグリッド内)
+            // ボスボタン生成 (折り畳みグリッド内)。Lv4-live 中は B5 以外を減光して区別する —
+            // 選択自体は塞がない (Lv3以前の凸の「遅れ報告」が正当なユースケースのため)。
+            // 誤報告は保存時の確認ダイアログで防ぐ (本番前監査 Codex 指摘への対応)
+            const pickerLv4 = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(ctx.season, ctx.bosses);
             bossButtonsEl.innerHTML = ctx.bosses.map(b => {
                 const playerAttr = weaknessPtOf(b);
                 const bossVisual = ATTR_VISUAL[b.attribute] || { color:'#8A9097', name:'?', icon:'' };
+                const dimmed = pickerLv4 && b.boss_number !== 5;
                 return `
                     <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}" data-attr="${b.attribute}" data-pt="${playerAttr}"
                         onclick="handleMyAttackBossPick(this, ${b.boss_number})"
-                        style="padding:11px 4px;border-radius:10px;border:1.5px solid ${bossVisual.color};background:#fff;color:${bossVisual.color};font-size:11px;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:all .12s;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                        style="padding:11px 4px;border-radius:10px;border:1.5px solid ${bossVisual.color};background:#fff;color:${bossVisual.color};font-size:11px;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;transition:all .12s;display:flex;flex-direction:column;align-items:center;gap:3px;${dimmed ? 'opacity:0.4;' : ''}">
                         ${bossVisual.icon ? `<img loading="lazy" decoding="async" src="${bossVisual.icon}" style="width:22px;height:22px;">` : `<div style="font-size:18px;">⚔️</div>`}
                         <div style="font-size:11px;font-weight:900;">B${b.boss_number}</div>
                     </button>`;
-            }).join('');
+            }).join('') + (pickerLv4 ? `<div style="grid-column:1/-1;font-size:10px;color:#8A9097;line-height:1.6;">♾️ Lv4中はB5のみ凸可能。他のボスは「さっき凸した分の遅れ報告」用です。</div>` : '');
 
             // ボス事前選択: 引数 > 戦闘準備 > なし
             let prefillBoss = null;
@@ -10092,6 +10096,17 @@
                     if (!ctx?.season) { setMsg('❌ アクティブシーズンが見つかりません', true); return; }
                     const boss = ctx.bosses.find(b => b.boss_number === _myAttackSelectedBossNumber);
                     if (!boss) { setMsg('❌ ボス情報が見つかりません', true); return; }
+                    // Lv4中の非B5・撃破済みボスへの新規報告は誤タップの可能性が高い → 遅れ報告かを確認
+                    // (ハードブロックにしない理由: Lv3以前の凸を後から報告する正当ケースがあるため)
+                    const saveLv4 = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(ctx.season, ctx.bosses);
+                    const bossDead = (Number(boss.remaining_hp_raw) || 0) <= 1e7;
+                    if ((saveLv4 && boss.boss_number !== 5) || (!saveLv4 && bossDead)) {
+                        const why = saveLv4 ? 'いまは Lv4 (B5のみ凸可能) です' : `B${boss.boss_number} は撃破済みです`;
+                        if (!confirm(`⚠️ ${why}。\nこの報告は「以前に凸した分の遅れ報告」ですか？\nOKでこのまま登録します。`)) {
+                            setMsg('登録を中止しました (ボスを選び直してください)', true);
+                            return;
+                        }
+                    }
                     // === 二重報告ガード: 同じボスへの凸が既に登録済み (運営の代理入力と重複するケース) ===
                     try {
                         const mine = await window.supabaseLoadMyAttacks(id.id, ctx.season.id, ctx.season.hard_date);
