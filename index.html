@@ -16982,8 +16982,15 @@
             if (_navAuto.hidden === hide) return;
             _navAuto.hidden = hide;
             document.getElementById('bottomNav')?.classList.toggle('nav-hidden', hide);
-            // 上部ヘッダーも連動して隠す (実機FB 2026-07-28: 画面を広く使いたい)。CSS側でモバイル限定
-            document.querySelector('header.header')?.classList.toggle('nav-hidden', hide);
+            // 上部ヘッダーも連動して隠す (実機FB 2026-07-28: 画面を広く使いたい)。
+            // JS 側でもモバイル判定 — PC はヘッダーが隠れないので、下の --hdr-offset を
+            // 0 にするとクイックナビがヘッダー裏 (z-index 100 > 30) に潜ってしまう
+            const hdrHide = hide && window.matchMedia('(max-width: 767px)').matches;
+            document.querySelector('header.header')?.classList.toggle('nav-hidden', hdrHide);
+            // ヘッダー高を基準に sticky 配置している要素 (戦況クイックナビ) 用のオフセット。
+            // 隠れている間は 0 に倒して最上部へ詰める (var の fallback が「表示時のヘッダー高」)
+            if (hdrHide) document.documentElement.style.setProperty('--hdr-offset', '0px');
+            else document.documentElement.style.removeProperty('--hdr-offset');
         }
         function _navShowNow() {
             // タブ切替直後の復元スクロールで隠れないよう、しばらくスクロール判定を止めて表示に倒す
@@ -17055,7 +17062,9 @@
             el.style.display = 'block';
             el.style.position = 'fixed';
             el.style.left = '0'; el.style.right = '0';
-            el.style.top = (document.querySelector('header.header')?.offsetHeight || 0) + 'px';
+            // ヘッダーが自動隠し中 (transform で画面外) は 0 に — offsetHeight だと空白帯が出る。
+            // rect.bottom は transform 適用後の見た目位置なので、隠れていれば負値 → 0 に丸まる
+            el.style.top = Math.max(0, document.querySelector('header.header')?.getBoundingClientRect().bottom || 0) + 'px';
             el.style.bottom = '0';
             el.style.overflowY = 'auto';
             el.style.transform = `translate3d(${side === 'next' ? width : -width}px, 0, 0)`;
@@ -17556,7 +17565,8 @@
                 nav.id = 'opsQuickNav';
                 nav.setAttribute('data-no-swipe', '');
                 const hdrH = document.querySelector('.header')?.offsetHeight || 50;
-                nav.style.cssText = `position:sticky;top:${hdrH}px;z-index:30;display:flex;gap:6px;overflow-x:auto;padding:8px 2px;margin:-2px 0 8px;background:linear-gradient(180deg,#F5F6F8 78%,rgba(245,246,248,0));-webkit-overflow-scrolling:touch;`;
+                // ヘッダー自動隠し中は --hdr-offset=0px が入り最上部へ詰める (fallback=ヘッダー表示時の高さ)
+                nav.style.cssText = `position:sticky;top:var(--hdr-offset, ${hdrH}px);transition:top 0.28s cubic-bezier(0.4,0,0.2,1);z-index:30;display:flex;gap:6px;overflow-x:auto;padding:8px 2px;margin:-2px 0 8px;background:linear-gradient(180deg,#F5F6F8 78%,rgba(245,246,248,0));-webkit-overflow-scrolling:touch;`;
                 nav.innerHTML = `
                     <button class="dc-nav-chip" onclick="_opsJump('opsSecBoss')">🐙 ボス</button>
                     <button class="dc-nav-chip" onclick="_opsJump('opsSecCoord')">📣 状況</button>
