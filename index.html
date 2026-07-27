@@ -131,6 +131,16 @@
             align-items: center;
             justify-content: space-between;
         }
+        /* ヘッダーも下部ナビと同じスクロール方向連動で自動隠し (_navSetHidden が両方を制御)。
+           モバイル限定 — PC はスクロール量が少なく隠す益より違和感が勝つため対象外 */
+        @media (max-width: 767px) {
+            .header {
+                transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .header.nav-hidden {
+                transform: translateY(calc(-100% - 14px));   /* 影ぶん余分に上へ */
+            }
+        }
 
         .header-left {
             display: flex;
@@ -16972,6 +16982,8 @@
             if (_navAuto.hidden === hide) return;
             _navAuto.hidden = hide;
             document.getElementById('bottomNav')?.classList.toggle('nav-hidden', hide);
+            // 上部ヘッダーも連動して隠す (実機FB 2026-07-28: 画面を広く使いたい)。CSS側でモバイル限定
+            document.querySelector('header.header')?.classList.toggle('nav-hidden', hide);
         }
         function _navShowNow() {
             // タブ切替直後の復元スクロールで隠れないよう、しばらくスクロール判定を止めて表示に倒す
