@@ -2685,30 +2685,6 @@
                 <p id="mypageStatusHint" style="margin:8px 0 0 0;font-size:11px;color:#A4AAB0;min-height:14px;text-align:center;">プレイヤーを選択してください。</p>
             </div>
 
-            <!-- アバター編集モーダル -->
-            <div class="player-select-modal" id="avatarEditModal">
-                <div class="player-select-content" style="max-width:480px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2>🖼️ アバターを変更</h2>
-                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
-                    </div>
-                    <p class="subtitle">アイコンをタップして変更します。キャラから選ぶか、画像をアップロード。</p>
-                    <div style="display:flex;flex-direction:column;gap:12px;">
-                        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:#F7F8F9;">
-                            <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;"><span data-sp-icon="user" data-sp-size="30"></span></div>
-                            <div style="flex:1;font-size:13px;color:#6B7178;">現在のアバタープレビュー</div>
-                        </div>
-                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid #14161A;background:#ffffff;color:#14161A;font-size:14px;font-weight:700;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
-                        <label style="padding:12px;border-radius:10px;border:1px dashed rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:14px;font-weight:700;cursor:pointer;text-align:center;">
-                            📤 自分の画像をアップロード (最大5MB)
-                            <input type="file" id="avatarUploadInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none;">
-                        </label>
-                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
-                        <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
-                    </div>
-                </div>
-            </div>
-
             <!-- 🤝 締め凸依頼バナー (来ているときだけの割込み — ホーム再構成 H1 で戦闘カード内から独立。
                  ID は focus=finishreq の誘導先なので変更禁止) -->
             <div id="myFinishRequestArea"></div>
@@ -2822,79 +2798,6 @@
             <div id="mypageCoordActiveList" style="display:none;"></div>
             <div id="mypageStrongAttrs" style="display:none;"></div>
             <p id="mypageStrongAttrsMessage" style="display:none;"></p>
-
-            <!-- MY設定 内容用のモーダル群 -->
-            <!-- SLv 編集モーダル -->
-            <div class="player-select-modal" id="mySlvModal" onclick="if(event.target===this)closeMySlvModal()">
-                <div class="player-select-content" style="max-width:330px;gap:0;text-align:center;padding:22px 20px;">
-                    <div style="font-size:16px;font-weight:900;color:#14161A;letter-spacing:0.2px;">SLv (シンクロレベル)</div>
-                    <div style="font-size:11px;color:#A4AAB0;margin-top:5px;line-height:1.5;">基本は前回の値を引き継ぎます。<br>前回のレイド以降に上げたら更新してください。</div>
-                    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0;">
-                        <button onclick="adjustMySlv(-1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#F1F2F4;color:#14161A;font-size:22px;font-weight:900;cursor:pointer;">−</button>
-                        <input id="mySlvInput" type="number" min="0" max="999" inputmode="numeric" placeholder="—" style="width:108px;padding:8px 6px;border-radius:12px;border:1.5px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:30px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;outline:none;">
-                        <button onclick="adjustMySlv(1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#F1F2F4;color:#14161A;font-size:22px;font-weight:900;cursor:pointer;">＋</button>
-                    </div>
-                    <div style="display:flex;gap:8px;">
-                        <button onclick="closeMySlvModal()" style="flex:none;width:96px;padding:12px;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#fff;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;">取消</button>
-                        <button onclick="handleMySlvSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#14161A;color:#fff;font-size:13px;font-weight:900;cursor:pointer;">保存</button>
-                    </div>
-                    <p id="mySlvMessage" style="margin:10px 0 0 0;font-size:11px;min-height:14px;color:#A4AAB0;"></p>
-                </div>
-            </div>
-
-            <div class="player-select-modal" id="myAvailModal">
-                <div class="player-select-content" style="max-width:520px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2><span data-sp-icon="swords" data-sp-size="17"></span> 戦闘可能時間</h2>
-                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
-                    </div>
-                    <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
-                    <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
-                    <!-- 運用オプション -->
-                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
-                            <input type="checkbox" id="myAvailFlexTime" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:#F59E0B;flex:none;">
-                            <span style="flex:1;">
-                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;">⏳ 隙間時間型 (時間の約束はできないが3凸はする)</span>
-                                <span style="display:block;font-size:11px;color:#8A9097;line-height:1.55;margin-top:2px;">当日多忙で時間が読めない人向け。凸プランではボスの割当だけ受け取り、時間帯の指示は付きません (律速にもなりません)。通知は時間帯に関係なく届きます。<br>💡 上の時間も塗っておくと「その時間は確約・それ以外は隙間で対応」のハイブリッドになります。</span>
-                            </span>
-                        </label>
-                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
-                            <input type="checkbox" id="myAvailNotifyAll" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:#6C42F0;flex:none;">
-                            <span style="flex:1;">
-                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;"><span data-sp-icon="bell" data-sp-size="13"></span> 通知はいつでも受け取る</span>
-                                <span style="display:block;font-size:11px;color:#8A9097;line-height:1.55;margin-top:2px;">戦闘可能時間の外でも締め凸候補などの通知が届きます (情報として見たい人向け)。</span>
-                            </span>
-                        </label>
-                    </div>
-                    <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
-                </div>
-            </div>
-
-            <div class="player-select-modal" id="myPushModal">
-                <div class="player-select-content" style="max-width:520px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> Push通知設定</h2>
-                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
-                    </div>
-                    <p class="subtitle">締め凸候補や運営からのお知らせをスマホに通知。<strong>iPhone</strong>の場合は Safari で「ホーム画面に追加」してから設定が必要です。</p>
-                    <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
-                    <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-                    <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
-                </div>
-            </div>
-
-            <div class="player-select-modal" id="myStrongAttrsModal">
-                <div class="player-select-content" style="max-width:520px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2>⚔ 得意属性</h2>
-                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
-                    </div>
-                    <p class="subtitle">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
-                    <div id="mypageStrongAttrsModalBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
-                    <p id="mypageStrongAttrsModalMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
-                </div>
-            </div>
 
             <!-- OCR 提出後プレビュー (ボトムシート) -->
         </div>
@@ -4185,7 +4088,7 @@
                         <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">マスタ一覧</div>
                         <span id="settingsCharSummary" style="font-size:10.5px;color:#A4AAB0;"></span>
                     </div>
-                    <div style="overflow-x:auto;margin-top:8px;">
+                    <div data-no-swipe style="overflow-x:auto;margin-top:8px;">
                         <div id="settingsCharList" style="font-size:12px;color:#A4AAB0;">読み込み中…</div>
                     </div>
                 </div>
@@ -4601,6 +4504,105 @@
                         <button onclick="handleMyDmgPreviewRetry()" style="flex:none;width:90px;height:50px;border-radius:13px;border:none;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;"><span data-sp-icon="camera" data-sp-size="13"></span> 再撮影</button>
                     </div>
                     <p id="myDmgPreviewMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
+            </div>
+
+    <!-- アバター編集モーダル -->
+            <!-- ホーム系モーダル群 (2026-07-27 本番前監査でタブ外へ移設 — タブコンテナ内の
+         モーダルは他タブ表示中に開くと不可視になる事故クラスのため全廃) -->
+    <div class="player-select-modal" id="avatarEditModal">
+                <div class="player-select-content" style="max-width:480px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2>🖼️ アバターを変更</h2>
+                        <button onclick="closeAvatarEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">アイコンをタップして変更します。キャラから選ぶか、画像をアップロード。</p>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:#F7F8F9;">
+                            <div id="avatarEditPreview" style="position:relative;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary-soft),#fff);box-shadow:0 0 0 2px var(--brand-primary);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;flex-shrink:0;"><span data-sp-icon="user" data-sp-size="30"></span></div>
+                            <div style="flex:1;font-size:13px;color:#6B7178;">現在のアバタープレビュー</div>
+                        </div>
+                        <button onclick="openIconPickerForAvatar()" style="padding:12px;border-radius:10px;border:1px solid #14161A;background:#ffffff;color:#14161A;font-size:14px;font-weight:700;cursor:pointer;">📚 NIKKE キャラから選ぶ</button>
+                        <label style="padding:12px;border-radius:10px;border:1px dashed rgba(20,22,26,0.08);background:#F7F8F9;color:#14161A;font-size:14px;font-weight:700;cursor:pointer;text-align:center;">
+                            📤 自分の画像をアップロード (最大5MB)
+                            <input type="file" id="avatarUploadInput" accept="image/*" onchange="handleAvatarUpload(event)" style="display:none;">
+                        </label>
+                        <button onclick="handleAvatarClear()" style="padding:10px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.45);background:#ffffff;color:#ef4444;font-size:13px;cursor:pointer;"><span data-sp-icon="trash" data-sp-size="13"></span> アバターを削除 (デフォルトに戻す)</button>
+                        <p id="avatarEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+                    </div>
+                </div>
+            </div>
+
+    <!-- SLv 編集モーダル -->
+            <div class="player-select-modal" id="mySlvModal" onclick="if(event.target===this)closeMySlvModal()">
+                <div class="player-select-content" style="max-width:330px;gap:0;text-align:center;padding:22px 20px;">
+                    <div style="font-size:16px;font-weight:900;color:#14161A;letter-spacing:0.2px;">SLv (シンクロレベル)</div>
+                    <div style="font-size:11px;color:#A4AAB0;margin-top:5px;line-height:1.5;">基本は前回の値を引き継ぎます。<br>前回のレイド以降に上げたら更新してください。</div>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0;">
+                        <button onclick="adjustMySlv(-1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#F1F2F4;color:#14161A;font-size:22px;font-weight:900;cursor:pointer;">−</button>
+                        <input id="mySlvInput" type="number" min="0" max="999" inputmode="numeric" placeholder="—" style="width:108px;padding:8px 6px;border-radius:12px;border:1.5px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:30px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;outline:none;">
+                        <button onclick="adjustMySlv(1)" style="width:42px;height:42px;flex:none;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#F1F2F4;color:#14161A;font-size:22px;font-weight:900;cursor:pointer;">＋</button>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="closeMySlvModal()" style="flex:none;width:96px;padding:12px;border-radius:12px;border:1px solid rgba(20,22,26,0.08);background:#fff;color:#6B7178;font-size:13px;font-weight:800;cursor:pointer;">取消</button>
+                        <button onclick="handleMySlvSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#14161A;color:#fff;font-size:13px;font-weight:900;cursor:pointer;">保存</button>
+                    </div>
+                    <p id="mySlvMessage" style="margin:10px 0 0 0;font-size:11px;min-height:14px;color:#A4AAB0;"></p>
+                </div>
+            </div>
+
+    <!-- MY設定 内容用のモーダル群 -->
+            <div class="player-select-modal" id="myAvailModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2><span data-sp-icon="swords" data-sp-size="17"></span> 戦闘可能時間</h2>
+                        <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
+                    <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
+                    <!-- 運用オプション -->
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
+                            <input type="checkbox" id="myAvailFlexTime" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:#F59E0B;flex:none;">
+                            <span style="flex:1;">
+                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;">⏳ 隙間時間型 (時間の約束はできないが3凸はする)</span>
+                                <span style="display:block;font-size:11px;color:#8A9097;line-height:1.55;margin-top:2px;">当日多忙で時間が読めない人向け。凸プランではボスの割当だけ受け取り、時間帯の指示は付きません (律速にもなりません)。通知は時間帯に関係なく届きます。<br>💡 上の時間も塗っておくと「その時間は確約・それ以外は隙間で対応」のハイブリッドになります。</span>
+                            </span>
+                        </label>
+                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
+                            <input type="checkbox" id="myAvailNotifyAll" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:#6C42F0;flex:none;">
+                            <span style="flex:1;">
+                                <span style="display:block;font-size:13px;font-weight:800;color:#14161A;"><span data-sp-icon="bell" data-sp-size="13"></span> 通知はいつでも受け取る</span>
+                                <span style="display:block;font-size:11px;color:#8A9097;line-height:1.55;margin-top:2px;">戦闘可能時間の外でも締め凸候補などの通知が届きます (情報として見たい人向け)。</span>
+                            </span>
+                        </label>
+                    </div>
+                    <p id="mypageAvailMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
+            </div>
+
+    <div class="player-select-modal" id="myPushModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> Push通知設定</h2>
+                        <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">締め凸候補や運営からのお知らせをスマホに通知。<strong>iPhone</strong>の場合は Safari で「ホーム画面に追加」してから設定が必要です。</p>
+                    <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
+                    <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                    <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
+                </div>
+            </div>
+
+    <div class="player-select-modal" id="myStrongAttrsModal">
+                <div class="player-select-content" style="max-width:520px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                        <h2>⚔ 得意属性</h2>
+                        <button onclick="closeMyStrongAttrsModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+                    </div>
+                    <p class="subtitle">あなたが得意とする属性 (好きなだけ選択 OK)。メンバー一覧で他メンバーから一目で見えます。</p>
+                    <div id="mypageStrongAttrsModalBody" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+                    <p id="mypageStrongAttrsModalMsg" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
                 </div>
             </div>
 
@@ -7213,7 +7215,7 @@
                             <span style="flex:1;font-size:10.5px;font-weight:800;color:#8A9097;" title="${g.count}/${total}件が使用">${g.count}人が使用 · ${pct}%</span>
                             <span style="flex:none;padding:6px 14px;border-radius:999px;background:#14161A;color:#fff;font-size:11px;font-weight:800;">使う</span>
                         </div>
-                        <div style="display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;">${icons}</div>
+                        <div data-no-swipe style="display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;">${icons}</div>
                     </button>`;
             }).join('');
             el.innerHTML = `
