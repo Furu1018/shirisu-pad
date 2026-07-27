@@ -16738,6 +16738,7 @@
         window.addEventListener('pageshow', (e) => { if (e.persisted) _checkVersionOnResume(); });
 
         async function _watchAppVersion() {
+            _verCheckLast = Date.now();   // 起動時実行も記録し、直後の復帰チェックと二重fetchしない (Codex指摘)
             try {
                 const mine = document.querySelector('meta[name="app-build"]')?.content || 'dev';
                 if (mine === 'dev') return;   // ローカル/未置換ビルドでは何もしない
