@@ -1556,7 +1556,6 @@
         @keyframes dcLivePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
         @keyframes dcFadeIn { from{opacity:0} to{opacity:1} }
         @keyframes dcSavePulse { 0%{background:rgba(31,195,110,0.22)} 70%{background:rgba(31,195,110,0.10)} 100%{background:transparent} }
-        @keyframes dcSavePulseDark { 0%{box-shadow:inset 0 0 0 999px rgba(31,195,110,0.30)} 100%{box-shadow:inset 0 0 0 999px rgba(31,195,110,0)} }
         @keyframes dcSlideInUp { from{opacity:0; transform:translateY(9px)} to{opacity:1; transform:translateY(0)} }
         @keyframes dcSheetUp { from{transform:translateY(102%)} to{transform:translateY(0)} }
         @keyframes dcFlameFlicker {
@@ -2102,29 +2101,23 @@
         .dc-dmg-panel:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
         .dc-dmg-panel:active { transform: translateY(0); }
         .dc-dmg-panel.saved { animation: dcSavePulse 1.2s ease-out; }
-        /* 黒カード (submitted) の保存パルス: background を動かすと黒地が消えるので inset 影で表現 */
-        .dc-dmg-panel.submitted.saved { animation: dcSavePulseDark 1.2s ease-out; }
-        .dc-dmg-name { color: #14161A; }      /* 色はクラス側で持つ (submitted の反転が inline に勝てるように) */
+
+        .dc-dmg-name { color: #14161A; }
         .dc-dmg-bossnum { color: #A4AAB0; }
-        /* HomeMind基調 B4b (2026-07-25): 提出済み=黒カード (ON状態の対比 — 交戦中ボスカードと同じ意味論)。
-           未提出パネルは白のまま = 「まだ」が一目で分かる */
-        .dc-dmg-panel.submitted { background: #101114; border-color: transparent; }
-        .dc-dmg-panel.submitted:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.28); }
-        .dc-dmg-panel.submitted .dc-dmg-value { color: #fff; }
-        .dc-dmg-panel.submitted .dc-dmg-unit { color: rgba(255,255,255,0.45); }
-        .dc-dmg-panel.submitted .dc-dmg-name { color: #fff; }
-        .dc-dmg-panel.submitted .dc-dmg-bossnum { color: rgba(255,255,255,0.5); }
-        .dc-dmg-panel.submitted .dc-dmg-char { background: #1D1E23; color: #9AA0A6; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); }
-        .dc-dmg-panel.submitted .dc-dmg-char.empty { background: #1D1E23; color: #9AA0A6; }
-        /* 2編成重ねの背面カードも黒に (両スロット提出済みの黒カードの背後に白が残ると
-           「白=未提出」の意味付けと矛盾する — Codex 指摘) */
-        .dc-dmg-panel.submitted.stacked { box-shadow: 5px 6px 0 -2px #101114, 5px 6px 0 -1px rgba(255,255,255,0.22); }
-        /* dup-N の外周色枠は黒カードでも維持 (詳細度で .submitted .dc-dmg-char に負けないよう再宣言) */
-        .dc-dmg-panel.submitted .dc-dmg-char.dup-1 { box-shadow: 0 0 0 1px #F5B400, inset 0 0 0 1px rgba(255,255,255,0.12); }
-        .dc-dmg-panel.submitted .dc-dmg-char.dup-2 { box-shadow: 0 0 0 1px #E91E63, inset 0 0 0 1px rgba(255,255,255,0.12); }
-        .dc-dmg-panel.submitted .dc-dmg-char.dup-3 { box-shadow: 0 0 0 1px #00BCD4, inset 0 0 0 1px rgba(255,255,255,0.12); }
-        .dc-dmg-panel.submitted .dc-dmg-char.dup-4 { box-shadow: 0 0 0 1px #9B4DFF, inset 0 0 0 1px rgba(255,255,255,0.12); }
-        .dc-dmg-panel.submitted .dc-dmg-char.dup-5 { box-shadow: 0 0 0 1px #FF8A2B, inset 0 0 0 1px rgba(255,255,255,0.12); }
+        /* 提出状態の表現 v2 (2026-07-27 実機FB「黒は2枚目が見づらい」で方向転換):
+           済み = 白カードのまま上端に属性色バー (::after) + 属性名横に✓ /
+           まだ = 点線ゴースト (「空き枠」の表現)。
+           黒=アクティブは情報の少ないカード (交戦中ボス・ヒーロー) 専用に戻す。
+           ⚠ ::before はタップ領域拡張 (@media pointer:coarse) が使うため装飾は ::after 限定 */
+        .dc-dmg-panel { position: relative; }
+        .dc-dmg-panel.submitted::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--pnl-c, #6C42F0);
+            border-radius: 14px 14px 0 0; pointer-events: none;
+        }
+        .dc-dmg-panel.todo { border: 1.5px dashed #C9CED3; background: #FBFBFC; }
+        .dc-dmg-panel.todo .dc-dmg-chip { opacity: 0.55; }
+        .dc-dmg-panel.todo .dc-dmg-name { color: #8A9097; }
         .dc-dmg-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
@@ -6970,7 +6963,7 @@
                     ? `<div class="dc-dmg-slotbadge" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="編成①⇄②を入れ替え">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}" style="--pnl-c:${c};" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
@@ -6980,7 +6973,7 @@
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
                                 : `<div class="dc-dmg-value empty">—</div>`}
                         </div>
-                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}</div>
+                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}</div>
                         <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
             }).join('');
