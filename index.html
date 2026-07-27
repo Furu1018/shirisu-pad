@@ -636,6 +636,13 @@
         }
 
         /* ========== Attribute tab buttons ========== */
+        /* ふるり値の属性フィルタ行: 1列固定 + 横スクロール (2026-07-27 実機FB) */
+        .fururi-attr-row {
+            display: flex; gap: 6px; flex-wrap: nowrap;
+            overflow-x: auto; padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .fururi-attr-row .attribute-tab-btn { flex: none; padding: 6px 11px; }
         .attribute-tab-btn {
             display: inline-flex;
             align-items: center;
@@ -2104,17 +2111,10 @@
 
         .dc-dmg-name { color: #14161A; }
         .dc-dmg-bossnum { color: #A4AAB0; }
-        /* 提出状態の表現 v2 (2026-07-27 実機FB「黒は2枚目が見づらい」で方向転換):
-           済み = 白カードのまま上端に属性色バー (::after) + 属性名横に✓ /
-           まだ = 点線ゴースト (「空き枠」の表現)。
-           黒=アクティブは情報の少ないカード (交戦中ボス・ヒーロー) 専用に戻す。
-           ⚠ ::before はタップ領域拡張 (@media pointer:coarse) が使うため装飾は ::after 限定 */
+        /* 提出状態の表現 v3 (2026-07-27 実機FB — 黒カード/属性色上バーとも不評):
+           済み = 黒カード化以前の元の見た目 + 属性名横の✓のみ /
+           まだ = 点線ゴースト (これは好評につき維持) のハイブリッド */
         .dc-dmg-panel { position: relative; }
-        .dc-dmg-panel.submitted::after {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-            background: var(--pnl-c, #6C42F0);
-            border-radius: 14px 14px 0 0; pointer-events: none;
-        }
         .dc-dmg-panel.todo { border: 1.5px dashed #C9CED3; background: #FBFBFC; }
         .dc-dmg-panel.todo .dc-dmg-chip { opacity: 0.55; }
         .dc-dmg-panel.todo .dc-dmg-name { color: #8A9097; }
@@ -3336,7 +3336,8 @@
                 <p id="fururiModeHint" style="font-size:10.5px;color:#B6BBC1;margin:6px 0 0 0;min-height:14px;"></p>
                 <div style="height:1px;background:#F0F1F3;margin:14px 0 12px;"></div>
                 <div style="font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:#B6BBC1;margin-bottom:9px;">属性別表示</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <!-- 1列固定: 折り返さず横スクロール (実機FB「2列になる」)。横スクロール要素なので data-no-swipe 必須 -->
+                <div data-no-swipe class="fururi-attr-row">
                     <button class="attribute-tab-btn active" data-fururi-boss="ALL" onclick="switchFururiBoss('ALL')">全体</button>
                     <button class="attribute-tab-btn" data-fururi-boss="A.N.M.I." onclick="switchFururiBoss('A.N.M.I.')" title="灼熱">
                         <img loading="lazy" decoding="async" src="./属性アイコン/灼熱.png" alt="灼熱" style="width:20px;height:20px;">
@@ -6963,7 +6964,7 @@
                     ? `<div class="dc-dmg-slotbadge" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="編成①⇄②を入れ替え">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}" style="--pnl-c:${c};" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}" data-attr="${a.key}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
@@ -16722,6 +16723,20 @@
         // まれに旧バージョンのページで起動することがある。
         // 起動時に最新の index.html のビルドIDを no-store で取得して照合し、
         // 自分が古ければ「更新」バナーを出す (クエリ付き遷移でキャッシュを回避)。
+        // 復帰時にも最新版チェック (2026-07-27 実機FB: 改修前から裏で生きていたページが
+        // フォアグラウンド復帰すると旧UIのまま表示される — _watchAppVersion は起動時しか
+        // 走らなかった)。5分に1回までのスロットルで、復帰・bfcache 復元の両方を拾う
+        let _verCheckLast = 0;
+        function _checkVersionOnResume() {
+            if (document.visibilityState !== 'visible') return;
+            const now = Date.now();
+            if (now - _verCheckLast < 5 * 60 * 1000) return;
+            _verCheckLast = now;
+            try { _watchAppVersion(); } catch { /* noop */ }
+        }
+        document.addEventListener('visibilitychange', _checkVersionOnResume);
+        window.addEventListener('pageshow', (e) => { if (e.persisted) _checkVersionOnResume(); });
+
         async function _watchAppVersion() {
             try {
                 const mine = document.querySelector('meta[name="app-build"]')?.content || 'dev';
