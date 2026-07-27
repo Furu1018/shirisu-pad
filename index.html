@@ -16978,19 +16978,27 @@
         // 上端付近では常に表示。タブ切替のスクロール復元 (プログラム由来) では反応しないよう
         // squelch 窓を設ける (TabController.activate が _navShowNow を呼ぶ)。
         const _navAuto = { lastY: 0, acc: 0, hidden: false, squelchUntil: 0 };
-        function _navSetHidden(hide) {
-            if (_navAuto.hidden === hide) return;
-            _navAuto.hidden = hide;
-            document.getElementById('bottomNav')?.classList.toggle('nav-hidden', hide);
-            // 上部ヘッダーも連動して隠す (実機FB 2026-07-28: 画面を広く使いたい)。
-            // JS 側でもモバイル判定 — PC はヘッダーが隠れないので、下の --hdr-offset を
-            // 0 にするとクイックナビがヘッダー裏 (z-index 100 > 30) に潜ってしまう
-            const hdrHide = hide && window.matchMedia('(max-width: 767px)').matches;
+        // 上部ヘッダーの連動隠し (実機FB 2026-07-28: 画面を広く使いたい)。
+        // JS 側でもモバイル判定 — PC はヘッダーが隠れないので、--hdr-offset を 0 にすると
+        // 戦況クイックナビがヘッダー裏 (z-index 100 > 30) に潜ってしまう。
+        // ブレークポイント跨ぎ (モバイルで隠したまま PC 幅へリサイズ等) でも再同期が必要なため
+        // ヘルパーに分離し、メディアクエリの change でも呼ぶ (Codex指摘)
+        const _navMobileMql = window.matchMedia('(max-width: 767px)');
+        function _navSyncHeader() {
+            const hdrHide = _navAuto.hidden && _navMobileMql.matches;
             document.querySelector('header.header')?.classList.toggle('nav-hidden', hdrHide);
             // ヘッダー高を基準に sticky 配置している要素 (戦況クイックナビ) 用のオフセット。
             // 隠れている間は 0 に倒して最上部へ詰める (var の fallback が「表示時のヘッダー高」)
             if (hdrHide) document.documentElement.style.setProperty('--hdr-offset', '0px');
             else document.documentElement.style.removeProperty('--hdr-offset');
+        }
+        if (_navMobileMql.addEventListener) _navMobileMql.addEventListener('change', _navSyncHeader);
+        else if (_navMobileMql.addListener) _navMobileMql.addListener(_navSyncHeader);   // 旧Safari
+        function _navSetHidden(hide) {
+            if (_navAuto.hidden === hide) return;
+            _navAuto.hidden = hide;
+            document.getElementById('bottomNav')?.classList.toggle('nav-hidden', hide);
+            _navSyncHeader();
         }
         function _navShowNow() {
             // タブ切替直後の復元スクロールで隠れないよう、しばらくスクロール判定を止めて表示に倒す
