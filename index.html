@@ -3020,7 +3020,7 @@
                     <button onclick="openOpsAttacksEditModal()" class="dc-ops-action"><span data-sp-icon="clipboard" data-sp-size="14"></span> 凸履歴・編集</button>
                     <button onclick="openOpsAuditModal()" class="dc-ops-action"><span data-sp-icon="search" data-sp-size="14"></span> 提出漏れチェック</button>
                     <button onclick="openOpsMockAuditModal()" class="dc-ops-action"><span data-sp-icon="clipboardCheck" data-sp-size="14"></span> 模擬提出チェック</button>
-                    <button onclick="switchTab('member-admin')" class="dc-ops-action"><span data-sp-icon="users" data-sp-size="14"></span> メンバー管理</button>
+                    <!-- メンバー管理は戦闘中の操作ではないため除去 (設定タブ→メンバー管理から。実機FB 2026-07-28) -->
                 </div>
             </div>
 
@@ -3040,6 +3040,8 @@
             <div class="dc-card">
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:6px;">シーズン制御</div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#A4AAB0;">月次のレイドサイクル全体に関わる操作です。誤操作に注意してください。</p>
+                <!-- 走っているシーズンのサマリー + 確認・編集 (renderOpsSeasonCtlSummary が描画) -->
+                <div id="opsSeasonCtlSummary" style="margin:0 0 12px 0;"></div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" style="background:#14161A;color:#fff;"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
                     <button onclick="handleOpsQuickCreateTestSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;border:1px dashed rgba(245,158,11,0.4);"><span data-sp-icon="flask" data-sp-size="14"></span> クイックテスト</button>
@@ -3776,10 +3778,11 @@
                             <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。運営メンバーは一度ONにすれば端末に記憶される</li>
                             <li><strong>HP鮮度</strong> — ボス状況の見出しに「HP更新 ○分前」を表示 (30分以上で⚠️)。ボスHPは30秒毎に自動再取得される</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
+                            <li><strong>✏️ シーズン確認・編集</strong> — シーズン制御カードに走っているシーズンのサマリー (月キー・ハード日・ボス構成) を表示。ハード日・月キー・ボス名はここから修正できる。<strong>ボスコード・級は凸記録と連動するため変更不可</strong> — 構成を間違えたらシーズン作り直しで対応</li>
                             <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
                             <li><strong>🧪 クイックテストシーズン</strong> — ワンクリックでテストボス1〜5の独立環境を生成。OCR/スクショ不要</li>
                             <li><strong>📣 オンライン / 調整中 メンバー</strong> — リアルタイム共有 (10秒毎ポーリング)。アバター付きで誰が何をしているか即把握</li>
-                            <li><strong>メンバー管理</strong> — 改名・脱退・復活・完全削除。アバター付きで判別しやすい</li>
+                            <li><strong>メンバー管理 (設定タブ)</strong> — 改名・脱退・復活・完全削除。アバター付きで判別しやすい (戦闘中の操作ではないため設定タブ側に集約)</li>
                             <li><strong>Push通知 一斉送信</strong> — 購読者全員に通知（受信時間帯フィルタ適用）</li>
                         </ul>
                         <h3>🗓 当日運用チェックリスト</h3>
@@ -4424,6 +4427,39 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeOpsSeasonCreateModal()" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
                 <button onclick="handleOpsSeasonCreateSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;">作成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 運営: シーズン確認・編集モーダル (戦況タブ シーズン制御から開く) ========== -->
+    <div class="player-select-modal" id="opsSeasonEditModal">
+        <div class="player-select-content" style="max-width:620px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>✏️ シーズン確認・編集</h2>
+                <button onclick="closeOpsSeasonEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">走っているシーズンの基本情報を修正できます。<strong>ボスコード・級 (HP) は凸記録・ダメージと連動するためここでは変更できません</strong> — 構成を間違えた場合はシーズンを作り直してください。</p>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+                <div style="min-width:0;">
+                    <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">ハード日 (Day2)</label>
+                    <input type="date" id="opsSeasonEditHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;min-height:38px;">
+                </div>
+                <div style="min-width:0;">
+                    <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">月キー (YYYY-MM)</label>
+                    <input type="text" id="opsSeasonEditMonthKey" placeholder="例: 2026-06" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;min-height:38px;">
+                </div>
+            </div>
+
+            <div>
+                <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:6px;">ボス名の修正 (空欄のままなら変更しません)</label>
+                <div id="opsSeasonEditBossRows"></div>
+            </div>
+
+            <p id="opsSeasonEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button onclick="closeOpsSeasonEditModal()" style="padding:10px 16px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">キャンセル</button>
+                <button onclick="handleOpsSeasonEditSave()" style="padding:10px 18px;border-radius:8px;border:1px solid #14161A;background:#14161A;color:#ffffff;font-size:12.5px;font-weight:800;cursor:pointer;"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
     </div>
@@ -11548,6 +11584,7 @@
                 if (bossSummaryEl) bossSummaryEl.innerHTML = '';
                 finishListEl.innerHTML = '';
                 if (testBanner) testBanner.style.display = 'none';
+                renderOpsSeasonCtlSummary(null, []);
                 return;
             }
             labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})${season.is_test ? ' 🧪テスト' : ''}`;
@@ -11570,6 +11607,7 @@
                 bannerEl.style.display = 'none';
             }
 
+            renderOpsSeasonCtlSummary(season, bosses);
             renderOpsBossSummary();
             renderOpsRemainingList();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
@@ -14492,6 +14530,101 @@
         }
         function closeOpsSeasonCreateModal() {
             document.getElementById('opsSeasonCreateModal').classList.remove('open');
+        }
+
+        // ===== 走っているシーズンの確認・編集 (実機FB 2026-07-28: 作成後に見る/直す場所が無かった) =====
+        // サマリーは opsStore のスナップショットだけで描ける (追加フェッチなし)。
+        // 編集できるのはハード日・月キー・ボス名のみ — コード/級は attribute/weakness/HP や
+        // 凸記録と連動するため、間違えた場合はシーズン作り直しで対応する (モーダルにも明記)
+        let _opsSeasonEditCtx = null;
+        function renderOpsSeasonCtlSummary(season, bosses) {
+            const el = document.getElementById('opsSeasonCtlSummary');
+            if (!el) return;
+            if (!season) {
+                el.innerHTML = '<div style="padding:9px 12px;border-radius:10px;background:#F7F8F9;font-size:12px;color:#8A9097;">アクティブシーズンはありません。「シーズン作成」で開始します。</div>';
+                return;
+            }
+            let hdLabel = '未設定';
+            if (season.hard_date) {
+                const d = new Date(season.hard_date + 'T00:00:00');
+                if (!isNaN(d)) hdLabel = `${d.getMonth() + 1}/${d.getDate()}(${'日月火水木金土'[d.getDay()]})`;
+            }
+            const pills = (bosses || []).slice().sort((a, b) => a.boss_number - b.boss_number).map(b => {
+                const v = ATTR_VISUAL[b.attribute] || { color: '#8A9097' };
+                return `<span style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:900;color:${v.color};background:${v.color}1A;white-space:nowrap;">B${b.boss_number} ${escapeHtml(b.boss_code)}</span>`;
+            }).join('');
+            el.innerHTML = `
+                <div style="padding:10px 12px;border-radius:12px;background:#F7F8F9;display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="font-size:13px;font-weight:900;color:#14161A;">🗓 ${escapeHtml(season.month_key || '?')}</span>
+                        ${season.is_test ? '<span style="border-radius:999px;padding:3px 9px;font-size:10px;font-weight:900;color:#b45309;background:rgba(245,158,11,0.15);">🧪 テスト</span>' : ''}
+                        <span style="font-size:11px;font-weight:700;color:#6B7178;">ハード日 ${hdLabel} · Lv${season.current_level || 1}</span>
+                        <button onclick="openOpsSeasonEditModal()" style="margin-left:auto;padding:5px 11px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">✏️ 確認・編集</button>
+                    </div>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">${pills}</div>
+                </div>`;
+        }
+        async function openOpsSeasonEditModal() {
+            let snap = opsStore.get();
+            if (!snap) { try { snap = await opsStore.load(); } catch { snap = null; } }
+            const season = snap?.season;
+            if (!season) { showNotification('アクティブシーズンがありません'); return; }
+            const bosses = (snap.bosses || []).slice().sort((a, b) => a.boss_number - b.boss_number);
+            _opsSeasonEditCtx = {
+                seasonId: season.id,
+                hardDate: season.hard_date || '',
+                monthKey: season.month_key || '',
+                bosses: bosses.map(b => ({ bossNumber: b.boss_number, name: b.name || '' })),
+            };
+            document.getElementById('opsSeasonEditHardDate').value = season.hard_date || '';
+            document.getElementById('opsSeasonEditMonthKey').value = season.month_key || '';
+            const TIER_LABEL = { tyrant: 'タイラント級', lord: 'ロード級' };
+            document.getElementById('opsSeasonEditBossRows').innerHTML = bosses.map(b => {
+                const v = ATTR_VISUAL[b.attribute] || { color: '#8A9097', name: '?' };
+                return `
+                <div data-pos="${b.boss_number}" style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:5px 8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(20,22,26,0.06);">
+                    <span style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${v.color};background:${v.color}1A;border-radius:9px;">B${b.boss_number}</span>
+                    <div style="min-width:0;font-size:11px;font-weight:800;color:${v.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(b.boss_code)} <span style="color:#8A9097;font-weight:700;">· ${TIER_LABEL[b.tier] || b.tier} · ${v.name}</span></div>
+                    <input class="ops-season-edit-name" type="text" placeholder="${b.name ? '' : 'ボス名 (任意)'}" value="${escapeHtml(b.name || '')}" style="width:100%;min-width:0;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12.5px;">
+                </div>`;
+            }).join('');
+            document.getElementById('opsSeasonEditMessage').textContent = '';
+            document.getElementById('opsSeasonEditModal').classList.add('open');
+        }
+        function closeOpsSeasonEditModal() {
+            document.getElementById('opsSeasonEditModal').classList.remove('open');
+        }
+        async function handleOpsSeasonEditSave() {
+            const ctx = _opsSeasonEditCtx;
+            if (!ctx) return;
+            const msg = document.getElementById('opsSeasonEditMessage');
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const hardDate = document.getElementById('opsSeasonEditHardDate').value;
+            const monthKey = document.getElementById('opsSeasonEditMonthKey').value.trim();
+            if (!hardDate) { set('❌ ハード日を入力してください', true); return; }
+            if (!/^\d{4}-\d{2}$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式', true); return; }
+            const rows = Array.from(document.querySelectorAll('#opsSeasonEditBossRows > div[data-pos]'));
+            const nameEdits = [];
+            for (const row of rows) {
+                const bossNumber = parseInt(row.dataset.pos);
+                const v = row.querySelector('.ops-season-edit-name').value.trim();
+                const orig = ctx.bosses.find(b => b.bossNumber === bossNumber)?.name || '';
+                // 空欄は「変更しない」扱い (supabaseUpdateBossName も空文字は無視する仕様)
+                if (v && v !== orig) nameEdits.push({ bossNumber, name: v });
+            }
+            const metaChanged = hardDate !== ctx.hardDate || monthKey !== ctx.monthKey;
+            if (!metaChanged && nameEdits.length === 0) { set('変更はありません'); return; }
+            set('保存中...');
+            try {
+                if (metaChanged) await window.supabaseUpdateSeasonMeta(ctx.seasonId, { monthKey, hardDate });
+                for (const e of nameEdits) await window.supabaseUpdateBossName(ctx.seasonId, e.bossNumber, e.name);
+                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length}件)`);
+                opsStore.invalidate();
+                renderOpsDashboard();   // サマリー・盤面とも新データで再描画
+                setTimeout(closeOpsSeasonEditModal, 700);
+            } catch (e) {
+                set(`❌ ${e?.message || e}`, true);
+            }
         }
         function renderOpsSeasonBossRows(rows) {
             const el = document.getElementById('opsSeasonBossRows');

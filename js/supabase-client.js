@@ -920,6 +920,22 @@ window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, play
     if (error) throw error;
 };
 
+// シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。
+// 編集対象はハード日と月キーのみ — ボス構成 (code/tier) は凸記録・ダメージと連動するため
+// このAPIでは触らない (間違えた場合はシーズン作り直しの運用)
+window.supabaseUpdateSeasonMeta = async function (seasonId, { monthKey, hardDate } = {}) {
+    if (!seasonId) throw new Error('seasonId が必要です');
+    const patch = {};
+    if (monthKey) patch.month_key = monthKey;
+    if (hardDate) patch.hard_date = hardDate;
+    if (Object.keys(patch).length === 0) return;
+    const { error } = await supabase
+        .from('seasons')
+        .update(patch)
+        .eq('id', seasonId);
+    if (error) throw error;
+};
+
 // ボス名の変更 (運営のボス編集パネルから)
 window.supabaseUpdateBossName = async function (seasonId, bossNumber, name) {
     const clean = (name || '').trim();
