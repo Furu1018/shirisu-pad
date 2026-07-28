@@ -4392,22 +4392,22 @@
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <div>
-                    <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">ハード日 (Day2)</label>
-                    <input type="date" id="opsSeasonHardDate" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
+                <div style="min-width:0;">
+                    <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">ハード日 (Day2)</label>
+                    <input type="date" id="opsSeasonHardDate" style="width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
                 </div>
-                <div>
-                    <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;">月キー (YYYY-MM)</label>
-                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
+                <div style="min-width:0;">
+                    <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">月キー (YYYY-MM)</label>
+                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
                 </div>
             </div>
 
             <div>
-                <label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px;">ボス構成（B1〜B5）</label>
+                <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:6px;">ボス構成（B1〜B5）</label>
                 <div id="opsSeasonBossRows"></div>
             </div>
 
-            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:8px;background:#F7F8F9;">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:12px;background:#F7F8F9;">
                 <div style="font-size:12px;color:#6B7178;line-height:1.5;">
                     🪞 <strong>模擬戦の提出はシーズン期間中に必須</strong>です。前回ダメ引継ぎは廃止しました。<br>
                     新シーズンの最適プランや締め凸候補は、提出された模擬戦データに基づいて算出されます。
@@ -14493,17 +14493,24 @@
         }
         function renderOpsSeasonBossRows(rows) {
             const el = document.getElementById('opsSeasonBossRows');
-            el.innerHTML = rows.map(r => `
-                <div data-pos="${r.bossNumber}" style="display:grid;grid-template-columns:32px 1fr 80px 1.4fr;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid rgba(20,22,26,0.08);">
-                    <span style="font-size:13px;font-weight:700;">B${r.bossNumber}</span>
-                    <select class="ops-season-code" style="padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12px;">
+            // 旧レイアウト (32px 1fr 80px 1.4fr の1行4列) はスマホのモーダル内幅 (~300px) に
+            // 収まらず select がはみ出して枠ズレしていた → 「コード+級 / ボス名」の2段構成に。
+            // select/input は min-width:0 必須 (グリッド内の暗黙 min-width:auto で潰れなくなる)
+            const field = 'width:100%;min-width:0;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12.5px;';
+            el.innerHTML = `
+                <div style="display:grid;grid-template-columns:36px minmax(0,1.1fr) minmax(0,1fr);gap:0 8px;padding:0 0 3px;font-size:10px;font-weight:800;color:#8A9097;">
+                    <span></span><span>ボスコード</span><span>級 (HP規模)</span>
+                </div>` + rows.map(r => `
+                <div data-pos="${r.bossNumber}" style="display:grid;grid-template-columns:36px minmax(0,1.1fr) minmax(0,1fr);gap:6px 8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(20,22,26,0.06);">
+                    <span style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.10);border-radius:9px;">B${r.bossNumber}</span>
+                    <select class="ops-season-code" style="${field}font-weight:700;">
                         ${BOSS_CODES.map(c => `<option value="${c}" ${c === r.bossCode ? 'selected' : ''}>${c}</option>`).join('')}
                     </select>
-                    <select class="ops-season-tier" style="padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12px;">
+                    <select class="ops-season-tier" style="${field}font-weight:700;">
                         <option value="tyrant" ${r.tier === 'tyrant' ? 'selected' : ''}>タイラント</option>
                         <option value="lord" ${r.tier === 'lord' ? 'selected' : ''}>ロード</option>
                     </select>
-                    <input class="ops-season-name" type="text" placeholder="ボス名 (任意)" value="${escapeHtml(r.name)}" style="padding:6px 8px;border-radius:6px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12px;">
+                    <input class="ops-season-name" type="text" placeholder="ボス名 (任意)" value="${escapeHtml(r.name)}" style="grid-column:2/-1;${field}">
                 </div>
             `).join('');
         }
@@ -14590,7 +14597,7 @@
             if (!/^\d{4}-\d{2}$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式', true); return; }
 
             // ボス情報を収集
-            const rows = Array.from(document.querySelectorAll('#opsSeasonBossRows > div'));
+            const rows = Array.from(document.querySelectorAll('#opsSeasonBossRows > div[data-pos]'));   // 先頭の列見出し行を除外
             const bosses = rows.map(row => ({
                 bossNumber: parseInt(row.dataset.pos),
                 bossCode: row.querySelector('.ops-season-code').value,
