@@ -88,6 +88,11 @@ BEGIN
                 RAISE EXCEPTION 'ボス%の属性指定が不正です (attribute=%, weakness=%)', r.bn, r.attr, r.weak;
             END IF;
         END LOOP;
+        -- 同一ボスへの二重指定を拒否 (フェーズ1/2の対応が崩れ、凸コードだけずれる恐れがある)
+        IF (SELECT count(*) <> count(DISTINCT (e->>'boss_number')::int)
+              FROM jsonb_array_elements(p_boss_codes) e) THEN
+            RAISE EXCEPTION '同じボスに複数のコード変更が指定されています';
+        END IF;
         IF (SELECT count(*) <> count(DISTINCT final_code) FROM (
                 SELECT COALESCE(e.code, b.boss_code) AS final_code
                   FROM bosses b
