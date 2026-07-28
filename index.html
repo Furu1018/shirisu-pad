@@ -14603,7 +14603,7 @@
             const hardDate = document.getElementById('opsSeasonEditHardDate').value;
             const monthKey = document.getElementById('opsSeasonEditMonthKey').value.trim();
             if (!hardDate) { set('❌ ハード日を入力してください', true); return; }
-            if (!/^\d{4}-\d{2}$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式', true); return; }
+            if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式 (月は01〜12)', true); return; }
             const rows = Array.from(document.querySelectorAll('#opsSeasonEditBossRows > div[data-pos]'));
             const nameEdits = [];
             for (const row of rows) {
@@ -14617,10 +14617,9 @@
             if (!metaChanged && nameEdits.length === 0) { set('変更はありません'); return; }
             set('保存中...');
             try {
-                // ボス名だけの変更でも「開いている間にシーズン終了」を弾く (メタ更新側にも同ガードあり)
-                await window.supabaseAssertSeasonActive(ctx.seasonId);
-                if (metaChanged) await window.supabaseUpdateSeasonMeta(ctx.seasonId, { monthKey, hardDate, prevHardDate: ctx.hardDate });
-                for (const e of nameEdits) await window.supabaseUpdateBossName(ctx.seasonId, e.bossNumber, e.name);
+                // アクティブ確認・メタ更新・凸日付移行・ボス名更新を一括保存
+                // (26_season_meta_rpc.sql 適用済みなら原子的、未適用ならガード付き逐次にフォールバック)
+                await window.supabaseSaveSeasonEdits(ctx.seasonId, { monthKey, hardDate, bossNames: nameEdits });
                 set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length}件)`);
                 opsStore.invalidate();
                 renderOpsDashboard();   // サマリー・盤面とも新データで再描画
@@ -14734,7 +14733,7 @@
             const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
 
             if (!hardDate) { set('❌ ハード日を入力してください', true); return; }
-            if (!/^\d{4}-\d{2}$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式', true); return; }
+            if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式 (月は01〜12)', true); return; }
 
             // ボス情報を収集
             const rows = Array.from(document.querySelectorAll('#opsSeasonBossRows > div[data-pos]'));   // 先頭の列見出し行を除外

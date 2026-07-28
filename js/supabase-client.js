@@ -923,7 +923,7 @@ window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, play
 // シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。
 // 編集対象はハード日と月キーのみ — ボス構成 (code/tier) は凸記録・ダメージと連動するため
 // このAPIでは触らない (間違えた場合はシーズン作り直しの運用)
-window.supabaseUpdateSeasonMeta = async function (seasonId, { monthKey, hardDate, prevHardDate } = {}) {
+window.supabaseUpdateSeasonMeta = async function (seasonId, { monthKey, hardDate } = {}) {
     if (!seasonId) throw new Error('seasonId が必要です');
     const patch = {};
     if (monthKey) patch.month_key = monthKey;
@@ -941,16 +941,37 @@ window.supabaseUpdateSeasonMeta = async function (seasonId, { monthKey, hardDate
     if (!data || data.length === 0) {
         throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
     }
-    // ハード日を変えた場合、旧日付で記録済みの凸を新日付へ追随させる。
-    // 盤面ローダは attack_date = hard_date で絞るため、移行しないと既存凸が消えて見える
-    if (hardDate && prevHardDate && hardDate !== prevHardDate) {
+    // ハード日変更時、記録済みの凸日付を追随させる。盤面ローダは attack_date = hard_date で
+    // 絞るため、移行しないと既存凸が消えて見える。<> 条件なので冪等 (再保存で不整合も治る)
+    if (hardDate) {
         const { error: aErr } = await supabase
             .from('attacks')
             .update({ attack_date: hardDate })
             .eq('season_id', seasonId)
-            .eq('attack_date', prevHardDate);
+            .neq('attack_date', hardDate);
         if (aErr) throw aErr;
     }
+};
+
+// シーズン確認・編集の一括保存。26_season_meta_rpc.sql の RPC で
+// アクティブ確認・メタ更新・凸日付移行・ボス名更新を原子的に実行する。
+// RPC 未適用の環境では従来の逐次更新へ静かにフォールバック
+// (非原子的だが各ステップにガードと冪等性あり)
+window.supabaseSaveSeasonEdits = async function (seasonId, { monthKey, hardDate, bossNames = [] } = {}) {
+    if (!seasonId) throw new Error('seasonId が必要です');
+    const { error } = await supabase.rpc('ops_update_season_meta', {
+        p_season_id: seasonId,
+        p_month_key: monthKey,
+        p_hard_date: hardDate,
+        p_boss_names: bossNames.map(b => ({ boss_number: b.bossNumber, name: b.name })),
+    });
+    if (!error) return;
+    // PGRST202 = 関数がスキーマに無い (26 未適用)。それ以外 (RPC内の RAISE 等) はそのまま投げる
+    const missing = error.code === 'PGRST202' || /Could not find the function/i.test(error.message || '');
+    if (!missing) throw error;
+    await window.supabaseAssertSeasonActive(seasonId);
+    await window.supabaseUpdateSeasonMeta(seasonId, { monthKey, hardDate });
+    for (const b of bossNames) await window.supabaseUpdateBossName(seasonId, b.bossNumber, b.name);
 };
 
 // シーズンがまだアクティブかの事前チェック (シーズン確認・編集モーダルの保存前ガード)

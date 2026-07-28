@@ -135,6 +135,10 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'burst_alt'),
         'nikke_characters.burst_alt (複数バースト対応キャラのサブバースト)'
 
+    UNION ALL SELECT '26_season_meta_rpc',
+        to_regproc('public.ops_update_season_meta') IS NOT NULL,
+        'シーズン確認・編集の原子的保存 RPC (未適用でも非原子的フォールバックで動作)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'
