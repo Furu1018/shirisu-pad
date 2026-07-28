@@ -991,29 +991,61 @@ window.supabaseSaveSeasonEdits = async function (seasonId, { monthKey, hardDate,
     if (!missing) throw error;
     await window.supabaseAssertSeasonActive(seasonId);
     await window.supabaseUpdateSeasonMeta(seasonId, { monthKey, hardDate });
-    for (const b of bossCodes) await window.supabaseUpdateBossCode(seasonId, b.bossNumber, b);
+    if (bossCodes.length > 0) await window.supabaseUpdateBossCodes(seasonId, bossCodes);
     for (const b of bossNames) await window.supabaseUpdateBossName(seasonId, b.bossNumber, b.name);
 };
 
-// ボスコード (属性) の変更 + 記録済み凸の boss_code 追随 (27 RPC 未適用環境のフォールバック用)。
-// 凸は boss_number が主の紐付けなので、非正規化カラムの書き換えだけで整合する
-window.supabaseUpdateBossCode = async function (seasonId, bossNumber, { bossCode, attribute, weakness } = {}) {
-    if (!seasonId || !bossNumber || !bossCode) throw new Error('ボスコードの指定が不正です');
+// ボスコード (属性) の一括変更 + 記録済みデータの追随 (27 RPC 未適用環境のフォールバック用)。
+// bosses は UNIQUE(season_id, boss_code) のため入替 (スワップ) は2段階で行う:
+// 一時コード → 最終コード。fururi_simulation_scores (boss_code キー) も同伴、
+// attacks は boss_number が主の紐付けなので非正規化カラムの書き換えだけで整合する。
+// 非原子的 (途中失敗で一時コード ~EDIT~n が残り得る) — その場合は編集を再保存すれば自己修復する
+window.supabaseUpdateBossCodes = async function (seasonId, edits = []) {
+    if (!seasonId || !Array.isArray(edits) || edits.length === 0) return;
     const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
-    if (!ATTRS.includes(attribute) || !ATTRS.includes(weakness)) throw new Error(`ボス${bossNumber}の属性指定が不正です`);
-    const { error } = await supabase
-        .from('bosses')
-        .update({ boss_code: bossCode, attribute, weakness })
-        .eq('season_id', seasonId)
-        .eq('boss_number', bossNumber);
-    if (error) throw error;
-    const { error: aErr } = await supabase
-        .from('attacks')
-        .update({ boss_code: bossCode })
-        .eq('season_id', seasonId)
-        .eq('boss_number', bossNumber)
-        .neq('boss_code', bossCode);
-    if (aErr) throw aErr;
+    for (const b of edits) {
+        if (!b.bossNumber || !b.bossCode) throw new Error('ボスコードの指定が不正です');
+        if (!ATTRS.includes(b.attribute) || !ATTRS.includes(b.weakness)) throw new Error(`ボス${b.bossNumber}の属性指定が不正です`);
+    }
+    const { data: cur, error: curErr } = await supabase
+        .from('bosses').select('boss_number, boss_code').eq('season_id', seasonId);
+    if (curErr) throw curErr;
+    const oldCode = new Map((cur || []).map(r => [r.boss_number, r.boss_code]));
+    const real = edits.filter(b => oldCode.get(b.bossNumber) !== b.bossCode);
+    if (real.length === 0) return;
+    // 最終状態の重複チェック (UNIQUE違反を平易なエラーで先取り)
+    const finalCodes = (cur || []).map(r => real.find(e => e.bossNumber === r.boss_number)?.bossCode || r.boss_code);
+    if (new Set(finalCodes).size !== finalCodes.length) {
+        throw new Error('同じボスコードを複数のボスに割り当てることはできません (入替の場合は両方のボスを変更してください)');
+    }
+    // フェーズ1: 一時コードへ退避
+    for (const b of real) {
+        const tmp = `~EDIT~${b.bossNumber}`;
+        let r = await supabase.from('bosses').update({ boss_code: tmp })
+            .eq('season_id', seasonId).eq('boss_number', b.bossNumber);
+        if (r.error) throw r.error;
+        r = await supabase.from('fururi_simulation_scores').update({ boss_code: tmp })
+            .eq('season_id', seasonId).eq('boss_code', oldCode.get(b.bossNumber));
+        if (r.error) throw r.error;
+    }
+    // フェーズ2: 最終コード + 属性/弱点を確定し、凸・fururi を追随
+    for (const b of real) {
+        const tmp = `~EDIT~${b.bossNumber}`;
+        let r = await supabase.from('bosses')
+            .update({ boss_code: b.bossCode, attribute: b.attribute, weakness: b.weakness })
+            .eq('season_id', seasonId).eq('boss_number', b.bossNumber).eq('boss_code', tmp);
+        if (r.error) throw r.error;
+        r = await supabase.from('fururi_simulation_scores').update({ boss_code: b.bossCode })
+            .eq('season_id', seasonId).eq('boss_code', tmp);
+        if (r.error) throw r.error;
+        r = await supabase.from('attacks').update({ boss_code: b.bossCode })
+            .eq('season_id', seasonId).eq('boss_number', b.bossNumber).neq('boss_code', b.bossCode);
+        if (r.error) throw r.error;
+        // boss_code が NULL の凸 (旧データ) も boss_number 基準で埋める (.neq は NULL に効かない)
+        r = await supabase.from('attacks').update({ boss_code: b.bossCode })
+            .eq('season_id', seasonId).eq('boss_number', b.bossNumber).is('boss_code', null);
+        if (r.error) throw r.error;
+    }
 };
 
 // シーズンがまだアクティブかの事前チェック (シーズン確認・編集モーダルの保存前ガード)

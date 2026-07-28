@@ -14642,6 +14642,11 @@
                     codeEdits.push({ bossNumber, bossCode: code, attribute: meta.attribute, weakness: meta.weakness });
                 }
             }
+            // 最終状態のコード重複を先取りチェック (bosses は UNIQUE(season_id, boss_code))
+            const finalCodes = rows.map(row => row.querySelector('.ops-season-edit-code')?.value).filter(Boolean);
+            if (new Set(finalCodes).size !== finalCodes.length) {
+                set('❌ 同じボスコードを複数のボスに割り当てられません (入替は両方のボスを変更)', true); return;
+            }
             const metaChanged = hardDate !== ctx.hardDate || monthKey !== ctx.monthKey;
             if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0) { set('変更はありません'); return; }
             if (codeEdits.length > 0) {
@@ -14662,8 +14667,11 @@
                 setTimeout(closeOpsSeasonEditModal, 700);
             } catch (e) {
                 const m = String(e?.message || e);
-                if (e?.code === '23505' || m.includes('duplicate key')) set('❌ その月キーは既に別シーズンで使われています', true);
-                else set(`❌ ${m}`, true);
+                if (e?.code === '23505' || m.includes('duplicate key')) {
+                    // どの一意制約に当たったかで平易なメッセージを出し分け
+                    if (m.includes('boss_code')) set('❌ 同じボスコードを複数のボスに割り当てられません (入替は両方のボスを変更)', true);
+                    else set('❌ その月キーは既に別シーズンで使われています', true);
+                } else set(`❌ ${m}`, true);
             }
         }
         function renderOpsSeasonBossRows(rows) {
