@@ -37,6 +37,8 @@ AS $$
 DECLARE
     r RECORD;
     v_old TEXT;
+    v_expect_attr TEXT;
+    v_expect_weak TEXT;
 BEGIN
     -- サーバ側でも月キーを検証 (クライアント検証だけだと 2026-13 等が保存できてしまう)
     IF p_month_key IS NULL OR p_month_key !~ '^\d{4}-(0[1-9]|1[0-2])$' THEN
@@ -83,9 +85,29 @@ BEGIN
             IF r.bn IS NULL OR r.code IS NULL OR r.code = '' THEN
                 RAISE EXCEPTION 'ボスコード変更の指定が不正です (boss_number=%)', r.bn;
             END IF;
-            IF r.attr NOT IN ('fire','water','electric','iron','wind')
-               OR r.weak NOT IN ('fire','water','electric','iron','wind') THEN
-                RAISE EXCEPTION 'ボス%の属性指定が不正です (attribute=%, weakness=%)', r.bn, r.attr, r.weak;
+            -- コード⇄属性・弱点の対応を固定検証する (クライアント値の鵜呑みにしない —
+            -- 任意RPC呼び出しでの不正な組合せ保存を防ぐ)。
+            -- ⚠ この対応表は js/supabase-client.js の SEASON_ATTR_FROM_CODE /
+            --    SEASON_WEAKNESS_BY_ATTR と一致させること (導出はクライアントが正、ここは検証のみ)
+            v_expect_attr := CASE r.code
+                WHEN 'H.S.T.A.' THEN 'fire'
+                WHEN 'P.S.I.D.' THEN 'water'
+                WHEN 'D.M.T.R.' THEN 'iron'
+                WHEN 'Z.E.U.S.' THEN 'electric'
+                WHEN 'A.N.M.I.' THEN 'wind'
+                ELSE NULL END;
+            IF v_expect_attr IS NULL THEN
+                RAISE EXCEPTION 'ボス%のボスコードが不正です (%)', r.bn, r.code;
+            END IF;
+            v_expect_weak := CASE v_expect_attr
+                WHEN 'fire' THEN 'water'
+                WHEN 'water' THEN 'electric'
+                WHEN 'iron' THEN 'wind'
+                WHEN 'electric' THEN 'iron'
+                WHEN 'wind' THEN 'fire'
+                END;
+            IF r.attr IS DISTINCT FROM v_expect_attr OR r.weak IS DISTINCT FROM v_expect_weak THEN
+                RAISE EXCEPTION 'ボス%の属性指定がコード%と一致しません (attribute=%, weakness=%)', r.bn, r.code, r.attr, r.weak;
             END IF;
         END LOOP;
         -- 同一ボスへの二重指定を拒否 (フェーズ1/2の対応が崩れ、凸コードだけずれる恐れがある)
