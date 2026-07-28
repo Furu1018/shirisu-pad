@@ -139,6 +139,11 @@ SELECT * FROM (
         to_regproc('public.ops_update_season_meta') IS NOT NULL,
         'シーズン確認・編集の原子的保存 RPC (未適用でも非原子的フォールバックで動作)'
 
+    UNION ALL SELECT '27_season_boss_edit_rpc',
+        EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                WHERE n.nspname = 'public' AND p.proname = 'ops_update_season_meta' AND p.pronargs = 5),
+        'シーズン編集 v2: ボスコード(属性)修正対応の5引数RPC (未適用でもコード変更のみ逐次フォールバック)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

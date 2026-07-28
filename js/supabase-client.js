@@ -920,6 +920,18 @@ window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, play
     if (error) throw error;
 };
 
+// ボスコード → ボス属性 / ボス属性 → 弱点PT属性。
+// supabaseCreateSeason と シーズン確認・編集 (supabaseSaveSeasonEdits) が共有する唯一の定義
+// (js/domain/attributes.js の WEAKNESS_BY_BOSS_ATTR と同一写像 — 画面側で再定義しないこと)
+const SEASON_ATTR_FROM_CODE = { 'H.S.T.A.': 'fire', 'P.S.I.D.': 'water', 'D.M.T.R.': 'iron', 'Z.E.U.S.': 'electric', 'A.N.M.I.': 'wind' };
+const SEASON_WEAKNESS_BY_ATTR = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
+// コード → {attribute, weakness}。未知コードは null (画面のセレクト生成・保存時の導出兼用)
+window.seasonBossMetaFromCode = function (code) {
+    const attribute = SEASON_ATTR_FROM_CODE[code];
+    if (!attribute) return null;
+    return { attribute, weakness: SEASON_WEAKNESS_BY_ATTR[attribute] };
+};
+
 // シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。
 // 編集対象はハード日と月キーのみ — ボス構成 (code/tier) は凸記録・ダメージと連動するため
 // このAPIでは触らない (間違えた場合はシーズン作り直しの運用)
@@ -953,25 +965,55 @@ window.supabaseUpdateSeasonMeta = async function (seasonId, { monthKey, hardDate
     }
 };
 
-// シーズン確認・編集の一括保存。26_season_meta_rpc.sql の RPC で
-// アクティブ確認・メタ更新・凸日付移行・ボス名更新を原子的に実行する。
-// RPC 未適用の環境では従来の逐次更新へ静かにフォールバック
-// (非原子的だが各ステップにガードと冪等性あり)
-window.supabaseSaveSeasonEdits = async function (seasonId, { monthKey, hardDate, bossNames = [] } = {}) {
+// シーズン確認・編集の一括保存。26/27_season_*_rpc.sql の RPC で
+// アクティブ確認・メタ更新・凸日付移行・ボスコード(属性)修正・ボス名更新を原子的に実行する。
+// bossCodes を含む保存は 27 (5引数版) が前提 — p_boss_codes を渡すのはコード変更があるときだけに
+// して、26 のみ適用済みの環境でも通常保存 (4引数) は原子的なまま保つ。
+// RPC 未適用の環境では従来の逐次更新へ静かにフォールバック (非原子的だが各ステップにガードと冪等性あり)
+window.supabaseSaveSeasonEdits = async function (seasonId, { monthKey, hardDate, bossNames = [], bossCodes = [] } = {}) {
     if (!seasonId) throw new Error('seasonId が必要です');
-    const { error } = await supabase.rpc('ops_update_season_meta', {
+    const args = {
         p_season_id: seasonId,
         p_month_key: monthKey,
         p_hard_date: hardDate,
         p_boss_names: bossNames.map(b => ({ boss_number: b.bossNumber, name: b.name })),
-    });
+    };
+    if (bossCodes.length > 0) {
+        args.p_boss_codes = bossCodes.map(b => ({
+            boss_number: b.bossNumber, boss_code: b.bossCode,
+            attribute: b.attribute, weakness: b.weakness,
+        }));
+    }
+    const { error } = await supabase.rpc('ops_update_season_meta', args);
     if (!error) return;
-    // PGRST202 = 関数がスキーマに無い (26 未適用)。それ以外 (RPC内の RAISE 等) はそのまま投げる
+    // PGRST202 = 引数に合う関数がスキーマに無い (26/27 未適用)。それ以外 (RPC内の RAISE 等) はそのまま投げる
     const missing = error.code === 'PGRST202' || /Could not find the function/i.test(error.message || '');
     if (!missing) throw error;
     await window.supabaseAssertSeasonActive(seasonId);
     await window.supabaseUpdateSeasonMeta(seasonId, { monthKey, hardDate });
+    for (const b of bossCodes) await window.supabaseUpdateBossCode(seasonId, b.bossNumber, b);
     for (const b of bossNames) await window.supabaseUpdateBossName(seasonId, b.bossNumber, b.name);
+};
+
+// ボスコード (属性) の変更 + 記録済み凸の boss_code 追随 (27 RPC 未適用環境のフォールバック用)。
+// 凸は boss_number が主の紐付けなので、非正規化カラムの書き換えだけで整合する
+window.supabaseUpdateBossCode = async function (seasonId, bossNumber, { bossCode, attribute, weakness } = {}) {
+    if (!seasonId || !bossNumber || !bossCode) throw new Error('ボスコードの指定が不正です');
+    const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
+    if (!ATTRS.includes(attribute) || !ATTRS.includes(weakness)) throw new Error(`ボス${bossNumber}の属性指定が不正です`);
+    const { error } = await supabase
+        .from('bosses')
+        .update({ boss_code: bossCode, attribute, weakness })
+        .eq('season_id', seasonId)
+        .eq('boss_number', bossNumber);
+    if (error) throw error;
+    const { error: aErr } = await supabase
+        .from('attacks')
+        .update({ boss_code: bossCode })
+        .eq('season_id', seasonId)
+        .eq('boss_number', bossNumber)
+        .neq('boss_code', bossCode);
+    if (aErr) throw aErr;
 };
 
 // シーズンがまだアクティブかの事前チェック (シーズン確認・編集モーダルの保存前ガード)
@@ -1247,11 +1289,11 @@ window.supabaseCreateSeason = async function (payload) {
     if (!payload.monthKey) throw new Error('monthKey 必須');
     if (!Array.isArray(payload.bosses) || payload.bosses.length !== 5) throw new Error('boss は5体必要');
 
-    const ATTR_FROM_CODE = { 'H.S.T.A.': 'fire', 'P.S.I.D.': 'water', 'D.M.T.R.': 'iron', 'Z.E.U.S.': 'electric', 'A.N.M.I.': 'wind' };
-    // bosses.weakness の唯一の発生源 (シーズン作成時にここで確定し、以降は不変)。
+    // bosses.attribute/weakness の発生源はファイル冒頭の共有マップ (シーズン確認・編集と同一定義)。
+    // シーズン作成時にここで確定し、以降は ✏️編集での属性修正以外では不変。
     // 画面側はこの値を再計算せず boss.weakness / weaknessPtOf() を読むこと
-    // (js/domain/attributes.js の WEAKNESS_BY_BOSS_ATTR と同一写像 — リアーキ ステップ1)
-    const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
+    const ATTR_FROM_CODE = SEASON_ATTR_FROM_CODE;
+    const COUNTER = SEASON_WEAKNESS_BY_ATTR;
     const HARD_LV1_HP = { lord: 99856279200, tyrant: 150841813600 };   // lord=低HP / tyrant=高HP
 
     const isTest = !!payload.isTest;

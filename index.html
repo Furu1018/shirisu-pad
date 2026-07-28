@@ -864,6 +864,13 @@
         .player-select-modal.open { display: flex; }
         /* アイコンピッカーは他モーダルから呼ばれる「子」なので必ず上に出す */
         #iconPickerModal { z-index: 600; }
+        /* シーズン作成/編集のハード日+月キー行: iOS の input[type=date] は固有幅を持ち
+           2列トラックからはみ出して隣枠に重なる (auto-fit でも2列成立時に再発 — 実機FB
+           2026-07-28)。モバイルは常に縦積み、広い画面のみ2列にする */
+        .season-meta-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 520px) {
+            .season-meta-grid { grid-template-columns: 1fr 1fr; }
+        }
         .player-select-content {
             background: #fff;
             border-radius: 20px;
@@ -3778,7 +3785,7 @@
                             <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。運営メンバーは一度ONにすれば端末に記憶される</li>
                             <li><strong>HP鮮度</strong> — ボス状況の見出しに「HP更新 ○分前」を表示 (30分以上で⚠️)。ボスHPは30秒毎に自動再取得される</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
-                            <li><strong>✏️ シーズン確認・編集</strong> — シーズン制御カードに走っているシーズンのサマリー (月キー・ハード日・ボス構成) を表示。ハード日・月キー・ボス名はここから修正できる。<strong>ボスコード・級は凸記録と連動するため変更不可</strong> — 構成を間違えたらシーズン作り直しで対応</li>
+                            <li><strong>✏️ シーズン確認・編集</strong> — シーズン制御カードに走っているシーズンのサマリー (月キー・ハード日・ボス構成) を表示。ハード日・月キー・<strong>属性 (ボスコード)</strong>・ボス名はここから修正できる (属性を直すと記録済みの凸も追随。配信済みプランは再算出・再配信が必要)。<strong>級 (HP規模) はHPと連動するため変更不可</strong> — その場合はシーズン作り直しで対応</li>
                             <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
                             <li><strong>🧪 クイックテストシーズン</strong> — ワンクリックでテストボス1〜5の独立環境を生成。OCR/スクショ不要</li>
                             <li><strong>📣 オンライン / 調整中 メンバー</strong> — リアルタイム共有 (10秒毎ポーリング)。アバター付きで誰が何をしているか即把握</li>
@@ -4394,9 +4401,7 @@
                 <p id="opsSeasonOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
             </div>
 
-            <!-- 実機FB 2026-07-28: iOS の input[type=date] は固有幅を持ち 1fr 1fr の狭いトラックから
-                 はみ出して隣の枠に重なる → 収まらない幅では auto-fit で自動的に縦積みへ -->
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+            <div class="season-meta-grid">
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">ハード日 (Day2)</label>
                     <input type="date" id="opsSeasonHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;min-height:38px;">
@@ -4438,9 +4443,9 @@
                 <h2>✏️ シーズン確認・編集</h2>
                 <button onclick="closeOpsSeasonEditModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">走っているシーズンの基本情報を修正できます。<strong>ボスコード・級 (HP) は凸記録・ダメージと連動するためここでは変更できません</strong> — 構成を間違えた場合はシーズンを作り直してください。</p>
+            <p class="subtitle">走っているシーズンの基本情報を修正できます。属性 (ボスコード) を直すと記録済みの凸も追随します。<strong>級 (HP規模) はHPと連動するため変更不可</strong> — 間違えた場合はシーズンを作り直してください。</p>
 
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+            <div class="season-meta-grid">
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">ハード日 (Day2)</label>
                     <input type="date" id="opsSeasonEditHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;min-height:38px;">
@@ -4452,7 +4457,7 @@
             </div>
 
             <div>
-                <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:6px;">ボス名の修正 (空欄のままなら変更しません)</label>
+                <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:6px;">ボス構成 — 属性はセレクトで修正 / ボス名は空欄なら変更しません</label>
                 <div id="opsSeasonEditBossRows"></div>
             </div>
 
@@ -14575,18 +14580,27 @@
                 seasonId: season.id,
                 hardDate: season.hard_date || '',
                 monthKey: season.month_key || '',
-                bosses: bosses.map(b => ({ bossNumber: b.boss_number, name: b.name || '' })),
+                bosses: bosses.map(b => ({ bossNumber: b.boss_number, name: b.name || '', bossCode: b.boss_code || '' })),
             };
             document.getElementById('opsSeasonEditHardDate').value = season.hard_date || '';
             document.getElementById('opsSeasonEditMonthKey').value = season.month_key || '';
             const TIER_LABEL = { tyrant: 'タイラント級', lord: 'ロード級' };
+            const field = 'width:100%;min-width:0;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12.5px;';
             document.getElementById('opsSeasonEditBossRows').innerHTML = bosses.map(b => {
                 const v = ATTR_VISUAL[b.attribute] || { color: '#8A9097', name: '?' };
+                // 属性 (=ボスコード) はセレクトで修正可能 (実機FB 2026-07-28)。表示は
+                // 「コード (属性名)」— 対応は supabase-client.js の seasonBossMetaFromCode が正
+                const opts = BOSS_CODES.map(c => {
+                    const meta = window.seasonBossMetaFromCode?.(c);
+                    const an = meta ? (ATTR_VISUAL[meta.attribute]?.name || meta.attribute) : '?';
+                    return `<option value="${c}" ${c === b.boss_code ? 'selected' : ''}>${c} (${an})</option>`;
+                }).join('');
                 return `
-                <div data-pos="${b.boss_number}" style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:5px 8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(20,22,26,0.06);">
-                    <span style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${v.color};background:${v.color}1A;border-radius:9px;">B${b.boss_number}</span>
-                    <div style="min-width:0;font-size:11px;font-weight:800;color:${v.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(b.boss_code)} <span style="color:#8A9097;font-weight:700;">· ${TIER_LABEL[b.tier] || b.tier} · ${v.name}</span></div>
-                    <input class="ops-season-edit-name" type="text" placeholder="${b.name ? '' : 'ボス名 (任意)'}" value="${escapeHtml(b.name || '')}" style="width:100%;min-width:0;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:12.5px;">
+                <div data-pos="${b.boss_number}" style="display:grid;grid-template-columns:36px minmax(0,1.25fr) minmax(0,1fr);gap:5px 8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(20,22,26,0.06);">
+                    <span class="ops-se-pill" style="grid-row:1/3;align-self:stretch;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:${v.color};background:${v.color}1A;border-radius:9px;">B${b.boss_number}</span>
+                    <select class="ops-season-edit-code" onchange="_opsSeasonEditCodeChanged(this)" style="${field}font-weight:700;">${opts}</select>
+                    <div style="min-width:0;font-size:11px;font-weight:700;color:#8A9097;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TIER_LABEL[b.tier] || escapeHtml(b.tier || '?')}</div>
+                    <input class="ops-season-edit-name" type="text" placeholder="${b.name ? '' : 'ボス名 (任意)'}" value="${escapeHtml(b.name || '')}" style="grid-column:2/-1;${field}">
                 </div>`;
             }).join('');
             document.getElementById('opsSeasonEditMessage').textContent = '';
@@ -14594,6 +14608,14 @@
         }
         function closeOpsSeasonEditModal() {
             document.getElementById('opsSeasonEditModal').classList.remove('open');
+        }
+        // 属性セレクト変更時、行の B# ピルを新属性の色に追随させる (保存前のプレビュー)
+        function _opsSeasonEditCodeChanged(sel) {
+            const row = sel.closest('[data-pos]');
+            const pill = row?.querySelector('.ops-se-pill');
+            const meta = window.seasonBossMetaFromCode?.(sel.value);
+            const v = meta ? (ATTR_VISUAL[meta.attribute] || { color: '#8A9097' }) : { color: '#8A9097' };
+            if (pill) { pill.style.color = v.color; pill.style.background = `${v.color}1A`; }
         }
         async function handleOpsSeasonEditSave() {
             const ctx = _opsSeasonEditCtx;
@@ -14606,21 +14628,35 @@
             if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式 (月は01〜12)', true); return; }
             const rows = Array.from(document.querySelectorAll('#opsSeasonEditBossRows > div[data-pos]'));
             const nameEdits = [];
+            const codeEdits = [];
             for (const row of rows) {
                 const bossNumber = parseInt(row.dataset.pos);
+                const orig = ctx.bosses.find(b => b.bossNumber === bossNumber);
                 const v = row.querySelector('.ops-season-edit-name').value.trim();
-                const orig = ctx.bosses.find(b => b.bossNumber === bossNumber)?.name || '';
                 // 空欄は「変更しない」扱い (supabaseUpdateBossName も空文字は無視する仕様)
-                if (v && v !== orig) nameEdits.push({ bossNumber, name: v });
+                if (v && v !== (orig?.name || '')) nameEdits.push({ bossNumber, name: v });
+                const code = row.querySelector('.ops-season-edit-code')?.value;
+                if (code && code !== (orig?.bossCode || '')) {
+                    const meta = window.seasonBossMetaFromCode?.(code);
+                    if (!meta) { set(`❌ B${bossNumber} のボスコードが不正です`, true); return; }
+                    codeEdits.push({ bossNumber, bossCode: code, attribute: meta.attribute, weakness: meta.weakness });
+                }
             }
             const metaChanged = hardDate !== ctx.hardDate || monthKey !== ctx.monthKey;
-            if (!metaChanged && nameEdits.length === 0) { set('変更はありません'); return; }
+            if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0) { set('変更はありません'); return; }
+            if (codeEdits.length > 0) {
+                const lines = codeEdits.map(e => {
+                    const an = ATTR_VISUAL[e.attribute]?.name || e.attribute;
+                    return `B${e.bossNumber} → ${e.bossCode} (${an})`;
+                }).join('\n');
+                if (!confirm(`⚠️ ボスの属性を変更します:\n${lines}\n\n記録済みの凸データも新しいコードに追随します。\n配信済みの凸プランには自動反映されないため、変更後はプランを再算出・再配信してください。\nよろしいですか？`)) return;
+            }
             set('保存中...');
             try {
-                // アクティブ確認・メタ更新・凸日付移行・ボス名更新を一括保存
-                // (26_season_meta_rpc.sql 適用済みなら原子的、未適用ならガード付き逐次にフォールバック)
-                await window.supabaseSaveSeasonEdits(ctx.seasonId, { monthKey, hardDate, bossNames: nameEdits });
-                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length}件)`);
+                // アクティブ確認・メタ更新・凸日付移行・属性修正・ボス名更新を一括保存
+                // (26/27 RPC 適用済みなら原子的、未適用ならガード付き逐次にフォールバック)
+                await window.supabaseSaveSeasonEdits(ctx.seasonId, { monthKey, hardDate, bossNames: nameEdits, bossCodes: codeEdits });
+                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length}件)`);
                 opsStore.invalidate();
                 renderOpsDashboard();   // サマリー・盤面とも新データで再描画
                 setTimeout(closeOpsSeasonEditModal, 700);
