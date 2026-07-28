@@ -14565,8 +14565,9 @@
                 </div>`;
         }
         async function openOpsSeasonEditModal() {
-            let snap = opsStore.get();
-            if (!snap) { try { snap = await opsStore.load(); } catch { snap = null; } }
+            // 常にフレッシュな盤面から編集を始める (get() は無期限キャッシュのことがある — Codex指摘)
+            let snap = null;
+            try { snap = await opsStore.load(); } catch { snap = opsStore.get(); }
             const season = snap?.season;
             if (!season) { showNotification('アクティブシーズンがありません'); return; }
             const bosses = (snap.bosses || []).slice().sort((a, b) => a.boss_number - b.boss_number);
@@ -14616,14 +14617,18 @@
             if (!metaChanged && nameEdits.length === 0) { set('変更はありません'); return; }
             set('保存中...');
             try {
-                if (metaChanged) await window.supabaseUpdateSeasonMeta(ctx.seasonId, { monthKey, hardDate });
+                // ボス名だけの変更でも「開いている間にシーズン終了」を弾く (メタ更新側にも同ガードあり)
+                await window.supabaseAssertSeasonActive(ctx.seasonId);
+                if (metaChanged) await window.supabaseUpdateSeasonMeta(ctx.seasonId, { monthKey, hardDate, prevHardDate: ctx.hardDate });
                 for (const e of nameEdits) await window.supabaseUpdateBossName(ctx.seasonId, e.bossNumber, e.name);
                 set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length}件)`);
                 opsStore.invalidate();
                 renderOpsDashboard();   // サマリー・盤面とも新データで再描画
                 setTimeout(closeOpsSeasonEditModal, 700);
             } catch (e) {
-                set(`❌ ${e?.message || e}`, true);
+                const m = String(e?.message || e);
+                if (e?.code === '23505' || m.includes('duplicate key')) set('❌ その月キーは既に別シーズンで使われています', true);
+                else set(`❌ ${m}`, true);
             }
         }
         function renderOpsSeasonBossRows(rows) {

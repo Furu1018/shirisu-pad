@@ -923,17 +923,42 @@ window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, play
 // シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。
 // 編集対象はハード日と月キーのみ — ボス構成 (code/tier) は凸記録・ダメージと連動するため
 // このAPIでは触らない (間違えた場合はシーズン作り直しの運用)
-window.supabaseUpdateSeasonMeta = async function (seasonId, { monthKey, hardDate } = {}) {
+window.supabaseUpdateSeasonMeta = async function (seasonId, { monthKey, hardDate, prevHardDate } = {}) {
     if (!seasonId) throw new Error('seasonId が必要です');
     const patch = {};
     if (monthKey) patch.month_key = monthKey;
     if (hardDate) patch.hard_date = hardDate;
     if (Object.keys(patch).length === 0) return;
-    const { error } = await supabase
+    // is_active 条件付き更新: モーダルを開いている間にシーズンが終了された場合、
+    // 終了済みシーズンを黙って書き換えない (Codexレビュー指摘)
+    const { data, error } = await supabase
         .from('seasons')
         .update(patch)
-        .eq('id', seasonId);
+        .eq('id', seasonId)
+        .eq('is_active', true)
+        .select('id');
     if (error) throw error;
+    if (!data || data.length === 0) {
+        throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+    }
+    // ハード日を変えた場合、旧日付で記録済みの凸を新日付へ追随させる。
+    // 盤面ローダは attack_date = hard_date で絞るため、移行しないと既存凸が消えて見える
+    if (hardDate && prevHardDate && hardDate !== prevHardDate) {
+        const { error: aErr } = await supabase
+            .from('attacks')
+            .update({ attack_date: hardDate })
+            .eq('season_id', seasonId)
+            .eq('attack_date', prevHardDate);
+        if (aErr) throw aErr;
+    }
+};
+
+// シーズンがまだアクティブかの事前チェック (シーズン確認・編集モーダルの保存前ガード)
+window.supabaseAssertSeasonActive = async function (seasonId) {
+    const { data, error } = await supabase
+        .from('seasons').select('id').eq('id', seasonId).eq('is_active', true).maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
 };
 
 // ボス名の変更 (運営のボス編集パネルから)
