@@ -4391,14 +4391,16 @@
                 <p id="opsSeasonOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#6B7178;min-height:14px;">&nbsp;</p>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <!-- 実機FB 2026-07-28: iOS の input[type=date] は固有幅を持ち 1fr 1fr の狭いトラックから
+                 はみ出して隣の枠に重なる → 収まらない幅では auto-fit で自動的に縦積みへ -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">ハード日 (Day2)</label>
-                    <input type="date" id="opsSeasonHardDate" style="width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
+                    <input type="date" id="opsSeasonHardDate" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;min-height:38px;">
                 </div>
                 <div style="min-width:0;">
                     <label style="display:block;font-size:12px;font-weight:700;color:#6B7178;margin-bottom:4px;">月キー (YYYY-MM)</label>
-                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;">
+                    <input type="text" id="opsSeasonMonthKey" placeholder="例: 2026-06" style="display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#F7F8F9;color:#14161A;font-size:14px;min-height:38px;">
                 </div>
             </div>
 
