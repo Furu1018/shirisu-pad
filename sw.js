@@ -37,7 +37,8 @@ self.addEventListener('fetch', (event) => {
     const path = decodeURIComponent(url.pathname);
     const isImg = path.includes('/character-images/')
         || path.includes('/属性アイコン/')
-        || path.endsWith('/icon.png');
+        || path.endsWith('/icon.png')
+        || path.endsWith('/assets/loading.gif');   // 起動ローディングGIF (メンバー作・実質不変)
     if (!isImg) return;
     event.respondWith(
         caches.open(IMG_CACHE).then(async (cache) => {
@@ -110,4 +111,4 @@ self.addEventListener('notificationclick', (event) => {
     })());
 });
 
-// rebuild: 1783906000
+// rebuild: 1785456000

@@ -871,6 +871,24 @@
         @media (min-width: 520px) {
             .season-meta-grid { grid-template-columns: 1fr 1fr; }
         }
+        /* ===== 起動ローディング (ユニオンメンバー作 Now Loading GIF — GBから移植) =====
+           初期データ取得が300msを超える場合だけ表示 (高速起動時のチラつき防止)。
+           GIF (約700KB) の src は表示が確定した時点でセット = 初期フェッチと帯域を取り合わない */
+        .boot-loading-overlay {
+            position: fixed; inset: 0; z-index: 650;
+            background: rgba(20,22,26,0.32);
+            display: none; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .boot-loading-overlay.show { display: flex; }
+        .boot-loading-box {
+            background: #fff; border-radius: 20px; padding: 12px 12px 10px;
+            width: min(72vw, 250px); text-align: center;
+            border: 1px solid rgba(20,22,26,0.05);
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 18px 44px rgba(20,22,26,0.13);
+        }
+        .boot-loading-box img { width: 100%; display: block; border-radius: 13px; background: #fff; }
+        .boot-loading-box p { margin: 6px 0 0; font-size: 11.5px; font-weight: 800; color: #6B7178; }
         .player-select-content {
             background: #fff;
             border-radius: 20px;
@@ -2611,6 +2629,14 @@
 
     <!-- Error Banner -->
     <div class="error-banner" id="errorBanner"></div>
+
+    <!-- 起動ローディングオーバーレイ (初期データ取得中のみ。300ms未満で終われば出さない) -->
+    <div class="boot-loading-overlay" id="bootLoadingOverlay" role="status" aria-live="polite">
+        <div class="boot-loading-box">
+            <img id="bootLoadingGif" alt="Now Loading…">
+            <p>データを読み込んでいます…</p>
+        </div>
+    </div>
 
     <!-- Tab Navigation (PC) -->
     <nav class="tab-navigation pc-only">
@@ -17068,6 +17094,31 @@
         });
         window.addEventListener('pageshow', () => _consumePendingNav());
 
+        // ===== 起動ローディングオーバーレイ (GB の Now Loading GIF を移植) =====
+        // GB の「送信中」用とは要件が違うため挙動を変えている:
+        //  - 開始から300ms以内に初期読み込みが終わったら表示自体をスキップ (チラつき防止)
+        //  - 最低表示時間なし — 読み込み完了で即閉じる (起動を遅くしない)
+        //  - 20秒の保険タイマーで必ず閉じる (想定外のハング時もUIを塞ぎ続けない。
+        //    エラー表示は既存機構 = errorBanner / _watchSupabaseModule に引き継ぐ)
+        const _bootLoading = { timer: 0, safety: 0, done: false };
+        function _bootLoadingBegin() {
+            _bootLoading.timer = setTimeout(() => {
+                if (_bootLoading.done) return;
+                const el = document.getElementById('bootLoadingOverlay');
+                if (!el) return;
+                const img = document.getElementById('bootLoadingGif');
+                if (img && !img.getAttribute('src')) img.src = './assets/loading.gif';
+                el.classList.add('show');
+            }, 300);
+            _bootLoading.safety = setTimeout(_bootLoadingEnd, 20000);
+        }
+        function _bootLoadingEnd() {
+            _bootLoading.done = true;
+            clearTimeout(_bootLoading.timer);
+            clearTimeout(_bootLoading.safety);
+            document.getElementById('bootLoadingOverlay')?.classList.remove('show');
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             _initSheetSwipeDismiss();
             initSpIcons();   // data-sp-icon の SVG 流し込み
@@ -17078,9 +17129,14 @@
             const buildEl = document.getElementById('settingsBuildId');
             if (buildEl) buildEl.textContent = document.querySelector('meta[name="app-build"]')?.content || 'dev';
             _wrapAiVisionSpinner();   // 全画像認識に共通の解析中スピナーを付ける
-            await _waitSupabaseReady();   // ← モジュール読込との起動レースを防ぐ
-            await loadSlvRatioTable();
-            await autoLoadData();
+            _bootLoadingBegin();   // 起動ローディング (初期データ取得が300ms超のときだけ表示)
+            try {
+                await _waitSupabaseReady();   // ← モジュール読込との起動レースを防ぐ
+                await loadSlvRatioTable();
+                await autoLoadData();
+            } finally {
+                _bootLoadingEnd();   // 失敗経路でも必ず閉じる (エラー表示は既存バナーが担当)
+            }
             updateIdentityHeader();
             // 初期アクティブタブ (ホーム) のコンテンツを描画
             // switchTab を経由しないと renderMyPage が呼ばれないため、ここで明示的に。
