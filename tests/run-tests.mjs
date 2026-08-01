@@ -1665,6 +1665,56 @@ test('完了凸のキャラは Lv4 (無限ボス) の割当でも復活しない
     assert.ok(all.every(a => !(a.team || []).includes('ラピ')), 'Lv4 でもラピは使えないはず');
 });
 
+test('表記揺れ (全角コロン・前後空白・大小文字) でもキャラ被りを検出する', () => {
+    // 実データに「アニス:スター」(半角) と「ドロシー：セレンディピティ」(全角) が混在するため、
+    // 生値比較だと seed 除外をすり抜けて使用済みキャラ入りを再提案してしまう。
+    const p = player('A', { fire: 20 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 2, characters: ['ドロシー：セレンディピティ', 'ラピ', 'モダニア', 'ノワール', 'ブラン'] }],
+    });
+    p.loadoutsByAttr = { fire: [
+        // 同一キャラだが半角コロン + 前後空白 → 正規化しないと別人扱いになる
+        { dmgB: 20, team: [' ドロシー:セレンディピティ ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 },
+    ] };
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'iron', { remainingB: 10 })],
+        [p],
+    ));
+    const fireBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(fireBoss.attacks.length, 0, '表記揺れを吸収して被りと判定するはず');
+});
+
+test('部分的な編成記録 (5人未満) は要確認として名指しする', () => {
+    // ['ラピ'] だけ / 画像パス除去後に4人になった等。残りのキャラが不明なので
+    // 被り判定は不完全 = best-effort の警告対象 (判明分は seed に使う)
+    const p = player('D', { fire: 20 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 2, characters: ['ラピ'] }],   // 5人に満たない部分記録
+    });
+    p.loadoutsByAttr = { fire: [{ dmgB: 20, team: ['マキマ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }] };
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'iron', { remainingB: 10 })],
+        [p],
+    ));
+    assert.ok(plan.membersUnknownCompletedTeam.includes('D'), '部分記録は要確認になるはず');
+    const fireBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(fireBoss.attacks.length, 1, '判明分と被らない編成は出せる (best-effort)');
+});
+
+test('部分記録でも判明しているキャラの被りは除外する', () => {
+    const p = player('E', { fire: 20 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 2, characters: ['ラピ'] }],
+    });
+    p.loadoutsByAttr = { fire: [{ dmgB: 20, team: ['ラピ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }] };
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'iron', { remainingB: 10 })],
+        [p],
+    ));
+    const fireBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(fireBoss.attacks.length, 0, '判明しているラピの被りは除外されるはず');
+});
+
 test('完了凸が無い入力は従来どおり (回帰保証)', () => {
     // characters を持たない従来入力で、seed 導入前と同じ結果になること。
     const plan = compute(makeInput(

@@ -2659,14 +2659,25 @@ window.supabaseLoadOpsDashboardData = async function () {
     // 3) アクティブシーズンの全凸を一括取得
     let attacksByPlayer = new Map();
     if (season) {
-        const { data: atks, error: aErr } = await supabase
+        // characters = その凸で実際に使った5キャラ。最適プランが「同キャラ1日1回」の
+        // 被り判定に使う (朝に鉄甲でラピを使ったら灼熱のラピ入り編成は出せない)。
+        // 未記録 (代理凸・一括登録) の場合は [] のままで best-effort 扱い。
+        // ⚠ characters 列が無い環境 (新規プロジェクト等) でも運営盤面全体が落ちないよう、
+        //   列エラーなら旧列構成で取り直す (被り判定だけ静かに劣化する)
+        const ATK_COLS = 'id, player_id, attack_number, boss_number, boss_code, damage_raw, level';
+        let { data: atks, error: aErr } = await supabase
             .from('attacks')
-            // characters = その凸で実際に使った5キャラ。最適プランが「同キャラ1日1回」の
-            // 被り判定に使う (朝に鉄甲でラピを使ったら灼熱のラピ入り編成は出せない)。
-            // 未記録 (代理凸・一括登録) の場合は [] のままで best-effort 扱い
-            .select('id, player_id, attack_number, boss_number, boss_code, damage_raw, level, characters')
+            .select(`${ATK_COLS}, characters`)
             .eq('season_id', season.id)
             .eq('attack_date', season.hard_date);
+        if (aErr) {
+            console.warn('[ops] attacks.characters 取得に失敗 — 旧列構成で再試行:', aErr.message);
+            ({ data: atks, error: aErr } = await supabase
+                .from('attacks')
+                .select(ATK_COLS)
+                .eq('season_id', season.id)
+                .eq('attack_date', season.hard_date));
+        }
         if (aErr) throw aErr;
         (atks || []).forEach(a => {
             if (!attacksByPlayer.has(a.player_id)) attacksByPlayer.set(a.player_id, []);

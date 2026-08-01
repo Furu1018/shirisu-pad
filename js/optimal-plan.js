@@ -167,23 +167,36 @@
         // 未記録 (代理凸・一括登録の characters: []) の場合は best-effort —
         // 候補から外さず、unknownCompletedTeam フラグで運営に「要確認」と伝える
         // (内輪運用なので Discord で本人に確認できる。ブロックより名指しが有用)。
+        // キャラ照合キー: 表記揺れ (前後空白 / 全角半角 / 大小文字) を吸収する。
+        // 実データに「アニス:スター」(半角コロン) と「ドロシー：セレンディピティ」(全角コロン) が
+        // 混在するため、生値の比較では seed 除外も編成一致もすり抜ける。
+        // ※ 表示用の名前は元の値を保持し、比較のときだけこのキーを使う
+        const charKey = (c) => (typeof c === 'string' ? c : '')
+            .normalize('NFKC').trim().toLowerCase();
         const teamCharsOf = (a) => (Array.isArray(a && a.characters) ? a.characters : [])
-            .filter(c => typeof c === 'string' && c.trim().length > 0)
-            .map(c => c.trim());
+            .map(charKey)
+            .filter(c => c.length > 0);
         const usedCharsFor = (p) => {
             const set = new Set();
             (p.attacks || []).forEach(a => teamCharsOf(a).forEach(c => set.add(c)));
             return set;
         };
-        // 完了凸に編成が1件でも未記録なら「被り判定が不完全」= 要確認マーク
-        const hasUnknownCompletedTeam = (p) => (p.attacks || []).some(a => teamCharsOf(a).length === 0);
+        // 完了凸の編成記録が「完全」と言えるのは 有効キャラ5人・重複なし のときだけ。
+        // 部分記録 (['ラピ'] だけ / 画像パス除去後に4人になった 等) は残りのキャラが不明なので
+        // 被り判定は不完全 = 要確認マーク。判明している分は seed に使う (best-effort)
+        const TEAM_SIZE = 5;
+        const hasUnknownCompletedTeam = (p) => (p.attacks || []).some(a => {
+            const t = teamCharsOf(a);
+            return t.length !== TEAM_SIZE || new Set(t).size !== t.length;
+        });
         // 完了凸が「どのロードアウトを消費したか」の確定:
         //   優先1 = 記録キャラとの完全一致 (順不同) / 優先2 = 旧来のダメージ順 slice (推定)
         // 旧実装は「完了凸 = その属性の最高火力編成を使った」と決め打ちしていたため、
         // 実際は低火力の編成②で凸した場合に、合法な編成①まで消してしまう近似バグがあった。
+        // 編成の同一判定 (順不同)。表記揺れを吸収するため charKey で比較する
         const sameTeam = (a, b) => {
             if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || a.length !== b.length) return false;
-            const sa = [...a].map(String).sort(), sb = [...b].map(String).sort();
+            const sa = a.map(charKey).sort(), sb = b.map(charKey).sort();
             return sa.every((v, i) => v === sb[i]);
         };
 
@@ -247,7 +260,7 @@
                         if (unresolved > 0) clean = clean.slice(unresolved);
                         // ③ 完了凸のキャラと被る編成は出せない (同キャラ1日1回)
                         if (seedChars.size > 0) {
-                            clean = clean.filter(lo => !(lo.team.length > 0 && lo.team.some(c => c && seedChars.has(c))));
+                            clean = clean.filter(lo => !(lo.team.length > 0 && lo.team.some(c => c && seedChars.has(charKey(c)))));
                         }
                         if (clean.length > 0) avail[k] = clean;
                     }
@@ -256,7 +269,7 @@
                     for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
                         if (Number(v) > 0 && !(usedCount.get(k) > 0)) {
                             const team = (p.teamsByAttr || {})[k] || [];
-                            if (seedChars.size > 0 && team.length > 0 && team.some(c => c && seedChars.has(c))) continue;
+                            if (seedChars.size > 0 && team.length > 0 && team.some(c => c && seedChars.has(charKey(c)))) continue;
                             avail[k] = [{ dmg: Number(v), team, slot: 1 }];
                         }
                     }
@@ -432,7 +445,7 @@
                         // 残HPが小さいボスには 2編成目 (低火力) の方がオーバーキルが小さい・
                         // 温存の機会費用が安いことがある (編成データが全く無い人は衝突チェック対象外)
                         for (const cand of list) {
-                            if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(c))) continue;
+                            if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(charKey(c)))) continue;
                             let s = scoreOf(m, t.b.weakness, cand.dmg, t.rem, levelPos, slot.idx, openIdx, slot.flex, slot.mismatch);
                             // 温存パス: ボス5で入るはずの与ダメを失う機会費用 (B) を加算。
                             // オーバーキルと同じ単位なので W_OVER=1.0 と自然に比較される
@@ -472,7 +485,7 @@
                         isBottleneck: false,                 // レベル確定後に付与
                     });
                     // 採用したキャラを使用済セットへ
-                    if (teamRegistered) team.forEach(ch => { if (ch) pick.usedChars.add(ch); });
+                    if (teamRegistered) team.forEach(ch => { if (ch) pick.usedChars.add(charKey(ch)); });
                     // 使用したロードアウトを除去 (同属性の別編成が残っていれば2凸目も提案可)
                     const loIdx = pick.avail[t.b.weakness].indexOf(pickLo);
                     if (loIdx >= 0) pick.avail[t.b.weakness].splice(loIdx, 1);
@@ -594,7 +607,7 @@
                     if (!list || list.length === 0) break;
                     let lo = null;
                     for (const cand of list) {
-                        if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(c))) continue;
+                        if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(charKey(c)))) continue;
                         lo = cand;
                         break;
                     }
@@ -616,7 +629,7 @@
                         loadoutSlot: lo.slot,
                         isBottleneck: false,
                     });
-                    if (teamRegistered) lo.team.forEach(c => { if (c) m.usedChars.add(c); });
+                    if (teamRegistered) lo.team.forEach(c => { if (c) m.usedChars.add(charKey(c)); });
                     const loIdx = list.indexOf(lo);
                     if (loIdx >= 0) list.splice(loIdx, 1);
                     if (list.length === 0) delete m.avail[lv4Weak];
@@ -784,7 +797,7 @@
                         if (!lastAliveWeak.has(k)) continue;
                         anyAliveAttr = true;
                         const usable = m.avail[k].some(lo =>
-                            !(m.anyTeamRegistered && lo.team.length > 0 && lo.team.some(c => c && m.usedChars.has(c))));
+                            !(m.anyTeamRegistered && lo.team.length > 0 && lo.team.some(c => c && m.usedChars.has(charKey(c)))));
                         if (usable) { conflictOnly = false; break; }
                     }
                     if (!anyAliveAttr) reason = '残っている生存ボスの属性を未提出';

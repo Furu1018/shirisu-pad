@@ -13173,14 +13173,19 @@
             // 鮮度保証: プランは常に「押した時点」の盤面で組む。
             // キャッシュが60秒より古ければ、凸・ボスHP・メンバー状態を取り直してから算出する
             // (当日の不測の事態→再算出、の流れで古い盤面を使わないための保険)
-            if (opsStore.isStale(60_000)) {
-                el.innerHTML = '<p style="font-size:12px;color:#8A9097;">📡 最新の盤面を取得中…</p>';
-                try {
-                    await opsStore.load();
-                } catch (e) {
+            // プランは「押した時点の盤面」で組むのが前提。60秒キャッシュのままだと、
+            // 直前に別端末で入った凸 (=使用済みキャラ・残HP) を読まずに古い指示を出す。
+            // キャラ被り判定は完了凸に依存するため、算出時は必ず取り直す
+            el.innerHTML = '<p style="font-size:12px;color:#8A9097;">📡 最新の盤面を取得中…</p>';
+            try {
+                await opsStore.load();
+            } catch (e) {
+                // 取得失敗時は直前の盤面が残っていればそれで算出 (無ければ中断)
+                if (!opsStore.get()) {
                     el.innerHTML = `<p style="font-size:13px;color:#ef4444;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
                     return;
                 }
+                console.warn('[plan] 盤面の再取得に失敗 — 直前のデータで算出します:', e?.message || e);
             }
             const plan = computeOptimalPlan(options);
             if (!plan) {
