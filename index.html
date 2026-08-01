@@ -13187,8 +13187,15 @@
                 // さらに待機中の invalidate() (書き込み操作) も検出するため世代を照合する
                 const genBefore = opsStore.generation();
                 snapshot = await opsStore.load();
-                // load は自身で世代を1つ進める。それ以外の進み = 待機中に invalidate/別loadが起きた
-                if (!opsStore.isCurrentGeneration(genBefore + 1)) snapshot = opsStore.get();
+                // load は自身で世代を1つ進める。それ以外の進み = 待機中に invalidate/別load が起きた。
+                // このとき get() は「後発 load がまだ完了していない前世代のデータ」を返し得るので
+                // フォールバックに使わない。古い盤面で誤った指示を出すより、押し直してもらう方が安全
+                if (!opsStore.isCurrentGeneration(genBefore + 1)) {
+                    if (seq === _opsPlanSeq) {
+                        el.innerHTML = '<p style="font-size:12px;color:#B45309;font-weight:700;">盤面が更新されました (凸の登録などが入りました)。もう一度「算出」を押してください。</p>';
+                    }
+                    return;
+                }
             } catch (e) {
                 // 取得失敗時は直前の盤面が残っていればそれで算出 (無ければ中断)
                 if (!opsStore.get()) {
