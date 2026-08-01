@@ -13197,14 +13197,14 @@
                     return;
                 }
             } catch (e) {
-                // 取得失敗時は直前の盤面が残っていればそれで算出 (無ければ中断)
-                if (!opsStore.get()) {
-                    if (seq === _opsPlanSeq) {
-                        el.innerHTML = `<p style="font-size:13px;color:#ef4444;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
-                    }
-                    return;
+                // 取得失敗時も get() へは倒さない: 並行する後発 load が未完了なら
+                // get() は前世代のデータを返し得るため (成功時の世代不一致と同じ穴)。
+                // プランは盤面の鮮度が命なので、古いデータで指示を出すより押し直してもらう
+                console.warn('[plan] 盤面の取得に失敗:', e?.message || e);
+                if (seq === _opsPlanSeq) {
+                    el.innerHTML = `<p style="font-size:13px;color:#ef4444;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}<br><span style="font-size:11.5px;color:#8A9097;font-weight:700;">通信を確認して、もう一度「算出」を押してください。</span></p>`;
                 }
-                console.warn('[plan] 盤面の再取得に失敗 — 直前のデータで算出します:', e?.message || e);
+                return;
             }
             if (seq !== _opsPlanSeq) return;   // 後発の算出が始まっていたらこの結果は捨てる
             const plan = computeOptimalPlan(options, snapshot);
