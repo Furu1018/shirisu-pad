@@ -1322,6 +1322,32 @@ await testAsync('load/get/invalidate: 基本契約 (未ロードは null・inval
     assert.equal(calls, 1);
 });
 
+await testAsync('generation/isCurrentGeneration: load中の invalidate を呼び出し元が検出できる', async () => {
+    // プラン算出は load() の戻り値 (snapshot) で描画するため、待機中に invalidate() が
+    // 起きた場合はその snapshot が「無効化済みの盤面」であることを検出できる必要がある。
+    opsStore.configure({
+        load: async () => {
+            opsStore.invalidate();   // 応答待ちの間に書き込み操作が起きた状況を再現
+            return { season: { id: 9 }, bosses: [], players: [] };
+        },
+    });
+    opsStore.invalidate();
+    const genBefore = opsStore.generation();
+    const snap = await opsStore.load();
+    assert.ok(snap, 'フェッチ結果自体は返る');
+    assert.equal(opsStore.isCurrentGeneration(genBefore + 1), false,
+        'load中に invalidate されたら「最新世代ではない」と判定できるはず');
+    assert.equal(opsStore.get(), null, '無効化済みなのでストアは null のまま (不変条件3)');
+
+    // 競合が無い通常ケースは +1 のまま = そのまま使ってよい
+    opsStore.configure({ load: async () => ({ season: { id: 10 }, bosses: [], players: [] }) });
+    opsStore.invalidate();
+    const g2 = opsStore.generation();
+    const snap2 = await opsStore.load();
+    assert.equal(opsStore.isCurrentGeneration(g2 + 1), true, '競合が無ければ最新世代');
+    assert.equal(opsStore.get(), snap2);
+});
+
 await testAsync('isStale: 60秒TTL 相当の判定 (未ロード=常に古い / 部分patchでは若返らない)', async () => {
     opsStore.configure({ load: async () => ({ season: { id: 7 }, bosses: [{ n: 1 }], players: [] }) });
     opsStore.invalidate();

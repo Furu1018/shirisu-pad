@@ -2671,16 +2671,9 @@ window.supabaseLoadOpsDashboardData = async function () {
             .eq('season_id', season.id)
             .eq('attack_date', season.hard_date);
         // 再試行は「characters 列が無い」ときだけ。通信断・RLS・タイムアウト等で
-        // 無条件に再試行すると、障害時のリクエストと待ち時間が倍になり本来の原因も隠れる
-        // (42703 = undefined_column / PGRST204 = schema cache に列が無い)
-        const _isMissingColumn = (e) => {
-            if (!e) return false;
-            const code = String(e.code || '');
-            const msg = String(e.message || '').toLowerCase();
-            return code === '42703' || code === 'PGRST204'
-                || (msg.includes('characters') && (msg.includes('column') || msg.includes('schema cache')));
-        };
-        if (aErr && _isMissingColumn(aErr)) {
+        // 無条件に再試行すると、障害時のリクエストと待ち時間が倍になり本来の原因も隠れる。
+        // 判定は既存の _isMissingColumnErr (列名を必ず含むことを要求する) を再利用
+        if (aErr && _isMissingColumnErr(aErr, 'characters')) {
             console.warn('[ops] attacks.characters 列が無いため旧列構成で再試行 (キャラ被り判定は劣化):', aErr.message);
             ({ data: atks, error: aErr } = await supabase
                 .from('attacks')

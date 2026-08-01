@@ -52,6 +52,17 @@
         /** 強制全量ロード (ops タブ描画・書き込み後の再描画用) */
         async load() { return doLoad(); },
 
+        /**
+         * 現在の世代番号。load() の戻り値 (フェッチ結果) を使って描画する呼び出し元が、
+         * 「待っている間に invalidate() や新しい load() が起きていないか」を照合するためのもの。
+         * 例: const g = opsStore.generation(); const snap = await opsStore.load();
+         *     if (!opsStore.isCurrentGeneration(g + 1)) → その snapshot は古いので破棄
+         */
+        generation() { return generation; },
+
+        /** gen が最新世代なら true (load 完了後の鮮度照合用) */
+        isCurrentGeneration(gen) { return gen === generation; },
+
         /** ttlMs より古い/未ロードなら true (プラン算出の鮮度保証用。nowMs はテスト注入用) */
         isStale(ttlMs, nowMs = Date.now()) {
             return !data || (nowMs - loadedAt) > ttlMs;

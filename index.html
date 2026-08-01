@@ -13171,22 +13171,24 @@
 
         let _opsPlanSeq = 0;   // プラン算出の世代番号 (連打・再描画の競合で古い結果を描かない)
         async function computeAndRenderOptimalPlan(options = {}) {
+            const seq = ++_opsPlanSeq;   // 関数冒頭で採番: マスタ先読みの待機中に来た後発クリックも先行を無効化できる
             const el = document.getElementById('opsOptimalPlan');
             // 編成アイコン表示のためマスタを先読み
             await getNikkeCharsCache();
-            // 鮮度保証: プランは常に「押した時点」の盤面で組む。
-            // キャッシュが60秒より古ければ、凸・ボスHP・メンバー状態を取り直してから算出する
-            // (当日の不測の事態→再算出、の流れで古い盤面を使わないための保険)
-            // プランは「押した時点の盤面」で組むのが前提。60秒キャッシュのままだと、
-            // 直前に別端末で入った凸 (=使用済みキャラ・残HP) を読まずに古い指示を出す。
-            // キャラ被り判定は完了凸に依存するため、算出時は必ず取り直す
-            const seq = ++_opsPlanSeq;   // 連打・再描画の競合で古い結果を描かないための世代番号
+            if (seq !== _opsPlanSeq) return;   // 待機中に後発の算出が始まっていたら中断
+            // 鮮度保証: プランは「押した時点の盤面」で組むのが前提。60秒キャッシュのままだと
+            // 直前に別端末で入った凸 (=使用済みキャラ・残HP) を読まずに古い指示を出すため、
+            // キャラ被り判定が意味を失う。算出時は必ず取り直す
             el.innerHTML = '<p style="font-size:12px;color:#8A9097;">📡 最新の盤面を取得中…</p>';
             let snapshot = null;
             try {
                 // load() の戻り値を使う: 並行ロード中は opsStore が世代ガードで
-                // 古い応答を保存しないため、get() だと「取得成功なのに旧キャッシュで算出」になり得る
+                // 古い応答を保存しないため、get() だと「取得成功なのに旧キャッシュで算出」になり得る。
+                // さらに待機中の invalidate() (書き込み操作) も検出するため世代を照合する
+                const genBefore = opsStore.generation();
                 snapshot = await opsStore.load();
+                // load は自身で世代を1つ進める。それ以外の進み = 待機中に invalidate/別loadが起きた
+                if (!opsStore.isCurrentGeneration(genBefore + 1)) snapshot = opsStore.get();
             } catch (e) {
                 // 取得失敗時は直前の盤面が残っていればそれで算出 (無ければ中断)
                 if (!opsStore.get()) {
