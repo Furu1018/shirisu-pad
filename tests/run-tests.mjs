@@ -1715,6 +1715,25 @@ test('部分記録でも判明しているキャラの被りは除外する', ()
     assert.equal(fireBoss.attacks.length, 0, '判明しているラピの被りは除外されるはず');
 });
 
+test('空白だけのキャラ名で偽のキャラ被りを作らない', () => {
+    // 生値の truthy 判定 (c &&) だと ' ' は truthy → charKey で '' になり、
+    // '' を usedChars に入れると後続の空白項目と「偽の被り」になってしまう。
+    const p = player('F', { fire: 20, water: 20 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 3, characters: ['ラピ', ' ', 'モダニア', 'ノワール', 'ブラン'] }],
+    });
+    p.loadoutsByAttr = {
+        // 完了凸と被るキャラは無い。空白項目だけが共通 → 被り扱いされてはいけない
+        fire: [{ dmgB: 20, team: ['マキマ', ' ', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }],
+    };
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(3, 'electric', { remainingB: 10 })],
+        [p],
+    ));
+    const fireBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(fireBoss.attacks.length, 1, '空白は被り判定に使わない (実キャラは重複なし)');
+});
+
 test('完了凸が無い入力は従来どおり (回帰保証)', () => {
     // characters を持たない従来入力で、seed 導入前と同じ結果になること。
     const plan = compute(makeInput(

@@ -13154,9 +13154,12 @@
                 computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
             }
         }
-        function computeOptimalPlan(options = {}) {
-            if (!opsStore.get()) return null;
-            const { season, bosses, players } = opsStore.get();
+        // snapshot を渡せば「そのロードで得た盤面」で算出する (並行ロード時に
+        // opsStore が世代ガードで古い結果を保存しない契約のため、load() の戻り値を使う)
+        function computeOptimalPlan(options = {}, snapshot = null) {
+            const src = snapshot || opsStore.get();
+            if (!src) return null;
+            const { season, bosses, players } = src;
             return window.computeOptimalPlanCore({
                 season, bosses, players,
                 // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン
@@ -13166,6 +13169,7 @@
             });
         }
 
+        let _opsPlanSeq = 0;   // プラン算出の世代番号 (連打・再描画の競合で古い結果を描かない)
         async function computeAndRenderOptimalPlan(options = {}) {
             const el = document.getElementById('opsOptimalPlan');
             // 編成アイコン表示のためマスタを先読み
@@ -13176,18 +13180,25 @@
             // プランは「押した時点の盤面」で組むのが前提。60秒キャッシュのままだと、
             // 直前に別端末で入った凸 (=使用済みキャラ・残HP) を読まずに古い指示を出す。
             // キャラ被り判定は完了凸に依存するため、算出時は必ず取り直す
+            const seq = ++_opsPlanSeq;   // 連打・再描画の競合で古い結果を描かないための世代番号
             el.innerHTML = '<p style="font-size:12px;color:#8A9097;">📡 最新の盤面を取得中…</p>';
+            let snapshot = null;
             try {
-                await opsStore.load();
+                // load() の戻り値を使う: 並行ロード中は opsStore が世代ガードで
+                // 古い応答を保存しないため、get() だと「取得成功なのに旧キャッシュで算出」になり得る
+                snapshot = await opsStore.load();
             } catch (e) {
                 // 取得失敗時は直前の盤面が残っていればそれで算出 (無ければ中断)
                 if (!opsStore.get()) {
-                    el.innerHTML = `<p style="font-size:13px;color:#ef4444;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
+                    if (seq === _opsPlanSeq) {
+                        el.innerHTML = `<p style="font-size:13px;color:#ef4444;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
+                    }
                     return;
                 }
                 console.warn('[plan] 盤面の再取得に失敗 — 直前のデータで算出します:', e?.message || e);
             }
-            const plan = computeOptimalPlan(options);
+            if (seq !== _opsPlanSeq) return;   // 後発の算出が始まっていたらこの結果は捨てる
+            const plan = computeOptimalPlan(options, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">プラン算出に失敗しました。</p>';
                 return;

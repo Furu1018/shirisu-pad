@@ -173,6 +173,11 @@
         // ※ 表示用の名前は元の値を保持し、比較のときだけこのキーを使う
         const charKey = (c) => (typeof c === 'string' ? c : '')
             .normalize('NFKC').trim().toLowerCase();
+        // usedChars の出し入れは必ずこの2つを通す。生値の truthy 判定 (c &&) だと
+        // 空白だけの項目 ' ' が truthy → charKey で '' になり、'' を Set に入れて
+        // 後続の空白項目と「偽のキャラ被り」を作ってしまう
+        const hasUsedChar = (set, c) => { const k = charKey(c); return k.length > 0 && set.has(k); };
+        const addUsedChar = (set, c) => { const k = charKey(c); if (k) set.add(k); };
         const teamCharsOf = (a) => (Array.isArray(a && a.characters) ? a.characters : [])
             .map(charKey)
             .filter(c => c.length > 0);
@@ -260,7 +265,7 @@
                         if (unresolved > 0) clean = clean.slice(unresolved);
                         // ③ 完了凸のキャラと被る編成は出せない (同キャラ1日1回)
                         if (seedChars.size > 0) {
-                            clean = clean.filter(lo => !(lo.team.length > 0 && lo.team.some(c => c && seedChars.has(charKey(c)))));
+                            clean = clean.filter(lo => !(lo.team.length > 0 && lo.team.some(c => hasUsedChar(seedChars, c))));
                         }
                         if (clean.length > 0) avail[k] = clean;
                     }
@@ -269,7 +274,7 @@
                     for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
                         if (Number(v) > 0 && !(usedCount.get(k) > 0)) {
                             const team = (p.teamsByAttr || {})[k] || [];
-                            if (seedChars.size > 0 && team.length > 0 && team.some(c => c && seedChars.has(charKey(c)))) continue;
+                            if (seedChars.size > 0 && team.length > 0 && team.some(c => hasUsedChar(seedChars, c))) continue;
                             avail[k] = [{ dmg: Number(v), team, slot: 1 }];
                         }
                     }
@@ -445,7 +450,7 @@
                         // 残HPが小さいボスには 2編成目 (低火力) の方がオーバーキルが小さい・
                         // 温存の機会費用が安いことがある (編成データが全く無い人は衝突チェック対象外)
                         for (const cand of list) {
-                            if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(charKey(c)))) continue;
+                            if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
                             let s = scoreOf(m, t.b.weakness, cand.dmg, t.rem, levelPos, slot.idx, openIdx, slot.flex, slot.mismatch);
                             // 温存パス: ボス5で入るはずの与ダメを失う機会費用 (B) を加算。
                             // オーバーキルと同じ単位なので W_OVER=1.0 と自然に比較される
@@ -485,7 +490,7 @@
                         isBottleneck: false,                 // レベル確定後に付与
                     });
                     // 採用したキャラを使用済セットへ
-                    if (teamRegistered) team.forEach(ch => { if (ch) pick.usedChars.add(charKey(ch)); });
+                    if (teamRegistered) team.forEach(ch => addUsedChar(pick.usedChars, ch));
                     // 使用したロードアウトを除去 (同属性の別編成が残っていれば2凸目も提案可)
                     const loIdx = pick.avail[t.b.weakness].indexOf(pickLo);
                     if (loIdx >= 0) pick.avail[t.b.weakness].splice(loIdx, 1);
@@ -607,7 +612,7 @@
                     if (!list || list.length === 0) break;
                     let lo = null;
                     for (const cand of list) {
-                        if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => c && m.usedChars.has(charKey(c)))) continue;
+                        if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
                         lo = cand;
                         break;
                     }
@@ -629,7 +634,7 @@
                         loadoutSlot: lo.slot,
                         isBottleneck: false,
                     });
-                    if (teamRegistered) lo.team.forEach(c => { if (c) m.usedChars.add(charKey(c)); });
+                    if (teamRegistered) lo.team.forEach(c => addUsedChar(m.usedChars, c));
                     const loIdx = list.indexOf(lo);
                     if (loIdx >= 0) list.splice(loIdx, 1);
                     if (list.length === 0) delete m.avail[lv4Weak];
@@ -797,7 +802,7 @@
                         if (!lastAliveWeak.has(k)) continue;
                         anyAliveAttr = true;
                         const usable = m.avail[k].some(lo =>
-                            !(m.anyTeamRegistered && lo.team.length > 0 && lo.team.some(c => c && m.usedChars.has(charKey(c)))));
+                            !(m.anyTeamRegistered && lo.team.length > 0 && lo.team.some(c => hasUsedChar(m.usedChars, c))));
                         if (usable) { conflictOnly = false; break; }
                     }
                     if (!anyAliveAttr) reason = '残っている生存ボスの属性を未提出';
