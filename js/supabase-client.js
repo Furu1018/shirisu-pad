@@ -555,6 +555,21 @@ const _expandLegacySlots = (rawSlots) => {
 };
 const _isValidHourSlot = (s) => typeof s === 'string' && /^h(0[0-9]|1[0-9]|2[0-3])$/.test(s);
 
+// 古いスキーマで attacks.characters に画像パス (./character-images/xxx.webp) が
+// 保存されているケースを除外。本物のキャラ名だけを通す。
+// 最適プランのキャラ被り判定 (同キャラ1日1回) は名前で照合するため、
+// 完了凸の characters を読む箇所は必ずこれを通すこと。
+const _isLikelyCharName = (s) => {
+    if (typeof s !== 'string') return false;
+    const t = s.trim();
+    if (t.length === 0 || t.length > 40) return false;
+    if (t.includes('/') || t.includes('\\')) return false;        // ファイルパス
+    if (/\.(webp|png|jpg|jpeg|gif|svg)$/i.test(t)) return false;  // 画像拡張子
+    if (/^[a-fA-F0-9]{12,}$/.test(t)) return false;               // UUID/ハッシュ風
+    if (/^https?:\/\//i.test(t)) return false;                    // URL
+    return true;
+};
+
 // プレイヤーの通知受信可能時間帯 (availability) を取得
 // 戻り値: ['h05','h06',...] (空配列なら未登録)
 // 旧 morning/noon 等の値は自動的に hXX に展開して返す。
@@ -1485,18 +1500,6 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
         .from('bosses').select('boss_code, weakness').eq('season_id', prevId);
     const weaknessByCode = new Map((bosses || []).map(b => [b.boss_code, b.weakness]));
 
-    // 古いスキーマで attacks.characters に画像パス (./character-images/xxx.webp) が
-    // 保存されているケースを除外。本物のキャラ名だけを通す。
-    const _isLikelyCharName = (s) => {
-        if (typeof s !== 'string') return false;
-        const t = s.trim();
-        if (t.length === 0 || t.length > 40) return false;
-        if (t.includes('/') || t.includes('\\')) return false;        // ファイルパス
-        if (/\.(webp|png|jpg|jpeg|gif|svg)$/i.test(t)) return false;  // 画像拡張子
-        if (/^[a-fA-F0-9]{12,}$/.test(t)) return false;               // UUID/ハッシュ風
-        if (/^https?:\/\//i.test(t)) return false;                    // URL
-        return true;
-    };
     // (player_id, ptAttr) ごとに「最大ダメージ凸の damage + characters」を保持
     const maxMap = new Map();
     (atks || []).forEach(a => {
@@ -2658,13 +2661,20 @@ window.supabaseLoadOpsDashboardData = async function () {
     if (season) {
         const { data: atks, error: aErr } = await supabase
             .from('attacks')
-            .select('id, player_id, attack_number, boss_number, boss_code, damage_raw, level')
+            // characters = その凸で実際に使った5キャラ。最適プランが「同キャラ1日1回」の
+            // 被り判定に使う (朝に鉄甲でラピを使ったら灼熱のラピ入り編成は出せない)。
+            // 未記録 (代理凸・一括登録) の場合は [] のままで best-effort 扱い
+            .select('id, player_id, attack_number, boss_number, boss_code, damage_raw, level, characters')
             .eq('season_id', season.id)
             .eq('attack_date', season.hard_date);
         if (aErr) throw aErr;
         (atks || []).forEach(a => {
             if (!attacksByPlayer.has(a.player_id)) attacksByPlayer.set(a.player_id, []);
-            attacksByPlayer.get(a.player_id).push(a);
+            // 旧スキーマの画像パス混入を除去してキャラ名だけ通す (照合は名前で行うため)
+            attacksByPlayer.get(a.player_id).push({
+                ...a,
+                characters: (Array.isArray(a.characters) ? a.characters : []).filter(_isLikelyCharName),
+            });
         });
     }
 

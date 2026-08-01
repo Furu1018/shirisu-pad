@@ -157,6 +157,36 @@
             return map;
         };
 
+        // ===== 完了凸のキャラ消費 (同キャラは1日1回) =====
+        // NIKKE は同じキャラを1日に1回しか使えない。朝に鉄甲PTでラピを使ったら、
+        // その日は灼熱PTのラピ入り編成は出せない。運用上は「朝1凸だけ済ませて
+        // 残りは運営指示にお任せ」が多いため、完了凸のキャラを除外しないと
+        // 実行不能なプラン (使用済みキャラ入り) を提案してしまう。
+        //
+        // 前提: attacks[].characters は「その凸で実際に使った5キャラ」のスナップショット。
+        // 未記録 (代理凸・一括登録の characters: []) の場合は best-effort —
+        // 候補から外さず、unknownCompletedTeam フラグで運営に「要確認」と伝える
+        // (内輪運用なので Discord で本人に確認できる。ブロックより名指しが有用)。
+        const teamCharsOf = (a) => (Array.isArray(a && a.characters) ? a.characters : [])
+            .filter(c => typeof c === 'string' && c.trim().length > 0)
+            .map(c => c.trim());
+        const usedCharsFor = (p) => {
+            const set = new Set();
+            (p.attacks || []).forEach(a => teamCharsOf(a).forEach(c => set.add(c)));
+            return set;
+        };
+        // 完了凸に編成が1件でも未記録なら「被り判定が不完全」= 要確認マーク
+        const hasUnknownCompletedTeam = (p) => (p.attacks || []).some(a => teamCharsOf(a).length === 0);
+        // 完了凸が「どのロードアウトを消費したか」の確定:
+        //   優先1 = 記録キャラとの完全一致 (順不同) / 優先2 = 旧来のダメージ順 slice (推定)
+        // 旧実装は「完了凸 = その属性の最高火力編成を使った」と決め打ちしていたため、
+        // 実際は低火力の編成②で凸した場合に、合法な編成①まで消してしまう近似バグがあった。
+        const sameTeam = (a, b) => {
+            if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || a.length !== b.length) return false;
+            const sa = [...a].map(String).sort(), sb = [...b].map(String).sort();
+            return sa.every((v, i) => v === sb[i]);
+        };
+
         // openIdx 以降でそのメンバーが凸できる最も早い時間帯を返す。
         // 戻り値: { idx, flex } / null = 時間的に不可。
         //   flex=true は「時刻を約束しない ⏳隙間 割当」(純粋な隙間型、またはハイブリッドの登録時間外)
@@ -184,25 +214,50 @@
             .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(currentSlot))
             .map(p => {
                 const usedCount = usedCountFor(p);
+                // 完了凸で消費済みのキャラ (属性をまたいで効く。空 = 未記録 or 凸なし)
+                const seedChars = usedCharsFor(p);
+                // その属性へ完了した凸のうち、記録キャラが判明しているものの一覧
+                const doneTeamsByAttr = new Map();
+                (p.attacks || []).forEach(a => {
+                    const w = bossWeaknessByNum.get(a.boss_number);
+                    const t = teamCharsOf(a);
+                    if (!w || t.length === 0) return;
+                    if (!doneTeamsByAttr.has(w)) doneTeamsByAttr.set(w, []);
+                    doneTeamsByAttr.get(w).push(t);
+                });
                 // avail: 属性 -> 使用可能な編成 (ロードアウト) リスト、ダメージ降順。
                 // 1属性2編成 (player_damages.slot) に対応し、別編成なら同属性2凸を提案できる。
-                // 既にその属性へ凸した回数ぶん、上位ロードアウトから消費済みとして除外。
+                // 消費の確定は「記録キャラと完全一致する編成を消す」を優先し、
+                // 一致が取れない分だけ従来のダメージ順 slice (推定) で補う。
                 const avail = {};
                 const loadouts = (p.loadoutsByAttr && Object.keys(p.loadoutsByAttr).length > 0) ? p.loadoutsByAttr : null;
                 if (loadouts) {
                     for (const [k, list] of Object.entries(loadouts)) {
-                        const clean = (list || [])
+                        let clean = (list || [])
                             .filter(lo => Number(lo.dmgB) > 0)
                             .map(lo => ({ dmg: Number(lo.dmgB), team: Array.isArray(lo.team) ? lo.team : [], slot: lo.slot || 1 }))
-                            .sort((a, b) => b.dmg - a.dmg)
-                            .slice(usedCount.get(k) || 0);
+                            .sort((a, b) => b.dmg - a.dmg);
+                        // ① 実際に使った編成 (記録キャラと完全一致) を優先的に消す
+                        let unresolved = usedCount.get(k) || 0;
+                        for (const doneTeam of (doneTeamsByAttr.get(k) || [])) {
+                            const hit = clean.findIndex(lo => sameTeam(lo.team, doneTeam));
+                            if (hit >= 0) { clean.splice(hit, 1); unresolved--; }
+                        }
+                        // ② 一致が取れなかった凸 (未記録・編成更新でズレた等) は従来どおり上位から推定消費
+                        if (unresolved > 0) clean = clean.slice(unresolved);
+                        // ③ 完了凸のキャラと被る編成は出せない (同キャラ1日1回)
+                        if (seedChars.size > 0) {
+                            clean = clean.filter(lo => !(lo.team.length > 0 && lo.team.some(c => c && seedChars.has(c))));
+                        }
                         if (clean.length > 0) avail[k] = clean;
                     }
                 } else {
                     // 旧入力形式 (damagesByAttr のみ) のフォールバック: 1属性1編成
                     for (const [k, v] of Object.entries(p.damagesByAttr || {})) {
                         if (Number(v) > 0 && !(usedCount.get(k) > 0)) {
-                            avail[k] = [{ dmg: Number(v), team: (p.teamsByAttr || {})[k] || [], slot: 1 }];
+                            const team = (p.teamsByAttr || {})[k] || [];
+                            if (seedChars.size > 0 && team.length > 0 && team.some(c => c && seedChars.has(c))) continue;
+                            avail[k] = [{ dmg: Number(v), team, slot: 1 }];
                         }
                     }
                 }
@@ -243,7 +298,12 @@
                     slvEstimated: !!p.syncLevelEstimated,
                     remainingAttacks: 3 - p.attackCount,
                     avail,
-                    usedChars: new Set(),               // すでに割当済みのキャラ
+                    // 完了凸で使ったキャラを初期値に入れる (同キャラ1日1回)。
+                    // ここで seed すると通常割当(:375)・Lv4割当(:537)・未使用診断(:722) の
+                    // 全経路と、温存/吸収の各パス (buildMemberState が唯一の入口) に一貫して効く
+                    usedChars: new Set(seedChars),
+                    // 完了凸に編成未記録がある = 被り判定が不完全 (best-effort)。運営に要確認を伝える
+                    unknownCompletedTeam: hasUnknownCompletedTeam(p),
                     anyTeamRegistered: Object.values(avail).some(list => list.some(lo => lo.team.length > 0))
                         || Object.values(p.teamsByAttr || {}).some(arr => Array.isArray(arr) && arr.length > 0),
                     hourIdxs: (timeUnknown || (flexTime && rawSlots.length === 0)) ? null : rawSlots,   // null = いつでも可
@@ -683,6 +743,11 @@
             ? memberState.filter(m => m.timeUnknown && !m.flexTime && Object.keys(m.avail).length + (3 - m.remainingAttacks) > 0).map(m => m.name)
             : [];
         const membersFlex = timeAware ? memberState.filter(m => m.flexTime).map(m => m.name) : [];
+        // 完了凸の編成が未記録 = キャラ被り判定が不完全なメンバー (best-effort で候補には残す)。
+        // 運営は Discord 等で「この編成で出せるか」を本人に確認できるので、除外せず名指しする
+        const membersUnknownCompletedTeam = memberState
+            .filter(m => m.unknownCompletedTeam && m.remainingAttacks > 0)
+            .map(m => m.name);
         const anyTimeConstrained = levels.some(lv => lv.bosses.some(b => b.timeConstrained));
 
         // ===== 未使用凸の理由診断 =====
@@ -745,6 +810,7 @@
             finalClearHourLabel: (timeAware && lastFinite?.levelCleared) ? lastFinite.clearHourLabel : null,
             membersTimeUnknown,
             membersFlex,
+            membersUnknownCompletedTeam,
             anyTimeConstrained,
             unusedDetail,
             hoursUntilReset: timeAware ? (LAST_IDX - nowIdx + 1) : null,

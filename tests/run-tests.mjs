@@ -1556,6 +1556,126 @@ console.log('\ndomain/mockCompare:');
     });
 }
 
+// ---- 完了凸のキャラ消費 (同キャラ1日1回 / PLAN-optimal-plan-v3 フェーズ1) --------
+console.log('\n完了凸のキャラ消費:');
+
+test('ラピ問題: 鉄甲でラピ使用済みなら灼熱のラピ入り編成は提案しない', () => {
+    // 実際に起きた事象: 灼熱にも鉄甲にもラピ入りを提出 → 鉄甲凸(ラピ使用)後にプランを押すと
+    // ラピ入り灼熱PTが提案され、ラピは使用済みで凸できなかった。
+    const p = player('ふるり', { fire: 20 }, {
+        attackCount: 1,
+        // B2 = iron弱点ボスへ凸済み。その凸でラピを使った
+        attacks: [{ boss_number: 2, characters: ['ラピ', 'ドロシー', 'モダニア', 'ノワール', 'ブラン'] }],
+    });
+    p.loadoutsByAttr = { fire: [{ dmgB: 20, team: ['ラピ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }] };
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'iron', { remainingB: 10 })],
+        [p],
+    ));
+    const fireBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(fireBoss.attacks.length, 0, 'ラピ使用済みなのでラピ入り灼熱は提案されないはず');
+});
+
+test('ラピなし代替編成があればそちらが採用される', () => {
+    const p = player('ふるり', { fire: 20 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 2, characters: ['ラピ', 'ドロシー', 'モダニア', 'ノワール', 'ブラン'] }],
+    });
+    // 編成①=ラピ入り(高火力) / 編成②=ラピなし(低火力) → ②が選ばれる
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 20, team: ['ラピ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 },
+        { dmgB: 12, team: ['マキマ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 2 },
+    ] };
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'iron', { remainingB: 10 })],
+        [p],
+    ));
+    const fireBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(fireBoss.attacks.length, 1, 'ラピなし編成で凸できるはず');
+    assert.equal(fireBoss.attacks[0].dmgB, 12, 'ラピなしの編成②が採用されるはず');
+});
+
+test('実使用が低火力の編成②でも、合法な編成①を失わない (旧sliceの近似バグ回帰)', () => {
+    // 旧実装は「完了凸 = その属性の最高火力編成」と決め打ちしていたため、
+    // 実際に②で凸した場合に①(合法)まで消してしまっていた。
+    const p = player('A', { fire: 30 }, {
+        attackCount: 1,
+        // fire弱点ボス(B1)へ、編成②のキャラで凸済み
+        attacks: [{ boss_number: 1, characters: ['ベス', 'アニス', 'ネオン', 'ユニ', 'ソーダ'] }],
+    });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 30, team: ['ヘルム', 'マリアン', 'ノア', 'ミカ', 'リター'], slot: 1 },   // 未使用・高火力
+        { dmgB: 10, team: ['ベス', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 2 },     // 実際に使った
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100 })], [p]));
+    const atks = plan.levels[0].bosses[0].attacks;
+    assert.equal(atks.length, 1, '残り編成①で1凸できるはず');
+    assert.equal(atks[0].dmgB, 30, '実使用は②なので、未使用の①(高火力)が残るはず');
+});
+
+test('得意属性が完了凸のキャラ被りで全滅しても、他属性をロックしない', () => {
+    // seed で avail から消えた属性を mandatory に入れると、出せない属性を予約して
+    // 他属性まで止めてしまう (Codex指摘の実装順序の罠)。
+    const p = player('A', { fire: 20, water: 15 }, {
+        attackCount: 1,
+        strong: ['fire'],                       // 得意 = fire (必ず消化したい)
+        attacks: [{ boss_number: 3, characters: ['ラピ', 'ドロシー', 'モダニア', 'ノワール', 'ブラン'] }],
+    });
+    p.loadoutsByAttr = {
+        fire:  [{ dmgB: 20, team: ['ラピ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }],   // ラピ被りで出せない
+        water: [{ dmgB: 15, team: ['マキマ', 'ベス', 'ノア', 'ミカ', 'リター'], slot: 1 }],
+    };
+    const plan = compute(makeInput(
+        [boss(1, 'water', { remainingB: 10 }), boss(3, 'electric', { remainingB: 10 })],
+        [p],
+    ));
+    const waterBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(waterBoss.attacks.length, 1, 'fire が出せない以上 water に出せるはず (予約で固まらない)');
+});
+
+test('完了凸の編成が未記録なら best-effort (候補に残し、要確認として名指し)', () => {
+    // 代理凸・一括登録は characters: [] を保存する。被り判定はできないが、
+    // 除外せず候補に残し membersUnknownCompletedTeam で運営に確認を促す。
+    const p = player('B', { fire: 20 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 2, characters: [] }],   // 編成未記録
+    });
+    p.loadoutsByAttr = { fire: [{ dmgB: 20, team: ['ラピ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }] };
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'iron', { remainingB: 10 })],
+        [p],
+    ));
+    const fireBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
+    assert.equal(fireBoss.attacks.length, 1, '未記録なので候補に残る (best-effort)');
+    assert.ok(plan.membersUnknownCompletedTeam.includes('B'), '要確認として名指しされるはず');
+});
+
+test('完了凸のキャラは Lv4 (無限ボス) の割当でも復活しない', () => {
+    // Lv4 は別経路 (:537) で割り当てる。seed が全経路に効くことの確認。
+    const p = player('C', { fire: 50 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 2, characters: ['ラピ', 'ドロシー', 'モダニア', 'ノワール', 'ブラン'] }],
+    });
+    p.loadoutsByAttr = { fire: [{ dmgB: 50, team: ['ラピ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }] };
+    const plan = compute(makeInput(
+        [boss(5, 'fire', { remainingB: 1 })],   // ボス5 = Lv4 無限ボスの対象
+        [p],
+    ));
+    const all = plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks));
+    assert.ok(all.every(a => !(a.team || []).includes('ラピ')), 'Lv4 でもラピは使えないはず');
+});
+
+test('完了凸が無い入力は従来どおり (回帰保証)', () => {
+    // characters を持たない従来入力で、seed 導入前と同じ結果になること。
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 10 })],
+        [player('A', { fire: 12 })],
+    ));
+    assert.equal(plan.levels[0].bosses[0].attacks.length, 1);
+    assert.equal(plan.levels[0].bosses[0].attacks[0].memberName, 'A');
+    assert.deepEqual(plan.membersUnknownCompletedTeam, [], '凸が無ければ要確認も空');
+});
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
