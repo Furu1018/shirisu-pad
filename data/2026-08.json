@@ -1,0 +1,1613 @@
+{
+  "players": [
+    {
+      "player": "無銘",
+      "totalDamage": 141241000000,
+      "attackCount": 3,
+      "syncLevel": 746,
+      "attacks": [
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 46454777782,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 42266784723,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 52519765370,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "NOB",
+      "totalDamage": 138559000000,
+      "attackCount": 3,
+      "syncLevel": 776,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 36745761430,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 37088497497,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 25,
+          "damage": 64725202919,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "迅帝",
+      "totalDamage": 127178000000,
+      "attackCount": 3,
+      "syncLevel": 748,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 32,
+          "damage": 28844845730,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 31,
+          "damage": 47006108770,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 51327523817,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "なべりうす",
+      "totalDamage": 126599000000,
+      "attackCount": 3,
+      "syncLevel": 761,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 38034703669,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 31,
+          "damage": 51090730123,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 23,
+          "damage": 37473179785,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "PHANTOM",
+      "totalDamage": 123912000000,
+      "attackCount": 3,
+      "syncLevel": 781,
+      "attacks": [
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 51085781854,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 38896356659,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 33930293764,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるる",
+      "totalDamage": 101892000000,
+      "attackCount": 3,
+      "syncLevel": 741,
+      "attacks": [
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 31,
+          "damage": 34562125819,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 35353028123,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 31977071000,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "みに",
+      "totalDamage": 97153000000,
+      "attackCount": 3,
+      "syncLevel": 682,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 26910981797,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 35149803610,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 35092006943,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "銀狐リン",
+      "totalDamage": 95285000000,
+      "attackCount": 3,
+      "syncLevel": 757,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 31236600474,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 35396247722,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 28652087967,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "パン",
+      "totalDamage": 94132000000,
+      "attackCount": 3,
+      "syncLevel": 728,
+      "attacks": [
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 23007741012,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 39127953723,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 31995866940,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "フブキ",
+      "totalDamage": 92938000000,
+      "attackCount": 3,
+      "syncLevel": 730,
+      "attacks": [
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 34120065465,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 18466277790,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 40351196412,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ニッサ",
+      "totalDamage": 84282000000,
+      "attackCount": 3,
+      "syncLevel": 743,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 31119049732,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 23855738632,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 29306782641,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あるちゃ",
+      "totalDamage": 82604000000,
+      "attackCount": 3,
+      "syncLevel": 745,
+      "attacks": [
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 30715610084,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 26,
+          "damage": 35911007461,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 16,
+          "damage": 15977264448,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "にま",
+      "totalDamage": 76015000000,
+      "attackCount": 3,
+      "syncLevel": 714,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 33,
+          "damage": 20113530417,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 33,
+          "damage": 21941106228,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 33960328664,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "翠秋めぐる",
+      "totalDamage": 75121000000,
+      "attackCount": 3,
+      "syncLevel": 726,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 31,
+          "damage": 18588829660,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 34,
+          "damage": 25764705022,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 30767352735,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "STREKOZA",
+      "totalDamage": 73002000000,
+      "attackCount": 3,
+      "syncLevel": 639,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 14,
+          "damage": 15708020912,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 26388598442,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 30905330991,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "まるちょ",
+      "totalDamage": 72532000000,
+      "attackCount": 3,
+      "syncLevel": 693,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 37796168044,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 18765881300,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 15969870213,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "今際の金糸雀",
+      "totalDamage": 70727000000,
+      "attackCount": 3,
+      "syncLevel": 608,
+      "attacks": [
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 26285927191,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 21916135389,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 22524762272,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "あんず",
+      "totalDamage": 61623000000,
+      "attackCount": 3,
+      "syncLevel": 623,
+      "attacks": [
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 14,
+          "damage": 12500964486,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 15,
+          "damage": 25963391226,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 23158465078,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ねむねこ",
+      "totalDamage": 61047000000,
+      "attackCount": 3,
+      "syncLevel": 569,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 14,
+          "damage": 14130254775,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 21570027906,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 25347042719,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "MIRIN",
+      "totalDamage": 59403000000,
+      "attackCount": 3,
+      "syncLevel": 651,
+      "attacks": [
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 32,
+          "damage": 24856484289,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 19369369403,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 15177637253,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "世紀末伝説ことえ",
+      "totalDamage": 58371000000,
+      "attackCount": 3,
+      "syncLevel": 678,
+      "attacks": [
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 23,
+          "damage": 17391795560,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 12102915983,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 14,
+          "damage": 28876757010,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "るり",
+      "totalDamage": 56564000000,
+      "attackCount": 3,
+      "syncLevel": 599,
+      "attacks": [
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 25,
+          "damage": 12705146915,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 23,
+          "damage": 21245534022,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 22613526257,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "YATO",
+      "totalDamage": 55410000000,
+      "attackCount": 3,
+      "syncLevel": 702,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 21,
+          "damage": 15062590245,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 22,
+          "damage": 16484043765,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 23863638544,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ふるり",
+      "totalDamage": 52897000000,
+      "attackCount": 3,
+      "syncLevel": 558,
+      "attacks": [
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 19996411087,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 18556694559,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 14343559057,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "DETロイ",
+      "totalDamage": 50735000000,
+      "attackCount": 3,
+      "syncLevel": 583,
+      "attacks": [
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 12660023068,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 19325808710,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 26,
+          "damage": 18748836914,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "めいさ",
+      "totalDamage": 42188000000,
+      "attackCount": 3,
+      "syncLevel": 662,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 9395838032,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 17565587873,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 15,
+          "damage": 15227014685,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "覆面仮面",
+      "totalDamage": 41409000000,
+      "attackCount": 3,
+      "syncLevel": 633,
+      "attacks": [
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 9898578611,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 15,
+          "damage": 13683526061,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 17826710868,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "時雨",
+      "totalDamage": 36747000000,
+      "attackCount": 3,
+      "syncLevel": 508,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 14887182379,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 13892153959,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7967891481,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "むう",
+      "totalDamage": 36402000000,
+      "attackCount": 3,
+      "syncLevel": 506,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 9644998204,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 14574238739,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IIIトーカティブ",
+          "bossCode": "H.S.T.A.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 12183198579,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "はる",
+      "totalDamage": 35349000000,
+      "attackCount": 3,
+      "syncLevel": 550,
+      "attacks": [
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 3,
+          "damage": 8196438665,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 14105247839,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 2,
+          "damage": 13046815313,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "NAVI01",
+      "totalDamage": 27649000000,
+      "attackCount": 3,
+      "syncLevel": 447,
+      "attacks": [
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 7649162280,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 9854791163,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "Iサンバス",
+          "bossCode": "P.S.I.D.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 10144564348,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "player": "ほりっぴー",
+      "totalDamage": 16448000000,
+      "attackCount": 3,
+      "syncLevel": 411,
+      "attacks": [
+        {
+          "bossType": "IIプレート",
+          "bossCode": "A.N.M.I.",
+          "difficulty": "HARD",
+          "level": 12,
+          "damage": 4559066120,
+          "characters": [
+            "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
+            "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
+            "./character-images/171c4160829049f2604cde5036b79801.webp",
+            "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
+            "./character-images/6fe1b0c6425c0bae6413c1e15718b1ba.webp"
+          ]
+        },
+        {
+          "bossType": "VマテリアルH",
+          "bossCode": "Z.E.U.S.",
+          "difficulty": "HARD",
+          "level": 1,
+          "damage": 6585727962,
+          "characters": [
+            "./character-images/430fe2319b54b1569064001be1a93641.webp",
+            "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
+            "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
+            "./character-images/9a54283cdd0c15a9b554810488563775.webp",
+            "./character-images/8af2ca57a2237ea175a791338607c215.webp"
+          ]
+        },
+        {
+          "bossType": "IVリビルドフィンガーズ",
+          "bossCode": "D.M.T.R.",
+          "difficulty": "HARD",
+          "level": 11,
+          "damage": 5303541801,
+          "characters": [
+            "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
+            "./character-images/b9fec0034b307567e3d64dd978ccc600.webp",
+            "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
+            "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
+            "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp"
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "extractedAt": "2026-08-01T21:13:04.229Z",
+    "playerCount": 32,
+    "totalDamage": 2365414000000,
+    "source": "BlaBlaLINK Chrome Extension",
+    "version": "2.3",
+    "hasDetailedAttacks": true,
+    "imagesDownloaded": true
+  }
+}
