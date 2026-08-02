@@ -485,13 +485,15 @@
                 // 分岐ポリシー: 「この決定点では2番手(指定の候補)を選べ」という指示。
                 // フェーズ2 (ボス横断) が「Aを温存してBを使う」案を試すために使う。
                 // 指定が無い/候補が消えている場合は通常どおり先頭 (最小スコア) を採る
-                const pickFor = (t) => {
-                    const list = listCandidatesFor(t);
+                // 決定点キー: レベル・モードを含めないと Lv1〜Lv3 で同じボスの同じ何凸目が衝突し、
+                // 「1決定点だけ分岐」の前提が壊れる (別レベルでも同じ分岐が再発火する)
+                const decisionKey = (t, isAbsorb) => `${L}|${isAbsorb ? 'C' : 'A'}|${t.b.boss_number}|${t.attacks.length}`;
+                const pickFor = (t, preList) => {
+                    const list = preList || listCandidatesFor(t);
                     if (list.length === 0) return null;
                     const policy = opts.decisionPolicy;
                     if (policy) {
-                        const key = `${t.b.boss_number}|${t.attacks.length}`;
-                        const want = policy.get(key);
+                        const want = policy.get(decisionKey(t, absorbMode));
                         if (want) {
                             const alt = list.find(c => c.pick.id === want.memberId
                                 && (c.pickLo.slot || 1) === want.slot && (c.pickLo.ord ?? 0) === want.ord);
@@ -501,7 +503,7 @@
                     return list[0];
                 };
                 // 決定点の記録 (分岐候補の抽出用): 上位2件のスコア差が小さい所を後で試す
-                const noteDecision = (t, list, chosenCand) => {
+                const noteDecision = (t, list, chosenCand, isAbsorb) => {
                     if (!opts.trace || list.length < 2) return;
                     // 分岐先は「別のメンバー」を選ぶ。同一人物の別ロードアウトに振り替えても
                     // その人を消費する事実は変わらず、ボス横断の取りこぼし (貴重な人材を
@@ -509,7 +511,7 @@
                     const second = list.find(c => c.pick.id !== chosenCand.pick.id);
                     if (!second) return;
                     opts.trace.push({
-                        key: `${t.b.boss_number}|${t.attacks.length}`,
+                        key: decisionKey(t, isAbsorb),
                         weakness: t.b.weakness,
                         gap: second.pickScore - chosenCand.pickScore,
                         chosenId: chosenCand.pick.id,
@@ -637,9 +639,9 @@
                         while (t.rem > 0.0001) {
                             const list = listCandidatesFor(t);
                             if (list.length === 0) break;
-                            const c = pickFor(t);
+                            const c = pickFor(t, list);   // 列挙済みを渡す (二重列挙を避ける)
                             if (!c) break;
-                            noteDecision(t, list, c);
+                            noteDecision(t, list, c, false);
                             applyPick(t, c);
                         }
                         trimOverkill(t);   // 撃破を保ったまま不要な凸を外す (損失圧縮・凸を浮かせる)
@@ -698,6 +700,10 @@
             if (!levelResult.levelCleared) {
                 // フロンティア (踏破できないレベル): 撃破狙いをやめて吸収割当でやり直す
                 restoreSnapshot();
+                // trace は巻き戻さない: 破棄したのは「割当」であって「決定点」ではない。
+                // 分岐は最初から解き直すので、同じ decisionKey (L|A|ボス|何凸目) には再び到達する。
+                // むしろ踏破に失敗したレベルの決定点こそ横断分岐で救える本命 (テスト:
+                // 「貴重な人材を代替可能なボスで使い切らない」はこの trace がないと解けない)
                 levelResult = runLevel(true);
                 if (!levelResult.levelCleared) frontierLevel = L;
             }
@@ -805,10 +811,14 @@
         // policy を渡すと指定の決定点だけ2番手を採る = ボス横断の分岐 (フェーズ2)。
         // 分岐は最終結果を部分修正せず「最初から全パスを再実行」する — 温存の機会費用・
         // Lv4開放時刻の収束・時間伝播・必須予約をすべて同じ規則で評価し直すため
-        const solveScenario = (policy, trace) => {
-        const probe = runPass({ decisionPolicy: policy, trace });
+        const solveScenario = (policy, traceOut) => {
+        // trace はパスごとに独立させ、最後に「採用したパス」の分だけを呼び出し元へ返す。
+        // probe 固定だと、温存パスが採用されたとき別パスの決定点を分岐候補にしてしまう
+        const probeTrace = traceOut ? [] : null;
+        const probe = runPass({ decisionPolicy: policy, trace: probeTrace });
         const lv4Open = probe.fullyClearedThrough >= 3 && !!(boss5 && boss5.weakness);
         let chosen = probe;
+        let chosenTrace = probeTrace;
         let reservePassUsed = false;
         if (lv4Open) {
             const lv4Weak = boss5.weakness;
@@ -848,15 +858,17 @@
             // 前提にした T3 より実際の開放が遅いと「開放時刻に出られない人」を誤って温存して
             // しまうため、実クリア時刻が前提以下に収まるまで T3 を引き上げて引き直す
             // (T3 は単調増加・時間帯は有限なので必ず止まるが、安全のため3回で打ち切り)
-            let reserved = null;
+            let reserved = null, reserveTrace = null, reservedTrace = null;
             for (let iter = 0; iter < 3; iter++) {
+                if (traceOut) reserveTrace = [];
                 const attempt = runPass({
                     oppCostOf,
                     lv4Mandatory: { attr: lv4Weak, canAfter: canAttackAfterT3 },
                     decisionPolicy: policy,
+                    trace: reserveTrace,
                 });
                 if (attempt.fullyClearedThrough < 3) { reserved = null; break; }   // 温存で踏破が崩れた
-                if (attempt.openIdx <= T3) { reserved = attempt; break; }          // 前提どおり → 採用候補
+                if (attempt.openIdx <= T3) { reserved = attempt; reservedTrace = reserveTrace; break; }   // 前提どおり → 採用候補
                 T3 = attempt.openIdx;   // 実際の開放が遅い → 前提を更新して引き直し
             }
             assignLv4(probe);
@@ -867,9 +879,11 @@
                 if (sumCreditedOf(reserved) > sumCreditedOf(probe) + 1e-9) {
                     chosen = reserved;
                     reservePassUsed = true;
+                    chosenTrace = reservedTrace;   // 採用したパスの決定点を分岐候補にする
                 }
             }
         }
+            if (traceOut && chosenTrace) traceOut.push(...chosenTrace);
             return { probe, chosen, lv4Open, reservePassUsed };
         };
 
@@ -924,7 +938,8 @@
                 .sort((x, y) => y.regret - x.regret)
                 .slice(0, MAX_BRANCH);
             for (const d of cands) {
-                if (optimization.explored >= MAX_SCENARIOS) break;
+                // MAX_SCENARIOS は「解いたシナリオ総数」の上限。基準解も1つ数える
+                if (optimization.explored + 1 >= MAX_SCENARIOS) break;
                 optimization.explored++;
                 const policy = new Map([[d.key, d.alt]]);
                 let alt;

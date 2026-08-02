@@ -1632,6 +1632,42 @@ test('分岐は基準解より総与ダメを減らさない (非悪化の不変
         `横断ONが基準解を下回ってはいけない (ON ${on.totalCreditedB.toFixed(2)} / OFF ${off.totalCreditedB.toFixed(2)})`);
 });
 
+test('複数レベルでも分岐が基準解を悪化させない (決定点キーにレベルが入っている)', () => {
+    // 決定点キーがレベルを含まないと、Lv1 の B1・1凸目に張った分岐が Lv2 の B1・1凸目にも
+    // 誤発火し「1決定点だけ分岐」の前提が壊れる。踏破レベルと総与ダメの非悪化で検出する
+    const mk = (name, dmg, slv) => player(name, dmg, { slv });
+    const input = makeInput(
+        [boss(1, 'fire', { remainingB: 15 }), boss(2, 'water', { remainingB: 15 }),
+         boss(3, 'iron', { remainingB: 15 }), boss(4, 'electric', { remainingB: 15 }),
+         boss(5, 'wind', { remainingB: 20, tier: 'tyrant' })],
+        [mk('Q1', { fire: 16, water: 14 }, 500), mk('Q2', { water: 16, iron: 14 }, 520),
+         mk('Q3', { iron: 16, electric: 14 }, 540), mk('Q4', { electric: 16, wind: 14 }, 560),
+         mk('Q5', { wind: 16, fire: 14 }, 580), mk('Q6', { fire: 12, iron: 12, wind: 12 }, 600)],
+    );
+    const on = compute(input);
+    const off = compute({ ...input, crossBoss: false });
+    assert.ok(on.fullyClearedThrough >= off.fullyClearedThrough,
+        `踏破レベルが下がってはいけない (ON ${on.fullyClearedThrough} / OFF ${off.fullyClearedThrough})`);
+    assert.ok(on.totalCreditedB >= off.totalCreditedB - 1e-9,
+        `総与ダメが下がってはいけない (ON ${on.totalCreditedB.toFixed(2)} / OFF ${off.totalCreditedB.toFixed(2)})`);
+    assert.ok(on.levels.length >= 2, '複数レベルを解いている盤面であること');
+});
+
+test('分岐探索の内部情報が出力に漏れない (JSONB配信の前提)', () => {
+    // trace / decisionPolicy / 内部メタが Plan に混ざると 📤配信の JSONB に載る
+    const mk = (name, dmg, slv) => player(name, dmg, { slv });
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 20 }), boss(2, 'water', { remainingB: 20 })],
+        [mk('R1', { fire: 20, water: 18 }, 500), mk('R2', { fire: 15, water: 15 }, 520),
+         mk('R3', { water: 12 }, 480)],
+    ));
+    const json = JSON.stringify(plan);
+    for (const k of ['trace', 'decisionPolicy', '_lo', '_consumedMandatory', 'chosenTrace']) {
+        assert.ok(!json.includes(`"${k}"`), `${k} が出力に含まれてはいけない`);
+    }
+    assert.ok(!json.includes('null,null'), '未定義値が配列に混ざっていないこと');
+});
+
 // ---- オーバーキルの後処理 (フェーズ2a: 抜いても倒せる凸を外す) ------------------
 console.log('\nオーバーキル後処理:');
 
