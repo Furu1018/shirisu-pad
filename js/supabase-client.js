@@ -576,9 +576,11 @@ const _isLikelyCharName = (s) => {
 const _isValidTeam5 = (arr) => {
     // 「ちょうど5要素」かつ「全要素が実キャラ名」かつ「重複なし」。
     // filter 後の件数だけを見ると「有効5人 + 画像パス」の6要素配列を通してしまう
+    // Array.from で疎配列の穴を undefined として走査させる (every は穴を飛ばすため)
     if (!Array.isArray(arr) || arr.length !== 5) return false;
-    if (!arr.every(_isLikelyCharName)) return false;
-    const t = arr.map(c => String(c).normalize('NFKC').trim().toLowerCase());
+    const src = Array.from(arr);
+    if (!src.every(_isLikelyCharName)) return false;
+    const t = src.map(c => String(c).normalize('NFKC').trim().toLowerCase());
     return new Set(t).size === 5;
 };
 
