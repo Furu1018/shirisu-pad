@@ -574,9 +574,12 @@ const _isLikelyCharName = (s) => {
 // 空文字・画像パス混入・前後空白違いの同一キャラ・4人以下はすべて不正 (= テストシードの補完対象)。
 // 正規化して比較するので ' ラピ ' と 'ラピ' は同一と判定する
 const _isValidTeam5 = (arr) => {
-    if (!Array.isArray(arr)) return false;
-    const t = arr.filter(_isLikelyCharName).map(c => String(c).normalize('NFKC').trim().toLowerCase());
-    return t.length === 5 && new Set(t).size === 5;
+    // 「ちょうど5要素」かつ「全要素が実キャラ名」かつ「重複なし」。
+    // filter 後の件数だけを見ると「有効5人 + 画像パス」の6要素配列を通してしまう
+    if (!Array.isArray(arr) || arr.length !== 5) return false;
+    if (!arr.every(_isLikelyCharName)) return false;
+    const t = arr.map(c => String(c).normalize('NFKC').trim().toLowerCase());
+    return new Set(t).size === 5;
 };
 
 // プレイヤーの通知受信可能時間帯 (availability) を取得
