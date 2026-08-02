@@ -125,6 +125,10 @@
         3: { lord: 292.44529575, tyrant: 349.2309015 },
     };
 
+    // フェーズ2 (ボス横断の限定分岐) の探索上限。ブラウザ実行なので小さく始める
+    const MAX_BRANCH = 6;      // 分岐を試す決定点の数
+    const MAX_SCENARIOS = 8;   // 再計算するシナリオの総数
+
     // レイド日の時間帯 (AM5時起点)。index.html の HOUR_ORDER と一致させること。
     const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
     const hourKey = (h) => `h${String(h).padStart(2, '0')}`;
@@ -478,9 +482,41 @@
                         .sort((x, y) => (x.c.pickScore - y.c.pickScore) || (x.i - y.i))
                         .map(x => x.c);
                 };
+                // 分岐ポリシー: 「この決定点では2番手(指定の候補)を選べ」という指示。
+                // フェーズ2 (ボス横断) が「Aを温存してBを使う」案を試すために使う。
+                // 指定が無い/候補が消えている場合は通常どおり先頭 (最小スコア) を採る
                 const pickFor = (t) => {
                     const list = listCandidatesFor(t);
-                    return list.length > 0 ? list[0] : null;
+                    if (list.length === 0) return null;
+                    const policy = opts.decisionPolicy;
+                    if (policy) {
+                        const key = `${t.b.boss_number}|${t.attacks.length}`;
+                        const want = policy.get(key);
+                        if (want) {
+                            const alt = list.find(c => c.pick.id === want.memberId
+                                && (c.pickLo.slot || 1) === want.slot && (c.pickLo.ord ?? 0) === want.ord);
+                            if (alt) return alt;   // 合法なら指定候補を採用 (消えていれば通常選択)
+                        }
+                    }
+                    return list[0];
+                };
+                // 決定点の記録 (分岐候補の抽出用): 上位2件のスコア差が小さい所を後で試す
+                const noteDecision = (t, list, chosenCand) => {
+                    if (!opts.trace || list.length < 2) return;
+                    // 分岐先は「別のメンバー」を選ぶ。同一人物の別ロードアウトに振り替えても
+                    // その人を消費する事実は変わらず、ボス横断の取りこぼし (貴重な人材を
+                    // 代替可能なボスで使い切る) は解消しないため
+                    const second = list.find(c => c.pick.id !== chosenCand.pick.id);
+                    if (!second) return;
+                    opts.trace.push({
+                        key: `${t.b.boss_number}|${t.attacks.length}`,
+                        weakness: t.b.weakness,
+                        gap: second.pickScore - chosenCand.pickScore,
+                        chosenId: chosenCand.pick.id,
+                        alt: { memberId: second.pick.id, slot: second.pickLo.slot || 1, ord: second.pickLo.ord ?? 0 },
+                        altMemberAttrs: Object.keys(second.pick.avail || {}).length,
+                        chosenMemberAttrs: Object.keys(chosenCand.pick.avail || {}).length,
+                    });
                 };
                 // 候補を採用: 凸行を追加し、メンバー状態とボス残HPを更新する
                 // 割当の内部メタ (出力に混ぜないため WeakMap/WeakSet で外部管理):
@@ -599,8 +635,11 @@
                     // 踏破モード: ボスごとに残HPを削り切るまで投入
                     for (const t of targets) {
                         while (t.rem > 0.0001) {
+                            const list = listCandidatesFor(t);
+                            if (list.length === 0) break;
                             const c = pickFor(t);
                             if (!c) break;
+                            noteDecision(t, list, c);
                             applyPick(t, c);
                         }
                         trimOverkill(t);   // 撃破を保ったまま不要な凸を外す (損失圧縮・凸を浮かせる)
@@ -762,8 +801,12 @@
         const sumCreditedOf = (pass) =>
             pass.levels.reduce((s, lv) => s + lv.bosses.reduce((t, b) => t + b.attacks.reduce((u, a) => u + a.usedB, 0), 0), 0);
 
-        // ===== パス実行: probe (温存なし・現行アルゴリズム) → 温存パス (Lv4 が見える時のみ) =====
-        const probe = runPass();
+        // ===== シナリオ実行: probe (温存なし) → 温存パス (Lv4 が見える時のみ) =====
+        // policy を渡すと指定の決定点だけ2番手を採る = ボス横断の分岐 (フェーズ2)。
+        // 分岐は最終結果を部分修正せず「最初から全パスを再実行」する — 温存の機会費用・
+        // Lv4開放時刻の収束・時間伝播・必須予約をすべて同じ規則で評価し直すため
+        const solveScenario = (policy, trace) => {
+        const probe = runPass({ decisionPolicy: policy, trace });
         const lv4Open = probe.fullyClearedThrough >= 3 && !!(boss5 && boss5.weakness);
         let chosen = probe;
         let reservePassUsed = false;
@@ -810,6 +853,7 @@
                 const attempt = runPass({
                     oppCostOf,
                     lv4Mandatory: { attr: lv4Weak, canAfter: canAttackAfterT3 },
+                    decisionPolicy: policy,
                 });
                 if (attempt.fullyClearedThrough < 3) { reserved = null; break; }   // 温存で踏破が崩れた
                 if (attempt.openIdx <= T3) { reserved = attempt; break; }          // 前提どおり → 採用候補
@@ -826,6 +870,84 @@
                 }
             }
         }
+            return { probe, chosen, lv4Open, reservePassUsed };
+        };
+
+        // --- 基準解 (現行アルゴリズム) ---
+        const baseTrace = [];
+        const baseScenario = solveScenario(null, baseTrace);   // 現行アルゴリズムの解 (下限として守る)
+        let scenario = baseScenario;
+        let optimization = { explored: 0, improvedB: 0, applied: false };
+
+        // --- フェーズ2: ボス横断の限定分岐 ---
+        // 貪欲は「そのボスで最良」を選ぶため、別ボスでしか使えない人材を先に消費してしまう
+        // (例: 両属性に出せる残1凸の人を、代替がいるボスで使い切り、別ボスが倒せない)。
+        // 僅差だった決定点で2番手を採るシナリオを少数だけ試し、全体が良くなる案があれば採用する。
+        if (input.crossBoss !== false && baseTrace.length > 0) {
+            // 実現可能性の劣化を数える: 時刻を確約できない凸 (⚠時間外 / ⏳隙間) が増えた案は、
+            // 数字上 credited が増えても「実際には出せないかもしれない凸」で稼いでいるだけ。
+            // 運用では改悪なので、まず実現可能性で足切りしてから credited を比べる
+            const riskOf = (r) => r.chosen.levels.flatMap(lv => lv.bosses.flatMap(x => x.attacks))
+                .reduce((t, x) => t + (x.timeMismatch ? 2 : 0) + (x.flex ? 1 : 0), 0);
+            // 同じリスク量でも「確約できない凸を先に置く」案は避ける。
+            // 先の凸ほどレベル開放を律速するので、実際に出られないと後続が全部ずれる
+            const riskOrderOf = (r) => {
+                let penalty = 0, i = 0;
+                r.chosen.levels.forEach(lv => lv.bosses.forEach(b => b.attacks.forEach(x => {
+                    i++;
+                    if (x.timeMismatch || x.flex) penalty += 1 / i;   // 早い凸ほど重い
+                })));
+                return penalty;
+            };
+            const cmp = (a, b) => {
+                // 採否は辞書順: 踏破レベル → 実現可能性 → 総与ダメ → 損失の少なさ
+                if (a.chosen.fullyClearedThrough !== b.chosen.fullyClearedThrough) {
+                    return b.chosen.fullyClearedThrough - a.chosen.fullyClearedThrough;
+                }
+                const ra = riskOf(a), rb = riskOf(b);
+                if (ra !== rb) return ra - rb;
+                const ca = sumCreditedOf(a.chosen), cb = sumCreditedOf(b.chosen);
+                if (Math.abs(ca - cb) > 1e-9) return cb - ca;
+                // ここから下は credited が同点のときのタイブレーク。
+                // 確約できない凸を「先に」置く案は避ける (早い凸ほどレベル開放を律速するため)
+                const oa = riskOrderOf(a), ob = riskOrderOf(b);
+                if (Math.abs(oa - ob) > 1e-9) return oa - ob;
+                const wasteOf = (r) => r.chosen.levels.flatMap(lv => lv.bosses.flatMap(x => x.attacks))
+                    .reduce((t, x) => t + x.overflowB, 0);
+                return wasteOf(a) - wasteOf(b);
+            };
+            // 分岐候補: 「僅差」かつ「選ばれた人の方が出せる属性が多い(=希少)」決定点を優先。
+            // 貴重な人材を代替可能なボスで使ってしまった疑いが濃い順
+            const cands = baseTrace
+                .filter(d => d.gap < 8 && d.altMemberAttrs > 0)
+                .map(d => ({ ...d, regret: (d.chosenMemberAttrs - d.altMemberAttrs) * 10 - d.gap }))
+                .sort((x, y) => y.regret - x.regret)
+                .slice(0, MAX_BRANCH);
+            for (const d of cands) {
+                if (optimization.explored >= MAX_SCENARIOS) break;
+                optimization.explored++;
+                const policy = new Map([[d.key, d.alt]]);
+                let alt;
+                try { alt = solveScenario(policy, null); } catch { continue; }
+                // 不変条件: 分岐は「基準解より総与ダメを減らさない」ものだけ採用する。
+                // 実現可能性 (⚠時間外/⏳隙間) を優先しすぎると credited が大きく落ちる案を
+                // 選んでしまうため、まず credited の非悪化を絶対条件にする
+                if (sumCreditedOf(alt.chosen) < sumCreditedOf(baseScenario.chosen) - 1e-9) continue;
+                // 実現可能性を犠牲にした案は採らない: 確約できない凸 (⚠時間外/⏳隙間) が
+                // 基準解より増えるなら、数字が伸びても運用では改悪 (当日出られない人に賭ける形)。
+                // 「予期せぬことが起きても再算出で回る」ことを優先する
+                if (riskOf(alt) > riskOf(baseScenario)) continue;
+                // 同じリスク量でも「確約できない凸をより早い順番に置く」案は採らない。
+                // 早い凸ほどレベル開放を律速するので、出られなかったとき後続が全部ずれる
+                if (riskOrderOf(alt) > riskOrderOf(baseScenario) + 1e-9) continue;
+                if (cmp(alt, scenario) < 0) {
+                    optimization.improvedB = sumCreditedOf(alt.chosen) - sumCreditedOf(scenario.chosen);
+                    optimization.applied = true;
+                    scenario = alt;
+                }
+            }
+        }
+        const { probe, chosen, lv4Open, reservePassUsed } = scenario;
         const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited
         // 温存マーク: probe では有限ボスに使われていた凸 (人+編成) が、温存パスでボス5に回ったもの。
         // memberId だけで判定すると、2編成持ちの「元からボス5行きだった方の編成」にも

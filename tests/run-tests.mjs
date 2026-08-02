@@ -1582,6 +1582,56 @@ console.log('\ndomain/mockCompare:');
     });
 }
 
+// ---- ボス横断の最適化 (フェーズ2: 限定分岐) --------------------------------------
+console.log('\nボス横断の最適化:');
+
+test('貴重な人材を代替可能なボスで使い切らない (ボス横断の分岐)', () => {
+    // A は fire/water 両方に出せるが残1凸。B は fire 専用、C は water で火力不足。
+    // 貪欲は B1(fire) で A を使い切り、B2(water) が C だけで倒せない。
+    // 正しくは B1←B(火専)、B2←A(両刀) で両方撃破できる。
+    const P = (name, dmg, done) => player(name, dmg, {
+        slv: 500, attackCount: done,
+        attacks: done ? Array(done).fill({ boss_number: 99 }) : [],
+    });
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 20 }), boss(2, 'water', { remainingB: 20 })],
+        [P('A両刀', { fire: 20, water: 20 }, 2), P('B火専', { fire: 20 }, 0), P('C水弱', { water: 10 }, 0)],
+    ));
+    const [b1, b2] = plan.levels[0].bosses;
+    assert.equal(b1.cleared, true, 'B1 は撃破できるはず');
+    assert.equal(b2.cleared, true, 'B2 も撃破できるはず (A を温存した結果)');
+    assert.equal(b1.attacks[0].memberName, 'B火専', 'B1 は代替可能な B を使うはず');
+    assert.equal(b2.attacks[0].memberName, 'A両刀', 'A は B2 でしか使えないので回されるはず');
+});
+
+test('crossBoss:false で従来の貪欲解に戻せる (feature flag)', () => {
+    const P = (name, dmg, done) => player(name, dmg, {
+        slv: 500, attackCount: done,
+        attacks: done ? Array(done).fill({ boss_number: 99 }) : [],
+    });
+    const input = makeInput(
+        [boss(1, 'fire', { remainingB: 20 }), boss(2, 'water', { remainingB: 20 })],
+        [P('A両刀', { fire: 20, water: 20 }, 2), P('B火専', { fire: 20 }, 0), P('C水弱', { water: 10 }, 0)],
+    );
+    const plan = compute({ ...input, crossBoss: false });
+    assert.equal(plan.levels[0].bosses[0].attacks[0].memberName, 'A両刀', '分岐OFFなら従来どおり A を先に使う');
+    assert.equal(plan.levels[0].bosses[1].cleared, false, '結果として B2 は倒せない (従来の挙動)');
+});
+
+test('分岐は基準解より総与ダメを減らさない (非悪化の不変条件)', () => {
+    // 分岐探索は「基準解より credited が下がる案」「確約できない凸が増える案」を採用しない
+    const mk = (name, dmg, slv) => player(name, dmg, { slv });
+    const input = makeInput(
+        [boss(1, 'fire', { remainingB: 30 }), boss(2, 'water', { remainingB: 30 }), boss(3, 'iron', { remainingB: 40, tier: 'tyrant' })],
+        [mk('P1', { fire: 20, water: 15 }, 500), mk('P2', { fire: 18, iron: 22 }, 600),
+         mk('P3', { water: 25, iron: 20 }, 450), mk('P4', { fire: 12, water: 12, iron: 12 }, 700)],
+    );
+    const on = compute(input);
+    const off = compute({ ...input, crossBoss: false });
+    assert.ok(on.totalCreditedB >= off.totalCreditedB - 1e-9,
+        `横断ONが基準解を下回ってはいけない (ON ${on.totalCreditedB.toFixed(2)} / OFF ${off.totalCreditedB.toFixed(2)})`);
+});
+
 // ---- オーバーキルの後処理 (フェーズ2a: 抜いても倒せる凸を外す) ------------------
 console.log('\nオーバーキル後処理:');
 
