@@ -1620,20 +1620,34 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
     // 2) 全プレイヤー × 5属性 の不足分をランダム補完
     const { data: players, error: pErr } = await supabase.from('players').select('id');
     if (pErr) throw pErr;
-    const { data: existing } = await supabase
-        .from('player_damages')
-        .select('player_id, attribute, damage_b, characters, slot');
+    // ⚠ 旧スキーマ互換: slot (21) / characters (07) が未適用の環境でも壊れないよう段階的に落とす。
+    //    エラーを無視して existing を空にすると、引き継いだ実績をランダム値で上書きしてしまう
+    let existing = null;
+    for (const cols of ['player_id, attribute, damage_b, characters, slot',
+                        'player_id, attribute, damage_b, characters',
+                        'player_id, attribute, damage_b']) {
+        const r = await supabase.from('player_damages').select(cols);
+        if (!r.error) { existing = r.data; break; }
+        console.warn(`[testSeed] player_damages select 失敗 (${cols}):`, r.error.message);
+    }
+    existing = existing || [];
 
     // 「編成が入っている行」だけを have 扱いにする。前シーズン引継ぎ分は編成が空のことがあり
     // (元の凸が characters 未記録だった等)、そのまま除外すると空編成のまま凸シードへ流れて
     // キャラ被りの検証ができない (今回の検証失敗の再発)。空/不完全な行は下で編成を補う
     const have = new Set();
     const needTeam = [];   // 編成が空の既存行 = 生成編成で埋める対象
-    (existing || []).forEach(d => {
+    // 「有効」= 実キャラ名として通る5人が重複なく揃っていること。
+    // 空文字・画像パス混入・同一キャラ2枠は不正なので補完対象にする
+    const isValidTeam = (arr) => {
+        if (!Array.isArray(arr)) return false;
+        const t = arr.filter(_isLikelyCharName).map(c => String(c).trim());
+        return t.length === 5 && new Set(t).size === 5;
+    };
+    existing.forEach(d => {
         const key = `${d.player_id}:${d.attribute}`;
-        const t = Array.isArray(d.characters) ? d.characters.filter(Boolean) : [];
-        if (t.length === 5) have.add(key);          // 有効な編成つき = そのまま使う
-        else needTeam.push(d);                      // 編成なし/不完全 = 補完対象
+        if (isValidTeam(d.characters)) have.add(key);   // 有効な編成つき = そのまま使う
+        else needTeam.push(d);                          // 編成なし/不正/不完全 = 補完対象
     });
 
     // プレイヤーごとの基準値: 引継ぎ済みの実績 + テスト直前の提出値 (スナップショット) の平均
@@ -1722,9 +1736,15 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
     // 模擬の登録編成も一緒に読む: 凸には「実際に使った編成」を記録する必要がある。
     // これが無いと完了凸のキャラ消費が判定できず、最適プランのキャラ被り回避
     // (同キャラ1日1回 — 朝に鉄甲でラピを使ったら灼熱のラピ入りは出せない) を検証できない
-    const { data: dmgs } = await supabase
-        .from('player_damages')
-        .select('player_id, attribute, damage_b, characters, slot');
+    // 旧スキーマ互換 (slot/characters 未適用環境) — 読めた範囲で動く
+    let dmgs = null;
+    for (const cols of ['player_id, attribute, damage_b, characters, slot',
+                        'player_id, attribute, damage_b, characters',
+                        'player_id, attribute, damage_b']) {
+        const r = await supabase.from('player_damages').select(cols);
+        if (!r.error) { dmgs = r.data; break; }
+    }
+    dmgs = dmgs || [];
     // ⚠ ダメージと編成は「同じ行」から取ること。1属性2編成 (slot=1|2) があるため、
     //    別々に上書きすると「slot2のダメージ + slot1の編成」という食い違いが起きる。
     //    slot 1 (主編成) を優先し、無ければ最初に見つかった行を使う
@@ -1737,7 +1757,7 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
         loOf.set(k, {
             slot,
             dmg: Number(d.damage_b) || 0,
-            team: Array.isArray(d.characters) ? d.characters.filter(Boolean) : [],
+            team: Array.isArray(d.characters) ? d.characters.filter(_isLikelyCharName) : [],
         });
     });
 
@@ -1769,7 +1789,7 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
                 level: 1,
                 // その属性で登録している編成を「実際に使った編成」として記録。
                 // → 最適プランがこのキャラを使用済みとして扱い、他属性の同キャラ編成を提案しなくなる
-                characters: (lo && lo.team.length === 5) ? lo.team : [],
+                characters: (lo && lo.team.length === 5 && new Set(lo.team).size === 5) ? lo.team : [],
             });
             bossDamage.set(b.boss_number, (bossDamage.get(b.boss_number) || 0) + raw);
         });
