@@ -1548,6 +1548,58 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
 // 2) それでも埋まらない (プレイヤー × 属性) はランダム値で補完
 //    基準値はそのプレイヤーの実績平均 → 無ければテスト直前の提出値 (snapshotRows) → 全体平均
 // 本番シーズンでは呼ばないこと (空スタートが正しい挙動)。
+// 🧪 テスト用の「現実に寄せた編成」ジェネレータ。
+// NIKKE の実際の傾向を再現する:
+//   - B1/B2 (サポート) は環境で固定 = メンバー間・属性間で同じ数体を使い回す → 被りの主因
+//   - B3 (アタッカー) は属性ごとに決まる → 属性が違えば別キャラ
+// これにより「朝に鉄甲でラピを使ったら灼熱のラピ入り編成は出せない」という
+// 実際のキャラ被り (同キャラ1日1回) がテストシーズンでも自然に発生する。
+// 戻り値: (playerId, attr) => string[5]  (キャラマスタが薄い環境では [] を返す)
+function _makeTestTeamGenerator(chars) {
+    const byBurst = { B1: [], B2: [], B3: [] };
+    (chars || []).forEach(c => {
+        const b = c.burst;
+        if (byBurst[b]) byBurst[b].push(c.canonical_name);
+    });
+    // マスタが薄い環境 (新規/テストDB) では編成を作らない = 従来どおり [] で動く
+    if (byBurst.B1.length < 2 || byBurst.B2.length < 2 || byBurst.B3.length < 5) return () => [];
+
+    // 決定的な擬似乱数 (同じ入力なら同じ編成 = 再現性のためシード固定)
+    const pick = (arr, seed) => arr[Math.abs(seed) % arr.length];
+    const hash = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) | 0; return h; };
+    // 環境トップの想定: B1/B2 の上位数体を「みんなが使うサポート」として共有プールにする
+    const META_B1 = byBurst.B1.slice(0, 4);
+    const META_B2 = byBurst.B2.slice(0, 4);
+    const ATTR_IDX = { fire: 0, water: 1, electric: 2, iron: 3, wind: 4 };
+
+    return (playerId, attr) => {
+        const pSeed = hash(playerId);
+        const aIdx = ATTR_IDX[attr] ?? 0;
+        // サポート2枠: プレイヤーごとに好みは違うが、属性が変わっても同じ人を使いがち (=被りの種)。
+        // ただし全属性で同じサポートにすると「被りなし3部隊」が1つも組めず、残り凸が常に
+        // 詰まって最適プランの検証にならない。実際のプレイヤーも属性帯ごとに手持ちが違うため、
+        // 5属性を3グループに分ける: これで「3属性を選べば被りなしで3凸できるが、
+        // 選び方を誤ると被って出せない」= 最適プランが解くべき本来の問題が再現される
+        const grp = aIdx % 3;   // fire/iron=0 / water/wind=1 / electric=2
+        const s1 = pick(META_B1, pSeed + grp * 101);
+        const s2 = pick(META_B2, pSeed + 7 + grp * 211);
+        // アタッカー3枠: 属性ごとに別の3体 (B3プールから属性オフセットで選ぶ)
+        const pool = byBurst.B3;
+        const a1 = pool[Math.abs(pSeed + aIdx * 13) % pool.length];
+        const a2 = pool[Math.abs(pSeed + aIdx * 13 + 1) % pool.length];
+        const a3 = pool[Math.abs(pSeed + aIdx * 13 + 2) % pool.length];
+        const team = [...new Set([s1, s2, a1, a2, a3])];
+        // 重複で5人に満たない場合は B3 プールから埋める (同キャラ2枠は不正なため)
+        let k = 3;
+        while (team.length < 5 && k < pool.length + 3) {
+            const cand = pool[Math.abs(pSeed + aIdx * 13 + k) % pool.length];
+            if (!team.includes(cand)) team.push(cand);
+            k++;
+        }
+        return team.length === 5 ? team : [];
+    };
+}
+
 window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) {
     const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
 
@@ -1585,6 +1637,13 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
     for (const s of sums.values()) { globalTotal += s.total; globalN += s.n; }
     const globalAvg = globalN > 0 ? globalTotal / globalN : 20;  // 実績ゼロ環境のフォールバック (B単位)
 
+    // 編成も現実に寄せて生成する (B1/B2共有・B3属性別)。
+    // 編成が無いとキャラ被り (同キャラ1日1回) が起きず、最適プランの被り回避を検証できない
+    const { data: charMaster } = await supabase
+        .from('nikke_characters')
+        .select('canonical_name, burst');
+    const teamFor = _makeTestTeamGenerator(charMaster || []);
+
     const rows = [];
     (players || []).forEach(p => {
         const s = sums.get(p.id);
@@ -1596,7 +1655,7 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
                 player_id: p.id,
                 attribute: attr,
                 damage_b: Number(dmg.toFixed(3)),
-                characters: [],
+                characters: teamFor(p.id, attr),
                 updated_at: new Date().toISOString(),
             });
         });
@@ -1628,11 +1687,19 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
 
     const { data: players, error: pErr } = await supabase.from('players').select('id, name');
     if (pErr) throw pErr;
+    // 模擬の登録編成も一緒に読む: 凸には「実際に使った編成」を記録する必要がある。
+    // これが無いと完了凸のキャラ消費が判定できず、最適プランのキャラ被り回避
+    // (同キャラ1日1回 — 朝に鉄甲でラピを使ったら灼熱のラピ入りは出せない) を検証できない
     const { data: dmgs } = await supabase
         .from('player_damages')
-        .select('player_id, attribute, damage_b');
-    const dmgOf = new Map();   // 'pid:attr' -> B
-    (dmgs || []).forEach(d => dmgOf.set(`${d.player_id}:${d.attribute}`, Number(d.damage_b) || 0));
+        .select('player_id, attribute, damage_b, characters');
+    const dmgOf = new Map();    // 'pid:attr' -> B
+    const teamOf = new Map();   // 'pid:attr' -> string[]
+    (dmgs || []).forEach(d => {
+        const k = `${d.player_id}:${d.attribute}`;
+        dmgOf.set(k, Number(d.damage_b) || 0);
+        if (Array.isArray(d.characters) && d.characters.length > 0) teamOf.set(k, d.characters);
+    });
 
     // 30〜60% のメンバーを凸済みに。1凸:45% / 2凸:35% / 3凸:20%
     // ※ 基準者 (ふるり) はテストで締め凸依頼フローを自分宛てに確認できるよう
@@ -1659,7 +1726,9 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
                 damage_raw: raw,
                 attack_number: i + 1,
                 level: 1,
-                characters: [],
+                // その属性で登録している編成を「実際に使った編成」として記録。
+                // → 最適プランがこのキャラを使用済みとして扱い、他属性の同キャラ編成を提案しなくなる
+                characters: teamOf.get(`${p.id}:${b.weakness}`) || [],
             });
             bossDamage.set(b.boss_number, (bossDamage.get(b.boss_number) || 0) + raw);
         });

@@ -1760,6 +1760,38 @@ test('空白だけのキャラ名で偽のキャラ被りを作らない', () =>
     assert.equal(fireBoss.attacks.length, 1, '空白は被り判定に使わない (実キャラは重複なし)');
 });
 
+test('テストシーズン相当のデータ (B1/B2共有・B3属性別) で被り回避が働く', () => {
+    // 🧪 テストシーズンのシードが生成する編成の形を再現する:
+    //   サポート2枠は属性グループごとに共有 / アタッカー3枠は属性別。
+    // fire で凸済み → 同じサポートを使う iron は出せず、別サポートの water は出せる、が正。
+    const SUP_A = ['サポA1', 'サポA2'];   // fire / iron が共有
+    const SUP_B = ['サポB1', 'サポB2'];   // water が使う別サポート
+    const p = player('T', { fire: 20, water: 20, iron: 20 }, {
+        attackCount: 1,
+        attacks: [{ boss_number: 1, characters: [...SUP_A, '火職1', '火職2', '火職3'] }],
+    });
+    p.loadoutsByAttr = {
+        fire: [{ dmgB: 20, team: [...SUP_A, '火職1', '火職2', '火職3'], slot: 1 }],
+        iron: [{ dmgB: 20, team: [...SUP_A, '鉄職1', '鉄職2', '鉄職3'], slot: 1 }],   // サポートが被る
+        water:[{ dmgB: 20, team: [...SUP_B, '水職1', '水職2', '水職3'], slot: 1 }],   // サポートが別
+    };
+    const plan = compute(makeInput(
+        [
+            boss(1, 'fire', { remainingB: 10 }),
+            boss(2, 'iron', { remainingB: 10 }),
+            boss(3, 'water', { remainingB: 10 }),
+        ],
+        [p],
+    ));
+    const byNum = Object.fromEntries(plan.levels[0].bosses.map(b => [b.bossNumber, b]));
+    assert.equal(byNum[2].attacks.length, 0, 'サポートが被る iron は提案されないはず');
+    assert.equal(byNum[3].attacks.length, 1, 'サポートが別の water は提案されるはず');
+    // 提案された編成に使用済みキャラが混ざっていないこと
+    const used = new Set([...SUP_A, '火職1', '火職2', '火職3']);
+    const all = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.ok(all.every(a => !(a.team || []).some(c => used.has(c))), '使用済みキャラを含む提案は無いはず');
+});
+
 test('完了凸が無い入力は従来どおり (回帰保証)', () => {
     // characters を持たない従来入力で、seed 導入前と同じ結果になること。
     const plan = compute(makeInput(
