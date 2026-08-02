@@ -1582,6 +1582,56 @@ console.log('\ndomain/mockCompare:');
     });
 }
 
+// ---- オーバーキルの後処理 (フェーズ2a: 抜いても倒せる凸を外す) ------------------
+console.log('\nオーバーキル後処理:');
+
+test('撃破を保ったまま不要な凸を外し、損失と凸消費を減らす (実機報告のケース)', () => {
+    // 実際に報告された盤面: 目標61.2B に 5人が投入され 69.6B (損失8.4B)。
+    // ほりっぴー(5.5B) を抜いても 64.1B で倒せるので、外して1凸を浮かせるのが正しい。
+    // 貪欲法は残HPが多い序盤で overkill=0 のため、この無駄を事前に避けられない。
+    const mk = (name, dmg, slv) => player(name, { water: dmg }, { slv });
+    const plan = compute(makeInput(
+        [boss(3, 'water', { remainingB: 61.2, totalB: 61.2, tier: 'tyrant' })],
+        [mk('むう', 12.2, 506), mk('ほりっぴー', 5.5, 411), mk('金糸雀', 22.5, 608),
+         mk('ふるり', 14.3, 558), mk('MIRIN', 15.1, 651)],
+    ));
+    const b = plan.levels[0].bosses[0];
+    const total = b.attacks.reduce((s, a) => s + a.dmgB, 0);
+    assert.equal(b.cleared, true, '撃破は維持されるはず');
+    assert.equal(b.attacks.length, 4, '5凸→4凸に減るはず (1凸が浮く)');
+    assert.ok(total < 69.5, `総投入が減るはず (実際 ${total.toFixed(1)}B)`);
+    assert.ok(!b.attacks.some(a => a.memberName === 'ほりっぴー'), '抜いても倒せる最小の凸が外れるはず');
+});
+
+test('抜くと倒せなくなる凸は外さない', () => {
+    // 3人でギリギリ (10+10+10=30 ≥ 目標28)。どれを抜いても20 < 28 なので全員残す
+    const mk = (name, dmg) => player(name, { fire: dmg }, { slv: 500 });
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 28 })],
+        [mk('A', 10), mk('B', 10), mk('C', 10)],
+    ));
+    const b = plan.levels[0].bosses[0];
+    assert.equal(b.cleared, true);
+    assert.equal(b.attacks.length, 3, '1つでも抜くと倒せないので全員残るはず');
+});
+
+test('外した凸のキャラは他ボスで再利用できる (状態が正しく巻き戻る)', () => {
+    // A は fire/water 両方に同じキャラ入り編成。fire で一旦使われても、
+    // trim で外れたら water で使えるようになる (usedChars/avail/残凸が戻ること)
+    const a = player('A', { fire: 30, water: 30 }, {
+        slv: 500,
+        teamsByAttr: { fire: ['共有1', '火1'], water: ['共有1', '水1'] },
+    });
+    const plan = compute(makeInput(
+        [boss(1, 'fire', { remainingB: 20 }), boss(2, 'water', { remainingB: 25 })],
+        [a, player('B', { fire: 25 }, { slv: 500 })],
+    ));
+    const [b1, b2] = plan.levels[0].bosses;
+    assert.equal(b1.cleared, true, 'fire は B の25Bで倒せる');
+    assert.equal(b2.attacks.length, 1, 'A は water に回れるはず');
+    assert.equal(b2.attacks[0].memberName, 'A');
+});
+
 // ---- 完了凸のキャラ消費 (同キャラ1日1回 / PLAN-optimal-plan-v3 フェーズ1) --------
 console.log('\n完了凸のキャラ消費:');
 

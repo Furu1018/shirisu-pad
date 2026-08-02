@@ -320,6 +320,8 @@
                     // ここで seed すると通常割当(:375)・Lv4割当(:537)・未使用診断(:722) の
                     // 全経路と、温存/吸収の各パス (buildMemberState が唯一の入口) に一貫して効く
                     usedChars: new Set(seedChars),
+                    // 完了凸由来の使用済みキャラ (割当の取り消し undoPick で「戻してはいけない分」の判定に使う)
+                    seedChars: new Set(seedChars),
                     // 完了凸に編成未記録がある = 被り判定が不完全 (best-effort)。運営に要確認を伝える
                     unknownCompletedTeam: hasUnknownCompletedTeam(p),
                     anyTeamRegistered: Object.values(avail).some(list => list.some(lo => lo.team.length > 0))
@@ -504,6 +506,56 @@
                     }
                     t.rem -= dmg;
                 };
+                // 割当を1件取り消して、消費した状態 (キャラ・編成・残凸・必須予約) を戻す。
+                // trimOverkill 用 — applyPick の逆操作なので、applyPick を変えたらここも直すこと
+                const undoPick = (t, atk) => {
+                    const m = memberState.find(x => x.id === atk.memberId);
+                    if (!m) return false;
+                    const idx = t.attacks.indexOf(atk);
+                    if (idx < 0) return false;
+                    t.attacks.splice(idx, 1);
+                    t.rem += atk.dmgB;
+                    m.remainingAttacks++;
+                    // 編成を avail へ戻す (ダメージ降順を維持)
+                    const w = t.b.weakness;
+                    if (!m.avail[w]) m.avail[w] = [];
+                    m.avail[w].push({ dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1 });
+                    m.avail[w].sort((a, b) => b.dmg - a.dmg);
+                    // usedChars は「この凸で初めて使ったキャラ」だけ戻す。
+                    // 完了凸の seed や他の割当が同じキャラを持つ場合は消してはいけない
+                    if (Array.isArray(atk.team) && atk.team.length > 0) {
+                        const stillUsed = new Set();
+                        (m.seedChars || []).forEach(c => stillUsed.add(c));
+                        targets.forEach(tt => tt.attacks.forEach(a2 => {
+                            if (a2.memberId !== m.id) return;
+                            (a2.team || []).forEach(c => stillUsed.add(charKey(c)));
+                        }));
+                        atk.team.forEach(c => { const k = charKey(c); if (k && !stillUsed.has(k)) m.usedChars.delete(k); });
+                    }
+                    return true;
+                };
+                // ===== オーバーキルの後処理 (フェーズ2a) =====
+                // 貪欲法は1凸ずつ「その時点の残HP」で選ぶため、残HPが十分ある序盤は
+                // どれを入れても overkill=0 になり、オーバーキル評価が効かない。
+                // 結果「最後の1凸で大きく超過するが、振り返れば途中の小さい凸は不要だった」
+                // という組合せになる (例: 目標61.2Bに 5.5+12.2+14.3+22.5+15.1=69.6B 投入、
+                // 5.5Bを抜いても64.1Bで倒せた = 8.4B→2.9Bに損失圧縮 + 1凸が浮く)。
+                // 撃破を維持したまま外せる凸をダメージの小さい順に外し、損失と凸消費を減らす。
+                // 浮いた凸は他ボスや Lv4 (無限ボス) に回るので総与ダメも増える。
+                const trimOverkill = (t) => {
+                    if (t.rem > 0.0001) return;              // 倒せていないボスは削らない
+                    let changed = true;
+                    while (changed) {
+                        changed = false;
+                        // 小さい凸から試す = 残す凸の合計が目標をギリギリ上回る形に寄せる
+                        const order = [...t.attacks].sort((a, b) => a.dmgB - b.dmgB);
+                        for (const atk of order) {
+                            if (t.attacks.length <= 1) break;
+                            if (t.rem + atk.dmgB > 0.0001) continue;   // 抜くと倒せなくなる
+                            if (undoPick(t, atk)) { changed = true; break; }
+                        }
+                    }
+                };
                 if (!absorbMode) {
                     // 踏破モード: ボスごとに残HPを削り切るまで投入
                     for (const t of targets) {
@@ -512,6 +564,7 @@
                             if (!c) break;
                             applyPick(t, c);
                         }
+                        trimOverkill(t);   // 撃破を保ったまま不要な凸を外す (損失圧縮・凸を浮かせる)
                         recountLocked();   // このボスが撃破されたら必須予約を解放 (#4)
                     }
                 } else {
