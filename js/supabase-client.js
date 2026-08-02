@@ -1559,17 +1559,21 @@ function _makeTestTeamGenerator(chars) {
     const byBurst = { B1: [], B2: [], B3: [] };
     (chars || []).forEach(c => {
         const b = c.burst;
-        if (byBurst[b]) byBurst[b].push(c.canonical_name);
+        if (byBurst[b] && c.canonical_name) byBurst[b].push(c.canonical_name);
     });
-    // マスタが薄い環境 (新規/テストDB) では編成を作らない = 従来どおり [] で動く
-    if (byBurst.B1.length < 2 || byBurst.B2.length < 2 || byBurst.B3.length < 5) return () => [];
+    // 呼び出し側の order に依存しないよう、ここでも名前順に固定する (生成の決定性)
+    Object.values(byBurst).forEach(a => a.sort());
+    // 必要数の根拠: サポートは3グループに別々の B1/B2 を割り当てる → 各3体。
+    // アタッカーは 5属性 × 3枠 = 15体を重複なしで配れると「3属性選べば被りなし」が成立する。
+    // 満たせない薄いマスタ (新規/テストDB) では編成を作らない = 従来どおり [] で動く
+    if (byBurst.B1.length < 3 || byBurst.B2.length < 3 || byBurst.B3.length < 15) return () => [];
 
     // 決定的な擬似乱数 (同じ入力なら同じ編成 = 再現性のためシード固定)
     const pick = (arr, seed) => arr[Math.abs(seed) % arr.length];
     const hash = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) | 0; return h; };
     // 環境トップの想定: B1/B2 の上位数体を「みんなが使うサポート」として共有プールにする
-    const META_B1 = byBurst.B1.slice(0, 4);
-    const META_B2 = byBurst.B2.slice(0, 4);
+    const META_B1 = byBurst.B1.slice(0, 6);
+    const META_B2 = byBurst.B2.slice(0, 6);
     const ATTR_IDX = { fire: 0, water: 1, electric: 2, iron: 3, wind: 4 };
 
     return (playerId, attr) => {
@@ -1583,16 +1587,17 @@ function _makeTestTeamGenerator(chars) {
         const grp = aIdx % 3;   // fire/iron=0 / water/wind=1 / electric=2
         const s1 = pick(META_B1, pSeed + grp * 101);
         const s2 = pick(META_B2, pSeed + 7 + grp * 211);
-        // アタッカー3枠: 属性ごとに別の3体 (B3プールから属性オフセットで選ぶ)
+        // アタッカー3枠: 属性ごとに完全に別の3体。プレイヤーごとに開始位置をずらしつつ、
+        // 同一プレイヤー内では 5属性 × 3枠 = 15体が重複しないよう連続領域を割り当てる
+        // (これで「3属性を選べば被りなし3凸」が成立する = プランが解くべき問題になる)
         const pool = byBurst.B3;
-        const a1 = pool[Math.abs(pSeed + aIdx * 13) % pool.length];
-        const a2 = pool[Math.abs(pSeed + aIdx * 13 + 1) % pool.length];
-        const a3 = pool[Math.abs(pSeed + aIdx * 13 + 2) % pool.length];
-        const team = [...new Set([s1, s2, a1, a2, a3])];
-        // 重複で5人に満たない場合は B3 プールから埋める (同キャラ2枠は不正なため)
-        let k = 3;
-        while (team.length < 5 && k < pool.length + 3) {
-            const cand = pool[Math.abs(pSeed + aIdx * 13 + k) % pool.length];
+        const off = Math.abs(pSeed) % pool.length;
+        const at = (n) => pool[(off + aIdx * 3 + n) % pool.length];
+        const team = [...new Set([s1, s2, at(0), at(1), at(2)])];
+        // サポートとアタッカーが偶然重なった場合の埋め合わせ (同キャラ2枠は不正)
+        let k = 15;
+        while (team.length < 5 && k < pool.length + 15) {
+            const cand = pool[(off + k) % pool.length];
             if (!team.includes(cand)) team.push(cand);
             k++;
         }
@@ -1617,9 +1622,19 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
     if (pErr) throw pErr;
     const { data: existing } = await supabase
         .from('player_damages')
-        .select('player_id, attribute, damage_b');
+        .select('player_id, attribute, damage_b, characters, slot');
 
-    const have = new Set((existing || []).map(d => `${d.player_id}:${d.attribute}`));
+    // 「編成が入っている行」だけを have 扱いにする。前シーズン引継ぎ分は編成が空のことがあり
+    // (元の凸が characters 未記録だった等)、そのまま除外すると空編成のまま凸シードへ流れて
+    // キャラ被りの検証ができない (今回の検証失敗の再発)。空/不完全な行は下で編成を補う
+    const have = new Set();
+    const needTeam = [];   // 編成が空の既存行 = 生成編成で埋める対象
+    (existing || []).forEach(d => {
+        const key = `${d.player_id}:${d.attribute}`;
+        const t = Array.isArray(d.characters) ? d.characters.filter(Boolean) : [];
+        if (t.length === 5) have.add(key);          // 有効な編成つき = そのまま使う
+        else needTeam.push(d);                      // 編成なし/不完全 = 補完対象
+    });
 
     // プレイヤーごとの基準値: 引継ぎ済みの実績 + テスト直前の提出値 (スナップショット) の平均
     const sums = new Map();
@@ -1639,17 +1654,34 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
 
     // 編成も現実に寄せて生成する (B1/B2共有・B3属性別)。
     // 編成が無いとキャラ被り (同キャラ1日1回) が起きず、最適プランの被り回避を検証できない
+    // ⚠ order 必須: 返却順が変わると生成編成も変わり「決定的」でなくなる
     const { data: charMaster } = await supabase
         .from('nikke_characters')
-        .select('canonical_name, burst');
+        .select('canonical_name, burst')
+        .order('canonical_name');
     const teamFor = _makeTestTeamGenerator(charMaster || []);
 
     const rows = [];
+    // (a) 編成が空の既存行 (前シーズン引継ぎ分など) は、ダメージを保ったまま編成だけ補う
+    needTeam.forEach(d => {
+        const team = teamFor(d.player_id, d.attribute);
+        if (team.length === 0) return;              // マスタが薄い環境では触らない
+        rows.push({
+            player_id: d.player_id,
+            attribute: d.attribute,
+            slot: d.slot || 1,                      // 既存行を更新する (別スロットを増やさない)
+            damage_b: Number(d.damage_b) || 0,      // 引き継いだ実績値はそのまま
+            characters: team,
+            updated_at: new Date().toISOString(),
+        });
+    });
+    // (b) そもそも未登録の (player, attr) はダメージも編成もランダム生成
     (players || []).forEach(p => {
         const s = sums.get(p.id);
         const base = s && s.n > 0 ? s.total / s.n : globalAvg;
         ATTRS.forEach(attr => {
             if (have.has(`${p.id}:${attr}`)) return;
+            if (needTeam.some(d => d.player_id === p.id && d.attribute === attr)) return;  // (a)で処理済み
             const dmg = base * (0.7 + Math.random() * 0.6);  // 基準値の 70〜130% でばらつかせる
             rows.push({
                 player_id: p.id,
@@ -1692,13 +1724,21 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
     // (同キャラ1日1回 — 朝に鉄甲でラピを使ったら灼熱のラピ入りは出せない) を検証できない
     const { data: dmgs } = await supabase
         .from('player_damages')
-        .select('player_id, attribute, damage_b, characters');
-    const dmgOf = new Map();    // 'pid:attr' -> B
-    const teamOf = new Map();   // 'pid:attr' -> string[]
+        .select('player_id, attribute, damage_b, characters, slot');
+    // ⚠ ダメージと編成は「同じ行」から取ること。1属性2編成 (slot=1|2) があるため、
+    //    別々に上書きすると「slot2のダメージ + slot1の編成」という食い違いが起きる。
+    //    slot 1 (主編成) を優先し、無ければ最初に見つかった行を使う
+    const loOf = new Map();     // 'pid:attr' -> {dmg, team}
     (dmgs || []).forEach(d => {
         const k = `${d.player_id}:${d.attribute}`;
-        dmgOf.set(k, Number(d.damage_b) || 0);
-        if (Array.isArray(d.characters) && d.characters.length > 0) teamOf.set(k, d.characters);
+        const cur = loOf.get(k);
+        const slot = Number(d.slot) || 1;
+        if (cur && !(slot === 1 && cur.slot !== 1)) return;   // 既存が slot1 なら据え置き
+        loOf.set(k, {
+            slot,
+            dmg: Number(d.damage_b) || 0,
+            team: Array.isArray(d.characters) ? d.characters.filter(Boolean) : [],
+        });
     });
 
     // 30〜60% のメンバーを凸済みに。1凸:45% / 2凸:35% / 3凸:20%
@@ -1714,7 +1754,8 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
         const nAtk = roll < 0.45 ? 1 : (roll < 0.8 ? 2 : 3);
         const pool = [...bosses].sort(() => Math.random() - 0.5).slice(0, nAtk);
         pool.forEach((b, i) => {
-            const base = dmgOf.get(`${p.id}:${b.weakness}`) || (12 + Math.random() * 12);
+            const lo = loOf.get(`${p.id}:${b.weakness}`);
+            const base = (lo && lo.dmg > 0) ? lo.dmg : (12 + Math.random() * 12);
             const dmgB = base * (0.85 + Math.random() * 0.25);
             const raw = Math.max(1, Math.round(dmgB * 1e9));
             rows.push({
@@ -1728,7 +1769,7 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
                 level: 1,
                 // その属性で登録している編成を「実際に使った編成」として記録。
                 // → 最適プランがこのキャラを使用済みとして扱い、他属性の同キャラ編成を提案しなくなる
-                characters: teamOf.get(`${p.id}:${b.weakness}`) || [],
+                characters: (lo && lo.team.length === 5) ? lo.team : [],
             });
             bossDamage.set(b.boss_number, (bossDamage.get(b.boss_number) || 0) + raw);
         });
