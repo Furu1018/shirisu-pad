@@ -1632,25 +1632,87 @@ test('分岐は基準解より総与ダメを減らさない (非悪化の不変
         `横断ONが基準解を下回ってはいけない (ON ${on.totalCreditedB.toFixed(2)} / OFF ${off.totalCreditedB.toFixed(2)})`);
 });
 
-test('複数レベルでも分岐が基準解を悪化させない (決定点キーにレベルが入っている)', () => {
-    // 決定点キーがレベルを含まないと、Lv1 の B1・1凸目に張った分岐が Lv2 の B1・1凸目にも
-    // 誤発火し「1決定点だけ分岐」の前提が壊れる。踏破レベルと総与ダメの非悪化で検出する
+test('全レベル一括の分岐でしか届かない改善を拾う (レベル別1点分岐では不足)', () => {
+    // 実測で見つけた4人盤面。貴重な人材の取り合いは Lv1〜Lv3 に連鎖するため、
+    // 「このレベルのこの決定点だけ」を振り替える1点分岐では届かない。
+    // 全レベル一括キー (wildKey) を候補から外すと 146.5B に落ちる盤面
+    const bs = [
+        boss(1, 'iron', { attribute: 'fire', totalB: 44, remainingB: 23 }),
+        boss(2, 'wind', { attribute: 'water', totalB: 43, remainingB: 38 }),
+        boss(3, 'fire', { attribute: 'electric', totalB: 52, remainingB: 42 }),
+        boss(4, 'water', { attribute: 'iron', totalB: 26, remainingB: 22 }),
+        boss(5, 'electric', { attribute: 'wind', tier: 'tyrant', totalB: 35, remainingB: 24 }),
+    ];
+    const ps = [
+        player('M0', { iron: 25, wind: 25, electric: 10.5, fire: 25.5 }),
+        player('M1', { wind: 22, iron: 13.5, electric: 22.5, water: 26.5 }),
+        player('M2', { fire: 25.5, wind: 23.5, water: 19 }),
+        player('M3', { water: 13.5, iron: 7, wind: 14.5, fire: 20.5 }),
+    ];
+    const input = makeInput(bs, ps, { currentSlot: 'h05' });
+    const on = compute({ ...input, timeAware: false });
+    const off = compute({ ...input, timeAware: false, crossBoss: false });
+    assert.ok(on.totalCreditedB >= off.totalCreditedB + 70,
+        `横断分岐で 70B 以上伸びるはず (ON ${on.totalCreditedB.toFixed(1)} / OFF ${off.totalCreditedB.toFixed(1)})`);
+});
+
+test('改善した分岐に重ねて分岐する (深さ1では届かない)', () => {
+    // 実測で見つけた4人盤面。MAX_DEPTH を 1 に戻すと 179.5B に落ちる
+    const bs = [
+        boss(1, 'iron', { attribute: 'fire', totalB: 24, remainingB: 10 }),
+        boss(2, 'wind', { attribute: 'water', totalB: 45, remainingB: 22 }),
+        boss(3, 'fire', { attribute: 'electric', totalB: 40, remainingB: 30 }),
+        boss(4, 'water', { attribute: 'iron', totalB: 29, remainingB: 28 }),
+        boss(5, 'electric', { attribute: 'wind', tier: 'tyrant', totalB: 21, remainingB: 20 }),
+    ];
+    const ps = [
+        player('M0', { wind: 9.5, iron: 18.5, electric: 21, water: 16.5 }),
+        player('M1', { fire: 22.5, wind: 19, water: 8.5, iron: 19.5 }),
+        player('M2', { electric: 19, water: 14, fire: 13.5 }),
+        player('M3', { fire: 17, water: 14.5, electric: 19, iron: 7.5 }),
+    ];
+    const plan = compute({ ...makeInput(bs, ps, { currentSlot: 'h05' }), timeAware: false });
+    assert.ok(plan.totalCreditedB >= 184,
+        `深さを重ねた解に届くはず (実際 ${plan.totalCreditedB.toFixed(1)}B / 深さ1なら 179.5B)`);
+});
+
+test('決定点キーはレベルごとに独立している (衝突すると探索が鈍る)', () => {
+    // decisionKey からレベルを外すと「このレベルだけ」の候補が全レベル一括と縮退し、
+    // 候補の多様性が落ちて 266.5B になる盤面
+    const bs = [
+        boss(1, 'iron', { attribute: 'fire', totalB: 32, remainingB: 23 }),
+        boss(2, 'wind', { attribute: 'water', totalB: 26, remainingB: 13 }),
+        boss(3, 'fire', { attribute: 'electric', totalB: 35, remainingB: 34 }),
+        boss(4, 'water', { attribute: 'iron', totalB: 39, remainingB: 35 }),
+        boss(5, 'electric', { attribute: 'wind', tier: 'tyrant', totalB: 30, remainingB: 22 }),
+    ];
+    const ps = [
+        player('M0', { wind: 21.5, iron: 6, electric: 21 }),
+        player('M1', { water: 23.5, electric: 9.5, iron: 18.5 }),
+        player('M2', { electric: 10.5, water: 16.5, fire: 21 }),
+        player('M3', { fire: 7.5, wind: 11, iron: 23.5 }),
+        player('M4', { wind: 18.5, iron: 25, electric: 15.5 }),
+        player('M5', { electric: 10, wind: 21, fire: 12.5 }),
+    ];
+    const plan = compute({ ...makeInput(bs, ps, { currentSlot: 'h05' }), timeAware: false });
+    assert.ok(plan.totalCreditedB >= 269,
+        `レベル別キーがあれば 269.5B に届く (実際 ${plan.totalCreditedB.toFixed(1)}B / 衝突時 266.5B)`);
+});
+
+test('同じ入力からは常に同じプランが出る (探索の決定性)', () => {
+    // 分岐探索は探索順・タイブレークを固定してある。実行ごとに配信内容が変わってはいけない
     const mk = (name, dmg, slv) => player(name, dmg, { slv });
     const input = makeInput(
-        [boss(1, 'fire', { remainingB: 15 }), boss(2, 'water', { remainingB: 15 }),
-         boss(3, 'iron', { remainingB: 15 }), boss(4, 'electric', { remainingB: 15 }),
-         boss(5, 'wind', { remainingB: 20, tier: 'tyrant' })],
-        [mk('Q1', { fire: 16, water: 14 }, 500), mk('Q2', { water: 16, iron: 14 }, 520),
-         mk('Q3', { iron: 16, electric: 14 }, 540), mk('Q4', { electric: 16, wind: 14 }, 560),
-         mk('Q5', { wind: 16, fire: 14 }, 580), mk('Q6', { fire: 12, iron: 12, wind: 12 }, 600)],
+        [boss(1, 'fire', { remainingB: 25 }), boss(2, 'water', { remainingB: 25 }),
+         boss(3, 'iron', { remainingB: 30 }), boss(4, 'wind', { remainingB: 20 }),
+         boss(5, 'electric', { remainingB: 28, tier: 'tyrant' })],
+        [mk('S1', { fire: 18, water: 16, iron: 14 }, 500), mk('S2', { water: 20, wind: 17 }, 520),
+         mk('S3', { iron: 19, electric: 15, fire: 13 }, 540), mk('S4', { wind: 21, electric: 18 }, 560),
+         mk('S5', { fire: 16, water: 15, electric: 14, iron: 13, wind: 12 }, 580)],
     );
-    const on = compute(input);
-    const off = compute({ ...input, crossBoss: false });
-    assert.ok(on.fullyClearedThrough >= off.fullyClearedThrough,
-        `踏破レベルが下がってはいけない (ON ${on.fullyClearedThrough} / OFF ${off.fullyClearedThrough})`);
-    assert.ok(on.totalCreditedB >= off.totalCreditedB - 1e-9,
-        `総与ダメが下がってはいけない (ON ${on.totalCreditedB.toFixed(2)} / OFF ${off.totalCreditedB.toFixed(2)})`);
-    assert.ok(on.levels.length >= 2, '複数レベルを解いている盤面であること');
+    const a = JSON.stringify(compute(structuredClone(input)));
+    const b = JSON.stringify(compute(structuredClone(input)));
+    assert.equal(a, b, '同じ入力で結果が揺れてはいけない');
 });
 
 test('分岐探索の内部情報が出力に漏れない (JSONB配信の前提)', () => {
@@ -1662,7 +1724,7 @@ test('分岐探索の内部情報が出力に漏れない (JSONB配信の前提)
          mk('R3', { water: 12 }, 480)],
     ));
     const json = JSON.stringify(plan);
-    for (const k of ['trace', 'decisionPolicy', '_lo', '_consumedMandatory', 'chosenTrace']) {
+    for (const k of ['trace', 'wildKey', 'decisionPolicy', '_lo', '_consumedMandatory', 'chosenTrace']) {
         assert.ok(!json.includes(`"${k}"`), `${k} が出力に含まれてはいけない`);
     }
     assert.ok(!json.includes('null,null'), '未定義値が配列に混ざっていないこと');

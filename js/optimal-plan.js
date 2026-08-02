@@ -125,9 +125,11 @@
         3: { lord: 292.44529575, tyrant: 349.2309015 },
     };
 
-    // フェーズ2 (ボス横断の限定分岐) の探索上限。ブラウザ実行なので小さく始める
-    const MAX_BRANCH = 6;      // 分岐を試す決定点の数
-    const MAX_SCENARIOS = 8;   // 再計算するシナリオの総数
+    // フェーズ2 (ボス横断の限定分岐) の探索上限。運営ボタンの体感を壊さない範囲に収める
+    const MAX_BRANCH = 16;       // 1ラウンドで試す決定点の数
+    const MAX_DEPTH = 3;        // 改善した分岐に重ねて分岐する深さ (1決定点だけでは弱い)
+    const MAX_SCENARIOS = 60;   // 解くシナリオの総数 (基準解を含む)
+    const MAX_MS = 150;         // 実時間の打ち切り (低性能スマホ前提)
 
     // レイド日の時間帯 (AM5時起点)。index.html の HOUR_ORDER と一致させること。
     const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
@@ -488,12 +490,16 @@
                 // 決定点キー: レベル・モードを含めないと Lv1〜Lv3 で同じボスの同じ何凸目が衝突し、
                 // 「1決定点だけ分岐」の前提が壊れる (別レベルでも同じ分岐が再発火する)
                 const decisionKey = (t, isAbsorb) => `${L}|${isAbsorb ? 'C' : 'A'}|${t.b.boss_number}|${t.attacks.length}`;
+                // 全レベル一括の分岐キー。貴重な人材の取り合いはレベルをまたいで連鎖するので、
+                // 「このボスの何凸目は代替可能な人に回す」を全レベルに同時適用する候補も要る
+                // (レベル別キーの1点分岐だけでは、Lv1〜Lv3 で一貫した振り替えに到達できない)
+                const wildKey = (t) => `*|*|${t.b.boss_number}|${t.attacks.length}`;
                 const pickFor = (t, preList) => {
                     const list = preList || listCandidatesFor(t);
                     if (list.length === 0) return null;
                     const policy = opts.decisionPolicy;
                     if (policy) {
-                        const want = policy.get(decisionKey(t, absorbMode));
+                        const want = policy.get(decisionKey(t, absorbMode)) || policy.get(wildKey(t));
                         if (want) {
                             const alt = list.find(c => c.pick.id === want.memberId
                                 && (c.pickLo.slot || 1) === want.slot && (c.pickLo.ord ?? 0) === want.ord);
@@ -512,6 +518,7 @@
                     if (!second) return;
                     opts.trace.push({
                         key: decisionKey(t, isAbsorb),
+                        wildKey: wildKey(t),
                         weakness: t.b.weakness,
                         gap: second.pickScore - chosenCand.pickScore,
                         chosenId: chosenCand.pick.id,
@@ -883,7 +890,18 @@
                 }
             }
         }
-            if (traceOut && chosenTrace) traceOut.push(...chosenTrace);
+            // 候補は「採用したパス」を優先しつつ probe の決定点も残す。
+            // policy はキーで決定点を指すだけなので、出所が別パスでも再計算時に有効に効く。
+            // 非悪化ガードが最終防波堤なので、候補は多いほど拾える改善が増える
+            if (traceOut) {
+                const seen = new Set();
+                for (const d of [...(chosenTrace || []), ...(probeTrace || [])]) {
+                    const k = `${d.key}|${d.alt}`;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    traceOut.push(d);
+                }
+            }
             return { probe, chosen, lv4Open, reservePassUsed };
         };
 
@@ -932,34 +950,60 @@
             };
             // 分岐候補: 「僅差」かつ「選ばれた人の方が出せる属性が多い(=希少)」決定点を優先。
             // 貴重な人材を代替可能なボスで使ってしまった疑いが濃い順
-            const cands = baseTrace
-                .filter(d => d.gap < 8 && d.altMemberAttrs > 0)
-                .map(d => ({ ...d, regret: (d.chosenMemberAttrs - d.altMemberAttrs) * 10 - d.gap }))
-                .sort((x, y) => y.regret - x.regret)
-                .slice(0, MAX_BRANCH);
-            for (const d of cands) {
-                // MAX_SCENARIOS は「解いたシナリオ総数」の上限。基準解も1つ数える
-                if (optimization.explored + 1 >= MAX_SCENARIOS) break;
-                optimization.explored++;
-                const policy = new Map([[d.key, d.alt]]);
-                let alt;
-                try { alt = solveScenario(policy, null); } catch { continue; }
-                // 不変条件: 分岐は「基準解より総与ダメを減らさない」ものだけ採用する。
-                // 実現可能性 (⚠時間外/⏳隙間) を優先しすぎると credited が大きく落ちる案を
-                // 選んでしまうため、まず credited の非悪化を絶対条件にする
-                if (sumCreditedOf(alt.chosen) < sumCreditedOf(baseScenario.chosen) - 1e-9) continue;
-                // 実現可能性を犠牲にした案は採らない: 確約できない凸 (⚠時間外/⏳隙間) が
-                // 基準解より増えるなら、数字が伸びても運用では改悪 (当日出られない人に賭ける形)。
-                // 「予期せぬことが起きても再算出で回る」ことを優先する
-                if (riskOf(alt) > riskOf(baseScenario)) continue;
-                // 同じリスク量でも「確約できない凸をより早い順番に置く」案は採らない。
-                // 早い凸ほどレベル開放を律速するので、出られなかったとき後続が全部ずれる
-                if (riskOrderOf(alt) > riskOrderOf(baseScenario) + 1e-9) continue;
-                if (cmp(alt, scenario) < 0) {
-                    optimization.improvedB = sumCreditedOf(alt.chosen) - sumCreditedOf(scenario.chosen);
-                    optimization.applied = true;
-                    scenario = alt;
+            const candsOf = (trace, fixed) => {
+                const out = [], seen = new Set();
+                for (const d of trace) {
+                    if (d.gap >= 8 || d.altMemberAttrs <= 0) continue;
+                    const regret = (d.chosenMemberAttrs - d.altMemberAttrs) * 10 - d.gap;
+                    // 同じ決定点について「このレベルだけ」と「全レベル一括」の2案を出す。
+                    // 一括の方をわずかに優先する (連鎖する取り合いはまとめて直る方が効く)
+                    for (const [k, bonus] of [[d.wildKey, 0.5], [d.key, 0]]) {
+                        if (!k || fixed.has(k) || seen.has(k)) continue;
+                        seen.add(k);
+                        out.push({ key: k, alt: d.alt, regret: regret + bonus });
+                    }
                 }
+                return out.sort((x, y) => y.regret - x.regret).slice(0, MAX_BRANCH);
+            };
+            // 1決定点だけの分岐では弱い (貴重な人材の取り合いは複数のボスに連鎖するため)。
+            // 改善した分岐の上にさらに分岐を重ねる = 深さ MAX_DEPTH の貪欲な反復深化。
+            // 各ラウンドは「その時点の最良解」の決定点から選び直すので、
+            // 前のラウンドで解消された決定点を無駄に試さない
+            const t0 = Date.now();
+            let policy = new Map();
+            let bestTrace = baseTrace;
+            for (let depth = 0; depth < MAX_DEPTH; depth++) {
+                let best = null, bestPolicy = null, bestNextTrace = null;
+                for (const d of candsOf(bestTrace, policy)) {
+                    // MAX_SCENARIOS は「解いたシナリオ総数」の上限。基準解も1つ数える
+                    if (optimization.explored + 1 >= MAX_SCENARIOS) break;
+                    if (Date.now() - t0 > MAX_MS) { optimization.truncated = true; break; }
+                    optimization.explored++;
+                    const p2 = new Map(policy).set(d.key, d.alt);
+                    const t2 = [];
+                    let alt;
+                    try { alt = solveScenario(p2, t2); } catch { continue; }
+                    // 不変条件: 分岐は「基準解より総与ダメを減らさない」ものだけ採用する。
+                    // 実現可能性 (⚠時間外/⏳隙間) を優先しすぎると credited が大きく落ちる案を
+                    // 選んでしまうため、まず credited の非悪化を絶対条件にする
+                    if (sumCreditedOf(alt.chosen) < sumCreditedOf(baseScenario.chosen) - 1e-9) continue;
+                    // 実現可能性を犠牲にした案は採らない: 確約できない凸 (⚠時間外/⏳隙間) が
+                    // 基準解より増えるなら、数字が伸びても運用では改悪 (当日出られない人に賭ける形)。
+                    // 「予期せぬことが起きても再算出で回る」ことを優先する
+                    if (riskOf(alt) > riskOf(baseScenario)) continue;
+                    // 同じリスク量でも「確約できない凸をより早い順番に置く」案は採らない。
+                    // 早い凸ほどレベル開放を律速するので、出られなかったとき後続が全部ずれる
+                    if (riskOrderOf(alt) > riskOrderOf(baseScenario) + 1e-9) continue;
+                    if (cmp(alt, scenario) < 0 && (!best || cmp(alt, best) < 0)) {
+                        best = alt; bestPolicy = p2; bestNextTrace = t2;
+                    }
+                }
+                if (!best) break;   // このラウンドで改善なし → これ以上深くしても無駄
+                optimization.improvedB = sumCreditedOf(best.chosen) - sumCreditedOf(baseScenario.chosen);
+                optimization.applied = true;
+                optimization.depth = depth + 1;
+                scenario = best; policy = bestPolicy; bestTrace = bestNextTrace;
+                if (optimization.explored + 1 >= MAX_SCENARIOS || Date.now() - t0 > MAX_MS) break;
             }
         }
         const { probe, chosen, lv4Open, reservePassUsed } = scenario;
