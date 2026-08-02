@@ -439,8 +439,12 @@
                     });
                 };
                 // t のボスに出せる最良 (スコア最小) の候補を探す
-                const pickFor = (t) => {
-                    let pick = null, pickScore = Infinity, pickHour = openIdx, pickFlex = false, pickLo = null, pickSlot = null;
+                // 候補を全列挙する (スコア昇順・同点は走査順で安定)。
+                // pickFor は「先頭を採る」だけの薄いラッパにしてある — フェーズ2 (ボス横断の
+                // 限定分岐) で「2番手をあえて選ぶ」分岐を作れるようにするための分離。
+                // ⚠ 列挙条件は選択と同一でなければならない (被り・必須枠・時間の判定を二重化しない)
+                const listCandidatesFor = (t) => {
+                    const out = [];
                     for (const m of memberState) {
                         const list = m.avail[t.b.weakness];
                         if (m.remainingAttacks <= 0 || !list || list.length === 0) continue;
@@ -465,10 +469,18 @@
                                 // 与ダメ大を主項にし、通常スコアはタイブレークに格下げする
                                 s = Math.max(0, cand.dmg - t.rem) - Math.min(cand.dmg, t.rem) * 0.01 + s * 0.001;
                             }
-                            if (s < pickScore) { pickScore = s; pick = m; pickHour = slot.idx; pickFlex = slot.flex; pickLo = cand; pickSlot = slot; }
+                            out.push({ pick: m, pickScore: s, pickHour: slot.idx, pickFlex: slot.flex, pickLo: cand, pickSlot: slot });
                         }
                     }
-                    return pick ? { pick, pickScore, pickHour, pickFlex, pickLo, pickSlot } : null;
+                    // 安定ソート: スコア昇順 → 同点は列挙順 (メンバー順 × ロードアウトの ord) を維持。
+                    // 旧実装は「s < pickScore」で最初の最小値を採ったので、この並びの先頭と一致する
+                    return out.map((c, i) => ({ c, i }))
+                        .sort((x, y) => (x.c.pickScore - y.c.pickScore) || (x.i - y.i))
+                        .map(x => x.c);
+                };
+                const pickFor = (t) => {
+                    const list = listCandidatesFor(t);
+                    return list.length > 0 ? list[0] : null;
                 };
                 // 候補を採用: 凸行を追加し、メンバー状態とボス残HPを更新する
                 // 割当の内部メタ (出力に混ぜないため WeakMap/WeakSet で外部管理):
