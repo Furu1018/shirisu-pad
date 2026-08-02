@@ -1603,6 +1603,41 @@ test('撃破を保ったまま不要な凸を外し、損失と凸消費を減�
     assert.ok(!b.attacks.some(a => a.memberName === 'ほりっぴー'), '抜いても倒せる最小の凸が外れるはず');
 });
 
+test('trim 後に usedB/overflowB と集計が再計算される', () => {
+    // 凸を外すと「外す前の残HP」で計算された usedB/overflowB が残り、
+    // totalWaste・画面の超過表示・温存パスの採否判定まで誤る (Codex指摘)
+    const mk = (name, dmg, slv) => player(name, { water: dmg }, { slv });
+    const plan = compute(makeInput(
+        [boss(3, 'water', { remainingB: 61.2, totalB: 61.2, tier: 'tyrant' })],
+        [mk('むう', 12.2, 506), mk('ほりっぴー', 5.5, 411), mk('金糸雀', 22.5, 608),
+         mk('ふるり', 14.3, 558), mk('MIRIN', 15.1, 651)],
+    ));
+    const b = plan.levels[0].bosses[0];
+    const last = b.attacks[b.attacks.length - 1];
+    assert.ok(Math.abs(last.overflowB - 2.9) < 0.05, `最後の凸の超過は2.9のはず (実際 ${last.overflowB.toFixed(1)})`);
+    assert.ok(Math.abs(plan.totalWaste - 2.9) < 0.05, `totalWaste は2.9のはず (実際 ${plan.totalWaste.toFixed(1)})`);
+    // usedB の合計 = 目標HP (削り切っている)
+    const used = b.attacks.reduce((s, a) => s + a.usedB, 0);
+    assert.ok(Math.abs(used - 61.2) < 0.05, `usedB合計は目標61.2のはず (実際 ${used.toFixed(1)})`);
+});
+
+test('trim で外した必須属性(得意)の凸は予約が戻る', () => {
+    // 得意属性の凸を trim で外したのに mandatory を消化済みのままにすると、
+    // 後続の同弱点ボスで必須予約が失われ、非必須属性へ凸を使えてしまう (Codex指摘)
+    const a = player('A', { fire: 30, water: 30 }, { slv: 500, strong: ['fire'] });
+    const b1 = player('B', { fire: 25 }, { slv: 500 });
+    const c1 = player('C', { fire: 25 }, { slv: 500 });
+    const plan = compute(makeInput(
+        // fire弱点ボスが2体。1体目は B+C だけで倒せるので A の凸は trim される
+        [boss(1, 'fire', { remainingB: 45 }), boss(2, 'fire', { remainingB: 20 })],
+        [a, b1, c1],
+    ));
+    const bosses = plan.levels[0].bosses;
+    // A が fire に出ている (必須予約が戻り、2体目の fire で使われる) こと
+    const aAttacks = bosses.flatMap(b => b.attacks).filter(x => x.memberName === 'A');
+    assert.ok(aAttacks.length >= 1, 'A は必須の fire で使われるはず (予約が戻る)');
+});
+
 test('抜くと倒せなくなる凸は外さない', () => {
     // 3人でギリギリ (10+10+10=30 ≥ 目標28)。どれを抜いても20 < 28 なので全員残す
     const mk = (name, dmg) => player(name, { fire: dmg }, { slv: 500 });

@@ -253,8 +253,10 @@
                     for (const [k, list] of Object.entries(loadouts)) {
                         let clean = (list || [])
                             .filter(lo => Number(lo.dmgB) > 0)
-                            .map(lo => ({ dmg: Number(lo.dmgB), team: Array.isArray(lo.team) ? lo.team : [], slot: lo.slot || 1 }))
-                            .sort((a, b) => b.dmg - a.dmg);
+                            // ord = 安定順序ID: undoPick で avail に戻すとき元の並びを再現するため
+                            // (同ダメージの編成が入れ替わると pickFor の選択が変わってしまう)
+                            .map((lo, i) => ({ dmg: Number(lo.dmgB), team: Array.isArray(lo.team) ? lo.team : [], slot: lo.slot || 1, ord: i }))
+                            .sort((a, b) => b.dmg - a.dmg || a.ord - b.ord);
                         // ① 実際に使った編成 (記録キャラと完全一致) を優先的に消す
                         let unresolved = usedCount.get(k) || 0;
                         for (const doneTeam of (doneTeamsByAttr.get(k) || [])) {
@@ -275,7 +277,7 @@
                         if (Number(v) > 0 && !(usedCount.get(k) > 0)) {
                             const team = (p.teamsByAttr || {})[k] || [];
                             if (seedChars.size > 0 && team.length > 0 && team.some(c => hasUsedChar(seedChars, c))) continue;
-                            avail[k] = [{ dmg: Number(v), team, slot: 1 }];
+                            avail[k] = [{ dmg: Number(v), team, slot: 1, ord: 0 }];
                         }
                     }
                 }
@@ -503,7 +505,11 @@
                     if (pick.mandatory.has(t.b.weakness)) {
                         pick.mandatory.delete(t.b.weakness);
                         pick.lockedNow = Math.max(0, pick.lockedNow - 1);
+                        // undoPick で必須予約を戻すための内部メタ
+                        t.attacks[t.attacks.length - 1]._consumedMandatory = true;
                     }
+                    // 復元用に元のロードアウト参照を持たせる (ord ごと戻す)
+                    t.attacks[t.attacks.length - 1]._lo = pickLo;
                     t.rem -= dmg;
                 };
                 // 割当を1件取り消して、消費した状態 (キャラ・編成・残凸・必須予約) を戻す。
@@ -519,8 +525,11 @@
                     // 編成を avail へ戻す (ダメージ降順を維持)
                     const w = t.b.weakness;
                     if (!m.avail[w]) m.avail[w] = [];
-                    m.avail[w].push({ dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1 });
-                    m.avail[w].sort((a, b) => b.dmg - a.dmg);
+                    // 元のロードアウト要素をそのまま戻し dmg降順 → ord昇順 で並べ直す
+                    m.avail[w].push(atk._lo || { dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1, ord: 0 });
+                    m.avail[w].sort((a, b) => b.dmg - a.dmg || (a.ord ?? 0) - (b.ord ?? 0));
+                    // 必須属性を消化した凸なら予約も戻す (後続の recountLocked で最終整合)
+                    if (atk._consumedMandatory) { m.mandatory.add(w); m.lockedNow++; }
                     // usedChars は「この凸で初めて使ったキャラ」だけ戻す。
                     // 完了凸の seed や他の割当が同じキャラを持つ場合は消してはいけない
                     if (Array.isArray(atk.team) && atk.team.length > 0) {
@@ -544,7 +553,7 @@
                 // 浮いた凸は他ボスや Lv4 (無限ボス) に回るので総与ダメも増える。
                 const trimOverkill = (t) => {
                     if (t.rem > 0.0001) return;              // 倒せていないボスは削らない
-                    let changed = true;
+                    let changed = true, removed = false;
                     while (changed) {
                         changed = false;
                         // 小さい凸から試す = 残す凸の合計が目標をギリギリ上回る形に寄せる
@@ -552,9 +561,21 @@
                         for (const atk of order) {
                             if (t.attacks.length <= 1) break;
                             if (t.rem + atk.dmgB > 0.0001) continue;   // 抜くと倒せなくなる
-                            if (undoPick(t, atk)) { changed = true; break; }
+                            if (undoPick(t, atk)) { changed = true; removed = true; break; }
                         }
                     }
+                    if (!removed) return;
+                    // 凸を外したら usedB/overflowB を投入順に再計算する。
+                    // 放置すると「外す前の残HP」で計算された値が残り、totalWaste・totalCreditedB・
+                    // 温存パスの採否判定・画面の超過表示がすべて誤る (例: 5.5Bを外しても
+                    // 最後の凸が usedB=6.7/overflow=8.4 のままで、実際は usedB=12.2/overflow=2.9)
+                    let rem = t.targetHpB;
+                    for (const a of t.attacks) {
+                        a.usedB = Math.min(a.dmgB, Math.max(0, rem));
+                        a.overflowB = Math.max(0, a.dmgB - Math.max(0, rem));
+                        rem -= a.dmgB;
+                    }
+                    t.rem = rem;
                 };
                 if (!absorbMode) {
                     // 踏破モード: ボスごとに残HPを削り切るまで投入
@@ -578,7 +599,10 @@
                         }
                         if (!best) break;
                         applyPick(bestT, best);
-                        if (bestT.rem <= 0.0001) recountLocked();   // 撃破が起きたら必須予約を解放 (#4)
+                        if (bestT.rem <= 0.0001) {
+                            trimOverkill(bestT);   // 撃破したボスの不要な凸を外し、他ボスへ回す
+                            recountLocked();       // 撃破が起きたら必須予約を解放 (#4)
+                        }
                     }
                 }
                 // 集計: ボスごとの結果を組み立てる
