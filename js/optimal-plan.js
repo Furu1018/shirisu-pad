@@ -471,6 +471,11 @@
                     return pick ? { pick, pickScore, pickHour, pickFlex, pickLo, pickSlot } : null;
                 };
                 // 候補を採用: 凸行を追加し、メンバー状態とボス残HPを更新する
+                // 割当の内部メタ (出力に混ぜないため WeakMap/WeakSet で外部管理):
+                //   loMeta = 使用したロードアウト参照 (undo で ord ごと avail へ戻す)
+                //   consumedMandatory = その凸が必須属性を消化したか (undo で予約を戻す)
+                const loMeta = new WeakMap();
+                const consumedMandatory = new WeakSet();
                 const applyPick = (t, c) => {
                     const { pick, pickHour, pickFlex, pickLo, pickSlot } = c;
                     const dmg = pickLo.dmg;
@@ -502,14 +507,15 @@
                     pick.remainingAttacks--;
                     // 得意属性の消化管理: 必須を消化したら予約も1つ解放
                     // (自由枠の消費は remainingAttacks の減少で自然に反映される)
+                    const justPushed = t.attacks[t.attacks.length - 1];
                     if (pick.mandatory.has(t.b.weakness)) {
                         pick.mandatory.delete(t.b.weakness);
                         pick.lockedNow = Math.max(0, pick.lockedNow - 1);
-                        // undoPick で必須予約を戻すための内部メタ
-                        t.attacks[t.attacks.length - 1]._consumedMandatory = true;
+                        consumedMandatory.add(justPushed);
                     }
-                    // 復元用に元のロードアウト参照を持たせる (ord ごと戻す)
-                    t.attacks[t.attacks.length - 1]._lo = pickLo;
+                    // 復元情報は WeakMap に置く: 凸オブジェクトに直接生やすと
+                    // 📤配信の JSONB に内部メタが混入して配信データが膨らむ (Codex指摘)
+                    loMeta.set(justPushed, pickLo);
                     t.rem -= dmg;
                 };
                 // 割当を1件取り消して、消費した状態 (キャラ・編成・残凸・必須予約) を戻す。
@@ -526,10 +532,10 @@
                     const w = t.b.weakness;
                     if (!m.avail[w]) m.avail[w] = [];
                     // 元のロードアウト要素をそのまま戻し dmg降順 → ord昇順 で並べ直す
-                    m.avail[w].push(atk._lo || { dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1, ord: 0 });
+                    m.avail[w].push(loMeta.get(atk) || { dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1, ord: 0 });
                     m.avail[w].sort((a, b) => b.dmg - a.dmg || (a.ord ?? 0) - (b.ord ?? 0));
                     // 必須属性を消化した凸なら予約も戻す (後続の recountLocked で最終整合)
-                    if (atk._consumedMandatory) { m.mandatory.add(w); m.lockedNow++; }
+                    if (consumedMandatory.has(atk)) { m.mandatory.add(w); m.lockedNow++; }
                     // usedChars は「この凸で初めて使ったキャラ」だけ戻す。
                     // 完了凸の seed や他の割当が同じキャラを持つ場合は消してはいけない
                     if (Array.isArray(atk.team) && atk.team.length > 0) {
