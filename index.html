@@ -7096,7 +7096,9 @@
                         const attr = b.weakness;   // 提出カードは弱点PT属性ごとに並んでいる
                         if (!attr) return;
                         if (!next.has(attr)) next.set(attr, new Set());
-                        next.get(attr).add(Number(a.loadoutSlot) || 1);
+                        // 提出は 1|2 の2枠しかない。想定外の値は 1 に丸めて
+                        // 「どのカードにも一致しない = めくっても採用編成に辿り着けない」を防ぐ
+                        next.get(attr).add(Number(a.loadoutSlot) === 2 ? 2 : 1);
                     });
                 });
             });
@@ -7187,9 +7189,16 @@
 
             el.innerHTML = panelAttrs.map(a => {
                 const slots = byAttr.get(a.key) || {};
-                const hasSlot2 = !!slots[2];
-                const activeSlot = (hasSlot2 && _myDmgPanelSlots[a.key] === 2) ? 2 : 1;
-                const rec = slots[activeSlot] || slots[1] || slots[2];
+                // ①を消して②だけ残ることがある (削除処理は表示スロットを1に戻す)。
+                // その状態で「hasSlot2 かつ activeSlot=1、でも中身は②」になると、
+                // ラベル①・編集先①・採用判定がすべて実際の表示とずれる。
+                // 「2編成ある = ①と②が両方ある」に統一し、activeSlot は必ず rec と一致させる
+                const has1 = !!slots[1], has2 = !!slots[2];
+                const hasSlot2 = has1 && has2;
+                const activeSlot = hasSlot2
+                    ? (_myDmgPanelSlots[a.key] === 2 ? 2 : 1)
+                    : (has1 ? 1 : 2);
+                const rec = slots[activeSlot];
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const submitted = Number(rec?.damage_b) > 0;   // 黒カード判定 (0B保存は白のまま — Codex 指摘)
@@ -16394,11 +16403,13 @@
             // (2026-03以降のJSONに Lv11/Lv26/Lv34 等が混入。同じ凸をDBと突き合わせると
             //  実際は Lv1/Lv2/Lv3)。先頭1桁を採って 1〜4 に収める
             const normLevel = (v) => {
-                // 数値でも "Lv11" のような文字列でも、最初に出てくる数字の先頭1桁を採る
-                // (1.5 のような小数、負値、空、null もこれで安全に落ちる)
-                const m = String(v ?? '').match(/\d+/);
+                // 数値でも "Lv11"/"Ｌｖ３" のような文字列でも読めるようにする。
+                // **先頭に固定**して符号つき (-3) を弾く。全角は NFKC で半角に寄せる。
+                // 壊れた値 (Lv26 → 2) は先頭1桁を採り、1〜4 に収まらなければ表示しない
+                const t = String(v ?? '').normalize('NFKC').trim();
+                const m = t.match(/^(?:lv\.?)?\s*(\d)/i);
                 if (!m) return null;
-                const head = Number(m[0][0]);
+                const head = Number(m[1]);
                 return (head >= 1 && head <= 4) ? head : null;
             };
 
