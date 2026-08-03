@@ -1853,11 +1853,15 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
         .select('id, published_at')
         .single();
     if (error) throw error;
-    // 同一シーズンの古い配信は削除して最新1件だけ残す。
+    // 同一シーズンの古い配信を掃除する。
     // ★ neq ではなく lt を使うこと — 運営が2人同時に配信すると neq では互いの INSERT を
     //   削除し合い、配信プランが0件になる順序がある。lt なら「自分より古い行」しか消さないので
-    //   最後に入った行は必ず残る (id は BIGSERIAL = 単調増加)
-    await supabase.from('published_plans').delete().eq('season_id', sid).lt('id', data.id);
+    //   最後に入った行は必ず残る (id は BIGSERIAL = 単調増加)。
+    // ※ INSERT と DELETE が別リクエストなので「常に1件だけ」は保証できない
+    //   (同時配信では両方残り得る)。**読む側は id 降順で1件を選ぶ**ので表示は常に最新になり、
+    //   残った古い行は次の配信で掃除される。完全な原子性が要るならサーバ側 RPC 化すること
+    const delRes = await supabase.from('published_plans').delete().eq('season_id', sid).lt('id', data.id);
+    if (delRes.error) console.warn('[publish] 旧配信の掃除に失敗 (表示は最新が出る):', delRes.error.message);
     window.supabaseLogActivity?.('ops', '凸プランを配信', { actorName: publishedByName || null });
     return data;
 };
@@ -1948,7 +1952,10 @@ window.supabaseGetPublishedPlan = async function () {
         .from('published_plans')
         .select('id, season_id, plan, published_by, published_by_name, published_at')
         .eq('season_id', season.id)
+        // id 降順まで指定する: 同時配信で複数行が残ったとき published_at だけでは
+        // どちらを表示するか不定になる。id は挿入順なので必ず最新が決まる
         .order('published_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(1)
         .maybeSingle();
     if (error) throw error;
