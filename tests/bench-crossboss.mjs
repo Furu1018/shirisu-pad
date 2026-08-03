@@ -208,6 +208,7 @@ times.sort((a, b) => a - b);
 const q = (p) => times[Math.floor(times.length * p)].toFixed(1);
 const done = up + down + same;
 console.log(`盤面 ${done}/${N} 件 (例外 ${errors} 件)`);
+let calibrationOff = null;
 {   // 生成された盤面が実測分布どおりかを毎回照合する (「較正済み」を口約束にしない)
     const tot = pairShare.reduce((a, b) => a + b, 0);
     const avg = pairShare.reduce((a, b, i) => a + b * i, 0) / tot;
@@ -220,6 +221,13 @@ console.log(`盤面 ${done}/${N} 件 (例外 ${errors} 件)`);
         + `2:${(100 * charMult[2] / mt).toFixed(1)}% 3以上:${(100 * m3 / mt).toFixed(2)}%`);
     console.log(`  ↑ 本番 player_damages の実測値: 平均 0.30 (0:83% 1:5% 2:12%) / 編成数 4.9`);
     console.log(`                                  1キャラの登場編成数 1:86.6% 2:13.4% 3以上:0%`);
+    // 出力するだけだと生成器を変えたときに見落とす。許容範囲を外れたら落とす
+    const share2 = 100 * pairShare[2] / tot, mult3 = 100 * m3 / mt;
+    const loadoutsPer = nLoadouts / nPlayers;
+    if (Math.abs(avg - 0.30) > 0.05) calibrationOff = `ペア共通キャラ数 平均 ${avg.toFixed(2)} (実測 0.30 ±0.05)`;
+    else if (Math.abs(share2 - 12) > 3) calibrationOff = `2共有 ${share2.toFixed(1)}% (実測 12% ±3)`;
+    else if (mult3 > 0.5) calibrationOff = `3編成以上に出るキャラ ${mult3.toFixed(2)}% (実測 0%)`;
+    else if (Math.abs(loadoutsPer - 4.9) > 0.2) calibrationOff = `1人あたり編成数 ${loadoutsPer.toFixed(2)} (実測 4.9 ±0.2)`;
 }
 console.log(`平均 人数 ${(nPlayers / N).toFixed(1)} / 残凸 ${(nRemain / N).toFixed(1)} / `
     + `割当 ${(nAssigned / N).toFixed(1)} (${(100 * nAssigned / nRemain).toFixed(0)}%)   `
@@ -230,6 +238,11 @@ console.log(`実行時間 中央値 ${q(0.5)}ms / p95 ${q(0.95)}ms / p99 ${q(0.9
 
 // 基準解 (crossBoss:false) 比較のときだけ非悪化を強制する。
 // 旧実装との比較は「探索の当たり方の差」なので勝ち負けが出て当然 = 落とさない
+if (calibrationOff) {
+    console.error(`❌ 盤面が実測分布から外れている: ${calibrationOff}`);
+    console.error('   このまま測っても数字の意味が変わる。盤面生成を直すか、実測を取り直して基準を更新すること');
+    process.exit(1);
+}
 const failed = errors > 0 || done !== N || (!OTHER && (down > 0 || lvDown > 0));
 if (failed) {
     console.error('❌ ' + (errors > 0 || done !== N ? '全盤面を解けていない' : '基準解より悪い盤面がある'));
