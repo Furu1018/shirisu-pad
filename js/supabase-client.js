@@ -1085,7 +1085,7 @@ const _BACKUP_TABLES = [
     'players', 'player_damages', 'seasons', 'bosses', 'player_sync_levels',
     'attacks', 'day_offs', 'availability', 'finish_claims', 'finish_coordinations',
     'fururi_simulation_scores', 'push_subscriptions', 'push_notifications_log',
-    'nikke_characters', 'plan_acks',
+    'nikke_characters', 'published_plans', 'plan_acks',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -1128,7 +1128,10 @@ const _RESTORE_TABLES = [
     ['finish_coordinations', 'player_id', 'num'],
     ['push_subscriptions', 'id', 'num'],
     ['push_notifications_log', 'id', 'num'],
-    ['plan_acks', 'season_id', 'num'],   // seasons の CASCADE で消えるので復元対象に必要
+    // seasons の CASCADE で消えるので復元対象に必要。
+    // plan_acks.plan_id は published_plans を指すので、必ず published_plans を先に戻すこと
+    ['published_plans', 'season_id', 'num'],
+    ['plan_acks', 'season_id', 'num'],
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
     if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');
