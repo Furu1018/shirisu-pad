@@ -360,6 +360,22 @@
             .dc-dmg-panel.planpick { animation: none;
                 box-shadow: 0 0 0 1px rgba(108,66,240,0.45), 0 0 12px 1px rgba(108,66,240,0.25); }
         }
+        /* ①⇄② の入れ替えアニメは光より優先する (planpick の animation に潰されるため、
+           詳細度を上げて後に置く)。切替中は光を止めて、終わったら戻る */
+        .dc-dmg-panel.planpick.swap-out { animation: dmg-swap-out 0.14s ease forwards; }
+        .dc-dmg-panel.planpick.swap-in  { animation: dmg-swap-in 0.2s ease; }
+        /* 「めくった先が採用編成」のヒント: 文言を置かずバッジ側を光らせる */
+        @keyframes pickHintPulse {
+            0%, 100% { box-shadow: 0 2px 6px rgba(20,22,26,0.25), 0 0 0 0 rgba(108,66,240,0.55); }
+            50%      { box-shadow: 0 2px 6px rgba(20,22,26,0.25), 0 0 0 5px rgba(108,66,240,0.00); }
+        }
+        .dc-dmg-slotbadge.pickhint {
+            background: linear-gradient(135deg, #7A5AF8, #5B2BE0);
+            animation: pickHintPulse 2.2s ease-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .dc-dmg-slotbadge.pickhint { animation: none; box-shadow: 0 0 0 2px rgba(108,66,240,0.45); }
+        }
         /* ④ タップ当たり判定の拡大: 見た目はそのまま、指の周囲4pxまで反応を広げる
            (::before を装飾に使うボタンは除外して衝突を回避) */
         @media (pointer: coarse) {
@@ -7193,18 +7209,23 @@
                 const isPicked = pickedSlots.length > 0;
                 // 表示中のスロットが採用されたものかどうかで文言を変える。
                 // 「②が選ばれているのに①を見ている」状態を放置すると誤解のもとになる
-                // 文言は置かない (ユーザー判断 2026-08-04)。光る枠だけで「選ばれている」を伝え、
-                // どちらの編成かは ①⇄② バッジと title で分かるようにする
+                // 文言は置かない (ユーザー判断 2026-08-04)。光る枠だけで「選ばれている」を伝える。
+                // ★ 光らせるのは「いま表示しているスロットが採用されたとき」だけ。
+                //   ②だけ採用なのに①を見ている状態で光らせると、文言が無いぶん
+                //   「いま見えている①が採用された」と誤解される。
+                //   その場合は ①⇄② バッジ側を光らせて「めくると採用編成」を伝える
+                const isPickedVisible = !!picked && picked.has(activeSlot);
+                const isPickedOther = isPicked && !isPickedVisible;
                 const pickTitle = !isPicked ? ''
                     : pickedSlots.length > 1 ? ' — 配信プランで編成①②とも採用'
                     : hasSlot2 ? ` — 配信プランで編成${pickedSlots[0] === 2 ? '②' : '①'}を採用`
                     : ' — 配信プランで採用';
                 // 2編成目があるカードは「重なり」+ ①⇄② 入れ替えバッジ
                 const slotBadge = hasSlot2
-                    ? `<div class="dc-dmg-slotbadge" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="編成①⇄②を入れ替え">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
+                    ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="${isPickedOther ? 'めくると配信プランで採用された編成' : '編成①⇄②を入れ替え'}">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPicked ? ' planpick' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}${pickTitle}" data-attr="${a.key}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}${pickTitle}" data-attr="${a.key}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
@@ -16373,10 +16394,11 @@
             // (2026-03以降のJSONに Lv11/Lv26/Lv34 等が混入。同じ凸をDBと突き合わせると
             //  実際は Lv1/Lv2/Lv3)。先頭1桁を採って 1〜4 に収める
             const normLevel = (v) => {
-                const n = Number(v);
-                if (!Number.isFinite(n) || n <= 0) return null;
-                if (n >= 1 && n <= 4) return n;
-                const head = Number(String(Math.trunc(n))[0]);
+                // 数値でも "Lv11" のような文字列でも、最初に出てくる数字の先頭1桁を採る
+                // (1.5 のような小数、負値、空、null もこれで安全に落ちる)
+                const m = String(v ?? '').match(/\d+/);
+                if (!m) return null;
+                const head = Number(m[0][0]);
                 return (head >= 1 && head <= 4) ? head : null;
             };
 
