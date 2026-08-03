@@ -3,6 +3,7 @@
 //   node tests/run-tests.mjs
 // ============================================================================
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import '../js/optimal-plan.js';        // globalThis.computeOptimalPlanCore を定義する
 import '../js/domain/attributes.js';   // globalThis.weaknessPtOf 等 (リアーキ ステップ1)
 import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ ステップ2)
@@ -1697,6 +1698,31 @@ test('決定点キーはレベルごとに独立している (衝突すると探
     const plan = compute({ ...makeInput(bs, ps, { currentSlot: 'h05' }), timeAware: false });
     assert.ok(plan.totalCreditedB >= 269,
         `レベル別キーがあれば 269.5B に届く (実際 ${plan.totalCreditedB.toFixed(1)}B / 衝突時 266.5B)`);
+});
+
+test('探索の上限は人数から決まる (実時間で打ち切らない)', () => {
+    // 実時間 (Date.now) で打ち切ると、端末性能・GC・負荷で同じ盤面から違うプランが出る。
+    // 配信 (📤) は「運営が押すたびに同じ指示が出る」ことが前提なので、上限は人数から決める。
+    // 大人数盤面を2回解いて完全一致することで、時間依存が入っていないことを担保する
+    const ps = [];
+    for (let i = 0; i < 28; i++) {
+        ps.push(player(`L${i}`, {
+            fire: 10 + (i % 7) * 1.5, water: 9 + (i % 5) * 1.7,
+            electric: 8 + (i % 4) * 2.1, iron: 11 + (i % 6) * 1.3, wind: 12 + (i % 3) * 1.9,
+        }, { slv: 400 + i * 5 }));
+    }
+    const input = makeInput(
+        [boss(1, 'fire', { remainingB: 60 }), boss(2, 'water', { remainingB: 55 }),
+         boss(3, 'electric', { remainingB: 58 }), boss(4, 'iron', { remainingB: 52 }),
+         boss(5, 'wind', { remainingB: 70, tier: 'tyrant' })],
+        ps,
+    );
+    const a = JSON.stringify(compute(structuredClone(input)));
+    const b = JSON.stringify(compute(structuredClone(input)));
+    assert.equal(a, b, '大人数盤面でも結果が揺れてはいけない');
+    // ついでに実装側に実時間依存が残っていないことを直接確認する
+    const src = readFileSync(new URL('../js/optimal-plan.js', import.meta.url), 'utf8');
+    assert.ok(!/Date\.now\(\)/.test(src), 'ソルバーは Date.now() に依存してはいけない');
 });
 
 test('同じ入力からは常に同じプランが出る (探索の決定性)', () => {

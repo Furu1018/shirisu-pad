@@ -128,8 +128,11 @@
     // フェーズ2 (ボス横断の限定分岐) の探索上限。運営ボタンの体感を壊さない範囲に収める
     const MAX_BRANCH = 16;       // 1ラウンドで試す決定点の数
     const MAX_DEPTH = 3;        // 改善した分岐に重ねて分岐する深さ (1決定点だけでは弱い)
-    const MAX_SCENARIOS = 60;   // 解くシナリオの総数 (基準解を含む)
-    const MAX_MS = 150;         // 実時間の打ち切り (低性能スマホ前提)
+    // 解くシナリオの総数 (基準解を含む)。**実時間で打ち切ってはいけない** —
+    // 同じ盤面から毎回同じプランが出ることが配信 (📤) の前提で、実行速度・GC・端末性能で
+    // 内容が変わると「運営が押すたびに違う指示が出る」ことになる。
+    // 代わりに人数から決まる決定的な上限で計算量を抑える (1シナリオのコストは人数に比例)
+    const scenarioBudgetFor = (n) => (n > 40 ? 20 : n > 25 ? 40 : 60);
 
     // レイド日の時間帯 (AM5時起点)。index.html の HOUR_ORDER と一致させること。
     const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
@@ -952,6 +955,7 @@
             // 貴重な人材を代替可能なボスで使ってしまった疑いが濃い順
             const candsOf = (trace, fixed) => {
                 const out = [], seen = new Set();
+                const altId = (a) => `${a.memberId}|${a.slot}|${a.ord}`;
                 for (const d of trace) {
                     if (d.gap >= 8 || d.altMemberAttrs <= 0) continue;
                     const regret = (d.chosenMemberAttrs - d.altMemberAttrs) * 10 - d.gap;
@@ -959,6 +963,12 @@
                     // 一括の方をわずかに優先する (連鎖する取り合いはまとめて直る方が効く)
                     for (const [k, bonus] of [[d.wildKey, 0.5], [d.key, 0]]) {
                         if (!k || fixed.has(k) || seen.has(k)) continue;
+                        // レベル別キーは一括キーの「別名」でもある: 一括を同じ代替で固定済みなら
+                        // レベル別を重ねても解が変わらない (pickFor はレベル別を優先するが指す先が同じ)。
+                        // 空振りのシナリオで探索枠を使わないよう除外する。
+                        // 代替が違うなら「一括の上でこのレベルだけ別の人に回す」有効な絞り込みなので残す
+                        const wildFixed = k !== d.wildKey ? fixed.get(d.wildKey) : null;
+                        if (wildFixed && altId(wildFixed) === altId(d.alt)) continue;
                         seen.add(k);
                         out.push({ key: k, alt: d.alt, regret: regret + bonus });
                     }
@@ -969,7 +979,7 @@
             // 改善した分岐の上にさらに分岐を重ねる = 深さ MAX_DEPTH の貪欲な反復深化。
             // 各ラウンドは「その時点の最良解」の決定点から選び直すので、
             // 前のラウンドで解消された決定点を無駄に試さない
-            const t0 = Date.now();
+            const MAX_SCENARIOS = scenarioBudgetFor((players || []).length);
             let policy = new Map();
             let bestTrace = baseTrace;
             for (let depth = 0; depth < MAX_DEPTH; depth++) {
@@ -977,7 +987,6 @@
                 for (const d of candsOf(bestTrace, policy)) {
                     // MAX_SCENARIOS は「解いたシナリオ総数」の上限。基準解も1つ数える
                     if (optimization.explored + 1 >= MAX_SCENARIOS) break;
-                    if (Date.now() - t0 > MAX_MS) { optimization.truncated = true; break; }
                     optimization.explored++;
                     const p2 = new Map(policy).set(d.key, d.alt);
                     const t2 = [];
@@ -1003,7 +1012,7 @@
                 optimization.applied = true;
                 optimization.depth = depth + 1;
                 scenario = best; policy = bestPolicy; bestTrace = bestNextTrace;
-                if (optimization.explored + 1 >= MAX_SCENARIOS || Date.now() - t0 > MAX_MS) break;
+                if (optimization.explored + 1 >= MAX_SCENARIOS) break;
             }
         }
         const { probe, chosen, lv4Open, reservePassUsed } = scenario;
