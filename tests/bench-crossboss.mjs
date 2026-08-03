@@ -9,11 +9,15 @@
 // 「seed 固定なら誰が実行しても同じ盤面」が成立しなくなる。
 //
 // 盤面は本番の前提に合わせてある (js/supabase-client.js の SEASON_WEAKNESS_BY_ATTR と
-// supabaseQuickCreateTestSeason のティア配分):
+// supabaseQuickCreateTestSeason のティア配分、js/optimal-plan.js の HARD_LEVEL_HP_B):
 //   - 弱点(=持っていくPT属性) は fire→water / water→electric / iron→wind /
 //     electric→iron / wind→fire
 //   - ティアは B1,B2,B4 = lord / B3,B5 = tyrant
+//   - 総HPは本番のレベル別定数 (Lv1 lord 99.9B / tyrant 150.8B …)
 //   - 人数は NIKKE のユニオン上限に合わせて最大30人
+//   - **loadoutsByAttr を渡す** (1属性2編成 + キャラ名)。damagesByAttr だけだと
+//     slot/ord・同属性2凸・キャラ被りが一切評価されず、フェーズ1〜2の本題が抜ける。
+//     B1/B2 は環境で決まる少数の汎用キャラを共有させ、実際に被りが起きるようにしてある
 //
 // **悪化0・踏破Lv低下0 が採用条件** (分岐は基準解を下回ってはいけない)。
 // 実行時間は端末・負荷に依存するので、完全一致ではなく桁の目安として見ること。
@@ -41,6 +45,17 @@ const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
 const HOURS = ['h05', 'h09', 'h13', 'h17', 'h21'];
 const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
 const TIERS = ['lord', 'lord', 'tyrant', 'lord', 'tyrant'];   // B1,2,4=lord / B3,5=tyrant
+const HP = {   // js/optimal-plan.js の HARD_LEVEL_HP_B と一致させること
+    1: { lord: 99.8562792, tyrant: 150.8418136 },
+    2: { lord: 149.7844188, tyrant: 226.2627204 },
+    3: { lord: 292.44529575, tyrant: 349.2309015 },
+};
+// 環境で決まる汎用B1/B2。属性をまたいで使い回されるので被りの発生源になる (= ラピ問題の再現)。
+// 各人が持つのは6〜8体で、1編成が使うのは2体 → 被りは起きるが全凸が潰れるほどではない。
+// ※プールを絞りすぎると「全員が1日1凸しかできない」退化した盤面になる。
+//   平均割当凸数が「人数×3」から大きく落ちていないかを diag で見ること
+const SHARED = ['ラピ:レッドフード', 'クラウン', 'ドロシー：セレンディピティ', 'ナガ',
+                'アニス:スター', 'モダニア', 'red hood', 'シンデレラ', 'マリアン', 'ノワール'];
 
 function board(seed) {
     let s = seed;
@@ -53,36 +68,54 @@ function board(seed) {
     };
     // 5属性がボス1〜5に毎シーズン別の順で割り当たる
     const order = shuffled(ATTRS);
+    const level = 1 + pick(3);
     const bosses = order.map((attr, k) => {
-        const totalB = 20 + pick(41);                  // 20〜60B
+        const totalB = HP[level][TIERS[k]];            // 本番のレベル別HP
         return {
             boss_number: k + 1, boss_code: `T${k + 1}`, name: `テストボス${k + 1}`,
             attribute: attr, weakness: COUNTER[attr], tier: TIERS[k],
             total_hp_raw: totalB * 1e9,
-            remaining_hp_raw: Math.round(totalB * (0.3 + rnd() * 0.7)) * 1e9,   // 残HP <= 総HP
+            remaining_hp_raw: totalB * (0.15 + rnd() * 0.85) * 1e9,   // 残HP <= 総HP
         };
     });
     const n = 6 + pick(25);                            // 6〜30人 (ユニオン上限)
     const players = [];
     for (let p = 0; p < n; p++) {
-        const dmg = {}, teams = {};
+        const dmg = {}, teams = {}, loadouts = {};
         // 出せるのは弱点PT属性 = COUNTER の値側。2〜5属性ぶん模擬を出している想定
         const pool = shuffled(Object.values(COUNTER)).slice(0, 2 + pick(4));
+        // この人が持っている汎用B1/B2 (2〜3体)。属性をまたいで同じ顔ぶれを使う = 被りの種
+        const mine = shuffled(SHARED).slice(0, 6 + pick(3));
         pool.forEach(a => {
-            dmg[a] = Math.round((4 + rnd() * 24) * 2) / 2;
-            teams[a] = ['B1共有', 'B2共有', `${a}A`, `${a}B`, `${a}C`];
+            const base = Math.round((4 + rnd() * 24) * 2) / 2;
+            const b12 = shuffled(mine).slice(0, 2);   // 属性ごとに引き直す = 一部で被る
+            const los = [{ dmgB: base, team: [...b12, `${a}アタッカーA`, `${a}サポートA`, `${a}汎用`], slot: 1 }];
+            // 3割の人は同属性2編成目を出している (B1/B2 を1体入れ替えた別編成)
+            if (rnd() < 0.3) {
+                const alt = shuffled(SHARED).filter(c => !b12.includes(c))[0] || `${a}代替`;
+                los.push({ dmgB: Math.round((base * (0.7 + rnd() * 0.25)) * 2) / 2,
+                           team: [b12[0], alt, `${a}アタッカーB`, `${a}サポートA`, `${a}汎用`], slot: 2 });
+            }
+            dmg[a] = base;
+            teams[a] = los[0].team;
+            loadouts[a] = los;
         });
-        const done = pick(4);                          // 0〜3凸済み
+        // 凸済みは「実際に出した編成」を持たせる (キャラ消費が正しく効くか評価するため)
+        const done = pick(4);
+        const attacks = [];
+        for (let k = 0; k < done && k < pool.length; k++) {
+            const a = pool[k];
+            attacks.push({ boss_number: 1 + pick(5), characters: [...loadouts[a][0].team] });
+        }
         players.push({
-            id: `p${p}`, name: `M${p}`, syncLevel: 300 + pick(400), attackCount: done,
-            damagesByAttr: dmg, teamsByAttr: teams,
-            attacks: Array.from({ length: done }, () => ({ boss_number: 1 + pick(5), characters: [] })),
+            id: `p${p}`, name: `M${p}`, syncLevel: 300 + pick(400), attackCount: attacks.length,
+            damagesByAttr: dmg, teamsByAttr: teams, loadoutsByAttr: loadouts, attacks,
             availableSlots: rnd() < 0.4 ? HOURS.filter(() => rnd() < 0.6) : [],
             strong_attributes: rnd() < 0.3 ? pool.slice(0, 2) : [],
         });
     }
     return {
-        season: { current_level: 1 + pick(3) }, bosses, players,
+        season: { current_level: level }, bosses, players,
         currentSlot: HOURS[pick(5)], timeAware: rnd() < 0.7,
     };
 }
