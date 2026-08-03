@@ -6508,6 +6508,13 @@
             const st = _myPubState;
             const me = getCurrentIdentity();
             if (!st?.planId || !st?.seasonId || !me?.id) { showNotification('確認の記録に必要な情報が取れませんでした'); return; }
+            // プレイヤーを切り替えた直後は、再描画が終わるまで前の人のカードが残る。
+            // その状態で押すと「いま選んでいる人」名義で他人のプランを確認済みにしてしまう
+            if (st.viewerId !== me.id) {
+                showNotification('表示を更新しています。もう一度お試しください');
+                await renderMyPublishedPlan(me);
+                return;
+            }
             const seqAtStart = _myPubRenderSeq;   // 通信中に再取得が走ったら古い state で上書きしない
             btn.disabled = true;
             btn.textContent = '記録中…';
@@ -13820,6 +13827,8 @@
             try {
                 // ダイアログを出している間にシーズンが切り替わっていないか確認する。
                 // プランは「そのシーズンの盤面」で組んであるので、別シーズンへ配信してはいけない
+                // ※ この照合と INSERT の間にシーズンが切り替わる窓は残る。
+                //   完全に閉じるにはサーバ側 RPC で active 判定と INSERT を一体化する必要がある
                 seasonStore.invalidate();
                 const after = await ensureActiveSeasonLoaded();
                 if (Number(after?.season?.id) !== Number(seasonId)) {
