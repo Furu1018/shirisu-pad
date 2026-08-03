@@ -3,7 +3,6 @@
 //   node tests/run-tests.mjs
 // ============================================================================
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import '../js/optimal-plan.js';        // globalThis.computeOptimalPlanCore を定義する
 import '../js/domain/attributes.js';   // globalThis.weaknessPtOf 等 (リアーキ ステップ1)
 import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ ステップ2)
@@ -1720,9 +1719,22 @@ test('探索の上限は人数から決まる (実時間で打ち切らない)',
     const a = JSON.stringify(compute(structuredClone(input)));
     const b = JSON.stringify(compute(structuredClone(input)));
     assert.equal(a, b, '大人数盤面でも結果が揺れてはいけない');
-    // ついでに実装側に実時間依存が残っていないことを直接確認する
-    const src = readFileSync(new URL('../js/optimal-plan.js', import.meta.url), 'utf8');
-    assert.ok(!/Date\.now\(\)/.test(src), 'ソルバーは Date.now() に依存してはいけない');
+    // 時計を「呼ぶたびに1時間進む」ものに差し替えて同じ結果になるか確かめる。
+    // ソース文字列の検査と違い、Date['now']() や performance.now() 経由の
+    // 時間依存も、実際に打ち切りが発火する形で検出できる
+    const realNow = Date.now, realDate = globalThis.Date, realPerf = globalThis.performance;
+    let tick = 0;
+    try {
+        const jump = () => (tick += 3600000);
+        Date.now = jump;
+        globalThis.performance = { ...(realPerf || {}), now: jump };
+        const c = JSON.stringify(compute(structuredClone(input)));
+        const d = JSON.stringify(compute(structuredClone(input)));
+        assert.equal(c, a, '時計が飛んでも結果が変わってはいけない');
+        assert.equal(d, a, '時計が飛んでも結果が変わってはいけない');
+    } finally {
+        Date.now = realNow; globalThis.Date = realDate; globalThis.performance = realPerf;
+    }
 });
 
 test('同じ入力からは常に同じプランが出る (探索の決定性)', () => {

@@ -132,7 +132,10 @@
     // 同じ盤面から毎回同じプランが出ることが配信 (📤) の前提で、実行速度・GC・端末性能で
     // 内容が変わると「運営が押すたびに違う指示が出る」ことになる。
     // 代わりに人数から決まる決定的な上限で計算量を抑える (1シナリオのコストは人数に比例)
-    const scenarioBudgetFor = (n) => (n > 40 ? 20 : n > 25 ? 40 : 60);
+    // 閾値は実運用の人数 (NIKKE のユニオン上限は30人) より上に置く —
+    // 26人と25人でプランの質が不連続に変わるのは運営から見て理解不能なため。
+    // 縮小はあくまで「想定外に大きい入力でブラウザを固まらせない」保険
+    const scenarioBudgetFor = (n) => (n > 60 ? 20 : n > 40 ? 40 : 60);
 
     // レイド日の時間帯 (AM5時起点)。index.html の HOUR_ORDER と一致させること。
     const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
@@ -955,7 +958,9 @@
             // 貴重な人材を代替可能なボスで使ってしまった疑いが濃い順
             const candsOf = (trace, fixed) => {
                 const out = [], seen = new Set();
-                const altId = (a) => `${a.memberId}|${a.slot}|${a.ord}`;
+                // pickFor の候補判定と同じ厳密比較にそろえる (文字列化すると 1 と '1' を同一視する)
+                const sameAlt = (a, b) => !!a && !!b
+                    && a.memberId === b.memberId && a.slot === b.slot && a.ord === b.ord;
                 for (const d of trace) {
                     if (d.gap >= 8 || d.altMemberAttrs <= 0) continue;
                     const regret = (d.chosenMemberAttrs - d.altMemberAttrs) * 10 - d.gap;
@@ -968,7 +973,7 @@
                         // 空振りのシナリオで探索枠を使わないよう除外する。
                         // 代替が違うなら「一括の上でこのレベルだけ別の人に回す」有効な絞り込みなので残す
                         const wildFixed = k !== d.wildKey ? fixed.get(d.wildKey) : null;
-                        if (wildFixed && altId(wildFixed) === altId(d.alt)) continue;
+                        if (sameAlt(wildFixed, d.alt)) continue;
                         seen.add(k);
                         out.push({ key: k, alt: d.alt, regret: regret + bonus });
                     }
