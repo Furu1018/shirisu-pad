@@ -13356,6 +13356,9 @@
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">プラン算出に失敗しました。</p>';
                 return;
             }
+            // 算出元シーズンを焼き込む: これが無いと「旧シーズンで算出 → シーズン切替 → 配信」で
+            // 配信時の照合が2回とも新シーズンになって通過し、旧盤面のプランを配信できてしまう
+            plan.seasonId = snapshot?.season?.id ?? null;
             _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
             renderOpsPlanView();
         }
@@ -13811,6 +13814,13 @@
             } catch (e) { console.warn('[publish] シーズン取得skip:', e?.message || e); }
             if (!seasonId) {
                 alert('❌ アクティブシーズンを確認できませんでした。通信を確認して、もう一度お試しください。');
+                return;
+            }
+            // 算出元シーズンと配信先が一致しているか。算出後にシーズンが切り替わっていると
+            // 旧盤面のプランを新シーズンへ配信することになる
+            const planSeason = _opsLastPlan.seasonId;
+            if (planSeason != null && Number(planSeason) !== Number(seasonId)) {
+                alert('❌ このプランは別のシーズンの盤面で算出されています。\n算出し直してから配信してください。');
                 return;
             }
             // 確認ダイアログ用の件数 (目安)。実際の通知対象は配信後に取り直す

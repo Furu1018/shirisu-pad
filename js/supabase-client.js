@@ -1853,8 +1853,11 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
         .select('id, published_at')
         .single();
     if (error) throw error;
-    // 同一シーズンの古い配信は削除して最新1件だけ残す
-    await supabase.from('published_plans').delete().eq('season_id', sid).neq('id', data.id);
+    // 同一シーズンの古い配信は削除して最新1件だけ残す。
+    // ★ neq ではなく lt を使うこと — 運営が2人同時に配信すると neq では互いの INSERT を
+    //   削除し合い、配信プランが0件になる順序がある。lt なら「自分より古い行」しか消さないので
+    //   最後に入った行は必ず残る (id は BIGSERIAL = 単調増加)
+    await supabase.from('published_plans').delete().eq('season_id', sid).lt('id', data.id);
     window.supabaseLogActivity?.('ops', '凸プランを配信', { actorName: publishedByName || null });
     return data;
 };
