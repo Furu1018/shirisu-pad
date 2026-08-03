@@ -1085,7 +1085,7 @@ const _BACKUP_TABLES = [
     'players', 'player_damages', 'seasons', 'bosses', 'player_sync_levels',
     'attacks', 'day_offs', 'availability', 'finish_claims', 'finish_coordinations',
     'fururi_simulation_scores', 'push_subscriptions', 'push_notifications_log',
-    'nikke_characters',
+    'nikke_characters', 'plan_acks',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -1128,6 +1128,7 @@ const _RESTORE_TABLES = [
     ['finish_coordinations', 'player_id', 'num'],
     ['push_subscriptions', 'id', 'num'],
     ['push_notifications_log', 'id', 'num'],
+    ['plan_acks', 'season_id', 'num'],   // seasons の CASCADE で消えるので復元対象に必要
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
     if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');
@@ -1826,15 +1827,22 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
 // ============ 凸プラン配信 ============
 // 運営が算出したプランを published_plans に保存 → 全メンバーのマイページに表示。
 // テーブルは supabase/17_published_plans.sql を SQL Editor で適用しておくこと。
-window.supabasePublishPlan = async function (planObj, publishedBy, publishedByName) {
-    const { data: season, error: sErr } = await supabase
-        .from('seasons').select('id').eq('is_active', true).maybeSingle();
-    if (sErr) throw sErr;
-    if (!season) throw new Error('アクティブなシーズンがありません');
+// seasonId を渡すとそのシーズンへ配信する。省略時のみアクティブシーズンを引く。
+// 呼び出し側が「事前に読んだ確認済み一覧」と同じシーズンへ確実に配信するために必要
+// (シーズン切替と競合すると、旧シーズンの確認者へ新シーズンの更新通知を送ってしまう)
+window.supabasePublishPlan = async function (planObj, publishedBy, publishedByName, seasonId = null) {
+    let sid = seasonId;
+    if (!sid) {
+        const { data: season, error: sErr } = await supabase
+            .from('seasons').select('id').eq('is_active', true).maybeSingle();
+        if (sErr) throw sErr;
+        if (!season) throw new Error('アクティブなシーズンがありません');
+        sid = season.id;
+    }
     const { data, error } = await supabase
         .from('published_plans')
         .insert({
-            season_id: season.id,
+            season_id: sid,
             plan: planObj,
             published_by: publishedBy || null,
             published_by_name: publishedByName || null,
@@ -1843,7 +1851,7 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
         .single();
     if (error) throw error;
     // 同一シーズンの古い配信は削除して最新1件だけ残す
-    await supabase.from('published_plans').delete().eq('season_id', season.id).neq('id', data.id);
+    await supabase.from('published_plans').delete().eq('season_id', sid).neq('id', data.id);
     window.supabaseLogActivity?.('ops', '凸プランを配信', { actorName: publishedByName || null });
     return data;
 };

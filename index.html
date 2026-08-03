@@ -6508,11 +6508,19 @@
             const st = _myPubState;
             const me = getCurrentIdentity();
             if (!st?.planId || !st?.seasonId || !me?.id) { showNotification('確認の記録に必要な情報が取れませんでした'); return; }
+            const seqAtStart = _myPubRenderSeq;   // 通信中に再取得が走ったら古い state で上書きしない
             btn.disabled = true;
             btn.textContent = '記録中…';
             try {
                 await window.supabaseAckPlan(me.id, st.seasonId, st.planId);
-                _myPubState = { ...st, ack: { acked: true, updated: false } };
+                if (seqAtStart !== _myPubRenderSeq) {
+                    // 待っている間に新しいプランが配信・再描画された。
+                    // いま記録したのは古い plan_id なので、確認済みにはせず取り直す
+                    showNotification('プランが更新されました。新しい内容をご確認ください');
+                    await renderMyPublishedPlan(me);
+                    return;
+                }
+                _myPubState = { ..._myPubState, ack: { acked: true, updated: false } };
                 _renderMyPubBody();
                 showNotification('✅ 確認しました — 更新されたら通知でお知らせします');
             } catch (e) {
@@ -13781,34 +13789,53 @@
                 showNotification('先に「👥 全員」か「⏰ 凸可能のみ」でプランを算出してください');
                 return;
             }
-            // 先に「確認済みの人」を数える: 配信後だと plan_id が変わって旧確認と区別できない
-            let acked = [];
+            // 配信先シーズンをここで固定する。確認済み一覧と配信先がずれると
+            // 「旧シーズンの確認者に新シーズンの更新を通知する」事故になる
             let seasonId = null;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 seasonId = ctx?.season?.id || null;
-                if (seasonId) acked = await window.supabaseLoadPlanAcks(seasonId);
+            } catch (e) { console.warn('[publish] シーズン取得skip:', e?.message || e); }
+            // 確認ダイアログ用の件数 (目安)。実際の通知対象は配信後に取り直す
+            let ackedPreview = [];
+            try {
+                if (seasonId) ackedPreview = await window.supabaseLoadPlanAcks(seasonId);
             } catch (e) { console.warn('[publish] 確認済み一覧の取得skip:', e?.message || e); }
-            const reNotify = acked.length > 0;
-            const msg = reNotify
+            const msg = ackedPreview.length > 0
                 ? `📤 現在表示中のプランを全メンバーに配信しますか？\n\n` +
-                  `すでに「確認しました」を押している ${acked.length} 名には\n` +
+                  `すでに「確認しました」を押している ${ackedPreview.length} 名には\n` +
                   `「プランが更新されました」の通知を送ります。`
                 : '📤 現在表示中のプランを全メンバーに配信しますか？\n各メンバーのホームに「配信された凸プラン」として表示されます (Push通知は送りません)。';
             if (!confirm(msg)) return;
             try {
                 const me = getCurrentIdentity();
-                await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null);
+                const pub = await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null, seasonId);
                 showNotification('✅ プランを配信しました');
-                if (reNotify) {
+                // 通知対象は**配信後に**取り直す: 確認ダイアログを出している間に押した人も拾える。
+                // 新しい plan_id を確認済みの人は除外する (配信直後に確認した人へ更新通知は不要)
+                let targets = [];
+                try {
+                    if (seasonId) {
+                        const acks = await window.supabaseLoadPlanAcks(seasonId);
+                        targets = acks.filter(a => Number(a.plan_id) !== Number(pub?.id)).map(a => a.player_id);
+                    }
+                } catch (e) { console.warn('[publish] 通知対象の取得skip:', e?.message || e); }
+                if (targets.length > 0) {
                     try {
+                        // ignoreAvailability: 「確認しました」を押した人＝いま追従している人なので、
+                        // 戦闘可能時間の設定に関係なく届ける (時間帯フィルタで黙って消えると
+                        // 旧プランのまま凸されてしまう)
                         const res = await window.sendPushNotification({
                             title: '🔄 最適凸プランが更新されました',
                             body: '戦況が変わったのでプランを組み直しました。ホームで新しい割当を確認してください。',
                             url: './?tab=mypage&focus=plan',
-                            playerIds: acked.map(a => a.player_id),
+                            playerIds: targets,
+                            ignoreAvailability: true,
                         }, { senderPlayerId: me?.id || null });
-                        showNotification(`📣 更新を ${res?.sent ?? 0} 名に通知しました`);
+                        const sent = Number(res?.sent) || 0;
+                        showNotification(sent > 0
+                            ? `📣 更新を ${sent} 件の端末に通知しました (対象 ${targets.length} 名)`
+                            : `⚠️ 対象 ${targets.length} 名にPush購読が無く、通知は届いていません (アプリ内の案内は出ます)`);
                     } catch (e) {
                         // 通知が飛ばなくても配信自体は成立している。アプリ内の案内は出るので致命ではない
                         console.warn('[publish] 更新通知の送信失敗', e);
