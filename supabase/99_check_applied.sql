@@ -144,6 +144,11 @@ SELECT * FROM (
                 WHERE n.nspname = 'public' AND p.proname = 'ops_update_season_meta' AND p.pronargs = 5),
         'シーズン編集 v2: ボスコード(属性)修正対応の5引数RPC (未適用でもコード変更のみ逐次フォールバック)'
 
+    UNION ALL SELECT '28_plan_acks',
+        EXISTS (SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'plan_acks'),
+        'plan_acks (配信プランの「確認しました」— 未適用だとボタンが押せず更新通知も飛ばない)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

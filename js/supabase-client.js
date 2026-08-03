@@ -1941,6 +1941,49 @@ window.supabaseGetPublishedPlan = async function () {
     return data ? { ...data, month_key: season.month_key } : null;
 };
 
+// ============ 配信プランの「確認しました」 (28_plan_acks.sql) ============
+// メンバーが「確認しました」を押した時点の published_plans.id を記録する。
+// 運営が再配信すると id が変わるので、「確認済みの id ≠ 最新の id」= 更新あり と判定できる。
+// 1シーズン1人1行 (最新の確認だけ持つ)。未適用環境ではエラーメッセージで適用を促す。
+window.supabaseAckPlan = async function (playerId, seasonId, planId) {
+    if (!playerId || !seasonId || !planId) throw new Error('確認の記録に必要な情報が足りません');
+    const { error } = await supabase
+        .from('plan_acks')
+        .upsert({ season_id: seasonId, player_id: playerId, plan_id: planId, acked_at: new Date().toISOString() },
+                { onConflict: 'season_id,player_id' });
+    if (error) {
+        if (/plan_acks/.test(error.message || '')) {
+            throw new Error('plan_acks テーブルが未適用です。supabase/28_plan_acks.sql を SQL Editor で実行してください');
+        }
+        throw error;
+    }
+    return true;
+};
+
+// 自分が確認済みのプランID (未確認なら null)。テーブル未適用なら静かに null (機能を殺さない)
+window.supabaseGetMyPlanAck = async function (playerId, seasonId) {
+    if (!playerId || !seasonId) return null;
+    const { data, error } = await supabase
+        .from('plan_acks')
+        .select('plan_id, acked_at')
+        .eq('season_id', seasonId).eq('player_id', playerId)
+        .maybeSingle();
+    if (error) { console.warn('[plan ack] 取得skip:', error.message); return null; }
+    return data || null;
+};
+
+// このシーズンで「確認しました」を押した人の一覧 (再配信時の通知対象)。
+// 未適用環境では空配列 = 通知を飛ばさないだけで配信自体は成功させる
+window.supabaseLoadPlanAcks = async function (seasonId) {
+    if (!seasonId) return [];
+    const { data, error } = await supabase
+        .from('plan_acks')
+        .select('player_id, plan_id, acked_at')
+        .eq('season_id', seasonId);
+    if (error) { console.warn('[plan ack] 一覧取得skip:', error.message); return []; }
+    return data || [];
+};
+
 // アクティブなテストシーズンを削除し、player_damages と元のアクティブシーズンを復元
 window.supabaseDeleteActiveTestSeason = async function () {
     const { data: season, error: sErr } = await supabase
