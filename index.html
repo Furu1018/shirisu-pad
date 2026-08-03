@@ -267,6 +267,12 @@
         .tab-content.swipe-no-anim.active { animation: none !important; }
         /* 横スワイプ中のブラウザ横オーバースクロール抑止 + 自前プルリフレッシュのため縦のネイティブPTRも無効化 */
         html, body { overscroll-behavior-x: none; overscroll-behavior-y: contain; }
+        /* 横スワイプ中の「プルプル拡大縮小」対策 (2026-07-21 の overflow-x:clip だけでは再発した)。
+           タブ面の横方向ジェスチャはブラウザに渡さず自前で処理する。pinch-zoom は残すので
+           指2本の拡大は今までどおりできる。data-no-swipe の内側 (時間割・表など) は
+           自前の横スクロールが要るので auto に戻す */
+        .tab-content { touch-action: pan-y pinch-zoom; }
+        .tab-content [data-no-swipe] { touch-action: auto; }
         /* ③ プル・トゥ・リフレッシュのインジケータ */
         #ptrIndicator {
             position: fixed; top: 8px; left: 50%;
@@ -325,18 +331,34 @@
             from { transform: translateY(-12px) rotate(-2deg) scale(0.96); opacity: 0; }
         }
         .dc-dmg-panel.swap-in { animation: dmg-swap-in 0.2s ease; }
-        /* 配信プランで採用された編成: 「どれを使うか」を提出カード側でも一目で分かるようにする */
-        .dc-dmg-panel.planpick {
-            border: 1.5px solid #6C42F0;
-            background: linear-gradient(180deg, rgba(108,66,240,0.07), #F9FAFB 60%);
+        /* 配信プランで採用された編成: 文言は置かず、枠をホワホワ光らせて「選ばれている」を伝える */
+        @keyframes planPickGlow {
+            0%, 100% { box-shadow: 0 0 0 1px rgba(108,66,240,0.30), 0 0 9px 0 rgba(108,66,240,0.16); }
+            50%      { box-shadow: 0 0 0 1px rgba(108,66,240,0.55), 0 0 18px 3px rgba(108,66,240,0.34); }
         }
-        .dc-dmg-planbadge {
-            position: absolute; top: -8px; right: 8px; z-index: 3;
-            padding: 3px 9px; border-radius: 999px;
-            background: linear-gradient(135deg, #7A5AF8, #5B2BE0); color: #fff;
-            font-size: 9.5px; font-weight: 900; letter-spacing: 0.02em;
-            box-shadow: 0 3px 9px rgba(108,66,240,0.38);
-            white-space: nowrap;
+        .dc-dmg-panel.planpick {
+            border: 1.5px solid rgba(108,66,240,0.55);
+            background: linear-gradient(180deg, rgba(108,66,240,0.05), #F9FAFB 60%);
+            animation: planPickGlow 2.6s ease-in-out infinite;
+        }
+        /* 重ねカード (2編成持ち) は影で厚みを出しているので、光らせる影を後ろに足す */
+        .dc-dmg-panel.stacked.planpick {
+            animation: none;
+            box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
+                        0 0 0 1px rgba(108,66,240,0.30), 0 0 9px 0 rgba(108,66,240,0.16);
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .dc-dmg-panel.stacked.planpick { animation: planPickStackGlow 2.6s ease-in-out infinite; }
+            @keyframes planPickStackGlow {
+                0%, 100% { box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
+                                       0 0 0 1px rgba(108,66,240,0.30), 0 0 9px 0 rgba(108,66,240,0.16); }
+                50%      { box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
+                                       0 0 0 1px rgba(108,66,240,0.55), 0 0 18px 3px rgba(108,66,240,0.34); }
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .dc-dmg-panel.planpick { animation: none;
+                box-shadow: 0 0 0 1px rgba(108,66,240,0.45), 0 0 12px 1px rgba(108,66,240,0.25); }
         }
         /* ④ タップ当たり判定の拡大: 見た目はそのまま、指の周囲4pxまで反応を広げる
            (::before を装飾に使うボタンは除外して衝突を回避) */
@@ -7171,19 +7193,19 @@
                 const isPicked = pickedSlots.length > 0;
                 // 表示中のスロットが採用されたものかどうかで文言を変える。
                 // 「②が選ばれているのに①を見ている」状態を放置すると誤解のもとになる
-                const planBadge = !isPicked ? ''
-                    : pickedSlots.length > 1
-                        ? '<span class="dc-dmg-planbadge">⚔️ 編成①②とも使う</span>'
-                        : hasSlot2
-                            ? `<span class="dc-dmg-planbadge">⚔️ 編成${pickedSlots[0] === 2 ? '②' : '①'}を使う</span>`
-                            : '<span class="dc-dmg-planbadge">⚔️ 当日ここを使う</span>';
+                // 文言は置かない (ユーザー判断 2026-08-04)。光る枠だけで「選ばれている」を伝え、
+                // どちらの編成かは ①⇄② バッジと title で分かるようにする
+                const pickTitle = !isPicked ? ''
+                    : pickedSlots.length > 1 ? ' — 配信プランで編成①②とも採用'
+                    : hasSlot2 ? ` — 配信プランで編成${pickedSlots[0] === 2 ? '②' : '①'}を採用`
+                    : ' — 配信プランで採用';
                 // 2編成目があるカードは「重なり」+ ①⇄② 入れ替えバッジ
                 const slotBadge = hasSlot2
                     ? `<div class="dc-dmg-slotbadge" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="編成①⇄②を入れ替え">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPicked ? ' planpick' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}${isPicked ? ' — 配信プランで採用' : ''}" data-attr="${a.key}">
-                        ${planBadge}${slotBadge}
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPicked ? ' planpick' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}${pickTitle}" data-attr="${a.key}">
+                        ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chip" style="background:${c};">
                                 <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;">
@@ -16309,7 +16331,10 @@
                 </div>
             `;
 
-            // Build attack maps keyed by bossCode (arrays — same boss can be hit multiple times)
+            // ボスコードごとに凸をまとめる (同じボスに複数回凸できる)。
+            // ★ 並べ替えないこと — 以前はダメージ降順にしていたため「1凸目」のラベルと
+            //   そこに出る編成が実際の1凸目とずれていた (2026-08-04 ユーザー報告)。
+            //   JSON の配列順が実際の記録順なので、それをそのまま使う
             const groupByBoss = (attacks) => {
                 const m = new Map();
                 (attacks || []).forEach(a => {
@@ -16318,8 +16343,6 @@
                     if (!m.has(key)) m.set(key, []);
                     m.get(key).push(a);
                 });
-                // Sort each bucket by damage desc so highest-damage attacks pair across months
-                m.forEach(arr => arr.sort((x, y) => (y.damage || 0) - (x.damage || 0)));
                 return m;
             };
 
@@ -16346,6 +16369,17 @@
                 html = '<p style="color:#B6BBC1;font-size:12px;font-weight:700;text-align:center;padding:28px 0;">攻撃データがありません</p>';
             }
 
+            // BlaBlaLINK 拡張が出す level は末尾に余計な数字が付くことがある
+            // (2026-03以降のJSONに Lv11/Lv26/Lv34 等が混入。同じ凸をDBと突き合わせると
+            //  実際は Lv1/Lv2/Lv3)。先頭1桁を採って 1〜4 に収める
+            const normLevel = (v) => {
+                const n = Number(v);
+                if (!Number.isFinite(n) || n <= 0) return null;
+                if (n >= 1 && n <= 4) return n;
+                const head = Number(String(Math.trunc(n))[0]);
+                return (head >= 1 && head <= 4) ? head : null;
+            };
+
             const renderIcons = (chars) => {
                 if (!chars || chars.length === 0) {
                     return Array(5).fill('<div class="comp-icon-placeholder"></div>').join('');
@@ -16367,13 +16401,14 @@
                 // 大文字ドメイン ('WATER') → 小文字正規形の境界は normalizeAttrKey を通す
                 const accentC = DC_ATTR_COLORS[normalizeAttrKey(attr)] || '#A4AAB0';
 
-                // Sort: bossCodes with current data first, then prev-only; within each group by max current damage desc
+                // 今月データがあるボスを先に。同じ区分の中は「今月の記録順」を保つ
+                // (ダメージ順に並べ替えると、画面の並びが実際の凸の流れと食い違う)
+                const currOrder = [...currAttackMap.keys()];
                 bossCodes.sort((a, b) => {
                     const hasCurrA = currAttackMap.has(a), hasCurrB = currAttackMap.has(b);
                     if (hasCurrA !== hasCurrB) return hasCurrA ? -1 : 1;
-                    const dmgA = (currAttackMap.get(a)?.[0] || prevAttackMap.get(a)?.[0])?.damage || 0;
-                    const dmgB = (currAttackMap.get(b)?.[0] || prevAttackMap.get(b)?.[0])?.damage || 0;
-                    return dmgB - dmgA;
+                    if (hasCurrA) return currOrder.indexOf(a) - currOrder.indexOf(b);
+                    return 0;
                 });
 
                 bossCodes.forEach(bossCode => {
@@ -16390,7 +16425,7 @@
                         const diff = (currAtk && prevAtk) ? currAtk.damage - prevAtk.damage : null;
                         const diffCls = diff !== null ? (diff >= 0 ? 'comp-diff-positive' : 'comp-diff-negative') : '';
                         const difficulty = currAtk?.difficulty || prevAtk?.difficulty || '';
-                        const level = currAtk?.level || prevAtk?.level || '';
+                        const level = normLevel(currAtk?.level ?? prevAtk?.level) ?? '';
                         const indexLabel = showIndex ? `<span style="font-size:10px;font-weight:800;color:#B6BBC1;margin-left:3px;">${i + 1}凸目</span>` : '';
                         const diffBadge = diff !== null
                             ? `<span class="${diffCls}" style="display:inline-block;font-size:10.5px;font-weight:900;margin-left:4px;">(${diff >= 0 ? '+' : ''}${formatDamage(diff)})</span>`
@@ -16403,7 +16438,7 @@
                                     <span style="opacity:0.5; font-size:10px;">対</span>
                                     <img loading="lazy" decoding="async" src="${info.bossAttributeIcon}" alt="${info.bossAttributeJP}" title="${info.bossAttributeJP}ボス" style="width:15px; height:15px; opacity:0.85;">
                                     <span class="comp-boss-title">${bossName}</span>${indexLabel}
-                                    ${difficulty ? `<span style="margin-left:auto;font-size:10.5px;font-weight:800;color:${accentC};background:${accentC}1A;padding:2px 8px;border-radius:999px;white-space:nowrap;">${difficulty} Lv.${level}</span>` : ''}
+                                    ${difficulty ? `<span style="margin-left:auto;font-size:10.5px;font-weight:800;color:${accentC};background:${accentC}1A;padding:2px 8px;border-radius:999px;white-space:nowrap;">${difficulty}${level ? ` Lv.${level}` : ''}</span>` : ''}
                                 </div>
                                 <div class="comp-row">
                                     <div class="comp-side">
