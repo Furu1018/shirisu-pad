@@ -16,8 +16,15 @@
 //   - 総HPは本番のレベル別定数 (Lv1 lord 99.9B / tyrant 150.8B …)
 //   - 人数は NIKKE のユニオン上限に合わせて最大30人
 //   - **loadoutsByAttr を渡す** (1属性2編成 + キャラ名)。damagesByAttr だけだと
-//     slot/ord・同属性2凸・キャラ被りが一切評価されず、フェーズ1〜2の本題が抜ける。
-//     B1/B2 は環境で決まる少数の汎用キャラを共有させ、実際に被りが起きるようにしてある
+//     slot/ord・同属性2凸・キャラ被りが一切評価されず、フェーズ1〜2の本題が抜ける
+//
+// キャラ被りの強さは **本番 player_damages の実測分布** に合わせてある
+// (2026-08-03 時点・46人227編成を集計):
+//   - 1人あたり編成数 平均4.9 (ほぼ全員が5属性提出)
+//   - 1人が使う総キャラ種類数 平均21.8 / 25枠 → 被りは「たまに起きる」程度
+//   - 編成ペアの共通キャラ数 平均0.30 (0が83% / 1が5% / 2が12%)
+// ※ここを盛る (全員が少数の汎用キャラを使い回す設定にする) と、
+//   全員が1日1凸しかできない退化盤面になり測定値が意味を失う
 //
 // **悪化0・踏破Lv低下0 が採用条件** (分岐は基準解を下回ってはいけない)。
 // 実行時間は端末・負荷に依存するので、完全一致ではなく桁の目安として見ること。
@@ -50,12 +57,12 @@ const HP = {   // js/optimal-plan.js の HARD_LEVEL_HP_B と一致させるこ�
     2: { lord: 149.7844188, tyrant: 226.2627204 },
     3: { lord: 292.44529575, tyrant: 349.2309015 },
 };
-// 環境で決まる汎用B1/B2。属性をまたいで使い回されるので被りの発生源になる (= ラピ問題の再現)。
-// 各人が持つのは6〜8体で、1編成が使うのは2体 → 被りは起きるが全凸が潰れるほどではない。
-// ※プールを絞りすぎると「全員が1日1凸しかできない」退化した盤面になる。
-//   平均割当凸数が「人数×3」から大きく落ちていないかを diag で見ること
-const SHARED = ['ラピ:レッドフード', 'クラウン', 'ドロシー：セレンディピティ', 'ナガ',
-                'アニス:スター', 'モダニア', 'red hood', 'シンデレラ', 'マリアン', 'ノワール'];
+// 実測の共通キャラ数分布 (0:83% / 1:5% / 2:12%) を属性ペアごとに再現する確率
+const P_SHARE2 = 0.12, P_SHARE1 = 0.05;
+// 同属性2編成 (slot=2) の提出率。**実測は 0%** (誰もまだ2編成目を出していない) だが、
+// 0 にすると slot/ord の探索が一切評価されないため、フェーズ3で目指す状態を想定して 30% にしてある。
+// 「本番の現状」ではなく「本番で目指す状態」を測っている点に注意
+const P_SLOT2 = 0.3;
 
 function board(seed) {
     let s = seed;
@@ -82,30 +89,44 @@ function board(seed) {
     const players = [];
     for (let p = 0; p < n; p++) {
         const dmg = {}, teams = {}, loadouts = {};
-        // 出せるのは弱点PT属性 = COUNTER の値側。2〜5属性ぶん模擬を出している想定
-        const pool = shuffled(Object.values(COUNTER)).slice(0, 2 + pick(4));
-        // この人が持っている汎用B1/B2 (2〜3体)。属性をまたいで同じ顔ぶれを使う = 被りの種
-        const mine = shuffled(SHARED).slice(0, 6 + pick(3));
+        // 実測ではほぼ全員が5属性提出 (平均4.9編成)。少数だけ4属性
+        const pool = shuffled(Object.values(COUNTER)).slice(0, rnd() < 0.8 ? 5 : 4);
+        // まず属性ごとに完全に独立した編成を作る (この時点で共通キャラ0)
+        const team1 = {};
+        pool.forEach(a => { team1[a] = [1, 2, 3, 4, 5].map(k => `${p}_${a}_${k}`); });
+        // 実測分布に合わせて属性ペア単位で共通キャラを注入する。
+        // 「a の枠を b の同じ位置のキャラで置き換える」= 2人が同じキャラを使っている状態
+        for (let i = 0; i < pool.length; i++) {
+            for (let j = i + 1; j < pool.length; j++) {
+                const r = rnd();
+                const n = r < P_SHARE2 ? 2 : r < P_SHARE2 + P_SHARE1 ? 1 : 0;
+                for (let k = 0; k < n; k++) team1[pool[j]][k] = team1[pool[i]][k];
+            }
+        }
         pool.forEach(a => {
             const base = Math.round((4 + rnd() * 24) * 2) / 2;
-            const b12 = shuffled(mine).slice(0, 2);   // 属性ごとに引き直す = 一部で被る
-            const los = [{ dmgB: base, team: [...b12, `${a}アタッカーA`, `${a}サポートA`, `${a}汎用`], slot: 1 }];
-            // 3割の人は同属性2編成目を出している (B1/B2 を1体入れ替えた別編成)
-            if (rnd() < 0.3) {
-                const alt = shuffled(SHARED).filter(c => !b12.includes(c))[0] || `${a}代替`;
-                los.push({ dmgB: Math.round((base * (0.7 + rnd() * 0.25)) * 2) / 2,
-                           team: [b12[0], alt, `${a}アタッカーB`, `${a}サポートA`, `${a}汎用`], slot: 2 });
+            const los = [{ dmgB: base, team: team1[a], slot: 1 }];
+            // 同属性2編成目。**slot1 と1人も被らせないこと** — 1人でも共有すると
+            // 2編成目は必ずキャラ被りで除外され、slot/ord が一度も評価されない
+            if (rnd() < P_SLOT2) {
+                los.push({
+                    dmgB: Math.round((base * (0.7 + rnd() * 0.25)) * 2) / 2,
+                    team: [1, 2, 3, 4, 5].map(k => `${p}_${a}_alt${k}`), slot: 2,
+                });
             }
             dmg[a] = base;
             teams[a] = los[0].team;
             loadouts[a] = los;
         });
-        // 凸済みは「実際に出した編成」を持たせる (キャラ消費が正しく効くか評価するため)
+        // 凸済みは「実際に出した編成」を持たせる (キャラ消費が正しく効くか評価するため)。
+        // **boss_number はその属性が弱点のボスにすること** — ソルバーは boss_number から
+        // 消費した属性を逆引きするので、ランダムだと別属性の上位編成を誤って消費する
+        const bossOfAttr = new Map(bosses.map(b => [b.weakness, b.boss_number]));
         const done = pick(4);
         const attacks = [];
         for (let k = 0; k < done && k < pool.length; k++) {
             const a = pool[k];
-            attacks.push({ boss_number: 1 + pick(5), characters: [...loadouts[a][0].team] });
+            attacks.push({ boss_number: bossOfAttr.get(a), characters: [...loadouts[a][0].team] });
         }
         players.push({
             id: `p${p}`, name: `M${p}`, syncLevel: 300 + pick(400), attackCount: attacks.length,
@@ -122,6 +143,7 @@ function board(seed) {
 
 const N = 2000;
 let up = 0, down = 0, same = 0, sum = 0, lvUp = 0, lvDown = 0, errors = 0;
+let nPlayers = 0, nRemain = 0, nAssigned = 0, nSlot2 = 0, nSlot2Used = 0;
 const times = [];
 for (let i = 1; i <= N; i++) {
     const seed = i * 7919;
@@ -138,6 +160,15 @@ for (let i = 1; i <= N; i++) {
         console.error(`  例外 seed ${seed}: ${e && e.message}`);
         continue;
     }
+    // 盤面が退化していないかの内訳 (割当率が極端に低い = 被りで全員が凸できない盤面)
+    nPlayers += inp.players.length;
+    nRemain += inp.players.reduce((t, p) => t + Math.max(0, 3 - p.attackCount), 0);
+    nSlot2 += inp.players.reduce((t, p) =>
+        t + Object.values(p.loadoutsByAttr).filter(l => l.length > 1).length, 0);
+    on.levels.forEach(l => l.bosses.forEach(b => b.attacks.forEach(x => {
+        nAssigned++;
+        if (x.loadoutSlot === 2) nSlot2Used++;
+    })));
     if (on.fullyClearedThrough > off.fullyClearedThrough) lvUp++;
     if (on.fullyClearedThrough < off.fullyClearedThrough) { lvDown++; console.log(`  踏破低下 seed ${seed}`); }
     const d = on.totalCreditedB - off.totalCreditedB;
@@ -150,6 +181,9 @@ times.sort((a, b) => a - b);
 const q = (p) => times[Math.floor(times.length * p)].toFixed(1);
 const done = up + down + same;
 console.log(`盤面 ${done}/${N} 件 (例外 ${errors} 件)`);
+console.log(`平均 人数 ${(nPlayers / N).toFixed(1)} / 残凸 ${(nRemain / N).toFixed(1)} / `
+    + `割当 ${(nAssigned / N).toFixed(1)} (${(100 * nAssigned / nRemain).toFixed(0)}%)   `
+    + `2編成目 保有 ${(nSlot2 / N).toFixed(1)} → 採用 ${(nSlot2Used / N).toFixed(1)}`);
 console.log(`改善 ${up} / 悪化 ${down} / 同一 ${same}   合計 ${sum >= 0 ? '+' : ''}${sum.toFixed(1)}B`);
 console.log(`踏破Lv 上昇 ${lvUp} / 低下 ${lvDown}`);
 console.log(`実行時間 中央値 ${q(0.5)}ms / p95 ${q(0.95)}ms / p99 ${q(0.99)}ms / 最大 ${times[times.length - 1].toFixed(1)}ms`);
