@@ -89,18 +89,29 @@ function board(seed) {
     const players = [];
     for (let p = 0; p < n; p++) {
         const dmg = {}, teams = {}, loadouts = {};
-        // 実測ではほぼ全員が5属性提出 (平均4.9編成)。少数だけ4属性
-        const pool = shuffled(Object.values(COUNTER)).slice(0, rnd() < 0.8 ? 5 : 4);
+        // 実測ではほぼ全員が5属性提出 (平均4.9編成)
+        const pool = shuffled(Object.values(COUNTER)).slice(0, rnd() < 0.9 ? 5 : 4);
         // まず属性ごとに完全に独立した編成を作る (この時点で共通キャラ0)
-        const team1 = {};
-        pool.forEach(a => { team1[a] = [1, 2, 3, 4, 5].map(k => `${p}_${a}_${k}`); });
+        const base = {}, team1 = {};
+        pool.forEach(a => {
+            base[a] = [1, 2, 3, 4, 5].map(k => `${p}_${a}_${k}`);
+            team1[a] = [...base[a]];
+        });
         // 実測分布に合わせて属性ペア単位で共通キャラを注入する。
-        // 「a の枠を b の同じ位置のキャラで置き換える」= 2人が同じキャラを使っている状態
+        // 「a の枠を b の同じ位置のキャラで置き換える」= 2人が同じキャラを使っている状態。
+        // **コピー元は必ず base (注入前) を使うこと** — 注入済みの team1 からコピーすると
+        // A-B の共有が B-C 経由で A-C に推移し、ペアが独立でなくなって分布がずれる
+        // 書き込み先は属性ごとに未使用の枠を順に使う。同じ枠を2回上書きすると
+        // 先に入れた共有が消えてペアの分布が目標より薄くなる
+        const nextSlot = {};
+        pool.forEach(a => { nextSlot[a] = 0; });
         for (let i = 0; i < pool.length; i++) {
             for (let j = i + 1; j < pool.length; j++) {
                 const r = rnd();
                 const n = r < P_SHARE2 ? 2 : r < P_SHARE2 + P_SHARE1 ? 1 : 0;
-                for (let k = 0; k < n; k++) team1[pool[j]][k] = team1[pool[i]][k];
+                for (let k = 0; k < n && nextSlot[pool[j]] < 5; k++) {
+                    team1[pool[j]][nextSlot[pool[j]]++] = base[pool[i]][k];
+                }
             }
         }
         pool.forEach(a => {
@@ -144,6 +155,8 @@ function board(seed) {
 const N = 2000;
 let up = 0, down = 0, same = 0, sum = 0, lvUp = 0, lvDown = 0, errors = 0;
 let nPlayers = 0, nRemain = 0, nAssigned = 0, nSlot2 = 0, nSlot2Used = 0;
+let nLoadouts = 0;
+const pairShare = [0, 0, 0, 0, 0, 0];   // 編成ペアの共通キャラ数の分布 (実測との照合用)
 const times = [];
 for (let i = 1; i <= N; i++) {
     const seed = i * 7919;
@@ -165,6 +178,15 @@ for (let i = 1; i <= N; i++) {
     nRemain += inp.players.reduce((t, p) => t + Math.max(0, 3 - p.attackCount), 0);
     nSlot2 += inp.players.reduce((t, p) =>
         t + Object.values(p.loadoutsByAttr).filter(l => l.length > 1).length, 0);
+    inp.players.forEach(p => {
+        const t1 = Object.values(p.loadoutsByAttr).map(l => l[0].team);
+        nLoadouts += t1.length;
+        for (let i = 0; i < t1.length; i++) {
+            for (let j = i + 1; j < t1.length; j++) {
+                pairShare[new Set(t1[i].filter(c => t1[j].includes(c))).size]++;
+            }
+        }
+    });
     on.levels.forEach(l => l.bosses.forEach(b => b.attacks.forEach(x => {
         nAssigned++;
         if (x.loadoutSlot === 2) nSlot2Used++;
@@ -181,6 +203,14 @@ times.sort((a, b) => a - b);
 const q = (p) => times[Math.floor(times.length * p)].toFixed(1);
 const done = up + down + same;
 console.log(`盤面 ${done}/${N} 件 (例外 ${errors} 件)`);
+{   // 生成された盤面が実測分布どおりかを毎回照合する (「較正済み」を口約束にしない)
+    const tot = pairShare.reduce((a, b) => a + b, 0);
+    const avg = pairShare.reduce((a, b, i) => a + b * i, 0) / tot;
+    const pct = (i) => (100 * pairShare[i] / tot).toFixed(1);
+    console.log(`盤面の被り分布: 編成ペアの共通キャラ数 平均 ${avg.toFixed(2)} `
+        + `(0:${pct(0)}% 1:${pct(1)}% 2:${pct(2)}%)  1人あたり編成数 ${(nLoadouts / nPlayers).toFixed(2)}`);
+    console.log(`  ↑ 本番 player_damages の実測値: 平均 0.30 (0:83% 1:5% 2:12%) / 編成数 4.9`);
+}
 console.log(`平均 人数 ${(nPlayers / N).toFixed(1)} / 残凸 ${(nRemain / N).toFixed(1)} / `
     + `割当 ${(nAssigned / N).toFixed(1)} (${(100 * nAssigned / nRemain).toFixed(0)}%)   `
     + `2編成目 保有 ${(nSlot2 / N).toFixed(1)} → 採用 ${(nSlot2Used / N).toFixed(1)}`);
