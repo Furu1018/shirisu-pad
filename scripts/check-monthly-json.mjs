@@ -31,10 +31,12 @@ if (players.length === 0) {
 const KNOWN_CODES = new Set(['H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.', 'D.M.T.R.', 'A.N.M.I.']);
 const problems = [];
 
-// 1) bossCode
+// 1) bossCode (欠落も検出 — 分析タブのモーダルは bossCode の無い凸を黙って落とすため)
 for (const p of players) {
     for (const a of (p.attacks || [])) {
-        if (a.bossCode && !KNOWN_CODES.has(a.bossCode)) {
+        if (!a.bossCode) {
+            problems.push(`bossCode 欠落: ${p.player} (${a.bossType || '?'}) dmg=${a.damage}`);
+        } else if (!KNOWN_CODES.has(a.bossCode)) {
             problems.push(`未知の bossCode: ${p.player} ${a.bossCode}`);
         }
     }
@@ -58,13 +60,24 @@ for (let i = 0; i < maxAtk; i++) {
     }
 }
 
-// 3) アイコンパスの実在
+// 3) アイコンパスの実在。Windows の fs は大文字小文字を無視して「ある」と答えるが、
+//    GitHub Pages は case-sensitive で 404 になる — ディレクトリ一覧との完全一致で判定する
+const dirListing = new Map();   // dir → Set(実ファイル名)
+function existsExact(rel) {
+    const abs = path.join(root, rel);
+    const dir = path.dirname(abs);
+    if (!dirListing.has(dir)) {
+        try { dirListing.set(dir, new Set(fs.readdirSync(dir))); }
+        catch { dirListing.set(dir, new Set()); }
+    }
+    return dirListing.get(dir).has(path.basename(abs));
+}
 let iconTotal = 0, iconMissing = 0;
 for (const p of players) {
     for (const a of (p.attacks || [])) {
         for (const u of (a.characters || [])) {
             iconTotal++;
-            if (typeof u !== 'string' || !fs.existsSync(path.join(root, u))) iconMissing++;
+            if (typeof u !== 'string' || !existsExact(u)) iconMissing++;
         }
     }
 }
