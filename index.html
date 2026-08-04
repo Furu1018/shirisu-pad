@@ -16418,7 +16418,8 @@
                     // 代理凸・一括取込で登録された凸は編成がどこにも記録されていない。
                     // グレー枠5個だと「バグで表示されない」ように見える (実機FB 2026-08-05)
                     // → 記録が無いことを明示する
-                    return '<div style="display:flex;align-items:center;justify-content:center;width:100%;min-height:34px;border-radius:8px;background:#F7F8F9;border:1px dashed rgba(20,22,26,0.10);font-size:10px;font-weight:700;color:#A4AAB0;">📷 編成の記録なし</div>';
+                    // ⚠ 親 .comp-icons は5列グリッド — grid-column:1/-1 で全幅にしないと1列に潰れる
+                    return '<div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;min-height:34px;border-radius:8px;background:#fff;border:1px dashed rgba(20,22,26,0.12);font-size:10px;font-weight:700;color:#8A9097;">📷 編成の記録なし</div>';
                 }
                 const slots = [];
                 for (let i = 0; i < 5; i++) {
