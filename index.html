@@ -3163,11 +3163,12 @@
                 </div>
             </div>
 
-            <!-- 分析セグメント: 実績 (このタブ) / ふるり値・シミュレータ (tab-slv-ranking のビュー) -->
+            <!-- 分析セグメント: 実績 (このタブ) / ふるり値・シミュレータ・GB比較 (tab-slv-ranking のビュー) -->
             <div class="ana-seg">
                 <button class="active" type="button">📊 実績</button>
                 <button type="button" onclick="_gotoSlvView('fururi')">⚡ ふるり値</button>
                 <button type="button" onclick="_gotoSlvView('sim')">🧪 シミュレータ</button>
+                <button type="button" onclick="_gotoSlvView('gb')">🌏 GB比較</button>
             </div>
 
             <!-- ① グラフ + 統計 -->
@@ -3292,9 +3293,6 @@
                 </div>
             </div>
 
-            <!-- GB比較 (しりすこPAD GB のシーズン凍結スナップショット。データが無い月は非表示) -->
-            <div class="dc-card" id="gbCompareCard" style="display:none;margin-top:14px;"></div>
-
             <!-- 注意書き (インライン) -->
             <p style="margin:4px 2px 0 2px;font-size:11px;color:#A4AAB0;line-height:1.5;">⚠️ 他人との比較は参考程度に。過去の自分との比較に役立ててください。</p>
         </div>
@@ -3325,6 +3323,7 @@
                 <button type="button" onclick="switchTab('ranking')">📊 実績</button>
                 <button class="active" type="button" data-view="fururi" onclick="_setSlvView('fururi')">⚡ ふるり値</button>
                 <button type="button" data-view="sim" onclick="_setSlvView('sim')">🧪 シミュレータ</button>
+                <button type="button" data-view="gb" onclick="_setSlvView('gb')">🌏 GB比較</button>
             </div>
 
             <!-- ① モード + 属性別フィルタ -->
@@ -3390,6 +3389,13 @@
             </div>
 
             <!-- ③ シミュレータ (シミュレータビュー — 旧折り畳みから格上げ。既定は非表示、_setSlvView('sim') で表示) -->
+            <!-- GB比較 (しりすこPAD GB のシーズン凍結スナップショット — _setSlvView('gb') で表示) -->
+            <div data-slv-view="gb" hidden>
+                <div class="dc-card" id="gbCompareCard">
+                    <p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:10px 0;">読み込み中…</p>
+                </div>
+            </div>
+
             <div class="dc-card" data-slv-view="sim" hidden>
                 <div id="simulatorSectionHeader" onclick="toggleSimulatorSection()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
@@ -6410,11 +6416,29 @@
                 const on = upper === activeUpper;
                 const c = DC_ATTR_COLORS[a.key];
                 return `<button type="button" onclick="${onclickName}('${upper}')" style="flex:none;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">
-                    <span style="width:8px;height:8px;border-radius:50%;background:${c};"></span>${a.name}</button>`;
+                    ${renderAttrIcon(a.key, 14)}${a.name}</button>`;
             }).join('');
         }
         function _gbFacesHtml(names, size = 26) {
             return `<span style="display:inline-flex;gap:3px;flex-wrap:wrap;">${names.map(n => _charIconHtml(n, size)).join('')}</span>`;
+        }
+
+        // 自分のSLv (最適3凸の換算用)。currentData → Supabase の順で1回だけ解決してキャッシュ
+        let _gbMySlvCache;   // undefined=未取得 / null=不明 / number
+        async function _gbResolveMySlv() {
+            if (_gbMySlvCache !== undefined) return _gbMySlvCache;
+            let slv = null;
+            const ident = getCurrentIdentity();
+            const byName = ident?.name ? Number((currentData || []).find(p => p.player === ident.name)?.syncLevel) : NaN;
+            if (byName > 0) slv = byName;
+            else if (ident?.id && typeof window.supabaseLoadSyncLevel === 'function') {
+                try {
+                    const r = await window.supabaseLoadSyncLevel(ident.id);
+                    if (Number(r?.syncLevel) > 0) slv = Number(r.syncLevel);
+                } catch { /* 未登録なら基準SLv換算のまま */ }
+            }
+            _gbMySlvCache = slv;
+            return slv;
         }
 
         async function renderGbCompare() {
@@ -6422,23 +6446,25 @@
             if (!card) return;
             const seq = ++_gbCmpSeq;
             const month = currentMonthKey;
-            if (!month) { card.style.display = 'none'; return; }
+            const empty = (msg) => { card.innerHTML = `<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:14px 0;">${escapeHtml(msg)}</p>`; };
+            if (!month) { empty('データ読み込み中です。少し待ってからもう一度開いてください。'); return; }
             const ex = await _loadGbExport(month);
             if (seq !== _gbCmpSeq) return;
-            if (!ex || !window.gbCompareDomain) { card.style.display = 'none'; return; }
+            if (!ex || !window.gbCompareDomain) { empty(`${month} のGB凍結データがありません (シーズン確定後に取り込まれます)。`); return; }
             // PT属性 → 本家 bossCode の対応。GB側の bossCode と一致しない属性は
             // ドメイン側でフェイルクローズ (別シーズンの取り違え防止)
             const codeMap = {};
             Object.keys(BOSS_ATTRIBUTES).forEach(c => { codeMap[BOSS_ATTRIBUTES[c].attribute] = c; });
             const idx = gbCompareDomain.buildIndex(ex, codeMap);
             try { await getNikkeCharsCache(); } catch { /* アイコン未解決でも頭文字タイルで劣化表示 */ }
+            const mySlv = await _gbResolveMySlv();   // 最適3凸の「あなたのSLv換算」用
             if (seq !== _gbCmpSeq) return;
             card.style.display = '';
 
             let body = '';
             if (_gbCmpView === 'members') body = _gbMembersHtml(ex, idx);
             else if (_gbCmpView === 'comps') body = _gbCompsHtml(idx);
-            else body = _gbBestHtml(ex, idx);
+            else body = _gbBestHtml(ex, idx, mySlv);
 
             const segBtn = (v, label) => `<button type="button" class="${_gbCmpView === v ? 'active' : ''}" onclick="_setGbView('${v}')">${label}</button>`;
             card.innerHTML = `
@@ -6477,8 +6503,7 @@
                 const mine = myName != null && r.name === myName;
                 const pills = r.atks.map(x => {
                     const c = DC_ATTR_COLORS[x.attr.toLowerCase()] || '#8A9097';
-                    const d = _gbAttrDef(x.attr);
-                    return `<span style="font-size:10px;font-weight:900;color:${c};background:${c}14;border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;">${d ? d.name : x.attr} ${x.pct != null ? Math.round(x.pct) + '%' : '—'}</span>`;
+                    return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${c};background:${c}14;border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;">${renderAttrIcon(x.attr.toLowerCase(), 12)}${x.pct != null ? Math.round(x.pct) + '%' : '—'}</span>`;
                 }).join('');
                 return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
                     <div style="font-size:11px;font-weight:900;color:#A4AAB0;text-align:center;font-variant-numeric:tabular-nums;">${i + 1}</div>
@@ -6527,8 +6552,9 @@
                 `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
 
-        // ③ 最適3凸 — 15キャラ被りなしで Σ(GB中央値×基準ダメージ) 最大の3編成
-        function _gbBestHtml(ex, idx) {
+        // ③ 最適3凸 — 15キャラ被りなしで Σ(GB中央値×基準ダメージ) 最大の3編成。
+        // 推定合計は自分のSLv換算 (未登録ならGB基準SLv換算)。同属性2凸は凸1に高出力側を割当
+        function _gbBestHtml(ex, idx, mySlv) {
             const pickRows = _gbCmpPicks.map((sel, i) => `
                 <div data-no-swipe style="display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;">
                     <span style="flex:none;font-size:10px;font-weight:900;color:#A4AAB0;width:26px;">凸${i + 1}</span>
@@ -6536,9 +6562,14 @@
                         const upper = a.key.toUpperCase();
                         const on = upper === sel;
                         const c = DC_ATTR_COLORS[a.key];
-                        return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" style="flex:none;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">${a.name}</button>`;
+                        return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" style="flex:none;display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">${renderAttrIcon(a.key, 13)}${a.name}</button>`;
                     }).join('')}
                 </div>`).join('');
+            // SLv換算: 基準SLv → 自分のSLv への攻撃力係数比 (どちらか欠けたら基準のまま)
+            const ratioBase = Number(slvRatioTable?.[String(ex.base?.baseSlv)]);
+            const ratioMy = mySlv != null ? Number(slvRatioTable?.[String(mySlv)]) : NaN;
+            const scale = ratioBase > 0 && ratioMy > 0 ? ratioMy / ratioBase : 1;
+            const slvLabel = scale !== 1 ? `あなた (SLv ${mySlv}) 換算` : `GB基準SLv ${ex.base?.baseSlv ?? '?'} 換算`;
             const r = gbCompareDomain.optimizeTriple(idx, _gbCmpPicks);
             let resultHtml = '';
             if (r.error) {
@@ -6548,23 +6579,24 @@
                     <div style="margin-top:10px;border:1.5px solid ${ci === 0 ? '#6C42F0' : '#EDEFF2'};border-radius:14px;padding:10px 12px;">
                         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
                             <span style="font-size:11px;font-weight:900;color:${ci === 0 ? '#6C42F0' : '#8A9097'};">${ci === 0 ? '🏆 最適' : `案${ci + 1}`}</span>
-                            <span style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">推定合計 ${formatDamage(combo.total)}</span>
+                            <span style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">推定合計 ${formatDamage(combo.total * scale)}</span>
                         </div>
-                        ${combo.comps.map(c => {
-                            const d = _gbAttrDef(c.attr);
+                        ${combo.comps.map((c, si) => {
                             const col = DC_ATTR_COLORS[c.attr.toLowerCase()] || '#8A9097';
                             const g = idx.attrs[c.attr];
                             const medPct = g && g.attackMedianFururi > 0 ? Math.round(c.medianFururi / g.attackMedianFururi * 100) : null;
                             return `<div style="display:flex;align-items:center;gap:8px;margin-top:7px;">
-                                <span style="flex:none;font-size:10px;font-weight:900;color:${col};background:${col}14;border-radius:999px;padding:2px 8px;">${d ? d.name : c.attr}</span>
+                                <span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${col};background:${col}14;border-radius:999px;padding:2px 7px;">凸${si + 1}${renderAttrIcon(c.attr.toLowerCase(), 13)}</span>
                                 <span style="min-width:0;">${_gbFacesHtml(c.names, 24)}</span>
-                                <span style="flex:none;margin-left:auto;font-size:10px;font-weight:800;color:#8A9097;text-align:right;">${medPct != null ? `中央値比${medPct}%` : ''}<br>採用${c.n}人</span>
+                                <span style="flex:none;margin-left:auto;font-size:10px;font-weight:800;color:#8A9097;text-align:right;">${formatDamage(c.estDamage * scale)}${medPct != null ? ` · 中央値比${medPct}%` : ''}<br>採用${c.n}人</span>
                             </div>`;
                         }).join('')}
                     </div>`).join('');
             }
-            const note = `GB編成中央値 × 基準ダメージの合計が最大になる組み合わせ (15キャラ被りなし・同属性2凸可)。` +
-                `中央値ベースの推定で、ボス残HP・自ユニオンの所持/育成状況・同属性2凸目の減衰は考慮していません。表示は基準SLv ${ex.base?.baseSlv ?? '?'} 換算。`;
+            const note = `GB編成中央値の合計が最大になる組み合わせ (15キャラ被りなし・同属性2凸可)。` +
+                `同属性2凸は凸1に出力の高い編成を割当・合計が同じ案は凸1の出力が高い方を優先。` +
+                `表示は${slvLabel}${scale === 1 && mySlv == null ? ' (ホームでSLvを登録すると自分換算になります)' : ''}。` +
+                `中央値ベースの推定で、ボス残HP・自ユニオンの所持/育成状況・同属性2凸目の減衰は考慮していません。`;
             return pickRows + resultHtml +
                 `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
@@ -11600,7 +11632,8 @@
         // 非表示中も従来どおり動く (表示を戻せばそのまま最新)
         let _slvView = 'fururi';
         function _setSlvView(view) {
-            _slvView = view === 'sim' ? 'sim' : 'fururi';
+            _slvView = view === 'sim' ? 'sim' : view === 'gb' ? 'gb' : 'fururi';
+            if (_slvView === 'gb') renderGbCompare();   // GBビューは開いた時に描画 (非同期)
             document.querySelectorAll('#tab-slv-ranking [data-slv-view]').forEach(el => {
                 // hidden 属性で切替 (style.display だと inline の display:flex を壊す — Codex 指摘)
                 el.hidden = el.dataset.slvView !== _slvView;

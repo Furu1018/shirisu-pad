@@ -2168,6 +2168,9 @@ test('gbCompare: 3凸最適化 — 15キャラ被りなし・同属性2凸・決
     // (人気トップの A..E:1.2 ではなく、被り制約下で中央値の高い ABCDF が選ばれる)
     assert.equal(b2.total, 44e9);
     assert.ok(b2.comps.some(c => c.names.includes('F')), '高中央値編成 (ABCDF) が採用される');
+    // 凸1優先: 同属性2凸 (WATER×2) は凸1に出力の高い編成 (ABCDF 15B > GHIJK 9B) が入る
+    assert.ok(b2.comps[0].names.includes('F'), '凸1に高出力側 (ABCDF)');
+    assert.ok(b2.comps[0].estDamage >= b2.comps[1].estDamage, '同属性は凸1 >= 凸2');
     // 同属性で同じ編成の2度使いは禁止されている
     const keys = b2.comps.map(c => c.attr + ':' + c.key);
     assert.equal(new Set(keys).size, 3);

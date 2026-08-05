@@ -100,12 +100,14 @@
     }
 
     // ---- 3凸セット最適化 ----
-    // picks = 属性3つ (重複可・例 ['WATER','WATER','FIRE'])。
+    // picks = 属性3つ (凸1→凸3の順・重複可・例 ['WATER','WATER','FIRE'])。
     // index = buildIndex の戻り値。15キャラ (日本語名) 被りなしの3編成で
     // Σ(medianFururi × baseDamage) 最大を全探索 (候補は属性ごと高々20件 → 最大8000通り)。
     // 戻り値: 上位 topK 件 [{total, comps: [{attr, names, n, medianFururi, estDamage}]}]。
-    // total/estDamage は「基準SLv換算の推定ダメージ (raw)」— 表示側で B 単位にする。
-    // 決定的: 同点は 採用数合計 → 編成キーで安定順序。
+    // comps[i] は picks[i] (凸i+1) に対応。total/estDamage は「基準SLv換算の推定ダメージ
+    // (raw)」— 表示側で B 単位・自分SLv換算にする。
+    // 凸1優先 (ユーザー要望 2026-08-05): 同属性2凸は先の凸に出力の高い編成を割り当てる。
+    // 合計が同点の案は 凸1の出力 → 凸2の出力 の辞書式で高い方を優先 (合計は犠牲にしない)。
     function optimizeTriple(index, picks, { topK = 3 } = {}) {
         if (!Array.isArray(picks) || picks.length !== 3) return { error: '属性を3つ選んでください', results: [] };
         const pools = picks.map(attr => {
@@ -119,17 +121,24 @@
         const missing = picks.filter((_, i) => !pools[i]);
         if (missing.length) return { error: `${[...new Set(missing)].join('・')} の編成データがありません`, results: [] };
 
+        // 同属性スロット間の正準順序: 先の凸の出力 >= 後の凸 (同値は key 昇順)。
+        // これで「凸1に高出力側」を保証しつつ、入れ替えただけの重複列挙も消える
+        const slotOrderOk = (earlier, later) => {
+            if (earlier.attr !== later.attr) return true;
+            if (earlier.key === later.key) return false;   // 同じ編成の2度使いは禁止
+            return earlier.estDamage > later.estDamage ||
+                (earlier.estDamage === later.estDamage && earlier.key < later.key);
+        };
+
         const results = [];
         for (const c1 of pools[0]) {
             const s1 = new Set(c1.names);
             for (const c2 of pools[1]) {
-                // 同属性で同じ編成を2度使わない + キャラ被りなし
-                if (c2.attr === c1.attr && c2.key === c1.key) continue;
+                if (!slotOrderOk(c1, c2)) continue;
                 if (c2.names.some(x => s1.has(x))) continue;
                 const s2 = new Set([...s1, ...c2.names]);
                 for (const c3 of pools[2]) {
-                    if ((c3.attr === c1.attr && c3.key === c1.key) ||
-                        (c3.attr === c2.attr && c3.key === c2.key)) continue;
+                    if (!slotOrderOk(c1, c3) || !slotOrderOk(c2, c3)) continue;
                     if (c3.names.some(x => s2.has(x))) continue;
                     results.push({
                         total: c1.estDamage + c2.estDamage + c3.estDamage,
@@ -139,7 +148,8 @@
                 }
             }
         }
-        // 属性の順序違い (WATER,FIRE と FIRE,WATER) で同じ組が重複するのを除去
+        // 異属性の picks 順は固定なので、同属性の正準順序と合わせて重複は残らないはずだが
+        // 念のための保険 (残っても最終並びは決定的)
         const seen = new Set();
         const uniq = results.filter(r => {
             const k = r.comps.map(c => c.attr + ':' + c.key).sort().join('/');
@@ -147,7 +157,10 @@
             seen.add(k);
             return true;
         });
-        uniq.sort((a, b) => b.total - a.total || b.totalN - a.totalN ||
+        uniq.sort((a, b) => b.total - a.total ||
+            b.comps[0].estDamage - a.comps[0].estDamage ||   // 凸1優先
+            b.comps[1].estDamage - a.comps[1].estDamage ||
+            b.totalN - a.totalN ||
             a.comps.map(c => c.key).join('/').localeCompare(b.comps.map(c => c.key).join('/')));
         return { error: uniq.length ? null : '15キャラ被りなしで組める組み合わせがありません', results: uniq.slice(0, topK) };
     }
