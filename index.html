@@ -6555,8 +6555,17 @@
                 `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
 
+        // 換算SLvの手動上書き (null = 自分のSLv)。空・不正入力で自分に戻る
+        let _gbSlvOverride = null;
+        function _setGbSlv(v) {
+            const n = parseInt(v, 10);
+            _gbSlvOverride = Number.isFinite(n) && n >= 1 ? Math.min(999, n) : null;
+            renderGbCompare();
+        }
+
         // ③ 最適3凸 — 15キャラ被りなしで Σ(GB中央値×基準ダメージ) 最大の3編成。
-        // 推定合計は自分のSLv換算 (未登録ならGB基準SLv換算)。同属性2凸は凸1に高出力側を割当
+        // 推定合計は 自分のSLv をデフォルトに、入力で任意のSLvへ換算変更できる。
+        // 同属性2凸は凸1に高出力側を割当
         function _gbBestHtml(ex, idx, mySlv) {
             const pickRows = _gbCmpPicks.map((sel, i) => `
                 <div data-no-swipe style="display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;">
@@ -6568,11 +6577,25 @@
                         return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" style="flex:none;display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">${renderAttrIcon(a.key, 13)}${a.name}</button>`;
                     }).join('')}
                 </div>`).join('');
-            // SLv換算: 基準SLv → 自分のSLv への攻撃力係数比 (どちらか欠けたら基準のまま)
+            // SLv換算: 基準SLv → 表示SLv (上書き > 自分のSLv) への攻撃力係数比。
+            // どちらか欠けたら基準のまま (係数が引けないSLvも基準に倒す)
+            const effSlv = _gbSlvOverride ?? mySlv;
             const ratioBase = Number(slvRatioTable?.[String(ex.base?.baseSlv)]);
-            const ratioMy = mySlv != null ? Number(slvRatioTable?.[String(mySlv)]) : NaN;
-            const scale = ratioBase > 0 && ratioMy > 0 ? ratioMy / ratioBase : 1;
-            const slvLabel = scale !== 1 ? `あなた (SLv ${mySlv}) 換算` : `GB基準SLv ${ex.base?.baseSlv ?? '?'} 換算`;
+            const ratioEff = effSlv != null ? Number(slvRatioTable?.[String(effSlv)]) : NaN;
+            const scale = ratioBase > 0 && ratioEff > 0 ? ratioEff / ratioBase : 1;
+            const slvLabel = scale !== 1
+                ? `SLv ${effSlv} 換算${_gbSlvOverride == null ? ' (あなたのSLv)' : ''}`
+                : `GB基準SLv ${ex.base?.baseSlv ?? '?'} 換算`;
+            const slvRow = `
+                <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px;">
+                    <span style="flex:none;font-size:10px;font-weight:900;color:#A4AAB0;width:26px;">SLv</span>
+                    <input type="number" inputmode="numeric" min="1" max="999" value="${effSlv ?? ''}"
+                        placeholder="${ex.base?.baseSlv ?? ''}" onchange="_setGbSlv(this.value)"
+                        style="width:82px;padding:6px 8px;border:1.5px solid #E3E5E8;border-radius:10px;font-size:13px;font-weight:800;font-family:inherit;color:#14161A;text-align:center;background:#fff;">
+                    ${_gbSlvOverride != null
+                        ? `<button type="button" onclick="_setGbSlv('')" style="border:1.5px solid #E3E5E8;background:#fff;color:#8A9097;border-radius:999px;padding:5px 11px;font-size:10px;font-weight:900;font-family:inherit;cursor:pointer;">↩ 自分のSLvに戻す</button>`
+                        : `<span style="font-size:10px;color:#A4AAB0;">${mySlv != null ? 'あなたのSLvで換算中 (変更可)' : '未登録 — SLvを入力すると換算できます'}</span>`}
+                </div>`;
             const r = gbCompareDomain.optimizeTriple(idx, _gbCmpPicks);
             let resultHtml = '';
             if (r.error) {
@@ -6598,9 +6621,9 @@
             }
             const note = `GB編成中央値の合計が最大になる組み合わせ (15キャラ被りなし・同属性2凸可)。` +
                 `同属性2凸は凸1に出力の高い編成を割当・合計が同じ案は凸1の出力が高い方を優先。` +
-                `表示は${slvLabel}${scale === 1 && mySlv == null ? ' (ホームでSLvを登録すると自分換算になります)' : ''}。` +
+                `表示は${slvLabel}。` +
                 `中央値ベースの推定で、ボス残HP・自ユニオンの所持/育成状況・同属性2凸目の減衰は考慮していません。`;
-            return pickRows + resultHtml +
+            return pickRows + slvRow + resultHtml +
                 `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
 
