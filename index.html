@@ -18153,6 +18153,24 @@
             if (document.hidden && (_swipe.active || _swipe.tracking || _swipe.animating)) _swipeHardReset();
         });
 
+        // ===== iOS 復帰時の fixed バー貼り付きバグ対策 (実機FB 2026-08-06) =====
+        // iOS Safari/PWA はバックグラウンド復帰後、fixed + 合成レイヤー
+        // (will-change:transform / translateZ) の要素をビューポートではなくページ座標に
+        // 貼り付けてしまうことがある (下部ナビがスクロールに追従・タスクキルで直る、が症状)。
+        // 復帰時に display を一瞬外して強制リフローし、レンダーレイヤーを作り直す。
+        // inline display は '' に戻すので、CSS (メディアクエリ/クラス) 由来の表示状態は壊さない
+        function _kickFixedBarsAfterResume() {
+            document.querySelectorAll('#bottomNav, header.header').forEach(el => {
+                el.style.display = 'none';
+                void el.offsetHeight;   // 強制リフロー (レイヤー破棄)
+                el.style.display = '';
+            });
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) _kickFixedBarsAfterResume();
+        });
+        window.addEventListener('pageshow', (e) => { if (e.persisted) _kickFixedBarsAfterResume(); });
+
         // スワイプ除外漏れの検出 (リアーキ ステップ5 Stage3 → Codex監査で強化 — 不変条件2 の担保)。
         // 横スクロール要素が除外されていないと「スクロールしたいのにタブが切り替わる」事故になる。
         // 旧実装はインライン style の文字列一致だけで、CSSクラス由来 (.dc-table-wrap 等) や
