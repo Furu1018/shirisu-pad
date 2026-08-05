@@ -6417,17 +6417,19 @@
         function _gbAttrDef(upper) {
             return PT_ATTRS.find(a => a.key === String(upper).toLowerCase()) || null;
         }
+        // 属性セレクタはアイコンのみ (文字なしでスペース節約 — 実機FB)。title で名前は補完
         function _gbAttrChipsHtml(activeUpper, onclickName) {
             return PT_ATTRS.map(a => {
                 const upper = a.key.toUpperCase();
                 const on = upper === activeUpper;
                 const c = DC_ATTR_COLORS[a.key];
-                return `<button type="button" onclick="${onclickName}('${upper}')" style="flex:none;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">
-                    ${renderAttrIcon(a.key, 14)}${a.name}</button>`;
+                return `<button type="button" onclick="${onclickName}('${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : '#fff'};${on ? '' : 'opacity:0.55;'}">
+                    ${renderAttrIcon(a.key, 20, { title: a.name })}</button>`;
             }).join('');
         }
-        function _gbFacesHtml(names, size = 26) {
-            return `<span style="display:inline-flex;gap:3px;flex-wrap:wrap;">${names.map(n => _charIconHtml(n, size)).join('')}</span>`;
+        // 編成5人は折り返さず1行に収める (アイコン22px×5 = 最小幅でも入る — 実機FB)
+        function _gbFacesHtml(names, size = 22) {
+            return `<span style="display:inline-flex;gap:2px;flex-wrap:nowrap;flex:none;">${names.map(n => _charIconHtml(n, size)).join('')}</span>`;
         }
 
         // 自分のSLv (最適3凸の換算用)。currentData → Supabase の順で解決し、
@@ -6547,17 +6549,19 @@
             const rowsHtml = list.map((c, i) => {
                 const medPct = Number.isFinite(g.attackMedianFururi) && g.attackMedianFururi > 0
                     ? Math.round(c.medianFururi / g.attackMedianFururi * 100) : null;
-                return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;">
+                return `<div style="display:grid;grid-template-columns:18px auto minmax(0,1fr);gap:6px;align-items:center;padding:6px 0;">
                     <div style="font-size:11px;font-weight:900;color:#A4AAB0;text-align:center;font-variant-numeric:tabular-nums;">${i + 1}</div>
-                    <div style="min-width:0;">${_gbFacesHtml(c.names)}</div>
-                    <div style="text-align:right;">
-                        <div style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${medPct != null ? `中央値比 ${medPct}%` : `ふるり値 ${c.medianFururi.toFixed(2)}`}</div>
-                        <div style="font-size:10px;font-weight:800;color:#8A9097;">採用 ${c.n}人</div>
+                    ${_gbFacesHtml(c.names)}
+                    <div style="text-align:right;min-width:0;">
+                        <div style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;white-space:nowrap;">${medPct != null ? `${medPct}%` : c.medianFururi.toFixed(2)}</div>
+                        <div style="font-size:10px;font-weight:800;color:#8A9097;white-space:nowrap;">${c.n}人</div>
                     </div>
                 </div>`;
             }).join('');
             const note = `GB利用者 ${g.compCohortN}人の編成つき提出から (採用5人未満の編成は非公開)。中央値比 = その属性のGB全体中央値を100%とした編成中央値。`;
-            return head +
+            const colHead = list.length
+                ? `<div style="text-align:right;font-size:10px;font-weight:800;color:#A4AAB0;margin-bottom:2px;">中央値比 / 採用人数</div>` : '';
+            return head + colHead +
                 (list.length ? rowsHtml : `<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:12px 0;">条件 (採用10人以上かつ属性中央値以上) に合う編成がありません。</p>`) +
                 `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
@@ -6620,10 +6624,10 @@
                             const col = DC_ATTR_COLORS[c.attr.toLowerCase()] || '#8A9097';
                             const g = idx.attrs[c.attr];
                             const medPct = g && g.attackMedianFururi > 0 ? Math.round(c.medianFururi / g.attackMedianFururi * 100) : null;
-                            return `<div style="display:flex;align-items:center;gap:8px;margin-top:7px;">
-                                <span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${col};background:${col}14;border-radius:999px;padding:2px 7px;">凸${si + 1}${renderAttrIcon(c.attr.toLowerCase(), 13)}</span>
-                                <span style="min-width:0;">${_gbFacesHtml(c.names, 24)}</span>
-                                <span style="flex:none;margin-left:auto;font-size:10px;font-weight:800;color:#8A9097;text-align:right;">${formatDamage(c.estDamage * scale)}${medPct != null ? ` · 中央値比${medPct}%` : ''}<br>採用${c.n}人</span>
+                            return `<div style="display:flex;align-items:center;gap:6px;margin-top:7px;">
+                                <span style="flex:none;display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:900;color:${col};background:${col}14;border-radius:999px;padding:2px 6px;">${si + 1}${renderAttrIcon(c.attr.toLowerCase(), 13)}</span>
+                                ${_gbFacesHtml(c.names, 22)}
+                                <span style="flex:none;margin-left:auto;min-width:0;font-size:10px;font-weight:800;color:#8A9097;text-align:right;white-space:nowrap;">${formatDamage(c.estDamage * scale)}<br>${medPct != null ? `${medPct}%·` : ''}${c.n}人</span>
                             </div>`;
                         }).join('')}
                     </div>`).join('');
