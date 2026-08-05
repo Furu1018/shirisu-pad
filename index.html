@@ -6423,12 +6423,15 @@
             return `<span style="display:inline-flex;gap:3px;flex-wrap:wrap;">${names.map(n => _charIconHtml(n, size)).join('')}</span>`;
         }
 
-        // 自分のSLv (最適3凸の換算用)。currentData → Supabase の順で1回だけ解決してキャッシュ
-        let _gbMySlvCache;   // undefined=未取得 / null=不明 / number
+        // 自分のSLv (最適3凸の換算用)。currentData → Supabase の順で解決し、
+        // **identity 単位で**キャッシュ (プレイヤー切替で前の人のSLvが残る — Codex指摘)。
+        // ホームのSLv保存 (handleMySlvSave) で全消しして次回開いた時に取り直す
+        const _gbMySlvCache = new Map();   // identityキー → slv(number) | null(不明)
         async function _gbResolveMySlv() {
-            if (_gbMySlvCache !== undefined) return _gbMySlvCache;
-            let slv = null;
             const ident = getCurrentIdentity();
+            const key = String(ident?.id ?? ident?.name ?? '');
+            if (_gbMySlvCache.has(key)) return _gbMySlvCache.get(key);
+            let slv = null;
             const byName = ident?.name ? Number((currentData || []).find(p => p.player === ident.name)?.syncLevel) : NaN;
             if (byName > 0) slv = byName;
             else if (ident?.id && typeof window.supabaseLoadSyncLevel === 'function') {
@@ -6437,7 +6440,7 @@
                     if (Number(r?.syncLevel) > 0) slv = Number(r.syncLevel);
                 } catch { /* 未登録なら基準SLv換算のまま */ }
             }
-            _gbMySlvCache = slv;
+            _gbMySlvCache.set(key, slv);
             return slv;
         }
 
@@ -7027,6 +7030,7 @@
                 const cd = (typeof currentData !== 'undefined' ? currentData : []).find(p => p.player === id.name);
                 if (cd) cd.syncLevel = val;
                 opsStore.patchPlayer(id.id, { syncLevel: val, syncLevelEstimated: false });
+                if (typeof _gbMySlvCache !== 'undefined') _gbMySlvCache.clear();   // GB比較の自分SLv換算に即時反映
                 closeMySlvModal();
                 showNotification(`⚡ SLv を ${val} に更新しました`);
                 if (_myRadarLastIdentity && typeof renderMyFururiRadar === 'function') {
