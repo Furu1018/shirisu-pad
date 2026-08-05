@@ -5772,22 +5772,25 @@
         // ========== Player Identity (Phase 2a) ==========
         const IDENTITY_KEY = 'shirisuPad.currentPlayer';
 
+        // ストレージ不可環境用のメモリ退避 (保存に失敗してもセッション中は選択が生きる — Codex監査)
+        let _identityMem = null;
         function getCurrentIdentity() {
             try {
                 const raw = localStorage.getItem(IDENTITY_KEY);
-                if (!raw) return null;
-                return JSON.parse(raw);  // { id, name }
-            } catch { return null; }
+                if (raw) return JSON.parse(raw);  // { id, name }
+            } catch { /* 下のメモリ値へ */ }
+            return _identityMem;
         }
         function setCurrentIdentity(player) {
             // ストレージ不可 (プライベートモード/容量) でも選択操作自体は続行させる (Codex監査)
+            _identityMem = player ? { id: player.id, name: player.name } : null;
             try {
                 if (player) {
                     localStorage.setItem(IDENTITY_KEY, JSON.stringify({ id: player.id, name: player.name }));
                 } else {
                     localStorage.removeItem(IDENTITY_KEY);
                 }
-            } catch { /* 保存できなくてもセッション中の表示は成立する */ }
+            } catch { /* 保存できなくても _identityMem でセッション中は成立する */ }
             updateIdentityHeader();
             // GB比較の換算SLv: 手動上書きは前の人の値なので破棄 (自分のSLvに戻す — Codex指摘)
             if (typeof _gbSlvOverride !== 'undefined') _gbSlvOverride = null;
