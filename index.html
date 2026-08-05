@@ -5164,11 +5164,13 @@
             return formatDomain.formatDamageRaw(v);
         }
 
+        let _notifTimer = null;   // 前のトーストのタイマーが新しいトーストを早消ししないように (Codex監査)
         function showNotification(msg) {
             const el = document.getElementById('notification');
             el.textContent = msg;
             el.classList.add('show');
-            setTimeout(() => el.classList.remove('show'), 3000);
+            if (_notifTimer) clearTimeout(_notifTimer);
+            _notifTimer = setTimeout(() => { el.classList.remove('show'); _notifTimer = null; }, 3000);
         }
 
         function showError(msg) {
@@ -5778,11 +5780,14 @@
             } catch { return null; }
         }
         function setCurrentIdentity(player) {
-            if (player) {
-                localStorage.setItem(IDENTITY_KEY, JSON.stringify({ id: player.id, name: player.name }));
-            } else {
-                localStorage.removeItem(IDENTITY_KEY);
-            }
+            // ストレージ不可 (プライベートモード/容量) でも選択操作自体は続行させる (Codex監査)
+            try {
+                if (player) {
+                    localStorage.setItem(IDENTITY_KEY, JSON.stringify({ id: player.id, name: player.name }));
+                } else {
+                    localStorage.removeItem(IDENTITY_KEY);
+                }
+            } catch { /* 保存できなくてもセッション中の表示は成立する */ }
             updateIdentityHeader();
             // GB比較の換算SLv: 手動上書きは前の人の値なので破棄 (自分のSLvに戻す — Codex指摘)
             if (typeof _gbSlvOverride !== 'undefined') _gbSlvOverride = null;
@@ -6401,13 +6406,22 @@
         function _setGbPick(i, a) { _gbCmpPicks[i] = a; renderGbCompare(); }
 
         function _loadGbExport(month) {
-            // in-flight の Promise ごとキャッシュ (並行 render で二重フェッチしない — Codex指摘)
+            // in-flight の Promise ごとキャッシュ (並行 render で二重フェッチしない — Codex指摘)。
+            // 失敗 (オフライン等) はキャッシュから外す — 永続キャッシュだと通信回復後も
+            // リロードまで失敗を返し続ける (Codex監査 2026-08-06)。404 (その月のデータ無し) は
+            // resp.ok=false で null 確定なのでキャッシュしてよいが、区別が複雑になるだけなので
+            // null は一律再試行に倒す (静的ファイルへの軽い fetch なので実害なし)
             if (_gbExportCache.has(month)) return _gbExportCache.get(month);
             const p = (async () => {
                 try {
                     const resp = await fetch(`./data/gb-export/${month}.json`);
-                    return resp.ok ? await resp.json() : null;
-                } catch { return null; /* ファイルが無い月はカード非表示のまま */ }
+                    const json = resp.ok ? await resp.json() : null;
+                    if (json == null) _gbExportCache.delete(month);
+                    return json;
+                } catch {
+                    _gbExportCache.delete(month);
+                    return null;
+                }
             })();
             _gbExportCache.set(month, p);
             return p;
@@ -9582,11 +9596,18 @@
             await _refreshCoordOnce(identity);
         }
 
-        // active list を取得 → セルフ状態 + 一覧 を描画
+        // active list を取得 → セルフ状態 + 一覧 を描画。
+        // 世代ガード: バックグラウンド前の取得が復帰後の再取得やプレイヤー切替の後に
+        // 完了すると、古い応答が新しいキャッシュ/DOMを上書きする (Codex監査 2026-08-06)
+        let _coordRefreshGen = 0;
         async function _refreshCoordOnce(identity) {
+            const gen = ++_coordRefreshGen;
             try {
                 if (typeof window.supabaseGetActiveFinishCoordinations !== 'function') return;
-                _coordActiveCache = await window.supabaseGetActiveFinishCoordinations();
+                const list = await window.supabaseGetActiveFinishCoordinations();
+                if (gen !== _coordRefreshGen) return;   // より新しい取得が走っている
+                if (getCurrentIdentity()?.id !== identity?.id) return;   // その間に切替
+                _coordActiveCache = list;
                 _coordSelfCache = _coordActiveCache.find(c => c.player_id === identity?.id) || null;
                 _renderCoordSelf(identity);
                 _renderCoordActiveList(identity);
@@ -13691,9 +13712,13 @@
         }
 
         // ===== プラン表示モード: list(縦リスト) / timetable(属性×時間の時間割) =====
-        let _opsPlanViewMode = localStorage.getItem('shirisuko_plan_view') || 'list';
+        // モジュール直下の未ガード読みはストレージ不可環境で以降のスクリプト全体を殺す (Codex監査)
+        let _opsPlanViewMode = 'list', _opsPlanShowTeams = false;
+        try {
+            _opsPlanViewMode = localStorage.getItem('shirisuko_plan_view') || 'list';
+            _opsPlanShowTeams = localStorage.getItem('shirisuko_plan_teams') === '1';   // 時間割チップに編成5キャラ
+        } catch { /* 既定値のまま */ }
         if (!['list', 'timetable'].includes(_opsPlanViewMode)) _opsPlanViewMode = 'timetable';   // 旧 gantt/shift モードからの移行
-        let _opsPlanShowTeams = localStorage.getItem('shirisuko_plan_teams') === '1';   // 時間割チップに編成5キャラを表示
         function setOpsPlanViewMode(mode) {
             _opsPlanViewMode = mode;
             try { localStorage.setItem('shirisuko_plan_view', mode); } catch { /* noop */ }
@@ -16127,7 +16152,9 @@
             // 端末ごとに月1回だけ試行 (成功時マーカー)。サーバ側は差分のみ書くので多重実行も安全。
             if (found[0].source === 'json') {
                 const markKey = `shirisuko_slv_synced_${found[0].key}`;
-                if (!localStorage.getItem(markKey) && typeof window.supabaseSyncSlvFromJson === 'function') {
+                let slvSyncedMark = null;
+                try { slvSyncedMark = localStorage.getItem(markKey); } catch { slvSyncedMark = '1'; /* 読めない環境では同期を諦める (多重実行防止優先) */ }
+                if (!slvSyncedMark && typeof window.supabaseSyncSlvFromJson === 'function') {
                     const rawPlayers = found[0].json.players || found[0].json.raidData?.players || [];
                     window.supabaseSyncSlvFromJson(found[0].key, rawPlayers).then(r => {
                         try { localStorage.setItem(markKey, '1'); } catch { /* noop */ }
@@ -18160,7 +18187,8 @@
         // 復帰時に display を一瞬外して強制リフローし、レンダーレイヤーを作り直す。
         // inline display は '' に戻すので、CSS (メディアクエリ/クラス) 由来の表示状態は壊さない
         function _kickFixedBarsAfterResume() {
-            document.querySelectorAll('#bottomNav, header.header').forEach(el => {
+            // #ptrIndicator / 表示中トーストも fixed+transform の合成レイヤー持ちで同じ穴 (Codex監査)
+            document.querySelectorAll('#bottomNav, header.header, #ptrIndicator, .notification.show').forEach(el => {
                 const prev = el.style.display;   // 意図的な inline 非表示を上書きしない (Codex指摘)
                 el.style.display = 'none';
                 void el.offsetHeight;   // 強制リフロー (レイヤー破棄)
@@ -18263,6 +18291,15 @@
             _ptrEl.style.transform = 'translate(-50%, -70px)';
             _ptrEl.style.opacity = '0';
         }
+        // 引っ張り途中でバックグラウンドに行くと touchend が来ず、インジケータが出っぱなしに
+        // なる (スワイプ側の hidden リセットと同じ穴 — Codex監査 2026-08-06)。更新実行中
+        // (busy) は触らない — 完了処理が自分で閉じる
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && !_ptr.busy && (_ptr.active || _ptr.engaged || _ptr.pull > 0)) {
+                _ptr.active = false; _ptr.engaged = false; _ptr.pull = 0;
+                _ptrHide();
+            }
+        });
         const _PTR_KNOWN_TABS = TAB_REGISTRY.filter(t => t.ptr).map(t => t.name);   // 定義は TAB_REGISTRY (includes 判定のみ)
         async function _ptrRefresh() {
             const name = document.querySelector('.tab-content.active')?.id?.replace('tab-', '');
