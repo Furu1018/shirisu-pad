@@ -18161,9 +18161,10 @@
         // inline display は '' に戻すので、CSS (メディアクエリ/クラス) 由来の表示状態は壊さない
         function _kickFixedBarsAfterResume() {
             document.querySelectorAll('#bottomNav, header.header').forEach(el => {
+                const prev = el.style.display;   // 意図的な inline 非表示を上書きしない (Codex指摘)
                 el.style.display = 'none';
                 void el.offsetHeight;   // 強制リフロー (レイヤー破棄)
-                el.style.display = '';
+                el.style.display = prev;
             });
         }
         document.addEventListener('visibilitychange', () => {
