@@ -31,6 +31,7 @@
     <script defer src="./js/domain/finish.js"></script>
     <script defer src="./js/domain/format.js"></script>
     <script defer src="./js/domain/mockCompare.js"></script>
+    <script defer src="./js/domain/gbCompare.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -3291,6 +3292,9 @@
                 </div>
             </div>
 
+            <!-- GB比較 (しりすこPAD GB のシーズン凍結スナップショット。データが無い月は非表示) -->
+            <div class="dc-card" id="gbCompareCard" style="display:none;margin-top:14px;"></div>
+
             <!-- 注意書き (インライン) -->
             <p style="margin:4px 2px 0 2px;font-size:11px;color:#A4AAB0;line-height:1.5;">⚠️ 他人との比較は参考程度に。過去の自分との比較に役立ててください。</p>
         </div>
@@ -6365,6 +6369,202 @@
                 ${model.rows.length ? rowsHtml : `<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:12px 0;">${attrDef.name}の提出がまだありません。</p>`}
                 <div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${notes.map(escapeHtml).join('<br>')}</div>`;
                 if (typeof initSpIcons === 'function') initSpIcons(card);
+        }
+
+        // ---- GB比較 (しりすこPAD GB のシーズン凍結スナップショット) ----
+        // 純ロジックは js/domain/gbCompare.js (buildIndex / memberPct / filterComps /
+        // optimizeTriple)。ここはデータ収集と描画のみ。
+        // データ: data/gb-export/<month>.json — GB リポジトリの凍結エクスポートを
+        // vendored コピーしたもの (実行時に GB のサーバーへは一切アクセスしない)。
+        let _gbCmpView = 'members';    // 'members' | 'comps' | 'best'
+        let _gbCmpAttr = 'WATER';      // comps ビューの属性 (大文字PT属性)
+        let _gbCmpMode = 'popular';    // 'popular' | 'strong' | 'both'
+        let _gbCmpPicks = ['WATER', 'WATER', 'FIRE'];   // best ビューの3凸属性 (同属性2凸可)
+        let _gbCmpSeq = 0;             // 世代ガード (mockCompare と同じ流儀)
+        const _gbExportCache = new Map();
+        function _setGbView(v) { _gbCmpView = v; renderGbCompare(); }
+        function _setGbAttr(a) { _gbCmpAttr = a; renderGbCompare(); }
+        function _setGbMode(m) { _gbCmpMode = m; renderGbCompare(); }
+        function _setGbPick(i, a) { _gbCmpPicks[i] = a; renderGbCompare(); }
+
+        async function _loadGbExport(month) {
+            if (_gbExportCache.has(month)) return _gbExportCache.get(month);
+            let json = null;
+            try {
+                const resp = await fetch(`./data/gb-export/${month}.json`);
+                if (resp.ok) json = await resp.json();
+            } catch { /* ファイルが無い月はカード非表示のまま */ }
+            _gbExportCache.set(month, json);
+            return json;
+        }
+
+        // 大文字PT属性 ⇄ 表示 (PT_ATTRS は小文字キー)
+        function _gbAttrDef(upper) {
+            return PT_ATTRS.find(a => a.key === String(upper).toLowerCase()) || null;
+        }
+        function _gbAttrChipsHtml(activeUpper, onclickName) {
+            return PT_ATTRS.map(a => {
+                const upper = a.key.toUpperCase();
+                const on = upper === activeUpper;
+                const c = DC_ATTR_COLORS[a.key];
+                return `<button type="button" onclick="${onclickName}('${upper}')" style="flex:none;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${c};"></span>${a.name}</button>`;
+            }).join('');
+        }
+        function _gbFacesHtml(names, size = 26) {
+            return `<span style="display:inline-flex;gap:3px;flex-wrap:wrap;">${names.map(n => _charIconHtml(n, size)).join('')}</span>`;
+        }
+
+        async function renderGbCompare() {
+            const card = document.getElementById('gbCompareCard');
+            if (!card) return;
+            const seq = ++_gbCmpSeq;
+            const month = currentMonthKey;
+            if (!month) { card.style.display = 'none'; return; }
+            const ex = await _loadGbExport(month);
+            if (seq !== _gbCmpSeq) return;
+            if (!ex || !window.gbCompareDomain) { card.style.display = 'none'; return; }
+            // PT属性 → 本家 bossCode の対応。GB側の bossCode と一致しない属性は
+            // ドメイン側でフェイルクローズ (別シーズンの取り違え防止)
+            const codeMap = {};
+            Object.keys(BOSS_ATTRIBUTES).forEach(c => { codeMap[BOSS_ATTRIBUTES[c].attribute] = c; });
+            const idx = gbCompareDomain.buildIndex(ex, codeMap);
+            await ensureNikkeCharsLoaded();   // _charIconHtml の名前解決に必要
+            if (seq !== _gbCmpSeq) return;
+            card.style.display = '';
+
+            let body = '';
+            if (_gbCmpView === 'members') body = _gbMembersHtml(ex, idx);
+            else if (_gbCmpView === 'comps') body = _gbCompsHtml(idx);
+            else body = _gbBestHtml(ex, idx);
+
+            const segBtn = (v, label) => `<button type="button" class="${_gbCmpView === v ? 'active' : ''}" onclick="_setGbView('${v}')">${label}</button>`;
+            card.innerHTML = `
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:11px;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">🌏 GB比較</div>
+                    <span style="font-size:10.5px;color:#A4AAB0;">しりすこPAD GB ${escapeHtml(ex.season)} 凍結データ</span>
+                </div>
+                <div class="ana-seg" style="margin:0 0 10px;">
+                    ${segBtn('members', 'メンバー%')}${segBtn('comps', '編成')}${segBtn('best', '最適3凸')}
+                </div>
+                ${body}
+                ${idx.dropped.length ? `<div style="margin-top:8px;font-size:10px;color:#B45309;">⚠ ${idx.dropped.map(escapeHtml).join(' / ')}</div>` : ''}`;
+            if (typeof initSpIcons === 'function') initSpIcons(card);
+        }
+
+        // ① メンバーの GB中央値% — 各凸を「GB利用者のその属性の真ん中 = 100%」で換算
+        function _gbMembersHtml(ex, idx) {
+            const ratioBase = Number(slvRatioTable?.[String(ex.base?.baseSlv)]);
+            const myName = getCurrentIdentity()?.name ?? null;
+            const noSlv = [];
+            const rows = (currentData || []).map(p => {
+                const ratioP = Number(slvRatioTable?.[String(p.syncLevel)]);
+                if (!(ratioP > 0)) { if ((p.attacks || []).length) noSlv.push(p.player); return null; }
+                const atks = (p.attacks || []).map(a => {
+                    const attr = BOSS_ATTRIBUTES[a.bossCode]?.attribute;
+                    const g = attr ? idx.attrs[attr] : null;
+                    const normMed = g ? gbCompareDomain.normFromFururi(g.attackMedianFururi, g.baseDamage, ratioBase) : null;
+                    return { attr, pct: gbCompareDomain.memberPct(a.damage, ratioP, normMed) };
+                }).filter(x => x.attr);
+                if (!atks.length) return null;
+                const pcts = atks.filter(x => x.pct != null).map(x => x.pct);
+                return { name: p.player, atks, avg: pcts.length ? pcts.reduce((s, x) => s + x, 0) / pcts.length : null };
+            }).filter(Boolean).sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
+
+            const rowHtml = rows.map((r, i) => {
+                const mine = myName != null && r.name === myName;
+                const pills = r.atks.map(x => {
+                    const c = DC_ATTR_COLORS[x.attr.toLowerCase()] || '#8A9097';
+                    const d = _gbAttrDef(x.attr);
+                    return `<span style="font-size:10px;font-weight:900;color:${c};background:${c}14;border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;">${d ? d.name : x.attr} ${x.pct != null ? Math.round(x.pct) + '%' : '—'}</span>`;
+                }).join('');
+                return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
+                    <div style="font-size:11px;font-weight:900;color:#A4AAB0;text-align:center;font-variant-numeric:tabular-nums;">${i + 1}</div>
+                    <div style="min-width:0;">
+                        <div style="font-size:12px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}</div>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${pills}</div>
+                    </div>
+                    <div style="font-size:13px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${r.avg != null ? Math.round(r.avg) + '<small style="font-size:9px;color:#8A9097;">%</small>' : '—'}</div>
+                </div>`;
+            }).join('');
+
+            const notes = [
+                `各凸を「GB利用者 (同属性に凸した人のシーズンベスト・荒らし/締め凸除外済み) の中央値 = 100%」に換算。右端はその平均。`,
+                `GB側は各人のベスト値のため厳しめの基準です。SLv補正済み・ボスの通りやすさは属性中央値で相殺。`,
+            ];
+            if (!(ratioBase > 0)) return `<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:12px 0;">SLv補正テーブルを読み込めないため計算できません。</p>`;
+            if (noSlv.length) notes.push(`SLv未登録のため対象外: ${noSlv.length}人`);
+            return (rows.length ? rowHtml : '<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:12px 0;">表示できる凸データがありません。</p>') +
+                `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${notes.map(escapeHtml).join('<br>')}</div>`;
+        }
+
+        // ② GB編成ブラウズ — 人気 (採用順) / 強い (中央値順) / 強い且つ人気 (採用10人以上かつ属性中央値以上)
+        function _gbCompsHtml(idx) {
+            const g = idx.attrs[_gbCmpAttr];
+            const segBtn = (m, label) => `<button type="button" class="${_gbCmpMode === m ? 'active' : ''}" onclick="_setGbMode('${m}')">${label}</button>`;
+            const head = `
+                <div data-no-swipe style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:9px;-webkit-overflow-scrolling:touch;">${_gbAttrChipsHtml(_gbCmpAttr, '_setGbAttr')}</div>
+                <div class="ana-seg" style="margin:0 0 10px;">${segBtn('popular', '人気')}${segBtn('strong', '強い')}${segBtn('both', '強い且つ人気')}</div>`;
+            if (!g) return head + `<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:12px 0;">この属性のGBデータがありません。</p>`;
+            const list = gbCompareDomain.filterComps(g.comps, _gbCmpMode, g.attackMedianFururi);
+            const rowsHtml = list.map((c, i) => {
+                const medPct = Number.isFinite(g.attackMedianFururi) && g.attackMedianFururi > 0
+                    ? Math.round(c.medianFururi / g.attackMedianFururi * 100) : null;
+                return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;">
+                    <div style="font-size:11px;font-weight:900;color:#A4AAB0;text-align:center;font-variant-numeric:tabular-nums;">${i + 1}</div>
+                    <div style="min-width:0;">${_gbFacesHtml(c.names)}</div>
+                    <div style="text-align:right;">
+                        <div style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${medPct != null ? `中央値比 ${medPct}%` : `ふるり値 ${c.medianFururi.toFixed(2)}`}</div>
+                        <div style="font-size:10px;font-weight:800;color:#8A9097;">採用 ${c.n}人</div>
+                    </div>
+                </div>`;
+            }).join('');
+            const note = `GB利用者 ${g.compCohortN}人の編成つき提出から (採用5人未満の編成は非公開)。中央値比 = その属性のGB全体中央値を100%とした編成中央値。`;
+            return head +
+                (list.length ? rowsHtml : `<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:12px 0;">条件 (採用10人以上かつ属性中央値以上) に合う編成がありません。</p>`) +
+                `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
+        }
+
+        // ③ 最適3凸 — 15キャラ被りなしで Σ(GB中央値×基準ダメージ) 最大の3編成
+        function _gbBestHtml(ex, idx) {
+            const pickRows = _gbCmpPicks.map((sel, i) => `
+                <div data-no-swipe style="display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;">
+                    <span style="flex:none;font-size:10px;font-weight:900;color:#A4AAB0;width:26px;">凸${i + 1}</span>
+                    ${PT_ATTRS.map(a => {
+                        const upper = a.key.toUpperCase();
+                        const on = upper === sel;
+                        const c = DC_ATTR_COLORS[a.key];
+                        return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" style="flex:none;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">${a.name}</button>`;
+                    }).join('')}
+                </div>`).join('');
+            const r = gbCompareDomain.optimizeTriple(idx, _gbCmpPicks);
+            let resultHtml = '';
+            if (r.error) {
+                resultHtml = `<p style="margin:10px 0 0;font-size:12px;color:#A4AAB0;text-align:center;padding:8px 0;">${escapeHtml(r.error)}</p>`;
+            } else {
+                resultHtml = r.results.map((combo, ci) => `
+                    <div style="margin-top:10px;border:1.5px solid ${ci === 0 ? '#6C42F0' : '#EDEFF2'};border-radius:14px;padding:10px 12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+                            <span style="font-size:11px;font-weight:900;color:${ci === 0 ? '#6C42F0' : '#8A9097'};">${ci === 0 ? '🏆 最適' : `案${ci + 1}`}</span>
+                            <span style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">推定合計 ${formatDamage(combo.total)}</span>
+                        </div>
+                        ${combo.comps.map(c => {
+                            const d = _gbAttrDef(c.attr);
+                            const col = DC_ATTR_COLORS[c.attr.toLowerCase()] || '#8A9097';
+                            const g = idx.attrs[c.attr];
+                            const medPct = g && g.attackMedianFururi > 0 ? Math.round(c.medianFururi / g.attackMedianFururi * 100) : null;
+                            return `<div style="display:flex;align-items:center;gap:8px;margin-top:7px;">
+                                <span style="flex:none;font-size:10px;font-weight:900;color:${col};background:${col}14;border-radius:999px;padding:2px 8px;">${d ? d.name : c.attr}</span>
+                                <span style="min-width:0;">${_gbFacesHtml(c.names, 24)}</span>
+                                <span style="flex:none;margin-left:auto;font-size:10px;font-weight:800;color:#8A9097;text-align:right;">${medPct != null ? `中央値比${medPct}%` : ''}<br>採用${c.n}人</span>
+                            </div>`;
+                        }).join('')}
+                    </div>`).join('');
+            }
+            const note = `GB編成中央値 × 基準ダメージの合計が最大になる組み合わせ (15キャラ被りなし・同属性2凸可)。` +
+                `中央値ベースの推定で、ボス残HP・自ユニオンの所持/育成状況・同属性2凸目の減衰は考慮していません。表示は基準SLv ${ex.base?.baseSlv ?? '?'} 換算。`;
+            return pickRows + resultHtml +
+                `<div style="margin-top:10px;font-size:10px;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">${escapeHtml(note)}</div>`;
         }
 
         function renderMyPage() {
@@ -15931,6 +16131,7 @@
             updateStats();
             updateSimulatorPlayerList();
             updateFururiSimPlayerList();
+            renderGbCompare();      // GB比較 (非同期・データが無い月はカード非表示のまま)
         }
 
         // ========== Ranking Table ==========

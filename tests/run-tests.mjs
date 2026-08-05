@@ -10,11 +10,12 @@ import '../js/domain/ocr.js';          // globalThis.ocrDomain (リアーキ ス
 import '../js/domain/finish.js';       // globalThis.finishDomain (リアーキ ステップ2)
 import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ ステップ2)
 import '../js/domain/mockCompare.js';  // globalThis.mockCompareDomain (UI再設計 Stage2)
+import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
 const compute = globalThis.computeOptimalPlanCore;
-const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain, ocrDomain, finishDomain, formatDomain } = globalThis;
+const { normalizeAttrKey, weaknessPtOf, bossAttributeOf, ATTR_KEYS, fururiDomain, ocrDomain, finishDomain, formatDomain, gbCompareDomain } = globalThis;
 
 // ---- テストデータ ヘルパー -------------------------------------------------
 const B = 1e9;   // 1B = 10億
@@ -2072,6 +2073,113 @@ test('完了凸が無い入力は従来どおり (回帰保証)', () => {
     assert.equal(plan.levels[0].bosses[0].attacks.length, 1);
     assert.equal(plan.levels[0].bosses[0].attacks[0].memberName, 'A');
     assert.deepEqual(plan.membersUnknownCompletedTeam, [], '凸が無ければ要確認も空');
+});
+
+// ---- ドメイン: GB比較 (js/domain/gbCompare.js) --------------------------------
+console.log('\ndomain/gbCompare:');
+
+// GBエクスポートの最小フィクスチャ (単位: ふるり値。値は検算しやすい丸数字)
+function gbExportFixture() {
+    const comp = (names, n, med) => ({
+        compKey: [...names].sort().join('|'),
+        members: names.map(nm => ({ gbId: nm + '.webp', name: nm })),
+        n, medianFururi: med, arrangements: [],
+    });
+    return {
+        schemaVersion: 1, season: '2026-08',
+        base: {
+            baseSlv: 558,
+            attributes: {
+                WATER: { bossCode: 'H.S.T.A.', baseDamage: 10e9 },
+                FIRE: { bossCode: 'A.N.M.I.', baseDamage: 20e9 },
+            },
+        },
+        attributes: {
+            WATER: {
+                attackBenchmark: { n: 100, medianFururi: 1.0 },
+                compCohortN: 60,
+                comps: [
+                    comp(['A', 'B', 'C', 'D', 'E'], 30, 1.2),
+                    comp(['A', 'B', 'C', 'D', 'F'], 12, 1.5),
+                    comp(['G', 'H', 'I', 'J', 'K'], 8, 0.9),
+                ],
+            },
+            FIRE: {
+                attackBenchmark: { n: 80, medianFururi: 1.0 },
+                compCohortN: 40,
+                comps: [
+                    comp(['L', 'M', 'N', 'O', 'P'], 20, 1.0),
+                    comp(['A', 'M', 'N', 'O', 'P'], 15, 1.4),   // WATER人気編成と A が被る
+                ],
+            },
+        },
+    };
+}
+const GB_CODES = { WATER: 'H.S.T.A.', FIRE: 'A.N.M.I.' };
+
+test('gbCompare: norm換算とメンバー%の往復', () => {
+    const g = gbCompareDomain;
+    // fururi 1.2 × base 10B ÷ ratio(558)=4000 → norm 3e6
+    const norm = g.normFromFururi(1.2, 10e9, 4000);
+    assert.equal(norm, 3e6);
+    // メンバー: damage 6e9, ratio(自SLv)=1000 → 自norm 6e6 → 200%
+    assert.equal(g.memberPct(6e9, 1000, norm), 200);
+    assert.equal(g.normFromFururi(null, 10e9, 4000), null);
+    assert.equal(g.memberPct(6e9, 0, norm), null, '係数0はnull (0除算防止)');
+});
+
+test('gbCompare: buildIndex はボスコード不一致・名前未解決をフェイルクローズ', () => {
+    const g = gbCompareDomain;
+    const ex = gbExportFixture();
+    ex.attributes.WATER.comps[0].members[0].name = null;   // 名前未解決
+    const idx = g.buildIndex(ex, { WATER: 'H.S.T.A.', FIRE: '別コード' });
+    assert.ok(idx.attrs.WATER, 'コード一致の属性は残る');
+    assert.equal(idx.attrs.FIRE, undefined, 'コード不一致の属性は除外');
+    assert.equal(idx.attrs.WATER.comps.length, 2, '名前未解決の編成は除外');
+    assert.ok(idx.dropped.some(d => d.includes('FIRE')), '除外理由が記録される');
+});
+
+test('gbCompare: 絞り込み (人気=採用順 / 強い=中央値順 / 両方=n>=10かつ属性中央値以上)', () => {
+    const g = gbCompareDomain;
+    const idx = g.buildIndex(gbExportFixture(), GB_CODES);
+    const comps = idx.attrs.WATER.comps;
+    assert.equal(g.filterComps(comps, 'popular')[0].n, 30);
+    assert.equal(g.filterComps(comps, 'strong')[0].medianFururi, 1.5);
+    const both = g.filterComps(comps, 'both', 1.0);
+    assert.deepEqual(both.map(c => c.n), [12, 30], 'n>=10 かつ 中央値>=1.0 を中央値順');
+});
+
+test('gbCompare: 3凸最適化 — 15キャラ被りなし・同属性2凸・決定的順序', () => {
+    const g = gbCompareDomain;
+    const idx = g.buildIndex(gbExportFixture(), GB_CODES);
+    // WATER + FIRE + FIRE: FIRE の2編成 (L..P / A,M,N,O,P) は M,N,O,P が被るため
+    // 同属性2凸が成立せず解なし → error が立ち results は空 (黙って劣化しない)
+    const r = g.optimizeTriple(idx, ['WATER', 'FIRE', 'FIRE']);
+    assert.equal(r.results.length, 0);
+    assert.ok(typeof r.error === 'string' && r.error.includes('組み合わせ'), '解なしの理由を返す');
+    // WATER×2 + FIRE なら組める: (A..E)+(G..K) + FIRE(L..P) が最大
+    const r2 = g.optimizeTriple(idx, ['WATER', 'WATER', 'FIRE']);
+    assert.equal(r2.error, null);
+    const b2 = r2.results[0];
+    assert.equal(b2.comps.length, 3);
+    const all = b2.comps.flatMap(c => c.names);
+    assert.equal(new Set(all).size, 15, '15キャラ被りなし');
+    // 目的関数: Σ fururi×baseDamage。最適は (A,B,C,D,F:1.5×10B)+(G..K:0.9×10B)+(L..P:1.0×20B)=44B
+    // (人気トップの A..E:1.2 ではなく、被り制約下で中央値の高い ABCDF が選ばれる)
+    assert.equal(b2.total, 44e9);
+    assert.ok(b2.comps.some(c => c.names.includes('F')), '高中央値編成 (ABCDF) が採用される');
+    // 同属性で同じ編成の2度使いは禁止されている
+    const keys = b2.comps.map(c => c.attr + ':' + c.key);
+    assert.equal(new Set(keys).size, 3);
+});
+
+test('gbCompare: 属性の順序違いの同一組は重複除去される', () => {
+    const g = gbCompareDomain;
+    const idx = g.buildIndex(gbExportFixture(), GB_CODES);
+    const a = g.optimizeTriple(idx, ['WATER', 'WATER', 'FIRE']);
+    const b = g.optimizeTriple(idx, ['FIRE', 'WATER', 'WATER']);
+    assert.equal(a.results.length, b.results.length);
+    assert.equal(a.results[0]?.total, b.results[0]?.total, '順序が違っても同じ最適解');
 });
 
 // ---- 結果 --------------------------------------------------------------------
