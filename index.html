@@ -5779,6 +5779,8 @@
                 localStorage.removeItem(IDENTITY_KEY);
             }
             updateIdentityHeader();
+            // GB比較の換算SLv: 手動上書きは前の人の値なので破棄 (自分のSLvに戻す — Codex指摘)
+            if (typeof _gbSlvOverride !== 'undefined') _gbSlvOverride = null;
             // プレイヤー固有データを使うタブのキャッシュを無効化
             if (typeof _invalidateTabRenderCache === 'function') {
                 _invalidateTabRenderCache('mypage');
@@ -6578,19 +6580,21 @@
                     }).join('')}
                 </div>`).join('');
             // SLv換算: 基準SLv → 表示SLv (上書き > 自分のSLv) への攻撃力係数比。
-            // どちらか欠けたら基準のまま (係数が引けないSLvも基準に倒す)
+            // どちらか欠けたら基準のまま (係数が引けないSLvも基準に倒す)。
+            // baseSlv は外部データ由来なので数値に強制してから使う (Codex指摘)
             const effSlv = _gbSlvOverride ?? mySlv;
-            const ratioBase = Number(slvRatioTable?.[String(ex.base?.baseSlv)]);
+            const baseSlvNum = Number(ex.base?.baseSlv);
+            const ratioBase = Number(slvRatioTable?.[String(baseSlvNum)]);
             const ratioEff = effSlv != null ? Number(slvRatioTable?.[String(effSlv)]) : NaN;
             const scale = ratioBase > 0 && ratioEff > 0 ? ratioEff / ratioBase : 1;
             const slvLabel = scale !== 1
                 ? `SLv ${effSlv} 換算${_gbSlvOverride == null ? ' (あなたのSLv)' : ''}`
-                : `GB基準SLv ${ex.base?.baseSlv ?? '?'} 換算`;
+                : `GB基準SLv ${Number.isFinite(baseSlvNum) ? baseSlvNum : '?'} 換算`;
             const slvRow = `
                 <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px;">
                     <span style="flex:none;font-size:10px;font-weight:900;color:#A4AAB0;width:26px;">SLv</span>
                     <input type="number" inputmode="numeric" min="1" max="999" value="${effSlv ?? ''}"
-                        placeholder="${ex.base?.baseSlv ?? ''}" onchange="_setGbSlv(this.value)"
+                        placeholder="${Number.isFinite(baseSlvNum) ? baseSlvNum : ''}" onchange="_setGbSlv(this.value)"
                         style="width:82px;padding:6px 8px;border:1.5px solid #E3E5E8;border-radius:10px;font-size:13px;font-weight:800;font-family:inherit;color:#14161A;text-align:center;background:#fff;">
                     ${_gbSlvOverride != null
                         ? `<button type="button" onclick="_setGbSlv('')" style="border:1.5px solid #E3E5E8;background:#fff;color:#8A9097;border-radius:999px;padding:5px 11px;font-size:10px;font-weight:900;font-family:inherit;cursor:pointer;">↩ 自分のSLvに戻す</button>`
