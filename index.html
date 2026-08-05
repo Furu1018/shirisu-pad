@@ -6387,15 +6387,17 @@
         function _setGbMode(m) { _gbCmpMode = m; renderGbCompare(); }
         function _setGbPick(i, a) { _gbCmpPicks[i] = a; renderGbCompare(); }
 
-        async function _loadGbExport(month) {
+        function _loadGbExport(month) {
+            // in-flight の Promise ごとキャッシュ (並行 render で二重フェッチしない — Codex指摘)
             if (_gbExportCache.has(month)) return _gbExportCache.get(month);
-            let json = null;
-            try {
-                const resp = await fetch(`./data/gb-export/${month}.json`);
-                if (resp.ok) json = await resp.json();
-            } catch { /* ファイルが無い月はカード非表示のまま */ }
-            _gbExportCache.set(month, json);
-            return json;
+            const p = (async () => {
+                try {
+                    const resp = await fetch(`./data/gb-export/${month}.json`);
+                    return resp.ok ? await resp.json() : null;
+                } catch { return null; /* ファイルが無い月はカード非表示のまま */ }
+            })();
+            _gbExportCache.set(month, p);
+            return p;
         }
 
         // 大文字PT属性 ⇄ 表示 (PT_ATTRS は小文字キー)
@@ -6429,7 +6431,7 @@
             const codeMap = {};
             Object.keys(BOSS_ATTRIBUTES).forEach(c => { codeMap[BOSS_ATTRIBUTES[c].attribute] = c; });
             const idx = gbCompareDomain.buildIndex(ex, codeMap);
-            await ensureNikkeCharsLoaded();   // _charIconHtml の名前解決に必要
+            try { await getNikkeCharsCache(); } catch { /* アイコン未解決でも頭文字タイルで劣化表示 */ }
             if (seq !== _gbCmpSeq) return;
             card.style.display = '';
 

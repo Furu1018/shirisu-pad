@@ -2176,10 +2176,16 @@ test('gbCompare: 3凸最適化 — 15キャラ被りなし・同属性2凸・決
 test('gbCompare: 属性の順序違いの同一組は重複除去される', () => {
     const g = gbCompareDomain;
     const idx = g.buildIndex(gbExportFixture(), GB_CODES);
-    const a = g.optimizeTriple(idx, ['WATER', 'WATER', 'FIRE']);
-    const b = g.optimizeTriple(idx, ['FIRE', 'WATER', 'WATER']);
-    assert.equal(a.results.length, b.results.length);
-    assert.equal(a.results[0]?.total, b.results[0]?.total, '順序が違っても同じ最適解');
+    // topK を全件にして具体的な件数で検証する (dedup を外すと WATER 2枠の入れ替えで
+    // 同一組が2回ずつ現れ件数が倍になる — 上位だけ見る検査では空振りするため)。
+    // WATER の被りなしペアは {A..E, G..K} と {ABCDF, G..K} の2通り × FIRE(L..P) = 2組
+    const a = g.optimizeTriple(idx, ['WATER', 'WATER', 'FIRE'], { topK: 99 });
+    assert.equal(a.results.length, 2, '順序入れ替えの重複が除去されて2組');
+    const keys = a.results.map(r => r.comps.map(c => c.attr + ':' + c.key).sort().join('/'));
+    assert.equal(new Set(keys).size, 2, '同一の組が2度現れない');
+    const b = g.optimizeTriple(idx, ['FIRE', 'WATER', 'WATER'], { topK: 99 });
+    assert.equal(b.results.length, 2);
+    assert.equal(a.results[0].total, b.results[0].total, 'picks の順序が違っても同じ最適解');
 });
 
 // ---- 結果 --------------------------------------------------------------------
