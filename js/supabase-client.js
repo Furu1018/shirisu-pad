@@ -1866,6 +1866,23 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
     return data;
 };
 
+// 配信の中止 (取り下げ): そのシーズンの配信プランを全削除し、メンバーの画面から消す。
+// plan_acks は published_plans への FK を持たない (28_plan_acks.sql) ので、
+// 宙に浮いた「確認済み」を残さないよう同シーズンぶんを一緒に掃除する。
+// 戻り値: 削除した配信の件数 (0 = もともと配信なし)。
+window.supabaseUnpublishPlan = async function (seasonId, actorName = null) {
+    const sid = Number(seasonId);
+    if (!sid) throw new Error('シーズンが特定できないため中止できません');
+    const { data, error } = await supabase
+        .from('published_plans').delete().eq('season_id', sid).select('id');
+    if (error) throw error;
+    // acks の掃除は失敗しても中止自体は成立している (配信は消えている) ので警告どまり
+    const ackRes = await supabase.from('plan_acks').delete().eq('season_id', sid);
+    if (ackRes.error) console.warn('[unpublish] 確認済みの掃除に失敗:', ackRes.error.message);
+    window.supabaseLogActivity?.('ops', '凸プランの配信を中止', { actorName: actorName || null });
+    return (data || []).length;
+};
+
 // シーズンの凸をプレイヤー別に集計 (提出漏れチェック用)
 // 戻り値: { [playerId]: { count, damageRaw } }
 window.supabaseLoadSeasonAttackStats = async function (seasonId) {

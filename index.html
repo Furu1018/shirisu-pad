@@ -332,50 +332,92 @@
             from { transform: translateY(-12px) rotate(-2deg) scale(0.96); opacity: 0; }
         }
         .dc-dmg-panel.swap-in { animation: dmg-swap-in 0.2s ease; }
-        /* 配信プランで採用された編成: 文言は置かず、枠をホワホワ光らせて「選ばれている」を伝える */
+        /* 配信プランで採用された編成: 文言は置かず、属性色の枠をホワホワ光らせて伝える。
+           色は JS が --pk (属性色) + --pkA/--pkB/--pkC (8桁hexの透過違い) をインラインで渡す
+           — keyframes 内の var() は適用要素で解決されるので属性ごとに色が変わる */
         @keyframes planPickGlow {
-            0%, 100% { box-shadow: 0 0 0 1px rgba(108,66,240,0.30), 0 0 9px 0 rgba(108,66,240,0.16); }
-            50%      { box-shadow: 0 0 0 1px rgba(108,66,240,0.55), 0 0 18px 3px rgba(108,66,240,0.34); }
+            0%, 100% { box-shadow: 0 0 0 1px var(--pkA), 0 0 9px 0 var(--pkC); }
+            50%      { box-shadow: 0 0 0 1px var(--pkB), 0 0 18px 3px var(--pkA); }
         }
         .dc-dmg-panel.planpick {
-            border: 1.5px solid rgba(108,66,240,0.55);
-            background: linear-gradient(180deg, rgba(108,66,240,0.05), #F9FAFB 60%);
+            border: 1.5px solid var(--pkB);
+            background: linear-gradient(180deg, var(--pkC), #F9FAFB 60%);
             animation: planPickGlow 2.6s ease-in-out infinite;
         }
+        /* 属性アイコンの周りを光がぐるぐる回る (実機FB 2026-08-07)。
+           ラッパの ::before に conic-gradient を敷き、アイコン本体 (不透明背景) を
+           上に重ねてリング状に見せる — mask を使わないので Safari でも確実に出る */
+        .dc-dmg-chipwrap { position: relative; flex: none; }
+        .dc-dmg-chipwrap > .dc-dmg-chip { position: relative; z-index: 1; }
+        .dc-dmg-panel.planpick .dc-dmg-chipwrap::before {
+            content: ''; position: absolute; inset: -3.5px; border-radius: 12px;
+            background: conic-gradient(from 0deg, transparent 0 38%, var(--pk) 60%, #FFFFFF 70%, var(--pk) 80%, transparent 100%);
+            animation: planPickSpin 2.4s linear infinite;
+        }
+        @keyframes planPickSpin { to { transform: rotate(360deg); } }
         /* 重ねカード (2編成持ち) は影で厚みを出しているので、光らせる影を後ろに足す */
         .dc-dmg-panel.stacked.planpick {
             animation: none;
             box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
-                        0 0 0 1px rgba(108,66,240,0.30), 0 0 9px 0 rgba(108,66,240,0.16);
+                        0 0 0 1px var(--pkA), 0 0 9px 0 var(--pkC);
         }
         @media (prefers-reduced-motion: no-preference) {
             .dc-dmg-panel.stacked.planpick { animation: planPickStackGlow 2.6s ease-in-out infinite; }
             @keyframes planPickStackGlow {
                 0%, 100% { box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
-                                       0 0 0 1px rgba(108,66,240,0.30), 0 0 9px 0 rgba(108,66,240,0.16); }
+                                       0 0 0 1px var(--pkA), 0 0 9px 0 var(--pkC); }
                 50%      { box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
-                                       0 0 0 1px rgba(108,66,240,0.55), 0 0 18px 3px rgba(108,66,240,0.34); }
+                                       0 0 0 1px var(--pkB), 0 0 18px 3px var(--pkA); }
             }
         }
         @media (prefers-reduced-motion: reduce) {
             .dc-dmg-panel.planpick { animation: none;
-                box-shadow: 0 0 0 1px rgba(108,66,240,0.45), 0 0 12px 1px rgba(108,66,240,0.25); }
+                box-shadow: 0 0 0 1px var(--pkB), 0 0 12px 1px var(--pkA); }
+            .dc-dmg-panel.planpick .dc-dmg-chipwrap::before { animation: none; }
         }
         /* ①⇄② の入れ替えアニメは光より優先する (planpick の animation に潰されるため、
            詳細度を上げて後に置く)。切替中は光を止めて、終わったら戻る */
         .dc-dmg-panel.planpick.swap-out { animation: dmg-swap-out 0.14s ease forwards; }
         .dc-dmg-panel.planpick.swap-in  { animation: dmg-swap-in 0.2s ease; }
-        /* 「めくった先が採用編成」のヒント: 文言を置かずバッジ側を光らせる */
+        /* 「めくった先が採用編成」のヒント: 文言を置かずバッジ側を光らせる (属性色) */
         @keyframes pickHintPulse {
-            0%, 100% { box-shadow: 0 2px 6px rgba(20,22,26,0.25), 0 0 0 0 rgba(108,66,240,0.55); }
-            50%      { box-shadow: 0 2px 6px rgba(20,22,26,0.25), 0 0 0 5px rgba(108,66,240,0.00); }
+            0%, 100% { box-shadow: 0 2px 6px rgba(20,22,26,0.25), 0 0 0 0 var(--pkB); }
+            50%      { box-shadow: 0 2px 6px rgba(20,22,26,0.25), 0 0 0 5px transparent; }
         }
         .dc-dmg-slotbadge.pickhint {
-            background: linear-gradient(135deg, #7A5AF8, #5B2BE0);
+            background: var(--pk, #5B2BE0);
             animation: pickHintPulse 2.2s ease-out infinite;
         }
         @media (prefers-reduced-motion: reduce) {
-            .dc-dmg-slotbadge.pickhint { animation: none; box-shadow: 0 0 0 2px rgba(108,66,240,0.45); }
+            .dc-dmg-slotbadge.pickhint { animation: none; box-shadow: 0 0 0 2px var(--pkB); }
+        }
+
+        /* === 残り戦闘可能メンバー: 配信プランの採用PT + 2編成の入れ替え (実機FB 2026-08-07) === */
+        .dc-rem-cell.has2 { position: relative; cursor: pointer; box-shadow: 2px 2px 0 -0.5px #fff, 2px 2px 0 0 rgba(20,22,26,0.13); }
+        .dc-rem-cell.planpick { position: relative; animation: remPickGlow 2.6s ease-in-out infinite; }
+        @keyframes remPickGlow {
+            0%, 100% { box-shadow: inset 0 0 0 1.5px var(--pkA), 0 0 5px 0 var(--pkC); }
+            50%      { box-shadow: inset 0 0 0 1.5px var(--pkB), 0 0 11px 2px var(--pkA); }
+        }
+        .dc-rem-cell.has2.planpick {
+            animation: remPickStackGlow 2.6s ease-in-out infinite;
+        }
+        @keyframes remPickStackGlow {
+            0%, 100% { box-shadow: 2px 2px 0 -0.5px #fff, 2px 2px 0 0 rgba(20,22,26,0.13), inset 0 0 0 1.5px var(--pkA); }
+            50%      { box-shadow: 2px 2px 0 -0.5px #fff, 2px 2px 0 0 rgba(20,22,26,0.13), inset 0 0 0 1.5px var(--pkB), 0 0 11px 2px var(--pkA); }
+        }
+        /* めくった先が採用編成: スロットバッジ側を光らせる (カード本体は光らせない) */
+        .dc-rem-slot {
+            position: absolute; top: -4px; right: -4px; min-width: 13px; height: 13px;
+            border-radius: 999px; background: #14161A; color: #fff;
+            font-size: 9px; font-weight: 900; line-height: 13px; text-align: center;
+        }
+        .dc-rem-slot.pickhint { background: var(--pk, #5B2BE0); animation: pickHintPulse 2.2s ease-out infinite; }
+        .dc-rem-cell.swap-out { animation: dmg-swap-out 0.13s ease forwards; }
+        .dc-rem-cell.swap-in  { animation: dmg-swap-in 0.18s ease; }
+        @media (prefers-reduced-motion: reduce) {
+            .dc-rem-cell.planpick, .dc-rem-cell.has2.planpick, .dc-rem-slot.pickhint { animation: none; }
+            .dc-rem-cell.planpick { box-shadow: inset 0 0 0 1.5px var(--pkB); }
         }
         /* ④ タップ当たり判定の拡大: 見た目はそのまま、指の周囲4pxまで反応を広げる
            (::before を装飾に使うボタンは除外して衝突を回避) */
@@ -3093,6 +3135,7 @@
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                         <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#7A5AF8,#5B2BE0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(108,66,240,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
                         <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのホームにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#2ED97F,#18C26B);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);"><span data-sp-icon="send" data-sp-size="13"></span> 配信</button>
+                        <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランを取り下げてメンバーの画面から消す" style="display:none;padding:7px 11px;border-radius:8px;border:1px solid rgba(255,61,68,0.35);background:#fff;color:#FF3D44;font-size:11px;font-weight:800;cursor:pointer;">🚫 配信中止</button>
                     </div>
                 </div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#8A9097;line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
@@ -7373,6 +7416,10 @@
             return order;
         }
 
+        // 「配信プランで採用」の光る枠を属性色で出すためのCSS変数一式。
+        // 8桁hex (RRGGBBAA) で透過を作る — color-mix と違い古い Safari でも確実に効く
+        const _pkVars = (c) => `--pk:${c};--pkA:${c}4D;--pkB:${c}8C;--pkC:${c}26;`;
+
         // 模擬パネルの表示スロット (attr -> 1|2)。②があるカードは ①⇄② を入れ替えられる
         let _myDmgPanelSlots = {};
         // 配信プランで自分が使う編成 (弱点PT属性 -> Set<slot>)。
@@ -7525,11 +7572,13 @@
                     ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="${isPickedOther ? 'めくると配信プランで採用された編成' : '編成①⇄②を入れ替え'}">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}${pickTitle}" data-attr="${a.key}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}${pickTitle}" data-attr="${a.key}" style="${_pkVars(c)}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                            <div class="dc-dmg-chip" style="background:${c};">
-                                <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;">
+                            <div class="dc-dmg-chipwrap">
+                                <div class="dc-dmg-chip" style="background:${c};">
+                                    <img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:24px;height:24px;">
+                                </div>
                             </div>
                             ${hasVal
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
@@ -12126,6 +12175,8 @@
             renderOpsSeasonCtlSummary(season, bosses);
             renderOpsBossSummary();
             renderOpsRemainingList();
+            _refreshOpsPlanPicksFromPublished();   // 残凸表の「採用PT」枠取り (配信中プラン由来)
+            _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
             else finishListEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
         }
@@ -12215,6 +12266,19 @@
                 btn.style.color = fururi ? '#fff' : '#5A6068';
             }
             renderOpsRemainingList();
+        }
+
+        // 残凸表のセルで表示中の編成スロット (key = `${playerId}:${attr}`)。
+        // タップで ①⇄② を入れ替える (2編成あるセルだけ)
+        const _opsRemSlot = new Map();
+        function flipOpsRemCell(playerId, attrKey) {
+            const k = `${playerId}:${attrKey}`;
+            _opsRemSlot.set(k, _opsRemSlot.get(k) === 2 ? 1 : 2);
+            document.querySelector(`.dc-rem-cell[data-flip="${k}"]`)?.classList.add('swap-out');
+            setTimeout(() => {
+                renderOpsRemainingList();
+                document.querySelector(`.dc-rem-cell[data-flip="${k}"]`)?.classList.add('swap-in');
+            }, 130);
         }
 
         function renderOpsRemainingList() {
@@ -12391,24 +12455,50 @@
                 return scaled > 0 ? dmgB / scaled : null;
             };
             const fururiMode = _opsRemainingMode === 'fururi';
+            // 属性ごとの編成一覧 (1属性2編成対応)。loadouts が無い旧データはベスト値1件に劣化
+            const loadoutsOf = (p, key) => {
+                const arr = Array.isArray(p.loadoutsByAttr?.[key])
+                    ? p.loadoutsByAttr[key].filter(lo => Number(lo?.dmgB) > 0) : [];
+                if (arr.length) return [...arr].sort((a, b) => (a.slot || 1) - (b.slot || 1));
+                const v = Number(p.damagesByAttr?.[key]) || 0;
+                return v > 0 ? [{ dmgB: v, slot: 1 }] : [];
+            };
             const renderCell = (p, attr, used) => {
-                const v = p.damagesByAttr?.[attr.key];
-                if (v == null || v <= 0) return `<div class="dc-rem-cell unset">─</div>`;
+                const los = loadoutsOf(p, attr.key);
+                if (los.length === 0) return `<div class="dc-rem-cell unset">─</div>`;
+                const flipKey = `${p.id}:${attr.key}`;
+                const has2 = los.length >= 2;
+                // 表示スロット (タップで①⇄②)。②を消した直後などのズレは①に倒す
+                const shownIdx = has2 && _opsRemSlot.get(flipKey) === 2 ? 1 : 0;
+                const shown = los[shownIdx];
+                const shownSlot = Number(shown.slot) === 2 ? 2 : 1;
+                const v = Number(shown.dmgB);
                 let text, tip;
                 if (fururiMode) {
-                    const s = fururiOf(p, attr.key, Number(v));
+                    const s = fururiOf(p, attr.key, v);
                     text = s != null ? s.toFixed(2) : '—';
                     tip = s != null
-                        ? `${attr.name}PT ふるり値 ${s.toFixed(2)} (ダメージ ${Number(v).toFixed(1)}B / SLv${p.syncLevel || '?'})`
+                        ? `${attr.name}PT ふるり値 ${s.toFixed(2)} (ダメージ ${v.toFixed(1)}B / SLv${p.syncLevel || '?'})`
                         : `${attr.name}PT ふるり値算出不可 (基準データかSLv不足)`;
                 } else {
-                    text = Number(v).toFixed(1);
-                    tip = `${attr.name}PT ${Number(v).toFixed(1)}B`;
+                    text = v.toFixed(1);
+                    tip = `${attr.name}PT ${v.toFixed(1)}B`;
                 }
                 if (used.has(attr.key)) {
                     return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${text}</div>`;
                 }
-                return `<div class="dc-rem-cell" style="color:#14161A;background:${attr.color}1A;" title="${tip}">${text}</div>`;
+                // 配信/算出プランで採用された属性か (2編成ならどちらが採用されたかまで)
+                const picked = _opsPlanPicks.get(flipKey);
+                const pickedVisible = !!picked && picked.has(shownSlot);
+                const pickedOther = !!picked && !pickedVisible;
+                if (picked) {
+                    tip += ` — プランで採用${has2 ? ` (編成${[...picked].sort().map(s => s === 2 ? '②' : '①').join('・')})` : ''}`;
+                }
+                const badge = has2
+                    ? `<span class="dc-rem-slot${pickedOther ? ' pickhint' : ''}">${shownSlot === 2 ? '②' : '①'}</span>` : '';
+                const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}`;
+                const onclick = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
+                return `<div class="${cls}" data-flip="${flipKey}"${onclick} style="color:#14161A;background:${attr.color}1A;${_pkVars(attr.color)}" title="${escapeHtml(tip)}${has2 ? ' / タップで編成①⇄②' : ''}">${text}${badge}</div>`;
             };
             const renderMemberRow = (p) => {
                 const used = usedAttrsFor(p);
@@ -12501,11 +12591,15 @@
                     </div>`;
             }
 
+            const pickLegend = _opsPlanPickSource
+                ? `<div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:linear-gradient(135deg,#FF3D44,#2E8BFF,#18C26B);box-shadow:0 0 6px 1px rgba(20,22,26,0.18);display:inline-block;"></span>${_opsPlanPickSource === 'published' ? '配信中プラン' : '算出プラン'}で採用 (属性色に光る)</div>` : '';
+            const slotLegend = `<div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:#EDEFF2;box-shadow:2px 2px 0 -0.5px #fff,2px 2px 0 0 rgba(20,22,26,0.13);display:inline-block;"></span>2編成 (タップで①⇄②)</div>`;
             html += `
                 <div style="display:flex;flex-wrap:wrap;gap:9px 14px;margin-top:13px;padding-top:11px;border-top:1px solid #F0F1F3;">
                     <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:#FF3D441A;display:inline-block;"></span>凸可能</div>
                     <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="font-size:11px;text-decoration:line-through;opacity:0.5;">12.5</span>使用済</div>
                     <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="color:#C9CED3;font-weight:900;">─</span>未登録</div>
+                    ${slotLegend}${pickLegend}
                 </div>`;
 
             listEl.innerHTML = html;
@@ -13711,7 +13805,44 @@
             // 配信時の照合が2回とも新シーズンになって通過し、旧盤面のプランを配信できてしまう
             plan.seasonId = snapshot?.season?.id ?? null;
             _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
+            _setOpsPlanPicks(plan, 'local');   // 残凸表の「採用PT」枠取りに反映
             renderOpsPlanView();
+            _syncOpsUnpublishBtn();
+        }
+
+        // ===== 残凸表に出す「プランで採用された属性/編成」 =====
+        // key = `${memberId}:${weaknessPT}` → 採用された編成スロットの Set。
+        // 出典 (source) は 'local' (いま算出したプラン) / 'published' (配信中のプラン)。
+        // どちらも無ければ空 = 枠取りを出さない
+        let _opsPlanPicks = new Map(), _opsPlanPickSource = null;
+        function _setOpsPlanPicks(plan, source) {
+            const m = new Map();
+            (Array.isArray(plan?.levels) ? plan.levels : []).forEach(lv => {
+                (Array.isArray(lv.bosses) ? lv.bosses : []).forEach(b => {
+                    (Array.isArray(b.attacks) ? b.attacks : []).forEach(a => {
+                        const attr = b.weakness;
+                        if (!attr || a.memberId == null) return;
+                        const k = `${a.memberId}:${attr}`;
+                        if (!m.has(k)) m.set(k, new Set());
+                        m.get(k).add(Number(a.loadoutSlot) === 2 ? 2 : 1);   // 想定外は①に丸める
+                    });
+                });
+            });
+            _opsPlanPicks = m;
+            _opsPlanPickSource = m.size > 0 ? source : null;
+            if (document.getElementById('opsRemainingList')) renderOpsRemainingList();
+        }
+        // 算出プランが無いときは配信中のプランを引いて枠取りの出典にする
+        let _opsPlanPicksSeq = 0;
+        async function _refreshOpsPlanPicksFromPublished() {
+            if (_opsLastPlan) return;   // 手元の算出結果が優先 (運営がいま見ているもの)
+            const seq = ++_opsPlanPicksSeq;
+            try {
+                if (typeof window.supabaseGetPublishedPlan !== 'function') return;
+                const pub = await window.supabaseGetPublishedPlan();
+                if (seq !== _opsPlanPicksSeq || _opsLastPlan) return;
+                _setOpsPlanPicks(pub?.plan || null, 'published');
+            } catch { /* 取れなければ枠取り無しのまま */ }
         }
 
         // ===== プラン表示モード: list(縦リスト) / timetable(属性×時間の時間割) =====
@@ -14241,6 +14372,48 @@
             } catch (e) {
                 alert(`❌ 配信失敗: ${e?.message || e}\n\n初回は supabase/17_published_plans.sql を SQL Editor で実行してください。`);
             }
+            _syncOpsUnpublishBtn();
+        }
+
+        // 🚫 配信中止: 配信中のプランを取り下げ、メンバーのホームから消す。
+        // 「組み直す予定だが今のプランで動かれると困る」ときの取り下げ操作 (再配信は通常の📤で可)
+        async function handleOpsUnpublishPlan() {
+            let seasonId = null;
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                seasonId = ctx?.season?.id || null;
+            } catch (e) { console.warn('[unpublish] シーズン取得skip:', e?.message || e); }
+            if (!seasonId) {
+                alert('❌ アクティブシーズンを確認できませんでした。通信を確認して、もう一度お試しください。');
+                return;
+            }
+            if (!confirm('🚫 配信中のプランを取り下げますか？\n\n各メンバーのホームから「配信された凸プラン」が消えます。\n(「確認しました」の記録も消えます。通知は送りません)')) return;
+            try {
+                const me = getCurrentIdentity();
+                const n = await window.supabaseUnpublishPlan(seasonId, me?.name || null);
+                showNotification(n > 0 ? '🚫 配信を中止しました' : '配信中のプランはありませんでした');
+                // 残凸表の枠取りが「配信中プラン」由来なら消す (手元の算出結果由来なら残す)
+                if (_opsPlanPickSource === 'published') _setOpsPlanPicks(null, null);
+                // 自分の画面の配信カードも即時に消す
+                if (typeof renderMyPublishedPlan === 'function') await renderMyPublishedPlan(me);
+            } catch (e) {
+                alert(`❌ 配信の中止に失敗: ${e?.message || e}`);
+            }
+            _syncOpsUnpublishBtn();
+        }
+
+        // 配信中のときだけ「配信中止」ボタンを出す (配信が無い状態で押させない)
+        let _unpublishBtnSeq = 0;
+        async function _syncOpsUnpublishBtn() {
+            const btn = document.getElementById('opsPlanUnpublishBtn');
+            if (!btn) return;
+            const seq = ++_unpublishBtnSeq;
+            let published = null;
+            try {
+                if (typeof window.supabaseGetPublishedPlan === 'function') published = await window.supabaseGetPublishedPlan();
+            } catch { /* 取得できないときは出さない (誤操作防止側に倒す) */ }
+            if (seq !== _unpublishBtnSeq) return;
+            btn.style.display = published ? '' : 'none';
         }
 
         // ========== 運営: ボスHP更新モーダル (Phase 3b) ==========
