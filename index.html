@@ -4435,6 +4435,17 @@
     </div>
 
     <!-- ========== 運営: 模擬提出チェックモーダル ========== -->
+    <!-- ========== 配信プラン: この凸でどれくらい削れるか (読み取り専用の試算) ========== -->
+    <div class="player-select-modal" id="planHpModal">
+        <div class="player-select-content" style="max-width:460px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>🎯 どれくらい削れる?</h2>
+                <button onclick="closePlanHpModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <div id="planHpBody" style="font-size:13px;color:#14161A;">読み込み中…</div>
+        </div>
+    </div>
+
     <div class="player-select-modal" id="opsMockAuditModal">
         <div class="player-select-content" style="max-width:560px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -6315,7 +6326,140 @@
                 <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:${label};margin-bottom:6px;">📌 次にやること</div>
                 <div style="font-size:${hero ? '15px' : '14px'};font-weight:900;color:${ink};line-height:1.5;margin-bottom:4px;">${lead}</div>
                 <div style="font-size:11.5px;color:${sub};line-height:1.65;margin-bottom:11px;">${why}</div>
+                ${_heroPlanStripHtml(identity, hero)}
                 ${cta}${subLink}`;
+        }
+
+        // ヒーロー内の「配信プランの自分の割当」ストリップ (実機FB 2026-08-07)。
+        // 配信後のヒーローは文言だけで空くので、その空間に「どの編成でいつ・どのボスへ」を並べる。
+        // ⚠ タップは**読み取りのみ** (HP予測モーダル) — 交戦宣言はユニオン全体に見える書き込みなので
+        //   誤爆を避け、従来どおり戦闘カードのボスタイル側の確認付き操作に残す (Codex/Fable 合意)
+        let _heroPlanKey = '';   // 描画済みシグネチャ (配信プラン取得後の再描画を1回に抑える)
+        function _heroPlanStripHtml(identity, hero) {
+            const st = _myPubState;
+            if (!st?.plan || st.viewerId !== identity?.id) { _heroPlanKey = ''; return ''; }
+            let rows = [];
+            try { rows = _myPlanRows(st.plan, st.viewerId, st.doneCounts); } catch { return ''; }
+            if (rows.length === 0) { _heroPlanKey = `${st.planId}:none`; return ''; }
+            _heroPlanKey = `${st.planId}:${rows.filter(r => r.done).length}/${rows.length}`;
+            const line = hero ? 'rgba(255,255,255,0.14)' : 'rgba(20,22,26,0.06)';
+            const ink = hero ? '#fff' : '#14161A';
+            const sub = hero ? 'rgba(255,255,255,0.55)' : '#8A9097';
+            const items = rows.map((a, i) => {
+                const ptc = DC_ATTR_COLORS[a.weakness] || '#A4AAB0';
+                const icon = DC_ATTR_ICONS[a.weakness] || '';
+                const time = a.flex ? '⏳隙間' : (a.hourLabel ? String(a.hourLabel) : '未定');
+                const slot = Number(a.loadoutSlot) === 2 ? '②' : '①';
+                const faces = a.team ? renderTeamSnippet(a.team, { size: 20 }) : '';
+                const bn = Number(a.bossNumber);
+                return `
+                <div onclick="openPlanHpModal(${bn}, ${Number(a.level) || 1}, ${Number(a.dmgB) || 0}, ${i})" style="display:flex;align-items:center;gap:8px;padding:7px 2px;${i > 0 ? `border-top:1px solid ${line};` : ''}cursor:pointer;${a.done ? 'opacity:0.5;' : ''}">
+                    <span style="flex:none;width:34px;text-align:center;font-size:11.5px;font-weight:900;color:${ink};font-variant-numeric:tabular-nums;">${escapeHtml(time)}</span>
+                    <span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${ptc};background:${ptc}22;border-radius:999px;padding:2px 7px;">${icon ? `<img loading="lazy" decoding="async" src="${icon}" alt="" style="width:12px;height:12px;">` : ''}B${bn}</span>
+                    <span style="flex:1;min-width:0;display:flex;align-items:center;gap:2px;overflow:hidden;">${faces}</span>
+                    <span style="flex:none;text-align:right;font-size:11px;font-weight:900;color:${ink};font-variant-numeric:tabular-nums;">${a.done ? '✓' : `${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:8px;color:${sub};">B</span>`}<div style="font-size:8.5px;font-weight:800;color:${sub};">編成${slot}</div></span>
+                </div>`;
+            }).join('');
+            return `
+                <div style="margin:2px 0 11px;padding:8px 10px;border-radius:12px;background:${hero ? 'rgba(255,255,255,0.07)' : '#F7F8F9'};">
+                    <div style="font-size:10px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:3px;">📤 配信プランのあなたの凸 — タップで削れ具合を試算</div>
+                    ${items}
+                </div>`;
+        }
+
+        // ===== 「この凸でどれくらい削れる?」試算モーダル (読み取り専用) =====
+        // 配信プランの想定ダメージ × いまの残HP。書き込みは一切しない (交戦宣言は従来どおり
+        // 戦闘カードのボスタイル側)。数字は模擬提出値ベースの想定なので、但し書きを必ず添える
+        let _planHpSeq = 0;
+        function closePlanHpModal() { document.getElementById('planHpModal')?.classList.remove('open'); }
+        async function openPlanHpModal(bossNumber, level, dmgB) {
+            const modal = document.getElementById('planHpModal');
+            const body = document.getElementById('planHpBody');
+            if (!modal || !body) return;
+            const seq = ++_planHpSeq;
+            modal.classList.add('open');
+            body.innerHTML = '<p style="margin:0;color:#8A9097;font-size:12px;">最新の残HPを取得中…</p>';
+            const bn = Number(bossNumber), dmg = Number(dmgB) || 0;
+            let season = null, bosses = [];
+            try {
+                // シートを開いたときだけ1回取り直す (常時ポーリングは増やさない)
+                const fresh = await window.supabaseLoadActiveSeasonWithBosses();
+                season = fresh?.season || null;
+                bosses = fresh?.bosses || [];
+                if (season?.id) {
+                    opsStore.patchBosses(season.id, bosses);
+                    seasonStore.patchBosses(season.id, bosses);
+                }
+            } catch (e) {
+                if (seq !== _planHpSeq) return;
+                body.innerHTML = `<p style="margin:0;color:#FF3D44;font-size:12px;font-weight:700;">最新の残HPを取得できませんでした (${escapeHtml(e?.message || String(e))})</p>`;
+                return;
+            }
+            if (seq !== _planHpSeq) return;
+            // 配信プランのシーズンと今のシーズンが食い違っていたら試算しない (別シーズンの数字を混ぜない)
+            if (_myPubState?.seasonId != null && season?.id != null && Number(_myPubState.seasonId) !== Number(season.id)) {
+                body.innerHTML = '<p style="margin:0;color:#B45309;font-size:12px;font-weight:700;">シーズンが切り替わりました。ホームを再読み込みして最新のプランをご確認ください。</p>';
+                return;
+            }
+            const boss = bosses.find(b => Number(b.boss_number) === bn);
+            if (!boss) {
+                body.innerHTML = '<p style="margin:0;color:#8A9097;font-size:12px;">このボスの情報が見つかりませんでした。</p>';
+                return;
+            }
+            const remB = (Number(boss.remaining_hp_raw) || 0) / 1e9;
+            const totalB = (Number(boss.total_hp_raw) || 0) / 1e9;
+            const infinite = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(season, bosses) && bn === 5;
+            const c = DC_ATTR_COLORS[boss.attribute] || '#6C42F0';
+            const ptc = DC_ATTR_COLORS[weaknessPtOf(boss)] || '#6C42F0';
+            const ptName = PT_ATTRS.find(x => x.key === weaknessPtOf(boss))?.name || '';
+            // 残HPの鮮度 (20_bosses_updated_at.sql 未適用環境では出さない)
+            let fresh = '';
+            if (boss.updated_at) {
+                const min = Math.max(0, Math.round((Date.now() - new Date(boss.updated_at).getTime()) / 60000));
+                fresh = min < 1 ? 'たった今更新' : `${min}分前に更新`;
+            }
+            const row = (k, v, strong) => `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid rgba(20,22,26,0.06);">
+                <span style="font-size:11.5px;font-weight:800;color:#8A9097;">${k}</span>
+                <span style="font-size:${strong ? '17px' : '13.5px'};font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${v}</span></div>`;
+            const fmt = (x) => `${x.toFixed(2)}<span style="font-size:9px;color:#A4AAB0;">B</span>`;
+            let verdict, bars, rows;
+            if (infinite) {
+                verdict = `<div style="padding:11px 13px;border-radius:12px;background:rgba(155,77,255,0.10);color:#7A5BD6;font-size:13px;font-weight:900;">♾️ Lv4 (HP無限) — 与えたダメージがそのまま加算されます</div>`;
+                bars = '';
+                rows = row('想定ダメージ', fmt(dmg), true);
+            } else {
+                const shave = Math.min(dmg, remB);
+                const after = Math.max(0, remB - dmg);
+                const pct = remB > 0 ? Math.min(100, (shave / remB) * 100) : 0;
+                const kill = dmg >= remB && remB > 0;
+                verdict = kill
+                    ? `<div style="padding:11px 13px;border-radius:12px;background:rgba(24,194,107,0.12);color:#0F9D58;font-size:13.5px;font-weight:900;">💥 この凸で撃破できる見込みです<div style="font-size:10.5px;font-weight:800;margin-top:3px;color:#0F9D58;opacity:0.85;">超過ぶん (${(dmg - remB).toFixed(2)}B) はこのボスには入りません</div></div>`
+                    : `<div style="padding:11px 13px;border-radius:12px;background:rgba(245,158,11,0.12);color:#B45309;font-size:13.5px;font-weight:900;">残HPの ${pct.toFixed(0)}% を削る見込み<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">撃破まであと ${(remB - dmg).toFixed(2)}B</div></div>`;
+                bars = `<div style="margin:11px 0 3px;height:12px;border-radius:999px;background:#EDEFF2;overflow:hidden;display:flex;">
+                        <span style="width:${pct.toFixed(1)}%;background:${c};"></span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:9.5px;font-weight:800;color:#A4AAB0;">
+                        <span>あなたの削り ${shave.toFixed(2)}B</span><span>残 ${after.toFixed(2)}B</span>
+                    </div>`;
+                rows = row('配信時の想定ダメージ', fmt(dmg), true)
+                     + row(`現在の残HP${fresh ? ` (${fresh})` : ''}`, fmt(remB))
+                     + row('この凸で削れる', fmt(shave))
+                     + row('予測される残HP', fmt(after))
+                     + (totalB > 0 ? row('全体HPに対して', `${((shave / totalB) * 100).toFixed(1)}%`) : '');
+            }
+            body.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px;margin:2px 0 11px;">
+                    <span style="font-size:14px;font-weight:900;color:#14161A;">B${bn} ${escapeHtml(String(boss.name || boss.boss_code || ''))}</span>
+                    <span style="font-size:10px;font-weight:900;color:${ptc};background:${ptc}22;border-radius:999px;padding:2px 8px;">${escapeHtml(ptName)}PTで</span>
+                    <span style="margin-left:auto;font-size:10px;font-weight:800;color:#A4AAB0;">Lv${Number(level) || 1}</span>
+                </div>
+                ${verdict}${bars}${rows}
+                <p style="margin:11px 0 0;font-size:10px;font-weight:700;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">
+                    ※ ダメージは<b>配信時点のあなたの模擬提出値</b>による想定で、本番の結果を保証するものではありません。<br>
+                    ※ 残HPは<b>運営が最後に記録した値</b>です${fresh ? ` (${escapeHtml(fresh)})` : ''} — ゲーム内では既に変わっている場合があります。<br>
+                    ※ 撃破時の超過ダメージはそのボスには加算されません。<br>
+                    ※ 配信後に模擬を編集していても、ここは<b>配信時のプラン</b>の数字を表示します。
+                </p>`;
         }
 
         // ヒーローの主CTA: 戦闘カードのゲートへスクロールして一瞬ハイライト (H2)
@@ -6809,6 +6953,13 @@
                             planId: pub.id, seasonId: pub.season_id, ack: ackState };
             _renderMyPubBody();
             card.style.display = '';
+            // ヒーローの割当ストリップは _myPubState 依存。プランの取得はこのカードが先に走るので、
+            // 内容が変わったときだけヒーローを描き直す (毎回だと二重フェッチになる)
+            try {
+                const r = _myPlanRows(plan, identity.id, doneCounts);
+                const wantKey = r.length ? `${pub.id}:${r.filter(x => x.done).length}/${r.length}` : `${pub.id}:none`;
+                if (wantKey !== _heroPlanKey) renderMyNextAction(identity);
+            } catch { /* ストリップが出ないだけ */ }
             // 提出カード側にも「この編成が選ばれた」を出す。
             // 配信プランの取得は非同期なので、パネルが先に描かれていることがある → 変化時だけ描き直す
             if (_setMyPlanPicks(plan, identity.id) && typeof renderMyDamagePanels === 'function') {
@@ -6912,11 +7063,11 @@
         }
 
         // 🙋 わたしの凸: 自分の割当をチェックリスト。報告済みは ✓ + 薄く、未報告(現在Lv)は「報告する ▶」
-        function _planMineHtml(plan, viewerId, doneCounts, liveLevel) {
-            const esc = escapeHtml;
-            const curLevel = Number(liveLevel) || Number(plan.startLevel) || 1;   // ライブの current_level 優先
+        // 配信プランから「自分の凸」だけを時系列で取り出す (ホームのヒーロー・配信カード共用)。
+        // done は「配信後に報告した件数」で上から消し込む — 同一ボスの二重✓を防ぐため件数で照合する
+        function _myPlanRows(plan, viewerId, doneCounts) {
             const mine = [];
-            (Array.isArray(plan.levels) ? plan.levels : []).forEach(lv => {
+            (Array.isArray(plan?.levels) ? plan.levels : []).forEach(lv => {
                 (Array.isArray(lv.bosses) ? lv.bosses : []).forEach(b => {
                     (Array.isArray(b.attacks) ? b.attacks : []).forEach(a => {
                         if (a.memberId === viewerId) mine.push({ ...a, level: Number(lv.level) || 1, bossNumber: Number(b.bossNumber), bossName: b.name, attribute: b.attribute, weakness: b.weakness });
@@ -6924,16 +7075,27 @@
                 });
             });
             mine.sort((a, b) => (a.hourIdx ?? 99) - (b.hourIdx ?? 99));
-            if (mine.length === 0) return '<p style="margin:0;font-size:12px;font-weight:700;color:#8A9097;">このプランであなたへの凸割当はありません (凸済み、またはデータ未提出の可能性)。</p>';
-            // 実際に報告した件数ぶんだけ、上から予定行を「済」に消し込む (同一ボスの二重✓防止)
             const remain = new Map(doneCounts || []);
+            mine.forEach(a => {
+                const key = `${a.level}:${Number(a.bossNumber)}`;
+                const rem = remain.get(key) || 0;
+                a.done = rem > 0;
+                if (a.done) remain.set(key, rem - 1);
+            });
+            return mine;
+        }
+
+        function _planMineHtml(plan, viewerId, doneCounts, liveLevel) {
+            const esc = escapeHtml;
+            const curLevel = Number(liveLevel) || Number(plan.startLevel) || 1;   // ライブの current_level 優先
+            const mine = _myPlanRows(plan, viewerId, doneCounts);
+            if (mine.length === 0) return '<p style="margin:0;font-size:12px;font-weight:700;color:#8A9097;">このプランであなたへの凸割当はありません (凸済み、またはデータ未提出の可能性)。</p>';
+            // 済の消し込みは _myPlanRows が済ませている (件数照合で二重✓を防ぐ)
             let doneCount = 0;
             const rows = mine.map(a => {
                 const bn = Number(a.bossNumber);   // インライン onclick へは数値化して埋める (XSS遮断)
-                const key = `${a.level}:${bn}`;    // Lv:ボス で照合 (別Lvの同ボスを取り違えない)
-                const rem = remain.get(key) || 0;
-                const done = rem > 0;
-                if (done) { remain.set(key, rem - 1); doneCount++; }
+                const done = !!a.done;
+                if (done) doneCount++;
                 const reportable = !done && a.level === curLevel;   // 報告は現在開いているLvの割当だけ
                 const c = DC_ATTR_COLORS[a.attribute] || '#A4AAB0';
                 const ptc = DC_ATTR_COLORS[a.weakness] || '#A4AAB0';
