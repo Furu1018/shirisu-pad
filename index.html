@@ -344,17 +344,15 @@
             background: linear-gradient(180deg, var(--pkC), #F9FAFB 60%);
             animation: planPickGlow 2.6s ease-in-out infinite;
         }
-        /* 属性アイコンの周りを光がぐるぐる回る (実機FB 2026-08-07)。
-           ラッパの ::before に conic-gradient を敷き、アイコン本体 (不透明背景) を
-           上に重ねてリング状に見せる — mask を使わないので Safari でも確実に出る */
+        /* 属性アイコンの周りを属性色でぼんやり光らせる (実機FB 2026-08-07:
+           回転はイメージと違ったので静的な光に変更)。ラッパの ::before に
+           リング + ソフトなハローを置き、アイコン本体を上に重ねる */
         .dc-dmg-chipwrap { position: relative; flex: none; }
         .dc-dmg-chipwrap > .dc-dmg-chip { position: relative; z-index: 1; }
         .dc-dmg-panel.planpick .dc-dmg-chipwrap::before {
-            content: ''; position: absolute; inset: -3.5px; border-radius: 12px;
-            background: conic-gradient(from 0deg, transparent 0 38%, var(--pk) 60%, #FFFFFF 70%, var(--pk) 80%, transparent 100%);
-            animation: planPickSpin 2.4s linear infinite;
+            content: ''; position: absolute; inset: -3px; border-radius: 12px;
+            box-shadow: 0 0 0 1.5px var(--pkB), 0 0 11px 2px var(--pkA);
         }
-        @keyframes planPickSpin { to { transform: rotate(360deg); } }
         /* 重ねカード (2編成持ち) は影で厚みを出しているので、光らせる影を後ろに足す */
         .dc-dmg-panel.stacked.planpick {
             animation: none;
@@ -373,7 +371,6 @@
         @media (prefers-reduced-motion: reduce) {
             .dc-dmg-panel.planpick { animation: none;
                 box-shadow: 0 0 0 1px var(--pkB), 0 0 12px 1px var(--pkA); }
-            .dc-dmg-panel.planpick .dc-dmg-chipwrap::before { animation: none; }
         }
         /* ①⇄② の入れ替えアニメは光より優先する (planpick の animation に潰されるため、
            詳細度を上げて後に置く)。切替中は光を止めて、終わったら戻る */
