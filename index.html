@@ -5845,6 +5845,12 @@
             updateIdentityHeader();
             // GB比較の換算SLv: 手動上書きは前の人の値なので破棄 (自分のSLvに戻す — Codex指摘)
             if (typeof _gbSlvOverride !== 'undefined') _gbSlvOverride = null;
+            // 配信プラン由来の表示は前の人のもの。再取得まで残さず即座に消す (Codex指摘)。
+            // DOM も同期的に外す — 再描画は非同期で、それまで他人の割当が見えてしまうため
+            if (typeof _myPubState !== 'undefined') { _myPubState = null; _heroPlanKey = ''; }
+            document.getElementById('heroPlanStrip')?.remove();
+            const _pubCard = document.getElementById('myPublishedPlanCard');
+            if (_pubCard) _pubCard.style.display = 'none';
             // プレイヤー固有データを使うタブのキャッシュを無効化
             if (typeof _invalidateTabRenderCache === 'function') {
                 _invalidateTabRenderCache('mypage');
@@ -6347,6 +6353,10 @@
             const sub = hero ? 'rgba(255,255,255,0.55)' : '#8A9097';
             const items = rows.map((a, i) => {
                 const ptc = DC_ATTR_COLORS[a.weakness] || '#A4AAB0';
+                // 暗いヒーロー面では属性色そのままだと小さい文字のコントラストが足りない
+                // (電撃 #9B4DFF で約3.9:1 — Codex指摘) → 白文字 + 属性色の面で読ませる
+                const pillFg = hero ? '#fff' : ptc;
+                const pillBg = hero ? `${ptc}59` : `${ptc}22`;
                 const icon = DC_ATTR_ICONS[a.weakness] || '';
                 const time = a.flex ? '⏳隙間' : (a.hourLabel ? String(a.hourLabel) : '未定');
                 const slot = Number(a.loadoutSlot) === 2 ? '②' : '①';
@@ -6355,13 +6365,13 @@
                 return `
                 <div onclick="openPlanHpModal(${bn}, ${Number(a.level) || 1}, ${Number(a.dmgB) || 0}, ${i})" style="display:flex;align-items:center;gap:8px;padding:7px 2px;${i > 0 ? `border-top:1px solid ${line};` : ''}cursor:pointer;${a.done ? 'opacity:0.5;' : ''}">
                     <span style="flex:none;width:34px;text-align:center;font-size:11.5px;font-weight:900;color:${ink};font-variant-numeric:tabular-nums;">${escapeHtml(time)}</span>
-                    <span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${ptc};background:${ptc}22;border-radius:999px;padding:2px 7px;">${icon ? `<img loading="lazy" decoding="async" src="${icon}" alt="" style="width:12px;height:12px;">` : ''}B${bn}</span>
+                    <span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${pillFg};background:${pillBg};border-radius:999px;padding:2px 7px;">${icon ? `<img loading="lazy" decoding="async" src="${icon}" alt="" style="width:12px;height:12px;">` : ''}B${bn}</span>
                     <span style="flex:1;min-width:0;display:flex;align-items:center;gap:2px;overflow:hidden;">${faces}</span>
                     <span style="flex:none;text-align:right;font-size:11px;font-weight:900;color:${ink};font-variant-numeric:tabular-nums;">${a.done ? '✓' : `${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:8px;color:${sub};">B</span>`}<div style="font-size:8.5px;font-weight:800;color:${sub};">編成${slot}</div></span>
                 </div>`;
             }).join('');
             return `
-                <div style="margin:2px 0 11px;padding:8px 10px;border-radius:12px;background:${hero ? 'rgba(255,255,255,0.07)' : '#F7F8F9'};">
+                <div id="heroPlanStrip" style="margin:2px 0 11px;padding:8px 10px;border-radius:12px;background:${hero ? 'rgba(255,255,255,0.07)' : '#F7F8F9'};">
                     <div style="font-size:10px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:3px;">📤 配信プランのあなたの凸 — タップで削れ具合を試算</div>
                     ${items}
                 </div>`;
@@ -6384,6 +6394,8 @@
             try {
                 // シートを開いたときだけ1回取り直す (常時ポーリングは増やさない)
                 const fresh = await window.supabaseLoadActiveSeasonWithBosses();
+                // 遅れて返った古い取得で共有ストアを上書きしない (patch より前に世代を見る — Codex指摘)
+                if (seq !== _planHpSeq) return;
                 season = fresh?.season || null;
                 bosses = fresh?.bosses || [];
                 if (season?.id) {
@@ -6892,6 +6904,12 @@
                 // 配信が取り下げられた/シーズンが変わった → 提出カードの採用マークも消す
                 if (_setMyPlanPicks(null, identity.id) && typeof renderMyDamagePanels === 'function') {
                     renderMyDamagePanels(identity);
+                }
+                // ヒーローの割当ストリップも消す (取り下げ後に残り続けるのを防ぐ — Codex指摘)
+                if (_myPubState || _heroPlanKey) {
+                    _myPubState = null;
+                    _heroPlanKey = '';
+                    renderMyNextAction(identity);
                 }
                 return;
             }
