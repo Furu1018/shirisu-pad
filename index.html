@@ -2196,6 +2196,69 @@
             100% { transform: scale(2.2);  opacity: 0; }
         }
 
+        /* ===== ホーム: 配信プランの自分の凸カード =====
+           模擬タブの .dc-dmg-panel と同じ見た目にそろえる (ユーザー要望 2026-08-08)。
+           ヒーロー (黒カード) の上にも置くので、色は on-hero で差し替える */
+        .dc-plan-strip {
+            display: flex; gap: 10px; overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            margin: 0 -16px; padding: 4px 16px 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .dc-plan-strip::-webkit-scrollbar { display: none; }
+        .dc-plan-card {
+            position: relative;
+            flex: none; width: 156px; box-sizing: border-box;
+            scroll-snap-align: start;
+            background: #F9FAFB; border-radius: 14px; padding: 14px;
+            border: 1px solid rgba(20,22,26,0.05);
+            display: block; cursor: pointer; text-align: left; font-family: inherit;
+            transition: transform 0.12s ease, box-shadow 0.15s ease;
+        }
+        .dc-plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
+        .dc-plan-card:active { transform: translateY(0); }
+        .dc-plan-card.on-hero {
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(255,255,255,0.10);
+        }
+        .dc-plan-card.done { opacity: 0.5; }
+        .dc-plan-time {
+            font-size: 15px; font-weight: 900; color: #14161A;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.3px; line-height: 1;
+        }
+        .dc-plan-card.on-hero .dc-plan-time { color: #fff; }
+        .dc-plan-sub { font-size: 10px; font-weight: 800; color: #A4AAB0; letter-spacing: 0.2px; }
+        .dc-plan-card.on-hero .dc-plan-sub { color: rgba(255,255,255,0.5); }
+        .dc-plan-value {
+            font-size: 17px; font-weight: 900; color: #14161A;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1;
+        }
+        .dc-plan-card.on-hero .dc-plan-value { color: #fff; }
+        .dc-plan-unit { font-size: 10px; color: #A4AAB0; font-weight: 800; margin-left: 1px; }
+        .dc-plan-card.on-hero .dc-plan-unit { color: rgba(255,255,255,0.45); }
+        /* 編成5人 (模擬パネルの .dc-dmg-char と同寸) */
+        .dc-plan-chars { display: flex; gap: 4px; margin-top: 11px; }
+        .dc-plan-char {
+            width: 24px; height: 24px; flex: 1; min-width: 0; max-width: 26px;
+            border-radius: 6px; background: #fff; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 800; color: #6B7178;
+            box-shadow: inset 0 0 0 1px rgba(20,22,26,0.08);
+        }
+        .dc-plan-card.on-hero .dc-plan-char {
+            background: rgba(255,255,255,0.10);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14);
+            color: rgba(255,255,255,0.6);
+        }
+        .dc-plan-char img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* 編成①② と 報告済み。
+           ★ 模擬パネルのように絶対配置の中央バッジにすると、幅156px では
+              想定ダメージの数字と重なる (実際に重なった) → 数字の直下に置く */
+        .dc-plan-slot { font-size: 10px; font-weight: 900; color: #5B2BE0; letter-spacing: 0.2px; }
+        .dc-plan-card.on-hero .dc-plan-slot { color: #C3B2FF; }
+        .dc-plan-done { font-size: 10px; font-weight: 900; color: #0F9D58; letter-spacing: 0.2px; }
+        .dc-plan-card.on-hero .dc-plan-done { color: #3ED98C; }
+
         /* ステータス切替 3ボタン (soft-fill) */
         .dc-status-btn {
             flex: 1; display: flex; align-items: center; justify-content: center;
@@ -6348,32 +6411,54 @@
             try { rows = _myPlanRows(st.plan, st.viewerId, st.doneCounts); } catch { return ''; }
             if (rows.length === 0) { _heroPlanKey = `${st.planId}:none`; return ''; }
             _heroPlanKey = `${st.planId}:${rows.filter(r => r.done).length}/${rows.length}`;
-            const line = hero ? 'rgba(255,255,255,0.14)' : 'rgba(20,22,26,0.06)';
-            const ink = hero ? '#fff' : '#14161A';
             const sub = hero ? 'rgba(255,255,255,0.55)' : '#8A9097';
-            const items = rows.map((a, i) => {
-                const ptc = DC_ATTR_COLORS[a.weakness] || '#A4AAB0';
-                // 暗いヒーロー面では属性色そのままだと小さい文字のコントラストが足りない
-                // (電撃 #9B4DFF で約3.9:1 — Codex指摘) → 白文字 + 属性色の面で読ませる
-                const pillFg = hero ? '#fff' : ptc;
-                const pillBg = hero ? `${ptc}59` : `${ptc}22`;
-                const icon = DC_ATTR_ICONS[a.weakness] || '';
+            // 模擬タブの提出カードと同じ見た目でカードを横に並べる (ユーザー要望 2026-08-08)。
+            // 5キャラの枠サイズ・角丸・幅まで .dc-dmg-panel にそろえてあるので、
+            // 「模擬で出した編成が、そのまま当日の割当として並ぶ」ことが一目で分かる
+            const cards = rows.map((a, i) => {
+                const ptKey = a.weakness;
+                const ptc = DC_ATTR_COLORS[ptKey] || '#A4AAB0';
+                const icon = DC_ATTR_ICONS[ptKey] || '';
+                const ptName = PT_ATTRS.find(x => x.key === ptKey)?.name || '';
                 const time = a.flex ? '⏳隙間' : (a.hourLabel ? String(a.hourLabel) : '未定');
-                const slot = Number(a.loadoutSlot) === 2 ? '②' : '①';
-                const faces = a.team ? renderTeamSnippet(a.team, { size: 20 }) : '';
                 const bn = Number(a.bossNumber);
+                const slot = Number(a.loadoutSlot) === 2 ? '②' : '①';
+                const team = Array.isArray(a.team) ? a.team : [];
+                const cells = Array.from({ length: 5 }).map((_, k) => {
+                    const name = team[k];
+                    if (!name) return '<div class="dc-plan-char"></div>';
+                    const r = typeof resolveNikkeChar === 'function' ? resolveNikkeChar(name) : null;
+                    const label = escapeHtml(String((r && (r.canonical || r.raw)) || name));
+                    return (r && r.iconPath)
+                        ? `<div class="dc-plan-char" title="${label}"><img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${label}"></div>`
+                        : `<div class="dc-plan-char" title="${label}">${escapeHtml(String(name).charAt(0))}</div>`;
+                }).join('');
                 return `
-                <div onclick="openPlanHpModal(${bn}, ${Number(a.level) || 1}, ${Number(a.dmgB) || 0}, ${i})" style="display:flex;align-items:center;gap:8px;padding:7px 2px;${i > 0 ? `border-top:1px solid ${line};` : ''}cursor:pointer;${a.done ? 'opacity:0.5;' : ''}">
-                    <span style="flex:none;width:34px;text-align:center;font-size:11.5px;font-weight:900;color:${ink};font-variant-numeric:tabular-nums;">${escapeHtml(time)}</span>
-                    <span style="flex:none;display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${pillFg};background:${pillBg};border-radius:999px;padding:2px 7px;">${icon ? `<img loading="lazy" decoding="async" src="${icon}" alt="" style="width:12px;height:12px;">` : ''}B${bn}</span>
-                    <span style="flex:1;min-width:0;display:flex;align-items:center;gap:2px;overflow:hidden;">${faces}</span>
-                    <span style="flex:none;text-align:right;font-size:11px;font-weight:900;color:${ink};font-variant-numeric:tabular-nums;">${a.done ? '✓' : `${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:8px;color:${sub};">B</span>`}<div style="font-size:8.5px;font-weight:800;color:${sub};">編成${slot}</div></span>
-                </div>`;
+                <button type="button" onclick="openPlanHpModal(${bn}, ${Number(a.level) || 1}, ${Number(a.dmgB) || 0}, ${i})"
+                        class="dc-plan-card${hero ? ' on-hero' : ''}${a.done ? ' done' : ''}"
+                        title="${escapeHtml(ptName)}PTで B${bn} — タップで削れ具合を試算">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+                        <div class="dc-dmg-chip" style="background:${ptc};">
+                            ${icon ? `<img loading="lazy" decoding="async" src="${icon}" alt="${escapeHtml(ptName)}" style="width:24px;height:24px;">` : ''}
+                        </div>
+                        <div style="text-align:right;min-width:0;">
+                            <div class="dc-plan-value">${Number(a.dmgB || 0).toFixed(1)}<span class="dc-plan-unit">B</span></div>
+                            <div style="margin-top:3px;white-space:nowrap;">${a.done
+                                ? '<span class="dc-plan-done">✓ 報告済み</span>'
+                                : `<span class="dc-plan-slot">編成${slot}</span>`}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:9px;display:flex;align-items:baseline;gap:5px;">
+                        <span class="dc-plan-time">${escapeHtml(time)}</span>
+                        <span class="dc-plan-sub">B${bn} · ${escapeHtml(ptName)}PT</span>
+                    </div>
+                    <div class="dc-plan-chars">${cells}</div>
+                </button>`;
             }).join('');
             return `
-                <div id="heroPlanStrip" style="margin:2px 0 11px;padding:8px 10px;border-radius:12px;background:${hero ? 'rgba(255,255,255,0.07)' : '#F7F8F9'};">
-                    <div style="font-size:10px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:3px;">📤 配信プランのあなたの凸 — タップで削れ具合を試算</div>
-                    ${items}
+                <div id="heroPlanStrip" style="margin:2px 0 4px;">
+                    <div style="font-size:10px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:2px;">📤 配信プランのあなたの凸 — タップで削れ具合を試算</div>
+                    <div class="dc-plan-strip" data-no-swipe>${cards}</div>
                 </div>`;
         }
 
@@ -6382,7 +6467,8 @@
         // 戦闘カードのボスタイル側)。数字は模擬提出値ベースの想定なので、但し書きを必ず添える
         let _planHpSeq = 0;
         function closePlanHpModal() { document.getElementById('planHpModal')?.classList.remove('open'); }
-        async function openPlanHpModal(bossNumber, level, dmgB) {
+        // 引数の i は割当ストリップの何枚目か (編成の取得に使う)
+        async function openPlanHpModal(bossNumber, level, dmgB, rowIndex) {
             const modal = document.getElementById('planHpModal');
             const body = document.getElementById('planHpBody');
             if (!modal || !body) return;
@@ -6418,54 +6504,145 @@
                 body.innerHTML = '<p style="margin:0;color:#8A9097;font-size:12px;">このボスの情報が見つかりませんでした。</p>';
                 return;
             }
-            const remB = (Number(boss.remaining_hp_raw) || 0) / 1e9;
-            const totalB = (Number(boss.total_hp_raw) || 0) / 1e9;
+
+            // 配信プランの該当行から編成を引く (「自分のこのPTで削る」を見せるため)
+            let planRow = null;
+            try {
+                const rows = _myPlanRows(_myPubState.plan, _myPubState.viewerId, _myPubState.doneCounts);
+                planRow = rows[Number(rowIndex)] || rows.find(r => Number(r.bossNumber) === bn) || null;
+            } catch { planRow = null; }
+
+            const maxHp = Number(boss.total_hp_raw) || 0;
+            const remHp = boss.remaining_hp_raw != null ? Number(boss.remaining_hp_raw) : maxHp;
+            const remB = remHp / 1e9, totalB = maxHp / 1e9;
             const infinite = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(season, bosses) && bn === 5;
-            const c = DC_ATTR_COLORS[boss.attribute] || '#6C42F0';
-            const ptc = DC_ATTR_COLORS[weaknessPtOf(boss)] || '#6C42F0';
-            const ptName = PT_ATTRS.find(x => x.key === weaknessPtOf(boss))?.name || '';
+            const bossV = ATTR_VISUAL[boss.attribute] || { color: '#8A9097', dark: '#5A6068', name: '?', icon: '' };
+            const ptKey = weaknessPtOf(boss);
+            const ptV = ATTR_VISUAL[ptKey] || { color: '#8A9097', dark: '#5A6068', name: '?', icon: '' };
             // 残HPの鮮度 (20_bosses_updated_at.sql 未適用環境では出さない)
             let fresh = '';
             if (boss.updated_at) {
                 const min = Math.max(0, Math.round((Date.now() - new Date(boss.updated_at).getTime()) / 60000));
                 fresh = min < 1 ? 'たった今更新' : `${min}分前に更新`;
             }
+
+            // ---- 上段: ボス (凸報告モーダルの ar-matchup と同じ作り) ----
+            const bossHpPct = maxHp > 0 ? (remHp / maxHp) * 100 : 0;
+            const bossHpHtml = (maxHp > 0 && !infinite) ? `
+                <div style="margin-top:8px;">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
+                        <span style="font-size:10px;font-weight:800;letter-spacing:0.8px;color:#A4AAB0;">残HP</span>
+                        <span style="font-size:13px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">
+                            ${remB.toFixed(2)}<span style="font-size:10px;color:#A4AAB0;margin:0 2px;">/</span><span style="font-size:10.5px;color:#A4AAB0;font-weight:700;">${totalB.toFixed(1)}B</span>
+                        </span>
+                    </div>
+                    <div class="ar-hpbar"><div class="ar-hpbar-fill" style="width:${bossHpPct.toFixed(1)}%;background:linear-gradient(90deg,${bossV.color},${bossV.dark});"></div></div>
+                </div>` : (infinite ? `
+                <div style="margin-top:8px;font-size:12px;font-weight:900;color:#7A5BD6;">♾️ HP無限 — 与えたぶんが全額入ります</div>` : '');
+
+            // ---- 下段: 自分の PT ----
+            // アイコン解決にキャラマスタが要る。ホーム描画で温まっているはずだが、
+            // 直接開かれても顔が出るように念のため待つ (キャッシュ済みなら即返る)
+            if (typeof getNikkeCharsCache === 'function') {
+                try { await getNikkeCharsCache(); } catch { /* アイコン無しで続行 */ }
+                if (seq !== _planHpSeq) return;
+            }
+            const team = Array.isArray(planRow?.team) ? planRow.team.slice(0, 5) : [];
+            const facesHtml = team.length
+                ? team.map(c => (typeof _renderMatchupCharAvatar === 'function'
+                    ? _renderMatchupCharAvatar(c, 26)
+                    : `<div style="width:26px;height:26px;border-radius:6px;background:#EDEEF0;"></div>`)).join('')
+                : '<div style="font-size:10.5px;font-weight:700;color:#A4AAB0;">編成の記録なし</div>';
+            const slotLabel = Number(planRow?.loadoutSlot) === 2 ? '編成②' : '編成①';
+            const timeLabel = planRow ? (planRow.flex ? '⏳隙間' : (planRow.hourLabel ? String(planRow.hourLabel) : '時刻未定')) : '';
+
+            // ---- 削り想定バー ----
+            const dmgRaw = dmg * 1e9;
+            const shave = Math.min(dmg, infinite ? dmg : remB);
+            const after = infinite ? 0 : Math.max(0, remB - dmg);
+            const damagePct = infinite ? 100 : (remHp > 0 ? Math.min(100, (dmgRaw / remHp) * 100) : 0);
+            const dmgWidthPct = infinite ? 100 : Math.min(bossHpPct, maxHp > 0 ? (dmgRaw / maxHp) * 100 : 0);
+            const dmgRightOffset = infinite ? 0 : (100 - bossHpPct);
+            const predHtml = (dmg > 0 && (maxHp > 0 || infinite)) ? `
+                <div style="margin-top:11px;padding:9px 11px;border-radius:11px;background:rgba(255,255,255,0.7);border:1px solid rgba(20,22,26,0.06);">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
+                        <span style="font-size:10.5px;font-weight:800;letter-spacing:0.8px;color:#8A9097;">この凸の想定削り</span>
+                        <span style="font-size:11.5px;font-weight:900;color:${ptV.color};font-variant-numeric:tabular-nums;">${damagePct.toFixed(0)}% 削減</span>
+                    </div>
+                    <div class="ar-prediction-bar">
+                        <div class="ar-prediction-rem" style="width:${infinite ? 100 : bossHpPct.toFixed(1)}%;"></div>
+                        <div class="ar-prediction-damage" style="width:${dmgWidthPct.toFixed(1)}%;right:${dmgRightOffset.toFixed(1)}%;background:linear-gradient(90deg,${ptV.color},${ptV.dark});box-shadow:0 0 8px ${ptV.color}66;"></div>
+                        <div class="ar-prediction-label">${infinite ? `+${dmg.toFixed(1)}B` : `残 ${after.toFixed(1)}B`}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:11px;margin-top:5px;padding:0 1px;">
+                        <div style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:linear-gradient(90deg,#B4B8BE,#8C9096);"></span><span style="font-size:10px;font-weight:800;color:#A4AAB0;">残HP</span></div>
+                        <div style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:linear-gradient(90deg,${ptV.color},${ptV.dark});"></span><span style="font-size:10px;font-weight:800;color:#A4AAB0;">あなたの想定</span></div>
+                    </div>
+                </div>` : '';
+
+            // ---- 判定 ----
+            const kill = !infinite && dmg >= remB && remB > 0;
+            const verdict = infinite
+                ? `<div style="padding:11px 13px;border-radius:12px;background:rgba(155,77,255,0.10);color:#7A5BD6;font-size:13px;font-weight:900;">♾️ Lv4 (HP無限) — 与えたダメージがそのまま加算されます</div>`
+                : kill
+                    ? `<div style="padding:11px 13px;border-radius:12px;background:rgba(24,194,107,0.12);color:#0F9D58;font-size:13.5px;font-weight:900;">💥 この凸で撃破できる見込みです<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">超過ぶん (${(dmg - remB).toFixed(2)}B) はこのボスには入りません</div></div>`
+                    : `<div style="padding:11px 13px;border-radius:12px;background:rgba(245,158,11,0.12);color:#B45309;font-size:13.5px;font-weight:900;">残HPの ${damagePct.toFixed(0)}% を削る見込み<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">撃破まであと ${(remB - dmg).toFixed(2)}B</div></div>`;
+
             const row = (k, v, strong) => `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid rgba(20,22,26,0.06);">
                 <span style="font-size:11.5px;font-weight:800;color:#8A9097;">${k}</span>
                 <span style="font-size:${strong ? '17px' : '13.5px'};font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${v}</span></div>`;
             const fmt = (x) => `${x.toFixed(2)}<span style="font-size:9px;color:#A4AAB0;">B</span>`;
-            let verdict, bars, rows;
-            if (infinite) {
-                verdict = `<div style="padding:11px 13px;border-radius:12px;background:rgba(155,77,255,0.10);color:#7A5BD6;font-size:13px;font-weight:900;">♾️ Lv4 (HP無限) — 与えたダメージがそのまま加算されます</div>`;
-                bars = '';
-                rows = row('想定ダメージ', fmt(dmg), true);
-            } else {
-                const shave = Math.min(dmg, remB);
-                const after = Math.max(0, remB - dmg);
-                const pct = remB > 0 ? Math.min(100, (shave / remB) * 100) : 0;
-                const kill = dmg >= remB && remB > 0;
-                verdict = kill
-                    ? `<div style="padding:11px 13px;border-radius:12px;background:rgba(24,194,107,0.12);color:#0F9D58;font-size:13.5px;font-weight:900;">💥 この凸で撃破できる見込みです<div style="font-size:10.5px;font-weight:800;margin-top:3px;color:#0F9D58;opacity:0.85;">超過ぶん (${(dmg - remB).toFixed(2)}B) はこのボスには入りません</div></div>`
-                    : `<div style="padding:11px 13px;border-radius:12px;background:rgba(245,158,11,0.12);color:#B45309;font-size:13.5px;font-weight:900;">残HPの ${pct.toFixed(0)}% を削る見込み<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">撃破まであと ${(remB - dmg).toFixed(2)}B</div></div>`;
-                bars = `<div style="margin:11px 0 3px;height:12px;border-radius:999px;background:#EDEFF2;overflow:hidden;display:flex;">
-                        <span style="width:${pct.toFixed(1)}%;background:${c};"></span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;font-size:9.5px;font-weight:800;color:#A4AAB0;">
-                        <span>あなたの削り ${shave.toFixed(2)}B</span><span>残 ${after.toFixed(2)}B</span>
-                    </div>`;
-                rows = row('配信時の想定ダメージ', fmt(dmg), true)
-                     + row(`現在の残HP${fresh ? ` (${fresh})` : ''}`, fmt(remB))
-                     + row('この凸で削れる', fmt(shave))
-                     + row('予測される残HP', fmt(after))
-                     + (totalB > 0 ? row('全体HPに対して', `${((shave / totalB) * 100).toFixed(1)}%`) : '');
-            }
+            const rows = infinite
+                ? row('想定ダメージ', fmt(dmg), true)
+                : row('配信時の想定ダメージ', fmt(dmg), true)
+                  + row(`現在の残HP${fresh ? ` (${fresh})` : ''}`, fmt(remB))
+                  + row('この凸で削れる', fmt(shave))
+                  + row('予測される残HP', fmt(after))
+                  + (totalB > 0 ? row('全体HPに対して', `${((shave / totalB) * 100).toFixed(1)}%`) : '');
+
             body.innerHTML = `
-                <div style="display:flex;align-items:center;gap:8px;margin:2px 0 11px;">
-                    <span style="font-size:14px;font-weight:900;color:#14161A;">B${bn} ${escapeHtml(String(boss.name || boss.boss_code || ''))}</span>
-                    <span style="font-size:10px;font-weight:900;color:${ptc};background:${ptc}22;border-radius:999px;padding:2px 8px;">${escapeHtml(ptName)}PTで</span>
-                    <span style="margin-left:auto;font-size:10px;font-weight:800;color:#A4AAB0;">Lv${Number(level) || 1}</span>
+                <div class="ar-matchup" style="margin-bottom:12px;">
+                    <div class="ar-matchup-row" style="background:linear-gradient(180deg, ${bossV.color}10, ${bossV.color}04);border:1.5px solid ${bossV.color}50;">
+                        <div class="ar-matchup-icon" style="background:linear-gradient(180deg,${bossV.color},${bossV.dark});box-shadow:0 4px 10px ${bossV.color}55, inset 0 1px 0 rgba(255,255,255,0.3);">
+                            ${bossV.icon ? `<img loading="lazy" decoding="async" src="${bossV.icon}" alt="${escapeHtml(bossV.name)}">` : '<span>⚔️</span>'}
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:baseline;gap:6px;">
+                                <span style="font-size:18px;font-weight:900;color:${bossV.color};letter-spacing:0.5px;">B${bn}</span>
+                                <span style="font-size:11px;font-weight:800;color:#A4AAB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(String(boss.name || boss.boss_code || ''))}</span>
+                                <span style="margin-left:auto;flex:none;font-size:10px;font-weight:800;color:#A4AAB0;">Lv${Number(level) || 1}</span>
+                            </div>
+                            ${bossHpHtml}
+                        </div>
+                    </div>
+                    <div class="ar-matchup-arrow">
+                        <div class="ar-matchup-arrow-tri"><div>▼</div><div>▼</div></div>
+                        <div class="ar-matchup-arrow-label">で攻撃</div>
+                    </div>
+                    <div class="ar-matchup-row" style="background:linear-gradient(180deg, ${ptV.color}10, ${ptV.color}04);border:1.5px solid ${ptV.color}50;">
+                        <div class="ar-matchup-icon" style="background:linear-gradient(180deg,${ptV.color},${ptV.dark});box-shadow:0 4px 10px ${ptV.color}55, inset 0 1px 0 rgba(255,255,255,0.3);">
+                            ${ptV.icon ? `<img loading="lazy" decoding="async" src="${ptV.icon}" alt="${escapeHtml(ptV.name)}">` : '<span>⚔️</span>'}
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+                                <span style="font-size:16px;font-weight:900;color:${ptV.color};letter-spacing:0.4px;">${escapeHtml(ptV.name)}PT</span>
+                                <span style="font-size:10px;font-weight:900;color:#5B2BE0;background:rgba(108,66,240,0.13);border-radius:999px;padding:1px 7px;">${slotLabel}</span>
+                                ${timeLabel ? `<span style="margin-left:auto;flex:none;font-size:11px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${escapeHtml(timeLabel)}</span>` : ''}
+                            </div>
+                            <div style="display:flex;align-items:center;gap:9px;margin-top:7px;">
+                                <div style="display:flex;gap:3px;flex:1;min-width:0;">${facesHtml}</div>
+                                <div style="text-align:right;flex:none;">
+                                    <div style="font-size:10px;font-weight:800;letter-spacing:0.8px;color:#A4AAB0;">想定</div>
+                                    <div style="font-size:15px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;letter-spacing:-0.3px;line-height:1.1;">
+                                        ${dmg.toFixed(1)}<span style="font-size:10px;color:#A4AAB0;font-weight:800;margin-left:1px;">B</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ${predHtml}
                 </div>
-                ${verdict}${bars}${rows}
+                ${verdict}${rows}
                 <p style="margin:11px 0 0;font-size:10px;font-weight:700;color:#8A9097;line-height:1.7;background:#F7F8F9;border-radius:9px;padding:8px 10px;">
                     ※ ダメージは<b>配信時点のあなたの模擬提出値</b>による想定で、本番の結果を保証するものではありません。<br>
                     ※ 残HPは<b>運営が最後に記録した値</b>です${fresh ? ` (${escapeHtml(fresh)})` : ''} — ゲーム内では既に変わっている場合があります。<br>
