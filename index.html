@@ -6538,13 +6538,16 @@
             const remHp = boss.remaining_hp_raw != null ? Number(boss.remaining_hp_raw) : maxHp;
             const remB = remHp / 1e9, totalB = maxHp / 1e9;
             // Lv4 (ボス5・HP無限) 判定。
-            // ★ isLv4LiveBoard は「total_hp_raw=0 かつ HP未記録」も撃破済みとみなすため、
-            //   B5 のHPが未記録なだけの盤面を Lv4 と誤認しうる (Codex指摘)。
-            //   ここでは「Lv3までの4体が実際に記録された上で撃破されている」ことを追加で確認する
-            const lv3Cleared = (bosses || []).filter(b => Number(b.boss_number) !== 5)
-                .every(b => (Number(b.total_hp_raw) || 0) > 0
-                    && ((Number(b.remaining_hp_raw) || 0) / (Number(b.total_hp_raw) || 1)) * 100 <= 0.01);
-            const infinite = bn === 5 && lv3Cleared
+            // ★ isLv4LiveBoard は total_hp_raw=0 / remaining_hp_raw=0 を「撃破済み」とみなす。
+            //   これは Lv4 の B5 (HP無限なので記録が無意味) には妥当だが、
+            //   **HPを一度も記録していない盤面**まで「全ボス撃破 = Lv4」と読んでしまう。
+            //   一方で「B1〜B4 全部に total>0 を要求する」のは厳しすぎて、
+            //   撃破済みだが総HP未記録のボスが1体あるだけで正当な Lv4 を落とす (Codex指摘)。
+            //   → 折衷: 「B1〜B4 のうち少なくとも1体に実際のHP記録がある」ことだけを求める。
+            //     何も記録が無い盤面 (=運営がまだHPを入れていない) だけを弾く
+            const anyRecorded = (bosses || []).some(b => Number(b.boss_number) !== 5
+                && (Number(b.total_hp_raw) || 0) > 0);
+            const infinite = bn === 5 && anyRecorded
                 && typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(season, bosses);
             const bossV = ATTR_VISUAL[boss.attribute] || { color: '#8A9097', dark: '#5A6068', name: '?', icon: '' };
             const ptKey = weaknessPtOf(boss);
