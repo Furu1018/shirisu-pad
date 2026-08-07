@@ -2221,9 +2221,17 @@
             background: rgba(255,255,255,0.07);
             border-color: rgba(255,255,255,0.10);
         }
-        /* 報告済み: カード全体を 0.5 まで落とすと暗い面で文字が 2.2:1 まで落ちる (Codex指摘)。
-           減光は控えめにし、済んだことは「✓ 報告済み」の文字で伝える */
-        .dc-plan-card.done { opacity: 0.78; }
+        /* 報告済み。
+           ★ opacity は子テキストにも掛かるので、カード全体を薄くすると
+              文字のコントラストが道連れで落ちる (0.78 でも白カードで 3.1:1 — Codex指摘)。
+              → 減光は使わず、背景と属性チップだけを落ち着かせて「済んだ感」を出す */
+        .dc-plan-card.done { background: #F1F2F4; }
+        /* 済みカードは背景が一段暗いので、サブ文字も一段濃くして 4.5:1 を保つ
+           (#6B7178 は #F1F2F4 上で 4.40:1 と僅かに足りない) */
+        .dc-plan-card.done .dc-plan-sub { color: #5A6068; }
+        .dc-plan-card.done .dc-dmg-chip { filter: grayscale(0.55); opacity: 0.75; }
+        .dc-plan-card.done .dc-plan-chars { opacity: 0.72; }
+        .dc-plan-card.on-hero.done { background: rgba(255,255,255,0.045); }
         .dc-plan-time {
             font-size: 15px; font-weight: 900; color: #14161A;
             font-variant-numeric: tabular-nums; letter-spacing: -0.3px; line-height: 1;
@@ -6564,8 +6572,11 @@
                 ? team.map(c => (typeof _renderMatchupCharAvatar === 'function'
                     ? _renderMatchupCharAvatar(c, 26)
                     : `<div style="width:26px;height:26px;border-radius:6px;background:#EDEEF0;"></div>`)).join('')
-                : `<div style="font-size:10.5px;font-weight:700;color:#A4AAB0;">${rowStale ? 'プランが更新されました — ホームを開き直してください' : '編成の記録なし'}</div>`;
-            const slotLabel = Number(planRow?.loadoutSlot) === 2 ? '編成②' : '編成①';
+                : (rowStale
+                    ? '<div style="font-size:11px;font-weight:800;color:#B45309;">プランが更新されました — ホームを開き直してください</div>'
+                    : '<div style="font-size:10.5px;font-weight:700;color:#6B7178;">編成の記録なし</div>');
+            // planRow が引けていないのに「編成①」と出すと、存在しない情報を見せることになる
+            const slotLabel = planRow ? (Number(planRow.loadoutSlot) === 2 ? '編成②' : '編成①') : '';
             const timeLabel = planRow ? (planRow.flex ? '⏳隙間' : (planRow.hourLabel ? String(planRow.hourLabel) : '時刻未定')) : '';
 
             // ---- 削り想定バー ----
@@ -6595,7 +6606,7 @@
             // ---- 判定 ----
             // 残HPが取れていない (未登録・0) 有限ボスでは削り率を定義できない。
             // 무理に出すと「撃破まであと -3.20B」のような矛盾表示になるので、試算自体を控える
-            const noHp = !infinite && !(remB > 0);
+            const noHp = !infinite && !(remB > 0 && totalB > 0);
             const kill = !infinite && !noHp && dmg >= remB;
             const verdict = noHp
                 ? `<div style="padding:11px 13px;border-radius:12px;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:900;">残HPが記録されていないため試算できません<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">運営がHPを更新すると出せるようになります</div></div>`
@@ -6643,7 +6654,7 @@
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
                                 <span style="font-size:16px;font-weight:900;color:${ptV.color};letter-spacing:0.4px;">${escapeHtml(ptV.name)}PT</span>
-                                <span style="font-size:10px;font-weight:900;color:#5B2BE0;background:rgba(108,66,240,0.13);border-radius:999px;padding:1px 7px;">${slotLabel}</span>
+                                ${slotLabel ? `<span style="font-size:10px;font-weight:900;color:#5B2BE0;background:rgba(108,66,240,0.13);border-radius:999px;padding:1px 7px;">${slotLabel}</span>` : ''}
                                 ${timeLabel ? `<span style="margin-left:auto;flex:none;font-size:11px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${escapeHtml(timeLabel)}</span>` : ''}
                             </div>
                             <div style="display:flex;align-items:center;gap:9px;margin-top:7px;">
