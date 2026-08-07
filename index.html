@@ -7417,8 +7417,12 @@
         }
 
         // 「配信プランで採用」の光る枠を属性色で出すためのCSS変数一式。
-        // 8桁hex (RRGGBBAA) で透過を作る — color-mix と違い古い Safari でも確実に効く
-        const _pkVars = (c) => `--pk:${c};--pkA:${c}4D;--pkB:${c}8C;--pkC:${c}26;`;
+        // 8桁hex (RRGGBBAA) で透過を作る — color-mix と違い古い Safari でも確実に効く。
+        // 入力は #RRGGBB のみ許可 (将来データ由来の色を渡しても style 属性を割れない — Codex指摘)
+        const _pkVars = (c) => {
+            const hex = /^#[0-9a-fA-F]{6}$/.test(String(c || '')) ? c : '#6C42F0';
+            return `--pk:${hex};--pkA:${hex}4D;--pkB:${hex}8C;--pkC:${hex}26;`;
+        };
 
         // 模擬パネルの表示スロット (attr -> 1|2)。②があるカードは ①⇄② を入れ替えられる
         let _myDmgPanelSlots = {};
@@ -9852,6 +9856,10 @@
                 const id = getCurrentIdentity();
                 if (!id?.id) return;
                 _refreshCoordOnce(id);
+                // 配信プランの取り下げ/再配信をホーム表示中の人にも追従させる (Codex指摘)。
+                // renderMyPublishedPlan は世代ガード付きなので多重呼び出しでも安全
+                if (document.getElementById('tab-mypage')?.classList.contains('active')
+                    && typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(id);
                 _coordPollTick = (_coordPollTick + 1) % 3;
                 if (_coordPollTick === 0 && opsStore.get()?.season) {
                     window.supabaseLoadActiveSeasonWithBosses().then(r => {
@@ -12172,6 +12180,12 @@
                 bannerEl.style.display = 'none';
             }
 
+            // シーズンが切り替わったら前シーズンの算出プランを捨てる。残すと残凸表に
+            // 旧シーズンの採用マークが出続け、配信中プランの取得もスキップされる (Codex指摘)
+            if (_opsLastPlan && season?.id != null && Number(_opsLastPlan.seasonId) !== Number(season.id)) {
+                _opsLastPlan = null;
+                _setOpsPlanPicks(null, null);
+            }
             renderOpsSeasonCtlSummary(season, bosses);
             renderOpsBossSummary();
             renderOpsRemainingList();
@@ -12498,7 +12512,9 @@
                     ? `<span class="dc-rem-slot${pickedOther ? ' pickhint' : ''}">${shownSlot === 2 ? '②' : '①'}</span>` : '';
                 const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}`;
                 const onclick = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
-                return `<div class="${cls}" data-flip="${flipKey}"${onclick} style="color:#14161A;background:${attr.color}1A;${_pkVars(attr.color)}" title="${escapeHtml(tip)}${has2 ? ' / タップで編成①⇄②' : ''}">${text}${badge}</div>`;
+                // 光の色は模擬タブと同じ DC_ATTR_COLORS に揃える (PT_ATTRS.color とは別定義 — Codex指摘)
+                const glowColor = DC_ATTR_COLORS[attr.key] || attr.color;
+                return `<div class="${cls}" data-flip="${flipKey}"${onclick} style="color:#14161A;background:${attr.color}1A;${_pkVars(glowColor)}" title="${escapeHtml(tip)}${has2 ? ' / タップで編成①⇄②' : ''}">${text}${badge}</div>`;
             };
             const renderMemberRow = (p) => {
                 const used = usedAttrsFor(p);

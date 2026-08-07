@@ -1876,9 +1876,14 @@ window.supabaseUnpublishPlan = async function (seasonId, actorName = null) {
     const { data, error } = await supabase
         .from('published_plans').delete().eq('season_id', sid).select('id');
     if (error) throw error;
-    // acks の掃除は失敗しても中止自体は成立している (配信は消えている) ので警告どまり
-    const ackRes = await supabase.from('plan_acks').delete().eq('season_id', sid);
-    if (ackRes.error) console.warn('[unpublish] 確認済みの掃除に失敗:', ackRes.error.message);
+    // acks の掃除は「いま消した配信ぶん」に限定する。season 全体で消すと、
+    // 2人目の運営がこの2リクエストの間に配信していた場合その確認済みまで巻き込む (Codex指摘)。
+    // 失敗しても中止自体は成立している (配信は消えている) ので警告どまり
+    const removedIds = (data || []).map(r => r.id);
+    if (removedIds.length > 0) {
+        const ackRes = await supabase.from('plan_acks').delete().eq('season_id', sid).in('plan_id', removedIds);
+        if (ackRes.error) console.warn('[unpublish] 確認済みの掃除に失敗:', ackRes.error.message);
+    }
     window.supabaseLogActivity?.('ops', '凸プランの配信を中止', { actorName: actorName || null });
     return (data || []).length;
 };
