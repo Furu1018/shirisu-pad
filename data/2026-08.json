@@ -88,7 +88,7 @@
           "bossType": "VマテリアルH",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
-          "level": 25,
+          "level": 2,
           "damage": 64725202919,
           "characters": [
             "./character-images/b5c010ddf20f7616c4f35132487128e9.webp",
@@ -110,7 +110,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 32,
+          "level": 3,
           "damage": 28844845730,
           "characters": []
         },
@@ -118,7 +118,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 31,
+          "level": 3,
           "damage": 47006108770,
           "characters": []
         },
@@ -156,7 +156,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 31,
+          "level": 3,
           "damage": 51090730123,
           "characters": [
             "./character-images/cd10fd6cefaddfe1f9fccdb68c1b7b1d.webp",
@@ -170,7 +170,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 23,
+          "level": 2,
           "damage": 37473179785,
           "characters": [
             "./character-images/3ba5a280abfdec37e5267235e778dd0a.webp",
@@ -242,7 +242,7 @@
           "bossType": "Iサンバス",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
-          "level": 31,
+          "level": 3,
           "damage": 34562125819,
           "characters": []
         },
@@ -382,7 +382,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 21,
+          "level": 2,
           "damage": 34120065465,
           "characters": [
             "./character-images/5b87d7a23046dbe63282a5b2fdef3493.webp",
@@ -410,7 +410,7 @@
           "bossType": "VマテリアルH",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
-          "level": 12,
+          "level": 1,
           "damage": 40351196412,
           "characters": [
             "./character-images/b5c010ddf20f7616c4f35132487128e9.webp",
@@ -446,7 +446,7 @@
           "bossType": "IIプレート",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
-          "level": 21,
+          "level": 2,
           "damage": 23855738632,
           "characters": [
             "./character-images/ed1ab5732bd386c0cee57794a425c914.webp",
@@ -496,7 +496,7 @@
           "bossType": "Iサンバス",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
-          "level": 26,
+          "level": 2,
           "damage": 35911007461,
           "characters": [
             "./character-images/b5c010ddf20f7616c4f35132487128e9.webp",
@@ -510,7 +510,7 @@
           "bossType": "IIプレート",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
-          "level": 16,
+          "level": 1,
           "damage": 15977264448,
           "characters": [
             "./character-images/ed1ab5732bd386c0cee57794a425c914.webp",
@@ -532,7 +532,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 33,
+          "level": 3,
           "damage": 20113530417,
           "characters": []
         },
@@ -540,7 +540,7 @@
           "bossType": "VマテリアルH",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
-          "level": 33,
+          "level": 3,
           "damage": 21941106228,
           "characters": []
         },
@@ -564,7 +564,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 31,
+          "level": 3,
           "damage": 18588829660,
           "characters": []
         },
@@ -572,7 +572,7 @@
           "bossType": "VマテリアルH",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
-          "level": 34,
+          "level": 3,
           "damage": 25764705022,
           "characters": []
         },
@@ -596,7 +596,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 14,
+          "level": 1,
           "damage": 15708020912,
           "characters": [
             "./character-images/cd10fd6cefaddfe1f9fccdb68c1b7b1d.webp",
@@ -624,7 +624,7 @@
           "bossType": "Iサンバス",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
-          "level": 11,
+          "level": 1,
           "damage": 30905330991,
           "characters": [
             "./character-images/3ba5a280abfdec37e5267235e778dd0a.webp",
@@ -646,7 +646,7 @@
           "bossType": "VマテリアルH",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
-          "level": 21,
+          "level": 2,
           "damage": 37796168044,
           "characters": [
             "./character-images/3ba5a280abfdec37e5267235e778dd0a.webp",
@@ -696,7 +696,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 11,
+          "level": 1,
           "damage": 26285927191,
           "characters": [
             "./character-images/72cba85cb6d7f9e4e45ea250bbd9210d.webp",
@@ -746,7 +746,7 @@
           "bossType": "IIプレート",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
-          "level": 14,
+          "level": 1,
           "damage": 12500964486,
           "characters": [
             "./character-images/ed1ab5732bd386c0cee57794a425c914.webp",
@@ -760,7 +760,7 @@
           "bossType": "VマテリアルH",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
-          "level": 15,
+          "level": 1,
           "damage": 25963391226,
           "characters": [
             "./character-images/b5c010ddf20f7616c4f35132487128e9.webp",
@@ -796,7 +796,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 14,
+          "level": 1,
           "damage": 14130254775,
           "characters": [
             "./character-images/8793e3cb54d0b685b26728a77793666a.webp",
@@ -810,7 +810,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 11,
+          "level": 1,
           "damage": 21570027906,
           "characters": [
             "./character-images/92a538179c545fe9453d3254cf316303.webp",
@@ -846,7 +846,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 32,
+          "level": 3,
           "damage": 24856484289,
           "characters": [
             "./character-images/5b87d7a23046dbe63282a5b2fdef3493.webp",
@@ -860,7 +860,7 @@
           "bossType": "IIプレート",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
-          "level": 11,
+          "level": 1,
           "damage": 19369369403,
           "characters": [
             "./character-images/3ba5a280abfdec37e5267235e778dd0a.webp",
@@ -874,7 +874,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 11,
+          "level": 1,
           "damage": 15177637253,
           "characters": [
             "./character-images/ed1ab5732bd386c0cee57794a425c914.webp",
@@ -896,7 +896,7 @@
           "bossType": "IIプレート",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
-          "level": 23,
+          "level": 2,
           "damage": 17391795560,
           "characters": []
         },
@@ -904,7 +904,7 @@
           "bossType": "Iサンバス",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
-          "level": 12,
+          "level": 1,
           "damage": 12102915983,
           "characters": []
         },
@@ -912,7 +912,7 @@
           "bossType": "Iサンバス",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
-          "level": 14,
+          "level": 1,
           "damage": 28876757010,
           "characters": []
         }
@@ -928,7 +928,7 @@
           "bossType": "Iサンバス",
           "bossCode": "P.S.I.D.",
           "difficulty": "HARD",
-          "level": 25,
+          "level": 2,
           "damage": 12705146915,
           "characters": []
         },
@@ -936,7 +936,7 @@
           "bossType": "VマテリアルH",
           "bossCode": "Z.E.U.S.",
           "difficulty": "HARD",
-          "level": 23,
+          "level": 2,
           "damage": 21245534022,
           "characters": []
         },
@@ -944,7 +944,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 21,
+          "level": 2,
           "damage": 22613526257,
           "characters": []
         }
@@ -960,7 +960,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 21,
+          "level": 2,
           "damage": 15062590245,
           "characters": []
         },
@@ -968,7 +968,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 22,
+          "level": 2,
           "damage": 16484043765,
           "characters": []
         },
@@ -1020,7 +1020,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 12,
+          "level": 1,
           "damage": 14343559057,
           "characters": [
             "./character-images/5b87d7a23046dbe63282a5b2fdef3493.webp",
@@ -1058,7 +1058,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 26,
+          "level": 2,
           "damage": 18748836914,
           "characters": []
         }
@@ -1090,7 +1090,7 @@
           "bossType": "IIIトーカティブ",
           "bossCode": "H.S.T.A.",
           "difficulty": "HARD",
-          "level": 15,
+          "level": 1,
           "damage": 15227014685,
           "characters": []
         }
@@ -1120,7 +1120,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 15,
+          "level": 1,
           "damage": 13683526061,
           "characters": [
             "./character-images/521b9ab066e96379ef0f9816a6e75092.webp",
@@ -1336,7 +1336,7 @@
           "bossType": "IIプレート",
           "bossCode": "A.N.M.I.",
           "difficulty": "HARD",
-          "level": 12,
+          "level": 1,
           "damage": 4559066120,
           "characters": []
         },
@@ -1358,7 +1358,7 @@
           "bossType": "IVリビルドフィンガーズ",
           "bossCode": "D.M.T.R.",
           "difficulty": "HARD",
-          "level": 11,
+          "level": 1,
           "damage": 5303541801,
           "characters": [
             "./character-images/47a643f136e656fc17bf620c58aa772d.webp",
