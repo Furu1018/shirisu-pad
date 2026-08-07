@@ -2221,21 +2221,25 @@
             background: rgba(255,255,255,0.07);
             border-color: rgba(255,255,255,0.10);
         }
-        .dc-plan-card.done { opacity: 0.5; }
+        /* 報告済み: カード全体を 0.5 まで落とすと暗い面で文字が 2.2:1 まで落ちる (Codex指摘)。
+           減光は控えめにし、済んだことは「✓ 報告済み」の文字で伝える */
+        .dc-plan-card.done { opacity: 0.78; }
         .dc-plan-time {
             font-size: 15px; font-weight: 900; color: #14161A;
             font-variant-numeric: tabular-nums; letter-spacing: -0.3px; line-height: 1;
         }
         .dc-plan-card.on-hero .dc-plan-time { color: #fff; }
-        .dc-plan-sub { font-size: 10px; font-weight: 800; color: #A4AAB0; letter-spacing: 0.2px; }
-        .dc-plan-card.on-hero .dc-plan-sub { color: rgba(255,255,255,0.5); }
+        /* 「B3 · 水冷PT」は意味のある情報なので薄文字 (#A4AAB0 = 2.2:1) ではなく
+           ClaudeDesign のサブ色 #6B7178 を使う (Codex コントラスト指摘) */
+        .dc-plan-sub { font-size: 10px; font-weight: 800; color: #6B7178; letter-spacing: 0.2px; }
+        .dc-plan-card.on-hero .dc-plan-sub { color: rgba(255,255,255,0.72); }
         .dc-plan-value {
             font-size: 17px; font-weight: 900; color: #14161A;
             font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1;
         }
         .dc-plan-card.on-hero .dc-plan-value { color: #fff; }
-        .dc-plan-unit { font-size: 10px; color: #A4AAB0; font-weight: 800; margin-left: 1px; }
-        .dc-plan-card.on-hero .dc-plan-unit { color: rgba(255,255,255,0.45); }
+        .dc-plan-unit { font-size: 10px; color: #8A9097; font-weight: 800; margin-left: 1px; }
+        .dc-plan-card.on-hero .dc-plan-unit { color: rgba(255,255,255,0.72); }
         /* 編成5人 (模擬パネルの .dc-dmg-char と同寸) */
         .dc-plan-chars { display: flex; gap: 4px; margin-top: 11px; }
         .dc-plan-char {
@@ -2256,7 +2260,7 @@
               想定ダメージの数字と重なる (実際に重なった) → 数字の直下に置く */
         .dc-plan-slot { font-size: 10px; font-weight: 900; color: #5B2BE0; letter-spacing: 0.2px; }
         .dc-plan-card.on-hero .dc-plan-slot { color: #C3B2FF; }
-        .dc-plan-done { font-size: 10px; font-weight: 900; color: #0F9D58; letter-spacing: 0.2px; }
+        .dc-plan-done { font-size: 10px; font-weight: 900; color: #0B7A44; letter-spacing: 0.2px; }
         .dc-plan-card.on-hero .dc-plan-done { color: #3ED98C; }
 
         /* ステータス切替 3ボタン (soft-fill) */
@@ -6505,12 +6509,20 @@
                 return;
             }
 
-            // 配信プランの該当行から編成を引く (「自分のこのPTで削る」を見せるため)
-            let planRow = null;
+            // 配信プランの該当行から編成を引く (「自分のこのPTで削る」を見せるため)。
+            // ★ カードを描いた後にプランが更新・並び替えされていると、rowIndex は別の凸を指す。
+            //   同じボスに2凸ある人もいるので、**ボス番号と想定ダメージの両方**が
+            //   一致する行だけを採用する。合わなければ編成を出さない (別の凸の編成を
+            //   自分の凸として見せる方が有害)
+            let planRow = null, rowStale = false;
             try {
                 const rows = _myPlanRows(_myPubState.plan, _myPubState.viewerId, _myPubState.doneCounts);
-                planRow = rows[Number(rowIndex)] || rows.find(r => Number(r.bossNumber) === bn) || null;
-            } catch { planRow = null; }
+                const fits = (r) => r && Number(r.bossNumber) === bn
+                    && Math.abs((Number(r.dmgB) || 0) - dmg) < 0.005;
+                const byIdx = rows[Number(rowIndex)];
+                planRow = fits(byIdx) ? byIdx : (rows.find(fits) || null);
+                rowStale = !planRow;
+            } catch { planRow = null; rowStale = true; }
 
             const maxHp = Number(boss.total_hp_raw) || 0;
             const remHp = boss.remaining_hp_raw != null ? Number(boss.remaining_hp_raw) : maxHp;
@@ -6552,7 +6564,7 @@
                 ? team.map(c => (typeof _renderMatchupCharAvatar === 'function'
                     ? _renderMatchupCharAvatar(c, 26)
                     : `<div style="width:26px;height:26px;border-radius:6px;background:#EDEEF0;"></div>`)).join('')
-                : '<div style="font-size:10.5px;font-weight:700;color:#A4AAB0;">編成の記録なし</div>';
+                : `<div style="font-size:10.5px;font-weight:700;color:#A4AAB0;">${rowStale ? 'プランが更新されました — ホームを開き直してください' : '編成の記録なし'}</div>`;
             const slotLabel = Number(planRow?.loadoutSlot) === 2 ? '編成②' : '編成①';
             const timeLabel = planRow ? (planRow.flex ? '⏳隙間' : (planRow.hourLabel ? String(planRow.hourLabel) : '時刻未定')) : '';
 
@@ -6563,11 +6575,11 @@
             const damagePct = infinite ? 100 : (remHp > 0 ? Math.min(100, (dmgRaw / remHp) * 100) : 0);
             const dmgWidthPct = infinite ? 100 : Math.min(bossHpPct, maxHp > 0 ? (dmgRaw / maxHp) * 100 : 0);
             const dmgRightOffset = infinite ? 0 : (100 - bossHpPct);
-            const predHtml = (dmg > 0 && (maxHp > 0 || infinite)) ? `
+            const predHtml = (dmg > 0 && !noHp && (maxHp > 0 || infinite)) ? `
                 <div style="margin-top:11px;padding:9px 11px;border-radius:11px;background:rgba(255,255,255,0.7);border:1px solid rgba(20,22,26,0.06);">
                     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:5px;">
                         <span style="font-size:10.5px;font-weight:800;letter-spacing:0.8px;color:#8A9097;">この凸の想定削り</span>
-                        <span style="font-size:11.5px;font-weight:900;color:${ptV.color};font-variant-numeric:tabular-nums;">${damagePct.toFixed(0)}% 削減</span>
+                        <span style="font-size:11.5px;font-weight:900;color:${ptV.color};font-variant-numeric:tabular-nums;">${infinite ? '全額が加算' : `${damagePct.toFixed(0)}% 削減`}</span>
                     </div>
                     <div class="ar-prediction-bar">
                         <div class="ar-prediction-rem" style="width:${infinite ? 100 : bossHpPct.toFixed(1)}%;"></div>
@@ -6581,8 +6593,13 @@
                 </div>` : '';
 
             // ---- 判定 ----
-            const kill = !infinite && dmg >= remB && remB > 0;
-            const verdict = infinite
+            // 残HPが取れていない (未登録・0) 有限ボスでは削り率を定義できない。
+            // 무理に出すと「撃破まであと -3.20B」のような矛盾表示になるので、試算自体を控える
+            const noHp = !infinite && !(remB > 0);
+            const kill = !infinite && !noHp && dmg >= remB;
+            const verdict = noHp
+                ? `<div style="padding:11px 13px;border-radius:12px;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:900;">残HPが記録されていないため試算できません<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">運営がHPを更新すると出せるようになります</div></div>`
+                : infinite
                 ? `<div style="padding:11px 13px;border-radius:12px;background:rgba(155,77,255,0.10);color:#7A5BD6;font-size:13px;font-weight:900;">♾️ Lv4 (HP無限) — 与えたダメージがそのまま加算されます</div>`
                 : kill
                     ? `<div style="padding:11px 13px;border-radius:12px;background:rgba(24,194,107,0.12);color:#0F9D58;font-size:13.5px;font-weight:900;">💥 この凸で撃破できる見込みです<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">超過ぶん (${(dmg - remB).toFixed(2)}B) はこのボスには入りません</div></div>`
@@ -6592,7 +6609,7 @@
                 <span style="font-size:11.5px;font-weight:800;color:#8A9097;">${k}</span>
                 <span style="font-size:${strong ? '17px' : '13.5px'};font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${v}</span></div>`;
             const fmt = (x) => `${x.toFixed(2)}<span style="font-size:9px;color:#A4AAB0;">B</span>`;
-            const rows = infinite
+            const rows = (infinite || noHp)
                 ? row('想定ダメージ', fmt(dmg), true)
                 : row('配信時の想定ダメージ', fmt(dmg), true)
                   + row(`現在の残HP${fresh ? ` (${fresh})` : ''}`, fmt(remB))
