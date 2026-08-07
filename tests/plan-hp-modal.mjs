@@ -84,9 +84,14 @@ const cases = [
     ['B1-4は未撃破・B5だけ0/0', [B(1, 'fire', 'water', 100, 50), B(2, 'water', 'electric', 100, 50),
         B(3, 'electric', 'iron', 100, 50), B(4, 'iron', 'wind', 100, 50), B(5, 'wind', 'fire', 0, 0)],
         3, 5, 25.0, /試算できません/, null],
-    ['正当なLv4 (B3だけ総HP未記録で撃破)', [B(1, 'fire', 'water', 100, 0), B(2, 'water', 'electric', 100, 0),
+    // 本番DBでは「5体とも記録済み」か「5体とも未記録」しか無く、混在は0件 (2026-08-08 実測)。
+    // 万一混在したら「HP無限・全額入る」と誤って言うより「試算できません」に倒す
+    ['混在 (B3だけ総HP未記録) は安全側に倒す', [B(1, 'fire', 'water', 100, 0), B(2, 'water', 'electric', 100, 0),
         B(3, 'electric', 'iron', 0, 0), B(4, 'iron', 'wind', 100, 0), B(5, 'wind', 'fire', 0, 0)],
-        3, 5, 25.0, /HP無限/, '全額が加算'],
+        3, 5, 25.0, /試算できません/, null],
+    ['B1〜B4 が1体足りない盤面', [B(1, 'fire', 'water', 100, 0), B(2, 'water', 'electric', 100, 0),
+        B(3, 'electric', 'iron', 100, 0), B(5, 'wind', 'fire', 0, 0)],
+        3, 5, 25.0, /試算できません/, null],
     ['想定ダメージ0', [B(1, 'fire', 'water', 150.8, 34.2)], 2, 1, 0, /残HPの 0% を削る見込み/, null],
 ];
 
@@ -112,5 +117,45 @@ for (const [name, bs, cl, bn, dmg, expectVerdict, expectBar] of cases) {
     if (problems.length === 0) { console.log(`  ✅ ${name}`); pass++; }
     else { console.error(`  ❌ ${name}`); problems.forEach(x => console.error(`     ${x}`)); fail++; }
 }
+
+// ---- 防御分岐 (早期リターン) ----
+// 取得失敗・シーズン切替・ボス欠損・プラン行の不一致で、
+// 黙って壊れず「案内を出して止まる」ことを固定する
+const guards = [
+    ['盤面の取得に失敗', async () => {
+        globalThis.window = { supabaseLoadActiveSeasonWithBosses: async () => { throw new Error('network down'); } };
+    }, /最新の残HPを取得できませんでした/],
+    ['配信後にシーズンが切り替わった', async () => {
+        SEASON = { id: 99, current_level: 2 };
+        globalThis.window = { supabaseLoadActiveSeasonWithBosses: async () => ({ season: SEASON, bosses: BOSSES }) };
+    }, /シーズンが切り替わりました/],
+    ['対象ボスが盤面にいない', async () => {
+        BOSSES = [B(2, 'water', 'electric', 100, 50)];
+        SEASON = { id: 26, current_level: 2 };
+        globalThis.window = { supabaseLoadActiveSeasonWithBosses: async () => ({ season: SEASON, bosses: BOSSES }) };
+    }, /このボスの情報が見つかりませんでした/],
+    ['プラン行が一致しない (配信が更新された)', async () => {
+        BOSSES = [B(1, 'fire', 'water', 150.8, 34.2)];
+        SEASON = { id: 26, current_level: 2 };
+        globalThis.window = { supabaseLoadActiveSeasonWithBosses: async () => ({ season: SEASON, bosses: BOSSES }) };
+        MOCK_ROWS = [{ bossNumber: 1, dmgB: 99.9, level: 2, team: ['A'], loadoutSlot: 1, hourLabel: '07時' }];
+    }, /プランが更新されました/],
+];
+for (const [name, setup, expect] of guards) {
+    BOSSES = [B(1, 'fire', 'water', 150.8, 34.2)];
+    SEASON = { id: 26, current_level: 2 };
+    MOCK_ROWS = [{ bossNumber: 1, dmgB: 18.4, level: 2, team: ['A', 'B', 'C', 'D', 'E'], loadoutSlot: 1, hourLabel: '07時' }];
+    globalThis.window = { supabaseLoadActiveSeasonWithBosses: async () => ({ season: SEASON, bosses: BOSSES }) };
+    await setup();
+    bodyHtml = '';
+    try {
+        await openPlanHpModal(1, 2, 18.4, 0);
+        if (expect.test(bodyHtml)) { console.log(`  ✅ ${name}`); pass++; }
+        else { console.error(`  ❌ ${name}\n     案内が出ていない (期待: ${expect})`); fail++; }
+    } catch (e) {
+        console.error(`  ❌ ${name}\n     ${e.constructor.name}: ${e.message}`); fail++;
+    }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
