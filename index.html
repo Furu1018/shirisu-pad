@@ -2230,7 +2230,9 @@
            (#6B7178 は #F1F2F4 上で 4.40:1 と僅かに足りない) */
         .dc-plan-card.done .dc-plan-sub { color: #5A6068; }
         .dc-plan-card.done .dc-dmg-chip { filter: grayscale(0.55); opacity: 0.75; }
-        .dc-plan-card.done .dc-plan-chars { opacity: 0.72; }
+        /* 減光は画像だけに掛ける。コンテナに掛けると、アイコン未解決時の
+           代替文字 (キャラ名の頭文字) まで薄くなり 2.7:1 まで落ちる (Codex指摘) */
+        .dc-plan-card.done .dc-plan-char img { opacity: 0.72; }
         .dc-plan-card.on-hero.done { background: rgba(255,255,255,0.045); }
         .dc-plan-time {
             font-size: 15px; font-weight: 900; color: #14161A;
@@ -6535,7 +6537,15 @@
             const maxHp = Number(boss.total_hp_raw) || 0;
             const remHp = boss.remaining_hp_raw != null ? Number(boss.remaining_hp_raw) : maxHp;
             const remB = remHp / 1e9, totalB = maxHp / 1e9;
-            const infinite = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(season, bosses) && bn === 5;
+            // Lv4 (ボス5・HP無限) 判定。
+            // ★ isLv4LiveBoard は「total_hp_raw=0 かつ HP未記録」も撃破済みとみなすため、
+            //   B5 のHPが未記録なだけの盤面を Lv4 と誤認しうる (Codex指摘)。
+            //   ここでは「Lv3までの4体が実際に記録された上で撃破されている」ことを追加で確認する
+            const lv3Cleared = (bosses || []).filter(b => Number(b.boss_number) !== 5)
+                .every(b => (Number(b.total_hp_raw) || 0) > 0
+                    && ((Number(b.remaining_hp_raw) || 0) / (Number(b.total_hp_raw) || 1)) * 100 <= 0.01);
+            const infinite = bn === 5 && lv3Cleared
+                && typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(season, bosses);
             const bossV = ATTR_VISUAL[boss.attribute] || { color: '#8A9097', dark: '#5A6068', name: '?', icon: '' };
             const ptKey = weaknessPtOf(boss);
             const ptV = ATTR_VISUAL[ptKey] || { color: '#8A9097', dark: '#5A6068', name: '?', icon: '' };
@@ -6579,6 +6589,13 @@
             const slotLabel = planRow ? (Number(planRow.loadoutSlot) === 2 ? '編成②' : '編成①') : '';
             const timeLabel = planRow ? (planRow.flex ? '⏳隙間' : (planRow.hourLabel ? String(planRow.hourLabel) : '時刻未定')) : '';
 
+            // ---- 試算できるか ----
+            // 残HP・総HPが取れていない有限ボスでは削り率を定義できない。
+            // 無理に出すと「撃破まであと -3.20B」のような矛盾表示になるので試算を控える。
+            // ★ predHtml より前で宣言すること (const の TDZ で ReferenceError になる — Codex指摘)
+            const noHp = !infinite && !(remB > 0 && totalB > 0);
+            const kill = !infinite && !noHp && dmg >= remB;
+
             // ---- 削り想定バー ----
             const dmgRaw = dmg * 1e9;
             const shave = Math.min(dmg, infinite ? dmg : remB);
@@ -6604,10 +6621,6 @@
                 </div>` : '';
 
             // ---- 判定 ----
-            // 残HPが取れていない (未登録・0) 有限ボスでは削り率を定義できない。
-            // 무理に出すと「撃破まであと -3.20B」のような矛盾表示になるので、試算自体を控える
-            const noHp = !infinite && !(remB > 0 && totalB > 0);
-            const kill = !infinite && !noHp && dmg >= remB;
             const verdict = noHp
                 ? `<div style="padding:11px 13px;border-radius:12px;background:#F1F2F4;color:#6B7178;font-size:13px;font-weight:900;">残HPが記録されていないため試算できません<div style="font-size:10.5px;font-weight:800;margin-top:3px;opacity:0.85;">運営がHPを更新すると出せるようになります</div></div>`
                 : infinite

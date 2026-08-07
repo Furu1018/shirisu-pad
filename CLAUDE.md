@@ -86,8 +86,13 @@ rm -f .claude/hooks/.codex-on      # OFF
 ## テスト
 
 ```sh
-node tests/run-tests.mjs   # 最適凸プランソルバーの単体テスト
+node tests/run-tests.mjs      # ソルバー+ドメイン+ストアの単体テスト
+node tests/plan-hp-modal.mjs  # 🎯どれくらい削れる? モーダルの実行テスト (index.html から切り出して実行)
 ```
+`plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
+**単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
+「カードをタップすると ReferenceError」が入った) を拾うためのもの。
+関数のシグネチャや依存を変えたらスタブも直すこと。
 
 UI はテストなし。変更後は `node --check` でJS構文を確認し、実機 (GitHub Pages) で目視確認する運用。
 index.html 内の script は `python3` で抜き出して `node --check` に通せる。
