@@ -2426,11 +2426,6 @@
         @keyframes arSlideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes arGrowBar { from{transform:scaleX(0)} to{transform:scaleX(1)} }
         @keyframes arArrowFlow { 0%,100%{opacity:.4;transform:translateY(0)} 50%{opacity:1;transform:translateY(-2px)} }
-        /* 上向き (自分のPT → ボス)。戦闘予想モーダルは「下のPTで上のボスを攻撃する」ので
-           矢印は上を向く。凸報告モーダル (ボス選択 → PT選択の入力フロー) は下向きのまま */
-        @keyframes arArrowFlowUp { 0%,100%{opacity:.4;transform:translateY(0)} 50%{opacity:1;transform:translateY(2px)} }
-        .ar-matchup-arrow-tri.up > div:nth-child(1) { animation-name: arArrowFlowUp; }
-        .ar-matchup-arrow-tri.up > div:nth-child(2) { animation-name: arArrowFlowUp; }
         @keyframes arSoftGlow {
             0%,100% { box-shadow: 0 3px 10px rgba(108,66,240,0.18); }
             50%     { box-shadow: 0 5px 14px rgba(108,66,240,0.30); }
@@ -6672,7 +6667,7 @@
                         </div>
                     </div>
                     <div class="ar-matchup-arrow">
-                        <div class="ar-matchup-arrow-tri up"><div>▲</div><div>▲</div></div>
+                        <div class="ar-matchup-arrow-tri"><div>▲</div><div>▲</div></div>
                         <div class="ar-matchup-arrow-label">で攻撃</div>
                     </div>
                     <div class="ar-matchup-row" style="background:linear-gradient(180deg, ${ptV.color}10, ${ptV.color}04);border:1.5px solid ${ptV.color}50;">
