@@ -2426,6 +2426,11 @@
         @keyframes arSlideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes arGrowBar { from{transform:scaleX(0)} to{transform:scaleX(1)} }
         @keyframes arArrowFlow { 0%,100%{opacity:.4;transform:translateY(0)} 50%{opacity:1;transform:translateY(-2px)} }
+        /* 上向き (自分のPT → ボス)。戦闘予想モーダルは「下のPTで上のボスを攻撃する」ので
+           矢印は上を向く。凸報告モーダル (ボス選択 → PT選択の入力フロー) は下向きのまま */
+        @keyframes arArrowFlowUp { 0%,100%{opacity:.4;transform:translateY(0)} 50%{opacity:1;transform:translateY(2px)} }
+        .ar-matchup-arrow-tri.up > div:nth-child(1) { animation-name: arArrowFlowUp; }
+        .ar-matchup-arrow-tri.up > div:nth-child(2) { animation-name: arArrowFlowUp; }
         @keyframes arSoftGlow {
             0%,100% { box-shadow: 0 3px 10px rgba(108,66,240,0.18); }
             50%     { box-shadow: 0 5px 14px rgba(108,66,240,0.30); }
@@ -2473,6 +2478,7 @@
             font-size:10px; font-weight: 900; letter-spacing: 1.5px;
             color: #A4AAB0; margin-top: 2px;
         }
+
         .ar-matchup-change {
             position: absolute; top: 8px; right: 8px;
             padding: 4px 10px; border-radius: 7px;
@@ -4512,11 +4518,11 @@
     </div>
 
     <!-- ========== 運営: 模擬提出チェックモーダル ========== -->
-    <!-- ========== 配信プラン: この凸でどれくらい削れるか (読み取り専用の試算) ========== -->
+    <!-- ========== 配信プラン: 戦闘予想 (読み取り専用の試算) ========== -->
     <div class="player-select-modal" id="planHpModal">
         <div class="player-select-content" style="max-width:460px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2>🎯 どれくらい削れる?</h2>
+                <h2>⚔️ 戦闘予想</h2>
                 <button onclick="closePlanHpModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
             </div>
             <div id="planHpBody" style="font-size:13px;color:#14161A;">読み込み中…</div>
@@ -6450,7 +6456,7 @@
                 return `
                 <button type="button" onclick="openPlanHpModal(${bn}, ${Number(a.level) || 1}, ${Number(a.dmgB) || 0}, ${i})"
                         class="dc-plan-card${hero ? ' on-hero' : ''}${a.done ? ' done' : ''}"
-                        title="${escapeHtml(ptName)}PTで B${bn} — タップで削れ具合を試算">
+                        title="${escapeHtml(ptName)}PTで B${bn} — タップで戦闘予想">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
                         <div class="dc-dmg-chip" style="background:${ptc};">
                             ${icon ? `<img loading="lazy" decoding="async" src="${icon}" alt="${escapeHtml(ptName)}" style="width:24px;height:24px;">` : ''}
@@ -6471,12 +6477,12 @@
             }).join('');
             return `
                 <div id="heroPlanStrip" style="margin:2px 0 4px;">
-                    <div style="font-size:10px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:2px;">📤 配信プランのあなたの凸 — タップで削れ具合を試算</div>
+                    <div style="font-size:10px;font-weight:900;letter-spacing:0.04em;color:${sub};margin-bottom:2px;">📤 配信プランのあなたの凸 — タップで戦闘予想</div>
                     <div class="dc-plan-strip" data-no-swipe>${cards}</div>
                 </div>`;
         }
 
-        // ===== 「この凸でどれくらい削れる?」試算モーダル (読み取り専用) =====
+        // ===== 「⚔️ 戦闘予想」モーダル (読み取り専用の試算) =====
         // 配信プランの想定ダメージ × いまの残HP。書き込みは一切しない (交戦宣言は従来どおり
         // 戦闘カードのボスタイル側)。数字は模擬提出値ベースの想定なので、但し書きを必ず添える
         let _planHpSeq = 0;
@@ -6666,7 +6672,7 @@
                         </div>
                     </div>
                     <div class="ar-matchup-arrow">
-                        <div class="ar-matchup-arrow-tri"><div>▼</div><div>▼</div></div>
+                        <div class="ar-matchup-arrow-tri up"><div>▲</div><div>▲</div></div>
                         <div class="ar-matchup-arrow-label">で攻撃</div>
                     </div>
                     <div class="ar-matchup-row" style="background:linear-gradient(180deg, ${ptV.color}10, ${ptV.color}04);border:1.5px solid ${ptV.color}50;">
