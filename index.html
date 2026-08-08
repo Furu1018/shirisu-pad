@@ -13442,6 +13442,8 @@
                 const ctx = await window.supabaseLoadActiveSeasonWithBosses();
                 if (!ctx?.season) throw new Error('アクティブシーズン無し');
                 await window.supabaseUpdateBossHp(ctx.season.id, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
+                // 残HPが動く → 検知 (invalidate の前に呼ぶ)
+                _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
                 // ボス名の変更 (空欄なら据え置き)
                 const newName = (nameEl?.value || '').trim();
                 const oldName = ctx.bosses?.find(x => x.boss_number === bossNumber)?.name || '';

@@ -92,12 +92,17 @@ rm -f .claude/hooks/.codex-on      # OFF
 
 ```sh
 node tests/run-tests.mjs      # ソルバー+ドメイン+ストアの単体テスト
-node tests/plan-hp-modal.mjs  # 🎯どれくらい削れる? モーダルの実行テスト (index.html から切り出して実行)
+node tests/plan-hp-modal.mjs  # ⚔️戦闘予想モーダルの実行テスト (index.html から切り出して実行)
+node tests/check-raid-event-hooks.mjs  # 戦況の通知フックの網羅チェック
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
 「カードをタップすると ReferenceError」が入った) を拾うためのもの。
 関数のシグネチャや依存を変えたらスタブも直すこと。
+`check-raid-event-hooks.mjs` は「ボスの残HPを動かす呼び出しの直後に `_checkRaidEvents()` があるか」を
+機械的に確認する。**HPを動かす経路を足したら invalidate の前にフックを呼ぶこと** —
+呼ばないとその操作で倒れたときに撃破通知を落とす (2026-08-09 にレビュー6往復で
+ようやく全経路が埋まった。人力の grep では漏れる)。
 
 UI はテストなし。変更後は `node --check` でJS構文を確認し、実機 (GitHub Pages) で目視確認する運用。
 index.html 内の script は `python3` で抜き出して `node --check` に通せる。
