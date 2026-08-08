@@ -6712,6 +6712,48 @@
             requestAnimationFrame(() => requestAnimationFrame(() => gate.classList.add('dc-gate-highlight')));
         }
 
+        // ===== 戦況の通知 (撃破 / レベル開放) =====
+        // 送るのは「そのボスに関係する人」だけ。全員配信は凸報告だけで1日90通になりうるため
+        // 採らない (ユーザー判断 2026-08-09)。送信に失敗しても本処理は止めない。
+        async function _notifyBossDefeated(seasonId, boss, actor, dmgB, level) {
+            try {
+                if (typeof window.supabaseBossDefeatNotifyTargets !== 'function') return;
+                const ids = await window.supabaseBossDefeatNotifyTargets(seasonId, boss.boss_number, actor?.id, level);
+                if (!ids.length) return;
+                const label = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
+                await window.sendPushNotification({
+                    title: `⭐ ${label} 撃破!`,
+                    body: `${actor?.name || '誰か'} さんの凸 (${Number(dmgB || 0).toFixed(2)}B) で撃破されました。`
+                        + `このボスへの凸はもう入りません — 割当の変更は運営の再配信をご確認ください。`,
+                    url: './?tab=ops',
+                    tag: `boss-defeated-${seasonId}-${boss.boss_number}`,
+                    // 交戦宣言中の人は「いま撃ちに行こうとしている」ので、
+                    // 戦闘可能時間の設定に関係なく届ける (時間帯フィルタで消えると凸を無駄にする)
+                    ignoreAvailability: true,
+                    playerIds: ids,
+                }, { senderPlayerId: actor?.id || null });
+                console.log(`[notify] ${label} 撃破を ${ids.length} 名へ通知`);
+            } catch (e) { console.warn('[notify] 撃破通知の送信失敗:', e?.message || e); }
+        }
+
+        async function _notifyLevelOpened(seasonId, levelUp) {
+            try {
+                if (typeof window.supabaseLevelOpenNotifyTargets !== 'function') return;
+                const ids = await window.supabaseLevelOpenNotifyTargets(seasonId);
+                if (!ids.length) return;
+                await window.sendPushNotification({
+                    title: `🎉 Lv${levelUp.to} 開放!`,
+                    body: `Lv${levelUp.from} を踏破し、Lv${levelUp.to} のボスが出現しました。残っている凸を進めてください。`,
+                    url: './?tab=ops',
+                    tag: `level-open-${seasonId}-${levelUp.to}`,
+                    // レベル開放は「いま動ける人に今すぐ知らせる」意味があるので時間帯を問わない
+                    ignoreAvailability: true,
+                    playerIds: ids,
+                });
+                console.log(`[notify] Lv${levelUp.to} 開放を ${ids.length} 名へ通知`);
+            } catch (e) { console.warn('[notify] レベル開放通知の送信失敗:', e?.message || e); }
+        }
+
         // ========== 模擬タブ (Stage2 新設) ==========
         // 模擬戦データ提出パネル (renderMyDamagePanels) と人気編成はホームから移設。
         // 各要素の id は移設前と同一なので、OCRフロー・編集シート等の既存ハンドラは無変更で動く。
@@ -11166,7 +11208,7 @@
                             canonChars = (reg.canonical || canonChars).filter(Boolean);
                         } catch (e) { console.warn('[char register]', e?.message || e); }
                     }
-                    await window.supabaseAddAttack({
+                    const addRes = await window.supabaseAddAttack({
                         seasonId: ctx.season.id,
                         playerId: id.id,
                         attackDate: ctx.season.hard_date,
@@ -11176,11 +11218,16 @@
                         level: ctx.season.current_level || 1,
                         characters: canonChars,
                     }, { skipHpDecrement: ocrApplies });
+                    // 撃破判定は2経路ある: 通常は自動減算の結果、OCR適用時は書き換えた残HP
+                    let defeatedNow = !!addRes?._defeated;
                     if (ocrApplies) {
                         const totalRaw = _myAttackOcrBossHp.maxHp != null ? Number(_myAttackOcrBossHp.maxHp) : Number(boss.total_hp_raw || 0);
                         const remRaw = Number(_myAttackOcrBossHp.remainingHp);
-                        try { await window.supabaseUpdateBossHp(ctx.season.id, boss.boss_number, totalRaw, remRaw); }
-                        catch (e) { console.warn('[ocr hp apply] failed:', e?.message || e); }
+                        const wasAlive = Number(boss.remaining_hp_raw || 0) > 0;
+                        try {
+                            await window.supabaseUpdateBossHp(ctx.season.id, boss.boss_number, totalRaw, remRaw);
+                            defeatedNow = wasAlive && remRaw <= 0;
+                        } catch (e) { console.warn('[ocr hp apply] failed:', e?.message || e); }
                     }
                     // player_damages[me, 該当属性].characters に編成を反映 (プラン算出の衝突チェックに使用)
                     if (canonChars.length > 0 && boss.weakness) {
@@ -11197,6 +11244,12 @@
                             _coordActiveCache = (_coordActiveCache || []).filter(c => c.player_id !== id.id);
                         }
                     } catch (e) { console.warn('[coord auto-release]', e?.message || e); }
+                    // === 撃破したら、そのボスに関係する人へ通知 ===
+                    // 「交戦宣言中の人」と「配信プランでこのボス担当だが未報告の人」だけに絞る。
+                    // 全員配信は1日90通になりうるので採らない (ユーザー判断 2026-08-09)
+                    if (defeatedNow) {
+                        await _notifyBossDefeated(ctx.season.id, boss, id, dmgB, ctx.season.current_level || 1);
+                    }
                     // === 強行した場合、対象の本人(達)に Push 通知 ===
                     if (forcedAgainst && forcedAgainst.length > 0) {
                         try {
@@ -15040,8 +15093,9 @@
                 return;
             }
             try {
-                await window.supabaseUpdateBossHp(seasonId, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
-                msg.textContent = `✅ B${bossNumber} のHPを更新しました`;
+                const upd = await window.supabaseUpdateBossHp(seasonId, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
+                if (upd?.levelUp) await _notifyLevelOpened(seasonId, upd.levelUp);
+                msg.textContent = `✅ B${bossNumber} のHPを更新しました${upd?.levelUp ? ` (Lv${upd.levelUp.to} 開放を通知しました)` : ''}`;
                 msg.style.color = '#22c55e';
                 opsStore.invalidate();
                 seasonStore.invalidate();

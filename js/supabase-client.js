@@ -789,6 +789,10 @@ window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bos
     if (error) throw error;
 
     // ボス残HPを自動的に減算 (OCRで残HPを正確に書き換える場合は skipHpDecrement=true で skip)
+    // 減算の結果は戻り値に載せる — 「この凸で撃破したか」を呼び出し側が判定して
+    // 関係者へ通知するため (撃破通知)。HPを書き換えるのはこの1箇所だけなので、
+    // ここで判定すれば通知が二重に飛ぶことはない
+    let hpAfter = null, defeated = false;
     if (!opts.skipHpDecrement && damageRaw > 0) {
         try {
             const { data: boss } = await supabase
@@ -798,12 +802,15 @@ window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bos
                 .eq('boss_number', bossNumber)
                 .single();
             if (boss) {
-                const newRem = Math.max(0, Number(boss.remaining_hp_raw || 0) - Math.round(damageRaw));
+                const before = Number(boss.remaining_hp_raw || 0);
+                const newRem = Math.max(0, before - Math.round(damageRaw));
                 await supabase
                     .from('bosses')
                     .update({ remaining_hp_raw: newRem })
                     .eq('season_id', seasonId)
                     .eq('boss_number', bossNumber);
+                hpAfter = newRem;
+                defeated = before > 0 && newRem <= 0;   // この凸でちょうど落ちた
             }
         } catch (e) { console.warn('[boss hp auto-decrement] failed:', e?.message || e); }
     }
@@ -815,7 +822,7 @@ window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bos
         { playerId, actorName: opts.actorName || null }
     );
 
-    return data;
+    return { ...data, _hpAfter: hpAfter, _defeated: defeated };
 };
 
 // 凸を削除 (ボス残HPを復元: damage_raw 分を total_hp_raw で頭打ちにして加算)
@@ -1062,7 +1069,10 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
         .eq('boss_number', bossNumber);
     if (error) throw error;
 
-    // LV自動判定 → 必要なら current_level を昇格
+    // LV自動判定 → 必要なら current_level を昇格。
+    // 昇格したことは戻り値で返す — 「Lvが開放された」を関係者へ通知するため。
+    // current_level を進めるのはこの1箇所だけなので通知が二重に飛ばない
+    let levelUp = null;
     try {
         const { data: bossRow } = await supabase
             .from('bosses').select('tier').eq('season_id', seasonId).eq('boss_number', bossNumber).maybeSingle();
@@ -1073,9 +1083,11 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
             const currentLevel = Number(seasonRow?.current_level) || 1;
             if (detected > currentLevel) {
                 await supabase.from('seasons').update({ current_level: detected }).eq('id', seasonId);
+                levelUp = { from: currentLevel, to: detected };   // 呼び出し側がレベル開放を通知する
             }
         }
     } catch (e) { console.warn('[updateBossHp] auto level detect failed:', e?.message || e); }
+    return { levelUp };
 };
 
 // ===== バックアップ: 全テーブル JSON エクスポート =====
@@ -1982,6 +1994,68 @@ window.supabaseGetPublishedPlan = async function () {
         .maybeSingle();
     if (error) throw error;
     return data ? { ...data, month_key: season.month_key } : null;
+};
+
+// ============ 戦況の通知 (撃破 / レベル開放) ============
+// 「そのボスに関係する人だけ」に絞る (ユーザー判断 2026-08-09)。
+// 全員配信にすると凸報告だけで1日90通になり、通知を切る人が出るため。
+
+// ボス撃破の通知先: そのボスで凸を無駄にしそうな人。
+//   ① そのボスに交戦宣言中の人 (いま撃ちに行こうとしている = 最も無駄になる)
+//   ② 配信プランでそのボスを割り当てられていて、まだ報告していない人
+// 本人 (撃破した人) は除く。
+window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, excludePlayerId, level) {
+    const targets = new Set();
+    // ① 交戦宣言中
+    try {
+        const coords = await window.supabaseGetActiveFinishCoordinations();
+        (coords || []).forEach(c => {
+            if (Number(c.boss_number) === Number(bossNumber)) targets.add(c.player_id);
+        });
+    } catch (e) { console.warn('[defeat notify] 交戦宣言の取得skip:', e?.message || e); }
+    // ② 配信プランの割当 (未報告のみ)
+    try {
+        const pub = await window.supabaseGetPublishedPlan();
+        if (pub?.plan && Number(pub.season_id) === Number(seasonId)) {
+            // ★ **いま撃破されたレベルの割当だけ**を見る。
+            //   全レベルぶんを拾うと、次のレベルで同じボスを担当する人まで
+            //   「もう凸できません」と通知されてしまう (実データで1撃破あたり10〜13名になった)
+            const assigned = new Set();
+            (pub.plan.levels || []).forEach(lv => {
+                if (level != null && Number(lv.level) !== Number(level)) return;
+                (lv.bosses || []).forEach(b => {
+                    if (Number(b.bossNumber) !== Number(bossNumber)) return;
+                    (b.attacks || []).forEach(a => { if (a.memberId != null) assigned.add(a.memberId); });
+                });
+            });
+            if (assigned.size > 0) {
+                // 「そのボスへ既に報告済み」の人は外す (もう用が済んでいる)
+                const { data } = await supabase.from('attacks')
+                    .select('player_id').eq('season_id', seasonId).eq('boss_number', bossNumber);
+                const done = new Set((data || []).map(x => x.player_id));
+                assigned.forEach(pid => { if (!done.has(pid)) targets.add(pid); });
+            }
+        }
+    } catch (e) { console.warn('[defeat notify] 配信プランの取得skip:', e?.message || e); }
+    if (excludePlayerId != null) targets.delete(excludePlayerId);
+    return [...targets];
+};
+
+// レベル開放の通知先: まだ凸が残っている人 (動ける人だけに知らせる)
+window.supabaseLevelOpenNotifyTargets = async function (seasonId) {
+    try {
+        const [pRes, aRes] = await Promise.all([
+            supabase.from('players').select('id').or('archived.is.null,archived.eq.false'),
+            supabase.from('attacks').select('player_id').eq('season_id', seasonId),
+        ]);
+        if (pRes.error) throw pRes.error;
+        const used = new Map();
+        (aRes.data || []).forEach(a => used.set(a.player_id, (used.get(a.player_id) || 0) + 1));
+        return (pRes.data || []).map(p => p.id).filter(id => (used.get(id) || 0) < 3);
+    } catch (e) {
+        console.warn('[levelup notify] 対象の取得skip:', e?.message || e);
+        return [];
+    }
 };
 
 // ============ 配信プランの「確認しました」 (28_plan_acks.sql) ============

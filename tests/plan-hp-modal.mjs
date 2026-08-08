@@ -16,12 +16,28 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const i = html.indexOf('        async function openPlanHpModal(');
-const j = html.indexOf('        // ヒーローの主CTA:');
-if (i < 0 || j < 0 || j <= i) {
+if (i < 0) {
     console.error('NG: openPlanHpModal を index.html から切り出せませんでした (目印が変わった?)');
     process.exit(2);
 }
-const src = html.slice(i, j);
+// ★ 終端は「次の目印」ではなく**波括弧の対応**で決める。
+//   目印方式だと、間に別の関数を足しただけでテストが壊れる (2026-08-09 に実際に起きた)
+let depth = 0, end = -1, inStr = null, prev = '';
+for (let k = html.indexOf('{', i); k < html.length; k++) {
+    const ch = html[k];
+    if (inStr) {
+        if (ch === inStr && prev !== '\\') inStr = null;
+    } else if (ch === '"' || ch === "'" || ch === '`') {
+        inStr = ch;
+    } else if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) { end = k + 1; break; } }
+    prev = ch;
+}
+if (end < 0) {
+    console.error('NG: openPlanHpModal の終端を判定できませんでした');
+    process.exit(2);
+}
+const src = html.slice(i, end);
 // ---- 依存スタブ (index.html 側の実装に合わせる) ----
 let bodyHtml = '';
 const bodyEl = { set innerHTML(v) { bodyHtml = v; }, get innerHTML() { return bodyHtml; } };
