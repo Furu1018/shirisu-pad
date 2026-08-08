@@ -366,9 +366,14 @@
         const assignSlvRanks = (memberState) => {
             const participants = memberState.filter(m => m.remainingAttacks > 0 && Object.keys(m.avail).length > 0);
             participants.forEach(m => { m.power = powerOf(m); });
+            // 最終タイブレークは id の**コードポイント順**にする。
+            // localeCompare は既定ロケール依存で、同火力・同SLvの人の並びが端末によって
+            // 変わりうる = 同じ盤面から違うプランが出る (配信の前提が崩れる — Codex指摘)。
+            // id は一意なので必ずどちらかに決まる
+            const cpCmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
             const sorted = [...participants].sort((a, b) => (a.power - b.power)
                 || (a.slv - b.slv)
-                || String(a.name).localeCompare(String(b.name)));
+                || cpCmp(String(a.id), String(b.id)));
             const np = sorted.length;
             sorted.forEach((m, i) => { m.slvRank = np > 1 ? i / (np - 1) : 0.5; });
         };
