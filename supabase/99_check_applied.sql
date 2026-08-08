@@ -154,6 +154,11 @@ SELECT * FROM (
                 WHERE table_schema = 'public' AND table_name = 'plan_acks'),
         'plan_acks (配信プランの「確認しました」— 未適用だとボタンが押せず更新通知も飛ばない)'
 
+    UNION ALL SELECT '29_raid_event_notices',
+        EXISTS (SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'raid_event_notices'),
+        'raid_event_notices (撃破/レベル開放の通知の二重送信よけ — 未適用だと通知が出ない)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

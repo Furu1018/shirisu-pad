@@ -6713,22 +6713,68 @@
         }
 
         // ===== 戦況の通知 (撃破 / レベル開放) =====
-        // 送るのは「そのボスに関係する人」だけ。全員配信は凸報告だけで1日90通になりうるため
-        // 採らない (ユーザー判断 2026-08-09)。送信に失敗しても本処理は止めない。
-        async function _notifyBossDefeated(seasonId, boss, actor, dmgB, level) {
+        // 送るのは「そのボスに関係する人」だけ。全員配信は凸報告だけで1日90通に
+        // なりうるため採らない (ユーザー判断 2026-08-09)。
+        //
+        // ★ 検知は「盤面を見て気づく」方式に一本化してある。
+        //   残HPを0にする経路は 凸報告の自動減算 / OCR適用 / 代理凸 / 凸ダメージの編集 /
+        //   運営の単体HP保存・一括保存・ボス概要編集 / テストシード と複数あり、
+        //   書き込み側をフックすると必ず漏れる (Codex 監査で6箇所以上を確認)。
+        //   送信するかどうかは **DB の一意制約** (raid_event_notices) が決めるので、
+        //   何人が同時に気づいても送信は1回だけ。書き込み経路が増えても直す必要がない。
+        //   29_raid_event_notices.sql 未適用なら確保に失敗し、通知が出ないだけ。
+        let _raidEventBusy = false;
+        async function _checkRaidEvents() {
+            if (_raidEventBusy) return;   // 同一端末内の多重実行を抑える (DB側は一意制約で守られる)
+            _raidEventBusy = true;
             try {
-                if (typeof window.supabaseBossDefeatNotifyTargets !== 'function') return;
+                if (typeof window.supabaseClaimRaidNotice !== 'function') return;
+                const ctx = await ensureActiveSeasonLoaded();
+                const season = ctx?.season;
+                if (!season?.id) return;
+                const fresh = await window.supabaseLoadActiveSeasonWithBosses();
+                if (!fresh?.season || Number(fresh.season.id) !== Number(season.id)) return;
+                const bosses = fresh.bosses || [];
+                const level = Number(fresh.season.current_level) || 1;
+                const me = getCurrentIdentity();
+
+                // ① ボス撃破: 残HP0のボスごとに「このレベルでの撃破」を1回だけ通知する。
+                //   総HP未記録 (0) のボスは撃破と区別できないので対象外
+                for (const b of bosses) {
+                    if (!((Number(b.total_hp_raw) || 0) > 0)) continue;
+                    if ((Number(b.remaining_hp_raw) || 0) > 0) continue;
+                    const ref = `L${level}B${b.boss_number}`;
+                    if (!await window.supabaseClaimRaidNotice(fresh.season.id, 'boss_defeated', ref, me?.id)) continue;
+                    await _notifyBossDefeated(fresh.season.id, b, me, level);
+                }
+
+                // ② レベル開放: current_level が上がったこと自体を1回だけ通知する
+                if (level > 1) {
+                    const ref = `L${level}`;
+                    if (await window.supabaseClaimRaidNotice(fresh.season.id, 'level_open', ref, me?.id)) {
+                        await _notifyLevelOpened(fresh.season.id, { from: level - 1, to: level });
+                    }
+                }
+            } catch (e) {
+                console.warn('[raid notice] 検知に失敗:', e?.message || e);
+            } finally {
+                _raidEventBusy = false;
+            }
+        }
+
+        async function _notifyBossDefeated(seasonId, boss, actor, level) {
+            try {
                 const ids = await window.supabaseBossDefeatNotifyTargets(seasonId, boss.boss_number, actor?.id, level);
                 if (!ids.length) return;
                 const label = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
                 await window.sendPushNotification({
                     title: `⭐ ${label} 撃破!`,
-                    body: `${actor?.name || '誰か'} さんの凸 (${Number(dmgB || 0).toFixed(2)}B) で撃破されました。`
-                        + `このボスへの凸はもう入りません — 割当の変更は運営の再配信をご確認ください。`,
+                    body: 'このボスへの凸はもう入りません。'
+                        + '割当が変わる可能性があるので、運営の再配信をご確認ください。',
                     url: './?tab=ops',
-                    tag: `boss-defeated-${seasonId}-${boss.boss_number}`,
-                    // 交戦宣言中の人は「いま撃ちに行こうとしている」ので、
-                    // 戦闘可能時間の設定に関係なく届ける (時間帯フィルタで消えると凸を無駄にする)
+                    tag: `boss-defeated-${seasonId}-${level}-${boss.boss_number}`,
+                    // 交戦宣言中の人は「いま撃ちに行こうとしている」ので、戦闘可能時間の
+                    // 設定に関係なく届ける (時間帯フィルタで消えると凸を無駄にする)
                     ignoreAvailability: true,
                     playerIds: ids,
                 }, { senderPlayerId: actor?.id || null });
@@ -6738,7 +6784,6 @@
 
         async function _notifyLevelOpened(seasonId, levelUp) {
             try {
-                if (typeof window.supabaseLevelOpenNotifyTargets !== 'function') return;
                 const ids = await window.supabaseLevelOpenNotifyTargets(seasonId);
                 if (!ids.length) return;
                 await window.sendPushNotification({
@@ -6746,7 +6791,7 @@
                     body: `Lv${levelUp.from} を踏破し、Lv${levelUp.to} のボスが出現しました。残っている凸を進めてください。`,
                     url: './?tab=ops',
                     tag: `level-open-${seasonId}-${levelUp.to}`,
-                    // レベル開放は「いま動ける人に今すぐ知らせる」意味があるので時間帯を問わない
+                    // 「いま動ける人に今すぐ知らせる」意味があるので時間帯を問わない
                     ignoreAvailability: true,
                     playerIds: ids,
                 });
@@ -10309,6 +10354,9 @@
                     && typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(id);
                 _coordPollTick = (_coordPollTick + 1) % 3;
                 if (_coordPollTick === 0 && opsStore.get()?.season) {
+                    // 撃破/レベル開放の検知 (30秒ごと)。報告した本人以外の端末でも気づけるように。
+                    // 誰が気づいても送信は DB の一意制約で1回だけになる
+                    _checkRaidEvents().catch(() => { /* noop */ });
                     window.supabaseLoadActiveSeasonWithBosses().then(r => {
                         // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
                         // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
@@ -11208,7 +11256,7 @@
                             canonChars = (reg.canonical || canonChars).filter(Boolean);
                         } catch (e) { console.warn('[char register]', e?.message || e); }
                     }
-                    const addRes = await window.supabaseAddAttack({
+                    await window.supabaseAddAttack({
                         seasonId: ctx.season.id,
                         playerId: id.id,
                         attackDate: ctx.season.hard_date,
@@ -11218,16 +11266,11 @@
                         level: ctx.season.current_level || 1,
                         characters: canonChars,
                     }, { skipHpDecrement: ocrApplies });
-                    // 撃破判定は2経路ある: 通常は自動減算の結果、OCR適用時は書き換えた残HP
-                    let defeatedNow = !!addRes?._defeated;
                     if (ocrApplies) {
                         const totalRaw = _myAttackOcrBossHp.maxHp != null ? Number(_myAttackOcrBossHp.maxHp) : Number(boss.total_hp_raw || 0);
                         const remRaw = Number(_myAttackOcrBossHp.remainingHp);
-                        const wasAlive = Number(boss.remaining_hp_raw || 0) > 0;
-                        try {
-                            await window.supabaseUpdateBossHp(ctx.season.id, boss.boss_number, totalRaw, remRaw);
-                            defeatedNow = wasAlive && remRaw <= 0;
-                        } catch (e) { console.warn('[ocr hp apply] failed:', e?.message || e); }
+                        try { await window.supabaseUpdateBossHp(ctx.season.id, boss.boss_number, totalRaw, remRaw); }
+                        catch (e) { console.warn('[ocr hp apply] failed:', e?.message || e); }
                     }
                     // player_damages[me, 該当属性].characters に編成を反映 (プラン算出の衝突チェックに使用)
                     if (canonChars.length > 0 && boss.weakness) {
@@ -11244,12 +11287,10 @@
                             _coordActiveCache = (_coordActiveCache || []).filter(c => c.player_id !== id.id);
                         }
                     } catch (e) { console.warn('[coord auto-release]', e?.message || e); }
-                    // === 撃破したら、そのボスに関係する人へ通知 ===
-                    // 「交戦宣言中の人」と「配信プランでこのボス担当だが未報告の人」だけに絞る。
-                    // 全員配信は1日90通になりうるので採らない (ユーザー判断 2026-08-09)
-                    if (defeatedNow) {
-                        await _notifyBossDefeated(ctx.season.id, boss, id, dmgB, ctx.season.current_level || 1);
-                    }
+                    // 撃破/レベル開放の検知は盤面を見る _checkRaidEvents に一本化してある。
+                    // 報告した本人が最速で気づけるよう、ここで1回だけ即時チェックする
+                    // (送るかどうかは DB の一意制約が決めるので二重に飛ばない)
+                    _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
                     // === 強行した場合、対象の本人(達)に Push 通知 ===
                     if (forcedAgainst && forcedAgainst.length > 0) {
                         try {
@@ -15093,9 +15134,9 @@
                 return;
             }
             try {
-                const upd = await window.supabaseUpdateBossHp(seasonId, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
-                if (upd?.levelUp) await _notifyLevelOpened(seasonId, upd.levelUp);
-                msg.textContent = `✅ B${bossNumber} のHPを更新しました${upd?.levelUp ? ` (Lv${upd.levelUp.to} 開放を通知しました)` : ''}`;
+                await window.supabaseUpdateBossHp(seasonId, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
+                _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
+                msg.textContent = `✅ B${bossNumber} のHPを更新しました`;
                 msg.style.color = '#22c55e';
                 opsStore.invalidate();
                 seasonStore.invalidate();
