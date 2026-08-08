@@ -1636,25 +1636,27 @@ test('分岐は基準解より総与ダメを減らさない (非悪化の不変
 test('全レベル一括の分岐でしか届かない改善を拾う (レベル別1点分岐では不足)', () => {
     // 実測で見つけた4人盤面。貴重な人材の取り合いは Lv1〜Lv3 に連鎖するため、
     // 「このレベルのこの決定点だけ」を振り替える1点分岐では届かない。
-    // 全レベル一括キー (wildKey) を候補から外すと 146.5B に落ちる盤面
+    // 全レベル一括キー (wildKey) を候補から外すと 160.5B に落ちる盤面
+    // (2026-08-08 に順位付けを実ダメージ基準へ変えた際、旧盤面が検出力を失ったため取り直した)
     const bs = [
-        boss(1, 'iron', { attribute: 'fire', totalB: 44, remainingB: 23 }),
-        boss(2, 'wind', { attribute: 'water', totalB: 43, remainingB: 38 }),
-        boss(3, 'fire', { attribute: 'electric', totalB: 52, remainingB: 42 }),
-        boss(4, 'water', { attribute: 'iron', totalB: 26, remainingB: 22 }),
-        boss(5, 'electric', { attribute: 'wind', tier: 'tyrant', totalB: 35, remainingB: 24 }),
+        boss(1, 'wind', { attribute: 'iron', totalB: 38, remainingB: 22 }),
+        boss(2, 'water', { attribute: 'fire', totalB: 41, remainingB: 39 }),
+        boss(3, 'iron', { attribute: 'electric', tier: 'tyrant', totalB: 53, remainingB: 50 }),
+        boss(4, 'electric', { attribute: 'water', totalB: 52, remainingB: 31 }),
+        boss(5, 'fire', { attribute: 'wind', tier: 'tyrant', totalB: 55, remainingB: 50 }),
     ];
     const ps = [
-        player('M0', { iron: 25, wind: 25, electric: 10.5, fire: 25.5 }),
-        player('M1', { wind: 22, iron: 13.5, electric: 22.5, water: 26.5 }),
-        player('M2', { fire: 25.5, wind: 23.5, water: 19 }),
-        player('M3', { water: 13.5, iron: 7, wind: 14.5, fire: 20.5 }),
+        player('M0', { iron: 17.5, fire: 19 }, { slv: 632 }),
+        player('M1', { electric: 23.5, water: 21 }, { slv: 405 }),
+        player('M2', { water: 17, iron: 12.5, wind: 20, electric: 21 }, { slv: 333 }),
+        player('M3', { electric: 24.5, water: 22.5, iron: 20, fire: 21.5 }, { slv: 537 }),
     ];
     const input = makeInput(bs, ps, { currentSlot: 'h05' });
     const on = compute({ ...input, timeAware: false });
     const off = compute({ ...input, timeAware: false, crossBoss: false });
-    assert.ok(on.totalCreditedB >= off.totalCreditedB + 70,
-        `横断分岐で 70B 以上伸びるはず (ON ${on.totalCreditedB.toFixed(1)} / OFF ${off.totalCreditedB.toFixed(1)})`);
+    // 一括分岐を外すと ON は OFF と同じ 160.5B に落ちる
+    assert.ok(on.totalCreditedB >= off.totalCreditedB + 15,
+        `横断分岐で 15B 以上伸びるはず (ON ${on.totalCreditedB.toFixed(1)} / OFF ${off.totalCreditedB.toFixed(1)})`);
 });
 
 test('改善した分岐に重ねて分岐する (深さ1では届かない)', () => {

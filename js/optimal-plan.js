@@ -350,20 +350,38 @@
             });
 
         // SLv順位 (0=最低, 1=最高) を参加可能メンバー内で相対化して付与
+        // 「火力の弱い人ほど低いレベルのボスへ」の順位付け。
+        // ★ 基準は SLv ではなく**実際に提出されたダメージ**にする (ユーザー要望 2026-08-08)。
+        //   SLv はあくまで育成度の目安で、同じ SLv でも編成次第で実火力は大きく違う。
+        //   実測でも「平均5.4B / SLv411」の人と「平均13.0B / SLv550」の人の並びが
+        //   SLv 基準では実力どおりにならなかった。
+        //   火力 = 提出済み各属性のベスト編成の平均 (その人が普段出せる火力の代表値)。
+        //   同点は SLv → 名前順で崩し、同じ盤面から常に同じ並びになるようにする
+        const powerOf = (m) => {
+            const best = Object.values(m.avail || {})
+                .map(list => (list && list.length) ? Math.max(...list.map(x => x.dmg)) : 0)
+                .filter(v => v > 0);
+            return best.length ? best.reduce((a, b) => a + b, 0) / best.length : 0;
+        };
         const assignSlvRanks = (memberState) => {
             const participants = memberState.filter(m => m.remainingAttacks > 0 && Object.keys(m.avail).length > 0);
-            const sortedBySlv = [...participants].sort((a, b) => a.slv - b.slv);
-            const np = sortedBySlv.length;
-            sortedBySlv.forEach((m, i) => { m.slvRank = np > 1 ? i / (np - 1) : 0.5; });
+            participants.forEach(m => { m.power = powerOf(m); });
+            const sorted = [...participants].sort((a, b) => (a.power - b.power)
+                || (a.slv - b.slv)
+                || String(a.name).localeCompare(String(b.name)));
+            const np = sorted.length;
+            sorted.forEach((m, i) => { m.slvRank = np > 1 ? i / (np - 1) : 0.5; });
         };
 
-        // 候補スコア(小さいほど良い): オーバーキル + SLvミスマッチ + 遅い時間ペナルティ。
-        // SLv完全ミスマッチ(1.0) ≈ 5B のオーバーキル、1時間の遅れ ≈ 0.2B のオーバーキル相当。
+        // 候補スコア(小さいほど良い): オーバーキル + 火力レベルのミスマッチ + 遅い時間ペナルティ。
+        // 火力の完全ミスマッチ(1.0) ≈ 5B のオーバーキル、1時間の遅れ ≈ 0.2B のオーバーキル相当。
+        // ここでいう「火力」は実際の提出ダメージの順位 (slvRank — 名前は歴史的経緯で SLv のまま)。
         // ⏳隙間割当は時刻を確約しない分の不確実性ペナルティ (2時間の遅れ相当) を課し、
         // 「時刻を確約できる人」が僅差なら優先されるようにする。
         const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2, FLEX_PENALTY = 2 * W_TIME, MISMATCH_PENALTY = 6 * W_TIME, W_STRONG = 2.5;
         const scoreOf = (m, attr, dmg, rem, levelPos, hourIdx, openIdx, isFlex, isMismatch) => {
             const overkill = Math.max(0, dmg - rem);
+            // 火力が弱い人ほど低いレベル (levelPos: Lv1=0 / Lv2=0.5 / Lv3=1) に寄せる
             const slvPenalty = Math.abs((m.slvRank ?? 0.5) - levelPos);
             const timePenalty = timeAware ? (hourIdx - openIdx) : 0;
             // ⚠ 括弧必須: ?: は + より優先度が低いため、括弧が無いと
@@ -441,13 +459,22 @@
                 // targets は未処理ボスも満タン残HPで持つので、1回の走査で生存判定できる。
                 // 温存パス (lv4Mandatory) の除外条件も同じ式に含める — 含めないと
                 // レベル開始時に外した予約が途中の数え直しで復活してしまう
+                // その属性で、キャラ被りせずに出せる編成が1つでも残っているか
+                const canUseAttr = (m, attr) => (m.avail[attr] || []).some(c =>
+                    !(m.anyTeamRegistered && c.team.length > 0
+                        && c.team.some(x => hasUsedChar(m.usedChars, x))));
                 const recountLocked = () => {
                     const aliveWeakLeft = new Set();
                     targets.forEach(t => { if (t.rem > 0.0001 && t.b.weakness) aliveWeakLeft.add(t.b.weakness); });
                     memberState.forEach(m => {
                         if (m.mandatory.size === 0) { m.lockedNow = 0; return; }
                         m.lockedNow = [...m.mandatory].filter(k => aliveWeakLeft.has(k)
-                            && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))).length;
+                            && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))
+                            // ★ その属性で「実際に出せる編成」が残っているかまで見る。
+                            //   見ないと、キャラ被りで得意属性の編成が全滅した人が
+                            //   出せない枠を予約し続け、出せる属性への凸まで封じられる
+                            //   (2026-08-08 実データで4名が3凸目を消化できず・8凸が未使用のまま残った)
+                            && canUseAttr(m, k)).length;
                     });
                 };
                 // t のボスに出せる最良 (スコア最小) の候補を探す
@@ -656,6 +683,9 @@
                             if (!c) break;
                             noteDecision(t, list, c, false);
                             applyPick(t, c);
+                            // ★ 撃破時だけでなく毎回数え直す — 凸を1つ採るたびに usedChars が増え、
+                            //   得意属性が「出せない」状態に変わりうる (上のコメント参照)
+                            recountLocked();
                         }
                         trimOverkill(t);   // 撃破を保ったまま不要な凸を外す (損失圧縮・凸を浮かせる)
                         recountLocked();   // このボスが撃破されたら必須予約を解放 (#4)
@@ -673,8 +703,8 @@
                         applyPick(bestT, best);
                         if (bestT.rem <= 0.0001) {
                             trimOverkill(bestT);   // 撃破したボスの不要な凸を外し、他ボスへ回す
-                            recountLocked();       // 撃破が起きたら必須予約を解放 (#4)
                         }
+                        recountLocked();   // 採用のたびに数え直す (同上)
                     }
                 }
                 // 集計: ボスごとの結果を組み立てる
