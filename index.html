@@ -6735,8 +6735,14 @@
             try {
                 if (typeof window.supabaseClaimRaidNotice !== 'function') return;
                 if (!window.raidEventsDomain) return;
-                // ★ 取得の**前**に掴むこと — 取得後だと新しい盤面と同じになり差分が消える
-                const cached = opsStore.get() || seasonStore.get() || null;
+                // ★ 取得の**前**に、しかも**その場でスナップショットに焼く**こと。
+                //   参照のまま await をまたぐと、途中のポーリングの patchBosses() が
+                //   同じストアオブジェクトの bosses を差し替え、掴んだはずの旧盤面が
+                //   新盤面に化けて差分が消える (Codex指摘)
+                const cachedStore = opsStore.get() || seasonStore.get() || null;
+                const cachedSnap = cachedStore?.season
+                    ? window.raidEventsDomain.snapshotBoard(cachedStore.season, cachedStore.bosses)
+                    : null;
                 const ctx = await ensureActiveSeasonLoaded();
                 const season = ctx?.season;
                 if (!season?.id) return;
@@ -6752,8 +6758,8 @@
                 //   これが無いと「アプリを開いて最初の凸報告で撃破」が初回観測になり、
                 //   一番よくある流れで通知が出ない (Codex指摘)
                 let prev = (_raidSeen && String(_raidSeen.seasonId) === String(cur.seasonId)) ? _raidSeen : null;
-                if (!prev && cached?.season && String(cached.season.id) === String(cur.seasonId)) {
-                    prev = D.snapshotBoard(cached.season, cached.bosses);
+                if (!prev && cachedSnap && String(cachedSnap.seasonId) === String(cur.seasonId)) {
+                    prev = cachedSnap;
                 }
                 _raidSeen = cur;
                 if (!prev) return;   // 比較対象が全く無い = 初回観測。記録だけして何も送らない
@@ -11222,6 +11228,8 @@
             try {
                 if (editId) {
                     await window.supabaseUpdateAttackDamage(parseInt(editId), damageRaw);
+                    // 編集でも残HPが動く → 撃破/レベル開放の検知を走らせる
+                    _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
                     setMsg('✅ ダメージを更新しました');
                 } else {
                     if (!_myAttackSelectedBossNumber) { setMsg('❌ ボスを選択してください', true); return; }
@@ -15063,6 +15071,9 @@
                 ? `✅ ${ok}ボス保存完了`
                 : `⚠️ ${ok}保存 / ${fail}失敗: ${errs.join(', ')}`;
             msg.style.color = fail === 0 ? '#22c55e' : '#f59e0b';
+            // ★ invalidate の前に検知する — キャッシュ (= 保存前の盤面) を
+            //   前回の盤面として使うため。invalidate 後だと比較対象が消える
+            _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
             opsStore.invalidate();
             seasonStore.invalidate();
             await renderOpsDashboard();
@@ -15396,6 +15407,9 @@
                     }, proxyOpts);
                     set(`✅ 代理凸を登録しました (${memberName})${hpDecrement ? '' : ' — HPは減算していません。ボスHP更新を忘れずに'}`);
                 }
+                // ★ invalidate の前に検知する (キャッシュ = 登録前の盤面を比較元に使うため)。
+                //   代理凸も hpDecrement が ON なら残HPが動く
+                _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
                 opsStore.invalidate();
                 setTimeout(() => closeOpsProxyAttackModal(), 900);
                 renderOpsDashboard();
