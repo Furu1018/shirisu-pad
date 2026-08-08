@@ -11590,6 +11590,8 @@
             const id = getCurrentIdentity();
             try {
                 await window.supabaseDeleteAttack(attackId);
+                // 削除はHPを戻す。通知は出ないが _raidSeen を追随させる (差分の取りこぼし防止)
+                _checkRaidEvents().catch(() => { /* noop */ });
                 _myTodayAttacksCache = null;
                 seasonStore.invalidate();
                 opsStore.invalidate();
@@ -15710,6 +15712,8 @@
             const msg = document.getElementById('opsAttacksMessage');
             try {
                 await window.supabaseUpdateAttackDamage(attackId, Math.round(newB * 1e9));
+                // 編集で残HPが動く → 検知 (invalidate の前に呼ぶ)
+                _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
                 msg.textContent = `✅ ダメージを ${newB} B に更新しました`;
                 msg.style.color = '#22c55e';
                 opsStore.invalidate();
@@ -15725,6 +15729,8 @@
             const msg = document.getElementById('opsAttacksMessage');
             try {
                 await window.supabaseDeleteAttack(attackId);
+                // 削除はHPを戻す。通知は出ないが _raidSeen を追随させる (差分の取りこぼし防止)
+                _checkRaidEvents().catch(() => { /* noop */ });
                 msg.textContent = `🗑️ ${playerName} の ${attackNumber}凸目 を削除しました`;
                 msg.style.color = '#22c55e';
                 opsStore.invalidate();
