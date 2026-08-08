@@ -9,7 +9,8 @@ import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ 
 import '../js/domain/ocr.js';          // globalThis.ocrDomain (リアーキ ステップ2)
 import '../js/domain/finish.js';       // globalThis.finishDomain (リアーキ ステップ2)
 import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ ステップ2)
-import '../js/domain/mockCompare.js';  // globalThis.mockCompareDomain (UI再設計 Stage2)
+import '../js/domain/mockCompare.js';
+import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベル開放)  // globalThis.mockCompareDomain (UI再設計 Stage2)
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
@@ -1630,6 +1631,65 @@ test('レベルの割当は SLv ではなく実際の提出ダメージ順で決
     assert.equal(first.memberName, '高SLv低火力',
         `Lv1 には総合火力の低い人が寄るはず (実際は ${first.memberName})`);
 });
+
+// ---- 戦況の変化検知 (撃破 / レベル開放) ------------------------------------------
+console.log('\n戦況の変化検知:');
+{
+    const { deadBossNumbers, snapshotBoard, diffRaidEvents } = globalThis.raidEventsDomain;
+    const B = (n, totalB, remB) => ({ boss_number: n, total_hp_raw: totalB * 1e9, remaining_hp_raw: remB * 1e9 });
+    const snap = (lv, bosses, sid = 1) => snapshotBoard({ id: sid, current_level: lv }, bosses);
+
+    test('総HP未記録 (0) のボスは撃破扱いしない', () => {
+        // 古いシーズンは5体とも total=0/rem=0。これを撃破とみなすと全部誤爆する
+        const dead = deadBossNumbers([B(1, 0, 0), B(2, 100, 0), B(3, 100, 50)]);
+        assert.deepEqual([...dead], [2]);
+    });
+
+    test('初回観測 (前回なし) では何も通知しない', () => {
+        const cur = snap(1, [B(1, 100, 0), B(2, 100, 0)]);
+        const ev = diffRaidEvents(null, cur);
+        assert.deepEqual(ev.defeated, []);
+        assert.equal(ev.levelOpened, null);
+    });
+
+    test('前回は生きていて今回倒れているボスだけを返す', () => {
+        const prev = snap(1, [B(1, 100, 30), B(2, 100, 0), B(3, 100, 20)]);
+        const cur  = snap(1, [B(1, 100, 0),  B(2, 100, 0), B(3, 100, 20)]);
+        const ev = diffRaidEvents(prev, cur);
+        assert.deepEqual(ev.defeated, [1], 'B2 は前回から倒れているので再通知しない');
+        assert.equal(ev.levelOpened, null);
+    });
+
+    test('レベルが上がったときだけ開放を返す', () => {
+        const bs = [B(1, 100, 50)];
+        assert.equal(diffRaidEvents(snap(1, bs), snap(2, bs)).levelOpened, 2);
+        assert.equal(diffRaidEvents(snap(2, bs), snap(2, bs)).levelOpened, null);
+        assert.equal(diffRaidEvents(snap(2, bs), snap(1, bs)).levelOpened, null, '下がった場合は出さない');
+    });
+
+    test('Lv2 から始まるシーズンでも開放を誤爆しない', () => {
+        const bs = [B(1, 100, 50)];
+        // 最初に見たときが Lv2 → prev.level=2、次も 2 なので出ない
+        assert.equal(diffRaidEvents(snap(2, bs), snap(2, bs)).levelOpened, null);
+    });
+
+    test('シーズンが変わったら何も通知しない (別シーズンの盤面と比べない)', () => {
+        const prev = snap(1, [B(1, 100, 50)], 1);
+        const cur  = snap(1, [B(1, 100, 0)], 2);
+        const ev = diffRaidEvents(prev, cur);
+        assert.deepEqual(ev.defeated, []);
+        assert.equal(ev.levelOpened, null);
+    });
+
+    test('レベル開放と撃破が同時でも両方返る', () => {
+        const prev = snap(1, [B(1, 100, 10), B(2, 100, 10)]);
+        const cur  = snap(2, [B(1, 100, 0),  B(2, 100, 0)]);
+        const ev = diffRaidEvents(prev, cur);
+        assert.deepEqual(ev.defeated, [1, 2]);
+        assert.equal(ev.levelOpened, 2);
+        assert.equal(ev.from, 1);
+    });
+}
 
 // ---- ボス横断の最適化 (フェーズ2: 限定分岐) --------------------------------------
 console.log('\nボス横断の最適化:');

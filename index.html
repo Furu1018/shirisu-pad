@@ -32,6 +32,7 @@
     <script defer src="./js/domain/format.js"></script>
     <script defer src="./js/domain/mockCompare.js"></script>
     <script defer src="./js/domain/gbCompare.js"></script>
+    <script defer src="./js/domain/raidEvents.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -6733,6 +6734,9 @@
             _raidEventBusy = true;
             try {
                 if (typeof window.supabaseClaimRaidNotice !== 'function') return;
+                if (!window.raidEventsDomain) return;
+                // ★ 取得の**前**に掴むこと — 取得後だと新しい盤面と同じになり差分が消える
+                const cached = opsStore.get() || seasonStore.get() || null;
                 const ctx = await ensureActiveSeasonLoaded();
                 const season = ctx?.season;
                 if (!season?.id) return;
@@ -6741,31 +6745,31 @@
                 const bosses = fresh.bosses || [];
                 const level = Number(fresh.season.current_level) || 1;
                 const me = getCurrentIdentity();
-                // 総HP未記録 (0) のボスは「撃破」と「未入力」を区別できないので対象外
-                const deadNow = new Set(bosses
-                    .filter(b => (Number(b.total_hp_raw) || 0) > 0 && (Number(b.remaining_hp_raw) || 0) <= 0)
-                    .map(b => Number(b.boss_number)));
+                const D = window.raidEventsDomain;
+                const cur = D.snapshotBoard(fresh.season, bosses);
 
-                const prev = (_raidSeen && Number(_raidSeen.seasonId) === Number(fresh.season.id)) ? _raidSeen : null;
-                _raidSeen = { seasonId: fresh.season.id, level, dead: deadNow };
-                if (!prev) return;   // 初回観測 (またはシーズン切替直後) は記録だけして何も送らない
-
-                // ① ボス撃破: 「前回は生きていたのに今回は倒れている」ボスだけ
-                for (const b of bosses) {
-                    const bn = Number(b.boss_number);
-                    if (!deadNow.has(bn) || prev.dead.has(bn)) continue;
-                    const ref = `L${level}B${bn}`;
-                    if (!await window.supabaseClaimRaidNotice(fresh.season.id, 'boss_defeated', ref, me?.id)) continue;
-                    await _notifyBossDefeated(fresh.season.id, b, me, level);
+                // 「前回見た盤面」。★ 手元に記録が無いときは **取得直前のキャッシュ** を使う。
+                //   これが無いと「アプリを開いて最初の凸報告で撃破」が初回観測になり、
+                //   一番よくある流れで通知が出ない (Codex指摘)
+                let prev = (_raidSeen && String(_raidSeen.seasonId) === String(cur.seasonId)) ? _raidSeen : null;
+                if (!prev && cached?.season && String(cached.season.id) === String(cur.seasonId)) {
+                    prev = D.snapshotBoard(cached.season, cached.bosses);
                 }
+                _raidSeen = cur;
+                if (!prev) return;   // 比較対象が全く無い = 初回観測。記録だけして何も送らない
 
-                // ② レベル開放: 「前回より current_level が上がった」ときだけ。
-                //   シーズンが Lv2 から始まっている場合などに誤爆しない
-                if (level > prev.level) {
-                    const ref = `L${level}`;
-                    if (await window.supabaseClaimRaidNotice(fresh.season.id, 'level_open', ref, me?.id)) {
-                        await _notifyLevelOpened(fresh.season.id, { from: prev.level, to: level });
-                    }
+                const ev = D.diffRaidEvents(prev, cur);
+                // ① ボス撃破
+                for (const bn of ev.defeated) {
+                    const b = bosses.find(x => Number(x.boss_number) === bn);
+                    if (!b) continue;
+                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, 'boss_defeated', `L${level}B${bn}`, me?.id)) continue;
+                    await _notifyBossDefeated(cur.seasonId, b, me, level);
+                }
+                // ② レベル開放
+                if (ev.levelOpened != null
+                    && await window.supabaseClaimRaidNotice(cur.seasonId, 'level_open', `L${ev.levelOpened}`, me?.id)) {
+                    await _notifyLevelOpened(cur.seasonId, { from: ev.from, to: ev.levelOpened });
                 }
             } catch (e) {
                 console.warn('[raid notice] 検知に失敗:', e?.message || e);
