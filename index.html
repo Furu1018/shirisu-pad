@@ -6723,9 +6723,13 @@
         //   送信するかどうかは **DB の一意制約** (raid_event_notices) が決めるので、
         //   何人が同時に気づいても送信は1回だけ。書き込み経路が増えても直す必要がない。
         //   29_raid_event_notices.sql 未適用なら確保に失敗し、通知が出ないだけ。
-        let _raidEventBusy = false;
+        let _raidEventBusy = false, _raidEventAgain = false;
+        // 「前回見たときの状態」。★ 初回観測では通知しない —
+        // アプリを開いた時点で既に倒れているボスを一斉に「撃破!」と流さないため。
+        // テストシーズンのシード (残HPを0にする) で誤爆するのも同じ理屈で防げる
+        let _raidSeen = null;   // { seasonId, level, dead:Set<bossNumber> }
         async function _checkRaidEvents() {
-            if (_raidEventBusy) return;   // 同一端末内の多重実行を抑える (DB側は一意制約で守られる)
+            if (_raidEventBusy) { _raidEventAgain = true; return; }   // 実行中の変化を捨てない
             _raidEventBusy = true;
             try {
                 if (typeof window.supabaseClaimRaidNotice !== 'function') return;
@@ -6737,28 +6741,38 @@
                 const bosses = fresh.bosses || [];
                 const level = Number(fresh.season.current_level) || 1;
                 const me = getCurrentIdentity();
+                // 総HP未記録 (0) のボスは「撃破」と「未入力」を区別できないので対象外
+                const deadNow = new Set(bosses
+                    .filter(b => (Number(b.total_hp_raw) || 0) > 0 && (Number(b.remaining_hp_raw) || 0) <= 0)
+                    .map(b => Number(b.boss_number)));
 
-                // ① ボス撃破: 残HP0のボスごとに「このレベルでの撃破」を1回だけ通知する。
-                //   総HP未記録 (0) のボスは撃破と区別できないので対象外
+                const prev = (_raidSeen && Number(_raidSeen.seasonId) === Number(fresh.season.id)) ? _raidSeen : null;
+                _raidSeen = { seasonId: fresh.season.id, level, dead: deadNow };
+                if (!prev) return;   // 初回観測 (またはシーズン切替直後) は記録だけして何も送らない
+
+                // ① ボス撃破: 「前回は生きていたのに今回は倒れている」ボスだけ
                 for (const b of bosses) {
-                    if (!((Number(b.total_hp_raw) || 0) > 0)) continue;
-                    if ((Number(b.remaining_hp_raw) || 0) > 0) continue;
-                    const ref = `L${level}B${b.boss_number}`;
+                    const bn = Number(b.boss_number);
+                    if (!deadNow.has(bn) || prev.dead.has(bn)) continue;
+                    const ref = `L${level}B${bn}`;
                     if (!await window.supabaseClaimRaidNotice(fresh.season.id, 'boss_defeated', ref, me?.id)) continue;
                     await _notifyBossDefeated(fresh.season.id, b, me, level);
                 }
 
-                // ② レベル開放: current_level が上がったこと自体を1回だけ通知する
-                if (level > 1) {
+                // ② レベル開放: 「前回より current_level が上がった」ときだけ。
+                //   シーズンが Lv2 から始まっている場合などに誤爆しない
+                if (level > prev.level) {
                     const ref = `L${level}`;
                     if (await window.supabaseClaimRaidNotice(fresh.season.id, 'level_open', ref, me?.id)) {
-                        await _notifyLevelOpened(fresh.season.id, { from: level - 1, to: level });
+                        await _notifyLevelOpened(fresh.season.id, { from: prev.level, to: level });
                     }
                 }
             } catch (e) {
                 console.warn('[raid notice] 検知に失敗:', e?.message || e);
             } finally {
                 _raidEventBusy = false;
+                // 実行中に来た呼び出しを1回だけ拾い直す (盤面がさらに動いている可能性)
+                if (_raidEventAgain) { _raidEventAgain = false; setTimeout(() => _checkRaidEvents(), 0); }
             }
         }
 

@@ -2057,7 +2057,9 @@ window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, e
                 //   同レベル同ボスに2凸割当の人は、割当数より報告数が少なければ対象に残す
                 const q = supabase.from('attacks')
                     .select('player_id').eq('season_id', seasonId).eq('boss_number', bossNumber);
-                const { data } = await (level != null ? q.eq('level', level) : q);
+                const { data, error: aErr } = await (level != null ? q.eq('level', level) : q);
+                // 取得に失敗したら「全員未報告」とみなして報告済みの人にも通知してしまう
+                if (aErr) throw aErr;
                 const doneCount = new Map();
                 (data || []).forEach(x => doneCount.set(x.player_id, (doneCount.get(x.player_id) || 0) + 1));
                 assignedCount.forEach((need, pid) => {
