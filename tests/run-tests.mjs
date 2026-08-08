@@ -1583,6 +1583,54 @@ console.log('\ndomain/mockCompare:');
     });
 }
 
+test('得意属性の予約は「実際に出せる編成が残っているか」まで見る (レベル跨ぎ)', () => {
+    // 得意属性の編成がキャラ被りで全滅しているのに枠だけ予約し続けると、
+    // 出せる属性への凸まで封じられる。**レベル開始時の初期化にも効かせないと**、
+    // 次のレベルの最初の候補選定で弾かれ、そのレベルで1凸もできないまま終わる。
+    // 実測で見つけた4人盤面 (canUseAttr をレベル開始時から外すと 139B に落ちる)
+    const lo = (dmg, shared, attr) => [{ dmgB: dmg, team: [shared, `${attr}A`, `${attr}B`, `${attr}C`, `${attr}D`], slot: 1 }];
+    const mk = (name, slv, strong, spec) => ({
+        id: name, name, attackCount: 0, syncLevel: slv, attacks: [],
+        availableSlots: [], flexTime: false, strong_attributes: strong, teamsByAttr: {},
+        damagesByAttr: Object.fromEntries(Object.entries(spec).map(([a, [d]]) => [a, d])),
+        loadoutsByAttr: Object.fromEntries(Object.entries(spec).map(([a, [d, sh]]) => [a, lo(d, sh, a)])),
+    });
+    const bs = [
+        boss(1, 'fire', { attribute: 'wind', totalB: 36, remainingB: 31 }),
+        boss(2, 'electric', { attribute: 'water', totalB: 49, remainingB: 48 }),
+        boss(3, 'iron', { attribute: 'electric', tier: 'tyrant', totalB: 26, remainingB: 15 }),
+        boss(4, 'wind', { attribute: 'iron', totalB: 33, remainingB: 18 }),
+        boss(5, 'water', { attribute: 'fire', tier: 'tyrant', totalB: 28, remainingB: 20 }),
+    ];
+    const ps = [
+        mk('M0', 529, ['fire'], { wind: [17.5, '共有B'], electric: [24.5, '共有D'], fire: [25, '共有B'] }),
+        mk('M1', 509, ['water'], { electric: [20.5, '共有C'], water: [20, '共有B'], fire: [23, '共有C'] }),
+        mk('M2', 653, ['wind'], { wind: [19.5, '共有D'], iron: [22, '共有A'], fire: [7, '共有D'], electric: [13.5, '共有A'] }),
+        mk('M3', 503, ['fire', 'iron'], { wind: [13, '共有D'], iron: [16, '共有B'], fire: [7, '共有D'], electric: [23.5, '共有B'] }),
+    ];
+    const plan = compute({ ...makeInput(bs, ps, { currentSlot: 'h05' }), timeAware: false });
+    assert.ok(plan.totalCreditedB >= 144,
+        `出せない得意属性の枠でロックしてはいけない (実際 ${plan.totalCreditedB.toFixed(1)}B / ロックすると 139B)`);
+});
+
+test('レベルの割当は SLv ではなく実際の提出ダメージ順で決まる', () => {
+    // 順位付けだけを切り出す: **同じボスに対する火力は両者とも同じ 10B** にして、
+    // オーバーキル差で決まらないようにする。違うのは「その人の総合火力」と SLv だけ。
+    // Lv1 (levelPos=0) には火力順位の低い人が寄るのが正しい。
+    // SLv 基準のままだと SLv300 の人 (=高火力) が選ばれてしまう
+    const bs = [boss(1, 'fire', { remainingB: 10 })];
+    const ps = [
+        player('高SLv低火力', { fire: 10, water: 10, electric: 10 }, { slv: 800 }),   // 総合10B
+        player('低SLv高火力', { fire: 10, water: 40, electric: 40 }, { slv: 300 }),   // 総合30B
+    ];
+    const plan = compute({ ...makeInput(bs, ps), timeAware: false });
+    const lv1 = plan.levels.find(lv => lv.level === 1);
+    const first = lv1?.bosses?.[0]?.attacks?.[0];
+    assert.ok(first, 'Lv1 のボスに凸が割り当てられること');
+    assert.equal(first.memberName, '高SLv低火力',
+        `Lv1 には総合火力の低い人が寄るはず (実際は ${first.memberName})`);
+});
+
 // ---- ボス横断の最適化 (フェーズ2: 限定分岐) --------------------------------------
 console.log('\nボス横断の最適化:');
 

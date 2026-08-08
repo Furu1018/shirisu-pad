@@ -400,6 +400,12 @@
         // opts.lv4Mandatory: { attr, canAfter(m) } — この属性の必須消化は Lv4 で満たせる前提で
         //   枠予約 (lockedNow) から除外する (canAfter な人のみ)。
         const runPass = (opts = {}) => {
+            // その属性で、キャラ被りせずに出せる編成が1つでも残っているか。
+            // ⚠ listCandidatesFor のキャラ被り判定と同じ式にすること (片方だけ変えると
+            //    「候補にはならないのに枠だけ予約される」状態が復活する)
+            const canUseAttr = (m, attr) => (m.avail[attr] || []).some(c =>
+                !(m.anyTeamRegistered && c.team.length > 0
+                    && c.team.some(x => hasUsedChar(m.usedChars, x))));
             const memberState = buildMemberState();
             assignSlvRanks(memberState);
             const levels = [];
@@ -421,7 +427,12 @@
                 m.lockedNow = [...m.mandatory].filter(k => aliveWeakThisLevel.has(k)
                     // 温存パス: ボス5弱点が得意属性の人は Lv4 で消化できる (全額計上で本人にも最良) ため
                     // 有限レベルでは枠予約しない。ただし Lv4 開放時刻に出られない人は従来どおり予約する
-                    && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))).length;
+                    && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))
+                    // ★ ここでも「実際に出せるか」を見る。見ないと、前のレベルで得意属性の編成が
+                    //   キャラ被りで全滅した人が、次のレベルの**最初の候補選定**で弾かれる。
+                    //   候補が全部このロックで消えると applyPick が起きず再集計も走らないため、
+                    //   そのレベルで1凸もできないまま終わる (Codex指摘 P1)
+                    && canUseAttr(m, k)).length;
             });
             // メンバー状態のスナップショット — 踏破モードで失敗したら吸収モードでやり直すため
             const snapshot = memberState.map(m => ({
@@ -459,10 +470,6 @@
                 // targets は未処理ボスも満タン残HPで持つので、1回の走査で生存判定できる。
                 // 温存パス (lv4Mandatory) の除外条件も同じ式に含める — 含めないと
                 // レベル開始時に外した予約が途中の数え直しで復活してしまう
-                // その属性で、キャラ被りせずに出せる編成が1つでも残っているか
-                const canUseAttr = (m, attr) => (m.avail[attr] || []).some(c =>
-                    !(m.anyTeamRegistered && c.team.length > 0
-                        && c.team.some(x => hasUsedChar(m.usedChars, x))));
                 const recountLocked = () => {
                     const aliveWeakLeft = new Set();
                     targets.forEach(t => { if (t.rem > 0.0001 && t.b.weakness) aliveWeakLeft.add(t.b.weakness); });
