@@ -2010,7 +2010,8 @@ window.supabaseGetPublishedPlan = async function () {
 // INSERT が通った1人だけが true を受け取り、送信する。
 // これで「残HPを0にする経路が複数ある」「同時に2人が気づく」の両方に耐える。
 // 29_raid_event_notices.sql 未適用なら false を返す (通知は出ないが本処理は壊さない)
-const RAID_NOTICE_LEASE_MS = 90 * 1000;   // 確保したまま送信されない状態を引き継ぐまでの猶予
+const RAID_NOTICE_LEASE_MS = 90 * 1000;
+let _raidNoticeWarned = false;   // 恒久エラーの警告は1回だけ   // 確保したまま送信されない状態を引き継ぐまでの猶予
 window.supabaseClaimRaidNotice = async function (seasonId, kind, ref, byPlayerId) {
     if (!seasonId || !kind || !ref) return false;
     // 戻り値は3値。★ 単なる true/false にすると、呼び出し側が
@@ -2022,8 +2023,19 @@ window.supabaseClaimRaidNotice = async function (seasonId, kind, ref, byPlayerId
         .insert({ season_id: seasonId, kind, ref, notified_by: byPlayerId || null });
     if (!error) return 'claimed';
     if (error.code !== '23505') {   // 23505 = unique_violation (正常な競合)
-        console.warn('[raid notice] 確保に失敗 (通知は見送り):', error.message);
-        return 'held';   // 一時的な失敗として後で再挑戦する
+        // ★ 恒久的なエラー (テーブル未適用・権限不足など) を 'held' で返すと、
+        //   呼び出し側が毎回のポーリングで再挑戦し、失敗リクエストと警告が出続ける。
+        //   直らない類のものは 'done' 扱いにして諦め、警告も1回だけにする (Codex指摘)
+        const permanent = ['42P01', '42501', '42703'].includes(error.code);   // 未定義テーブル/権限不足/未定義列
+        if (permanent) {
+            if (!_raidNoticeWarned) {
+                _raidNoticeWarned = true;
+                console.warn('[raid notice] 通知の確保ができません (supabase/29_raid_event_notices.sql は適用済みですか?):', error.message);
+            }
+            return 'done';   // これ以上試しても直らない → 諦める (通知が出ないだけ)
+        }
+        console.warn('[raid notice] 確保に失敗 (一時的とみなして後で再挑戦):', error.message);
+        return 'held';
     }
     // 既に行がある。送信まで終わっているなら何もしない。
     // 送信前のまま放置されている (確保した端末が落ちた等) なら引き継ぐ
