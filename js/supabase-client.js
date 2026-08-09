@@ -1982,8 +1982,11 @@ window.supabaseGetSeasonLastChange = async function (seasonId) {
 
 // アクティブシーズンの最新配信プランを取得 (無ければ null)
 window.supabaseGetPublishedPlan = async function () {
-    const { data: season } = await supabase
+    // ★ error を見ないと、取得失敗を「配信プランなし」と混同する (Codex指摘)。
+    //   撃破通知の宛先計算で「割当ゼロ」に化けて通知が消えるため throw する
+    const { data: season, error: sErr } = await supabase
         .from('seasons').select('id, month_key').eq('is_active', true).maybeSingle();
+    if (sErr) throw sErr;
     if (!season) return null;
     const { data, error } = await supabase
         .from('published_plans')
@@ -2010,20 +2013,26 @@ window.supabaseGetPublishedPlan = async function () {
 const RAID_NOTICE_LEASE_MS = 90 * 1000;   // 確保したまま送信されない状態を引き継ぐまでの猶予
 window.supabaseClaimRaidNotice = async function (seasonId, kind, ref, byPlayerId) {
     if (!seasonId || !kind || !ref) return false;
+    // 戻り値は3値。★ 単なる true/false にすると、呼び出し側が
+    //   「送信済みだから諦める」と「誰かが確保中だから後で再挑戦」を区別できず、
+    //   完了済みのイベントにも毎回のポーリングで INSERT を投げ続ける (Codex指摘)
+    //     'claimed' = 送信権を取った / 'done' = 送信済み (もう何もしない)
+    //     'held'    = 誰かが確保中 (まだ未送信。後でリースが切れたら引き継げる)
     const { error } = await supabase.from('raid_event_notices')
         .insert({ season_id: seasonId, kind, ref, notified_by: byPlayerId || null });
-    if (!error) return true;
+    if (!error) return 'claimed';
     if (error.code !== '23505') {   // 23505 = unique_violation (正常な競合)
         console.warn('[raid notice] 確保に失敗 (通知は見送り):', error.message);
-        return false;
+        return 'held';   // 一時的な失敗として後で再挑戦する
     }
     // 既に行がある。送信まで終わっているなら何もしない。
     // 送信前のまま放置されている (確保した端末が落ちた等) なら引き継ぐ
-    const { data: row } = await supabase.from('raid_event_notices')
+    const { data: row, error: rErr } = await supabase.from('raid_event_notices')
         .select('sent, claimed_at').eq('season_id', seasonId).eq('kind', kind).eq('ref', ref).maybeSingle();
-    if (!row || row.sent) return false;
+    if (rErr || !row) return 'held';
+    if (row.sent) return 'done';
     const age = Date.now() - new Date(row.claimed_at).getTime();
-    if (!(age > RAID_NOTICE_LEASE_MS)) return false;   // まだ送信中かもしれない
+    if (!(age > RAID_NOTICE_LEASE_MS)) return 'held';   // まだ送信中かもしれない
     // 引き継ぎ: claimed_at がさっき読んだ値のままの行だけ更新する (取り合いの排他)
     const { data: took } = await supabase.from('raid_event_notices')
         .update({ claimed_at: new Date().toISOString(), notified_by: byPlayerId || null })
@@ -2032,9 +2041,9 @@ window.supabaseClaimRaidNotice = async function (seasonId, kind, ref, byPlayerId
         .select('ref');
     if (took && took.length > 0) {
         console.log(`[raid notice] 放置された確保を引き継ぎます (${kind}/${ref})`);
-        return true;
+        return 'claimed';
     }
-    return false;
+    return 'held';
 };
 
 // 送信まで完了したことを記録する (これが立つと以後は誰も引き継がない)

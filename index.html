@@ -6778,8 +6778,13 @@
                     if (!b) continue;
                     const ref = `L${level}B${bn}`;
                     const kind = 'boss_defeated';
-                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id)) {
-                        cur.dead.delete(bn);   // 次の検知でもう一度確保を試みる
+                    const st = await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id);
+                    if (st !== 'claimed') {
+                        // 'held' = 誰かが確保中 → 手元の記録を戻して次の検知で再挑戦する
+                        //   (リースが切れていれば引き継げる)
+                        // 'done' = 送信済み → 戻さない。戻すと完了済みのイベントに
+                        //   毎回 INSERT を投げ続けることになる (Codex指摘)
+                        if (st === 'held') cur.dead.delete(bn);
                         continue;
                     }
                     if (await _notifyBossDefeated(cur.seasonId, b, me, level)) {
@@ -6792,8 +6797,9 @@
                 // ② レベル開放
                 if (ev.levelOpened != null) {
                     const ref = `L${ev.levelOpened}`, kind = 'level_open';
-                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id)) {
-                        cur.level = ev.from;
+                    const st = await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id);
+                    if (st !== 'claimed') {
+                        if (st === 'held') cur.level = ev.from;
                     } else if (await _notifyLevelOpened(cur.seasonId, { from: ev.from, to: ev.levelOpened })) {
                         await window.supabaseMarkRaidNoticeSent(cur.seasonId, kind, ref);
                     } else {
