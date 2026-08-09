@@ -2244,6 +2244,20 @@
            ClaudeDesign のサブ色 #6B7178 を使う (Codex コントラスト指摘) */
         .dc-plan-sub { font-size: 10px; font-weight: 800; color: #6B7178; letter-spacing: 0.2px; }
         .dc-plan-card.on-hero .dc-plan-sub { color: rgba(255,255,255,0.72); }
+        /* 「どのレベルのボスか」(ユーザー要望 2026-08-09)。
+           ★ 時刻と同じ行に「Lv3 · B5 · 電撃PT」を並べると、時刻が「⏳隙間」のとき
+              138.6px 必要で幅156pxのカード (内寸128px) からあふれる (headless Chrome 実測)。
+              → 時刻を1行目、レベル/ボス/PT を2行目に積む。2行目単体なら約110pxで収まる */
+        .dc-plan-lv {
+            display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: 0;
+            padding: 1px 5px; border-radius: 999px; margin-right: 4px;
+            background: #E7E9EC; color: #4E545B;
+        }
+        .dc-plan-card.on-hero .dc-plan-lv { background: rgba(255,255,255,0.18); color: #fff; }
+        .dc-plan-card.done .dc-plan-lv { background: #E1E3E6; color: #5A6068; }
+        /* ★ .done は .on-hero より後に来るので、黒カードの報告済みで白ピルに戻ってしまう。
+              明示的に打ち消す (実機ではヒーロー上の3枚目だけ浮いて見えた) */
+        .dc-plan-card.on-hero.done .dc-plan-lv { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.82); }
         .dc-plan-value {
             font-size: 17px; font-weight: 900; color: #14161A;
             font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1;
@@ -6438,6 +6452,7 @@
                 const ptName = PT_ATTRS.find(x => x.key === ptKey)?.name || '';
                 const time = a.flex ? '⏳隙間' : (a.hourLabel ? String(a.hourLabel) : '未定');
                 const bn = Number(a.bossNumber);
+                const lv = Number(a.level) || 1;
                 const slot = Number(a.loadoutSlot) === 2 ? '②' : '①';
                 const team = Array.isArray(a.team) ? a.team : [];
                 const cells = Array.from({ length: 5 }).map((_, k) => {
@@ -6450,9 +6465,9 @@
                         : `<div class="dc-plan-char" title="${label}">${escapeHtml(String(name).charAt(0))}</div>`;
                 }).join('');
                 return `
-                <button type="button" onclick="openPlanHpModal(${bn}, ${Number(a.level) || 1}, ${Number(a.dmgB) || 0}, ${i})"
+                <button type="button" onclick="openPlanHpModal(${bn}, ${lv}, ${Number(a.dmgB) || 0}, ${i})"
                         class="dc-plan-card${hero ? ' on-hero' : ''}${a.done ? ' done' : ''}"
-                        title="${escapeHtml(ptName)}PTで B${bn} — タップで戦闘予想">
+                        title="Lv${lv} の B${bn} へ ${escapeHtml(ptName)}PTで — タップで戦闘予想">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
                         <div class="dc-dmg-chip" style="background:${ptc};">
                             ${icon ? `<img loading="lazy" decoding="async" src="${icon}" alt="${escapeHtml(ptName)}" style="width:24px;height:24px;">` : ''}
@@ -6464,9 +6479,11 @@
                                 : `<span class="dc-plan-slot">編成${slot}</span>`}</div>
                         </div>
                     </div>
-                    <div style="margin-top:9px;display:flex;align-items:baseline;gap:5px;">
-                        <span class="dc-plan-time">${escapeHtml(time)}</span>
-                        <span class="dc-plan-sub">B${bn} · ${escapeHtml(ptName)}PT</span>
+                    <div style="margin-top:9px;">
+                        <div class="dc-plan-time">${escapeHtml(time)}</div>
+                        <div class="dc-plan-sub" style="margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            <span class="dc-plan-lv">Lv${lv}</span>B${bn} · ${escapeHtml(ptName)}PT
+                        </div>
                     </div>
                     <div class="dc-plan-chars">${cells}</div>
                 </button>`;
