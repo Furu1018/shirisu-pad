@@ -123,8 +123,10 @@ if (problems.length) {
 }
 // --- js/supabase-client.js の直接HP更新の棚卸し ---
 // index.html のフックだけ見ていると、クライアント側で bosses.remaining_hp_raw を
-// 直接書く関数が増えたことに気づけない。既知のものを列挙しておき、
-// 増えたら失敗させて「通知が要るか」を必ず考えさせる
+// 直接 update/upsert する関数が増えたことに気づけない。既知のものを列挙しておき、
+// 増えたら失敗させて「通知が要るか」を必ず考えさせる。
+// ※ シーズン作成時の insert (supabaseCreateSeason の初期HP) は対象外 —
+//   新シーズンの初期盤面であり、初回観測は通知しない設計と整合する
 const KNOWN_DIRECT_WRITERS = [
     'supabaseAddAttack',            // 凸報告の自動減算 (index.html 側でフック済み)
     'supabaseDeleteAttack',         // 凸削除でHPを戻す (同上)
@@ -151,6 +153,13 @@ client.forEach((l, i) => {
         if (/\.(update|upsert|insert)\(/.test(near) && curFn) found.add(curFn);
     }
 });
+// ★ found が空になっても unknown も空で成功してしまう = 棚卸しの退行を見逃す (Codex指摘)
+const MIN_DIRECT_WRITERS = 4;
+if (found.size < MIN_DIRECT_WRITERS) {
+    console.error(`NG: 残HPを直接更新する関数が ${found.size} 件しか見つかりません (最低 ${MIN_DIRECT_WRITERS} 件を想定)`);
+    console.error('  → 洗い出しの条件が実装に合わなくなった可能性があります');
+    process.exit(1);
+}
 const unknown = [...found].filter(f => !KNOWN_DIRECT_WRITERS.includes(f));
 if (unknown.length) {
     console.error('NG: ボスの残HPを直接更新する未知の関数があります:');

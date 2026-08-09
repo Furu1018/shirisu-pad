@@ -6766,16 +6766,28 @@
 
                 const ev = D.diffRaidEvents(prev, cur);
                 // ① ボス撃破
+                // ★ 確保 → 送信 → 失敗なら確保を戻す。
+                //   戻さないと「送っていないのに通知済み」になり永久に届かない (Codex指摘)
                 for (const bn of ev.defeated) {
                     const b = bosses.find(x => Number(x.boss_number) === bn);
                     if (!b) continue;
-                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, 'boss_defeated', `L${level}B${bn}`, me?.id)) continue;
-                    await _notifyBossDefeated(cur.seasonId, b, me, level);
+                    const ref = `L${level}B${bn}`;
+                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, 'boss_defeated', ref, me?.id)) continue;
+                    if (!await _notifyBossDefeated(cur.seasonId, b, me, level)) {
+                        await window.supabaseReleaseRaidNotice(cur.seasonId, 'boss_defeated', ref);
+                        // 手元の記録も戻す — 次の検知でまた「新しく倒れた」と拾えるように
+                        cur.dead.delete(bn);
+                    }
                 }
                 // ② レベル開放
-                if (ev.levelOpened != null
-                    && await window.supabaseClaimRaidNotice(cur.seasonId, 'level_open', `L${ev.levelOpened}`, me?.id)) {
-                    await _notifyLevelOpened(cur.seasonId, { from: ev.from, to: ev.levelOpened });
+                if (ev.levelOpened != null) {
+                    const ref = `L${ev.levelOpened}`;
+                    if (await window.supabaseClaimRaidNotice(cur.seasonId, 'level_open', ref, me?.id)) {
+                        if (!await _notifyLevelOpened(cur.seasonId, { from: ev.from, to: ev.levelOpened })) {
+                            await window.supabaseReleaseRaidNotice(cur.seasonId, 'level_open', ref);
+                            cur.level = ev.from;   // 次の検知でまた「上がった」と拾えるように
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn('[raid notice] 検知に失敗:', e?.message || e);
@@ -6789,7 +6801,7 @@
         async function _notifyBossDefeated(seasonId, boss, actor, level) {
             try {
                 const ids = await window.supabaseBossDefeatNotifyTargets(seasonId, boss.boss_number, actor?.id, level);
-                if (!ids.length) return;
+                if (!ids.length) return true;   // 宛先ゼロは「送るものが無い」= 成功扱い
                 const label = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
                 await window.sendPushNotification({
                     title: `⭐ ${label} 撃破!`,
@@ -6803,13 +6815,17 @@
                     playerIds: ids,
                 }, { senderPlayerId: actor?.id || null });
                 console.log(`[notify] ${label} 撃破を ${ids.length} 名へ通知`);
-            } catch (e) { console.warn('[notify] 撃破通知の送信失敗:', e?.message || e); }
+                return true;
+            } catch (e) {
+                console.warn('[notify] 撃破通知の送信失敗:', e?.message || e);
+                return false;   // 呼び出し側が確保を戻して再送できるようにする
+            }
         }
 
         async function _notifyLevelOpened(seasonId, levelUp) {
             try {
                 const ids = await window.supabaseLevelOpenNotifyTargets(seasonId);
-                if (!ids.length) return;
+                if (!ids.length) return true;   // 宛先ゼロは成功扱い
                 await window.sendPushNotification({
                     title: `🎉 Lv${levelUp.to} 開放!`,
                     body: `Lv${levelUp.from} を踏破し、Lv${levelUp.to} のボスが出現しました。残っている凸を進めてください。`,
@@ -6820,7 +6836,11 @@
                     playerIds: ids,
                 });
                 console.log(`[notify] Lv${levelUp.to} 開放を ${ids.length} 名へ通知`);
-            } catch (e) { console.warn('[notify] レベル開放通知の送信失敗:', e?.message || e); }
+                return true;
+            } catch (e) {
+                console.warn('[notify] レベル開放通知の送信失敗:', e?.message || e);
+                return false;
+            }
         }
 
         // ========== 模擬タブ (Stage2 新設) ==========

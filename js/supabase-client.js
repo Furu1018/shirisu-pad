@@ -2018,6 +2018,17 @@ window.supabaseClaimRaidNotice = async function (seasonId, kind, ref, byPlayerId
     return false;
 };
 
+// 確保の取り消し。
+// ★ 確保 → 送信 の順なので、送信に失敗したら確保を戻さないと
+//   「送っていないのに通知済み」になってその撃破は永久に通知されない (Codex指摘)。
+//   戻せば次の検知 (ポーリング等) でもう一度誰かが確保して送り直せる
+window.supabaseReleaseRaidNotice = async function (seasonId, kind, ref) {
+    if (!seasonId || !kind || !ref) return;
+    const { error } = await supabase.from('raid_event_notices').delete()
+        .eq('season_id', seasonId).eq('kind', kind).eq('ref', ref);
+    if (error) console.warn('[raid notice] 確保の取り消しに失敗:', error.message);
+};
+
 // ボス撃破の通知先: そのボスで凸を無駄にしそうな人。
 //   ① そのボスに交戦宣言中の人 (いま撃ちに行こうとしている = 最も無駄になる)
 //   ② 配信プランでそのボスを割り当てられていて、まだ報告していない人
