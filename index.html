@@ -6768,25 +6768,37 @@
                 // ① ボス撃破
                 // ★ 確保 → 送信 → 失敗なら確保を戻す。
                 //   戻さないと「送っていないのに通知済み」になり永久に届かない (Codex指摘)
+                // ★ 確保 → 送信 → 成功なら sent を立てる / 失敗なら確保を戻す。
+                //   さらに **確保できなかった場合も手元の記録を戻す** —
+                //   戻さないと「前回も今回も撃破済み」になり、確保した端末が
+                //   送信前に落ちたときに誰も引き継げない (Codex指摘)。
+                //   引き継ぎは supabaseClaimRaidNotice のリース (sent=false のまま放置) が担う
                 for (const bn of ev.defeated) {
                     const b = bosses.find(x => Number(x.boss_number) === bn);
                     if (!b) continue;
                     const ref = `L${level}B${bn}`;
-                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, 'boss_defeated', ref, me?.id)) continue;
-                    if (!await _notifyBossDefeated(cur.seasonId, b, me, level)) {
-                        await window.supabaseReleaseRaidNotice(cur.seasonId, 'boss_defeated', ref);
-                        // 手元の記録も戻す — 次の検知でまた「新しく倒れた」と拾えるように
+                    const kind = 'boss_defeated';
+                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id)) {
+                        cur.dead.delete(bn);   // 次の検知でもう一度確保を試みる
+                        continue;
+                    }
+                    if (await _notifyBossDefeated(cur.seasonId, b, me, level)) {
+                        await window.supabaseMarkRaidNoticeSent(cur.seasonId, kind, ref);
+                    } else {
+                        await window.supabaseReleaseRaidNotice(cur.seasonId, kind, ref);
                         cur.dead.delete(bn);
                     }
                 }
                 // ② レベル開放
                 if (ev.levelOpened != null) {
-                    const ref = `L${ev.levelOpened}`;
-                    if (await window.supabaseClaimRaidNotice(cur.seasonId, 'level_open', ref, me?.id)) {
-                        if (!await _notifyLevelOpened(cur.seasonId, { from: ev.from, to: ev.levelOpened })) {
-                            await window.supabaseReleaseRaidNotice(cur.seasonId, 'level_open', ref);
-                            cur.level = ev.from;   // 次の検知でまた「上がった」と拾えるように
-                        }
+                    const ref = `L${ev.levelOpened}`, kind = 'level_open';
+                    if (!await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id)) {
+                        cur.level = ev.from;
+                    } else if (await _notifyLevelOpened(cur.seasonId, { from: ev.from, to: ev.levelOpened })) {
+                        await window.supabaseMarkRaidNoticeSent(cur.seasonId, kind, ref);
+                    } else {
+                        await window.supabaseReleaseRaidNotice(cur.seasonId, kind, ref);
+                        cur.level = ev.from;
                     }
                 }
             } catch (e) {
@@ -6800,8 +6812,10 @@
 
         async function _notifyBossDefeated(seasonId, boss, actor, level) {
             try {
+                // 宛先の取得に失敗したら throw される → catch で false を返し、確保を戻して再試行させる
+                // (「取得失敗」を「宛先ゼロ」と混同すると、送らないまま完了扱いになる — Codex指摘)
                 const ids = await window.supabaseBossDefeatNotifyTargets(seasonId, boss.boss_number, actor?.id, level);
-                if (!ids.length) return true;   // 宛先ゼロは「送るものが無い」= 成功扱い
+                if (!ids.length) return true;   // 本当に宛先ゼロ = 送るものが無い
                 const label = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
                 await window.sendPushNotification({
                     title: `⭐ ${label} 撃破!`,

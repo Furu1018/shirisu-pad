@@ -2007,15 +2007,43 @@ window.supabaseGetPublishedPlan = async function () {
 // INSERT が通った1人だけが true を受け取り、送信する。
 // これで「残HPを0にする経路が複数ある」「同時に2人が気づく」の両方に耐える。
 // 29_raid_event_notices.sql 未適用なら false を返す (通知は出ないが本処理は壊さない)
+const RAID_NOTICE_LEASE_MS = 90 * 1000;   // 確保したまま送信されない状態を引き継ぐまでの猶予
 window.supabaseClaimRaidNotice = async function (seasonId, kind, ref, byPlayerId) {
     if (!seasonId || !kind || !ref) return false;
     const { error } = await supabase.from('raid_event_notices')
         .insert({ season_id: seasonId, kind, ref, notified_by: byPlayerId || null });
     if (!error) return true;
-    // 23505 = unique_violation → 既に誰かが送っている (正常な競合)
-    if (error.code === '23505') return false;
-    console.warn('[raid notice] 確保に失敗 (通知は見送り):', error.message);
+    if (error.code !== '23505') {   // 23505 = unique_violation (正常な競合)
+        console.warn('[raid notice] 確保に失敗 (通知は見送り):', error.message);
+        return false;
+    }
+    // 既に行がある。送信まで終わっているなら何もしない。
+    // 送信前のまま放置されている (確保した端末が落ちた等) なら引き継ぐ
+    const { data: row } = await supabase.from('raid_event_notices')
+        .select('sent, claimed_at').eq('season_id', seasonId).eq('kind', kind).eq('ref', ref).maybeSingle();
+    if (!row || row.sent) return false;
+    const age = Date.now() - new Date(row.claimed_at).getTime();
+    if (!(age > RAID_NOTICE_LEASE_MS)) return false;   // まだ送信中かもしれない
+    // 引き継ぎ: claimed_at がさっき読んだ値のままの行だけ更新する (取り合いの排他)
+    const { data: took } = await supabase.from('raid_event_notices')
+        .update({ claimed_at: new Date().toISOString(), notified_by: byPlayerId || null })
+        .eq('season_id', seasonId).eq('kind', kind).eq('ref', ref)
+        .eq('claimed_at', row.claimed_at).eq('sent', false)
+        .select('ref');
+    if (took && took.length > 0) {
+        console.log(`[raid notice] 放置された確保を引き継ぎます (${kind}/${ref})`);
+        return true;
+    }
     return false;
+};
+
+// 送信まで完了したことを記録する (これが立つと以後は誰も引き継がない)
+window.supabaseMarkRaidNoticeSent = async function (seasonId, kind, ref) {
+    if (!seasonId || !kind || !ref) return;
+    const { error } = await supabase.from('raid_event_notices')
+        .update({ sent: true })
+        .eq('season_id', seasonId).eq('kind', kind).eq('ref', ref);
+    if (error) console.warn('[raid notice] 送信済みの記録に失敗:', error.message);
 };
 
 // 確保の取り消し。
@@ -2034,16 +2062,17 @@ window.supabaseReleaseRaidNotice = async function (seasonId, kind, ref) {
 //   ② 配信プランでそのボスを割り当てられていて、まだ報告していない人
 // 本人 (撃破した人) は除く。
 window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, excludePlayerId, level) {
+    // ★ 取得に失敗したら throw する。握り潰して「宛先ゼロ」にすると、
+    //   送っていないのに完了扱いになり、その撃破は誰にも通知されない (Codex指摘)。
+    //   throw すれば呼び出し側が確保を戻し、次の検知でやり直せる
     const targets = new Set();
     // ① 交戦宣言中
-    try {
-        const coords = await window.supabaseGetActiveFinishCoordinations();
-        (coords || []).forEach(c => {
-            if (Number(c.boss_number) === Number(bossNumber)) targets.add(c.player_id);
-        });
-    } catch (e) { console.warn('[defeat notify] 交戦宣言の取得skip:', e?.message || e); }
+    const coords = await window.supabaseGetActiveFinishCoordinations();
+    (coords || []).forEach(c => {
+        if (Number(c.boss_number) === Number(bossNumber)) targets.add(c.player_id);
+    });
     // ② 配信プランの割当 (未報告のみ)
-    try {
+    {
         const pub = await window.supabaseGetPublishedPlan();
         if (pub?.plan && Number(pub.season_id) === Number(seasonId)) {
             // ★ **いま撃破されたレベルの割当だけ**を見る。
@@ -2078,7 +2107,7 @@ window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, e
                 });
             }
         }
-    } catch (e) { console.warn('[defeat notify] 配信プランの取得skip:', e?.message || e); }
+    }
     if (excludePlayerId != null) targets.delete(excludePlayerId);
     return [...targets];
 };
@@ -2097,8 +2126,9 @@ window.supabaseLevelOpenNotifyTargets = async function (seasonId) {
         (aRes.data || []).forEach(a => used.set(a.player_id, (used.get(a.player_id) || 0) + 1));
         return (pRes.data || []).map(p => p.id).filter(id => (used.get(id) || 0) < 3);
     } catch (e) {
-        console.warn('[levelup notify] 対象の取得skip:', e?.message || e);
-        return [];
+        // ここも握り潰さない — 宛先ゼロと取得失敗を混同すると通知が消える
+        console.warn('[levelup notify] 対象の取得に失敗:', e?.message || e);
+        throw e;
     }
 };
 
