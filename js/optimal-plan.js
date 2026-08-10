@@ -286,7 +286,10 @@
                                 level: (Number.isInteger(lo.level) && lo.level >= 1 && lo.level <= 4) ? lo.level : null,
                                 ord: i,
                             }))
-                            .sort((a, b) => b.dmg - a.dmg || a.ord - b.ord);
+                            // ★ 同ダメージのタイブレークに slot を入れる。ord は取得順そのもの
+                            //   なので、DB の返却順が揺れると選ばれる編成が変わる = 非決定的になる
+                            //   (取得側にも order を付けてあるが、不変条件をここでも閉じておく)
+                            .sort((a, b) => b.dmg - a.dmg || a.slot - b.slot || a.ord - b.ord);
                         // ① 実際に使った編成 (記録キャラと完全一致) を優先的に消す
                         let unresolved = usedCount.get(k) || 0;
                         for (const doneTeam of (doneTeamsByAttr.get(k) || [])) {
@@ -1182,18 +1185,23 @@
                     const lastLv = Number(lastPlanned?.level) || 1;
                     let conflictOnly = true;
                     let anyAliveAttr = false;
-                    let levelBlocked = false;   // 測定レベル不足だけが理由か
+                    // ★ 「レベル不足」と言えるのは、生存ボスの属性の**どれも**そのレベルで
+                    //   出せないときだけ。1属性でも在庫があれば本当の原因はキャラ被りの側。
+                    //   属性ごとのフラグにすると「A属性はレベル不足・B属性は被り」で
+                    //   レベル不足と誤診断する (Codex指摘 2026-08-10)
+                    let anyInLevel = false;
                     for (const k of attrs) {
                         if (!lastAliveWeak.has(k)) continue;
                         anyAliveAttr = true;
                         const inLevel = m.avail[k].filter(lo => usableAtLevel(lo, lastLv));
-                        if (inLevel.length === 0) { levelBlocked = true; continue; }
+                        if (inLevel.length === 0) continue;
+                        anyInLevel = true;
                         const usable = inLevel.some(lo =>
                             !(m.anyTeamRegistered && lo.team.length > 0 && lo.team.some(c => hasUsedChar(m.usedChars, c))));
-                        if (usable) { conflictOnly = false; levelBlocked = false; break; }
+                        if (usable) { conflictOnly = false; break; }
                     }
                     if (!anyAliveAttr) reason = '残っている生存ボスの属性を未提出';
-                    else if (levelBlocked) reason = `編成の測定レベルが Lv${lastLv} に届かない (Lv${lastLv}以上で測り直すと出せる)`;
+                    else if (!anyInLevel) reason = `編成の測定レベルが Lv${lastLv} に届かない (Lv${lastLv}以上で測り直すと出せる)`;
                     else if (conflictOnly) reason = 'キャラ被り (同キャラは1日1回) で出せる編成なし';
                     else if (m.mandatory.size > 0 && (m.remainingAttacks - m.lockedNow) <= 0) reason = '得意属性の必須枠を温存中';
                     else reason = 'ボスHPが尽きた (割当先なし)';

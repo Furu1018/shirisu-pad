@@ -8029,9 +8029,11 @@
                         const attr = b.weakness;   // 提出カードは弱点PT属性ごとに並んでいる
                         if (!attr) return;
                         if (!next.has(attr)) next.set(attr, new Set());
-                        // 提出は 1|2 の2枠しかない。想定外の値は 1 に丸めて
+                        // 提出は 1|2|3 の3枠。想定外の値だけ 1 に丸めて
                         // 「どのカードにも一致しない = めくっても採用編成に辿り着けない」を防ぐ
-                        next.get(attr).add(Number(a.loadoutSlot) === 2 ? 2 : 1);
+                        // (★ 2枠時代の `=== 2 ? 2 : 1` のままだと③採用が①として記録され、
+                        //    ①を消して②③だけ残した人は③を表示しても採用マークが出ない)
+                        next.get(attr).add(MY_TEAM_SLOTS.includes(Number(a.loadoutSlot)) ? Number(a.loadoutSlot) : 1);
                     });
                 });
             });
@@ -12934,11 +12936,12 @@
         }
 
         // 残凸表のセルで表示中の編成スロット (key = `${playerId}:${attr}`)。
-        // タップで ①⇄② を入れ替える (2編成あるセルだけ)
+        // タップで編成を巡回する (複数編成があるセルだけ)。
+        // 表示インデックス (0基点) を持ち、描画側が編成数で割った余りを使う
         const _opsRemSlot = new Map();
         function flipOpsRemCell(playerId, attrKey) {
             const k = `${playerId}:${attrKey}`;
-            _opsRemSlot.set(k, _opsRemSlot.get(k) === 2 ? 1 : 2);
+            _opsRemSlot.set(k, (Number(_opsRemSlot.get(k)) || 0) + 1);
             document.querySelector(`.dc-rem-cell[data-flip="${k}"]`)?.classList.add('swap-out');
             setTimeout(() => {
                 renderOpsRemainingList();
@@ -13133,10 +13136,11 @@
                 if (los.length === 0) return `<div class="dc-rem-cell unset">─</div>`;
                 const flipKey = `${p.id}:${attr.key}`;
                 const has2 = los.length >= 2;
-                // 表示スロット (タップで①⇄②)。②を消した直後などのズレは①に倒す
-                const shownIdx = has2 && _opsRemSlot.get(flipKey) === 2 ? 1 : 0;
+                // 表示中の編成 (タップで巡回)。編成数で割った余りにするので、
+                // 編成を消して数が減っても必ず実在する編成を指す
+                const shownIdx = has2 ? ((Number(_opsRemSlot.get(flipKey)) || 0) % los.length) : 0;
                 const shown = los[shownIdx];
-                const shownSlot = Number(shown.slot) === 2 ? 2 : 1;
+                const shownSlot = MY_TEAM_SLOTS.includes(Number(shown.slot)) ? Number(shown.slot) : 1;
                 const v = Number(shown.dmgB);
                 let text, tip;
                 if (fururiMode) {
@@ -14498,7 +14502,8 @@
                         if (!attr || a.memberId == null) return;
                         const k = `${a.memberId}:${attr}`;
                         if (!m.has(k)) m.set(k, new Set());
-                        m.get(k).add(Number(a.loadoutSlot) === 2 ? 2 : 1);   // 想定外は①に丸める
+                        // 1|2|3 の3枠。想定外だけ①に丸める (2枠時代の丸めだと③が①に化ける)
+                        m.get(k).add(MY_TEAM_SLOTS.includes(Number(a.loadoutSlot)) ? Number(a.loadoutSlot) : 1);
                     });
                 });
             });

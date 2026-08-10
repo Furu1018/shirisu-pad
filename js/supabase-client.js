@@ -3077,7 +3077,13 @@ window.supabaseLoadOpsDashboardData = async function () {
         'player_id, attribute, damage_b, updated_at',
     ]) {
         try {
-            const r = await supabase.from('player_damages').select(sel);
+            // ★ order は必須。ソルバーは同ダメージの編成を「列挙順 (ord)」で安定タイブレークする
+            //   ので、DB の返却順が揺れると同じ盤面でも別のプランが出る = 配信の前提が崩れる
+            //   (Codex指摘 2026-08-10。レベル違いの並行登録で同値が増えるため顕在化しやすい)
+            const r = await supabase.from('player_damages').select(sel)
+                .order('player_id', { ascending: true })
+                .order('attribute', { ascending: true })
+                .order('slot', { ascending: true });
             if (!r.error) { dmgs = r.data; break; }
         } catch { /* fallthrough */ }
     }
