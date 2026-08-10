@@ -716,6 +716,43 @@ test('3編成目 (slot=3) も候補になる', () => {
     assert.deepEqual(atks.map(a => a.loadoutSlot), [1, 2, 3]);
 });
 
+test('ボス5弱点が得意属性で Lv4 未満測定でも、得意属性が消化される', () => {
+    // 「得意属性の消化は Lv4 で満たせる」前提で有限レベルの必須枠を外す最適化 (lv4Mandatory)
+    // がある。その前提には「Lv4 で出せる編成を持っていること」も要るので、
+    // canAfter に usableAtLevel(lo, 4) を足してある。
+    // ⚠ このテストは**そのガード単体を切り分けられていない** (ガードを外しても通る)。
+    //    probe/温存の2パス選択で最終プランが一致してしまうため。
+    //    ここではシナリオ全体の回帰 (Lv4未満測定の得意属性が消化される) だけを固定している。
+    //    ガードを外すと canAfter(A) が false→true に変わることは実測で確認済み
+    // 盤面: fire も wind も「A がぴったり削り切れる」大きさにしてある。
+    // A の枠を予約しないと、先に処理される fire (b1) を A が取ってしまい、
+    // 得意属性の wind は他メンバーで埋まって A の得意消化が消える
+    const bs = [
+        boss(1, 'fire', { tier: 'lord', remainingB: 20 }),
+        boss(2, 'water', { tier: 'lord', remainingB: 5 }),
+        boss(3, 'electric', { tier: 'tyrant', remainingB: 5 }),
+        boss(4, 'iron', { tier: 'lord', remainingB: 5 }),
+        boss(5, 'wind', { tier: 'tyrant', remainingB: 20 }),
+    ];
+    // A: 得意=wind (ボス5弱点) だが wind は Lv3 でしか測っていない → Lv4 では出せない
+    const a = player('A', { wind: 20, fire: 20 }, { strong: ['wind'], attackCount: 2 });
+    a.loadoutsByAttr = {
+        wind: [{ dmgB: 20, team: ['a1','a2','a3','a4','a5'], slot: 1, level: 3 }],
+        fire: [{ dmgB: 20, team: ['b1','b2','b3','b4','b5'], slot: 1 }],
+    };
+    const others = [
+        player('P2', { fire: 9, water: 9, electric: 9 }),
+        player('P3', { iron: 9, wind: 9 }),
+        player('P4', { fire: 12 }),
+        player('P5', { wind: 12 }),
+    ];
+    const plan = compute(makeInput(bs, [a, ...others], { currentLevel: 3 }));
+    const mine = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks.map(x => ({ ...x, w: b.weakness }))))
+        .filter(x => x.memberName === 'A');
+    assert.equal(mine.length, 1, 'A は残1凸を使うはず');
+    assert.equal(mine[0].w, 'wind', `得意属性 wind に割り当てられるはず: ${mine[0].w}`);
+});
+
 test('レベル指定と未指定が混ざっても、使える方だけが選ばれる', () => {
     // 「未指定 (全レベル可) の低火力」と「Lv1限定の高火力」が同居するケース。
     // Lv3 のボスには未指定の方しか使えない

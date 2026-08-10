@@ -952,7 +952,16 @@
                 if (traceOut) reserveTrace = [];
                 const attempt = runPass({
                     oppCostOf,
-                    lv4Mandatory: { attr: lv4Weak, canAfter: canAttackAfterT3 },
+                    // ★ 「Lv4 で消化できるから有限レベルでは枠予約しない」の前提には、
+                    //   時間だけでなく **Lv4 で出せる編成を持っていること** も要る。
+                    //   見ないと、ボス5弱点が得意属性なのに Lv4 未満でしか測っていない人の
+                    //   必須枠を有限レベルで外してしまい、Lv4 でも出せないので
+                    //   得意属性が一度も消化されないまま終わる
+                    lv4Mandatory: {
+                        attr: lv4Weak,
+                        canAfter: (m) => canAttackAfterT3(m)
+                            && (m.avail[lv4Weak] || []).some(lo => usableAtLevel(lo, 4)),
+                    },
                     decisionPolicy: policy,
                     trace: reserveTrace,
                 });

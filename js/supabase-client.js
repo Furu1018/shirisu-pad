@@ -528,22 +528,34 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
 // ★ 0 や NaN を 1 に丸めない — 「未指定 (全レベル可)」と「Lv1 (Lv1でしか使えない)」は
 //   意味が正反対なので、分からない値を Lv1 に倒すと割当対象から不当に外れる
 export function _normBossLevel(v) {
-    if (v === null || v === undefined || v === '') return null;
+    // ★ 型を先に絞る。Number(true) === 1 なので、真偽値を素通しすると Lv1 になってしまう
+    //   (「未指定」であるべきものが「Lv1でしか使えない」に化ける = 割当対象から外れる)
+    if (typeof v !== 'number' && typeof v !== 'string') return null;
+    if (v === '') return null;
     const n = Number(v);
     return Number.isInteger(n) && n >= 1 && n <= 4 ? n : null;
 }
 window._normBossLevel = _normBossLevel;
 
 // プレイヤーの属性別ダメージを upsert (新規 or 上書き)。slot=2/3 で2・3編成目
-// bossLevel: 測定したボスレベル (1〜4)。null/未指定なら「レベル未指定」として保存
-window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1, bossLevel = null) {
+// bossLevel の扱い (★ 3値):
+//   未指定 (引数を省略) → boss_level を payload に**入れない** = 既存の値を保つ。
+//     OCRプレビュー保存など「ダメージだけ更新する」経路で、既に設定済みのレベルを
+//     消してしまわないため (null を送ると ON CONFLICT で NULL に上書きされる)
+//   null                → 明示的に「レベル未設定」にする (編集モーダルで選択を外した場合)
+//   1〜4                → その値を設定
+window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1, bossLevel = undefined) {
     const valid = ['fire','water','iron','electric','wind'];
     if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
     const value = Number(damageB);
     if (isNaN(value) || value < 0) throw new Error('damageB は0以上の数値で指定');
-    const lv = _normBossLevel(bossLevel);
+    const lv = bossLevel === undefined ? undefined : _normBossLevel(bossLevel);
     const { error } = await _upsertPlayerDamages([
-        { player_id: playerId, attribute, damage_b: value, slot, boss_level: lv, updated_at: new Date().toISOString() },
+        {
+            player_id: playerId, attribute, damage_b: value, slot,
+            ...(lv === undefined ? {} : { boss_level: lv }),
+            updated_at: new Date().toISOString(),
+        },
     ]);
     if (error) throw error;
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
