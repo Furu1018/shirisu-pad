@@ -662,10 +662,13 @@
                     // 編成を avail へ戻す (ダメージ降順を維持)
                     const w = t.b.weakness;
                     if (!m.avail[w]) m.avail[w] = [];
-                    // 元のロードアウト要素をそのまま戻し dmg降順 → ord昇順 で並べ直す
+                    // 元のロードアウト要素をそのまま戻し dmg降順 → slot昇順 → ord昇順 で並べ直す。
+                    // ★ 並べ方は初期化時 (buildMemberState) と同一にすること。
+                    //   片方だけ slot を見ると、undo した瞬間に並びが変わって別の編成が選ばれる
                     m.avail[w].push(loMeta.get(atk)
                         || { dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1, level: atk.loadoutLevel ?? null, ord: 0 });
-                    m.avail[w].sort((a, b) => b.dmg - a.dmg || (a.ord ?? 0) - (b.ord ?? 0));
+                    m.avail[w].sort((a, b) => b.dmg - a.dmg
+                        || (a.slot ?? 1) - (b.slot ?? 1) || (a.ord ?? 0) - (b.ord ?? 0));
                     // 必須属性を消化した凸なら予約も戻す (後続の recountLocked で最終整合)
                     if (consumedMandatory.has(atk)) { m.mandatory.add(w); m.lockedNow++; }
                     // usedChars は「この凸で初めて使ったキャラ」だけ戻す。

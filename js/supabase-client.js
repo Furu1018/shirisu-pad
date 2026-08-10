@@ -3070,20 +3070,22 @@ window.supabaseLoadOpsDashboardData = async function () {
 
     // 2) 全プレイヤーの player_damages を一括取得 (characters 列はマイグ未適用なら無視)
     let dmgs = null;
-    for (const sel of [
-        'player_id, attribute, damage_b, updated_at, characters, slot, boss_level',
-        'player_id, attribute, damage_b, updated_at, characters, slot',
-        'player_id, attribute, damage_b, updated_at, characters',
-        'player_id, attribute, damage_b, updated_at',
+    // ★ order は必須。ソルバーは同ダメージの編成を「列挙順 (ord)」で安定タイブレークするので、
+    //   DB の返却順が揺れると同じ盤面でも別のプランが出る = 配信の前提が崩れる
+    //   (Codex指摘 2026-08-10。レベル違いの並行登録で同値が増えるため顕在化しやすい)
+    // ★★ order の列は**その段の select に存在する列だけ**にすること。
+    //   全段で slot を order すると、slot 未適用環境では最後の旧列フォールバックまで失敗し、
+    //   dmgs が null のまま「登録ダメージ無し」の空盤面になる (Codex指摘 2026-08-10)
+    for (const [sel, orderCols] of [
+        ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level', ['player_id', 'attribute', 'slot']],
+        ['player_id, attribute, damage_b, updated_at, characters, slot', ['player_id', 'attribute', 'slot']],
+        ['player_id, attribute, damage_b, updated_at, characters', ['player_id', 'attribute']],
+        ['player_id, attribute, damage_b, updated_at', ['player_id', 'attribute']],
     ]) {
         try {
-            // ★ order は必須。ソルバーは同ダメージの編成を「列挙順 (ord)」で安定タイブレークする
-            //   ので、DB の返却順が揺れると同じ盤面でも別のプランが出る = 配信の前提が崩れる
-            //   (Codex指摘 2026-08-10。レベル違いの並行登録で同値が増えるため顕在化しやすい)
-            const r = await supabase.from('player_damages').select(sel)
-                .order('player_id', { ascending: true })
-                .order('attribute', { ascending: true })
-                .order('slot', { ascending: true });
+            let q = supabase.from('player_damages').select(sel);
+            for (const c of orderCols) q = q.order(c, { ascending: true });
+            const r = await q;
             if (!r.error) { dmgs = r.data; break; }
         } catch { /* fallthrough */ }
     }

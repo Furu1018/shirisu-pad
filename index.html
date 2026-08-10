@@ -13169,7 +13169,7 @@
                 const onclick = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
                 // 光の色は模擬タブと同じ DC_ATTR_COLORS に揃える (PT_ATTRS.color とは別定義 — Codex指摘)
                 const glowColor = DC_ATTR_COLORS[attr.key] || attr.color;
-                return `<div class="${cls}" data-flip="${flipKey}"${onclick} style="color:#14161A;background:${attr.color}1A;${_pkVars(glowColor)}" title="${escapeHtml(tip)}${has2 ? ' / タップで編成①⇄②' : ''}">${text}${badge}</div>`;
+                return `<div class="${cls}" data-flip="${flipKey}"${onclick} style="color:#14161A;background:${attr.color}1A;${_pkVars(glowColor)}" title="${escapeHtml(tip)}${has2 ? ` / タップで編成を切替 (${los.length}編成)` : ''}">${text}${badge}</div>`;
             };
             const renderMemberRow = (p) => {
                 const used = usedAttrsFor(p);
@@ -13264,7 +13264,7 @@
 
             const pickLegend = _opsPlanPickSource
                 ? `<div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:linear-gradient(135deg,#FF3D44,#2E8BFF,#18C26B);box-shadow:0 0 6px 1px rgba(20,22,26,0.18);display:inline-block;"></span>${_opsPlanPickSource === 'published' ? '配信中プラン' : '算出プラン'}で採用 (属性色に光る)</div>` : '';
-            const slotLegend = `<div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:#EDEFF2;box-shadow:2px 2px 0 -0.5px #fff,2px 2px 0 0 rgba(20,22,26,0.13);display:inline-block;"></span>2編成 (タップで①⇄②)</div>`;
+            const slotLegend = `<div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:#EDEFF2;box-shadow:2px 2px 0 -0.5px #fff,2px 2px 0 0 rgba(20,22,26,0.13);display:inline-block;"></span>複数編成 (タップで切替)</div>`;
             html += `
                 <div style="display:flex;flex-wrap:wrap;gap:9px 14px;margin-top:13px;padding-top:11px;border-top:1px solid #F0F1F3;">
                     <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:#A4AAB0;"><span style="width:14px;height:14px;border-radius:4px;background:#FF3D441A;display:inline-block;"></span>凸可能</div>
