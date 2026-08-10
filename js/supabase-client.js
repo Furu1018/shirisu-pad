@@ -469,24 +469,41 @@ window.supabaseDeletePlayer = async function (playerId) {
 // ---- player_damages 書き込みヘルパー (21_player_damages_slots.sql の slot 対応) ----
 // 適用後は主キーが (player_id, attribute, slot) になるため onConflict を切り替える。
 // 未適用環境では slot 列を外して旧形式で再試行 (slot=2 の保存は適用が必須)。
+// ★ boss_level (30_player_damages_level.sql) も同じ多段フォールバックに乗せる。
+//   未適用環境で「レベルを指定した提出」を黙って落とすと、レベル無しとして保存され
+//   ソルバーが全レベルで使えると誤認する = 過大評価につながるので、その場合はエラーにする。
 async function _upsertPlayerDamages(rows) {
     const withSlot = rows.map(r => ({ slot: 1, ...r }));
     let res = await supabase.from('player_damages')
         .upsert(withSlot, { onConflict: 'player_id,attribute,slot' });
     if (!res.error) return res;
     if (/column .*characters/i.test(String(res.error?.message))) return res;   // characters 起因は呼び出し元で処理
-    if (withSlot.some(r => r.slot === 2)) {
+    if (/boss_level/i.test(String(res.error?.message))) {
+        if (withSlot.some(r => r.boss_level != null)) {
+            throw new Error('模擬のボスレベル指定には supabase/30_player_damages_level.sql の適用が必要です');
+        }
+        const noLevel = withSlot.map(({ boss_level, ...rest }) => rest);
+        res = await supabase.from('player_damages')
+            .upsert(noLevel, { onConflict: 'player_id,attribute,slot' });
+        if (!res.error) return res;
+    }
+    if (withSlot.some(r => Number(r.slot) === 3)) {
+        throw new Error('3編成目の保存には supabase/30_player_damages_level.sql の適用が必要です');
+    }
+    if (withSlot.some(r => Number(r.slot) === 2)) {
         throw new Error('2編成目の保存には supabase/21_player_damages_slots.sql の適用が必要です');
     }
-    const legacy = withSlot.map(({ slot, ...rest }) => rest);
+    const legacy = withSlot.map(({ slot, boss_level, ...rest }) => rest);
     return await supabase.from('player_damages')
         .upsert(legacy, { onConflict: 'player_id,attribute' });
 }
 
-// プレイヤーの属性別ダメージ登録を取得（1属性最大2編成、未登録は欠落。slot 昇順）
+// プレイヤーの属性別ダメージ登録を取得（1属性最大3編成、未登録は欠落。slot 昇順）
+// boss_level = 測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
 window.supabaseLoadPlayerDamages = async function (playerId) {
-    // slot / characters カラム未マイグの環境でも壊れないよう多段フォールバック
+    // slot / characters / boss_level カラム未マイグの環境でも壊れないよう多段フォールバック
     const selects = [
+        'attribute, damage_b, updated_at, characters, slot, boss_level',
         'attribute, damage_b, updated_at, characters, slot',
         'attribute, damage_b, updated_at, characters',
         'attribute, damage_b, updated_at',
@@ -499,7 +516,7 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
                 .eq('player_id', playerId);
             if (!r.error) {
                 return (r.data || [])
-                    .map(d => ({ ...d, slot: d.slot || 1 }))
+                    .map(d => ({ ...d, slot: d.slot || 1, boss_level: _normBossLevel(d.boss_level) }))
                     .sort((a, b) => a.slot - b.slot);
             }
         } catch { /* fallthrough */ }
@@ -507,18 +524,31 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
     return [];
 };
 
-// プレイヤーの属性別ダメージを upsert (新規 or 上書き)。slot=2 で2編成目
-window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1) {
+// 模擬のボスレベル: 1〜4 の整数だけを通し、それ以外 (未指定・不正値) は null に倒す。
+// ★ 0 や NaN を 1 に丸めない — 「未指定 (全レベル可)」と「Lv1 (Lv1でしか使えない)」は
+//   意味が正反対なので、分からない値を Lv1 に倒すと割当対象から不当に外れる
+export function _normBossLevel(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 1 && n <= 4 ? n : null;
+}
+window._normBossLevel = _normBossLevel;
+
+// プレイヤーの属性別ダメージを upsert (新規 or 上書き)。slot=2/3 で2・3編成目
+// bossLevel: 測定したボスレベル (1〜4)。null/未指定なら「レベル未指定」として保存
+window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1, bossLevel = null) {
     const valid = ['fire','water','iron','electric','wind'];
     if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
     const value = Number(damageB);
     if (isNaN(value) || value < 0) throw new Error('damageB は0以上の数値で指定');
+    const lv = _normBossLevel(bossLevel);
     const { error } = await _upsertPlayerDamages([
-        { player_id: playerId, attribute, damage_b: value, slot, updated_at: new Date().toISOString() },
+        { player_id: playerId, attribute, damage_b: value, slot, boss_level: lv, updated_at: new Date().toISOString() },
     ]);
     if (error) throw error;
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
-    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${slot === 2 ? ' (2編成目)' : ''}`, { playerId });
+    const slotJp = Number(slot) >= 2 ? ` (${Number(slot)}編成目)` : '';
+    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lv ? ` [Lv${lv}]` : ''}${slotJp}`, { playerId });
 };
 
 // 2編成目の削除 (slot=2 の行のみ)
@@ -1349,7 +1379,10 @@ window.supabaseCreateSeason = async function (payload) {
     if (isTest) {
         // characters カラムは player_damages にあとから足したスキーマなので、無い環境でも壊れないように
         let dmgs = null;
+        // ★ boss_level を必ず含めること。テスト終了時にこのスナップショットで
+        //   player_damages を**全削除して入れ替える**ので、抜けると全員の測定レベルが消える
         for (const sel of [
+            'player_id, attribute, damage_b, characters, slot, boss_level',
             'player_id, attribute, damage_b, characters, slot',
             'player_id, attribute, damage_b, characters',
             'player_id, attribute, damage_b',
@@ -2213,12 +2246,17 @@ window.supabaseDeleteActiveTestSeason = async function () {
         await supabase.from('player_damages').delete().gte('player_id', 0);
         if (snapshot.length > 0) {
             // characters カラムが入っているかどうかで2回試行 (旧 snapshot との後方互換)
+            // boss_level は「スナップショットに入っていれば」戻す。
+            // 旧スナップショット (30 適用前に作ったテストシーズン) には無いので undefined →
+            // その場合は列ごと落として旧挙動のまま復元する
+            const hasLevel = snapshot.some(s => s.boss_level !== undefined);
             const rowsWithChars = snapshot.map(s => ({
                 player_id: s.player_id,
                 attribute: s.attribute,
                 damage_b: s.damage_b,
                 slot: s.slot || 1,
                 characters: Array.isArray(s.characters) ? s.characters : [],
+                ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
             }));
             const r1 = await _upsertPlayerDamages(rowsWithChars);
             if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
@@ -2228,6 +2266,7 @@ window.supabaseDeleteActiveTestSeason = async function () {
                     attribute: s.attribute,
                     damage_b: s.damage_b,
                     slot: s.slot || 1,
+                    ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
                 }));
                 await _upsertPlayerDamages(rowsBasic);
             }
@@ -3020,6 +3059,7 @@ window.supabaseLoadOpsDashboardData = async function () {
     // 2) 全プレイヤーの player_damages を一括取得 (characters 列はマイグ未適用なら無視)
     let dmgs = null;
     for (const sel of [
+        'player_id, attribute, damage_b, updated_at, characters, slot, boss_level',
         'player_id, attribute, damage_b, updated_at, characters, slot',
         'player_id, attribute, damage_b, updated_at, characters',
         'player_id, attribute, damage_b, updated_at',
@@ -3031,10 +3071,13 @@ window.supabaseLoadOpsDashboardData = async function () {
     }
     const dmgByPlayer = new Map();     // { player_id: { attr: 最大ダメージ } } (既存консюмер用)
     const teamByPlayer = new Map();    // { player_id: { attr: [chars] } } (slot1優先)
-    const loadoutsByPlayer = new Map();// { player_id: { attr: [{dmgB, team, slot}] } } (ソルバーの2編成対応用)
+    // { player_id: { attr: [{dmgB, team, slot, level}] } } (ソルバーの3編成 + レベル対応用)
+    // level = 模擬で測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
+    const loadoutsByPlayer = new Map();
     (dmgs || []).forEach(d => {
         const v = Number(d.damage_b) || 0;
         const slot = d.slot || 1;
+        const level = _normBossLevel(d.boss_level);
         const team = (Array.isArray(d.characters) && d.characters.length > 0) ? d.characters : [];
         if (!dmgByPlayer.has(d.player_id)) dmgByPlayer.set(d.player_id, {});
         const dm = dmgByPlayer.get(d.player_id);
@@ -3048,7 +3091,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             if (!loadoutsByPlayer.has(d.player_id)) loadoutsByPlayer.set(d.player_id, {});
             const lm = loadoutsByPlayer.get(d.player_id);
             if (!lm[d.attribute]) lm[d.attribute] = [];
-            lm[d.attribute].push({ dmgB: v, team, slot });
+            lm[d.attribute].push({ dmgB: v, team, slot, level });
         }
     });
 
@@ -3159,7 +3202,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             strong_attributes: Array.isArray(p.strong_attributes) ? p.strong_attributes : [],
             damagesByAttr: dmgByPlayer.get(p.id) || {},
             teamsByAttr: teamByPlayer.get(p.id) || {},
-            loadoutsByAttr: loadoutsByPlayer.get(p.id) || {},   // 1属性最大2編成 (ソルバー用)
+            loadoutsByAttr: loadoutsByPlayer.get(p.id) || {},   // 1属性最大3編成 + 測定レベル (ソルバー用)
             attacks: attacksByPlayer.get(p.id) || [],
             attackCount: (attacksByPlayer.get(p.id) || []).length,
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),

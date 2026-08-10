@@ -53,6 +53,8 @@ globalThis.ATTR_VISUAL = {
     wind: { color: '#18C26B', dark: '#0EA055', name: '風圧', icon: 'e.png' },
 };
 globalThis.weaknessPtOf = (b) => b.weakness;
+// 編成スロットの表示名 (index.html の SLOT_JP と同じ。3スロット対応 2026-08-10)
+globalThis.SLOT_JP = { 1: '①', 2: '②', 3: '③' };
 globalThis.opsStore = { patchBosses() {} };
 globalThis.seasonStore = { patchBosses() {} };
 // ★ index.html の isLv4LiveBoard と同じ契約 (B1〜B5 が全員そろっていることの確認を含む)

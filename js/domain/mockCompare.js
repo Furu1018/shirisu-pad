@@ -18,9 +18,9 @@
 
     /**
      * @typedef {{id:(string|number), name:string, slv?:(number|null)}} MockPlayer
-     * @typedef {{player_id:(string|number), attribute:string, slot?:number, damage_b:number}} MockDamageRow
+     * @typedef {{player_id:(string|number), attribute:string, slot?:number, damage_b:number, boss_level?:?number}} MockDamageRow
      * @typedef {{slv:number, dmgByAttr:Object<string, number>}} MockBase  _loadMockRadarBase の形
-     * @typedef {{playerId:(string|number), name:string, value:number, damageB:number, slot:number, rank:number}} MockCompareRow
+     * @typedef {{playerId:(string|number), name:string, value:number, damageB:number, slot:number, bossLevel:?number, rank:number}} MockCompareRow
      */
 
     /**
@@ -44,15 +44,22 @@
         const rowsRaw = Array.isArray(damages) ? damages : [];
         const useFururi = mode === 'fururi';
 
-        // 属性別・プレイヤー別のベスト提出 (2編成は高い方を採用、採用 slot を記憶)
-        const bestByPlayer = new Map();   // playerId -> {damageB, slot}
+        // 属性別・プレイヤー別のベスト提出 (複数編成は高い方を採用、採用 slot と測定レベルを記憶)
+        // ★ 比較は従来どおり「属性ごとの最大値」。測定レベルで値を割り引いたりはしない
+        //   (レベル違いを混ぜて並べること自体は避けられないので、行にレベルを出して見える化する)
+        const bestByPlayer = new Map();   // playerId -> {damageB, slot, bossLevel}
         rowsRaw.forEach(d => {
             if (!d || d.attribute !== attribute) return;
             const v = Number(d.damage_b) || 0;
             if (v <= 0) return;
             const prev = bestByPlayer.get(d.player_id);
             if (!prev || v > prev.damageB) {
-                bestByPlayer.set(d.player_id, { damageB: v, slot: Number(d.slot) || 1 });
+                const lv = Number(d.boss_level);
+                bestByPlayer.set(d.player_id, {
+                    damageB: v,
+                    slot: Number(d.slot) || 1,
+                    bossLevel: (Number.isInteger(lv) && lv >= 1 && lv <= 4) ? lv : null,
+                });
             }
         });
 
@@ -71,7 +78,7 @@
             const best = bestByPlayer.get(p.id);
             if (!best) { missing.push({ playerId: p.id, name: p.name }); return; }
             if (!useFururi) {
-                rows.push({ playerId: p.id, name: p.name, value: best.damageB, damageB: best.damageB, slot: best.slot, rank: 0 });
+                rows.push({ playerId: p.id, name: p.name, value: best.damageB, damageB: best.damageB, slot: best.slot, bossLevel: best.bossLevel ?? null, rank: 0 });
                 return;
             }
             if (baseMissing) return;   // 基準なし: 提出者も並べられない (meta.baseMissing で通知)
@@ -81,7 +88,7 @@
                 mode: 'classic', maps, slvRatioTable,
             }) : null;
             if (val == null) { noSlv.push({ playerId: p.id, name: p.name }); return; }
-            rows.push({ playerId: p.id, name: p.name, value: val, damageB: best.damageB, slot: best.slot, rank: 0 });
+            rows.push({ playerId: p.id, name: p.name, value: val, damageB: best.damageB, slot: best.slot, bossLevel: best.bossLevel ?? null, rank: 0 });
         });
 
         // 降順 + 同値同順位 (1,2,2,4)。同値の並びは名前で安定させる

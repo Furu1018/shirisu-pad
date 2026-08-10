@@ -159,6 +159,12 @@ SELECT * FROM (
                 WHERE table_schema = 'public' AND table_name = 'raid_event_notices'),
         'raid_event_notices (撃破/レベル開放の通知の二重送信よけ — 未適用だと通知が出ない)'
 
+    UNION ALL SELECT '30_player_damages_level',
+        EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'player_damages'
+                  AND column_name = 'boss_level'),
+        'player_damages.boss_level (模擬の測定ボスレベル + 編成3枠 — 未適用だとレベル指定と3編成目が保存できない)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

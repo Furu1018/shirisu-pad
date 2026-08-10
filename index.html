@@ -2334,6 +2334,14 @@
 
         .dc-dmg-name { color: #14161A; }
         .dc-dmg-bossnum { color: #A4AAB0; }
+        /* 測定ボスレベル (2026-08-10)。Lv? = 未設定 = いまは全レベルで使われる状態。
+           設定を促したいので警告色にする (放置しても壊れないが精度が上がらない) */
+        .dc-dmg-lv {
+            display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: 0;
+            padding: 1px 5px; border-radius: 999px; vertical-align: 1px;
+            background: #EDEFF1; color: #4E545B;
+        }
+        .dc-dmg-lv.unset { background: rgba(245,158,11,0.14); color: #B45309; }
         /* 提出状態の表現 v3 (2026-07-27 実機FB — 黒カード/属性色上バーとも不評):
            済み = 黒カード化以前の元の見た目 + 属性名横の✓のみ /
            まだ = 点線ゴースト (これは好評につき維持) のハイブリッド */
@@ -3853,7 +3861,7 @@
                             <li>各レベル5体撃破で次レベル。<strong>Lv3を踏破すると即日「Lv4＝ボス5のみ・HP無限」が開き、そこへの凸は全額スコアに入ります</strong>（オーバーキルが存在しない）。</li>
                             <li>Lv3踏破が見えている場合、<strong>大火力の凸はなるべくボス5へ温存</strong>し、Lv1〜3の踏破は小さめの凸でまかないます。温存された凸には 🔒 マークが付き、増えたスコア想定はヒーローの「🔒温存で増加」チップに出ます。ただし<strong>ボス5開放時刻より前にしか出られない人は温存しません</strong>（出られない時間の凸は約束できないため）。</li>
                             <li>火力が Lv3 まで届かない場合はそのレベルで停止しますが、<strong>止まったレベルでは撃破を狙わず</strong>、オーバーキルが出ない配り方（残HPの大きいボスへ全額入れる）でスコアを最大化します。</li>
-                            <li>登録ダメージは1編成につき1回のみ使用（キャラ使い回し不可の再現）。<strong>編成②を提出した属性はキャラが被らなければ同属性2凸</strong>も提案されます（ボス5にも2凸可）。残りHPの小さいボスには低火力側の編成を回すなど、編成の使い分けも自動です。</li>
+                            <li>登録ダメージは1編成につき1回のみ使用（キャラ使い回し不可の再現）。<strong>1属性に複数の編成を提出すれば、キャラが被らなければ同属性2凸</strong>も提案されます（ボス5にも2凸可）。残りHPの小さいボスには低火力側の編成を回すなど、編成の使い分けも自動です。<strong>編成は模擬で測ったレベル以下のボスにだけ</strong>割り当てます（Lv3で出せた火力はLv1でも出せるが逆は保証できないため）。</li>
                             <li><strong>得意属性</strong>を設定している人はそれが優先されます: 1〜3個選択でその属性を必ず消化（残り枠は自由）、4個選択ならその中からのみ選出。ボス5の弱点が得意属性の人は、ボス5への凸で消化扱いになります（全額入るので一番おいしい消化先です）。</li>
                             <li>低レベルは低SLv、高レベルは高SLvを優先（高SLvを後半に温存）。</li>
                             <li>SLv未登録の新メンバーは、登録ダメージが近い既知メンバーから推定。</li>
@@ -4944,9 +4952,9 @@
                 <h2 id="myTeamEditTitle">✏️ 編成編集</h2>
                 <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成②を追加すると同属性2凸のプラン提案が可能になります。</p>
+            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成は1属性につき3つまで登録でき、キャラが被らなければ同属性への複数凸をプランが提案します。</p>
 
-            <!-- 編成スロット切替 (① / ② 同属性2凸用) -->
+            <!-- 編成スロット切替 (① / ② / ③ 同属性複数凸用) -->
             <div id="myTeamEditSlotTabs" style="display:flex;gap:6px;"></div>
 
             <!-- ダメージ入力 -->
@@ -4954,6 +4962,15 @@
                 <label for="myTeamEditDamage" style="font-size:13px;font-weight:700;flex:1;">💥 ベストダメージ (B)</label>
                 <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;text-align:right;">
                 <span style="font-size:12px;color:#8A9097;">B</span>
+            </div>
+
+            <!-- 測定したボスレベル (30_player_damages_level.sql) -->
+            <div style="padding:10px 12px;border-radius:10px;background:#F7F8F9;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <label style="font-size:13px;font-weight:700;flex:1;">🎚 測定したボスのレベル</label>
+                    <div id="myTeamEditLevelBtns" style="display:flex;gap:4px;"></div>
+                </div>
+                <p id="myTeamEditLevelNote" style="margin:7px 0 0 0;font-size:11px;line-height:1.6;color:#8A9097;"></p>
             </div>
 
             <!-- 画像取り込み -->
@@ -6287,7 +6304,7 @@
             if (!card) return;
             const seq = ++_nextActionSeq;
             if (!identity?.id) { card.style.display = 'none'; return; }
-            let season = null, squads = [], attrs = 0, hasSlot2 = false;
+            let season = null, squads = [], attrs = 0, hasExtraSquad = false;
             try {
                 const ctx = await seasonStore.ensure();
                 season = ctx?.season || null;
@@ -6300,7 +6317,7 @@
                             .map(c => (typeof fuzzyResolveCharacter === 'function' && fuzzyResolveCharacter(c)) || c),
                     }));
                     attrs = new Set(squads.map(s => s.attr)).size;
-                    hasSlot2 = squads.some(sq => sq.slot === 2);
+                    hasExtraSquad = squads.some(sq => sq.slot >= 2);   // 同属性の2つ目以降の編成
                 }
             } catch (e) { console.warn('[次にやること] 読込失敗:', e?.message || e); }
             if (seq !== _nextActionSeq) return;
@@ -6318,7 +6335,7 @@
             // 5属性まで出し切った人への次の一手 = 同属性の2編成目。
             // 効果は「その人のダメージ次第」で確定値は言えないので、
             // 「選択肢が増える = プランの精度が上がる」という言い方に留める
-            const nudge2 = hasSlot2
+            const nudge2 = hasExtraSquad
                 ? '同じ属性の2編成目も出せているので、運営のプランが組める選択肢はかなり広い状態です。'
                 : '同じ属性で<b>2つ目の編成</b>も出しておくと、キャラが被らない組み合わせが増えて、'
                   + '当日ユニオン全体の最適な3凸を割り出す精度が上がります。';
@@ -6402,7 +6419,7 @@
                     // C3: 5属性コンプ — 5属性が埋まった人への次の一手は「同属性の2編成目」
                     lead = '✅ 模擬 5属性 提出済み!';
                     why = `レーダーが完成しています。${nudge2}`;
-                    cta = softBtn("switchTab('mock')", hasSlot2 ? '🏆 みんなと見比べる' : '📸 2編成目を出す');
+                    cta = softBtn("switchTab('mock')", hasExtraSquad ? '🏆 みんなと見比べる' : '📸 2編成目を出す');
                 } else if (season) {
                     // C2: 3部隊OK・5属性未満 — 要求は解除し、上乗せは軽い案内に留める
                     lead = '✅ 凸に必要な部隊は揃いました!';
@@ -6453,7 +6470,7 @@
                 const time = a.flex ? '⏳隙間' : (a.hourLabel ? String(a.hourLabel) : '未定');
                 const bn = Number(a.bossNumber);
                 const lv = Number(a.level) || 1;
-                const slot = Number(a.loadoutSlot) === 2 ? '②' : '①';
+                const slot = SLOT_JP[Number(a.loadoutSlot)] || '①';
                 const team = Array.isArray(a.team) ? a.team : [];
                 const cells = Array.from({ length: 5 }).map((_, k) => {
                     const name = team[k];
@@ -6614,7 +6631,7 @@
                     ? '<div style="font-size:11px;font-weight:800;color:#B45309;">プランが更新されました — ホームを開き直してください</div>'
                     : '<div style="font-size:10.5px;font-weight:700;color:#6B7178;">編成の記録なし</div>');
             // planRow が引けていないのに「編成①」と出すと、存在しない情報を見せることになる
-            const slotLabel = planRow ? (Number(planRow.loadoutSlot) === 2 ? '編成②' : '編成①') : '';
+            const slotLabel = planRow ? `編成${SLOT_JP[Number(planRow.loadoutSlot)] || '①'}` : '';
             const timeLabel = planRow ? (planRow.flex ? '⏳隙間' : (planRow.hourLabel ? String(planRow.hourLabel) : '時刻未定')) : '';
 
             // ---- 試算できるか ----
@@ -6920,7 +6937,7 @@
             const damages = [];
             (data?.players || []).forEach(p => {
                 Object.entries(p.loadoutsByAttr || {}).forEach(([attr, arr]) => {
-                    (arr || []).forEach(lo => damages.push({ player_id: p.id, attribute: attr, slot: lo.slot || 1, damage_b: Number(lo.dmgB) || 0 }));
+                    (arr || []).forEach(lo => damages.push({ player_id: p.id, attribute: attr, slot: lo.slot || 1, damage_b: Number(lo.dmgB) || 0, boss_level: lo.level ?? null }));
                 });
                 // loadouts が無い旧データは damagesByAttr (ベスト値のみ) でフォールバック
                 if (!p.loadoutsByAttr || Object.keys(p.loadoutsByAttr).length === 0) {
@@ -6952,7 +6969,7 @@
                 return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
                     <div style="font-size:11px;font-weight:900;color:#A4AAB0;text-align:center;font-variant-numeric:tabular-nums;">${r.rank}</div>
                     <div style="min-width:0;">
-                        <div style="font-size:12px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}${r.slot === 2 ? ' <span style="font-size:9px;font-weight:800;color:#8A9097;">編成②</span>' : ''}${est ? ' <span style="font-size:9px;font-weight:800;color:#B45309;background:rgba(245,158,11,0.12);border-radius:999px;padding:1px 6px;">SLv推定</span>' : ''}</div>
+                        <div style="font-size:12px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}${r.slot >= 2 ? ` <span style="font-size:9px;font-weight:800;color:#8A9097;">編成${SLOT_JP[r.slot] || r.slot}</span>` : ''}${r.bossLevel ? ` <span class="dc-dmg-lv" title="Lv${r.bossLevel} で測定">Lv${r.bossLevel}</span>` : ''}${est ? ' <span style="font-size:9px;font-weight:800;color:#B45309;background:rgba(245,158,11,0.12);border-radius:999px;padding:1px 6px;">SLv推定</span>' : ''}</div>
                         <div style="height:6px;border-radius:4px;margin-top:4px;width:${w}%;background:${color};"></div>
                     </div>
                     <div style="font-size:12px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${fmtVal(r)}</div>
@@ -7521,7 +7538,7 @@
                 // どの編成が選ばれたかを見て分かるように: アイコンを大きめにし、
                 // 2編成提出している属性は「編成①/②」を明示する (模擬タブのカードと同じ呼び方)
                 const loSlot = Number(a.loadoutSlot) || 1;
-                const loBadge = `<span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:#5B2BE0;background:rgba(108,66,240,0.13);">編成${loSlot === 2 ? '②' : '①'}</span>`;
+                const loBadge = `<span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:#5B2BE0;background:rgba(108,66,240,0.13);">編成${SLOT_JP[loSlot] || '①'}</span>`;
                 const team = a.team ? renderTeamSnippet(a.team, { size: 26 }) : '';
                 const dmgHtml = `<span style="font-size:13px;font-weight:900;color:#14161A;font-variant-numeric:tabular-nums;">${Number(a.dmgB || 0).toFixed(1)}<span style="font-size:9px;color:#A4AAB0;">B</span></span>`;
                 let right;
@@ -8024,11 +8041,12 @@
             _myPlanPicks = next;
             return changed;
         }
-        function flipMyDmgPanel(attrKey) {
+        // 次に表示するスロットは描画側が決めて渡す (提出のあるスロットだけを巡回するため)
+        function flipMyDmgPanel(attrKey, nextSlot) {
             const id = getCurrentIdentity();
             const panel = document.querySelector(`.dc-dmg-panel[data-attr="${attrKey}"]`);
             if (panel) panel.classList.add('swap-out');
-            _myDmgPanelSlots[attrKey] = _myDmgPanelSlots[attrKey] === 2 ? 1 : 2;
+            _myDmgPanelSlots[attrKey] = Number(nextSlot) || 1;
             setTimeout(async () => {
                 await renderMyDamagePanels(id);
                 document.querySelector(`.dc-dmg-panel[data-attr="${attrKey}"]`)?.classList.add('swap-in');
@@ -8105,16 +8123,19 @@
 
             el.innerHTML = panelAttrs.map(a => {
                 const slots = byAttr.get(a.key) || {};
-                // ①を消して②だけ残ることがある (削除処理は表示スロットを1に戻す)。
-                // その状態で「hasSlot2 かつ activeSlot=1、でも中身は②」になると、
-                // ラベル①・編集先①・採用判定がすべて実際の表示とずれる。
-                // 「2編成ある = ①と②が両方ある」に統一し、activeSlot は必ず rec と一致させる
-                const has1 = !!slots[1], has2 = !!slots[2];
-                const hasSlot2 = has1 && has2;
-                const activeSlot = hasSlot2
-                    ? (_myDmgPanelSlots[a.key] === 2 ? 2 : 1)
-                    : (has1 ? 1 : 2);
+                // ①を消して②③だけ残ることがある。その状態でラベル①・編集先①・採用判定が
+                // 実際の表示とずれると誤操作のもとになるので、activeSlot は
+                // **必ず実在するスロット**に合わせ、巡回も提出があるスロットだけにする
+                // (3スロット化 2026-08-10。それ以前は「①と②が両方ある」固定の判定だった)
+                const present = MY_TEAM_SLOTS.filter(s => slots[s]);
+                const hasMulti = present.length > 1;
+                const want = _myDmgPanelSlots[a.key];
+                const activeSlot = present.includes(want) ? want : (present[0] ?? 1);
+                const nextSlot = hasMulti
+                    ? present[(present.indexOf(activeSlot) + 1) % present.length]
+                    : activeSlot;
                 const rec = slots[activeSlot];
+                const recLevel = rec ? (window._normBossLevel?.(rec.boss_level) ?? null) : null;
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const submitted = Number(rec?.damage_b) > 0;   // 黒カード判定 (0B保存は白のまま — Codex 指摘)
@@ -8142,15 +8163,15 @@
                 const isPickedVisible = !!picked && picked.has(activeSlot);
                 const isPickedOther = isPicked && !isPickedVisible;
                 const pickTitle = !isPicked ? ''
-                    : pickedSlots.length > 1 ? ' — 配信プランで編成①②とも採用'
-                    : hasSlot2 ? ` — 配信プランで編成${pickedSlots[0] === 2 ? '②' : '①'}を採用`
+                    : pickedSlots.length > 1 ? ` — 配信プランで編成${pickedSlots.map(s => SLOT_JP[s] || s).join('')}を採用`
+                    : hasMulti ? ` — 配信プランで編成${SLOT_JP[pickedSlots[0]] || pickedSlots[0]}を採用`
                     : ' — 配信プランで採用';
-                // 2編成目があるカードは「重なり」+ ①⇄② 入れ替えバッジ
-                const slotBadge = hasSlot2
-                    ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}')" title="${isPickedOther ? 'めくると配信プランで採用された編成' : '編成①⇄②を入れ替え'}">${activeSlot === 1 ? '①' : '②'}<span style="opacity:0.65;">⇄</span></div>`
+                // 複数編成があるカードは「重なり」+ スロット巡回バッジ
+                const slotBadge = hasMulti
+                    ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}', ${nextSlot})" title="${isPickedOther ? 'めくると配信プランで採用された編成' : `編成${SLOT_JP[nextSlot]}を表示`}">${SLOT_JP[activeSlot]}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasSlot2 ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasSlot2 ? ` (編成${activeSlot === 1 ? '①' : '②'}を表示中)` : ''}${pickTitle}" data-attr="${a.key}" style="${_pkVars(c)}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${recLevel ? ` — Lv${recLevel}で測定` : ''}${pickTitle}" data-attr="${a.key}" style="${_pkVars(c)}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chipwrap">
@@ -8162,7 +8183,9 @@
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
                                 : `<div class="dc-dmg-value empty">—</div>`}
                         </div>
-                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}</div>
+                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}${submitted ? (recLevel
+                            ? ` <span class="dc-dmg-lv" title="Lv${recLevel} で測定 — Lv1〜Lv${recLevel} の割当に使われます">Lv${recLevel}</span>`
+                            : ' <span class="dc-dmg-lv unset" title="測定レベル未設定 — いまは全レベルで使われます。タップして設定できます">Lv?</span>') : ''}</div>
                         <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
             }).join('');
@@ -8206,44 +8229,79 @@
             }
         }
 
-        // 編成編集モーダル (slot: 1=メイン編成 / 2=同属性2凸用の2編成目)
+        // 編成編集モーダル (slot: 1=メイン編成 / 2・3=同属性の複数凸用)
+        const MY_TEAM_SLOTS = [1, 2, 3];
+        const SLOT_JP = { 1: '①', 2: '②', 3: '③' };
         let _myTeamEditAttr = null;
         let _myTeamEditSlot = 1;
-        function _renderTeamEditSlotTabs(hasSlot2) {
+        // 測定したボスレベル: null = 未指定 (全レベルで使える・移行前の提出)
+        let _myTeamEditLevel = null;
+        function _renderTeamEditSlotTabs(existingSlots) {
             const el = document.getElementById('myTeamEditSlotTabs');
             if (!el) return;
-            const btn = (slot, label) => `<button onclick="switchMyTeamEditSlot(${slot})" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:800;${_myTeamEditSlot === slot ? 'background:#14161A;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">${label}</button>`;
-            el.innerHTML = btn(1, '編成 ①')
-                + btn(2, hasSlot2 ? '編成 ②' : '＋ 編成②を追加')
-                + ((_myTeamEditSlot === 2 && hasSlot2)
-                    ? `<button onclick="handleMyTeamEditDeleteSlot2()" title="編成②を削除" style="flex:none;padding:8px 12px;border-radius:9px;border:none;background:rgba(255,61,68,0.10);color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑</button>`
+            const has = new Set(existingSlots || []);
+            const btn = (slot) => {
+                const label = has.has(slot) ? `編成 ${SLOT_JP[slot]}` : `＋ ${SLOT_JP[slot]}`;
+                return `<button onclick="switchMyTeamEditSlot(${slot})" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:800;${_myTeamEditSlot === slot ? 'background:#14161A;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">${label}</button>`;
+            };
+            el.innerHTML = MY_TEAM_SLOTS.map(btn).join('')
+                + ((_myTeamEditSlot !== 1 && has.has(_myTeamEditSlot))
+                    ? `<button onclick="handleMyTeamEditDeleteCurrent()" title="編成${SLOT_JP[_myTeamEditSlot]}を削除" style="flex:none;padding:8px 12px;border-radius:9px;border:none;background:rgba(255,61,68,0.10);color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑</button>`
                     : '');
+        }
+        // 測定レベルの選択UI。
+        // ★ 「そのレベル以下にしか使われない」ことを必ず見せる — 見せないと
+        //    親切心で Lv1 を選んだ人が Lv2〜Lv4 の割当対象から静かに外れる
+        //    (とくに Lv4 = ボス5・HP無限 は全額計上の最重要枠)
+        function _renderTeamEditLevel() {
+            const el = document.getElementById('myTeamEditLevelBtns');
+            const note = document.getElementById('myTeamEditLevelNote');
+            if (!el) return;
+            el.innerHTML = [1, 2, 3, 4].map(lv => {
+                const on = _myTeamEditLevel === lv;
+                return `<button onclick="setMyTeamEditLevel(${lv})" style="padding:7px 10px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:900;${on ? 'background:#6C42F0;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">Lv${lv}</button>`;
+            }).join('');
+            if (!note) return;
+            if (_myTeamEditLevel == null) {
+                note.innerHTML = '<b style="color:#B45309;">未設定</b> — いまは全レベルの割当で使われます。'
+                    + '測ったレベルを選ぶと当日の予測が正確になります。';
+            } else {
+                const upTo = _myTeamEditLevel === 1 ? 'Lv1' : `Lv1〜Lv${_myTeamEditLevel}`;
+                const warn = _myTeamEditLevel < 4
+                    ? `<b style="color:#B45309;">Lv${_myTeamEditLevel + 1}以上には使われません。</b>`
+                      + (_myTeamEditLevel < 4 ? ' ボス5(HP無限)に出るには Lv4 で測った編成が要ります。' : '')
+                    : 'すべてのレベルで使えます (ボス5(HP無限)を含む)。';
+                note.innerHTML = `この編成は <b>${upTo}</b> の割当に使われます。${warn}`;
+            }
+        }
+        function setMyTeamEditLevel(lv) {
+            _myTeamEditLevel = (_myTeamEditLevel === lv) ? null : lv;   // 押し直しで未設定に戻せる
+            _renderTeamEditLevel();
         }
         function switchMyTeamEditSlot(slot) {
             if (slot === _myTeamEditSlot || !_myTeamEditAttr) return;
             handleMyTeamEdit(_myTeamEditAttr, slot);
         }
-        async function handleMyTeamEditDeleteSlot2() {
-            return _deleteMyTeamEditSlot(2);
-        }
         // 表示中の編成 (① or ②) を削除 — 編成編集モーダル下部の 🗑 から (ユーザー要望 2026-07-24)
         async function handleMyTeamEditDeleteCurrent() {
-            return _deleteMyTeamEditSlot(_myTeamEditSlot === 2 ? 2 : 1);
+            return _deleteMyTeamEditSlot(MY_TEAM_SLOTS.includes(_myTeamEditSlot) ? _myTeamEditSlot : 1);
         }
         async function _deleteMyTeamEditSlot(slot) {
             const id = getCurrentIdentity();
             if (!id?.id || !_myTeamEditAttr) return;
             const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
-            let hasSlot2 = false;
+            let others = [];
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
-                hasSlot2 = (dmgs || []).some(d => d.attribute === _myTeamEditAttr && (d.slot || 1) === 2);
+                others = (dmgs || [])
+                    .filter(d => d.attribute === _myTeamEditAttr && (d.slot || 1) !== slot)
+                    .map(d => SLOT_JP[d.slot || 1]);
             } catch { /* noop — 確認文言の補足が出ないだけ */ }
-            const note = (slot === 1 && hasSlot2) ? '\n(編成②は②のまま残ります)' : '';
-            if (!confirm(`${ptName}PT 編成${slot === 2 ? '②' : '①'}を削除しますか？\nダメージと編成キャラの提出が消えます。${note}`)) return;
+            const note = others.length > 0 ? `\n(編成${others.join('・')}はそのまま残ります)` : '';
+            if (!confirm(`${ptName}PT 編成${SLOT_JP[slot]}を削除しますか？\nダメージと編成キャラの提出が消えます。${note}`)) return;
             try {
                 await window.supabaseDeletePlayerDamageSlot(id.id, _myTeamEditAttr, slot);
-                window.supabaseLogActivity?.('mock_delete', `${ptName}PT 模擬 編成${slot === 2 ? '②' : '①'}を削除`, { playerId: id.id });
+                window.supabaseLogActivity?.('mock_delete', `${ptName}PT 模擬 編成${SLOT_JP[slot]}を削除`, { playerId: id.id });
                 opsStore.invalidate();
                 _myDmgPanelSlots[_myTeamEditAttr] = 1;
                 await renderMyDamagePanels(id);
@@ -8263,21 +8321,29 @@
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
             const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || attrKey;
             _myTeamEditAttr = attrKey;
-            _myTeamEditSlot = slot === 2 ? 2 : 1;
+            _myTeamEditSlot = MY_TEAM_SLOTS.includes(Number(slot)) ? Number(slot) : 1;
             // 現在の編成・ダメージを取得して初期表示
             let current = ['', '', '', '', ''];
             let curDamage = '';
-            let hasSlot2 = false;
+            let existingSlots = [];
+            let isNew = true;
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
                 const row = (dmgs || []).find(d => d.attribute === attrKey && (d.slot || 1) === _myTeamEditSlot);
-                hasSlot2 = (dmgs || []).some(d => d.attribute === attrKey && (d.slot || 1) === 2);
+                existingSlots = (dmgs || []).filter(d => d.attribute === attrKey).map(d => d.slot || 1);
+                isNew = !row;
                 const existing = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
                 for (let i = 0; i < 5; i++) current[i] = existing[i] || '';
                 if (row?.damage_b != null) curDamage = Number(row.damage_b).toFixed(2).replace(/\.?0+$/, '');
-            } catch { /* noop */ }
-            _renderTeamEditSlotTabs(hasSlot2);
-            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成${_myTeamEditSlot === 2 ? '②' : '①'}・ダメージ`;
+                // ★ 既存行のレベルはそのまま引き継ぐ。null (移行前の提出) を Lv1 に倒すと
+                //    保存し直した瞬間に Lv2 以降の割当対象から静かに外れる
+                _myTeamEditLevel = row ? (window._normBossLevel?.(row.boss_level) ?? null) : 1;
+            } catch {
+                _myTeamEditLevel = null;   // 読めなかったときは「未設定」= 従来どおり全レベル可
+            }
+            _renderTeamEditSlotTabs(existingSlots);
+            _renderTeamEditLevel();
+            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成${SLOT_JP[_myTeamEditSlot]}・ダメージ`;
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
             const dmgInput = document.getElementById('myTeamEditDamage');
@@ -9191,13 +9257,13 @@
                 }
                 const parts = [];
                 if (dmgVal !== null) {
-                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, dmgVal, _myTeamEditSlot);
-                    parts.push(`💥 ${dmgVal}B`);
+                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, dmgVal, _myTeamEditSlot, _myTeamEditLevel);
+                    parts.push(`💥 ${dmgVal}B${_myTeamEditLevel ? ` (Lv${_myTeamEditLevel})` : ''}`);
                 }
                 await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
                 if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                 const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
-                setMsg(`✅ ${ptName}PT 編成${_myTeamEditSlot === 2 ? '②' : '①'} を更新: ${parts.join(' / ') || '空'}`);
+                setMsg(`✅ ${ptName}PT 編成${SLOT_JP[_myTeamEditSlot]} を更新: ${parts.join(' / ') || '空'}`);
                 opsStore.invalidate();
                 await renderMyDamagePanels(id);
                 setTimeout(() => closeMyTeamEditModal(), 700);
@@ -9347,7 +9413,7 @@
             if (hasDual) {
                 // 2編成目 (破線): 2枚提出した属性だけ点を打ち、他は主系列に沿わせて形を保つ
                 datasets.push({
-                    label: '編成②',
+                    label: '2番手の編成',
                     data: values2,
                     fill: false,
                     borderColor: 'rgba(108,66,240,0.55)',
@@ -13091,10 +13157,10 @@
                 const pickedVisible = !!picked && picked.has(shownSlot);
                 const pickedOther = !!picked && !pickedVisible;
                 if (picked) {
-                    tip += ` — プランで採用${has2 ? ` (編成${[...picked].sort().map(s => s === 2 ? '②' : '①').join('・')})` : ''}`;
+                    tip += ` — プランで採用${has2 ? ` (編成${[...picked].sort().map(s => SLOT_JP[s] || s).join('・')})` : ''}`;
                 }
                 const badge = has2
-                    ? `<span class="dc-rem-slot${pickedOther ? ' pickhint' : ''}">${shownSlot === 2 ? '②' : '①'}</span>` : '';
+                    ? `<span class="dc-rem-slot${pickedOther ? ' pickhint' : ''}">${SLOT_JP[shownSlot] || '①'}</span>` : '';
                 const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}`;
                 const onclick = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
                 // 光の色は模擬タブと同じ DC_ATTR_COLORS に揃える (PT_ATTRS.color とは別定義 — Codex指摘)
@@ -13543,7 +13609,7 @@
 
         function renderOpsFinishList(attrKey) {
             if (!opsStore.get()) return;
-            const { bosses, players } = opsStore.get();
+            const { season, bosses, players } = opsStore.get();
             const ptInfo = PT_ATTRS.find(x => x.key === attrKey);
             const boss = bosses.find(b => b.weakness === attrKey);
             const listEl = document.getElementById('opsFinishList');
@@ -13575,11 +13641,16 @@
             const candidates = players
                 .filter(p => p.attackCount < 3)
                 .map(p => {
-                    // 1属性2編成対応: この属性への凸回数ぶん上位ロードアウトを消費済みとし、
-                    // 編成②が残っていれば「同属性2凸での締め」も候補に含める
+                    // 1属性複数編成対応: この属性への凸回数ぶん上位ロードアウトを消費済みとし、
+                    // 編成②③が残っていれば「同属性2凸目での締め」も候補に含める。
+                    // ★ 締め凸は「いまのレベル」のボスへの依頼なので、測定レベルが届かない
+                    //   編成は候補にしない (ソルバーの usableAtLevel と同じルール)。
+                    //   これを外すと Lv1 でしか測っていない人に Lv3 の締めを頼んでしまう
+                    const curLv = Number(season?.current_level) || 1;
                     const usedN = (p.attacks || []).filter(a => bossWeaknessByNum.get(a.boss_number) === attrKey).length;
                     const los = (p.loadoutsByAttr?.[attrKey] || [])
                         .filter(lo => Number(lo.dmgB) > 0)
+                        .filter(lo => lo.level == null || Number(lo.level) >= curLv)
                         .sort((x, y) => Number(y.dmgB) - Number(x.dmgB))
                         .slice(usedN);
                     const dmg = los.length > 0
@@ -13608,7 +13679,7 @@
                     <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid rgba(20,22,26,0.08);">
                         <span style="min-width:22px;text-align:right;color:#6B7178;font-size:12px;">${i + 1}.</span>
                         ${renderAvatarHtml(p, 28)}
-                        <strong style="flex:1;font-size:14px;">${escapeHtml(p.name)}${p.viaSlot2 ? ' <span title="同属性2凸目 (編成②) での締め" style="font-size:10px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.10);padding:1px 6px;border-radius:999px;">②</span>' : ''}</strong>
+                        <strong style="flex:1;font-size:14px;">${escapeHtml(p.name)}${p.viaSlot2 ? ' <span title="同属性2凸目 (別編成) での締め" style="font-size:10px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.10);padding:1px 6px;border-radius:999px;">＋</span>' : ''}</strong>
                         <span style="font-size:13px;font-weight:700;">${p.dmg.toFixed(2)} B</span>
                         ${overTag}
                         <span style="font-size:11px;color:#6B7178;">(${p.attackCount}/3)</span>
@@ -15884,12 +15955,13 @@
 「なんで自分がこのボスなの?」と思ったときのために、プランの決め方を公開します。**AIのお任せではなく、全部ルールで決まる計算**です(何回押しても同じ条件なら同じ答えが出ます)。
 
 **📥 材料にしているもの**
-みんなの模擬ダメージ(編成②も)/SLv/戦闘可能時間(⏳隙間型含む)/得意属性/ボスの残HP/いまの時刻。
+みんなの模擬ダメージ(1属性につき最大3編成・**どのレベルのボスで測ったか**も)/SLv/戦闘可能時間(⏳隙間型含む)/得意属性/ボスの残HP/いまの時刻。
 **つまり、みんなの提出データの質 = プランの質**です。模擬とSLvが正確なほど、無駄のないプランになります。
 
 **⚖️ 割り当てのルール**
 1. **各レベルは5体全部倒さないと次に進めない**ので、レベル1から順に「誰の凸で削り切るか」を組みます
-2. **1つの編成は1回だけ使える**(ゲームと同じでキャラの使い回し不可)。編成②を出している属性は、キャラが被っていなければ同属性2凸も組み込みます
+2. **1つの編成は1回だけ使える**(ゲームと同じでキャラの使い回し不可)。同じ属性に複数の編成を出していれば、キャラが被っていなければ同属性2凸も組み込みます
+2-2. **模擬で測ったレベル以下にしか使いません** — Lv3で出せたダメージはLv1でも確実に出せますが、逆(Lv1の数字がLv3でも出る)は保証がないためです。とくに**ボス5(HP無限)に出るにはLv4で測った編成**が要ります。レベル未設定の古い提出は、いまのところ全レベルで使っています
 3. **得意属性を設定した人は、その属性に必ず割り当て**(2〜3個選択なら残り枠だけ自由選出、4個ならその中からのみ)
 4. **序盤の低レベルには控えめなダメージの人、終盤の高レベルには高火力の人を温存** — SLv順で役割分担します
 5. **オーバーキル(削りすぎ)が最小になる人を優先** — 残HP4Bのボスに30B出せる人を当てるのはもったいない、という計算です

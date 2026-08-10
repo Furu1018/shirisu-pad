@@ -616,6 +616,120 @@ test('凸済みの得意属性は再強制しない (編成②が残っていて
     assert.deepEqual(attrs, ['electric', 'water'], `water(必須)+electric(自由枠) のはず: ${attrs}`);
 });
 
+// ---- 模擬の測定レベル (boss_level) --------------------------------------------
+// ルール: 記録レベル L の編成は「対象レベル ≤ L」にだけ使える。
+// level == null (レベル未指定 = 移行前の提出) は全レベルで使える。
+console.log('\nloadoutLevel:');
+
+test('Lv1で測った編成は Lv2 のボスに割り当てられない', () => {
+    // Lv1 のボスは全滅済み → 割当は Lv2 から始まる。
+    // Lv1測定の編成しか無い人は Lv2 に出せないので、凸が余る
+    const bs = [boss(1, 'fire', { remainingB: 0, totalB: 100 })];
+    const p = player('A', { fire: 30 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1 }] };
+    const plan = compute(makeInput(bs, [p], { currentLevel: 2 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 0, `Lv1測定の編成は Lv2 に出せないはず: ${used.length}凸`);
+});
+
+test('Lv2で測った編成は Lv2 にも Lv1 にも使える (高レベル測定は下位互換)', () => {
+    const p = player('A', { fire: 30 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 2 }] };
+    for (const lv of [1, 2]) {
+        const plan = compute(makeInput([boss(1, 'fire', { remainingB: 20, totalB: 100 })], [p], { currentLevel: lv }));
+        const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+        assert.equal(used.length, 1, `Lv2測定の編成は Lv${lv} で使えるはず`);
+    }
+});
+
+test('レベル未指定 (移行前の提出) は全レベルで使える', () => {
+    // ★ ここが崩れると既存235行が Lv2 以降で一切使えなくなり配信プランが壊れる
+    const p = player('A', { fire: 30 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1 }] };   // level 無し
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 20, totalB: 100 })], [p], { currentLevel: 3 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 1, 'レベル未指定は Lv3 でも使えるはず');
+    assert.equal(used[0].loadoutLevel, null);
+});
+
+test('同じ属性でレベル違いの編成を出すと、対象レベルで使える方が選ばれる', () => {
+    // Lv1測定 40B (高い) と Lv3測定 25B (低い)。Lv3 のボスには 25B しか使えない
+    const p = player('A', { fire: 40 });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 40, team: ['a','b','c','d','e'], slot: 1, level: 1 },
+        { dmgB: 25, team: ['f','g','h','i','j'], slot: 2, level: 3 },
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 1);
+    assert.equal(used[0].dmgB, 25, `Lv3 で使えるのは Lv3測定の25Bだけ: ${used[0].dmgB}`);
+    assert.equal(used[0].loadoutLevel, 3);
+});
+
+test('Lv3で測った編成は Lv4 (ボス5・無限) には出せない', () => {
+    // Lv4 は最上位。Lv3測定では届かない = ボス5への凸が発生しない
+    const bs = [
+        boss(1, 'fire', { tier: 'lord', remainingB: 0 }),
+        boss(2, 'water', { tier: 'lord', remainingB: 0 }),
+        boss(3, 'electric', { tier: 'tyrant', remainingB: 0 }),
+        boss(4, 'iron', { tier: 'lord', remainingB: 0 }),
+        boss(5, 'wind', { tier: 'tyrant', remainingB: 0 }),
+    ];
+    const p = player('A', { wind: 30 });
+    p.loadoutsByAttr = { wind: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 3 }] };
+    const plan = compute(makeInput(bs, [p], { currentLevel: 3 }));
+    assert.equal(plan.lv4Open, true);
+    const lv4 = plan.levels[plan.levels.length - 1];
+    assert.equal(lv4.bosses[0].attacks.length, 0, 'Lv3測定ではボス5に出せないはず');
+    // 運営が打ち手を判断できるよう、理由が「測定レベル不足」と分かること
+    const d = (plan.unusedDetail || []).find(x => x.name === 'A');
+    assert.ok(d && /Lv4/.test(d.reason), `理由に Lv4 測り直しの案内が要る: ${d?.reason}`);
+});
+
+test('Lv4で測った編成はボス5に出せる (全額計上)', () => {
+    const bs = [
+        boss(1, 'fire', { tier: 'lord', remainingB: 0 }),
+        boss(2, 'water', { tier: 'lord', remainingB: 0 }),
+        boss(3, 'electric', { tier: 'tyrant', remainingB: 0 }),
+        boss(4, 'iron', { tier: 'lord', remainingB: 0 }),
+        boss(5, 'wind', { tier: 'tyrant', remainingB: 0 }),
+    ];
+    const p = player('A', { wind: 30 });
+    p.loadoutsByAttr = { wind: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 4 }] };
+    const plan = compute(makeInput(bs, [p], { currentLevel: 3 }));
+    const lv4 = plan.levels[plan.levels.length - 1];
+    assert.equal(lv4.bosses[0].attacks.length, 1);
+    assert.equal(lv4.bosses[0].attacks[0].usedB, 30);
+    assert.equal(lv4.bosses[0].attacks[0].loadoutLevel, 4);
+});
+
+test('3編成目 (slot=3) も候補になる', () => {
+    const p = player('A', { fire: 10 });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 10, team: ['a','b','c','d','e'], slot: 1 },
+        { dmgB: 8, team: ['f','g','h','i','j'], slot: 2 },
+        { dmgB: 6, team: ['k','l','m','n','o'], slot: 3 },
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 24 })], [p]));
+    const atks = plan.levels[0].bosses[0].attacks;
+    assert.equal(atks.length, 3, `3凸ぶん出せるはず: ${atks.length}`);
+    assert.deepEqual(atks.map(a => a.loadoutSlot), [1, 2, 3]);
+});
+
+test('レベル指定と未指定が混ざっても、使える方だけが選ばれる', () => {
+    // 「未指定 (全レベル可) の低火力」と「Lv1限定の高火力」が同居するケース。
+    // Lv3 のボスには未指定の方しか使えない
+    const p = player('A', { fire: 40 });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 40, team: ['a','b','c','d','e'], slot: 1, level: 1 },
+        { dmgB: 12, team: ['f','g','h','i','j'], slot: 2 },          // 未指定
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 1);
+    assert.equal(used[0].dmgB, 12, `Lv3 で使えるのは未指定の12Bだけ: ${used[0].dmgB}`);
+});
+
 // ---- Lv4: ボス5・HP無限 (Lv3踏破で即日開放) ----------------------------------
 console.log('\nlv4:');
 
@@ -1521,6 +1635,21 @@ console.log('\ndomain/mockCompare:');
         const asahi = r.rows.find(x => x.playerId === 1);
         assert.equal(asahi.value, 9, '高い方 (slot2=9B) を採用');
         assert.equal(asahi.slot, 2, '採用した slot=2 を返す');
+    });
+
+    test('mockCompare: 採用した提出の測定レベルを bossLevel で返す', () => {
+        // 比較はレベルで割り引かない (最大値を採用する従来どおり) が、
+        // レベル違いが同じ土俵に並ぶので、どのレベルで測った値かは行に出せるようにする
+        const dmgs = [
+            { player_id: 1, attribute: 'fire', slot: 1, damage_b: 8, boss_level: 3 },
+            { player_id: 1, attribute: 'fire', slot: 2, damage_b: 9, boss_level: 1 },  // 採用される方
+            { player_id: 2, attribute: 'fire', slot: 1, damage_b: 7 },                 // レベル未指定
+            { player_id: 3, attribute: 'fire', slot: 1, damage_b: 6, boss_level: 9 },  // 範囲外→null
+        ];
+        const r = buildMockComparison({ attribute: 'fire', mode: 'damage', players: mcPlayers, damages: dmgs, base: null, slvRatioTable: null });
+        assert.equal(r.rows.find(x => x.playerId === 1).bossLevel, 1, '採用した方 (slot2/Lv1) のレベル');
+        assert.equal(r.rows.find(x => x.playerId === 2).bossLevel, null, '未指定は null');
+        assert.equal(r.rows.find(x => x.playerId === 3).bossLevel, null, '範囲外は null に倒す');
     });
 
     test('mockCompare: 未提出者は missing に分離される', () => {
