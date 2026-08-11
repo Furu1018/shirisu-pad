@@ -8526,8 +8526,10 @@
             let curDamage = '';
             let existingSlots = [];
             let isNew = true;
+            let allRows = [];
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
+                allRows = dmgs || [];
                 const row = (dmgs || []).find(d => d.attribute === attrKey && (d.slot || 1) === _myTeamEditSlot);
                 existingSlots = (dmgs || []).filter(d => d.attribute === attrKey).map(d => d.slot || 1);
                 isNew = !row;
@@ -8581,15 +8583,14 @@
             const ma = document.getElementById('teManualArw'); if (ma) ma.textContent = '▼';
             const tt = document.getElementById('myTeamEditTopTeams'); if (tt) tt.hidden = true;
             const ta = document.getElementById('teTopArw'); if (ta) ta.textContent = '▼';
-            // もう一方のスロットの編成 = 被りマークの元 (同キャラは1日1回)
+            // もう一方のスロットの編成 = 被りマークの元 (同キャラは1日1回)。
+            // ★ 上で取得済みの allRows を使う — ここで再取得すると、被りマークのためだけに
+            //   モーダルの表示が1往復ぶん遅れる (Codex指摘 2026-08-12)
             _myTeamEditOtherTeam = [];
-            try {
-                const dmgs2 = await window.supabaseLoadPlayerDamages(id.id);
-                (dmgs2 || []).forEach(d => {
-                    if (d.attribute !== attrKey || (d.slot || 1) === _myTeamEditSlot) return;
-                    (d.characters || []).filter(Boolean).forEach(c => _myTeamEditOtherTeam.push(c));
-                });
-            } catch { /* 取れなければ被りマークが出ないだけ */ }
+            allRows.forEach(d => {
+                if (d.attribute !== attrKey || (d.slot || 1) === _myTeamEditSlot) return;
+                (d.characters || []).filter(Boolean).forEach(c => _myTeamEditOtherTeam.push(c));
+            });
             renderTeamEditPicker();
             // 人気編成・単独採用率はユニオン全体の提出が要る → 届き次第そっと出す (モーダルを待たせない)
             if (_teamSubsCache) _teBuildUsage();
@@ -8854,8 +8855,11 @@
                 const img = icon
                     ? `<img loading="lazy" decoding="async" src="${escapeHtml(icon)}" alt="${escapeHtml(nm)}">`
                     : `<span class="te-ph" style="font-size:13px;color:#fff;">${escapeHtml(nm.charAt(0))}</span>`;
+                // ★ キャラ名を onclick に文字列で埋めない。escapeHtml した &#39; は
+                //   HTMLパース時に ' に戻るので、属性内の JS としては壊れる = 注入経路になる
+                //   (キャラ名は OCR 由来の外部入力)。data 属性 + 委譲リスナーで受ける
                 return `<button type="button" class="te-tile${isUsed ? ' used' : ''}${isDup ? ' dup' : ''}"`
-                    + ` onclick="tePick('${escapeHtml(nm).replace(/'/g, "\\'")}')"`
+                    + ` data-te-pick="${escapeHtml(nm)}"`
                     + ` title="${escapeHtml(nm)}${isDup ? ' — もう一方の編成で使用中' : ''}${pct ? ` — 単独の採用率 ${pct}%` : ''}">`
                     + `<span class="te-thumb">${img}${_teBand(c, pct)}`
                     + `${isDup ? '<span class="te-dup">!</span>' : ''}</span>`
@@ -8869,6 +8873,7 @@
                 more.style.display = show ? '' : 'none';
                 more.textContent = showAll ? '▲ 上位10体だけ表示' : `▼ 残り${rest}体を表示`;
             }
+            _teBindGrid();
             // バースト絞りチップ (枠を選んでいる間はその枠のバーストに固定)
             const fl = document.getElementById('teFilters');
             if (fl) {
@@ -8897,6 +8902,18 @@
             if (body) body.hidden = !_tePickOpen;
             if (cnt) cnt.textContent = full ? '5人そろいました' : `残り${5 - filled}人`;
             if (arw) arw.textContent = _tePickOpen ? '▲' : '▼';
+        }
+        // グリッドは innerHTML で作り直すが、コンテナ自体は残るのでリスナーは1回だけ張る
+        let _teGridBound = false;
+        function _teBindGrid() {
+            if (_teGridBound) return;
+            const g = document.getElementById('teGrid');
+            if (!g || typeof g.addEventListener !== 'function') return;
+            g.addEventListener('click', (e) => {
+                const b = e.target?.closest?.('[data-te-pick]');
+                if (b) tePick(b.getAttribute('data-te-pick'));
+            });
+            _teGridBound = true;
         }
         function teArmSlot(i) { _teArmed = (_teArmed === i) ? null : i; renderTeamEditPicker(); }
         function teClearSlot(i) { _teArmed = i; _teSetSlot(i, ''); }   // 描画は updateMyTeamEditIcon 経由

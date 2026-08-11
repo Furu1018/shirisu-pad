@@ -32,7 +32,8 @@ const src = html.slice(i, j);
 const nodes = new Map();
 function mkNode(id) {
     const n = {
-        id, _html: '', hidden: false, textContent: '', value: '', style: {},
+        id, _html: '', hidden: false, textContent: '', value: '', style: {}, _listeners: [],
+        addEventListener(type, fn) { this._listeners.push({ type, fn }); },
         get innerHTML() { return this._html; },
         set innerHTML(v) { this._html = String(v); },
     };
@@ -72,6 +73,8 @@ const MASTER = [
     { canonical_name: 'ベルベット', burst: 'B2', burst_alt: null, icon_paths: ['./character-images/h.webp'] },
     { canonical_name: 'ラピ:レッドフード', burst: 'B3', burst_alt: 'B1', icon_paths: ['./character-images/i.webp'] },
     { canonical_name: 'アイコン無し子', burst: 'B3', burst_alt: null, icon_paths: [] },
+    // ★ 注入を試す名前。キャラ名は OCR 由来の外部入力なので、記号が入りうる前提で扱う
+    { canonical_name: `危険'); alert(1); ('<img src=x onerror=alert(2)>`, burst: 'B1', burst_alt: null, icon_paths: [] },
 ];
 for (let k = 0; k < 14; k++) {
     MASTER.push({ canonical_name: `その他${k}`, burst: ['B1', 'B2', 'B3'][k % 3], burst_alt: null, icon_paths: [`./character-images/x${k}.webp`] });
@@ -274,6 +277,25 @@ test('アイコンが無いキャラもタイルに出る (頭文字で代替)',
     reset(); renderTeamEditPicker();
     teSetFilter('all'); toggleTeamEditGridMore();
     assert(gridNames().includes('アイコン無し子'), 'アイコン無しでも選べるはず');
+    toggleTeamEditGridMore();
+});
+
+test('キャラ名を onclick に文字列で埋めない (属性内JSへの注入を塞ぐ)', () => {
+    // escapeHtml した &#39; は HTMLパース時に ' に戻るため、onclick の中では
+    // エスケープが効かない。data 属性 + 委譲リスナーで受けること
+    reset(); renderTeamEditPicker();
+    teSetFilter('all'); toggleTeamEditGridMore();
+    const html = nodes.get('teGrid')._html;
+    assert(!/onclick=/.test(html), `グリッドに onclick を出さないこと: ${(/onclick="[^"]*"/.exec(html) || [])[0]}`);
+    assert(/data-te-pick="/.test(html), 'data-te-pick で受けること');
+    // 危険な名前が属性値の外へ出ていないか (生の ' " < > が属性値に残っていない)
+    const attrs = [...html.matchAll(/data-te-pick="([^"]*)"/g)].map(m => m[1]);
+    const bad = attrs.find(a => /[<>"]/.test(a) || /(^|[^&#\d])'/.test(a));
+    assert(!bad, `属性値にエスケープ漏れ: ${bad}`);
+    assert(attrs.some(a => a.includes('&#39;')), '危険な名前がエスケープされて入っていること');
+    // 生のままの危険な断片が出力に現れないこと (エスケープされていれば ' は &#39; になる)
+    assert(!html.includes(`'); alert(1);`), '生の引用符が出力に残っている');
+    assert(!html.includes('<img src=x'), '名前が img タグとして出力されている');
     toggleTeamEditGridMore();
 });
 
