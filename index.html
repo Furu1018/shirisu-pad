@@ -4796,6 +4796,11 @@
                         <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:8px;">対象属性を選択</div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;"></div>
                     </div>
+                    <!-- 測定ボスレベル (任意)。未指定 = 全レベルで使える -->
+                    <div style="margin-top:12px;">
+                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:8px;">測定したボスレベル (任意)</div>
+                        <div id="myDmgPreviewLevelBtns" style="display:flex;gap:4px;"></div>
+                    </div>
                     <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
                     <div style="display:flex;gap:8px;margin-top:18px;">
                         <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
@@ -4972,6 +4977,8 @@
                     <div id="myTeamEditLevelBtns" style="display:flex;gap:4px;"></div>
                 </div>
                 <p id="myTeamEditLevelNote" style="margin:7px 0 0 0;font-size:11px;line-height:1.6;color:#8A9097;"></p>
+                <!-- この編成のレベル別測定値 (31_player_damages_levels) — タップで編集・×で削除 -->
+                <div id="myTeamEditLevelStrip"></div>
             </div>
 
             <!-- 画像取り込み -->
@@ -6317,6 +6324,17 @@
                         chars: (Array.isArray(r.characters) ? r.characters : []).filter(Boolean)
                             .map(c => (typeof fuzzyResolveCharacter === 'function' && fuzzyResolveCharacter(c)) || c),
                     }));
+                    // 同一 (属性, 編成) の重複行は1部隊として数える (防御 — 31 の自動マージ後は
+                    // 原則発生しないが、旧データやマージ対象外の行が「あと◯部隊」を狂わせないように)
+                    const seenSquads = new Set();
+                    squads = squads.filter(sq => {
+                        if (sq.chars.length === 0) return true;   // 編成未登録は照合不能 → そのまま
+                        const key = sq.attr + '|' + [...sq.chars]
+                            .map(c => String(c).normalize('NFKC').trim().toLowerCase()).sort().join('|');
+                        if (seenSquads.has(key)) return false;
+                        seenSquads.add(key);
+                        return true;
+                    });
                     attrs = new Set(squads.map(s => s.attr)).size;
                     hasExtraSquad = squads.some(sq => sq.slot >= 2);   // 同属性の2つ目以降の編成
                 }
@@ -8139,6 +8157,15 @@
                     : activeSlot;
                 const rec = slots[activeSlot];
                 const recLevel = rec ? (window._normBossLevel?.(rec.boss_level) ?? null) : null;
+                // レベル別測定値 (31): バッジは保有する測定レベルを列挙 (例: Lv1·4)。
+                // 未指定 ("0") だけの行は従来どおり Lv? 扱い
+                const recLevels = rec?.levels || null;
+                const lvKeys = recLevels ? ['1', '2', '3', '4'].filter(k => Number(recLevels[k]) > 0) : [];
+                const lvTitle = recLevels
+                    ? ['0', '1', '2', '3', '4'].filter(k => Number(recLevels[k]) > 0)
+                        .map(k => `${k === '0' ? '未指定' : 'Lv' + k}: ${Number(recLevels[k])}B`).join(' / ')
+                    : '';
+                const lvLabel = lvKeys.length > 0 ? `Lv${lvKeys.join('·')}` : (recLevel ? `Lv${recLevel}` : null);
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const submitted = Number(rec?.damage_b) > 0;   // 黒カード判定 (0B保存は白のまま — Codex 指摘)
@@ -8174,7 +8201,7 @@
                     ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}', ${nextSlot})" title="${isPickedOther ? 'めくると配信プランで採用された編成' : `編成${SLOT_JP[nextSlot]}を表示`}">${SLOT_JP[activeSlot]}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${recLevel ? ` — Lv${recLevel}で測定` : ''}${pickTitle}" data-attr="${a.key}" style="${_pkVars(c)}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${lvTitle ? ` — 測定: ${lvTitle}` : ''}${pickTitle}" data-attr="${a.key}" style="${_pkVars(c)}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chipwrap">
@@ -8186,8 +8213,8 @@
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
                                 : `<div class="dc-dmg-value empty">—</div>`}
                         </div>
-                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}${submitted ? (recLevel
-                            ? ` <span class="dc-dmg-lv" title="Lv${recLevel} で測定 — Lv1〜Lv${recLevel} の割当に使われます">Lv${recLevel}</span>`
+                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}${submitted ? (lvLabel
+                            ? ` <span class="dc-dmg-lv" title="${lvTitle || `Lv${recLevel} で測定`} — 記録レベル以下のボスの割当に使われます">${lvLabel}</span>`
                             : ' <span class="dc-dmg-lv unset" title="測定レベル未設定 — いまは全レベルで使われます。タップして設定できます">Lv?</span>') : ''}</div>
                         <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
@@ -8276,10 +8303,56 @@
                     : 'すべてのレベルで使えます (ボス5(HP無限)を含む)。';
                 note.innerHTML = `この編成は <b>${upTo}</b> の割当に使われます。${warn}`;
             }
+            _renderTeamEditLevelStrip();
         }
         function setMyTeamEditLevel(lv) {
             _myTeamEditLevel = (_myTeamEditLevel === lv) ? null : lv;   // 押し直しで未設定に戻せる
             _renderTeamEditLevel();
+        }
+        // ===== スロット内のレベル別測定値ストリップ (1スロット=1編成の再設計) =====
+        let _myTeamEditLevels = null;   // 現在行の levels (表示用スナップショット)
+        function _renderTeamEditLevelStrip() {
+            const el = document.getElementById('myTeamEditLevelStrip');
+            if (!el) return;
+            const lvs = _myTeamEditLevels || {};
+            const keys = ['0', '1', '2', '3', '4'].filter(k => Number(lvs[k]) > 0);
+            if (keys.length === 0) { el.innerHTML = ''; return; }
+            el.innerHTML = '<div style="font-size:10.5px;font-weight:800;color:#8A9097;margin:9px 0 5px;">この編成の測定値 — タップで値を呼び出し / ×で削除:</div>'
+                + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+                + keys.map(k => {
+                    const isOn = (k === '0') ? (_myTeamEditLevel == null) : (Number(k) === _myTeamEditLevel);
+                    const label = k === '0' ? '未指定' : `Lv${k}`;
+                    return `<span style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 8px 5px 11px;font-size:11px;font-weight:800;${isOn ? 'background:#6C42F0;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">`
+                        + `<span onclick="pickMyTeamEditMeasurement('${k}')" style="cursor:pointer;">${label}: ${Number(lvs[k])}B</span>`
+                        + `<span onclick="handleDeleteMyTeamEditLevel('${k}')" title="この測定を削除" style="cursor:pointer;opacity:0.75;font-weight:900;padding:0 2px;">×</span>`
+                        + `</span>`;
+                }).join('') + '</div>';
+        }
+        function pickMyTeamEditMeasurement(k) {
+            _myTeamEditLevel = (k === '0') ? null : Number(k);
+            const v = Number((_myTeamEditLevels || {})[k]);
+            const inp = document.getElementById('myTeamEditDamage');
+            if (inp && v > 0) inp.value = String(v);
+            _renderTeamEditLevel();
+        }
+        async function handleDeleteMyTeamEditLevel(k) {
+            const id = getCurrentIdentity();
+            if (!id?.id || !_myTeamEditAttr) return;
+            const label = k === '0' ? 'レベル未指定' : `Lv${k}`;
+            if (!confirm(`${label} の測定値を削除しますか？`)) return;
+            try {
+                const r = await window.supabaseDeleteMockLevel(id.id, _myTeamEditAttr, _myTeamEditSlot, k === '0' ? null : Number(k));
+                opsStore.invalidate();
+                await renderMyDamagePanels(id);
+                if (r?.deletedRow) {
+                    closeMyTeamEditModal();
+                    showNotification('🗑 最後の測定を削除したため、この編成の提出を削除しました');
+                } else {
+                    await handleMyTeamEdit(_myTeamEditAttr, _myTeamEditSlot);   // ストリップを最新化
+                }
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
         }
         function switchMyTeamEditSlot(slot) {
             if (slot === _myTeamEditSlot || !_myTeamEditAttr) return;
@@ -8341,8 +8414,11 @@
                 // ★ 既存行のレベルはそのまま引き継ぐ。null (移行前の提出) を Lv1 に倒すと
                 //    保存し直した瞬間に Lv2 以降の割当対象から静かに外れる
                 _myTeamEditLevel = row ? (window._normBossLevel?.(row.boss_level) ?? null) : 1;
+                // レベル別測定値 (31): ストリップ表示用。supabaseLoadPlayerDamages が正規化済み
+                _myTeamEditLevels = row?.levels || null;
             } catch {
                 _myTeamEditLevel = null;   // 読めなかったときは「未設定」= 従来どおり全レベル可
+                _myTeamEditLevels = null;
             }
             _renderTeamEditSlotTabs(existingSlots);
             _renderTeamEditLevel();
@@ -8571,11 +8647,15 @@
                 const team = (r.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
                 if (team.length === 0) return;
                 const key = [...new Set(team)].sort().join('|');
-                const g = groups.get(key) || { team, count: 0, bestDmgB: 0 };
+                const g = groups.get(key) || { team, count: 0, bestDmgB: 0, players: new Set() };
                 g.count++;
+                if (r.player_id != null) g.players.add(r.player_id);
                 g.bestDmgB = Math.max(g.bestDmgB, Number(r.damage_b) || 0);
                 groups.set(key, g);
             });
+            // 「N人」表示は distinct プレイヤー数で数える — 同じ人が同一編成をレベル違いで
+            // 複数行出しても人気度を押し上げない (player_id が来ない旧環境は行数のまま)
+            groups.forEach(g => { if (g.players.size > 0) g.count = g.players.size; });
             const list = [...groups.values()].sort((a, b) => b.count - a.count || b.bestDmgB - a.bestDmgB);
             return { total: rows.length, list };
         }
@@ -9259,17 +9339,43 @@
                     canonical = (reg.canonical || names).filter(Boolean);
                 }
                 const parts = [];
-                if (dmgVal !== null) {
-                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, dmgVal, _myTeamEditSlot, _myTeamEditLevel);
+                let savedSlot = _myTeamEditSlot;
+                let redirected = false;
+                if (dmgVal !== null && dmgVal > 0) {
+                    // 提出の主経路: 同一編成が別スロットにあれば自動でそちらへ測定を追記
+                    // (レベル違いの提出で編成枠を食わない — 1スロット=1編成の再設計)
+                    const res = await window.supabaseSaveMockSubmission(id.id, _myTeamEditAttr, {
+                        damageB: dmgVal, level: _myTeamEditLevel, slot: _myTeamEditSlot,
+                        characters: canonical.length > 0 ? canonical : null,
+                    });
+                    savedSlot = res.slot;
+                    redirected = !!res.redirected;
                     parts.push(`💥 ${dmgVal}B${_myTeamEditLevel ? ` (Lv${_myTeamEditLevel})` : ''}`);
+                    if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
+                    // 編成を空にして保存した場合は従来どおり編成のクリアとして扱う
+                    if (canonical.length === 0) await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, savedSlot);
+                } else if (dmgVal === 0) {
+                    // 0 = 測定のクリア (旧挙動の維持)
+                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, 0, _myTeamEditSlot, _myTeamEditLevel);
+                    await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
+                    if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
+                } else {
+                    // ダメージ未入力: 編成だけ更新 (従来どおり)
+                    await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
+                    if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                 }
-                await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
-                if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                 const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
-                setMsg(`✅ ${ptName}PT 編成${SLOT_JP[_myTeamEditSlot]} を更新: ${parts.join(' / ') || '空'}`);
+                setMsg(redirected
+                    ? `✅ 入力した編成は編成${SLOT_JP[savedSlot]}と同一のため、${SLOT_JP[savedSlot]}に測定を追記しました`
+                    : `✅ ${ptName}PT 編成${SLOT_JP[savedSlot]} を更新: ${parts.join(' / ') || '空'}`);
                 opsStore.invalidate();
                 await renderMyDamagePanels(id);
-                setTimeout(() => closeMyTeamEditModal(), 700);
+                if (redirected) {
+                    showNotification(`✅ 同一編成のため 編成${SLOT_JP[savedSlot]} に統合しました`);
+                    setTimeout(() => handleMyTeamEdit(_myTeamEditAttr, savedSlot), 900);   // 統合先を開き直す
+                } else {
+                    setTimeout(() => closeMyTeamEditModal(), 700);
+                }
             } catch (e) {
                 setMsg(`❌ 保存失敗: ${e?.message || e}`, true);
             }
@@ -9496,6 +9602,7 @@
                     totalDamage: r.totalDamage,
                     bossName: r.bossName,
                     characters: Array.isArray(r.characters) ? r.characters : [],
+                    selectedLevel: null,    // 測定ボスレベル (任意・未指定=全レベル可)
                     ptAttr,                 // 自動判定 (null なら未確定 → 手動選択UI を表示)
                     selectedAttr: ptAttr,   // 保存時に使う実際の属性
                 };
@@ -9531,6 +9638,7 @@
             const saveBtn = document.getElementById('myDmgPreviewSaveBtn');
             const msg = document.getElementById('myDmgPreviewMsg');
             if (msg) msg.textContent = '';
+            _renderMyDmgPreviewLevelBtns();
 
             // 属性 + ダメージ サマリ
             const attr = d.selectedAttr ? PT_ATTRS.find(a => a.key === d.selectedAttr) : null;
@@ -9614,6 +9722,22 @@
             _myDmgPreviewData = null;
         }
 
+        // 測定ボスレベルの選択 (任意)。未指定 = 全レベルで使える (従来どおり)
+        function _renderMyDmgPreviewLevelBtns() {
+            const el = document.getElementById('myDmgPreviewLevelBtns');
+            if (!el) return;
+            const sel = _myDmgPreviewData?.selectedLevel ?? null;
+            el.innerHTML = [1, 2, 3, 4].map(lv => {
+                const on = sel === lv;
+                return `<button onclick="setMyDmgPreviewLevel(${lv})" style="flex:1;padding:8px 4px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:900;${on ? 'background:#6C42F0;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">Lv${lv}</button>`;
+            }).join('') + `<button onclick="setMyDmgPreviewLevel(null)" style="flex:1.2;padding:8px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;${sel == null ? 'background:#14161A;color:#fff;' : 'background:#F1F2F4;color:#8A9097;'}">未指定</button>`;
+        }
+        function setMyDmgPreviewLevel(lv) {
+            if (!_myDmgPreviewData) return;
+            _myDmgPreviewData.selectedLevel = lv;
+            _renderMyDmgPreviewLevelBtns();
+        }
+
         function handleMyDmgPreviewPickAttr(key) {
             if (!_myDmgPreviewData) return;
             _myDmgPreviewData.selectedAttr = key;
@@ -9649,19 +9773,24 @@
             }
             try {
                 const damageB = Number(d.totalDamage) / 1e9;
-                await window.supabaseSavePlayerDamage(id.id, attr, damageB);
-                // 編成 (5キャラ) も登録
+                // 編成 (5キャラ) をマスタ解決してから、測定+編成を1回で保存する。
+                // saveMockSubmission は同一編成のスロットへ自動で測定を追記する
+                // (同じ編成をレベル違いで撮っても編成枠を食わない)
+                let canon = null;
                 if (Array.isArray(d.characters) && d.characters.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
                     try {
                         const reg = await window.supabaseRegisterOcrCharacters(d.characters);
-                        const canon = (reg.canonical || []).filter(Boolean);
-                        if (canon.length > 0) {
-                            await window.supabaseSaveTeamForAttribute(id.id, attr, canon);
-                        }
+                        canon = (reg.canonical || []).filter(Boolean);
                     } catch (e) { console.warn('[preview save team]', e?.message || e); }
                 }
+                const res = await window.supabaseSaveMockSubmission(id.id, attr, {
+                    damageB, level: d.selectedLevel ?? null, slot: 1,
+                    characters: canon && canon.length > 0 ? canon : null,
+                });
                 if (statusEl) {
-                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で保存しました`;
+                    const lvJp = d.selectedLevel ? ` (Lv${d.selectedLevel})` : '';
+                    const slotJp = res?.redirected ? ` — 同一編成のため編成${SLOT_JP[res.slot] || res.slot}に統合` : '';
+                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B${lvJp} で保存しました${slotJp}`;
                     statusEl.style.color = '#22c55e';
                 }
                 closeMyDmgPreviewModal();
@@ -13124,7 +13253,16 @@
                 return scaled > 0 ? dmgB / scaled : null;
             };
             const fururiMode = _opsRemainingMode === 'fururi';
-            // 属性ごとの編成一覧 (1属性2編成対応)。loadouts が無い旧データはベスト値1件に劣化
+            // いまのレベルで「実際に使える値」を出す (レベル別測定 31 対応)。
+            // 残凸表は運営の行動ビューなので、Lv1でしか測っていない値を Lv3 の検討材料に見せない
+            const remCurLv = Number(opsStore.get()?.season?.current_level) || 1;
+            const remML = window.mockLevelsDomain || null;
+            const resolvedDmgOf = (lo) => {
+                if (!remML) return Number(lo.dmgB) || 0;
+                const lvs = remML.normLevels(lo.levels, lo.dmgB, lo.level);
+                return lvs ? (remML.bestAtLevel(lvs, remCurLv) ?? 0) : 0;
+            };
+            // 属性ごとの編成一覧 (1属性複数編成対応)。loadouts が無い旧データはベスト値1件に劣化
             const loadoutsOf = (p, key) => {
                 const arr = Array.isArray(p.loadoutsByAttr?.[key])
                     ? p.loadoutsByAttr[key].filter(lo => Number(lo?.dmgB) > 0) : [];
@@ -13142,7 +13280,11 @@
                 const shownIdx = has2 ? ((Number(_opsRemSlot.get(flipKey)) || 0) % los.length) : 0;
                 const shown = los[shownIdx];
                 const shownSlot = MY_TEAM_SLOTS.includes(Number(shown.slot)) ? Number(shown.slot) : 1;
-                const v = Number(shown.dmgB);
+                // いまのレベルで使える値に解決 (Lv不足なら 0 = 「使えない」を明示)
+                const v = resolvedDmgOf(shown);
+                if (!(v > 0)) {
+                    return `<div class="dc-rem-cell unset" title="${attr.name}PT — 測定レベルが Lv${remCurLv} に届かない (Lv${remCurLv}以上で測り直すと使える)">Lv不足</div>`;
+                }
                 let text, tip;
                 if (fururiMode) {
                     const s = fururiOf(p, attr.key, v);
@@ -13152,7 +13294,7 @@
                         : `${attr.name}PT ふるり値算出不可 (基準データかSLv不足)`;
                 } else {
                     text = v.toFixed(1);
-                    tip = `${attr.name}PT ${v.toFixed(1)}B`;
+                    tip = `${attr.name}PT ${v.toFixed(1)}B (Lv${remCurLv}時点で使える値)`;
                 }
                 if (used.has(attr.key)) {
                     return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${text}</div>`;
@@ -13653,14 +13795,28 @@
                     //   これを外すと Lv1 でしか測っていない人に Lv3 の締めを頼んでしまう
                     const curLv = Number(season?.current_level) || 1;
                     const usedN = (p.attacks || []).filter(a => bossWeaknessByNum.get(a.boss_number) === attrKey).length;
+                    // レベル別測定 (31): 「いまのレベルで使える最良値」に解決してから並べる。
+                    // 値もレベル解決値を使う — Lv1測定の高い値で締めを頼むと実際は届かない
+                    const fml = window.mockLevelsDomain || null;
                     const los = (p.loadoutsByAttr?.[attrKey] || [])
-                        .filter(lo => Number(lo.dmgB) > 0)
-                        .filter(lo => lo.level == null || Number(lo.level) >= curLv)
-                        .sort((x, y) => Number(y.dmgB) - Number(x.dmgB))
+                        .map(lo => {
+                            if (!fml) {
+                                const ok = Number(lo.dmgB) > 0 && (lo.level == null || Number(lo.level) >= curLv);
+                                return ok ? { ...lo, resolvedB: Number(lo.dmgB) } : null;
+                            }
+                            const lvs = fml.normLevels(lo.levels, lo.dmgB, lo.level);
+                            const v = lvs ? fml.bestAtLevel(lvs, curLv) : null;
+                            return v > 0 ? { ...lo, resolvedB: v } : null;
+                        })
+                        .filter(Boolean)
+                        .sort((x, y) => y.resolvedB - x.resolvedB)
                         .slice(usedN);
+                    // damagesByAttr へのフォールバックは「ロードアウト情報が全く無い旧データ」限定。
+                    // 全編成がレベル不足で消えたケースまで倒すと、レベル絞り込みが素通りする
+                    const hasLoadoutData = (p.loadoutsByAttr?.[attrKey] || []).length > 0;
                     const dmg = los.length > 0
-                        ? Number(los[0].dmgB)
-                        : (usedN > 0 ? 0 : Number(p.damagesByAttr[attrKey]) || 0);
+                        ? los[0].resolvedB
+                        : ((usedN > 0 || hasLoadoutData) ? 0 : Number(p.damagesByAttr[attrKey]) || 0);
                     return { ...p, dmg, viaSlot2: usedN > 0 && los.length > 0 };
                 })
                 .filter(p => p.dmg > 0)
