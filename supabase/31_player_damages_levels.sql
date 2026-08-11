@@ -66,25 +66,29 @@ BEGIN
          GROUP BY player_id, attribute, tkey
         HAVING count(*) > 1
     LOOP
-        -- グループ全行の levels をキーごとに max で統合
+        -- グループ全行の levels をキーごとに max で統合。
+        -- CHECK は値の型まで縛れないため、数値型のエントリだけを対象にする
+        -- (非数値が混ざっていてもこの移行が中断しない = 冪等性の維持。Codexレビュー指摘)
         SELECT jsonb_object_agg(k, v) INTO v_levels FROM (
             SELECT e.key AS k, max((e.value)::numeric) AS v
               FROM player_damages pd,
-                   jsonb_each_text(COALESCE(pd.levels,
+                   jsonb_each(COALESCE(pd.levels,
                        jsonb_build_object(COALESCE(pd.boss_level, 0)::text, pd.damage_b))) e
              WHERE pd.player_id = g.player_id AND pd.attribute = g.attribute
                AND pd.slot = ANY(g.slots)
+               AND jsonb_typeof(e.value) = 'number'
                AND (e.value)::numeric > 0
              GROUP BY e.key
         ) s;
         IF v_levels IS NULL THEN CONTINUE; END IF;
 
         -- 互換ミラー (damage_b = 最大値 / boss_level = そのキー。タイは "0" > 高レベル)
-        SELECT max((e.value)::numeric) INTO v_best FROM jsonb_each_text(v_levels) e;
+        SELECT max((e.value)::numeric) INTO v_best
+          FROM jsonb_each(v_levels) e WHERE jsonb_typeof(e.value) = 'number';
         SELECT CASE WHEN bool_or(e.key = '0') THEN NULL ELSE max((e.key)::int) END
           INTO v_boss
-          FROM jsonb_each_text(v_levels) e
-         WHERE (e.value)::numeric = v_best;
+          FROM jsonb_each(v_levels) e
+         WHERE jsonb_typeof(e.value) = 'number' AND (e.value)::numeric = v_best;
         SELECT max(updated_at) INTO v_upd
           FROM player_damages
          WHERE player_id = g.player_id AND attribute = g.attribute AND slot = ANY(g.slots);

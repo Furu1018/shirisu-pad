@@ -98,6 +98,8 @@
      * 新しい測定 {damageB, level, characters?} をマージし、保存すべき行の形を返す。
      * - incoming.characters があり既存編成と別編成なら levels をリセット
      *   (編成が変わったら過去の測定は無効 — 古いレベルタグの残留バグを構造的に防ぐ)
+     * - 既存行に編成が無い (出所不明の測定) 場合も、編成付きの提出が来たら仕切り直す —
+     *   別編成の値を新しい編成に相続させない (Codexレビュー指摘)
      * - 同一編成 (または characters 未指定 = 編成不変) なら該当レベルキーだけ更新
      * @returns {{levels: Object<string,number>, damage_b: number, boss_level: number|null, teamChanged: boolean}|null}
      */
@@ -106,7 +108,8 @@
         if (!(Number.isFinite(d) && d > 0)) return null;
         const exChars = Array.isArray(existing && existing.characters) ? existing.characters : [];
         const inChars = Array.isArray(incoming && incoming.characters) ? incoming.characters : null;
-        const teamChanged = !!(inChars && inChars.length > 0 && exChars.length > 0 && !sameTeam(inChars, exChars));
+        const teamChanged = !!(inChars && inChars.length > 0
+            && (exChars.length === 0 || !sameTeam(inChars, exChars)));
         const base = teamChanged
             ? {}
             : (normLevels(existing && existing.levels, existing && existing.damage_b, existing && existing.boss_level) || {});

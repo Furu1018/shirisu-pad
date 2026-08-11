@@ -2531,6 +2531,14 @@ console.log('\nmockLevelsDomain:');
         assert.equal(ml.mergeMeasurement(existing, { damageB: NaN, level: 1 }), null);
     });
 
+    test('mockLevels: 編成未登録の行へ編成付き提出が来たら測定を相続しない (仕切り直し)', () => {
+        // 出所不明の測定値を新しい編成に付け替えない (Codexレビュー指摘)
+        const existing = { levels: { '0': 20 }, damage_b: 20, boss_level: null, characters: [] };
+        const r = ml.mergeMeasurement(existing, { damageB: 15, level: 3, characters: ['A', 'B', 'C', 'D', 'E'] });
+        assert.equal(r.teamChanged, true);
+        assert.deepEqual(r.levels, { '3': 15 });
+    });
+
     test('mockLevels: sameTeam/charKey の正規化契約 (ソルバーと同一規則のフィクスチャ)', () => {
         // optimal-plan.js:188/224 と同じ受理規則であることを固定する (実装は二重化 —
         // どちらかだけ変えるとこのフィクスチャが乖離を検知する)
