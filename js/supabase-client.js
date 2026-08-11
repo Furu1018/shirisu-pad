@@ -693,11 +693,17 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
 // 一致するスロットがあれば**そのスロットへ測定を追記**する (レベル違いで枠を食わない)。
 // 一致が無ければ指定スロットへ保存。characters なしは照合不能なので従来動作。
 // 戻り値: { slot, redirected, teamChanged, levels } — UI がフィードバック文言を組む用
-window.supabaseSaveMockSubmission = async function (playerId, attribute, { damageB, level = null, slot = 1, characters = null } = {}) {
+// entries を渡すと Lv1〜Lv4 をまとめて登録できる (フォームの内容がそのまま保存結果になる)。
+// 従来どおり damageB/level を渡せば1件だけの登録 (OCR・旧経路の互換)。
+window.supabaseSaveMockSubmission = async function (playerId, attribute, { damageB, level = null, slot = 1, characters = null, entries = null } = {}) {
     const valid = ['fire','water','iron','electric','wind'];
     if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
-    const value = Number(damageB);
-    if (!(value > 0)) throw new Error('damageB は正の数値で指定');
+    const multi = entries && typeof entries === 'object';
+    // 一括登録では「フォームに入っている最大値」を代表値として扱う (互換ミラーの damage_b 用)
+    const value = multi
+        ? Math.max(0, ...Object.values(entries).map(v => Number(v)).filter(v => Number.isFinite(v)))
+        : Number(damageB);
+    if (!(value > 0)) throw new Error(multi ? '登録する測定値がありません' : 'damageB は正の数値で指定');
     const lv = _normBossLevel(level);
     const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
     const cleaned = Array.isArray(characters)
@@ -708,8 +714,14 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
     const res = ml ? await _loadDamageRowsForAttr(playerId, attribute) : { legacy: true, failed: false, rows: null };
     if (res.failed) throw (res.error || new Error('既存の提出を読めなかったため保存を中止しました (再試行してください)'));
     if (!ml || res.legacy) {
-        // 劣化経路 (31未適用): 従来の2段階保存 (レベルは supabaseSavePlayerDamage の3値でそのまま)
-        await window.supabaseSavePlayerDamage(playerId, attribute, value, slot, lv);
+        // 劣化経路 (31未適用): levels 列が無いのでレベル別に持てない。
+        // 一括登録は「最大値 = そのレベル」の1件に潰して保存する (欠落より劣化を選ぶ)
+        let legacyLv = lv;
+        if (multi && ml) {
+            const best = ml.maxEntry(ml.normLevels(entries, 0, null) || {});
+            legacyLv = best && best.value > 0 ? best.level : lv;
+        }
+        await window.supabaseSavePlayerDamage(playerId, attribute, value, slot, legacyLv);
         if (cleaned && cleaned.length > 0) await window.supabaseSaveTeamForAttribute(playerId, attribute, cleaned, slot);
         return { slot, redirected: false, teamChanged: false, levels: null };
     }
@@ -722,9 +734,10 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
         if (hit) { targetSlot = hit.slot; redirected = hit.slot !== slot; }
     }
     const existing = attrRows.find(r => r.slot === targetSlot) || null;
-    const merged = ml.mergeMeasurement(existing || {}, {
-        damageB: value, level: lv, characters: cleaned || undefined,
-    });
+    const merged = multi
+        ? ml.mergeMeasurements(existing || {}, { entries, characters: cleaned || undefined })
+        : ml.mergeMeasurement(existing || {}, { damageB: value, level: lv, characters: cleaned || undefined });
+    if (!merged) throw new Error('登録する測定値がありません');
     const basePayload = {
         player_id: playerId, attribute, slot: targetSlot,
         levels: merged.levels, damage_b: merged.damage_b, boss_level: merged.boss_level,

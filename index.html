@@ -2273,6 +2273,26 @@
         .te-legend { font-size:10px; color:#8A9097; font-weight:700; margin-top:8px; display:flex; gap:11px; flex-wrap:wrap; }
         .te-legend span { display:flex; align-items:center; gap:4px; }
         .te-legend .sw { width:9px; height:9px; border-radius:3px; display:inline-block; }
+        /* レベル別ダメージの入力行 (Lv1〜Lv4 をまとめて登録) */
+        .te-lvbox { padding:11px 12px; border-radius:10px; background:#F7F8F9; }
+        .te-lvhead { margin:0 0 8px; font-size:11px; font-weight:800; color:#6B7178; }
+        .te-lvrow { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+        .te-lvrow:last-child { margin-bottom:0; }
+        .te-lvlabel {
+            flex:none; width:38px; text-align:center; padding:5px 0; border-radius:7px;
+            background:#EDEFF1; color:#4E545B; font-size:11px; font-weight:900;
+        }
+        .te-lvlabel.unset { background:rgba(245,158,11,0.14); color:#B45309; }
+        .te-lvhint { flex:1; min-width:0; font-size:10px; font-weight:700; color:#8A9097;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .te-lvinput {
+            flex:none; width:82px; padding:7px 9px; border-radius:8px; border:1.5px solid #E3E5E8;
+            background:#fff; color:#14161A; font:inherit; font-weight:700; font-size:14px; text-align:right;
+        }
+        .te-lvinput::placeholder { color:#C9CED3; font-weight:600; }
+        .te-lvunit { flex:none; font-size:11px; color:#8A9097; font-weight:700; }
+        .te-lvnote { margin:9px 0 0; font-size:11px; line-height:1.6; color:#8A9097; }
+
         .te-ocr {
             display:flex; align-items:center; gap:9px; width:100%; padding:11px 12px; border-radius:12px;
             border:1.5px dashed rgba(20,22,26,0.14); background:#F7F8F9; cursor:pointer;
@@ -5098,21 +5118,13 @@
                 </div>
             </div>
 
-            <!-- ===== ③ ダメージ + 測定レベル ===== -->
+            <!-- ===== ③ レベル別のダメージ (Lv1〜Lv4 をまとめて登録) ===== -->
             <div class="te-sec">
                 <p class="te-step" style="margin-bottom:8px;">③ この編成で出たダメージを入れる</p>
-                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#F7F8F9;">
-                    <label for="myTeamEditDamage" style="font-size:13px;font-weight:700;flex:1;">💥 ベストダメージ (B)</label>
-                    <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;text-align:right;">
-                    <span style="font-size:12px;color:#8A9097;">B</span>
-                </div>
-                <!-- 測定したボスレベル (30_player_damages_level.sql) -->
-                <div style="padding:10px 12px;border-radius:10px;background:#F7F8F9;margin-top:8px;">
-                    <label style="display:block;font-size:13px;font-weight:700;margin-bottom:7px;">🎚 測定したボスのレベル</label>
-                    <div id="myTeamEditLevelBtns" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;"></div>
-                    <p id="myTeamEditLevelNote" style="margin:7px 0 0 0;font-size:11px;line-height:1.6;color:#8A9097;"></p>
-                    <!-- この編成のレベル別測定値 (31_player_damages_levels) — タップで編集・×で削除 -->
-                    <div id="myTeamEditLevelStrip"></div>
+                <div class="te-lvbox">
+                    <p class="te-lvhead">測ったレベルの欄にだけ入れてください（空欄は登録しません）</p>
+                    <div id="myTeamEditLevelRows"></div>
+                    <p id="myTeamEditLevelNote" class="te-lvnote"></p>
                 </div>
             </div>
 
@@ -8399,61 +8411,80 @@
                     ? `<button onclick="handleMyTeamEditDeleteCurrent()" title="編成${SLOT_JP[_myTeamEditSlot]}を削除" style="flex:none;padding:8px 12px;border-radius:9px;border:none;background:rgba(255,61,68,0.10);color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑</button>`
                     : '');
         }
-        // 測定レベルの選択UI。
-        // ★ 「そのレベル以下にしか使われない」ことを必ず見せる — 見せないと
-        //    親切心で Lv1 を選んだ人が Lv2〜Lv4 の割当対象から静かに外れる
-        //    (とくに Lv4 = ボス5・HP無限 は全額計上の最重要枠)
-        function _renderTeamEditLevel() {
-            const el = document.getElementById('myTeamEditLevelBtns');
-            const note = document.getElementById('myTeamEditLevelNote');
-            if (!el) return;
-            el.innerHTML = [1, 2, 3, 4].map(lv => {
-                const on = _myTeamEditLevel === lv;
-                return `<button onclick="setMyTeamEditLevel(${lv})" style="padding:7px 10px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:900;${on ? 'background:#6C42F0;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">Lv${lv}</button>`;
-            }).join('');
-            if (!note) return;
-            if (_myTeamEditLevel == null) {
-                note.innerHTML = '<b style="color:#B45309;">未設定</b> — いまは全レベルの割当で使われます。'
-                    + '測ったレベルを選ぶと当日の予測が正確になります。';
-            } else {
-                const upTo = _myTeamEditLevel === 1 ? 'Lv1' : `Lv1〜Lv${_myTeamEditLevel}`;
-                const warn = _myTeamEditLevel < 4
-                    ? `<b style="color:#B45309;">Lv${_myTeamEditLevel + 1}以上には使われません。</b>`
-                      + (_myTeamEditLevel < 4 ? ' ボス5(HP無限)に出るには Lv4 で測った編成が要ります。' : '')
-                    : 'すべてのレベルで使えます (ボス5(HP無限)を含む)。';
-                note.innerHTML = `この編成は <b>${upTo}</b> の割当に使われます。${warn}`;
-            }
-            _renderTeamEditLevelStrip();
-        }
-        function setMyTeamEditLevel(lv) {
-            _myTeamEditLevel = (_myTeamEditLevel === lv) ? null : lv;   // 押し直しで未設定に戻せる
-            _renderTeamEditLevel();
-        }
-        // ===== スロット内のレベル別測定値ストリップ (1スロット=1編成の再設計) =====
-        let _myTeamEditLevels = null;   // 現在行の levels (表示用スナップショット)
-        function _renderTeamEditLevelStrip() {
-            const el = document.getElementById('myTeamEditLevelStrip');
-            if (!el) return;
+        // ===== レベル別ダメージの入力行 (Lv1〜Lv4 をまとめて登録) =====
+        // ★ 1回ずつ「値を入れて → レベルを選んで → 保存」だと、Lv1〜Lv4 を登録するのに
+        //   4往復かかる (しかも以前は保存のたびにモーダルが閉じていた)。
+        //   levels は元々レベル→値のマップなので、フォームもその形にする。
+        //   **画面に入っている内容がそのまま保存結果になる** = 空欄にしたレベルは消える。
+        let _myTeamEditLevels = null;   // 開いた時点の levels (プレースホルダ表示に使う)
+        const TE_LEVEL_KEYS = ['1', '2', '3', '4'];
+        function _teLevelRowsHtml() {
             const lvs = _myTeamEditLevels || {};
-            const keys = ['0', '1', '2', '3', '4'].filter(k => Number(lvs[k]) > 0);
-            if (keys.length === 0) { el.innerHTML = ''; return; }
-            el.innerHTML = '<div style="font-size:10.5px;font-weight:800;color:#8A9097;margin:9px 0 5px;">この編成の測定値 — タップで値を呼び出し / ×で削除:</div>'
-                + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-                + keys.map(k => {
-                    const isOn = (k === '0') ? (_myTeamEditLevel == null) : (Number(k) === _myTeamEditLevel);
-                    const label = k === '0' ? '未指定' : `Lv${k}`;
-                    return `<span style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 8px 5px 11px;font-size:11px;font-weight:800;${isOn ? 'background:#6C42F0;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">`
-                        + `<span onclick="pickMyTeamEditMeasurement('${k}')" style="cursor:pointer;">${label}: ${Number(lvs[k])}B</span>`
-                        + `<span onclick="handleDeleteMyTeamEditLevel('${k}')" title="この測定を削除" style="cursor:pointer;opacity:0.75;font-weight:900;padding:0 2px;">×</span>`
-                        + `</span>`;
-                }).join('') + '</div>';
+            // 未指定 ('0') は移行前の提出にだけ存在する。値がある間は編集できるよう出す
+            const keys = (Number(lvs['0']) > 0) ? ['0', ...TE_LEVEL_KEYS] : TE_LEVEL_KEYS;
+            return keys.map(k => {
+                const v = Number(lvs[k]) > 0 ? String(lvs[k]) : '';
+                const label = k === '0' ? '未指定' : `Lv${k}`;
+                const hint = k === '0' ? '全レベルで使用'
+                    : k === '1' ? 'Lv1 だけで使用'
+                    : k === '4' ? 'ボス5(無限)にも出せる'
+                    : `Lv1〜Lv${k} で使用`;
+                return `<div class="te-lvrow">
+                    <span class="te-lvlabel${k === '0' ? ' unset' : ''}">${label}</span>
+                    <span class="te-lvhint">${hint}</span>
+                    <input type="number" inputmode="decimal" step="0.1" min="0" max="999"
+                        data-te-lv="${k}" value="${escapeHtml(v)}" placeholder="—"
+                        oninput="_renderTeamEditLevelNote()" class="te-lvinput">
+                    <span class="te-lvunit">B</span>
+                </div>`;
+            }).join('');
+        }
+        function _renderTeamEditLevel() {
+            const el = document.getElementById('myTeamEditLevelRows');
+            if (!el) return;
+            el.innerHTML = _teLevelRowsHtml();
+            _renderTeamEditLevelNote();
+        }
+        // いま入っている値から「どのレベルの割当に使われるか」を説明する。
+        // ★ Lv1 にだけ入れた編成は Lv2 以降の割当対象から外れる。とくに Lv4
+        //   (ボス5・HP無限) は全額計上の最重要枠なので、空なら必ず知らせる
+        function _renderTeamEditLevelNote() {
+            const note = document.getElementById('myTeamEditLevelNote');
+            if (!note) return;
+            const e = _teLevelEntries();
+            const filled = Object.keys(e).filter(k => e[k] > 0);
+            if (filled.length === 0) {
+                note.innerHTML = '<b style="color:#B45309;">まだ1つも入っていません。</b> 測ったレベルの欄に入れてください。';
+                return;
+            }
+            if (filled.includes('0')) {
+                note.innerHTML = '「未指定」はレベルを記録する前の提出です。'
+                    + '<b>いまは全レベルの割当で使われます。</b>測ったレベルの欄に入れ直すと予測が正確になります。';
+                return;
+            }
+            const max = Math.max(...filled.map(Number));
+            const list = filled.map(Number).sort((a, b) => a - b).map(n => `Lv${n}`).join('・');
+            note.innerHTML = `${list} の測定として登録します。`
+                + (max < 4
+                    ? ` <b style="color:#B45309;">Lv4 が空なのでボス5(HP無限)には出せません。</b>`
+                    : ' Lv4 まであるのでボス5(HP無限)にも出せます。');
+        }
+        // フォームの内容 = 保存後に残る測定の全体
+        function _teLevelEntries() {
+            const out = {};
+            document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]').forEach(inp => {
+                const raw = (inp.value || '').trim();
+                if (raw === '') return;
+                const v = parseFloat(raw);
+                if (Number.isFinite(v) && v > 0) out[inp.getAttribute('data-te-lv')] = v;
+            });
+            return out;
         }
         function pickMyTeamEditMeasurement(k) {
-            _myTeamEditLevel = (k === '0') ? null : Number(k);
-            const v = Number((_myTeamEditLevels || {})[k]);
-            const inp = document.getElementById('myTeamEditDamage');
-            if (inp && v > 0) inp.value = String(v);
-            _renderTeamEditLevel();
+            // 測定値ピルは廃止 (行そのものが入力欄になったため)。
+            // 互換のため関数だけ残し、該当レベルの入力欄へフォーカスする
+            const inp = document.querySelector(`#myTeamEditLevelRows input[data-te-lv="${k}"]`);
+            inp?.focus?.();
         }
         async function handleDeleteMyTeamEditLevel(k) {
             const id = getCurrentIdentity();
@@ -8520,7 +8551,6 @@
             _myTeamEditSlot = MY_TEAM_SLOTS.includes(Number(slot)) ? Number(slot) : 1;
             // 現在の編成・ダメージを取得して初期表示
             let current = ['', '', '', '', ''];
-            let curDamage = '';
             let existingSlots = [];
             let isNew = true;
             let allRows = [];
@@ -8532,11 +8562,10 @@
                 isNew = !row;
                 const existing = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
                 for (let i = 0; i < 5; i++) current[i] = existing[i] || '';
-                if (row?.damage_b != null) curDamage = Number(row.damage_b).toFixed(2).replace(/\.?0+$/, '');
-                // ★ 既存行のレベルはそのまま引き継ぐ。null (移行前の提出) を Lv1 に倒すと
-                //    保存し直した瞬間に Lv2 以降の割当対象から静かに外れる
-                _myTeamEditLevel = row ? (window._normBossLevel?.(row.boss_level) ?? null) : 1;
-                // レベル別測定値 (31): ストリップ表示用。supabaseLoadPlayerDamages が正規化済み
+                // ★ 既存行のレベルはそのまま引き継ぐ (行そのものが入力欄になったので、
+                //    値の有無がそのまま「そのレベルの測定があるか」を表す)
+                _myTeamEditLevel = row ? (window._normBossLevel?.(row.boss_level) ?? null) : null;
+                // レベル別測定値 (31): 入力行の初期値。supabaseLoadPlayerDamages が正規化済み
                 _myTeamEditLevels = row?.levels || null;
             } catch {
                 _myTeamEditLevel = null;   // 読めなかったときは「未設定」= 従来どおり全レベル可
@@ -8547,8 +8576,6 @@
             document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成${SLOT_JP[_myTeamEditSlot]}・ダメージ`;
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
-            const dmgInput = document.getElementById('myTeamEditDamage');
-            if (dmgInput) dmgInput.value = curDamage;
             await getNikkeCharsCache();
             // 古い保存データを開いた瞬間にファジィ解決でクリーンアップ
             // (例: 旧スキーマで「ディーゼル:ウー」と保存されていたら「ディーゼル：ウィンタースイーツ」に置換)
@@ -9638,32 +9665,25 @@
                     });
                     done.push(`${nChars}キャラ${matched > 0 ? ` (うち${matched}件をマスタへ自動補正)` : ''}`);
                 }
-                let skippedDmg = false;
+                // ★ レベルはスクショから読めない (attack_result スキーマに項目が無い)。
+                //   どのレベルの結果かは分からないので、**空いている一番低いレベル行**に入れて
+                //   「合っているか確認してください」と促す。黙って特定のレベルとして保存されると
+                //   ボス5(HP無限)の候補から静かに外れることがあるため
+                let placedLv = null;
                 if (dmgB !== null) {
-                    const inp = document.getElementById('myTeamEditDamage');
-                    // 表示形式は既存の読み込み時と揃える (末尾の 0 を落とす)
                     const shown = dmgB.toFixed(2).replace(/\.?0+$/, '');
-                    const cur = (inp?.value || '').trim();
-                    // ★ 手で入れた値・締め凸後に補正した値を無確認で潰さない。
-                    //   空 or 同値ならそのまま入れ、違う値が入っているときだけ確認する (Codex指摘)
-                    if (inp && (cur === '' || Number(cur) === Number(shown))) {
-                        inp.value = shown;
+                    const rows = Array.from(document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]'));
+                    const target = rows.find(r => (r.value || '').trim() === '') || rows[0];
+                    if (target) {
+                        target.value = shown;
+                        placedLv = target.getAttribute('data-te-lv');
                         done.push(`ダメージ ${shown}B`);
-                    } else if (inp && confirm(`ダメージ欄に ${cur}B が入っています。\n読み取った ${shown}B で置き換えますか？`)) {
-                        inp.value = shown;
-                        done.push(`ダメージ ${shown}B`);
-                    } else {
-                        skippedDmg = true;
                     }
                 }
-                // ★ レベルはスクショから読めない (attack_result スキーマに項目が無い)。
-                //   新規スロットは開いた時点で Lv1 が既定なので「未選択なら促す」だと促されず、
-                //   Lv4 の結果を取り込んでも黙って Lv1 測定として保存され、ボス5候補から外れる。
-                //   取り込み後は**常に**レベルの確認を促す (Codex指摘 2026-08-12)
-                const lvNow = _myTeamEditLevel == null ? '未設定' : `Lv${_myTeamEditLevel}`;
-                statusEl.textContent = `✅ ${done.join(' / ')} を取り込みました`
-                    + (skippedDmg ? ' (ダメージは据え置き)' : '')
-                    + ` — 測定したレベルを確認してください (いま ${lvNow})`;
+                if (typeof _renderTeamEditLevelNote === 'function') _renderTeamEditLevelNote();
+                const where = placedLv === null ? ''
+                    : ` — ${placedLv === '0' ? '未指定' : 'Lv' + placedLv} の欄に入れました。測ったレベルか確認してください`;
+                statusEl.textContent = `✅ ${done.join(' / ')} を取り込みました${where}`;
                 statusEl.style.color = '#B45309';
             } catch (e) {
                 if (stale()) return;   // 古い解析の失敗で新しい解析の表示を潰さない
@@ -9680,12 +9700,19 @@
             const names = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
             const msgEl = document.getElementById('myTeamEditMessage');
             const setMsg = (t, err = false) => { msgEl.textContent = t; msgEl.style.color = err ? '#ef4444' : '#22c55e'; };
-            const dmgRaw = (document.getElementById('myTeamEditDamage')?.value || '').trim();
-            const dmgVal = dmgRaw === '' ? null : parseFloat(dmgRaw);
-            if (dmgVal !== null && (Number.isNaN(dmgVal) || dmgVal < 0 || dmgVal > 999)) {
-                setMsg('❌ ダメージは 0〜999 (B単位) で入力してください', true);
-                return;
-            }
+            // レベル行の内容 = 保存後に残る測定の全体 (空欄にしたレベルは消える)
+            const entries = _teLevelEntries();
+            const bad = Array.from(document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]'))
+                .some(inp => {
+                    const raw = (inp.value || '').trim();
+                    if (raw === '') return false;
+                    const v = parseFloat(raw);
+                    return !Number.isFinite(v) || v < 0 || v > 999;
+                });
+            if (bad) { setMsg('❌ ダメージは 0〜999 (B単位) で入力してください', true); return; }
+            const hasEntries = Object.keys(entries).length > 0;
+            // 開いた時点で測定があったのに全部空にした = クリアの意図
+            const hadBefore = Object.values(_myTeamEditLevels || {}).some(v => Number(v) > 0);
             try {
                 let canonical = names;
                 if (names.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {
@@ -9695,24 +9722,29 @@
                 const parts = [];
                 let savedSlot = _myTeamEditSlot;
                 let redirected = false;
-                if (dmgVal !== null && dmgVal > 0) {
+                if (hasEntries) {
                     // 提出の主経路: 同一編成が別スロットにあれば自動でそちらへ測定を追記
                     // (レベル違いの提出で編成枠を食わない — 1スロット=1編成の再設計)
                     const res = await window.supabaseSaveMockSubmission(id.id, _myTeamEditAttr, {
-                        damageB: dmgVal, level: _myTeamEditLevel, slot: _myTeamEditSlot,
+                        entries, slot: _myTeamEditSlot,
                         characters: canonical.length > 0 ? canonical : null,
                     });
                     savedSlot = res.slot;
                     redirected = !!res.redirected;
-                    parts.push(`💥 ${dmgVal}B${_myTeamEditLevel ? ` (Lv${_myTeamEditLevel})` : ''}`);
+                    const lvTxt = Object.keys(entries).sort()
+                        .map(k => `${k === '0' ? '未指定' : 'Lv' + k} ${entries[k]}B`).join(' / ');
+                    parts.push(`💥 ${lvTxt}`);
                     if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                     // 編成を空にして保存した場合は従来どおり編成のクリアとして扱う
                     if (canonical.length === 0) await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, savedSlot);
-                } else if (dmgVal === 0) {
-                    // 0 = 測定のクリア (旧挙動の維持)
-                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, 0, _myTeamEditSlot, _myTeamEditLevel);
+                    _myTeamEditLevels = res.levels || entries;   // ストリップ表示の元を更新
+                } else if (hadBefore) {
+                    // 全部空にした = 測定のクリア (旧挙動の維持)
+                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, 0, _myTeamEditSlot, null);
                     await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
+                    parts.push('測定をクリア');
                     if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
+                    _myTeamEditLevels = null;
                 } else {
                     // ダメージ未入力: 編成だけ更新 (従来どおり)
                     await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
@@ -9732,9 +9764,10 @@
                     setTimeout(() => {
                         if (_myTeamEditAttr === reopenAttr) handleMyTeamEdit(reopenAttr, savedSlot);
                     }, 900);
-                } else {
-                    setTimeout(() => closeMyTeamEditModal(), 700);
                 }
+                // ★ 保存してもモーダルは閉じない (ユーザー決定 2026-08-12)。
+                //   1編成に Lv1〜Lv4 の測定を持てるので、閉じてしまうと登録のたびに開き直しになる。
+                //   閉じる出口は右上と下部の「閉じる」の2つがあるので迷わない
             } catch (e) {
                 setMsg(`❌ 保存失敗: ${e?.message || e}`, true);
             }

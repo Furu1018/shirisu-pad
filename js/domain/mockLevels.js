@@ -118,6 +118,38 @@
         return { levels, damage_b: m.value, boss_level: m.level, teamChanged };
     }
 
+    /**
+     * 複数レベルの測定をまとめて取り込む (Lv1〜Lv4 を一度に登録するフォーム用)。
+     * ★ entries は「保存後に残っていてほしい測定の全体」。フォームが空欄にしたレベルは
+     *   消える = 画面に見えているものがそのまま保存結果になる、という素直な意味にする。
+     *   1件ずつの mergeMeasurement と違い、既存の levels とはマージしない。
+     * - 編成が変わった場合は既存を捨てる点だけ mergeMeasurement と同じ
+     * - 有効な値が1件も無ければ null (呼び出し側で「測定なし」として扱う)
+     * @param {Object} existing 既存行 {levels, damage_b, boss_level, characters}
+     * @param {{entries: Object<string|number, number>, characters?: string[]}} incoming
+     * @returns {{levels: Object<string,number>, damage_b: number, boss_level: number|null, teamChanged: boolean}|null}
+     */
+    function mergeMeasurements(existing, incoming) {
+        const src = (incoming && incoming.entries) || {};
+        const levels = {};
+        Object.keys(src).forEach(k => {
+            // ★ 範囲外のキーは**捨てる** (levelKey に通さない)。
+            //   levelKey は不明な値を '0' = 「未指定 = 全レベルで使える」に倒すので、
+            //   フォームの打ち間違いが一番緩い設定に化けてしまう
+            const key = String(k);
+            if (!['0', '1', '2', '3', '4'].includes(key)) return;
+            const d = Number(src[k]);
+            if (Number.isFinite(d) && d > 0) levels[key] = d;
+        });
+        if (Object.keys(levels).length === 0) return null;
+        const exChars = Array.isArray(existing && existing.characters) ? existing.characters : [];
+        const inChars = Array.isArray(incoming && incoming.characters) ? incoming.characters : null;
+        const teamChanged = !!(inChars && inChars.length > 0
+            && (exChars.length === 0 || !sameTeam(inChars, exChars)));
+        const m = maxEntry(levels);
+        return { levels, damage_b: m.value, boss_level: m.level, teamChanged };
+    }
+
     root.mockLevelsDomain = {
         charKey,
         sameTeam,
@@ -126,5 +158,6 @@
         maxEntry,
         bestAtLevel,
         mergeMeasurement,
+        mergeMeasurements,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

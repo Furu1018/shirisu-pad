@@ -2554,6 +2554,47 @@ console.log('\nmockLevelsDomain:');
         assert.deepEqual(r, { '1': 14.2, '4': 12.5 });
     });
 
+    // ---- mergeMeasurements: Lv1〜Lv4 をまとめて登録するフォーム用 ----
+    test('mergeMeasurements: フォームの内容がそのまま levels になる', () => {
+        const r = ml.mergeMeasurements({}, { entries: { 1: 12, 2: 18, 3: 24, 4: 30 } });
+        assert.deepEqual(r.levels, { '1': 12, '2': 18, '3': 24, '4': 30 });
+        assert.equal(r.damage_b, 30, '互換ミラーは最大値');
+        assert.equal(r.boss_level, 4, '互換ミラーは最大値のレベル');
+    });
+
+    test('mergeMeasurements: 空欄にしたレベルは消える (既存とマージしない)', () => {
+        // 1件ずつの mergeMeasurement と違い、画面の内容が保存結果そのものになる
+        const existing = { levels: { '1': 10, '2': 20, '3': 30 }, damage_b: 30, boss_level: 3 };
+        const r = ml.mergeMeasurements(existing, { entries: { 1: 11, 4: 44 } });
+        assert.deepEqual(r.levels, { '1': 11, '4': 44 }, `Lv2/Lv3 は消えるはず: ${JSON.stringify(r.levels)}`);
+        assert.equal(r.damage_b, 44);
+        assert.equal(r.boss_level, 4);
+    });
+
+    test('mergeMeasurements: 0・空・不正値は登録しない', () => {
+        const r = ml.mergeMeasurements({}, { entries: { 1: 0, 2: '', 3: 'abc', 4: 25, 9: 99 } });
+        assert.deepEqual(r.levels, { '4': 25 }, `有効なのは Lv4 だけ: ${JSON.stringify(r.levels)}`);
+    });
+
+    test('mergeMeasurements: 有効な値が1つも無ければ null', () => {
+        assert.equal(ml.mergeMeasurements({}, { entries: {} }), null);
+        assert.equal(ml.mergeMeasurements({}, { entries: { 1: 0, 2: -5 } }), null);
+    });
+
+    test('mergeMeasurements: 編成が変わったら teamChanged を立てる', () => {
+        const existing = { levels: { '1': 10 }, damage_b: 10, boss_level: 1, characters: ['a', 'b', 'c', 'd', 'e'] };
+        const same = ml.mergeMeasurements(existing, { entries: { 1: 12 }, characters: ['e', 'd', 'c', 'b', 'a'] });
+        assert.equal(same.teamChanged, false, '順不同で同じ編成なら false');
+        const diff = ml.mergeMeasurements(existing, { entries: { 1: 12 }, characters: ['a', 'b', 'c', 'd', 'z'] });
+        assert.equal(diff.teamChanged, true, '別編成なら true');
+    });
+
+    test('mergeMeasurements: 未指定 (0) も登録できる (移行前の提出の編集)', () => {
+        const r = ml.mergeMeasurements({}, { entries: { 0: 14.3, 4: 30 } });
+        assert.deepEqual(r.levels, { '0': 14.3, '4': 30 });
+        assert.equal(r.boss_level, 4, '未指定より Lv4 の方が大きいので代表は Lv4');
+    });
+
     test('mockLevels: levels が無ければ (damage_b, boss_level) の1測定として読む (移行互換)', () => {
         assert.deepEqual(ml.normLevels(null, 14.2, 4), { '4': 14.2 });
         assert.deepEqual(ml.normLevels(null, 14.2, null), { '0': 14.2 });
