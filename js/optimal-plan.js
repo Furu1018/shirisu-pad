@@ -290,7 +290,6 @@
                 if (loadouts) {
                     for (const [k, list] of Object.entries(loadouts)) {
                         let clean = (list || [])
-                            .filter(lo => Number(lo.dmgB) > 0)
                             // ord = 安定順序ID: undoPick で avail に戻すとき元の並びを再現するため
                             // (同ダメージの編成が入れ替わると pickFor の選択が変わってしまう)
                             .map((lo, i) => {
@@ -319,6 +318,9 @@
                                     ord: i,
                                 };
                             })
+                            // ★ フィルタは正規化の後 — dmgB が古い 0 でも levels に有効な測定が
+                            //   あれば使える (dmgB 先行フィルタだと黙って捨ててしまう。Codex指摘)
+                            .filter(lo => lo.dmg > 0)
                             // ★ 同ダメージのタイブレークに slot を入れる。ord は取得順そのもの
                             //   なので、DB の返却順が揺れると選ばれる編成が変わる = 非決定的になる
                             //   (取得側にも order を付けてあるが、不変条件をここでも閉じておく)

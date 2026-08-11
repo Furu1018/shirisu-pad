@@ -2521,6 +2521,15 @@ test('Lv4割当は「Lv4で解決した値」の argmax (静的な最大値順�
     assert.equal(lv4.bosses[0].attacks[0].loadoutSlot, 2);
 });
 
+test('dmgB=0 でも levels に有効な測定があれば使える (先行フィルタで捨てない)', () => {
+    const p = player('A', { fire: 12 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 0, team: ['a','b','c','d','e'], slot: 1, level: null, levels: { '4': 12 } }] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 1 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 1, 'levels の 12B が候補になるはず');
+    assert.equal(used[0].dmgB, 12);
+});
+
 test('dmgB と levels が矛盾する入力は levels 側の最大値に正規化される (防御)', () => {
     const p = player('A', { fire: 5 });
     p.loadoutsByAttr = { fire: [{ dmgB: 5, team: ['a','b','c','d','e'], slot: 1, level: null, levels: { '2': 18 } }] };
