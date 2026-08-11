@@ -485,6 +485,12 @@ async function _upsertPlayerDamages(rows) {
         const m = ml.maxEntry(norm);
         return { ...row, levels: norm, damage_b: m.value, boss_level: m.level };
     });
+    // ★ 範囲チェックは**最初の upsert より前**に置くこと。後ろに置くと、
+    //   32未適用のDB (CHECK がまだ 1|2|3) では slot=3 の書き込みが成功してしまい、
+    //   画面にもソルバーにも見えない行を更新し続ける (Codex指摘 2026-08-12)
+    if (withSlot.some(r => !isUsableSlot(r.slot))) {
+        throw new Error(`模擬の編成スロットは 1〜${MOCK_SLOT_MAX} です (指定: ${withSlot.map(r => r.slot).join(',')})`);
+    }
     let res = await supabase.from('player_damages')
         .upsert(withSlot, { onConflict: 'player_id,attribute,slot' });
     if (!res.error) return res;
@@ -506,10 +512,6 @@ async function _upsertPlayerDamages(rows) {
         res = await supabase.from('player_damages')
             .upsert(noLevel, { onConflict: 'player_id,attribute,slot' });
         if (!res.error) return res;
-    }
-    if (rows2.some(r => !isUsableSlot(r.slot))) {
-        // 32 で slot の CHECK が 1|2 に戻っている。ここに来るのは実装側のバグなので原因を明示する
-        throw new Error(`模擬の編成スロットは 1〜${MOCK_SLOT_MAX} です (指定: ${rows2.map(r => r.slot).join(',')})`);
     }
     if (rows2.some(r => Number(r.slot) === 2)) {
         throw new Error('2編成目の保存には supabase/21_player_damages_slots.sql の適用が必要です');
@@ -604,7 +606,9 @@ async function _loadDamageRowsForAttr(playerId, attribute) {
             .from('player_damages')
             .select('attribute, damage_b, characters, slot, boss_level, levels')
             .eq('player_id', playerId).eq('attribute', attribute);
-        if (!r.error) return { legacy: false, failed: false, rows: r.data || [] };
+        // ★ 32未適用環境に残る slot=3 を混ぜない。混ぜると「同一編成だから」と
+        //   画面にもソルバーにも見えない③へ書き戻してしまう (Codex指摘 2026-08-12)
+        if (!r.error) return { legacy: false, failed: false, rows: (r.data || []).filter(d => isUsableSlot(d.slot)) };
         if (/levels/i.test(String(r.error?.message))) return { legacy: true, failed: false, rows: null };
         return { legacy: false, failed: true, rows: null, error: r.error };
     } catch (e) {
@@ -1596,7 +1600,9 @@ window.supabaseCreateSeason = async function (payload) {
                 if (!r.error) { dmgs = r.data || []; break; }
             } catch { /* fallthrough */ }
         }
-        dmgs = dmgs || [];
+        // ★ 2枠運用に合わせて slot>2 は最初からスナップショットに入れない。
+        //   入れると復元側で落とすことになり、作成側と終了側で扱いがズレる (Codex指摘)
+        dmgs = (dmgs || []).filter(d => isUsableSlot(d.slot));
         // キャラマスタは canonical_name 一覧のみ保存 (sighting_count 等の細部はロールバック対象外)
         let charNames = [];
         try {
@@ -1908,6 +1914,7 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
     }
     // 全て失敗したら中断する: 空配列で続行すると「既存の実績値をランダム値で上書き」してしまう
     if (existing === null) throw lastErr || new Error('player_damages を読めませんでした');
+    existing = existing.filter(d => isUsableSlot(d.slot));   // 2枠運用に合わせる
 
     // 「編成が入っている行」だけを have 扱いにする。前シーズン引継ぎ分は編成が空のことがあり
     // (元の凸が characters 未記録だった等)、そのまま除外すると空編成のまま凸シードへ流れて
@@ -2024,6 +2031,7 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
     }
     // 読めないまま続行すると編成なし・ランダムダメージの凸になり検証にならない
     if (dmgs === null) throw lastDmgErr || new Error('player_damages を読めませんでした');
+    dmgs = dmgs.filter(d => isUsableSlot(d.slot));   // 2枠運用に合わせる
     // ⚠ ダメージと編成は「同じ行」から取ること。1属性2編成 (slot=1|2) があるため、
     //    別々に上書きすると「slot2のダメージ + slot1の編成」という食い違いが起きる。
     //    slot 1 (主編成) を優先し、無ければ最初に見つかった行を使う

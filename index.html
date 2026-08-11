@@ -9290,15 +9290,17 @@
                 alert(`新規登録失敗: ${e?.message || e}`);
             }
         }
+        // ★ 連続で画像を選ぶと、古い解析が後から完了して新しい結果を上書きしうる
+        //   (キャラありの経路は getNikkeCharsCache を挟むぶん到着順が入れ替わりやすい)。
+        //   世代番号で「最後に開始した解析」だけを反映する (Codex指摘 2026-08-12)
+        //   ⚠ 宣言は closeMyTeamEditModal より**前**に置くこと (const/let の TDZ 事故を避ける)
+        let _teamEditOcrSeq = 0;
         function closeMyTeamEditModal() {
+            _teamEditOcrSeq++;   // 実行中のOCRを無効化 (閉じ→開き直しで旧結果が入るのを防ぐ)
             document.getElementById('myTeamEditModal').classList.remove('open');
             _myTeamEditAttr = null;
         }
 
-        // ★ 連続で画像を選ぶと、古い解析が後から完了して新しい結果を上書きしうる
-        //   (キャラありの経路は getNikkeCharsCache を挟むぶん到着順が入れ替わりやすい)。
-        //   世代番号で「最後に開始した解析」だけを反映する (Codex指摘 2026-08-12)
-        let _teamEditOcrSeq = 0;
         async function handleMyTeamEditOcr(event) {
             const files = Array.from(event.target.files || []);
             event.target.value = '';
@@ -9344,7 +9346,7 @@
                     const cur = (inp?.value || '').trim();
                     // ★ 手で入れた値・締め凸後に補正した値を無確認で潰さない。
                     //   空 or 同値ならそのまま入れ、違う値が入っているときだけ確認する (Codex指摘)
-                    if (inp && (cur === '' || cur === shown)) {
+                    if (inp && (cur === '' || Number(cur) === Number(shown))) {
                         inp.value = shown;
                         done.push(`ダメージ ${shown}B`);
                     } else if (inp && confirm(`ダメージ欄に ${cur}B が入っています。\n読み取った ${shown}B で置き換えますか？`)) {
