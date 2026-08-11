@@ -567,7 +567,9 @@ export function _normBossLevel(v) {
 window._normBossLevel = _normBossLevel;
 
 // 対象スロットの現在行を levels 付きで1件取得 (RMW用)。
-// 31未適用 (levels 列なし) は { legacy: true } を返し、呼び出し元が旧動作へ倒す
+// 31未適用 (levels 列なし) は legacy=true → 呼び出し元が旧動作へ倒す。
+// それ以外の取得失敗は failed=true → 呼び出し元は**中断する**こと
+// (「行なし」と誤認して既存の levels を単一測定で上書き破壊しないため — Codexレビュー指摘)
 async function _loadDamageRowForMerge(playerId, attribute, slot) {
     try {
         const r = await supabase
@@ -575,11 +577,27 @@ async function _loadDamageRowForMerge(playerId, attribute, slot) {
             .select('attribute, damage_b, characters, slot, boss_level, levels')
             .eq('player_id', playerId).eq('attribute', attribute).eq('slot', slot)
             .maybeSingle();
-        if (!r.error) return { legacy: false, row: r.data || null };
-        if (/levels/i.test(String(r.error?.message))) return { legacy: true, row: null };
-        return { legacy: false, row: null };   // 行なし扱い (通信エラー等は upsert 側で顕在化する)
-    } catch {
-        return { legacy: true, row: null };
+        if (!r.error) return { legacy: false, failed: false, row: r.data || null };
+        if (/levels/i.test(String(r.error?.message))) return { legacy: true, failed: false, row: null };
+        return { legacy: false, failed: true, row: null, error: r.error };
+    } catch (e) {
+        return { legacy: false, failed: true, row: null, error: e };
+    }
+}
+
+// 同属性の全スロットを levels 付きで取得 (提出時の同一編成照合用)。
+// 戻り値の意味は _loadDamageRowForMerge と同じ3値 (legacy / failed / rows)
+async function _loadDamageRowsForAttr(playerId, attribute) {
+    try {
+        const r = await supabase
+            .from('player_damages')
+            .select('attribute, damage_b, characters, slot, boss_level, levels')
+            .eq('player_id', playerId).eq('attribute', attribute);
+        if (!r.error) return { legacy: false, failed: false, rows: r.data || [] };
+        if (/levels/i.test(String(r.error?.message))) return { legacy: true, failed: false, rows: null };
+        return { legacy: false, failed: true, rows: null, error: r.error };
+    } catch (e) {
+        return { legacy: false, failed: true, rows: null, error: e };
     }
 }
 
@@ -597,9 +615,20 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
     const value = Number(damageB);
     if (isNaN(value) || value < 0) throw new Error('damageB は0以上の数値で指定');
     const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
-    const rmw = ml ? await _loadDamageRowForMerge(playerId, attribute, slot) : { legacy: true, row: null };
+    if (value <= 0) {
+        // 0 はクリア用途: 測定ごと消す (levels を残すとミラー不整合になる — Codexレビュー指摘)
+        const { error } = await _upsertPlayerDamages([{
+            player_id: playerId, attribute, slot,
+            damage_b: 0, levels: null, boss_level: null,
+            updated_at: new Date().toISOString(),
+        }]);
+        if (error) throw error;
+        return;
+    }
+    const rmw = ml ? await _loadDamageRowForMerge(playerId, attribute, slot) : { legacy: true, failed: false, row: null };
+    if (rmw.failed) throw (rmw.error || new Error('既存の提出を読めなかったため保存を中止しました (再試行してください)'));
     let lvForLog;
-    if (!rmw.legacy && ml && value > 0) {
+    if (!rmw.legacy && ml) {
         const existing = rmw.row || {};
         // 未指定 = 既存ミラーの測定を更新 / null = '0' (未設定) の測定 / 1〜4 = そのレベル
         const lv = bossLevel === undefined
@@ -616,7 +645,7 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
         }]);
         if (error) throw error;
     } else {
-        // 旧動作 (31未適用 / value=0 のクリア用途)
+        // 旧動作 (31未適用環境): 3値セマンティクス (undefined=列を送らない/null=クリア)
         const lv = bossLevel === undefined ? undefined : _normBossLevel(bossLevel);
         lvForLog = lv;
         const { error } = await _upsertPlayerDamages([
@@ -648,18 +677,18 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
     const cleaned = Array.isArray(characters)
         ? characters.filter(c => typeof c === 'string' && c.trim().length > 0) : null;
 
-    let rows = null;
-    if (ml) {
-        try { rows = await window.supabaseLoadPlayerDamages(playerId); } catch { rows = null; }
-    }
-    if (!ml || rows === null) {
-        // 劣化経路: 従来の2段階保存 (レベルは supabaseSavePlayerDamage の3値でそのまま)
+    // 照合用の取得は専用ローダーで行う — supabaseLoadPlayerDamages は失敗を [] に潰すため
+    // 「取得失敗」を「行なし」と誤認して既存 levels を上書き破壊しうる (Codexレビュー指摘)
+    const res = ml ? await _loadDamageRowsForAttr(playerId, attribute) : { legacy: true, failed: false, rows: null };
+    if (res.failed) throw (res.error || new Error('既存の提出を読めなかったため保存を中止しました (再試行してください)'));
+    if (!ml || res.legacy) {
+        // 劣化経路 (31未適用): 従来の2段階保存 (レベルは supabaseSavePlayerDamage の3値でそのまま)
         await window.supabaseSavePlayerDamage(playerId, attribute, value, slot, lv);
         if (cleaned && cleaned.length > 0) await window.supabaseSaveTeamForAttribute(playerId, attribute, cleaned, slot);
         return { slot, redirected: false, teamChanged: false, levels: null };
     }
 
-    const attrRows = rows.filter(r => r.attribute === attribute);
+    const attrRows = res.rows;
     let targetSlot = slot;
     let redirected = false;
     if (cleaned && cleaned.length > 0) {
@@ -670,13 +699,20 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
     const merged = ml.mergeMeasurement(existing || {}, {
         damageB: value, level: lv, characters: cleaned || undefined,
     });
-    const { error } = await _upsertPlayerDamages([{
+    const basePayload = {
         player_id: playerId, attribute, slot: targetSlot,
         levels: merged.levels, damage_b: merged.damage_b, boss_level: merged.boss_level,
-        ...(cleaned && cleaned.length > 0 ? { characters: cleaned } : {}),
         updated_at: new Date().toISOString(),
+    };
+    let r1 = await _upsertPlayerDamages([{
+        ...basePayload,
+        ...(cleaned && cleaned.length > 0 ? { characters: cleaned } : {}),
     }]);
-    if (error) throw error;
+    if (r1.error && /column .*characters/i.test(String(r1.error?.message))) {
+        // characters 列が無い環境: 編成抜きで再試行 (他の呼び出し元と同じ流儀)
+        r1 = await _upsertPlayerDamages([basePayload]);
+    }
+    if (r1.error) throw r1.error;
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
     const slotJp = Number(targetSlot) >= 2 ? ` (${Number(targetSlot)}編成目)` : '';
     window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lv ? ` [Lv${lv}]` : ''}${slotJp}${redirected ? ' (同一編成のため統合)' : ''}`, { playerId });
@@ -689,6 +725,7 @@ window.supabaseDeleteMockLevel = async function (playerId, attribute, slot, leve
     if (!ml) throw new Error('mockLevelsDomain が読み込まれていません');
     const rmw = await _loadDamageRowForMerge(playerId, attribute, slot);
     if (rmw.legacy) throw new Error('レベル別測定の編集には supabase/31_player_damages_levels.sql の適用が必要です');
+    if (rmw.failed) throw (rmw.error || new Error('既存の提出を読めなかったため削除を中止しました (再試行してください)'));
     if (!rmw.row) return { deletedRow: false };
     const levels = ml.normLevels(rmw.row.levels, rmw.row.damage_b, rmw.row.boss_level) || {};
     delete levels[ml.levelKey(level)];
@@ -2735,7 +2772,7 @@ window.supabaseSaveTeamForAttribute = async function (playerId, attribute, chara
     const cleaned = characters.filter(c => typeof c === 'string' && c.trim().length > 0);
     try {
         const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
-        const rmw = ml ? await _loadDamageRowForMerge(playerId, attribute, slot) : { legacy: true, row: null };
+        const rmw = ml ? await _loadDamageRowForMerge(playerId, attribute, slot) : { legacy: true, failed: false, row: null };
         const payload = {
             player_id: playerId,
             attribute,
@@ -2743,7 +2780,9 @@ window.supabaseSaveTeamForAttribute = async function (playerId, attribute, chara
             characters: cleaned,
             updated_at: new Date().toISOString(),
         };
-        if (!rmw.legacy && ml && rmw.row) {
+        // 取得失敗時は旧動作 (編成のみの upsert) に倒す — 編成保存自体を落とさない。
+        // レベルタグの仕切り直しは次の levels 対応保存時に DB トリガーが整合させる
+        if (!rmw.legacy && !rmw.failed && ml && rmw.row) {
             const exChars = Array.isArray(rmw.row.characters) ? rmw.row.characters : [];
             const changed = cleaned.length > 0
                 && (exChars.length === 0 || !ml.sameTeam(cleaned, exChars));

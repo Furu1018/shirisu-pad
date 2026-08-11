@@ -106,6 +106,42 @@ BEGIN
     RAISE NOTICE '同一編成のレベル違いスロットを統合: % グループ', v_merged;
 END $$;
 
+-- ---- 4) 不変条件の DB 側強制 (BEFORE トリガー) ----
+-- damage_b = levels の最大値 / boss_level = そのキー、が崩れた書き込みが来たら
+-- 「(damage_b, boss_level) の単一測定」として levels を畳み直す。
+-- 主目的はロールアウト中の**旧クライアント** (levels を知らずに damage_b だけ更新する) —
+-- 旧クライアントの世界観は「1行=1測定」なので、この畳み込みがそのまま正しい意味になる。
+-- 新クライアントは常にミラー一致で送る (_upsertPlayerDamages) ためこのトリガーは素通り。
+CREATE OR REPLACE FUNCTION player_damages_sync_levels() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_max NUMERIC;
+    v_key INT;
+BEGIN
+    IF NEW.levels IS NULL OR jsonb_typeof(NEW.levels) <> 'object' OR NEW.levels = '{}'::jsonb THEN
+        RETURN NEW;
+    END IF;
+    SELECT max((e.value)::numeric) INTO v_max
+      FROM jsonb_each(NEW.levels) e WHERE jsonb_typeof(e.value) = 'number' AND (e.value)::numeric > 0;
+    IF v_max IS NULL THEN
+        NEW.levels := NULL;
+        RETURN NEW;
+    END IF;
+    SELECT CASE WHEN bool_or(e.key = '0') THEN NULL ELSE max((e.key)::int) END INTO v_key
+      FROM jsonb_each(NEW.levels) e
+     WHERE jsonb_typeof(e.value) = 'number' AND (e.value)::numeric = v_max;
+    -- NUMERIC(8,3) への丸めを考慮して比較 (jsonb 側はフル精度で持っているため)
+    IF round(v_max, 3) IS DISTINCT FROM NEW.damage_b OR v_key IS DISTINCT FROM NEW.boss_level THEN
+        NEW.levels := jsonb_build_object(COALESCE(NEW.boss_level, 0)::text, NEW.damage_b);
+    END IF;
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS trg_player_damages_sync_levels ON player_damages;
+CREATE TRIGGER trg_player_damages_sync_levels
+    BEFORE INSERT OR UPDATE ON player_damages
+    FOR EACH ROW EXECUTE FUNCTION player_damages_sync_levels();
+
 COMMENT ON COLUMN player_damages.levels IS
     'レベル別測定値 {"0":14.2,"4":12.5}。キー"0"=未指定(全レベル可)〜"4"、値=B単位。'
     'damage_b=最大値 / boss_level=そのキーの互換ミラー (維持は _upsertPlayerDamages)。'
