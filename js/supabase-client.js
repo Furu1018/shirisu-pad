@@ -473,41 +473,65 @@ window.supabaseDeletePlayer = async function (playerId) {
 //   未適用環境で「レベルを指定した提出」を黙って落とすと、レベル無しとして保存され
 //   ソルバーが全レベルで使えると誤認する = 過大評価につながるので、その場合はエラーにする。
 async function _upsertPlayerDamages(rows) {
-    const withSlot = rows.map(r => ({ slot: 1, ...r }));
+    // ★ levels (31_player_damages_levels.sql) の不変条件はここが唯一の維持点:
+    //   damage_b = levels の最大値 / boss_level = そのキーの互換ミラー。
+    //   levels を持つ行は upsert 前に必ず再計算する (呼び出し元の計算を信用しない)
+    const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
+    const withSlot = rows.map(r => {
+        const row = { slot: 1, ...r };
+        if (!('levels' in row) || !ml) return row;
+        const norm = ml.normLevels(row.levels, row.damage_b, row.boss_level);
+        if (!norm) return { ...row, levels: null };   // 有効な測定なし
+        const m = ml.maxEntry(norm);
+        return { ...row, levels: norm, damage_b: m.value, boss_level: m.level };
+    });
     let res = await supabase.from('player_damages')
         .upsert(withSlot, { onConflict: 'player_id,attribute,slot' });
     if (!res.error) return res;
     if (/column .*characters/i.test(String(res.error?.message))) return res;   // characters 起因は呼び出し元で処理
+    // 31 未適用環境: levels を落として再試行 (ミラー列 damage_b/boss_level が残るので
+    // 「ベスト測定1件」に劣化するだけで情報の意味は壊れない)
+    let rows2 = withSlot;
+    if (/levels/i.test(String(res.error?.message))) {
+        rows2 = withSlot.map(({ levels, ...rest }) => rest);
+        res = await supabase.from('player_damages')
+            .upsert(rows2, { onConflict: 'player_id,attribute,slot' });
+        if (!res.error) return res;
+    }
     if (/boss_level/i.test(String(res.error?.message))) {
-        if (withSlot.some(r => r.boss_level != null)) {
+        if (rows2.some(r => r.boss_level != null)) {
             throw new Error('模擬のボスレベル指定には supabase/30_player_damages_level.sql の適用が必要です');
         }
-        const noLevel = withSlot.map(({ boss_level, ...rest }) => rest);
+        const noLevel = rows2.map(({ boss_level, ...rest }) => rest);
         res = await supabase.from('player_damages')
             .upsert(noLevel, { onConflict: 'player_id,attribute,slot' });
         if (!res.error) return res;
     }
-    if (withSlot.some(r => Number(r.slot) === 3)) {
+    if (rows2.some(r => Number(r.slot) === 3)) {
         throw new Error('3編成目の保存には supabase/30_player_damages_level.sql の適用が必要です');
     }
-    if (withSlot.some(r => Number(r.slot) === 2)) {
+    if (rows2.some(r => Number(r.slot) === 2)) {
         throw new Error('2編成目の保存には supabase/21_player_damages_slots.sql の適用が必要です');
     }
-    const legacy = withSlot.map(({ slot, boss_level, ...rest }) => rest);
+    const legacy = rows2.map(({ slot, boss_level, levels, ...rest }) => rest);
     return await supabase.from('player_damages')
         .upsert(legacy, { onConflict: 'player_id,attribute' });
 }
 
 // プレイヤーの属性別ダメージ登録を取得（1属性最大3編成、未登録は欠落。slot 昇順）
 // boss_level = 測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
+// levels = レベル別測定値 {"0":14.2,"4":12.5} (31適用後)。未適用/旧行では
+// (damage_b, boss_level) から正規化した1測定になる (mockLevelsDomain.normLevels)
 window.supabaseLoadPlayerDamages = async function (playerId) {
-    // slot / characters / boss_level カラム未マイグの環境でも壊れないよう多段フォールバック
+    // slot / characters / boss_level / levels カラム未マイグの環境でも壊れないよう多段フォールバック
     const selects = [
+        'attribute, damage_b, updated_at, characters, slot, boss_level, levels',
         'attribute, damage_b, updated_at, characters, slot, boss_level',
         'attribute, damage_b, updated_at, characters, slot',
         'attribute, damage_b, updated_at, characters',
         'attribute, damage_b, updated_at',
     ];
+    const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
     for (const sel of selects) {
         try {
             const r = await supabase
@@ -516,7 +540,12 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
                 .eq('player_id', playerId);
             if (!r.error) {
                 return (r.data || [])
-                    .map(d => ({ ...d, slot: d.slot || 1, boss_level: _normBossLevel(d.boss_level) }))
+                    .map(d => ({
+                        ...d,
+                        slot: d.slot || 1,
+                        boss_level: _normBossLevel(d.boss_level),
+                        levels: ml ? ml.normLevels(d.levels, d.damage_b, d.boss_level) : (d.levels ?? null),
+                    }))
                     .sort((a, b) => a.slot - b.slot);
             }
         } catch { /* fallthrough */ }
@@ -537,30 +566,144 @@ export function _normBossLevel(v) {
 }
 window._normBossLevel = _normBossLevel;
 
+// 対象スロットの現在行を levels 付きで1件取得 (RMW用)。
+// 31未適用 (levels 列なし) は { legacy: true } を返し、呼び出し元が旧動作へ倒す
+async function _loadDamageRowForMerge(playerId, attribute, slot) {
+    try {
+        const r = await supabase
+            .from('player_damages')
+            .select('attribute, damage_b, characters, slot, boss_level, levels')
+            .eq('player_id', playerId).eq('attribute', attribute).eq('slot', slot)
+            .maybeSingle();
+        if (!r.error) return { legacy: false, row: r.data || null };
+        if (/levels/i.test(String(r.error?.message))) return { legacy: true, row: null };
+        return { legacy: false, row: null };   // 行なし扱い (通信エラー等は upsert 側で顕在化する)
+    } catch {
+        return { legacy: true, row: null };
+    }
+}
+
 // プレイヤーの属性別ダメージを upsert (新規 or 上書き)。slot=2/3 で2・3編成目
-// bossLevel の扱い (★ 3値):
-//   未指定 (引数を省略) → boss_level を payload に**入れない** = 既存の値を保つ。
-//     OCRプレビュー保存など「ダメージだけ更新する」経路で、既に設定済みのレベルを
-//     消してしまわないため (null を送ると ON CONFLICT で NULL に上書きされる)
-//   null                → 明示的に「レベル未設定」にする (編集モーダルで選択を外した場合)
-//   1〜4                → その値を設定
+// 31適用後は「スロット内のレベル別測定値 (levels)」への追記として動く:
+//   bossLevel 1〜4 → そのレベルの測定値を更新 (他レベルの測定は保持)
+//   未指定 (省略)  → いま表示中の測定 (互換ミラーのレベル) の値を更新 —
+//                    「ダメージだけ更新する」経路 (OCR等) が別レベルの測定を消したり
+//                    古いレベルタグを引き継いだりしないため
+//   null           → 「レベル未設定」の測定として保存 (旧: 行のレベルをクリア)
+// 31未適用環境は従来の3値セマンティクス (undefined=列を送らない/null=クリア) に劣化
 window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1, bossLevel = undefined) {
     const valid = ['fire','water','iron','electric','wind'];
     if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
     const value = Number(damageB);
     if (isNaN(value) || value < 0) throw new Error('damageB は0以上の数値で指定');
-    const lv = bossLevel === undefined ? undefined : _normBossLevel(bossLevel);
-    const { error } = await _upsertPlayerDamages([
-        {
-            player_id: playerId, attribute, damage_b: value, slot,
-            ...(lv === undefined ? {} : { boss_level: lv }),
+    const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
+    const rmw = ml ? await _loadDamageRowForMerge(playerId, attribute, slot) : { legacy: true, row: null };
+    let lvForLog;
+    if (!rmw.legacy && ml && value > 0) {
+        const existing = rmw.row || {};
+        // 未指定 = 既存ミラーの測定を更新 / null = '0' (未設定) の測定 / 1〜4 = そのレベル
+        const lv = bossLevel === undefined
+            ? _normBossLevel(existing.boss_level)
+            : _normBossLevel(bossLevel);
+        lvForLog = lv;
+        // 明示 null は「単一の未設定測定に戻す」旧セマンティクスを保つ (levels を仕切り直す)
+        const base = (bossLevel === null) ? { characters: existing.characters } : existing;
+        const merged = ml.mergeMeasurement(base, { damageB: value, level: lv });
+        const { error } = await _upsertPlayerDamages([{
+            player_id: playerId, attribute, slot,
+            levels: merged.levels, damage_b: merged.damage_b, boss_level: merged.boss_level,
             updated_at: new Date().toISOString(),
-        },
-    ]);
-    if (error) throw error;
+        }]);
+        if (error) throw error;
+    } else {
+        // 旧動作 (31未適用 / value=0 のクリア用途)
+        const lv = bossLevel === undefined ? undefined : _normBossLevel(bossLevel);
+        lvForLog = lv;
+        const { error } = await _upsertPlayerDamages([
+            {
+                player_id: playerId, attribute, damage_b: value, slot,
+                ...(lv === undefined ? {} : { boss_level: lv }),
+                updated_at: new Date().toISOString(),
+            },
+        ]);
+        if (error) throw error;
+    }
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
     const slotJp = Number(slot) >= 2 ? ` (${Number(slot)}編成目)` : '';
-    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lv ? ` [Lv${lv}]` : ''}${slotJp}`, { playerId });
+    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lvForLog ? ` [Lv${lvForLog}]` : ''}${slotJp}`, { playerId });
+};
+
+// ===== 模擬提出の主経路 (31以降): 同一編成の自動マージつき保存 =====
+// characters 付きの提出は、同属性の既存スロットと編成照合 (sameTeam) し、
+// 一致するスロットがあれば**そのスロットへ測定を追記**する (レベル違いで枠を食わない)。
+// 一致が無ければ指定スロットへ保存。characters なしは照合不能なので従来動作。
+// 戻り値: { slot, redirected, teamChanged, levels } — UI がフィードバック文言を組む用
+window.supabaseSaveMockSubmission = async function (playerId, attribute, { damageB, level = null, slot = 1, characters = null } = {}) {
+    const valid = ['fire','water','iron','electric','wind'];
+    if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
+    const value = Number(damageB);
+    if (!(value > 0)) throw new Error('damageB は正の数値で指定');
+    const lv = _normBossLevel(level);
+    const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
+    const cleaned = Array.isArray(characters)
+        ? characters.filter(c => typeof c === 'string' && c.trim().length > 0) : null;
+
+    let rows = null;
+    if (ml) {
+        try { rows = await window.supabaseLoadPlayerDamages(playerId); } catch { rows = null; }
+    }
+    if (!ml || rows === null) {
+        // 劣化経路: 従来の2段階保存 (レベルは supabaseSavePlayerDamage の3値でそのまま)
+        await window.supabaseSavePlayerDamage(playerId, attribute, value, slot, lv);
+        if (cleaned && cleaned.length > 0) await window.supabaseSaveTeamForAttribute(playerId, attribute, cleaned, slot);
+        return { slot, redirected: false, teamChanged: false, levels: null };
+    }
+
+    const attrRows = rows.filter(r => r.attribute === attribute);
+    let targetSlot = slot;
+    let redirected = false;
+    if (cleaned && cleaned.length > 0) {
+        const hit = attrRows.find(r => ml.sameTeam(r.characters || [], cleaned));
+        if (hit) { targetSlot = hit.slot; redirected = hit.slot !== slot; }
+    }
+    const existing = attrRows.find(r => r.slot === targetSlot) || null;
+    const merged = ml.mergeMeasurement(existing || {}, {
+        damageB: value, level: lv, characters: cleaned || undefined,
+    });
+    const { error } = await _upsertPlayerDamages([{
+        player_id: playerId, attribute, slot: targetSlot,
+        levels: merged.levels, damage_b: merged.damage_b, boss_level: merged.boss_level,
+        ...(cleaned && cleaned.length > 0 ? { characters: cleaned } : {}),
+        updated_at: new Date().toISOString(),
+    }]);
+    if (error) throw error;
+    const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
+    const slotJp = Number(targetSlot) >= 2 ? ` (${Number(targetSlot)}編成目)` : '';
+    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lv ? ` [Lv${lv}]` : ''}${slotJp}${redirected ? ' (同一編成のため統合)' : ''}`, { playerId });
+    return { slot: targetSlot, redirected, teamChanged: merged.teamChanged, levels: merged.levels };
+};
+
+// レベル別測定値の1件削除。最後の測定を消したら行ごと削除
+window.supabaseDeleteMockLevel = async function (playerId, attribute, slot, level) {
+    const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
+    if (!ml) throw new Error('mockLevelsDomain が読み込まれていません');
+    const rmw = await _loadDamageRowForMerge(playerId, attribute, slot);
+    if (rmw.legacy) throw new Error('レベル別測定の編集には supabase/31_player_damages_levels.sql の適用が必要です');
+    if (!rmw.row) return { deletedRow: false };
+    const levels = ml.normLevels(rmw.row.levels, rmw.row.damage_b, rmw.row.boss_level) || {};
+    delete levels[ml.levelKey(level)];
+    if (Object.keys(levels).length === 0) {
+        await window.supabaseDeletePlayerDamageSlot(playerId, attribute, slot);
+        return { deletedRow: true };
+    }
+    const m = ml.maxEntry(levels);
+    const { error } = await _upsertPlayerDamages([{
+        player_id: playerId, attribute, slot,
+        levels, damage_b: m.value, boss_level: m.level,
+        updated_at: new Date().toISOString(),
+    }]);
+    if (error) throw error;
+    return { deletedRow: false, levels };
 };
 
 // 2編成目の削除 (slot=2 の行のみ)
@@ -1391,9 +1534,10 @@ window.supabaseCreateSeason = async function (payload) {
     if (isTest) {
         // characters カラムは player_damages にあとから足したスキーマなので、無い環境でも壊れないように
         let dmgs = null;
-        // ★ boss_level を必ず含めること。テスト終了時にこのスナップショットで
+        // ★ boss_level / levels を必ず含めること。テスト終了時にこのスナップショットで
         //   player_damages を**全削除して入れ替える**ので、抜けると全員の測定レベルが消える
         for (const sel of [
+            'player_id, attribute, damage_b, characters, slot, boss_level, levels',
             'player_id, attribute, damage_b, characters, slot, boss_level',
             'player_id, attribute, damage_b, characters, slot',
             'player_id, attribute, damage_b, characters',
@@ -1600,10 +1744,15 @@ window.supabaseSeedDamagesFromPreviousSeason = async function (newSeasonId) {
         const pid = Number(key.slice(0, idx));
         const attr = key.slice(idx + 1);
         if (v.dmg <= 0) continue;
+        const dmgB = Number((v.dmg / 1e9).toFixed(3));
         rows.push({
             player_id: pid,
             attribute: attr,
-            damage_b: Number((v.dmg / 1e9).toFixed(3)),
+            damage_b: dmgB,
+            // 実凸ベースの引き継ぎはレベル未指定の1測定として明示 —
+            // 既存行の古い boss_level タグを引き継がない (過大評価バグの修正)
+            levels: { '0': dmgB },
+            boss_level: null,
             characters: v.characters,  // 最大ダメ凸の編成も一緒に引き継ぎ
             updated_at: new Date().toISOString(),
         });
@@ -1753,11 +1902,15 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
     needTeam.forEach(d => {
         const team = teamFor(d.player_id, d.attribute);
         if (team.length === 0) return;              // マスタが薄い環境では触らない
+        const dmgKeep = Number(d.damage_b) || 0;
         rows.push({
             player_id: d.player_id,
             attribute: d.attribute,
             slot: d.slot || 1,                      // 既存行を更新する (別スロットを増やさない)
-            damage_b: Number(d.damage_b) || 0,      // 引き継いだ実績値はそのまま
+            damage_b: dmgKeep,                      // 引き継いだ実績値はそのまま
+            // 編成を生成編成に差し替えるので、レベルタグは未指定に仕切り直す
+            levels: dmgKeep > 0 ? { '0': dmgKeep } : null,
+            boss_level: null,
             characters: team,
             updated_at: new Date().toISOString(),
         });
@@ -1770,10 +1923,13 @@ window.supabaseSeedTestMockDamages = async function (newSeasonId, snapshotRows) 
             if (have.has(`${p.id}:${attr}`)) return;
             if (needTeam.some(d => d.player_id === p.id && d.attribute === attr)) return;  // (a)で処理済み
             const dmg = base * (0.7 + Math.random() * 0.6);  // 基準値の 70〜130% でばらつかせる
+            const dmgB = Number(dmg.toFixed(3));
             rows.push({
                 player_id: p.id,
                 attribute: attr,
-                damage_b: Number(dmg.toFixed(3)),
+                damage_b: dmgB,
+                levels: { '0': dmgB },
+                boss_level: null,
                 characters: teamFor(p.id, attr),
                 updated_at: new Date().toISOString(),
             });
@@ -2258,10 +2414,11 @@ window.supabaseDeleteActiveTestSeason = async function () {
         await supabase.from('player_damages').delete().gte('player_id', 0);
         if (snapshot.length > 0) {
             // characters カラムが入っているかどうかで2回試行 (旧 snapshot との後方互換)
-            // boss_level は「スナップショットに入っていれば」戻す。
-            // 旧スナップショット (30 適用前に作ったテストシーズン) には無いので undefined →
+            // boss_level / levels は「スナップショットに入っていれば」戻す。
+            // 旧スナップショット (30/31 適用前に作ったテストシーズン) には無いので undefined →
             // その場合は列ごと落として旧挙動のまま復元する
             const hasLevel = snapshot.some(s => s.boss_level !== undefined);
+            const hasLevels = snapshot.some(s => s.levels !== undefined);
             const rowsWithChars = snapshot.map(s => ({
                 player_id: s.player_id,
                 attribute: s.attribute,
@@ -2269,6 +2426,7 @@ window.supabaseDeleteActiveTestSeason = async function () {
                 slot: s.slot || 1,
                 characters: Array.isArray(s.characters) ? s.characters : [],
                 ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
+                ...(hasLevels ? { levels: s.levels ?? null } : {}),
             }));
             const r1 = await _upsertPlayerDamages(rowsWithChars);
             if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
@@ -2279,6 +2437,7 @@ window.supabaseDeleteActiveTestSeason = async function () {
                     damage_b: s.damage_b,
                     slot: s.slot || 1,
                     ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
+                    ...(hasLevels ? { levels: s.levels ?? null } : {}),
                 }));
                 await _upsertPlayerDamages(rowsBasic);
             }
@@ -2566,19 +2725,36 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
     return out;
 };
 
-// player_damages の characters カラムを更新 (該当行が無ければ upsert で作成)
-// 同じ (player_id, attribute) は1行しか無い前提 (既存スキーマの onConflict ターゲット)
+// player_damages の characters カラムを更新 (該当行が無ければ upsert で作成)。
+// ★ 編成が変わる場合はレベル別測定を仕切り直す (levels = {"0": 現damage_b})。
+//   旧編成で測った値のレベルタグを新編成に相続させないため (過大評価の温床)。
+//   値そのものは「登録済みダメージ」として残す — 人気編成の反映や凸報告の焼き戻しは
+//   「編成だけ差し替える」操作であり、数値まで消すとユーザーの提出が失われる
 window.supabaseSaveTeamForAttribute = async function (playerId, attribute, characters, slot = 1) {
     if (!playerId || !attribute || !Array.isArray(characters)) return;
     const cleaned = characters.filter(c => typeof c === 'string' && c.trim().length > 0);
     try {
-        await _upsertPlayerDamages([{
+        const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
+        const rmw = ml ? await _loadDamageRowForMerge(playerId, attribute, slot) : { legacy: true, row: null };
+        const payload = {
             player_id: playerId,
             attribute,
             slot,
             characters: cleaned,
             updated_at: new Date().toISOString(),
-        }]);
+        };
+        if (!rmw.legacy && ml && rmw.row) {
+            const exChars = Array.isArray(rmw.row.characters) ? rmw.row.characters : [];
+            const changed = cleaned.length > 0
+                && (exChars.length === 0 || !ml.sameTeam(cleaned, exChars));
+            if (changed) {
+                const d = Number(rmw.row.damage_b) || 0;
+                payload.levels = d > 0 ? { '0': d } : null;
+                payload.damage_b = d;
+                payload.boss_level = null;
+            }
+        }
+        await _upsertPlayerDamages([payload]);
     } catch (e) {
         // characters カラム未マイグレーションのときは静かにスキップ
         console.warn('[saveTeamForAttribute] skipped:', e?.message || e);
@@ -3077,6 +3253,7 @@ window.supabaseLoadOpsDashboardData = async function () {
     //   全段で slot を order すると、slot 未適用環境では最後の旧列フォールバックまで失敗し、
     //   dmgs が null のまま「登録ダメージ無し」の空盤面になる (Codex指摘 2026-08-10)
     for (const [sel, orderCols] of [
+        ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters', ['player_id', 'attribute']],
@@ -3094,10 +3271,14 @@ window.supabaseLoadOpsDashboardData = async function () {
     // { player_id: { attr: [{dmgB, team, slot, level}] } } (ソルバーの3編成 + レベル対応用)
     // level = 模擬で測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
     const loadoutsByPlayer = new Map();
+    const mlDom = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
     (dmgs || []).forEach(d => {
         const v = Number(d.damage_b) || 0;
         const slot = d.slot || 1;
         const level = _normBossLevel(d.boss_level);
+        // levels = スロット内のレベル別測定値 (31)。未適用/旧行は (damage_b, boss_level) の
+        // 1測定に正規化される — ソルバーは常に levels を読めばよい
+        const levels = mlDom ? mlDom.normLevels(d.levels, d.damage_b, d.boss_level) : null;
         const team = (Array.isArray(d.characters) && d.characters.length > 0) ? d.characters : [];
         if (!dmgByPlayer.has(d.player_id)) dmgByPlayer.set(d.player_id, {});
         const dm = dmgByPlayer.get(d.player_id);
@@ -3111,7 +3292,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             if (!loadoutsByPlayer.has(d.player_id)) loadoutsByPlayer.set(d.player_id, {});
             const lm = loadoutsByPlayer.get(d.player_id);
             if (!lm[d.attribute]) lm[d.attribute] = [];
-            lm[d.attribute].push({ dmgB: v, team, slot, level });
+            lm[d.attribute].push({ dmgB: v, team, slot, level, levels });
         }
     });
 
