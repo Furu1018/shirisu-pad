@@ -9372,7 +9372,12 @@
                 await renderMyDamagePanels(id);
                 if (redirected) {
                     showNotification(`✅ 同一編成のため 編成${SLOT_JP[savedSlot]} に統合しました`);
-                    setTimeout(() => handleMyTeamEdit(_myTeamEditAttr, savedSlot), 900);   // 統合先を開き直す
+                    // ★ グローバルはタイマー発火までに変わりうるので、開き直す対象はローカルに固定する。
+                    //   発火時に別の属性を開いていたら (ユーザーが先に操作した) 何もしない (Codex指摘)
+                    const reopenAttr = _myTeamEditAttr;
+                    setTimeout(() => {
+                        if (_myTeamEditAttr === reopenAttr) handleMyTeamEdit(reopenAttr, savedSlot);
+                    }, 900);
                 } else {
                     setTimeout(() => closeMyTeamEditModal(), 700);
                 }
@@ -13280,8 +13285,15 @@
                 const shownIdx = has2 ? ((Number(_opsRemSlot.get(flipKey)) || 0) % los.length) : 0;
                 const shown = los[shownIdx];
                 const shownSlot = MY_TEAM_SLOTS.includes(Number(shown.slot)) ? Number(shown.slot) : 1;
-                // いまのレベルで使える値に解決 (Lv不足なら 0 = 「使えない」を明示)
+                // いまのレベルで使える値に解決 (Lv不足なら 0 = 「使えない」を明示)。
+                // ★ 凸済み判定が先 — Lv不足を先に返すと凸済みの属性が「空き枠」に見える (Codex指摘)
                 const v = resolvedDmgOf(shown);
+                if (used.has(attr.key)) {
+                    const usedText = v > 0
+                        ? (fururiMode ? (fururiOf(p, attr.key, v) != null ? fururiOf(p, attr.key, v).toFixed(2) : '—') : v.toFixed(1))
+                        : '—';
+                    return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${usedText}</div>`;
+                }
                 if (!(v > 0)) {
                     return `<div class="dc-rem-cell unset" title="${attr.name}PT — 測定レベルが Lv${remCurLv} に届かない (Lv${remCurLv}以上で測り直すと使える)">Lv不足</div>`;
                 }
@@ -13295,9 +13307,6 @@
                 } else {
                     text = v.toFixed(1);
                     tip = `${attr.name}PT ${v.toFixed(1)}B (Lv${remCurLv}時点で使える値)`;
-                }
-                if (used.has(attr.key)) {
-                    return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${text}</div>`;
                 }
                 // 配信/算出プランで採用された属性か (2編成ならどちらが採用されたかまで)
                 const picked = _opsPlanPicks.get(flipKey);
