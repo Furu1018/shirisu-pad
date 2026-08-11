@@ -56,8 +56,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   ボスHP鮮度表示 (HP更新 ○分前) は `20_bosses_updated_at.sql`、
   模擬の1属性2編成 (同属性2凸) は `21_player_damages_slots.sql` の適用が前提
   (主キーが (player_id, attribute, slot) に変わる — upsert は _upsertPlayerDamages 経由必須)。
-  模擬の**3編成目 + 測定ボスレベル**は `30_player_damages_level.sql`
-  (slot を 1〜3 に拡張・`boss_level` 追加。未適用だとレベル指定と3編成目の保存がエラーになる)。
+  模擬の**測定ボスレベル**は `30_player_damages_level.sql` (`boss_level` 追加)、
+  **レベル別測定値** (1スロット = 1編成・レベルは `levels` JSONB でスロット内に持つ) は
+  `31_player_damages_levels.sql`。**スロット数は 2** — 30 で 3 に増やしたが、31 で
+  レベルがスロットの中に入り「1スロット = 1編成」になったため `32_player_damages_slots_back_to_2.sql`
+  で戻した (⚠ 32 は slot>=3 の行を削除する破壊的マイグレーション)。
   **1スロット=1編成・レベル別測定値**は `31_player_damages_levels.sql` (`levels` JSONB。
   不変条件: damage_b=levels最大値 / boss_level=そのキーの互換ミラー — 維持は
   `_upsertPlayerDamages` に集約。純ロジックは `js/domain/mockLevels.js`。
@@ -174,7 +177,7 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
 - **得意属性 (strong_attributes)**: 1〜3個選択=必ず消化 (自由枠は残り) / 4個=その中からのみ /
   0・5個=制約なし。**凸済みの得意属性は満足扱い** (再強制しない)。
   ボス5弱点が得意属性の人は Lv4 割当で消化とみなす
-- **1属性3編成 (player_damages.slot=1..3)**: キャラが被らない別編成なら同属性2凸を提案 (ボス5にも2凸可)。
+- **1属性2編成 (player_damages.slot=1|2)**: キャラが被らない別編成なら同属性2凸を提案 (ボス5にも2凸可)。
   凸済み回数ぶん上位 (高ダメージ) 編成から消費済みとみなす。候補は全ロードアウトをスコアリング
   (残HPの小さいボスには2編成目の方がオーバーキルが小さいことがある)
 - **測定ボスレベル (player_damages.boss_level)**: 模擬で測ったレベル L の編成は

@@ -704,17 +704,21 @@ test('Lv4で測った編成はボス5に出せる (全額計上)', () => {
     assert.equal(lv4.bosses[0].attacks[0].loadoutLevel, 4);
 });
 
-test('3編成目 (slot=3) も候補になる', () => {
+test('ソルバーはスロット番号に依存しない (枠数を変えても壊れない)', () => {
+    // 提出スロットの上限は DB と UI (MY_TEAM_SLOTS) が決めるもので、
+    // ソルバーは渡されたロードアウトを枠数に関係なく扱う。
+    // 2026-08-12 に 3→2 へ戻したときに、ソルバー側へ枠数の決め打ちが
+    // 入り込んでいないことを固定しておく
     const p = player('A', { fire: 10 });
     p.loadoutsByAttr = { fire: [
         { dmgB: 10, team: ['a','b','c','d','e'], slot: 1 },
         { dmgB: 8, team: ['f','g','h','i','j'], slot: 2 },
-        { dmgB: 6, team: ['k','l','m','n','o'], slot: 3 },
+        { dmgB: 6, team: ['k','l','m','n','o'], slot: 7 },   // 想定外の番号でも素通しする
     ] };
     const plan = compute(makeInput([boss(1, 'fire', { remainingB: 24 })], [p]));
     const atks = plan.levels[0].bosses[0].attacks;
     assert.equal(atks.length, 3, `3凸ぶん出せるはず: ${atks.length}`);
-    assert.deepEqual(atks.map(a => a.loadoutSlot), [1, 2, 3]);
+    assert.deepEqual(atks.map(a => a.loadoutSlot), [1, 2, 7]);
 });
 
 test('ボス5弱点が得意属性で Lv4 未満測定でも、得意属性が消化される', () => {

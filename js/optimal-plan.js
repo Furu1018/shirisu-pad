@@ -28,7 +28,7 @@
  * @property {Object<string, number>} damagesByAttr    PT属性→ベストダメージ(B)。旧形式フォールバック
  * @property {Object<string, string[]>=} teamsByAttr   PT属性→編成5キャラ名
  * @property {Object<string, {dmgB:number, team:string[], slot:number, level:?number}[]>=} loadoutsByAttr
- *   1属性最大3編成 (slot=1|2|3)。level = 模擬で測定したボスレベル (1〜4)。
+ *   1属性最大2編成 (slot=1|2)。level = 模擬で測定したボスレベル (1〜4)。
  *   null = レベル未指定 (移行前の提出) = 全レベルで使える
  * @property {{boss_number:number}[]=} attacks         本日の凸履歴 (属性消費の逆引き用)
  * @property {string[]=} availableSlots     戦闘可能時間 'h05'..'h28'

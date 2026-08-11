@@ -507,9 +507,6 @@ async function _upsertPlayerDamages(rows) {
             .upsert(noLevel, { onConflict: 'player_id,attribute,slot' });
         if (!res.error) return res;
     }
-    if (rows2.some(r => Number(r.slot) === 3)) {
-        throw new Error('3編成目の保存には supabase/30_player_damages_level.sql の適用が必要です');
-    }
     if (rows2.some(r => Number(r.slot) === 2)) {
         throw new Error('2編成目の保存には supabase/21_player_damages_slots.sql の適用が必要です');
     }
@@ -518,7 +515,7 @@ async function _upsertPlayerDamages(rows) {
         .upsert(legacy, { onConflict: 'player_id,attribute' });
 }
 
-// プレイヤーの属性別ダメージ登録を取得（1属性最大3編成、未登録は欠落。slot 昇順）
+// プレイヤーの属性別ダメージ登録を取得（1属性最大2編成、未登録は欠落。slot 昇順）
 // boss_level = 測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
 // levels = レベル別測定値 {"0":14.2,"4":12.5} (31適用後)。未適用/旧行では
 // (damage_b, boss_level) から正規化した1測定になる (mockLevelsDomain.normLevels)
@@ -601,7 +598,7 @@ async function _loadDamageRowsForAttr(playerId, attribute) {
     }
 }
 
-// プレイヤーの属性別ダメージを upsert (新規 or 上書き)。slot=2/3 で2・3編成目
+// プレイヤーの属性別ダメージを upsert (新規 or 上書き)。slot=2 で2編成目
 // 31適用後は「スロット内のレベル別測定値 (levels)」への追記として動く:
 //   bossLevel 1〜4 → そのレベルの測定値を更新 (他レベルの測定は保持)
 //   未指定 (省略)  → いま表示中の測定 (互換ミラーのレベル) の値を更新 —
@@ -3307,7 +3304,7 @@ window.supabaseLoadOpsDashboardData = async function () {
     }
     const dmgByPlayer = new Map();     // { player_id: { attr: 最大ダメージ } } (既存консюмер用)
     const teamByPlayer = new Map();    // { player_id: { attr: [chars] } } (slot1優先)
-    // { player_id: { attr: [{dmgB, team, slot, level}] } } (ソルバーの3編成 + レベル対応用)
+    // { player_id: { attr: [{dmgB, team, slot, level}] } } (ソルバーの2編成 + レベル対応用)
     // level = 模擬で測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
     const loadoutsByPlayer = new Map();
     const mlDom = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
@@ -3442,7 +3439,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             strong_attributes: Array.isArray(p.strong_attributes) ? p.strong_attributes : [],
             damagesByAttr: dmgByPlayer.get(p.id) || {},
             teamsByAttr: teamByPlayer.get(p.id) || {},
-            loadoutsByAttr: loadoutsByPlayer.get(p.id) || {},   // 1属性最大3編成 + 測定レベル (ソルバー用)
+            loadoutsByAttr: loadoutsByPlayer.get(p.id) || {},   // 1属性最大2編成 + 測定レベル (ソルバー用)
             attacks: attacksByPlayer.get(p.id) || [],
             attackCount: (attacksByPlayer.get(p.id) || []).length,
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),

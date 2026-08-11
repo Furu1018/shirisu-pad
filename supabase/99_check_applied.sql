@@ -163,13 +163,20 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = 'player_damages'
                   AND column_name = 'boss_level'),
-        'player_damages.boss_level (模擬の測定ボスレベル + 編成3枠 — 未適用だとレベル指定と3編成目が保存できない)'
+        'player_damages.boss_level (模擬の測定ボスレベル — 未適用だとレベル指定が保存できない)'
 
     UNION ALL SELECT '31_player_damages_levels',
         EXISTS (SELECT 1 FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = 'player_damages'
                   AND column_name = 'levels'),
         'player_damages.levels (1スロット=1編成・レベル別測定値。未適用だとベスト測定1件に劣化)'
+
+    UNION ALL SELECT '32_slots_back_to_2',
+        EXISTS (SELECT 1 FROM pg_constraint
+                WHERE conname = 'chk_player_damages_slot'
+                  AND pg_get_constraintdef(oid) LIKE '%%2%%'
+                  AND pg_get_constraintdef(oid) NOT LIKE '%%3%%'),
+        'player_damages.slot を 1|2 に戻した (31でレベルが levels に入り 1スロット=1編成 になったため)'
 
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
