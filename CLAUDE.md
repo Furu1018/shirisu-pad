@@ -126,8 +126,10 @@ node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカー
 呼ばないとその操作で倒れたときに撃破通知を落とす (2026-08-09 にレビュー6往復で
 ようやく全経路が埋まった。人力の grep では漏れる)。
 
-UI はテストなし。変更後は `node --check` でJS構文を確認し、実機 (GitHub Pages) で目視確認する運用。
-index.html 内の script は `python3` で抜き出して `node --check` に通せる。
+UI の目視確認は実機 (GitHub Pages) で行う運用。
+**構文チェックは `node tests/check-syntax.mjs` に一本化**した — 手で
+「python3 で抜き出して `node --check`」をやっていた頃、2026-08-12 に
+コマンドの連結ミスで構文エラーのまま commit した。手順ではなく仕組みで防ぐ。
 
 ## デザインシステム: ClaudeDesign
 
