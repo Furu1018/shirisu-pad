@@ -566,6 +566,17 @@ export const MOCK_SLOT_MAX = 2;
 export function isUsableSlot(v) { const n = Number(v) || 1; return n >= 1 && n <= MOCK_SLOT_MAX; }
 window.MOCK_SLOT_MAX = MOCK_SLOT_MAX;
 
+// player_damages を「使えるスロットだけ」で読む小ヘルパー。
+// 集計系 (提出状況・人気編成・最終更新・活動ログ) も 2枠運用に合わせるために使う。
+// slot 列が無い環境 (21未適用) では列を落として再試行する — その世界は全行が実質 slot1
+async function _selectUsableDamages(cols, tune) {
+    const run = (c) => { const q = supabase.from('player_damages').select(c); return tune ? tune(q) : q; };
+    const r = await run(`${cols}, slot`);
+    if (r.error && /slot/i.test(String(r.error?.message))) return await run(cols);
+    if (r.error) return r;
+    return { data: (r.data || []).filter(d => isUsableSlot(d.slot)), error: null };
+}
+
 // 模擬のボスレベル: 1〜4 の整数だけを通し、それ以外 (未指定・不正値) は null に倒す。
 // ★ 0 や NaN を 1 に丸めない — 「未指定 (全レベル可)」と「Lv1 (Lv1でしか使えない)」は
 //   意味が正反対なので、分からない値を Lv1 に倒すと割当対象から不当に外れる
@@ -2183,7 +2194,7 @@ window.supabaseLoadSeasonAttackStats = async function (seasonId) {
 window.supabaseLoadMockSubmissionStatus = async function () {
     const [pRes, dRes] = await Promise.all([
         supabase.from('players').select('id, name').order('name'),
-        supabase.from('player_damages').select('player_id, attribute, damage_b, updated_at'),
+        _selectUsableDamages('player_id, attribute, damage_b, updated_at'),
     ]);
     if (pRes.error) throw pRes.error;
     if (dRes.error) throw dRes.error;
@@ -2205,11 +2216,9 @@ window.supabaseLoadMockSubmissionStatus = async function () {
 
 // 模擬提出のうち編成つきの行を取得 (人気編成の集計用)。attribute 省略で全属性
 window.supabaseLoadTeamSubmissions = async function (attribute = null) {
-    let q = supabase
-        .from('player_damages')
-        .select('player_id, attribute, damage_b, characters, players(name)');
-    if (attribute) q = q.eq('attribute', attribute);
-    const { data, error } = await q;
+    // ★ 人気編成・キャラ採用率も 2枠運用に合わせる (32未適用環境の③を混ぜない)
+    const { data, error } = await _selectUsableDamages('player_id, attribute, damage_b, characters, players(name)',
+        (q) => (attribute ? q.eq('attribute', attribute) : q));
     if (error) throw error;
     return (data || []).filter(r => Array.isArray(r.characters) && r.characters.filter(Boolean).length > 0);
 };
@@ -3090,9 +3099,7 @@ window.supabaseLoadMemberNotificationStatus = async function () {
     const { data: avail } = await supabase
         .from('availability')
         .select('player_id, time_slot');
-    const { data: dmgs } = await supabase
-        .from('player_damages')
-        .select('player_id, updated_at');
+    const { data: dmgs } = await _selectUsableDamages('player_id, updated_at');
 
     const subsByPlayer = new Map();
     (subs || []).forEach(s => {
@@ -3193,11 +3200,8 @@ window.supabaseLoadRecentActivity = async function (limit = 50) {
         text: `${s.players?.name || '?'} が通知を有効化`,
     }));
 
-    const { data: dmgRows } = await supabase
-        .from('player_damages')
-        .select('attribute, damage_b, updated_at, players(name)')
-        .order('updated_at', { ascending: false })
-        .limit(15);
+    const { data: dmgRows } = await _selectUsableDamages('attribute, damage_b, updated_at, players(name)',
+        (q) => q.order('updated_at', { ascending: false }).limit(15));
     (dmgRows || []).forEach(d => events.push({
         type: 'damage', ts: d.updated_at,
         text: `${d.players?.name || '?'} の ${d.attribute}PT ダメージ → ${Number(d.damage_b).toFixed(1)}B`,
