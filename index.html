@@ -8720,7 +8720,7 @@
         // ===== 編成編集モーダルのタイルピッカー (2026-08-12) =====
         // ★ 値の保持先は従来どおり #myTeamEditFields の5つの input。
         //   ピッカーはそこへ書き込むだけにして、保存・OCR・人気編成適用など
-        //   既存の読み書き経路 (_teamEditNames / updateMyTeamEditIcon 等) を一切変えない。
+        //   既存の読み書き経路 (handleMyTeamEditSave / updateMyTeamEditIcon 等) を一切変えない。
         //   マスタに無いキャラは手入力に落とせるよう、入力欄は折りたたみで残す。
         const TE_BURST_COLOR = { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' };
         const TE_WANT = ['B1', 'B2', 'B3', null, null];   // 4・5人目は自由枠
@@ -9284,15 +9284,6 @@
         // BΛ (レッドフード) はワイルドカード: どのバースト枠にも入れる
         function _isBurstWild(entry) { return _burstsOf(entry).includes('BΛ'); }
         // 名前 → マスタ行 (エイリアス・ファジィ解決も通す)。未解決なら null
-        function _burstEntryOf(name) {
-            const nm = (name || '').trim();
-            if (!nm) return null;
-            const hit = _nikkeCharsByName.get(nm);
-            if (hit) return hit;
-            const canon = fuzzyResolveCharacter(nm);
-            return (canon && _nikkeCharsByName.get(canon)) || null;
-        }
-
         // ========== ユニオン内の採用率 (模擬提出 player_damages.characters が材料) ==========
         // player_damages はシーズン作成時にリセットされる → 自然に「今シーズンの採用率」になる。
         // 既存の _teamGroupsFor は「5人の組み合わせ」を PT単位 で数える (シナジーが本体のため) が、
@@ -9336,6 +9327,8 @@
         const _ICON_PICKER_TOP = 6;   // 各セクションで先に見せる件数 (モバイル3列 × 2行)
         // opts.attr:       PT属性。渡すとユニオン内の採用率で並べ替え + 採用数バッジを出す
         // opts.burst:      この枠のバースト。渡すと最初からそれで絞る
+        //                  ※ いまこれを渡す呼び出し元は無い (編成タイル側は自前で絞るため)。
+        //                    共有ピッカーの汎用オプションとして残してある
         function openIconPicker(initialSearch, callback, title = '📚 アイコンを選択', opts = {}) {
             _iconPickerCallback = callback;
             _iconPickerAttr = opts.attr || null;
@@ -9371,10 +9364,6 @@
             _iconPickerHint = '';
         }
         // 編成編集モーダルの5枠から、idx 以外に入っている名前を集める
-        function _teamEditNames() {
-            return Array.from(document.querySelectorAll('#myTeamEditFields input[data-team-idx]'))
-                .map(el => el.value.trim());
-        }
         // 編成編集モーダル用
         function openIconPickerForTeamEdit(idx) {
             const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
