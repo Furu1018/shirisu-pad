@@ -95,7 +95,7 @@ globalThis._teamSubsCache = [
     { player_id: 3, attribute: 'wind', characters: ['紅蓮：ブラックシャドウ', 'クラウン', 'アニス:スター', 'モラン', 'ラピ:レッドフード'] },
     { player_id: 4, attribute: 'fire', characters: ['クラウン', 'クラウン', 'クラウン', 'クラウン', 'クラウン'] },
 ];
-// updateMyTeamEditIcon は本体では「アイコン + チェーン + ピッカー」を描き直す。
+// updateMyTeamEditIcon は本体では「アイコン + タイルピッカー」を描き直す。
 // ここでは再描画だけを再現する (無限ループしないことの確認も兼ねる)
 let iconCalls = 0;
 globalThis.updateMyTeamEditIcon = function (idx) {

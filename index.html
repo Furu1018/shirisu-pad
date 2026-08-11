@@ -9283,7 +9283,6 @@
         }
         // BΛ (レッドフード) はワイルドカード: どのバースト枠にも入れる
         function _isBurstWild(entry) { return _burstsOf(entry).includes('BΛ'); }
-        // 名前 → マスタ行 (エイリアス・ファジィ解決も通す)。未解決なら null
         // ========== ユニオン内の採用率 (模擬提出 player_damages.characters が材料) ==========
         // player_damages はシーズン作成時にリセットされる → 自然に「今シーズンの採用率」になる。
         // 既存の _teamGroupsFor は「5人の組み合わせ」を PT単位 で数える (シナジーが本体のため) が、
@@ -9338,7 +9337,6 @@
             document.getElementById('iconPickerNewLabel').textContent = initialSearch
                 ? `「${initialSearch}」を新規登録`
                 : '空欄では新規登録できません';
-            // 他の枠を見て足りないバーストがあれば、そこに絞った状態で開く。
             // 検索語を持って開いたときは名前で探したい意図が明確なので絞らない。
             _iconPickerBurst = '';
             _iconPickerHint = '';
@@ -9363,7 +9361,6 @@
             _iconPickerCallback = null;
             _iconPickerHint = '';
         }
-        // 編成編集モーダルの5枠から、idx 以外に入っている名前を集める
         // 編成編集モーダル用
         function openIconPickerForTeamEdit(idx) {
             const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
@@ -9564,7 +9561,7 @@
                 if (top.length) html += head('近い候補') + grid(top);
                 if (rest.length) html += head(`その他 (${rest.length}件)`) + grid(rest);
             } else {
-                // 検索も絞り込みも無いときはバースト別に並べる (チェーンを組む視点で見やすい)
+                // 検索も絞り込みも無いときはバースト別に並べる (役割ごとに見やすい)
                 _BURST_ORDER.forEach(b => {
                     html += section(`b:${b}`, b, pool.filter(c => c.burst === b));
                 });
