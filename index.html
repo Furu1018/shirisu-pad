@@ -2198,6 +2198,89 @@
             100% { transform: scale(2.2);  opacity: 0; }
         }
 
+        /* ===== 編成編集モーダルのタイルピッカー (2026-08-12) =====
+           GB (shirisu-pad-global) の js/tiles.js の構造を参考にした「画像 + バースト帯」。
+           ★ 名前・×・％を画像に重ねると顔が隠れて誰か分からない (実機FB) ので、
+              画像は正方形のまま無加工で見せ、名前は画像の**下**に出す。
+              画像に乗せるのは上端のバンド1行 (バースト + 採用率) と解除の × だけ */
+        .te-step { font-size:10px; font-weight:900; letter-spacing:0.08em; color:#8A9097; margin:0 0 6px; }
+        .te-step b { color:#6C42F0; }
+        .te-sec { border-top:1px solid rgba(20,22,26,0.08); margin-top:13px; padding-top:11px; }
+        .te-head {
+            display:flex; align-items:center; gap:7px; width:100%; padding:0; border:none; background:none;
+            cursor:pointer; font:inherit; font-size:10px; font-weight:900; letter-spacing:0.08em; color:#8A9097;
+        }
+        .te-head .cnt { font-size:9.5px; font-weight:900; color:#6C42F0; background:rgba(108,66,240,0.10); border-radius:999px; padding:1px 7px; letter-spacing:0; }
+        .te-head .arw { margin-left:auto; font-size:10px; color:#B6BBC1; }
+        .te-slots { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:10px; }
+        .te-slot, .te-tile {
+            display:flex; flex-direction:column; gap:3px; background:none; border:none; padding:0;
+            cursor:pointer; font:inherit; text-align:center; min-width:0; overflow:hidden;
+            transition:transform 0.1s ease;
+        }
+        .te-slot:active, .te-tile:active { transform:scale(0.96); }
+        .te-thumb {
+            position:relative; aspect-ratio:1/1; border-radius:10px; overflow:hidden;
+            background:#F1F2F4; border:1.5px dashed rgba(20,22,26,0.10);
+            display:flex; align-items:center; justify-content:center;
+        }
+        .te-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+        .te-slot.filled .te-thumb, .te-tile .te-thumb { border-style:solid; border-color:transparent; background:#0E1014; }
+        .te-slot.armed .te-thumb { border-color:#6C42F0; border-style:solid; box-shadow:0 0 0 3px rgba(108,66,240,0.14); }
+        .te-ph { font-size:16px; color:#B6BBC1; font-weight:900; line-height:1; }
+        .te-slot.armed .te-ph { color:#6C42F0; }
+        .te-band {
+            position:absolute; top:0; left:0; right:0; height:14px; z-index:2;
+            display:flex; align-items:center; justify-content:center; gap:3px; padding:0 4px;
+            font-size:8.5px; font-weight:900; letter-spacing:0.04em; color:#fff;
+        }
+        .te-band.split { justify-content:space-between; }
+        .te-band.dark { color:#14161A; }
+        .te-band .pct { opacity:0.85; font-weight:800; }
+        .te-cap {
+            display:block; max-width:100%; font-size:8.5px; font-weight:800; color:#6B7178; line-height:1.2;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 1px;
+        }
+        .te-slot.armed .te-cap { color:#6C42F0; }
+        .te-tile .te-cap { font-size:9px; color:#14161A; }
+        .te-x {
+            position:absolute; bottom:2px; right:2px; z-index:3; width:16px; height:16px; border-radius:50%;
+            background:rgba(0,0,0,0.66); color:#fff; font-size:10px; line-height:16px; text-align:center; font-weight:900;
+        }
+        .te-dup {
+            position:absolute; bottom:2px; left:2px; z-index:3; width:15px; height:15px; border-radius:5px;
+            background:#F59E0B; color:#14161A; font-size:9px; font-weight:900; line-height:15px; text-align:center;
+        }
+        .te-search {
+            width:100%; padding:9px 12px; border-radius:10px; border:1.5px solid #E3E5E8;
+            background:#F7F8F9; color:#14161A; font:inherit; font-size:13px; font-weight:700; margin:9px 0 8px;
+        }
+        .te-filters { display:flex; gap:5px; margin-bottom:9px; flex-wrap:wrap; align-items:center; }
+        .te-chip { padding:5px 11px; border-radius:999px; border:none; cursor:pointer; font:inherit; font-size:11px; font-weight:900; background:#F1F2F4; color:#5A6068; }
+        .te-chip.on { color:#fff; }
+        .te-lock { font-size:10px; font-weight:800; color:#6C42F0; margin-left:auto; }
+        .te-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px 6px; padding:2px; margin:0 -2px; }
+        .te-tile.used { opacity:0.34; }
+        .te-tile.used .te-thumb::after {
+            content:"選択中"; position:absolute; inset:0; display:grid; place-items:center;
+            font-size:9px; font-weight:900; color:#fff; background:rgba(0,0,0,0.5); z-index:4;
+        }
+        .te-tile.dup .te-thumb { border-color:#F59E0B; border-style:solid; }
+        .te-more {
+            width:100%; margin-top:9px; padding:9px; border-radius:10px; border:1px solid rgba(20,22,26,0.08);
+            background:#F7F8F9; color:#6B7178; font:inherit; font-size:11.5px; font-weight:900; cursor:pointer;
+        }
+        .te-legend { font-size:10px; color:#8A9097; font-weight:700; margin-top:8px; display:flex; gap:11px; flex-wrap:wrap; }
+        .te-legend span { display:flex; align-items:center; gap:4px; }
+        .te-legend .sw { width:9px; height:9px; border-radius:3px; display:inline-block; }
+        .te-ocr {
+            display:flex; align-items:center; gap:9px; width:100%; padding:11px 12px; border-radius:12px;
+            border:1.5px dashed rgba(20,22,26,0.14); background:#F7F8F9; cursor:pointer;
+        }
+        .te-ocr .txt { flex:1; min-width:0; font-size:12.5px; font-weight:800; line-height:1.35; }
+        .te-ocr .txt small { display:block; font-size:10.5px; font-weight:700; color:#8A9097; margin-top:1px; }
+        .te-ocr .go { flex:none; padding:6px 12px; border-radius:7px; background:#6C42F0; color:#fff; font-size:11.5px; font-weight:900; }
+
         /* ===== ホーム: 配信プランの自分の凸カード =====
            模擬タブの .dc-dmg-panel と同じ見た目にそろえる (ユーザー要望 2026-08-08)。
            ヒーロー (黒カード) の上にも置くので、色は on-hero で差し替える */
@@ -4960,46 +5043,81 @@
             </div>
             <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成は1属性につき2つまで登録でき、キャラが被らなければ同属性2凸をプランが提案します。1つの編成に<strong>レベル別の測定値</strong>を持たせられます。</p>
 
-            <!-- 編成スロット切替 (① / ② / ③ 同属性複数凸用) -->
+            <!-- 編成スロット切替 (① / ② 同属性2凸用) -->
             <div id="myTeamEditSlotTabs" style="display:flex;gap:6px;"></div>
 
-            <!-- ダメージ入力 -->
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#F7F8F9;">
-                <label for="myTeamEditDamage" style="font-size:13px;font-weight:700;flex:1;">💥 ベストダメージ (B)</label>
-                <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;text-align:right;">
-                <span style="font-size:12px;color:#8A9097;">B</span>
-            </div>
-
-            <!-- 測定したボスレベル (30_player_damages_level.sql) -->
-            <div style="padding:10px 12px;border-radius:10px;background:#F7F8F9;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <label style="font-size:13px;font-weight:700;flex:1;">🎚 測定したボスのレベル</label>
-                    <div id="myTeamEditLevelBtns" style="display:flex;gap:4px;"></div>
-                </div>
-                <p id="myTeamEditLevelNote" style="margin:7px 0 0 0;font-size:11px;line-height:1.6;color:#8A9097;"></p>
-                <!-- この編成のレベル別測定値 (31_player_damages_levels) — タップで編集・×で削除 -->
-                <div id="myTeamEditLevelStrip"></div>
-            </div>
-
-            <!-- 画像取り込み -->
-            <div style="padding:10px 12px;border-radius:12px;border:1.5px dashed rgba(20,22,26,0.14);background:#F7F8F9;">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
-                    <span data-sp-icon="camera" data-sp-size="18"></span>
-                    <span style="flex:1;">戦闘履歴スクショから5キャラを自動入力（複数枚OK）</span>
-                    <input type="file" id="myTeamEditOcrInput" accept="image/*" multiple onchange="handleMyTeamEditOcr(event)" style="display:none;">
-                    <span style="padding:6px 12px;border-radius:6px;background:#6C42F0;color:#fff;font-size:12px;font-weight:800;">画像を選ぶ</span>
-                </label>
-                <p id="myTeamEditOcrStatus" style="margin:6px 0 0 0;font-size:11px;color:#8A9097;min-height:14px;">&nbsp;</p>
-            </div>
-
-            <!-- みんながよく使う「実キャラ5人編成」をワンタップ (提出が溜まると出る) -->
-            <div id="myTeamEditTopTeams"></div>
-
-            <!-- 5キャラ入力欄 -->
-            <div id="myTeamEditFields" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <!-- ===== ① 編成 (タイルピッカー) ===== -->
+            <p class="te-step">① 枠を選ぶ <b id="teArmedName"></b></p>
+            <div class="te-slots" id="teSlots"></div>
 
             <!-- バーストチェーン成立チェック (renderTeamEditChainRow が中身を描く) -->
             <div id="myTeamEditChain"></div>
+
+            <!-- ===== まとめて入れる ===== -->
+            <div class="te-sec">
+                <p class="te-step" style="margin-bottom:8px;">まとめて入れる</p>
+                <label class="te-ocr">
+                    <span class="ico" data-sp-icon="camera" data-sp-size="18"></span>
+                    <span class="txt">スクショから読み取る<small>戦闘履歴から5キャラとダメージを自動入力</small></span>
+                    <input type="file" id="myTeamEditOcrInput" accept="image/*" multiple onchange="handleMyTeamEditOcr(event)" style="display:none;">
+                    <span class="go">選ぶ</span>
+                </label>
+                <p id="myTeamEditOcrStatus" style="margin:7px 0 0 0;font-size:11px;font-weight:800;color:#8A9097;min-height:15px;">&nbsp;</p>
+            </div>
+
+            <!-- みんながよく使う「実キャラ5人編成」をワンタップ (提出が溜まると出る) -->
+            <div class="te-sec">
+                <button type="button" class="te-head" onclick="toggleTeamEditTopTeams()">
+                    <span>★ よく使われている編成</span><span class="cnt" id="teTopCnt"></span>
+                    <span class="arw" id="teTopArw">▼</span>
+                </button>
+                <div id="myTeamEditTopTeams" hidden></div>
+            </div>
+
+            <!-- ===== ② キャラ選択 (5人そろうと自動で畳む) ===== -->
+            <div class="te-sec">
+                <button type="button" class="te-head" onclick="toggleTeamEditPicker()">
+                    <span>② 枠に入れるキャラを選ぶ</span><span class="cnt" id="tePickCnt"></span>
+                    <span class="arw" id="tePickArw">▼</span>
+                </button>
+                <div id="tePickBody">
+                    <input type="text" id="teSearch" class="te-search" placeholder="キャラ名で絞り込み" autocomplete="off" oninput="onTeamEditSearch(this.value)">
+                    <div class="te-filters" id="teFilters"></div>
+                    <div class="te-grid" id="teGrid"></div>
+                    <button type="button" class="te-more" id="teMore" style="display:none;" onclick="toggleTeamEditGridMore()"></button>
+                    <div class="te-legend">
+                        <span><i class="sw" style="background:#1FA95C;"></i>B1</span>
+                        <span><i class="sw" style="background:#F2B705;"></i>B2</span>
+                        <span><i class="sw" style="background:#E5484D;"></i>B3</span>
+                        <span><i class="sw" style="background:#F59E0B;"></i>もう一方の編成で使用中</span>
+                        <span>％ = 単独での採用率</span>
+                    </div>
+                    <!-- マスタに無いキャラ用の手入力 (既定は折りたたみ)。
+                         ★ この5つの input が値の保持先そのもの — ピッカーはここへ書き込む -->
+                    <button type="button" class="te-head" style="margin-top:11px;" onclick="toggleTeamEditManual()">
+                        <span>✎ 手入力で直す</span><span class="arw" id="teManualArw">▼</span>
+                    </button>
+                    <div id="myTeamEditFields" hidden style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                </div>
+            </div>
+
+            <!-- ===== ③ ダメージ + 測定レベル ===== -->
+            <div class="te-sec">
+                <p class="te-step" style="margin-bottom:8px;">③ この編成で出たダメージを入れる</p>
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#F7F8F9;">
+                    <label for="myTeamEditDamage" style="font-size:13px;font-weight:700;flex:1;">💥 ベストダメージ (B)</label>
+                    <input type="number" inputmode="decimal" step="0.1" min="0" max="999" id="myTeamEditDamage" placeholder="例: 22.5" style="width:100px;padding:8px 10px;border-radius:8px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;text-align:right;">
+                    <span style="font-size:12px;color:#8A9097;">B</span>
+                </div>
+                <!-- 測定したボスレベル (30_player_damages_level.sql) -->
+                <div style="padding:10px 12px;border-radius:10px;background:#F7F8F9;margin-top:8px;">
+                    <label style="display:block;font-size:13px;font-weight:700;margin-bottom:7px;">🎚 測定したボスのレベル</label>
+                    <div id="myTeamEditLevelBtns" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;"></div>
+                    <p id="myTeamEditLevelNote" style="margin:7px 0 0 0;font-size:11px;line-height:1.6;color:#8A9097;"></p>
+                    <!-- この編成のレベル別測定値 (31_player_damages_levels) — タップで編集・×で削除 -->
+                    <div id="myTeamEditLevelStrip"></div>
+                </div>
+            </div>
 
             <!-- 人気編成の参考 (みんなの模擬提出の統計 / 既定は折りたたみ) -->
             <div onclick="toggleTeamEditPopular()" id="myTeamEditPopularToggle" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">📚 みんなの人気編成を見る ▼</div>
@@ -5008,7 +5126,7 @@
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
                 <button onclick="handleMyTeamEditDeleteCurrent()" title="表示中の編成の提出 (ダメージ+編成) を削除" style="margin-right:auto;padding:9px 13px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.4);background:#fff;color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑 削除</button>
-                <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:10px;border:none;background:#F1F2F4;color:#14161A;font-size:12.5px;font-weight:800;cursor:pointer;">キャンセル</button>
+                <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:10px;border:none;background:#F1F2F4;color:#14161A;font-size:12.5px;font-weight:800;cursor:pointer;">閉じる</button>
                 <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 10px rgba(20,22,26,0.24);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
         </div>
@@ -8451,12 +8569,37 @@
             };
             fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
             renderTeamEditChainRow();
-            // 人気編成はユニオン全体の提出が要る → 届き次第そっと出す (モーダルを待たせない)
+            // ===== タイルピッカーの初期化 =====
+            // 開くたびに絞り込み・選択状態を戻す (前回の属性の状態を持ち越さない)
+            _teArmed = current.findIndex(v => !v);
+            if (_teArmed < 0) _teArmed = null;
+            _teFilter = 'all'; _teQuery = ''; _teExpanded = false;
+            _tePickManual = false; _teLastFull = current.filter(Boolean).length === 5;
+            _teTopOpen = false;
+            const sEl = document.getElementById('teSearch'); if (sEl) sEl.value = '';
+            const mf = document.getElementById('myTeamEditFields'); if (mf) mf.hidden = true;
+            const ma = document.getElementById('teManualArw'); if (ma) ma.textContent = '▼';
+            const tt = document.getElementById('myTeamEditTopTeams'); if (tt) tt.hidden = true;
+            const ta = document.getElementById('teTopArw'); if (ta) ta.textContent = '▼';
+            // もう一方のスロットの編成 = 被りマークの元 (同キャラは1日1回)
+            _myTeamEditOtherTeam = [];
+            try {
+                const dmgs2 = await window.supabaseLoadPlayerDamages(id.id);
+                (dmgs2 || []).forEach(d => {
+                    if (d.attribute !== attrKey || (d.slot || 1) === _myTeamEditSlot) return;
+                    (d.characters || []).filter(Boolean).forEach(c => _myTeamEditOtherTeam.push(c));
+                });
+            } catch { /* 取れなければ被りマークが出ないだけ */ }
+            renderTeamEditPicker();
+            // 人気編成・単独採用率はユニオン全体の提出が要る → 届き次第そっと出す (モーダルを待たせない)
+            if (_teamSubsCache) _teBuildUsage();
             _renderTeamEditTopTeams();
             if (!_teamSubsCache) {
                 _loadTeamSubs().then(() => {
                     if (document.getElementById('myTeamEditModal')?.classList.contains('open')) {
+                        _teBuildUsage();
                         _renderTeamEditTopTeams();
+                        renderTeamEditGrid();
                     }
                 }).catch(() => { /* 提出が取れなければ従来どおり */ });
             }
@@ -8530,7 +8673,9 @@
             if (!el) return;
             if (!_myTeamEditAttr) { el.innerHTML = ''; return; }
             const { total, list } = _teamGroupsFor(_myTeamEditAttr);
-            const top = list.slice(0, 2);   // 迷わせないようベスト2
+            const top = list.slice(0, 3);
+            const cntEl = document.getElementById('teTopCnt');
+            if (cntEl) cntEl.textContent = top.length > 0 ? `${top.length}件` : 'まだ無し';
             if (top.length === 0) { el.innerHTML = ''; return; }
             const a = PT_ATTRS.find(x => x.key === _myTeamEditAttr);
             const ptName = a?.name || '';
@@ -8576,6 +8721,231 @@
             }
         }
         // 編成編集モーダルの「バーストチェーン成立してる?」行
+        // ===== 編成編集モーダルのタイルピッカー (2026-08-12) =====
+        // ★ 値の保持先は従来どおり #myTeamEditFields の5つの input。
+        //   ピッカーはそこへ書き込むだけにして、保存・OCR・人気編成適用など
+        //   既存の読み書き経路 (_teamEditNames / updateMyTeamEditIcon 等) を一切変えない。
+        //   マスタに無いキャラは手入力に落とせるよう、入力欄は折りたたみで残す。
+        const TE_BURST_COLOR = { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' };
+        const TE_WANT = ['B1', 'B2', 'B3', null, null];   // 4・5人目は自由枠
+        const TE_GRID_TOP = 10;                            // 上位何体まで開いて出すか
+        let _teArmed = 0;            // 選択中の枠 (null = なし)
+        let _teFilter = 'all';
+        let _teQuery = '';
+        let _teExpanded = false;     // グリッドを全件表示中か
+        let _teTopOpen = false;      // 「よく使われている編成」を開いているか
+        let _tePickOpen = true;      // キャラ選択を開いているか
+        let _tePickManual = false;   // 手で開閉したか (人数が変わるまで自動制御を止める)
+        let _teLastFull = false;
+        let _teUsage = null;         // { byAttr: {attr: Map(name→人数)}, totals: {attr: 人数} } 単独採用率
+        let _myTeamEditOtherTeam = [];   // いま編集していない方のスロットの編成 (被りマーク用)
+
+        // 単独採用率: 属性ごとに「そのキャラを出している人数 / その属性の提出人数」。
+        // 編成まるごとの一致はほとんど重ならない (実測で9割が1人だけ) が、
+        // キャラ単位なら同じ提出からはっきり出るので、グリッドの並び順に使う
+        function _teBuildUsage() {
+            const byAttr = {}, totals = {};
+            const players = {};
+            (_teamSubsCache || []).forEach(r => {
+                const a = r.attribute;
+                const chars = (r.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
+                if (chars.length === 0) return;
+                if (!byAttr[a]) { byAttr[a] = new Map(); players[a] = new Set(); }
+                players[a].add(r.player_id);
+                const seen = new Set();
+                chars.forEach(c => {
+                    if (seen.has(c)) return;   // 同一提出内の重複は1回
+                    seen.add(c);
+                    if (!byAttr[a].has(c)) byAttr[a].set(c, new Set());
+                    byAttr[a].get(c).add(r.player_id);
+                });
+            });
+            Object.keys(byAttr).forEach(a => {
+                const m = new Map();
+                byAttr[a].forEach((set, name) => m.set(name, set.size));
+                byAttr[a] = m;
+                totals[a] = players[a].size;
+            });
+            _teUsage = { byAttr, totals };
+        }
+
+        const _teNames = () => Array.from(document.querySelectorAll('#myTeamEditFields input[data-team-idx]'))
+            .map(i => (i.value || '').trim());
+        function _teSetSlot(idx, name) {
+            const inp = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
+            if (!inp) return;
+            inp.value = name || '';
+            updateMyTeamEditIcon(idx);   // アイコン + チェーン行の再描画は既存関数に任せる
+        }
+        // マスタから「バーストが分かるキャラ」を引く。resolveNikkeChar と同じ正規化を通す
+        function _teMaster() {
+            return (_nikkeCharsCache || []).filter(c => c && c.canonical_name);
+        }
+        function _teBurstOf(c) { return c?.burst || null; }
+        function _teBand(c, pct) {
+            const b = _teBurstOf(c) || '—';
+            const col = TE_BURST_COLOR[b] || '#8A9097';
+            const dark = b === 'B2' ? ' dark' : '';
+            const alt = c?.burst_alt ? ` / ${escapeHtml(c.burst_alt)}` : '';
+            return `<span class="te-band${dark}${pct ? ' split' : ''}" style="background:${col};">`
+                + `<span>${escapeHtml(b)}${alt}</span>${pct ? `<span class="pct">${pct}%</span>` : ''}</span>`;
+        }
+        // もう一方のスロットで使っているキャラ (同キャラは1日1回なので被ると2凸目が出せない)
+        function _teOtherTeam() {
+            const other = (_myTeamEditOtherTeam || []).map(n => (fuzzyResolveCharacter(n) || n));
+            return new Set(other.filter(Boolean));
+        }
+        function renderTeamEditPicker() {
+            const slotsEl = document.getElementById('teSlots');
+            if (!slotsEl) return;
+            const names = _teNames();
+            slotsEl.innerHTML = names.map((n, i) => {
+                const want = TE_WANT[i] || '自由';
+                const armed = _teArmed === i ? ' armed' : '';
+                if (!n) {
+                    return `<button type="button" class="te-slot${armed}" onclick="teArmSlot(${i})">`
+                        + `<span class="te-thumb"><span class="te-ph">＋</span></span>`
+                        + `<span class="te-cap">${want}</span></button>`;
+                }
+                const r = resolveNikkeChar(n);
+                const c = _nikkeCharsByName.get(r?.canonical || n) || null;
+                const img = r?.iconPath
+                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(n)}">`
+                    : `<span class="te-ph" style="font-size:13px;color:#fff;">${escapeHtml(n.charAt(0))}</span>`;
+                return `<button type="button" class="te-slot filled${armed}" onclick="teArmSlot(${i})">`
+                    + `<span class="te-thumb">${img}${c ? _teBand(c) : ''}`
+                    + `<span class="te-x" onclick="event.stopPropagation();teClearSlot(${i})">×</span></span>`
+                    + `<span class="te-cap">${escapeHtml(r?.canonical || n)}</span></button>`;
+            }).join('');
+            const w = _teArmed === null ? '' : (TE_WANT[_teArmed] ? `${TE_WANT[_teArmed]}の枠` : '自由枠');
+            const an = document.getElementById('teArmedName');
+            if (an) an.textContent = w ? `— ${w}を選択中` : '';
+            renderTeamEditGrid();
+            _teSyncPickOpen();
+        }
+        function renderTeamEditGrid() {
+            const gridEl = document.getElementById('teGrid');
+            if (!gridEl) return;
+            const names = _teNames();
+            const picked = new Set(names.filter(Boolean).map(n => (resolveNikkeChar(n)?.canonical || n)));
+            const dup = _teOtherTeam();
+            const want = _teArmed === null ? null : TE_WANT[_teArmed];
+            const usage = (_teUsage && _teUsage.byAttr[_myTeamEditAttr]) || null;
+            const total = (_teUsage && _teUsage.totals[_myTeamEditAttr]) || 0;
+            const pctOf = (name) => (usage && total > 0) ? Math.round((usage.get(name) || 0) / total * 100) : 0;
+            let list = _teMaster().filter(c => {
+                if (_teQuery && !c.canonical_name.toLowerCase().includes(_teQuery)) return false;
+                if (want) return c.burst === want || c.burst_alt === want;
+                if (_teFilter !== 'all') return c.burst === _teFilter || c.burst_alt === _teFilter;
+                return true;
+            });
+            list = list.map(c => ({ c, pct: pctOf(c.canonical_name) }))
+                .sort((a, b) => (b.pct - a.pct) || a.c.canonical_name.localeCompare(b.c.canonical_name, 'ja'));
+            // 検索中は折りたたまない (探しているものが隠れると意味がない)。
+            // 上位10体は「まだ選んでいないキャラ」で数える — 選択済みを含めると選択肢が減る
+            const showAll = _teExpanded || !!_teQuery;
+            let n = 0;
+            const shown = showAll ? list
+                : list.filter(x => picked.has(x.c.canonical_name) || n++ < TE_GRID_TOP);
+            gridEl.innerHTML = shown.map(({ c, pct }) => {
+                const nm = c.canonical_name;
+                const icon = (Array.isArray(c.icon_paths) && c.icon_paths[0]) || null;
+                const isUsed = picked.has(nm), isDup = dup.has(nm);
+                const img = icon
+                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(icon)}" alt="${escapeHtml(nm)}">`
+                    : `<span class="te-ph" style="font-size:13px;color:#fff;">${escapeHtml(nm.charAt(0))}</span>`;
+                return `<button type="button" class="te-tile${isUsed ? ' used' : ''}${isDup ? ' dup' : ''}"`
+                    + ` onclick="tePick('${escapeHtml(nm).replace(/'/g, "\\'")}')"`
+                    + ` title="${escapeHtml(nm)}${isDup ? ' — もう一方の編成で使用中' : ''}${pct ? ` — 単独の採用率 ${pct}%` : ''}">`
+                    + `<span class="te-thumb">${img}${_teBand(c, pct)}`
+                    + `${isDup ? '<span class="te-dup">!</span>' : ''}</span>`
+                    + `<span class="te-cap">${escapeHtml(nm)}</span></button>`;
+            }).join('')
+                || '<div style="grid-column:1/-1;text-align:center;color:#8A9097;font-size:11px;padding:22px 0;font-weight:700;">該当なし</div>';
+            const rest = list.length - shown.length;
+            const more = document.getElementById('teMore');
+            if (more) {
+                const show = rest > 0 || (showAll && !_teQuery && list.length > TE_GRID_TOP);
+                more.style.display = show ? '' : 'none';
+                more.textContent = showAll ? '▲ 上位10体だけ表示' : `▼ 残り${rest}体を表示`;
+            }
+            // バースト絞りチップ (枠を選んでいる間はその枠のバーストに固定)
+            const fl = document.getElementById('teFilters');
+            if (fl) {
+                const cur = want || _teFilter;
+                const chip = (k, label) => {
+                    const on = k === cur;
+                    const col = k === 'all' ? '#14161A' : TE_BURST_COLOR[k];
+                    const fg = k === 'B2' ? '#14161A' : '#fff';
+                    return `<button type="button" class="te-chip${on ? ' on' : ''}" onclick="teSetFilter('${k}')"`
+                        + `${on ? ` style="background:${col};color:${fg};"` : ''}>${label}</button>`;
+                };
+                fl.innerHTML = chip('all', 'すべて') + chip('B1', 'B1') + chip('B2', 'B2') + chip('B3', 'B3')
+                    + (want ? `<span class="te-lock">${want}だけ表示中</span>` : '');
+            }
+        }
+        // 5人そろったらキャラ選択を自動で畳む (スクショ・人気編成で一発で埋まったとき、
+        // 使わないグリッドが編成とダメージの間に居座るのを防ぐ)
+        function _teSyncPickOpen() {
+            const filled = _teNames().filter(Boolean).length;
+            const full = filled === 5;
+            if (full !== _teLastFull) { _tePickManual = false; _teLastFull = full; }
+            if (!_tePickManual) _tePickOpen = !full;
+            const body = document.getElementById('tePickBody');
+            const cnt = document.getElementById('tePickCnt');
+            const arw = document.getElementById('tePickArw');
+            if (body) body.hidden = !_tePickOpen;
+            if (cnt) cnt.textContent = full ? '5人そろいました' : `残り${5 - filled}人`;
+            if (arw) arw.textContent = _tePickOpen ? '▲' : '▼';
+        }
+        function teArmSlot(i) { _teArmed = (_teArmed === i) ? null : i; renderTeamEditPicker(); }
+        function teClearSlot(i) { _teArmed = i; _teSetSlot(i, ''); }   // 描画は updateMyTeamEditIcon 経由
+        function teSetFilter(k) { _teFilter = k; _teArmed = null; renderTeamEditPicker(); }
+        function onTeamEditSearch(v) { _teQuery = (v || '').trim().toLowerCase(); renderTeamEditGrid(); }
+        function toggleTeamEditGridMore() { _teExpanded = !_teExpanded; renderTeamEditGrid(); }
+        function toggleTeamEditPicker() {
+            _tePickOpen = !_tePickOpen; _tePickManual = true;
+            const body = document.getElementById('tePickBody');
+            const arw = document.getElementById('tePickArw');
+            if (body) body.hidden = !_tePickOpen;
+            if (arw) arw.textContent = _tePickOpen ? '▲' : '▼';
+        }
+        function toggleTeamEditTopTeams() {
+            _teTopOpen = !_teTopOpen;
+            const el = document.getElementById('myTeamEditTopTeams');
+            const arw = document.getElementById('teTopArw');
+            if (el) el.hidden = !_teTopOpen;
+            if (arw) arw.textContent = _teTopOpen ? '▲' : '▼';
+        }
+        function toggleTeamEditManual() {
+            const el = document.getElementById('myTeamEditFields');
+            const arw = document.getElementById('teManualArw');
+            if (!el) return;
+            el.hidden = !el.hidden;
+            if (arw) arw.textContent = el.hidden ? '▼' : '▲';
+        }
+        // タイルを押す: 選択中の枠へ入れる。既に入っているキャラをもう一度押すと外す
+        function tePick(name) {
+            const names = _teNames();
+            const canon = (n) => (resolveNikkeChar(n)?.canonical || n);
+            const at = names.findIndex(n => n && canon(n) === name);
+            if (at >= 0) { _teArmed = at; _teSetSlot(at, ''); return; }   // もう一度押すと外す
+            let idx = _teArmed;
+            if (idx == null || names[idx]) {
+                // 枠が未選択 / 埋まっている場合は、バーストの合う空き枠 → 最初の空き枠
+                const c = _nikkeCharsByName.get(name) || null;
+                idx = names.findIndex((v, k) => !v && TE_WANT[k]
+                    && (TE_WANT[k] === c?.burst || TE_WANT[k] === c?.burst_alt));
+                if (idx < 0) idx = names.findIndex(v => !v);
+            }
+            if (idx < 0) return;   // 満席
+            // 先に「次の空き枠」を見込んでから書く — 描画は _teSetSlot → updateMyTeamEditIcon 経由
+            const after = names.slice(); after[idx] = name;
+            const next = after.findIndex(v => !v);
+            _teArmed = next < 0 ? null : next;
+            _teSetSlot(idx, name);
+        }
+
         function renderTeamEditChainRow() {
             const el = document.getElementById('myTeamEditChain');
             if (!el) return;
@@ -8618,6 +8988,9 @@
                 iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:#F1F2F4;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#F59E0B;cursor:pointer;border:1.5px dashed #F59E0B;">?</div>`;
             }
             renderTeamEditChainRow();
+            // 値を書き換える経路 (OCR・人気編成の適用・アイコンピッカー・手入力) は
+            // すべてここを通るので、タイルの再描画もここに集約する
+            if (typeof renderTeamEditPicker === 'function') renderTeamEditPicker();
         }
 
         // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========

@@ -33,6 +33,13 @@ rm -f .claude/hooks/.codex-on      # OFF
 
 ## アーキテクチャ
 
+- **模擬タブの編成入力はタイルピッカー** (2026-08-12)。GB (`~/Desktop/shirisu-pad-global` の
+  `js/tiles.js`) の「キャラ画像 + バースト帯」の構造を参考にしたが、**持ち込んだのはUIの構造だけ** —
+  GBのゲームアセット全廃方針は本家に持ち込まない (本家は BlaBlaLINK 図鑑アイコンを使用)。
+  ★ **値の保持先は `#myTeamEditFields` の5つの input のまま**。ピッカーは `_teSetSlot` で
+  そこへ書き、再描画は `updateMyTeamEditIcon` に集約している。この形にしたのは、保存・OCR・
+  人気編成の適用・アイコンピッカーという既存の読み書き経路を一切変えずに済ませるため。
+  マスタに無いキャラ用に手入力欄も折りたたみで残してある
 - **index.html**(約17,000行) にUI・CSS・アプリロジックのほぼ全てが入った単一ファイル構成。
   **リアーキ進行中** (ARCHITECTURE-AUDIT.md — B:段階的モジュール分割を2026-07-22に承認・着手)
 - **js/supabase-client.js** — Supabase への読み書きを `window.supabaseXxx` 関数として公開
@@ -103,11 +110,17 @@ rm -f .claude/hooks/.codex-on      # OFF
 node tests/run-tests.mjs      # ソルバー+ドメイン+ストアの単体テスト
 node tests/plan-hp-modal.mjs  # ⚔️戦闘予想モーダルの実行テスト (index.html から切り出して実行)
 node tests/check-raid-event-hooks.mjs  # 戦況の通知フックの網羅チェック
+node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカーの実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
 「カードをタップすると ReferenceError」が入った) を拾うためのもの。
 関数のシグネチャや依存を変えたらスタブも直すこと。
+`team-picker.mjs` は編成タイルピッカーを切り出してスタブ実行する。
+**値の保持先は従来どおり `#myTeamEditFields` の5つの input** で、ピッカーはそこへ書くだけ —
+この契約が崩れると保存・OCR・人気編成の適用がまとめて壊れるので、テストで固定してある。
+枠のバースト絞り込み・上位10体の折りたたみ・5人そろったら自動で畳む、の状態遷移も見る。
+
 `check-raid-event-hooks.mjs` は「ボスの残HPを動かす呼び出しの直後に `_checkRaidEvents()` があるか」を
 機械的に確認する。**HPを動かす経路を足したら invalidate の前にフックを呼ぶこと** —
 呼ばないとその操作で倒れたときに撃破通知を落とす (2026-08-09 にレビュー6往復で
