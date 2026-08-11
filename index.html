@@ -5050,9 +5050,6 @@
             <p class="te-step">① 枠を選ぶ <b id="teArmedName"></b></p>
             <div class="te-slots" id="teSlots"></div>
 
-            <!-- バーストチェーン成立チェック (renderTeamEditChainRow が中身を描く) -->
-            <div id="myTeamEditChain"></div>
-
             <!-- ===== まとめて入れる ===== -->
             <div class="te-sec">
                 <p class="te-step" style="margin-bottom:8px;">まとめて入れる</p>
@@ -8570,7 +8567,6 @@
                     </div>`;
             };
             fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
-            renderTeamEditChainRow();
             // ===== タイルピッカーの初期化 =====
             // 開くたびに絞り込み・選択状態を戻す (前回の属性の状態を持ち越さない)
             _teArmed = current.findIndex(v => !v);
@@ -8721,7 +8717,6 @@
                 msg.style.color = '#6C42F0';
             }
         }
-        // 編成編集モーダルの「バーストチェーン成立してる?」行
         // ===== 編成編集モーダルのタイルピッカー (2026-08-12) =====
         // ★ 値の保持先は従来どおり #myTeamEditFields の5つの input。
         //   ピッカーはそこへ書き込むだけにして、保存・OCR・人気編成適用など
@@ -8776,7 +8771,7 @@
             const inp = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
             if (!inp) return;
             inp.value = name || '';
-            updateMyTeamEditIcon(idx);   // アイコン + チェーン行の再描画は既存関数に任せる
+            updateMyTeamEditIcon(idx);   // アイコンとタイルの再描画は既存関数に任せる
         }
         // マスタから「バーストが分かるキャラ」を引く。resolveNikkeChar と同じ正規化を通す
         function _teMaster() {
@@ -8963,34 +8958,6 @@
             _teSetSlot(idx, name);
         }
 
-        function renderTeamEditChainRow() {
-            const el = document.getElementById('myTeamEditChain');
-            if (!el) return;
-            const names = _teamEditNames();
-            if (names.every(n => !n)) { el.innerHTML = ''; return; }   // 空編成では黙る
-            const st = _burstChainStatus(names);
-            const pills = _CHAIN_SLOTS.map(s => {
-                const on = !st.missing.includes(s);
-                const c = _BURST_COLOR[s];
-                return `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:3px 9px;`
-                    + (on ? `color:${c};background:${c}1A;` : `color:#B6BBC1;background:#F1F2F4;border:1px dashed #D5D8DC;`)
-                    + `">${s}${on ? '' : ' なし'}</span>`;
-            }).join('');
-            const notes = [];
-            if (st.noBurst > 0) notes.push(`バースト未設定 ${st.noBurst}体は判定から除外 (設定タブ → キャラ管理 で登録できます)`);
-            if (st.unresolved > 0) notes.push(`マスタに無い名前 ${st.unresolved}件は判定から除外`);
-            const msg = st.ok
-                ? `<span style="font-size:11.5px;font-weight:900;color:#18C26B;">✅ チェーン成立</span>`
-                : `<span style="font-size:11.5px;font-weight:900;color:#F59E0B;">⚠️ ${st.missing.join('・')} が不足</span>`;
-            el.innerHTML = `
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);">
-                    <span style="font-size:11px;font-weight:900;color:#6B7178;">🔗 バーストチェーン</span>
-                    <span style="display:flex;gap:5px;flex-wrap:wrap;">${pills}</span>
-                    ${msg}
-                    ${notes.length ? `<div style="width:100%;font-size:10.5px;color:#8A9097;">${notes.map(escapeHtml).join(' / ')}</div>` : ''}
-                </div>`;
-        }
-
         // 入力中にアイコンプレビューを更新 (?マークもクリックで Picker)
         function updateMyTeamEditIcon(idx) {
             const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
@@ -9004,7 +8971,6 @@
             } else {
                 iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:#F1F2F4;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#F59E0B;cursor:pointer;border:1.5px dashed #F59E0B;">?</div>`;
             }
-            renderTeamEditChainRow();
             // 値を書き換える経路 (OCR・人気編成の適用・アイコンピッカー・手入力) は
             // すべてここを通るので、タイルの再描画もここに集約する
             if (typeof renderTeamEditPicker === 'function') renderTeamEditPicker();
@@ -9302,10 +9268,11 @@
             }
         }
 
-        // ========== バースト枠モデル (ピッカー・チェーン判定・キャラ管理で共有) ==========
+        // ========== バースト区分 (アイコンピッカーの絞り込み・キャラ管理で共有) ==========
+        // ★ 「チェーンが成立しているか」の判定は 2026-08-12 に廃止 (ユーザー決定)。
+        //    バースト自体は絞り込みと表示に使うので残す
         const _BURST_COLOR = { B1: '#6C42F0', B2: '#18C26B', B3: '#FF3D44', 'BΛ': '#9B4DFF' };
         const _BURST_ORDER = ['B1', 'B2', 'B3', 'BΛ'];
-        const _CHAIN_SLOTS = ['B1', 'B2', 'B3'];   // フルバーストに必要な3枠
 
         // このキャラが埋められるバースト枠の一覧。
         // burst = 表示上の主バースト / burst_alt = サブ (例: ラピ:レッドフードは表示B3・B1でも使える)
@@ -9314,12 +9281,8 @@
             if (!entry) return [];
             return Array.from(new Set([entry.burst, entry.burst_alt].filter(Boolean)));
         }
-        // BΛ (レッドフード) はワイルドカード: どのチェーン枠にも入れる
+        // BΛ (レッドフード) はワイルドカード: どのバースト枠にも入れる
         function _isBurstWild(entry) { return _burstsOf(entry).includes('BΛ'); }
-        function _burstSatisfies(entry, want) {
-            const b = _burstsOf(entry);
-            return b.includes('BΛ') || b.includes(want);
-        }
         // 名前 → マスタ行 (エイリアス・ファジィ解決も通す)。未解決なら null
         function _burstEntryOf(name) {
             const nm = (name || '').trim();
@@ -9328,34 +9291,6 @@
             if (hit) return hit;
             const canon = fuzzyResolveCharacter(nm);
             return (canon && _nikkeCharsByName.get(canon)) || null;
-        }
-
-        // 編成の名前配列 → バーストチェーン (B1/B2/B3 を1体ずつ) の充足状況。
-        // BΛ・サブバースト持ちをどの枠に割り当てるかは最大二部マッチングで解く。
-        // (貪欲だと「BΛをB1に置いたせいでB3が埋まらない」のような取りこぼしが出る)
-        function _burstChainStatus(names) {
-            const usable = [];
-            let unresolved = 0, noBurst = 0;
-            (names || []).forEach(n => {
-                if (!(n || '').trim()) return;
-                const e = _burstEntryOf(n);
-                if (!e) { unresolved++; return; }
-                if (_burstsOf(e).length === 0) { noBurst++; return; }
-                usable.push(e);
-            });
-            const cand = usable.map(e => _CHAIN_SLOTS.filter(s => _burstSatisfies(e, s)));
-            const slotToChar = {};   // slot -> usable の index
-            const assign = (ci, seen) => {
-                for (const s of cand[ci]) {
-                    if (seen.has(s)) continue;
-                    seen.add(s);
-                    if (slotToChar[s] === undefined || assign(slotToChar[s], seen)) { slotToChar[s] = ci; return true; }
-                }
-                return false;
-            };
-            for (let ci = 0; ci < usable.length; ci++) assign(ci, new Set());
-            const missing = _CHAIN_SLOTS.filter(s => slotToChar[s] === undefined);
-            return { missing, ok: missing.length === 0, unresolved, noBurst };
         }
 
         // ========== ユニオン内の採用率 (模擬提出 player_damages.characters が材料) ==========
@@ -9378,7 +9313,7 @@
         // ユニオンの提出から算出するので、メタが変わっても自動で追従する。
         // 5人全員のバーストが判明している提出だけを数える (1人でも未設定だと構成が確定しないため)
         // 戻り値: [{ layout: ['B1','B2','B3','B3','B3'], count }] — 多い順
-        // バーストのピル (一覧カード・チェーン行で共通)
+        // バーストのピル (一覧カードで使う)
         function _burstBadgeHtml(entry) {
             if (!entry || !entry.burst) {
                 return `<span title="バースト未設定" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:#A4AAB0;background:#F1F2F4;">?</span>`;
@@ -9399,9 +9334,8 @@
         let _iconPickerAttr = null;   // 採用率をどの属性で数えるか (null = 採用率を使わない)
         let _iconPickerExpanded = {}; // セクションキー -> 全件表示するか (TOP以外は既定で畳む)
         const _ICON_PICKER_TOP = 6;   // 各セクションで先に見せる件数 (モバイル3列 × 2行)
-        // opts.otherNames: この枠以外に既に入っているキャラ名。渡すと不足バーストを初期フィルタにする
         // opts.attr:       PT属性。渡すとユニオン内の採用率で並べ替え + 採用数バッジを出す
-        // opts.burst:      この枠のバースト。渡すと最初からそれで絞る (otherNames の推定より優先)
+        // opts.burst:      この枠のバースト。渡すと最初からそれで絞る
         function openIconPicker(initialSearch, callback, title = '📚 アイコンを選択', opts = {}) {
             _iconPickerCallback = callback;
             _iconPickerAttr = opts.attr || null;
@@ -9419,12 +9353,6 @@
                 // 枠のバーストが決まっている (編成編集のバーストチップ) → それが最優先
                 _iconPickerBurst = opts.burst;
                 _iconPickerHint = `${opts.burst} の枠として絞り込み中 (「すべて」で解除)`;
-            } else if (!initialSearch && Array.isArray(opts.otherNames)) {
-                const st = _burstChainStatus(opts.otherNames);
-                if (st.missing.length > 0) {
-                    _iconPickerBurst = st.missing[0];
-                    _iconPickerHint = `他の枠に ${st.missing.join('・')} がいません → ${_iconPickerBurst} で絞り込み中 (「すべて」で解除)`;
-                }
             }
             _ensureIconPickerDelegation();
             renderIconPickerList();
@@ -9451,20 +9379,16 @@
         function openIconPickerForTeamEdit(idx) {
             const input = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
             const current = input?.value.trim() || '';
-            const others = _teamEditNames().filter((_, i) => i !== idx);
             openIconPicker(current, (name) => {
                 if (input) input.value = name;
                 updateMyTeamEditIcon(idx);
-                renderTeamEditChainRow();
             }, `📚 編成編集 (${idx + 1}枠目)`, {
-                otherNames: others,
                 attr: _myTeamEditAttr,                    // 採用率をこの属性で数える
             });
         }
         // 凸報告モーダル用
         function openIconPickerForAttackSlot(idx) {
             const current = (_myAttackTeamSlots && _myAttackTeamSlots[idx]) || '';
-            const others = (_myAttackTeamSlots || []).filter((_, i) => i !== idx);
             // 採用率は「持っていくPT属性」で数える = ボスの weakness
             // (bosses.attribute はボス自身の属性なので取り違えないこと — CLAUDE.md 参照)
             const boss = (seasonStore.get()?.bosses || [])
@@ -9484,7 +9408,7 @@
                             `<span onclick="openIconPickerForAttackSlot(${i})" title="タップでキャラを修正" style="cursor:pointer;display:inline-flex;">${_renderMatchupCharAvatar(c, 24)}</span>`).join('');
                     }
                 }
-            }, `📚 凸報告 編成 (${idx + 1}枠目)`, { otherNames: others, attr });
+            }, `📚 凸報告 編成 (${idx + 1}枠目)`, { attr });
         }
         // ==== 名前正規化・類似度・ファジィ解決の本体は js/domain/ocr.js に抽出済み (リアーキ ステップ2) ====
         // 以下は薄いアダプタ。実行は必ずランタイム (ocrDomain は defer 読込のためトップレベルでは未定義)

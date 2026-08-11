@@ -18,7 +18,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 const START = '        // ===== 編成編集モーダルのタイルピッカー';
-const END = '        function renderTeamEditChainRow() {';
+// ★ 終端の目印。ここに置く関数を動かしたらこの定数も直すこと
+const END = '        // 入力中にアイコンプレビューを更新';
 const i = html.indexOf(START), j = html.indexOf(END);
 if (i < 0 || j < 0 || j <= i) {
     console.error('NG: ピッカーのブロックを index.html から切り出せませんでした (目印が変わった?)');

@@ -75,7 +75,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   締め凸依頼のステータス追跡 (pending/accepted/declined) は `22_finish_requests.sql` が前提。
   キャラのバースト区分は `24_nikke_burst.sql` (burst) + `25_nikke_burst_alt.sql` (burst_alt =
   複数バーストで使えるキャラのサブ枠。例: ラピ:レッドフード は表示B3・B1枠でも可)。
-  編成ピッカーのバースト絞り込み・チェーン判定がこれを読む。25未適用でも読みは静かに劣化する
+  編成ピッカーのバースト絞り込みがこれを読む。25未適用でも読みは静かに劣化する
   (サブ無し扱い) が、サブの保存だけはエラーで案内する。
   戦況の通知 (ボス撃破・レベル開放) の二重送信よけは `29_raid_event_notices.sql`
   (未適用だと通知が出ないだけで本処理は壊れない)。
