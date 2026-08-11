@@ -734,9 +734,21 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
         if (hit) { targetSlot = hit.slot; redirected = hit.slot !== slot; }
     }
     const existing = attrRows.find(r => r.slot === targetSlot) || null;
-    const merged = multi
-        ? ml.mergeMeasurements(existing || {}, { entries, characters: cleaned || undefined })
-        : ml.mergeMeasurement(existing || {}, { damageB: value, level: lv, characters: cleaned || undefined });
+    let merged;
+    if (!multi) {
+        merged = ml.mergeMeasurement(existing || {}, { damageB: value, level: lv, characters: cleaned || undefined });
+    } else if (!redirected) {
+        // 編集していたスロットへの保存 = 「画面の内容がそのまま結果」
+        merged = ml.mergeMeasurements(existing || {}, { entries, characters: cleaned || undefined });
+    } else {
+        // ★ 同一編成だったので別スロットへ振り替える場合は**全置換しない**。
+        //   フォームは元スロットの内容で初期化されているので、そのまま置き換えると
+        //   振替先が持っていた別レベルの測定を消してしまう
+        //   (例: slot1={Lv1,Lv4} / slot2={Lv2} で slot2 を保存 → slot1 が {Lv2} だけになる)。
+        //   振替先には「追記」する — 同じレベルはフォームの値で上書き (Codex指摘 2026-08-12)
+        const base = ml.normLevels(existing && existing.levels, existing && existing.damage_b, existing && existing.boss_level) || {};
+        merged = ml.mergeMeasurements(existing || {}, { entries: { ...base, ...entries }, characters: cleaned || undefined });
+    }
     if (!merged) throw new Error('登録する測定値がありません');
     const basePayload = {
         player_id: playerId, attribute, slot: targetSlot,

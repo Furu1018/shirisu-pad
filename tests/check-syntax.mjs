@@ -51,7 +51,7 @@ console.log('syntax:');
 {
     const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d =>
         d.isDirectory() ? walk(path.join(dir, d.name))
-            : (d.name.endsWith('.js') ? [path.join(dir, d.name)] : []));
+            : (/\.(js|mjs|cjs)$/.test(d.name) ? [path.join(dir, d.name)] : []));
     const files = walk(path.join(ROOT, 'js'));
     if (files.length === 0) ng('js/ にファイルがありません', new Error('探索条件を確認'));
     files.forEach(f => {

@@ -8398,6 +8398,8 @@
         let _myTeamEditSlot = 1;
         // 測定したボスレベル: null = 未指定 (全レベルで使える・移行前の提出)
         let _myTeamEditLevel = null;
+        let _myTeamEditLoadOk = false;   // 開いたときに既存の提出を読めたか (読めていないと全置換保存は危険)
+        let _myTeamEditSeq = 0;          // 開き直しの世代 (非同期の取り違え防止)
         function _renderTeamEditSlotTabs(existingSlots) {
             const el = document.getElementById('myTeamEditSlotTabs');
             if (!el) return;
@@ -8547,17 +8549,29 @@
             const id = getCurrentIdentity();
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
             const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || attrKey;
+            // ★ 途中に await があるので、A を開く→閉じる→B を開く のように重なると、
+            //   A の応答が後着して「画面は A の値なのに保存先は B」になりうる。
+            //   全置換フォームでは B の測定を消す事故になるため世代で捨てる (Codex指摘 2026-08-12)
+            const seq = ++_myTeamEditSeq;
+            const stale = () => seq !== _myTeamEditSeq;
             _myTeamEditAttr = attrKey;
             _myTeamEditSlot = MY_TEAM_SLOTS.includes(Number(slot)) ? Number(slot) : 1;
+            const mySlot = _myTeamEditSlot;
             // 現在の編成・ダメージを取得して初期表示
             let current = ['', '', '', '', ''];
             let existingSlots = [];
             let isNew = true;
             let allRows = [];
+            // ★ supabaseLoadPlayerDamages は失敗を [] に潰す。区別せずに開くと、
+            //   「測定なし」の画面から1件だけ入れて保存 → 既存の levels をその1件で
+            //   全置換して消してしまう (フォームは全置換の意味なので) (Codex指摘 2026-08-12)
+            _myTeamEditLoadOk = false;
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
+                if (stale()) return;   // 後から別の属性・スロットが開かれた
+                _myTeamEditLoadOk = Array.isArray(dmgs);
                 allRows = dmgs || [];
-                const row = (dmgs || []).find(d => d.attribute === attrKey && (d.slot || 1) === _myTeamEditSlot);
+                const row = (dmgs || []).find(d => d.attribute === attrKey && (d.slot || 1) === mySlot);
                 existingSlots = (dmgs || []).filter(d => d.attribute === attrKey).map(d => d.slot || 1);
                 isNew = !row;
                 const existing = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
@@ -8577,6 +8591,7 @@
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
             await getNikkeCharsCache();
+            if (stale()) return;
             // 古い保存データを開いた瞬間にファジィ解決でクリーンアップ
             // (例: 旧スキーマで「ディーゼル:ウー」と保存されていたら「ディーゼル：ウィンタースイーツ」に置換)
             current = current.map(v => v ? (fuzzyResolveCharacter(v) || v) : '');
@@ -8611,7 +8626,7 @@
             //   モーダルの表示が1往復ぶん遅れる (Codex指摘 2026-08-12)
             _myTeamEditOtherTeam = [];
             allRows.forEach(d => {
-                if (d.attribute !== attrKey || (d.slot || 1) === _myTeamEditSlot) return;
+                if (d.attribute !== attrKey || (d.slot || 1) === mySlot) return;
                 (d.characters || []).filter(Boolean).forEach(c => _myTeamEditOtherTeam.push(c));
             });
             renderTeamEditPicker();
@@ -9669,11 +9684,21 @@
                 //   どのレベルの結果かは分からないので、**空いている一番低いレベル行**に入れて
                 //   「合っているか確認してください」と促す。黙って特定のレベルとして保存されると
                 //   ボス5(HP無限)の候補から静かに外れることがあるため
-                let placedLv = null;
+                let placedLv = null, skippedDmg = false;
                 if (dmgB !== null) {
                     const shown = dmgB.toFixed(2).replace(/\.?0+$/, '');
                     const rows = Array.from(document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]'));
-                    const target = rows.find(r => (r.value || '').trim() === '') || rows[0];
+                    const empty = rows.find(r => (r.value || '').trim() === '');
+                    // ★ 空きが無いときに黙って先頭を潰さない。手で入れた値・締め凸後に
+                    //   補正した値を確認なしで消す経路になる (Codex指摘 2026-08-12)
+                    let target = empty;
+                    if (!target && rows.length > 0) {
+                        const k = rows[0].getAttribute('data-te-lv');
+                        const label = k === '0' ? '未指定' : `Lv${k}`;
+                        target = confirm(`すべてのレベルに値が入っています。\n${label} の ${rows[0].value}B を、読み取った ${shown}B で置き換えますか？`)
+                            ? rows[0] : null;
+                        if (!target) skippedDmg = true;
+                    }
                     if (target) {
                         target.value = shown;
                         placedLv = target.getAttribute('data-te-lv');
@@ -9681,7 +9706,7 @@
                     }
                 }
                 if (typeof _renderTeamEditLevelNote === 'function') _renderTeamEditLevelNote();
-                const where = placedLv === null ? ''
+                const where = placedLv === null ? (skippedDmg ? ' (ダメージは据え置き)' : '')
                     : ` — ${placedLv === '0' ? '未指定' : 'Lv' + placedLv} の欄に入れました。測ったレベルか確認してください`;
                 statusEl.textContent = `✅ ${done.join(' / ')} を取り込みました${where}`;
                 statusEl.style.color = '#B45309';
@@ -9713,6 +9738,13 @@
             const hasEntries = Object.keys(entries).length > 0;
             // 開いた時点で測定があったのに全部空にした = クリアの意図
             const hadBefore = Object.values(_myTeamEditLevels || {}).some(v => Number(v) > 0);
+            // ★ このフォームは「画面の内容がそのまま保存結果」なので、開いたときに
+            //   既存の提出を読めていないと、見えていない測定を消してしまう。
+            //   読めていないまま測定を触る保存は止める (編成だけの更新は従来どおり許す)
+            if (!_myTeamEditLoadOk && (hasEntries || hadBefore)) {
+                setMsg('❌ 提出の読み込みに失敗した状態です。閉じて開き直してから保存してください', true);
+                return;
+            }
             try {
                 let canonical = names;
                 if (names.length > 0 && typeof window.supabaseRegisterOcrCharacters === 'function') {

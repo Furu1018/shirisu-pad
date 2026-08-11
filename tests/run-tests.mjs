@@ -2589,6 +2589,18 @@ console.log('\nmockLevelsDomain:');
         assert.equal(diff.teamChanged, true, '別編成なら true');
     });
 
+    test('mergeMeasurements: 別スロットへ振り替えるときは追記マージで消さない', () => {
+        // supabaseSaveMockSubmission は同一編成が別スロットにあるとそちらへ振り替える。
+        // そのとき全置換すると、振替先が持っていた別レベルの測定が消える。
+        // 呼び出し側は「振替先の既存 levels + フォーム」を entries に渡す約束にしてある
+        const target = { levels: { '1': 10, '4': 40 }, damage_b: 40, boss_level: 4, characters: ['a','b','c','d','e'] };
+        const form = { '2': 22 };                       // 元スロットのフォームには Lv2 だけ
+        const base = ml.normLevels(target.levels, target.damage_b, target.boss_level);
+        const r = ml.mergeMeasurements(target, { entries: { ...base, ...form }, characters: ['a','b','c','d','e'] });
+        assert.deepEqual(r.levels, { '1': 10, '2': 22, '4': 40 }, `Lv1/Lv4 が残るはず: ${JSON.stringify(r.levels)}`);
+        assert.equal(r.damage_b, 40);
+    });
+
     test('mergeMeasurements: 未指定 (0) も登録できる (移行前の提出の編集)', () => {
         const r = ml.mergeMeasurements({}, { entries: { 0: 14.3, 4: 30 } });
         assert.deepEqual(r.levels, { '0': 14.3, '4': 30 });
