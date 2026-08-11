@@ -2468,6 +2468,69 @@ test('gbCompare: 属性の順序違いの同一組は重複除去される', () 
     assert.equal(a.results[0].total, b.results[0].total, 'picks の順序が違っても同じ最適解');
 });
 
+// ---- レベル別測定値 (levels マップ — 31_player_damages_levels) ---------------
+console.log('\nloadout levels:');
+
+test('levels{1:30,4:12}: Lv1のボスには30が、Lv2のボスには12が使われる', () => {
+    const mk = () => {
+        const p = player('A', { fire: 30 });
+        p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30, '4': 12 } }] };
+        return p;
+    };
+    const p1 = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [mk()], { currentLevel: 1 }));
+    const a1 = p1.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(a1.length, 1);
+    assert.equal(a1[0].dmgB, 30, `Lv1 では Lv1測定の30を使う: ${a1[0].dmgB}`);
+    assert.equal(a1[0].loadoutLevel, 1);
+    const p2 = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [mk()], { currentLevel: 2 }));
+    const a2 = p2.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(a2.length, 1, 'Lv4測定があるので Lv2 にも出せる');
+    assert.equal(a2[0].dmgB, 12, `Lv2 では Lv4測定の12に落ちる (Lv1の30は過大評価): ${a2[0].dmgB}`);
+    assert.equal(a2[0].loadoutLevel, 4, '採用した測定のレベルが出る');
+});
+
+test('levels のキー"0" (未指定) は全レベルで使え、レベル付き測定より高ければ勝つ', () => {
+    const p = player('A', { fire: 30 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: null, levels: { '0': 20, '1': 30 } }] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 1);
+    assert.equal(used[0].dmgB, 20, `Lv3 では "0" の20だけが使える (Lv1の30は不可): ${used[0].dmgB}`);
+    assert.equal(used[0].loadoutLevel, null);
+});
+
+test('Lv4割当は「Lv4で解決した値」の argmax (静的な最大値順の先頭採用に戻すと落ちる)', () => {
+    const bs = [
+        boss(1, 'fire', { tier: 'lord', remainingB: 0 }),
+        boss(2, 'water', { tier: 'lord', remainingB: 0 }),
+        boss(3, 'electric', { tier: 'tyrant', remainingB: 0 }),
+        boss(4, 'iron', { tier: 'lord', remainingB: 0 }),
+        boss(5, 'wind', { tier: 'tyrant', remainingB: 0 }),
+    ];
+    const p = player('A', { wind: 25 }, { attackCount: 2 });   // 残1凸 → 良い方1つだけ選ばれる
+    p.loadoutsByAttr = { wind: [
+        // 静的最大値 25 (ソート先頭) だが Lv4 では 12 しか出ない編成
+        { dmgB: 25, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 25, '4': 12 } },
+        // 未指定 20 = Lv4 でも 20 出る編成 — こちらを選ぶべき
+        { dmgB: 20, team: ['f','g','h','i','j'], slot: 2, level: null, levels: { '0': 20 } },
+    ] };
+    const plan = compute(makeInput(bs, [p], { currentLevel: 3 }));
+    const lv4 = plan.levels[plan.levels.length - 1];
+    assert.equal(lv4.bosses[0].attacks.length, 1);
+    assert.equal(lv4.bosses[0].attacks[0].dmgB, 20, `Lv4解決値 20 > 12 なので編成②: ${lv4.bosses[0].attacks[0].dmgB}`);
+    assert.equal(lv4.bosses[0].attacks[0].loadoutSlot, 2);
+});
+
+test('dmgB と levels が矛盾する入力は levels 側の最大値に正規化される (防御)', () => {
+    const p = player('A', { fire: 5 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 5, team: ['a','b','c','d','e'], slot: 1, level: null, levels: { '2': 18 } }] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 1 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 1);
+    assert.equal(used[0].dmgB, 18, `levels の 18 が正: ${used[0].dmgB}`);
+    assert.equal(used[0].loadoutLevel, 2);
+});
+
 // ---- mockLevels ドメイン (レベル別測定値 — 31_player_damages_levels) --------
 console.log('\nmockLevelsDomain:');
 {
