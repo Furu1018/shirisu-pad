@@ -8567,10 +8567,13 @@
             //   全置換して消してしまう (フォームは全置換の意味なので) (Codex指摘 2026-08-12)
             _myTeamEditLoadOk = false;
             try {
-                const dmgs = await window.supabaseLoadPlayerDamages(id.id);
+                // ★ 成否つきで読む。supabaseLoadPlayerDamages は失敗を [] に潰すため、
+                //   それだけでは「提出が無い」と「読めなかった」を区別できない
+                const res0 = await window.supabaseLoadPlayerDamagesResult(id.id);
                 if (stale()) return;   // 後から別の属性・スロットが開かれた
-                _myTeamEditLoadOk = Array.isArray(dmgs);
-                allRows = dmgs || [];
+                _myTeamEditLoadOk = !!res0.ok;
+                const dmgs = res0.rows || [];
+                allRows = dmgs;
                 const row = (dmgs || []).find(d => d.attribute === attrKey && (d.slot || 1) === mySlot);
                 existingSlots = (dmgs || []).filter(d => d.attribute === attrKey).map(d => d.slot || 1);
                 isNew = !row;
@@ -8582,6 +8585,10 @@
                 // レベル別測定値 (31): 入力行の初期値。supabaseLoadPlayerDamages が正規化済み
                 _myTeamEditLevels = row?.levels || null;
             } catch {
+                // ★ catch にも stale が要る。A の読み込み失敗が後着すると、
+                //   すでに開いている B のフォームを空にしてしまう (Codex指摘 2026-08-12)
+                if (stale()) return;
+                _myTeamEditLoadOk = false;
                 _myTeamEditLevel = null;   // 読めなかったときは「未設定」= 従来どおり全レベル可
                 _myTeamEditLevels = null;
             }
@@ -9639,6 +9646,10 @@
         let _teamEditOcrSeq = 0;
         function closeMyTeamEditModal() {
             _teamEditOcrSeq++;   // 実行中のOCRを無効化 (閉じ→開き直しで旧結果が入るのを防ぐ)
+            // 読み込み中に閉じられたら、その結果でモーダルを開き直さない。
+            // 読み込み済みフラグも落として「読めていないのに保存できる」状態を作らない
+            _myTeamEditSeq++;
+            _myTeamEditLoadOk = false;
             document.getElementById('myTeamEditModal').classList.remove('open');
             _myTeamEditAttr = null;
         }
@@ -9721,10 +9732,23 @@
             if (!_myTeamEditAttr) return;
             const id = getCurrentIdentity();
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
+            // ★ 保存の途中にも await があるので、開始時点の対象を固定する。
+            //   固定しないと、await 中に別の属性・スロットを開かれたとき
+            //   「元のフォームの内容を切り替え先へ全置換保存」する事故になる (Codex指摘 2026-08-12)
+            const saveAttr = _myTeamEditAttr;
+            const saveSlot = _myTeamEditSlot;
+            const saveSeq = _myTeamEditSeq;
+            const movedOn = () => saveSeq !== _myTeamEditSeq;
             const inputs = document.querySelectorAll('#myTeamEditFields input[data-team-idx]');
             const names = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
             const msgEl = document.getElementById('myTeamEditMessage');
-            const setMsg = (t, err = false) => { msgEl.textContent = t; msgEl.style.color = err ? '#ef4444' : '#22c55e'; };
+            // ★ 別の編成を開いたあとに古い保存の結果を書き込むと、いま開いている編成の
+            //   メッセージ欄に無関係な成否が出る。世代がずれていたら黙る (Codex指摘 2026-08-12)
+            const setMsg = (t, err = false) => {
+                if (movedOn()) return;
+                msgEl.textContent = t;
+                msgEl.style.color = err ? '#ef4444' : '#22c55e';
+            };
             // レベル行の内容 = 保存後に残る測定の全体 (空欄にしたレベルは消える)
             const entries = _teLevelEntries();
             const bad = Array.from(document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]'))
@@ -9751,14 +9775,16 @@
                     const reg = await window.supabaseRegisterOcrCharacters(names);
                     canonical = (reg.canonical || names).filter(Boolean);
                 }
+                // キャラ登録の間に別の属性・スロットへ移られていたら、この保存は捨てる
+                if (movedOn()) { setMsg('⚠️ 別の編成を開いたため保存を中止しました', true); return; }
                 const parts = [];
-                let savedSlot = _myTeamEditSlot;
+                let savedSlot = saveSlot;
                 let redirected = false;
                 if (hasEntries) {
                     // 提出の主経路: 同一編成が別スロットにあれば自動でそちらへ測定を追記
                     // (レベル違いの提出で編成枠を食わない — 1スロット=1編成の再設計)
-                    const res = await window.supabaseSaveMockSubmission(id.id, _myTeamEditAttr, {
-                        entries, slot: _myTeamEditSlot,
+                    const res = await window.supabaseSaveMockSubmission(id.id, saveAttr, {
+                        entries, slot: saveSlot,
                         characters: canonical.length > 0 ? canonical : null,
                     });
                     savedSlot = res.slot;
@@ -9768,21 +9794,23 @@
                     parts.push(`💥 ${lvTxt}`);
                     if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                     // 編成を空にして保存した場合は従来どおり編成のクリアとして扱う
-                    if (canonical.length === 0) await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, savedSlot);
-                    _myTeamEditLevels = res.levels || entries;   // ストリップ表示の元を更新
+                    if (canonical.length === 0) await window.supabaseSaveTeamForAttribute(id.id, saveAttr, canonical, savedSlot);
+                    if (!movedOn()) _myTeamEditLevels = res.levels || entries;   // 入力行の元を更新
                 } else if (hadBefore) {
                     // 全部空にした = 測定のクリア (旧挙動の維持)
-                    await window.supabaseSavePlayerDamage(id.id, _myTeamEditAttr, 0, _myTeamEditSlot, null);
-                    await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
+                    await window.supabaseSavePlayerDamage(id.id, saveAttr, 0, saveSlot, null);
+                    await window.supabaseSaveTeamForAttribute(id.id, saveAttr, canonical, saveSlot);
                     parts.push('測定をクリア');
                     if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
-                    _myTeamEditLevels = null;
+                    if (!movedOn()) _myTeamEditLevels = null;
                 } else {
                     // ダメージ未入力: 編成だけ更新 (従来どおり)
-                    await window.supabaseSaveTeamForAttribute(id.id, _myTeamEditAttr, canonical, _myTeamEditSlot);
+                    await window.supabaseSaveTeamForAttribute(id.id, saveAttr, canonical, saveSlot);
                     if (canonical.length > 0) parts.push(`編成${canonical.length}名`);
                 }
-                const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
+                // 保存自体は完了している。以降の画面更新だけ、移動していたら控える
+                if (movedOn()) { opsStore.invalidate(); await renderMyDamagePanels(id); return; }
+                const ptName = PT_ATTRS.find(x => x.key === saveAttr)?.name || saveAttr;
                 setMsg(redirected
                     ? `✅ 入力した編成は編成${SLOT_JP[savedSlot]}と同一のため、${SLOT_JP[savedSlot]}に測定を追記しました`
                     : `✅ ${ptName}PT 編成${SLOT_JP[savedSlot]} を更新: ${parts.join(' / ') || '空'}`);
@@ -9792,9 +9820,8 @@
                     showNotification(`✅ 同一編成のため 編成${SLOT_JP[savedSlot]} に統合しました`);
                     // ★ グローバルはタイマー発火までに変わりうるので、開き直す対象はローカルに固定する。
                     //   発火時に別の属性を開いていたら (ユーザーが先に操作した) 何もしない (Codex指摘)
-                    const reopenAttr = _myTeamEditAttr;
                     setTimeout(() => {
-                        if (_myTeamEditAttr === reopenAttr) handleMyTeamEdit(reopenAttr, savedSlot);
+                        if (!movedOn() && _myTeamEditAttr === saveAttr) handleMyTeamEdit(saveAttr, savedSlot);
                     }, 900);
                 }
                 // ★ 保存してもモーダルは閉じない (ユーザー決定 2026-08-12)。

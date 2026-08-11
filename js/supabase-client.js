@@ -525,7 +525,11 @@ async function _upsertPlayerDamages(rows) {
 // boss_level = 測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
 // levels = レベル別測定値 {"0":14.2,"4":12.5} (31適用後)。未適用/旧行では
 // (damage_b, boss_level) から正規化した1測定になる (mockLevelsDomain.normLevels)
-window.supabaseLoadPlayerDamages = async function (playerId) {
+// ★ 読み取りの本体は「クエリが成功したか」も返す。
+//   空配列を返してから別クエリで確かめる方式にすると、初回登録の人 (本当に0件) でも
+//   その確認クエリが RLS・通信の揺れで失敗すると「読めなかった」と誤判定し、
+//   保存できなくなる (Codex指摘 2026-08-12)
+async function _loadPlayerDamagesRaw(playerId) {
     // slot / characters / boss_level / levels カラム未マイグの環境でも壊れないよう多段フォールバック
     const selects = [
         'attribute, damage_b, updated_at, characters, slot, boss_level, levels',
@@ -542,7 +546,7 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
                 .select(sel)
                 .eq('player_id', playerId);
             if (!r.error) {
-                return (r.data || [])
+                const rows = (r.data || [])
                     .filter(d => isUsableSlot(d.slot))   // 32未適用環境の slot=3 を全画面から締め出す
                     .map(d => ({
                         ...d,
@@ -551,11 +555,18 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
                         levels: ml ? ml.normLevels(d.levels, d.damage_b, d.boss_level) : (d.levels ?? null),
                     }))
                     .sort((a, b) => a.slot - b.slot);
+                return { ok: true, rows };
             }
         } catch { /* fallthrough */ }
     }
-    return [];
+    return { ok: false, rows: [] };   // どの列構成でも読めなかった
+}
+window.supabaseLoadPlayerDamages = async function (playerId) {
+    return (await _loadPlayerDamagesRaw(playerId)).rows;
 };
+// 「提出が無い」と「読めなかった」を区別したい画面用 (編集モーダルのように
+// 画面の内容で全置換するところは、この区別を誤ると測定を消してしまう)
+window.supabaseLoadPlayerDamagesResult = _loadPlayerDamagesRaw;
 
 // 模擬の編成スロット上限 (supabase/32 で DB の CHECK も 1|2)。
 // ★ 32 未適用の環境には slot=3 の行が残りうる。読み取り時にここで切り落として
