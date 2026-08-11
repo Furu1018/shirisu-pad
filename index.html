@@ -9304,19 +9304,39 @@
             statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
             try {
                 const r = await _ocrAttackMultiAndMerge(files);
-                if (!r.characters || r.characters.length === 0) throw new Error('キャラ名を読み取れませんでした');
-                await getNikkeCharsCache();  // ファジィ解決のためマスタを準備
-                const inputs = document.querySelectorAll('#myTeamEditFields input[data-team-idx]');
+                // ★ OCR は { characters, totalDamage, bossName } を返す。
+                //   以前はキャラだけ使って totalDamage を捨てており、同じスクショを見ながら
+                //   ユーザーが数字を手で打ち直していた (マイページ側の取り込みは使っている)。
+                //   どちらか片方でも読めたら成功として扱う。
+                const nChars = Array.isArray(r.characters) ? r.characters.length : 0;
+                const dmgB = Number(r.totalDamage) > 0 ? Number(r.totalDamage) / 1e9 : null;
+                if (nChars === 0 && dmgB === null) throw new Error('ダメージも編成も読み取れませんでした');
+                const done = [];
                 let matched = 0;
-                r.characters.slice(0, 5).forEach((rawName, i) => {
-                    if (!inputs[i] || !rawName) return;
-                    const resolved = fuzzyResolveCharacter(rawName);
-                    inputs[i].value = resolved || rawName;
-                    if (resolved && resolved !== rawName) matched++;
-                    updateMyTeamEditIcon(i);
-                });
-                statusEl.textContent = `✅ ${r.characters.length}キャラ取り込み (うち${matched}件をマスタへ自動補正)`;
-                statusEl.style.color = '#22c55e';
+                if (nChars > 0) {
+                    await getNikkeCharsCache();  // ファジィ解決のためマスタを準備
+                    const inputs = document.querySelectorAll('#myTeamEditFields input[data-team-idx]');
+                    r.characters.slice(0, 5).forEach((rawName, i) => {
+                        if (!inputs[i] || !rawName) return;
+                        const resolved = fuzzyResolveCharacter(rawName);
+                        inputs[i].value = resolved || rawName;
+                        if (resolved && resolved !== rawName) matched++;
+                        updateMyTeamEditIcon(i);
+                    });
+                    done.push(`${nChars}キャラ${matched > 0 ? ` (うち${matched}件をマスタへ自動補正)` : ''}`);
+                }
+                if (dmgB !== null) {
+                    const inp = document.getElementById('myTeamEditDamage');
+                    // 表示形式は既存の読み込み時と揃える (末尾の 0 を落とす)
+                    if (inp) inp.value = dmgB.toFixed(2).replace(/\.?0+$/, '');
+                    done.push(`ダメージ ${dmgB.toFixed(2).replace(/\.?0+$/, '')}B`);
+                }
+                // ★ レベルはスクショから読めない (attack_result スキーマに項目が無い)。
+                //   未選択のまま保存されると「全レベルで使える」扱いになり過大評価につながるので、
+                //   取り込み直後に必ず促す
+                const needLv = _myTeamEditLevel == null ? ' — 測定したレベルを選んでください' : '';
+                statusEl.textContent = `✅ ${done.join(' / ')} を取り込みました${needLv}`;
+                statusEl.style.color = needLv ? '#B45309' : '#22c55e';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
                 statusEl.style.color = '#ef4444';
