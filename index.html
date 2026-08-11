@@ -9295,11 +9295,20 @@
             _myTeamEditAttr = null;
         }
 
+        // ★ 連続で画像を選ぶと、古い解析が後から完了して新しい結果を上書きしうる
+        //   (キャラありの経路は getNikkeCharsCache を挟むぶん到着順が入れ替わりやすい)。
+        //   世代番号で「最後に開始した解析」だけを反映する (Codex指摘 2026-08-12)
+        let _teamEditOcrSeq = 0;
         async function handleMyTeamEditOcr(event) {
             const files = Array.from(event.target.files || []);
             event.target.value = '';
             const statusEl = document.getElementById('myTeamEditOcrStatus');
             if (files.length === 0) return;
+            const seq = ++_teamEditOcrSeq;
+            // 解析中に別の属性・スロットへ移られたら結果を捨てる (取り違え防止)
+            const forAttr = _myTeamEditAttr, forSlot = _myTeamEditSlot;
+            const stale = () => seq !== _teamEditOcrSeq
+                || _myTeamEditAttr !== forAttr || _myTeamEditSlot !== forSlot;
             statusEl.textContent = `🔍 ${files.length}枚をAIで解析中... (1枚あたり10〜20秒)`;
             statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
             try {
@@ -9308,6 +9317,7 @@
                 //   以前はキャラだけ使って totalDamage を捨てており、同じスクショを見ながら
                 //   ユーザーが数字を手で打ち直していた (マイページ側の取り込みは使っている)。
                 //   どちらか片方でも読めたら成功として扱う。
+                if (stale()) return;
                 const nChars = Array.isArray(r.characters) ? r.characters.length : 0;
                 const dmgB = Number(r.totalDamage) > 0 ? Number(r.totalDamage) / 1e9 : null;
                 if (nChars === 0 && dmgB === null) throw new Error('ダメージも編成も読み取れませんでした');
@@ -9315,6 +9325,7 @@
                 let matched = 0;
                 if (nChars > 0) {
                     await getNikkeCharsCache();  // ファジィ解決のためマスタを準備
+                    if (stale()) return;
                     const inputs = document.querySelectorAll('#myTeamEditFields input[data-team-idx]');
                     r.characters.slice(0, 5).forEach((rawName, i) => {
                         if (!inputs[i] || !rawName) return;
@@ -9325,19 +9336,35 @@
                     });
                     done.push(`${nChars}キャラ${matched > 0 ? ` (うち${matched}件をマスタへ自動補正)` : ''}`);
                 }
+                let skippedDmg = false;
                 if (dmgB !== null) {
                     const inp = document.getElementById('myTeamEditDamage');
                     // 表示形式は既存の読み込み時と揃える (末尾の 0 を落とす)
-                    if (inp) inp.value = dmgB.toFixed(2).replace(/\.?0+$/, '');
-                    done.push(`ダメージ ${dmgB.toFixed(2).replace(/\.?0+$/, '')}B`);
+                    const shown = dmgB.toFixed(2).replace(/\.?0+$/, '');
+                    const cur = (inp?.value || '').trim();
+                    // ★ 手で入れた値・締め凸後に補正した値を無確認で潰さない。
+                    //   空 or 同値ならそのまま入れ、違う値が入っているときだけ確認する (Codex指摘)
+                    if (inp && (cur === '' || cur === shown)) {
+                        inp.value = shown;
+                        done.push(`ダメージ ${shown}B`);
+                    } else if (inp && confirm(`ダメージ欄に ${cur}B が入っています。\n読み取った ${shown}B で置き換えますか？`)) {
+                        inp.value = shown;
+                        done.push(`ダメージ ${shown}B`);
+                    } else {
+                        skippedDmg = true;
+                    }
                 }
                 // ★ レベルはスクショから読めない (attack_result スキーマに項目が無い)。
-                //   未選択のまま保存されると「全レベルで使える」扱いになり過大評価につながるので、
-                //   取り込み直後に必ず促す
-                const needLv = _myTeamEditLevel == null ? ' — 測定したレベルを選んでください' : '';
-                statusEl.textContent = `✅ ${done.join(' / ')} を取り込みました${needLv}`;
-                statusEl.style.color = needLv ? '#B45309' : '#22c55e';
+                //   新規スロットは開いた時点で Lv1 が既定なので「未選択なら促す」だと促されず、
+                //   Lv4 の結果を取り込んでも黙って Lv1 測定として保存され、ボス5候補から外れる。
+                //   取り込み後は**常に**レベルの確認を促す (Codex指摘 2026-08-12)
+                const lvNow = _myTeamEditLevel == null ? '未設定' : `Lv${_myTeamEditLevel}`;
+                statusEl.textContent = `✅ ${done.join(' / ')} を取り込みました`
+                    + (skippedDmg ? ' (ダメージは据え置き)' : '')
+                    + ` — 測定したレベルを確認してください (いま ${lvNow})`;
+                statusEl.style.color = '#B45309';
             } catch (e) {
+                if (stale()) return;   // 古い解析の失敗で新しい解析の表示を潰さない
                 statusEl.textContent = `❌ ${e?.message || e}`;
                 statusEl.style.color = '#ef4444';
             }

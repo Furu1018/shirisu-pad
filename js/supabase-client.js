@@ -507,6 +507,10 @@ async function _upsertPlayerDamages(rows) {
             .upsert(noLevel, { onConflict: 'player_id,attribute,slot' });
         if (!res.error) return res;
     }
+    if (rows2.some(r => !isUsableSlot(r.slot))) {
+        // 32 で slot の CHECK が 1|2 に戻っている。ここに来るのは実装側のバグなので原因を明示する
+        throw new Error(`模擬の編成スロットは 1〜${MOCK_SLOT_MAX} です (指定: ${rows2.map(r => r.slot).join(',')})`);
+    }
     if (rows2.some(r => Number(r.slot) === 2)) {
         throw new Error('2編成目の保存には supabase/21_player_damages_slots.sql の適用が必要です');
     }
@@ -537,6 +541,7 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
                 .eq('player_id', playerId);
             if (!r.error) {
                 return (r.data || [])
+                    .filter(d => isUsableSlot(d.slot))   // 32未適用環境の slot=3 を全画面から締め出す
                     .map(d => ({
                         ...d,
                         slot: d.slot || 1,
@@ -549,6 +554,15 @@ window.supabaseLoadPlayerDamages = async function (playerId) {
     }
     return [];
 };
+
+// 模擬の編成スロット上限 (supabase/32 で DB の CHECK も 1|2)。
+// ★ 32 未適用の環境には slot=3 の行が残りうる。読み取り時にここで切り落として
+//   「アプリ全体が2枠として一貫して振る舞う」ようにする。切らないと、
+//   ソルバーは③を候補にするのに模擬タブは表示・編集できず、採用マークは③を①に丸めて
+//   「使っていない①が採用済みに見える」という不整合になる (Codex指摘 2026-08-12)
+export const MOCK_SLOT_MAX = 2;
+export function isUsableSlot(v) { const n = Number(v) || 1; return n >= 1 && n <= MOCK_SLOT_MAX; }
+window.MOCK_SLOT_MAX = MOCK_SLOT_MAX;
 
 // 模擬のボスレベル: 1〜4 の整数だけを通し、それ以外 (未指定・不正値) は null に倒す。
 // ★ 0 や NaN を 1 に丸めない — 「未指定 (全レベル可)」と「Lv1 (Lv1でしか使えない)」は
@@ -2453,7 +2467,13 @@ window.supabaseDeleteActiveTestSeason = async function () {
             // その場合は列ごと落として旧挙動のまま復元する
             const hasLevel = snapshot.some(s => s.boss_level !== undefined);
             const hasLevels = snapshot.some(s => s.levels !== undefined);
-            const rowsWithChars = snapshot.map(s => ({
+            // ★ 32 適用後は slot>=3 が CHECK 違反になる。古いテストシーズンの
+            //   スナップショットに③が入っていると、**全削除したあとの復元がまるごと失敗し
+            //   模擬データが消えたまま終了処理が進む**ため、ここで落とす (Codex指摘 2026-08-12)
+            const kept = snapshot.filter(s => isUsableSlot(s.slot));
+            const dropped = snapshot.length - kept.length;
+            if (dropped > 0) console.warn(`[endTestSeason] slot>${MOCK_SLOT_MAX} の ${dropped} 行はスナップショットから除外して復元します`);
+            const rowsWithChars = kept.map(s => ({
                 player_id: s.player_id,
                 attribute: s.attribute,
                 damage_b: s.damage_b,
@@ -2465,7 +2485,7 @@ window.supabaseDeleteActiveTestSeason = async function () {
             const r1 = await _upsertPlayerDamages(rowsWithChars);
             if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
                 // characters 列が DB に存在しない環境にフォールバック
-                const rowsBasic = snapshot.map(s => ({
+                const rowsBasic = kept.map(s => ({
                     player_id: s.player_id,
                     attribute: s.attribute,
                     damage_b: s.damage_b,
@@ -2473,7 +2493,12 @@ window.supabaseDeleteActiveTestSeason = async function () {
                     ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
                     ...(hasLevels ? { levels: s.levels ?? null } : {}),
                 }));
-                await _upsertPlayerDamages(rowsBasic);
+                const r2 = await _upsertPlayerDamages(rowsBasic);
+                if (r2.error) throw r2.error;
+            } else if (r1.error) {
+                // ★ 復元は「全削除 → 入れ直し」なので、ここで黙って進むと模擬データが消える。
+                //   characters 列以外の失敗も必ず表に出す (Codex指摘 2026-08-12)
+                throw r1.error;
             }
         }
     }
@@ -3309,6 +3334,9 @@ window.supabaseLoadOpsDashboardData = async function () {
     const loadoutsByPlayer = new Map();
     const mlDom = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
     (dmgs || []).forEach(d => {
+        // 32未適用環境に残る slot=3 はここでも締め出す。
+        // 落とさないと「ソルバーは③を使うのに模擬タブは編集できない」不整合になる
+        if (!isUsableSlot(d.slot)) return;
         const v = Number(d.damage_b) || 0;
         const slot = d.slot || 1;
         const level = _normBossLevel(d.boss_level);
