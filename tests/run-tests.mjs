@@ -12,6 +12,7 @@ import '../js/domain/format.js';       // globalThis.formatDomain (リアーキ 
 import '../js/domain/mockCompare.js';
 import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベル開放)  // globalThis.mockCompareDomain (UI再設計 Stage2)
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
+import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -2466,6 +2467,80 @@ test('gbCompare: 属性の順序違いの同一組は重複除去される', () 
     assert.equal(b.results.length, 2);
     assert.equal(a.results[0].total, b.results[0].total, 'picks の順序が違っても同じ最適解');
 });
+
+// ---- mockLevels ドメイン (レベル別測定値 — 31_player_damages_levels) --------
+console.log('\nmockLevelsDomain:');
+{
+    const ml = globalThis.mockLevelsDomain;
+
+    test('mockLevels: normLevels は正の有限数のみ通し、不正キーを無視する', () => {
+        const r = ml.normLevels({ 1: 14.2, 4: 12.5, 9: 99, x: 3, 2: -1, 3: 'abc' }, 0, null);
+        assert.deepEqual(r, { '1': 14.2, '4': 12.5 });
+    });
+
+    test('mockLevels: levels が無ければ (damage_b, boss_level) の1測定として読む (移行互換)', () => {
+        assert.deepEqual(ml.normLevels(null, 14.2, 4), { '4': 14.2 });
+        assert.deepEqual(ml.normLevels(null, 14.2, null), { '0': 14.2 });
+        assert.equal(ml.normLevels(null, 0, 4), null, '測定なしは null');
+        // Number(true)===1 の真偽値化け対策 (30 実装時の教訓)
+        assert.deepEqual(ml.normLevels(null, 10, true), { '0': 10 });
+    });
+
+    test('mockLevels: maxEntry は最大値、タイは "0" > 高レベル (寛容側)', () => {
+        assert.deepEqual(ml.maxEntry({ '1': 14, '4': 12 }), { level: 1, value: 14 });
+        assert.deepEqual(ml.maxEntry({ '0': 12, '4': 12 }), { level: null, value: 12 });
+        assert.deepEqual(ml.maxEntry({ '2': 12, '4': 12 }), { level: 4, value: 12 });
+        assert.equal(ml.maxEntry(null), null);
+    });
+
+    test('mockLevels: bestAtLevel は「キー0 または キー≥L」の最大値', () => {
+        const lv = { '1': 30, '4': 12 };
+        assert.equal(ml.bestAtLevel(lv, 1), 30, 'Lv1 には Lv1 測定の 30');
+        assert.equal(ml.bestAtLevel(lv, 2), 12, 'Lv2 には Lv4 測定の 12 (Lv1 測定は使えない)');
+        assert.equal(ml.bestAtLevel(lv, 4), 12);
+        assert.equal(ml.bestAtLevel({ '1': 30 }, 2), null, '届く測定が無ければ null');
+        assert.equal(ml.bestAtLevel({ '0': 20, '1': 30 }, 3), 20, '"0" は全レベルで使える');
+    });
+
+    test('mockLevels: mergeMeasurement は同一編成なら該当キーだけ追記しミラーを再計算', () => {
+        const existing = { levels: { '4': 12 }, damage_b: 12, boss_level: 4,
+            characters: ['ラピ:レッドフード', 'クラウン', 'リター', 'シンデレラ', 'ナガ'] };
+        const r = ml.mergeMeasurement(existing, { damageB: 14, level: 1,
+            characters: ['クラウン', 'ラピ：レッドフード', 'ナガ', 'シンデレラ', 'リター'] });   // 全角コロン+順不同 = 同一編成
+        assert.equal(r.teamChanged, false, '表記揺れ・順不同でも同一編成と判定');
+        assert.deepEqual(r.levels, { '4': 12, '1': 14 });
+        assert.equal(r.damage_b, 14);
+        assert.equal(r.boss_level, 1, 'ミラーは最大値の測定キー');
+    });
+
+    test('mockLevels: 編成が変わったら levels をリセットして新測定だけ残す', () => {
+        const existing = { levels: { '4': 12, '1': 14 }, damage_b: 14, boss_level: 1,
+            characters: ['A', 'B', 'C', 'D', 'E'] };
+        const r = ml.mergeMeasurement(existing, { damageB: 10, level: 2, characters: ['A', 'B', 'C', 'D', 'F'] });
+        assert.equal(r.teamChanged, true);
+        assert.deepEqual(r.levels, { '2': 10 }, '旧編成の測定は無効化');
+        assert.equal(r.damage_b, 10);
+        assert.equal(r.boss_level, 2);
+    });
+
+    test('mockLevels: characters 未指定の取り込みは編成不変としてマージ / 不正値は null', () => {
+        const existing = { levels: { '4': 12 }, damage_b: 12, boss_level: 4, characters: ['A', 'B', 'C', 'D', 'E'] };
+        const r = ml.mergeMeasurement(existing, { damageB: 13, level: null });
+        assert.deepEqual(r.levels, { '4': 12, '0': 13 });
+        assert.equal(ml.mergeMeasurement(existing, { damageB: 0, level: 1 }), null);
+        assert.equal(ml.mergeMeasurement(existing, { damageB: NaN, level: 1 }), null);
+    });
+
+    test('mockLevels: sameTeam/charKey の正規化契約 (ソルバーと同一規則のフィクスチャ)', () => {
+        // optimal-plan.js:188/224 と同じ受理規則であることを固定する (実装は二重化 —
+        // どちらかだけ変えるとこのフィクスチャが乖離を検知する)
+        assert.equal(ml.sameTeam(['アニス:スター', ' クラウン '], ['アニス：スター', 'クラウン']), true, 'NFKC+trim');
+        assert.equal(ml.sameTeam(['a', 'b'], ['B', 'A']), true, '大小文字・順不同');
+        assert.equal(ml.sameTeam(['a', 'b'], ['a', 'b', 'c']), false, '要素数違い');
+        assert.equal(ml.sameTeam([], []), false, '空編成は同一と見なさない');
+        assert.equal(ml.charKey('ラピ：レッドフード'), 'ラピ:レッドフード'.toLowerCase().normalize('NFKC'));
+    });
+}
 
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -165,6 +165,12 @@ SELECT * FROM (
                   AND column_name = 'boss_level'),
         'player_damages.boss_level (模擬の測定ボスレベル + 編成3枠 — 未適用だとレベル指定と3編成目が保存できない)'
 
+    UNION ALL SELECT '31_player_damages_levels',
+        EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'player_damages'
+                  AND column_name = 'levels'),
+        'player_damages.levels (1スロット=1編成・レベル別測定値。未適用だとベスト測定1件に劣化)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

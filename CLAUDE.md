@@ -58,6 +58,10 @@ rm -f .claude/hooks/.codex-on      # OFF
   (主キーが (player_id, attribute, slot) に変わる — upsert は _upsertPlayerDamages 経由必須)。
   模擬の**3編成目 + 測定ボスレベル**は `30_player_damages_level.sql`
   (slot を 1〜3 に拡張・`boss_level` 追加。未適用だとレベル指定と3編成目の保存がエラーになる)。
+  **1スロット=1編成・レベル別測定値**は `31_player_damages_levels.sql` (`levels` JSONB。
+  不変条件: damage_b=levels最大値 / boss_level=そのキーの互換ミラー — 維持は
+  `_upsertPlayerDamages` に集約。純ロジックは `js/domain/mockLevels.js`。
+  未適用環境は levels を落として「ベスト測定1件」に静かに劣化する)。
   締め凸依頼のステータス追跡 (pending/accepted/declined) は `22_finish_requests.sql` が前提。
   キャラのバースト区分は `24_nikke_burst.sql` (burst) + `25_nikke_burst_alt.sql` (burst_alt =
   複数バーストで使えるキャラのサブ枠。例: ラピ:レッドフード は表示B3・B1枠でも可)。
