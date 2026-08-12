@@ -121,12 +121,11 @@ try {
                  setOther: (v) => { _myTeamEditOtherTeam = v; },
                  resetState: () => { _teArmed = 0; _teFilter = 'all'; _teQuery = '';
                      _teExpanded = false; _tePickManual = false; _teLastFull = false;
-                     _myTeamEditLoadedTeam = []; _myTeamEditTeamDirty = false;
+                     _myTeamEditLoadedTeam = [];
                      _teamEditSuppressDirty = false; },
                  checkTeamChanged: () => _teCheckTeamChanged(),
                  openWith: (team) => {
                      _myTeamEditLoadedTeam = team.slice();
-                     _myTeamEditTeamDirty = false;
                      _teamEditSuppressDirty = false;
                  } };`);
     const api = factory();
@@ -359,6 +358,20 @@ test('測定が無い状態で編成を変えても何も起きない', () => {
     renderTeamEditPicker();
     tePick('ナユタ');
     assert(nodes.get('myTeamEditLevelNote')._html === '', `消す対象が無いので黙る: ${nodes.get('myTeamEditLevelNote')._html}`);
+});
+
+test('2回目以降の編成変更でも消す (基準が更新されること)', () => {
+    // 一度きりのフラグで抑止すると、B で入れ直した値が C の測定として保存される
+    reset();
+    inputs[0].value = 'アニス:スター';
+    globalThis.__api.openWith(['アニス:スター']);
+    lvInputs[0].value = '20';
+    renderTeamEditPicker();
+    tePick('ナユタ');                      // 1回目の変更 → 消える
+    assert(lvInputs[0].value === '', '1回目で消えること');
+    lvInputs[0].value = '31';              // 新しい編成で測り直して入力
+    tePick('リバーレリオ');                 // 2回目の変更
+    assert(lvInputs[0].value === '', `2回目でも消えるはず: ${lvInputs[0].value}`);
 });
 
 test('未測定で開いて値を入れたあとに編成を変えても消す', () => {

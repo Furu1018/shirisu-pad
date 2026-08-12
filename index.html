@@ -8400,7 +8400,6 @@
         let _myTeamEditLevel = null;
         let _myTeamEditLoadOk = false;   // 開いたときに既存の提出を読めたか (読めていないと全置換保存は危険)
         let _myTeamEditLoadedTeam = [];  // 開いた時点の編成 (変更を検知して測定値を無効化するため)
-        let _myTeamEditTeamDirty = false;
         let _teamEditSuppressDirty = false;      // 初期描画中は変更検知を止める
         let _myTeamEditSeq = 0;          // 開き直しの世代 (非同期の取り違え防止)
         function _renderTeamEditSlotTabs(existingSlots) {
@@ -8624,7 +8623,6 @@
             // 開くたびに絞り込み・選択状態を戻す (前回の属性の状態を持ち越さない)
             // 編成変更の検知はここを基準にする (初期描画では発火させない)
             _myTeamEditLoadedTeam = current.filter(Boolean).slice();
-            _myTeamEditTeamDirty = false;
             _teArmed = current.findIndex(v => !v);
             if (_teArmed < 0) _teArmed = null;
             _teFilter = 'all'; _teQuery = ''; _teExpanded = false;
@@ -8829,7 +8827,7 @@
             if (!inp) return;
             inp.value = name || '';
             updateMyTeamEditIcon(idx);   // アイコン差し替え + タイル再描画
-            _teCheckTeamChanged();       // ★ ここでも呼ぶ (二重発火は _myTeamEditTeamDirty で防ぐ)
+            _teCheckTeamChanged();       // ★ ここでも呼ぶ (同じ編成なら中で早期 return する)
         }
         // ★ 編成を変えたら、開いた時点の測定値は**その編成のものではない**。
         //   フォームは「画面の内容がそのまま保存結果」なので、放置すると旧編成の数字が
@@ -8837,19 +8835,21 @@
         //   変わった瞬間に一度だけ入力欄を空にして、測り直しを促す
         function _teCheckTeamChanged() {
             if (_teamEditSuppressDirty) return;
-            const now = _teNames().filter(Boolean).map(n => (resolveNikkeChar(n)?.canonical || n));
-            const before = (_myTeamEditLoadedTeam || []).map(n => (resolveNikkeChar(n)?.canonical || n));
+            const canon = (n) => (resolveNikkeChar(n)?.canonical || n);
+            const now = _teNames().filter(Boolean).map(canon);
+            const before = (_myTeamEditLoadedTeam || []).map(canon);
             const same = now.length === before.length
                 && [...now].sort().join('|') === [...before].sort().join('|');
             if (same) return;
-            if (_myTeamEditTeamDirty) return;   // 通知済み
-            // ★ 「消すものがあるか」は**いまの入力欄**で判断する。
-            //   開いた時点の有無で判断すると、未測定で開いて値を入れてから編成を変えた場合に
-            //   早期 return してしまい、入力済みの値が新しい編成に紐付く (Codex指摘 2026-08-12)
+            // ★ 基準の編成をここで更新する。更新しないと (以前は dirty フラグで
+            //   一度きりにしていた) 2回目以降の変更で消せず、
+            //   「Bで入れ直した値が Cの測定として保存される」が起きる (Codex指摘 2026-08-12)
+            _myTeamEditLoadedTeam = _teNames().filter(Boolean);
             const rows = Array.from(document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]'));
+            // 「消すものがあるか」は**いまの入力欄**で判断する。
+            // 値が無いなら黙って基準だけ更新する (キャラを1人ずつ入れている途中など)
             if (!rows.some(i => (i.value || '').trim() !== '')) return;
-            _myTeamEditTeamDirty = true;
-            document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]').forEach(i => { i.value = ''; });
+            rows.forEach(i => { i.value = ''; });
             if (typeof _renderTeamEditLevelNote === 'function') _renderTeamEditLevelNote();
             const note = document.getElementById('myTeamEditLevelNote');
             if (note) {
