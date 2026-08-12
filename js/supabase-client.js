@@ -2838,16 +2838,20 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
 };
 
 // player_damages の characters カラムを更新 (該当行が無ければ upsert で作成)。
-// ★ 編成が変わる場合はレベル別測定を仕切り直す (levels = {"0": 現damage_b})。
-//   旧編成で測った値のレベルタグを新編成に相続させないため (過大評価の温床)。
-//   値そのものは「登録済みダメージ」として残す — 人気編成の反映や凸報告の焼き戻しは
-//   「編成だけ差し替える」操作であり、数値まで消すとユーザーの提出が失われる
+// ★ **測定値 (levels / damage_b / boss_level) には触らない**。
+//   この関数は「編成だけ差し替える」操作として、凸報告の焼き戻し・人気編成の反映・
+//   編集モーダルからと複数経路で呼ばれる。ここで測定を消すと、
+//   凸を報告しただけで模擬の提出が黙って消える (Codex指摘 2026-08-12)。
+//   以前は編成が変わると damage_b を { '0': d } に置き換えていたが、
+//   '0' は「レベル未指定 = 全レベルで使える」の意味なので、Lv1限定30B の編成を
+//   組み替えただけで「全レベルで30B」に化けていた (過大評価の温床)。両方やめる。
+//   「編成が変わったら測定は無効」の担保は入力画面側で行う
+//   (_teCheckTeamChanged が入力欄を空にして測り直しを促す)。
 window.supabaseSaveTeamForAttribute = async function (playerId, attribute, characters, slot = 1) {
     if (!playerId || !attribute || !Array.isArray(characters)) return;
     const cleaned = characters.filter(c => typeof c === 'string' && c.trim().length > 0);
     try {
-        const ml = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
-        const rmw = ml ? await _loadDamageRowForMerge(playerId, attribute, slot) : { legacy: true, failed: false, row: null };
+        // payload に levels/damage_b/boss_level を入れない = ON CONFLICT では触られない
         const payload = {
             player_id: playerId,
             attribute,
@@ -2855,23 +2859,6 @@ window.supabaseSaveTeamForAttribute = async function (playerId, attribute, chara
             characters: cleaned,
             updated_at: new Date().toISOString(),
         };
-        // 取得失敗時は旧動作 (編成のみの upsert) に倒す — 編成保存自体を落とさない。
-        // レベルタグの仕切り直しは次の levels 対応保存時に DB トリガーが整合させる
-        if (!rmw.legacy && !rmw.failed && ml && rmw.row) {
-            const exChars = Array.isArray(rmw.row.characters) ? rmw.row.characters : [];
-            const changed = cleaned.length > 0
-                && (exChars.length === 0 || !ml.sameTeam(cleaned, exChars));
-            if (changed) {
-                // ★ 旧編成の測定値を新編成へ持ち越さない。
-                //   以前は damage_b (levels の最大値) を { '0': d } にしていたが、
-                //   '0' = 「レベル未指定 = 全レベルで使える」なので、
-                //   Lv1限定30B の編成を組み替えただけで「全レベルで30B出せる」に化けていた。
-                //   これは過大評価の方向で、当日「倒せるはずが倒れない」を招く (Codex指摘 2026-08-12)
-                payload.levels = null;
-                payload.damage_b = 0;
-                payload.boss_level = null;
-            }
-        }
         await _upsertPlayerDamages([payload]);
     } catch (e) {
         // characters カラム未マイグレーションのときは静かにスキップ
