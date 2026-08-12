@@ -122,12 +122,11 @@ try {
                  resetState: () => { _teArmed = 0; _teFilter = 'all'; _teQuery = '';
                      _teExpanded = false; _tePickManual = false; _teLastFull = false;
                      _myTeamEditLoadedTeam = []; _myTeamEditTeamDirty = false;
-                     _teamEditSuppressDirty = false; _teamEditNoMeasurementAtOpen = true; },
+                     _teamEditSuppressDirty = false; },
                  checkTeamChanged: () => _teCheckTeamChanged(),
-                 openWith: (team, hasMeasurement) => {
+                 openWith: (team) => {
                      _myTeamEditLoadedTeam = team.slice();
                      _myTeamEditTeamDirty = false;
-                     _teamEditNoMeasurementAtOpen = !hasMeasurement;
                      _teamEditSuppressDirty = false;
                  } };`);
     const api = factory();
@@ -334,7 +333,7 @@ test('編成を変えたら測定値を消す (旧編成の数字を新編成に
     // 前の編成の数字が残っていると、それが新編成の測定として登録されてしまう
     reset();
     inputs[0].value = 'アニス:スター'; inputs[1].value = 'ナユタ';
-    globalThis.__api.openWith(['アニス:スター', 'ナユタ'], true);
+    globalThis.__api.openWith(['アニス:スター', 'ナユタ']);
     lvInputs.forEach(i => { i.value = '20'; });
     renderTeamEditPicker();
     assert(lvInputs.every(i => i.value === '20'), '開いた直後は消さない');
@@ -346,7 +345,7 @@ test('編成を変えたら測定値を消す (旧編成の数字を新編成に
 test('編成を戻したり触っただけでは消さない (初期描画・同じ編成)', () => {
     reset();
     inputs[0].value = 'アニス:スター'; inputs[1].value = 'ナユタ';
-    globalThis.__api.openWith(['アニス:スター', 'ナユタ'], true);
+    globalThis.__api.openWith(['アニス:スター', 'ナユタ']);
     lvInputs.forEach(i => { i.value = '20'; });
     renderTeamEditPicker();                       // 初期描画で消えない
     assert(lvInputs.every(i => i.value === '20'), '再描画だけでは消さない');
@@ -356,10 +355,22 @@ test('編成を戻したり触っただけでは消さない (初期描画・同
 
 test('測定が無い状態で編成を変えても何も起きない', () => {
     reset();
-    globalThis.__api.openWith([], false);
+    globalThis.__api.openWith([]);
     renderTeamEditPicker();
     tePick('ナユタ');
     assert(nodes.get('myTeamEditLevelNote')._html === '', `消す対象が無いので黙る: ${nodes.get('myTeamEditLevelNote')._html}`);
+});
+
+test('未測定で開いて値を入れたあとに編成を変えても消す', () => {
+    // 「消すものがあるか」を開いた時点で判断すると、この経路で入力済みの値が
+    // 差し替え後の編成に紐付いてしまう
+    reset();
+    globalThis.__api.openWith([]);          // 開いた時点では測定なし
+    renderTeamEditPicker();
+    tePick('アニス:スター');                 // 編成を作る (ここでは消さない)
+    lvInputs[0].value = '20';               // あとから値を入れる
+    tePick('ナユタ');                        // さらに編成を変える
+    assert(lvInputs[0].value === '', `入力済みの値も消えるはず: ${lvInputs[0].value}`);
 });
 
 // 抽出できない側 (updateMyTeamEditIcon) の配線は静的に確かめる。

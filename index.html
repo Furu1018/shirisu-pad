@@ -8402,7 +8402,6 @@
         let _myTeamEditLoadedTeam = [];  // 開いた時点の編成 (変更を検知して測定値を無効化するため)
         let _myTeamEditTeamDirty = false;
         let _teamEditSuppressDirty = false;      // 初期描画中は変更検知を止める
-        let _teamEditNoMeasurementAtOpen = true; // 開いた時点で測定が無ければ消すものが無い
         let _myTeamEditSeq = 0;          // 開き直しの世代 (非同期の取り違え防止)
         function _renderTeamEditSlotTabs(existingSlots) {
             const el = document.getElementById('myTeamEditSlotTabs');
@@ -8626,7 +8625,6 @@
             // 編成変更の検知はここを基準にする (初期描画では発火させない)
             _myTeamEditLoadedTeam = current.filter(Boolean).slice();
             _myTeamEditTeamDirty = false;
-            _teamEditNoMeasurementAtOpen = !Object.values(_myTeamEditLevels || {}).some(v => Number(v) > 0);
             _teArmed = current.findIndex(v => !v);
             if (_teArmed < 0) _teArmed = null;
             _teFilter = 'all'; _teQuery = ''; _teExpanded = false;
@@ -8843,8 +8841,13 @@
             const before = (_myTeamEditLoadedTeam || []).map(n => (resolveNikkeChar(n)?.canonical || n));
             const same = now.length === before.length
                 && [...now].sort().join('|') === [...before].sort().join('|');
-            if (same || _teamEditNoMeasurementAtOpen) { return; }
+            if (same) return;
             if (_myTeamEditTeamDirty) return;   // 通知済み
+            // ★ 「消すものがあるか」は**いまの入力欄**で判断する。
+            //   開いた時点の有無で判断すると、未測定で開いて値を入れてから編成を変えた場合に
+            //   早期 return してしまい、入力済みの値が新しい編成に紐付く (Codex指摘 2026-08-12)
+            const rows = Array.from(document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]'));
+            if (!rows.some(i => (i.value || '').trim() !== '')) return;
             _myTeamEditTeamDirty = true;
             document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]').forEach(i => { i.value = ''; });
             if (typeof _renderTeamEditLevelNote === 'function') _renderTeamEditLevelNote();
@@ -9200,7 +9203,7 @@
                 : entry[kind] || [];
             if (team.length === 0) { showNotification('編成データがありません'); return; }
             const a = PT_ATTRS.find(x => x.key === attrKey);
-            if (!confirm(`${a?.name || attrKey}PT の編成①に反映しますか？\n${team.join(' / ')}\n(ダメージ値はそのまま。編成のみ上書き)`)) return;
+            if (!confirm(`${a?.name || attrKey}PT の編成①に反映しますか？\n${team.join(' / ')}\n(ダメージ値はそのまま。編成のみ上書き)\n※ 登録済みのダメージは別の編成で測った値のままです。実際に出るまで参考値として扱われます`)) return;
             try {
                 await window.supabaseSaveTeamForAttribute(id.id, attrKey, team, 1);
                 showNotification(`✅ ${a?.name || attrKey}PT の編成に反映しました`);
@@ -9340,7 +9343,7 @@
             const s = (_popularComboSets[comboIdx] || [])[rowIdx];
             if (!s) return;
             const a = PT_ATTRS.find(x => x.key === s.attr);
-            if (!confirm(`${a?.name || s.attr}PT の編成①に反映しますか？\n${s.team.join(' / ')}\n(ダメージ値はそのまま。編成のみ上書き)`)) return;
+            if (!confirm(`${a?.name || s.attr}PT の編成①に反映しますか？\n${s.team.join(' / ')}\n(ダメージ値はそのまま。編成のみ上書き)\n※ 登録済みのダメージは別の編成で測った値のままです。実際に出るまで参考値として扱われます`)) return;
             try {
                 await window.supabaseSaveTeamForAttribute(id.id, s.attr, s.team, 1);
                 showNotification(`✅ ${a?.name || s.attr}PT の編成に反映しました`);
