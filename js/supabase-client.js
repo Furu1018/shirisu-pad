@@ -2847,6 +2847,9 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
 //   組み替えただけで「全レベルで30B」に化けていた (過大評価の温床)。両方やめる。
 //   「編成が変わったら測定は無効」の担保は入力画面側で行う
 //   (_teCheckTeamChanged が入力欄を空にして測り直しを促す)。
+//   ★ 凸報告の焼き戻しで模擬と違う編成になっても測定値を残すのは**確定仕様**
+//     (ユーザー決定 2026-08-13)。実測していない編成に旧測定が付く控えめな不正確さより、
+//     報告のたびに提出が消える方が実害が大きいという判断。レビューで再指摘不要。
 window.supabaseSaveTeamForAttribute = async function (playerId, attribute, characters, slot = 1) {
     if (!playerId || !attribute || !Array.isArray(characters)) return;
     const cleaned = characters.filter(c => typeof c === 'string' && c.trim().length > 0);
