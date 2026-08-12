@@ -42,15 +42,18 @@ function mkNode(id) {
     return n;
 }
 ['teSlots', 'teGrid', 'teMore', 'teFilters', 'teArmedName', 'tePickBody', 'tePickCnt',
- 'tePickArw', 'teTopArw', 'myTeamEditTopTeams', 'myTeamEditFields', 'teManualArw', 'teSearch'].forEach(mkNode);
+ 'tePickArw', 'teTopArw', 'myTeamEditTopTeams', 'myTeamEditFields', 'teManualArw', 'teSearch',
+ 'myTeamEditLevelRows', 'myTeamEditLevelNote'].forEach(mkNode);
 
 // 5つの入力欄 = 値の保持先
 const inputs = Array.from({ length: 5 }, (_, k) => ({ value: '', dataset: { teamIdx: String(k) } }));
 
+const lvInputs = ['1', '2', '3', '4'].map(k => ({ value: '', _k: k, getAttribute: () => k }));
 globalThis.document = {
     getElementById: (id) => nodes.get(id) || null,
     querySelectorAll: (sel) => {
         if (sel === '#myTeamEditFields input[data-team-idx]') return inputs;
+        if (sel === '#myTeamEditLevelRows input[data-te-lv]') return lvInputs;
         return [];
     },
     querySelector: (sel) => {
@@ -98,6 +101,9 @@ globalThis._teamSubsCache = [
 // updateMyTeamEditIcon は本体では「アイコン + タイルピッカー」を描き直す。
 // ここでは再描画だけを再現する (無限ループしないことの確認も兼ねる)
 let iconCalls = 0;
+// ★ スタブは「アイコン差し替え + タイル再描画」までしかやらない。
+//   編成変更の検知まで肩代わりすると、実装側の配線が外れてもテストが通ってしまう
+//   (実際に 2026-08-12 の変異テストで素通りした)
 globalThis.updateMyTeamEditIcon = function (idx) {
     iconCalls++;
     if (iconCalls > 200) throw new Error('updateMyTeamEditIcon が過剰に呼ばれています (再帰の疑い)');
@@ -114,7 +120,16 @@ try {
                  getArmed: () => _teArmed,
                  setOther: (v) => { _myTeamEditOtherTeam = v; },
                  resetState: () => { _teArmed = 0; _teFilter = 'all'; _teQuery = '';
-                     _teExpanded = false; _tePickManual = false; _teLastFull = false; } };`);
+                     _teExpanded = false; _tePickManual = false; _teLastFull = false;
+                     _myTeamEditLoadedTeam = []; _myTeamEditTeamDirty = false;
+                     _teamEditSuppressDirty = false; _teamEditNoMeasurementAtOpen = true; },
+                 checkTeamChanged: () => _teCheckTeamChanged(),
+                 openWith: (team, hasMeasurement) => {
+                     _myTeamEditLoadedTeam = team.slice();
+                     _myTeamEditTeamDirty = false;
+                     _teamEditNoMeasurementAtOpen = !hasMeasurement;
+                     _teamEditSuppressDirty = false;
+                 } };`);
     const api = factory();
     ({ renderTeamEditPicker, renderTeamEditGrid, tePick, teArmSlot, teClearSlot, teSetFilter,
        onTeamEditSearch, toggleTeamEditGridMore, toggleTeamEditPicker, _teBuildUsage, _teNames } = api);
@@ -136,6 +151,10 @@ const slotCaps = () => [...nodes.get('teSlots')._html.matchAll(/class="te-cap">(
 //   (戻さないと前のテストの選択枠・絞り込みを引き継いでテストが順序依存になる)
 const reset = () => {
     inputs.forEach(i => { i.value = ''; });
+    lvInputs.forEach(i => { i.value = ''; });
+    // ★ ノードの中身もテストごとに空にする。残すと前のテストの表示を
+    //   「今回出た」と誤認して、検知が壊れても気づけない
+    nodes.forEach(n => { n._html = ''; n.textContent = ''; n.hidden = false; });
     iconCalls = 0;
     globalThis.__api.setOther([]);
     globalThis.__api.resetState();
@@ -308,6 +327,51 @@ test('値の保持先は input のまま (ピッカーは input に書くだけ)
     inputs[3].value = '手入力キャラ';       // 手入力の値も拾えること
     renderTeamEditPicker();
     assert(slotCaps()[3] === '手入力キャラ', `手入力もタイルに反映されるはず: ${slotCaps()[3]}`);
+});
+
+test('編成を変えたら測定値を消す (旧編成の数字を新編成に登録させない)', () => {
+    // フォームは「画面の内容がそのまま保存結果」なので、編成を変えたときに
+    // 前の編成の数字が残っていると、それが新編成の測定として登録されてしまう
+    reset();
+    inputs[0].value = 'アニス:スター'; inputs[1].value = 'ナユタ';
+    globalThis.__api.openWith(['アニス:スター', 'ナユタ'], true);
+    lvInputs.forEach(i => { i.value = '20'; });
+    renderTeamEditPicker();
+    assert(lvInputs.every(i => i.value === '20'), '開いた直後は消さない');
+    tePick('リバーレリオ');                       // 編成を変える
+    assert(lvInputs.every(i => i.value === ''), `編成変更で測定値が消えるはず: ${lvInputs.map(i => i.value)}`);
+    assert(/測定値を消しました/.test(nodes.get('myTeamEditLevelNote')._html), '理由を出すこと');
+});
+
+test('編成を戻したり触っただけでは消さない (初期描画・同じ編成)', () => {
+    reset();
+    inputs[0].value = 'アニス:スター'; inputs[1].value = 'ナユタ';
+    globalThis.__api.openWith(['アニス:スター', 'ナユタ'], true);
+    lvInputs.forEach(i => { i.value = '20'; });
+    renderTeamEditPicker();                       // 初期描画で消えない
+    assert(lvInputs.every(i => i.value === '20'), '再描画だけでは消さない');
+    teArmSlot(3); teSetFilter('all');             // 選択・絞り込みだけでは消さない
+    assert(lvInputs.every(i => i.value === '20'), '枠の選択では消さない');
+});
+
+test('測定が無い状態で編成を変えても何も起きない', () => {
+    reset();
+    globalThis.__api.openWith([], false);
+    renderTeamEditPicker();
+    tePick('ナユタ');
+    assert(nodes.get('myTeamEditLevelNote')._html === '', `消す対象が無いので黙る: ${nodes.get('myTeamEditLevelNote')._html}`);
+});
+
+// 抽出できない側 (updateMyTeamEditIcon) の配線は静的に確かめる。
+// OCR・人気編成の適用・アイコンピッカー・手入力はこの関数を通るため、
+// ここが外れると「編成を変えても旧測定が残る」に戻る
+test('updateMyTeamEditIcon が編成変更の検知を呼んでいる (OCR・手入力の経路)', () => {
+    const i2 = html.indexOf('        function updateMyTeamEditIcon(idx) {');
+    assert(i2 > 0, 'updateMyTeamEditIcon が見つからない');
+    const end = html.indexOf('\n        }', i2);
+    const body = html.slice(i2, end);
+    assert(/_teCheckTeamChanged\s*\(/.test(body),
+        'updateMyTeamEditIcon から _teCheckTeamChanged を呼ぶこと (OCR経路の編成変更を拾えなくなる)');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -8399,6 +8399,10 @@
         // 測定したボスレベル: null = 未指定 (全レベルで使える・移行前の提出)
         let _myTeamEditLevel = null;
         let _myTeamEditLoadOk = false;   // 開いたときに既存の提出を読めたか (読めていないと全置換保存は危険)
+        let _myTeamEditLoadedTeam = [];  // 開いた時点の編成 (変更を検知して測定値を無効化するため)
+        let _myTeamEditTeamDirty = false;
+        let _teamEditSuppressDirty = false;      // 初期描画中は変更検知を止める
+        let _teamEditNoMeasurementAtOpen = true; // 開いた時点で測定が無ければ消すものが無い
         let _myTeamEditSeq = 0;          // 開き直しの世代 (非同期の取り違え防止)
         function _renderTeamEditSlotTabs(existingSlots) {
             const el = document.getElementById('myTeamEditSlotTabs');
@@ -8615,9 +8619,14 @@
                         <input type="text" data-team-idx="${i}" value="${escapeHtml(v)}" placeholder="例: アニス:スター" list="myTeamEditDataList" oninput="updateMyTeamEditIcon(${i})" style="flex:1;min-width:0;padding:8px 10px;border-radius:9px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-weight:700;font-size:14px;">
                     </div>`;
             };
+            _teamEditSuppressDirty = true;
             fieldsEl.innerHTML = current.map((v, i) => buildRow(i, v)).join('');
             // ===== タイルピッカーの初期化 =====
             // 開くたびに絞り込み・選択状態を戻す (前回の属性の状態を持ち越さない)
+            // 編成変更の検知はここを基準にする (初期描画では発火させない)
+            _myTeamEditLoadedTeam = current.filter(Boolean).slice();
+            _myTeamEditTeamDirty = false;
+            _teamEditNoMeasurementAtOpen = !Object.values(_myTeamEditLevels || {}).some(v => Number(v) > 0);
             _teArmed = current.findIndex(v => !v);
             if (_teArmed < 0) _teArmed = null;
             _teFilter = 'all'; _teQuery = ''; _teExpanded = false;
@@ -8637,6 +8646,7 @@
                 (d.characters || []).filter(Boolean).forEach(c => _myTeamEditOtherTeam.push(c));
             });
             renderTeamEditPicker();
+            _teamEditSuppressDirty = false;   // ここから先の編集は「ユーザーの変更」
             // 人気編成・単独採用率はユニオン全体の提出が要る → 届き次第そっと出す (モーダルを待たせない)
             if (_teamSubsCache) _teBuildUsage();
             _renderTeamEditTopTeams();
@@ -8820,7 +8830,29 @@
             const inp = document.querySelector(`#myTeamEditFields input[data-team-idx="${idx}"]`);
             if (!inp) return;
             inp.value = name || '';
-            updateMyTeamEditIcon(idx);   // アイコンとタイルの再描画は既存関数に任せる
+            updateMyTeamEditIcon(idx);   // アイコン差し替え + タイル再描画
+            _teCheckTeamChanged();       // ★ ここでも呼ぶ (二重発火は _myTeamEditTeamDirty で防ぐ)
+        }
+        // ★ 編成を変えたら、開いた時点の測定値は**その編成のものではない**。
+        //   フォームは「画面の内容がそのまま保存結果」なので、放置すると旧編成の数字が
+        //   新しい編成の測定として登録される (Codex指摘 2026-08-12)。
+        //   変わった瞬間に一度だけ入力欄を空にして、測り直しを促す
+        function _teCheckTeamChanged() {
+            if (_teamEditSuppressDirty) return;
+            const now = _teNames().filter(Boolean).map(n => (resolveNikkeChar(n)?.canonical || n));
+            const before = (_myTeamEditLoadedTeam || []).map(n => (resolveNikkeChar(n)?.canonical || n));
+            const same = now.length === before.length
+                && [...now].sort().join('|') === [...before].sort().join('|');
+            if (same || _teamEditNoMeasurementAtOpen) { return; }
+            if (_myTeamEditTeamDirty) return;   // 通知済み
+            _myTeamEditTeamDirty = true;
+            document.querySelectorAll('#myTeamEditLevelRows input[data-te-lv]').forEach(i => { i.value = ''; });
+            if (typeof _renderTeamEditLevelNote === 'function') _renderTeamEditLevelNote();
+            const note = document.getElementById('myTeamEditLevelNote');
+            if (note) {
+                note.innerHTML = '<b style="color:#B45309;">編成を変えたので測定値を消しました。</b>'
+                    + ' 前の編成で出た数字は、この編成の実力ではないためです。測り直して入れてください。';
+            }
         }
         // マスタから「バーストが分かるキャラ」を引く。resolveNikkeChar と同じ正規化を通す
         function _teMaster() {
@@ -9021,8 +9053,9 @@
                 iconEl.outerHTML = `<div onclick="openIconPickerForTeamEdit(${idx})" title="クリックでマスタから選択" style="width:28px;height:28px;border-radius:6px;background:#F1F2F4;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#F59E0B;cursor:pointer;border:1.5px dashed #F59E0B;">?</div>`;
             }
             // 値を書き換える経路 (OCR・人気編成の適用・アイコンピッカー・手入力) は
-            // すべてここを通るので、タイルの再描画もここに集約する
+            // すべてここを通るので、タイルの再描画と編成変更の検知もここに集約する
             if (typeof renderTeamEditPicker === 'function') renderTeamEditPicker();
+            if (typeof _teCheckTeamChanged === 'function') _teCheckTeamChanged();
         }
 
         // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========
@@ -10294,43 +10327,6 @@
             return null;
         }
 
-        async function handleMyDamageBlur(input) {
-            const id = getCurrentIdentity();
-            if (!id?.id) return;
-            const attr = input.getAttribute('data-attr');
-            const raw = input.value.trim();
-            const statusEl = document.getElementById('mypageDmgStatus');
-            try {
-                const value = raw === '' ? 0 : Number(raw);
-                if (isNaN(value) || value < 0) throw new Error('0以上の数値で入力してください');
-                if (raw === '') {
-                    // 空欄なら 0 として保存（または削除でも良いが運用上0にしておく方がシンプル）
-                    await window.supabaseSavePlayerDamage(id.id, attr, 0);
-                } else {
-                    await window.supabaseSavePlayerDamage(id.id, attr, value);
-                }
-                if (statusEl) {
-                    const now = new Date();
-                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name || attr}PT を保存 (${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')})`;
-                    statusEl.style.color = '#22c55e';
-                }
-                // 該当行の「更新:」表示を即更新（data-row-attr で正確に絞り込み）
-                const row = input.closest('.mydmg-row');
-                const upEl = row?.querySelector('.mydmg-updated');
-                if (upEl) upEl.textContent = formatDmgUpdatedAt(new Date().toISOString());
-                // レーダーチャートも再描画
-                try {
-                    const fresh = await window.supabaseLoadPlayerDamages(id.id);
-                    renderMyFururiRadar(id, fresh);
-                } catch { /* graceful: chart stays at previous values */ }
-            } catch (e) {
-                if (statusEl) {
-                    statusEl.textContent = `❌ ${e?.message || e}`;
-                    statusEl.style.color = '#ef4444';
-                }
-            }
-        }
-
         // ========== ホーム: 得意属性 ==========
         async function renderMyStrongAttrs(identity) {
             // 旧 HTML の隠し要素 + モーダル中身の両方に描画 (どちらも存在すれば)
@@ -10865,7 +10861,6 @@
         async function renderMyFinishCoord(identity) {
             const selfEl = document.getElementById('mypageCoordSelf');
             const listEl = document.getElementById('mypageCoordActiveList');
-            const refreshEl = document.getElementById('mypageCoordRefresh');
             if (!selfEl || !listEl) return;
             if (!identity?.id) {
                 selfEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">プレイヤーを選択してください。</p>';
@@ -10897,11 +10892,6 @@
                 // ホームの「次の凸」も同期
                 if (typeof renderMyNextAttackBosses === 'function') {
                     renderMyNextAttackBosses(identity);
-                }
-                const refreshEl = document.getElementById('mypageCoordRefresh');
-                if (refreshEl) {
-                    const t = new Date();
-                    refreshEl.textContent = `最終取得: ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
                 }
             } catch (e) {
                 console.warn('[coord poll]', e?.message || e);
@@ -11523,9 +11513,18 @@
                 if (typeof window.supabaseLoadPlayerDamages === 'function') {
                     const rows = await window.supabaseLoadPlayerDamages(id.id);
                     const byAttr = {};
+                    // ★ damage_b は levels の最大値なので、そのまま使うと
+                    //   「Lv1限定30B / Lv4用15B」の編成で Lv4 の凸に 30B 削れる予測が出る。
+                    //   いまのレイドレベルで**使える**測定 (キー'0' または キー≥L) から選ぶ
+                    //   (Codex指摘 2026-08-12)
+                    const curLv = Number(ctx?.season?.current_level) || 1;
+                    const ml = window.mockLevelsDomain || null;
                     (rows || []).forEach(r => {
-                        const v = Number(r.damage_b) || 0;
-                        // 1属性2編成のときはベスト値の行を採用
+                        const v = ml
+                            ? (ml.bestAtLevel(r.levels, curLv) ?? 0)
+                            : (Number(r.damage_b) || 0);
+                        if (!(v > 0)) return;
+                        // 1属性2編成のときは「そのレベルで使える方」のベスト値を採用
                         if (byAttr[r.attribute] && byAttr[r.attribute].damage_b >= v) return;
                         byAttr[r.attribute] = {
                             damage_b: v,
@@ -15490,8 +15489,6 @@
                 if (_opsLastPlan) renderOpsPlanView();
             } else {
                 renderMyPublishedPlan(getCurrentIdentity());
-                // 再描画で <details> が閉じるので開き直す (フィルタ操作は details 内で行うため)
-                setTimeout(() => document.getElementById('myPublishedPlanDetails')?.setAttribute('open', ''), 0);
             }
         }
 

@@ -2601,6 +2601,16 @@ console.log('\nmockLevelsDomain:');
         assert.equal(r.damage_b, 40);
     });
 
+    test('bestAtLevel: いまのレベルで使える測定だけを見る (凸報告のHP予測が使う)', () => {
+        // Lv1限定30B / Lv4用15B の編成。Lv4 の凸で 30B 削れる予測を出してはいけない
+        const lv = { '1': 30, '4': 15 };
+        assert.equal(ml.bestAtLevel(lv, 1), 30, 'Lv1では両方使えるので最大の30');
+        assert.equal(ml.bestAtLevel(lv, 2), 15, 'Lv2ではLv1測定は使えない');
+        assert.equal(ml.bestAtLevel(lv, 4), 15, 'Lv4で30Bを出してはいけない');
+        assert.equal(ml.bestAtLevel({ '1': 30 }, 4), null, '使える測定が無ければ null');
+        assert.equal(ml.bestAtLevel({ '0': 20, '1': 30 }, 3), 20, '未指定は全レベルで使える');
+    });
+
     test('mergeMeasurements: 未指定 (0) も登録できる (移行前の提出の編集)', () => {
         const r = ml.mergeMeasurements({}, { entries: { 0: 14.3, 4: 30 } });
         assert.deepEqual(r.levels, { '0': 14.3, '4': 30 });

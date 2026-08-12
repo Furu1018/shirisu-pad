@@ -2862,9 +2862,13 @@ window.supabaseSaveTeamForAttribute = async function (playerId, attribute, chara
             const changed = cleaned.length > 0
                 && (exChars.length === 0 || !ml.sameTeam(cleaned, exChars));
             if (changed) {
-                const d = Number(rmw.row.damage_b) || 0;
-                payload.levels = d > 0 ? { '0': d } : null;
-                payload.damage_b = d;
+                // ★ 旧編成の測定値を新編成へ持ち越さない。
+                //   以前は damage_b (levels の最大値) を { '0': d } にしていたが、
+                //   '0' = 「レベル未指定 = 全レベルで使える」なので、
+                //   Lv1限定30B の編成を組み替えただけで「全レベルで30B出せる」に化けていた。
+                //   これは過大評価の方向で、当日「倒せるはずが倒れない」を招く (Codex指摘 2026-08-12)
+                payload.levels = null;
+                payload.damage_b = 0;
                 payload.boss_level = null;
             }
         }
