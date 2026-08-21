@@ -3210,7 +3210,7 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="bookOpen" data-sp-size="15"></span> 人気編成</div>
-                    <span style="font-size:10.5px;color:#A4AAB0;">みんなの模擬提出から集計</span>
+                    <span style="font-size:10.5px;color:#A4AAB0;">今季の模擬+過去シーズンの凸から集計</span>
                 </div>
                 <div onclick="togglePopularTeams()" id="popularTeamsToggle" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ 人気編成を表示</div>
                 <div id="popularTeamsContent" style="display:none;margin-top:10px;">
@@ -9149,7 +9149,11 @@
             const rows = (_teamSubsCache || []).filter(r => r.attribute === attrKey);
             const a = PT_ATTRS.find(x => x.key === attrKey);
             if (!a) return '';
-            if (rows.length === 0) return `<p style="margin:0;font-size:11.5px;color:#A4AAB0;">${a.name}PT の編成つき模擬提出はまだありません。模擬戦データに編成を付けて提出すると、ここに集計されます。</p>`;
+            // ★ 今季の模擬が0件でも、過去シーズンの凸履歴があれば人気PTは出せる
+            //   (シーズン初日は模擬が空なので、模擬だけで早期 return すると毎月頭に消える — Codex指摘)
+            if (rows.length === 0 && _teamGroupsFor(attrKey).list.length === 0) {
+                return `<p style="margin:0;font-size:11.5px;color:#A4AAB0;">${a.name}PT の編成つき提出はまだありません。模擬戦データに編成を付けて提出すると、ここに集計されます。</p>`;
+            }
             const st = _teamStatsFor(rows, attrKey);
             // 人気PT: 同じ5人 (順不同) を使っている提出をまとめて使用率順に表示
             const allUnique = st.topTeams.length > 0 && st.topTeams.every(g => g.count === 1);
@@ -9314,10 +9318,13 @@
                 combos.push({
                     teams: [g0, g1, g2],
                     uses: g0.count + g1.count + g2.count,
-                    dmg: g0.bestDmgB + g1.bestDmgB + g2.bestDmgB,
+                    // ★ 旧実装は bestDmgB でタイブレークしていたが、合算集計 (popularTeams) に
+                    //   bestDmgB は無い (NaN になる)。人気順のみ + 決定的なキー比較にする
+                    //   — ダメージ順を並びに使わないのはユーザー決定 2026-08-11 とも整合
+                    _key: [g0, g1, g2].map(g => [...g.team].sort().join('|')).join('||'),
                 });
             }
-            combos.sort((a, b) => b.uses - a.uses || b.dmg - a.dmg);
+            combos.sort((a, b) => b.uses - a.uses || (a._key < b._key ? -1 : a._key > b._key ? 1 : 0));
             const top = combos.slice(0, 2);
             if (top.length === 0) {
                 bodyEl.innerHTML = '<p style="margin:0;font-size:11px;color:#B45309;">⚠️ 人気PT同士でキャラが被っていて、被りなしの組み合わせが見つかりませんでした。編成編集で一部キャラの入れ替えを検討してください。</p>';

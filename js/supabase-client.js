@@ -2271,10 +2271,16 @@ window.supabaseLoadHistoricalTeamRows = async function () {
         const ids = seasons.map(s => s.id);
         const [bRes, aRes] = await Promise.all([
             supabase.from('bosses').select('season_id, boss_number, weakness').in('season_id', ids),
-            supabase.from('attacks').select('season_id, player_id, boss_number, characters')
-                .in('season_id', ids).limit(10000),
+            // ★ order 必須: limit に達したときに「どの1万件か」が返却順まかせになり、
+            //   集計が非決定的に欠落する。id 昇順 = 古い方から確定的に切れる
+            supabase.from('attacks').select('id, season_id, player_id, boss_number, characters')
+                .in('season_id', ids).order('id', { ascending: true }).limit(10000),
         ]);
         if (bRes.error || aRes.error) return [];
+        if ((aRes.data || []).length >= 10000) {
+            // 30人×3凸×12ヶ月 ≈ 年1000件ペースなので当分届かないが、届いたら気づけるように
+            console.warn('[人気編成] 凸履歴が10,000件に達しました — 古い分が集計から欠けています。ページングの実装が必要です');
+        }
         const wk = new Map((bRes.data || []).map(b => [`${b.season_id}|${b.boss_number}`, b.weakness]));
         return (aRes.data || [])
             .map(a => ({
