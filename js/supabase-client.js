@@ -2259,6 +2259,34 @@ window.supabaseLoadTeamSubmissions = async function (attribute = null) {
     return (data || []).filter(r => Array.isArray(r.characters) && r.characters.filter(Boolean).length > 0);
 };
 
+// 過去シーズンの凸記録から「編成つきの凸」を取得する (人気編成の合算用)。
+// ★ characters は画像パスで入っている — 名前への解決は呼び出し側 (resolveNikkeChar) が行う。
+//   attribute はそのボスの弱点 (= 持っていったPT属性)。テストシーズンは除外。
+//   失敗したら [] — 人気編成が「今シーズンの模擬だけ」に静かに劣化するのが正しい振る舞い
+window.supabaseLoadHistoricalTeamRows = async function () {
+    try {
+        const { data: seasons, error: sErr } = await supabase
+            .from('seasons').select('id').eq('is_test', false);
+        if (sErr || !seasons || seasons.length === 0) return [];
+        const ids = seasons.map(s => s.id);
+        const [bRes, aRes] = await Promise.all([
+            supabase.from('bosses').select('season_id, boss_number, weakness').in('season_id', ids),
+            supabase.from('attacks').select('season_id, player_id, boss_number, characters')
+                .in('season_id', ids).limit(10000),
+        ]);
+        if (bRes.error || aRes.error) return [];
+        const wk = new Map((bRes.data || []).map(b => [`${b.season_id}|${b.boss_number}`, b.weakness]));
+        return (aRes.data || [])
+            .map(a => ({
+                player_id: a.player_id,
+                attribute: wk.get(`${a.season_id}|${a.boss_number}`) || null,
+                characters: Array.isArray(a.characters) ? a.characters : [],
+                season_id: a.season_id,
+            }))
+            .filter(r => r.attribute && r.characters.filter(Boolean).length >= 5);
+    } catch { return []; }
+};
+
 // シーズンの戦況 (凸/ボスHP) が最後に動いた時刻 (配信プランの陳腐化検知用)
 window.supabaseGetSeasonLastChange = async function (seasonId) {
     let latest = null;

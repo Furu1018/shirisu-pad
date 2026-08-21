@@ -34,6 +34,7 @@
     <script defer src="./js/domain/gbCompare.js"></script>
     <script defer src="./js/domain/raidEvents.js"></script>
     <script defer src="./js/domain/mockLevels.js"></script>
+    <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -8724,7 +8725,7 @@
             const el = document.getElementById('myTeamEditTopTeams');
             if (!el) return;
             if (!_myTeamEditAttr) { el.innerHTML = ''; return; }
-            const { total, list } = _teamGroupsFor(_myTeamEditAttr);
+            const { list } = _teamGroupsFor(_myTeamEditAttr);
             const top = list.slice(0, 3);
             const cntEl = document.getElementById('teTopCnt');
             if (cntEl) cntEl.textContent = top.length > 0 ? `${top.length}件` : 'まだ無し';
@@ -8735,14 +8736,16 @@
             // モバイルで横に詰め込むと折り返して2段化するので、1カード=縦2段にする。
             // 上段: 順位 + 使用率 + 「使う」ボタン / 下段: 5キャラを1行 (はみ出す時は横スクロール)。
             const cards = top.map((g, i) => {
-                const pct = total ? Math.round(g.count / total * 100) : 0;
+                // 分母が「模擬+過去シーズン」の延べ人数になり % は直感に合わないため、
+                // 人数と内訳 (模擬n件+過去の凸m件) で示す (モック確認済み 2026-08-11)
+                const detail = `模擬${g.mockCount || 0}件+過去の凸${g.histCount || 0}件`;
                 const icons = g.team.map(c => _charIconHtml(c, 30)).join('');
                 return `
                     <button type="button" onclick="applyTeamEditTopTeam(${i})" title="この編成を5枠に入れる"
                         style="display:block;width:100%;text-align:left;padding:9px 11px;border-radius:11px;border:1px solid ${color}33;background:${color}0D;cursor:pointer;font-family:inherit;${i > 0 ? 'margin-top:6px;' : ''}">
                         <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
                             <span style="flex:none;font-size:11px;font-weight:900;color:${i === 0 ? color : '#B6BBC1'};">#${i + 1}</span>
-                            <span style="flex:1;font-size:10.5px;font-weight:800;color:#8A9097;" title="${g.count}/${total}件が使用">${g.count}人が使用 · ${pct}%</span>
+                            <span style="flex:1;font-size:10.5px;font-weight:800;color:#8A9097;" title="${detail}">${g.count}人が使用 <span style="font-size:9px;font-weight:700;">(${detail})</span></span>
                             <span style="flex:none;padding:6px 14px;border-radius:999px;background:#14161A;color:#fff;font-size:11px;font-weight:800;">使う</span>
                         </div>
                         <div data-no-swipe style="display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;">${icons}</div>
@@ -9063,47 +9066,51 @@
 
         // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========
         let _teamSubsCache = null;        // 全属性の編成つき提出
+        let _teamHistCache = null;        // 過去シーズンの編成つき凸 (人気編成の合算用・失敗時 [])
         let _teamSlvCache = null;         // playerId -> 最新SLv (ふるり値トップ算出用)
         let _popularBestTeams = {};       // attrKey -> { dmg: [], fururi: [] } (コピー用)
         let _popularTeamsAttr = 'fire';
         async function _loadTeamSubs(force = false) {
             if (!_teamSubsCache || force) {
                 try {
-                    const [subs, slvs] = await Promise.all([
+                    const [subs, slvs, hist] = await Promise.all([
                         window.supabaseLoadTeamSubmissions(),
                         window.supabaseLoadAllSyncLevels(),
+                        // 過去シーズンの凸記録 (人気編成の合算用)。ローダー側が失敗を [] に潰す
+                        window.supabaseLoadHistoricalTeamRows?.() ?? [],
                     ]);
                     _teamSubsCache = subs;
                     _teamSlvCache = slvs || {};
+                    _teamHistCache = hist || [];
                 } catch (e) {
                     console.warn('[人気編成] 読込失敗:', e?.message || e);
                     _teamSubsCache = _teamSubsCache || [];
                     _teamSlvCache = _teamSlvCache || {};
+                    _teamHistCache = _teamHistCache || [];
                 }
             }
             return _teamSubsCache;
         }
-        // PT単位の使用率集計: ゲーム仕様上 キャラ単体よりPT5人のシナジーが本体なので、
-        // 「同じ5人の組み合わせ (順不同)」をひとつの編成として数える。
-        // 戻り値: { total, list } — list は 使用数 → 同数ならベストダメージ順
+        // PT単位の使用率集計: 「同じ5人の組み合わせ (順不同)」をひとつの編成として数える。
+        // 材料は 今シーズンの模擬提出 + 過去シーズンの凸記録 の合算 (ユーザー決定 2026-08-21 —
+        // 模擬はシーズンごとにリセットされるため、模擬だけでは組み合わせがほぼ重ならない)。
+        // 純ロジックは js/domain/popularTeams.js。ここはキャッシュと解決関数を渡すだけ。
+        // 戻り値: { total, list } — list は 人数 → 延べ使用数 → キー昇順 (決定的)
         function _teamGroupsFor(attrKey) {
-            const rows = (_teamSubsCache || []).filter(r => r.attribute === attrKey);
-            const groups = new Map();   // 正規化キー (ソート済みキャラ名結合) -> { team, count, bestDmgB }
-            rows.forEach(r => {
-                const team = (r.characters || []).filter(Boolean).map(c => fuzzyResolveCharacter(c) || c);
-                if (team.length === 0) return;
-                const key = [...new Set(team)].sort().join('|');
-                const g = groups.get(key) || { team, count: 0, bestDmgB: 0, players: new Set() };
-                g.count++;
-                if (r.player_id != null) g.players.add(r.player_id);
-                g.bestDmgB = Math.max(g.bestDmgB, Number(r.damage_b) || 0);
-                groups.set(key, g);
+            const dom = window.popularTeamsDomain;
+            if (!dom) return { total: 0, list: [] };   // defer 読込前 (直後の再描画で埋まる)
+            const all = dom.buildPopularTeams({
+                mockRows: _teamSubsCache || [],
+                histRows: _teamHistCache || [],
+                // 模擬 = キャラ名 (表記ゆれをファジィ解決。未解決は生名のまま = 従来どおり寛容)
+                resolveMock: (c) => fuzzyResolveCharacter(c) || c,
+                // 凸記録 = 画像パス。マスタに無いパスは null → その凸は丸ごと使わない
+                resolveHist: (c) => {
+                    const r = resolveNikkeChar(String(c));
+                    return r?.canonical || null;
+                },
             });
-            // 「N人」表示は distinct プレイヤー数で数える — 同じ人が同一編成をレベル違いで
-            // 複数行出しても人気度を押し上げない (player_id が来ない旧環境は行数のまま)
-            groups.forEach(g => { if (g.players.size > 0) g.count = g.players.size; });
-            const list = [...groups.values()].sort((a, b) => b.count - a.count || b.bestDmgB - a.bestDmgB);
-            return { total: rows.length, list };
+            return all[attrKey] || { total: 0, list: [] };
         }
         function _teamStatsFor(rows, attrKey) {
             const topTeams = _teamGroupsFor(attrKey).list.slice(0, 2);   // たくさん見せても迷うのでベスト2
@@ -9150,7 +9157,7 @@
                 <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:11px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);${i > 0 ? 'margin-top:5px;' : ''}">
                     <span style="flex:none;width:20px;font-size:11px;font-weight:900;color:${i === 0 ? a.color : '#B6BBC1'};">#${i + 1}</span>
                     <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;">${g.team.map(c => _charIconHtml(c, 28)).join('')}</div>
-                    <span style="flex:none;font-size:10px;font-weight:800;color:#5A6068;text-align:right;line-height:1.3;" title="このPTを${g.count}/${st.total}件の提出が使用">${g.count}人使用<br><span style="color:#A4AAB0;">${Math.round(g.count / st.total * 100)}%</span></span>
+                    <span style="flex:none;font-size:10px;font-weight:800;color:#5A6068;text-align:right;line-height:1.3;" title="模擬${g.mockCount || 0}件+過去の凸${g.histCount || 0}件">${g.count}人使用<br><span style="color:#A4AAB0;">模擬${g.mockCount || 0}+凸${g.histCount || 0}</span></span>
                     ${opts.copyable
                         ? `<button onclick="applyPopularTeamFromAttr('${attrKey}', 'pt${i}')" title="このPTを編成枠にコピー" style="flex:none;padding:5px 9px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">⬇️</button>`
                         : `<button onclick="applyPopularTeamToSelf('${attrKey}', 'pt${i}')" title="このPTを自分の${a.name}PT編成①に反映" style="flex:none;padding:5px 9px;border-radius:999px;border:none;background:#14161A;color:#fff;font-size:10px;font-weight:800;cursor:pointer;">反映</button>`}
@@ -9186,9 +9193,9 @@
                 ? `<p style="margin:8px 0 0 0;font-size:10px;color:#A4AAB0;">⚖️ ふるり値トップは基準者(${fururiBasePlayerName})の${a.name}PT模擬と提出者のSLvが揃うと表示されます。</p>` : '';
 
             return `
-                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">人気PT TOP${st.topTeams.length}（${st.total}件の提出から · 5人の組み合わせで集計/並び順不問）</div>
+                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">人気PT TOP${st.topTeams.length}（今季の模擬+過去シーズンの凸から · 5人の組み合わせで集計/並び順不問）</div>
                 ${topHtml}
-                ${allUnique ? '<p style="margin:5px 0 0 0;font-size:10px;color:#A4AAB0;">まだ同じPTを使う人がいないため、ダメージ順に表示しています。</p>' : ''}
+                ${allUnique ? '<p style="margin:5px 0 0 0;font-size:10px;color:#A4AAB0;">まだ同じPTを使っている人はいません（各1人）。</p>' : ''}
                 ${dmgHtml}
                 ${fururiHtml}
                 ${fururiNote}`;

@@ -13,6 +13,7 @@ import '../js/domain/mockCompare.js';
 import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベル開放)  // globalThis.mockCompareDomain (UI再設計 Stage2)
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
+import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -2543,6 +2544,105 @@ test('dmgB と levels が矛盾する入力は levels 側の最大値に正規�
     assert.equal(used[0].dmgB, 18, `levels の 18 が正: ${used[0].dmgB}`);
     assert.equal(used[0].loadoutLevel, 2);
 });
+
+// ---- popularTeams ドメイン (人気編成 = 模擬 + 過去シーズンの凸の合算) --------
+console.log('\npopularTeamsDomain:');
+{
+    const pt = globalThis.popularTeamsDomain;
+    // 解決関数: 模擬 = 表記ゆれ吸収 (ここでは恒等) / 凸 = パス→名前 (末尾のファイル名で引く)
+    const PATHMAP = { 'a.webp': 'A', 'b.webp': 'B', 'c.webp': 'C', 'd.webp': 'D', 'e.webp': 'E', 'f.webp': 'F' };
+    const resolveMock = (c) => c;
+    const resolveHist = (c) => PATHMAP[String(c).split('/').pop()] || null;
+    const T5 = ['A', 'B', 'C', 'D', 'E'];
+    const P5 = ['./x/a.webp', './x/b.webp', './x/c.webp', './x/d.webp', './x/e.webp'];
+
+    test('popularTeams: 模擬と凸を合算し、同一人物は1人と数える', () => {
+        const r = pt.buildPopularTeams({
+            mockRows: [{ player_id: 1, attribute: 'wind', characters: T5 }],
+            histRows: [
+                { player_id: 1, attribute: 'wind', characters: P5 },   // 同一人物 (模擬と凸)
+                { player_id: 2, attribute: 'wind', characters: P5 },
+            ],
+            resolveMock, resolveHist,
+        });
+        const g = r.wind.list[0];
+        assert.equal(g.count, 2, `distinct 2人のはず: ${g.count}`);
+        assert.equal(g.mockCount, 1);
+        assert.equal(g.histCount, 2);
+        assert.equal(r.wind.total, 2);
+    });
+
+    test('popularTeams: 順不同で同じ5人は同じ編成として数える', () => {
+        const r = pt.buildPopularTeams({
+            mockRows: [
+                { player_id: 1, attribute: 'fire', characters: ['A', 'B', 'C', 'D', 'E'] },
+                { player_id: 2, attribute: 'fire', characters: ['E', 'D', 'C', 'B', 'A'] },
+            ],
+            histRows: [], resolveMock, resolveHist,
+        });
+        assert.equal(r.fire.list.length, 1);
+        assert.equal(r.fire.list[0].count, 2);
+    });
+
+    test('popularTeams: 解決できないパスを含む凸は丸ごと捨てる (部分編成を作らない)', () => {
+        const r = pt.buildPopularTeams({
+            mockRows: [],
+            histRows: [
+                { player_id: 1, attribute: 'wind', characters: ['./x/a.webp', './x/unknown.webp', './x/c.webp', './x/d.webp', './x/e.webp'] },
+                { player_id: 2, attribute: 'wind', characters: P5 },
+            ],
+            resolveMock, resolveHist,
+        });
+        assert.equal(r.wind.list.length, 1, '不完全な凸はグループを作らない');
+        assert.equal(r.wind.list[0].count, 1);
+    });
+
+    test('popularTeams: 5人未満の凸記録は使わない (模擬は従来どおり寛容)', () => {
+        const r = pt.buildPopularTeams({
+            mockRows: [{ player_id: 1, attribute: 'iron', characters: ['A', 'B'] }],   // 模擬は部分でも数える
+            histRows: [{ player_id: 2, attribute: 'iron', characters: P5.slice(0, 4) }],
+            resolveMock, resolveHist,
+        });
+        assert.equal(r.iron.list.length, 1, '模擬の部分編成だけが残るはず');
+        assert.equal(r.iron.list[0].mockCount, 1);
+        assert.equal(r.iron.list[0].histCount, 0);
+    });
+
+    test('popularTeams: 属性ごとに独立して集計する', () => {
+        const r = pt.buildPopularTeams({
+            mockRows: [{ player_id: 1, attribute: 'fire', characters: T5 }],
+            histRows: [{ player_id: 1, attribute: 'wind', characters: P5 }],
+            resolveMock, resolveHist,
+        });
+        assert.equal(r.fire.list[0].mockCount, 1);
+        assert.equal(r.fire.list[0].histCount, 0);
+        assert.equal(r.wind.list[0].histCount, 1);
+    });
+
+    test('popularTeams: 並びは 人数 → 延べ使用数 → キー昇順で決定的', () => {
+        const mk = (pid, chars) => ({ player_id: pid, attribute: 'water', characters: chars });
+        const r = pt.buildPopularTeams({
+            mockRows: [
+                mk(1, ['A', 'B', 'C', 'D', 'E']), mk(2, ['A', 'B', 'C', 'D', 'E']),   // 2人
+                mk(3, ['A', 'B', 'C', 'D', 'F']),                                     // 1人・延べ2
+                mk(3, ['A', 'B', 'C', 'D', 'F']),
+                mk(4, ['B', 'C', 'D', 'E', 'F']),                                     // 1人・延べ1
+            ],
+            histRows: [], resolveMock, resolveHist,
+        });
+        const keys = r.water.list.map(g => [...g.team].sort().join(''));
+        assert.deepEqual(keys, ['ABCDE', 'ABCDF', 'BCDEF'], `並びが違う: ${keys}`);
+    });
+
+    test('popularTeams: 表示用の編成は模擬提出の並びを優先する', () => {
+        const r = pt.buildPopularTeams({
+            mockRows: [{ player_id: 1, attribute: 'wind', characters: ['E', 'D', 'C', 'B', 'A'] }],
+            histRows: [{ player_id: 2, attribute: 'wind', characters: P5 }],   // 解決順は A,B,C,D,E
+            resolveMock, resolveHist,
+        });
+        assert.deepEqual(r.wind.list[0].team, ['E', 'D', 'C', 'B', 'A'], '模擬の並びが代表になる');
+    });
+}
 
 // ---- mockLevels ドメイン (レベル別測定値 — 31_player_damages_levels) --------
 console.log('\nmockLevelsDomain:');
