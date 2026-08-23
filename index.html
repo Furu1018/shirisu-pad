@@ -3673,7 +3673,7 @@
                             </div>
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: #6B7178; margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 700; color: #A4AAB0;"></span></label>
-                                <input id="simTargetSlv" type="number" min="1" max="1000" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px;" placeholder="例: 160">
+                                <input id="simTargetSlv" type="number" min="1" max="1183" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px;" placeholder="例: 160">
                             </div>
                         </div>
                         <div id="simResult" style="display: none; padding: 16px; background: #F7F8F9; border-radius: 12px; border-left: 4px solid #6C42F0;">
@@ -3715,7 +3715,7 @@
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: #6B7178; margin-bottom: 6px;">SLv <span id="fsimRaidSlvLabel" style="font-weight: 700; color: #A4AAB0;"></span></label>
                                 <div style="display: flex; gap: 6px; align-items: center;">
                                     <button type="button" onclick="adjustFururiSimSlv(-1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 16px; cursor: pointer;">−</button>
-                                    <input id="fsimSlv" type="number" min="1" max="1000" oninput="runFururiSimulator()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px; text-align: center;">
+                                    <input id="fsimSlv" type="number" min="1" max="1183" oninput="runFururiSimulator()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 14px; text-align: center;">
                                     <button type="button" onclick="adjustFururiSimSlv(1)" style="width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid #E3E5E8; background: #F7F8F9; color: #14161A; font-weight: 700; font-size: 16px; cursor: pointer;">＋</button>
                                 </div>
                             </div>
@@ -18379,7 +18379,7 @@
             }
 
             // 目標SLv未入力
-            if (!targetSlv || targetSlv < 1 || targetSlv > 1000) {
+            if (!targetSlv || targetSlv < 1 || targetSlv > _slvMax) {
                 resultEl.style.display = 'none';
                 errorEl.style.display = 'none';
                 tableWrapper.style.display = 'none';
@@ -18491,7 +18491,7 @@
         function adjustFururiSimSlv(delta) {
             const slvInput = document.getElementById('fsimSlv');
             const v = parseInt(slvInput.value) || 0;
-            const next = Math.max(1, Math.min(1000, v + delta));
+            const next = Math.max(1, Math.min(_slvMax, v + delta));
             slvInput.value = next;
             runFururiSimulator();
         }
@@ -18757,12 +18757,24 @@
         }
 
         // ========== ふるり値 ==========
+        // 対応SLvの上限。テーブル読込前のフォールバック値で、読込後は実データの最大キーに更新される
+        // — 上限を4箇所に決め打ちしていた頃は、テーブル拡張のたびに直し漏れが出る構造だった
+        let _slvMax = 1183;
         async function loadSlvRatioTable() {
             try {
                 const resp = await fetch('./data/slv-ratio.json');
                 if (!resp.ok) return;
                 const data = await resp.json();
                 slvRatioTable = data.data;
+                // 上限はテーブルが唯一の正。input[max] にも反映する
+                const keys = Object.keys(slvRatioTable || {}).map(Number).filter(Number.isInteger);
+                if (keys.length > 0) {
+                    _slvMax = Math.max(...keys);
+                    ['simTargetSlv', 'fsimSlv'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.max = String(_slvMax);
+                    });
+                }
             } catch (e) {
                 console.warn('SLv補正テーブル読み込みエラー:', e);
             }
