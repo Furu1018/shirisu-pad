@@ -127,6 +127,7 @@ node tests/run-tests.mjs      # ソルバー+ドメイン+ストアの単体テ�
 node tests/plan-hp-modal.mjs  # ⚔️戦闘予想モーダルの実行テスト (index.html から切り出して実行)
 node tests/check-raid-event-hooks.mjs  # 戦況の通知フックの網羅チェック
 node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカーの実行テスト
+node tests/member-board.mjs   # 👥 メンバー状況ボードの描画 (_mbPaint) の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で

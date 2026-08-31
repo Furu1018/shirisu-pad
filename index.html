@@ -13659,7 +13659,7 @@
         // ========== 👥 メンバー状況ボード (運営改修 #1・運営ONのみ) ==========
         // 純ロジック (要対応の定義・集計・催促文面) は js/domain/memberStatus.js。
         // 盤面は opsStore の snapshot を再利用し、追加取得は supabaseLoadMemberStatusExtras の4クエリだけ。
-        const _mb = { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, loading: false };
+        const _mb = { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 };
         function _mbCurrentPhase() {
             const dom = window.memberStatusDomain;
             return _mb.phase || (dom ? dom.phaseFor(_mb.season?.hard_date) : 'pre');
@@ -13677,14 +13677,21 @@
                 rowsEl.innerHTML = '<p style="color:#6B7178;font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
                 return;
             }
-            if (_mb.loading && !force) return;
-            _mb.loading = true;
+            // シーズンが変わったら前シーズンの行・手動フェーズを捨てる (旧シーズンの状況が残らないように)
+            if (_mb.season && Number(_mb.season.id) !== Number(snap.season.id)) {
+                _mb.rows = []; _mb.players = null; _mb.extras = null; _mb.phase = null;
+            }
+            // 世代番号: 取得中にシーズン切替・↻連打・force が重なっても、最後に始めた取得だけを採用する
+            // (opsStore の generation と同じ考え方 — 古い応答で _mb を上書きしない。Codex指摘)
+            const gen = ++_mb.gen;
             if (!_mb.rows.length) rowsEl.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中...</p>';
             try {
-                // 代理凸ログはハード日の前日以降だけ数える (前シーズンの代理を混ぜない)
-                const since = new Date(`${snap.season.hard_date}T00:00:00`);
-                since.setDate(since.getDate() - 1);
+                // 代理凸ログはハード日 (JST) の前日 0:00 以降だけ数える (前シーズンの代理を混ぜない)。
+                // 端末のタイムゾーンに依存させない (+09:00 固定)
+                const since = new Date(`${snap.season.hard_date}T00:00:00+09:00`);
+                since.setTime(since.getTime() - 24 * 60 * 60 * 1000);
                 const extras = await window.supabaseLoadMemberStatusExtras(snap.season.id, since.toISOString());
+                if (gen !== _mb.gen) return;   // 追い越された古い応答は捨てる
                 _mb.players = snap.players;
                 _mb.extras = extras;
                 _mb.season = snap.season;
@@ -13692,9 +13699,8 @@
                 const upd = document.getElementById('opsMbUpdated');
                 if (upd) upd.textContent = `更新 ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
             } catch (e) {
+                if (gen !== _mb.gen) return;
                 rowsEl.innerHTML = `<p style="color:#ef4444;font-size:12px;margin:0;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
-            } finally {
-                _mb.loading = false;
             }
         }
         function _mbRebuild() {
@@ -16580,6 +16586,9 @@
                 opsStore.invalidate();
                 setTimeout(() => closeOpsProxyAttackModal(), 900);
                 renderOpsDashboard();
+                // 👥 メンバー状況の「代理」件数は activity_log (fire-and-forget) を数えるため、
+                // 直後の再描画では間に合わないことがある → 少し待って取り直す (Codex指摘)
+                setTimeout(() => { if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(null, true); }, 1500);
             } catch (e) {
                 set(`❌ ${e?.message || e}`, true);
             }
