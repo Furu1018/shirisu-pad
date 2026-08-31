@@ -2894,6 +2894,9 @@ console.log('\nmemberStatusDomain:');
         };
         assert.equal(dom.maxDisjointAttrs(['fire', 'water', 'wind'], lo, { fire: ['X', 'a'], water: ['X', 'b'], wind: ['X', 'c'] }), 3);
         assert.equal(dom.maxDisjointAttrs(['fire', 'water', 'wind'], null, { fire: ['X', 'a'], water: ['X', 'b'], wind: ['X', 'c'] }), 1, '代表編成だけなら 1');
+        // slot1 が被り・slot2 が未記録 (team 空) → 判定できないのでワイルドカード = OK 側に倒す
+        const loUnknown = { fire: [{ team: ['X', 'a'] }, { team: [] }], water: [{ team: ['X', 'b'] }], wind: [{ team: ['X', 'c'] }, { team: [] }] };
+        assert.equal(dom.maxDisjointAttrs(['fire', 'water', 'wind'], loUnknown, {}), 3, '未記録の slot はワイルドカード');
         const twoLoadouts = P({ id: 4, damagesByAttr: { fire: 1, water: 1, wind: 1 }, loadoutsByAttr: lo, teamsByAttr: { fire: ['X', 'a'], water: ['X', 'b'], wind: ['X', 'c'] }, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
         assert.equal(dom.buildRows({ players: [twoLoadouts], extras: { pushPlayerIds: [4], slvThisSeasonIds: [4] }, phase: 'pre' })[0].mockOk, true, 'buildRows は loadoutsByAttr を優先して判定する');
         const s = Object.fromEntries(dom.summarize(rows, 'pre').map(x => [x.key, x]));

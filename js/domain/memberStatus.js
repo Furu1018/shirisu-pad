@@ -44,10 +44,12 @@
     function maxDisjointAttrs(mockAttrs, loadoutsByAttr, teamsByAttr) {
         const attrs = Array.isArray(mockAttrs) ? mockAttrs : [];
         const toSet = (chars) => new Set((Array.isArray(chars) ? chars : []).map(charKey).filter(Boolean));
-        // 属性ごとの候補編成 (Set の配列)。候補が無い = ワイルドカード
+        // 属性ごとの候補編成 (Set の配列)。候補が無い = ワイルドカード。
+        // 編成が未記録の slot が1つでもあれば、その属性は「被り判定できない」= ワイルドカード
+        // (記録の欠落で要対応にしない — 空編成を候補から捨てると slot1 被り・slot2 未記録の人を誤判定する。Codex指摘)
         const cands = attrs.map(a => {
-            const lo = Array.isArray(loadoutsByAttr?.[a]) ? loadoutsByAttr[a].map(l => toSet(l?.team)).filter(s => s.size > 0) : [];
-            if (lo.length) return lo;
+            const lo = Array.isArray(loadoutsByAttr?.[a]) ? loadoutsByAttr[a].map(l => toSet(l?.team)) : [];
+            if (lo.length) return lo.some(s => s.size === 0) ? [] : lo;
             const t = toSet(teamsByAttr?.[a]);
             return t.size ? [t] : [];
         });

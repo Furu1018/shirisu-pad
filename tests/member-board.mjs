@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
+import '../js/domain/mockLevels.js';     // globalThis.mockLevelsDomain (charKey の委譲先 — 本番と同じ読み込み順)
 import '../js/domain/memberStatus.js';   // globalThis.memberStatusDomain
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
