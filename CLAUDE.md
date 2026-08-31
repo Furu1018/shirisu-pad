@@ -55,6 +55,12 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **js/state/opsStore.js** — 運営ダッシュボード盤面 {season,bosses,players} の単一ストア
   (リアーキ ステップ3)。**直接代入・部分書き換え禁止** — get/load/isStale/invalidate/
   patchBosses/patchPlayer を使う。TTL等の不変条件はファイル冒頭に記載
+- **戦況タブの折りたたみ + コックピット** (2026-09-01) — カード定義 (id / 見出し / 運営限定 / 前日・当日の既定開閉 /
+  グループ) は `js/domain/opsLayout.js` の CARDS が唯一。`_initOpsTabStructure` が先頭行を折りたたみヘッダ、残りを
+  `.ops-card-body` にラップする (**畳んでも DOM は残す** — 各 renderer は畳まれていても更新し続ける)。手動開閉は
+  localStorage `shirisuko_ops_card_open_v1` に前日/当日別で記憶。運営OFF は全開・開閉不可。旧 sticky ジャンプナビは廃止し、
+  最上部に 2×2 コックピット (HP更新・残凸・未完・締め凸未返答 → タップで該当カードを開く)。畳まれたカードの見出しには
+  `opsLayoutDomain.summarize` の1行サマリー。**カードを足したら CARDS に1行追加** (先頭行が見出しであること)
 - **👥 メンバー状況ボード** (戦況タブ・運営ONのみ・運営改修 #1 2026-09-01) — 前日 (模擬/SLv/時間帯/通知) と
   当日 (凸Lv/代理/締め凸返答) を1人1行に。**「要対応」の定義は `js/domain/memberStatus.js` だけ**
   (模擬は「キャラ被りなしで3属性」が必要範囲 — 5属性は加点で強制しない・2026-09-01 ユーザー判断)

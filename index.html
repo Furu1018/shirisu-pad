@@ -38,6 +38,7 @@
     <script defer src="./js/domain/testSeason.js"></script>
     <script defer src="./js/domain/charMaster.js"></script>
     <script defer src="./js/domain/memberStatus.js"></script>
+    <script defer src="./js/domain/opsLayout.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -315,6 +316,26 @@
             font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap;
         }
         #tab-ops .dc-card { scroll-margin-top: 64px; }
+        /* 戦況タブ: 折りたたみカード + コックピット (定義は js/domain/opsLayout.js)。
+           畳んでも DOM は残す — HP ポーリングや残凸表の更新関数はそのまま動く必要がある */
+        .ops-card-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .ops-always > .ops-card-head, body:not(.ops-mode) .ops-card-head { cursor: default; }
+        .ops-card-sum { margin-left: auto; font-size: 11px; font-weight: 700; color: #8A9097; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; display: none; }
+        .ops-card-sum.bad { color: #FF3D44; }
+        .ops-card.ops-closed > .ops-card-head .ops-card-sum { display: inline-block; }
+        .ops-card-car { flex: none; font-size: 12px; color: #A4AAB0; margin-left: 6px; }
+        body:not(.ops-mode) .ops-card-car { display: none; }
+        .ops-card.ops-closed > .ops-card-body { display: none; }
+        .ops-card.ops-closed > .ops-card-head { margin-bottom: 0 !important; }
+        .ops-group-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: #A4AAB0; margin: 14px 6px 6px; }
+        #opsTopBar { margin: 0 0 8px; }
+        .ops-topbar-row { display: flex; justify-content: flex-end; padding: 4px 2px; }
+        .ops-cockpit { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+        .ops-cockpit:empty { display: none; }
+        .ops-cockpit-tile { font-family: inherit; text-align: left; background: #fff; border: 1px solid rgba(20,22,26,0.06); border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+        .ops-cockpit-tile .k { font-size: 10px; font-weight: 800; color: #8A9097; }
+        .ops-cockpit-tile .v { font-size: 16px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; }
+        .ops-cockpit-tile.bad .v { color: #FF3D44; }
         /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
         .dc-mb-seg { display:inline-flex; background:#F1F2F4; border-radius:999px; padding:3px; }
         .dc-mb-seg button { font:inherit; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:#6B7178; cursor:pointer; }
@@ -4194,7 +4215,7 @@
                             <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。同一ボスへの重複は警告/スキップされ、HP減算はチェックボックスで選択 (OFFなら別途ボスHP更新で同期)。入力者名がログに残る</li>
                             <li><strong>🔍 提出漏れチェック</strong> — BlaBlaLINK のユニオン全体スクショから各メンバーの凸消化数を読み取り、PADの登録数と突き合わせ。未提出者には 📣 催促Push を一斉送信でき、✏️ からそのまま代理凸へ。全体画面にはボスが写らないため登録は個人スクショで行う役割分担</li>
                             <li><strong>🪞 模擬提出チェック</strong> — 前日運用向け。今シーズンの模擬戦データ提出状況 (未提出/一部/5属性) を一覧し、未提出者へ催促Pushを一斉送信</li>
-                            <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。運営メンバーは一度ONにすれば端末に記憶される</li>
+                            <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。ONは端末に記憶されない (起動のたびにOFFから — 誤操作防止)。運営ONでは各カードを見出しタップで折りたためる。当日はボス状況・残り戦闘可能メンバー・👥メンバー状況・運営アクションだけが既定で開き、開閉は前日/当日ごとに記憶される。最上部の 2×2 (HP更新・残凸・未完・締め凸未返答) をタップすると該当カードが開く</li>
                             <li><strong>HP鮮度</strong> — ボス状況の見出しに「HP更新 ○分前」を表示 (30分以上で⚠️)。ボスHPは30秒毎に自動再取得される</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
                             <li><strong>✏️ シーズン確認・編集</strong> — シーズン制御カードに走っているシーズンのサマリー (月キー・ハード日・ボス構成) を表示。ハード日・月キー・<strong>属性 (ボスコード)</strong>・ボス名はここから修正できる (属性を直すと記録済みの凸も追随。配信済みプランは再算出・再配信が必要)。<strong>級 (HP規模) はHPと連動するため変更不可</strong> — その場合はシーズン作り直しで対応</li>
@@ -11009,6 +11030,7 @@
                 if (gen !== _coordRefreshGen) return;   // より新しい取得が走っている
                 if (getCurrentIdentity()?.id !== identity?.id) return;   // その間に切替
                 _coordActiveCache = list;
+                if (typeof _renderOpsCockpitSoon === 'function') _renderOpsCockpitSoon();
                 _coordSelfCache = _coordActiveCache.find(c => c.player_id === identity?.id) || null;
                 _renderCoordSelf(identity);
                 _renderCoordActiveList(identity);
@@ -13655,6 +13677,8 @@
             _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
             else finishListEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
+            _applyOpsCardStates();     // フェーズ (前日/当日) が確定したので既定の開閉を反映
+            _renderOpsCockpitSoon();
         }
 
         // ========== 👥 メンバー状況ボード (運営改修 #1・運営ONのみ) ==========
@@ -13730,6 +13754,7 @@
             const phase = _mbCurrentPhase();
             _mb.rows = dom.buildRows({ players: _mb.players, extras: _mb.extras, phase });
             _mbPaint(phase);
+            if (typeof _renderOpsCockpitSoon === 'function') _renderOpsCockpitSoon();   // (切り出し実行テストでは未定義)
         }
         function _mbPaint(phase) {
             const dom = window.memberStatusDomain;
@@ -13980,6 +14005,7 @@
         }
 
         function renderOpsRemainingList() {
+            _renderOpsCockpitSoon();
             if (!opsStore.get()) return;
             const { players, bosses } = opsStore.get();
             const listEl = document.getElementById('opsRemainingList');
@@ -14524,6 +14550,7 @@
         }
 
         function renderOpsBossSummary() {
+            _renderOpsCockpitSoon();   // HP鮮度 (30秒ポーリング) をコックピットにも反映
             renderOpsStatusOverview();   // 概況チップは入力と無関係なので常に更新
             if (!opsStore.get()) return;
             const { season, bosses } = opsStore.get();
@@ -14641,6 +14668,8 @@
             _opsCurrentAttr = attrKey;
             renderOpsBossSummary();
             renderOpsFinishList(attrKey);
+            expandOpsCard('opsSecFinish');   // 畳まれていても結果が見えるように開く (座標計算より前に)
+            _renderOpsCockpitSoon();
             // 締め凸候補カードへスムーススクロール
             // ※ レイアウト確定後に絶対座標で算出 (scrollIntoView は smooth 中に body
             //    高さが変動すると目標位置がずれて overshoot していたため)
@@ -15489,6 +15518,7 @@
 
         let _opsPlanSeq = 0;   // プラン算出の世代番号 (連打・再描画の競合で古い結果を描かない)
         async function computeAndRenderOptimalPlan(options = {}) {
+            if (typeof expandOpsCard === 'function') expandOpsCard('opsSecPlan');   // 当日は既定で畳まれている
             const seq = ++_opsPlanSeq;   // 関数冒頭で採番: マスタ先読みの待機中に来た後発クリックも先行を無効化できる
             const el = document.getElementById('opsOptimalPlan');
             // 編成アイコン表示のためマスタを先読み
@@ -16152,6 +16182,8 @@
             } catch { /* 取得できないときは出さない (誤操作防止側に倒す) */ }
             if (seq !== _unpublishBtnSeq) return;
             btn.style.display = published ? '' : 'none';
+            _opsPublishedFlag = !!published;
+            _renderOpsCockpitSoon();
         }
 
         // ========== 運営: ボスHP更新モーダル (Phase 3b) ==========
@@ -20337,17 +20369,8 @@
         // ========== ops タブ: セクションジャンプナビ + 運営モード折りたたみ ==========
         // 運営モードOFF (既定) では操作系カードを非表示にして、メンバーが見る画面をすっきりさせる。
         // カードの特定は タイトル文字列 で行い、HTML の改変を最小化する。
-        const _OPS_SECTION_DEFS = [
-            { id: 'opsSecBoss',      title: 'ボス状況',            opsOnly: false },
-            { id: 'opsSecCoord',     title: 'オンライン / 調整中', opsOnly: false },
-            { id: 'opsSecRemaining', title: '残り戦闘可能メンバー', opsOnly: false },
-            { id: 'opsSecMembers',   title: 'メンバー状況',         opsOnly: true },
-            { id: 'opsSecFinish',    title: '締め凸候補検索',       opsOnly: true },
-            { id: 'opsSecPlan',      title: '最適凸プラン算出',     opsOnly: true },
-            { id: 'opsSecActions',   title: '戦闘中の運営アクション', opsOnly: true },
-            { id: 'opsSecPush',      title: '一斉通知',             opsOnly: true },
-            { id: 'opsSecSeason',    title: 'シーズン制御',         opsOnly: true },
-        ];
+        // カード定義 (id / 見出し / 運営限定 / 前日・当日の既定開閉 / グループ) は js/domain/opsLayout.js の CARDS が唯一。
+        // ここでは参照するだけ (defer 読み込みなので実行時に解決する)
         // 運営モード: 誰でもスイッチで切り替えられる「表示トグル」。これは意図した仕様。
         //   目的は誤操作防止 — 用がある人だけが開き、触る気のないメンバーがバックアップ復元や
         //   メンバー管理をうっかり触る事故を防ぐ。内輪ユニオン運用なのでこれで足りる。
@@ -20360,7 +20383,10 @@
         // セッション中の切り替えは _opsMode 変数だけで保持し、localStorage には残さない。
         let _opsMode = false;
         function _opsJump(id) {
-            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            expandOpsCard(id);   // 畳まれていたら開く (display:none のままだと座標が取れない)
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }));
         }
         function _applyOpsMode() {
             document.body.classList.toggle('ops-mode', _opsMode);
@@ -20382,6 +20408,8 @@
             _opsMode = !_opsMode;
             // 永続化しない: 次回起動は必ず OFF から (誤操作防止)
             _applyOpsMode();
+            _applyOpsCardStates();   // 運営OFF は全カード全開 / ON は前日・当日の既定 + 記憶
+            _renderOpsCockpitSoon();
             // OFF にしたらボスHP編集パネルを閉じる — ボタン行 (data-ops-only) だけ隠れて
             // 開きっぱなしの編集パネルから保存できてしまう穴を塞ぐ (Codex 指摘)
             // 👥 メンバー状況: OFF にしたら待機中の取得を無効化する (古い応答で _mb を更新しない)
@@ -20406,39 +20434,155 @@
             }
             showNotification(_opsMode ? '🛠 運営モードON — 操作パネルを表示します' : '運営モードOFF — 操作パネルを隠しました');
         }
-        function _initOpsTabStructure() {
-            // 1) カードに id と data-ops-only をタグ付け
-            const cards = document.querySelectorAll('#tab-ops .dc-card');
-            _OPS_SECTION_DEFS.forEach(def => {
-                for (const card of cards) {
-                    if (card.dataset._secTagged) continue;
-                    if ((card.textContent || '').includes(def.title)) {
-                        card.id = card.id || def.id;
-                        card.dataset._secTagged = '1';
-                        if (def.opsOnly) card.setAttribute('data-ops-only', '');
-                        break;
-                    }
-                }
+        // ---- 戦況タブの折りたたみ (前日/当日の既定 + 手動開閉の記憶) と最上部コックピット ----
+        //   純ロジック (定義・開閉の解決・サマリー・コックピット値) は js/domain/opsLayout.js。
+        //   畳んでも DOM は残す (display:none) — 各 renderer は畳まれていても更新し続ける
+        let _opsCardStored = null;      // 手動開閉の記憶 { pre:{id:bool}, day:{...} } (localStorage)
+        let _opsPublishedFlag = false;  // 配信中プランがあるか (_syncOpsUnpublishBtn が更新)
+        function _opsCardPhase() {
+            const season = opsStore.get()?.season || seasonStore.get()?.season || null;
+            const dom = window.memberStatusDomain;
+            return dom ? dom.phaseFor(season?.hard_date) : 'pre';
+        }
+        function _loadOpsCardStored() {
+            if (_opsCardStored) return _opsCardStored;
+            const dom = window.opsLayoutDomain;
+            let raw = null;
+            try { raw = localStorage.getItem(dom.STORAGE_KEY); } catch { /* noop */ }
+            _opsCardStored = dom.parseStored(raw);
+            return _opsCardStored;
+        }
+        function _saveOpsCardStored() {
+            try { localStorage.setItem(window.opsLayoutDomain.STORAGE_KEY, JSON.stringify(_opsCardStored)); } catch { /* 保存できなくてもセッション中は動く */ }
+        }
+        function _setOpsCardOpen(card, open) {
+            card.classList.toggle('ops-closed', !open);
+            const car = card.querySelector(':scope > .ops-card-head .ops-card-car');
+            if (car) car.textContent = open ? '▴' : '▾';
+        }
+        // 現在のフェーズ・記憶・運営モードから全カードの開閉を反映 (運営OFF は常に全開)
+        function _applyOpsCardStates() {
+            const dom = window.opsLayoutDomain;
+            if (!dom) return;
+            const phase = _opsCardPhase();
+            const stored = _loadOpsCardStored();
+            for (const def of dom.CARDS) {
+                const card = document.getElementById(def.id);
+                if (card) _setOpsCardOpen(card, dom.resolveOpen(def.id, phase, stored, _opsMode));
+            }
+        }
+        // 自動展開 (締め凸検索・プラン算出・コックピットのタップ)。記憶にも「開」を残す
+        function expandOpsCard(id) {
+            const dom = window.opsLayoutDomain;
+            const card = document.getElementById(id);
+            if (!dom || !card || !_opsMode) return;
+            _setOpsCardOpen(card, true);
+            _opsCardStored = dom.withStored(_loadOpsCardStored(), _opsCardPhase(), id, true);
+            _saveOpsCardStored();
+        }
+        function toggleOpsCard(id) {
+            const dom = window.opsLayoutDomain;
+            const def = dom?.cardById(id);
+            const card = document.getElementById(id);
+            if (!def || !card || def.always || !_opsMode) return;
+            const open = card.classList.contains('ops-closed');
+            _setOpsCardOpen(card, open);
+            _opsCardStored = dom.withStored(_loadOpsCardStored(), _opsCardPhase(), id, open);
+            _saveOpsCardStored();
+        }
+        // コックピットと見出しサマリー: 盤面 (opsStore) と _mb.rows から生成 (DOM の文言は再解析しない)。
+        // 各 renderer から呼ばれるので rAF でまとめる
+        let _cockpitRaf = 0;
+        function _renderOpsCockpitSoon() {
+            if (_cockpitRaf) return;
+            _cockpitRaf = requestAnimationFrame(() => { _cockpitRaf = 0; _renderOpsCockpit(); });
+        }
+        function _renderOpsCockpit() {
+            const dom = window.opsLayoutDomain;
+            if (!dom) return;
+            const snap = opsStore.get();
+            const { summaries, cockpit } = dom.summarize({
+                season: snap?.season || null, bosses: snap?.bosses || [], players: snap?.players || [],
+                mbRows: (typeof _mb !== 'undefined' && _mb.players) ? _mb.rows : null,
+                coordList: (typeof _coordActiveCache !== 'undefined') ? _coordActiveCache : null,
+                published: _opsPublishedFlag,
+                planComputed: (typeof _opsLastPlan !== 'undefined') && !!_opsLastPlan,
+                finishAttr: (typeof _opsCurrentAttr !== 'undefined') ? _opsCurrentAttr : null,
             });
-            // 2) ジャンプナビを ops タブ先頭に挿入
+            for (const [id, s] of Object.entries(summaries)) {
+                const el = document.querySelector(`#${id} > .ops-card-head .ops-card-sum`);
+                if (el) { el.textContent = s.text; el.classList.toggle('bad', !!s.bad); }
+            }
+            const ck = document.getElementById('opsCockpit');
+            if (ck) {
+                ck.innerHTML = cockpit.map(t =>
+                    `<button type="button" class="ops-cockpit-tile ${t.bad ? 'bad' : ''}" onclick="_opsJump('${t.id}')" title="タップで該当カードを開く"><span class="k">${escapeHtml(t.label)}</span><span class="v">${escapeHtml(String(t.value))}</span></button>`).join('');
+            }
+        }
+        function _initOpsTabStructure() {
+            const dom = window.opsLayoutDomain;
+            if (!dom) { console.warn('[ops] opsLayoutDomain 未読込 — 戦況タブの折りたたみを初期化できません'); return; }
+            // 1) カードに id / data-ops-only を付け、先頭行を折りたたみヘッダ、残りを本文ラッパーにする
+            const cards = Array.from(document.querySelectorAll('#tab-ops .dc-card'));
+            for (const def of dom.CARDS) {
+                const card = cards.find(c => !c.dataset._secTagged && (c.textContent || '').includes(def.title));
+                if (!card) continue;
+                card.id = card.id || def.id;
+                card.dataset._secTagged = '1';
+                if (def.opsOnly) card.setAttribute('data-ops-only', '');
+                card.classList.add('ops-card');
+                const head = card.firstElementChild;
+                if (!head) continue;
+                head.classList.add('ops-card-head');
+                const body = document.createElement('div');
+                body.className = 'ops-card-body';
+                while (head.nextSibling) body.appendChild(head.nextSibling);
+                card.appendChild(body);
+                const sum = document.createElement('span');
+                sum.className = 'ops-card-sum';
+                head.appendChild(sum);
+                if (def.always) {
+                    card.classList.add('ops-always');
+                } else {
+                    const car = document.createElement('span');
+                    car.className = 'ops-card-car';
+                    car.textContent = '▾';
+                    head.appendChild(car);
+                    // 見出し行のボタン (並び替え・更新など) はそのまま効かせ、それ以外のタップで開閉
+                    head.addEventListener('click', (e) => {
+                        if (e.target.closest('button, input, select, a, label, [data-no-collapse]')) return;
+                        toggleOpsCard(def.id);
+                    });
+                }
+            }
+            // 2) 締め凸候補をメンバー状況の直後へ移し、グループ「判断・配信」を DOM 上でも連続させる
+            const fin = document.getElementById('opsSecFinish'), mem = document.getElementById('opsSecMembers');
+            if (fin && mem) mem.insertAdjacentElement('afterend', fin);
+            // 3) グループ見出し (運営ONのときだけ表示)
+            let lastGroup = null;
+            for (const def of dom.CARDS) {
+                const card = document.getElementById(def.id);
+                if (!card) continue;
+                if (def.group !== lastGroup) {
+                    const lab = document.createElement('div');
+                    lab.className = 'ops-group-label';
+                    lab.setAttribute('data-ops-only', '');
+                    lab.textContent = def.group;
+                    card.insertAdjacentElement('beforebegin', lab);
+                    lastGroup = def.group;
+                }
+            }
+            // 4) 最上部: コックピット (運営ON・2×2) + 🛠運営 トグル。
+            //    旧 sticky ジャンプナビ (🐙 ボス … 🛠 操作) は廃止 — 畳めばページが短くなるので不要 (2026-09-01)
             const container = document.querySelector('#tab-ops .container');
-            if (container && !document.getElementById('opsQuickNav')) {
-                const nav = document.createElement('div');
-                nav.id = 'opsQuickNav';
-                nav.setAttribute('data-no-swipe', '');
-                const hdrH = document.querySelector('.header')?.offsetHeight || 50;
-                // ヘッダー自動隠し中は --hdr-offset=0px が入り最上部へ詰める (fallback=ヘッダー表示時の高さ)
-                nav.style.cssText = `position:sticky;top:var(--hdr-offset, ${hdrH}px);transition:top 0.28s cubic-bezier(0.4,0,0.2,1);z-index:30;display:flex;gap:6px;overflow-x:auto;padding:8px 2px;margin:-2px 0 8px;background:linear-gradient(180deg,#F5F6F8 78%,rgba(245,246,248,0));-webkit-overflow-scrolling:touch;`;
-                nav.innerHTML = `
-                    <button class="dc-nav-chip" onclick="_opsJump('opsSecBoss')">🐙 ボス</button>
-                    <button class="dc-nav-chip" onclick="_opsJump('opsSecCoord')">📣 状況</button>
-                    <button class="dc-nav-chip" onclick="_opsJump('opsSecRemaining')">🎯 残凸</button>
-                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecMembers')">👥 メンバー</button>
-                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecFinish')">🔔 締め</button>
-                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecPlan')">🧠 プラン</button>
-                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecActions')">🛠 操作</button>
-                    <button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()" style="margin-left:auto;"></button>`;
-                container.prepend(nav);
+            if (container && !document.getElementById('opsTopBar')) {
+                const top = document.createElement('div');
+                top.id = 'opsTopBar';
+                top.innerHTML = `<div id="opsCockpit" class="ops-cockpit" data-ops-only></div>
+                    <div class="ops-topbar-row"><button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()"></button></div>`;
+                const first = container.querySelector('.ops-group-label, .dc-card');
+                if (first) first.insertAdjacentElement('beforebegin', top);
+                else container.prepend(top);
             }
             // 3) ホームへの当日導線 (UI再設計 Stage3): 残凸カード直後に相互リンクを置く。
             //    運営ONの人には不要 (画面が長くなるだけ) なので OFF時のみ表示
@@ -20454,6 +20598,7 @@
                 rem.insertAdjacentElement('afterend', link);
             }
             _applyOpsMode();
+            _applyOpsCardStates();   // 初期表示 (シーズン未取得 = 前日の既定。盤面取得後に renderOpsDashboard が再適用)
         }
         document.addEventListener('DOMContentLoaded', _initOpsTabStructure);
     </script>

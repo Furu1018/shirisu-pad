@@ -17,6 +17,7 @@ import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
 import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メンバー状況ボード)
+import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タブの折りたたみ + コックピット)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -2840,6 +2841,62 @@ console.log('\ntestSeasonDomain:');
         assert.equal(out[0].defaultDelete, true);
         assert.equal(out[1].sighting_count, 0);
         assert.equal(out[1].defaultDelete, false);
+    });
+}
+
+// ---- opsLayoutDomain (戦況タブの折りたたみ + コックピット) ----------------------
+console.log('\nopsLayoutDomain:');
+{
+    const dom = globalThis.opsLayoutDomain;
+    test('resolveOpen: 前日/当日の既定 (当日はボス・残凸・メンバー状況・運営アクションだけ開く) / always は常に開 / 運営OFFは全開', () => {
+        const ids = dom.CARDS.map(c => c.id);
+        const openDay = ids.filter(id => dom.resolveOpen(id, 'day', null, true));
+        assert.deepEqual(openDay, ['opsSecBoss', 'opsSecRemaining', 'opsSecMembers', 'opsSecActions']);
+        const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true));
+        assert.deepEqual(openPre, ['opsSecMembers', 'opsSecPlan', 'opsSecActions']);
+        assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
+        assert.equal(dom.resolveOpen('opsSecActions', 'day', { day: { opsSecActions: false } }, true), true, 'always は畳めない');
+        assert.equal(dom.resolveOpen('unknown', 'day', null, true), true);
+    });
+    test('withStored / parseStored: フェーズ別に記憶し、元オブジェクトは変えない / 壊れた JSON は空', () => {
+        const s0 = { pre: {}, day: {} };
+        const s1 = dom.withStored(s0, 'day', 'opsSecBoss', false);
+        assert.equal(dom.resolveOpen('opsSecBoss', 'day', s1, true), false, '当日の記憶が既定より優先');
+        assert.equal(dom.resolveOpen('opsSecBoss', 'pre', s1, true), false, '前日は既定 (閉) のまま');
+        assert.deepEqual(s0, { pre: {}, day: {} }, '元は不変');
+        const s2 = dom.withStored(s1, 'pre', 'opsSecBoss', true);
+        assert.equal(dom.resolveOpen('opsSecBoss', 'pre', s2, true), true);
+        assert.deepEqual(dom.parseStored('{broken'), { pre: {}, day: {} });
+        assert.deepEqual(dom.parseStored(null), { pre: {}, day: {} });
+        assert.deepEqual(dom.parseStored(JSON.stringify(s2)), s2);
+    });
+    test('summarize: 見出しサマリーとコックピット (HP鮮度⚠️・残凸・未完・締め凸未返答)', () => {
+        const now = Date.parse('2026-09-05T12:00:00+09:00');
+        const bosses = [
+            { boss_number: 1, remaining_hp_raw: 0, updated_at: '2026-09-05T11:20:00+09:00' },
+            { boss_number: 2, remaining_hp_raw: 5, updated_at: '2026-09-05T11:00:00+09:00' },
+        ];
+        const players = [{ attackCount: 3 }, { attackCount: 1 }, { attackCount: 0 }];
+        const mbRows = [{ todo: true, finish: 'pending' }, { todo: false, finish: null }, { todo: true, finish: null }];
+        const r = dom.summarize({ season: { month_key: '2026-09', current_level: 2 }, bosses, players, mbRows, coordList: [{ status: 'available' }, { status: 'coordinating' }, { status: 'off' }], published: true, finishAttr: 'fire', now });
+        assert.equal(r.summaries.opsSecBoss.text, 'Lv2 · 残1体 · HP更新 40分前 ⚠️');
+        assert.equal(r.summaries.opsSecBoss.bad, true);
+        assert.equal(r.summaries.opsSecRemaining.text, '2名 / 5凸残');
+        assert.equal(r.summaries.opsSecMembers.text, '未完 2 · 締め凸未返答 1');
+        assert.equal(r.summaries.opsSecCoord.text, 'オンライン 2 · 調整中 1');
+        assert.equal(r.summaries.opsSecFinish.text, '灼熱 締め凸を検索中');
+        assert.equal(r.summaries.opsSecPlan.text, '配信中');
+        assert.equal(r.summaries.opsSecSeason.text, '2026-09 · Lv2');
+        const ck = Object.fromEntries(r.cockpit.map(t => [t.key, t]));
+        assert.equal(ck.hp.value, '40分前'); assert.equal(ck.hp.bad, true);
+        assert.equal(ck.remain.value, 5); assert.equal(ck.todo.value, 2); assert.equal(ck.finish.value, 1);
+        assert.equal(ck.todo.id, 'opsSecMembers');
+        // シーズン無し / メンバー状況未ロード
+        const e = dom.summarize({ season: null, bosses: [], players: [], mbRows: null, now });
+        assert.equal(e.summaries.opsSecSeason.text, 'シーズン無し');
+        assert.equal(e.cockpit.find(t => t.key === 'todo').value, '—');
+        assert.equal(e.cockpit.find(t => t.key === 'hp').value, '—');
+        assert.equal(dom.summarize({ season: { current_level: 1 }, bosses: [{ updated_at: new Date(now - 30 * 1000).toISOString() }], now }).summaries.opsSecBoss.text, 'Lv1 · 残0体 · HP更新 たった今');
     });
 }
 

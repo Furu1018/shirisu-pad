@@ -202,6 +202,8 @@ await testAsync('extras 待機中に opsStore.invalidate() (凸登録等) が走
 });
 // toggleOpsMode 本体を切り出して実行 (OFF 側で _mb.gen を進める実装そのものを検証する)
 globalThis._applyOpsMode = () => {};
+globalThis._applyOpsCardStates = () => {};      // 戦況タブの折りたたみ (toggleOpsMode が呼ぶ。ここでは対象外)
+globalThis._renderOpsCockpitSoon = () => {};
 globalThis.showNotification = () => {};
 globalThis._invalidateTabRenderCache = () => {};
 globalThis.renderOpsMemberStatus = renderOpsMemberStatus;
