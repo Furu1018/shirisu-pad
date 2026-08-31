@@ -2824,6 +2824,21 @@ console.log('\ntestSeasonDomain:');
         assert.deepEqual(dom.filterDeletableChars(undefined, ['x']), []);
         assert.deepEqual(dom.filterDeletableChars('テスト中OCR', []), [], '配列以外は無視');
     });
+    test('境界: スナップショット内かつ今回タグ付きは候補外 / 文字列の testSeasonId でも一致 / sighting_count 欠落は0扱い', () => {
+        const out = dom.classifyTestSeasonChars({
+            snapshotNames: ['両方'],
+            currentRows: [
+                { canonical_name: '両方', created_by_test_season_id: 29 },
+                { canonical_name: '文字列ID', created_by_test_season_id: 29 },
+                { canonical_name: '欠落', is_confirmed: false },
+            ],
+            testSeasonId: '29',
+        });
+        assert.deepEqual(out.map(c => c.canonical_name), ['文字列ID', '欠落']);
+        assert.equal(out[0].defaultDelete, true);
+        assert.equal(out[1].sighting_count, 0);
+        assert.equal(out[1].defaultDelete, false);
+    });
 }
 
 // ---- バックアップ整合 (静的) ------------------------------------------------

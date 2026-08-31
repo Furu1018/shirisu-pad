@@ -17055,6 +17055,7 @@
             if (e.target?.id === 'opsAttacksEditModal') closeOpsAttacksEditModal();
             if (e.target?.id === 'opsSeasonCreateModal') closeOpsSeasonCreateModal();
             if (e.target?.id === 'opsPushSendModal') closeOpsPushSendModal();
+            if (e.target?.id === 'opsTestEndModal') closeOpsTestEndModal();
         });
         // Esc で閉じる
         document.addEventListener('keydown', e => {
@@ -17062,6 +17063,7 @@
                 closePlayerSelectModal();
                 closeMemberManageModal();
                 closeMyAttackModal();
+                closeOpsTestEndModal();
             }
         });
 

@@ -1718,6 +1718,7 @@ window.supabaseCreateSeason = async function (payload) {
         .select('id, hard_date, month_key, is_test')
         .single();
     if (sErr) throw sErr;
+    _invalidateActiveTestSeasonCache();   // テスト開始/本番作成のどちらでも OCR のタグ判定を即時に切り替える
 
     // ボス5体挿入
     const bossRows = payload.bosses.map(b => {
@@ -2548,6 +2549,8 @@ window.supabaseLoadPlanAcks = async function (seasonId) {
 // アクティブなテストシーズンの id (OCR 自動学習の「テスト由来タグ」用)。
 // OCR は1回の解析で何十行も回るので 60 秒キャッシュ。テスト稼働中でなければ null
 let _activeTestSeasonCache = { at: 0, id: null };
+// テストの作成・終了で必ず呼ぶ (古い id を付けて FK エラー / 開始直後60秒がタグ無し、を防ぐ — Codex指摘)
+function _invalidateActiveTestSeasonCache() { _activeTestSeasonCache = { at: 0, id: null }; }
 async function _activeTestSeasonId() {
     if (Date.now() - _activeTestSeasonCache.at < 60_000) return _activeTestSeasonCache.id;
     let id = null;
@@ -2695,6 +2698,7 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
     // テストシーズン削除 (CASCADE で bosses / attacks も消える)
     const { error: dErr } = await supabase.from('seasons').delete().eq('id', season.id);
     if (dErr) throw dErr;
+    _invalidateActiveTestSeasonCache();   // 削除済み id を OCR のタグに使わない
 
     // テスト作成前にアクティブだったシーズンのみ復活させる。
     // 手動で 🏁 シーズン終了 していたなら restore せず、シーズン無しの状態に戻る。
@@ -2946,10 +2950,11 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
             // 33 未適用環境では列エラー → タグ無しで再試行 (その行は終了時に既定OFF になるだけ)
             const testSid = await _activeTestSeasonId();
             let ins = await supabase.from('nikke_characters').insert(testSid ? { ...row, created_by_test_season_id: testSid } : row);
-            if (ins.error && testSid && /created_by_test_season_id/.test(String(ins.error.message))) {
-                ins = await supabase.from('nikke_characters').insert(row);
-            }
-            if (ins.error) throw ins.error;
+            // タグ付き insert が失敗したら理由を問わずタグ無しで再試行
+            // (33 未適用の列エラー / テスト終了直後にキャッシュが古く FK エラー、など)
+            if (ins.error && testSid) ins = await supabase.from('nikke_characters').insert(row);
+            // 従来契約: DB エラーでも索引・ローカルマスタは更新し、同一バッチ内の再認識を通す (投げない — Codex指摘)
+            if (ins.error) console.warn('[char master insert]', ins.error.message);
             normIndex.set(norm, raw);
             master.push({ canonical_name: raw, aliases: [], sighting_count: 1, is_confirmed: false });
         } catch { /* noop: テーブル未作成時など */ }
