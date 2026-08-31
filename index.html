@@ -12585,9 +12585,7 @@
                 const srcEl = document.getElementById('settingsNewCharSource'); if (srcEl) srcEl.value = '';
                 const noteEl = document.getElementById('settingsNewCharNotes'); if (noteEl) noteEl.value = '';
                 _selectBurst('newChar', '');
-                setMsg(r.metaDropped
-                    ? `✅ 「${name}」を登録しました (根拠・登録者は supabase/34_nikke_verification.sql 適用後に保存されます)`
-                    : `✅ 「${name}」を要確認として登録しました。別の運営が一覧から開いて根拠を確認し「確認済みにする」を押してください`, '#18C26B');
+                setMsg(`✅ 「${name}」を要確認として登録しました。別の運営が一覧から開いて根拠を確認し「確認済みにする」を押してください`, '#18C26B');
                 _nikkeCharsCache = null;                 // キャッシュ再構築 (fuzzy解決に即反映)
                 await getNikkeCharsCache();
                 renderSettingsCharMaster();
@@ -12600,6 +12598,10 @@
             const listEl = document.getElementById('settingsCharList');
             const sumEl = document.getElementById('settingsCharSummary');
             if (!listEl) return;
+            // 事前登録フォームのバーストピッカー (初回だけ描画。選択状態は _burstState が保持)。
+            // 一覧のロード失敗・マスタ空の early return より前に置く (でないと登録が必ず止まる — Codex指摘)
+            const bp = document.getElementById('settingsNewCharBurst');
+            if (bp && !bp.dataset.ready) { bp.innerHTML = _burstPickerHtml('newChar', ''); bp.dataset.ready = '1'; }
             listEl.innerHTML = '<p style="color:#6B7178;font-size:12px;">読み込み中…</p>';
             let rows;
             try {
@@ -12613,9 +12615,6 @@
                 if (sumEl) sumEl.textContent = '';
                 return;
             }
-            // 事前登録フォームのバーストピッカー (初回だけ描画。選択状態は _burstState が保持)
-            const bp = document.getElementById('settingsNewCharBurst');
-            if (bp && !bp.dataset.ready) { bp.innerHTML = _burstPickerHtml('newChar', ''); bp.dataset.ready = '1'; }
             const cmDom = window.charMasterDomain;
             const confirmed = rows.filter(r => r.is_confirmed).length;
             const needsReview = cmDom ? rows.filter(r => cmDom.verificationState(r).kind === 'needs_review').length : 0;
@@ -12678,9 +12677,12 @@
             const vs = dom.verificationState(entry);
             const me = getCurrentIdentity();
             const fmt = (ts) => { try { return SETTINGS_TS_FMT(ts); } catch { return String(ts || '-'); } };
-            const src = entry.verification_source
-                ? `<a href="${escapeHtml(entry.verification_source)}" target="_blank" rel="noopener noreferrer" style="color:#6C42F0;">${escapeHtml(entry.verification_source)}</a>`
-                : '<span style="color:#B45309;">根拠URLなし</span>';
+            const safeSrc = _safeHttpUrl(entry.verification_source);
+            const src = safeSrc
+                ? `<a href="${escapeHtml(safeSrc)}" target="_blank" rel="noopener noreferrer" style="color:#6C42F0;">${escapeHtml(safeSrc)}</a>`
+                : entry.verification_source
+                    ? `<span title="http(s) 以外はリンクにしません">${escapeHtml(entry.verification_source)}</span>`
+                    : '<span style="color:#B45309;">根拠URLなし</span>';
             document.getElementById('charEditVerifyInfo').innerHTML =
                 `<div>登録: <strong>${escapeHtml(entry.registered_by)}</strong> · ${escapeHtml(fmt(entry.first_seen))}</div>` +
                 `<div>根拠: ${src}</div>` +
@@ -12706,6 +12708,9 @@
             }
             box.style.display = 'block';
         }
+        // 「確認済みにする」= チェックを付けて通常保存に合流する。
+        // 別経路で is_confirmed だけ更新すると、モーダルで直したバースト (二者確認の主目的) が
+        // 保存されないまま確定できてしまう (Codex指摘 blocker)
         async function handleCharMasterVerify() {
             if (!_charEditOriginal || !_charEditEntry) return;
             const msg = document.getElementById('charEditMessage');
@@ -12714,20 +12719,16 @@
             const me = getCurrentIdentity();
             const cv = dom.canVerify({ registeredBy: _charEditEntry.registered_by, registeredAt: _charEditEntry.first_seen, actorName: me?.name });
             if (!cv.ok) { setMsg(`❌ ${cv.reason}`, true); return; }
-            const b = _readBurst('charEdit');
-            if (!b) { setMsg('❌ バーストを設定してから確定してください (要確認の主目的はバーストの検証です)', true); return; }
-            try {
-                await window.supabaseVerifyCharacterMasterEntry(_charEditOriginal, { verifiedBy: me.name });
-                setMsg(`✅ ${me.name} が確認済みにしました`);
-                _charEditEntry = { ..._charEditEntry, is_confirmed: true, verified_by: me.name, verified_at: new Date().toISOString() };
-                document.getElementById('charEditConfirmed').checked = true;
-                _renderCharEditVerifyBox(_charEditEntry);
-                invalidateNikkeCharsCache();
-                renderSettingsCharMaster();
-            } catch (e) {
-                setMsg(`❌ ${e?.message || e}`, true);
-            }
+            if (!_readBurst('charEdit')) { setMsg('❌ バーストを設定してから確定してください (要確認の主目的はバーストの検証です)', true); return; }
+            if (document.getElementById('charEditMergeTarget').value.trim()) { setMsg('❌ 統合先を指定したままでは確定できません (統合か確定のどちらかに)', true); return; }
+            document.getElementById('charEditConfirmed').checked = true;
+            await handleCharMasterSave();   // 内部で canVerify を再判定し verified_by を付けて保存 → 一覧更新 → 閉じる
         }
+        // 根拠URLをリンクにしてよいのは http(s) だけ (別経路で書かれた javascript: 等をリンク化しない — Codex指摘)
+        function _safeHttpUrl(u) {
+            try { const p = new URL(String(u || '')); return (p.protocol === 'http:' || p.protocol === 'https:') ? p.href : null; } catch { return null; }
+        }
+
         // ---------- バースト選択ピル (キャラ登録/編集で共用) ----------
         // 単一選択。'' = 未設定 (null)。groupId ごとに状態を保持。
         const _burstState = {};
@@ -12849,7 +12850,7 @@
             if (burstAlt && burstAlt === burst) { setMsg('❌ 主バーストとサブバーストが同じです', true); return; }
             // 要確認 (手動登録) の行をチェックボックスで確定にする場合も「確認済みにする」と同じルール (運営改修 #6)
             let verifiedBy = null;
-            if (isConfirmed && _charEditEntry && !_charEditEntry.is_confirmed && _charEditEntry.registered_by && window.charMasterDomain) {
+            if (!mergeTarget && isConfirmed && _charEditEntry && !_charEditEntry.is_confirmed && _charEditEntry.registered_by && window.charMasterDomain) {
                 const me = getCurrentIdentity();
                 const cv = window.charMasterDomain.canVerify({ registeredBy: _charEditEntry.registered_by, registeredAt: _charEditEntry.first_seen, actorName: me?.name });
                 if (!cv.ok) { setMsg(`❌ ${cv.reason}`, true); return; }
@@ -12872,7 +12873,7 @@
                         burst,          // '' なら未設定(null)に戻す
                         burst_alt: burstAlt,
                     });
-                    setMsg('✅ 保存しました');
+                    setMsg(verifiedBy ? `✅ ${verifiedBy} が確認済みにして保存しました` : '✅ 保存しました');
                 }
                 invalidateNikkeCharsCache();
                 await renderSettingsCharMaster();

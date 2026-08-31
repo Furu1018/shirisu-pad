@@ -3095,11 +3095,11 @@ window.supabaseRegisterNikkeCharName = async function (name, burst = null, meta 
     const extra = {};
     if (meta && typeof meta.registeredBy === 'string' && meta.registeredBy.trim()) extra.registered_by = meta.registeredBy.trim();
     if (meta && typeof meta.source === 'string' && meta.source.trim()) extra.verification_source = meta.source.trim();
-    let ins = await supabase.from('nikke_characters').insert({ ...baseRow, ...extra });
+    const ins = await supabase.from('nikke_characters').insert({ ...baseRow, ...extra });
     if (ins.error && Object.keys(extra).length && (_isMissingColumnErr(ins.error, 'registered_by') || _isMissingColumnErr(ins.error, 'verification_source'))) {
-        // 34 未適用: 根拠・登録者は保存できないが登録自体は通す (一覧では ⚠未確定)
-        ins = await supabase.from('nikke_characters').insert(baseRow);
-        if (!ins.error) return { canonical_name: clean, inserted: true, needsReview: true, metaDropped: true };
+        // 34 未適用: 列抜きで通すと根拠・登録者が黙って失われ、同名なので再登録もできない → 中止して案内
+        // (27 の属性変更と同じ扱い。未確認の行を「誰が・何を根拠に」無しで作らない)
+        throw new Error('手動登録には supabase/34_nikke_verification.sql の適用が必要です (Supabase → SQL Editor で実行してから再度登録)');
     }
     if (ins.error) throw ins.error;
     return { canonical_name: clean, inserted: true, needsReview: true };
@@ -3182,10 +3182,11 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
             ...(mergedBurst ? { burst: mergedBurst } : {}),
             ...(mergedAlt ? { burst_alt: mergedAlt } : {}),
         };
-        // 改名で落としてはいけない付帯情報を引き継ぐ (旧行 → 統合先の順で値があるものだけ)。
+        // 改名で落としてはいけない付帯情報を引き継ぐ。統合先 (existing) に値があればそちらを優先し、
+        // 無いときだけ旧行から補う (旧行の古い根拠・確認者・テスト由来タグで新しい側を巻き戻さない — Codex指摘)。
         // '*' select なので未マイグレ環境では undefined = キーごと付かない (列エラーにならない)
         for (const k of ['notes', 'registered_by', 'verification_source', 'verified_by', 'verified_at', 'created_by_test_season_id']) {
-            const v = old[k] ?? existing?.[k];
+            const v = existing?.[k] ?? old[k];
             if (v !== undefined && v !== null) row[k] = v;
         }
         // 改名と同時に要確認→確定にする場合も確認者を残す (34 未適用なら upsert が列エラー → 下で案内)
@@ -3193,7 +3194,12 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
             row.verified_by = patch.verified_by.trim();
             row.verified_at = new Date().toISOString();
         }
-        const { error: upErr } = await supabase.from('nikke_characters').upsert(row);
+        let { error: upErr } = await supabase.from('nikke_characters').upsert(row);
+        if (upErr && ('verified_by' in row) && (_isMissingColumnErr(upErr, 'verified_by') || _isMissingColumnErr(upErr, 'verified_at'))) {
+            // 34 未適用: 確認者の記録だけ諦めて改名+確定は通す (通常更新側と同じ扱い)
+            const { verified_by: _vb, verified_at: _va, ...rest } = row;
+            ({ error: upErr } = await supabase.from('nikke_characters').upsert(rest));
+        }
         // 未マイグレ環境では引き継ぎ元の burst_alt も undefined なので、ここでこのエラーが出るのは
         // 「呼び出し側が明示的にサブを保存しようとした」ときだけ。黙って捨てず案内する
         if (upErr && mergedAlt && _isMissingColumnErr(upErr, 'burst_alt')) {
