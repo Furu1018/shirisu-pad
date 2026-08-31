@@ -74,7 +74,8 @@ test('前日・未完のみ: 未完の行だけ描画され、名前はエスケ
     assert.ok(/handleOpsMemberNudge\(1\)[^>]*disabled/.test(out), 'Push未購読の催促ボタンが disabled になっていない');
     assert.ok(!out.includes('handleOpsMemberProxy'), '前日に代理凸ボタンが出ている');
     assert.ok(!/undefined|NaN|\[object/.test(out), `描画に undefined/NaN が混ざっている: ${out.slice(0, 200)}`);
-    assert.ok(el('opsMbSummary').innerHTML.includes('模擬 5属性'), '前日の集計が出ていない');
+    assert.ok(el('opsMbSummary').innerHTML.includes('模擬 3属性 (被りなし)'), '前日の集計が出ていない');
+    assert.ok(el('opsMbSummary').innerHTML.includes('5属性 '), '5属性の加点表示が無い');
     assert.equal(el('opsMbFilterTodo').textContent, '未完のみ (1)');
     assert.equal(el('opsMbFilterAll').textContent, '全員 (3)');
     assert.equal(el('opsMbPhasePre').attrs['aria-pressed'], 'true');

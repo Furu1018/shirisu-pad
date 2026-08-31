@@ -18,6 +18,35 @@
     const ATTR_KEYS = ['fire', 'water', 'electric', 'iron', 'wind'];
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
     const MAX_ATTACKS = 3;
+    // 模擬の必要範囲は「キャラ被りなしで3属性」(= 3凸を別キャラで回せる)。5属性は運営が助かる加点扱いで強制しない
+    // (2026-09-01 ユーザー判断)。同じキャラは1日1回しか使えないため、提出属性数ではなく
+    // 「互いにキャラが被らない属性の最大数」で判定する
+    const MOCK_REQUIRED = 3;
+
+    const charKey = (c) => (typeof c === 'string' ? c : '').normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '').trim().toLowerCase();
+
+    /**
+     * 提出済み属性のうち、互いにキャラが被らない属性の最大数 (5属性なので全部分集合を総当たり)。
+     * 編成が未記録 (chars 空) の属性は「被り判定できない」= どの属性とも両立するものとして数える
+     * (提出自体は済んでいるのに、記録の欠落で要対応にしない)。
+     * @param {string[]} mockAttrs
+     * @param {Record<string, string[]>} teamsByAttr
+     */
+    function maxDisjointAttrs(mockAttrs, teamsByAttr) {
+        const attrs = Array.isArray(mockAttrs) ? mockAttrs : [];
+        const sets = attrs.map(a => new Set((Array.isArray(teamsByAttr?.[a]) ? teamsByAttr[a] : []).map(charKey).filter(Boolean)));
+        let best = 0;
+        for (let mask = 1; mask < (1 << attrs.length); mask++) {
+            const idx = []; for (let i = 0; i < attrs.length; i++) if (mask & (1 << i)) idx.push(i);
+            if (idx.length <= best) continue;
+            let ok = true;
+            for (let x = 0; x < idx.length && ok; x++) for (let y = x + 1; y < idx.length && ok; y++) {
+                for (const c of sets[idx[x]]) if (sets[idx[y]].has(c)) { ok = false; break; }
+            }
+            if (ok) best = idx.length;
+        }
+        return best;
+    }
 
     /** ローカル日付 YYYY-MM-DD (hard_date との比較用。運用は日本時間の端末前提) */
     function localDateStr(d) {
@@ -71,6 +100,8 @@
             const dmg = p.damagesByAttr || {};
             const mockAttrs = ATTR_KEYS.filter(a => (Number(dmg[a]) || 0) > 0);
             const missingAttrs = ATTR_KEYS.filter(a => !mockAttrs.includes(a));
+            const mockUsable = maxDisjointAttrs(mockAttrs, p.teamsByAttr);   // キャラ被りなしで回せる属性数
+            const mockOk = mockUsable >= MOCK_REQUIRED;
             const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
             const flex = !!p.flexTime;
             const slvKnown = !p.syncLevelEstimated && Number(p.syncLevel) > 0;
@@ -88,7 +119,14 @@
             const reasons = [];
             if (isDay && atkCount < MAX_ATTACKS) reasons.push({ key: 'attacks', label: `凸 残${MAX_ATTACKS - atkCount}` });
             if (isDay && finish === 'pending') reasons.push({ key: 'finish', label: '締め凸 未返答' });
-            if (mockAttrs.length < ATTR_KEYS.length) reasons.push({ key: 'mock', label: `模擬 ${ATTR_KEYS.length - mockAttrs.length}属性不足` });
+            if (!mockOk) {
+                reasons.push({
+                    key: 'mock',
+                    label: mockUsable < mockAttrs.length
+                        ? `模擬 被りなし${mockUsable}/${MOCK_REQUIRED} (提出${mockAttrs.length}属性・キャラ被り)`
+                        : `模擬 被りなし${mockUsable}/${MOCK_REQUIRED}`,
+                });
+            }
             if (slvNow == null) reasons.push({ key: 'slv', label: slvPrev ? `SLv未登録 (前回 ${slvPrev})` : 'SLv未登録' });
             if (!slots.length && !flex) reasons.push({ key: 'slots', label: '時間帯未登録' });
             if (!push) reasons.push({ key: 'push', label: '通知購読なし' });
@@ -98,7 +136,7 @@
                 avatarChar: p.avatar_character || null,
                 avatarUrl: p.avatar_url || null,
                 strong: Array.isArray(p.strong_attributes) ? p.strong_attributes : [],
-                mockCount: mockAttrs.length, missingAttrs,
+                mockCount: mockAttrs.length, missingAttrs, mockUsable, mockOk,
                 slvNow, slvPrev,
                 slots, flex, allHours: !!p.notifyAllHours,
                 push,
@@ -132,12 +170,13 @@
                 { key: 'finish', label: '締め凸 未返答', value: pending, total: null, bad: pending > 0 },
             ];
         }
-        const mock = cnt(r => r.mockCount >= ATTR_KEYS.length);
+        const mock = cnt(r => r.mockOk);
+        const mockFull = cnt(r => r.mockCount >= ATTR_KEYS.length);
         const slv = cnt(r => r.slvNow != null);
         const slots = cnt(r => r.slots.length > 0 || r.flex);
         const push = cnt(r => r.push);
         return [
-            { key: 'mock', label: '模擬 5属性', value: mock, total: n, bad: mock < n },
+            { key: 'mock', label: '模擬 3属性 (被りなし)', value: mock, total: n, bad: mock < n, sub: `5属性 ${mockFull}` },
             { key: 'slv', label: 'SLv 登録', value: slv, total: n, bad: slv < n },
             { key: 'slots', label: '時間帯 登録', value: slots, total: n, bad: slots < n },
             { key: 'push', label: '通知 購読', value: push, total: n, bad: push < n },
@@ -158,12 +197,17 @@
             return { title: '🔔 締め凸依頼の返答をお願いします', body: '締め凸の依頼が届いています。ホームから 受ける / 見送る を選んでください🙏', url: './?tab=mypage' };
         }
         const parts = [];
-        if (keys.has('mock')) parts.push(`模擬戦データ (残り${ATTR_KEYS.length - row.mockCount}属性: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・')})`);
+        if (keys.has('mock')) {
+            const need = Math.max(0, MOCK_REQUIRED - (row.mockUsable || 0));
+            parts.push(row.mockUsable < row.mockCount
+                ? `模擬戦データ (キャラ被りなしで${MOCK_REQUIRED}属性必要・あと${need}属性。未提出: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・') || 'なし'})`
+                : `模擬戦データ (キャラ被りなしで${MOCK_REQUIRED}属性必要・あと${need}属性: ${row.missingAttrs.map(a => ATTR_JP[a]).join('・')})`);
+        }
         if (keys.has('slv')) parts.push('シンクロレベル');
         if (keys.has('slots')) parts.push('戦闘可能時間');
         if (!parts.length) return null;
         return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。ホーム・模擬タブから登録お願いします🙏`, url: './?tab=mypage' };
     }
 
-    root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, phaseFor, buildRows, sortRows, summarize, nudgeMessage, localDateStr };
+    root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, MOCK_REQUIRED, phaseFor, buildRows, sortRows, summarize, nudgeMessage, localDateStr, maxDisjointAttrs };
 })(typeof window !== 'undefined' ? window : globalThis);

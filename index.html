@@ -13751,7 +13751,7 @@
             const fa = document.getElementById('opsMbFilterAll'); if (fa) fa.textContent = `全員 (${all.length})`;
             // 集計
             sumEl.innerHTML = dom.summarize(all, phase).map(s =>
-                `<div class="dc-mb-sum ${s.bad ? 'bad' : ''}"><div class="k">${escapeHtml(s.label)}</div><div class="v">${s.value}${s.total != null ? `<small> / ${s.total}</small>` : ''}</div></div>`).join('');
+                `<div class="dc-mb-sum ${s.bad ? 'bad' : ''}"><div class="k">${escapeHtml(s.label)}</div><div class="v">${s.value}${s.total != null ? `<small> / ${s.total}</small>` : ''}${s.sub ? `<small style="margin-left:6px;color:#8A9097;">${escapeHtml(s.sub)}</small>` : ''}</div></div>`).join('');
             // 行
             const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || '#8A9097'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
             const strip = (r) => {
@@ -13764,9 +13764,12 @@
                 return `<div><div class="dc-mb-strip">${cells}</div><div class="dc-mb-tz">${label}${r.allHours ? ' · 🔔いつでも' : ''}</div></div>`;
             };
             rowsEl.innerHTML = shown.length ? shown.map(r => {
-                const mock = r.mockCount >= dom.ATTR_KEYS.length ? '<span class="dc-mb-c ok">模擬 5/5</span>'
-                    : r.mockCount === 0 ? '<span class="dc-mb-c err">模擬 0/5</span>'
-                    : `<span class="dc-mb-c warn">模擬 ${r.mockCount}/5 ${r.missingAttrs.map(dot).join('')}</span>`;
+                // 必要範囲は「キャラ被りなしで3属性」。5属性は運営が助かる加点 (★)。判定は domain (mockOk / mockUsable)
+                const mockTitle = r.mockOk
+                    ? (r.mockCount >= dom.ATTR_KEYS.length ? '5属性そろい (運営助かる)' : `被りなし${r.mockUsable}属性 = 必要範囲OK`)
+                    : `キャラ被りなしで${dom.MOCK_REQUIRED}属性必要 (今 ${r.mockUsable})`;
+                const mock = r.mockCount === 0 ? '<span class="dc-mb-c err" title="未提出">模擬 0/5</span>'
+                    : `<span class="dc-mb-c ${r.mockOk ? 'ok' : 'warn'}" title="${escapeHtml(mockTitle)}">模擬 ${r.mockCount}/5${r.mockCount >= dom.ATTR_KEYS.length ? ' ★' : ''}${!r.mockOk && r.mockUsable < r.mockCount ? ` 被り→${r.mockUsable}` : ''} ${r.mockOk ? '' : r.missingAttrs.map(dot).join('')}</span>`;
                 const slv = r.slvNow != null ? `<span class="dc-mb-c ok">SLv ${r.slvNow}</span>`
                     : r.slvPrev ? `<span class="dc-mb-c warn">SLv 前回${r.slvPrev}</span>`
                     : '<span class="dc-mb-c err">SLv —</span>';
@@ -13798,7 +13801,7 @@
             }).join('') : '<p style="color:#6B7178;font-size:12px;margin:6px 0;">要対応のメンバーはいません 🎉</p>';
             if (legEl) legEl.innerHTML = isDay
                 ? `<span>L1/L2/L3 = 各凸のレベル</span><span style="color:#6C42F0;">紫 = 代理登録</span><span>赤枠 = 現在時刻 (${nowH}時)</span><span>● 得意属性</span>`
-                : '<span>● 得意属性</span><span>模擬の色つき点 = 未提出の属性</span><span>時間帯バー = 0〜23時の戦闘可能時間</span><span>🔕 = Push未購読 (催促が届かない)</span>';
+                : '<span>● 得意属性</span><span>模擬: キャラ被りなしで3属性が必要範囲 (★ = 5属性)</span><span>色つき点 = 未提出の属性</span><span>時間帯バー = 0〜23時の戦闘可能時間</span><span>🔕 = Push未購読 (催促が届かない)</span>';
         }
         function handleOpsMemberPhase(p) { _mb.phase = p; _mbRebuild(); }
         function handleOpsMemberFilter(f) { _mb.filter = f; _mbPaint(_mbCurrentPhase()); }
