@@ -3037,7 +3037,10 @@ console.log('\ncharMasterDomain:');
 {
     const fs = await import('node:fs');
     const path = await import('node:path');
-    const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+    const { fileURLToPath } = await import('node:url');
+    // fileURLToPath を通す: 日本語フォルダ名 (自宅 Mac の しりすこPAD) は URL の pathname だと
+    // %E3%81%97… にエンコードされたままで ENOENT になる (2026-08-31 pull 直後に発覚)。他テストと同じ方式
+    const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
     const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
     const sqlDir = path.join(ROOT, 'supabase');
     const sqlFiles = fs.readdirSync(sqlDir).filter(f => /^\d+_.*\.sql$/.test(f));
