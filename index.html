@@ -320,8 +320,11 @@
            畳んでも DOM は残す — HP ポーリングや残凸表の更新関数はそのまま動く必要がある */
         .ops-card-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .ops-always > .ops-card-head, body:not(.ops-mode) .ops-card-head { cursor: default; }
-        .ops-card-title { flex: none; white-space: nowrap; }
+        /* 題名は畳んだときだけ折り返し禁止 (開いているときは従来どおり縮んで折り返す — 375px で並び替えボタンと同居するため) */
+        .ops-card.ops-closed > .ops-card-head > .ops-card-title { flex: none; white-space: nowrap; }
         .ops-card.ops-closed > .ops-card-head > :not(.ops-card-title):not(.ops-card-sum):not(.ops-card-car) { display: none !important; }
+        /* 題名ブロックに副題がある場合 (一斉通知) は畳んだとき副題も隠す */
+        .ops-card.ops-closed > .ops-card-head > .ops-card-title > :not(:first-child) { display: none !important; }
         .ops-card-sum { margin-left: auto; flex: 1 1 auto; min-width: 0; font-size: 11px; font-weight: 700; color: #8A9097; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; display: none; }
         .ops-card-sum.bad { color: #FF3D44; }
         .ops-card.ops-closed > .ops-card-head .ops-card-sum { display: inline-block; }
