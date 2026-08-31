@@ -2545,8 +2545,76 @@ window.supabaseLoadPlanAcks = async function (seasonId) {
     return data || [];
 };
 
-// アクティブなテストシーズンを削除し、player_damages と元のアクティブシーズンを復元
-window.supabaseDeleteActiveTestSeason = async function () {
+// アクティブなテストシーズンの id (OCR 自動学習の「テスト由来タグ」用)。
+// OCR は1回の解析で何十行も回るので 60 秒キャッシュ。テスト稼働中でなければ null
+let _activeTestSeasonCache = { at: 0, id: null };
+async function _activeTestSeasonId() {
+    if (Date.now() - _activeTestSeasonCache.at < 60_000) return _activeTestSeasonCache.id;
+    let id = null;
+    try {
+        const { data } = await supabase
+            .from('seasons').select('id').eq('is_active', true).eq('is_test', true).maybeSingle();
+        id = data?.id ?? null;
+    } catch { /* noop: 判定できなければタグ無し */ }
+    _activeTestSeasonCache = { at: Date.now(), id };
+    return id;
+}
+
+// テスト終了の確認モーダル用: 「何が復元され、何が消えるか」を実行前に返す (書き込みなし)。
+// キャラマスタの分類は js/domain/testSeason.js (純ロジック・テスト済み)
+async function _loadCharsForTestEnd() {
+    let r = await supabase.from('nikke_characters')
+        .select('canonical_name, sighting_count, is_confirmed, created_by_test_season_id');
+    if (r.error && /created_by_test_season_id/.test(String(r.error.message))) {
+        // 33 未適用環境: タグ列なしで取得 (全候補が既定OFF になる)
+        r = await supabase.from('nikke_characters').select('canonical_name, sighting_count, is_confirmed');
+    }
+    if (r.error) throw r.error;
+    return r.data || [];
+}
+window.supabasePreviewTestSeasonEnd = async function () {
+    const { data: season, error: sErr } = await supabase
+        .from('seasons')
+        .select('id, is_test, metadata, month_key')
+        .eq('is_active', true)
+        .eq('is_test', true)
+        .maybeSingle();
+    if (sErr) throw sErr;
+    if (!season) throw new Error('アクティブなテストシーズンがありません');
+    const dom = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
+    if (!dom) throw new Error('js/domain/testSeason.js が読み込まれていません');
+    const snapshot = Array.isArray(season.metadata?.damages_snapshot) ? season.metadata.damages_snapshot : [];
+    const kept = snapshot.filter(s => isUsableSlot(s.slot));
+    let attacks = 0;
+    try {
+        const { count } = await supabase.from('attacks').select('id', { count: 'exact', head: true }).eq('season_id', season.id);
+        attacks = count || 0;
+    } catch { /* noop */ }
+    let restoredKey = null;
+    const prevId = season.metadata?.previous_active_season_id;
+    if (prevId) {
+        const { data: prev } = await supabase.from('seasons').select('month_key').eq('id', prevId).maybeSingle();
+        restoredKey = prev?.month_key ?? null;
+    }
+    const chars = dom.classifyTestSeasonChars({
+        snapshotNames: season.metadata?.nikke_characters_snapshot,
+        currentRows: await _loadCharsForTestEnd(),
+        testSeasonId: season.id,
+    });
+    return {
+        season: { id: season.id, month_key: season.month_key },
+        restoreRows: kept.length,
+        droppedRows: snapshot.length - kept.length,
+        attacks,
+        restoredKey,
+        chars,
+    };
+};
+
+// アクティブなテストシーズンを削除し、player_damages と元のアクティブシーズンを復元。
+// charsToDelete: 確認モーダルで運営が選んだキャラ名。**未指定なら何も消さない**
+// (旧仕様の「スナップショットに無い名前を全部削除」はテスト中の正規登録を巻き込んだため廃止 — 2026-08-31)
+window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) {
     const { data: season, error: sErr } = await supabase
         .from('seasons')
         .select('id, is_test, metadata, month_key')
@@ -2603,25 +2671,24 @@ window.supabaseDeleteActiveTestSeason = async function () {
         }
     }
 
-    // nikke_characters: テスト中に追加された行のみ削除 (canonical_name 集合差分)
+    // nikke_characters: 運営が確認モーダルで選んだ行だけ削除する (運営改修 #3)。
+    //   安全弁: スナップショットにある名前は指定されても消さない / 配列でなければ何も消さない
     let charsRemoved = 0;
-    const charSnap = season.metadata?.nikke_characters_snapshot;
-    if (Array.isArray(charSnap)) {
+    const dom = (typeof window !== 'undefined' && window.testSeasonDomain) || null;
+    const wanted = dom
+        ? dom.filterDeletableChars(charsToDelete, season.metadata?.nikke_characters_snapshot)
+        : [];
+    if (Array.isArray(charsToDelete) && wanted.length !== charsToDelete.length) {
+        console.warn(`[test cleanup] 削除指定 ${charsToDelete.length} 件のうち ${wanted.length} 件だけ削除します (スナップショット内・重複・不正値は除外)`);
+    }
+    if (wanted.length > 0) {
         try {
-            const { data: nowChars } = await supabase
+            const { error: cErr } = await supabase
                 .from('nikke_characters')
-                .select('canonical_name');
-            const beforeSet = new Set(charSnap);
-            const addedDuringTest = (nowChars || [])
-                .map(c => c.canonical_name)
-                .filter(n => !beforeSet.has(n));
-            if (addedDuringTest.length > 0) {
-                const { error: cErr } = await supabase
-                    .from('nikke_characters')
-                    .delete()
-                    .in('canonical_name', addedDuringTest);
-                if (!cErr) charsRemoved = addedDuringTest.length;
-            }
+                .delete()
+                .in('canonical_name', wanted);
+            if (!cErr) charsRemoved = wanted.length;
+            else console.warn('[test cleanup] nikke_characters', cErr.message);
         } catch (e) { console.warn('[test cleanup] nikke_characters', e?.message || e); }
     }
 
@@ -2866,14 +2933,23 @@ window.supabaseRegisterOcrCharacters = async function (rawNames) {
 
         // 3) どれにも該当しなければ新規追加
         try {
-            await supabase.from('nikke_characters').insert({
+            const row = {
                 canonical_name: raw,
                 aliases: [],
                 sighting_count: 1,
                 is_confirmed: false,
                 first_seen: nowIso,
                 last_seen: nowIso,
-            });
+            };
+            // テスト稼働中に自動学習された行にはテスト由来タグを付ける (33_nikke_test_origin)。
+            // テスト終了の確認モーダルで「既定ON (削除)」になるのはこのタグが今回のテストを指す行だけ。
+            // 33 未適用環境では列エラー → タグ無しで再試行 (その行は終了時に既定OFF になるだけ)
+            const testSid = await _activeTestSeasonId();
+            let ins = await supabase.from('nikke_characters').insert(testSid ? { ...row, created_by_test_season_id: testSid } : row);
+            if (ins.error && testSid && /created_by_test_season_id/.test(String(ins.error.message))) {
+                ins = await supabase.from('nikke_characters').insert(row);
+            }
+            if (ins.error) throw ins.error;
             normIndex.set(norm, raw);
             master.push({ canonical_name: raw, aliases: [], sighting_count: 1, is_confirmed: false });
         } catch { /* noop: テーブル未作成時など */ }

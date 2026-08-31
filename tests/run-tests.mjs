@@ -14,6 +14,7 @@ import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベ�
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
+import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -2786,6 +2787,42 @@ console.log('\nmockLevelsDomain:');
         assert.equal(ml.sameTeam(['a', 'b'], ['a', 'b', 'c']), false, '要素数違い');
         assert.equal(ml.sameTeam([], []), false, '空編成は同一と見なさない');
         assert.equal(ml.charKey('ラピ：レッドフード'), 'ラピ:レッドフード'.toLowerCase().normalize('NFKC'));
+    });
+}
+
+// ---- testSeasonDomain (テスト終了時のキャラマスタ整理) -------------------------
+console.log('\ntestSeasonDomain:');
+{
+    const dom = globalThis.testSeasonDomain;
+    const rows = [
+        { canonical_name: 'テスト前から居る', sighting_count: 9, is_confirmed: true, created_by_test_season_id: null },
+        { canonical_name: 'テスト中OCR', sighting_count: 1, is_confirmed: false, created_by_test_season_id: 29 },
+        { canonical_name: 'アイギス', sighting_count: 0, is_confirmed: true, created_by_test_season_id: null },        // 手動登録
+        { canonical_name: '別テスト由来', sighting_count: 2, is_confirmed: false, created_by_test_season_id: 27 },
+        { canonical_name: 'タグ無しOCR', sighting_count: 1, is_confirmed: false },                                    // 33 未適用時代
+    ];
+    test('テスト由来タグが今回のテストを指す行だけ既定ON、手動登録・別テスト・タグ無しは既定OFF', () => {
+        const out = dom.classifyTestSeasonChars({ snapshotNames: ['テスト前から居る'], currentRows: rows, testSeasonId: 29 });
+        assert.deepEqual(out.map(c => c.canonical_name).includes('テスト前から居る'), false, 'スナップショット内は候補にしない');
+        const by = Object.fromEntries(out.map(c => [c.canonical_name, c]));
+        assert.equal(by['テスト中OCR'].defaultDelete, true);
+        assert.equal(by['テスト中OCR'].origin, 'test');
+        assert.equal(by['アイギス'].defaultDelete, false);
+        assert.equal(by['アイギス'].origin, 'manual');
+        assert.equal(by['別テスト由来'].defaultDelete, false);
+        assert.equal(by['タグ無しOCR'].defaultDelete, false);
+        assert.equal(out[0].canonical_name, 'テスト中OCR', '既定ON が先頭に来る');
+    });
+    test('testSeasonId が無い / スナップショットが無い / タグ列が無い環境でも落ちず、全て既定OFF', () => {
+        const out = dom.classifyTestSeasonChars({ snapshotNames: null, currentRows: rows.map(({ created_by_test_season_id, ...r }) => r), testSeasonId: null });
+        assert.equal(out.length, rows.length);
+        assert.ok(out.every(c => c.defaultDelete === false));
+        assert.deepEqual(dom.classifyTestSeasonChars({}), []);
+    });
+    test('filterDeletableChars: スナップショット内の名前・重複・不正値は削除対象から外す (未指定なら空)', () => {
+        assert.deepEqual(dom.filterDeletableChars(['テスト中OCR', 'テスト前から居る', 'テスト中OCR', '', null, 42], ['テスト前から居る']), ['テスト中OCR']);
+        assert.deepEqual(dom.filterDeletableChars(undefined, ['x']), []);
+        assert.deepEqual(dom.filterDeletableChars('テスト中OCR', []), [], '配列以外は無視');
     });
 }
 

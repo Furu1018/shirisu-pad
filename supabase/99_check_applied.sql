@@ -185,6 +185,10 @@ SELECT * FROM (
                   AND pg_get_constraintdef(oid) NOT LIKE '%%3%%'),
         'player_damages.slot を 1|2 に戻した (31でレベルが levels に入り 1スロット=1編成 になったため)'
 
+    UNION ALL SELECT '33_nikke_test_origin',
+        EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'created_by_test_season_id'),
+        'nikke_characters.created_by_test_season_id (テスト中の自動学習にタグ。未適用だとテスト終了の削除候補が全て既定OFF)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

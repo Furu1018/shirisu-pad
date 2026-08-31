@@ -35,6 +35,7 @@
     <script defer src="./js/domain/raidEvents.js"></script>
     <script defer src="./js/domain/mockLevels.js"></script>
     <script defer src="./js/domain/popularTeams.js"></script>
+    <script defer src="./js/domain/testSeason.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -4663,6 +4664,23 @@
             <div id="opsMockAuditList" style="display:flex;flex-direction:column;gap:6px;"></div>
             <div id="opsMockAuditActions" style="display:none;gap:8px;justify-content:flex-end;">
                 <button onclick="handleOpsMockAuditPush()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#7A5AF8,#5B2BE0);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(108,66,240,0.35);"><span data-sp-icon="megaphone" data-sp-size="13"></span> 未提出者に催促Push</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 運営: テストシーズン終了 確認モーダル (運営改修 #3) ========== -->
+    <div class="player-select-modal" id="opsTestEndModal">
+        <div class="player-select-content" style="max-width:560px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>🧪 テストシーズンを終了</h2>
+                <button onclick="closeOpsTestEndModal()" style="padding:6px 12px;border-radius:8px;border:none;background:#F1F2F4;color:#14161A;font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">終了すると何が復元され、何が消えるかを先に確認できます。キャラマスタは<strong>削除する行だけ</strong>にチェックを付けてください (テスト中に自動学習された行は既定ON、運営が手動登録した行は既定OFF)。</p>
+            <div id="opsTestEndSummary" style="font-size:12.5px;line-height:1.7;color:#14161A;background:#F7F8F9;border-radius:10px;padding:10px 12px;"></div>
+            <div id="opsTestEndChars" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div id="opsTestEndActions" style="display:none;gap:8px;justify-content:flex-end;">
+                <button onclick="closeOpsTestEndModal()" style="padding:10px 16px;border-radius:8px;border:1.5px solid #E3E5E8;background:#fff;color:#14161A;font-size:13px;font-weight:700;cursor:pointer;">キャンセル</button>
+                <button id="opsTestEndConfirmBtn" onclick="handleOpsTestEndConfirm()" style="padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(180deg,#F87171,#DC2626);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">終了して復元</button>
             </div>
         </div>
     </div>
@@ -13460,17 +13478,68 @@
             }
         }
 
-        async function handleOpsDeleteTestSeason() {
-            if (!confirm('🧪 テストシーズンを削除して元の状態に戻します。\nテスト中の凸データ + 追加されたキャラマスタは消え、ダメージ登録と元のシーズンが復元されます。よろしいですか？')) return;
+        // 🧪 テスト終了 (運営改修 #3): confirm() 一発ではなく、復元/削除の内訳と
+        //   キャラマスタの削除候補を見せてから実行する。削除は運営がチェックした行だけ
+        let _opsTestEndPreview = null;
+        async function handleOpsDeleteTestSeason() { await openOpsTestEndModal(); }
+        function closeOpsTestEndModal() { document.getElementById('opsTestEndModal').classList.remove('open'); }
+        async function openOpsTestEndModal() {
+            const modal = document.getElementById('opsTestEndModal');
+            const sumEl = document.getElementById('opsTestEndSummary');
+            const listEl = document.getElementById('opsTestEndChars');
+            const actEl = document.getElementById('opsTestEndActions');
+            modal.classList.add('open');
+            sumEl.innerHTML = '<span style="color:#A4AAB0;">読み込み中…</span>';
+            listEl.innerHTML = '';
+            actEl.style.display = 'none';
             try {
-                const r = await window.supabaseDeleteActiveTestSeason();
+                _opsTestEndPreview = await window.supabasePreviewTestSeasonEnd();
+                const p = _opsTestEndPreview;
+                const restored = p.restoredKey
+                    ? `${escapeHtml(p.restoredKey)} を復活`
+                    : 'なし (テスト作成前もアクティブシーズン無し)';
+                const dropped = p.droppedRows > 0 ? ` (旧形式 ${p.droppedRows}行は除外)` : '';
+                sumEl.innerHTML = `
+                    <div><strong>対象:</strong> 🧪 ${escapeHtml(p.season.month_key)}</div>
+                    <div><strong>復元:</strong> 模擬戦データ ${p.restoreRows}行${dropped} · 元シーズン ${restored}</div>
+                    <div><strong>削除:</strong> テスト中の凸 ${p.attacks}件 · 配信プラン・締め凸依頼はテストシーズンごと消えます</div>`;
+                if (p.chars.length === 0) {
+                    listEl.innerHTML = '<p style="margin:0;color:#6B7178;font-size:12px;">テスト作成後に増えたキャラマスタはありません。</p>';
+                } else {
+                    listEl.innerHTML = '<div style="font-size:12px;font-weight:800;color:#6B7178;">キャラマスタ — 削除する行にチェック</div>' +
+                        p.chars.map(c => `
+                        <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${c.defaultDelete ? 'rgba(239,68,68,0.35)' : '#E3E5E8'};border-radius:10px;background:${c.defaultDelete ? 'rgba(239,68,68,0.05)' : '#fff'};cursor:pointer;">
+                            <input type="checkbox" class="ops-test-end-char" data-name="${escapeHtml(c.canonical_name)}" ${c.defaultDelete ? 'checked' : ''} onchange="_syncOpsTestEndBtn()" style="margin-top:3px;">
+                            <span style="min-width:0;"><span style="font-weight:800;font-size:13px;">${escapeHtml(c.canonical_name)}</span><br><span style="font-size:11px;color:#6B7178;">${escapeHtml(c.reason)}</span></span>
+                        </label>`).join('');
+                }
+                actEl.style.display = 'flex';
+                _syncOpsTestEndBtn();
+            } catch (e) {
+                sumEl.innerHTML = `<span style="color:#E23036;">❌ ${escapeHtml(e?.message || String(e))}</span>`;
+            }
+        }
+        function _syncOpsTestEndBtn() {
+            const n = document.querySelectorAll('#opsTestEndChars .ops-test-end-char:checked').length;
+            const btn = document.getElementById('opsTestEndConfirmBtn');
+            if (btn) btn.textContent = n > 0 ? `終了して復元 (キャラ ${n}件 削除)` : '終了して復元 (キャラ削除なし)';
+        }
+        async function handleOpsTestEndConfirm() {
+            const names = Array.from(document.querySelectorAll('#opsTestEndChars .ops-test-end-char:checked')).map(el => el.dataset.name);
+            const btn = document.getElementById('opsTestEndConfirmBtn');
+            btn.disabled = true;
+            try {
+                const r = await window.supabaseDeleteActiveTestSeason({ charsToDelete: names });
                 seasonStore.invalidate();
                 opsStore.invalidate();
+                closeOpsTestEndModal();
                 const extra = r.charsRemoved > 0 ? ` / キャラマスタ ${r.charsRemoved}件 削除` : '';
                 showNotification(`テストシーズンを削除しました${r.restoredKey ? ` (${r.restoredKey} を復元)` : ''}${extra}`);
                 await renderOpsDashboard();
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
+            } finally {
+                btn.disabled = false;
             }
         }
 

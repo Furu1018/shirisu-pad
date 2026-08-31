@@ -89,6 +89,9 @@ rm -f .claude/hooks/.codex-on      # OFF
   未再実行だと復元後の配信・締め凸依頼・監査ログの INSERT が採番衝突で失敗し得る)。
   バックアップ対象 (`_BACKUP_TABLES`) と復元順 (`_RESTORE_TABLES`) は **supabase/ の全テーブルと一致**させる —
   `tests/run-tests.mjs` の「バックアップ整合」が突き合わせる (新テーブルを作ったら両方に追加)。
+  テスト終了 (🧪 ✕ 終了) は `33_nikke_test_origin.sql` でテスト中の自動学習にタグを付け、
+  確認モーダル (`supabasePreviewTestSeasonEnd` → `js/domain/testSeason.js` で分類) で運営が選んだ行だけ削除する。
+  **未指定なら何も消さない** (旧「スナップショット差分を全削除」はテスト中の正規登録を巻き込んだため廃止)。
   シーズン確認・編集 (戦況タブ→シーズン制御→✏️) の原子的保存は `26_season_meta_rpc.sql`、
   属性 (ボスコード) の修正対応は `27_season_boss_edit_rpc.sql` (26を5引数版で置き換え)。
   メタ・ボス名のみの保存は未適用でもガード付き逐次にフォールバックするが、
