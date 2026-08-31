@@ -1380,11 +1380,16 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
 // ===== バックアップ: 全テーブル JSON エクスポート =====
 // RLS が anon 全許可の内輪運用のため、誤操作・事故に備えた手動バックアップ手段。
 // Supabase の行数上限(1000)を超えるテーブルに備えてページネーションで全件取得する。
+// ⚠ 新しいテーブルを作ったら必ずここと _RESTORE_TABLES の両方に足すこと。
+//   tests/run-tests.mjs の「バックアップ整合」が supabase/*.sql の CREATE TABLE と突き合わせて検知する
+//   (2026-08-31: activity_log / finish_requests / raid_event_notices の3表が漏れていた —
+//    復元後に監査ログ・締め凸依頼の状態・撃破/開放通知の二重送信よけが巻き戻らなかった)
 const _BACKUP_TABLES = [
     'players', 'player_damages', 'seasons', 'bosses', 'player_sync_levels',
     'attacks', 'day_offs', 'availability', 'finish_claims', 'finish_coordinations',
     'fururi_simulation_scores', 'push_subscriptions', 'push_notifications_log',
     'nikke_characters', 'published_plans', 'plan_acks',
+    'finish_requests', 'raid_event_notices', 'activity_log',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -1431,6 +1436,14 @@ const _RESTORE_TABLES = [
     // plan_acks.plan_id は published_plans を指すので、必ず published_plans を先に戻すこと
     ['published_plans', 'season_id', 'num'],
     ['plan_acks', 'season_id', 'num'],
+    // 2026-08-31 追加 (いずれも seasons / players の CASCADE で消える or 参照する):
+    //   finish_requests    = 締め凸依頼の pending/accepted/declined (season_id, player_id → CASCADE)
+    //   raid_event_notices = 撃破/レベル開放 Push の二重送信よけ (PK season_id+kind+ref、serial なし)。
+    //                        戻さないと復元直後に同じ通知がもう一度飛ぶ
+    //   activity_log       = 監査ログ (player_id → SET NULL のみ。親子関係が無いので最後でよい)
+    ['finish_requests', 'season_id', 'num'],
+    ['raid_event_notices', 'season_id', 'num'],
+    ['activity_log', 'id', 'num'],
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
     if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');

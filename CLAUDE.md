@@ -84,8 +84,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   書き込み側にフックを足すと必ず漏れる。純ロジックは `js/domain/raidEvents.js`。
   配信プランの「確認しました」と再配信時の更新通知は `28_plan_acks.sql`
   (未適用だと確認ボタンがエラーになり、再配信しても通知が飛ばない — 配信自体は動く)。
-  **`23_restore_helpers.sql` は 2026-08-03 に published_plans を追加したので再実行が必要**
-  (CREATE OR REPLACE なので何度でも安全。未再実行だと復元後の配信が採番衝突で失敗し得る)。
+  **`23_restore_helpers.sql` は 2026-08-31 に finish_requests / activity_log を追加したので再実行が必要**
+  (2026-08-03 の published_plans 追加に続く2回目。CREATE OR REPLACE なので何度でも安全。
+  未再実行だと復元後の配信・締め凸依頼・監査ログの INSERT が採番衝突で失敗し得る)。
+  バックアップ対象 (`_BACKUP_TABLES`) と復元順 (`_RESTORE_TABLES`) は **supabase/ の全テーブルと一致**させる —
+  `tests/run-tests.mjs` の「バックアップ整合」が突き合わせる (新テーブルを作ったら両方に追加)。
   シーズン確認・編集 (戦況タブ→シーズン制御→✏️) の原子的保存は `26_season_meta_rpc.sql`、
   属性 (ボスコード) の修正対応は `27_season_boss_edit_rpc.sql` (26を5引数版で置き換え)。
   メタ・ボス名のみの保存は未適用でもガード付き逐次にフォールバックするが、

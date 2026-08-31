@@ -149,6 +149,11 @@ SELECT * FROM (
                  LIKE '%published_plans%', false),
         '復元後の採番修正に published_plans が入っているか (2026-08-03 更新。旧定義なら再実行が必要)'
 
+    UNION ALL SELECT '23_restore_helpers (v3)',
+        COALESCE(pg_get_functiondef(to_regprocedure('public.restore_fix_sequences()'))
+                 LIKE '%activity_log%', false),
+        '復元後の採番修正に finish_requests / activity_log が入っているか (2026-08-31 更新。旧定義なら再実行が必要)'
+
     UNION ALL SELECT '28_plan_acks',
         EXISTS (SELECT 1 FROM information_schema.tables
                 WHERE table_schema = 'public' AND table_name = 'plan_acks'),

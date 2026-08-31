@@ -2789,6 +2789,56 @@ console.log('\nmockLevelsDomain:');
     });
 }
 
+// ---- バックアップ整合 (静的) ------------------------------------------------
+// 「テーブルを作ったのにバックアップ/復元に足し忘れる」を仕組みで止める。
+// 2026-08-31: activity_log / finish_requests / raid_event_notices の3表が漏れていた
+// (復元しても監査ログ・締め凸依頼・通知の二重送信よけが巻き戻らない) のを機に追加。
+{
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+    const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+    const sqlDir = path.join(ROOT, 'supabase');
+    const sqlFiles = fs.readdirSync(sqlDir).filter(f => /^\d+_.*\.sql$/.test(f));
+    const listOf = (name) => {
+        const m = client.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\n\\];`));
+        assert.ok(m, `${name} が js/supabase-client.js に見つからない`);
+        return m[1];
+    };
+    const backup = [...listOf('_BACKUP_TABLES').matchAll(/'([a-z_]+)'/g)].map(m => m[1]);
+    const restore = [...listOf('_RESTORE_TABLES').matchAll(/^\s*\['([a-z_]+)'/gm)].map(m => m[1]);
+    const created = new Set();
+    const serialTables = new Set();
+    for (const f of sqlFiles) {
+        const src = fs.readFileSync(path.join(sqlDir, f), 'utf8');
+        for (const m of src.matchAll(/CREATE TABLE IF NOT EXISTS\s+([a-z_]+)\s*\(([\s\S]*?)\n\);/g)) {
+            created.add(m[1]);
+            if (/\bid\s+BIGSERIAL\b/.test(m[2])) serialTables.add(m[1]);
+        }
+    }
+    const helpers = fs.readFileSync(path.join(sqlDir, '23_restore_helpers.sql'), 'utf8');
+
+    test('バックアップ整合: supabase/ の全テーブルが _BACKUP_TABLES に入っている', () => {
+        const missing = [...created].filter(t => !backup.includes(t));
+        assert.deepEqual(missing, [], `バックアップ対象から漏れているテーブル: ${missing.join(', ')}`);
+        const unknown = backup.filter(t => !created.has(t));
+        assert.deepEqual(unknown, [], `supabase/ に定義が無いテーブル: ${unknown.join(', ')}`);
+    });
+    test('バックアップ整合: _RESTORE_TABLES と _BACKUP_TABLES が同じ集合 (順序は親→子)', () => {
+        assert.deepEqual([...restore].sort(), [...backup].sort());
+        // 親→子の最低限: players / seasons が先頭側、それを参照する表が後ろ
+        const idx = (t) => restore.indexOf(t);
+        for (const child of ['bosses', 'attacks', 'finish_requests', 'raid_event_notices', 'published_plans', 'plan_acks']) {
+            assert.ok(idx(child) > idx('seasons'), `${child} は seasons より後に投入すること`);
+        }
+        assert.ok(idx('plan_acks') > idx('published_plans'), 'plan_acks は published_plans より後');
+    });
+    test('バックアップ整合: BIGSERIAL id を持つ全表が restore_fix_sequences() に入っている', () => {
+        const missing = [...serialTables].filter(t => !new RegExp(`pg_get_serial_sequence\\('${t}', 'id'\\)`).test(helpers));
+        assert.deepEqual(missing, [], `23_restore_helpers.sql に採番修正が無い表: ${missing.join(', ')}`);
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
