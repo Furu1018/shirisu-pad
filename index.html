@@ -4217,7 +4217,7 @@
                             <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。同一ボスへの重複は警告/スキップされ、HP減算はチェックボックスで選択 (OFFなら別途ボスHP更新で同期)。入力者名がログに残る</li>
                             <li><strong>🔍 提出漏れチェック</strong> — BlaBlaLINK のユニオン全体スクショから各メンバーの凸消化数を読み取り、PADの登録数と突き合わせ。未提出者には 📣 催促Push を一斉送信でき、✏️ からそのまま代理凸へ。全体画面にはボスが写らないため登録は個人スクショで行う役割分担</li>
                             <li><strong>🪞 模擬提出チェック</strong> — 前日運用向け。今シーズンの模擬戦データ提出状況 (未提出/一部/5属性) を一覧し、未提出者へ催促Pushを一斉送信</li>
-                            <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・残凸だけのすっきりした画面になる。ONは端末に記憶されない (起動のたびにOFFから — 誤操作防止)。運営ONでは各カードを見出しタップで折りたためる。当日はボス状況・残り戦闘可能メンバー・👥メンバー状況・運営アクションだけが既定で開き、開閉は前日/当日ごとに記憶される。最上部の 2×2 (HP更新・残凸・未完・締め凸未返答) をタップすると該当カードが開く</li>
+                            <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・オンライン/調整中・残り戦闘可能メンバーの3枚だけのすっきりした画面になる (折りたたみ無し)。ONは端末に記憶されない (起動のたびにOFFから — 誤操作防止)。運営ONでは運営アクション以外の各カードを見出しタップで折りたためる。当日はボス状況・残り戦闘可能メンバー・👥メンバー状況・運営アクションだけが既定で開き、開閉は前日/当日ごとに記憶される。最上部の 2×2 (HP更新・残凸・未完・締め凸未返答) をタップすると該当カードが開く</li>
                             <li><strong>HP鮮度</strong> — ボス状況の見出しに「HP更新 ○分前」を表示 (30分以上で⚠️)。ボスHPは30秒毎に自動再取得される</li>
                             <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
                             <li><strong>✏️ シーズン確認・編集</strong> — シーズン制御カードに走っているシーズンのサマリー (月キー・ハード日・ボス構成) を表示。ハード日・月キー・<strong>属性 (ボスコード)</strong>・ボス名はここから修正できる (属性を直すと記録済みの凸も追随。配信済みプランは再算出・再配信が必要)。<strong>級 (HP規模) はHPと連動するため変更不可</strong> — その場合はシーズン作り直しで対応</li>
@@ -13643,6 +13643,8 @@
                 if (testBanner) testBanner.style.display = 'none';
                 renderOpsSeasonCtlSummary(null, []);
                 if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snapshot);   // 👥 も「シーズン無し」に
+                _applyOpsCardStates();     // シーズン終了直後も前シーズンの開閉状態を残さない (Codex指摘)
+                _renderOpsCockpitSoon();   // コックピット・見出しサマリーを「シーズン無し」に
                 return;
             }
             labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})${season.is_test ? ' 🧪テスト' : ''}`;
@@ -19831,14 +19833,15 @@
         const _navAuto = { lastY: 0, acc: 0, hidden: false, squelchUntil: 0 };
         // 上部ヘッダーの連動隠し (実機FB 2026-07-28: 画面を広く使いたい)。
         // JS 側でもモバイル判定 — PC はヘッダーが隠れないので、--hdr-offset を 0 にすると
-        // 戦況クイックナビがヘッダー裏 (z-index 100 > 30) に潜ってしまう。
+        // ヘッダー高基準で sticky 配置した要素がヘッダー裏 (z-index 100 > 30) に潜ってしまう
+        // (旧 戦況クイックナビがその例。2026-09-01 に廃止したが、var の仕組みは将来の sticky 要素用に維持)。
         // ブレークポイント跨ぎ (モバイルで隠したまま PC 幅へリサイズ等) でも再同期が必要なため
         // ヘルパーに分離し、メディアクエリの change でも呼ぶ (Codex指摘)
         const _navMobileMql = window.matchMedia('(max-width: 767px)');
         function _navSyncHeader() {
             const hdrHide = _navAuto.hidden && _navMobileMql.matches;
             document.querySelector('header.header')?.classList.toggle('nav-hidden', hdrHide);
-            // ヘッダー高を基準に sticky 配置している要素 (戦況クイックナビ) 用のオフセット。
+            // ヘッダー高を基準に sticky 配置する要素用のオフセット (2026-09-01 時点で利用要素なし — 旧 戦況クイックナビは廃止)。
             // 隠れている間は 0 に倒して最上部へ詰める (var の fallback が「表示時のヘッダー高」)
             if (hdrHide) document.documentElement.style.setProperty('--hdr-offset', '0px');
             else document.documentElement.style.removeProperty('--hdr-offset');
