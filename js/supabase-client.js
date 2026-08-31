@@ -1377,6 +1377,30 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
     return { levelUp };
 };
 
+// ===== 👥 メンバー状況ボード (運営改修 #1) =====
+// 盤面 (opsStore) に無いものだけ追加取得: 通知購読 / 今季の SLv 登録 / 締め凸依頼 / 代理凸ログ。
+// 各クエリはテーブル未適用・失敗時に空配列へ静かに劣化 (ボード全体は落とさない)。
+// 判定ロジックは js/domain/memberStatus.js
+window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso) {
+    const safe = async (p) => { try { const r = await p; return (r && !r.error && Array.isArray(r.data)) ? r.data : []; } catch { return []; } };
+    const [subs, slv, fin, proxy] = await Promise.all([
+        safe(supabase.from('push_subscriptions').select('player_id')),
+        seasonId ? safe(supabase.from('player_sync_levels').select('player_id').eq('season_id', seasonId)) : [],
+        seasonId ? safe(supabase.from('finish_requests').select('player_id, status, requested_at').eq('season_id', seasonId)) : [],
+        // 代理凸は attacks に印が無いので activity_log (proxy_attack) から。ハード日前日以降だけ数える
+        safe(supabase.from('activity_log').select('player_id, created_at')
+            .eq('event_type', 'proxy_attack')
+            .gte('created_at', sinceIso || '1970-01-01T00:00:00Z')
+            .limit(1000)),
+    ]);
+    return {
+        pushPlayerIds: subs.map(s => s.player_id),
+        slvThisSeasonIds: slv.map(s => s.player_id),
+        finishRequests: fin,
+        proxyEvents: proxy,
+    };
+};
+
 // ===== バックアップ: 全テーブル JSON エクスポート =====
 // RLS が anon 全許可の内輪運用のため、誤操作・事故に備えた手動バックアップ手段。
 // Supabase の行数上限(1000)を超えるテーブルに備えてページネーションで全件取得する。

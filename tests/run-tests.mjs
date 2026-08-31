@@ -16,6 +16,7 @@ import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
+import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メンバー状況ボード)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -2839,6 +2840,68 @@ console.log('\ntestSeasonDomain:');
         assert.equal(out[0].defaultDelete, true);
         assert.equal(out[1].sighting_count, 0);
         assert.equal(out[1].defaultDelete, false);
+    });
+}
+
+// ---- memberStatusDomain (メンバー状況ボード) -----------------------------------
+console.log('\nmemberStatusDomain:');
+{
+    const dom = globalThis.memberStatusDomain;
+    const P = (o) => ({ id: 1, name: 'A', damagesByAttr: {}, attacks: [], syncLevel: 0, syncLevelEstimated: true, availableSlots: [], flexTime: false, notifyAllHours: false, strong_attributes: [], ...o });
+    test('phaseFor: ハード日当日以降は day、前日までは pre、未設定は pre', () => {
+        assert.equal(dom.phaseFor('2026-09-05', new Date(2026, 8, 4, 23, 59)), 'pre');
+        assert.equal(dom.phaseFor('2026-09-05', new Date(2026, 8, 5, 0, 0)), 'day');
+        assert.equal(dom.phaseFor('2026-09-05', new Date(2026, 8, 7)), 'day');
+        assert.equal(dom.phaseFor(null, new Date()), 'pre');
+    });
+    test('buildRows(前日): 模擬不足・SLv未登録(前回値つき)・時間帯未登録・通知購読なし を理由に積む / 揃っていれば todo=false', () => {
+        const players = [
+            P({ id: 1, name: '未完', damagesByAttr: { fire: 10, water: 5 }, syncLevel: 558, syncLevelEstimated: false }),
+            P({ id: 2, name: '完了', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21', 'h22'] }),
+            P({ id: 3, name: '隙間', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, flexTime: true }),
+        ];
+        const extras = { pushPlayerIds: [2, 3], slvThisSeasonIds: [2, 3], finishRequests: [], proxyEvents: [] };
+        const rows = dom.buildRows({ players, extras, phase: 'pre' });
+        const r1 = rows.find(r => r.id === 1);
+        assert.deepEqual(r1.reasons.map(r => r.key), ['mock', 'slv', 'slots', 'push']);
+        assert.equal(r1.reasons[0].label, '模擬 3属性不足');
+        assert.deepEqual(r1.missingAttrs, ['electric', 'iron', 'wind']);
+        assert.equal(r1.reasons[1].label, 'SLv未登録 (前回 558)');
+        assert.equal(r1.slvNow, null); assert.equal(r1.slvPrev, 558);
+        assert.equal(rows.find(r => r.id === 2).todo, false);
+        assert.equal(rows.find(r => r.id === 3).todo, false, '⏳隙間型は時間帯未登録にしない');
+        assert.equal(rows.find(r => r.id === 2).slvNow, 600);
+    });
+    test('buildRows(当日): 凸残・締め凸未返答が先頭に来る / 代理は activity_log から数える / 推定SLvは未登録扱い', () => {
+        const players = [P({ id: 1, name: 'A', attacks: [{ level: 1, boss_number: 2 }, { level: 2, boss_number: 3 }], syncLevel: 500, syncLevelEstimated: true, availableSlots: ['h20'] })];
+        const extras = { pushPlayerIds: [1], slvThisSeasonIds: [1], finishRequests: [{ player_id: 1, status: 'pending' }], proxyEvents: [{ player_id: 1 }, { player_id: 1 }] };
+        const [r] = dom.buildRows({ players, extras, phase: 'day' });
+        assert.deepEqual(r.reasons.slice(0, 2).map(x => x.key), ['attacks', 'finish']);
+        assert.equal(r.reasons[0].label, '凸 残1');
+        assert.equal(r.atkCount, 2); assert.equal(r.proxyCount, 2);
+        assert.equal(r.slvNow, null, '推定SLv (syncLevelEstimated) は登録扱いにしない');
+        assert.ok(r.reasons.some(x => x.key === 'slv'));
+        const [r2] = dom.buildRows({ players, extras: { ...extras, finishRequests: [{ player_id: 1, status: 'accepted' }, { player_id: 1, status: 'pending' }] }, phase: 'day' });
+        assert.equal(r2.finish, 'pending', 'pending が1件でもあれば未返答');
+    });
+    test('summarize / sortRows / nudgeMessage', () => {
+        const players = [
+            P({ id: 1, name: 'い', damagesByAttr: { fire: 1 } }),
+            P({ id: 2, name: 'あ', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21'] }),
+        ];
+        const extras = { pushPlayerIds: [2], slvThisSeasonIds: [2] };
+        const rows = dom.buildRows({ players, extras, phase: 'pre' });
+        const s = Object.fromEntries(dom.summarize(rows, 'pre').map(x => [x.key, x]));
+        assert.equal(s.mock.value, 1); assert.equal(s.mock.total, 2); assert.equal(s.mock.bad, true);
+        assert.equal(s.push.value, 1);
+        assert.deepEqual(dom.sortRows(rows, 'why').map(r => r.name), ['い', 'あ'], '要対応が多い順');
+        assert.deepEqual(dom.sortRows(rows, 'name').map(r => r.name), ['あ', 'い']);
+        assert.equal(dom.nudgeMessage(rows.find(r => r.id === 1), 'pre'), null, '通知未購読には文面を作らない');
+        const m = dom.nudgeMessage({ ...rows.find(r => r.id === 1), push: true }, 'pre');
+        assert.match(m.body, /模擬戦データ \(残り4属性: 水冷・電撃・鉄甲・風圧\)/);
+        assert.match(m.body, /シンクロレベル/);
+        const d = dom.nudgeMessage({ ...rows.find(r => r.id === 1), push: true, reasons: [{ key: 'attacks' }], atkCount: 1 }, 'day');
+        assert.match(d.title, /凸報告/); assert.match(d.body, /残り2件/);
     });
 }
 

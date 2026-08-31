@@ -37,6 +37,7 @@
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
     <script defer src="./js/domain/charMaster.js"></script>
+    <script defer src="./js/domain/memberStatus.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -314,6 +315,54 @@
             font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap;
         }
         #tab-ops .dc-card { scroll-margin-top: 64px; }
+        /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
+        .dc-mb-seg { display:inline-flex; background:#F1F2F4; border-radius:999px; padding:3px; }
+        .dc-mb-seg button { font:inherit; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:#6B7178; cursor:pointer; }
+        .dc-mb-seg button[aria-pressed="true"] { background:#14161A; color:#fff; }
+        .dc-mb-pill { font:inherit; font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px; border:1.5px solid transparent; background:#F1F2F4; color:#6B7178; cursor:pointer; }
+        .dc-mb-pill[aria-pressed="true"] { background:#14161A; color:#fff; }
+        .dc-mb-summary { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:10px; }
+        @media (min-width:560px) { .dc-mb-summary { grid-template-columns:repeat(4,1fr); } }
+        .dc-mb-sum { background:#F7F8F9; border-radius:10px; padding:7px 10px; }
+        .dc-mb-sum .k { font-size:10px; font-weight:800; color:#8A9097; letter-spacing:.04em; }
+        .dc-mb-sum .v { font-size:16px; font-weight:900; color:#14161A; font-variant-numeric:tabular-nums; }
+        .dc-mb-sum .v small { font-size:11px; color:#6B7178; font-weight:700; }
+        .dc-mb-sum.bad .v { color:#FF3D44; }
+        .dc-mb-rows { display:flex; flex-direction:column; gap:6px; }
+        .dc-mb-row { border:1px solid rgba(20,22,26,0.06); border-radius:12px; padding:8px 10px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; }
+        .dc-mb-row.todo { border-color:rgba(245,158,11,0.45); background:rgba(245,158,11,0.04); }
+        .dc-mb-row.done { opacity:.72; }
+        .dc-mb-who { display:flex; align-items:center; gap:8px; min-width:0; }
+        .dc-mb-av { width:28px; height:28px; border-radius:50%; background:#F1F2F4; display:grid; place-items:center; font-weight:900; font-size:12px; color:#6B7178; flex:none; overflow:hidden; }
+        .dc-mb-av img { width:100%; height:100%; object-fit:cover; display:block; }
+        .dc-mb-nm { font-weight:900; font-size:13px; color:#14161A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .dc-mb-cols { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; min-width:0; }
+        .dc-mb-why { grid-column:1/-1; font-size:11.5px; color:#6B7178; line-height:1.4; }
+        .dc-mb-why b { color:#14161A; }
+        .dc-mb-acts { grid-column:2; grid-row:1; display:flex; gap:4px; }
+        @media (min-width:760px) {
+            .dc-mb-row { grid-template-columns:minmax(130px,1.1fr) minmax(0,3fr) minmax(150px,1.3fr) auto; }
+            .dc-mb-cols, .dc-mb-why { grid-column:auto; }
+            .dc-mb-acts { grid-column:auto; grid-row:auto; justify-content:flex-end; }
+        }
+        .dc-mb-c { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:900; padding:3px 8px; border-radius:999px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .dc-mb-c.ok { color:#18C26B; background:rgba(24,194,107,.12); }
+        .dc-mb-c.warn { color:#B45309; background:rgba(245,158,11,.14); }
+        .dc-mb-c.err { color:#FF3D44; background:rgba(255,61,68,.10); }
+        .dc-mb-c.mute { color:#8A9097; background:#F1F2F4; }
+        .dc-mb-c.acc { color:#6C42F0; background:rgba(108,66,240,.10); }
+        .dc-mb-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+        .dc-mb-strip { display:grid; grid-template-columns:repeat(24,1fr); gap:1px; height:12px; width:130px; }
+        .dc-mb-strip i { display:block; background:#F1F2F4; border-radius:2px; }
+        .dc-mb-strip i.on { background:#6C42F0; }
+        .dc-mb-strip i.now { outline:1.5px solid #FF3D44; outline-offset:-1px; }
+        .dc-mb-tz { font-size:10px; color:#8A9097; white-space:nowrap; }
+        .dc-mb-atk { display:inline-flex; gap:3px; }
+        .dc-mb-atk i { display:inline-grid; place-items:center; width:22px; height:20px; border-radius:6px; font-style:normal; font-size:10px; font-weight:900; background:#F1F2F4; color:#A4AAB0; }
+        .dc-mb-atk i.d { background:#14161A; color:#fff; }
+        .dc-mb-btn { font:inherit; font-size:11px; font-weight:900; padding:6px 10px; border-radius:8px; border:none; background:#14161A; color:#fff; cursor:pointer; white-space:nowrap; }
+        .dc-mb-btn.sub { background:#F1F2F4; color:#14161A; }
+        .dc-mb-btn:disabled { opacity:.45; cursor:default; }
         body:not(.ops-mode) [data-ops-only] { display: none !important; }
         /* 運営モードOFF のときだけ出す (運営項目が隠れていることの案内など) */
         body.ops-mode [data-ops-off-only] { display: none !important; }
@@ -3328,6 +3377,29 @@
                 <div id="opsRemainingList" style="margin-top:12px;">
                     <p style="color:#A4AAB0;font-size:12px;">読み込み中...</p>
                 </div>
+            </div>
+
+            <!-- 👥 メンバー状況 (運営改修 #1・運営ONのみ)。判定は js/domain/memberStatus.js -->
+            <div class="dc-card" data-ops-only>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">👥 メンバー状況</div>
+                    <div class="dc-mb-seg" role="group" aria-label="フェーズ">
+                        <button id="opsMbPhasePre" aria-pressed="false" onclick="handleOpsMemberPhase('pre')">前日</button>
+                        <button id="opsMbPhaseDay" aria-pressed="false" onclick="handleOpsMemberPhase('day')">当日</button>
+                    </div>
+                    <span id="opsMbUpdated" style="font-size:10.5px;color:#A4AAB0;"></span>
+                    <button onclick="renderOpsMemberStatus(null, true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:1px solid rgba(20,22,26,0.08);background:#fff;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">↻ 更新</button>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+                    <button class="dc-mb-pill" id="opsMbFilterTodo" aria-pressed="true" onclick="handleOpsMemberFilter('todo')">未完のみ</button>
+                    <button class="dc-mb-pill" id="opsMbFilterAll" aria-pressed="false" onclick="handleOpsMemberFilter('all')">全員</button>
+                    <span style="width:4px;"></span>
+                    <button class="dc-mb-pill" id="opsMbSortWhy" aria-pressed="true" onclick="handleOpsMemberSort('why')">要対応が多い順</button>
+                    <button class="dc-mb-pill" id="opsMbSortName" aria-pressed="false" onclick="handleOpsMemberSort('name')">名前順</button>
+                </div>
+                <div id="opsMbSummary" class="dc-mb-summary"></div>
+                <div id="opsMbRows" class="dc-mb-rows"><p style="color:#A4AAB0;font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
+                <div id="opsMbLegend" style="font-size:11px;color:#8A9097;margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;"></div>
             </div>
 
             <!-- 最適凸プラン -->
@@ -13577,10 +13649,152 @@
             renderOpsSeasonCtlSummary(season, bosses);
             renderOpsBossSummary();
             renderOpsRemainingList();
+            renderOpsMemberStatus(snapshot);       // 👥 メンバー状況 (運営ONのときだけ中で取得・描画)
             _refreshOpsPlanPicksFromPublished();   // 残凸表の「採用PT」枠取り (配信中プラン由来)
             _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
             else finishListEl.innerHTML = '<p style="color:#6B7178;font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
+        }
+
+        // ========== 👥 メンバー状況ボード (運営改修 #1・運営ONのみ) ==========
+        // 純ロジック (要対応の定義・集計・催促文面) は js/domain/memberStatus.js。
+        // 盤面は opsStore の snapshot を再利用し、追加取得は supabaseLoadMemberStatusExtras の4クエリだけ。
+        const _mb = { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, loading: false };
+        function _mbCurrentPhase() {
+            const dom = window.memberStatusDomain;
+            return _mb.phase || (dom ? dom.phaseFor(_mb.season?.hard_date) : 'pre');
+        }
+        async function renderOpsMemberStatus(snapshot = null, force = false) {
+            const rowsEl = document.getElementById('opsMbRows');
+            const sumEl = document.getElementById('opsMbSummary');
+            if (!rowsEl || !sumEl) return;
+            if (!_opsMode) return;                              // 運営OFF: 取得も描画もしない
+            const dom = window.memberStatusDomain;
+            if (!dom) return;
+            const snap = snapshot || opsStore.get();
+            if (!snap?.season) {
+                sumEl.innerHTML = '';
+                rowsEl.innerHTML = '<p style="color:#6B7178;font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
+                return;
+            }
+            if (_mb.loading && !force) return;
+            _mb.loading = true;
+            if (!_mb.rows.length) rowsEl.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中...</p>';
+            try {
+                // 代理凸ログはハード日の前日以降だけ数える (前シーズンの代理を混ぜない)
+                const since = new Date(`${snap.season.hard_date}T00:00:00`);
+                since.setDate(since.getDate() - 1);
+                const extras = await window.supabaseLoadMemberStatusExtras(snap.season.id, since.toISOString());
+                _mb.players = snap.players;
+                _mb.extras = extras;
+                _mb.season = snap.season;
+                _mbRebuild();
+                const upd = document.getElementById('opsMbUpdated');
+                if (upd) upd.textContent = `更新 ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
+            } catch (e) {
+                rowsEl.innerHTML = `<p style="color:#ef4444;font-size:12px;margin:0;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+            } finally {
+                _mb.loading = false;
+            }
+        }
+        function _mbRebuild() {
+            const dom = window.memberStatusDomain;
+            if (!dom || !_mb.players) return;
+            const phase = _mbCurrentPhase();
+            _mb.rows = dom.buildRows({ players: _mb.players, extras: _mb.extras, phase });
+            _mbPaint(phase);
+        }
+        function _mbPaint(phase) {
+            const dom = window.memberStatusDomain;
+            const rowsEl = document.getElementById('opsMbRows');
+            const sumEl = document.getElementById('opsMbSummary');
+            const legEl = document.getElementById('opsMbLegend');
+            if (!dom || !rowsEl || !sumEl) return;
+            const isDay = phase === 'day';
+            const nowH = new Date().getHours();
+            const all = _mb.rows;
+            const todoCount = all.filter(r => r.todo).length;
+            const shown = dom.sortRows(_mb.filter === 'all' ? all : all.filter(r => r.todo), _mb.sort);
+            // ボタンの状態
+            const press = (id, on) => { const el = document.getElementById(id); if (el) el.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+            press('opsMbPhasePre', !isDay); press('opsMbPhaseDay', isDay);
+            press('opsMbFilterTodo', _mb.filter === 'todo'); press('opsMbFilterAll', _mb.filter === 'all');
+            press('opsMbSortWhy', _mb.sort === 'why'); press('opsMbSortName', _mb.sort === 'name');
+            const ft = document.getElementById('opsMbFilterTodo'); if (ft) ft.textContent = `未完のみ (${todoCount})`;
+            const fa = document.getElementById('opsMbFilterAll'); if (fa) fa.textContent = `全員 (${all.length})`;
+            // 集計
+            sumEl.innerHTML = dom.summarize(all, phase).map(s =>
+                `<div class="dc-mb-sum ${s.bad ? 'bad' : ''}"><div class="k">${escapeHtml(s.label)}</div><div class="v">${s.value}${s.total != null ? `<small> / ${s.total}</small>` : ''}</div></div>`).join('');
+            // 行
+            const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || '#8A9097'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
+            const strip = (r) => {
+                if (!r.slots.length) return r.flex ? '<span class="dc-mb-c acc">⏳隙間型</span>' : '<span class="dc-mb-c err">時間帯 未登録</span>';
+                const on = new Set(r.slots.map(s => parseInt(String(s).slice(1), 10)).filter(Number.isFinite));
+                let cells = '';
+                for (let i = 0; i < 24; i++) cells += `<i class="${on.has(i) ? 'on' : ''}${isDay && i === nowH ? ' now' : ''}" title="${i}時"></i>`;
+                const hrs = [...on].sort((a, b) => a - b);
+                const label = hrs.length ? `${hrs[0]}-${hrs[hrs.length - 1] + 1}時` : '';
+                return `<div><div class="dc-mb-strip">${cells}</div><div class="dc-mb-tz">${label}${r.allHours ? ' · 🔔いつでも' : ''}</div></div>`;
+            };
+            rowsEl.innerHTML = shown.length ? shown.map(r => {
+                const mock = r.mockCount >= dom.ATTR_KEYS.length ? '<span class="dc-mb-c ok">模擬 5/5</span>'
+                    : r.mockCount === 0 ? '<span class="dc-mb-c err">模擬 0/5</span>'
+                    : `<span class="dc-mb-c warn">模擬 ${r.mockCount}/5 ${r.missingAttrs.map(dot).join('')}</span>`;
+                const slv = r.slvNow != null ? `<span class="dc-mb-c ok">SLv ${r.slvNow}</span>`
+                    : r.slvPrev ? `<span class="dc-mb-c warn">SLv 前回${r.slvPrev}</span>`
+                    : '<span class="dc-mb-c err">SLv —</span>';
+                const push = r.push ? '<span class="dc-mb-c mute" title="Push購読あり">🔔</span>' : '<span class="dc-mb-c err" title="Push未購読 — 催促が届きません">🔕</span>';
+                const atk = `<span class="dc-mb-atk">${[0, 1, 2].map(i => i < r.atkCount
+                    ? `<i class="d">${r.attacks[i]?.level ? 'L' + r.attacks[i].level : '✓'}</i>`
+                    : '<i>·</i>').join('')}</span>${r.proxyCount > 0 ? `<span class="dc-mb-c acc" title="代理登録 ${r.proxyCount}件">代理${r.proxyCount > 1 ? r.proxyCount : ''}</span>` : ''}`;
+                const fin = r.finish === 'pending' ? '<span class="dc-mb-c warn">締め凸 未返答</span>'
+                    : r.finish === 'accepted' ? '<span class="dc-mb-c ok">締め凸 OK</span>'
+                    : r.finish === 'declined' ? '<span class="dc-mb-c mute">締め凸 見送り</span>' : '';
+                const cols = isDay ? `${mock}${slv}${strip(r)}${atk}${fin}` : `${mock}${slv}${strip(r)}${push}`;
+                const why = r.reasons.length
+                    ? r.reasons.map((w, i) => i === 0 ? `<b>${escapeHtml(w.label)}</b>` : escapeHtml(w.label)).join(' · ')
+                    : '<span style="color:#A4AAB0;">完了</span>';
+                const canNudge = r.todo && r.push;
+                const acts = r.todo
+                    ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" ${canNudge ? '' : 'disabled'} title="${canNudge ? 'この人だけに催促Push' : 'Push未購読のため届きません'}">催促</button>` +
+                      (isDay && r.atkCount < dom.MAX_ATTACKS ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy(${r.id})" title="代理凸を報告">代理凸</button>` : '')
+                    : '<span class="dc-mb-c ok">✓</span>';
+                const av = r.avatarUrl
+                    ? `<img loading="lazy" decoding="async" src="${escapeHtml(r.avatarUrl)}" alt="">`
+                    : escapeHtml((r.avatarChar || r.name).slice(0, 1));
+                return `<div class="dc-mb-row ${r.todo ? 'todo' : 'done'}">
+                    <div class="dc-mb-who"><div class="dc-mb-av">${av}</div><div style="min-width:0;"><div class="dc-mb-nm" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div><div style="display:flex;gap:2px;margin-top:1px;">${r.strong.map(dot).join('')}</div></div></div>
+                    <div class="dc-mb-cols">${cols}</div>
+                    <div class="dc-mb-why">${why}</div>
+                    <div class="dc-mb-acts">${acts}</div>
+                </div>`;
+            }).join('') : '<p style="color:#6B7178;font-size:12px;margin:6px 0;">要対応のメンバーはいません 🎉</p>';
+            if (legEl) legEl.innerHTML = isDay
+                ? `<span>L1/L2/L3 = 各凸のレベル</span><span style="color:#6C42F0;">紫 = 代理登録</span><span>赤枠 = 現在時刻 (${nowH}時)</span><span>● 得意属性</span>`
+                : '<span>● 得意属性</span><span>模擬の色つき点 = 未提出の属性</span><span>時間帯バー = 0〜23時の戦闘可能時間</span><span>🔕 = Push未購読 (催促が届かない)</span>';
+        }
+        function handleOpsMemberPhase(p) { _mb.phase = p; _mbRebuild(); }
+        function handleOpsMemberFilter(f) { _mb.filter = f; _mbPaint(_mbCurrentPhase()); }
+        function handleOpsMemberSort(s) { _mb.sort = s; _mbPaint(_mbCurrentPhase()); }
+        async function handleOpsMemberNudge(playerId) {
+            const row = _mb.rows.find(r => r.id === Number(playerId));
+            if (!row) return;
+            const msg = window.memberStatusDomain?.nudgeMessage(row, _mbCurrentPhase());
+            if (!msg) {
+                showNotification(row.push ? '催促する項目がありません' : `${row.name} は通知を購読していないため Push が届きません`);
+                return;
+            }
+            const ok = await showPushPreview([{ title: msg.title, body: msg.body, recipients: [{ id: row.id, name: row.name }] }]);
+            if (!ok) return;
+            try {
+                const res = await window.sendPushNotification({ title: msg.title, body: msg.body, url: msg.url, playerIds: [row.id] });
+                showNotification(`✅ ${row.name} に送信 (${res.sent}/${res.target} 端末)`);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+        function handleOpsMemberProxy(playerId) {
+            openOpsProxyAttackModal(Number(playerId));
         }
 
         async function handleOpsQuickCreateTestSeason() {
@@ -20094,6 +20308,7 @@
             { id: 'opsSecBoss',      title: 'ボス状況',            opsOnly: false },
             { id: 'opsSecCoord',     title: 'オンライン / 調整中', opsOnly: false },
             { id: 'opsSecRemaining', title: '残り戦闘可能メンバー', opsOnly: false },
+            { id: 'opsSecMembers',   title: 'メンバー状況',         opsOnly: true },
             { id: 'opsSecFinish',    title: '締め凸候補検索',       opsOnly: true },
             { id: 'opsSecPlan',      title: '最適凸プラン算出',     opsOnly: true },
             { id: 'opsSecActions',   title: '戦闘中の運営アクション', opsOnly: true },
@@ -20149,6 +20364,11 @@
                 && typeof renderSettingsTab === 'function') {
                 renderSettingsTab();
             }
+            // 👥 メンバー状況は運営ONのときだけ取得する (OFF のメンバーに余計なクエリを走らせない)
+            if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active')
+                && typeof renderOpsMemberStatus === 'function') {
+                renderOpsMemberStatus();
+            }
             showNotification(_opsMode ? '🛠 運営モードON — 操作パネルを表示します' : '運営モードOFF — 操作パネルを隠しました');
         }
         function _initOpsTabStructure() {
@@ -20178,6 +20398,7 @@
                     <button class="dc-nav-chip" onclick="_opsJump('opsSecBoss')">🐙 ボス</button>
                     <button class="dc-nav-chip" onclick="_opsJump('opsSecCoord')">📣 状況</button>
                     <button class="dc-nav-chip" onclick="_opsJump('opsSecRemaining')">🎯 残凸</button>
+                    <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecMembers')">👥 メンバー</button>
                     <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecFinish')">🔔 締め</button>
                     <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecPlan')">🧠 プラン</button>
                     <button class="dc-nav-chip" data-ops-only onclick="_opsJump('opsSecActions')">🛠 操作</button>

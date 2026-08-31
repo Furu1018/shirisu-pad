@@ -55,6 +55,11 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **js/state/opsStore.js** — 運営ダッシュボード盤面 {season,bosses,players} の単一ストア
   (リアーキ ステップ3)。**直接代入・部分書き換え禁止** — get/load/isStale/invalidate/
   patchBosses/patchPlayer を使う。TTL等の不変条件はファイル冒頭に記載
+- **👥 メンバー状況ボード** (戦況タブ・運営ONのみ・運営改修 #1 2026-09-01) — 前日 (模擬/SLv/時間帯/通知) と
+  当日 (凸Lv/代理/締め凸返答) を1人1行に。**「要対応」の定義は `js/domain/memberStatus.js` だけ**
+  (画面側で判定を書き足さない)。盤面は opsStore を再利用し、追加取得は `supabaseLoadMemberStatusExtras`
+  の4クエリ (通知購読・今季SLv・締め凸依頼・代理凸ログ)。代理凸は attacks に印が無いので activity_log の
+  proxy_attack を数える (v2 で attacks.is_proxy/reported_by を足す予定)
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
   バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
   凸プラン配信 (📤) は `17_published_plans.sql`、戦闘可能時間の運用オプション
