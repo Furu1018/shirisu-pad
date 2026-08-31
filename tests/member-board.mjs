@@ -121,5 +121,58 @@ test('行が0件のときは案内文だけ', () => {
     assert.ok(el('opsMbRows').innerHTML.includes('要対応のメンバーはいません'));
 });
 
+// ---- 非同期の世代制御 (renderOpsMemberStatus) ----
+// 「シーズンあり → 取得待ち中にシーズン無し / 別シーズンへ切替」で古い応答が盤面を復活させないこと
+globalThis._opsMode = true;
+let storeData = null;
+globalThis.opsStore = { get: () => storeData, load: async () => storeData };
+let pendingResolvers = [];
+globalThis.supabaseLoadMemberStatusExtras = () => new Promise(res => pendingResolvers.push(res));
+const _mbCurrentPhase = eval(`(${extract('        function _mbCurrentPhase(').trim()})`);
+const _mbRebuild = eval(`(${extract('        function _mbRebuild(').trim()})`);
+globalThis._mbCurrentPhase = _mbCurrentPhase; globalThis._mbRebuild = _mbRebuild; globalThis._mbPaint = _mbPaint;
+const renderOpsMemberStatus = eval(`(${extract('        async function renderOpsMemberStatus(').trim()})`);
+
+async function testAsync(name, fn) {
+    try { await fn(); passed++; console.log(`  ✅ ${name}`); }
+    catch (e) { failed++; console.error(`  ❌ ${name}\n     ${e.message}`); }
+}
+await testAsync('世代制御: 取得待ち中に「シーズン無し」へ遷移したら、古い応答は盤面を復活させない', async () => {
+    Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const snapA = { season: { id: 26, hard_date: '2026-08-01' }, players };
+    const pA = renderOpsMemberStatus(snapA);            // 取得開始 (待機)
+    assert.equal(pendingResolvers.length, 1);
+    await renderOpsMemberStatus({ season: null, players: [] });   // シーズン無しへ
+    assert.ok(el('opsMbRows').innerHTML.includes('アクティブシーズンがありません'));
+    pendingResolvers.shift()(extras);                    // 古い応答が遅れて到着
+    await pA;
+    assert.ok(el('opsMbRows').innerHTML.includes('アクティブシーズンがありません'), '古い応答で旧盤面が復活している');
+    assert.equal(_mb.rows.length, 0);
+    assert.equal(_mb.season, null);
+});
+await testAsync('世代制御: 別シーズンへの切替中に届いた前シーズンの応答は捨て、新シーズンの応答だけ採用', async () => {
+    Object.assign(_mb, { phase: 'day', filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const pOld = renderOpsMemberStatus({ season: { id: 26, hard_date: '2026-08-01' }, players });
+    const pNew = renderOpsMemberStatus({ season: { id: 30, hard_date: '2026-09-05' }, players: [players[1]] });
+    assert.equal(pendingResolvers.length, 2);
+    const [resOld, resNew] = pendingResolvers.splice(0, 2);
+    resNew(extras); await pNew;
+    assert.equal(_mb.season.id, 30);
+    assert.equal(_mb.rows.length, 1, '新シーズンの players で組み立てられている');
+    resOld(extras); await pOld;
+    assert.equal(_mb.season.id, 30, '古い応答で前シーズンに戻っている');
+    assert.equal(_mb.rows.length, 1);
+});
+await testAsync('snapshot 無し (invalidate 直後) は opsStore.load() を待ってから描く — null を「シーズン無し」と誤認しない', async () => {
+    Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
+    storeData = { season: { id: 30, hard_date: '2026-09-05' }, players };
+    const p = renderOpsMemberStatus(null, true);
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(pendingResolvers.length, 1, 'load() 後に extras を取りに行く');
+    pendingResolvers.shift()(extras); await p;
+    assert.equal(_mb.season.id, 30);
+    assert.ok(!el('opsMbRows').innerHTML.includes('アクティブシーズンがありません'));
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

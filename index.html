@@ -13618,6 +13618,7 @@
                 finishListEl.innerHTML = '';
                 if (testBanner) testBanner.style.display = 'none';
                 renderOpsSeasonCtlSummary(null, []);
+                if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snapshot);   // 👥 も「シーズン無し」に
                 return;
             }
             labelEl.textContent = `${season.month_key} (Lv${season.current_level || 1})${season.is_test ? ' 🧪テスト' : ''}`;
@@ -13671,8 +13672,18 @@
             if (!_opsMode) return;                              // 運営OFF: 取得も描画もしない
             const dom = window.memberStatusDomain;
             if (!dom) return;
-            const snap = snapshot || opsStore.get();
+            // 世代番号: どの経路 (シーズン無し・切替・↻連打・force) でも呼ばれた時点で進め、
+            // 待機中の古い取得の応答を無効化する (opsStore の generation と同じ考え方 — Codex指摘)
+            const gen = ++_mb.gen;
+            let snap = snapshot || opsStore.get();
+            if (!snap) {
+                // 書き込み直後 (invalidate 後) は get() が null — 盤面の再ロードを待ってから描く
+                // (null を「シーズン無し」と誤認して空表示にしない)
+                try { snap = await opsStore.load(); } catch { snap = null; }
+                if (gen !== _mb.gen) return;
+            }
             if (!snap?.season) {
+                _mb.rows = []; _mb.players = null; _mb.extras = null; _mb.season = null; _mb.phase = null;
                 sumEl.innerHTML = '';
                 rowsEl.innerHTML = '<p style="color:#6B7178;font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
                 return;
@@ -13681,9 +13692,6 @@
             if (_mb.season && Number(_mb.season.id) !== Number(snap.season.id)) {
                 _mb.rows = []; _mb.players = null; _mb.extras = null; _mb.phase = null;
             }
-            // 世代番号: 取得中にシーズン切替・↻連打・force が重なっても、最後に始めた取得だけを採用する
-            // (opsStore の generation と同じ考え方 — 古い応答で _mb を上書きしない。Codex指摘)
-            const gen = ++_mb.gen;
             if (!_mb.rows.length) rowsEl.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中...</p>';
             try {
                 // 代理凸ログはハード日 (JST) の前日 0:00 以降だけ数える (前シーズンの代理を混ぜない)。
