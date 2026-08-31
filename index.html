@@ -320,7 +320,9 @@
            畳んでも DOM は残す — HP ポーリングや残凸表の更新関数はそのまま動く必要がある */
         .ops-card-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .ops-always > .ops-card-head, body:not(.ops-mode) .ops-card-head { cursor: default; }
-        .ops-card-sum { margin-left: auto; font-size: 11px; font-weight: 700; color: #8A9097; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; display: none; }
+        .ops-card-title { flex: none; white-space: nowrap; }
+        .ops-card.ops-closed > .ops-card-head > :not(.ops-card-title):not(.ops-card-sum):not(.ops-card-car) { display: none !important; }
+        .ops-card-sum { margin-left: auto; flex: 1 1 auto; min-width: 0; font-size: 11px; font-weight: 700; color: #8A9097; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; display: none; }
         .ops-card-sum.bad { color: #FF3D44; }
         .ops-card.ops-closed > .ops-card-head .ops-card-sum { display: inline-block; }
         .ops-card-car { flex: none; font-size: 12px; color: #A4AAB0; margin-left: 6px; }
@@ -20534,6 +20536,13 @@
                 const head = card.firstElementChild;
                 if (!head) continue;
                 head.classList.add('ops-card-head');
+                // 題名を含む要素 (見出し行の直下) に印を付ける — 畳んだときはこれと サマリー/矢印 だけ残す
+                const leaf = Array.from(card.querySelectorAll('*')).find(el => el.children.length === 0 && (el.textContent || '').trim().includes(def.title));
+                if (leaf && leaf !== head && head.contains(leaf)) {
+                    let node = leaf;
+                    while (node.parentElement && node.parentElement !== head) node = node.parentElement;
+                    if (node.parentElement === head) node.classList.add('ops-card-title');
+                }
                 const body = document.createElement('div');
                 body.className = 'ops-card-body';
                 while (head.nextSibling) body.appendChild(head.nextSibling);
