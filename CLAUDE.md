@@ -92,6 +92,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   テスト終了 (🧪 ✕ 終了) は `33_nikke_test_origin.sql` でテスト中の自動学習にタグを付け、
   確認モーダル (`supabasePreviewTestSeasonEnd` → `js/domain/testSeason.js` で分類) で運営が選んだ行だけ削除する。
   **未指定なら何も消さない** (旧「スナップショット差分を全削除」はテスト中の正規登録を巻き込んだため廃止)。
+  **手動キャラ登録は「要確認」** (`34_nikke_verification.sql`: registered_by / verification_source / verified_by / verified_at)。
+  事前登録フォームはバースト・根拠URL必須で is_confirmed=false のまま入り、**登録者とは別の運営**が
+  編集モーダルの「確認済みにする」で確定する (本人は24時間経過後のみ — 判定は `js/domain/charMaster.js`)。
+  is_confirmed=false でも編成・OCR解決には使える (除外する経路は無い)。2026-08-21 の素体ソリン/ブリッド
+  誤バースト (B1↔B3・スキン版との混同) の再発防止。
   シーズン確認・編集 (戦況タブ→シーズン制御→✏️) の原子的保存は `26_season_meta_rpc.sql`、
   属性 (ボスコード) の修正対応は `27_season_boss_edit_rpc.sql` (26を5引数版で置き換え)。
   メタ・ボス名のみの保存は未適用でもガード付き逐次にフォールバックするが、

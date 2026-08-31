@@ -36,6 +36,7 @@
     <script defer src="./js/domain/mockLevels.js"></script>
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
+    <script defer src="./js/domain/charMaster.js"></script>
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -4436,9 +4437,18 @@
                     <div style="margin-top:18px;">
                         <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#B6BBC1;">➕ 新キャラの事前登録</div>
                         <p style="margin:5px 0 8px 0;font-size:10.5px;color:#A4AAB0;line-height:1.5;">実装されたばかりの新キャラ名を先に登録しておくと、メンバーの画像認識時に正しくこの名前へ解決されます (アイコンは提出画像から自動学習)。</p>
-                        <div style="display:flex;gap:7px;">
-                            <input id="settingsNewCharName" type="text" placeholder="正式名 (例: 紅蓮：ブラックシャドウ)" style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:13px;outline:none;">
-                            <button onclick="handleSettingsAddNewChar()" style="flex:none;padding:10px 16px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12px;font-weight:900;cursor:pointer;">登録</button>
+                        <!-- 運営改修 #6: 手動登録は「要確認」で入り、別の運営が根拠URLを見て確定する -->
+                        <div style="display:flex;flex-direction:column;gap:7px;">
+                            <input id="settingsNewCharName" type="text" placeholder="正式名 (例: 紅蓮：ブラックシャドウ)" style="width:100%;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:13px;outline:none;">
+                            <div>
+                                <div style="font-size:10.5px;font-weight:800;color:#6B7178;margin-bottom:4px;">バースト <span style="color:#FF3D44;">必須</span></div>
+                                <div id="settingsNewCharBurst"></div>
+                            </div>
+                            <input id="settingsNewCharSource" type="url" inputmode="url" placeholder="根拠URL 必須 (例: https://game8.jp/nikke/… の個別ページ)" style="width:100%;min-width:0;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:13px;outline:none;">
+                            <div style="display:flex;gap:7px;">
+                                <input id="settingsNewCharNotes" type="text" placeholder="メモ (任意: 素体/スキンの別、実装日など)" style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid rgba(20,22,26,0.10);background:#fff;color:#14161A;font-size:13px;outline:none;">
+                                <button onclick="handleSettingsAddNewChar()" style="flex:none;padding:10px 16px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;">要確認として登録</button>
+                            </div>
                         </div>
                         <p id="settingsNewCharMsg" style="margin:6px 0 0 0;font-size:11px;min-height:14px;color:#A4AAB0;"></p>
                     </div>
@@ -4868,6 +4878,16 @@
                 <input id="charEditConfirmed" type="checkbox" style="width:18px;height:18px;">
                 <span>確定（is_confirmed） / 未チェックで未確定に戻す</span>
             </label>
+
+            <!-- 運営改修 #6: 手動登録の二者確認 (registered_by がある行だけ表示) -->
+            <div id="charEditVerifyBox" style="display:none;border:1px solid rgba(108,66,240,0.35);background:rgba(108,66,240,0.06);border-radius:10px;padding:10px 12px;font-size:12px;">
+                <div id="charEditVerifyTitle" style="font-weight:800;color:#6C42F0;margin-bottom:4px;">🔍 要確認 — 登録者とは別の運営が根拠を見て確定してください</div>
+                <div id="charEditVerifyInfo" style="color:#14161A;line-height:1.7;word-break:break-all;"></div>
+                <div id="charEditVerifyActions" style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+                    <button id="charEditVerifyBtn" onclick="handleCharMasterVerify()" style="padding:8px 14px;border-radius:8px;border:none;background:linear-gradient(180deg,#7A5AF8,#5B2BE0);color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;">確認済みにする</button>
+                    <span id="charEditVerifyHint" style="font-size:11px;color:#6B7178;"></span>
+                </div>
+            </div>
 
             <hr style="border:none;border-top:1px solid rgba(20,22,26,0.08);margin:8px 0;">
 
@@ -12533,7 +12553,7 @@
             const name = input?.value.trim();
             if (!name) { input?.focus(); return; }
             try {
-                await window.supabaseRegisterCharacterWithIcon(name, path, _readBurst('iconBoot-' + idx));
+                await window.supabaseRegisterCharacterWithIcon(name, path, _readBurst('iconBoot-' + idx), { registeredBy: getCurrentIdentity()?.name || null });
                 invalidateNikkeCharsCache();
                 await getNikkeCharsCache();
                 if (typeof window._iconBootstrapRerender === 'function') window._iconBootstrapRerender();
@@ -12549,12 +12569,25 @@
             const msg = document.getElementById('settingsNewCharMsg');
             const name = (input?.value || '').trim();
             const setMsg = (t, c) => { if (msg) { msg.style.color = c || '#A4AAB0'; msg.textContent = t; } };
+            const dom = window.charMasterDomain;
+            const burst = _readBurst('newChar');
+            const source = (document.getElementById('settingsNewCharSource')?.value || '').trim();
+            const notes = (document.getElementById('settingsNewCharNotes')?.value || '').trim();
+            const me = getCurrentIdentity();
             if (!name) { setMsg('キャラ名を入力してください', '#FF3D44'); return; }
+            if (!burst) { setMsg('バーストを選んでください (B1/B2/B3/BΛ) — 素体とスキンで違うことがあります', '#FF3D44'); return; }
+            if (!dom?.isValidSourceUrl(source)) { setMsg('根拠URLを入力してください (game8 等の個別ページ。http(s):// から)', '#FF3D44'); return; }
+            if (!me?.name) { setMsg('登録者を記録するため、先にホームで自分を選択してください', '#FF3D44'); return; }
             try {
-                const r = await window.supabaseRegisterNikkeCharName(name);
+                const r = await window.supabaseRegisterNikkeCharName(name, burst, { source, notes, registeredBy: me.name });
                 if (r.exists) { setMsg(`「${name}」は既にマスタに登録されています`, '#B45309'); return; }
                 if (input) input.value = '';
-                setMsg(`✅ 「${name}」を登録しました。画像認識でこの名前に解決されます`, '#18C26B');
+                const srcEl = document.getElementById('settingsNewCharSource'); if (srcEl) srcEl.value = '';
+                const noteEl = document.getElementById('settingsNewCharNotes'); if (noteEl) noteEl.value = '';
+                _selectBurst('newChar', '');
+                setMsg(r.metaDropped
+                    ? `✅ 「${name}」を登録しました (根拠・登録者は supabase/34_nikke_verification.sql 適用後に保存されます)`
+                    : `✅ 「${name}」を要確認として登録しました。別の運営が一覧から開いて根拠を確認し「確認済みにする」を押してください`, '#18C26B');
                 _nikkeCharsCache = null;                 // キャッシュ再構築 (fuzzy解決に即反映)
                 await getNikkeCharsCache();
                 renderSettingsCharMaster();
@@ -12580,12 +12613,20 @@
                 if (sumEl) sumEl.textContent = '';
                 return;
             }
+            // 事前登録フォームのバーストピッカー (初回だけ描画。選択状態は _burstState が保持)
+            const bp = document.getElementById('settingsNewCharBurst');
+            if (bp && !bp.dataset.ready) { bp.innerHTML = _burstPickerHtml('newChar', ''); bp.dataset.ready = '1'; }
+            const cmDom = window.charMasterDomain;
             const confirmed = rows.filter(r => r.is_confirmed).length;
-            if (sumEl) sumEl.textContent = `全 ${rows.length} 件 / 確定 ${confirmed} / 未確定 ${rows.length - confirmed}`;
+            const needsReview = cmDom ? rows.filter(r => cmDom.verificationState(r).kind === 'needs_review').length : 0;
+            if (sumEl) sumEl.textContent = `全 ${rows.length} 件 / 確定 ${confirmed} / 未確定 ${rows.length - confirmed}${needsReview ? ` (うち🔍要確認 ${needsReview})` : ''}`;
             const body = rows.map(r => {
-                const status = r.is_confirmed
-                    ? '<span style="color:#22c55e;font-weight:700;">✅確定</span>'
-                    : '<span style="color:#f59e0b;font-weight:700;">⚠未確定</span>';
+                const vs = cmDom ? cmDom.verificationState(r) : { kind: r.is_confirmed ? 'verified' : 'unconfirmed' };
+                const status = vs.kind === 'verified'
+                    ? `<span style="color:#22c55e;font-weight:700;" title="${escapeHtml(r.verified_by ? `${r.verified_by} が確認` : '確定')}">✅確定</span>`
+                    : vs.kind === 'needs_review'
+                        ? `<span style="color:#6C42F0;font-weight:800;" title="${escapeHtml(`登録: ${r.registered_by} — 別の運営が根拠を見て確定してください`)}">🔍要確認</span>`
+                        : '<span style="color:#f59e0b;font-weight:700;">⚠未確定</span>';
                 const aliases = Array.isArray(r.aliases) && r.aliases.length > 0
                     ? escapeHtml(r.aliases.join(', '))
                     : '<span style="color:rgba(20,22,26,0.08);">-</span>';
@@ -12627,6 +12668,66 @@
 
         // キャラマスタ編集モーダル
         let _charEditOriginal = null;
+        let _charEditEntry = null;      // 開いたときの行 (二者確認の判定に使う — 運営改修 #6)
+        // 要確認ブロックの描画。registered_by がある行だけ出す (OCR由来の未確定はチェックボックスのまま)
+        function _renderCharEditVerifyBox(entry) {
+            const box = document.getElementById('charEditVerifyBox');
+            if (!box) return;
+            const dom = window.charMasterDomain;
+            if (!dom || !entry?.registered_by) { box.style.display = 'none'; return; }
+            const vs = dom.verificationState(entry);
+            const me = getCurrentIdentity();
+            const fmt = (ts) => { try { return SETTINGS_TS_FMT(ts); } catch { return String(ts || '-'); } };
+            const src = entry.verification_source
+                ? `<a href="${escapeHtml(entry.verification_source)}" target="_blank" rel="noopener noreferrer" style="color:#6C42F0;">${escapeHtml(entry.verification_source)}</a>`
+                : '<span style="color:#B45309;">根拠URLなし</span>';
+            document.getElementById('charEditVerifyInfo').innerHTML =
+                `<div>登録: <strong>${escapeHtml(entry.registered_by)}</strong> · ${escapeHtml(fmt(entry.first_seen))}</div>` +
+                `<div>根拠: ${src}</div>` +
+                (entry.notes ? `<div>メモ: ${escapeHtml(entry.notes)}</div>` : '') +
+                (vs.kind === 'verified' ? `<div>確定: <strong>${escapeHtml(entry.verified_by || '—')}</strong>${entry.verified_at ? ' · ' + escapeHtml(fmt(entry.verified_at)) : ''}</div>` : '');
+            const title = document.getElementById('charEditVerifyTitle');
+            const actions = document.getElementById('charEditVerifyActions');
+            if (vs.kind === 'verified') {
+                title.textContent = '✅ 確認済みの手動登録';
+                title.style.color = '#18C26B';
+                actions.style.display = 'none';
+            } else {
+                title.textContent = '🔍 要確認 — 登録者とは別の運営が根拠を見て確定してください';
+                title.style.color = '#6C42F0';
+                actions.style.display = 'flex';
+                const cv = dom.canVerify({ registeredBy: entry.registered_by, registeredAt: entry.first_seen, actorName: me?.name });
+                const btn = document.getElementById('charEditVerifyBtn');
+                btn.disabled = !cv.ok;
+                btn.style.opacity = cv.ok ? '1' : '0.45';
+                document.getElementById('charEditVerifyHint').textContent = cv.ok
+                    ? (cv.selfVerify ? cv.reason : `${me.name} として確定します`)
+                    : cv.reason;
+            }
+            box.style.display = 'block';
+        }
+        async function handleCharMasterVerify() {
+            if (!_charEditOriginal || !_charEditEntry) return;
+            const msg = document.getElementById('charEditMessage');
+            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const dom = window.charMasterDomain;
+            const me = getCurrentIdentity();
+            const cv = dom.canVerify({ registeredBy: _charEditEntry.registered_by, registeredAt: _charEditEntry.first_seen, actorName: me?.name });
+            if (!cv.ok) { setMsg(`❌ ${cv.reason}`, true); return; }
+            const b = _readBurst('charEdit');
+            if (!b) { setMsg('❌ バーストを設定してから確定してください (要確認の主目的はバーストの検証です)', true); return; }
+            try {
+                await window.supabaseVerifyCharacterMasterEntry(_charEditOriginal, { verifiedBy: me.name });
+                setMsg(`✅ ${me.name} が確認済みにしました`);
+                _charEditEntry = { ..._charEditEntry, is_confirmed: true, verified_by: me.name, verified_at: new Date().toISOString() };
+                document.getElementById('charEditConfirmed').checked = true;
+                _renderCharEditVerifyBox(_charEditEntry);
+                invalidateNikkeCharsCache();
+                renderSettingsCharMaster();
+            } catch (e) {
+                setMsg(`❌ ${e?.message || e}`, true);
+            }
+        }
         // ---------- バースト選択ピル (キャラ登録/編集で共用) ----------
         // 単一選択。'' = 未設定 (null)。groupId ごとに状態を保持。
         const _burstState = {};
@@ -12705,6 +12806,8 @@
             _burstChangeHooks['charEditAlt'] = () => _renderCharEditAltHint();
             _renderCharEditAltHint();
             document.getElementById('charEditConfirmed').checked = !!entry.is_confirmed;
+            _charEditEntry = entry;
+            _renderCharEditVerifyBox(entry);
             document.getElementById('charEditMergeTarget').value = '';
             document.getElementById('charEditMessage').textContent = '';
             // 統合先候補リストを更新
@@ -12725,6 +12828,7 @@
         function closeCharMasterEditModal() {
             document.getElementById('charMasterEditModal').classList.remove('open');
             _charEditOriginal = null;
+            _charEditEntry = null;
         }
 
         async function handleCharMasterSave() {
@@ -12743,6 +12847,15 @@
             const burstAlt = _readBurst('charEditAlt');
             if (burstAlt && !burst) { setMsg('❌ サブバーストを設定するには主バーストが必要です', true); return; }
             if (burstAlt && burstAlt === burst) { setMsg('❌ 主バーストとサブバーストが同じです', true); return; }
+            // 要確認 (手動登録) の行をチェックボックスで確定にする場合も「確認済みにする」と同じルール (運営改修 #6)
+            let verifiedBy = null;
+            if (isConfirmed && _charEditEntry && !_charEditEntry.is_confirmed && _charEditEntry.registered_by && window.charMasterDomain) {
+                const me = getCurrentIdentity();
+                const cv = window.charMasterDomain.canVerify({ registeredBy: _charEditEntry.registered_by, registeredAt: _charEditEntry.first_seen, actorName: me?.name });
+                if (!cv.ok) { setMsg(`❌ ${cv.reason}`, true); return; }
+                if (!burst) { setMsg('❌ バーストを設定してから確定してください', true); return; }
+                verifiedBy = me.name;
+            }
 
             try {
                 // 統合モードが優先
@@ -12755,6 +12868,7 @@
                         canonical_name: newCanonical,
                         aliases,
                         is_confirmed: isConfirmed,
+                        ...(verifiedBy ? { verified_by: verifiedBy } : {}),
                         burst,          // '' なら未設定(null)に戻す
                         burst_alt: burstAlt,
                     });

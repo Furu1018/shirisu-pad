@@ -189,6 +189,10 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'created_by_test_season_id'),
         'nikke_characters.created_by_test_season_id (テスト中の自動学習にタグ。未適用だとテスト終了の削除候補が全て既定OFF)'
 
+    UNION ALL SELECT '34_nikke_verification',
+        EXISTS (SELECT 1 FROM col WHERE table_name = 'nikke_characters' AND column_name = 'verified_at'),
+        'nikke_characters.registered_by / verification_source / verified_by / verified_at (手動登録の二者確認。未適用でも登録は ⚠未確定として通る)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

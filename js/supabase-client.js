@@ -3010,7 +3010,8 @@ window.supabaseLoadCharacterMaster = async function () {
 
 // 名前 + アイコン画像で登録/更新 (ブートストラップウィザード用)
 // 同一 canonical_name が既にあれば icon_paths に追加 (重複しないように)、無ければ新規 INSERT
-window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPath, burst = null) {
+// meta.registeredBy: 登録した運営の表示名 (要確認バッジと二者確認に使う。34_nikke_verification)
+window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPath, burst = null, meta = {}) {
     if (!canonicalName || typeof canonicalName !== 'string') throw new Error('canonical_name 必須');
     if (!iconPath || typeof iconPath !== 'string') throw new Error('icon_path 必須');
     const name = canonicalName.trim();
@@ -3034,31 +3035,43 @@ window.supabaseRegisterCharacterWithIcon = async function (canonicalName, iconPa
         // error を握り潰すと「登録できた」と表示したまま実際は保存されない → 必ず投げる
         const { error: updErr } = await supabase.from('nikke_characters').update({
             icon_paths: paths,
-            is_confirmed: true,   // 運営が手動でひも付けたのは確定扱い
+            // OCR 由来の未確定行にアイコンをひも付けたら確定扱い (従来どおり)。
+            // ただし「要確認」(手動登録・registered_by あり) の行はアイコン追加では確定しない —
+            // 確定は別の運営の「確認済みにする」だけ (運営改修 #6)
+            ...(existing.registered_by ? {} : { is_confirmed: true }),
             last_seen: nowIso,
             ...burstPatch,
         }).eq('canonical_name', name);
         if (updErr) throw updErr;
         return { canonical_name: name, updated: true, icon_count: paths.length };
     }
-    // 新規登録
-    const { error: insErr } = await supabase.from('nikke_characters').insert({
+    // 新規登録 — 運営の手動登録は「要確認」で入れる (運営改修 #6)。
+    // 34 未適用環境では registered_by 列が無いので、列抜きで再試行 (⚠未確定として入る)
+    const baseRow = {
         canonical_name: name,
         aliases: [],
         icon_paths: [iconPath],
         sighting_count: 0,
-        is_confirmed: true,
+        is_confirmed: false,
         first_seen: nowIso,
         last_seen: nowIso,
         ...burstPatch,
-    });
-    if (insErr) throw insErr;
-    return { canonical_name: name, inserted: true, icon_count: 1 };
+    };
+    const regBy = (meta && typeof meta.registeredBy === 'string' && meta.registeredBy.trim()) ? meta.registeredBy.trim() : null;
+    let ins = await supabase.from('nikke_characters').insert(regBy ? { ...baseRow, registered_by: regBy } : baseRow);
+    if (ins.error && regBy && _isMissingColumnErr(ins.error, 'registered_by')) {
+        ins = await supabase.from('nikke_characters').insert(baseRow);
+    }
+    if (ins.error) throw ins.error;
+    return { canonical_name: name, inserted: true, icon_count: 1, needsReview: true };
 };
 
 // ➕ 新キャラの事前登録: 正式名だけ先にマスタへ入れておく (アイコンは後から自動学習)
 // 実装直後の新キャラを OCR が誤解決しないよう、運営が名前を先回りで登録する用途。
-window.supabaseRegisterNikkeCharName = async function (name, burst = null) {
+// meta: { source: 根拠URL, notes: メモ, registeredBy: 登録した運営の表示名 } (34_nikke_verification)。
+// 手動登録は is_confirmed=false (要確認) で入れ、別の運営が「確認済みにする」で確定する (運営改修 #6)。
+// 必須チェック (バースト・URL形式) は呼び出し側 (index.html) — ここは保存のみ
+window.supabaseRegisterNikkeCharName = async function (name, burst = null, meta = {}) {
     const clean = (name || '').trim();
     if (!clean) throw new Error('キャラ名が空です');
     const { data: existing } = await supabase
@@ -3068,18 +3081,43 @@ window.supabaseRegisterNikkeCharName = async function (name, burst = null) {
         .maybeSingle();
     if (existing) return { canonical_name: clean, exists: true };
     const nowIso = new Date().toISOString();
-    const { error } = await supabase.from('nikke_characters').insert({
+    const baseRow = {
         canonical_name: clean,
         aliases: [],
         icon_paths: [],
         sighting_count: 0,
-        is_confirmed: true,   // 運営の手動登録は確定扱い
+        is_confirmed: false,   // 要確認。旧「運営の手動登録は確定扱い」は誤バースト (B1↔B3) を素通しした
         first_seen: nowIso,
         last_seen: nowIso,
         ...(burst ? { burst } : {}),   // 選択時のみ書く
-    });
+        ...(meta && typeof meta.notes === 'string' && meta.notes.trim() ? { notes: meta.notes.trim() } : {}),
+    };
+    const extra = {};
+    if (meta && typeof meta.registeredBy === 'string' && meta.registeredBy.trim()) extra.registered_by = meta.registeredBy.trim();
+    if (meta && typeof meta.source === 'string' && meta.source.trim()) extra.verification_source = meta.source.trim();
+    let ins = await supabase.from('nikke_characters').insert({ ...baseRow, ...extra });
+    if (ins.error && Object.keys(extra).length && (_isMissingColumnErr(ins.error, 'registered_by') || _isMissingColumnErr(ins.error, 'verification_source'))) {
+        // 34 未適用: 根拠・登録者は保存できないが登録自体は通す (一覧では ⚠未確定)
+        ins = await supabase.from('nikke_characters').insert(baseRow);
+        if (!ins.error) return { canonical_name: clean, inserted: true, needsReview: true, metaDropped: true };
+    }
+    if (ins.error) throw ins.error;
+    return { canonical_name: clean, inserted: true, needsReview: true };
+};
+
+// 要確認の行を確定する (登録者とは別の運営が根拠を見て押す。本人可否の判定は charMasterDomain.canVerify)
+window.supabaseVerifyCharacterMasterEntry = async function (canonicalName, { verifiedBy } = {}) {
+    const name = (canonicalName || '').trim();
+    if (!name) throw new Error('canonical_name 必須');
+    const by = (typeof verifiedBy === 'string' && verifiedBy.trim()) ? verifiedBy.trim() : null;
+    if (!by) throw new Error('確認者を特定できません (ホームで自分を選択してから操作してください)');
+    const full = { is_confirmed: true, verified_by: by, verified_at: new Date().toISOString() };
+    let { error } = await supabase.from('nikke_characters').update(full).eq('canonical_name', name);
+    if (error && (_isMissingColumnErr(error, 'verified_by') || _isMissingColumnErr(error, 'verified_at'))) {
+        ({ error } = await supabase.from('nikke_characters').update({ is_confirmed: true }).eq('canonical_name', name));
+    }
     if (error) throw error;
-    return { canonical_name: clean, inserted: true };
+    return { canonical_name: name, verified: true };
 };
 
 // 画像パスから canonical_name を逆引き
@@ -3144,6 +3182,17 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
             ...(mergedBurst ? { burst: mergedBurst } : {}),
             ...(mergedAlt ? { burst_alt: mergedAlt } : {}),
         };
+        // 改名で落としてはいけない付帯情報を引き継ぐ (旧行 → 統合先の順で値があるものだけ)。
+        // '*' select なので未マイグレ環境では undefined = キーごと付かない (列エラーにならない)
+        for (const k of ['notes', 'registered_by', 'verification_source', 'verified_by', 'verified_at', 'created_by_test_season_id']) {
+            const v = old[k] ?? existing?.[k];
+            if (v !== undefined && v !== null) row[k] = v;
+        }
+        // 改名と同時に要確認→確定にする場合も確認者を残す (34 未適用なら upsert が列エラー → 下で案内)
+        if (row.is_confirmed && !old.is_confirmed && typeof patch.verified_by === 'string' && patch.verified_by.trim()) {
+            row.verified_by = patch.verified_by.trim();
+            row.verified_at = new Date().toISOString();
+        }
         const { error: upErr } = await supabase.from('nikke_characters').upsert(row);
         // 未マイグレ環境では引き継ぎ元の burst_alt も undefined なので、ここでこのエラーが出るのは
         // 「呼び出し側が明示的にサブを保存しようとした」ときだけ。黙って捨てず案内する
@@ -3159,6 +3208,11 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
     const update = {};
     if (newAliases != null) update.aliases = newAliases;
     if (isConfirmed != null) update.is_confirmed = !!isConfirmed;
+    // 要確認 → 確定に変えるときは誰が確定したかを残す (34 未適用なら下のフォールバックで列を落とす)
+    if (update.is_confirmed === true && typeof patch.verified_by === 'string' && patch.verified_by.trim()) {
+        update.verified_by = patch.verified_by.trim();
+        update.verified_at = new Date().toISOString();
+    }
     if (Array.isArray(patch.icon_paths)) update.icon_paths = patch.icon_paths.filter(Boolean);
     if (patch.burst !== undefined) update.burst = patch.burst || null;   // '' → null で未設定に戻せる
     if (patch.burst_alt !== undefined) update.burst_alt = patch.burst_alt || null;
@@ -3184,6 +3238,11 @@ window.supabaseUpdateCharacterMasterEntry = async function (oldCanonical, patch)
     }
     if (Object.keys(update).length === 0) return { unchanged: true };
     let { error } = await supabase.from('nikke_characters').update(update).eq('canonical_name', oldCanonical);
+    if (error && 'verified_by' in update && (_isMissingColumnErr(error, 'verified_by') || _isMissingColumnErr(error, 'verified_at'))) {
+        // 34_nikke_verification.sql 未適用: 確認者の記録だけ諦めて確定は通す
+        const { verified_by: _vb, verified_at: _va, ...rest } = update;
+        ({ error } = await supabase.from('nikke_characters').update(rest).eq('canonical_name', oldCanonical));
+    }
     if (error && 'burst_alt' in update && _isMissingColumnErr(error, 'burst_alt')) {
         // 25_nikke_burst_alt.sql 未適用。サブを実際に設定しようとしたなら黙って捨てず案内する
         if (update.burst_alt) {

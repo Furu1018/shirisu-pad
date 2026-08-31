@@ -15,6 +15,7 @@ import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
+import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -2838,6 +2839,40 @@ console.log('\ntestSeasonDomain:');
         assert.equal(out[0].defaultDelete, true);
         assert.equal(out[1].sighting_count, 0);
         assert.equal(out[1].defaultDelete, false);
+    });
+}
+
+// ---- charMasterDomain (手動登録の二者確認) -------------------------------------
+console.log('\ncharMasterDomain:');
+{
+    const dom = globalThis.charMasterDomain;
+    const H = 3600 * 1000;
+    const t0 = Date.parse('2026-08-31T00:00:00Z');
+    test('verificationState: 確定 / 要確認 (registered_by あり) / 未確定 (OCR由来) を区別する', () => {
+        assert.equal(dom.verificationState({ is_confirmed: true }).kind, 'verified');
+        assert.equal(dom.verificationState({ is_confirmed: true, verified_by: 'ねむねこ' }).label, '✅確定 (ねむねこ)');
+        assert.equal(dom.verificationState({ is_confirmed: false, registered_by: 'ふるり' }).kind, 'needs_review');
+        assert.equal(dom.verificationState({ is_confirmed: false }).kind, 'unconfirmed');
+        assert.equal(dom.verificationState(null).kind, 'unconfirmed');
+    });
+    test('canVerify: 別の運営は即可 / 本人は24時間未満で不可・以後は可 / 確認者不明は不可', () => {
+        assert.equal(dom.canVerify({ registeredBy: 'ふるり', registeredAt: t0, actorName: 'ねむねこ', now: t0 + H }).ok, true);
+        const self1 = dom.canVerify({ registeredBy: 'ふるり', registeredAt: t0, actorName: 'ふるり', now: t0 + 23 * H });
+        assert.equal(self1.ok, false); assert.match(self1.reason, /本人/);
+        const self2 = dom.canVerify({ registeredBy: 'ふるり', registeredAt: t0, actorName: 'ふるり', now: t0 + 24 * H });
+        assert.equal(self2.ok, true); assert.equal(self2.selfVerify, true);
+        assert.equal(dom.canVerify({ registeredBy: 'ふるり', registeredAt: t0, actorName: '', now: t0 + 48 * H }).ok, false);
+        assert.equal(dom.canVerify({ registeredBy: null, actorName: 'ふるり' }).ok, true, '登録者不明 (34未適用) は別人扱いで可');
+    });
+    test('canVerify: 名前の表記ゆれ (空白・全角) は同一人物とみなす / 登録日時不明の本人は不可', () => {
+        assert.equal(dom.canVerify({ registeredBy: 'ふる り', registeredAt: t0, actorName: 'ふるり', now: t0 + H }).ok, false);
+        assert.equal(dom.canVerify({ registeredBy: 'ふるり', registeredAt: null, actorName: 'ふるり', now: t0 + 100 * H }).ok, false);
+    });
+    test('isValidSourceUrl: http(s) の絶対URLのみ', () => {
+        assert.equal(dom.isValidSourceUrl('https://game8.jp/nikke/492115'), true);
+        assert.equal(dom.isValidSourceUrl('game8.jp/nikke/492115'), false);
+        assert.equal(dom.isValidSourceUrl('https://x y'), false);
+        assert.equal(dom.isValidSourceUrl(''), false);
     });
 }
 
