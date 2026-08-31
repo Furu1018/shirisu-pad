@@ -37,7 +37,8 @@ function extract(marker) {
 
 // ---- 依存スタブ (index.html 側の実装に合わせる) ----
 const els = {};
-const el = (id) => (els[id] ||= { id, innerHTML: '', textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } });
+const el = (id) => (els[id] ||= { id, innerHTML: '', textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; },
+    classList: { contains: () => false, add() {}, remove() {}, toggle() {} } });
 globalThis.document = { getElementById: (id) => el(id) };
 globalThis.escapeHtml = (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 globalThis.DC_ATTR_COLORS = { fire: '#FF3D44', water: '#2E8BFF', electric: '#9B4DFF', iron: '#FF8A2B', wind: '#18C26B' };
@@ -194,15 +195,42 @@ await testAsync('extras 待機中に opsStore.invalidate() (凸登録等) が走
     assert.equal(_mb.rows.length, 0, '古い盤面の応答で行が組み立てられている');
     assert.equal(_mb.season, null);
 });
-await testAsync('extras 待機中に運営OFF (gen++ 相当) になったら、隠れた盤面を更新しない', async () => {
+// toggleOpsMode 本体を切り出して実行 (OFF 側で _mb.gen を進める実装そのものを検証する)
+globalThis._applyOpsMode = () => {};
+globalThis.showNotification = () => {};
+globalThis._invalidateTabRenderCache = () => {};
+globalThis.renderOpsMemberStatus = renderOpsMemberStatus;
+const toggleOpsMode = eval(`(${extract('        function toggleOpsMode(').trim()})`);
+await testAsync('extras 待機中に toggleOpsMode() で運営OFF になったら、隠れた盤面を更新しない (ON に戻すときは世代を進めない)', async () => {
     Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
     const snap = { season: { id: 30, hard_date: '2026-09-05' }, players };
     storeData = snap;
-    const p = renderOpsMemberStatus(snap);
-    globalThis._opsMode = false; _mb.gen++;                        // toggleOpsMode(OFF) と同じ処理
-    pendingResolvers.shift()(extras); await p;
-    assert.equal(_mb.rows.length, 0);
     globalThis._opsMode = true;
+    const p = renderOpsMemberStatus(snap);
+    const genBefore = _mb.gen;
+    toggleOpsMode();                                               // ON → OFF
+    assert.equal(globalThis._opsMode, false);
+    assert.equal(_mb.gen, genBefore + 1, 'OFF で世代が進んでいない');
+    pendingResolvers.shift()(extras); await p;
+    assert.equal(_mb.rows.length, 0, 'OFF 中に届いた応答で盤面が更新されている');
+    const genOff = _mb.gen;
+    toggleOpsMode();                                               // OFF → ON (tab-ops 非アクティブなので再取得は走らない)
+    assert.equal(globalThis._opsMode, true);
+    assert.equal(_mb.gen, genOff, 'ON に戻すときに世代を進めてはいけない');
+});
+await testAsync('extras が失敗しても、待機中に invalidate されていたらエラー表示すら出さない', async () => {
+    Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const snap = { season: { id: 30, hard_date: '2026-09-05' }, players };
+    storeData = snap;
+    el('opsMbRows').innerHTML = 'KEEP';
+    const origExtras = globalThis.supabaseLoadMemberStatusExtras;
+    let rejecter = null;
+    globalThis.supabaseLoadMemberStatusExtras = () => new Promise((_, rej) => { rejecter = rej; });
+    const p = renderOpsMemberStatus(snap);
+    opsStore.invalidate();
+    rejecter(new Error('boom')); await p;
+    globalThis.supabaseLoadMemberStatusExtras = origExtras;
+    assert.ok(!el('opsMbRows').innerHTML.includes('読み込みエラー'), '古い失敗応答でエラーが描画されている');
 });
 await testAsync('opsStore.load() が失敗したら「取得に失敗」を出し、既存の行は消さない (シーズン無し扱いにしない)', async () => {
     Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [{ id: 1 }], players, extras, season: { id: 30 }, gen: 0 });

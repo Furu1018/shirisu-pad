@@ -13719,7 +13719,8 @@
                 const upd = document.getElementById('opsMbUpdated');
                 if (upd) upd.textContent = `更新 ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
             } catch (e) {
-                if (gen !== _mb.gen) return;
+                // 成功側と同じ条件で古い失敗も捨てる (追い越し・盤面の書き換え・運営OFF)
+                if (gen !== _mb.gen || !opsStore.isCurrentGeneration(storeGen) || !_opsMode) return;
                 rowsEl.innerHTML = `<p style="color:#ef4444;font-size:12px;margin:0;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
             }
         }
