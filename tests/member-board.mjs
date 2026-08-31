@@ -124,8 +124,15 @@ test('行が0件のときは案内文だけ', () => {
 // ---- 非同期の世代制御 (renderOpsMemberStatus) ----
 // 「シーズンあり → 取得待ち中にシーズン無し / 別シーズンへ切替」で古い応答が盤面を復活させないこと
 globalThis._opsMode = true;
-let storeData = null;
-globalThis.opsStore = { get: () => storeData, load: async () => storeData };
+// opsStore スタブ: get()/load() を分け、世代 (generation/isCurrentGeneration/invalidate) も本物と同じ契約で持つ
+let storeData = null, loadData = null, loadCalls = 0, storeGen = 0;
+globalThis.opsStore = {
+    get: () => storeData,
+    load: async () => { loadCalls++; storeGen++; storeData = loadData; return loadData; },
+    generation: () => storeGen,
+    isCurrentGeneration: (g) => g === storeGen,
+    invalidate: () => { storeGen++; storeData = null; },
+};
 let pendingResolvers = [];
 globalThis.supabaseLoadMemberStatusExtras = () => new Promise(res => pendingResolvers.push(res));
 const _mbCurrentPhase = eval(`(${extract('        function _mbCurrentPhase(').trim()})`);
@@ -165,13 +172,48 @@ await testAsync('世代制御: 別シーズンへの切替中に届いた前シ�
 });
 await testAsync('snapshot 無し (invalidate 直後) は opsStore.load() を待ってから描く — null を「シーズン無し」と誤認しない', async () => {
     Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
-    storeData = { season: { id: 30, hard_date: '2026-09-05' }, players };
+    storeData = null;                                              // invalidate 直後: get() は null
+    loadData = { season: { id: 30, hard_date: '2026-09-05' }, players };
+    loadCalls = 0;
     const p = renderOpsMemberStatus(null, true);
-    await Promise.resolve(); await Promise.resolve();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    assert.equal(loadCalls, 1, 'opsStore.load() を1回呼ぶ');
     assert.equal(pendingResolvers.length, 1, 'load() 後に extras を取りに行く');
     pendingResolvers.shift()(extras); await p;
     assert.equal(_mb.season.id, 30);
     assert.ok(!el('opsMbRows').innerHTML.includes('アクティブシーズンがありません'));
+});
+await testAsync('extras 待機中に opsStore.invalidate() (凸登録等) が走ったら、その応答は採用しない', async () => {
+    Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const snap = { season: { id: 30, hard_date: '2026-09-05' }, players };
+    storeData = snap;
+    const p = renderOpsMemberStatus(snap);
+    assert.equal(pendingResolvers.length, 1);
+    opsStore.invalidate();                                         // 盤面が書き換わった
+    pendingResolvers.shift()(extras); await p;
+    assert.equal(_mb.rows.length, 0, '古い盤面の応答で行が組み立てられている');
+    assert.equal(_mb.season, null);
+});
+await testAsync('extras 待機中に運営OFF (gen++ 相当) になったら、隠れた盤面を更新しない', async () => {
+    Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const snap = { season: { id: 30, hard_date: '2026-09-05' }, players };
+    storeData = snap;
+    const p = renderOpsMemberStatus(snap);
+    globalThis._opsMode = false; _mb.gen++;                        // toggleOpsMode(OFF) と同じ処理
+    pendingResolvers.shift()(extras); await p;
+    assert.equal(_mb.rows.length, 0);
+    globalThis._opsMode = true;
+});
+await testAsync('opsStore.load() が失敗したら「取得に失敗」を出し、既存の行は消さない (シーズン無し扱いにしない)', async () => {
+    Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [{ id: 1 }], players, extras, season: { id: 30 }, gen: 0 });
+    storeData = null;
+    const origLoad = opsStore.load;
+    opsStore.load = async () => { throw new Error('network down'); };
+    await renderOpsMemberStatus(null, true);
+    opsStore.load = origLoad;
+    assert.ok(el('opsMbRows').innerHTML.includes('取得に失敗'), '失敗表示が無い');
+    assert.ok(!el('opsMbRows').innerHTML.includes('アクティブシーズンがありません'));
+    assert.equal(_mb.rows.length, 1, '既存の行が消されている');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
