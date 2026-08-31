@@ -23,27 +23,54 @@
     // 「互いにキャラが被らない属性の最大数」で判定する
     const MOCK_REQUIRED = 3;
 
-    const charKey = (c) => (typeof c === 'string' ? c : '').normalize('NFKC').replace(/[：]/g, ':').replace(/\s+/g, '').trim().toLowerCase();
+    // キャラ照合キーは模擬・ソルバー側 (mockLevelsDomain.charKey / optimal-plan.js) と同じ規則を使う。
+    // 独自に空白除去などを足すと「同一キャラ」の判定が画面ごとにズレる (Codex指摘) — 実体があれば委譲
+    const charKey = (c) => {
+        const shared = root.mockLevelsDomain && root.mockLevelsDomain.charKey;
+        return shared ? shared(c) : (typeof c === 'string' ? c : '').normalize('NFKC').trim().toLowerCase();
+    };
 
     /**
-     * 提出済み属性のうち、互いにキャラが被らない属性の最大数 (5属性なので全部分集合を総当たり)。
-     * 編成が未記録 (chars 空) の属性は「被り判定できない」= どの属性とも両立するものとして数える
+     * 提出済み属性のうち、互いにキャラが被らない属性の最大数。
+     * 各属性は複数の編成 (slot 1/2 = loadoutsByAttr) を持ちうるので、「属性ごとにどの編成を採るか」も
+     * 含めて総当たりする (5属性 × 最大2編成 なので十分小さい)。slot1 同士が被っていても slot2 で
+     * 回せるなら OK にする (代表編成だけ見ると偽陰性になる — Codex指摘)。
+     * 編成が未記録の属性は「被り判定できない」= どの属性とも両立するものとして数える
      * (提出自体は済んでいるのに、記録の欠落で要対応にしない)。
      * @param {string[]} mockAttrs
-     * @param {Record<string, string[]>} teamsByAttr
+     * @param {Record<string, {team?:string[]}[]>=} loadoutsByAttr  opsStore 盤面の loadoutsByAttr (優先)
+     * @param {Record<string, string[]>=} teamsByAttr  代表編成 (loadouts が無い環境の後方互換)
      */
-    function maxDisjointAttrs(mockAttrs, teamsByAttr) {
+    function maxDisjointAttrs(mockAttrs, loadoutsByAttr, teamsByAttr) {
         const attrs = Array.isArray(mockAttrs) ? mockAttrs : [];
-        const sets = attrs.map(a => new Set((Array.isArray(teamsByAttr?.[a]) ? teamsByAttr[a] : []).map(charKey).filter(Boolean)));
+        const toSet = (chars) => new Set((Array.isArray(chars) ? chars : []).map(charKey).filter(Boolean));
+        // 属性ごとの候補編成 (Set の配列)。候補が無い = ワイルドカード
+        const cands = attrs.map(a => {
+            const lo = Array.isArray(loadoutsByAttr?.[a]) ? loadoutsByAttr[a].map(l => toSet(l?.team)).filter(s => s.size > 0) : [];
+            if (lo.length) return lo;
+            const t = toSet(teamsByAttr?.[a]);
+            return t.size ? [t] : [];
+        });
+        const disjoint = (a, b) => { for (const c of a) if (b.has(c)) return false; return true; };
+        // idx の属性群について、各属性から編成を1つずつ選んで互いに被らない組合せがあるか (バックトラック)
+        const feasible = (idx) => {
+            const chosen = [];
+            const rec = (k) => {
+                if (k === idx.length) return true;
+                const options = cands[idx[k]];
+                if (!options.length) return rec(k + 1);          // ワイルドカード
+                for (const s of options) {
+                    if (chosen.every(c => disjoint(c, s))) { chosen.push(s); if (rec(k + 1)) return true; chosen.pop(); }
+                }
+                return false;
+            };
+            return rec(0);
+        };
         let best = 0;
         for (let mask = 1; mask < (1 << attrs.length); mask++) {
             const idx = []; for (let i = 0; i < attrs.length; i++) if (mask & (1 << i)) idx.push(i);
             if (idx.length <= best) continue;
-            let ok = true;
-            for (let x = 0; x < idx.length && ok; x++) for (let y = x + 1; y < idx.length && ok; y++) {
-                for (const c of sets[idx[x]]) if (sets[idx[y]].has(c)) { ok = false; break; }
-            }
-            if (ok) best = idx.length;
+            if (feasible(idx)) best = idx.length;
         }
         return best;
     }
@@ -100,7 +127,7 @@
             const dmg = p.damagesByAttr || {};
             const mockAttrs = ATTR_KEYS.filter(a => (Number(dmg[a]) || 0) > 0);
             const missingAttrs = ATTR_KEYS.filter(a => !mockAttrs.includes(a));
-            const mockUsable = maxDisjointAttrs(mockAttrs, p.teamsByAttr);   // キャラ被りなしで回せる属性数
+            const mockUsable = maxDisjointAttrs(mockAttrs, p.loadoutsByAttr, p.teamsByAttr);   // キャラ被りなしで回せる属性数 (全編成を考慮)
             const mockOk = mockUsable >= MOCK_REQUIRED;
             const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
             const flex = !!p.flexTime;

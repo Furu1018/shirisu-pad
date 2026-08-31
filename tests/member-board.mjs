@@ -53,8 +53,10 @@ const players = [
     P({ id: 1, name: '<script>x</script>', damagesByAttr: { fire: 1 }, strong_attributes: ['fire'] }),
     P({ id: 2, name: '完了さん', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21', 'h22'], avatar_url: 'https://x/y.png' }),
     P({ id: 3, name: '当日残凸', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 610, syncLevelEstimated: false, flexTime: true, attacks: [{ level: 1, boss_number: 1 }] }),
+    // 3属性 (被りなし) = 必要範囲を満たす → 前日は「完了」扱い (5属性必須に戻ると未完になりテストが落ちる)
+    P({ id: 4, name: '三属性', damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: { fire: ['a'], water: ['b'], wind: ['c'] }, syncLevel: 590, syncLevelEstimated: false, availableSlots: ['h20'], attacks: [{ level: 1 }, { level: 2 }, { level: 3 }] }),
 ];
-const extras = { pushPlayerIds: [2, 3], slvThisSeasonIds: [2, 3], finishRequests: [{ player_id: 3, status: 'pending' }], proxyEvents: [{ player_id: 3 }] };
+const extras = { pushPlayerIds: [2, 3, 4], slvThisSeasonIds: [2, 3, 4], finishRequests: [{ player_id: 3, status: 'pending' }], proxyEvents: [{ player_id: 3 }] };
 
 let passed = 0, failed = 0;
 function test(name, fn) {
@@ -76,8 +78,9 @@ test('前日・未完のみ: 未完の行だけ描画され、名前はエスケ
     assert.ok(!/undefined|NaN|\[object/.test(out), `描画に undefined/NaN が混ざっている: ${out.slice(0, 200)}`);
     assert.ok(el('opsMbSummary').innerHTML.includes('模擬 3属性 (被りなし)'), '前日の集計が出ていない');
     assert.ok(el('opsMbSummary').innerHTML.includes('5属性 '), '5属性の加点表示が無い');
-    assert.equal(el('opsMbFilterTodo').textContent, '未完のみ (1)');
-    assert.equal(el('opsMbFilterAll').textContent, '全員 (3)');
+    assert.equal(el('opsMbFilterTodo').textContent, '未完のみ (1)', '3属性(被りなし)の人は完了扱い');
+    assert.equal(el('opsMbFilterAll').textContent, '全員 (4)');
+    assert.ok(!out.includes('三属性'), '3属性で完了の人が「未完のみ」に出ている');
     assert.equal(el('opsMbPhasePre').attrs['aria-pressed'], 'true');
 });
 

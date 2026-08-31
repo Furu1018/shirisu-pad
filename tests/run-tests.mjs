@@ -2884,7 +2884,18 @@ console.log('\nmemberStatusDomain:');
         assert.equal(rows[1].mockUsable, 2); assert.equal(rows[1].mockOk, false);
         assert.match(rows[1].reasons[0].label, /被りなし2\/3 \(提出5属性・キャラ被り\)/);
         assert.equal(rows[2].mockOk, true, '編成未記録は被り判定できないので両立扱い');
-        assert.equal(dom.maxDisjointAttrs(['fire', 'water'], { fire: ['ラピ：レッドフード'], water: ['ラピ:レッドフード'] }), 1, '全角/半角コロンの表記ゆれも同一キャラ');
+        assert.equal(dom.maxDisjointAttrs(['fire', 'water'], null, { fire: ['ラピ：レッドフード'], water: ['ラピ:レッドフード'] }), 1, '全角/半角コロンの表記ゆれも同一キャラ (NFKC)');
+        assert.equal(dom.maxDisjointAttrs(['fire', 'water'], null, { fire: ['ラ ピ'], water: ['ラピ'] }), 2, '内部空白は既存の charKey と同じく別キャラ扱い (独自に潰さない)');
+        // slot1 同士は被るが slot2 なら回せる → 全編成を見て OK にする (代表編成だけだと偽陰性)
+        const lo = {
+            fire: [{ team: ['X', 'a'] }, { team: ['p', 'q'] }],
+            water: [{ team: ['X', 'b'] }],
+            wind: [{ team: ['X', 'c'] }, { team: ['r', 's'] }],
+        };
+        assert.equal(dom.maxDisjointAttrs(['fire', 'water', 'wind'], lo, { fire: ['X', 'a'], water: ['X', 'b'], wind: ['X', 'c'] }), 3);
+        assert.equal(dom.maxDisjointAttrs(['fire', 'water', 'wind'], null, { fire: ['X', 'a'], water: ['X', 'b'], wind: ['X', 'c'] }), 1, '代表編成だけなら 1');
+        const twoLoadouts = P({ id: 4, damagesByAttr: { fire: 1, water: 1, wind: 1 }, loadoutsByAttr: lo, teamsByAttr: { fire: ['X', 'a'], water: ['X', 'b'], wind: ['X', 'c'] }, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
+        assert.equal(dom.buildRows({ players: [twoLoadouts], extras: { pushPlayerIds: [4], slvThisSeasonIds: [4] }, phase: 'pre' })[0].mockOk, true, 'buildRows は loadoutsByAttr を優先して判定する');
         const s = Object.fromEntries(dom.summarize(rows, 'pre').map(x => [x.key, x]));
         assert.equal(s.mock.value, 2); assert.equal(s.mock.sub, '5属性 1');
         const m = dom.nudgeMessage(rows[1], 'pre');
