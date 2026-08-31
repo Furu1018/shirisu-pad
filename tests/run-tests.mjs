@@ -2800,11 +2800,9 @@ console.log('\nmockLevelsDomain:');
     const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
     const sqlDir = path.join(ROOT, 'supabase');
     const sqlFiles = fs.readdirSync(sqlDir).filter(f => /^\d+_.*\.sql$/.test(f));
-    const listOf = (name) => {
-        const m = client.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\n\\];`));
-        assert.ok(m, `${name} が js/supabase-client.js に見つからない`);
-        return m[1];
-    };
+    // 宣言が見つからなければ空リストにして、下の test() 内で「テーブルが漏れている」として検知させる
+    // (test() の外で assert すると集計に乗らずモジュール例外になる — Codex指摘)
+    const listOf = (name) => client.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\n\\];`))?.[1] ?? '';
     const backup = [...listOf('_BACKUP_TABLES').matchAll(/'([a-z_]+)'/g)].map(m => m[1]);
     const restore = [...listOf('_RESTORE_TABLES').matchAll(/^\s*\['([a-z_]+)'/gm)].map(m => m[1]);
     const created = new Set();
@@ -2828,8 +2826,13 @@ console.log('\nmockLevelsDomain:');
         assert.deepEqual([...restore].sort(), [...backup].sort());
         // 親→子の最低限: players / seasons が先頭側、それを参照する表が後ろ
         const idx = (t) => restore.indexOf(t);
-        for (const child of ['bosses', 'attacks', 'finish_requests', 'raid_event_notices', 'published_plans', 'plan_acks']) {
+        assert.ok(backup.length > 0 && restore.length > 0, '_BACKUP_TABLES / _RESTORE_TABLES の宣言が見つからない');
+        for (const child of ['bosses', 'attacks', 'finish_requests', 'raid_event_notices', 'published_plans', 'plan_acks', 'player_sync_levels', 'fururi_simulation_scores', 'finish_claims']) {
             assert.ok(idx(child) > idx('seasons'), `${child} は seasons より後に投入すること`);
+        }
+        // players を参照する表 (CASCADE / SET NULL いずれも、投入時に親が要る)
+        for (const child of ['attacks', 'player_damages', 'player_sync_levels', 'day_offs', 'availability', 'finish_coordinations', 'finish_requests', 'raid_event_notices', 'activity_log', 'push_subscriptions', 'plan_acks']) {
+            assert.ok(idx(child) > idx('players'), `${child} は players より後に投入すること`);
         }
         assert.ok(idx('plan_acks') > idx('published_plans'), 'plan_acks は published_plans より後');
     });
