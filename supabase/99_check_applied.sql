@@ -192,7 +192,7 @@ SELECT * FROM (
     UNION ALL SELECT '34_nikke_verification',
         (SELECT COUNT(*) FROM col WHERE table_name = 'nikke_characters'
             AND column_name IN ('registered_by', 'verification_source', 'verified_by', 'verified_at')) = 4,
-        'nikke_characters.registered_by / verification_source / verified_by / verified_at (手動登録の二者確認。未適用でも登録は ⚠未確定として通る)'
+        'nikke_characters.registered_by / verification_source / verified_by / verified_at (手動登録の二者確認。未適用だと事前登録がエラーで止まり適用を案内する)'
 
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),

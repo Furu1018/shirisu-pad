@@ -12721,8 +12721,11 @@
             if (!cv.ok) { setMsg(`❌ ${cv.reason}`, true); return; }
             if (!_readBurst('charEdit')) { setMsg('❌ バーストを設定してから確定してください (要確認の主目的はバーストの検証です)', true); return; }
             if (document.getElementById('charEditMergeTarget').value.trim()) { setMsg('❌ 統合先を指定したままでは確定できません (統合か確定のどちらかに)', true); return; }
-            document.getElementById('charEditConfirmed').checked = true;
-            await handleCharMasterSave();   // 内部で canVerify を再判定し verified_by を付けて保存 → 一覧更新 → 閉じる
+            const cb = document.getElementById('charEditConfirmed');
+            const prev = cb.checked;
+            cb.checked = true;
+            const ok = await handleCharMasterSave();   // 内部で canVerify を再判定し verified_by を付けて保存 → 一覧更新 → 閉じる
+            if (!ok) cb.checked = prev;                // 保存に失敗したらフォーム表示を実データに戻す (Codex指摘)
         }
         // 根拠URLをリンクにしてよいのは http(s) だけ (別経路で書かれた javascript: 等をリンク化しない — Codex指摘)
         function _safeHttpUrl(u) {
@@ -12878,8 +12881,10 @@
                 invalidateNikkeCharsCache();
                 await renderSettingsCharMaster();
                 setTimeout(() => closeCharMasterEditModal(), 700);
+                return true;
             } catch (e) {
                 setMsg(`❌ ${e?.message || e}`, true);
+                return false;
             }
         }
 
