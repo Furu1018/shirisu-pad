@@ -63,6 +63,7 @@ function makeInput(bosses, players, opts = {}) {
         players,
         currentSlot: opts.currentSlot ?? 'h21',
         onlyAvailableNow: !!opts.onlyAvailableNow,
+        ...(opts.ignoreLevels ? { ignoreLevels: true } : {}),
     };
 }
 
@@ -636,6 +637,40 @@ test('Lv1で測った編成は Lv2 のボスに割り当てられない', () => 
     const plan = compute(makeInput(bs, [p], { currentLevel: 2 }));
     const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
     assert.equal(used.length, 0, `Lv1測定の編成は Lv2 に出せないはず: ${used.length}凸`);
+});
+
+test('ignoreLevels: Lv1測定の編成でも Lv2 に出せる (緊急モード・記録レベルは表示用に残る)', () => {
+    // 2026-09-05 第44回初日: 提出の大半が Lv1 のみで未消化49凸 → 測定レベルを無視するモードを追加
+    const bs = [boss(1, 'fire', { remainingB: 0, totalB: 100 })];
+    const p = player('A', { fire: 30 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30 } }] };
+    const plan = compute(makeInput(bs, [p], { currentLevel: 2, ignoreLevels: true }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(used.length, 1, `ignoreLevels なら Lv1測定でも Lv2 に出せるはず: ${used.length}凸`);
+    assert.equal(used[0].dmgB, 30);
+    assert.equal(used[0].loadoutLevel, 1, '楽観値だと分かるよう記録レベルは Lv1 のまま返す');
+    assert.equal(plan.ignoreLevels, true, 'UI が注意書きを出せるよう結果にフラグを含める');
+    assert.equal(plan.unusedAttacks, 2, '編成が1つなので残り2凸は未消化のまま (キャラ被りの規則は無視モードでも変えない)');
+});
+
+test('ignoreLevels: レベル違い測定は最良値 (Lv1 の高い値) が選ばれる', () => {
+    // 厳格なら Lv3 には 25B しか使えないが、無視モードでは 40B (Lv1測定) が最良値
+    const p = player('A', { fire: 40 });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 40, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 40 } },
+        { dmgB: 25, team: ['f','g','h','i','j'], slot: 2, level: 3, levels: { '3': 25 } },
+    ] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3, ignoreLevels: true }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    // キャラの被らない2編成なので同属性2凸 (40B + 25B) が出せる。厳格なら 25B の1凸だけ
+    assert.equal(used.length, 2, `無視モードでは2編成とも出せるはず: ${used.length}凸`);
+    assert.deepEqual(used.map(a => a.dmgB).sort((a, b) => b - a), [40, 25], '40B (Lv1測定) が候補に入る');
+    // 既定 (フラグ無し) は従来どおり厳格 — 回帰防止
+    const strict = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
+    const strictUsed = strict.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    assert.equal(strictUsed.length, 1);
+    assert.equal(strictUsed[0].dmgB, 25);
+    assert.equal(strict.ignoreLevels, false);
 });
 
 test('Lv2で測った編成は Lv2 にも Lv1 にも使える (高レベル測定は下位互換)', () => {

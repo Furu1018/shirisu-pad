@@ -3434,6 +3434,7 @@
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最適凸プラン算出</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button id="opsPlanStartModeBtn" onclick="toggleOpsPlanStartMode()" title="プランの起点時刻: 当日中は「今から」、前日の準備は「朝5時から」でレイド日フルのプランを組めます" style="padding:7px 11px;border-radius:8px;border:1px dashed rgba(20,22,26,0.18);background:#fff;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">🕐 今から</button>
+                        <button id="opsPlanIgnoreLevelsBtn" onclick="toggleOpsPlanIgnoreLevels()" title="測定レベルの扱い: 「厳格」は記録レベル以下のボスにだけ使う (既定)。「無視」は Lv1 測定も全レベルに流用する緊急モード (提出の多くが Lv1 のみで未消化凸が大量に出るとき用。削り切り予測は楽観的になる)" style="padding:7px 11px;border-radius:8px;border:1px dashed rgba(20,22,26,0.18);background:#fff;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">📏 測定Lv厳格</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;"><span data-sp-icon="users" data-sp-size="12"></span> 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                         <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#7A5AF8,#5B2BE0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(108,66,240,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
@@ -14733,7 +14734,8 @@
                     // ★ 締め凸は「いまのレベル」のボスへの依頼なので、測定レベルが届かない
                     //   編成は候補にしない (ソルバーの usableAtLevel と同じルール)。
                     //   これを外すと Lv1 でしか測っていない人に Lv3 の締めを頼んでしまう
-                    const curLv = Number(season?.current_level) || 1;
+                    // 「測定Lv無視」(緊急モード) のときは Lv1 扱いで解決 = 全測定が候補になる (プランと同じ扱い)
+                    const curLv = _opsPlanIgnoreLevels ? 1 : (Number(season?.current_level) || 1);
                     const usedN = (p.attacks || []).filter(a => bossWeaknessByNum.get(a.boss_number) === attrKey).length;
                     // レベル別測定 (31): 「いまのレベルで使える最良値」に解決してから並べる。
                     // 値もレベル解決値を使う — Lv1測定の高い値で締めを頼むと実際は届かない
@@ -15508,6 +15510,36 @@
                 computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
             }
         }
+        // 測定レベルの扱い (緊急モード・端末ごとに記憶):
+        //   false = 厳格 (既定。記録レベル L の編成は対象レベル ≤ L にだけ使う)
+        //   true  = 無視 (全測定を全レベルで使う。Lv1 測定を Lv3 に流用するので楽観的)
+        // 2026-09-05 第44回初日: 0行からの再提出で 114件中74件が Lv1 のみになり、厳格のままだと
+        // Lv2 以降に出せる人が属性あたり6〜9人しか残らず未消化49凸になった。その場しのぎ用
+        const _OPS_PLAN_IGNORE_LEVELS_KEY = 'shirisuko_ops_plan_ignore_levels';
+        let _opsPlanIgnoreLevels = false;
+        try { _opsPlanIgnoreLevels = localStorage.getItem(_OPS_PLAN_IGNORE_LEVELS_KEY) === '1'; } catch (_) { /* private mode 等 */ }
+        function _syncOpsPlanIgnoreLevelsBtn() {
+            const btn = document.getElementById('opsPlanIgnoreLevelsBtn');
+            if (!btn) return;
+            const on = _opsPlanIgnoreLevels;
+            btn.textContent = on ? '📏 測定Lv無視' : '📏 測定Lv厳格';
+            btn.style.background = on ? 'rgba(255,61,68,0.08)' : '#fff';
+            btn.style.color = on ? '#C0262C' : '#5A6068';
+            btn.style.borderColor = on ? 'rgba(255,61,68,0.45)' : 'rgba(20,22,26,0.18)';
+        }
+        function toggleOpsPlanIgnoreLevels() {
+            _opsPlanIgnoreLevels = !_opsPlanIgnoreLevels;
+            try { localStorage.setItem(_OPS_PLAN_IGNORE_LEVELS_KEY, _opsPlanIgnoreLevels ? '1' : '0'); } catch (_) { /* 記憶できなくても動作は続ける */ }
+            _syncOpsPlanIgnoreLevelsBtn();
+            // 表示中の締め凸候補も同じ規則で引き直す (無視→厳格に戻したとき Lv1測定の候補が
+            // 残ったまま依頼を送れてしまう — Codex指摘)
+            if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+            if (_opsLastPlan) {
+                // 直前と同じ対象範囲で再算出
+                computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
+            }
+        }
+        _syncOpsPlanIgnoreLevelsBtn();   // 記憶した状態をボタンに反映 (静的HTMLの既定は「厳格」表記)
         // snapshot を渡せば「そのロードで得た盤面」で算出する (並行ロード時に
         // opsStore が世代ガードで古い結果を保存しない契約のため、load() の戻り値を使う)
         function computeOptimalPlan(options = {}, snapshot = null) {
@@ -15520,6 +15552,7 @@
                 currentSlot: _opsPlanStartMode === 'day' ? 'h05' : getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
                 timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
+                ignoreLevels: _opsPlanIgnoreLevels,   // 緊急モード: 測定レベルの絞り込みを外す
             });
         }
 
@@ -15821,6 +15854,9 @@
             }).join('');
 
             const warnings = [];
+            if (plan.ignoreLevels) {
+                warnings.push('📏 <strong>測定レベルを無視</strong>して計算しています (Lv1 で測った値を Lv2 以降にもそのまま流用)。上位レベルのボスは防御が上がるため<strong>削り切りの予測は楽観的</strong>です。余裕を見て締め凸を早めに。');
+            }
             if (plan.anyTimeConstrained) {
                 warnings.push('⏰ 火力はあるのに戦闘可能時間が合わず削り切れないボスがあります。該当時間帯のメンバーへの声かけか、戦闘可能時間の更新依頼を。');
             }

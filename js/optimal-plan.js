@@ -153,6 +153,10 @@
         if (!season || !Array.isArray(bosses) || bosses.length === 0) return null;
         const onlyAvailableNow = !!input.onlyAvailableNow;
         const timeAware = !!input.timeAware;
+        // 測定レベルの絞り込みを外す緊急モード (2026-09-05 第44回初日: 提出114件中74件が Lv1 のみで
+        // 未消化49凸になった)。true なら記録レベルに関係なく全測定を全レベルで使う (最良値)。
+        // 値は楽観的 (Lv1 測定を Lv3 に流用) なので UI 側で必ず注意書きを出すこと
+        const ignoreLevels = input.ignoreLevels === true;
         const startLevel = season.current_level || 1;
 
         // 時間軸: 現在時刻 (currentSlot) からリセット (HOUR_ORDER 末尾) まで
@@ -230,7 +234,7 @@
                 const v = src[k];
                 if (v === undefined) continue;
                 const kn = Number(k);
-                if (kn !== 0 && kn < level) continue;
+                if (!ignoreLevels && kn !== 0 && kn < level) continue;   // ignoreLevels: 記録レベルを問わない
                 if (bestV === null || v > bestV) { bestV = v; bestK = kn === 0 ? null : kn; }
             }
             return bestV === null ? null : { value: bestV, level: bestK };
@@ -1273,7 +1277,7 @@
         return {
             startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste,
             unusedAttacks, membersNoData, onlyAvailableNow, currentSlot, candidateCount,
-            timeAware,
+            timeAware, ignoreLevels,
             nowHourLabel: timeAware ? hourLabelOf(nowIdx) : null,
             finalClearHourLabel: (timeAware && lastFinite?.levelCleared) ? lastFinite.clearHourLabel : null,
             membersTimeUnknown,
