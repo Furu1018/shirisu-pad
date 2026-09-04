@@ -16,12 +16,18 @@
 -- 読み取り側 (supabaseLoadOpsDashboardData / _selectUsableDamages) が excluded_at IS NOT NULL の行を外す。
 -- 本人がその行を保存し直す (提出・単値保存・測定削除) とクライアントが 3列を NULL に戻す = 修正すれば自動復帰。
 -- 凸報告の焼き戻し (characters だけの更新) では戻さない (値を見直していないため)。
--- ADD COLUMN (NULL 既定) はメタデータ変更のみで、既存行の書き換えもロックも発生しない。
+-- ADD COLUMN (NULL 既定) はメタデータ変更のみで既存行の書き換えは無いが、ACCESS EXCLUSIVE ロックを一瞬取る。
+-- 長いトランザクションが player_damages を掴んでいると待ち行列になり後続の書き込みも止まるので、
+-- lock_timeout で待たずに失敗させる (失敗したら数秒後に再実行すればよい。Codex指摘 2026-09-05)。
+-- 3列は 1 つの ALTER で足す = 全部入るか全部入らないか (excluded_at だけある部分適用状態を作らない)。
 -- 未適用の環境: 読み取りは除外なしに静かに劣化し、🧹除外の操作だけがエラーで適用を案内する。
 -- ============================================================================
 
-ALTER TABLE player_damages ADD COLUMN IF NOT EXISTS excluded_at TIMESTAMPTZ;
-ALTER TABLE player_damages ADD COLUMN IF NOT EXISTS excluded_by TEXT;
-ALTER TABLE player_damages ADD COLUMN IF NOT EXISTS excluded_reason TEXT;
+SET lock_timeout = '3s';
+
+ALTER TABLE player_damages
+    ADD COLUMN IF NOT EXISTS excluded_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS excluded_by TEXT,
+    ADD COLUMN IF NOT EXISTS excluded_reason TEXT;
 
 NOTIFY pgrst, 'reload schema';   -- API に即認識させる (忘れると列が見えず 35未適用扱いのまま)

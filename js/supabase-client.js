@@ -499,7 +499,9 @@ async function _upsertPlayerDamages(rows) {
     // 35 未適用環境: 運営除外の列 (excluded_*) を落として再試行。
     // 本人の保存し直しは「3列を NULL に戻す」payload を常に含むので、列の無い環境で
     // 保存そのものが止まらないようにする (除外の解除だけが静かに無効になる)
-    if (/excluded_/i.test(String(res.error?.message))) {
+    // 判定は _isMissingColumnErr (PGRST204/42703 + 列名) — 文言の緩い正規表現だと列欠損以外のエラーまで
+    // 「列を落として再試行」に倒し、本来出すべきエラーを隠す (Codex指摘 2026-09-05)
+    if (['excluded_at', 'excluded_by', 'excluded_reason'].some(c => _isMissingColumnErr(res.error, c))) {
         rows2 = rows2.map(({ excluded_at, excluded_by, excluded_reason, ...rest }) => rest);
         res = await supabase.from('player_damages')
             .upsert(rows2, { onConflict: 'player_id,attribute,slot' });
@@ -577,6 +579,7 @@ async function _loadPlayerDamagesRaw(playerId) {
     const selects = [
         // excluded_* (35) は本人の画面で「運営除外」を見せるために読む (行は落とさない)
         'attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason',
+        'attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at',   // 35 の部分適用 (excluded_at のみ) でも除外を落とさない
         'attribute, damage_b, updated_at, characters, slot, boss_level, levels',
         'attribute, damage_b, updated_at, characters, slot, boss_level',
         'attribute, damage_b, updated_at, characters, slot',
@@ -630,7 +633,7 @@ async function _selectUsableDamages(cols, tune) {
     const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
     // 運営除外 (35) の行も「使えない行」として外す。列が無い環境 (35未適用) は除外なしで読む
     let r = await run(`${cols}, slot, excluded_at`);
-    if (r.error && /excluded_at/i.test(String(r.error?.message))) r = await run(`${cols}, slot`);
+    if (r.error && _isMissingColumnErr(r.error, 'excluded_at')) r = await run(`${cols}, slot`);
     if (r.error && /slot/i.test(String(r.error?.message))) return await run(cols);
     if (r.error) return r;
     const rows = (r.data || []).filter(d => isUsableSlot(d.slot));
@@ -1728,6 +1731,7 @@ window.supabaseCreateSeason = async function (payload) {
         //   player_damages を**全削除して入れ替える**ので、抜けると全員の測定レベルが消える
         for (const sel of [
             'player_id, attribute, damage_b, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason',
+            'player_id, attribute, damage_b, characters, slot, boss_level, levels, excluded_at',   // 35 の部分適用でも除外を保持
             'player_id, attribute, damage_b, characters, slot, boss_level, levels',
             'player_id, attribute, damage_b, characters, slot, boss_level',
             'player_id, attribute, damage_b, characters, slot',
@@ -3634,6 +3638,9 @@ window.supabaseLoadOpsDashboardData = async function () {
     for (const [sel, orderCols] of [
         // excluded_* (35): 運営除外の行を盤面から外すために読む。列が無い環境は次段へ落ちて除外なしになる
         ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason', ['player_id', 'attribute', 'slot']],
+        // ★ 部分適用 (excluded_at だけある) でも除外を落とさない中間段。これが無いと by/reason 欠損で
+        //   3列版が失敗 → 次段で excluded_at ごと落ち、除外行が通常行としてプランに漏れる (Codex指摘 2026-09-05)
+        ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot', ['player_id', 'attribute', 'slot']],

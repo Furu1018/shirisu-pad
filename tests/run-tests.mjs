@@ -3204,19 +3204,42 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(client.includes('excludedByAttr: excludedByPlayer.get(p.id) || {}'));
         assert.match(client, /exDom \? exDom\.isExcluded\(d\) : d\.excluded_at != null/);
     });
+    test('35 の部分適用 (excluded_at だけ) でも除外行が盤面・本人画面・スナップショットから漏れない中間 select がある', () => {
+        // 3列版 → excluded_at 単独版 → 無し の順 (Codex指摘 2026-09-05: 中間段が無いと部分適用で除外がプランに漏れる)
+        const order = (full, mid, none) => {
+            const i = client.indexOf(full), j = client.indexOf(mid), k = client.indexOf(none, j + 1);
+            assert.ok(i >= 0 && j > i && k > j, `select の段順が崩れている: full=${i} mid=${j} none=${k}`);
+        };
+        order("['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason'",
+              "['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at'",
+              "['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels'");
+        order("'attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason'",
+              "'attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at'",
+              "'attribute, damage_b, updated_at, characters, slot, boss_level, levels'");
+        order("'player_id, attribute, damage_b, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason'",
+              "'player_id, attribute, damage_b, characters, slot, boss_level, levels, excluded_at'",
+              "'player_id, attribute, damage_b, characters, slot, boss_level, levels'");
+        // SQL 側も 1 つの ALTER で 3 列 (部分適用状態を作らない)
+        const sql = read('supabase', '35_player_damages_exclusion.sql');
+        assert.equal((sql.match(/ALTER TABLE player_damages/g) || []).length, 1, '35 は ALTER TABLE 1 文で 3 列を足す');
+        assert.equal((sql.match(/ADD COLUMN IF NOT EXISTS excluded_/g) || []).length, 3);
+        assert.match(sql, /SET lock_timeout/);
+    });
     test('_selectUsableDamages (提出状況・人気編成・活動) も除外行を落とす', () => {
         const body = client.match(/async function _selectUsableDamages[\s\S]*?\n}\n/)?.[0] || '';
         assert.ok(body.includes('excluded_at'), body);
         assert.ok(/isExcluded\(d\)/.test(body));
+        assert.ok(/_isMissingColumnErr\(r\.error, 'excluded_at'\)/.test(body), '列欠損の判定は _isMissingColumnErr');
     });
     test('本人の保存し直し (提出・単値保存・測定削除) は除外解除 payload を含む', () => {
         const n = (client.match(/\.\.\._exclusionClear\(\)/g) || []).length;
         assert.ok(n >= 5, `_exclusionClear() の使用箇所が ${n} (期待 5 以上: 単値保存3経路 + 提出 + 測定削除)`);
         assert.ok(/window\.supabaseSaveMockSubmission[\s\S]*?const basePayload = \{[\s\S]*?_exclusionClear\(\)/.test(client));
     });
-    test('_upsertPlayerDamages は 35 未適用で excluded_* を落として再試行し、旧形式にも持ち込まない', () => {
+    test('_upsertPlayerDamages は 35 未適用で excluded_* を落として再試行し、旧形式にも持ち込まない (判定は _isMissingColumnErr)', () => {
         const body = client.match(/async function _upsertPlayerDamages[\s\S]*?\n}\n/)?.[0] || '';
-        assert.ok(/\/excluded_\/i\.test/.test(body));
+        assert.ok(/\['excluded_at', 'excluded_by', 'excluded_reason'\]\.some\(c => _isMissingColumnErr\(res\.error, c\)\)/.test(body));
+        assert.ok(!/\/excluded_\/i/.test(body), '文言の緩い正規表現で列欠損を判定しない (列欠損以外のエラーを隠す)');
         assert.ok(/const legacy = rows2\.map\(\(\{ slot, boss_level, levels, excluded_at, excluded_by, excluded_reason, \.\.\.rest \}\) => rest\)/.test(body));
     });
     test('supabaseSetMockExclusion は 35 未適用を SQL の適用案内に変換する', () => {
