@@ -34,6 +34,7 @@
     <script defer src="./js/domain/gbCompare.js"></script>
     <script defer src="./js/domain/raidEvents.js"></script>
     <script defer src="./js/domain/mockLevels.js"></script>
+    <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
     <script defer src="./js/domain/charMaster.js"></script>
@@ -2014,6 +2015,18 @@
         .dc-rem-cell.unset {
             color: #C9CED3; font-weight: 900; background: transparent;
         }
+        /* 運営除外 (35): 提出は残るがプラン等には使われない行。🧹整理モードでは ✕ (除外) / ↩ (解除) を左上に重ねる */
+        .dc-rem-cell.excl {
+            color: #B6BBC1; background: transparent; text-decoration: line-through;
+            border: 1.5px dashed #D9DDE2; box-sizing: border-box; font-size: 9px; font-weight: 900;
+        }
+        .dc-rem-cell.tidy { position: relative; }
+        .dc-rem-x {
+            position: absolute; top: -7px; left: -7px; width: 17px; height: 17px; border-radius: 999px;
+            border: 2px solid #fff; padding: 0; background: #FF3D44; color: #fff; font-size: 10px; font-weight: 900;
+            line-height: 13px; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(20,22,26,0.25); z-index: 1;
+        }
+        .dc-rem-x.undo { background: #18C26B; }
         .dc-rem-fav-chip {
             width: 14px; height: 14px; border-radius: 4px; flex: none;
             display: flex; align-items: center; justify-content: center;
@@ -3398,7 +3411,10 @@
                 <!-- 要約バナー -->
                 <div id="opsRemainingSummaryBanner" style="display:flex;align-items:center;justify-content:space-between;margin-top:13px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.04);border-radius:11px;padding:10px 13px;">
                     <div id="opsRemainingSummaryLeft" style="font-size:14px;font-weight:900;color:#14161A;letter-spacing:0.2px;font-variant-numeric:tabular-nums;">—</div>
-                    <div id="opsRemainingSummary" style="font-size:11px;font-weight:700;color:#8A9097;">読み込み中...</div>
+                    <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                        <div id="opsRemainingSummary" style="font-size:11px;font-weight:700;color:#8A9097;">読み込み中...</div>
+                        <button id="opsRemTidyBtn" data-ops-only onclick="handleOpsRemainingTidyToggle()" title="模擬の整理 (運営): ON にすると各セルに ✕ (除外) / ↩ (解除) が出る。除外した提出はプラン・締め凸候補・事前比較・提出状況から外れ、本人には「運営除外」と理由が表示される (本人が保存し直すと自動で戻る)" style="flex:none;padding:5px 10px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:10.5px;font-weight:800;cursor:pointer;">🧹 整理</button>
+                    </div>
                 </div>
                 <div id="opsRemainingList" style="margin-top:12px;">
                     <p style="color:#A4AAB0;font-size:12px;">読み込み中...</p>
@@ -5200,6 +5216,8 @@
                 <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
             </div>
             <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成は1属性につき2つまで登録でき、キャラが被らなければ同属性2凸をプランが提案します。1つの編成に<strong>レベル別の測定値</strong>を持たせられます。</p>
+            <!-- 運営除外 (35): 除外されている提出を開いたときだけ理由を出す -->
+            <div id="myTeamEditExclNote" style="display:none;margin:6px 0 8px;padding:8px 10px;border-radius:10px;background:rgba(255,61,68,0.08);color:#B91C1C;font-size:11.5px;font-weight:800;line-height:1.5;"></div>
 
             <!-- 編成スロット切替 (① / ② 同属性2凸用) -->
             <div id="myTeamEditSlotTabs" style="display:flex;gap:6px;"></div>
@@ -8434,6 +8452,10 @@
                 const val = rec?.damage_b != null ? Number(rec.damage_b).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const submitted = Number(rec?.damage_b) > 0;   // 黒カード判定 (0B保存は白のまま — Codex 指摘)
+                // 運営除外 (35): 値は残るがプラン等には使われない。本人に理由を見せ、保存し直しで戻ることを案内
+                const exDom = window.mockExclusionDomain || null;
+                const excl = !!(rec && exDom && exDom.isExcluded(rec));
+                const exclTitle = excl ? exDom.exclusionLabel(rec) : '';
                 const c = DC_ATTR_COLORS[a.key] || '#14161A';
                 const team = Array.isArray(rec?.characters) ? rec.characters.filter(Boolean) : [];
                 // 5キャラ分のセル (空きは ? プレースホルダ)
@@ -8466,7 +8488,7 @@
                     ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}', ${nextSlot})" title="${isPickedOther ? 'めくると配信プランで採用された編成' : `編成${SLOT_JP[nextSlot]}を表示`}">${SLOT_JP[activeSlot]}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${lvTitle ? ` — 測定: ${lvTitle}` : ''}${pickTitle}" data-attr="${a.key}" style="${_pkVars(c)}">
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${lvTitle ? ` — 測定: ${lvTitle}` : ''}${pickTitle}${excl ? ` — ${escapeHtml(exclTitle)}` : ''}" data-attr="${a.key}" style="${_pkVars(c)}">
                         ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chipwrap">
@@ -8480,7 +8502,7 @@
                         </div>
                         <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}${submitted ? (lvLabel
                             ? ` <span class="dc-dmg-lv" title="${lvTitle || `Lv${recLevel} で測定`} — 記録レベル以下のボスの割当に使われます">${lvLabel}</span>`
-                            : ' <span class="dc-dmg-lv unset" title="測定レベル未設定 — いまは全レベルで使われます。タップして設定できます">Lv?</span>') : ''}</div>
+                            : ' <span class="dc-dmg-lv unset" title="測定レベル未設定 — いまは全レベルで使われます。タップして設定できます">Lv?</span>') : ''}${excl ? ` <span class="dc-dmg-lv" style="background:rgba(255,61,68,0.12);color:#B91C1C;" title="${escapeHtml(exclTitle)} — 値を確認して保存し直すと自動で戻ります">⚠ 運営除外</span>` : ''}</div>
                         <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
             }).join('');
@@ -8559,6 +8581,7 @@
         //   levels は元々レベル→値のマップなので、フォームもその形にする。
         //   **画面に入っている内容がそのまま保存結果になる** = 空欄にしたレベルは消える。
         let _myTeamEditLevels = null;   // 開いた時点の levels (プレースホルダ表示に使う)
+        let _myTeamEditExcl = '';       // 運営除外 (35) の表示ラベル (空 = 除外なし)
         const TE_LEVEL_KEYS = ['1', '2', '3', '4'];
         function _teLevelRowsHtml() {
             const lvs = _myTeamEditLevels || {};
@@ -8724,6 +8747,7 @@
                 _myTeamEditLevel = row ? (window._normBossLevel?.(row.boss_level) ?? null) : null;
                 // レベル別測定値 (31): 入力行の初期値。supabaseLoadPlayerDamages が正規化済み
                 _myTeamEditLevels = row?.levels || null;
+                _myTeamEditExcl = (row && window.mockExclusionDomain?.isExcluded(row)) ? window.mockExclusionDomain.exclusionLabel(row) : '';
             } catch {
                 // ★ catch にも stale が要る。A の読み込み失敗が後着すると、
                 //   すでに開いている B のフォームを空にしてしまう (Codex指摘 2026-08-12)
@@ -8731,9 +8755,16 @@
                 _myTeamEditLoadOk = false;
                 _myTeamEditLevel = null;   // 読めなかったときは「未設定」= 従来どおり全レベル可
                 _myTeamEditLevels = null;
+                _myTeamEditExcl = '';
             }
             _renderTeamEditSlotTabs(existingSlots);
             _renderTeamEditLevel();
+            // 運営除外 (35): 理由を見せ、保存し直しで解除されることを案内
+            const exclNote = document.getElementById('myTeamEditExclNote');
+            if (exclNote) {
+                exclNote.style.display = _myTeamEditExcl ? '' : 'none';
+                exclNote.textContent = _myTeamEditExcl ? `⚠ ${_myTeamEditExcl}。値を確認して保存し直すと除外は自動で解除されます` : '';
+            }
             document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成${SLOT_JP[_myTeamEditSlot]}・ダメージ`;
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
@@ -13434,6 +13465,7 @@
             attack:       { label: '凸報告',       color: '#FF3D44' },
             proxy_attack: { label: '代理凸',       color: '#FF8A2B' },
             mock_submit:  { label: '模擬戦',       color: '#2E8BFF' },
+            mock_exclude: { label: '模擬 除外',    color: '#F59E0B' },
             notify_on:    { label: '通知ON',       color: '#18C26B' },
             notify_off:   { label: '通知OFF',      color: '#8A9097' },
             avail_change: { label: '戦闘可能時間', color: '#9B4DFF' },
@@ -13443,7 +13475,7 @@
             { key: 'all',    label: 'すべて',      types: null },
             { key: 'attack', label: '⚔️ 凸報告',   types: ['attack'] },
             { key: 'proxy',  label: '✏️ 代理凸',   types: ['proxy_attack'] },
-            { key: 'mock',   label: '🪞 模擬戦',   types: ['mock_submit'] },
+            { key: 'mock',   label: '🪞 模擬戦',   types: ['mock_submit', 'mock_exclude'] },
             { key: 'notify', label: '🔔 通知',     types: ['notify_on', 'notify_off'] },
             { key: 'avail',  label: '🕐 時間',     types: ['avail_change'] },
             { key: 'ops',    label: '🛠 運営',     types: ['ops'] },
@@ -13803,6 +13835,9 @@
                     : `キャラ被りなしで${dom.MOCK_REQUIRED}属性必要 (今 ${r.mockUsable})`;
                 const mock = r.mockCount === 0 ? '<span class="dc-mb-c err" title="未提出">模擬 0/5</span>'
                     : `<span class="dc-mb-c ${r.mockOk ? 'ok' : 'warn'}" title="${escapeHtml(mockTitle)}">模擬 ${r.mockCount}/5${r.mockCount >= dom.ATTR_KEYS.length ? ' ★' : ''}${!r.mockOk && r.mockUsable < r.mockCount ? ` 被り→${r.mockUsable}` : ''} ${r.mockOk ? '' : r.missingAttrs.map(dot).join('')}</span>`;
+                // 運営除外 (35) がある人は印を出す (模擬 n/5 からは外れて数えられている)
+                const exAttrs = Object.keys((_mb.players || []).find(p => Number(p.id) === Number(r.id))?.excludedByAttr || {});
+                const excl = exAttrs.length ? `<span class="dc-mb-c warn" title="運営が除外した模擬: ${escapeHtml(exAttrs.map(a => dom.ATTR_JP[a] || a).join('・'))} (本人が保存し直すと戻る)">除外${exAttrs.length}</span>` : '';
                 const slv = r.slvNow != null ? `<span class="dc-mb-c ok">SLv ${r.slvNow}</span>`
                     : r.slvPrev ? `<span class="dc-mb-c warn">SLv 前回${r.slvPrev}</span>`
                     : '<span class="dc-mb-c err">SLv —</span>';
@@ -13813,7 +13848,7 @@
                 const fin = r.finish === 'pending' ? '<span class="dc-mb-c warn">締め凸 未返答</span>'
                     : r.finish === 'accepted' ? '<span class="dc-mb-c ok">締め凸 OK</span>'
                     : r.finish === 'declined' ? '<span class="dc-mb-c mute">締め凸 見送り</span>' : '';
-                const cols = isDay ? `${mock}${slv}${strip(r)}${atk}${fin}` : `${mock}${slv}${strip(r)}${push}`;
+                const cols = isDay ? `${mock}${excl}${slv}${strip(r)}${atk}${fin}` : `${mock}${excl}${slv}${strip(r)}${push}`;
                 const why = r.reasons.length
                     ? r.reasons.map((w, i) => i === 0 ? `<b>${escapeHtml(w.label)}</b>` : escapeHtml(w.label)).join(' · ')
                     : '<span style="color:#A4AAB0;">完了</span>';
@@ -13996,6 +14031,64 @@
                 btn.style.color = fururi ? '#fff' : '#5A6068';
             }
             renderOpsRemainingList();
+        }
+
+        // ===== 🧹 模擬の整理 = 運営による提出の除外 (35_player_damages_exclusion.sql) =====
+        // メンバーが誤った値 (桁違い等) を提出したまま放置しても、運営が本人になりすまさずに
+        // その行だけをプラン・締め凸候補・残凸表・事前比較・提出状況から外せるようにする (2026-09-05 第44回ハード日)。
+        // 行は消さない: 本人の模擬パネルに「⚠ 運営除外 (理由)」が出て、保存し直すと自動で戻る。
+        // 整理モードはセッション内だけ (端末に記憶しない) — 通常のタップ (編成切替) の意味を変えないため、
+        // ON のときだけ各セルに ✕ (除外) / ↩ (解除) の小ボタンを重ねる
+        let _opsRemTidy = false;
+        function handleOpsRemainingTidyToggle() {
+            _opsRemTidy = !_opsRemTidy;
+            const btn = document.getElementById('opsRemTidyBtn');
+            if (btn) {
+                btn.textContent = _opsRemTidy ? '🧹 整理中' : '🧹 整理';
+                btn.style.background = _opsRemTidy ? '#F59E0B' : '#F1F2F4';
+                btn.style.color = _opsRemTidy ? '#fff' : '#5A6068';
+            }
+            renderOpsRemainingList();
+        }
+        function _opsRemTarget(playerId, attrKey, slot) {
+            const p = (opsStore.get()?.players || []).find(x => Number(x.id) === Number(playerId)) || null;
+            const ptName = PT_ATTRS.find(a => a.key === attrKey)?.name || attrKey;
+            return { p, ptName, slotJp: SLOT_JP[Number(slot) || 1] || '①' };
+        }
+        async function _opsRemApplyExclusion(playerId, attrKey, slot, excluded, reason) {
+            const by = getCurrentIdentity()?.name || '運営';
+            await window.supabaseSetMockExclusion(Number(playerId), attrKey, Number(slot) || 1, { excluded, reason, by });
+            const { p, ptName, slotJp } = _opsRemTarget(playerId, attrKey, slot);
+            window.supabaseLogActivity?.('mock_exclude',
+                `${p?.name || '?'} の ${ptName}PT 模擬 編成${slotJp} を${excluded ? `除外${reason ? ` (${reason})` : ''}` : '除外解除'}`,
+                { playerId: Number(playerId), actorName: by });
+            opsStore.invalidate();
+            await renderOpsDashboard();   // 残凸表・締め凸候補・👥メンバー状況をまとめて描き直す (プランは次の算出から反映)
+        }
+        async function handleOpsRemExclude(playerId, attrKey, slot) {
+            const { p, ptName, slotJp } = _opsRemTarget(playerId, attrKey, slot);
+            if (!p) return;
+            const lo = (p.loadoutsByAttr?.[attrKey] || []).find(l => (Number(l.slot) || 1) === (Number(slot) || 1));
+            const val = lo ? ` ${Number(lo.dmgB).toFixed(1)}B` : '';
+            const reason = prompt(`${p.name} の ${ptName}PT 編成${slotJp}${val} を除外します。\nプラン・締め凸候補・事前比較・提出状況から外れ、本人の模擬パネルに「運営除外」と理由が表示されます (本人が保存し直すと自動で戻ります)。\n\n理由:`, '桁違いの可能性');
+            if (reason === null) return;   // キャンセル
+            try {
+                await _opsRemApplyExclusion(playerId, attrKey, slot, true, reason);
+                showNotification(`🧹 ${p.name} の ${ptName}PT 編成${slotJp} を除外しました`);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+        async function handleOpsRemUnexclude(playerId, attrKey, slot) {
+            const { p, ptName, slotJp } = _opsRemTarget(playerId, attrKey, slot);
+            if (!p) return;
+            if (!confirm(`${p.name} の ${ptName}PT 編成${slotJp} の除外を解除しますか？\n(プラン・締め凸候補・事前比較に戻ります)`)) return;
+            try {
+                await _opsRemApplyExclusion(playerId, attrKey, slot, false, '');
+                showNotification(`↩ ${p.name} の ${ptName}PT 編成${slotJp} の除外を解除しました`);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
         }
 
         // 残凸表のセルで表示中の編成スロット (key = `${playerId}:${attr}`)。
@@ -14196,17 +14289,42 @@
                 const lvs = remML.normLevels(lo.levels, lo.dmgB, lo.level);
                 return lvs ? (remML.bestAtLevel(lvs, remCurLv) ?? 0) : 0;
             };
-            // 属性ごとの編成一覧 (1属性複数編成対応)。loadouts が無い旧データはベスト値1件に劣化
+            // 属性ごとの編成一覧 (1属性複数編成対応)。loadouts が無い旧データはベスト値1件に劣化。
+            // 運営除外 (35) の行は通常は巡回に入れない (使えない値を見せない)。
+            // 🧹整理モードだけ末尾に足して、めくって ↩ で解除できるようにする
+            const exclOf = (p, key) => Array.isArray(p.excludedByAttr?.[key]) ? p.excludedByAttr[key] : [];
             const loadoutsOf = (p, key) => {
                 const arr = Array.isArray(p.loadoutsByAttr?.[key])
                     ? p.loadoutsByAttr[key].filter(lo => Number(lo?.dmgB) > 0) : [];
-                if (arr.length) return [...arr].sort((a, b) => (a.slot || 1) - (b.slot || 1));
-                const v = Number(p.damagesByAttr?.[key]) || 0;
-                return v > 0 ? [{ dmgB: v, slot: 1 }] : [];
+                let out;
+                if (arr.length) {
+                    out = [...arr].sort((a, b) => (a.slot || 1) - (b.slot || 1));
+                } else {
+                    const v = Number(p.damagesByAttr?.[key]) || 0;
+                    out = v > 0 ? [{ dmgB: v, slot: 1 }] : [];
+                }
+                if (_opsRemTidy) out = out.concat(exclOf(p, key).map(e => ({ ...e, excluded: true })));
+                return out;
+            };
+            // 🧹整理モード: セル左上の ✕ (除外)。セル本体の onclick (編成切替) と分けるため stopPropagation
+            const tidyBtnOf = (p, key, slot) => _opsRemTidy
+                ? `<button type="button" class="dc-rem-x" onclick="event.stopPropagation();handleOpsRemExclude(${Number(p.id)}, '${key}', ${Number(slot) || 1})" title="この提出を除外 (プラン・締め凸・事前比較・提出状況から外す。本人が保存し直すと戻る)">✕</button>`
+                : '';
+            const exclTitleOf = (e, slot) => {
+                const exDom = window.mockExclusionDomain || null;
+                return `${exDom ? exDom.exclusionLabel(e) : '運営が除外'} / 編成${SLOT_JP[slot] || '①'} ${Number(e.dmgB).toFixed(1)}B`;
             };
             const renderCell = (p, attr, used) => {
                 const los = loadoutsOf(p, attr.key);
-                if (los.length === 0) return `<div class="dc-rem-cell unset">─</div>`;
+                if (los.length === 0) {
+                    // 使える編成が無く除外だけがある: 「除外」を出す (誰が見ても「提出はあるが使っていない」と分かる)
+                    const ex = exclOf(p, attr.key);
+                    if (ex.length > 0) {
+                        const t = ex.map(e => exclTitleOf(e, Number(e.slot) || 1)).join('\n');
+                        return `<div class="dc-rem-cell excl" title="${escapeHtml(t)}">除外</div>`;
+                    }
+                    return `<div class="dc-rem-cell unset">─</div>`;
+                }
                 const flipKey = `${p.id}:${attr.key}`;
                 const has2 = los.length >= 2;
                 // 表示中の編成 (タップで巡回)。編成数で割った余りにするので、
@@ -14214,6 +14332,12 @@
                 const shownIdx = has2 ? ((Number(_opsRemSlot.get(flipKey)) || 0) % los.length) : 0;
                 const shown = los[shownIdx];
                 const shownSlot = MY_TEAM_SLOTS.includes(Number(shown.slot)) ? Number(shown.slot) : 1;
+                // 🧹整理モードで除外済みの編成をめくっているとき: 「除外」セル + ↩ (解除)
+                if (shown.excluded) {
+                    const onclickX = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
+                    const undo = `<button type="button" class="dc-rem-x undo" onclick="event.stopPropagation();handleOpsRemUnexclude(${Number(p.id)}, '${attr.key}', ${shownSlot})" title="除外を解除 (プラン・締め凸・事前比較に戻す)">↩</button>`;
+                    return `<div class="dc-rem-cell excl tidy" data-flip="${flipKey}"${onclickX} title="${escapeHtml(exclTitleOf(shown, shownSlot))}${has2 ? ` / タップで編成を切替 (${los.length}編成)` : ''}">除外${has2 ? `<span class="dc-rem-slot">${SLOT_JP[shownSlot] || '①'}</span>` : ''}${undo}</div>`;
+                }
                 // いまのレベルで使える値に解決 (Lv不足なら 0 = 「使えない」を明示)。
                 // ★ 凸済み判定が先 — Lv不足を先に返すと凸済みの属性が「空き枠」に見える (Codex指摘)
                 const v = resolvedDmgOf(shown);
@@ -14224,7 +14348,8 @@
                     return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${usedText}</div>`;
                 }
                 if (!(v > 0)) {
-                    return `<div class="dc-rem-cell unset" title="${attr.name}PT — 測定レベルが Lv${remCurLv} に届かない (Lv${remCurLv}以上で測り直すと使える)">Lv不足</div>`;
+                    // 🧹整理モードでは Lv不足のセルも除外できる (📏測定Lv無視の緊急モードではソルバーがこの値を使うため)
+                    return `<div class="dc-rem-cell unset${_opsRemTidy ? ' tidy' : ''}" title="${attr.name}PT — 測定レベルが Lv${remCurLv} に届かない (Lv${remCurLv}以上で測り直すと使える)">Lv不足${tidyBtnOf(p, attr.key, shownSlot)}</div>`;
                 }
                 let text, tip;
                 if (fururiMode) {
@@ -14246,11 +14371,11 @@
                 }
                 const badge = has2
                     ? `<span class="dc-rem-slot${pickedOther ? ' pickhint' : ''}">${SLOT_JP[shownSlot] || '①'}</span>` : '';
-                const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}`;
+                const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}${_opsRemTidy ? ' tidy' : ''}`;
                 const onclick = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
                 // 光の色は模擬タブと同じ DC_ATTR_COLORS に揃える (PT_ATTRS.color とは別定義 — Codex指摘)
                 const glowColor = DC_ATTR_COLORS[attr.key] || attr.color;
-                return `<div class="${cls}" data-flip="${flipKey}"${onclick} style="color:#14161A;background:${attr.color}1A;${_pkVars(glowColor)}" title="${escapeHtml(tip)}${has2 ? ` / タップで編成を切替 (${los.length}編成)` : ''}">${text}${badge}</div>`;
+                return `<div class="${cls}" data-flip="${flipKey}"${onclick} style="color:#14161A;background:${attr.color}1A;${_pkVars(glowColor)}" title="${escapeHtml(tip)}${has2 ? ` / タップで編成を切替 (${los.length}編成)` : ''}">${text}${badge}${tidyBtnOf(p, attr.key, shownSlot)}</div>`;
             };
             const renderMemberRow = (p) => {
                 const used = usedAttrsFor(p);

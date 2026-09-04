@@ -194,6 +194,11 @@ SELECT * FROM (
             AND column_name IN ('registered_by', 'verification_source', 'verified_by', 'verified_at')) = 4,
         'nikke_characters.registered_by / verification_source / verified_by / verified_at (手動登録の二者確認。未適用だと事前登録がエラーで止まり適用を案内する)'
 
+    UNION ALL SELECT '35_player_damages_exclusion',
+        (SELECT COUNT(*) FROM col WHERE table_name = 'player_damages'
+            AND column_name IN ('excluded_at', 'excluded_by', 'excluded_reason')) = 3,
+        'player_damages.excluded_at / excluded_by / excluded_reason (運営による模擬提出の除外。未適用だと 🧹除外がエラーで止まり適用を案内する — 読み取りは除外なしに劣化)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

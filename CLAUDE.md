@@ -109,6 +109,13 @@ rm -f .claude/hooks/.codex-on      # OFF
   編集モーダルの「確認済みにする」で確定する (本人は24時間経過後のみ — 判定は `js/domain/charMaster.js`)。
   is_confirmed=false でも編成・OCR解決には使える (除外する経路は無い)。2026-08-21 の素体ソリン/ブリッド
   誤バースト (B1↔B3・スキン版との混同) の再発防止。
+  **模擬提出の運営除外** (`35_player_damages_exclusion.sql`: excluded_at / excluded_by / excluded_reason — 2026-09-05 ハード日の緊急改修)。
+  戦況タブ → 残り戦闘可能メンバー → 🧹整理 でセルの ✕ を押すと行 (player_id, attribute, slot) に印が付き、
+  **盤面ローダ (`supabaseLoadOpsDashboardData`) と `_selectUsableDamages` が読み取り時に外す** — ソルバー・締め凸候補・残凸表・
+  事前比較・👥メンバー状況・提出状況・SLv推定の全部から一括で外れる (除外行は `excludedByAttr` に別立て。画面側で判定を書き足さない)。
+  行は消さない — 本人の模擬パネルに「⚠ 運営除外 (理由)」が出て、**本人が保存し直す (提出・単値保存・測定削除) と
+  `_exclusionClear()` で自動解除**。凸報告の焼き戻し (characters のみ) では解除しない。純ロジックは `js/domain/mockExclusion.js`。
+  未適用環境は読み取りが除外なしに静かに劣化し、除外操作だけエラーで 35 の適用を案内する。
   シーズン確認・編集 (戦況タブ→シーズン制御→✏️) の原子的保存は `26_season_meta_rpc.sql`、
   属性 (ボスコード) の修正対応は `27_season_boss_edit_rpc.sql` (26を5引数版で置き換え)。
   メタ・ボス名のみの保存は未適用でもガード付き逐次にフォールバックするが、

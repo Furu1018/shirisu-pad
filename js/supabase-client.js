@@ -495,11 +495,20 @@ async function _upsertPlayerDamages(rows) {
         .upsert(withSlot, { onConflict: 'player_id,attribute,slot' });
     if (!res.error) return res;
     if (/column .*characters/i.test(String(res.error?.message))) return res;   // characters 起因は呼び出し元で処理
+    let rows2 = withSlot;
+    // 35 未適用環境: 運営除外の列 (excluded_*) を落として再試行。
+    // 本人の保存し直しは「3列を NULL に戻す」payload を常に含むので、列の無い環境で
+    // 保存そのものが止まらないようにする (除外の解除だけが静かに無効になる)
+    if (/excluded_/i.test(String(res.error?.message))) {
+        rows2 = rows2.map(({ excluded_at, excluded_by, excluded_reason, ...rest }) => rest);
+        res = await supabase.from('player_damages')
+            .upsert(rows2, { onConflict: 'player_id,attribute,slot' });
+        if (!res.error) return res;
+    }
     // 31 未適用環境: levels を落として再試行 (ミラー列 damage_b/boss_level が残るので
     // 「ベスト測定1件」に劣化するだけで情報の意味は壊れない)
-    let rows2 = withSlot;
     if (/levels/i.test(String(res.error?.message))) {
-        rows2 = withSlot.map(({ levels, ...rest }) => rest);
+        rows2 = rows2.map(({ levels, ...rest }) => rest);
         res = await supabase.from('player_damages')
             .upsert(rows2, { onConflict: 'player_id,attribute,slot' });
         if (!res.error) return res;
@@ -516,10 +525,44 @@ async function _upsertPlayerDamages(rows) {
     if (rows2.some(r => Number(r.slot) === 2)) {
         throw new Error('2編成目の保存には supabase/21_player_damages_slots.sql の適用が必要です');
     }
-    const legacy = rows2.map(({ slot, boss_level, levels, ...rest }) => rest);
+    const legacy = rows2.map(({ slot, boss_level, levels, excluded_at, excluded_by, excluded_reason, ...rest }) => rest);
     return await supabase.from('player_damages')
         .upsert(legacy, { onConflict: 'player_id,attribute' });
 }
+
+// 本人が行を保存し直したときに運営除外 (35_player_damages_exclusion.sql) を解除する payload。
+// 列が無い環境 (35未適用) では _upsertPlayerDamages が落として再試行する
+function _exclusionClear() {
+    const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
+    return ex ? ex.clearPatch() : { excluded_at: null, excluded_by: null, excluded_reason: null };
+}
+
+// 運営による模擬提出の除外 / 解除 (35_player_damages_exclusion.sql)。
+// 行は消さず印だけ付ける — 本人が確認・修正できるよう残し、読み取り側 (盤面ローダ・集計ヘルパ) が外す。
+// 本人がその行を保存し直すと _exclusionClear() で自動解除される
+window.supabaseSetMockExclusion = async function (playerId, attribute, slot = 1, { excluded, reason = '', by = '' } = {}) {
+    const valid = ['fire','water','iron','electric','wind'];
+    if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
+    if (!isUsableSlot(slot)) throw new Error(`模擬の編成スロットは 1〜${MOCK_SLOT_MAX} です (指定: ${slot})`);
+    const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
+    if (!ex) throw new Error('mockExclusionDomain が読み込まれていません (再読み込みしてください)');
+    const patch = ex.exclusionPatch({ excluded: !!excluded, reason, by });
+    const { data, error } = await supabase
+        .from('player_damages')
+        .update(patch)
+        .eq('player_id', playerId)
+        .eq('attribute', attribute)
+        .eq('slot', Number(slot) || 1)
+        .select('player_id');
+    if (error) {
+        if (['excluded_at', 'excluded_by', 'excluded_reason'].some(c => _isMissingColumnErr(error, c))) {
+            throw new Error('模擬の除外には supabase/35_player_damages_exclusion.sql を SQL Editor で適用してください (数秒で終わります)');
+        }
+        throw error;
+    }
+    if (!data || data.length === 0) throw new Error('対象の提出が見つかりません (本人が削除した可能性があります。再読み込みしてください)');
+    return patch;
+};
 
 // プレイヤーの属性別ダメージ登録を取得（1属性最大2編成、未登録は欠落。slot 昇順）
 // boss_level = 測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
@@ -532,6 +575,8 @@ async function _upsertPlayerDamages(rows) {
 async function _loadPlayerDamagesRaw(playerId) {
     // slot / characters / boss_level / levels カラム未マイグの環境でも壊れないよう多段フォールバック
     const selects = [
+        // excluded_* (35) は本人の画面で「運営除外」を見せるために読む (行は落とさない)
+        'attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason',
         'attribute, damage_b, updated_at, characters, slot, boss_level, levels',
         'attribute, damage_b, updated_at, characters, slot, boss_level',
         'attribute, damage_b, updated_at, characters, slot',
@@ -582,10 +627,14 @@ window.MOCK_SLOT_MAX = MOCK_SLOT_MAX;
 // slot 列が無い環境 (21未適用) では列を落として再試行する — その世界は全行が実質 slot1
 async function _selectUsableDamages(cols, tune) {
     const run = (c) => { const q = supabase.from('player_damages').select(c); return tune ? tune(q) : q; };
-    const r = await run(`${cols}, slot`);
+    const ex = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
+    // 運営除外 (35) の行も「使えない行」として外す。列が無い環境 (35未適用) は除外なしで読む
+    let r = await run(`${cols}, slot, excluded_at`);
+    if (r.error && /excluded_at/i.test(String(r.error?.message))) r = await run(`${cols}, slot`);
     if (r.error && /slot/i.test(String(r.error?.message))) return await run(cols);
     if (r.error) return r;
-    return { data: (r.data || []).filter(d => isUsableSlot(d.slot)), error: null };
+    const rows = (r.data || []).filter(d => isUsableSlot(d.slot));
+    return { data: rows.filter(d => (ex ? !ex.isExcluded(d) : d.excluded_at == null)), error: null };
 }
 
 // 模擬のボスレベル: 1〜4 の整数だけを通し、それ以外 (未指定・不正値) は null に倒す。
@@ -657,6 +706,7 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
         const { error } = await _upsertPlayerDamages([{
             player_id: playerId, attribute, slot,
             damage_b: 0, levels: null, boss_level: null,
+            ..._exclusionClear(),
             updated_at: new Date().toISOString(),
         }]);
         if (error) throw error;
@@ -678,6 +728,7 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
         const { error } = await _upsertPlayerDamages([{
             player_id: playerId, attribute, slot,
             levels: merged.levels, damage_b: merged.damage_b, boss_level: merged.boss_level,
+            ..._exclusionClear(),   // 本人の保存し直し = 運営除外 (35) を解除
             updated_at: new Date().toISOString(),
         }]);
         if (error) throw error;
@@ -689,6 +740,7 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
             {
                 player_id: playerId, attribute, damage_b: value, slot,
                 ...(lv === undefined ? {} : { boss_level: lv }),
+                ..._exclusionClear(),
                 updated_at: new Date().toISOString(),
             },
         ]);
@@ -764,6 +816,7 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
     const basePayload = {
         player_id: playerId, attribute, slot: targetSlot,
         levels: merged.levels, damage_b: merged.damage_b, boss_level: merged.boss_level,
+        ..._exclusionClear(),   // 本人の保存し直し = 運営除外 (35) を解除 (修正すれば運営の手を煩わせず戻る)
         updated_at: new Date().toISOString(),
     };
     let r1 = await _upsertPlayerDamages([{
@@ -799,6 +852,7 @@ window.supabaseDeleteMockLevel = async function (playerId, attribute, slot, leve
     const { error } = await _upsertPlayerDamages([{
         player_id: playerId, attribute, slot,
         levels, damage_b: m.value, boss_level: m.level,
+        ..._exclusionClear(),   // 本人が測定を整理した = 運営除外 (35) を解除
         updated_at: new Date().toISOString(),
     }]);
     if (error) throw error;
@@ -1673,6 +1727,7 @@ window.supabaseCreateSeason = async function (payload) {
         // ★ boss_level / levels を必ず含めること。テスト終了時にこのスナップショットで
         //   player_damages を**全削除して入れ替える**ので、抜けると全員の測定レベルが消える
         for (const sel of [
+            'player_id, attribute, damage_b, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason',
             'player_id, attribute, damage_b, characters, slot, boss_level, levels',
             'player_id, attribute, damage_b, characters, slot, boss_level',
             'player_id, attribute, damage_b, characters, slot',
@@ -2662,6 +2717,8 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
             // その場合は列ごと落として旧挙動のまま復元する
             const hasLevel = snapshot.some(s => s.boss_level !== undefined);
             const hasLevels = snapshot.some(s => s.levels !== undefined);
+            const hasExcl = snapshot.some(s => s.excluded_at !== undefined);   // 運営除外 (35) もテスト前の状態に戻す
+            const exclOf = (s) => (hasExcl ? { excluded_at: s.excluded_at ?? null, excluded_by: s.excluded_by ?? null, excluded_reason: s.excluded_reason ?? null } : {});
             // ★ 32 適用後は slot>=3 が CHECK 違反になる。古いテストシーズンの
             //   スナップショットに③が入っていると、**全削除したあとの復元がまるごと失敗し
             //   模擬データが消えたまま終了処理が進む**ため、ここで落とす (Codex指摘 2026-08-12)
@@ -2676,6 +2733,7 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
                 characters: Array.isArray(s.characters) ? s.characters : [],
                 ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
                 ...(hasLevels ? { levels: s.levels ?? null } : {}),
+                ...exclOf(s),
             }));
             const r1 = await _upsertPlayerDamages(rowsWithChars);
             if (r1.error && /column.*characters/i.test(String(r1.error?.message))) {
@@ -2687,6 +2745,7 @@ window.supabaseDeleteActiveTestSeason = async function ({ charsToDelete } = {}) 
                     slot: s.slot || 1,
                     ...(hasLevel ? { boss_level: _normBossLevel(s.boss_level) } : {}),
                     ...(hasLevels ? { levels: s.levels ?? null } : {}),
+                    ...exclOf(s),
                 }));
                 const r2 = await _upsertPlayerDamages(rowsBasic);
                 if (r2.error) throw r2.error;
@@ -3573,6 +3632,8 @@ window.supabaseLoadOpsDashboardData = async function () {
     //   全段で slot を order すると、slot 未適用環境では最後の旧列フォールバックまで失敗し、
     //   dmgs が null のまま「登録ダメージ無し」の空盤面になる (Codex指摘 2026-08-10)
     for (const [sel, orderCols] of [
+        // excluded_* (35): 運営除外の行を盤面から外すために読む。列が無い環境は次段へ落ちて除外なしになる
+        ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot, boss_level', ['player_id', 'attribute', 'slot']],
         ['player_id, attribute, damage_b, updated_at, characters, slot', ['player_id', 'attribute', 'slot']],
@@ -3591,11 +3652,32 @@ window.supabaseLoadOpsDashboardData = async function () {
     // { player_id: { attr: [{dmgB, team, slot, level}] } } (ソルバーの2編成 + レベル対応用)
     // level = 模擬で測定したボスレベル (1〜4)。null = 未指定 = 全レベルで使える (移行互換)
     const loadoutsByPlayer = new Map();
+    // 運営除外 (35): { player_id: { attr: [{slot, dmgB, team, level, levels, excluded_*}] } }。
+    // 盤面 (dmgByPlayer / teamByPlayer / loadoutsByPlayer) には入れない = ソルバー・締め凸候補・残凸表・
+    // 事前比較・メンバー状況・SLv推定の全部から一括で外れる。残凸表の「除外」表示と解除にだけ使う
+    const excludedByPlayer = new Map();
     const mlDom = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
+    const exDom = (typeof window !== 'undefined' && window.mockExclusionDomain) || null;
     (dmgs || []).forEach(d => {
         // 32未適用環境に残る slot=3 はここでも締め出す。
         // 落とさないと「ソルバーは③を使うのに模擬タブは編集できない」不整合になる
         if (!isUsableSlot(d.slot)) return;
+        if (exDom ? exDom.isExcluded(d) : d.excluded_at != null) {
+            if (!excludedByPlayer.has(d.player_id)) excludedByPlayer.set(d.player_id, {});
+            const em = excludedByPlayer.get(d.player_id);
+            if (!em[d.attribute]) em[d.attribute] = [];
+            em[d.attribute].push({
+                slot: d.slot || 1,
+                dmgB: Number(d.damage_b) || 0,
+                team: (Array.isArray(d.characters) && d.characters.length > 0) ? d.characters : [],
+                level: _normBossLevel(d.boss_level),
+                levels: mlDom ? mlDom.normLevels(d.levels, d.damage_b, d.boss_level) : null,
+                excluded_at: d.excluded_at,
+                excluded_by: d.excluded_by || null,
+                excluded_reason: d.excluded_reason || null,
+            });
+            return;
+        }
         const v = Number(d.damage_b) || 0;
         const slot = d.slot || 1;
         const level = _normBossLevel(d.boss_level);
@@ -3727,6 +3809,7 @@ window.supabaseLoadOpsDashboardData = async function () {
             damagesByAttr: dmgByPlayer.get(p.id) || {},
             teamsByAttr: teamByPlayer.get(p.id) || {},
             loadoutsByAttr: loadoutsByPlayer.get(p.id) || {},   // 1属性最大2編成 + 測定レベル (ソルバー用)
+            excludedByAttr: excludedByPlayer.get(p.id) || {},   // 運営除外 (35) の行。盤面には入れず、残凸表の「除外」表示と解除にだけ使う
             attacks: attacksByPlayer.get(p.id) || [],
             attackCount: (attacksByPlayer.get(p.id) || []).length,
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),

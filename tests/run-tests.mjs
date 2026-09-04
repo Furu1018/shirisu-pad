@@ -13,6 +13,7 @@ import '../js/domain/mockCompare.js';
 import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベル開放)  // globalThis.mockCompareDomain (UI再設計 Stage2)
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
+import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
@@ -3140,6 +3141,100 @@ console.log('\ncharMasterDomain:');
     test('バックアップ整合: BIGSERIAL id を持つ全表が restore_fix_sequences() に入っている', () => {
         const missing = [...serialTables].filter(t => !new RegExp(`pg_get_serial_sequence\\('${t}', 'id'\\)`).test(helpers));
         assert.deepEqual(missing, [], `23_restore_helpers.sql に採番修正が無い表: ${missing.join(', ')}`);
+    });
+}
+
+// ---- 運営による模擬提出の除外 (35_player_damages_exclusion.sql) ------------------
+console.log('\nmockExclusionDomain (運営除外):');
+{
+    const ex = globalThis.mockExclusionDomain;
+    test('isExcluded: excluded_at がある行だけ true (null / undefined / 空文字 / 行なしは false)', () => {
+        assert.equal(ex.isExcluded({ excluded_at: '2026-09-05T01:00:00.000Z' }), true);
+        assert.equal(ex.isExcluded({ excluded_at: null }), false);
+        assert.equal(ex.isExcluded({}), false);
+        assert.equal(ex.isExcluded({ excluded_at: '' }), false);
+        assert.equal(ex.isExcluded(null), false);
+    });
+    test('splitExcluded: 使える行と除外行に分ける (順序維持・配列以外は空)', () => {
+        const rows = [{ id: 1 }, { id: 2, excluded_at: 'x' }, { id: 3, excluded_at: null }];
+        const r = ex.splitExcluded(rows);
+        assert.deepEqual(r.usable.map(x => x.id), [1, 3]);
+        assert.deepEqual(r.excluded.map(x => x.id), [2]);
+        assert.deepEqual(ex.splitExcluded(null), { usable: [], excluded: [] });
+    });
+    test('exclusionPatch: 除外は excluded_at(ISO) + by + 理由 (空白正規化・80字上限)、解除は3列とも null', () => {
+        const now = new Date('2026-09-05T03:04:05.000Z');
+        const p = ex.exclusionPatch({ excluded: true, by: ' ふるり ', reason: '  桁が\n違う   可能性 ', now });
+        assert.deepEqual(p, { excluded_at: '2026-09-05T03:04:05.000Z', excluded_by: 'ふるり', excluded_reason: '桁が 違う 可能性' });
+        const long = ex.exclusionPatch({ excluded: true, reason: 'あ'.repeat(200), now });
+        assert.equal(long.excluded_reason.length, ex.REASON_MAX);
+        assert.equal(long.excluded_by, '運営', '運営名が空なら「運営」');
+        assert.equal(ex.exclusionPatch({ excluded: true, reason: '   ', now }).excluded_reason, null, '空理由は null');
+        assert.deepEqual(ex.exclusionPatch({ excluded: false, reason: 'x', by: 'y' }), { excluded_at: null, excluded_by: null, excluded_reason: null });
+        assert.deepEqual(ex.clearPatch(), { excluded_at: null, excluded_by: null, excluded_reason: null });
+    });
+    test('exclusionLabel: 理由・運営名・時刻が入る / 通常行は空文字', () => {
+        const row = { excluded_at: '2026-09-05T01:02:00.000Z', excluded_by: 'ふるり', excluded_reason: '桁違い' };
+        const s = ex.exclusionLabel(row);
+        assert.ok(s.startsWith('運営が除外 (桁違い) — ふるり '), s);
+        assert.match(s, /\d{1,2}\/\d{1,2} \d{2}:\d{2}$/, s);
+        assert.ok(ex.exclusionLabel({ excluded_at: '2026-09-05T01:02:00.000Z' }).startsWith('運営が除外 — '), '理由も運営名も無いときは時刻だけ');
+        assert.equal(ex.exclusionLabel({}), '');
+    });
+    test('stripExclusion: 3列だけ落として他は保持 (35未適用フォールバック用)', () => {
+        const r = ex.stripExclusion({ player_id: 1, slot: 2, excluded_at: 'x', excluded_by: 'y', excluded_reason: 'z' });
+        assert.deepEqual(r, { player_id: 1, slot: 2 });
+    });
+}
+
+console.log('\n運営除外の配線 (ソース突合):');
+{
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8').replace(/\r\n/g, '\n');
+    const client = read('js', 'supabase-client.js');
+    const html = read('index.html');
+    const check = read('supabase', '99_check_applied.sql');
+    // 盤面 (ソルバー・締め凸・残凸表・事前比較・メンバー状況) の唯一の入口で除外行を外す。
+    // ここが崩れると「運営が除外したのにプランに使われる」= 今回の改修の目的そのものが壊れる
+    test('盤面ローダは excluded_* を最優先 select で読み、除外行を盤面から外して excludedByAttr に別立てする', () => {
+        assert.ok(client.includes("['player_id, attribute, damage_b, updated_at, characters, slot, boss_level, levels, excluded_at, excluded_by, excluded_reason', ['player_id', 'attribute', 'slot']]"));
+        assert.ok(client.includes('excludedByAttr: excludedByPlayer.get(p.id) || {}'));
+        assert.match(client, /exDom \? exDom\.isExcluded\(d\) : d\.excluded_at != null/);
+    });
+    test('_selectUsableDamages (提出状況・人気編成・活動) も除外行を落とす', () => {
+        const body = client.match(/async function _selectUsableDamages[\s\S]*?\n}\n/)?.[0] || '';
+        assert.ok(body.includes('excluded_at'), body);
+        assert.ok(/isExcluded\(d\)/.test(body));
+    });
+    test('本人の保存し直し (提出・単値保存・測定削除) は除外解除 payload を含む', () => {
+        const n = (client.match(/\.\.\._exclusionClear\(\)/g) || []).length;
+        assert.ok(n >= 5, `_exclusionClear() の使用箇所が ${n} (期待 5 以上: 単値保存3経路 + 提出 + 測定削除)`);
+        assert.ok(/window\.supabaseSaveMockSubmission[\s\S]*?const basePayload = \{[\s\S]*?_exclusionClear\(\)/.test(client));
+    });
+    test('_upsertPlayerDamages は 35 未適用で excluded_* を落として再試行し、旧形式にも持ち込まない', () => {
+        const body = client.match(/async function _upsertPlayerDamages[\s\S]*?\n}\n/)?.[0] || '';
+        assert.ok(/\/excluded_\/i\.test/.test(body));
+        assert.ok(/const legacy = rows2\.map\(\(\{ slot, boss_level, levels, excluded_at, excluded_by, excluded_reason, \.\.\.rest \}\) => rest\)/.test(body));
+    });
+    test('supabaseSetMockExclusion は 35 未適用を SQL の適用案内に変換する', () => {
+        assert.ok(/window\.supabaseSetMockExclusion = async function/.test(client));
+        assert.ok(client.includes('supabase/35_player_damages_exclusion.sql'));
+    });
+    test('index.html: mockExclusion.js を読み込み、残凸表の 🧹整理 と除外/解除ハンドラ・本人向け表示がある', () => {
+        assert.ok(html.includes('<script defer src="./js/domain/mockExclusion.js"></script>'));
+        assert.ok(html.includes('id="opsRemTidyBtn"'));
+        for (const fn of ['handleOpsRemainingTidyToggle', 'handleOpsRemExclude', 'handleOpsRemUnexclude']) {
+            assert.ok(new RegExp(`function ${fn}\\(`).test(html), `${fn} が無い`);
+        }
+        assert.ok(html.includes('⚠ 運営除外'), '本人の模擬パネルに除外バッジ');
+        assert.ok(html.includes('id="myTeamEditExclNote"'), '編成編集モーダルに除外の案内');
+        assert.ok(/mock_exclude:\s*\{/.test(html), '設定タブのログ種別');
+    });
+    test('99_check_applied.sql に 35 の判定行がある', () => {
+        assert.ok(check.includes("'35_player_damages_exclusion'"));
     });
 }
 
