@@ -15869,12 +15869,33 @@
             }
             if (plan.unusedAttacks > 0) {
                 const detail = Array.isArray(plan.unusedDetail) ? plan.unusedDetail : [];
+                // 理由別の合計はソルバーが返す (unusedSummary)。無い場合 (旧結果) は人単位から組み立てる
+                const summary = Array.isArray(plan.unusedSummary) && plan.unusedSummary.length > 0
+                    ? plan.unusedSummary
+                    : (() => {
+                        const g = new Map();
+                        detail.forEach(d => {
+                            const k = d.key || d.reason;
+                            const cur = g.get(k) || { key: k, label: d.label || d.reason, attacks: 0, members: [] };
+                            cur.attacks += d.remaining; cur.members.push({ name: d.name, remaining: d.remaining });
+                            g.set(k, cur);
+                        });
+                        return [...g.values()].sort((a, b) => b.attacks - a.attacks);
+                    })();
+                // 1行目: 「未消化凸 25凸 — 模擬未提出 12 · キャラ被り 7 · ボスHP尽き 3」 (開かなくても読める)
+                const summaryText = summary.map(s => `${esc(s.label)} <strong>${s.attacks}</strong>`).join(' · ');
+                // 折りたたみ: 理由ごとに説明文 + 名前 (残n凸)
+                const reasonOf = (s) => { const d = detail.find(x => (x.key || x.reason) === s.key); return d ? d.reason : ''; };
                 const detailHtml = detail.length > 0
                     ? `<details style="margin-top:4px;"><summary style="cursor:pointer;font-weight:800;color:#8A6A2A;">内訳を見る (${detail.length}名)</summary>` +
-                      detail.map(d => `<div style="display:flex;gap:6px;margin-top:3px;padding-left:8px;"><span style="flex:none;font-weight:800;">${esc(d.name)}</span><span style="flex:none;color:#B45309;">残${d.remaining}凸</span><span style="flex:1;">— ${esc(d.reason)}</span></div>`).join('') +
+                      summary.map(s => `<div style="margin-top:5px;padding-left:8px;">
+                            <div style="font-weight:900;color:#8A6A2A;">${esc(s.label)} <span style="color:#B45309;">${s.attacks}凸</span><span style="font-weight:600;color:#A4AAB0;"> · ${s.members.length}名</span></div>
+                            <div style="font-weight:600;color:#8A9097;">${esc(reasonOf(s))}</div>
+                            <div style="margin-top:2px;">${s.members.map(m => `<span style="display:inline-block;margin:2px 6px 0 0;"><strong>${esc(m.name)}</strong><span style="color:#B45309;">(残${m.remaining})</span></span>`).join('')}</div>
+                        </div>`).join('') +
                       `</details>`
                     : '';
-                warnings.push(`未消化凸 ${plan.unusedAttacks}凸。${detailHtml}`);
+                warnings.push(`未消化凸 <strong>${plan.unusedAttacks}凸</strong>${summaryText ? ` — ${summaryText}` : ''}。${detailHtml}`);
             }
             if (plan.membersNoData.length > 0) {
                 warnings.push(`属性ダメ未登録 ${plan.membersNoData.length}名: ${plan.membersNoData.slice(0, 5).map(esc).join('、')}${plan.membersNoData.length > 5 ? '...' : ''}（本人にホームからの登録依頼を）`);

@@ -639,6 +639,28 @@ test('Lv1で測った編成は Lv2 のボスに割り当てられない', () => 
     assert.equal(used.length, 0, `Lv1測定の編成は Lv2 に出せないはず: ${used.length}凸`);
 });
 
+test('unusedSummary: 未消化の理由別合計 (模擬未提出は「未提出」として分ける・凸数の多い順・key/label 付き)', () => {
+    // 2026-09-05: 留意点の1行目に「未消化 25凸 — 模擬未提出 12 · キャラ被り 7 …」を出すための集計
+    const bs = [boss(1, 'fire', { remainingB: 0, totalB: 100 })];
+    const none = player('未提出', {});                      // 模擬を1属性も出していない
+    const lv1 = player('Lv1だけ', { fire: 30 });            // Lv1 測定のみ → Lv2 に届かない
+    lv1.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30 } }] };
+    const plan = compute(makeInput(bs, [none, lv1], { currentLevel: 2 }));
+    assert.equal(plan.unusedAttacks, 6);
+    const byName = Object.fromEntries(plan.unusedDetail.map(d => [d.name, d]));
+    assert.equal(byName['未提出'].key, 'noSubmission');
+    assert.equal(byName['未提出'].label, '模擬未提出');
+    assert.match(byName['未提出'].reason, /模擬未提出/, '旧文言「提出属性を使い切り」だと未提出と区別がつかない');
+    assert.equal(byName['Lv1だけ'].key, 'level');
+    assert.equal(byName['Lv1だけ'].label, '測定Lv不足');
+    assert.deepEqual(plan.unusedSummary.map(s => [s.key, s.attacks, s.members.map(m => m.name)]),
+        [['level', 3, ['Lv1だけ']], ['noSubmission', 3, ['未提出']]], '凸数が同じなら key の辞書順で決定的 (level < noSubmission)');
+    // 無視モードなら Lv1だけ の人は出せる → 未提出だけが残る
+    const relaxed = compute(makeInput(bs, [none, lv1], { currentLevel: 2, ignoreLevels: true }));
+    assert.deepEqual(relaxed.unusedSummary.map(s => s.key), ['noSubmission', 'attrsExhausted'].filter(k => relaxed.unusedSummary.some(s => s.key === k)));
+    assert.equal(relaxed.unusedSummary.find(s => s.key === 'noSubmission').attacks, 3);
+});
+
 test('ignoreLevels: Lv1測定の編成でも Lv2 に出せる (緊急モード・記録レベルは表示用に残る)', () => {
     // 2026-09-05 第44回初日: 提出の大半が Lv1 のみで未消化49凸 → 測定レベルを無視するモードを追加
     const bs = [boss(1, 'fire', { remainingB: 0, totalB: 100 })];

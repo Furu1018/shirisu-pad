@@ -391,6 +391,9 @@
                     slvEstimated: !!p.syncLevelEstimated,
                     remainingAttacks: 3 - p.attackCount,
                     avail,
+                    // 模擬を1属性も出していない (未消化の理由を「未提出」と「提出属性の使い切り」で分けるため。
+                    // membersNoData と同じ判定)
+                    noSubmission: Object.values(p.damagesByAttr || {}).every(v => !v || v === 0),
                     // 完了凸で使ったキャラを初期値に入れる (同キャラ1日1回)。
                     // ここで seed すると通常割当(:375)・Lv4割当(:537)・未使用診断(:722) の
                     // 全経路と、温存/吸収の各パス (buildMemberState が唯一の入口) に一貫して効く
@@ -1210,6 +1213,20 @@
         // ===== 未使用凸の理由診断 =====
         // 「63凸あるのに50凸しか使われない」の内訳を可視化する。
         // 判定は最後に計画したレベルの状態に対して行う (優先度順に1つ)。
+        // key = 集計用の分類 / label = その短い表示名 (reason は人向けの説明文のまま)
+        const UNUSED_LABELS = {
+            noSubmission: '模擬未提出',
+            attrsExhausted: '出せる属性なし',
+            lv4NoLoadout: 'ボス5弱点の編成なし',
+            lv4NoWeak: 'ボス5弱点が未提出',
+            conflict: 'キャラ被り',
+            level: '測定Lv不足',
+            surplus: '余剰戦力',
+            time: '時間帯なし',
+            noAliveAttr: '生存ボスの属性が未提出',
+            reserve: '得意属性を温存',
+            hpExhausted: 'ボスHP尽き',
+        };
         const lastPlanned = levels[levels.length - 1];
         const lastAliveWeak = new Set(
             (lastPlanned?.bosses || []).filter(b => b.targetHpB > 0.0001).map(b => b.weakness)
@@ -1219,8 +1236,12 @@
             .filter(m => m.remainingAttacks > 0)
             .map(m => {
                 const attrs = Object.keys(m.avail);
-                let reason;
-                if (attrs.length === 0) {
+                let reason, key;
+                if (m.noSubmission) {
+                    key = 'noSubmission';
+                    reason = '模擬未提出 (提出があれば候補に入る)';
+                } else if (attrs.length === 0) {
+                    key = lv4Open ? 'lv4NoLoadout' : 'attrsExhausted';
                     reason = lv4Open
                         ? 'ボス5(無限)の弱点属性の編成が残っていない (未提出 or 使い切り)'
                         : '出せる属性の残りなし (提出属性を使い切り)';
@@ -1229,14 +1250,21 @@
                     // 「キャラ被り」と「測定レベル不足」は打ち手が全く違う (前者は編成を足す /
                     // 後者は Lv4 で測り直す) ので、運営が読んで動けるよう区別する
                     const b5 = m.avail[boss5.weakness];
-                    reason = !attrs.includes(boss5.weakness)
-                        ? 'ボス5(無限)の弱点属性が未提出 (提出すれば全額スコアに入る)'
-                        : (b5 || []).some(lo => usableAtLevel(lo, 4))
-                            ? 'キャラ被り (同キャラは1日1回) でボス5に出せる編成なし'
-                            : 'ボス5(無限)の編成が Lv4 未満で測定されている (Lv4で測り直すと出せる)';
+                    if (!attrs.includes(boss5.weakness)) {
+                        key = 'lv4NoWeak';
+                        reason = 'ボス5(無限)の弱点属性が未提出 (提出すれば全額スコアに入る)';
+                    } else if ((b5 || []).some(lo => usableAtLevel(lo, 4))) {
+                        key = 'conflict';
+                        reason = 'キャラ被り (同キャラは1日1回) でボス5に出せる編成なし';
+                    } else {
+                        key = 'level';
+                        reason = 'ボス5(無限)の編成が Lv4 未満で測定されている (Lv4で測り直すと出せる)';
+                    }
                 } else if (planFullyCleared) {
+                    key = 'surplus';
                     reason = 'Lv3まで完走想定のため出番なし (余剰戦力)';
                 } else if (timeAware && earliestHourFor(m, openIdx) === null) {
+                    key = 'time';
                     reason = '停止レベルの開放時刻以降に戦闘可能時間がない';
                 } else {
                     // 停止レベルの生存ボスに対して実際に出せるか判定
@@ -1258,14 +1286,27 @@
                             !(m.anyTeamRegistered && lo.team.length > 0 && lo.team.some(c => hasUsedChar(m.usedChars, c))));
                         if (usable) { conflictOnly = false; break; }
                     }
-                    if (!anyAliveAttr) reason = '残っている生存ボスの属性を未提出';
-                    else if (!anyInLevel) reason = `編成の測定レベルが Lv${lastLv} に届かない (Lv${lastLv}以上で測り直すと出せる)`;
-                    else if (conflictOnly) reason = 'キャラ被り (同キャラは1日1回) で出せる編成なし';
-                    else if (m.mandatory.size > 0 && (m.remainingAttacks - m.lockedNow) <= 0) reason = '得意属性の必須枠を温存中';
-                    else reason = 'ボスHPが尽きた (割当先なし)';
+                    if (!anyAliveAttr) { key = 'noAliveAttr'; reason = '残っている生存ボスの属性を未提出'; }
+                    else if (!anyInLevel) { key = 'level'; reason = `編成の測定レベルが Lv${lastLv} に届かない (Lv${lastLv}以上で測り直すと出せる)`; }
+                    else if (conflictOnly) { key = 'conflict'; reason = 'キャラ被り (同キャラは1日1回) で出せる編成なし'; }
+                    else if (m.mandatory.size > 0 && (m.remainingAttacks - m.lockedNow) <= 0) { key = 'reserve'; reason = '得意属性の必須枠を温存中'; }
+                    else { key = 'hpExhausted'; reason = 'ボスHPが尽きた (割当先なし)'; }
                 }
-                return { name: m.name, remaining: m.remainingAttacks, reason };
+                return { name: m.name, remaining: m.remainingAttacks, reason, key, label: UNUSED_LABELS[key] || key };
             });
+        // 理由別の合計 (留意点の1行目に「未消化 25凸 — 模擬未提出 12 · キャラ被り 7 …」と出す用)。
+        // 人単位の unusedDetail は残し、運営が「何を先に手当てするか」を開かずに読めるようにする (2026-09-05)
+        const unusedSummary = (() => {
+            const groups = new Map();
+            for (const d of unusedDetail) {
+                const g = groups.get(d.key) || { key: d.key, label: d.label, attacks: 0, members: [] };
+                g.attacks += d.remaining;
+                g.members.push({ name: d.name, remaining: d.remaining });
+                groups.set(d.key, g);
+            }
+            // 凸数の多い順 → キー順で決定的に
+            return [...groups.values()].sort((a, b) => (b.attacks - a.attacks) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+        })();
 
         const candidateCount = memberState.length;
         // 「完了想定時刻」は最後の有限レベルから取る (Lv4 は無限なのでクリア時刻を持たない)
@@ -1276,7 +1317,7 @@
         const lv4CreditedB = lv4Level ? lv4Level.bosses[0].creditedB : 0;
         return {
             startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste,
-            unusedAttacks, membersNoData, onlyAvailableNow, currentSlot, candidateCount,
+            unusedAttacks, unusedSummary, membersNoData, onlyAvailableNow, currentSlot, candidateCount,
             timeAware, ignoreLevels,
             nowHourLabel: timeAware ? hourLabelOf(nowIdx) : null,
             finalClearHourLabel: (timeAware && lastFinite?.levelCleared) ? lastFinite.clearHourLabel : null,
