@@ -22,6 +22,7 @@ ALTER 1 文 + `lock_timeout 3s` で、長いトランザクションが掴んで
   Codex レビュー 1巡 (部分適用時の中間 select・ALTER 1文化 + lock_timeout・列欠損判定を `_isMissingColumnErr` に統一 — 対応済)
 - 見送り: レベル別測定値の1件だけの除外 (粒度は行=編成)、異常値の自動ハイライト、運営による値の訂正入力 → 下の「候補」へ
 
+**適用状況 (2026-09-05)**: ① SQL 35 適用済 (ユーザー確認「問題なく通りました」) ② push 済 (Codex 1巡後・ユーザー承認) ③ 実機確認は下のチェックリスト (未)
 **適用手順 (ユーザー)**: ① SQL Editor で `35_player_damages_exclusion.sql` を実行 (`99_check_applied.sql` で applied=true を確認) →
 ② main へ push (= 本番反映) → ③ 下の実機確認。①より先に②でも壊れない (✕ を押したときだけ「35 を適用してください」と出る)
 
