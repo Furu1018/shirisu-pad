@@ -2015,6 +2015,12 @@
         .dc-rem-cell.unset {
             color: #C9CED3; font-weight: 900; background: transparent;
         }
+        /* 参考値 (2026-09-06): いまのボスレベルでは測定Lv不足だが、値は必ず見せる。
+           括弧付き + 薄色 + 属性色の背景を消して「計算に入っていない」ことを示す */
+        .dc-rem-cell.weak {
+            color: #A4AAB0 !important; background: transparent !important;
+            font-size: 9.5px; font-weight: 700;
+        }
         /* 運営除外 (35): 提出は残るがプラン等には使われない行。🧹整理モードでは ✕ (除外) / ↩ (解除) を左上に重ねる */
         .dc-rem-cell.excl {
             color: #B6BBC1; background: transparent; text-decoration: line-through;
@@ -14280,14 +14286,24 @@
                 return scaled > 0 ? dmgB / scaled : null;
             };
             const fururiMode = _opsRemainingMode === 'fururi';
-            // いまのレベルで「実際に使える値」を出す (レベル別測定 31 対応)。
-            // 残凸表は運営の行動ビューなので、Lv1でしか測っていない値を Lv3 の検討材料に見せない
+            // いまのレベルで「実際に使える値」(v) と、測定レベルを問わない最良値 (vAny) の両方を出す
+            // (レベル別測定 31 対応)。
+            // ★ 2026-09-06 ハード日のFB: 「Lv不足」で値を伏せると、Lv2以降で残メンバーの火力が
+            //   一切見えなくなり「誰に締めを頼むか」を運営が判断できない。**値は必ず見せる** —
+            //   そのレベルで使えないことは括弧付き・薄色 (weak) で示すに留める。
+            //   📏測定Lv無視 (緊急モード) が ON のときはソルバーもこの値を使うので通常表示に戻す
             const remCurLv = Number(opsStore.get()?.season?.current_level) || 1;
             const remML = window.mockLevelsDomain || null;
             const resolvedDmgOf = (lo) => {
-                if (!remML) return Number(lo.dmgB) || 0;
+                const raw = Number(lo.dmgB) || 0;
+                if (!remML) return { v: raw, vAny: raw, weak: false };
                 const lvs = remML.normLevels(lo.levels, lo.dmgB, lo.level);
-                return lvs ? (remML.bestAtLevel(lvs, remCurLv) ?? 0) : 0;
+                const strict = lvs ? (remML.bestAtLevel(lvs, remCurLv) ?? 0) : 0;
+                // Lv1 で解決 = キー'0'とキー≥1 の全部が対象 = 測定レベルを問わない最良値
+                const any = lvs ? (remML.bestAtLevel(lvs, 1) ?? raw) : raw;
+                if (strict > 0) return { v: strict, vAny: any, weak: false };
+                if (_opsPlanIgnoreLevels && any > 0) return { v: any, vAny: any, weak: false };
+                return { v: 0, vAny: any, weak: any > 0 };
             };
             // 属性ごとの編成一覧 (1属性複数編成対応)。loadouts が無い旧データはベスト値1件に劣化。
             // 運営除外 (35) の行は通常は巡回に入れない (使えない値を見せない)。
@@ -14338,29 +14354,38 @@
                     const undo = `<button type="button" class="dc-rem-x undo" onclick="event.stopPropagation();handleOpsRemUnexclude(${Number(p.id)}, '${attr.key}', ${shownSlot})" title="除外を解除 (プラン・締め凸・事前比較に戻す)">↩</button>`;
                     return `<div class="dc-rem-cell excl tidy" data-flip="${flipKey}"${onclickX} title="${escapeHtml(exclTitleOf(shown, shownSlot))}${has2 ? ` / タップで編成を切替 (${los.length}編成)` : ''}">除外${has2 ? `<span class="dc-rem-slot">${SLOT_JP[shownSlot] || '①'}</span>` : ''}${undo}</div>`;
                 }
-                // いまのレベルで使える値に解決 (Lv不足なら 0 = 「使えない」を明示)。
-                // ★ 凸済み判定が先 — Lv不足を先に返すと凸済みの属性が「空き枠」に見える (Codex指摘)
-                const v = resolvedDmgOf(shown);
+                // v = いまのレベルで使える値 / vAny = 測定レベルを問わない最良値 / weak = 参考値表示
+                // ★ 凸済み判定が先 — 使えない判定を先に返すと凸済みの属性が「空き枠」に見える (Codex指摘)
+                const { v, vAny, weak } = resolvedDmgOf(shown);
+                // 表示に使う値: 使える値があればそれ、無ければ測定レベルを問わない値 (参考値)
+                const shownV = v > 0 ? v : vAny;
                 if (used.has(attr.key)) {
-                    const usedText = v > 0
-                        ? (fururiMode ? (fururiOf(p, attr.key, v) != null ? fururiOf(p, attr.key, v).toFixed(2) : '—') : v.toFixed(1))
+                    // 凸済みセルは「何を出したか」の記録なので、測定レベルに関係なく値を見せる
+                    const usedText = shownV > 0
+                        ? (fururiMode ? (fururiOf(p, attr.key, shownV) != null ? fururiOf(p, attr.key, shownV).toFixed(2) : '—') : shownV.toFixed(1))
                         : '—';
                     return `<div class="dc-rem-cell used" title="${attr.name}PT 凸済み">${usedText}</div>`;
                 }
-                if (!(v > 0)) {
-                    // 🧹整理モードでは Lv不足のセルも除外できる (📏測定Lv無視の緊急モードではソルバーがこの値を使うため)
-                    return `<div class="dc-rem-cell unset${_opsRemTidy ? ' tidy' : ''}" title="${attr.name}PT — 測定レベルが Lv${remCurLv} に届かない (Lv${remCurLv}以上で測り直すと使える)">Lv不足${tidyBtnOf(p, attr.key, shownSlot)}</div>`;
+                if (!(shownV > 0)) {
+                    return `<div class="dc-rem-cell unset${_opsRemTidy ? ' tidy' : ''}" title="${attr.name}PT 未登録">─${tidyBtnOf(p, attr.key, shownSlot)}</div>`;
                 }
                 let text, tip;
                 if (fururiMode) {
-                    const s = fururiOf(p, attr.key, v);
+                    const s = fururiOf(p, attr.key, shownV);
                     text = s != null ? s.toFixed(2) : '—';
                     tip = s != null
-                        ? `${attr.name}PT ふるり値 ${s.toFixed(2)} (ダメージ ${v.toFixed(1)}B / SLv${p.syncLevel || '?'})`
+                        ? `${attr.name}PT ふるり値 ${s.toFixed(2)} (ダメージ ${shownV.toFixed(1)}B / SLv${p.syncLevel || '?'})`
                         : `${attr.name}PT ふるり値算出不可 (基準データかSLv不足)`;
                 } else {
-                    text = v.toFixed(1);
-                    tip = `${attr.name}PT ${v.toFixed(1)}B (Lv${remCurLv}時点で使える値)`;
+                    text = shownV.toFixed(1);
+                    tip = `${attr.name}PT ${shownV.toFixed(1)}B (Lv${remCurLv}時点で使える値)`;
+                }
+                if (weak) {
+                    // 参考値: 値は見せるが「いまのレベルの計算には入っていない」ことを括弧と薄色で示す
+                    const measured = Number(shown.level) || null;
+                    text = `(${text})`;
+                    tip = `${attr.name}PT ${shownV.toFixed(1)}B — ${measured ? `Lv${measured}測定` : 'レベル未指定'}のため Lv${remCurLv} のプラン計算には入っていません (参考値)。`
+                        + ` 使うなら 📏測定Lv無視 に切り替えるか、Lv${remCurLv}以上で測り直しを`;
                 }
                 // 配信/算出プランで採用された属性か (2編成ならどちらが採用されたかまで)
                 const picked = _opsPlanPicks.get(flipKey);
@@ -14371,7 +14396,7 @@
                 }
                 const badge = has2
                     ? `<span class="dc-rem-slot${pickedOther ? ' pickhint' : ''}">${SLOT_JP[shownSlot] || '①'}</span>` : '';
-                const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}${_opsRemTidy ? ' tidy' : ''}`;
+                const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}${_opsRemTidy ? ' tidy' : ''}${weak ? ' weak' : ''}`;
                 const onclick = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
                 // 光の色は模擬タブと同じ DC_ATTR_COLORS に揃える (PT_ATTRS.color とは別定義 — Codex指摘)
                 const glowColor = DC_ATTR_COLORS[attr.key] || attr.color;
@@ -15659,6 +15684,9 @@
             // 表示中の締め凸候補も同じ規則で引き直す (無視→厳格に戻したとき Lv1測定の候補が
             // 残ったまま依頼を送れてしまう — Codex指摘)
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+            // 残凸表のセルも同じトグルで参考値(括弧)⇄通常表示が切り替わるので引き直す。
+            // プラン未算出 (_opsLastPlan が無い) 状態では下の再算出が走らないため、ここで独立に呼ぶ (Codex指摘)
+            if (typeof renderOpsRemainingList === 'function') renderOpsRemainingList();
             if (_opsLastPlan) {
                 // 直前と同じ対象範囲で再算出
                 computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
