@@ -23,7 +23,15 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
-const opt = (k) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] ?? null : null; };
+// 値が無いオプション (`--name --burst B3` のように次がフラグ) は値として飲み込まない。
+// 飲み込むと name='--burst' のまま本番テーブルに壊れた行が入る
+const opt = (k) => {
+    const i = args.indexOf(`--${k}`);
+    if (i < 0) return null;
+    const v = args[i + 1];
+    if (v === undefined || v.startsWith('--')) { console.error(`--${k} の値がありません`); process.exit(1); }
+    return v;
+};
 
 const name = (opt('name') ?? '').trim();
 const burst = (opt('burst') ?? '').trim().toUpperCase() || null;
@@ -34,7 +42,11 @@ const notes = (opt('notes') ?? '').trim() || null;
 const BURSTS = ['B1', 'B2', 'B3', 'BΛ'];
 if (!name) { console.error('--name <正式名> は必須です'); process.exit(1); }
 if (!burst || !BURSTS.includes(burst)) { console.error(`--burst は ${BURSTS.join(' / ')} のいずれか (誤バーストは GB の編成ピッカーまで波及する)`); process.exit(1); }
-if (!source || !/^https?:\/\/\S+$/i.test(source)) { console.error('--source <根拠URL> は http(s) の絶対URLで必須 (二者確認の根拠)'); process.exit(1); }
+const validSource = (() => {
+    if (!source || !/^https?:\/\/\S+$/i.test(source)) return false;
+    try { const u = new URL(source); return /^https?:$/.test(u.protocol) && u.hostname.includes('.'); } catch { return false; }
+})();
+if (!validSource) { console.error('--source <根拠URL> は http(s) の絶対URLで必須 (二者確認の根拠)'); process.exit(1); }
 if (!by) { console.error('--by <登録した運営の表示名> は必須です'); process.exit(1); }
 
 const src = readFileSync(join(ROOT, 'js', 'supabase-client.js'), 'utf8');
@@ -51,7 +63,16 @@ const api = async (path, init) => {
 
 // 全角/半角コロン・空白のゆれを吸収して既存を探す (GB の build-characters と同じ正規化)
 const norm = (s) => String(s).normalize('NFKC').replace(/：/g, ':').replace(/\s+/g, '').trim();
-const all = await api('nikke_characters?select=canonical_name,burst,burst_alt,is_confirmed,aliases,icon_paths,registered_by,verification_source,notes');
+// ⚠ ページングする: API の既定行数上限 (Supabase は通常1000) で切れると、既存の表記ゆれ行を
+//   見落として重複行を作る (canonical_name は完全一致のPKなので DB 側では防げない)
+const COLS = 'canonical_name,burst,burst_alt,is_confirmed,aliases,icon_paths,registered_by,verification_source,notes';
+const PAGE = 500;
+const all = [];
+for (let offset = 0; ; offset += PAGE) {
+    const page = await api(`nikke_characters?select=${COLS}&order=canonical_name.asc&limit=${PAGE}&offset=${offset}`);
+    all.push(...page);
+    if (page.length < PAGE) break;
+}
 const hit = all.find(r => norm(r.canonical_name) === norm(name));
 
 if (hit) {
@@ -67,7 +88,18 @@ if (hit) {
         if (APPLY) await api(`nikke_characters?canonical_name=eq.${encodeURIComponent(hit.canonical_name)}`,
             { method: 'PATCH', body: JSON.stringify({ burst }) });
     }
-    console.log(APPLY ? '完了 (既存行はそれ以外を書き換えません)' : '(dry-run。--apply で反映)');
+    // 根拠・登録者・メモの食い違いは黙って捨てない (古い誤った根拠のまま確認者が見てしまう)
+    const diffs = [
+        ['根拠URL', hit.verification_source, source],
+        ['登録者', hit.registered_by, by],
+        ...(notes ? [['メモ', hit.notes, notes]] : []),
+    ].filter(([, cur, next]) => (cur ?? '') !== next);
+    if (diffs.length) {
+        console.warn('\n⚠ 既存行と指定が食い違っています (このスクリプトは上書きしません):');
+        for (const [what, cur, next] of diffs) console.warn(`   ${what}: DB=${cur ?? '(なし)'} / 指定=${next}`);
+        console.warn('   直すなら設定タブ → キャラ管理の編集モーダルから (誰が直したかが残るため)');
+    }
+    console.log(APPLY ? '完了 (既存行はバースト補完以外を書き換えません)' : '(dry-run。--apply で反映)');
     process.exit(0);
 }
 
