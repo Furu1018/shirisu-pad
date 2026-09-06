@@ -54,6 +54,10 @@ const SRC = [
     cut('        function _availEnqueue('),
     cut('        function _availDoSave('),
     cut('        function _availConfirmSetBusy('),
+    // ★ 再描画も**実装のもの**を使う。スタブに置き換えると「再描画のあとに busy を貼り直すか」を
+    //   テスト側の作り物で確かめることになり、実装の保証にならない
+    cut('        function _renderMyAvailConfirmBadge('),
+    cut('        function _renderMyAvailConfirm('),
     cut('        async function handleConfirmAvailability('),
 ].join('\n');
 
@@ -66,9 +70,23 @@ let saved = null;             // availability の最終状態 (最後に着地�
 let confirmRows = [];         // availability_confirmations への書き込み
 let saveGate = null;          // 保存を止めておくためのフック
 
+// innerHTML を代入するとボタン要素が作り直される箱 (実物と同じ挙動)。
+// querySelectorAll('button') は「その瞬間の」ボタンを返す
+function makeBox() {
+    let buttons = [];
+    return {
+        style: {}, _buttons: () => buttons,
+        set innerHTML(v) {
+            buttons = [...String(v).matchAll(/<button\b/g)].map(() => ({ disabled: false, style: {} }));
+        },
+        get innerHTML() { return ''; },
+        querySelectorAll: () => buttons,
+    };
+}
+
 function makeEnv() {
     log = []; saved = null; confirmRows = []; saveGate = null;
-    const buttons = [{ disabled: false, style: {} }, { disabled: false, style: {} }];
+    const box = makeBox();
     const env = {
         HOUR_ORDER, _hourKey,
         _availUI: { slots: new Array(24).fill(false), saveTimer: null },
@@ -76,11 +94,13 @@ function makeEnv() {
         getCurrentIdentity: () => ({ id: 7 }),
         ensureActiveSeasonLoaded: async () => ({ season: { id: 44 } }),
         opsStore: { invalidate() { } },
+        escapeHtml: (x) => String(x),
         document: {
-            getElementById: (id) => id === 'myAvailConfirmBox'
-                ? { querySelectorAll: () => buttons, style: {} }
+            getElementById: (id) => id === 'myAvailConfirmBox' ? box
+                : id === 'myAvailConfirmBadge' ? { style: {}, textContent: '' }
                 : { style: {}, textContent: '' },
         },
+        box,
         window: {
             supabaseConfirmAvailability: async (seasonId, playerId, opt) => {
                 confirmRows.push({ seasonId, playerId, ...opt });
@@ -88,8 +108,6 @@ function makeEnv() {
             },
         },
         _myAvailConfirm: null,
-        _renderMyAvailConfirm: () => { },
-        buttons,
         // 保存の実体スタブ。押した瞬間の slots を読み、gate があればそこで待つ
         async _availDoSaveInner(opts = {}) {
             const slots = HOUR_ORDER.map((h, i) => env._availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
@@ -102,7 +120,8 @@ function makeEnv() {
     };
     // 切り出したコードを env のスコープで評価し、必要な関数を取り出す
     const keys = Object.keys(env);
-    const fn = new Function(...keys, `${SRC}\nreturn { _availEnqueue, _availDoSave, handleConfirmAvailability, get _myAvailConfirm(){return _myAvailConfirm;} };`);
+    const fn = new Function(...keys, `${SRC}\nreturn { _availEnqueue, _availDoSave, _availConfirmSetBusy, _renderMyAvailConfirm,`
+        + ` handleConfirmAvailability, get _myAvailConfirm(){return _myAvailConfirm;} };`);
     return Object.assign(env, fn(...keys.map(k => env[k])));
 }
 
@@ -195,9 +214,35 @@ await test('処理中はボタンを押せなくする / 終わったら戻す',
     const gate = defer(); saveGate = gate;
     const p = env.handleConfirmAvailability(false);
     await tick();
-    assert.ok(env.buttons.every(b => b.disabled), '処理中にボタンが押せる');
+    assert.ok(env.box._buttons().every(b => b.disabled), '処理中にボタンが押せる');
     gate.resolve(); await p;
-    assert.ok(env.buttons.every(b => !b.disabled), '終わってもボタンが戻らない');
+    assert.ok(env.box._buttons().every(b => !b.disabled), '終わってもボタンが戻らない');
+});
+
+await test('★ 保存中に確認ブロックが再描画されてもボタンは押せないまま', async () => {
+    // _availDoSaveInner は保存成功のたびに _renderMyAvailConfirm を呼ぶ = ボタンが作り直される。
+    // 貼り直しを忘れると「処理中なのに押せる」状態に戻る
+    const env = makeEnv();
+    setSlots(env, [21]);
+    const gate = defer(); saveGate = gate;
+    const p = env.handleConfirmAvailability(false);
+    await tick();
+    env._renderMyAvailConfirm();          // 実装の再描画 (保存成功時に _availDoSaveInner が呼ぶのと同じ)
+    assert.ok(env.box._buttons().length > 0, '再描画でボタンが作られていない (テストの前提が崩れた)');
+    assert.ok(env.box._buttons().every(b => b.disabled), '作り直されたボタンが押せる状態に戻っている');
+    gate.resolve(); await p;
+    assert.ok(env.box._buttons().every(b => !b.disabled), '終わってもボタンが戻らない');
+
+    // ★ 確認ブロックには「未確認」と「確認済み」の2つの描画分岐がある。
+    //   1回確認したあとは「確認済み」側が描かれるので、そちらでも貼り直しを確かめる
+    const gate2 = defer(); saveGate = gate2;
+    const p2 = env.handleConfirmAvailability(false);
+    await tick();
+    env._renderMyAvailConfirm();
+    assert.ok(env.box._buttons().length > 0, '確認済みの描画でボタンが作られていない');
+    assert.ok(env.box._buttons().every(b => b.disabled), '確認済み側の再描画でボタンが押せる状態に戻っている');
+    gate2.resolve(); await p2;
+    assert.ok(env.box._buttons().every(b => !b.disabled), '終わってもボタンが戻らない');
 });
 
 await test('「今回は難しい」は枠を送らない (slots/slotCount とも null)', async () => {

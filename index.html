@@ -8328,7 +8328,11 @@
         // ★ availability は無期限のプロフィール設定。「今季もその時間で動けるか」は別物なので、
         //   レイドごとに本人が確認する。未確認は空欄と同じ **未確定** として運営に見せる
         //   (第44回: 設定しているはずなのに実際にいない人が多かった)
-        let _myAvailConfirm = null;   // { confirmed_at, unavailable, slot_count } | null
+        let _myAvailConfirm = null;   // { confirmed_at, unavailable, slot_count } | null  / { unsupported:true } = 37未適用
+        // 確認は「時間帯の保存 → 確認の書き込み」の2段階。処理中にもう一度押せると、
+        // 遅れて着地した方が勝って unavailable と枠のスナップショットが食い違う (Codex指摘 2026-09-07)。
+        // ★ _renderMyAvailConfirm から参照するので、そこより前に置くこと (TDZ よけ)
+        let _availConfirmBusy = false;
         async function _loadMyAvailConfirm(playerId) {
             _myAvailConfirm = null;
             try {
@@ -8387,6 +8391,7 @@
                         <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);">この時間で参加します</button>
                         <button onclick="handleConfirmAvailability(true)" style="flex:none;border:none;border-radius:999px;padding:11px 15px;font-family:inherit;font-size:12px;font-weight:800;color:#5A6068;background:#F1F2F4;cursor:pointer;">今回は難しい</button>
                     </div>`;
+                _availConfirmSetBusy(_availConfirmBusy);   // 保存中の再描画でボタンを復活させない
                 return;
             }
             const when = c.confirmed_at ? new Date(c.confirmed_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
@@ -8400,13 +8405,13 @@
                     ${escapeHtml(when)} に確認${c.unavailable ? '' : ` (${n}枠)`}。変える場合は上で時間帯を直してから、下のボタンを押してください。
                 </div>
                 <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap;">
-                    <button onclick="handleConfirmAvailability(${c.unavailable ? 'false' : 'false'})" style="flex:1;min-width:150px;border:1.5px solid #6C42F0;border-radius:999px;padding:10px;font-family:inherit;font-size:12px;font-weight:900;color:#6C42F0;background:#fff;cursor:pointer;">この時間で参加します</button>
+                    <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;border:1.5px solid #6C42F0;border-radius:999px;padding:10px;font-family:inherit;font-size:12px;font-weight:900;color:#6C42F0;background:#fff;cursor:pointer;">この時間で参加します</button>
                     ${c.unavailable ? '' : '<button onclick="handleConfirmAvailability(true)" style="flex:none;border:none;border-radius:999px;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:800;color:#5A6068;background:#F1F2F4;cursor:pointer;">今回は難しい</button>'}
                 </div>`;
+            // ★ 保存中の再描画 (_availDoSaveInner が呼ぶ) でボタンが作り直されるので、
+            //   処理中なら貼り直す。でないと「処理中なのに押せる」状態に戻る
+            _availConfirmSetBusy(_availConfirmBusy);
         }
-        // 確認は「時間帯の保存 → 確認の書き込み」の2段階。処理中にもう一度押せると、
-        // 遅れて着地した方が勝って unavailable と枠のスナップショットが食い違う (Codex指摘 2026-09-07)
-        let _availConfirmBusy = false;
         function _availConfirmSetBusy(busy) {
             const box = document.getElementById('myAvailConfirmBox');
             if (!box) return;

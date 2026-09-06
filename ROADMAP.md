@@ -17,7 +17,7 @@
 4. テストが全部通ることを確認:
    `node tests/run-tests.mjs` (219) / `plan-hp-modal.mjs` (14) / `team-picker.mjs` (22) /
    `member-board.mjs` (11) / `kill-badge.mjs` (9) / `finish-requests.mjs` (16) /
-   `avail-save.mjs` (7・新規) / `check-syntax.mjs` / `check-raid-event-hooks.mjs`
+   `avail-save.mjs` (8・新規) / `check-syntax.mjs` / `check-raid-event-hooks.mjs`
 
 **いまの状態**: 第44回の課題6件のうち **A・D・B(最小版) が完了して push 済み**。未コミットの作業なし。
 実機 (GitHub Pages) での確認が**3件たまっている**ので、続きの実装より先に見ておくと手戻りが少ない:
