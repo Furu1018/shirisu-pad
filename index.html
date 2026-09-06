@@ -3607,6 +3607,7 @@
                             <tr><td colspan="4" style="text-align:center;padding:24px;color:#A4AAB0;">データを読み込み中...</td></tr>
                         </tbody>
                     </table>
+                    <p id="rankingKillNote" style="display:none;margin:8px 2px 0;font-size:10.5px;line-height:1.6;color:#8A6A2A;"></p>
                 </div>
             </div>
 
@@ -3752,6 +3753,7 @@
                             <tr><td colspan="3" style="text-align:center;padding:24px;color:#A4AAB0;">データを読み込み中...</td></tr>
                         </tbody>
                     </table>
+                    <p id="fururiKillNote" style="display:none;margin:8px 2px 0;font-size:10.5px;line-height:1.6;color:#8A6A2A;"></p>
                 </div>
             </div>
 
@@ -18419,6 +18421,7 @@
         // ========== Ranking Table ==========
         function updateTable() {
             const tbody = document.getElementById('tableBody');
+            _renderKillNote('rankingKillNote');
 
             // Build previousData map for quick lookup
             const prevMap = new Map(previousData.map(p => [p.player, p]));
@@ -18457,7 +18460,7 @@
                 return `
                     <tr class="${rankRowClass}" onclick="showPlayerDetails(${jsonAttr(player.player)})">
                         <td class="rank rank-${player.rank <= 3 ? player.rank : 'other'}">${rankDisp}</td>
-                        <td><strong>${player.player}</strong></td>
+                        <td><strong>${player.player}</strong>${_killBadge(_killCountOf(player), { withCount: true })}</td>
                         <td>
                             <div style="display: flex; flex-direction: column; gap: 2px;">
                                 <span>${formatDamage(player.damage)}</span>
@@ -19476,6 +19479,50 @@
             return { classic: fururiBaseMap, mean: window.fururiBaseMapMean, median: window.fururiBaseMapMedian };
         }
 
+        // ===== 締め凸 (そのボスを倒した凸) の表記 =====
+        // ゲームは残HPを超えたダメージを記録しないので、締め凸の数値は**実力より小さい**。
+        // 実績・ふるり値はその記録値をそのまま使うため、締めを引き受けた人ほど低く出る
+        // (2026-09 は イオ が3凸とも締め凸だった)。数値は動かさず、印と注記で分かるようにする。
+        //
+        // ★ 判定は BlaBlaLINK が赤字で出している事実 (月次JSON の attacks[].isKill) だけを使う。
+        //   「合計==HPのとき最小の凸が締め」という推定は実データで外れたので採用しない
+        //   (P.S.I.D. Lv2 の実際の締めは STREKOZA 34.24B・最小は銀狐リン 32.82B — 2026-09-06 検証)。
+        // ★ isKill が無い過去シーズン (拡張 v2.4 以前) は **null = 不明**。false と混ぜないこと —
+        //   混ぜると「締め凸ゼロのシーズン」に見えてしまう
+        const KILL_NOTE = 'このボスを倒した凸 (締め凸)。残りHP分しか記録されないため、実際の火力より小さい数字になっています';
+        // 表の下の注記。締め凸が1件も無いシーズン・フラグを持たない過去シーズンでは出さない
+        function _renderKillNote(elId) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            if (!_seasonHasKillFlags()) { el.style.display = 'none'; return; }
+            const people = (currentData || []).filter(p => _killCountOf(p) > 0);
+            const total = people.reduce((s, p) => s + _killCountOf(p), 0);
+            if (total === 0) { el.style.display = 'none'; return; }
+            const names = people
+                .sort((a, b) => _killCountOf(b) - _killCountOf(a))
+                .map(p => `${escapeHtml(p.player)}${_killCountOf(p) > 1 ? ` (${_killCountOf(p)}凸)` : ''}`)
+                .join('、');
+            el.innerHTML = `<strong>締</strong> = ボスを倒した凸 (${total}件)。`
+                + `<strong>残りHP分しか記録されない</strong>ため、この人たちの数字は実際の火力より小さく出ています — ${names}`;
+            el.style.display = 'block';
+        }
+        function _attackIsKill(a) { return !!(a && a.isKill === true); }
+        function _killCountOf(player) {
+            return (player && Array.isArray(player.attacks) ? player.attacks : []).filter(_attackIsKill).length;
+        }
+        // シーズンが締め凸フラグを持っているか (持たない過去データでは注記自体を出さない)
+        function _seasonHasKillFlags() {
+            return (currentData || []).some(p => (p.attacks || []).some(a => a && a.isKill !== undefined && a.isKill !== null));
+        }
+        function _killBadge(n, opts = {}) {
+            if (!n) return '';
+            const label = opts.withCount && n > 1 ? `締 ${n}` : '締';
+            const title = opts.withCount && n > 1
+                ? `3凸のうち ${n}凸が締め凸。${KILL_NOTE}`
+                : KILL_NOTE;
+            return `<span title="${escapeHtml(title)}" style="display:inline-block;margin-left:5px;padding:1px 6px;border-radius:999px;font-size:9.5px;font-weight:900;color:#B45309;background:rgba(245,158,11,0.16);vertical-align:middle;white-space:nowrap;">${label}</span>`;
+        }
+
         function calculateFururiScore(playerDamage, playerSLv, basePlayer, mode = 'classic') {
             return fururiDomain.calcFururiScore({
                 playerDamage, playerSLv, basePlayer, mode,
@@ -19555,6 +19602,7 @@
 
         function renderFururiRanking() {
             const tbody = document.getElementById('fururiRankingBody');
+            _renderKillNote('fururiKillNote');
             // モードヒントを毎回更新 (ページ初回も反映)
             const hintEl = document.getElementById('fururiModeHint');
             if (hintEl) hintEl.textContent = FURURI_MODE_HINTS[currentFururiMode] || '';
@@ -19594,7 +19642,7 @@
                     return `
                         <tr style="${rowStyle}">
                             <td style="text-align: center; font-weight: 700;">
-                                ${player.player}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}
+                                ${player.player}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}${_killBadge(_killCountOf(player), { withCount: true })}
                             </td>
                             <td style="text-align: right;">
                                 <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
@@ -19628,7 +19676,7 @@
                     const sameCount = (p.attacks || []).filter(x => x.bossCode === code).length;
                     const sameIndex = (p.attacks || []).filter((x, i) => x.bossCode === code && i <= idx).length;
                     const label = sameCount > 1 ? `${p.player} (${sameIndex}凸目)` : p.player;
-                    rows.push({ player: p.player, label, syncLevel: p.syncLevel, damage: a.damage, score });
+                    rows.push({ player: p.player, label, syncLevel: p.syncLevel, damage: a.damage, score, isKill: _attackIsKill(a) });
                 });
             });
             rows.sort((a, b) => b.score - a.score);
@@ -19644,7 +19692,7 @@
                 return `
                     <tr style="${rowStyle}">
                         <td style="text-align: center; font-weight: 700;">
-                            ${r.label}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}
+                            ${r.label}${isBase ? ' <span style="font-size: 11px; color: #14161A;">(基準)</span>' : ''}${_killBadge(r.isKill ? 1 : 0)}
                         </td>
                         <td style="text-align: right;">
                             <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">

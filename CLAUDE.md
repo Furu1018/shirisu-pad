@@ -142,6 +142,7 @@ node tests/plan-hp-modal.mjs  # ⚔️戦闘予想モーダルの実行テスト
 node tests/check-raid-event-hooks.mjs  # 戦況の通知フックの網羅チェック
 node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカーの実行テスト
 node tests/member-board.mjs   # 👥 メンバー状況ボードの描画 (_mbPaint) の実行テスト
+node tests/kill-badge.mjs     # 締め凸「締」バッジ・注記の実行テスト (実データ整合も見る)
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
@@ -201,6 +202,16 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
   さらに月次JSON到着時に確定SLvを該当シーズンへ自動同期 (supabaseSyncSlvFromJson、差分のみ・冪等)
 - ダメージは `_raw` (生値) と B単位 (10億=1B) が混在。表示はほぼ B 単位
 - 比較・ふるり値タブの対象は「完了した実シーズン」のみ (is_test=false, is_active=false)
+- **締め凸 (撃破した凸) は月次JSON の `attacks[].isKill`**。BlaBlaLINK が撃破した凸のダメージを
+  **赤字**で出しているのを、Chrome拡張 (`~/Desktop/NIKKE/nikke-analytics-extension` v4.8.1〜) が
+  文字色から判定して JSON に載せる (`metadata.hasKillFlags: true`)。
+  ゲームは残HPを超えたダメージを記録しないので、**締め凸の数値は実力より小さい** —
+  実績・ふるり値の行に「締」バッジと注記を出すのはこのため (数値自体は動かさない)。
+  ★ **推定してはいけない**: 「合計==HPのとき最小の凸が締め」は実データで外れた
+  (P.S.I.D. Lv2 の実際の締めは STREKOZA 34.24B・最小は銀狐リン 32.82B)。
+  締め凸は最小の凸とは限らず、凸の時系列順が無いと特定できない。
+  ★ `isKill` が無い過去シーズン (拡張 v2.4 以前) は **null = 不明**。false と混ぜると
+  「締め凸ゼロのシーズン」に見える。判定は `_attackIsKill` / `_seasonHasKillFlags` に集約
 - **BlaBlaLINK スクショの情報量**: ユニオン全体画面は「メンバー別の凸回数と合計ダメージ」のみで
   **どのボスへの凸かは写らない** → 全体画面からの凸自動登録は不可 (attacks はボス必須)。
   全体画面は「提出漏れの検出」まで、凸登録は個人の凸一覧画面 (ボスが写る) で行う役割分担
