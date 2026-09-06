@@ -2015,12 +2015,6 @@
         .dc-rem-cell.unset {
             color: #C9CED3; font-weight: 900; background: transparent;
         }
-        /* 参考値 (2026-09-06): いまのボスレベルでは測定Lv不足だが、値は必ず見せる。
-           括弧付き + 薄色 + 属性色の背景を消して「計算に入っていない」ことを示す */
-        .dc-rem-cell.weak {
-            color: #A4AAB0 !important; background: transparent !important;
-            font-size: 9.5px; font-weight: 700;
-        }
         /* 運営除外 (35): 提出は残るがプラン等には使われない行。🧹整理モードでは ✕ (除外) / ↩ (解除) を左上に重ねる */
         .dc-rem-cell.excl {
             color: #B6BBC1; background: transparent; text-decoration: line-through;
@@ -3456,7 +3450,6 @@
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">最適凸プラン算出</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button id="opsPlanStartModeBtn" onclick="toggleOpsPlanStartMode()" title="プランの起点時刻: 当日中は「今から」、前日の準備は「朝5時から」でレイド日フルのプランを組めます" style="padding:7px 11px;border-radius:8px;border:1px dashed rgba(20,22,26,0.18);background:#fff;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">🕐 今から</button>
-                        <button id="opsPlanIgnoreLevelsBtn" onclick="toggleOpsPlanIgnoreLevels()" title="測定レベルの扱い: 「厳格」は記録レベル以下のボスにだけ使う (既定)。「無視」は Lv1 測定も全レベルに流用する緊急モード (提出の多くが Lv1 のみで未消化凸が大量に出るとき用。削り切り予測は楽観的になる)" style="padding:7px 11px;border-radius:8px;border:1px dashed rgba(20,22,26,0.18);background:#fff;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">📏 測定Lv厳格</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:#14161A;color:#fff;font-size:11px;font-weight:800;cursor:pointer;"><span data-sp-icon="users" data-sp-size="12"></span> 全員</button>
                         <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
                         <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,#7A5AF8,#5B2BE0);color:#fff;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(108,66,240,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
@@ -11707,15 +11700,12 @@
                 if (typeof window.supabaseLoadPlayerDamages === 'function') {
                     const rows = await window.supabaseLoadPlayerDamages(id.id);
                     const byAttr = {};
-                    // ★ damage_b は levels の最大値なので、そのまま使うと
-                    //   「Lv1限定30B / Lv4用15B」の編成で Lv4 の凸に 30B 削れる予測が出る。
-                    //   いまのレイドレベルで**使える**測定 (キー'0' または キー≥L) から選ぶ
-                    //   (Codex指摘 2026-08-12)
-                    const curLv = Number(ctx?.season?.current_level) || 1;
+                    // 測定ボスレベルは廃止した (2026-09-06) ので、レベルによる出し分けはしない。
+                    // 廃止前の複数測定が残っている行は代表値 (中央値) に畳む
                     const ml = window.mockLevelsDomain || null;
                     (rows || []).forEach(r => {
                         const v = ml
-                            ? (ml.bestAtLevel(r.levels, curLv) ?? 0)
+                            ? (ml.representativeDamage(ml.normLevels(r.levels, r.damage_b, r.boss_level)) ?? 0)
                             : (Number(r.damage_b) || 0);
                         if (!(v > 0)) return;
                         // 1属性2編成のときは「そのレベルで使える方」のベスト値を採用
@@ -14288,24 +14278,15 @@
                 return scaled > 0 ? dmgB / scaled : null;
             };
             const fururiMode = _opsRemainingMode === 'fururi';
-            // いまのレベルで「実際に使える値」(v) と、測定レベルを問わない最良値 (vAny) の両方を出す
-            // (レベル別測定 31 対応)。
-            // ★ 2026-09-06 ハード日のFB: 「Lv不足」で値を伏せると、Lv2以降で残メンバーの火力が
-            //   一切見えなくなり「誰に締めを頼むか」を運営が判断できない。**値は必ず見せる** —
-            //   そのレベルで使えないことは括弧付き・薄色 (weak) で示すに留める。
-            //   📏測定Lv無視 (緊急モード) が ON のときはソルバーもこの値を使うので通常表示に戻す
-            const remCurLv = Number(opsStore.get()?.season?.current_level) || 1;
+            // 提出の代表ダメージ。測定ボスレベルは廃止した (2026-09-06) ので、
+            // 「このレベルでは使えない」という状態はもう無い (weak は常に false)。
+            // 廃止前の複数測定が残っている行は代表値 (中央値) に畳む
             const remML = window.mockLevelsDomain || null;
             const resolvedDmgOf = (lo) => {
                 const raw = Number(lo.dmgB) || 0;
-                if (!remML) return { v: raw, vAny: raw, weak: false };
+                if (!remML) return { v: raw };
                 const lvs = remML.normLevels(lo.levels, lo.dmgB, lo.level);
-                const strict = lvs ? (remML.bestAtLevel(lvs, remCurLv) ?? 0) : 0;
-                // Lv1 で解決 = キー'0'とキー≥1 の全部が対象 = 測定レベルを問わない最良値
-                const any = lvs ? (remML.bestAtLevel(lvs, 1) ?? raw) : raw;
-                if (strict > 0) return { v: strict, vAny: any, weak: false };
-                if (_opsPlanIgnoreLevels && any > 0) return { v: any, vAny: any, weak: false };
-                return { v: 0, vAny: any, weak: any > 0 };
+                return { v: lvs ? (remML.representativeDamage(lvs) ?? 0) : raw };
             };
             // 属性ごとの編成一覧 (1属性複数編成対応)。loadouts が無い旧データはベスト値1件に劣化。
             // 運営除外 (35) の行は通常は巡回に入れない (使えない値を見せない)。
@@ -14356,13 +14337,10 @@
                     const undo = `<button type="button" class="dc-rem-x undo" onclick="event.stopPropagation();handleOpsRemUnexclude(${Number(p.id)}, '${attr.key}', ${shownSlot})" title="除外を解除 (プラン・締め凸・事前比較に戻す)">↩</button>`;
                     return `<div class="dc-rem-cell excl tidy" data-flip="${flipKey}"${onclickX} title="${escapeHtml(exclTitleOf(shown, shownSlot))}${has2 ? ` / タップで編成を切替 (${los.length}編成)` : ''}">除外${has2 ? `<span class="dc-rem-slot">${SLOT_JP[shownSlot] || '①'}</span>` : ''}${undo}</div>`;
                 }
-                // v = いまのレベルで使える値 / vAny = 測定レベルを問わない最良値 / weak = 参考値表示
-                // ★ 凸済み判定が先 — 使えない判定を先に返すと凸済みの属性が「空き枠」に見える (Codex指摘)
-                const { v, vAny, weak } = resolvedDmgOf(shown);
-                // 表示に使う値: 使える値があればそれ、無ければ測定レベルを問わない値 (参考値)
-                const shownV = v > 0 ? v : vAny;
+                // ★ 凸済み判定が先 — 値の有無を先に返すと凸済みの属性が「空き枠」に見える (Codex指摘)
+                const shownV = resolvedDmgOf(shown).v;
                 if (used.has(attr.key)) {
-                    // 凸済みセルは「何を出したか」の記録なので、測定レベルに関係なく値を見せる
+                    // 凸済みセルは「何を出したか」の記録
                     const usedText = shownV > 0
                         ? (fururiMode ? (fururiOf(p, attr.key, shownV) != null ? fururiOf(p, attr.key, shownV).toFixed(2) : '—') : shownV.toFixed(1))
                         : '—';
@@ -14380,14 +14358,7 @@
                         : `${attr.name}PT ふるり値算出不可 (基準データかSLv不足)`;
                 } else {
                     text = shownV.toFixed(1);
-                    tip = `${attr.name}PT ${shownV.toFixed(1)}B (Lv${remCurLv}時点で使える値)`;
-                }
-                if (weak) {
-                    // 参考値: 値は見せるが「いまのレベルの計算には入っていない」ことを括弧と薄色で示す
-                    const measured = Number(shown.level) || null;
-                    text = `(${text})`;
-                    tip = `${attr.name}PT ${shownV.toFixed(1)}B — ${measured ? `Lv${measured}測定` : 'レベル未指定'}のため Lv${remCurLv} のプラン計算には入っていません (参考値)。`
-                        + ` 使うなら 📏測定Lv無視 に切り替えるか、Lv${remCurLv}以上で測り直しを`;
+                    tip = `${attr.name}PT ${shownV.toFixed(1)}B`;
                 }
                 // 配信/算出プランで採用された属性か (2編成ならどちらが採用されたかまで)
                 const picked = _opsPlanPicks.get(flipKey);
@@ -14398,7 +14369,7 @@
                 }
                 const badge = has2
                     ? `<span class="dc-rem-slot${pickedOther ? ' pickhint' : ''}">${SLOT_JP[shownSlot] || '①'}</span>` : '';
-                const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}${_opsRemTidy ? ' tidy' : ''}${weak ? ' weak' : ''}`;
+                const cls = `dc-rem-cell${has2 ? ' has2' : ''}${pickedVisible ? ' planpick' : ''}${_opsRemTidy ? ' tidy' : ''}`;
                 const onclick = has2 ? ` onclick="flipOpsRemCell(${Number(p.id)}, '${attr.key}')"` : '';
                 // 光の色は模擬タブと同じ DC_ATTR_COLORS に揃える (PT_ATTRS.color とは別定義 — Codex指摘)
                 const glowColor = DC_ATTR_COLORS[attr.key] || attr.color;
@@ -14886,27 +14857,25 @@
                     // ★ 締め凸は「いまのレベル」のボスへの依頼なので、測定レベルが届かない
                     //   編成は候補にしない (ソルバーの usableAtLevel と同じルール)。
                     //   これを外すと Lv1 でしか測っていない人に Lv3 の締めを頼んでしまう
-                    // 「測定Lv無視」(緊急モード) のときは Lv1 扱いで解決 = 全測定が候補になる (プランと同じ扱い)
-                    const curLv = _opsPlanIgnoreLevels ? 1 : (Number(season?.current_level) || 1);
+
                     const usedN = (p.attacks || []).filter(a => bossWeaknessByNum.get(a.boss_number) === attrKey).length;
-                    // レベル別測定 (31): 「いまのレベルで使える最良値」に解決してから並べる。
-                    // 値もレベル解決値を使う — Lv1測定の高い値で締めを頼むと実際は届かない
+                    // 測定ボスレベルは廃止した (2026-09-06) ので、レベルによる出し分けはしない。
+                    // 廃止前の複数測定が残っている行は代表値 (中央値) に畳む
                     const fml = window.mockLevelsDomain || null;
                     const los = (p.loadoutsByAttr?.[attrKey] || [])
                         .map(lo => {
                             if (!fml) {
-                                const ok = Number(lo.dmgB) > 0 && (lo.level == null || Number(lo.level) >= curLv);
-                                return ok ? { ...lo, resolvedB: Number(lo.dmgB) } : null;
+                                const v = Number(lo.dmgB) || 0;
+                                return v > 0 ? { ...lo, resolvedB: v } : null;
                             }
                             const lvs = fml.normLevels(lo.levels, lo.dmgB, lo.level);
-                            const v = lvs ? fml.bestAtLevel(lvs, curLv) : null;
+                            const v = lvs ? fml.representativeDamage(lvs) : null;
                             return v > 0 ? { ...lo, resolvedB: v } : null;
                         })
                         .filter(Boolean)
                         .sort((x, y) => y.resolvedB - x.resolvedB)
                         .slice(usedN);
-                    // damagesByAttr へのフォールバックは「ロードアウト情報が全く無い旧データ」限定。
-                    // 全編成がレベル不足で消えたケースまで倒すと、レベル絞り込みが素通りする
+                    // damagesByAttr へのフォールバックは「ロードアウト情報が全く無い旧データ」限定
                     const hasLoadoutData = (p.loadoutsByAttr?.[attrKey] || []).length > 0;
                     const dmg = los.length > 0
                         ? los[0].resolvedB
@@ -15662,39 +15631,6 @@
                 computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
             }
         }
-        // 測定レベルの扱い (緊急モード・端末ごとに記憶):
-        //   false = 厳格 (既定。記録レベル L の編成は対象レベル ≤ L にだけ使う)
-        //   true  = 無視 (全測定を全レベルで使う。Lv1 測定を Lv3 に流用するので楽観的)
-        // 2026-09-05 第44回初日: 0行からの再提出で 114件中74件が Lv1 のみになり、厳格のままだと
-        // Lv2 以降に出せる人が属性あたり6〜9人しか残らず未消化49凸になった。その場しのぎ用
-        const _OPS_PLAN_IGNORE_LEVELS_KEY = 'shirisuko_ops_plan_ignore_levels';
-        let _opsPlanIgnoreLevels = false;
-        try { _opsPlanIgnoreLevels = localStorage.getItem(_OPS_PLAN_IGNORE_LEVELS_KEY) === '1'; } catch (_) { /* private mode 等 */ }
-        function _syncOpsPlanIgnoreLevelsBtn() {
-            const btn = document.getElementById('opsPlanIgnoreLevelsBtn');
-            if (!btn) return;
-            const on = _opsPlanIgnoreLevels;
-            btn.textContent = on ? '📏 測定Lv無視' : '📏 測定Lv厳格';
-            btn.style.background = on ? 'rgba(255,61,68,0.08)' : '#fff';
-            btn.style.color = on ? '#C0262C' : '#5A6068';
-            btn.style.borderColor = on ? 'rgba(255,61,68,0.45)' : 'rgba(20,22,26,0.18)';
-        }
-        function toggleOpsPlanIgnoreLevels() {
-            _opsPlanIgnoreLevels = !_opsPlanIgnoreLevels;
-            try { localStorage.setItem(_OPS_PLAN_IGNORE_LEVELS_KEY, _opsPlanIgnoreLevels ? '1' : '0'); } catch (_) { /* 記憶できなくても動作は続ける */ }
-            _syncOpsPlanIgnoreLevelsBtn();
-            // 表示中の締め凸候補も同じ規則で引き直す (無視→厳格に戻したとき Lv1測定の候補が
-            // 残ったまま依頼を送れてしまう — Codex指摘)
-            if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
-            // 残凸表のセルも同じトグルで参考値(括弧)⇄通常表示が切り替わるので引き直す。
-            // プラン未算出 (_opsLastPlan が無い) 状態では下の再算出が走らないため、ここで独立に呼ぶ (Codex指摘)
-            if (typeof renderOpsRemainingList === 'function') renderOpsRemainingList();
-            if (_opsLastPlan) {
-                // 直前と同じ対象範囲で再算出
-                computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
-            }
-        }
-        _syncOpsPlanIgnoreLevelsBtn();   // 記憶した状態をボタンに反映 (静的HTMLの既定は「厳格」表記)
         // snapshot を渡せば「そのロードで得た盤面」で算出する (並行ロード時に
         // opsStore が世代ガードで古い結果を保存しない契約のため、load() の戻り値を使う)
         function computeOptimalPlan(options = {}, snapshot = null) {
@@ -15707,7 +15643,6 @@
                 currentSlot: _opsPlanStartMode === 'day' ? 'h05' : getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
                 timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
-                ignoreLevels: _opsPlanIgnoreLevels,   // 緊急モード: 測定レベルの絞り込みを外す
             });
         }
 
@@ -16009,9 +15944,6 @@
             }).join('');
 
             const warnings = [];
-            if (plan.ignoreLevels) {
-                warnings.push('📏 <strong>測定レベルを無視</strong>して計算しています (Lv1 で測った値を Lv2 以降にもそのまま流用)。上位レベルのボスは防御が上がるため<strong>削り切りの予測は楽観的</strong>です。余裕を見て締め凸を早めに。');
-            }
             if (plan.anyTimeConstrained) {
                 warnings.push('⏰ 火力はあるのに戦闘可能時間が合わず削り切れないボスがあります。該当時間帯のメンバーへの声かけか、戦闘可能時間の更新依頼を。');
             }

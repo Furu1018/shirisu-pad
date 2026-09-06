@@ -627,73 +627,66 @@ test('凸済みの得意属性は再強制しない (編成②が残っていて
 // ---- 模擬の測定レベル (boss_level) --------------------------------------------
 // ルール: 記録レベル L の編成は「対象レベル ≤ L」にだけ使える。
 // level == null (レベル未指定 = 移行前の提出) は全レベルで使える。
-console.log('\nloadoutLevel:');
+console.log('\n測定レベルの廃止:');
 
-test('Lv1で測った編成は Lv2 のボスに割り当てられない', () => {
-    // Lv1 のボスは全滅済み → 割当は Lv2 から始まる。
-    // Lv1測定の編成しか無い人は Lv2 に出せないので、凸が余る
+// 2026-09-06: 模擬の「測定ボスレベル」は概念ごと廃止した。
+// 「Lv1で測った値をLv3に流用すると過大評価」という想定を実データが否定したため
+// (同一編成のレベル違い測定6件すべてが Lv1比96〜105%・実凸90件のSLv補正集計でも低下傾向なし)。
+// この想定でソルバーが候補を絞った結果、第44回は未消化49凸になった。
+
+test('★ Lv1で測った編成でも Lv2/Lv3 のボスに割り当てられる (廃止前は出せなかった)', () => {
+    // Lv1 のボスは全滅済み → 割当は Lv2 から始まる。廃止前はここで0凸になっていた
     const bs = [boss(1, 'fire', { remainingB: 0, totalB: 100 })];
     const p = player('A', { fire: 30 });
-    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1 }] };
+    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30 } }] };
     const plan = compute(makeInput(bs, [p], { currentLevel: 2 }));
     const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(used.length, 0, `Lv1測定の編成は Lv2 に出せないはず: ${used.length}凸`);
+    assert.equal(used.length, 1, `Lv1測定でも Lv2 に出せるはず: ${used.length}凸`);
+    assert.equal(used[0].dmgB, 30);
+});
+
+test('★ 記録レベルは結果に残さない (loadoutLevel は廃止)', () => {
+    const p = player('A', { fire: 30 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30 } }] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 20, totalB: 100 })], [p], { currentLevel: 3 }));
+    const a = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks))[0];
+    assert.equal(a.loadoutLevel, undefined, '測定レベルは概念ごと無くしたので結果に出さない');
+    assert.equal(plan.ignoreLevels, undefined, '緊急モードのフラグも廃止');
+});
+
+test('★ 複数レベルの測定が残っている既存データは中央値を使う (最大値だとブレの上振れを拾う)', () => {
+    const p = player('A', { fire: 40 });
+    // 廃止前に Lv1/Lv3/Lv4 で測った行。中央値は 30
+    p.loadoutsByAttr = { fire: [{ dmgB: 40, team: ['a','b','c','d','e'], slot: 1, levels: { '1': 40, '3': 30, '4': 20 } }] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
+    const a = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks))[0];
+    assert.equal(a.dmgB, 30, `中央値の30が使われるはず: ${a.dmgB}`);
+});
+
+test('★ 偶数個の測定は中央2つの平均', () => {
+    const p = player('A', { fire: 40 });
+    p.loadoutsByAttr = { fire: [{ dmgB: 40, team: ['a','b','c','d','e'], slot: 1, levels: { '1': 40, '2': 30, '3': 20, '4': 10 } }] };
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 1 }));
+    const a = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks))[0];
+    assert.equal(a.dmgB, 25, `(20+30)/2 = 25 のはず: ${a.dmgB}`);
 });
 
 test('unusedSummary: 未消化の理由別合計 (模擬未提出は「未提出」として分ける・凸数の多い順・key/label 付き)', () => {
     // 2026-09-05: 留意点の1行目に「未消化 25凸 — 模擬未提出 12 · キャラ被り 7 …」を出すための集計
     const bs = [boss(1, 'fire', { remainingB: 0, totalB: 100 })];
     const none = player('未提出', {});                      // 模擬を1属性も出していない
-    const lv1 = player('Lv1だけ', { fire: 30 });            // Lv1 測定のみ → Lv2 に届かない
-    lv1.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30 } }] };
-    const plan = compute(makeInput(bs, [none, lv1], { currentLevel: 2 }));
-    assert.equal(plan.unusedAttacks, 6);
+    const one = player('1属性だけ', { fire: 30 });          // 灼熱1つだけ → 使い切ると余る
+    one.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, levels: { '1': 30 } }] };
+    const plan = compute(makeInput(bs, [none, one], { currentLevel: 2 }));
+    // 1属性だけの人は Lv2 に1凸だけ出せる (測定レベルでは絞られない) → 残り2凸 + 未提出3凸
+    assert.equal(plan.unusedAttacks, 5);
     const byName = Object.fromEntries(plan.unusedDetail.map(d => [d.name, d]));
     assert.equal(byName['未提出'].key, 'noSubmission');
     assert.equal(byName['未提出'].label, '模擬未提出');
     assert.match(byName['未提出'].reason, /模擬未提出/, '旧文言「提出属性を使い切り」だと未提出と区別がつかない');
-    assert.equal(byName['Lv1だけ'].key, 'level');
-    assert.equal(byName['Lv1だけ'].label, '測定Lv不足');
+    assert.equal(byName['1属性だけ'].key, 'attrsExhausted');
     assert.deepEqual(plan.unusedSummary.map(s => [s.key, s.attacks, s.members.map(m => m.name)]),
-        [['level', 3, ['Lv1だけ']], ['noSubmission', 3, ['未提出']]], '凸数が同じなら key の辞書順で決定的 (level < noSubmission)');
-    // 無視モードなら Lv1だけ の人は出せる → 未提出だけが残る
-    const relaxed = compute(makeInput(bs, [none, lv1], { currentLevel: 2, ignoreLevels: true }));
-    assert.deepEqual(relaxed.unusedSummary.map(s => s.key), ['noSubmission', 'attrsExhausted'].filter(k => relaxed.unusedSummary.some(s => s.key === k)));
-    assert.equal(relaxed.unusedSummary.find(s => s.key === 'noSubmission').attacks, 3);
-});
-
-test('ignoreLevels: Lv1測定の編成でも Lv2 に出せる (緊急モード・記録レベルは表示用に残る)', () => {
-    // 2026-09-05 第44回初日: 提出の大半が Lv1 のみで未消化49凸 → 測定レベルを無視するモードを追加
-    const bs = [boss(1, 'fire', { remainingB: 0, totalB: 100 })];
-    const p = player('A', { fire: 30 });
-    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30 } }] };
-    const plan = compute(makeInput(bs, [p], { currentLevel: 2, ignoreLevels: true }));
-    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(used.length, 1, `ignoreLevels なら Lv1測定でも Lv2 に出せるはず: ${used.length}凸`);
-    assert.equal(used[0].dmgB, 30);
-    assert.equal(used[0].loadoutLevel, 1, '楽観値だと分かるよう記録レベルは Lv1 のまま返す');
-    assert.equal(plan.ignoreLevels, true, 'UI が注意書きを出せるよう結果にフラグを含める');
-    assert.equal(plan.unusedAttacks, 2, '編成が1つなので残り2凸は未消化のまま (キャラ被りの規則は無視モードでも変えない)');
-});
-
-test('ignoreLevels: レベル違い測定は最良値 (Lv1 の高い値) が選ばれる', () => {
-    // 厳格なら Lv3 には 25B しか使えないが、無視モードでは 40B (Lv1測定) が最良値
-    const p = player('A', { fire: 40 });
-    p.loadoutsByAttr = { fire: [
-        { dmgB: 40, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 40 } },
-        { dmgB: 25, team: ['f','g','h','i','j'], slot: 2, level: 3, levels: { '3': 25 } },
-    ] };
-    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3, ignoreLevels: true }));
-    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    // キャラの被らない2編成なので同属性2凸 (40B + 25B) が出せる。厳格なら 25B の1凸だけ
-    assert.equal(used.length, 2, `無視モードでは2編成とも出せるはず: ${used.length}凸`);
-    assert.deepEqual(used.map(a => a.dmgB).sort((a, b) => b - a), [40, 25], '40B (Lv1測定) が候補に入る');
-    // 既定 (フラグ無し) は従来どおり厳格 — 回帰防止
-    const strict = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
-    const strictUsed = strict.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(strictUsed.length, 1);
-    assert.equal(strictUsed[0].dmgB, 25);
-    assert.equal(strict.ignoreLevels, false);
+        [['noSubmission', 3, ['未提出']], ['attrsExhausted', 2, ['1属性だけ']]], '凸数の多い順');
 });
 
 test('Lv2で測った編成は Lv2 にも Lv1 にも使える (高レベル測定は下位互換)', () => {
@@ -704,50 +697,6 @@ test('Lv2で測った編成は Lv2 にも Lv1 にも使える (高レベル測�
         const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
         assert.equal(used.length, 1, `Lv2測定の編成は Lv${lv} で使えるはず`);
     }
-});
-
-test('レベル未指定 (移行前の提出) は全レベルで使える', () => {
-    // ★ ここが崩れると既存235行が Lv2 以降で一切使えなくなり配信プランが壊れる
-    const p = player('A', { fire: 30 });
-    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1 }] };   // level 無し
-    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 20, totalB: 100 })], [p], { currentLevel: 3 }));
-    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(used.length, 1, 'レベル未指定は Lv3 でも使えるはず');
-    assert.equal(used[0].loadoutLevel, null);
-});
-
-test('同じ属性でレベル違いの編成を出すと、対象レベルで使える方が選ばれる', () => {
-    // Lv1測定 40B (高い) と Lv3測定 25B (低い)。Lv3 のボスには 25B しか使えない
-    const p = player('A', { fire: 40 });
-    p.loadoutsByAttr = { fire: [
-        { dmgB: 40, team: ['a','b','c','d','e'], slot: 1, level: 1 },
-        { dmgB: 25, team: ['f','g','h','i','j'], slot: 2, level: 3 },
-    ] };
-    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
-    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(used.length, 1);
-    assert.equal(used[0].dmgB, 25, `Lv3 で使えるのは Lv3測定の25Bだけ: ${used[0].dmgB}`);
-    assert.equal(used[0].loadoutLevel, 3);
-});
-
-test('Lv3で測った編成は Lv4 (ボス5・無限) には出せない', () => {
-    // Lv4 は最上位。Lv3測定では届かない = ボス5への凸が発生しない
-    const bs = [
-        boss(1, 'fire', { tier: 'lord', remainingB: 0 }),
-        boss(2, 'water', { tier: 'lord', remainingB: 0 }),
-        boss(3, 'electric', { tier: 'tyrant', remainingB: 0 }),
-        boss(4, 'iron', { tier: 'lord', remainingB: 0 }),
-        boss(5, 'wind', { tier: 'tyrant', remainingB: 0 }),
-    ];
-    const p = player('A', { wind: 30 });
-    p.loadoutsByAttr = { wind: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 3 }] };
-    const plan = compute(makeInput(bs, [p], { currentLevel: 3 }));
-    assert.equal(plan.lv4Open, true);
-    const lv4 = plan.levels[plan.levels.length - 1];
-    assert.equal(lv4.bosses[0].attacks.length, 0, 'Lv3測定ではボス5に出せないはず');
-    // 運営が打ち手を判断できるよう、理由が「測定レベル不足」と分かること
-    const d = (plan.unusedDetail || []).find(x => x.name === 'A');
-    assert.ok(d && /Lv4/.test(d.reason), `理由に Lv4 測り直しの案内が要る: ${d?.reason}`);
 });
 
 test('Lv4で測った編成はボス5に出せる (全額計上)', () => {
@@ -764,7 +713,6 @@ test('Lv4で測った編成はボス5に出せる (全額計上)', () => {
     const lv4 = plan.levels[plan.levels.length - 1];
     assert.equal(lv4.bosses[0].attacks.length, 1);
     assert.equal(lv4.bosses[0].attacks[0].usedB, 30);
-    assert.equal(lv4.bosses[0].attacks[0].loadoutLevel, 4);
 });
 
 test('ソルバーはスロット番号に依存しない (枠数を変えても壊れない)', () => {
@@ -819,20 +767,6 @@ test('ボス5弱点が得意属性で Lv4 未満測定でも、得意属性が�
         .filter(x => x.memberName === 'A');
     assert.equal(mine.length, 1, 'A は残1凸を使うはず');
     assert.equal(mine[0].w, 'wind', `得意属性 wind に割り当てられるはず: ${mine[0].w}`);
-});
-
-test('レベル指定と未指定が混ざっても、使える方だけが選ばれる', () => {
-    // 「未指定 (全レベル可) の低火力」と「Lv1限定の高火力」が同居するケース。
-    // Lv3 のボスには未指定の方しか使えない
-    const p = player('A', { fire: 40 });
-    p.loadoutsByAttr = { fire: [
-        { dmgB: 40, team: ['a','b','c','d','e'], slot: 1, level: 1 },
-        { dmgB: 12, team: ['f','g','h','i','j'], slot: 2 },          // 未指定
-    ] };
-    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
-    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(used.length, 1);
-    assert.equal(used[0].dmgB, 12, `Lv3 で使えるのは未指定の12Bだけ: ${used[0].dmgB}`);
 });
 
 // ---- Lv4: ボス5・HP無限 (Lv3踏破で即日開放) ----------------------------------
@@ -2538,34 +2472,6 @@ test('gbCompare: 属性の順序違いの同一組は重複除去される', () 
 // ---- レベル別測定値 (levels マップ — 31_player_damages_levels) ---------------
 console.log('\nloadout levels:');
 
-test('levels{1:30,4:12}: Lv1のボスには30が、Lv2のボスには12が使われる', () => {
-    const mk = () => {
-        const p = player('A', { fire: 30 });
-        p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: 1, levels: { '1': 30, '4': 12 } }] };
-        return p;
-    };
-    const p1 = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [mk()], { currentLevel: 1 }));
-    const a1 = p1.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(a1.length, 1);
-    assert.equal(a1[0].dmgB, 30, `Lv1 では Lv1測定の30を使う: ${a1[0].dmgB}`);
-    assert.equal(a1[0].loadoutLevel, 1);
-    const p2 = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [mk()], { currentLevel: 2 }));
-    const a2 = p2.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(a2.length, 1, 'Lv4測定があるので Lv2 にも出せる');
-    assert.equal(a2[0].dmgB, 12, `Lv2 では Lv4測定の12に落ちる (Lv1の30は過大評価): ${a2[0].dmgB}`);
-    assert.equal(a2[0].loadoutLevel, 4, '採用した測定のレベルが出る');
-});
-
-test('levels のキー"0" (未指定) は全レベルで使え、レベル付き測定より高ければ勝つ', () => {
-    const p = player('A', { fire: 30 });
-    p.loadoutsByAttr = { fire: [{ dmgB: 30, team: ['a','b','c','d','e'], slot: 1, level: null, levels: { '0': 20, '1': 30 } }] };
-    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 3 }));
-    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
-    assert.equal(used.length, 1);
-    assert.equal(used[0].dmgB, 20, `Lv3 では "0" の20だけが使える (Lv1の30は不可): ${used[0].dmgB}`);
-    assert.equal(used[0].loadoutLevel, null);
-});
-
 test('Lv4割当は「Lv4で解決した値」の argmax (静的な最大値順の先頭採用に戻すと落ちる)', () => {
     const bs = [
         boss(1, 'fire', { tier: 'lord', remainingB: 0 }),
@@ -2597,14 +2503,14 @@ test('dmgB=0 でも levels に有効な測定があれば使える (先行フィ
     assert.equal(used[0].dmgB, 12);
 });
 
-test('dmgB と levels が矛盾する入力は levels 側の最大値に正規化される (防御)', () => {
+test('dmgB と levels が矛盾する入力は levels 側が正 (防御)', () => {
+    // 互換ミラーの damage_b がずれていても、実測値そのものである levels を信じる
     const p = player('A', { fire: 5 });
-    p.loadoutsByAttr = { fire: [{ dmgB: 5, team: ['a','b','c','d','e'], slot: 1, level: null, levels: { '2': 18 } }] };
+    p.loadoutsByAttr = { fire: [{ dmgB: 5, team: ['a','b','c','d','e'], slot: 1, levels: { '2': 18 } }] };
     const plan = compute(makeInput([boss(1, 'fire', { remainingB: 100, totalB: 300 })], [p], { currentLevel: 1 }));
     const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
     assert.equal(used.length, 1);
     assert.equal(used[0].dmgB, 18, `levels の 18 が正: ${used[0].dmgB}`);
-    assert.equal(used[0].loadoutLevel, 2);
 });
 
 // ---- popularTeams ドメイン (人気編成 = 模擬 + 過去シーズンの凸の合算) --------

@@ -153,10 +153,6 @@
         if (!season || !Array.isArray(bosses) || bosses.length === 0) return null;
         const onlyAvailableNow = !!input.onlyAvailableNow;
         const timeAware = !!input.timeAware;
-        // 測定レベルの絞り込みを外す緊急モード (2026-09-05 第44回初日: 提出114件中74件が Lv1 のみで
-        // 未消化49凸になった)。true なら記録レベルに関係なく全測定を全レベルで使う (最良値)。
-        // 値は楽観的 (Lv1 測定を Lv3 に流用) なので UI 側で必ず注意書きを出すこと
-        const ignoreLevels = input.ignoreLevels === true;
         const startLevel = season.current_level || 1;
 
         // 時間軸: 現在時刻 (currentSlot) からリセット (HOUR_ORDER 末尾) まで
@@ -219,27 +215,24 @@
         // ===== 模擬の測定レベルによる絞り込み (ユーザー決定 2026-08-10) =====
         // 記録レベル L の編成は **対象レベル ≤ L** にだけ使う。
         // 高難度で出せた出力は低難度なら確実に出せる (下限として保証される) が、
-        // 逆に Lv1 で測った値を Lv3 に流用すると過大評価になり、当日「倒せるはずが倒れない」が起きる。
-        // ★ level == null = レベル未指定 (30_player_damages_level.sql 適用前の提出) は
-        //   従来どおり全レベルで使える。ここを Lv1 扱いにすると既存の提出が
-        //   Lv2 以降で一切使えなくなり配信プランが崩壊する
-        // ★ 31_player_damages_levels 以降、ロードアウトはレベル別測定値 lo.levels
-        //   ({'0':14.2,'4':12.5} — キー'0'=未指定) を持つ。対象レベル L で使える測定 =
-        //   キー'0' または キー≥L。その中の**最良値**を使う (レベル違い測定の使い分け)。
-        //   タイは '0' > 高レベル の順で決定的に (loadoutLevel の表示も同じ規則)
-        const resolveAtLevel = (lo, level) => {
-            let bestV = null, bestK = null;
+        // 提出の代表ダメージ。**対象レベルによらず同じ値**を返す。
+        // 測定レベルで候補を絞るのはやめた (2026-09-06 ユーザー決定) — 根拠と経緯は
+        // js/domain/mockLevels.js の representativeDamage を参照。
+        // 複数値を持つのは廃止前の既存データだけで、その場合は中央値を採る
+        // (最大値は試行のブレの上振れを固定してしまう)
+        const resolveDamage = (lo) => {
             const src = lo.levels;
-            for (const k of ['0', '4', '3', '2', '1']) {
+            const vals = [];
+            for (const k of ['0', '1', '2', '3', '4']) {
                 const v = src[k];
-                if (v === undefined) continue;
-                const kn = Number(k);
-                if (!ignoreLevels && kn !== 0 && kn < level) continue;   // ignoreLevels: 記録レベルを問わない
-                if (bestV === null || v > bestV) { bestV = v; bestK = kn === 0 ? null : kn; }
+                if (Number.isFinite(v) && v > 0) vals.push(v);
             }
-            return bestV === null ? null : { value: bestV, level: bestK };
+            if (vals.length === 0) return null;
+            vals.sort((a, b) => a - b);
+            const mid = Math.floor(vals.length / 2);
+            return vals.length % 2 === 1 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
         };
-        const usableAtLevel = (lo, level) => resolveAtLevel(lo, level) !== null;
+        const hasDamage = (lo) => resolveDamage(lo) !== null;
         // 編成の同一判定 (順不同)。表記揺れを吸収するため charKey で比較する
         const sameTeam = (a, b) => {
             if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || a.length !== b.length) return false;
@@ -469,13 +462,11 @@
         // opts.lv4Mandatory: { attr, canAfter(m) } — この属性の必須消化は Lv4 で満たせる前提で
         //   枠予約 (lockedNow) から除外する (canAfter な人のみ)。
         const runPass = (opts = {}) => {
-            // その属性で、キャラ被りせずに**そのレベルで**出せる編成が1つでも残っているか。
+            // その属性で、キャラ被りせずに出せる編成が1つでも残っているか。
             // ⚠ listCandidatesFor の除外条件と同じ式にすること (片方だけ変えると
-            //    「候補にはならないのに枠だけ予約される」状態が復活する)。
-            // ★ level を必ず渡すこと。渡し忘れると undefined >= 数値が false になり
-            //    usableAtLevel が全部 false = 誰も予約しない、という静かな退行になる
-            const canUseAttr = (m, attr, level) => (m.avail[attr] || []).some(c =>
-                usableAtLevel(c, level)
+            //    「候補にはならないのに枠だけ予約される」状態が復活する)
+            const canUseAttr = (m, attr) => (m.avail[attr] || []).some(c =>
+                hasDamage(c)
                 && !(m.anyTeamRegistered && c.team.length > 0
                     && c.team.some(x => hasUsedChar(m.usedChars, x))));
             const memberState = buildMemberState();
@@ -504,7 +495,7 @@
                     //   キャラ被りで全滅した人が、次のレベルの**最初の候補選定**で弾かれる。
                     //   候補が全部このロックで消えると applyPick が起きず再集計も走らないため、
                     //   そのレベルで1凸もできないまま終わる (Codex指摘 P1)
-                    && canUseAttr(m, k, L)).length;
+                    && canUseAttr(m, k)).length;
             });
             // メンバー状態のスナップショット — 踏破モードで失敗したら吸収モードでやり直すため
             const snapshot = memberState.map(m => ({
@@ -553,7 +544,7 @@
                             //   見ないと、キャラ被りで得意属性の編成が全滅した人が
                             //   出せない枠を予約し続け、出せる属性への凸まで封じられる
                             //   (2026-08-08 実データで4名が3凸目を消化できず・8凸が未使用のまま残った)
-                            && canUseAttr(m, k, L)).length;
+                            && canUseAttr(m, k)).length;
                     });
                 };
                 // t のボスに出せる最良 (スコア最小) の候補を探す
@@ -576,13 +567,10 @@
                         // 残HPが小さいボスには 2編成目 (低火力) の方がオーバーキルが小さい・
                         // 温存の機会費用が安いことがある (編成データが全く無い人は衝突チェック対象外)
                         for (const cand of list) {
-                            // 模擬の測定レベルが対象レベルに届かない編成は候補にしない
-                            // (Lv1 でしか測っていない編成を Lv2/Lv3 に出すと過大評価になる)。
-                            // レベル別測定がある編成は「対象レベルで使える最良値」で評価する
-                            const meas = resolveAtLevel(cand, L);
-                            if (!meas) continue;
+                            const dmg = resolveDamage(cand);
+                            if (dmg === null) continue;
                             if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
-                            let s = scoreOf(m, t.b.weakness, meas.value, t.rem, levelPos, slot.idx, openIdx, slot.flex, slot.mismatch);
+                            let s = scoreOf(m, t.b.weakness, dmg, t.rem, levelPos, slot.idx, openIdx, slot.flex, slot.mismatch);
                             // 温存パス: ボス5で入るはずの与ダメを失う機会費用 (B) を加算。
                             // オーバーキルと同じ単位なので W_OVER=1.0 と自然に比較される
                             if (opts.oppCostOf) s += opts.oppCostOf(m, t.b.weakness, cand);
@@ -590,9 +578,9 @@
                                 // 吸収モードの目的は credited 最大化そのもの。SLv 公平性や時間の
                                 // ペナルティを何Bもの与ダメと交換しない — オーバーキル最小・
                                 // 与ダメ大を主項にし、通常スコアはタイブレークに格下げする
-                                s = Math.max(0, meas.value - t.rem) - Math.min(meas.value, t.rem) * 0.01 + s * 0.001;
+                                s = Math.max(0, dmg - t.rem) - Math.min(dmg, t.rem) * 0.01 + s * 0.001;
                             }
-                            out.push({ pick: m, pickScore: s, pickHour: slot.idx, pickFlex: slot.flex, pickLo: cand, pickDmg: meas.value, pickLevel: meas.level, pickSlot: slot });
+                            out.push({ pick: m, pickScore: s, pickHour: slot.idx, pickFlex: slot.flex, pickLo: cand, pickDmg: dmg, pickSlot: slot });
                         }
                     }
                     // 安定ソート: スコア昇順 → 同点は列挙順 (メンバー順 × ロードアウトの ord) を維持。
@@ -672,9 +660,6 @@
                         timeMismatch: !!(timeAware && pickSlot?.mismatch),
                         nearestHourLabel: (timeAware && pickSlot?.mismatch && pickSlot.nearestIdx != null) ? hourLabelOf(pickSlot.nearestIdx) : null,
                         loadoutSlot: pickLo.slot,            // 2編成目なら 2 (表示用)
-                        // 採用した「測定」のレベル (null=未指定)。レベル別測定を持つ編成は
-                        // 実際に値を採った測定のキーを出す (編成のミラーレベルではない)
-                        loadoutLevel: (c.pickDmg !== undefined) ? c.pickLevel : (pickLo.level ?? null),
                         isBottleneck: false,                 // レベル確定後に付与
                     });
                     // 採用したキャラを使用済セットへ
@@ -714,8 +699,8 @@
                     // ★ 並べ方は初期化時 (buildMemberState) と同一にすること。
                     //   片方だけ slot を見ると、undo した瞬間に並びが変わって別の編成が選ばれる
                     m.avail[w].push(loMeta.get(atk)
-                        || { dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1, level: atk.loadoutLevel ?? null,
-                             levels: { [String(atk.loadoutLevel ?? 0)]: atk.dmgB }, ord: 0 });
+                        || { dmg: atk.dmgB, team: atk.team || [], slot: atk.loadoutSlot || 1,
+                             levels: { '0': atk.dmgB }, ord: 0 });
                     m.avail[w].sort((a, b) => b.dmg - a.dmg
                         || (a.slot ?? 1) - (b.slot ?? 1) || (a.ord ?? 0) - (b.ord ?? 0));
                     // 必須属性を消化した凸なら予約も戻す (後続の recountLocked で最終整合)
@@ -887,26 +872,23 @@
                 while (m.remainingAttacks > 0) {
                     const list = m.avail[lv4Weak];
                     if (!list || list.length === 0) break;
-                    let lo = null, loMeas = null;
+                    let lo = null, loDmg = null;
                     for (const cand of list) {
-                        // Lv4 (ボス5・HP無限) は最上位レベル。Lv4 で測った編成か
-                        // レベル未指定の編成しか出せない。
-                        // ★ list の並びは静的 dmg (=最大値) 降順なので先頭採用だと
-                        //   「Lv1では25B・Lv4では12Bの編成」が「未指定20Bの編成」に勝ってしまう —
-                        //   Lv4で解決した値の argmax を採る
-                        const meas = resolveAtLevel(cand, 4);
-                        if (!meas) continue;
+                        // ★ list の並びは静的 dmg 降順だが、代表値 (中央値) は順序が変わりうるので
+                        //   先頭採用ではなく代表値の argmax を採る
+                        const dmg = resolveDamage(cand);
+                        if (dmg === null) continue;
                         if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
-                        if (!lo || meas.value > loMeas.value) { lo = cand; loMeas = meas; }
+                        if (!lo || dmg > loDmg) { lo = cand; loDmg = dmg; }
                     }
-                    if (!lo) break;   // キャラ被り / 測定レベル不足で出せる編成なし
+                    if (!lo) break;   // キャラ被りで出せる編成なし
                     // 開放時刻に出られない人も除外せずベストエフォート ⏳ で組み込む (有限ボスと同じ哲学)
                     const slot = earliestHourFor(m, lv4OpenIdx);
                     const teamRegistered = lo.team.length > 0;
                     lv4Attacks.push({
                         memberId: m.id, memberName: m.name,
                         slv: m.slv, slvEstimated: m.slvEstimated,
-                        dmgB: loMeas.value, usedB: loMeas.value, overflowB: 0,   // 無限HP: 全額計上 (Lv4解決値)
+                        dmgB: loDmg, usedB: loDmg, overflowB: 0,   // 無限HP: 全額計上
                         team: teamRegistered ? lo.team : null,
                         hourIdx: timeAware ? slot.idx : null,
                         hourLabel: (timeAware && !slot.flex) ? hourLabelOf(slot.idx) : null,
@@ -915,7 +897,6 @@
                         timeMismatch: !!(timeAware && slot.mismatch),
                         nearestHourLabel: (timeAware && slot.mismatch && slot.nearestIdx != null) ? hourLabelOf(slot.nearestIdx) : null,
                         loadoutSlot: lo.slot,
-                        loadoutLevel: loMeas.level,          // 採用した測定のレベル (null=未指定)
                         isBottleneck: false,
                     });
                     if (teamRegistered) lo.team.forEach(c => addUsedChar(m.usedChars, c));
@@ -989,14 +970,9 @@
             // 弱点属性の凸は編成そのものを失い、他属性の凸もスロット逼迫時
             // (残凸数 <= 弱点属性の編成数) にはボス5に入れる回数を1つ失う。
             // どちらも potential の差分として1つの式で正しく出る
-            // ★ potential は「ボス5 (= Lv4) で入る与ダメ」なので、Lv4 で出せる編成の
-            //   **Lv4で解決した値**だけを数える。Lv1 でしか測っていない編成 (や Lv1測定の高い値)
-            //   を数えると、実際には出せない火力を温存の根拠にしてしまい
-            //   「有限ボスへの凸を我慢したのに Lv4 でも出せない」という最悪の取りこぼしになる
             const lv4ValsOf = (list) => list
-                .map(x => resolveAtLevel(x, 4))
-                .filter(r => r !== null)
-                .map(r => r.value)
+                .map(x => resolveDamage(x))
+                .filter(v => v !== null)
                 .sort((a, b) => b - a);
             const oppCostOf = (m, attr, lo) => {
                 if (!canAttackAfterT3(m)) return 0;
@@ -1024,7 +1000,7 @@
                     lv4Mandatory: {
                         attr: lv4Weak,
                         canAfter: (m) => canAttackAfterT3(m)
-                            && (m.avail[lv4Weak] || []).some(lo => usableAtLevel(lo, 4)),
+                            && (m.avail[lv4Weak] || []).some(lo => hasDamage(lo)),
                     },
                     decisionPolicy: policy,
                     trace: reserveTrace,
@@ -1253,7 +1229,7 @@
                     if (!attrs.includes(boss5.weakness)) {
                         key = 'lv4NoWeak';
                         reason = 'ボス5(無限)の弱点属性が未提出 (提出すれば全額スコアに入る)';
-                    } else if ((b5 || []).some(lo => usableAtLevel(lo, 4))) {
+                    } else if ((b5 || []).some(lo => hasDamage(lo))) {
                         key = 'conflict';
                         reason = 'キャラ被り (同キャラは1日1回) でボス5に出せる編成なし';
                     } else {
@@ -1279,7 +1255,7 @@
                     for (const k of attrs) {
                         if (!lastAliveWeak.has(k)) continue;
                         anyAliveAttr = true;
-                        const inLevel = m.avail[k].filter(lo => usableAtLevel(lo, lastLv));
+                        const inLevel = m.avail[k].filter(lo => hasDamage(lo));
                         if (inLevel.length === 0) continue;
                         anyInLevel = true;
                         const usable = inLevel.some(lo =>
@@ -1318,7 +1294,7 @@
         return {
             startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste,
             unusedAttacks, unusedSummary, membersNoData, onlyAvailableNow, currentSlot, candidateCount,
-            timeAware, ignoreLevels,
+            timeAware,
             nowHourLabel: timeAware ? hourLabelOf(nowIdx) : null,
             finalClearHourLabel: (timeAware && lastFinite?.levelCleared) ? lastFinite.clearHourLabel : null,
             membersTimeUnknown,

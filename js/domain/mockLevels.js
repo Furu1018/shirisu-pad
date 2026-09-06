@@ -76,7 +76,35 @@
     }
 
     /**
+     * 提出の**代表ダメージ**。測定ボスレベルの概念は廃止した (2026-09-06 ユーザー決定)。
+     *
+     * ★ 廃止の根拠: 「Lv1で測った値をLv3に流用すると過大評価」という想定を実データが否定した。
+     *   同一編成でレベル違いを測った提出6件すべてが Lv1比 96〜105% (風圧 55.1→56.6→56.2→56.9B /
+     *   電撃 33.4→33.4→33.4B)、実凸90件のSLv補正集計でもレベル上昇による低下傾向なし。
+     *   この想定でソルバーが候補を絞った結果、第44回は未消化49凸になった。
+     *
+     * ★ 複数値の代表は**中央値**。最大値だと試行のブレの上振れを固定してしまう。
+     *   新規保存は単一値なので、複数キーを持つのは廃止前の既存データだけ。
+     *   (既存の levels は書き換えず読み取りだけで畳む — 移行の巻き戻し余地を残すため)
+     * @param {Object<string,number>|null} levels 正規化済み levels
+     * @returns {number|null} 有効な値が無ければ null
+     */
+    function representativeDamage(levels) {
+        if (!levels) return null;
+        const vals = Object.keys(levels)
+            .map(k => Number(levels[k]))
+            .filter(v => Number.isFinite(v) && v > 0)
+            .sort((a, b) => a - b);
+        if (vals.length === 0) return null;
+        const mid = Math.floor(vals.length / 2);
+        // 偶数個は中央2つの平均。1件ならその値がそのまま返る
+        return vals.length % 2 === 1 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+    }
+
+    /**
      * 対象レベル L で使える最良値。使える測定 = キー '0' または キー ≥ L。
+     * @deprecated 測定レベルの概念は廃止 (2026-09-06)。新しい経路は representativeDamage を使う。
+     *   バックアップ復元など、廃止前のデータをそのまま読む必要がある箇所のためだけに残している
      * @param {Object<string,number>|null} levels 正規化済み levels
      * @param {number} targetLevel 1〜4
      * @returns {number|null} 使える値が無ければ null
@@ -156,6 +184,7 @@
         levelKey,
         normLevels,
         maxEntry,
+        representativeDamage,
         bestAtLevel,
         mergeMeasurement,
         mergeMeasurements,
