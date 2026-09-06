@@ -93,6 +93,21 @@ rm -f .claude/hooks/.codex-on      # OFF
   ログ・通知には**削除で返った行**を使う (確定した行を使うと、その間に本人が了承した場合に古い status で扱う)。
   `raid_level` が NULL の行は 36 適用前の旧データ = 現在レベルの依頼として扱わない。
   36 未適用環境ではレベルで絞れないので**何も消さない** (別レベルを巻き込むため)
+  **今季の戦闘可能時間の確認**は `37_availability_confirmations.sql`
+  (season_id + player_id / confirmed_at / unavailable / slot_count / slots_snapshot)。
+  ★ **時間帯そのものは持たない** — 現在の時間帯は `players.availability` が唯一の正で、37 が持つのは
+  「いつ確認したか」「今回は難しいか」「確認時点の枠のスナップショット」だけ。二重に持つと必ず食い違う。
+  ★ **未確認は空欄と同じ「未確定」**として催促対象にする (「前回のまま有効」とみなさない)。
+  ★ **`unavailable=true` の人は盤面ローダーが `unavailableThisSeason` を立て、
+  availableSlots=[] / flexTime=false にして全候補経路から外す** — 時間帯を空にするだけだと
+  `timeUnknown` = 「いつでも可」に化けて逆効果になる。除外はソルバー・残凸表・締め凸候補・時間別候補の4箇所。
+  この人には催促Pushも送らない (`memberStatus.nudgeMessage` が null を返す)。
+  ★ **未適用環境は `supabaseLoadAvailabilityConfirmations` が null を返す** ([] にしないこと —
+  「37適用済みで全員が未確認」と区別がつかず、実行できない確認の催促を送る)。
+  `js/domain/memberStatus.js` は配列でない値を「機能未適用」として確認の理由も集計欄も出さない。
+  ★ **確認まわりの保存は直列化する** (`_availSaveChain` / `_availDoSaveInner`) —
+  `clearTimeout` は未開始のタイマーしか止めないので、自動保存が通信中に時間を変えて確認すると
+  古い保存が遅れて着地して巻き戻る。
   キャラのバースト区分は `24_nikke_burst.sql` (burst) + `25_nikke_burst_alt.sql` (burst_alt =
   複数バーストで使えるキャラのサブ枠。例: ラピ:レッドフード は表示B3・B1枠でも可)。
   編成ピッカーのバースト絞り込みがこれを読む。25未適用でも読みは静かに劣化する

@@ -10874,13 +10874,24 @@
 
         function _availScheduleSave() {
             clearTimeout(_availUI.saveTimer);
-            _availUI.saveTimer = setTimeout(_availDoSave, 250);
+            _availUI.saveTimer = setTimeout(() => _availDoSave(), 250);
         }
 
+        // 保存を**直列化**するキュー。clearTimeout は未開始のタイマーしか止められないので、
+        // 「自動保存が通信中に時間を変えて確認」すると、確認側の保存の後に古い保存が
+        // 遅れて着地して availability が巻き戻る (Codex指摘 2026-09-07)。
+        // 直前の保存の完了を待ってから次を流すことで、最後に押した内容が必ず残る
+        let _availSaveChain = Promise.resolve();
         // @param {{rethrow?: boolean}} opts rethrow=true なら保存失敗を投げる
         //   (「今季の確認」は保存の成功が前提。握り潰すと古い時間帯のまま確認済みになる — Codex指摘)
-        async function _availDoSave(opts = {}) {
-            clearTimeout(_availUI.saveTimer);   // デバウンス中の保存と二重に走らせない
+        function _availDoSave(opts = {}) {
+            clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
+            const run = _availSaveChain.then(() => _availDoSaveInner(opts), () => _availDoSaveInner(opts));
+            // チェーン自体は失敗で止めない (次の保存は必ず走る)
+            _availSaveChain = run.catch(() => { });
+            return run;
+        }
+        async function _availDoSaveInner(opts = {}) {
             const id = getCurrentIdentity();
             if (!id?.id) return;
             const msgEl = document.getElementById('mypageAvailMessage');

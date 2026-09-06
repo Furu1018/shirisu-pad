@@ -989,7 +989,10 @@ window.supabaseLoadMyAvailabilityConfirmation = async function (seasonId, player
         return data || null;
     } catch { return null; }
 };
-// シーズン全員分 (メンバー状況ボード用)。未適用環境では [] = 全員未確認
+// シーズン全員分 (メンバー状況ボード用)。
+// ★ 未適用環境 (テーブルが無い) では **null** を返す — [] にすると「全員が今季未確認」に
+//   見えて、実行不能な確認催促を送れてしまう (Codex指摘 2026-09-07)。
+//   呼び出し側は null を「この機能はまだ無い」として、確認の理由も催促も出さない
 window.supabaseLoadAvailabilityConfirmations = async function (seasonId) {
     if (!seasonId) return [];
     try {
@@ -1002,7 +1005,7 @@ window.supabaseLoadAvailabilityConfirmations = async function (seasonId) {
         }
         if (error) throw error;
         return data || [];
-    } catch { return []; }
+    } catch { return null; }   // テーブルごと無い = 機能未適用
 };
 
 // プレイヤーの availability を slots[] で上書き (hXX 形式のみ)
@@ -1626,7 +1629,7 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
             .eq('event_type', 'proxy_attack')
             .gte('created_at', sinceIso || '1970-01-01T00:00:00Z')
             .limit(1000)),
-        // 今季の戦闘可能時間の確認 (37)。未適用環境は [] = 全員未確認として静かに劣化
+        // 今季の戦闘可能時間の確認 (37)。★ 未適用環境は **null** が返る (「全員未確認」ではない)
         seasonId ? window.supabaseLoadAvailabilityConfirmations(seasonId) : [],
     ]);
     return {
@@ -1634,7 +1637,7 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
         slvThisSeasonIds: slv.map(s => s.player_id),
         finishRequests: fin,
         proxyEvents: proxy,
-        // 今季の戦闘可能時間の確認 (37)。未適用環境では [] = 全員未確認として静かに劣化
+        // 今季の戦闘可能時間の確認 (37)。null = 機能未適用 (memberStatus 側が確認の理由も催促も出さない)
         availConfirmations: availConf,
     };
 };

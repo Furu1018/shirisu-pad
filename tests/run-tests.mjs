@@ -3005,12 +3005,49 @@ console.log('\nmemberStatusDomain:');
         const base = { damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false };
         const rows = dom.buildRows({
             players: [P({ id: 2, name: '未確認', ...base, availableSlots: ['h21'] })],
-            extras: { pushPlayerIds: [2], slvThisSeasonIds: [2] }, phase: 'pre',
+            // ★ availConfirmations: [] = 37適用済みで誰も確認していない (省略は「機能未適用」になる)
+            extras: { pushPlayerIds: [2], slvThisSeasonIds: [2], availConfirmations: [] }, phase: 'pre',
         });
         const msg = dom.nudgeMessage(rows[0], 'pre');
         assert.ok(msg, '催促の文面が出る');
         assert.match(msg.title, /確認/);
         assert.doesNotMatch(msg.body, /未登録/, '未登録ではないので「未登録です」と言わない');
+    });
+
+    test('★ 「今回は難しい」人には催促を送らない (出られない人に督促しない)', () => {
+        // 模擬もSLvも足りていない = 本来なら催促対象。だが本人は今季「難しい」と申告済み
+        const rows = dom.buildRows({
+            players: [P({ id: 2, name: '不参加', damagesByAttr: { fire: 1 }, availableSlots: [] })],
+            extras: { pushPlayerIds: [2], availConfirmations: [{ player_id: 2, unavailable: true }] }, phase: 'pre',
+        });
+        assert.equal(rows[0].availUnavailable, true);
+        assert.ok(rows[0].reasons.some(r => r.key === 'mock'), '要対応の理由自体は残す (運営には見せる)');
+        assert.equal(dom.nudgeMessage(rows[0], 'pre'), null, 'Push催促は作らない');
+        // 当日も同じ
+        assert.equal(dom.nudgeMessage(dom.buildRows({
+            players: [P({ id: 2, damagesByAttr: { fire: 1 } })],
+            extras: { pushPlayerIds: [2], availConfirmations: [{ player_id: 2, unavailable: true }] }, phase: 'day',
+        })[0], 'day'), null);
+    });
+
+    test('★ 37未適用 (availConfirmations が無い) では確認の理由も集計欄も出さない', () => {
+        const base = { damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false };
+        const mk = (extras) => dom.buildRows({
+            players: [P({ id: 2, name: '未確認', ...base, availableSlots: ['h21'] })],
+            extras: { pushPlayerIds: [2], slvThisSeasonIds: [2], ...extras }, phase: 'pre',
+        });
+        const [off] = mk({});                        // 列/テーブルごと無い = null 相当 (未指定)
+        const [offNull] = mk({ availConfirmations: null });
+        const [on] = mk({ availConfirmations: [] }); // 適用済みで未確認
+        assert.equal(off.availSupported, false);
+        assert.equal(offNull.availSupported, false);
+        assert.equal(on.availSupported, true);
+        assert.ok(!off.reasons.some(r => r.key === 'availConfirm'), '未適用環境で「今季未確認」を積まない');
+        assert.equal(dom.nudgeMessage(off, 'pre'), null, '実行できない確認の催促を送らない');
+        assert.ok(on.reasons.some(r => r.key === 'availConfirm'), '適用済みなら従来どおり積む');
+        const keys = (rows) => dom.summarize(rows, 'pre').map(x => x.key);
+        assert.ok(!keys([off]).includes('availConfirm'), '未適用環境では集計欄ごと出さない (0/30 は誤解を招く)');
+        assert.ok(keys([on]).includes('availConfirm'));
     });
 
     test('buildRows(当日): 凸残・締め凸未返答が先頭に来る / 代理は activity_log から数える / 推定SLvは未登録扱い', () => {
@@ -3253,6 +3290,39 @@ console.log('\n運営除外の配線 (ソース突合):');
     });
     test('99_check_applied.sql に 35 の判定行がある', () => {
         assert.ok(check.includes("'35_player_damages_exclusion'"));
+    });
+
+    // ---- 37: 今季の戦闘可能時間の確認 ------------------------------------------
+    test('★ supabaseLoadAvailabilityConfirmations は未適用環境で null を返す ([] にしない)', () => {
+        const body = client.match(/window\.supabaseLoadAvailabilityConfirmations = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(body, '関数が見つからない');
+        // ★ [] を返すと「37適用済みで全員が未確認」と区別がつかず、実行できない確認の催促を送る
+        assert.ok(/catch\s*\{\s*return null;/.test(body), '通信/テーブル欠損の catch は null を返すこと');
+        assert.ok(!/catch\s*\{\s*return \[\];/.test(body), '未適用を空配列に潰さない');
+        // slots_snapshot だけ未適用のときは列を落として読み直す (テーブルはあるので null にしない)
+        assert.ok(/_isMissingColumnErr\(error, 'slots_snapshot'\)/.test(body));
+    });
+    test('★ 盤面ローダーは 37未適用でも誰も除外しない / 「難しい」人は全経路から外す', () => {
+        assert.ok(/catch \{ \/\* 37未適用環境では誰も除外しない/.test(client));
+        // 時間帯を空にするだけでは「いつでも可」に化けるので、flexTime も落とし印も立てる
+        assert.ok(/unavailableThisSeason: unavailableIds\.has\(Number\(p\.id\)\)/.test(client));
+        assert.ok(/flexTime: unavailableIds\.has\(Number\(p\.id\)\) \? false :/.test(client));
+        for (const f of ['js/optimal-plan.js', 'index.html']) {
+            const src = read(...f.split('/'));
+            assert.ok(src.includes('!p.unavailableThisSeason'), `${f} で除外していない`);
+        }
+    });
+    test('99_check_applied.sql に 36 / 37 の判定行がある', () => {
+        assert.ok(check.includes("'36_finish_requests_level'"));
+        assert.ok(check.includes("'37_availability_confirmations'"));
+        assert.ok(check.includes('slots_snapshot'), '37 は追補の列まで見ること');
+    });
+    test('★ 戦闘可能時間の保存は直列化する (自動保存の遅着で巻き戻さない)', () => {
+        assert.ok(/_availSaveChain/.test(html), '保存キューが無い');
+        assert.ok(/function _availDoSave\(opts = \{\}\) \{[\s\S]*?_availSaveChain\.then\(/.test(html),
+            '_availDoSave はキューに積むラッパであること');
+        assert.ok(/async function _availDoSaveInner\(/.test(html), '実体は _availDoSaveInner');
+        assert.ok(!/setTimeout\(_availDoSave,/.test(html), 'デバウンスは引数なしで呼ぶ (setTimeout の第2引数が opts に入る)');
     });
 }
 

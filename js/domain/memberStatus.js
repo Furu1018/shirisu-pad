@@ -101,7 +101,7 @@
      * 1人1行の状態を組み立てる。
      * @param {Object} args
      * @param {Object[]} args.players  opsStore 盤面の players
-     * @param {{pushPlayerIds?:any, slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:{player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]}=} args.extras
+     * @param {{pushPlayerIds?:any, slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:({player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]|null)}=} args.extras (availConfirmations が配列でない = 37未適用)
      * @param {'pre'|'day'} args.phase
      * @returns {Object[]} rows (未ソート)
      */
@@ -118,9 +118,12 @@
             else if (finishBy.get(pid) !== 'pending') finishBy.set(pid, r.status);
         }
         // 今季の戦闘可能時間の確認 (37)。★ 未確認は「空欄」と同じ **未確定** として扱う —
-        // 前月の設定が残っているだけの人を「登録済み」と数えると、当日いない人が候補に出る
+        // 前月の設定が残っているだけの人を「登録済み」と数えると、当日いない人が候補に出る。
+        // ★★ availConfirmations が null = **機能そのものが未適用**。この場合は
+        //   「全員が未確認」ではないので、確認の理由も催促も出さない (Codex指摘 2026-09-07)
+        const availSupported = Array.isArray(ex.availConfirmations);
         const availBy = new Map();
-        for (const c of (Array.isArray(ex.availConfirmations) ? ex.availConfirmations : [])) {
+        for (const c of (availSupported ? ex.availConfirmations : [])) {
             const pid = Number(c?.player_id);
             if (Number.isFinite(pid)) availBy.set(pid, c);
         }
@@ -179,6 +182,8 @@
                 : (confirm.slot_count != null && Number(confirm.slot_count) !== slots.length));
             if (!slots.length && !flex && !availUnavailable) {
                 reasons.push({ key: 'slots', label: '時間帯未登録' });
+            } else if (!availSupported) {
+                /* 機能未適用: 確認まわりの理由は積まない */
             } else if (!availConfirmed) {
                 reasons.push({ key: 'availConfirm', label: '時間帯 今季未確認' });
             } else if (availChanged) {
@@ -200,7 +205,7 @@
                 mockCount: mockAttrs.length, missingAttrs, mockUsable, mockOk,
                 slvNow, slvPrev,
                 slots, flex, allHours: !!p.notifyAllHours,
-                availConfirmed, availUnavailable, availChanged,
+                availSupported, availConfirmed, availUnavailable, availChanged,
                 availConfirmedAt: confirm ? (confirm.confirmed_at || null) : null,
                 push,
                 attacks, atkCount, proxyCount, finish,
@@ -240,12 +245,14 @@
         // ★ 「今季確認した人」を別に数える。登録があるだけの人と区別しないと、
         //   前月の設定が残っているだけの人まで「登録済み」に見える
         const availOk = cnt(r => r.availConfirmed);
+        const availSupported = rows.some(r => r.availSupported);
         const push = cnt(r => r.push);
         return [
             { key: 'mock', label: '模擬 3属性 (被りなし)', value: mock, total: n, bad: mock < n, sub: `5属性 ${mockFull}` },
             { key: 'slv', label: 'SLv 登録', value: slv, total: n, bad: slv < n },
             { key: 'slots', label: '時間帯 登録', value: slots, total: n, bad: slots < n },
-            { key: 'availConfirm', label: '時間帯 今季確認', value: availOk, total: n, bad: availOk < n },
+            // 機能未適用の環境では欄ごと出さない (0/30 と出ると誤解を招く)
+            ...(availSupported ? [{ key: 'availConfirm', label: '時間帯 今季確認', value: availOk, total: n, bad: availOk < n }] : []),
             { key: 'push', label: '通知 購読', value: push, total: n, bad: push < n },
         ];
     }
@@ -256,6 +263,9 @@
      */
     function nudgeMessage(row, phase) {
         if (!row || !row.push) return null;
+        // ★ 「今回は難しい」と申告した人には催促を送らない。
+        //   出られないと分かっている人に模擬やSLvの督促を送るのは筋が悪い (Codex指摘 2026-09-07)
+        if (row.availUnavailable) return null;
         const keys = new Set((row.reasons || []).map(r => r.key));
         if (phase === 'day' && keys.has('attacks')) {
             return { title: '📝 凸報告のお願い', body: `凸が残り${MAX_ATTACKS - row.atkCount}件です。凸したらホーム → ⚔️ 凸報告 から提出お願いします🙏`, url: './?tab=mypage' };
