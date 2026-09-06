@@ -3303,7 +3303,8 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(/_isMissingColumnErr\(error, 'slots_snapshot'\)/.test(body));
     });
     test('★ 盤面ローダーは 37未適用でも誰も除外しない / 「難しい」人は全経路から外す', () => {
-        assert.ok(/catch \{ \/\* 37未適用環境では誰も除外しない/.test(client));
+        // 37未適用 (テーブルごと無い) のときだけ除外なしで進む。判定は上の別テストで固定
+        assert.ok(/supabase\/37 が未適用のため/.test(client), '未適用時の警告が無い');
         // 時間帯を空にするだけでは「いつでも可」に化けるので、flexTime も落とし印も立てる
         assert.ok(/unavailableThisSeason: unavailableIds\.has\(Number\(p\.id\)\)/.test(client));
         assert.ok(/flexTime: unavailableIds\.has\(Number\(p\.id\)\) \? false :/.test(client));
@@ -3317,12 +3318,36 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(check.includes("'37_availability_confirmations'"));
         assert.ok(check.includes('slots_snapshot'), '37 は追補の列まで見ること');
     });
-    test('★ 戦闘可能時間の保存は直列化する (自動保存の遅着で巻き戻さない)', () => {
-        assert.ok(/_availSaveChain/.test(html), '保存キューが無い');
-        assert.ok(/function _availDoSave\(opts = \{\}\) \{[\s\S]*?_availSaveChain\.then\(/.test(html),
-            '_availDoSave はキューに積むラッパであること');
-        assert.ok(/async function _availDoSaveInner\(/.test(html), '実体は _availDoSaveInner');
-        assert.ok(!/setTimeout\(_availDoSave,/.test(html), 'デバウンスは引数なしで呼ぶ (setTimeout の第2引数が opts に入る)');
+    // 保存キューの**振る舞い**は tests/avail-save.mjs が実行して確かめる
+    // (ソース文字列の検査は「実際に前の保存を待っているか」を保証しない — Codex指摘 2026-09-07)。
+    // ここでは静的にしか見えないものだけ残す
+    test('戦闘可能時間: デバウンスは引数なしで _availDoSave を呼ぶ', () => {
+        // setTimeout(_availDoSave, 250) だと第2引数の遅延時間が opts に渡り、opts.rethrow が
+        // undefined になるだけでなく将来のオプション追加で誤動作する
+        assert.ok(!/setTimeout\(_availDoSave,/.test(html));
+        assert.ok(/setTimeout\(\(\) => _availDoSave\(\), \d+\)/.test(html));
+    });
+    test('★ 37未適用は「未確認」と区別する (unsupported センチネル)', () => {
+        const body = client.match(/window\.supabaseLoadMyAvailabilityConfirmation = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(body, '関数が見つからない');
+        assert.ok(/_isMissingTableErr\(error, 'availability_confirmations'\)/.test(body), 'テーブル欠損だけを未適用と判定すること');
+        assert.ok(/return \{ unsupported: true \}/.test(body));
+        assert.ok(!/\} catch \{ return null; \}/.test(body), '通信断まで「未確認」に潰さない');
+        // 画面側: 未適用なら確認UIごと出さない (押すと SQL 適用エラーになるだけ)
+        assert.ok(/if \(c && c\.unsupported\) \{ el\.style\.display = 'none'; return; \}/.test(html), 'バッジを隠していない');
+        assert.ok(/if \(c && c\.unsupported\) \{ box\.style\.display = 'none'; box\.innerHTML = ''; return; \}/.test(html), '確認ブロックを隠していない');
+    });
+    test('★ 盤面ローダーは「今回は難しい」の取得失敗を握り潰さない', () => {
+        // 握り潰すと通信断・RLS の失敗が「誰も難しいと言っていない」と同じ結果になり、
+        // 申告した本人がプラン・締め凸候補に戻ってくる (Codex指摘 2026-09-07)
+        assert.ok(/if \(uErr && !_isMissingTableErr\(uErr, 'availability_confirmations'\)\) throw uErr;/.test(client));
+        assert.ok(/function _isMissingTableErr\(error, table\)/.test(client), 'テーブル欠損の判定ヘルパーが無い');
+        const helper = client.match(/function _isMissingTableErr[\s\S]*?\n}\n/)?.[0] || '';
+        assert.ok(/PGRST205|42P01/.test(helper), '欠損コードで判定すること (文言だけの緩い判定にしない)');
+        assert.ok(/blob\.includes\(table\)/.test(helper), '対象テーブル名を含むことを要求すること');
+    });
+    test('★ 「今回は難しい」人には催促ボタンを押させない', () => {
+        assert.ok(/const canNudge = r\.todo && r\.push && !r\.availUnavailable;/.test(html));
     });
 }
 

@@ -167,6 +167,7 @@ node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカー
 node tests/member-board.mjs   # 👥 メンバー状況ボードの描画 (_mbPaint) の実行テスト
 node tests/kill-badge.mjs     # 締め凸「締」バッジ・注記の実行テスト (実データ整合も見る)
 node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
+node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の確認 の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
@@ -176,6 +177,13 @@ node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベ
 **値の保持先は従来どおり `#myTeamEditFields` の5つの input** で、ピッカーはそこへ書くだけ —
 この契約が崩れると保存・OCR・人気編成の適用がまとめて壊れるので、テストで固定してある。
 枠のバースト絞り込み・上位10体の折りたたみ・5人そろったら自動で畳む、の状態遷移も見る。
+
+`avail-save.mjs` は保存キュー (`_availEnqueue`/`_availDoSave`/`handleConfirmAvailability`) を
+切り出し、**保存を止められるスタブ**で実際に走らせる。ソース文字列の検査では
+「本当に前の保存の完了を待っているか」「rethrow が呼び出し元に届くか」を保証できないため
+(Codex指摘 2026-09-07)。守っているのは 巻き戻さない / キューが詰まらない / 二重クリックで
+確認が2回書かれない の3点。⚠ 切り出しは**引数のデフォルト値 (`opts = {}`) を本体と誤認しない**よう
+引数リストの `)` を先に対応で探している。
 
 `check-raid-event-hooks.mjs` は「ボスの残HPを動かす呼び出しの直後に `_checkRaidEvents()` があるか」を
 機械的に確認する。**HPを動かす経路を足したら invalidate の前にフックを呼ぶこと** —

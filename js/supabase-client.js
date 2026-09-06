@@ -973,21 +973,24 @@ window.supabaseConfirmAvailability = async function (seasonId, playerId, { unava
     window.supabaseLogActivity?.('avail_confirm',
         unavailable ? '今季は参加が難しいと申告' : `今季の戦闘可能時間を確認 (${slotCount ?? '?'}枠)`, { playerId });
 };
-// 自分の確認状態。未確認なら null (37未適用環境でも null = 未確認扱いで静かに劣化)
+// 自分の確認状態。未確認なら null。
+// ★ 37未適用は `{ unsupported: true }` を返して「未確認」と区別する (Codex指摘 2026-09-07) —
+//   同じ null にすると、確認ボタンが出せない環境で「今季 未確認」と表示し、押すと SQL 適用エラーになる
 window.supabaseLoadMyAvailabilityConfirmation = async function (seasonId, playerId) {
     if (!seasonId || !playerId) return null;
-    try {
-        let { data, error } = await supabase.from('availability_confirmations')
-            .select('confirmed_at, unavailable, slot_count, slots_snapshot')
-            .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle();
-        if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
-            ({ data, error } = await supabase.from('availability_confirmations')
-                .select('confirmed_at, unavailable, slot_count')
-                .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle());
-        }
-        if (error) throw error;
-        return data || null;
-    } catch { return null; }
+    let { data, error } = await supabase.from('availability_confirmations')
+        .select('confirmed_at, unavailable, slot_count, slots_snapshot')
+        .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle();
+    if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
+        ({ data, error } = await supabase.from('availability_confirmations')
+            .select('confirmed_at, unavailable, slot_count')
+            .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle());
+    }
+    if (error) {
+        if (_isMissingTableErr(error, 'availability_confirmations')) return { unsupported: true };
+        throw error;   // 通信断などは呼び出し側の catch で「未確認」に倒れる (従来どおり)
+    }
+    return data || null;
 };
 // シーズン全員分 (メンバー状況ボード用)。
 // ★ 未適用環境 (テーブルが無い) では **null** を返す — [] にすると「全員が今季未確認」に
@@ -1005,7 +1008,7 @@ window.supabaseLoadAvailabilityConfirmations = async function (seasonId) {
         }
         if (error) throw error;
         return data || [];
-    } catch { return null; }   // テーブルごと無い = 機能未適用
+    } catch { return null; }   // テーブルごと無い/取得失敗 = 「全員未確認」と断定できない
 };
 
 // プレイヤーの availability を slots[] で上書き (hXX 形式のみ)
@@ -3415,6 +3418,16 @@ window.supabaseFindCharacterByIconPath = async function (iconPath) {
 };
 
 // PostgREST が「そんな列は無い」と言っているかの判定 (25_nikke_burst_alt.sql 未適用環境の検出用)
+// テーブルそのものが無い (= マイグレーション未適用)。列欠損 (_isMissingColumnErr) とは別物で、
+// 「静かに劣化してよい唯一のエラー」。通信断・RLS・タイムアウトをこれに混ぜないこと (Codex指摘 2026-09-07)
+function _isMissingTableErr(error, table) {
+    if (!error || !table) return false;
+    const blob = `${error.code || ''} ${error.message || ''} ${error.details || ''} ${error.hint || ''}`;
+    if (!blob.includes(table)) return false;
+    return error.code === 'PGRST205' || error.code === '42P01'
+        || /could not find the table|relation .* does not exist/i.test(blob);
+}
+
 function _isMissingColumnErr(error, col) {
     if (!error || !col) return false;
     const blob = `${error.code || ''} ${error.message || ''} ${error.details || ''} ${error.hint || ''}`;
@@ -3974,13 +3987,17 @@ window.supabaseLoadOpsDashboardData = async function () {
     // ★ 申告した本人をプラン・締め凸候補・残凸表に残すと、催促からは外れたのに
     //   候補には出続けるという最悪の状態になる (Codex指摘 2026-09-07)。
     //   ここで時間帯を空にし、⏳隙間型も解除して、全経路から確実に外す
+    // ★ error を握り潰さないこと (Codex指摘 2026-09-07)。握り潰すと通信断・RLS の失敗が
+    //   「誰も難しいと言っていない」と同じ結果になり、**申告した人が候補に戻る**。
+    //   静かに劣化してよいのは 37未適用 (テーブルごと無い) のときだけ —
+    //   そのときは申告自体が存在し得ないので、誰も除外しないのが正しい
     const unavailableIds = new Set();
     if (season?.id) {
-        try {
-            const { data: confs } = await supabase.from('availability_confirmations')
-                .select('player_id, unavailable').eq('season_id', season.id).eq('unavailable', true);
-            (confs || []).forEach(c => unavailableIds.add(Number(c.player_id)));
-        } catch { /* 37未適用環境では誰も除外しない (従来どおり) */ }
+        const { data: confs, error: uErr } = await supabase.from('availability_confirmations')
+            .select('player_id, unavailable').eq('season_id', season.id).eq('unavailable', true);
+        if (uErr && !_isMissingTableErr(uErr, 'availability_confirmations')) throw uErr;
+        if (uErr) console.warn('[ops] supabase/37 が未適用のため「今回は難しい」を反映できません:', uErr.message);
+        (confs || []).forEach(c => unavailableIds.add(Number(c.player_id)));
     }
 
     // 5) SLv: 各メンバーの「最新シーズン」の sync_level を引き継ぐ (前月引き継ぎ)。

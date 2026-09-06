@@ -8343,6 +8343,8 @@
             const el = document.getElementById('myAvailConfirmBadge');
             if (!el) return;
             const c = _myAvailConfirm;
+            // 37未適用: 確認できない環境で「未確認」と急かさない (押しても SQL 適用エラーになるだけ)
+            if (c && c.unsupported) { el.style.display = 'none'; return; }
             if (!c) {
                 el.style.display = 'inline-block';
                 el.textContent = '今季 未確認';
@@ -8360,6 +8362,9 @@
             const box = document.getElementById('myAvailConfirmBox');
             if (!box) return;
             const c = _myAvailConfirm;
+            // 37未適用 (supabase/37_availability_confirmations.sql がまだ) では確認UIを出さない。
+            // 出すと押せてしまい「SQL を適用してください」というメンバーには意味不明なエラーになる
+            if (c && c.unsupported) { box.style.display = 'none'; box.innerHTML = ''; return; }
             const nowSlots = HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
             const n = nowSlots.length;
             // 枠数だけでなく中身も見る (h21→h22 の付け替えを見逃さない)
@@ -8399,28 +8404,49 @@
                     ${c.unavailable ? '' : '<button onclick="handleConfirmAvailability(true)" style="flex:none;border:none;border-radius:999px;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:800;color:#5A6068;background:#F1F2F4;cursor:pointer;">今回は難しい</button>'}
                 </div>`;
         }
+        // 確認は「時間帯の保存 → 確認の書き込み」の2段階。処理中にもう一度押せると、
+        // 遅れて着地した方が勝って unavailable と枠のスナップショットが食い違う (Codex指摘 2026-09-07)
+        let _availConfirmBusy = false;
+        function _availConfirmSetBusy(busy) {
+            const box = document.getElementById('myAvailConfirmBox');
+            if (!box) return;
+            box.querySelectorAll('button').forEach(b => {
+                b.disabled = !!busy;
+                b.style.opacity = busy ? '0.5' : '';
+                b.style.cursor = busy ? 'progress' : 'pointer';
+            });
+        }
         async function handleConfirmAvailability(unavailable) {
             const id = getCurrentIdentity();
             if (!id?.id) return;
+            if (_availConfirmBusy) return;   // 二重クリックよけ (押した1回だけを通す)
+            _availConfirmBusy = true;
+            _availConfirmSetBusy(true);
             const msg = document.getElementById('mypageAvailMessage');
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
-                // ★ 先に時間帯そのものをサーバへ確定させる。なぞっただけで保存していない状態で
-                //   確認すると、「確認した内容」と実際の availability がずれる
-                //   (_availDoSave は自動保存の実体。なぞり終わりにも走るが、押した瞬間の内容で確実に揃える)
-                if (typeof _availDoSave === 'function') await _availDoSave({ rethrow: true });
-                const cur = HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
-                const n = cur.length;
-                await window.supabaseConfirmAvailability(ctx.season.id, id.id,
-                    { unavailable: !!unavailable, slotCount: unavailable ? null : n, slots: unavailable ? null : cur });
+                clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
+                // ★ 「時間帯の保存」と「確認の書き込み」を **1つの単位** としてキューに積む。
+                //   間に自動保存が割り込むと、確認したスナップショットと availability がずれる。
+                //   ⚠ キューの中なので _availDoSave ではなく _availDoSaveInner を呼ぶこと (自分待ちになる)
+                const cur = await _availEnqueue(async () => {
+                    await _availDoSaveInner({ rethrow: true });
+                    const slots = HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
+                    await window.supabaseConfirmAvailability(ctx.season.id, id.id,
+                        { unavailable: !!unavailable, slotCount: unavailable ? null : slots.length, slots: unavailable ? null : slots });
+                    return slots;
+                });
                 _myAvailConfirm = { confirmed_at: new Date().toISOString(), unavailable: !!unavailable,
-                    slot_count: unavailable ? null : n, slots_snapshot: unavailable ? null : cur };
+                    slot_count: unavailable ? null : cur.length, slots_snapshot: unavailable ? null : cur };
                 _renderMyAvailConfirm();
                 opsStore.invalidate();   // メンバー状況ボードに即反映
                 if (msg) { msg.style.color = '#18C26B'; msg.textContent = unavailable ? '✅ 今回は難しいと伝えました' : '✅ 今回の参加時間を確認しました'; }
             } catch (e) {
                 if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+            } finally {
+                _availConfirmBusy = false;
+                _availConfirmSetBusy(false);   // 再描画で作り直された分も含めて戻す
             }
         }
 
@@ -10882,14 +10908,19 @@
         // 遅れて着地して availability が巻き戻る (Codex指摘 2026-09-07)。
         // 直前の保存の完了を待ってから次を流すことで、最後に押した内容が必ず残る
         let _availSaveChain = Promise.resolve();
+        // ⚠ ここに積む関数の中から _availDoSave / _availEnqueue を呼ばないこと。
+        //   自分が走らせているチェーンの完了を待つことになり、永久に返らない
+        function _availEnqueue(fn) {
+            const run = _availSaveChain.then(fn, fn);
+            // チェーン自体は失敗で止めない (次の保存は必ず走る)
+            _availSaveChain = run.catch(() => { });
+            return run;
+        }
         // @param {{rethrow?: boolean}} opts rethrow=true なら保存失敗を投げる
         //   (「今季の確認」は保存の成功が前提。握り潰すと古い時間帯のまま確認済みになる — Codex指摘)
         function _availDoSave(opts = {}) {
             clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
-            const run = _availSaveChain.then(() => _availDoSaveInner(opts), () => _availDoSaveInner(opts));
-            // チェーン自体は失敗で止めない (次の保存は必ず走る)
-            _availSaveChain = run.catch(() => { });
-            return run;
+            return _availEnqueue(() => _availDoSaveInner(opts));
         }
         async function _availDoSaveInner(opts = {}) {
             const id = getCurrentIdentity();
@@ -13959,9 +13990,13 @@
                 const why = r.reasons.length
                     ? r.reasons.map((w, i) => i === 0 ? `<b>${escapeHtml(w.label)}</b>` : escapeHtml(w.label)).join(' · ')
                     : '<span style="color:#A4AAB0;">完了</span>';
-                const canNudge = r.todo && r.push;
+                // ★ 「今回は難しい」人には催促を送らない (nudgeMessage が null を返す) ので、
+                //   押せるボタンを出さない。押しても何も起きないボタンは運営を混乱させる (Codex指摘)
+                const canNudge = r.todo && r.push && !r.availUnavailable;
+                const nudgeTitle = r.availUnavailable ? '今回は難しいと申告しているため催促しません'
+                    : r.push ? 'この人だけに催促Push' : 'Push未購読のため届きません';
                 const acts = r.todo
-                    ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" ${canNudge ? '' : 'disabled'} title="${canNudge ? 'この人だけに催促Push' : 'Push未購読のため届きません'}">催促</button>` +
+                    ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" ${canNudge ? '' : 'disabled'} title="${escapeHtml(nudgeTitle)}">催促</button>` +
                       (isDay && r.atkCount < dom.MAX_ATTACKS ? `<button class="dc-mb-btn" onclick="handleOpsMemberProxy(${r.id})" title="代理凸を報告">代理凸</button>` : '')
                     : '<span class="dc-mb-c ok">✓</span>';
                 const av = r.avatarUrl
