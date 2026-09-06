@@ -8328,7 +8328,9 @@
         // ★ availability は無期限のプロフィール設定。「今季もその時間で動けるか」は別物なので、
         //   レイドごとに本人が確認する。未確認は空欄と同じ **未確定** として運営に見せる
         //   (第44回: 設定しているはずなのに実際にいない人が多かった)
-        let _myAvailConfirm = null;   // { confirmed_at, unavailable, slot_count } | null  / { unsupported:true } = 37未適用
+        // null = 今季まだ確認していない / { confirmed_at, unavailable, slot_count, slots_snapshot } = 確認済み /
+        // { unsupported:true } = 37未適用 (確認UIごと出さない) / { loadFailed:true } = 取得できなかった (状態不明)
+        let _myAvailConfirm = null;
         // 確認は「時間帯の保存 → 確認の書き込み」の2段階。処理中にもう一度押せると、
         // 遅れて着地した方が勝って unavailable と枠のスナップショットが食い違う (Codex指摘 2026-09-07)。
         // ★ _renderMyAvailConfirm から参照するので、そこより前に置くこと (TDZ よけ)
