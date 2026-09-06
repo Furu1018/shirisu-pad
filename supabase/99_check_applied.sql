@@ -204,6 +204,12 @@ SELECT * FROM (
             AND column_name = 'raid_level') = 1,
         'finish_requests.raid_level (締め凸依頼をレベル単位に。未適用だと撃破・レベル進行で依頼が消えず、次のレベルの依頼と混ざって見える)'
 
+    UNION ALL SELECT '37_availability_confirmations',
+        to_regclass('public.availability_confirmations') IS NOT NULL
+            AND (SELECT COUNT(*) FROM col WHERE table_name = 'availability_confirmations'
+                AND column_name = 'slots_snapshot') = 1,
+        'availability_confirmations テーブル + slots_snapshot 列 (今季の戦闘可能時間を本人が確認したか。未適用だと確認UIがエラーで止まる。列だけ未適用なら「確認後の付け替え」を見逃す)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

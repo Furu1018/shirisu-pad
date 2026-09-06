@@ -101,7 +101,7 @@
      * 1人1行の状態を組み立てる。
      * @param {Object} args
      * @param {Object[]} args.players  opsStore 盤面の players
-     * @param {{pushPlayerIds?:any, slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[]}=} args.extras
+     * @param {{pushPlayerIds?:any, slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:{player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]}=} args.extras
      * @param {'pre'|'day'} args.phase
      * @returns {Object[]} rows (未ソート)
      */
@@ -116,6 +116,13 @@
             // pending が1件でもあれば「未返答」で固定。無ければ最後に見たステータス
             if (r.status === 'pending') finishBy.set(pid, 'pending');
             else if (finishBy.get(pid) !== 'pending') finishBy.set(pid, r.status);
+        }
+        // 今季の戦闘可能時間の確認 (37)。★ 未確認は「空欄」と同じ **未確定** として扱う —
+        // 前月の設定が残っているだけの人を「登録済み」と数えると、当日いない人が候補に出る
+        const availBy = new Map();
+        for (const c of (Array.isArray(ex.availConfirmations) ? ex.availConfirmations : [])) {
+            const pid = Number(c?.player_id);
+            if (Number.isFinite(pid)) availBy.set(pid, c);
         }
         const proxyBy = new Map();
         for (const e of (Array.isArray(ex.proxyEvents) ? ex.proxyEvents : [])) {
@@ -157,7 +164,32 @@
                 });
             }
             if (slvNow == null) reasons.push({ key: 'slv', label: slvPrev ? `SLv未登録 (前回 ${slvPrev})` : 'SLv未登録' });
-            if (!slots.length && !flex) reasons.push({ key: 'slots', label: '時間帯未登録' });
+            // 時間帯の状態は3つ: 未登録 / 登録はあるが今季未確認 / 今季確認済み。
+            // ★ 「今回は難しい」と申告した人は**確認済み**として扱う (催促の対象から外す) —
+            //   出られないことが分かっているのは、分からないより運営にとって良い状態
+            const confirm = availBy.get(id) || null;
+            const availConfirmed = !!confirm;
+            const availUnavailable = !!(confirm && confirm.unavailable);
+            // 確認した時点から時間帯が変わっている = 確認後に本人が触った。
+            // ★ 枠**数**だけだと h21→h22 の付け替えを見逃す。確認時の枠そのもの (slots_snapshot)
+            //   があればそれで比べ、無い旧行 (37 初期の記録) は枠数で見る (Codex指摘 2026-09-07)
+            const confSlots = Array.isArray(confirm && confirm.slots_snapshot) ? confirm.slots_snapshot : null;
+            const availChanged = !!confirm && !confirm.unavailable && (confSlots
+                ? (confSlots.length !== slots.length || [...confSlots].sort().join(',') !== [...slots].sort().join(','))
+                : (confirm.slot_count != null && Number(confirm.slot_count) !== slots.length));
+            if (!slots.length && !flex && !availUnavailable) {
+                reasons.push({ key: 'slots', label: '時間帯未登録' });
+            } else if (!availConfirmed) {
+                reasons.push({ key: 'availConfirm', label: '時間帯 今季未確認' });
+            } else if (availChanged) {
+                const before = confSlots ? confSlots.length : confirm.slot_count;
+                reasons.push({
+                    key: 'availChanged',
+                    label: (before === slots.length)
+                        ? `時間帯を確認後に変更 (${slots.length}枠のまま中身が変化)`
+                        : `時間帯を確認後に変更 (${before}→${slots.length}枠)`,
+                });
+            }
             if (!push) reasons.push({ key: 'push', label: '通知購読なし' });
 
             return {
@@ -168,6 +200,8 @@
                 mockCount: mockAttrs.length, missingAttrs, mockUsable, mockOk,
                 slvNow, slvPrev,
                 slots, flex, allHours: !!p.notifyAllHours,
+                availConfirmed, availUnavailable, availChanged,
+                availConfirmedAt: confirm ? (confirm.confirmed_at || null) : null,
                 push,
                 attacks, atkCount, proxyCount, finish,
                 reasons, todo: reasons.length > 0,
@@ -203,11 +237,15 @@
         const mockFull = cnt(r => r.mockCount >= ATTR_KEYS.length);
         const slv = cnt(r => r.slvNow != null);
         const slots = cnt(r => r.slots.length > 0 || r.flex);
+        // ★ 「今季確認した人」を別に数える。登録があるだけの人と区別しないと、
+        //   前月の設定が残っているだけの人まで「登録済み」に見える
+        const availOk = cnt(r => r.availConfirmed);
         const push = cnt(r => r.push);
         return [
             { key: 'mock', label: '模擬 3属性 (被りなし)', value: mock, total: n, bad: mock < n, sub: `5属性 ${mockFull}` },
             { key: 'slv', label: 'SLv 登録', value: slv, total: n, bad: slv < n },
             { key: 'slots', label: '時間帯 登録', value: slots, total: n, bad: slots < n },
+            { key: 'availConfirm', label: '時間帯 今季確認', value: availOk, total: n, bad: availOk < n },
             { key: 'push', label: '通知 購読', value: push, total: n, bad: push < n },
         ];
     }
@@ -234,7 +272,24 @@
         }
         if (keys.has('slv')) parts.push('シンクロレベル');
         if (keys.has('slots')) parts.push('戦闘可能時間');
-        if (!parts.length) return null;
+        if (!parts.length) {
+            // 未登録は無いが「今季まだ確認していない」だけの人には、確認のお願いを送る
+            if (keys.has('availConfirm')) {
+                return {
+                    title: '⏰ 戦闘可能時間の確認をお願いします',
+                    body: '今回のレイドでその時間に動けるか、ホームから確認をお願いします🙏 前回のままでOKならボタン1つで終わります。',
+                    url: './?tab=mypage',
+                };
+            }
+            if (keys.has('availChanged')) {
+                return {
+                    title: '⏰ 戦闘可能時間が変わっています',
+                    body: '確認したあとに時間帯を変更したようです。今の設定でよければ、ホームからもう一度確認をお願いします🙏',
+                    url: './?tab=mypage',
+                };
+            }
+            return null;
+        }
         return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。ホーム・模擬タブから登録お願いします🙏`, url: './?tab=mypage' };
     }
 

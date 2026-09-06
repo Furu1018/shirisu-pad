@@ -3207,7 +3207,8 @@
                 <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
                 <div onclick="openMyAvailModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
-                    <div style="flex:1;font-size:14px;font-weight:700;color:#14161A;">戦闘可能時間 <span style="font-size:10px;color:#A4AAB0;font-weight:700;">(通知の受信時間)</span></div>
+                    <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:#14161A;">戦闘可能時間 <span style="font-size:10px;color:#A4AAB0;font-weight:700;">(通知の受信時間)</span></div>
+                    <span id="myAvailConfirmBadge" style="display:none;flex:none;font-size:9.5px;font-weight:900;padding:3px 9px;border-radius:999px;white-space:nowrap;"></span>
                     <div style="color:#C9CED3;font-size:20px;font-weight:300;">›</div>
                 </div>
                 <div onclick="openMyPushModal()" class="dc-setting-row">
@@ -5116,6 +5117,8 @@
                     </div>
                     <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
+                    <!-- 今季の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
+                    <div id="myAvailConfirmBox" style="display:none;margin-top:14px;padding:13px 15px;border-radius:13px;"></div>
                     <!-- 運用オプション -->
                     <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
                         <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);cursor:pointer;">
@@ -8317,8 +8320,109 @@
             document.getElementById('myAvailModal').classList.add('open');
             renderMyAvailabilitySettings(id);
             _loadAvailPrefsUI(id.id);
+            _loadMyAvailConfirm(id.id);
         }
         function closeMyAvailModal() { document.getElementById('myAvailModal').classList.remove('open'); }
+
+        // ===== 今季の戦闘可能時間の確認 (37_availability_confirmations) =====
+        // ★ availability は無期限のプロフィール設定。「今季もその時間で動けるか」は別物なので、
+        //   レイドごとに本人が確認する。未確認は空欄と同じ **未確定** として運営に見せる
+        //   (第44回: 設定しているはずなのに実際にいない人が多かった)
+        let _myAvailConfirm = null;   // { confirmed_at, unavailable, slot_count } | null
+        async function _loadMyAvailConfirm(playerId) {
+            _myAvailConfirm = null;
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                if (!ctx?.season?.id) return;
+                _myAvailConfirm = await window.supabaseLoadMyAvailabilityConfirmation(ctx.season.id, playerId);
+            } catch { /* 未適用・シーズン無しなら未確認扱い */ }
+            _renderMyAvailConfirm();
+        }
+        // ホームの設定行に出す小さなバッジ (確認済み / 未確認)
+        function _renderMyAvailConfirmBadge() {
+            const el = document.getElementById('myAvailConfirmBadge');
+            if (!el) return;
+            const c = _myAvailConfirm;
+            if (!c) {
+                el.style.display = 'inline-block';
+                el.textContent = '今季 未確認';
+                el.style.color = '#B45309'; el.style.background = 'rgba(245,158,11,0.14)';
+                return;
+            }
+            el.style.display = 'inline-block';
+            el.textContent = c.unavailable ? '今季 参加むずかしい' : '今季 確認済み';
+            el.style.color = c.unavailable ? '#8A9097' : '#0E9455';
+            el.style.background = c.unavailable ? '#F1F2F4' : 'rgba(24,194,107,0.12)';
+        }
+        // モーダル内の確認ブロック
+        function _renderMyAvailConfirm() {
+            _renderMyAvailConfirmBadge();
+            const box = document.getElementById('myAvailConfirmBox');
+            if (!box) return;
+            const c = _myAvailConfirm;
+            const nowSlots = HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
+            const n = nowSlots.length;
+            // 枠数だけでなく中身も見る (h21→h22 の付け替えを見逃さない)
+            const snap = Array.isArray(c && c.slots_snapshot) ? c.slots_snapshot : null;
+            const changed = !!(c && !c.unavailable && (snap
+                ? [...snap].sort().join(',') !== [...nowSlots].sort().join(',')
+                : (c.slot_count != null && Number(c.slot_count) !== n)));
+            box.style.display = 'block';
+            if (!c || changed) {
+                box.style.background = 'rgba(245,158,11,0.08)';
+                box.style.border = '1px solid rgba(245,158,11,0.30)';
+                box.innerHTML = `
+                    <div style="font-size:12.5px;font-weight:900;color:#B45309;">${changed ? '確認したあとに時間帯を変えました' : '今回のレイドの確認がまだです'}</div>
+                    <div style="font-size:11.5px;font-weight:700;color:#8A6A2A;line-height:1.6;margin-top:3px;">
+                        ${changed
+                            ? `いまは <b>${n}枠</b> です (確認時は ${snap ? snap.length : c.slot_count}枠)。この内容でよければ確認しなおしてください。`
+                            : 'いまの設定で今回も動けるなら「この時間で参加します」を押してください。運営はこれを見て凸プランを組みます。'}
+                    </div>
+                    <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap;">
+                        <button onclick="handleConfirmAvailability(false)" style="flex:1;min-width:150px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);">この時間で参加します</button>
+                        <button onclick="handleConfirmAvailability(true)" style="flex:none;border:none;border-radius:999px;padding:11px 15px;font-family:inherit;font-size:12px;font-weight:800;color:#5A6068;background:#F1F2F4;cursor:pointer;">今回は難しい</button>
+                    </div>`;
+                return;
+            }
+            const when = c.confirmed_at ? new Date(c.confirmed_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+            box.style.background = c.unavailable ? '#F7F8F9' : 'rgba(24,194,107,0.08)';
+            box.style.border = c.unavailable ? '1px solid rgba(20,22,26,0.08)' : '1px solid rgba(24,194,107,0.28)';
+            box.innerHTML = `
+                <div style="font-size:12.5px;font-weight:900;color:${c.unavailable ? '#6B7178' : '#0E9455'};">
+                    ${c.unavailable ? '今回は難しいと伝えています' : '今回のレイドの確認が済んでいます'}
+                </div>
+                <div style="font-size:11.5px;font-weight:700;color:#8A9097;line-height:1.6;margin-top:3px;">
+                    ${escapeHtml(when)} に確認${c.unavailable ? '' : ` (${n}枠)`}。変える場合は上で時間帯を直してから、下のボタンを押してください。
+                </div>
+                <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap;">
+                    <button onclick="handleConfirmAvailability(${c.unavailable ? 'false' : 'false'})" style="flex:1;min-width:150px;border:1.5px solid #6C42F0;border-radius:999px;padding:10px;font-family:inherit;font-size:12px;font-weight:900;color:#6C42F0;background:#fff;cursor:pointer;">この時間で参加します</button>
+                    ${c.unavailable ? '' : '<button onclick="handleConfirmAvailability(true)" style="flex:none;border:none;border-radius:999px;padding:10px 14px;font-family:inherit;font-size:12px;font-weight:800;color:#5A6068;background:#F1F2F4;cursor:pointer;">今回は難しい</button>'}
+                </div>`;
+        }
+        async function handleConfirmAvailability(unavailable) {
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            const msg = document.getElementById('mypageAvailMessage');
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
+                // ★ 先に時間帯そのものをサーバへ確定させる。なぞっただけで保存していない状態で
+                //   確認すると、「確認した内容」と実際の availability がずれる
+                //   (_availDoSave は自動保存の実体。なぞり終わりにも走るが、押した瞬間の内容で確実に揃える)
+                if (typeof _availDoSave === 'function') await _availDoSave({ rethrow: true });
+                const cur = HOUR_ORDER.map((h, i) => _availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
+                const n = cur.length;
+                await window.supabaseConfirmAvailability(ctx.season.id, id.id,
+                    { unavailable: !!unavailable, slotCount: unavailable ? null : n, slots: unavailable ? null : cur });
+                _myAvailConfirm = { confirmed_at: new Date().toISOString(), unavailable: !!unavailable,
+                    slot_count: unavailable ? null : n, slots_snapshot: unavailable ? null : cur };
+                _renderMyAvailConfirm();
+                opsStore.invalidate();   // メンバー状況ボードに即反映
+                if (msg) { msg.style.color = '#18C26B'; msg.textContent = unavailable ? '✅ 今回は難しいと伝えました' : '✅ 今回の参加時間を確認しました'; }
+            } catch (e) {
+                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+            }
+        }
 
         // 運用オプション (⏳隙間時間型 / 🔔いつでも通知) の読み込みと即時保存
         async function _loadAvailPrefsUI(playerId) {
@@ -10773,7 +10877,10 @@
             _availUI.saveTimer = setTimeout(_availDoSave, 250);
         }
 
-        async function _availDoSave() {
+        // @param {{rethrow?: boolean}} opts rethrow=true なら保存失敗を投げる
+        //   (「今季の確認」は保存の成功が前提。握り潰すと古い時間帯のまま確認済みになる — Codex指摘)
+        async function _availDoSave(opts = {}) {
+            clearTimeout(_availUI.saveTimer);   // デバウンス中の保存と二重に走らせない
             const id = getCurrentIdentity();
             if (!id?.id) return;
             const msgEl = document.getElementById('mypageAvailMessage');
@@ -10792,11 +10899,14 @@
                 }
                 // 範囲リストとステータスを再描画 (タイムライン自体は data 属性が既に正しい)
                 _renderAvailUI();
+                // 確認済みのあとに枠を変えたことをその場で知らせる
+                if (typeof _renderMyAvailConfirm === 'function') _renderMyAvailConfirm();
             } catch (e) {
                 if (msgEl) {
                     msgEl.textContent = `❌ ${e?.message || e}`;
                     msgEl.style.color = '#ef4444';
                 }
+                if (opts.rethrow) throw e;
             } finally {
                 _availUI.saving = false;
             }
@@ -14140,8 +14250,11 @@
                     .map(c => c.player_id)
             );
 
+            // ★ 今季「参加が難しい」と申告した人は残凸表から外す。
+            //   運営はメンバー状況ボードで「参加むずかしい」として把握できる (2026-09-07)
             let allRemaining = players
                 .filter(p => p.attackCount < 3)
+                .filter(p => !p.unavailableThisSeason)
                 .map(p => ({ ...p, remain: 3 - p.attackCount }));
 
             // base filter
@@ -14839,6 +14952,7 @@
             //   3) 該当属性をまだ使っていない (既に[attr]PTで凸済みは候補から除外)
             const candidates = players
                 .filter(p => p.attackCount < 3)
+                .filter(p => !p.unavailableThisSeason)   // 今季「参加が難しい」人には締めを頼まない
                 .map(p => {
                     // 1属性複数編成対応: この属性への凸回数ぶん上位ロードアウトを消費済みとし、
                     // 編成②③が残っていれば「同属性2凸目での締め」も候補に含める。
@@ -16479,6 +16593,7 @@
                     if (remB <= 0) continue;
                     const cands = players
                         .filter(p => p.attackCount < 3)
+                        .filter(p => !p.unavailableThisSeason)
                         .filter(p => !usedAttrsFor(p).has(ptKey))
                         .map(p => ({ id: p.id, name: p.name, dmg: Number(p.damagesByAttr[ptKey]) || 0 }))
                         .filter(c => c.dmg > 0 && c.dmg <= remB * 1.2)  // 残HP+20%以内

@@ -57,7 +57,9 @@ const players = [
     // 3属性 (被りなし) = 必要範囲を満たす → 前日は「完了」扱い (5属性必須に戻ると未完になりテストが落ちる)
     P({ id: 4, name: '三属性', damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: { fire: ['a'], water: ['b'], wind: ['c'] }, syncLevel: 590, syncLevelEstimated: false, availableSlots: ['h20'], attacks: [{ level: 1 }, { level: 2 }, { level: 3 }] }),
 ];
-const extras = { pushPlayerIds: [2, 3, 4], slvThisSeasonIds: [2, 3, 4], finishRequests: [{ player_id: 3, status: 'pending' }], proxyEvents: [{ player_id: 3 }] };
+// availConfirmations = 今季の戦闘可能時間を確認済み (37)。無いと全員「今季未確認」で要対応になる
+const extras = { pushPlayerIds: [2, 3, 4], slvThisSeasonIds: [2, 3, 4], finishRequests: [{ player_id: 3, status: 'pending' }], proxyEvents: [{ player_id: 3 }],
+    availConfirmations: [1, 2, 3, 4, 9].map(id => ({ player_id: id, confirmed_at: '2026-09-06T00:00:00Z', unavailable: false, slot_count: null })) };
 
 let passed = 0, failed = 0;
 function test(name, fn) {

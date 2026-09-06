@@ -270,6 +270,10 @@
         //    パス間で avail/usedChars/remainingAttacks の消費を持ち越さないこと
         const buildMemberState = () => (players || [])
             .filter(p => p.attackCount < 3)
+            // ★ 今季「参加が難しい」と申告した人は候補にしない。
+            //   時間帯を空にするだけだと timeUnknown = 「いつでも可」として扱われ、
+            //   かえって全時間帯の候補になってしまう (2026-09-07)
+            .filter(p => !p.unavailableThisSeason)
             .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(currentSlot))
             .map(p => {
                 const usedCount = usedCountFor(p);

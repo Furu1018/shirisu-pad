@@ -942,6 +942,69 @@ window.supabaseLoadAvailability = async function (playerId) {
     return _expandLegacySlots(raw);
 };
 
+// ===== 今季の戦闘可能時間の確認 (37_availability_confirmations.sql が前提) =====
+// ★ availability は無期限のプロフィール設定 (いつもの生活時間)。
+//   「今季も本当にその時間で動けるか」は別物なので、レイドごとに本人が確認する。
+//   ここが持つのは「いつ確認したか」と「今回は難しいか」だけ — 時間帯はコピーしない
+//   (二重に持つと、片方だけ直したときにどちらが正かで揉める)。
+//   未確認は空欄と同じ **未確定** として扱う (勝手に「前回のまま有効」とみなさない)
+window.supabaseConfirmAvailability = async function (seasonId, playerId, { unavailable = false, slotCount = null, slots = null } = {}) {
+    if (!seasonId || !playerId) throw new Error('シーズン/プレイヤーが特定できません');
+    const row = {
+        season_id: seasonId, player_id: playerId,
+        confirmed_at: new Date().toISOString(),
+        unavailable: !!unavailable,
+        slot_count: Number.isFinite(Number(slotCount)) ? Number(slotCount) : null,
+    };
+    // ★ 確認時の枠そのもの。枠数だけだと h21→h22 の付け替えを見逃す
+    if (Array.isArray(slots)) row.slots_snapshot = slots.filter(_isValidHourSlot);
+    let { error } = await supabase.from('availability_confirmations').upsert(row, { onConflict: 'season_id,player_id' });
+    // 追補列が無い環境では列抜きで再試行 (枠数だけの判定に静かに劣化)
+    if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
+        delete row.slots_snapshot;
+        ({ error } = await supabase.from('availability_confirmations').upsert(row, { onConflict: 'season_id,player_id' }));
+    }
+    if (error) {
+        if (/availability_confirmations/.test(String(error.message))) {
+            throw new Error('supabase/37_availability_confirmations.sql を SQL Editor で適用してください');
+        }
+        throw error;
+    }
+    window.supabaseLogActivity?.('avail_confirm',
+        unavailable ? '今季は参加が難しいと申告' : `今季の戦闘可能時間を確認 (${slotCount ?? '?'}枠)`, { playerId });
+};
+// 自分の確認状態。未確認なら null (37未適用環境でも null = 未確認扱いで静かに劣化)
+window.supabaseLoadMyAvailabilityConfirmation = async function (seasonId, playerId) {
+    if (!seasonId || !playerId) return null;
+    try {
+        let { data, error } = await supabase.from('availability_confirmations')
+            .select('confirmed_at, unavailable, slot_count, slots_snapshot')
+            .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle();
+        if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
+            ({ data, error } = await supabase.from('availability_confirmations')
+                .select('confirmed_at, unavailable, slot_count')
+                .eq('season_id', seasonId).eq('player_id', playerId).maybeSingle());
+        }
+        if (error) throw error;
+        return data || null;
+    } catch { return null; }
+};
+// シーズン全員分 (メンバー状況ボード用)。未適用環境では [] = 全員未確認
+window.supabaseLoadAvailabilityConfirmations = async function (seasonId) {
+    if (!seasonId) return [];
+    try {
+        let { data, error } = await supabase.from('availability_confirmations')
+            .select('player_id, confirmed_at, unavailable, slot_count, slots_snapshot')
+            .eq('season_id', seasonId);
+        if (error && _isMissingColumnErr(error, 'slots_snapshot')) {
+            ({ data, error } = await supabase.from('availability_confirmations')
+                .select('player_id, confirmed_at, unavailable, slot_count').eq('season_id', seasonId));
+        }
+        if (error) throw error;
+        return data || [];
+    } catch { return []; }
+};
+
 // プレイヤーの availability を slots[] で上書き (hXX 形式のみ)
 window.supabaseSaveAvailability = async function (playerId, slots) {
     const clean = (slots || []).filter(_isValidHourSlot);
@@ -1549,7 +1612,7 @@ async function _loadFinishRequestsForStatus(seasonId, currentLevel) {
 
 window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, currentLevel = null) {
     const safe = async (p) => { try { const r = await p; return (r && !r.error && Array.isArray(r.data)) ? r.data : []; } catch { return []; } };
-    const [subs, slv, fin, proxy] = await Promise.all([
+    const [subs, slv, fin, proxy, availConf] = await Promise.all([
         safe(supabase.from('push_subscriptions').select('player_id')),
         seasonId ? safe(supabase.from('player_sync_levels').select('player_id').eq('season_id', seasonId)) : [],
         // ★ 締め凸依頼は「いまのレベルのもの」だけ数える。
@@ -1563,12 +1626,16 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
             .eq('event_type', 'proxy_attack')
             .gte('created_at', sinceIso || '1970-01-01T00:00:00Z')
             .limit(1000)),
+        // 今季の戦闘可能時間の確認 (37)。未適用環境は [] = 全員未確認として静かに劣化
+        seasonId ? window.supabaseLoadAvailabilityConfirmations(seasonId) : [],
     ]);
     return {
         pushPlayerIds: subs.map(s => s.player_id),
         slvThisSeasonIds: slv.map(s => s.player_id),
         finishRequests: fin,
         proxyEvents: proxy,
+        // 今季の戦闘可能時間の確認 (37)。未適用環境では [] = 全員未確認として静かに劣化
+        availConfirmations: availConf,
     };
 };
 
@@ -1585,6 +1652,7 @@ const _BACKUP_TABLES = [
     'fururi_simulation_scores', 'push_subscriptions', 'push_notifications_log',
     'nikke_characters', 'published_plans', 'plan_acks',
     'finish_requests', 'raid_event_notices', 'activity_log',
+    'availability_confirmations',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -1638,6 +1706,9 @@ const _RESTORE_TABLES = [
     //   activity_log       = 監査ログ (player_id → SET NULL のみ。親子関係が無いので最後でよい)
     ['finish_requests', 'season_id', 'num'],
     ['raid_event_notices', 'season_id', 'num'],
+    //   availability_confirmations = 今季の戦闘可能時間の確認 (season_id, player_id → CASCADE)。
+    //                                戻さないと復元後に全員「今季未確認」になって催促が飛ぶ
+    ['availability_confirmations', 'season_id', 'num'],
     ['activity_log', 'id', 'num'],
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
@@ -3896,6 +3967,19 @@ window.supabaseLoadOpsDashboardData = async function () {
     });
     rawByPlayer.forEach((raws, pid) => slotsByPlayer.set(pid, _expandLegacySlots(raws)));
 
+    // 4-2) 今季「参加が難しい」と申告した人 (37)。
+    // ★ 申告した本人をプラン・締め凸候補・残凸表に残すと、催促からは外れたのに
+    //   候補には出続けるという最悪の状態になる (Codex指摘 2026-09-07)。
+    //   ここで時間帯を空にし、⏳隙間型も解除して、全経路から確実に外す
+    const unavailableIds = new Set();
+    if (season?.id) {
+        try {
+            const { data: confs } = await supabase.from('availability_confirmations')
+                .select('player_id, unavailable').eq('season_id', season.id).eq('unavailable', true);
+            (confs || []).forEach(c => unavailableIds.add(Number(c.player_id)));
+        } catch { /* 37未適用環境では誰も除外しない (従来どおり) */ }
+    }
+
     // 5) SLv: 各メンバーの「最新シーズン」の sync_level を引き継ぐ (前月引き継ぎ)。
     //    優先順位は アクティブシーズン → hard_date が新しい順。
     //    アクティブシーズンで手動更新した値が最優先になる。
@@ -3960,8 +4044,10 @@ window.supabaseLoadOpsDashboardData = async function () {
             attackCount: (attacksByPlayer.get(p.id) || []).length,
             syncLevel: known ? slvByPlayer.get(p.id) : estimateSlv(p.id),
             syncLevelEstimated: !known,
-            availableSlots: slotsByPlayer.get(p.id) || [],
-            flexTime: !!p.flex_time,           // ⏳ 隙間時間型 (時間指示なしで3凸する人)
+            // 「今回は難しい」と申告した人は時間帯なし・隙間型オフとして扱う (全候補経路から外す)
+            availableSlots: unavailableIds.has(Number(p.id)) ? [] : (slotsByPlayer.get(p.id) || []),
+            unavailableThisSeason: unavailableIds.has(Number(p.id)),
+            flexTime: unavailableIds.has(Number(p.id)) ? false : !!p.flex_time,   // ⏳ 隙間時間型
             notifyAllHours: !!p.notify_all_hours,   // 🔔 通知はいつでも受け取る
         };
     });

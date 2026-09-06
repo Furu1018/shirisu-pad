@@ -2901,9 +2901,11 @@ console.log('\nmemberStatusDomain:');
             P({ id: 2, name: '完了', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21', 'h22'] }),
             P({ id: 3, name: '隙間', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, flexTime: true }),
         ];
-        const extras = { pushPlayerIds: [2, 3], slvThisSeasonIds: [2, 3], finishRequests: [], proxyEvents: [] };
+        const extras = { pushPlayerIds: [2, 3], slvThisSeasonIds: [2, 3], finishRequests: [], proxyEvents: [],
+            availConfirmations: [2, 3].map(id => ({ player_id: id })) };   // 1 は今季未確認のまま
         const rows = dom.buildRows({ players, extras, phase: 'pre' });
         const r1 = rows.find(r => r.id === 1);
+        // 時間帯そのものが未登録なら「今季未確認」は積まない (未登録の方が具体的)
         assert.deepEqual(r1.reasons.map(r => r.key), ['mock', 'slv', 'slots', 'push']);
         assert.equal(r1.reasons[0].label, '模擬 被りなし2/3');
         assert.equal(r1.mockUsable, 2); assert.equal(r1.mockOk, false);
@@ -2919,7 +2921,9 @@ console.log('\nmemberStatusDomain:');
         const okThree = P({ id: 1, damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: { fire: T(['a', 'b']), water: T(['c', 'd']), wind: T(['e']) }, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
         const fiveButOverlap = P({ id: 2, damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, teamsByAttr: { fire: ['X', 'a'], water: ['X', 'b'], electric: ['X', 'c'], iron: ['Y', 'd'], wind: ['Y', 'e'] }, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
         const noTeams = P({ id: 3, damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: {}, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
-        const ex = { pushPlayerIds: [1, 2, 3], slvThisSeasonIds: [1, 2, 3] };
+        // availConfirmations = 今季の戦闘可能時間を確認済み (37)。無いと全員「今季未確認」で要対応になる
+        const ex = { pushPlayerIds: [1, 2, 3], slvThisSeasonIds: [1, 2, 3],
+            availConfirmations: [1, 2, 3].map(id => ({ player_id: id })) };
         const rows = dom.buildRows({ players: [okThree, fiveButOverlap, noTeams], extras: ex, phase: 'pre' });
         assert.equal(rows[0].mockOk, true); assert.equal(rows[0].todo, false, '被りなし3属性なら5属性でなくても完了');
         assert.equal(rows[1].mockUsable, 2); assert.equal(rows[1].mockOk, false);
@@ -2945,9 +2949,74 @@ console.log('\nmemberStatusDomain:');
         const m = dom.nudgeMessage(rows[1], 'pre');
         assert.match(m.body, /キャラ被りなしで3属性必要・あと1属性/);
     });
+    test('★ 戦闘可能時間は 未登録 / 今季未確認 / 確認済み の3状態を区別する', () => {
+        // 第44回の実害: availability は無期限のプロフィール設定なので、前月のまま残っている人が
+        // 「登録済み」に見えて、当日いないのに候補へ出る。今季確認したかを別に持つ (37)
+        const base = { damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false };
+        const players = [
+            P({ id: 1, name: '未登録', ...base, availableSlots: [] }),
+            P({ id: 2, name: '登録あり未確認', ...base, availableSlots: ['h21'] }),
+            P({ id: 3, name: '確認済み', ...base, availableSlots: ['h21'] }),
+            P({ id: 4, name: '今回は難しい', ...base, availableSlots: [] }),
+            P({ id: 5, name: '確認後に変更', ...base, availableSlots: ['h21', 'h22', 'h23'] }),
+        ];
+        const extras = {
+            pushPlayerIds: [1, 2, 3, 4, 5], slvThisSeasonIds: [1, 2, 3, 4, 5],
+            availConfirmations: [
+                { player_id: 3, slot_count: 1 },
+                { player_id: 4, unavailable: true },
+                { player_id: 5, slot_count: 1 },            // 確認時は1枠 → いま3枠
+            ],
+        };
+        const rows = dom.buildRows({ players, extras, phase: 'pre' });
+        const keysOf = (id) => rows.find(r => r.id === id).reasons.map(r => r.key);
+        assert.deepEqual(keysOf(1), ['slots'], '未登録は従来どおり「時間帯未登録」だけ');
+        assert.deepEqual(keysOf(2), ['availConfirm'], '登録はあるが今季未確認');
+        assert.deepEqual(keysOf(3), [], '確認済みなら要対応なし');
+        assert.deepEqual(keysOf(4), [], '★「今回は難しい」は確認済み扱い (分かっている方が良い状態)');
+        assert.deepEqual(keysOf(5), ['availChanged'], '確認後に枠数が変わったら知らせる');
+        assert.equal(rows.find(r => r.id === 5).reasons[0].label, '時間帯を確認後に変更 (1→3枠)');
+        // ★ 枠数が同じでも中身が違えば検出する (h21 で確認 → h22 に付け替え)
+        const swapped = dom.buildRows({
+            players: [P({ id: 6, name: '付け替え', ...base, availableSlots: ['h22'] })],
+            extras: { pushPlayerIds: [6], slvThisSeasonIds: [6],
+                availConfirmations: [{ player_id: 6, slot_count: 1, slots_snapshot: ['h21'] }] },
+            phase: 'pre',
+        });
+        assert.deepEqual(swapped[0].reasons.map(r => r.key), ['availChanged'],
+            '枠数が同じでも中身が変われば知らせる (slots_snapshot があるとき)');
+        assert.match(swapped[0].reasons[0].label, /中身が変化/);
+        // スナップショットが無い旧行は従来どおり枠数で見る (同数なら検出しない)
+        const legacy = dom.buildRows({
+            players: [P({ id: 7, name: '旧行', ...base, availableSlots: ['h22'] })],
+            extras: { pushPlayerIds: [7], slvThisSeasonIds: [7], availConfirmations: [{ player_id: 7, slot_count: 1 }] },
+            phase: 'pre',
+        });
+        assert.deepEqual(legacy[0].reasons, [], '旧行は枠数一致なら確認済みのまま');
+        // 集計にも「今季確認」の欄が出る
+        const sum = dom.summarize(rows, 'pre');
+        const ac = sum.find(x => x.key === 'availConfirm');
+        assert.ok(ac, '集計に availConfirm がある');
+        assert.equal(ac.value, 3, '確認済みは3人 (id 3,4,5)');
+        assert.equal(ac.total, 5);
+    });
+
+    test('★ 未確認だけの人には「確認のお願い」を送る (未登録の文面と分ける)', () => {
+        const base = { damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false };
+        const rows = dom.buildRows({
+            players: [P({ id: 2, name: '未確認', ...base, availableSlots: ['h21'] })],
+            extras: { pushPlayerIds: [2], slvThisSeasonIds: [2] }, phase: 'pre',
+        });
+        const msg = dom.nudgeMessage(rows[0], 'pre');
+        assert.ok(msg, '催促の文面が出る');
+        assert.match(msg.title, /確認/);
+        assert.doesNotMatch(msg.body, /未登録/, '未登録ではないので「未登録です」と言わない');
+    });
+
     test('buildRows(当日): 凸残・締め凸未返答が先頭に来る / 代理は activity_log から数える / 推定SLvは未登録扱い', () => {
         const players = [P({ id: 1, name: 'A', attacks: [{ level: 1, boss_number: 2 }, { level: 2, boss_number: 3 }], syncLevel: 500, syncLevelEstimated: true, availableSlots: ['h20'] })];
-        const extras = { pushPlayerIds: [1], slvThisSeasonIds: [1], finishRequests: [{ player_id: 1, status: 'pending' }], proxyEvents: [{ player_id: 1 }, { player_id: 1 }] };
+        const extras = { pushPlayerIds: [1], slvThisSeasonIds: [1], finishRequests: [{ player_id: 1, status: 'pending' }], proxyEvents: [{ player_id: 1 }, { player_id: 1 }],
+            availConfirmations: [{ player_id: 1 }] };
         const [r] = dom.buildRows({ players, extras, phase: 'day' });
         assert.deepEqual(r.reasons.map(x => x.key), ['attacks', 'finish', 'mock', 'slv'], '当日の理由順 (凸→締め凸→模擬→SLv。時間帯・通知は満たしている)');
         assert.equal(r.reasons[0].label, '凸 残1');
