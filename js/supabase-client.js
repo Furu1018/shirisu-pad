@@ -3520,12 +3520,22 @@ window.supabaseLoadRecentActivity = async function (limit = 50) {
         text: `${s.players?.name || '?'} が通知を有効化`,
     }));
 
-    const { data: dmgRows } = await _selectUsableDamages('attribute, damage_b, updated_at, players(name)',
-        (q) => q.order('updated_at', { ascending: false }).limit(15));
-    (dmgRows || []).forEach(d => events.push({
-        type: 'damage', ts: d.updated_at,
-        text: `${d.players?.name || '?'} の ${d.attribute}PT ダメージ → ${Number(d.damage_b).toFixed(1)}B`,
-    }));
+    // ★ levels / boss_level も取る — カード・プラン・人気編成は代表値 (中央値) を出すので、
+    //   ここだけ damage_b (= 廃止前の互換ミラー = 最大値) を出すと数字が食い違う (Codex指摘)
+    const dmgCols = 'attribute, damage_b, updated_at, players(name)';
+    const dmgTune = (q) => q.order('updated_at', { ascending: false }).limit(15);
+    let dmgRes = await _selectUsableDamages(`${dmgCols}, levels, boss_level`, dmgTune);
+    if (dmgRes.error && _isMissingColumnErr(dmgRes.error, 'levels')) dmgRes = await _selectUsableDamages(dmgCols, dmgTune);
+    const mlAct = (typeof window !== 'undefined' && window.mockLevelsDomain) || null;
+    (dmgRes.data || []).forEach(d => {
+        const v = mlAct
+            ? (mlAct.representativeDamage(mlAct.normLevels(d.levels, d.damage_b, d.boss_level)) || 0)
+            : (Number(d.damage_b) || 0);
+        events.push({
+            type: 'damage', ts: d.updated_at,
+            text: `${d.players?.name || '?'} の ${d.attribute}PT ダメージ → ${v.toFixed(1)}B`,
+        });
+    });
 
     // Push通知の送信履歴
     try {
