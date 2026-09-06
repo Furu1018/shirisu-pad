@@ -802,7 +802,12 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
     const existing = attrRows.find(r => r.slot === targetSlot) || null;
     let merged;
     if (!multi) {
-        merged = ml.mergeMeasurement(existing || {}, { damageB: value, level: lv, characters: cleaned || undefined });
+        // 単値保存 (画像で提出・旧経路) も**全置換**する。
+        // ★ 追記 (mergeMeasurement) のままだと、廃止前の測定が残っている編成に
+        //   OCR で 20B を保存したとき {0:20, 3:30} になり、成功表示は20Bなのに
+        //   パネルとプランは代表値25Bになる (Codex指摘 2026-09-06)。
+        //   測定ボスレベルを廃止した以上、1編成に残す値は1つだけ
+        merged = ml.mergeMeasurements(existing || {}, { entries: { '0': value }, characters: cleaned || undefined });
     } else if (!redirected) {
         // 編集していたスロットへの保存 = 「画面の内容がそのまま結果」
         merged = ml.mergeMeasurements(existing || {}, { entries, characters: cleaned || undefined });
@@ -2349,8 +2354,14 @@ window.supabaseLoadMockSubmissionStatus = async function () {
 // 模擬提出のうち編成つきの行を取得 (人気編成の集計用)。attribute 省略で全属性
 window.supabaseLoadTeamSubmissions = async function (attribute = null) {
     // ★ 人気編成・キャラ採用率も 2枠運用に合わせる (32未適用環境の③を混ぜない)
-    const { data, error } = await _selectUsableDamages('player_id, attribute, damage_b, characters, players(name)',
-        (q) => (attribute ? q.eq('attribute', attribute) : q));
+    // ★ levels / boss_level も取る — 呼び出し側が代表値 (mockDamageOf) を出すのに要る。
+    //   damage_b だけだと廃止前の複数測定が残る行で最大値になり、プランと数字がずれる (Codex指摘)
+    const tune = (q) => (attribute ? q.eq('attribute', attribute) : q);
+    let { data, error } = await _selectUsableDamages('player_id, attribute, damage_b, levels, boss_level, characters, players(name)', tune);
+    // 31未適用の環境には levels 列が無い。その場合は damage_b だけで読む (代表値は単一値に劣化)
+    if (error && _isMissingColumnErr(error, 'levels')) {
+        ({ data, error } = await _selectUsableDamages('player_id, attribute, damage_b, characters, players(name)', tune));
+    }
     if (error) throw error;
     return (data || []).filter(r => Array.isArray(r.characters) && r.characters.filter(Boolean).length > 0);
 };
