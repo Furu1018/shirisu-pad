@@ -215,22 +215,28 @@
         // ===== 模擬の測定レベルによる絞り込み (ユーザー決定 2026-08-10) =====
         // 記録レベル L の編成は **対象レベル ≤ L** にだけ使う。
         // 高難度で出せた出力は低難度なら確実に出せる (下限として保証される) が、
+        // 代表ダメージの計算 (levels オブジェクト → 数値)。有効値の中央値。
+        // 偶数個は中央2つの平均。1件ならその値。廃止前の複数測定を畳むためだけに使う
+        const representative = (levels) => {
+            const vals = [];
+            for (const k of ['0', '1', '2', '3', '4']) {
+                const v = levels[k];
+                if (Number.isFinite(v) && v > 0) vals.push(v);
+            }
+            if (vals.length === 0) return 0;
+            vals.sort((a, b) => a - b);
+            const mid = Math.floor(vals.length / 2);
+            return vals.length % 2 === 1 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+        };
+
         // 提出の代表ダメージ。**対象レベルによらず同じ値**を返す。
         // 測定レベルで候補を絞るのはやめた (2026-09-06 ユーザー決定) — 根拠と経緯は
         // js/domain/mockLevels.js の representativeDamage を参照。
         // 複数値を持つのは廃止前の既存データだけで、その場合は中央値を採る
         // (最大値は試行のブレの上振れを固定してしまう)
         const resolveDamage = (lo) => {
-            const src = lo.levels;
-            const vals = [];
-            for (const k of ['0', '1', '2', '3', '4']) {
-                const v = src[k];
-                if (Number.isFinite(v) && v > 0) vals.push(v);
-            }
-            if (vals.length === 0) return null;
-            vals.sort((a, b) => a - b);
-            const mid = Math.floor(vals.length / 2);
-            return vals.length % 2 === 1 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+            const v = representative(lo.levels);
+            return v > 0 ? v : null;
         };
         const hasDamage = (lo) => resolveDamage(lo) !== null;
         // 編成の同一判定 (順不同)。表記揺れを吸収するため charKey で比較する
@@ -304,8 +310,12 @@
                                     }
                                 }
                                 if (Object.keys(levels).length === 0) levels[String(level ?? 0)] = Number(lo.dmgB);
-                                let dmg = 0;
-                                for (const k in levels) if (levels[k] > dmg) dmg = levels[k];
+                                // ★ dmg は**代表値**にする (resolveDamage と同じ中央値)。
+                                //   ここだけ最大値のままにすると、並べ替え・火力順位・
+                                //   「編成未記録の完了凸を上位から消費する」推定が、実際に使う値と
+                                //   食い違う (levels{1:100,2:1,3:1} の代表値は 1 なのに最大値100で
+                                //   最上位に並び、先に消費されてしまう — Codex指摘)
+                                const dmg = representative(levels);
                                 return {
                                     dmg,
                                     team: Array.isArray(lo.team) ? lo.team : [],

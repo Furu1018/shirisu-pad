@@ -43,17 +43,18 @@ function mkNode(id) {
 }
 ['teSlots', 'teGrid', 'teMore', 'teFilters', 'teArmedName', 'tePickBody', 'tePickCnt',
  'tePickArw', 'teTopArw', 'myTeamEditTopTeams', 'myTeamEditFields', 'teManualArw', 'teSearch',
- 'myTeamEditLevelRows', 'myTeamEditLevelNote'].forEach(mkNode);
+ 'myTeamEditLevelNote'].forEach(mkNode);
 
 // 5つの入力欄 = 値の保持先
 const inputs = Array.from({ length: 5 }, (_, k) => ({ value: '', dataset: { teamIdx: String(k) } }));
 
-const lvInputs = ['1', '2', '3', '4'].map(k => ({ value: '', _k: k, getAttribute: () => k }));
+// ダメージ入力は1つだけ (測定ボスレベルは 2026-09-06 に廃止)
+const dmgInput = { value: '' };
+nodes.set('myTeamEditDamage', dmgInput);
 globalThis.document = {
     getElementById: (id) => nodes.get(id) || null,
     querySelectorAll: (sel) => {
         if (sel === '#myTeamEditFields input[data-team-idx]') return inputs;
-        if (sel === '#myTeamEditLevelRows input[data-te-lv]') return lvInputs;
         return [];
     },
     querySelector: (sel) => {
@@ -149,7 +150,7 @@ const slotCaps = () => [...nodes.get('teSlots')._html.matchAll(/class="te-cap">(
 //   (戻さないと前のテストの選択枠・絞り込みを引き継いでテストが順序依存になる)
 const reset = () => {
     inputs.forEach(i => { i.value = ''; });
-    lvInputs.forEach(i => { i.value = ''; });
+    dmgInput.value = '';
     // ★ ノードの中身もテストごとに空にする。残すと前のテストの表示を
     //   「今回出た」と誤認して、検知が壊れても気づけない
     nodes.forEach(n => { n._html = ''; n.textContent = ''; n.hidden = false; });
@@ -333,23 +334,23 @@ test('編成を変えたら測定値を消す (旧編成の数字を新編成に
     reset();
     inputs[0].value = 'アニス:スター'; inputs[1].value = 'ナユタ';
     globalThis.__api.openWith(['アニス:スター', 'ナユタ']);
-    lvInputs.forEach(i => { i.value = '20'; });
+    dmgInput.value = '20';
     renderTeamEditPicker();
-    assert(lvInputs.every(i => i.value === '20'), '開いた直後は消さない');
+    assert(dmgInput.value === '20', '開いた直後は消さない');
     tePick('リバーレリオ');                       // 編成を変える
-    assert(lvInputs.every(i => i.value === ''), `編成変更で測定値が消えるはず: ${lvInputs.map(i => i.value)}`);
-    assert(/測定値を消しました/.test(nodes.get('myTeamEditLevelNote')._html), '理由を出すこと');
+    assert(dmgInput.value === '', `編成変更でダメージが消えるはず: ${dmgInput.value}`);
+    assert(/ダメージを消しました/.test(nodes.get('myTeamEditLevelNote')._html), '理由を出すこと');
 });
 
 test('編成を戻したり触っただけでは消さない (初期描画・同じ編成)', () => {
     reset();
     inputs[0].value = 'アニス:スター'; inputs[1].value = 'ナユタ';
     globalThis.__api.openWith(['アニス:スター', 'ナユタ']);
-    lvInputs.forEach(i => { i.value = '20'; });
+    dmgInput.value = '20';
     renderTeamEditPicker();                       // 初期描画で消えない
-    assert(lvInputs.every(i => i.value === '20'), '再描画だけでは消さない');
+    assert(dmgInput.value === '20', '再描画だけでは消さない');
     teArmSlot(3); teSetFilter('all');             // 選択・絞り込みだけでは消さない
-    assert(lvInputs.every(i => i.value === '20'), '枠の選択では消さない');
+    assert(dmgInput.value === '20', '枠の選択では消さない');
 });
 
 test('測定が無い状態で編成を変えても何も起きない', () => {
@@ -365,13 +366,13 @@ test('2回目以降の編成変更でも消す (基準が更新されること)'
     reset();
     inputs[0].value = 'アニス:スター';
     globalThis.__api.openWith(['アニス:スター']);
-    lvInputs[0].value = '20';
+    dmgInput.value = '20';
     renderTeamEditPicker();
     tePick('ナユタ');                      // 1回目の変更 → 消える
-    assert(lvInputs[0].value === '', '1回目で消えること');
-    lvInputs[0].value = '31';              // 新しい編成で測り直して入力
+    assert(dmgInput.value === '', '1回目で消えること');
+    dmgInput.value = '31';              // 新しい編成で測り直して入力
     tePick('リバーレリオ');                 // 2回目の変更
-    assert(lvInputs[0].value === '', `2回目でも消えるはず: ${lvInputs[0].value}`);
+    assert(dmgInput.value === '', `2回目でも消えるはず: ${dmgInput.value}`);
 });
 
 test('未測定で開いて値を入れたあとに編成を変えても消す', () => {
@@ -381,9 +382,9 @@ test('未測定で開いて値を入れたあとに編成を変えても消す',
     globalThis.__api.openWith([]);          // 開いた時点では測定なし
     renderTeamEditPicker();
     tePick('アニス:スター');                 // 編成を作る (ここでは消さない)
-    lvInputs[0].value = '20';               // あとから値を入れる
+    dmgInput.value = '20';               // あとから値を入れる
     tePick('ナユタ');                        // さらに編成を変える
-    assert(lvInputs[0].value === '', `入力済みの値も消えるはず: ${lvInputs[0].value}`);
+    assert(dmgInput.value === '', `入力済みの値も消えるはず: ${dmgInput.value}`);
 });
 
 // 抽出できない側 (updateMyTeamEditIcon) の配線は静的に確かめる。

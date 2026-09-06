@@ -663,6 +663,26 @@ test('★ 複数レベルの測定が残っている既存データは中央値�
     assert.equal(a.dmgB, 30, `中央値の30が使われるはず: ${a.dmgB}`);
 });
 
+test('★ 並べ替え・消費も代表値で行う (最大値のまま残すと弱い編成が生き残る)', () => {
+    // Codex指摘 2026-09-06: 選択は代表値なのに並び・消費が最大値だと、
+    // 「最大値は高いが代表値は低い編成」が上位に並び、完了凸の推定消費で先に消えてしまう。
+    // 編成が記録されていない完了凸は「上位から消費」なので、その差が結果に出る
+    const p = player('A', { fire: 100 });
+    p.loadoutsByAttr = { fire: [
+        { dmgB: 100, team: ['a','b','c','d','e'], slot: 1, levels: { '1': 100, '2': 1, '3': 1 } },  // 代表値 1
+        { dmgB: 50,  team: ['f','g','h','i','j'], slot: 2, levels: { '1': 50, '2': 50, '3': 50 } }, // 代表値 50
+    ] };
+    // 灼熱PTで1凸済み・編成は未記録 → 代表値が上位の1件が消費済みとみなされる
+    p.attacks = [{ boss_number: 1, characters: [] }];
+    p.attackCount = 1;
+    // boss() の第2引数は弱点 (持っていくPT属性)。灼熱PTで殴るボス1体だけを置く
+    const plan = compute(makeInput([boss(1, 'fire', { remainingB: 200, totalB: 300 })], [p], { currentLevel: 1 }));
+    const used = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks));
+    // 代表値の高い編成② (50) が消費済みになり、残るのは代表値1の編成①
+    assert.equal(used.length, 1, `残り1凸のはず: ${used.length}`);
+    assert.equal(used[0].dmgB, 1, `代表値で消費すると残るのは1B: ${used[0].dmgB} (最大値で消費すると50Bになる)`);
+});
+
 test('★ 偶数個の測定は中央2つの平均', () => {
     const p = player('A', { fire: 40 });
     p.loadoutsByAttr = { fire: [{ dmgB: 40, team: ['a','b','c','d','e'], slot: 1, levels: { '1': 40, '2': 30, '3': 20, '4': 10 } }] };
