@@ -63,10 +63,11 @@ const P_SHARE2 = 0.12, P_SHARE1 = 0.05;
 // 0 にすると slot/ord の探索が一切評価されないため、フェーズ3で目指す状態を想定して 30% にしてある。
 // 「本番の現状」ではなく「本番で目指す状態」を測っている点に注意
 const P_SLOT2 = 0.3;
-// レベル別測定 (31_player_damages_levels) を持つ編成の割合。想定運用:
-// 高レベルで測り直した値が levels{'0':旧値, L:新値} の形で追記される。
+// 複数レベルの測定が残っている編成の割合。
+// ★ 測定ボスレベルは 2026-09-06 に廃止したので、これは**廃止前のデータが残っている**
+//   状態を模したもの。本番の実測は 114件中6件 = 約5%
 // 0 にするとレベル解決 (resolveAtLevel) が一度も評価されないため 25% にしてある
-const P_LEVELED = 0.25;
+const P_LEVELED = 0.05;
 
 function board(seed) {
     let s = seed;
@@ -122,12 +123,15 @@ function board(seed) {
         pool.forEach(a => {
             const base = Math.round((4 + rnd() * 24) * 2) / 2;
             const lo1 = { dmgB: base, team: team1[a], slot: 1 };
-            // レベル別測定: 一部の編成は「未指定の旧値 + 高レベルで測り直した低めの値」を持つ
-            // (levels のミラー不変条件: dmgB = 最大値)
+            // 廃止前に複数レベルで測った編成。
+            // ★ 差は実測レンジに合わせる — 同一編成でレベル違いを測った本番6件は
+            //   すべて Lv1比 96〜105% だった (2026-09-06 検証)。
+            //   「高レベルほど下がる」という旧実装の想定は実データが否定している。
+            //   ここを大きくすると、代表値 (中央値) を使う現行実装が不当に不利に見える
             if (rnd() < P_LEVELED) {
                 const lv = 2 + Math.floor(rnd() * 3);               // 2〜4
-                const lower = Math.round((base * (0.75 + rnd() * 0.2)) * 2) / 2;
-                lo1.levels = { '0': base, [String(lv)]: lower };
+                const other = Math.round((base * (0.96 + rnd() * 0.09)) * 2) / 2;
+                lo1.levels = { '0': base, [String(lv)]: other };
                 lo1.level = null;
             }
             const los = [lo1];

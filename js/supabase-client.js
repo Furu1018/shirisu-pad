@@ -807,13 +807,12 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
         // 編集していたスロットへの保存 = 「画面の内容がそのまま結果」
         merged = ml.mergeMeasurements(existing || {}, { entries, characters: cleaned || undefined });
     } else {
-        // ★ 同一編成だったので別スロットへ振り替える場合は**全置換しない**。
-        //   フォームは元スロットの内容で初期化されているので、そのまま置き換えると
-        //   振替先が持っていた別レベルの測定を消してしまう
-        //   (例: slot1={Lv1,Lv4} / slot2={Lv2} で slot2 を保存 → slot1 が {Lv2} だけになる)。
-        //   振替先には「追記」する — 同じレベルはフォームの値で上書き (Codex指摘 2026-08-12)
-        const base = ml.normLevels(existing && existing.levels, existing && existing.damage_b, existing && existing.boss_level) || {};
-        merged = ml.mergeMeasurements(existing || {}, { entries: { ...base, ...entries }, characters: cleaned || undefined });
+        // 同一編成だったので別スロットへ振り替える場合も**全置換**する。
+        // ★ 測定ボスレベルを廃止 (2026-09-06) して「1編成 = ダメージ1つ」になったので、
+        //   振替先に古い値を残す意味がなくなった。追記のままだと廃止前の複数測定が
+        //   このスロットにだけ生き残る (Codex指摘 2026-09-06)。
+        //   レベル別測定があった頃は「振替先の別レベルを消さない」ために追記していた
+        merged = ml.mergeMeasurements(existing || {}, { entries, characters: cleaned || undefined });
     }
     if (!merged) throw new Error('登録する測定値がありません');
     const basePayload = {
@@ -3685,12 +3684,14 @@ window.supabaseLoadOpsDashboardData = async function () {
             });
             return;
         }
-        const v = Number(d.damage_b) || 0;
         const slot = d.slot || 1;
         const level = _normBossLevel(d.boss_level);
-        // levels = スロット内のレベル別測定値 (31)。未適用/旧行は (damage_b, boss_level) の
-        // 1測定に正規化される — ソルバーは常に levels を読めばよい
+        // levels = 保存されている測定。廃止前の行は複数キーを持つことがある
         const levels = mlDom ? mlDom.normLevels(d.levels, d.damage_b, d.boss_level) : null;
+        // ★ 代表ダメージ (中央値)。測定ボスレベルを廃止 (2026-09-06) してからは
+        //   ソルバーも表示もこの値で揃える。damage_b (= 廃止前の互換ミラー = 最大値) を
+        //   そのまま配ると、事前比較・レーダー・人気編成・GB同期だけ数字がずれる (Codex指摘)
+        const v = (mlDom && levels) ? (mlDom.representativeDamage(levels) || 0) : (Number(d.damage_b) || 0);
         const team = (Array.isArray(d.characters) && d.characters.length > 0) ? d.characters : [];
         if (!dmgByPlayer.has(d.player_id)) dmgByPlayer.set(d.player_id, {});
         const dm = dmgByPlayer.get(d.player_id);

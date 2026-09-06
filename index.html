@@ -4084,7 +4084,7 @@
                             <li>各レベル5体撃破で次レベル。<strong>Lv3を踏破すると即日「Lv4＝ボス5のみ・HP無限」が開き、そこへの凸は全額スコアに入ります</strong>（オーバーキルが存在しない）。</li>
                             <li>Lv3踏破が見えている場合、<strong>大火力の凸はなるべくボス5へ温存</strong>し、Lv1〜3の踏破は小さめの凸でまかないます。温存された凸には 🔒 マークが付き、増えたスコア想定はヒーローの「🔒温存で増加」チップに出ます。ただし<strong>ボス5開放時刻より前にしか出られない人は温存しません</strong>（出られない時間の凸は約束できないため）。</li>
                             <li>火力が Lv3 まで届かない場合はそのレベルで停止しますが、<strong>止まったレベルでは撃破を狙わず</strong>、オーバーキルが出ない配り方（残HPの大きいボスへ全額入れる）でスコアを最大化します。</li>
-                            <li>登録ダメージは1編成につき1回のみ使用（キャラ使い回し不可の再現）。<strong>1属性に複数の編成を提出すれば、キャラが被らなければ同属性2凸</strong>も提案されます（ボス5にも2凸可）。残りHPの小さいボスには低火力側の編成を回すなど、編成の使い分けも自動です。<strong>編成は模擬で測ったレベル以下のボスにだけ</strong>割り当てます（Lv3で出せた火力はLv1でも出せるが逆は保証できないため）。</li>
+                            <li>登録ダメージは1編成につき1回のみ使用（キャラ使い回し不可の再現）。<strong>1属性に複数の編成を提出すれば、キャラが被らなければ同属性2凸</strong>も提案されます（ボス5にも2凸可）。残りHPの小さいボスには低火力側の編成を回すなど、編成の使い分けも自動です。</li>
                             <li><strong>得意属性</strong>を設定している人はそれが優先されます: 1〜3個選択でその属性を必ず消化（残り枠は自由）、4個選択ならその中からのみ選出。ボス5の弱点が得意属性の人は、ボス5への凸で消化扱いになります（全額入るので一番おいしい消化先です）。</li>
                             <li>低レベルは低SLv、高レベルは高SLvを優先（高SLvを後半に温存）。</li>
                             <li>SLv未登録の新メンバーは、登録ダメージが近い既知メンバーから推定。</li>
@@ -5054,11 +5054,6 @@
                         <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:8px;">対象属性を選択</div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;"></div>
                     </div>
-                    <!-- 測定ボスレベル (任意)。未指定 = 全レベルで使える -->
-                    <div style="margin-top:12px;">
-                        <div style="font-size:11px;font-weight:800;color:#9AA0A6;letter-spacing:0.3px;margin-bottom:8px;">測定したボスレベル (任意)</div>
-                        <div id="myDmgPreviewLevelBtns" style="display:flex;gap:4px;"></div>
-                    </div>
                     <!-- ボタン群 (保存 / 再撮影 / キャンセル) -->
                     <div style="display:flex;gap:8px;margin-top:18px;">
                         <button onclick="handleMyDmgPreviewSave()" id="myDmgPreviewSaveBtn" style="flex:1;height:50px;border-radius:13px;border:none;background:#14161A;color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px rgba(20,22,26,0.2);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
@@ -5216,7 +5211,7 @@
                 <h2 id="myTeamEditTitle">✏️ 編成編集</h2>
                 <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成は1属性につき2つまで登録でき、キャラが被らなければ同属性2凸をプランが提案します。1つの編成に<strong>レベル別の測定値</strong>を持たせられます。</p>
+            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成は1属性につき2つまで登録でき、キャラが被らなければ同属性2凸をプランが提案します。</p>
             <!-- 運営除外 (35): 除外されている提出を開いたときだけ理由を出す -->
             <div id="myTeamEditExclNote" style="display:none;margin:6px 0 8px;padding:8px 10px;border-radius:10px;background:rgba(255,61,68,0.08);color:#B91C1C;font-size:11.5px;font-weight:800;line-height:1.5;"></div>
 
@@ -6605,7 +6600,7 @@
                 season = ctx?.season || null;
                 if (season && typeof window.supabaseLoadPlayerDamages === 'function') {
                     const rows = await window.supabaseLoadPlayerDamages(identity.id);
-                    squads = (rows || []).filter(r => Number(r.damage_b) > 0).map(r => ({
+                    squads = (rows || []).filter(r => mockDamageOf(r) > 0).map(r => ({
                         attr: r.attribute,
                         slot: Number(r.slot) || 1,
                         chars: (Array.isArray(r.characters) ? r.characters : []).filter(Boolean)
@@ -8444,11 +8439,8 @@
                     : activeSlot;
                 const rec = slots[activeSlot];
                 // 測定ボスレベルは廃止 (2026-09-06)。廃止前の複数測定が残っている行は代表値 (中央値) を出す
-                const _ml = window.mockLevelsDomain || null;
-                const recVal = (_ml && rec)
-                    ? _ml.representativeDamage(_ml.normLevels(rec.levels, rec.damage_b, rec.boss_level))
-                    : (rec?.damage_b != null ? Number(rec.damage_b) : null);
-                const val = (recVal != null && recVal > 0) ? Number(recVal).toFixed(2).replace(/\.?0+$/, '') : null;
+                const recVal = mockDamageOf(rec);
+                const val = recVal > 0 ? Number(recVal).toFixed(2).replace(/\.?0+$/, '') : null;
                 const hasVal = val !== null;
                 const submitted = Number(recVal) > 0;   // 黒カード判定 (0B保存は白のまま — Codex 指摘)
                 // 運営除外 (35): 値は残るがプラン等には使われない。本人に理由を見せ、保存し直しで戻ることを案内
@@ -8572,6 +8564,17 @@
                     ? `<button onclick="handleMyTeamEditDeleteCurrent()" title="編成${SLOT_JP[_myTeamEditSlot]}を削除" style="flex:none;padding:8px 12px;border-radius:9px;border:none;background:rgba(255,61,68,0.10);color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑</button>`
                     : '');
         }
+        // 模擬提出行 (player_damages) の代表ダメージ。
+        // ★ 測定ボスレベル廃止 (2026-09-06) 後は、この関数がアプリ内で唯一の「その提出の値」。
+        //   damage_b は廃止前の互換ミラー (= levels の最大値) なので、直接読むと
+        //   複数測定が残っている行だけプラン・パネルと数字がずれる (Codex指摘)
+        function mockDamageOf(row) {
+            if (!row) return 0;
+            const ml = window.mockLevelsDomain || null;
+            if (!ml) return Number(row.damage_b) || 0;
+            return ml.representativeDamage(ml.normLevels(row.levels, row.damage_b, row.boss_level)) || 0;
+        }
+
         // ===== ダメージ入力 (2026-09-06: 測定ボスレベルは廃止。1編成 = ダメージ1つ) =====
         let _myTeamEditLevels = null;   // 開いた時点の levels (廃止前の複数測定が残っていることがある)
         let _myTeamEditExcl = '';       // 運営除外 (35) の表示ラベル (空 = 除外なし)
@@ -8582,8 +8585,9 @@
             if (!inp) return;
             const ml = window.mockLevelsDomain || null;
             const lv = _myTeamEditLevels || null;
+            // ★ 丸めない — 触らず保存したときに精度を落とさないため (Codex指摘)
             const v = (ml && lv) ? ml.representativeDamage(lv) : null;
-            inp.value = (v > 0) ? String(Math.round(v * 10) / 10) : '';
+            inp.value = (v > 0) ? String(v) : '';
             _renderTeamEditLevelNote();
         }
         function _renderTeamEditLevelNote() {
@@ -8632,7 +8636,7 @@
                 // 属性にまだ編成が残っていれば「残っているスロット」を開き直し、空になったら閉じる
                 // (①削除で②だけ残ったのに①を開くと削除済みの空画面になる — Codex指摘)
                 const rest = await window.supabaseLoadPlayerDamages(id.id);
-                const slots = (rest || []).filter(d => d.attribute === _myTeamEditAttr && Number(d.damage_b) > 0)
+                const slots = (rest || []).filter(d => d.attribute === _myTeamEditAttr && mockDamageOf(d) > 0)
                     .map(d => d.slot || 1).sort();
                 if (slots.length > 0) handleMyTeamEdit(_myTeamEditAttr, slots[0]);
                 else { closeMyTeamEditModal(); showNotification(`🗑 ${ptName}PT の提出を削除しました`); }
@@ -9214,7 +9218,7 @@
         }
         function _teamStatsFor(rows, attrKey) {
             const topTeams = _teamGroupsFor(attrKey).list.slice(0, 2);   // たくさん見せても迷うのでベスト2
-            const bestDmg = [...rows].sort((a, b) => (Number(b.damage_b) || 0) - (Number(a.damage_b) || 0))[0] || null;
+            const bestDmg = [...rows].sort((a, b) => mockDamageOf(b) - mockDamageOf(a))[0] || null;
             // ふるり値トップ: SLv補正後スコアの最大 (基準: ふるりの今季模擬 + SLv)
             // ダメージトップはSLvが高い人に偏るが、こちらはSLvに関わらず全員にチャンスがある
             const baseDmg = _mockRadarBase?.dmgByAttr?.[attrKey];
@@ -9226,7 +9230,7 @@
                 const pr = slvRatioTable[String(slv)];
                 if (!br || !pr) return null;
                 const baseScaled = baseDmg * pr / br;
-                return baseScaled > 0 ? (Number(r.damage_b) || 0) / baseScaled : null;
+                return baseScaled > 0 ? mockDamageOf(r) / baseScaled : null;
             };
             let bestFururi = null, bestFururiScore = 0, bestFururiSlv = 0;
             rows.forEach(r => {
@@ -9288,11 +9292,11 @@
                 ? `<span style="font-size:10px;font-weight:900;color:${a.color};">${spIcon('trophy', 11)} ダメージ & ${spIcon('scale', 11)} ふるり値 両トップ</span>`
                 : `<span style="font-size:10px;font-weight:900;color:${a.color};">${spIcon('trophy', 11)} ダメージトップ</span>`;
             const dmgHtml = bestBlock(st.bestDmg, 'dmg', dmgLabel,
-                ` · ${Number(st.bestDmg?.damage_b || 0).toFixed(1)}B${sameTop && st.bestFururiScore ? ` · ふるり値 ${st.bestFururiScore.toFixed(2)}` : ''}`);
+                ` · ${mockDamageOf(st.bestDmg).toFixed(1)}B${sameTop && st.bestFururiScore ? ` · ふるり値 ${st.bestFururiScore.toFixed(2)}` : ''}`);
             // ふるり値トップ: SLv補正後の比較 — SLvに関わらず全員にトップの可能性がある
             const fururiHtml = (!sameTop && st.bestFururi) ? bestBlock(st.bestFururi, 'fururi',
                 `<span style="font-size:10px;font-weight:900;color:#6C42F0;">${spIcon('scale', 11)} ふるり値トップ <span style="font-weight:800;color:#8A9097;">(SLv補正)</span></span>`,
-                ` · ふるり値 ${st.bestFururiScore.toFixed(2)} · SLv ${st.bestFururiSlv} · ${Number(st.bestFururi.damage_b).toFixed(1)}B`) : '';
+                ` · ふるり値 ${st.bestFururiScore.toFixed(2)} · SLv ${st.bestFururiSlv} · ${mockDamageOf(st.bestFururi).toFixed(1)}B`) : '';
             const fururiNote = (!st.bestFururi && st.bestDmg)
                 ? `<p style="margin:8px 0 0 0;font-size:10px;color:#A4AAB0;">⚖️ ふるり値トップは基準者(${fururiBasePlayerName})の${a.name}PT模擬と提出者のSLvが揃うと表示されます。</p>` : '';
 
@@ -10000,7 +10004,7 @@
                 // (Codex レビュー指摘。比較・レーダー両方の基準に効く)
                 const dmgByAttr = {};
                 (dmgs || []).forEach(d => {
-                    const v = Number(d.damage_b) || 0;
+                    const v = mockDamageOf(d);
                     if (v > (dmgByAttr[d.attribute] || 0)) dmgByAttr[d.attribute] = v;
                 });
                 _mockRadarBase = {
@@ -10048,7 +10052,7 @@
             const dmgByAttr = {};      // 属性 -> ベスト値
             const dmgAltByAttr = {};   // 属性 -> 2編成目の値 (2件提出時のみ)
             (damages || []).forEach(d => {
-                const v = Number(d.damage_b) || 0;
+                const v = mockDamageOf(d);
                 if (v <= 0) return;
                 const k = d.attribute;
                 if (v > (dmgByAttr[k] || 0)) {
@@ -10187,7 +10191,6 @@
                     totalDamage: r.totalDamage,
                     bossName: r.bossName,
                     characters: Array.isArray(r.characters) ? r.characters : [],
-                    selectedLevel: null,    // 測定ボスレベル (任意・未指定=全レベル可)
                     ptAttr,                 // 自動判定 (null なら未確定 → 手動選択UI を表示)
                     selectedAttr: ptAttr,   // 保存時に使う実際の属性
                 };
@@ -10223,7 +10226,6 @@
             const saveBtn = document.getElementById('myDmgPreviewSaveBtn');
             const msg = document.getElementById('myDmgPreviewMsg');
             if (msg) msg.textContent = '';
-            _renderMyDmgPreviewLevelBtns();
 
             // 属性 + ダメージ サマリ
             const attr = d.selectedAttr ? PT_ATTRS.find(a => a.key === d.selectedAttr) : null;
@@ -10307,21 +10309,6 @@
             _myDmgPreviewData = null;
         }
 
-        // 測定ボスレベルの選択 (任意)。未指定 = 全レベルで使える (従来どおり)
-        function _renderMyDmgPreviewLevelBtns() {
-            const el = document.getElementById('myDmgPreviewLevelBtns');
-            if (!el) return;
-            const sel = _myDmgPreviewData?.selectedLevel ?? null;
-            el.innerHTML = [1, 2, 3, 4].map(lv => {
-                const on = sel === lv;
-                return `<button onclick="setMyDmgPreviewLevel(${lv})" style="flex:1;padding:8px 4px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:900;${on ? 'background:#6C42F0;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">Lv${lv}</button>`;
-            }).join('') + `<button onclick="setMyDmgPreviewLevel(null)" style="flex:1.2;padding:8px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;${sel == null ? 'background:#14161A;color:#fff;' : 'background:#F1F2F4;color:#8A9097;'}">未指定</button>`;
-        }
-        function setMyDmgPreviewLevel(lv) {
-            if (!_myDmgPreviewData) return;
-            _myDmgPreviewData.selectedLevel = lv;
-            _renderMyDmgPreviewLevelBtns();
-        }
 
         function handleMyDmgPreviewPickAttr(key) {
             if (!_myDmgPreviewData) return;
@@ -10368,14 +10355,14 @@
                         canon = (reg.canonical || []).filter(Boolean);
                     } catch (e) { console.warn('[preview save team]', e?.message || e); }
                 }
+                // 測定ボスレベルは廃止 (2026-09-06) — level は渡さない (= 未指定 '0' として保存される)
                 const res = await window.supabaseSaveMockSubmission(id.id, attr, {
-                    damageB, level: d.selectedLevel ?? null, slot: 1,
+                    damageB, slot: 1,
                     characters: canon && canon.length > 0 ? canon : null,
                 });
                 if (statusEl) {
-                    const lvJp = d.selectedLevel ? ` (Lv${d.selectedLevel})` : '';
                     const slotJp = res?.redirected ? ` — 同一編成のため編成${SLOT_JP[res.slot] || res.slot}に統合` : '';
-                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B${lvJp} で保存しました${slotJp}`;
+                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で保存しました${slotJp}`;
                     statusEl.style.color = '#22c55e';
                 }
                 closeMyDmgPreviewModal();
@@ -11615,15 +11602,11 @@
                 if (typeof window.supabaseLoadPlayerDamages === 'function') {
                     const rows = await window.supabaseLoadPlayerDamages(id.id);
                     const byAttr = {};
-                    // 測定ボスレベルは廃止した (2026-09-06) ので、レベルによる出し分けはしない。
-                    // 廃止前の複数測定が残っている行は代表値 (中央値) に畳む
-                    const ml = window.mockLevelsDomain || null;
+                    // 測定ボスレベルは廃止した (2026-09-06) ので、レベルによる出し分けはしない
                     (rows || []).forEach(r => {
-                        const v = ml
-                            ? (ml.representativeDamage(ml.normLevels(r.levels, r.damage_b, r.boss_level)) ?? 0)
-                            : (Number(r.damage_b) || 0);
+                        const v = mockDamageOf(r);
                         if (!(v > 0)) return;
-                        // 1属性2編成のときは「そのレベルで使える方」のベスト値を採用
+                        // 1属性2編成のときは高い方を採用
                         if (byAttr[r.attribute] && byAttr[r.attribute].damage_b >= v) return;
                         byAttr[r.attribute] = {
                             damage_b: v,
@@ -11849,7 +11832,7 @@
             // 模擬戦データから 5 キャラ + ダメージ取得
             const myDmg = (_attackReport.myDamages || {})[ptAttr];
             const chars = (myDmg?.characters || []).slice(0, 5);
-            const dmgB = myDmg?.damage_b ? Number(myDmg.damage_b) : 0;
+            const dmgB = mockDamageOf(myDmg);
 
             ptCharsEl.innerHTML = chars.length
                 ? chars.map((c) => _renderMatchupCharAvatar(c, 26)).join('')
@@ -14769,9 +14752,6 @@
                 .map(p => {
                     // 1属性複数編成対応: この属性への凸回数ぶん上位ロードアウトを消費済みとし、
                     // 編成②③が残っていれば「同属性2凸目での締め」も候補に含める。
-                    // ★ 締め凸は「いまのレベル」のボスへの依頼なので、測定レベルが届かない
-                    //   編成は候補にしない (ソルバーの usableAtLevel と同じルール)。
-                    //   これを外すと Lv1 でしか測っていない人に Lv3 の締めを頼んでしまう
 
                     const usedN = (p.attacks || []).filter(a => bossWeaknessByNum.get(a.boss_number) === attrKey).length;
                     // 測定ボスレベルは廃止した (2026-09-06) ので、レベルによる出し分けはしない。
@@ -17120,13 +17100,13 @@
 「なんで自分がこのボスなの?」と思ったときのために、プランの決め方を公開します。**AIのお任せではなく、全部ルールで決まる計算**です(何回押しても同じ条件なら同じ答えが出ます)。
 
 **📥 材料にしているもの**
-みんなの模擬ダメージ(1属性につき最大2編成・**どのレベルのボスで測ったか**も)/SLv/戦闘可能時間(⏳隙間型含む)/得意属性/ボスの残HP/いまの時刻。
+みんなの模擬ダメージ(1属性につき最大2編成)/SLv/戦闘可能時間(⏳隙間型含む)/得意属性/ボスの残HP/いまの時刻。
 **つまり、みんなの提出データの質 = プランの質**です。模擬とSLvが正確なほど、無駄のないプランになります。
 
 **⚖️ 割り当てのルール**
 1. **各レベルは5体全部倒さないと次に進めない**ので、レベル1から順に「誰の凸で削り切るか」を組みます
 2. **1つの編成は1回だけ使える**(ゲームと同じでキャラの使い回し不可)。同じ属性に複数の編成を出していれば、キャラが被っていなければ同属性2凸も組み込みます
-2-2. **模擬で測ったレベル以下にしか使いません** — Lv3で出せたダメージはLv1でも確実に出せますが、逆(Lv1の数字がLv3でも出る)は保証がないためです。とくに**ボス5(HP無限)に出るにはLv4で測った編成**が要ります。レベル未設定の古い提出は、いまのところ全レベルで使っています
+2-2. **提出したダメージは、どのレベルのボスにも同じ値で使います** — 「Lv1で測った値はLv3では出せない」と考えて記録レベル以下に絞っていた時期がありますが、実データで差が出ませんでした(同じ編成でレベル違いを測った6件すべてがLv1比96〜105%)。2026-09-06 に測定レベルの区別をやめています
 3. **得意属性を設定した人は、その属性に必ず割り当て**(2〜3個選択なら残り枠だけ自由選出、4個ならその中からのみ)
 4. **序盤の低レベルには控えめなダメージの人、終盤の高レベルには高火力の人を温存** — SLv順で役割分担します
 5. **オーバーキル(削りすぎ)が最小になる人を優先** — 残HP4Bのボスに30B出せる人を当てるのはもったいない、という計算です
