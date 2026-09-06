@@ -5,11 +5,33 @@
 
 ## 🔀 PC間の引き継ぎ (2026-09-07 自宅PC → 職場PC)
 
-**職場PCで最初にやること**
+### ⚠ この作業は `main` ではなく **`work/avail-confirm-2026-09-07`** ブランチにある
 
-1. `git pull`
+自宅PCでの最後の4コミット (`e5b5224` / `469674f` / `3c886e9` / `5d67f4f`) は
+**Codex 監査を通せていない** — Codex CLI が利用上限に達したため。
+`main` へ push すると GitHub Pages がそのまま本番に反映されるので、
+未監査のまま本番へ出さないようブランチに置いてある。
+
+```sh
+git fetch
+git checkout work/avail-confirm-2026-09-07
+touch .claude/hooks/.codex-on          # Codex併用フラグ (PCごとの設定)
+# → Codex 監査を回す。指摘が無ければ:
+git checkout main && git merge --ff-only work/avail-confirm-2026-09-07 && git push
+```
+
+監査してほしい点は `469674f` のコミットメッセージに書いてある。要点は3つ:
+- `_availDoSaveInner` の戻り値契約 (成功=保存した時間帯の配列 / 失敗・早期return=null) を壊す経路が無いか
+- `_myAvailConfirm` の4状態 (null / 確認済み / `unsupported` / `loadFailed`) で壊れる分岐が無いか
+- 盤面ローダーの「1回だけ取り直してから throw」の是非
+  (当日の可用性 ⇔ 「今回は難しい」と申告した人を候補に戻さない安全性のトレードオフ)
+
+**そのあとにやること**
+
+1. 上のブランチを checkout (`git pull` だけでは**この作業は落ちてこない**)
 2. **`touch .claude/hooks/.codex-on`** — Codex併用フラグは `.gitignore` 済み = **PCごとの設定**。
-   pull しても ON にならない (ユーザーは「Codexを併用して」と指示済み)
+   pull しても ON にならない (ユーザーは「Codexを併用して」と指示済み)。
+   ★ 上の未監査4コミットの監査を最初に回すこと
 3. **Supabase の SQL は適用済み** (自宅PCで実行完了): `36_finish_requests_level.sql` /
    `37_availability_confirmations.sql` (本体 + 追補の `slots_snapshot` 列)。
    本番DBへの適用なので**職場PCで再実行は不要**。念のため確認するなら SQL Editor で
@@ -19,8 +41,10 @@
    `member-board.mjs` (11) / `kill-badge.mjs` (9) / `finish-requests.mjs` (16) /
    `avail-save.mjs` (9・新規) / `check-syntax.mjs` / `check-raid-event-hooks.mjs`
 
-**いまの状態**: 第44回の課題6件のうち **A・D・B(最小版) が完了して push 済み**。未コミットの作業なし。
-実機 (GitHub Pages) での確認が**3件たまっている**ので、続きの実装より先に見ておくと手戻りが少ない:
+**いまの状態**: 第44回の課題6件のうち **A・D・B(最小版) が完了**。未コミットの作業なし。
+A・D と課題B の最初の2コミットは監査済み。**残る4コミットが監査待ち** (上記)。
+実機 (GitHub Pages) での確認が**4件たまっている**。★ ブランチは本番に反映されないので、
+**監査 → main へ merge → push のあと**に見ること。続きの実装より先に消化すると手戻りが少ない:
 
 - 締め凸「締」バッジと注記 (実績・ふるり値の行)
 - 戦闘可能時間の「今季の確認」UI (ホームタブ)。確認済み / 未確認 / 確認後に変更 の3表示 +
