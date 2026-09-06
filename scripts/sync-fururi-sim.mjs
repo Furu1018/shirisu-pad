@@ -36,8 +36,22 @@ if (!url || !key) { console.error('接続情報を読み取れませんでした
 const H = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
 const api = async (path, init) => {
     const res = await fetch(`${url}/rest/v1/${path}`, { headers: H, ...init });
-    if (!res.ok) throw new Error(`${path} → ${res.status} ${await res.text()}`);
+    if (!res.ok) {
+        const body = await res.text();
+        // ★ status と body を持たせる。エラー文にはリクエストパスも入るので、
+        //   メッセージ全体を正規表現で見ると「列名がパスに含まれるだけ」で誤判定する
+        //   (levels を select しただけで、通信断まで列不存在に見えてしまう — Codex指摘)
+        const e = new Error(`${path} → ${res.status} ${body}`);
+        e.status = res.status; e.body = body;
+        throw e;
+    }
     return res.status === 204 ? null : res.json();
+};
+// 列が無い (PostgREST PGRST204 / PostgreSQL 42703) ときだけ true。
+// js/supabase-client.js の _isMissingColumnErr と同じ水準の判定
+const isMissingColumn = (e, col) => {
+    const b = String(e?.body || '');
+    return (/PGRST204/.test(b) || /42703/.test(b)) && new RegExp(col, 'i').test(b);
 };
 
 // ---- 対象シーズン ----
@@ -69,8 +83,26 @@ if (codeByAttr.size !== 5) {   // 弱点属性が重複していると Map が�
 // ---- ふるりの模擬 (slot1) ----
 const players = await api(`players?select=id,name&name=eq.${encodeURIComponent('ふるり')}`);
 if (players.length !== 1) { console.error(`プレイヤー「ふるり」が一意に決まりません (${players.length}件)`); process.exit(1); }
-const dmgs = (await api(`player_damages?select=attribute,slot,damage_b,updated_at&player_id=eq.${players[0].id}`))
-    .filter(d => (d.slot ?? 1) === 1);
+// ★ levels / boss_level も取る — 測定ボスレベル廃止 (2026-09-06) 後、アプリは代表値 (中央値) を
+//   使う。damage_b (廃止前の互換ミラー = 最大値) をそのまま基準に保存すると、
+//   GB のふるり値基準だけが最大値で永続化され、画面と食い違う (Codex指摘)
+let dmgs;
+try {
+    dmgs = await api(`player_damages?select=attribute,slot,damage_b,levels,boss_level,updated_at&player_id=eq.${players[0].id}`);
+} catch (e) {
+    // 31未適用の環境には levels 列が無い。その場合だけ damage_b で読む (単一値に劣化)。
+    // ★ それ以外の失敗で握りつぶすと、最大値を GB の基準として永続保存してしまう
+    if (!isMissingColumn(e, 'levels')) throw e;
+    dmgs = await api(`player_damages?select=attribute,slot,damage_b,updated_at&player_id=eq.${players[0].id}`);
+}
+dmgs = dmgs.filter(d => (d.slot ?? 1) === 1);
+
+// 提出の代表ダメージ (中央値) はドメインを唯一の実装にする — 計算を写すと乖離するため
+await import(`file://${join(ROOT, 'js', 'domain', 'mockLevels.js')}`);
+const mlDom = globalThis.mockLevelsDomain;
+if (!mlDom?.representativeDamage) { console.error('js/domain/mockLevels.js を読み込めませんでした'); process.exit(1); }
+const representativeDamage = (row) =>
+    mlDom.representativeDamage(mlDom.normLevels(row?.levels, row?.damage_b, row?.boss_level)) || 0;
 
 // timestamptz → JST の YYYY-MM-DD (不正/欠損は null = 安全側で stale 扱い)
 function jstDate(ts) {
@@ -80,10 +112,11 @@ function jstDate(ts) {
 const rows = [], missing = [], stale = [];
 for (const [attr, code] of codeByAttr) {
     const d = dmgs.find(x => String(x.attribute).toLowerCase() === attr);
-    if (!d || !(Number(d.damage_b) > 0)) { missing.push(`${attr} (${code} / ${nameByAttr.get(attr)})`); continue; }
+    const dmgB = representativeDamage(d);
+    if (!d || !(dmgB > 0)) { missing.push(`${attr} (${code} / ${nameByAttr.get(attr)})`); continue; }
     const updatedJst = jstDate(d.updated_at);   // hard_date は JST の日付なので同じ基準に揃えて比べる
     if (prev && (!updatedJst || updatedJst <= prev.hard_date)) stale.push(`${attr}: 更新 ${updatedJst ?? '不明'}`);
-    rows.push({ season_id: target.id, boss_code: code, damage_raw: Math.round(Number(d.damage_b) * 1e9),
+    rows.push({ season_id: target.id, boss_code: code, damage_raw: Math.round(dmgB * 1e9),
         _attr: attr, _updated: updatedJst ?? '不明', _boss: nameByAttr.get(attr) });
 }
 
