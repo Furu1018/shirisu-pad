@@ -12,6 +12,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 54566009867,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
@@ -26,6 +28,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 54846149481,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/171c4160829049f2604cde5036b79801.webp",
@@ -40,6 +44,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 63211808349,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -62,6 +68,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 57092709970,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
             "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
@@ -76,6 +84,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 63630060866,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
             "./character-images/9a54283cdd0c15a9b554810488563775.webp",
@@ -90,6 +100,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 35038467792,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
             "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
@@ -112,6 +124,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 73914108981,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
             "./character-images/2020306990ac4f6696c4674b536dca49.webp",
@@ -126,6 +140,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 51588398281,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/171c4160829049f2604cde5036b79801.webp",
@@ -140,6 +156,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 26140947572,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/a318393ea9779b93263dcb5e09b5f8a6.webp",
             "./character-images/8ce431b15458c35f7382e7d7d9d213b7.webp",
@@ -162,6 +180,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 37112563395,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -176,6 +196,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 54554516982,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
             "./character-images/d2c988a262dd44579c299337d5658c40.webp",
@@ -190,6 +212,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 57882552916,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
@@ -212,6 +236,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 27566205626,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
             "./character-images/461b597b997e9b787bbb1a9e5089d62f.webp",
@@ -226,6 +252,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 61236765481,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/171c4160829049f2604cde5036b79801.webp",
             "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
@@ -240,6 +268,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 55232896807,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2020306990ac4f6696c4674b536dca49.webp",
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
@@ -262,6 +292,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 38113971021,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
@@ -276,6 +308,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 53902584985,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
@@ -290,6 +324,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 44739555275,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -312,6 +348,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 38354953986,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
@@ -326,6 +364,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 49867391023,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
             "./character-images/9a54283cdd0c15a9b554810488563775.webp",
@@ -340,6 +380,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 46029250105,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
@@ -362,6 +404,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 31760230475,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
             "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
@@ -376,6 +420,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 39096738205,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/03d1fd97b534b7adbcc378694be6e25e.webp",
@@ -390,6 +436,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 61513365141,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
@@ -412,6 +460,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 48652343472,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/891bcbffffc5feae8545935ca6e6a4ea.webp",
@@ -426,6 +476,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 36591522376,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
@@ -440,6 +492,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 43011865325,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
             "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
@@ -462,6 +516,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 35512860640,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/3ac85e36766abc5e052921bbe2b857ae.webp",
             "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
@@ -476,6 +532,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 37408632259,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -490,6 +548,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 54641800284,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2020306990ac4f6696c4674b536dca49.webp",
             "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
@@ -512,6 +572,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 36047134495,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
             "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
@@ -526,6 +588,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 46430139706,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
             "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
@@ -540,6 +604,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 36284675568,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
@@ -562,6 +628,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 38852421947,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
@@ -576,6 +644,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 36852200070,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
@@ -590,6 +660,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 37929486487,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
             "./character-images/c4ba87906faff8cfc78af5ba6429e5be.webp",
@@ -604,7 +676,7 @@
       "player": "フブキ",
       "totalDamage": 104458000000,
       "attackCount": 3,
-      "syncLevel": 743,
+      "syncLevel": 744,
       "attacks": [
         {
           "bossType": "IIトゥームストーン",
@@ -612,6 +684,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 24664080434,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4844e4d5e35257607e7dfb58f7a666a9.webp",
             "./character-images/171c4160829049f2604cde5036b79801.webp",
@@ -626,6 +700,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 45355013450,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
             "./character-images/2020306990ac4f6696c4674b536dca49.webp",
@@ -640,6 +716,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 34438408789,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
             "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
@@ -662,6 +740,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 23451725717,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -676,6 +756,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 32849674005,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
             "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
@@ -690,6 +772,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 46437055410,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
             "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
@@ -712,6 +796,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 43356940288,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/31caa32129469999a8c011eba7fc1bac.webp",
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
@@ -726,6 +812,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 29268338008,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
             "./character-images/171c4160829049f2604cde5036b79801.webp",
@@ -740,6 +828,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 27632898979,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
@@ -762,6 +852,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 21143344107,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/68aa881ffdc137d2a50da839eaa1adb6.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -776,6 +868,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 40805437599,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
             "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
@@ -790,6 +884,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 28445040146,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
             "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
@@ -812,6 +908,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 19718967554,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
@@ -826,6 +924,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 34238987526,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
             "./character-images/29158a7c5723af1fd145f7abba06fcbf.webp",
@@ -840,6 +940,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 34379976652,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/171c4160829049f2604cde5036b79801.webp",
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
@@ -862,6 +964,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 20182037675,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/171c4160829049f2604cde5036b79801.webp",
             "./character-images/e9a7c3d1ab9791731978c1cdc8a4fdff.webp",
@@ -876,6 +980,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 33143152088,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2020306990ac4f6696c4674b536dca49.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -890,6 +996,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 34194777350,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
@@ -912,6 +1020,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 19810472448,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/ce3b833cd35960c9bf06fce4351e8812.webp",
             "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
@@ -926,6 +1036,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 27328966297,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -940,6 +1052,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 39808680138,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
@@ -962,6 +1076,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 30423641975,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
@@ -976,6 +1092,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 30410748693,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -990,6 +1108,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 20878701616,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
@@ -1012,6 +1132,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 25081892928,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
@@ -1026,6 +1148,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 27640896616,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/6e3b8dbfd367f6b1c0977866c27cd40b.webp",
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
@@ -1040,6 +1164,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 23489835241,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
@@ -1062,6 +1188,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 23456348434,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/6045c557bca29bcd35a65c8c99745ff0.webp",
@@ -1076,6 +1204,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 21826630717,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
@@ -1090,6 +1220,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 26407057973,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -1112,6 +1244,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 22002167166,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/9a54283cdd0c15a9b554810488563775.webp",
@@ -1126,6 +1260,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 24567674709,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/51a502c306eb644c879de8355a8eb574.webp",
             "./character-images/2a8b1a833483ca6aaef103f3ce487f0b.webp",
@@ -1140,6 +1276,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 18290890955,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
@@ -1162,6 +1300,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 32823700296,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/b24c71eb0f4824d4c7aefb379d4067e4.webp",
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
@@ -1176,6 +1316,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 5215613145,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/042f5fc774db7fdfb29fb91268649484.webp",
             "./character-images/a340e8e611c0c27a583640edcfa8f8f0.webp",
@@ -1190,6 +1332,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 26376380298,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
             "./character-images/d79376caa8148ed88ae6daea0c3c8146.webp",
@@ -1212,6 +1356,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 26084367586,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
             "./character-images/f078b4261519b0d1f598b6c1e943469a.webp",
@@ -1226,6 +1372,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 16483392003,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
             "./character-images/63d53b92567aba6aeb1368a2c6c5e420.webp",
@@ -1240,6 +1388,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 15573006598,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/430fe2319b54b1569064001be1a93641.webp",
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
@@ -1262,6 +1412,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 15566892049,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1be4ad890858ba5bb544affbf6a51dfc.webp",
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
@@ -1276,6 +1428,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 21187982332,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
             "./character-images/82830231c70562b5e080bb3d04c6d67c.webp",
@@ -1290,6 +1444,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 21087104996,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/3bbd011af06a42c324f937d5d931b4d2.webp",
             "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
@@ -1312,6 +1468,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 27680473641,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/1335f36c55dbb22eb0975d407e8ca1a6.webp",
             "./character-images/2020306990ac4f6696c4674b536dca49.webp",
@@ -1326,6 +1484,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 13109693931,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/c506579ca1253ccc24bfc464869085cc.webp",
             "./character-images/dab693df5b0baaf29b8f2a1b254c7679.webp",
@@ -1340,6 +1500,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 11939076334,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/ec51dcc7846a88299df91a31ac5c41c2.webp",
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
@@ -1362,6 +1524,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 17169385021,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2bb069ba8678aa438f728fdb3c73ac1f.webp",
             "./character-images/f8c6e8785196351c009e61dbba27645d.webp",
@@ -1376,6 +1540,8 @@
           "difficulty": "HARD",
           "level": 3,
           "damage": 20263524476,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/830d9d8541fce0c485950e38050b1c6d.webp",
             "./character-images/59035ecc65d2e661f612d9eea23dbe07.webp",
@@ -1390,6 +1556,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 13010266109,
+          "isKill": true,
+          "damageColor": "rgb(160, 33, 33)",
           "characters": [
             "./character-images/b6bd2f152e9a7e05b72e65323e039063.webp",
             "./character-images/627884de8e4628efd7dbcb7a9e4ecf53.webp",
@@ -1412,6 +1580,8 @@
           "difficulty": "HARD",
           "level": 2,
           "damage": 10670769050,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2020306990ac4f6696c4674b536dca49.webp",
             "./character-images/d53975fb3ddd520d13aa07e5614ad59e.webp",
@@ -1426,6 +1596,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 16126166108,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/4d82ca28d037c4aefecea57f554654aa.webp",
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
@@ -1440,6 +1612,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 18158617346,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
@@ -1462,6 +1636,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 11959446225,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/430fe2319b54b1569064001be1a93641.webp",
             "./character-images/04a73cd1bfa43f3a1078564107ad8336.webp",
@@ -1476,6 +1652,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 11218170432,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/cfc1f77baa6c70c165d42601357899cd.webp",
             "./character-images/70fb299487aa9bb61a844a4b68e96d89.webp",
@@ -1490,6 +1668,8 @@
           "difficulty": "HARD",
           "level": 1,
           "damage": 9491198815,
+          "isKill": false,
+          "damageColor": "rgb(88, 88, 89)",
           "characters": [
             "./character-images/e3532447b3ca028770c2a5ee149e746e.webp",
             "./character-images/2b99cf6d141638788d640b64cb84bf66.webp",
@@ -1502,12 +1682,13 @@
     }
   ],
   "metadata": {
-    "extractedAt": "2026-09-05T22:33:18.067Z",
+    "extractedAt": "2026-09-06T07:17:36.627Z",
     "playerCount": 30,
     "totalDamage": 2981534000000,
     "source": "BlaBlaLINK Chrome Extension",
-    "version": "2.4",
+    "version": "2.5",
     "hasDetailedAttacks": true,
+    "hasKillFlags": true,
     "imagesDownloaded": true
   }
 }
