@@ -105,9 +105,13 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ **未適用環境は `supabaseLoadAvailabilityConfirmations` が null を返す** ([] にしないこと —
   「37適用済みで全員が未確認」と区別がつかず、実行できない確認の催促を送る)。
   `js/domain/memberStatus.js` は配列でない値を「機能未適用」として確認の理由も集計欄も出さない。
-  ★ **確認まわりの保存は直列化する** (`_availSaveChain` / `_availDoSaveInner`) —
+  ★ **確認まわりの保存は直列化する** (`_availSaveChain` / `_availEnqueue` / `_availDoSaveInner`) —
   `clearTimeout` は未開始のタイマーしか止めないので、自動保存が通信中に時間を変えて確認すると
-  古い保存が遅れて着地して巻き戻る。
+  古い保存が遅れて着地して巻き戻る。確認は「保存 → 書き込み」を1単位でキューに積み、
+  **スナップショットには `_availDoSaveInner` の戻り値** (実際にサーバへ載せた時間帯) を使う。
+  ⚠ キューに積む関数の中から `_availDoSave`/`_availEnqueue` を呼ぶと自分待ちで返らなくなる。
+  ★ **取得失敗を「未確認」に偽装しない** — `_loadMyAvailConfirm` は `{ loadFailed: true }` を立て、
+  確認ボタンを出さない (偽装すると確認済みの人に「確認がまだです」と出て、押すと保存エラーになる)。
   キャラのバースト区分は `24_nikke_burst.sql` (burst) + `25_nikke_burst_alt.sql` (burst_alt =
   複数バーストで使えるキャラのサブ枠。例: ラピ:レッドフード は表示B3・B1枠でも可)。
   編成ピッカーのバースト絞り込みがこれを読む。25未適用でも読みは静かに劣化する

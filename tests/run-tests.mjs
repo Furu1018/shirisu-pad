@@ -3345,6 +3345,31 @@ console.log('\n運営除外の配線 (ソース突合):');
         const helper = client.match(/function _isMissingTableErr[\s\S]*?\n}\n/)?.[0] || '';
         assert.ok(/PGRST205|42P01/.test(helper), '欠損コードで判定すること (文言だけの緩い判定にしない)');
         assert.ok(/blob\.includes\(table\)/.test(helper), '対象テーブル名を含むことを要求すること');
+        // ★ 文言でのフォールバックを持たない — プロキシ等が同じ文言を返すと障害を「未適用」と誤分類し、
+        //   「今回は難しい」と申告した人を盤面に戻してしまう (Codex指摘 2026-09-07)
+        assert.ok(!/could not find the table|does not exist/i.test(helper), 'エラー文言での判定を残さない');
+        // 一時的な通信断で当日の運営盤面が丸ごと開けなくなるので、1回だけ取り直してから throw する
+        assert.ok(/1回だけ取り直します/.test(client), '再試行が無い');
+    });
+    test('★ 自分の確認状態は「取得失敗」を「未確認」に偽装しない', () => {
+        // 偽装すると、確認済みの人にまで「確認がまだです」と出て、押すと保存エラーになる
+        assert.ok(/_myAvailConfirm = \{ loadFailed: true \};/.test(html), '取得失敗の印が無い');
+        assert.ok(!/catch \{ \/\* 未適用・シーズン無しなら未確認扱い \*\/ \}/.test(html), '旧い握り潰しが残っている');
+        assert.ok(/c\.loadFailed/.test(html), '描画側が取得失敗を扱っていない');
+        // 取得失敗のときは確認ボタンを出さない (状態が分からないまま押させない)。
+        // ★ バッジ側 (el.textContent) の分岐と取り違えないよう box.innerHTML を含む方を取る
+        const box = [...html.matchAll(/if \(c && c\.loadFailed\) \{[\s\S]*?\n            \}/g)]
+            .map(m => m[0]).find(t => t.includes('box.innerHTML')) || '';
+        assert.ok(box, '確認ブロックの loadFailed 分岐が無い');
+        assert.ok(!/<button/.test(box), '状態不明なのに確認ボタンを出している');
+    });
+    test('★ 確認スナップショットは「実際に保存した時間帯」を使う', () => {
+        // 保存の後で _availUI.slots を読み直すと、保存中に本人が時間を変えた場合に
+        // 「availability は h21 なのに確認済みの記録は h22」というずれが残る (Codex指摘 2026-09-07)。
+        // 振る舞いは tests/avail-save.mjs が実行して確かめる
+        assert.ok(/const slots = await _availDoSaveInner\(\{ rethrow: true \}\);/.test(html),
+            '保存の戻り値をスナップショットに使っていない');
+        assert.ok(/if \(!Array\.isArray\(slots\)\) throw new Error/.test(html), '保存できなかった場合に確認を書かない');
     });
     test('★ 「今回は難しい」人には催促ボタンを押させない', () => {
         assert.ok(/const canNudge = r\.todo && r\.push && !r\.availUnavailable;/.test(html));

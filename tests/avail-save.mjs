@@ -108,20 +108,24 @@ function makeEnv() {
             },
         },
         _myAvailConfirm: null,
-        // 保存の実体スタブ。押した瞬間の slots を読み、gate があればそこで待つ
+        // 保存の実体スタブ。実装と同じく **走り出した時点の** slots を読み、
+        // 通信 (gate) を挟んでから着地し、**実際に載せた slots を返す**。
+        // ★ 戻り値は確認スナップショットの正 — 契約が変わったらここも直すこと
         async _availDoSaveInner(opts = {}) {
             const slots = HOUR_ORDER.map((h, i) => env._availUI.slots[i] ? _hourKey(h) : null).filter(Boolean);
             const tag = slots.join('|') || '(空)';
             if (saveGate) { const g = saveGate; saveGate = null; await g.promise; }
-            if (env._failNextSave) { env._failNextSave = false; log.push(`save(${tag}) 失敗`); if (opts.rethrow) throw new Error('通信断'); return; }
+            if (env._failNextSave) { env._failNextSave = false; log.push(`save(${tag}) 失敗`); if (opts.rethrow) throw new Error('通信断'); return null; }
             saved = slots; log.push(`save(${tag})`);
+            env._renderMyAvailConfirm?.();   // 実装は保存成功のたびに再描画する
+            return slots;
         },
         _failNextSave: false,
     };
     // 切り出したコードを env のスコープで評価し、必要な関数を取り出す
     const keys = Object.keys(env);
     const fn = new Function(...keys, `${SRC}\nreturn { _availEnqueue, _availDoSave, _availConfirmSetBusy, _renderMyAvailConfirm,`
-        + ` handleConfirmAvailability, get _myAvailConfirm(){return _myAvailConfirm;} };`);
+        + ` handleConfirmAvailability, _myAvailConfirmRef: () => _myAvailConfirm };`);
     return Object.assign(env, fn(...keys.map(k => env[k])));
 }
 
@@ -177,6 +181,22 @@ await test('★ 確認の書き込みは自分の保存の直後に来る (間�
     assert.equal(log[log.length - 1], 'save(h23)', `後からの自動保存が最後に来ていない: ${log.join(' → ')}`);
 });
 
+await test('★ 確認の保存中に時間を変えても、記録は「実際に保存した内容」と一致する', async () => {
+    // Codex指摘 2026-09-07: 保存の後で _availUI.slots を読み直すと、
+    // availability は h21 なのに確認済みの記録は h22 という状態が残る
+    const env = makeEnv();
+    setSlots(env, [21]);
+    const gate = defer(); saveGate = gate;
+    const p = env.handleConfirmAvailability(false);
+    await tick();                       // 確認の保存が走り出し、h21 を読んで通信中になる
+    setSlots(env, [22]);                // 通信中に本人が時間を変えた
+    gate.resolve(); await p;
+    assert.deepEqual(saved, ['h21'], 'サーバに載ったのは h21 のはず');
+    assert.deepEqual(confirmRows[0].slots, ['h21'], `確認の記録が保存内容とずれている (${JSON.stringify(confirmRows[0].slots)})`);
+    assert.equal(confirmRows[0].slotCount, 1);
+    assert.deepEqual(env._myAvailConfirmRef().slots_snapshot, ['h21'], '画面側の記録もずれてはいけない');
+});
+
 await test('保存が失敗してもキューは詰まらない (次の保存は走る)', async () => {
     const env = makeEnv();
     setSlots(env, [21]); env._failNextSave = true;
@@ -192,7 +212,7 @@ await test('★ 保存に失敗したら確認レコードを書かない (rethr
     setSlots(env, [21]); env._failNextSave = true;
     await env.handleConfirmAvailability(false);
     assert.equal(confirmRows.length, 0, '保存が失敗したのに確認だけ書かれた (古い時間帯のまま確認済みになる)');
-    assert.equal(env._myAvailConfirm, null, '画面側の状態も更新しない');
+    assert.equal(env._myAvailConfirmRef(), null, '画面側の状態も更新しない');
 });
 
 await test('★ 二重クリックしても確認は1回だけ書かれる', async () => {

@@ -15,9 +15,9 @@
    本番DBへの適用なので**職場PCで再実行は不要**。念のため確認するなら SQL Editor で
    `supabase/99_check_applied.sql` を実行する (36・37 の判定行が入っている)
 4. テストが全部通ることを確認:
-   `node tests/run-tests.mjs` (219) / `plan-hp-modal.mjs` (14) / `team-picker.mjs` (22) /
+   `node tests/run-tests.mjs` (221) / `plan-hp-modal.mjs` (14) / `team-picker.mjs` (22) /
    `member-board.mjs` (11) / `kill-badge.mjs` (9) / `finish-requests.mjs` (16) /
-   `avail-save.mjs` (8・新規) / `check-syntax.mjs` / `check-raid-event-hooks.mjs`
+   `avail-save.mjs` (9・新規) / `check-syntax.mjs` / `check-raid-event-hooks.mjs`
 
 **いまの状態**: 第44回の課題6件のうち **A・D・B(最小版) が完了して push 済み**。未コミットの作業なし。
 実機 (GitHub Pages) での確認が**3件たまっている**ので、続きの実装より先に見ておくと手戻りが少ない:
@@ -107,6 +107,10 @@ E と F は設計が下の「実装順」3・6 に書いてある。**E のモ�
    ★ **保存は直列化** (`_availSaveChain`) — `clearTimeout` は未開始のタイマーしか止めないので、
    自動保存が通信中に時間を変えて確認すると古い保存が遅れて着地して巻き戻る (Codex指摘)。
    確認は「時間帯の保存 → 確認の書き込み」を**1単位でキューに積む** + 二重クリックよけ。
+   ★ スナップショットは **保存が実際にサーバへ載せた時間帯** (`_availDoSaveInner` の戻り値) を使う —
+   保存の後で読み直すと、保存中に本人が時間を変えたときに記録と availability がずれる。
+   ★ 取得失敗を「未確認」に偽装しない (`{ loadFailed: true }`)。偽装すると確認済みの人に
+   「確認がまだです」と出て、押すと保存エラーになる。
    振る舞いは `tests/avail-save.mjs` が実際に走らせて確認する。
    → 実機確認まち: 前日締切時点の確認率と未確認者数が見えるか / 「今回は難しい」人が候補から消えるか
 5. **C: 締め凸候補を「今すぐ」と「次に可能」の二層に** (規模中・4が入れば DB変更不要)

@@ -3424,8 +3424,10 @@ function _isMissingTableErr(error, table) {
     if (!error || !table) return false;
     const blob = `${error.code || ''} ${error.message || ''} ${error.details || ''} ${error.hint || ''}`;
     if (!blob.includes(table)) return false;
-    return error.code === 'PGRST205' || error.code === '42P01'
-        || /could not find the table|relation .* does not exist/i.test(blob);
+    // ★ 文言でのフォールバックは持たない (Codex指摘 2026-09-07)。
+    //   プロキシや別のエラーが同じ文言 + テーブル名を返すと、障害を「未適用」と誤分類し、
+    //   「今回は難しい」と申告した人を盤面に戻してしまう
+    return error.code === 'PGRST205' || error.code === '42P01';
 }
 
 function _isMissingColumnErr(error, col) {
@@ -3993,8 +3995,15 @@ window.supabaseLoadOpsDashboardData = async function () {
     //   そのときは申告自体が存在し得ないので、誰も除外しないのが正しい
     const unavailableIds = new Set();
     if (season?.id) {
-        const { data: confs, error: uErr } = await supabase.from('availability_confirmations')
+        const _loadUnavail = () => supabase.from('availability_confirmations')
             .select('player_id, unavailable').eq('season_id', season.id).eq('unavailable', true);
+        let { data: confs, error: uErr } = await _loadUnavail();
+        // 一時的な通信断で運営盤面が丸ごと開けなくなるのは当日致命的なので、1回だけ取り直す。
+        // それでも駄目なら throw (誰も除外しないまま進むと、申告した人が候補に戻る)
+        if (uErr && !_isMissingTableErr(uErr, 'availability_confirmations')) {
+            console.warn('[ops] 「今回は難しい」の取得に失敗。1回だけ取り直します:', uErr.message);
+            ({ data: confs, error: uErr } = await _loadUnavail());
+        }
         if (uErr && !_isMissingTableErr(uErr, 'availability_confirmations')) throw uErr;
         if (uErr) console.warn('[ops] supabase/37 が未適用のため「今回は難しい」を反映できません:', uErr.message);
         (confs || []).forEach(c => unavailableIds.add(Number(c.player_id)));
