@@ -7065,6 +7065,73 @@
         // アプリを開いた時点で既に倒れているボスを一斉に「撃破!」と流さないため。
         // テストシーズンのシード (残HPを0にする) で誤爆するのも同じ理屈で防げる
         let _raidSeen = null;   // { seasonId, level, dead:Set<bossNumber> }
+        // 締め凸依頼の後片付け: 対象を確定 → 削除 → (実際に消せたときだけ) 活動ログ → 本人へ通知。
+        // ★ この順序が要点 (Codex指摘 2026-09-06):
+        //   - 削除より先にログを書くと、複数端末の同時検知で「2台が解除と記録したのに消したのは1台」になる
+        //   - ログ・通知には**削除で返った行**を使う。確定した行を使うと、その間に本人が了承した場合に
+        //     古い status のまま扱い、解除通知が本人に届かない
+        //   履歴は残さない (ユーザー決定 2026-09-06) — 次のレベルの依頼と混同するため、
+        //   代わりに activity_log へ「誰の依頼をなぜ消したか」を書く
+        async function _clearFinishRequestsFor(seasonId, scope, whatJp) {
+            if (typeof window.supabaseFindFinishRequestsToClear !== 'function') return;
+            let found;
+            try {
+                found = await window.supabaseFindFinishRequestsToClear(seasonId, scope);
+            } catch (e) {
+                console.warn('[finish req] 対象の取得に失敗:', e?.message || e);
+                return;
+            }
+            if (found.skipped) {
+                // 36 未適用環境ではレベルで絞れない = 消すと別レベルまで巻き込むので何もしない
+                console.warn('[finish req] supabase/36_finish_requests_level.sql が未適用のため、古い依頼を消せません');
+                return;
+            }
+            const found_rows = found.rows || [];
+            if (found_rows.length === 0) return;
+            const nameById = new Map(found_rows.map(r => [r.player_id, r.name]));
+            // ★ 順序は **削除 → (実際に消せたときだけ) ログ + 通知**。
+            //   複数端末が同時に検知すると全端末が同じ行を確定するので、削除より先にログを書くと
+            //   「2台が解除と記録したのに消したのは1台」というログになる (Codex指摘 2026-09-06)。
+            //   削除の直後に落ちると監査ログを1件落とすが、記録が事実とずれるよりは良い
+            //   (依頼そのものは消えており、運用は回る)
+            let removed = [];
+            try {
+                // ★ 返るのは**実際に消えた行**。確定した行をそのまま使うと、
+                //   確定〜削除の間に本人が了承した場合に古い status で記録・通知してしまう
+                removed = await window.supabaseDeleteFinishRequests(found_rows.map(r => r.id));
+            } catch (e) {
+                // 消せなかったら記録も通知もしない (依頼はまだ有効なまま)
+                console.warn('[finish req] 削除に失敗:', e?.message || e);
+                return;
+            }
+            // 0件 = 別の端末が先に消していた → 記録も通知もその端末に任せる
+            if (removed.length === 0) return;
+            const names = removed.map(r => `${nameById.get(r.player_id) || '?'}(${r.status})`).join('、');
+            // ★ detail は第2引数の文字列。履歴を残さない代わりに、ここに
+            //   「いつ・どのレベルのどのボスで・誰の依頼を・どの返答状態で消したか」を全部書く
+            const where = removed.map(r => `Lv${r.raid_level ?? '?'}B${r.boss_number}`).join(',');
+            // ★ 握り潰す supabaseLogActivity ではなく Strict 版を使う —
+            //   前者は insert の { error } を見ないので、書けていなくても成功として進む
+            try {
+                await window.supabaseLogActivityStrict('finish_req_cleared',
+                    `${whatJp} の締め凸依頼を解除 (${removed.length}件 / ${where} / ${names})`);
+            } catch (e) {
+                console.warn('[finish req] 記録に失敗 (依頼は解除済み):', e?.message || e);
+            }
+            // 返答済み (了承) の人には結果を知らせる。未返答のまま消えた人は
+            // そもそも見ていない可能性が高いので、通知は了承した人に絞る
+            const notify = removed.filter(r => r.status === 'accepted').map(r => r.player_id);
+            if (notify.length > 0 && typeof window.sendPushNotification === 'function') {
+                try {
+                    await window.sendPushNotification({
+                        title: '締め凸は不要になりました',
+                        body: `${whatJp} は撃破されました。了承いただいた締め凸は解除されています。`,
+                        url: './?tab=mypage', playerIds: notify,
+                    });
+                } catch (e) { console.warn('[finish req] 解除通知に失敗:', e?.message || e); }
+            }
+        }
+
         async function _checkRaidEvents() {
             if (_raidEventBusy) { _raidEventAgain = true; return; }   // 実行中の変化を捨てない
             _raidEventBusy = true;
@@ -7109,9 +7176,20 @@
                 //   戻さないと「前回も今回も撃破済み」になり、確保した端末が
                 //   送信前に落ちたときに誰も引き継げない (Codex指摘)。
                 //   引き継ぎは supabaseClaimRaidNotice のリース (sent=false のまま放置) が担う
+                // ★ レベルが上がった検知と同時のときは、ここで個別に消してはいけない。
+                //   level は**新しい** current_level なので、倒れたのは旧レベルのボスなのに
+                //   新レベルの有効な依頼を消してしまう (Codex指摘 2026-09-06)。
+                //   その場合は下の belowLevel でまとめて消すのが正しい
+                const levelJustOpened = ev.levelOpened != null;
                 for (const bn of ev.defeated) {
                     const b = bosses.find(x => Number(x.boss_number) === bn);
                     if (!b) continue;
+                    // そのレベルのそのボスへの締め凸依頼を片付ける。撃破通知の成否とは切り離す。
+                    // ★ ここで失敗しても再試行はしない (_raidSeen は既に進んでいるので同じ差分は二度来ない)。
+                    //   取り残した依頼は、次にレベルが上がったときの belowLevel 一括クリアで消える
+                    if (!levelJustOpened) {
+                        await _clearFinishRequestsFor(cur.seasonId, { bossNumber: bn, raidLevel: level }, b.name || `B${bn}`);
+                    }
                     const ref = `L${level}B${bn}`;
                     const kind = 'boss_defeated';
                     const st = await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id);
@@ -7132,6 +7210,13 @@
                 }
                 // ② レベル開放
                 if (ev.levelOpened != null) {
+                    // 前のレベルの依頼は、そのレベルが終わった時点で全部無効
+                    await _clearFinishRequestsFor(cur.seasonId, { belowLevel: ev.levelOpened }, `Lv${ev.from}`);
+                    // ★ ここで「いま倒れているボス」の新レベル依頼まで消してはいけない。
+                    //   撃破判定は残HP0かどうかだけなので、運営がボスHPを1体ずつ手で更新する運用だと
+                    //   「旧レベルのHP0のまま残っているボス」を新レベルの撃破と誤認する (Codex指摘)。
+                    //   誤削除 (有効な依頼が消えて締め凸が回らない) は、取り残し (古い依頼が見える) より害が大きい。
+                    //   新レベルで実際に倒れた分は、その撃破を差分で検知したときに個別クリアが拾う
                     const ref = `L${ev.levelOpened}`, kind = 'level_open';
                     const st = await window.supabaseClaimRaidNotice(cur.seasonId, kind, ref, me?.id);
                     if (st !== 'claimed') {
@@ -7951,7 +8036,8 @@
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブシーズンなし');
-                await window.supabaseRespondFinishRequest(ctx.season.id, bossNumber, id.id, status);
+                await window.supabaseRespondFinishRequest(ctx.season.id, bossNumber, id.id, status,
+                    Number(ctx.season.current_level) || null);
                 await _refreshFinishRequests();
                 renderMyFinishRequestBanner(id);
                 showNotification(status === 'accepted'
@@ -11136,7 +11222,10 @@
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) { _finishReqCache = []; return; }
-                _finishReqCache = await window.supabaseLoadFinishRequests(ctx.season.id);
+                // ★ 現在のレベルの依頼だけを見る。渡さないと、撃破済みレベルの
+                //   「依頼中」「了承済み」が残って次のレベルの依頼と混ざる (第44回の実害)
+                _finishReqCache = await window.supabaseLoadFinishRequests(
+                    ctx.season.id, Number(ctx.season.current_level) || null);
             } catch { /* noop */ }
         }
         const _FINISH_REQ_STATUS = {
@@ -13668,7 +13757,8 @@
                 // 端末のタイムゾーンに依存させない (+09:00 固定)
                 const since = new Date(`${snap.season.hard_date}T00:00:00+09:00`);
                 since.setTime(since.getTime() - 24 * 60 * 60 * 1000);
-                const extras = await window.supabaseLoadMemberStatusExtras(snap.season.id, since.toISOString());
+                const extras = await window.supabaseLoadMemberStatusExtras(snap.season.id, since.toISOString(),
+                    Number(snap.season.current_level) || null);
                 if (gen !== _mb.gen) return;                          // 追い越された古い応答は捨てる
                 if (!opsStore.isCurrentGeneration(storeGen)) return;  // 盤面が書き換わった (invalidate/load) → 次の描画に任せる
                 if (!_opsMode) return;                                // 待機中に運営OFF → 隠れた盤面を更新しない
@@ -14971,7 +15061,8 @@
                 try {
                     const seasonId = opsStore.get()?.season?.id;
                     if (seasonId) {
-                        await window.supabaseSetFinishRequests(seasonId, ctx.boss.boss_number, ids);
+                        await window.supabaseSetFinishRequests(seasonId, ctx.boss.boss_number, ids,
+                            Number(opsStore.get()?.season?.current_level) || null);
                         await _refreshFinishRequests();
                         renderOpsBossSummary();
                     }
@@ -14997,7 +15088,8 @@
                 try {
                     const seasonId = opsStore.get()?.season?.id;
                     if (seasonId) {
-                        await window.supabaseSetFinishRequests(seasonId, ctx.boss.boss_number, playerIds);
+                        await window.supabaseSetFinishRequests(seasonId, ctx.boss.boss_number, playerIds,
+                            Number(opsStore.get()?.season?.current_level) || null);
                         await _refreshFinishRequests();
                         renderOpsBossSummary();
                     }

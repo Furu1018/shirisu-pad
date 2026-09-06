@@ -199,6 +199,11 @@ SELECT * FROM (
             AND column_name IN ('excluded_at', 'excluded_by', 'excluded_reason')) = 3,
         'player_damages.excluded_at / excluded_by / excluded_reason (運営による模擬提出の除外。未適用だと 🧹除外がエラーで止まり適用を案内する — 読み取りは除外なしに劣化)'
 
+    UNION ALL SELECT '36_finish_requests_level',
+        (SELECT COUNT(*) FROM col WHERE table_name = 'finish_requests'
+            AND column_name = 'raid_level') = 1,
+        'finish_requests.raid_level (締め凸依頼をレベル単位に。未適用だと撃破・レベル進行で依頼が消えず、次のレベルの依頼と混ざって見える)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

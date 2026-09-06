@@ -1263,15 +1263,33 @@ const _detectLevelFromHp = (tier, totalRaw, tolerance = 0.05) => {
 
 // ボスHPを更新（remaining / total を raw 値で）
 // 副作用: total_hp_raw が標準LVに合致した場合、season.current_level を最大値へ昇格 (レベルアップ自動化)
-// ===== 締め凸依頼のステータス管理 (22_finish_requests.sql が前提) =====
-// 依頼バッチの記録: 同ボスの旧依頼は入れ替え (最後に送った相手だけ追跡)
-window.supabaseSetFinishRequests = async function (seasonId, bossNumber, playerIds) {
+// ===== 締め凸依頼のステータス管理 (22_finish_requests.sql / 36_finish_requests_level.sql) =====
+// ★ 依頼は「そのレベルのそのボスへの依頼」(2026-09-06)。
+//   撃破・レベル進行で有効な依頼から外す — シーズン中ずっと残ると
+//   次のレベルの依頼と見分けがつかなくなる (第44回の実害)。
+//   raid_level が NULL の行は 36 適用前の旧データ = レベル不明として現在レベルの依頼に含めない
+window.supabaseSetFinishRequests = async function (seasonId, bossNumber, playerIds, raidLevel = null) {
     if (!seasonId || !bossNumber || !Array.isArray(playerIds) || playerIds.length === 0) return;
-    await supabase.from('finish_requests').delete()
+    const lv = Number(raidLevel);
+    const hasLv = Number.isInteger(lv) && lv >= 1 && lv <= 4;
+    // 入れ替えるのは**同じレベルの同じボス**の依頼だけ。レベルを跨いで消すと、
+    // Lv2 の依頼を出した瞬間に Lv1 の返答履歴が消える
+    let del = supabase.from('finish_requests').delete()
         .eq('season_id', seasonId).eq('boss_number', bossNumber);
-    const { error } = await supabase.from('finish_requests').insert(
-        playerIds.map(pid => ({ season_id: seasonId, boss_number: bossNumber, player_id: pid }))
-    );
+    del = hasLv ? del.eq('raid_level', lv) : del.is('raid_level', null);
+    const delRes = await del;
+    // 36 未適用環境は raid_level 列が無い → レベル指定なしで従来どおり入れ替える
+    const noCol = delRes.error && _isMissingColumnErr(delRes.error, 'raid_level');
+    if (noCol) {
+        await supabase.from('finish_requests').delete()
+            .eq('season_id', seasonId).eq('boss_number', bossNumber);
+    } else if (delRes.error) {
+        throw delRes.error;
+    }
+    const row = (pid) => (hasLv && !noCol)
+        ? { season_id: seasonId, boss_number: bossNumber, player_id: pid, raid_level: lv }
+        : { season_id: seasonId, boss_number: bossNumber, player_id: pid };
+    const { error } = await supabase.from('finish_requests').insert(playerIds.map(row));
     if (error) {
         if (/finish_requests/.test(String(error.message))) {
             throw new Error('supabase/22_finish_requests.sql を SQL Editor で適用してください');
@@ -1279,26 +1297,95 @@ window.supabaseSetFinishRequests = async function (seasonId, bossNumber, playerI
         throw error;
     }
 };
-// シーズンの依頼一覧 (プレイヤー名つき)
-window.supabaseLoadFinishRequests = async function (seasonId) {
+// シーズンの依頼一覧 (プレイヤー名つき)。
+// currentLevel を渡すと「そのレベルの依頼」だけを返す (旧データ = raid_level NULL は除く)
+window.supabaseLoadFinishRequests = async function (seasonId, currentLevel = null) {
     if (!seasonId) return [];
-    try {
-        const { data, error } = await supabase
-            .from('finish_requests')
-            .select('id, boss_number, player_id, status, requested_at, players(name)')
+    const cols = 'id, boss_number, player_id, status, requested_at, players(name)';
+    const run = async (withLevel) => {
+        let q = supabase.from('finish_requests')
+            .select(withLevel ? `${cols}, raid_level` : cols)
             .eq('season_id', seasonId)
             .order('requested_at', { ascending: true });
+        return await q;
+    };
+    try {
+        let { data, error } = await run(true);
+        // 36 未適用環境は列が無い → レベルなしで読む (従来どおり全件が「有効」に見える)
+        if (error && _isMissingColumnErr(error, 'raid_level')) ({ data, error } = await run(false));
         if (error) throw error;
-        return (data || []).map(r => ({ ...r, name: r.players?.name || '?' }));
+        const rows = (data || []).map(r => ({ ...r, name: r.players?.name || '?' }));
+        const lv = Number(currentLevel);
+        if (!(Number.isInteger(lv) && lv >= 1 && lv <= 4)) return rows;
+        // ★ raid_level を持つ行だけを対象にレベルで絞る。列自体が無い環境では絞らない
+        //   (絞ると「依頼が1件も無い」ように見えて、締め凸の追跡が丸ごと消える)
+        if (!rows.some(r => 'raid_level' in r)) return rows;
+        return rows.filter(r => Number(r.raid_level) === lv);
     } catch { return []; }   // テーブル未適用環境では空扱い
 };
-// 依頼への返答 (メンバー本人)
-window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, playerId, status) {
-    const { error } = await supabase
-        .from('finish_requests')
-        .update({ status, responded_at: new Date().toISOString() })
-        .eq('season_id', seasonId).eq('boss_number', bossNumber).eq('player_id', playerId);
+// 依頼への返答 (メンバー本人)。レベルを渡せばそのレベルの依頼だけに答える
+window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, playerId, status, raidLevel = null) {
+    const lv = Number(raidLevel);
+    const hasLv = Number.isInteger(lv) && lv >= 1 && lv <= 4;
+    const build = (withLevel) => {
+        let q = supabase.from('finish_requests')
+            .update({ status, responded_at: new Date().toISOString() })
+            .eq('season_id', seasonId).eq('boss_number', bossNumber).eq('player_id', playerId);
+        return withLevel ? q.eq('raid_level', lv) : q;
+    };
+    // ★ .select() で更新できた行を見る。0件 = その依頼はもう無い (撃破で解除された等)。
+    //   見ないと「了承しました」と出るのに実際は何も更新されていない (Codex指摘)
+    let { data, error } = await build(hasLv).select('id');
+    if (error && hasLv && _isMissingColumnErr(error, 'raid_level')) ({ data, error } = await build(false).select('id'));
     if (error) throw error;
+    if (!data || data.length === 0) throw new Error('この締め凸依頼はすでに解除されています (ボスが倒れたか、レベルが上がりました)');
+};
+// 撃破・レベル進行で不要になった依頼を消す。
+// ★ 履歴は残さない (ユーザー決定 2026-09-06) — 次のレベルの依頼と混同するため。
+//   消す前に activity_log へ記録するのは呼び出し側の責務
+//   (「誰の依頼を消したか」を通知に使うので、削除と通知対象の確定を先に済ませる)
+// ★ 「対象の確定」と「削除」を**分けて**公開する。1関数にまとめると、
+//   削除が先に完了してしまい、その後の活動ログを書く前に落ちると履歴が完全に消える
+//   (履歴テーブルを持たない方針なので、ログが唯一の記録 — Codex指摘 2026-09-06)
+// @param {{bossNumber?: number, raidLevel?: number, belowLevel?: number}} scope
+//   bossNumber + raidLevel = そのレベルのそのボスの依頼 / belowLevel = そのレベル未満の依頼すべて
+// @returns {{rows: {id, player_id, boss_number, raid_level, status, name}[], skipped: boolean}}
+//   skipped=true は 36 未適用環境 (レベルが無いので消せない)
+window.supabaseFindFinishRequestsToClear = async function (seasonId, scope = {}) {
+    if (!seasonId) return { rows: [], skipped: false };
+    const { bossNumber = null, raidLevel = null, belowLevel = null } = scope;
+    let q = supabase.from('finish_requests')
+        .select('id, boss_number, player_id, status, raid_level, players(name)')
+        .eq('season_id', seasonId);
+    if (bossNumber != null) q = q.eq('boss_number', bossNumber);
+    if (raidLevel != null) q = q.eq('raid_level', raidLevel);
+    if (belowLevel != null) q = q.lt('raid_level', belowLevel);
+    const { data, error } = await q;
+    // 36 未適用: raid_level で絞れない = 消すと別レベルの依頼まで巻き込む → 何もしない
+    if (error) {
+        if (_isMissingColumnErr(error, 'raid_level')) return { rows: [], skipped: true };
+        throw error;
+    }
+    return {
+        rows: (data || []).map(r => ({
+            id: r.id, player_id: r.player_id, boss_number: r.boss_number,
+            raid_level: r.raid_level, status: r.status, name: r.players?.name || '?',
+        })),
+        skipped: false,
+    };
+};
+// 確定済みの id だけを消し、**実際に消えた行**を返す。
+// ★ 条件で消し直さない — 間に入った新しい依頼を巻き込むため。
+// ★ 結果は .select() で DB から取る。入力をそのまま返すと (a) 複数端末の同時検知で
+//   2台目も「消した」ことになり解除通知が二重に飛ぶ (b) 確定〜削除の間に本人が了承しても
+//   古い status のまま通知・記録してしまう (Codex指摘 2026-09-06)
+window.supabaseDeleteFinishRequests = async function (ids) {
+    const list = (Array.isArray(ids) ? ids : []).map(Number).filter(Number.isFinite);
+    if (list.length === 0) return [];
+    const { data, error } = await supabase.from('finish_requests').delete().in('id', list)
+        .select('id, player_id, boss_number, raid_level, status');
+    if (error) throw error;
+    return data || [];
 };
 
 // ボスコード → ボス属性 / ボス属性 → 弱点PT属性。
@@ -1442,12 +1529,35 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
 // 盤面 (opsStore) に無いものだけ追加取得: 通知購読 / 今季の SLv 登録 / 締め凸依頼 / 代理凸ログ。
 // 各クエリはテーブル未適用・失敗時に空配列へ静かに劣化 (ボード全体は落とさない)。
 // 判定ロジックは js/domain/memberStatus.js
-window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso) {
+// メンバー状況ボード用の締め凸依頼。36未適用環境ではレベルなしで読み直す
+async function _loadFinishRequestsForStatus(seasonId, currentLevel) {
+    const lv = Number(currentLevel);
+    const useLevel = Number.isInteger(lv) && lv >= 1 && lv <= 4;
+    try {
+        if (useLevel) {
+            const r = await supabase.from('finish_requests')
+                .select('player_id, status, requested_at, raid_level')
+                .eq('season_id', seasonId).eq('raid_level', lv);
+            if (!r.error) return r.data || [];
+            if (!_isMissingColumnErr(r.error, 'raid_level')) return [];
+        }
+        const r2 = await supabase.from('finish_requests')
+            .select('player_id, status, requested_at').eq('season_id', seasonId);
+        return r2.error ? [] : (r2.data || []);
+    } catch { return []; }
+}
+
+window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, currentLevel = null) {
     const safe = async (p) => { try { const r = await p; return (r && !r.error && Array.isArray(r.data)) ? r.data : []; } catch { return []; } };
     const [subs, slv, fin, proxy] = await Promise.all([
         safe(supabase.from('push_subscriptions').select('player_id')),
         seasonId ? safe(supabase.from('player_sync_levels').select('player_id').eq('season_id', seasonId)) : [],
-        seasonId ? safe(supabase.from('finish_requests').select('player_id, status, requested_at').eq('season_id', seasonId)) : [],
+        // ★ 締め凸依頼は「いまのレベルのもの」だけ数える。
+        //   raid_level が NULL の旧データ (36適用前) や、撃破済みレベルの依頼を含めると、
+        //   本人には返答UIが出ないのに運営側では「未返答」として残り続ける (Codex指摘)。
+        //   36未適用環境は列が無いので旧形式で読み直す — 握り潰すと依頼が丸ごと消えて
+        //   本人側 (旧形式へフォールバックする) と食い違う (Codex再指摘)
+        seasonId ? _loadFinishRequestsForStatus(seasonId, currentLevel) : [],
         // 代理凸は attacks に印が無いので activity_log (proxy_attack) から。ハード日前日以降だけ数える
         safe(supabase.from('activity_log').select('player_id, created_at')
             .eq('event_type', 'proxy_attack')
@@ -3456,16 +3566,23 @@ window.supabaseLoadMemberNotificationStatus = async function () {
 // ============================================================================
 window.supabaseLogActivity = async function (eventType, detail, opts = {}) {
     try {
-        await supabase.from('activity_log').insert({
-            event_type: eventType,
-            player_id: opts.playerId || null,
-            player_name: opts.playerName || null,
-            actor_name: opts.actorName || null,
-            detail: String(detail || ''),
-        });
+        await window.supabaseLogActivityStrict(eventType, detail, opts);
     } catch (e) {
         console.warn('[activityLog] skipped:', e?.message || e);
     }
+};
+// ★ 失敗を**投げる**版。ログが唯一の記録になる操作 (履歴を残さない削除など) は
+//   こちらを使い、書けなかったら操作自体を中止すること。
+//   握り潰す supabaseLogActivity を使うと「ログが無いのに消えている」が起こる (Codex指摘)
+window.supabaseLogActivityStrict = async function (eventType, detail, opts = {}) {
+    const { error } = await supabase.from('activity_log').insert({
+        event_type: eventType,
+        player_id: opts.playerId || null,
+        player_name: opts.playerName || null,
+        actor_name: opts.actorName || null,
+        detail: String(detail || ''),
+    });
+    if (error) throw error;   // ★ insert は例外でなく { error } を返す — 見ないと失敗に気づけない
 };
 
 // アクティビティログ取得。テーブル未作成環境では null を返す (呼び出し側でフォールバック)

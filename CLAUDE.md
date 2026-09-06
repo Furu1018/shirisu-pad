@@ -85,6 +85,14 @@ rm -f .claude/hooks/.codex-on      # OFF
   `_upsertPlayerDamages` に集約。純ロジックは `js/domain/mockLevels.js`。
   未適用環境は levels を落として「ベスト測定1件」に静かに劣化する)。
   締め凸依頼のステータス追跡 (pending/accepted/declined) は `22_finish_requests.sql` が前提。
+  **依頼は「そのレベルのそのボスへの依頼」** (`36_finish_requests_level.sql` の `raid_level`)。
+  撃破・レベル進行で `_clearFinishRequestsFor` が有効な依頼を消す — **履歴は残さない**
+  (残すと次のレベルの依頼と見分けがつかない。第44回の実害)。代わりに activity_log へ
+  「Lv・ボス・対象者・返答状態」を書く。★ 順序は **対象の確定 → 削除 → (実際に消せたときだけ) ログ → 通知**。
+  削除より先にログを書くと、複数端末の同時検知で「2台が解除と記録したのに消したのは1台」になる。
+  ログ・通知には**削除で返った行**を使う (確定した行を使うと、その間に本人が了承した場合に古い status で扱う)。
+  `raid_level` が NULL の行は 36 適用前の旧データ = 現在レベルの依頼として扱わない。
+  36 未適用環境ではレベルで絞れないので**何も消さない** (別レベルを巻き込むため)
   キャラのバースト区分は `24_nikke_burst.sql` (burst) + `25_nikke_burst_alt.sql` (burst_alt =
   複数バーストで使えるキャラのサブ枠。例: ラピ:レッドフード は表示B3・B1枠でも可)。
   編成ピッカーのバースト絞り込みがこれを読む。25未適用でも読みは静かに劣化する
@@ -143,6 +151,7 @@ node tests/check-raid-event-hooks.mjs  # 戦況の通知フックの網羅チェ
 node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカーの実行テスト
 node tests/member-board.mjs   # 👥 メンバー状況ボードの描画 (_mbPaint) の実行テスト
 node tests/kill-badge.mjs     # 締め凸「締」バッジ・注記の実行テスト (実データ整合も見る)
+node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
