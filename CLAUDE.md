@@ -70,10 +70,22 @@ rm -f .claude/hooks/.codex-on      # OFF
   結果は `plan.stability` に出る (applied / reason / creditedGapB / thresholdB)。
   画面は **配信中のプラン**を基準に渡す (手元の直前の算出ではない — 約束は配信したもの)。
   運営は 🔗前回を尊重 / 🆕ゼロから で切り替えられる (端末ごと・既定は尊重)
-- **凸の予約 (L2・2026-09-07)** — `39_plan_reservations.sql` / `40_attack_with_reservation_rpc.sql`。
-  純ロジックは `js/domain/reservations.js`。**ソルバーを拘束するのは approved だけ**
-  (requested / cancel_requested は提案層で計算に効かせない)。`input.reservations` に
-  `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
+- **凸の予約 (L2・2026-09-07 / 2026-09-08 改訂)** — `39_plan_reservations.sql` / `40_attack_with_reservation_rpc.sql` /
+  `42_reservations_level_optional.sql`。純ロジックは `js/domain/reservations.js`。
+  **ソルバーを拘束するのは isFixed** (approved と承認済み起点の cancel_requested。requested は提案層で計算に効かせない)。
+  `input.reservations` に `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
+  ★ **予約はレベルを持たない** (2026-09-08)。メンバーの約束は「この時刻に・この弱点のボスへ・この編成で」で、
+  ボスは全レベル共通 (HP だけ違う)。メンバー発は raid_level NULL、締め凸依頼の了承だけ運営がレベル付きで作る。
+  レベル無しは `resolveReservationLevels` が「約束の時刻にそのボスがいるレベル」へ置く (レベル付きだけで1回解いて
+  窓を得る → 割り当て → 予約込みで解き直してもう1回)。決まらないものは level=null のまま未達へ (黙らせない)。
+  ★ **後のレベルに予約がある人の残り凸・予約した編成・そのキャラは手前のレベルで使わない** (`reservedLater`) —
+  無いと残り1凸の人の Lv2 の予約が Lv1 の貪欲に使われて置けない (実際に起きた)。
+  ★ `plan.unassigned` = 残り凸があるのに割当が無い人と理由 (本人のホームの空き枠に日本語で出す)。
+  ★ **本人のホームは3枠** (`reservationsDomain.homeSlots`): 予約で固定 → 配信の割当 → 空き枠 (理由)。
+  ヒーローと「わたしの凸」が同じ関数で組む。配信が予約を知らない間は「運営が組み直し中」の帯。
+  ★ **承認 = 承認して組み直す → 差分 → 配信は明示の1タップ** (`_recomputeAndOfferPublish`)。自動配信はしない。
+  押さなければ運営ホームのヒーロー「配信後の予約があります」(`pendingRepublish`) が促す。
+  ★ 置けない理由・選ばれなかった理由は**日本語だけ** (`UNMET_JP` / `UNASSIGNED_JP` / `unmetText`)。コードを画面に出さない。
   ★ **予約は時刻まで守る** — レベルが開く前の時刻を約束していたら**置かない**
   (ソルバーが後ろへずらすと約束の意味が消える。運営が解除して組み直す)。
   ★ **温存 (Phase B) より予約が勝つ**。★ 圧縮 (trimOverkill) でも外さない。
@@ -246,6 +258,7 @@ node tests/bench-stability.mjs           # L1 安定化の効果と代償 (BENCH
 node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
 node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の確認 の実行テスト
 node tests/mock-panels.mjs    # 模擬タブの提出カード (renderMyDamagePanels) の実行テスト
+node tests/home-slots.mjs     # 本人のホーム「あなたの3凸」(3枠) の描画の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
@@ -348,9 +361,10 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
   Lv3クリア想定時刻以降に出られない人は温存させない。温存で credited が増えないなら probe に倒す
 - **吸収 (Phase C)**: 踏破できないレベル (frontierLevel) は撃破を狙わず、全ボス横断で
   オーバーキル最小の割当に切り替える (スナップショット→やり直し)
-- **得意属性 (strong_attributes)**: 1〜3個選択=必ず消化 (自由枠は残り) / 4個=その中からのみ /
-  0・5個=制約なし。**凸済みの得意属性は満足扱い** (再強制しない)。
-  ボス5弱点が得意属性の人は Lv4 割当で消化とみなす
+- **得意属性 (strong_attributes) はソルバーで使わない (2026-09-08 ユーザー決定)**。予約 (L2) があれば本人が
+  得意属性のカードを予約すればよく、「必ず消化」の枠予約は要らない。申告はコミュニティの表示 (プロフィール・
+  メンバー一覧) として残す。枠予約 (mandatory / lockedNow / lv4Mandatory / W_STRONG) は**仕組みごと撤去済み**
+  — 復活させないこと (出せる属性への凸まで封じる事故を何度も起こした)
 - **1属性2編成 (player_damages.slot=1|2)**: キャラが被らない別編成なら同属性2凸を提案 (ボス5にも2凸可)。
   凸済み回数ぶん上位 (高ダメージ) 編成から消費済みとみなす。候補は全ロードアウトをスコアリング
   (残HPの小さいボスには2編成目の方がオーバーキルが小さいことがある)
