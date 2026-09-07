@@ -2814,6 +2814,26 @@ window.supabaseGetMyPlanAck = async function (playerId, seasonId) {
     return data || null;
 };
 
+// 再配信時、**割当が変わらなかった人の「確認しました」を新しい plan_id へ引き継ぐ** (L4/L5・2026-09-07)。
+// 引き継がないと、自分の割当が1文字も変わっていない人にまで
+// 「🔄 プランが更新されました」のバナーと Push が出る = 第44回の振り回しの一因。
+// 変わったかどうかの判定は js/domain/planDiff.js に集約してある (ここは書き込みだけ)。
+// 失敗しても配信は成功扱いにする (最悪でも「更新バナーが出る」だけで、旧仕様と同じ)。
+window.supabaseCarryOverPlanAcks = async function (seasonId, playerIds, newPlanId) {
+    const ids = (Array.isArray(playerIds) ? playerIds : []).map(Number).filter(Number.isFinite);
+    if (!seasonId || !newPlanId || ids.length === 0) return 0;
+    const { data, error } = await supabase
+        .from('plan_acks')
+        .update({ plan_id: newPlanId })
+        .eq('season_id', seasonId)
+        .in('player_id', ids)
+        // ★ 新しい plan_id の行は触らない (acked_at を無意味に動かさない)
+        .neq('plan_id', newPlanId)
+        .select('player_id');
+    if (error) { console.warn('[plan ack] 引き継ぎskip:', error.message); return 0; }
+    return (data || []).length;
+};
+
 // このシーズンで「確認しました」を押した人の一覧 (再配信時の通知対象)。
 // 未適用環境では空配列 = 通知を飛ばさないだけで配信自体は成功させる
 window.supabaseLoadPlanAcks = async function (seasonId) {

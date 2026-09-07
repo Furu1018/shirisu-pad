@@ -14,6 +14,7 @@ import '../js/domain/raidEvents.js';   // 戦況の変化検知 (撃破/レベ�
 import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
 import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
+import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
@@ -3373,6 +3374,178 @@ console.log('\n運営除外の配線 (ソース突合):');
     });
     test('★ 「今回は難しい」人には催促ボタンを押させない', () => {
         assert.ok(/const canNudge = r\.todo && r\.push && !r\.availUnavailable;/.test(html));
+    });
+}
+
+// ---- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) ----------------------------
+console.log('\nplanDiffDomain (配信プランの差分):');
+{
+    const pd = globalThis.planDiffDomain;
+    // プランの最小フィクスチャ: levels[].bosses[].attacks[]
+    const atk = (id, o = {}) => ({
+        memberId: id, memberName: `P${id}`, dmgB: o.dmgB ?? 10,
+        hourIdx: o.hourIdx === undefined ? 16 : o.hourIdx,
+        hourLabel: o.hourLabel === undefined ? '21時' : o.hourLabel,
+        flex: !!o.flex, loadoutSlot: o.slot ?? 1, team: o.team ?? ['A', 'B', 'C', 'D', 'E'],
+    });
+    const plan = (spec) => ({
+        levels: spec.map(lv => ({
+            level: lv.level,
+            bosses: lv.bosses.map(b => ({ bossNumber: b.n, name: `B${b.n}`, weakness: b.w || 'fire', attacks: b.a })),
+        })),
+    });
+    const base = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1), atk(2)] }, { n: 5, a: [atk(3)] }] }]);
+
+    test('planDiff: 同じプランなら誰も変わらない (unchanged に全員)', () => {
+        const d = pd.diffPlans(base, plan([{ level: 2, bosses: [{ n: 3, a: [atk(1), atk(2)] }, { n: 5, a: [atk(3)] }] }]));
+        assert.equal(d.first, false);
+        assert.deepEqual(d.changed, []);
+        assert.deepEqual(pd.unchangedIds(d).sort(), [1, 2, 3]);
+    });
+    test('planDiff: 初回配信は first=true (全員を「変わった」に積まない)', () => {
+        const d = pd.diffPlans(null, base);
+        assert.equal(d.first, true);
+        assert.deepEqual(d.changed, []);
+        assert.equal(d.totalAfter, 3, '割当のある人数は数えている');
+    });
+    test('planDiff: ボスが変わった人だけ changed に入る (他は unchanged)', () => {
+        // P1 が B3 → B5 へ移動。P2/P3 はそのまま
+        const next = plan([{ level: 2, bosses: [{ n: 3, a: [atk(2)] }, { n: 5, a: [atk(3), atk(1)] }] }]);
+        const d = pd.diffPlans(base, next);
+        assert.deepEqual(pd.changedIds(d), [1]);
+        assert.deepEqual(pd.unchangedIds(d).sort(), [2, 3]);
+        assert.equal(d.changed[0].kind, 'boss');
+    });
+    test('planDiff: 時刻だけ変わっても「変わった」に数える (時刻は約束の一部 — 2026-09-07 決定)', () => {
+        const next = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1, { hourIdx: 18, hourLabel: '23時' }), atk(2)] }, { n: 5, a: [atk(3)] }] }]);
+        const d = pd.diffPlans(base, next);
+        assert.deepEqual(pd.changedIds(d), [1]);
+        assert.equal(d.changed[0].kind, 'time');
+        assert.match(d.changed[0].afterText, /23時/);
+    });
+    test('planDiff: 編成 (スロット・キャラ) が変わっても「変わった」に数える', () => {
+        const slotChanged = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1, { slot: 2 }), atk(2)] }, { n: 5, a: [atk(3)] }] }]);
+        assert.equal(pd.diffPlans(base, slotChanged).changed[0].kind, 'team');
+        const charChanged = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1, { team: ['A', 'B', 'C', 'D', 'Z'] }), atk(2)] }, { n: 5, a: [atk(3)] }] }]);
+        assert.equal(pd.diffPlans(base, charChanged).changed[0].kind, 'team');
+    });
+    test('planDiff: 割当が消えた / 増えた人を区別する', () => {
+        const gone = plan([{ level: 2, bosses: [{ n: 3, a: [atk(2)] }, { n: 5, a: [atk(3)] }] }]);
+        const dg = pd.diffPlans(base, gone);
+        assert.equal(dg.changed.find(c => c.memberId === 1).kind, 'gone');
+        assert.equal(dg.changed.find(c => c.memberId === 1).afterText, '割当なし');
+        const added = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1), atk(2), atk(9)] }, { n: 5, a: [atk(3)] }] }]);
+        assert.equal(pd.diffPlans(base, added).changed.find(c => c.memberId === 9).kind, 'added');
+    });
+    test('planDiff: 同じ割当なら**並び順が違っても**変化なし (位置で比べていない)', () => {
+        // 1人が2凸持つとき、レベル/ボスの列挙順が入れ替わっただけで「変わった」にしてはいけない
+        const a2 = plan([{ level: 1, bosses: [{ n: 1, a: [atk(7, { hourLabel: '9時', hourIdx: 4 })] }] },
+                         { level: 2, bosses: [{ n: 3, a: [atk(7)] }] }]);
+        const b2 = plan([{ level: 2, bosses: [{ n: 3, a: [atk(7)] }] },
+                         { level: 1, bosses: [{ n: 1, a: [atk(7, { hourLabel: '9時', hourIdx: 4 })] }] }]);
+        assert.deepEqual(pd.diffPlans(a2, b2).changed, []);
+    });
+    test('planDiff: 2つの割当で**時刻が入れ替わった**のを見逃さない (集合で比べない)', () => {
+        // 同じ人が Lv1B1 と Lv2B3 を持ち、時刻だけ入れ替わる。
+        // 時刻を集合として比べると {21時,23時} が一致して「変化なし」に化ける
+        const before = plan([{ level: 1, bosses: [{ n: 1, a: [atk(5, { hourIdx: 16, hourLabel: '21時' })] }] },
+                             { level: 2, bosses: [{ n: 3, a: [atk(5, { hourIdx: 18, hourLabel: '23時' })] }] }]);
+        const after  = plan([{ level: 1, bosses: [{ n: 1, a: [atk(5, { hourIdx: 18, hourLabel: '23時' })] }] },
+                             { level: 2, bosses: [{ n: 3, a: [atk(5, { hourIdx: 16, hourLabel: '21時' })] }] }]);
+        const d = pd.diffPlans(before, after);
+        assert.deepEqual(pd.changedIds(d), [5], `時刻の入れ替えを検出できていない: ${JSON.stringify(d.changed)}`);
+        assert.equal(d.changed[0].kind, 'time');
+    });
+    test('planDiff: 凸数が減った/増えたは boss 扱い (時刻や編成の比較に落とさない)', () => {
+        const one = plan([{ level: 2, bosses: [{ n: 3, a: [atk(6)] }] }]);
+        const two = plan([{ level: 2, bosses: [{ n: 3, a: [atk(6)] }, { n: 5, a: [atk(6)] }] }]);
+        assert.equal(pd.diffPlans(one, two).changed[0].kind, 'boss');
+        assert.equal(pd.diffPlans(two, one).changed[0].kind, 'boss');
+    });
+    test('planDiff: ⏳隙間型は時刻を約束しないので、hourLabel の有無で揺れない', () => {
+        const f1 = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1, { flex: true, hourLabel: null, hourIdx: null })] }] }]);
+        const f2 = plan([{ level: 2, bosses: [{ n: 3, a: [atk(1, { flex: true, hourLabel: '21時', hourIdx: 16 })] }] }]);
+        assert.deepEqual(pd.diffPlans(f1, f2).changed, [], 'flex 同士は時刻差で変化にしない');
+    });
+    test('planDiff: summaryText は人数・種類・名前を出す / 変化なしも言い切る', () => {
+        const same = pd.summaryText(pd.diffPlans(base, base));
+        assert.match(same, /変わる人はいません/);
+        const next = plan([{ level: 2, bosses: [{ n: 3, a: [atk(2)] }, { n: 5, a: [atk(3), atk(1)] }] }]);
+        const s = pd.summaryText(pd.diffPlans(base, next));
+        assert.match(s, /1名の割当が変わります/);
+        assert.match(s, /そのまま 2名/);
+        assert.match(s, /P1/);
+        assert.match(pd.summaryText(pd.diffPlans(null, base)), /初回の配信です/);
+    });
+    test('planDiff: 壊れた入力でも落ちない (null / levels なし / attacks なし)', () => {
+        assert.equal(pd.rowsByPlayer(null).size, 0);
+        assert.equal(pd.rowsByPlayer({}).size, 0);
+        assert.equal(pd.rowsByPlayer({ levels: [{ level: 1 }] }).size, 0);
+        assert.equal(pd.diffPlans(null, null).totalAfter, 0);
+        assert.deepEqual(pd.changedIds(null), []);
+        assert.deepEqual(pd.unchangedIds(undefined), []);
+        // memberId が無い凸は落とす (集計に nullish な鍵を作らない)
+        const broken = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ dmgB: 5 }] }] }] };
+        assert.equal(pd.rowsByPlayer(broken).size, 0);
+    });
+}
+
+console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
+{
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8').replace(/\r\n/g, '\n');
+    const html = read('index.html');
+    const client = read('js', 'supabase-client.js');
+
+    test('L4: 撃破Push が「運営の再配信をご確認ください」と書かない (再配信を煽らない)', () => {
+        assert.ok(!html.includes('割当が変わる可能性があるので、運営の再配信をご確認ください'),
+            '撃破のたびに全員へ再配信を促す文面が残っている');
+        assert.ok(html.includes('割当が変わる場合は運営から個別にお知らせします'));
+    });
+    test('L4: 更新通知の宛先は「割当が変わった人」に絞る (差分が取れないときだけ全員)', () => {
+        assert.ok(/const changed = new Set\(dd\.changedIds\(publishDiff\)/.test(html));
+        assert.ok(/targets = stale\.filter\(a => changed\.has\(Number\(a\.player_id\)\)\)/.test(html));
+        assert.ok(/} else {\s*\n\s*targets = stale\.map/.test(html), '差分が無いときの全員フォールバックが要る');
+    });
+    test('L4: 変わらなかった人の ack を新しい plan_id へ引き継ぐ (更新バナーを出さない)', () => {
+        assert.ok(/window\.supabaseCarryOverPlanAcks = async function/.test(client));
+        assert.ok(/\.neq\('plan_id', newPlanId\)/.test(client), '新しい plan_id の行は触らない');
+        assert.ok(html.includes('supabaseCarryOverPlanAcks(seasonId, keep, pub?.id)'));
+    });
+    test('L4: 締め凸候補は属性ごとに選べる (5属性一斉を既定にしない)', () => {
+        assert.ok(html.includes('showPushPreview(groups, { selectable: true })'));
+        assert.ok(/opportunities\.sort\(\(a, b\) => a\.remB - b\.remB\)/.test(html), '残HPの少ない順 = 締めに近い順');
+        assert.ok(/checked: i === 0/.test(html), '既定は先頭1件だけ ON');
+        assert.ok(/if \(!picked \|\| picked\.length === 0\) return;/.test(html));
+    });
+    test('L4: showPushPreview の既定 (selectable なし) は従来どおり boolean を返す', () => {
+        const body = html.match(/function closePushPreview\([\s\S]*?\n        }\n/)?.[0] || '';
+        assert.ok(/r\(sel \? picked : !!confirmed\)/.test(body), body.slice(0, 200));
+        // 選択状態はモーダルを閉じる**前**に読む
+        const iRead = body.indexOf('data-push-group');
+        const iClose = body.indexOf("classList.remove('open')");
+        assert.ok(iRead >= 0 && iClose > iRead, '閉じてから読むと選択が取れない');
+    });
+    test('L5: 配信前に前回との差分を出し、同じ差分を通知の絞り込みに使い回す', () => {
+        assert.ok(/publishDiff = window\.planDiffDomain\.diffPlans\(prevPlan, _opsLastPlan\)/.test(html));
+        assert.ok(/Number\(prevPub\.season_id\) === Number\(seasonId\)/.test(html), '別シーズンの配信を前回扱いにしない');
+        assert.ok(html.includes('window.planDiffDomain.summaryText(publishDiff)'));
+    });
+    test('L5: 配信中止は二段確認 + 影響 (確認済み人数) を見せる', () => {
+        const fn = html.match(/async function handleOpsUnpublishPlan\([\s\S]*?\n        }\n/)?.[0] || '';
+        assert.equal((fn.match(/if \(!confirm\(/g) || []).length, 2, `confirm が2段でない: ${fn.slice(0, 120)}`);
+        assert.ok(fn.includes('名が「確認しました」を押しています'));
+    });
+    test('L5: 最終配信の状況 (誰が・いつ・無配信の警告) を戦況タブに出す', () => {
+        assert.ok(html.includes('id="opsPlanPubStatus"'));
+        assert.ok(/function _renderOpsPubStatus\(/.test(html));
+        assert.ok(html.includes('いま配信中のプランはありません'));
+    });
+    test('planDiff.js が index.html から読み込まれている', () => {
+        assert.ok(html.includes('<script defer src="./js/domain/planDiff.js"></script>'));
     });
 }
 

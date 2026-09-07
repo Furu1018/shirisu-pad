@@ -35,6 +35,7 @@
     <script defer src="./js/domain/raidEvents.js"></script>
     <script defer src="./js/domain/mockLevels.js"></script>
     <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
+    <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
     <script defer src="./js/domain/charMaster.js"></script>
@@ -3458,6 +3459,9 @@
                         <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランを取り下げてメンバーの画面から消す" style="display:none;padding:7px 11px;border-radius:8px;border:1px solid rgba(255,61,68,0.35);background:#fff;color:#FF3D44;font-size:11px;font-weight:800;cursor:pointer;">🚫 配信中止</button>
                     </div>
                 </div>
+                <!-- 最終配信の状況 (L5 運営ガード・2026-09-07)。運営3人が別々に組み直していた第44回は、
+                     いま誰の配信が生きているのかが画面から分からなかった。配信が無いまま時間が経つのも警告する -->
+                <div id="opsPlanPubStatus" data-ops-only style="display:none;margin:0 0 10px 0;padding:8px 11px;border-radius:10px;font-size:11px;font-weight:800;line-height:1.55;"></div>
                 <p style="margin:0 0 12px 0;font-size:11px;color:#8A9097;line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
                 <div id="opsOptimalPlan">
                     <p style="color:#A4AAB0;font-size:12px;">「プラン算出」を押して計算してください。</p>
@@ -7249,8 +7253,11 @@
                 const label = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
                 await window.sendPushNotification({
                     title: `⭐ ${label} 撃破!`,
+                    // ★ 「運営の再配信をご確認ください」とは書かない (L4・2026-09-07)。
+                    //   撃破のたびに全員へ再配信を促していたのが、第44回の振り回しの起点だった。
+                    //   割当が実際に変わった人には、配信時に本人だけへ通知が飛ぶ (planDiffDomain)
                     body: 'このボスへの凸はもう入りません。'
-                        + '割当が変わる可能性があるので、運営の再配信をご確認ください。',
+                        + '割当が変わる場合は運営から個別にお知らせします。',
                     url: './?tab=ops',
                     tag: `boss-defeated-${seasonId}-${level}-${boss.boss_number}`,
                     // 交戦宣言中の人は「いま撃ちに行こうとしている」ので、戦闘可能時間の
@@ -15210,21 +15217,39 @@
         // groups: [{ title, body, recipients: [{id?, name}], allSubscribers?: bool }]
         // 戻り値: ユーザーが「送信する」を押したら true、キャンセル/閉じるなら false
         let _pushPreviewResolver = null;
-        function showPushPreview(groups) {
+        // groups[] を確認してから送る。既定は「全部まとめて送る」= 戻り値 boolean。
+        // ★ opts.selectable=true にすると**グループごとにチェックボックス**が出て、
+        //   戻り値が「選ばれた index の配列」になる (キャンセルは null)。
+        //   締め凸候補は5属性ぶんが一度に出るので、全部送るか一件も送らないかの二択だと
+        //   第44回のように5属性へ一斉送信することになる (16:57 に実際に起きた) — L4 の対策
+        let _pushPreviewSelectable = false;
+        function showPushPreview(groups, opts = {}) {
             return new Promise(resolve => {
                 _pushPreviewResolver = resolve;
+                _pushPreviewSelectable = !!opts.selectable;
                 const bodyEl = document.getElementById('pushPreviewBody');
                 const msgEl = document.getElementById('pushPreviewMessage');
                 if (msgEl) msgEl.textContent = '';
-                if (!bodyEl) { resolve(false); return; }
-                bodyEl.innerHTML = (groups || []).map(g => {
+                if (!bodyEl) { resolve(_pushPreviewSelectable ? null : false); return; }
+                const list = groups || [];
+                // 既定のチェック状態は呼び出し側が決める (g.checked)。未指定なら全部ON =
+                // 従来の「まとめて送る」と同じ挙動
+                bodyEl.innerHTML = list.map((g, i) => {
                     const recList = g.allSubscribers
                         ? '<span style="color:#6B7178;">購読中の全メンバー（時間帯フィルタ無視）</span>'
                         : (g.recipients && g.recipients.length > 0
                             ? `<strong>${g.recipients.length}名</strong>: ${g.recipients.map(r => escapeHtml(r.name)).join('、')}`
                             : '<span style="color:#ef4444;">受信者なし</span>');
+                    const checked = g.checked === undefined ? true : !!g.checked;
+                    const pick = _pushPreviewSelectable
+                        ? `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;margin-bottom:7px;">
+                             <input type="checkbox" data-push-group="${i}" ${checked ? 'checked' : ''} style="width:17px;height:17px;accent-color:#6C42F0;flex:none;">
+                             <span style="font-size:11px;font-weight:800;color:#5A6068;">この通知を送る</span>
+                           </label>`
+                        : '';
                     return `
                         <div style="padding:12px;border:1px solid rgba(20,22,26,0.08);border-left:4px solid #8b5cf6;border-radius:8px;background:#F7F8F9;">
+                            ${pick}
                             <div style="font-size:13px;font-weight:700;color:#14161A;margin-bottom:4px;">📣 ${escapeHtml(g.title || '(無題)')}</div>
                             <div style="font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:#14161A;margin-bottom:8px;">${escapeHtml(g.body || '')}</div>
                             <div style="font-size:11px;color:#14161A;"><span style="color:#6B7178;">受信者: </span>${recList}</div>
@@ -15234,10 +15259,22 @@
             });
         }
         function closePushPreview(confirmed) {
+            // ★ 選択状態は**閉じる前に**読む (modal を閉じてから読むと DOM が空の実装に変えたときに壊れる)
+            let picked = null;
+            if (_pushPreviewSelectable) {
+                picked = confirmed
+                    ? [...document.querySelectorAll('#pushPreviewBody input[data-push-group]')]
+                        .filter(el => el.checked)
+                        .map(el => Number(el.dataset.pushGroup))
+                        .filter(Number.isFinite)
+                    : null;
+            }
             document.getElementById('pushPreviewModal').classList.remove('open');
             const r = _pushPreviewResolver;
+            const sel = _pushPreviewSelectable;
             _pushPreviewResolver = null;
-            if (r) r(!!confirmed);
+            _pushPreviewSelectable = false;
+            if (r) r(sel ? picked : !!confirmed);
         }
 
         async function handleOpsFinishPlanPush(kind) {
@@ -16418,11 +16455,26 @@
             try {
                 if (seasonId) ackedPreview = await window.supabaseLoadPlanAcks(seasonId);
             } catch (e) { console.warn('[publish] 確認済み一覧の取得skip:', e?.message || e); }
-            const msg = ackedPreview.length > 0
-                ? `📤 現在表示中のプランを全メンバーに配信しますか？\n\n` +
-                  `すでに「確認しました」を押している ${ackedPreview.length} 名には\n` +
-                  `「プランが更新されました」の通知を送ります。`
-                : '📤 現在表示中のプランを全メンバーに配信しますか？\n各メンバーのホームに「配信された凸プラン」として表示されます (Push通知は送りません)。';
+            // ★ L5 運営ガード (2026-09-07): 押す前に「前回と比べて誰の割当が変わるか」を見せる。
+            //   運営3人が別々に組み直していた第44回は、押した本人も影響が分からないまま配信していた。
+            //   ここで取った差分は配信後の通知の絞り込み (L4) にも使い回す — 判定を二重に書かない
+            let publishDiff = null;
+            try {
+                const prevPub = typeof window.supabaseGetPublishedPlan === 'function'
+                    ? await window.supabaseGetPublishedPlan() : null;
+                // 別シーズンの配信を前回扱いにしない (シーズンを跨いだ差分は意味を持たない)
+                const prevPlan = (prevPub && Number(prevPub.season_id) === Number(seasonId)) ? prevPub.plan : null;
+                if (window.planDiffDomain) publishDiff = window.planDiffDomain.diffPlans(prevPlan, _opsLastPlan);
+            } catch (e) { console.warn('[publish] 差分の取得skip (影響の提示なしで続行):', e?.message || e); }
+            const diffMsg = publishDiff && window.planDiffDomain
+                ? `\n\n${window.planDiffDomain.summaryText(publishDiff)}` : '';
+            const ackMsg = ackedPreview.length > 0
+                ? `\n\n「確認しました」を押している ${ackedPreview.length} 名のうち、**割当が変わった人にだけ**\n` +
+                  `「プランが更新されました」の通知を送ります (変わらない人には送りません)。`
+                : '';
+            const msg = '📤 現在表示中のプランを全メンバーに配信しますか？'
+                + (ackedPreview.length > 0 ? '' : '\n各メンバーのホームに「配信された凸プラン」として表示されます (Push通知は送りません)。')
+                + diffMsg + ackMsg;
             if (!confirm(msg)) return;
             try {
                 // ダイアログを出している間にシーズンが切り替わっていないか確認する。
@@ -16444,20 +16496,42 @@
                 //   完全に消すにはサーバ側トランザクションが要るが、その人も次に開いたとき
                 //   「🔄 プランが更新されました」が出る (plan_id が最新と違うため) ので実害は限定的
                 let targets = [];
+                let carried = 0;
                 try {
                     if (seasonId) {
                         const acks = await window.supabaseLoadPlanAcks(seasonId);
-                        targets = acks.filter(a => Number(a.plan_id) !== Number(pub?.id)).map(a => a.player_id);
+                        const stale = acks.filter(a => Number(a.plan_id) !== Number(pub?.id));
+                        // ★ L4 通知抑制 (2026-09-07): 「確認しました」を押した人**全員**ではなく、
+                        //   **割当が実際に変わった人だけ**へ送る。変わらなかった人は ack を新しい
+                        //   plan_id へ引き継いで、更新バナーも Push も出さない。
+                        //   差分が取れなかったとき (planDiff 未読込・前回取得失敗) は
+                        //   **旧どおり全員へ送る** — 絞り込みに失敗して黙って通知を落とすより、
+                        //   多めに送るほうが安全 (旧プランのまま凸されるのを防ぐのが元の目的)
+                        const dd = window.planDiffDomain;
+                        if (dd && publishDiff && !publishDiff.first) {
+                            const changed = new Set(dd.changedIds(publishDiff).map(Number));
+                            targets = stale.filter(a => changed.has(Number(a.player_id))).map(a => a.player_id);
+                            const keep = stale.filter(a => !changed.has(Number(a.player_id))).map(a => a.player_id);
+                            if (keep.length > 0 && typeof window.supabaseCarryOverPlanAcks === 'function') {
+                                carried = await window.supabaseCarryOverPlanAcks(seasonId, keep, pub?.id);
+                            }
+                        } else {
+                            targets = stale.map(a => a.player_id);
+                        }
                     }
                 } catch (e) { console.warn('[publish] 通知対象の取得skip:', e?.message || e); }
+                if (carried > 0) showNotification(`🔕 割当が変わらない ${carried} 名には通知しません`);
                 if (targets.length > 0) {
                     try {
                         // ignoreAvailability: 「確認しました」を押した人＝いま追従している人なので、
                         // 戦闘可能時間の設定に関係なく届ける (時間帯フィルタで黙って消えると
                         // 旧プランのまま凸されてしまう)
                         const res = await window.sendPushNotification({
-                            title: '🔄 最適凸プランが更新されました',
-                            body: '戦況が変わったのでプランを組み直しました。ホームで新しい割当を確認してください。',
+                            title: '🔄 あなたの割当が変わりました',
+                            // ★ 宛先は「割当が変わった人」だけなので、本文も断定してよい (L4)。
+                            //   全員に送っていた頃の「戦況が変わったので組み直しました」は、
+                            //   変わっていない人にも確認を強いる文面だった
+                            body: 'プランを組み直した結果、あなたの凸の割当が変わりました。ホームで新しい割当を確認してください。',
                             url: './?tab=mypage&focus=plan',
                             playerIds: targets,
                             ignoreAvailability: true,
@@ -16491,7 +16565,20 @@
                 alert('❌ アクティブシーズンを確認できませんでした。通信を確認して、もう一度お試しください。');
                 return;
             }
-            if (!confirm('🚫 配信中のプランを取り下げますか？\n\n各メンバーのホームから「配信された凸プラン」が消えます。\n(「確認しました」の記録も消えます。通知は送りません)')) return;
+            // ★ L5 運営ガード (2026-09-07): 中止は影響が大きいので二段確認にする。
+            //   第44回は当日2回の中止で 8.5時間プランが存在しない時間帯ができ、
+            //   「確認しました」の記録も一緒に消えて、再配信しても誰にも更新通知が飛ばなかった。
+            let ackedNow = [];
+            try {
+                if (seasonId) ackedNow = await window.supabaseLoadPlanAcks(seasonId);
+            } catch (e) { console.warn('[unpublish] 確認済み一覧の取得skip:', e?.message || e); }
+            const impact = ackedNow.length > 0
+                ? `\n\n・いま ${ackedNow.length} 名が「確認しました」を押しています。その記録も消えます\n`
+                  + '・記録が消えると、次に配信し直しても更新通知は誰にも飛びません'
+                : '';
+            if (!confirm('🚫 配信中のプランを取り下げますか？\n\n・各メンバーのホームから「配信された凸プラン」が消えます\n'
+                + '・組み直すだけなら、中止せずそのまま 📤 配信で上書きできます' + impact)) return;
+            if (!confirm('本当に取り下げますか？\n\n取り下げている間、メンバーは自分の割当を確認できません。')) return;
             try {
                 const me = getCurrentIdentity();
                 const n = await window.supabaseUnpublishPlan(seasonId, me?.name || null);
@@ -16510,16 +16597,53 @@
         let _unpublishBtnSeq = 0;
         async function _syncOpsUnpublishBtn() {
             const btn = document.getElementById('opsPlanUnpublishBtn');
-            if (!btn) return;
+            const statusEl = document.getElementById('opsPlanPubStatus');
+            if (!btn && !statusEl) return;
             const seq = ++_unpublishBtnSeq;
             let published = null;
+            let failed = false;
             try {
                 if (typeof window.supabaseGetPublishedPlan === 'function') published = await window.supabaseGetPublishedPlan();
-            } catch { /* 取得できないときは出さない (誤操作防止側に倒す) */ }
+            } catch { failed = true; /* 取得できないときは出さない (誤操作防止側に倒す) */ }
             if (seq !== _unpublishBtnSeq) return;
-            btn.style.display = published ? '' : 'none';
+            if (btn) btn.style.display = published ? '' : 'none';
             _opsPublishedFlag = !!published;
+            _renderOpsPubStatus(published, failed);
             _renderOpsCockpitSoon();
+        }
+
+        // 「いま誰の配信が生きているか」を出す (L5)。配信が無い時間が続くのは第44回の実害
+        // (08:34 の中止から 17:04 まで 8.5時間、メンバーは自分の割当を見られなかった)
+        function _renderOpsPubStatus(published, failed) {
+            const el = document.getElementById('opsPlanPubStatus');
+            if (!el) return;
+            if (failed) {
+                el.style.display = '';
+                el.style.background = '#F1F2F4'; el.style.color = '#6B7178';
+                el.textContent = '配信の状況を取得できませんでした (通信を確認してください)';
+                return;
+            }
+            el.style.display = '';
+            if (!published) {
+                el.style.background = 'rgba(255,61,68,0.10)'; el.style.color = '#B91C1C';
+                el.textContent = '🚫 いま配信中のプランはありません — メンバーは自分の割当を見られません';
+                return;
+            }
+            let when = '';
+            let mins = null;
+            try {
+                const t = new Date(published.published_at);
+                when = t.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                mins = Math.floor((Date.now() - t.getTime()) / 60000);
+            } catch { /* 表示だけの劣化 */ }
+            const who = published.published_by_name ? ` · ${published.published_by_name}` : '';
+            const ago = mins == null ? '' : (mins < 60 ? ` (${mins}分前)` : ` (${Math.floor(mins / 60)}時間前)`);
+            // 古い配信ほど「盤面と食い違っている」可能性が高いので色で段階を出す
+            const stale = mins != null && mins >= 180;
+            el.style.background = stale ? 'rgba(245,158,11,0.12)' : 'rgba(24,194,107,0.10)';
+            el.style.color = stale ? '#B45309' : '#0F7A45';
+            el.textContent = `${stale ? '⚠️' : '📤'} 配信中: ${when}${ago}${who}`
+                + (stale ? ' — 盤面が動いていないか確認してください' : '');
         }
 
         // ========== 運営: ボスHP更新モーダル (Phase 3b) ==========
@@ -16689,17 +16813,22 @@
                     }
                 }
                 if (opportunities.length === 0) return;
-                // プレビューモーダルで属性ごとの内容と受信者を確認
-                const groups = opportunities.map(o => ({
+                // ★ L4 (2026-09-07): 残HPの少ない順 = 締めに近い順に並べ、**既定は先頭1件だけON**。
+                //   全属性が既定ONだと「まとめて送る」しか選べず、第44回 16:57 のように
+                //   Lv開放と同時に5属性ぶんの Push が全員へ飛ぶ。運営は必要な属性を足してから送る
+                opportunities.sort((a, b) => a.remB - b.remB);
+                const groups = opportunities.map((o, i) => ({
                     title: `📣 ${o.ptName}PT 締め凸候補`,
                     body: `${o.boss.name || o.boss.boss_code} 残HP ${o.remB.toFixed(2)}B → 凸お願いできる方🙏`,
                     recipients: o.cands.map(c => ({ id: c.id, name: c.name })),
+                    checked: i === 0,
                     _ptKey: o.ptKey,
                 }));
-                const ok = await showPushPreview(groups);
-                if (!ok) return;
+                const picked = await showPushPreview(groups, { selectable: true });
+                if (!picked || picked.length === 0) return;
+                const selected = picked.map(i => groups[i]).filter(Boolean);
                 let totalSent = 0;
-                for (const g of groups) {
+                for (const g of selected) {
                     try {
                         const res = await window.sendPushNotification({
                             title: g.title,
