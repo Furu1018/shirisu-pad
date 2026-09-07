@@ -3505,15 +3505,34 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
             '撃破のたびに全員へ再配信を促す文面が残っている');
         assert.ok(html.includes('割当が変わる場合は運営から個別にお知らせします'));
     });
-    test('L4: 更新通知の宛先は「割当が変わった人」に絞る (差分が取れないときだけ全員)', () => {
+    test('L4: 通知を止めるのは「差分の基準を確認済み かつ 変わらなかった人」だけ', () => {
         assert.ok(/const changed = new Set\(dd\.changedIds\(publishDiff\)/.test(html));
-        assert.ok(/targets = stale\.filter\(a => changed\.has\(Number\(a\.player_id\)\)\)/.test(html));
+        // ★ 止める側を先に決め、残り全員へ送る (「変わった人だけ送る」だと、
+        //   別の運営の配信を確認していた人が漏れる — Codex指摘 2026-09-07)
+        assert.ok(/Number\(a\.plan_id\) === Number\(prevPlanId\)/.test(html), 'ack の基準を照合していない');
+        assert.ok(/targets = stale\.filter\(a => !keepSet\.has\(Number\(a\.player_id\)\)\)/.test(html));
         assert.ok(/} else {\s*\n\s*targets = stale\.map/.test(html), '差分が無いときの全員フォールバックが要る');
     });
-    test('L4: 変わらなかった人の ack を新しい plan_id へ引き継ぐ (更新バナーを出さない)', () => {
-        assert.ok(/window\.supabaseCarryOverPlanAcks = async function/.test(client));
-        assert.ok(/\.neq\('plan_id', newPlanId\)/.test(client), '新しい plan_id の行は触らない');
-        assert.ok(html.includes('supabaseCarryOverPlanAcks(seasonId, keep, pub?.id)'));
+    test('L4: ack の引き継ぎは「差分を取った相手を確認済みの行」だけを進める', () => {
+        assert.ok(/window\.supabaseCarryOverPlanAcks = async function \(seasonId, playerIds, newPlanId, basePlanId\)/.test(client));
+        assert.ok(/\.eq\('plan_id', base\)/.test(client), '基準の plan_id に限定していない');
+        assert.ok(!/\.neq\('plan_id', newPlanId\)/.test(client), '「新しい行以外を全部」は並行配信で事故る');
+        assert.ok(html.includes('supabaseCarryOverPlanAcks(seasonId, keep, pub?.id, prevPlanId)'));
+    });
+    test('L4: 「変わりました」と断定するのは差分が取れたときだけ', () => {
+        assert.ok(/const asserted = !!\(window\.planDiffDomain && publishDiff && !publishDiff\.first\)/.test(html));
+        assert.ok(/asserted \? '🔄 あなたの割当が変わりました' : '🔄 新しい凸プランを配信しました'/.test(html));
+    });
+    test('L4: プレビューを閉じずに再度開いても、先の待ち手が必ず解決される', () => {
+        const fn = html.match(/function showPushPreview\([\s\S]*?\n            \}\);\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(_pushPreviewResolver\) \{/.test(fn), '再入時に先の resolver を解決していない');
+        assert.ok(/prev\(prevSel \? null : false\);/.test(fn));
+    });
+    test('L3: 凍結が旧世代に当たったら stale として運営に知らせる', () => {
+        const fn = client.match(/window\.supabaseSetPlanFrozen = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/stale = !!\(latest && Number\(latest\.id\) !== pid\)/.test(fn));
+        assert.ok(/return \{ ok: true, stale \};/.test(fn));
+        assert.ok(html.includes('操作中に別の運営が新しいプランを配信しました'));
     });
     test('L4: 締め凸候補は属性ごとに選べる (5属性一斉を既定にしない)', () => {
         assert.ok(html.includes('showPushPreview(groups, { selectable: true })'));

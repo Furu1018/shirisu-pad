@@ -15255,6 +15255,14 @@
         let _pushPreviewSelectable = false;
         function showPushPreview(groups, opts = {}) {
             return new Promise(resolve => {
+                // ★ 表示中にもう一度呼ばれたら、**先の待ち手をキャンセルとして必ず解決してから**差し替える。
+                //   上書きするだけだと先の await が永久に返らない (Codex指摘 2026-09-07)
+                if (_pushPreviewResolver) {
+                    const prev = _pushPreviewResolver;
+                    const prevSel = _pushPreviewSelectable;
+                    _pushPreviewResolver = null;
+                    prev(prevSel ? null : false);
+                }
                 _pushPreviewResolver = resolve;
                 _pushPreviewSelectable = !!opts.selectable;
                 const bodyEl = document.getElementById('pushPreviewBody');
@@ -16489,11 +16497,14 @@
             //   運営3人が別々に組み直していた第44回は、押した本人も影響が分からないまま配信していた。
             //   ここで取った差分は配信後の通知の絞り込み (L4) にも使い回す — 判定を二重に書かない
             let publishDiff = null;
+            let prevPlanId = null;   // 差分を取った相手。ack の引き継ぎをこの行に限定するのに使う
             try {
                 const prevPub = typeof window.supabaseGetPublishedPlan === 'function'
                     ? await window.supabaseGetPublishedPlan() : null;
                 // 別シーズンの配信を前回扱いにしない (シーズンを跨いだ差分は意味を持たない)
-                const prevPlan = (prevPub && Number(prevPub.season_id) === Number(seasonId)) ? prevPub.plan : null;
+                const sameSeason = prevPub && Number(prevPub.season_id) === Number(seasonId);
+                const prevPlan = sameSeason ? prevPub.plan : null;
+                if (sameSeason) prevPlanId = prevPub.id;
                 if (window.planDiffDomain) publishDiff = window.planDiffDomain.diffPlans(prevPlan, _opsLastPlan);
             } catch (e) { console.warn('[publish] 差分の取得skip (影響の提示なしで続行):', e?.message || e); }
             const diffMsg = publishDiff && window.planDiffDomain
@@ -16540,10 +16551,18 @@
                         const dd = window.planDiffDomain;
                         if (dd && publishDiff && !publishDiff.first) {
                             const changed = new Set(dd.changedIds(publishDiff).map(Number));
-                            targets = stale.filter(a => changed.has(Number(a.player_id))).map(a => a.player_id);
-                            const keep = stale.filter(a => !changed.has(Number(a.player_id))).map(a => a.player_id);
+                            // ★ 引き継ぎ・通知の抑制はどちらも「差分を取った相手 (prevPlanId) を
+                            //   確認済みだった人」に限る。別の運営が間に配信していて、その人が
+                            //   そちらを確認していた場合、こちらの差分は本人にとっての変化を表さない
+                            //   (Codex指摘 2026-09-07)。分からない人は通知する側に倒す
+                            const keep = stale
+                                .filter(a => !changed.has(Number(a.player_id)))
+                                .filter(a => prevPlanId != null && Number(a.plan_id) === Number(prevPlanId))
+                                .map(a => a.player_id);
+                            const keepSet = new Set(keep.map(Number));
+                            targets = stale.filter(a => !keepSet.has(Number(a.player_id))).map(a => a.player_id);
                             if (keep.length > 0 && typeof window.supabaseCarryOverPlanAcks === 'function') {
-                                carried = await window.supabaseCarryOverPlanAcks(seasonId, keep, pub?.id);
+                                carried = await window.supabaseCarryOverPlanAcks(seasonId, keep, pub?.id, prevPlanId);
                             }
                         } else {
                             targets = stale.map(a => a.player_id);
@@ -16556,12 +16575,15 @@
                         // ignoreAvailability: 「確認しました」を押した人＝いま追従している人なので、
                         // 戦闘可能時間の設定に関係なく届ける (時間帯フィルタで黙って消えると
                         // 旧プランのまま凸されてしまう)
+                        // ★ 断定してよいのは「前回と比べて変わった」と**言い切れるときだけ** (Codex指摘 2026-09-07)。
+                        //   差分が取れなかった / 初回配信 / 別の運営の配信を確認していた人 が混ざる経路では、
+                        //   本当に変わったかを知らないまま「変わりました」と言うことになる
+                        const asserted = !!(window.planDiffDomain && publishDiff && !publishDiff.first);
                         const res = await window.sendPushNotification({
-                            title: '🔄 あなたの割当が変わりました',
-                            // ★ 宛先は「割当が変わった人」だけなので、本文も断定してよい (L4)。
-                            //   全員に送っていた頃の「戦況が変わったので組み直しました」は、
-                            //   変わっていない人にも確認を強いる文面だった
-                            body: 'プランを組み直した結果、あなたの凸の割当が変わりました。ホームで新しい割当を確認してください。',
+                            title: asserted ? '🔄 あなたの割当が変わりました' : '🔄 新しい凸プランを配信しました',
+                            body: asserted
+                                ? 'プランを組み直した結果、あなたの凸の割当が変わりました。ホームで新しい割当を確認してください。'
+                                : 'プランを組み直しました。ホームで自分の割当を確認してください。',
                             url: './?tab=mypage&focus=plan',
                             playerIds: targets,
                             ignoreAvailability: true,
@@ -16618,8 +16640,15 @@
                     + '※ 組み直すだけなら、この操作は不要です (そのまま 📤 配信で上書きできます)')) return;
             }
             try {
-                await window.supabaseSetPlanFrozen(pub.id, !nowFrozen, me?.name || null);
-                showNotification(nowFrozen ? '▶️ 組み直し中を解除しました' : '⏳ 組み直し中にしました (メンバーには表示が残ります)');
+                const r = await window.supabaseSetPlanFrozen(pub.id, !nowFrozen, me?.name || null);
+                if (r && r.stale) {
+                    // 操作の直前に別の運営が配信していた = いまメンバーが見ているのは別のプラン
+                    alert('⚠️ 操作中に別の運営が新しいプランを配信しました。\n\n'
+                        + 'いまメンバーに出ているのは新しいプランで、組み直し中にはなっていません。\n'
+                        + '画面を更新して、必要ならもう一度操作してください。');
+                } else {
+                    showNotification(nowFrozen ? '▶️ 組み直し中を解除しました' : '⏳ 組み直し中にしました (メンバーには表示が残ります)');
+                }
                 if (typeof renderMyPublishedPlan === 'function') await renderMyPublishedPlan(me);
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);

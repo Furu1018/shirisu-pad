@@ -2506,7 +2506,16 @@ window.supabaseSetPlanFrozen = async function (planId, frozen, actorName = null)
     if (!data || data.length === 0) throw new Error('対象の配信が見つかりません (すでに入れ替わっている可能性があります)');
     window.supabaseLogActivity?.('ops', frozen ? '凸プランを組み直し中にした' : '凸プランの組み直し中を解除した',
         { actorName: actorName || null });
-    return true;
+    // ★ 別の運営がこの操作の直前に配信していると、**旧世代の行を凍結して成功してしまう**
+    //   (メンバーが見るのは最新行なので、画面には「組み直し中」が出ない — Codex指摘 2026-09-07)。
+    //   更新後にもう一度いまの最新を引いて、対象が最新でなければ stale を返す。
+    //   旧行に残った frozen_at は読まれないので害はない (取り消す操作は増やさない)
+    let stale = false;
+    try {
+        const latest = await window.supabaseGetPublishedPlan();
+        stale = !!(latest && Number(latest.id) !== pid);
+    } catch { /* 確認できないときは黙って成功扱い (操作自体は通っている) */ }
+    return { ok: true, stale };
 };
 
 // 配信の中止 (取り下げ): そのシーズンの配信プランを全削除し、メンバーの画面から消す。
@@ -2656,9 +2665,15 @@ window.supabaseGetPublishedPlan = async function () {
         .from('seasons').select('id, month_key').eq('is_active', true).maybeSingle();
     if (sErr) throw sErr;
     if (!season) return null;
-    // ★ 並びは **id 降順だけ** にする (L3・2026-09-07)。履歴を消さなくなったので、
-    //   published_at で先に並べると「時計がずれた端末が入れた行」が最新になり得る。
-    //   id は BIGSERIAL = 挿入順なので、後から入れた配信が必ず勝つ
+    // ★ 並びは **id 降順だけ** にする (L3・2026-09-07)。履歴を消さなくなったので
+    //   「最新の1件」の決め方が効いてくる。published_at は DB 側の NOW() なので端末の時計とは無関係だが、
+    //   ほぼ同時の2件で**同値になり得る** (同値だと最新が不定)。id は BIGSERIAL で必ず一意・単調なので
+    //   全順序が決まる。
+    //   ⚠ 既知の限界 (Codex指摘 2026-09-07): BIGSERIAL は**採番順であってコミット順ではない**ので、
+    //   厳密には「最後にコミットされた配信」を保証しない。配信は INSERT 1文 (PostgREST は
+    //   リクエストごとに独立トランザクション) なので採番とコミットの窓はマイクロ秒単位で、
+    //   運営が同時に押しても実害は「ほぼ同時の2件のどちらが勝つか」だけ。
+    //   厳密な直列化が要るならサーバ側 RPC で世代を採番すること (3人運営の内輪ツールには過剰と判断)
     const cols = 'id, season_id, plan, published_by, published_by_name, published_at';
     const run = async (sel) => await supabase
         .from('published_plans').select(sel)
@@ -2862,16 +2877,25 @@ window.supabaseGetMyPlanAck = async function (playerId, seasonId) {
 // 「🔄 プランが更新されました」のバナーと Push が出る = 第44回の振り回しの一因。
 // 変わったかどうかの判定は js/domain/planDiff.js に集約してある (ここは書き込みだけ)。
 // 失敗しても配信は成功扱いにする (最悪でも「更新バナーが出る」だけで、旧仕様と同じ)。
-window.supabaseCarryOverPlanAcks = async function (seasonId, playerIds, newPlanId) {
+//
+// ★★ 引き継ぐのは **basePlanId (差分を取った相手) を確認済みの人だけ** (Codex指摘 2026-09-07)。
+//   「新しい plan_id 以外を全部進める」にすると、運営2人が同じ P0 を基準に組んだとき事故る:
+//     A が P1 を配信 → 本人が P1 を確認 → B が (P0 と比べて「不変」の) P2 を配信
+//   B が知っているのは「P0 と P2 は同じ」だけで、P1 と P2 が同じかは**知らない**。
+//   それでも ack を P2 へ進めると、本人には変更が起きたのに通知もバナーも出ないまま既読になる。
+//   基準を確認していた人以外は「分からない」= 通知する側に倒す。
+window.supabaseCarryOverPlanAcks = async function (seasonId, playerIds, newPlanId, basePlanId) {
     const ids = (Array.isArray(playerIds) ? playerIds : []).map(Number).filter(Number.isFinite);
-    if (!seasonId || !newPlanId || ids.length === 0) return 0;
+    const base = Number(basePlanId);
+    if (!seasonId || !newPlanId || !base || ids.length === 0) return 0;
+    if (base === Number(newPlanId)) return 0;   // 自分自身への引き継ぎは無意味
     const { data, error } = await supabase
         .from('plan_acks')
         .update({ plan_id: newPlanId })
         .eq('season_id', seasonId)
         .in('player_id', ids)
-        // ★ 新しい plan_id の行は触らない (acked_at を無意味に動かさない)
-        .neq('plan_id', newPlanId)
+        // ★ 差分を取った相手を確認済みの行だけ。それ以外は「変わっていない」と言い切れない
+        .eq('plan_id', base)
         .select('player_id');
     if (error) { console.warn('[plan ack] 引き継ぎskip:', error.message); return 0; }
     return (data || []).length;
