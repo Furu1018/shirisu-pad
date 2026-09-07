@@ -950,11 +950,13 @@
         // policy を渡すと指定の決定点だけ2番手を採る = ボス横断の分岐 (フェーズ2)。
         // 分岐は最終結果を部分修正せず「最初から全パスを再実行」する — 温存の機会費用・
         // Lv4開放時刻の収束・時間伝播・必須予約をすべて同じ規則で評価し直すため
-        const solveScenario = (policy, traceOut) => {
+        // passOpts: 全パスに素通しで渡す追加オプション (L1 の sticky など)。
+        // ここで受けて runPass へ広げることで、「拘束あり/なし」を同じパイプラインで2回解ける
+        const solveScenario = (policy, traceOut, passOpts = null) => {
         // trace はパスごとに独立させ、最後に「採用したパス」の分だけを呼び出し元へ返す。
         // probe 固定だと、温存パスが採用されたとき別パスの決定点を分岐候補にしてしまう
         const probeTrace = traceOut ? [] : null;
-        const probe = runPass({ decisionPolicy: policy, trace: probeTrace });
+        const probe = runPass({ ...(passOpts || {}), decisionPolicy: policy, trace: probeTrace });
         const lv4Open = probe.fullyClearedThrough >= 3 && !!(boss5 && boss5.weakness);
         let chosen = probe;
         let chosenTrace = probeTrace;
@@ -1005,6 +1007,7 @@
             for (let iter = 0; iter < 3; iter++) {
                 if (traceOut) reserveTrace = [];
                 const attempt = runPass({
+                    ...(passOpts || {}),
                     oppCostOf,
                     // ★ 「Lv4 で消化できるから有限レベルでは枠予約しない」の前提には、
                     //   時間だけでなく **Lv4 で出せる編成を持っていること** も要る。
@@ -1050,9 +1053,15 @@
             return { probe, chosen, lv4Open, reservePassUsed };
         };
 
+        // ===== 解法パイプライン一式 (基準解 + ボス横断分岐) =====
+        // L1 (2026-09-07) で **同じ盤面を「拘束あり」と「拘束なし」で2回解く** ようになったため、
+        // インラインだったこの一連を関数にした。passOpts 以外は以前と同じ処理。
+        // ★ passOpts を渡さなければ従来と1ビットも変わらない出力になること
+        //   (tests/solver-fingerprint.mjs で固定してある)
+        const solveWhole = (passOpts = null) => {
         // --- 基準解 (現行アルゴリズム) ---
         const baseTrace = [];
-        const baseScenario = solveScenario(null, baseTrace);   // 現行アルゴリズムの解 (下限として守る)
+        const baseScenario = solveScenario(null, baseTrace, passOpts);   // 現行アルゴリズムの解 (下限として守る)
         let scenario = baseScenario;
         let optimization = { explored: 0, improvedB: 0, applied: false };
 
@@ -1138,7 +1147,7 @@
                     const p2 = new Map(policy).set(d.key, d.alt);
                     const t2 = [];
                     let alt;
-                    try { alt = solveScenario(p2, t2); } catch { continue; }
+                    try { alt = solveScenario(p2, t2, passOpts); } catch { continue; }
                     // 不変条件: 分岐は「基準解より総与ダメを減らさない」ものだけ採用する。
                     // 実現可能性 (⚠時間外/⏳隙間) を優先しすぎると credited が大きく落ちる案を
                     // 選んでしまうため、まず credited の非悪化を絶対条件にする
@@ -1162,6 +1171,12 @@
                 if (optimization.explored + 1 >= MAX_SCENARIOS) break;
             }
         }
+        return { scenario, optimization };
+        };
+
+        const solved = solveWhole(null);
+        let scenario = solved.scenario;
+        let optimization = solved.optimization;
         const { probe, chosen, lv4Open, reservePassUsed } = scenario;
         const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited
         // 温存マーク: probe では有限ボスに使われていた凸 (人+編成) が、温存パスでボス5に回ったもの。
