@@ -3543,11 +3543,12 @@
                 <div id="opsSeasonCtlSummary" style="margin:0 0 12px 0;"></div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
                     <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" style="background:#14161A;color:#fff;"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
-                    <button onclick="handleOpsQuickCreateTestSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;border:1px dashed rgba(245,158,11,0.4);"><span data-sp-icon="flask" data-sp-size="14"></span> クイックテスト</button>
+                    <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-action" style="background:rgba(108,66,240,0.10);color:#5B2BE0;border:1px dashed rgba(108,66,240,0.4);"><span data-sp-icon="flask" data-sp-size="14"></span> 予約テスト (序盤)</button>
+                    <button onclick="handleOpsQuickCreateTestSeason('midraid')" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;border:1px dashed rgba(245,158,11,0.4);"><span data-sp-icon="flask" data-sp-size="14"></span> クイックテスト (中盤)</button>
                     <button onclick="handleOpsEndSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" style="background:rgba(239,68,68,0.10);color:#dc2626;"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
-                <p style="margin:8px 0 0 0;font-size:10px;color:#B6BBC1;">🧪 クイックテストは「テストボス1〜5」のプレースホルダで独立した検証環境を作ります。終了時にデータが完全に復元されます。</p>
+                <p style="margin:8px 0 0 0;font-size:10px;color:#B6BBC1;">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>予約テスト (序盤)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、申請→承認→固定→凸報告の1周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
             </div>
 
             <!-- 📣 Discord 告知テンプレ (運営用) -->
@@ -15119,14 +15120,18 @@
             openOpsProxyAttackModal(Number(playerId));
         }
 
-        async function handleOpsQuickCreateTestSeason() {
-            if (!confirm('🧪 クイックテストシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・レイド中盤を再現: ランダムな数名が凸済みの状態から開始\n・「🧪 テスト終了」で完全に元の状態へ復元')) return;
+        async function handleOpsQuickCreateTestSeason(scenario = 'midraid') {
+            const fresh = scenario === 'fresh';
+            const msg = fresh
+                ? '🧪 予約テスト (序盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・Lv1・全ボス満タン・凸ゼロから開始 (予約の申請→承認→固定→凸報告を練習できます)\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・「🧪 テスト終了」で完全に元の状態へ復元 (テスト中の予約も一緒に消えます)'
+                : '🧪 クイックテスト (中盤) のシーズンを作成しますか？\n\n・5体のプレースホルダボス (テストボス1〜5) を即座に生成\n・現在の player_damages とキャラマスタは自動バックアップ\n・模擬戦データはテスト用に自動シード (前回実績 + ランダム補完)\n・レイド中盤を再現: ランダムな数名が凸済みの状態から開始\n・「🧪 テスト終了」で完全に元の状態へ復元';
+            if (!confirm(msg)) return;
             try {
-                const r = await window.supabaseQuickCreateTestSeason();
+                const r = await window.supabaseQuickCreateTestSeason({ scenario });
                 seasonStore.invalidate();
                 opsStore.invalidate();
                 const seedTotal = (r.mockSeed?.fromPrevious || 0) + (r.mockSeed?.randomFilled || 0);
-                const atkInfo = r.attackSeed?.attacks > 0 ? ` / ${r.attackSeed.players}名が計${r.attackSeed.attacks}凸済み` : '';
+                const atkInfo = r.attackSeed?.attacks > 0 ? ` / ${r.attackSeed.players}名が計${r.attackSeed.attacks}凸済み` : (fresh ? ' / 凸ゼロ・全ボス満タン' : '');
                 showNotification(`✅ ${r.month_key} を作成しました${seedTotal > 0 ? ` (模擬戦 ${seedTotal}件シード${atkInfo})` : ''}`);
                 renderOpsDashboard();
             } catch (e) {

@@ -3304,6 +3304,22 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(html.includes('id="myTeamEditExclNote"'), '編成編集モーダルに除外の案内');
         assert.ok(/mock_exclude:\s*\{/.test(html), '設定タブのログ種別');
     });
+    test('★ 予約テスト (序盤): testScenario=fresh は凸をシードしない / 中盤は従来どおり', () => {
+        // 凸をシードすると HP の小さいテストボスは撃破済みになり「未凸の状態で予約を組む」体験ができない
+        const core = client.match(/window\.supabaseCreateSeason = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(core, 'シーズン作成の本体が見つからない');
+        assert.ok(/if \(payload\.testScenario !== 'fresh'\) \{[\s\S]{0,200}supabaseSeedTestMockAttacks\(/.test(core),
+            '序盤シナリオで凸のシードを飛ばしていない');
+        assert.ok(/testScenario: isTest \? \(payload\.testScenario \|\| 'midraid'\) : null/.test(core));
+        const quick = client.match(/window\.supabaseQuickCreateTestSeason = async function \(opts = \{\}\)[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(quick, 'クイックテストがシナリオを受け取っていない');
+        assert.ok(/const testScenario = opts\.scenario === 'fresh' \? 'fresh' : 'midraid';/.test(quick), '既定が中盤でない (従来の挙動が変わる)');
+        assert.ok(/return window\.supabaseCreateSeason\(\{\s*\n\s*testScenario,/.test(quick), '本体へ渡していない');
+        // 運営画面に2つの入口
+        assert.ok(/handleOpsQuickCreateTestSeason\('fresh'\)/.test(html), '序盤のボタンが無い');
+        assert.ok(/handleOpsQuickCreateTestSeason\('midraid'\)/.test(html), '中盤のボタンが無い');
+        assert.ok(/await window\.supabaseQuickCreateTestSeason\(\{ scenario \}\)/.test(html), 'シナリオを渡していない');
+    });
     test('99_check_applied.sql に 35 の判定行がある', () => {
         assert.ok(check.includes("'35_player_damages_exclusion'"));
     });

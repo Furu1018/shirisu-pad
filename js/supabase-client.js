@@ -2157,21 +2157,28 @@ window.supabaseCreateSeason = async function (payload) {
         } catch (e) {
             console.warn('[createSeason] テスト用模擬戦データのシードに失敗:', e?.message || e);
         }
-        // レイド中盤らしい状態: ランダムな数名を凸済みに (登録値を基準に使うので模擬戦シードの後)
-        try {
-            attackSeed = await window.supabaseSeedTestMockAttacks(season.id, season.hard_date);
-        } catch (e) {
-            console.warn('[createSeason] テスト用凸データのシードに失敗:', e?.message || e);
+        // レイド中盤らしい状態: ランダムな数名を凸済みに (登録値を基準に使うので模擬戦シードの後)。
+        // ★ testScenario = 'fresh' (序盤) のときはシードしない (2026-09-07 ユーザー要望)。
+        //   凸をシードすると HP の小さいテストボスは撃破済みになり、「未凸の状態で予約を組む」
+        //   体験ができない。Lv1・全ボス満タン・凸ゼロから始める
+        if (payload.testScenario !== 'fresh') {
+            try {
+                attackSeed = await window.supabaseSeedTestMockAttacks(season.id, season.hard_date);
+            } catch (e) {
+                console.warn('[createSeason] テスト用凸データのシードに失敗:', e?.message || e);
+            }
         }
     }
 
-    return { ...season, mockSeed, attackSeed };
+    return { ...season, mockSeed, attackSeed, testScenario: isTest ? (payload.testScenario || 'midraid') : null };
 };
 
 // 🧪 クイックテストシーズン: 1クリックで独立したテスト環境を作る
 // プレースホルダのボス (テストボス1〜5) + 既存5コードのローテーション + 標準ティア配分
 // 完全独立: 前回シーズンからのシードなし、終了時に player_damages と nikke_characters は復元される。
-window.supabaseQuickCreateTestSeason = async function () {
+// opts.scenario: 'midraid' (既定・数名が凸済みのレイド中盤) / 'fresh' (序盤・未凸・全ボス満タン = 予約の練習用)
+window.supabaseQuickCreateTestSeason = async function (opts = {}) {
+    const testScenario = opts.scenario === 'fresh' ? 'fresh' : 'midraid';
     const codes = ['A.N.M.I.', 'D.M.T.R.', 'H.S.T.A.', 'P.S.I.D.', 'Z.E.U.S.'];
     const tiers = ['lord', 'lord', 'tyrant', 'lord', 'tyrant'];   // B1,2,4=lord / B3,5=tyrant
     const bosses = codes.map((code, i) => ({
@@ -2183,6 +2190,7 @@ window.supabaseQuickCreateTestSeason = async function () {
     const now = new Date();
     const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
     return window.supabaseCreateSeason({
+        testScenario,
         hardDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
         monthKey: `TEST-${ts}`,
         bosses,
