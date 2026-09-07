@@ -3478,12 +3478,15 @@ console.log('\nreservationsDomain (凸の予約):');
             res({ id: 1, pid: 'p1', lv: 1, boss: 1, status: 'approved' }),   // 前のレベル → 通過
             res({ id: 2, pid: 'p2', lv: 2, boss: 3, status: 'approved' }),   // いまのレベル → 残す
             res({ id: 3, pid: 'p3', lv: 2, boss: 4, status: 'requested' }),  // 承認前は対象外
+            res({ id: 4, pid: 'p4', lv: 3, boss: 3, status: 'approved' }),   // ★ 次のレベルの同じボス → 残す
         ];
         const out = rv.findInfeasible(rows, { currentLevel: 2, bosses: [] });
         assert.deepEqual(out.map(h => [h.id, h.reason]), [[1, 'level_passed']]);
-        // bosses を渡せば撃破も見る
+        // bosses を渡せば撃破も見る。★ ただし「いまのレベル」の撃破だけ —
+        //   B3 が Lv2 で倒れても、Lv3 の B3 の予約はまだ実行できる (次のレベルで復活する)
         const dead = rv.findInfeasible(rows, { currentLevel: 2, bosses: [{ boss_number: 3, remaining_hp_raw: 0 }] });
-        assert.deepEqual(dead.map(h => [h.id, h.reason]).sort(), [[1, 'level_passed'], [2, 'boss_defeated']]);
+        assert.deepEqual(dead.map(h => [h.id, h.reason]).sort(), [[1, 'level_passed'], [2, 'boss_defeated']],
+            '次のレベルの予約まで外している');
     });
 
     test('予約: 残凸の検査は「生きている予約 + 実凸」で数える', () => {
