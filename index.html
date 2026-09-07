@@ -7777,8 +7777,27 @@
                 } catch { /* noop */ }
                 metaEl.textContent = `${when} 配信${pub.published_by_name ? ` · ${pub.published_by_name}` : ''}`;
             }
+            // ★ L3 (2026-09-07): 前回の配信と比べて**自分の割当が変わったか**を出す。
+            //   「何が変わったか分からないまま確認しろとだけ言われる」のが振り回しの実体だった。
+            //   取得や判定に失敗したら黙って出さない (誤った「変わっていません」を出すより無表示が安全)
+            let myChange = null;
+            try {
+                const dd = window.planDiffDomain;
+                if (dd && pub.season_id && typeof window.supabaseGetPreviousPublishedPlan === 'function') {
+                    const prev = await window.supabaseGetPreviousPublishedPlan(pub.season_id, pub.id);
+                    if (prev && prev.plan) {
+                        const d = dd.diffPlans(prev.plan, plan);
+                        const mine = d.changed.find(c => String(c.memberId) === String(identity.id));
+                        myChange = mine
+                            ? { changed: true, label: mine.kindLabel, before: mine.beforeText, after: mine.afterText }
+                            : { changed: false };
+                    }
+                }
+            } catch (e) { console.warn('[my plan] 差分の取得skip:', e?.message || e); }
+            if (mySeq !== _myPubRenderSeq) return;   // 差分の取得中に新しい render が始まっていたら捨てる
             _myPubState = { plan, viewerId: identity.id, doneCounts, stale, liveLevel,
-                            planId: pub.id, seasonId: pub.season_id, ack: ackState };
+                            planId: pub.id, seasonId: pub.season_id, ack: ackState,
+                            frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange };
             _renderMyPubBody();
             card.style.display = '';
             // ヒーローの割当ストリップは _myPubState 依存。プランの取得はこのカードが先に走るので、
@@ -7820,7 +7839,7 @@
         function _renderMyPubBody() {
             const body = document.getElementById('myPublishedPlanBody');
             if (!body || !_myPubState) return;
-            const { plan, viewerId, doneCounts, stale, liveLevel, ack } = _myPubState;
+            const { plan, viewerId, doneCounts, stale, liveLevel, ack, frozen, frozenBy, myChange } = _myPubState;
             const tab = (mode, icon, label) => `<button onclick="setMyPlanViewMode('${mode}')" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:11.5px;font-weight:800;font-family:inherit;${_myPlanViewMode === mode ? 'background:#fff;color:#14161A;box-shadow:0 1px 3px rgba(20,22,26,0.14);' : 'background:transparent;color:#8A9097;'}">${icon} ${label}</button>`;
             const tabs = `<div style="display:flex;gap:3px;background:#E7E9EC;border-radius:12px;padding:3px;margin-bottom:12px;">${tab('mine', '🙋', 'わたしの凸')}${tab('overview', '🗺', '全体')}${tab('timetable', '🗓', '時間割')}</div>`;
             let inner;
@@ -7841,7 +7860,18 @@
                 ? `<div style="margin-top:12px;padding:9px;border-radius:999px;background:rgba(24,194,107,0.12);text-align:center;font-size:11.5px;font-weight:900;color:#0F9D58;">✅ 確認済み — 更新されたら通知でお知らせします</div>`
                 : `<button onclick="handleAckPlan(this)" style="width:100%;margin-top:12px;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 4px 13px rgba(108,66,240,0.32);">✅ 確認しました</button>
                    <p style="margin:7px 4px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.5;">押しておくと、レイド中にプランが組み直されたとき通知でお知らせします。</p>`;
+            // ⏳ 組み直し中 (L3): プランは残したまま「いま運営が組み直しています」と伝える。
+            //   消してしまうと「ほっとかれている」と感じさせる (ユーザー判断 2026-09-07)
+            const frozenBanner = frozen
+                ? `<p style="margin:0 0 8px 0;padding:8px 11px;border-radius:9px;background:rgba(245,158,11,0.14);font-size:11.5px;font-weight:800;color:#B45309;line-height:1.55;">⏳ 運営がプランを組み直し中です${frozenBy ? ` (${escapeHtml(String(frozenBy))})` : ''}<br>下の割当はひとつ前のものです。新しいプランが出るまで少しお待ちください。</p>`
+                : '';
+            // 前回の配信から自分の割当が変わったか (L3)。変わっていないと分かること自体が安心につながる
+            const changeBanner = !myChange ? ''
+                : myChange.changed
+                    ? `<p style="margin:0 0 8px 0;padding:8px 11px;border-radius:9px;background:rgba(108,66,240,0.10);font-size:11.5px;font-weight:800;color:#5B2BE0;line-height:1.55;">🔄 前回の配信から<strong>あなたの割当が変わりました</strong> (${escapeHtml(String(myChange.label))})<br><span style="font-weight:700;color:#6B7178;">前: ${escapeHtml(String(myChange.before))}<br>今: ${escapeHtml(String(myChange.after))}</span></p>`
+                    : '<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:rgba(24,194,107,0.10);font-size:11.5px;font-weight:800;color:#0F7A45;">✅ 前回の配信から、あなたの割当は変わっていません</p>';
             body.innerHTML = `
+                ${frozenBanner}${changeBanner}
                 ${updatedBanner}
                 ${stale ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:#B45309;">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
                 ${tabs}
@@ -16553,47 +16583,51 @@
             _syncOpsUnpublishBtn();
         }
 
-        // 🚫 配信中止: 配信中のプランを取り下げ、メンバーのホームから消す。
-        // 「組み直す予定だが今のプランで動かれると困る」ときの取り下げ操作 (再配信は通常の📤で可)
+        // ⏳ 組み直し中: 配信を**消さずに**「いま組み直しています」と伝える (L3・2026-09-07)。
+        // 以前は配信ごと削除していたため、第44回は 8.5時間メンバーが自分の割当を見られず、
+        // plan_acks も消えて再配信しても更新通知が飛ばなかった。
+        // ユーザー決定: 「運営が組み直し中と出るほうが良い。出ないとメンバーがほっとかれていると感じる」
         async function handleOpsUnpublishPlan() {
             let seasonId = null;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 seasonId = ctx?.season?.id || null;
-            } catch (e) { console.warn('[unpublish] シーズン取得skip:', e?.message || e); }
+            } catch (e) { console.warn('[freeze] シーズン取得skip:', e?.message || e); }
             if (!seasonId) {
                 alert('❌ アクティブシーズンを確認できませんでした。通信を確認して、もう一度お試しください。');
                 return;
             }
-            // ★ L5 運営ガード (2026-09-07): 中止は影響が大きいので二段確認にする。
-            //   第44回は当日2回の中止で 8.5時間プランが存在しない時間帯ができ、
-            //   「確認しました」の記録も一緒に消えて、再配信しても誰にも更新通知が飛ばなかった。
-            let ackedNow = [];
+            let pub = null;
+            try { pub = await window.supabaseGetPublishedPlan(); }
+            catch (e) { alert(`❌ 配信の状況を取得できませんでした: ${e?.message || e}`); return; }
+            if (!pub || Number(pub.season_id) !== Number(seasonId)) {
+                showNotification('配信中のプランはありません');
+                _syncOpsUnpublishBtn();
+                return;
+            }
+            const nowFrozen = !!pub.frozen_at;
+            const me = getCurrentIdentity();
+            if (nowFrozen) {
+                if (!confirm('▶️ 組み直し中を解除して、このプランを有効に戻しますか？')) return;
+            } else {
+                // 組み直すだけなら 📤 で上書きすれば足りる。凍結は「今のプランで動かないでほしい」ときだけ
+                if (!confirm('⏳ このプランを「組み直し中」にしますか？\n\n'
+                    + '・メンバーの画面にはプランが残ったまま「運営が組み直し中です」と出ます\n'
+                    + '・「確認しました」の記録は消えません\n'
+                    + '・新しいプランを 📤 配信すると自動で解除されます\n\n'
+                    + '※ 組み直すだけなら、この操作は不要です (そのまま 📤 配信で上書きできます)')) return;
+            }
             try {
-                if (seasonId) ackedNow = await window.supabaseLoadPlanAcks(seasonId);
-            } catch (e) { console.warn('[unpublish] 確認済み一覧の取得skip:', e?.message || e); }
-            const impact = ackedNow.length > 0
-                ? `\n\n・いま ${ackedNow.length} 名が「確認しました」を押しています。その記録も消えます\n`
-                  + '・記録が消えると、次に配信し直しても更新通知は誰にも飛びません'
-                : '';
-            if (!confirm('🚫 配信中のプランを取り下げますか？\n\n・各メンバーのホームから「配信された凸プラン」が消えます\n'
-                + '・組み直すだけなら、中止せずそのまま 📤 配信で上書きできます' + impact)) return;
-            if (!confirm('本当に取り下げますか？\n\n取り下げている間、メンバーは自分の割当を確認できません。')) return;
-            try {
-                const me = getCurrentIdentity();
-                const n = await window.supabaseUnpublishPlan(seasonId, me?.name || null);
-                showNotification(n > 0 ? '🚫 配信を中止しました' : '配信中のプランはありませんでした');
-                // 残凸表の枠取りが「配信中プラン」由来なら消す (手元の算出結果由来なら残す)
-                if (_opsPlanPickSource === 'published') _setOpsPlanPicks(null, null);
-                // 自分の画面の配信カードも即時に消す
+                await window.supabaseSetPlanFrozen(pub.id, !nowFrozen, me?.name || null);
+                showNotification(nowFrozen ? '▶️ 組み直し中を解除しました' : '⏳ 組み直し中にしました (メンバーには表示が残ります)');
                 if (typeof renderMyPublishedPlan === 'function') await renderMyPublishedPlan(me);
             } catch (e) {
-                alert(`❌ 配信の中止に失敗: ${e?.message || e}`);
+                alert(`❌ ${e?.message || e}`);
             }
             _syncOpsUnpublishBtn();
         }
 
-        // 配信中のときだけ「配信中止」ボタンを出す (配信が無い状態で押させない)
+        // 配信中のときだけ「組み直し中」ボタンを出す (配信が無い状態で押させない)
         let _unpublishBtnSeq = 0;
         async function _syncOpsUnpublishBtn() {
             const btn = document.getElementById('opsPlanUnpublishBtn');
@@ -16606,7 +16640,15 @@
                 if (typeof window.supabaseGetPublishedPlan === 'function') published = await window.supabaseGetPublishedPlan();
             } catch { failed = true; /* 取得できないときは出さない (誤操作防止側に倒す) */ }
             if (seq !== _unpublishBtnSeq) return;
-            if (btn) btn.style.display = published ? '' : 'none';
+            if (btn) {
+                btn.style.display = published ? '' : 'none';
+                // 凍結中はボタンの意味が「解除」に変わる (L3)
+                const frozen = !!(published && published.frozen_at);
+                btn.textContent = frozen ? '▶️ 組み直し中を解除' : '⏳ 組み直し中にする';
+                btn.title = frozen
+                    ? '「組み直し中」を解除して、このプランを有効に戻す'
+                    : 'メンバーの画面にプランを残したまま「運営が組み直し中です」と表示する (確認済みの記録は消えません)';
+            }
             _opsPublishedFlag = !!published;
             _renderOpsPubStatus(published, failed);
             _renderOpsCockpitSoon();
@@ -16627,6 +16669,16 @@
             if (!published) {
                 el.style.background = 'rgba(255,61,68,0.10)'; el.style.color = '#B91C1C';
                 el.textContent = '🚫 いま配信中のプランはありません — メンバーは自分の割当を見られません';
+                return;
+            }
+            if (published.frozen_at) {
+                let fWhen = '';
+                try {
+                    fWhen = new Date(published.frozen_at).toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                } catch { /* 表示だけの劣化 */ }
+                el.style.background = 'rgba(245,158,11,0.14)'; el.style.color = '#B45309';
+                el.textContent = `⏳ 組み直し中${fWhen ? ` (${fWhen}〜)` : ''}${published.frozen_by ? ` · ${published.frozen_by}` : ''}`
+                    + ' — メンバーには前のプランが残ったまま「組み直し中」と出ています';
                 return;
             }
             let when = '';

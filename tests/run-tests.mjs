@@ -3534,10 +3534,56 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/Number\(prevPub\.season_id\) === Number\(seasonId\)/.test(html), '別シーズンの配信を前回扱いにしない');
         assert.ok(html.includes('window.planDiffDomain.summaryText(publishDiff)'));
     });
-    test('L5: 配信中止は二段確認 + 影響 (確認済み人数) を見せる', () => {
+    test('L3: 「中止」は削除ではなく凍結 (プランは残す・確認記録も消さない)', () => {
         const fn = html.match(/async function handleOpsUnpublishPlan\([\s\S]*?\n        }\n/)?.[0] || '';
-        assert.equal((fn.match(/if \(!confirm\(/g) || []).length, 2, `confirm が2段でない: ${fn.slice(0, 120)}`);
-        assert.ok(fn.includes('名が「確認しました」を押しています'));
+        assert.ok(fn.includes('supabaseSetPlanFrozen'), '凍結を呼んでいない');
+        assert.ok(!/supabaseDeleteAllPublishedPlans|\.delete\(\)/.test(fn), '中止の経路から削除を呼んではいけない');
+        assert.ok(fn.includes('メンバーの画面にはプランが残ったまま'), '何が起きるかを確認文で説明する');
+        assert.ok(fn.includes('「確認しました」の記録は消えません'));
+        // 凍結中は同じボタンが「解除」になる (状態で意味が変わるので文言も変える)
+        assert.ok(html.includes("btn.textContent = frozen ? '▶️ 組み直し中を解除' : '⏳ 組み直し中にする'"));
+    });
+    test('L3: 配信は旧行を消さない (前回との差分を後から引けるようにする)', () => {
+        const fn = client.match(/window\.supabasePublishPlan = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(!/\.delete\(\)/.test(fn), `配信が旧行を削除している: ${fn.slice(0, 160)}`);
+        assert.ok(fn.includes('旧配信は**消さない**'));
+    });
+    test('L3: 最新の配信は id 降順だけで選ぶ (端末の時計ずれで最新が入れ替わらない)', () => {
+        const fn = client.match(/window\.supabaseGetPublishedPlan = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(!/order\('published_at'/.test(fn), 'published_at で並べると時計ずれに弱い');
+        assert.ok(/order\('id', \{ ascending: false \}\)/.test(fn));
+        // 38未適用環境では frozen 列を落として再試行 = 「常に配信中」に静かに劣化
+        assert.ok(/_isMissingColumnErr\(r\.error, 'frozen_at'\)/.test(fn));
+    });
+    test('L3: 1つ前の配信を引ける (本人への「前回から変わったか」の材料)', () => {
+        assert.ok(/window\.supabaseGetPreviousPublishedPlan = async function/.test(client));
+        const fn = client.match(/window\.supabaseGetPreviousPublishedPlan = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/\.lt\('id', cur\)/.test(fn), '「いまより古い中で最大の id」で引く');
+        assert.ok(/order\('id', \{ ascending: false \}\)\.limit\(1\)/.test(fn));
+    });
+    test('L3: 凍結の読み書きは 38 未適用で静かに劣化し、操作だけ適用を案内する', () => {
+        const fn = client.match(/window\.supabaseSetPlanFrozen = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(fn.includes('supabase/38_published_plans_freeze.sql'));
+        assert.ok(/_isMissingColumnErr\(error, 'frozen_at'\)/.test(fn));
+    });
+    test('L3: 本人の画面に「組み直し中」と「前回から変わったか」を出す', () => {
+        assert.ok(html.includes('運営がプランを組み直し中です'));
+        assert.ok(html.includes('あなたの割当が変わりました'));
+        assert.ok(html.includes('前回の配信から、あなたの割当は変わっていません'));
+        // ★ 文言が有ることではなく**状態に配線されていること**を見る
+        //   (定数を false にすれば文言は残ったまま出なくなる — 変異テストで素通りした)
+        assert.ok(/const frozenBanner = frozen\s*\n/.test(html), 'frozenBanner が frozen だけで決まっていない');
+        assert.ok(/const changeBanner = !myChange \? ''\s*\n/.test(html));
+        assert.ok(/\$\{frozenBanner\}\$\{changeBanner\}/.test(html), '2つのバナーが本文に差し込まれていない');
+        assert.ok(/frozen: !!pub\.frozen_at/.test(html), '凍結状態が _myPubState に入っていない');
+        assert.ok(/const \{ plan, viewerId, doneCounts, stale, liveLevel, ack, frozen, frozenBy, myChange \} = _myPubState;/.test(html));
+        // 差分の取得に失敗したら黙って出さない (誤った「変わっていません」を出さない)
+        assert.ok(/myChange = null;/.test(html));
+        // 取得中に別の描画が始まったら捨てる (世代ガード)
+        assert.ok(/差分の取得中に新しい render が始まっていたら捨てる/.test(html));
+    });
+    test('L3: 99_check_applied.sql に 38 の判定行がある', () => {
+        assert.ok(read('supabase', '99_check_applied.sql').includes("'38_published_plans_freeze'"));
     });
     test('L5: 最終配信の状況 (誰が・いつ・無配信の警告) を戦況タブに出す', () => {
         assert.ok(html.includes('id="opsPlanPubStatus"'));

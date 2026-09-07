@@ -55,6 +55,12 @@ rm -f .claude/hooks/.codex-on      # OFF
   ここが唯一の置き場所。画面側は `weaknessPtOf(boss)` / `bossAttributeOf(boss)` /
   `normalizeAttrKey(v)` を使う — **相性表を画面に再定義しないこと** (DB書き込み側の発生源は
   supabaseCreateSeason の COUNTER のみ)
+- **js/domain/planDiff.js** — 配信プランの差分 (L4 通知抑制 / L5 運営ガード / L3 本人への提示)。
+  前回の配信と次のプランを**人ごと**に突き合わせ、変化の種類 (gone/added/boss/time/team) を1つ返す。
+  ★ **列として比べる** — 種類ごとに sort して集合で比べると「Lv1B1が21時 / Lv2B3が23時」→
+  「Lv1B1が23時 / Lv2B3が21時」の入れ替えを見逃す (最初の実装がこれで、変異テストで発覚)。
+  `rowsByPlayer` が (level, bossNumber, hourIdx, loadoutSlot) で決定的に並べるのが前提。
+  時刻と編成も約束の一部なので変化に数える (2026-09-07 ユーザー決定)。⏳隙間型は flex に畳む
 - **js/domain/** (fururi/ocr/finish/format/mockCompare) — ふるり値計算・OCR後処理・締め凸候補選別・
   ダメージ整形・ユニオン事前比較 (模擬タブ) の純ロジック。全て引数渡し・テストあり。
   該当領域の計算式を index.html に書き足さないこと。mockCompare のふるり値は
@@ -147,6 +153,16 @@ rm -f .claude/hooks/.codex-on      # OFF
   編集モーダルの「確認済みにする」で確定する (本人は24時間経過後のみ — 判定は `js/domain/charMaster.js`)。
   is_confirmed=false でも編成・OCR解決には使える (除外する経路は無い)。2026-08-21 の素体ソリン/ブリッド
   誤バースト (B1↔B3・スキン版との混同) の再発防止。
+  **配信プランの「組み直し中」と履歴の保持** (`38_published_plans_freeze.sql`: frozen_at / frozen_by — L3・2026-09-07)。
+  ★ **配信は旧行を消さない** (以前は自分より古い行を delete していた)。
+  「前回の配信と比べて誰の割当が変わったか」を後から引けるようにするため。
+  読みは常に **season_id が同じ中で id 最大の1件** (`published_at` で並べない — 端末の時計ずれで最新が入れ替わる)。
+  ★ **「配信中止」は削除ではなく凍結**。消すとメンバーは自分の割当を見られず plan_acks も失われる
+  (第44回は 8.5時間その状態だった)。凍結中もプランは表示され「運営が組み直し中です」が出る。
+  新しい配信を入れれば自動で解除される (新しい行の frozen_at は NULL)。
+  完全削除は `supabaseDeleteAllPublishedPlans` に残してあるが**通常運用では使わない**。
+  差分の判定は `js/domain/planDiff.js` が唯一 — 運営の事前提示・更新通知の絞り込み・
+  本人への「前回から変わったか」の3つが同じ判定を使う (画面側で書き足さない)。
   **模擬提出の運営除外** (`35_player_damages_exclusion.sql`: excluded_at / excluded_by / excluded_reason — 2026-09-05 ハード日の緊急改修)。
   戦況タブ → 残り戦闘可能メンバー → 🧹整理 でセルの ✕ を押すと行 (player_id, attribute, slot) に印が付き、
   **盤面ローダ (`supabaseLoadOpsDashboardData`) と `_selectUsableDamages` が読み取り時に外す** — ソルバー・締め凸候補・残凸表・

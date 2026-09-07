@@ -2460,38 +2460,76 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
         .select('id, published_at')
         .single();
     if (error) throw error;
-    // 同一シーズンの古い配信を掃除する。
-    // ★ neq ではなく lt を使うこと — 運営が2人同時に配信すると neq では互いの INSERT を
-    //   削除し合い、配信プランが0件になる順序がある。lt なら「自分より古い行」しか消さないので
-    //   最後に入った行は必ず残る (id は BIGSERIAL = 単調増加)。
-    // ※ INSERT と DELETE が別リクエストなので「常に1件だけ」は保証できない
-    //   (同時配信では両方残り得る)。**読む側は id 降順で1件を選ぶ**ので表示は常に最新になり、
-    //   残った古い行は次の配信で掃除される。完全な原子性が要るならサーバ側 RPC 化すること
-    const delRes = await supabase.from('published_plans').delete().eq('season_id', sid).lt('id', data.id);
-    if (delRes.error) console.warn('[publish] 旧配信の掃除に失敗 (表示は最新が出る):', delRes.error.message);
+    // ★ 旧配信は**消さない** (L3・2026-09-07)。以前は自分より古い行を削除していたが、
+    //   「前回の配信と比べて誰の割当が変わったか」を後から再現できず、
+    //   更新通知を確認済み全員へ送るしかなかった (= 第44回の振り回しの一因)。
+    //   読む側は常に「season_id が同じ中で id 最大の1件」を選ぶので、行が増えても表示は変わらない。
+    //   運営が2人同時に配信しても、後から入った行が勝つ (id は BIGSERIAL = 単調増加)。
+    //   行数はシーズンあたり数件〜十数件で、JSONB も小さいので保持コストは無視できる
     window.supabaseLogActivity?.('ops', '凸プランを配信', { actorName: publishedByName || null });
     return data;
+};
+
+// そのシーズンで「いまの配信の1つ前」を取る (L3: 本人へ「前回から何が変わったか」を出すため)。
+// 履歴を消さなくなったので引ける。1つ前が無い (初回配信) なら null
+window.supabaseGetPreviousPublishedPlan = async function (seasonId, currentPlanId) {
+    const sid = Number(seasonId), cur = Number(currentPlanId);
+    if (!sid || !cur) return null;
+    const cols = 'id, season_id, plan, published_by_name, published_at';
+    const run = async (sel) => await supabase
+        .from('published_plans').select(sel)
+        .eq('season_id', sid).lt('id', cur)
+        .order('id', { ascending: false }).limit(1).maybeSingle();
+    let r = await run(`${cols}, frozen_at`);
+    if (r.error && _isMissingColumnErr(r.error, 'frozen_at')) r = await run(cols);
+    if (r.error) { console.warn('[plan] 前回配信の取得skip:', r.error.message); return null; }
+    return r.data || null;
+};
+
+// 配信の凍結 / 解除 (38_published_plans_freeze.sql)。
+// 「組み直すので今のプランでは動かないでほしい」を、**消さずに**伝えるための操作。
+// 消すとメンバーは自分の割当を見られなくなり、plan_acks も失われる (第44回の実害)。
+window.supabaseSetPlanFrozen = async function (planId, frozen, actorName = null) {
+    const pid = Number(planId);
+    if (!pid) throw new Error('対象の配信が特定できません');
+    const patch = frozen
+        ? { frozen_at: new Date().toISOString(), frozen_by: actorName || '運営' }
+        : { frozen_at: null, frozen_by: null };
+    const { data, error } = await supabase
+        .from('published_plans').update(patch).eq('id', pid).select('id');
+    if (error) {
+        if (_isMissingColumnErr(error, 'frozen_at') || _isMissingColumnErr(error, 'frozen_by')) {
+            throw new Error('組み直し中の表示には supabase/38_published_plans_freeze.sql を SQL Editor で適用してください');
+        }
+        throw error;
+    }
+    if (!data || data.length === 0) throw new Error('対象の配信が見つかりません (すでに入れ替わっている可能性があります)');
+    window.supabaseLogActivity?.('ops', frozen ? '凸プランを組み直し中にした' : '凸プランの組み直し中を解除した',
+        { actorName: actorName || null });
+    return true;
 };
 
 // 配信の中止 (取り下げ): そのシーズンの配信プランを全削除し、メンバーの画面から消す。
 // plan_acks は published_plans への FK を持たない (28_plan_acks.sql) ので、
 // 宙に浮いた「確認済み」を残さないよう同シーズンぶんを一緒に掃除する。
 // 戻り値: 削除した配信の件数 (0 = もともと配信なし)。
-window.supabaseUnpublishPlan = async function (seasonId, actorName = null) {
+// 配信の完全削除。**通常の運用では使わない** — 中止は supabaseSetPlanFrozen による「凍結」に
+// 変えた (L3・2026-09-07)。消すとメンバーは自分の割当を見られなくなり、plan_acks も失われる。
+// シーズンの後片付けなど、履歴ごと消してよい場面のためだけに残してある
+window.supabaseDeleteAllPublishedPlans = async function (seasonId, actorName = null) {
     const sid = Number(seasonId);
-    if (!sid) throw new Error('シーズンが特定できないため中止できません');
+    if (!sid) throw new Error('シーズンが特定できないため削除できません');
     const { data, error } = await supabase
         .from('published_plans').delete().eq('season_id', sid).select('id');
     if (error) throw error;
     // acks の掃除は「いま消した配信ぶん」に限定する。season 全体で消すと、
-    // 2人目の運営がこの2リクエストの間に配信していた場合その確認済みまで巻き込む (Codex指摘)。
-    // 失敗しても中止自体は成立している (配信は消えている) ので警告どまり
+    // 2人目の運営がこの2リクエストの間に配信していた場合その確認済みまで巻き込む (Codex指摘)
     const removedIds = (data || []).map(r => r.id);
     if (removedIds.length > 0) {
         const ackRes = await supabase.from('plan_acks').delete().eq('season_id', sid).in('plan_id', removedIds);
         if (ackRes.error) console.warn('[unpublish] 確認済みの掃除に失敗:', ackRes.error.message);
     }
-    window.supabaseLogActivity?.('ops', '凸プランの配信を中止', { actorName: actorName || null });
+    window.supabaseLogActivity?.('ops', '凸プランの配信履歴を削除', { actorName: actorName || null });
     return (data || []).length;
 };
 
@@ -2618,18 +2656,23 @@ window.supabaseGetPublishedPlan = async function () {
         .from('seasons').select('id, month_key').eq('is_active', true).maybeSingle();
     if (sErr) throw sErr;
     if (!season) return null;
-    const { data, error } = await supabase
-        .from('published_plans')
-        .select('id, season_id, plan, published_by, published_by_name, published_at')
+    // ★ 並びは **id 降順だけ** にする (L3・2026-09-07)。履歴を消さなくなったので、
+    //   published_at で先に並べると「時計がずれた端末が入れた行」が最新になり得る。
+    //   id は BIGSERIAL = 挿入順なので、後から入れた配信が必ず勝つ
+    const cols = 'id, season_id, plan, published_by, published_by_name, published_at';
+    const run = async (sel) => await supabase
+        .from('published_plans').select(sel)
         .eq('season_id', season.id)
-        // id 降順まで指定する: 同時配信で複数行が残ったとき published_at だけでは
-        // どちらを表示するか不定になる。id は挿入順なので必ず最新が決まる
-        .order('published_at', { ascending: false })
         .order('id', { ascending: false })
         .limit(1)
         .maybeSingle();
-    if (error) throw error;
-    return data ? { ...data, month_key: season.month_key } : null;
+    // frozen_at/by (38) は未適用環境では列ごと落として再試行 = 「常に配信中」に静かに劣化
+    let r = await run(`${cols}, frozen_at, frozen_by`);
+    if (r.error && (_isMissingColumnErr(r.error, 'frozen_at') || _isMissingColumnErr(r.error, 'frozen_by'))) {
+        r = await run(cols);
+    }
+    if (r.error) throw r.error;
+    return r.data ? { ...r.data, month_key: season.month_key } : null;
 };
 
 // ============ 戦況の通知 (撃破 / レベル開放) ============

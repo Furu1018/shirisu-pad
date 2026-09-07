@@ -210,6 +210,11 @@ SELECT * FROM (
                 AND column_name = 'slots_snapshot') = 1,
         'availability_confirmations テーブル + slots_snapshot 列 (今季の戦闘可能時間を本人が確認したか。未適用だと確認UIがエラーで止まる。列だけ未適用なら「確認後の付け替え」を見逃す)'
 
+    UNION ALL SELECT '38_published_plans_freeze',
+        (SELECT COUNT(*) FROM col WHERE table_name = 'published_plans'
+            AND column_name IN ('frozen_at', 'frozen_by')) = 2,
+        'published_plans.frozen_at / frozen_by (配信の「組み直し中」。未適用だと凍結操作がエラーで止まり適用を案内する — 表示は常に配信中に劣化)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'
