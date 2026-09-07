@@ -5350,6 +5350,19 @@
             <div onclick="toggleTeamEditPopular()" id="myTeamEditPopularToggle" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">📚 みんなの人気編成を見る ▼</div>
             <div id="myTeamEditPopular" style="display:none;padding:10px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);"></div>
 
+            <!-- ===== 🔒 この編成で凸を予約する (L2 ⑧・シーズン中に対応ボスがあるときだけ出る) ===== -->
+            <div id="myTeamEditResvSec" class="te-sec" style="display:none;">
+                <p class="te-step" style="margin-bottom:6px;">🔒 この編成で凸を予約する</p>
+                <p style="margin:0 0 9px;font-size:11px;font-weight:700;color:#8A9097;line-height:1.6;">
+                    運営が承認すると<b>固定</b>されます。プランを組み直しても、この凸だけは動きません。
+                </p>
+                <div id="myTeamEditResvState" style="font-size:11.5px;font-weight:800;color:#8A9097;margin-bottom:9px;"></div>
+                <div id="myTeamEditResvForm" style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
+                    <select id="myTeamEditResvTime" style="flex:1;min-width:130px;padding:9px 10px;border-radius:10px;border:1px solid rgba(20,22,26,0.12);font-family:inherit;font-size:12px;font-weight:800;color:#14161A;background:#fff;"></select>
+                    <button type="button" onclick="handleRequestReservationFromMock()" style="flex:none;border:none;border-radius:999px;padding:10px 15px;font-family:inherit;font-size:12px;font-weight:900;color:#fff;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);cursor:pointer;">申請する</button>
+                </div>
+            </div>
+
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
                 <button onclick="handleMyTeamEditDeleteCurrent()" title="表示中の編成の提出 (ダメージ+編成) を削除" style="margin-right:auto;padding:9px 13px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.4);background:#fff;color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑 削除</button>
@@ -9224,6 +9237,100 @@
                 alert(`❌ ${e?.message || e}`);
             }
         }
+        // ===== 🔒 この編成で凸を予約する (L2 ⑧ / 模擬タブのパネル → 編成編集モーダル) =====
+        // ★ 「どのボスか」は属性から引く — シーズンのボスは弱点PT属性で1対1に対応する。
+        //   本人にボスを選ばせると、弱点でない編成で予約できてしまう
+        let _resvFormCtx = null;   // { seasonId, playerId, level, bossNumber, slot, characters, dmgB }
+        let _teAllRows = [];       // モーダルが読んだ提出行 (予約欄は**保存済み**を見る)
+        function allRowsForResv() { return _teAllRows; }
+
+        async function _renderTeamEditResv(identity, attrKey, slot) {
+            const sec = document.getElementById('myTeamEditResvSec');
+            const state = document.getElementById('myTeamEditResvState');
+            const form = document.getElementById('myTeamEditResvForm');
+            const sel = document.getElementById('myTeamEditResvTime');
+            const rv = window.reservationsDomain;
+            _resvFormCtx = null;
+            if (!sec || !state || !form || !sel || !rv || !identity?.id) { if (sec) sec.style.display = 'none'; return; }
+            sec.style.display = 'none';
+            let ctx = null;
+            try { ctx = await ensureActiveSeasonLoaded(); } catch { return; }
+            const level = Number(ctx?.season?.current_level) || 0;
+            const boss = (ctx?.bosses || []).find(b => b.weakness === attrKey);
+            if (!ctx?.season?.id || !level || !boss) return;   // シーズン外・対応ボスなし
+            if (Number(boss.remaining_hp_raw) <= 0) return;    // 撃破済みのボスは予約できない
+            let mine = null;
+            try { mine = await window.supabaseLoadMyReservations?.(ctx.season.id, identity.id) ?? null; } catch { return; }
+            if (!Array.isArray(mine)) return;                  // 39未適用 → 欄ごと出さない
+            const bossNumber = Number(boss.boss_number);
+            sec.style.display = '';
+            const cur = rv.findActiveFor(mine, { playerId: identity.id, level, bossNumber, loadoutSlot: slot });
+            if (cur) {
+                state.textContent = `この編成は ${rv.STATUS_JP[cur.status] || cur.status} です (Lv${level} / ${boss.name || 'B' + bossNumber})`;
+                form.style.display = 'none';
+                return;
+            }
+            // 残凸の検査 (DB のトリガーが弾く前に、押せないボタンを出さない)。
+            // ⚠ 引数の順は (playerId, seasonId, date)。間違えると常に0凸になり検査が効かない
+            let done = 0;
+            try {
+                const atks = await window.supabaseLoadMyAttacks?.(identity.id, ctx.season.id, ctx.season.hard_date);
+                done = Array.isArray(atks) ? atks.length : 0;
+            } catch { done = 0; }
+            const chk = rv.canRequest(mine, { playerId: identity.id, level, bossNumber, loadoutSlot: slot, doneAttacks: done });
+            if (!chk.ok) {
+                state.textContent = chk.label || '申請できません';
+                form.style.display = 'none';
+                return;
+            }
+            // ★ 編成とダメージは「いま編集中の値」ではなく**保存済みの提出**を使う。
+            //   保存前の値で予約すると、承認された内容と提出が食い違う
+            const row = (allRowsForResv() || []).find(d => d.attribute === attrKey && (d.slot || 1) === slot);
+            const chars = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
+            const dmgB = row ? mockDamageOf(row) : 0;
+            if (!(Number(dmgB) > 0)) {
+                state.textContent = 'この編成のダメージを保存すると予約できます';
+                form.style.display = 'none';
+                return;
+            }
+            state.textContent = `Lv${level} / ${boss.name || 'B' + bossNumber} / 編成${SLOT_JP[slot] || '①'} (${Number(dmgB).toFixed(1)}B)`;
+            form.style.display = '';
+            // 時刻は自分の登録時間帯から選ぶ。⏳は「時刻を約束しない」
+            const slots = Array.isArray(_availUI?.slots) ? _availUI.slots : [];
+            const opts = ['<option value="flex">⏳ 時刻は約束しない</option>'];
+            HOUR_ORDER.forEach((h, i) => {
+                if (!slots[i]) return;
+                opts.push(`<option value="${_hourKey(h)}">${h >= 0 && h <= 4 ? `翌${h}時` : `${h}時`}</option>`);
+            });
+            sel.innerHTML = opts.join('');
+            _resvFormCtx = { seasonId: ctx.season.id, playerId: identity.id, level, bossNumber, slot, characters: chars, dmgB: Number(dmgB) };
+        }
+
+        async function handleRequestReservationFromMock() {
+            const c = _resvFormCtx;
+            const sel = document.getElementById('myTeamEditResvTime');
+            if (!c || !sel) return;
+            const v = sel.value || 'flex';
+            const flex = v === 'flex';
+            if (!confirm(`この編成で凸を申請します。\n\nLv${c.level} / B${c.bossNumber} / ${flex ? '⏳時刻は約束しない' : v.slice(1) + '時'} / 編成${SLOT_JP[c.slot] || '①'}\n\n`
+                + '運営が承認すると、この凸は**固定**されます。\n\n[OK] 申請する / [キャンセル] やめる')) return;
+            try {
+                const me = getCurrentIdentity();
+                await window.supabaseCreateReservation({
+                    seasonId: c.seasonId, playerId: c.playerId,
+                    raidLevel: c.level, bossNumber: c.bossNumber, loadoutSlot: c.slot,
+                    flex, timeSlot: flex ? null : v,
+                    characters: c.characters, expectedDamageB: c.dmgB,
+                    sourceType: 'self', requestedBy: me?.name || null,
+                });
+                showNotification('🔒 申請しました (運営の承認待ちです)');
+                await _renderTeamEditResv(me, _myTeamEditAttr, c.slot);
+                renderMyReservations(me);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+
         async function handleMyTeamEdit(attrKey, slot = 1) {
             const id = getCurrentIdentity();
             if (!id?.id) { alert('プレイヤー未選択です'); return; }
@@ -9253,6 +9360,7 @@
                 _myTeamEditLoadOk = !!res0.ok;
                 const dmgs = res0.rows || [];
                 allRows = dmgs;
+                _teAllRows = dmgs;   // 予約欄が「保存済みの提出」を見るため
                 const row = (dmgs || []).find(d => d.attribute === attrKey && (d.slot || 1) === mySlot);
                 existingSlots = (dmgs || []).filter(d => d.attribute === attrKey).map(d => d.slot || 1);
                 isNew = !row;
@@ -9284,6 +9392,7 @@
             document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成${SLOT_JP[_myTeamEditSlot]}・ダメージ`;
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
+            _renderTeamEditResv(id, attrKey, mySlot).catch(() => { /* 予約欄が出ないだけ */ });
             await getNikkeCharsCache();
             if (stale()) return;
             // 古い保存データを開いた瞬間にファジィ解決でクリーンアップ

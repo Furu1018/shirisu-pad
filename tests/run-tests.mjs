@@ -3640,6 +3640,29 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/renderMyReservations\(id\);\s*\/\/ 🔒 引き受けた凸/.test(html), 'ホームで呼んでいない');
     });
 
+    test('★ ⑧配線: 模擬タブから申請できる (ボスは属性から引く / 保存済みの提出を使う)', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        assert.ok(html.includes('id="myTeamEditResvSec"'), '編成編集モーダルに予約欄が無い');
+        const fn = html.match(/async function _renderTeamEditResv[\s\S]{0,3200}/)?.[0] || '';
+        assert.ok(fn, '予約欄の描画関数が無い');
+        // ★ 本人にボスを選ばせない — 選ばせると弱点でない編成で予約できてしまう
+        assert.ok(/\(ctx\?\.bosses \|\| \[\]\)\.find\(b => b\.weakness === attrKey\)/.test(fn), 'ボスを属性から引いていない');
+        assert.ok(/Number\(boss\.remaining_hp_raw\) <= 0\) return;/.test(fn), '撃破済みのボスに予約できてしまう');
+        assert.ok(/if \(!Array\.isArray\(mine\)\) return;/.test(fn), '39未適用でも欄を出している');
+        assert.ok(/rv\.findActiveFor\(/.test(fn), '申請済みの判定をしていない');
+        assert.ok(/rv\.canRequest\(/.test(fn), '残凸を見ていない');
+        // ★ 編集中の値ではなく保存済みの提出を使う (承認内容と提出が食い違わないように)
+        assert.ok(/allRowsForResv\(\)/.test(fn), '保存済みの提出を見ていない');
+        assert.ok(/この編成のダメージを保存すると予約できます/.test(fn), '未保存でも申請できてしまう');
+        // 引数の順を間違えると常に0凸になり、残凸の検査が効かない
+        assert.ok(/supabaseLoadMyAttacks\?\.\(identity\.id, ctx\.season\.id, ctx\.season\.hard_date\)/.test(fn),
+            'supabaseLoadMyAttacks の引数の順が違う');
+        const send = html.match(/async function handleRequestReservationFromMock[\s\S]{0,1400}/)?.[0] || '';
+        assert.ok(/sourceType: 'self'/.test(send), 'メンバー発の申請として作っていない');
+        assert.ok(!/status: 'approved'/.test(send), 'メンバーの申請を承認済みで作っている');
+        assert.ok(/flex, timeSlot: flex \? null : v/.test(send), '⏳のときに時刻を送っている');
+    });
+
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
         // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる
         const m = _sqlRes.match(/status TEXT NOT NULL DEFAULT 'requested'\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
