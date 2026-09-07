@@ -4537,6 +4537,20 @@ console.log('\nclientGateDomain (互換ゲート):');
         assert.ok(/_gateFetchedAt = Date\.now\(\);/.test(html), '取得時刻を記録していない');
         // 解除は配信の版のしめ切りも戻す (戻さないと「解除しました」なのに旧配信が出ない)
         assert.ok(/\{ minPlanSchema: 0 \}/.test(html), '解除で min_plan_schema を戻していない');
+        // ★ 再描画の呼び出し口が4つあるので、表示関数の入口でも見る
+        const view = html.match(/function renderOpsPlanView\(\) \{[\s\S]{0,600}/)?.[0] || '';
+        assert.ok(/!_gateAllows\('plan'\)/.test(view), '運営の再描画を止めていない');
+    });
+
+    test('★ ⑦: セッション途中で締められたら古い指示を画面に残さない', () => {
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
+        // 配信カードを差し替えるだけだと、ヒーローの割当ストリップと提出カードの採用マークに
+        // 締める前の指示が残り続ける
+        const blk = html.match(/if \(pub\?\.plan && \(!_gateAllows\('plan'\)[\s\S]{0,900}/)?.[0] || '';
+        assert.ok(blk, 'ゲート分岐が見つからない');
+        assert.ok(/_setMyPlanPicks\(null, identity\.id\)/.test(blk), '提出カードの採用マークを消していない');
+        assert.ok(/_myPubState = null;/.test(blk), 'ヒーローの割当ストリップを消していない');
+        assert.ok(/renderMyNextAction\(identity\);/.test(blk), 'ヒーローを描き直していない');
     });
 
     test('★ ⑦: 38/41 の片方だけ未適用でも版を落とさない', () => {

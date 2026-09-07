@@ -7759,6 +7759,16 @@
                 planSchema: pub?.plan_schema, supportedSchema: PLAN_SCHEMA, gate: _gateRaw,
             });
             if (pub?.plan && (!_gateAllows('plan') || (gateRead && !gateRead.readable))) {
+                // ★ セッションの途中で締められた場合、ヒーローの割当ストリップと提出カードの
+                //   採用マークに**古い指示が残る**。カードだけ差し替えても意味が無いので一緒に消す
+                if (_setMyPlanPicks(null, identity.id) && typeof renderMyDamagePanels === 'function') {
+                    renderMyDamagePanels(identity);
+                }
+                if (_myPubState || _heroPlanKey) {
+                    _myPubState = null;
+                    _heroPlanKey = '';
+                    renderMyNextAction(identity);
+                }
                 card.style.display = 'block';
                 if (metaEl) metaEl.textContent = '';
                 if (body) {
@@ -16368,6 +16378,16 @@
         }
 
         function renderOpsPlanView() {
+            // ★ セッションの途中で締められたら、手元に残っている算出結果も出さない。
+            //   算出は入口で止めているが、再描画の呼び出し口が4つあるのでここでも見る
+            if (!_gateAllows('plan')) {
+                const el0 = document.getElementById('opsOptimalPlan');
+                if (el0) {
+                    el0.innerHTML = '<p style="font-size:12px;color:#C42A30;font-weight:800;line-height:1.7;">'
+                        + 'アプリが古いため、いまは凸プランを表示できません。<br>ページを再読み込みしてください。</p>';
+                }
+                return;
+            }
             const el = document.getElementById('opsOptimalPlan');
             const plan = _opsLastPlan;
             if (!el || !plan) return;
