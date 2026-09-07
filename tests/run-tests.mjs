@@ -3701,6 +3701,35 @@ console.log('\nreservationsDomain (凸の予約):');
         });
     }
 
+    test('★ 算出は「押した時点の DB の予約」を固定制約として渡す (実機で発覚: 渡していなかった)', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        // 10時の予約が承認済みなのに 6時に組まれ、配信の reservationCount が 0 だった。
+        // computeOptimalPlan が reservations をソルバーに渡していなかった
+        const fn = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]{0,1600}/)?.[0] || '';
+        assert.ok(/reservations: \(rv && resvRows\) \? rv\.toSolverConstraints\(resvRows\) : \[\]/.test(fn), 'ソルバーに予約を渡していない');
+        // ★ 運営カードの _resv.rows に頼らない (開いていないと null)。押した時点の DB から取り直す
+        const run = html.match(/async function computeAndRenderOptimalPlan[\s\S]{0,9000}/)?.[0] || '';
+        assert.ok(/reservations = await window\.supabaseLoadReservations\(snapshot\.season\.id\);/.test(run), '算出時に予約を取り直していない');
+        assert.ok(/computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations: Array\.isArray\(reservations\) \? reservations : \[\] \}, snapshot\)/.test(run),
+            '取り直した予約を渡していない');
+        // 取れなければ止める (予約を無視したプランを配信すると約束が破れる)
+        assert.ok(/予約の取得に失敗したため算出を止めました/.test(run), '取得失敗でも予約なしで組んでいる');
+        assert.ok(!/_resv\.rows\)\s*\}, snapshot\)/.test(run), '画面の状態 (_resv.rows) をそのまま渡している');
+    });
+
+    test('★ モーダル→モーダルの切替で history.back() と pushState を同じバッチに出さない (ページ外へ出る)', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const fn = html.match(/const onClassChange = \(\) => \{[\s\S]{0,2600}/)?.[0] || '';
+        assert.ok(fn, 'history 連携が見つからない');
+        // 閉じると開くを集めてから相殺する
+        assert.ok(/const opened = \[\], closed = \[\];/.test(fn), '閉じる・開くを集めていない');
+        assert.ok(/while \(opened\.length && closed\.length && !closingFromPop && armed > 0\) \{/.test(fn), '相殺していない');
+        assert.ok(/closed\.shift\(\);[\s\S]{0,80}stack\.push\(opened\.shift\(\)\);/.test(fn), '相殺で state を引き継いでいない');
+        // 相殺のあとに残った分だけ back / push する
+        assert.ok(/closed\.forEach\(\(\) => \{[\s\S]{0,200}history\.back\(\)/.test(fn));
+        assert.ok(/opened\.forEach\(el => \{[\s\S]{0,200}history\.pushState/.test(fn));
+    });
+
     test('★ モック④: 運営プランと本人のプランに「🔒予約」ピン / 「N件を固定して計算」', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
         assert.ok(/const resvPin = a\.fromReservation \?/.test(html), '運営プランの行にピンが無い');
@@ -4724,7 +4753,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // OFF は「前回を尊重しない」と決めて算出したもの。照合すると出せなくなるだけ
         assert.ok(/plan\.stickyOn = !!_opsPlanSticky;/.test(html));
         assert.ok(/_opsLastPlan\?\.stickyOn &&/.test(html), 'OFF でも照合してしまう');
-        assert.ok(/const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan \}, snapshot\);/.test(html));
+        assert.ok(/const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations: [^}]*\}, snapshot\);/.test(html));
         // 取得に失敗しても算出は続ける (安定化は「あれば嬉しい」もので、止める理由にならない)
         assert.ok(/配信中プランの取得skip \(安定化なしで算出\)/.test(html));
     });

@@ -16909,8 +16909,15 @@
             const src = snapshot || opsStore.get();
             if (!src) return null;
             const { season, bosses, players } = src;
+            // ★ L2: 承認済みの予約を固定制約として渡す (2026-09-07 実機で発覚: 渡していなかったので
+            //   10時の予約が6時に組まれ、配信の reservationCount も 0 だった)。
+            //   options.reservations は「押した時点の DB の予約」(computeAndRenderOptimalPlan が取り直す)。
+            //   画面の _resv.rows は運営カードを開いていないと空のままなので、それに頼らない
+            const rv = window.reservationsDomain;
+            const resvRows = Array.isArray(options.reservations) ? options.reservations : null;
             return window.computeOptimalPlanCore({
                 season, bosses, players,
+                reservations: (rv && resvRows) ? rv.toSolverConstraints(resvRows) : [],
                 // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン
                 currentSlot: _opsPlanStartMode === 'day' ? 'h05' : getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
@@ -17015,12 +17022,32 @@
                 } catch (e) { console.warn('[plan] 配信中プランの取得skip (安定化なしで算出):', e?.message || e); }
                 if (seq !== _opsPlanSeq) return;
             }
+            // ★ L2: 予約は**押した時点の DB** から取り直す (盤面と同じ鮮度の原則)。
+            //   運営カードの _resv.rows は開いていないと null なので、それに頼ると予約が無視される。
+            //   取れなければ「予約なし」で組まずに止める — 予約はあるのに無視したプランを配信すると
+            //   約束が破れる (「予約はあるがソルバーが無視する状態は出してはいけない」)
+            let reservations = null;
+            if (typeof window.supabaseLoadReservations === 'function' && snapshot?.season?.id) {
+                try {
+                    reservations = await window.supabaseLoadReservations(snapshot.season.id);
+                } catch (e) {
+                    if (seq === _opsPlanSeq) {
+                        el.innerHTML = `<p style="font-size:12px;color:#C42A30;font-weight:800;">予約の取得に失敗したため算出を止めました (${escapeHtml(e?.message || String(e))})。もう一度「算出」を押してください。</p>`;
+                    }
+                    return;
+                }
+                if (seq !== _opsPlanSeq) return;
+                if (Array.isArray(reservations) && typeof _resv !== 'undefined') {
+                    _resv.rows = reservations;   // 運営カードの表示も同じ鮮度に揃える
+                    if (typeof _paintOpsReservations === 'function') _paintOpsReservations();
+                }
+            }
             // ソルバーは同期実行でメインスレッドを止める (30人・ボス横断探索ありで最大1秒超)。
             // 「取得中…」のまま固まって見えるので表示を切り替え、2フレーム待って確実に描画させてから回す
             el.innerHTML = '<p style="font-size:12px;color:#8A9097;">🧮 最適な3凸を計算中…</p>';
             await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
             if (seq !== _opsPlanSeq) return;
-            const plan = computeOptimalPlan({ ...options, previousPlan }, snapshot);
+            const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:#ef4444;">プラン算出に失敗しました。</p>';
                 return;
@@ -22072,20 +22099,34 @@
                 else el.classList.remove('open');
             };
             const onClassChange = () => {
+                // ★ 同じバッチ (同期処理の中) で「閉じる」と「開く」が来たら**相殺する** (2026-09-07 実機で発覚)。
+                //   閉じるで history.back() を呼んだ直後に、開くで pushState を呼ぶと、WebKit では
+                //   保留中の戻り操作が pushState を飲み込むことがある。すると armed は 1 なのに
+                //   履歴の入口が無く、次に閉じたときの back() でページの外 (ブラウザのホーム) へ出る。
+                //   モーダル → 別のモーダル (編成編集 → 申請シート) の切替がこれに当たる。
+                //   相殺 = 積んである state をそのまま新しいモーダルに使い回す (back も push もしない)
+                const opened = [], closed = [];
                 document.querySelectorAll(SELECTOR).forEach(el => {
                     const open = el.classList.contains('open');
                     const idx = stack.indexOf(el);
-                    if (open && idx < 0) {
-                        stack.push(el);
-                        try { history.pushState({ shirisukoModal: true }, ''); armed++; } catch { /* noop */ }
-                    } else if (!open && idx >= 0) {
-                        stack.splice(idx, 1);
-                        if (!closingFromPop && armed > 0) {
-                            armed--;
-                            suppressPop = true;
-                            try { history.back(); } catch { /* noop */ }
-                        }
+                    if (open && idx < 0) opened.push(el);
+                    else if (!open && idx >= 0) closed.push(el);
+                });
+                closed.forEach(el => { const i = stack.indexOf(el); if (i >= 0) stack.splice(i, 1); });
+                while (opened.length && closed.length && !closingFromPop && armed > 0) {
+                    closed.shift();                 // この閉じるは back() しない
+                    stack.push(opened.shift());     // この開くは push しない (state を引き継ぐ)
+                }
+                closed.forEach(() => {
+                    if (!closingFromPop && armed > 0) {
+                        armed--;
+                        suppressPop = true;
+                        try { history.back(); } catch { /* noop */ }
                     }
+                });
+                opened.forEach(el => {
+                    stack.push(el);
+                    try { history.pushState({ shirisukoModal: true }, ''); armed++; } catch { /* noop */ }
                 });
             };
             const mo = new MutationObserver(onClassChange);
