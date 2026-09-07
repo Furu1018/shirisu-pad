@@ -8376,7 +8376,15 @@
             _myAvailConfirm = null;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
-                if (!ctx?.season?.id) return;
+                if (!ctx?.season?.id) {
+                    // ★ 何も描かずに return すると、前のシーズンで描いた「確認済み」の表示が残る。
+                    //   状態 (_myAvailConfirm) は null に戻っているので画面と食い違い、
+                    //   ボタンを押すと「アクティブなシーズンがありません」で失敗する (Codex指摘 2026-09-07)。
+                    //   確認する相手がいない状態として描き直す
+                    _myAvailConfirm = { noSeason: true };
+                    _renderMyAvailConfirm();
+                    return;
+                }
                 _myAvailConfirm = await window.supabaseLoadMyAvailabilityConfirmation(ctx.season.id, playerId);
             } catch {
                 // ★ 通信断・RLS の失敗を「未確認」に落とさない (Codex指摘 2026-09-07)。
@@ -8391,8 +8399,9 @@
             const el = document.getElementById('myAvailConfirmBadge');
             if (!el) return;
             const c = _myAvailConfirm;
-            // 37未適用: 確認できない環境で「未確認」と急かさない (押しても SQL 適用エラーになるだけ)
-            if (c && c.unsupported) { el.style.display = 'none'; return; }
+            // 37未適用 / シーズン無し: 確認できない環境で「未確認」と急かさない
+            // (押しても「SQL を適用してください」「アクティブなシーズンがありません」になるだけ)
+            if (c && (c.unsupported || c.noSeason)) { el.style.display = 'none'; return; }
             if (c && c.loadFailed) {   // 取得できなかっただけ。「未確認」と断定しない
                 el.style.display = 'inline-block';
                 el.textContent = '今季 確認状態不明';
@@ -8417,8 +8426,9 @@
             if (!box) return;
             const c = _myAvailConfirm;
             // 37未適用 (supabase/37_availability_confirmations.sql がまだ) では確認UIを出さない。
-            // 出すと押せてしまい「SQL を適用してください」というメンバーには意味不明なエラーになる
-            if (c && c.unsupported) { box.style.display = 'none'; box.innerHTML = ''; return; }
+            // 出すと押せてしまい「SQL を適用してください」というメンバーには意味不明なエラーになる。
+            // シーズンが無いときも同じ (確認する相手がいない)
+            if (c && (c.unsupported || c.noSeason)) { box.style.display = 'none'; box.innerHTML = ''; return; }
             // 取得できなかった: 確認済みかどうか分からないので、確認ボタンは出さない
             if (c && c.loadFailed) {
                 box.style.display = 'block';

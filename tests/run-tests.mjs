@@ -3334,9 +3334,18 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(/_isMissingTableErr\(error, 'availability_confirmations'\)/.test(body), 'テーブル欠損だけを未適用と判定すること');
         assert.ok(/return \{ unsupported: true \}/.test(body));
         assert.ok(!/\} catch \{ return null; \}/.test(body), '通信断まで「未確認」に潰さない');
-        // 画面側: 未適用なら確認UIごと出さない (押すと SQL 適用エラーになるだけ)
-        assert.ok(/if \(c && c\.unsupported\) \{ el\.style\.display = 'none'; return; \}/.test(html), 'バッジを隠していない');
-        assert.ok(/if \(c && c\.unsupported\) \{ box\.style\.display = 'none'; box\.innerHTML = ''; return; \}/.test(html), '確認ブロックを隠していない');
+        // 画面側: 未適用なら確認UIごと出さない (押すと SQL 適用エラーになるだけ)。
+        // シーズンが無いときも同じ扱い ("アクティブなシーズンがありません" で失敗するだけ)
+        assert.ok(/if \(c && \(c\.unsupported \|\| c\.noSeason\)\) \{ el\.style\.display = 'none'; return; \}/.test(html), 'バッジを隠していない');
+        assert.ok(/if \(c && \(c\.unsupported \|\| c\.noSeason\)\) \{ box\.style\.display = 'none'; box\.innerHTML = ''; return; \}/.test(html), '確認ブロックを隠していない');
+    });
+    test('★ シーズンが無くなったら確認UIを描き直す (前シーズンの「確認済み」を残さない)', () => {
+        const fn = html.match(/async function _loadMyAvailConfirm\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_myAvailConfirm = \{ noSeason: true \};/.test(fn), 'シーズン無しの状態を持っていない');
+        // ★ 何も描かずに return すると、状態は null なのに画面は前シーズンの「確認済み」のまま残り、
+        //   押すと「アクティブなシーズンがありません」で失敗する (Codex指摘 2026-09-07)
+        assert.ok(/_myAvailConfirm = \{ noSeason: true \};\s*\n\s*_renderMyAvailConfirm\(\);\s*\n\s*return;/.test(fn),
+            'シーズン無しで描き直さずに return している');
     });
     test('★ 盤面ローダーは「今回は難しい」の取得失敗を握り潰さない', () => {
         // 握り潰すと通信断・RLS の失敗が「誰も難しいと言っていない」と同じ結果になり、
