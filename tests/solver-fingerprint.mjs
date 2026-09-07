@@ -154,10 +154,24 @@ for (let seed = 1; seed <= N; seed++) {
 }
 const text = lines.join('\n');
 
-const cmpFile = process.argv[2];
-if (!cmpFile) {
-    console.log(text);
+// ★ 引数なしでも**必ず基準と突き合わせる** (Codex指摘 2026-09-07)。
+//   以前は引数なしだとハッシュを出して成功終了していたので、
+//   「previousPlan なしの割当が全盤面で変わっても、手で基準を渡さなければ気づけない」状態だった。
+//   基準は L1 導入前 (112d110) のソルバーで取ったもの。
+//   ⚠ ソルバーの選択ロジックを意図的に変えたときだけ、理由をコミットに書いて更新すること:
+//     node tests/solver-fingerprint.mjs --update
+const BASELINE = path.join(HERE, 'solver-fingerprint.baseline.txt');
+if (process.argv[2] === '--update') {
+    fs.writeFileSync(BASELINE, text + '\n');
+    console.log(`基準を更新した (${lines.length} 盤面) — 変更の理由をコミットメッセージに残すこと`);
     process.exit(0);
+}
+if (process.argv[2] === '--print') { console.log(text); process.exit(0); }
+const cmpFile = process.argv[2] || BASELINE;
+if (!fs.existsSync(cmpFile)) {
+    console.error(`基準ファイルが無い: ${cmpFile}`);
+    console.error('意図した変更なら --update で作り直すこと');
+    process.exit(1);
 }
 const before = fs.readFileSync(cmpFile, 'utf8').trim().split('\n').map(s => s.trim()).filter(Boolean);
 const after = text.split('\n');

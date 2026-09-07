@@ -15990,11 +15990,15 @@
             //   取れなくても算出は続ける — 安定化は「あれば嬉しい」もので、止める理由にはならない。
             //   別シーズンの配信は基準にしない (盤面が違うので比べる意味がない)
             let previousPlan = null;
+            let basisPlanId = null;   // 何を基準に組んだか。配信直前に「基準が変わっていないか」を照合する
             if (_opsPlanSticky) {
                 try {
                     const pub = typeof window.supabaseGetPublishedPlan === 'function'
                         ? await window.supabaseGetPublishedPlan() : null;
-                    if (pub && Number(pub.season_id) === Number(snapshot?.season?.id)) previousPlan = pub.plan || null;
+                    if (pub && Number(pub.season_id) === Number(snapshot?.season?.id)) {
+                        previousPlan = pub.plan || null;
+                        basisPlanId = pub.id ?? null;
+                    }
                 } catch (e) { console.warn('[plan] 配信中プランの取得skip (安定化なしで算出):', e?.message || e); }
                 if (seq !== _opsPlanSeq) return;
             }
@@ -16011,6 +16015,12 @@
             // 算出元シーズンを焼き込む: これが無いと「旧シーズンで算出 → シーズン切替 → 配信」で
             // 配信時の照合が2回とも新シーズンになって通過し、旧盤面のプランを配信できてしまう
             plan.seasonId = snapshot?.season?.id ?? null;
+            // ★ L1: 「どの配信を約束として尊重したか」を焼き込む (Codex指摘 2026-09-07)。
+            //   運営3人が同じ配信 P0 を基準に組んでいるとき、A が P1 を配信したあとに
+            //   B が P0 基準のまま P2 を配信すると、B は P1 の約束を知らないまま壊してしまう。
+            //   配信直前にこの ID と最新を照合して、ずれていたら組み直させる
+            plan.basisPlanId = basisPlanId;
+            plan.stickyOn = !!_opsPlanSticky;
             _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
             _setOpsPlanPicks(plan, 'local');   // 残凸表の「採用PT」枠取りに反映
             renderOpsPlanView();
@@ -16578,6 +16588,18 @@
                 const prevPlan = sameSeason ? prevPub.plan : null;
                 if (sameSeason) prevPlanId = prevPub.id;
                 if (window.planDiffDomain) publishDiff = window.planDiffDomain.diffPlans(prevPlan, _opsLastPlan);
+                // ★ 基準がずれていたら配信させない (Codex指摘 2026-09-07)。
+                //   算出時に尊重した配信と、いま生きている配信が違う = 別の運営が間に配信している。
+                //   そのまま出すと相手の約束を知らないまま壊す。安定化 OFF のときは元から
+                //   「前回を尊重しない」と決めて算出しているので照合しない
+                const basis = _opsLastPlan?.basisPlanId ?? null;
+                if (_opsLastPlan?.stickyOn && Number(basis || 0) !== Number(prevPlanId || 0)) {
+                    alert('⚠️ 別の運営が新しいプランを配信しました。\n\n'
+                        + 'いま表示しているプランは古い配信を基準に組まれているため、'
+                        + 'そのまま配信すると相手が出した割当を壊してしまいます。\n\n'
+                        + 'プランを算出し直してから配信してください。');
+                    return;
+                }
             } catch (e) { console.warn('[publish] 差分の取得skip (影響の提示なしで続行):', e?.message || e); }
             const diffMsg = publishDiff && window.planDiffDomain
                 ? `\n\n${window.planDiffDomain.summaryText(publishDiff)}` : '';

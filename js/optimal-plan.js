@@ -133,6 +133,9 @@
     // 30B の根拠: 第44回の総与ダメ 2,981B の約1% で、1人1凸ぶんに近い (ユーザー承認 2026-09-07)
     const STICKY_GAIN_RATIO = 0.05;
     const STICKY_MIN_GAIN_B = 30;
+    // 拘束として受け付ける編成スロットの上限 (supabase/32 で DB の CHECK も 1|2)。
+    // 範囲外は壊れた配信データなので、その行ごと捨てる
+    const MOCK_SLOT_MAX_STICKY = 2;
     const MAX_BRANCH = 16;       // 1ラウンドで試す決定点の数
     const MAX_DEPTH = 3;        // 改善した分岐に重ねて分岐する深さ (1決定点だけでは弱い)
     // 解くシナリオの総数 (基準解を含む)。**実時間で打ち切ってはいけない** —
@@ -1026,14 +1029,26 @@
                     if (!Number.isInteger(bossNumber)) return;
                     (Array.isArray(b.attacks) ? b.attacks : []).forEach(a => {
                         if (!a || a.memberId == null) return;
-                        const loadoutSlot = Number(a.loadoutSlot) || 1;
+                        // ★ スロットは「欠けている」ときだけ 1 に補う (Codex指摘 2026-09-07)。
+                        //   `Number(x) || 1` だと 0 や "bad" まで 1 に化け、本来無効な行が
+                        //   別の人の編成①を拘束して正しい割当を妨げる
+                        let loadoutSlot = 1;
+                        if (a.loadoutSlot != null && a.loadoutSlot !== '') {
+                            const n = Number(a.loadoutSlot);
+                            if (!Number.isInteger(n) || n < 1 || n > MOCK_SLOT_MAX_STICKY) return;   // 壊れた行は捨てる
+                            loadoutSlot = n;
+                        }
                         out.push({ memberId: a.memberId, level, bossNumber, loadoutSlot });
                     });
                 });
             });
+            // ★ 並べ替えは**ロケール非依存**にする (Codex指摘 2026-09-07)。
+            //   localeCompare は端末の言語設定で順序が変わり、"z" と "ä" のような ID で
+            //   投入順が変わる = 同じ盤面でも端末ごとに違う指示が出る
+            const idKey = (v) => String(v);
             out.sort((x, y) => (x.level - y.level)
                 || (x.bossNumber - y.bossNumber)
-                || String(x.memberId).localeCompare(String(y.memberId))
+                || (idKey(x.memberId) < idKey(y.memberId) ? -1 : idKey(x.memberId) > idKey(y.memberId) ? 1 : 0)
                 || (x.loadoutSlot - y.loadoutSlot));
             return out;
         };

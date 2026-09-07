@@ -55,12 +55,16 @@ const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
 const HOURS = ['h05', 'h09', 'h13', 'h17', 'h21'];
 const COUNTER = { fire: 'water', water: 'electric', iron: 'wind', electric: 'iron', wind: 'fire' };
 const TIERS = ['lord', 'lord', 'tyrant', 'lord', 'tyrant'];
+// ★ js/optimal-plan.js の HARD_LEVEL_HP_B と**必ず一致させる** (bench-crossboss.mjs と同じ値)。
+//   ここがずれると撃破率・オーバーキル圧縮・約束が置ける頻度が別分布になり、
+//   「振り回しが何%減った」という数字が現実の盤面のものでなくなる (Codex指摘 2026-09-07 で発覚)
 const HP = {
-    1: { lord: 29.9568837600, tyrant: 44.9353256400 },
-    2: { lord: 99.8562792000, tyrant: 149.7844188000 },
-    3: { lord: 199.7125584000, tyrant: 299.5688376000 },
+    1: { lord: 99.8562792, tyrant: 150.8418136 },
+    2: { lord: 149.7844188, tyrant: 226.2627204 },
+    3: { lord: 292.44529575, tyrant: 349.2309015 },
 };
 const P_SHARE2 = 0.12, P_SHARE1 = 0.05, P_SLOT2 = 0.3;
+const P_LEVELED = 0.05;   // 廃止前に複数レベルで測った編成 (crossboss と同じ割合)
 
 function board(seed) {
     let s = seed;
@@ -104,7 +108,15 @@ function board(seed) {
         }
         pool.forEach(a => {
             const base = Math.round((4 + rnd() * 24) * 2) / 2;
-            const los = [{ dmgB: base, team: team1[a], slot: 1 }];
+            const lo1 = { dmgB: base, team: team1[a], slot: 1 };
+            // 廃止前に複数レベルで測った編成 (crossboss と同じ規則)。差は実測レンジ (Lv1比 96〜105%)
+            if (rnd() < P_LEVELED) {
+                const lv = 2 + Math.floor(rnd() * 3);
+                const other = Math.round((base * (0.96 + rnd() * 0.09)) * 2) / 2;
+                lo1.levels = { '0': base, [String(lv)]: other };
+                lo1.level = null;
+            }
+            const los = [lo1];
             if (rnd() < P_SLOT2) {
                 los.push({
                     dmgB: Math.round((base * (0.7 + rnd() * 0.25)) * 2) / 2,
@@ -137,7 +149,7 @@ const PERTURB = {
     hp: (inp) => {   // 誰かが凸してボスのHPが減った (運営がHPを更新した)
         const b = inp.bosses.find(x => x.remaining_hp_raw > 0);
         if (b) b.remaining_hp_raw = Math.max(1e9, b.remaining_hp_raw * 0.6);
-        return 'HP減';
+        return { label: 'HP減', fulfilled: [] };
     },
     attack: (inp, base) => {   // プランどおりに1人が凸を済ませた
         const rows = planDiff.rowsByPlayer(base);
@@ -147,14 +159,20 @@ const PERTURB = {
             const r = list[0];
             p.attacks = [...(p.attacks || []), { boss_number: r.bossNumber, characters: r.team || [] }];
             p.attackCount = p.attacks.length;
-            return '実凸';
+            // ★ ボスの残HPも減らす (Codex指摘 2026-09-07)。凸だけ数えてHPを据え置くと、
+            //   「削れていないのに凸だけ消えた」という現実に無い盤面で測ることになる
+            const b = inp.bosses.find(x => Number(x.boss_number) === Number(r.bossNumber));
+            if (b) b.remaining_hp_raw = Math.max(0, (b.remaining_hp_raw || 0) - (Number(r.dmgB) || 0) * 1e9);
+            // ★ 実行済みになった行は「約束が壊れた」の母集団から外す
+            //   (次のプランに出てこないのは当たり前で、振り回しではない)
+            return { label: '実凸', fulfilled: [{ id, key: r }] };
         }
-        return '実凸(対象なし)';
+        return { label: '実凸(対象なし)', fulfilled: [] };
     },
     avail: (inp) => {   // 誰かが戦闘可能時間を変えた
         const p = inp.players.find(x => (x.availableSlots || []).length > 0);
         if (p) p.availableSlots = [HOURS[HOURS.length - 1]];
-        return '時間帯';
+        return { label: '時間帯', fulfilled: [] };
     },
     loadout: (inp) => {   // 誰かが模擬を出し直した (ダメージが少し変わる)
         const p = inp.players.find(x => Object.keys(x.loadoutsByAttr || {}).length > 0);
@@ -163,7 +181,7 @@ const PERTURB = {
             p.loadoutsByAttr[a][0].dmgB = Math.round(p.loadoutsByAttr[a][0].dmgB * 1.15 * 2) / 2;
             p.damagesByAttr[a] = Math.max(...p.loadoutsByAttr[a].map(x => x.dmgB));
         }
-        return '模擬再提出';
+        return { label: '模擬再提出', fulfilled: [] };
     },
 };
 const PERTURB_KEYS = Object.keys(PERTURB);
@@ -177,14 +195,17 @@ const churn = (prev, next) => planDiff.diffPlans(prev, next).changed.length;
 // ★ 「約束が壊れた人数」— 前回の割当が**1つでも消えた/変わった**人だけを数える。
 //   凸が増えるのは振り回しではない (前の指示はそのまま有効で、上乗せされただけ) ので分けて数える。
 //   これが L1 の本命の指標。churn は追加も含むので、そのままだと安定化を過小評価する
-function promiseStats(prev, next) {
+// fulfilled: すでに実行された約束 (この行が次のプランに無いのは当たり前なので母集団から外す)
+function promiseStats(prev, next, fulfilled = []) {
     const P = planDiff.rowsByPlayer(prev), Nx = planDiff.rowsByPlayer(next);
     const key = (r) => `${planDiff.coreKey(r)}|${planDiff.timeKey(r)}|${planDiff.teamKey(r)}`;
+    const done = new Set(fulfilled.map(f => `${f.id}::${key(f.key)}`));
     let broken = 0, added = 0;
     P.forEach((prevRows, id) => {
         const pool = (Nx.get(id) || []).map(key);
         let ok = true;
         for (const r of prevRows) {
+            if (done.has(`${id}::${key(r)}`)) continue;   // 実行済みは数えない
             const i = pool.indexOf(key(r));
             if (i < 0) { ok = false; break; }
             pool.splice(i, 1);   // 同じ行は1回しか使わない (多重集合の包含判定)
@@ -238,8 +259,11 @@ for (let i = 1; i <= N; i++) {
     // ②〜⑤ 盤面を1箇所だけ動かす (seed ごとに種類を回す)
     const key = PERTURB_KEYS[i % PERTURB_KEYS.length];
     const inp2 = structuredClone(board(seed));
-    let label;
-    try { label = PERTURB[key](inp2, base); } catch { label = key; }
+    let label = key, fulfilled = [];
+    try {
+        const r = PERTURB[key](inp2, base);
+        label = r.label; fulfilled = r.fulfilled || [];
+    } catch { label = key; }
     let normal, sticky;
     try {
         normal = compute(structuredClone(inp2));
@@ -249,7 +273,8 @@ for (let i = 1; i <= N; i++) {
     const st = sticky.stability || { applied: false, reason: 'none' };
     reasons[st.reason] = (reasons[st.reason] || 0) + 1;
 
-    const cN = promiseStats(base, normal).broken, cS = promiseStats(base, sticky).broken;
+    const cN = promiseStats(base, normal, fulfilled).broken;
+    const cS = promiseStats(base, sticky, fulfilled).broken;
     const cost = creditedOf(normal) - creditedOf(sticky);
     churnNormalAll.push(cN); churnStickyAll.push(cS); costAll.push(cost);
     if (!byPerturb[label]) byPerturb[label] = { n: 0, cN: 0, cS: 0, cost: 0, kept: 0 };

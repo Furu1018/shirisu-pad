@@ -3878,8 +3878,18 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         //   メンバーへの約束は配信したものなので、何度算出し直しても基準は動かない
         assert.ok(/previousPlan: options\.previousPlan \|\| null,/.test(html), 'ソルバーへ渡していない');
         assert.ok(/const pub = typeof window\.supabaseGetPublishedPlan === 'function'/.test(html));
-        assert.ok(/if \(pub && Number\(pub\.season_id\) === Number\(snapshot\?\.season\?\.id\)\) previousPlan = pub\.plan \|\| null;/.test(html),
+        assert.ok(/if \(pub && Number\(pub\.season_id\) === Number\(snapshot\?\.season\?\.id\)\) \{/.test(html),
             '別シーズンの配信を基準にしてしまう');
+        // ★ 何を基準に組んだかを焼き込み、配信直前に照合する (並行配信で相手の約束を壊さない)
+        assert.ok(/plan\.basisPlanId = basisPlanId;/.test(html), '基準の配信IDを焼き込んでいない');
+        assert.ok(/if \(_opsLastPlan\?\.stickyOn && Number\(basis \|\| 0\) !== Number\(prevPlanId \|\| 0\)\) \{/.test(html),
+            '配信直前に基準のずれを照合していない');
+        assert.ok(html.includes('別の運営が新しいプランを配信しました'));
+    });
+    test('L1 配線: 安定化 OFF で組んだプランは基準の照合をしない', () => {
+        // OFF は「前回を尊重しない」と決めて算出したもの。照合すると出せなくなるだけ
+        assert.ok(/plan\.stickyOn = !!_opsPlanSticky;/.test(html));
+        assert.ok(/_opsLastPlan\?\.stickyOn &&/.test(html), 'OFF でも照合してしまう');
         assert.ok(/const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan \}, snapshot\);/.test(html));
         // 取得に失敗しても算出は続ける (安定化は「あれば嬉しい」もので、止める理由にならない)
         assert.ok(/配信中プランの取得skip \(安定化なしで算出\)/.test(html));
