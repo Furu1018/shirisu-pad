@@ -2987,6 +2987,8 @@ window.supabaseLoadReservations = async function (seasonId) {
 };
 
 // 予約を1件作る (本人の引き受け / 自分から申請 / 締め凸依頼の了承)。
+// ⚠ **呼び出し元はまだ無い** — 申請UI (実装順⑧: 配信プランの行 / ホーム / 模擬タブのパネル) で使う。
+//   先に作ってあるのは、承認画面と DB の契約をここで閉じておくため
 // 残凸を超える予約は DB のトリガーが弾く — クライアントの検査だけだと複数端末で破れる
 window.supabaseCreateReservation = async function (o = {}) {
     const flex = !!o.flex;
@@ -3046,7 +3048,8 @@ window.supabaseSetReservationStatus = async function (id, to, o = {}) {
     return data;
 };
 
-// 予約の履歴 (誰がいつ何をしたか)。監査はこちらが正 — status 列は「いまの状態」のキャッシュ
+// 予約の履歴 (誰がいつ何をしたか)。監査はこちらが正 — status 列は「いまの状態」のキャッシュ。
+// ⚠ **呼び出し元はまだ無い** — 予約の詳細を開いたときに出す (実装順⑧ と同時)
 window.supabaseLoadReservationEvents = async function (reservationId) {
     if (!reservationId) return [];
     const { data, error } = await supabase

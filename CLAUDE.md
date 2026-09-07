@@ -70,6 +70,23 @@ rm -f .claude/hooks/.codex-on      # OFF
   結果は `plan.stability` に出る (applied / reason / creditedGapB / thresholdB)。
   画面は **配信中のプラン**を基準に渡す (手元の直前の算出ではない — 約束は配信したもの)。
   運営は 🔗前回を尊重 / 🆕ゼロから で切り替えられる (端末ごと・既定は尊重)
+- **凸の予約 (L2・2026-09-07)** — `39_plan_reservations.sql` / `40_attack_with_reservation_rpc.sql`。
+  純ロジックは `js/domain/reservations.js`。**ソルバーを拘束するのは approved だけ**
+  (requested / cancel_requested は提案層で計算に効かせない)。`input.reservations` に
+  `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
+  ★ **予約は時刻まで守る** — レベルが開く前の時刻を約束していたら**置かない**
+  (ソルバーが後ろへずらすと約束の意味が消える。運営が解除して組み直す)。
+  ★ **温存 (Phase B) より予約が勝つ**。★ 圧縮 (trimOverkill) でも外さない。
+  ★ 置けなかった予約は `plan.unmetReservations` に理由つきで出る —
+  **運営が解除しないとその人の枠を押さえたまま**になるので必ず画面に出すこと。
+  ★ 未達の突き合わせには**時刻も含める** (同じ人が同じボスでも別の時刻なら守れていない)。
+  状態と遷移表は **SQL と JS の両方**にあり、`tests/run-tests.mjs` が機械的に突き合わせる —
+  片方だけ変えると「画面では押せるのにサーバで弾かれる」。
+  凸報告は `report_attack` RPC (採番・insert・残HP減算・予約の消し込みを1トランザクション)。
+  **従来の3リクエスト方式へ落ちるのは RPC が存在しないときだけ** — 「3凸済み」等の
+  意味のある拒否を握り潰して落ちると、拒否したはずの凸が入る。
+  attacks ⇄ 予約のリンクは **`attacks.reservation_id` の片方向だけ**
+  (相互FKは循環参照になり、バックアップ復元の順序が決まらない)
 - **js/domain/planDiff.js** — 配信プランの差分 (L4 通知抑制 / L5 運営ガード / L3 本人への提示)。
   前回の配信と次のプランを**人ごと**に突き合わせ、変化の種類 (gone/added/boss/time/team) を1つ返す。
   ★ **列として比べる** — 種類ごとに sort して集合で比べると「Lv1B1が21時 / Lv2B3が23時」→
