@@ -13,8 +13,8 @@
 // 状態: requested → approved | rejected | cancel_requested
 //       approved  → cancel_requested | fulfilled | released
 //       cancel_requested → released | approved
-// **ソルバーを拘束するのは approved だけ**。requested と cancel_requested は
-// 「提案層」として表示するだけで、計算には効かせない。
+// **ソルバーを拘束するのは isFixed = approved と「承認済み起点の cancel_requested」**。
+// requested と未承認の取り下げは「提案層」として表示するだけで、計算には効かせない (2026-09-08 更新)。
 //
 // optimal-plan.js と同じ規約: IIFE + root 直付け。DOM/Supabase 非依存で node からテスト可:
 //   node tests/run-tests.mjs
