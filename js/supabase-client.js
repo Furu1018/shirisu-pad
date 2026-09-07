@@ -3080,9 +3080,27 @@ window.supabaseLoadReservations = async function (seasonId) {
     return (data || []).map(r => ({ ...r, player_name: r.players?.name || null }));
 };
 
+// 自分の予約だけ (メンバー側の表示・申請の重複判定用)。
+// ★ 未適用環境は **null** を返す — [] (予約0件) と区別しないと、
+//   申請ボタンを出しておいて押した瞬間に「SQLを適用してください」になる
+window.supabaseLoadMyReservations = async function (seasonId, playerId) {
+    if (!seasonId || !playerId) return [];
+    const { data, error } = await supabase
+        .from('plan_reservations')
+        .select('id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
+              + 'characters_snapshot, expected_damage_b, source_type, status, '
+              + 'requested_at, approved_by, approved_at, released_by, release_reason')
+        .eq('season_id', seasonId).eq('player_id', playerId)
+        .order('id', { ascending: true });
+    if (error) {
+        if (_isMissingReservationTable(error)) return null;
+        throw error;
+    }
+    return data || [];
+};
+
 // 予約を1件作る (本人の引き受け / 自分から申請 / 締め凸依頼の了承)。
-// ⚠ **呼び出し元はまだ無い** — 申請UI (実装順⑧: 配信プランの行 / ホーム / 模擬タブのパネル) で使う。
-//   先に作ってあるのは、承認画面と DB の契約をここで閉じておくため
+// 残凸を超える予約は DB のトリガーが弾く — クライアントの検査だけだと複数端末で破れる
 // 残凸を超える予約は DB のトリガーが弾く — クライアントの検査だけだと複数端末で破れる
 window.supabaseCreateReservation = async function (o = {}) {
     const flex = !!o.flex;

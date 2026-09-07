@@ -7866,9 +7866,16 @@
                 }
             } catch (e) { console.warn('[my plan] 差分の取得skip:', e?.message || e); }
             if (mySeq !== _myPubRenderSeq) return;   // 差分の取得中に新しい render が始まっていたら捨てる
+            // ⑧ 申請UI: 自分の予約 (null = 39未適用 → 申請の導線ごと出さない)
+            let myResv = null;
+            try {
+                myResv = await window.supabaseLoadMyReservations?.(pub.season_id, identity.id) ?? null;
+            } catch (e) { console.warn('[my plan] 予約の取得skip:', e?.message || e); myResv = null; }
+            if (mySeq !== _myPubRenderSeq) return;
             _myPubState = { plan, viewerId: identity.id, doneCounts, stale, liveLevel,
                             planId: pub.id, seasonId: pub.season_id, ack: ackState,
-                            frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange };
+                            frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange,
+                            resv: myResv };
             _renderMyPubBody();
             card.style.display = '';
             // ヒーローの割当ストリップは _myPubState 依存。プランの取得はこのカードが先に走るので、
@@ -8014,6 +8021,67 @@
             return mine;
         }
 
+        // ⑧ 申請UI: 配信プランの1行に「引き受ける」/「申請中」/「予約済み」を出す。
+        // ★ 39未適用 (_myPubState.resv === null) では**導線ごと出さない** —
+        //   出しても押した瞬間に「SQLを適用してください」になるだけ
+        function _planRowResvHtml(a, viewerId, doneCount) {
+            const rv = window.reservationsDomain;
+            const rows = _myPubState?.resv;
+            if (!rv || !Array.isArray(rows)) return '';
+            const level = Number(a.level), boss = Number(a.bossNumber), slot = Number(a.loadoutSlot) || 1;
+            const cur = rv.findActiveFor(rows, { playerId: viewerId, level, bossNumber: boss, loadoutSlot: slot });
+            if (cur) {
+                const jp = rv.STATUS_JP[cur.status] || cur.status;
+                const col = cur.status === 'approved' ? '#0E9455' : (cur.status === 'cancel_requested' ? '#B45309' : '#5B2BE0');
+                const who = cur.status === 'approved' && cur.approved_by ? ` (${escapeHtml(String(cur.approved_by))}が承認)` : '';
+                return `<div style="margin-top:6px;font-size:10.5px;font-weight:900;color:${col};">🔒 ${escapeHtml(jp)}${who}</div>`;
+            }
+            const chk = rv.canRequest(rows, {
+                playerId: viewerId, level, bossNumber: boss, loadoutSlot: slot, doneAttacks: doneCount,
+            });
+            if (!chk.ok) {
+                return `<div style="margin-top:6px;font-size:10px;font-weight:800;color:#B6BBC1;">${escapeHtml(chk.label || '')}</div>`;
+            }
+            // 時刻を約束できない行 (時刻不明) は下書きが作れないので出さない
+            const draft = rv.planRowToDraft(a, (i) => (HOUR_ORDER[i] == null ? null : _hourKey(HOUR_ORDER[i])));
+            if (!draft.ok) return '';
+            return `<button onclick="handleClaimPlanRow(${level},${boss},${slot})" style="margin-top:7px;border:1.5px solid #6C42F0;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:10.5px;font-weight:900;color:#6C42F0;background:#fff;cursor:pointer;">この凸を引き受ける</button>`;
+        }
+
+        // 引き受ける = 予約を申請する (運営の承認を待つ)
+        let _claimBusy = false;
+        async function handleClaimPlanRow(level, bossNumber, loadoutSlot) {
+            const rv = window.reservationsDomain;
+            const st = _myPubState;
+            if (!rv || !st || _claimBusy) return;
+            const row = (_myPlanRows(st.plan, st.viewerId, st.doneCounts) || []).find(x =>
+                Number(x.level) === Number(level) && Number(x.bossNumber) === Number(bossNumber)
+                && (Number(x.loadoutSlot) || 1) === Number(loadoutSlot));
+            if (!row) { alert('この割当が見つかりませんでした。画面を更新してください。'); return; }
+            const draft = rv.planRowToDraft(row, (i) => (HOUR_ORDER[i] == null ? null : _hourKey(HOUR_ORDER[i])));
+            if (!draft.ok) { alert('この割当は時刻が決まっていないため、引き受けられません。'); return; }
+            const when = draft.draft.flex ? '⏳隙間時間' : (row.hourLabel || draft.draft.timeSlot);
+            if (!confirm(`この凸を引き受けます。\n\nLv${level} / ${row.bossName || 'B' + bossNumber} / ${when} / 編成${SLOT_JP[loadoutSlot] || '①'}\n\n`
+                + '運営が承認すると、この凸は**固定**されます (プランを組み直しても動きません)。\n'
+                + '取り消したくなったら運営に申し出てください。\n\n[OK] 申請する / [キャンセル] やめる')) return;
+            _claimBusy = true;
+            try {
+                const me = getCurrentIdentity();
+                await window.supabaseCreateReservation({
+                    seasonId: st.seasonId, playerId: st.viewerId,
+                    ...draft.draft,
+                    sourcePlanId: st.planId,
+                    requestedBy: me?.name || null,
+                });
+                showNotification('🔒 申請しました (運営の承認待ちです)');
+                // 一覧を取り直して、同じ行を「申請中」に変える
+                st.resv = await window.supabaseLoadMyReservations?.(st.seasonId, st.viewerId) ?? st.resv;
+                _renderMyPubBody();
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            } finally { _claimBusy = false; }
+        }
+
         function _planMineHtml(plan, viewerId, doneCounts, liveLevel) {
             const esc = escapeHtml;
             const curLevel = Number(liveLevel) || Number(plan.startLevel) || 1;   // ライブの current_level 優先
@@ -8042,12 +8110,15 @@
                 if (done) right = `<span style="flex:none;">${dmgHtml}</span>`;
                 else if (reportable) right = `<button onclick="_planReportBoss(${bn})" style="flex:none;font-size:10.5px;font-weight:900;color:#fff;background:linear-gradient(180deg,#7A5AF8,#5B2BE0);border:none;padding:7px 12px;border-radius:999px;cursor:pointer;font-family:inherit;">報告する ▶</button>`;
                 else right = `<div style="flex:none;text-align:right;">${dmgHtml}<div style="font-size:8.5px;font-weight:800;color:#B6BBC1;margin-top:1px;">Lv${a.level}開放後</div></div>`;
+                // ⑧ 申請UI: この行を「引き受ける」= 予約を申請する。運営が承認すると固定される
+                const resvHtml = done ? '' : _planRowResvHtml(a, viewerId, doneCount);
                 return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(20,22,26,0.05);${done ? 'opacity:0.55;' : ''}">
                     <span style="flex:none;width:24px;height:24px;border-radius:8px;${done ? 'background:#18C26B;' : 'border:2px dashed #B6BBC1;'}display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;">${done ? '✓' : ''}</span>
                     <div style="width:48px;flex:none;text-align:center;">${timeHtml}<div style="font-size:9px;font-weight:800;color:#A4AAB0;margin-top:1px;">Lv${a.level}</div></div>
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="width:9px;height:9px;border-radius:3px;background:${c};flex:none;"></span><span style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(String(a.bossName || ('B' + bn)))}</span><span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PTで</span>${loBadge}${a.isBottleneck ? '<span style="flex:none;font-size:9.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:1px 6px;border-radius:999px;">律速</span>' : ''}</div>
                         ${team ? `<div style="margin-top:6px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;">${team}</div>` : '<div style="margin-top:5px;font-size:10.5px;font-weight:700;color:#B6BBC1;">編成の登録がありません</div>'}
+                        ${resvHtml}
                     </div>
                     ${right}
                 </div>`;
@@ -11552,6 +11623,11 @@
                     if (myId?.id && typeof renderMyFinishRequestBanner === 'function') renderMyFinishRequestBanner(myId);
                     if (document.getElementById('tab-ops')?.classList.contains('active') && opsStore.get()) renderOpsBossSummary();
                 });
+                // ★ 互換ゲートも同じ周期で見る (Codex指摘 2026-09-07)。
+                //   前面に開きっぱなしだと visibilitychange が起きないので、これが無いと
+                //   運営が締めても画面に古い指示が残り続ける。
+                //   _refreshClientGateIfStale は5分の間引きつきなので、通信は最大でも5分に1回
+                _refreshClientGateIfStale().catch(() => { /* fail-open */ });
                 // ★ 凸の予約も同じ周期で取り直す (Codex指摘 2026-09-07)。
                 //   運営は複数人なので、運営Aが承認したことが運営Bの開いたままの画面にも
                 //   出ないといけない (ユーザー要件: 「Aでは許可なのにBでは未許可」を作らない)。
@@ -20631,7 +20707,13 @@
         window._refreshClientGateIfStale = _refreshClientGateIfStale;
         const _onGateResume = () => { if (!document.hidden) _refreshClientGateIfStale(); };
         document.addEventListener('visibilitychange', _onGateResume);
-        window.addEventListener('pageshow', _onGateResume);   // bfcache 復帰は visibilitychange が出ない
+        // ★ bfcache 復帰は visibilitychange が出ない。しかも復帰まで何時間も空くことがあるので、
+        //   ここは**間引きを無視して**取り直す (Codex指摘 2026-09-07)
+        window.addEventListener('pageshow', (e) => {
+            if (document.hidden) return;
+            if (e?.persisted) _gateFetchedAt = 0;
+            _refreshClientGateIfStale().catch(() => { /* fail-open */ });
+        });
 
         // 止められている操作かどうか。ゲートが無ければ常に true
         function _gateAllows(feature) {
@@ -20658,9 +20740,12 @@
             const el = document.getElementById('settingsGateState');
             if (!el) return;
             if (!_opsMode) { el.textContent = ''; return; }
-            let g = null;
-            try { g = await window.supabaseLoadClientGate?.() ?? null; } catch { g = null; }
-            _gateRaw = g;
+            // ★ ここで直接取って _gateRaw に代入すると、_loadClientGate と並行したときに
+            //   古い値が戻り、配信の表示可否が古い min_plan_schema で判定される (Codex指摘 2026-09-07)。
+            //   取得経路は _loadClientGate 1本に寄せる (single-flight + 世代つき)
+            _gateFetchedAt = 0;
+            try { await _loadClientGate(); } catch { /* fail-open */ }
+            const g = _gateRaw;
             const n = window.clientGateDomain?.normalizeGate(g);
             if (!n) {
                 el.innerHTML = '<span style="color:#8A9097;font-weight:700;">まだ使えません。SQL Editor で <code>supabase/41_client_gate.sql</code> を実行してください。</span>';

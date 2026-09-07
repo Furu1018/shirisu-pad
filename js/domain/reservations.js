@@ -185,6 +185,74 @@
         };
     }
 
+    // ===== ⑧ 申請UI 用 ==========================================================
+
+    /**
+     * 配信プランの1行 (自分の割当) を、予約の申請内容に変換する。
+     * ★ ここが「配信で言われたこと」と「予約として固定されること」を突き合わせる唯一の場所。
+     *   画面側で組み立てると、時刻や編成の取り違えが起きても気づけない。
+     * @param {{level:number, bossNumber:number, loadoutSlot:number, team:string[]|null,
+     *          dmgB:number, flex:boolean, hourIdx:number|null}} row 配信プランの行
+     * @param {(idx:number)=>string|null} hourKeyOf hourIdx → 'hXX' の変換 (画面側の HOUR_ORDER を使う)
+     * @returns {{ok:boolean, reason?:string, draft?:object}}
+     */
+    function planRowToDraft(row, hourKeyOf) {
+        if (!row) return { ok: false, reason: 'no_row' };
+        const level = Number(row.level), bossNumber = Number(row.bossNumber);
+        const loadoutSlot = Number(row.loadoutSlot) || 1;
+        if (!Number.isInteger(level) || level < 1 || level > 4) return { ok: false, reason: 'bad_level' };
+        if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) return { ok: false, reason: 'bad_boss' };
+        if (loadoutSlot !== 1 && loadoutSlot !== 2) return { ok: false, reason: 'bad_slot' };
+        const flex = !!row.flex;
+        // ★ 時刻は「約束できる形」でだけ固定する。⏳隙間型は時刻を約束しない (flex)。
+        //   時刻不明を fixed のまま出すと DB の CHECK で弾かれる = 押しても何も起きない
+        let timeSlot = null;
+        if (!flex) {
+            timeSlot = (row.hourIdx == null) ? null : (typeof hourKeyOf === 'function' ? hourKeyOf(row.hourIdx) : null);
+            if (!timeSlot) return { ok: false, reason: 'no_time' };
+        }
+        const team = Array.isArray(row.team) ? row.team.filter(Boolean) : [];
+        return {
+            ok: true,
+            draft: {
+                raidLevel: level, bossNumber, loadoutSlot,
+                flex, timeSlot,
+                // ★ 承認時点で固定する写し。あとから模擬を編集しても動かさない
+                characters: team,
+                expectedDamageB: Number(row.dmgB) > 0 ? Number(row.dmgB) : null,
+                sourceType: 'plan',
+            },
+        };
+    }
+
+    /**
+     * その割当に対応する「生きている予約」を探す。
+     * ★ 突き合わせは 誰が・レベル・ボス・編成枠 の4つ。時刻は含めない —
+     *   時刻だけ違う予約を「別物」にすると、同じ枠に二重に申請できてしまう
+     *   (DB の部分一意索引も同じ4つで張ってある)
+     */
+    function findActiveFor(rows, { playerId, level, bossNumber, loadoutSlot }) {
+        const list = Array.isArray(rows) ? rows : [];
+        return list.find(r => r && isActive(r)
+            && String(r.player_id) === String(playerId)
+            && Number(r.raid_level) === Number(level)
+            && Number(r.boss_number) === Number(bossNumber)
+            && Number(r.loadout_slot) === Number(loadoutSlot)) || null;
+    }
+
+    /**
+     * 申請してよいか。残凸を超える申請は DB のトリガーが弾くが、
+     * 押せるボタンを出しておいて弾かれるのは体験が悪いので画面側でも見る
+     */
+    function canRequest(rows, { playerId, level, bossNumber, loadoutSlot, doneAttacks }) {
+        if (findActiveFor(rows, { playerId, level, bossNumber, loadoutSlot })) {
+            return { ok: false, reason: 'already', label: '申請済み' };
+        }
+        const left = capacityLeft(rows, playerId, doneAttacks);
+        if (left <= 0) return { ok: false, reason: 'no_capacity', label: '残り凸がありません' };
+        return { ok: true, left };
+    }
+
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS,
         isActive, isApproved, canTransition,
@@ -193,5 +261,6 @@
         capacityLeft,
         describe,
         approvalImpact,
+        planRowToDraft, findActiveFor, canRequest,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

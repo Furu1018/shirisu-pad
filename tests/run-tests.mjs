@@ -3508,6 +3508,103 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(same.movedCount, 0);
     });
 
+    // ---- ⑧ 申請UI 用の純ロジック ----------------------------------------------
+    {
+        const HO = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4];
+        const hourKeyOf = (i) => (HO[i] == null ? null : `h${String(HO[i]).padStart(2, '0')}`);
+        const planRow = (o = {}) => ({
+            level: o.lv ?? 2, bossNumber: o.boss ?? 3, loadoutSlot: o.slot ?? 1,
+            team: o.team ?? ['a', 'b', 'c', 'd', 'e'], dmgB: o.dmg ?? 33.4,
+            flex: !!o.flex, hourIdx: o.flex ? null : (o.idx ?? 16),
+        });
+
+        test('★ ⑧ 申請: 配信の行をそのまま予約の内容にする (時刻・編成・ダメージ)', () => {
+            const r = rv.planRowToDraft(planRow(), hourKeyOf);
+            assert.equal(r.ok, true);
+            assert.equal(r.draft.raidLevel, 2);
+            assert.equal(r.draft.bossNumber, 3);
+            assert.equal(r.draft.loadoutSlot, 1);
+            assert.equal(r.draft.flex, false);
+            assert.equal(r.draft.timeSlot, 'h21', 'hourIdx 16 は 21時');
+            assert.deepEqual(r.draft.characters, ['a', 'b', 'c', 'd', 'e'], '承認時の写しを載せていない');
+            assert.equal(r.draft.expectedDamageB, 33.4);
+            assert.equal(r.draft.sourceType, 'plan');
+        });
+
+        test('★ ⑧ 申請: ⏳隙間型は時刻を約束しない / 時刻不明は申請にしない', () => {
+            const f = rv.planRowToDraft(planRow({ flex: true }), hourKeyOf);
+            assert.equal(f.ok, true);
+            assert.equal(f.draft.flex, true);
+            assert.equal(f.draft.timeSlot, null, '隙間型に時刻を入れてはいけない');
+            // ★ 時刻不明を fixed のまま出すと DB の CHECK で弾かれる = 押しても何も起きない
+            const n = rv.planRowToDraft({ ...planRow(), hourIdx: null }, hourKeyOf);
+            assert.equal(n.ok, false);
+            assert.equal(n.reason, 'no_time');
+        });
+
+        test('⑧ 申請: 範囲外のレベル・ボス・編成枠は下書きにしない', () => {
+            assert.equal(rv.planRowToDraft(planRow({ lv: 0 }), hourKeyOf).ok, false);
+            assert.equal(rv.planRowToDraft(planRow({ lv: 5 }), hourKeyOf).ok, false);
+            assert.equal(rv.planRowToDraft(planRow({ boss: 6 }), hourKeyOf).ok, false);
+            assert.equal(rv.planRowToDraft(planRow({ slot: 3 }), hourKeyOf).ok, false);
+            assert.equal(rv.planRowToDraft(null, hourKeyOf).ok, false);
+        });
+
+        test('★ ⑧ 申請: 同じ枠の生きている予約は「申請済み」— 時刻違いを別物にしない', () => {
+            const rows = [res({ id: 1, pid: 'p1', lv: 2, boss: 3, status: 'requested' })];
+            const key = { playerId: 'p1', level: 2, bossNumber: 3, loadoutSlot: 1 };
+            assert.ok(rv.findActiveFor(rows, key), '見つからない');
+            // ★ 時刻が違っても同じ枠 (DB の部分一意索引と同じ4つで突き合わせる)
+            const other = [res({ id: 2, pid: 'p1', lv: 2, boss: 3, slot: 'h05', status: 'approved' })];
+            assert.ok(rv.findActiveFor(other, key), '時刻違いを別物にしている (二重申請できてしまう)');
+            // 終わった予約は枠を持たない
+            for (const st of ['fulfilled', 'released', 'rejected']) {
+                assert.equal(rv.findActiveFor([res({ id: 3, pid: 'p1', lv: 2, boss: 3, status: st })], key), null, st);
+            }
+            // 別人・別レベル・別ボス・別編成は別物
+            assert.equal(rv.findActiveFor(rows, { ...key, playerId: 'p2' }), null);
+            assert.equal(rv.findActiveFor(rows, { ...key, level: 3 }), null);
+            assert.equal(rv.findActiveFor(rows, { ...key, bossNumber: 4 }), null);
+            assert.equal(rv.findActiveFor(rows, { ...key, loadoutSlot: 2 }), null);
+        });
+
+        test('★ ⑧ 申請: 残凸を超える申請はボタンを出さない (DBで弾かれる前に止める)', () => {
+            const key = { playerId: 'p1', level: 2, bossNumber: 3, loadoutSlot: 1 };
+            assert.equal(rv.canRequest([], { ...key, doneAttacks: 0 }).ok, true);
+            // 生きている予約2件 + 実凸1件 = 3 → もう申請できない
+            const full = [res({ id: 1, pid: 'p1', lv: 1, boss: 1 }), res({ id: 2, pid: 'p1', lv: 1, boss: 2 })];
+            const r = rv.canRequest(full, { ...key, doneAttacks: 1 });
+            assert.equal(r.ok, false);
+            assert.equal(r.reason, 'no_capacity');
+            // 同じ枠を二重に申請させない
+            const dup = rv.canRequest([res({ id: 9, pid: 'p1', lv: 2, boss: 3 })], { ...key, doneAttacks: 0 });
+            assert.equal(dup.ok, false);
+            assert.equal(dup.reason, 'already');
+        });
+    }
+
+    test('★ ⑧配線: 39未適用では申請の導線ごと出さない / 下書きはドメインで作る', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8');
+        // 自分の予約は null (未適用) と [] (0件) を区別する。混ぜると押した瞬間に SQL 適用エラーになる
+        const loader = client.match(/window\.supabaseLoadMyReservations = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(loader, '自分の予約のローダーが無い');
+        assert.ok(/_isMissingReservationTable\(error\)\) return null;/.test(loader));
+        const fn = html.match(/function _planRowResvHtml[\s\S]{0,1400}/)?.[0] || '';
+        assert.ok(fn, '行ごとの予約表示が無い');
+        assert.ok(/if \(!rv \|\| !Array\.isArray\(rows\)\) return '';/.test(fn), '未適用で導線を出している');
+        // ★ 下書きは画面で組み立てない (時刻・編成の取り違えに気づけない)
+        assert.ok(/rv\.planRowToDraft\(/.test(fn));
+        assert.ok(/rv\.findActiveFor\(/.test(fn), '申請済みの判定をドメインでやっていない');
+        assert.ok(/rv\.canRequest\(/.test(fn), '残凸の検査をドメインでやっていない');
+        // 申請の実処理も同じ下書きを使う
+        const h = html.match(/async function handleClaimPlanRow[\s\S]{0,1600}/)?.[0] || '';
+        assert.ok(/rv\.planRowToDraft\(row,/.test(h), '申請時に下書きを作り直していない');
+        assert.ok(/if \(!draft\.ok\)/.test(h), '下書きが作れないのに申請している');
+        assert.ok(/_claimBusy/.test(h), '二重押しよけが無い');
+        assert.ok(/sourcePlanId: st\.planId/.test(h), 'どの配信から生まれた予約か残していない');
+    });
+
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
         // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる
         const m = _sqlRes.match(/status TEXT NOT NULL DEFAULT 'requested'\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
@@ -4581,10 +4678,17 @@ console.log('\nclientGateDomain (互換ゲート):');
         // ★ 取得が並行すると、新しい「締めた」の後に古い「許可」が着地して判定が戻る
         assert.ok(/if \(_gateInFlight\) return _gateInFlight;/.test(html), 'single-flight でない');
         assert.ok(/if \(seq >= _gateApplied\)/.test(html), '古い応答を捨てていない');
-        // bfcache 復帰は visibilitychange が出ない
-        assert.ok(/window\.addEventListener\('pageshow', _onGateResume\)/.test(html));
-        // 運営が締めた直後は間引きを外して必ず取り直す
-        assert.ok(/_gateFetchedAt = 0;/.test(html));
+        // ★ bfcache 復帰は visibilitychange が出ないうえ、復帰まで何時間も空くことがある。
+        //   ここは間引きを無視して取り直す
+        assert.ok(/window\.addEventListener\('pageshow'/.test(html), 'bfcache 復帰を拾っていない');
+        assert.ok(/if \(e\?\.persisted\) _gateFetchedAt = 0;/.test(html), 'bfcache 復帰で間引きを外していない');
+        // ★ 前面に開きっぱなしの端末にも届かせる (10秒ポーリングに相乗り。間引き5分なので通信は増えない)
+        assert.ok(/_refreshClientGateIfStale\(\)\.catch\(\(\) => \{ \/\* fail-open \*\/ \}\);\s*\n\s*\/\/ ★ 凸の予約も同じ周期で/.test(html),
+            'ポーリングでゲートを見ていない (締めても画面に古い指示が残る)');
+        // ★ 設定画面も取得経路を _loadClientGate 1本に寄せる (直接代入すると古い値が戻る)
+        const rs = html.match(/async function renderClientGateSettings[\s\S]{0,900}/)?.[0] || '';
+        assert.ok(/await _loadClientGate\(\)/.test(rs), '設定画面が別経路で取っている');
+        assert.ok(!/_gateRaw = g;/.test(rs), '_gateRaw を世代確認なしに代入している');
     });
 
     test('★ ⑦: 版は安全整数だけを採る (BIGINT・小数・例外を投げる値)', () => {
