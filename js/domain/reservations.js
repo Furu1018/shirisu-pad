@@ -253,6 +253,32 @@
         return { ok: true, left };
     }
 
+    /**
+     * 凸報告に紐づける「承認済みの予約」を1件だけ選ぶ。
+     * ★ 曖昧なときは**紐づけない** (Codex指摘 2026-09-07)。
+     *   間違った予約を消し込むと、本当に守るべき約束が消えて残凸だけ減る。
+     *   同じレベル・同じボスに承認済みが2件 (編成①②) あるときは、編成で絞れたときだけ確定する。
+     * @returns {{id:number|null, reason:'none'|'one'|'by_team'|'ambiguous'}}
+     */
+    function matchForAttack(rows, { playerId, level, bossNumber, characters }) {
+        const cand = (Array.isArray(rows) ? rows : []).filter(r => r
+            && r.status === 'approved'
+            && String(r.player_id) === String(playerId)
+            && Number(r.boss_number) === Number(bossNumber)
+            // レベルは進行とずれることがあるので、指定が無ければ見ない
+            && (level == null || Number(r.raid_level) === Number(level)));
+        if (cand.length === 0) return { id: null, reason: 'none' };
+        if (cand.length === 1) return { id: cand[0].id, reason: 'one' };
+        // 編成で絞る (順不同で一致するものだけ)
+        const key = (arr) => (Array.isArray(arr) ? arr.filter(Boolean).map(String).slice().sort().join('\u0001') : '');
+        const mine = key(characters);
+        if (mine) {
+            const hit = cand.filter(r => key(r.characters_snapshot) === mine);
+            if (hit.length === 1) return { id: hit[0].id, reason: 'by_team' };
+        }
+        return { id: null, reason: 'ambiguous' };
+    }
+
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS,
         isActive, isApproved, canTransition,
@@ -261,6 +287,6 @@
         capacityLeft,
         describe,
         approvalImpact,
-        planRowToDraft, findActiveFor, canRequest,
+        planRowToDraft, findActiveFor, canRequest, matchForAttack,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

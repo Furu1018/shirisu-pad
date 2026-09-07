@@ -3590,37 +3590,49 @@ console.log('\nreservationsDomain (凸の予約):');
         const loader = client.match(/window\.supabaseLoadMyReservations = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(loader, '自分の予約のローダーが無い');
         assert.ok(/_isMissingReservationTable\(error\)\) return null;/.test(loader));
-        const fn = html.match(/function _planRowResvHtml[\s\S]{0,1400}/)?.[0] || '';
+        const fn = html.match(/function _planRowResvHtml[\s\S]{0,2400}/)?.[0] || '';
         assert.ok(fn, '行ごとの予約表示が無い');
         assert.ok(/if \(!rv \|\| !Array\.isArray\(rows\)\) return '';/.test(fn), '未適用で導線を出している');
         // ★ 下書きは画面で組み立てない (時刻・編成の取り違えに気づけない)
         assert.ok(/rv\.planRowToDraft\(/.test(fn));
         assert.ok(/rv\.findActiveFor\(/.test(fn), '申請済みの判定をドメインでやっていない');
         assert.ok(/rv\.canRequest\(/.test(fn), '残凸の検査をドメインでやっていない');
+        // ★ 残凸は「このプランで報告済みの数」ではなく当日の実凸総数で数える (Codex指摘)
+        assert.ok(/doneAttacks: Number\(_myPubState\?\.todayAttacks\) \|\| 0/.test(fn), '実凸総数で数えていない');
+        // ★ 実行できない予約を作らせない (過去レベル・撃破済みボス)
+        assert.ok(/if \(liveLv && level < liveLv\) return '';/.test(fn), '過去レベルの行にも申請導線を出している');
+        assert.ok(/Number\(liveBoss\.remaining_hp_raw\) <= 0\) return '';/.test(fn), '撃破済みボスにも申請導線を出している');
         // 申請の実処理も同じ下書きを使う
-        const h = html.match(/async function handleClaimPlanRow[\s\S]{0,1600}/)?.[0] || '';
+        const h = html.match(/async function handleClaimPlanRow[\s\S]{0,2400}/)?.[0] || '';
         assert.ok(/rv\.planRowToDraft\(row,/.test(h), '申請時に下書きを作り直していない');
         assert.ok(/if \(!draft\.ok\)/.test(h), '下書きが作れないのに申請している');
         assert.ok(/_claimBusy/.test(h), '二重押しよけが無い');
         assert.ok(/sourcePlanId: st\.planId/.test(h), 'どの配信から生まれた予約か残していない');
+        // ★ 画面を開いたあとにプレイヤーを切り替えると、別メンバー名義の申請ができてしまう
+        assert.ok(/String\(me0\.id\) !== String\(st\.viewerId\)/.test(h), '本人性を確認していない');
     });
 
     test('★ ⑧配線: 締め凸の了承は即予約 / 予約が作れなくても了承は成立させる', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
-        const fn = html.match(/async function _reserveForFinishRequest[\s\S]{0,1400}/)?.[0] || '';
+        const fn = html.match(/async function _reserveForFinishRequest[\s\S]{0,1900}/)?.[0] || '';
         assert.ok(fn, '締め凸→予約の関数が無い');
         // ★ 依頼したのは運営なので、改めて承認を挟まない
         assert.ok(/status: 'approved'/.test(fn), '了承を承認待ちで作っている (運営がもう一度承認する羽目になる)');
         assert.ok(/sourceType: 'finish_request'/.test(fn));
         // ★ 締め凸は「いまから行く」もの。時刻を約束させると守れないほうが普通になる
         assert.ok(/flex: true, timeSlot: null/.test(fn), '締め凸に時刻を約束させている');
-        // 押し直しても増やさない
-        assert.ok(/rv\.findActiveFor\(mine,/.test(fn), '同じ枠の重複を見ていない');
+        // ★ 押し直しても増やさない。**編成枠は見ない** — 押し直す間に一番強い編成が
+        //   ①→② に変わると、枠まで見る判定では別物になり同じ依頼から2件できる
+        assert.ok(/Number\(r\.boss_number\) === Number\(bossNumber\)\)\) return;/.test(fn), '同じボスの重複を見ていない');
+        assert.ok(!/rv\.findActiveFor\(mine, \{ playerId: id\.id, level, bossNumber, loadoutSlot: slot \}\)/.test(fn),
+            '編成枠まで見ている (押し直しで二重予約になる)');
         // 39未適用なら何もしない (了承だけ成立)
         assert.ok(/if \(!Array\.isArray\(mine\)\) return;/.test(fn));
         // ★ 予約が作れなくても了承は成立させる (返答はもうサーバへ届いている)
-        const caller = html.match(/if \(status === 'accepted'\) \{[\s\S]{0,300}/)?.[0] || '';
-        assert.ok(/catch \(e\) \{ console\.warn\('\[finish→予約\]'/.test(caller), '予約の失敗で了承ごと失敗している');
+        const caller = html.match(/if \(status === 'accepted'\) \{[\s\S]{0,600}/)?.[0] || '';
+        assert.ok(/console\.warn\('\[finish→予約\]'/.test(caller), '予約の失敗で了承ごと失敗している');
+        // ★ ただし黙らない — 「了承済みなのに予約が無い」は運営が知る必要がある
+        assert.ok(/凸の固定に失敗しました/.test(html), '失敗を握り潰している');
     });
 
     test('★ ⑧配線: ホームの「引き受けた凸」/ 取り消しは希望を出すだけ', () => {
@@ -3661,6 +3673,56 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/sourceType: 'self'/.test(send), 'メンバー発の申請として作っていない');
         assert.ok(!/status: 'approved'/.test(send), 'メンバーの申請を承認済みで作っている');
         assert.ok(/flex, timeSlot: flex \? null : v/.test(send), '⏳のときに時刻を送っている');
+    });
+
+    test('★ ⑧: 凸報告は承認済みの予約に紐づけて消し込む (4経路すべて)', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        // ★ 紐づけないと、承認済みの予約が fulfilled にならないまま残り、
+        //   実凸と合わせて残凸を二重に消費する = 約束を守る仕組みが本人を止める (Codex指摘)
+        assert.ok(/async function _reservationIdForAttack/.test(html), '紐づけの共通処理が無い');
+        const n = (html.match(/_reservationIdForAttack\(/g) || []).length;
+        assert.ok(n >= 5, `呼び出しが足りない (定義1 + 4経路 = 5以上のはずが ${n})`);
+        assert.equal((html.match(/reservationId: r/g) || []).length, 4, '凸報告4経路すべてに渡していない');
+        // 曖昧なときは紐づけない (間違った予約を消し込む方が害が大きい)
+        const m = rv.matchForAttack;
+        const R = (o) => ({ id: o.id, player_id: 'p1', status: o.st || 'approved', raid_level: 2,
+            boss_number: o.boss ?? 3, characters_snapshot: o.team || [] });
+        const key = { playerId: 'p1', level: 2, bossNumber: 3, characters: ['a', 'b'] };
+        assert.equal(m([], key).reason, 'none');
+        assert.equal(m([R({ id: 5 })], key).id, 5, '1件なら紐づける');
+        assert.equal(m([R({ id: 5, st: 'requested' })], key).id, null, '承認前の予約に紐づけている');
+        assert.equal(m([R({ id: 5, boss: 4 })], key).id, null, '別ボスに紐づけている');
+        // 2件あるときは編成で絞れたときだけ
+        const two = [R({ id: 5, team: ['b', 'a'] }), R({ id: 6, team: ['c', 'd'] })];
+        assert.equal(m(two, key).id, 5, '編成で絞れていない');
+        assert.equal(m(two, { ...key, characters: [] }).reason, 'ambiguous', '曖昧なのに紐づけている');
+        assert.equal(m(two, { ...key, characters: [] }).id, null);
+    });
+
+    test('★ ⑧: 承認は「承認時点の提出」で固定し直す', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8');
+        // ユーザー決定は「承認時点で固定」。申請時の写しのままだと、
+        // 申請から承認までの間に本人が模擬を直したとき古い内容で固定される (Codex指摘)
+        assert.ok(/async function _snapshotAtApproval/.test(html), '承認時の読み直しが無い');
+        assert.ok(/申請後に本人が編成を変えています/.test(html), '変わったことを運営に見せていない');
+        assert.ok(/characters: snap\?\.characters \|\| null, expectedDamageB: snap\?\.expectedDamageB \|\| null/.test(html));
+        assert.ok(/p_characters: Array\.isArray\(o\.characters\)/.test(client), 'RPC に渡していない');
+        // SQL 側: 承認の瞬間だけ載せ直す。引数を増やしたので旧シグネチャは落とす
+        assert.ok(/DROP FUNCTION IF EXISTS reservation_set_status\(BIGINT, TEXT, TEXT, TEXT, TEXT, BIGINT\);/.test(_sqlRes),
+            '旧シグネチャを落としていない (PostgREST から呼ぶと曖昧になる)');
+        assert.ok(/characters_snapshot = CASE WHEN p_to = 'approved' AND p_characters IS NOT NULL/.test(_sqlRes));
+        const check = _fs.readFileSync(_path.join(_ROOT, 'supabase', '99_check_applied.sql'), 'utf8');
+        assert.ok(/reservation_set_status\(bigint,text,text,text,text,bigint,jsonb,numeric\)/.test(check),
+            '99 の判定行が旧シグネチャのまま');
+    });
+
+    test('★ ⑧: 画面のプレイヤー切替後に別名義で申請・取消できない', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const cancel = html.match(/async function handleRequestCancelReservation[\s\S]{0,1200}/)?.[0] || '';
+        assert.ok(/String\(me0\.id\) !== String\(r\.player_id\)/.test(cancel), '取消の本人性を見ていない');
+        const mock = html.match(/async function handleRequestReservationFromMock[\s\S]{0,1800}/)?.[0] || '';
+        assert.ok(/String\(me0\.id\) !== String\(c\.playerId\)/.test(mock), '模擬タブの本人性を見ていない');
     });
 
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
@@ -3733,7 +3795,14 @@ console.log('\nreservationsDomain (凸の予約):');
     test('★ 予約: 履歴は append-only / 状態は RPC 経由だけ', () => {
         // RLS が anon 全許可なので、REST から直接 status を書くと履歴だけ欠ける
         assert.ok(/BEFORE UPDATE OR DELETE ON plan_reservation_events/.test(_sqlRes), '履歴が書き換えられる');
-        assert.ok(/BEFORE UPDATE OF status ON plan_reservations/.test(_sqlRes), '状態の直接更新が通る');
+        assert.ok(/BEFORE UPDATE ON plan_reservations[\s\S]{0,120}plan_reservations_status_via_rpc/.test(_sqlRes),
+            '状態の直接更新が通る');
+        // ★ 承認済み以降は「固定する範囲」の後出し変更も弾く
+        assert.ok(/承認済みの予約の内容 \(誰が・レベル・ボス・時刻・編成\) は変更できません/.test(_sqlRes),
+            '承認済みの中身を書き換えられる');
+        assert.ok(/NEW\.characters_snapshot IS DISTINCT FROM OLD\.characters_snapshot/.test(_sqlRes));
+        // 承認の瞬間だけは RPC がスナップショットを載せ直せる
+        assert.ok(/NEW\.status = 'approved'/.test(_sqlRes), '承認時にスナップショットを固定し直せない');
         assert.ok(/current_setting\('app\.reservation_rpc', true\)/.test(_sqlRes));
         // 正規の経路 (RPC) は自分で名乗る。名乗りが無いと自分の更新まで弾かれる
         assert.ok(/set_config\('app\.reservation_rpc', 'on', true\)/.test(_sqlRes), 'RPC が名乗っていない');

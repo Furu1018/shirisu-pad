@@ -163,13 +163,24 @@ CREATE TRIGGER trg_plan_reservations_capacity
 -- ---- 5) 状態遷移 (更新 + 履歴を1つの操作で) --------------------------------
 -- ★ クライアントから2回に分けて書くと「状態は変わったのに履歴が無い」が起きる。
 --   期待する現在の状態 (p_expect_from) を渡させて、取り違えた更新も弾く
+-- ⚠ 引数を増やしたので、**旧シグネチャを先に落とす** — CREATE OR REPLACE は引数が違うと
+--   別関数として増え、PostgREST から呼ぶと「どちらか決まらない」で失敗する
+DROP FUNCTION IF EXISTS reservation_set_status(BIGINT, TEXT, TEXT, TEXT, TEXT, BIGINT);
+
+-- ★ p_characters / p_expected_b は **承認の瞬間に固定するスナップショット** (Codex指摘 2026-09-07)。
+--   ユーザー決定は「characters_snapshot / expected_damage_b は**承認時点で**固定」。
+--   申請時の写しのまま承認すると、申請から承認までの間に本人が模擬を直したとき、
+--   固定されるのは古い内容になる。承認する運営が見ている内容と一致させる。
+--   NULL を渡せば従来どおり既存の写しを維持する (締め凸の了承など、作成即承認の経路)
 CREATE OR REPLACE FUNCTION reservation_set_status(
     p_id BIGINT,
     p_to TEXT,
     p_expect_from TEXT DEFAULT NULL,   -- ★ 実際には必須 (NULL は下で弾く。既存呼び出しの互換のため既定値は残す)
     p_actor TEXT DEFAULT NULL,
     p_reason TEXT DEFAULT NULL,
-    p_plan_id BIGINT DEFAULT NULL
+    p_plan_id BIGINT DEFAULT NULL,
+    p_characters JSONB DEFAULT NULL,
+    p_expected_b NUMERIC DEFAULT NULL
 ) RETURNS plan_reservations AS $$
 DECLARE
     v_row plan_reservations;
@@ -203,6 +214,11 @@ BEGIN
     PERFORM set_config('app.reservation_rpc', 'on', true);
     UPDATE plan_reservations SET
         status = p_to,
+        -- 承認の瞬間だけ、承認時点の内容で固定し直す
+        characters_snapshot = CASE WHEN p_to = 'approved' AND p_characters IS NOT NULL
+                                   THEN p_characters ELSE characters_snapshot END,
+        expected_damage_b   = CASE WHEN p_to = 'approved' AND p_expected_b IS NOT NULL
+                                   THEN p_expected_b ELSE expected_damage_b END,
         approved_by   = CASE WHEN p_to = 'approved' THEN COALESCE(p_actor, approved_by) ELSE approved_by END,
         approved_at   = CASE WHEN p_to = 'approved' AND approved_at IS NULL THEN NOW() ELSE approved_at END,
         approved_plan_id = COALESCE(p_plan_id, approved_plan_id),
@@ -254,14 +270,34 @@ CREATE TRIGGER trg_plan_reservation_events_append_only
     BEFORE UPDATE OR DELETE ON plan_reservation_events
     FOR EACH ROW EXECUTE FUNCTION plan_reservation_events_append_only();
 
--- status の直接更新を弾く。RPC 側はセッション変数で自分を名乗ってから更新する
+-- status の直接更新を弾く。RPC 側はセッション変数で自分を名乗ってから更新する。
+-- ★ あわせて「固定する範囲」(誰が・レベル・ボス・時刻・編成) の後出し変更も弾く
+--   (Codex指摘 2026-09-07)。status だけ守っても、承認済みの予約の中身を書き換えられては
+--   「約束を固定する」という不変条件が成立しない
 CREATE OR REPLACE FUNCTION plan_reservations_status_via_rpc()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_rpc BOOLEAN := COALESCE(current_setting('app.reservation_rpc', true), '') = 'on';
 BEGIN
-    IF NEW.status IS DISTINCT FROM OLD.status
-       AND COALESCE(current_setting('app.reservation_rpc', true), '') <> 'on' THEN
+    IF NEW.status IS DISTINCT FROM OLD.status AND NOT v_rpc THEN
         RAISE EXCEPTION '予約の状態は reservation_set_status() 経由で変更してください (履歴が残らないため)'
             USING ERRCODE = 'check_violation';
+    END IF;
+    -- 承認済み以降は約束の中身を動かさない。
+    -- ★ 承認の瞬間 (approved への遷移) だけは、RPC が承認時のスナップショットを載せ直せるようにする
+    IF OLD.status IN ('approved', 'cancel_requested', 'fulfilled', 'released', 'rejected')
+       AND NOT (v_rpc AND OLD.status IN ('requested', 'cancel_requested') AND NEW.status = 'approved') THEN
+        IF NEW.player_id IS DISTINCT FROM OLD.player_id
+           OR NEW.raid_level IS DISTINCT FROM OLD.raid_level
+           OR NEW.boss_number IS DISTINCT FROM OLD.boss_number
+           OR NEW.time_mode IS DISTINCT FROM OLD.time_mode
+           OR NEW.time_slot IS DISTINCT FROM OLD.time_slot
+           OR NEW.loadout_slot IS DISTINCT FROM OLD.loadout_slot
+           OR NEW.characters_snapshot IS DISTINCT FROM OLD.characters_snapshot
+           OR NEW.expected_damage_b IS DISTINCT FROM OLD.expected_damage_b THEN
+            RAISE EXCEPTION '承認済みの予約の内容 (誰が・レベル・ボス・時刻・編成) は変更できません'
+                USING ERRCODE = 'check_violation';
+        END IF;
     END IF;
     RETURN NEW;
 END;
@@ -269,7 +305,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_plan_reservations_status_via_rpc ON plan_reservations;
 CREATE TRIGGER trg_plan_reservations_status_via_rpc
-    BEFORE UPDATE OF status ON plan_reservations
+    BEFORE UPDATE ON plan_reservations
     FOR EACH ROW EXECUTE FUNCTION plan_reservations_status_via_rpc();
 
 -- ---- 6) RLS (anon 全許可 — 認証なしの内輪運用という設計判断) ----------------

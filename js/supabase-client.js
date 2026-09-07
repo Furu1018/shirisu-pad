@@ -3148,6 +3148,10 @@ window.supabaseSetReservationStatus = async function (id, to, o = {}) {
         p_actor: o.actor || null,
         p_reason: o.reason || null,
         p_plan_id: o.planId ?? null,
+        // ★ 承認の瞬間に固定し直すスナップショット (承認する運営が見ている内容と揃える)。
+        //   渡さなければ申請時の写しがそのまま残る
+        p_characters: Array.isArray(o.characters) ? o.characters.filter(Boolean) : null,
+        p_expected_b: Number(o.expectedDamageB) > 0 ? Number(o.expectedDamageB) : null,
     });
     if (error) {
         const msg = String(error.message || '');

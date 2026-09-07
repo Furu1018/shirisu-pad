@@ -219,7 +219,7 @@ SELECT * FROM (
         (to_regclass('public.plan_reservations') IS NOT NULL
          AND to_regclass('public.plan_reservation_events') IS NOT NULL
          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'attacks' AND column_name = 'reservation_id')
-         AND to_regproc('public.reservation_set_status(bigint,text,text,text,text,bigint)') IS NOT NULL),
+         AND to_regproc('public.reservation_set_status(bigint,text,text,text,text,bigint,jsonb,numeric)') IS NOT NULL),
         'plan_reservations / plan_reservation_events / attacks.reservation_id / reservation_set_status() (凸の予約。未適用だと予約の作成・承認がエラーで止まり適用を案内する)'
 
     UNION ALL SELECT '40_attack_with_reservation_rpc',

@@ -7830,11 +7830,16 @@
             // (attacks は level と reported_at を持つ。配信前の凸は元々プラン算出から除外済み)
             const doneCounts = new Map();
             let liveLevel = Number(plan.startLevel) || 1;
+            let todayAttacks = 0;   // その日の実凸総数 (予約の残凸検査に使う)
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (ctx?.season?.current_level) liveLevel = Number(ctx.season.current_level) || liveLevel;
                 if (ctx?.season?.id && typeof window.supabaseLoadMyAttacks === 'function') {
                     const atks = await window.supabaseLoadMyAttacks(identity.id, ctx.season.id, ctx.season.hard_date);
+                    // ★ 残凸の検査は DB と同じ「当日の実凸**総数**」で数える (Codex指摘 2026-09-07)。
+                    //   下の doneCounts は「配信後にプランの行を消し込んだ数」なので別物 —
+                    //   プランに無いボスへ3凸済みでも 0 のままになり、申請できてしまう
+                    todayAttacks = (atks || []).length;
                     const pubAt = new Date(pub.published_at).getTime();
                     (atks || []).forEach(a => {
                         if (a.boss_number == null) return;
@@ -7902,7 +7907,7 @@
             _myPubState = { plan, viewerId: identity.id, doneCounts, stale, liveLevel,
                             planId: pub.id, seasonId: pub.season_id, ack: ackState,
                             frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange,
-                            resv: myResv };
+                            resv: myResv, todayAttacks };
             _renderMyPubBody();
             card.style.display = '';
             // ヒーローの割当ストリップは _myPubState 依存。プランの取得はこのカードが先に走るので、
@@ -8056,6 +8061,13 @@
             const rows = _myPubState?.resv;
             if (!rv || !Array.isArray(rows)) return '';
             const level = Number(a.level), boss = Number(a.bossNumber), slot = Number(a.loadoutSlot) || 1;
+            // ★ 実行できない予約を作らせない (Codex指摘 2026-09-07)。
+            //   過去レベルの行と、既に倒されたボスの行は申請の対象にしない —
+            //   DB は形式しか見ないので、承認まで通ってしまう
+            const liveLv = Number(_myPubState?.liveLevel) || 0;
+            if (liveLv && level < liveLv) return '';
+            const liveBoss = (_seasonBossesForResv() || []).find(b => Number(b.boss_number) === boss);
+            if (liveBoss && Number(liveBoss.remaining_hp_raw) <= 0) return '';
             const cur = rv.findActiveFor(rows, { playerId: viewerId, level, bossNumber: boss, loadoutSlot: slot });
             if (cur) {
                 const jp = rv.STATUS_JP[cur.status] || cur.status;
@@ -8063,8 +8075,12 @@
                 const who = cur.status === 'approved' && cur.approved_by ? ` (${escapeHtml(String(cur.approved_by))}が承認)` : '';
                 return `<div style="margin-top:6px;font-size:10.5px;font-weight:900;color:${col};">🔒 ${escapeHtml(jp)}${who}</div>`;
             }
+            // ★ 残凸は「このプランで報告済みの数」ではなく **当日の実凸総数** で数える
+            //   (Codex指摘)。プランに無いボスへ3凸済みでも、ここが 0 だと申請できてしまい、
+            //   押した瞬間に DB のトリガーで弾かれる
             const chk = rv.canRequest(rows, {
-                playerId: viewerId, level, bossNumber: boss, loadoutSlot: slot, doneAttacks: doneCount,
+                playerId: viewerId, level, bossNumber: boss, loadoutSlot: slot,
+                doneAttacks: Number(_myPubState?.todayAttacks) || 0,
             });
             if (!chk.ok) {
                 return `<div style="margin-top:6px;font-size:10px;font-weight:800;color:#B6BBC1;">${escapeHtml(chk.label || '')}</div>`;
@@ -8073,6 +8089,11 @@
             const draft = rv.planRowToDraft(a, (i) => (HOUR_ORDER[i] == null ? null : _hourKey(HOUR_ORDER[i])));
             if (!draft.ok) return '';
             return `<button onclick="handleClaimPlanRow(${level},${boss},${slot})" style="margin-top:7px;border:1.5px solid #6C42F0;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:10.5px;font-weight:900;color:#6C42F0;background:#fff;cursor:pointer;">この凸を引き受ける</button>`;
+        }
+
+        // 配信プランの行から「いまの盤面のボス」を引く (撃破済みの判定用)
+        function _seasonBossesForResv() {
+            try { return seasonStore.get()?.bosses || opsStore.get()?.bosses || []; } catch { return []; }
         }
 
         // ===== ホームの「🔒 引き受けた凸」 (L2 ⑧) =====
@@ -8133,6 +8154,13 @@
             const rv = window.reservationsDomain;
             const r = (_myResvRows || []).find(x => Number(x.id) === Number(id));
             if (!rv || !r) return;
+            // ★ プレイヤー切替直後の古い一覧から、別メンバーの予約に取消希望を出せてしまう
+            const me0 = getCurrentIdentity();
+            if (!me0?.id || String(me0.id) !== String(r.player_id)) {
+                alert('プレイヤーが切り替わっています。画面を更新してからもう一度お試しください。');
+                renderMyReservations(me0);
+                return;
+            }
             if (!confirm('この凸の取り消しを運営に希望します。\n\n'
                 + '★ 押しただけでは外れません。運営が承認すると解除されます。\n\n[OK] 希望を出す / [キャンセル] やめる')) return;
             try {
@@ -8163,9 +8191,17 @@
             if (!confirm(`この凸を引き受けます。\n\nLv${level} / ${row.bossName || 'B' + bossNumber} / ${when} / 編成${SLOT_JP[loadoutSlot] || '①'}\n\n`
                 + '運営が承認すると、この凸は**固定**されます (プランを組み直しても動きません)。\n'
                 + '取り消したくなったら運営に申し出てください。\n\n[OK] 申請する / [キャンセル] やめる')) return;
+            const me0 = getCurrentIdentity();
+            // ★ 画面を開いたあとにプレイヤーを切り替えると、古い viewerId のまま申請できてしまう
+            //   (別メンバー名義の申請になる — Codex指摘 2026-09-07)
+            if (!me0?.id || String(me0.id) !== String(st.viewerId)) {
+                alert('プレイヤーが切り替わっています。画面を更新してからもう一度お試しください。');
+                renderMyPublishedPlan(me0);
+                return;
+            }
             _claimBusy = true;
             try {
-                const me = getCurrentIdentity();
+                const me = me0;
                 await window.supabaseCreateReservation({
                     seasonId: st.seasonId, playerId: st.viewerId,
                     ...draft.draft,
@@ -8346,7 +8382,12 @@
                     try {
                         await _reserveForFinishRequest(ctx, id, bossNumber);
                         renderMyReservations(id);
-                    } catch (e) { console.warn('[finish→予約]', e?.message || e); }
+                    } catch (e) {
+                        // ★ 了承はもうサーバへ届いているので、ここで失敗させない。
+                        //   ただし黙らない — 「了承済みなのに予約が無い」状態は運営が知る必要がある
+                        console.warn('[finish→予約]', e?.message || e);
+                        showNotification('⚠ 了承は伝わりましたが、凸の固定に失敗しました。運営に伝えてください');
+                    }
                 }
                 await _refreshFinishRequests();
                 renderMyFinishRequestBanner(id);
@@ -8373,7 +8414,12 @@
             const boss = (ctx.bosses || []).find(b => Number(b.boss_number) === Number(bossNumber));
             const lo = boss ? await _myBestLoadoutFor(id.id, boss.weakness) : null;
             const slot = lo?.slot || 1;
-            if (rv.findActiveFor(mine, { playerId: id.id, level, bossNumber, loadoutSlot: slot })) return;
+            // ★ 同じレベル・同じボスに生きている予約があれば作らない — **編成枠は見ない**
+            //   (Codex指摘 2026-09-07)。了承を押し直す間に一番強い編成が①→②に変わると、
+            //   枠まで見る判定では別物になり、同じ依頼から2件できてしまう
+            if (mine.some(r => rv.isActive(r)
+                && Number(r.raid_level) === Number(level)
+                && Number(r.boss_number) === Number(bossNumber))) return;
             await window.supabaseCreateReservation({
                 seasonId: ctx.season.id, playerId: id.id,
                 raidLevel: level, bossNumber: Number(bossNumber), loadoutSlot: slot,
@@ -9237,6 +9283,23 @@
                 alert(`❌ ${e?.message || e}`);
             }
         }
+        // 凸報告に紐づける承認済み予約を探す (L2 ⑧ / Codex指摘 2026-09-07)。
+        // ★ これが無いと、承認済みの予約が **fulfilled にならないまま残り**、
+        //   実凸と合わせて残凸を二重に消費する = 約束を守る仕組みが本人を止める。
+        // ★ 曖昧なときは null (紐づけない)。間違った予約を消し込む方が害が大きい
+        async function _reservationIdForAttack(seasonId, playerId, level, bossNumber, characters) {
+            const rv = window.reservationsDomain;
+            if (!rv || !seasonId || !playerId) return null;
+            let mine = null;
+            try { mine = await window.supabaseLoadMyReservations?.(seasonId, playerId) ?? null; } catch { return null; }
+            if (!Array.isArray(mine)) return null;   // 39未適用
+            const m = rv.matchForAttack(mine, { playerId, level, bossNumber, characters });
+            if (!m.id && m.reason === 'ambiguous') {
+                console.warn('[予約] 同じレベル・ボスに承認済みが複数あり、編成でも絞れないので紐づけません');
+            }
+            return m.id;
+        }
+
         // ===== 🔒 この編成で凸を予約する (L2 ⑧ / 模擬タブのパネル → 編成編集モーダル) =====
         // ★ 「どのボスか」は属性から引く — シーズンのボスは弱点PT属性で1対1に対応する。
         //   本人にボスを選ばせると、弱点でない編成で予約できてしまう
@@ -9314,8 +9377,13 @@
             const flex = v === 'flex';
             if (!confirm(`この編成で凸を申請します。\n\nLv${c.level} / B${c.bossNumber} / ${flex ? '⏳時刻は約束しない' : v.slice(1) + '時'} / 編成${SLOT_JP[c.slot] || '①'}\n\n`
                 + '運営が承認すると、この凸は**固定**されます。\n\n[OK] 申請する / [キャンセル] やめる')) return;
+            const me0 = getCurrentIdentity();
+            if (!me0?.id || String(me0.id) !== String(c.playerId)) {
+                alert('プレイヤーが切り替わっています。画面を開き直してください。');
+                return;
+            }
             try {
-                const me = getCurrentIdentity();
+                const me = me0;
                 await window.supabaseCreateReservation({
                     seasonId: c.seasonId, playerId: c.playerId,
                     raidLevel: c.level, bossNumber: c.bossNumber, loadoutSlot: c.slot,
@@ -12804,7 +12872,10 @@
                             canonChars = (reg.canonical || canonChars).filter(Boolean);
                         } catch (e) { console.warn('[char register]', e?.message || e); }
                     }
-                    await window.supabaseAddAttack({
+                    // 承認済みの予約があれば紐づけて消し込む (無ければ従来どおり)
+                    const resvId = await _reservationIdForAttack(ctx.season.id, id.id,
+                        ctx.season.current_level || 1, boss.boss_number, canonChars);
+                    const res = await window.supabaseAddAttack({
                         seasonId: ctx.season.id,
                         playerId: id.id,
                         attackDate: ctx.season.hard_date,
@@ -12813,7 +12884,12 @@
                         damageRaw,
                         level: ctx.season.current_level || 1,
                         characters: canonChars,
-                    }, { skipHpDecrement: ocrApplies });
+                    }, { skipHpDecrement: ocrApplies, reservationId: resvId, actorName: id.name || null });
+                    // 「守れなくなった予約がある」は黙って飲み込まない (運営が解除する必要がある)
+                    if (Number(res?.overCapacity) > 0) {
+                        showNotification('⚠ 残り凸を超えて予約を押さえています。運営に相談してください');
+                    }
+                    if (typeof renderMyReservations === 'function') renderMyReservations(id);
                     if (ocrApplies) {
                         const totalRaw = _myAttackOcrBossHp.maxHp != null ? Number(_myAttackOcrBossHp.maxHp) : Number(boss.total_hp_raw || 0);
                         const remRaw = Number(_myAttackOcrBossHp.remainingHp);
@@ -12977,6 +13053,10 @@
                     try {
                         // 凸を INSERT。characters は空 (消化済み凸なので衝突検知不要)。
                         // HP も更新せず、別途BlaBla進捗から同期する想定。
+                        // 承認済みの予約があれば消し込む。編成が無いので、
+                        // 同じレベル・ボスに承認済みが2件あるときは紐づけない (曖昧なまま消さない)
+                        const rid = await _reservationIdForAttack(ctx.season.id, id.id,
+                            a.level || ctx.season.current_level || 1, a.bossNumber, []);
                         await window.supabaseAddAttack({
                             seasonId: ctx.season.id,
                             playerId: id.id,
@@ -12986,7 +13066,7 @@
                             damageRaw: Math.round(a.totalDamage),
                             level: a.level || ctx.season.current_level || 1,
                             characters: [],
-                        }, { skipHpDecrement: true });
+                        }, { skipHpDecrement: true, reservationId: rid, actorName: id.name || null });
                         ok++;
                     } catch (e) {
                         fail++;
@@ -14633,6 +14713,7 @@
             try {
                 const me = getCurrentIdentity();
                 await window.supabaseSetReservationStatus(rid, to, { ...o, actor: me?.name || '運営' });
+                // ★ 承認で内容を固定し直した場合があるので、盤面より先に一覧を取り直す
                 const row = (_resv.rows || []).find(r => Number(r.id) === rid);
                 window.supabaseLogActivity?.('ops',
                     `凸の予約: ${row ? (row.player_name || '#' + row.player_id) : '#' + rid} を ${window.reservationsDomain?.STATUS_JP[to] || to}`,
@@ -14646,6 +14727,24 @@
                 _resv.busy.delete(rid);
             }
             await renderOpsReservations(true);
+        }
+
+        // 承認時点の提出を読み直す。★ ユーザー決定は「承認時点で固定」なので、
+        //   申請から承認までの間に本人が模擬を直していたら、承認する内容の方を採る
+        //   (Codex指摘 2026-09-07)。読めなければ申請時の写しをそのまま使う
+        async function _snapshotAtApproval(row) {
+            try {
+                const bosses = opsStore.get()?.bosses || [];
+                const boss = bosses.find(b => Number(b.boss_number) === Number(row.boss_number));
+                if (!boss?.weakness) return null;
+                const rows = await window.supabaseLoadPlayerDamages?.(row.player_id);
+                if (!Array.isArray(rows)) return null;
+                const hit = rows.find(d => d.attribute === boss.weakness && (d.slot || 1) === Number(row.loadout_slot));
+                if (!hit) return null;
+                const dmg = mockDamageOf(hit);
+                if (!(dmg > 0)) return null;
+                return { characters: Array.isArray(hit.characters) ? hit.characters.filter(Boolean) : [], expectedDamageB: dmg };
+            } catch { return null; }
         }
 
         async function handleReservationApprove(id) {
@@ -14669,8 +14768,23 @@
                 if (impact.warnings.length) msg += `\n\n⚠️ ${impact.warnings.join('\n⚠️ ')}`;
                 if (impact.blocking) msg += '\n\n※ 攻略の見込みが下がります。それでも承認しますか？';
             }
+            // ★ 承認時点の提出を読み直し、申請時と違えば運営に見せてから固定する
+            const snap = await _snapshotAtApproval(row);
+            const changed = snap && (
+                Number(snap.expectedDamageB).toFixed(1) !== Number(row.expected_damage_b || 0).toFixed(1)
+                || snap.characters.slice().sort().join('\u0001')
+                   !== (Array.isArray(row.characters_snapshot) ? row.characters_snapshot.slice().sort().join('\u0001') : ''));
+            if (changed) {
+                msg += `\n\n【申請後に本人が編成を変えています】\n`
+                    + `・申請時 ${Number(row.expected_damage_b || 0).toFixed(1)}B → いま ${Number(snap.expectedDamageB).toFixed(1)}B\n`
+                    + '承認すると **いまの内容** で固定されます。';
+            }
             if (!confirm(msg)) return;
-            await _resvTransition(id, 'approved', { expectFrom: 'requested', done: '🔒 予約を承認しました' });
+            await _resvTransition(id, 'approved', {
+                expectFrom: 'requested', done: '🔒 予約を承認しました',
+                // 渡さなければ申請時の写しがそのまま残る
+                characters: snap?.characters || null, expectedDamageB: snap?.expectedDamageB || null,
+            });
         }
 
         async function handleReservationReject(id) {
@@ -17869,6 +17983,8 @@
                         // 同一ボスへの凸が既に登録済みならスキップ (本人提出との二重計上防止)
                         if (existingAtks.some(x => Number(x.boss_number) === Number(a.bossNumber))) { skipped++; continue; }
                         try {
+                            const rid = await _reservationIdForAttack(ctx.season.id, playerId,
+                                a.level || ctx.season.current_level || 1, a.bossNumber, []);
                             await window.supabaseAddAttack({
                                 seasonId: ctx.season.id,
                                 playerId,
@@ -17878,7 +17994,7 @@
                                 damageRaw: Math.round(a.totalDamage),
                                 level: a.level || ctx.season.current_level || 1,
                                 characters: [],
-                            }, proxyOpts);
+                            }, { ...proxyOpts, reservationId: rid });
                             ok++;
                         } catch (e) {
                             fail++;
@@ -17898,6 +18014,8 @@
                         const cont = confirm(`⚠️ ${memberName} さんは B${boss.boss_number} への凸が既に登録されています。\n本人の報告と重複していませんか？\n\n[OK] それでも登録する\n[キャンセル] やめる`);
                         if (!cont) { set('🛑 重複の可能性があるため中止しました', true); return; }
                     }
+                    const rid1 = await _reservationIdForAttack(ctx.season.id, playerId,
+                        ctx.season.current_level || 1, boss.boss_number, []);
                     await window.supabaseAddAttack({
                         seasonId: ctx.season.id,
                         playerId,
@@ -17907,7 +18025,7 @@
                         damageRaw: dmgRaw,
                         level: ctx.season.current_level || 1,
                         characters: [],
-                    }, proxyOpts);
+                    }, { ...proxyOpts, reservationId: rid1 });
                     set(`✅ 代理凸を登録しました (${memberName})${hpDecrement ? '' : ' — HPは減算していません。ボスHP更新を忘れずに'}`);
                 }
                 // ★ invalidate の前に検知する (キャッシュ = 登録前の盤面を比較元に使うため)。
