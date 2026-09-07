@@ -3114,7 +3114,9 @@ window.supabaseCreateReservation = async function (o = {}) {
     const flex = !!o.flex;
     const row = {
         season_id: o.seasonId, player_id: o.playerId,
-        raid_level: o.raidLevel, boss_number: o.bossNumber,
+        // ★ レベルは任意 (42・2026-09-08)。メンバー発は NULL、締め凸依頼の了承だけレベル付き
+        raid_level: (o.raidLevel == null) ? null : Number(o.raidLevel),
+        boss_number: o.bossNumber,
         time_mode: flex ? 'flex' : 'fixed',
         time_slot: flex ? null : (o.timeSlot || null),
         loadout_slot: Number(o.loadoutSlot) || 1,
@@ -3135,7 +3137,11 @@ window.supabaseCreateReservation = async function (o = {}) {
         const msg = String(error.message || '');
         if (/残凸を超える予約/.test(msg)) throw new Error('残りの凸数を超える予約はできません');
         if (/uq_plan_reservations_active|duplicate key/i.test(msg)) {
-            throw new Error('同じレベル・同じボス・同じ編成の予約がすでにあります');
+            throw new Error('同じボス・同じ編成の予約がすでにあります');
+        }
+        // 42 未適用 (raid_level NOT NULL のまま) で NULL を入れた
+        if (/raid_level/.test(msg) && /null value|not-null/i.test(msg)) {
+            throw new Error('凸の予約を更新するには supabase/42_reservations_level_optional.sql の適用が必要です');
         }
         throw error;
     }

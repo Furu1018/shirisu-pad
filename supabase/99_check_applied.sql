@@ -231,6 +231,12 @@ SELECT * FROM (
          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'published_plans' AND column_name = 'plan_schema')),
         'app_gate / published_plans.plan_schema (互換ゲート。未適用だと誰も止めない = 従来どおり静かに素通りする)'
 
+    UNION ALL SELECT '42_reservations_level_optional',
+        EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'plan_reservations' AND column_name = 'raid_level' AND is_nullable = 'YES')
+        AND to_regclass('public.uq_plan_reservations_active_card') IS NOT NULL,
+        '予約のレベルを任意に + 一意性を「誰が・ボス・編成枠」へ (未適用だとメンバーの申請が NOT NULL で弾かれる)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

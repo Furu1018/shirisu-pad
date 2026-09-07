@@ -3601,7 +3601,7 @@ console.log('\nreservationsDomain (凸の予約):');
         test('★ ⑧ 申請: 配信の行をそのまま予約の内容にする (時刻・編成・ダメージ)', () => {
             const r = rv.planRowToDraft(planRow(), hourKeyOf);
             assert.equal(r.ok, true);
-            assert.equal(r.draft.raidLevel, 2);
+            assert.equal(r.draft.raidLevel, null, 'レベルは本人が選ばない (2026-09-08) — 予約に載せない');
             assert.equal(r.draft.bossNumber, 3);
             assert.equal(r.draft.loadoutSlot, 1);
             assert.equal(r.draft.flex, false);
@@ -3641,9 +3641,10 @@ console.log('\nreservationsDomain (凸の予約):');
             for (const st of ['fulfilled', 'released', 'rejected']) {
                 assert.equal(rv.findActiveFor([res({ id: 3, pid: 'p1', lv: 2, boss: 3, status: st })], key), null, st);
             }
-            // 別人・別レベル・別ボス・別編成は別物
+            // ★ レベル違いも同じ枠 (2026-09-08: 同じカードは1日1回。DB の索引もレベルを含まない)
+            assert.ok(rv.findActiveFor(rows, { ...key, level: 3 }), 'レベル違いを別物にしている (二重申請できてしまう)');
+            // 別人・別ボス・別編成は別物
             assert.equal(rv.findActiveFor(rows, { ...key, playerId: 'p2' }), null);
-            assert.equal(rv.findActiveFor(rows, { ...key, level: 3 }), null);
             assert.equal(rv.findActiveFor(rows, { ...key, bossNumber: 4 }), null);
             assert.equal(rv.findActiveFor(rows, { ...key, loadoutSlot: 2 }), null);
         });
@@ -3696,10 +3697,10 @@ console.log('\nreservationsDomain (凸の予約):');
     {
         const B = (o = {}) => ({ boss_number: o.n ?? 3, name: 'アニヒリオ', attribute: 'iron', weakness: 'wind', remaining_hp_raw: o.hp ?? 100 });
         const LO = (o = {}) => ({ slot: o.slot ?? 2, characters: o.team ?? ['a', 'b', 'c', 'd', 'e'], dmgB: o.dmg ?? 13.1 });
-        test('★ 申請シート: 4つが揃えば下書きになる (時刻 fixed / ⏳ flex)', () => {
+        test('★ 申請シート: ボス・時刻・編成が揃えば下書きになる (時刻 fixed / ⏳ flex) — レベルは聞かない', () => {
             const r = rv.buildRequestDraft({ boss: B(), level: 2, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 });
             assert.equal(r.ok, true);
-            assert.deepEqual(r.draft, { raidLevel: 2, bossNumber: 3, loadoutSlot: 2, flex: false, timeSlot: 'h23',
+            assert.deepEqual(r.draft, { raidLevel: null, bossNumber: 3, loadoutSlot: 2, flex: false, timeSlot: 'h23',
                 characters: ['a', 'b', 'c', 'd', 'e'], expectedDamageB: 13.1, sourceType: 'self' });
             assert.equal(r.note, '', '開いているレベルに注記は要らない');
             const f = rv.buildRequestDraft({ boss: B(), level: 2, timeSlot: null, flex: true, loadout: LO(), currentLevel: 2 });
@@ -3708,20 +3709,24 @@ console.log('\nreservationsDomain (凸の予約):');
         test('★ 申請シート: 足りないものを名指しで返す (押せるのに弾かれる、を作らない)', () => {
             const base = { boss: B(), level: 2, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 };
             assert.deepEqual(rv.buildRequestDraft({ ...base, boss: null }).missing, ['boss']);
-            assert.deepEqual(rv.buildRequestDraft({ ...base, boss: B({ hp: 0 }) }).missing, ['boss_defeated'], '撃破済みのボスに申請できる');
-            assert.deepEqual(rv.buildRequestDraft({ ...base, level: null }).missing, ['level']);
-            assert.deepEqual(rv.buildRequestDraft({ ...base, level: 5 }).missing, ['level']);
+            // ★ 倒れたボスは次のレベルにもいる — 申請は通し、本人に注記だけ出す (2026-09-08)
+            assert.equal(rv.buildRequestDraft({ ...base, boss: B({ hp: 0 }) }).ok, true, '倒れたボスへの申請を止めている');
+            assert.match(rv.buildRequestDraft({ ...base, boss: B({ hp: 0 }) }).note, /次のレベル/);
+            // レベルは聞かないので、無くても範囲外でも足りないものにならない
+            assert.equal(rv.buildRequestDraft({ ...base, level: null }).ok, true);
+            assert.equal(rv.buildRequestDraft({ ...base, level: 5 }).ok, true);
             assert.deepEqual(rv.buildRequestDraft({ ...base, timeSlot: null }).missing, ['time'], '時刻未選択 (⏳でもない) を通している');
             assert.deepEqual(rv.buildRequestDraft({ ...base, timeSlot: 'あ' }).missing, ['time'], '形式が違う時刻を通している (DB の CHECK で弾かれる)');
             assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: null }).missing, ['loadout']);
             assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ dmg: 0 }) }).missing, ['loadout'], 'ダメージ未保存の編成を通している');
             assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 3 }) }).missing, ['loadout']);
-            assert.deepEqual(rv.buildRequestDraft({ boss: null, level: null, timeSlot: null, loadout: null }).missing, ['boss', 'level', 'time', 'loadout'], '複数まとめて返す');
+            assert.deepEqual(rv.buildRequestDraft({ boss: null, level: null, timeSlot: null, loadout: null }).missing, ['boss', 'time', 'loadout'], '複数まとめて返す');
         });
-        test('申請シート: 先のレベルは申請できるが注記が付く (「先に出しておける」のが目的)', () => {
+        test('申請シート: レベルは聞かない — 指定しても下書きに載らず、注記も出ない (2026-09-08)', () => {
             const r = rv.buildRequestDraft({ boss: B(), level: 3, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 });
             assert.equal(r.ok, true);
-            assert.match(r.note, /Lv3 はまだ開いていません/);
+            assert.equal(r.draft.raidLevel, null);
+            assert.equal(r.note, '');
         });
         test('★ ⑧配線: 申請シートがモック②の形で入っている', () => {
             const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
@@ -3954,6 +3959,108 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/_resvReq\.slotsFailed = !Array\.isArray\(slots\);/.test(html));
         assert.ok(/戦闘可能時間を取得できませんでした/.test(html));
     });
+
+    // ===== 2026-09-08: 予約から「レベル」を外す =====
+    test('★ 予約: レベルの無い予約 (メンバー発) は拘束になる / 並びは level null を先頭に', () => {
+        const noLv = { ...res({ id: 7, status: 'approved', boss: 2 }), raid_level: null };
+        const c = rv.toSolverConstraints([res({ id: 8, status: 'approved', lv: 3, boss: 1 }), noLv]);
+        assert.equal(c.length, 2, 'レベル無しの予約が拘束から落ちた');
+        assert.equal(c[0].level, null, 'level は null のまま渡す (ソルバーが時刻から決める)');
+        assert.equal(c[0].reservationId, 7);
+        assert.equal(c[1].level, 3);
+        // 壊れたレベル (範囲外) は今までどおり落とす
+        assert.equal(rv.toSolverConstraints([{ ...res({ status: 'approved' }), raid_level: 9 }]).length, 0);
+    });
+    test('予約: describe はレベルが無ければ Lv を出さない', () => {
+        const bn = new Map([[3, 'ボス3']]);
+        assert.equal(rv.describe({ ...res(), raid_level: null }, bn), 'ボス3 21時 編成①');
+        assert.equal(rv.describe(res({ lv: 2 }), bn), 'Lv2 ボス3 21時 編成①');
+    });
+    test('★ 予約: レベルの無い予約はどのレベルの凸にも紐づく (消し込み)', () => {
+        const rows = [{ ...res({ id: 5, status: 'approved', boss: 3 }), raid_level: null }];
+        const m = rv.matchForAttack(rows, { playerId: 'p1', level: 3, bossNumber: 3, characters: [] });
+        assert.equal(m.id, 5, 'レベル指定つきの凸にレベル無しの予約が紐づかない');
+        assert.equal(rv.matchForAttack(rows, { playerId: 'p1', level: 3, bossNumber: 4, characters: [] }).id, null, 'ボス違いは紐づけない');
+    });
+    test('★ 予約: 置けない理由はすべて日本語 (コードのまま出さない) / 見込み時刻を添える', () => {
+        for (const k of Object.keys(rv.UNMET_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNMET_JP[k]), k);
+        for (const k of Object.keys(rv.UNASSIGNED_JP)) assert.ok(/[ぁ-んァ-ン一-龥]/.test(rv.UNASSIGNED_JP[k]), k);
+        assert.equal(rv.unmetText({ reason: 'time_passed' }), '約束の時刻を過ぎています');
+        const t = rv.unmetText({ reason: 'no_boss_at_time', detail: { level: 2, killedLabel: '9時', nextOpenLabel: '11時' } });
+        assert.match(t, /そのボスがいない見込み/);
+        assert.match(t, /Lv2 は 9時に撃破の見込み/);
+        assert.match(t, /Lv3 の開放は 11時/);
+        assert.equal(rv.unmetText({ reason: 'zzz' }), '置けませんでした', '未知の理由でもコードを出さない');
+    });
+    test('★ 予約: 承認前の影響は「候補そのものが置けない」を最初の警告にして止める', () => {
+        const plan = (unmet) => ({ fullyClearedThrough: 3, unusedAttacks: 10, totalCreditedB: 700, levels: [], unmetReservations: unmet });
+        const r = rv.approvalImpact(plan([]), plan([{ reservationId: 42, reason: 'no_boss_at_time' }]), null, 42);
+        assert.equal(r.blocking, true);
+        assert.equal(r.cannotPlace, true);
+        assert.match(r.warnings[0], /この予約は置けません: 約束の時刻には、そのボスがいない見込みです/);
+        const ok = rv.approvalImpact(plan([]), plan([{ reservationId: 41, reason: 'conflict' }]), null, 42);
+        assert.equal(ok.cannotPlace, false, '別の予約の未達で候補を止めてはいけない');
+        assert.equal(ok.blocking, false);
+    });
+
+    // ===== 本人のホーム = 3枠 (2026-09-08) =====
+    {
+        const mkPlan = (attacks, unassigned = []) => ({
+            levels: [{ level: 2, bosses: [{ bossNumber: 3, name: 'ボス3', attribute: 'water', weakness: 'fire',
+                attacks: attacks.map(a => ({ memberId: 'p1', loadoutSlot: 1, hourIdx: 8, hourLabel: '13時', team: ['a', 'b', 'c', 'd', 'e'], dmgB: 30, ...a })) }] }],
+            unassigned,
+        });
+        test('★ ホーム3枠: 予約したカードが先頭・配信の割当が続き・空きには理由 (日本語)', () => {
+            const resv = [{ ...res({ id: 1, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
+            const plan = mkPlan([{ reservationId: 1, hourIdx: 16, hourLabel: '21時' }, { loadoutSlot: 2, hourIdx: 4, hourLabel: '9時' }],
+                                [{ memberId: 'p1', reason: 'char_conflict' }]);
+            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(h.slots.length, 3);
+            assert.equal(h.slots[0].kind, 'fixed'); assert.equal(h.slots[0].inPlan, true); assert.equal(h.slots[0].timeSlot, 'h21');
+            assert.equal(h.slots[0].level, 2, '配信に入っていればそのレベルを添える');
+            assert.equal(h.slots[1].kind, 'plan'); assert.equal(h.slots[1].loadoutSlot, 2);
+            assert.equal(h.slots[2].kind, 'empty');
+            assert.equal(h.slots[2].text, 'ほかの凸とキャラが被って、使える編成が残っていません');
+            assert.equal(h.stale, false);
+        });
+        test('★ ホーム3枠: 配信が予約を知らなければ stale (運営が組み直し中) / 3枠を超える配信は落とす', () => {
+            const resv = [{ ...res({ id: 9, status: 'approved', boss: 3, slot: 'h21', lo: 2 }), raid_level: null, approved_at: 'x' }];
+            // 配信は編成① だけ = 予約 (編成②) を知らない
+            const plan = mkPlan([{ loadoutSlot: 1 }, { loadoutSlot: 1, hourIdx: 10 }, { loadoutSlot: 1, hourIdx: 12 }]);
+            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(h.stale, true, '配信が予約を知らないのに stale でない');
+            assert.equal(h.slots[0].kind, 'fixed'); assert.equal(h.slots[0].inPlan, false);
+            assert.equal(h.slots.filter(x => x.kind === 'plan').length, 2, '予約1 + 配信2 で3枠。4枚目を出してはいけない');
+        });
+        test('ホーム3枠: 配信が無ければ空きは「算出待ち」/ プラン外の実凸は枠を消費 / 取り消し希望中も固定', () => {
+            const h0 = rv.homeSlots({ plan: null, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
+            assert.deepEqual(h0.slots.map(x => x.kind), ['empty', 'empty', 'empty']);
+            assert.equal(h0.slots[0].text, '運営の算出待ちです');
+            assert.equal(h0.stale, false, '配信が無いのは stale ではない');
+            const h1 = rv.homeSlots({ plan: mkPlan([{}]), viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 2 });
+            assert.deepEqual(h1.slots.map(x => x.kind), ['plan', 'done', 'done']);
+            const cr = [{ ...res({ id: 3, status: 'cancel_requested', boss: 3 }), raid_level: null, approved_at: 'x' }];
+            assert.equal(rv.homeSlots({ plan: null, viewerId: 'p1', reservations: cr, doneCounts: new Map() }).slots[0].kind, 'fixed');
+            const req = [{ ...res({ id: 4, status: 'requested', boss: 3 }), raid_level: null }];
+            assert.equal(rv.homeSlots({ plan: null, viewerId: 'p1', reservations: req, doneCounts: new Map() }).fixedCount, 0, '承認前は固定ではない');
+        });
+        test('★ 配信後の予約: 配信に入っていない固定予約だけ数える (運営ホームの「確認して下さい」の根拠)', () => {
+            const rows = [
+                { ...res({ id: 1, status: 'approved', boss: 3, lo: 1 }), raid_level: null },        // 配信に入っている (reservationId)
+                { ...res({ id: 2, status: 'approved', boss: 3, lo: 2 }), raid_level: null },        // 入っていない
+                { ...res({ id: 3, status: 'requested', boss: 4 }), raid_level: null },              // 承認前は数えない
+                { ...res({ id: 4, status: 'approved', boss: 4, pid: 'p2' }), raid_level: null },    // 別人・入っていない
+            ];
+            const plan = mkPlan([{ reservationId: 1 }]);
+            const p = rv.pendingRepublish(rows, plan);
+            assert.deepEqual(p.items.map(x => x.id), [2, 4]);
+            assert.equal(p.count, 2);
+            assert.equal(rv.pendingRepublish(rows, null).count, 3, '配信が無ければ固定予約は全部「配信後」');
+            // reservationId が無い古い配信でも、同じカード (誰が・ボス・編成枠) が入っていれば数えない
+            const old = mkPlan([{ reservationId: undefined, loadoutSlot: 1 }]);
+            assert.deepEqual(rv.pendingRepublish(rows, old).items.map(x => x.id), [2, 4]);
+        });
+    }
 
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
         // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる

@@ -5,8 +5,10 @@
 // 第44回 (2026-09-05) の反省「当日のプラン再生成でメンバーを振り回した」への本命。
 // L1 (ソルバーの安定化) は理由があれば割当を動かすが、**承認済みの予約は原則動かさない**。
 //
-// ユーザー決定 (2026-09-07):
-//   固定する範囲 = 誰が・レベル・ボス・時刻・編成の全部
+// ユーザー決定 (2026-09-07 / 2026-09-08 改訂):
+//   固定する範囲 = 誰が・ボス・時刻・編成。**レベルは本人が選ばない** (2026-09-08)
+//   ボスは全レベル共通で HP だけが違う。「この時刻にこの弱点のボスへこの編成で」が約束で、
+//   どのレベルに置くかは時間軸からソルバーが決める。締め凸依頼の了承だけ運営がレベル付きで作る
 //   承認は運営の誰か1人 / 承認しても自動配信しない / 締め凸依頼の了承は即予約 /
 //   無断欠席は猶予なし運営判断 / 本人の取り消しは希望を出す→運営が承認して解除
 //
@@ -53,6 +55,49 @@
         rejected: [],
     };
 
+    // ソルバーが「置けなかった」理由 → 日本語。運営にもメンバーにも**コードのまま出さない** (ユーザー決定 D)
+    const UNMET_JP = {
+        member_gone: '参加対象から外れています',
+        attacks_done: '本人がもう3凸しています',
+        boss_gone: 'そのボスが見つかりません',
+        boss_defeated: 'そのボスはもう倒れています',
+        level_passed: 'そのレベルはもう終わっています',
+        loadout_gone: '予約した編成が模擬から消えています',
+        time_passed: '約束の時刻を過ぎています',
+        before_open: '約束の時刻には、そのレベルがまだ開いていない見込みです',
+        no_boss_at_time: '約束の時刻には、そのボスがいない見込みです',
+        conflict: 'ほかの凸とキャラが被るため置けません',
+    };
+    // ソルバーが「その人の残り凸を使わなかった」理由 → 日本語 (本人のホームの空き枠に出す)
+    const UNASSIGNED_JP = {
+        no_loadout: '模擬の提出がありません',
+        char_conflict: 'ほかの凸とキャラが被って、使える編成が残っていません',
+        no_target: '出せる属性のボスが残っていない見込みです',
+        time: '戦闘可能時間に合う枠がありません',
+        not_needed: 'いまのプランでは出番がありません (残HPは足りる見込みです)',
+    };
+
+    /**
+     * 未達の1件を日本語の1文に。ソルバーが detail (撃破見込み・開放見込みの時刻) を添えていれば含める
+     * @param {{reason:string, detail?:{level?:number, killedLabel?:string, nextOpenLabel?:string, openLabel?:string}}} u
+     */
+    function unmetText(u) {
+        if (!u) return '';
+        const base = UNMET_JP[u.reason] || '置けませんでした';
+        const d = u.detail || null;
+        if (!d) return base;
+        if (u.reason === 'no_boss_at_time') {
+            const parts = [];
+            if (d.level && d.killedLabel) parts.push(`Lv${d.level} は ${d.killedLabel}に撃破の見込み`);
+            if (d.level && d.nextOpenLabel) parts.push(`Lv${d.level + 1} の開放は ${d.nextOpenLabel}`);
+            return parts.length ? `${base} (${parts.join('、')})` : base;
+        }
+        if (u.reason === 'before_open' && d.level && d.openLabel) {
+            return `${base} (Lv${d.level} の開放は ${d.openLabel})`;
+        }
+        return base;
+    }
+
     const isActive = (r) => !!r && ACTIVE.includes(r.status);
     const isApproved = (r) => !!r && r.status === 'approved';
     const canTransition = (from, to) => (TRANSITIONS[from] || []).includes(to);
@@ -94,10 +139,11 @@
             //   取り消しは「希望を出すだけで、解除には運営の承認が要る」(ユーザー決定)。
             //   希望を出した瞬間に固定が外れると、運営が判断する前にプランが動いてしまう
             if (!r || !isFixed(r)) return;
-            const level = Number(r.raid_level);
+            // ★ レベルは任意 (2026-09-08)。NULL = 「約束の時刻にそのボスがいるレベル」をソルバーが決める
+            const level = (r.raid_level == null) ? null : Number(r.raid_level);
             const bossNumber = Number(r.boss_number);
             const loadoutSlot = Number(r.loadout_slot);
-            if (!Number.isInteger(level) || level < 1 || level > 4) return;
+            if (level !== null && (!Number.isInteger(level) || level < 1 || level > 4)) return;
             if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) return;
             if (!Number.isInteger(loadoutSlot) || loadoutSlot < 1 || loadoutSlot > 2) return;
             if (r.player_id == null) return;
@@ -115,7 +161,7 @@
             });
         });
         const idKey = (v) => String(v);
-        out.sort((x, y) => (x.level - y.level)
+        out.sort((x, y) => ((x.level ?? 0) - (y.level ?? 0))
             || (x.bossNumber - y.bossNumber)
             || (idKey(x.memberId) < idKey(y.memberId) ? -1 : idKey(x.memberId) > idKey(y.memberId) ? 1 : 0)
             || (x.loadoutSlot - y.loadoutSlot));
@@ -124,6 +170,9 @@
 
     /**
      * 盤面を見て「もう実現できない予約」を洗い出す。
+     * ★ レベルを持たない予約 (メンバー発) はここでは外さない — ボスは次のレベルにもいるので、
+     *   「倒れた」「レベルが進んだ」は実現不能を意味しない。置けるかはソルバーが時間軸で判定し、
+     *   `unmetReservations` として理由つきで出す (運営が2択で処理する — ユーザー決定 C)
      * ★ 撃破・レベル通過は**盤面の事実**なので自動で解除してよい。
      *   時間切れ (no_show) はここでは出さない — ユーザー決定により運営判断で取り下げる
      *   (ブラウザが開いている保証がないので、時刻到来だけの自動解除はしない)。
@@ -176,7 +225,8 @@
         const name = bossNameByNumber && bossNameByNumber.get
             ? (bossNameByNumber.get(Number(r.boss_number)) || `B${r.boss_number}`)
             : `B${r.boss_number}`;
-        return `Lv${r.raid_level} ${name} ${t} 編成${Number(r.loadout_slot) === 2 ? '②' : '①'}`;
+        const lv = (r.raid_level != null) ? `Lv${r.raid_level} ` : '';
+        return `${lv}${name} ${t} 編成${Number(r.loadout_slot) === 2 ? '②' : '①'}`;
     }
 
     /**
@@ -189,8 +239,13 @@
      * @param {Object} withPlan それに候補を足して解いたプラン
      * @param {Object=} diffDomain planDiffDomain (割当変更人数の算出に使う)
      */
-    function approvalImpact(basePlan, withPlan, diffDomain) {
+    function approvalImpact(basePlan, withPlan, diffDomain, candidateId = null) {
         if (!basePlan || !withPlan) return null;
+        // ★ 候補そのものが置けなかったら、それが最初の警告で、承認は止める (ユーザー決定 C の置き換え)。
+        //   「10時にはそのボスがいない見込み」は予測なので自動では何もしないが、承認の時点では止めてよい
+        const cand = (candidateId != null && Array.isArray(withPlan.unmetReservations))
+            ? withPlan.unmetReservations.find(u => String(u.reservationId) === String(candidateId)) || null
+            : null;
         const clearBefore = Number(basePlan.fullyClearedThrough) || 0;
         const clearAfter = Number(withPlan.fullyClearedThrough) || 0;
         const unusedBefore = Number(basePlan.unusedAttacks) || 0;
@@ -205,6 +260,7 @@
         } catch { movedCount = null; }
         // 承認を鈍らせる条件 (押せなくはしない — 運営が例外を通せる余地は残す)
         const warnings = [];
+        if (cand) warnings.push(`この予約は置けません: ${unmetText(cand)}`);
         if (clearAfter < clearBefore) warnings.push(`Lv${clearBefore} 完全攻略の見込みが消えます`);
         if (unusedAfter > unusedBefore) warnings.push(`未消化の凸が ${unusedBefore} → ${unusedAfter} に増えます`);
         if (risk(withPlan) > risk(basePlan)) warnings.push('時刻を確約できない凸が増えます');
@@ -215,7 +271,9 @@
             creditedDiffB: Math.round((creditedAfter - creditedBefore) * 1000) / 1000,
             movedCount,
             warnings,
-            blocking: clearAfter < clearBefore,   // 踏破の見込みが消えるのが一番重い
+            blocking: !!cand || clearAfter < clearBefore,   // 置けない / 踏破の見込みが消える
+            cannotPlace: !!cand,
+            cannotPlaceText: cand ? unmetText(cand) : '',
         };
     }
 
@@ -234,6 +292,7 @@
         if (!row) return { ok: false, reason: 'no_row' };
         const level = Number(row.level), bossNumber = Number(row.bossNumber);
         const loadoutSlot = Number(row.loadoutSlot) || 1;
+        // 行のレベルは形式だけ見る (壊れた行を弾く)。予約には**載せない** — レベルは本人が選ばない
         if (!Number.isInteger(level) || level < 1 || level > 4) return { ok: false, reason: 'bad_level' };
         if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) return { ok: false, reason: 'bad_boss' };
         if (loadoutSlot !== 1 && loadoutSlot !== 2) return { ok: false, reason: 'bad_slot' };
@@ -249,7 +308,7 @@
         return {
             ok: true,
             draft: {
-                raidLevel: level, bossNumber, loadoutSlot,
+                raidLevel: null, bossNumber, loadoutSlot,
                 flex, timeSlot,
                 // ★ 承認時点で固定する写し。あとから模擬を編集しても動かさない
                 characters: team,
@@ -261,15 +320,14 @@
 
     /**
      * その割当に対応する「生きている予約」を探す。
-     * ★ 突き合わせは 誰が・レベル・ボス・編成枠 の4つ。時刻は含めない —
-     *   時刻だけ違う予約を「別物」にすると、同じ枠に二重に申請できてしまう
-     *   (DB の部分一意索引も同じ4つで張ってある)
+     * ★ 突き合わせは 誰が・ボス・編成枠 の3つ (2026-09-08)。時刻もレベルも含めない —
+     *   同じカード (編成) は1日1回しか使えないので、時刻やレベルだけ違う予約は「別物」ではない。
+     *   別物にすると同じ枠に二重に申請できてしまう (DB の部分一意索引 uq_plan_reservations_active_card も同じ3つ)
      */
-    function findActiveFor(rows, { playerId, level, bossNumber, loadoutSlot }) {
+    function findActiveFor(rows, { playerId, bossNumber, loadoutSlot }) {
         const list = Array.isArray(rows) ? rows : [];
         return list.find(r => r && isActive(r)
             && String(r.player_id) === String(playerId)
-            && Number(r.raid_level) === Number(level)
             && Number(r.boss_number) === Number(bossNumber)
             && Number(r.loadout_slot) === Number(loadoutSlot)) || null;
     }
@@ -278,8 +336,8 @@
      * 申請してよいか。残凸を超える申請は DB のトリガーが弾くが、
      * 押せるボタンを出しておいて弾かれるのは体験が悪いので画面側でも見る
      */
-    function canRequest(rows, { playerId, level, bossNumber, loadoutSlot, doneAttacks }) {
-        if (findActiveFor(rows, { playerId, level, bossNumber, loadoutSlot })) {
+    function canRequest(rows, { playerId, bossNumber, loadoutSlot, doneAttacks }) {
+        if (findActiveFor(rows, { playerId, bossNumber, loadoutSlot })) {
             return { ok: false, reason: 'already', label: '申請済み' };
         }
         const left = capacityLeft(rows, playerId, doneAttacks);
@@ -299,8 +357,9 @@
             && isFixed(r)   // approved / 承認済み起点の cancel_requested (取り消し希望中に本人が凸したら消し込む)
             && String(r.player_id) === String(playerId)
             && Number(r.boss_number) === Number(bossNumber)
-            // レベルは進行とずれることがあるので、指定が無ければ見ない
-            && (level == null || Number(r.raid_level) === Number(level)));
+            // レベルは進行とずれることがあるので、指定が無ければ見ない。
+            // 予約側がレベルを持たない (メンバー発) ときも見ない
+            && (level == null || r.raid_level == null || Number(r.raid_level) === Number(level)));
         if (cand.length === 0) return { id: null, reason: 'none' };
         if (cand.length === 1) return { id: cand[0].id, reason: 'one' };
         // 編成で絞る (順不同で一致するものだけ)
@@ -317,8 +376,10 @@
      * 「自分から申請する」フォームの入力を、予約の申請内容に変換する (モック②)。
      * ★ 画面はチップの選択状態しか持たない。何が足りないかの判定はここに集める —
      *   画面側に散らすと「押せるのに弾かれる」「押せないのに理由が出ない」が起きる
-     * @param {{boss:object|null, level:number|null, timeSlot:string|null, flex:boolean,
-     *          loadout:{slot:number,characters:string[],dmgB:number}|null, currentLevel:number}} f
+     * ★ レベルは聞かない (2026-09-08)。ボスは次のレベルにもいるので「倒れている」も止めない —
+     *   いまのレベルで倒れていても、時刻によっては次のレベルのそのボスに置ける
+     * @param {{boss:object|null, timeSlot:string|null, flex:boolean,
+     *          loadout:{slot:number,characters:string[],dmgB:number}|null}} f
      * @returns {{ok:boolean, missing:string[], draft?:object, note?:string}}
      */
     function buildRequestDraft(f = {}) {
@@ -326,9 +387,6 @@
         const boss = f.boss || null;
         const bossNumber = Number(boss && boss.boss_number);
         if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) missing.push('boss');
-        else if (Number(boss.remaining_hp_raw) <= 0) missing.push('boss_defeated');
-        const level = Number(f.level);
-        if (!Number.isInteger(level) || level < 1 || level > 4) missing.push('level');
         const flex = !!f.flex;
         const timeSlot = flex ? null : (f.timeSlot || null);
         if (!flex && !/^h(0[0-9]|1[0-9]|2[0-3])$/.test(String(timeSlot || ''))) missing.push('time');
@@ -336,13 +394,13 @@
         const slot = Number(lo && lo.slot);
         if (!lo || (slot !== 1 && slot !== 2) || !(Number(lo.dmgB) > 0)) missing.push('loadout');
         if (missing.length) return { ok: false, missing };
-        const cur = Number(f.currentLevel) || 0;
-        // 先のレベルは申請できる (「先に出しておける」のが目的)。ただし本人に分かるように注記する
-        const note = (cur && level > cur) ? `Lv${level} はまだ開いていません。開くまでは予定として扱われます。` : '';
+        // いまのレベルでそのボスが倒れていれば、次のレベルのそのボスに置かれることを本人に伝える
+        const note = (boss && Number(boss.remaining_hp_raw) <= 0)
+            ? 'このボスはいまのレベルでは倒れています。約束の時刻に次のレベルで出てきていれば、そこに置かれます。' : '';
         return {
             ok: true, missing: [], note,
             draft: {
-                raidLevel: level, bossNumber, loadoutSlot: slot,
+                raidLevel: null, bossNumber, loadoutSlot: slot,
                 flex, timeSlot,
                 characters: Array.isArray(lo.characters) ? lo.characters.filter(Boolean) : [],
                 expectedDamageB: Number(lo.dmgB),
@@ -351,8 +409,117 @@
         };
     }
 
+    // ===== 本人のホーム = 3枠 (2026-09-08 ユーザーのイメージ) ==================
+    // 「予約したカードは固定で置かれ、予約しなかった枠は運営の算出が埋め、埋まらなかった枠には
+    //  なぜ選ばれなかったかが日本語で書いてある」を1つの純関数で組み立てる。
+    // 画面は並べるだけ。ここで組まないと、ヒーローと「わたしの凸」で違う枠が出る。
+
+    /** 配信プランから本人の行を時系列で取り出す (画面の _myPlanRows と同じ規約) */
+    function planRowsOf(plan, viewerId, doneCounts) {
+        const mine = [];
+        (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv => {
+            (Array.isArray(lv.bosses) ? lv.bosses : []).forEach(b => {
+                (Array.isArray(b.attacks) ? b.attacks : []).forEach(a => {
+                    if (String(a.memberId) !== String(viewerId)) return;
+                    mine.push({ ...a, level: Number(lv.level) || 1, bossNumber: Number(b.bossNumber),
+                                bossName: b.name, attribute: b.attribute, weakness: b.weakness });
+                });
+            });
+        });
+        mine.sort((a, b) => ((a.hourIdx ?? 99) - (b.hourIdx ?? 99)));
+        const remain = new Map(doneCounts || []);
+        mine.forEach(a => {
+            const key = `${a.level}:${Number(a.bossNumber)}`;
+            const rem = remain.get(key) || 0;
+            a.done = rem > 0;
+            if (a.done) remain.set(key, rem - 1);
+        });
+        return mine;
+    }
+
+    /**
+     * @param {Object} o
+     * @param {Object|null} o.plan 配信中のプラン (無ければ null)
+     * @param {*} o.viewerId
+     * @param {Object[]} o.reservations 本人の予約 (plan_reservations の行)
+     * @param {Map=} o.doneCounts 配信後に報告した「level:boss」→件数
+     * @param {number=} o.todayAttacks 当日の実凸総数
+     * @returns {{slots:Object[], stale:boolean, fixedCount:number}}
+     *   slot.kind = 'fixed' (予約で固定) | 'plan' (配信の割当) | 'done' (プラン外の実凸) | 'empty' (理由つき)
+     *   stale = 配信が予約より古い (固定した予約が配信に入っていない) → 「運営が組み直し中」を出す
+     */
+    function homeSlots({ plan, viewerId, reservations, doneCounts, todayAttacks } = {}) {
+        const fixed = (Array.isArray(reservations) ? reservations : []).filter(isFixed)
+            .slice().sort((a, b) => {
+                const ta = a.time_mode === 'flex' ? 'zz' : String(a.time_slot || 'zz');
+                const tb = b.time_mode === 'flex' ? 'zz' : String(b.time_slot || 'zz');
+                return ta < tb ? -1 : ta > tb ? 1 : (Number(a.id) - Number(b.id));
+            });
+        const rows = plan ? planRowsOf(plan, viewerId, doneCounts) : [];
+        const usedRow = new Set();
+        const slots = [];
+        let stale = false;
+        // ① 固定した予約。配信に同じカードが入っていればその行を「予約の時刻」で出す
+        for (const r of fixed) {
+            const idx = rows.findIndex((a, i) => !usedRow.has(i) && (
+                (a.reservationId != null && String(a.reservationId) === String(r.id))
+                || (Number(a.bossNumber) === Number(r.boss_number) && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot))));
+            const a = idx >= 0 ? rows[idx] : null;
+            if (a) usedRow.add(idx); else if (plan) stale = true;   // 配信がこの予約を知らない
+            slots.push({
+                kind: 'fixed', reservationId: r.id, status: r.status,
+                bossNumber: Number(r.boss_number), loadoutSlot: Number(r.loadout_slot) || 1,
+                team: Array.isArray(r.characters_snapshot) ? r.characters_snapshot.filter(Boolean) : (a && a.team) || [],
+                dmgB: Number(r.expected_damage_b) || (a ? Number(a.dmgB) || 0 : 0),
+                flex: r.time_mode === 'flex', timeSlot: r.time_mode === 'flex' ? null : (r.time_slot || null),
+                level: a ? a.level : null, inPlan: !!a, done: !!(a && a.done),
+                bossName: a ? a.bossName : null, weakness: a ? a.weakness : null, attribute: a ? a.attribute : null,
+                approvedBy: r.approved_by || null,
+            });
+        }
+        // ② 配信の割当 (予約と重ならないもの)。3枠を超える分は配信が古い証拠 = 出さない
+        rows.forEach((a, i) => {
+            if (usedRow.has(i)) return;
+            if (slots.length >= 3) { stale = true; return; }
+            slots.push({ kind: 'plan', ...a, loadoutSlot: Number(a.loadoutSlot) || 1, level: a.level, inPlan: true });
+        });
+        // ③ プラン外の実凸 (配信に無いボスへ凸した分) は枠を消費する
+        const doneInRows = slots.filter(s => s.done).length;
+        const extraDone = Math.max(0, (Number(todayAttacks) || 0) - doneInRows);
+        for (let i = 0; i < extraDone && slots.length < 3; i++) slots.push({ kind: 'done' });
+        // ④ 空き枠 = 理由つき
+        const mine = Array.isArray(plan && plan.unassigned)
+            ? plan.unassigned.find(u => String(u.memberId) === String(viewerId)) || null : null;
+        while (slots.length < 3) {
+            const reason = !plan ? 'no_plan' : (mine ? mine.reason : 'not_needed');
+            slots.push({ kind: 'empty', reason,
+                         text: reason === 'no_plan' ? '運営の算出待ちです' : (UNASSIGNED_JP[reason] || UNASSIGNED_JP.not_needed) });
+        }
+        return { slots: slots.slice(0, 3), stale, fixedCount: fixed.length };
+    }
+
+    /**
+     * 配信のあとに固定された (= 配信に入っていない) 予約。運営のホームで「配信後の予約があります」を出す根拠
+     * @returns {{count:number, items:Object[]}}
+     */
+    function pendingRepublish(rows, plan) {
+        const fixed = (Array.isArray(rows) ? rows : []).filter(isFixed);
+        if (fixed.length === 0) return { count: 0, items: [] };
+        const inPlan = new Set();
+        const cardKeys = new Set();
+        (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv =>
+            (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+                if (a.reservationId != null) inPlan.add(String(a.reservationId));
+                cardKeys.add(`${a.memberId}|${Number(b.bossNumber)}|${Number(a.loadoutSlot) || 1}`);
+            })));
+        const items = fixed.filter(r => !inPlan.has(String(r.id))
+            && !cardKeys.has(`${r.player_id}|${Number(r.boss_number)}|${Number(r.loadout_slot) || 1}`));
+        return { count: items.length, items };
+    }
+
     root.reservationsDomain = {
-        STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS,
+        STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP,
+        unmetText, planRowsOf, homeSlots, pendingRepublish,
         isActive, isApproved, isFixed, fingerprint, canTransition,
         toSolverConstraints,
         findInfeasible,
