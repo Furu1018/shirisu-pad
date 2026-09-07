@@ -17038,6 +17038,7 @@
                 }
                 if (seq !== _opsPlanSeq) return;
                 if (Array.isArray(reservations) && typeof _resv !== 'undefined') {
+                    _resv.gen++;                 // 進行中の一覧取得が後から古い応答で上書きしないように
                     _resv.rows = reservations;   // 運営カードの表示も同じ鮮度に揃える
                     if (typeof _paintOpsReservations === 'function') _paintOpsReservations();
                 }
@@ -17055,6 +17056,9 @@
             // 算出元シーズンを焼き込む: これが無いと「旧シーズンで算出 → シーズン切替 → 配信」で
             // 配信時の照合が2回とも新シーズンになって通過し、旧盤面のプランを配信できてしまう
             plan.seasonId = snapshot?.season?.id ?? null;
+            // ★ 算出時の予約集合の指紋。配信直前に取り直して比べ、違えば配信を止める (Codex指摘)
+            plan.reservationFingerprint = (window.reservationsDomain && Array.isArray(reservations))
+                ? window.reservationsDomain.fingerprint(reservations) : null;
             // ★ L1: 「どの配信を約束として尊重したか」を焼き込む (Codex指摘 2026-09-07)。
             //   運営3人が同じ配信 P0 を基準に組んでいるとき、A が P1 を配信したあとに
             //   B が P0 基準のまま P2 を配信すると、B は P1 の約束を知らないまま壊してしまう。
@@ -17654,6 +17658,23 @@
                         + 'そのまま配信すると相手が出した割当を壊してしまいます。\n\n'
                         + 'プランを算出し直してから配信してください。');
                     return;
+                }
+                // ★ 予約が算出のあとに変わっていたら配信させない (Codex指摘 2026-09-07)。
+                //   別端末で承認・解除が入ると、このプランはその予約を知らない。
+                //   そのまま出すと、固定したはずの凸が動く / 外れたはずの凸が残る
+                if (_opsLastPlan?.reservationFingerprint != null && window.reservationsDomain
+                    && typeof window.supabaseLoadReservations === 'function') {
+                    const nowRows = await window.supabaseLoadReservations(seasonId);
+                    if (Array.isArray(nowRows)) {
+                        const nowFp = window.reservationsDomain.fingerprint(nowRows);
+                        if (nowFp !== _opsLastPlan.reservationFingerprint) {
+                            alert('⚠️ 算出のあとに予約が変わりました (承認・解除・取り消し希望など)。\n\n'
+                                + 'いま表示しているプランはその予約を知らないため、そのまま配信すると'
+                                + '固定したはずの凸が動く/外れたはずの凸が残る、が起きます。\n\n'
+                                + 'プランを算出し直してから配信してください。');
+                            return;
+                        }
+                    }
                 }
             } catch (e) { console.warn('[publish] 差分の取得skip (影響の提示なしで続行):', e?.message || e); }
             const diffMsg = publishDiff && window.planDiffDomain
@@ -22098,7 +22119,7 @@
                 if (el.id === 'drawer' && typeof closeDrawer === 'function') closeDrawer();
                 else el.classList.remove('open');
             };
-            const onClassChange = () => {
+            const onClassChange = (records) => {
                 // ★ 同じバッチ (同期処理の中) で「閉じる」と「開く」が来たら**相殺する** (2026-09-07 実機で発覚)。
                 //   閉じるで history.back() を呼んだ直後に、開くで pushState を呼ぶと、WebKit では
                 //   保留中の戻り操作が pushState を飲み込むことがある。すると armed は 1 なのに
@@ -22106,7 +22127,16 @@
                 //   モーダル → 別のモーダル (編成編集 → 申請シート) の切替がこれに当たる。
                 //   相殺 = 積んである state をそのまま新しいモーダルに使い回す (back も push もしない)
                 const opened = [], closed = [];
-                document.querySelectorAll(SELECTOR).forEach(el => {
+                // ★ 走査順は DOM 順でなく**操作の順** (MutationRecord の順) にする (Codex指摘)。
+                //   同じバッチで2つ開いたとき、DOM 順で積むと「戻る」が視覚的な最上位でない方を閉じる
+                const seen = new Set();
+                const targets = [];
+                (Array.isArray(records) ? records : []).forEach(rec => {
+                    const el = rec && rec.target;
+                    if (el && !seen.has(el)) { seen.add(el); targets.push(el); }
+                });
+                document.querySelectorAll(SELECTOR).forEach(el => { if (!seen.has(el)) { seen.add(el); targets.push(el); } });
+                targets.forEach(el => {
                     const open = el.classList.contains('open');
                     const idx = stack.indexOf(el);
                     if (open && idx < 0) opened.push(el);

@@ -3438,12 +3438,39 @@ console.log('\nreservationsDomain (凸の予約):');
         expected_damage_b: o.dmg ?? 13.1, status: o.status ?? 'approved',
     });
 
-    test('予約: ソルバーの拘束になるのは approved だけ', () => {
+    test('★ 予約: 取り消し希望 (cancel_requested) の間も固定は外れない (解除には運営の承認が要る)', () => {
+        const rows = [
+            res({ id: 1, pid: 'p1', status: 'approved' }),
+            res({ id: 2, pid: 'p2', status: 'cancel_requested' }),
+            res({ id: 3, pid: 'p3', status: 'requested' }),
+            res({ id: 4, pid: 'p4', status: 'released' }),
+        ];
+        assert.deepEqual(rv.toSolverConstraints(rows).map(c => c.reservationId).sort(), [1, 2],
+            '取り消し希望を出しただけで固定が外れている');
+        assert.equal(rv.isFixed(rows[1]), true);
+        assert.equal(rv.isFixed(rows[2]), false);
+    });
+
+    test('★ 予約: 指紋は拘束に効く行だけで作る (申請が増えても変わらない / 承認・解除で変わる)', () => {
+        const base = [res({ id: 1, pid: 'p1', status: 'approved' }), res({ id: 3, pid: 'p3', status: 'requested' })];
+        const fp = rv.fingerprint(base);
+        assert.equal(fp, '1:approved');
+        assert.equal(rv.fingerprint([...base, res({ id: 9, pid: 'p9', status: 'requested' })]), fp, '申請が増えただけで変わっている');
+        assert.notEqual(rv.fingerprint([res({ id: 1, pid: 'p1', status: 'approved' }), res({ id: 3, pid: 'p3', status: 'approved' })]), fp, '承認で変わらない');
+        assert.notEqual(rv.fingerprint([res({ id: 1, pid: 'p1', status: 'released' })]), fp, '解除で変わらない');
+        assert.notEqual(rv.fingerprint([res({ id: 1, pid: 'p1', status: 'cancel_requested' })]), fp, '取り消し希望で変わらない');
+        // 順序に依存しない
+        assert.equal(rv.fingerprint([res({ id: 2, pid: 'a', status: 'approved' }), res({ id: 1, pid: 'b', status: 'approved' })]),
+            rv.fingerprint([res({ id: 1, pid: 'b', status: 'approved' }), res({ id: 2, pid: 'a', status: 'approved' })]));
+        assert.equal(rv.fingerprint(null), '');
+    });
+
+    test('予約: ソルバーの拘束になるのは approved / cancel_requested だけ (requested・終端は含めない)', () => {
         const rows = ['requested', 'approved', 'cancel_requested', 'fulfilled', 'released', 'rejected']
             .map((s, i) => res({ id: i + 1, status: s, boss: i + 1 }));
         const c = rv.toSolverConstraints(rows);
-        assert.equal(c.length, 1, `approved 以外が混ざった: ${JSON.stringify(c.map(x => x.reservationId))}`);
-        assert.equal(c[0].reservationId, 2);
+        // ★ approved と cancel_requested が拘束 (取り消し希望を出しただけでは固定を外さない — ユーザー決定)
+        assert.deepEqual(c.map(x => x.reservationId).sort(), [2, 3], `拘束の集合が違う: ${JSON.stringify(c.map(x => x.reservationId))}`);
     });
 
     test('予約: 拘束は安定ソートされる (DB の返却順に依存しない)', () => {
@@ -3714,15 +3741,24 @@ console.log('\nreservationsDomain (凸の予約):');
             '取り直した予約を渡していない');
         // 取れなければ止める (予約を無視したプランを配信すると約束が破れる)
         assert.ok(/予約の取得に失敗したため算出を止めました/.test(run), '取得失敗でも予約なしで組んでいる');
+        // _resv.rows を書き換えるときは世代を進める (進行中の一覧取得の古い応答で上書きされない)
+        assert.ok(/_resv\.gen\+\+;[^\n]*\n\s*_resv\.rows = reservations;/.test(run), '世代を進めずに _resv.rows を書き換えている');
+        // ★ 算出時の予約の指紋をプランに焼き込み、配信直前に取り直して照合する
+        assert.ok(/plan\.reservationFingerprint = \(window\.reservationsDomain && Array\.isArray\(reservations\)\)/.test(run), '指紋を焼き込んでいない');
+        assert.ok(/if \(nowFp !== _opsLastPlan\.reservationFingerprint\) \{/.test(html), '配信直前に予約の指紋を照合していない');
+        assert.ok(/算出のあとに予約が変わりました/.test(html));
         assert.ok(!/_resv\.rows\)\s*\}, snapshot\)/.test(run), '画面の状態 (_resv.rows) をそのまま渡している');
     });
 
     test('★ モーダル→モーダルの切替で history.back() と pushState を同じバッチに出さない (ページ外へ出る)', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
-        const fn = html.match(/const onClassChange = \(\) => \{[\s\S]{0,2600}/)?.[0] || '';
+        const fn = html.match(/const onClassChange = \(records\) => \{[\s\S]{0,3400}/)?.[0] || '';
         assert.ok(fn, 'history 連携が見つからない');
         // 閉じると開くを集めてから相殺する
         assert.ok(/const opened = \[\], closed = \[\];/.test(fn), '閉じる・開くを集めていない');
+        // ★ 走査順は DOM 順でなく操作の順 (MutationRecord の順)
+        assert.ok(/const onClassChange = \(records\) => \{/.test(html), 'MutationRecord を受け取っていない');
+        assert.ok(/\(Array\.isArray\(records\) \? records : \[\]\)\.forEach\(rec => \{/.test(fn), 'レコードの順で走査していない');
         assert.ok(/while \(opened\.length && closed\.length && !closingFromPop && armed > 0\) \{/.test(fn), '相殺していない');
         assert.ok(/closed\.shift\(\);[\s\S]{0,80}stack\.push\(opened\.shift\(\)\);/.test(fn), '相殺で state を引き継いでいない');
         // 相殺のあとに残った分だけ back / push する

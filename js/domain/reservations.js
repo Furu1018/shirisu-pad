@@ -64,10 +64,29 @@
      * @param {Object[]} rows plan_reservations の行
      * @returns {Object[]} { reservationId, memberId, level, bossNumber, loadoutSlot, timeSlot, flex, team, expectedB }
      */
+    // ソルバーを拘束する状態 (= 運営が承認済みで、まだ解除されていない)
+    function isFixed(r) { return !!r && (r.status === 'approved' || r.status === 'cancel_requested'); }
+
+    /**
+     * 算出時の予約集合の指紋。配信直前に取り直した集合と比べ、違えば配信を止める
+     * (別端末で承認・解除が入ったプランをそのまま出すと約束が破れる — Codex指摘 2026-09-07)。
+     * 拘束に効く行 (isFixed) だけを見る。申請 (requested) が増えてもプランは変わらないので含めない
+     */
+    function fingerprint(rows) {
+        return (Array.isArray(rows) ? rows : [])
+            .filter(isFixed)
+            .map(r => `${r.id}:${r.status}`)
+            .sort()
+            .join('|');
+    }
+
     function toSolverConstraints(rows) {
         const out = [];
         (Array.isArray(rows) ? rows : []).forEach(r => {
-            if (!r || r.status !== 'approved') return;
+            // ★ 固定するのは approved と **cancel_requested** (2026-09-07)。
+            //   取り消しは「希望を出すだけで、解除には運営の承認が要る」(ユーザー決定)。
+            //   希望を出した瞬間に固定が外れると、運営が判断する前にプランが動いてしまう
+            if (!r || !isFixed(r)) return;
             const level = Number(r.raid_level);
             const bossNumber = Number(r.boss_number);
             const loadoutSlot = Number(r.loadout_slot);
@@ -324,7 +343,7 @@
 
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS,
-        isActive, isApproved, canTransition,
+        isActive, isApproved, isFixed, fingerprint, canTransition,
         toSolverConstraints,
         findInfeasible,
         capacityLeft,
