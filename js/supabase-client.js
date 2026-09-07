@@ -1659,6 +1659,9 @@ const _BACKUP_TABLES = [
     'nikke_characters', 'published_plans', 'plan_acks',
     'finish_requests', 'raid_event_notices', 'activity_log',
     'availability_confirmations',
+    // 2026-09-07 追加 (L2 予約層): 予約本体と、その状態遷移の履歴。
+    // attacks.reservation_id が plan_reservations を参照するので、復元順は attacks より前
+    'plan_reservations', 'plan_reservation_events',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -1693,6 +1696,10 @@ const _RESTORE_TABLES = [
     ['bosses', 'season_id', 'num'],
     ['player_damages', 'player_id', 'num'],
     ['player_sync_levels', 'season_id', 'num'],
+    // ★ attacks より**前**に戻すこと — attacks.reservation_id が参照している。
+    //   逆にすると復元時に外部キー違反で attacks が入らない
+    ['plan_reservations', 'id', 'num'],
+    ['plan_reservation_events', 'id', 'num'],
     ['attacks', 'id', 'num'],
     ['day_offs', 'player_id', 'num'],
     ['availability', 'player_id', 'num'],

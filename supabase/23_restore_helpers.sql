@@ -45,6 +45,14 @@ BEGIN
         PERFORM setval(pg_get_serial_sequence('activity_log', 'id'),
                        COALESCE((SELECT MAX(id) FROM activity_log), 0) + 1, false);
     END IF;
+    IF to_regclass('public.plan_reservations') IS NOT NULL THEN
+        PERFORM setval(pg_get_serial_sequence('plan_reservations', 'id'),
+                       COALESCE((SELECT MAX(id) FROM plan_reservations), 0) + 1, false);
+    END IF;
+    IF to_regclass('public.plan_reservation_events') IS NOT NULL THEN
+        PERFORM setval(pg_get_serial_sequence('plan_reservation_events', 'id'),
+                       COALESCE((SELECT MAX(id) FROM plan_reservation_events), 0) + 1, false);
+    END IF;
     -- raid_event_notices は複合主キー (season_id, kind, ref) で serial を持たないため対象外
 END;
 $$;

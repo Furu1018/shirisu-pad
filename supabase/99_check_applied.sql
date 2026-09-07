@@ -215,6 +215,17 @@ SELECT * FROM (
             AND column_name IN ('frozen_at', 'frozen_by')) = 2,
         'published_plans.frozen_at / frozen_by (配信の「組み直し中」。未適用だと凍結操作がエラーで止まり適用を案内する — 表示は常に配信中に劣化)'
 
+    UNION ALL SELECT '39_plan_reservations',
+        (to_regclass('public.plan_reservations') IS NOT NULL
+         AND to_regclass('public.plan_reservation_events') IS NOT NULL
+         AND EXISTS (SELECT 1 FROM col WHERE table_name = 'attacks' AND column_name = 'reservation_id')
+         AND to_regproc('public.reservation_set_status(bigint,text,text,text,text,bigint)') IS NOT NULL),
+        'plan_reservations / plan_reservation_events / attacks.reservation_id / reservation_set_status() (凸の予約。未適用だと予約の作成・承認がエラーで止まり適用を案内する)'
+
+    UNION ALL SELECT '40_attack_with_reservation_rpc',
+        to_regproc('public.report_attack(bigint,bigint,date,integer,text,bigint,integer,jsonb,bigint,boolean,text)') IS NOT NULL,
+        'report_attack() (凸報告の採番・insert・残HP減算・予約の消し込みを1トランザクションで。未適用だと従来の3リクエスト方式に静かに劣化する)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'
