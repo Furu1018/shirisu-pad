@@ -245,6 +245,7 @@ node tests/solver-fingerprint.mjs <file> # 保存した指紋と突き合わせ�
 node tests/bench-stability.mjs           # L1 安定化の効果と代償 (BENCH_N で件数指定・既定150)
 node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
 node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の確認 の実行テスト
+node tests/mock-panels.mjs    # 模擬タブの提出カード (renderMyDamagePanels) の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
@@ -254,6 +255,13 @@ node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の
 **値の保持先は従来どおり `#myTeamEditFields` の5つの input** で、ピッカーはそこへ書くだけ —
 この契約が崩れると保存・OCR・人気編成の適用がまとめて壊れるので、テストで固定してある。
 枠のバースト絞り込み・上位10体の折りたたみ・5人そろったら自動で畳む、の状態遷移も見る。
+
+`mock-panels.mjs` は模擬タブの提出カードを切り出して実行する。
+**2026-09-07 に本番で「5枚のカードが1枚も出ない」障害**を起こしたため追加した —
+測定ボスレベルを廃止したとき (8a5265f) に `lvTitle` の定義だけ消え、テンプレート内の参照が残った。
+カード生成の map の中で ReferenceError になるので**全滅**するが、単体テスト333件は1つも落ちなかった。
+★ **テンプレートリテラルの中の未定義参照は実行しないと出ない**。
+画面を組み立てる関数を大きく触ったら、実行テストがあるか確認すること。
 
 `avail-save.mjs` は保存キュー (`_availEnqueue`/`_availDoSave`/`handleConfirmAvailability`) を
 切り出し、**保存を止められるスタブ**で実際に走らせる。ソース文字列の検査では
