@@ -7182,13 +7182,21 @@
             if (hits.length === 0) return;
             const released = [];
             for (const h of hits) {
-                try {
-                    await window.supabaseSetReservationStatus(h.id, 'released',
-                        { expectFrom: 'approved', reason: h.reason, actor: 'system' });
-                    released.push(h);
-                } catch (e) {
-                    // 別の端末が先に外した (状態が変わっています) → 記録も通知もその端末に任せる
-                    console.warn('[予約] 自動解除をスキップ:', h.id, e?.message || e);
+                // ★ 一時的な失敗 (通信断) は1回だけ取り直す (Codex指摘 2026-09-07)。
+                //   _raidSeen は検知の時点で進んでいるので、ここで諦めると同じ撃破は二度と差分に来ない。
+                //   「状態が変わっています」(別端末が先に外した) は取り直さない
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        await window.supabaseSetReservationStatus(h.id, 'released',
+                            { expectFrom: 'approved', reason: h.reason, actor: 'system' });
+                        released.push(h);
+                        break;
+                    } catch (e) {
+                        const msg = String(e?.message || e);
+                        if (/別の運営が操作しました|状態が変わっています|もう変更できません/.test(msg)) break;   // 競合 = 相手に任せる
+                        console.warn('[予約] 自動解除に失敗:', h.id, msg);
+                        if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+                    }
                 }
             }
             if (released.length === 0) return;
@@ -7210,7 +7218,12 @@
                     : `Lv${r.raid_level} が終わったため、${bn} ${when}の予約は外れました。新しいプランを確認してください。`;
                 try {
                     await window.sendPushNotification?.({ title, body, url: './?tab=mypage', tag: `resv-released-${h.id}`, playerIds: [r.player_id], requireInteraction: true });
-                } catch (e) { console.warn('[予約] 解除の通知に失敗:', e?.message || e); }
+                } catch (e) {
+                    // ★ 予約はもう外れている。届かなかったことを運営が見える形で残す (Codex指摘 2026-09-07)。
+                    //   本人の画面 (🔒引き受けた凸) には理由つきで出るので、運営が口頭で補える
+                    console.warn('[予約] 解除の通知に失敗:', e?.message || e);
+                    try { await window.supabaseLogActivityStrict?.('reservation_release', `⚠ ${nameOf(r)} への解除通知が届きませんでした (${bn} Lv${r.raid_level})。口頭で伝えてください`, { actorName: 'system', playerId: r.player_id }); } catch { /* noop */ }
+                }
             }
             // 予約が変わるとプランの前提が変わる
             opsStore.invalidate();
@@ -8283,7 +8296,7 @@
                 ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
                 [slots, dmgs, mine, atks] = await Promise.all([
-                    window.supabaseLoadAvailability?.(id.id).catch(() => []) ?? [],
+                    window.supabaseLoadAvailability?.(id.id).catch(() => null) ?? null,   // null = 取得失敗
                     window.supabaseLoadPlayerDamages?.(id.id).catch(() => []) ?? [],
                     window.supabaseLoadMyReservations?.(ctx.season.id, id.id).catch(() => null) ?? null,
                     window.supabaseLoadMyAttacks?.(id.id, ctx.season.id, ctx.season.hard_date).catch(() => []) ?? [],
@@ -8300,6 +8313,7 @@
             }
             _resvReq.ctx = ctx;
             _resvReq.playerId = id.id;   // 開いた本人。送信時に照合する (途中で切り替えたら別名義になる)
+            _resvReq.slotsFailed = !Array.isArray(slots);   // 取得失敗を「未登録」と混同しない
             _resvReq.slots = Array.isArray(slots) ? slots : [];
             _resvReq.loadouts = (dmgs || []).map(d => ({
                 attribute: d.attribute, slot: Number(d.slot) || 1,
@@ -8375,7 +8389,9 @@
             const timeChips = HOUR_ORDER.filter(h => slotSet.has(_hourKey(h))).map(h =>
                 chip(!st.flex && st.time === _hourKey(h), `_resvReqPick('time', '${_hourKey(h)}')`, (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`));
             timeChips.push(chip(st.flex, `_resvReqPick('flex')`, '⏳ 時刻は約束しない'));
-            const timeNote = st.slots.length === 0
+            const timeNote = st.slotsFailed
+                ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#C42A30;line-height:1.55;">戦闘可能時間を取得できませんでした。シートを開き直してください。</p>'
+                : st.slots.length === 0
                 ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#B45309;line-height:1.55;">戦闘可能時間が未登録です。ホームで時間帯を登録すると選べます。</p>'
                 : '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.55;">戦闘可能時間に登録している中から選べます。</p>';
             // どの編成で (選んだボスの弱点属性の提出から)
@@ -8418,6 +8434,7 @@
             const rv = window.reservationsDomain;
             const st = _resvReq;
             if (!rv || !st.ctx || st.busy) return;
+            const seq = st.seq;   // ★ 送信中に閉じて開き直された世代の画面を、この送信の完了処理で閉じない
             const me = getCurrentIdentity();
             if (!me?.id) return;
             // ★ 開いたあとにプレイヤーを切り替えると、別メンバーの登録時間帯・提出で申請してしまう
@@ -8434,10 +8451,26 @@
                 + (d.note ? `\n\n${d.note}` : '') + '\n\n運営が承認すると、この凸は固定されます。\n\n[OK] 申請する / [キャンセル] やめる')) return;
             st.busy = true;
             try {
+                // ★ 開いた時点の残凸・重複ではなく、**いま**の状態で見直す (Codex指摘 2026-09-07)。
+                //   他端末で申請や凸報告が入っていると、押せたのに DB で弾かれる = 理由が伝わらない
+                const [mineNow, atksNow] = await Promise.all([
+                    window.supabaseLoadMyReservations?.(st.ctx.season.id, me.id).catch(() => null) ?? null,
+                    window.supabaseLoadMyAttacks?.(me.id, st.ctx.season.id, st.ctx.season.hard_date).catch(() => null) ?? null,
+                ]);
+                if (seq !== st.seq) return;   // 送信中に閉じられた
+                if (Array.isArray(mineNow)) st.mine = mineNow;
+                if (Array.isArray(atksNow)) st.done = atksNow.length;
+                const chk = rv.canRequest(st.mine, { playerId: me.id, level: d.draft.raidLevel, bossNumber: d.draft.bossNumber, loadoutSlot: d.draft.loadoutSlot, doneAttacks: st.done });
+                if (!chk.ok) {
+                    _resvReqRender();
+                    alert(chk.reason === 'already' ? 'この内容の申請はもう出ています' : '残りの凸数を超えるため申請できません');
+                    return;
+                }
                 await window.supabaseCreateReservation({
                     seasonId: st.ctx.season.id, playerId: me.id,
                     ...d.draft, requestedBy: me.name || null,
                 });
+                if (seq !== st.seq) return;   // 完了前に閉じて別の世代が開いていたら、そちらは触らない
                 showNotification('🔒 申請しました (運営の承認待ちです)');
                 closeMyResvRequestModal();
                 renderMyReservations(me);
@@ -12198,6 +12231,16 @@
                     // 誰が気づいても送信は DB の一意制約で1回だけになる
                     _checkRaidEvents().catch(() => { /* noop */ });
                     window.supabaseLoadActiveSeasonWithBosses().then(r => {
+                        // ★ 予約の定期点検 (Codex指摘 2026-09-07): イベント差分を取り逃しても
+                        //   (一時的な失敗・他端末の検知) 取り残しが恒久化しないよう、運営端末は
+                        //   30秒ごとに「レベル通過」分だけ見直す。撃破分は bosses を渡さない —
+                        //   手動HP更新の途中で新レベルの予約を誤って外さないため。撃破の取り残しは
+                        //   次のレベル通過でまとめて外れる (締め凸依頼と同じ)
+                        if (_opsMode && r?.season?.id && typeof _releaseInfeasibleReservations === 'function') {
+                            _releaseInfeasibleReservations(r.season.id,
+                                { currentLevel: Number(r.season.current_level) || 1, bosses: [] }, '定期点検')
+                                .catch(() => { /* 次の周期で */ });
+                        }
                         // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
                         // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
                         if (r?.season && opsStore.patchBosses(r.season.id, r.bosses)) {

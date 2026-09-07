@@ -3482,6 +3482,9 @@ console.log('\nreservationsDomain (凸の予約):');
         ];
         const out = rv.findInfeasible(rows, { currentLevel: 2, bosses: [] });
         assert.deepEqual(out.map(h => [h.id, h.reason]), [[1, 'level_passed']]);
+        // ★ raid_level が無い行は外さない (Number(null) は 0 なので、放っておくと通過扱いになる)
+        const legacy = [{ ...res({ id: 9, pid: 'p9', lv: 1, boss: 1, status: 'approved' }), raid_level: null }];
+        assert.deepEqual(rv.findInfeasible(legacy, { currentLevel: 2, bosses: [] }), [], 'raid_level が無い旧行を外している');
         // bosses を渡せば撃破も見る。★ ただし「いまのレベル」の撃破だけ —
         //   B3 が Lv2 で倒れても、Lv3 の B3 の予約はまだ実行できる (次のレベルで復活する)
         const dead = rv.findInfeasible(rows, { currentLevel: 2, bosses: [{ boss_number: 3, remaining_hp_raw: 0 }] });
@@ -3703,6 +3706,14 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/if \(released\.length === 0\) return;/.test(fn), '外せた分だけ通知する形になっていない');
         assert.ok(/supabaseLogActivityStrict\?\.\('reservation_release'/.test(fn), '監査ログが無い');
         assert.ok(/playerIds: \[r\.player_id\]/.test(fn), '本人だけに送っていない');
+        // ★ 一時的な失敗は1回だけ取り直す。競合 (別端末が先に外した) は取り直さない
+        assert.ok(/for \(let attempt = 0; attempt < 2; attempt\+\+\)/.test(fn), '取り直しが無い');
+        assert.ok(/状態が変わっています\|もう変更できません\/\.test\(msg\)\) break;/.test(fn), '競合まで取り直している');
+        // Push が届かなかったことを運営が見える形で残す
+        assert.ok(/への解除通知が届きませんでした/.test(fn), 'Push 失敗を握り潰している');
+        // ★ 定期点検: 運営端末は30秒ごとにレベル通過分だけ見直す (bosses は渡さない)
+        assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _releaseInfeasibleReservations === 'function'\) \{\s*\n\s*_releaseInfeasibleReservations\(r\.season\.id,\s*\n\s*\{ currentLevel: Number\(r\.season\.current_level\) \|\| 1, bosses: \[\] \}, '定期点検'\)/.test(html),
+            '定期点検が無い、または bosses を渡している');
         assert.ok(/予約していたボスが倒れました/.test(fn));
         assert.ok(/新しいプランを確認してください/.test(fn), '「代わりの割当」への導線の文言が無い');
         // ★ _checkRaidEvents への接続。撃破はレベル開放と同時でないときだけ、
@@ -3821,11 +3832,20 @@ console.log('\nreservationsDomain (凸の予約):');
         const cancel = html.match(/async function handleRequestCancelReservation[\s\S]{0,1200}/)?.[0] || '';
         assert.ok(/String\(me0\.id\) !== String\(r\.player_id\)/.test(cancel), '取消の本人性を見ていない');
         // 申請シートは開いた本人の identity で作る (送信直前に取り直す)
-        const sheet = html.match(/async function handleResvReqSubmit[\s\S]{0,1600}/)?.[0] || '';
+        const sheet = html.match(/async function handleResvReqSubmit[\s\S]{0,3600}/)?.[0] || '';
         assert.ok(/const me = getCurrentIdentity\(\);\s*\n\s*if \(!me\?\.id\) return;/.test(sheet), '送信直前に本人を取り直していない');
         assert.ok(/playerId: me\.id/.test(sheet), '開いたときの本人ではなく送信時の本人で作ること');
         // ★ 開いた本人と送信時の本人が違えば送らない (別メンバーの時間帯・提出で申請してしまう)
         assert.ok(/String\(me\.id\) !== String\(st\.playerId\)/.test(sheet), '開いた本人との照合が無い');
+        // ★ 送信は世代を握り、閉じて開き直された画面を完了処理で閉じない
+        assert.ok(/const seq = st\.seq;/.test(sheet), '送信の世代を握っていない');
+        assert.ok((sheet.match(/if \(seq !== st\.seq\) return;/g) || []).length >= 2, '取得後と作成後の両方で世代を見ていない');
+        // ★ 送信直前に最新の予約・凸数で残凸と重複を見直す (押せたのに DB で弾かれる、を作らない)
+        assert.ok(/const \[mineNow, atksNow\] = await Promise\.all/.test(sheet), '送信直前に取り直していない');
+        assert.ok(/const chk = rv\.canRequest\(st\.mine, \{ playerId: me\.id/.test(sheet), '送信直前に canRequest していない');
+        // 戦闘可能時間の取得失敗を「未登録」と混同しない
+        assert.ok(/_resvReq\.slotsFailed = !Array\.isArray\(slots\);/.test(html));
+        assert.ok(/戦闘可能時間を取得できませんでした/.test(html));
     });
 
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {

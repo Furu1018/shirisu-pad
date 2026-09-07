@@ -113,7 +113,12 @@
         const out = [];
         (Array.isArray(rows) ? rows : []).forEach(r => {
             if (!isApproved(r)) return;
+            // ★ raid_level が無い行は判定しない (Codex指摘 2026-09-07)。Number(null) は 0 なので
+            //   何もしないと「Lv0 < 現在レベル」= 通過扱いで外してしまう。
+            //   DB (39) では NOT NULL だが、旧データや復元漏れに備えて明示的に除く
+            if (r.raid_level == null) return;
             const lv = Number(r.raid_level);
+            if (!Number.isInteger(lv) || lv < 1) return;
             // そのレベルを通過した = もうそのボスは出てこない
             if (Number.isInteger(lv) && lv < cur) { out.push({ id: r.id, reason: 'level_passed', row: r }); return; }
             // いまのレベルで対象ボスが倒れている
