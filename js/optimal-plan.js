@@ -696,10 +696,15 @@
                     });
                     // 採用したキャラを使用済セットへ
                     if (teamRegistered) team.forEach(ch => addUsedChar(pick.usedChars, ch));
-                    // 使用したロードアウトを除去 (同属性の別編成が残っていれば2凸目も提案可)
-                    const loIdx = pick.avail[t.b.weakness].indexOf(pickLo);
-                    if (loIdx >= 0) pick.avail[t.b.weakness].splice(loIdx, 1);
-                    if (pick.avail[t.b.weakness].length === 0) delete pick.avail[t.b.weakness];
+                    // 使用したロードアウトを除去 (同属性の別編成が残っていれば2凸目も提案可)。
+                    // ★ 配列が無いことがある — 予約を**承認時のスナップショット**で置く経路は、
+                    //   本人が現在その属性の編成を持っていなくても割り当てる (L2 / Codex指摘 2026-09-07)
+                    const loArr = pick.avail[t.b.weakness];
+                    if (loArr) {
+                        const loIdx = loArr.indexOf(pickLo);
+                        if (loIdx >= 0) loArr.splice(loIdx, 1);
+                        if (loArr.length === 0) delete pick.avail[t.b.weakness];
+                    }
                     pick.remainingAttacks--;
                     // 得意属性の消化管理: 必須を消化したら予約も1つ解放
                     // (自由枠の消費は remainingAttacks の減少で自然に反映される)
@@ -804,9 +809,16 @@
                     const t = targets.find(x => Number(x.b.boss_number) === Number(s.bossNumber));
                     if (!t || t.rem <= 0.0001) return;
                     const w = t.b.weakness;
-                    const list = m.avail[w];
-                    if (!list || list.length === 0) return;
-                    const cand = list.find(c => Number(c.slot) === Number(s.loadoutSlot));
+                    const list = m.avail[w] || [];
+                    const real = list.find(c => Number(c.slot) === Number(s.loadoutSlot)) || null;
+                    // ★ 承認時のスナップショットが正 (ユーザー決定 2026-09-07)。
+                    //   予約後に本人が編成を変えても、消しても、約束した編成とダメージで計画する。
+                    //   スナップショットを持たない旧データだけ、現在の編成に落ちる
+                    const hasSnap = Array.isArray(s.team) && s.team.length > 0 && Number(s.expectedB) > 0;
+                    const cand = hasSnap
+                        ? { dmg: Number(s.expectedB), team: s.team.slice(), slot: Number(s.loadoutSlot),
+                            level: null, levels: { '0': Number(s.expectedB) }, ord: 0, fromReservation: true }
+                        : real;
                     if (!cand) return;
                     const dmg = resolveDamage(cand);
                     if (dmg === null) return;
@@ -826,6 +838,14 @@
                         else slot = { idx: want, flex: false };
                     }
                     if (!slot) return;
+                    // ★ スナップショットで置くときは、現在の同じ枠の編成を手で外す。
+                    //   applyPick は渡した候補を avail から探して外すが、合成した候補は
+                    //   その配列に居ないので外れない → 同じ枠が別のボスにもう一度使われる
+                    if (hasSnap && real) {
+                        const i = list.indexOf(real);
+                        if (i >= 0) list.splice(i, 1);
+                        if (list.length === 0) delete m.avail[w];
+                    }
                     applyPick(t, {
                         pick: m, pickScore: 0, pickHour: slot.idx, pickFlex: slot.flex,
                         pickLo: cand, pickDmg: dmg, pickSlot: slot,
@@ -1079,6 +1099,12 @@
                     memberId: r.memberId, level, bossNumber, loadoutSlot,
                     flex: !!r.flex,
                     timeSlot: r.flex ? null : (r.timeSlot || null),
+                    // ★ 承認時のスナップショット。**捨ててはいけない** (Codex指摘 2026-09-07)。
+                    //   捨てて現在の模擬を見ると、予約後に本人が編成を変えたときに
+                    //   「約束と違う編成で計画される」「編成を消したら予約が実行不能になる」が起きる。
+                    //   ユーザー決定は「予約は守り、残り2凸を本人が調整する」
+                    team: Array.isArray(r.team) ? r.team.filter(Boolean) : [],
+                    expectedB: Number(r.expectedB) > 0 ? Number(r.expectedB) : 0,
                 });
             });
             const idKey = (v) => String(v);

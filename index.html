@@ -11510,6 +11510,15 @@
                     if (myId?.id && typeof renderMyFinishRequestBanner === 'function') renderMyFinishRequestBanner(myId);
                     if (document.getElementById('tab-ops')?.classList.contains('active') && opsStore.get()) renderOpsBossSummary();
                 });
+                // ★ 凸の予約も同じ周期で取り直す (Codex指摘 2026-09-07)。
+                //   運営は複数人なので、運営Aが承認したことが運営Bの開いたままの画面にも
+                //   出ないといけない (ユーザー要件: 「Aでは許可なのにBでは未許可」を作らない)。
+                //   操作中のカードがあるときは触らない (押している最中に描き直すと取り違える)
+                if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active')
+                    && typeof renderOpsReservations === 'function'
+                    && !_resv.unsupported && _resv.busy.size === 0) {
+                    renderOpsReservations().catch(() => { /* 一時的な失敗は次の周期で取り直す */ });
+                }
                 const id = getCurrentIdentity();
                 if (!id?.id) return;
                 _refreshCoordOnce(id);

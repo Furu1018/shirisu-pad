@@ -3412,6 +3412,8 @@ console.log('\nreservationsDomain (凸の予約):');
     const _ROOT = _path.resolve(_path.dirname(_f2p(import.meta.url)), '..');
     const _sqlRes = _fs.readFileSync(_path.join(_ROOT, 'supabase', '39_plan_reservations.sql'), 'utf8').replace(/\r\n/g, '\n');
     const _sqlRpc = _fs.readFileSync(_path.join(_ROOT, 'supabase', '40_attack_with_reservation_rpc.sql'), 'utf8').replace(/\r\n/g, '\n');
+    // クライアント側と SQL の食い違いも見るので読んでおく
+    const _client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
     const res = (o = {}) => ({
         id: o.id ?? 1, season_id: 30, player_id: o.pid ?? 'p1',
         raid_level: o.lv ?? 2, boss_number: o.boss ?? 3,
@@ -3536,6 +3538,61 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/INSERT INTO plan_reservation_events/.test(_sqlRpc));
         // 別のボスを殴って予約が消えるのを防ぐ
         assert.ok(/v_res\.boss_number <> p_boss_number/.test(_sqlRpc));
+    });
+
+    test('★ 予約: 残凸の検査は同時実行でも破れない (同じ鍵で直列化する)', () => {
+        // 2端末が同時に予約を作ると、どちらも同じ v_active を読んで両方通る (Codex指摘 2026-09-07)
+        const fn = _sqlRes.match(/CREATE OR REPLACE FUNCTION plan_reservations_capacity_check[\s\S]*?\$\$ LANGUAGE plpgsql;/)?.[0] || '';
+        assert.ok(fn, '容量トリガーが見つからない');
+        assert.ok(/pg_advisory_xact_lock/.test(fn), '容量検査を直列化していない');
+        // ★ 鍵は凸報告RPC と同一にすること — 別の鍵だと「予約を作りながら凸を報告」で同じ穴が開く
+        const key = /hashtextextended\('attack:' \|\| ([\w.]+)\.?season_id \|\| ':' \|\| ([\w.]+)\.?player_id, 0\)/;
+        assert.ok(key.test(fn), `予約側の鍵の形が違う`);
+        assert.ok(/hashtextextended\('attack:' \|\| p_season_id \|\| ':' \|\| p_player_id, 0\)/.test(_sqlRpc),
+            '凸報告RPC 側の鍵の形が違う');
+    });
+
+    test('★ 予約: 予約と無関係な凸で3凸を超えたら「守れない予約」を返す', () => {
+        // 承認済み予約2件 + 予約なしの凸2件 = 4 になる経路がある (Codex指摘 2026-09-07)。
+        // ★ 凸は止めない (ゲーム内では既に起きている) が、黙って飲み込まない
+        assert.ok(/v_over := GREATEST\(0, \(v_active \+ v_done \+ 1\) - 3\)/.test(_sqlRpc), '超過を数えていない');
+        assert.ok(/'over_capacity', v_over/.test(_sqlRpc), '超過を返していない');
+        assert.ok(/'reservations_at_risk', to_jsonb\(v_at_risk\)/.test(_sqlRpc), '守れない予約を返していない');
+        // 消し込む予約自身は二重に数えない
+        assert.ok(/p_reservation_id IS NULL OR id <> p_reservation_id/.test(_sqlRpc));
+        // クライアントが握り潰していないこと
+        assert.ok(/overCapacity: Number\(rpc\.over_capacity\) \|\| 0/.test(_client));
+        assert.ok(/reservationsAtRisk/.test(_client));
+    });
+
+    test('★ 予約: 約束と違う形で実行されたら記録する (止めはしない)', () => {
+        assert.ok(/v_res\.raid_level IS DISTINCT FROM p_level/.test(_sqlRpc), 'レベルのずれを見ていない');
+        assert.ok(/'編成が違う'/.test(_sqlRpc), '編成のずれを見ていない');
+        // 履歴の理由に載せる (黙って fulfilled にすると約束どおりに見えてしまう)
+        assert.ok(/COALESCE\('凸報告により実行済み \(' \|\| v_mismatch \|\| '\)', '凸報告により実行済み'\)/.test(_sqlRpc));
+        assert.ok(/'mismatch', v_mismatch/.test(_sqlRpc));
+        // ★ ボス違いだけは止める (別のボスを殴って予約が消えるのは事故)
+        assert.ok(/v_res\.boss_number <> p_boss_number[\s\S]{0,200}RAISE EXCEPTION/.test(_sqlRpc));
+    });
+
+    test('★ 予約: 履歴は append-only / 状態は RPC 経由だけ', () => {
+        // RLS が anon 全許可なので、REST から直接 status を書くと履歴だけ欠ける
+        assert.ok(/BEFORE UPDATE OR DELETE ON plan_reservation_events/.test(_sqlRes), '履歴が書き換えられる');
+        assert.ok(/BEFORE UPDATE OF status ON plan_reservations/.test(_sqlRes), '状態の直接更新が通る');
+        assert.ok(/current_setting\('app\.reservation_rpc', true\)/.test(_sqlRes));
+        // 正規の経路 (RPC) は自分で名乗る。名乗りが無いと自分の更新まで弾かれる
+        assert.ok(/set_config\('app\.reservation_rpc', 'on', true\)/.test(_sqlRes), 'RPC が名乗っていない');
+        assert.ok(/set_config\('app\.reservation_rpc', 'on', true\)/.test(_sqlRpc), '凸報告RPC が名乗っていない');
+    });
+
+    test('★ 予約: 期待する現在の状態は必須 (取り違えた操作を通さない)', () => {
+        assert.ok(/p_expect_from IS NULL OR p_expect_from = ''[\s\S]{0,200}RAISE EXCEPTION/.test(_sqlRes));
+        assert.ok(/if \(!o\.expectFrom\) throw new Error/.test(_client), 'クライアント側で省略できてしまう');
+    });
+
+    test('★ 予約: 固定時刻は形式まで DB で縛る', () => {
+        // 'あ' でも保存できると、ソルバーは未知の時刻を「指定なし」として最速枠に寄せる
+        assert.ok(/time_slot ~ '\^h\(0\[0-9\]\|1\[0-9\]\|2\[0-3\]\)\$'/.test(_sqlRes), '時刻の形式を縛っていない');
     });
 
     test('予約: attacks との紐づけは片方向 (循環参照を作らない)', () => {
@@ -3857,6 +3914,70 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         assert.deepEqual(rowOf(p, 1), ['L1/B2/1/13時'], `予約が効いていない: ${JSON.stringify(rowOf(p, 1))}`);
         assert.deepEqual(p.unmetReservations, []);
         assert.equal(p.reservationCount, 1);
+    });
+
+    test('★ L2: 予約後に本人が編成を変えても、承認時のスナップショットで計画する', () => {
+        // ユーザー決定 2026-09-07: 「予約した編成はそのまま守り、残り2凸は本人が調整する」。
+        // 現在の模擬を見に行くと、編成を変えた瞬間に約束と違う指示になる (Codex指摘)
+        const snap = (o) => ({ ...resv(o), team: o.team, expectedB: o.exp });
+        // 本人の現在の fire ① は c1〜c5 / 60B。予約は承認時の a1〜a5 / 44B
+        const changed = () => [
+            mkPlayer(1, 'A', { fire: [lo(60, ['c1', 'c2', 'c3', 'c4', 'c5'])] }, { done: 2 }),
+            mkPlayer(2, 'B', { water: [lo(60, ['b1', 'b2', 'b3', 'b4', 'b5'])] }, { done: 2 }),
+        ];
+        const p = compute(mkInput(changed(), {
+            reservations: [snap({ id: 31, member: 1, boss: 1, slot: 'h13', team: ['a1', 'a2', 'a3', 'a4', 'a5'], exp: 44 })],
+        }));
+        assert.deepEqual(rowOf(p, 1), ['L1/B1/1/13時'], '予約が置けていない');
+        assert.deepEqual(p.unmetReservations, [], '編成を変えただけで実行不能にしてはいけない');
+        const a = p.levels[0].bosses.find(b => b.bossNumber === 1).attacks.find(x => x.memberId === 1);
+        assert.deepEqual(a.team, ['a1', 'a2', 'a3', 'a4', 'a5'], '現在の編成で計画してしまっている');
+        assert.equal(a.dmgB, 44, '現在のダメージで計画してしまっている');
+    });
+
+    test('★ L2: 予約した編成を本人が消しても予約は守る', () => {
+        // 編成が消えたら unmet にする実装だと、本人の操作ひとつで約束が消える
+        const gone = () => [
+            mkPlayer(1, 'A', { water: [lo(10, ['a6', 'a7', 'a8', 'a9', 'a10'])] }, { done: 2 }),   // fire ごと無い
+            mkPlayer(2, 'B', { water: [lo(60, ['b1', 'b2', 'b3', 'b4', 'b5'])] }, { done: 2 }),
+        ];
+        const p = compute(mkInput(gone(), {
+            reservations: [{ ...resv({ id: 32, member: 1, boss: 1, slot: 'h13' }),
+                team: ['a1', 'a2', 'a3', 'a4', 'a5'], expectedB: 44 }],
+        }));
+        assert.deepEqual(rowOf(p, 1), ['L1/B1/1/13時'], '編成が消えたら予約も消えてしまっている');
+        assert.deepEqual(p.unmetReservations, []);
+    });
+
+    test('★ L2: スナップショットで置いた枠は同属性の別ボスに使い回されない', () => {
+        // 合成した候補は avail に居ないので、手で外さないと同じ編成枠が2回使われる。
+        // ★ キャラ被りでは検出できない形にする — スナップショットのキャラ (a*) と
+        //   現在の編成のキャラ (c*) を別にすれば、被り判定は素通りする
+        const bothFire = [
+            { boss_number: 1, boss_code: 'B1', name: 'ボス1', attribute: 'water', weakness: 'fire', tier: 'lord',
+              total_hp_raw: 200e9, remaining_hp_raw: 200e9 },
+            { boss_number: 2, boss_code: 'B2', name: 'ボス2', attribute: 'water', weakness: 'fire', tier: 'lord',
+              total_hp_raw: 200e9, remaining_hp_raw: 200e9 },
+        ];
+        const one = [mkPlayer(1, 'A', { fire: [lo(50, ['c1', 'c2', 'c3', 'c4', 'c5'])] }, { done: 1 })];
+        // 予約なし = fire ① は1回しか使えない (残凸2でも編成は1つ)
+        const base = compute(mkInput(one, { bosses: bothFire }));
+        assert.equal(rowOf(base, 1).length, 1, `前提が崩れた: ${JSON.stringify(rowOf(base, 1))}`);
+        const p = compute(mkInput(one, {
+            bosses: bothFire,
+            reservations: [{ ...resv({ id: 33, member: 1, boss: 1, slot: 'h13' }),
+                team: ['a1', 'a2', 'a3', 'a4', 'a5'], expectedB: 44 }],
+        }));
+        const rows = rowOf(p, 1);
+        assert.deepEqual(rows, ['L1/B1/1/13時'],
+            `予約で使った編成枠が別ボスにも使われた: ${JSON.stringify(rows)}`);
+    });
+
+    test('L2: スナップショットが無い旧予約は現在の編成に落ちる (移行互換)', () => {
+        const p = compute(mkInput(players2(), { reservations: [resv({ id: 34, member: 1, boss: 1, slot: 'h13' })] }));
+        assert.deepEqual(rowOf(p, 1), ['L1/B1/1/13時']);
+        const a = p.levels[0].bosses.find(b => b.bossNumber === 1).attacks.find(x => x.memberId === 1);
+        assert.equal(a.dmgB, 60, '現在の測定値で置くこと');
     });
 
     test('L2: 予約は時刻まで守る (貪欲の最速枠に寄せない)', () => {

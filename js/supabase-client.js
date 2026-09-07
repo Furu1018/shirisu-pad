@@ -1195,7 +1195,22 @@ window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bos
                     + (opts.reservationId ? ' [予約]' : ''),
                 { playerId, actorName: opts.actorName || null }
             );
-            return { id: rpc.id, attack_number: rpc.attack_number, _hpAfter: rpc.hp_after ?? null };
+            // ★ 「約束と違う形で実行された」「この凸で守れなくなった予約がある」は
+            //   凸を止める理由にはしない (ゲーム内では既に起きている) が、
+            //   黙って飲み込むと運営が気づけない。呼び出し側に返して画面に出させる
+            if (rpc.mismatch || Number(rpc.over_capacity) > 0) {
+                window.supabaseLogActivity?.('reservation_warn',
+                    rpc.mismatch
+                        ? `予約と違う形で凸: ${rpc.mismatch}`
+                        : `残凸を超えて予約を押さえています (${rpc.over_capacity}件が守れません)`,
+                    { playerId, actorName: opts.actorName || null });
+            }
+            return {
+                id: rpc.id, attack_number: rpc.attack_number, _hpAfter: rpc.hp_after ?? null,
+                mismatch: rpc.mismatch || null,
+                overCapacity: Number(rpc.over_capacity) || 0,
+                reservationsAtRisk: Array.isArray(rpc.reservations_at_risk) ? rpc.reservations_at_risk : [],
+            };
         }
         // RPC が無い環境だけ従来経路へ落ちる。それ以外のエラー (3凸済み・予約の不一致など) は
         // 意味のある拒否なので、握り潰さずそのまま投げる
@@ -3067,6 +3082,9 @@ window.supabaseCreateReservation = async function (o = {}) {
 // expectFrom を渡すと、その間に誰かが状態を変えていた場合に弾く (取り違えた承認・解除を防ぐ)
 window.supabaseSetReservationStatus = async function (id, to, o = {}) {
     if (!id || !to) throw new Error('予約と遷移先が必要です');
+    // ★ 期待する現在の状態は必須。省略できると、古い画面からの操作が
+    //   「先に別の運営が動かした後の状態」に対して別の合法な遷移として通る (Codex指摘 2026-09-07)
+    if (!o.expectFrom) throw new Error('expectFrom (いまの状態) を渡してください');
     const { data, error } = await supabase.rpc('reservation_set_status', {
         p_id: Number(id),
         p_to: to,

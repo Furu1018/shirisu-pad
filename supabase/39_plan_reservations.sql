@@ -76,10 +76,12 @@ CREATE TABLE IF NOT EXISTS plan_reservations (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- time_mode と time_slot の対応を DB で閉じる (兼用させない)
+-- time_mode と time_slot の対応を DB で閉じる (兼用させない)。
+-- ★ 形式まで縛る (Codex指摘 2026-09-07) — 'あ' のような値でも保存できてしまうと、
+--   ソルバーは未知の時刻を「指定なし」として最速枠に寄せる = 固定時刻が静かに変わる
 ALTER TABLE plan_reservations DROP CONSTRAINT IF EXISTS chk_plan_reservations_time;
 ALTER TABLE plan_reservations ADD CONSTRAINT chk_plan_reservations_time
-    CHECK ((time_mode = 'fixed' AND time_slot IS NOT NULL)
+    CHECK ((time_mode = 'fixed' AND time_slot ~ '^h(0[0-9]|1[0-9]|2[0-3])$')
         OR (time_mode = 'flex'  AND time_slot IS NULL));
 
 CREATE INDEX IF NOT EXISTS idx_plan_reservations_season_status
@@ -131,6 +133,12 @@ BEGIN
     IF NEW.status NOT IN ('requested', 'approved', 'cancel_requested') THEN
         RETURN NEW;
     END IF;
+    -- ★ 同じメンバーへの操作を直列化する (Codex指摘 2026-09-07)。
+    --   これが無いと、2端末が同時に予約を作ったとき双方が同じ v_active を読み、
+    --   どちらも「+1 で3件」と判断して両方通る = 予約が4件になる。
+    --   キーは report_attack (40) と**同一の式**にすること — 予約と実凸が別の鍵だと
+    --   「予約を作りながら凸を報告」で同じ穴が開く
+    PERFORM pg_advisory_xact_lock(hashtextextended('attack:' || NEW.season_id || ':' || NEW.player_id, 0));
     SELECT hard_date INTO v_hard_date FROM seasons WHERE id = NEW.season_id;
     SELECT COUNT(*) INTO v_active FROM plan_reservations
      WHERE season_id = NEW.season_id AND player_id = NEW.player_id
@@ -158,7 +166,7 @@ CREATE TRIGGER trg_plan_reservations_capacity
 CREATE OR REPLACE FUNCTION reservation_set_status(
     p_id BIGINT,
     p_to TEXT,
-    p_expect_from TEXT DEFAULT NULL,
+    p_expect_from TEXT DEFAULT NULL,   -- ★ 実際には必須 (NULL は下で弾く。既存呼び出しの互換のため既定値は残す)
     p_actor TEXT DEFAULT NULL,
     p_reason TEXT DEFAULT NULL,
     p_plan_id BIGINT DEFAULT NULL
@@ -172,7 +180,13 @@ BEGIN
         RAISE EXCEPTION '予約が見つかりません (id=%)', p_id USING ERRCODE = 'no_data_found';
     END IF;
     v_from := v_row.status;
-    IF p_expect_from IS NOT NULL AND v_from <> p_expect_from THEN
+    -- ★ 期待する現在の状態は必須 (Codex指摘 2026-09-07)。任意にすると、
+    --   古い画面からの操作が「先に別の運営が動かした後の状態」に対して
+    --   別の合法な遷移として通ってしまう
+    IF p_expect_from IS NULL OR p_expect_from = '' THEN
+        RAISE EXCEPTION '期待する現在の状態 (p_expect_from) は必須です' USING ERRCODE = 'check_violation';
+    END IF;
+    IF v_from <> p_expect_from THEN
         RAISE EXCEPTION '予約の状態が変わっています (いま % / 期待 %)', v_from, p_expect_from
             USING ERRCODE = 'serialization_failure';
     END IF;
@@ -185,6 +199,8 @@ BEGIN
         RAISE EXCEPTION '許可されていない状態遷移です (% → %)', v_from, p_to USING ERRCODE = 'check_violation';
     END IF;
 
+    -- このトランザクションの更新は RPC 経由であると名乗る (上のトリガーが見る)
+    PERFORM set_config('app.reservation_rpc', 'on', true);
     UPDATE plan_reservations SET
         status = p_to,
         approved_by   = CASE WHEN p_to = 'approved' THEN COALESCE(p_actor, approved_by) ELSE approved_by END,
@@ -218,6 +234,43 @@ DROP TRIGGER IF EXISTS trg_plan_reservations_log_insert ON plan_reservations;
 CREATE TRIGGER trg_plan_reservations_log_insert
     AFTER INSERT ON plan_reservations
     FOR EACH ROW EXECUTE FUNCTION plan_reservations_log_insert();
+
+-- ---- 5-2) 履歴は append-only / 状態は RPC 経由だけ ------------------------
+-- ★ RLS は anon 全許可 (内輪運用の割り切り) なので、REST から直接
+--   status を書き換えたり履歴を消したりできてしまう。**認可の話ではなく**、
+--   「状態遷移は必ず履歴に残る」という設計上の不変条件が破れるのが問題
+--   (旧クライアントや手作業が直接書くと、監査ログだけ欠ける — Codex指摘 2026-09-07)。
+--   遷移の正しさは reservation_set_status に集約してあるので、それ以外の経路を塞ぐ。
+CREATE OR REPLACE FUNCTION plan_reservation_events_append_only()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION '予約の履歴は書き換え・削除できません (append-only)'
+        USING ERRCODE = 'check_violation';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_plan_reservation_events_append_only ON plan_reservation_events;
+CREATE TRIGGER trg_plan_reservation_events_append_only
+    BEFORE UPDATE OR DELETE ON plan_reservation_events
+    FOR EACH ROW EXECUTE FUNCTION plan_reservation_events_append_only();
+
+-- status の直接更新を弾く。RPC 側はセッション変数で自分を名乗ってから更新する
+CREATE OR REPLACE FUNCTION plan_reservations_status_via_rpc()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status IS DISTINCT FROM OLD.status
+       AND COALESCE(current_setting('app.reservation_rpc', true), '') <> 'on' THEN
+        RAISE EXCEPTION '予約の状態は reservation_set_status() 経由で変更してください (履歴が残らないため)'
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_plan_reservations_status_via_rpc ON plan_reservations;
+CREATE TRIGGER trg_plan_reservations_status_via_rpc
+    BEFORE UPDATE OF status ON plan_reservations
+    FOR EACH ROW EXECUTE FUNCTION plan_reservations_status_via_rpc();
 
 -- ---- 6) RLS (anon 全許可 — 認証なしの内輪運用という設計判断) ----------------
 ALTER TABLE plan_reservations ENABLE ROW LEVEL SECURITY;
