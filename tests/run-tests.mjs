@@ -3147,7 +3147,7 @@ console.log('\ncharMasterDomain:');
     // fileURLToPath を通す: 日本語フォルダ名 (自宅 Mac の しりすこPAD) は URL の pathname だと
     // %E3%81%97… にエンコードされたままで ENOENT になる (2026-08-31 pull 直後に発覚)。他テストと同じ方式
     const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-    const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+    const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
     const sqlDir = path.join(ROOT, 'supabase');
     const sqlFiles = fs.readdirSync(sqlDir).filter(f => /^\d+_.*\.sql$/.test(f));
     // 宣言が見つからなければ空リストにして、下の test() 内で「テーブルが漏れている」として検知させる
@@ -3158,13 +3158,13 @@ console.log('\ncharMasterDomain:');
     const created = new Set();
     const serialTables = new Set();
     for (const f of sqlFiles) {
-        const src = fs.readFileSync(path.join(sqlDir, f), 'utf8');
+        const src = fs.readFileSync(path.join(sqlDir, f), 'utf8').replace(/\r\n/g, '\n');
         for (const m of src.matchAll(/CREATE TABLE IF NOT EXISTS\s+([a-z_]+)\s*\(([\s\S]*?)\n\);/g)) {
             created.add(m[1]);
             if (/\bid\s+BIGSERIAL\b/.test(m[2])) serialTables.add(m[1]);
         }
     }
-    const helpers = fs.readFileSync(path.join(sqlDir, '23_restore_helpers.sql'), 'utf8');
+    const helpers = fs.readFileSync(path.join(sqlDir, '23_restore_helpers.sql'), 'utf8').replace(/\r\n/g, '\n');
 
     test('バックアップ整合: supabase/ の全テーブルが _BACKUP_TABLES に入っている', () => {
         const missing = [...created].filter(t => !backup.includes(t));
@@ -3664,8 +3664,8 @@ console.log('\nreservationsDomain (凸の予約):');
     }
 
     test('★ ⑧配線: 39未適用では申請の導線ごと出さない / 下書きはドメインで作る', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
-        const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         // 自分の予約は null (未適用) と [] (0件) を区別する。混ぜると押した瞬間に SQL 適用エラーになる
         const loader = client.match(/window\.supabaseLoadMyReservations = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(loader, '自分の予約のローダーが無い');
@@ -3724,7 +3724,7 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.match(r.note, /Lv3 はまだ開いていません/);
         });
         test('★ ⑧配線: 申請シートがモック②の形で入っている', () => {
-            const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+            const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
             assert.ok(html.includes('id="myResvRequestModal"'), 'シートが無い');
             const render = html.match(/function _resvReqRender\(\) \{[\s\S]{0,12000}/)?.[0] || '';
             for (const t of ['どのボスを', 'どのレベルを', '何時に', 'どの編成で', 'この内容で申請する']) {
@@ -3745,7 +3745,7 @@ console.log('\nreservationsDomain (凸の予約):');
     }
 
     test('★ 算出は「押した時点の DB の予約」を固定制約として渡す (実機で発覚: 渡していなかった)', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         // 10時の予約が承認済みなのに 6時に組まれ、配信の reservationCount が 0 だった。
         // computeOptimalPlan が reservations をソルバーに渡していなかった
         const fn = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]{0,1600}/)?.[0] || '';
@@ -3776,7 +3776,7 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ モーダル→モーダルの切替で history.back() と pushState を同じバッチに出さない (ページ外へ出る)', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/const onClassChange = \(records\) => \{[\s\S]{0,3400}/)?.[0] || '';
         assert.ok(fn, 'history 連携が見つからない');
         // 閉じると開くを集めてから相殺する
@@ -3792,7 +3792,7 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ モック④: 運営プランと本人のプランに「🔒予約」ピン / 「N件を固定して計算」', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/const resvPin = a\.fromReservation \?/.test(html), '運営プランの行にピンが無い');
         assert.ok(/\$\{meTag\}\$\{resvPin\}\$\{reservedTag\}/.test(html), 'ピンを行に差し込んでいない');
         assert.ok(/件を固定して計算しました/.test(html), '「N件を固定して計算」が無い');
@@ -3803,7 +3803,7 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ モック⑤: 予約先が倒れた / レベルが終わったら自動で外して本人に知らせる', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/async function _releaseInfeasibleReservations[\s\S]{0,4200}/)?.[0] || '';
         assert.ok(fn, '自動解除が無い');
         assert.ok(/rv\.findInfeasible\(rows, board\)/.test(fn), '対象の判定をドメインでやっていない');
@@ -3832,7 +3832,7 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ ⑧配線: 締め凸の了承は即予約 / 予約が作れなくても了承は成立させる', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/async function _reserveForFinishRequest[\s\S]{0,1900}/)?.[0] || '';
         assert.ok(fn, '締め凸→予約の関数が無い');
         // ★ 依頼したのは運営なので、改めて承認を挟まない
@@ -3855,7 +3855,7 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ ⑧配線: ホームの「引き受けた凸」/ 取り消しは希望を出すだけ', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(html.includes('id="myReservationsCard"'), 'カードが無い');
         const fn = html.match(/async function renderMyReservations[\s\S]{0,4200}/)?.[0] || '';
         assert.ok(fn, '描画関数が無い');
@@ -3874,7 +3874,7 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ ⑧配線: 模擬タブから申請できる (ボスは属性から引く / 保存済みの提出を使う)', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(html.includes('id="myTeamEditResvSec"'), '編成編集モーダルに予約欄が無い');
         const fn = html.match(/async function _renderTeamEditResv[\s\S]{0,3200}/)?.[0] || '';
         assert.ok(fn, '予約欄の描画関数が無い');
@@ -3893,7 +3893,7 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ ⑧: 凸報告は承認済みの予約に紐づけて消し込む (4経路すべて)', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         // ★ 紐づけないと、承認済みの予約が fulfilled にならないまま残り、
         //   実凸と合わせて残凸を二重に消費する = 約束を守る仕組みが本人を止める (Codex指摘)
         assert.ok(/async function _reservationIdForAttack/.test(html), '紐づけの共通処理が無い');
@@ -3917,8 +3917,8 @@ console.log('\nreservationsDomain (凸の予約):');
     });
 
     test('★ ⑧: 承認は「承認時点の提出」で固定し直す', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
-        const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         // ユーザー決定は「承認時点で固定」。申請時の写しのままだと、
         // 申請から承認までの間に本人が模擬を直したとき古い内容で固定される (Codex指摘)
         assert.ok(/async function _snapshotAtApproval/.test(html), '承認時の読み直しが無い');
@@ -3929,13 +3929,13 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/DROP FUNCTION IF EXISTS reservation_set_status\(BIGINT, TEXT, TEXT, TEXT, TEXT, BIGINT\);/.test(_sqlRes),
             '旧シグネチャを落としていない (PostgREST から呼ぶと曖昧になる)');
         assert.ok(/characters_snapshot = CASE WHEN p_to = 'approved' AND p_characters IS NOT NULL/.test(_sqlRes));
-        const check = _fs.readFileSync(_path.join(_ROOT, 'supabase', '99_check_applied.sql'), 'utf8');
+        const check = _fs.readFileSync(_path.join(_ROOT, 'supabase', '99_check_applied.sql'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/reservation_set_status\(bigint,text,text,text,text,bigint,jsonb,numeric\)/.test(check),
             '99 の判定行が旧シグネチャのまま');
     });
 
     test('★ ⑧: 画面のプレイヤー切替後に別名義で申請・取消できない', () => {
-        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const cancel = html.match(/async function handleRequestCancelReservation[\s\S]{0,1200}/)?.[0] || '';
         assert.ok(/String\(me0\.id\) !== String\(r\.player_id\)/.test(cancel), '取消の本人性を見ていない');
         // 申請シートは開いた本人の identity で作る (送信直前に取り直す)
@@ -4975,8 +4975,8 @@ console.log('\nclientGateDomain (互換ゲート):');
     });
 
     test('★ ⑦配線: 止めるのは3機能だけ / 呼び出し口を1箇所に絞る', () => {
-        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
-        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(html.includes('<script defer src="./js/domain/clientGate.js"></script>'), 'ドメインを読み込んでいない');
         // 版は手で上げる単調増加の整数 (app-build のコミットSHAは大小比較できない)
         assert.ok(/const CLIENT_BUILD = \d{10};/.test(html), 'CLIENT_BUILD が無い / 形式が違う');
@@ -4998,7 +4998,7 @@ console.log('\nclientGateDomain (互換ゲート):');
         assert.ok(/_isMissingColumnErr\(error, 'plan_schema'\)/.test(client));
     });
     test('★ ⑦配線: 運営側のプラン算出も止める / 締めた直後の端末にも届く', () => {
-        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         // 本人の配信カードだけ隠しても、古いアプリの運営画面でプランを組めてしまう (Codex指摘)
         const fn = html.match(/async function computeAndRenderOptimalPlan[\s\S]{0,1200}/)?.[0] || '';
         assert.ok(/!_gateAllows\('plan'\)/.test(fn), '運営の算出を止めていない');
@@ -5014,7 +5014,7 @@ console.log('\nclientGateDomain (互換ゲート):');
     });
 
     test('★ ⑦: セッション途中で締められたら古い指示を画面に残さない', () => {
-        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         // 配信カードを差し替えるだけだと、ヒーローの割当ストリップと提出カードの採用マークに
         // 締める前の指示が残り続ける
         const blk = html.match(/if \(pub\?\.plan && \(!_gateAllows\('plan'\)[\s\S]{0,900}/)?.[0] || '';
@@ -5025,7 +5025,7 @@ console.log('\nclientGateDomain (互換ゲート):');
     });
 
     test('★ ⑦: 38/41 の欠落はどちらが先に返っても正しく外す', () => {
-        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         // frozen 列が無いだけで plan_schema まで落とすと、新しすぎる配信を旧配信に見せて描いてしまう。
         // ★ 片方向の分岐だと、両方未適用の環境で先に plan_schema 欠落が返ったときに
         //   frozen 欠落を処理できずそのまま throw する (Codex指摘 2026-09-07)
@@ -5040,8 +5040,8 @@ console.log('\nclientGateDomain (互換ゲート):');
     });
 
     test('★ ⑦: 止める側の操作は判定を取り直してから通す / 取得は single-flight', () => {
-        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
-        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         // ★ 前面に開きっぱなしの端末は visibilitychange が起きない。
         //   メモリ上の判定だけ見ると「締めた」が届かず、凸報告と配信を続けられる
         assert.ok(/async function _gateGuard\(feature\)/.test(client), 'ガードが同期のまま');
@@ -5075,7 +5075,7 @@ console.log('\nclientGateDomain (互換ゲート):');
     });
 
     test('★ ゲートの取得は fail-open (未適用・通信断は null = 誰も止めない)', () => {
-        const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         const body = client.match(/window\.supabaseLoadClientGate = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(body, '取得関数が無い');
         assert.ok(/catch \{ return null; \}/.test(body), '取得失敗で throw すると全員が止まりうる');
@@ -5085,7 +5085,7 @@ console.log('\nclientGateDomain (互換ゲート):');
         assert.ok(/supabase\/41_client_gate\.sql/.test(setter));
     });
     test('41_client_gate.sql: 既定は誰も止めない / 再実行で運営の設定を戻さない', () => {
-        const sql = fs.readFileSync(path.join(ROOT, 'supabase', '41_client_gate.sql'), 'utf8');
+        const sql = fs.readFileSync(path.join(ROOT, 'supabase', '41_client_gate.sql'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/CREATE TABLE IF NOT EXISTS app_gate/.test(sql));
         assert.ok(/min_client_build BIGINT NOT NULL DEFAULT 0/.test(sql), '既定が 0 でない (配る回に締めてしまう)');
         assert.ok(/ON CONFLICT \(id\) DO NOTHING/.test(sql), '再実行で運営が上げた値を戻してしまう');
