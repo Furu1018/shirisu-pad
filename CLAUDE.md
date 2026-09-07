@@ -61,7 +61,12 @@ rm -f .claude/hooks/.codex-on      # OFF
   拘束は `normalizeSticky` で {memberId, level, bossNumber, loadoutSlot} に畳み**安定ソート**してから
   `runLevel` の貪欲ループの前に `applyPick` で置く (残凸・キャラ・編成・残HP・必須枠の扱いを貪欲と揃えるため)。
   置けないものは黙って諦める。`trimOverkill` は約束した凸を外さない (`stickyPlaced`)。
-  採否は `preferNormalOver`: 踏破改善 → 時間リスク増 → `max(5%, 30B)` の改善、の順で通常解へ倒す。
+  採否は `preferNormalOver`: 踏破改善 → 時間リスク増 → **拘束解の方が約束を壊す** → `max(5%, 30B)` の改善、
+  の順で通常解へ倒す。3つ目 (`countStickyKept`) が**同一盤面不変性の要**:
+  約束を先に置くと貪欲の途中状態がずれて、かえって前回の割当を壊すことがある。
+  盤面が動いていなければ通常解 = 前回そのものなので、この判定で必ず通常解が選ばれる。
+  これが無いと「盤面が1つも動いていないのに人が入れ替わる」が 3.5〜4.5% の盤面で起きる
+  (最小盤面では再現できないので、回帰検出は `tests/bench-stability.mjs` の ① が担う)。
   結果は `plan.stability` に出る (applied / reason / creditedGapB / thresholdB)。
   画面は **配信中のプラン**を基準に渡す (手元の直前の算出ではない — 約束は配信したもの)。
   運営は 🔗前回を尊重 / 🆕ゼロから で切り替えられる (端末ごと・既定は尊重)
@@ -209,6 +214,7 @@ node tests/member-board.mjs   # 👥 メンバー状況ボードの描画 (_mbPa
 node tests/kill-badge.mjs     # 締め凸「締」バッジ・注記の実行テスト (実データ整合も見る)
 node tests/solver-fingerprint.mjs        # ソルバーの出力指紋 (リファクタで挙動が変わっていないか)
 node tests/solver-fingerprint.mjs <file> # 保存した指紋と突き合わせる (FP_SOLVER で別実装を指定可)
+node tests/bench-stability.mjs           # L1 安定化の効果と代償 (BENCH_N で件数指定・既定150)
 node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
 node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の確認 の実行テスト
 ```
@@ -329,6 +335,11 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
   (幅16・深さ3 = 基準解を含め最大49シナリオ。30人ユニオンでは `scenarioBudgetFor` は60を返すので
   実際の制約は幅・深さ側。40人超で40、60人超で20に落とすのが異常入力への保険)。**実時間で打ち切らない** — 配信は「押すたびに同じ
   指示が出る」ことが前提。`crossBoss: false` で無効化
+- **L1 の効果測定と回帰検出は `node tests/bench-stability.mjs`**。cross-boss とは**目的が違う**ので別系統 —
+  L1 はわざと `max(5%, 30B)` までの改善を捨てて約束を守るので、悪化0 の規約では評価できない。
+  測るのは ① 同一盤面不変性 (前回と同じ盤面なら1人も動かない・必須) ② 振り回し (前回から割当が変わった人数を
+  安定化あり/なしで比較) ③ 代償 (捨てた与ダメの分布) ④ 安全性 (約束を守った盤面で踏破Lv低下0・時間リスク増0・必須)
+  ⑤ 採否の内訳。盤面の動かし方は当日に実際に起きること (HP減 / 実凸 / 時間帯 / 模擬再提出) を1つずつ
 - **効果測定は `node tests/bench-crossboss.mjs`** (seed固定の乱数2000盤面)。
   ソルバーの選択ロジックを触ったら必ず流し、**悪化0・踏破Lv低下0** を確認する。
   盤面は本番前提 (レベル別HP定数・B1,2,4=lord/B3,5=tyrant・`loadoutsByAttr`) に合わせ、

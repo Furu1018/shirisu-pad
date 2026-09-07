@@ -3586,6 +3586,40 @@ console.log('\nL1 安定化 (前回配信の割当を守る):');
         assert.equal(mine.length, 1, `キャラ被りの編成まで置かれた: ${JSON.stringify(mine.map(a => a.dmgB))}`);
     });
 
+    // ⚠ この規則 (countStickyKept) の**回帰検出は tests/bench-stability.mjs の ①** が担う。
+    //   最小盤面では「拘束解の方が約束を壊す」状況を作れなかった (圧縮の戻り・温存パスの
+    //   相互作用で起きるため)。規則を外すと bench の同一盤面違反が 0% → 3.5% になることを確認済み。
+    //   ここでは「結果として約束が壊れていないこと」だけを固定する
+    test('L1: 拘束解の方が約束を壊すなら通常解を採る (同一盤面で人が動かない土台)', () => {
+        // 前回プランをそのまま基準にして同じ盤面を解き直す。拘束を先に置くと貪欲の途中状態が
+        // ずれて、かえって前回の割当を壊すことがある。そのときは通常解 (= 前回そのもの) を採る
+        const players = basePlayers();
+        const first = compute(mkInput(players));
+        const again = compute(mkInput(basePlayers(), { previousPlan: first }));
+        // どちらを採ったにせよ、**前回の割当が1つも壊れていない**ことが要件
+        const rows = (plan) => {
+            const m = new Map();
+            (plan.levels || []).filter(lv => !lv.infinite).forEach(lv => (lv.bosses || []).forEach(b =>
+                (b.attacks || []).forEach(a => {
+                    const k = `${a.memberId}`;
+                    if (!m.has(k)) m.set(k, []);
+                    m.get(k).push(`L${lv.level}/B${b.bossNumber}/${a.loadoutSlot}`);
+                })));
+            m.forEach(v => v.sort());
+            return m;
+        };
+        const before = rows(first), after = rows(again);
+        before.forEach((list, id) => {
+            const pool = [...(after.get(id) || [])];
+            list.forEach(r => {
+                const i = pool.indexOf(r);
+                assert.ok(i >= 0, `${id} の約束「${r}」が消えた (前: ${list.join(',')} / 後: ${(after.get(id) || []).join(',')})`);
+                pool.splice(i, 1);
+            });
+        });
+        assert.ok(['kept', 'lessKept'].includes(again.stability.reason), `想定外の判定: ${JSON.stringify(again.stability)}`);
+    });
+
     test('L1: 拘束は決定的な順序で入る (前回プランの並び順で結果が変わらない)', () => {
         // 同じボスに2人ぶん約束する = 置いた順で usedB / overflowB の配り方が変わる形。
         // 並べ替えを外すと入力の配列順がそのまま出るので、逆順で渡すと結果が変わる

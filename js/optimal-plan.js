@@ -505,6 +505,12 @@
                     : (HARD_LEVEL_HP_B[L]?.[b.tier] ?? ((b.total_hp_raw || 0) / 1e9));
                 if (t > 0.0001 && b.weakness) aliveWeakThisLevel.add(b.weakness);
             }
+            // ⚠ ここで「後のレベルに約束された凸ぶんの枠を予約する」ことを試したが**やめた** (2026-09-07)。
+            //   狙いは「手前のレベルの貪欲が Lv3 の約束の枠を食う」のを防ぐことだったが、
+            //   安定性ベンチ (tests/bench-stability.mjs) で測ると
+            //   約束が壊れた人数が 163 → 188 に**増え**、同一盤面の違反件数も変わらなかった。
+            //   枠を空けて待つと、その人が手前で出せたはずの凸まで失うため。
+            //   予約は L2 (承認済みの予約) の仕事で、L1 の「前回どおりを尊重する」には強すぎる
             memberState.forEach(m => {
                 m.lockedNow = [...m.mandatory].filter(k => aliveWeakThisLevel.has(k)
                     // 温存パス: ボス5弱点が得意属性の人は Lv4 で消化できる (全額計上で本人にも最良) ため
@@ -1032,6 +1038,28 @@
             return out;
         };
 
+        // 解の中で「約束が実際に守られた本数」を数える。
+        // ★ 拘束解が常に約束を多く守るとは限らない — 約束を先に置くと貪欲の途中状態がずれ、
+        //   別の約束が置けなくなることがある (圧縮で戻るはずの枠が戻らない・温存パスの判断が変わる)。
+        //   通常解のほうが多く守れているなら、拘束解を採る理由は無い
+        const countStickyKept = (chosen, list) => {
+            const have = new Map();   // "level|boss|memberId|slot" -> 件数
+            (chosen.levels || []).forEach(lv => {
+                const level = Number(lv && lv.level) || 0;
+                (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+                    const k = `${level}|${Number(b.bossNumber)}|${a.memberId}|${Number(a.loadoutSlot) || 1}`;
+                    have.set(k, (have.get(k) || 0) + 1);
+                }));
+            });
+            let kept = 0;
+            for (const s of list) {
+                const k = `${s.level}|${s.bossNumber}|${s.memberId}|${s.loadoutSlot}`;
+                const n = have.get(k) || 0;
+                if (n > 0) { have.set(k, n - 1); kept++; }
+            }
+            return kept;
+        };
+
         // ===== L1: 拘束解と通常解のどちらを採るか =====
         // 辞書順で判定する (既存のボス横断分岐と同じ序列に合わせてある):
         //   ① 通常解の方が踏破レベルが上 → 無条件で通常解 (約束より攻略を優先)
@@ -1041,7 +1069,7 @@
         // ★ 比較対象は「前回プラン」ではなく **同じ盤面を拘束なしで解いた通常解**。
         //   前回からHPも実凸も進んでいるので、前回の数字とは比べられない
         // ★ 判定は人ごとではなく全体で行う。「A を動かして B を守る」価値は個別火力では測れない
-        const preferNormalOver = (stickyChosen, normalChosen) => {
+        const preferNormalOver = (stickyChosen, normalChosen, list) => {
             const cn = sumCreditedOf(normalChosen), cs = sumCreditedOf(stickyChosen);
             const gapB = cn - cs;
             const thresholdB = Math.max(STICKY_GAIN_RATIO * cn, STICKY_MIN_GAIN_B);
@@ -1050,6 +1078,12 @@
             }
             if (riskOfPass(stickyChosen) > riskOfPass(normalChosen)) {
                 return { normal: true, reason: 'timeRisk', gapB, thresholdB };
+            }
+            // ★ 拘束解が約束を守れていないなら採る意味がない。
+            //   盤面が1つも動いていないとき通常解は前回そのものなので、ここで必ず通常解が選ばれ、
+            //   「同じ盤面で組み直したら人が入れ替わった」が起きなくなる (安定性ベンチ ①)
+            if (countStickyKept(stickyChosen, list) < countStickyKept(normalChosen, list)) {
+                return { normal: true, reason: 'lessKept', gapB, thresholdB };
             }
             if (gapB >= thresholdB - 1e-9) {
                 return { normal: true, reason: 'creditedGain', gapB, thresholdB };
@@ -1300,7 +1334,7 @@
             // 拘束解で例外が出ても通常解で配信できる方が安全 (安定化は「あれば嬉しい」もの)
             try { solvedSticky = solveWhole({ sticky: stickyList }); } catch { solvedSticky = null; }
             if (solvedSticky) {
-                const verdict = preferNormalOver(solvedSticky.scenario.chosen, scenario.chosen);
+                const verdict = preferNormalOver(solvedSticky.scenario.chosen, scenario.chosen, stickyList);
                 stability = {
                     applied: !verdict.normal,
                     reason: verdict.reason,
