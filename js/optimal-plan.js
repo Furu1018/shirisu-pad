@@ -33,7 +33,7 @@
  * @property {{boss_number:number}[]=} attacks         本日の凸履歴 (属性消費の逆引き用)
  * @property {string[]=} availableSlots     戦闘可能時間 'h05'..'h28'
  * @property {boolean=} flexTime            ⏳隙間時間型
- * @property {string[]=} strong_attributes  得意属性: 1-3個=必ず消化 / 4個=その中からのみ / 0・5個=制約なし
+ * @property {string[]=} strong_attributes  得意属性 — **ソルバーでは使わない** (2026-09-08)。予約 (L2) が本人の希望を表すため。申告はコミュニティ表示だけ
  *
  * @typedef {Object} PlanInput
  * @property {{current_level:number}} season
@@ -369,25 +369,10 @@
                         }
                     }
                 }
-                // 得意属性 (strong_attributes) の選出制約:
-                //   1〜3個選択 → その属性は必ず消化 (残りの凸枠だけ自由選出)
-                //   4個選択   → その4属性の中からのみ選出
-                //   0個 / 5個 → 制約なし (従来どおり)
-                // ※ ダメージ未提出・凸済みの得意属性は強制対象から外す (avail に無いものは選べない)
-                const strong = Array.isArray(p.strong_attributes)
-                    ? p.strong_attributes.filter(k => typeof k === 'string' && k.length > 0)
-                    : [];
-                if (strong.length === 4) {
-                    for (const k of Object.keys(avail)) {
-                        if (!strong.includes(k)) delete avail[k];
-                    }
-                }
-                // 「必ず消化」は最低1回の意味 — 既に凸済みの得意属性は満足済みとして除外する
-                // (2編成対応後は凸済みでも編成②が avail に残るため、avail 存在だけで判定すると
-                //  同属性2凸目を強制して自由枠を不当に奪ってしまう)
-                const mandatory = (strong.length >= 1 && strong.length <= 3)
-                    ? new Set(strong.filter(k => (avail[k] || []).length > 0 && !(usedCount.get(k) > 0)))
-                    : new Set();
+                // ★ 得意属性 (strong_attributes) はソルバーで使わない (2026-09-08 ユーザー決定)。
+                //   予約 (L2) があれば本人が得意属性のカードを予約すればよく、「必ず消化」の枠予約は要らない
+                //   (枠予約は「出せる属性への凸まで封じる」事故を何度も起こした — 2026-08-08 の8凸未使用 等)。
+                //   申告はコミュニティの表示 (プロフィール・メンバー一覧) として残す。計算には入れない
                 // 凸可能時間 → 現在以降の時間帯インデックス集合 (昇順)。未登録は「いつでも可」
                 const allSlots = (p.availableSlots || [])
                     .map(k => IDX_BY_KEY.get(k))
@@ -423,8 +408,6 @@
                     allHourIdxs: allSlots,   // 未フィルタの宣言時間 (ミスマッチ時の「最寄り時刻」表示用)
                     timeUnknown,
                     flexTime,
-                    mandatory,      // 未消化の必須得意属性
-                    lockedNow: 0,   // このレベルで実際に予約する枠数 (レベルごとに再計算)
                 };
             });
 
@@ -462,7 +445,7 @@
         // ここでいう「火力」は実際の提出ダメージの順位 (slvRank — 名前は歴史的経緯で SLv のまま)。
         // ⏳隙間割当は時刻を確約しない分の不確実性ペナルティ (2時間の遅れ相当) を課し、
         // 「時刻を確約できる人」が僅差なら優先されるようにする。
-        const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2, FLEX_PENALTY = 2 * W_TIME, MISMATCH_PENALTY = 6 * W_TIME, W_STRONG = 2.5;
+        const W_OVER = 1.0, W_SLV = 5.0, W_TIME = 0.2, FLEX_PENALTY = 2 * W_TIME, MISMATCH_PENALTY = 6 * W_TIME;
         const scoreOf = (m, attr, dmg, rem, levelPos, hourIdx, openIdx, isFlex, isMismatch) => {
             const overkill = Math.max(0, dmg - rem);
             // 火力が弱い人ほど低いレベル (levelPos: Lv1=0 / Lv2=0.5 / Lv3=1) に寄せる
@@ -473,24 +456,13 @@
             // 来るので MISMATCH_PENALTY が一度も加算されなくなる (Opus/Codex 監査で確認)。
             const flexPenalty = ((timeAware && isFlex) ? FLEX_PENALTY : 0)
                 + ((timeAware && isMismatch) ? MISMATCH_PENALTY : 0);
-            // 必須得意属性は早めに消化 (ボス撃破後に強制枠が余って無駄になるのを防ぐ)
-            const strongBonus = m.mandatory.has(attr) ? W_STRONG : 0;
-            return overkill * W_OVER + slvPenalty * W_SLV + timePenalty * W_TIME + flexPenalty - strongBonus - Math.min(dmg, rem) * 0.001;
+            return overkill * W_OVER + slvPenalty * W_SLV + timePenalty * W_TIME + flexPenalty - Math.min(dmg, rem) * 0.001;
         };
 
         // ===== 1パスぶんの割当実行 (Lv1〜3 の有限ボス) =====
         // opts.oppCostOf(m, attr, lo): 候補スコアへの加算項 (B単位)。「この凸を有限ボスに使うと
         //   ボス5(無限) で入るはずだったダメージをいくら失うか」の機会費用 (Phase B 温存パス)。
-        // opts.lv4Mandatory: { attr, canAfter(m) } — この属性の必須消化は Lv4 で満たせる前提で
-        //   枠予約 (lockedNow) から除外する (canAfter な人のみ)。
         const runPass = (opts = {}) => {
-            // その属性で、キャラ被りせずに出せる編成が1つでも残っているか。
-            // ⚠ listCandidatesFor の除外条件と同じ式にすること (片方だけ変えると
-            //    「候補にはならないのに枠だけ予約される」状態が復活する)
-            const canUseAttr = (m, attr) => (m.avail[attr] || []).some(c =>
-                hasDamage(c)
-                && !(m.anyTeamRegistered && c.team.length > 0
-                    && c.team.some(x => hasUsedChar(m.usedChars, x))));
             const memberState = buildMemberState();
             assignSlvRanks(memberState);
             const levels = [];
@@ -499,32 +471,12 @@
             let frontierLevel = null;                   // 踏破できず吸収割当に切り替えたレベル
             for (let L = startLevel; L <= 3; L++) {
             const levelPos = (L - 1) / 2;  // Lv1=0, Lv2=0.5, Lv3=1
-            // 必須得意属性の枠予約は「このレベルで生きているボスの弱点」に限る。
-            // 撃破済みボスの属性まで予約すると、得意属性が全滅済みのメンバーが
-            // 自由枠0で他ボスにも出せず、模擬提出があるのに一切使われなくなる。
-            const aliveWeakThisLevel = new Set();
-            for (const b of bosses) {
-                const t = (L === startLevel) ? ((b.remaining_hp_raw || 0) / 1e9)
-                    : (HARD_LEVEL_HP_B[L]?.[b.tier] ?? ((b.total_hp_raw || 0) / 1e9));
-                if (t > 0.0001 && b.weakness) aliveWeakThisLevel.add(b.weakness);
-            }
             // ⚠ ここで「後のレベルに約束された凸ぶんの枠を予約する」ことを試したが**やめた** (2026-09-07)。
             //   狙いは「手前のレベルの貪欲が Lv3 の約束の枠を食う」のを防ぐことだったが、
             //   安定性ベンチ (tests/bench-stability.mjs) で測ると
             //   約束が壊れた人数が 163 → 188 に**増え**、同一盤面の違反件数も変わらなかった。
             //   枠を空けて待つと、その人が手前で出せたはずの凸まで失うため。
             //   予約は L2 (承認済みの予約) の仕事で、L1 の「前回どおりを尊重する」には強すぎる
-            memberState.forEach(m => {
-                m.lockedNow = [...m.mandatory].filter(k => aliveWeakThisLevel.has(k)
-                    // 温存パス: ボス5弱点が得意属性の人は Lv4 で消化できる (全額計上で本人にも最良) ため
-                    // 有限レベルでは枠予約しない。ただし Lv4 開放時刻に出られない人は従来どおり予約する
-                    && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))
-                    // ★ ここでも「実際に出せるか」を見る。見ないと、前のレベルで得意属性の編成が
-                    //   キャラ被りで全滅した人が、次のレベルの**最初の候補選定**で弾かれる。
-                    //   候補が全部このロックで消えると applyPick が起きず再集計も走らないため、
-                    //   そのレベルで1凸もできないまま終わる (Codex指摘 P1)
-                    && canUseAttr(m, k)).length;
-            });
             // ===== L2: 後のレベルに予約がある人は、その分の凸・編成・キャラをこのレベルで使わない (2026-09-08) =====
             // 予約は「そのレベルで・その編成で」の約束。手前のレベルの貪欲がその人の残り凸や
             // 予約した編成 (とそのキャラ) を先に使うと、予約のレベルに来たときには置けない
@@ -551,16 +503,12 @@
                 remainingAttacks: m.remainingAttacks,
                 avail: Object.fromEntries(Object.entries(m.avail).map(([k, v]) => [k, [...v]])),
                 usedChars: new Set(m.usedChars),
-                mandatory: new Set(m.mandatory),
-                lockedNow: m.lockedNow,
             }));
             const restoreSnapshot = () => memberState.forEach((m, i) => {
                 const s = snapshot[i];
                 m.remainingAttacks = s.remainingAttacks;
                 m.avail = Object.fromEntries(Object.entries(s.avail).map(([k, v]) => [k, [...v]]));
                 m.usedChars = new Set(s.usedChars);
-                m.mandatory = new Set(s.mandatory);
-                m.lockedNow = s.lockedNow;
             });
 
             // このレベルの割当を1回実行する。
@@ -575,27 +523,6 @@
                     const targetHpB = (L === startLevel) ? ((b.remaining_hp_raw || 0) / 1e9) : tierHp;
                     return { b, targetHpB, rem: targetHpB, attacks: [], sawTimeExcluded: false };
                 });
-                // === 必須予約(mandatory)の途中解放 (Opus/Codex 監査 #4) ===
-                // lockedNow をレベル開始時点で固定すると、必須属性のボスがレベル途中で
-                // 他メンバーに撃破されても枠が握られたままになり、当該メンバーの1凸が
-                // 丸ごと未使用になる。ボスが撃破されるたびに生存弱点を数え直して解放する。
-                // targets は未処理ボスも満タン残HPで持つので、1回の走査で生存判定できる。
-                // 温存パス (lv4Mandatory) の除外条件も同じ式に含める — 含めないと
-                // レベル開始時に外した予約が途中の数え直しで復活してしまう
-                const recountLocked = () => {
-                    const aliveWeakLeft = new Set();
-                    targets.forEach(t => { if (t.rem > 0.0001 && t.b.weakness) aliveWeakLeft.add(t.b.weakness); });
-                    memberState.forEach(m => {
-                        if (m.mandatory.size === 0) { m.lockedNow = 0; return; }
-                        m.lockedNow = [...m.mandatory].filter(k => aliveWeakLeft.has(k)
-                            && !(opts.lv4Mandatory && k === opts.lv4Mandatory.attr && opts.lv4Mandatory.canAfter(m))
-                            // ★ その属性で「実際に出せる編成」が残っているかまで見る。
-                            //   見ないと、キャラ被りで得意属性の編成が全滅した人が
-                            //   出せない枠を予約し続け、出せる属性への凸まで封じられる
-                            //   (2026-08-08 実データで4名が3凸目を消化できず・8凸が未使用のまま残った)
-                            && canUseAttr(m, k)).length;
-                    });
-                };
                 // t のボスに出せる最良 (スコア最小) の候補を探す
                 // 候補を全列挙する (スコア昇順・同点は走査順で安定)。
                 // pickFor は「先頭を採る」だけの薄いラッパにしてある — フェーズ2 (ボス横断の
@@ -606,10 +533,6 @@
                     for (const m of memberState) {
                         const list = m.avail[t.b.weakness];
                         if (m.remainingAttacks <= 0 || !list || list.length === 0) continue;
-                        // 得意属性の必須消化: 予約枠 (このレベルで消化可能な必須) を除いた
-                        // 自由枠が尽きたら、必須属性以外には出さない
-                        if (m.mandatory.size > 0 && !m.mandatory.has(t.b.weakness)
-                            && (m.remainingAttacks - m.lockedNow) <= 0) continue;
                         // L2: 後のレベルの予約ぶんの凸は残す (編成・キャラは候補ごとに下で見る)
                         if ((m.remainingAttacks - (m.reservedLater || 0)) <= 0) continue;
                         const slot = earliestHourFor(m, openIdx);
@@ -689,9 +612,7 @@
                 // 候補を採用: 凸行を追加し、メンバー状態とボス残HPを更新する
                 // 割当の内部メタ (出力に混ぜないため WeakMap/WeakSet で外部管理):
                 //   loMeta = 使用したロードアウト参照 (undo で ord ごと avail へ戻す)
-                //   consumedMandatory = その凸が必須属性を消化したか (undo で予約を戻す)
                 const loMeta = new WeakMap();
-                const consumedMandatory = new WeakSet();
                 // ★ L1: 前回の約束として先に置いた凸。trimOverkill が参照するので**そこより前で宣言する**
                 //   (後ろで宣言すると呼び出し順しだいで TDZ の ReferenceError になる。
                 //    2026-08-08 に同じ形で「カードをタップすると落ちる」事故を起こしている)
@@ -735,17 +656,12 @@
                     // 得意属性の消化管理: 必須を消化したら予約も1つ解放
                     // (自由枠の消費は remainingAttacks の減少で自然に反映される)
                     const justPushed = t.attacks[t.attacks.length - 1];
-                    if (pick.mandatory.has(t.b.weakness)) {
-                        pick.mandatory.delete(t.b.weakness);
-                        pick.lockedNow = Math.max(0, pick.lockedNow - 1);
-                        consumedMandatory.add(justPushed);
-                    }
                     // 復元情報は WeakMap に置く: 凸オブジェクトに直接生やすと
                     // 📤配信の JSONB に内部メタが混入して配信データが膨らむ (Codex指摘)
                     loMeta.set(justPushed, pickLo);
                     t.rem -= dmg;
                 };
-                // 割当を1件取り消して、消費した状態 (キャラ・編成・残凸・必須予約) を戻す。
+                // 割当を1件取り消して、消費した状態 (キャラ・編成・残凸) を戻す。
                 // trimOverkill 用 — applyPick の逆操作なので、applyPick を変えたらここも直すこと
                 const undoPick = (t, atk) => {
                     const m = memberState.find(x => x.id === atk.memberId);
@@ -766,8 +682,6 @@
                              levels: { '0': atk.dmgB }, ord: 0 });
                     m.avail[w].sort((a, b) => b.dmg - a.dmg
                         || (a.slot ?? 1) - (b.slot ?? 1) || (a.ord ?? 0) - (b.ord ?? 0));
-                    // 必須属性を消化した凸なら予約も戻す (後続の recountLocked で最終整合)
-                    if (consumedMandatory.has(atk)) { m.mandatory.add(w); m.lockedNow++; }
                     // usedChars は「この凸で初めて使ったキャラ」だけ戻す。
                     // 完了凸の seed や他の割当が同じキャラを持つ場合は消してはいけない
                     if (Array.isArray(atk.team) && atk.team.length > 0) {
@@ -882,7 +796,6 @@
                     //   全凸に null で付けると配信 JSON と指紋テストの出力が変わる
                     placed.fromReservation = true;
                     placed.reservationId = s.reservationId ?? null;
-                    recountLocked();
                 };
                 if (Array.isArray(opts.reservations) && opts.reservations.length > 0) {
                     for (const s of opts.reservations) placeReservation(s);
@@ -912,12 +825,10 @@
                         if (!cand) continue;
                         const dmg = resolveDamage(cand);
                         if (dmg === null) continue;
-                        // ⚠ キャラ被り・必須枠の条件は listCandidatesFor と同じ式にすること
+                        // ⚠ キャラ被りの条件は listCandidatesFor と同じ式にすること
                         //   (片方だけ変えると「候補にならないのに置かれる」不整合になる)
                         if (m.anyTeamRegistered && cand.team.length > 0
                             && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
-                        if (m.mandatory.size > 0 && !m.mandatory.has(w)
-                            && (m.remainingAttacks - m.lockedNow) <= 0) continue;
                         // L2: 後のレベルの予約ぶんは前回どおり (sticky) でも使わない — 予約の方が強い
                         if ((m.remainingAttacks - (m.reservedLater || 0)) <= 0) continue;
                         if ((m.reservedLater || 0) > 0 && (m.reservedLaterSlots.has(`${w}|${Number(cand.slot) || 1}`)
@@ -929,7 +840,6 @@
                             pickLo: cand, pickDmg: dmg, pickSlot: slot,
                         });
                         stickyPlaced.add(t.attacks[t.attacks.length - 1]);
-                        recountLocked();
                     }
                 }
                 if (!absorbMode) {
@@ -944,10 +854,8 @@
                             applyPick(t, c);
                             // ★ 撃破時だけでなく毎回数え直す — 凸を1つ採るたびに usedChars が増え、
                             //   得意属性が「出せない」状態に変わりうる (上のコメント参照)
-                            recountLocked();
                         }
                         trimOverkill(t);   // 撃破を保ったまま不要な凸を外す (損失圧縮・凸を浮かせる)
-                        recountLocked();   // このボスが撃破されたら必須予約を解放 (#4)
                     }
                 } else {
                     // 吸収モード: 生きている全ボスを横断して、常に全体スコア最小の凸を選ぶ
@@ -963,7 +871,6 @@
                         if (bestT.rem <= 0.0001) {
                             trimOverkill(bestT);   // 撃破したボスの不要な凸を外し、他ボスへ回す
                         }
-                        recountLocked();   // 採用のたびに数え直す (同上)
                     }
                 }
                 // 集計: ボスごとの結果を組み立てる
@@ -1047,8 +954,6 @@
             const lv4Attacks = [];
             for (const m of memberState) {
                 // 同一人物でも別編成 (loadout slot) なら同属性に複数凸できる — 残凸数まで dmg 降順で割当。
-                // 有限ボスはもう残っていないので、得意属性の枠予約 (lockedNow) はここでは考慮しない
-                // (温存する先が存在しない。凸を余らせるより全額入るボス5へ出す方が常に良い)
                 while (m.remainingAttacks > 0) {
                     const list = m.avail[lv4Weak];
                     if (!list || list.length === 0) break;
@@ -1084,10 +989,6 @@
                     if (loIdx >= 0) list.splice(loIdx, 1);
                     if (list.length === 0) delete m.avail[lv4Weak];
                     m.remainingAttacks--;
-                    if (m.mandatory.has(lv4Weak)) {
-                        m.mandatory.delete(lv4Weak);
-                        m.lockedNow = Math.max(0, m.lockedNow - 1);
-                    }
                 }
             }
             const lv4HasFlex = lv4Attacks.some(a => a.flex);
@@ -1475,16 +1376,6 @@
                 const attempt = runPass({
                     ...(passOpts || {}),
                     oppCostOf,
-                    // ★ 「Lv4 で消化できるから有限レベルでは枠予約しない」の前提には、
-                    //   時間だけでなく **Lv4 で出せる編成を持っていること** も要る。
-                    //   見ないと、ボス5弱点が得意属性なのに Lv4 未満でしか測っていない人の
-                    //   必須枠を有限レベルで外してしまい、Lv4 でも出せないので
-                    //   得意属性が一度も消化されないまま終わる
-                    lv4Mandatory: {
-                        attr: lv4Weak,
-                        canAfter: (m) => canAttackAfterT3(m)
-                            && (m.avail[lv4Weak] || []).some(lo => hasDamage(lo)),
-                    },
                     decisionPolicy: policy,
                     trace: reserveTrace,
                 });
@@ -1740,7 +1631,6 @@
             surplus: '余剰戦力',
             time: '時間帯なし',
             noAliveAttr: '生存ボスの属性が未提出',
-            reserve: '得意属性を温存',
             hpExhausted: 'ボスHP尽き',
         };
         const lastPlanned = levels[levels.length - 1];
@@ -1805,7 +1695,6 @@
                     if (!anyAliveAttr) { key = 'noAliveAttr'; reason = '残っている生存ボスの属性を未提出'; }
                     else if (!anyInLevel) { key = 'level'; reason = `編成の測定レベルが Lv${lastLv} に届かない (Lv${lastLv}以上で測り直すと出せる)`; }
                     else if (conflictOnly) { key = 'conflict'; reason = 'キャラ被り (同キャラは1日1回) で出せる編成なし'; }
-                    else if (m.mandatory.size > 0 && (m.remainingAttacks - m.lockedNow) <= 0) { key = 'reserve'; reason = '得意属性の必須枠を温存中'; }
                     else { key = 'hpExhausted'; reason = 'ボスHPが尽きた (割当先なし)'; }
                 }
                 return { name: m.name, remaining: m.remainingAttacks, reason, key, label: UNUSED_LABELS[key] || key };

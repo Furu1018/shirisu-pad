@@ -56,7 +56,7 @@ function player(name, damagesByAttr, opts = {}) {
         attacks: opts.attacks || [],
         availableSlots: opts.availableSlots || [],
         flexTime: !!opts.flexTime,
-        strong_attributes: opts.strong || [],
+        strong_attributes: opts.strong || [],   // ソルバーでは使わない (2026-09-08) — 渡しても結果が変わらないことを下で確認する
     };
 }
 
@@ -231,63 +231,8 @@ test('3凸済みメンバーは候補に含まれない', () => {
 });
 
 // ---- 得意属性の必須消化 ----------------------------------------------------------
-test('得意属性のボスが全滅済みでも他ボスに出せる (予約ロックアウト回帰)', () => {
-    // NOB: 得意3属性 (fire/water/electric) のボスは全て撃破済み。
-    // wind のボスだけ生存していて wind ダメージも提出済み → wind に出せるべき。
-    // 旧実装は 自由枠 = 3 - 必須3 = 0 で wind をスキップし、一切使われなかった。
-    const plan = compute(makeInput(
-        [
-            boss(1, 'fire', { remainingB: 0, totalB: 100 }),
-            boss(2, 'water', { remainingB: 0, totalB: 100 }),
-            boss(3, 'electric', { remainingB: 0, totalB: 100 }),
-            boss(4, 'wind', { remainingB: 10 }),
-        ],
-        [player('NOB', { fire: 20, water: 20, electric: 20, wind: 15 }, {
-            strong: ['fire', 'water', 'electric'],
-        })],
-    ));
-    const b4 = plan.levels[0].bosses.find(b => b.bossNumber === 4);
-    assert.equal(b4.cleared, true, 'wind ボスに割当てられるはず');
-    assert.equal(b4.attacks[0].memberName, 'NOB');
-});
 
-test('得意属性のボスが生きている間は枠が予約される (必須消化の本来動作)', () => {
-    // 得意 fire のボスが生存 → 残凸1のとき water には出さず fire に温存する
-    const plan = compute(makeInput(
-        [boss(1, 'water', { remainingB: 10 }), boss(2, 'fire', { remainingB: 10 })],
-        [player('A', { fire: 15, water: 15 }, {
-            strong: ['fire'],
-            attackCount: 2,               // 残凸1
-            attacks: [{ boss_number: 99 }, { boss_number: 98 }],   // 属性未消費扱いのダミー
-        })],
-    ));
-    const water = plan.levels[0].bosses.find(b => b.bossNumber === 1);
-    const fire = plan.levels[0].bosses.find(b => b.bossNumber === 2);
-    assert.equal(water.attacks.length, 0, '残り1凸は必須の fire に温存されるはず');
-    assert.equal(fire.attacks[0]?.memberName, 'A');
-});
 
-test('必須属性のボスがレベル途中で他メンバーに撃破されたら予約を解放して他ボスに出せる (Codex監査 #4)', () => {
-    // A: 得意 fire (必須) + water も出せる、残凸1。fire は大幅オーバーキル(火力過剰)。
-    // B: fire を低オーバーキルで撃破 → A より fire に適する。
-    // 期待: B が fire を撃破 → A の必須 fire は満たせなくなるので予約を解放し、A は water に出る。
-    // 修正前は A の lockedNow が握られたまま水ボスで除外され、A の1凸が丸ごと未使用だった。
-    const plan = compute(makeInput(
-        [boss(1, 'fire', { remainingB: 10 }), boss(2, 'water', { remainingB: 10 })],
-        [
-            player('A', { fire: 100, water: 15 }, {
-                strong: ['fire'], attackCount: 2,               // 残凸1
-                attacks: [{ boss_number: 98 }, { boss_number: 99 }],
-            }),
-            player('B', { fire: 11 }),
-        ],
-    ));
-    const fire = plan.levels[0].bosses.find(b => b.bossNumber === 1);
-    const water = plan.levels[0].bosses.find(b => b.bossNumber === 2);
-    assert.equal(fire.attacks[0]?.memberName, 'B', 'fire は低オーバーキルの B が撃破するはず');
-    assert.equal(water.cleared, true, 'A の予約が解放され water も撃破されるはず');
-    assert.equal(water.attacks[0]?.memberName, 'A', 'A が余った1凸を water に使うはず');
-});
 
 // ---- 時間考慮モード (timeAware) ------------------------------------------------
 console.log('\ntimeAware:');
@@ -506,43 +451,18 @@ test('timeAware=false では従来と同じ出力 (時間フィールドは null
 // ---- 得意属性の必須選出 -------------------------------------------------------
 console.log('\nstrongAttrs:');
 
-test('得意属性2つ: その2属性は必ず消化、自由枠は1つだけ', () => {
-    const bs = [
-        boss(1, 'fire', { remainingB: 5 }), boss(2, 'water', { remainingB: 5 }),
-        boss(3, 'electric', { remainingB: 5 }), boss(4, 'iron', { remainingB: 5 }),
-        boss(5, 'wind', { remainingB: 5 }),
-    ];
-    const plan = compute(makeInput(bs, [
-        player('A', { fire: 10, water: 10, electric: 10, iron: 10, wind: 10 }, { strong: ['electric', 'wind'] }),
-    ]));
-    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness));
-    assert.equal(attrs.length, 3, `3凸のはず: ${attrs}`);
-    assert.ok(attrs.includes('electric') && attrs.includes('wind'), `得意2属性を含むはず: ${attrs}`);
-});
 
-test('得意属性4つ: その4属性の中からのみ選出 (5属性目には出さない)', () => {
-    const bs = [
-        boss(1, 'wind', { remainingB: 5 }), boss(2, 'fire', { remainingB: 5 }),
-        boss(3, 'water', { remainingB: 5 }), boss(4, 'electric', { remainingB: 5 }),
-    ];
-    const plan = compute(makeInput(bs, [
-        player('A', { fire: 10, water: 10, electric: 10, iron: 10, wind: 10 }, { strong: ['fire', 'water', 'electric', 'iron'] }),
-    ]));
-    assert.equal(plan.levels[0].bosses[0].attacks.length, 0, 'wind ボスには出ないはず');
-    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness)).sort();
-    assert.deepEqual(attrs, ['electric', 'fire', 'water']);
-});
 
-test('得意属性でもダメージ未提出なら強制しない (提出済みの得意属性のみ必須)', () => {
-    const plan = compute(makeInput(
-        [boss(1, 'fire', { remainingB: 5 }), boss(2, 'electric', { remainingB: 5 })],
-        [player('A', { fire: 10, electric: 10 }, { strong: ['electric', 'wind'] })],
-    ));
-    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness)).sort();
-    assert.deepEqual(attrs, ['electric', 'fire'], 'wind 未提出でも fire は自由枠で選出されるはず');
-});
 
-test('得意属性なし: 従来どおり制約なく選出される', () => {
+test('得意属性は算出に影響しない (2026-09-08: ソルバーから外した。予約が本人の希望を表す)', () => {
+    // ★ 同じ盤面で得意属性を付けても割当が1つも変わらないこと (仕組みを外した証拠)
+    {
+        const bs0 = [boss(1, 'fire', { remainingB: 5 }), boss(2, 'water', { remainingB: 5 }), boss(3, 'electric', { remainingB: 5 })];
+        const shot = (strong) => JSON.stringify(compute(makeInput(bs0, [player('A', { fire: 10, water: 10, electric: 10, iron: 10, wind: 10 }, { strong })])).levels
+            .map(lv => lv.bosses.map(b => b.attacks.map(a => [a.memberId, a.loadoutSlot, a.hourIdx]))));
+        assert.equal(shot(['fire']), shot([]), '得意属性1つで割当が変わった');
+        assert.equal(shot(['fire', 'water', 'electric', 'iron']), shot([]), '得意属性4つで割当が変わった');
+    }
     const bs = [
         boss(1, 'fire', { remainingB: 5 }), boss(2, 'water', { remainingB: 5 }),
         boss(3, 'electric', { remainingB: 5 }),
@@ -600,32 +520,6 @@ test('既に1凸済みの属性は上位ロードアウトから消費済み扱�
     assert.equal(b1.attacks[0].dmgB, 8, '残っているのは2編成目 (8B) のはず');
 });
 
-test('凸済みの得意属性は再強制しない (編成②が残っていても満足済み扱い)', () => {
-    // fire に1凸済み。fire の編成②が残っていても mandatory は water だけになり、
-    // 残り1枠は自由に electric へ使えるはず (旧バグ: fire 再強制で electric が選出不能)
-    const p = player('A', { fire: 10, water: 9, electric: 8 }, {
-        attackCount: 1,
-        attacks: [{ boss_number: 1 }],   // boss1 (fire) に凸済み
-        strong: ['fire', 'water'],
-    });
-    p.loadoutsByAttr = {
-        fire: [
-            { dmgB: 10, team: ['a', 'b', 'c', 'd', 'e'], slot: 1 },
-            { dmgB: 7, team: ['f', 'g', 'h', 'i', 'j'], slot: 2 },
-        ],
-        water: [{ dmgB: 9, team: [], slot: 1 }],
-        electric: [{ dmgB: 8, team: [], slot: 1 }],
-    };
-    // fire ボスは既に撃破済み (残HP 0)。ボスリストには居るので凸履歴→属性の逆引きは可能
-    const bs = [
-        boss(1, 'fire', { remainingB: 0 }),
-        boss(2, 'water', { remainingB: 5 }),
-        boss(3, 'electric', { remainingB: 5 }),
-    ];
-    const plan = compute(makeInput(bs, [p]));
-    const attrs = plan.levels[0].bosses.flatMap(b => b.attacks.map(() => b.weakness)).sort();
-    assert.deepEqual(attrs, ['electric', 'water'], `water(必須)+electric(自由枠) のはず: ${attrs}`);
-});
 
 // ---- 模擬の測定レベル (boss_level) --------------------------------------------
 // ルール: 記録レベル L の編成は「対象レベル ≤ L」にだけ使える。
@@ -755,42 +649,6 @@ test('ソルバーはスロット番号に依存しない (枠数を変えても
     assert.deepEqual(atks.map(a => a.loadoutSlot), [1, 2, 7]);
 });
 
-test('ボス5弱点が得意属性で Lv4 未満測定でも、得意属性が消化される', () => {
-    // 「得意属性の消化は Lv4 で満たせる」前提で有限レベルの必須枠を外す最適化 (lv4Mandatory)
-    // がある。その前提には「Lv4 で出せる編成を持っていること」も要るので、
-    // canAfter に usableAtLevel(lo, 4) を足してある。
-    // ⚠ このテストは**そのガード単体を切り分けられていない** (ガードを外しても通る)。
-    //    probe/温存の2パス選択で最終プランが一致してしまうため。
-    //    ここではシナリオ全体の回帰 (Lv4未満測定の得意属性が消化される) だけを固定している。
-    //    ガードを外すと canAfter(A) が false→true に変わることは実測で確認済み
-    // 盤面: fire も wind も「A がぴったり削り切れる」大きさにしてある。
-    // A の枠を予約しないと、先に処理される fire (b1) を A が取ってしまい、
-    // 得意属性の wind は他メンバーで埋まって A の得意消化が消える
-    const bs = [
-        boss(1, 'fire', { tier: 'lord', remainingB: 20 }),
-        boss(2, 'water', { tier: 'lord', remainingB: 5 }),
-        boss(3, 'electric', { tier: 'tyrant', remainingB: 5 }),
-        boss(4, 'iron', { tier: 'lord', remainingB: 5 }),
-        boss(5, 'wind', { tier: 'tyrant', remainingB: 20 }),
-    ];
-    // A: 得意=wind (ボス5弱点) だが wind は Lv3 でしか測っていない → Lv4 では出せない
-    const a = player('A', { wind: 20, fire: 20 }, { strong: ['wind'], attackCount: 2 });
-    a.loadoutsByAttr = {
-        wind: [{ dmgB: 20, team: ['a1','a2','a3','a4','a5'], slot: 1, level: 3 }],
-        fire: [{ dmgB: 20, team: ['b1','b2','b3','b4','b5'], slot: 1 }],
-    };
-    const others = [
-        player('P2', { fire: 9, water: 9, electric: 9 }),
-        player('P3', { iron: 9, wind: 9 }),
-        player('P4', { fire: 12 }),
-        player('P5', { wind: 12 }),
-    ];
-    const plan = compute(makeInput(bs, [a, ...others], { currentLevel: 3 }));
-    const mine = plan.levels.flatMap(l => l.bosses.flatMap(b => b.attacks.map(x => ({ ...x, w: b.weakness }))))
-        .filter(x => x.memberName === 'A');
-    assert.equal(mine.length, 1, 'A は残1凸を使うはず');
-    assert.equal(mine[0].w, 'wind', `得意属性 wind に割り当てられるはず: ${mine[0].w}`);
-});
 
 // ---- Lv4: ボス5・HP無限 (Lv3踏破で即日開放) ----------------------------------
 console.log('\nlv4:');
@@ -1039,22 +897,6 @@ test('残HPの小さい有限ボスには2編成目(低火力)を回し、1編�
         '1編成目(20B)はボス5(無限)へ');
 });
 
-test('得意属性が wind の人は Lv4 (ボス5) への割当で必須消化を満たす', () => {
-    const plan = compute(lv3Input(fiveBosses({ b1: 10 }), [
-        player('風得意', { wind: 20, fire: 10 }, { slv: 500, strong: ['wind'] }),
-        player('風小', { wind: 6 }, { slv: 400 }),
-        player('水担当', { water: 5 }), player('電担当', { electric: 5 }), player('鉄担当', { iron: 5 }),
-    ]));
-    assert.equal(plan.lv4Open, true);
-    const lv4 = plan.levels[plan.levels.length - 1].bosses[0];
-    assert.ok(lv4.attacks.some(a => a.memberName === '風得意'), '得意属性はボス5で消化 (全額計上で本人にも最良)');
-    const lv3 = plan.levels.find(lv => lv.level === 3);
-    assert.ok(lv3.bosses.find(b => b.weakness === 'fire').attacks.some(a => a.memberName === '風得意'),
-        '必須枠の予約で fire への自由凸がブロックされない');
-    // 温存が絡んでも必須未消化の警告対象にならない
-    const detail = plan.unusedDetail.find(d => d.name === '風得意');
-    assert.ok(!detail || !/必須枠を温存中/.test(detail.reason));
-});
 
 test('reserveGainB は常に0以上 (悪化するなら probe に倒す)', () => {
     // 温存の余地がないケース (wind 1人だけ) でも壊れない
@@ -1775,35 +1617,6 @@ console.log('\ndomain/mockCompare:');
     });
 }
 
-test('得意属性の予約は「実際に出せる編成が残っているか」まで見る (レベル跨ぎ)', () => {
-    // 得意属性の編成がキャラ被りで全滅しているのに枠だけ予約し続けると、
-    // 出せる属性への凸まで封じられる。**レベル開始時の初期化にも効かせないと**、
-    // 次のレベルの最初の候補選定で弾かれ、そのレベルで1凸もできないまま終わる。
-    // 実測で見つけた4人盤面 (canUseAttr をレベル開始時から外すと 139B に落ちる)
-    const lo = (dmg, shared, attr) => [{ dmgB: dmg, team: [shared, `${attr}A`, `${attr}B`, `${attr}C`, `${attr}D`], slot: 1 }];
-    const mk = (name, slv, strong, spec) => ({
-        id: name, name, attackCount: 0, syncLevel: slv, attacks: [],
-        availableSlots: [], flexTime: false, strong_attributes: strong, teamsByAttr: {},
-        damagesByAttr: Object.fromEntries(Object.entries(spec).map(([a, [d]]) => [a, d])),
-        loadoutsByAttr: Object.fromEntries(Object.entries(spec).map(([a, [d, sh]]) => [a, lo(d, sh, a)])),
-    });
-    const bs = [
-        boss(1, 'fire', { attribute: 'wind', totalB: 36, remainingB: 31 }),
-        boss(2, 'electric', { attribute: 'water', totalB: 49, remainingB: 48 }),
-        boss(3, 'iron', { attribute: 'electric', tier: 'tyrant', totalB: 26, remainingB: 15 }),
-        boss(4, 'wind', { attribute: 'iron', totalB: 33, remainingB: 18 }),
-        boss(5, 'water', { attribute: 'fire', tier: 'tyrant', totalB: 28, remainingB: 20 }),
-    ];
-    const ps = [
-        mk('M0', 529, ['fire'], { wind: [17.5, '共有B'], electric: [24.5, '共有D'], fire: [25, '共有B'] }),
-        mk('M1', 509, ['water'], { electric: [20.5, '共有C'], water: [20, '共有B'], fire: [23, '共有C'] }),
-        mk('M2', 653, ['wind'], { wind: [19.5, '共有D'], iron: [22, '共有A'], fire: [7, '共有D'], electric: [13.5, '共有A'] }),
-        mk('M3', 503, ['fire', 'iron'], { wind: [13, '共有D'], iron: [16, '共有B'], fire: [7, '共有D'], electric: [23.5, '共有B'] }),
-    ];
-    const plan = compute({ ...makeInput(bs, ps, { currentSlot: 'h05' }), timeAware: false });
-    assert.ok(plan.totalCreditedB >= 144,
-        `出せない得意属性の枠でロックしてはいけない (実際 ${plan.totalCreditedB.toFixed(1)}B / ロックすると 139B)`);
-});
 
 test('レベルの割当は SLv ではなく実際の提出ダメージ順で決まる', () => {
     // 順位付けだけを切り出す: **同じボスに対する火力は両者とも同じ 10B** にして、
@@ -2109,22 +1922,6 @@ test('trim 後に usedB/overflowB と集計が再計算される', () => {
     assert.ok(Math.abs(used - 61.2) < 0.05, `usedB合計は目標61.2のはず (実際 ${used.toFixed(1)})`);
 });
 
-test('trim で外した必須属性(得意)の凸は予約が戻る', () => {
-    // 得意属性の凸を trim で外したのに mandatory を消化済みのままにすると、
-    // 後続の同弱点ボスで必須予約が失われ、非必須属性へ凸を使えてしまう (Codex指摘)
-    const a = player('A', { fire: 30, water: 30 }, { slv: 500, strong: ['fire'] });
-    const b1 = player('B', { fire: 25 }, { slv: 500 });
-    const c1 = player('C', { fire: 25 }, { slv: 500 });
-    const plan = compute(makeInput(
-        // fire弱点ボスが2体。1体目は B+C だけで倒せるので A の凸は trim される
-        [boss(1, 'fire', { remainingB: 45 }), boss(2, 'fire', { remainingB: 20 })],
-        [a, b1, c1],
-    ));
-    const bosses = plan.levels[0].bosses;
-    // A が fire に出ている (必須予約が戻り、2体目の fire で使われる) こと
-    const aAttacks = bosses.flatMap(b => b.attacks).filter(x => x.memberName === 'A');
-    assert.ok(aAttacks.length >= 1, 'A は必須の fire で使われるはず (予約が戻る)');
-});
 
 test('抜くと倒せなくなる凸は外さない', () => {
     // 3人でギリギリ (10+10+10=30 ≥ 目標28)。どれを抜いても20 < 28 なので全員残す
@@ -2212,25 +2009,6 @@ test('実使用が低火力の編成②でも、合法な編成①を失わな�
     assert.equal(atks[0].dmgB, 30, '実使用は②なので、未使用の①(高火力)が残るはず');
 });
 
-test('得意属性が完了凸のキャラ被りで全滅しても、他属性をロックしない', () => {
-    // seed で avail から消えた属性を mandatory に入れると、出せない属性を予約して
-    // 他属性まで止めてしまう (Codex指摘の実装順序の罠)。
-    const p = player('A', { fire: 20, water: 15 }, {
-        attackCount: 1,
-        strong: ['fire'],                       // 得意 = fire (必ず消化したい)
-        attacks: [{ boss_number: 3, characters: ['ラピ', 'ドロシー', 'モダニア', 'ノワール', 'ブラン'] }],
-    });
-    p.loadoutsByAttr = {
-        fire:  [{ dmgB: 20, team: ['ラピ', 'アニス', 'ネオン', 'ユニ', 'ソーダ'], slot: 1 }],   // ラピ被りで出せない
-        water: [{ dmgB: 15, team: ['マキマ', 'ベス', 'ノア', 'ミカ', 'リター'], slot: 1 }],
-    };
-    const plan = compute(makeInput(
-        [boss(1, 'water', { remainingB: 10 }), boss(3, 'electric', { remainingB: 10 })],
-        [p],
-    ));
-    const waterBoss = plan.levels[0].bosses.find(b => b.bossNumber === 1);
-    assert.equal(waterBoss.attacks.length, 1, 'fire が出せない以上 water に出せるはず (予約で固まらない)');
-});
 
 test('完了凸の編成が未記録なら best-effort (候補に残し、要確認として名指し)', () => {
     // 代理凸・一括登録は characters: [] を保存する。被り判定はできないが、
