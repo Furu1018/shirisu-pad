@@ -3605,6 +3605,41 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/sourcePlanId: st\.planId/.test(h), 'どの配信から生まれた予約か残していない');
     });
 
+    test('★ ⑧配線: 締め凸の了承は即予約 / 予約が作れなくても了承は成立させる', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const fn = html.match(/async function _reserveForFinishRequest[\s\S]{0,1400}/)?.[0] || '';
+        assert.ok(fn, '締め凸→予約の関数が無い');
+        // ★ 依頼したのは運営なので、改めて承認を挟まない
+        assert.ok(/status: 'approved'/.test(fn), '了承を承認待ちで作っている (運営がもう一度承認する羽目になる)');
+        assert.ok(/sourceType: 'finish_request'/.test(fn));
+        // ★ 締め凸は「いまから行く」もの。時刻を約束させると守れないほうが普通になる
+        assert.ok(/flex: true, timeSlot: null/.test(fn), '締め凸に時刻を約束させている');
+        // 押し直しても増やさない
+        assert.ok(/rv\.findActiveFor\(mine,/.test(fn), '同じ枠の重複を見ていない');
+        // 39未適用なら何もしない (了承だけ成立)
+        assert.ok(/if \(!Array\.isArray\(mine\)\) return;/.test(fn));
+        // ★ 予約が作れなくても了承は成立させる (返答はもうサーバへ届いている)
+        const caller = html.match(/if \(status === 'accepted'\) \{[\s\S]{0,300}/)?.[0] || '';
+        assert.ok(/catch \(e\) \{ console\.warn\('\[finish→予約\]'/.test(caller), '予約の失敗で了承ごと失敗している');
+    });
+
+    test('★ ⑧配線: ホームの「引き受けた凸」/ 取り消しは希望を出すだけ', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        assert.ok(html.includes('id="myReservationsCard"'), 'カードが無い');
+        const fn = html.match(/async function renderMyReservations[\s\S]{0,2600}/)?.[0] || '';
+        assert.ok(fn, '描画関数が無い');
+        // 39未適用 (null) と 0件 ([]) をどちらもカード非表示にするが、判定は分けて書く
+        assert.ok(/!Array\.isArray\(_myResvRows\) \|\| _myResvRows\.length === 0/.test(fn));
+        assert.ok(/rv\.isActive\(r\)/.test(fn), '生きている予約の判定をドメインでやっていない');
+        // ★ 取り消しは希望を出すだけ。解除には運営の承認が要る (ユーザー決定)
+        const cancel = html.match(/async function handleRequestCancelReservation[\s\S]{0,900}/)?.[0] || '';
+        assert.ok(/'cancel_requested'/.test(cancel), '本人が直接解除できてしまう');
+        assert.ok(!/'released'/.test(cancel), '本人の操作で解除している');
+        assert.ok(/expectFrom: r\.status/.test(cancel), '取り違えた操作を弾いていない');
+        // ホームの描画に載っている
+        assert.ok(/renderMyReservations\(id\);\s*\/\/ 🔒 引き受けた凸/.test(html), 'ホームで呼んでいない');
+    });
+
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
         // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる
         const m = _sqlRes.match(/status TEXT NOT NULL DEFAULT 'requested'\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);

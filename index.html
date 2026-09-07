@@ -3210,6 +3210,18 @@
                 <div id="myPublishedPlanBody"></div>
             </div>
 
+            <!-- 🔒 引き受けた凸 (予約) — L2 ⑧。予約が1件でもあるときだけ表示 -->
+            <div class="dc-card" id="myReservationsCard" style="display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">🔒 引き受けた凸</div>
+                    <span id="myReservationsMeta" style="font-size:10px;font-weight:700;color:#A4AAB0;"></span>
+                </div>
+                <p style="margin:0 0 10px;font-size:11px;font-weight:700;color:#8A9097;line-height:1.6;">
+                    運営が承認した凸は<b>固定</b>されます。プランを組み直しても動きません。
+                </p>
+                <div id="myReservationsBody"></div>
+            </div>
+
             <!-- ④ 受け取った通知 (id はヘッダー🔔のスクロール先) -->
             <div class="dc-card" id="myNotificationsCard">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -7718,6 +7730,7 @@
                 renderMypageStrongAttrsBadge(null);
                 _refreshMyStatusSwitcher(null);
                 renderMyPublishedPlan(null);
+                renderMyReservations(null);
                 renderMyNextAction(null);
                 return;
             }
@@ -7731,6 +7744,7 @@
             renderMyNextAttackBosses(id);
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
+            renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
         }
@@ -8048,6 +8062,78 @@
             return `<button onclick="handleClaimPlanRow(${level},${boss},${slot})" style="margin-top:7px;border:1.5px solid #6C42F0;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:10.5px;font-weight:900;color:#6C42F0;background:#fff;cursor:pointer;">この凸を引き受ける</button>`;
         }
 
+        // ===== ホームの「🔒 引き受けた凸」 (L2 ⑧) =====
+        let _myResvRows = null;   // null = 未取得 or 39未適用
+        async function renderMyReservations(identity) {
+            const card = document.getElementById('myReservationsCard');
+            const body = document.getElementById('myReservationsBody');
+            const meta = document.getElementById('myReservationsMeta');
+            const rv = window.reservationsDomain;
+            if (!card || !body || !rv) return;
+            if (!identity?.id) { card.style.display = 'none'; return; }
+            let ctx = null;
+            try { ctx = await ensureActiveSeasonLoaded(); } catch { /* 下で null 扱い */ }
+            if (!ctx?.season?.id) { card.style.display = 'none'; return; }
+            try {
+                _myResvRows = await window.supabaseLoadMyReservations?.(ctx.season.id, identity.id) ?? null;
+            } catch { _myResvRows = null; }
+            // ★ 39未適用 (null) と「予約0件」([]) を区別する。どちらもカードは出さないが、
+            //   0件は「これから引き受けられる」状態なので、他の導線は生かす
+            if (!Array.isArray(_myResvRows) || _myResvRows.length === 0) { card.style.display = 'none'; return; }
+            const bossName = new Map((ctx.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code || `B${b.boss_number}`]));
+            const live = _myResvRows.filter(r => rv.isActive(r));
+            const done = _myResvRows.filter(r => !rv.isActive(r));
+            const row = (r) => {
+                const jp = rv.STATUS_JP[r.status] || r.status;
+                const col = r.status === 'approved' ? '#0E9455'
+                    : r.status === 'requested' ? '#5B2BE0'
+                    : r.status === 'cancel_requested' ? '#B45309' : '#A4AAB0';
+                const bg = r.status === 'approved' ? 'rgba(24,194,107,0.10)'
+                    : r.status === 'requested' ? 'rgba(108,66,240,0.10)'
+                    : r.status === 'cancel_requested' ? 'rgba(245,158,11,0.12)' : '#F1F2F4';
+                const when = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定');
+                const who = r.status === 'approved' && r.approved_by ? `${escapeHtml(String(r.approved_by))}が承認` : '';
+                const why = !rv.isActive(r) && r.release_reason ? (rv.RELEASE_JP[r.release_reason] || r.release_reason) : '';
+                const team = Array.isArray(r.characters_snapshot) && r.characters_snapshot.length
+                    ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
+                // 取り消しは**希望を出すだけ** — 解除には運営の承認が要る (ユーザー決定)
+                const cancel = (r.status === 'requested' || r.status === 'approved')
+                    ? `<button onclick="handleRequestCancelReservation(${Number(r.id)})" style="flex:none;border:1px solid rgba(20,22,26,0.10);border-radius:999px;padding:6px 11px;font-family:inherit;font-size:10.5px;font-weight:800;color:#6B7178;background:#fff;cursor:pointer;">取り消したい</button>`
+                    : '';
+                return `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid rgba(20,22,26,0.05);${rv.isActive(r) ? '' : 'opacity:0.55;'}">
+                    <span style="flex:none;font-size:10px;font-weight:900;color:${col};background:${bg};padding:4px 9px;border-radius:999px;">${escapeHtml(jp)}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12.5px;font-weight:800;color:#14161A;">Lv${Number(r.raid_level)} · ${escapeHtml(String(bossName.get(Number(r.boss_number)) || ('B' + r.boss_number)))} · ${escapeHtml(when)} · 編成${SLOT_JP[Number(r.loadout_slot)] || '①'}</div>
+                        ${who || why ? `<div style="font-size:10px;font-weight:700;color:#A4AAB0;margin-top:2px;">${escapeHtml(who || why)}</div>` : ''}
+                        ${team ? `<div style="margin-top:5px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;">${team}</div>` : ''}
+                    </div>
+                    ${cancel}
+                </div>`;
+            };
+            body.innerHTML = live.map(row).join('') + done.map(row).join('');
+            if (meta) meta.textContent = `固定 ${live.filter(r => r.status === 'approved').length} / 申請中 ${live.filter(r => r.status === 'requested').length}`;
+            card.style.display = '';
+        }
+
+        // 取り消しは希望を出すだけ。解除には運営の承認が要る (ユーザー決定 2026-09-07)
+        async function handleRequestCancelReservation(id) {
+            const rv = window.reservationsDomain;
+            const r = (_myResvRows || []).find(x => Number(x.id) === Number(id));
+            if (!rv || !r) return;
+            if (!confirm('この凸の取り消しを運営に希望します。\n\n'
+                + '★ 押しただけでは外れません。運営が承認すると解除されます。\n\n[OK] 希望を出す / [キャンセル] やめる')) return;
+            try {
+                const me = getCurrentIdentity();
+                await window.supabaseSetReservationStatus(Number(id), 'cancel_requested', {
+                    expectFrom: r.status, actor: me?.name || null, reason: 'member_request',
+                });
+                showNotification('運営に取り消しの希望を伝えました');
+                await renderMyReservations(me);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+
         // 引き受ける = 予約を申請する (運営の承認を待つ)
         let _claimBusy = false;
         async function handleClaimPlanRow(level, bossNumber, loadoutSlot) {
@@ -8077,6 +8163,7 @@
                 // 一覧を取り直して、同じ行を「申請中」に変える
                 st.resv = await window.supabaseLoadMyReservations?.(st.seasonId, st.viewerId) ?? st.resv;
                 _renderMyPubBody();
+                renderMyReservations(getCurrentIdentity());   // 🔒 カードにも出す
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             } finally { _claimBusy = false; }
@@ -8212,6 +8299,23 @@
                 </div>`;
             }).join('');
         }
+        // その属性で自分がいま出せる一番強い編成 (⑧ 申請UI の下書き用)。
+        // 見つからなければ null — 予約は編成の写しなしで作る (ソルバーは現在の編成に落ちる)
+        async function _myBestLoadoutFor(playerId, attrKey) {
+            if (!playerId || !attrKey) return null;
+            let rows = [];
+            try { rows = await window.supabaseLoadPlayerDamages(playerId) || []; } catch { return null; }
+            let best = null;
+            rows.filter(r => r.attribute === attrKey).forEach(r => {
+                const dmg = mockDamageOf(r);
+                if (dmg <= 0) return;
+                if (!best || dmg > best.dmgB) {
+                    best = { slot: Number(r.slot) || 1, characters: Array.isArray(r.characters) ? r.characters.filter(Boolean) : [], dmgB: dmg };
+                }
+            });
+            return best;
+        }
+
         async function handleMyFinishRequestRespond(bossNumber, status) {
             const id = getCurrentIdentity();
             if (!id?.id) return;
@@ -8220,6 +8324,17 @@
                 if (!ctx?.season?.id) throw new Error('アクティブシーズンなし');
                 await window.supabaseRespondFinishRequest(ctx.season.id, bossNumber, id.id, status,
                     Number(ctx.season.current_level) || null);
+                // ★ 締め凸の了承は **即予約** (ユーザー決定 2026-09-07)。
+                //   了承したのにソルバーが別のボスへ回すと、依頼した意味が無くなる。
+                //   ⏳時刻は約束しない (flex) — 締め凸は「いまから行く」ものなので、
+                //   特定の時刻を約束させると守れないほうが普通になる。
+                //   ★ 予約が作れなくても了承は成立させる (返答は既にサーバへ届いている)
+                if (status === 'accepted') {
+                    try {
+                        await _reserveForFinishRequest(ctx, id, bossNumber);
+                        renderMyReservations(id);
+                    } catch (e) { console.warn('[finish→予約]', e?.message || e); }
+                }
                 await _refreshFinishRequests();
                 renderMyFinishRequestBanner(id);
                 showNotification(status === 'accepted'
@@ -8228,6 +8343,34 @@
             } catch (e) {
                 showNotification(`❌ 送信失敗: ${e?.message || e}`);
             }
+        }
+
+        // 締め凸の了承 → 予約を1件作る。
+        // ★ status は 'approved' で作る — 依頼したのは運営なので、改めて承認を挟む意味がない
+        //   (メンバー発の申請だけが 'requested' から始まる)
+        async function _reserveForFinishRequest(ctx, id, bossNumber) {
+            if (typeof window.supabaseCreateReservation !== 'function') return;
+            const rv = window.reservationsDomain;
+            const level = Number(ctx.season.current_level) || null;
+            if (!rv || !level) return;
+            // 既に同じ枠の予約があれば作らない (了承を押し直しても増やさない)
+            let mine = null;
+            try { mine = await window.supabaseLoadMyReservations(ctx.season.id, id.id); } catch { return; }
+            if (!Array.isArray(mine)) return;   // 39未適用 → 何もしない (了承だけ成立)
+            const boss = (ctx.bosses || []).find(b => Number(b.boss_number) === Number(bossNumber));
+            const lo = boss ? await _myBestLoadoutFor(id.id, boss.weakness) : null;
+            const slot = lo?.slot || 1;
+            if (rv.findActiveFor(mine, { playerId: id.id, level, bossNumber, loadoutSlot: slot })) return;
+            await window.supabaseCreateReservation({
+                seasonId: ctx.season.id, playerId: id.id,
+                raidLevel: level, bossNumber: Number(bossNumber), loadoutSlot: slot,
+                flex: true, timeSlot: null,
+                characters: lo?.characters || [],
+                expectedDamageB: lo?.dmgB ?? null,
+                sourceType: 'finish_request',
+                status: 'approved',
+                requestedBy: id.name || null,
+            });
         }
 
         // ========== SLv (シンクロレベル) 表示 + 手動更新 ==========
