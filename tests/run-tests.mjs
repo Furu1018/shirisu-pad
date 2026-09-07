@@ -3732,16 +3732,20 @@ console.log('\nreservationsDomain (凸の予約):');
             const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
             assert.ok(html.includes('id="myResvRequestModal"'), 'シートが無い');
             const render = html.match(/function _resvReqRender\(\) \{[\s\S]{0,12000}/)?.[0] || '';
-            for (const t of ['どのボスを', 'どのレベルを', '何時に', 'どの編成で', 'この内容で申請する']) {
+            // ★ レベルは聞かない (2026-09-08)。ボスは全レベル共通で、置くレベルは運営の算出が時刻から決める
+            for (const t of ['どのボスを', '何時に', 'どの編成で', 'この内容で申請する']) {
                 assert.ok(render.includes(t), `「${t}」が無い`);
             }
+            assert.ok(!render.includes('どのレベルを'), 'レベルを聞いている (本人が選ぶものではない)');
+            assert.ok(!/_resvReqPick\('level'/.test(render), 'レベルのチップが残っている');
             // ★ 足りないものの判定と残凸はドメインに寄せる
             assert.ok(/rv\.buildRequestDraft\(/.test(render), '下書きをドメインで作っていない');
             assert.ok(/rv\.canRequest\(/.test(render), '残凸と重複を見ていない');
             // 時刻は本人の登録時間帯から (何でも選べると守れない約束になる)
             assert.ok(/HOUR_ORDER\.filter\(h => slotSet\.has\(_hourKey\(h\)\)\)/.test(render), '登録時間帯から選ばせていない');
-            // 撃破済みのボスは選べない
-            assert.ok(/dead \? 'disabled'/.test(render));
+            // 倒れているボスも選べる (次のレベルにもいる) — 「いまのLvでは撃破済み」と分かる形で
+            assert.ok(!/dead \? 'disabled'/.test(render), '倒れたボスを選べなくしている');
+            assert.ok(render.includes('いまのLvでは撃破済み'));
             // 入口: ホームの「引き受けた凸」カードと配信プランカードの両方 (モック①)
             assert.ok((html.match(/onclick="openMyResvRequest\(\)"/g) || []).length >= 2, '入口が2つ無い');
             // 下スワイプで閉じられる
@@ -3803,8 +3807,40 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/件を固定して計算しました/.test(html), '「N件を固定して計算」が無い');
         assert.ok(/statChip\('🔒予約を固定'/.test(html));
         assert.ok(/固定できなかった予約が/.test(html), '守れなかった予約を運営に見せていない');
-        // 本人の配信プランの行にも
-        assert.ok(/\$\{a\.fromReservation \? '<span[^']*>🔒予約<\/span>' : ''\}/.test(html), '本人の行にピンが無い');
+        // 本人の配信プランの行にも (2026-09-08: 3枠の一覧では「予約で固定」の行として出る)
+        const mine = html.match(/function _planMineHtml\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/rv\.homeSlots\(\{ plan, viewerId,/.test(mine), '本人の一覧を homeSlots で組んでいない');
+        assert.ok(mine.includes('🔒 予約で固定'), '本人の行に予約の印が無い');
+    });
+
+    // ===== 本人のホーム = 3枠 (2026-09-08) =====
+    test('★ ホーム3枠: ヒーローと「わたしの凸」が同じ homeSlots で組まれ、空き枠は理由つき・タップで申請', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const now = html.match(/function _homeSlotsNow\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/rv\.homeSlots\(\{ plan: st \? st\.plan : null, viewerId: identity\.id, reservations: resv,/.test(now), '3枠をドメインで組んでいない');
+        // 予約は本人のぶんだけ (プレイヤー切替直後の古い一覧で他人の予約を出さない)
+        assert.ok(/_myResvRows\.filter\(r => String\(r\.player_id\) === String\(identity\.id\)\)/.test(now));
+        const strip = html.match(/function _heroPlanStripHtml\(identity, hero\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const h = _homeSlotsNow\(identity\);/.test(strip), 'ヒーローが3枠を使っていない');
+        assert.ok(/_homeSlotCardHtml\(slot, i, hero\)/.test(strip));
+        assert.ok(/_homeStaleBannerHtml\(h, hero\)/.test(strip), '「運営が組み直し中」を出していない');
+        const card = html.match(/function _homeSlotCardHtml\(slot, i, hero\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        for (const k of ["slot.kind === 'empty'", "slot.kind === 'done'", "slot.kind === 'fixed'"]) assert.ok(card.includes(k), `${k} の描き分けが無い`);
+        assert.ok(/esc\(slot\.text \|\| ''\)/.test(card), '空き枠に理由 (日本語) を出していない');
+        assert.ok(card.includes("openMyResvRequest()"), '空き枠から申請シートを開けない');
+        // 39未適用なら申請の導線は出さない
+        assert.ok(/const canAsk = Array\.isArray\(_myResvRows\);/.test(card));
+        assert.ok(/'🔒 予約 \(組み直し待ち\)'/.test(card), '配信に入っていない予約を区別していない');
+        // 「運営が組み直し中」の帯は配信カード本文にも
+        const body = html.match(/function _renderMyPubBody\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/resvStaleBanner = _homeStaleBannerHtml\(_homeSlotsNow\(\{ id: viewerId \}\), false\)/.test(body));
+        assert.ok(/\$\{resvStaleBanner\}\$\{frozenBanner\}/.test(body), '帯を本文に差し込んでいない');
+        assert.ok(html.includes('運営が組み直し中です — 予約の枠は動きません'));
+        // 予約が変わったらヒーローを描き直す (予約の一覧を読んだあと)
+        const resv = html.match(/async function renderMyReservations\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const k = _homeSlotsKey\(_homeSlotsNow\(identity\)\);\s*\n\s*if \(k !== _heroPlanKey\) renderMyNextAction\(identity\);/.test(resv), '予約が変わってもヒーローが古いまま');
+        // CSS: 固定 / 空き の見た目
+        assert.ok(/\.dc-plan-card\.fixed \{/.test(html) && /\.dc-plan-card\.empty \{/.test(html));
     });
 
     test('★ モック⑤: 予約先が倒れた / レベルが終わったら自動で外して本人に知らせる', () => {
@@ -3862,7 +3898,7 @@ console.log('\nreservationsDomain (凸の予約):');
     test('★ ⑧配線: ホームの「引き受けた凸」/ 取り消しは希望を出すだけ', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(html.includes('id="myReservationsCard"'), 'カードが無い');
-        const fn = html.match(/async function renderMyReservations[\s\S]{0,4200}/)?.[0] || '';
+        const fn = html.match(/async function renderMyReservations[\s\S]{0,6500}/)?.[0] || '';
         assert.ok(fn, '描画関数が無い');
         // ★ 39未適用 (null) だけ非表示。0件 ([]) でも出す — ここが「自分から申請する」の入口 (モック①)
         assert.ok(/if \(!Array\.isArray\(_myResvRows\)\) \{ card\.style\.display = 'none'; return; \}/.test(fn));
@@ -3885,7 +3921,9 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(fn, '予約欄の描画関数が無い');
         // ★ 本人にボスを選ばせない — 選ばせると弱点でない編成で予約できてしまう
         assert.ok(/\(ctx\?\.bosses \|\| \[\]\)\.find\(b => b\.weakness === attrKey\)/.test(fn), 'ボスを属性から引いていない');
-        assert.ok(/Number\(boss\.remaining_hp_raw\) <= 0\) return;/.test(fn), '撃破済みのボスに予約できてしまう');
+        // 倒れているボスも予約できる (次のレベルにもいる・2026-09-08)。置くレベルは運営の算出が時刻から決める
+        assert.ok(!/Number\(boss\.remaining_hp_raw\) <= 0\) return;/.test(fn), '倒れたボスを予約できなくしている');
+        assert.ok(fn.includes('倒れているボスも予約できる'));
         assert.ok(/if \(!Array\.isArray\(mine\)\) return;/.test(fn), '39未適用でも欄を出している');
         assert.ok(/rv\.findActiveFor\(/.test(fn), '申請済みの判定をしていない');
         // ★ 編集中の値ではなく保存済みの提出を使う (承認内容と提出が食い違わないように)
