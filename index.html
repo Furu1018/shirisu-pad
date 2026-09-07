@@ -7157,6 +7157,66 @@
         //     古い status のまま扱い、解除通知が本人に届かない
         //   履歴は残さない (ユーザー決定 2026-09-06) — 次のレベルの依頼と混同するため、
         //   代わりに activity_log へ「誰の依頼をなぜ消したか」を書く
+        // 予約の時刻を人向けに ('h23' → '23時' / flex → '⏳隙間')
+        function _resvWhenJp(r) {
+            if (!r) return '';
+            if (r.time_mode === 'flex' || !r.time_slot) return '⏳隙間';
+            const h = Number(String(r.time_slot).slice(1));
+            return (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`;
+        }
+
+        // ===== 予約先が倒れた / レベルが終わった → 予約を自動で外して本人に知らせる (モック⑤) =====
+        // ★ 時刻到来だけでは外さない (ブラウザが起動している保証がない — 設計レビュー)。
+        //   外すのは「もう実行できない」と盤面で確定したときだけ: 撃破 / レベル通過。
+        // ★ 順序は 対象の確定 → 解除 (RPC・expectFrom で楽観ロック) → **実際に外せた分だけ** ログ + Push。
+        //   複数端末が同時に検知しても、RPC が「状態が変わっています」で2台目を弾くので、
+        //   通知は外した端末からの1回だけになる (締め凸依頼の片付けと同じ考え方)
+        async function _releaseInfeasibleReservations(seasonId, board, whatJp) {
+            const rv = window.reservationsDomain;
+            if (!rv || typeof window.supabaseLoadReservations !== 'function') return;
+            let rows = null;
+            try { rows = await window.supabaseLoadReservations(seasonId); }
+            catch (e) { console.warn('[予約] 一覧の取得に失敗:', e?.message || e); return; }
+            if (!Array.isArray(rows)) return;   // 39未適用
+            const hits = rv.findInfeasible(rows, board);
+            if (hits.length === 0) return;
+            const released = [];
+            for (const h of hits) {
+                try {
+                    await window.supabaseSetReservationStatus(h.id, 'released',
+                        { expectFrom: 'approved', reason: h.reason, actor: 'system' });
+                    released.push(h);
+                } catch (e) {
+                    // 別の端末が先に外した (状態が変わっています) → 記録も通知もその端末に任せる
+                    console.warn('[予約] 自動解除をスキップ:', h.id, e?.message || e);
+                }
+            }
+            if (released.length === 0) return;
+            const bossName = new Map((board.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code || `B${b.boss_number}`]));
+            const nameOf = (r) => r.player_name || `#${r.player_id}`;
+            try {
+                await window.supabaseLogActivityStrict?.('reservation_release',
+                    `${whatJp}: 予約を自動解除 — ${released.map(h => `${nameOf(h.row)} Lv${h.row.raid_level}B${h.row.boss_number}(${rv.RELEASE_JP[h.reason] || h.reason})`).join('、')}`,
+                    { actorName: 'system' });
+            } catch (e) { console.warn('[予約] 自動解除のログに失敗:', e?.message || e); }
+            // 本人に知らせる (緊急情報なので戦闘可能時間外でも送る — ユーザー決定)
+            for (const h of released) {
+                const r = h.row;
+                const bn = bossName.get(Number(r.boss_number)) || `B${r.boss_number}`;
+                const when = _resvWhenJp(r);
+                const title = h.reason === 'boss_defeated' ? '予約していたボスが倒れました' : '予約していたレベルが終わりました';
+                const body = h.reason === 'boss_defeated'
+                    ? `${bn} Lv${r.raid_level} は撃破されたため、${when}の予約は外れました。新しいプランを確認してください。`
+                    : `Lv${r.raid_level} が終わったため、${bn} ${when}の予約は外れました。新しいプランを確認してください。`;
+                try {
+                    await window.sendPushNotification?.({ title, body, url: './?tab=mypage', tag: `resv-released-${h.id}`, playerIds: [r.player_id], requireInteraction: true });
+                } catch (e) { console.warn('[予約] 解除の通知に失敗:', e?.message || e); }
+            }
+            // 予約が変わるとプランの前提が変わる
+            opsStore.invalidate();
+            if (typeof renderOpsReservations === 'function' && _opsMode) renderOpsReservations(true).catch(() => { /* noop */ });
+        }
+
         async function _clearFinishRequestsFor(seasonId, scope, whatJp) {
             if (typeof window.supabaseFindFinishRequestsToClear !== 'function') return;
             let found;
@@ -7293,10 +7353,18 @@
                         cur.dead.delete(bn);
                     }
                 }
+                // ①-2 倒れたボスの予約を外す (締め凸依頼と同じく、レベル開放と同時のときは下でまとめて)
+                if (ev.defeated.length > 0 && !levelJustOpened) {
+                    await _releaseInfeasibleReservations(cur.seasonId, { currentLevel: level, bosses }, `Lv${level} 撃破`);
+                }
                 // ② レベル開放
                 if (ev.levelOpened != null) {
                     // 前のレベルの依頼は、そのレベルが終わった時点で全部無効
                     await _clearFinishRequestsFor(cur.seasonId, { belowLevel: ev.levelOpened }, `Lv${ev.from}`);
+                    // ★ 前のレベルの予約も外す。bosses は渡さない — 運営がボスHPを1体ずつ手で
+                    //   更新する運用だと、新レベルの「まだ更新前 = 残HP0」のボスを撃破済みと誤認して
+                    //   新レベルの予約まで外してしまう (締め凸依頼と同じ理由)
+                    await _releaseInfeasibleReservations(cur.seasonId, { currentLevel: ev.levelOpened, bosses: [] }, `Lv${ev.from} 終了`);
                     // ★ ここで「いま倒れているボス」の新レベル依頼まで消してはいけない。
                     //   撃破判定は残HP0かどうかだけなので、運営がボスHPを1体ずつ手で更新する運用だと
                     //   「旧レベルのHP0のまま残っているボス」を新レベルの撃破と誤認する (Codex指摘)。
@@ -8137,7 +8205,9 @@
                     : r.status === 'cancel_requested' ? 'rgba(245,158,11,0.12)' : '#F1F2F4';
                 const when = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定');
                 const who = r.status === 'approved' && r.approved_by ? `${escapeHtml(String(r.approved_by))}が承認` : '';
-                const why = !rv.isActive(r) && r.release_reason ? (rv.RELEASE_JP[r.release_reason] || r.release_reason) : '';
+                const why = !rv.isActive(r) && r.release_reason
+                    ? (r.release_reason === 'boss_defeated' ? 'ボスが倒れたため自動で外れました (新しいプランを確認してください)'
+                        : (rv.RELEASE_JP[r.release_reason] || r.release_reason)) : '';
                 const team = Array.isArray(r.characters_snapshot) && r.characters_snapshot.length
                     ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
                 // 取り消しは**希望を出すだけ** — 解除には運営の承認が要る (ユーザー決定)
@@ -8447,7 +8517,7 @@
                     <span style="flex:none;width:24px;height:24px;border-radius:8px;${done ? 'background:#18C26B;' : 'border:2px dashed #B6BBC1;'}display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;">${done ? '✓' : ''}</span>
                     <div style="width:48px;flex:none;text-align:center;">${timeHtml}<div style="font-size:9px;font-weight:800;color:#A4AAB0;margin-top:1px;">Lv${a.level}</div></div>
                     <div style="flex:1;min-width:0;">
-                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="width:9px;height:9px;border-radius:3px;background:${c};flex:none;"></span><span style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(String(a.bossName || ('B' + bn)))}</span><span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PTで</span>${loBadge}${a.isBottleneck ? '<span style="flex:none;font-size:9.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:1px 6px;border-radius:999px;">律速</span>' : ''}</div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="width:9px;height:9px;border-radius:3px;background:${c};flex:none;"></span><span style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(String(a.bossName || ('B' + bn)))}</span><span style="flex:none;font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PTで</span>${loBadge}${a.isBottleneck ? '<span style="flex:none;font-size:9.5px;font-weight:900;color:#E23036;background:rgba(255,61,68,0.10);padding:1px 6px;border-radius:999px;">律速</span>' : ''}${a.fromReservation ? '<span style="flex:none;font-size:9.5px;font-weight:900;color:#fff;background:#6C42F0;padding:1px 7px;border-radius:999px;" title="あなたが引き受け、運営が承認した凸。組み直しても動きません">🔒予約</span>' : ''}</div>
                         ${team ? `<div style="margin-top:6px;display:flex;align-items:center;gap:2px;flex-wrap:wrap;">${team}</div>` : '<div style="margin-top:5px;font-size:10.5px;font-weight:700;color:#B6BBC1;">編成の登録がありません</div>'}
                         ${resvHtml}
                     </div>
@@ -17049,7 +17119,10 @@
                         ${statChip('想定総凸数', plan.totalAttacks)}
                         ${statChip('オーバーキル', plan.totalWaste.toFixed(2) + ' B', plan.totalWaste > 5 ? '#F59E0B' : '#18C26B')}
                         ${statChip('未消化凸', plan.unusedAttacks, plan.unusedAttacks > 0 ? '#F59E0B' : '#8A9097')}
+                        ${Number(plan.reservationCount) > 0 ? statChip('🔒予約を固定', plan.reservationCount + '件', '#6C42F0') : ''}
                     </div>
+                    ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:#5B2BE0;line-height:1.55;">予約 ${plan.reservationCount}件を固定して計算しました。固定した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
+                    ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:#C42A30;line-height:1.55;">⚠ 固定できなかった予約が ${plan.unmetReservations.length}件あります (${esc(plan.unmetReservations.map(u => `${u.memberName || '#' + u.memberId} Lv${u.level}B${u.bossNumber}: ${u.reason || ''}`).join(' / '))})。予約の一覧で外すか、本人と調整してください。</div>` : ''}
                 </div>`;
 
             const levelSections = plan.levels.map(lv => {
@@ -17105,6 +17178,8 @@
                             const avatar = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(a.memberId, a.memberName, 26) : '';
                             const meTag = isMe ? '<span style="flex:none;font-size:10px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.12);padding:1px 7px;border-radius:999px;">あなた</span>' : '';
                             const reservedTag = a.reserved ? `<span style="flex:none;font-size:10px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.10);padding:1px 7px;border-radius:999px;" title="踏破には使わずボス5(無限)へ温存 — 全額スコアに入る">🔒温存</span>` : '';
+                            // 予約で固定した凸 (モック④)。組み直しても動かない
+                            const resvPin = a.fromReservation ? `<span style="flex:none;font-size:10px;font-weight:900;color:#fff;background:#6C42F0;padding:1px 7px;border-radius:999px;" title="本人が引き受け、運営が承認した凸。組み直しても動きません">🔒予約</span>` : '';
                             // 編成は専用の2行目 (flex-wrap) — 他の要素と同じ行に置くと潰し合う
                             const teamRow = a.team
                                 ? `<div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:2px;margin-top:4px;">${renderTeamSnippet(a.team, { size: 18 })}</div>`
@@ -17116,7 +17191,7 @@
                                 <div style="flex:1;min-width:0;">
                                     <div style="display:flex;align-items:center;gap:6px;min-width:0;">
                                         <span style="font-size:12.5px;font-weight:800;color:#14161A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.memberName)}</span>
-                                        ${meTag}${reservedTag}
+                                        ${meTag}${resvPin}${reservedTag}
                                     </div>
                                     ${teamRow}
                                 </div>

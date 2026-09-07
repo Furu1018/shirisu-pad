@@ -850,7 +850,12 @@
                         pick: m, pickScore: 0, pickHour: slot.idx, pickFlex: slot.flex,
                         pickLo: cand, pickDmg: dmg, pickSlot: slot,
                     });
-                    stickyPlaced.add(t.attacks[t.attacks.length - 1]);   // 圧縮で外させない
+                    const placed = t.attacks[t.attacks.length - 1];
+                    stickyPlaced.add(placed);   // 圧縮で外させない
+                    // ★ 画面が「🔒予約」ピンを出すための印。予約で置いた凸にだけ付ける —
+                    //   全凸に null で付けると配信 JSON と指紋テストの出力が変わる
+                    placed.fromReservation = true;
+                    placed.reservationId = s.reservationId ?? null;
                     recountLocked();
                 };
                 if (Array.isArray(opts.reservations) && opts.reservations.length > 0) {

@@ -3471,6 +3471,21 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(!out.some(x => x.reason === 'no_show'), '時刻を過ぎただけで解除してはいけない');
     });
 
+    test('★ 予約: findInfeasible は bosses を渡さなければレベル通過だけを外す (手動HP更新の誤認よけ)', () => {
+        // 運営がボスHPを1体ずつ手で更新する運用だと、新レベルの「まだ更新前 = 残HP0」のボスを
+        // 撃破済みと誤認して新レベルの予約まで外してしまう。レベル開放時は bosses: [] で呼ぶ
+        const rows = [
+            res({ id: 1, pid: 'p1', lv: 1, boss: 1, status: 'approved' }),   // 前のレベル → 通過
+            res({ id: 2, pid: 'p2', lv: 2, boss: 3, status: 'approved' }),   // いまのレベル → 残す
+            res({ id: 3, pid: 'p3', lv: 2, boss: 4, status: 'requested' }),  // 承認前は対象外
+        ];
+        const out = rv.findInfeasible(rows, { currentLevel: 2, bosses: [] });
+        assert.deepEqual(out.map(h => [h.id, h.reason]), [[1, 'level_passed']]);
+        // bosses を渡せば撃破も見る
+        const dead = rv.findInfeasible(rows, { currentLevel: 2, bosses: [{ boss_number: 3, remaining_hp_raw: 0 }] });
+        assert.deepEqual(dead.map(h => [h.id, h.reason]).sort(), [[1, 'level_passed'], [2, 'boss_defeated']]);
+    });
+
     test('予約: 残凸の検査は「生きている予約 + 実凸」で数える', () => {
         const rows = [res({ id: 1, status: 'approved' }), res({ id: 2, status: 'requested', boss: 4 }),
                       res({ id: 3, status: 'fulfilled', boss: 5 }), res({ id: 4, status: 'released', boss: 1 })];
@@ -3663,6 +3678,37 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.ok(/\['myResvRequestModal', \(\) => closeMyResvRequestModal\(\)\]/.test(html));
         });
     }
+
+    test('★ モック④: 運営プランと本人のプランに「🔒予約」ピン / 「N件を固定して計算」', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        assert.ok(/const resvPin = a\.fromReservation \?/.test(html), '運営プランの行にピンが無い');
+        assert.ok(/\$\{meTag\}\$\{resvPin\}\$\{reservedTag\}/.test(html), 'ピンを行に差し込んでいない');
+        assert.ok(/件を固定して計算しました/.test(html), '「N件を固定して計算」が無い');
+        assert.ok(/statChip\('🔒予約を固定'/.test(html));
+        assert.ok(/固定できなかった予約が/.test(html), '守れなかった予約を運営に見せていない');
+        // 本人の配信プランの行にも
+        assert.ok(/\$\{a\.fromReservation \? '<span[^']*>🔒予約<\/span>' : ''\}/.test(html), '本人の行にピンが無い');
+    });
+
+    test('★ モック⑤: 予約先が倒れた / レベルが終わったら自動で外して本人に知らせる', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+        const fn = html.match(/async function _releaseInfeasibleReservations[\s\S]{0,4200}/)?.[0] || '';
+        assert.ok(fn, '自動解除が無い');
+        assert.ok(/rv\.findInfeasible\(rows, board\)/.test(fn), '対象の判定をドメインでやっていない');
+        // ★ 楽観ロック: 別端末が先に外していたら通知しない (2重通知よけ)
+        assert.ok(/\{ expectFrom: 'approved', reason: h\.reason, actor: 'system' \}/.test(fn));
+        assert.ok(/if \(released\.length === 0\) return;/.test(fn), '外せた分だけ通知する形になっていない');
+        assert.ok(/supabaseLogActivityStrict\?\.\('reservation_release'/.test(fn), '監査ログが無い');
+        assert.ok(/playerIds: \[r\.player_id\]/.test(fn), '本人だけに送っていない');
+        assert.ok(/予約していたボスが倒れました/.test(fn));
+        assert.ok(/新しいプランを確認してください/.test(fn), '「代わりの割当」への導線の文言が無い');
+        // ★ _checkRaidEvents への接続。撃破はレベル開放と同時でないときだけ、
+        //   レベル開放時は bosses を渡さない (手動HP更新の誤認よけ)
+        assert.ok(/if \(ev\.defeated\.length > 0 && !levelJustOpened\) \{\s*\n\s*await _releaseInfeasibleReservations\(cur\.seasonId, \{ currentLevel: level, bosses \}/.test(html),
+            '撃破時の接続が無い、または levelJustOpened を見ていない');
+        assert.ok(/_releaseInfeasibleReservations\(cur\.seasonId, \{ currentLevel: ev\.levelOpened, bosses: \[\] \}/.test(html),
+            'レベル開放時に bosses を渡している (新レベルの予約まで外す)');
+    });
 
     test('★ ⑧配線: 締め凸の了承は即予約 / 予約が作れなくても了承は成立させる', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
@@ -4254,6 +4300,20 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         assert.deepEqual(rowOf(p, 1), ['L1/B1/1/13時']);
         const a = p.levels[0].bosses.find(b => b.bossNumber === 1).attacks.find(x => x.memberId === 1);
         assert.equal(a.dmgB, 60, '現在の測定値で置くこと');
+    });
+
+    test('★ L2 モック④: 予約で置いた凸にだけ「予約」の印が付く (他の凸には付けない = 指紋を変えない)', () => {
+        const p = compute(mkInput(players2(), { reservations: [resv({ id: 7, member: 1, boss: 2, slot: 'h13' })] }));
+        const all = p.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks));
+        const mine = all.filter(a => a.memberId === 1);
+        assert.equal(mine.length, 1);
+        assert.equal(mine[0].fromReservation, true, '予約の印が無い');
+        assert.equal(mine[0].reservationId, 7, '予約 id を持っていない');
+        const others = all.filter(a => a.memberId !== 1);
+        assert.ok(others.length > 0, '前提: 他の凸がある');
+        assert.ok(others.every(a => !('fromReservation' in a) && !('reservationId' in a)),
+            '予約でない凸にも印 (null) を付けている — 配信 JSON と指紋テストの出力が変わる');
+        assert.equal(p.reservationCount, 1);
     });
 
     test('L2: 予約は時刻まで守る (貪欲の最速枠に寄せない)', () => {
