@@ -3824,6 +3824,8 @@ console.log('\nreservationsDomain (凸の予約):');
         const sheet = html.match(/async function handleResvReqSubmit[\s\S]{0,1600}/)?.[0] || '';
         assert.ok(/const me = getCurrentIdentity\(\);\s*\n\s*if \(!me\?\.id\) return;/.test(sheet), '送信直前に本人を取り直していない');
         assert.ok(/playerId: me\.id/.test(sheet), '開いたときの本人ではなく送信時の本人で作ること');
+        // ★ 開いた本人と送信時の本人が違えば送らない (別メンバーの時間帯・提出で申請してしまう)
+        assert.ok(/String\(me\.id\) !== String\(st\.playerId\)/.test(sheet), '開いた本人との照合が無い');
     });
 
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {

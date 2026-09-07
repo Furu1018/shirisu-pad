@@ -8299,6 +8299,7 @@
                 return;
             }
             _resvReq.ctx = ctx;
+            _resvReq.playerId = id.id;   // 開いた本人。送信時に照合する (途中で切り替えたら別名義になる)
             _resvReq.slots = Array.isArray(slots) ? slots : [];
             _resvReq.loadouts = (dmgs || []).map(d => ({
                 attribute: d.attribute, slot: Number(d.slot) || 1,
@@ -8419,6 +8420,12 @@
             if (!rv || !st.ctx || st.busy) return;
             const me = getCurrentIdentity();
             if (!me?.id) return;
+            // ★ 開いたあとにプレイヤーを切り替えると、別メンバーの登録時間帯・提出で申請してしまう
+            if (String(me.id) !== String(st.playerId)) {
+                alert('プレイヤーが切り替わっています。シートを開き直してください。');
+                closeMyResvRequestModal();
+                return;
+            }
             const cur = Number(st.ctx.season.current_level) || 1;
             const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, loadout: st.lo, currentLevel: cur });
             if (!d.ok) { _resvReqRender(); return; }
