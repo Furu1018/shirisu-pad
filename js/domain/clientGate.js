@@ -32,10 +32,13 @@
 
     const DEFAULT_MESSAGE = 'アプリが古いため、この操作は止めています。ページを再読み込みしてください。';
 
-    // 数値として読める値だけを採る。null/undefined/文字列ゴミは「制限なし」に倒す (fail-open)
+    // 数値として読める値だけを採る。null/undefined/文字列ゴミは「制限なし」に倒す (fail-open)。
+    // ★ 安全整数だけを通す (Codex指摘 2026-09-07) — SQL の BIGINT は JS の安全整数を超え得るし、
+    //   1.5 のような小数や valueOf が投げる値を版番号として扱うと比較が壊れる
     function _num(v, fallback = 0) {
-        const n = Number(v);
-        return Number.isFinite(n) && n >= 0 ? n : fallback;
+        let n;
+        try { n = Number(v); } catch { return fallback; }
+        return Number.isSafeInteger(n) && n >= 0 ? n : fallback;
     }
 
     /**
@@ -44,10 +47,14 @@
      */
     function normalizeGate(row) {
         if (!row || typeof row !== 'object') return null;
-        const msg = typeof row.message === 'string' ? row.message.trim() : '';
+        // ★ 値の取り出しごと try で囲む (Codex指摘 2026-09-07)。
+        //   getter が投げる行を渡されても、ゲートは「制限なし」に倒すだけで落ちてはいけない
+        const pick = (k) => { try { return row[k]; } catch { return undefined; } };
+        const raw = pick('message');
+        const msg = typeof raw === 'string' ? raw.trim() : '';
         return {
-            minClientBuild: _num(row.min_client_build, 0),
-            minPlanSchema: _num(row.min_plan_schema, 0),
+            minClientBuild: _num(pick('min_client_build'), 0),
+            minPlanSchema: _num(pick('min_plan_schema'), 0),
             message: msg || '',
         };
     }

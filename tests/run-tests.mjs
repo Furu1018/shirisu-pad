@@ -4526,6 +4526,36 @@ console.log('\nclientGateDomain (互換ゲート):');
         // 41未適用でも配信は止めない (列を落として入れ直す)
         assert.ok(/_isMissingColumnErr\(error, 'plan_schema'\)/.test(client));
     });
+    test('★ ⑦配線: 運営側のプラン算出も止める / 締めた直後の端末にも届く', () => {
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
+        // 本人の配信カードだけ隠しても、古いアプリの運営画面でプランを組めてしまう (Codex指摘)
+        const fn = html.match(/async function computeAndRenderOptimalPlan[\s\S]{0,1200}/)?.[0] || '';
+        assert.ok(/!_gateAllows\('plan'\)/.test(fn), '運営の算出を止めていない');
+        // ★ 起動しっぱなしの端末に「締めた」を届ける。押す直前と復帰時に取り直す
+        assert.ok(/_refreshClientGateIfStale/.test(fn), '算出の直前に取り直していない');
+        assert.ok(/visibilitychange[\s\S]{0,160}_refreshClientGateIfStale/.test(html), '復帰時に取り直していない');
+        assert.ok(/_gateFetchedAt = Date\.now\(\);/.test(html), '取得時刻を記録していない');
+        // 解除は配信の版のしめ切りも戻す (戻さないと「解除しました」なのに旧配信が出ない)
+        assert.ok(/\{ minPlanSchema: 0 \}/.test(html), '解除で min_plan_schema を戻していない');
+    });
+
+    test('★ ⑦: 38/41 の片方だけ未適用でも版を落とさない', () => {
+        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        // frozen 列が無いだけで plan_schema まで落とすと、新しすぎる配信を旧配信に見せて描いてしまう
+        assert.ok(/r = await run\(`\$\{cols\}, plan_schema`\);/.test(client), '38だけ未適用の再試行が無い');
+        assert.ok(/\} else if \(r\.error && \(_isMissingColumnErr\(r\.error, 'frozen_at'\)/.test(client),
+            '列を1つずつ外していない (まとめて外すと版が落ちる)');
+    });
+
+    test('★ ⑦: 版は安全整数だけを採る (BIGINT・小数・例外を投げる値)', () => {
+        // SQL の BIGINT は JS の安全整数を超え得る。小数の版番号も比較が壊れる
+        assert.equal(cg.evaluate({ build: 5, gate: { min_client_build: Number.MAX_SAFE_INTEGER + 2 } }).blocked, false,
+            '安全整数を超える下限で止めている');
+        assert.equal(cg.evaluate({ build: 5, gate: { min_client_build: 10.5 } }).blocked, false, '小数の下限で止めている');
+        const throwing = { get min_client_build() { throw new Error('boom'); } };
+        assert.doesNotThrow(() => cg.normalizeGate(throwing), '値の取得で投げる行で落ちる');
+    });
+
     test('★ ゲートの取得は fail-open (未適用・通信断は null = 誰も止めない)', () => {
         const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
         const body = client.match(/window\.supabaseLoadClientGate = async function[\s\S]*?\n};\n/)?.[0] || '';

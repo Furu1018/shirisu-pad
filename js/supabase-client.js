@@ -2811,12 +2811,14 @@ window.supabaseGetPublishedPlan = async function () {
         .maybeSingle();
     // frozen_at/by (38) と plan_schema (41) は未適用環境では列ごと落として再試行。
     // plan_schema が無い = 版を持たない旧配信なので、読む側は 0 として扱う
+    // ★ 列を1つずつ外す (Codex指摘 2026-09-07)。まとめて外すと、38だけ未適用の環境で
+    //   plan_schema まで落ちて「版を持たない旧配信」に見え、新しすぎる配信を描いてしまう
     let r = await run(`${cols}, frozen_at, frozen_by, plan_schema`);
     if (r.error && _isMissingColumnErr(r.error, 'plan_schema')) {
-        r = await run(`${cols}, frozen_at, frozen_by`);
-    }
-    if (r.error && (_isMissingColumnErr(r.error, 'frozen_at') || _isMissingColumnErr(r.error, 'frozen_by'))) {
-        r = await run(cols);
+        r = await run(`${cols}, frozen_at, frozen_by`);         // 41 だけ未適用
+    } else if (r.error && (_isMissingColumnErr(r.error, 'frozen_at') || _isMissingColumnErr(r.error, 'frozen_by'))) {
+        r = await run(`${cols}, plan_schema`);                  // 38 だけ未適用 (版は残す)
+        if (r.error && _isMissingColumnErr(r.error, 'plan_schema')) r = await run(cols);   // 両方未適用
     }
     if (r.error) throw r.error;
     return r.data ? { ...r.data, month_key: season.month_key } : null;

@@ -16220,6 +16220,18 @@
             if (typeof expandOpsCard === 'function') expandOpsCard('opsSecPlan');   // 当日は既定で畳まれている
             const seq = ++_opsPlanSeq;   // 関数冒頭で採番: マスタ先読みの待機中に来た後発クリックも先行を無効化できる
             const el = document.getElementById('opsOptimalPlan');
+            // ★ 互換ゲート (L2 ⑦): 運営側の算出・表示も止める (Codex指摘 2026-09-07)。
+            //   本人向けの配信カードだけ隠しても、古いアプリの運営画面でプランを組めてしまう。
+            //   予約を知らないクライアントが組んだプランは、約束を無視した指示になる。
+            //   ★ 締めた直後に開きっぱなしの端末が算出しないよう、押す直前に取り直す
+            await _refreshClientGateIfStale().catch(() => { /* fail-open */ });
+            if (!_gateAllows('plan')) {
+                if (el) {
+                    el.innerHTML = '<p style="font-size:12px;color:#C42A30;font-weight:800;line-height:1.7;">'
+                        + 'アプリが古いため、いまは凸プランを組めません。<br>ページを再読み込みしてください。</p>';
+                }
+                return;
+            }
             // 編成アイコン表示のためマスタを先読み
             await getNikkeCharsCache();
             if (seq !== _opsPlanSeq) return;   // 待機中に後発の算出が始まっていたら中断
@@ -20561,10 +20573,24 @@
                 _gateRaw = await window.supabaseLoadClientGate?.() ?? null;
                 _gateVerdict = window.clientGateDomain?.evaluate({ build: CLIENT_BUILD, gate: _gateRaw }) || null;
             } catch { _gateRaw = null; _gateVerdict = null; }   // fail-open
+            _gateFetchedAt = Date.now();
             // supabase-client 側 (凸報告・配信) から見えるようにする
             window._clientGateVerdict = _gateVerdict;
             _renderClientGateBanner();
         }
+
+        // ★ 起動しっぱなしの端末にも「締めた」を届ける (Codex指摘 2026-09-07)。
+        //   起動時に1回読むだけだと、運営が値を上げても開きっぱなしのアプリは古い判定のまま動く。
+        //   復帰時に取り直し、一定時間より古ければ「止める側の操作」の直前にも取り直す
+        let _gateFetchedAt = 0;
+        const GATE_MAX_AGE_MS = 5 * 60 * 1000;
+        async function _refreshClientGateIfStale() {
+            if (Date.now() - _gateFetchedAt < GATE_MAX_AGE_MS) return;
+            await _loadClientGate();
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) _refreshClientGateIfStale().catch(() => { /* fail-open */ });
+        });
 
         // 止められている操作かどうか。ゲートが無ければ常に true
         function _gateAllows(feature) {
@@ -20618,6 +20644,9 @@
             try {
                 await window.supabaseSetClientGate({
                     minClientBuild: mode === 'now' ? CLIENT_BUILD : 0,
+                    // ★ 解除は配信の版のしめ切りも戻す (Codex指摘 2026-09-07)。
+                    //   戻さないと「解除しました」と出るのに旧配信が表示されないままになる
+                    ...(mode === 'now' ? {} : { minPlanSchema: 0 }),
                     actorName: me?.name || null,
                 });
                 showNotification(mode === 'now' ? '🔒 古いアプリを止めました' : '解除しました');
@@ -20779,6 +20808,7 @@
                 await _waitSupabaseReady();   // ← モジュール読込との起動レースを防ぐ
                 // ★ 互換ゲートは他の取得より先に。止められている操作を掴んでから画面を作る。
                 //   失敗しても素通り (fail-open) なので、ここで待っても起動は止まらない
+                await _loadClientGate();
                 await loadSlvRatioTable();
                 await autoLoadData();
             } finally {
