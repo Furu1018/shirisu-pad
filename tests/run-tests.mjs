@@ -4428,8 +4428,10 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
 console.log('\nclientGateDomain (互換ゲート):');
 {
     const cg = globalThis.clientGateDomain;
-    const fs = await import('node:fs');
-    const path = await import('node:path');
+    const _fs = (await import('node:fs')).default;
+    const fs = _fs;
+    const _path = (await import('node:path')).default;
+    const path = _path;
     const { fileURLToPath } = await import('node:url');
     // fileURLToPath を通す: 日本語フォルダ名は URL の pathname だと ENOENT になる (他テストと同じ方式)
     const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -4501,6 +4503,29 @@ console.log('\nclientGateDomain (互換ゲート):');
         assert.match(cg.describe(cg.evaluate({ build: 1, gate: { min_client_build: 7 } })), /再読み込み/);
     });
 
+    test('★ ⑦配線: 止めるのは3機能だけ / 呼び出し口を1箇所に絞る', () => {
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
+        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        assert.ok(html.includes('<script defer src="./js/domain/clientGate.js"></script>'), 'ドメインを読み込んでいない');
+        // 版は手で上げる単調増加の整数 (app-build のコミットSHAは大小比較できない)
+        assert.ok(/const CLIENT_BUILD = \d{10};/.test(html), 'CLIENT_BUILD が無い / 形式が違う');
+        assert.ok(/const PLAN_SCHEMA = \d+;/.test(html));
+        // ★ 凸報告は4つある呼び出し口 (本人・一括・代理・代理一括) を supabaseAddAttack 1箇所で止める
+        assert.ok(/window\.supabaseAddAttack = async function[\s\S]{0,400}_gateGuard\('attack'\)/.test(client),
+            '凸報告を1箇所で止めていない');
+        assert.ok(/window\.supabasePublishPlan = async function[\s\S]{0,200}_gateGuard\('publish'\)/.test(client),
+            '配信を止めていない');
+        assert.ok(/!_gateAllows\('plan'\)/.test(html), 'プラン表示を止めていない');
+        // ★ 起動時に、他の取得より**先に**読む。止められている操作を掴んでから画面を作る。
+        //   handleSetClientGate 内の呼び出しと取り違えないよう、起動の並びごと固定する
+        assert.ok(/await _loadClientGate\(\);\s*\n\s*await loadSlvRatioTable\(\);/.test(html),
+            '起動時に (他の取得より先に) ゲートを読んでいない');
+        // 配信には版を載せ、読む側は自分より新しい版を描かない
+        assert.ok(/supabasePublishPlan\(_opsLastPlan, me\?\.id \|\| null, me\?\.name \|\| null, seasonId, PLAN_SCHEMA\)/.test(html));
+        assert.ok(/planReadable\(\{[\s\S]{0,120}supportedSchema: PLAN_SCHEMA/.test(html));
+        // 41未適用でも配信は止めない (列を落として入れ直す)
+        assert.ok(/_isMissingColumnErr\(error, 'plan_schema'\)/.test(client));
+    });
     test('★ ゲートの取得は fail-open (未適用・通信断は null = 誰も止めない)', () => {
         const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
         const body = client.match(/window\.supabaseLoadClientGate = async function[\s\S]*?\n};\n/)?.[0] || '';

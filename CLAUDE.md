@@ -142,6 +142,17 @@ rm -f .claude/hooks/.codex-on      # OFF
   ログ・通知には**削除で返った行**を使う (確定した行を使うと、その間に本人が了承した場合に古い status で扱う)。
   `raid_level` が NULL の行は 36 適用前の旧データ = 現在レベルの依頼として扱わない。
   36 未適用環境ではレベルで絞れないので**何も消さない** (別レベルを巻き込むため)
+  **互換ゲート**は `41_client_gate.sql` (`app_gate` 1行 + `published_plans.plan_schema`)。
+  予約を知らない古いアプリが「凸プランの表示・凸の報告・プランの配信」をするのを止める。
+  ★ **2段階リリースが前提** — 既定は `min_client_build = 0` = 誰も止めない。
+  ゲートを配る回に締めると、締められた側に更新経路が無くなる。全員に行き渡ってから
+  設定タブ (運営) で締める。★ **fail-open** — 読めない・壊れているときは通す
+  (fail-closed にすると一時的な通信断で全員のアプリが止まる)。これは事故防止であって認可ではない。
+  ★ 止めるのは**3機能だけ**。判定は `js/domain/clientGate.js` が唯一で、
+  凸報告は `supabaseAddAttack`、配信は `supabasePublishPlan` の**入口1箇所**で止める
+  (呼び出し側に散らすと必ず足し忘れる。凸報告の呼び出し口は4つある)。
+  クライアントの版は index.html の `CLIENT_BUILD` (手で上げる YYYYMMDDnn の整数) —
+  `app-build` はコミットSHAなので大小比較できない。
   **今季の戦闘可能時間の確認**は `37_availability_confirmations.sql`
   (season_id + player_id / confirmed_at / unavailable / slot_count / slots_snapshot)。
   ★ **時間帯そのものは持たない** — 現在の時間帯は `players.availability` が唯一の正で、37 が持つのは

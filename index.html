@@ -37,6 +37,7 @@
     <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
+    <script defer src="./js/domain/clientGate.js"></script>      <!-- 互換ゲート (L2 ⑦) -->
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
     <script defer src="./js/domain/charMaster.js"></script>
@@ -4518,6 +4519,20 @@
                 <div id="settingsSystemInfo" style="display:none;"></div>
             </div>
 
+            <!-- ①-2 互換ゲート (運営) — L2 ⑦ -->
+            <div class="dc-card" data-ops-only>
+                <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;margin-bottom:6px;">アプリの版のしめ切り</div>
+                <div style="font-size:11.5px;font-weight:700;color:#8A9097;line-height:1.7;margin-bottom:11px;">
+                    予約を知らない古いアプリが「凸プランの表示・凸の報告・プランの配信」をするのを止めます。<br>
+                    <b style="color:#B45309;">全員が新しい版になってから締めてください。</b>先に締めると、更新できない人が何もできなくなります。
+                </div>
+                <div id="settingsGateState" style="font-size:12px;font-weight:800;color:#14161A;line-height:1.8;margin-bottom:11px;">読み込み中…</div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap;">
+                    <button onclick="handleSetClientGate('now')" style="flex:1;min-width:170px;border:none;border-radius:999px;padding:11px;font-family:inherit;font-size:12px;font-weight:900;color:#fff;background:#14161A;cursor:pointer;">いまの版でしめ切る</button>
+                    <button onclick="handleSetClientGate('off')" style="flex:none;border:none;border-radius:999px;padding:11px 15px;font-family:inherit;font-size:12px;font-weight:800;color:#5A6068;background:#F1F2F4;cursor:pointer;">解除</button>
+                </div>
+            </div>
+
             <!-- ② メンバーの通知状況 (運営) -->
             <div class="dc-card dc-card-tight" data-ops-only>
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
@@ -7738,6 +7753,23 @@
                 pub = null;
             }
             if (mySeq !== _myPubRenderSeq) return;   // 取得中に新しい render が始まっていたら、古い結果で DOM を触らず破棄
+            // ★ 互換ゲート (L2 ⑦): 止められている / 自分には新しすぎる配信は**描かない**。
+            //   予約を知らない画面で予約入りのプランを描くと、実際とは違う指示を見せることになる
+            const gateRead = window.clientGateDomain?.planReadable({
+                planSchema: pub?.plan_schema, supportedSchema: PLAN_SCHEMA, gate: _gateRaw,
+            });
+            if (pub?.plan && (!_gateAllows('plan') || (gateRead && !gateRead.readable))) {
+                card.style.display = 'block';
+                if (metaEl) metaEl.textContent = '';
+                if (body) {
+                    body.innerHTML = '<div style="background:rgba(255,61,68,0.08);border:1px solid rgba(255,61,68,0.28);border-radius:13px;padding:14px;">'
+                        + '<div style="font-size:12.5px;font-weight:900;color:#C42A30;">凸プランを表示できません</div>'
+                        + '<div style="font-size:11.5px;font-weight:700;color:#8A6A2A;line-height:1.6;margin-top:4px;color:#6B7178;">'
+                        + 'アプリが古いため、いまの配信を正しく表示できません。ページを再読み込みしてください。</div>'
+                        + '<button onclick="location.href=\'./?u=\'+Date.now()" style="margin-top:10px;border:none;border-radius:999px;padding:10px 16px;font-family:inherit;font-size:12px;font-weight:900;color:#fff;background:#14161A;cursor:pointer;">更新する</button></div>';
+                }
+                return;
+            }
             if (!pub?.plan) {
                 card.style.display = 'none';
                 // 配信が取り下げられた/シーズンが変わった → 提出カードの採用マークも消す
@@ -12781,6 +12813,7 @@
                     renderSettingsNotifyStatus(),
                     renderSettingsActivity(),
                     renderSettingsCharMaster(),
+                    renderClientGateSettings(),   // 互換ゲート (L2 ⑦)
                 );
             }
             await Promise.all(tasks);
@@ -16863,7 +16896,7 @@
                     return;
                 }
                 const me = getCurrentIdentity();
-                const pub = await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null, seasonId);
+                const pub = await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null, seasonId, PLAN_SCHEMA);
                 showNotification('✅ プランを配信しました');
                 // 通知対象は**配信後に**取り直す: 確認ダイアログを出している間に押した人も拾える。
                 // 新しい plan_id を確認済みの人は除外する (配信直後に確認した人へ更新通知は不要)。
@@ -20513,6 +20546,88 @@
         document.addEventListener('visibilitychange', _checkVersionOnResume);
         window.addEventListener('pageshow', (e) => { if (e.persisted) _checkVersionOnResume(); });
 
+        // ===== 互換ゲート (L2 ⑦ / 41_client_gate.sql) =====
+        // ★ CLIENT_BUILD は**手で上げる**単調増加の整数 (YYYYMMDDnn)。
+        //   app-build (コミットSHA) は大小比較できないので別に持つ。
+        //   予約まわりの契約を変えたときに上げ、行き渡ってから運営がゲートを締める
+        const CLIENT_BUILD = 2026090701;
+        // このクライアントが読める配信プランの版。予約を含むプランは 2
+        const PLAN_SCHEMA = 2;
+        let _gateVerdict = null;   // clientGateDomain.evaluate の結果 (null = 制限なし)
+        let _gateRaw = null;       // app_gate の行 (min_plan_schema を見るのに使う)
+
+        async function _loadClientGate() {
+            try {
+                _gateRaw = await window.supabaseLoadClientGate?.() ?? null;
+                _gateVerdict = window.clientGateDomain?.evaluate({ build: CLIENT_BUILD, gate: _gateRaw }) || null;
+            } catch { _gateRaw = null; _gateVerdict = null; }   // fail-open
+            // supabase-client 側 (凸報告・配信) から見えるようにする
+            window._clientGateVerdict = _gateVerdict;
+            _renderClientGateBanner();
+        }
+
+        // 止められている操作かどうか。ゲートが無ければ常に true
+        function _gateAllows(feature) {
+            const cg = window.clientGateDomain;
+            return cg ? cg.allows(_gateVerdict, feature) : true;
+        }
+
+        function _renderClientGateBanner() {
+            const cg = window.clientGateDomain;
+            const on = !!(_gateVerdict && _gateVerdict.blocked);
+            const existing = document.getElementById('clientGateBanner');
+            if (!on) { existing?.remove(); return; }
+            if (existing) return;
+            const b = document.createElement('div');
+            b.id = 'clientGateBanner';
+            b.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top, 8px) + 8px);z-index:9999;background:#FF3D44;color:#fff;border-radius:14px;padding:12px 15px;font-size:12px;font-weight:800;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;';
+            b.innerHTML = `<span style="flex:1;">⚠️ ${escapeHtml(cg ? cg.describe(_gateVerdict) : 'アプリが古いため一部の操作を止めています')}</span>`
+                + `<button onclick="location.href='./?u='+Date.now()" style="flex:none;padding:8px 14px;border-radius:10px;border:none;background:#fff;color:#14161A;font-size:12px;font-weight:900;cursor:pointer;">更新</button>`;
+            document.body.appendChild(b);
+        }
+
+        // 設定タブ (運営) のゲート表示と操作
+        async function renderClientGateSettings() {
+            const el = document.getElementById('settingsGateState');
+            if (!el) return;
+            if (!_opsMode) { el.textContent = ''; return; }
+            let g = null;
+            try { g = await window.supabaseLoadClientGate?.() ?? null; } catch { g = null; }
+            _gateRaw = g;
+            const n = window.clientGateDomain?.normalizeGate(g);
+            if (!n) {
+                el.innerHTML = '<span style="color:#8A9097;font-weight:700;">まだ使えません。SQL Editor で <code>supabase/41_client_gate.sql</code> を実行してください。</span>';
+                return;
+            }
+            const min = n.minClientBuild;
+            el.innerHTML = `このアプリの版: <b>${CLIENT_BUILD}</b><br>`
+                + (min > 0
+                    ? `<span style="color:#C42A30;">版 <b>${min}</b> より古いアプリを止めています</span>`
+                    : '<span style="color:#0E9455;">いまは誰も止めていません</span>')
+                + (n.message ? `<br><span style="font-weight:700;color:#8A9097;">文面: ${escapeHtml(n.message)}</span>` : '');
+        }
+
+        async function handleSetClientGate(mode) {
+            const me = getCurrentIdentity();
+            if (mode === 'now') {
+                const ok = confirm(`版 ${CLIENT_BUILD} より古いアプリを止めます。\n\n`
+                    + '⚠ まだ更新していない人は「凸プランの表示・凸の報告・プランの配信」ができなくなります。\n'
+                    + '全員が新しい版で開いたのを確認してから実行してください。\n\n[OK] 締める / [キャンセル] やめる');
+                if (!ok) return;
+            }
+            try {
+                await window.supabaseSetClientGate({
+                    minClientBuild: mode === 'now' ? CLIENT_BUILD : 0,
+                    actorName: me?.name || null,
+                });
+                showNotification(mode === 'now' ? '🔒 古いアプリを止めました' : '解除しました');
+                await renderClientGateSettings();
+                await _loadClientGate();   // 自分の判定も取り直す
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+
         async function _watchAppVersion() {
             _verCheckLast = Date.now();   // 起動時実行も記録し、直後の復帰チェックと二重fetchしない (Codex指摘)
             try {
@@ -20662,6 +20777,8 @@
             _bootLoadingBegin();   // 起動ローディング (初期データ取得が300ms超のときだけ表示)
             try {
                 await _waitSupabaseReady();   // ← モジュール読込との起動レースを防ぐ
+                // ★ 互換ゲートは他の取得より先に。止められている操作を掴んでから画面を作る。
+                //   失敗しても素通り (fail-open) なので、ここで待っても起動は止まらない
                 await loadSlvRatioTable();
                 await autoLoadData();
             } finally {

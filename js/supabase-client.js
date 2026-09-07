@@ -1172,6 +1172,9 @@ window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
 
 // 凸を1件追加
 window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bossNumber, bossCode, damageRaw, level, characters }, opts = {}) {
+    // ★ 互換ゲート (L2 ⑦)。4つある呼び出し口 (本人報告・一括・代理・代理一括) を
+    //   ここ1箇所で止める — 呼び出し側に散らすと必ず足し忘れる
+    _gateGuard('attack');
     // ★ 40_attack_with_reservation_rpc.sql があれば **サーバ側の1トランザクション**でやる。
     //   従来の「凸数を読む → insert → 残HPを read-modify-write」は
     //   ①採番と②insert の間に別端末が凸すると attack_number が衝突し、
@@ -1719,6 +1722,16 @@ window.supabaseLoadClientGate = async function () {
         return data || null;
     } catch { return null; }
 };
+
+// 止められている操作なら投げる。呼び出し側は普通のエラーとして扱えばよい。
+// ★ 判定そのものは index.html が起動時に作って window._clientGateVerdict に置く。
+//   ここで毎回取りに行かないのは、凸報告のたびに1往復増やさないため
+function _gateGuard(feature) {
+    const cg = window.clientGateDomain;
+    const v = window._clientGateVerdict;
+    if (!cg || !v || cg.allows(v, feature)) return;
+    throw new Error(cg.describe(v) || 'アプリが古いため、この操作は止めています。ページを再読み込みしてください。');
+}
 
 // 運営が「この版より古いクライアントを止める」を設定する。
 // ★ 上げる前に、全員が新しいクライアントを取得できていることを確認すること —
@@ -2548,7 +2561,8 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
 // seasonId を渡すとそのシーズンへ配信する。省略時のみアクティブシーズンを引く。
 // 呼び出し側が「事前に読んだ確認済み一覧」と同じシーズンへ確実に配信するために必要
 // (シーズン切替と競合すると、旧シーズンの確認者へ新シーズンの更新通知を送ってしまう)
-window.supabasePublishPlan = async function (planObj, publishedBy, publishedByName, seasonId = null) {
+window.supabasePublishPlan = async function (planObj, publishedBy, publishedByName, seasonId = null, planSchema = null) {
+    _gateGuard('publish');   // 互換ゲート (L2 ⑦)
     let sid = seasonId;
     if (!sid) {
         const { data: season, error: sErr } = await supabase
@@ -2557,16 +2571,22 @@ window.supabasePublishPlan = async function (planObj, publishedBy, publishedByNa
         if (!season) throw new Error('アクティブなシーズンがありません');
         sid = season.id;
     }
-    const { data, error } = await supabase
-        .from('published_plans')
-        .insert({
-            season_id: sid,
-            plan: planObj,
-            published_by: publishedBy || null,
-            published_by_name: publishedByName || null,
-        })
-        .select('id, published_at')
-        .single();
+    // ★ 配信の版を載せる (41)。読む側が「自分には新しすぎる配信」を判定できるようにする。
+    //   41未適用の環境は列が無いので、列を落として入れ直す (配信自体は止めない)
+    const row = {
+        season_id: sid,
+        plan: planObj,
+        published_by: publishedBy || null,
+        published_by_name: publishedByName || null,
+    };
+    if (planSchema != null) row.plan_schema = Math.max(0, Math.floor(Number(planSchema) || 0));
+    let { data, error } = await supabase.from('published_plans').insert(row)
+        .select('id, published_at').single();
+    if (error && _isMissingColumnErr(error, 'plan_schema')) {
+        const { plan_schema, ...legacy } = row;
+        ({ data, error } = await supabase.from('published_plans').insert(legacy)
+            .select('id, published_at').single());
+    }
     if (error) throw error;
     // ★ 旧配信は**消さない** (L3・2026-09-07)。以前は自分より古い行を削除していたが、
     //   「前回の配信と比べて誰の割当が変わったか」を後から再現できず、
@@ -2789,8 +2809,12 @@ window.supabaseGetPublishedPlan = async function () {
         .order('id', { ascending: false })
         .limit(1)
         .maybeSingle();
-    // frozen_at/by (38) は未適用環境では列ごと落として再試行 = 「常に配信中」に静かに劣化
-    let r = await run(`${cols}, frozen_at, frozen_by`);
+    // frozen_at/by (38) と plan_schema (41) は未適用環境では列ごと落として再試行。
+    // plan_schema が無い = 版を持たない旧配信なので、読む側は 0 として扱う
+    let r = await run(`${cols}, frozen_at, frozen_by, plan_schema`);
+    if (r.error && _isMissingColumnErr(r.error, 'plan_schema')) {
+        r = await run(`${cols}, frozen_at, frozen_by`);
+    }
     if (r.error && (_isMissingColumnErr(r.error, 'frozen_at') || _isMissingColumnErr(r.error, 'frozen_by'))) {
         r = await run(cols);
     }
