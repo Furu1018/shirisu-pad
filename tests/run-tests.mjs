@@ -4553,12 +4553,38 @@ console.log('\nclientGateDomain (互換ゲート):');
         assert.ok(/renderMyNextAction\(identity\);/.test(blk), 'ヒーローを描き直していない');
     });
 
-    test('★ ⑦: 38/41 の片方だけ未適用でも版を落とさない', () => {
+    test('★ ⑦: 38/41 の欠落はどちらが先に返っても正しく外す', () => {
         const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
-        // frozen 列が無いだけで plan_schema まで落とすと、新しすぎる配信を旧配信に見せて描いてしまう
-        assert.ok(/r = await run\(`\$\{cols\}, plan_schema`\);/.test(client), '38だけ未適用の再試行が無い');
-        assert.ok(/\} else if \(r\.error && \(_isMissingColumnErr\(r\.error, 'frozen_at'\)/.test(client),
-            '列を1つずつ外していない (まとめて外すと版が落ちる)');
+        // frozen 列が無いだけで plan_schema まで落とすと、新しすぎる配信を旧配信に見せて描いてしまう。
+        // ★ 片方向の分岐だと、両方未適用の環境で先に plan_schema 欠落が返ったときに
+        //   frozen 欠落を処理できずそのまま throw する (Codex指摘 2026-09-07)
+        const blk = client.match(/let want = \{ frozen: true, schema: true \};[\s\S]{0,700}/)?.[0] || '';
+        assert.ok(blk, '列を外していく形になっていない');
+        assert.ok(/for \(let i = 0; i < 2 && r\.error; i\+\+\)/.test(blk), '2列ぶん試していない');
+        assert.ok(/want\.schema && _isMissingColumnErr\(r\.error, 'plan_schema'\)/.test(blk));
+        assert.ok(/want\.frozen && \(_isMissingColumnErr\(r\.error, 'frozen_at'\)/.test(blk));
+        assert.ok(/else break;/.test(blk), '列欠落以外のエラーまで飲み込んでいる');
+        assert.ok(/want\.frozen \? ', frozen_at, frozen_by' : ''/.test(blk));
+        assert.ok(/want\.schema \? ', plan_schema' : ''/.test(blk));
+    });
+
+    test('★ ⑦: 止める側の操作は判定を取り直してから通す / 取得は single-flight', () => {
+        const html = _fs.readFileSync(_path.join(ROOT, 'index.html'), 'utf8');
+        const client = _fs.readFileSync(_path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        // ★ 前面に開きっぱなしの端末は visibilitychange が起きない。
+        //   メモリ上の判定だけ見ると「締めた」が届かず、凸報告と配信を続けられる
+        assert.ok(/async function _gateGuard\(feature\)/.test(client), 'ガードが同期のまま');
+        assert.ok(/await window\._refreshClientGateIfStale\?\.\(\)/.test(client), '直前に取り直していない');
+        assert.ok(/await _gateGuard\('attack'\)/.test(client), '凸報告で await していない');
+        assert.ok(/await _gateGuard\('publish'\)/.test(client), '配信で await していない');
+        assert.ok(/window\._refreshClientGateIfStale = _refreshClientGateIfStale;/.test(html), '公開していない');
+        // ★ 取得が並行すると、新しい「締めた」の後に古い「許可」が着地して判定が戻る
+        assert.ok(/if \(_gateInFlight\) return _gateInFlight;/.test(html), 'single-flight でない');
+        assert.ok(/if \(seq >= _gateApplied\)/.test(html), '古い応答を捨てていない');
+        // bfcache 復帰は visibilitychange が出ない
+        assert.ok(/window\.addEventListener\('pageshow', _onGateResume\)/.test(html));
+        // 運営が締めた直後は間引きを外して必ず取り直す
+        assert.ok(/_gateFetchedAt = 0;/.test(html));
     });
 
     test('★ ⑦: 版は安全整数だけを採る (BIGINT・小数・例外を投げる値)', () => {

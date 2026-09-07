@@ -1174,7 +1174,7 @@ window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
 window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bossNumber, bossCode, damageRaw, level, characters }, opts = {}) {
     // ★ 互換ゲート (L2 ⑦)。4つある呼び出し口 (本人報告・一括・代理・代理一括) を
     //   ここ1箇所で止める — 呼び出し側に散らすと必ず足し忘れる
-    _gateGuard('attack');
+    await _gateGuard('attack');
     // ★ 40_attack_with_reservation_rpc.sql があれば **サーバ側の1トランザクション**でやる。
     //   従来の「凸数を読む → insert → 残HPを read-modify-write」は
     //   ①採番と②insert の間に別端末が凸すると attack_number が衝突し、
@@ -1726,7 +1726,12 @@ window.supabaseLoadClientGate = async function () {
 // 止められている操作なら投げる。呼び出し側は普通のエラーとして扱えばよい。
 // ★ 判定そのものは index.html が起動時に作って window._clientGateVerdict に置く。
 //   ここで毎回取りに行かないのは、凸報告のたびに1往復増やさないため
-function _gateGuard(feature) {
+async function _gateGuard(feature) {
+    // ★ 判定が古ければ取り直してから見る (Codex指摘 2026-09-07)。
+    //   前面に開きっぱなしの端末は visibilitychange が起きないので、
+    //   メモリ上の判定だけを見ると「締めた」が届かず凸報告と配信を続けられる。
+    //   間引き (5分) と single-flight は index.html 側が持つので、ここは呼ぶだけ
+    try { await window._refreshClientGateIfStale?.(); } catch { /* fail-open */ }
     const cg = window.clientGateDomain;
     const v = window._clientGateVerdict;
     if (!cg || !v || cg.allows(v, feature)) return;
@@ -2562,7 +2567,7 @@ window.supabaseSeedTestMockAttacks = async function (seasonId, hardDate) {
 // 呼び出し側が「事前に読んだ確認済み一覧」と同じシーズンへ確実に配信するために必要
 // (シーズン切替と競合すると、旧シーズンの確認者へ新シーズンの更新通知を送ってしまう)
 window.supabasePublishPlan = async function (planObj, publishedBy, publishedByName, seasonId = null, planSchema = null) {
-    _gateGuard('publish');   // 互換ゲート (L2 ⑦)
+    await _gateGuard('publish');   // 互換ゲート (L2 ⑦)
     let sid = seasonId;
     if (!sid) {
         const { data: season, error: sErr } = await supabase
@@ -2813,12 +2818,19 @@ window.supabaseGetPublishedPlan = async function () {
     // plan_schema が無い = 版を持たない旧配信なので、読む側は 0 として扱う
     // ★ 列を1つずつ外す (Codex指摘 2026-09-07)。まとめて外すと、38だけ未適用の環境で
     //   plan_schema まで落ちて「版を持たない旧配信」に見え、新しすぎる配信を描いてしまう
+    // ★ どちらの欠落が先に返るかに依存しない (Codex指摘 2026-09-07)。
+    //   「欠けていると言われた列だけを落として、落とせる列が無くなるまで試す」形にする。
+    //   片方向の分岐だと、両方未適用の環境で先に plan_schema 欠落が返ったときに
+    //   frozen 欠落を処理できずそのまま throw する
+    let want = { frozen: true, schema: true };
     let r = await run(`${cols}, frozen_at, frozen_by, plan_schema`);
-    if (r.error && _isMissingColumnErr(r.error, 'plan_schema')) {
-        r = await run(`${cols}, frozen_at, frozen_by`);         // 41 だけ未適用
-    } else if (r.error && (_isMissingColumnErr(r.error, 'frozen_at') || _isMissingColumnErr(r.error, 'frozen_by'))) {
-        r = await run(`${cols}, plan_schema`);                  // 38 だけ未適用 (版は残す)
-        if (r.error && _isMissingColumnErr(r.error, 'plan_schema')) r = await run(cols);   // 両方未適用
+    for (let i = 0; i < 2 && r.error; i++) {
+        if (want.schema && _isMissingColumnErr(r.error, 'plan_schema')) want.schema = false;
+        else if (want.frozen && (_isMissingColumnErr(r.error, 'frozen_at') || _isMissingColumnErr(r.error, 'frozen_by'))) want.frozen = false;
+        else break;   // 列欠落以外のエラーはそのまま投げる
+        r = await run(cols
+            + (want.frozen ? ', frozen_at, frozen_by' : '')
+            + (want.schema ? ', plan_schema' : ''));
     }
     if (r.error) throw r.error;
     return r.data ? { ...r.data, month_key: season.month_key } : null;

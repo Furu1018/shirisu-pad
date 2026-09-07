@@ -20587,16 +20587,33 @@
         const PLAN_SCHEMA = 2;
         let _gateVerdict = null;   // clientGateDomain.evaluate の結果 (null = 制限なし)
         let _gateRaw = null;       // app_gate の行 (min_plan_schema を見るのに使う)
+        let _gateSeq = 0;          // 要求の世代 (古い応答で新しい判定を上書きしない)
+        let _gateApplied = 0;      // 適用済みの最大世代
+        let _gateInFlight = null;  // 取得中の Promise (single-flight)
 
-        async function _loadClientGate() {
-            try {
-                _gateRaw = await window.supabaseLoadClientGate?.() ?? null;
-                _gateVerdict = window.clientGateDomain?.evaluate({ build: CLIENT_BUILD, gate: _gateRaw }) || null;
-            } catch { _gateRaw = null; _gateVerdict = null; }   // fail-open
-            _gateFetchedAt = Date.now();
-            // supabase-client 側 (凸報告・配信) から見えるようにする
-            window._clientGateVerdict = _gateVerdict;
-            _renderClientGateBanner();
+        // ★ single-flight + 世代で単調に適用する (Codex指摘 2026-09-07)。
+        //   これが無いと、取得が並行したときに新しい「締めた」応答の後で
+        //   古い「許可」応答が着地し、判定が許可へ戻る = 無期限にすり抜ける
+        function _loadClientGate() {
+            if (_gateInFlight) return _gateInFlight;
+            const seq = ++_gateSeq;
+            _gateInFlight = (async () => {
+                let raw = null, verdict = null;
+                try {
+                    raw = await window.supabaseLoadClientGate?.() ?? null;
+                    verdict = window.clientGateDomain?.evaluate({ build: CLIENT_BUILD, gate: raw }) || null;
+                } catch { raw = null; verdict = null; }   // fail-open
+                if (seq >= _gateApplied) {   // 古い応答は捨てる
+                    _gateApplied = seq;
+                    _gateRaw = raw;
+                    _gateVerdict = verdict;
+                    _gateFetchedAt = Date.now();
+                    // supabase-client 側 (凸報告・配信) から見えるようにする
+                    window._clientGateVerdict = _gateVerdict;
+                    _renderClientGateBanner();
+                }
+            })().finally(() => { _gateInFlight = null; });
+            return _gateInFlight;
         }
 
         // ★ 起動しっぱなしの端末にも「締めた」を届ける (Codex指摘 2026-09-07)。
@@ -20606,11 +20623,15 @@
         const GATE_MAX_AGE_MS = 5 * 60 * 1000;
         async function _refreshClientGateIfStale() {
             if (Date.now() - _gateFetchedAt < GATE_MAX_AGE_MS) return;
-            await _loadClientGate();
+            try { await _loadClientGate(); } catch { /* fail-open */ }
         }
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) _refreshClientGateIfStale().catch(() => { /* fail-open */ });
-        });
+        // ★ 止める側の操作 (凸報告・配信) の直前に supabase-client から呼ばせる。
+        //   前面に開きっぱなしの端末は visibilitychange が起きないので、
+        //   これが無いと「締めた」が届かないまま凸報告と配信を続けられる (Codex指摘 2026-09-07)
+        window._refreshClientGateIfStale = _refreshClientGateIfStale;
+        const _onGateResume = () => { if (!document.hidden) _refreshClientGateIfStale(); };
+        document.addEventListener('visibilitychange', _onGateResume);
+        window.addEventListener('pageshow', _onGateResume);   // bfcache 復帰は visibilitychange が出ない
 
         // 止められている操作かどうか。ゲートが無ければ常に true
         function _gateAllows(feature) {
@@ -20671,6 +20692,7 @@
                 });
                 showNotification(mode === 'now' ? '🔒 古いアプリを止めました' : '解除しました');
                 await renderClientGateSettings();
+                _gateFetchedAt = 0;        // 間引きを外して必ず取り直す
                 await _loadClientGate();   // 自分の判定も取り直す
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
