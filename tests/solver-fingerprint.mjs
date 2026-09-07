@@ -26,7 +26,7 @@ const load = (p) => {
     vm.runInContext(fs.readFileSync(p, 'utf8'), ctx);
     return ctx.computeOptimalPlanCore || ctx.window.computeOptimalPlanCore;
 };
-const compute = load(path.join(HERE, '..', 'js', 'optimal-plan.js'));
+const compute = load(process.env.FP_SOLVER || path.join(HERE, '..', 'js', 'optimal-plan.js'));
 
 const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
 const HOURS = ['h05', 'h09', 'h13', 'h17', 'h21'];
@@ -99,6 +99,35 @@ function board(seed) {
     };
 }
 
+// ハッシュ対象は「割当そのもの」に絞る。
+// ★ プラン全体を丸ごとハッシュすると、テレメトリ項目 (stability など) を1つ足しただけで
+//   全盤面が落ちて「挙動が変わった」と誤読する。見たいのは
+//   **誰がどのレベルのどのボスを、いつ、どの編成で、いくら削るか** が変わっていないこと
+function projection(plan) {
+    return {
+        startLevel: plan.startLevel,
+        fullyClearedThrough: plan.fullyClearedThrough,
+        frontierLevel: plan.frontierLevel,
+        lv4Open: plan.lv4Open,
+        totalAttacks: plan.totalAttacks,
+        totalCreditedB: plan.totalCreditedB,
+        totalWaste: plan.totalWaste,
+        unusedAttacks: plan.unusedAttacks,
+        levels: (plan.levels || []).map(lv => ({
+            level: lv.level, infinite: !!lv.infinite, levelCleared: !!lv.levelCleared,
+            openHourLabel: lv.openHourLabel ?? null, clearHourLabel: lv.clearHourLabel ?? null,
+            bosses: (lv.bosses || []).map(b => ({
+                bossNumber: b.bossNumber, cleared: !!b.cleared,
+                remainingHpB: b.remainingHpB, creditedB: b.creditedB ?? null, absorbedB: b.absorbedB ?? null,
+                attacks: (b.attacks || []).map(a => [
+                    a.memberId, a.loadoutSlot, a.dmgB, a.usedB, a.overflowB,
+                    a.hourLabel ?? null, !!a.flex, !!a.timeMismatch, !!a.reserved,
+                ]),
+            })),
+        })),
+    };
+}
+
 // プランを安定 JSON にする。オブジェクトのキー順に依存しないよう並べ替える
 function stable(v) {
     if (Array.isArray(v)) return v.map(stable);
@@ -117,7 +146,7 @@ for (let seed = 1; seed <= N; seed++) {
     let h;
     try {
         const plan = compute(board(seed));
-        h = crypto.createHash('sha1').update(JSON.stringify(stable(plan))).digest('hex').slice(0, 16);
+        h = crypto.createHash('sha1').update(JSON.stringify(stable(projection(plan)))).digest('hex').slice(0, 16);
     } catch (e) {
         h = `ERROR:${e && e.message ? e.message.slice(0, 60) : e}`;
     }

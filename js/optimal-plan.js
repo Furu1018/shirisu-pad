@@ -128,6 +128,11 @@
     };
 
     // フェーズ2 (ボス横断の限定分岐) の探索上限。運営ボタンの体感を壊さない範囲に収める
+    // L1 安定化 (2026-09-07): 前回の約束を捨てて通常解へ動くのは「明確に損」なときだけ。
+    // 相対だけだと小さい盤面で過敏になり、絶対だけだと大きい盤面で鈍る → 両方の大きい方を使う。
+    // 30B の根拠: 第44回の総与ダメ 2,981B の約1% で、1人1凸ぶんに近い (ユーザー承認 2026-09-07)
+    const STICKY_GAIN_RATIO = 0.05;
+    const STICKY_MIN_GAIN_B = 30;
     const MAX_BRANCH = 16;       // 1ラウンドで試す決定点の数
     const MAX_DEPTH = 3;        // 改善した分岐に重ねて分岐する深さ (1決定点だけでは弱い)
     // 解くシナリオの総数 (基準解を含む)。**実時間で打ち切ってはいけない** —
@@ -652,6 +657,10 @@
                 //   consumedMandatory = その凸が必須属性を消化したか (undo で予約を戻す)
                 const loMeta = new WeakMap();
                 const consumedMandatory = new WeakSet();
+                // ★ L1: 前回の約束として先に置いた凸。trimOverkill が参照するので**そこより前で宣言する**
+                //   (後ろで宣言すると呼び出し順しだいで TDZ の ReferenceError になる。
+                //    2026-08-08 に同じ形で「カードをタップすると落ちる」事故を起こしている)
+                const stickyPlaced = new Set();
                 const applyPick = (t, c) => {
                     const { pick, pickHour, pickFlex, pickLo, pickSlot } = c;
                     // pickDmg = 対象レベルで解決した測定値 (レベル別測定の使い分け)。
@@ -749,6 +758,10 @@
                         const order = [...t.attacks].sort((a, b) => a.dmgB - b.dmgB);
                         for (const atk of order) {
                             if (t.attacks.length <= 1) break;
+                            // ★ L1: 前回の約束として先に置いた凸は外さない。
+                            //   外すと「安定させるために置いたのに、オーバーキル圧縮で消える」
+                            //   = その人だけ割当が消えて振り回すことになる (L1 の目的と正面から矛盾)
+                            if (stickyPlaced.has(atk)) continue;
                             if (t.rem + atk.dmgB > 0.0001) continue;   // 抜くと倒せなくなる
                             if (undoPick(t, atk)) { changed = true; removed = true; break; }
                         }
@@ -766,6 +779,47 @@
                     }
                     t.rem = rem;
                 };
+                // ===== L1: 前回配信で約束した割当を先に置く (sticky) =====
+                // 「変えないと実現不能でない限り前回どおり」を実現する土台 (2026-09-07)。
+                // ★ 置くのは **通常の凸とまったく同じ経路 (applyPick)**。残凸数・キャラ消費・
+                //   編成消費・残HP・必須枠の扱いが貪欲の結果と1つもズレないようにするため。
+                //   ここを独自実装にすると、後段の候補列挙やスコアと食い違って壊れる。
+                // ★ 置けなかったもの (本人が3凸済み・撃破済みボス・キャラ被り・編成が消えた 等) は
+                //   **黙って諦める**。約束は「守れるなら守る」であって、守れない形に歪めることではない。
+                //   諦めた枠は後段の貪欲がそのまま埋める
+                // ★ 時刻は earliestHourFor に任せる (貪欲と同じ)。盤面が動いていなければ前回と同じ枠が返るので
+                //   実質的に時刻も保たれる。動いていれば現実に合わせる方が正しい
+                if (Array.isArray(opts.sticky) && opts.sticky.length > 0) {
+                    for (const s of opts.sticky) {
+                        if (Number(s.level) !== L) continue;
+                        const m = memberState.find(x => String(x.id) === String(s.memberId));
+                        if (!m || m.remainingAttacks <= 0) continue;
+                        const t = targets.find(x => Number(x.b.boss_number) === Number(s.bossNumber));
+                        if (!t || t.rem <= 0.0001) continue;
+                        const w = t.b.weakness;
+                        const list = m.avail[w];
+                        if (!list || list.length === 0) continue;
+                        // 編成はスロットで特定する (同属性の別編成に化けさせない)
+                        const cand = list.find(c => Number(c.slot) === Number(s.loadoutSlot));
+                        if (!cand) continue;
+                        const dmg = resolveDamage(cand);
+                        if (dmg === null) continue;
+                        // ⚠ キャラ被り・必須枠の条件は listCandidatesFor と同じ式にすること
+                        //   (片方だけ変えると「候補にならないのに置かれる」不整合になる)
+                        if (m.anyTeamRegistered && cand.team.length > 0
+                            && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
+                        if (m.mandatory.size > 0 && !m.mandatory.has(w)
+                            && (m.remainingAttacks - m.lockedNow) <= 0) continue;
+                        const slot = earliestHourFor(m, openIdx);
+                        if (!slot) continue;
+                        applyPick(t, {
+                            pick: m, pickScore: 0, pickHour: slot.idx, pickFlex: slot.flex,
+                            pickLo: cand, pickDmg: dmg, pickSlot: slot,
+                        });
+                        stickyPlaced.add(t.attacks[t.attacks.length - 1]);
+                        recountLocked();
+                    }
+                }
                 if (!absorbMode) {
                     // 踏破モード: ボスごとに残HPを削り切るまで投入
                     for (const t of targets) {
@@ -945,6 +999,63 @@
         };
         const sumCreditedOf = (pass) =>
             pass.levels.reduce((s, lv) => s + lv.bosses.reduce((t, b) => t + b.attacks.reduce((u, a) => u + a.usedB, 0), 0), 0);
+        // 実現可能性の劣化量: 時刻を確約できない凸 (⚠時間外 / ⏳隙間) の重みつき本数。
+        // 数字上 credited が増えても、これが増えた案は「実際には出せないかもしれない凸」で
+        // 稼いでいるだけなので運用では改悪。ボス横断分岐と L1 の両方が同じ物差しを使う
+        const riskOfPass = (pass) => pass.levels.flatMap(lv => lv.bosses.flatMap(x => x.attacks))
+            .reduce((t, x) => t + (x.timeMismatch ? 2 : 0) + (x.flex ? 1 : 0), 0);
+
+        // ===== L1: 前回プランを「拘束」に正規化する =====
+        // 配信済みプラン (published_plans.plan) から、人ごとの約束を取り出す。
+        // ★ 投入順は **仕様化したキーで安定ソート** する。DB の返却順や配列順に依存させると
+        //   「同じ盤面でも押すたびに違う指示」になり、配信の前提が崩れる (Codex指摘 2026-09-07)
+        const normalizeSticky = (prev) => {
+            const out = [];
+            const levels = Array.isArray(prev && prev.levels) ? prev.levels : [];
+            levels.forEach(lv => {
+                const level = Number(lv && lv.level);
+                if (!Number.isInteger(level) || level < 1 || level > 3) return;   // Lv4 は無限ボスなので拘束しない
+                (Array.isArray(lv.bosses) ? lv.bosses : []).forEach(b => {
+                    const bossNumber = Number(b && b.bossNumber);
+                    if (!Number.isInteger(bossNumber)) return;
+                    (Array.isArray(b.attacks) ? b.attacks : []).forEach(a => {
+                        if (!a || a.memberId == null) return;
+                        const loadoutSlot = Number(a.loadoutSlot) || 1;
+                        out.push({ memberId: a.memberId, level, bossNumber, loadoutSlot });
+                    });
+                });
+            });
+            out.sort((x, y) => (x.level - y.level)
+                || (x.bossNumber - y.bossNumber)
+                || String(x.memberId).localeCompare(String(y.memberId))
+                || (x.loadoutSlot - y.loadoutSlot));
+            return out;
+        };
+
+        // ===== L1: 拘束解と通常解のどちらを採るか =====
+        // 辞書順で判定する (既存のボス横断分岐と同じ序列に合わせてある):
+        //   ① 通常解の方が踏破レベルが上 → 無条件で通常解 (約束より攻略を優先)
+        //   ② 拘束解の方が時刻を確約できない凸が多い → 通常解 (出られない凸で約束しても意味がない)
+        //   ③ 通常解の credited 改善が閾値以上 → 通常解
+        //   ④ それ以外 → 拘束解 (= 前回の約束を守る)
+        // ★ 比較対象は「前回プラン」ではなく **同じ盤面を拘束なしで解いた通常解**。
+        //   前回からHPも実凸も進んでいるので、前回の数字とは比べられない
+        // ★ 判定は人ごとではなく全体で行う。「A を動かして B を守る」価値は個別火力では測れない
+        const preferNormalOver = (stickyChosen, normalChosen) => {
+            const cn = sumCreditedOf(normalChosen), cs = sumCreditedOf(stickyChosen);
+            const gapB = cn - cs;
+            const thresholdB = Math.max(STICKY_GAIN_RATIO * cn, STICKY_MIN_GAIN_B);
+            if (normalChosen.fullyClearedThrough > stickyChosen.fullyClearedThrough) {
+                return { normal: true, reason: 'clearLevel', gapB, thresholdB };
+            }
+            if (riskOfPass(stickyChosen) > riskOfPass(normalChosen)) {
+                return { normal: true, reason: 'timeRisk', gapB, thresholdB };
+            }
+            if (gapB >= thresholdB - 1e-9) {
+                return { normal: true, reason: 'creditedGain', gapB, thresholdB };
+            }
+            return { normal: false, reason: 'kept', gapB, thresholdB };
+        };
 
         // ===== シナリオ実行: probe (温存なし) → 温存パス (Lv4 が見える時のみ) =====
         // policy を渡すと指定の決定点だけ2番手を採る = ボス横断の分岐 (フェーズ2)。
@@ -1073,8 +1184,7 @@
             // 実現可能性の劣化を数える: 時刻を確約できない凸 (⚠時間外 / ⏳隙間) が増えた案は、
             // 数字上 credited が増えても「実際には出せないかもしれない凸」で稼いでいるだけ。
             // 運用では改悪なので、まず実現可能性で足切りしてから credited を比べる
-            const riskOf = (r) => r.chosen.levels.flatMap(lv => lv.bosses.flatMap(x => x.attacks))
-                .reduce((t, x) => t + (x.timeMismatch ? 2 : 0) + (x.flex ? 1 : 0), 0);
+            const riskOf = (r) => riskOfPass(r.chosen);
             // 同じリスク量でも「確約できない凸を先に置く」案は避ける。
             // 先の凸ほどレベル開放を律速するので、実際に出られないと後続が全部ずれる
             const riskOrderOf = (r) => {
@@ -1174,9 +1284,38 @@
         return { scenario, optimization };
         };
 
-        const solved = solveWhole(null);
-        let scenario = solved.scenario;
-        let optimization = solved.optimization;
+        // ===== L1: 前回配信で約束した割当を守る (安定化・2026-09-07) =====
+        // 第44回の反省は「当日のプラン再生成でメンバーを振り回した」こと。ソルバーは毎回ゼロから
+        // 組み直すので、盤面が少し動くだけで無関係な人の割当まで入れ替わっていた。
+        // **同じ盤面を「前回どおりを先に置いた解」と「拘束なしの通常解」で2回解き、辞書順で選ぶ**。
+        // ★ input.previousPlan を渡さなければ従来と1ビットも変わらない出力になること
+        //   (tests/solver-fingerprint.mjs が固定している)
+        const stickyList = normalizeSticky(input.previousPlan);
+        const solvedNormal = solveWhole(null);
+        let scenario = solvedNormal.scenario;
+        let optimization = solvedNormal.optimization;
+        let stability = null;
+        if (stickyList.length > 0) {
+            let solvedSticky = null;
+            // 拘束解で例外が出ても通常解で配信できる方が安全 (安定化は「あれば嬉しい」もの)
+            try { solvedSticky = solveWhole({ sticky: stickyList }); } catch { solvedSticky = null; }
+            if (solvedSticky) {
+                const verdict = preferNormalOver(solvedSticky.scenario.chosen, scenario.chosen);
+                stability = {
+                    applied: !verdict.normal,
+                    reason: verdict.reason,
+                    stickyCount: stickyList.length,
+                    creditedGapB: Math.round(verdict.gapB * 1000) / 1000,
+                    thresholdB: Math.round(verdict.thresholdB * 1000) / 1000,
+                };
+                if (!verdict.normal) {
+                    scenario = solvedSticky.scenario;
+                    optimization = solvedSticky.optimization;
+                }
+            } else {
+                stability = { applied: false, reason: 'error', stickyCount: stickyList.length, creditedGapB: 0, thresholdB: 0 };
+            }
+        }
         const { probe, chosen, lv4Open, reservePassUsed } = scenario;
         const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited
         // 温存マーク: probe では有限ボスに使われていた凸 (人+編成) が、温存パスでボス5に回ったもの。
@@ -1341,6 +1480,11 @@
             baselineCreditedB,
             reserveGainB: baselineCreditedB != null ? Math.max(0, totalCreditedB - baselineCreditedB) : 0,
             reservePassUsed,
+            // L1 安定化の結果 (previousPlan を渡したときだけ非 null)。
+            // applied=true = 前回の約束を守った / false = 守るより明確に良かったので組み直した。
+            // reason: clearLevel=踏破が上がる / timeRisk=確約できない凸が増える /
+            //         creditedGain=与ダメ改善が閾値超 / kept=約束を守った / error=拘束解で例外
+            stability,
         };
     }
 

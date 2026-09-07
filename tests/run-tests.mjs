@@ -3386,6 +3386,224 @@ console.log('\n運営除外の配線 (ソース突合):');
     });
 }
 
+// ---- L1: ソルバーの安定化 (前回の約束を守る) ----------------------------------
+console.log('\nL1 安定化 (前回配信の割当を守る):');
+{
+    // 盤面: 3人・弱点がバラけた2ボス。誰がどのボスへ行くかを入れ替えても総与ダメが大きく変わらない形にする
+    const mkPlayer = (id, name, byAttr, opts = {}) => ({
+        id, name, attackCount: opts.done || 0,
+        syncLevel: 500, syncLevelEstimated: false,
+        damagesByAttr: Object.fromEntries(Object.entries(byAttr).map(([k, v]) => [k, Math.max(...v.map(x => x.dmgB))])),
+        teamsByAttr: {}, loadoutsByAttr: byAttr, attacks: opts.attacks || [],
+        availableSlots: opts.slots || ['h05', 'h09', 'h13', 'h17', 'h21'],
+        flexTime: false, notifyAllHours: false, strong_attributes: [],
+    });
+    const lo = (dmgB, team, slot = 1) => ({ dmgB, team, slot, level: null, levels: null });
+    // ボス1 の弱点=fire / ボス2 の弱点=water
+    const twoBosses = [
+        { boss_number: 1, boss_code: 'B1', name: 'ボス1', attribute: 'water', weakness: 'fire', tier: 'lord',
+          total_hp_raw: 30e9, remaining_hp_raw: 30e9 },
+        { boss_number: 2, boss_code: 'B2', name: 'ボス2', attribute: 'electric', weakness: 'water', tier: 'lord',
+          total_hp_raw: 30e9, remaining_hp_raw: 30e9 },
+    ];
+    const mkInput = (players, extra = {}) => ({
+        season: { id: 1, current_level: 1, hard_date: '2026-09-05' },
+        bosses: twoBosses.map(b => ({ ...b })), players,
+        currentSlot: 'h05', timeAware: true, onlyAvailableNow: false, crossBoss: false,
+        ...extra,
+    });
+    // 両属性に出せる人が2人。どちらがどちらへ行っても総与ダメはほぼ同じ = 安定化が効くはずの形
+    const basePlayers = () => [
+        mkPlayer(1, 'A', { fire: [lo(16, ['a1', 'a2', 'a3', 'a4', 'a5'])], water: [lo(16, ['a6', 'a7', 'a8', 'a9', 'a10'])] }),
+        mkPlayer(2, 'B', { fire: [lo(16, ['b1', 'b2', 'b3', 'b4', 'b5'])], water: [lo(16, ['b6', 'b7', 'b8', 'b9', 'b10'])] }),
+        mkPlayer(3, 'C', { fire: [lo(15, ['c1', 'c2', 'c3', 'c4', 'c5'])] }),
+    ];
+    const rowsOf = (plan) => {
+        const out = [];
+        (plan.levels || []).filter(lv => !lv.infinite).forEach(lv => (lv.bosses || []).forEach(b =>
+            (b.attacks || []).forEach(a => out.push(`L${lv.level}/B${b.bossNumber}/${a.memberId}/${a.loadoutSlot}`))));
+        return out.sort();
+    };
+
+    test('L1: previousPlan を渡さなければ stability は null (従来と同じ扱い)', () => {
+        const p = compute(mkInput(basePlayers()));
+        assert.equal(p.stability, null);
+    });
+
+    test('L1: 前回と同じ盤面なら、前回の割当がそのまま維持される', () => {
+        const first = compute(mkInput(basePlayers()));
+        const again = compute(mkInput(basePlayers(), { previousPlan: first }));
+        assert.deepEqual(rowsOf(again), rowsOf(first), '同じ盤面で割当が動いた');
+        assert.ok(again.stability, 'stability が出ていない');
+        assert.equal(again.stability.reason, 'kept');
+        assert.equal(again.stability.applied, true);
+    });
+
+    test('L1: 前回の割当を人為的に入れ替えても、損が閾値未満ならそちらを守る', () => {
+        const natural = compute(mkInput(basePlayers()));
+        // A と B のボスを入れ替えた「前回プラン」を作る (火力が同じなので総与ダメはほぼ変わらない)
+        const swapped = JSON.parse(JSON.stringify(natural));
+        let touched = 0;
+        swapped.levels.filter(lv => !lv.infinite).forEach(lv => lv.bosses.forEach(b => b.attacks.forEach(a => {
+            if (a.memberId === 1) { a.memberId = 2; a.memberName = 'B'; touched++; }
+            else if (a.memberId === 2) { a.memberId = 1; a.memberName = 'A'; touched++; }
+        })));
+        assert.ok(touched >= 2, `入れ替え対象が足りない (${touched})`);
+        const kept = compute(mkInput(basePlayers(), { previousPlan: swapped }));
+        assert.equal(kept.stability.applied, true, `守られなかった: ${JSON.stringify(kept.stability)}`);
+        assert.deepEqual(rowsOf(kept), rowsOf(swapped), '前回どおりに置かれていない');
+        // 自然解とは違う = 本当に「前回どおり」を選んでいる (通るだけのテストにしない)
+        assert.notDeepEqual(rowsOf(kept), rowsOf(natural));
+    });
+
+    test('L1: 前回の約束が実現不能なら黙って諦め、残りは通常どおり埋まる', () => {
+        // 前回 A がボス1へ行く約束だったが、実際には A がもう3凸済み
+        const first = compute(mkInput(basePlayers()));
+        const players = basePlayers();
+        players[0] = mkPlayer(1, 'A', { fire: [lo(16, ['a1', 'a2', 'a3', 'a4', 'a5'])] }, { done: 3 });
+        const p = compute(mkInput(players, { previousPlan: first }));
+        const ids = new Set(rowsOf(p).map(r => r.split('/')[2]));
+        assert.ok(!ids.has('1'), '3凸済みの人が置かれている');
+        assert.ok(p.totalAttacks > 0, '残りが埋まっていない');
+    });
+
+    test('L1: 踏破レベルが上がるなら約束を捨てる (無条件)', () => {
+        // 前回プランは「1人だけがボス1へ行く」= HPを削り切れない案。
+        // 通常解は全員を動員して踏破できる → clearLevel で通常解を採るはず
+        const players = basePlayers();
+        const natural = compute(mkInput(players));
+        const crippled = JSON.parse(JSON.stringify(natural));
+        crippled.levels.filter(lv => !lv.infinite).forEach(lv => lv.bosses.forEach(b => {
+            b.attacks = b.attacks.slice(0, 1);   // 各ボス1凸だけの約束にする
+        }));
+        const p = compute(mkInput(players, { previousPlan: crippled }));
+        assert.ok(p.stability, 'stability が出ていない');
+        // 拘束解の方が踏破が低いなら通常解が採られる。同じなら守られる — どちらでも
+        // 「1凸だけ」で終わっていないことが要件 (約束のせいで攻略を捨てていない)
+        assert.ok(p.totalAttacks > 2, `約束に引きずられて凸が減っている: ${p.totalAttacks}`);
+    });
+
+    test('L1: 壊れた previousPlan でも落ちない', () => {
+        const players = basePlayers();
+        for (const bad of [null, {}, { levels: null }, { levels: [{ level: 9, bosses: [] }] },
+                           { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ }] }] }] }]) {
+            const p = compute(mkInput(players, { previousPlan: bad }));
+            assert.ok(p && Array.isArray(p.levels), `落ちた: ${JSON.stringify(bad)}`);
+        }
+    });
+
+    // ---- ここから下は「拘束を直接組み立てて」経路を通す。
+    //      自然解から作った previousPlan だけだと、閾値・保護・被り判定の分岐に入らない ----
+    const stickyPlan = (entries) => ({
+        levels: [{
+            level: 1,
+            bosses: [1, 2].map(n => ({
+                bossNumber: n,
+                attacks: entries.filter(e => e.boss === n)
+                    .map(e => ({ memberId: e.id, memberName: `P${e.id}`, loadoutSlot: e.slot || 1 })),
+            })),
+        }],
+    });
+
+    test('L1: 閾値の内側なら損でも約束を守り、閾値を超えたら組み直す', () => {
+        // A は fire が強く water が弱い / B はその逆。素直に組めば A→B1・B→B2。
+        // 前回の約束が逆 (A→B2・B→B1) のとき、損の大きさで採否が変わることを見る。
+        // ★ 残凸を1にする (done:2) — 3凸あると「約束を置いたうえで良い方にも行く」ので損が出ない。
+        // ★ ボスHPを大きくして誰も倒せない盤面にする — 撃破すると次レベルが開いて
+        //   credited が跳ね、閾値の内側/外側を作り分けられない
+        const bigHp = [
+            { boss_number: 1, boss_code: 'B1', name: 'ボス1', attribute: 'water', weakness: 'fire', tier: 'lord',
+              total_hp_raw: 200e9, remaining_hp_raw: 200e9 },
+            { boss_number: 2, boss_code: 'B2', name: 'ボス2', attribute: 'electric', weakness: 'water', tier: 'lord',
+              total_hp_raw: 200e9, remaining_hp_raw: 200e9 },
+        ];
+        const mk = (waterA, fireB) => [
+            mkPlayer(1, 'A', { fire: [lo(30, ['a1', 'a2', 'a3', 'a4', 'a5'])], water: [lo(waterA, ['a6', 'a7', 'a8', 'a9', 'a10'])] }, { done: 2 }),
+            mkPlayer(2, 'B', { fire: [lo(fireB, ['b1', 'b2', 'b3', 'b4', 'b5'])], water: [lo(30, ['b6', 'b7', 'b8', 'b9', 'b10'])] }, { done: 2 }),
+        ];
+        const swapped = stickyPlan([{ id: 1, boss: 2 }, { id: 2, boss: 1 }]);
+        // ① 損が小さい (各 5B ずつ低いだけ = 合計 10B) → 守る
+        const small = compute(mkInput(mk(25, 25), { previousPlan: swapped, bosses: bigHp.map(b => ({ ...b })) }));
+        assert.equal(small.stability.applied, true, `小さい損で守られなかった: ${JSON.stringify(small.stability)}`);
+        assert.ok(small.stability.creditedGapB < small.stability.thresholdB,
+            `閾値の内側のはず: gap=${small.stability.creditedGapB} th=${small.stability.thresholdB}`);
+        // ★ 閾値そのものを固定する (定数を 0 にする変異を検出するため)
+        assert.ok(small.stability.thresholdB >= 30 - 1e-9,
+            `閾値が小さすぎる: ${small.stability.thresholdB}`);
+        // ② 損が大きい (各 30B → 1B = 合計 58B) → 組み直す
+        const big = compute(mkInput(mk(1, 1), { previousPlan: swapped, bosses: bigHp.map(b => ({ ...b })) }));
+        assert.equal(big.stability.applied, false, `大きい損でも守ってしまった: ${JSON.stringify(big.stability)}`);
+        assert.equal(big.stability.reason, 'creditedGain');
+    });
+
+    test('L1: 踏破レベルが上がるなら閾値に関係なく組み直す', () => {
+        // ボス1 (HP30) は A の fire 30 でちょうど倒せる。前回の約束は A を water 側に回す案 =
+        // ボス1 が倒せず踏破が落ちる。損は小さくても踏破が上がる通常解を採るべき
+        // ★ 残凸を1にする (done:2)。3凸あると、約束を置いたあとで貪欲がボス1も倒してしまい
+        //   踏破レベルが並んでしまう (この分岐に入らない)
+        const players = [
+            mkPlayer(1, 'A', { fire: [lo(30, ['a1', 'a2', 'a3', 'a4', 'a5'])], water: [lo(29, ['a6', 'a7', 'a8', 'a9', 'a10'])] }, { done: 2 }),
+            mkPlayer(2, 'B', { water: [lo(30, ['b6', 'b7', 'b8', 'b9', 'b10'])] }, { done: 2 }),
+        ];
+        const away = stickyPlan([{ id: 1, boss: 2 }, { id: 2, boss: 2 }]);
+        const p = compute(mkInput(players, { previousPlan: away }));
+        assert.equal(p.stability.applied, false, `踏破が落ちる約束を守ってしまった: ${JSON.stringify(p.stability)}`);
+        assert.equal(p.stability.reason, 'clearLevel');
+    });
+
+    test('L1: 約束した凸はオーバーキル圧縮で外されない', () => {
+        // ボス1 (HP30) に 25B → 30B の順で約束する。25B を置いた時点で残5B、30B で撃破。
+        // 通常の trimOverkill は「25B を外しても倒せる」ので外しにいくが、
+        // 約束した凸を外すと「安定させるために置いたのに消える」= 目的と矛盾するので残す。
+        // ★ 逆順 (30B が先) だと 2人目を置く前にボスが落ちて、そもそも置かれない
+        //   (撃破済みのボスには約束を置かない)。この順序でないと圧縮の分岐に入らない
+        // ★ ボス2 を倒せる C を入れてレベルを踏破させる — 踏破できないと吸収モードになり、
+        //   撃破済みのボスは横断ループが飛ばすので trimOverkill 自体が走らない
+        const players = [
+            mkPlayer(1, 'A', { fire: [lo(25, ['a1', 'a2', 'a3', 'a4', 'a5'])] }),
+            mkPlayer(2, 'B', { fire: [lo(30, ['b1', 'b2', 'b3', 'b4', 'b5'])] }),
+            mkPlayer(3, 'C', { water: [lo(30, ['c1', 'c2', 'c3', 'c4', 'c5'])] }),
+        ];
+        const both = stickyPlan([{ id: 1, boss: 1 }, { id: 2, boss: 1 }]);
+        const p = compute(mkInput(players, { previousPlan: both }));
+        const b1 = p.levels.find(lv => lv.level === 1).bosses.find(b => b.bossNumber === 1);
+        const ids = (b1.attacks || []).map(a => a.memberId).sort();
+        assert.deepEqual(ids, [1, 2], `約束した凸が外された: ${JSON.stringify(ids)} / ${JSON.stringify(p.stability)}`);
+    });
+
+    test('L1: 約束でもキャラが被る編成は置かない (同じ人を2回使わない)', () => {
+        // A の fire と water がキャラを共有している。前回の約束が両方でも、2つ目は置けない
+        const players = [
+            mkPlayer(1, 'A', {
+                fire: [lo(30, ['共有', 'a2', 'a3', 'a4', 'a5'])],
+                water: [lo(30, ['共有', 'a7', 'a8', 'a9', 'a10'])],
+            }),
+        ];
+        const both = stickyPlan([{ id: 1, boss: 1 }, { id: 1, boss: 2 }]);
+        const p = compute(mkInput(players, { previousPlan: both }));
+        const lv1 = p.levels.find(lv => lv.level === 1);
+        const mine = lv1.bosses.flatMap(b => b.attacks || []).filter(a => a.memberId === 1);
+        assert.equal(mine.length, 1, `キャラ被りの編成まで置かれた: ${JSON.stringify(mine.map(a => a.dmgB))}`);
+    });
+
+    test('L1: 拘束は決定的な順序で入る (前回プランの並び順で結果が変わらない)', () => {
+        // 同じボスに2人ぶん約束する = 置いた順で usedB / overflowB の配り方が変わる形。
+        // 並べ替えを外すと入力の配列順がそのまま出るので、逆順で渡すと結果が変わる
+        const players = [
+            mkPlayer(1, 'A', { fire: [lo(20, ['a1', 'a2', 'a3', 'a4', 'a5'])] }),
+            mkPlayer(2, 'B', { fire: [lo(25, ['b1', 'b2', 'b3', 'b4', 'b5'])] }),
+        ];
+        const fwd = stickyPlan([{ id: 1, boss: 1 }, { id: 2, boss: 1 }]);
+        const rev = JSON.parse(JSON.stringify(fwd));
+        rev.levels.forEach(lv => lv.bosses.forEach(b => (b.attacks || []).reverse()));
+        const shot = (p) => JSON.stringify(p.levels.filter(lv => !lv.infinite).map(lv => lv.bosses.map(b =>
+            (b.attacks || []).map(a => [a.memberId, a.dmgB, a.usedB, a.overflowB]))));
+        const a = compute(mkInput(players, { previousPlan: fwd }));
+        const b = compute(mkInput(players, { previousPlan: rev }));
+        assert.equal(shot(a), shot(b), '前回プランの並び順で結果が変わる (投入順が入力依存になっている)');
+    });
+}
+
 // ---- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) ----------------------------
 console.log('\nplanDiffDomain (配信プランの差分):');
 {
