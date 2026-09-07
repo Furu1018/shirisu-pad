@@ -15,6 +15,7 @@ import '../js/domain/gbCompare.js';    // globalThis.gbCompareDomain (GB連携)
 import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル別測定値)
 import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
+import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
@@ -3383,6 +3384,163 @@ console.log('\n運営除外の配線 (ソース突合):');
     });
     test('★ 「今回は難しい」人には催促ボタンを押させない', () => {
         assert.ok(/const canNudge = r\.todo && r\.push && !r\.availUnavailable;/.test(html));
+    });
+}
+
+// ---- L2: 凸の予約 ------------------------------------------------------------
+console.log('\nreservationsDomain (凸の予約):');
+{
+    const rv = globalThis.reservationsDomain;
+    // SQL との突き合わせ用に先に読む (test() の中は同期なので await できない)
+    const _fs = await import('node:fs');
+    const _path = await import('node:path');
+    const { fileURLToPath: _f2p } = await import('node:url');
+    const _ROOT = _path.resolve(_path.dirname(_f2p(import.meta.url)), '..');
+    const _sqlRes = _fs.readFileSync(_path.join(_ROOT, 'supabase', '39_plan_reservations.sql'), 'utf8').replace(/\r\n/g, '\n');
+    const _sqlRpc = _fs.readFileSync(_path.join(_ROOT, 'supabase', '40_attack_with_reservation_rpc.sql'), 'utf8').replace(/\r\n/g, '\n');
+    const res = (o = {}) => ({
+        id: o.id ?? 1, season_id: 30, player_id: o.pid ?? 'p1',
+        raid_level: o.lv ?? 2, boss_number: o.boss ?? 3,
+        time_mode: o.flex ? 'flex' : 'fixed', time_slot: o.flex ? null : (o.slot ?? 'h21'),
+        loadout_slot: o.lo ?? 1, characters_snapshot: o.team ?? ['A', 'B', 'C', 'D', 'E'],
+        expected_damage_b: o.dmg ?? 13.1, status: o.status ?? 'approved',
+    });
+
+    test('予約: ソルバーの拘束になるのは approved だけ', () => {
+        const rows = ['requested', 'approved', 'cancel_requested', 'fulfilled', 'released', 'rejected']
+            .map((s, i) => res({ id: i + 1, status: s, boss: i + 1 }));
+        const c = rv.toSolverConstraints(rows);
+        assert.equal(c.length, 1, `approved 以外が混ざった: ${JSON.stringify(c.map(x => x.reservationId))}`);
+        assert.equal(c[0].reservationId, 2);
+    });
+
+    test('予約: 拘束は安定ソートされる (DB の返却順に依存しない)', () => {
+        const mk = (o) => res({ ...o, status: 'approved' });
+        const a = [mk({ id: 1, lv: 3, boss: 1, pid: 'z' }), mk({ id: 2, lv: 2, boss: 5, pid: 'a' }),
+                   mk({ id: 3, lv: 2, boss: 5, pid: 'a', lo: 2 })];
+        const key = (c) => c.map(x => `${x.level}/${x.bossNumber}/${x.memberId}/${x.loadoutSlot}`).join(',');
+        assert.equal(key(rv.toSolverConstraints(a)), key(rv.toSolverConstraints([...a].reverse())),
+            '並び順で結果が変わる');
+        assert.equal(key(rv.toSolverConstraints(a)), '2/5/a/1,2/5/a/2,3/1/z/1');
+    });
+
+    test('予約: 壊れた行は拘束にしない (範囲外のレベル・ボス・編成)', () => {
+        const bad = [res({ lv: 0 }), res({ lv: 9 }), res({ boss: 0 }), res({ boss: 6 }),
+                     res({ lo: 0 }), res({ lo: 3 }), { ...res(), player_id: null }];
+        assert.deepEqual(rv.toSolverConstraints(bad), []);
+        assert.deepEqual(rv.toSolverConstraints(null), []);
+    });
+
+    test('予約: 隙間型は時刻を持たない拘束になる', () => {
+        const c = rv.toSolverConstraints([res({ flex: true })]);
+        assert.equal(c[0].flex, true);
+        assert.equal(c[0].timeSlot, null);
+        const f = rv.toSolverConstraints([res({ slot: 'h21' })]);
+        assert.equal(f[0].flex, false);
+        assert.equal(f[0].timeSlot, 'h21');
+    });
+
+    test('予約: 撃破・レベル通過は自動で解除の対象になる / 時間切れは対象外', () => {
+        const rows = [
+            res({ id: 1, lv: 1, boss: 1 }),
+            res({ id: 2, lv: 2, boss: 3 }),
+            res({ id: 3, lv: 2, boss: 4 }),
+            res({ id: 4, lv: 3, boss: 5 }),
+            res({ id: 5, lv: 2, boss: 3, status: 'requested' }),
+        ];
+        const board = { currentLevel: 2, bosses: [
+            { boss_number: 3, remaining_hp_raw: 0 }, { boss_number: 4, remaining_hp_raw: 5e9 }] };
+        const out = rv.findInfeasible(rows, board);
+        assert.deepEqual(out.map(x => [x.id, x.reason]), [[1, 'level_passed'], [2, 'boss_defeated']]);
+        assert.ok(!out.some(x => x.reason === 'no_show'), '時刻を過ぎただけで解除してはいけない');
+    });
+
+    test('予約: 残凸の検査は「生きている予約 + 実凸」で数える', () => {
+        const rows = [res({ id: 1, status: 'approved' }), res({ id: 2, status: 'requested', boss: 4 }),
+                      res({ id: 3, status: 'fulfilled', boss: 5 }), res({ id: 4, status: 'released', boss: 1 })];
+        assert.equal(rv.capacityLeft(rows, 'p1', 0), 1, '生きているのは2件なので残り1');
+        assert.equal(rv.capacityLeft(rows, 'p1', 1), 0, '実凸1件を足すと空きなし');
+        assert.equal(rv.capacityLeft(rows, 'p9', 0), 3, '別人は影響しない');
+    });
+
+    test('予約: 遷移表は DB (reservation_set_status) と同じ', () => {
+        assert.equal(rv.canTransition('requested', 'approved'), true);
+        assert.equal(rv.canTransition('requested', 'fulfilled'), false, '承認を飛ばして実行済みにできてはいけない');
+        assert.equal(rv.canTransition('approved', 'released'), true);
+        assert.equal(rv.canTransition('cancel_requested', 'approved'), true, '運営が却下したら承認済みへ戻る');
+        for (const t of ['fulfilled', 'released', 'rejected']) {
+            assert.deepEqual(rv.TRANSITIONS[t], [], `${t} は終端であるべき`);
+        }
+    });
+
+    test('予約: 承認前の影響は主指標2つ + 他人への波及を出す', () => {
+        const plan = (o) => ({
+            fullyClearedThrough: o.clear, unusedAttacks: o.unused, totalCreditedB: o.credited,
+            levels: [{ level: 2, bosses: [{ bossNumber: 3, attacks: o.attacks || [] }] }],
+        });
+        const base = plan({ clear: 3, unused: 12, credited: 700, attacks: [{ memberId: 1, loadoutSlot: 1 }] });
+        const worse = plan({ clear: 2, unused: 14, credited: 690, attacks: [{ memberId: 2, loadoutSlot: 1 }] });
+        const bad = rv.approvalImpact(base, worse, globalThis.planDiffDomain);
+        assert.equal(bad.blocking, true);
+        assert.ok(bad.warnings.some(w => w.includes('完全攻略の見込みが消えます')));
+        assert.ok(bad.warnings.some(w => w.includes('未消化の凸が 12 → 14')));
+        assert.equal(bad.creditedDiffB, -10);
+        assert.equal(bad.movedCount, 2, '割当が変わる人数を出していない');
+        const same = rv.approvalImpact(base, plan({ clear: 3, unused: 12, credited: 700, attacks: [{ memberId: 1, loadoutSlot: 1 }] }), globalThis.planDiffDomain);
+        assert.deepEqual(same.warnings, []);
+        assert.equal(same.blocking, false);
+        assert.equal(same.movedCount, 0);
+    });
+
+    test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
+        // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる
+        const m = _sqlRes.match(/status TEXT NOT NULL DEFAULT 'requested'\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
+        assert.ok(m, 'status の CHECK が見つからない');
+        const sqlStatuses = [...m[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]).sort();
+        assert.deepEqual(sqlStatuses, [...rv.STATUS].sort(), 'SQL と JS で状態の集合が違う');
+        const pick = (from) => {
+            const mm = _sqlRes.match(new RegExp(`v_from = '${from}'\\s*AND p_to IN \\(([^)]*)\\)`));
+            return mm ? [...mm[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]).sort() : null;
+        };
+        for (const from of ['requested', 'approved', 'cancel_requested']) {
+            assert.deepEqual(pick(from), [...rv.TRANSITIONS[from]].sort(), `${from} の遷移が SQL と違う`);
+        }
+        // 「枠を押さえている状態」も同じ集合であること (残凸の検査が食い違うと予約を作れない/作りすぎる)
+        const cap = _sqlRes.match(/status IN \('requested', 'approved', 'cancel_requested'\)/g) || [];
+        assert.ok(cap.length >= 2, `残凸トリガーと部分一意索引が同じ集合を使っていない (${cap.length})`);
+        assert.deepEqual([...rv.ACTIVE].sort(), ['approved', 'cancel_requested', 'requested']);
+    });
+
+    test('予約: 凸報告RPCが「採番・insert・残HP・消し込み」を1つでやる', () => {
+        assert.ok(/CREATE OR REPLACE FUNCTION report_attack\(/.test(_sqlRpc));
+        // 同じ人の凸を直列化していないと attack_number が衝突する
+        assert.ok(/pg_advisory_xact_lock/.test(_sqlRpc), '直列化していない');
+        // 残HPは read-modify-write でなく1文で引く (同時凸で取りこぼさない)
+        assert.ok(/SET remaining_hp_raw = GREATEST\(0, COALESCE\(remaining_hp_raw, 0\) - p_damage_raw\)/.test(_sqlRpc));
+        // 予約の消し込みと履歴が同じ関数の中にある
+        assert.ok(/status = 'fulfilled'/.test(_sqlRpc));
+        assert.ok(/INSERT INTO plan_reservation_events/.test(_sqlRpc));
+        // 別のボスを殴って予約が消えるのを防ぐ
+        assert.ok(/v_res\.boss_number <> p_boss_number/.test(_sqlRpc));
+    });
+
+    test('予約: attacks との紐づけは片方向 (循環参照を作らない)', () => {
+        assert.ok(/ALTER TABLE attacks ADD COLUMN IF NOT EXISTS reservation_id/.test(_sqlRes));
+        assert.ok(/CREATE UNIQUE INDEX IF NOT EXISTS uq_attacks_reservation/.test(_sqlRes));
+        // plan_reservations 側に attack_id を作ると相互FK = 復元順が決まらなくなる
+        assert.ok(!/attack_id\s+BIGINT/.test(_sqlRes), 'plan_reservations.attack_id を作ってはいけない');
+    });
+
+    test('予約: 時刻を確約できない凸が増える候補は警告する', () => {
+        const plan = (attacks) => ({
+            fullyClearedThrough: 3, unusedAttacks: 12, totalCreditedB: 700,
+            levels: [{ level: 2, bosses: [{ bossNumber: 3, attacks }] }],
+        });
+        const base = plan([{ memberId: 1, loadoutSlot: 1 }]);
+        const risky = plan([{ memberId: 1, loadoutSlot: 1, flex: true }]);
+        const r = rv.approvalImpact(base, risky, globalThis.planDiffDomain);
+        assert.ok(r.warnings.some(w => w.includes('時刻を確約できない凸が増えます')), JSON.stringify(r.warnings));
+        assert.equal(r.blocking, false, '時間リスクだけでは承認を止めない (鈍らせるだけ)');
     });
 }
 
