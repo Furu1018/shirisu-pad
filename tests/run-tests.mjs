@@ -3612,6 +3612,58 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/String\(me0\.id\) !== String\(st\.viewerId\)/.test(h), '本人性を確認していない');
     });
 
+    // ---- モック②: 自分から申請する (どのボス / どのレベル / 何時 / どの編成) ----
+    {
+        const B = (o = {}) => ({ boss_number: o.n ?? 3, name: 'アニヒリオ', attribute: 'iron', weakness: 'wind', remaining_hp_raw: o.hp ?? 100 });
+        const LO = (o = {}) => ({ slot: o.slot ?? 2, characters: o.team ?? ['a', 'b', 'c', 'd', 'e'], dmgB: o.dmg ?? 13.1 });
+        test('★ 申請シート: 4つが揃えば下書きになる (時刻 fixed / ⏳ flex)', () => {
+            const r = rv.buildRequestDraft({ boss: B(), level: 2, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 });
+            assert.equal(r.ok, true);
+            assert.deepEqual(r.draft, { raidLevel: 2, bossNumber: 3, loadoutSlot: 2, flex: false, timeSlot: 'h23',
+                characters: ['a', 'b', 'c', 'd', 'e'], expectedDamageB: 13.1, sourceType: 'self' });
+            assert.equal(r.note, '', '開いているレベルに注記は要らない');
+            const f = rv.buildRequestDraft({ boss: B(), level: 2, timeSlot: null, flex: true, loadout: LO(), currentLevel: 2 });
+            assert.equal(f.ok, true); assert.equal(f.draft.flex, true); assert.equal(f.draft.timeSlot, null);
+        });
+        test('★ 申請シート: 足りないものを名指しで返す (押せるのに弾かれる、を作らない)', () => {
+            const base = { boss: B(), level: 2, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 };
+            assert.deepEqual(rv.buildRequestDraft({ ...base, boss: null }).missing, ['boss']);
+            assert.deepEqual(rv.buildRequestDraft({ ...base, boss: B({ hp: 0 }) }).missing, ['boss_defeated'], '撃破済みのボスに申請できる');
+            assert.deepEqual(rv.buildRequestDraft({ ...base, level: null }).missing, ['level']);
+            assert.deepEqual(rv.buildRequestDraft({ ...base, level: 5 }).missing, ['level']);
+            assert.deepEqual(rv.buildRequestDraft({ ...base, timeSlot: null }).missing, ['time'], '時刻未選択 (⏳でもない) を通している');
+            assert.deepEqual(rv.buildRequestDraft({ ...base, timeSlot: 'あ' }).missing, ['time'], '形式が違う時刻を通している (DB の CHECK で弾かれる)');
+            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: null }).missing, ['loadout']);
+            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ dmg: 0 }) }).missing, ['loadout'], 'ダメージ未保存の編成を通している');
+            assert.deepEqual(rv.buildRequestDraft({ ...base, loadout: LO({ slot: 3 }) }).missing, ['loadout']);
+            assert.deepEqual(rv.buildRequestDraft({ boss: null, level: null, timeSlot: null, loadout: null }).missing, ['boss', 'level', 'time', 'loadout'], '複数まとめて返す');
+        });
+        test('申請シート: 先のレベルは申請できるが注記が付く (「先に出しておける」のが目的)', () => {
+            const r = rv.buildRequestDraft({ boss: B(), level: 3, timeSlot: 'h23', flex: false, loadout: LO(), currentLevel: 2 });
+            assert.equal(r.ok, true);
+            assert.match(r.note, /Lv3 はまだ開いていません/);
+        });
+        test('★ ⑧配線: 申請シートがモック②の形で入っている', () => {
+            const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
+            assert.ok(html.includes('id="myResvRequestModal"'), 'シートが無い');
+            const render = html.match(/function _resvReqRender\(\) \{[\s\S]{0,12000}/)?.[0] || '';
+            for (const t of ['どのボスを', 'どのレベルを', '何時に', 'どの編成で', 'この内容で申請する']) {
+                assert.ok(render.includes(t), `「${t}」が無い`);
+            }
+            // ★ 足りないものの判定と残凸はドメインに寄せる
+            assert.ok(/rv\.buildRequestDraft\(/.test(render), '下書きをドメインで作っていない');
+            assert.ok(/rv\.canRequest\(/.test(render), '残凸と重複を見ていない');
+            // 時刻は本人の登録時間帯から (何でも選べると守れない約束になる)
+            assert.ok(/HOUR_ORDER\.filter\(h => slotSet\.has\(_hourKey\(h\)\)\)/.test(render), '登録時間帯から選ばせていない');
+            // 撃破済みのボスは選べない
+            assert.ok(/dead \? 'disabled'/.test(render));
+            // 入口: ホームの「引き受けた凸」カードと配信プランカードの両方 (モック①)
+            assert.ok((html.match(/onclick="openMyResvRequest\(\)"/g) || []).length >= 2, '入口が2つ無い');
+            // 下スワイプで閉じられる
+            assert.ok(/\['myResvRequestModal', \(\) => closeMyResvRequestModal\(\)\]/.test(html));
+        });
+    }
+
     test('★ ⑧配線: 締め凸の了承は即予約 / 予約が作れなくても了承は成立させる', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
         const fn = html.match(/async function _reserveForFinishRequest[\s\S]{0,1900}/)?.[0] || '';
@@ -3638,10 +3690,12 @@ console.log('\nreservationsDomain (凸の予約):');
     test('★ ⑧配線: ホームの「引き受けた凸」/ 取り消しは希望を出すだけ', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
         assert.ok(html.includes('id="myReservationsCard"'), 'カードが無い');
-        const fn = html.match(/async function renderMyReservations[\s\S]{0,2600}/)?.[0] || '';
+        const fn = html.match(/async function renderMyReservations[\s\S]{0,4200}/)?.[0] || '';
         assert.ok(fn, '描画関数が無い');
-        // 39未適用 (null) と 0件 ([]) をどちらもカード非表示にするが、判定は分けて書く
-        assert.ok(/!Array\.isArray\(_myResvRows\) \|\| _myResvRows\.length === 0/.test(fn));
+        // ★ 39未適用 (null) だけ非表示。0件 ([]) でも出す — ここが「自分から申請する」の入口 (モック①)
+        assert.ok(/if \(!Array\.isArray\(_myResvRows\)\) \{ card\.style\.display = 'none'; return; \}/.test(fn));
+        assert.ok(/openMyResvRequest\(\)/.test(fn), 'カードから申請シートを開けない');
+        assert.ok(html.includes('まだ引き受けた凸はありません'), '0件のときの文言が無い');
         assert.ok(/rv\.isActive\(r\)/.test(fn), '生きている予約の判定をドメインでやっていない');
         // ★ 取り消しは希望を出すだけ。解除には運営の承認が要る (ユーザー決定)
         const cancel = html.match(/async function handleRequestCancelReservation[\s\S]{0,900}/)?.[0] || '';
@@ -3662,17 +3716,13 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/Number\(boss\.remaining_hp_raw\) <= 0\) return;/.test(fn), '撃破済みのボスに予約できてしまう');
         assert.ok(/if \(!Array\.isArray\(mine\)\) return;/.test(fn), '39未適用でも欄を出している');
         assert.ok(/rv\.findActiveFor\(/.test(fn), '申請済みの判定をしていない');
-        assert.ok(/rv\.canRequest\(/.test(fn), '残凸を見ていない');
         // ★ 編集中の値ではなく保存済みの提出を使う (承認内容と提出が食い違わないように)
         assert.ok(/allRowsForResv\(\)/.test(fn), '保存済みの提出を見ていない');
         assert.ok(/この編成のダメージを保存すると予約できます/.test(fn), '未保存でも申請できてしまう');
-        // 引数の順を間違えると常に0凸になり、残凸の検査が効かない
-        assert.ok(/supabaseLoadMyAttacks\?\.\(identity\.id, ctx\.season\.id, ctx\.season\.hard_date\)/.test(fn),
-            'supabaseLoadMyAttacks の引数の順が違う');
-        const send = html.match(/async function handleRequestReservationFromMock[\s\S]{0,1400}/)?.[0] || '';
-        assert.ok(/sourceType: 'self'/.test(send), 'メンバー発の申請として作っていない');
-        assert.ok(!/status: 'approved'/.test(send), 'メンバーの申請を承認済みで作っている');
-        assert.ok(/flex, timeSlot: flex \? null : v/.test(send), '⏳のときに時刻を送っている');
+        // ★ 模擬タブは埋め込みフォームではなく、共通の申請シートをこの属性・編成で開く (モック②)
+        const open = html.match(/function handleRequestReservationFromMock[\s\S]{0,400}/)?.[0] || '';
+        assert.ok(/openMyResvRequest\(\{ attr: c\.attr, slot: c\.slot \}\)/.test(open), '共通シートを開いていない');
+        assert.ok(html.includes('id="myTeamEditResvOpen"'), '模擬タブの入口ボタンが無い');
     });
 
     test('★ ⑧: 凸報告は承認済みの予約に紐づけて消し込む (4経路すべて)', () => {
@@ -3721,8 +3771,10 @@ console.log('\nreservationsDomain (凸の予約):');
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8');
         const cancel = html.match(/async function handleRequestCancelReservation[\s\S]{0,1200}/)?.[0] || '';
         assert.ok(/String\(me0\.id\) !== String\(r\.player_id\)/.test(cancel), '取消の本人性を見ていない');
-        const mock = html.match(/async function handleRequestReservationFromMock[\s\S]{0,1800}/)?.[0] || '';
-        assert.ok(/String\(me0\.id\) !== String\(c\.playerId\)/.test(mock), '模擬タブの本人性を見ていない');
+        // 申請シートは開いた本人の identity で作る (送信直前に取り直す)
+        const sheet = html.match(/async function handleResvReqSubmit[\s\S]{0,1600}/)?.[0] || '';
+        assert.ok(/const me = getCurrentIdentity\(\);\s*\n\s*if \(!me\?\.id\) return;/.test(sheet), '送信直前に本人を取り直していない');
+        assert.ok(/playerId: me\.id/.test(sheet), '開いたときの本人ではなく送信時の本人で作ること');
     });
 
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {

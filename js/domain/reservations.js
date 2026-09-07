@@ -279,6 +279,44 @@
         return { id: null, reason: 'ambiguous' };
     }
 
+    /**
+     * 「自分から申請する」フォームの入力を、予約の申請内容に変換する (モック②)。
+     * ★ 画面はチップの選択状態しか持たない。何が足りないかの判定はここに集める —
+     *   画面側に散らすと「押せるのに弾かれる」「押せないのに理由が出ない」が起きる
+     * @param {{boss:object|null, level:number|null, timeSlot:string|null, flex:boolean,
+     *          loadout:{slot:number,characters:string[],dmgB:number}|null, currentLevel:number}} f
+     * @returns {{ok:boolean, missing:string[], draft?:object, note?:string}}
+     */
+    function buildRequestDraft(f = {}) {
+        const missing = [];
+        const boss = f.boss || null;
+        const bossNumber = Number(boss && boss.boss_number);
+        if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) missing.push('boss');
+        else if (Number(boss.remaining_hp_raw) <= 0) missing.push('boss_defeated');
+        const level = Number(f.level);
+        if (!Number.isInteger(level) || level < 1 || level > 4) missing.push('level');
+        const flex = !!f.flex;
+        const timeSlot = flex ? null : (f.timeSlot || null);
+        if (!flex && !/^h(0[0-9]|1[0-9]|2[0-3])$/.test(String(timeSlot || ''))) missing.push('time');
+        const lo = f.loadout || null;
+        const slot = Number(lo && lo.slot);
+        if (!lo || (slot !== 1 && slot !== 2) || !(Number(lo.dmgB) > 0)) missing.push('loadout');
+        if (missing.length) return { ok: false, missing };
+        const cur = Number(f.currentLevel) || 0;
+        // 先のレベルは申請できる (「先に出しておける」のが目的)。ただし本人に分かるように注記する
+        const note = (cur && level > cur) ? `Lv${level} はまだ開いていません。開くまでは予定として扱われます。` : '';
+        return {
+            ok: true, missing: [], note,
+            draft: {
+                raidLevel: level, bossNumber, loadoutSlot: slot,
+                flex, timeSlot,
+                characters: Array.isArray(lo.characters) ? lo.characters.filter(Boolean) : [],
+                expectedDamageB: Number(lo.dmgB),
+                sourceType: 'self',
+            },
+        };
+    }
+
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS,
         isActive, isApproved, canTransition,
@@ -287,6 +325,6 @@
         capacityLeft,
         describe,
         approvalImpact,
-        planRowToDraft, findActiveFor, canRequest, matchForAttack,
+        planRowToDraft, findActiveFor, canRequest, matchForAttack, buildRequestDraft,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

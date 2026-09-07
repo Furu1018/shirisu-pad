@@ -5357,10 +5357,7 @@
                     運営が承認すると<b>固定</b>されます。プランを組み直しても、この凸だけは動きません。
                 </p>
                 <div id="myTeamEditResvState" style="font-size:11.5px;font-weight:800;color:#8A9097;margin-bottom:9px;"></div>
-                <div id="myTeamEditResvForm" style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
-                    <select id="myTeamEditResvTime" style="flex:1;min-width:130px;padding:9px 10px;border-radius:10px;border:1px solid rgba(20,22,26,0.12);font-family:inherit;font-size:12px;font-weight:800;color:#14161A;background:#fff;"></select>
-                    <button type="button" onclick="handleRequestReservationFromMock()" style="flex:none;border:none;border-radius:999px;padding:10px 15px;font-family:inherit;font-size:12px;font-weight:900;color:#fff;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);cursor:pointer;">申請する</button>
-                </div>
+                <button type="button" id="myTeamEditResvOpen" onclick="handleRequestReservationFromMock()" style="width:100%;border:none;border-radius:999px;padding:12px;font-family:inherit;font-size:12.5px;font-weight:900;color:#fff;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);cursor:pointer;">この編成で凸を申請する</button>
             </div>
 
             <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
@@ -5369,6 +5366,18 @@
                 <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:10px;border:none;background:#F1F2F4;color:#14161A;font-size:12.5px;font-weight:800;cursor:pointer;">閉じる</button>
                 <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 10px rgba(20,22,26,0.24);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ========== 🔒 凸を申請する (L2 ⑧ モック②: 自分から申請する) ========== -->
+    <div class="player-select-modal" id="myResvRequestModal">
+        <div class="player-select-content" style="max-width:480px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
+                <h2 style="margin:0;font-size:17px;font-weight:900;">凸を申請する</h2>
+                <button onclick="closeMyResvRequestModal()" style="padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle" style="margin:4px 0 16px;">運営が承認すると予約になり、プランを組み直しても変わりません。</p>
+            <div id="myResvReqBody"></div>
         </div>
     </div>
 
@@ -8111,9 +8120,10 @@
             try {
                 _myResvRows = await window.supabaseLoadMyReservations?.(ctx.season.id, identity.id) ?? null;
             } catch { _myResvRows = null; }
-            // ★ 39未適用 (null) と「予約0件」([]) を区別する。どちらもカードは出さないが、
-            //   0件は「これから引き受けられる」状態なので、他の導線は生かす
-            if (!Array.isArray(_myResvRows) || _myResvRows.length === 0) { card.style.display = 'none'; return; }
+            // ★ 39未適用 (null) ならカードごと出さない。0件 ([]) でもカードは出す —
+            //   ここが「自分から凸を申請する」の入口なので、予約が無いうちこそ見えている必要がある
+            //   (モック①: 予約が無くても申請ボタンは常にある)
+            if (!Array.isArray(_myResvRows)) { card.style.display = 'none'; return; }
             const bossName = new Map((ctx.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code || `B${b.boss_number}`]));
             const live = _myResvRows.filter(r => rv.isActive(r));
             const done = _myResvRows.filter(r => !rv.isActive(r));
@@ -8144,8 +8154,14 @@
                     ${cancel}
                 </div>`;
             };
-            body.innerHTML = live.map(row).join('') + done.map(row).join('');
-            if (meta) meta.textContent = `固定 ${live.filter(r => r.status === 'approved').length} / 申請中 ${live.filter(r => r.status === 'requested').length}`;
+            const cta = `<div style="margin-top:${_myResvRows.length ? 12 : 4}px;">
+                    <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 4px 13px rgba(108,66,240,0.32);">自分から凸を申請する</button>
+                    <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.55;">「この時間にこのボスを凸したい」を先に出しておけます。運営が承認すると予約になります。</p>
+                </div>`;
+            body.innerHTML = (_myResvRows.length
+                ? live.map(row).join('') + done.map(row).join('')
+                : '<p style="margin:0;font-size:12px;font-weight:700;color:#A4AAB0;">まだ引き受けた凸はありません。</p>') + cta;
+            if (meta) meta.textContent = _myResvRows.length ? `固定 ${live.filter(r => r.status === 'approved').length} / 申請中 ${live.filter(r => r.status === 'requested').length}` : '';
             card.style.display = '';
         }
 
@@ -8173,6 +8189,185 @@
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             }
+        }
+
+        // ===== 🔒 凸を申請する (モック②: どのボス / どのレベル / 何時 / どの編成) =====
+        // ★ 画面はチップの選択状態しか持たない。足りないものの判定は
+        //   reservationsDomain.buildRequestDraft に集める (散らすと「押せるのに弾かれる」が起きる)
+        const _resvReq = { seq: 0, ctx: null, slots: [], loadouts: [], mine: null, done: 0,
+                           boss: null, level: null, time: null, flex: false, lo: null, busy: false };
+
+        async function openMyResvRequest(preset = {}) {
+            const id = getCurrentIdentity();
+            if (!id?.id) { alert('プレイヤー未選択です'); return; }
+            const rv = window.reservationsDomain;
+            if (!rv) return;
+            const seq = ++_resvReq.seq;
+            const modal = document.getElementById('myResvRequestModal');
+            const body = document.getElementById('myResvReqBody');
+            if (!modal || !body) return;
+            body.innerHTML = '<p style="color:#A4AAB0;font-size:12px;">読み込み中…</p>';
+            modal.classList.add('open');
+            let ctx = null, slots = [], dmgs = [], mine = null, atks = [];
+            try {
+                ctx = await ensureActiveSeasonLoaded();
+                if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
+                [slots, dmgs, mine, atks] = await Promise.all([
+                    window.supabaseLoadAvailability?.(id.id).catch(() => []) ?? [],
+                    window.supabaseLoadPlayerDamages?.(id.id).catch(() => []) ?? [],
+                    window.supabaseLoadMyReservations?.(ctx.season.id, id.id).catch(() => null) ?? null,
+                    window.supabaseLoadMyAttacks?.(id.id, ctx.season.id, ctx.season.hard_date).catch(() => []) ?? [],
+                ]);
+            } catch (e) {
+                if (seq !== _resvReq.seq) return;
+                body.innerHTML = `<p style="color:#FF3D44;font-size:12px;font-weight:700;">${escapeHtml(e?.message || String(e))}</p>`;
+                return;
+            }
+            if (seq !== _resvReq.seq) return;
+            if (!Array.isArray(mine)) {
+                body.innerHTML = '<p style="color:#8A9097;font-size:12px;font-weight:700;line-height:1.6;">凸の予約はまだ使えません。運営に <code>supabase/39_plan_reservations.sql</code> の適用を頼んでください。</p>';
+                return;
+            }
+            _resvReq.ctx = ctx;
+            _resvReq.slots = Array.isArray(slots) ? slots : [];
+            _resvReq.loadouts = (dmgs || []).map(d => ({
+                attribute: d.attribute, slot: Number(d.slot) || 1,
+                characters: Array.isArray(d.characters) ? d.characters.filter(Boolean) : [],
+                dmgB: mockDamageOf(d),
+            })).filter(l => l.dmgB > 0);
+            _resvReq.mine = mine;
+            _resvReq.done = Array.isArray(atks) ? atks.length : 0;
+            // 初期値: 指定の属性 → そのボス / 無ければ「まだ倒れていない最初のボス」
+            const bosses = (ctx.bosses || []).slice().sort((a, b) => Number(a.boss_number) - Number(b.boss_number));
+            _resvReq.boss = (preset.attr ? bosses.find(b => b.weakness === preset.attr) : null)
+                || bosses.find(b => Number(b.remaining_hp_raw) > 0) || bosses[0] || null;
+            _resvReq.level = Number(ctx.season.current_level) || 1;
+            _resvReq.time = null; _resvReq.flex = false;
+            _resvReq.lo = null;
+            _resvReqPickDefaultLoadout(preset.slot);
+            _resvReqRender();
+        }
+        function closeMyResvRequestModal() {
+            _resvReq.seq++;
+            document.getElementById('myResvRequestModal')?.classList.remove('open');
+        }
+        // 選んだボスの属性で、いま出せる編成を既定にする (指定の枠があればそれ)
+        function _resvReqPickDefaultLoadout(preferSlot) {
+            const w = _resvReq.boss?.weakness;
+            const cands = _resvReq.loadouts.filter(l => l.attribute === w);
+            _resvReq.lo = (preferSlot ? cands.find(l => l.slot === Number(preferSlot)) : null)
+                || cands.slice().sort((a, b) => b.dmgB - a.dmgB)[0] || null;
+        }
+        function _resvReqPick(kind, val) {
+            if (kind === 'boss') {
+                _resvReq.boss = (_resvReq.ctx?.bosses || []).find(b => Number(b.boss_number) === Number(val)) || null;
+                _resvReqPickDefaultLoadout(null);
+            } else if (kind === 'level') _resvReq.level = Number(val);
+            else if (kind === 'time') { _resvReq.time = val; _resvReq.flex = false; }
+            else if (kind === 'flex') { _resvReq.time = null; _resvReq.flex = true; }
+            else if (kind === 'lo') _resvReq.lo = _resvReq.loadouts.find(l => l.attribute === _resvReq.boss?.weakness && l.slot === Number(val)) || null;
+            _resvReqRender();
+        }
+        function _resvReqRender() {
+            const body = document.getElementById('myResvReqBody');
+            const rv = window.reservationsDomain;
+            if (!body || !rv || !_resvReq.ctx) return;
+            const esc = escapeHtml;
+            const st = _resvReq;
+            const cur = Number(st.ctx.season.current_level) || 1;
+            const lbl = (t) => `<div style="font-size:10.5px;font-weight:900;color:#A4AAB0;letter-spacing:0.4px;margin-bottom:7px;">${t}</div>`;
+            const chip = (on, onclick, text, disabled = false) =>
+                `<button type="button" ${disabled ? 'disabled' : `onclick="${onclick}"`} style="font-family:inherit;font-size:12px;font-weight:800;padding:9px 0;border-radius:10px;border:1px solid ${on ? '#14161A' : 'rgba(20,22,26,0.10)'};background:${on ? '#14161A' : '#fff'};color:${disabled ? '#C9CED3' : (on ? '#fff' : '#6B7178')};cursor:${disabled ? 'default' : 'pointer'};">${text}</button>`;
+            // どのボスを
+            const bosses = (st.ctx.bosses || []).slice().sort((a, b) => Number(a.boss_number) - Number(b.boss_number));
+            const bossHtml = bosses.map(b => {
+                const on = st.boss && Number(st.boss.boss_number) === Number(b.boss_number);
+                const dead = Number(b.remaining_hp_raw) <= 0;
+                const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                const ptc = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
+                const ptName = PT_ATTRS.find(x => x.key === b.weakness)?.name || '';
+                return `<button type="button" ${dead ? 'disabled' : `onclick="_resvReqPick('boss', ${Number(b.boss_number)})"`} style="display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(20,22,26,0.10)'};background:${on ? 'rgba(108,66,240,0.06)' : '#fff'};cursor:${dead ? 'default' : 'pointer'};font-family:inherit;text-align:left;opacity:${dead ? '0.5' : '1'};">
+                    <span style="width:10px;height:10px;border-radius:3px;background:${c};flex:none;"></span>
+                    <span style="font-size:13px;font-weight:${on ? '900' : '800'};color:${on ? '#14161A' : '#6B7178'};flex:1;">${esc(String(b.name || b.boss_code || ('B' + b.boss_number)))}</span>
+                    ${dead ? '<span style="font-size:9.5px;font-weight:900;color:#A4AAB0;">撃破済み</span>'
+                           : `<span style="font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PTで</span>`}
+                    ${on ? '<span style="color:#6C42F0;font-weight:900;">✓</span>' : ''}
+                </button>`;
+            }).join('');
+            // どのレベルを
+            const lvHtml = [1, 2, 3, 4].map(L => chip(st.level === L, `_resvReqPick('level', ${L})`, `Lv${L}`)).join('');
+            const lvNote = st.level && st.level > cur
+                ? `<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#B45309;line-height:1.55;">Lv${st.level} はまだ開いていません。開くまでは予定として扱われます。</p>`
+                : (st.level && st.level < cur ? `<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#C42A30;line-height:1.55;">Lv${st.level} はもう終わっています。</p>` : '');
+            // 何時に (自分の登録時間帯から)
+            const slotSet = new Set(st.slots);
+            const timeChips = HOUR_ORDER.filter(h => slotSet.has(_hourKey(h))).map(h =>
+                chip(!st.flex && st.time === _hourKey(h), `_resvReqPick('time', '${_hourKey(h)}')`, (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`));
+            timeChips.push(chip(st.flex, `_resvReqPick('flex')`, '⏳ 時刻は約束しない'));
+            const timeNote = st.slots.length === 0
+                ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#B45309;line-height:1.55;">戦闘可能時間が未登録です。ホームで時間帯を登録すると選べます。</p>'
+                : '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.55;">戦闘可能時間に登録している中から選べます。</p>';
+            // どの編成で (選んだボスの弱点属性の提出から)
+            const w = st.boss?.weakness;
+            const los = st.loadouts.filter(l => l.attribute === w).sort((a, b) => a.slot - b.slot);
+            const ptName = PT_ATTRS.find(x => x.key === w)?.name || '';
+            const loHtml = los.length === 0
+                ? `<p style="margin:0;font-size:11.5px;font-weight:700;color:#B45309;line-height:1.6;">${esc(ptName)}PT の模擬を提出すると、その編成で申請できます。</p>`
+                : los.map(l => {
+                    const on = st.lo && st.lo.slot === l.slot;
+                    return `<button type="button" onclick="_resvReqPick('lo', ${l.slot})" style="display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(20,22,26,0.10)'};background:${on ? 'rgba(108,66,240,0.06)' : '#fff'};cursor:pointer;font-family:inherit;width:100%;">
+                        <span style="flex:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;color:#5B2BE0;background:rgba(108,66,240,0.16);">編成${SLOT_JP[l.slot] || l.slot}</span>
+                        <span style="display:flex;gap:2px;flex:1;">${l.characters.length ? renderTeamSnippet(l.characters, { size: 24 }) : '<span style="font-size:10.5px;color:#B6BBC1;font-weight:700;">編成の登録なし</span>'}</span>
+                        <span style="flex:none;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;">${l.dmgB.toFixed(1)}<span style="font-size:9px;color:#A4AAB0;">B</span></span>
+                    </button>`;
+                }).join('');
+            // 申請できるか (足りないもの / 残凸 / 重複)
+            const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, loadout: st.lo, currentLevel: cur });
+            let blocker = '';
+            if (d.ok) {
+                const chk = rv.canRequest(st.mine, { playerId: getCurrentIdentity()?.id, level: st.level, bossNumber: Number(st.boss.boss_number), loadoutSlot: st.lo.slot, doneAttacks: st.done });
+                if (!chk.ok) blocker = chk.reason === 'already' ? 'この内容の申請はもう出ています' : '残りの凸数を超えるため申請できません';
+            }
+            const canSend = d.ok && !blocker;
+            body.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:16px;">
+                    <div>${lbl('どのボスを')}<div style="display:flex;flex-direction:column;gap:6px;">${bossHtml || '<p style="margin:0;font-size:12px;color:#A4AAB0;">ボスがありません</p>'}</div></div>
+                    <div>${lbl('どのレベルを')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">${lvHtml}</div>${lvNote}</div>
+                    <div>${lbl('何時に')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">${timeChips.join('')}</div>${timeNote}</div>
+                    <div>${lbl('どの編成で')}<div style="display:flex;flex-direction:column;gap:7px;">${loHtml}</div>
+                        ${los.length ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.55;">模擬で提出した編成とダメージです。これがそのまま運営に伝わります。</p>' : ''}</div>
+                </div>
+                ${blocker ? `<p style="margin:14px 2px 0;font-size:11.5px;font-weight:800;color:#C42A30;">${esc(blocker)}</p>` : ''}
+                <div style="margin-top:${blocker ? '10' : '22'}px;display:flex;flex-direction:column;gap:9px;">
+                    <button type="button" onclick="handleResvReqSubmit()" ${canSend ? '' : 'disabled'} style="width:100%;border:none;border-radius:999px;padding:14px;font-family:inherit;font-size:13px;font-weight:900;color:#fff;cursor:${canSend ? 'pointer' : 'default'};background:${canSend ? 'linear-gradient(135deg,#7A5AF8,#5B2BE0)' : '#C9CED3'};box-shadow:${canSend ? '0 4px 13px rgba(108,66,240,0.32)' : 'none'};">この内容で申請する</button>
+                    <button type="button" onclick="closeMyResvRequestModal()" style="width:100%;border:none;border-radius:999px;padding:12px;font-family:inherit;font-size:12.5px;font-weight:800;color:#5A6068;background:#F1F2F4;cursor:pointer;">やめる</button>
+                </div>`;
+        }
+        async function handleResvReqSubmit() {
+            const rv = window.reservationsDomain;
+            const st = _resvReq;
+            if (!rv || !st.ctx || st.busy) return;
+            const me = getCurrentIdentity();
+            if (!me?.id) return;
+            const cur = Number(st.ctx.season.current_level) || 1;
+            const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, loadout: st.lo, currentLevel: cur });
+            if (!d.ok) { _resvReqRender(); return; }
+            const when = d.draft.flex ? '⏳時刻は約束しない' : `${Number(d.draft.timeSlot.slice(1))}時`;
+            if (!confirm(`この内容で申請します。\n\nLv${d.draft.raidLevel} / ${st.boss.name || 'B' + d.draft.bossNumber} / ${when} / 編成${SLOT_JP[d.draft.loadoutSlot] || '①'} (${d.draft.expectedDamageB.toFixed(1)}B)`
+                + (d.note ? `\n\n${d.note}` : '') + '\n\n運営が承認すると、この凸は固定されます。\n\n[OK] 申請する / [キャンセル] やめる')) return;
+            st.busy = true;
+            try {
+                await window.supabaseCreateReservation({
+                    seasonId: st.ctx.season.id, playerId: me.id,
+                    ...d.draft, requestedBy: me.name || null,
+                });
+                showNotification('🔒 申請しました (運営の承認待ちです)');
+                closeMyResvRequestModal();
+                renderMyReservations(me);
+                if (typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(me);
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            } finally { st.busy = false; }
         }
 
         // 引き受ける = 予約を申請する (運営の承認を待つ)
@@ -8263,7 +8458,11 @@
                     <span style="font-size:13px;font-weight:900;color:#14161A;">あなたの凸</span>
                     <span style="margin-left:auto;font-size:11px;font-weight:900;color:#6C42F0;background:rgba(108,66,240,0.12);padding:3px 10px;border-radius:999px;">${doneCount} / ${mine.length} 報告済み</span>
                 </div>${rows}
-                <p style="margin:10px 4px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.5;">✓ が付くのは <b>ホーム → 戦闘報告</b> を完了したとき。「報告する ▶」で報告画面へ直行できます。</p>`;
+                <p style="margin:10px 4px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.5;">✓ が付くのは <b>ホーム → 戦闘報告</b> を完了したとき。「報告する ▶」で報告画面へ直行できます。</p>`
+                + (Array.isArray(_myPubState?.resv)
+                    ? `<p style="margin:10px 4px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.5;">引き受けた凸は、運営がプランを組み直しても<b>変わりません</b>。都合が変わったら取り消しを申し出てください。</p>
+                       <button type="button" onclick="openMyResvRequest()" style="margin-top:10px;width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);box-shadow:0 4px 13px rgba(108,66,240,0.32);">自分から凸を申請する</button>`
+                    : '');
         }
 
         // 🗺 全体の流れ: 総括ヒーロー + Lvステッパー + ボス1行概観 (攻撃メンバーのアバター重ね)
@@ -9310,11 +9509,9 @@
         async function _renderTeamEditResv(identity, attrKey, slot) {
             const sec = document.getElementById('myTeamEditResvSec');
             const state = document.getElementById('myTeamEditResvState');
-            const form = document.getElementById('myTeamEditResvForm');
-            const sel = document.getElementById('myTeamEditResvTime');
+            const btn = document.getElementById('myTeamEditResvOpen');
             const rv = window.reservationsDomain;
-            _resvFormCtx = null;
-            if (!sec || !state || !form || !sel || !rv || !identity?.id) { if (sec) sec.style.display = 'none'; return; }
+            if (!sec || !state || !btn || !rv || !identity?.id) { if (sec) sec.style.display = 'none'; return; }
             sec.style.display = 'none';
             let ctx = null;
             try { ctx = await ensureActiveSeasonLoaded(); } catch { return; }
@@ -9325,78 +9522,32 @@
             let mine = null;
             try { mine = await window.supabaseLoadMyReservations?.(ctx.season.id, identity.id) ?? null; } catch { return; }
             if (!Array.isArray(mine)) return;                  // 39未適用 → 欄ごと出さない
-            const bossNumber = Number(boss.boss_number);
             sec.style.display = '';
-            const cur = rv.findActiveFor(mine, { playerId: identity.id, level, bossNumber, loadoutSlot: slot });
+            const cur = rv.findActiveFor(mine, { playerId: identity.id, level, bossNumber: Number(boss.boss_number), loadoutSlot: slot });
             if (cur) {
-                state.textContent = `この編成は ${rv.STATUS_JP[cur.status] || cur.status} です (Lv${level} / ${boss.name || 'B' + bossNumber})`;
-                form.style.display = 'none';
+                state.textContent = `この編成は ${rv.STATUS_JP[cur.status] || cur.status} です (Lv${level} / ${boss.name || 'B' + boss.boss_number})`;
+                btn.style.display = 'none';
                 return;
             }
-            // 残凸の検査 (DB のトリガーが弾く前に、押せないボタンを出さない)。
-            // ⚠ 引数の順は (playerId, seasonId, date)。間違えると常に0凸になり検査が効かない
-            let done = 0;
-            try {
-                const atks = await window.supabaseLoadMyAttacks?.(identity.id, ctx.season.id, ctx.season.hard_date);
-                done = Array.isArray(atks) ? atks.length : 0;
-            } catch { done = 0; }
-            const chk = rv.canRequest(mine, { playerId: identity.id, level, bossNumber, loadoutSlot: slot, doneAttacks: done });
-            if (!chk.ok) {
-                state.textContent = chk.label || '申請できません';
-                form.style.display = 'none';
-                return;
-            }
-            // ★ 編成とダメージは「いま編集中の値」ではなく**保存済みの提出**を使う。
-            //   保存前の値で予約すると、承認された内容と提出が食い違う
+            // ★ 編成とダメージは**保存済みの提出**を使う (編集中の値で予約すると承認内容と提出が食い違う)
             const row = (allRowsForResv() || []).find(d => d.attribute === attrKey && (d.slot || 1) === slot);
-            const chars = Array.isArray(row?.characters) ? row.characters.filter(Boolean) : [];
             const dmgB = row ? mockDamageOf(row) : 0;
             if (!(Number(dmgB) > 0)) {
                 state.textContent = 'この編成のダメージを保存すると予約できます';
-                form.style.display = 'none';
+                btn.style.display = 'none';
                 return;
             }
-            state.textContent = `Lv${level} / ${boss.name || 'B' + bossNumber} / 編成${SLOT_JP[slot] || '①'} (${Number(dmgB).toFixed(1)}B)`;
-            form.style.display = '';
-            // 時刻は自分の登録時間帯から選ぶ。⏳は「時刻を約束しない」
-            const slots = Array.isArray(_availUI?.slots) ? _availUI.slots : [];
-            const opts = ['<option value="flex">⏳ 時刻は約束しない</option>'];
-            HOUR_ORDER.forEach((h, i) => {
-                if (!slots[i]) return;
-                opts.push(`<option value="${_hourKey(h)}">${h >= 0 && h <= 4 ? `翌${h}時` : `${h}時`}</option>`);
-            });
-            sel.innerHTML = opts.join('');
-            _resvFormCtx = { seasonId: ctx.season.id, playerId: identity.id, level, bossNumber, slot, characters: chars, dmgB: Number(dmgB) };
+            state.textContent = `${boss.name || 'B' + boss.boss_number} / 編成${SLOT_JP[slot] || '①'} (${Number(dmgB).toFixed(1)}B) で申請します`;
+            btn.style.display = '';
+            _resvFormCtx = { attr: attrKey, slot };
         }
 
-        async function handleRequestReservationFromMock() {
+        // 模擬タブから: 共通の申請シートを、この属性・この編成を初期値にして開く
+        function handleRequestReservationFromMock() {
             const c = _resvFormCtx;
-            const sel = document.getElementById('myTeamEditResvTime');
-            if (!c || !sel) return;
-            const v = sel.value || 'flex';
-            const flex = v === 'flex';
-            if (!confirm(`この編成で凸を申請します。\n\nLv${c.level} / B${c.bossNumber} / ${flex ? '⏳時刻は約束しない' : v.slice(1) + '時'} / 編成${SLOT_JP[c.slot] || '①'}\n\n`
-                + '運営が承認すると、この凸は**固定**されます。\n\n[OK] 申請する / [キャンセル] やめる')) return;
-            const me0 = getCurrentIdentity();
-            if (!me0?.id || String(me0.id) !== String(c.playerId)) {
-                alert('プレイヤーが切り替わっています。画面を開き直してください。');
-                return;
-            }
-            try {
-                const me = me0;
-                await window.supabaseCreateReservation({
-                    seasonId: c.seasonId, playerId: c.playerId,
-                    raidLevel: c.level, bossNumber: c.bossNumber, loadoutSlot: c.slot,
-                    flex, timeSlot: flex ? null : v,
-                    characters: c.characters, expectedDamageB: c.dmgB,
-                    sourceType: 'self', requestedBy: me?.name || null,
-                });
-                showNotification('🔒 申請しました (運営の承認待ちです)');
-                await _renderTeamEditResv(me, _myTeamEditAttr, c.slot);
-                renderMyReservations(me);
-            } catch (e) {
-                alert(`❌ ${e?.message || e}`);
-            }
+            if (!c) return;
+            closeMyTeamEditModal();
+            openMyResvRequest({ attr: c.attr, slot: c.slot });
         }
 
         async function handleMyTeamEdit(attrKey, slot = 1) {
@@ -20897,6 +21048,7 @@
             ['myPushModal', () => closeMyPushModal()],
             ['myStrongAttrsModal', () => closeMyStrongAttrsModal()],
             ['myAttackModal', () => closeMyAttackModal()],
+            ['myResvRequestModal', () => closeMyResvRequestModal()],
         ];
         function _enableSheetSwipeDismiss(modalId, closeFn) {
             const modal = document.getElementById(modalId);
