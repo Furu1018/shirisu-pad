@@ -3796,6 +3796,170 @@ console.log('\nL1 安定化 (前回配信の割当を守る):');
     });
 }
 
+// ---- L2: 予約がソルバーを拘束する --------------------------------------------
+console.log('\nL2 予約の拘束 (ソルバー):');
+{
+    const mkPlayer = (id, name, byAttr, opts = {}) => ({
+        id, name, attackCount: opts.done || 0,
+        syncLevel: 500, syncLevelEstimated: false,
+        damagesByAttr: Object.fromEntries(Object.entries(byAttr).map(([k, v]) => [k, Math.max(...v.map(x => x.dmgB))])),
+        teamsByAttr: {}, loadoutsByAttr: byAttr, attacks: opts.attacks || [],
+        availableSlots: opts.slots || ['h05', 'h09', 'h13', 'h17', 'h21'],
+        flexTime: false, notifyAllHours: false, strong_attributes: [],
+    });
+    const lo = (dmgB, team, slot = 1) => ({ dmgB, team, slot, level: null, levels: null });
+    const bosses2 = () => ([
+        { boss_number: 1, boss_code: 'B1', name: 'ボス1', attribute: 'water', weakness: 'fire', tier: 'lord',
+          total_hp_raw: 200e9, remaining_hp_raw: 200e9 },
+        { boss_number: 2, boss_code: 'B2', name: 'ボス2', attribute: 'electric', weakness: 'water', tier: 'lord',
+          total_hp_raw: 200e9, remaining_hp_raw: 200e9 },
+    ]);
+    const mkInput = (players, extra = {}) => ({
+        season: { id: 1, current_level: 1, hard_date: '2026-09-05' },
+        bosses: bosses2(), players,
+        currentSlot: 'h05', timeAware: true, onlyAvailableNow: false, crossBoss: false,
+        ...extra,
+    });
+    const rowOf = (plan, memberId) => {
+        const out = [];
+        (plan.levels || []).filter(lv => !lv.infinite).forEach(lv => (lv.bosses || []).forEach(b =>
+            (b.attacks || []).filter(a => a.memberId === memberId).forEach(a =>
+                out.push(`L${lv.level}/B${b.bossNumber}/${a.loadoutSlot}/${a.hourLabel || (a.flex ? 'flex' : '-')}`))));
+        return out.sort();
+    };
+    // A は fire が強い。素直に組めば A→B1 (fire)
+    const players2 = () => [
+        mkPlayer(1, 'A', { fire: [lo(60, ['a1', 'a2', 'a3', 'a4', 'a5'])], water: [lo(10, ['a6', 'a7', 'a8', 'a9', 'a10'])] }, { done: 2 }),
+        mkPlayer(2, 'B', { water: [lo(60, ['b1', 'b2', 'b3', 'b4', 'b5'])] }, { done: 2 }),
+    ];
+    const resv = (o) => ({ reservationId: o.id ?? 1, memberId: o.member, level: o.lv ?? 1,
+        bossNumber: o.boss, loadoutSlot: o.lo ?? 1, flex: !!o.flex, timeSlot: o.flex ? null : (o.slot ?? 'h13') });
+
+    test('L2: 予約は素直な解より優先される (弱い編成でも約束どおり置く)', () => {
+        const natural = compute(mkInput(players2()));
+        assert.deepEqual(rowOf(natural, 1), ['L1/B1/1/5時'], `前提が崩れた: ${JSON.stringify(rowOf(natural, 1))}`);
+        // A を water 側 (10B) に予約する = 素直な解より明確に損だが、約束なので守る
+        const p = compute(mkInput(players2(), { reservations: [resv({ id: 7, member: 1, boss: 2, slot: 'h13' })] }));
+        assert.deepEqual(rowOf(p, 1), ['L1/B2/1/13時'], `予約が効いていない: ${JSON.stringify(rowOf(p, 1))}`);
+        assert.deepEqual(p.unmetReservations, []);
+        assert.equal(p.reservationCount, 1);
+    });
+
+    test('L2: 予約は時刻まで守る (貪欲の最速枠に寄せない)', () => {
+        const p = compute(mkInput(players2(), { reservations: [resv({ member: 1, boss: 1, slot: 'h21' })] }));
+        assert.deepEqual(rowOf(p, 1), ['L1/B1/1/21時'], '約束した時刻に置いていない');
+        // ⏳隙間型の予約は時刻を約束しない
+        const f = compute(mkInput(players2(), { reservations: [resv({ member: 1, boss: 1, flex: true })] }));
+        assert.deepEqual(rowOf(f, 1), ['L1/B1/1/flex']);
+    });
+
+    test('L2: 予約は L1 の安定化より強い (前回の割当と食い違っても予約が勝つ)', () => {
+        const natural = compute(mkInput(players2()));
+        const p = compute(mkInput(players2(), {
+            previousPlan: natural,                                  // 前回は A→B1
+            reservations: [resv({ member: 1, boss: 2, slot: 'h13' })],   // 予約は A→B2
+        }));
+        assert.deepEqual(rowOf(p, 1), ['L1/B2/1/13時'], `予約より前回の割当が勝ってしまった: ${JSON.stringify(rowOf(p, 1))}`);
+    });
+
+    test('L2: 実現できない予約は理由つきで返す (黙って飲み込まない)', () => {
+        // ① 本人が3凸済み
+        const done3 = players2();
+        done3[0] = mkPlayer(1, 'A', { fire: [lo(60, ['a1', 'a2', 'a3', 'a4', 'a5'])] }, { done: 3 });
+        const p1 = compute(mkInput(done3, { reservations: [resv({ id: 11, member: 1, boss: 1 })] }));
+        assert.equal(p1.unmetReservations.length, 1);
+        assert.equal(p1.unmetReservations[0].reason, 'attacks_done');
+        assert.equal(p1.unmetReservations[0].reservationId, 11);
+        // ② 予約した編成が模擬から消えた (slot2 を予約したが slot2 が無い)
+        const p2 = compute(mkInput(players2(), { reservations: [resv({ id: 12, member: 1, boss: 1, lo: 2 })] }));
+        assert.equal(p2.unmetReservations[0].reason, 'loadout_gone');
+        // ③ 対象ボスが撃破済み
+        const dead = bosses2();
+        dead[0].remaining_hp_raw = 0;
+        const p3 = compute(mkInput(players2(), { bosses: dead, reservations: [resv({ id: 13, member: 1, boss: 1 })] }));
+        assert.equal(p3.unmetReservations[0].reason, 'boss_defeated');
+    });
+
+    test('L2: レベルが開く前の時刻を約束していたら置かない (勝手に後ろへずらさない)', () => {
+        // 現在 h13 起点。h05 の予約は開放より前なので実行できない
+        const p = compute(mkInput(players2(), {
+            currentSlot: 'h13',
+            reservations: [resv({ id: 21, member: 1, boss: 1, slot: 'h05' })],
+        }));
+        assert.deepEqual(rowOf(p, 1).filter(r => r.includes('/5時')), [], '開放前の時刻に置いてしまった');
+        assert.equal(p.unmetReservations.length, 1, `理由を返していない: ${JSON.stringify(p.unmetReservations)}`);
+    });
+
+    test('L2: 同じキャラを1日2回使う予約は置かない (物理的に実行できない)', () => {
+        const shared = [
+            mkPlayer(1, 'A', {
+                fire: [lo(60, ['共有', 'a2', 'a3', 'a4', 'a5'])],
+                water: [lo(60, ['共有', 'a7', 'a8', 'a9', 'a10'])],
+            }),
+        ];
+        const p = compute(mkInput(shared, {
+            reservations: [resv({ id: 31, member: 1, boss: 1, slot: 'h13' }), resv({ id: 32, member: 1, boss: 2, slot: 'h17' })],
+        }));
+        assert.equal(rowOf(p, 1).length, 1, `キャラ被りの予約まで置かれた: ${JSON.stringify(rowOf(p, 1))}`);
+        assert.equal(p.unmetReservations.length, 1);
+        assert.equal(p.unmetReservations[0].reason, 'conflict');
+    });
+
+    test('L2: 予約を渡さなければ従来どおり (unmetReservations は空)', () => {
+        const p = compute(mkInput(players2()));
+        assert.deepEqual(p.unmetReservations, []);
+        assert.equal(p.reservationCount, 0);
+        assert.equal(p.stability, null);
+    });
+
+    test('L2: 予約の投入順は入力の並びに依存しない', () => {
+        // ★ 同じボスに2人ぶん予約する = 置いた順で usedB / overflowB の配り方が変わる形にする。
+        //   別々のボスに1人ずつだと、並べ替えを外しても結果が同じで検出できない
+        const small = [
+            { boss_number: 1, boss_code: 'B1', name: 'ボス1', attribute: 'water', weakness: 'fire', tier: 'lord',
+              total_hp_raw: 40e9, remaining_hp_raw: 40e9 },
+            { boss_number: 2, boss_code: 'B2', name: 'ボス2', attribute: 'electric', weakness: 'water', tier: 'lord',
+              total_hp_raw: 200e9, remaining_hp_raw: 200e9 },
+        ];
+        const two = [
+            mkPlayer(1, 'A', { fire: [lo(20, ['a1', 'a2', 'a3', 'a4', 'a5'])] }, { done: 2 }),
+            mkPlayer(2, 'B', { fire: [lo(35, ['b1', 'b2', 'b3', 'b4', 'b5'])] }, { done: 2 }),
+        ];
+        const rs = [resv({ id: 1, member: 1, boss: 1, slot: 'h13' }), resv({ id: 2, member: 2, boss: 1, slot: 'h13' })];
+        const shot = (p) => JSON.stringify((p.levels || []).filter(lv => !lv.infinite).map(lv => lv.bosses.map(b =>
+            (b.attacks || []).map(a => [a.memberId, a.loadoutSlot, a.hourLabel, a.usedB, a.overflowB]))));
+        const a = compute(mkInput(two, { bosses: small.map(b => ({ ...b })), reservations: rs }));
+        const b = compute(mkInput(two, { bosses: small.map(b => ({ ...b })), reservations: [...rs].reverse() }));
+        assert.equal(shot(a), shot(b), '予約の並び順で結果が変わる (投入順が入力依存になっている)');
+    });
+
+    test('L2: 予約した凸はオーバーキル圧縮で外されない', () => {
+        // ボス1 (HP30) に 25B → 30B の順で予約する。25B を置いた時点で残5B、30B で撃破。
+        // 通常の圧縮は「25B を外しても倒せる」ので外しにいくが、約束は外してはいけない。
+        // ★ ボス2 を倒せる C を入れてレベルを踏破させる — 踏破できないと吸収モードになり、
+        //   撃破済みのボスは横断ループが飛ばすので圧縮自体が走らない
+        const small = [
+            { boss_number: 1, boss_code: 'B1', name: 'ボス1', attribute: 'water', weakness: 'fire', tier: 'lord',
+              total_hp_raw: 30e9, remaining_hp_raw: 30e9 },
+            { boss_number: 2, boss_code: 'B2', name: 'ボス2', attribute: 'electric', weakness: 'water', tier: 'lord',
+              total_hp_raw: 30e9, remaining_hp_raw: 30e9 },
+        ];
+        const three = [
+            mkPlayer(1, 'A', { fire: [lo(25, ['a1', 'a2', 'a3', 'a4', 'a5'])] }),
+            mkPlayer(2, 'B', { fire: [lo(30, ['b1', 'b2', 'b3', 'b4', 'b5'])] }),
+            mkPlayer(3, 'C', { water: [lo(30, ['c1', 'c2', 'c3', 'c4', 'c5'])] }),
+        ];
+        const p = compute(mkInput(three, {
+            bosses: small.map(b => ({ ...b })),
+            reservations: [resv({ id: 41, member: 1, boss: 1, slot: 'h05' }), resv({ id: 42, member: 2, boss: 1, slot: 'h05' })],
+        }));
+        const b1 = p.levels.find(lv => lv.level === 1).bosses.find(b => b.bossNumber === 1);
+        const ids = (b1.attacks || []).map(a => a.memberId).sort();
+        assert.deepEqual(ids, [1, 2], `予約した凸が外された: ${JSON.stringify(ids)} / ${JSON.stringify(p.unmetReservations)}`);
+        assert.deepEqual(p.unmetReservations, []);
+    });
+}
+
 // ---- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) ----------------------------
 console.log('\nplanDiffDomain (配信プランの差分):');
 {

@@ -788,6 +788,54 @@
                     }
                     t.rem = rem;
                 };
+                // ===== L2: 承認済みの予約を**いちばん先に**置く =====
+                // 予約は「運営が承認した約束」なので、L1 の sticky (前回の割当) より強い。
+                // 置き方は sticky と同じ (applyPick を通す) が、違いが3つある:
+                //   1. **時刻を尊重する** — 予約は時刻まで固定した約束。sticky は earliestHourFor に任せるが、
+                //      予約は指定された枠にそのまま置く (⏳隙間型の予約は時刻を約束しないので従来どおり)
+                //   2. **置けなかったことを黙って飲み込まない** — 実現できない予約は運営が解除する必要があるので、
+                //      最終的なプランと突き合わせて `unmetReservations` として返す (下の集計)
+                //   3. **温存 (Phase B) より優先される** — 先に置いてしまうので、Lv4 に回される余地がない。
+                //      「ボス5に回した方が得」でも、約束を破ってよい理由にはならない (ユーザー方針)
+                const placeReservation = (s) => {
+                    if (Number(s.level) !== L) return;
+                    const m = memberState.find(x => String(x.id) === String(s.memberId));
+                    if (!m || m.remainingAttacks <= 0) return;
+                    const t = targets.find(x => Number(x.b.boss_number) === Number(s.bossNumber));
+                    if (!t || t.rem <= 0.0001) return;
+                    const w = t.b.weakness;
+                    const list = m.avail[w];
+                    if (!list || list.length === 0) return;
+                    const cand = list.find(c => Number(c.slot) === Number(s.loadoutSlot));
+                    if (!cand) return;
+                    const dmg = resolveDamage(cand);
+                    if (dmg === null) return;
+                    // ⚠ キャラ被りは候補列挙と同じ式。予約でもここは曲げない —
+                    //   同じキャラを1日2回使う指示は物理的に実行できない
+                    if (m.anyTeamRegistered && cand.team.length > 0
+                        && cand.team.some(c => hasUsedChar(m.usedChars, c))) return;
+                    // ★ 時刻: 約束した枠に置く。レベルが開く前の時刻は実行できないので置かない
+                    //   (運営が解除して組み直す。ソルバーが勝手に後ろへずらすと約束の意味が消える)
+                    let slot;
+                    if (s.flex) {
+                        slot = { idx: openIdx, flex: true };
+                    } else {
+                        const want = (s.timeSlot != null) ? IDX_BY_KEY.get(s.timeSlot) : undefined;
+                        if (want == null) slot = earliestHourFor(m, openIdx);
+                        else if (want < openIdx) return;   // 開放より前 = 実行できない
+                        else slot = { idx: want, flex: false };
+                    }
+                    if (!slot) return;
+                    applyPick(t, {
+                        pick: m, pickScore: 0, pickHour: slot.idx, pickFlex: slot.flex,
+                        pickLo: cand, pickDmg: dmg, pickSlot: slot,
+                    });
+                    stickyPlaced.add(t.attacks[t.attacks.length - 1]);   // 圧縮で外させない
+                    recountLocked();
+                };
+                if (Array.isArray(opts.reservations) && opts.reservations.length > 0) {
+                    for (const s of opts.reservations) placeReservation(s);
+                }
                 // ===== L1: 前回配信で約束した割当を先に置く (sticky) =====
                 // 「変えないと実現不能でない限り前回どおり」を実現する土台 (2026-09-07)。
                 // ★ 置くのは **通常の凸とまったく同じ経路 (applyPick)**。残凸数・キャラ消費・
@@ -1013,6 +1061,86 @@
         // 稼いでいるだけなので運用では改悪。ボス横断分岐と L1 の両方が同じ物差しを使う
         const riskOfPass = (pass) => pass.levels.flatMap(lv => lv.bosses.flatMap(x => x.attacks))
             .reduce((t, x) => t + (x.timeMismatch ? 2 : 0) + (x.flex ? 1 : 0), 0);
+
+        // ===== L2: 承認済みの予約を正規化する =====
+        // 入力は js/domain/reservations.js の toSolverConstraints が作った形
+        // ({ reservationId, memberId, level, bossNumber, loadoutSlot, flex, timeSlot })。
+        // ★ ここでも**安定ソート**する (投入順が入力の配列順に依存すると同じ盤面で違う指示が出る)
+        const normalizeReservations = (list) => {
+            const out = [];
+            (Array.isArray(list) ? list : []).forEach(r => {
+                if (!r || r.memberId == null) return;
+                const level = Number(r.level), bossNumber = Number(r.bossNumber), loadoutSlot = Number(r.loadoutSlot);
+                if (!Number.isInteger(level) || level < 1 || level > 3) return;   // Lv4 は無限ボスなので拘束しない
+                if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) return;
+                if (!Number.isInteger(loadoutSlot) || loadoutSlot < 1 || loadoutSlot > MOCK_SLOT_MAX_STICKY) return;
+                out.push({
+                    reservationId: r.reservationId ?? null,
+                    memberId: r.memberId, level, bossNumber, loadoutSlot,
+                    flex: !!r.flex,
+                    timeSlot: r.flex ? null : (r.timeSlot || null),
+                });
+            });
+            const idKey = (v) => String(v);
+            out.sort((x, y) => (x.level - y.level)
+                || (x.bossNumber - y.bossNumber)
+                || (idKey(x.memberId) < idKey(y.memberId) ? -1 : idKey(x.memberId) > idKey(y.memberId) ? 1 : 0)
+                || (x.loadoutSlot - y.loadoutSlot));
+            return out;
+        };
+
+        // 採用したプランに、予約が実際に入っているかを突き合わせる。
+        // ★ 入らなかった予約は**運営が解除しないと枠を押さえたまま**になるので、必ず表に出す。
+        //   理由は盤面から引き直す (置けなかった時点の理由をパスをまたいで持ち回るより、
+        //   最終結果に対して1回判定する方が、どのパスが採用されても一貫する)
+        const unmetOf = (chosen, list) => {
+            if (!list || list.length === 0) return [];
+            // ★ 突き合わせには**時刻も含める**。予約は時刻まで固定した約束なので、
+            //   同じ人が同じボスに入っていても別の時刻なら「守れていない」。
+            //   時間を見ないモード (timeAware=false) のときだけ時刻を無視する
+            const tKeyOfAttack = (a) => !timeAware ? '-'
+                : (a.flex ? 'flex' : (a.hourIdx == null ? '-' : String(a.hourIdx)));
+            const tKeyOfRes = (r) => {
+                if (!timeAware) return '-';
+                if (r.flex) return 'flex';
+                const want = (r.timeSlot != null) ? IDX_BY_KEY.get(r.timeSlot) : undefined;
+                return want == null ? '-' : String(want);
+            };
+            const have = new Map();
+            (chosen.levels || []).forEach(lv => {
+                const level = Number(lv && lv.level) || 0;
+                (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+                    const k = `${level}|${Number(b.bossNumber)}|${a.memberId}|${Number(a.loadoutSlot) || 1}|${tKeyOfAttack(a)}`;
+                    have.set(k, (have.get(k) || 0) + 1);
+                }));
+            });
+            const bossByNum = new Map((bosses || []).map(b => [Number(b.boss_number), b]));
+            const playerById = new Map((players || []).map(p => [String(p.id), p]));
+            const out = [];
+            for (const r of list) {
+                const k = `${r.level}|${r.bossNumber}|${r.memberId}|${r.loadoutSlot}|${tKeyOfRes(r)}`;
+                const n = have.get(k) || 0;
+                if (n > 0) { have.set(k, n - 1); continue; }
+                // 入らなかった理由を盤面から引く (運営が次に何をすればいいかが分かる粒度で)
+                const p = playerById.get(String(r.memberId));
+                const b = bossByNum.get(r.bossNumber);
+                let reason = 'conflict';                       // キャラ被り・枠の取り合い
+                const wantIdx = (!r.flex && r.timeSlot != null) ? IDX_BY_KEY.get(r.timeSlot) : null;
+                if (timeAware && wantIdx != null && wantIdx < nowIdx) reason = 'time_passed';   // 約束の時刻を過ぎている
+                if (!p) reason = 'member_gone';                // 参加対象から外れた (退会・今回は難しい)
+                else if ((p.attackCount || 0) >= 3) reason = 'attacks_done';
+                else if (!b) reason = 'boss_gone';
+                else if (r.level < startLevel) reason = 'level_passed';
+                else if (r.level === startLevel && ((b.remaining_hp_raw || 0) / 1e9) <= 0.0001) reason = 'boss_defeated';
+                else if (!(p.loadoutsByAttr && p.loadoutsByAttr[b.weakness]
+                           && p.loadoutsByAttr[b.weakness].some(lo => Number(lo.slot) === r.loadoutSlot))) {
+                    reason = 'loadout_gone';                   // 模擬の編成が消えた/差し替わった
+                }
+                out.push({ reservationId: r.reservationId, memberId: r.memberId,
+                           level: r.level, bossNumber: r.bossNumber, loadoutSlot: r.loadoutSlot, reason });
+            }
+            return out;
+        };
 
         // ===== L1: 前回プランを「拘束」に正規化する =====
         // 配信済みプラン (published_plans.plan) から、人ごとの約束を取り出す。
@@ -1339,15 +1467,21 @@
         // **同じ盤面を「前回どおりを先に置いた解」と「拘束なしの通常解」で2回解き、辞書順で選ぶ**。
         // ★ input.previousPlan を渡さなければ従来と1ビットも変わらない出力になること
         //   (tests/solver-fingerprint.mjs が固定している)
+        // ===== L2: 承認済みの予約 (ソルバーを拘束する唯一の層) =====
+        // ★ 予約は**通常解にも拘束解にも同じように効く**。L1 の二者比較は
+        //   「前回の割当を尊重するか」だけを比べるものなので、予約は両方に入れる
+        const reservationList = normalizeReservations(input.reservations);
+        const passBase = reservationList.length > 0 ? { reservations: reservationList } : null;
+
         const stickyList = normalizeSticky(input.previousPlan);
-        const solvedNormal = solveWhole(null);
+        const solvedNormal = solveWhole(passBase);
         let scenario = solvedNormal.scenario;
         let optimization = solvedNormal.optimization;
         let stability = null;
         if (stickyList.length > 0) {
             let solvedSticky = null;
             // 拘束解で例外が出ても通常解で配信できる方が安全 (安定化は「あれば嬉しい」もの)
-            try { solvedSticky = solveWhole({ sticky: stickyList }); } catch { solvedSticky = null; }
+            try { solvedSticky = solveWhole({ ...(passBase || {}), sticky: stickyList }); } catch { solvedSticky = null; }
             if (solvedSticky) {
                 const verdict = preferNormalOver(solvedSticky.scenario.chosen, scenario.chosen, stickyList);
                 stability = {
@@ -1366,6 +1500,7 @@
             }
         }
         const { probe, chosen, lv4Open, reservePassUsed } = scenario;
+        const unmetReservations = unmetOf(chosen, reservationList);
         const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited
         // 温存マーク: probe では有限ボスに使われていた凸 (人+編成) が、温存パスでボス5に回ったもの。
         // memberId だけで判定すると、2編成持ちの「元からボス5行きだった方の編成」にも
@@ -1529,6 +1664,10 @@
             baselineCreditedB,
             reserveGainB: baselineCreditedB != null ? Math.max(0, totalCreditedB - baselineCreditedB) : 0,
             reservePassUsed,
+            // L2: 承認済みの予約のうち、このプランに入らなかったもの。
+            // **運営が解除しないとその人の枠を押さえたまま**になるので必ず出す
+            unmetReservations,
+            reservationCount: reservationList.length,
             // L1 安定化の結果 (previousPlan を渡したときだけ非 null)。
             // applied=true = 前回の約束を守った / false = 守るより明確に良かったので組み直した。
             // reason: clearLevel=踏破が上がる / timeRisk=確約できない凸が増える /
