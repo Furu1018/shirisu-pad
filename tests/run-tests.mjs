@@ -3839,6 +3839,34 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     test('planDiff.js が index.html から読み込まれている', () => {
         assert.ok(html.includes('<script defer src="./js/domain/planDiff.js"></script>'));
     });
+    test('L1 配線: 算出は「いま配信中のプラン」を previousPlan として渡す', () => {
+        // ★ 手元の直前の算出結果ではなく**配信したもの**が基準。
+        //   メンバーへの約束は配信したものなので、何度算出し直しても基準は動かない
+        assert.ok(/previousPlan: options\.previousPlan \|\| null,/.test(html), 'ソルバーへ渡していない');
+        assert.ok(/const pub = typeof window\.supabaseGetPublishedPlan === 'function'/.test(html));
+        assert.ok(/if \(pub && Number\(pub\.season_id\) === Number\(snapshot\?\.season\?\.id\)\) previousPlan = pub\.plan \|\| null;/.test(html),
+            '別シーズンの配信を基準にしてしまう');
+        assert.ok(/const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan \}, snapshot\);/.test(html));
+        // 取得に失敗しても算出は続ける (安定化は「あれば嬉しい」もので、止める理由にならない)
+        assert.ok(/配信中プランの取得skip \(安定化なしで算出\)/.test(html));
+    });
+    test('L1 配線: 既定は「前回を尊重」。運営が OFF にできる', () => {
+        assert.ok(/let _opsPlanSticky = true;/.test(html), '既定が尊重になっていない');
+        assert.ok(/localStorage\.getItem\(_OPS_PLAN_STICKY_KEY\) !== '0'/.test(html), '既定OFFに倒れる読み方になっている');
+        assert.ok(html.includes('id="opsPlanStickyBtn"'));
+        assert.ok(/function toggleOpsPlanSticky\(\)/.test(html));
+        // OFF のときは配信中プランを取りにいかない (無駄な取得をしない)
+        assert.ok(/if \(_opsPlanSticky\) \{\s*\n\s*try \{/.test(html), 'OFF でも取得している');
+    });
+    test('L1 配線: 安定化の結果を運営に見せる (効いたのか組み直したのか)', () => {
+        assert.ok(/const st = plan\.stability;/.test(html));
+        assert.ok(html.includes('前回の割当をそのまま維持しました'));
+        assert.ok(html.includes('踏破できるレベルが上がるので組み直しました'));
+        assert.ok(html.includes('時間を確約できない凸が増えるので組み直しました'));
+        assert.ok(html.includes('総与ダメが大きく増えるので組み直しました'));
+        // 本文に差し込まれていること (定数を作っただけで出していない、を防ぐ)
+        assert.ok(/el\.innerHTML = summary \+ stickyHtml \+ viewToggle \+ bodyHtml \+ warnHtml;/.test(html));
+    });
 }
 
 // ---- 結果 --------------------------------------------------------------------

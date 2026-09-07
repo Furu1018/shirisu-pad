@@ -55,6 +55,16 @@ rm -f .claude/hooks/.codex-on      # OFF
   ここが唯一の置き場所。画面側は `weaknessPtOf(boss)` / `bossAttributeOf(boss)` /
   `normalizeAttrKey(v)` を使う — **相性表を画面に再定義しないこと** (DB書き込み側の発生源は
   supabaseCreateSeason の COUNTER のみ)
+- **ソルバーの安定化 (L1・2026-09-07)** — `computeOptimalPlanCore` に `input.previousPlan` を渡すと、
+  **同じ盤面を「前回どおりを先に置いた解」と「拘束なしの通常解」で2回解いて辞書順で選ぶ**。
+  ★ 渡さなければ従来と1ビットも変わらない出力になること (`node tests/solver-fingerprint.mjs` が固定)。
+  拘束は `normalizeSticky` で {memberId, level, bossNumber, loadoutSlot} に畳み**安定ソート**してから
+  `runLevel` の貪欲ループの前に `applyPick` で置く (残凸・キャラ・編成・残HP・必須枠の扱いを貪欲と揃えるため)。
+  置けないものは黙って諦める。`trimOverkill` は約束した凸を外さない (`stickyPlaced`)。
+  採否は `preferNormalOver`: 踏破改善 → 時間リスク増 → `max(5%, 30B)` の改善、の順で通常解へ倒す。
+  結果は `plan.stability` に出る (applied / reason / creditedGapB / thresholdB)。
+  画面は **配信中のプラン**を基準に渡す (手元の直前の算出ではない — 約束は配信したもの)。
+  運営は 🔗前回を尊重 / 🆕ゼロから で切り替えられる (端末ごと・既定は尊重)
 - **js/domain/planDiff.js** — 配信プランの差分 (L4 通知抑制 / L5 運営ガード / L3 本人への提示)。
   前回の配信と次のプランを**人ごと**に突き合わせ、変化の種類 (gone/added/boss/time/team) を1つ返す。
   ★ **列として比べる** — 種類ごとに sort して集合で比べると「Lv1B1が21時 / Lv2B3が23時」→
@@ -197,6 +207,8 @@ node tests/check-raid-event-hooks.mjs  # 戦況の通知フックの網羅チェ
 node tests/team-picker.mjs    # 編成編集モーダルのタイルピッカーの実行テスト
 node tests/member-board.mjs   # 👥 メンバー状況ボードの描画 (_mbPaint) の実行テスト
 node tests/kill-badge.mjs     # 締め凸「締」バッジ・注記の実行テスト (実データ整合も見る)
+node tests/solver-fingerprint.mjs        # ソルバーの出力指紋 (リファクタで挙動が変わっていないか)
+node tests/solver-fingerprint.mjs <file> # 保存した指紋と突き合わせる (FP_SOLVER で別実装を指定可)
 node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
 node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の確認 の実行テスト
 ```
