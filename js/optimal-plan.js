@@ -525,6 +525,27 @@
                     //   そのレベルで1凸もできないまま終わる (Codex指摘 P1)
                     && canUseAttr(m, k)).length;
             });
+            // ===== L2: 後のレベルに予約がある人は、その分の凸・編成・キャラをこのレベルで使わない (2026-09-08) =====
+            // 予約は「そのレベルで・その編成で」の約束。手前のレベルの貪欲がその人の残り凸や
+            // 予約した編成 (とそのキャラ) を先に使うと、予約のレベルに来たときには置けない
+            // (実際に起きた: 残り1凸の人の Lv2 の予約が、Lv1 の貪欲に使われて「置けない」になった)。
+            // ★ L1 (前回どおり) では同じ「枠を空けて待つ」を試して**やめた** (上の注記) が、
+            //   予約は運営が承認した約束なので「手前で出せたはずの凸を失う」より約束が優先。
+            //   レベルごとの定数なので、吸収モードのスナップショット復元の影響を受けない
+            memberState.forEach(m => {
+                m.reservedLater = 0;
+                m.reservedLaterSlots = new Set();
+                m.reservedLaterChars = new Set();
+            });
+            for (const r of (opts.reservations || [])) {
+                if (!(Number(r.level) > L) || Number(r.level) > 3) continue;
+                const m = memberState.find(x => String(x.id) === String(r.memberId));
+                if (!m) continue;
+                m.reservedLater++;
+                const w = bossWeaknessByNum.get(Number(r.bossNumber));
+                if (w) m.reservedLaterSlots.add(`${w}|${Number(r.loadoutSlot) || 1}`);
+                (Array.isArray(r.team) ? r.team : []).forEach(c => addUsedChar(m.reservedLaterChars, c));
+            }
             // メンバー状態のスナップショット — 踏破モードで失敗したら吸収モードでやり直すため
             const snapshot = memberState.map(m => ({
                 remainingAttacks: m.remainingAttacks,
@@ -589,6 +610,8 @@
                         // 自由枠が尽きたら、必須属性以外には出さない
                         if (m.mandatory.size > 0 && !m.mandatory.has(t.b.weakness)
                             && (m.remainingAttacks - m.lockedNow) <= 0) continue;
+                        // L2: 後のレベルの予約ぶんの凸は残す (編成・キャラは候補ごとに下で見る)
+                        if ((m.remainingAttacks - (m.reservedLater || 0)) <= 0) continue;
                         const slot = earliestHourFor(m, openIdx);
                         if (slot === null) { t.sawTimeExcluded = true; continue; }
                         // キャラ衝突しないロードアウトを全て候補としてスコアリングする。
@@ -598,6 +621,9 @@
                             const dmg = resolveDamage(cand);
                             if (dmg === null) continue;
                             if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
+                            // L2: 後のレベルで予約した編成と、そのキャラを含む編成はここでは使わない
+                            if ((m.reservedLater || 0) > 0 && (m.reservedLaterSlots.has(`${t.b.weakness}|${Number(cand.slot) || 1}`)
+                                || (cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.reservedLaterChars, c))))) continue;
                             let s = scoreOf(m, t.b.weakness, dmg, t.rem, levelPos, slot.idx, openIdx, slot.flex, slot.mismatch);
                             // 温存パス: ボス5で入るはずの与ダメを失う機会費用 (B) を加算。
                             // オーバーキルと同じ単位なので W_OVER=1.0 と自然に比較される
@@ -892,6 +918,10 @@
                             && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
                         if (m.mandatory.size > 0 && !m.mandatory.has(w)
                             && (m.remainingAttacks - m.lockedNow) <= 0) continue;
+                        // L2: 後のレベルの予約ぶんは前回どおり (sticky) でも使わない — 予約の方が強い
+                        if ((m.remainingAttacks - (m.reservedLater || 0)) <= 0) continue;
+                        if ((m.reservedLater || 0) > 0 && (m.reservedLaterSlots.has(`${w}|${Number(cand.slot) || 1}`)
+                            || (cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.reservedLaterChars, c))))) continue;
                         const slot = earliestHourFor(m, openIdx);
                         if (!slot) continue;
                         applyPick(t, {
@@ -1095,8 +1125,10 @@
             const out = [];
             (Array.isArray(list) ? list : []).forEach(r => {
                 if (!r || r.memberId == null) return;
-                const level = Number(r.level), bossNumber = Number(r.bossNumber), loadoutSlot = Number(r.loadoutSlot);
-                if (!Number.isInteger(level) || level < 1 || level > 3) return;   // Lv4 は無限ボスなので拘束しない
+                // ★ level null = メンバー発の予約 (2026-09-08)。どのレベルに置くかは resolveReservationLevels が時間軸から決める
+                const level = (r.level == null) ? null : Number(r.level);
+                const bossNumber = Number(r.bossNumber), loadoutSlot = Number(r.loadoutSlot);
+                if (level !== null && (!Number.isInteger(level) || level < 1 || level > 3)) return;   // Lv4 は無限ボスなので拘束しない
                 if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) return;
                 if (!Number.isInteger(loadoutSlot) || loadoutSlot < 1 || loadoutSlot > MOCK_SLOT_MAX_STICKY) return;
                 out.push({
@@ -1113,7 +1145,7 @@
                 });
             });
             const idKey = (v) => String(v);
-            out.sort((x, y) => (x.level - y.level)
+            out.sort((x, y) => ((x.level ?? 0) - (y.level ?? 0))
                 || (x.bossNumber - y.bossNumber)
                 || (idKey(x.memberId) < idKey(y.memberId) ? -1 : idKey(x.memberId) > idKey(y.memberId) ? 1 : 0)
                 || (x.loadoutSlot - y.loadoutSlot));
@@ -1149,28 +1181,143 @@
             const playerById = new Map((players || []).map(p => [String(p.id), p]));
             const out = [];
             for (const r of list) {
+                if (r.level === 4) continue;   // Lv4 (ボス5・無限) は拘束にしない = 未達にもしない
                 const k = `${r.level}|${r.bossNumber}|${r.memberId}|${r.loadoutSlot}|${tKeyOfRes(r)}`;
                 const n = have.get(k) || 0;
                 if (n > 0) { have.set(k, n - 1); continue; }
-                // 入らなかった理由を盤面から引く (運営が次に何をすればいいかが分かる粒度で)
+                // 入らなかった理由を盤面から引く (運営が次に何をすればいいかが分かる粒度で)。
+                // ★ 理由はコード。日本語にするのは reservationsDomain.unmetText (画面で必ず通す — ユーザー決定 D)
                 const p = playerById.get(String(r.memberId));
                 const b = bossByNum.get(r.bossNumber);
                 let reason = 'conflict';                       // キャラ被り・枠の取り合い
+                let detail = null;
                 const wantIdx = (!r.flex && r.timeSlot != null) ? IDX_BY_KEY.get(r.timeSlot) : null;
-                if (timeAware && wantIdx != null && wantIdx < nowIdx) reason = 'time_passed';   // 約束の時刻を過ぎている
+                const hasSnap = Array.isArray(r.team) && r.team.length > 0 && Number(r.expectedB) > 0;
+                const lvOpenIdx = (L) => {
+                    const lv = (chosen.levels || []).find(x => Number(x.level) === L);
+                    return (lv && lv.openHourIdx != null) ? lv.openHourIdx : null;
+                };
                 if (!p) reason = 'member_gone';                // 参加対象から外れた (退会・今回は難しい)
                 else if ((p.attackCount || 0) >= 3) reason = 'attacks_done';
                 else if (!b) reason = 'boss_gone';
+                else if (r.level == null) {                    // 時間軸のどのレベルにもそのボスがいない見込み (resolveReservationLevels)
+                    reason = r.unresolvedReason || 'no_boss_at_time';
+                    detail = r.unresolvedDetail || null;
+                }
                 else if (r.level < startLevel) reason = 'level_passed';
                 else if (r.level === startLevel && ((b.remaining_hp_raw || 0) / 1e9) <= 0.0001) reason = 'boss_defeated';
-                else if (!(p.loadoutsByAttr && p.loadoutsByAttr[b.weakness]
-                           && p.loadoutsByAttr[b.weakness].some(lo => Number(lo.slot) === r.loadoutSlot))) {
-                    reason = 'loadout_gone';                   // 模擬の編成が消えた/差し替わった
+                else if (r.level > startLevel && !(chosen.levels || []).some(lv => Number(lv.level) === r.level)) {
+                    reason = 'level_unreached';                // そのレベルまで計画が届かない見込み
                 }
-                out.push({ reservationId: r.reservationId, memberId: r.memberId,
-                           level: r.level, bossNumber: r.bossNumber, loadoutSlot: r.loadoutSlot, reason });
+                else if (timeAware && wantIdx != null && wantIdx < nowIdx) reason = 'time_passed';   // 約束の時刻を過ぎている
+                else if (timeAware && wantIdx != null && lvOpenIdx(r.level) != null && lvOpenIdx(r.level) > wantIdx) {
+                    reason = 'before_open';                    // 置く先のレベルが約束の時刻より後に開く見込み
+                    detail = { level: r.level, openLabel: hourLabelOf(lvOpenIdx(r.level)) };
+                }
+                else if (!hasSnap && !(p.loadoutsByAttr && p.loadoutsByAttr[b.weakness]
+                           && p.loadoutsByAttr[b.weakness].some(lo => Number(lo.slot) === r.loadoutSlot))) {
+                    reason = 'loadout_gone';                   // 模擬の編成が消えた/差し替わった (写しも無い旧予約)
+                }
+                out.push({ reservationId: r.reservationId, memberId: r.memberId, memberName: p ? p.name : null,
+                           level: r.level, bossNumber: r.bossNumber, loadoutSlot: r.loadoutSlot, reason, detail });
             }
             return out;
+        };
+
+        // ===== L2: レベルを持たない予約に、時間軸からレベルを与える (2026-09-08 ユーザー決定) =====
+        // メンバーの約束は「この時刻に・この弱点のボスへ・この編成で」で、レベルは本人が選ばない
+        // (ボスは全レベル共通で HP だけ違う)。レベルを選ばせると「どう計算しても13時に Lv3 へ届かないのに
+        // 10時に Lv3 のボスを予約」= 計画が破綻するだけの予約が作れてしまう。
+        //   ① レベル付きの予約 (締め凸依頼の了承) だけで1回解き、各レベルの「開放〜踏破」の見込み時刻を得る
+        //   ② 固定時刻 T の予約は、T にそのボスがいるレベル (open(L) ≤ T < clear(L)) に置く。
+        //      レベルの窓は連続している (次の開放 = 前の踏破) ので、T が現在以降なら必ずどこかの窓に入る。
+        //      入らないのは 時刻を過ぎている / 有限レベルを全部踏破したあと (ボス5以外) /
+        //      いまのレベルでそのボスがもう倒れていて、次のレベルは T には開かない見込み — のいずれか
+        //   ③ ⏳隙間型は、いま開いているレベルでそのボスが生きていればそこ、倒れていれば次のレベル
+        //   ④ 予約を置くと時間軸が少しずれるので、②③の結果を入れて解き直し、もう1回だけ引き直す。
+        //      収束を待つより、それでもずれたら未達として運営に見せる方が正直
+        // ★ 「置けない」は黙らせない: レベルが決まらない予約は level=null のまま残し、unmetOf が理由つきで返す。
+        //   コストは runPass 2回 (ボス横断分岐に比べれば小さい)。レベル無しの予約が無ければ何もしない
+        const resolveReservationLevels = (list) => {
+            const free = list.filter(r => r.level === null);
+            if (free.length === 0) return list;
+            const leveled = list.filter(r => r.level !== null);
+            const idKey = (v) => String(v);
+            const sortKey = (arr) => arr.slice().sort((x, y) => ((x.level ?? 0) - (y.level ?? 0)) || (x.bossNumber - y.bossNumber)
+                || (idKey(x.memberId) < idKey(y.memberId) ? -1 : idKey(x.memberId) > idKey(y.memberId) ? 1 : 0)
+                || (x.loadoutSlot - y.loadoutSlot));
+            const bossAliveNow = (bn) => {
+                const b = (bosses || []).find(x => Number(x.boss_number) === Number(bn));
+                return !!b && ((b.remaining_hp_raw || 0) / 1e9) > 0.0001;
+            };
+            const nextLevelFor = (bn) => (bossAliveNow(bn) ? startLevel : startLevel + 1);
+            const windowsOf = (pass) => (pass.levels || []).filter(lv => !lv.infinite).map(lv => ({
+                level: Number(lv.level),
+                open: timeAware ? (lv.openHourIdx ?? nowIdx) : nowIdx,
+                clear: (timeAware && lv.levelCleared && lv.clearHourIdx != null) ? lv.clearHourIdx : (LAST_IDX + 1),
+                cleared: !!lv.levelCleared,
+            }));
+            const assign = (wins) => free.map(r => {
+                const out = { ...r };
+                delete out.unresolvedReason; delete out.unresolvedDetail;
+                const T = (!r.flex && r.timeSlot != null) ? IDX_BY_KEY.get(r.timeSlot) : null;
+                if (r.flex || T == null || !timeAware) {
+                    // 時刻を約束しない (⏳) / 時刻が読めない / 時間を見ないモード: いま出てくる最初のレベルへ
+                    const L = nextLevelFor(r.bossNumber);
+                    if (L > 3) { out.level = null; out.unresolvedReason = 'boss_defeated'; }
+                    else out.level = L;
+                    return out;
+                }
+                if (T < nowIdx) { out.level = null; out.unresolvedReason = 'time_passed'; return out; }
+                const w = wins.find(x => T >= x.open && T < x.clear) || null;
+                if (!w) {
+                    // 有限レベルを全部踏破したあと = ボス5 (Lv4・無限) しかいない
+                    const last = wins.length ? wins[wins.length - 1] : null;
+                    if (Number(r.bossNumber) === 5 && last && last.cleared) { out.level = 4; return out; }   // 拘束にはしない
+                    out.level = null; out.unresolvedReason = 'no_boss_at_time';
+                    out.unresolvedDetail = last ? { level: last.level, killedLabel: last.cleared ? hourLabelOf(last.clear) : null } : null;
+                    return out;
+                }
+                if (w.level === startLevel && !bossAliveNow(r.bossNumber)) {
+                    // いまのレベルではもう倒れていて、次のレベルは T には開かない見込み
+                    out.level = null; out.unresolvedReason = 'no_boss_at_time';
+                    out.unresolvedDetail = { level: w.level, killed: true, nextOpenLabel: w.cleared ? hourLabelOf(w.clear) : null };
+                    return out;
+                }
+                out.level = w.level;
+                return out;
+            });
+            const usable = (rs) => sortKey(rs.filter(r => r.level !== null && r.level >= 1 && r.level <= 3));
+            let pass = runPass(leveled.length ? { reservations: sortKey(leveled) } : {});
+            let resolved = assign(windowsOf(pass));
+            try {
+                pass = runPass({ reservations: usable([...leveled, ...resolved]) });
+                resolved = assign(windowsOf(pass));
+            } catch { /* 1回目の割当で進む */ }
+            return sortKey([...leveled, ...resolved]);
+        };
+
+        // ===== 本人のホームの空き枠に出す「なぜ選ばれなかったか」 (2026-09-08・ユーザー決定 D) =====
+        // 残り凸があるのに割当が無い人ごとに理由を1つ。日本語にするのは reservationsDomain.UNASSIGNED_JP。
+        // ★ 目安であって判定ではない (貪欲の途中経過までは追わない)。「なぜ2枚しか無いのか」が本人に伝わればよい
+        const leftoverReasonOf = (m, pass) => {
+            if (m.noSubmission) return 'no_loadout';
+            const lists = Object.values(m.avail || {}).filter(l => Array.isArray(l) && l.length > 0);
+            if (lists.length === 0) return 'cards_used_up';
+            const usable = lists.flat().filter(c => hasDamage(c)
+                && !(m.anyTeamRegistered && c.team.length > 0 && c.team.some(x => hasUsedChar(m.usedChars, x))));
+            if (usable.length === 0) return 'char_conflict';
+            const attrs = new Set(Object.keys(m.avail || {}).filter(k => (m.avail[k] || []).some(c => usable.includes(c))));
+            const frontier = pass.frontierLevel;
+            const lv4 = (pass.levels || []).some(lv => lv.infinite);
+            const targetsLeft = (frontier != null) || (lv4 && !!boss5 && attrs.has(boss5.weakness));
+            if (!targetsLeft) return 'not_needed';
+            if (timeAware && m.hourIdxs !== null && !m.flexTime) {
+                const fl = frontier != null ? (pass.levels || []).find(lv => Number(lv.level) === frontier) : null;
+                const openOf = fl && fl.openHourIdx != null ? fl.openHourIdx : (pass.openIdx ?? nowIdx);
+                if (!m.hourIdxs.some(i => i >= openOf)) return 'time';
+            }
+            return 'not_needed';
         };
 
         // ===== L1: 前回プランを「拘束」に正規化する =====
@@ -1501,8 +1648,11 @@
         // ===== L2: 承認済みの予約 (ソルバーを拘束する唯一の層) =====
         // ★ 予約は**通常解にも拘束解にも同じように効く**。L1 の二者比較は
         //   「前回の割当を尊重するか」だけを比べるものなので、予約は両方に入れる
-        const reservationList = normalizeReservations(input.reservations);
-        const passBase = reservationList.length > 0 ? { reservations: reservationList } : null;
+        // ★ レベルの無い予約は先に時間軸からレベルを決める (2026-09-08)。決まらなかったものは level=null のまま
+        //   unmetOf へ回り、拘束には入れない (Lv4 に解決したものも拘束にしない = ボス5は無限で全員入る)
+        const reservationList = resolveReservationLevels(normalizeReservations(input.reservations));
+        const constraintList = reservationList.filter(r => r.level !== null && r.level >= 1 && r.level <= 3);
+        const passBase = constraintList.length > 0 ? { reservations: constraintList } : null;
 
         const stickyList = normalizeSticky(input.previousPlan);
         const solvedNormal = solveWhole(passBase);
@@ -1548,6 +1698,13 @@
         }
         const { memberState, levels, fullyClearedThrough } = chosen;
         const openIdx = chosen.openIdx;
+        // 残り凸があるのに割当が無い人 → 本人のホームの空き枠に理由を出す (2026-09-08)
+        // 置けなかった予約のために取り置いた凸は「予約のために残しています」(取り置きはレベル付きの予約だけ)
+        const heldFor = new Set(unmetReservations.filter(u => u.level != null).map(u => String(u.memberId)));
+        const unassigned = memberState.filter(m => m.remainingAttacks > 0).map(m => ({
+            memberId: m.id, memberName: m.name, remaining: m.remainingAttacks,
+            reason: heldFor.has(String(m.id)) ? 'reserved' : leftoverReasonOf(m, chosen),
+        }));
 
         const allAttacks = levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks));
         const totalAttacks = allAttacks.length;
@@ -1699,6 +1856,8 @@
             // **運営が解除しないとその人の枠を押さえたまま**になるので必ず出す
             unmetReservations,
             reservationCount: reservationList.length,
+            // 残り凸があるのに割当が無い人と、その理由 (コード。画面は reservationsDomain.UNASSIGNED_JP で日本語に)
+            unassigned,
             // L1 安定化の結果 (previousPlan を渡したときだけ非 null)。
             // applied=true = 前回の約束を守った / false = 守るより明確に良かったので組み直した。
             // reason: clearLevel=踏破が上がる / timeRisk=確約できない凸が増える /

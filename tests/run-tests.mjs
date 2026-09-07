@@ -4470,6 +4470,104 @@ console.log('\nL2 予約の拘束 (ソルバー):');
     const resv = (o) => ({ reservationId: o.id ?? 1, memberId: o.member, level: o.lv ?? 1,
         bossNumber: o.boss, loadoutSlot: o.lo ?? 1, flex: !!o.flex, timeSlot: o.flex ? null : (o.slot ?? 'h13') });
 
+    // ===== 2026-09-08: レベルの無い予約 (メンバー発) は時間軸からレベルを決める =====
+    // 盤面: A/B は 9時にしか出られない → Lv1 (各20B) は 9時に踏破 → Lv2 は 9時開放 (火力不足で踏破はしない)
+    const tl = () => ([
+        mkPlayer(1, 'A', { fire: [lo(60, ['a1', 'a2', 'a3', 'a4', 'a5'])] }, { slots: ['h09'] }),
+        mkPlayer(2, 'B', { water: [lo(60, ['b1', 'b2', 'b3', 'b4', 'b5'])] }, { slots: ['h09'] }),
+        mkPlayer(3, 'C', { fire: [lo(30, ['c1', 'c2', 'c3', 'c4', 'c5'])] }, { done: 2, slots: ['h05', 'h07', 'h13'] }),
+    ]);
+    const smallB = (b1hp = 20e9) => bosses2().map(b => ({ ...b, total_hp_raw: 20e9,
+        remaining_hp_raw: b.boss_number === 1 ? b1hp : 20e9 }));
+    const free = (o) => ({ ...resv(o), level: null });
+    const rv = globalThis.reservationsDomain;
+
+    test('★ L2: レベル無しの予約は「その時刻にそのボスがいるレベル」に置かれる (Lv1 の窓 / Lv2 の窓)', () => {
+        const early = compute(mkInput(tl(), { bosses: smallB(), reservations: [free({ id: 1, member: 3, boss: 1, slot: 'h07' })] }));
+        assert.deepEqual(rowOf(early, 3), ['L1/B1/1/7時'], `7時は Lv1 の窓: ${JSON.stringify(rowOf(early, 3))} / ${JSON.stringify(early.unmetReservations)}`);
+        assert.deepEqual(early.unmetReservations, []);
+        const late = compute(mkInput(tl(), { bosses: smallB(), reservations: [free({ id: 2, member: 3, boss: 1, slot: 'h13' })] }));
+        assert.deepEqual(rowOf(late, 3), ['L2/B1/1/13時'], `13時は Lv2 の窓: ${JSON.stringify(rowOf(late, 3))} / ${JSON.stringify(late.unmetReservations)}`);
+        assert.deepEqual(late.unmetReservations, []);
+        assert.equal(late.reservationCount, 1);
+    });
+
+    test('★ L2: いまのレベルで倒れたボスに、次のレベルが開く前の時刻 → 置かず「そのボスがいない見込み」を日本語で', () => {
+        const p = compute(mkInput(tl(), { bosses: smallB(0), reservations: [free({ id: 3, member: 3, boss: 1, slot: 'h07' })] }));
+        // 置けない予約は拘束にならない = 本人はほかの凸に普通に使われる (運営が2択で処理するまで)
+        assert.ok(!rowOf(p, 3).includes('L1/B1/1/7時'), `倒れているボスへ置いてしまった: ${JSON.stringify(rowOf(p, 3))}`);
+        assert.equal(p.unmetReservations.length, 1);
+        const u = p.unmetReservations[0];
+        assert.equal(u.reason, 'no_boss_at_time');
+        assert.equal(u.reservationId, 3);
+        assert.equal(u.memberName, 'C', '運営の画面で名前を出すため');
+        assert.equal(u.detail?.killed, true);
+        assert.equal(u.detail?.nextOpenLabel, '9時', `次の開放見込み: ${JSON.stringify(u.detail)}`);
+        const t = rv.unmetText(u);
+        assert.match(t, /そのボスがいない見込み/);
+        assert.match(t, /Lv1 ではもう倒れています/);
+        assert.match(t, /Lv2 の開放は 9時/);
+        assert.ok(!/no_boss_at_time/.test(t), 'コードが日本語に混ざっている');
+    });
+
+    test('★ L2: 約束の時刻を過ぎたレベル無しの予約は time_passed / ⏳隙間型は倒れていれば次のレベルへ', () => {
+        const past = compute(mkInput(tl(), { bosses: smallB(), currentSlot: 'h13',
+            reservations: [free({ id: 4, member: 3, boss: 1, slot: 'h07' })] }));
+        assert.equal(past.unmetReservations[0]?.reason, 'time_passed', JSON.stringify(past.unmetReservations));
+        assert.equal(rv.unmetText(past.unmetReservations[0]), '約束の時刻を過ぎています');
+        const fx = compute(mkInput(tl(), { bosses: smallB(0), reservations: [free({ id: 5, member: 3, boss: 1, flex: true })] }));
+        assert.deepEqual(rowOf(fx, 3), ['L2/B1/1/flex'], `倒れたボスの隙間予約は次のレベルへ: ${JSON.stringify(rowOf(fx, 3))} / ${JSON.stringify(fx.unmetReservations)}`);
+    });
+
+    test('★ L2: レベル付きの予約 (締め凸の了承) は今までどおりそのレベルに置く', () => {
+        const p = compute(mkInput(tl(), { bosses: smallB(), reservations: [resv({ id: 6, member: 3, boss: 1, lv: 2, slot: 'h13' })] }));
+        assert.deepEqual(rowOf(p, 3), ['L2/B1/1/13時']);
+        // Lv1 の窓の時刻に Lv2 を指定 = 開放前 → 置かず before_open
+        const q = compute(mkInput(tl(), { bosses: smallB(), reservations: [resv({ id: 7, member: 3, boss: 1, lv: 2, slot: 'h07' })] }));
+        assert.equal(q.unmetReservations[0]?.reason, 'before_open', JSON.stringify(q.unmetReservations));
+        assert.match(rv.unmetText(q.unmetReservations[0]), /Lv2 の開放は 9時/);
+    });
+
+    test('★ L2: 後のレベルに予約がある人の残り凸は、手前のレベルの貪欲に使わせない (別編成でも)', () => {
+        // C は火の編成を2つ持ち、残り1凸。編成①を Lv2 (13時) に予約 → 手前の Lv1 で編成②を使われると
+        // 残り凸が無くなり、Lv2 の約束が置けない。取り置きが無いと L1/B1/2/5時 になる
+        const ps = tl();
+        ps[2] = mkPlayer(3, 'C', { fire: [lo(30, ['c1', 'c2', 'c3', 'c4', 'c5']), lo(25, ['c6', 'c7', 'c8', 'c9', 'c10'], 2)] },
+                         { done: 2, slots: ['h05', 'h07', 'h13'] });
+        const p = compute(mkInput(ps, { bosses: smallB(), reservations: [free({ id: 8, member: 3, boss: 1, lo: 1, slot: 'h13' })] }));
+        assert.deepEqual(rowOf(p, 3), ['L2/B1/1/13時'], `取り置きが効いていない: ${JSON.stringify(rowOf(p, 3))} / ${JSON.stringify(p.unmetReservations)}`);
+        assert.deepEqual(p.unmetReservations, []);
+        // 残り2凸なら、手前のレベルで編成②を使ってよい (取り置くのは予約のぶんだけ)
+        ps[2] = mkPlayer(3, 'C', { fire: [lo(30, ['c1', 'c2', 'c3', 'c4', 'c5']), lo(25, ['c6', 'c7', 'c8', 'c9', 'c10'], 2)] },
+                         { done: 1, slots: ['h05', 'h07', 'h13'] });
+        const q = compute(mkInput(ps, { bosses: smallB(), reservations: [free({ id: 9, member: 3, boss: 1, lo: 1, slot: 'h13' })] }));
+        assert.ok(rowOf(q, 3).includes('L2/B1/1/13時'), `予約が置けていない: ${JSON.stringify(rowOf(q, 3))}`);
+        assert.ok(rowOf(q, 3).some(r => r.startsWith('L1/') && r.includes('/2/')), `編成②を手前で使ってよい: ${JSON.stringify(rowOf(q, 3))}`);
+    });
+
+    test('★ 未割当の理由: 提出なし / 編成を使い切った / キャラ被り — 本人のホームの空き枠に日本語で出すため', () => {
+        const ps = [
+            mkPlayer(1, 'A', { fire: [lo(60, ['a1', 'a2', 'a3', 'a4', 'a5'])] }, { slots: ['h09'] }),      // 1枚だけ → 使い切り
+            mkPlayer(2, 'B', { water: [lo(60, ['b1', 'b2', 'b3', 'b4', 'b5'])] }, { slots: ['h09'] }),
+            mkPlayer(4, 'D', {}, {}),                                                                       // 提出なし
+            mkPlayer(5, 'E', { fire: [lo(50, ['x', 'e2', 'e3', 'e4', 'e5']), lo(40, ['x', 'e7', 'e8', 'e9', 'e10'], 2)] }, { done: 1 }),   // 被り
+        ];
+        const p = compute(mkInput(ps, { bosses: smallB() }));
+        const by = new Map((p.unassigned || []).map(u => [u.memberId, u]));
+        assert.equal(by.get(4)?.reason, 'no_loadout', JSON.stringify(p.unassigned));
+        assert.equal(by.get(4)?.remaining, 3);
+        assert.equal(by.get(1)?.reason, 'cards_used_up', JSON.stringify(p.unassigned));
+        assert.equal(by.get(5)?.reason, 'char_conflict', JSON.stringify(p.unassigned));
+        assert.equal(by.get(4)?.memberName, 'D');
+        for (const u of p.unassigned) assert.ok(rv.UNASSIGNED_JP[u.reason], `日本語が無い理由: ${u.reason}`);
+    });
+
+    test('L2: 予約を渡さなければ unassigned 以外の出力は従来どおり (指紋テストが割当を固定)', () => {
+        const p = compute(mkInput(players2()));
+        assert.ok(Array.isArray(p.unassigned));
+        assert.deepEqual(p.unmetReservations, []);
+    });
+
     test('L2: 予約は素直な解より優先される (弱い編成でも約束どおり置く)', () => {
         const natural = compute(mkInput(players2()));
         assert.deepEqual(rowOf(natural, 1), ['L1/B1/1/5時'], `前提が崩れた: ${JSON.stringify(rowOf(natural, 1))}`);

@@ -66,15 +66,18 @@
         time_passed: '約束の時刻を過ぎています',
         before_open: '約束の時刻には、そのレベルがまだ開いていない見込みです',
         no_boss_at_time: '約束の時刻には、そのボスがいない見込みです',
+        level_unreached: 'そのレベルまで届かない見込みです',
         conflict: 'ほかの凸とキャラが被るため置けません',
     };
     // ソルバーが「その人の残り凸を使わなかった」理由 → 日本語 (本人のホームの空き枠に出す)
     const UNASSIGNED_JP = {
         no_loadout: '模擬の提出がありません',
+        cards_used_up: '提出した編成をすべて使いました (3凸ぶんの編成が足りません)',
         char_conflict: 'ほかの凸とキャラが被って、使える編成が残っていません',
         no_target: '出せる属性のボスが残っていない見込みです',
         time: '戦闘可能時間に合う枠がありません',
         not_needed: 'いまのプランでは出番がありません (残HPは足りる見込みです)',
+        reserved: '予約のために残しています (その予約はまだ置けていません)',
     };
 
     /**
@@ -88,7 +91,8 @@
         if (!d) return base;
         if (u.reason === 'no_boss_at_time') {
             const parts = [];
-            if (d.level && d.killedLabel) parts.push(`Lv${d.level} は ${d.killedLabel}に撃破の見込み`);
+            if (d.level && d.killed) parts.push(`Lv${d.level} ではもう倒れています`);
+            else if (d.level && d.killedLabel) parts.push(`Lv${d.level} は ${d.killedLabel}に撃破の見込み`);
             if (d.level && d.nextOpenLabel) parts.push(`Lv${d.level + 1} の開放は ${d.nextOpenLabel}`);
             return parts.length ? `${base} (${parts.join('、')})` : base;
         }
