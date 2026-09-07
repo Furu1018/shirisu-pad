@@ -1690,6 +1690,42 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
     };
 };
 
+// ===== 互換ゲート (41_client_gate.sql / L2 ⑦) =====
+// 予約を知らない古いアプリが「プラン表示・凸報告・配信」をするのを止める仕組み。
+// ★ **fail-open**: 未適用・通信断・行なしは null を返し、呼び出し側は「誰も止めない」に倒す。
+//   ここを fail-closed にすると、一時的な通信断でユニオン全員のアプリが使えなくなる。
+//   ゲートは事故防止であって認可ではない (RLS は anon 全許可のまま — CLAUDE.md 参照)
+window.supabaseLoadClientGate = async function () {
+    try {
+        const { data, error } = await supabase.from('app_gate')
+            .select('min_client_build, min_plan_schema, message, updated_by, updated_at')
+            .eq('id', 1).maybeSingle();
+        if (error) throw error;
+        return data || null;
+    } catch { return null; }
+};
+
+// 運営が「この版より古いクライアントを止める」を設定する。
+// ★ 上げる前に、全員が新しいクライアントを取得できていることを確認すること —
+//   締めた時点で更新経路の無い人が出ると、その人は何もできなくなる (2段階リリース)
+window.supabaseSetClientGate = async function ({ minClientBuild, minPlanSchema, message, actorName } = {}) {
+    const patch = { id: 1, updated_by: actorName || null, updated_at: new Date().toISOString() };
+    if (minClientBuild != null) patch.min_client_build = Math.max(0, Math.floor(Number(minClientBuild) || 0));
+    if (minPlanSchema != null) patch.min_plan_schema = Math.max(0, Math.floor(Number(minPlanSchema) || 0));
+    if (message !== undefined) patch.message = (typeof message === 'string' && message.trim()) ? message.trim() : null;
+    const { data, error } = await supabase.from('app_gate')
+        .upsert(patch, { onConflict: 'id' }).select().maybeSingle();
+    if (error) {
+        if (_isMissingTableErr(error, 'app_gate')) {
+            throw new Error('supabase/41_client_gate.sql を SQL Editor で適用してください');
+        }
+        throw error;
+    }
+    window.supabaseLogActivity?.('client_gate',
+        `互換ゲートを更新 (最低版 ${patch.min_client_build ?? '据置'})`, { actorName });
+    return data;
+};
+
 // ===== バックアップ: 全テーブル JSON エクスポート =====
 // RLS が anon 全許可の内輪運用のため、誤操作・事故に備えた手動バックアップ手段。
 // Supabase の行数上限(1000)を超えるテーブルに備えてページネーションで全件取得する。
@@ -1707,6 +1743,9 @@ const _BACKUP_TABLES = [
     // 2026-09-07 追加 (L2 予約層): 予約本体と、その状態遷移の履歴。
     // attacks.reservation_id が plan_reservations を参照するので、復元順は attacks より前
     'plan_reservations', 'plan_reservation_events',
+    // 2026-09-07 追加 (L2 ⑦ 互換ゲート): 運営が上げた「止める版」の設定。
+    // 1行しか無いが、戻さないと復元後にゲートが既定値 (誰も止めない) に落ちる
+    'app_gate',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -1768,6 +1807,8 @@ const _RESTORE_TABLES = [
     //                                戻さないと復元後に全員「今季未確認」になって催促が飛ぶ
     ['availability_confirmations', 'season_id', 'num'],
     ['activity_log', 'id', 'num'],
+    //   app_gate = 互換ゲート (L2 ⑦)。他のどのテーブルも参照しないので順序は最後でよい
+    ['app_gate', 'id', 'num'],
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
     if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');

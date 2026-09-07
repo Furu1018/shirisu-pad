@@ -16,6 +16,7 @@ import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル
 import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
 import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
+import '../js/domain/clientGate.js';      // globalThis.clientGateDomain (互換ゲート — L2 ⑦)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
@@ -4299,6 +4300,104 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(html.includes('総与ダメが大きく増えるので組み直しました'));
         // 本文に差し込まれていること (定数を作っただけで出していない、を防ぐ)
         assert.ok(/el\.innerHTML = summary \+ stickyHtml \+ viewToggle \+ bodyHtml \+ warnHtml;/.test(html));
+    });
+}
+
+// ---- 互換ゲート (L2 ⑦) --------------------------------------------------------
+console.log('\nclientGateDomain (互換ゲート):');
+{
+    const cg = globalThis.clientGateDomain;
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    // fileURLToPath を通す: 日本語フォルダ名は URL の pathname だと ENOENT になる (他テストと同じ方式)
+    const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+    test('★ fail-open: ゲートが無い・読めない・壊れているときは止めない', () => {
+        // ここを fail-closed にすると、一時的な通信断でユニオン全員のアプリが止まる
+        for (const gate of [null, undefined, {}, 'ゴミ', 0, { min_client_build: null },
+                            { min_client_build: 'あ' }, { min_client_build: -5 }]) {
+            assert.equal(cg.evaluate({ build: 1, gate }).blocked, false, `gate=${JSON.stringify(gate)} で止めている`);
+        }
+    });
+
+    test('★ ゲートを配る回は誰も止めない (min_client_build = 0 が既定)', () => {
+        // 配る回に締めると、締められた側に更新経路が無くなる (2段階リリースの要)
+        assert.equal(cg.evaluate({ build: 0, gate: { min_client_build: 0 } }).blocked, false);
+        assert.equal(cg.evaluate({ build: 1, gate: { min_client_build: 0, min_plan_schema: 3 } }).blocked, false,
+            'プラン版だけ上げてもクライアントは止めない');
+    });
+
+    test('古い版だけを止める (同じ版は通す)', () => {
+        const gate = { min_client_build: 2026090701 };
+        assert.equal(cg.evaluate({ build: 2026090700, gate }).blocked, true, '1つ古い');
+        assert.equal(cg.evaluate({ build: 2026090701, gate }).blocked, false, 'ちょうど');
+        assert.equal(cg.evaluate({ build: 2026090702, gate }).blocked, false, '新しい');
+        assert.equal(cg.evaluate({ build: 0, gate }).blocked, true, '版を持たない旧クライアント');
+    });
+
+    test('★ 止めるのは プラン表示・凸報告・配信 の3つだけ', () => {
+        const v = cg.evaluate({ build: 1, gate: { min_client_build: 9 } });
+        assert.equal(v.blocked, true);
+        for (const f of ['plan', 'attack', 'publish']) {
+            assert.equal(cg.allows(v, f), false, `${f} を通している`);
+        }
+        // 更新できない人が何もできなくなるので、それ以外は止めない
+        for (const f of ['mock', 'availability', 'chars', 'settings', undefined]) {
+            assert.equal(cg.allows(v, f), true, `${f} まで止めている`);
+        }
+        // 止まっていなければ全部通る
+        const ok = cg.evaluate({ build: 10, gate: { min_client_build: 9 } });
+        for (const f of ['plan', 'attack', 'publish']) assert.equal(cg.allows(ok, f), true);
+    });
+
+    test('★ 自分より新しい版の配信プランは表示しない', () => {
+        // 予約入りのプランを予約を知らない画面で描くと、実際とは違う指示を見せてしまう
+        assert.equal(cg.planReadable({ planSchema: 2, supportedSchema: 1 }).readable, false);
+        assert.equal(cg.planReadable({ planSchema: 2, supportedSchema: 1 }).reason, 'too_new');
+        assert.equal(cg.planReadable({ planSchema: 1, supportedSchema: 1 }).readable, true, '同じ版は読める');
+        assert.equal(cg.planReadable({ planSchema: null, supportedSchema: 1 }).readable, true,
+            '版を持たない旧配信は 0 として読める (移行互換)');
+    });
+
+    test('運営が下限を上げたら、それより古い配信は読ませない', () => {
+        const gate = { min_plan_schema: 2 };
+        assert.equal(cg.planReadable({ planSchema: 1, supportedSchema: 5, gate }).readable, false);
+        assert.equal(cg.planReadable({ planSchema: 1, supportedSchema: 5, gate }).reason, 'too_old');
+        assert.equal(cg.planReadable({ planSchema: 2, supportedSchema: 5, gate }).readable, true);
+        assert.equal(cg.planReadable({ planSchema: 1, supportedSchema: 5, gate: null }).readable, true,
+            '下限が無いときは旧配信も読める');
+    });
+
+    test('文面に「いまの版」と「必要な版」が入る (何をすればいいか分かる)', () => {
+        const v = cg.evaluate({ build: 3, gate: { min_client_build: 7, message: '更新してね' } });
+        const s = cg.describe(v);
+        assert.match(s, /更新してね/);
+        assert.match(s, /3/); assert.match(s, /7/);
+        assert.equal(cg.describe(cg.evaluate({ build: 9, gate: { min_client_build: 7 } })), '',
+            '止まっていないときは何も出さない');
+        // メッセージ未設定なら既定の文面
+        assert.match(cg.describe(cg.evaluate({ build: 1, gate: { min_client_build: 7 } })), /再読み込み/);
+    });
+
+    test('★ ゲートの取得は fail-open (未適用・通信断は null = 誰も止めない)', () => {
+        const client = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8');
+        const body = client.match(/window\.supabaseLoadClientGate = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(body, '取得関数が無い');
+        assert.ok(/catch \{ return null; \}/.test(body), '取得失敗で throw すると全員が止まりうる');
+        // 設定側は未適用を SQL の適用案内に変える (静かに失敗させない)
+        const setter = client.match(/window\.supabaseSetClientGate = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/_isMissingTableErr\(error, 'app_gate'\)/.test(setter));
+        assert.ok(/supabase\/41_client_gate\.sql/.test(setter));
+    });
+    test('41_client_gate.sql: 既定は誰も止めない / 再実行で運営の設定を戻さない', () => {
+        const sql = fs.readFileSync(path.join(ROOT, 'supabase', '41_client_gate.sql'), 'utf8');
+        assert.ok(/CREATE TABLE IF NOT EXISTS app_gate/.test(sql));
+        assert.ok(/min_client_build BIGINT NOT NULL DEFAULT 0/.test(sql), '既定が 0 でない (配る回に締めてしまう)');
+        assert.ok(/ON CONFLICT \(id\) DO NOTHING/.test(sql), '再実行で運営が上げた値を戻してしまう');
+        assert.ok(/CHECK \(id = 1\)/.test(sql), '設定行が複数できないようにすること');
+        assert.ok(/ALTER TABLE published_plans ADD COLUMN IF NOT EXISTS plan_schema INT/.test(sql));
+        assert.ok(/NOTIFY pgrst/.test(sql));
     });
 }
 

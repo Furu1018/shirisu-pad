@@ -226,6 +226,11 @@ SELECT * FROM (
         to_regproc('public.report_attack(bigint,bigint,date,integer,text,bigint,integer,jsonb,bigint,boolean,text)') IS NOT NULL,
         'report_attack() (凸報告の採番・insert・残HP減算・予約の消し込みを1トランザクションで。未適用だと従来の3リクエスト方式に静かに劣化する)'
 
+    UNION ALL SELECT '41_client_gate',
+        (to_regclass('public.app_gate') IS NOT NULL
+         AND EXISTS (SELECT 1 FROM col WHERE table_name = 'published_plans' AND column_name = 'plan_schema')),
+        'app_gate / published_plans.plan_schema (互換ゲート。未適用だと誰も止めない = 従来どおり静かに素通りする)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'
