@@ -36,6 +36,7 @@
     <script defer src="./js/domain/mockLevels.js"></script>
     <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
+    <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
     <script defer src="./js/domain/charMaster.js"></script>
@@ -2028,6 +2029,22 @@
             line-height: 13px; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(20,22,26,0.25); z-index: 1;
         }
         .dc-rem-x.undo { background: #18C26B; }
+        /* 🔒 凸の予約 (L2) */
+        .dc-resv-head { font-size: 11px; font-weight: 900; color: #8A9097; letter-spacing: 0.04em; margin: 12px 0 6px; }
+        .dc-resv-head:first-child { margin-top: 0; }
+        .dc-resv-row {
+            padding: 9px 11px; border-radius: 11px; background: #F7F8F9;
+            border: 1px solid rgba(20,22,26,0.05); margin-bottom: 7px;
+        }
+        .dc-resv-row.pending { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.28); }
+        .dc-resv-row.approved { background: rgba(24,194,107,0.08); border-color: rgba(24,194,107,0.25); }
+        .dc-resv-row.done { opacity: 0.6; }
+        .dc-resv-btn {
+            padding: 5px 11px; border-radius: 8px; border: none; cursor: pointer;
+            font-size: 11px; font-weight: 800; background: #F1F2F4; color: #5A6068;
+        }
+        .dc-resv-btn.primary { background: #14161A; color: #fff; }
+        .dc-resv-btn:disabled { opacity: 0.45; cursor: default; }
         .dc-rem-fav-chip {
             width: 14px; height: 14px; border-radius: 4px; flex: none;
             display: flex; align-items: center; justify-content: center;
@@ -3444,6 +3461,17 @@
                 <div id="opsMbSummary" class="dc-mb-summary"></div>
                 <div id="opsMbRows" class="dc-mb-rows"><p style="color:#A4AAB0;font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
                 <div id="opsMbLegend" style="font-size:11px;color:#8A9097;margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;"></div>
+            </div>
+
+            <!-- 🔒 凸の予約 (L2 / 課題E・運営ONのみ)。判定は js/domain/reservations.js -->
+            <div class="dc-card" data-ops-only>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">🔒 凸の予約</div>
+                    <span id="opsResvCounts" style="font-size:10.5px;font-weight:800;color:#8A9097;"></span>
+                    <button onclick="renderOpsReservations(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:10.5px;font-weight:800;cursor:pointer;">↻</button>
+                </div>
+                <p style="margin:0 0 10px 0;font-size:11px;color:#8A9097;line-height:1.5;">承認するとプランに固定されます。<strong>運営の誰か1人</strong>が承認すれば成立し、誰が承認したかは全員に見えます。承認しても自動では配信しません。</p>
+                <div id="opsResvList"><p style="color:#A4AAB0;font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
             <!-- 最適凸プラン -->
@@ -13902,6 +13930,7 @@
                 if (testBanner) testBanner.style.display = 'none';
                 renderOpsSeasonCtlSummary(null, []);
                 if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snapshot);   // 👥 も「シーズン無し」に
+                if (typeof renderOpsReservations === 'function') renderOpsReservations();           // 🔒 も同様
                 _applyOpsCardStates();     // シーズン終了直後も前シーズンの開閉状態を残さない (Codex指摘)
                 _renderOpsCockpitSoon();   // コックピット・見出しサマリーを「シーズン無し」に
                 return;
@@ -13936,6 +13965,7 @@
             renderOpsBossSummary();
             renderOpsRemainingList();
             renderOpsMemberStatus(snapshot);       // 👥 メンバー状況 (運営ONのときだけ中で取得・描画)
+            renderOpsReservations();               // 🔒 凸の予約 (同上)
             _refreshOpsPlanPicksFromPublished();   // 残凸表の「採用PT」枠取り (配信中プラン由来)
             _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
@@ -14099,6 +14129,207 @@
                 ? `<span>L1/L2/L3 = 各凸のレベル</span><span style="color:#6C42F0;">紫 = 代理登録</span><span>赤枠 = 現在時刻 (${nowH}時)</span><span>● 得意属性</span>`
                 : '<span>● 得意属性</span><span>模擬: キャラ被りなしで3属性が必要範囲 (★ = 5属性)</span><span>色つき点 = 未提出の属性</span><span>時間帯バー = 0〜23時の戦闘可能時間</span><span>🔕 = Push未購読 (催促が届かない)</span>';
         }
+        // ========== 🔒 凸の予約 (L2 / 課題E・運営ONのみ) ==========
+        // 承認するとソルバーの固定制約になる。承認は運営の誰か1人でよく、
+        // 誰が承認したかは全員に同じように見える (ユーザー決定 2026-09-07)。
+        // ★ 承認しても自動では配信しない — 承認のたびに再配信すると承認自体が振り回しの原因になる
+        const _resv = { rows: null, gen: 0, unsupported: false, busy: new Set() };
+
+        async function renderOpsReservations(force = false) {
+            const el = document.getElementById('opsResvList');
+            const cntEl = document.getElementById('opsResvCounts');
+            if (!el) return;
+            if (!_opsMode) return;                       // 運営OFF: 取得も描画もしない
+            const rv = window.reservationsDomain;
+            if (!rv) { el.innerHTML = '<p style="color:#ef4444;font-size:12px;margin:0;">予約の読み込みに失敗しました (再読み込みしてください)</p>'; return; }
+            const gen = ++_resv.gen;
+            if (force || _resv.rows === null) {
+                el.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p>';
+            }
+            let season = null;
+            try { season = (await ensureActiveSeasonLoaded())?.season || null; } catch { /* 下で null 扱い */ }
+            if (gen !== _resv.gen) return;
+            if (!season) {
+                _resv.rows = null;
+                el.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
+                if (cntEl) cntEl.textContent = '';
+                return;
+            }
+            let rows = null;
+            try {
+                rows = await window.supabaseLoadReservations(season.id);
+            } catch (e) {
+                if (gen !== _resv.gen) return;
+                el.innerHTML = `<p style="color:#ef4444;font-size:12px;margin:0;">取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
+                return;
+            }
+            if (gen !== _resv.gen) return;
+            // ★ null = 39 未適用。空配列 (予約0件) と区別する — 混同すると
+            //   「予約はまだありません」と出て、押しても適用エラーになる
+            if (rows === null) {
+                _resv.unsupported = true;
+                _resv.rows = null;
+                el.innerHTML = '<p style="color:#8A9097;font-size:12px;margin:0;line-height:1.6;">'
+                    + '凸の予約はまだ使えません。<br>Supabase の SQL Editor で <code>supabase/39_plan_reservations.sql</code> と '
+                    + '<code>supabase/40_attack_with_reservation_rpc.sql</code> を実行してください。</p>';
+                if (cntEl) cntEl.textContent = '';
+                _renderOpsCockpitSoon();
+                return;
+            }
+            _resv.unsupported = false;
+            _resv.rows = rows;
+            _paintOpsReservations();
+            _renderOpsCockpitSoon();
+        }
+
+        function _paintOpsReservations() {
+            const el = document.getElementById('opsResvList');
+            const cntEl = document.getElementById('opsResvCounts');
+            const rv = window.reservationsDomain;
+            if (!el || !rv || !Array.isArray(_resv.rows)) return;
+            const rows = _resv.rows;
+            const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
+            const pending = rows.filter(r => r.status === 'requested');
+            const cancelReq = rows.filter(r => r.status === 'cancel_requested');
+            const approved = rows.filter(r => r.status === 'approved');
+            const done = rows.filter(r => ['fulfilled', 'released', 'rejected'].includes(r.status));
+            if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 固定中 ${approved.length}`;
+
+            const who = (r) => escapeHtml(r.player_name || `#${r.player_id}`);
+            const what = (r) => escapeHtml(rv.describe(r, bossName));
+            const dmg = (r) => r.expected_damage_b != null ? `<span style="font-variant-numeric:tabular-nums;">${Number(r.expected_damage_b).toFixed(1)}B</span>` : '';
+            const team = (r) => (Array.isArray(r.characters_snapshot) && r.characters_snapshot.length && typeof renderTeamSnippet === 'function')
+                ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
+            const busy = (id) => _resv.busy.has(Number(id));
+            const btn = (label, onclick, kind, id) => `<button class="dc-resv-btn${kind ? ' ' + kind : ''}" ${busy(id) ? 'disabled' : ''} onclick="${onclick}">${label}</button>`;
+
+            const card = (r, actions, tone) => `
+                <div class="dc-resv-row${tone ? ' ' + tone : ''}">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="font-size:12.5px;font-weight:900;color:#14161A;">${who(r)}</span>
+                        <span style="font-size:11.5px;font-weight:800;color:#5A6068;">${what(r)}</span>
+                        ${dmg(r)}
+                        <span style="margin-left:auto;font-size:10px;font-weight:800;color:#A4AAB0;">${escapeHtml(rv.STATUS_JP[r.status] || r.status)}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+                        ${team(r)}
+                        <div style="margin-left:auto;display:flex;gap:6px;">${actions}</div>
+                    </div>
+                </div>`;
+
+            const sections = [];
+            if (pending.length) {
+                sections.push(`<div class="dc-resv-head">承認待ち (${pending.length})</div>` + pending.map(r => card(r,
+                    btn('承認する', `handleReservationApprove(${Number(r.id)})`, 'primary', r.id)
+                    + btn('見送る', `handleReservationReject(${Number(r.id)})`, '', r.id), 'pending')).join(''));
+            }
+            if (cancelReq.length) {
+                sections.push(`<div class="dc-resv-head">取り消し希望 (${cancelReq.length})</div>` + cancelReq.map(r => card(r,
+                    btn('取り消しを認める', `handleReservationRelease(${Number(r.id)}, 'member_request')`, 'primary', r.id)
+                    + btn('続行してもらう', `handleReservationKeep(${Number(r.id)})`, '', r.id), 'pending')).join(''));
+            }
+            if (approved.length) {
+                sections.push(`<div class="dc-resv-head">固定中 (${approved.length})</div>` + approved.map(r => card(r,
+                    btn('取り下げる', `handleReservationRelease(${Number(r.id)}, 'ops')`, '', r.id)
+                    + `<span style="font-size:10px;font-weight:700;color:#A4AAB0;align-self:center;">${escapeHtml(r.approved_by || '')}${r.approved_by ? ' が承認' : ''}</span>`,
+                    'approved')).join(''));
+            }
+            if (done.length) {
+                sections.push(`<div class="dc-resv-head">終わったもの (${done.length})</div>`
+                    + done.slice(-8).map(r => card(r,
+                        `<span style="font-size:10px;font-weight:700;color:#A4AAB0;align-self:center;">${escapeHtml(rv.RELEASE_JP[r.release_reason] || r.release_reason || '')}</span>`,
+                        'done')).join(''));
+            }
+            el.innerHTML = sections.join('')
+                || '<p style="color:#A4AAB0;font-size:12px;margin:0;">まだ予約はありません。</p>';
+        }
+
+        // 状態を進める共通処理。押している間はそのカードのボタンを止める (二重承認よけ)
+        async function _resvTransition(id, to, o = {}) {
+            const rid = Number(id);
+            if (_resv.busy.has(rid)) return;
+            _resv.busy.add(rid);
+            _paintOpsReservations();
+            try {
+                const me = getCurrentIdentity();
+                await window.supabaseSetReservationStatus(rid, to, { ...o, actor: me?.name || '運営' });
+                const row = (_resv.rows || []).find(r => Number(r.id) === rid);
+                window.supabaseLogActivity?.('ops',
+                    `凸の予約: ${row ? (row.player_name || '#' + row.player_id) : '#' + rid} を ${window.reservationsDomain?.STATUS_JP[to] || to}`,
+                    { actorName: me?.name || null });
+                showNotification(o.done || '更新しました');
+                // 予約が変わるとプランの前提が変わる。盤面を捨てて読み直す
+                opsStore.invalidate();
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            } finally {
+                _resv.busy.delete(rid);
+            }
+            await renderOpsReservations(true);
+        }
+
+        async function handleReservationApprove(id) {
+            const rv = window.reservationsDomain;
+            const row = (_resv.rows || []).find(r => Number(r.id) === Number(id));
+            if (!row) return;
+            const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
+            // ★ 承認前に「固定した場合の影響」を出す。同じ盤面を
+            //   「いまの承認済みだけ」と「+この候補」で解いて比べる (Codex 設計レビュー)
+            let impact = null;
+            try { impact = await _reservationImpact(row); }
+            catch (e) { console.warn('[reservation] 影響の算出skip:', e?.message || e); }
+            let msg = `🔒 ${row.player_name || '#' + row.player_id} の「${rv.describe(row, bossName)}」を承認しますか？\n\n`
+                + 'プランに固定され、組み直しても動かなくなります。';
+            if (impact) {
+                msg += `\n\n【固定した場合の影響】\n`
+                    + `・Lv${impact.clearBefore} 完全攻略の見込み → ${impact.clearAfter >= impact.clearBefore ? '変わりません' : `Lv${impact.clearAfter} に下がります`}\n`
+                    + `・未消化の凸 ${impact.unusedBefore} → ${impact.unusedAfter}\n`
+                    + `・総与ダメ ${impact.creditedDiffB >= 0 ? '+' : ''}${impact.creditedDiffB.toFixed(1)}B`
+                    + (impact.movedCount != null ? `\n・ほかに割当が変わる人: ${impact.movedCount}名` : '');
+                if (impact.warnings.length) msg += `\n\n⚠️ ${impact.warnings.join('\n⚠️ ')}`;
+                if (impact.blocking) msg += '\n\n※ 攻略の見込みが下がります。それでも承認しますか？';
+            }
+            if (!confirm(msg)) return;
+            await _resvTransition(id, 'approved', { expectFrom: 'requested', done: '🔒 予約を承認しました' });
+        }
+
+        async function handleReservationReject(id) {
+            const reason = prompt('見送る理由 (本人に表示されます):', '');
+            if (reason === null) return;
+            await _resvTransition(id, 'rejected', { expectFrom: 'requested', reason, done: '見送りました' });
+        }
+
+        async function handleReservationRelease(id, reason) {
+            const rv = window.reservationsDomain;
+            const row = (_resv.rows || []).find(r => Number(r.id) === Number(id));
+            const label = row ? (row.player_name || `#${row.player_id}`) : `#${id}`;
+            const from = row?.status === 'cancel_requested' ? 'cancel_requested' : 'approved';
+            const jp = rv?.RELEASE_JP[reason] || reason;
+            if (!confirm(`${label} の予約を取り下げますか？ (${jp})\n\n固定が外れ、次の算出からその枠は自由に使われます。`)) return;
+            await _resvTransition(id, 'released', { expectFrom: from, reason, done: '予約を取り下げました' });
+        }
+
+        async function handleReservationKeep(id) {
+            if (!confirm('取り消しの希望を却下し、予約を続けてもらいますか？')) return;
+            await _resvTransition(id, 'approved', { expectFrom: 'cancel_requested', done: '予約を続行にしました' });
+        }
+
+        // 承認前の影響: 同じ盤面を「いまの承認済みだけ」と「+この候補」で解いて差を出す
+        async function _reservationImpact(row) {
+            const rv = window.reservationsDomain;
+            if (!rv || typeof window.computeOptimalPlanCore !== 'function') return null;
+            const snap = await opsStore.load();
+            if (!snap) return null;
+            const base = (_resv.rows || []).filter(r => r.status === 'approved');
+            const solve = (rows) => window.computeOptimalPlanCore({
+                season: snap.season, bosses: snap.bosses, players: snap.players,
+                currentSlot: getCurrentSlotJST(), timeAware: true, onlyAvailableNow: false,
+                reservations: rv.toSolverConstraints(rows),
+            });
+            // 候補は「承認済みとして」解く (approved にしないと拘束にならない)
+            return rv.approvalImpact(solve(base), solve([...base, { ...row, status: 'approved' }]), window.planDiffDomain);
+        }
+
         function handleOpsMemberPhase(p) { _mb.phase = p; _mbRebuild(); }
         function handleOpsMemberFilter(f) { _mb.filter = f; _mbPaint(_mbCurrentPhase()); }
         function handleOpsMemberSort(s) { _mb.sort = s; _mbPaint(_mbCurrentPhase()); }
@@ -21196,6 +21427,13 @@
                 published: _opsPublishedFlag,
                 planComputed: (typeof _opsLastPlan !== 'undefined') && !!_opsLastPlan,
                 finishAttr: (typeof _opsCurrentAttr !== 'undefined') ? _opsCurrentAttr : null,
+                // 予約の件数 (未ロード / 39未適用は null = 何も出さない。「0件」と混同させない)
+                reservations: (typeof _resv !== 'undefined' && Array.isArray(_resv.rows))
+                    ? {
+                        pending: _resv.rows.filter(r => r.status === 'requested' || r.status === 'cancel_requested').length,
+                        approved: _resv.rows.filter(r => r.status === 'approved').length,
+                    }
+                    : null,
             });
             for (const [id, s] of Object.entries(summaries)) {
                 const el = document.querySelector(`#${id} > .ops-card-head .ops-card-sum`);

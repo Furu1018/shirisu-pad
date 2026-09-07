@@ -24,6 +24,9 @@
         { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false } },
         { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true } },
         { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true } },
+        // 当日は畳む — 承認待ちの件数は見出しの1行サマリーに出るので気づける
+        // (当日に開くカードを増やすと縦に長くなり、折りたたみを入れた意味が消える)
+        { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false } },
         { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false } },
         { id: 'opsSecPlan',      title: '最適凸プラン算出',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false } },
         { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true },
@@ -88,10 +91,11 @@
      * @param {boolean=} args.published  配信中プランがあるか
      * @param {boolean=} args.planComputed  算出済みプランがあるか
      * @param {string|null=} args.finishAttr  締め凸検索中の属性キー
+     * @param {{pending:number, approved:number}|null=} args.reservations  予約の件数 (未ロード/未適用なら null)
      * @param {number=} args.now
      * @returns {{summaries: Record<string,{text:string,bad:boolean}>, cockpit: {id:string,key:string,label:string,value:string|number,bad:boolean}[]}}
      */
-    function summarize({ season, bosses, players, mbRows, coordList, published, planComputed, finishAttr, now } = {}) {
+    function summarize({ season, bosses, players, mbRows, coordList, published, planComputed, finishAttr, reservations, now } = {}) {
         const bs = Array.isArray(bosses) ? bosses : [];
         const ps = Array.isArray(players) ? players : [];
         const lvl = season ? Number(season.current_level) || 1 : null;
@@ -112,6 +116,10 @@
             opsSecCoord: { text: coordList ? `オンライン ${online}${coordinating ? ` · 調整中 ${coordinating}` : ''}` : '', bad: false },
             opsSecRemaining: { text: season ? `${remainingPlayers.length}名 / ${remainingTotal}凸残` : '', bad: remainingTotal > 0 },
             opsSecMembers: { text: todo == null ? '' : `未完 ${todo}${finPending ? ` · 締め凸未返答 ${finPending}` : ''}`, bad: (todo || 0) > 0 || (finPending || 0) > 0 },
+            // 承認待ちは「運営が見ていないと予約が成立しない」状態なので bad 扱いにする
+            opsSecReserve: reservations
+                ? { text: `承認待ち ${reservations.pending} · 固定中 ${reservations.approved}`, bad: (reservations.pending || 0) > 0 }
+                : { text: '', bad: false },
             opsSecFinish: { text: finishAttr ? `${ATTR_JP[finishAttr] || finishAttr} 締め凸を検索中` : '', bad: false },
             opsSecPlan: { text: published ? '配信中' : planComputed ? '算出済み (未配信)' : '未算出', bad: false },
             opsSecActions: { text: '', bad: false },

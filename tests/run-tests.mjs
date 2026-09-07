@@ -2839,10 +2839,23 @@ console.log('\nopsLayoutDomain:');
         const openDay = ids.filter(id => dom.resolveOpen(id, 'day', null, true));
         assert.deepEqual(openDay, ['opsSecBoss', 'opsSecRemaining', 'opsSecMembers', 'opsSecActions']);
         const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true));
-        assert.deepEqual(openPre, ['opsSecMembers', 'opsSecPlan', 'opsSecActions']);
+        assert.deepEqual(openPre, ['opsSecMembers', 'opsSecReserve', 'opsSecPlan', 'opsSecActions']);
         assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
         assert.equal(dom.resolveOpen('opsSecActions', 'day', { day: { opsSecActions: false } }, true), true, 'always は畳めない');
         assert.equal(dom.resolveOpen('unknown', 'day', null, true), true);
+    });
+    test('予約カード: 当日は畳み、承認待ちの件数を見出しに出す', () => {
+        // 当日に開くカードを増やすと縦に長くなり、折りたたみを入れた意味が消える。
+        // 代わりに「承認待ち n」を見出しのサマリーに出して気づけるようにする
+        assert.equal(dom.resolveOpen('opsSecReserve', 'day', null, true), false, '当日は畳むこと');
+        assert.equal(dom.resolveOpen('opsSecReserve', 'pre', null, true), true, '前日は開くこと');
+        const s = dom.summarize({ season: null, reservations: { pending: 2, approved: 3 } });
+        assert.equal(s.summaries.opsSecReserve.text, '承認待ち 2 · 固定中 3');
+        assert.equal(s.summaries.opsSecReserve.bad, true, '承認待ちがあるなら目立たせる');
+        const none = dom.summarize({ season: null, reservations: { pending: 0, approved: 3 } });
+        assert.equal(none.summaries.opsSecReserve.bad, false);
+        // 未ロード / 39未適用は何も出さない (「予約0件」と混同させない)
+        assert.equal(dom.summarize({ season: null }).summaries.opsSecReserve.text, '');
     });
     test('withStored / parseStored: フェーズ別に記憶し、元オブジェクトは変えない / 壊れた JSON は空', () => {
         const s0 = { pre: {}, day: {} };
@@ -4224,6 +4237,60 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         // OFF のときは配信中プランを取りにいかない (無駄な取得をしない)
         assert.ok(/if \(_opsPlanSticky\) \{\s*\n\s*try \{/.test(html), 'OFF でも取得している');
     });
+    test('L2 配線: 予約カードは運営ONのときだけ取得・描画する', () => {
+        const fn = html.match(/async function renderOpsReservations\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn, 'renderOpsReservations が無い');
+        assert.ok(/if \(!_opsMode\) return;/.test(fn), '運営OFFでも取得してしまう');
+        // 世代ガード: ↻連打や切替で古い応答が後着しても描かない
+        assert.ok(/const gen = \+\+_resv\.gen;/.test(fn));
+        assert.ok((fn.match(/if \(gen !== _resv\.gen\) return;/g) || []).length >= 3, '世代の照合が足りない');
+        // 盤面の描き直しから呼ばれている (押さないと出ない状態にしない)
+        assert.ok(/renderOpsReservations\(\);\s*\/\/ 🔒 凸の予約/.test(html));
+    });
+    test('L2 配線: 39未適用は「予約0件」と区別して適用を案内する', () => {
+        const fn = html.match(/async function renderOpsReservations\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(rows === null\) \{/.test(fn), 'null (未適用) と [] (0件) を区別していない');
+        assert.ok(fn.includes('39_plan_reservations.sql'));
+        // クライアント側も null を返すこと ([] にすると押せてしまい適用エラーになる)
+        const cf = client.match(/window\.supabaseLoadReservations = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/if \(_isMissingReservationTable\(error\)\) return null;/.test(cf));
+    });
+    test('L2 配線: 承認は「固定した場合の影響」を見せてから', () => {
+        const fn = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_reservationImpact\(row\)/.test(fn), '影響を出していない');
+        assert.ok(fn.includes('完全攻略の見込み'));
+        assert.ok(fn.includes('未消化の凸'));
+        assert.ok(fn.includes('ほかに割当が変わる人'));
+        // 影響の算出は「承認済みだけ」と「+候補」の2解を比べる
+        const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/solve\(base\), solve\(\[\.\.\.base, \{ \.\.\.row, status: 'approved' \}\]\)/.test(im));
+        assert.ok(/rv\.toSolverConstraints\(rows\)/.test(im), 'ソルバーへ拘束として渡していない');
+    });
+    test('L2 配線: 状態を進めたら盤面を捨てる / 二重押しを止める', () => {
+        const fn = html.match(/async function _resvTransition\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(_resv\.busy\.has\(rid\)\) return;/.test(fn), '二重押しを止めていない');
+        assert.ok(/opsStore\.invalidate\(\);/.test(fn), '予約が変わったのに盤面を読み直していない');
+        // 取り違えた承認・解除を防ぐ (別の運営が先に操作していたら弾く)
+        assert.ok(/expectFrom: 'requested'/.test(html));
+        assert.ok(/expectFrom: 'cancel_requested'/.test(html));
+    });
+    test('L2 配線: 凸報告は原子的なRPCを通る (40未適用だけ従来経路)', () => {
+        const fn = client.match(/window\.supabaseAddAttack = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/supabase\.rpc\('report_attack'/.test(fn), 'RPC を使っていない');
+        assert.ok(/p_reservation_id: opts\.reservationId \?\? null/.test(fn));
+        // 「3凸済み」「予約の不一致」など意味のある拒否を握り潰して従来経路へ落ちない
+        assert.ok(/const missing = \/report_attack\/\.test\(msg\) && \/does not exist\|schema cache\|function\/i\.test\(msg\);/.test(fn));
+        assert.ok(/if \(!missing\) throw rpcErr;/.test(fn));
+        // 予約つきなのに RPC が無い環境では、黙って予約を無視せずエラーにする
+        assert.ok(fn.includes('予約つきの凸報告には supabase/40_attack_with_reservation_rpc.sql'));
+    });
+    test('L2 配線: reservations.js を読み込み、予約カードがカード定義にある', () => {
+        assert.ok(html.includes('<script defer src="./js/domain/reservations.js"></script>'));
+        assert.ok(html.includes('id="opsResvList"'));
+        const layout = read('js', 'domain', 'opsLayout.js');
+        assert.ok(/id: 'opsSecReserve'/.test(layout));
+    });
+
     test('L1 配線: 安定化の結果を運営に見せる (効いたのか組み直したのか)', () => {
         assert.ok(/const st = plan\.stability;/.test(html));
         assert.ok(html.includes('前回の割当をそのまま維持しました'));

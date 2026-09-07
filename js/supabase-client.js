@@ -1172,6 +1172,51 @@ window.supabaseLoadMyAttacks = async function (playerId, seasonId, date) {
 
 // 凸を1件追加
 window.supabaseAddAttack = async function ({ seasonId, playerId, attackDate, bossNumber, bossCode, damageRaw, level, characters }, opts = {}) {
+    // ★ 40_attack_with_reservation_rpc.sql があれば **サーバ側の1トランザクション**でやる。
+    //   従来の「凸数を読む → insert → 残HPを read-modify-write」は
+    //   ①採番と②insert の間に別端末が凸すると attack_number が衝突し、
+    //   ③は同時凸でダメージを取りこぼす。予約が入ると「凸は入ったのに予約が生きたまま」=
+    //   ソルバーが枠を二重に押さえて本人の残り凸が消える、という形で表に出る。
+    //   未適用の環境では下の従来経路に静かに劣化する (予約の消し込みだけができない)
+    try {
+        const { data: rpc, error: rpcErr } = await supabase.rpc('report_attack', {
+            p_season_id: seasonId, p_player_id: playerId, p_attack_date: attackDate,
+            p_boss_number: bossNumber, p_boss_code: bossCode,
+            p_damage_raw: Math.round(damageRaw), p_level: level || 1,
+            p_characters: characters || [],
+            p_reservation_id: opts.reservationId ?? null,
+            p_skip_hp_decrement: !!opts.skipHpDecrement,
+            p_actor: opts.actorName || null,
+        });
+        if (!rpcErr && rpc) {
+            window.supabaseLogActivity?.(
+                opts.isProxy ? 'proxy_attack' : 'attack',
+                `B${bossNumber} (${bossCode}) に ${(Math.round(damageRaw) / 1e9).toFixed(2)}B 凸 (${rpc.attack_number}凸目)`
+                    + (opts.reservationId ? ' [予約]' : ''),
+                { playerId, actorName: opts.actorName || null }
+            );
+            return { id: rpc.id, attack_number: rpc.attack_number, _hpAfter: rpc.hp_after ?? null };
+        }
+        // RPC が無い環境だけ従来経路へ落ちる。それ以外のエラー (3凸済み・予約の不一致など) は
+        // 意味のある拒否なので、握り潰さずそのまま投げる
+        const msg = String(rpcErr?.message || '');
+        const missing = /report_attack/.test(msg) && /does not exist|schema cache|function/i.test(msg);
+        if (!missing) throw rpcErr;
+        if (opts.reservationId) {
+            throw new Error('予約つきの凸報告には supabase/40_attack_with_reservation_rpc.sql の適用が必要です');
+        }
+        console.warn('[attack] report_attack が無いので従来経路で登録します (40 未適用)');
+    } catch (e) {
+        // supabase.rpc 自体が投げた場合も上と同じ判定にする
+        const msg = String(e?.message || '');
+        const missing = /report_attack/.test(msg) && /does not exist|schema cache|function/i.test(msg);
+        if (!missing) throw e;
+        if (opts.reservationId) {
+            throw new Error('予約つきの凸報告には supabase/40_attack_with_reservation_rpc.sql の適用が必要です');
+        }
+    }
+
+    // ---- 以下は 40 未適用環境のフォールバック (従来の3リクエスト方式) ----
     // attack_number は現在の凸数 + 1
     const { data: existing, error: cErr } = await supabase
         .from('attacks')
@@ -2906,6 +2951,111 @@ window.supabaseCarryOverPlanAcks = async function (seasonId, playerIds, newPlanI
         .select('player_id');
     if (error) { console.warn('[plan ack] 引き継ぎskip:', error.message); return 0; }
     return (data || []).length;
+};
+
+// ============ 凸の予約 (L2 / 課題E — 39_plan_reservations.sql) ============
+// 「本人が引き受け、運営が承認した凸は動かさない」を成立させる層。
+// ソルバーを拘束するのは approved だけ (requested / cancel_requested は提案層)。
+// 39 未適用の環境では、読みは空配列に静かに劣化し、書き込みだけがエラーで適用を案内する。
+
+// テーブルが無い環境の判定 (列欠損とは別物 — こちらは機能ごと出さない)
+function _isMissingReservationTable(error) {
+    const blob = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`;
+    return /plan_reservations|plan_reservation_events/.test(blob)
+        && (error?.code === 'PGRST205' || error?.code === '42P01' || /does not exist|schema cache/i.test(blob));
+}
+const RESERVATION_SQL_HINT = '凸の予約には supabase/39_plan_reservations.sql を SQL Editor で適用してください';
+
+// そのシーズンの予約を全部読む (終わったものも含む — 履歴として画面に出すため)。
+// ★ 未適用環境は **null** を返す (空配列にしない — 「機能が無い」と「予約が0件」は別物。
+//   [] にすると「予約はまだありません」と出て、押しても適用エラーになる)
+window.supabaseLoadReservations = async function (seasonId) {
+    if (!seasonId) return [];
+    const { data, error } = await supabase
+        .from('plan_reservations')
+        .select('id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
+              + 'characters_snapshot, expected_damage_b, source_type, source_plan_id, source_finish_request_id, '
+              + 'status, requested_by, requested_at, approved_by, approved_at, released_by, released_at, release_reason, '
+              + 'players(name)')
+        .eq('season_id', seasonId)
+        .order('id', { ascending: true });
+    if (error) {
+        if (_isMissingReservationTable(error)) return null;
+        throw error;
+    }
+    return (data || []).map(r => ({ ...r, player_name: r.players?.name || null }));
+};
+
+// 予約を1件作る (本人の引き受け / 自分から申請 / 締め凸依頼の了承)。
+// 残凸を超える予約は DB のトリガーが弾く — クライアントの検査だけだと複数端末で破れる
+window.supabaseCreateReservation = async function (o = {}) {
+    const flex = !!o.flex;
+    const row = {
+        season_id: o.seasonId, player_id: o.playerId,
+        raid_level: o.raidLevel, boss_number: o.bossNumber,
+        time_mode: flex ? 'flex' : 'fixed',
+        time_slot: flex ? null : (o.timeSlot || null),
+        loadout_slot: Number(o.loadoutSlot) || 1,
+        characters_snapshot: Array.isArray(o.characters) ? o.characters.filter(Boolean) : [],
+        expected_damage_b: o.expectedDamageB ?? null,
+        source_type: o.sourceType || 'self',
+        source_plan_id: o.sourcePlanId ?? null,
+        source_finish_request_id: o.sourceFinishRequestId ?? null,
+        status: o.status || 'requested',
+        requested_by: o.requestedBy || null,
+    };
+    if (!row.season_id || !row.player_id) throw new Error('シーズンとメンバーが必要です');
+    if (!flex && !row.time_slot) throw new Error('時刻を選んでください');
+    const { data, error } = await supabase.from('plan_reservations').insert(row).select('*').single();
+    if (error) {
+        if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
+        // トリガー / 部分一意索引のエラーを、運営とメンバーに意味の分かる文言へ
+        const msg = String(error.message || '');
+        if (/残凸を超える予約/.test(msg)) throw new Error('残りの凸数を超える予約はできません');
+        if (/uq_plan_reservations_active|duplicate key/i.test(msg)) {
+            throw new Error('同じレベル・同じボス・同じ編成の予約がすでにあります');
+        }
+        throw error;
+    }
+    return data;
+};
+
+// 状態を進める。**更新と履歴の追記をサーバ側の1操作で**やる (RPC)。
+// expectFrom を渡すと、その間に誰かが状態を変えていた場合に弾く (取り違えた承認・解除を防ぐ)
+window.supabaseSetReservationStatus = async function (id, to, o = {}) {
+    if (!id || !to) throw new Error('予約と遷移先が必要です');
+    const { data, error } = await supabase.rpc('reservation_set_status', {
+        p_id: Number(id),
+        p_to: to,
+        p_expect_from: o.expectFrom || null,
+        p_actor: o.actor || null,
+        p_reason: o.reason || null,
+        p_plan_id: o.planId ?? null,
+    });
+    if (error) {
+        const msg = String(error.message || '');
+        if (/reservation_set_status|plan_reservations/.test(msg) && /does not exist|schema cache/i.test(msg)) {
+            throw new Error(RESERVATION_SQL_HINT);
+        }
+        if (/予約の状態が変わっています/.test(msg)) {
+            throw new Error('この予約は別の運営が操作しました。画面を更新してから、もう一度お試しください');
+        }
+        if (/許可されていない状態遷移/.test(msg)) throw new Error('この予約はもう変更できません');
+        throw error;
+    }
+    return data;
+};
+
+// 予約の履歴 (誰がいつ何をしたか)。監査はこちらが正 — status 列は「いまの状態」のキャッシュ
+window.supabaseLoadReservationEvents = async function (reservationId) {
+    if (!reservationId) return [];
+    const { data, error } = await supabase
+        .from('plan_reservation_events')
+        .select('id, from_status, to_status, actor_name, reason, created_at')
+        .eq('reservation_id', Number(reservationId))
+        .order('id', { ascending: true });
+    if (error) { console.warn('[reservation] 履歴の取得skip:', error.message); return []; }
+    return data || [];
 };
 
 // このシーズンで「確認しました」を押した人の一覧 (再配信時の通知対象)。
