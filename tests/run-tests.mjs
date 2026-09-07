@@ -3431,6 +3431,11 @@ console.log('\nreservationsDomain (凸の予約):');
     // クライアント側と SQL の食い違いも見るので読んでおく
     const _client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
     const res = (o = {}) => ({
+        // ★ approved_at: 承認済み起点かどうかの印。approved / cancel_requested / fulfilled / released は
+        //   「一度承認された」ことにする (isFixed は approved_at の有無で cancel_requested を区別する)。
+        //   未承認の取り下げを作るときは approved_at: null を明示する
+        approved_at: o.approved_at !== undefined ? o.approved_at
+            : (['approved', 'cancel_requested', 'fulfilled', 'released'].includes(o.status ?? 'approved') ? '2026-09-07T00:00:00Z' : null),
         id: o.id ?? 1, season_id: 30, player_id: o.pid ?? 'p1',
         raid_level: o.lv ?? 2, boss_number: o.boss ?? 3,
         time_mode: o.flex ? 'flex' : 'fixed', time_slot: o.flex ? null : (o.slot ?? 'h21'),
@@ -3449,6 +3454,17 @@ console.log('\nreservationsDomain (凸の予約):');
             '取り消し希望を出しただけで固定が外れている');
         assert.equal(rv.isFixed(rows[1]), true);
         assert.equal(rv.isFixed(rows[2]), false);
+        // ★ 未承認の申請を本人が引っ込めた cancel_requested (approved_at 無し) は固定にしない
+        const withdrawn = { ...res({ id: 5, pid: 'p5', status: 'cancel_requested' }), approved_at: null };
+        assert.equal(rv.isFixed(withdrawn), false, '未承認の申請を引っ込めただけで固定になっている');
+        assert.deepEqual(rv.toSolverConstraints([withdrawn]), []);
+        assert.equal(rv.fingerprint([withdrawn]), '', '未承認の取り下げが指紋に入っている');
+        // 固定されている cancel_requested は自動解除・凸の紐づけの対象
+        const fixedCancel = { ...res({ id: 6, pid: 'p6', lv: 1, boss: 1, status: 'cancel_requested' }) };
+        assert.deepEqual(rv.findInfeasible([fixedCancel], { currentLevel: 2, bosses: [] }).map(h => h.id), [6],
+            '取り消し希望中はレベルが終わっても固定のまま残る');
+        assert.equal(rv.matchForAttack([{ ...fixedCancel, characters_snapshot: [] }], { playerId: 'p6', level: 1, bossNumber: 1, characters: [] }).id, 6,
+            '取り消し希望中に本人が凸しても消し込めない');
     });
 
     test('★ 予約: 指紋は拘束に効く行だけで作る (申請が増えても変わらない / 承認・解除で変わる)', () => {
@@ -3745,8 +3761,17 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/_resv\.gen\+\+;[^\n]*\n\s*_resv\.rows = reservations;/.test(run), '世代を進めずに _resv.rows を書き換えている');
         // ★ 算出時の予約の指紋をプランに焼き込み、配信直前に取り直して照合する
         assert.ok(/plan\.reservationFingerprint = \(window\.reservationsDomain && Array\.isArray\(reservations\)\)/.test(run), '指紋を焼き込んでいない');
-        assert.ok(/if \(nowFp !== _opsLastPlan\.reservationFingerprint\) \{/.test(html), '配信直前に予約の指紋を照合していない');
-        assert.ok(/算出のあとに予約が変わりました/.test(html));
+        // ★ 配信直前の照合は fail-closed。confirm の前と INSERT の直前の両方で見る
+        const guard = html.match(/async function _publishReservationGuard[\s\S]{0,2200}/)?.[0] || '';
+        assert.ok(guard, '配信直前の予約ガードが無い');
+        assert.ok(/if \(fp === 'unsupported'\) return true;/.test(guard), '39未適用を素通りしていない');
+        assert.ok(/if \(fp == null \|\| !rv/.test(guard), '指紋が無い古い算出結果を止めていない');
+        assert.ok(/予約の取得に失敗したため配信を止めました/.test(guard), '取得失敗で止めていない');
+        assert.ok(/if \(!Array\.isArray\(nowRows\)\) \{/.test(guard), '取得結果 null で止めていない');
+        assert.ok(/if \(rv\.fingerprint\(nowRows\) !== fp\) \{/.test(guard), '指紋を照合していない');
+        assert.equal((html.match(/if \(!\(await _publishReservationGuard\(seasonId\)\)\) return;/g) || []).length, 2,
+            'confirm の前と INSERT の直前の2箇所で照合していない');
+        assert.ok(/: \(reservations === null \? 'unsupported' : null\);/.test(run), '39未適用の印を焼き込んでいない');
         assert.ok(!/_resv\.rows\)\s*\}, snapshot\)/.test(run), '画面の状態 (_resv.rows) をそのまま渡している');
     });
 
@@ -3782,8 +3807,9 @@ console.log('\nreservationsDomain (凸の予約):');
         const fn = html.match(/async function _releaseInfeasibleReservations[\s\S]{0,4200}/)?.[0] || '';
         assert.ok(fn, '自動解除が無い');
         assert.ok(/rv\.findInfeasible\(rows, board\)/.test(fn), '対象の判定をドメインでやっていない');
-        // ★ 楽観ロック: 別端末が先に外していたら通知しない (2重通知よけ)
-        assert.ok(/\{ expectFrom: 'approved', reason: h\.reason, actor: 'system' \}/.test(fn));
+        // ★ 楽観ロック: 別端末が先に外していたら通知しない (2重通知よけ)。
+        //   期待する状態は行の実際の状態 (approved / 承認済み起点の cancel_requested)
+        assert.ok(/\{ expectFrom: h\.row\.status, reason: h\.reason, actor: 'system' \}/.test(fn), 'expectFrom を approved に固定している');
         assert.ok(/if \(released\.length === 0\) return;/.test(fn), '外せた分だけ通知する形になっていない');
         assert.ok(/supabaseLogActivityStrict\?\.\('reservation_release'/.test(fn), '監査ログが無い');
         assert.ok(/playerIds: \[r\.player_id\]/.test(fn), '本人だけに送っていない');
@@ -3992,6 +4018,9 @@ console.log('\nreservationsDomain (凸の予約):');
         // 履歴の理由に載せる (黙って fulfilled にすると約束どおりに見えてしまう)
         assert.ok(/COALESCE\('凸報告により実行済み \(' \|\| v_mismatch \|\| '\)', '凸報告により実行済み'\)/.test(_sqlRpc));
         assert.ok(/'mismatch', v_mismatch/.test(_sqlRpc));
+        // ★ 消し込めるのは固定されている予約 (approved / 承認済み起点の cancel_requested)
+        assert.ok(/v_res\.status = 'cancel_requested' AND v_res\.approved_at IS NOT NULL/.test(_sqlRpc), 'RPC が取り消し希望中の予約を消し込めない');
+        assert.ok(/VALUES \(p_reservation_id, v_res\.status, 'fulfilled'/.test(_sqlRpc), '履歴の from_status を approved に固定している');
         // ★ ボス違いだけは止める (別のボスを殴って予約が消えるのは事故)
         assert.ok(/v_res\.boss_number <> p_boss_number[\s\S]{0,200}RAISE EXCEPTION/.test(_sqlRpc));
     });

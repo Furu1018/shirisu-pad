@@ -65,8 +65,11 @@ BEGIN
         IF v_res.player_id <> p_player_id OR v_res.season_id <> p_season_id THEN
             RAISE EXCEPTION 'この予約は別のメンバー/シーズンのものです' USING ERRCODE = 'check_violation';
         END IF;
-        IF v_res.status <> 'approved' THEN
-            RAISE EXCEPTION '承認済みの予約ではありません (いま %)', v_res.status USING ERRCODE = 'check_violation';
+        -- ★ 消し込めるのは「固定されている」予約: approved と、承認済み起点の cancel_requested
+        --   (取り消し希望を出したまま本人が凸した場合。消し込まないと予約が残って枠を塞ぐ — Codex指摘 2026-09-07)。
+        --   未承認の申請を引っ込めた cancel_requested (approved_at IS NULL) は対象外
+        IF NOT (v_res.status = 'approved' OR (v_res.status = 'cancel_requested' AND v_res.approved_at IS NOT NULL)) THEN
+            RAISE EXCEPTION '固定されている予約ではありません (いま %)', v_res.status USING ERRCODE = 'check_violation';
         END IF;
         -- ★ ボスが違う凸で予約を消し込ませない (「別のボスを殴ったのに予約が消えた」を防ぐ)。
         --   レベルは実際の進行とずれることがあるので照合しない (ボスと本人が合っていれば実行とみなす)
@@ -152,7 +155,7 @@ BEGIN
            SET status = 'fulfilled', release_reason = 'fulfilled', updated_at = NOW()
          WHERE id = p_reservation_id;
         INSERT INTO plan_reservation_events (reservation_id, from_status, to_status, actor_name, reason)
-        VALUES (p_reservation_id, 'approved', 'fulfilled', p_actor,
+        VALUES (p_reservation_id, v_res.status, 'fulfilled', p_actor,
                 COALESCE('凸報告により実行済み (' || v_mismatch || ')', '凸報告により実行済み'));
     END IF;
 

@@ -64,8 +64,15 @@
      * @param {Object[]} rows plan_reservations の行
      * @returns {Object[]} { reservationId, memberId, level, bossNumber, loadoutSlot, timeSlot, flex, team, expectedB }
      */
-    // ソルバーを拘束する状態 (= 運営が承認済みで、まだ解除されていない)
-    function isFixed(r) { return !!r && (r.status === 'approved' || r.status === 'cancel_requested'); }
+    // ソルバーを拘束する状態 (= 運営が承認済みで、まだ解除されていない)。
+    // ★ cancel_requested は「承認済みからの取り消し希望」だけ固定 (Codex指摘 2026-09-07)。
+    //   requested → cancel_requested (未承認の申請を本人が引っ込めた) も同じ状態名なので、
+    //   approved_at の有無で区別する。未承認の申請が突然ソルバーの拘束になってはいけない
+    function isFixed(r) {
+        if (!r) return false;
+        if (r.status === 'approved') return true;
+        return r.status === 'cancel_requested' && r.approved_at != null;
+    }
 
     /**
      * 算出時の予約集合の指紋。配信直前に取り直した集合と比べ、違えば配信を止める
@@ -131,7 +138,10 @@
             .forEach(b => hpByBoss.set(Number(b.boss_number), Number(b.remaining_hp_raw) || 0));
         const out = [];
         (Array.isArray(rows) ? rows : []).forEach(r => {
-            if (!isApproved(r)) return;
+            // ★ 固定されている行はすべて対象 (承認済み起点の取り消し希望も含む — Codex指摘)。
+            //   approved だけだと、取り消し希望中に対象ボスが倒れても固定のまま残り、
+            //   残凸・同一枠の一意制約・ソルバーを塞ぎ続ける
+            if (!isFixed(r)) return;
             // ★ raid_level が無い行は判定しない (Codex指摘 2026-09-07)。Number(null) は 0 なので
             //   何もしないと「Lv0 < 現在レベル」= 通過扱いで外してしまう。
             //   DB (39) では NOT NULL だが、旧データや復元漏れに備えて明示的に除く
@@ -286,7 +296,7 @@
      */
     function matchForAttack(rows, { playerId, level, bossNumber, characters }) {
         const cand = (Array.isArray(rows) ? rows : []).filter(r => r
-            && r.status === 'approved'
+            && isFixed(r)   // approved / 承認済み起点の cancel_requested (取り消し希望中に本人が凸したら消し込む)
             && String(r.player_id) === String(playerId)
             && Number(r.boss_number) === Number(bossNumber)
             // レベルは進行とずれることがあるので、指定が無ければ見ない

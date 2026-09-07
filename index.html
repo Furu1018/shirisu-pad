@@ -7189,7 +7189,7 @@
                 for (let attempt = 0; attempt < 2; attempt++) {
                     try {
                         await window.supabaseSetReservationStatus(h.id, 'released',
-                            { expectFrom: 'approved', reason: h.reason, actor: 'system' });
+                            { expectFrom: h.row.status, reason: h.reason, actor: 'system' });   // approved / cancel_requested
                         released.push(h);
                         break;
                     } catch (e) {
@@ -15086,7 +15086,7 @@
             if (!rv || typeof window.computeOptimalPlanCore !== 'function') return null;
             const snap = await opsStore.load();
             if (!snap) return null;
-            const base = (_resv.rows || []).filter(r => r.status === 'approved');
+            const base = (_resv.rows || []).filter(r => window.reservationsDomain.isFixed(r));   // 実際のソルバー条件と同じ集合
             const solve = (rows) => window.computeOptimalPlanCore({
                 season: snap.season, bosses: snap.bosses, players: snap.players,
                 currentSlot: getCurrentSlotJST(), timeAware: true, onlyAvailableNow: false,
@@ -17057,8 +17057,10 @@
             // 配信時の照合が2回とも新シーズンになって通過し、旧盤面のプランを配信できてしまう
             plan.seasonId = snapshot?.season?.id ?? null;
             // ★ 算出時の予約集合の指紋。配信直前に取り直して比べ、違えば配信を止める (Codex指摘)
+            // 39未適用 (null) は 'unsupported' の印にして、「指紋を持たない古い算出結果」(null) と区別する
             plan.reservationFingerprint = (window.reservationsDomain && Array.isArray(reservations))
-                ? window.reservationsDomain.fingerprint(reservations) : null;
+                ? window.reservationsDomain.fingerprint(reservations)
+                : (reservations === null ? 'unsupported' : null);
             // ★ L1: 「どの配信を約束として尊重したか」を焼き込む (Codex指摘 2026-09-07)。
             //   運営3人が同じ配信 P0 を基準に組んでいるとき、A が P1 を配信したあとに
             //   B が P0 基準のまま P2 を配信すると、B は P1 の約束を知らないまま壊してしまう。
@@ -17606,6 +17608,37 @@
         // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのホームに表示。
         // 再配信 (レイド中に予期せぬことが起きて組み直した場合) は、すでに
         // 「確認しました」を押していた人 = 旧プランで動くつもりだった人に更新を知らせる
+        // 配信直前の予約照合。true = 配信してよい。
+        // ★ fail-closed (Codex指摘 2026-09-07): 指紋を持たない古い算出結果・取得失敗・取得結果 null は止める。
+        //   39未適用の環境で組んだプラン ('unsupported') だけは、予約が存在し得ないので素通り
+        async function _publishReservationGuard(seasonId) {
+            const fp = _opsLastPlan?.reservationFingerprint;
+            if (fp === 'unsupported') return true;
+            const rv = window.reservationsDomain;
+            if (fp == null || !rv || typeof window.supabaseLoadReservations !== 'function') {
+                alert('⚠️ このプランは予約を照合できません (古い算出結果です)。\n\nプランを算出し直してから配信してください。');
+                return false;
+            }
+            let nowRows = null;
+            try { nowRows = await window.supabaseLoadReservations(seasonId); }
+            catch (e) {
+                alert(`⚠️ 予約の取得に失敗したため配信を止めました (${e?.message || e})。\n\nもう一度お試しください。`);
+                return false;
+            }
+            if (!Array.isArray(nowRows)) {
+                alert('⚠️ 予約を読めないため配信を止めました。supabase/39_plan_reservations.sql の適用を確認してください。');
+                return false;
+            }
+            if (rv.fingerprint(nowRows) !== fp) {
+                alert('⚠️ 算出のあとに予約が変わりました (承認・解除・取り消し希望など)。\n\n'
+                    + 'いま表示しているプランはその予約を知らないため、そのまま配信すると'
+                    + '固定したはずの凸が動く/外れたはずの凸が残る、が起きます。\n\n'
+                    + 'プランを算出し直してから配信してください。');
+                return false;
+            }
+            return true;
+        }
+
         async function handleOpsPublishPlan() {
             if (!_opsLastPlan) {
                 showNotification('先に「👥 全員」か「⏰ 凸可能のみ」でプランを算出してください');
@@ -17659,24 +17692,12 @@
                         + 'プランを算出し直してから配信してください。');
                     return;
                 }
-                // ★ 予約が算出のあとに変わっていたら配信させない (Codex指摘 2026-09-07)。
-                //   別端末で承認・解除が入ると、このプランはその予約を知らない。
-                //   そのまま出すと、固定したはずの凸が動く / 外れたはずの凸が残る
-                if (_opsLastPlan?.reservationFingerprint != null && window.reservationsDomain
-                    && typeof window.supabaseLoadReservations === 'function') {
-                    const nowRows = await window.supabaseLoadReservations(seasonId);
-                    if (Array.isArray(nowRows)) {
-                        const nowFp = window.reservationsDomain.fingerprint(nowRows);
-                        if (nowFp !== _opsLastPlan.reservationFingerprint) {
-                            alert('⚠️ 算出のあとに予約が変わりました (承認・解除・取り消し希望など)。\n\n'
-                                + 'いま表示しているプランはその予約を知らないため、そのまま配信すると'
-                                + '固定したはずの凸が動く/外れたはずの凸が残る、が起きます。\n\n'
-                                + 'プランを算出し直してから配信してください。');
-                            return;
-                        }
-                    }
-                }
             } catch (e) { console.warn('[publish] 差分の取得skip (影響の提示なしで続行):', e?.message || e); }
+            // ★ 予約が算出のあとに変わっていたら配信させない (Codex指摘 2026-09-07)。
+            //   別端末で承認・解除が入ると、このプランはその予約を知らない。
+            //   そのまま出すと、固定したはずの凸が動く / 外れたはずの凸が残る。
+            //   ★ fail-closed: 指紋が無い (古い算出結果) ・取得失敗でも止める。39未適用 ('unsupported') だけ素通り
+            if (!(await _publishReservationGuard(seasonId))) return;
             const diffMsg = publishDiff && window.planDiffDomain
                 ? `\n\n${window.planDiffDomain.summaryText(publishDiff)}` : '';
             const ackMsg = ackedPreview.length > 0
@@ -17698,6 +17719,10 @@
                     alert('❌ 操作中にアクティブシーズンが変わりました。プランを算出し直してから配信してください。');
                     return;
                 }
+                // ★ 確認ダイアログを出している間に予約が変わっていないか、INSERT の直前にもう一度見る
+                //   (confirm の前だけだと、確認中の承認・解除を知らないまま配信できる — Codex指摘)。
+                //   ※ 照合と INSERT の間の窓は残る。完全に閉じるにはサーバ側 RPC で照合と INSERT を一体化する
+                if (!(await _publishReservationGuard(seasonId))) return;
                 const me = getCurrentIdentity();
                 const pub = await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null, seasonId, PLAN_SCHEMA);
                 showNotification('✅ プランを配信しました');
