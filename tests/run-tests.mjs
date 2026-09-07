@@ -5066,11 +5066,58 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     });
     test('L2 配線: 状態を進めたら盤面を捨てる / 二重押しを止める', () => {
         const fn = html.match(/async function _resvTransition\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(_resv\.busy\.has\(rid\)\) return;/.test(fn), '二重押しを止めていない');
+        assert.ok(/if \(_resv\.busy\.has\(rid\)\) return false;/.test(fn), '二重押しを止めていない');
         assert.ok(/opsStore\.invalidate\(\);/.test(fn), '予約が変わったのに盤面を読み直していない');
         // 取り違えた承認・解除を防ぐ (別の運営が先に操作していたら弾く)
         assert.ok(/expectFrom: 'requested'/.test(html));
         assert.ok(/expectFrom: 'cancel_requested'/.test(html));
+    });
+    test('★ B: 承認 → 固定して組み直す → 差分を見て配信 (1タップ) / 自動配信はしない (2026-09-08)', () => {
+        const ap = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const ok = await _resvTransition\(id, 'approved'/.test(ap), '承認の成否を見ていない');
+        assert.ok(/if \(!ok\) return;\s*\n\s*\/\/ B: 固定して組み直し → 配信 \(1タップ\)\s*\n\s*await _recomputeAndOfferPublish\(/.test(ap),
+            '承認のあとに組み直し→配信の流れへ入っていない');
+        const fl = html.match(/async function _recomputeAndOfferPublish\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/await computeOptimalPlan|await computeAndRenderOptimalPlan\(\{ onlyAvailableNow: false \}\)/.test(fl), '算出していない');
+        // ★ 算出が無効化されたら古いプランを配信しない
+        assert.ok(/if \(!_opsLastPlan \|\| _opsLastPlan === before\)/.test(fl), '古いプランを配信してしまう');
+        // 配信は handleOpsPublishPlan (差分・予約の照合・確認ダイアログ) を通す = 自動配信ではない
+        assert.ok(/await handleOpsPublishPlan\(\);/.test(fl), '配信の確認を通していない');
+        assert.ok(!/supabasePublishPlan\(/.test(fl), '確認を飛ばして直接配信している');
+        // 承認できなかったとき (別の運営が先に操作 等) は流れに入らない
+        const tr = html.match(/async function _resvTransition\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/let ok = false;/.test(tr) && /ok = true;/.test(tr) && /return ok;/.test(tr), '成否を返していない');
+    });
+    test('★ C→: 候補そのものが置けない予約は承認しない (理由は日本語)', () => {
+        const ap = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(impact && impact\.cannotPlace\) \{/.test(ap), '置けない候補を止めていない');
+        assert.ok(/impact\.cannotPlaceText/.test(ap), '理由を出していない');
+        const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/window\.planDiffDomain, row\.id\)/.test(im), '候補IDを渡していない (置けたかを判定できない)');
+    });
+    test('★ A: 運営ホームのヒーロー「配信後の予約があります、確認して下さい」→ 組み直し→配信へ飛ぶ', () => {
+        const fn = html.match(/async function renderMyNextAction\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn.includes('配信後の予約があります、確認して下さい'), '文言が違う');
+        assert.ok(/if \(_opsMode && season\?\.id\) \{/.test(fn), '運営ONのときだけ調べる');
+        assert.ok(/rv\.pendingRepublish\(rows, samePlan\)/.test(fn), '判定をドメインに寄せていない');
+        // 別シーズンの配信を「入っている」と見なさない
+        assert.ok(/Number\(pub\.season_id\) === Number\(season\.id\)/.test(fn));
+        // 最優先: 当日の「残り凸」より先に判定される
+        assert.ok(fn.indexOf('opsPending.count > 0') < fn.indexOf("season.hard_date === todayStr) {"), '当日の分岐より後になっている');
+        assert.ok(/heroBtn\('_opsGotoRepublish\(\)'/.test(fn), '押して飛べない');
+        assert.ok(/function _opsGotoRepublish\(\) \{ _recomputeAndOfferPublish\(null\)/.test(html));
+        // 配信の状況行にも出す
+        const st = html.match(/function _renderOpsPubStatus\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/pendingRepublish\(_resv\.rows, published\.plan\)\.count/.test(st));
+        assert.ok(st.includes('配信後の予約が'));
+    });
+    test('★ D: 固定できなかった予約の表示はコードでなく日本語 (unmetText) / レベル無しは Lv を出さない', () => {
+        const view = html.match(/固定できなかった予約が \$\{plan\.unmetReservations\.length\}件あります[^\n]*/)?.[0] || '';
+        assert.ok(view, '表示が無い');
+        assert.ok(/reservationsDomain\.unmetText\(u\)/.test(view), 'unmetText を通していない');
+        assert.ok(!/\$\{u\.reason/.test(view), 'コードをそのまま出している');
+        assert.ok(/u\.level != null \? `Lv\$\{Number\(u\.level\)\} ` : ''/.test(view), 'レベル無しでも Lv を出している');
+        assert.ok(view.includes('実行済みなら凸報告で消えます'), '運営の2択 (C) を示していない');
     });
     test('L2 配線: 凸報告は原子的なRPCを通る (40未適用だけ従来経路)', () => {
         const fn = client.match(/window\.supabaseAddAttack = async function[\s\S]*?\n};\n/)?.[0] || '';

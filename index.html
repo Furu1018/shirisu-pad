@@ -6737,7 +6737,31 @@
             const lack = 3 - maxPick;   // 3凸に足りない部隊数
             let lead, why, cta, hero = false, subLink = '';
 
-            if (season && season.hard_date === todayStr) {
+            // ★ 運営ON: 配信のあとに固定された予約があれば、それが最優先の1アクション (ユーザー決定 A・2026-09-08)。
+            //   承認しても自動では配信しないので、配信し直すまで本人のホームは古い配信を見続ける。
+            //   ここで押すと プラン算出 → 差分 → 配信 の流れに飛ぶ (B と同じ1本の導線)
+            let opsPending = null;
+            if (_opsMode && season?.id) {
+                try {
+                    const [rows, pub] = await Promise.all([
+                        window.supabaseLoadReservations?.(season.id).catch(() => null) ?? null,
+                        window.supabaseGetPublishedPlan?.().catch(() => null) ?? null,
+                    ]);
+                    if (seq !== _nextActionSeq) return;
+                    const rv = window.reservationsDomain;
+                    if (rv && Array.isArray(rows)) {
+                        const samePlan = (pub && Number(pub.season_id) === Number(season.id)) ? pub.plan : null;
+                        opsPending = rv.pendingRepublish(rows, samePlan);
+                    }
+                } catch { opsPending = null; }
+            }
+            if (opsPending && opsPending.count > 0) {
+                hero = true;
+                lead = '🔒 配信後の予約があります、確認して下さい';
+                why = `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。固定して組み直し、配信し直してください。`
+                    + 'それまで本人のホームには「運営が組み直し中」と出ています。';
+                cta = heroBtn('_opsGotoRepublish()', '🧮 固定して組み直す → 配信');
+            } else if (season && season.hard_date === todayStr) {
                 // A: 当日 — 凸の消化状況を反映 (キャッシュ優先・無ければ取得)
                 let atkCount = null;
                 try {
@@ -14912,6 +14936,8 @@
             _resv.rows = rows;
             _paintOpsReservations();
             _renderOpsCockpitSoon();
+            // 配信の状況行に「配信後の予約 N件」を出すため、一覧が読めたら取り直す
+            if (typeof _syncOpsUnpublishBtn === 'function') _syncOpsUnpublishBtn();
         }
 
         function _paintOpsReservations() {
@@ -14979,9 +15005,10 @@
         // 状態を進める共通処理。押している間はそのカードのボタンを止める (二重承認よけ)
         async function _resvTransition(id, to, o = {}) {
             const rid = Number(id);
-            if (_resv.busy.has(rid)) return;
+            if (_resv.busy.has(rid)) return false;
             _resv.busy.add(rid);
             _paintOpsReservations();
+            let ok = false;
             try {
                 const me = getCurrentIdentity();
                 await window.supabaseSetReservationStatus(rid, to, { ...o, actor: me?.name || '運営' });
@@ -14993,13 +15020,38 @@
                 showNotification(o.done || '更新しました');
                 // 予約が変わるとプランの前提が変わる。盤面を捨てて読み直す
                 opsStore.invalidate();
+                ok = true;
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
             } finally {
                 _resv.busy.delete(rid);
             }
             await renderOpsReservations(true);
+            // 運営ホームのヒーロー (「配信後の予約があります」) も同じ鮮度に
+            if (typeof renderMyNextAction === 'function') renderMyNextAction(getCurrentIdentity());
+            return ok;
         }
+
+        // ===== B: 承認 → 固定して組み直す → 差分を見て配信 (1タップ) =====
+        // ユーザー決定 (2026-09-08): 「予約の承認 → 固定して最適凸プラン更新はマスト」。
+        // 承認だけして配信が古いままだと、本人はプランの3枚と予約の1枚で**4凸**を求められる (3凸までなので破綻)。
+        // ★ 自動配信はしない (承認しても自動では配信しない、の決定は守る) — 配信の確認は明示の1タップ。
+        //   ここで配信を押さなかった場合は、運営ホームのヒーロー「配信後の予約があります」が促す (A)
+        async function _recomputeAndOfferPublish(noteJp) {
+            if (typeof switchTab === 'function') switchTab('ops');
+            const before = _opsLastPlan;
+            await computeAndRenderOptimalPlan({ onlyAvailableNow: false });
+            // 算出が途中で無効化された (後発の算出・ゲート・取得失敗) ときは古いプランを配信しない
+            if (!_opsLastPlan || _opsLastPlan === before) {
+                showNotification('プランを算出できませんでした。プランカードから算出し直してください');
+                return;
+            }
+            if (noteJp) showNotification(noteJp);
+            await handleOpsPublishPlan();   // 差分と影響を見せ、OK なら配信。キャンセルしても承認は成立している
+            if (typeof renderMyNextAction === 'function') renderMyNextAction(getCurrentIdentity());
+        }
+        // 運営ホームのヒーローから: 固定して組み直し → 配信へ (A)
+        function _opsGotoRepublish() { _recomputeAndOfferPublish(null).catch(e => alert(`❌ ${e?.message || e}`)); }
 
         // 承認時点の提出を読み直す。★ ユーザー決定は「承認時点で固定」なので、
         //   申請から承認までの間に本人が模擬を直していたら、承認する内容の方を採る
@@ -15029,8 +15081,14 @@
             let impact = null;
             try { impact = await _reservationImpact(row); }
             catch (e) { console.warn('[reservation] 影響の算出skip:', e?.message || e); }
-            let msg = `🔒 ${row.player_name || '#' + row.player_id} の「${rv.describe(row, bossName)}」を承認しますか？\n\n`
-                + 'プランに固定され、組み直しても動かなくなります。';
+            // ★ 候補そのものが置けない (約束の時刻にそのボスがいない見込み 等) なら承認しない。
+            //   理由は日本語で (ユーザー決定 C の置き換え・D)
+            if (impact && impact.cannotPlace) {
+                alert(`❌ この予約は固定できません。\n\n${impact.cannotPlaceText}\n\n本人と時刻を相談するか、「見送る」を押してください。`);
+                return;
+            }
+            let msg = `🔒 ${row.player_name || '#' + row.player_id} の「${rv.describe(row, bossName)}」を承認して、プランを組み直しますか？\n\n`
+                + '承認した凸は固定され、残りの人とHPで組み直します。組み直したプランは次の画面で配信できます。';
             if (impact) {
                 msg += `\n\n【固定した場合の影響】\n`
                     + `・Lv${impact.clearBefore} 完全攻略の見込み → ${impact.clearAfter >= impact.clearBefore ? '変わりません' : `Lv${impact.clearAfter} に下がります`}\n`
@@ -15052,11 +15110,14 @@
                     + '承認すると **いまの内容** で固定されます。';
             }
             if (!confirm(msg)) return;
-            await _resvTransition(id, 'approved', {
+            const ok = await _resvTransition(id, 'approved', {
                 expectFrom: 'requested', done: '🔒 予約を承認しました',
                 // 渡さなければ申請時の写しがそのまま残る
                 characters: snap?.characters || null, expectedDamageB: snap?.expectedDamageB || null,
             });
+            if (!ok) return;
+            // B: 固定して組み直し → 配信 (1タップ)
+            await _recomputeAndOfferPublish('承認した予約を固定して組み直しました');
         }
 
         async function handleReservationReject(id) {
@@ -15072,7 +15133,8 @@
             const from = row?.status === 'cancel_requested' ? 'cancel_requested' : 'approved';
             const jp = rv?.RELEASE_JP[reason] || reason;
             if (!confirm(`${label} の予約を取り下げますか？ (${jp})\n\n固定が外れ、次の算出からその枠は自由に使われます。`)) return;
-            await _resvTransition(id, 'released', { expectFrom: from, reason, done: '予約を取り下げました' });
+            const ok = await _resvTransition(id, 'released', { expectFrom: from, reason, done: '予約を取り下げました' });
+            if (ok) showNotification('取り下げた枠を使うには、プランを算出し直して配信してください');
         }
 
         async function handleReservationKeep(id) {
@@ -15092,8 +15154,9 @@
                 currentSlot: getCurrentSlotJST(), timeAware: true, onlyAvailableNow: false,
                 reservations: rv.toSolverConstraints(rows),
             });
-            // 候補は「承認済みとして」解く (approved にしないと拘束にならない)
-            return rv.approvalImpact(solve(base), solve([...base, { ...row, status: 'approved' }]), window.planDiffDomain);
+            // 候補は「承認済みとして」解く (approved にしないと拘束にならない)。
+            // 候補の ID を渡すと、置けなかったときに最初の警告として返り、承認を止められる
+            return rv.approvalImpact(solve(base), solve([...base, { ...row, status: 'approved' }]), window.planDiffDomain, row.id);
         }
 
         function handleOpsMemberPhase(p) { _mb.phase = p; _mbRebuild(); }
@@ -17210,7 +17273,7 @@
                         ${Number(plan.reservationCount) > 0 ? statChip('🔒予約を固定', plan.reservationCount + '件', '#6C42F0') : ''}
                     </div>
                     ${Number(plan.reservationCount) > 0 ? `<div style="margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(108,66,240,0.08);font-size:11px;font-weight:800;color:#5B2BE0;line-height:1.55;">予約 ${plan.reservationCount}件を固定して計算しました。固定した凸は動かさず、残りの人とHPで組み直しています。</div>` : ''}
-                    ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:#C42A30;line-height:1.55;">⚠ 固定できなかった予約が ${plan.unmetReservations.length}件あります (${esc(plan.unmetReservations.map(u => `${u.memberName || '#' + u.memberId} Lv${u.level}B${u.bossNumber}: ${u.reason || ''}`).join(' / '))})。予約の一覧で外すか、本人と調整してください。</div>` : ''}
+                    ${Array.isArray(plan.unmetReservations) && plan.unmetReservations.length > 0 ? `<div style="margin-top:8px;padding:9px 11px;border-radius:11px;background:rgba(255,61,68,0.08);font-size:11px;font-weight:800;color:#C42A30;line-height:1.55;">⚠ 固定できなかった予約が ${plan.unmetReservations.length}件あります。<br>${plan.unmetReservations.map(u => `・${esc(u.memberName || '#' + u.memberId)} ${u.level != null ? `Lv${Number(u.level)} ` : ''}B${Number(u.bossNumber)}: ${esc(window.reservationsDomain ? window.reservationsDomain.unmetText(u) : '置けませんでした')}`).join('<br>')}<br>実行済みなら凸報告で消えます。未実行なら予約の一覧で取り下げるか、本人と時刻を相談してください。</div>` : ''}
                 </div>`;
 
             const levelSections = plan.levels.map(lv => {
@@ -17914,12 +17977,19 @@
             } catch { /* 表示だけの劣化 */ }
             const who = published.published_by_name ? ` · ${published.published_by_name}` : '';
             const ago = mins == null ? '' : (mins < 60 ? ` (${mins}分前)` : ` (${Math.floor(mins / 60)}時間前)`);
+            // 配信のあとに固定された予約 (配信に入っていない) — 運営カードの一覧が読めているときだけ
+            let pending = 0;
+            try {
+                const rv = window.reservationsDomain;
+                if (rv && typeof _resv !== 'undefined' && Array.isArray(_resv.rows)) pending = rv.pendingRepublish(_resv.rows, published.plan).count;
+            } catch { pending = 0; }
             // 古い配信ほど「盤面と食い違っている」可能性が高いので色で段階を出す
-            const stale = mins != null && mins >= 180;
+            const stale = (mins != null && mins >= 180) || pending > 0;
             el.style.background = stale ? 'rgba(245,158,11,0.12)' : 'rgba(24,194,107,0.10)';
             el.style.color = stale ? '#B45309' : '#0F7A45';
             el.textContent = `${stale ? '⚠️' : '📤'} 配信中: ${when}${ago}${who}`
-                + (stale ? ' — 盤面が動いていないか確認してください' : '');
+                + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。固定して組み直し、配信し直してください`
+                    : (stale ? ' — 盤面が動いていないか確認してください' : ''));
         }
 
         // ========== 運営: ボスHP更新モーダル (Phase 3b) ==========
