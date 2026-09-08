@@ -5027,6 +5027,15 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(fn.indexOf('opsPending.count > 0') < fn.indexOf("season.hard_date === todayStr) {"), '当日の分岐より後になっている');
         assert.ok(/heroBtn\('_opsGotoRepublish\(\)'/.test(fn), '押して飛べない');
         assert.ok(/function _opsGotoRepublish\(\) \{ _recomputeAndOfferPublish\(null\)/.test(html));
+        // ★ 承認待ち (requested / cancel_requested) があればホームで気づける (ユーザー要望 2026-09-08)。
+        //   承認が先 (承認すると組み直し→配信の流れに入り、配信後の予約も一緒に片づく)
+        assert.ok(/opsWaiting = rows\.filter\(r => r\.status === 'requested' \|\| r\.status === 'cancel_requested'\)\.length;/.test(fn), '承認待ちを数えていない');
+        assert.ok(fn.includes('承認待ちの予約が ${opsWaiting}件あります'), '承認待ちの文言が無い');
+        assert.ok(fn.indexOf('_opsMode && opsWaiting > 0') < fn.indexOf('opsPending && opsPending.count > 0'), '承認待ちより配信後の予約が先になっている');
+        assert.ok(/heroBtn\('_opsGotoReservations\(\)'/.test(fn), '予約カードへ飛べない');
+        const go = html.match(/function _opsGotoReservations\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_opsJump\('opsSecReserve'\)/.test(go), '予約カードを開いていない');
+        assert.ok(/renderOpsReservations\(true\)/.test(go), '一覧を取り直していない');
         // 配信の状況行にも出す
         const st = html.match(/function _renderOpsPubStatus\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/pendingRepublish\(_resv\.rows, published\.plan\)\.count/.test(st));

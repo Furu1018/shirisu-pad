@@ -6759,6 +6759,7 @@
             //   承認しても自動では配信しないので、配信し直すまで本人のホームは古い配信を見続ける。
             //   ここで押すと プラン算出 → 差分 → 配信 の流れに飛ぶ (B と同じ1本の導線)
             let opsPending = null;
+            let opsWaiting = 0;   // 承認待ち + 取り消し希望 (どちらも運営の判断待ち)
             if (_opsMode && season?.id) {
                 try {
                     const [rows, pub] = await Promise.all([
@@ -6770,10 +6771,19 @@
                     if (rv && Array.isArray(rows)) {
                         const samePlan = (pub && Number(pub.season_id) === Number(season.id)) ? pub.plan : null;
                         opsPending = rv.pendingRepublish(rows, samePlan);
+                        opsWaiting = rows.filter(r => r.status === 'requested' || r.status === 'cancel_requested').length;
                     }
-                } catch { opsPending = null; }
+                } catch { opsPending = null; opsWaiting = 0; }
             }
-            if (opsPending && opsPending.count > 0) {
+            // ★ 運営ON: 承認待ちがあればホームで気づけるようにする (ユーザー要望 2026-09-08)。
+            //   戦況タブの予約カードは当日畳まれているので、ホームに出ないと見落とす
+            if (_opsMode && opsWaiting > 0) {
+                hero = true;
+                lead = `🔒 承認待ちの予約が ${opsWaiting}件あります`;
+                why = '承認するとその凸は固定され、プランを組み直して配信できます。取り消し希望も含みます。'
+                    + (opsPending && opsPending.count > 0 ? ` 配信し直しが必要な予約も ${opsPending.count}件あります。` : '');
+                cta = heroBtn('_opsGotoReservations()', '🔒 予約を確認する');
+            } else if (opsPending && opsPending.count > 0) {
                 hero = true;
                 lead = '🔒 配信後の予約があります、確認して下さい';
                 why = `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。固定して組み直し、配信し直してください。`
@@ -15187,6 +15197,12 @@
         }
         // 運営ホームのヒーローから: 固定して組み直し → 配信へ (A)
         function _opsGotoRepublish() { _recomputeAndOfferPublish(null).catch(e => alert(`❌ ${e?.message || e}`)); }
+        // 運営ホームのヒーローから: 戦況タブの予約カードへ (承認待ち・取り消し希望)
+        function _opsGotoReservations() {
+            if (typeof switchTab === 'function') switchTab('ops');
+            _opsJump('opsSecReserve');
+            if (typeof renderOpsReservations === 'function') renderOpsReservations(true).catch(() => { /* 一覧が出ないだけ */ });
+        }
 
         // 承認時点の提出を読み直す。★ ユーザー決定は「承認時点で固定」なので、
         //   申請から承認までの間に本人が模擬を直していたら、承認する内容の方を採る
