@@ -16071,13 +16071,26 @@
             if (!dom || !ta || _growth.busy || !_growth.seasonId) return;
             const text = ta.value;
             if (!String(text || '').trim()) { _growthNote('err', 'ブックマークレットが出した文字列を貼り付けてください。'); return; }
-            let box;
-            try { box = dom.parseImportPayload(text); }
-            catch (e) { _growthNote('err', e?.message || String(e)); return; }
+            // ★ 取り込みの材料は**開始時に写しを取る** (Codex指摘 2026-09-09)。
+            //   1人ずつ await する間に renderOpsGrowth が走ると _growth.players / used / seasonId が
+            //   次のシーズンのものに入れ替わり、古いシーズンの行に新しい盤面の中身を書いてしまう
             const seasonId = _growth.seasonId;
-            const byOpenid = new Map((_growth.players || []).filter(p => p.blabla_openid).map(p => [String(p.blabla_openid), p]));
-            const results = [];
+            const players = (_growth.players || []).slice();
+            const wanted = (_growth.used || []).slice();
+            const nameMap = _growthNameMap;
+            const priorStatus = new Map((_growth.statusRows || []).map(r => [String(r.player_id), r.status]));
+            let box;
             _growth.busy = true; _growth.msg = null; _growthPaint();
+            try {
+                // ★ 展開は非同期 (gzip)。await しないと Promise を box に入れてしまい、取り込みが必ず失敗する
+                box = await dom.parseImportPayload(text);
+            } catch (e) {
+                _growth.busy = false;
+                _growthNote('err', e?.message || String(e));
+                return;
+            }
+            const byOpenid = new Map(players.filter(p => p.blabla_openid).map(p => [String(p.blabla_openid), p]));
+            const results = [];
             try {
                 for (const m of box.members) {
                     const p = byOpenid.get(String(m.openid));
@@ -16086,7 +16099,7 @@
                         results.push({ playerId: null, name: m.label || m.openid, status: 'error', detail: 'この識別子のメンバーが PAD にいません', count: 0 });
                         continue;
                     }
-                    const prep = dom.prepareMember(m, { nameCodeMap: _growthNameMap, wanted: _growth.used });
+                    const prep = dom.prepareMember(m, { nameCodeMap: nameMap, wanted });
                     let status = prep.status, detail = prep.detail, count = 0;
                     if (prep.save) {
                         try { count = await window.supabaseSaveMemberGrowth(seasonId, p.id, prep.rows); }
@@ -16096,9 +16109,12 @@
                     catch (e) { status = 'error'; detail = e?.message || String(e); }
                     results.push({ playerId: p.id, name: p.name, status, detail, count });
                 }
-                // ★ 識別子が無い人も「未紐づけ」として残す — 「非公開」と混ざると声をかける相手を間違える
-                for (const p of (_growth.players || [])) {
+                // ★ 識別子が無い人も「未紐づけ」として残す — 「非公開」と混ざると声をかける相手を間違える。
+                //   ただし**すでに取り込めている人は上書きしない** (Codex指摘 2026-09-09) —
+                //   あとから識別子を外しただけで、そのシーズンに取り込んだ事実まで消えてしまう
+                for (const p of players) {
                     if (p.blabla_openid) continue;
+                    if (priorStatus.get(String(p.id)) === 'ok') continue;
                     try { await window.supabaseSaveMemberGrowthStatus(seasonId, p.id, { status: 'no_openid', detail: null, characterCount: null }); }
                     catch { /* 状態が残らないだけ */ }
                     results.push({ playerId: p.id, name: p.name, status: 'no_openid', detail: null, count: 0 });
@@ -16110,7 +16126,6 @@
                 _growthNote(sum.error ? 'warn' : 'ok',
                     `取り込み: ${sum.ok}人 / ${sum.characters}体。非公開 ${sum.private}人・未ひも付け ${sum.noOpenid}人・失敗 ${sum.error}人`);
             } catch (e) {
-                _growth.busy = false;
                 _growthNote('err', e?.message || String(e));
             } finally {
                 _growth.busy = false;

@@ -138,5 +138,110 @@ test('取り込み中はボタンと貼り付け欄を止める / 伝言はそ�
     noUndef(out);
 });
 
+// ============================================================================
+// 取り込み本体 (handleGrowthImport) の実行テスト
+// ★ ここが実行テストである理由: parseImportPayload は **非同期** (gzip 展開)。
+//   await を忘れると box が Promise になり、box.members が undefined で必ず失敗する。
+//   ソース検査では気づけない (実際 2026-09-09 に await 漏れのまま commit した)。
+// ============================================================================
+const SRC_IMPORT = cut('        async function handleGrowthImport()');
+const NAME_MAP = { '1012': { jp: 'サクラ', pad: 'サクラ' } };
+const member = (o = {}) => ({
+    openid: '111111', label: 'あ', code: 0, area: 81, requested: 1,
+    characters: [{ name_code: 1012 }],
+    details: [{ name_code: 1012, grade: 3, core: 0, lv: 200 }],
+    stateEffects: [], ...o,
+});
+function runImport({ players = [], statusRows = [], used = ['サクラ'], payload = { members: [member()] }, onSaveGrowth = null } = {}) {
+    const calls = { growth: [], status: [], notes: [], repaints: 0 };
+    const ta = { value: typeof payload === 'string' ? payload : JSON.stringify(payload) };
+    const state = { gen: 0, seasonId: 10, players, statusRows, used, wanted: { codes: [1012], missing: [] }, busy: false, msg: null };
+    const env = {
+        _growth: state,
+        _growthNameMap: NAME_MAP,
+        window: {
+            growthDomain: dom,
+            supabaseSaveMemberGrowth: async (seasonId, playerId, rows) => {
+                calls.growth.push({ seasonId, playerId, names: rows.map(r => r.character_name) });
+                if (onSaveGrowth) await onSaveGrowth(state);
+                return rows.length;
+            },
+            supabaseSaveMemberGrowthStatus: async (seasonId, playerId, o) => { calls.status.push({ seasonId, playerId, ...o }); },
+        },
+        document: { getElementById: (id) => (id === 'opsGrowthPaste' ? ta : null) },
+        _growthPaint: () => { calls.repaints++; },
+        _growthNote: (kind, text) => { calls.notes.push({ kind, text }); },
+        renderOpsGrowth: async () => { },
+    };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, SRC_IMPORT + '\nreturn handleGrowthImport;')(...keys.map(k => env[k]));
+    return { run: () => fn(), calls, state, ta };
+}
+
+async function testAsync(name, f) {
+    try { await f(); console.log('  ✅ ' + name); pass++; }
+    catch (e) { console.error('  ❌ ' + name + '\n     ' + e.constructor.name + ': ' + e.message); fail++; }
+}
+
+console.log('\n取り込み本体:\n');
+
+await testAsync('★ 貼り付けの展開を await している (忘れると1件も保存されない)', async () => {
+    const t = runImport({ players: [{ id: 1, name: 'あ', blabla_openid: '111111' }] });
+    await t.run();
+    assert.equal(t.calls.growth.length, 1, '保存されていない: ' + JSON.stringify(t.calls.notes));
+    assert.deepEqual(t.calls.growth[0], { seasonId: 10, playerId: 1, names: ['サクラ'] });
+    assert.equal(t.calls.status[0].status, 'ok');
+    assert.equal(t.ta.value, '', '成功したのに貼り付け欄を空にしていない');
+    assert.equal(t.state.busy, false, '実行中のままになっている');
+    assert.match(t.calls.notes.at(-1).text, /取り込み: 1人 \/ 1体/);
+});
+
+await testAsync('★ 取り込み中にシーズンが切り替わっても、開始時の写しで書き続ける', async () => {
+    // 1人目の保存中に renderOpsGrowth が走って _growth が次のシーズンに入れ替わる状況
+    const t = runImport({
+        players: [{ id: 1, name: 'あ', blabla_openid: '111111' }, { id: 2, name: 'い', blabla_openid: '222222' }],
+        payload: { members: [member(), member({ openid: '222222', label: 'い' })] },
+        onSaveGrowth: async (state) => {
+            state.seasonId = 99; state.players = [{ id: 7, name: 'ぜんぜん別人' }]; state.used = ['別のキャラ'];
+        },
+    });
+    await t.run();
+    assert.equal(t.calls.growth.length, 2, '2人目が落ちている');
+    assert.ok(t.calls.growth.every(c => c.seasonId === 10), '別のシーズンに書いている: ' + JSON.stringify(t.calls.growth));
+    assert.ok(t.calls.growth.every(c => c.names.length === 1), '入れ替わった対象キャラで絞っている');
+    assert.deepEqual(t.calls.growth.map(c => c.playerId), [1, 2]);
+    assert.ok(t.calls.status.every(c => c.seasonId === 10), '状態を別のシーズンに書いている');
+});
+
+await testAsync('★ すでに取り込めている人は、識別子が無くても no_openid で上書きしない', async () => {
+    const t = runImport({
+        players: [{ id: 1, name: 'あ', blabla_openid: '111111' }, { id: 2, name: 'い', blabla_openid: null }, { id: 3, name: 'う', blabla_openid: null }],
+        statusRows: [{ player_id: 2, status: 'ok' }, { player_id: 3, status: 'error' }],
+    });
+    await t.run();
+    const noOpenid = t.calls.status.filter(c => c.status === 'no_openid');
+    assert.deepEqual(noOpenid.map(c => c.playerId), [3], '取り込み済みの人を未ひも付けに落としている');
+});
+
+await testAsync('非公開・PADにいない識別子は保存せず、理由だけ残す', async () => {
+    const t = runImport({
+        players: [{ id: 1, name: 'あ', blabla_openid: '111111' }],
+        payload: { members: [member({ code: 1301002 }), member({ openid: '999999', label: '知らない人' })] },
+    });
+    await t.run();
+    assert.equal(t.calls.growth.length, 0, '保存してはいけない行を保存している');
+    assert.deepEqual(t.calls.status.map(c => c.status), ['private'], 'PAD にいない識別子まで状態に書いている');
+    assert.match(t.calls.notes.at(-1).text, /非公開 1人/);
+});
+
+await testAsync('壊れた貼り付けは理由を出して止まる (実行中のままにしない)', async () => {
+    const t = runImport({ players: [{ id: 1, name: 'あ', blabla_openid: '111111' }], payload: 'これはちがう' });
+    await t.run();
+    assert.equal(t.calls.growth.length, 0);
+    assert.equal(t.calls.notes.at(-1).kind, 'err');
+    assert.equal(t.state.busy, false, '失敗したのに実行中のままになっている');
+    assert.ok(t.ta.value !== '', '失敗したのに貼り付けを消している');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

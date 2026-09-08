@@ -6214,8 +6214,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/usedCharacters\(atks\)/.test(rg) && /wantedCodesFor\(_growth\.used, nameMap\)/.test(rg), '対象をドメインで決めていない');
         // 取り込みは prepareMember の判断に従う (保存してよいかを画面で決めない)
         const imp = html.match(/async function handleGrowthImport\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/dom\.parseImportPayload\(text\)/.test(imp), '貼り付けの解釈をドメインに任せていない');
-        assert.ok(/dom\.prepareMember\(m, \{ nameCodeMap: _growthNameMap, wanted: _growth\.used \}\)/.test(imp), '保存してよいかの判断をドメインに任せていない');
+        assert.ok(/box = await dom\.parseImportPayload\(text\);/.test(imp), '貼り付けの展開 (非同期) を await していない — box が Promise になり取り込みが必ず失敗する');
+        assert.ok(/dom\.prepareMember\(m, \{ nameCodeMap: nameMap, wanted \}\)/.test(imp), '保存してよいかの判断をドメインに任せていない');
+        // ★ 1人ずつ await する間に画面が更新されても、開始時の写しで書き続ける (Codex指摘 2026-09-09)
+        assert.ok(/const players = \(_growth\.players \|\| \[\]\)\.slice\(\);/.test(imp), '取り込みの材料 (メンバー) の写しを取っていない');
+        assert.ok(/const wanted = \(_growth\.used \|\| \[\]\)\.slice\(\);/.test(imp), '取り込みの材料 (対象キャラ) の写しを取っていない');
+        assert.ok(/if \(priorStatus\.get\(String\(p\.id\)\) === 'ok'\) continue;/.test(imp), '取り込み済みの状態を未ひも付けで上書きしている');
         assert.ok(/if \(prep\.save\)/.test(imp), 'save の判断を無視して保存している');
         assert.ok(/status: 'no_openid'/.test(imp), '識別子が無い人を状態として残していない');
         // 保存は upsert のみ (2026-09-09 の決定①) — delete を書かない
