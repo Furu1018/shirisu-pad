@@ -1,10 +1,29 @@
 # しりすこPAD ロードマップ / 引き継ぎメモ
 
-最終更新: 2026-09-08 夜 職場PC (**A+B+C+D + 実機FB 8件 + Codex 監査 2回 (9件) まで本番反映済み・main d29024c・作業ツリーは空。
+最終更新: 2026-09-08 夕方 職場PC (**運営モードの段階化を実装・未監査 → ブランチ ops-stage-2026-09-08。本番 (origin/main) は 44a1b9f のまま。
+上の「⏸ 自宅PCで最初にやること」から**)。それ以前: A+B+C+D + 実機FB 8件 + Codex 監査 2回 (9件) まで本番反映済み・作業ツリーは空。
 SQL 39〜42 適用済み。残るのは (1) 実機に残った PT1/PT2 のキャラ被りの予約を運営が片方解除 → 組み直し → 配信、
 (2) 全員が新しい版で開いてからゲートを締める、(3) 実機確認の1周**)。
 **着手前に「🔀 引き継ぎ」→「🎯 改修の目的」の順で読むこと。**
 新しいモデル・PCで開発を始めるときは **CLAUDE.md → .claude/skills/ の4スキル → このファイル** の順に読むこと。
+
+## ⏸ 自宅PCで最初にやること (2026-09-08 夕方に職場で中断) — **Codex 監査から始める**
+
+運営モードの段階化 (下の「次にやること」7) は実装・テスト済みだが、**Codex の利用上限 (18:06 まで) で監査できず、main へは push していない**。
+監査を通さない push は禁止なので、未監査のコミットは **ブランチ `ops-stage-2026-09-08`** に置いた (GitHub Pages には出ていない)。
+
+```sh
+git checkout main && git pull
+git merge --ff-only origin/ops-stage-2026-09-08     # main を未監査の4コミットへ進める (fast-forward)
+touch .claude/hooks/.codex-on                        # 自宅PCの Codex フラグ (PCごと)
+node tests/run-tests.mjs && node tests/ops-stage.mjs # 念のため緑を確認
+```
+そのあと **codex:codex-rescue へ明示レビュー** (対象: `git log origin/main..main` の4コミット。要点は 9e45ae5 のコミットメッセージ) →
+指摘対応 → 全スイート → **push** → ブランチ削除 (`git push origin --delete ops-stage-2026-09-08`)。
+レビューの観点 (職場で Codex に渡すはずだった依頼文の要約): カード移動による DOM 順の回帰 / 初期化順 (DOMContentLoaded・defer) /
+運営OFF でカードを動かさない / 設定タブから移した6ブロックを期待するコード / 5時境界と Intl / 手動上書きの記憶 /
+`_opsPublishedPlan` の鮮度 / チェックリストの元データ (bossReady・remainingTotal・finPending) / `[data-stage]` / 新しい HTML 生成のエスケープ。
+職場での自己確認で直した点: 終わったシーズンの手動上書きを準備段階に持ち越さない (parseOverride) / チェックリストの罫線。
 
 ## ✅ 2026-09-08 の決定と実装 (職場PC) — **どのPCで開いても、まずこれを読む**
 
