@@ -218,6 +218,9 @@
             if (remainingTotal == null) return { lead: '盤面を読み込んでいます', why: 'ボスとメンバーが読めると、残り凸と締め凸がここに出ます', action: 'members', label: '👥 状況を見る' };
             const rem = Number(remainingTotal) || 0;
             if (rem > 0) return { lead: `残り ${rem} 凸`, why: '残り戦闘可能メンバーから、いま出られる人と締め凸を見ます', action: 'remaining', label: '👥 残りメンバーを見る' };
+            // ★ 締め凸の返答 (finPending) が未取得 (null) のうちは「全員完了」と断定しない (Codex再監査 2026-09-08)。
+            //   メンバー状況は運営画面の描画で必ず読みに行くので、null は読み込み中か取得失敗のどちらか
+            if (finPending == null) return { lead: 'メンバー状況を読み込んでいます', why: '締め凸の返答が読めると、全員完了かどうかが決まります', action: 'members', label: '👥 メンバー状況を見る' };
             // ★ 当日は終了処理を出さない (Codex指摘 2026-09-08)。翌日5時以降の「終了」の段階でだけ終了できる。
             //   ここから handleOpsEndSeason に飛べると、レイド中にシーズンを非アクティブ化できてしまう
             return { lead: '🎉 全員 3 凸完了', why: '終了処理は翌日 5 時以降の「終了」の段階でできます。それまでは HP と結果の確認だけです', action: 'members', label: '👥 状況を見る' };

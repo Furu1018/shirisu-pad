@@ -2768,7 +2768,12 @@ console.log('\nopsStageDomain:');
         assert.ok(/remainingTotal: players \? Math\.max\(0, attackCap - attacksDone\) : null,/.test(html), '未ロードの残凸を 0 にしている');
         assert.ok(/function _opsPublishedFor\(season\) \{[\s\S]{0,300}Number\(_opsPublishedPlan\.season_id\) === Number\(season\.id\)\);/.test(html), '配信の有無をシーズンで絞っていない');
         assert.ok(/const published = _opsPublishedFor\(season\);/.test(html), '段階のチェックリストがシーズン照合を使っていない');
-        assert.ok(/published: !!_opsPublishedFor\(snap\?\.season \|\| null\),/.test(html), 'コックピットがシーズン照合を使っていない');
+        assert.ok(/published: _opsPublishedFor\(snap\?\.season \|\| null\),/.test(html), 'コックピットがシーズン照合を使っていない (null をそのまま渡す)');
+        // コックピット: 未取得 (null) は「未算出」ではなく「配信を確認中」
+        const lay = globalThis.opsLayoutDomain;
+        assert.equal(lay.summarize({ season: null, published: null }).summaries.opsSecPlan.text, '配信を確認中');
+        assert.equal(lay.summarize({ season: null, published: false }).summaries.opsSecPlan.text, '未算出');
+        assert.equal(lay.summarize({ season: null, published: false, planComputed: true }).summaries.opsSecPlan.text, '算出済み (未配信)');
     });
 
     test('visibleIn: stages の無いカードは全段階 / ある場合はその段階だけ / 空 = どの段階でも「その他」', () => {
@@ -2827,8 +2832,11 @@ console.log('\nopsStageDomain:');
         const r = dom.hero({ stage: 'day', freshMin: 5, finPending: 0, remainingTotal: 41 });
         assert.equal(r.action, 'remaining'); assert.match(r.lead, /41 凸/);
         // 当日の全員完了は終了へ飛ばさない (Codex指摘 2026-09-08) — 終了は翌日5時以降の「終了」の段階で
-        const done = dom.hero({ stage: 'day', freshMin: null, finPending: null, remainingTotal: 0 });
+        const done = dom.hero({ stage: 'day', freshMin: null, finPending: 0, remainingTotal: 0 });
         assert.match(done.lead, /全員 3 凸完了/); assert.equal(done.action, 'members');
+        // 締め凸の返答が未取得 (null) なら残凸0でも「全員完了」と言わない (Codex再監査 2026-09-08)
+        const unk = dom.hero({ stage: 'day', freshMin: null, finPending: null, remainingTotal: 0 });
+        assert.match(unk.lead, /読み込んでいます/); assert.notEqual(unk.action, 'end');
         assert.equal(dom.hero({ stage: 'prep' }).action, 'create');
         const e = dom.hero({ stage: 'end', attacksDone: 90, attackCap: 96 });
         assert.equal(e.action, 'end'); assert.match(e.lead, /90 凸 \/ 96/);

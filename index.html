@@ -23534,7 +23534,7 @@
                 season: snap?.season || null, bosses: snap?.bosses || [], players: snap?.players || [],
                 mbRows: (typeof _mb !== 'undefined' && _mb.players) ? _mb.rows : null,
                 coordList: (typeof _coordActiveCache !== 'undefined') ? _coordActiveCache : null,
-                published: !!_opsPublishedFor(snap?.season || null),
+                published: _opsPublishedFor(snap?.season || null),   // null = 未取得 → 「配信を確認中」
                 planComputed: (typeof _opsLastPlan !== 'undefined') && !!_opsLastPlan,
                 finishAttr: (typeof _opsCurrentAttr !== 'undefined') ? _opsCurrentAttr : null,
                 // 予約の件数 (未ロード / 39未適用は null = 何も出さない。「0件」と混同させない)

@@ -90,7 +90,7 @@
      * @param {Object[]=} args.players   opsStore の players (attackCount)
      * @param {Object[]|null=} args.mbRows  memberStatusDomain.buildRows の結果 (未ロードなら null)
      * @param {Object[]=} args.coordList  {status:'available'|'coordinating'|'off'}[]
-     * @param {boolean=} args.published  配信中プランがあるか
+     * @param {boolean|null=} args.published  配信中プランがあるか (null = 未取得)
      * @param {boolean=} args.planComputed  算出済みプランがあるか
      * @param {string|null=} args.finishAttr  締め凸検索中の属性キー
      * @param {{pending:number, approved:number}|null=} args.reservations  予約の件数 (未ロード/未適用なら null)
@@ -123,7 +123,8 @@
                 ? { text: `承認待ち ${reservations.pending} · 固定中 ${reservations.approved}`, bad: (reservations.pending || 0) > 0 }
                 : { text: '', bad: false },
             opsSecFinish: { text: finishAttr ? `${ATTR_JP[finishAttr] || finishAttr} 締め凸を検索中` : '', bad: false },
-            opsSecPlan: { text: published ? '配信中' : planComputed ? '算出済み (未配信)' : '未算出', bad: false },
+            // published: true=配信中 / false=未配信 / null=まだ取得できていない (未配信と混同させない。Codex再監査 2026-09-08)
+            opsSecPlan: { text: published === null ? '配信を確認中' : published ? '配信中' : planComputed ? '算出済み (未配信)' : '未算出', bad: false },
             opsSecActions: { text: '', bad: false },
             opsSecPush: { text: '', bad: false },
             opsSecSeason: { text: season ? `${season.month_key || ''}${season.is_test ? ' 🧪' : ''} · Lv${lvl}` : 'シーズン無し', bad: !season },
