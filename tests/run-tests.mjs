@@ -5931,6 +5931,9 @@ console.log('\ngrowthDomain:');
         assert.equal(s1.lead, 'unknown', 'null を 0 として比べている');
         assert.equal(s1.diff, null);
         assert.equal(mixed.find((r) => r.key === 'growth').mine, '—', '突破が分からないのに 0凸 と言い切っている');
+        // ★ 1項目だけでなく全項目を見る。どれか1つでも null を 0 に畳んでいたら落とす
+        const folded = mixed.filter((r) => r.lead !== 'unknown' || r.diff !== null).map((r) => r.label);
+        assert.deepEqual(folded, [], `null を 0 として比べている項目がある: ${folded.join(', ')}`);
     });
 
     test('★ state_effects が足りないまま「オーバーロード無し」として保存させない', () => {
