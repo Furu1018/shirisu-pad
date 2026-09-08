@@ -94,7 +94,8 @@
         if (opts.flexTime) return true;
         const set = toSet(slots);
         if (set.size === 0) return false;
-        for (let k = 0; k < Math.min(24, hours); k++) {
+        const span = Math.min(24, Math.floor(hours));   // finishDomain.filterByWindow と同じ丸め (1.5時間 = 1時間)
+        for (let k = 0; k < span; k++) {
             if (set.has(keyOf(curHour + k))) return true;
         }
         return false;

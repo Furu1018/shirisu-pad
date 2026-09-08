@@ -45,7 +45,9 @@ function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, n
         myAvailStripBadge: { style: {}, textContent: '' },
         myAvailConfirmBadge: { style: { display: 'inline-block', color: '#0E9455', background: 'x' }, textContent: badgeText },
     };
+    let current = null;   // いま選んでいるプレイヤー (帯は読み終わる前に切り替わっていたら写さない)
     const env = {
+        getCurrentIdentity: () => current,
         document: { getElementById: (id) => els[id] || null },
         window: {
             availabilityDomain: dom,
@@ -62,7 +64,7 @@ function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, n
     };
     const keys = Object.keys(env);
     const fn = new Function(...keys, `${SRC}\nreturn renderMyAvailStrip;`)(...keys.map(k => env[k]));
-    return { render: fn, els };
+    return { render: async (identity) => { current = identity; return fn(identity); }, els };
 }
 
 let pass = 0, fail = 0;

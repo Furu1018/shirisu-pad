@@ -28,7 +28,7 @@
         // opts.shots = 何人で締めるか (1/2/3)。指定があればその人数の組合せだけを探す (2026-09-08 ユーザー要望)。
         //   無ければ従来どおり 1→2 を探し、削れないときだけ 3 を探す
         const shots = [1, 2, 3].includes(Number(opts.shots)) ? Number(opts.shots) : null;
-        if (remHP <= 0 || candidates.length === 0) return { tight: null, safe: null, cannotKill: false, shots };
+        if (remHP <= 0 || candidates.length === 0) return { tight: null, safe: null, cannotKill: false };
         const all = [];
         const N = candidates.length;
         if (shots === null || shots === 1) {
@@ -58,7 +58,7 @@
                 }
             }
         }
-        if (all.length === 0) return { tight: null, safe: null, cannotKill: true, shots };
+        if (all.length === 0) return { tight: null, safe: null, cannotKill: true };
 
         // ギリギリ: オーバーキル昇順 → 凸数少ない順
         const tight = [...all].sort((a, b) => a.overkill - b.overkill || a.shots - b.shots)[0];

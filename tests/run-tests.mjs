@@ -4809,6 +4809,13 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(/supabaseReleaseRaidNotice\(season\.id, 'avail_start', ref\)/.test(fn), '送信失敗で確保を戻していない');
         assert.ok(/ignoreAvailability: true/.test(fn) && /playerIds: \[t\.id\]/.test(fn), '本人だけに送っていない');
         assert.ok(fn.includes('戦闘可能時間になりました'));
+        // Codex指摘 (2026-09-08): 残凸は送る直前に本人の実凸で見直す / 1人の失敗で残りを落とさない / 30分を過ぎたら送らない
+        assert.ok(/supabaseLoadMyAttacks\?\.\(t\.id, season\.id, season\.hard_date\)/.test(fn), '残凸を取り直していない');
+        assert.ok(/if \(remaining <= 0\) continue;/.test(fn));
+        assert.ok(/for \(const t of targets\) \{\s*\n[^\n]*\n\s*try \{/.test(fn), '人ごとに try で囲んでいない');
+        assert.ok(/if \(minute >= 30\) return;/.test(fn), '遅れすぎた通知を止めていない');
+        // 「何時まで待てば誰が最適？」は絞る前の全員で
+        assert.ok(/_buildFinishTimeline\(attrKey, candidatesAll, remainingHpB\)/.test(html), '時間別ベストを範囲で絞ってしまっている');
         // 定期チェックから呼ばれる (運営ONの端末)
         assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _checkAvailReminders === 'function'\) \{\s*\n\s*_checkAvailReminders\(r\.season\)/.test(html), '定期チェックから呼んでいない');
     });
@@ -5122,7 +5129,8 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
             '承認のあとに組み直し→配信の流れへ入っていない');
         // ★ 承認待ちが他にも残っている間は配信の確認を出さず、組み直しだけ (ユーザー決定 2026-09-08)。
         //   最後の1件を承認したときに差分と配信の確認を出す
-        assert.ok(/const remaining = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested'\)\.length;/.test(ap), '残りの承認待ちを数えていない');
+        // 承認したばかりの行は数えない (一覧の取り直しに失敗しても最後の1件で配信へ進める — Codex指摘)
+        assert.ok(/const remaining = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested' && Number\(r\.id\) !== Number\(id\)\)\.length;/.test(ap), '残りの承認待ちを数えていない');
         assert.ok(/if \(remaining > 0\) \{\s*\n\s*await _recomputeOnly\(\);\s*\n[^\n]*残り \$\{remaining\} 件を承認してから配信へ進みます[^\n]*\n\s*return;/.test(ap),
             '承認待ちが残っているのに配信の確認を出している');
         assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を固定して組み直しました')"), '順序が逆');

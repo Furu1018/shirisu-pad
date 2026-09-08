@@ -7615,27 +7615,42 @@
                 const hour = Number(String(curSlot).slice(1));
                 const targets = dom.reminderTargets(players, hour);
                 if (targets.length === 0) return;
+                // ★ 時刻の始まりから30分を過ぎていたら送らない (Codex指摘): 運営端末を 13:40 に開いて
+                //   「13時になりました」が届くのは変。次の区間の始まりは別の ref なので取りこぼしはそこまで
+                const minute = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo', minute: '2-digit' })) || 0;
+                if (minute >= 30) return;
                 const me = getCurrentIdentity();
                 for (const t of targets) {
-                    const ref = `${t.id}:${curSlot}`;
-                    const st = await window.supabaseClaimRaidNotice(season.id, 'avail_start', ref, me?.id);
-                    if (st !== 'claimed') continue;                       // 'done' = 送信済み / 'held' = 別の端末が送信中
-                    const w = t.window ? dom.rangeLabel(t.window) : `${hour}時〜`;
+                    // ★ 1人の失敗で残りの人を落とさない (Codex指摘): 確保も送信も人ごとに try で囲む
                     try {
-                        await window.sendPushNotification({
-                            title: '⏰ 戦闘可能時間になりました',
-                            body: `${w} はあなたが登録した戦闘可能時間です。残り ${t.remaining} 凸。割当はホームで確認できます。`,
-                            url: './?tab=mypage',
-                            tag: `avail-start-${season.id}-${t.id}-${curSlot}`,
-                            ignoreAvailability: true,                     // 本人が登録した時刻そのものなのでフィルタは要らない
-                            playerIds: [t.id],
-                        }, { senderPlayerId: me?.id || null });
-                        await window.supabaseMarkRaidNoticeSent(season.id, 'avail_start', ref);
-                    } catch (e) {
-                        // 送れなかったら確保を戻す (戻さないと「送っていないのに送信済み」で永久に届かない)
-                        console.warn('[avail reminder] 送信失敗 (確保を戻す):', e?.message || e);
-                        await window.supabaseReleaseRaidNotice(season.id, 'avail_start', ref);
-                    }
+                        // ★ 残凸は盤面のスナップショット (最大60秒古い) でなく、送る直前に本人の実凸で見直す (Codex指摘)。
+                        //   別端末で3凸目を終えた人に「残り1凸」と送ると、その時刻の ref が消費されて取り消せない
+                        let remaining = t.remaining;
+                        try {
+                            const atks = await window.supabaseLoadMyAttacks?.(t.id, season.id, season.hard_date);
+                            if (Array.isArray(atks)) remaining = 3 - atks.length;
+                        } catch { /* 取れなければ盤面の値で進む */ }
+                        if (remaining <= 0) continue;
+                        const ref = `${t.id}:${curSlot}`;
+                        const st = await window.supabaseClaimRaidNotice(season.id, 'avail_start', ref, me?.id);
+                        if (st !== 'claimed') continue;                   // 'done' = 送信済み / 'held' = 別の端末が送信中
+                        const w = t.window ? dom.rangeLabel(t.window) : `${hour}時〜`;
+                        try {
+                            await window.sendPushNotification({
+                                title: '⏰ 戦闘可能時間になりました',
+                                body: `${w} はあなたが登録した戦闘可能時間です。残り ${remaining} 凸。割当はホームで確認できます。`,
+                                url: './?tab=mypage',
+                                tag: `avail-start-${season.id}-${t.id}-${curSlot}`,
+                                ignoreAvailability: true,                 // 本人が登録した時刻そのものなのでフィルタは要らない
+                                playerIds: [t.id],
+                            }, { senderPlayerId: me?.id || null });
+                            await window.supabaseMarkRaidNoticeSent(season.id, 'avail_start', ref);
+                        } catch (e) {
+                            // 送れなかったら確保を戻す (戻さないと「送っていないのに送信済み」で永久に届かない)
+                            console.warn('[avail reminder] 送信失敗 (確保を戻す):', e?.message || e);
+                            await window.supabaseReleaseRaidNotice(season.id, 'avail_start', ref);
+                        }
+                    } catch (e) { console.warn('[avail reminder] 1人分をskip:', t?.name || t?.id, e?.message || e); }
                 }
             } catch (e) { console.warn('[avail reminder] skip:', e?.message || e); }
         }
@@ -8114,9 +8129,11 @@
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
                 <div style="display:flex;margin-top:3px;">${labels}</div>`;
             card.style.display = '';
-            // 今季の確認状態 (37) は MY設定行のバッジと同じ表示を写す
+            // 今季の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
+            // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)
             try { await _loadMyAvailConfirm(identity.id); } catch { /* バッジが出ないだけ */ }
             if (seq !== _availStripSeq) return;
+            if (String(getCurrentIdentity()?.id) !== String(identity.id)) return;
             const src = document.getElementById('myAvailConfirmBadge');
             if (badge && src) {
                 badge.textContent = src.textContent;
@@ -9342,10 +9359,13 @@
         // 遅れて着地した方が勝って unavailable と枠のスナップショットが食い違う (Codex指摘 2026-09-07)。
         // ★ _renderMyAvailConfirm から参照するので、そこより前に置くこと (TDZ よけ)
         let _availConfirmBusy = false;
+        let _availConfirmSeq = 0;   // 遅れて着地した古い読み込みで別人の確認状態を上書きしない (Codex指摘 2026-09-08)
         async function _loadMyAvailConfirm(playerId) {
+            const reqSeq = ++_availConfirmSeq;
             _myAvailConfirm = null;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
+                if (reqSeq !== _availConfirmSeq) return;   // その間に別の読み込みが始まった (プレイヤー切替・モーダル)
                 if (!ctx?.season?.id) {
                     // ★ 何も描かずに return すると、前のシーズンで描いた「確認済み」の表示が残る。
                     //   状態 (_myAvailConfirm) は null に戻っているので画面と食い違い、
@@ -9355,7 +9375,9 @@
                     _renderMyAvailConfirm();
                     return;
                 }
-                _myAvailConfirm = await window.supabaseLoadMyAvailabilityConfirmation(ctx.season.id, playerId);
+                const got = await window.supabaseLoadMyAvailabilityConfirmation(ctx.season.id, playerId);
+                if (reqSeq !== _availConfirmSeq) return;
+                _myAvailConfirm = got;
             } catch {
                 // ★ 通信断・RLS の失敗を「未確認」に落とさない (Codex指摘 2026-09-07)。
                 //   落とすと確認済みの人にまで「確認がまだです」と出て、押すと保存エラーになる。
@@ -15434,7 +15456,9 @@
             // ★ 承認待ちが他にも残っている間は配信の確認を出さない (ユーザー決定 2026-09-08)。
             //   5件続けて承認するたびに配信の確認が出て、そのたび配信するとメンバーに通知が5回届く。
             //   組み直しだけは毎回やる (プランカードは常に最新) — 配信は最後の1件を承認したときに差分と一緒に
-            const remaining = (_resv.rows || []).filter(r => r.status === 'requested').length;
+            // ★ 承認したばかりの行は数えない (Codex指摘 2026-09-08): 一覧の取り直しに失敗すると古い行が
+            //   requested のまま残り、最後の1件でも配信の確認に進めなくなる
+            const remaining = (_resv.rows || []).filter(r => r.status === 'requested' && Number(r.id) !== Number(id)).length;
             if (remaining > 0) {
                 await _recomputeOnly();
                 showNotification(`🔒 承認しました。残り ${remaining} 件を承認してから配信へ進みます`);
@@ -16573,7 +16597,8 @@
             };
 
             // 時間別ベスト候補のタイムライン (次の12時間)
-            const timelineHtml = _buildFinishTimeline(attrKey, candidates, remainingHpB);
+            // 「何時まで待てば誰が最適？」は先の時間の判断なので、範囲で絞る前の全員で見る (Codex指摘)
+            const timelineHtml = _buildFinishTimeline(attrKey, candidatesAll, remainingHpB);
 
             listEl.innerHTML = controls + header + rows + pushBtn + timelineHtml;
 
