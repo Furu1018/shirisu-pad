@@ -222,6 +222,176 @@
         error: '取得に失敗しました',
     };
 
+    // ---- 取り込み ---------------------------------------------------------
+    /** 取り込んだデータの目印。しりすこスクワッドの NKP1-/NKU1- と混ざらないよう別にする。 */
+    const IMPORT_PREFIX = 'SPG1-';
+    /** 公式サーバー。日本を先に見る (ほとんどが日本サーバー)。 */
+    const AREAS = [81, 83, 84, 82, 85];
+
+    /**
+     * BlaBlaLINK で実行してもらうブックマークレットを組み立てる。
+     *
+     * ★ **コンソールではなくブックマークレット**にする。blablalink.com は `debugger` を
+     *   作り続ける anti-debug を入れており、DevTools を開いたままだと setTimeout も fetch も
+     *   返らない (2026-09-08 実機確認)。DevTools を閉じていれば `debugger` は何もしない。
+     * ★ 埋め込む値は JSON.stringify で入れる。名前に ' や \ が入っても壊れない。
+     * ★ 出力はページ上のボックスに出す。DevTools を閉じているのでコンソールは使えない。
+     *
+     * @param {Object} a
+     * @param {Array<{openid:string, label?:string}>} a.targets 取りに行く相手
+     * @param {number[]=} a.wantedCodes 取りたい name_code (省略なら全部)。
+     *   ★ 今回のレイドで使われたキャラだけに絞るためのもの。60件ずつに割って投げる
+     * @param {number=} a.gapMs 1リクエストごとの間隔
+     * @returns {string} `javascript:` から始まる1行
+     */
+    function buildImportSnippet({ targets, wantedCodes, gapMs = 350 } = {}) {
+        const list = (Array.isArray(targets) ? targets : [])
+            .map((t) => ({ openid: String(t && t.openid || '').trim(), label: String(t && t.label || '') }))
+            .filter((t) => /^\d{6,}$/.test(t.openid));
+        if (!list.length) throw new Error('取りに行く相手がいません (識別子が未設定です)');
+        const codes = (Array.isArray(wantedCodes) ? wantedCodes : [])
+            .map((c) => Number(c)).filter((c) => Number.isFinite(c) && c > 0);
+
+        const D = {
+            targets: list, codes, areas: AREAS, gap: Math.max(0, Number(gapMs) || 0),
+            prefix: IMPORT_PREFIX, privacy: [...PRIVACY_CODES],
+        };
+        // 生成されるコードは1行。テンプレート内では // コメントを使わない (行末で全部消える)
+        return 'javascript:(function(){' + [
+            'var D=' + JSON.stringify(D) + ';',
+            'var box=document.createElement("textarea");',
+            'box.setAttribute("style","position:fixed;top:4%;left:4%;width:92%;height:70%;z-index:2147483647;'
+                + 'background:#03090f;color:#e8f6f5;font:12px monospace;padding:10px;border:2px solid #45d6d0");',
+            'document.body.appendChild(box);',
+            'var L=[];var say=function(s){L.push(s);box.value=L.join("\\n");};',
+            'var gap=function(){return new Promise(function(r){setTimeout(r,D.gap);});};',
+            'var call=function(route,body){return fetch("https://api.blablalink.com/api/game/proxy/"+route,{',
+            'method:"POST",credentials:"include",headers:{"Content-Type":"application/json",'
+                + '"X-Channel-Type":"2","X-Language":"ja","X-Common-Params":JSON.stringify({game_id:"29080",'
+                + 'area_id:"global",source:"pc_web",intl_game_id:"29080",language:"ja",env:"prod"})},',
+            'body:JSON.stringify(body)}).then(function(r){return r.json();});};',
+            'var out={v:1,at:new Date().toISOString(),members:[]};',
+            'var run=async function(){',
+            'say("しりすこPAD 育成データの取り込み");',
+            'say(D.targets.length+"人ぶんを取りに行きます。閉じずにお待ちください。");say("");',
+            'for(var i=0;i<D.targets.length;i++){var t=D.targets[i];',
+            'var rec={openid:t.openid,label:t.label,code:null,area:null,characters:[],details:[],stateEffects:[]};',
+            'var found=null;',
+            'for(var a=0;a<D.areas.length;a++){await gap();',
+            'var got=await call("Game/GetUserCharacters",{intl_open_id:t.openid,nikke_area_id:D.areas[a]});',
+            'rec.code=got.code;',
+            'if(D.privacy.indexOf(got.code)>=0){break;}',
+            'var cs=(got.data||{}).characters||[];',
+            'if(got.code===0&&cs.length){found={area:D.areas[a],characters:cs};break;}}',
+            'if(!found){say((t.label||t.openid)+" → 取得できず (code="+rec.code+")");out.members.push(rec);continue;}',
+            'rec.area=found.area;',
+            'var want=D.codes.length?found.characters.filter(function(c){return D.codes.indexOf(c.name_code)>=0;})'
+                + ':found.characters;',
+            'rec.characters=want.map(function(c){return {name_code:c.name_code,grade:c.grade,core:c.core,lv:c.lv};});',
+            'var ids=want.map(function(c){return c.name_code;});',
+            'for(var at=0;at<ids.length;at+=60){await gap();',
+            'var ch=await call("Game/GetUserCharacterDetails",{intl_open_id:t.openid,nikke_area_id:found.area,'
+                + 'name_codes:ids.slice(at,at+60)});',
+            'if(ch.code!==0){rec.code=ch.code;break;}',
+            'var dd=ch.data||{};',
+            '(dd.character_details||[]).forEach(function(d){rec.details.push(d);});',
+            '(dd.state_effects||[]).forEach(function(e){var f=(e.function_details||[])[0]||{};',
+            'rec.stateEffects.push({id:e.id,function_details:[{function_type:f.function_type,'
+                + 'function_value:f.function_value}]});});}',
+            'say((t.label||t.openid)+" → "+rec.details.length+"体");',
+            'out.members.push(rec);}',
+            'say("");say("まとめています...");',
+            'var packed=JSON.stringify(out);var text=packed;',
+            'if(typeof CompressionStream==="function"){',
+            'var gz=new Blob([packed]).stream().pipeThrough(new CompressionStream("gzip"));',
+            'var bytes=new Uint8Array(await new Response(gz).arrayBuffer());var bin="";',
+            'for(var b=0;b<bytes.length;b++){bin+=String.fromCharCode(bytes[b]);}',
+            'text=D.prefix+btoa(bin);}',
+            'L.length=0;box.value=text;box.focus();box.select();',
+            'try{document.execCommand("copy");}catch(e){}',
+            '};',
+            'run().catch(function(e){say("");say("途中で止まりました: "+(e&&e.message||e));});',
+        ].join('') + '})()';
+    }
+
+    /**
+     * ブックマークレットの出力を読む。`SPG1-` は gzip+base64、それ以外は生の JSON。
+     * 貼り付けは人が手でやるので、途中で切れた・別のものを貼った、が普通に起きる。
+     */
+    async function parseImportPayload(text) {
+        const trimmed = String(text == null ? '' : text).trim();
+        if (!trimmed) throw new Error('貼り付けた内容が空です。');
+
+        let json = trimmed;
+        if (trimmed.startsWith(IMPORT_PREFIX)) {
+            try {
+                const binary = atob(trimmed.slice(IMPORT_PREFIX.length));
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+                const body = new Response(bytes).body;
+                if (!body) throw new Error('stream unavailable');
+                json = await new Response(body.pipeThrough(new DecompressionStream('gzip'))).text();
+            } catch {
+                throw new Error('データの展開に失敗しました。コピーが途中で切れていないか確認してください。');
+            }
+        }
+
+        let box;
+        try {
+            box = JSON.parse(json);
+        } catch {
+            throw new Error('内容を認識できませんでした。ブックマークレットが出したものを丸ごと貼り付けてください。');
+        }
+        // 別のツールの出力を貼られたときは、何が違うのかを言う
+        if (box && !Array.isArray(box.members) && (box.profile || box.areas)) {
+            throw new Error('しりすこスクワッド用のデータのようです。PAD の取り込み用ブックマークレットで取り直してください。');
+        }
+        if (!box || !Array.isArray(box.members)) {
+            throw new Error('内容を認識できませんでした。ブックマークレットが出したものを丸ごと貼り付けてください。');
+        }
+        return {
+            at: typeof box.at === 'string' ? box.at : null,
+            members: box.members.filter((m) => m && typeof m === 'object').map((m) => ({
+                openid: String(m.openid || ''),
+                label: String(m.label || ''),
+                code: m.code == null ? null : Number(m.code),
+                area: m.area == null ? null : Number(m.area),
+                characters: Array.isArray(m.characters) ? m.characters : [],
+                details: Array.isArray(m.details) ? m.details : [],
+                stateEffects: Array.isArray(m.stateEffects) ? m.stateEffects : [],
+            })),
+        };
+    }
+
+    /**
+     * 1人ぶんの取り込み結果を、保存できる形に整える。
+     * ★ 保存してよいかの判断もここでする — 呼び出し側 (DOM) に散らさない。
+     * @returns {{status:string, detail:string|null, rows:Object[], unknown:Object[], save:boolean}}
+     */
+    function prepareMember(member, { nameCodeMap, wanted } = {}) {
+        const status = statusOfCode(member && member.code);
+        if (status !== 'ok') {
+            return { status, detail: STATUS_JP[status], rows: [], unknown: [], save: false };
+        }
+        const got = toRows({
+            characters: member.characters, details: member.details, stateEffects: member.stateEffects,
+            nameCodeMap, wanted,
+        });
+        // ★ 枠は埋まっているのに state_effects が足りない = オーバーロードが「無い」ことにされる。
+        //   静かに嘘のデータを残すより、取り直してもらうほうがよい (2026-09-09 の決定)
+        if (got.optionsUnresolved > 0) {
+            return {
+                status: 'error',
+                detail: `オーバーロードを ${got.optionsUnresolved} 枠ぶん読み取れませんでした。取り直してください`,
+                rows: [], unknown: got.unknown, save: false,
+            };
+        }
+        if (!got.rows.length) {
+            return { status: 'error', detail: '対象のキャラが1体も取れませんでした', rows: [], unknown: got.unknown, save: false };
+        }
+        return { status: 'ok', detail: null, rows: got.rows, unknown: got.unknown, save: true };
+    }
+
     // ---- 比べる -----------------------------------------------------------
     /** 比較する項目。上から順に並べて見せる。cmp は「大きいほうが育っている」。 */
     // ★ value は「無ければ null」を返す。0 に畳むと、画面が「—」なのに差分だけ
@@ -322,5 +492,6 @@
         OVERLOAD_JP, PARTS, STATUS_JP, FIELDS, CORP_TIER, MAX_GRADE, MAX_CORE,
         growthRank, gradeText, buildOptionMap, overloadTotals, overloadSlotCount, unresolvedOptions,
         equipOf, toRows, statusOfCode, compare, compareSquad, usedCharacters,
+        IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

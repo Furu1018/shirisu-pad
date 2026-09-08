@@ -6013,6 +6013,84 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.usedCharacters(null), []);
     });
 
+    test('★ ブックマークレット: 1行・構文が通る・埋め込んだ値が壊れない', () => {
+        const snip = dom.buildImportSnippet({
+            // 名前に ' と \ を入れる — 文字列連結で組むと、ここで壊れる
+            targets: [{ openid: '3273786220482814289', label: "ふる'り\\さん" }, { openid: '16669553168687894762', label: 'B' }],
+            wantedCodes: [1012, 3015],
+        });
+        assert.ok(snip.startsWith('javascript:'), 'ブックマークレットの形になっていない');
+        assert.ok(!/\n/.test(snip), '改行があるとブックマークに登録できない');
+        // 実際に構文として通ること (壊れたコードを配らない)
+        assert.doesNotThrow(() => new Function(snip.slice('javascript:'.length)));
+        assert.ok(snip.includes('3273786220482814289') && snip.includes('16669553168687894762'));
+        assert.ok(snip.includes('1012') && snip.includes('3015'), '取りたい name_code が入っていない');
+        // ★ DevTools を閉じて使うので、出力はページ上のボックス。console に出すと見えない
+        assert.ok(/document\.createElement\("textarea"\)/.test(snip), '出力先がページ上のボックスでない');
+        assert.ok(/credentials:"include"/.test(snip), 'ログイン状態を使っていない');
+        // 識別子が数字でないものは落とす / 1人もいなければ作らない
+        assert.throws(() => dom.buildImportSnippet({ targets: [{ openid: '' }, { openid: 'abc' }] }), /識別子/);
+        assert.throws(() => dom.buildImportSnippet({}), /相手がいません/);
+    });
+
+    test('★ 取り込みの読み取り: 生 JSON も gzip+base64 も読める / 別ツールの出力は言い分ける', async () => {
+        const payload = {
+            v: 1, at: '2026-09-09T00:00:00Z',
+            members: [{ openid: '1', label: 'A', code: 0, area: 81, characters: [], details: [], stateEffects: [] }],
+        };
+        const raw = await dom.parseImportPayload(JSON.stringify(payload));
+        assert.equal(raw.members.length, 1);
+        assert.equal(raw.at, '2026-09-09T00:00:00Z');
+
+        // ブックマークレットと同じ手順で固める
+        const gz = new Blob([JSON.stringify(payload)]).stream().pipeThrough(new CompressionStream('gzip'));
+        const bytes = new Uint8Array(await new Response(gz).arrayBuffer());
+        let bin = '';
+        for (const b of bytes) bin += String.fromCharCode(b);
+        const packed = await dom.parseImportPayload(dom.IMPORT_PREFIX + btoa(bin));
+        assert.equal(packed.members.length, 1);
+        assert.equal(packed.members[0].label, 'A');
+
+        // 何を貼り直せばよいかが分かる文言で投げる
+        await assert.rejects(dom.parseImportPayload(''), /空です/);
+        await assert.rejects(dom.parseImportPayload('こわれてる'), /認識できませんでした/);
+        await assert.rejects(dom.parseImportPayload(JSON.stringify({ profile: { openid: '1' }, areas: [] })), /スクワッド/);
+        await assert.rejects(dom.parseImportPayload(dom.IMPORT_PREFIX + 'あああ'), /展開に失敗/);
+    });
+
+    test('★ 保存してよいかの判断: 非公開は保存しない / オーバーロードが読めなければ保存しない', () => {
+        const map = { '1012': { jp: 'サクラ', pad: 'サクラ' } };
+        const detail = {
+            name_code: 1012, grade: 3, core: 2, lv: 200, skill1_lv: 10,
+            head_equip_tier: 10, head_equip_lv: 3, head_equip_option1_id: 101,
+        };
+        const effects = [{ id: '101', function_details: [{ function_type: 'StatAtk', function_value: 1234 }] }];
+
+        const ok = dom.prepareMember({ code: 0, characters: [], details: [detail], stateEffects: effects }, { nameCodeMap: map });
+        assert.equal(ok.status, 'ok'); assert.equal(ok.save, true); assert.equal(ok.rows.length, 1);
+
+        // 非公開は「取れなかった」を状態として残す。保存はしない
+        const priv = dom.prepareMember({ code: 1301002 }, { nameCodeMap: map });
+        assert.equal(priv.status, 'private'); assert.equal(priv.save, false);
+        assert.match(priv.detail, /非公開/);
+
+        // ★ state_effects が足りないまま「オーバーロード無し」で残すと、比較が静かに嘘をつく
+        const blind = dom.prepareMember({ code: 0, details: [detail], stateEffects: [] }, { nameCodeMap: map });
+        assert.equal(blind.save, false, 'オーバーロードを読めないまま保存しようとしている');
+        assert.equal(blind.status, 'error');
+        assert.match(blind.detail, /オーバーロードを 1 枠/);
+
+        // 1体も取れなければ保存しない (空で上書きしない)
+        const empty = dom.prepareMember({ code: 0, details: [], stateEffects: effects }, { nameCodeMap: map });
+        assert.equal(empty.save, false);
+        assert.match(empty.detail, /1体も取れませんでした/);
+
+        // wanted で絞ったうえで対象が残ればよい
+        const want = dom.prepareMember({ code: 0, details: [detail], stateEffects: effects },
+            { nameCodeMap: map, wanted: ['サクラ'] });
+        assert.equal(want.save, true);
+    });
+
     test('43_member_growth.sql: 冪等・識別子の一意性・状態の綴り', () => {
         const sql = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '43_member_growth.sql'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/ADD COLUMN IF NOT EXISTS blabla_openid TEXT/.test(sql));
