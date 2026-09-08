@@ -40,6 +40,16 @@ rm -f .claude/hooks/.codex-on      # OFF
 
 ## アーキテクチャ
 
+- **模擬提出シート (編成編集モーダル) は 2026-09-08 に再設計** (モック a3a7b6e9・ユーザー承認)。
+  並びは ① 編成 (スクショ読み取りは見出しの横の小さな入口) → ② ダメージ → ③ キャラを選ぶ (5人そろうと畳む)。
+  **提出バーをシートの下に固定** (`.te-bar` は `position:sticky; bottom:0`。`.player-select-content.te-sheet` は
+  padding/gap を 0 にして本文 `.te-body` が余白を持つ)。バーは `_renderTeamEditBar` が
+  要約 (属性・編成・ダメージ、提出済みと違えば「33.1B → 35B」) と足りないものを出し、
+  5人+ダメージで黒く点灯、ダメージだけ/編成だけでも提出はできる (暗い灰色)、何も無ければ押せない。
+  編成の変更 (`updateMyTeamEditIcon`)・ダメージ入力 (`_renderTeamEditLevelNote`)・開いたとき・提出のあと に描き直す。
+  「保存」は「提出する」に言い換え (模擬タブは「提出」で統一)。削除は赤い小リンク。予約 (🔒) は区画でなく
+  バーの1行の導線 (`_renderTeamEditResv` が `#myTeamEditResvSec` に描く)。「よく使う編成」と「人気編成の参考」は
+  ③ の中の1つの折りたたみ (`toggleTeamEditTopTeams` → `_teSyncPopular`)。実行テスト `tests/submit-bar.mjs`
 - **模擬タブの編成入力はタイルピッカー** (2026-08-12)。GB (`~/Desktop/shirisu-pad-global` の
   `js/tiles.js`) の「キャラ画像 + バースト帯」の構造を参考にしたが、**持ち込んだのはUIの構造だけ** —
   GBのゲームアセット全廃方針は本家に持ち込まない (本家は BlaBlaLINK 図鑑アイコンを使用)。
@@ -268,6 +278,7 @@ node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の
 node tests/mock-panels.mjs    # 模擬タブの提出カード (renderMyDamagePanels) の実行テスト
 node tests/home-slots.mjs     # 本人のホーム「あなたの3凸」(3枠) の描画の実行テスト
 node tests/avail-strip.mjs    # ホーム「⏰ あなたの戦闘可能時間」の帯の描画の実行テスト
+node tests/submit-bar.mjs     # 模擬提出シートの提出バー (_renderTeamEditBar) の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で

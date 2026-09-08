@@ -3713,7 +3713,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/rv\.findActiveFor\(/.test(fn), '申請済みの判定をしていない');
         // ★ 編集中の値ではなく保存済みの提出を使う (承認内容と提出が食い違わないように)
         assert.ok(/allRowsForResv\(\)/.test(fn), '保存済みの提出を見ていない');
-        assert.ok(/この編成のダメージを保存すると予約できます/.test(fn), '未保存でも申請できてしまう');
+        assert.ok(/提出すると、この編成で凸を予約できます/.test(fn), '未保存でも申請できてしまう');
         // ★ 模擬タブは埋め込みフォームではなく、共通の申請シートをこの属性・編成で開く (モック②)
         const open = html.match(/function handleRequestReservationFromMock[\s\S]{0,400}/)?.[0] || '';
         assert.ok(/openMyResvRequest\(\{ attr: c\.attr, slot: c\.slot \}\)/.test(open), '共通シートを開いていない');
@@ -4818,6 +4818,64 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(/_buildFinishTimeline\(attrKey, candidatesAll, remainingHpB\)/.test(html), '時間別ベストを範囲で絞ってしまっている');
         // 定期チェックから呼ばれる (運営ONの端末)
         assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _checkAvailReminders === 'function'\) \{\s*\n\s*_checkAvailReminders\(r\.season\)/.test(html), '定期チェックから呼んでいない');
+    });
+}
+
+// ---- 模擬提出シートの再設計 (2026-09-08 モック a3a7b6e9) -------------------------
+console.log('\n模擬提出シート (提出バー固定):');
+{
+    const _fs = await import('node:fs');
+    const _path = await import('node:path');
+    const { fileURLToPath: _f2p } = await import('node:url');
+    const _ROOT = _path.resolve(_path.dirname(_f2p(import.meta.url)), '..');
+    const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+    const modal = html.match(/<div class="player-select-modal" id="myTeamEditModal">[\s\S]*?<!-- ========== 🔒 凸を申請する/)?.[0] || '';
+    test('★ 提出バーがシートの下に固定され、要約・提出ボタン・削除リンク・予約の導線を持つ', () => {
+        assert.ok(modal, 'モーダルが無い');
+        assert.ok(/<div class="te-bar">[\s\S]*id="myTeamEditBarSum"[\s\S]*id="myTeamEditSubmit"[\s\S]*class="te-dellink"/.test(modal), 'バーの部品が足りない');
+        assert.ok(/\.te-bar \{\s*\n\s*position:sticky; bottom:0;/.test(html), 'バーが固定されていない');
+        assert.ok(/\.te-sheet \{ padding:0; gap:0; \}/.test(html), 'シートの余白をバーに合わせていない');
+        // 削除は小さな赤いリンクに格下げ (フッターの並びのボタンではない)
+        assert.ok(!/class="btn danger"|🗑 削除/.test(modal), '削除がボタンのまま');
+        // 予約の区画はシートから外し、バーの1行の案内に (ユーザー決定 B)
+        assert.ok(/class="te-barlinks">[\s\S]*id="myTeamEditResvSec"[\s\S]*id="myTeamEditResvOpen"/.test(modal), '予約の導線がバーに無い');
+        assert.ok(!/<div id="myTeamEditResvSec" class="te-sec"/.test(modal), '予約の区画が残っている');
+    });
+    test('★ 見出しは「模擬を提出する」+ 属性ピル / 編成①②はセグメントに提出済みダメージ', () => {
+        assert.ok(/id="myTeamEditAttrPill"/.test(modal) && />模擬を提出する<\/h2>/.test(modal), '見出しが違う');
+        assert.ok(/document\.getElementById\('myTeamEditTitle'\)\.textContent = '模擬を提出する';/.test(html), '開いたときに見出しを上書きしている');
+        assert.ok(/function _renderTeamEditSlotTabs\(existingSlots, rows = \[\]\)/.test(html), 'セグメントに提出値を渡していない');
+        assert.ok(/_renderTeamEditSlotTabs\(existingSlots, allRows\);/.test(html));
+        assert.ok(/class="te-seg\$\{slot === _myTeamEditSlot \? ' on' : ''\}"/.test(html), 'セグメントの選択状態が無い');
+        assert.ok(html.includes("'<small>未提出</small>'"), '未提出の編成が分かる表示が無い');
+    });
+    test('★ 並び: ① 編成 (スクショ読み取りは見出しの横) → ② ダメージ → ③ キャラを選ぶ', () => {
+        const i1 = modal.indexOf('① 編成'), i2 = modal.indexOf('② ダメージ'), i3 = modal.indexOf('③ キャラを選ぶ');
+        assert.ok(i1 > 0 && i2 > i1 && i3 > i2, `並びが違う: ${i1}/${i2}/${i3}`);
+        assert.ok(/<label class="te-ocrmini"[\s\S]*id="myTeamEditOcrInput"[\s\S]*<\/label>\s*\n\s*<\/p>\s*\n\s*<div class="te-slots" id="teSlots">/.test(modal), 'スクショ読み取りが編成の見出しの横に無い');
+        assert.ok(!/class="te-ocr"/.test(modal), '旧「まとめて入れる」の区画が残っている');
+        // 値の保持先の契約は変えない (ピッカーは #myTeamEditFields の5つの input に書く)
+        assert.ok(/id="myTeamEditFields" hidden/.test(modal));
+    });
+    test('★ 「よく使われている編成」と「人気編成の参考」は1つの折りたたみ (ユーザー決定 C)', () => {
+        assert.ok(modal.includes('★ みんなの編成'), '見出しが無い');
+        assert.ok(!/myTeamEditPopularToggle/.test(html), '旧トグルが残っている');
+        assert.ok(!/async function toggleTeamEditPopular/.test(html), '旧の開閉関数が残っている');
+        assert.ok(/if \(typeof _teSyncPopular === 'function'\) _teSyncPopular\(_teTopOpen\);/.test(html), 'よく使う編成の開閉で統計を同居させていない');
+        const sync = html.match(/async function _teSyncPopular\(open\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(_tePopularLoadedFor === attrKey\) return;/.test(sync), '開くたびに読み直している');
+        assert.ok(/if \(_myTeamEditAttr !== attrKey\) return;/.test(sync), '別属性に切り替わったのに描いてしまう');
+    });
+    test('★ 提出バーは 編成の変更・ダメージ入力・開いたとき・提出のあと に描き直される', () => {
+        assert.ok(/function _renderTeamEditBar\(\)/.test(html));
+        const note = html.match(/function _renderTeamEditLevelNote\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_renderTeamEditBar\(\)/.test(note), 'ダメージ入力で描き直していない');
+        const icon = html.match(/function updateMyTeamEditIcon\(idx\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_renderTeamEditBar\(\)/.test(icon), '編成の変更で描き直していない');
+        assert.ok(/_myTeamEditSubmittedB = \(window\.mockLevelsDomain && _myTeamEditLevels\)/.test(html), '開いた時点の提出値を基準にしていない');
+        const save = html.match(/async function handleMyTeamEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_myTeamEditSubmittedB = hasEntries \? dmgVal : 0;\s*\n\s*_renderTeamEditBar\(\);/.test(save), '提出のあとに基準を更新していない');
+        assert.ok(/_teAllRows = rows \|\| \[\];\s*\n\s*_renderTeamEditResv\(id, saveAttr, savedSlot\)/.test(save), '提出のあとに予約の導線を描き直していない');
     });
 }
 

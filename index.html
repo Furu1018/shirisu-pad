@@ -2411,6 +2411,45 @@
         .te-ocr .txt { flex:1; min-width:0; font-size:12.5px; font-weight:800; line-height:1.35; }
         .te-ocr .txt small { display:block; font-size:10.5px; font-weight:700; color:#8A9097; margin-top:1px; }
         .te-ocr .go { flex:none; padding:6px 12px; border-radius:7px; background:#6C42F0; color:#fff; font-size:11.5px; font-weight:900; }
+        /* ===== 模擬提出シート (2026-09-08 再設計): 本文はスクロール、提出バーは下に固定 ===== */
+        .te-sheet { padding:0; gap:0; }
+        .te-body { padding:18px 22px 10px; }
+        .te-bar {
+            position:sticky; bottom:0; z-index:5; margin-top:auto;
+            background:rgba(255,255,255,0.96); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+            border-top:1px solid rgba(20,22,26,0.08);
+            padding:10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+            display:flex; flex-direction:column; gap:8px;
+        }
+        .te-barsum { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11px; font-weight:800; color:#6B7178; min-height:16px; }
+        .te-barsum b { color:#14161A; font-size:12.5px; }
+        .te-barsum .ok { color:#0E9455; }
+        .te-barsum .todo { color:#B45309; }
+        .te-barsum .diff { color:#5B2BE0; font-variant-numeric:tabular-nums; }
+        .te-submit {
+            width:100%; border:none; border-radius:999px; padding:14px; font:inherit; font-size:14px; font-weight:900;
+            background:#14161A; color:#fff; cursor:pointer; box-shadow:0 6px 16px rgba(20,22,26,0.22);
+            transition:background .15s ease, box-shadow .15s ease;
+        }
+        .te-submit.partial { background:#5A6068; box-shadow:none; }
+        .te-submit:disabled { background:#C9CED3; color:#fff; box-shadow:none; cursor:default; }
+        .te-barlinks { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:10.5px; font-weight:800; color:#8A9097; }
+        .te-resvlink { border:none; background:none; padding:0; font:inherit; font-size:10.5px; font-weight:900; color:#6C42F0; cursor:pointer; }
+        .te-dellink { border:none; background:none; padding:0; margin-left:auto; font:inherit; font-size:10.5px; font-weight:800; color:#FF3D44; cursor:pointer; }
+        .te-attrpill { flex:none; font-size:10.5px; font-weight:900; padding:3px 9px; border-radius:999px; color:#fff; background:#6C42F0; letter-spacing:0.2px; }
+        .te-segs { display:flex; gap:3px; background:#E7E9EC; border-radius:12px; padding:3px; margin:6px 0 12px; }
+        .te-seg {
+            flex:1; border:none; background:none; padding:8px 4px; border-radius:9px; cursor:pointer; font:inherit;
+            font-size:11.5px; font-weight:900; color:#6B7178; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .te-seg.on { background:#fff; color:#14161A; box-shadow:0 1px 3px rgba(20,22,26,0.10); }
+        .te-seg small { font-weight:800; color:#8A9097; font-size:10px; margin-left:3px; }
+        .te-seg.on small { color:#5B2BE0; }
+        .te-ocrmini {
+            margin-left:auto; flex:none; font-size:10px; font-weight:900; letter-spacing:0; color:#6C42F0;
+            background:rgba(108,66,240,0.12); padding:4px 10px; border-radius:999px; cursor:pointer;
+        }
+        .te-lvinput-big { width:120px; font-size:20px; font-weight:900; letter-spacing:-0.4px; border-color:#6C42F0; }
 
         /* ===== ホーム: 配信プランの自分の凸カード =====
            模擬タブの .dc-dmg-panel と同じ見た目にそろえる (ユーザー要望 2026-08-08)。
@@ -5298,103 +5337,96 @@
     </div>
 
     <!-- ========== 編成編集モーダル (ホームの属性別ダメ行から開く) ========== -->
+    <!-- ========== 模擬提出シート (2026-09-08 再設計: モック a3a7b6e9) ==========
+         提出に要るのは「5人」と「ダメージ」の2つだけなので、この2つを上半分に置き、
+         長いキャラ一覧は3番目。提出バーはシートの下に固定 (どこまでスクロールしても見える)。
+         ★ 値の保持先は従来どおり #myTeamEditFields の5つの input (ピッカーはそこへ書く) -->
     <div class="player-select-modal" id="myTeamEditModal">
-        <div class="player-select-content" style="max-width:480px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <h2 id="myTeamEditTitle">✏️ 編成編集</h2>
-                <button onclick="closeMyTeamEditModal()" style="padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
-            </div>
-            <p class="subtitle">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を登録します。編成は1属性につき2つまで登録でき、キャラが被らなければ同属性2凸をプランが提案します。</p>
-            <!-- 運営除外 (35): 除外されている提出を開いたときだけ理由を出す -->
-            <div id="myTeamEditExclNote" style="display:none;margin:6px 0 8px;padding:8px 10px;border-radius:10px;background:rgba(255,61,68,0.08);color:#B91C1C;font-size:11.5px;font-weight:800;line-height:1.5;"></div>
-
-            <!-- 編成スロット切替 (① / ② 同属性2凸用) -->
-            <div id="myTeamEditSlotTabs" style="display:flex;gap:6px;"></div>
-
-            <!-- ===== ① 編成 (タイルピッカー) ===== -->
-            <p class="te-step">① 枠を選ぶ <b id="teArmedName"></b></p>
-            <div class="te-slots" id="teSlots"></div>
-
-            <!-- ===== まとめて入れる ===== -->
-            <div class="te-sec">
-                <p class="te-step" style="margin-bottom:8px;">まとめて入れる</p>
-                <label class="te-ocr">
-                    <span class="ico" data-sp-icon="camera" data-sp-size="18"></span>
-                    <span class="txt">スクショから読み取る<small>戦闘履歴から5キャラとダメージを自動入力</small></span>
-                    <input type="file" id="myTeamEditOcrInput" accept="image/*" multiple onchange="handleMyTeamEditOcr(event)" style="display:none;">
-                    <span class="go">選ぶ</span>
-                </label>
-                <p id="myTeamEditOcrStatus" style="margin:7px 0 0 0;font-size:11px;font-weight:800;color:#8A9097;min-height:15px;">&nbsp;</p>
-            </div>
-
-            <!-- みんながよく使う「実キャラ5人編成」をワンタップ (提出が溜まると出る) -->
-            <div class="te-sec">
-                <button type="button" class="te-head" onclick="toggleTeamEditTopTeams()">
-                    <span>★ よく使われている編成</span><span class="cnt" id="teTopCnt"></span>
-                    <span class="arw" id="teTopArw">▼</span>
-                </button>
-                <div id="myTeamEditTopTeams" hidden></div>
-            </div>
-
-            <!-- ===== ② キャラ選択 (5人そろうと自動で畳む) ===== -->
-            <div class="te-sec">
-                <button type="button" class="te-head" onclick="toggleTeamEditPicker()">
-                    <span>② 枠に入れるキャラを選ぶ</span><span class="cnt" id="tePickCnt"></span>
-                    <span class="arw" id="tePickArw">▼</span>
-                </button>
-                <div id="tePickBody">
-                    <input type="text" id="teSearch" class="te-search" placeholder="キャラ名で絞り込み" autocomplete="off" oninput="onTeamEditSearch(this.value)">
-                    <div class="te-filters" id="teFilters"></div>
-                    <div class="te-grid" id="teGrid"></div>
-                    <button type="button" class="te-more" id="teMore" style="display:none;" onclick="toggleTeamEditGridMore()"></button>
-                    <div class="te-legend">
-                        <span><i class="sw" style="background:#1FA95C;"></i>B1</span>
-                        <span><i class="sw" style="background:#F2B705;"></i>B2</span>
-                        <span><i class="sw" style="background:#E5484D;"></i>B3</span>
-                        <span><i class="sw" style="background:#F59E0B;"></i>もう一方の編成で使用中</span>
-                        <span>％ = 単独での採用率</span>
-                    </div>
-                    <!-- マスタに無いキャラ用の手入力 (既定は折りたたみ)。
-                         ★ この5つの input が値の保持先そのもの — ピッカーはここへ書き込む -->
-                    <button type="button" class="te-head" style="margin-top:11px;" onclick="toggleTeamEditManual()">
-                        <span>✎ 手入力で直す</span><span class="arw" id="teManualArw">▼</span>
-                    </button>
-                    <div id="myTeamEditFields" hidden style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+        <div class="player-select-content te-sheet" style="max-width:480px;">
+            <div class="te-body">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span id="myTeamEditAttrPill" class="te-attrpill"></span>
+                    <h2 id="myTeamEditTitle" style="flex:1;min-width:0;">模擬を提出する</h2>
+                    <button onclick="closeMyTeamEditModal()" style="flex:none;padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
                 </div>
-            </div>
+                <p class="subtitle" style="margin:4px 0 8px;">この属性で出せる<strong>ベストダメージ</strong>と、そのときの<strong>5キャラ編成</strong>を提出します。編成は1属性に2つまで。</p>
+                <!-- 運営除外 (35): 除外されている提出を開いたときだけ理由を出す -->
+                <div id="myTeamEditExclNote" style="display:none;margin:6px 0 8px;padding:8px 10px;border-radius:10px;background:rgba(255,61,68,0.08);color:#B91C1C;font-size:11.5px;font-weight:800;line-height:1.5;"></div>
 
-            <!-- ===== ③ ダメージ (2026-09-06: 測定ボスレベルは廃止。1編成 = ダメージ1つ) ===== -->
-            <div class="te-sec">
-                <p class="te-step" style="margin-bottom:8px;">③ この編成で出たダメージを入れる</p>
-                <div class="te-lvbox">
-                    <div class="te-lvrow">
-                        <input type="number" inputmode="decimal" step="0.1" min="0" max="999"
-                            id="myTeamEditDamage" placeholder="—" oninput="_renderTeamEditLevelNote()" class="te-lvinput">
-                        <span class="te-lvunit">B</span>
-                    </div>
-                    <p id="myTeamEditLevelNote" class="te-lvnote"></p>
-                </div>
-            </div>
+                <!-- 編成スロット切替 (① / ② 同属性2凸用)。提出済みのダメージを添える -->
+                <div id="myTeamEditSlotTabs" class="te-segs"></div>
 
-            <!-- 人気編成の参考 (みんなの模擬提出の統計 / 既定は折りたたみ) -->
-            <div onclick="toggleTeamEditPopular()" id="myTeamEditPopularToggle" style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">📚 みんなの人気編成を見る ▼</div>
-            <div id="myTeamEditPopular" style="display:none;padding:10px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);"></div>
-
-            <!-- ===== 🔒 この編成で凸を予約する (L2 ⑧・シーズン中に対応ボスがあるときだけ出る) ===== -->
-            <div id="myTeamEditResvSec" class="te-sec" style="display:none;">
-                <p class="te-step" style="margin-bottom:6px;">🔒 この編成で凸を予約する</p>
-                <p style="margin:0 0 9px;font-size:11px;font-weight:700;color:#8A9097;line-height:1.6;">
-                    運営が承認すると<b>固定</b>されます。プランを組み直しても、この凸だけは動きません。
+                <!-- ===== ① 編成 (タイルピッカー) + スクショ読み取りの入口 ===== -->
+                <p class="te-step" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">① 編成 <b id="teArmedName"></b>
+                    <label class="te-ocrmini" title="戦闘履歴のスクショから5キャラとダメージを自動入力 (複数枚可)">📷 スクショから読み取る
+                        <input type="file" id="myTeamEditOcrInput" accept="image/*" multiple onchange="handleMyTeamEditOcr(event)" style="display:none;">
+                    </label>
                 </p>
-                <div id="myTeamEditResvState" style="font-size:11.5px;font-weight:800;color:#8A9097;margin-bottom:9px;"></div>
-                <button type="button" id="myTeamEditResvOpen" onclick="handleRequestReservationFromMock()" style="width:100%;border:none;border-radius:999px;padding:12px;font-family:inherit;font-size:12.5px;font-weight:900;color:#fff;background:linear-gradient(135deg,#7A5AF8,#5B2BE0);cursor:pointer;">この編成で凸を申請する</button>
+                <div class="te-slots" id="teSlots"></div>
+                <p id="myTeamEditOcrStatus" style="margin:0;font-size:11px;font-weight:800;color:#8A9097;min-height:15px;">&nbsp;</p>
+
+                <!-- ===== ② ダメージ (2026-09-06: 測定ボスレベルは廃止。1編成 = ダメージ1つ) ===== -->
+                <div class="te-sec" style="margin-top:6px;">
+                    <p class="te-step" style="margin-bottom:8px;">② ダメージ</p>
+                    <div class="te-lvbox">
+                        <div class="te-lvrow">
+                            <input type="number" inputmode="decimal" step="0.1" min="0" max="999"
+                                id="myTeamEditDamage" placeholder="—" oninput="_renderTeamEditLevelNote()" class="te-lvinput te-lvinput-big">
+                            <span class="te-lvunit">B</span>
+                        </div>
+                        <p id="myTeamEditLevelNote" class="te-lvnote"></p>
+                    </div>
+                </div>
+
+                <!-- ===== ③ キャラ選択 (5人そろうと自動で畳む) ===== -->
+                <div class="te-sec">
+                    <button type="button" class="te-head" onclick="toggleTeamEditPicker()">
+                        <span>③ キャラを選ぶ</span><span class="cnt" id="tePickCnt"></span>
+                        <span class="arw" id="tePickArw">▼</span>
+                    </button>
+                    <div id="tePickBody">
+                        <input type="text" id="teSearch" class="te-search" placeholder="キャラ名で絞り込み" autocomplete="off" oninput="onTeamEditSearch(this.value)">
+                        <div class="te-filters" id="teFilters"></div>
+                        <div class="te-grid" id="teGrid"></div>
+                        <button type="button" class="te-more" id="teMore" style="display:none;" onclick="toggleTeamEditGridMore()"></button>
+                        <div class="te-legend">
+                            <span><i class="sw" style="background:#1FA95C;"></i>B1</span>
+                            <span><i class="sw" style="background:#F2B705;"></i>B2</span>
+                            <span><i class="sw" style="background:#E5484D;"></i>B3</span>
+                            <span><i class="sw" style="background:#F59E0B;"></i>もう一方の編成で使用中</span>
+                            <span>％ = 単独での採用率</span>
+                        </div>
+                        <!-- みんなの編成: よく使われている編成 (ワンタップで入れる) + 人気編成の参考 (統計) を1つに (2026-09-08) -->
+                        <button type="button" class="te-head" style="margin-top:11px;" onclick="toggleTeamEditTopTeams()">
+                            <span>★ みんなの編成</span><span class="cnt" id="teTopCnt"></span>
+                            <span class="arw" id="teTopArw">▼</span>
+                        </button>
+                        <div id="myTeamEditTopTeams" hidden></div>
+                        <div id="myTeamEditPopular" style="display:none;margin-top:8px;padding:10px 12px;border-radius:12px;background:#F7F8F9;border:1px solid rgba(20,22,26,0.05);"></div>
+                        <!-- マスタに無いキャラ用の手入力 (既定は折りたたみ)。
+                             ★ この5つの input が値の保持先そのもの — ピッカーはここへ書き込む -->
+                        <button type="button" class="te-head" style="margin-top:11px;" onclick="toggleTeamEditManual()">
+                            <span>✎ 手入力で直す</span><span class="arw" id="teManualArw">▼</span>
+                        </button>
+                        <div id="myTeamEditFields" hidden style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                    </div>
+                </div>
+
+                <p id="myTeamEditMessage" style="margin:10px 0 0;min-height:18px;font-size:12px;"></p>
             </div>
 
-            <p id="myTeamEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
-            <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">
-                <button onclick="handleMyTeamEditDeleteCurrent()" title="表示中の編成の提出 (ダメージ+編成) を削除" style="margin-right:auto;padding:9px 13px;border-radius:10px;border:1.5px solid rgba(255,61,68,0.4);background:#fff;color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑 削除</button>
-                <button onclick="closeMyTeamEditModal()" style="padding:10px 16px;border-radius:10px;border:none;background:#F1F2F4;color:#14161A;font-size:12.5px;font-weight:800;cursor:pointer;">閉じる</button>
-                <button onclick="handleMyTeamEditSave()" style="padding:10px 18px;border-radius:10px;border:none;background:#14161A;color:#fff;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 10px rgba(20,22,26,0.24);"><span data-sp-icon="save" data-sp-size="13"></span> 保存</button>
+            <!-- ===== 提出バー (シートの下に固定) ===== -->
+            <div class="te-bar">
+                <div class="te-barsum" id="myTeamEditBarSum"></div>
+                <button type="button" id="myTeamEditSubmit" class="te-submit" onclick="handleMyTeamEditSave()">提出する</button>
+                <div class="te-barlinks">
+                    <!-- 🔒 予約は提出のあとの導線 (L2 ⑧・シーズン中に対応ボスがあるときだけ出る)。判定は _renderTeamEditResv -->
+                    <span id="myTeamEditResvSec" style="display:none;min-width:0;">
+                        <span id="myTeamEditResvState"></span>
+                        <button type="button" id="myTeamEditResvOpen" onclick="handleRequestReservationFromMock()" class="te-resvlink">🔒 この編成で凸を予約する →</button>
+                    </span>
+                    <button type="button" class="te-dellink" onclick="handleMyTeamEditDeleteCurrent()" title="表示中の編成の提出 (ダメージ+編成) を削除">削除</button>
+                </div>
             </div>
         </div>
     </div>
@@ -9838,18 +9870,19 @@
         let _myTeamEditLoadedTeam = [];  // 開いた時点の編成 (変更を検知して測定値を無効化するため)
         let _teamEditSuppressDirty = false;      // 初期描画中は変更検知を止める
         let _myTeamEditSeq = 0;          // 開き直しの世代 (非同期の取り違え防止)
-        function _renderTeamEditSlotTabs(existingSlots) {
+        function _renderTeamEditSlotTabs(existingSlots, rows = []) {
             const el = document.getElementById('myTeamEditSlotTabs');
             if (!el) return;
             const has = new Set(existingSlots || []);
-            const btn = (slot) => {
-                const label = has.has(slot) ? `編成 ${SLOT_JP[slot]}` : `＋ ${SLOT_JP[slot]}`;
-                return `<button onclick="switchMyTeamEditSlot(${slot})" style="flex:1;padding:8px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:800;${_myTeamEditSlot === slot ? 'background:#14161A;color:#fff;' : 'background:#F1F2F4;color:#5A6068;'}">${label}</button>`;
+            // 提出済みのダメージをセグメントに添える (編成② が未提出なことも同時に見える — モック 2026-09-08)
+            const dmgOf = (slot) => {
+                const row = (rows || []).find(d => d.attribute === _myTeamEditAttr && (d.slot || 1) === slot);
+                const v = row ? mockDamageOf(row) : 0;
+                return v > 0 ? `<small>${v}B</small>` : (has.has(slot) ? '<small>未測定</small>' : '<small>未提出</small>');
             };
-            el.innerHTML = MY_TEAM_SLOTS.map(btn).join('')
-                + ((_myTeamEditSlot !== 1 && has.has(_myTeamEditSlot))
-                    ? `<button onclick="handleMyTeamEditDeleteCurrent()" title="編成${SLOT_JP[_myTeamEditSlot]}を削除" style="flex:none;padding:8px 12px;border-radius:9px;border:none;background:rgba(255,61,68,0.10);color:#E23036;font-size:12px;font-weight:800;cursor:pointer;">🗑</button>`
-                    : '');
+            el.innerHTML = MY_TEAM_SLOTS.map(slot =>
+                `<button type="button" class="te-seg${slot === _myTeamEditSlot ? ' on' : ''}" onclick="switchMyTeamEditSlot(${slot})">編成${SLOT_JP[slot]}${dmgOf(slot)}</button>`
+            ).join('');
         }
         // 模擬提出行 (player_damages) の代表ダメージ。
         // ★ 測定ボスレベル廃止 (2026-09-06) 後は、この関数がアプリ内で唯一の「その提出の値」。
@@ -9884,6 +9917,7 @@
             note.innerHTML = (v > 0)
                 ? `${v}B で登録します。どのレベルのボスにも同じ値で使われます。`
                 : '<b style="color:#B45309;">まだ入っていません。</b> 模擬で出たダメージを入れてください。';
+            if (typeof _renderTeamEditBar === 'function') _renderTeamEditBar();
         }
         // フォームの内容 = 保存後に残る値 (0 や空欄なら「測定なし」)
         function _teDamageValue() {
@@ -9982,11 +10016,11 @@
             const row = (allRowsForResv() || []).find(d => d.attribute === attrKey && (d.slot || 1) === slot);
             const dmgB = row ? mockDamageOf(row) : 0;
             if (!(Number(dmgB) > 0)) {
-                state.textContent = 'この編成のダメージを保存すると予約できます';
+                state.textContent = '提出すると、この編成で凸を予約できます';
                 btn.style.display = 'none';
                 return;
             }
-            state.textContent = `${boss.name || 'B' + boss.boss_number} / 編成${SLOT_JP[slot] || '①'} (${Number(dmgB).toFixed(1)}B) で申請します`;
+            state.textContent = `${boss.name || 'B' + boss.boss_number} / 編成${SLOT_JP[slot] || '①'} (${Number(dmgB).toFixed(1)}B)`;
             btn.style.display = '';
             _resvFormCtx = { attr: attrKey, slot };
         }
@@ -10049,7 +10083,7 @@
                 _myTeamEditLevels = null;
                 _myTeamEditExcl = '';
             }
-            _renderTeamEditSlotTabs(existingSlots);
+            _renderTeamEditSlotTabs(existingSlots, allRows);
             _renderTeamEditLevel();
             // 運営除外 (35): 理由を見せ、保存し直しで解除されることを案内
             const exclNote = document.getElementById('myTeamEditExclNote');
@@ -10057,7 +10091,12 @@
                 exclNote.style.display = _myTeamEditExcl ? '' : 'none';
                 exclNote.textContent = _myTeamEditExcl ? `⚠ ${_myTeamEditExcl}。値を確認して保存し直すと除外は自動で解除されます` : '';
             }
-            document.getElementById('myTeamEditTitle').textContent = `✏️ ${ptName}PT 編成${SLOT_JP[_myTeamEditSlot]}・ダメージ`;
+            document.getElementById('myTeamEditTitle').textContent = '模擬を提出する';
+            const pill = document.getElementById('myTeamEditAttrPill');
+            if (pill) {
+                pill.textContent = `${ptName}PT`;
+                pill.style.background = (PT_ATTRS.find(x => x.key === attrKey)?.color) || DC_ATTR_COLORS?.[attrKey] || '#6C42F0';
+            }
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
             _renderTeamEditResv(id, attrKey, mySlot).catch(() => { /* 予約欄が出ないだけ */ });
@@ -10130,37 +10169,75 @@
             }
             document.getElementById('myTeamEditModal').classList.add('open');
 
-            // 📚 人気編成の参考は折りたたみリセット (開いたときにロード)
+            // 📚 人気編成の参考は「みんなの編成」の中で折りたたみ (開いたときにロード)
             const popEl = document.getElementById('myTeamEditPopular');
-            const popToggle = document.getElementById('myTeamEditPopularToggle');
             if (popEl) { popEl.style.display = 'none'; popEl.innerHTML = ''; }
-            if (popToggle) popToggle.textContent = '📚 みんなの人気編成を見る ▼';
+            _tePopularLoadedFor = null;
+            // 提出バー (要約・足りないもの・ボタン) — 開いた時点の提出値を基準にする
+            _myTeamEditSubmittedB = (window.mockLevelsDomain && _myTeamEditLevels)
+                ? (window.mockLevelsDomain.representativeDamage(_myTeamEditLevels) || 0) : 0;
+            _renderTeamEditBar();
         }
 
-        // 編成編集モーダル内の人気編成トグル (初回展開時にロード)
-        async function toggleTeamEditPopular() {
-            const popEl = document.getElementById('myTeamEditPopular');
-            const popToggle = document.getElementById('myTeamEditPopularToggle');
-            if (!popEl || !popToggle) return;
-            const open = popEl.style.display !== 'none';
-            if (open) {
-                popEl.style.display = 'none';
-                popToggle.textContent = '📚 みんなの人気編成を見る ▼';
-                return;
-            }
+        // ===== 提出バー (2026-09-08 再設計・モック a3a7b6e9 の④) =====
+        // シートの下に固定して、要約 (属性・編成・ダメージ) と足りないものを常に出す。
+        // 編成 (updateMyTeamEditIcon) とダメージ (_renderTeamEditLevelNote) の変更経路から呼ばれる
+        let _myTeamEditSubmittedB = 0;   // 開いた時点の提出値 (編集中の値と違えば「33.1B → 35.0B」と出す)
+        function _renderTeamEditBar() {
+            const sum = document.getElementById('myTeamEditBarSum');
+            const btn = document.getElementById('myTeamEditSubmit');
+            if (!sum || !btn) return;
             const attrKey = _myTeamEditAttr;
             const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || '';
-            popEl.innerHTML = '<p style="margin:0;font-size:11.5px;color:#A4AAB0;">読み込み中…</p>';
+            const names = (typeof _teNames === 'function') ? _teNames() : [];
+            const filled = names.filter(Boolean).length;
+            const dmg = _teDamageValue();
+            const before = Number(_myTeamEditSubmittedB) || 0;
+            const hadBefore = before > 0;
+            const dmgHtml = dmg > 0
+                ? (hadBefore && Math.abs(dmg - before) > 1e-9
+                    ? `<span class="diff">${before}B → ${dmg}B</span>`
+                    : `<span>${dmg}B</span>`)
+                : (hadBefore ? `<span class="diff">${before}B → 未入力</span>` : '');
+            // 足りないものを1つだけ言う (優先: ダメージ → 人数)
+            let status, cls;
+            if (dmg > 0 && filled === 5) { status = '提出できます'; cls = 'ok'; }
+            else if (dmg <= 0 && filled === 5) { status = 'ダメージが未入力です'; cls = 'todo'; }
+            else if (dmg > 0) { status = `あと${5 - filled}人 (未登録でも提出はできます)`; cls = 'todo'; }
+            else if (filled > 0) { status = `あと${5 - filled}人とダメージで提出できます`; cls = 'todo'; }
+            else { status = hadBefore ? '空で提出すると測定をクリアします' : '編成とダメージを入れてください'; cls = 'todo'; }
+            sum.innerHTML = `<b>${escapeHtml(ptName)}PT 編成${SLOT_JP[_myTeamEditSlot] || '①'}</b>${dmgHtml}<span class="${cls}">・${escapeHtml(status)}</span>`;
+            // ボタン: 5人+ダメージで黒く点灯。ダメージだけ/編成だけでも提出はできる (従来の保存と同じ意味) が、暗い灰色で示す。
+            // 何も無い (かつ消すものも無い) ときだけ押せない
+            const complete = dmg > 0 && filled === 5;
+            const anything = dmg > 0 || filled > 0 || hadBefore;
+            btn.disabled = !anything;
+            btn.classList.toggle('partial', anything && !complete);
+            btn.textContent = dmg > 0 ? '提出する' : (hadBefore ? '測定をクリアして提出' : '編成だけ提出する');
+        }
+        // 「みんなの編成」の中の人気編成の参考 (統計)。開いたときに1回だけ読む
+        let _tePopularLoadedFor = null;
+        async function _teSyncPopular(open) {
+            const popEl = document.getElementById('myTeamEditPopular');
+            if (!popEl) return;
+            if (!open) { popEl.style.display = 'none'; return; }
+            const attrKey = _myTeamEditAttr;
+            if (!attrKey) return;
             popEl.style.display = 'block';
-            popToggle.textContent = '📚 人気編成を閉じる ▲';
+            if (_tePopularLoadedFor === attrKey) return;
+            const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || '';
+            popEl.innerHTML = '<p style="margin:0;font-size:11.5px;color:#A4AAB0;">読み込み中…</p>';
             try {
                 await Promise.all([_loadTeamSubs(true), _loadMockRadarBase()]);
                 if (_myTeamEditAttr !== attrKey) return;   // モーダルが別属性に切り替わっていたら破棄
-                popEl.innerHTML = `<div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:7px;">📚 みんなの${ptName}PT編成</div>` + _popularTeamsHtml(attrKey, { copyable: true });
+                popEl.innerHTML = `<div style="font-size:11px;font-weight:900;color:#14161A;margin-bottom:7px;">📚 みんなの${ptName}PT編成 (統計)</div>` + _popularTeamsHtml(attrKey, { copyable: true });
+                _tePopularLoadedFor = attrKey;
             } catch (e) {
                 popEl.innerHTML = `<p style="margin:0;font-size:11.5px;color:#FF3D44;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
             }
         }
+
+        // 編成編集モーダル内の人気編成トグル (初回展開時にロード)
         // 凸報告モーダルの使用キャラ5枠を描画
         function renderMyAttackTeamSlots() {
             const el = document.getElementById('myAttackTeamSlots');
@@ -10476,6 +10553,8 @@
             const arw = document.getElementById('teTopArw');
             if (el) el.hidden = !_teTopOpen;
             if (arw) arw.textContent = _teTopOpen ? '▲' : '▼';
+            // 「みんなの編成」は よく使う編成 + 人気編成の参考 (統計) の1区画 (2026-09-08)
+            if (typeof _teSyncPopular === 'function') _teSyncPopular(_teTopOpen);
         }
         function toggleTeamEditManual() {
             const el = document.getElementById('myTeamEditFields');
@@ -10523,6 +10602,7 @@
             // すべてここを通るので、タイルの再描画と編成変更の検知もここに集約する
             if (typeof renderTeamEditPicker === 'function') renderTeamEditPicker();
             if (typeof _teCheckTeamChanged === 'function') _teCheckTeamChanged();
+            if (typeof _renderTeamEditBar === 'function') _renderTeamEditBar();   // 提出バーの要約と足りないもの
         }
 
         // ========== 📚 人気編成 (みんなの模擬提出の純統計 — NIKKE知識は不要) ==========
@@ -11311,6 +11391,14 @@
                     : `✅ ${ptName}PT 編成${SLOT_JP[savedSlot]} を更新: ${parts.join(' / ') || '空'}`);
                 opsStore.invalidate();
                 await renderMyDamagePanels(id);
+                // 提出バー: 基準の提出値を更新 / 予約の導線は「保存済みの提出」を見るので取り直す
+                _myTeamEditSubmittedB = hasEntries ? dmgVal : 0;
+                _renderTeamEditBar();
+                window.supabaseLoadPlayerDamages(id.id).then(rows => {
+                    if (movedOn()) return;
+                    _teAllRows = rows || [];
+                    _renderTeamEditResv(id, saveAttr, savedSlot).catch(() => { /* 導線が出ないだけ */ });
+                }).catch(() => { /* 導線が出ないだけ */ });
                 if (redirected) {
                     showNotification(`✅ 同一編成のため 編成${SLOT_JP[savedSlot]} に統合しました`);
                     // ★ グローバルはタイマー発火までに変わりうるので、開き直す対象はローカルに固定する。
