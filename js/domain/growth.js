@@ -186,7 +186,11 @@
                 name_code: Number(code),
                 grade: pick(detail.grade, base.grade),
                 core: pick(detail.core, base.core),
-                lv: pick(detail.lv, base.lv),
+                // ★ レベルは**一覧側 (GetUserCharacters) を優先する** (2026-09-09 実機で発覚)。
+                //   一覧の lv は「効いているレベル」= シンクロレベル (実機で 781)。
+                //   詳細の lv は**個体レベル**で、シンクロ装置に預けたキャラは 1 のまま (上限 200)。
+                //   詳細を優先すると、フル育成のキャラが「Lv1」として保存され、比較が嘘になる
+                lv: pick(base.lv, detail.lv),
                 skill1_lv: val(detail.skill1_lv),
                 skill2_lv: val(detail.skill2_lv),
                 ulti_skill_lv: val(detail.ulti_skill_lv),

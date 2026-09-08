@@ -6112,6 +6112,24 @@ console.log('\ngrowthDomain:');
         assert.equal(want.save, true);
     });
 
+    test('★ レベルは一覧側 (シンクロレベル) を優先する — 詳細の個体レベルだとフル育成が Lv1 になる', () => {
+        // 実機 (2026-09-09): 一覧 lv=781 (シンクロレベル) / 詳細 lv=1 (シンクロ装置に預けた個体レベル)。
+        // 詳細を優先すると、戦闘力 73万のキャラが「Lv1」で保存され、比較が嘘になる
+        const map = { '1012': { jp: 'サクラ', pad: 'サクラ' } };
+        const synced = dom.toRows({
+            characters: [{ name_code: 1012, lv: 781, grade: 3, core: 7 }],
+            details: [{ name_code: 1012, lv: 1, grade: 3, core: 7 }],
+            stateEffects: [], nameCodeMap: map,
+        }).rows[0];
+        assert.equal(synced.lv, 781, '個体レベルを保存している (フル育成が Lv1 になる)');
+        assert.equal(synced.grade, 3); assert.equal(synced.core, 7);
+        // 一覧が無い (古い貼り付け) なら詳細を使う
+        const only = dom.toRows({ details: [{ name_code: 1012, lv: 200 }], stateEffects: [], nameCodeMap: map }).rows[0];
+        assert.equal(only.lv, 200);
+        // どちらも無ければ null (0 に畳まない)
+        assert.equal(dom.toRows({ details: [{ name_code: 1012 }], stateEffects: [], nameCodeMap: map }).rows[0].lv, null);
+    });
+
     test('★ 壊れた応答を「成功」に化けさせない (Number([]) も Number("") も 0)', () => {
         assert.equal(dom.statusOfCode(0), 'ok');
         for (const bad of [[], '', '0', null, undefined, {}, NaN, '1301002']) {
