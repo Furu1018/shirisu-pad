@@ -6062,6 +6062,8 @@ console.log('\ngrowthDomain:');
         await assert.rejects(dom.parseImportPayload('こわれてる'), /認識できませんでした/);
         await assert.rejects(dom.parseImportPayload(JSON.stringify({ profile: { openid: '1' }, areas: [] })), /スクワッド/);
         await assert.rejects(dom.parseImportPayload(dom.IMPORT_PREFIX + 'あああ'), /展開に失敗/);
+        // ★ 上限を置く。人が貼るものなので、これを超えるのは事故か別物
+        await assert.rejects(dom.parseImportPayload('x'.repeat(8 * 1000 * 1000 + 1)), /大きすぎます/);
     });
 
     test('★ 保存してよいかの判断: 非公開は保存しない / オーバーロードが読めなければ保存しない', () => {
