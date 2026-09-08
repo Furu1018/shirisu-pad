@@ -78,7 +78,13 @@ function makeInput(bosses, players, opts = {}) {
 let passed = 0, failed = 0;
 function test(name, fn) {
     try {
-        fn();
+        const r = fn();
+        // ★ async のテストをここに渡すと、中身を待たずに「合格」にしてしまう。
+        //   assert が一つも効かない**静かに通るテスト**になる (2026-09-09 に実際に踏んだ —
+        //   変異を入れても赤くならず気づいた)。非同期は下の testAsync を await して使うこと
+        if (r && typeof r.then === 'function') {
+            throw new Error('async のテストは testAsync を使うこと (このままでは中身が検証されません)');
+        }
         passed++;
         console.log(`  ✅ ${name}`);
     } catch (e) {
@@ -6033,7 +6039,7 @@ console.log('\ngrowthDomain:');
         assert.throws(() => dom.buildImportSnippet({}), /相手がいません/);
     });
 
-    test('★ 取り込みの読み取り: 生 JSON も gzip+base64 も読める / 別ツールの出力は言い分ける', async () => {
+    await testAsync('★ 取り込みの読み取り: 生 JSON も gzip+base64 も読める / 別ツールの出力は言い分ける', async () => {
         const payload = {
             v: 1, at: '2026-09-09T00:00:00Z',
             members: [{ openid: '1', label: 'A', code: 0, area: 81, characters: [], details: [], stateEffects: [] }],
