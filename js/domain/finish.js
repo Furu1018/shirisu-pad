@@ -24,23 +24,30 @@
      * @param {FinishCandidate[]} candidates
      * @param {number} remHP  残HP (B)
      */
-    function computeFinishPlans(candidates, remHP) {
-        if (remHP <= 0 || candidates.length === 0) return { tight: null, safe: null, cannotKill: false };
+    function computeFinishPlans(candidates, remHP, opts = {}) {
+        // opts.shots = 何人で締めるか (1/2/3)。指定があればその人数の組合せだけを探す (2026-09-08 ユーザー要望)。
+        //   無ければ従来どおり 1→2 を探し、削れないときだけ 3 を探す
+        const shots = [1, 2, 3].includes(Number(opts.shots)) ? Number(opts.shots) : null;
+        if (remHP <= 0 || candidates.length === 0) return { tight: null, safe: null, cannotKill: false, shots };
         const all = [];
         const N = candidates.length;
-        for (let i = 0; i < N; i++) {
-            if (candidates[i].dmg >= remHP) {
-                all.push({ members: [candidates[i]], total: candidates[i].dmg, overkill: candidates[i].dmg - remHP, shots: 1 });
+        if (shots === null || shots === 1) {
+            for (let i = 0; i < N; i++) {
+                if (candidates[i].dmg >= remHP) {
+                    all.push({ members: [candidates[i]], total: candidates[i].dmg, overkill: candidates[i].dmg - remHP, shots: 1 });
+                }
             }
         }
-        for (let i = 0; i < N; i++) {
-            for (let j = i + 1; j < N; j++) {
-                const s = candidates[i].dmg + candidates[j].dmg;
-                if (s >= remHP) all.push({ members: [candidates[i], candidates[j]], total: s, overkill: s - remHP, shots: 2 });
+        if (shots === null || shots === 2) {
+            for (let i = 0; i < N; i++) {
+                for (let j = i + 1; j < N; j++) {
+                    const s = candidates[i].dmg + candidates[j].dmg;
+                    if (s >= remHP) all.push({ members: [candidates[i], candidates[j]], total: s, overkill: s - remHP, shots: 2 });
+                }
             }
         }
-        // 1/2凸で削れない時のみ3凸を探索 (パフォーマンス配慮: 候補多い場合はトップ12のみ)
-        if (all.length === 0) {
+        // 1/2凸で削れない時のみ3凸を探索 (パフォーマンス配慮: 候補多い場合はトップ12のみ)。人数指定が 3 なら常に探す
+        if (shots === 3 || (shots === null && all.length === 0)) {
             const top = candidates.slice(0, Math.min(12, N));
             for (let i = 0; i < top.length; i++) {
                 for (let j = i + 1; j < top.length; j++) {
@@ -51,7 +58,7 @@
                 }
             }
         }
-        if (all.length === 0) return { tight: null, safe: null, cannotKill: true };
+        if (all.length === 0) return { tight: null, safe: null, cannotKill: true, shots };
 
         // ギリギリ: オーバーキル昇順 → 凸数少ない順
         const tight = [...all].sort((a, b) => a.overkill - b.overkill || a.shots - b.shots)[0];
@@ -97,5 +104,27 @@
         return { rows, leaderChanges };
     }
 
-    root.finishDomain = { computeFinishPlans, buildFinishLeaderTimeline };
+    /**
+     * 「今から N 時間の範囲」に出られる候補だけを残す (2026-09-08 ユーザー要望)。
+     * ⏳隙間型 (flexTime) は時刻を約束しない = いつでも可として通す。
+     * 時間帯が未登録で隙間型でもない人は「出られる時間が分からない」ので、範囲を指定したときは外す。
+     * hours が null / 0 以下なら制限なし (全員そのまま)
+     * @param {{availableSlots?:string[], flexTime?:boolean}[]} candidates
+     * @param {{curHour:number, hours:number|null}} args curHour は 0-23 (JST)
+     */
+    function filterByWindow(candidates, { curHour, hours }) {
+        const list = Array.isArray(candidates) ? candidates : [];
+        if (hours == null || !(hours > 0)) return list.slice();
+        const keyOf = (h) => `h${String(((h % 24) + 24) % 24).padStart(2, '0')}`;
+        const span = Math.min(24, Math.floor(hours));
+        return list.filter(p => {
+            if (p.flexTime) return true;
+            const set = new Set(p.availableSlots || []);
+            if (set.size === 0) return false;
+            for (let k = 0; k < span; k++) if (set.has(keyOf(curHour + k))) return true;
+            return false;
+        });
+    }
+
+    root.finishDomain = { computeFinishPlans, buildFinishLeaderTimeline, filterByWindow };
 })(typeof window !== 'undefined' ? window : globalThis);

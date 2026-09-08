@@ -99,6 +99,14 @@ rm -f .claude/hooks/.codex-on      # OFF
   意味のある拒否を握り潰して落ちると、拒否したはずの凸が入る。
   attacks ⇄ 予約のリンクは **`attacks.reservation_id` の片方向だけ**
   (相互FKは循環参照になり、バックアップ復元の順序が決まらない)
+- **js/domain/availability.js** — 戦闘可能時間 ('hXX' の配列) の読み方 (2026-09-08)。5時始まりの並びで区間にまとめ
+  (`rangesOf` / `labelOf` → 「5〜9時・21〜翌2時 (11時間)」)、区間の始まりか (`windowStartsAt`)、今から N 時間に出られるか
+  (`canAttackWithin`)、当日の「戦闘可能時間になりました」の相手 (`reminderTargets`: 残凸あり・今季参加できる・隙間型でない・
+  その時刻が区間の始まり)。ホームの帯 (`renderMyAvailStrip`)・開始の通知 (`_checkAvailReminders`)・締め凸検索の範囲
+  (`finishDomain.filterByWindow`) が同じ読み方を共有する。★ **翌4時と5時は同じレイド日の両端** — 5時は常に区間の始まり。
+  ★ 開始の通知は運営端末の定期チェック (30秒ごと・`_opsMode`) が送り手で、二重送信は `raid_event_notices` の
+  kind `avail_start` / ref `${playerId}:hXX` の一意制約で防ぐ (撃破通知と同じ 確保 → 送信 → 完了記録 / 失敗なら確保を戻す)。
+  運営端末が1台も開いていない時間は届かない (サーバ側 cron ではない)
 - **js/domain/planDiff.js** — 配信プランの差分 (L4 通知抑制 / L5 運営ガード / L3 本人への提示)。
   前回の配信と次のプランを**人ごと**に突き合わせ、変化の種類 (gone/added/boss/time/team) を1つ返す。
   ★ **列として比べる** — 種類ごとに sort して集合で比べると「Lv1B1が21時 / Lv2B3が23時」→
@@ -259,6 +267,7 @@ node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベ
 node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の確認 の実行テスト
 node tests/mock-panels.mjs    # 模擬タブの提出カード (renderMyDamagePanels) の実行テスト
 node tests/home-slots.mjs     # 本人のホーム「あなたの3凸」(3枠) の描画の実行テスト
+node tests/avail-strip.mjs    # ホーム「⏰ あなたの戦闘可能時間」の帯の描画の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で

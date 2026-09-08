@@ -37,6 +37,7 @@
     <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
+    <script defer src="./js/domain/availability.js"></script>    <!-- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) -->
     <script defer src="./js/domain/clientGate.js"></script>      <!-- 互換ゲート (L2 ⑦) -->
     <script defer src="./js/domain/popularTeams.js"></script>
     <script defer src="./js/domain/testSeason.js"></script>
@@ -3220,6 +3221,16 @@
 
             <!-- 📤 配信された凸プラン (運営が配信したときだけ表示 — ホーム再構成 H1 で主行動群の下へ降格。
                  遅延ロードのレイアウトシフトが主行動を押し下げない位置) -->
+            <!-- ⏰ あなたの戦闘可能時間 (2026-09-08 ユーザー要望: 自分の設定を認識していないメンバーがいた) -->
+            <div class="dc-card" id="myAvailStripCard" style="display:none;padding:12px 14px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:13px;font-weight:900;color:#14161A;">⏰ あなたの戦闘可能時間</div>
+                    <span id="myAvailStripBadge" style="display:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;"></span>
+                    <button type="button" onclick="openMyAvailModal()" style="margin-left:auto;flex:none;border:none;border-radius:999px;padding:6px 12px;font-family:inherit;font-size:11px;font-weight:900;background:#F1F2F4;color:#5A6068;cursor:pointer;">変更する ›</button>
+                </div>
+                <div id="myAvailStripBody"></div>
+            </div>
+
             <div class="dc-card" id="myPublishedPlanCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="inbox" data-sp-size="15"></span> 配信された凸プラン</div>
@@ -7586,6 +7597,49 @@
             }
         }
 
+        // ===== ⏰ 戦闘可能時間になったらお知らせ (2026-09-08 ユーザー要望) =====
+        // 当日、本人の時間帯の**始まり**の時刻に「戦闘可能時間になりました」を送る (区間の途中では毎時送らない)。
+        // 送り手は運営端末の定期チェック (30秒ごと)。二重送信は撃破通知と同じ raid_event_notices の一意制約で防ぐ
+        // (kind 'avail_start' / ref `${playerId}:hXX`)。相手の判定は availabilityDomain.reminderTargets。
+        // ★ 限界: 運営端末が1台も開いていない時間は送れない (サーバ側の cron ではない — ROADMAP G7 と同じ課題)
+        async function _checkAvailReminders(season) {
+            try {
+                if (!season?.id || typeof window.supabaseClaimRaidNotice !== 'function') return;
+                const dom = window.availabilityDomain;
+                if (!dom) return;
+                const todayJst = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+                if (season.hard_date !== todayJst) return;              // レイド当日だけ
+                const players = opsStore.get()?.players;
+                if (!Array.isArray(players)) return;
+                const curSlot = getCurrentSlotJST();
+                const hour = Number(String(curSlot).slice(1));
+                const targets = dom.reminderTargets(players, hour);
+                if (targets.length === 0) return;
+                const me = getCurrentIdentity();
+                for (const t of targets) {
+                    const ref = `${t.id}:${curSlot}`;
+                    const st = await window.supabaseClaimRaidNotice(season.id, 'avail_start', ref, me?.id);
+                    if (st !== 'claimed') continue;                       // 'done' = 送信済み / 'held' = 別の端末が送信中
+                    const w = t.window ? dom.rangeLabel(t.window) : `${hour}時〜`;
+                    try {
+                        await window.sendPushNotification({
+                            title: '⏰ 戦闘可能時間になりました',
+                            body: `${w} はあなたが登録した戦闘可能時間です。残り ${t.remaining} 凸。割当はホームで確認できます。`,
+                            url: './?tab=mypage',
+                            tag: `avail-start-${season.id}-${t.id}-${curSlot}`,
+                            ignoreAvailability: true,                     // 本人が登録した時刻そのものなのでフィルタは要らない
+                            playerIds: [t.id],
+                        }, { senderPlayerId: me?.id || null });
+                        await window.supabaseMarkRaidNoticeSent(season.id, 'avail_start', ref);
+                    } catch (e) {
+                        // 送れなかったら確保を戻す (戻さないと「送っていないのに送信済み」で永久に届かない)
+                        console.warn('[avail reminder] 送信失敗 (確保を戻す):', e?.message || e);
+                        await window.supabaseReleaseRaidNotice(season.id, 'avail_start', ref);
+                    }
+                }
+            } catch (e) { console.warn('[avail reminder] skip:', e?.message || e); }
+        }
+
         async function _notifyLevelOpened(seasonId, levelUp) {
             try {
                 const ids = await window.supabaseLevelOpenNotifyTargets(seasonId);
@@ -7988,6 +8042,7 @@
                 _refreshMyStatusSwitcher(null);
                 renderMyPublishedPlan(null);
                 renderMyReservations(null);
+                renderMyAvailStrip(null);
                 renderMyNextAction(null);
                 return;
             }
@@ -8002,8 +8057,73 @@
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
             renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
+            renderMyAvailStrip(id);          // ⏰ あなたの戦闘可能時間 (2026-09-08)
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
+        }
+
+        // ===== ⏰ あなたの戦闘可能時間 (ホーム) =====
+        // 第44回の反省: 自分が設定している時間を認識していないメンバーがいた。設定はMY設定の奥にしか無く、
+        // 開かないと分からなかった。ホームに要約 (「5〜9時・21〜翌2時 (10時間)」) と24コマの帯を常に出す。
+        // 読み方は availabilityDomain (通知・締め凸検索と同じ)
+        let _availStripSeq = 0;
+        async function renderMyAvailStrip(identity) {
+            const card = document.getElementById('myAvailStripCard');
+            const body = document.getElementById('myAvailStripBody');
+            const badge = document.getElementById('myAvailStripBadge');
+            if (!card || !body) return;
+            const dom = window.availabilityDomain;
+            if (!identity?.id || !dom) { card.style.display = 'none'; return; }
+            const seq = ++_availStripSeq;
+            let slots = [], prefs = { flexTime: false, notifyAllHours: false };
+            try {
+                [slots, prefs] = await Promise.all([
+                    window.supabaseLoadAvailability(identity.id),
+                    (window.supabaseLoadAvailabilityPrefs ? window.supabaseLoadAvailabilityPrefs(identity.id) : Promise.resolve(prefs))
+                        .catch(() => ({ flexTime: false, notifyAllHours: false })),
+                ]);
+            } catch (e) {
+                console.warn('[avail strip] 取得skip:', e?.message || e);
+                if (seq === _availStripSeq) card.style.display = 'none';
+                return;
+            }
+            if (seq !== _availStripSeq) return;
+            const set = new Set(slots || []);
+            const curSlot = getCurrentSlotJST();
+            const curHour = Number(String(curSlot).slice(1));
+            const cells = HOUR_ORDER.map(h => {
+                const k = _hourKey(h);
+                const on = set.has(k);
+                const cur = k === curSlot;
+                return `<div title="${h}時${on ? ' 戦闘可能' : ''}" style="flex:1;height:14px;border-radius:3px;background:${on ? '#6C42F0' : '#E7E9EC'};${cur ? 'outline:2px solid #FF3D44;outline-offset:1px;' : ''}${h === 0 ? 'margin-left:4px;' : ''}"></div>`;
+            }).join('');
+            const labels = [5, 9, 13, 17, 21, 0].map(h => `<span style="flex:1;font-size:9px;font-weight:800;color:#B6BBC1;">${h === 0 ? '翌0' : h}時</span>`).join('');
+            const nowOn = set.has(curSlot);
+            const summary = dom.labelOf(slots, { flexTime: !!prefs.flexTime });
+            const w = dom.windowAt(slots, curHour);
+            const nowText = prefs.flexTime
+                ? '⏳ 隙間時間型: 時刻は約束しない設定です (通知は時間帯に関係なく届きます)'
+                : nowOn
+                    ? `いま (${curHour}時) は戦闘可能時間です${w ? ` — ${dom.rangeLabel(w)}` : ''}`
+                    : (set.size > 0
+                        ? `いま (${curHour}時) は時間外です。赤い枠がいまの時刻、紫が登録した時間帯です`
+                        : '時間帯が未登録です。登録すると通知とプランの割当に使われます');
+            body.innerHTML = `
+                <div style="font-size:12.5px;font-weight:900;color:#14161A;">${escapeHtml(summary)}</div>
+                <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? '#0E9455' : '#8A9097'};">${escapeHtml(nowText)}</div>
+                <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
+                <div style="display:flex;margin-top:3px;">${labels}</div>`;
+            card.style.display = '';
+            // 今季の確認状態 (37) は MY設定行のバッジと同じ表示を写す
+            try { await _loadMyAvailConfirm(identity.id); } catch { /* バッジが出ないだけ */ }
+            if (seq !== _availStripSeq) return;
+            const src = document.getElementById('myAvailConfirmBadge');
+            if (badge && src) {
+                badge.textContent = src.textContent;
+                badge.style.color = src.style.color;
+                badge.style.background = src.style.background;
+                badge.style.display = (src.style.display === 'none' || !src.textContent) ? 'none' : 'inline-block';
+            }
         }
 
         // ========== 📤 配信された凸プラン (ホーム) ==========
@@ -9204,7 +9324,12 @@
             _loadAvailPrefsUI(id.id);
             _loadMyAvailConfirm(id.id);
         }
-        function closeMyAvailModal() { document.getElementById('myAvailModal').classList.remove('open'); }
+        function closeMyAvailModal() {
+            document.getElementById('myAvailModal').classList.remove('open');
+            // 変えた直後にホームの帯へ反映する (保存はモーダル内で済んでいる)
+            const id = getCurrentIdentity();
+            if (id?.id && typeof renderMyAvailStrip === 'function') renderMyAvailStrip(id);
+        }
 
         // ===== 今季の戦闘可能時間の確認 (37_availability_confirmations) =====
         // ★ availability は無期限のプロフィール設定。「今季もその時間で動けるか」は別物なので、
@@ -12433,6 +12558,10 @@
                                 { currentLevel: Number(r.season.current_level) || 1, bosses: [] }, '定期点検')
                                 .catch(() => { /* 次の周期で */ });
                         }
+                        // ⏰ 戦闘可能時間の始まりを本人に知らせる (当日だけ・運営端末が送り手・二重送信は一意制約で防ぐ)
+                        if (_opsMode && r?.season?.id && typeof _checkAvailReminders === 'function') {
+                            _checkAvailReminders(r.season).catch(() => { /* 次の周期で */ });
+                        }
                         // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
                         // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
                         if (r?.season && opsStore.patchBosses(r.season.id, r.bosses)) {
@@ -14817,6 +14946,18 @@
         // 盤面キャッシュ { season, bosses, players } は js/state/opsStore.js に移行 (リアーキ ステップ3)。
         // 直接代入・部分書き換えは禁止 — get/load/isStale/invalidate/patchBosses/patchPlayer を使う
         let _opsCurrentAttr = null;
+        // 締め凸検索の条件 (2026-09-08 ユーザー要望): 何人で締めるか / 今から何時間の範囲で探すか。端末内だけの状態
+        const _opsFinish = { shots: null, hours: null };
+        function handleOpsFinishOpt(kind, val) {
+            if (kind === 'shots') _opsFinish.shots = (val == null) ? null : Number(val);
+            else if (kind === 'hours') _opsFinish.hours = (val == null) ? null : Number(val);
+            if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+        }
+        // 現在時 (JST・0-23)。締め凸検索の範囲と時間別ベストの起点
+        function _finishCurHour() {
+            const s = new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false });
+            return parseInt(s, 10) % 24;
+        }
 
         async function renderOpsDashboard() {
             const labelEl = document.getElementById('opsSeasonLabel');
@@ -16334,7 +16475,7 @@
             //   1) 3凸未満 (まだ残凸あり)
             //   2) 該当属性のダメージ登録あり
             //   3) 該当属性をまだ使っていない (既に[attr]PTで凸済みは候補から除外)
-            const candidates = players
+            const candidatesAll = players
                 .filter(p => p.attackCount < 3)
                 .filter(p => !p.unavailableThisSeason)   // 今季「参加が難しい」人には締めを頼まない
                 .map(p => {
@@ -16368,6 +16509,28 @@
                 .filter(p => p.dmg > 0)
                 // ダメージ降順。同ダメージなら凸残数が多い人を優先 (旧AI推薦のルール②をシステム側に吸収)
                 .sort((a, b) => (b.dmg - a.dmg) || ((3 - b.attackCount) - (3 - a.attackCount)));
+            // 「今から N 時間」の範囲に出られる人だけ (判定は finishDomain.filterByWindow)
+            const curHourJst = _finishCurHour();
+            const candidates = finishDomain.filterByWindow(candidatesAll, { curHour: curHourJst, hours: _opsFinish.hours });
+
+            const optChip = (on, onclick, text) => `<button type="button" onclick="${onclick}" style="font-family:inherit;font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:none;cursor:pointer;background:${on ? '#14161A' : '#F1F2F4'};color:${on ? '#fff' : '#5A6068'};">${text}</button>`;
+            const windowNote = _opsFinish.hours
+                ? `${curHourJst}時〜${(curHourJst + _opsFinish.hours) % 24}時に出られる ${candidates.length}名 (全 ${candidatesAll.length}名)`
+                : '';
+            const controls = `
+                <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span style="font-size:10.5px;font-weight:900;color:#A4AAB0;min-width:52px;">何人で</span>
+                        ${optChip(_opsFinish.shots == null, "handleOpsFinishOpt('shots', null)", '自動')}
+                        ${[1, 2, 3].map(n => optChip(_opsFinish.shots === n, `handleOpsFinishOpt('shots', ${n})`, `${n}人`)).join('')}
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span style="font-size:10.5px;font-weight:900;color:#A4AAB0;min-width:52px;">今から</span>
+                        ${optChip(_opsFinish.hours == null, "handleOpsFinishOpt('hours', null)", '制限なし')}
+                        ${[1, 2, 3, 6].map(h => optChip(_opsFinish.hours === h, `handleOpsFinishOpt('hours', ${h})`, `${h}時間`)).join('')}
+                        ${windowNote ? `<span style="font-size:10.5px;font-weight:700;color:#8A9097;">${windowNote}</span>` : ''}
+                    </div>
+                </div>`;
 
             const header = `
                 <div style="padding:8px 12px;border-radius:8px;background:#F7F8F9;margin-bottom:8px;font-size:13px;">
@@ -16375,7 +16538,7 @@
                 </div>`;
 
             if (candidates.length === 0) {
-                listEl.innerHTML = header + '<p style="color:#6B7178;font-size:13px;">この属性で凸できるメンバーがいません（ダメージ未登録か全員3凸済み）。</p>';
+                listEl.innerHTML = controls + header + '<p style="color:#6B7178;font-size:13px;">この属性で凸できるメンバーがいません（ダメージ未登録か全員3凸済み）。</p>';
                 return;
             }
 
@@ -16412,7 +16575,7 @@
             // 時間別ベスト候補のタイムライン (次の12時間)
             const timelineHtml = _buildFinishTimeline(attrKey, candidates, remainingHpB);
 
-            listEl.innerHTML = header + rows + pushBtn + timelineHtml;
+            listEl.innerHTML = controls + header + rows + pushBtn + timelineHtml;
 
             // 推薦プラン (ギリギリ / 余裕) を計算して表示
             renderOpsFinishPlans(attrKey, boss, ptInfo, remainingHpB, candidates);
@@ -16455,7 +16618,7 @@
         // 残HPを倒すための最適な1〜3凸の組合せを2パターン算出する。
         // 本体は js/domain/finish.js (リアーキ ステップ2 — テスト済み)。
         function computeFinishPlans(candidates, remHP) {
-            return finishDomain.computeFinishPlans(candidates, remHP);
+            return finishDomain.computeFinishPlans(candidates, remHP, { shots: _opsFinish.shots });
         }
 
         function renderOpsFinishPlans(attrKey, boss, ptInfo, remHpB, candidates) {

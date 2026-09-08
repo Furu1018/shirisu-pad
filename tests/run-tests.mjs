@@ -16,6 +16,7 @@ import '../js/domain/mockLevels.js';   // globalThis.mockLevelsDomain (レベル
 import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運営による模擬提出の除外)
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
 import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
+import '../js/domain/availability.js';    // globalThis.availabilityDomain (戦闘可能時間の読み方)
 import '../js/domain/clientGate.js';      // globalThis.clientGateDomain (互換ゲート — L2 ⑦)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
@@ -4689,6 +4690,127 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         const ids = (b1.attacks || []).map(a => a.memberId).sort();
         assert.deepEqual(ids, [1, 2], `予約した凸が外された: ${JSON.stringify(ids)} / ${JSON.stringify(p.unmetReservations)}`);
         assert.deepEqual(p.unmetReservations, []);
+    });
+}
+
+// ---- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) ----------------
+console.log('\navailabilityDomain (戦闘可能時間):');
+{
+    const av = globalThis.availabilityDomain;
+    const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
+    test('rangesOf / labelOf: 5時始まりの並びで区間にまとめ、深夜は「翌」で読む', () => {
+        assert.deepEqual(av.rangesOf(H(5, 6, 7, 8, 9, 21, 22, 23, 0, 1, 2)).map(r => [r.start, r.end, r.hours]), [[5, 9, 5], [21, 2, 6]]);
+        assert.equal(av.labelOf(H(5, 6, 7, 8, 9, 21, 22, 23, 0, 1, 2)), '5〜9時・21〜翌2時 (11時間)');
+        assert.equal(av.labelOf(H(13)), '13時 (1時間)');
+        assert.equal(av.labelOf([]), '未登録');
+        assert.equal(av.labelOf([], { flexTime: true }), '⏳ 隙間時間型 (時刻は約束しない)');
+        assert.equal(av.labelOf(H(1, 2)), '翌1〜翌2時 (2時間)');
+    });
+    test('★ windowStartsAt: 区間の始まりだけ真 (途中の時刻では毎時通知しない) / 5時は並びの先頭', () => {
+        const s = H(9, 10, 11, 21, 22);
+        assert.equal(av.windowStartsAt(s, 9), true);
+        assert.equal(av.windowStartsAt(s, 10), false);
+        assert.equal(av.windowStartsAt(s, 21), true);
+        assert.equal(av.windowStartsAt(s, 12), false, 'OFF の時刻を始まりにしている');
+        assert.equal(av.windowStartsAt(H(5, 6), 5), true, '5時は並びの先頭なので始まり');
+        // ★ 翌4時と5時は同じ「レイド日」の両端 (5時始まり・翌4時終わり)。当日の5時に4時から続いている人はいない
+        assert.equal(av.windowStartsAt(H(4, 5), 5), true, 'レイド日は5時始まり。翌4時は前の枠ではない');
+        assert.deepEqual(av.windowAt(s, 10), { start: 9, end: 11, hours: 3 });
+        assert.equal(av.windowAt(s, 12), null);
+    });
+    test('★ canAttackWithin: 今から N 時間の範囲 (日付またぎ) / 隙間型は常に可 / 未登録は範囲指定なら不可', () => {
+        assert.equal(av.canAttackWithin(H(1), 23, 3), true, '23時から3時間 = 23,0,1 を含む');
+        assert.equal(av.canAttackWithin(H(2), 23, 3), false);
+        assert.equal(av.canAttackWithin(H(13), 10, 3), false, '10,11,12 に 13 は入らない');
+        assert.equal(av.canAttackWithin(H(13), 10, 4), true);
+        assert.equal(av.canAttackWithin([], 10, 2), false, '未登録は「出られる時間が分からない」');
+        assert.equal(av.canAttackWithin([], 10, 2, { flexTime: true }), true);
+        assert.equal(av.canAttackWithin([], 10, null), true, '制限なしは全員');
+    });
+    test('★ reminderTargets: 残凸あり・今季参加できる・隙間型でない・その時刻が区間の始まり の人だけ', () => {
+        const ps = [
+            { id: 1, name: 'A', attackCount: 0, availableSlots: H(13, 14, 15) },          // 13時が始まり
+            { id: 2, name: 'B', attackCount: 3, availableSlots: H(13, 14) },              // 3凸済み
+            { id: 3, name: 'C', attackCount: 1, availableSlots: H(12, 13) },              // 13時は途中
+            { id: 4, name: 'D', attackCount: 0, availableSlots: H(13), flexTime: true },  // 隙間型は時刻を約束しない
+            { id: 5, name: 'E', attackCount: 0, availableSlots: H(13), unavailableThisSeason: true },
+            { id: 6, name: 'F', attackCount: 2, availableSlots: H(13) },
+        ];
+        const t = av.reminderTargets(ps, 13);
+        assert.deepEqual(t.map(x => [x.id, x.remaining]), [[1, 3], [6, 1]]);
+        assert.deepEqual(t[0].window, { start: 13, end: 15, hours: 3 });
+        assert.deepEqual(av.reminderTargets(ps, 14), [], '区間の途中では誰にも送らない');
+    });
+}
+
+// ---- 締め凸検索: 人数と時間範囲 (2026-09-08) --------------------------------------
+console.log('\nfinishDomain (人数・時間範囲):');
+{
+    const fd = globalThis.finishDomain;
+    const _fs = await import('node:fs');
+    const _path = await import('node:path');
+    const { fileURLToPath: _f2p } = await import('node:url');
+    const _ROOT = _path.resolve(_path.dirname(_f2p(import.meta.url)), '..');
+    const A = { name: 'A', dmg: 10 }, B = { name: 'B', dmg: 6 }, C = { name: 'C', dmg: 5 };
+    test('★ computeFinishPlans: 人数を指定したらその人数の組合せだけ / 届かなければ cannotKill', () => {
+        assert.equal(fd.computeFinishPlans([A, B, C], 8, { shots: 1 }).tight.members.length, 1);
+        const two = fd.computeFinishPlans([A, B, C], 8, { shots: 2 });
+        assert.equal(two.tight.shots, 2, '1人で足りても2人の組合せを出す');
+        assert.deepEqual(two.tight.members.map(m => m.name), ['B', 'C'], '2人ならオーバーキル最小は B+C (11)');
+        const three = fd.computeFinishPlans([A, B, C], 8, { shots: 3 });
+        assert.equal(three.tight.shots, 3, '3人指定なら 1/2人で足りても3人で探す');
+        assert.equal(fd.computeFinishPlans([B, C], 20, { shots: 2 }).cannotKill, true, '2人では届かない');
+        assert.equal(fd.computeFinishPlans([A, B, C], 8, { shots: 9 }).tight.shots, 1, '範囲外の指定は自動扱い');
+        // 指定なしは従来どおり (1→2、削れないときだけ3)
+        assert.equal(fd.computeFinishPlans([A, B, C], 8).tight.shots, 1);
+    });
+    test('★ filterByWindow: 今から N 時間に出られる人だけ (隙間型は通す / 未登録は外す / 制限なしは全員)', () => {
+        const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
+        const ps = [
+            { name: 'A', dmg: 10, availableSlots: H(13) },
+            { name: 'B', dmg: 9, availableSlots: H(20) },
+            { name: 'C', dmg: 8, availableSlots: [], flexTime: true },
+            { name: 'D', dmg: 7, availableSlots: [] },
+        ];
+        assert.deepEqual(fd.filterByWindow(ps, { curHour: 12, hours: 2 }).map(p => p.name), ['A', 'C']);
+        assert.deepEqual(fd.filterByWindow(ps, { curHour: 12, hours: null }).map(p => p.name), ['A', 'B', 'C', 'D']);
+        assert.deepEqual(fd.filterByWindow(ps, { curHour: 23, hours: 24 }).map(p => p.name), ['A', 'B', 'C'], '24時間なら登録のある人は全員');
+    });
+    test('★ 配線: 締め凸検索に「何人で」「今から」のチップがあり、候補と組合せに効く', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const fn = html.match(/function renderOpsFinishList\(attrKey\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const candidates = finishDomain\.filterByWindow\(candidatesAll, \{ curHour: curHourJst, hours: _opsFinish\.hours \}\);/.test(fn), '範囲で候補を絞っていない');
+        assert.ok(fn.includes("handleOpsFinishOpt('shots'") && fn.includes("handleOpsFinishOpt('hours'"), 'チップが無い');
+        assert.ok(/listEl\.innerHTML = controls \+ header \+ rows \+ pushBtn \+ timelineHtml;/.test(fn), 'チップを描いていない');
+        assert.ok(/return finishDomain\.computeFinishPlans\(candidates, remHP, \{ shots: _opsFinish\.shots \}\);/.test(html), '人数を組合せに渡していない');
+        assert.ok(/if \(_opsCurrentAttr\) renderOpsFinishList\(_opsCurrentAttr\);/.test(html), 'チップを押しても描き直さない');
+    });
+    test('★ 配線: ホームに「あなたの戦闘可能時間」の帯 (要約 + 24コマ + 今の時刻) と変更ボタン', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(html.includes('id="myAvailStripCard"') && html.includes('id="myAvailStripBody"'));
+        assert.ok(html.includes('<script defer src="./js/domain/availability.js"></script>'));
+        const fn = html.match(/async function renderMyAvailStrip\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.labelOf\(slots, \{ flexTime: !!prefs\.flexTime \}\)/.test(fn), '要約をドメインで作っていない');
+        assert.ok(/HOUR_ORDER\.map\(h => \{/.test(fn) && /outline:2px solid #FF3D44/.test(fn), '24コマと今の時刻の印が無い');
+        assert.ok(/const seq = \+\+_availStripSeq;/.test(fn) && (fn.match(/if \(seq !== _availStripSeq\) return;/g) || []).length >= 2, '世代ガードが無い');
+        assert.ok(/renderMyAvailStrip\(id\);\s*\/\/ ⏰/.test(html), 'ホームの描画から呼んでいない');
+        assert.ok(/renderMyAvailStrip\(null\);/.test(html), '未選択で隠していない');
+        const close = html.match(/function closeMyAvailModal\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/renderMyAvailStrip\(id\)/.test(close), '変更のあと帯を描き直していない');
+    });
+    test('★ 配線: 当日、時間帯の始まりに「戦闘可能時間になりました」を本人へ (運営端末が送り手・二重送信よけ)', () => {
+        const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const fn = html.match(/async function _checkAvailReminders\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn, '通知の関数が無い');
+        assert.ok(/if \(season\.hard_date !== todayJst\) return;/.test(fn), '当日以外にも送る');
+        assert.ok(/dom\.reminderTargets\(players, hour\)/.test(fn), '相手の判定をドメインでやっていない');
+        assert.ok(/supabaseClaimRaidNotice\(season\.id, 'avail_start', ref, me\?\.id\)/.test(fn), '二重送信よけ (確保) が無い');
+        assert.ok(/supabaseMarkRaidNoticeSent\(season\.id, 'avail_start', ref\)/.test(fn), '送信済みを記録していない');
+        assert.ok(/supabaseReleaseRaidNotice\(season\.id, 'avail_start', ref\)/.test(fn), '送信失敗で確保を戻していない');
+        assert.ok(/ignoreAvailability: true/.test(fn) && /playerIds: \[t\.id\]/.test(fn), '本人だけに送っていない');
+        assert.ok(fn.includes('戦闘可能時間になりました'));
+        // 定期チェックから呼ばれる (運営ONの端末)
+        assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _checkAvailReminders === 'function'\) \{\s*\n\s*_checkAvailReminders\(r\.season\)/.test(html), '定期チェックから呼んでいない');
     });
 }
 
