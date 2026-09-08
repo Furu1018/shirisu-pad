@@ -210,8 +210,11 @@
     /** BlaBlaLINK の応答コード → 保存する状態。非公開と一時的な失敗を混ぜない。 */
     const PRIVACY_CODES = new Set([1301002, 1303002]);
     function statusOfCode(code) {
-        if (Number(code) === 0) return 'ok';
-        if (PRIVACY_CODES.has(Number(code))) return 'private';
+        // ★ Number() に通さない。Number([]) も Number('') も 0 なので、
+        //   壊れた応答が「成功」に化ける (Codex指摘 2026-09-09)
+        if (!Number.isFinite(code)) return 'error';
+        if (code === 0) return 'ok';
+        if (PRIVACY_CODES.has(code)) return 'private';
         return 'error';
     }
 
@@ -275,7 +278,9 @@
             'say("しりすこPAD 育成データの取り込み");',
             'say(D.targets.length+"人ぶんを取りに行きます。閉じずにお待ちください。");say("");',
             'for(var i=0;i<D.targets.length;i++){var t=D.targets[i];',
-            'var rec={openid:t.openid,label:t.label,code:null,area:null,characters:[],details:[],stateEffects:[]};',
+            'var rec={openid:t.openid,label:t.label,code:null,area:null,requested:0,'
+                + 'characters:[],details:[],stateEffects:[]};',
+            'try{',
             'var found=null;',
             'for(var a=0;a<D.areas.length;a++){await gap();',
             'var got=await call("Game/GetUserCharacters",{intl_open_id:t.openid,nikke_area_id:D.areas[a]});',
@@ -283,11 +288,11 @@
             'if(D.privacy.indexOf(got.code)>=0){break;}',
             'var cs=(got.data||{}).characters||[];',
             'if(got.code===0&&cs.length){found={area:D.areas[a],characters:cs};break;}}',
-            'if(!found){say((t.label||t.openid)+" → 取得できず (code="+rec.code+")");out.members.push(rec);continue;}',
-            'rec.area=found.area;',
+            'if(found){rec.area=found.area;',
             'var want=D.codes.length?found.characters.filter(function(c){return D.codes.indexOf(c.name_code)>=0;})'
                 + ':found.characters;',
             'rec.characters=want.map(function(c){return {name_code:c.name_code,grade:c.grade,core:c.core,lv:c.lv};});',
+            'rec.requested=want.length;',
             'var ids=want.map(function(c){return c.name_code;});',
             'for(var at=0;at<ids.length;at+=60){await gap();',
             'var ch=await call("Game/GetUserCharacterDetails",{intl_open_id:t.openid,nikke_area_id:found.area,'
@@ -298,7 +303,11 @@
             '(dd.state_effects||[]).forEach(function(e){var f=(e.function_details||[])[0]||{};',
             'rec.stateEffects.push({id:e.id,function_details:[{function_type:f.function_type,'
                 + 'function_value:f.function_value}]});});}',
-            'say((t.label||t.openid)+" → "+rec.details.length+"体");',
+            'say((t.label||t.openid)+" → "+rec.details.length+"/"+rec.requested+"体");',
+            '}else{say((t.label||t.openid)+" → 取得できず (code="+rec.code+")");}',
+            // 1人が転んでも残りを続ける。ここで throw すると全員ぶんの結果が消える (Codex指摘)
+            '}catch(e){if(rec.code===0||rec.code==null){rec.code=-1;}',
+            'say((t.label||t.openid)+" → 通信に失敗 ("+(e&&e.message||e)+")");}',
             'out.members.push(rec);}',
             'say("");say("まとめています...");',
             'var packed=JSON.stringify(out);var text=packed;',
@@ -318,9 +327,16 @@
      * ブックマークレットの出力を読む。`SPG1-` は gzip+base64、それ以外は生の JSON。
      * 貼り付けは人が手でやるので、途中で切れた・別のものを貼った、が普通に起きる。
      */
+    const MAX_PASTE = 8 * 1000 * 1000;      // 貼り付けの上限。30人ぶんでも数百KBなので十分すぎる
+    const MAX_JSON = 32 * 1000 * 1000;     // 展開後の上限 (gzip 爆弾でブラウザを固めない)
+
     async function parseImportPayload(text) {
         const trimmed = String(text == null ? '' : text).trim();
         if (!trimmed) throw new Error('貼り付けた内容が空です。');
+        // ★ 上限を置く。人が貼るものなので、これを超えるのは事故か別物 (Codex指摘 2026-09-09)
+        if (trimmed.length > MAX_PASTE) {
+            throw new Error('貼り付けた内容が大きすぎます。取り込み用ブックマークレットの出力を貼ってください。');
+        }
 
         let json = trimmed;
         if (trimmed.startsWith(IMPORT_PREFIX)) {
@@ -331,6 +347,7 @@
                 const body = new Response(bytes).body;
                 if (!body) throw new Error('stream unavailable');
                 json = await new Response(body.pipeThrough(new DecompressionStream('gzip'))).text();
+                if (json.length > MAX_JSON) throw new Error('too large');
             } catch {
                 throw new Error('データの展開に失敗しました。コピーが途中で切れていないか確認してください。');
             }
@@ -354,8 +371,10 @@
             members: box.members.filter((m) => m && typeof m === 'object').map((m) => ({
                 openid: String(m.openid || ''),
                 label: String(m.label || ''),
-                code: m.code == null ? null : Number(m.code),
-                area: m.area == null ? null : Number(m.area),
+                // ★ 数値でないものを Number() で 0 にしない (0 = 成功に化ける)
+                code: Number.isFinite(m.code) ? m.code : null,
+                area: Number.isFinite(m.area) ? m.area : null,
+                requested: Number.isFinite(m.requested) ? m.requested : null,
                 characters: Array.isArray(m.characters) ? m.characters : [],
                 details: Array.isArray(m.details) ? m.details : [],
                 stateEffects: Array.isArray(m.stateEffects) ? m.stateEffects : [],
@@ -388,6 +407,18 @@
         }
         if (!got.rows.length) {
             return { status: 'error', detail: '対象のキャラが1体も取れませんでした', rows: [], unknown: got.unknown, save: false };
+        }
+        // ★ 応答が code=0 でも、頼んだぶんの詳細が全部返るとは限らない。
+        //   欠けたまま「そのシーズンのスナップショット」として残すと、静かに穴の空いた記録になる
+        const requested = Number.isFinite(member.requested) ? member.requested
+            : (Array.isArray(member.characters) ? member.characters.length : 0);
+        const got_ = Array.isArray(member.details) ? member.details.length : 0;
+        if (requested > 0 && got_ < requested) {
+            return {
+                status: 'error',
+                detail: `育成の詳細が ${got_}/${requested} 体しか返りませんでした。取り直してください`,
+                rows: [], unknown: got.unknown, save: false,
+            };
         }
         return { status: 'ok', detail: null, rows: got.rows, unknown: got.unknown, save: true };
     }

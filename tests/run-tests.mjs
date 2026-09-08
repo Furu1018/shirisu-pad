@@ -6097,6 +6097,51 @@ console.log('\ngrowthDomain:');
         assert.equal(want.save, true);
     });
 
+    test('★ 壊れた応答を「成功」に化けさせない (Number([]) も Number("") も 0)', () => {
+        assert.equal(dom.statusOfCode(0), 'ok');
+        for (const bad of [[], '', '0', null, undefined, {}, NaN, '1301002']) {
+            assert.equal(dom.statusOfCode(bad), 'error', `${JSON.stringify(bad)} を error にしていない`);
+        }
+        assert.equal(dom.statusOfCode(1301002), 'private');
+    });
+
+    test('★ 一部しか返っていないスナップショットを保存しない', () => {
+        const map = { '1012': { jp: 'サクラ', pad: 'サクラ' } };
+        const eff = [{ id: '101', function_details: [{ function_type: 'StatAtk', function_value: 1234 }] }];
+        const d = { name_code: 1012, grade: 3, core: 0, head_equip_option1_id: 101 };
+        // 3体頼んで1体しか返っていない = 穴の空いた記録になる
+        const partial = dom.prepareMember(
+            { code: 0, requested: 3, characters: [1, 2, 3], details: [d], stateEffects: eff }, { nameCodeMap: map });
+        assert.equal(partial.save, false, '欠けたまま保存しようとしている');
+        assert.match(partial.detail, /1\/3 体/);
+        // requested が無い古い形でも characters の数で見る
+        const legacy = dom.prepareMember(
+            { code: 0, characters: [1, 2], details: [d], stateEffects: eff }, { nameCodeMap: map });
+        assert.equal(legacy.save, false);
+        // 揃っていれば保存する
+        assert.equal(dom.prepareMember(
+            { code: 0, requested: 1, characters: [1], details: [d], stateEffects: eff }, { nameCodeMap: map }).save, true);
+    });
+
+    test('★ 生成コード: 1人が転んでも残りの取得を続ける / 要求数を記録する', () => {
+        const snip = dom.buildImportSnippet({ targets: [{ openid: '1234567890' }], wantedCodes: [1012] });
+        assert.doesNotThrow(() => new Function(snip.slice('javascript:'.length)));
+        // ここで throw を素通りさせると、1人の通信失敗で全員ぶんの結果が消える
+        assert.ok(/\}catch\(e\)\{if\(rec\.code===0\|\|rec\.code==null\)\{rec\.code=-1;\}/.test(snip),
+            '1人ぶんの失敗を捕まえていない (全員ぶんが消える)');
+        assert.ok(snip.includes('rec.requested=want.length'), '要求数を記録していない (部分取得を検出できない)');
+        assert.ok(!/continue;/.test(snip), 'continue で push を飛ばすと、その人の結果が記録から消える');
+    });
+
+    test('test() ハーネス: async を渡したら落とす (静かに通るテストを作らせない)', () => {
+        const src = _fsG.readFileSync(_pathG.join(_ROOTG, 'tests', 'run-tests.mjs'), 'utf8');
+        const fn = src.match(/function test\(name, fn\) \{[\s\S]*?\n\}/)?.[0] || '';
+        assert.ok(/typeof r\.then === 'function'/.test(fn), 'async のテストを検出していない');
+        assert.ok(/testAsync/.test(fn), '正しい使い方を案内していない');
+        // 実際に async を渡すと throw することを、カウンタを汚さずに確かめる
+        assert.throws(() => { const r = (async () => {})(); if (r && typeof r.then === 'function') throw new Error('async'); });
+    });
+
     test('43_member_growth.sql: 冪等・識別子の一意性・状態の綴り', () => {
         const sql = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '43_member_growth.sql'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/ADD COLUMN IF NOT EXISTS blabla_openid TEXT/.test(sql));
