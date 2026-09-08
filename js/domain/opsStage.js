@@ -22,12 +22,25 @@
     const RAID_DAY_START_HOUR = 5;
     const MAX_ATTACKS = 3;
 
-    /** その時刻の JST の日付 'YYYY-MM-DD' (端末のタイムゾーンに依存しない) */
+    /** Intl に頼らない JST の日付 (JST = UTC+9 固定・夏時間なし)。Intl 非対応の WebView の逃げ道 (Codex指摘 2026-09-08) */
+    function jstDateNoIntl(now) {
+        const ms = (now instanceof Date ? now : new Date(now == null ? Date.now() : now)).getTime();
+        const d = new Date(ms + 9 * 3600 * 1000);
+        const p2 = (n) => String(n).padStart(2, '0');
+        return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+    }
+    /** その時刻の JST の日付 'YYYY-MM-DD' (端末のタイムゾーンに依存しない)。
+     *  Intl が使えない環境では jstDateNoIntl に落ちる — 落ちずに例外にすると段階の判定ごと止まる */
     function jstDate(now) {
-        const d = now instanceof Date ? now : new Date(now == null ? Date.now() : now);
-        const f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
-        const p = Object.fromEntries(f.formatToParts(d).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));
-        return `${p.year}-${p.month}-${p.day}`;
+        try {
+            const d = now instanceof Date ? now : new Date(now == null ? Date.now() : now);
+            const f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
+            const p = Object.fromEntries(f.formatToParts(d).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));
+            if (!p.year || !p.month || !p.day) throw new Error('parts');
+            return `${p.year}-${p.month}-${p.day}`;
+        } catch {
+            return jstDateNoIntl(now);
+        }
     }
     /** レイド日のキー: 5時より前は前日のレイド日 (翌4時までが同じ日) */
     function raidDayKey(now) {
@@ -103,9 +116,14 @@
     function checklist({ stage, season, bosses, mbRows, reservations, published, pendingRepublish, backupSavedAt } = {}) {
         const row = (o) => ({ total: null, done: false, pending: false, action: null, nudge: null, optional: false, ...o });
         if (stage === 'pre') {
-            const bs = Array.isArray(bosses) ? bosses : [];
-            const ready = bs.filter(bossReady).length;
-            const rows = [row({ key: 'bosses', label: 'ボスの属性と HP', value: ready, total: 5, done: ready >= 5, action: 'season-edit' })];
+            // ★ bosses が null = 盤面が未ロード。[] に潰すと「0/5」と出て、運営が設定し直しに走る (Codex指摘 2026-09-08)
+            const rows = [];
+            if (Array.isArray(bosses)) {
+                const ready = bosses.filter(bossReady).length;
+                rows.push(row({ key: 'bosses', label: 'ボスの属性と HP', value: ready, total: 5, done: ready >= 5, action: 'season-edit' }));
+            } else {
+                rows.push(row({ key: 'bosses', label: 'ボスの属性と HP', value: null, pending: true, action: 'season-edit' }));
+            }
             const rs = Array.isArray(mbRows) ? mbRows : null;
             const n = rs ? rs.length : 0;
             if (rs) {
@@ -195,9 +213,14 @@
             if ((Number(finPending) || 0) > 0) return { lead: `締め凸の返答待ちが ${finPending} 件`, why: '返答が無いと締めの割当が決まりません', action: 'members', label: '👥 返答待ちを見る' };
             if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '当日の予約は承認するとすぐ固定されます', action: 'reserve', label: '🔒 予約を見る' };
             if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません`, action: 'republish', label: '🧮 組み直して再配信' };
+            // ★ 盤面が未ロード (null) なら「完了」とは言わない (Codex指摘 2026-09-08)。
+            //   [] に潰すと残り0凸 = 全員完了に見えて、当日のうちに終了処理へ誘導してしまう
+            if (remainingTotal == null) return { lead: '盤面を読み込んでいます', why: 'ボスとメンバーが読めると、残り凸と締め凸がここに出ます', action: 'members', label: '👥 状況を見る' };
             const rem = Number(remainingTotal) || 0;
             if (rem > 0) return { lead: `残り ${rem} 凸`, why: '残り戦闘可能メンバーから、いま出られる人と締め凸を見ます', action: 'remaining', label: '👥 残りメンバーを見る' };
-            return { lead: '🎉 全員 3 凸完了', why: '翌日になったら終了処理へ進みます', action: 'end', label: '🏁 終了処理へ' };
+            // ★ 当日は終了処理を出さない (Codex指摘 2026-09-08)。翌日5時以降の「終了」の段階でだけ終了できる。
+            //   ここから handleOpsEndSeason に飛べると、レイド中にシーズンを非アクティブ化できてしまう
+            return { lead: '🎉 全員 3 凸完了', why: '終了処理は翌日 5 時以降の「終了」の段階でできます。それまでは HP と結果の確認だけです', action: 'members', label: '👥 状況を見る' };
         }
         if (stage === 'end') {
             const done = Number(attacksDone) || 0, cap = Number(attackCap) || 0;
@@ -215,7 +238,7 @@
 
     root.opsStageDomain = {
         STAGES, STAGE_JP, STAGE_SUB, STORAGE_KEY, RAID_DAY_START_HOUR, MAX_ATTACKS,
-        jstDate, raidDayKey, detect, parseOverride, serializeOverride, nextOf, prevOf,
+        jstDate, jstDateNoIntl, raidDayKey, detect, parseOverride, serializeOverride, nextOf, prevOf,
         visibleIn, bossReady, checklist, hero, nudgeTargets,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

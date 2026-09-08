@@ -2684,6 +2684,9 @@ console.log('\nopsLayoutDomain:');
 console.log('\nopsStageDomain:');
 {
     const dom = globalThis.opsStageDomain;
+    const _fsStage = (await import('node:fs')).default;
+    const _pathStage = (await import('node:path')).default;
+    const _ROOTStage = _pathStage.resolve(_pathStage.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
     const T = (s) => Date.parse(s);
     const season = { id: 7, is_active: true, hard_date: '2026-09-11', month_key: '2026-09' };
     test('detect: シーズン無し=準備 / ハード日前=前日 / 当日は 5時〜翌4時 / 翌日 5時以降=終了 / 終了済み=準備', () => {
@@ -2712,6 +2715,62 @@ console.log('\nopsStageDomain:');
         assert.equal(dom.serializeOverride(7, 'bogus'), null);
         assert.equal(dom.nextOf('pre'), 'day'); assert.equal(dom.prevOf('prep'), 'prep'); assert.equal(dom.nextOf('end'), 'end');
     });
+    test('★ jstDate: Intl 無しの実装と同じ日付を返す (5時境界・翌4時59分・翌5時)', () => {
+        const ts = ['2026-09-11T04:59:00+09:00', '2026-09-11T05:00:00+09:00', '2026-09-12T04:59:00+09:00',
+                    '2026-09-12T05:00:00+09:00', '2026-09-11T23:59:59+09:00', '2026-09-12T00:00:00+09:00', '2026-12-31T23:30:00+09:00'];
+        for (const t of ts) {
+            const ms = Date.parse(t);
+            assert.equal(dom.jstDate(ms), dom.jstDateNoIntl(ms), `Intl とフォールバックがずれた: ${t}`);
+        }
+        assert.equal(dom.jstDateNoIntl(Date.parse('2026-09-11T04:59:00+09:00')), '2026-09-11');
+        assert.equal(dom.jstDateNoIntl(Date.parse('2026-09-10T23:30:00+09:00')), '2026-09-10');
+        // raidDayKey: 5時より前は前日のレイド日
+        const season = { id: 1, is_active: true, hard_date: '2026-09-11' };
+        assert.equal(dom.detect({ season, now: Date.parse('2026-09-11T04:59:00+09:00') }).auto, 'pre');
+        assert.equal(dom.detect({ season, now: Date.parse('2026-09-11T05:00:00+09:00') }).auto, 'day');
+        assert.equal(dom.detect({ season, now: Date.parse('2026-09-12T04:59:00+09:00') }).auto, 'day');
+        assert.equal(dom.detect({ season, now: Date.parse('2026-09-12T05:00:00+09:00') }).auto, 'end');
+        // ソースにフォールバックがあること
+        const src = _fsStage.readFileSync(_pathStage.join(_ROOTStage, 'js', 'domain', 'opsStage.js'), 'utf8');
+        assert.ok(/function jstDate\(now\) \{\s*\n\s*try \{/.test(src), 'Intl を try で囲んでいない');
+        assert.ok(/\} catch \{\s*\n\s*return jstDateNoIntl\(now\);/.test(src), 'フォールバックに落ちていない');
+    });
+
+    test('★ 未ロードの盤面を 0 と混同しない: チェックリストの「ボス」は pending / ヒーローは「読み込んでいます」', () => {
+        const season = { id: 1, is_active: true, hard_date: '2026-09-11' };
+        // 前日: bosses null → 0/5 ではなく pending
+        const rows = dom.checklist({ stage: 'pre', season, bosses: null, mbRows: null, reservations: null, published: null });
+        const b = rows.find(r => r.key === 'bosses');
+        assert.equal(b.pending, true, '未ロードのボスを 0/5 として数えている');
+        assert.equal(b.value, null);
+        const loaded = dom.checklist({ stage: 'pre', season, bosses: [], mbRows: null, reservations: null, published: null }).find(r => r.key === 'bosses');
+        assert.equal(loaded.pending, false); assert.equal(loaded.value, 0);
+        // 当日: remainingTotal null → 「全員3凸完了」と言わない・終了へ飛ばない
+        const h = dom.hero({ stage: 'day', season, rows: [], reservations: null, pendingRepublish: 0, freshMin: null, remainingTotal: null, finPending: null });
+        assert.match(h.lead, /読み込んでいます/);
+        assert.notEqual(h.action, 'end');
+    });
+
+    test('★ 当日のヒーローは終了処理へ飛ばさない (レイド中にシーズンを非アクティブ化できてしまう)', () => {
+        const season = { id: 1, is_active: true, hard_date: '2026-09-11' };
+        const h = dom.hero({ stage: 'day', season, rows: [], reservations: null, pendingRepublish: 0, freshMin: 3, remainingTotal: 0, finPending: 0 });
+        assert.match(h.lead, /全員 3 凸完了/);
+        assert.notEqual(h.action, 'end', '当日なのに終了処理へ誘導している');
+        assert.match(h.why, /翌日 5 時以降/);
+        // 終了の段階では終了へ
+        assert.equal(dom.hero({ stage: 'end', season, attacksDone: 60, attackCap: 90 }).action, 'end');
+        // index.html 側: 自動判定が当日なら handleOpsEndSeason を止める / 未ロードは null のまま渡す / 配信はこのシーズンだけ
+        const html = _fsStage.readFileSync(_pathStage.join(_ROOTStage, 'index.html'), 'utf8');
+        const fn = html.match(/async function handleOpsEndSeason\(\) \{[\s\S]{0,900}/)?.[0] || '';
+        assert.ok(/if \(stNow && stNow\.auto === 'day'\) \{/.test(fn), '当日の終了を止めていない');
+        assert.ok(/レイド当日はシーズンを終了できません/.test(fn));
+        assert.ok(/const bosses = snap \? \(snap\.bosses \|\| \[\]\) : null, players = snap \? \(snap\.players \|\| \[\]\) : null;/.test(html), '未ロードを [] に潰している');
+        assert.ok(/remainingTotal: players \? Math\.max\(0, attackCap - attacksDone\) : null,/.test(html), '未ロードの残凸を 0 にしている');
+        assert.ok(/function _opsPublishedFor\(season\) \{[\s\S]{0,300}Number\(_opsPublishedPlan\.season_id\) === Number\(season\.id\)\);/.test(html), '配信の有無をシーズンで絞っていない');
+        assert.ok(/const published = _opsPublishedFor\(season\);/.test(html), '段階のチェックリストがシーズン照合を使っていない');
+        assert.ok(/published: !!_opsPublishedFor\(snap\?\.season \|\| null\),/.test(html), 'コックピットがシーズン照合を使っていない');
+    });
+
     test('visibleIn: stages の無いカードは全段階 / ある場合はその段階だけ / 空 = どの段階でも「その他」', () => {
         assert.equal(dom.visibleIn({ id: 'x' }, 'pre'), true);
         assert.equal(dom.visibleIn({ id: 'x', stages: ['day'] }, 'pre'), false);
@@ -2767,7 +2826,9 @@ console.log('\nopsStageDomain:');
         assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 0, pendingRepublish: 1, remainingTotal: 10 }).action, 'republish');
         const r = dom.hero({ stage: 'day', freshMin: 5, finPending: 0, remainingTotal: 41 });
         assert.equal(r.action, 'remaining'); assert.match(r.lead, /41 凸/);
-        assert.equal(dom.hero({ stage: 'day', freshMin: null, finPending: null, remainingTotal: 0 }).action, 'end');
+        // 当日の全員完了は終了へ飛ばさない (Codex指摘 2026-09-08) — 終了は翌日5時以降の「終了」の段階で
+        const done = dom.hero({ stage: 'day', freshMin: null, finPending: null, remainingTotal: 0 });
+        assert.match(done.lead, /全員 3 凸完了/); assert.equal(done.action, 'members');
         assert.equal(dom.hero({ stage: 'prep' }).action, 'create');
         const e = dom.hero({ stage: 'end', attacksDone: 90, attackCap: 96 });
         assert.equal(e.action, 'end'); assert.match(e.lead, /90 凸 \/ 96/);

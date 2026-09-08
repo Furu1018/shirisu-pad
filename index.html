@@ -19909,6 +19909,14 @@
         async function handleOpsEndSeason() {
             const ctx = await ensureActiveSeasonLoaded();
             if (!ctx?.season) { alert('アクティブなシーズンがありません'); return; }
+            // ★ レイド当日 (自動判定が「当日」) は終了させない (Codex指摘 2026-09-08)。
+            //   手動で段階を「終了」に上書きしていても、実時間が当日なら止める — 終了するとホームが結果に変わり、
+            //   凸報告も締め凸も止まる。翌日5時以降に「終了」の段階で行う
+            const stNow = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null;
+            if (stNow && stNow.auto === 'day') {
+                alert('レイド当日はシーズンを終了できません。\n翌日 5 時以降に「終了」の段階で終了してください。');
+                return;
+            }
             const ur = prompt(`シーズン ${ctx.season.month_key} を終了します。\nユニオン順位 (%) を入力してください (例: 0.41、不明なら空欄)`, '');
             if (ur === null) return;
             if (!confirm(`シーズン ${ctx.season.month_key} を終了して非アクティブ化します。\nよろしいですか？`)) return;
@@ -23227,6 +23235,13 @@
         let _opsEtcRendered = false;     // その他 › メンテナンス を描いたか (開いたときに1回)
         const _OPS_BACKUP_AT_KEY = 'shirisuko_backup_saved_at_v1';
         function _opsStageSeason() { return opsStore.get()?.season || seasonStore.get()?.season || null; }
+        // ★ 配信の有無は**そのシーズンの**配信だけを見る (Codex指摘 2026-09-08)。
+        //   シーズンを切り替えた直後は前シーズンの配信が手元に残っていて、「配信済み」と誤表示する。
+        //   null = まだ取得できていない (「未配信」と混同させない)。段階のチェックリストとコックピットの両方がこれを使う
+        function _opsPublishedFor(season) {
+            if (!_opsPublishedKnown) return null;
+            return !!(_opsPublishedPlan && season && Number(_opsPublishedPlan.season_id) === Number(season.id));
+        }
         function _loadOpsStageOverride(seasonId) {
             const dom = window.opsStageDomain;
             if (!dom) return null;
@@ -23282,7 +23297,8 @@
             document.body.classList.toggle('ops-stage-overridden', !!st.overridden);
             // 材料はコックピットと同じ (盤面・メンバー状況・予約・配信)。未ロードは null のまま渡す (0 と混同させない)
             const snap = opsStore.get();
-            const bosses = snap?.bosses || [], players = snap?.players || [];
+            // ★ 未ロード (snap 無し) は null のまま渡す。[] に潰すと「ボス 0/5」「全員3凸完了」に化ける (Codex指摘 2026-09-08)
+            const bosses = snap ? (snap.bosses || []) : null, players = snap ? (snap.players || []) : null;
             const mbRows = (typeof _mb !== 'undefined' && _mb.players) ? _mb.rows : null;
             const reservations = (typeof _resv !== 'undefined' && Array.isArray(_resv.rows))
                 ? { pending: _resv.rows.filter(r => r.status === 'requested' || r.status === 'cancel_requested').length, approved: _resv.rows.filter(r => r.status === 'approved').length }
@@ -23290,13 +23306,14 @@
             const pendingRepublish = _opsPendingRepublishCount();
             let backupSavedAt = null;
             try { backupSavedAt = localStorage.getItem(_OPS_BACKUP_AT_KEY); } catch { /* noop */ }
-            const rows = dom.checklist({ stage: st.stage, season, bosses, mbRows, reservations, published: _opsPublishedKnown ? _opsPublishedFlag : null, pendingRepublish, backupSavedAt });
-            const attacksDone = players.reduce((s, p) => s + (Number(p.attackCount) || 0), 0);
-            const attackCap = players.length * dom.MAX_ATTACKS;
+            const published = _opsPublishedFor(season);
+            const rows = dom.checklist({ stage: st.stage, season, bosses, mbRows, reservations, published, pendingRepublish, backupSavedAt });
+            const attacksDone = players ? players.reduce((s, p) => s + (Number(p.attackCount) || 0), 0) : null;
+            const attackCap = players ? players.length * dom.MAX_ATTACKS : null;
             const h = dom.hero({
                 stage: st.stage, season, rows, reservations, pendingRepublish,
-                freshMin: lay.hpFreshnessMin(bosses, Date.now()),
-                remainingTotal: Math.max(0, attackCap - attacksDone),
+                freshMin: lay.hpFreshnessMin(bosses || [], Date.now()),
+                remainingTotal: players ? Math.max(0, attackCap - attacksDone) : null,
                 finPending: Array.isArray(mbRows) ? mbRows.filter(r => r.finish === 'pending').length : null,
                 attacksDone, attackCap,
             });
@@ -23517,7 +23534,7 @@
                 season: snap?.season || null, bosses: snap?.bosses || [], players: snap?.players || [],
                 mbRows: (typeof _mb !== 'undefined' && _mb.players) ? _mb.rows : null,
                 coordList: (typeof _coordActiveCache !== 'undefined') ? _coordActiveCache : null,
-                published: _opsPublishedFlag,
+                published: !!_opsPublishedFor(snap?.season || null),
                 planComputed: (typeof _opsLastPlan !== 'undefined') && !!_opsLastPlan,
                 finishAttr: (typeof _opsCurrentAttr !== 'undefined') ? _opsCurrentAttr : null,
                 // 予約の件数 (未ロード / 39未適用は null = 何も出さない。「0件」と混同させない)
