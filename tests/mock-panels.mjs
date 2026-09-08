@@ -49,17 +49,19 @@ const ATTRS = [
     { key: 'wind', name: '風圧', icon: 'e.png' },
 ];
 
-function run({ damages = [], picks = new Map(), excluded = false } = {}) {
+function run({ damages = [], picks = new Map(), excluded = false, resv = [], bosses = [] } = {}) {
     let boxHtml = '';
     const box = { set innerHTML(v) { boxHtml = v; }, get innerHTML() { return boxHtml; }, style: {} };
     const env = {
         document: { getElementById: (id) => id === 'mypageDmgPanels' ? box : { style: {}, textContent: '' } },
         window: {
             supabaseLoadPlayerDamages: async () => damages,
+            supabaseLoadMyReservations: async () => resv,
+            reservationsDomain: { isActive: (r) => ['requested', 'approved', 'cancel_requested'].includes(r.status) },
             mockExclusionDomain: { isExcluded: () => excluded, exclusionLabel: () => '運営が除外 (理由)' },
         },
         getNikkeCharsCache: async () => [],
-        ensureActiveSeasonLoaded: async () => ({ season: { id: 1, current_level: 1 }, bosses: [] }),
+        ensureActiveSeasonLoaded: async () => ({ season: { id: 1, current_level: 1 }, bosses }),
         PT_ATTRS: ATTRS, MY_TEAM_SLOTS: [1, 2], SLOT_JP: { 1: '①', 2: '②' },
         _myDmgPanelSlots: {}, _myPlanPicks: picks,
         mockDamageOf: (r) => Number(r?.damage_b) || 0,
@@ -129,6 +131,34 @@ await test('プレイヤー未選択なら案内だけ出す', async () => {
     await t.render(null);
     assert.ok(/プレイヤーを選択すると表示されます/.test(t.box()));
     assert.equal((t.box().match(/dc-dmg-panel/g) || []).length, 0);
+});
+
+await test('★ 予約中の編成に「🔒 予約済み / 承認待ち」の印が出る (実機FB 2026-09-08: 予約したカードを誤って消さないように)', async () => {
+    const bosses = [{ boss_number: 1, weakness: 'fire' }, { boss_number: 2, weakness: 'water' }];
+    const t = run({
+        damages: [
+            { attribute: 'fire', slot: 1, damage_b: 50, characters: ['a', 'b', 'c', 'd', 'e'] },
+            { attribute: 'water', slot: 1, damage_b: 40, characters: ['f', 'g', 'h', 'i', 'j'] },
+        ],
+        bosses,
+        resv: [
+            { id: 1, boss_number: 1, loadout_slot: 1, status: 'approved' },
+            { id: 2, boss_number: 2, loadout_slot: 1, status: 'requested' },
+            { id: 3, boss_number: 2, loadout_slot: 2, status: 'released' },   // 終わった予約は印にしない
+        ],
+    });
+    await t.render({ id: 1, name: 'me' });
+    const out = t.box();
+    assert.ok(/dc-dmg-resv approved"[^>]*>🔒 予約済み/.test(out), '予約済みの印が無い');
+    assert.ok(/dc-dmg-resv requested"[^>]*>🔒 承認待ち/.test(out), '承認待ちの印が無い');
+    assert.equal((out.match(/dc-dmg-resv /g) || []).length, 2, '終わった予約にも印が出ている');
+});
+
+await test('予約が読めない (39未適用 / シーズン無し) でもカードは描ける', async () => {
+    const t = run({ damages: [{ attribute: 'fire', slot: 1, damage_b: 50, characters: [] }], bosses: [], resv: null });
+    await t.render({ id: 1, name: 'me' });
+    assert.equal((t.box().match(/dc-dmg-panel/g) || []).length, 5);
+    assert.ok(!/dc-dmg-resv/.test(t.box()));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

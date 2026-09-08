@@ -401,6 +401,15 @@
         .dc-dmg-panel.stacked {
             box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14);
         }
+        .dc-dmg-panel { position: relative; }
+        /* 🔒 この編成で凸を予約している印 (2026-09-08) */
+        .dc-dmg-resv {
+            position: absolute; top: 7px; right: 7px; z-index: 2;
+            padding: 3px 8px; border-radius: 999px; font-size: 9.5px; font-weight: 900; color: #fff;
+            background: #0E9455; box-shadow: 0 2px 6px rgba(20,22,26,0.22); white-space: nowrap;
+        }
+        .dc-dmg-resv.requested { background: #5B2BE0; }
+        .dc-dmg-resv.cancel_requested { background: #B45309; }
         .dc-dmg-slotbadge {
             position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
             display: flex; align-items: center; gap: 2px;
@@ -1038,6 +1047,13 @@
             padding: 16px;
         }
         .player-select-modal.open { display: flex; }
+        /* モーダルの中を触っているのに後ろの本体がスクロールする (実機FB 2026-09-08)。
+           開いている間は body を固定し、閉じたら元の位置へ戻す (_syncModalLock) */
+        body.modal-lock { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; }
+        .player-select-content { overscroll-behavior: contain; }
+        /* ソフトキーボードが出ている間、iOS は fixed 要素を可視領域の下端に寄せるので下部ナビが画面の真ん中に出る。
+           入力中は隠す (_initKeyboardNavHide) */
+        body.kb-open .bottom-nav { display: none !important; }
         /* アイコンピッカーは他モーダルから呼ばれる「子」なので必ず上に出す */
         #iconPickerModal { z-index: 600; }
         /* シーズン作成/編集のハード日+月キー行: iOS の input[type=date] は固有幅を持ち
@@ -8654,34 +8670,46 @@
             })).filter(l => l.dmgB > 0);
             _resvReq.mine = mine;
             _resvReq.done = Array.isArray(atks) ? atks.length : 0;
-            // 初期値: 指定の属性 → そのボス / 無ければ「まだ倒れていない最初のボス」
-            const bosses = (ctx.bosses || []).slice().sort((a, b) => Number(a.boss_number) - Number(b.boss_number));
-            _resvReq.boss = (preset.attr ? bosses.find(b => b.weakness === preset.attr) : null)
-                || bosses.find(b => Number(b.remaining_hp_raw) > 0) || bosses[0] || null;   // 倒れていても選べる (次のレベルにもいる)
+            // 初期値: 編成を選べばボスは決まる (弱点属性のボスへ行く — ユーザー指摘 2026-09-08: ボスの選択は不要)。
+            //   指定の属性・枠があればそれ、無ければ「まだ倒れていないボス」の中で一番強い編成
             _resvReq.level = Number(ctx.season.current_level) || 1;
             _resvReq.time = null; _resvReq.flex = false;
-            _resvReq.lo = null;
-            _resvReqPickDefaultLoadout(preset.slot);
+            _resvReq.lo = null; _resvReq.boss = null;
+            _resvReqPickDefaultLoadout(preset.slot, preset.attr);
             _resvReqRender();
         }
         function closeMyResvRequestModal() {
             _resvReq.seq++;
             document.getElementById('myResvRequestModal')?.classList.remove('open');
         }
-        // 選んだボスの属性で、いま出せる編成を既定にする (指定の枠があればそれ)
-        function _resvReqPickDefaultLoadout(preferSlot) {
-            const w = _resvReq.boss?.weakness;
-            const cands = _resvReq.loadouts.filter(l => l.attribute === w);
-            _resvReq.lo = (preferSlot ? cands.find(l => l.slot === Number(preferSlot)) : null)
-                || cands.slice().sort((a, b) => b.dmgB - a.dmgB)[0] || null;
+        // 編成の属性 → 行くボス (シーズンのボスは弱点PT属性で1対1)
+        function _resvReqBossOf(lo) {
+            if (!lo) return null;
+            return (_resvReq.ctx?.bosses || []).find(b => b.weakness === lo.attribute) || null;
         }
-        function _resvReqPick(kind, val) {
-            if (kind === 'boss') {
-                _resvReq.boss = (_resvReq.ctx?.bosses || []).find(b => Number(b.boss_number) === Number(val)) || null;
-                _resvReqPickDefaultLoadout(null);
-            } else if (kind === 'time') { _resvReq.time = val; _resvReq.flex = false; }
+        // 既定の編成: 指定の属性・枠があればそれ。無ければ、いま倒れていないボスへ行ける編成のうち一番強いもの
+        function _resvReqPickDefaultLoadout(preferSlot, preferAttr) {
+            const all = _resvReq.loadouts.filter(l => _resvReqBossOf(l));   // 対応ボスが無い属性は申請できない
+            let lo = null;
+            if (preferAttr) {
+                const cands = all.filter(l => l.attribute === preferAttr);
+                lo = (preferSlot ? cands.find(l => l.slot === Number(preferSlot)) : null)
+                    || cands.slice().sort((a, b) => b.dmgB - a.dmgB)[0] || null;
+            }
+            if (!lo) {
+                const alive = all.filter(l => Number(_resvReqBossOf(l)?.remaining_hp_raw) > 0);
+                lo = (alive.length ? alive : all).slice().sort((a, b) => b.dmgB - a.dmgB)[0] || null;
+            }
+            _resvReq.lo = lo;
+            _resvReq.boss = _resvReqBossOf(lo);
+        }
+        function _resvReqPick(kind, val, val2) {
+            if (kind === 'time') { _resvReq.time = val; _resvReq.flex = false; }
             else if (kind === 'flex') { _resvReq.time = null; _resvReq.flex = true; }
-            else if (kind === 'lo') _resvReq.lo = _resvReq.loadouts.find(l => l.attribute === _resvReq.boss?.weakness && l.slot === Number(val)) || null;
+            else if (kind === 'lo') {
+                _resvReq.lo = _resvReq.loadouts.find(l => l.attribute === val && l.slot === Number(val2)) || null;
+                _resvReq.boss = _resvReqBossOf(_resvReq.lo);   // ボスは編成から決まる
+            }
             _resvReqRender();
         }
         function _resvReqRender() {
@@ -8694,22 +8722,8 @@
             const lbl = (t) => `<div style="font-size:10.5px;font-weight:900;color:#A4AAB0;letter-spacing:0.4px;margin-bottom:7px;">${t}</div>`;
             const chip = (on, onclick, text, disabled = false) =>
                 `<button type="button" ${disabled ? 'disabled' : `onclick="${onclick}"`} style="font-family:inherit;font-size:12px;font-weight:800;padding:9px 0;border-radius:10px;border:1px solid ${on ? '#14161A' : 'rgba(20,22,26,0.10)'};background:${on ? '#14161A' : '#fff'};color:${disabled ? '#C9CED3' : (on ? '#fff' : '#6B7178')};cursor:${disabled ? 'default' : 'pointer'};">${text}</button>`;
-            // どのボスを
-            const bosses = (st.ctx.bosses || []).slice().sort((a, b) => Number(a.boss_number) - Number(b.boss_number));
-            const bossHtml = bosses.map(b => {
-                const on = st.boss && Number(st.boss.boss_number) === Number(b.boss_number);
-                const dead = Number(b.remaining_hp_raw) <= 0;
-                const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
-                const ptc = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
-                const ptName = PT_ATTRS.find(x => x.key === b.weakness)?.name || '';
-                return `<button type="button" onclick="_resvReqPick('boss', ${Number(b.boss_number)})" style="display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(20,22,26,0.10)'};background:${on ? 'rgba(108,66,240,0.06)' : '#fff'};cursor:${dead ? 'default' : 'pointer'};font-family:inherit;text-align:left;opacity:${dead ? '0.5' : '1'};">
-                    <span style="width:10px;height:10px;border-radius:3px;background:${c};flex:none;"></span>
-                    <span style="font-size:13px;font-weight:${on ? '900' : '800'};color:${on ? '#14161A' : '#6B7178'};flex:1;">${esc(String(b.name || b.boss_code || ('B' + b.boss_number)))}</span>
-                    ${dead ? '<span style="font-size:9.5px;font-weight:900;color:#B45309;">いまのLvでは撃破済み</span>'
-                           : `<span style="font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;color:${ptc};background:${ptc}22;">${esc(ptName)}PTで</span>`}
-                    ${on ? '<span style="color:#6C42F0;font-weight:900;">✓</span>' : ''}
-                </button>`;
-            }).join('');
+            // ボスは選ばせない (ユーザー指摘 2026-09-08): 編成の弱点属性で行くボスが決まる。確認の1行だけ出す
+            const bossOrder = new Map((st.ctx.bosses || []).map(b => [b.weakness, Number(b.boss_number)]));
             // ★ レベルは聞かない (2026-09-08): ボスは全レベル共通。どのレベルに置くかは運営の算出が時刻から決める
             // 何時に (自分の登録時間帯から)
             const slotSet = new Set(st.slots);
@@ -8721,20 +8735,33 @@
                 : st.slots.length === 0
                 ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#B45309;line-height:1.55;">戦闘可能時間が未登録です。ホームで時間帯を登録すると選べます。</p>'
                 : '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.55;">戦闘可能時間に登録している中から選べます。</p>';
-            // どの編成で (選んだボスの弱点属性の提出から)
-            const w = st.boss?.weakness;
-            const los = st.loadouts.filter(l => l.attribute === w).sort((a, b) => a.slot - b.slot);
-            const ptName = PT_ATTRS.find(x => x.key === w)?.name || '';
+            // どの編成で (提出済みの全属性から。行き先のボスは属性で決まる)
+            const los = st.loadouts.filter(l => bossOrder.has(l.attribute))
+                .sort((a, b) => (bossOrder.get(a.attribute) - bossOrder.get(b.attribute)) || (a.slot - b.slot));
             const loHtml = los.length === 0
-                ? `<p style="margin:0;font-size:11.5px;font-weight:700;color:#B45309;line-height:1.6;">${esc(ptName)}PT の模擬を提出すると、その編成で申請できます。</p>`
+                ? '<p style="margin:0;font-size:11.5px;font-weight:700;color:#B45309;line-height:1.6;">模擬を提出すると、その編成で申請できます。</p>'
                 : los.map(l => {
-                    const on = st.lo && st.lo.slot === l.slot;
-                    return `<button type="button" onclick="_resvReqPick('lo', ${l.slot})" style="display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(20,22,26,0.10)'};background:${on ? 'rgba(108,66,240,0.06)' : '#fff'};cursor:pointer;font-family:inherit;width:100%;">
-                        <span style="flex:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;color:#5B2BE0;background:rgba(108,66,240,0.16);">編成${SLOT_JP[l.slot] || l.slot}</span>
-                        <span style="display:flex;gap:2px;flex:1;">${l.characters.length ? renderTeamSnippet(l.characters, { size: 24 }) : '<span style="font-size:10.5px;color:#B6BBC1;font-weight:700;">編成の登録なし</span>'}</span>
+                    const on = st.lo && st.lo.attribute === l.attribute && st.lo.slot === l.slot;
+                    const ac = DC_ATTR_COLORS[l.attribute] || '#A4AAB0';
+                    const an = PT_ATTRS.find(x => x.key === l.attribute)?.name || '';
+                    return `<button type="button" onclick="_resvReqPick('lo', '${esc(l.attribute)}', ${l.slot})" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(20,22,26,0.08)'};background:${on ? 'rgba(108,66,240,0.06)' : '#fff'};cursor:pointer;font-family:inherit;text-align:left;">
+                        <span style="flex:none;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:999px;color:#fff;background:${ac};">${esc(an)}${SLOT_JP[l.slot] || l.slot}</span>
+                        <span style="display:flex;gap:2px;flex:1;min-width:0;overflow:hidden;">${l.characters.length ? renderTeamSnippet(l.characters, { size: 22 }) : '<span style="font-size:10.5px;color:#B6BBC1;font-weight:700;">編成は未登録</span>'}</span>
                         <span style="flex:none;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;">${l.dmgB.toFixed(1)}<span style="font-size:9px;color:#A4AAB0;">B</span></span>
+                        ${on ? '<span style="flex:none;color:#6C42F0;font-weight:900;">✓</span>' : ''}
                     </button>`;
                 }).join('');
+            // 行き先のボス (確認の1行)
+            const bossLine = (() => {
+                const b = st.boss;
+                if (!b) return '';
+                const dead = Number(b.remaining_hp_raw) <= 0;
+                const bc = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                return `<p style="margin:8px 2px 0;font-size:11px;font-weight:800;color:#5A6068;line-height:1.55;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span style="width:9px;height:9px;border-radius:3px;background:${bc};flex:none;"></span>→ ${esc(String(b.name || b.boss_code || ('B' + b.boss_number)))} に行きます
+                    ${dead ? '<span style="font-size:9.5px;font-weight:900;color:#B45309;">いまのLvでは撃破済み (次のレベルで出てくれば、そこに置かれます)</span>' : ''}
+                </p>`;
+            })();
             // 申請できるか (足りないもの / 残凸 / 重複)
             const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, loadout: st.lo, currentLevel: cur });
             let blocker = '';
@@ -8745,10 +8772,8 @@
             const canSend = d.ok && !blocker;
             body.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:16px;">
-                    <div>${lbl('どのボスを')}<div style="display:flex;flex-direction:column;gap:6px;">${bossHtml || '<p style="margin:0;font-size:12px;color:#A4AAB0;">ボスがありません</p>'}</div></div>
-                    <div>${lbl('何時に')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">${timeChips.join('')}</div>${timeNote}</div>
-                    <div>${lbl('どの編成で')}<div style="display:flex;flex-direction:column;gap:7px;">${loHtml}</div>
-                        ${los.length ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:#8A9097;line-height:1.55;">模擬で提出した編成とダメージです。これがそのまま運営に伝わります。</p>' : ''}</div>
+                    <div>${lbl('どの編成で')}<div style="display:flex;flex-direction:column;gap:7px;">${loHtml}</div>${bossLine}</div>
+                    <div>${lbl('何時に')}$1
                 </div>
                 ${blocker ? `<p style="margin:14px 2px 0;font-size:11.5px;font-weight:800;color:#C42A30;">${esc(blocker)}</p>` : ''}
                 <div style="margin-top:${blocker ? '10' : '22'}px;display:flex;flex-direction:column;gap:9px;">
@@ -9675,6 +9700,7 @@
             }, 140);
         }
 
+        let _myMockResv = new Map();   // 'attr|slot' → 生きている予約 (模擬カードの印と削除ガード)
         async function renderMyDamagePanels(identity) {
             const el = document.getElementById('mypageDmgPanels');
             const legendEl = document.getElementById('mypageDmgDupLegend');
@@ -9704,10 +9730,25 @@
 
             // シーズン中は B1→B5 のボス順に対応する属性順で並べる
             let panelAttrs = PT_ATTRS.map(a => ({ ...a, bossNumber: null }));
+            let ctx = null;
             try {
-                const ctx = await ensureActiveSeasonLoaded();
+                ctx = await ensureActiveSeasonLoaded();
                 panelAttrs = _orderAttrsByBosses(ctx?.bosses);
             } catch { /* シーズン無し → 固定順 */ }
+            // 🔒 この編成で出している予約 (ユーザー要望 2026-09-08): どのカードを予約しているかを印で出し、
+            //   予約中の編成を誤って削除しないようにする (削除の判定も同じ地図を見る)
+            _myMockResv = new Map();
+            try {
+                const rv = window.reservationsDomain;
+                if (rv && ctx?.season?.id && typeof window.supabaseLoadMyReservations === 'function') {
+                    const mine = await window.supabaseLoadMyReservations(ctx.season.id, identity.id);
+                    const weakOf = new Map((ctx.bosses || []).map(b => [Number(b.boss_number), b.weakness]));
+                    (Array.isArray(mine) ? mine : []).filter(r => rv.isActive(r)).forEach(r => {
+                        const w = weakOf.get(Number(r.boss_number));
+                        if (w) _myMockResv.set(`${w}|${Number(r.loadout_slot) || 1}`, r);
+                    });
+                }
+            } catch { /* 印が出ないだけ */ }
 
             // 全編成 (slot1/2 両方) のキャラ → 出現属性キーSet のマップ
             const charToAttrs = new Map();
@@ -9793,13 +9834,19 @@
                     : pickedSlots.length > 1 ? ` — 配信プランで編成${pickedSlots.map(s => SLOT_JP[s] || s).join('')}を採用`
                     : hasMulti ? ` — 配信プランで編成${SLOT_JP[pickedSlots[0]] || pickedSlots[0]}を採用`
                     : ' — 配信プランで採用';
+                // 🔒 この編成で凸を予約しているか (表示中のスロット)
+                const resv = _myMockResv.get(`${a.key}|${activeSlot}`) || null;
+                const resvJp = !resv ? '' : (resv.status === 'approved' ? '🔒 予約済み' : resv.status === 'requested' ? '🔒 承認待ち' : '🔒 取り消し希望');
+                const resvBadge = resv
+                    ? `<div class="dc-dmg-resv ${resv.status}" title="この編成で凸を予約しています。削除する前に運営へ取り消しを希望してください">${resvJp}</div>`
+                    : '';
                 // 複数編成があるカードは「重なり」+ スロット巡回バッジ
                 const slotBadge = hasMulti
                     ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}', ${nextSlot})" title="${isPickedOther ? 'めくると配信プランで採用された編成' : `編成${SLOT_JP[nextSlot]}を表示`}">${SLOT_JP[activeSlot]}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
                     <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${pickTitle}${excl ? ` — ${escapeHtml(exclTitle)}` : ''}" data-attr="${a.key}" style="${_pkVars(c)}">
-                        ${slotBadge}
+                        ${slotBadge}${resvBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chipwrap">
                                 <div class="dc-dmg-chip" style="background:${c};">
@@ -9939,6 +9986,13 @@
             const id = getCurrentIdentity();
             if (!id?.id || !_myTeamEditAttr) return;
             const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
+            // 🔒 予約中の編成は消させない (削除すると約束と食い違う — ユーザー要望 2026-09-08)
+            const rsv = (typeof _myMockResv !== 'undefined') ? _myMockResv.get(`${_myTeamEditAttr}|${slot}`) : null;
+            if (rsv) {
+                const jp = window.reservationsDomain?.STATUS_JP?.[rsv.status] || rsv.status;
+                alert(`🔒 ${ptName}PT 編成${SLOT_JP[slot]} は凸を予約しています (${jp})。\n削除すると予約と食い違うので、先にホームの「引き受けた凸」から取り消しを希望してください。`);
+                return;
+            }
             let others = [];
             try {
                 const dmgs = await window.supabaseLoadPlayerDamages(id.id);
@@ -11416,9 +11470,13 @@
                         if (!movedOn() && _myTeamEditAttr === saveAttr) handleMyTeamEdit(saveAttr, savedSlot);
                     }, 900);
                 }
-                // ★ 保存してもモーダルは閉じない (ユーザー決定 2026-08-12)。
-                //   1編成に Lv1〜Lv4 の測定を持てるので、閉じてしまうと登録のたびに開き直しになる。
-                //   閉じる出口は右上と下部の「閉じる」の2つがあるので迷わない
+                // ★ 提出したら閉じる (ユーザー指摘 2026-09-08)。2026-08-12 に「閉じない」と決めた理由
+                //   (1編成に Lv1〜Lv4 の測定を持てる) は測定ボスレベルの廃止 (2026-09-06) で無くなった。
+                //   同一編成で別スロットへ統合したときだけ、上の setTimeout の開き直しに任せる
+                if (!redirected) {
+                    showNotification(`✅ ${ptName}PT 編成${SLOT_JP[savedSlot]} を提出しました`);
+                    closeMyTeamEditModal();
+                }
             } catch (e) {
                 setMsg(`❌ 保存失敗: ${e?.message || e}`, true);
             }
@@ -15468,6 +15526,7 @@
             if (typeof switchTab === 'function') switchTab('ops');
             const before = _opsLastPlan;
             await computeAndRenderOptimalPlan({ onlyAvailableNow: false });
+            if (typeof _opsScrollSettled === 'function') _opsScrollSettled('opsSecPlan');   // 算出結果の位置へ合わせる
             // 算出が途中で無効化された (後発の算出・ゲート・取得失敗) ときは古いプランを配信しない
             if (!_opsLastPlan || _opsLastPlan === before) {
                 showNotification('プランを算出できませんでした。プランカードから算出し直してください');
@@ -15479,11 +15538,32 @@
         }
         // 運営ホームのヒーローから: 固定して組み直し → 配信へ (A)
         function _opsGotoRepublish() { _recomputeAndOfferPublish(null).catch(e => alert(`❌ ${e?.message || e}`)); }
+        // 描画が落ち着くまでスクロールを合わせ直す (実機FB 2026-09-08: タブ切替直後は上のカードが
+        // あとから描かれて目標がずれ、承認の部分まで正確に飛べなかった)。位置が動かなくなるまで最大 ~2.5秒
+        function _opsScrollSettled(id) {
+            const el = () => document.getElementById(id);
+            let last = null, tries = 0;
+            const step = () => {
+                const e = el();
+                if (!e) return;
+                const top = e.getBoundingClientRect().top + (window.scrollY || 0);
+                if (last === null || Math.abs(top - last) > 4) {
+                    e.scrollIntoView({ behavior: tries === 0 ? 'smooth' : 'auto', block: 'start' });
+                    last = top;
+                    tries++;
+                    if (tries < 8) setTimeout(step, 320);
+                }
+            };
+            expandOpsCard(id);
+            requestAnimationFrame(() => requestAnimationFrame(step));
+        }
         // 運営ホームのヒーローから: 戦況タブの予約カードへ (承認待ち・取り消し希望)
-        function _opsGotoReservations() {
+        async function _opsGotoReservations() {
             if (typeof switchTab === 'function') switchTab('ops');
-            _opsJump('opsSecReserve');
-            if (typeof renderOpsReservations === 'function') renderOpsReservations(true).catch(() => { /* 一覧が出ないだけ */ });
+            expandOpsCard('opsSecReserve');
+            try { if (typeof renderOpsReservations === 'function') await renderOpsReservations(true); }
+            catch { /* 一覧が出ないだけ */ }
+            _opsScrollSettled('opsSecReserve');
         }
 
         // 承認時点の提出を読み直す。★ ユーザー決定は「承認時点で固定」なので、
@@ -22290,6 +22370,49 @@
             r.addEventListener('animationend', () => r.remove(), { once: true });
             setTimeout(() => r.remove(), 700);   // animationend が来ない環境の保険
         }, { passive: true, capture: true });
+
+        // ===== モーダルが開いている間は本体をスクロールさせない (実機FB 2026-09-08) =====
+        // 開閉は各所で classList の 'open' を足し引きしているだけなので、監視して一箇所で固定する。
+        // 固定中は window.scrollY が 0 になるため、閉じたら元の位置へ戻し、下部ナビの自動隠しには
+        // 「プログラム由来のスクロール」として抑止を張る (戻した瞬間に隠れるのを防ぐ)
+        const _MODAL_LOCK_SEL = '.player-select-modal.open, .fururi-help-modal.open, .player-modal.open, .drawer.open';
+        let _modalLockY = null;
+        function _syncModalLock() {
+            const open = !!document.querySelector(_MODAL_LOCK_SEL);
+            const locked = _modalLockY !== null;
+            if (open && !locked) {
+                _modalLockY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+                document.body.style.top = `-${_modalLockY}px`;
+                document.body.classList.add('modal-lock');
+            } else if (!open && locked) {
+                const y = _modalLockY;
+                _modalLockY = null;
+                document.body.classList.remove('modal-lock');
+                document.body.style.top = '';
+                window.scrollTo(0, y);
+                if (typeof _navShowNow === 'function') _navShowNow();
+            }
+        }
+        if (typeof MutationObserver === 'function') {
+            new MutationObserver(() => _syncModalLock())
+                .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        }
+        // ソフトキーボードが出ている間は下部ナビを隠す (入力欄にフォーカスがある間)
+        (function _initKeyboardNavHide() {
+            let t = 0;
+            const isField = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')
+                && !['checkbox', 'radio', 'button', 'file', 'range'].includes(String(el.type || '').toLowerCase());
+            document.addEventListener('focusin', (e) => {
+                if (!isField(e.target)) return;
+                clearTimeout(t);
+                document.body.classList.add('kb-open');
+            });
+            document.addEventListener('focusout', (e) => {
+                if (!isField(e.target)) return;
+                clearTimeout(t);
+                t = setTimeout(() => { if (!isField(document.activeElement)) document.body.classList.remove('kb-open'); }, 150);
+            });
+        })();
 
         // ===== 下部ナビの自動隠し (スクロール方向連動) =====
         // 下へスクロール = 閲覧に集中 → ナビを画面外へ / 少し上へ戻す = 操作意図 → すぐ出す。

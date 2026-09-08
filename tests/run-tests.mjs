@@ -3511,12 +3511,19 @@ console.log('\nreservationsDomain (凸の予約):');
             const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
             assert.ok(html.includes('id="myResvRequestModal"'), 'シートが無い');
             const render = html.match(/function _resvReqRender\(\) \{[\s\S]{0,12000}/)?.[0] || '';
-            // ★ レベルは聞かない (2026-09-08)。ボスは全レベル共通で、置くレベルは運営の算出が時刻から決める
-            for (const t of ['どのボスを', '何時に', 'どの編成で', 'この内容で申請する']) {
+            // ★ レベルは聞かない (2026-09-08)。ボスは全レベル共通で、置くレベルは運営の算出が時刻から決める。
+            //   ボスも選ばせない (同日ユーザー指摘): 編成の弱点属性で行くボスが決まる。確認の1行だけ
+            for (const t of ['どの編成で', '何時に', 'この内容で申請する', 'に行きます']) {
                 assert.ok(render.includes(t), `「${t}」が無い`);
             }
             assert.ok(!render.includes('どのレベルを'), 'レベルを聞いている (本人が選ぶものではない)');
             assert.ok(!/_resvReqPick\('level'/.test(render), 'レベルのチップが残っている');
+            assert.ok(!render.includes("lbl('どのボスを')"), 'ボスを選ばせている (編成で決まる)');
+            assert.ok(!/_resvReqPick\('boss'/.test(render), 'ボスのボタンが残っている');
+            assert.ok(render.indexOf("lbl('どの編成で')") < render.indexOf("lbl('何時に')"), '編成より先に時刻を聞いている');
+            // ボスは編成から決まる (_resvReqBossOf) — 選び直しの経路も同じ
+            assert.ok(/function _resvReqBossOf\(lo\)/.test(html));
+            assert.ok(/_resvReq\.boss = _resvReqBossOf\(_resvReq\.lo\);/.test(html), '編成を選んでもボスが決まらない');
             // ★ 足りないものの判定と残凸はドメインに寄せる
             assert.ok(/rv\.buildRequestDraft\(/.test(render), '下書きをドメインで作っていない');
             assert.ok(/rv\.canRequest\(/.test(render), '残凸と重複を見ていない');
@@ -4866,6 +4873,30 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(/if \(_tePopularLoadedFor === attrKey \|\| _tePopularLoadingFor === attrKey\) return;/.test(sync), '開くたびに読み直している / 読込中の二重読みを止めていない');
         assert.ok(/if \(_myTeamEditAttr !== attrKey\) return;/.test(sync), '別属性に切り替わったのに描いてしまう');
     });
+    test('★ 実機FB (2026-09-08): 提出したら閉じる / 本体をスクロールさせない / キーボード中は下部ナビを隠す', () => {
+        const save = html.match(/async function handleMyTeamEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!redirected\) \{\s*\n[^\n]*を提出しました[^\n]*\n\s*closeMyTeamEditModal\(\);/.test(save), '提出しても閉じない');
+        // モーダルが開いている間は body を固定 (開閉は classList を監視して一箇所で)
+        assert.ok(/body\.modal-lock \{ position: fixed;/.test(html), '固定の CSS が無い');
+        const lock = html.match(/function _syncModalLock\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/document\.body\.classList\.add\('modal-lock'\)/.test(lock) && /document\.body\.style\.top = `-\$\{_modalLockY\}px`/.test(lock), '開いたときに固定していない');
+        assert.ok(/window\.scrollTo\(0, y\);\s*\n\s*if \(typeof _navShowNow === 'function'\) _navShowNow\(\);/.test(lock), '閉じたときに元の位置へ戻して自動隠しを抑止していない');
+        assert.ok(/new MutationObserver\(\(\) => _syncModalLock\(\)\)/.test(html), 'open の付け外しを監視していない');
+        // ソフトキーボード中は下部ナビを隠す
+        assert.ok(/body\.kb-open \.bottom-nav \{ display: none !important; \}/.test(html));
+        assert.ok(/document\.addEventListener\('focusin'/.test(html) && /classList\.add\('kb-open'\)/.test(html));
+    });
+    test('★ 実機FB (2026-09-08): 模擬カードに予約の印 / 予約中の編成は削除できない', () => {
+        const panels = html.match(/async function renderMyDamagePanels\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_myMockResv = new Map\(\);/.test(panels), '予約の地図を作っていない');
+        assert.ok(/supabaseLoadMyReservations\(ctx\.season\.id, identity\.id\)/.test(panels), '自分の予約を読んでいない');
+        assert.ok(/filter\(r => rv\.isActive\(r\)\)/.test(panels), '生きている予約だけに絞っていない');
+        assert.ok(/class="dc-dmg-resv \$\{resv\.status\}"/.test(panels), 'カードに印が無い');
+        assert.ok(/\$\{slotBadge\}\$\{resvBadge\}/.test(panels), '印をカードに差し込んでいない');
+        const del = html.match(/async function _deleteMyTeamEditSlot\(slot\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_myMockResv\.get\(`\$\{_myTeamEditAttr\}\|\$\{slot\}`\)/.test(del), '削除で予約を見ていない');
+        assert.ok(/凸を予約しています/.test(del) && del.indexOf('凸を予約しています') < del.indexOf('supabaseDeletePlayerDamageSlot'), '予約中でも削除できてしまう');
+    });
     test('★ 提出バーは 編成の変更・ダメージ入力・開いたとき・提出のあと に描き直される', () => {
         assert.ok(/function _renderTeamEditBar\(\)/.test(html));
         const note = html.match(/function _renderTeamEditLevelNote\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -5235,8 +5266,14 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(fn.indexOf('_opsMode && opsWaiting > 0') < fn.indexOf('opsPending && opsPending.count > 0'), '承認待ちより配信後の予約が先になっている');
         assert.ok(/onclick: '_opsGotoReservations\(\)', label: /.test(fn), '予約カードへ飛べない');
         const go = html.match(/function _opsGotoReservations\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/_opsJump\('opsSecReserve'\)/.test(go), '予約カードを開いていない');
-        assert.ok(/renderOpsReservations\(true\)/.test(go), '一覧を取り直していない');
+        // 実機FB (2026-09-08): タブ切替直後は上のカードがあとから描かれて目標がずれる →
+        // 一覧を取り直してから、位置が動かなくなるまでスクロールを合わせ直す
+        assert.ok(/expandOpsCard\('opsSecReserve'\)/.test(go), '予約カードを開いていない');
+        assert.ok(/await renderOpsReservations\(true\)/.test(go), '一覧の取り直しを待っていない');
+        assert.ok(/_opsScrollSettled\('opsSecReserve'\)/.test(go), '描画が落ち着くまで合わせ直していない');
+        const settle = html.match(/function _opsScrollSettled\(id\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(tries < 8\) setTimeout\(step, 320\);/.test(settle), '合わせ直しを繰り返していない');
+        assert.ok(/Math\.abs\(top - last\) > 4/.test(settle), '位置が動いたときだけ合わせ直す条件が無い');
         // 配信の状況行にも出す
         const st = html.match(/function _renderOpsPubStatus\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/pendingRepublish\(_resv\.rows, published\.plan\)\.count/.test(st));
