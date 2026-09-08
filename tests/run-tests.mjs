@@ -5824,14 +5824,42 @@ console.log('\nblablaNameCodes:');
     const ROOT = path.resolve(path.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
     const map = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'blabla-name-codes.json'), 'utf8'));
 
-    test('形: すべての行に jp と resource_id があり、name_code は数字', () => {
+    // 手当ての正解表。★ここを正としてピン留めする — 生成スクリプトの OVERRIDES を
+    //   書き換えても、宛先が変われば必ずここで落ちる (Codex指摘 2026-09-08)
+    const EXPECTED_OVERRIDES = {
+        3015: '鈴原サクラ',                     1013: 'ソルジャーEG',
+        1014: 'ソルジャーFA',                   1025: 'ソルジャーOW',
+        1017: 'フラワー',                       1018: 'オーシャン',
+        1023: 'サン',                           5118: '式波・アスカ・ラングレー',
+        5119: '綾波レイ',                       5132: 'アヤナミレイ(仮称)',
+        5133: '式波・アスカ・ラングレー：WILLE', 5152: 'エイダ・ウォン',
+        5153: 'ジル・バレンタイン',             5164: '錦木千束',
+        5165: '井ノ上たきな',                   5179: 'クイーン(新島真)',
+        5180: '天城雪子',
+    };
+
+    test('形: すべての行に jp と resource_id と pad があり、name_code は数字', () => {
         const rows = Object.entries(map.data);
-        assert.ok(rows.length > 150, `件数が少なすぎる (${rows.length})`);
         for (const [nameCode, entry] of rows) {
             assert.match(nameCode, /^\d+$/, `name_code が数字でない: ${nameCode}`);
             assert.ok(entry.jp && typeof entry.jp === 'string', `jp が無い: ${nameCode}`);
             assert.ok(Number.isInteger(entry.resource_id), `resource_id が無い: ${nameCode}`);
+            // いまは 200 件すべてに PAD の宛先が付いている。付かない行が現れたら
+            // 「CDN に増えて PAD に無いキャラ」なので、気づけるようにここで落とす
+            assert.ok(entry.pad && typeof entry.pad === 'string', `pad が無い: ${nameCode} (${entry.jp})`);
         }
+    });
+
+    test('★ 表が痩せていない (CDN の一時不調で欠けたまま上書きされると気づけない)', () => {
+        const rows = Object.entries(map.data);
+        const withPad = rows.filter(([, e]) => e.pad);
+        // counts は生成時の自己申告。実データと食い違っていたら手で編集された疑い
+        assert.equal(rows.length, map.counts.name_codes, 'counts.name_codes が実データと合っていない');
+        assert.equal(withPad.length, map.counts.matched_pad, 'counts.matched_pad が実データと合っていない');
+        // 下限。この数は増えることはあっても減らない (減るときは必ず人が確認する)
+        assert.ok(rows.length >= 200, `name_code が減っている (${rows.length} < 200)`);
+        assert.ok(withPad.length >= 200, `PAD と対応した数が減っている (${withPad.length} < 200)`);
+        assert.ok(map.counts.pad_total >= 203, `PAD のキャラ数が減っている (${map.counts.pad_total})`);
     });
 
     test('★ 1つのキャラに2つの name_code が付いていない (取り込みが混ざる)', () => {
@@ -5856,12 +5884,16 @@ console.log('\nblablaNameCodes:');
         assert.equal(map.data['3015'].overridden, true, '手当て無しで一致したのなら CDN 側が変わっている');
     });
 
-    test('手当てした行は pad が jp と違う (手当てが空振りしていない)', () => {
-        const forced = Object.entries(map.data).filter(([, e]) => e.overridden);
-        assert.ok(forced.length >= 10, `手当ての件数が減っている (${forced.length})`);
-        for (const [nameCode, entry] of forced) {
-            assert.ok(entry.pad, `手当てしたのに宛先が無い: ${nameCode}`);
+    test('★ 手当て 17 件の宛先が1つも変わっていない', () => {
+        for (const [nameCode, expected] of Object.entries(EXPECTED_OVERRIDES)) {
+            const entry = map.data[nameCode];
+            assert.ok(entry, `手当てした name_code が表から消えている: ${nameCode} (${expected})`);
+            assert.equal(entry.pad, expected, `${nameCode} の宛先が変わっている`);
+            assert.equal(entry.overridden, true, `${nameCode} が手当て扱いになっていない`);
         }
+        // 手当てが増減したら気づく (勝手に足された/消された手当ての検出)
+        const forced = Object.entries(map.data).filter(([, e]) => e.overridden).map(([nc]) => nc).sort();
+        assert.deepEqual(forced, Object.keys(EXPECTED_OVERRIDES).sort(), '手当ての一覧が変わっている');
     });
 }
 

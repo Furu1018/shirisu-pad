@@ -11,24 +11,39 @@
 //
 // ★ GB の data/blabla-map.json (手で維持している resource_id → 日本語名) には依存しない。
 //   あれは 177 件で止まっており、コラボや新キャラが抜ける。CDN から引けば毎回最新になる。
-//   (2026-09-08 検証: GB 経由だと 177/203、CDN 直だと下の実行結果のとおり)
+//
+// ★ **この表は「欠けたまま上書きされる」のがいちばん怖い** (Codex指摘 2026-09-08)。
+//   CDN が一瞬こけただけで name_code が消えると、そのキャラの育成が二度と紐づかない。
+//   そのため: 取得は再試行する / 1件でも取れなければ書かない / 前回より減るなら書かない。
 //
 // 使い方:
-//   node scripts/build-blabla-name-codes.mjs            # 生成せず、突合結果だけ出す (dry-run)
-//   node scripts/build-blabla-name-codes.mjs --apply    # data/blabla-name-codes.json を書く
+//   node scripts/build-blabla-name-codes.mjs             # 突合結果だけ出す (書き込まない)
+//   node scripts/build-blabla-name-codes.mjs --apply     # data/blabla-name-codes.json を書く
+//   ... --apply --allow-missing   日本語名が取れない resource_id があっても書く (既定は中止)
+//   ... --apply --force           前回より件数が減っても書く (既定は中止)
 //
 // CDN のパスは難読化されているが、規則が分かっているので平文パスから決まる
 // (しりすこスクワッド scraper/cdn_path.py の移植。あちらが正本なので、変わったら一緒に直す)。
 
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APPLY = process.argv.includes('--apply');
+const ALLOW_MISSING = process.argv.includes('--allow-missing');
+const FORCE = process.argv.includes('--force');
 const CDN_BASE = 'https://sg-tools-cdn.blablalink.com';
 const LOCALE = 'ja';
+const DEST = join(ROOT, 'data', 'blabla-name-codes.json');
+
+/** 中止する。書き込み前にしか呼ばないので、既存ファイルは無傷のまま残る。 */
+function stop(title, lines = []) {
+    console.error(`\n❌ ${title}`);
+    for (const l of lines) console.error(`      ${l}`);
+    process.exit(1);
+}
 
 // ---- CDN パスの難読化 (フロントエンドの obfuscatedPath と同じ規則) ----
 const LARGE_PRIMES = [224737, 1000639, 2654435761, 2654435769, 1000621, 4294967291];
@@ -60,16 +75,29 @@ function cdnUrl(path) {
     return `${CDN_BASE}/${out.join('/')}`;
 }
 
-async function cdnJson(path) {
-    const res = await fetch(cdnUrl(path), { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** 取得は 3 回まで試す。**一度の失敗を「そのキャラは存在しない」と読み替えないため。** */
+async function cdnJson(path, tries = 3) {
+    let last = null;
+    for (let attempt = 1; attempt <= tries; attempt += 1) {
+        try {
+            const res = await fetch(cdnUrl(path), { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            last = e;
+            if (attempt < tries) await sleep(400 * attempt);
+        }
+    }
+    throw last;
 }
 
 // ---- 名前が一致しないものの手当て (name_code → PAD の canonical_name) ----
 //
 // ★ name_code で持つ。CDN 側の表記が変わっても壊れない (名前で持つと変わった瞬間に外れる)。
 // ★ ここに書いた名前が PAD のキャラマスタに無ければ、スクリプトが止まる (打ち間違いの検出)。
+// ★ ここに書いた name_code が CDN から消えていても止まる (古い手当ての検出)。
 const OVERRIDES = {
     // 同じ日本語名の別キャラ。**放っておくと他人の育成データが別キャラに付く**
     // (CDN では 1012 も 3015 も「サクラ」。1012 がニケ本編、3015 がエヴァコラボ)
@@ -115,12 +143,24 @@ async function loadPadCharacters() {
 // ---- 本体 ----
 console.log('① character_id_map.json を取得...');
 const idRows = await cdnJson('/character/character_id_map.json');
-// 同じ name_code が突破段階ぶん並ぶので、最初の1件だけ拾う
+
+// 同じ name_code が突破段階ぶん並ぶので 1 件だけ拾う。
+// ただし **同じ name_code に別の resource_id が並んでいたら黙って先勝ちにしない** (Codex指摘)
 const nameCodeToResource = new Map();
+const forked = [];
 for (const row of idRows) {
-    if (!nameCodeToResource.has(row.name_code)) nameCodeToResource.set(row.name_code, row.resource_id);
+    const prev = nameCodeToResource.get(row.name_code);
+    if (prev === undefined) nameCodeToResource.set(row.name_code, row.resource_id);
+    else if (prev !== row.resource_id) forked.push(`name_code ${row.name_code}: resource_id ${prev} と ${row.resource_id}`);
 }
+if (forked.length) stop('1つの name_code に複数の resource_id があります (どちらを使うか決められません)', forked);
 console.log(`   name_code ${nameCodeToResource.size} 種 / resource_id ${new Set(nameCodeToResource.values()).size} 種`);
+
+// 古くなった手当ての検出 — CDN から消えた name_code に手当てが残っていたら気づけるようにする
+const staleOverrides = Object.keys(OVERRIDES).filter((nc) => !nameCodeToResource.has(Number(nc)));
+if (staleOverrides.length) {
+    stop('OVERRIDES に、CDN に存在しない name_code が残っています', staleOverrides.map((nc) => `${nc} → ${OVERRIDES[nc]}`));
+}
 
 console.log(`② roledata から日本語名を取得 (${LOCALE})...`);
 const resourceIds = [...new Set(nameCodeToResource.values())];
@@ -133,14 +173,21 @@ for (let at = 0; at < resourceIds.length; at += CHUNK) {
         try {
             const d = await cdnJson(`/roledata/${rid}-v2-${LOCALE}.json`);
             if (d && d.name_localkey) nameByResource.set(rid, String(d.name_localkey));
-            else missed.push(rid);
-        } catch {
-            missed.push(rid);
+            else missed.push(`${rid} (name_localkey が無い)`);
+        } catch (e) {
+            missed.push(`${rid} (${e.message})`);
         }
     }));
     process.stdout.write(`\r   ${Math.min(at + CHUNK, resourceIds.length)}/${resourceIds.length}`);
 }
 console.log(`\n   日本語名が取れた resource_id: ${nameByResource.size} / 取れず: ${missed.length}`);
+
+// ★ 1件でも取れなければ書かない。CDN が一瞬こけただけで表が欠けるのを防ぐ (Codex指摘)
+if (missed.length && APPLY && !ALLOW_MISSING) {
+    stop(`日本語名が取れなかった resource_id が ${missed.length} 件あります。欠けた表で上書きしません`,
+        [...missed.slice(0, 20), missed.length > 20 ? `... ほか ${missed.length - 20} 件` : '',
+            '', '一時的な失敗ならもう一度実行してください。恒久的に消えたキャラなら --allow-missing'].filter(Boolean));
+}
 
 // ③ name_code → 日本語名
 const table = {};
@@ -153,14 +200,21 @@ console.log(`③ 日本語名が付いた name_code: ${Object.keys(table).length
 // ④ PAD のキャラマスタと突合
 console.log('④ PAD のキャラマスタと突合...');
 const pad = await loadPadCharacters();
-const padByNorm = new Map(pad.map((p) => [norm(p), p]));
+
+// 正規化して同じになる PAD キャラが2人いると、後勝ちで静かに隠れる (Codex指摘)
+const padByNorm = new Map();
+const padClash = [];
+for (const name of pad) {
+    const key = norm(name);
+    if (padByNorm.has(key)) padClash.push(`${padByNorm.get(key)} と ${name}`);
+    else padByNorm.set(key, name);
+}
+if (padClash.length) stop('PAD のキャラマスタに、正規化すると同じになる名前が複数あります', padClash);
 
 // 手当ての宛先が実在するか先に確かめる (打ち間違いに気づかず一致 0 件になるのを防ぐ)
 const badOverrides = Object.entries(OVERRIDES).filter(([, name]) => !padByNorm.has(norm(name)));
 if (badOverrides.length) {
-    console.error('\n❌ OVERRIDES の宛先が PAD のキャラマスタにありません:');
-    for (const [nc, name] of badOverrides) console.error(`      ${nc} → ${name}`);
-    process.exit(1);
+    stop('OVERRIDES の宛先が PAD のキャラマスタにありません', badOverrides.map(([nc, name]) => `${nc} → ${name}`));
 }
 
 const unknownJp = [];
@@ -177,12 +231,11 @@ for (const [nameCode, entry] of Object.entries(table)) {
     if (!byPad.has(entry.pad)) byPad.set(entry.pad, []);
     byPad.get(entry.pad).push(`${nameCode}(${entry.jp})`);
 }
-const collisions = [...byPad].filter(([, codes]) => codes.length > 1);
+const collisions = [...byPad].filter(([, codes]) => codes.length > 1)
+    .map(([name, codes]) => `${name} ← ${codes.join(' / ')}`);
 if (collisions.length) {
-    console.error('\n❌ 同じキャラに複数の name_code が付いています (取り込みが混ざります):');
-    for (const [name, codes] of collisions) console.error(`      ${name} ← ${codes.join(' / ')}`);
-    console.error('   → OVERRIDES にどちらが正しいかを書いてください');
-    process.exit(1);
+    stop('同じキャラに複数の name_code が付いています (取り込みが混ざります)',
+        [...collisions, '', '→ OVERRIDES にどちらが正しいかを書いてください']);
 }
 
 const matchedPadNames = new Set(byPad.keys());
@@ -199,20 +252,37 @@ if (unknownJp.length) {
     if (unknownJp.length > 30) console.log(`       ... ほか ${unknownJp.length - 30} 件`);
 }
 
-// ⑤ 書き出し
+// ⑤ 前回より痩せていないか。★ 減る方向の上書きは事故なので既定で止める (Codex指摘)
+const prev = existsSync(DEST) ? JSON.parse(readFileSync(DEST, 'utf8')) : null;
+if (prev && APPLY && !FORCE) {
+    const prevMatched = Object.values(prev.data || {}).filter((e) => e.pad).length;
+    const shrink = [];
+    if (Object.keys(table).length < Object.keys(prev.data || {}).length) {
+        shrink.push(`name_code: ${Object.keys(prev.data || {}).length} → ${Object.keys(table).length}`);
+    }
+    if (matchedPadNames.size < prevMatched) shrink.push(`PAD と対応した数: ${prevMatched} → ${matchedPadNames.size}`);
+    const lost = Object.keys(prev.data || {}).filter((nc) => !table[nc]);
+    if (lost.length) shrink.push(`消えた name_code: ${lost.slice(0, 15).join(', ')}${lost.length > 15 ? ' ...' : ''}`);
+    if (shrink.length) {
+        stop('前回より対応表が痩せています。上書きしません', [...shrink, '',
+            'CDN 側の一時的な不調でないか確かめてください。意図した削減なら --force']);
+    }
+}
+
+// ⑥ 書き出し。中身が同じなら generated も据え置く (無意味な差分を出さない)
+const sameData = prev && JSON.stringify(prev.data) === JSON.stringify(table);
 const out = {
     version: 1,
-    generated: new Date().toISOString(),
+    generated: sameData ? prev.generated : new Date().toISOString(),
     source: 'blablalink CDN: /character/character_id_map.json + /roledata/{resource_id}-v2-ja.json',
     note: 'name_code → { jp: CDNの日本語名, resource_id, pad: PADのcanonical_name (一致したものだけ) }。'
         + '再生成は node scripts/build-blabla-name-codes.mjs --apply',
     counts: { name_codes: Object.keys(table).length, matched_pad: matchedPadNames.size, pad_total: pad.length },
     data: table,
 };
-const dest = join(ROOT, 'data', 'blabla-name-codes.json');
 if (APPLY) {
-    writeFileSync(dest, JSON.stringify(out, null, 2) + '\n', 'utf8');
-    console.log(`\n✅ 書き出しました: data/blabla-name-codes.json`);
+    writeFileSync(DEST, JSON.stringify(out, null, 2) + '\n', 'utf8');
+    console.log(`\n✅ 書き出しました: data/blabla-name-codes.json${sameData ? ' (中身は前回と同じ)' : ''}`);
 } else {
-    console.log(`\n(dry-run: 書き込んでいません。--apply で ${dest.replace(ROOT + '/', '')} に書きます)`);
+    console.log(`\n(dry-run: 書き込んでいません。--apply で data/blabla-name-codes.json に書きます)`);
 }
