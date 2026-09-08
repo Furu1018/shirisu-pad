@@ -239,7 +239,9 @@ SELECT * FROM (
                      WHERE schemaname = 'public' AND indexname = 'uq_plan_reservations_active_card'
                        AND indexdef LIKE '%UNIQUE%'
                        AND indexdef LIKE '%(season_id, player_id, boss_number, loadout_slot)%'
-                       AND indexdef LIKE '%WHERE%')
+                       -- 部分条件は「生きている3状態」を全部含むこと (絞りすぎた索引を「適用済み」にしない)
+                       AND indexdef LIKE '%WHERE%'
+                       AND indexdef LIKE '%requested%' AND indexdef LIKE '%approved%' AND indexdef LIKE '%cancel_requested%')
         AND to_regclass('public.uq_plan_reservations_active') IS NULL,
         '予約のレベルを任意に + 一意性を「誰が・ボス・編成枠」へ (未適用だとメンバーの申請が NOT NULL で弾かれる)'
 

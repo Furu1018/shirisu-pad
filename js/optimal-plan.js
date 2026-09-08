@@ -1077,8 +1077,13 @@
         // ★ ここでも**安定ソート**する (投入順が入力の配列順に依存すると同じ盤面で違う指示が出る)
         const normalizeReservations = (list) => {
             const out = [];
+            const seenIds = new Set();   // 同じ予約が二重に渡されても1回だけ置く (Codex指摘 2026-09-08)
             (Array.isArray(list) ? list : []).forEach(r => {
                 if (!r || r.memberId == null) return;
+                if (r.reservationId != null) {
+                    if (seenIds.has(String(r.reservationId))) return;
+                    seenIds.add(String(r.reservationId));
+                }
                 // ★ level null = メンバー発の予約 (2026-09-08)。どのレベルに置くかは resolveReservationLevels が時間軸から決める
                 const level = (r.level == null) ? null : Number(r.level);
                 const bossNumber = Number(r.bossNumber), loadoutSlot = Number(r.loadoutSlot);

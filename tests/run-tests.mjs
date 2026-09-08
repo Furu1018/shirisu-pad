@@ -3810,6 +3810,9 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(other.reason, 'team_mismatch');
         const same = rv.matchForAttack(rows, { playerId: 'p1', level: 3, bossNumber: 3, characters: ['e', 'd', 'c', 'b', 'a'] });
         assert.equal(same.id, 5, '順不同で同じ編成なら紐づける');
+        // ★ OCR は5人のうち3人しか読めなくても凸を登録する — 読めた3人が約束の編成に入っていれば同じ編成 (Codex指摘)
+        assert.equal(rv.matchForAttack(rows, { playerId: 'p1', level: 3, bossNumber: 3, characters: ['a', 'b', 'c'] }).id, 5, '部分的に読めた編成を別物にしている');
+        assert.equal(rv.matchForAttack(rows, { playerId: 'p1', level: 3, bossNumber: 3, characters: ['a', 'b', 'x'] }).reason, 'team_mismatch', '約束に無いキャラが混ざっているのに紐づけた');
         // 写しの無い旧予約は編成で判定できないので従来どおり紐づける
         const noSnap = [{ ...res({ id: 6, status: 'approved', boss: 3, team: [] }), raid_level: null }];
         assert.equal(rv.matchForAttack(noSnap, { playerId: 'p1', level: 3, bossNumber: 3, characters: ['f', 'g'] }).id, 6);
@@ -4632,6 +4635,13 @@ console.log('\nL2 予約の拘束 (ソルバー):');
         assert.deepEqual(p.unmetReservations, []);
         assert.equal(p.reservationCount, 0);
         assert.equal(p.stability, null);
+    });
+
+    test('L2: 同じ予約が二重に渡されても1回だけ置く (Codex指摘 2026-09-08)', () => {
+        const r = free({ id: 77, member: 3, boss: 1, slot: 'h07' });
+        const p = compute(mkInput(tl(), { bosses: smallB(), reservations: [r, { ...r }] }));
+        assert.deepEqual(rowOf(p, 3), ['L1/B1/1/7時'], `二重に置いた: ${JSON.stringify(rowOf(p, 3))}`);
+        assert.equal(p.reservationCount, 1);
     });
 
     test('L2: 予約の投入順は入力の並びに依存しない', () => {

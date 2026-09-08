@@ -370,10 +370,17 @@
         //   レベルを持たない予約は「そのボスへの凸」なら何でも候補になるので、
         //   21時に編成①で約束した予約が、9時の編成②の凸で消し込まれてしまう。
         //   写しの無い旧予約だけは編成で判定できないので従来どおり
-        const key = (arr) => (Array.isArray(arr) ? arr.filter(Boolean).map(String).slice().sort().join('\u0001') : '');
-        const mine = key(characters);
-        if (mine) {
-            const same = cand.filter(r => { const k = key(r.characters_snapshot); return !k || k === mine; });
+        // ★ 部分一致で見る (Codex指摘 2026-09-08): OCR は5人のうち3人しか読めなくても凸を登録する。
+        //   完全一致だと、その3人が約束の編成に含まれていても「別の編成」と判定して予約が消し込まれない。
+        //   「凸で分かっているキャラが全員、約束の編成に入っている」なら同じ編成とみなす
+        const setOf = (arr) => new Set((Array.isArray(arr) ? arr : []).filter(Boolean).map(String));
+        const mineSet = setOf(characters);
+        if (mineSet.size > 0) {
+            const same = cand.filter(r => {
+                const snap = setOf(r.characters_snapshot);
+                if (snap.size === 0) return true;                 // 写しの無い旧予約は編成で判定できない
+                return [...mineSet].every(c => snap.has(c));
+            });
             if (same.length === 1) return { id: same[0].id, reason: cand.length === 1 ? 'one' : 'by_team' };
             if (same.length === 0) return { id: null, reason: 'team_mismatch' };
             return { id: null, reason: 'ambiguous' };
