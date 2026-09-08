@@ -6034,8 +6034,11 @@ console.log('\ngrowthDomain:');
         assert.ok(/uq_players_blabla_openid/.test(check) && /no_openid/.test(check), '判定が緩すぎる');
         // ★ 部分条件はその列に掛かっているかまで見る。WHERE と IS NOT NULL を別々に探すと
         //   別の列の条件でも「適用済み」と誤判定する
-        assert.ok(/WHERE \(?blabla_openid IS NOT NULL\)?/.test(check),
+        assert.ok(/WHERE \(?blabla_openid IS NOT NULL\)?'/.test(check),
             '部分索引の述語を列ごと照合していない (WHERE と IS NOT NULL を別々に探している)');
+        // ★ 述語で終端まで固定する。末尾に % があると「AND 別条件」で絞りすぎた索引も通る
+        assert.ok(!/blabla_openid IS NOT NULL\)?%'/.test(check),
+            '述語のあとに % が付いている (絞りすぎた部分索引を「適用済み」と誤判定する)');
     });
 }
 

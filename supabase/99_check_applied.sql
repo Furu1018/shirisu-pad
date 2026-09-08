@@ -256,8 +256,10 @@ SELECT * FROM (
                         -- ★ 部分条件は**その列に掛かっているか**まで見る。WHERE と IS NOT NULL を
                         --   別々に探すと、別の列の条件でも「適用済み」と誤判定する (Codex指摘 2026-09-09)。
                         --   Postgres は述語を括弧付きで出すが、念のため両方の書き方を許す
-                        AND (indexdef LIKE '%WHERE (blabla_openid IS NOT NULL)%'
-                          OR indexdef LIKE '%WHERE blabla_openid IS NOT NULL%'))
+                        --   末尾の % を付けない = 述語がここで終わっていること。付けると
+                        --   「... IS NOT NULL AND 別条件」で**絞りすぎた索引**も適用済みになる
+                        AND (indexdef LIKE '%WHERE (blabla_openid IS NOT NULL)'
+                          OR indexdef LIKE '%WHERE blabla_openid IS NOT NULL'))
          -- 状態の綴りが固定されていること (private と error を混ぜると催促の相手を間違える)
          AND EXISTS (SELECT 1 FROM pg_constraint
                       WHERE conname = 'member_growth_status_status_check'
