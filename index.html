@@ -8888,6 +8888,23 @@
             _claimBusy = true;
             try {
                 const me = me0;
+                // ★ ボタンを描いたあとに作った予約 (別の行を引き受けた / 模擬タブから予約した) を見ずに作れてしまう
+                //   (Codex指摘 2026-09-08) → 直前に取り直して canRequest (重複・残凸・キャラ被り) を通す
+                const fresh = await window.supabaseLoadMyReservations?.(st.seasonId, st.viewerId);
+                if (Array.isArray(fresh)) {
+                    st.resv = fresh;
+                    const chk = rv.canRequest(fresh, {
+                        playerId: st.viewerId, bossNumber: draft.draft.bossNumber, loadoutSlot: draft.draft.loadoutSlot,
+                        doneAttacks: Number(st.todayAttacks) || 0, characters: draft.draft.characters,
+                    });
+                    if (!chk.ok) {
+                        alert(chk.reason === 'already' ? 'この内容の申請はもう出ています'
+                            : chk.reason === 'char_conflict' ? '予約中の編成とキャラが被っているため、この編成では申請できません (同じキャラは1日1回)'
+                            : '残りの凸数を超えるため申請できません');
+                        _renderMyPubBody();
+                        return;
+                    }
+                }
                 await window.supabaseCreateReservation({
                     seasonId: st.seasonId, playerId: st.viewerId,
                     ...draft.draft,
@@ -15657,8 +15674,12 @@
             const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
             // ★ 承認前に「固定した場合の影響」を出す。同じ盤面を
             //   「いまの承認済みだけ」と「+この候補」で解いて比べる (Codex 設計レビュー)
+            // ★ 影響は**いまの内容**で解く — 承認は本人の最新の提出で固定するので、申請時の写しで解くと
+            //   申請後に変えた編成のキャラ被りをすり抜ける (Codex指摘 2026-09-08)。承認に使う写しと同じものを使う
+            const snap = await _snapshotAtApproval(row);
+            const rowNow = snap ? { ...row, characters_snapshot: snap.characters, expected_damage_b: snap.expectedDamageB } : row;
             let impact = null;
-            try { impact = await _reservationImpact(row); }
+            try { impact = await _reservationImpact(rowNow); }
             catch (e) { console.warn('[reservation] 影響の算出skip:', e?.message || e); }
             // ★ 候補そのものが置けない (約束の時刻にそのボスがいない見込み 等) なら承認しない。
             //   理由は日本語で (ユーザー決定 C の置き換え・D)
@@ -15683,8 +15704,7 @@
                 if (impact.clearAfter < impact.clearBefore) msg += '\n\n※ 攻略の見込みが下がります。それでも承認しますか？';
                 if (impact.breaks && impact.breaks.length) msg += '\n\n※ 固定済みの予約が置けなくなります (上の ⚠️)。それでも承認しますか？';
             }
-            // ★ 承認時点の提出を読み直し、申請時と違えば運営に見せてから固定する
-            const snap = await _snapshotAtApproval(row);
+            // ★ 承認時点の提出 (snap — 上で影響の算出にも使った) が申請時と違えば運営に見せてから固定する
             const changed = snap && (
                 Number(snap.expectedDamageB).toFixed(1) !== Number(row.expected_damage_b || 0).toFixed(1)
                 || snap.characters.slice().sort().join('\u0001')

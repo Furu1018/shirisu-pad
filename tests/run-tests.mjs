@@ -3441,6 +3441,10 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(rv.canRequest([{ ...rows[0], status: 'released' }], { ...key, characters: ['A'] }).ok, true);
             assert.equal(rv.canRequest([{ ...rows[0], player_id: 'p2' }], { ...key, characters: ['A'] }).ok, true);
             assert.equal(rv.conflictingReservation(rows, { playerId: 'p1', characters: ['A'], excludeId: 1 }), null, '自分自身は除ける');
+            // 壊れた写し (オブジェクト・空白だけ・null) を "[object Object]" や '' として一致させない (Codex指摘)
+            const broken = [{ ...rows[0], characters_snapshot: [{}, '   ', null, 'Z'] }];
+            assert.equal(rv.canRequest(broken, { ...key, characters: ['[object Object]', '', ' '] }).ok, true, '壊れた写しが一致している');
+            assert.equal(rv.canRequest(broken, { ...key, characters: [{}, 'z'] }).reason, 'char_conflict', '文字列の部分は見る');
         });
 
         test('★ ⑧ 申請: 残凸を超える申請はボタンを出さない (DBで弾かれる前に止める)', () => {
@@ -3478,7 +3482,7 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/if \(liveLv && level < liveLv\) return '';/.test(fn), '過去レベルの行にも申請導線を出している');
         assert.ok(/Number\(liveBoss\.remaining_hp_raw\) <= 0\) return '';/.test(fn), '撃破済みボスにも申請導線を出している');
         // 申請の実処理も同じ下書きを使う
-        const h = html.match(/async function handleClaimPlanRow[\s\S]{0,2400}/)?.[0] || '';
+        const h = html.match(/async function handleClaimPlanRow[\s\S]{0,4200}/)?.[0] || '';
         assert.ok(/rv\.planRowToDraft\(row,/.test(h), '申請時に下書きを作り直していない');
         assert.ok(/if \(!draft\.ok\)/.test(h), '下書きが作れないのに申請している');
         assert.ok(/_claimBusy/.test(h), '二重押しよけが無い');
@@ -4953,7 +4957,11 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(/resv\._unmet \? 'unmet' : resv\.status/.test(panels), '置けていない予約の透かしを鍵のままにしている');
         assert.ok(/\.dc-dmg-panel\.resv\.unmet \{/.test(html), '「!」の透かしの CSS が無い');
         // 申請の3経路すべてで、予約中の編成とのキャラ被りを止める
-        assert.equal((html.match(/characters: (Array\.isArray\(a\.team\) \? a\.team : \[\]|st\.lo\.characters|d\.draft\.characters)/g) || []).length, 3, 'canRequest に編成を渡していない経路がある');
+        assert.equal((html.match(/characters: (Array\.isArray\(a\.team\) \? a\.team : \[\]|st\.lo\.characters|d\.draft\.characters|draft\.draft\.characters)/g) || []).length, 4, 'canRequest に編成を渡していない経路がある');
+        // ホームの行の「引き受ける」は作る直前に予約を取り直して canRequest を通す (描いたあとの予約を見ずに作れた — Codex指摘)
+        const claim = html.match(/async function handleClaimPlanRow\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const fresh = await window\.supabaseLoadMyReservations\?\.\(st\.seasonId, st\.viewerId\);/.test(claim), '直前に取り直していない');
+        assert.ok(claim.indexOf('rv.canRequest(fresh,') > 0 && claim.indexOf('rv.canRequest(fresh,') < claim.indexOf('supabaseCreateReservation('), '作る前に canRequest を通していない');
         assert.ok(/rv\.conflictingReservation\(mine, \{ playerId: identity\.id, characters:/.test(html), '模擬タブの予約欄でキャラ被りを見ていない');
         // 承認側: 本人の固定済みが置けなくなるなら承認不可
         assert.ok(/if \(impact && impact\.blockingHard\) \{/.test(html), '承認でキャラ被りを止めていない');
@@ -5264,7 +5272,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     });
     test('L2 配線: 承認は「固定した場合の影響」を見せてから', () => {
         const fn = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/_reservationImpact\(row\)/.test(fn), '影響を出していない');
+        assert.ok(/_reservationImpact\(rowNow\)/.test(fn), '影響を出していない (いまの写しで解く)');
         assert.ok(fn.includes('完全攻略の見込み'));
         assert.ok(fn.includes('未消化の凸'));
         assert.ok(fn.includes('ほかに割当が変わる人'));
@@ -5313,6 +5321,11 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/impact\.cannotPlaceText/.test(ap), '理由を出していない');
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/window\.planDiffDomain, row\.id, row\.player_id\)/.test(im), '候補IDと本人を渡していない (置けたか・本人の予約が壊れるかを判定できない)');
+        // 影響は承認に使う写し (いまの提出) で解く — 申請時の写しで解くと申請後の編成変更のキャラ被りをすり抜ける (Codex指摘)
+        const iSnap = ap.indexOf('const snap = await _snapshotAtApproval(row);'), iImp = ap.indexOf('_reservationImpact(rowNow)');
+        assert.ok(iSnap >= 0 && iImp > iSnap, '影響の算出より前に承認時点の写しを取っていない');
+        assert.ok(/const rowNow = snap \? \{ \.\.\.row, characters_snapshot: snap\.characters, expected_damage_b: snap\.expectedDamageB \} : row;/.test(ap), 'いまの写しで解いていない');
+        assert.equal((ap.match(/_snapshotAtApproval\(row\)/g) || []).length, 1, '写しを2回取っている (影響と承認で別の内容になり得る)');
     });
     test('★ A: 運営ホームのヒーロー「配信後の予約があります、確認して下さい」→ 組み直し→配信へ飛ぶ', () => {
         const fn = html.match(/async function renderMyNextAction\([\s\S]*?\n        \}\n/)?.[0] || '';

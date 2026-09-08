@@ -354,14 +354,18 @@
      */
     // 同じ人の生きている予約と、編成のキャラが被っているか (同じキャラは1日1回しか使えない — 2026-09-08 実機で発覚:
     // PT1 を予約したあと、同じキャラを含む PT2 を申請でき、承認もでき、PT1 が置けなくなった)
-    const _charKey = (c) => String(c || '').normalize('NFKC').trim().toLowerCase();
+    // 文字列だけを見る — 壊れた写し (オブジェクト・空白だけ) を "[object Object]" や '' として一致させない (Codex指摘)
+    const _charKeys = (list) => (Array.isArray(list) ? list : [])
+        .filter(c => typeof c === 'string')
+        .map(c => c.normalize('NFKC').trim().toLowerCase())
+        .filter(Boolean);
     function conflictingReservation(rows, { playerId, characters, excludeId }) {
-        const mine = new Set((Array.isArray(characters) ? characters : []).filter(Boolean).map(_charKey));
+        const mine = new Set(_charKeys(characters));
         if (mine.size === 0) return null;
         return (Array.isArray(rows) ? rows : []).find(r => r && isActive(r)
             && String(r.player_id) === String(playerId)
             && (excludeId == null || String(r.id) !== String(excludeId))
-            && (Array.isArray(r.characters_snapshot) ? r.characters_snapshot : []).some(c => mine.has(_charKey(c)))) || null;
+            && _charKeys(r.characters_snapshot).some(k => mine.has(k))) || null;
     }
 
     function canRequest(rows, { playerId, bossNumber, loadoutSlot, doneAttacks, characters }) {
