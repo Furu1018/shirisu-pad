@@ -6334,7 +6334,10 @@
                 const prevEl = document.querySelector('.tab-content.active');
                 const prevName = prevEl?.id?.replace('tab-', '');
                 if (prevName) {
-                    _tabScrollY[prevName] = window.scrollY || document.documentElement.scrollTop || 0;
+                    // ★ モーダル/ドロワーで body を固定している間は window.scrollY が 0 になる。
+                    //   固定前の本来の位置 (_modalLockY) を保存する (Codex指摘 2026-09-08)
+                    const lockedY = (typeof _modalLockY !== 'undefined' && _modalLockY !== null) ? _modalLockY : null;
+                    _tabScrollY[prevName] = lockedY !== null ? lockedY : (window.scrollY || document.documentElement.scrollTop || 0);
                 }
 
                 // 2) タブ切替 (active / swipe-no-anim / ヘッダタブボタン)
@@ -8773,7 +8776,7 @@
             body.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:16px;">
                     <div>${lbl('どの編成で')}<div style="display:flex;flex-direction:column;gap:7px;">${loHtml}</div>${bossLine}</div>
-                    <div>${lbl('何時に')}$1
+                    <div>${lbl('何時に')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">${timeChips.join('')}</div>${timeNote}</div>
                 </div>
                 ${blocker ? `<p style="margin:14px 2px 0;font-size:11.5px;font-weight:800;color:#C42A30;">${esc(blocker)}</p>` : ''}
                 <div style="margin-top:${blocker ? '10' : '22'}px;display:flex;flex-direction:column;gap:9px;">
@@ -9701,6 +9704,7 @@
         }
 
         let _myMockResv = new Map();   // 'attr|slot' → 生きている予約 (模擬カードの印と削除ガード)
+        let _myMockResvFor = null;     // その地図が誰のものか (プレイヤー切替直後に別人の地図を見ない)
         async function renderMyDamagePanels(identity) {
             const el = document.getElementById('mypageDmgPanels');
             const legendEl = document.getElementById('mypageDmgDupLegend');
@@ -9738,6 +9742,7 @@
             // 🔒 この編成で出している予約 (ユーザー要望 2026-09-08): どのカードを予約しているかを印で出し、
             //   予約中の編成を誤って削除しないようにする (削除の判定も同じ地図を見る)
             _myMockResv = new Map();
+            _myMockResvFor = identity.id;
             try {
                 const rv = window.reservationsDomain;
                 if (rv && ctx?.season?.id && typeof window.supabaseLoadMyReservations === 'function') {
@@ -9986,8 +9991,22 @@
             const id = getCurrentIdentity();
             if (!id?.id || !_myTeamEditAttr) return;
             const ptName = PT_ATTRS.find(x => x.key === _myTeamEditAttr)?.name || _myTeamEditAttr;
-            // 🔒 予約中の編成は消させない (削除すると約束と食い違う — ユーザー要望 2026-09-08)
-            const rsv = (typeof _myMockResv !== 'undefined') ? _myMockResv.get(`${_myTeamEditAttr}|${slot}`) : null;
+            // 🔒 予約中の編成は消させない (削除すると約束と食い違う — ユーザー要望 2026-09-08)。
+            //   ★ 画面の地図 (_myMockResv) は別のプレイヤーのものかもしれない (切替直後の再描画前 — Codex指摘) ので、
+            //     削除の直前に**本人の予約を取り直して**判定する。取れなければ本人の地図だけを見る
+            let rsv = null;
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                const rvd = window.reservationsDomain;
+                if (ctx?.season?.id && rvd && typeof window.supabaseLoadMyReservations === 'function') {
+                    const mine = await window.supabaseLoadMyReservations(ctx.season.id, id.id);
+                    const boss = (ctx.bosses || []).find(b => b.weakness === _myTeamEditAttr);
+                    rsv = (Array.isArray(mine) ? mine : []).find(r => rvd.isActive(r) && boss
+                        && Number(r.boss_number) === Number(boss.boss_number) && (Number(r.loadout_slot) || 1) === slot) || null;
+                }
+            } catch {
+                rsv = (typeof _myMockResv !== 'undefined' && _myMockResvFor === id.id) ? (_myMockResv.get(`${_myTeamEditAttr}|${slot}`) || null) : null;
+            }
             if (rsv) {
                 const jp = window.reservationsDomain?.STATUS_JP?.[rsv.status] || rsv.status;
                 alert(`🔒 ${ptName}PT 編成${SLOT_JP[slot]} は凸を予約しています (${jp})。\n削除すると予約と食い違うので、先にホームの「引き受けた凸」から取り消しを希望してください。`);
@@ -22376,17 +22395,26 @@
         // 固定中は window.scrollY が 0 になるため、閉じたら元の位置へ戻し、下部ナビの自動隠しには
         // 「プログラム由来のスクロール」として抑止を張る (戻した瞬間に隠れるのを防ぐ)
         const _MODAL_LOCK_SEL = '.player-select-modal.open, .fururi-help-modal.open, .player-modal.open, .drawer.open';
-        let _modalLockY = null;
+        let _modalLockY = null;      // 固定中の本来のスクロール位置 (null = 固定していない)
+        let _modalLockTab = null;    // 固定したときに表示していたタブ
+        const _activeTabName = () => document.querySelector('.tab-content.active')?.id?.replace('tab-', '') || null;
         function _syncModalLock() {
-            const open = !!document.querySelector(_MODAL_LOCK_SEL);
+            // ★ 背面スクロールが問題になるのはモバイルだけ。PC は固定するとスクロールバーの溝が消えて横に跳ねる (Codex指摘)
+            const open = !!document.querySelector(_MODAL_LOCK_SEL) && window.matchMedia('(max-width: 767px)').matches;
             const locked = _modalLockY !== null;
             if (open && !locked) {
                 _modalLockY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+                _modalLockTab = _activeTabName();
                 document.body.style.top = `-${_modalLockY}px`;
                 document.body.classList.add('modal-lock');
             } else if (!open && locked) {
-                const y = _modalLockY;
+                // ★ 固定中にタブが切り替わっていたら (ドロワーから別タブへ)、元のタブの位置ではなく
+                //   切替先のタブの保存位置へ戻す (Codex指摘)
+                const cur = _activeTabName();
+                const y = (cur === _modalLockTab) ? _modalLockY
+                    : (typeof _tabScrollY !== 'undefined' && cur && Object.prototype.hasOwnProperty.call(_tabScrollY, cur) ? _tabScrollY[cur] : 0);
                 _modalLockY = null;
+                _modalLockTab = null;
                 document.body.classList.remove('modal-lock');
                 document.body.style.top = '';
                 window.scrollTo(0, y);

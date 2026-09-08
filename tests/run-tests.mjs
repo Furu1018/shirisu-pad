@@ -3521,6 +3521,9 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.ok(!render.includes("lbl('どのボスを')"), 'ボスを選ばせている (編成で決まる)');
             assert.ok(!/_resvReqPick\('boss'/.test(render), 'ボスのボタンが残っている');
             assert.ok(render.indexOf("lbl('どの編成で')") < render.indexOf("lbl('何時に')"), '編成より先に時刻を聞いている');
+            // ★ 時刻のチップと注記がテンプレートに差し込まれていること (置換の取りこぼしで `$1` が残った — Codex指摘)
+            assert.ok(render.includes("${timeChips.join('')}") && render.includes('${timeNote}'), '時刻の選択が描かれない');
+            assert.ok(!/\$1\b/.test(render), 'テンプレートに置換の残骸 ($1) がある');
             // ボスは編成から決まる (_resvReqBossOf) — 選び直しの経路も同じ
             assert.ok(/function _resvReqBossOf\(lo\)/.test(html));
             assert.ok(/_resvReq\.boss = _resvReqBossOf\(_resvReq\.lo\);/.test(html), '編成を選んでもボスが決まらない');
@@ -4881,6 +4884,10 @@ console.log('\n模擬提出シート (提出バー固定):');
         const lock = html.match(/function _syncModalLock\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/document\.body\.classList\.add\('modal-lock'\)/.test(lock) && /document\.body\.style\.top = `-\$\{_modalLockY\}px`/.test(lock), '開いたときに固定していない');
         assert.ok(/window\.scrollTo\(0, y\);\s*\n\s*if \(typeof _navShowNow === 'function'\) _navShowNow\(\);/.test(lock), '閉じたときに元の位置へ戻して自動隠しを抑止していない');
+        // モバイルだけ固定 / 固定中にタブが変わっていたら切替先の保存位置へ (Codex指摘)
+        assert.ok(/window\.matchMedia\('\(max-width: 767px\)'\)\.matches/.test(lock), 'PC でも固定している');
+        assert.ok(/const y = \(cur === _modalLockTab\) \? _modalLockY/.test(lock), '固定中のタブ切替を考えていない');
+        assert.ok(/_tabScrollY\[prevName\] = lockedY !== null \? lockedY :/.test(html), 'タブ切替の位置保存が固定中の 0 を保存する');
         assert.ok(/new MutationObserver\(\(\) => _syncModalLock\(\)\)/.test(html), 'open の付け外しを監視していない');
         // ソフトキーボード中は下部ナビを隠す
         assert.ok(/body\.kb-open \.bottom-nav \{ display: none !important; \}/.test(html));
@@ -4895,6 +4902,9 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(/\$\{slotBadge\}\$\{resvBadge\}/.test(panels), '印をカードに差し込んでいない');
         const del = html.match(/async function _deleteMyTeamEditSlot\(slot\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/_myMockResv\.get\(`\$\{_myTeamEditAttr\}\|\$\{slot\}`\)/.test(del), '削除で予約を見ていない');
+        // ★ 画面の地図は別人のものかもしれない → 削除の直前に本人の予約を取り直す (Codex指摘)
+        assert.ok(/supabaseLoadMyReservations\(ctx\.season\.id, id\.id\)/.test(del), '削除の直前に本人の予約を取り直していない');
+        assert.ok(/_myMockResvFor === id\.id/.test(del), '別人の地図で判定してしまう');
         assert.ok(/凸を予約しています/.test(del) && del.indexOf('凸を予約しています') < del.indexOf('supabaseDeletePlayerDamageSlot'), '予約中でも削除できてしまう');
     });
     test('★ 提出バーは 編成の変更・ダメージ入力・開いたとき・提出のあと に描き直される', () => {
