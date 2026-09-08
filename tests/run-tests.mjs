@@ -5895,6 +5895,21 @@ console.log('\nblablaNameCodes:');
         const forced = Object.entries(map.data).filter(([, e]) => e.overridden).map(([nc]) => nc).sort();
         assert.deepEqual(forced, Object.keys(EXPECTED_OVERRIDES).sort(), '手当ての一覧が変わっている');
     });
+
+    test('★ 生成スクリプトの OVERRIDES と JSON がずれていない (生成し直し忘れの検出)', () => {
+        // ここまでのテストは生成物 (JSON) しか見ないので、**スクリプトだけ直して生成し直さない**と
+        // 気づけない。スクリプト側の表も読んで突き合わせ、三者 (スクリプト/JSON/期待値) を揃える
+        const src = fs.readFileSync(path.join(ROOT, 'scripts', 'build-blabla-name-codes.mjs'), 'utf8');
+        const block = src.match(/const OVERRIDES = \{([\s\S]*?)\n\};/);
+        assert.ok(block, '生成スクリプトから OVERRIDES を読み取れない (書き方が変わった?)');
+        const inScript = {};
+        for (const line of block[1].split('\n')) {
+            const hit = line.replace(/\/\/.*$/, '').match(/(\d+):\s*'([^']*)'/);
+            if (hit) inScript[hit[1]] = hit[2];
+        }
+        assert.deepEqual(inScript, EXPECTED_OVERRIDES,
+            '生成スクリプトの OVERRIDES が期待値と違う (スクリプトを直したら --apply で生成し直すこと)');
+    });
 }
 
 // ---- 結果 --------------------------------------------------------------------

@@ -280,9 +280,12 @@ const out = {
     counts: { name_codes: Object.keys(table).length, matched_pad: matchedPadNames.size, pad_total: pad.length },
     data: table,
 };
-if (APPLY) {
+if (APPLY && sameData) {
+    // 中身が同じなら**書かない**。書くと mtime だけ動いて「更新された」ように見える (Codex指摘)
+    console.log('\n✅ 中身は前回と同じでした (data/blabla-name-codes.json は触っていません)');
+} else if (APPLY) {
     writeFileSync(DEST, JSON.stringify(out, null, 2) + '\n', 'utf8');
-    console.log(`\n✅ 書き出しました: data/blabla-name-codes.json${sameData ? ' (中身は前回と同じ)' : ''}`);
+    console.log('\n✅ 書き出しました: data/blabla-name-codes.json');
 } else {
     console.log(`\n(dry-run: 書き込んでいません。--apply で data/blabla-name-codes.json に書きます)`);
 }
