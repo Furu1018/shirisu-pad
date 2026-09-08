@@ -6160,7 +6160,19 @@ console.log('\ngrowthDomain:');
         }, { nameCodeMap: map }).save, true);
     });
 
-    test('★ parseOpenid: 数字だけ / ?uid= を含むリンク を受け、それ以外の数字は拾わない', () => {
+    test('★ parseOpenid: アドレスの openid は base64 で包まれている (生の数字を期待すると1件も読めない)', () => {
+        // しりすこスクワッド personal-scan.ts が実機で確かめた形。これが読めないと名寄せが成立しない
+        const wrapped = Buffer.from('123456789', 'utf8').toString('base64');   // 'MTIzNDU2Nzg5'
+        assert.equal(dom.parseOpenid(`https://www.blablalink.com/user?openid=${wrapped}`), '123456789');
+        assert.equal(dom.parseOpenid(`https://www.blablalink.com/ja/user?openid=${wrapped}&from=union`), '123456789');
+        assert.equal(dom.parseOpenid(wrapped), '123456789', '値だけ貼られた場合も受ける');
+        // URL-safe base64 (- と _) / %xx で包まれている場合
+        const urlSafe = Buffer.from('nikke:987654321', 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
+        assert.equal(dom.parseOpenid(`https://x/user?openid=${urlSafe}`), '987654321');
+        // 末尾に = の付く base64 は URL では %3D になる
+        const padded = Buffer.from('12345678', 'utf8').toString('base64');   // 'MTIzNDU2Nzg='
+        assert.equal(dom.parseOpenid(`https://x/user?openid=${encodeURIComponent(padded)}`), '12345678');
+        // 包まれていない (生の数字) 場合も従来どおり読める
         assert.equal(dom.parseOpenid('123456789'), '123456789');
         assert.equal(dom.parseOpenid('  123456789  '), '123456789');
         assert.equal(dom.parseOpenid('https://www.blablalink.com/profile?uid=123456789'), '123456789');
@@ -6169,6 +6181,8 @@ console.log('\ngrowthDomain:');
         // ★ 取り違えは「他人の育成が別人に付く」事故。関係ない数字を拾わないこと
         assert.equal(dom.parseOpenid('https://x/y?area=81&t=1725792000000'), null, '別のパラメータを識別子にしている');
         assert.equal(dom.parseOpenid('12345'), null, '短すぎる数字を通している');
+        assert.equal(dom.parseOpenid('abc123456'), null, 'base64 として開けない文字列から数字を拾っている');
+        assert.equal(dom.parseOpenid('テスト123456'), null);
         assert.equal(dom.parseOpenid('abc'), null);
         assert.equal(dom.parseOpenid(''), null);
         assert.equal(dom.parseOpenid(null), null);

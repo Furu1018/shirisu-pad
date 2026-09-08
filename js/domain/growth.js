@@ -544,19 +544,48 @@
         }));
     }
 
+    /** URL-safe base64 なら中身に開く。開けないときは null (「そのまま」と区別する) */
+    function _unbase64(raw) {
+        const t = String(raw == null ? '' : raw);
+        if (!t || !/^[A-Za-z0-9_\-+/=]+$/.test(t)) return null;
+        try {
+            const guess = atob(t.replace(/-/g, '+').replace(/_/g, '/'));
+            // 開けた結果が読める文字なら「包まれていた」とみなす
+            return (guess && /^[\x20-\x7e]+$/.test(guess)) ? guess : null;
+        } catch { return null; }
+    }
+
     /**
-     * 名寄せの入力を BlaBlaLINK の識別子 (openid) に読み替える。
-     * ユニオン一覧のリンクをそのまま貼れるようにする — 運営に「URL から数字だけ抜いて」と言わせない。
-     * ★ 受けるのは「数字だけ」と「?uid=... / &openid=... を含む文字列」。
-     *   それ以外の長い数字列 (URL の中の別のパラメータ) を拾わない — 取り違えは他人の育成が別人に付く事故になる。
+     * 名寄せの入力を BlaBlaLINK の識別子 (intl_open_id) に読み替える。
+     * プロフィールのアドレスをそのまま貼れるようにする — 運営に「URL から数字だけ抜いて」と言わせない。
+     *
+     * ★ **アドレスの openid は base64 で包まれている** (blablalink.com/user?openid=MTIzNDU2Nzg5)。
+     *   しりすこスクワッドの personal-scan.ts が実機で確かめた事実で、生の数字を期待すると1件も読めない。
+     *   包まれていない場合もあるので、開けたら開いた側・開けなければそのままを見る。
+     * ★ 受けるのは「数字だけ」「?openid= 等を含むアドレス」「その値だけ (base64)」の3つ。
+     *   それ以外の長い数字列 (アドレスの中の別のパラメータ) は拾わない —
+     *   取り違えは他人の育成が別人に付く事故になる。
      * @returns {string|null}
      */
     function parseOpenid(text) {
         const s = String(text == null ? '' : text).trim();
         if (!s) return null;
         if (/^\d{6,}$/.test(s)) return s;                       // 数字だけ貼られた
-        const m = s.match(/[?&#](?:uid|openid|intl_open_id|open_id)=(\d{6,})\b/i);
-        if (m) return m[1];
+        // アドレスの中の識別子パラメータ。値は base64 のことも生の数字のこともある
+        const m = s.match(/[?&#](?:uid|openid|intl_open_id|open_id)=([^&#\s]+)/i);
+        if (m) {
+            let v = m[1];
+            try { v = decodeURIComponent(v); } catch { /* %xx が壊れていればそのまま */ }
+            const inner = _unbase64(v);
+            const hit = String(inner == null ? v : inner).match(/(\d{6,})\s*$/);
+            return hit ? hit[1] : null;
+        }
+        // アドレスではなく、パラメータの値だけを貼られたとき (包まれた識別子)
+        const inner = _unbase64(s);
+        if (inner) {
+            const hit = inner.match(/(\d{6,})\s*$/);
+            if (hit) return hit[1];
+        }
         return null;
     }
 
