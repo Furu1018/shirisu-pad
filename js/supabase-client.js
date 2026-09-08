@@ -1765,6 +1765,13 @@ window.supabaseSetClientGate = async function ({ minClientBuild, minPlanSchema, 
 const _GROWTH_MIG = 'supabase/43_member_growth.sql を SQL Editor で適用してください';
 function _growthErr(error, table) {
     if (_isMissingTableErr(error, table) || _isMissingColumnErr(error, 'blabla_openid')) return new Error(_GROWTH_MIG);
+    // ★ RLS で弾かれる = テーブルはあるが書き込みの許可が入っていない (2026-09-09 実機で発生)。
+    //   英語の Postgres メッセージをそのまま出しても運営には何をすればよいか分からないので、
+    //   「43 を**もう一度**実行する」に翻訳する (43 は冪等なので何度でも安全)
+    const blob = `${error?.code || ''} ${error?.message || ''}`;
+    if (error?.code === '42501' || /row-level security/i.test(blob)) {
+        return new Error(`${table} への書き込みが許可されていません。supabase/43_member_growth.sql を SQL Editor で**もう一度**実行してください (何度実行しても安全です)`);
+    }
     return error;
 }
 

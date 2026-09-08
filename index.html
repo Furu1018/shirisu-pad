@@ -397,6 +397,10 @@
         .gr-row .st.error { color: #FF3D44; background: rgba(255,61,68,0.10); }
         .gr-row input { flex: none; width: 116px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 8px; padding: 5px 7px; background: #fff; color: #14161A; }
         .gr-row input.set { border-color: rgba(14,148,85,0.35); background: rgba(14,148,85,0.05); }
+        .gr-bad { padding: 6px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
+        .gr-bad:first-child { border-top: none; }
+        .gr-bad > .gr-row { border-top: none; padding-top: 0; }
+        .gr-bad > .why { font-size: 10.5px; font-weight: 700; color: #8A9097; line-height: 1.5; word-break: break-word; }
         .gr-btn { font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 999px; padding: 10px 14px; cursor: pointer; background: #14161A; color: #fff; }
         .gr-btn.sub { background: #F1F2F4; color: #14161A; }
         .gr-btn[disabled] { opacity: .45; cursor: default; }
@@ -16041,10 +16045,15 @@
                 const list = players.map(p => ({ p, s: statusBy.get(String(p.id)) })).filter(x => x.s);
                 const ok = list.filter(x => x.s.status === 'ok');
                 const bad = list.filter(x => x.s.status !== 'ok');
+                // ★ 理由は title でなく**画面に出す** (実機FB 2026-09-09: 「失敗」とだけ出て、
+                //   なぜ失敗したのか分からなかった。スマホには hover が無いので title は読めない)
                 const badRows = bad.map(({ p, s }) => `
-                    <div class="gr-row">
-                        <span class="nm" title="${esc(s.detail || dom.STATUS_JP[s.status] || '')}">${esc(p.name)}</span>
-                        <span class="st ${esc(s.status)}" title="${esc(dom.STATUS_JP[s.status] || s.status)}">${esc(dom.STATUS_SHORT[s.status] || s.status)}</span>
+                    <div class="gr-bad">
+                        <div class="gr-row" style="padding-bottom:2px;">
+                            <span class="nm">${esc(p.name)}</span>
+                            <span class="st ${esc(s.status)}">${esc(dom.STATUS_SHORT[s.status] || s.status)}</span>
+                        </div>
+                        <div class="why">${esc(s.detail || dom.STATUS_JP[s.status] || '')}</div>
                     </div>`).join('');
                 step4 = `
                     <div class="gr-step ${bad.length ? '' : 'done'}">

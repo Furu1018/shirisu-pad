@@ -151,7 +151,7 @@ test('★ 結果: 取れなかった人だけ理由つきで出す / 全員取�
     const out = t.html();
     assert.ok(out.includes('取れた 1人 · 取れなかった 2人'));
     assert.ok(/class="st private"[^>]*>非公開</.test(out), '非公開の表示が無い');
-    assert.ok(/title="本人が非公開にしています"/.test(out), 'ピルに詳しい言い方が付いていない');
+    assert.ok(/class="why">本人が非公開にしています</.test(out), '理由を画面に出していない');
     assert.ok(/class="st no_openid"[^>]*>未ひも付け</.test(out), '未ひも付けの表示が無い');
     assert.ok(!/class="st ok"/.test(out), '取れた人まで並べている (畳むこと)');
     const all = run({ players: [P(1, 'あ', '1')], statusRows: [{ player_id: 1, status: 'ok', character_count: 5 }] }).html();

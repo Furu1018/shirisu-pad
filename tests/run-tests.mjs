@@ -6255,6 +6255,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/_isMissingTableErr\(error, 'member_growth_status'\)\) return null;/.test(client), '未適用を「全員未取り込み」と混同している');
         // 一意索引に当たったら誰と重複したかを言う (取り違えの事故を見つけられるように)
         assert.ok(/error\.code === '23505'/.test(client) && /に登録済みです/.test(client), '識別子の重複を名前つきで知らせていない');
+        // ★ RLS で弾かれたら「43 をもう一度実行」に翻訳する (2026-09-09 実機: 英語の Postgres メッセージがそのまま出ていた)
+        assert.ok(/row-level security/i.test(client), 'RLS の失敗を見分けていない');
+        assert.ok(/もう一度\*\*実行してください/.test(client), '43 の再実行を案内していない');
+        // 取れなかった理由は title でなく画面に出す (スマホには hover が無い)
+        assert.ok(/<div class="gr-bad">/.test(html), '理由を出す枠が無い');
+        assert.ok(/class="why">\$\{esc\(s\.detail/.test(html), '取れなかった理由を画面に出していない');
     });
 
     test('★ 生成コード: 1人が転んでも残りの取得を続ける / 要求数を記録する', () => {
