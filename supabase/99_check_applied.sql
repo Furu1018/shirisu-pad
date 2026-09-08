@@ -253,8 +253,11 @@ SELECT * FROM (
          AND EXISTS (SELECT 1 FROM pg_indexes
                       WHERE schemaname = 'public' AND indexname = 'uq_players_blabla_openid'
                         AND indexdef LIKE '%UNIQUE%' AND indexdef LIKE '%blabla_openid%'
-                        -- 部分条件まで見る (WHERE が無いと未設定の NULL 同士でぶつかる作りに見える)
-                        AND indexdef LIKE '%WHERE%' AND indexdef LIKE '%IS NOT NULL%')
+                        -- ★ 部分条件は**その列に掛かっているか**まで見る。WHERE と IS NOT NULL を
+                        --   別々に探すと、別の列の条件でも「適用済み」と誤判定する (Codex指摘 2026-09-09)。
+                        --   Postgres は述語を括弧付きで出すが、念のため両方の書き方を許す
+                        AND (indexdef LIKE '%WHERE (blabla_openid IS NOT NULL)%'
+                          OR indexdef LIKE '%WHERE blabla_openid IS NOT NULL%'))
          -- 状態の綴りが固定されていること (private と error を混ぜると催促の相手を間違える)
          AND EXISTS (SELECT 1 FROM pg_constraint
                       WHERE conname = 'member_growth_status_status_check'

@@ -6032,6 +6032,10 @@ console.log('\ngrowthDomain:');
         const check = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '99_check_applied.sql'), 'utf8');
         assert.ok(/'43_member_growth'/.test(check), '99_check_applied.sql に判定行が無い');
         assert.ok(/uq_players_blabla_openid/.test(check) && /no_openid/.test(check), '判定が緩すぎる');
+        // ★ 部分条件はその列に掛かっているかまで見る。WHERE と IS NOT NULL を別々に探すと
+        //   別の列の条件でも「適用済み」と誤判定する
+        assert.ok(/WHERE \(?blabla_openid IS NOT NULL\)?/.test(check),
+            '部分索引の述語を列ごと照合していない (WHERE と IS NOT NULL を別々に探している)');
     });
 }
 
