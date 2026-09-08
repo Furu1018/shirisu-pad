@@ -234,7 +234,13 @@ SELECT * FROM (
     UNION ALL SELECT '42_reservations_level_optional',
         EXISTS (SELECT 1 FROM information_schema.columns
                  WHERE table_name = 'plan_reservations' AND column_name = 'raid_level' AND is_nullable = 'YES')
-        AND to_regclass('public.uq_plan_reservations_active_card') IS NOT NULL,
+        -- 索引は名前だけでなく定義まで見る (列と部分条件が違えば一意性が守られない)
+        AND EXISTS (SELECT 1 FROM pg_indexes
+                     WHERE schemaname = 'public' AND indexname = 'uq_plan_reservations_active_card'
+                       AND indexdef LIKE '%UNIQUE%'
+                       AND indexdef LIKE '%(season_id, player_id, boss_number, loadout_slot)%'
+                       AND indexdef LIKE '%WHERE%')
+        AND to_regclass('public.uq_plan_reservations_active') IS NULL,
         '予約のレベルを任意に + 一意性を「誰が・ボス・編成枠」へ (未適用だとメンバーの申請が NOT NULL で弾かれる)'
 
     UNION ALL SELECT '(storage bucket)',

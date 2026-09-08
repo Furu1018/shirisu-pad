@@ -365,14 +365,20 @@
             // 予約側がレベルを持たない (メンバー発) ときも見ない
             && (level == null || r.raid_level == null || Number(r.raid_level) === Number(level)));
         if (cand.length === 0) return { id: null, reason: 'none' };
-        if (cand.length === 1) return { id: cand[0].id, reason: 'one' };
-        // 編成で絞る (順不同で一致するものだけ)
+        // 編成で絞る (順不同で一致するものだけ)。
+        // ★ 候補が1件でも、編成が分かっていて約束の編成と違うなら紐づけない (Codex指摘 2026-09-08)。
+        //   レベルを持たない予約は「そのボスへの凸」なら何でも候補になるので、
+        //   21時に編成①で約束した予約が、9時の編成②の凸で消し込まれてしまう。
+        //   写しの無い旧予約だけは編成で判定できないので従来どおり
         const key = (arr) => (Array.isArray(arr) ? arr.filter(Boolean).map(String).slice().sort().join('\u0001') : '');
         const mine = key(characters);
         if (mine) {
-            const hit = cand.filter(r => key(r.characters_snapshot) === mine);
-            if (hit.length === 1) return { id: hit[0].id, reason: 'by_team' };
+            const same = cand.filter(r => { const k = key(r.characters_snapshot); return !k || k === mine; });
+            if (same.length === 1) return { id: same[0].id, reason: cand.length === 1 ? 'one' : 'by_team' };
+            if (same.length === 0) return { id: null, reason: 'team_mismatch' };
+            return { id: null, reason: 'ambiguous' };
         }
+        if (cand.length === 1) return { id: cand[0].id, reason: 'one' };
         return { id: null, reason: 'ambiguous' };
     }
 
@@ -417,6 +423,24 @@
     // 「予約したカードは固定で置かれ、予約しなかった枠は運営の算出が埋め、埋まらなかった枠には
     //  なぜ選ばれなかったかが日本語で書いてある」を1つの純関数で組み立てる。
     // 画面は並べるだけ。ここで組まないと、ヒーローと「わたしの凸」で違う枠が出る。
+
+    // 'hXX' → ソルバーの時間帯インデックス (HOUR_ORDER は 5時始まり: 5..23, 0..4)。読めなければ null
+    function slotIdxOf(timeSlot) {
+        const m = /^h(\d\d)$/.exec(String(timeSlot || ''));
+        if (!m) return null;
+        const h = Number(m[1]);
+        return (h >= 0 && h <= 23) ? ((h - 5 + 24) % 24) : null;
+    }
+    // 配信の行が、その予約の「時刻」まで満たしているか (reservationId が無い古い配信との突き合わせ用)。
+    // ★ 誰が・ボス・編成枠 だけで突き合わせると、9時の古い割当が 21時の予約を「入っている」ことにしてしまう
+    //   (Codex指摘 2026-09-08)。予約は時刻まで約束なので、時刻も見る
+    function rowHonorsTime(a, r) {
+        if (!a || !r) return false;
+        if (r.time_mode === 'flex') return !!a.flex;
+        const want = slotIdxOf(r.time_slot);
+        if (want == null) return true;                 // 時刻が読めない旧データは編成枠まででよしとする
+        return !a.flex && a.hourIdx != null && Number(a.hourIdx) === want;
+    }
 
     /** 配信プランから本人の行を時系列で取り出す (画面の _myPlanRows と同じ規約) */
     function planRowsOf(plan, viewerId, doneCounts) {
@@ -467,7 +491,9 @@
         for (const r of fixed) {
             const idx = rows.findIndex((a, i) => !usedRow.has(i) && (
                 (a.reservationId != null && String(a.reservationId) === String(r.id))
-                || (Number(a.bossNumber) === Number(r.boss_number) && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot))));
+                || (a.reservationId == null
+                    && Number(a.bossNumber) === Number(r.boss_number) && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot)
+                    && rowHonorsTime(a, r))));
             const a = idx >= 0 ? rows[idx] : null;
             if (a) usedRow.add(idx); else if (plan) stale = true;   // 配信がこの予約を知らない
             slots.push({
@@ -510,20 +536,24 @@
         const fixed = (Array.isArray(rows) ? rows : []).filter(isFixed);
         if (fixed.length === 0) return { count: 0, items: [] };
         const inPlan = new Set();
-        const cardKeys = new Set();
+        const planRows = [];
         (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv =>
             (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
                 if (a.reservationId != null) inPlan.add(String(a.reservationId));
-                cardKeys.add(`${a.memberId}|${Number(b.bossNumber)}|${Number(a.loadoutSlot) || 1}`);
+                else planRows.push({ ...a, bossNumber: Number(b.bossNumber) });
             })));
+        // reservationId が無い古い配信は、誰が・ボス・編成枠・**時刻** が揃うときだけ「入っている」とみなす
         const items = fixed.filter(r => !inPlan.has(String(r.id))
-            && !cardKeys.has(`${r.player_id}|${Number(r.boss_number)}|${Number(r.loadout_slot) || 1}`));
+            && !planRows.some(a => String(a.memberId) === String(r.player_id)
+                && Number(a.bossNumber) === Number(r.boss_number)
+                && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot)
+                && rowHonorsTime(a, r)));
         return { count: items.length, items };
     }
 
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP,
-        unmetText, planRowsOf, homeSlots, pendingRepublish,
+        unmetText, planRowsOf, homeSlots, pendingRepublish, slotIdxOf, rowHonorsTime,
         isActive, isApproved, isFixed, fingerprint, canTransition,
         toSolverConstraints,
         findInfeasible,

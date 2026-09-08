@@ -8882,12 +8882,13 @@
             const boss = (ctx.bosses || []).find(b => Number(b.boss_number) === Number(bossNumber));
             const lo = boss ? await _myBestLoadoutFor(id.id, boss.weakness) : null;
             const slot = lo?.slot || 1;
-            // ★ 同じレベル・同じボスに生きている予約があれば作らない — **編成枠は見ない**
-            //   (Codex指摘 2026-09-07)。了承を押し直す間に一番強い編成が①→②に変わると、
-            //   枠まで見る判定では別物になり、同じ依頼から2件できてしまう
-            if (mine.some(r => rv.isActive(r)
-                && Number(r.raid_level) === Number(level)
-                && Number(r.boss_number) === Number(bossNumber))) return;
+            // ★ 同じボスに生きている予約があれば作らない — **レベルも編成枠も見ない**
+            //   (Codex指摘 2026-09-07 / 2026-09-08)。了承を押し直す間に一番強い編成が①→②に変わると、
+            //   枠まで見る判定では別物になり、同じ依頼から2件できてしまう。
+            //   レベルを見ると、本人がレベル無しで出した同じボスの予約 (raid_level NULL) を見落とし、
+            //   一意索引 (誰が・ボス・編成枠) で insert が弾かれて「了承だけ成立して固定されない」になる。
+            //   本人の予約が既にあるなら、その約束 (時刻・編成) の方を守る
+            if (mine.some(r => rv.isActive(r) && Number(r.boss_number) === Number(bossNumber))) return;
             await window.supabaseCreateReservation({
                 seasonId: ctx.season.id, playerId: id.id,
                 raidLevel: level, bossNumber: Number(bossNumber), loadoutSlot: slot,

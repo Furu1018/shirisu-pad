@@ -490,7 +490,7 @@
                 m.reservedLaterChars = new Set();
             });
             for (const r of (opts.reservations || [])) {
-                if (!(Number(r.level) > L) || Number(r.level) > 3) continue;
+                if (!(Number(r.level) > L)) continue;   // Lv4 (ボス5) の予約ぶんも手前では使わない
                 const m = memberState.find(x => String(x.id) === String(r.memberId));
                 if (!m) continue;
                 m.reservedLater++;
@@ -947,12 +947,65 @@
         // 数値は Infinity を使わず 0 + infinite フラグで表現する — 📤配信は JSONB 保存であり、
         // JSON.stringify(Infinity) は null になって旧クライアントの .toFixed() を壊すため。
         const boss5 = bosses.find(b => b.boss_number === 5);
+        // Lv4 (ボス5) に解決された予約。reservationList の確定後に入る (assignLv4 はその後にしか呼ばれない)
+        let lv4Reservations = [];
         const assignLv4 = (pass) => {
             const lv4Weak = boss5.weakness;
             const lv4OpenIdx = pass.openIdx;   // ループ後の openIdx = Lv3 クリア想定時刻
             const memberState = pass.memberState;
             const lv4Attacks = [];
             for (const m of memberState) {
+                // ===== L2: ボス5 (Lv4) の予約を先に置く (Codex指摘 2026-09-08) =====
+                // 時刻が Lv3 踏破後の予約は Lv4 に解決される。ここで置かないと下の argmax が別の編成を先に使い、
+                // 約束した編成が余ったまま未達にもならない (黙って壊れる)。置き方は有限レベルの placeReservation と同じ
+                for (const r of lv4Reservations) {
+                    if (String(r.memberId) !== String(m.id) || m.remainingAttacks <= 0) continue;
+                    const list = m.avail[lv4Weak] || [];
+                    const real = list.find(c => Number(c.slot) === Number(r.loadoutSlot)) || null;
+                    const hasSnap = Array.isArray(r.team) && r.team.length > 0 && Number(r.expectedB) > 0;
+                    const cand = hasSnap
+                        ? { dmg: Number(r.expectedB), team: r.team.slice(), slot: Number(r.loadoutSlot),
+                            level: null, levels: { '0': Number(r.expectedB) }, ord: 0, fromReservation: true }
+                        : real;
+                    if (!cand) continue;
+                    const dmg = resolveDamage(cand);
+                    if (dmg === null) continue;
+                    if (m.anyTeamRegistered && cand.team.length > 0 && cand.team.some(c => hasUsedChar(m.usedChars, c))) continue;
+                    let slot;
+                    if (!timeAware) slot = { idx: lv4OpenIdx, flex: false };
+                    else if (r.flex) slot = { idx: lv4OpenIdx, flex: true };
+                    else {
+                        const want = (r.timeSlot != null) ? IDX_BY_KEY.get(r.timeSlot) : undefined;
+                        if (want == null) slot = earliestHourFor(m, lv4OpenIdx);
+                        else if (want < lv4OpenIdx) continue;   // 開放より前 = 置かない (unmetOf が before_open にする)
+                        else slot = { idx: want, flex: false };
+                    }
+                    if (!slot) continue;
+                    const teamRegistered = cand.team.length > 0;
+                    lv4Attacks.push({
+                        memberId: m.id, memberName: m.name,
+                        slv: m.slv, slvEstimated: m.slvEstimated,
+                        dmgB: dmg, usedB: dmg, overflowB: 0,   // 無限HP: 全額計上
+                        team: teamRegistered ? cand.team : null,
+                        hourIdx: timeAware ? slot.idx : null,
+                        hourLabel: (timeAware && !slot.flex) ? hourLabelOf(slot.idx) : null,
+                        flex: timeAware ? !!slot.flex : false,
+                        timeUnknown: timeAware ? m.timeUnknown : false,
+                        timeMismatch: false,
+                        nearestHourLabel: null,
+                        loadoutSlot: Number(r.loadoutSlot) || 1,
+                        isBottleneck: false,
+                        fromReservation: true,
+                        reservationId: r.reservationId ?? null,
+                    });
+                    if (teamRegistered) cand.team.forEach(c => addUsedChar(m.usedChars, c));
+                    if (real) {
+                        const i = list.indexOf(real);
+                        if (i >= 0) list.splice(i, 1);
+                        if (list.length === 0) delete m.avail[lv4Weak];
+                    }
+                    m.remainingAttacks--;
+                }
                 // 同一人物でも別編成 (loadout slot) なら同属性に複数凸できる — 残凸数まで dmg 降順で割当。
                 while (m.remainingAttacks > 0) {
                     const list = m.avail[lv4Weak];
@@ -1082,7 +1135,7 @@
             const playerById = new Map((players || []).map(p => [String(p.id), p]));
             const out = [];
             for (const r of list) {
-                if (r.level === 4) continue;   // Lv4 (ボス5・無限) は拘束にしない = 未達にもしない
+                // Lv4 (ボス5) に解決した予約も突き合わせる — assignLv4 が約束の編成・時刻で置く (Codex指摘 2026-09-08)
                 const k = `${r.level}|${r.bossNumber}|${r.memberId}|${r.loadoutSlot}|${tKeyOfRes(r)}`;
                 const n = have.get(k) || 0;
                 if (n > 0) { have.set(k, n - 1); continue; }
@@ -1542,7 +1595,10 @@
         // ★ レベルの無い予約は先に時間軸からレベルを決める (2026-09-08)。決まらなかったものは level=null のまま
         //   unmetOf へ回り、拘束には入れない (Lv4 に解決したものも拘束にしない = ボス5は無限で全員入る)
         const reservationList = resolveReservationLevels(normalizeReservations(input.reservations));
-        const constraintList = reservationList.filter(r => r.level !== null && r.level >= 1 && r.level <= 3);
+        // Lv1〜3 は runLevel の先置き、Lv4 (ボス5) は assignLv4 の先置きで守る。
+        // ★ 取り置き (reservedLater) は Lv4 の予約ぶんも見るので、拘束リストには Lv4 も入れる
+        const constraintList = reservationList.filter(r => r.level !== null && r.level >= 1 && r.level <= 4);
+        lv4Reservations = reservationList.filter(r => r.level === 4);
         const passBase = constraintList.length > 0 ? { reservations: constraintList } : null;
 
         const stickyList = normalizeSticky(input.previousPlan);

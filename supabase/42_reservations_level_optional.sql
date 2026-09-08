@@ -14,21 +14,23 @@
 --   どのレベルに置くかはソルバーが時間軸から決める。
 --
 -- 何を変えるか:
---   1. raid_level を NULL 可に (メンバー発の予約は NULL。締め凸依頼の了承だけ運営がレベル付きで作る)
---   2. 生きている予約の一意性を「誰が・レベル・ボス・編成枠」→「誰が・ボス・編成枠」に。
+--   1. 生きている予約の一意性を「誰が・レベル・ボス・編成枠」→「誰が・ボス・編成枠」に。
 --      同じカード (編成) は1日1回しか使えないので、レベル違いの二重予約はそもそも意味がない
+--   2. raid_level を NULL 可に (メンバー発の予約は NULL。締め凸依頼の了承だけ運営がレベル付きで作る)
 --
--- ⚠ 2 は既存の生きている予約に「同じ人・同じボス・同じ編成枠」の重複があると作れない。
---   その場合はここで止まり、どの予約かを表示する。運営が画面で片方を解除してから再実行する
+-- ★ 順序が要点 (Codex指摘 2026-09-08): **新しい索引を先に作り、古い索引を落とし、最後に NULL 可にする**。
+--   先に NULL 可にしてから索引を張り替えると、その間に入った NULL レベルの重複が新索引の作成を
+--   失敗させ、しかも古い索引はもう無い = 一意性が守られない窓が開く。
+--   この順なら、途中で失敗しても古い索引が残っていて (NULL はまだ入れないので) 何も壊れず、そのまま再実行できる。
+--
+-- ⚠ 生きている予約に「同じ人・同じボス・同じ編成枠」の重複があると新索引を作れない。
+--   その場合は最初の検査で止まり、どの予約かを表示する。運営が画面で片方を解除してから再実行する
 --   (状態の変更は RPC 経由に縛ってあるので、この SQL からは触らない)
 -- ============================================================================
 
 SET lock_timeout = '3s';
 
--- 1) レベルを任意に。CHECK (BETWEEN 1 AND 4) は NULL を通すのでそのまま
-ALTER TABLE plan_reservations ALTER COLUMN raid_level DROP NOT NULL;
-
--- 2) 一意索引の張り替え。先に重複を検査して、あれば分かる形で止める
+-- 1) 重複を検査して、あれば分かる形で止める
 DO $$
 DECLARE
     v_dup TEXT;
@@ -48,9 +50,15 @@ BEGIN
     END IF;
 END $$;
 
-DROP INDEX IF EXISTS uq_plan_reservations_active;
+-- 2) 新しい索引を先に作る (重複が同時に入っていればここで失敗し、古い索引は残る = 再実行できる)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_reservations_active_card
     ON plan_reservations(season_id, player_id, boss_number, loadout_slot)
     WHERE status IN ('requested', 'approved', 'cancel_requested');
+
+-- 3) 古い索引を落とす
+DROP INDEX IF EXISTS uq_plan_reservations_active;
+
+-- 4) 最後にレベルを任意に。CHECK (BETWEEN 1 AND 4) は NULL を通すのでそのまま
+ALTER TABLE plan_reservations ALTER COLUMN raid_level DROP NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
