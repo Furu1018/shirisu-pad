@@ -50,6 +50,17 @@ rm -f .claude/hooks/.codex-on      # OFF
   「保存」は「提出する」に言い換え (模擬タブは「提出」で統一)。削除は赤い小リンク。予約 (🔒) は区画でなく
   バーの1行の導線 (`_renderTeamEditResv` が `#myTeamEditResvSec` に描く)。「よく使う編成」と「人気編成の参考」は
   ③ の中の1つの折りたたみ (`toggleTeamEditTopTeams` → `_teSyncPopular`)。実行テスト `tests/submit-bar.mjs`
+- **モーダルが開いている間は body を固定する** (`_syncModalLock`・2026-09-08 実機FB「中を触っているのに後ろが動く」)。
+  開閉は各所で classList の `open` を足し引きしているだけなので、`MutationObserver` で監視して一箇所で
+  `body.modal-lock` (position:fixed + top:-scrollY) を付け外しする。閉じたら元の位置へ戻し `_navShowNow()` で
+  下部ナビの自動隠しを抑止する (戻した瞬間に隠れる)。★ 固定中は `window.scrollY` が 0 — スクロール位置を
+  読む処理をモーダル中に増やすときは `_modalLockY` を見ること。
+  ソフトキーボード中 (入力欄にフォーカス) は `body.kb-open` で下部ナビを隠す (iOS は fixed 要素を可視領域の下端へ寄せる)
+- **模擬カードの「🔒 予約済み / 承認待ち / 取り消し希望」の印と削除ガード** (2026-09-08)。`renderMyDamagePanels` が
+  自分の生きている予約を `_myMockResv` ('attr|slot' → 行) に畳み、表示中の編成に印を出す。
+  `_deleteMyTeamEditSlot` は同じ地図を見て、予約中の編成は削除させない (先にホームから取り消しを希望してもらう)
+- **申請シートはボスを選ばせない** (2026-09-08 ユーザー指摘)。編成の弱点属性で行くボスが決まる (`_resvReqBossOf`)。
+  並びは どの編成で (全属性・ボス順) → 何時に。行き先は「→ ボス3 に行きます」の1行だけ
 - **模擬タブの編成入力はタイルピッカー** (2026-08-12)。GB (`~/Desktop/shirisu-pad-global` の
   `js/tiles.js`) の「キャラ画像 + バースト帯」の構造を参考にしたが、**持ち込んだのはUIの構造だけ** —
   GBのゲームアセット全廃方針は本家に持ち込まない (本家は BlaBlaLINK 図鑑アイコンを使用)。
