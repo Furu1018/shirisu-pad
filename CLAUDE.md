@@ -122,7 +122,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   (相互FKは循環参照になり、バックアップ復元の順序が決まらない)
 - **js/domain/availability.js** — 戦闘可能時間 ('hXX' の配列) の読み方 (2026-09-08)。5時始まりの並びで区間にまとめ
   (`rangesOf` / `labelOf` → 「5〜9時・21〜翌2時 (11時間)」)、区間の始まりか (`windowStartsAt`)、今から N 時間に出られるか
-  (`canAttackWithin`)、当日の「戦闘可能時間になりました」の相手 (`reminderTargets`: 残凸あり・今季参加できる・隙間型でない・
+  (`canAttackWithin`)、当日の「戦闘可能時間になりました」の相手 (`reminderTargets`: 残凸あり・今期参加できる・隙間型でない・
   その時刻が区間の始まり)。ホームの帯 (`renderMyAvailStrip`)・開始の通知 (`_checkAvailReminders`)・締め凸検索の範囲
   (`finishDomain.filterByWindow`) が同じ読み方を共有する。★ **翌4時と5時は同じレイド日の両端** — 5時は常に区間の始まり。
   ★ 開始の通知は運営端末の定期チェック (30秒ごと・`_opsMode`) が送り手で、二重送信は `raid_event_notices` の
@@ -151,7 +151,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   当日 (凸Lv/代理/締め凸返答) を1人1行に。**「要対応」の定義は `js/domain/memberStatus.js` だけ**
   (模擬は「キャラ被りなしで3属性」が必要範囲 — 5属性は加点で強制しない・2026-09-01 ユーザー判断)
   (画面側で判定を書き足さない)。盤面は opsStore を再利用し、追加取得は `supabaseLoadMemberStatusExtras`
-  の4クエリ (通知購読・今季SLv・締め凸依頼・代理凸ログ)。代理凸は attacks に印が無いので activity_log の
+  の4クエリ (通知購読・今期SLv・締め凸依頼・代理凸ログ)。代理凸は attacks に印が無いので activity_log の
   proxy_attack を数える (v2 で attacks.is_proxy/reported_by を足す予定)
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
   バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
@@ -194,7 +194,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   (呼び出し側に散らすと必ず足し忘れる。凸報告の呼び出し口は4つある)。
   クライアントの版は index.html の `CLIENT_BUILD` (手で上げる YYYYMMDDnn の整数) —
   `app-build` はコミットSHAなので大小比較できない。
-  **今季の戦闘可能時間の確認**は `37_availability_confirmations.sql`
+  **今期の戦闘可能時間の確認**は `37_availability_confirmations.sql`
   (season_id + player_id / confirmed_at / unavailable / slot_count / slots_snapshot)。
   ★ **時間帯そのものは持たない** — 現在の時間帯は `players.availability` が唯一の正で、37 が持つのは
   「いつ確認したか」「今回は難しいか」「確認時点の枠のスナップショット」だけ。二重に持つと必ず食い違う。
@@ -285,7 +285,7 @@ node tests/solver-fingerprint.mjs        # ソルバーの出力指紋 (リフ�
 node tests/solver-fingerprint.mjs <file> # 保存した指紋と突き合わせる (FP_SOLVER で別実装を指定可)
 node tests/bench-stability.mjs           # L1 安定化の効果と代償 (BENCH_N で件数指定・既定150)
 node tests/finish-requests.mjs # 締め凸依頼の後片付け (撃破・レベル進行での解除) の実行テスト
-node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今季の確認 の実行テスト
+node tests/avail-save.mjs     # 戦闘可能時間の保存キュー + 今期の確認 の実行テスト
 node tests/mock-panels.mjs    # 模擬タブの提出カード (renderMyDamagePanels) の実行テスト
 node tests/home-slots.mjs     # 本人のホーム「あなたの3凸」(3枠) の描画の実行テスト
 node tests/avail-strip.mjs    # ホーム「⏰ あなたの戦闘可能時間」の帯の描画の実行テスト

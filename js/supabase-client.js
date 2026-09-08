@@ -942,9 +942,9 @@ window.supabaseLoadAvailability = async function (playerId) {
     return _expandLegacySlots(raw);
 };
 
-// ===== 今季の戦闘可能時間の確認 (37_availability_confirmations.sql が前提) =====
+// ===== 今期の戦闘可能時間の確認 (37_availability_confirmations.sql が前提) =====
 // ★ availability は無期限のプロフィール設定 (いつもの生活時間)。
-//   「今季も本当にその時間で動けるか」は別物なので、レイドごとに本人が確認する。
+//   「今期も本当にその時間で動けるか」は別物なので、レイドごとに本人が確認する。
 //   ここが持つのは「いつ確認したか」と「今回は難しいか」だけ — 時間帯はコピーしない
 //   (二重に持つと、片方だけ直したときにどちらが正かで揉める)。
 //   未確認は空欄と同じ **未確定** として扱う (勝手に「前回のまま有効」とみなさない)
@@ -971,11 +971,11 @@ window.supabaseConfirmAvailability = async function (seasonId, playerId, { unava
         throw error;
     }
     window.supabaseLogActivity?.('avail_confirm',
-        unavailable ? '今季は参加が難しいと申告' : `今季の戦闘可能時間を確認 (${slotCount ?? '?'}枠)`, { playerId });
+        unavailable ? '今期は参加が難しいと申告' : `今期の戦闘可能時間を確認 (${slotCount ?? '?'}枠)`, { playerId });
 };
 // 自分の確認状態。未確認なら null。
 // ★ 37未適用は `{ unsupported: true }` を返して「未確認」と区別する (Codex指摘 2026-09-07) —
-//   同じ null にすると、確認ボタンが出せない環境で「今季 未確認」と表示し、押すと SQL 適用エラーになる
+//   同じ null にすると、確認ボタンが出せない環境で「今期 未確認」と表示し、押すと SQL 適用エラーになる
 window.supabaseLoadMyAvailabilityConfirmation = async function (seasonId, playerId) {
     if (!seasonId || !playerId) return null;
     let { data, error } = await supabase.from('availability_confirmations')
@@ -993,7 +993,7 @@ window.supabaseLoadMyAvailabilityConfirmation = async function (seasonId, player
     return data || null;
 };
 // シーズン全員分 (メンバー状況ボード用)。
-// ★ 未適用環境 (テーブルが無い) では **null** を返す — [] にすると「全員が今季未確認」に
+// ★ 未適用環境 (テーブルが無い) では **null** を返す — [] にすると「全員が今期未確認」に
 //   見えて、実行不能な確認催促を送れてしまう (Codex指摘 2026-09-07)。
 //   呼び出し側は null を「この機能はまだ無い」として、確認の理由も催促も出さない
 window.supabaseLoadAvailabilityConfirmations = async function (seasonId) {
@@ -1658,7 +1658,7 @@ window.supabaseUpdateBossHp = async function (seasonId, bossNumber, totalRaw, re
 };
 
 // ===== 👥 メンバー状況ボード (運営改修 #1) =====
-// 盤面 (opsStore) に無いものだけ追加取得: 通知購読 / 今季の SLv 登録 / 締め凸依頼 / 代理凸ログ。
+// 盤面 (opsStore) に無いものだけ追加取得: 通知購読 / 今期の SLv 登録 / 締め凸依頼 / 代理凸ログ。
 // 各クエリはテーブル未適用・失敗時に空配列へ静かに劣化 (ボード全体は落とさない)。
 // 判定ロジックは js/domain/memberStatus.js
 // メンバー状況ボード用の締め凸依頼。36未適用環境ではレベルなしで読み直す
@@ -1695,7 +1695,7 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
             .eq('event_type', 'proxy_attack')
             .gte('created_at', sinceIso || '1970-01-01T00:00:00Z')
             .limit(1000)),
-        // 今季の戦闘可能時間の確認 (37)。★ 未適用環境は **null** が返る (「全員未確認」ではない)
+        // 今期の戦闘可能時間の確認 (37)。★ 未適用環境は **null** が返る (「全員未確認」ではない)
         seasonId ? window.supabaseLoadAvailabilityConfirmations(seasonId) : [],
     ]);
     return {
@@ -1703,7 +1703,7 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
         slvThisSeasonIds: slv.map(s => s.player_id),
         finishRequests: fin,
         proxyEvents: proxy,
-        // 今季の戦闘可能時間の確認 (37)。null = 機能未適用 (memberStatus 側が確認の理由も催促も出さない)
+        // 今期の戦闘可能時間の確認 (37)。null = 機能未適用 (memberStatus 側が確認の理由も催促も出さない)
         availConfirmations: availConf,
     };
 };
@@ -1836,8 +1836,8 @@ const _RESTORE_TABLES = [
     //   activity_log       = 監査ログ (player_id → SET NULL のみ。親子関係が無いので最後でよい)
     ['finish_requests', 'season_id', 'num'],
     ['raid_event_notices', 'season_id', 'num'],
-    //   availability_confirmations = 今季の戦闘可能時間の確認 (season_id, player_id → CASCADE)。
-    //                                戻さないと復元後に全員「今季未確認」になって催促が飛ぶ
+    //   availability_confirmations = 今期の戦闘可能時間の確認 (season_id, player_id → CASCADE)。
+    //                                戻さないと復元後に全員「今期未確認」になって催促が飛ぶ
     ['availability_confirmations', 'season_id', 'num'],
     ['activity_log', 'id', 'num'],
     //   app_gate = 互換ゲート (L2 ⑦)。他のどのテーブルも参照しないので順序は最後でよい
@@ -4365,7 +4365,7 @@ window.supabaseLoadOpsDashboardData = async function () {
     });
     rawByPlayer.forEach((raws, pid) => slotsByPlayer.set(pid, _expandLegacySlots(raws)));
 
-    // 4-2) 今季「参加が難しい」と申告した人 (37)。
+    // 4-2) 今期「参加が難しい」と申告した人 (37)。
     // ★ 申告した本人をプラン・締め凸候補・残凸表に残すと、催促からは外れたのに
     //   候補には出続けるという最悪の状態になる (Codex指摘 2026-09-07)。
     //   ここで時間帯を空にし、⏳隙間型も解除して、全経路から確実に外す

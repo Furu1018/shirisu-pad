@@ -38,7 +38,7 @@ function cut(marker) {
 const SRC = cut('        async function renderMyAvailStrip(identity)');
 
 const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
-function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, nowSlot = 'h13', fail = false, badgeText = '今季 確認済み' } = {}) {
+function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, nowSlot = 'h13', fail = false, badgeText = '今期 確認済み' } = {}) {
     const els = {
         myAvailStripCard: { style: { display: 'none' } },
         myAvailStripBody: { innerHTML: '' },
@@ -85,7 +85,7 @@ await test('★ 要約・24コマ・いまの時刻・確認バッジが実際�
     assert.equal((out.match(/outline:2px solid #FF3D44/g) || []).length, 1, 'いまの時刻の印が1つでない');
     assert.equal((out.match(/background:#6C42F0/g) || []).length, 11, 'ON のコマ数が違う');
     assert.equal(t.els.myAvailStripCard.style.display, '');
-    assert.equal(t.els.myAvailStripBadge.textContent, '今季 確認済み');
+    assert.equal(t.els.myAvailStripBadge.textContent, '今期 確認済み');
     assert.ok(!/undefined|NaN/.test(out), `未定義参照: ${out.match(/.{40}(undefined|NaN).{40}/)?.[0]}`);
 });
 

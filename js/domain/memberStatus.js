@@ -6,7 +6,7 @@
 // 状態を1人1行にまとめ、「要対応」の理由を機械的に付ける。
 //
 // 入力は opsStore の盤面 (players[] — damagesByAttr / attacks / availableSlots / syncLevel /
-// flexTime / notifyAllHours) と、追加取得した extras (通知購読・今季SLv登録・締め凸依頼・代理凸ログ)。
+// flexTime / notifyAllHours) と、追加取得した extras (通知購読・今期SLv登録・締め凸依頼・代理凸ログ)。
 // 「要対応」の定義はここが唯一の置き場所 — 画面側で判定を書き足さないこと。
 //
 // optimal-plan.js と同じ規約: IIFE + root 直付け。DOM 非依存で node からテスト可能:
@@ -117,7 +117,7 @@
             if (r.status === 'pending') finishBy.set(pid, 'pending');
             else if (finishBy.get(pid) !== 'pending') finishBy.set(pid, r.status);
         }
-        // 今季の戦闘可能時間の確認 (37)。★ 未確認は「空欄」と同じ **未確定** として扱う —
+        // 今期の戦闘可能時間の確認 (37)。★ 未確認は「空欄」と同じ **未確定** として扱う —
         // 前月の設定が残っているだけの人を「登録済み」と数えると、当日いない人が候補に出る。
         // ★★ availConfirmations が null = **機能そのものが未適用**。この場合は
         //   「全員が未確認」ではないので、確認の理由も催促も出さない (Codex指摘 2026-09-07)
@@ -167,7 +167,7 @@
                 });
             }
             if (slvNow == null) reasons.push({ key: 'slv', label: slvPrev ? `SLv未登録 (前回 ${slvPrev})` : 'SLv未登録' });
-            // 時間帯の状態は3つ: 未登録 / 登録はあるが今季未確認 / 今季確認済み。
+            // 時間帯の状態は3つ: 未登録 / 登録はあるが今期未確認 / 今期確認済み。
             // ★ 「今回は難しい」と申告した人は**確認済み**として扱う (催促の対象から外す) —
             //   出られないことが分かっているのは、分からないより運営にとって良い状態
             const confirm = availBy.get(id) || null;
@@ -185,7 +185,7 @@
             } else if (!availSupported) {
                 /* 機能未適用: 確認まわりの理由は積まない */
             } else if (!availConfirmed) {
-                reasons.push({ key: 'availConfirm', label: '時間帯 今季未確認' });
+                reasons.push({ key: 'availConfirm', label: '時間帯 今期未確認' });
             } else if (availChanged) {
                 const before = confSlots ? confSlots.length : confirm.slot_count;
                 reasons.push({
@@ -242,7 +242,7 @@
         const mockFull = cnt(r => r.mockCount >= ATTR_KEYS.length);
         const slv = cnt(r => r.slvNow != null);
         const slots = cnt(r => r.slots.length > 0 || r.flex);
-        // ★ 「今季確認した人」を別に数える。登録があるだけの人と区別しないと、
+        // ★ 「今期確認した人」を別に数える。登録があるだけの人と区別しないと、
         //   前月の設定が残っているだけの人まで「登録済み」に見える
         const availOk = cnt(r => r.availConfirmed);
         const availSupported = rows.some(r => r.availSupported);
@@ -252,7 +252,7 @@
             { key: 'slv', label: 'SLv 登録', value: slv, total: n, bad: slv < n },
             { key: 'slots', label: '時間帯 登録', value: slots, total: n, bad: slots < n },
             // 機能未適用の環境では欄ごと出さない (0/30 と出ると誤解を招く)
-            ...(availSupported ? [{ key: 'availConfirm', label: '時間帯 今季確認', value: availOk, total: n, bad: availOk < n }] : []),
+            ...(availSupported ? [{ key: 'availConfirm', label: '時間帯 今期確認', value: availOk, total: n, bad: availOk < n }] : []),
             { key: 'push', label: '通知 購読', value: push, total: n, bad: push < n },
         ];
     }
@@ -283,7 +283,7 @@
         if (keys.has('slv')) parts.push('シンクロレベル');
         if (keys.has('slots')) parts.push('戦闘可能時間');
         if (!parts.length) {
-            // 未登録は無いが「今季まだ確認していない」だけの人には、確認のお願いを送る
+            // 未登録は無いが「今期まだ確認していない」だけの人には、確認のお願いを送る
             if (keys.has('availConfirm')) {
                 return {
                     title: '⏰ 戦闘可能時間の確認をお願いします',

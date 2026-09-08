@@ -149,16 +149,19 @@ await test('★ 予約中の編成に「🔒 予約済み / 承認待ち」の�
     });
     await t.render({ id: 1, name: 'me' });
     const out = t.box();
-    assert.ok(/dc-dmg-resv approved"[^>]*>🔒 予約済み/.test(out), '予約済みの印が無い');
-    assert.ok(/dc-dmg-resv requested"[^>]*>🔒 承認待ち/.test(out), '承認待ちの印が無い');
-    assert.equal((out.match(/dc-dmg-resv /g) || []).length, 2, '終わった予約にも印が出ている');
+    // 透かし (カードの class) + 名前行の小さな文字。ダメージの数字の上にピルを置かない (実機FB 2026-09-08)
+    assert.ok(/class="dc-dmg-panel[^"]* resv approved"/.test(out), '予約済みの透かし (class) が無い');
+    assert.ok(/class="dc-dmg-panel[^"]* resv requested"/.test(out), '承認待ちの透かし (class) が無い');
+    assert.ok(/dc-dmg-resvtag"[^>]*>🔒 予約済み/.test(out) && /dc-dmg-resvtag"[^>]*>🔒 承認待ち/.test(out), '名前行の文字が無い');
+    assert.equal((out.match(/ resv (approved|requested|cancel_requested)"/g) || []).length, 2, '終わった予約にも印が出ている');
+    assert.ok(!/dc-dmg-resv /.test(out), '右上のピルが残っている (数字と重なる)');
 });
 
 await test('予約が読めない (39未適用 / シーズン無し) でもカードは描ける', async () => {
     const t = run({ damages: [{ attribute: 'fire', slot: 1, damage_b: 50, characters: [] }], bosses: [], resv: null });
     await t.render({ id: 1, name: 'me' });
     assert.equal((t.box().match(/dc-dmg-panel/g) || []).length, 5);
-    assert.ok(!/dc-dmg-resv/.test(t.box()));
+    assert.ok(!/ resv (approved|requested)|dc-dmg-resvtag/.test(t.box()));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

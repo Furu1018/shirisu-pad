@@ -103,7 +103,7 @@
 
     /**
      * 当日、この時刻に「戦闘可能時間になりました」を送る相手。
-     * 残り凸がある / 今季参加むずかしいではない / 隙間型ではない (時刻を約束していない) /
+     * 残り凸がある / 今期参加むずかしいではない / 隙間型ではない (時刻を約束していない) /
      * この時刻がその人の時間帯の**始まり** (区間の途中では毎時送らない)
      * @param {Object[]} players opsStore の players ({id, name, attackCount, availableSlots, flexTime, unavailableThisSeason})
      * @param {number} hour 0-23 (JST)

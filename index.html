@@ -402,14 +402,22 @@
             box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14);
         }
         .dc-dmg-panel { position: relative; }
-        /* 🔒 この編成で凸を予約している印 (2026-09-08) */
-        .dc-dmg-resv {
-            position: absolute; top: 7px; right: 7px; z-index: 2;
-            padding: 3px 8px; border-radius: 999px; font-size: 9.5px; font-weight: 900; color: #fff;
-            background: #0E9455; box-shadow: 0 2px 6px rgba(20,22,26,0.22); white-space: nowrap;
+        /* 🔒 この編成で凸を予約している印 (2026-09-08)。
+           右上のピルはダメージの数字と重なって読めなかった (実機FB) → カード全体に薄い鍵の透かし + 枠色 +
+           名前行の小さな文字。数字や編成の上には何も置かない */
+        .dc-dmg-panel.resv {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236C42F0' fill-opacity='0.13'%3E%3Cpath d='M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4V6zm2 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: center 44%; background-size: 62px 62px;
+            border-color: rgba(108,66,240,0.30);
         }
-        .dc-dmg-resv.requested { background: #5B2BE0; }
-        .dc-dmg-resv.cancel_requested { background: #B45309; }
+        .dc-dmg-panel.resv.approved {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230E9455' fill-opacity='0.13'%3E%3Cpath d='M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4V6zm2 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/%3E%3C/svg%3E");
+            border-color: rgba(14,148,85,0.30);
+        }
+        .dc-dmg-panel.resv.cancel_requested { border-color: rgba(180,83,9,0.35); }
+        .dc-dmg-resvtag { font-size: 9px; font-weight: 900; letter-spacing: 0; margin-left: 4px; color: #5B2BE0; }
+        .dc-dmg-panel.resv.approved .dc-dmg-resvtag { color: #0E9455; }
+        .dc-dmg-panel.resv.cancel_requested .dc-dmg-resvtag { color: #B45309; }
         .dc-dmg-slotbadge {
             position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
             display: flex; align-items: center; gap: 2px;
@@ -3416,7 +3424,7 @@
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;"><span data-sp-icon="bookOpen" data-sp-size="15"></span> 人気編成</div>
-                    <span style="font-size:10.5px;color:#A4AAB0;">今季の模擬+過去シーズンの凸から集計</span>
+                    <span style="font-size:10.5px;color:#A4AAB0;">今期の模擬+過去シーズンの凸から集計</span>
                 </div>
                 <div onclick="togglePopularTeams()" id="popularTeamsToggle" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:10px;background:#F7F8F9;color:#8A9097;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(20,22,26,0.04);user-select:none;">▼ 人気編成を表示</div>
                 <div id="popularTeamsContent" style="display:none;margin-top:10px;">
@@ -4122,7 +4130,7 @@
                         <p>各PT属性で出せる「あなたのベストダメージ」を B（10億）単位で登録します。<span class="help-pill">手入力</span>または<span class="help-pill">📷 画像OCR</span>から登録できます。
                             この値は、運営の<strong>残凸状況一覧</strong>・<strong>最適プラン</strong>・<strong>締め凸候補</strong>すべての基礎データです。</p>
                         <h3>③ 5属性 模擬ふるり値レーダー（→ 模擬タブに移動しました）</h3>
-                        <p>あなたの<strong>今季の模擬戦データ</strong>を、基準者（ふるり）の<strong>今季模擬 + SLv換算</strong>と比べて5角形で表示します。1.00 = ふるりと同等。本戦は3凸までなので本戦ベースでは5属性が揃いませんが、模擬同士の比較なら<strong>5属性提出すれば誰でも形が完成</strong>します。属性別の得意・不得意が一目で分かります（確定ふるり値は <a href="#help-fururi">§7</a> のタブで）。</p>
+                        <p>あなたの<strong>今期の模擬戦データ</strong>を、基準者（ふるり）の<strong>今期模擬 + SLv換算</strong>と比べて5角形で表示します。1.00 = ふるりと同等。本戦は3凸までなので本戦ベースでは5属性が揃いませんが、模擬同士の比較なら<strong>5属性提出すれば誰でも形が完成</strong>します。属性別の得意・不得意が一目で分かります（確定ふるり値は <a href="#help-fururi">§7</a> のタブで）。</p>
                         <h3>④ 次の凸 (ボスタップ起点)</h3>
                         <p><strong>「🎯 次の凸 (ボスをタップ)」</strong> セクションで、これから凸るボスをタップすると <strong>戦闘準備</strong> 状態になり、他メンバーに「あなたが戦闘中」が共有されます。これで二重凸を防止できます。</p>
                         <ul>
@@ -5262,7 +5270,7 @@
                     </div>
                     <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
-                    <!-- 今季の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
+                    <!-- 今期の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
                     <div id="myAvailConfirmBox" style="display:none;margin-top:14px;padding:13px 15px;border-radius:13px;"></div>
                     <!-- 運用オプション -->
                     <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
@@ -8180,7 +8188,7 @@
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
                 <div style="display:flex;margin-top:3px;">${labels}</div>`;
             card.style.display = '';
-            // 今季の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
+            // 今期の確認状態 (37) は MY設定行のバッジと同じ表示を写す。
             // ★ 読み終わる前にプレイヤーが切り替わっていたら写さない (共有状態 _myAvailConfirm は別人のものになりうる)
             try { await _loadMyAvailConfirm(identity.id); } catch { /* バッジが出ないだけ */ }
             if (seq !== _availStripSeq) return;
@@ -9408,11 +9416,11 @@
             if (id?.id && typeof renderMyAvailStrip === 'function') renderMyAvailStrip(id);
         }
 
-        // ===== 今季の戦闘可能時間の確認 (37_availability_confirmations) =====
-        // ★ availability は無期限のプロフィール設定。「今季もその時間で動けるか」は別物なので、
+        // ===== 今期の戦闘可能時間の確認 (37_availability_confirmations) =====
+        // ★ availability は無期限のプロフィール設定。「今期もその時間で動けるか」は別物なので、
         //   レイドごとに本人が確認する。未確認は空欄と同じ **未確定** として運営に見せる
         //   (第44回: 設定しているはずなのに実際にいない人が多かった)
-        // null = 今季まだ確認していない / { confirmed_at, unavailable, slot_count, slots_snapshot } = 確認済み /
+        // null = 今期まだ確認していない / { confirmed_at, unavailable, slot_count, slots_snapshot } = 確認済み /
         // { unsupported:true } = 37未適用 (確認UIごと出さない) / { loadFailed:true } = 取得できなかった (状態不明)
         let _myAvailConfirm = null;
         // 確認は「時間帯の保存 → 確認の書き込み」の2段階。処理中にもう一度押せると、
@@ -9456,18 +9464,18 @@
             if (c && (c.unsupported || c.noSeason)) { el.style.display = 'none'; return; }
             if (c && c.loadFailed) {   // 取得できなかっただけ。「未確認」と断定しない
                 el.style.display = 'inline-block';
-                el.textContent = '今季 確認状態不明';
+                el.textContent = '今期 確認状態不明';
                 el.style.color = '#8A9097'; el.style.background = '#F1F2F4';
                 return;
             }
             if (!c) {
                 el.style.display = 'inline-block';
-                el.textContent = '今季 未確認';
+                el.textContent = '今期 未確認';
                 el.style.color = '#B45309'; el.style.background = 'rgba(245,158,11,0.14)';
                 return;
             }
             el.style.display = 'inline-block';
-            el.textContent = c.unavailable ? '今季 参加むずかしい' : '今季 確認済み';
+            el.textContent = c.unavailable ? '今期 参加むずかしい' : '今期 確認済み';
             el.style.color = c.unavailable ? '#8A9097' : '#0E9455';
             el.style.background = c.unavailable ? '#F1F2F4' : 'rgba(24,194,107,0.12)';
         }
@@ -9842,16 +9850,18 @@
                 // 🔒 この編成で凸を予約しているか (表示中のスロット)
                 const resv = _myMockResv.get(`${a.key}|${activeSlot}`) || null;
                 const resvJp = !resv ? '' : (resv.status === 'approved' ? '🔒 予約済み' : resv.status === 'requested' ? '🔒 承認待ち' : '🔒 取り消し希望');
-                const resvBadge = resv
-                    ? `<div class="dc-dmg-resv ${resv.status}" title="この編成で凸を予約しています。削除する前に運営へ取り消しを希望してください">${resvJp}</div>`
+                // 薄い鍵の透かし (カードの class) + 名前行の小さな文字。ダメージの数字の上には置かない (実機FB 2026-09-08)
+                const resvCls = resv ? ` resv ${resv.status}` : '';
+                const resvTag = resv
+                    ? ` <span class="dc-dmg-resvtag" title="この編成で凸を予約しています。削除する前に運営へ取り消しを希望してください">${resvJp}</span>`
                     : '';
                 // 複数編成があるカードは「重なり」+ スロット巡回バッジ
                 const slotBadge = hasMulti
                     ? `<div class="dc-dmg-slotbadge${isPickedOther ? ' pickhint' : ''}" onclick="event.stopPropagation();flipMyDmgPanel('${a.key}', ${nextSlot})" title="${isPickedOther ? 'めくると配信プランで採用された編成' : `編成${SLOT_JP[nextSlot]}を表示`}">${SLOT_JP[activeSlot]}<span style="opacity:0.65;">⇄</span></div>`
                     : '';
                 return `
-                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${pickTitle}${excl ? ` — ${escapeHtml(exclTitle)}` : ''}" data-attr="${a.key}" style="${_pkVars(c)}">
-                        ${slotBadge}${resvBadge}
+                    <button type="button" onclick="handleMyTeamEdit('${a.key}', ${activeSlot})" class="dc-dmg-panel${hasMulti ? ' stacked' : ''}${submitted ? ' submitted' : ' todo'}${isPickedVisible ? ' planpick' : ''}${resvCls}" title="${a.name}PT${hasMulti ? ` (編成${SLOT_JP[activeSlot]}を表示中)` : ''}${pickTitle}${excl ? ` — ${escapeHtml(exclTitle)}` : ''}" data-attr="${a.key}" style="${_pkVars(c)}">
+                        ${slotBadge}
                         <div style="display:flex;align-items:flex-start;justify-content:space-between;">
                             <div class="dc-dmg-chipwrap">
                                 <div class="dc-dmg-chip" style="background:${c};">
@@ -9862,7 +9872,7 @@
                                 ? `<div class="dc-dmg-value">${val}<span class="dc-dmg-unit">B</span></div>`
                                 : `<div class="dc-dmg-value empty">—</div>`}
                         </div>
-                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}${excl ? ` <span class="dc-dmg-lv" style="background:rgba(255,61,68,0.12);color:#B91C1C;" title="${escapeHtml(exclTitle)} — 値を確認して保存し直すと自動で戻ります">⚠ 運営除外</span>` : ''}</div>
+                        <div class="dc-dmg-name" style="font-size:13px;font-weight:900;letter-spacing:0.4px;margin-top:9px;">${a.name}PT${submitted ? ' <span style="color:#18C26B;font-size:10px;" title="提出済み">✓</span>' : ''}${resvTag}${a.bossNumber ? ` <span class="dc-dmg-bossnum" style="font-size:9px;font-weight:800;" title="今シーズンの対応ボス">B${a.bossNumber}</span>` : ''}${excl ? ` <span class="dc-dmg-lv" style="background:rgba(255,61,68,0.12);color:#B91C1C;" title="${escapeHtml(exclTitle)} — 値を確認して保存し直すと自動で戻ります">⚠ 運営除外</span>` : ''}</div>
                         <div class="dc-dmg-chars-row">${cells}</div>
                     </button>`;
             }).join('');
@@ -10737,7 +10747,7 @@
         function _teamStatsFor(rows, attrKey) {
             const topTeams = _teamGroupsFor(attrKey).list.slice(0, 2);   // たくさん見せても迷うのでベスト2
             const bestDmg = [...rows].sort((a, b) => mockDamageOf(b) - mockDamageOf(a))[0] || null;
-            // ふるり値トップ: SLv補正後スコアの最大 (基準: ふるりの今季模擬 + SLv)
+            // ふるり値トップ: SLv補正後スコアの最大 (基準: ふるりの今期模擬 + SLv)
             // ダメージトップはSLvが高い人に偏るが、こちらはSLvに関わらず全員にチャンスがある
             const baseDmg = _mockRadarBase?.dmgByAttr?.[attrKey];
             const baseSlv = _mockRadarBase?.slv;
@@ -10771,7 +10781,7 @@
             const rows = (_teamSubsCache || []).filter(r => r.attribute === attrKey);
             const a = PT_ATTRS.find(x => x.key === attrKey);
             if (!a) return '';
-            // ★ 今季の模擬が0件でも、過去シーズンの凸履歴があれば人気PTは出せる
+            // ★ 今期の模擬が0件でも、過去シーズンの凸履歴があれば人気PTは出せる
             //   (シーズン初日は模擬が空なので、模擬だけで早期 return すると毎月頭に消える — Codex指摘)
             if (rows.length === 0 && _teamGroupsFor(attrKey).list.length === 0) {
                 return `<p style="margin:0;font-size:11.5px;color:#A4AAB0;">${a.name}PT の編成つき提出はまだありません。模擬戦データに編成を付けて提出すると、ここに集計されます。</p>`;
@@ -10819,7 +10829,7 @@
                 ? `<p style="margin:8px 0 0 0;font-size:10px;color:#A4AAB0;">⚖️ ふるり値トップは基準者(${fururiBasePlayerName})の${a.name}PT模擬と提出者のSLvが揃うと表示されます。</p>` : '';
 
             return `
-                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">人気PT TOP${st.topTeams.length}（今季の模擬+過去シーズンの凸から · 5人の組み合わせで集計/並び順不問）</div>
+                <div style="font-size:10px;font-weight:900;letter-spacing:0.6px;color:#B6BBC1;margin-bottom:6px;">人気PT TOP${st.topTeams.length}（今期の模擬+過去シーズンの凸から · 5人の組み合わせで集計/並び順不問）</div>
                 ${topHtml}
                 ${allUnique ? '<p style="margin:5px 0 0 0;font-size:10px;color:#A4AAB0;">まだ同じPTを使っている人はいません（各1人）。</p>' : ''}
                 ${dmgHtml}
@@ -11514,8 +11524,8 @@
         })();
 
         // ========== 模擬タブ: 模擬ふるり値レーダー (今シーズンの模擬同士のライブ比較 — Stage2でホームから移設) ==========
-        // 基準: ふるり(基準者)の今季模擬5属性 + SLv。自分: 今季模擬 + 自己申告SLv。
-        // 確定ふるり値 (完了シーズン・本戦3凸ベース) は分析タブ (ふるり値ビュー) が担当する — ここは今季専用。
+        // 基準: ふるり(基準者)の今期模擬5属性 + SLv。自分: 今期模擬 + 自己申告SLv。
+        // 確定ふるり値 (完了シーズン・本戦3凸ベース) は分析タブ (ふるり値ビュー) が担当する — ここは今期専用。
         // ユニレは3凸までなので本戦ベースでは5属性が揃わないが、模擬同士なら全員が形を完成できる。
         let _myRadarLastDamages = null;
         let _myRadarLastIdentity = null;
@@ -11613,17 +11623,17 @@
 
             if (metaEl) {
                 metaEl.textContent = slv
-                    ? `SLv ${slv}${slvEstimated ? '(推定)' : ''} / 基準: ${fururiBasePlayerName} 今季模擬${base?.slv ? ` (SLv ${base.slv})` : ''}`
+                    ? `SLv ${slv}${slvEstimated ? '(推定)' : ''} / 基準: ${fururiBasePlayerName} 今期模擬${base?.slv ? ` (SLv ${base.slv})` : ''}`
                     : 'SLv未登録';
             }
             if (hintEl) {
                 if (!slv) hintEl.textContent = 'ホーム上部の SLv チップからシンクロレベルを設定するとレーダーが描けます。';
                 else if (!base) hintEl.textContent = `基準者(${fururiBasePlayerName})のデータを読み込めませんでした。`;
                 else if (!base.slv) hintEl.textContent = `基準者(${fururiBasePlayerName})の SLv が未設定のため計算できません。`;
-                else if (base.missing.length >= 5) hintEl.textContent = `基準者(${fururiBasePlayerName})の今季模擬が未提出です。提出されると全員のレーダーが使えるようになります。`;
+                else if (base.missing.length >= 5) hintEl.textContent = `基準者(${fururiBasePlayerName})の今期模擬が未提出です。提出されると全員のレーダーが使えるようになります。`;
                 else if (base.missing.length > 0) hintEl.textContent = `⚠️ 基準者の ${base.missing.join('・')}PT が未提出のため、その軸は0表示。1.00 = ふるり(同SLv換算)と同等。`;
                 else if (!values.some(v => v > 0)) hintEl.textContent = '模擬戦データを提出するとグラフに反映されます。5属性提出すれば形が完成します。';
-                else hintEl.textContent = '1.00 = ふるり(同SLv換算)と同等。今季の模擬同士の比較 — 5属性提出で形が完成します。';
+                else hintEl.textContent = '1.00 = ふるり(同SLv換算)と同等。今期の模擬同士の比較 — 5属性提出で形が完成します。';
             }
 
             if (mypageRadarChartInstance) { mypageRadarChartInstance.destroy(); mypageRadarChartInstance = null; }
@@ -12232,7 +12242,7 @@
             return run;
         }
         // @param {{rethrow?: boolean}} opts rethrow=true なら保存失敗を投げる
-        //   (「今季の確認」は保存の成功が前提。握り潰すと古い時間帯のまま確認済みになる — Codex指摘)
+        //   (「今期の確認」は保存の成功が前提。握り潰すと古い時間帯のまま確認済みになる — Codex指摘)
         function _availDoSave(opts = {}) {
             clearTimeout(_availUI.saveTimer);   // 未開始のデバウンスを止める
             return _availEnqueue(() => _availDoSaveInner(opts));
@@ -15995,7 +16005,7 @@
                     .map(c => c.player_id)
             );
 
-            // ★ 今季「参加が難しい」と申告した人は残凸表から外す。
+            // ★ 今期「参加が難しい」と申告した人は残凸表から外す。
             //   運営はメンバー状況ボードで「参加むずかしい」として把握できる (2026-09-07)
             let allRemaining = players
                 .filter(p => p.attackCount < 3)
@@ -16697,7 +16707,7 @@
             //   3) 該当属性をまだ使っていない (既に[attr]PTで凸済みは候補から除外)
             const candidatesAll = players
                 .filter(p => p.attackCount < 3)
-                .filter(p => !p.unavailableThisSeason)   // 今季「参加が難しい」人には締めを頼まない
+                .filter(p => !p.unavailableThisSeason)   // 今期「参加が難しい」人には締めを頼まない
                 .map(p => {
                     // 1属性複数編成対応: この属性への凸回数ぶん上位ロードアウトを消費済みとし、
                     // 編成②③が残っていれば「同属性2凸目での締め」も候補に含める。

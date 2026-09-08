@@ -2697,10 +2697,10 @@ console.log('\nmemberStatusDomain:');
             P({ id: 3, name: '隙間', damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, flexTime: true }),
         ];
         const extras = { pushPlayerIds: [2, 3], slvThisSeasonIds: [2, 3], finishRequests: [], proxyEvents: [],
-            availConfirmations: [2, 3].map(id => ({ player_id: id })) };   // 1 は今季未確認のまま
+            availConfirmations: [2, 3].map(id => ({ player_id: id })) };   // 1 は今期未確認のまま
         const rows = dom.buildRows({ players, extras, phase: 'pre' });
         const r1 = rows.find(r => r.id === 1);
-        // 時間帯そのものが未登録なら「今季未確認」は積まない (未登録の方が具体的)
+        // 時間帯そのものが未登録なら「今期未確認」は積まない (未登録の方が具体的)
         assert.deepEqual(r1.reasons.map(r => r.key), ['mock', 'slv', 'slots', 'push']);
         assert.equal(r1.reasons[0].label, '模擬 被りなし2/3');
         assert.equal(r1.mockUsable, 2); assert.equal(r1.mockOk, false);
@@ -2716,7 +2716,7 @@ console.log('\nmemberStatusDomain:');
         const okThree = P({ id: 1, damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: { fire: T(['a', 'b']), water: T(['c', 'd']), wind: T(['e']) }, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
         const fiveButOverlap = P({ id: 2, damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, teamsByAttr: { fire: ['X', 'a'], water: ['X', 'b'], electric: ['X', 'c'], iron: ['Y', 'd'], wind: ['Y', 'e'] }, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
         const noTeams = P({ id: 3, damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: {}, syncLevel: 600, syncLevelEstimated: false, flexTime: true });
-        // availConfirmations = 今季の戦闘可能時間を確認済み (37)。無いと全員「今季未確認」で要対応になる
+        // availConfirmations = 今期の戦闘可能時間を確認済み (37)。無いと全員「今期未確認」で要対応になる
         const ex = { pushPlayerIds: [1, 2, 3], slvThisSeasonIds: [1, 2, 3],
             availConfirmations: [1, 2, 3].map(id => ({ player_id: id })) };
         const rows = dom.buildRows({ players: [okThree, fiveButOverlap, noTeams], extras: ex, phase: 'pre' });
@@ -2744,9 +2744,9 @@ console.log('\nmemberStatusDomain:');
         const m = dom.nudgeMessage(rows[1], 'pre');
         assert.match(m.body, /キャラ被りなしで3属性必要・あと1属性/);
     });
-    test('★ 戦闘可能時間は 未登録 / 今季未確認 / 確認済み の3状態を区別する', () => {
+    test('★ 戦闘可能時間は 未登録 / 今期未確認 / 確認済み の3状態を区別する', () => {
         // 第44回の実害: availability は無期限のプロフィール設定なので、前月のまま残っている人が
-        // 「登録済み」に見えて、当日いないのに候補へ出る。今季確認したかを別に持つ (37)
+        // 「登録済み」に見えて、当日いないのに候補へ出る。今期確認したかを別に持つ (37)
         const base = { damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false };
         const players = [
             P({ id: 1, name: '未登録', ...base, availableSlots: [] }),
@@ -2766,7 +2766,7 @@ console.log('\nmemberStatusDomain:');
         const rows = dom.buildRows({ players, extras, phase: 'pre' });
         const keysOf = (id) => rows.find(r => r.id === id).reasons.map(r => r.key);
         assert.deepEqual(keysOf(1), ['slots'], '未登録は従来どおり「時間帯未登録」だけ');
-        assert.deepEqual(keysOf(2), ['availConfirm'], '登録はあるが今季未確認');
+        assert.deepEqual(keysOf(2), ['availConfirm'], '登録はあるが今期未確認');
         assert.deepEqual(keysOf(3), [], '確認済みなら要対応なし');
         assert.deepEqual(keysOf(4), [], '★「今回は難しい」は確認済み扱い (分かっている方が良い状態)');
         assert.deepEqual(keysOf(5), ['availChanged'], '確認後に枠数が変わったら知らせる');
@@ -2788,7 +2788,7 @@ console.log('\nmemberStatusDomain:');
             phase: 'pre',
         });
         assert.deepEqual(legacy[0].reasons, [], '旧行は枠数一致なら確認済みのまま');
-        // 集計にも「今季確認」の欄が出る
+        // 集計にも「今期確認」の欄が出る
         const sum = dom.summarize(rows, 'pre');
         const ac = sum.find(x => x.key === 'availConfirm');
         assert.ok(ac, '集計に availConfirm がある');
@@ -2810,7 +2810,7 @@ console.log('\nmemberStatusDomain:');
     });
 
     test('★ 「今回は難しい」人には催促を送らない (出られない人に督促しない)', () => {
-        // 模擬もSLvも足りていない = 本来なら催促対象。だが本人は今季「難しい」と申告済み
+        // 模擬もSLvも足りていない = 本来なら催促対象。だが本人は今期「難しい」と申告済み
         const rows = dom.buildRows({
             players: [P({ id: 2, name: '不参加', damagesByAttr: { fire: 1 }, availableSlots: [] })],
             extras: { pushPlayerIds: [2], availConfirmations: [{ player_id: 2, unavailable: true }] }, phase: 'pre',
@@ -2837,7 +2837,7 @@ console.log('\nmemberStatusDomain:');
         assert.equal(off.availSupported, false);
         assert.equal(offNull.availSupported, false);
         assert.equal(on.availSupported, true);
-        assert.ok(!off.reasons.some(r => r.key === 'availConfirm'), '未適用環境で「今季未確認」を積まない');
+        assert.ok(!off.reasons.some(r => r.key === 'availConfirm'), '未適用環境で「今期未確認」を積まない');
         assert.equal(dom.nudgeMessage(off, 'pre'), null, '実行できない確認の催促を送らない');
         assert.ok(on.reasons.some(r => r.key === 'availConfirm'), '適用済みなら従来どおり積む');
         const keys = (rows) => dom.summarize(rows, 'pre').map(x => x.key);
@@ -2856,7 +2856,7 @@ console.log('\nmemberStatusDomain:');
         assert.equal(r.slvNow, null, '推定SLv (syncLevelEstimated) は登録扱いにしない');
         assert.ok(r.reasons.some(x => x.key === 'slv'));
         const [r0] = dom.buildRows({ players: [P({ id: 1, syncLevel: 0, syncLevelEstimated: false })], extras: { slvThisSeasonIds: [1] }, phase: 'pre' });
-        assert.equal(r0.slvNow, null, '今季行があっても sync_level=0 は未登録扱い');
+        assert.equal(r0.slvNow, null, '今期行があっても sync_level=0 は未登録扱い');
         const [r2] = dom.buildRows({ players, extras: { ...extras, finishRequests: [{ player_id: 1, status: 'accepted' }, { player_id: 1, status: 'pending' }] }, phase: 'day' });
         assert.equal(r2.finish, 'pending', 'pending が1件でもあれば未返答');
     });
@@ -3103,7 +3103,7 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(check.includes("'35_player_damages_exclusion'"));
     });
 
-    // ---- 37: 今季の戦闘可能時間の確認 ------------------------------------------
+    // ---- 37: 今期の戦闘可能時間の確認 ------------------------------------------
     test('★ supabaseLoadAvailabilityConfirmations は未適用環境で null を返す ([] にしない)', () => {
         const body = client.match(/window\.supabaseLoadAvailabilityConfirmations = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(body, '関数が見つからない');
@@ -4737,7 +4737,7 @@ console.log('\navailabilityDomain (戦闘可能時間):');
         assert.equal(av.canAttackWithin([], 10, 2, { flexTime: true }), true);
         assert.equal(av.canAttackWithin([], 10, null), true, '制限なしは全員');
     });
-    test('★ reminderTargets: 残凸あり・今季参加できる・隙間型でない・その時刻が区間の始まり の人だけ', () => {
+    test('★ reminderTargets: 残凸あり・今期参加できる・隙間型でない・その時刻が区間の始まり の人だけ', () => {
         const ps = [
             { id: 1, name: 'A', attackCount: 0, availableSlots: H(13, 14, 15) },          // 13時が始まり
             { id: 2, name: 'B', attackCount: 3, availableSlots: H(13, 14) },              // 3凸済み
@@ -4898,8 +4898,12 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(/_myMockResv = new Map\(\);/.test(panels), '予約の地図を作っていない');
         assert.ok(/supabaseLoadMyReservations\(ctx\.season\.id, identity\.id\)/.test(panels), '自分の予約を読んでいない');
         assert.ok(/filter\(r => rv\.isActive\(r\)\)/.test(panels), '生きている予約だけに絞っていない');
-        assert.ok(/class="dc-dmg-resv \$\{resv\.status\}"/.test(panels), 'カードに印が無い');
-        assert.ok(/\$\{slotBadge\}\$\{resvBadge\}/.test(panels), '印をカードに差し込んでいない');
+        // 印は右上のピルではなく、カード全体の薄い鍵 (class) + 名前行の小さな文字 (実機FB: ピルはダメージの数字と重なった)
+        assert.ok(/const resvCls = resv \? ` resv \$\{resv\.status\}` : '';/.test(panels), 'カードの透かし用 class が無い');
+        assert.ok(/\$\{isPickedVisible \? ' planpick' : ''\}\$\{resvCls\}"/.test(panels), '透かしをカードに差し込んでいない');
+        assert.ok(/class="dc-dmg-resvtag"/.test(panels) && /\$\{resvTag\}/.test(panels), '名前行の文字が無い');
+        assert.ok(!/\$\{resvBadge\}/.test(panels), '右上のピルが残っている');
+        assert.ok(/\.dc-dmg-panel\.resv \{\s*\n\s*background-image: url\("data:image\/svg\+xml/.test(html), '薄い鍵の透かしの CSS が無い');
         const del = html.match(/async function _deleteMyTeamEditSlot\(slot\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/_myMockResv\.get\(`\$\{_myTeamEditAttr\}\|\$\{slot\}`\)/.test(del), '削除で予約を見ていない');
         // ★ 画面の地図は別人のものかもしれない → 削除の直前に本人の予約を取り直す (Codex指摘)

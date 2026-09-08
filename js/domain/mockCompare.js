@@ -5,7 +5,7 @@
 // 「模擬ふるり値」ランキングを組む純関数。DOM・グローバル状態は読まない。
 //
 // ふるり値の意味論は模擬レーダー (index.html renderMyFururiRadar) と同一:
-// 「基準者の今季模擬 + SLv換算」との比。計算式は fururiDomain.calcPerAttackFururi を
+// 「基準者の今期模擬 + SLv換算」との比。計算式は fururiDomain.calcPerAttackFururi を
 // 属性キーを bossCode として再利用する — **式をここに再実装しない**。
 // 基準は月初固定 (呼び出し側が _loadMockRadarBase 相当を渡す) ため、
 // 月途中の他人の更新で自分との比較が歪まない公平性ルールもレーダーと共通。
@@ -29,8 +29,8 @@
      * @param {string} input.attribute            正規形属性キー (fire/water/electric/iron/wind)
      * @param {'damage'|'fururi'} input.mode
      * @param {MockPlayer[]} input.players        比較対象のロースター (アクティブメンバー)
-     * @param {MockDamageRow[]} input.damages     今季の模擬提出行 (全員分・全属性でよい)
-     * @param {MockBase|null} input.base          基準者の今季模擬 (fururi モードのみ使用)
+     * @param {MockDamageRow[]} input.damages     今期の模擬提出行 (全員分・全属性でよい)
+     * @param {MockBase|null} input.base          基準者の今期模擬 (fururi モードのみ使用)
      * @param {Object<string,number>|null} input.slvRatioTable  SLv→倍率 (fururi モードのみ使用)
      * @returns {{rows:MockCompareRow[], missing:{playerId,name}[], noSlv:{playerId,name}[],
      *            meta:{mode:string, attribute:string, count:number, baseMissing:boolean}}}

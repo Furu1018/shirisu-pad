@@ -208,7 +208,7 @@ SELECT * FROM (
         to_regclass('public.availability_confirmations') IS NOT NULL
             AND (SELECT COUNT(*) FROM col WHERE table_name = 'availability_confirmations'
                 AND column_name = 'slots_snapshot') = 1,
-        'availability_confirmations テーブル + slots_snapshot 列 (今季の戦闘可能時間を本人が確認したか。未適用だと確認UIがエラーで止まる。列だけ未適用なら「確認後の付け替え」を見逃す)'
+        'availability_confirmations テーブル + slots_snapshot 列 (今期の戦闘可能時間を本人が確認したか。未適用だと確認UIがエラーで止まる。列だけ未適用なら「確認後の付け替え」を見逃す)'
 
     UNION ALL SELECT '38_published_plans_freeze',
         (SELECT COUNT(*) FROM col WHERE table_name = 'published_plans'
