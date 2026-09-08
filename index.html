@@ -15289,8 +15289,23 @@
                 characters: snap?.characters || null, expectedDamageB: snap?.expectedDamageB || null,
             });
             if (!ok) return;
-            // B: 固定して組み直し → 配信 (1タップ)
+            // B: 固定して組み直し → 配信 (1タップ)。
+            // ★ 承認待ちが他にも残っている間は配信の確認を出さない (ユーザー決定 2026-09-08)。
+            //   5件続けて承認するたびに配信の確認が出て、そのたび配信するとメンバーに通知が5回届く。
+            //   組み直しだけは毎回やる (プランカードは常に最新) — 配信は最後の1件を承認したときに差分と一緒に
+            const remaining = (_resv.rows || []).filter(r => r.status === 'requested').length;
+            if (remaining > 0) {
+                await _recomputeOnly();
+                showNotification(`🔒 承認しました。残り ${remaining} 件を承認してから配信へ進みます`);
+                return;
+            }
             await _recomputeAndOfferPublish('承認した予約を固定して組み直しました');
+        }
+
+        // 承認のたびの組み直し (配信の確認は出さない)。失敗しても承認は成立している
+        async function _recomputeOnly() {
+            try { await computeAndRenderOptimalPlan({ onlyAvailableNow: false }); }
+            catch (e) { console.warn('[reservation] 承認後の組み直しに失敗:', e?.message || e); }
         }
 
         async function handleReservationReject(id) {

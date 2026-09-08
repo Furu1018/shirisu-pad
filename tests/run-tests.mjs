@@ -4996,8 +4996,17 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
     test('★ B: 承認 → 固定して組み直す → 差分を見て配信 (1タップ) / 自動配信はしない (2026-09-08)', () => {
         const ap = html.match(/async function handleReservationApprove\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const ok = await _resvTransition\(id, 'approved'/.test(ap), '承認の成否を見ていない');
-        assert.ok(/if \(!ok\) return;\s*\n\s*\/\/ B: 固定して組み直し → 配信 \(1タップ\)\s*\n\s*await _recomputeAndOfferPublish\(/.test(ap),
+        assert.ok(/if \(!ok\) return;/.test(ap) && /await _recomputeAndOfferPublish\('承認した予約を固定して組み直しました'\);/.test(ap),
             '承認のあとに組み直し→配信の流れへ入っていない');
+        // ★ 承認待ちが他にも残っている間は配信の確認を出さず、組み直しだけ (ユーザー決定 2026-09-08)。
+        //   最後の1件を承認したときに差分と配信の確認を出す
+        assert.ok(/const remaining = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested'\)\.length;/.test(ap), '残りの承認待ちを数えていない');
+        assert.ok(/if \(remaining > 0\) \{\s*\n\s*await _recomputeOnly\(\);\s*\n[^\n]*残り \$\{remaining\} 件を承認してから配信へ進みます[^\n]*\n\s*return;/.test(ap),
+            '承認待ちが残っているのに配信の確認を出している');
+        assert.ok(ap.indexOf('if (remaining > 0)') < ap.indexOf("await _recomputeAndOfferPublish('承認した予約を固定して組み直しました')"), '順序が逆');
+        const ro = html.match(/async function _recomputeOnly\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/await computeAndRenderOptimalPlan\(\{ onlyAvailableNow: false \}\)/.test(ro), '組み直していない');
+        assert.ok(!/handleOpsPublishPlan/.test(ro), '組み直しだけのはずが配信の確認を出している');
         const fl = html.match(/async function _recomputeAndOfferPublish\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/await computeOptimalPlan|await computeAndRenderOptimalPlan\(\{ onlyAvailableNow: false \}\)/.test(fl), '算出していない');
         // ★ 算出が無効化されたら古いプランを配信しない
