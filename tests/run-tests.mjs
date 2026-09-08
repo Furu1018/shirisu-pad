@@ -5814,6 +5814,57 @@ console.log('\nclientGateDomain (互換ゲート):');
     });
 }
 
+// ---- data/blabla-name-codes.json (BlaBlaLINK の name_code → PAD のキャラ名) -----
+//   ユニオン育成データ取り込みの土台。ここが狂うと**他人の育成が別キャラに付く**ので、
+//   生成時 (scripts/build-blabla-name-codes.mjs) だけでなく、ここでも不変条件を固定しておく。
+console.log('\nblablaNameCodes:');
+{
+    const fs = (await import('node:fs')).default;
+    const path = (await import('node:path')).default;
+    const ROOT = path.resolve(path.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
+    const map = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'blabla-name-codes.json'), 'utf8'));
+
+    test('形: すべての行に jp と resource_id があり、name_code は数字', () => {
+        const rows = Object.entries(map.data);
+        assert.ok(rows.length > 150, `件数が少なすぎる (${rows.length})`);
+        for (const [nameCode, entry] of rows) {
+            assert.match(nameCode, /^\d+$/, `name_code が数字でない: ${nameCode}`);
+            assert.ok(entry.jp && typeof entry.jp === 'string', `jp が無い: ${nameCode}`);
+            assert.ok(Number.isInteger(entry.resource_id), `resource_id が無い: ${nameCode}`);
+        }
+    });
+
+    test('★ 1つのキャラに2つの name_code が付いていない (取り込みが混ざる)', () => {
+        const byPad = new Map();
+        for (const [nameCode, entry] of Object.entries(map.data)) {
+            if (!entry.pad) continue;
+            if (!byPad.has(entry.pad)) byPad.set(entry.pad, []);
+            byPad.get(entry.pad).push(nameCode);
+        }
+        const dup = [...byPad].filter(([, codes]) => codes.length > 1)
+            .map(([name, codes]) => `${name} ← ${codes.join(' / ')}`);
+        assert.deepEqual(dup, [], '同じキャラに複数の name_code が付いている');
+    });
+
+    test('★ 同名の別キャラを取り違えない: サクラ (1012) と 鈴原サクラ (3015)', () => {
+        // CDN 上ではどちらも日本語名が「サクラ」。素直に名前で突き合わせると
+        // エヴァコラボの鈴原サクラがニケ本編のサクラに化ける (2026-09-08 に実際に踏んだ)
+        assert.equal(map.data['1012'].jp, 'サクラ');
+        assert.equal(map.data['3015'].jp, 'サクラ');
+        assert.equal(map.data['1012'].pad, 'サクラ');
+        assert.equal(map.data['3015'].pad, '鈴原サクラ');
+        assert.equal(map.data['3015'].overridden, true, '手当て無しで一致したのなら CDN 側が変わっている');
+    });
+
+    test('手当てした行は pad が jp と違う (手当てが空振りしていない)', () => {
+        const forced = Object.entries(map.data).filter(([, e]) => e.overridden);
+        assert.ok(forced.length >= 10, `手当ての件数が減っている (${forced.length})`);
+        for (const [nameCode, entry] of forced) {
+            assert.ok(entry.pad, `手当てしたのに宛先が無い: ${nameCode}`);
+        }
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
