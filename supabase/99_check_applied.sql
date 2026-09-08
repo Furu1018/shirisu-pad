@@ -241,7 +241,11 @@ SELECT * FROM (
                        AND indexdef LIKE '%(season_id, player_id, boss_number, loadout_slot)%'
                        -- 部分条件は「生きている3状態」を全部含むこと (絞りすぎた索引を「適用済み」にしない)
                        AND indexdef LIKE '%WHERE%'
-                       AND indexdef LIKE '%requested%' AND indexdef LIKE '%approved%' AND indexdef LIKE '%cancel_requested%')
+                       AND indexdef LIKE '%requested%' AND indexdef LIKE '%approved%' AND indexdef LIKE '%cancel_requested%'
+                       -- ★ 3状態を含んでいても、さらに AND で絞られていたら一意性は守られない。
+                       --   WHERE 以降に AND が無いことまで見る (Codex指摘 2026-09-09。正しい述語は
+                       --   status IN (...) だけなので AND は現れない)
+                       AND split_part(indexdef, ' WHERE ', 2) NOT LIKE '% AND %')
         AND to_regclass('public.uq_plan_reservations_active') IS NULL,
         '予約のレベルを任意に + 一意性を「誰が・ボス・編成枠」へ (未適用だとメンバーの申請が NOT NULL で弾かれる)'
 

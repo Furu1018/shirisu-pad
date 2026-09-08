@@ -6031,6 +6031,10 @@ console.log('\ngrowthDomain:');
         // 99 の判定行 (SQL Editor で 99 を1回流せば未適用が見える、を保つ)
         const check = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '99_check_applied.sql'), 'utf8');
         assert.ok(/'43_member_growth'/.test(check), '99_check_applied.sql に判定行が無い');
+        // 予約の部分索引 (42) も同じ穴を持っていたので塞いである — 3状態を含んでいても
+        // さらに AND で絞られていたら一意性は守られない
+        assert.ok(/split_part\(indexdef, ' WHERE ', 2\) NOT LIKE '% AND %'/.test(check),
+            '部分索引が AND で絞られていないかを見ていない');
         assert.ok(/uq_players_blabla_openid/.test(check) && /no_openid/.test(check), '判定が緩すぎる');
         // ★ 部分条件はその列に掛かっているかまで見る。WHERE と IS NOT NULL を別々に探すと
         //   別の列の条件でも「適用済み」と誤判定する
