@@ -224,6 +224,14 @@
         no_openid: '識別子が未設定です (運営の作業待ち)',
         error: '取得に失敗しました',
     };
+    // 一覧のピル用の短い言い方。長いほうは title に出す。
+    // ★ 綴りも言い回しもここが唯一 — 画面側で書き分けない
+    const STATUS_SHORT = {
+        ok: '取り込み済み',
+        private: '非公開',
+        no_openid: '未ひも付け',
+        error: '失敗',
+    };
 
     // ---- 取り込み ---------------------------------------------------------
     /** 取り込んだデータの目印。しりすこスクワッドの NKP1-/NKU1- と混ざらないよう別にする。 */
@@ -536,6 +544,71 @@
         }));
     }
 
+    /**
+     * 名寄せの入力を BlaBlaLINK の識別子 (openid) に読み替える。
+     * ユニオン一覧のリンクをそのまま貼れるようにする — 運営に「URL から数字だけ抜いて」と言わせない。
+     * ★ 受けるのは「数字だけ」と「?uid=... / &openid=... を含む文字列」。
+     *   それ以外の長い数字列 (URL の中の別のパラメータ) を拾わない — 取り違えは他人の育成が別人に付く事故になる。
+     * @returns {string|null}
+     */
+    function parseOpenid(text) {
+        const s = String(text == null ? '' : text).trim();
+        if (!s) return null;
+        if (/^\d{6,}$/.test(s)) return s;                       // 数字だけ貼られた
+        const m = s.match(/[?&#](?:uid|openid|intl_open_id|open_id)=(\d{6,})\b/i);
+        if (m) return m[1];
+        return null;
+    }
+
+    /**
+     * PAD のキャラ名 → BlaBlaLINK の name_code。ブックマークレットに埋める「取りたいキャラ」を決める。
+     * ★ 対応表に無い名前は codes に入れず missing に出す — 黙って対象から外すと
+     *   「そのキャラだけ取れていない」理由が分からなくなる (対応表に無い 3 体が実在する)。
+     * @param {string[]} names  usedCharacters の結果
+     * @param {Object} nameCodeMap  data/blabla-name-codes.json の data
+     * @returns {{codes:number[], missing:string[]}}
+     */
+    function wantedCodesFor(names, nameCodeMap) {
+        const byPad = new Map();
+        for (const [code, v] of Object.entries(nameCodeMap || {})) {
+            const pad = v && v.pad;
+            if (!pad || byPad.has(pad)) continue;               // 先勝ち (対応表は生成時に衝突を止めている)
+            const n = Number(code);
+            if (Number.isFinite(n) && n > 0) byPad.set(pad, n);
+        }
+        const codes = [];
+        const missing = [];
+        const seen = new Set();
+        for (const name of Array.isArray(names) ? names : []) {
+            const key = typeof name === 'string' ? name : '';
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            const code = byPad.get(key);
+            if (code == null) missing.push(key);
+            else codes.push(code);
+        }
+        return { codes: codes.sort((a, b) => a - b), missing: missing.sort() };
+    }
+
+    /**
+     * 取り込み結果の内訳。B3 の「未公開 N 人」と「取れなかった人」の材料。
+     * @param {{playerId:any, name:string, status:string, detail:string|null, count:number}[]} results
+     */
+    function importSummary(results) {
+        const rs = Array.isArray(results) ? results : [];
+        const by = { ok: [], private: [], no_openid: [], error: [] };
+        for (const r of rs) {
+            const k = r && by[r.status] ? r.status : 'error';
+            by[k].push(r);
+        }
+        return {
+            ok: by.ok.length, private: by.private.length, noOpenid: by.no_openid.length, error: by.error.length,
+            characters: by.ok.reduce((s, r) => s + (Number(r.count) || 0), 0),
+            failed: [...by.private, ...by.no_openid, ...by.error],
+            byStatus: by,
+        };
+    }
+
     /** 今回のレイドで使われたキャラを、凸記録から集める (取り込む対象を決めるのに使う)。 */
     function usedCharacters(attacks) {
         const out = new Set();
@@ -549,9 +622,10 @@
     }
 
     root.growthDomain = {
-        OVERLOAD_JP, PARTS, STATUS_JP, FIELDS, CORP_TIER, MAX_GRADE, MAX_CORE,
+        OVERLOAD_JP, PARTS, STATUS_JP, STATUS_SHORT, FIELDS, CORP_TIER, MAX_GRADE, MAX_CORE,
         growthRank, gradeText, buildOptionMap, overloadTotals, overloadSlotCount, unresolvedOptions,
         equipOf, toRows, statusOfCode, compare, compareSquad, usedCharacters,
+        parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -34,6 +34,8 @@
         { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'] },
         { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: [] },
         { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'] },
+        // 使われたキャラが確定するのはレイド後なので、終了段階だけに出す (2026-09-09)
+        { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['end'] },
         { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre'] },
     ];
     const STORAGE_KEY = 'shirisuko_ops_card_open_v1';

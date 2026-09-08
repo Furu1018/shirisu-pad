@@ -1759,6 +1759,103 @@ window.supabaseSetClientGate = async function ({ minClientBuild, minPlanSchema, 
     return data;
 };
 
+// ===== ユニオン育成データ (43_member_growth.sql — 2026-09-09) =====
+// ★ 43 未適用の環境では **静かに劣化させない**。育成の取り込みは運営が明示的に始める操作なので、
+//   「保存したつもりで保存されていない」より、適用を促して止めるほうがよい。
+const _GROWTH_MIG = 'supabase/43_member_growth.sql を SQL Editor で適用してください';
+function _growthErr(error, table) {
+    if (_isMissingTableErr(error, table) || _isMissingColumnErr(error, 'blabla_openid')) return new Error(_GROWTH_MIG);
+    return error;
+}
+
+// 名寄せ用: メンバーと BlaBlaLINK の識別子。43 未適用なら openid を null にして静かに落ちる
+// (一覧そのものは出したい — 「適用してください」は保存しようとしたときに出る)
+window.supabaseLoadPlayersWithOpenid = async function () {
+    const base = 'id, name, archived';
+    let r = await supabase.from('players').select(`${base}, blabla_openid`)
+        .or('archived.is.null,archived.eq.false').order('name', { ascending: true });
+    if (r.error && _isMissingColumnErr(r.error, 'blabla_openid')) {
+        r = await supabase.from('players').select(base)
+            .or('archived.is.null,archived.eq.false').order('name', { ascending: true });
+        if (r.error) throw r.error;
+        return (r.data || []).map(p => ({ ...p, blabla_openid: null, growthUnsupported: true }));
+    }
+    if (r.error) throw r.error;
+    return r.data || [];
+};
+
+// 識別子の紐づけ (null で解除)。★ 一意索引に当たったら「誰と重複したか」を出す —
+// 「重複しています」だけだと、取り違えたのか自分の二重登録なのか分からない
+window.supabaseSetPlayerOpenid = async function (playerId, openid) {
+    const value = openid == null || openid === '' ? null : String(openid);
+    const { error } = await supabase.from('players')
+        .update({ blabla_openid: value }).eq('id', playerId);
+    if (!error) return;
+    if (_isMissingColumnErr(error, 'blabla_openid')) throw new Error(_GROWTH_MIG);
+    if (error.code === '23505') {
+        let who = '';
+        try {
+            const { data } = await supabase.from('players').select('name').eq('blabla_openid', value).limit(1);
+            who = data && data[0] ? data[0].name : '';
+        } catch { /* 名前が引けなくても本題は伝わる */ }
+        throw new Error(who ? `この識別子は「${who}」に登録済みです` : 'この識別子は別のメンバーに登録済みです');
+    }
+    throw error;
+};
+
+// 育成のスナップショット (季節×人×キャラ)。
+// ★ **upsert のみ・削除はしない** (2026-09-09 の決定①)。部分的な取得結果で既存行を消すと、
+//   前回取れていたキャラの記録が黙って欠ける
+window.supabaseSaveMemberGrowth = async function (seasonId, playerId, rows) {
+    const list = (Array.isArray(rows) ? rows : []).map(r => ({
+        season_id: seasonId, player_id: playerId,
+        character_name: r.character_name, name_code: r.name_code ?? null,
+        grade: r.grade ?? null, core: r.core ?? null, lv: r.lv ?? null,
+        skill1_lv: r.skill1_lv ?? null, skill2_lv: r.skill2_lv ?? null, ulti_skill_lv: r.ulti_skill_lv ?? null,
+        combat: r.combat ?? null, attractive_lv: r.attractive_lv ?? null,
+        harmony_cube_tid: r.harmony_cube_tid ?? null, harmony_cube_lv: r.harmony_cube_lv ?? null,
+        favorite_item_tid: r.favorite_item_tid ?? null, favorite_item_lv: r.favorite_item_lv ?? null,
+        equip: r.equip ?? null, overload: r.overload ?? null,
+        fetched_at: new Date().toISOString(),
+    }));
+    if (!list.length) return 0;
+    const { error } = await supabase.from('member_growth')
+        .upsert(list, { onConflict: 'season_id,player_id,character_name' });
+    if (error) throw _growthErr(error, 'member_growth');
+    return list.length;
+};
+
+// 取り込みの結果 (ok / private / no_openid / error)。取れなかった理由を状態として残す
+window.supabaseSaveMemberGrowthStatus = async function (seasonId, playerId, { status, detail, characterCount } = {}) {
+    const { error } = await supabase.from('member_growth_status').upsert({
+        season_id: seasonId, player_id: playerId,
+        status, detail: detail || null,
+        character_count: Number.isFinite(characterCount) ? characterCount : null,
+        checked_at: new Date().toISOString(),
+    }, { onConflict: 'season_id,player_id' });
+    if (error) throw _growthErr(error, 'member_growth_status');
+};
+
+// 43 未適用なら null を返す (「全員が未取り込み」と区別する — 37 の確認と同じ考え方)
+window.supabaseLoadMemberGrowthStatus = async function (seasonId) {
+    const { data, error } = await supabase.from('member_growth_status')
+        .select('player_id, status, detail, character_count, checked_at')
+        .eq('season_id', seasonId);
+    if (error) {
+        if (_isMissingTableErr(error, 'member_growth_status')) return null;
+        throw error;
+    }
+    return data || [];
+};
+
+// 取り込み対象を決める材料: そのシーズンで実際に使われたキャラ (凸記録の characters)
+window.supabaseLoadSeasonAttackCharacters = async function (seasonId) {
+    const { data, error } = await supabase.from('attacks')
+        .select('player_id, characters').eq('season_id', seasonId);
+    if (error) throw error;
+    return data || [];
+};
+
 // ===== バックアップ: 全テーブル JSON エクスポート =====
 // RLS が anon 全許可の内輪運用のため、誤操作・事故に備えた手動バックアップ手段。
 // Supabase の行数上限(1000)を超えるテーブルに備えてページネーションで全件取得する。

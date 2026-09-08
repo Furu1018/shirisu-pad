@@ -2866,7 +2866,7 @@ console.log('\nopsStageDomain:');
         assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecReserve', 'opsSecPlan', 'opsSecDiscord']);
         assert.deepEqual(vis('day'), ['opsSecBoss', 'opsSecRemaining', 'opsSecFinish', 'opsSecPlan', 'opsSecActions']);
         assert.deepEqual(vis('prep'), ['opsSecSeason']);
-        assert.deepEqual(vis('end'), ['opsSecSeason']);
+        assert.deepEqual(vis('end'), ['opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
     const html = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
@@ -6158,6 +6158,75 @@ console.log('\ngrowthDomain:');
         assert.equal(dom.prepareMember({
             code: 0, requested: 1, characters: [{ name_code: 1012 }], details: [d], stateEffects: eff,
         }, { nameCodeMap: map }).save, true);
+    });
+
+    test('★ parseOpenid: 数字だけ / ?uid= を含むリンク を受け、それ以外の数字は拾わない', () => {
+        assert.equal(dom.parseOpenid('123456789'), '123456789');
+        assert.equal(dom.parseOpenid('  123456789  '), '123456789');
+        assert.equal(dom.parseOpenid('https://www.blablalink.com/profile?uid=123456789'), '123456789');
+        assert.equal(dom.parseOpenid('https://x/y?a=1&openid=987654321&b=2'), '987654321');
+        assert.equal(dom.parseOpenid('https://x/y#intl_open_id=555555555'), '555555555');
+        // ★ 取り違えは「他人の育成が別人に付く」事故。関係ない数字を拾わないこと
+        assert.equal(dom.parseOpenid('https://x/y?area=81&t=1725792000000'), null, '別のパラメータを識別子にしている');
+        assert.equal(dom.parseOpenid('12345'), null, '短すぎる数字を通している');
+        assert.equal(dom.parseOpenid('abc'), null);
+        assert.equal(dom.parseOpenid(''), null);
+        assert.equal(dom.parseOpenid(null), null);
+    });
+
+    test('★ wantedCodesFor: 使われたキャラ → name_code。対応表に無い名前は missing に出す (黙って外さない)', () => {
+        const map = { '1012': { jp: 'サクラ', pad: 'サクラ' }, '3015': { jp: 'サクラ', pad: '鈴原サクラ' }, '1007': { jp: 'D', pad: 'D' } };
+        const r = dom.wantedCodesFor(['鈴原サクラ', 'D', 'シフティー', 'D'], map);
+        assert.deepEqual(r.codes, [1007, 3015], '重複を畳んで昇順にしていない');
+        assert.deepEqual(r.missing, ['シフティー'], '対応表に無い名前を黙って外している');
+        assert.deepEqual(dom.wantedCodesFor([], map), { codes: [], missing: [] });
+        assert.deepEqual(dom.wantedCodesFor(['D'], null), { codes: [], missing: ['D'] });
+        // pad が無い行 (CDN にしか無いキャラ) は対応先にしない
+        assert.deepEqual(dom.wantedCodesFor(['謎'], { '9999': { jp: '謎', pad: null } }).missing, ['謎']);
+    });
+
+    test('★ importSummary: 取れた/非公開/未ひも付け/失敗 を分け、取れなかった人をまとめる', () => {
+        const r = dom.importSummary([
+            { name: 'a', status: 'ok', count: 5 }, { name: 'b', status: 'ok', count: 3 },
+            { name: 'c', status: 'private' }, { name: 'd', status: 'no_openid' },
+            { name: 'e', status: 'error' }, { name: 'f', status: 'なにこれ' },
+        ]);
+        assert.equal(r.ok, 2); assert.equal(r.characters, 8);
+        assert.equal(r.private, 1); assert.equal(r.noOpenid, 1);
+        assert.equal(r.error, 2, '知らない状態を失敗に寄せていない');
+        assert.deepEqual(r.failed.map(x => x.name), ['c', 'd', 'e', 'f']);
+        const none = dom.importSummary(null);
+        assert.equal(none.ok, 0); assert.equal(none.characters, 0); assert.deepEqual(none.failed, []);
+    });
+
+    test('★ 配線: 育成の取り込みパネル (段階「終了」・upsert のみ・43未適用は止める)', () => {
+        const rd = (...p) => _fsG.readFileSync(new URL(`../${p.join('/')}`, import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
+        const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js');
+        // 置き場所は運営タブの段階「終了」— 使われたキャラが確定するのはレイド後
+        assert.ok(/id: 'opsSecGrowth',[^\n]*stages: \['end'\]/.test(layout), '取り込みカードが終了段階に無い');
+        assert.ok(/id="opsGrowthBody"/.test(html) && /id="opsGrowthCounts"/.test(html), 'カードの描画先が無い');
+        assert.ok(/🧬 育成データの取り込み/.test(html), '見出しが CARDS の title と揃っていない');
+        // 盤面の描画と一緒に更新する (運営ONのときだけ中で取得)
+        assert.ok(/renderOpsGrowth\(\);/.test(html.match(/async function renderOpsDashboard\(\)[\s\S]*?\n        \}\n/)?.[0] || ''), '盤面の描画から呼んでいない');
+        const rg = html.match(/async function renderOpsGrowth\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!_opsMode\) return;/.test(rg), '運営OFF でも取得している');
+        assert.ok(/gen !== _growth\.gen/.test(rg), '追い越した古い応答を捨てていない');
+        assert.ok(/usedCharacters\(atks\)/.test(rg) && /wantedCodesFor\(_growth\.used, nameMap\)/.test(rg), '対象をドメインで決めていない');
+        // 取り込みは prepareMember の判断に従う (保存してよいかを画面で決めない)
+        const imp = html.match(/async function handleGrowthImport\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.parseImportPayload\(text\)/.test(imp), '貼り付けの解釈をドメインに任せていない');
+        assert.ok(/dom\.prepareMember\(m, \{ nameCodeMap: _growthNameMap, wanted: _growth\.used \}\)/.test(imp), '保存してよいかの判断をドメインに任せていない');
+        assert.ok(/if \(prep\.save\)/.test(imp), 'save の判断を無視して保存している');
+        assert.ok(/status: 'no_openid'/.test(imp), '識別子が無い人を状態として残していない');
+        // 保存は upsert のみ (2026-09-09 の決定①) — delete を書かない
+        const cli = client.match(/window\.supabaseSaveMemberGrowth = [\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/\.upsert\(list, \{ onConflict: 'season_id,player_id,character_name' \}\)/.test(cli), 'upsert で保存していない');
+        assert.ok(!/\.delete\(/.test(cli), '取り込みで既存行を消している (部分的な結果で記録が欠ける)');
+        // 43 未適用は静かに劣化させない (取り込みは運営が明示的に始める操作)
+        assert.ok(/supabase\/43_member_growth\.sql/.test(client), '43 未適用の案内が無い');
+        assert.ok(/_isMissingTableErr\(error, 'member_growth_status'\)\) return null;/.test(client), '未適用を「全員未取り込み」と混同している');
+        // 一意索引に当たったら誰と重複したかを言う (取り違えの事故を見つけられるように)
+        assert.ok(/error\.code === '23505'/.test(client) && /に登録済みです/.test(client), '識別子の重複を名前つきで知らせていない');
     });
 
     test('★ 生成コード: 1人が転んでも残りの取得を続ける / 要求数を記録する', () => {

@@ -380,6 +380,31 @@
         .ops-etc { margin-top: 16px; }
         .ops-etc-head { width: 100%; font: inherit; font-size: 12px; font-weight: 900; color: #6B7178; background: #F1F2F4; border: none; border-radius: 12px; padding: 11px; cursor: pointer; }
         .ops-etc-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: #A4AAB0; margin: 14px 6px 6px; }
+        /* ---- 🧬 育成データの取り込み (2026-09-09) ---- */
+        .gr-step { border: 1px solid rgba(20,22,26,0.06); border-radius: 12px; padding: 10px 12px; margin-bottom: 9px; background: #fff; }
+        .gr-step > .h { font-size: 12px; font-weight: 900; color: #14161A; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+        .gr-step > .h .n { display: grid; place-items: center; width: 19px; height: 19px; flex: none; border-radius: 6px; background: #F1F2F4; font-size: 10.5px; font-weight: 900; color: #6B7178; }
+        .gr-step.done > .h .n { background: #18C26B; color: #fff; }
+        .gr-step > .d { font-size: 10.5px; font-weight: 700; color: #8A9097; line-height: 1.6; margin: 5px 0 0 26px; }
+        .gr-rows { margin: 8px 0 0; max-height: 300px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+        .gr-row { display: flex; align-items: center; gap: 7px; padding: 5px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
+        .gr-row:first-child { border-top: none; }
+        .gr-row .nm { flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 800; color: #14161A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .gr-row .st { flex: none; font-size: 10px; font-weight: 900; border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+        .gr-row .st.ok { color: #0E9455; background: rgba(14,148,85,0.12); }
+        .gr-row .st.private { color: #B45309; background: rgba(245,158,11,0.14); }
+        .gr-row .st.no_openid { color: #6B7178; background: #F1F2F4; }
+        .gr-row .st.error { color: #FF3D44; background: rgba(255,61,68,0.10); }
+        .gr-row input { flex: none; width: 116px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 8px; padding: 5px 7px; background: #fff; color: #14161A; }
+        .gr-row input.set { border-color: rgba(14,148,85,0.35); background: rgba(14,148,85,0.05); }
+        .gr-btn { font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 999px; padding: 10px 14px; cursor: pointer; background: #14161A; color: #fff; }
+        .gr-btn.sub { background: #F1F2F4; color: #14161A; }
+        .gr-btn[disabled] { opacity: .45; cursor: default; }
+        .gr-paste { width: 100%; box-sizing: border-box; min-height: 74px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 10px; padding: 8px 9px; background: #fff; color: #14161A; resize: vertical; }
+        .gr-note { font-size: 10.5px; font-weight: 800; line-height: 1.6; border-radius: 9px; padding: 8px 10px; margin-top: 8px; }
+        .gr-note.warn { color: #B45309; background: rgba(245,158,11,0.10); }
+        .gr-note.err { color: #B91C1C; background: rgba(255,61,68,0.09); }
+        .gr-note.ok { color: #0E9455; background: rgba(14,148,85,0.10); }
         .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: #8A9097; background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
         /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
         .dc-mb-seg { display:inline-flex; background:#F1F2F4; border-radius:999px; padding:3px; }
@@ -3688,6 +3713,20 @@
                     <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:#dc2626;"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
                 <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:#B6BBC1;">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>予約テスト (序盤)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、申請→承認→固定→凸報告の1周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
+            </div>
+
+            <!-- 🧬 育成データの取り込み (43 / 運営ON・段階「終了」のみ)。純ロジックは js/domain/growth.js -->
+            <div class="dc-card" data-ops-only>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">🧬 育成データの取り込み</div>
+                    <span id="opsGrowthCounts" style="font-size:10.5px;font-weight:800;color:#8A9097;"></span>
+                    <button onclick="renderOpsGrowth(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:#F1F2F4;color:#5A6068;font-size:11px;font-weight:800;cursor:pointer;">↻</button>
+                </div>
+                <p style="margin:0 0 10px 0;font-size:11px;color:#8A9097;line-height:1.6;">
+                    今回のレイドで<strong>実際に使われたキャラ</strong>だけ、BlaBlaLINK から育成状況を取り込みます。
+                    取れるのは<strong>ゲームカードを公開している人</strong>だけです。
+                </p>
+                <div id="opsGrowthBody"><p style="color:#A4AAB0;font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
             <!-- 📣 Discord 告知テンプレ (運営用) -->
@@ -15316,6 +15355,7 @@
             renderOpsRemainingList();
             renderOpsMemberStatus(snapshot);       // 👥 メンバー状況 (運営ONのときだけ中で取得・描画)
             renderOpsReservations();               // 🔒 凸の予約 (同上)
+            renderOpsGrowth();                     // 🧬 育成データの取り込み (同上)
             _refreshOpsPlanPicksFromPublished();   // 残凸表の「採用PT」枠取り (配信中プラン由来)
             _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
@@ -15833,6 +15873,248 @@
         }
         function handleOpsMemberProxy(playerId) {
             openOpsProxyAttackModal(Number(playerId));
+        }
+
+        // ===== 🧬 育成データの取り込み (43 / 2026-09-09) =====
+        //   純ロジックは js/domain/growth.js。ここは DOM と保存の呼び出しだけ。
+        //   流れは 4 段: ① 識別子の名寄せ → ② ブックマークレットを作る → ③ 貼り付けて取り込む → ④ 取れなかった人。
+        //   ★ ブックマークレットにするのは blablalink.com の anti-debug 対策 (DevTools を開くと止まる)。
+        //   ★ 対象は「今回のレイドで実際に使われたキャラ」だけ (usedCharacters) — 全キャラは要らない。
+        const _growth = { gen: 0, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, msg: null };
+        let _growthNameMap = null;   // data/blabla-name-codes.json の data (name_code → {jp, pad})
+
+        async function _growthLoadNameMap() {
+            if (_growthNameMap) return _growthNameMap;
+            const res = await fetch('./data/blabla-name-codes.json');
+            if (!res.ok) throw new Error(`キャラ名の対応表を読み込めません (${res.status})`);
+            const j = await res.json();
+            if (!j || !j.data || typeof j.data !== 'object') throw new Error('キャラ名の対応表の形式が違います');
+            _growthNameMap = j.data;
+            return _growthNameMap;
+        }
+
+        async function renderOpsGrowth(force = false) {
+            const box = document.getElementById('opsGrowthBody');
+            if (!box) return;
+            if (!_opsMode) return;                       // 運営OFF: 取得も描画もしない
+            const dom = window.growthDomain;
+            if (!dom) { box.innerHTML = '<p style="color:#ef4444;font-size:12px;margin:0;">育成データの機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
+            const gen = ++_growth.gen;
+            if (force || !_growth.players) box.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p>';
+            let season = null;
+            try { season = (await ensureActiveSeasonLoaded())?.season || null; } catch { /* 下で null 扱い */ }
+            if (gen !== _growth.gen) return;
+            if (!season) {
+                _growth.players = null; _growth.seasonId = null;
+                box.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
+                const c = document.getElementById('opsGrowthCounts'); if (c) c.textContent = '';
+                return;
+            }
+            // シーズンが変わったら前シーズンの結果を捨てる (取り込み済みの内訳が残らないように)
+            if (_growth.seasonId != null && Number(_growth.seasonId) !== Number(season.id)) {
+                _growth.players = null; _growth.statusRows = null; _growth.used = []; _growth.wanted = null; _growth.msg = null;
+            }
+            _growth.seasonId = season.id;
+            try {
+                const [players, atks, statusRows, nameMap] = await Promise.all([
+                    window.supabaseLoadPlayersWithOpenid(),
+                    window.supabaseLoadSeasonAttackCharacters(season.id),
+                    window.supabaseLoadMemberGrowthStatus(season.id),
+                    _growthLoadNameMap(),
+                ]);
+                if (gen !== _growth.gen) return;
+                if (!_opsMode) return;                   // 待機中に運営OFF → 隠れた盤面を更新しない
+                _growth.players = players;
+                _growth.statusRows = statusRows;         // null = 43未適用 (「全員未取り込み」と区別する)
+                _growth.used = dom.usedCharacters(atks);
+                _growth.wanted = dom.wantedCodesFor(_growth.used, nameMap);
+                _growthPaint();
+            } catch (e) {
+                if (gen !== _growth.gen || !_opsMode) return;
+                box.innerHTML = `<p style="color:#ef4444;font-size:12px;margin:0;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+            }
+        }
+
+        function _growthNote(kind, text) { _growth.msg = { kind, text }; _growthPaint(); }
+
+        function _growthPaint() {
+            const box = document.getElementById('opsGrowthBody');
+            const dom = window.growthDomain;
+            if (!box || !dom || !_growth.players) return;
+            const esc = escapeHtml;
+            const players = _growth.players;
+            const linked = players.filter(p => p.blabla_openid);
+            const wanted = _growth.wanted || { codes: [], missing: [] };
+            const unsupported = _growth.statusRows === null || players.some(p => p.growthUnsupported);
+            const statusBy = new Map((_growth.statusRows || []).map(r => [String(r.player_id), r]));
+
+            const cnt = document.getElementById('opsGrowthCounts');
+            if (cnt) cnt.textContent = `紐づけ ${linked.length}/${players.length} · 対象 ${wanted.codes.length}体`;
+
+            // ① 名寄せ — URL をそのまま貼れる (parseOpenid が ?uid= を拾う)
+            const rows = players.map(p => `
+                <div class="gr-row">
+                    <span class="nm" title="${esc(p.name)}">${esc(p.name)}</span>
+                    <input type="text" inputmode="numeric" class="${p.blabla_openid ? 'set' : ''}"
+                           value="${esc(p.blabla_openid || '')}" placeholder="未設定"
+                           title="BlaBlaLINK のリンク (?uid=…) をそのまま貼っても構いません"
+                           onchange="handleGrowthSetOpenid(${Number(p.id)}, this.value)">
+                </div>`).join('');
+            const step1 = `
+                <div class="gr-step ${linked.length === players.length ? 'done' : ''}">
+                    <div class="h"><span class="n">1</span>BlaBlaLINK の識別子をひも付ける</div>
+                    <div class="d">ユニオン一覧で名前を開いたときの URL (<code>?uid=…</code>) をそのまま貼れます。1人1回だけの作業です。</div>
+                    <div class="gr-rows">${rows}</div>
+                </div>`;
+
+            // ② ブックマークレット
+            const miss = wanted.missing.length
+                ? `<div class="gr-note warn">対応表に無いキャラが ${wanted.missing.length} 体あります (${esc(wanted.missing.slice(0, 6).join('・'))}${wanted.missing.length > 6 ? ' ほか' : ''})。このキャラだけ取り込めません。</div>`
+                : '';
+            const canSnippet = linked.length > 0 && wanted.codes.length > 0;
+            const step2 = `
+                <div class="gr-step">
+                    <div class="h"><span class="n">2</span>取り込み用のブックマークレットを作る</div>
+                    <div class="d">対象は <strong>${linked.length}人</strong> / 今回使われた <strong>${wanted.codes.length}体</strong>。
+                        コピーしてブックマークを新規作成し、URL 欄に貼り付けます。
+                        <strong>BlaBlaLINK を開いて、開発者ツールを閉じたまま</strong>そのブックマークを実行してください。</div>
+                    <div style="margin:9px 0 0 26px;">
+                        <button type="button" class="gr-btn" onclick="handleGrowthCopySnippet()" ${canSnippet ? '' : 'disabled'}>📋 コピーする</button>
+                    </div>
+                    ${miss}
+                </div>`;
+
+            // ③ 貼り付け
+            const step3 = `
+                <div class="gr-step">
+                    <div class="h"><span class="n">3</span>出てきた文字列を貼り付ける</div>
+                    <div class="d">ブックマークレットがページ上に出す <code>SPG1-</code> で始まる文字列を、丸ごと貼り付けてください。</div>
+                    <div style="margin:9px 0 0 26px;">
+                        <textarea id="opsGrowthPaste" class="gr-paste" placeholder="SPG1-…" ${_growth.busy ? 'disabled' : ''}></textarea>
+                        <button type="button" class="gr-btn" style="margin-top:8px;" onclick="handleGrowthImport()" ${_growth.busy || unsupported ? 'disabled' : ''}>${_growth.busy ? '取り込み中…' : '取り込む'}</button>
+                    </div>
+                    ${unsupported ? '<div class="gr-note err">supabase/43_member_growth.sql を SQL Editor で適用してください。</div>' : ''}
+                    ${_growth.msg ? `<div class="gr-note ${esc(_growth.msg.kind)}">${esc(_growth.msg.text)}</div>` : ''}
+                </div>`;
+
+            // ④ 結果 — 取れた人は畳み、取れなかった人だけ理由つきで出す
+            let step4 = '';
+            if (_growth.statusRows && _growth.statusRows.length) {
+                const list = players.map(p => ({ p, s: statusBy.get(String(p.id)) })).filter(x => x.s);
+                const ok = list.filter(x => x.s.status === 'ok');
+                const bad = list.filter(x => x.s.status !== 'ok');
+                const badRows = bad.map(({ p, s }) => `
+                    <div class="gr-row">
+                        <span class="nm" title="${esc(s.detail || dom.STATUS_JP[s.status] || '')}">${esc(p.name)}</span>
+                        <span class="st ${esc(s.status)}" title="${esc(dom.STATUS_JP[s.status] || s.status)}">${esc(dom.STATUS_SHORT[s.status] || s.status)}</span>
+                    </div>`).join('');
+                step4 = `
+                    <div class="gr-step ${bad.length ? '' : 'done'}">
+                        <div class="h"><span class="n">4</span>取り込みの結果
+                            <span style="font-weight:800;color:#8A9097;font-size:10.5px;">取れた ${ok.length}人${bad.length ? ` · 取れなかった ${bad.length}人` : ''}</span></div>
+                        ${bad.length
+                        ? `<div class="d">「非公開」の人は本人が BlaBlaLINK で公開しないと取れません。声をかけてください。</div><div class="gr-rows">${badRows}</div>`
+                        : '<div class="d">全員ぶん取り込めています。</div>'}
+                    </div>`;
+            }
+            box.innerHTML = step1 + step2 + step3 + step4;
+        }
+
+        // 識別子のひも付け。URL でも数字でも受ける (parseOpenid)。空にすると解除
+        async function handleGrowthSetOpenid(playerId, raw) {
+            const dom = window.growthDomain;
+            const p = (_growth.players || []).find(x => Number(x.id) === Number(playerId));
+            if (!dom || !p) return;
+            const text = String(raw == null ? '' : raw).trim();
+            const openid = text ? dom.parseOpenid(text) : null;
+            if (text && !openid) { _growthNote('err', `「${p.name}」の識別子を読み取れませんでした。数字だけか、?uid=… を含むリンクを貼ってください。`); return; }
+            try {
+                await window.supabaseSetPlayerOpenid(p.id, openid);
+                p.blabla_openid = openid;
+                _growthNote('ok', openid ? `${p.name} をひも付けました` : `${p.name} のひも付けを外しました`);
+            } catch (e) {
+                _growthNote('err', `${p.name}: ${e?.message || e}`);
+            }
+        }
+
+        async function handleGrowthCopySnippet() {
+            const dom = window.growthDomain;
+            if (!dom) return;
+            const targets = (_growth.players || []).filter(p => p.blabla_openid)
+                .map(p => ({ openid: String(p.blabla_openid), label: p.name }));
+            let code;
+            try {
+                code = dom.buildImportSnippet({ targets, wantedCodes: (_growth.wanted || {}).codes || [] });
+            } catch (e) { _growthNote('err', e?.message || String(e)); return; }
+            try {
+                await navigator.clipboard.writeText(code);
+                _growthNote('ok', `コピーしました (${targets.length}人ぶん)。ブックマークを新規作成して URL 欄に貼り付けてください。`);
+            } catch {
+                // clipboard API が使えない環境 (非https 等)
+                const ta = document.createElement('textarea');
+                ta.value = code;
+                ta.style.cssText = 'position:fixed;opacity:0;';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    _growthNote('ok', `コピーしました (${targets.length}人ぶん)。ブックマークを新規作成して URL 欄に貼り付けてください。`);
+                } catch { _growthNote('err', 'コピーできませんでした。'); }
+                ta.remove();
+            }
+        }
+
+        // 貼り付け → 1人ずつ 判定 (prepareMember) → 保存 (upsert のみ) → 状態を残す
+        async function handleGrowthImport() {
+            const dom = window.growthDomain;
+            const ta = document.getElementById('opsGrowthPaste');
+            if (!dom || !ta || _growth.busy || !_growth.seasonId) return;
+            const text = ta.value;
+            if (!String(text || '').trim()) { _growthNote('err', 'ブックマークレットが出した文字列を貼り付けてください。'); return; }
+            let box;
+            try { box = dom.parseImportPayload(text); }
+            catch (e) { _growthNote('err', e?.message || String(e)); return; }
+            const seasonId = _growth.seasonId;
+            const byOpenid = new Map((_growth.players || []).filter(p => p.blabla_openid).map(p => [String(p.blabla_openid), p]));
+            const results = [];
+            _growth.busy = true; _growth.msg = null; _growthPaint();
+            try {
+                for (const m of box.members) {
+                    const p = byOpenid.get(String(m.openid));
+                    if (!p) {
+                        // 識別子を外した / まだ足していない人のぶんが混ざっている。保存先が無いので飛ばす
+                        results.push({ playerId: null, name: m.label || m.openid, status: 'error', detail: 'この識別子のメンバーが PAD にいません', count: 0 });
+                        continue;
+                    }
+                    const prep = dom.prepareMember(m, { nameCodeMap: _growthNameMap, wanted: _growth.used });
+                    let status = prep.status, detail = prep.detail, count = 0;
+                    if (prep.save) {
+                        try { count = await window.supabaseSaveMemberGrowth(seasonId, p.id, prep.rows); }
+                        catch (e) { status = 'error'; detail = e?.message || String(e); count = 0; }
+                    }
+                    try { await window.supabaseSaveMemberGrowthStatus(seasonId, p.id, { status, detail, characterCount: count }); }
+                    catch (e) { status = 'error'; detail = e?.message || String(e); }
+                    results.push({ playerId: p.id, name: p.name, status, detail, count });
+                }
+                // ★ 識別子が無い人も「未紐づけ」として残す — 「非公開」と混ざると声をかける相手を間違える
+                for (const p of (_growth.players || [])) {
+                    if (p.blabla_openid) continue;
+                    try { await window.supabaseSaveMemberGrowthStatus(seasonId, p.id, { status: 'no_openid', detail: null, characterCount: null }); }
+                    catch { /* 状態が残らないだけ */ }
+                    results.push({ playerId: p.id, name: p.name, status: 'no_openid', detail: null, count: 0 });
+                }
+                const sum = dom.importSummary(results);
+                ta.value = '';
+                _growth.busy = false;
+                await renderOpsGrowth(true);
+                _growthNote(sum.error ? 'warn' : 'ok',
+                    `取り込み: ${sum.ok}人 / ${sum.characters}体。非公開 ${sum.private}人・未ひも付け ${sum.noOpenid}人・失敗 ${sum.error}人`);
+            } catch (e) {
+                _growth.busy = false;
+                _growthNote('err', e?.message || String(e));
+            } finally {
+                _growth.busy = false;
+            }
         }
 
         async function handleOpsQuickCreateTestSeason(scenario = 'midraid') {
