@@ -6064,6 +6064,19 @@ console.log('\ngrowthDomain:');
         await assert.rejects(dom.parseImportPayload(dom.IMPORT_PREFIX + 'あああ'), /展開に失敗/);
         // ★ 上限を置く。人が貼るものなので、これを超えるのは事故か別物
         await assert.rejects(dom.parseImportPayload('x'.repeat(8 * 1000 * 1000 + 1)), /大きすぎます/);
+
+        // ★ gzip 爆弾は**展開しきる前に**止める (全部展開してから測っても手遅れ)
+        const bomb = new Blob([JSON.stringify({ members: [], pad: 'a'.repeat(2000000) })])
+            .stream().pipeThrough(new CompressionStream('gzip'));
+        const bb = new Uint8Array(await new Response(bomb).arrayBuffer());
+        let bs = '';
+        for (const b of bb) bs += String.fromCharCode(b);
+        const started = Date.now();
+        await assert.rejects(dom.parseImportPayload(dom.IMPORT_PREFIX + btoa(bs), { maxJson: 50000 }),
+            /展開した内容が大きすぎます/);
+        assert.ok(Date.now() - started < 2000, '打ち切らずに最後まで展開している');
+        // 上限の内側なら通る (上限そのものが厳しすぎないこと)
+        assert.equal((await dom.parseImportPayload(dom.IMPORT_PREFIX + btoa(bs))).members.length, 0);
     });
 
     test('★ 保存してよいかの判断: 非公開は保存しない / オーバーロードが読めなければ保存しない', () => {
@@ -6112,17 +6125,39 @@ console.log('\ngrowthDomain:');
         const eff = [{ id: '101', function_details: [{ function_type: 'StatAtk', function_value: 1234 }] }];
         const d = { name_code: 1012, grade: 3, core: 0, head_equip_option1_id: 101 };
         // 3体頼んで1体しか返っていない = 穴の空いた記録になる
-        const partial = dom.prepareMember(
-            { code: 0, requested: 3, characters: [1, 2, 3], details: [d], stateEffects: eff }, { nameCodeMap: map });
+        const partial = dom.prepareMember({
+            code: 0, requested: 3,
+            characters: [{ name_code: 1012 }, { name_code: 2000 }, { name_code: 3000 }],
+            details: [d], stateEffects: eff,
+        }, { nameCodeMap: map });
         assert.equal(partial.save, false, '欠けたまま保存しようとしている');
         assert.match(partial.detail, /1\/3 体/);
-        // requested が無い古い形でも characters の数で見る
+        // requested が無い古い形でも characters から見る
         const legacy = dom.prepareMember(
-            { code: 0, characters: [1, 2], details: [d], stateEffects: eff }, { nameCodeMap: map });
+            { code: 0, characters: [{ name_code: 1012 }, { name_code: 2000 }], details: [d], stateEffects: eff },
+            { nameCodeMap: map });
         assert.equal(legacy.save, false);
+
+        // ★ 件数の比較では騙される。頼んだ name_code が返っているかを集合で見ること
+        const dup = dom.prepareMember({
+            code: 0, requested: 2, characters: [{ name_code: 1012 }, { name_code: 2000 }],
+            details: [d, d], stateEffects: eff,      // 同じキャラが2回来て数だけ揃う
+        }, { nameCodeMap: map });
+        assert.equal(dup.save, false, '重複で数を埋められている');
+        const unk = dom.prepareMember({
+            code: 0, requested: 2, characters: [{ name_code: 1012 }, { name_code: 2000 }],
+            details: [d, { ...d, name_code: 9999 }], stateEffects: eff,   // 対応表に無いキャラで数だけ揃う
+        }, { nameCodeMap: map });
+        assert.equal(unk.save, false, '対応表に無いキャラで数を埋められている');
+        // characters 自体が途中で切れていたら requested との差で気づく
+        const cut = dom.prepareMember({
+            code: 0, requested: 5, characters: [{ name_code: 1012 }], details: [d], stateEffects: eff,
+        }, { nameCodeMap: map });
+        assert.equal(cut.save, false, '頼んだ一覧が途中で切れているのを見逃している');
         // 揃っていれば保存する
-        assert.equal(dom.prepareMember(
-            { code: 0, requested: 1, characters: [1], details: [d], stateEffects: eff }, { nameCodeMap: map }).save, true);
+        assert.equal(dom.prepareMember({
+            code: 0, requested: 1, characters: [{ name_code: 1012 }], details: [d], stateEffects: eff,
+        }, { nameCodeMap: map }).save, true);
     });
 
     test('★ 生成コード: 1人が転んでも残りの取得を続ける / 要求数を記録する', () => {

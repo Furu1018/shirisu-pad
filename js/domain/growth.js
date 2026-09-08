@@ -330,11 +330,32 @@
     const MAX_PASTE = 8 * 1000 * 1000;      // 貼り付けの上限。30人ぶんでも数百KBなので十分すぎる
     const MAX_JSON = 32 * 1000 * 1000;     // 展開後の上限 (gzip 爆弾でブラウザを固めない)
 
-    async function parseImportPayload(text) {
+    /** 展開しながら上限を超えたら**途中で**止める。全部展開してから測っても手遅れ (Codex指摘 2026-09-09)。 */
+    async function _inflateCapped(bytes, maxBytes) {
+        const body = new Response(bytes).body;
+        if (!body) throw new Error('stream unavailable');
+        const reader = body.pipeThrough(new DecompressionStream('gzip')).getReader();
+        const decoder = new TextDecoder();
+        let out = '';
+        let total = 0;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            total += value.length;
+            if (total > maxBytes) {
+                try { await reader.cancel(); } catch { /* 打ち切れなくても投げる */ }
+                throw new Error('too large');
+            }
+            out += decoder.decode(value, { stream: true });
+        }
+        return out + decoder.decode();
+    }
+
+    async function parseImportPayload(text, { maxPaste = MAX_PASTE, maxJson = MAX_JSON } = {}) {
         const trimmed = String(text == null ? '' : text).trim();
         if (!trimmed) throw new Error('貼り付けた内容が空です。');
         // ★ 上限を置く。人が貼るものなので、これを超えるのは事故か別物 (Codex指摘 2026-09-09)
-        if (trimmed.length > MAX_PASTE) {
+        if (trimmed.length > maxPaste) {
             throw new Error('貼り付けた内容が大きすぎます。取り込み用ブックマークレットの出力を貼ってください。');
         }
 
@@ -344,11 +365,12 @@
                 const binary = atob(trimmed.slice(IMPORT_PREFIX.length));
                 const bytes = new Uint8Array(binary.length);
                 for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-                const body = new Response(bytes).body;
-                if (!body) throw new Error('stream unavailable');
-                json = await new Response(body.pipeThrough(new DecompressionStream('gzip'))).text();
-                if (json.length > MAX_JSON) throw new Error('too large');
-            } catch {
+                json = await _inflateCapped(bytes, maxJson);
+            } catch (e) {
+                // 大きすぎと壊れているは別物 — 貼り直せば直るのかどうかが変わる
+                if (e && e.message === 'too large') {
+                    throw new Error('展開した内容が大きすぎます。取り込み用ブックマークレットの出力を貼ってください。');
+                }
                 throw new Error('データの展開に失敗しました。コピーが途中で切れていないか確認してください。');
             }
         }
@@ -409,11 +431,18 @@
             return { status: 'error', detail: '対象のキャラが1体も取れませんでした', rows: [], unknown: got.unknown, save: false };
         }
         // ★ 応答が code=0 でも、頼んだぶんの詳細が全部返るとは限らない。
-        //   欠けたまま「そのシーズンのスナップショット」として残すと、静かに穴の空いた記録になる
-        const requested = Number.isFinite(member.requested) ? member.requested
-            : (Array.isArray(member.characters) ? member.characters.length : 0);
-        const got_ = Array.isArray(member.details) ? member.details.length : 0;
-        if (requested > 0 && got_ < requested) {
+        //   欠けたまま「そのシーズンのスナップショット」として残すと、静かに穴の空いた記録になる。
+        //   ★ 件数の比較では騙される (重複・対応表に無いキャラ・wanted で外したぶんが数を埋める)。
+        //   **頼んだ name_code が全部返っているか**を集合で見る (Codex指摘 2026-09-09)
+        const codesOf = (list) => new Set((Array.isArray(list) ? list : [])
+            .map((x) => (x && x.name_code != null ? String(x.name_code) : null)).filter(Boolean));
+        const askedCodes = codesOf(member.characters);
+        const gotCodes = codesOf(member.details);
+        const missingCodes = [...askedCodes].filter((c) => !gotCodes.has(c));
+        // requested は生成コードが記録した「頼んだ数」。characters 自体が途中で切れていたら気づける
+        const requested = Number.isFinite(member.requested) ? member.requested : askedCodes.size;
+        if (requested > 0 && (missingCodes.length > 0 || askedCodes.size < requested)) {
+            const got_ = askedCodes.size - missingCodes.length;
             return {
                 status: 'error',
                 detail: `育成の詳細が ${got_}/${requested} 体しか返りませんでした。取り直してください`,
