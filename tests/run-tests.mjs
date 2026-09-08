@@ -5903,6 +5903,51 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(only.skipped, ['サクラ']);
     });
 
+    test('★ 本当に 0 の値を「未取得」に化けさせない (画面は — なのに差分だけ計算される)', () => {
+        const map = { '1': { jp: 'X', pad: 'X' } };
+        const zero = dom.toRows({
+            details: [{ name_code: 1, grade: 0, core: 0, lv: 1, skill1_lv: 0, skill2_lv: 0, combat: 0, attractive_lv: 0 }],
+            stateEffects: EFFECTS, nameCodeMap: map,
+        }).rows[0];
+        // 未突破・スキルLv0・戦闘力0 は「そういう値」であって「取れなかった」ではない
+        assert.equal(zero.grade, 0); assert.equal(zero.core, 0);
+        assert.equal(zero.skill1_lv, 0); assert.equal(zero.combat, 0); assert.equal(zero.attractive_lv, 0);
+
+        // 応答に無い項目だけが null になる
+        const absent = dom.toRows({ details: [{ name_code: 1 }], stateEffects: EFFECTS, nameCodeMap: map }).rows[0];
+        assert.equal(absent.grade, null); assert.equal(absent.skill1_lv, null); assert.equal(absent.combat, null);
+
+        // 0 同士は「同じ」、null 相手は「分からない」。null を 0 として比べない
+        const same = dom.compare(zero, zero).rows;
+        assert.equal(same.find((r) => r.key === 'combat').lead, 'same');
+        assert.equal(same.find((r) => r.key === 'combat').diff, 0);
+        assert.equal(same.find((r) => r.key === 'growth').text === undefined, true);
+        assert.equal(same.find((r) => r.key === 'growth').mine, '0凸');
+
+        const mixed = dom.compare(absent, zero).rows;
+        const s1 = mixed.find((r) => r.key === 'skill1_lv');
+        assert.equal(s1.mine, '—');
+        assert.equal(s1.theirs, 'Lv0');
+        assert.equal(s1.lead, 'unknown', 'null を 0 として比べている');
+        assert.equal(s1.diff, null);
+        assert.equal(mixed.find((r) => r.key === 'growth').mine, '—', '突破が分からないのに 0凸 と言い切っている');
+    });
+
+    test('★ state_effects が足りないまま「オーバーロード無し」として保存させない', () => {
+        const map = { '1': { jp: 'X', pad: 'X' } };
+        // 枠は埋まっているのに state_effects が空 = 意味が分からない。数えて呼び出し側に返す
+        const blind = dom.toRows({
+            details: [{ name_code: 1, head_equip_option1_id: 555, torso_equip_option2_id: 556 }],
+            stateEffects: [], nameCodeMap: map,
+        });
+        assert.equal(blind.optionsUnresolved, 2, '解決できなかった枠を数えていない');
+        assert.deepEqual(blind.rows[0].overload, {});
+        // 解決できていれば 0
+        const ok = dom.toRows({ details: [mkDetail()], stateEffects: EFFECTS, nameCodeMap: NAME_MAP });
+        assert.equal(ok.optionsUnresolved, 0);
+        assert.equal(dom.unresolvedOptions(mkDetail({ arm_equip_option1_id: 999 }), dom.buildOptionMap(EFFECTS)), 1);
+    });
+
     test('★ 同名の別キャラを取り違えない: name_code 3015 は 鈴原サクラ', () => {
         // CDN ではどちらも日本語名が「サクラ」。対応表が name_code で引けていれば取り違えない
         const got = dom.toRows({

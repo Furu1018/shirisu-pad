@@ -37,7 +37,13 @@
     const MAX_CORE = 7;
     const MAX_GRADE = 3;
 
+    // num は「無ければ 0」。装備の枠番号のように 0 が意味を持つ計算で使う。
     const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+    // ★ val は「無ければ null」。保存する値はこちらを使う — `num(x) || null` と書くと
+    //   **本当に 0 の値 (スキルLv0・戦闘力0・未突破) が「未取得」に化ける** (Codex指摘 2026-09-09)。
+    //   化けると、画面は「—」なのに差分は 0 として計算される、という食い違いが出る
+    const val = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    const pick = (a, b) => (val(a) != null ? val(a) : val(b));
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
     // ---- 突破とコア -------------------------------------------------------
@@ -89,6 +95,21 @@
             }
         }
         return total;
+    }
+
+    /**
+     * 埋まっているのに state_effects に無かった枠の数。
+     * ★ これが 0 でないのに保存すると、オーバーロードが「無い」ことにされてしまう
+     */
+    function unresolvedOptions(detail, optionMap) {
+        let bad = 0;
+        for (const [prefix] of PARTS) {
+            for (const slot of [1, 2, 3]) {
+                const id = num(detail && detail[`${prefix}_equip_option${slot}_id`]);
+                if (id && !optionMap.has(id)) bad += 1;
+            }
+        }
+        return bad;
     }
 
     /** オーバーロードが何枠埋まっているか (12枠中)。育成の進み具合の目安になる。 */
@@ -146,6 +167,7 @@
         const unknown = [];
         const skipped = [];
         const seen = new Set();
+        let unresolved = 0;
         for (const detail of Array.isArray(details) ? details : []) {
             const code = detail && detail.name_code != null ? String(detail.name_code) : null;
             if (!code) continue;
@@ -158,27 +180,30 @@
             seen.add(name);
 
             const base = baseByCode.get(code) || {};
-            const grade = detail.grade != null ? num(detail.grade) : num(base.grade);
-            const core = detail.core != null ? num(detail.core) : num(base.core);
+            // 詳細側を優先し、無ければ一覧側。どちらにも無ければ null (0 とは区別する)
             rows.push({
                 character_name: name,
                 name_code: Number(code),
-                grade, core,
-                lv: num(detail.lv) || num(base.lv) || null,
-                skill1_lv: num(detail.skill1_lv) || null,
-                skill2_lv: num(detail.skill2_lv) || null,
-                ulti_skill_lv: num(detail.ulti_skill_lv) || null,
-                combat: num(detail.combat) || null,
-                attractive_lv: num(detail.attractive_lv) || null,
-                harmony_cube_tid: num(detail.harmony_cube_tid) || null,
-                harmony_cube_lv: num(detail.harmony_cube_lv) || null,
-                favorite_item_tid: num(detail.favorite_item_tid) || null,
-                favorite_item_lv: num(detail.favorite_item_lv) || null,
+                grade: pick(detail.grade, base.grade),
+                core: pick(detail.core, base.core),
+                lv: pick(detail.lv, base.lv),
+                skill1_lv: val(detail.skill1_lv),
+                skill2_lv: val(detail.skill2_lv),
+                ulti_skill_lv: val(detail.ulti_skill_lv),
+                combat: val(detail.combat),
+                attractive_lv: val(detail.attractive_lv),
+                harmony_cube_tid: val(detail.harmony_cube_tid),
+                harmony_cube_lv: val(detail.harmony_cube_lv),
+                favorite_item_tid: val(detail.favorite_item_tid),
+                favorite_item_lv: val(detail.favorite_item_lv),
                 equip: equipOf(detail),
                 overload: overloadTotals(detail, optionMap),
             });
+            unresolved += unresolvedOptions(detail, optionMap);
         }
-        return { rows, unknown, skipped };
+        // ★ 埋まっているのに意味が分からなかった枠の数。0 でなければ state_effects が
+        //   足りていない = オーバーロードを「無い」として保存してはいけない (Codex指摘 2026-09-09)
+        return { rows, unknown, skipped, optionsUnresolved: unresolved };
     }
 
     // ---- 取り込みの状態 ---------------------------------------------------
@@ -199,16 +224,23 @@
 
     // ---- 比べる -----------------------------------------------------------
     /** 比較する項目。上から順に並べて見せる。cmp は「大きいほうが育っている」。 */
+    // ★ value は「無ければ null」を返す。0 に畳むと、画面が「—」なのに差分だけ
+    //   計算される食い違いが出る (Codex指摘 2026-09-09)
+    const lvText = (v) => (v == null ? '—' : `Lv${v}`);
     const FIELDS = [
-        { key: 'growth', label: '突破', text: (r) => gradeText(r.grade, r.core), value: (r) => growthRank(r.grade, r.core) },
-        { key: 'lv', label: 'レベル', text: (r) => (r.lv ? `Lv${r.lv}` : '—'), value: (r) => num(r.lv) },
-        { key: 'skill1_lv', label: 'スキル1', text: (r) => (r.skill1_lv ? `Lv${r.skill1_lv}` : '—'), value: (r) => num(r.skill1_lv) },
-        { key: 'skill2_lv', label: 'スキル2', text: (r) => (r.skill2_lv ? `Lv${r.skill2_lv}` : '—'), value: (r) => num(r.skill2_lv) },
-        { key: 'ulti_skill_lv', label: 'バースト', text: (r) => (r.ulti_skill_lv ? `Lv${r.ulti_skill_lv}` : '—'), value: (r) => num(r.ulti_skill_lv) },
-        { key: 'combat', label: '戦闘力', text: (r) => (r.combat ? r.combat.toLocaleString('ja-JP') : '—'), value: (r) => num(r.combat) },
-        { key: 'attractive_lv', label: '好感度', text: (r) => (r.attractive_lv ? `Lv${r.attractive_lv}` : '—'), value: (r) => num(r.attractive_lv) },
-        { key: 'harmony_cube_lv', label: 'キューブ', text: (r) => (r.harmony_cube_lv ? `Lv${r.harmony_cube_lv}` : '—'), value: (r) => num(r.harmony_cube_lv) },
-        { key: 'favorite_item_lv', label: 'お気に入り', text: (r) => (r.favorite_item_lv ? `Lv${r.favorite_item_lv}` : '—'), value: (r) => num(r.favorite_item_lv) },
+        {
+            key: 'growth', label: '突破',
+            text: (r) => (r.grade == null && r.core == null ? '—' : gradeText(r.grade, r.core)),
+            value: (r) => (r.grade == null && r.core == null ? null : growthRank(r.grade, r.core)),
+        },
+        { key: 'lv', label: 'レベル', text: (r) => lvText(r.lv), value: (r) => val(r.lv) },
+        { key: 'skill1_lv', label: 'スキル1', text: (r) => lvText(r.skill1_lv), value: (r) => val(r.skill1_lv) },
+        { key: 'skill2_lv', label: 'スキル2', text: (r) => lvText(r.skill2_lv), value: (r) => val(r.skill2_lv) },
+        { key: 'ulti_skill_lv', label: 'バースト', text: (r) => lvText(r.ulti_skill_lv), value: (r) => val(r.ulti_skill_lv) },
+        { key: 'combat', label: '戦闘力', text: (r) => (r.combat == null ? '—' : r.combat.toLocaleString('ja-JP')), value: (r) => val(r.combat) },
+        { key: 'attractive_lv', label: '好感度', text: (r) => lvText(r.attractive_lv), value: (r) => val(r.attractive_lv) },
+        { key: 'harmony_cube_lv', label: 'キューブ', text: (r) => lvText(r.harmony_cube_lv), value: (r) => val(r.harmony_cube_lv) },
+        { key: 'favorite_item_lv', label: 'お気に入り', text: (r) => lvText(r.favorite_item_lv), value: (r) => val(r.favorite_item_lv) },
     ];
 
     /**
@@ -288,7 +320,7 @@
 
     root.growthDomain = {
         OVERLOAD_JP, PARTS, STATUS_JP, FIELDS, CORP_TIER, MAX_GRADE, MAX_CORE,
-        growthRank, gradeText, buildOptionMap, overloadTotals, overloadSlotCount,
+        growthRank, gradeText, buildOptionMap, overloadTotals, overloadSlotCount, unresolvedOptions,
         equipOf, toRows, statusOfCode, compare, compareSquad, usedCharacters,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

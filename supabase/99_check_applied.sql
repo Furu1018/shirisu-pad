@@ -252,7 +252,9 @@ SELECT * FROM (
          -- 識別子の一意性は名前だけでなく定義まで見る (2人に同じ識別子が付くと他人の育成が別人に付く)
          AND EXISTS (SELECT 1 FROM pg_indexes
                       WHERE schemaname = 'public' AND indexname = 'uq_players_blabla_openid'
-                        AND indexdef LIKE '%UNIQUE%' AND indexdef LIKE '%blabla_openid%')
+                        AND indexdef LIKE '%UNIQUE%' AND indexdef LIKE '%blabla_openid%'
+                        -- 部分条件まで見る (WHERE が無いと未設定の NULL 同士でぶつかる作りに見える)
+                        AND indexdef LIKE '%WHERE%' AND indexdef LIKE '%IS NOT NULL%')
          -- 状態の綴りが固定されていること (private と error を混ぜると催促の相手を間違える)
          AND EXISTS (SELECT 1 FROM pg_constraint
                       WHERE conname = 'member_growth_status_status_check'
