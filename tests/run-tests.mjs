@@ -4863,7 +4863,7 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(!/async function toggleTeamEditPopular/.test(html), '旧の開閉関数が残っている');
         assert.ok(/if \(typeof _teSyncPopular === 'function'\) _teSyncPopular\(_teTopOpen\);/.test(html), 'よく使う編成の開閉で統計を同居させていない');
         const sync = html.match(/async function _teSyncPopular\(open\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(_tePopularLoadedFor === attrKey\) return;/.test(sync), '開くたびに読み直している');
+        assert.ok(/if \(_tePopularLoadedFor === attrKey \|\| _tePopularLoadingFor === attrKey\) return;/.test(sync), '開くたびに読み直している / 読込中の二重読みを止めていない');
         assert.ok(/if \(_myTeamEditAttr !== attrKey\) return;/.test(sync), '別属性に切り替わったのに描いてしまう');
     });
     test('★ 提出バーは 編成の変更・ダメージ入力・開いたとき・提出のあと に描き直される', () => {
@@ -4874,7 +4874,7 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(/_renderTeamEditBar\(\)/.test(icon), '編成の変更で描き直していない');
         assert.ok(/_myTeamEditSubmittedB = \(window\.mockLevelsDomain && _myTeamEditLevels\)/.test(html), '開いた時点の提出値を基準にしていない');
         const save = html.match(/async function handleMyTeamEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/_myTeamEditSubmittedB = hasEntries \? dmgVal : 0;\s*\n\s*_renderTeamEditBar\(\);/.test(save), '提出のあとに基準を更新していない');
+        assert.ok(/_myTeamEditSubmittedB = hasEntries \? dmgVal : 0;\s*\n\s*_myTeamEditOpenedTeamCount = canonical\.length;\s*\n\s*_renderTeamEditBar\(\);/.test(save), '提出のあとに基準 (提出値・編成の人数) を更新していない');
         assert.ok(/_teAllRows = rows \|\| \[\];\s*\n\s*_renderTeamEditResv\(id, saveAttr, savedSlot\)/.test(save), '提出のあとに予約の導線を描き直していない');
     });
 }

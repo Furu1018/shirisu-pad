@@ -10124,6 +10124,7 @@
             // 開くたびに絞り込み・選択状態を戻す (前回の属性の状態を持ち越さない)
             // 編成変更の検知はここを基準にする (初期描画では発火させない)
             _myTeamEditLoadedTeam = current.filter(Boolean).slice();
+            _myTeamEditOpenedTeamCount = _myTeamEditLoadedTeam.length;
             _teArmed = current.findIndex(v => !v);
             if (_teArmed < 0) _teArmed = null;
             _teFilter = 'all'; _teQuery = ''; _teExpanded = false;
@@ -10183,6 +10184,7 @@
         // シートの下に固定して、要約 (属性・編成・ダメージ) と足りないものを常に出す。
         // 編成 (updateMyTeamEditIcon) とダメージ (_renderTeamEditLevelNote) の変更経路から呼ばれる
         let _myTeamEditSubmittedB = 0;   // 開いた時点の提出値 (編集中の値と違えば「33.1B → 35.0B」と出す)
+        let _myTeamEditOpenedTeamCount = 0;   // 開いた時点の編成の人数 (空で提出すると編成をクリアする、を塞がないため — Codex指摘)
         function _renderTeamEditBar() {
             const sum = document.getElementById('myTeamEditBarSum');
             const btn = document.getElementById('myTeamEditSubmit');
@@ -10194,6 +10196,7 @@
             const dmg = _teDamageValue();
             const before = Number(_myTeamEditSubmittedB) || 0;
             const hadBefore = before > 0;
+            const hadTeam = (Number(_myTeamEditOpenedTeamCount) || 0) > 0;   // ダメージ無しで編成だけ提出していた人も、空で提出して消せる
             const dmgHtml = dmg > 0
                 ? (hadBefore && Math.abs(dmg - before) > 1e-9
                     ? `<span class="diff">${before}B → ${dmg}B</span>`
@@ -10205,18 +10208,20 @@
             else if (dmg <= 0 && filled === 5) { status = 'ダメージが未入力です'; cls = 'todo'; }
             else if (dmg > 0) { status = `あと${5 - filled}人 (未登録でも提出はできます)`; cls = 'todo'; }
             else if (filled > 0) { status = `あと${5 - filled}人とダメージで提出できます`; cls = 'todo'; }
-            else { status = hadBefore ? '空で提出すると測定をクリアします' : '編成とダメージを入れてください'; cls = 'todo'; }
+            else { status = hadBefore ? '空で提出すると測定をクリアします' : (hadTeam ? '空で提出すると編成をクリアします' : '編成とダメージを入れてください'); cls = 'todo'; }
             sum.innerHTML = `<b>${escapeHtml(ptName)}PT 編成${SLOT_JP[_myTeamEditSlot] || '①'}</b>${dmgHtml}<span class="${cls}">・${escapeHtml(status)}</span>`;
             // ボタン: 5人+ダメージで黒く点灯。ダメージだけ/編成だけでも提出はできる (従来の保存と同じ意味) が、暗い灰色で示す。
             // 何も無い (かつ消すものも無い) ときだけ押せない
             const complete = dmg > 0 && filled === 5;
-            const anything = dmg > 0 || filled > 0 || hadBefore;
+            const anything = dmg > 0 || filled > 0 || hadBefore || hadTeam;
             btn.disabled = !anything;
             btn.classList.toggle('partial', anything && !complete);
-            btn.textContent = dmg > 0 ? '提出する' : (hadBefore ? '測定をクリアして提出' : '編成だけ提出する');
+            btn.textContent = dmg > 0 ? '提出する'
+                : (hadBefore ? '測定をクリアして提出' : (filled > 0 ? '編成だけ提出する' : '編成をクリアして提出'));
         }
         // 「みんなの編成」の中の人気編成の参考 (統計)。開いたときに1回だけ読む
         let _tePopularLoadedFor = null;
+        let _tePopularLoadingFor = null;   // 読込中に閉じて開き直しても二重に読まない (Codex指摘 2026-09-08)
         async function _teSyncPopular(open) {
             const popEl = document.getElementById('myTeamEditPopular');
             if (!popEl) return;
@@ -10224,7 +10229,8 @@
             const attrKey = _myTeamEditAttr;
             if (!attrKey) return;
             popEl.style.display = 'block';
-            if (_tePopularLoadedFor === attrKey) return;
+            if (_tePopularLoadedFor === attrKey || _tePopularLoadingFor === attrKey) return;
+            _tePopularLoadingFor = attrKey;
             const ptName = PT_ATTRS.find(x => x.key === attrKey)?.name || '';
             popEl.innerHTML = '<p style="margin:0;font-size:11.5px;color:#A4AAB0;">読み込み中…</p>';
             try {
@@ -10234,6 +10240,8 @@
                 _tePopularLoadedFor = attrKey;
             } catch (e) {
                 popEl.innerHTML = `<p style="margin:0;font-size:11.5px;color:#FF3D44;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+            } finally {
+                if (_tePopularLoadingFor === attrKey) _tePopularLoadingFor = null;
             }
         }
 
@@ -11393,6 +11401,7 @@
                 await renderMyDamagePanels(id);
                 // 提出バー: 基準の提出値を更新 / 予約の導線は「保存済みの提出」を見るので取り直す
                 _myTeamEditSubmittedB = hasEntries ? dmgVal : 0;
+                _myTeamEditOpenedTeamCount = canonical.length;
                 _renderTeamEditBar();
                 window.supabaseLoadPlayerDamages(id.id).then(rows => {
                     if (movedOn()) return;
