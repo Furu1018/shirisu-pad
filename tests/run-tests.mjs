@@ -3428,6 +3428,21 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(rv.findActiveFor(rows, { ...key, loadoutSlot: 2 }), null);
         });
 
+        test('★ ⑧ 申請: 予約中の編成とキャラが被る編成は申請できない (同じキャラは1日1回 — 2026-09-08 実機で発覚)', () => {
+            const rows = [{ ...res({ id: 1, pid: 'p1', boss: 3, team: ['A', 'B', 'C', 'D', 'E'], status: 'approved' }), raid_level: null }];
+            const key = { playerId: 'p1', bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 };
+            const r = rv.canRequest(rows, { ...key, characters: ['E', 'x', 'y', 'z', 'w'] });
+            assert.equal(r.ok, false); assert.equal(r.reason, 'char_conflict'); assert.equal(r.with.id, 1);
+            assert.equal(rv.canRequest(rows, { ...key, characters: ['v', 'w', 'x', 'y', 'z'] }).ok, true, '被らなければ申請できる');
+            assert.equal(rv.canRequest(rows, { ...key, characters: [] }).ok, true, '編成が分からなければ止めない');
+            // 表記ゆれ (全角/空白/大小) は同じキャラとみなす
+            assert.equal(rv.canRequest(rows, { ...key, characters: [' e '] }).reason, 'char_conflict');
+            // 終わった予約・別人の予約とは被らない
+            assert.equal(rv.canRequest([{ ...rows[0], status: 'released' }], { ...key, characters: ['A'] }).ok, true);
+            assert.equal(rv.canRequest([{ ...rows[0], player_id: 'p2' }], { ...key, characters: ['A'] }).ok, true);
+            assert.equal(rv.conflictingReservation(rows, { playerId: 'p1', characters: ['A'], excludeId: 1 }), null, '自分自身は除ける');
+        });
+
         test('★ ⑧ 申請: 残凸を超える申請はボタンを出さない (DBで弾かれる前に止める)', () => {
             const key = { playerId: 'p1', level: 2, bossNumber: 3, loadoutSlot: 1 };
             assert.equal(rv.canRequest([], { ...key, doneAttacks: 0 }).ok, true);
@@ -3838,15 +3853,36 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.match(t, /Lv3 の開放は 11時/);
         assert.equal(rv.unmetText({ reason: 'zzz' }), '置けませんでした', '未知の理由でもコードを出さない');
     });
+    test('★ 予約: 承認すると固定済みの予約が置けなくなるなら止める (同じ人 = 承認不可 / 他人 = 強く警告)', () => {
+        const plan = (unmet) => ({ fullyClearedThrough: 3, unusedAttacks: 10, totalCreditedB: 700, levels: [], unmetReservations: unmet });
+        // 候補 (id 42, p1) を足すと、p1 の固定済み id 41 が置けなくなる = キャラ被り
+        const r = rv.approvalImpact(plan([]), plan([{ reservationId: 41, memberId: 'p1', memberName: 'A', bossNumber: 3, loadoutSlot: 1, reason: 'conflict' }]), null, 42, 'p1');
+        assert.equal(r.blocking, true);
+        assert.equal(r.blockingHard, true, '同じ人のキャラ被りを承認できてしまう');
+        assert.equal(r.breaks.length, 1);
+        assert.match(r.breaksText, /A の予約 \(B3 編成①\) が置けなくなります: ほかの凸とキャラが被るため置けません/);
+        assert.ok(r.warnings.some(w => w.includes('固定済みの予約が置けなくなります')));
+        // 他人の予約が置けなくなる = 止めないが警告
+        const o = rv.approvalImpact(plan([]), plan([{ reservationId: 41, memberId: 'p2', memberName: 'B', bossNumber: 3, loadoutSlot: 1, reason: 'conflict' }]), null, 42, 'p1');
+        assert.equal(o.blockingHard, false); assert.equal(o.blocking, true); assert.equal(o.breaks.length, 1);
+        // もともと置けていなかった予約は「承認で壊れた」に数えない
+        const already = plan([{ reservationId: 41, memberId: 'p1', reason: 'conflict' }]);
+        assert.equal(rv.approvalImpact(already, already, null, 42, 'p1').breaks.length, 0);
+    });
     test('★ 予約: 承認前の影響は「候補そのものが置けない」を最初の警告にして止める', () => {
         const plan = (unmet) => ({ fullyClearedThrough: 3, unusedAttacks: 10, totalCreditedB: 700, levels: [], unmetReservations: unmet });
         const r = rv.approvalImpact(plan([]), plan([{ reservationId: 42, reason: 'no_boss_at_time' }]), null, 42);
         assert.equal(r.blocking, true);
         assert.equal(r.cannotPlace, true);
         assert.match(r.warnings[0], /この予約は置けません: 約束の時刻には、そのボスがいない見込みです/);
+        // 別の予約が新たに置けなくなるのは「候補が置けない」ではなく「固定済みが壊れる」(breaks) — 承認不可ではないが警告
         const ok = rv.approvalImpact(plan([]), plan([{ reservationId: 41, reason: 'conflict' }]), null, 42);
         assert.equal(ok.cannotPlace, false, '別の予約の未達で候補を止めてはいけない');
-        assert.equal(ok.blocking, false);
+        assert.equal(ok.blockingHard, false, '本人が分からないのに承認不可にしている');
+        assert.equal(ok.breaks.length, 1); assert.equal(ok.blocking, true);
+        // 何も壊れなければ blocking も false
+        const calm = rv.approvalImpact(plan([]), plan([]), null, 42, 'p1');
+        assert.equal(calm.blocking, false); assert.equal(calm.breaks.length, 0); assert.equal(calm.breaksText, '');
     });
 
     // ===== 本人のホーム = 3枠 (2026-09-08) =====
@@ -3877,6 +3913,16 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.equal(h.stale, true, '配信が予約を知らないのに stale でない');
             assert.equal(h.slots[0].kind, 'fixed'); assert.equal(h.slots[0].inPlan, false);
             assert.equal(h.slots.filter(x => x.kind === 'plan').length, 2, '予約1 + 配信2 で3枠。4枚目を出してはいけない');
+        });
+        test('★ ホーム3枠: 配信が「置けなかった」予約は stale (組み直し中) にせず unmet で理由を持つ / 配信後の予約にも数えない', () => {
+            const resv = [{ ...res({ id: 5, status: 'approved', boss: 3, slot: 'h21', lo: 1 }), raid_level: null, approved_at: 'x' }];
+            const plan = mkPlan([{ loadoutSlot: 2, hourIdx: 4, hourLabel: '9時' }]);
+            plan.unmetReservations = [{ reservationId: 5, memberId: 'p1', reason: 'conflict' }];
+            const h = rv.homeSlots({ plan, viewerId: 'p1', reservations: resv, doneCounts: new Map(), todayAttacks: 0 });
+            assert.equal(h.stale, false, '置けなかったのを組み直し待ちにしている');
+            assert.equal(h.slots[0].kind, 'fixed'); assert.equal(h.slots[0].unmet, 'conflict');
+            assert.equal(h.slots[0].unmetText, 'ほかの凸とキャラが被るため置けません');
+            assert.equal(rv.pendingRepublish(resv, plan).count, 0, '置けない予約を「配信後の予約」に数えている');
         });
         test('ホーム3枠: 配信が無ければ空きは「算出待ち」/ プラン外の実凸は枠を消費 / 取り消し希望中も固定', () => {
             const h0 = rv.homeSlots({ plan: null, viewerId: 'p1', reservations: [], doneCounts: new Map(), todayAttacks: 0 });
@@ -4899,9 +4945,19 @@ console.log('\n模擬提出シート (提出バー固定):');
         assert.ok(/supabaseLoadMyReservations\(ctx\.season\.id, identity\.id\)/.test(panels), '自分の予約を読んでいない');
         assert.ok(/filter\(r => rv\.isActive\(r\)\)/.test(panels), '生きている予約だけに絞っていない');
         // 印は右上のピルではなく、カード全体の薄い鍵 (class) + 名前行の小さな文字 (実機FB: ピルはダメージの数字と重なった)
-        assert.ok(/const resvCls = resv \? ` resv \$\{resv\.status\}` : '';/.test(panels), 'カードの透かし用 class が無い');
+        assert.ok(/const resvCls = resv \? ` resv \$\{resv\._unmet \? 'unmet' : resv\.status\}` : '';/.test(panels), 'カードの透かし用 class が無い');
         assert.ok(/\$\{isPickedVisible \? ' planpick' : ''\}\$\{resvCls\}"/.test(panels), '透かしをカードに差し込んでいない');
         assert.ok(/class="dc-dmg-resvtag"/.test(panels) && /\$\{resvTag\}/.test(panels), '名前行の文字が無い');
+        // 置けていない予約は「!」(unmet) — 配信プランの unmetReservations を見る
+        assert.ok(/r\._unmet = unmetIds\.has\(String\(r\.id\)\)/.test(panels), '置けていない予約を判定していない');
+        assert.ok(/resv\._unmet \? 'unmet' : resv\.status/.test(panels), '置けていない予約の透かしを鍵のままにしている');
+        assert.ok(/\.dc-dmg-panel\.resv\.unmet \{/.test(html), '「!」の透かしの CSS が無い');
+        // 申請の3経路すべてで、予約中の編成とのキャラ被りを止める
+        assert.equal((html.match(/characters: (Array\.isArray\(a\.team\) \? a\.team : \[\]|st\.lo\.characters|d\.draft\.characters)/g) || []).length, 3, 'canRequest に編成を渡していない経路がある');
+        assert.ok(/rv\.conflictingReservation\(mine, \{ playerId: identity\.id, characters:/.test(html), '模擬タブの予約欄でキャラ被りを見ていない');
+        // 承認側: 本人の固定済みが置けなくなるなら承認不可
+        assert.ok(/if \(impact && impact\.blockingHard\) \{/.test(html), '承認でキャラ被りを止めていない');
+        assert.ok(/window\.planDiffDomain, row\.id, row\.player_id\)/.test(html), '候補の本人を渡していない');
         assert.ok(!/\$\{resvBadge\}/.test(panels), '右上のピルが残っている');
         assert.ok(/\.dc-dmg-panel\.resv \{\s*\n\s*background-image: url\("data:image\/svg\+xml/.test(html), '薄い鍵の透かしの CSS が無い');
         const del = html.match(/async function _deleteMyTeamEditSlot\(slot\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -5256,7 +5312,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/if \(impact && impact\.cannotPlace\) \{/.test(ap), '置けない候補を止めていない');
         assert.ok(/impact\.cannotPlaceText/.test(ap), '理由を出していない');
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/window\.planDiffDomain, row\.id\)/.test(im), '候補IDを渡していない (置けたかを判定できない)');
+        assert.ok(/window\.planDiffDomain, row\.id, row\.player_id\)/.test(im), '候補IDと本人を渡していない (置けたか・本人の予約が壊れるかを判定できない)');
     });
     test('★ A: 運営ホームのヒーロー「配信後の予約があります、確認して下さい」→ 組み直し→配信へ飛ぶ', () => {
         const fn = html.match(/async function renderMyNextAction\([\s\S]*?\n        \}\n/)?.[0] || '';

@@ -49,7 +49,7 @@ const ATTRS = [
     { key: 'wind', name: '風圧', icon: 'e.png' },
 ];
 
-function run({ damages = [], picks = new Map(), excluded = false, resv = [], bosses = [] } = {}) {
+function run({ damages = [], picks = new Map(), excluded = false, resv = [], bosses = [], pub = null } = {}) {
     let boxHtml = '';
     const box = { set innerHTML(v) { boxHtml = v; }, get innerHTML() { return boxHtml; }, style: {} };
     const env = {
@@ -57,6 +57,7 @@ function run({ damages = [], picks = new Map(), excluded = false, resv = [], bos
         window: {
             supabaseLoadPlayerDamages: async () => damages,
             supabaseLoadMyReservations: async () => resv,
+            supabaseGetPublishedPlan: async () => pub,
             reservationsDomain: { isActive: (r) => ['requested', 'approved', 'cancel_requested'].includes(r.status) },
             mockExclusionDomain: { isExcluded: () => excluded, exclusionLabel: () => '運営が除外 (理由)' },
         },
@@ -152,9 +153,25 @@ await test('★ 予約中の編成に「🔒 予約済み / 承認待ち」の�
     // 透かし (カードの class) + 名前行の小さな文字。ダメージの数字の上にピルを置かない (実機FB 2026-09-08)
     assert.ok(/class="dc-dmg-panel[^"]* resv approved"/.test(out), '予約済みの透かし (class) が無い');
     assert.ok(/class="dc-dmg-panel[^"]* resv requested"/.test(out), '承認待ちの透かし (class) が無い');
-    assert.ok(/dc-dmg-resvtag"[^>]*>🔒 予約済み/.test(out) && /dc-dmg-resvtag"[^>]*>🔒 承認待ち/.test(out), '名前行の文字が無い');
+    assert.ok(/dc-dmg-resvtag"[^>]*>予約済み</.test(out) && /dc-dmg-resvtag"[^>]*>承認待ち</.test(out), '名前行の文字が無い');
+    assert.ok(!/🔒 予約済み|🔒 承認待ち/.test(out), '文字に絵文字が付いている (透かしの鍵と二重に見える)');
     assert.equal((out.match(/ resv (approved|requested|cancel_requested)"/g) || []).length, 2, '終わった予約にも印が出ている');
     assert.ok(!/dc-dmg-resv /.test(out), '右上のピルが残っている (数字と重なる)');
+});
+
+await test('★ 置けていない予約 (配信の unmetReservations) は鍵でなく「!」の透かしと「置けていません」', async () => {
+    const bosses = [{ boss_number: 1, weakness: 'fire' }];
+    const t = run({
+        damages: [{ attribute: 'fire', slot: 1, damage_b: 50, characters: ['a', 'b', 'c', 'd', 'e'] }],
+        bosses,
+        resv: [{ id: 9, boss_number: 1, loadout_slot: 1, status: 'approved' }],
+        pub: { plan: { unmetReservations: [{ reservationId: 9, memberId: 1, reason: 'conflict' }] } },
+    });
+    await t.render({ id: 1, name: 'me' });
+    const out = t.box();
+    assert.ok(/class="dc-dmg-panel[^"]* resv unmet"/.test(out), '「!」の透かし (class) が無い');
+    assert.ok(/dc-dmg-resvtag"[^>]*>⚠ 置けていません</.test(out), '置けていない文字が無い');
+    assert.ok(!/ resv approved"/.test(out), '置けていないのに予約済みの鍵が出ている');
 });
 
 await test('予約が読めない (39未適用 / シーズン無し) でもカードは描ける', async () => {

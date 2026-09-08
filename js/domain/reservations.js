@@ -243,13 +243,21 @@
      * @param {Object} withPlan それに候補を足して解いたプラン
      * @param {Object=} diffDomain planDiffDomain (割当変更人数の算出に使う)
      */
-    function approvalImpact(basePlan, withPlan, diffDomain, candidateId = null) {
+    function approvalImpact(basePlan, withPlan, diffDomain, candidateId = null, candidateMemberId = null) {
         if (!basePlan || !withPlan) return null;
         // ★ 候補そのものが置けなかったら、それが最初の警告で、承認は止める (ユーザー決定 C の置き換え)。
         //   「10時にはそのボスがいない見込み」は予測なので自動では何もしないが、承認の時点では止めてよい
         const cand = (candidateId != null && Array.isArray(withPlan.unmetReservations))
             ? withPlan.unmetReservations.find(u => String(u.reservationId) === String(candidateId)) || null
             : null;
+        // ★ 承認すると**固定済みの予約が置けなくなる**なら、それも止める (2026-09-08 実機で発覚)。
+        //   同じ人の予約が置けなくなるのはキャラ被り = 物理的に両方できない → 承認不可。
+        //   他人の予約が置けなくなるのは枠の取り合い → 強く警告 (運営が判断)
+        const baseUnmet = new Set((Array.isArray(basePlan.unmetReservations) ? basePlan.unmetReservations : []).map(u => String(u.reservationId)));
+        const breaks = (Array.isArray(withPlan.unmetReservations) ? withPlan.unmetReservations : [])
+            .filter(u => String(u.reservationId) !== String(candidateId) && !baseUnmet.has(String(u.reservationId)))
+            .map(u => ({ ...u, sameMember: candidateMemberId != null && String(u.memberId) === String(candidateMemberId) }));
+        const breaksText = breaks.map(b => `${b.memberName || '#' + b.memberId} の予約 (B${b.bossNumber} 編成${Number(b.loadoutSlot) === 2 ? '②' : '①'}) が置けなくなります: ${unmetText(b)}`).join('\n');
         const clearBefore = Number(basePlan.fullyClearedThrough) || 0;
         const clearAfter = Number(withPlan.fullyClearedThrough) || 0;
         const unusedBefore = Number(basePlan.unusedAttacks) || 0;
@@ -265,6 +273,7 @@
         // 承認を鈍らせる条件 (押せなくはしない — 運営が例外を通せる余地は残す)
         const warnings = [];
         if (cand) warnings.push(`この予約は置けません: ${unmetText(cand)}`);
+        breaks.forEach(b => warnings.push(`承認すると固定済みの予約が置けなくなります: ${b.memberName || '#' + b.memberId} B${b.bossNumber} 編成${Number(b.loadoutSlot) === 2 ? '②' : '①'} (${unmetText(b)})`));
         if (clearAfter < clearBefore) warnings.push(`Lv${clearBefore} 完全攻略の見込みが消えます`);
         if (unusedAfter > unusedBefore) warnings.push(`未消化の凸が ${unusedBefore} → ${unusedAfter} に増えます`);
         if (risk(withPlan) > risk(basePlan)) warnings.push('時刻を確約できない凸が増えます');
@@ -275,9 +284,12 @@
             creditedDiffB: Math.round((creditedAfter - creditedBefore) * 1000) / 1000,
             movedCount,
             warnings,
-            blocking: !!cand || clearAfter < clearBefore,   // 置けない / 踏破の見込みが消える
+            blocking: !!cand || clearAfter < clearBefore || breaks.length > 0,   // 置けない / 踏破の見込みが消える / 固定済みが壊れる
             cannotPlace: !!cand,
             cannotPlaceText: cand ? unmetText(cand) : '',
+            breaks,
+            breaksText,
+            blockingHard: breaks.some(b => b.sameMember),   // 同じ人のキャラ被り = 承認不可
         };
     }
 
@@ -340,12 +352,27 @@
      * 申請してよいか。残凸を超える申請は DB のトリガーが弾くが、
      * 押せるボタンを出しておいて弾かれるのは体験が悪いので画面側でも見る
      */
-    function canRequest(rows, { playerId, bossNumber, loadoutSlot, doneAttacks }) {
+    // 同じ人の生きている予約と、編成のキャラが被っているか (同じキャラは1日1回しか使えない — 2026-09-08 実機で発覚:
+    // PT1 を予約したあと、同じキャラを含む PT2 を申請でき、承認もでき、PT1 が置けなくなった)
+    const _charKey = (c) => String(c || '').normalize('NFKC').trim().toLowerCase();
+    function conflictingReservation(rows, { playerId, characters, excludeId }) {
+        const mine = new Set((Array.isArray(characters) ? characters : []).filter(Boolean).map(_charKey));
+        if (mine.size === 0) return null;
+        return (Array.isArray(rows) ? rows : []).find(r => r && isActive(r)
+            && String(r.player_id) === String(playerId)
+            && (excludeId == null || String(r.id) !== String(excludeId))
+            && (Array.isArray(r.characters_snapshot) ? r.characters_snapshot : []).some(c => mine.has(_charKey(c)))) || null;
+    }
+
+    function canRequest(rows, { playerId, bossNumber, loadoutSlot, doneAttacks, characters }) {
         if (findActiveFor(rows, { playerId, bossNumber, loadoutSlot })) {
             return { ok: false, reason: 'already', label: '申請済み' };
         }
         const left = capacityLeft(rows, playerId, doneAttacks);
         if (left <= 0) return { ok: false, reason: 'no_capacity', label: '残り凸がありません' };
+        // ★ 予約中の編成とキャラが被る編成は申請できない (物理的に両方は実行できない)
+        const clash = conflictingReservation(rows, { playerId, characters });
+        if (clash) return { ok: false, reason: 'char_conflict', label: '予約中の編成とキャラが被っています', with: clash };
         return { ok: true, left };
     }
 
@@ -491,6 +518,9 @@
                 return ta < tb ? -1 : ta > tb ? 1 : (Number(a.id) - Number(b.id));
             });
         const rows = plan ? planRowsOf(plan, viewerId, doneCounts) : [];
+        // 配信プランが「置けなかった」予約 (キャラ被り等)。組み直し待ちではなく、置けていないことを本人に出す
+        const unmetById = new Map((Array.isArray(plan && plan.unmetReservations) ? plan.unmetReservations : [])
+            .map(u => [String(u.reservationId), u]));
         const usedRow = new Set();
         const slots = [];
         let stale = false;
@@ -502,7 +532,8 @@
                     && Number(a.bossNumber) === Number(r.boss_number) && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot)
                     && rowHonorsTime(a, r))));
             const a = idx >= 0 ? rows[idx] : null;
-            if (a) usedRow.add(idx); else if (plan) stale = true;   // 配信がこの予約を知らない
+            const um = unmetById.get(String(r.id)) || null;
+            if (a) usedRow.add(idx); else if (plan && !um) stale = true;   // 配信がこの予約を知らない (置けなかったのは別)
             slots.push({
                 kind: 'fixed', reservationId: r.id, status: r.status,
                 bossNumber: Number(r.boss_number), loadoutSlot: Number(r.loadout_slot) || 1,
@@ -512,6 +543,7 @@
                 level: a ? a.level : null, inPlan: !!a, done: !!(a && a.done),
                 bossName: a ? a.bossName : null, weakness: a ? a.weakness : null, attribute: a ? a.attribute : null,
                 approvedBy: r.approved_by || null,
+                unmet: um ? um.reason : null, unmetText: um ? unmetText(um) : '',
             });
         }
         // ② 配信の割当 (予約と重ならないもの)。3枠を超える分は配信が古い証拠 = 出さない
@@ -543,6 +575,8 @@
         const fixed = (Array.isArray(rows) ? rows : []).filter(isFixed);
         if (fixed.length === 0) return { count: 0, items: [] };
         const inPlan = new Set();
+        // 配信が「置けなかった」と知っている予約は、配信後の予約には数えない (組み直しても置けない)
+        const unmet = new Set((Array.isArray(plan && plan.unmetReservations) ? plan.unmetReservations : []).map(u => String(u.reservationId)));
         const planRows = [];
         (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv =>
             (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
@@ -550,7 +584,7 @@
                 else planRows.push({ ...a, bossNumber: Number(b.bossNumber) });
             })));
         // reservationId が無い古い配信は、誰が・ボス・編成枠・**時刻** が揃うときだけ「入っている」とみなす
-        const items = fixed.filter(r => !inPlan.has(String(r.id))
+        const items = fixed.filter(r => !inPlan.has(String(r.id)) && !unmet.has(String(r.id))
             && !planRows.some(a => String(a.memberId) === String(r.player_id)
                 && Number(a.bossNumber) === Number(r.boss_number)
                 && (Number(a.loadoutSlot) || 1) === Number(r.loadout_slot)
@@ -567,6 +601,6 @@
         capacityLeft,
         describe,
         approvalImpact,
-        planRowToDraft, findActiveFor, canRequest, matchForAttack, buildRequestDraft,
+        planRowToDraft, findActiveFor, canRequest, conflictingReservation, matchForAttack, buildRequestDraft,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -167,6 +167,19 @@ await test('★ 「わたしの凸」一覧も同じ3枠 (予約の行に取り�
     assert.ok(!/undefined|NaN/.test(out), `未定義参照が混ざっている: ${out.match(/.{40}(undefined|NaN).{40}/)?.[0]}`);
 });
 
+await test('★ 置けていない予約 (配信の unmetReservations) は「組み直し待ち」でなく ⚠ 置けていません + 理由', () => {
+    const p = plan([{ loadoutSlot: 2, team: ['f', 'g', 'h', 'i', 'j'] }]);
+    p.unmetReservations = [{ reservationId: 1, memberId: 7, level: 2, bossNumber: 3, loadoutSlot: 1, reason: 'conflict' }];
+    const t = run({ pub: p, rows: [resv({ id: 1 })] });
+    const out = t.strip({ id: 7 }, false);
+    assert.ok(/⚠ 置けていません/.test(out), '置けていない表示が無い');
+    assert.ok(/ほかの凸とキャラが被るため置けません/.test(out), '理由 (日本語) が無い');
+    assert.ok(!/組み直し待ち/.test(out) && !/運営が組み直し中/.test(out), '置けないのを組み直し待ちと言っている');
+    assert.ok(/dc-plan-card fixed unmet/.test(out));
+    const mine = t.mine(p, 7, new Map(), 2);
+    assert.ok(/⚠ 置けていません — ほかの凸とキャラが被るため置けません/.test(mine), '一覧に理由が無い');
+});
+
 await test('取り消し希望中の予約は固定のまま、印だけ変わる', () => {
     const t = run({ pub: null, rows: [resv({ id: 5, status: 'cancel_requested' })] });
     const out = t.strip({ id: 7 }, false);
