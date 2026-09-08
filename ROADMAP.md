@@ -1,6 +1,8 @@
 # しりすこPAD ロードマップ / 引き継ぎメモ
 
-最終更新: 2026-09-09 未明 自宅PC (**ユニオン育成データの取り込み — 純ロジックまで完了・本番反映済み**。
+最終更新: 2026-09-09 自宅PC (**ユニオン育成データの取り込み — 運営タブのパネルと保存まで完了・Codex 監査済み・本番反映 (7b52f38)**。
+次は実機で ① 識別子の名寄せ ② ブックマークレット実行 ③ 貼り付けて取り込み。そのあと B3 の働きかけと D1 の比較UI。
+**互換ゲートは 2026-09-09 に締めた** (min_client_build = 2026090801)。
 決定 A1·B3·C1·D1 と宿題3点の決定は下の節。**SQL 43 は適用済み** (39〜42 も適用済み)。
 次は「運営タブの取り込みパネル (UI) と保存」から — 下の「進捗」の未チェック項目。
 実機の残作業 (以前からの持ち越し): PT1/PT2 のキャラ被りの解除 → 組み直し → 配信 /
@@ -55,7 +57,7 @@
 - [x] **ブックマークレットの生成と取り込みの読み取り (純ロジック)** — `growthDomain.buildImportSnippet` /
       `parseImportPayload` / `prepareMember`。取りたい `name_code` を埋め込んで 60 件ずつ問い合わせる。
       出力は `SPG1-` の gzip+base64。**DevTools を閉じて使う**ので結果はページ上のボックスに出す
-- [ ] **← 次はここから: 運営タブの取り込みパネル (UI) と保存 (`js/supabase-client.js`)**
+- [x] **運営タブの取り込みパネル (UI) と保存** (2026-09-09・Codex 監査済み・本番反映 7b52f38)
       ① メンバーの識別子 (openid) の名寄せ — `players.blabla_openid` に保存。初回は手作業。
          BlaBlaLINK のユニオン一覧のリンクから `?uid=` を拾えば API 探索は不要な見込み
       ② ブックマークレットの生成とコピー — 対象は `growthDomain.usedCharacters(attacks)` で決める
@@ -63,6 +65,17 @@
       ④ 「取れなかった人」の一覧 (private / no_openid / error を出し分ける)
       ★ 置き場所は運営タブの段階「終了」(`opsLayout.CARDS` に `stages: ['end']` で追加)。
         使われたキャラが確定するのはレイド後なので、当日には出さない
+      → 実装: `renderOpsGrowth` / `_growthPaint` / `handleGrowthSetOpenid` / `handleGrowthCopySnippet` /
+        `handleGrowthImport`。純ロジック追加は `parseOpenid` / `wantedCodesFor` / `importSummary` / `STATUS_SHORT`。
+        保存は `supabaseLoadPlayersWithOpenid` / `supabaseSetPlayerOpenid` / `supabaseSaveMemberGrowth` (upsert のみ) /
+        `supabaseSaveMemberGrowthStatus` / `supabaseLoadMemberGrowthStatus` (43未適用は null) / `supabaseLoadSeasonAttackCharacters`。
+        実行テスト `tests/growth-panel.mjs` (12件)。
+      ★ **Codex 監査 (2026-09-09)**: 高=取り込み中にシーズンが切り替わると古いシーズンへ新しい盤面を書く →
+        開始時に写しを取る / 中=識別子を外しただけで取り込み済み (ok) を `no_openid` で上書き → 上書きしない。
+        **加えて自分で発見**: `parseImportPayload` は非同期なのに await していなかった (取り込みが必ず失敗していた)。
+        実行テストを書いた時点で出た — ソース検査では気づけない型
+      ★ **次の実機作業**: ① メンバーの識別子を BlaBlaLINK のユニオン一覧から拾って貼る (1人1回)
+        ② ブックマークレットをコピーして BlaBlaLINK で実行 (**開発者ツールは閉じたまま**) ③ 出力を貼って取り込む
 - [ ] B3 の働きかけ (運営タブの「未公開 N 人」+ 本人ホームの「あなたの育成データが未公開です」)
 - [ ] D1 の比較UI (凸カード・ダメージカードから「この編成の育成を見る」)
       → `growthDomain.compareSquad(squad, mineByName, theirsByName)` がそのまま使える

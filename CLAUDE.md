@@ -118,6 +118,17 @@ rm -f .claude/hooks/.codex-on      # OFF
   鈴原サクラがニケ本編のサクラに化ける — 生成側の `OVERRIDES` とテストの両方で固定してある。
   ★ 取得は **DevTools を閉じてブックマークレット**で行う。blablalink.com は `debugger` を
   作り続ける anti-debug を入れており、開発者ツールを開いたままだと `setTimeout` も `fetch` も返らない。
+  ★ **取り込みパネルは運営タブの段階「終了」だけ** (`opsLayout.CARDS` の `stages: ['end']`) —
+  使われたキャラが確定するのはレイド後。4段: ① 識別子のひも付け (`parseOpenid` が `?uid=` のリンクをそのまま受ける。
+  関係ない数字は拾わない — 取り違えは他人の育成が別人に付く事故) → ② ブックマークレットを作る
+  (`wantedCodesFor(usedCharacters(attacks), 対応表)`。対応表に無い名前は `missing` で名指し) →
+  ③ 貼り付けて取り込む → ④ 取れなかった人。
+  ★ **保存は upsert のみ・削除しない** (2026-09-09 の決定①)。部分的な結果で既存の記録を欠けさせない。
+  ★ **取り込みの材料は開始時に写しを取る** — 1人ずつ await する間に `renderOpsGrowth` が走ると
+  `_growth.players / used / seasonId` が次のシーズンに入れ替わる (Codex指摘)。
+  ★ **識別子を外しただけで、取り込み済み (ok) の状態を `no_openid` で上書きしない**。
+  ★ `parseImportPayload` は **非同期** (gzip 展開)。await を忘れると `box` が Promise になり取り込みが必ず失敗する —
+  実行テスト `tests/growth-panel.mjs` (描画7件 + 取り込み本体5件) がここを固定している。
   **ソルバーを拘束するのは isFixed** (approved と承認済み起点の cancel_requested。requested は提案層で計算に効かせない)。
   `input.reservations` に `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
   ★ **予約はレベルを持たない** (2026-09-08)。メンバーの約束は「この時刻に・この弱点のボスへ・この編成で」で、
@@ -331,6 +342,7 @@ node tests/home-slots.mjs     # 本人のホーム「あなたの3凸」(3枠) �
 node tests/avail-strip.mjs    # ホーム「⏰ あなたの戦闘可能時間」の帯の描画の実行テスト
 node tests/submit-bar.mjs     # 模擬提出シートの提出バー (_renderTeamEditBar) の実行テスト
 node tests/ops-stage.mjs      # 運営タブの段階ヘッダ・ヒーロー・チェックリストの描画の実行テスト
+node tests/growth-panel.mjs   # 育成データの取り込みパネルの描画 + 取り込み本体 (handleGrowthImport) の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
