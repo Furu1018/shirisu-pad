@@ -157,6 +157,21 @@ rm -f .claude/hooks/.codex-on      # OFF
   localStorage `shirisuko_ops_card_open_v1` に前日/当日別で記憶。運営OFF は全開・開閉不可。旧 sticky ジャンプナビは廃止し、
   最上部に 2×2 コックピット (HP更新・残凸・未完・締め凸未返答 → タップで該当カードを開く)。畳まれたカードの見出しには
   `opsLayoutDomain.summarize` の1行サマリー。**カードを足したら CARDS に1行追加** (先頭行が見出しであること)
+- **運営モードの段階 (準備 / 前日 / 当日 / 終了)** (運営UI再設計 2026-09-08・ユーザー決定 A〜D)。「情報量が多すぎる」→
+  運営タブの主語をカードから段階へ。判定・チェックリスト・ヒーロー (いちばん急ぐ1つ)・催促の対象は `js/domain/opsStage.js` が唯一。
+  ★ 段階は自動 (`detect`: シーズン無し=準備 / ハード日前=前日 / ハード日 5時〜翌4時=当日 / 翌日 5時以降でまだアクティブ=終了)。
+  テスト用に運営が手動で上書きできる (`handleOpsStageOverride`・localStorage `shirisuko_ops_stage_override_v1`・端末とシーズンごと。
+  自動と同じ段階を選んだら記憶しない)。**カードの前日/当日の既定と👥メンバー状況の前日/当日も段階に従う** (`_opsCardPhase` / `_mbCurrentPhase`)。
+  ★ 運営タブの先頭は 🛠トグル → 段階ヘッダ (`_opsStageBarHtml`) → ヒーロー (`_opsStageHeroHtml`) → チェックリスト (`_opsStageListHtml`・前日と終了だけ)
+  → コックピット (当日だけ)。すべて `_renderOpsStage` が `_renderOpsCockpit` と同じ材料 (盤面・_mb.rows・_resv.rows・配信) で描く。
+  ★ 段階外のカードは消さず末尾の「その他」(`#opsEtc`) へ移す — **`opsLayout.CARDS` の `stages` が唯一の定義** (`[]` = 常にその他)。
+  DOM は残るので各 renderer はそのまま更新し続ける。運営OFF (メンバー) は何もせずカードを元の並びに戻す (`_applyOpsStageCards(null)`)。
+  ★ **設定タブの運営ブロック (版のしめ切り・通知状況・メンバー管理・アクティビティ・キャラマスタ・バックアップ) は
+  「その他 › メンテナンス」へ移した** (`_initOpsEtc` が DOM ごと移し `opsMaint*` の id を付ける)。中身は「その他」を開いたときに描く
+  (`_setOpsEtcOpen`)。`renderSettingsTab` はもう運営ブロックを描かない。
+  ★ シーズン制御のボタンは `data-stage="prep"` (作成・テスト作成は小リンク) / `data-stage="end"` (終了・リセット) で段階の描画が出し分ける。
+  催促 (`_opsNudgeGroup`) は `memberStatus.nudgeMessage` の1人ずつの文面で、通知購読者かつ「今回は難しい」でない人にだけ送る。
+  実行テスト `tests/ops-stage.mjs`
 - **👥 メンバー状況ボード** (戦況タブ・運営ONのみ・運営改修 #1 2026-09-01) — 前日 (模擬/SLv/時間帯/通知) と
   当日 (凸Lv/代理/締め凸返答) を1人1行に。**「要対応」の定義は `js/domain/memberStatus.js` だけ**
   (模擬は「キャラ被りなしで3属性」が必要範囲 — 5属性は加点で強制しない・2026-09-01 ユーザー判断)
@@ -300,6 +315,7 @@ node tests/mock-panels.mjs    # 模擬タブの提出カード (renderMyDamagePa
 node tests/home-slots.mjs     # 本人のホーム「あなたの3凸」(3枠) の描画の実行テスト
 node tests/avail-strip.mjs    # ホーム「⏰ あなたの戦闘可能時間」の帯の描画の実行テスト
 node tests/submit-bar.mjs     # 模擬提出シートの提出バー (_renderTeamEditBar) の実行テスト
+node tests/ops-stage.mjs      # 運営タブの段階ヘッダ・ヒーロー・チェックリストの描画の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で

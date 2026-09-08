@@ -23,6 +23,7 @@ import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テス�
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
 import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メンバー状況ボード)
 import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タブの折りたたみ + コックピット)
+import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -2676,6 +2677,149 @@ console.log('\nopsLayoutDomain:');
         assert.equal(e.cockpit.find(t => t.key === 'todo').value, '—');
         assert.equal(e.cockpit.find(t => t.key === 'hp').value, '—');
         assert.equal(dom.summarize({ season: { current_level: 1 }, bosses: [{ updated_at: new Date(now - 30 * 1000).toISOString() }], now }).summaries.opsSecBoss.text, 'Lv1 · 残0体 · HP更新 たった今');
+    });
+}
+
+// ---- opsStageDomain (運営モードの段階: 準備 / 前日 / 当日 / 終了 — 運営UI再設計 2026-09-08) ----
+console.log('\nopsStageDomain:');
+{
+    const dom = globalThis.opsStageDomain;
+    const T = (s) => Date.parse(s);
+    const season = { id: 7, is_active: true, hard_date: '2026-09-11', month_key: '2026-09' };
+    test('detect: シーズン無し=準備 / ハード日前=前日 / 当日は 5時〜翌4時 / 翌日 5時以降=終了 / 終了済み=準備', () => {
+        assert.equal(dom.detect({ season: null }).stage, 'prep');
+        assert.equal(dom.detect({ season: { ...season, is_active: false } }).stage, 'prep');
+        assert.equal(dom.detect({ season: { ...season, hard_date: null } }).stage, 'pre');
+        assert.equal(dom.detect({ season, now: T('2026-09-10T23:59:00+09:00') }).stage, 'pre');
+        assert.equal(dom.detect({ season, now: T('2026-09-11T04:59:00+09:00') }).stage, 'pre', '5時より前はまだ前日');
+        assert.equal(dom.detect({ season, now: T('2026-09-11T05:00:00+09:00') }).stage, 'day');
+        assert.equal(dom.detect({ season, now: T('2026-09-12T04:59:00+09:00') }).stage, 'day', '翌4時までは当日');
+        assert.equal(dom.detect({ season, now: T('2026-09-12T05:00:00+09:00') }).stage, 'end');
+        assert.equal(dom.detect({ season, now: T('2026-09-20T12:00:00+09:00') }).stage, 'end');
+    });
+    test('detect: 手動上書きは自動より優先し overridden を立てる / 不正な値は無視 / 記憶はシーズンごと', () => {
+        const r = dom.detect({ season, now: T('2026-09-10T12:00:00+09:00'), override: 'day' });
+        assert.equal(r.stage, 'day'); assert.equal(r.auto, 'pre'); assert.equal(r.overridden, true);
+        assert.equal(dom.detect({ season, now: T('2026-09-10T12:00:00+09:00'), override: 'pre' }).overridden, false, '自動と同じ値なら上書きではない');
+        assert.equal(dom.detect({ season, now: T('2026-09-10T12:00:00+09:00'), override: 'bogus' }).stage, 'pre');
+        const raw = dom.serializeOverride(7, 'end');
+        assert.equal(dom.parseOverride(raw, 7), 'end');
+        assert.equal(dom.parseOverride(raw, 8), null, '別シーズンの記憶を引き継がない');
+        assert.equal(dom.parseOverride('{broken', 7), null);
+        assert.equal(dom.serializeOverride(7, 'bogus'), null);
+        assert.equal(dom.nextOf('pre'), 'day'); assert.equal(dom.prevOf('prep'), 'prep'); assert.equal(dom.nextOf('end'), 'end');
+    });
+    test('visibleIn: stages の無いカードは全段階 / ある場合はその段階だけ / 空 = どの段階でも「その他」', () => {
+        assert.equal(dom.visibleIn({ id: 'x' }, 'pre'), true);
+        assert.equal(dom.visibleIn({ id: 'x', stages: ['day'] }, 'pre'), false);
+        assert.equal(dom.visibleIn({ id: 'x', stages: ['day'] }, 'day'), true);
+        assert.equal(dom.visibleIn({ id: 'x', stages: [] }, 'day'), false);
+    });
+    test('checklist(前日): ボス設定 / 提出 / 時間帯の確認 / 通知OFF / 予約 / 配信 — 未ロードは pending (0 と混同しない)', () => {
+        const bosses = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, attribute: 'fire', weakness: 'water', total_hp_raw: n <= 4 ? 100 : 0 }));
+        const mbRows = [
+            { mockOk: true, availSupported: true, availConfirmed: true, push: true, reasons: [] },
+            { mockOk: false, availSupported: true, availConfirmed: false, push: false, reasons: [{ key: 'mock' }, { key: 'availConfirm' }, { key: 'push' }] },
+            { mockOk: true, availSupported: true, availConfirmed: false, push: true, reasons: [{ key: 'availConfirm' }] },
+        ];
+        const rows = dom.checklist({ stage: 'pre', season, bosses, mbRows, reservations: { pending: 2, approved: 1 }, published: false, pendingRepublish: 0 });
+        const by = Object.fromEntries(rows.map(r => [r.key, r]));
+        assert.deepEqual(rows.map(r => r.key), ['bosses', 'mock', 'avail', 'push', 'resv', 'publish']);
+        assert.equal(by.bosses.value, 4); assert.equal(by.bosses.done, false);
+        assert.equal(by.mock.value, 2); assert.equal(by.mock.total, 3); assert.equal(by.mock.nudge, 'mock');
+        assert.equal(by.avail.value, 1); assert.equal(by.avail.label, '戦闘可能時間の確認');
+        assert.equal(by.push.value, 1); assert.equal(by.push.done, false);
+        assert.equal(by.resv.value, '承認待ち 2'); assert.equal(by.resv.done, false);
+        assert.equal(by.publish.value, '未'); assert.equal(by.publish.done, false);
+        const p = Object.fromEntries(dom.checklist({ stage: 'pre', season, bosses, mbRows: null, reservations: null, published: null }).map(r => [r.key, r]));
+        assert.equal(p.mock.pending, true); assert.equal(p.resv.pending, true); assert.equal(p.publish.pending, true);
+        const ok = dom.checklist({ stage: 'pre', season, bosses: bosses.map(b => ({ ...b, total_hp_raw: 100 })), mbRows: [mbRows[0]], reservations: { pending: 0 }, published: true });
+        assert.ok(ok.every(r => r.done), `残っている: ${ok.filter(r => !r.done).map(r => r.key)}`);
+        const rp = dom.checklist({ stage: 'pre', season, bosses, mbRows: [mbRows[0]], reservations: { pending: 0 }, published: true, pendingRepublish: 1 }).find(r => r.key === 'publish');
+        assert.equal(rp.done, false); assert.equal(rp.action, 'republish');
+        const legacy = dom.checklist({ stage: 'pre', season, bosses, mbRows: [{ mockOk: true, availSupported: false, slots: ['h05'], flex: false, push: true }], reservations: { pending: 0 }, published: true }).find(r => r.key === 'avail');
+        assert.equal(legacy.label, '戦闘可能時間の登録'); assert.equal(legacy.value, 1);
+        assert.deepEqual(dom.checklist({ stage: 'day' }), []); assert.deepEqual(dom.checklist({ stage: 'prep' }), []);
+    });
+    test('checklist(終了): バックアップはハード日以降に保存したものだけ「保存済み」 / 終了 / リセットは任意', () => {
+        const rows = dom.checklist({ stage: 'end', season, backupSavedAt: '2026-09-10T20:00:00+09:00' });
+        assert.equal(rows[0].key, 'backup'); assert.equal(rows[0].done, false, 'ハード日より前の保存を数えている');
+        assert.equal(dom.checklist({ stage: 'end', season, backupSavedAt: '2026-09-12T09:00:00+09:00' })[0].done, true);
+        assert.equal(rows[1].key, 'end'); assert.equal(rows[2].optional, true);
+    });
+    test('hero(前日): 承認待ち > 配信後の予約 > 最初の未完 (催促の導線) > 全部済み / 未ロードは読み込み中', () => {
+        const rows = dom.checklist({ stage: 'pre', season, bosses: [], mbRows: [{ mockOk: false, availSupported: true, availConfirmed: false, push: true, reasons: [] }], reservations: { pending: 0 }, published: false });
+        assert.equal(dom.hero({ stage: 'pre', rows, reservations: { pending: 3 } }).action, 'reserve');
+        assert.equal(dom.hero({ stage: 'pre', rows, reservations: { pending: 0 }, pendingRepublish: 1 }).action, 'republish');
+        assert.equal(dom.hero({ stage: 'pre', rows, reservations: { pending: 0 } }).action, 'season-edit', 'ボス未設定が最初');
+        const m = dom.hero({ stage: 'pre', rows: rows.filter(r => r.key !== 'bosses'), reservations: { pending: 0 } });
+        assert.equal(m.action, 'nudge:mock'); assert.match(m.lead, /模擬の提出が残り 1 人/);
+        assert.match(dom.hero({ stage: 'pre', rows: rows.map(r => ({ ...r, done: true })), reservations: { pending: 0 } }).lead, /配信済み/);
+        assert.equal(dom.hero({ stage: 'pre', rows: [{ key: 'mock', pending: true }], reservations: null }).action, 'members');
+    });
+    test('hero(当日): HP更新30分以上 > 締め凸未返答 > 承認待ち > 配信後の予約 > 残凸 > 全員完了 / 準備・終了', () => {
+        assert.equal(dom.hero({ stage: 'day', freshMin: 38, finPending: 2, remainingTotal: 10 }).action, 'hp');
+        assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 2, remainingTotal: 10 }).action, 'members');
+        assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 0, reservations: { pending: 1 }, remainingTotal: 10 }).action, 'reserve');
+        assert.equal(dom.hero({ stage: 'day', freshMin: 5, finPending: 0, pendingRepublish: 1, remainingTotal: 10 }).action, 'republish');
+        const r = dom.hero({ stage: 'day', freshMin: 5, finPending: 0, remainingTotal: 41 });
+        assert.equal(r.action, 'remaining'); assert.match(r.lead, /41 凸/);
+        assert.equal(dom.hero({ stage: 'day', freshMin: null, finPending: null, remainingTotal: 0 }).action, 'end');
+        assert.equal(dom.hero({ stage: 'prep' }).action, 'create');
+        const e = dom.hero({ stage: 'end', attacksDone: 90, attackCap: 96 });
+        assert.equal(e.action, 'end'); assert.match(e.lead, /90 凸 \/ 96/);
+    });
+    test('nudgeTargets: 理由で絞り、通知を購読していて「今回は難しい」でない人だけ', () => {
+        const rows = [
+            { id: 1, push: true, availUnavailable: false, reasons: [{ key: 'mock' }] },
+            { id: 2, push: false, availUnavailable: false, reasons: [{ key: 'mock' }] },
+            { id: 3, push: true, availUnavailable: true, reasons: [{ key: 'mock' }, { key: 'availConfirm' }] },
+            { id: 4, push: true, availUnavailable: false, reasons: [{ key: 'availConfirm' }] },
+            { id: 5, push: true, availUnavailable: false, reasons: [{ key: 'slots' }] },
+        ];
+        assert.deepEqual(dom.nudgeTargets(rows, 'mock').map(r => r.id), [1]);
+        assert.deepEqual(dom.nudgeTargets(rows, 'avail').map(r => r.id), [4, 5]);
+        assert.deepEqual(dom.nudgeTargets(rows, 'x'), []);
+    });
+    test('opsLayout CARDS の段階: 前日=メンバー状況・予約・プラン・Discord / 当日=ボス・残り・締め凸・プラン・運営アクション / 準備・終了=シーズン制御', () => {
+        const lay = globalThis.opsLayoutDomain;
+        const vis = (s) => lay.CARDS.filter(c => dom.visibleIn(c, s)).map(c => c.id);
+        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecReserve', 'opsSecPlan', 'opsSecDiscord']);
+        assert.deepEqual(vis('day'), ['opsSecBoss', 'opsSecRemaining', 'opsSecFinish', 'opsSecPlan', 'opsSecActions']);
+        assert.deepEqual(vis('prep'), ['opsSecSeason']);
+        assert.deepEqual(vis('end'), ['opsSecSeason']);
+        assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
+    });
+    const html = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
+    test('★ 配線: 運営タブは段階で出し分ける (段階ヘッダ・ヒーロー・チェックリスト・その他・設定タブの運営ブロックの移動)', () => {
+        assert.ok(html.includes('<script defer src="./js/domain/opsStage.js"></script>'), 'opsStage.js を読み込んでいない');
+        const init = html.match(/function _initOpsTabStructure\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/id="opsStageBar"/.test(init) && /id="opsStageHero"/.test(init) && /id="opsStageList"/.test(init), '段階ヘッダ・ヒーロー・チェックリストの置き場が無い');
+        assert.ok(/_initOpsEtc\(\);/.test(init) && /_renderOpsStage\(\);/.test(init), '初期化で その他 と段階を描いていない');
+        const etc = html.match(/function _initOpsEtc\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/#tab-settings \.dc-card\[data-ops-only\]/.test(etc), '設定タブの運営ブロックを その他 へ移していない');
+        assert.ok(/opsMaintBackup/.test(etc) && /opsMaintNotify/.test(etc), '移した運営ブロックに id を付けていない (ジャンプできない)');
+        const st = html.match(/function _renderOpsStage\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.detect\(\{ season, now: Date\.now\(\), override:/.test(html) && /dom\.checklist\(/.test(st) && /dom\.hero\(/.test(st), '判定・チェックリスト・ヒーローをドメインで組んでいない');
+        assert.ok(/_applyOpsStageCards\(st\.stage\)/.test(st), '段階でカードを出し入れしていない');
+        assert.ok(/if \(!_opsMode\)/.test(st) && /_applyOpsStageCards\(null\)/.test(st), '運営OFF (メンバー) でカードを元の並びに戻していない');
+        assert.ok(/\[data-stage\]/.test(st), '[data-stage] の出し分けを段階の描画でやっていない');
+        const ck = html.match(/function _renderOpsCockpit\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_renderOpsStage\(\)/.test(ck), 'コックピットの更新と一緒に段階を描き直していない');
+        const ph = html.match(/function _opsCardPhase\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_opsCurrentStage\(\)/.test(ph), 'カードの既定 (前日/当日) が段階を見ていない');
+        const mp = html.match(/function _mbCurrentPhase\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_opsCurrentStage\(\)/.test(mp), 'メンバー状況の前日/当日が段階を見ていない');
+        const stg = html.match(/async function renderSettingsTab\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(!/renderSettingsNotifyStatus\(\)/.test(stg), '設定タブがまだ運営ブロックを描いている');
+        const etcOpen = html.match(/function _setOpsEtcOpen\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/renderSettingsNotifyStatus\(\)/.test(etcOpen) && /renderClientGateSettings\(\)/.test(etcOpen), 'その他 を開いたときに運営ブロックを描いていない');
+        assert.ok(/onclick="openOpsSeasonCreateModal\(\)" class="dc-ops-action" data-stage="prep"/.test(html), 'シーズン作成が準備段階に限られていない');
+        assert.equal((html.match(/handleOpsQuickCreateTestSeason\('(fresh|midraid)'\)" class="dc-ops-testlink" data-stage="prep"/g) || []).length, 2, 'テスト作成が小リンクになっていない');
+        assert.ok(/onclick="handleOpsEndSeason\(\)" class="dc-ops-action" data-stage="end"/.test(html) && /onclick="handleOpsResetDamages\(\)" class="dc-ops-action" data-stage="end"/.test(html), '終了・リセットが終了段階に限られていない');
+        const ng = html.match(/async function _opsNudgeGroup\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.nudgeTargets\(_mb\.rows, kind\)/.test(ng) && /showPushPreview\(groups\)/.test(ng), '催促の対象と確認が無い');
+        assert.ok(/shirisuko_backup_saved_at_v1/.test(html.match(/async function handleSettingsBackup\(\) \{[\s\S]*?\n        \}\n/)?.[0] || ''), 'バックアップの保存時刻を記憶していない (終了のチェックリストが埋まらない)');
     });
 }
 

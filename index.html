@@ -44,6 +44,7 @@
     <script defer src="./js/domain/charMaster.js"></script>
     <script defer src="./js/domain/memberStatus.js"></script>
     <script defer src="./js/domain/opsLayout.js"></script>
+    <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
     <script defer src="./js/state/opsStore.js"></script>
     <script defer src="./js/state/seasonStore.js"></script>
     <script defer src="./js/optimal-plan.js"></script>
@@ -346,6 +347,39 @@
         .ops-cockpit-tile .k { font-size: 10px; font-weight: 800; color: #8A9097; }
         .ops-cockpit-tile .v { font-size: 16px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; }
         .ops-cockpit-tile.bad .v { color: #FF3D44; }
+        /* ---- 運営モードの段階 (準備/前日/当日/終了) — 運営UI再設計 2026-09-08 ---- */
+        body.ops-mode .ops-group-label { display: none; }   /* グループ見出しは段階の出し分けに置き換えた */
+        body.ops-mode:not(.ops-stage-day) #opsCockpit, body.ops-mode:not(.ops-stage-day) #opsOverviewChips { display: none; }
+        .ops-stage-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 2px 2px 4px; }
+        .ops-stage-name { font-size: 13px; font-weight: 900; color: #14161A; }
+        .ops-stage-seg button { padding: 4px 9px; font-size: 11px; }
+        .ops-stage-sub { font-size: 10.5px; font-weight: 800; color: #8A9097; margin: 0 2px 8px; }
+        .ops-stage-auto { font: inherit; font-size: 10.5px; font-weight: 900; color: #B45309; background: rgba(245,158,11,0.14); border: none; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+        .ops-stage-auto.muted { color: #8A9097; background: transparent; padding: 0; }
+        .ops-stage-hero { border-radius: 14px; padding: 14px 14px 13px; background: linear-gradient(135deg,#7A5AF8,#5B2BE0); color: #fff; margin-bottom: 10px; box-shadow: 0 8px 22px rgba(91,43,224,0.22); }
+        .ops-stage-hero.day { background: linear-gradient(135deg,#23262C,#101114); box-shadow: 0 8px 22px rgba(0,0,0,0.22); }
+        .ops-stage-hero.end { background: linear-gradient(135deg,#0E9455,#0B6E41); box-shadow: 0 8px 22px rgba(14,148,85,0.22); }
+        .ops-stage-hero .k { font-size: 10.5px; font-weight: 900; letter-spacing: .06em; opacity: .8; margin-bottom: 4px; }
+        .ops-stage-hero .h { font-size: 15px; font-weight: 900; line-height: 1.4; }
+        .ops-stage-hero .s { font-size: 11.5px; opacity: .85; margin-top: 4px; line-height: 1.6; font-weight: 700; }
+        .ops-stage-hero .b { display: block; width: 100%; margin-top: 10px; border: none; border-radius: 999px; padding: 12px; font: inherit; font-size: 13px; font-weight: 900; color: #4B22C9; background: #fff; cursor: pointer; }
+        .ops-stage-hero.day .b { color: #14161A; }
+        .ops-stage-hero.end .b { color: #0B6E41; }
+        .ops-stage-list { border: 1px solid rgba(20,22,26,0.06); border-radius: 13px; padding: 9px 12px; background: #fff; margin-bottom: 10px; }
+        .ops-stage-list .tt { font-size: 10px; font-weight: 900; letter-spacing: .06em; color: #8A9097; margin-bottom: 4px; }
+        .ops-stage-list .row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-top: 1px solid rgba(20,22,26,0.05); }
+        .ops-stage-list .row:first-of-type { border-top: none; }
+        .ops-stage-list .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 900; border: 2px solid #C9CED4; color: #8A9097; }
+        .ops-stage-list .row.done .dot { background: #18C26B; border-color: #18C26B; color: #fff; }
+        .ops-stage-list .row.todo .dot { border-color: #F59E0B; background: rgba(245,158,11,0.16); color: #B45309; }
+        .ops-stage-list .lbl { flex: 1 1 auto; min-width: 0; text-align: left; font: inherit; font-size: 12.5px; font-weight: 800; color: #14161A; background: none; border: none; padding: 0; cursor: pointer; }
+        .ops-stage-list .row.done .lbl { color: #8A9097; }
+        .ops-stage-list .cnt { font-size: 12px; font-weight: 900; color: #6B7178; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .ops-stage-list .act { flex: none; font: inherit; font-size: 10.5px; font-weight: 900; color: #5B2BE0; background: rgba(108,66,240,0.10); border: none; border-radius: 999px; padding: 4px 9px; cursor: pointer; }
+        .ops-etc { margin-top: 16px; }
+        .ops-etc-head { width: 100%; font: inherit; font-size: 12px; font-weight: 900; color: #6B7178; background: #F1F2F4; border: none; border-radius: 12px; padding: 11px; cursor: pointer; }
+        .ops-etc-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: #A4AAB0; margin: 14px 6px 6px; }
+        .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: #8A9097; background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
         /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
         .dc-mb-seg { display:inline-flex; background:#F1F2F4; border-radius:999px; padding:3px; }
         .dc-mb-seg button { font:inherit; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:#6B7178; cursor:pointer; }
@@ -3473,8 +3507,8 @@
             <!-- テストシーズンバナー (細ピル, JS で中身を描画) -->
             <div id="opsTestBanner" style="display:none;align-items:center;gap:8px;"></div>
 
-            <!-- ① ステータス概況 (オンライン / 模擬中 / 戦闘中) -->
-            <div style="display:flex;gap:10px;">
+            <!-- ① ステータス概況 (オンライン / 模擬中 / 戦闘中)。運営ONでは当日だけ出す (段階の出し分け) -->
+            <div id="opsOverviewChips" style="display:flex;gap:10px;">
                 <div class="dc-stat-card">
                     <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#18C26B;"></span><span class="dc-stat-label">オンライン</span></div>
                     <div id="opsStatOnline" class="dc-stat-value">—</div>
@@ -3646,13 +3680,13 @@
                 <!-- 走っているシーズンのサマリー + 確認・編集 (renderOpsSeasonCtlSummary が描画) -->
                 <div id="opsSeasonCtlSummary" style="margin:0 0 12px 0;"></div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                    <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" style="background:#14161A;color:#fff;"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
-                    <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-action" style="background:rgba(108,66,240,0.10);color:#5B2BE0;border:1px dashed rgba(108,66,240,0.4);"><span data-sp-icon="flask" data-sp-size="14"></span> 予約テスト (序盤)</button>
-                    <button onclick="handleOpsQuickCreateTestSeason('midraid')" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;border:1px dashed rgba(245,158,11,0.4);"><span data-sp-icon="flask" data-sp-size="14"></span> クイックテスト (中盤)</button>
-                    <button onclick="handleOpsEndSeason()" class="dc-ops-action" style="background:rgba(245,158,11,0.10);color:#b45309;"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
-                    <button onclick="handleOpsResetDamages()" class="dc-ops-action" style="background:rgba(239,68,68,0.10);color:#dc2626;"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
+                    <button onclick="openOpsSeasonCreateModal()" class="dc-ops-action" data-stage="prep" style="background:#14161A;color:#fff;"><span data-sp-icon="calendar" data-sp-size="14"></span> シーズン作成</button>
+                    <button onclick="handleOpsQuickCreateTestSeason('fresh')" class="dc-ops-testlink" data-stage="prep">🧪 予約テスト (序盤)</button>
+                    <button onclick="handleOpsQuickCreateTestSeason('midraid')" class="dc-ops-testlink" data-stage="prep">🧪 クイックテスト (中盤)</button>
+                    <button onclick="handleOpsEndSeason()" class="dc-ops-action" data-stage="end" style="background:rgba(245,158,11,0.10);color:#b45309;"><span data-sp-icon="flag" data-sp-size="14"></span> シーズン終了</button>
+                    <button onclick="handleOpsResetDamages()" class="dc-ops-action" data-stage="end" style="background:rgba(239,68,68,0.10);color:#dc2626;"><span data-sp-icon="refresh" data-sp-size="14"></span> ダメージリセット</button>
                 </div>
-                <p style="margin:8px 0 0 0;font-size:10px;color:#B6BBC1;">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>予約テスト (序盤)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、申請→承認→固定→凸報告の1周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
+                <p data-stage="prep" style="margin:8px 0 0 0;font-size:10px;color:#B6BBC1;">🧪 どちらも「テストボス1〜5」のプレースホルダで独立した検証環境を作り、終了時にデータが完全に復元されます。<b>予約テスト (序盤)</b> は Lv1・全ボス満タン・凸ゼロから始まるので、申請→承認→固定→凸報告の1周を練習できます。<b>クイックテスト (中盤)</b> は数名が凸済みの盤面です。</p>
             </div>
 
             <!-- 📣 Discord 告知テンプレ (運営用) -->
@@ -14074,18 +14108,8 @@
         async function renderSettingsTab() {
             renderSettingsBrowserCard();   // 新: アバター + ストレージ
             const tasks = [renderSettingsSystemInfo()];
-            // 運営セクションは data-ops-only で CSS 的に隠れている。OFF のときは描画しても
-            // 見えないので、通知状況・アクティビティ・キャラマスタの取得ごと省く
-            // (Supabase 4クエリぶん。ON にした時点で toggleOpsMode が読みに行く)
-            if (_opsMode) {
-                renderSettingsMemberCount();
-                tasks.push(
-                    renderSettingsNotifyStatus(),
-                    renderSettingsActivity(),
-                    renderSettingsCharMaster(),
-                    renderClientGateSettings(),   // 互換ゲート (L2 ⑦)
-                );
-            }
+            // 運営ブロック (通知状況・メンバー管理・アクティビティ・キャラマスタ・版のしめ切り・バックアップ) は
+            // 運営タブの「その他 › メンテナンス」へ移した (ユーザー決定 B・2026-09-08)。描くのは _setOpsEtcOpen
             await Promise.all(tasks);
         }
 
@@ -14712,6 +14736,7 @@
                 const rowCount = Object.values(dump.tables)
                     .reduce((s, v) => s + (Array.isArray(v) ? v.length : 0), 0);
                 _downloadBackupJson(dump, 'shirisuko-pad-backup');
+                try { localStorage.setItem('shirisuko_backup_saved_at_v1', new Date().toISOString()); } catch { /* 段階のチェックリスト用の記憶 (端末ごと) */ }
                 if (msg) { msg.style.color = '#18C26B'; msg.textContent = `✅ ${rowCount} 行をエクスポートしました`; }
             } catch (e) {
                 if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `エクスポート失敗: ${e?.message || e}`; }
@@ -15304,7 +15329,11 @@
         const _mb = { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 };
         function _mbCurrentPhase() {
             const dom = window.memberStatusDomain;
-            return _mb.phase || (dom ? dom.phaseFor(_mb.season?.hard_date) : 'pre');
+            if (_mb.phase) return _mb.phase;
+            // 段階 (手動上書きを含む) に従う (運営UI再設計 2026-09-08)
+            const st = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null;
+            if (st) return st.stage === 'day' ? 'day' : 'pre';
+            return dom ? dom.phaseFor(_mb.season?.hard_date) : 'pre';
         }
         async function renderOpsMemberStatus(snapshot = null, force = false) {
             const rowsEl = document.getElementById('opsMbRows');
@@ -18582,6 +18611,8 @@
                     : 'メンバーの画面にプランを残したまま「運営が組み直し中です」と表示する (確認済みの記録は消えません)';
             }
             _opsPublishedFlag = !!published;
+            _opsPublishedPlan = published || null;   // 段階のチェックリスト (配信後の予約の数) に使う
+            _opsPublishedKnown = !failed;
             _renderOpsPubStatus(published, failed);
             _renderOpsCockpitSoon();
         }
@@ -23100,6 +23131,8 @@
         // セッション中の切り替えは _opsMode 変数だけで保持し、localStorage には残さない。
         let _opsMode = false;
         function _opsJump(id) {
+            const card = document.getElementById(id);
+            if (card && card.closest('#opsEtcBody') && typeof _setOpsEtcOpen === 'function') _setOpsEtcOpen(true);   // 「その他」に畳まれていたら開く
             expandOpsCard(id);   // 畳まれていたら開く (display:none のままだと座標が取れない)
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -23125,8 +23158,9 @@
             _opsMode = !_opsMode;
             // 永続化しない: 次回起動は必ず OFF から (誤操作防止)
             _applyOpsMode();
+            if (typeof _opsEtcRendered !== 'undefined') _opsEtcRendered = false;  // 「その他 › メンテナンス」は次に開いたときに描き直す (切り出し実行テストでは未定義)
             _applyOpsCardStates();   // 運営OFF は全カード全開 / ON は前日・当日の既定 + 記憶
-            _renderOpsCockpitSoon();
+            _renderOpsCockpitSoon(); // 段階の UI もここで描き直す (OFF なら消してカードを元の並びへ)
             // OFF にしたらボスHP編集パネルを閉じる — ボタン行 (data-ops-only) だけ隠れて
             // 開きっぱなしの編集パネルから保存できてしまう穴を塞ぐ (Codex 指摘)
             // 👥 メンバー状況: OFF にしたら待機中の取得を無効化する (古い応答で _mb を更新しない)
@@ -23157,6 +23191,9 @@
         let _opsCardStored = null;      // 手動開閉の記憶 { pre:{id:bool}, day:{...} } (localStorage)
         let _opsPublishedFlag = false;  // 配信中プランがあるか (_syncOpsUnpublishBtn が更新)
         function _opsCardPhase() {
+            // 段階 (手動上書きを含む) に従う — テストで「当日」にしたらカードも当日の既定で開く
+            const st = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null;
+            if (st) return st.stage === 'day' ? 'day' : 'pre';
             const season = opsStore.get()?.season || seasonStore.get()?.season || null;
             const dom = window.memberStatusDomain;
             return dom ? dom.phaseFor(season?.hard_date) : 'pre';
@@ -23176,6 +23213,263 @@
             card.classList.toggle('ops-closed', !open);
             const car = card.querySelector(':scope > .ops-card-head .ops-card-car');
             if (car) car.textContent = open ? '▴' : '▾';
+        }
+        // ---- 運営モードの段階 (準備 / 前日 / 当日 / 終了) — 運営UI再設計 2026-09-08 ----
+        //   判定・チェックリスト・ヒーローの純ロジックは js/domain/opsStage.js。ここは DOM だけ。
+        //   段階は自動 (シーズン + ハード日 + いま) で決め、テストのために運営が手動で上書きできる (端末・シーズンごと)。
+        //   段階外のカードは消さずに末尾の「その他」へ移す (DOM は残るので各 renderer はそのまま更新し続ける)。
+        //   設定タブの運営ブロック (版のしめ切り・通知状況・メンバー管理・アクティビティ・キャラマスタ・バックアップ) も
+        //   「その他 › メンテナンス」へ移す (ユーザー決定 B)。運営OFF (メンバー) では何もせず、カードを元の並びに戻す。
+        let _opsStage = null;            // detect の結果 { stage, auto, overridden }
+        let _opsStageApplied = null;     // 最後にカードを出し入れした段階 (null = 運営OFF の並び)
+        let _opsPublishedPlan = null;    // 直近の配信 (_syncOpsUnpublishBtn が更新) — 配信後の予約の数に使う
+        let _opsPublishedKnown = false;  // 配信の有無を取得できたか (取れていなければ「不明」として出す)
+        let _opsEtcRendered = false;     // その他 › メンテナンス を描いたか (開いたときに1回)
+        const _OPS_BACKUP_AT_KEY = 'shirisuko_backup_saved_at_v1';
+        function _opsStageSeason() { return opsStore.get()?.season || seasonStore.get()?.season || null; }
+        function _loadOpsStageOverride(seasonId) {
+            const dom = window.opsStageDomain;
+            if (!dom) return null;
+            let raw = null;
+            try { raw = localStorage.getItem(dom.STORAGE_KEY); } catch { /* noop */ }
+            return dom.parseOverride(raw, seasonId);
+        }
+        function _opsCurrentStage() {
+            const dom = window.opsStageDomain;
+            if (!dom) return null;
+            const season = _opsStageSeason();
+            return dom.detect({ season, now: Date.now(), override: _loadOpsStageOverride(season?.id ?? null) });
+        }
+        // 手動で段階を変える (テスト用)。null = 自動に戻す。自動と同じ段階を選んだら記憶しない
+        function handleOpsStageOverride(stage) {
+            const dom = window.opsStageDomain;
+            if (!dom || !_opsMode) return;
+            const cur = _opsCurrentStage();
+            const season = _opsStageSeason();
+            try {
+                const raw = (stage && cur && stage !== cur.auto) ? dom.serializeOverride(season?.id ?? null, stage) : null;
+                if (raw) localStorage.setItem(dom.STORAGE_KEY, raw); else localStorage.removeItem(dom.STORAGE_KEY);
+            } catch { /* 記憶できなくてもこのセッションは動く */ }
+            // メンバー状況の前日/当日の手動選択は捨て、段階に従わせる
+            if (typeof _mb !== 'undefined') { _mb.phase = null; if (_mb.players) _mbRebuild(); }
+            _applyOpsCardStates();
+            _renderOpsStage();
+        }
+        function _opsPendingRepublishCount() {
+            const rv = window.reservationsDomain;
+            if (!rv || typeof _resv === 'undefined' || !Array.isArray(_resv.rows)) return 0;
+            const season = _opsStageSeason();
+            const pub = _opsPublishedPlan;
+            const plan = (pub && season && Number(pub.season_id) === Number(season.id)) ? pub.plan : null;
+            try { return Number(rv.pendingRepublish(_resv.rows, plan)?.count) || 0; } catch { return 0; }
+        }
+        function _renderOpsStage() {
+            const dom = window.opsStageDomain, lay = window.opsLayoutDomain;
+            const bar = document.getElementById('opsStageBar'), heroEl = document.getElementById('opsStageHero'), listEl = document.getElementById('opsStageList');
+            if (!dom || !lay || !bar || !heroEl || !listEl) return;
+            if (!_opsMode) {
+                // メンバー: 段階の UI は出さず、カードは元の並びに戻す
+                dom.STAGES.forEach(s => document.body.classList.remove(`ops-stage-${s}`));
+                document.body.classList.remove('ops-stage-overridden');
+                if (_opsStageApplied !== null) { _opsStageApplied = null; _applyOpsStageCards(null); }
+                bar.innerHTML = ''; heroEl.innerHTML = ''; listEl.innerHTML = '';
+                return;
+            }
+            const st = _opsCurrentStage();
+            _opsStage = st;
+            const season = _opsStageSeason();
+            dom.STAGES.forEach(s => document.body.classList.toggle(`ops-stage-${s}`, s === st.stage));
+            document.body.classList.toggle('ops-stage-overridden', !!st.overridden);
+            // 材料はコックピットと同じ (盤面・メンバー状況・予約・配信)。未ロードは null のまま渡す (0 と混同させない)
+            const snap = opsStore.get();
+            const bosses = snap?.bosses || [], players = snap?.players || [];
+            const mbRows = (typeof _mb !== 'undefined' && _mb.players) ? _mb.rows : null;
+            const reservations = (typeof _resv !== 'undefined' && Array.isArray(_resv.rows))
+                ? { pending: _resv.rows.filter(r => r.status === 'requested' || r.status === 'cancel_requested').length, approved: _resv.rows.filter(r => r.status === 'approved').length }
+                : null;
+            const pendingRepublish = _opsPendingRepublishCount();
+            let backupSavedAt = null;
+            try { backupSavedAt = localStorage.getItem(_OPS_BACKUP_AT_KEY); } catch { /* noop */ }
+            const rows = dom.checklist({ stage: st.stage, season, bosses, mbRows, reservations, published: _opsPublishedKnown ? _opsPublishedFlag : null, pendingRepublish, backupSavedAt });
+            const attacksDone = players.reduce((s, p) => s + (Number(p.attackCount) || 0), 0);
+            const attackCap = players.length * dom.MAX_ATTACKS;
+            const h = dom.hero({
+                stage: st.stage, season, rows, reservations, pendingRepublish,
+                freshMin: lay.hpFreshnessMin(bosses, Date.now()),
+                remainingTotal: Math.max(0, attackCap - attacksDone),
+                finPending: Array.isArray(mbRows) ? mbRows.filter(r => r.finish === 'pending').length : null,
+                attacksDone, attackCap,
+            });
+            bar.innerHTML = _opsStageBarHtml(st, season);
+            heroEl.innerHTML = _opsStageHeroHtml(h, st.stage);
+            listEl.innerHTML = _opsStageListHtml(rows, st.stage);
+            if (_opsStageApplied !== st.stage) {
+                _opsStageApplied = st.stage;
+                _applyOpsStageCards(st.stage);
+                _applyOpsCardStates();
+            }
+            // 段階つきの部品 (シーズン制御のボタン等): data-stage="prep end" のように空白区切り
+            document.querySelectorAll('#tab-ops [data-stage]').forEach(el => {
+                el.style.display = String(el.dataset.stage || '').split(/\s+/).includes(st.stage) ? '' : 'none';
+            });
+        }
+        function _opsStageBarHtml(st, season) {
+            const dom = window.opsStageDomain, esc = escapeHtml;
+            const name = season ? `${season.month_key || '?'}${season.is_test ? ' 🧪' : ''}` : 'シーズン未作成';
+            let hd = '';
+            if (season?.hard_date) {
+                const d = new Date(String(season.hard_date).slice(0, 10) + 'T00:00:00');
+                if (!isNaN(d)) hd = ` · ${d.getMonth() + 1}/${d.getDate()}(${'日月火水木金土'[d.getDay()]})`;
+            }
+            const seg = dom.STAGES.map(s =>
+                `<button type="button" aria-pressed="${s === st.stage ? 'true' : 'false'}" onclick="handleOpsStageOverride('${s}')" title="${esc(dom.STAGE_SUB[s])}">${esc(dom.STAGE_JP[s])}</button>`).join('');
+            const sub = st.overridden
+                ? `<button type="button" class="ops-stage-auto" onclick="handleOpsStageOverride(null)">手動で「${esc(dom.STAGE_JP[st.stage])}」にしています · 自動 (${esc(dom.STAGE_JP[st.auto])}) に戻す</button>`
+                : `<span class="ops-stage-auto muted">自動判定 · ${esc(dom.STAGE_SUB[st.stage])}</span>`;
+            return `<div class="ops-stage-row"><div class="ops-stage-name">${esc(name)}${esc(hd)}</div><div class="dc-mb-seg ops-stage-seg" role="group" aria-label="段階">${seg}</div></div><div class="ops-stage-sub">${sub}</div>`;
+        }
+        function _opsStageHeroHtml(h, stage) {
+            if (!h || !h.lead) return '';
+            const esc = escapeHtml;
+            return `<div class="ops-stage-hero ${esc(stage)}"><div class="k">📌 いちばん先に</div><div class="h">${esc(h.lead)}</div>`
+                + (h.why ? `<div class="s">${esc(h.why)}</div>` : '')
+                + `<button type="button" class="b" onclick="_opsStageAct('${esc(h.action)}')">${esc(h.label)}</button></div>`;
+        }
+        function _opsStageListHtml(rows, stage) {
+            if (!Array.isArray(rows) || !rows.length) return '';
+            const esc = escapeHtml;
+            const title = stage === 'end' ? '終了までにやること' : '配信までにやること';
+            const li = rows.map(r => {
+                const cls = r.pending ? 'pending' : r.done ? 'done' : r.optional ? 'opt' : 'todo';
+                const mark = r.done ? '✓' : r.pending ? '…' : r.optional ? '·' : '!';
+                const val = r.pending ? '—' : (r.total != null ? `${r.value}/${r.total}` : esc(String(r.value ?? '')));
+                const nudge = (!r.done && !r.pending && r.nudge) ? `<button type="button" class="act" onclick="_opsStageAct('nudge:${esc(r.nudge)}')">催促</button>` : '';
+                const open = r.action ? ` onclick="_opsStageAct('${esc(r.action)}')"` : '';
+                return `<div class="row ${cls}"><span class="dot">${mark}</span><button type="button" class="lbl"${open}>${esc(r.label)}</button><span class="cnt">${val}</span>${nudge}</div>`;
+            }).join('');
+            return `<div class="ops-stage-list"><div class="tt">${title}</div>${li}</div>`;
+        }
+        // 段階外のカードを「その他」へ / 段階内のカードを本文へ (CARDS の順に並べ直す)。stage=null は運営OFF の並び
+        function _applyOpsStageCards(stage) {
+            const lay = window.opsLayoutDomain, dom = window.opsStageDomain;
+            const etc = document.getElementById('opsEtcCards'), anchor = document.getElementById('opsEtc');
+            if (!lay || !dom || !etc || !anchor) return;
+            let n = 0;
+            for (const def of lay.CARDS) {
+                const card = document.getElementById(def.id);
+                if (!card) continue;
+                if (!stage || dom.visibleIn(def, stage)) anchor.insertAdjacentElement('beforebegin', card);
+                else { etc.appendChild(card); n++; }
+            }
+            if (!stage) {
+                // 運営OFF: ホームへの導線 (OFF のときだけ出る) を残凸カードの直後へ戻す
+                const rem = document.getElementById('opsSecRemaining'), link = document.getElementById('opsHomeCrosslink');
+                if (rem && link) rem.insertAdjacentElement('afterend', link);
+            }
+            const cnt = document.getElementById('opsEtcCount');
+            if (cnt) cnt.textContent = n ? `(${n})` : '';
+        }
+        // 「その他」(段階外のカード + メンテナンス) を運営タブの末尾に作り、設定タブの運営ブロックを移す
+        function _initOpsEtc() {
+            const container = document.querySelector('#tab-ops .container');
+            if (!container || document.getElementById('opsEtc')) return;
+            const etc = document.createElement('div');
+            etc.id = 'opsEtc';
+            etc.className = 'ops-etc';
+            etc.setAttribute('data-ops-only', '');
+            etc.innerHTML = `<button type="button" id="opsEtcHead" class="ops-etc-head" aria-expanded="false" onclick="toggleOpsEtc()">その他 <span id="opsEtcCount"></span> ▾</button>
+                <div id="opsEtcBody" class="ops-etc-body" style="display:none;">
+                    <div class="ops-etc-label">この段階では使わない道具</div>
+                    <div id="opsEtcCards"></div>
+                    <div class="ops-etc-label">メンテナンス</div>
+                    <div id="opsEtcMaint"></div>
+                </div>`;
+            container.appendChild(etc);
+            // 設定タブの運営ブロック → メンテナンス (ユーザー決定 B)。id を付けてヒーロー/チェックリストから飛べるようにする
+            const maint = etc.querySelector('#opsEtcMaint');
+            const idOf = (card) => card.querySelector('#settingsGateState') ? 'opsMaintGate'
+                : card.querySelector('#settingsNotifyTable') ? 'opsMaintNotify'
+                : card.querySelector('#settingsMemberCount') ? 'opsMaintMembers'
+                : card.querySelector('#settingsActivityList') ? 'opsMaintActivity'
+                : card.querySelector('#settingsMasterBody') ? 'opsMaintMaster'
+                : card.querySelector('[onclick*="handleSettingsBackup"]') ? 'opsMaintBackup' : null;
+            document.querySelectorAll('#tab-settings .dc-card[data-ops-only]').forEach(card => {
+                const id = idOf(card);
+                if (!id) return;
+                card.id = card.id || id;
+                maint.appendChild(card);
+            });
+        }
+        function _setOpsEtcOpen(open) {
+            const body = document.getElementById('opsEtcBody'), head = document.getElementById('opsEtcHead');
+            if (!body) return;
+            body.style.display = open ? '' : 'none';
+            if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open && !_opsEtcRendered && _opsMode) {
+                // メンテナンスの中身は開いたときに1回だけ取りに行く (設定タブにあった頃と同じ 5 つの描画)
+                _opsEtcRendered = true;
+                try {
+                    renderSettingsMemberCount();
+                    renderSettingsNotifyStatus();
+                    renderSettingsActivity();
+                    renderSettingsCharMaster();
+                    renderClientGateSettings();
+                } catch (e) { console.warn('[ops] その他の描画:', e?.message || e); }
+            }
+        }
+        function toggleOpsEtc() {
+            const body = document.getElementById('opsEtcBody');
+            _setOpsEtcOpen(!body || body.style.display === 'none');
+        }
+        function _opsJumpEtc(elId) {
+            _setOpsEtcOpen(true);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                const el = document.getElementById(elId);
+                (el?.closest('.dc-card') || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }));
+        }
+        // ヒーロー / チェックリストの行からの導線
+        function _opsStageAct(action) {
+            const a = String(action || '');
+            if (a.startsWith('nudge:')) { _opsNudgeGroup(a.slice(6)); return; }
+            switch (a) {
+                case 'create': openOpsSeasonCreateModal(); break;
+                case 'season-edit': openOpsSeasonEditModal(); break;
+                case 'reserve': _opsJump('opsSecReserve'); break;
+                case 'republish': _opsGotoRepublish(); break;
+                case 'members': _opsJump('opsSecMembers'); break;
+                case 'notify': _opsJumpEtc('opsMaintNotify'); break;
+                case 'plan': _opsJump('opsSecPlan'); break;
+                case 'hp': openOpsBossHpModal(); break;
+                case 'remaining': _opsJump('opsSecRemaining'); break;
+                case 'end': handleOpsEndSeason(); break;
+                case 'backup': _opsJumpEtc('opsMaintBackup'); break;
+                case 'reset': handleOpsResetDamages(); break;
+                default: break;
+            }
+        }
+        // 催促 (前日): 模擬未提出 / 時間帯未確認 の人に、1人ずつの文面 (memberStatus.nudgeMessage) で Push。
+        // 通知を購読していない人・「今回は難しい」の人には送らない (opsStage.nudgeTargets)
+        async function _opsNudgeGroup(kind) {
+            const dom = window.opsStageDomain, ms = window.memberStatusDomain;
+            if (!dom || !ms) return;
+            if (typeof _mb === 'undefined' || !_mb.players) { showNotification('メンバー状況を読み込んでから催促できます'); _opsJump('opsSecMembers'); return; }
+            const targets = dom.nudgeTargets(_mb.rows, kind);
+            const groups = targets.map(r => {
+                const m = ms.nudgeMessage(r, 'pre');
+                return m ? { title: m.title, body: m.body, url: m.url, recipients: [{ id: r.id, name: r.name }] } : null;
+            }).filter(Boolean);
+            if (!groups.length) { showNotification('催促する相手がいません (通知を購読していない人には届きません)'); return; }
+            const ok = await showPushPreview(groups);
+            if (!ok) return;
+            let sent = 0, fail = 0;
+            for (const g of groups) {
+                try {
+                    const res = await window.sendPushNotification({ title: g.title, body: g.body, url: g.url, playerIds: [g.recipients[0].id] });
+                    sent += Number(res?.sent) || 0;
+                } catch { fail++; }
+            }
+            showNotification(fail ? `📣 ${groups.length - fail} 人に送信 / ${fail} 人は失敗` : `📣 ${groups.length} 人に送信しました (${sent} 端末)`);
         }
         // 現在のフェーズ・記憶・運営モードから全カードの開閉を反映 (運営OFF は常に全開)
         function _applyOpsCardStates() {
@@ -23217,6 +23511,7 @@
         function _renderOpsCockpit() {
             const dom = window.opsLayoutDomain;
             if (!dom) return;
+            if (typeof _renderOpsStage === 'function') _renderOpsStage();   // 段階ヘッダ・ヒーロー・チェックリストも同じ材料で描き直す
             const snap = opsStore.get();
             const { summaries, cockpit } = dom.summarize({
                 season: snap?.season || null, bosses: snap?.bosses || [], players: snap?.players || [],
@@ -23309,8 +23604,12 @@
             if (container && !document.getElementById('opsTopBar')) {
                 const top = document.createElement('div');
                 top.id = 'opsTopBar';
-                top.innerHTML = `<div id="opsCockpit" class="ops-cockpit" data-ops-only></div>
-                    <div class="ops-topbar-row"><button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()"></button></div>`;
+                // 運営ON: 🛠トグル → 段階ヘッダ → ヒーロー (いちばん急ぐ1つ) → チェックリスト (前日/終了) → コックピット (当日)
+                top.innerHTML = `<div class="ops-topbar-row"><button class="dc-nav-chip" id="opsModeBtn" onclick="toggleOpsMode()"></button></div>
+                    <div id="opsStageBar" data-ops-only></div>
+                    <div id="opsStageHero" data-ops-only></div>
+                    <div id="opsStageList" data-ops-only></div>
+                    <div id="opsCockpit" class="ops-cockpit" data-ops-only></div>`;
                 const first = container.querySelector('.ops-group-label, .dc-card');
                 if (first) first.insertAdjacentElement('beforebegin', top);
                 else container.prepend(top);
@@ -23328,8 +23627,10 @@
                 link.innerHTML = `✍️ 自分の凸報告・戦闘開始は<b style="margin:0 3px;">ホーム</b>から<span style="font-weight:900;">→</span>`;
                 rem.insertAdjacentElement('afterend', link);
             }
+            _initOpsEtc();           // 「その他」(段階外のカード + 設定タブから移した運営ブロック)
             _applyOpsMode();
             _applyOpsCardStates();   // 初期表示 (シーズン未取得 = 前日の既定。盤面取得後に renderOpsDashboard が再適用)
+            _renderOpsStage();       // 段階ヘッダ・ヒーロー・チェックリスト (盤面が来たらコックピットと一緒に描き直す)
         }
         document.addEventListener('DOMContentLoaded', _initOpsTabStructure);
     </script>
