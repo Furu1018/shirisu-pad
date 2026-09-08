@@ -6226,6 +6226,16 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!_opsMode\) return;/.test(rg), '運営OFF でも取得している');
         assert.ok(/gen !== _growth\.gen/.test(rg), '追い越した古い応答を捨てていない');
         assert.ok(/usedCharacters\(atks\)/.test(rg) && /wantedCodesFor\(_growth\.used, nameMap\)/.test(rg), '対象をドメインで決めていない');
+        // ★ 対象のレイドはアクティブシーズンに縛らない (2026-09-09 実機で発覚: アクティブが凸ゼロのテストシーズンで何もできなかった)
+        assert.ok(!/ensureActiveSeasonLoaded/.test(rg), '取り込みの対象をアクティブシーズンに縛っている');
+        assert.ok(/supabaseLoadGrowthSeasons\(\)/.test(rg), 'レイドの選択肢を取っていない');
+        assert.ok(/supabaseLoadLatestAttackSeasonId\(\)/.test(rg), '既定 (凸記録のある最新) を取っていない');
+        assert.ok(/_growth\.picked != null/.test(rg), '運営が選んだレイドを優先していない');
+        assert.ok(/function handleGrowthPickSeason\(id\) \{/.test(html), 'レイドを選び直せない');
+        // 押せない理由を必ず言う (実機FB 2026-09-09: 押せないだけで理由が分からなかった)
+        const paint = html.match(/function _growthPaint\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/まず ① で識別子をひも付けてください/.test(paint), '識別子が無いときの理由を出していない');
+        assert.ok(/選んだレイドに凸の記録が無いため/.test(paint), '凸記録が無いときの理由を出していない');
         // 取り込みは prepareMember の判断に従う (保存してよいかを画面で決めない)
         const imp = html.match(/async function handleGrowthImport\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/box = await dom\.parseImportPayload\(text\);/.test(imp), '貼り付けの展開 (非同期) を await していない — box が Promise になり取り込みが必ず失敗する');

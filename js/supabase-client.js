@@ -1848,6 +1848,25 @@ window.supabaseLoadMemberGrowthStatus = async function (seasonId) {
     return data || [];
 };
 
+// 育成を取り込む「どのレイドか」の候補。
+// ★ アクティブシーズンに縛らない — 育成の取り込みはレイドが終わったあとの作業で、
+//   そのころ本番シーズンは終了済み (is_active=false) か、アクティブなのが検証用のテストシーズンになっている
+window.supabaseLoadGrowthSeasons = async function (limit = 8) {
+    const { data, error } = await supabase.from('seasons')
+        .select('id, month_key, hard_date, is_active, is_test')
+        .order('hard_date', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+};
+
+// 凸記録のある最新のシーズン (既定の選択に使う)。1件も無ければ null
+window.supabaseLoadLatestAttackSeasonId = async function () {
+    const { data, error } = await supabase.from('attacks')
+        .select('season_id').order('season_id', { ascending: false }).limit(1);
+    if (error) throw error;
+    return (data && data[0]) ? data[0].season_id : null;
+};
+
 // 取り込み対象を決める材料: そのシーズンで実際に使われたキャラ (凸記録の characters)
 window.supabaseLoadSeasonAttackCharacters = async function (seasonId) {
     const { data, error } = await supabase.from('attacks')

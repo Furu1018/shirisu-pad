@@ -15880,7 +15880,7 @@
         //   流れは 4 段: ① 識別子の名寄せ → ② ブックマークレットを作る → ③ 貼り付けて取り込む → ④ 取れなかった人。
         //   ★ ブックマークレットにするのは blablalink.com の anti-debug 対策 (DevTools を開くと止まる)。
         //   ★ 対象は「今回のレイドで実際に使われたキャラ」だけ (usedCharacters) — 全キャラは要らない。
-        const _growth = { gen: 0, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, msg: null };
+        const _growth = { gen: 0, seasons: null, picked: null, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, msg: null };
         let _growthNameMap = null;   // data/blabla-name-codes.json の data (name_code → {jp, pad})
 
         async function _growthLoadNameMap() {
@@ -15901,29 +15901,40 @@
             if (!dom) { box.innerHTML = '<p style="color:#ef4444;font-size:12px;margin:0;">育成データの機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
             const gen = ++_growth.gen;
             if (force || !_growth.players) box.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p>';
-            let season = null;
-            try { season = (await ensureActiveSeasonLoaded())?.season || null; } catch { /* 下で null 扱い */ }
-            if (gen !== _growth.gen) return;
-            if (!season) {
-                _growth.players = null; _growth.seasonId = null;
-                box.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
-                const c = document.getElementById('opsGrowthCounts'); if (c) c.textContent = '';
-                return;
-            }
-            // シーズンが変わったら前シーズンの結果を捨てる (取り込み済みの内訳が残らないように)
-            if (_growth.seasonId != null && Number(_growth.seasonId) !== Number(season.id)) {
-                _growth.players = null; _growth.statusRows = null; _growth.used = []; _growth.wanted = null; _growth.msg = null;
-            }
-            _growth.seasonId = season.id;
             try {
-                const [players, atks, statusRows, nameMap] = await Promise.all([
+                // ★ アクティブシーズンに縛らない (2026-09-09 実機で発覚)。
+                //   育成の取り込みはレイドが終わったあとの作業なので、対象は終了済みのシーズンであることが普通。
+                //   実際、アクティブなのが凸記録ゼロの検証用テストシーズンで、対象キャラが1体も決まらなかった
+                const [seasons, latestAtk, players, nameMap] = await Promise.all([
+                    window.supabaseLoadGrowthSeasons(),
+                    window.supabaseLoadLatestAttackSeasonId().catch(() => null),
                     window.supabaseLoadPlayersWithOpenid(),
-                    window.supabaseLoadSeasonAttackCharacters(season.id),
-                    window.supabaseLoadMemberGrowthStatus(season.id),
                     _growthLoadNameMap(),
                 ]);
                 if (gen !== _growth.gen) return;
+                if (!seasons.length) {
+                    _growth.players = null; _growth.seasonId = null;
+                    box.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">シーズンがまだありません。</p>';
+                    const c = document.getElementById('opsGrowthCounts'); if (c) c.textContent = '';
+                    return;
+                }
+                // 選ぶ順: 運営が選んだもの → 凸記録のある最新 → 一覧の先頭
+                const ids = new Set(seasons.map(s => Number(s.id)));
+                const sid = (_growth.picked != null && ids.has(Number(_growth.picked))) ? Number(_growth.picked)
+                    : (latestAtk != null && ids.has(Number(latestAtk))) ? Number(latestAtk)
+                        : Number(seasons[0].id);
+                // 対象が変わったら前の結果を捨てる (取り込み済みの内訳が残らないように)
+                if (_growth.seasonId != null && Number(_growth.seasonId) !== sid) {
+                    _growth.statusRows = null; _growth.used = []; _growth.wanted = null;
+                }
+                const [atks, statusRows] = await Promise.all([
+                    window.supabaseLoadSeasonAttackCharacters(sid),
+                    window.supabaseLoadMemberGrowthStatus(sid),
+                ]);
+                if (gen !== _growth.gen) return;
                 if (!_opsMode) return;                   // 待機中に運営OFF → 隠れた盤面を更新しない
+                _growth.seasons = seasons;
+                _growth.seasonId = sid;
                 _growth.players = players;
                 _growth.statusRows = statusRows;         // null = 43未適用 (「全員未取り込み」と区別する)
                 _growth.used = dom.usedCharacters(atks);
@@ -15933,6 +15944,14 @@
                 if (gen !== _growth.gen || !_opsMode) return;
                 box.innerHTML = `<p style="color:#ef4444;font-size:12px;margin:0;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
             }
+        }
+
+        // どのレイドの育成を取り込むかを選び直す
+        function handleGrowthPickSeason(id) {
+            if (_growth.busy) return;                    // 取り込み中に対象を変えさせない
+            _growth.picked = Number(id);
+            _growth.msg = null;
+            renderOpsGrowth(true);
         }
 
         function _growthNote(kind, text) { _growth.msg = { kind, text }; _growthPaint(); }
@@ -15948,8 +15967,22 @@
             const unsupported = _growth.statusRows === null || players.some(p => p.growthUnsupported);
             const statusBy = new Map((_growth.statusRows || []).map(r => [String(r.player_id), r]));
 
+            const cur = (_growth.seasons || []).find(s => Number(s.id) === Number(_growth.seasonId)) || null;
+            const seasonJp = (s) => `${s.month_key || 'ID' + s.id}${s.hard_date ? ` (${String(s.hard_date).slice(5).replace('-', '/')})` : ''}${s.is_test ? ' 🧪テスト' : ''}`;
             const cnt = document.getElementById('opsGrowthCounts');
-            if (cnt) cnt.textContent = `紐づけ ${linked.length}/${players.length} · 対象 ${wanted.codes.length}体`;
+            if (cnt) cnt.textContent = `${cur ? seasonJp(cur) : ''} · 紐づけ ${linked.length}/${players.length} · 対象 ${wanted.codes.length}体`;
+
+            // ⓪ どのレイドの育成か。★ アクティブシーズンとは限らない (終わったレイドを後から取り込む)
+            const step0 = `
+                <div class="gr-step">
+                    <div class="h"><span class="n">0</span>どのレイドの育成か
+                        <select onchange="handleGrowthPickSeason(this.value)" ${_growth.busy ? 'disabled' : ''}
+                                style="margin-left:auto;font:inherit;font-size:11.5px;font-weight:800;border:1px solid rgba(20,22,26,0.12);border-radius:8px;padding:5px 7px;background:#fff;color:#14161A;max-width:60%;">
+                            ${(_growth.seasons || []).map(s => `<option value="${Number(s.id)}" ${Number(s.id) === Number(_growth.seasonId) ? 'selected' : ''}>${esc(seasonJp(s))}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="d">そのレイドで使われたキャラだけを取り込み、そのレイド時点の育成として残します。既定は<strong>凸記録のある最新のレイド</strong>です。</div>
+                </div>`;
 
             // ① 名寄せ — URL をそのまま貼れる (parseOpenid が ?uid= を拾う)
             const rows = players.map(p => `
@@ -15972,6 +16005,11 @@
                 ? `<div class="gr-note warn">対応表に無いキャラが ${wanted.missing.length} 体あります (${esc(wanted.missing.slice(0, 6).join('・'))}${wanted.missing.length > 6 ? ' ほか' : ''})。このキャラだけ取り込めません。</div>`
                 : '';
             const canSnippet = linked.length > 0 && wanted.codes.length > 0;
+            // ★ 押せない理由を必ず言う (実機FB 2026-09-09: 押せないだけで理由が分からなかった)
+            const why = canSnippet ? ''
+                : linked.length === 0
+                    ? '<div class="gr-note warn">まず ① で識別子をひも付けてください。</div>'
+                    : `<div class="gr-note warn">選んだレイドに凸の記録が無いため、取りたいキャラが決まりません。⓪ でレイドを選び直してください${cur && cur.is_test ? ' (いまはテストシーズンを見ています)' : ''}。</div>`;
             const step2 = `
                 <div class="gr-step">
                     <div class="h"><span class="n">2</span>取り込み用のブックマークレットを作る</div>
@@ -15981,7 +16019,7 @@
                     <div style="margin:9px 0 0 26px;">
                         <button type="button" class="gr-btn" onclick="handleGrowthCopySnippet()" ${canSnippet ? '' : 'disabled'}>📋 コピーする</button>
                     </div>
-                    ${miss}
+                    ${why}${miss}
                 </div>`;
 
             // ③ 貼り付け
@@ -16017,7 +16055,7 @@
                         : '<div class="d">全員ぶん取り込めています。</div>'}
                     </div>`;
             }
-            box.innerHTML = step1 + step2 + step3 + step4;
+            box.innerHTML = step0 + step1 + step2 + step3 + step4;
         }
 
         // 識別子のひも付け。URL でも数字でも受ける (parseOpenid)。空にすると解除

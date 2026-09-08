@@ -38,10 +38,15 @@ function cut(marker) {
 const SRC = cut('        function _growthPaint()');
 
 const P = (id, name, openid = null, extra = {}) => ({ id, name, blabla_openid: openid, ...extra });
-function run({ players = [], statusRows = [], used = ['ラピ'], wanted = { codes: [1007], missing: [] }, busy = false, msg = null } = {}) {
+const SEASONS = [
+    { id: 33, month_key: 'TEST-20260908121322', hard_date: '2026-09-08', is_active: true, is_test: true },
+    { id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_active: false, is_test: false },
+];
+function run({ players = [], statusRows = [], used = ['ラピ'], wanted = { codes: [1007], missing: [] }, busy = false, msg = null,
+    seasons = SEASONS, seasonId = 30 } = {}) {
     const els = { opsGrowthBody: { innerHTML: '' }, opsGrowthCounts: { textContent: '' } };
     const env = {
-        _growth: { gen: 0, seasonId: 1, players, statusRows, used, wanted, busy, msg },
+        _growth: { gen: 0, seasons, picked: null, seasonId, players, statusRows, used, wanted, busy, msg },
         window: { growthDomain: dom },
         document: { getElementById: (id) => els[id] || null },
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
@@ -68,13 +73,37 @@ test('★ 4段すべて実際に描ける (名寄せ → 生成 → 貼り付け
         statusRows: [{ player_id: 1, status: 'ok', character_count: 5 }, { player_id: 2, status: 'no_openid' }],
     });
     const out = t.html();
-    assert.equal((out.match(/class="gr-step/g) || []).length, 4, `段が4つでない: ${out.slice(0, 120)}`);
+    assert.equal((out.match(/class="gr-step/g) || []).length, 5, `段が5つでない: ${out.slice(0, 120)}`);
+    assert.ok(out.includes('どのレイドの育成か'));
     assert.ok(out.includes('BlaBlaLINK の識別子をひも付ける'));
     assert.ok(out.includes('取り込み用のブックマークレットを作る'));
     assert.ok(out.includes('id="opsGrowthPaste"'), '貼り付け欄が無い');
     assert.ok(out.includes('取り込みの結果'));
-    assert.equal(t.counts(), '紐づけ 1/2 · 対象 1体');
+    assert.equal(t.counts(), '2026-09 (09/05) · 紐づけ 1/2 · 対象 1体');
     noUndef(out);
+});
+
+test('★ ⓪ レイドは選べる (アクティブとは限らない — 終わったレイドを後から取り込む)', () => {
+    const t = run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }] });
+    const out = t.html();
+    assert.ok(/onchange="handleGrowthPickSeason\(this\.value\)"/.test(out), '選び直す導線が無い');
+    assert.equal((out.match(/<option value="\d+"/g) || []).length, 2, 'シーズンの選択肢が足りない');
+    assert.ok(/<option value="30" selected>2026-09 \(09\/05\)<\/option>/.test(out), '選んでいるレイドに印が無い');
+    assert.ok(/<option value="33" >TEST-20260908121322 \(09\/08\) 🧪テスト<\/option>/.test(out), 'テストシーズンの印が無い');
+    noUndef(out);
+});
+
+test('★ 生成ボタンが押せない理由を必ず言う (実機FB 2026-09-09: 押せないだけで理由が分からなかった)', () => {
+    // 凸記録が無いレイド (テストシーズン) を選んでいる
+    const t = run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }], seasonId: 33, used: [], wanted: { codes: [], missing: [] } });
+    const out = t.html();
+    assert.ok(/選んだレイドに凸の記録が無いため/.test(out), `理由が出ていない: ${out.slice(-500)}`);
+    assert.ok(/いまはテストシーズンを見ています/.test(out), 'テストシーズンだと気づけない');
+    // 識別子が1人もひも付いていない場合は別の理由
+    const t2 = run({ players: [{ id: 1, name: 'あ' }] });
+    assert.ok(/まず ① で識別子をひも付けてください/.test(t2.html()));
+    // 押せるときは理由を出さない
+    assert.ok(!/gr-note warn/.test(run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }] }).html()));
 });
 
 test('★ 名寄せ: 済みは値つきで印がつき、未設定は空欄。保存はドメインを通す導線', () => {
@@ -155,7 +184,7 @@ const member = (o = {}) => ({
 function runImport({ players = [], statusRows = [], used = ['サクラ'], payload = { members: [member()] }, onSaveGrowth = null } = {}) {
     const calls = { growth: [], status: [], notes: [], repaints: 0 };
     const ta = { value: typeof payload === 'string' ? payload : JSON.stringify(payload) };
-    const state = { gen: 0, seasonId: 10, players, statusRows, used, wanted: { codes: [1012], missing: [] }, busy: false, msg: null };
+    const state = { gen: 0, seasons: SEASONS, picked: null, seasonId: 10, players, statusRows, used, wanted: { codes: [1012], missing: [] }, busy: false, msg: null };
     const env = {
         _growth: state,
         _growthNameMap: NAME_MAP,
