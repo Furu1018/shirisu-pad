@@ -5025,14 +5025,18 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/Number\(pub\.season_id\) === Number\(season\.id\)/.test(fn));
         // 最優先: 当日の「残り凸」より先に判定される
         assert.ok(fn.indexOf('opsPending.count > 0') < fn.indexOf("season.hard_date === todayStr) {"), '当日の分岐より後になっている');
-        assert.ok(/heroBtn\('_opsGotoRepublish\(\)'/.test(fn), '押して飛べない');
+        assert.ok(/onclick: '_opsGotoRepublish\(\)', label: /.test(fn), '押して飛べない');
         assert.ok(/function _opsGotoRepublish\(\) \{ _recomputeAndOfferPublish\(null\)/.test(html));
+        // ★ 当日に本人の残り凸があるときは、運営の用事はサブリンク (本人の「戦闘に入る」を隠さない — Codex指摘 2026-09-08)
+        assert.ok(/subLink = opsNotice\s*\n\s*\? heroSub\(opsNotice\.onclick, `\$\{opsNotice\.lead\} →`\)/.test(fn), '当日の残凸より運営の用事を優先している');
+        assert.ok(/if \(opsNotice && atkCount != null && atkCount >= 3\) \{\s*\n[^\n]*\n\s*opsHero\(\);/.test(fn), '全凸消化後は運営の用事をヒーローにしていない');
+        assert.ok(/\} else if \(opsNotice\) \{\s*\n[^\n]*\n\s*opsHero\(\);/.test(fn), '当日以外で運営の用事をヒーローにしていない');
         // ★ 承認待ち (requested / cancel_requested) があればホームで気づける (ユーザー要望 2026-09-08)。
         //   承認が先 (承認すると組み直し→配信の流れに入り、配信後の予約も一緒に片づく)
         assert.ok(/opsWaiting = rows\.filter\(r => r\.status === 'requested' \|\| r\.status === 'cancel_requested'\)\.length;/.test(fn), '承認待ちを数えていない');
         assert.ok(fn.includes('承認待ちの予約が ${opsWaiting}件あります'), '承認待ちの文言が無い');
         assert.ok(fn.indexOf('_opsMode && opsWaiting > 0') < fn.indexOf('opsPending && opsPending.count > 0'), '承認待ちより配信後の予約が先になっている');
-        assert.ok(/heroBtn\('_opsGotoReservations\(\)'/.test(fn), '予約カードへ飛べない');
+        assert.ok(/onclick: '_opsGotoReservations\(\)', label: /.test(fn), '予約カードへ飛べない');
         const go = html.match(/function _opsGotoReservations\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/_opsJump\('opsSecReserve'\)/.test(go), '予約カードを開いていない');
         assert.ok(/renderOpsReservations\(true\)/.test(go), '一覧を取り直していない');

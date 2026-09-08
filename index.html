@@ -6775,21 +6775,34 @@
                     }
                 } catch { opsPending = null; opsWaiting = 0; }
             }
-            // ★ 運営ON: 承認待ちがあればホームで気づけるようにする (ユーザー要望 2026-09-08)。
-            //   戦況タブの予約カードは当日畳まれているので、ホームに出ないと見落とす
+            // ★ 運営ON: 承認待ち / 配信後の予約 があればホームで気づけるようにする (ユーザー要望 2026-09-08)。
+            //   戦況タブの予約カードは当日畳まれているので、ホームに出ないと見落とす。
+            //   承認待ちが先 — 承認すると組み直し→配信の流れに入り、配信後の予約も一緒に片づく。
+            //   ★ 当日に本人の残り凸があるときはヒーローにしない (Codex指摘 2026-09-08)。
+            //     運営も凸するメンバーなので、「戦闘に入る」を隠すと本人の凸が遅れる → サブリンクで出す
+            let opsNotice = null;
             if (_opsMode && opsWaiting > 0) {
-                hero = true;
-                lead = `🔒 承認待ちの予約が ${opsWaiting}件あります`;
-                why = '承認するとその凸は固定され、プランを組み直して配信できます。取り消し希望も含みます。'
-                    + (opsPending && opsPending.count > 0 ? ` 配信し直しが必要な予約も ${opsPending.count}件あります。` : '');
-                cta = heroBtn('_opsGotoReservations()', '🔒 予約を確認する');
+                opsNotice = {
+                    lead: `🔒 承認待ちの予約が ${opsWaiting}件あります`,
+                    why: '承認するとその凸は固定され、プランを組み直して配信できます。取り消し希望も含みます。'
+                        + (opsPending && opsPending.count > 0 ? ` 配信し直しが必要な予約も ${opsPending.count}件あります。` : ''),
+                    onclick: '_opsGotoReservations()', label: '🔒 予約を確認する',
+                };
             } else if (opsPending && opsPending.count > 0) {
+                opsNotice = {
+                    lead: '🔒 配信後の予約があります、確認して下さい',
+                    why: `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。固定して組み直し、配信し直してください。`
+                        + 'それまで本人のホームには「運営が組み直し中」と出ています。',
+                    onclick: '_opsGotoRepublish()', label: '🧮 固定して組み直す → 配信',
+                };
+            }
+            const opsHero = () => {
                 hero = true;
-                lead = '🔒 配信後の予約があります、確認して下さい';
-                why = `承認した予約 ${opsPending.count}件が、いまの配信プランに入っていません。固定して組み直し、配信し直してください。`
-                    + 'それまで本人のホームには「運営が組み直し中」と出ています。';
-                cta = heroBtn('_opsGotoRepublish()', '🧮 固定して組み直す → 配信');
-            } else if (season && season.hard_date === todayStr) {
+                lead = opsNotice.lead;
+                why = opsNotice.why;
+                cta = heroBtn(opsNotice.onclick, opsNotice.label);
+            };
+            if (season && season.hard_date === todayStr) {
                 // A: 当日 — 凸の消化状況を反映 (キャッシュ優先・無ければ取得)
                 let atkCount = null;
                 try {
@@ -6801,7 +6814,10 @@
                     if (Array.isArray(atks)) atkCount = atks.length;
                 } catch { /* 不明なら残凸ありとして扱う */ }
                 if (seq !== _nextActionSeq) return;
-                if (atkCount != null && atkCount >= 3) {
+                if (opsNotice && atkCount != null && atkCount >= 3) {
+                    // A2 + 運営の用事: 本人の凸は済んでいるので、運営の用事をヒーローにしてよい
+                    opsHero();
+                } else if (atkCount != null && atkCount >= 3) {
                     // A2: 全凸消化
                     lead = '✅ 3凸おつかれさまでした!';
                     why = 'きょうの凸はすべて消化済みです。結果はレイド終了後の集計で分析タブに反映されます。';
@@ -6812,8 +6828,14 @@
                     lead = atkCount != null ? `🔥 レイド当日! 残り${3 - atkCount}凸` : '🔥 きょうはレイド当日!';
                     why = '下の「戦闘」からボスを選んで凸開始。終わったらそのまま凸報告。自分の割当は下の配信プランカードで確認できます。';
                     cta = heroBtn('_heroGotoBattle()', '⚔️ 戦闘に入る');
-                    subLink = heroSub("switchTab('ops')", '👀 戦況を見る (ボス残HP・交戦状況)');
+                    // 運営の用事は本人の凸を隠さずサブリンクで (当日は自分の凸が先)
+                    subLink = opsNotice
+                        ? heroSub(opsNotice.onclick, `${opsNotice.lead} →`)
+                        : heroSub("switchTab('ops')", '👀 戦況を見る (ボス残HP・交戦状況)');
                 }
+            } else if (opsNotice) {
+                // 当日以外 (前日・準備期間) は運営の用事が最優先の1アクション
+                opsHero();
             } else if (season && !canForm3 && season.hard_date === tomorrowStr) {
                 // B1: 前日・部隊不足 (前日でも模擬は可能 — ユーザー決定)
                 hero = true;
