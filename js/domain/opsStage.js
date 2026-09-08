@@ -55,12 +55,14 @@
         return { stage: ov || auto, auto, overridden: !!ov && ov !== auto };
     }
 
-    /** 手動上書きの記憶 (端末ごと・シーズンごと)。別のシーズンの記憶は捨てる */
+    /** 手動上書きの記憶 (端末ごと・シーズンごと)。別のシーズンの記憶は捨てる。
+     *  ★ シーズン無し (準備) は「シーズン無しのときの記憶」だけを使う — 終わったシーズンで「当日」にした記憶を
+     *    準備段階に持ち越すと、シーズンが無いのに当日の画面になる */
     function parseOverride(raw, seasonId) {
         try {
             const v = JSON.parse(raw || 'null');
             if (!v || typeof v !== 'object' || !isStage(v.stage)) return null;
-            if (seasonId != null && String(v.seasonId) !== String(seasonId)) return null;
+            if (String(v.seasonId ?? null) !== String(seasonId ?? null)) return null;
             return v.stage;
         } catch { return null; }
     }
