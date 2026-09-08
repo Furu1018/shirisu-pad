@@ -245,6 +245,20 @@ SELECT * FROM (
         AND to_regclass('public.uq_plan_reservations_active') IS NULL,
         '予約のレベルを任意に + 一意性を「誰が・ボス・編成枠」へ (未適用だとメンバーの申請が NOT NULL で弾かれる)'
 
+    UNION ALL SELECT '43_member_growth',
+        (to_regclass('public.member_growth') IS NOT NULL
+         AND to_regclass('public.member_growth_status') IS NOT NULL
+         AND EXISTS (SELECT 1 FROM col WHERE table_name = 'players' AND column_name = 'blabla_openid')
+         -- 識別子の一意性は名前だけでなく定義まで見る (2人に同じ識別子が付くと他人の育成が別人に付く)
+         AND EXISTS (SELECT 1 FROM pg_indexes
+                      WHERE schemaname = 'public' AND indexname = 'uq_players_blabla_openid'
+                        AND indexdef LIKE '%UNIQUE%' AND indexdef LIKE '%blabla_openid%')
+         -- 状態の綴りが固定されていること (private と error を混ぜると催促の相手を間違える)
+         AND EXISTS (SELECT 1 FROM pg_constraint
+                      WHERE conname = 'member_growth_status_status_check'
+                        AND pg_get_constraintdef(oid) LIKE '%no_openid%')),
+        'ユニオンメンバーの育成スナップショット + 取り込み状態 + players.blabla_openid (未適用だと取り込みが丸ごと使えない)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

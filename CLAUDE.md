@@ -103,6 +103,21 @@ rm -f .claude/hooks/.codex-on      # OFF
   運営は 🔗前回を尊重 / 🆕ゼロから で切り替えられる (端末ごと・既定は尊重)
 - **凸の予約 (L2・2026-09-07 / 2026-09-08 改訂)** — `39_plan_reservations.sql` / `40_attack_with_reservation_rpc.sql` /
   `42_reservations_level_optional.sql`。純ロジックは `js/domain/reservations.js`。
+
+- **ユニオンメンバーの育成データ (BlaBlaLINK 由来)** — 前提SQL `43_member_growth.sql`
+  (`players.blabla_openid` + `member_growth` + `member_growth_status`)。純ロジックは `js/domain/growth.js`。
+  「A さんのこの編成すごいな」→ その人の育成と自分の同じキャラを並べる (2026-09-08 決定 A1/B3/C1/D1)。
+  ★ **取れるのは BlaBlaLINK でゲームカードを公開している人だけ** — 非公開は API が `1301002` で拒否し、
+  同じユニオンでも突破できない (2026-09-08 実機確認)。だから「取れなかった」を欠測にせず
+  `member_growth_status` に **private / no_openid / error** で残す (催促の相手を間違えないため)。
+  ★ **オーバーロードは option_id でしか来ない。意味は `state_effects` が無いと分からない**ので、
+  取り込みの時点で解決して `overload` に日本語キーで保存する (あとから復元できない)。
+  ★ `name_code` と PAD のキャラ名の対応は `data/blabla-name-codes.json`
+  (`scripts/build-blabla-name-codes.mjs --apply` で BlaBlaLINK の CDN から再生成)。
+  **CDN では name_code 1012 と 3015 の日本語名がどちらも「サクラ」**なので、名前で突き合わせると
+  鈴原サクラがニケ本編のサクラに化ける — 生成側の `OVERRIDES` とテストの両方で固定してある。
+  ★ 取得は **DevTools を閉じてブックマークレット**で行う。blablalink.com は `debugger` を
+  作り続ける anti-debug を入れており、開発者ツールを開いたままだと `setTimeout` も `fetch` も返らない。
   **ソルバーを拘束するのは isFixed** (approved と承認済み起点の cancel_requested。requested は提案層で計算に効かせない)。
   `input.reservations` に `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
   ★ **予約はレベルを持たない** (2026-09-08)。メンバーの約束は「この時刻に・この弱点のボスへ・この編成で」で、

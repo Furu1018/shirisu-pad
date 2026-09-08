@@ -1779,6 +1779,10 @@ const _BACKUP_TABLES = [
     // 2026-09-07 追加 (L2 ⑦ 互換ゲート): 運営が上げた「止める版」の設定。
     // 1行しか無いが、戻さないと復元後にゲートが既定値 (誰も止めない) に落ちる
     'app_gate',
+    // 2026-09-08 追加 (ユニオン育成データ): レイド当時の育成のスナップショットと、その取り込み結果。
+    // 育成は BlaBlaLINK から取り直せるが**当時の値は二度と取れない** (C1 の意味が消える)。
+    // status も戻さないと「非公開の人」の一覧が空になり、催促の相手が分からなくなる
+    'member_growth', 'member_growth_status',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -1842,6 +1846,10 @@ const _RESTORE_TABLES = [
     ['activity_log', 'id', 'num'],
     //   app_gate = 互換ゲート (L2 ⑦)。他のどのテーブルも参照しないので順序は最後でよい
     ['app_gate', 'id', 'num'],
+    //   member_growth / member_growth_status = ユニオン育成データ (season_id, player_id → CASCADE)。
+    //   どちらも他から参照されないので順序は最後でよい
+    ['member_growth', 'season_id', 'num'],
+    ['member_growth_status', 'season_id', 'num'],
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
     if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');

@@ -24,6 +24,7 @@ import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動�
 import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メンバー状況ボード)
 import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タブの折りたたみ + コックピット)
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
+import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -5811,6 +5812,178 @@ console.log('\nclientGateDomain (互換ゲート):');
         assert.ok(/CHECK \(id = 1\)/.test(sql), '設定行が複数できないようにすること');
         assert.ok(/ALTER TABLE published_plans ADD COLUMN IF NOT EXISTS plan_schema INT/.test(sql));
         assert.ok(/NOTIFY pgrst/.test(sql));
+    });
+}
+
+// ---- growthDomain (ユニオンメンバーの育成データ) --------------------------------
+console.log('\ngrowthDomain:');
+{
+    const dom = globalThis.growthDomain;
+    const _fsG = (await import('node:fs')).default;
+    const _pathG = (await import('node:path')).default;
+    const _ROOTG = _pathG.resolve(_pathG.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
+
+    // 実測に合わせた素材 (2026-09-08)。id は state_effects では文字列、装備側では数値で来る
+    const EFFECTS = [
+        { id: '101', function_details: [{ function_type: 'StatAtk', function_value: 1234 }] },
+        { id: 202, function_details: [{ function_type: 'StatChargeTime', function_value: -560 }] },
+        { id: 303, function_details: [{ function_type: 'StatCritical', function_value: 700 }] },
+        { id: 404, function_details: [{ function_type: 'UnknownThing', function_value: 100 }] },
+        { id: '101', function_details: [{ function_type: 'StatAtk', function_value: 9999 }] },   // 重複 (先勝ち)
+    ];
+    const mkDetail = (over = {}) => ({
+        name_code: 1012, grade: 3, core: 2, lv: 200,
+        skill1_lv: 10, skill2_lv: 9, ulti_skill_lv: 10, combat: 123456, attractive_lv: 30,
+        harmony_cube_tid: 5, harmony_cube_lv: 15, favorite_item_tid: 7, favorite_item_lv: 2,
+        head_equip_tier: 10, head_equip_lv: 3, head_equip_option1_id: 101, head_equip_option2_id: 303,
+        torso_equip_tier: 9, arm_equip_tier: 0, leg_equip_tier: 10, leg_equip_lv: 5, leg_equip_option1_id: 202,
+        ...over,
+    });
+    const NAME_MAP = { '1012': { jp: 'サクラ', pad: 'サクラ' }, '3015': { jp: 'サクラ', pad: '鈴原サクラ' } };
+
+    test('突破: grade 0〜3 / core は grade=3 のときだけ効く / 通し番号は 1〜11', () => {
+        assert.equal(dom.gradeText(0, 0), '0凸');
+        assert.equal(dom.gradeText(2, 0), '2凸');
+        assert.equal(dom.gradeText(3, 0), '3凸');
+        assert.equal(dom.gradeText(3, 7), 'コア7');
+        // ★ 3凸未満で core が入っていても無視する (段階が飛ぶと「相手のほうが上」を誤判定する)
+        assert.equal(dom.gradeText(1, 5), '1凸');
+        assert.equal(dom.growthRank(1, 5), 2);
+        assert.deepEqual([[0,0],[1,0],[2,0],[3,0],[3,1],[3,7]].map(([g, c]) => dom.growthRank(g, c)), [1, 2, 3, 4, 5, 11]);
+    });
+
+    test('オーバーロード: 文字列 id も引ける / チャージ時間の負値を正に / 未知の効果は捨てる / 重複は先勝ち', () => {
+        const m = dom.buildOptionMap(EFFECTS);
+        // ★ id は state_effects で文字列、装備スロットで数値。数のまま突き合わせないと全部 0 になる
+        assert.equal(m.get(101).jp, '攻撃力');
+        assert.equal(m.get(101).value, 12.34, '2回目の 9999 を採ってしまっている (先勝ちでない)');
+        assert.equal(m.get(202).value, 5.6, 'チャージ時間の負値を正に直していない');
+        assert.equal(m.get(303).jp, 'クリティカル確率');
+        assert.equal(m.has(404), false, '未知の効果を通している');
+        assert.deepEqual(dom.buildOptionMap(null), new Map());
+    });
+
+    test('オーバーロード合計: 12枠を合算し、埋まっていない枠と未知 id は数えない', () => {
+        const m = dom.buildOptionMap(EFFECTS);
+        assert.deepEqual(dom.overloadTotals(mkDetail(), m), { 攻撃力: 12.34, クリティカル確率: 7, チャージ速度: 5.6 });
+        assert.equal(dom.overloadSlotCount(mkDetail(), m), 3);
+        // 同じ効果が複数枠に付いたら足す
+        const two = mkDetail({ torso_equip_option1_id: 101 });
+        assert.equal(dom.overloadTotals(two, m).攻撃力, 24.68);
+        assert.equal(dom.overloadSlotCount(two, m), 4);
+        // 未知の id は 0 枠扱い (state_effects に無い = 意味が分からない)
+        assert.equal(dom.overloadSlotCount(mkDetail({ arm_equip_option1_id: 999 }), m), 3);
+    });
+
+    test('★ 装備は 企業 / 一般 / 未装着 の3つを区別する (畳むと未装着が一般装備に見える)', () => {
+        const e = dom.equipOf(mkDetail());
+        assert.deepEqual(e.map((x) => `${x.part}:${x.text}`), ['頭:企業+3', '胴:T9', '腕:未装着', '脚:企業+5']);
+        assert.equal(e[0].kind, '企業');
+        assert.equal(e[1].kind, '一般');
+        assert.equal(e[2].kind, '未装着');
+        // 企業の強化は 0〜5 に収める
+        assert.equal(dom.equipOf({ head_equip_tier: 10, head_equip_lv: 99 })[0].text, '企業+5');
+    });
+
+    test('toRows: PAD に無い name_code は unknown へ / wanted で絞る / 同じキャラは先勝ち', () => {
+        const got = dom.toRows({
+            characters: [{ name_code: 1012, grade: 3, core: 2 }],
+            details: [mkDetail(), mkDetail({ name_code: 9999 }), mkDetail()],
+            stateEffects: EFFECTS, nameCodeMap: NAME_MAP,
+        });
+        assert.equal(got.rows.length, 1, '同じキャラを2行作っている');
+        assert.equal(got.rows[0].character_name, 'サクラ');
+        assert.equal(got.rows[0].name_code, 1012);
+        assert.deepEqual(got.unknown, [{ name_code: '9999', jp: null }]);
+        assert.deepEqual(got.rows[0].overload, { 攻撃力: 12.34, クリティカル確率: 7, チャージ速度: 5.6 });
+        assert.equal(got.rows[0].equip.length, 4);
+        // wanted に無いキャラは落とす (今回のレイドで使われたキャラだけ取り込む)
+        const only = dom.toRows({ details: [mkDetail()], stateEffects: EFFECTS, nameCodeMap: NAME_MAP, wanted: ['ラピ'] });
+        assert.equal(only.rows.length, 0);
+        assert.deepEqual(only.skipped, ['サクラ']);
+    });
+
+    test('★ 同名の別キャラを取り違えない: name_code 3015 は 鈴原サクラ', () => {
+        // CDN ではどちらも日本語名が「サクラ」。対応表が name_code で引けていれば取り違えない
+        const got = dom.toRows({
+            details: [mkDetail({ name_code: 3015 })], stateEffects: EFFECTS, nameCodeMap: NAME_MAP,
+        });
+        assert.equal(got.rows[0].character_name, '鈴原サクラ');
+    });
+
+    test('★ 非公開と一時的な失敗を混ぜない (催促の相手を間違える)', () => {
+        assert.equal(dom.statusOfCode(0), 'ok');
+        assert.equal(dom.statusOfCode(1301002), 'private');   // user not allow show gamecard
+        assert.equal(dom.statusOfCode(1303002), 'private');   // GetUserShiftyspadPrivacy error
+        assert.equal(dom.statusOfCode(500), 'error');
+        assert.equal(dom.statusOfCode(undefined), 'error');
+        assert.ok(dom.STATUS_JP.no_openid.includes('運営'), '未紐づけを本人のせいに読める文言にしない');
+    });
+
+    test('★ 比較: 片方が持っていない項目を「差 0」にしない', () => {
+        const m = dom.buildOptionMap(EFFECTS);
+        const mine = { ...dom.toRows({ details: [mkDetail({ skill1_lv: 4 })], stateEffects: EFFECTS, nameCodeMap: NAME_MAP }).rows[0] };
+        const theirs = { ...dom.toRows({ details: [mkDetail()], stateEffects: EFFECTS, nameCodeMap: NAME_MAP }).rows[0] };
+        const cmp = dom.compare(mine, theirs);
+        const s1 = cmp.rows.find((r) => r.key === 'skill1_lv');
+        assert.equal(s1.lead, 'theirs');
+        assert.equal(s1.diff, 6);
+        assert.equal(cmp.rows.find((r) => r.key === 'lv').lead, 'same');
+        assert.equal(cmp.missing, null);
+
+        // 相手のデータが無いとき: 全部 unknown で、差は null (0 ではない)
+        const none = dom.compare(mine, null);
+        assert.equal(none.missing, 'theirs');
+        assert.ok(none.rows.every((r) => r.lead === 'unknown' && r.diff === null), '欠けを「同じ」に見せている');
+        assert.ok(none.rows.every((r) => r.theirs === '—'));
+        assert.deepEqual(dom.compare(null, null).rows, []);
+    });
+
+    test('比較: オーバーロードは片方にしか無い項目も並べる', () => {
+        const mine = { overload: { 攻撃力: 10 } };
+        const theirs = { overload: { 攻撃力: 12.5, クリティカル確率: 7 } };
+        const cmp = dom.compare(mine, theirs);
+        const keys = cmp.overload.map((o) => o.key);
+        assert.deepEqual(keys, ['クリティカル確率', '攻撃力']);
+        const atk = cmp.overload.find((o) => o.key === '攻撃力');
+        assert.equal(atk.lead, 'theirs'); assert.equal(atk.mine, '10.00%'); assert.equal(atk.theirs, '12.50%');
+        // 自分が持っていない項目は 0% として並ぶ (「無い」ことが見えるほうがよい)
+        assert.equal(cmp.overload.find((o) => o.key === 'クリティカル確率').mine, '0.00%');
+    });
+
+    test('compareSquad / usedCharacters: 編成ぶんをまとめて、凸記録から対象を集める', () => {
+        const mine = { サクラ: { grade: 3, core: 0 } };
+        const theirs = { サクラ: { grade: 3, core: 5 } };
+        const list = dom.compareSquad(['サクラ', 'ラピ'], mine, theirs);
+        assert.equal(list.length, 2);
+        assert.equal(list[0].character, 'サクラ');
+        assert.equal(list[0].rows.find((r) => r.key === 'growth').lead, 'theirs');
+        assert.equal(list[1].missing, 'both', '両方持っていない扱いになっていない');
+        // 凸記録は文字列でもオブジェクトでも来る (古いスキーマ対策)
+        assert.deepEqual(dom.usedCharacters([{ characters: ['B', 'A'] }, { characters: [{ name: 'A' }, { name: 'C' }] }]),
+            ['A', 'B', 'C']);
+        assert.deepEqual(dom.usedCharacters(null), []);
+    });
+
+    test('43_member_growth.sql: 冪等・識別子の一意性・状態の綴り', () => {
+        const sql = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '43_member_growth.sql'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/ADD COLUMN IF NOT EXISTS blabla_openid TEXT/.test(sql));
+        // 1つの識別子を2人に付けない。未設定は何人いてもよいので部分索引
+        assert.ok(/CREATE UNIQUE INDEX IF NOT EXISTS uq_players_blabla_openid[\s\S]*?WHERE blabla_openid IS NOT NULL/.test(sql),
+            '識別子の一意性が無い、または部分索引になっていない');
+        assert.ok(/CREATE TABLE IF NOT EXISTS member_growth \(/.test(sql));
+        assert.ok(/CREATE TABLE IF NOT EXISTS member_growth_status \(/.test(sql));
+        assert.ok(/PRIMARY KEY \(season_id, player_id, character_name\)/.test(sql), 'シーズンごとのスナップショットになっていない');
+        // 非公開・未紐づけ・失敗を綴りで固定する
+        for (const st of ['ok', 'private', 'no_openid', 'error']) {
+            assert.ok(new RegExp(`'${st}'`).test(sql), `状態 ${st} が CHECK に無い`);
+        }
+        assert.ok(/DROP CONSTRAINT IF EXISTS member_growth_status_status_check/.test(sql), '再実行できない');
+        assert.ok(/ENABLE ROW LEVEL SECURITY/.test(sql) && /NOTIFY pgrst/.test(sql));
+        // 99 の判定行 (SQL Editor で 99 を1回流せば未適用が見える、を保つ)
+        const check = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '99_check_applied.sql'), 'utf8');
+        assert.ok(/'43_member_growth'/.test(check), '99_check_applied.sql に判定行が無い');
+        assert.ok(/uq_players_blabla_openid/.test(check) && /no_openid/.test(check), '判定が緩すぎる');
     });
 }
 
