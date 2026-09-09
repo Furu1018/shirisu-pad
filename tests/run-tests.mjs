@@ -7168,6 +7168,28 @@ console.log('\nswipeGuards:');
         assert.deepEqual(bad, [], `data-no-swipe が無い横スクロール要素:\n      ${bad.join('\n      ')}`);
     });
 
+    /**
+     * overflow-y だけ指定しているクラス (= 横にもスクロールできてしまう箱)。
+     * ★ セレクタの並記もある。末尾の1クラスだけ見ると `.new, .drawer { ... }` で
+     *   新しいクラスを見逃す (Codex指摘 2026-09-09) — data-no-swipe の検査と同じ割り方をする
+     */
+    const overflowYOnly = (css) => {
+        const hits = [];
+        for (const m of css.matchAll(/([^{}]+)\{([^{}]*overflow-y:\s*auto[^{}]*)\}/g)) {
+            if (/overflow-x:/.test(m[2])) continue;
+            for (const c of selectorClasses(m[1])) hits.push(c);
+        }
+        return [...new Set(hits)];
+    };
+
+    test('この検査自体が効いていること: 並記されたセレクタを取りこぼさない', () => {
+        assert.deepEqual(overflowYOnly('.a { overflow-y: auto; }').sort(), ['a']);
+        assert.deepEqual(overflowYOnly('.a { overflow-y: auto; overflow-x: hidden; }'), [], 'x を書いても拾っている');
+        // ★ 並記の前側 (新しく足したクラス) を落とさないこと
+        assert.deepEqual(overflowYOnly('.new, .drawer { overflow-y: auto; }').sort(), ['drawer', 'new']);
+        assert.deepEqual(overflowYOnly('.wrap .inner { overflow-y: auto; }'), ['inner']);
+    });
+
     test('★ 縦だけスクロールさせたい箱は overflow-x を明示する (指定しないと auto に化ける)', () => {
         // CSS の仕様: 片方が visible 以外だと、もう片方の visible は auto に計算される。
         // overflow-y:auto だけ書くと横にもスクロールできてしまう (2026-09-09 の実機FB)
@@ -7175,17 +7197,11 @@ console.log('\nswipeGuards:');
         //   実機で「横に動く」と言われたものから順に直す。この一覧は**増やさない**ための線
         const KNOWN = new Set(['drawer', 'help-toc', 'player-select-list', 'player-modal',
             'fururi-help-body', 'tour-body-scroll']);
-        // ★ セレクタは並記もある。末尾の1クラスだけ見ると `.new, .drawer { ... }` で
-        //   新しいクラスを見逃す (Codex指摘 2026-09-09) — data-no-swipe の検査と同じ割り方をする
-        const hits = [];
-        for (const m of html.matchAll(/([^{}]+)\{([^{}]*overflow-y:\s*auto[^{}]*)\}/g)) {
-            if (/overflow-x:/.test(m[2])) continue;
-            for (const c of selectorClasses(m[1])) hits.push(c);
-        }
-        const bad = [...new Set(hits)].filter((c) => !KNOWN.has(c));
+        const hits = overflowYOnly(html);
+        const bad = hits.filter((c) => !KNOWN.has(c));
         assert.deepEqual(bad, [], `overflow-y だけ指定していて横にもスクロールできる: ${bad.join(', ')}`);
         // 直した分が KNOWN に残り続けないように (直したら消す)
-        assert.deepEqual([...KNOWN].sort(), [...new Set(hits)].filter((c) => KNOWN.has(c)).sort(),
+        assert.deepEqual([...KNOWN].sort(), hits.filter((c) => KNOWN.has(c)).sort(),
             'KNOWN に、もう該当しないクラスが残っている');
     });
 
