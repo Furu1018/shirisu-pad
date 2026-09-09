@@ -6523,6 +6523,30 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.squadsFor(lo, {}, attrs), [], '育成がゼロなのに編成を出している');
     });
 
+    test('★ 配線: 浮かぶナビ (白い帯 + いま居るタブを黒い円で持ち上げ、名前を出す)', () => {
+        // 2026-09-09 モック 6f9d0510 の決定 A。以前は黒い帯 + センターだけ大丸だった
+        const html = _grRd('index.html');
+        // 5つのタブすべてに名前が付いている (アイコンだけだと何のタブか分からない)
+        for (const [tab, label] of [['mock', '模擬'], ['ops', '戦況'], ['mypage', 'ホーム'], ['ranking', '分析'], ['settings', '設定']]) {
+            const re = new RegExp(`data-tab="${tab}"[^>]*><span class="nav-lb">${label}</span>`);
+            assert.ok(re.test(html), `${label} タブに名前が無い`);
+        }
+        assert.equal((html.match(/class="nav-lb"/g) || []).length, 5, '名前が5つでない');
+        // 帯は白、いま居るタブは黒い円で**持ち上げる** (position:absolute + 上に出す)
+        const nav = html.match(/\.bottom-nav \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/background: #FFFFFF;/.test(nav), '帯が白くない');
+        const on = html.match(/\.bottom-nav-btn\.active \.nav-icon-wrap \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/position: absolute;/.test(on) && /top: -26px;/.test(on), 'いま居るタブを持ち上げていない');
+        assert.ok(/background: #14161A;/.test(on), '円が黒くない (決定 A: 黒い円で統一)');
+        assert.ok(/border: 5px solid var\(--nav-ring\)/.test(on), '地の色で切っていない (帯から飛び出して見えない)');
+        assert.ok(/--nav-ring:/.test(nav), 'リングの色を持っていない');
+        // ★ センターだけ特別、ではなくなった — 大丸の指定が残っていると2つ持ち上がる
+        assert.ok(!/\.bottom-nav-btn\.nav-home \.nav-icon-wrap \{[^}]*width: 60px/.test(html), 'センターの大丸が残っている');
+        assert.ok(!/\.bottom-nav-btn\.nav-home\.active/.test(html), 'センターだけ別の見た目になっている');
+        // 自動隠しと下端の余白は据え置き (張り出しぶんを含む)
+        assert.ok(/\.bottom-nav\.nav-hidden \{/.test(html), '自動隠しが消えている');
+        assert.ok(/padding-bottom: calc\(112px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が足りない');
+    });
     test('★ 配線: 育成をくらべるシート (盤面から編成 / 取り込んだシーズンを使う / 入口は残凸表の名前)', () => {
         const noCR = (x) => x.split(String.fromCharCode(13)).join('');   // CRLF のままだと関数の切り出しが当たらない
         const html = noCR(_grRd('index.html')), client = noCR(_grRd('js', 'supabase-client.js'));
