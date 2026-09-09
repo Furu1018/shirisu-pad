@@ -418,5 +418,171 @@ await testAsync('読み込みに失敗しても、例外を投げずに隠すだ
     await p;
     assert.equal(h.card.style.display, 'none');
 });
+// ---- 📣 未公開の人に公開をお願いする (B3) の実行テスト ---------------------
+//   ★ ソースの文字列一致だけだと、privateTargets の行を残したまま送信側を
+//     全員に広げる変異がすり抜ける (Codex指摘 2026-09-09)。**実際の playerIds** を見る。
+const ASK_SRC = cut('        async function handleGrowthAskPublish()');
+
+function runAsk({ players = [], statusRows = [], preview = true, sendFails = false } = {}) {
+    const calls = { sent: [], notes: [], previews: [] };
+    let resolvePreview = null;
+    const state = {
+        gen: 0, seasons: null, picked: null, seasonId: 30, players, statusRows,
+        used: [], wanted: null, busy: false, sending: false, msg: null, rosterOpen: false,
+    };
+    const env = {
+        _growth: state,
+        window: {
+            growthDomain: dom,
+            sendPushNotification: async (payload) => {
+                calls.sent.push(payload);
+                if (sendFails) throw new Error('圏外');
+                return { ok: true, sent: payload.playerIds.length };
+            },
+        },
+        showPushPreview: (groups) => {
+            calls.previews.push(groups);
+            return new Promise((res) => { resolvePreview = res; });
+        },
+        _growthNote: (kind, text) => { calls.notes.push({ kind, text }); },
+    };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, `${ASK_SRC}\nreturn handleGrowthAskPublish;`)(...keys.map(k => env[k]));
+    return {
+        state, calls,
+        run: () => fn(),
+        answer: (v = preview) => { if (resolvePreview) resolvePreview(v); },
+        recipients: () => (calls.previews[0]?.[0]?.recipients || []).map(r => r.id),
+        playerIds: () => (calls.sent[0]?.playerIds || []),
+    };
+}
+
+const P4 = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }, { id: 4, name: 'え' }];
+const S4 = [
+    { player_id: 1, status: 'private' }, { player_id: 2, status: 'no_openid' },
+    { player_id: 3, status: 'ok' }, { player_id: 4, status: 'error' },
+];
+
+await testAsync('★ 送るのは非公開の人だけ (取り込み済み・未ひも付け・失敗には送らない)', async () => {
+    const t = runAsk({ players: P4, statusRows: S4 });
+    const p = t.run();
+    t.answer(true);
+    await p;
+    assert.deepEqual(t.recipients(), [1], '確認画面の顔ぶれが違う');
+    assert.deepEqual(t.playerIds(), [1], `実際の送信先が違う: ${JSON.stringify(t.playerIds())}`);
+    assert.equal(t.calls.notes.at(-1).kind, 'ok');
+});
+
+await testAsync('★ 確認している間に ok になった人には送らない (宛先を握ったままにしない)', async () => {
+    const t = runAsk({ players: P4, statusRows: [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'private' }] });
+    const p = t.run();
+    assert.deepEqual(t.recipients(), [1, 2]);
+    // 別の運営が取り込んで 2 が ok になった
+    t.state.statusRows = [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'ok' }];
+    t.answer(true);
+    await p;
+    assert.deepEqual(t.playerIds(), [1], '状況が変わった人にも送っている');
+    assert.match(t.calls.notes.at(-1).text, /1人は状況が変わったので外しました/);
+});
+
+await testAsync('★ 確認している間に書庫に入れた人には送らない (購読は残るので本当に届く)', async () => {
+    const t = runAsk({ players: P4, statusRows: [{ player_id: 1, status: 'private' }, { player_id: 4, status: 'private' }] });
+    const p = t.run();
+    assert.deepEqual(t.recipients(), [1, 4]);
+    t.state.players = P4.filter(x => x.id !== 4);      // 書庫入り = 一覧から消える
+    t.answer(true);
+    await p;
+    assert.deepEqual(t.playerIds(), [1], 'PAD にいない人に送っている');
+});
+
+await testAsync('確認している間に全員いなくなったら送らない', async () => {
+    const t = runAsk({ players: P4, statusRows: [{ player_id: 1, status: 'private' }] });
+    const p = t.run();
+    t.state.statusRows = [{ player_id: 1, status: 'ok' }];
+    t.answer(true);
+    await p;
+    assert.equal(t.calls.sent.length, 0, '宛先ゼロなのに送っている');
+    assert.equal(t.calls.notes.at(-1).kind, 'warn');
+});
+
+await testAsync('確認画面で断ったら送らない / 非公開の人が0なら確認画面も出さない', async () => {
+    const no = runAsk({ players: P4, statusRows: S4 });
+    const p = no.run(); no.answer(false); await p;
+    assert.equal(no.calls.sent.length, 0, '断ったのに送っている');
+    const none = runAsk({ players: P4, statusRows: [{ player_id: 3, status: 'ok' }] });
+    await none.run();
+    assert.equal(none.calls.previews.length, 0, '相手がいないのに確認画面を出している');
+    assert.equal(none.calls.notes.at(-1).kind, 'warn');
+});
+
+await testAsync('送信中は二重に走らない / 失敗しても実行中のままにしない', async () => {
+    const t = runAsk({ players: P4, statusRows: S4, sendFails: true });
+    const p = t.run(); t.answer(true); await p;
+    assert.equal(t.calls.notes.at(-1).kind, 'err');
+    assert.equal(t.state.sending, false, '失敗したのに送信中のままになっている');
+    // 送信中は入口で弾く
+    t.state.sending = true;
+    await t.run();
+    assert.equal(t.calls.previews.length, 1, '送信中にもう一度開けてしまう');
+});
+
+// ---- 育成の読み出しのページ送り -------------------------------------------
+//   ★ 1シーズン 600行を超える。Supabase の既定上限 1000 で黙って切れると、
+//     **後ろのメンバーだけ**「未取得」に見える (原因が分かりにくい壊れ方)
+const CLIENT = fs.readFileSync(path.join(ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
+const ROWS_SRC = (CLIENT.match(/window\.supabaseLoadGrowthSeasonRows = async function[\s\S]*?\n\};\n/) || [])[0];
+if (!ROWS_SRC) { console.error('NG: supabaseLoadGrowthSeasonRows を切り出せません'); process.exit(2); }
+
+function runPager(pages) {
+    const ranges = [];
+    let call = 0;
+    const b = {
+        select: () => b, eq: () => b, order: () => b,
+        range: async (from, to) => {
+            ranges.push([from, to]);
+            const p = pages[call++];
+            if (p instanceof Error) return { data: null, error: p };
+            return { data: p || [], error: null };
+        },
+    };
+    const win = {};
+    new Function('supabase', '_isMissingTableErr', 'window', `${ROWS_SRC}\nreturn 0;`)(
+        { from: () => b },
+        (e, t) => String(e?.message || '').includes(t),
+        win,
+    );
+    return { load: win.supabaseLoadGrowthSeasonRows, ranges };
+}
+const page = (n) => Array.from({ length: n }, (_, i) => ({ player_id: i, character_name: 'x' }));
+
+await testAsync('★ 1000行を超えても全部読む (後ろのメンバーだけ消えない)', async () => {
+    const t = runPager([page(1000), page(318)]);
+    const rows = await t.load(30);
+    assert.equal(rows.length, 1318, `読み落としている: ${rows.length}`);
+    assert.deepEqual(t.ranges, [[0, 999], [1000, 1999]], `ページの取り方が違う: ${JSON.stringify(t.ranges)}`);
+});
+
+await testAsync('ちょうど1000行なら、空の次ページまで見て終わる', async () => {
+    const t = runPager([page(1000), page(0)]);
+    assert.equal((await t.load(30)).length, 1000);
+    assert.equal(t.ranges.length, 2, '1ページ目で打ち切っている (次があるか確かめていない)');
+});
+
+await testAsync('1ページで収まるなら1回で終わる / シーズン未指定は読みに行かない', async () => {
+    const t = runPager([page(618)]);
+    assert.equal((await t.load(30)).length, 618);
+    assert.equal(t.ranges.length, 1, '余計に読みに行っている');
+    const none = runPager([page(10)]);
+    assert.deepEqual(await none.load(null), [], 'シーズンが無いのに読みに行っている');
+    assert.equal(none.ranges.length, 0);
+});
+
+await testAsync('★ 途中のエラーは握りつぶさない / 43未適用だけ null', async () => {
+    const boom = runPager([page(1000), new Error('network down')]);
+    await assert.rejects(() => boom.load(30), /network down/, '途中で失敗したのに半端な行を返している');
+    const missing = runPager([new Error('relation "public.member_growth" does not exist')]);
+    assert.equal(await missing.load(30), null, '43未適用を「育成ゼロ」と混同している');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

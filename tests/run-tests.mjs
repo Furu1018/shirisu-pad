@@ -6534,6 +6534,12 @@ console.log('\ngrowthDomain:');
         assert.equal(t[0].bossCode, 'M', '代表が最大ダメージの凸になっていない');
         assert.deepEqual(t[1].team, ['ドロシー']);
         assert.deepEqual(dom.usedTeams(atk, 99), [], '他人の凸を混ぜている');
+        // ★ ダメージ0の凸も「使った編成」— 落とすと、失敗凸しか無い編成が消える
+        const zero = dom.usedTeams([{ player_id: 9, boss_number: 1, boss_code: 'Z', characters: ['ラピ'], damage_raw: 0 }], 9);
+        assert.equal(zero.length, 1, 'ダメージ0の凸を落としている');
+        assert.equal(zero[0].dmg, 0, 'ダメージが負になっている');
+        const nul = dom.usedTeams([{ player_id: 9, boss_number: 1, boss_code: 'Z', characters: ['ラピ'], damage_raw: null }], 9);
+        assert.equal(nul[0].dmg, 0);
         assert.deepEqual(dom.usedTeams(atk, null), []);
     });
 
@@ -6571,6 +6577,16 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.unionRanking(by, players, 'ラピ', 'lv', 1).list.map(x => x.playerId), [1, 2]);
         assert.equal(dom.unionRanking(by, players, 'ラピ', 'combat', 3).myRank, null, '持っていない自分に順位が付いている');
         assert.deepEqual(dom.unionRanking(by, players, 'いないキャラ', 'combat', 1).list, []);
+        // ★ 同点は名前順で固定する — 描き直すたびに順位が入れ替わると信用されない
+        const tie = dom.byPlayerCharacter([
+            { player_id: 1, character_name: 'ラピ', combat: 100 },
+            { player_id: 2, character_name: 'ラピ', combat: 100 },
+            { player_id: 3, character_name: 'ラピ', combat: 100 },
+        ]);
+        const t1 = dom.unionRanking(tie, [{ id: 3, name: 'う' }, { id: 1, name: 'あ' }, { id: 2, name: 'い' }], 'ラピ', 'combat', 1);
+        const t2 = dom.unionRanking(tie, [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }], 'ラピ', 'combat', 1);
+        assert.deepEqual(t1.list.map(x => x.name), ['あ', 'い', 'う'], '同点の並びが名前順でない');
+        assert.deepEqual(t1.list.map(x => x.playerId), t2.list.map(x => x.playerId), '渡す順で並びが変わる');
     });
 
     test('★ teamGaps: 編成の並びのまま差を出す (並べ替えは rankSquad の仕事)', () => {

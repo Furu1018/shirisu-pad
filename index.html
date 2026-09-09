@@ -16494,7 +16494,7 @@
         //   流れは 4 段: ① 識別子の名寄せ → ② ブックマークレットを作る → ③ 貼り付けて取り込む → ④ 取れなかった人。
         //   ★ ブックマークレットにするのは blablalink.com の anti-debug 対策 (DevTools を開くと止まる)。
         //   ★ 対象は「今回のレイドで実際に使われたキャラ」だけ (usedCharacters) — 全キャラは要らない。
-        const _growth = { gen: 0, seasons: null, picked: null, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, msg: null, rosterOpen: false };
+        const _growth = { gen: 0, seasons: null, picked: null, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, sending: false, msg: null, rosterOpen: false };
         let _growthNameMap = null;   // data/blabla-name-codes.json の data (name_code → {jp, pad})
 
         async function _growthLoadNameMap() {
@@ -16693,20 +16693,32 @@
         // ★ 相手は private の人だけ。未ひも付けは運営の作業待ちなので送らない (本人には何もできない)
         async function handleGrowthAskPublish() {
             const dom = window.growthDomain;
-            if (!dom || _growth.busy) return;
-            const targets = dom.privateTargets(_growth.statusRows, _growth.players || [])
-                .map(p => ({ id: p.id, name: p.name }));
-            if (!targets.length) { _growthNote('warn', '非公開の人がいません。'); return; }
+            if (!dom || _growth.busy || _growth.sending) return;
+            const pick = (p) => ({ id: p.id, name: p.name });
+            const shown = dom.privateTargets(_growth.statusRows, _growth.players || []).map(pick);
+            if (!shown.length) { _growthNote('warn', '非公開の人がいません。'); return; }
             const ask = dom.PUBLISH_ASK;
-            const ok = await showPushPreview([{ title: ask.title, body: ask.body, recipients: targets }]);
+            const ok = await showPushPreview([{ title: ask.title, body: ask.body, recipients: shown }]);
             if (!ok) return;
+            // ★ 確認している間に状況は変わる (Codex指摘 2026-09-09) — 別の運営が取り込んで ok になる、
+            //   その人を書庫に入れる、など。**確認した顔ぶれのうち、いまも非公開の人だけ**に送る。
+            //   広げない (運営が承認したのはこの顔ぶれ) / 減らすのは安全側。
+            //   書庫入りは特に危険で、プレイヤー一覧から消えても Push の購読は残る = PAD にいない人に届く。
+            const now = new Set(dom.privateTargets(_growth.statusRows, _growth.players || []).map(p => String(p.id)));
+            const targets = shown.filter(t => now.has(String(t.id)));
+            if (!targets.length) { _growthNote('warn', '確認している間に状況が変わりました。もう一度お願いします。'); return; }
+            _growth.sending = true;
             try {
                 const res = await window.sendPushNotification({
                     title: ask.title, body: ask.body, url: ask.url, playerIds: targets.map(t => t.id),
                 });
-                _growthNote('ok', `📣 ${targets.length}人にお願いを送りました (${res?.sent ?? '?'} 端末)`);
+                const off = shown.length - targets.length;
+                _growthNote('ok', `📣 ${targets.length}人にお願いを送りました (${res?.sent ?? '?'} 端末)`
+                    + (off ? ` · ${off}人は状況が変わったので外しました` : ''));
             } catch (e) {
                 _growthNote('err', `送信に失敗しました: ${e?.message || e}`);
+            } finally {
+                _growth.sending = false;
             }
         }
 

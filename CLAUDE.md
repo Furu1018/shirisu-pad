@@ -179,6 +179,13 @@ rm -f .claude/hooks/.codex-on      # OFF
   - ★ 非同期の2つの守り: `_growthNoticeSeq` で**追い越した古い応答を捨てる** / 待機中に名乗り直したら
     (`getCurrentIdentity()` が別人) 何も書かない。どちらも実行テストで変異検出する
   文面は `growthDomain.PUBLISH_ASK` (画面に散らさない)。送る前に必ず `showPushPreview` を通す。
+  - ★ **確認ダイアログの前に握った宛先をそのまま使わない** (Codex指摘 2026-09-09)。await の間に
+    別の運営が取り込んで ok になる / その人を書庫に入れる、が起こる。await 後にもう一度
+    `privateTargets` を取り、**確認した顔ぶれとの積集合**だけに送る (広げない・減らすのは安全側)。
+    書庫入りは特に危険で、プレイヤー一覧から消えても Push の購読は残る = PAD にいない人に届く。
+  - ★ 宛先はソースの文字列一致では守れない。`tests/growth-panel.mjs` が
+    **await をまたいで実際に実行し `playerIds` を見る** (privateTargets の行を残したまま
+    送信側だけ全員に広げる変異がすり抜けるため)。
   実行テスト `tests/growth-panel.mjs`
   **ソルバーを拘束するのは isFixed** (approved と承認済み起点の cancel_requested。requested は提案層で計算に効かせない)。
   `input.reservations` に `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
@@ -462,6 +469,16 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
 - ★ ラベルは DOM 上ではアイコンより**前**に置き、CSS の `order` で下に出す —
   5つの閉じタグが同じで、後ろに差し込む目印に使えないため
 - 自動隠し (`nav-hidden`)・キーボード中の非表示 (`body.kb-open`)・下端の余白 (112px) は据え置き
+
+### Codex 監査の投げ方 (2026-09-09 に判明)
+
+`codex:codex-rescue` は **`task` に転送するだけ**の薄いラッパで、`status` / `result` / `cancel` を
+呼べない (プラグインの `agents/codex-rescue.md` にそう書いてある)。前景 (`--wait`) なら結果が
+そのまま返って自動で完結するが、**依頼文が長い・多段だと背景実行を選ぶ**。背景だと job id しか
+返らず、本人は結果を取りに行けないので、`/codex:result <id>` を**ユーザーに実行してもらう**しかない。
+- ★ 自動で回したいなら依頼文に **`--wait` を明示**する
+- ★ 「修正しないで、指摘だけ」と書くと Codex は**読み取り専用**で起動し、`node` も実行できない
+  (= テストを走らせられない)。テストはこちらで走らせる前提で読むこと
 
 ### 頻出パターン
 
