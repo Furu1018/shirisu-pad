@@ -1062,11 +1062,16 @@
     }
 
     /** 並べ替えに使える項目。★ 画面に項目名を持たせない (compare と食い違わせない) */
-    // 並べ替えのピルは「見たい順」に出す — 合計 → オーバーロード各種 → その他
-    const SORT_FIELDS = [SUM_FIELD, ...OVERLOAD_FIELDS, ...FIELDS].map((f) => ({ key: f.key, label: f.label }));
+    // 並べ替えは**オーバーロードだけ**にする (2026-09-09 ユーザー要望)。
+    // ★ 突破・レベル・スキル・戦闘力で順位を付けてもシンクロレベル順や横並びになるだけで、
+    //   ユニオン内で見比べる意味がない。比較表 (FIELDS) には従来どおり全部出す
+    const SORT_FIELDS = [SUM_FIELD, ...OVERLOAD_FIELDS].map((f) => ({ key: f.key, label: f.label }));
+    const SORT_KEYS = new Set(SORT_FIELDS.map((f) => f.key));
     /** 既定の並べ替え。戦闘力ではなくオーバーロード合計 (シンクロレベル順にならない) */
     const DEFAULT_SORT = SUM_FIELD_KEY;
     const _fieldOf = (key) => ALL_FIELDS.find((f) => f.key === key) || SUM_FIELD;
+    /** 並べ替えに使ってよいキーか。選べなくなった古いキー ('combat' 等) は既定に倒す */
+    const normalizeSortKey = (key) => (SORT_KEYS.has(key) ? key : DEFAULT_SORT);
 
     /**
      * 1体のキャラを**ユニオン内で並べる** (2026-09-09 ユーザー要望)。
@@ -1190,6 +1195,6 @@
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
         rankSquad, fmtMan, fmtPct, privateTargets, PUBLISH_ASK,
         defaultGrowthSeason, usedTeams, byPlayerCharacter, charactersIn,
-        SORT_FIELDS, unionRanking, teamGaps,
+        SORT_FIELDS, SORT_KEYS, normalizeSortKey, unionRanking, teamGaps,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

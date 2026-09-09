@@ -6476,11 +6476,21 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(labels.slice(1, 5), ['有利コード', '攻撃力', 'クリティカル確率', 'クリティカルダメージ'],
             'マストで見たい4項目が前に出ていない');
         assert.equal(dom.DEFAULT_SORT, dom.SUM_FIELD_KEY);
-        // 戦闘力も選べるが既定ではない
-        assert.ok(labels.includes('戦闘力'));
-        // ★ キューブは比較から外した / お気に入りは「指揮官ぬいぐるみ」
-        assert.ok(!labels.includes('キューブ'), 'キューブが残っている');
-        assert.ok(labels.includes('指揮官ぬいぐるみ'), '指揮官ぬいぐるみが無い');
+        // ★ 並べ替えはオーバーロードだけ (2026-09-09 ユーザー要望)。
+        //   突破・レベル・スキル・戦闘力で順位を付けても見比べる意味がない
+        assert.equal(labels.length, 10, `並べ替えの数が違う: ${labels.join('/')}`);
+        for (const gone of ['戦闘力', '突破', 'レベル', 'スキル1', '好感度', '指揮官ぬいぐるみ']) {
+            assert.ok(!labels.includes(gone), `${gone} が並べ替えに残っている`);
+        }
+        // 選べなくなった古いキーは既定に倒す (ピルが押されていないのに別の順で並ぶのを防ぐ)
+        for (const old of ['combat', 'lv', 'harmony_cube_lv', 'なにこれ', '']) {
+            assert.equal(dom.normalizeSortKey(old), dom.DEFAULT_SORT, `${old} を既定に倒していない`);
+        }
+        assert.equal(dom.normalizeSortKey(dom.OL_PREFIX + '攻撃力'), dom.OL_PREFIX + '攻撃力');
+        // ★ 比較表 (FIELDS) には従来どおり出る — 並べ替えから外しただけ
+        const fieldLabels = dom.FIELDS.map((f) => f.label);
+        assert.ok(fieldLabels.includes('戦闘力') && fieldLabels.includes('指揮官ぬいぐるみ'));
+        assert.ok(!fieldLabels.includes('キューブ'), 'キューブが残っている');
         assert.ok(!dom.FIELDS.some((f) => f.key === 'harmony_cube_lv'));
     });
 
@@ -6506,7 +6516,8 @@ console.log('\ngrowthDomain:');
             2: { X: mk({ 有利コード: 5, 攻撃力: 5 }, 500000) },
             3: { X: mk({ 有利コード: 9, 攻撃力: 9 }, 100000) },
         };
-        const byCombat = dom.unionRanking(byPl, P, 'X', 'combat', 1);
+        // ドメインとしては戦闘力でも引ける (画面が選べないだけ)
+        const byCombat = dom.unionRanking(byPl, P, 'combat', 1) && dom.unionRanking(byPl, P, 'X', 'combat', 1);
         assert.deepEqual(byCombat.list.map((x) => x.playerId), [1, 2, 3]);
         const bySum = dom.unionRanking(byPl, P, 'X', dom.DEFAULT_SORT, 1);
         assert.deepEqual(bySum.list.map((x) => x.playerId), [3, 2, 1], 'オーバーロード順になっていない');

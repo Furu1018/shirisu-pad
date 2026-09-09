@@ -16189,7 +16189,10 @@
         // 旧バージョンで 'combat' を記憶していても、無効なキーは既定に倒れる (_fieldOf のフォールバック)
         function _gvSort() {
             const dom = window.growthDomain;
-            return _gv.sort || (dom && dom.DEFAULT_SORT) || 'combat';
+            if (!dom) return _gv.sort || 'combat';
+            // ★ 並べ替えはオーバーロードだけ。選べなくなった古いキーは既定に倒す
+            //   (倒さないと、ピルがどれも押されていないのに別の順で並ぶ)
+            return dom.normalizeSortKey(_gv.sort || dom.DEFAULT_SORT);
         }
         function handleGrowthAnaWho(id) {
             _gv.them = (id === '' || id == null) ? null : Number(id);
@@ -16218,7 +16221,11 @@
             return _gv.elems.get(name) || '';
         }
         function handleGrowthAnaChar(i) { _gv.charIdx = Number(i); _gv.open = new Set(); _gvPaint(); }
-        function handleGrowthAnaSort(k) { _gv.sort = String(k || 'combat'); _gvPaint(); }
+        function handleGrowthAnaSort(k) {
+            const dom = window.growthDomain;
+            _gv.sort = dom ? dom.normalizeSortKey(String(k == null ? '' : k)) : String(k || '');
+            _gvPaint();
+        }
         function handleGrowthAnaRoster() { _gv.rosterOpen = !_gv.rosterOpen; _gvPaint(); }
         function handleGrowthAnaSearch(v) { _gv.q = String(v == null ? '' : v); _gv.focusQ = true; _gvPaint(); }
         function handleGrowthAnaOpen(key) {

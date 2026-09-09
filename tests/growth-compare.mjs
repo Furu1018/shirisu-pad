@@ -182,19 +182,36 @@ test('キャラ別: 検索とバースト絞り込みが効く', () => {
 });
 
 test('キャラ別 × ユニオン全体: 並べ替えが効く (順位が入れ替わる)', () => {
+    // ★ 並べ替えはオーバーロードだけ (2026-09-09 ユーザー要望)
     const rows = [
-        growthRow(1, 'ラピ', { combat: 900000, lv: 100 }),
-        growthRow(2, 'ラピ', { combat: 100000, lv: 900 }),
+        growthRow(1, 'ラピ', { overload: { 有利コード: 20, 攻撃力: 2 } }),
+        growthRow(2, 'ラピ', { overload: { 有利コード: 1, 攻撃力: 30 } }),
     ];
-    const t = build({ rows, teams: [], them: null, view: 'char', charIdx: 0, sort: 'combat' });   // 戦闘力順も選べる
-    const byCombat = t.paint();
+    const t = build({ rows, teams: [], them: null, view: 'char', charIdx: 0 });
     // ★ 相手えらびにも class="nm" があるので、順位表の行だけを見る
     const order = (s) => [...s.matchAll(/class="gv-rk[^>]*">[\s\S]*?class="nm">([^<]+)/g)].map(m => m[1]);
-    assert.deepEqual(order(byCombat).slice(0, 2), ['ふるり', 'なべりうす'], '戦闘力順になっていない');
-    t.handleGrowthAnaSort('lv');
-    const byLv = t.paint();
-    assert.deepEqual(order(byLv).slice(0, 2), ['なべりうす', 'ふるり'], 'レベル順に並べ替えられない');
-    assert.ok(/レベル順/.test(byLv), '何順なのか書いていない');
+    // 既定は合計 (22 vs 31) → なべりうすが上
+    assert.deepEqual(order(t.paint()).slice(0, 2), ['なべりうす', 'ふるり'], '合計順になっていない');
+    t.handleGrowthAnaSort(dom.OL_PREFIX + '有利コード');
+    const byElem = t.paint();
+    assert.deepEqual(order(byElem).slice(0, 2), ['ふるり', 'なべりうす'], '有利コード順に並べ替えられない');
+    assert.ok(/有利コード順/.test(byElem), '何順なのか書いていない');
+    // 選べなくなったキーを渡しても既定に倒れる (押されていないのに別の順で並ばない)
+    t.handleGrowthAnaSort('combat');
+    assert.equal(t.state.sort, dom.DEFAULT_SORT, '古いキーをそのまま覚えている');
+    assert.deepEqual(order(t.paint()).slice(0, 2), ['なべりうす', 'ふるり']);
+});
+
+test('★ 並べ替えのピルはオーバーロードだけ', () => {
+    const rows = [growthRow(1, 'ラピ'), growthRow(2, 'ラピ')];
+    const out = build({ rows, teams: [], them: null, view: 'char', charIdx: 0 }).paint();
+    const pills = /class="gv-pills gv-sorts"[^>]*>([\s\S]*?)<\/div>/.exec(out)?.[1] || '';
+    const labels = [...pills.matchAll(/>([^<]+)<\/button>/g)].map(m => m[1]);
+    assert.equal(labels.length, 10, `並べ替えの数が違う: ${labels.join('/')}`);
+    assert.equal(labels[0], '有利コード＋攻撃');
+    for (const gone of ['戦闘力', '突破', 'レベル', '好感度']) {
+        assert.ok(!labels.includes(gone), `${gone} が並べ替えに残っている`);
+    }
 });
 
 test('★ 相手・見方・並べ替えを変えても取り直さない (レイドを変えたときだけ読む)', () => {
