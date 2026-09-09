@@ -6760,6 +6760,16 @@ console.log('\ngrowthDomain:');
             'スキルの欠けを Lv0 として比べている');
         assert.equal(dom.quickCells(half, half, full)[1].text, '10/—/—', '欠けを 0 と書いている');
         assert.equal(dom.quickCells(full, full, half)[1].lead, 'unknown', '相手側が欠けても同じ');
+        // ★ 全部そろっていれば、ちゃんと色が付く (欠けの判定を入れた副作用で色が消えていないか)
+        const hi = { grade: 3, core: 0, skill1_lv: 10, skill2_lv: 10, ulti_skill_lv: 10, overload: {} };
+        assert.equal(dom.quickCells(full, full, hi)[1].lead, 'theirs', '全部そろっているのに色が付かない');
+        assert.equal(dom.quickCells(hi, hi, full)[1].lead, 'mine', '自分が上のときに色が付かない');
+        assert.equal(dom.quickCells(full, full, full)[1].lead, 'same', '同じなのに差が付いている');
+        // ★ S1 が同じでも S2・バーストで差が付く — 3つとも見ていないと拾えない
+        const s1same = { grade: 3, core: 0, skill1_lv: 10, skill2_lv: 7, ulti_skill_lv: 7, overload: {} };
+        assert.equal(dom.quickCells(s1same, s1same, hi)[1].lead, 'theirs',
+            'スキル1しか見ていない (S2・バーストの差を拾えない)');
+        assert.equal(dom.quickCells(hi, hi, s1same)[1].lead, 'mine', '同上 (自分が上の側)');
     });
     test('★ teamGaps: 編成の並びのまま差を出す (並べ替えは rankSquad の仕事)', () => {
         // 差はオーバーロード合計 (有利コード＋攻撃) で見る — 戦闘力はシンクロレベル順にしかならない
