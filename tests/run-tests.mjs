@@ -6001,7 +6001,8 @@ console.log('\ngrowthDomain:');
         const theirs = { overload: { 攻撃力: 12.5, クリティカル確率: 7 } };
         const cmp = dom.compare(mine, theirs);
         const keys = cmp.overload.map((o) => o.key);
-        assert.deepEqual(keys, ['クリティカル確率', '攻撃力']);
+        // ★ 並びは五十音順ではなく**見たい順** (有利コード → 攻撃 → クリ2種 → …)
+        assert.deepEqual(keys, ['攻撃力', 'クリティカル確率']);
         const atk = cmp.overload.find((o) => o.key === '攻撃力');
         assert.equal(atk.lead, 'theirs'); assert.equal(atk.mine, '10.00%'); assert.equal(atk.theirs, '12.50%');
         // 自分が持っていない項目は 0% として並ぶ (「無い」ことが見えるほうがよい)
@@ -6430,6 +6431,69 @@ console.log('\ngrowthDomain:');
         assert.ok(/signature: 0/.test(out) && /anchors: 0/.test(out) && /state: 0/.test(out), '内訳が出ていない');
     });
 
+    test('★ 有利コード: 旧キー「属性ダメージ」で保存された行を読み替える', () => {
+        // 2026-09-09 にゲーム内の呼び方へ改名した。本番には旧キーの行が残っている
+        assert.equal(dom.OVERLOAD_JP.IncElementDmg, '有利コード');
+        assert.deepEqual(dom.normalizeOverload({ 属性ダメージ: 10, 攻撃力: 5 }), { 有利コード: 10, 攻撃力: 5 });
+        // 寄せた先に同じ項目があったら足す (混在した行が来ても割れない)
+        assert.deepEqual(dom.normalizeOverload({ 属性ダメージ: 10, 有利コード: 2 }), { 有利コード: 12 });
+        assert.deepEqual(dom.normalizeOverload(null), {});
+        // ★ 読む入口 (byPlayerCharacter) で寄せる — ここを通さないと順位も比較も同じ項目が2つに割れる
+        const by = dom.byPlayerCharacter([{ player_id: 1, character_name: 'X', overload: { 属性ダメージ: 7 } }]);
+        assert.deepEqual(by['1'].X.overload, { 有利コード: 7 });
+    });
+
+    test('★ 並べ替えはオーバーロードが先頭・既定は「有利コード＋攻撃」', () => {
+        // 戦闘力で順位を付けるとシンクロレベル順にしかならない (2026-09-09 ユーザー指摘)
+        const labels = dom.SORT_FIELDS.map((f) => f.label);
+        assert.equal(labels[0], '有利コード＋攻撃', '既定にしたい項目が先頭に無い');
+        assert.deepEqual(labels.slice(1, 5), ['有利コード', '攻撃力', 'クリティカル確率', 'クリティカルダメージ'],
+            'マストで見たい4項目が前に出ていない');
+        assert.equal(dom.DEFAULT_SORT, dom.SUM_FIELD_KEY);
+        // 戦闘力も選べるが既定ではない
+        assert.ok(labels.includes('戦闘力'));
+        // ★ キューブは比較から外した / お気に入りは「指揮官ぬいぐるみ」
+        assert.ok(!labels.includes('キューブ'), 'キューブが残っている');
+        assert.ok(labels.includes('指揮官ぬいぐるみ'), '指揮官ぬいぐるみが無い');
+        assert.ok(!dom.FIELDS.some((f) => f.key === 'harmony_cube_lv'));
+    });
+
+    test('★ オーバーロードの値: データ無し (null) と その項目が 0 を分ける', () => {
+        // 0 にすると未取得の人が「最下位」として順位に並んでしまう
+        assert.equal(dom.overloadValue(null, '攻撃力'), null);
+        assert.equal(dom.overloadValue({ overload: null }, '攻撃力'), null);
+        assert.equal(dom.overloadValue({ overload: {} }, '攻撃力'), 0);
+        assert.equal(dom.overloadValue({ overload: { 攻撃力: 12.5 } }, '攻撃力'), 12.5);
+        assert.equal(dom.overloadValue({ overload: { 属性ダメージ: 3 } }, '有利コード'), 3, '旧キーを読めていない');
+        // 合計もデータが無ければ null
+        assert.equal(dom.SUM_FIELD.value({ overload: null }), null);
+        assert.equal(dom.SUM_FIELD.value({ overload: { 有利コード: 10, 攻撃力: 5.5 } }), 15.5);
+        assert.equal(dom.SUM_FIELD.text({ overload: { 有利コード: 10, 攻撃力: 5.5 } }), '15.50%');
+    });
+
+    test('★ ユニオン内の順位をオーバーロードで付けられる (戦闘力だけではない)', () => {
+        const P = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }];
+        const mk = (ol, combat) => ({ character_name: 'X', grade: 3, core: 0, lv: 200, combat, overload: ol });
+        const byPl = {
+            // 戦闘力は 1 が最大だが、オーバーロードは 3 が最大 (シンクロレベルの差を排除できる)
+            1: { X: mk({ 有利コード: 2, 攻撃力: 2 }, 900000) },
+            2: { X: mk({ 有利コード: 5, 攻撃力: 5 }, 500000) },
+            3: { X: mk({ 有利コード: 9, 攻撃力: 9 }, 100000) },
+        };
+        const byCombat = dom.unionRanking(byPl, P, 'X', 'combat', 1);
+        assert.deepEqual(byCombat.list.map((x) => x.playerId), [1, 2, 3]);
+        const bySum = dom.unionRanking(byPl, P, 'X', dom.DEFAULT_SORT, 1);
+        assert.deepEqual(bySum.list.map((x) => x.playerId), [3, 2, 1], 'オーバーロード順になっていない');
+        assert.equal(bySum.myRank, 3);
+        assert.equal(bySum.field.label, '有利コード＋攻撃');
+        assert.equal(bySum.list[0].text, '18.00%');
+        // 個別のオーバーロード項目でも引ける
+        const byAtk = dom.unionRanking(byPl, P, 'X', dom.OL_PREFIX + '攻撃力', 1);
+        assert.deepEqual(byAtk.list.map((x) => x.playerId), [3, 2, 1]);
+        // 知らないキーは既定 (合計) に倒れる — 古い記憶が残っていても壊れない
+        assert.equal(dom.unionRanking(byPl, P, 'X', 'なにこれ', 1).field.label, '有利コード＋攻撃');
+    });
+
     test('★ 壊れた応答を「成功」に化けさせない (Number([]) も Number("") も 0)', () => {
         assert.equal(dom.statusOfCode(0), 'ok');
         for (const bad of [[], '', '0', null, undefined, {}, NaN, '1301002']) {
@@ -6479,17 +6543,21 @@ console.log('\ngrowthDomain:');
     });
 
     test('★ rankSquad: 合計は**比べられる体だけ** / 戦闘力はチップにしない (Codex指摘 2026-09-09)', () => {
+        // ★ 上下の基準は 2026-09-09 に戦闘力からオーバーロード合計 (有利コード＋攻撃) へ変えた。
+        //   戦闘力はシンクロレベルの差がそのまま出るだけで、育成の差が読めない (ユーザー指摘)
         const r = (o) => ({ character_name: 'x', grade: 3, core: 0, lv: 200, skill1_lv: 10, skill2_lv: 10,
-            ulti_skill_lv: 10, combat: 100000, attractive_lv: 10, harmony_cube_lv: 10, favorite_item_lv: 10, ...o });
-        // A は両方あり / B は相手だけ / C は行はあるが戦闘力が欠けている
-        const mine = { A: r({ combat: 100000 }), C: r({ combat: null }) };
-        const theirs = { A: r({ combat: 150000 }), B: r({ combat: 900000 }), C: r({ combat: 400000 }) };
+            ulti_skill_lv: 10, combat: 100000, attractive_lv: 10, favorite_item_lv: 10,
+            overload: { 有利コード: 10, 攻撃力: 10 }, ...o });
+        // A は両方あり / B は相手だけ / C は行はあるがオーバーロードが欠けている
+        const mine = { A: r({ overload: { 有利コード: 5, 攻撃力: 5 } }), C: r({ overload: null }) };
+        const theirs = { A: r({ overload: { 有利コード: 8, 攻撃力: 7 } }), B: r({ overload: { 有利コード: 30, 攻撃力: 30 } }),
+            C: r({ overload: { 有利コード: 20, 攻撃力: 20 } }) };
         const { cells, summary } = dom.rankSquad(['A', 'B', 'C'], mine, theirs);
         // ★ 片方にしか無い体を混ぜると、違う顔ぶれの合計を「差」と言うことになる
-        assert.equal(summary.sumMine, 100000, '自分の合計に比べられない体が入っている');
-        assert.equal(summary.sumTheirs, 150000, '相手の合計に比べられない体が入っている');
-        assert.equal(summary.diff, 50000);
-        // ★ 行はあるが戦闘力が欠けている体 (C) を「互角」に数えない
+        assert.equal(summary.sumMine, 10, '自分の合計に比べられない体が入っている');
+        assert.equal(summary.sumTheirs, 15, '相手の合計に比べられない体が入っている');
+        assert.equal(summary.diff, 5);
+        // ★ 行はあるが値が欠けている体 (C) を「互角」に数えない
         assert.equal(summary.comparable, 1, `比べられる体の数が違う: ${summary.comparable}`);
         assert.equal(summary.aheadTheirs, 1); assert.equal(summary.aheadMine, 0);
         assert.equal(summary.total, 3, '全体の数は3体のまま');
@@ -6596,11 +6664,13 @@ console.log('\ngrowthDomain:');
     });
 
     test('★ teamGaps: 編成の並びのまま差を出す (並べ替えは rankSquad の仕事)', () => {
-        const mine = { 'ラピ': { combat: 100 }, 'アリス': { combat: 500 } };
-        const theirs = { 'ラピ': { combat: 300 }, 'ドロシー': { combat: 900 } };
+        // 差はオーバーロード合計 (有利コード＋攻撃) で見る — 戦闘力はシンクロレベル順にしかならない
+        const ol = (a, b) => ({ overload: { 有利コード: a, 攻撃力: b } });
+        const mine = { 'ラピ': ol(5, 5), 'アリス': ol(20, 20) };
+        const theirs = { 'ラピ': ol(9, 11), 'ドロシー': ol(30, 30) };
         const g = dom.teamGaps(['ラピ', 'アリス', 'ドロシー'], mine, theirs);
         assert.deepEqual(g.map(x => x.character), ['ラピ', 'アリス', 'ドロシー'], '編成の並びを崩している');
-        assert.equal(g[0].gap, 200);
+        assert.equal(g[0].gap, 10);
         assert.equal(g[1].gap, null, '片方しか無いのに差を出している');
         assert.equal(g[1].hasBoth, false);
         assert.equal(g[2].gap, null);

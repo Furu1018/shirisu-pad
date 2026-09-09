@@ -20,7 +20,7 @@
     /** ゲーム内部のオプション名 → 日本語。しりすこスクワッド blablalink.ts の表と同じ並び。 */
     const OVERLOAD_JP = {
         StatAtk: '攻撃力',
-        IncElementDmg: '属性ダメージ',
+        IncElementDmg: '有利コード',
         StatAmmoLoad: '装弾数',
         StatCritical: 'クリティカル確率',
         StatCriticalDamage: 'クリティカルダメージ',
@@ -30,6 +30,30 @@
         IncHurtDef: '防御力',
         StatDef: '防御力',
     };
+
+    // ★ 2026-09-09 に「属性ダメージ」→「有利コード」へ改名した (ゲーム内の呼び方に合わせる)。
+    //   本番には旧キーで保存された行が残っているので、**読むときに寄せる**。
+    //   寄せずに混在させると、順位も比較も同じ項目が2つに割れる
+    const OVERLOAD_ALIAS = { '属性ダメージ': '有利コード' };
+
+    /** 表示と並べ替えの順。見たい順 (有利コード → 攻撃 → クリ2種) を先頭に置く。 */
+    const OVERLOAD_ORDER = [
+        '有利コード', '攻撃力', 'クリティカル確率', 'クリティカルダメージ',
+        '装弾数', 'チャージ速度', 'チャージダメージ', '命中率', '防御力',
+    ];
+
+    /** 保存済みの overload を現在のキーに寄せる。同じ項目に寄ったら足す。 */
+    function normalizeOverload(o) {
+        if (!o || typeof o !== 'object') return {};
+        const out = {};
+        for (const [k, v] of Object.entries(o)) {
+            const key = OVERLOAD_ALIAS[k] || k;
+            const n = Number(v);
+            if (!Number.isFinite(n)) continue;
+            out[key] = Number(((out[key] || 0) + n).toFixed(4));
+        }
+        return out;
+    }
 
     /** 応答の接頭辞 → 部位名。胴が torso、手袋が arm。 */
     const PARTS = [['head', '頭'], ['torso', '胴'], ['arm', '腕'], ['leg', '脚']];
@@ -508,9 +532,51 @@
         { key: 'ulti_skill_lv', label: 'バースト', text: (r) => lvText(r.ulti_skill_lv), value: (r) => val(r.ulti_skill_lv) },
         { key: 'combat', label: '戦闘力', text: (r) => (r.combat == null ? '—' : r.combat.toLocaleString('ja-JP')), value: (r) => val(r.combat) },
         { key: 'attractive_lv', label: '好感度', text: (r) => lvText(r.attractive_lv), value: (r) => val(r.attractive_lv) },
-        { key: 'harmony_cube_lv', label: 'キューブ', text: (r) => lvText(r.harmony_cube_lv), value: (r) => val(r.harmony_cube_lv) },
-        { key: 'favorite_item_lv', label: 'お気に入り', text: (r) => lvText(r.favorite_item_lv), value: (r) => val(r.favorite_item_lv) },
+        // ★ キューブは 2026-09-09 に比較から外した (ユーザー要望)。データは取り込んだまま残している
+        { key: 'favorite_item_lv', label: '指揮官ぬいぐるみ', text: (r) => lvText(r.favorite_item_lv), value: (r) => val(r.favorite_item_lv) },
     ];
+
+    // ---- オーバーロードの項目 ------------------------------------------------
+    //   ★ 戦闘力で順位を付けるとシンクロレベル順にしかならない (2026-09-09 ユーザー指摘)。
+    //     オーバーロードは装備に乗る値なのでシンクロレベルの影響を受けず、育成の度合いがそのまま出る。
+    const OL_PREFIX = 'ol:';
+    const SUM_FIELD_KEY = 'ol+:有利コード+攻撃力';
+
+    /**
+     * その行のオーバーロード値。
+     * ★ 「データが無い」(null) と「その項目が 0」を分ける — 0 にすると未取得の人が最下位に並ぶ
+     */
+    function overloadValue(row, key) {
+        if (!row || !row.overload || typeof row.overload !== 'object') return null;
+        const o = normalizeOverload(row.overload);
+        const v = Number(o[key]);
+        return Number.isFinite(v) ? v : 0;
+    }
+    const pctText = (v) => (v == null ? '—' : `${v.toFixed(2)}%`);
+
+    const OVERLOAD_FIELDS = OVERLOAD_ORDER.map((k) => ({
+        key: OL_PREFIX + k, label: k, overload: true,
+        text: (r) => pctText(overloadValue(r, k)),
+        value: (r) => overloadValue(r, k),
+    }));
+
+    /** 「有利コード＋攻撃」の合計 (2026-09-09 ユーザー要望)。 */
+    const SUM_FIELD = {
+        key: SUM_FIELD_KEY, label: '有利コード＋攻撃', overload: true,
+        text: (r) => {
+            const a = overloadValue(r, '有利コード');
+            const b = overloadValue(r, '攻撃力');
+            return (a == null || b == null) ? '—' : pctText(Number((a + b).toFixed(4)));
+        },
+        value: (r) => {
+            const a = overloadValue(r, '有利コード');
+            const b = overloadValue(r, '攻撃力');
+            return (a == null || b == null) ? null : Number((a + b).toFixed(4));
+        },
+    };
+
+    /** 比較・並べ替えで引ける全項目。 */
+    const ALL_FIELDS = [...FIELDS, ...OVERLOAD_FIELDS, SUM_FIELD];
 
     /**
      * 自分と相手を項目ごとに並べる。
@@ -536,13 +602,17 @@
         });
 
         // オーバーロードは項目が可変なので、両方に出てくるキーを集めてから並べる
-        const keys = [...new Set([
-            ...Object.keys((mine && mine.overload) || {}),
-            ...Object.keys((theirs && theirs.overload) || {}),
-        ])].sort();
+        const seen = new Set([
+            ...Object.keys(normalizeOverload(mine && mine.overload)),
+            ...Object.keys(normalizeOverload(theirs && theirs.overload)),
+        ]);
+        // ★ 五十音順ではなく**見たい順** (有利コード → 攻撃 → クリ2種 → …)。
+        //   表に無いものは後ろに回す (ゲーム側に項目が増えても落とさない)
+        const keys = [...OVERLOAD_ORDER.filter((k) => seen.has(k)),
+            ...[...seen].filter((k) => !OVERLOAD_ORDER.includes(k)).sort()];
         const overload = keys.map((k) => {
-            const a = mine && mine.overload ? Number(mine.overload[k] || 0) : null;
-            const b = theirs && theirs.overload ? Number(theirs.overload[k] || 0) : null;
+            const a = overloadValue(mine, k);
+            const b = overloadValue(theirs, k);
             let lead = 'same';
             if (a == null || b == null) lead = 'unknown';
             else if (a > b) lead = 'mine';
@@ -918,6 +988,8 @@
 
     /** 戦闘力の読み方。並べて比べるので万単位に畳む (86.8万) */
     const fmtMan = (n) => (Number.isFinite(n) ? `${(n / 10000).toFixed(1)}万` : '—');
+    /** オーバーロードの表示。合計も差もこれで揃える (単位が混ざると読めない) */
+    const fmtPct = (n) => (Number.isFinite(n) ? `${n.toFixed(2)}%` : '—');
 
     // ---- 「どのレイドを見ているか」(2026-09-09 実機FB) --------------------
     /**
@@ -970,7 +1042,9 @@
             if (!r || r.player_id == null || !r.character_name) continue;
             const k = String(r.player_id);
             if (!out[k]) out[k] = {};
-            if (!out[k][r.character_name]) out[k][r.character_name] = r;
+            // ★ ここが育成データを読む唯一の入口。旧キー (属性ダメージ) をここで寄せておくと、
+            //   下流 (比較・順位・チップ) が混在を気にしなくてよい
+            if (!out[k][r.character_name]) out[k][r.character_name] = { ...r, overload: normalizeOverload(r.overload) };
         }
         return out;
     }
@@ -983,8 +1057,11 @@
     }
 
     /** 並べ替えに使える項目。★ 画面に項目名を持たせない (compare と食い違わせない) */
-    const SORT_FIELDS = FIELDS.map((f) => ({ key: f.key, label: f.label }));
-    const _fieldOf = (key) => FIELDS.find((f) => f.key === key) || FIELDS[0];
+    // 並べ替えのピルは「見たい順」に出す — 合計 → オーバーロード各種 → その他
+    const SORT_FIELDS = [SUM_FIELD, ...OVERLOAD_FIELDS, ...FIELDS].map((f) => ({ key: f.key, label: f.label }));
+    /** 既定の並べ替え。戦闘力ではなくオーバーロード合計 (シンクロレベル順にならない) */
+    const DEFAULT_SORT = SUM_FIELD_KEY;
+    const _fieldOf = (key) => ALL_FIELDS.find((f) => f.key === key) || SUM_FIELD;
 
     /**
      * 1体のキャラを**ユニオン内で並べる** (2026-09-09 ユーザー要望)。
@@ -1017,7 +1094,7 @@
         return (Array.isArray(team) ? team : []).filter(Boolean).map((name) => {
             const a = (mineByName || {})[name] || null;
             const b = (theirsByName || {})[name] || null;
-            const am = val(a && a.combat), bm = val(b && b.combat);
+            const am = SUM_FIELD.value(a), bm = SUM_FIELD.value(b);
             return {
                 character: name, mine: am, theirs: bm,
                 hasBoth: am != null && bm != null,
@@ -1038,18 +1115,24 @@
         const cells = compareSquad(squad, mineByName, theirsByName).map((c) => {
             const m = (mineByName || {})[c.character] || null;
             const t = (theirsByName || {})[c.character] || null;
-            const cm = val(m && m.combat);
-            const ct = val(t && t.combat);
+            // ★ 上下の基準は**オーバーロード合計 (有利コード＋攻撃)**。
+            //   戦闘力で並べるとシンクロレベル順にしかならず、育成の差が読めない (2026-09-09 ユーザー指摘)。
+            //   戦闘力は項目のひとつとして表に残す
+            const cm = SUM_FIELD.value(m);
+            const ct = SUM_FIELD.value(t);
             return {
                 ...c,
-                combatMine: cm, combatTheirs: ct,
-                // ★ 「行がある」と「戦闘力を比べられる」は別 (Codex指摘 2026-09-09)。
-                //   行はあるが戦闘力が欠けている体を「互角」に数えると、カードの「比べられない」と食い違う
+                scoreMine: cm, scoreTheirs: ct,
+                combatMine: val(m && m.combat), combatTheirs: val(t && t.combat),
+                // ★ 「行がある」と「比べられる」は別 (Codex指摘 2026-09-09)。
+                //   行はあるが値が欠けている体を「互角」に数えると、カードの「比べられない」と食い違う
                 comparable: cm != null && ct != null,
-                gap: (cm == null || ct == null) ? null : ct - cm,
+                gap: (cm == null || ct == null) ? null : Number((ct - cm).toFixed(4)),
                 hasBoth: !!(m && t),
                 // ★ 差のある項目だけ。「同じ」を並べても読む手がかりにならない。
                 //   戦闘力は横棒と差のピルで既に出しているのでチップにはしない (Codex指摘)
+                // ★ 差のある項目だけ。「同じ」を並べても読む手がかりにならない。
+                //   戦闘力はシンクロレベルの差がそのまま出るだけなのでチップにしない (2026-09-09)
                 diffs: c.rows.filter((r) => (r.lead === 'mine' || r.lead === 'theirs') && r.key !== 'combat'),
             };
         });
@@ -1071,9 +1154,10 @@
                 comparable: cmp.length,
                 aheadTheirs: cmp.filter((c) => c.gap > 0).length,
                 aheadMine: cmp.filter((c) => c.gap < 0).length,
-                sumMine: sum(cmp, 'combatMine'),
-                sumTheirs: sum(cmp, 'combatTheirs'),
-                diff: sum(cmp, 'combatTheirs') - sum(cmp, 'combatMine'),
+                // ★ 合計もオーバーロード基準。戦闘力の合計はシンクロレベルの差が5体ぶん積み上がるだけ
+                sumMine: Number(sum(cmp, 'scoreMine').toFixed(4)),
+                sumTheirs: Number(sum(cmp, 'scoreTheirs').toFixed(4)),
+                diff: Number((sum(cmp, 'scoreTheirs') - sum(cmp, 'scoreMine')).toFixed(4)),
             },
         };
     }
@@ -1091,13 +1175,15 @@
     }
 
     root.growthDomain = {
-        OVERLOAD_JP, PARTS, STATUS_JP, STATUS_SHORT, FIELDS, CORP_TIER, MAX_GRADE, MAX_CORE,
+        OVERLOAD_JP, OVERLOAD_ALIAS, OVERLOAD_ORDER, OVERLOAD_FIELDS, SUM_FIELD, ALL_FIELDS,
+        normalizeOverload, overloadValue, DEFAULT_SORT, SUM_FIELD_KEY, OL_PREFIX,
+        PARTS, STATUS_JP, STATUS_SHORT, FIELDS, CORP_TIER, MAX_GRADE, MAX_CORE,
         growthRank, gradeText, buildOptionMap, overloadTotals, overloadSlotCount, unresolvedOptions,
         equipOf, toRows, statusOfCode, compare, compareSquad, usedCharacters,
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
-        rankSquad, fmtMan, privateTargets, PUBLISH_ASK,
+        rankSquad, fmtMan, fmtPct, privateTargets, PUBLISH_ASK,
         defaultGrowthSeason, usedTeams, byPlayerCharacter, charactersIn,
         SORT_FIELDS, unionRanking, teamGaps,
     };

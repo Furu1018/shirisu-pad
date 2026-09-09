@@ -16093,7 +16093,7 @@
         const _gv = {
             gen: 0, seasons: null, players: [], seasonId: null, byPl: null, chars: [], status: null,
             teams: null, them: null, view: 'pt', base: 'mine', charIdx: -1, q: '', burst: 'all',
-            sort: 'combat', open: new Set(), rosterOpen: false, focusQ: false,
+            sort: null, open: new Set(), rosterOpen: false, focusQ: false,   // sort は null = growthDomain.DEFAULT_SORT (オーバーロード合計)
         };
 
         async function renderGrowthAnalysis(reload) {
@@ -16154,6 +16154,12 @@
             _gv.byPl = null; _gv.chars = []; _gv.status = null; _gv.teams = null;
             _gv.them = null; _gv.charIdx = -1; _gv.open = new Set();
             renderGrowthAnalysis(true);
+        }
+        // 並べ替えの既定は growthDomain.DEFAULT_SORT (オーバーロード合計)。
+        // 旧バージョンで 'combat' を記憶していても、無効なキーは既定に倒れる (_fieldOf のフォールバック)
+        function _gvSort() {
+            const dom = window.growthDomain;
+            return _gv.sort || (dom && dom.DEFAULT_SORT) || 'combat';
         }
         function handleGrowthAnaWho(id) {
             _gv.them = (id === '' || id == null) ? null : Number(id);
@@ -16320,7 +16326,7 @@
                 const tm = cells.map((c) => {
                     const nm = c.character;
                     if (union) {
-                        const r = dom.unionRanking(_gv.byPl, _gv.players, nm, 'combat', myId);
+                        const r = dom.unionRanking(_gv.byPl, _gv.players, nm, _gvSort(), myId);
                         const cls = r.myRank == null ? 'none'
                             : r.myRank === 1 ? 'mine' : (r.myRank * 2 <= r.list.length ? 'flat' : 'up');
                         const txt = r.myRank == null ? '未取得' : `${r.myRank}/${r.list.length}位`;
@@ -16328,7 +16334,7 @@
                     }
                     const cls = c.gap == null ? 'none' : c.gap > 0 ? 'up' : c.gap < 0 ? 'mine' : 'flat';
                     const txt = c.gap == null ? '未取得' : c.gap === 0 ? '差なし'
-                        : `${c.gap > 0 ? '+' : '−'}${dom.fmtMan(Math.abs(c.gap))}`;
+                        : `${c.gap > 0 ? '+' : '−'}${dom.fmtPct(Math.abs(c.gap))}`;
                     return `<div class="gv-tm">${_gvIcon(nm, 44)}<span class="g ${cls}">${esc(txt)}</span></div>`;
                 }).join('');
                 const detail = !open ? ''
@@ -16362,13 +16368,13 @@
             const tot = summary.sumMine + summary.sumTheirs;
             const wMine = tot > 0 ? (summary.sumMine / tot * 100).toFixed(1) : 50;
             const wThem = tot > 0 ? (100 - Number(wMine)).toFixed(1) : 50;
-            const diffTxt = summary.diff === 0 ? '同じ' : `${summary.diff > 0 ? '+' : '−'}${dom.fmtMan(Math.abs(summary.diff))}`;
+            const diffTxt = summary.diff === 0 ? '同じ' : `${summary.diff > 0 ? '+' : '−'}${dom.fmtPct(Math.abs(summary.diff))}`;
             return `<div class="gc-verdict">
                     <div class="gv-k">この回に使った ${names.length} 体</div>
                     <div class="gc-big">${lead}</div>
                     <div class="gc-bar"><i style="width:${wMine}%;background:#C9CED4"></i><i style="width:${wThem}%;background:#18C26B"></i></div>
-                    <div class="gc-legend"><span class="me">自分 計 ${dom.fmtMan(summary.sumMine)}</span>
-                        <span class="them">${esc(_gvName(_gv.them))} 計 ${dom.fmtMan(summary.sumTheirs)} (${diffTxt})</span></div>
+                    <div class="gc-legend"><span class="me">自分 計 ${dom.fmtPct(summary.sumMine)}</span>
+                        <span class="them">${esc(_gvName(_gv.them))} 計 ${dom.fmtPct(summary.sumTheirs)} (${diffTxt})</span></div>
                 </div>`;
         }
 
@@ -16411,7 +16417,7 @@
                 const sorts = '<div class="dc-card dc-card-tight" style="margin-top:10px;">'
                     + '<div class="gv-k">ならべかえ</div>'
                     + `<div class="gv-pills gv-sorts" data-no-swipe>${dom.SORT_FIELDS.map(f => `<button type="button"`
-                        + ` aria-pressed="${_gv.sort === f.key ? 'true' : 'false'}" onclick="handleGrowthAnaSort('${f.key}')">${esc(f.label)}</button>`).join('')}</div>`
+                        + ` aria-pressed="${_gvSort() === f.key ? 'true' : 'false'}" onclick="handleGrowthAnaSort('${f.key}')">${esc(f.label)}</button>`).join('')}</div>`
                     + '</div>';
                 return picker + sorts + `<div style="margin-top:10px;">${_gvUnionCard(name, false)}</div>`;
             }
@@ -16424,7 +16430,7 @@
             const dom = window.growthDomain, esc = escapeHtml;
             const me = getCurrentIdentity();
             const myId = me && me.id != null ? me.id : null;
-            const r = dom.unionRanking(_gv.byPl, _gv.players, name, _gv.sort, myId);
+            const r = dom.unionRanking(_gv.byPl, _gv.players, name, _gvSort(), myId);
             const rows = r.list.map((x, i) => {
                 const p = _gvPlayer(x.playerId);
                 const isMe = myId != null && String(x.playerId) === String(myId);
@@ -16453,13 +16459,14 @@
             const themName = _gvName(_gv.them);
             const open = _gv.open.has(key);
             const gapPill = c.gap == null ? '<span class="gc-gap none">比べられない</span>'
-                : c.gap > 0 ? `<span class="gc-gap up">+${dom.fmtMan(c.gap)}</span>`
-                    : c.gap < 0 ? `<span class="gc-gap mine">−${dom.fmtMan(-c.gap)}</span>`
+                : c.gap > 0 ? `<span class="gc-gap up">+${dom.fmtPct(c.gap)}</span>`
+                    : c.gap < 0 ? `<span class="gc-gap mine">−${dom.fmtPct(-c.gap)}</span>`
                         : '<span class="gc-gap flat">差なし</span>';
-            const top = Math.max(c.combatMine || 0, c.combatTheirs || 0) || 1;
+            // 横棒は**オーバーロード合計 (有利コード＋攻撃)**。戦闘力はシンクロレベル順にしかならない
+            const top = Math.max(c.scoreMine || 0, c.scoreTheirs || 0) || 1;
             const bar = (v, who) => `<div class="gc-dbar ${who}"><span class="w">${who === 'them' ? esc(themName) : '自分'}</span>`
                 + `<span class="track"><i style="width:${v == null ? 0 : (v / top * 100).toFixed(1)}%"></i></span>`
-                + `<span class="v">${dom.fmtMan(v)}</span></div>`;
+                + `<span class="v">${dom.fmtPct(v)}</span></div>`;
             const chips = c.diffs.map(r => `<span class="gc-chip ${r.lead === 'mine' ? 'mine' : 'up'}">`
                 + `${esc(r.label)} ${esc(r.lead === 'mine' ? r.mine : r.theirs)}</span>`).join('');
             const table = !open ? '' : `<div class="gc-tbl">
@@ -16475,13 +16482,13 @@
                     : '')
                 + '</div>';
             const miss = c.hasBoth ? ''
-                : `<div class="gc-miss">${c.combatTheirs == null ? esc(themName) : '自分'} は未取り込み</div>`;
+                : `<div class="gc-miss">${c.scoreTheirs == null ? esc(themName) : '自分'} は未取り込み</div>`;
             return '<div class="gc-char">'
                 + `<div class="gc-top">${_gvIcon(c.character, 32)}<span class="cn">${esc(c.character)}</span>${gapPill}</div>`
-                + bar(c.combatMine, 'me') + bar(c.combatTheirs, 'them') + miss
+                + bar(c.scoreMine, 'me') + bar(c.scoreTheirs, 'them') + miss
                 + (chips ? `<div class="gc-chips">${chips}</div>` : '')
                 + table
-                + `<button type="button" class="gc-more" onclick="handleGrowthAnaOpen('${key}')">${open ? '畳む ▴' : '9項目すべてを見る ▾'}</button>`
+                + `<button type="button" class="gc-more" onclick="handleGrowthAnaOpen('${key}')">${open ? '畳む ▴' : 'くわしく見る ▾'}</button>`
                 + '</div>';
         }
         // 勝ち負けの色。引き分けは負けと同じ見た目にしない

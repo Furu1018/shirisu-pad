@@ -38,8 +38,13 @@ const RETURN = ['_gvPaint', '_gvViewPT', '_gvViewChar', '_gvUnionCard', '_gvChar
 // 育成1行ぶん。省略した項目は null (未取得) として扱われる
 const row = (o = {}) => ({
     character_name: 'ラピ', grade: 3, core: 0, lv: 200, skill1_lv: 7, skill2_lv: 7, ulti_skill_lv: 7,
-    combat: 500000, attractive_lv: 20, harmony_cube_lv: 10, favorite_item_lv: 5, overload: null, ...o,
+    combat: 500000, attractive_lv: 20, favorite_item_lv: 5,
+    // ★ くらべの基準は 2026-09-09 にオーバーロード合計 (有利コード＋攻撃) へ移った。
+    //   戦闘力はシンクロレベルの差がそのまま出るだけなので、上下の基準には使わない
+    overload: { 有利コード: 5, 攻撃力: 5 }, ...o,
 });
+/** 有利コード＋攻撃 が n% になるオーバーロード */
+const ol = (n) => ({ overload: { 有利コード: n / 2, 攻撃力: n / 2 } });
 const growthRow = (pid, name, o = {}) => ({ player_id: pid, ...row({ character_name: name, ...o }) });
 const atk = (pid, team, o = {}) => ({
     player_id: pid, boss_number: 1, boss_code: 'Z.E.U.S.', characters: team, damage_raw: 2e10, ...o,
@@ -55,7 +60,7 @@ function build({
         { id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false, ok: 14 },
     ],
     seasonId = 30, them = null, view = 'pt', base = 'mine', charIdx = -1, q = '', burst = 'all',
-    sort = 'combat', open = [], rosterOpen = false,
+    sort = null, open = [], rosterOpen = false,   // null = growthDomain.DEFAULT_SORT (オーバーロード合計)
 } = {}) {
     let out = '';
     const els = { growthAnaBody: { set innerHTML(v) { out = v; }, get innerHTML() { return out; } } };
@@ -92,7 +97,7 @@ const noUndef = (out) => assert.ok(!/undefined|NaN|\[object Object\]/.test(out),
     `未定義参照: ${out.match(/.{40}(undefined|NaN|\[object Object\]).{40}/)?.[0]}`);
 
 const TEAM = ['ラピ', 'クラウン', 'モラン', 'ヘルム', '紅蓮'];
-const fullRows = (pid, mul) => TEAM.map(n => growthRow(pid, n, { combat: 400000 * mul, lv: 700 + mul }));
+const fullRows = (pid, mul) => TEAM.map(n => growthRow(pid, n, { combat: 400000 * mul, lv: 700 + mul, ...ol(10 * mul) }));
 const BASE = {
     rows: [...fullRows(1, 1), ...fullRows(2, 2), ...fullRows(3, 3)],
     teams: [atk(1, TEAM), atk(2, TEAM, { damage_raw: 3e10 })],
@@ -179,7 +184,7 @@ test('キャラ別 × ユニオン全体: 並べ替えが効く (順位が入れ
         growthRow(1, 'ラピ', { combat: 900000, lv: 100 }),
         growthRow(2, 'ラピ', { combat: 100000, lv: 900 }),
     ];
-    const t = build({ rows, teams: [], them: null, view: 'char', charIdx: 0, sort: 'combat' });
+    const t = build({ rows, teams: [], them: null, view: 'char', charIdx: 0, sort: 'combat' });   // 戦闘力順も選べる
     const byCombat = t.paint();
     // ★ 相手えらびにも class="nm" があるので、順位表の行だけを見る
     const order = (s) => [...s.matchAll(/class="gv-rk[^>]*">[\s\S]*?class="nm">([^<]+)/g)].map(m => m[1]);
@@ -222,15 +227,15 @@ test('取り込みの内訳: 折り畳みを開くと、誰が取れていない
 
 test('編成カードを開くと、差の大きい順に1体ずつ出る', () => {
     const rows = [
-        growthRow(1, 'ラピ', { combat: 500000 }), growthRow(2, 'ラピ', { combat: 500000 }),
-        growthRow(1, 'クラウン', { combat: 100000 }), growthRow(2, 'クラウン', { combat: 900000 }),
+        growthRow(1, 'ラピ', ol(10)), growthRow(2, 'ラピ', ol(10)),
+        growthRow(1, 'クラウン', ol(4)), growthRow(2, 'クラウン', ol(30)),
     ];
     const t = build({ rows, teams: [atk(1, ['ラピ', 'クラウン'])], them: 2, open: ['pt0'] });
     const out = t.paint();
     noUndef(out);
     const cards = [...out.matchAll(/class="cn">([^<]+)/g)].map(m => m[1]);
     assert.deepEqual(cards, ['クラウン', 'ラピ'], '差の大きい順になっていない');
-    assert.ok(/\+80\.0万/.test(out), '差が出ていない');
+    assert.ok(/\+26\.00%/.test(out), '差が出ていない');
     assert.ok(!/class="gc-tbl"/.test(out), '全項目を畳んでいない');
     t.handleGrowthAnaOpen('pt0_0');
     assert.ok(/class="gc-tbl"/.test(t.paint()), '全項目を開けない');
@@ -246,14 +251,14 @@ test('キャラのアイコンを出す (名前だけだと編成が読めない
 test('★ 編成のアイコンと差がずれない (キャラ名の行そのものを回す)', () => {
     // 添字で teamGaps と突き合わせると、片方にしか無い体が落ちたときに1つずつずれる
     const rows = [
-        growthRow(1, 'ラピ', { combat: 100000 }), growthRow(2, 'ラピ', { combat: 300000 }),
-        growthRow(1, 'アリス', { combat: 900000 }),   // 相手は持っていない
-        growthRow(1, 'モラン', { combat: 200000 }), growthRow(2, 'モラン', { combat: 200000 }),
+        growthRow(1, 'ラピ', ol(10)), growthRow(2, 'ラピ', ol(30)),
+        growthRow(1, 'アリス', ol(50)),   // 相手は持っていない
+        growthRow(1, 'モラン', ol(20)), growthRow(2, 'モラン', ol(20)),
     ];
     const t = build({ rows, teams: [atk(1, ['ラピ', 'アリス', 'モラン'])], them: 2 });
     const out = t.paint();
     const cells = [...out.matchAll(/alt="([^"]+)"[\s\S]*?class="g [a-z]+">([^<]+)</g)].map(m => [m[1], m[2]]);
-    assert.deepEqual(cells, [['ラピ', '+20.0万'], ['アリス', '未取得'], ['モラン', '差なし']],
+    assert.deepEqual(cells, [['ラピ', '+20.00%'], ['アリス', '未取得'], ['モラン', '差なし']],
         `アイコンと差がずれている: ${JSON.stringify(cells)}`);
 });
 
