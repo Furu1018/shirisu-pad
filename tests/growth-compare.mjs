@@ -33,7 +33,7 @@ const SRC = html.slice(a, b);
 const RETURN = ['_gvPaint', '_gvViewPT', '_gvViewChar', '_gvUnionCard', '_gvCharCard', '_gcCls',
     'handleGrowthAnaSeason', 'handleGrowthAnaWho', 'handleGrowthAnaView', 'handleGrowthAnaBase',
     'handleGrowthAnaChar', 'handleGrowthAnaSort', 'handleGrowthAnaBurst', 'handleGrowthAnaSearch',
-    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr', 'handleGrowthAnaDps', 'handleGrowthAnaDpsOnly'];
+    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr', 'handleGrowthAnaDps', 'handleGrowthAnaDpsOnly', '_gvBurstInk', '_gvBurstColor'];
 
 // 育成1行ぶん。省略した項目は null (未取得) として扱われる
 const row = (o = {}) => ({
@@ -60,7 +60,7 @@ function build({
         { id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false, ok: 14 },
     ],
     seasonId = 30, them = null, view = 'pt', base = 'mine', charIdx = -1, q = '', burst = 'all', attr = 'all',
-    sort = null, open = [], rosterOpen = false, bursts = null,   // null = growthDomain.DEFAULT_SORT (オーバーロード合計)
+    sort = null, open = [], rosterOpen = false, bursts = null, elems, burstColors = null,   // null = growthDomain.DEFAULT_SORT (オーバーロード合計)
 } = {}) {
     let out = '';
     const els = { growthAnaBody: { set innerHTML(v) { out = v; }, get innerHTML() { return out; } } };
@@ -68,8 +68,9 @@ function build({
     const _gv = {
         gen: 0, seasons, players, seasonId, byPl: dom.byPlayerCharacter(rows),
         chars: dom.charactersIn(rows), status, teams, them, view, base, charIdx, q, burst, attr, sort,
-        // 属性は data/blabla-name-codes.json 由来。テストでは固定の表を渡す
-        elems: new Map([['ラピ', 'fire'], ['クラウン', 'water'], ['モラン', 'wind'], ['ヘルム', 'iron'], ['紅蓮', 'fire']]),
+        // 属性は data/blabla-name-codes.json 由来。テストでは固定の表を渡す (elems で差し替えられる)
+        elems: elems === undefined ? new Map([['ラピ', 'fire'], ['クラウン', 'water'], ['モラン', 'wind'], ['ヘルム', 'iron'], ['紅蓮', 'fire']])
+            : (elems ? new Map(Object.entries(elems)) : null),
         open: new Set(open.map(String)), rosterOpen, focusQ: false, dps: null, tmNames: [], dpsOnly: false,
     };
     const env = {
@@ -82,7 +83,7 @@ function build({
         renderAvatarHtml: (p) => `<span class="av">${p && p.name ? p.name[0] : '?'}</span>`,
         resolveNikkeChar: (n) => ({ canonical: n, iconPath: `./character-images/${encodeURIComponent(n)}.webp` }),
         _nikkeCharsByName: new Map([...BURSTS, ...Object.entries(bursts || {})].map(([n, burst]) => [n, { canonical_name: n, burst }])),
-        TE_BURST_COLOR: { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' },
+        TE_BURST_COLOR: burstColors || { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' },
         PT_ATTRS: [
             { key: 'fire', name: '灼熱', icon: './属性アイコン/灼熱.png', color: '#FF3B30' },
             { key: 'water', name: '水冷', icon: './属性アイコン/水冷.png', color: '#007AFF' },
@@ -455,6 +456,34 @@ test('★ バーストの値が変でも style に流し込まない (constructo
     }
 });
 
+test('★ 色の値が壊れていたら既定に倒す / 文字色は読めるほうを選ぶ', () => {
+    // ★ 自前の鍵でも値が色の形とは限らない (手で書き換える・別の版が混ざる)
+    const t = build({
+        ...BASE, them: 2, view: 'char',
+        burstColors: { B1: 'red;background:url(x)', B2: '#GGGGGG', B3: 42, 'BΛ': '#E5484D' },
+    });
+    const out = t.paint();
+    for (const m of out.matchAll(/--b-c:([^;"]*)/g)) {
+        assert.match(m[1], /^#[0-9A-Fa-f]{6}$/, `色の形でない値が style に入った: ${m[1].slice(0, 40)}`);
+    }
+    assert.ok(!/url\(x\)/.test(out), 'CSS が差し込まれている');
+    assert.equal(t._gvBurstColor('B1'), '#8A9097', '壊れた値を既定に倒していない');
+    assert.equal(t._gvBurstColor('B2'), '#8A9097', '#GGGGGG を色として通している');
+    assert.equal(t._gvBurstColor('B3'), '#8A9097', '数値を色として通している');
+    assert.equal(t._gvBurstColor('BΛ'), '#E5484D', '正しい色まで落としている');
+    assert.equal(t._gvBurstColor('constructor'), '#8A9097', '継承した鍵を使っている');
+    // ★ 文字色は「黒と白のうちコントラストの高いほう」— 端まで確かめる
+    assert.equal(t._gvBurstInk('#FFFFFF'), '#14161A', '白地に白文字を選んでいる');
+    assert.equal(t._gvBurstInk('#000000'), '#FFFFFF', '黒地に黒文字を選んでいる');
+    assert.equal(t._gvBurstInk('#F2B705'), '#14161A', 'B2 の黄色に白文字を選んでいる');
+});
+
+test('★ バーストの点は白地でも見える (縁を付ける)', () => {
+    // 7px の点をそのまま置くと、B2 の黄色は白地に対して 1.8:1 で見えない
+    const dot = html.match(/\.gv-pills button\.gv-b \.dot \{[\s\S]*?\}/)?.[0] || '';
+    assert.ok(/box-shadow: 0 0 0 1px/.test(dot), '点に縁が無い (白地で見えない色がある)');
+});
+
 test('★ 絞り込みで消えた体の比較を出したままにしない', () => {
     // 選んだタイルが無いのに中身だけ残ると、絞り込みと食い違う (Codex指摘 2026-09-10)
     const t = build({ ...BASE, them: 2, view: 'char' });
@@ -470,7 +499,8 @@ test('★ 絞り込みで消えた体の比較を出したままにしない', (
 });
 
 test('★ 絞り込みは重ねがけできる (火力役 × バースト × 属性 × 検索)', () => {
-    const t = build({ ...BASE, them: 2, view: 'char' });
+    const t = build({ ...BASE, them: 2, view: 'char',
+        elems: { ラピ: 'fire', クラウン: 'water', モラン: 'wind', ヘルム: 'fire', 紅蓮: 'iron' } });
     t.handleGrowthAnaDpsOnly();
     assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 2, '火力役だけに絞れていない');
     t.handleGrowthAnaBurst('B3');
@@ -481,6 +511,14 @@ test('★ 絞り込みは重ねがけできる (火力役 × バースト × 属
     t.handleGrowthAnaBurst('B2');
     assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 0,
         '火力役だけのときにバーストが無視されている');
+    // ★ 属性も重ねがけできる (火力役だけのときに属性が無視されないこと)
+    t.handleGrowthAnaBurst('all'); t.handleGrowthAnaSearch('');
+    assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 2, '火力役だけに戻っていない');
+    t.handleGrowthAnaAttr('fire');
+    const fire = t.paint();
+    assert.equal((fire.match(/class="gv-tile/g) || []).length, 1,
+        '火力役だけのときに属性が無視されている');
+    assert.ok(/ヘルム/.test(fire), '残る顔ぶれが違う (灼熱の火力役はヘルムだけ)');
 });
 
 test('★ 属性は属性アイコンで出す / バーストは色で見分ける', () => {
