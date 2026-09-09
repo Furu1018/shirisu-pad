@@ -6618,8 +6618,11 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.privateTargets(rows, players).map(p => p.id), [1]);
         // ★ 状態は private のまま識別子だけ外れていることがある (付け替えの途中など)。
         //   公開してもらっても運営が付け直すまで取れないので、本人には何もできない
-        const unlinked = [L(1, 'あ'), { id: 5, name: 'お', blabla_openid: null }];
-        const r5 = [{ player_id: 1, status: 'private' }, { player_id: 5, status: 'private' }];
+        // ★ 空文字も「外れている」— null だけ見ると、空で保存された行をひも付け済みと誤認する
+        const unlinked = [L(1, 'あ'), { id: 5, name: 'お', blabla_openid: null },
+            { id: 6, name: 'か', blabla_openid: '' }, { id: 7, name: 'き' }];
+        const r5 = [{ player_id: 1, status: 'private' }, { player_id: 5, status: 'private' },
+            { player_id: 6, status: 'private' }, { player_id: 7, status: 'private' }];
         assert.deepEqual(dom.privateTargets(r5, unlinked).map(p => p.id), [1],
             'ひも付けの外れている人に「公開して」と言っている (公開しても取れない)');
         assert.deepEqual(dom.privateTargets(null, players), []);
