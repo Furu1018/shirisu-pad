@@ -1874,6 +1874,22 @@ window.supabaseLoadLatestAttackSeasonId = async function () {
     return (data && data[0]) ? data[0].season_id : null;
 };
 
+// 育成の取り込み状況 (分析タブの「育成」ビューの入口)。
+// いちばん新しい取り込み済みシーズンの結果を返す。43未適用は null
+window.supabaseLoadLatestGrowthStatus = async function () {
+    const r = await supabase.from('member_growth_status')
+        .select('season_id, player_id, status, detail, character_count')
+        .order('season_id', { ascending: false }).limit(1000);
+    if (r.error) {
+        if (_isMissingTableErr(r.error, 'member_growth_status')) return null;
+        throw r.error;
+    }
+    const rows = r.data || [];
+    if (!rows.length) return { seasonId: null, rows: [] };
+    const sid = rows[0].season_id;
+    return { seasonId: sid, rows: rows.filter(x => x.season_id === sid) };
+};
+
 // 育成の読み出し (比較用)。seasonId が null なら、その人たちの**いちばん新しい**シーズンを使う
 // (取り込みは終わったレイドに対して行うので、アクティブシーズンとは限らない)
 window.supabaseLoadMemberGrowth = async function (seasonId, playerIds) {

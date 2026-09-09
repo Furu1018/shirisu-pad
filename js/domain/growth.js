@@ -889,6 +889,56 @@
         };
     }
 
+    /** 戦闘力の読み方。並べて比べるので万単位に畳む (86.8万) */
+    const fmtMan = (n) => (Number.isFinite(n) ? `${(n / 10000).toFixed(1)}万` : '—');
+    const fmtCombat = (n) => (Number.isFinite(n) ? n.toLocaleString('ja-JP') : '—');
+
+    /**
+     * 編成ぶんを**差の大きい順**に並べ、先に読む結論を添える (2026-09-09 モックの決定 C)。
+     * ★ 9項目 × 5体を全部並べても差がどこにあるか読めない。並び順と要約が読み方そのもの。
+     * @returns {{cells:Object[], summary:Object}}
+     *   cells[].gap        戦闘力の差 (相手 − 自分)。片方でも欠けたら null
+     *   cells[].diffs      差のある項目だけ (同じ項目は出さない)
+     *   summary.aheadTheirs/aheadMine  何体で上か (両方そろっている体だけ数える)
+     */
+    function rankSquad(squad, mineByName, theirsByName) {
+        const cells = compareSquad(squad, mineByName, theirsByName).map((c) => {
+            const m = (mineByName || {})[c.character] || null;
+            const t = (theirsByName || {})[c.character] || null;
+            const cm = val(m && m.combat);
+            const ct = val(t && t.combat);
+            return {
+                ...c,
+                combatMine: cm, combatTheirs: ct,
+                gap: (cm == null || ct == null) ? null : ct - cm,
+                hasBoth: !!(m && t),
+                // ★ 差のある項目だけ。「同じ」を並べても読む手がかりにならない
+                diffs: c.rows.filter((r) => r.lead === 'mine' || r.lead === 'theirs'),
+            };
+        });
+        // 相手が大きく上のものから。比べられない体 (片方欠け) は最後に回す
+        const sorted = cells.slice().sort((a, b) => {
+            if (a.gap == null && b.gap == null) return 0;
+            if (a.gap == null) return 1;
+            if (b.gap == null) return -1;
+            return b.gap - a.gap;
+        });
+        const both = cells.filter((c) => c.hasBoth);
+        const sum = (list, k) => list.reduce((s, c) => s + (c[k] || 0), 0);
+        return {
+            cells: sorted,
+            summary: {
+                total: cells.length,
+                comparable: both.length,
+                aheadTheirs: both.filter((c) => c.gap > 0).length,
+                aheadMine: both.filter((c) => c.gap < 0).length,
+                sumMine: sum(cells, 'combatMine'),
+                sumTheirs: sum(cells, 'combatTheirs'),
+                diff: sum(cells, 'combatTheirs') - sum(cells, 'combatMine'),
+            },
+        };
+    }
+
     /** 育成の行を「キャラ名 → 行」に畳む。比較はこの形で受ける (compare / compareSquad) */
     function byCharacter(rows) {
         const out = {};
@@ -942,6 +992,6 @@
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
-        byCharacter, squadsFor,
+        byCharacter, squadsFor, rankSquad, fmtMan, fmtCombat,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

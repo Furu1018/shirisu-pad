@@ -6513,16 +6513,29 @@ console.log('\ngrowthDomain:');
         assert.ok(/rows === null/.test(op), '43未適用を案内していない');
         // 判定は compare が唯一 — 画面で勝ち負けを書き足さない
         const rn = html.match(/function _gcRender\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/dom\.compareSquad\(cur\.team, _gc\.mine, _gc\.theirs\)/.test(rn), '比較をドメインに任せていない');
+        assert.ok(/dom\.rankSquad\(cur\.team, _gc\.mine, _gc\.theirs\)/.test(rn), '比較と並びをドメインに任せていない');
+        // ★ 結論 → 差の大きい順 → 差のある項目だけ (2026-09-09 モックの決定)
+        assert.ok(/class="gc-verdict"/.test(rn), '結論のカードを出していない');
+        assert.ok(/c\.diffs\.map/.test(rn), '差のある項目だけを出していない');
+        assert.ok(/_gc\.open\.has\(String\(i\)\)/.test(rn), '全項目を畳んでいない');
+        assert.ok(/handleGrowthCmpOpen\(\$\{i\}\)/.test(rn), 'キャラ名で開いている (番号にすること)');
         assert.ok(!/r\.mine >|r\.theirs >/.test(rn), '画面で勝ち負けを計算している');
         // 入口: 残凸表のメンバー名
         assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}\)"/.test(html), '残凸表の名前から開けない');
+        // ★ 主役は分析タブ (レイド後にスコアを詰める場所)。運営タブの入口も残す
+        assert.ok(/data-slv-view="growth"/.test(html) && /id="growthAnaBody"/.test(html), '分析タブに育成ビューが無い');
+        assert.equal((html.match(/_(goto|set)SlvView\('growth'\)/g) || []).length, 2, '2つのセグメントから開けない');
+        assert.ok(/if \(_slvView === 'growth'\) renderGrowthAnalysis\(\);/.test(html), 'ビューを開いたときに描いていない');
+        const ana = html.match(/function _gAnaPaint\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/取り込み済み/.test(ana) && /非公開/.test(ana), '全体の内訳を出していない');
+        assert.ok(/status === 'ok'/.test(ana), '取り込めた人だけ開けるようにしていない');
         // ★ 名前を属性に埋めない (Codex指摘 2026-09-09) — 引用符でその場が壊れ、
         //   ` onmouseenter=…` のような名前を付けられると実行される
         assert.ok(!/openGrowthCompare\([^)]*p\.name/.test(html), '名前を onclick に埋めている (壊れる / 注入できる)');
-        assert.ok(/const known = \(opsStore\.get\(\)\?\.players \|\| \[\]\)/.test(op), '名前を盤面から引いていない');
+        assert.ok(/let known = \(opsStore\.get\(\)\?\.players \|\| \[\]\)/.test(op), '名前を盤面から引いていない');
+        assert.ok(/_growthNames\.get\(String\(playerId\)\)/.test(op), '分析タブから開いたときの名前を引けない');
         // 引き分けを負けと同じ見た目にしない
-        assert.ok(/lead === 'same' \? 'same'/.test(rn), '引き分けを負け扱いにしている');
+        assert.ok(/lead === 'same' \? 'same'/.test(html.match(/function _gcCls\([\s\S]*?\n        \}\n/)?.[0] || ''), '引き分けを負け扱いにしている');
         // 閉じ方は button だけにしない (背景タップ / 下スワイプ)
         assert.ok(/id="growthCmpModal" onclick="if\(event\.target===this\)closeGrowthCompare\(\)"/.test(html), '背景タップで閉じられない');
         assert.ok(/\['growthCmpModal', \(\) => closeGrowthCompare\(\)\]/.test(html), '下スワイプで閉じられない');
