@@ -6304,6 +6304,32 @@ console.log('\ngrowthDomain:');
         assert.ok(out.includes('名簿 3人'));
     });
 
+    test('★ 名簿のブックマークレット: 通信は経路で絞る (募集ページでは他ユニオンや掲示板が混ざる)', () => {
+        // 実機 2026-09-09: 在籍32人のところ55人取れた。QueryGuildCardList (他ユニオンのカード) と
+        // Dynamics/… (掲示板の投稿者) が混ざっていた
+        const body = (openid, name) => JSON.stringify({ data: { list: [{ openid: B64(`29080-${openid}`), nickname: name }] } });
+        const out = runRosterSnippet({
+            bodies: [
+                { u: 'https://api.blablalink.com/api/game/proxy/Game/GetUnionRaidData', t: body('111111111111111111', '身内') },
+                { u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardList', t: body('222222222222222222', 'よその人') },
+                { u: 'https://api.blablalink.com/api/ugc/direct/standalonesite/Dynamics/GetPostListNew', t: body('333333333333333333', '投稿者') },
+            ],
+        });
+        assert.ok(/身内\t111111111111111111/.test(out), '自分のユニオンの経路から取れていない');
+        assert.ok(!out.includes('よその人'), '他ユニオンのカード一覧まで拾っている');
+        assert.ok(!out.includes('投稿者'), '掲示板の投稿者まで拾っている');
+        assert.ok(out.includes('名簿 1人'));
+        assert.ok(/narrowed: yes/.test(out), '絞り込んだことを診断に出していない');
+        // ★ 絞ると0件になるなら、絞らない (絞りすぎて何も取れないほうが困る)
+        const only = runRosterSnippet({
+            bodies: [{ u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardList', t: body('444444444444444444', 'だれか') }],
+        });
+        assert.ok(/だれか\t444444444444444444/.test(only), '絞った結果0件なのに諦めている');
+        assert.ok(/narrowed: no/.test(only));
+        // 古い形 (文字列だけ) の記録も読める
+        assert.ok(/だれか/.test(runRosterSnippet({ bodies: [body('444444444444444444', 'だれか')] })), '古い形の記録を読めない');
+    });
+
     test('★ 名簿のブックマークレット: 空振りしたら「何が見えたか」を出す (見つかりませんだけでは手が打てない)', () => {
         const out = runRosterSnippet({ html: '<div>なにもない</div>' });
         assert.ok(out.includes('メンバーが見つかりませんでした'), '空振りの案内が無い');

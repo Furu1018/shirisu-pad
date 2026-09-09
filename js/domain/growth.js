@@ -608,6 +608,10 @@
      *   ③ 画面の裏に埋まっている状態 (__NUXT__ / __NEXT_DATA__ / __INITIAL_STATE__)
      *   ④ 通信の記録 — 1回目の実行で fetch/XHR に耳を付け、ページを操作してから2回目で拾う
      *      (SPA は一覧を通信で取ってくるだけで、HTML には何も残らないことがある)
+     * ★ **通信は経路で絞る** (2026-09-09 実機: 55人取れたが在籍は32人)。ユニオン募集のページでは
+     *   他ユニオンのカード一覧 (QueryGuildCardList) や掲示板の投稿者 (Dynamics/…) まで混ざる。
+     *   自分のユニオンの経路 (GetMyGuildInfo / GetGuildDetail / GetUnionRaidData / …Member…) を優先し、
+     *   それが1件も無いときだけ全部を見る (絞りすぎて0件になるほうが困る)。
      * ★ 見つからないときは**何が見えたかを報告する** (2026-09-09 実機で空振り)。
      *   「見つかりません」だけだと、こちらで手の打ちようがない。
      * ★ 出力は「名前 <TAB> 識別子」の行。**人が読んで直せる形にする**。
@@ -623,7 +627,7 @@
             'var digits=function(raw){if(!raw)return "";var t=String(raw);',
             'try{var g=atob(String(t).replace(/-/g,"+").replace(/_/g,"/"));if(g&&/^[\\x20-\\x7e]+$/.test(g)){t=g;}}catch(e){}',
             'var m=String(t).match(/(\\d{6,})\\s*$/);return m?m[1]:"";};',
-            'var found=new Map();var stat={anchors:0,sig:0,state:0,net:0};',
+            'var found=new Map();var stat={anchors:0,sig:0,state:0,net:0,narrowed:0};',
             'var put=function(id,name,src){if(!id)return;var n=String(name||"").replace(/\\s+/g," ").trim().slice(0,40);',
             'if(!found.has(id)){found.set(id,n);if(src)stat[src]++;}else if(!found.get(id)&&n){found.set(id,n);}};',
             'var PFX="' + OPENID_B64_PREFIX + '";',
@@ -646,11 +650,15 @@
             'if(ik){put(digits(v[ik]),nk?v[nk]:"",src);}}',
             'for(var k2 in v){try{walk(v[k2],d+1,src);}catch(e){}}};',
             'try{[W.__NUXT__,W.__NEXT_DATA__,W.__INITIAL_STATE__].forEach(function(s){walk(s,0,"state");});}catch(e){}',
-            'S.bodies.forEach(function(t){try{walk(JSON.parse(t),0,"net");}catch(e){',
+            'var OWN=/(GetMyGuildInfo|GetGuildDetail|GetUnionRaidData|Member)/i;var NOT=/(Dynamics|Post|CardList|Tourist|Supporters)/i;',
+            'var norm=S.bodies.map(function(b){return (b&&typeof b==="object")?{u:String(b.u||""),t:String(b.t||"")}:{u:"",t:String(b||"")};});',
+            'var pick=norm.filter(function(b){return OWN.test(b.u)&&!NOT.test(b.u);});',
+            'var used=pick.length?pick:norm;stat.narrowed=pick.length?1:0;',
+            'used.forEach(function(b){var t=b.t;try{walk(JSON.parse(t),0,"net");}catch(e){',
             'try{var r2=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g"),m2;while((m2=r2.exec(t))){put(digits(m2[0]),"","net");}}catch(e2){}}});',
             'if(!S.hooked){S.hooked=true;',
             'var keep=function(u,t){try{if(S.bodies.length>40)return;if(!t)return;',
-            'if(t.indexOf("29080-")>=0||t.indexOf(PFX)>=0||/open_?id/i.test(t)){S.bodies.push(t);S.urls.push(String(u).slice(0,120));}}catch(e){}};',
+            'if(t.indexOf("29080-")>=0||t.indexOf(PFX)>=0||/open_?id/i.test(t)){S.bodies.push({u:String(u||""),t:t});S.urls.push(String(u).slice(0,120));}}catch(e){}};',
             'var of=W.fetch;if(of){W.fetch=function(){var u=arguments[0];var p=of.apply(this,arguments);',
             'try{p.then(function(r){try{r.clone().text().then(function(t){keep((u&&u.url)||u,t);});}catch(e){}});}catch(e){}return p;};}',
             'var os=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.send=function(){var x=this;',
@@ -661,8 +669,9 @@
             'var diag="\\n\\n---- 診断 (見つからないときは、この下ごと運営に見せてください) ----\\naddress: "+location.href',
             '+"\\nlinks: "+document.querySelectorAll("a[href]").length+" / signature: "+stat.sig+" / anchors: "+stat.anchors',
             '+"\\nstate: "+stat.state+" ("+[W.__NUXT__?"NUXT":"",W.__NEXT_DATA__?"NEXT":"",W.__INITIAL_STATE__?"INITIAL":""].filter(Boolean).join(",")+")"',
-            '+"\\nnetwork: "+stat.net+" / captured "+S.bodies.length+"\\n"+S.urls.slice(0,8).join("\\n");',
-            'box.value=(lines.length?("しりすこPAD 名簿 "+lines.length+"人\\n名前とIDを確認して、そのままコピーしてPADに貼ってください\\n\\n"+lines.join("\\n"))',
+            '+"\\nnetwork: "+stat.net+" / captured "+S.bodies.length+" / narrowed: "+(stat.narrowed?"yes":"no")+"\\n"+S.urls.slice(0,8).join("\\n");',
+            'box.value=(lines.length?("しりすこPAD 名簿 "+lines.length+"人\\n名前とIDを確認して、そのままコピーしてPADに貼ってください\\n'
+                + '(在籍より多いときは、ユニオンのメンバー一覧を開いてからもう一度押すと絞り込めます)\\n\\n"+lines.join("\\n"))',
             ':"メンバーが見つかりませんでした。\\n\\nこの状態のまま、ユニオンのメンバー一覧を開き直す (またはスクロールする) と\\n通信を聞き取ります。そのあと、もう一度このブックマークレットを押してください。")+diag;',
             'box.focus();box.select();try{document.execCommand("copy");}catch(e){}',
         ].join('') + '})()';
