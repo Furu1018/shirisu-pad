@@ -243,6 +243,32 @@ test('キャラのアイコンを出す (名前だけだと編成が読めない
     assert.ok(/class="gv-bg">B[0-9Λ]<\/span>/.test(ch), 'バーストのバッジが無い');
 });
 
+test('★ 編成のアイコンと差がずれない (キャラ名の行そのものを回す)', () => {
+    // 添字で teamGaps と突き合わせると、片方にしか無い体が落ちたときに1つずつずれる
+    const rows = [
+        growthRow(1, 'ラピ', { combat: 100000 }), growthRow(2, 'ラピ', { combat: 300000 }),
+        growthRow(1, 'アリス', { combat: 900000 }),   // 相手は持っていない
+        growthRow(1, 'モラン', { combat: 200000 }), growthRow(2, 'モラン', { combat: 200000 }),
+    ];
+    const t = build({ rows, teams: [atk(1, ['ラピ', 'アリス', 'モラン'])], them: 2 });
+    const out = t.paint();
+    const cells = [...out.matchAll(/alt="([^"]+)"[\s\S]*?class="g [a-z]+">([^<]+)</g)].map(m => [m[1], m[2]]);
+    assert.deepEqual(cells, [['ラピ', '+20.0万'], ['アリス', '未取得'], ['モラン', '差なし']],
+        `アイコンと差がずれている: ${JSON.stringify(cells)}`);
+});
+
+test('★ いま選んでいる相手は、その回に育成が無くても相手えらびに残す', () => {
+    // 運営タブの名前から来ると、その回に取り込めていない人が選ばれ得る。
+    // 消すと「何も選ばれていない」ように見え、画面と食い違う
+    const t = build({ ...BASE, rows: [...fullRows(1, 1), ...fullRows(3, 3)], them: 2 });
+    const out = t.paint();
+    assert.ok(/onclick="handleGrowthAnaWho\(2\)"/.test(out), '選んでいる相手が消えている');
+    assert.ok(/aria-pressed="true" onclick="handleGrowthAnaWho\(2\)"/.test(out), '選ばれている印が無い');
+    // 選んでいない・育成も無い人は出さない (くらべられないので)
+    const other = build({ ...BASE, rows: [...fullRows(1, 1), ...fullRows(3, 3)], them: 3 }).paint();
+    assert.ok(!/handleGrowthAnaWho\(2\)/.test(other), 'くらべられない人まで並べている');
+});
+
 test('運営タブの名前から開くと、その人を相手にして分析タブへ送る', () => {
     const t = build({ ...BASE });
     t.openGrowthCompare(2);

@@ -16263,7 +16263,10 @@
             const esc = escapeHtml;
             const myId = me && me.id != null ? String(me.id) : '';
             const have = new Set(Object.keys(_gv.byPl || {}));
-            const mates = (_gv.players || []).filter(p => have.has(String(p.id)) && String(p.id) !== myId);
+            // ★ いま選んでいる相手は、その回に育成が無くても必ず並べる (運営タブの名前から来ると
+            //   その回に取り込めていない人が選ばれ得る。消すと「何も選ばれていない」ように見える)
+            const mates = (_gv.players || []).filter(p => String(p.id) !== myId
+                && (have.has(String(p.id)) || String(_gv.them) === String(p.id)));
             const all = `<button type="button" aria-pressed="${_gv.them == null ? 'true' : 'false'}" onclick="handleGrowthAnaWho('')">`
                 + '<span class="rim"><span class="all">👥</span></span><span class="nm">ユニオン全体</span></button>';
             const rest = mates.map(p => `<button type="button" aria-pressed="${String(_gv.them) === String(p.id) ? 'true' : 'false'}"`
@@ -16311,8 +16314,11 @@
             const cards = teams.map((t, ti) => {
                 const key = `pt${ti}`;
                 const open = _gv.open.has(key);
-                const cells = union ? null : dom.teamGaps(t.team, mine, theirs);
-                const tm = t.team.map((nm, k) => {
+                // ★ 添字で teamGaps と突き合わせない — 空の枠が落ちるとアイコンと差がずれる。
+                //   キャラ名を持つ行そのものを回す
+                const cells = union ? t.team.map(nm => ({ character: nm })) : dom.teamGaps(t.team, mine, theirs);
+                const tm = cells.map((c) => {
+                    const nm = c.character;
                     if (union) {
                         const r = dom.unionRanking(_gv.byPl, _gv.players, nm, 'combat', myId);
                         const cls = r.myRank == null ? 'none'
@@ -16320,7 +16326,6 @@
                         const txt = r.myRank == null ? '未取得' : `${r.myRank}/${r.list.length}位`;
                         return `<div class="gv-tm">${_gvIcon(nm, 44)}<span class="g ${cls}">${esc(txt)}</span></div>`;
                     }
-                    const c = cells[k];
                     const cls = c.gap == null ? 'none' : c.gap > 0 ? 'up' : c.gap < 0 ? 'mine' : 'flat';
                     const txt = c.gap == null ? '未取得' : c.gap === 0 ? '差なし'
                         : `${c.gap > 0 ? '+' : '−'}${dom.fmtMan(Math.abs(c.gap))}`;
