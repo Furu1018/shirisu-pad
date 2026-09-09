@@ -6308,10 +6308,9 @@ console.log('\ngrowthDomain:');
         // 実機ではリンクから1件も取れなかった。属性や埋め込みJSONに残った識別子を署名で拾う
         const t1 = B64('29080-3273786220482814289'), t2 = B64('29080-111111111111111111');
         const out = runRosterSnippet({ html: `<div data-x="${t1}"></div><span>${t2}</span>` });
-        assert.ok(out.includes('3273786220482814289'), `署名から拾えていない: ${out.slice(0, 200)}`);
-        assert.ok(out.includes('111111111111111111'));
-        assert.ok(out.includes('名簿 2人'), '人数が合っていない');
-        assert.ok(out.includes('(名前不明)'), '名前が取れないことを示していない');
+        // 署名では識別子は拾えるが名前は取れない。診断に件数として出る (名簿には出さない)
+        assert.ok(/signature: 2/.test(out), `署名から拾えていない: ${out.slice(0, 300)}`);
+        assert.ok(/noname: 2/.test(out), '名前の無い件数を出していない');
         assert.ok(out.includes('---- 診断'), '診断が付いていない');
     });
 
@@ -6344,15 +6343,33 @@ console.log('\ngrowthDomain:');
         assert.ok(!out.includes('よその人'), '他ユニオンのカード一覧まで拾っている');
         assert.ok(!out.includes('投稿者'), '掲示板の投稿者まで拾っている');
         assert.ok(out.includes('名簿 1人'));
-        assert.ok(/narrowed: yes/.test(out), '絞り込んだことを診断に出していない');
-        // ★ 絞ると0件になるなら、絞らない (絞りすぎて何も取れないほうが困る)
-        const only = runRosterSnippet({
-            bodies: [{ u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardList', t: body('444444444444444444', 'だれか') }],
+        assert.ok(/used: own/.test(out), '自分のユニオンの経路を使ったと出していない');
+        // ★ 他ユニオン・掲示板の経路しか無いなら、**何も出さない** (2026-09-09 実機: 169人の他人が出た)
+        const junk = runRosterSnippet({
+            bodies: [{ u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardList', t: body('444444444444444444', 'だれか') },
+                { u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardSupportersByTourist', t: body('555555555555555555', '') }],
         });
-        assert.ok(/だれか\t444444444444444444/.test(only), '絞った結果0件なのに諦めている');
-        assert.ok(/narrowed: no/.test(only));
+        assert.ok(!junk.includes('だれか'), '他ユニオンの募集カードを名簿として出している');
+        assert.ok(junk.includes('メンバーが見つかりませんでした'), '空振りとして扱っていない');
+        assert.ok(junk.includes('自分のユニオンのページ'), 'どこを開けばよいか言っていない');
+        assert.ok(/used: none/.test(junk) && /rejected: 2/.test(junk), '捨てた件数を出していない');
+        // 知らない経路は使う (取りこぼすほうが困る)
+        const unknown = runRosterSnippet({
+            bodies: [{ u: 'https://api.blablalink.com/api/game/proxy/Game/SomethingNew', t: body('666666666666666666', 'しらない経路') }],
+        });
+        assert.ok(/しらない経路\t666666666666666666/.test(unknown), '知らない経路を捨てている');
+        assert.ok(/used: other/.test(unknown));
         // 古い形 (文字列だけ) の記録も読める
         assert.ok(/だれか/.test(runRosterSnippet({ bodies: [body('444444444444444444', 'だれか')] })), '古い形の記録を読めない');
+    });
+
+    test('★ 名簿のブックマークレット: 名前の無い識別子は出さない (突き合わせられない — 実機で169件出た)', () => {
+        const t1 = B64('29080-777777777777777777');
+        const out = runRosterSnippet({ html: `<div data-x="${t1}"></div>` });
+        assert.ok(!out.includes('777777777777777777'), '名前の無い識別子を名簿に出している');
+        assert.ok(!out.includes('(名前不明)'), '名前不明の行を出している');
+        assert.ok(/noname: 1/.test(out), '名前の無い件数を診断に出していない');
+        assert.ok(out.includes('名前が無いと PAD のメンバーと突き合わせられない'), 'なぜ出さないかを言っていない');
     });
 
     test('★ 名簿のブックマークレット: 空振りしたら「何が見えたか」を出す (見つかりませんだけでは手が打てない)', () => {

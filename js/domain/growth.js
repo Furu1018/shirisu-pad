@@ -651,7 +651,7 @@
             'var digits=function(raw){if(!raw)return "";var t=String(raw);',
             'try{var g=atob(String(t).replace(/-/g,"+").replace(/_/g,"/"));if(g&&/^[\\x20-\\x7e]+$/.test(g)){t=g;}}catch(e){}',
             'var m=String(t).match(/(\\d{6,})\\s*$/);return m?m[1]:"";};',
-            'var found=new Map();var stat={anchors:0,sig:0,state:0,net:0,narrowed:0};',
+            'var found=new Map();var stat={anchors:0,sig:0,state:0,net:0,narrowed:0,rejected:0};',
             'var put=function(id,name,src){if(!id)return;var n=String(name||"").replace(/\\s+/g," ").trim().slice(0,40);',
             'if(!found.has(id)){found.set(id,n);if(src)stat[src]++;}else if(!found.get(id)&&n){found.set(id,n);}};',
             'var PFX="' + OPENID_B64_PREFIX + '";',
@@ -676,8 +676,10 @@
             'try{[W.__NUXT__,W.__NEXT_DATA__,W.__INITIAL_STATE__].forEach(function(s){walk(s,0,"state");});}catch(e){}',
             'var OWN=/(GetMyGuildInfo|GetGuildDetail|GetUnionRaidData|Member)/i;var NOT=/(Dynamics|Post|CardList|Tourist|Supporters)/i;',
             'var norm=S.bodies.map(function(b){return (b&&typeof b==="object")?{u:String(b.u||""),t:String(b.t||"")}:{u:"",t:String(b||"")};});',
-            'var pick=norm.filter(function(b){return OWN.test(b.u)&&!NOT.test(b.u);});',
-            'var used=pick.length?pick:norm;stat.narrowed=pick.length?1:0;',
+            'var good=norm.filter(function(b){return OWN.test(b.u)&&!NOT.test(b.u);});',
+            'var neutral=norm.filter(function(b){return !NOT.test(b.u);});',
+            'var used=good.length?good:neutral;stat.narrowed=good.length?2:(neutral.length?1:0);',
+            'stat.rejected=norm.length-neutral.length;',
             'used.forEach(function(b){var t=b.t;try{walk(JSON.parse(t),0,"net");}catch(e){',
             'try{var r2=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g"),m2;while((m2=r2.exec(t))){put(digits(m2[0]),"","net");}}catch(e2){}}});',
             'if(!S.hooked){S.hooked=true;',
@@ -688,15 +690,21 @@
             'var os=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.send=function(){var x=this;',
             'try{x.addEventListener("load",function(){try{keep(x.responseURL,x.responseText);}catch(e){}});}catch(e){}',
             'return os.apply(this,arguments);};}',
-            'var lines=[];found.forEach(function(n,id){lines.push((n||"(名前不明)")+"\\t"+id);});',
+            'var lines=[];var noname=0;',
+            'found.forEach(function(n,id){if(n){lines.push(n+"\\t"+id);}else{noname++;}});',
             'lines.sort();',
             'var diag="\\n\\n---- 診断 (見つからないときは、この下ごと運営に見せてください) ----\\naddress: "+location.href',
             '+"\\nlinks: "+document.querySelectorAll("a[href]").length+" / signature: "+stat.sig+" / anchors: "+stat.anchors',
             '+"\\nstate: "+stat.state+" ("+[W.__NUXT__?"NUXT":"",W.__NEXT_DATA__?"NEXT":"",W.__INITIAL_STATE__?"INITIAL":""].filter(Boolean).join(",")+")"',
-            '+"\\nnetwork: "+stat.net+" / captured "+S.bodies.length+" / narrowed: "+(stat.narrowed?"yes":"no")+"\\n"+S.urls.slice(0,8).join("\\n");',
+            '+"\\nnetwork: "+stat.net+" / captured "+S.bodies.length+" / used: "+["none","other","own"][stat.narrowed]',
+            '+" / rejected: "+stat.rejected+" / noname: "+noname+"\\n"+S.urls.slice(0,8).join("\\n");',
+            'var help="\\n\\nこの状態のまま、**自分のユニオンのページ**を開き、メンバー一覧を開いてから\\n'
+                + 'もう一度このブックマークレットを押してください。\\n'
+                + '(ユニオン募集のページでは、他のユニオンの情報しか見えません)";',
             'box.value=(lines.length?("しりすこPAD 名簿 "+lines.length+"人\\n名前とIDを確認して、そのままコピーしてPADに貼ってください\\n'
-                + '(在籍より多いときは、ユニオンのメンバー一覧を開いてからもう一度押すと絞り込めます)\\n\\n"+lines.join("\\n"))',
-            ':"メンバーが見つかりませんでした。\\n\\nこの状態のまま、ユニオンのメンバー一覧を開き直す (またはスクロールする) と\\n通信を聞き取ります。そのあと、もう一度このブックマークレットを押してください。")+diag;',
+                + '(在籍より多いときは、自分のユニオンのメンバー一覧を開いてからもう一度押すと絞り込めます)\\n\\n"+lines.join("\\n"))',
+            ':("メンバーが見つかりませんでした。"+(noname?"\\n\\n名前の無い識別子は "+noname+"件 見つかりましたが、\\n'
+                + '名前が無いと PAD のメンバーと突き合わせられないので出していません。":"")+help))+diag;',
             'box.focus();box.select();try{document.execCommand("copy");}catch(e){}',
         ].join(''));
     }
