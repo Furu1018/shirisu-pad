@@ -549,10 +549,14 @@
         .gv-tile.dim { opacity: .34; }
         /* ★ バーストはアイコンが無いので**色**で見分ける (2026-09-10 ユーザー要望)。
            色は編成エディタの TE_BURST_COLOR と同じものを使う (2つの色づかいを増やさない) */
-        .gv-bg { position: absolute; right: -3px; bottom: 1px; font-size: 8px; font-weight: 900; color: #fff;
+        .gv-bg { position: absolute; right: -3px; bottom: 1px; font-size: 8px; font-weight: 900; color: var(--b-ink, #fff);
             background: var(--b-c, #14161A); border-radius: 5px; padding: 1px 3px; line-height: 1.2; border: 1.5px solid #fff; }
-        .gv-pills button.gv-b { border-color: var(--b-c, rgba(20,22,26,0.10)); color: var(--b-c, #6B7178); }
-        .gv-pills button.gv-b[aria-pressed="true"] { background: var(--b-c, #14161A); border-color: var(--b-c, #14161A); color: #fff; }
+        /* ★ バーストの色は**点**で見せ、押した状態は他のピルと同じ黒にそろえる。
+           色で塗りつぶすと、B2 の黄色に白文字で 1.8:1 になり読めない (Codex指摘 2026-09-10)。
+           点なら押しても押さなくても色が読め、押下の見分けも画面全体と同じ作法で済む */
+        .gv-pills button.gv-b { display: inline-flex; align-items: center; gap: 5px; }
+        .gv-pills button.gv-b .dot { width: 7px; height: 7px; border-radius: 50%; flex: none;
+            background: var(--b-c, #8A9097); }
         .gv-attrs button img { width: 19px; height: 19px; display: block; }
         .gv-attrs button.gv-a { padding: 5px 8px; }
         .gv-pills button.gv-dps { border-color: #6C42F0; color: #5B2BE0; }
@@ -16262,6 +16266,22 @@
         function handleGrowthAnaDpsOnly() { _gv.dpsOnly = !_gv.dpsOnly; _gvPaint(); }
         // ★ バーストのアイコンは無いので色で見分ける。編成エディタと同じ色づかいにそろえる
         const GV_BURST_COLOR = TE_BURST_COLOR;
+        // ★ style に入れる前に**自前の鍵か**と**色の形か**を確かめる (Codex指摘 2026-09-10)。
+        //   'constructor' のような鍵は継承先の関数を返し、そのまま CSS 変数に流れ込む
+        function _gvBurstColor(b) {
+            const c = Object.prototype.hasOwnProperty.call(GV_BURST_COLOR, b) ? GV_BURST_COLOR[b] : null;
+            return (typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.test(c)) ? c : '#8A9097';
+        }
+        // 背景に対して**読めるほうの**文字色。★ B2 の黄色に白は 1.8:1 しかない (Codex指摘 2026-09-10)。
+        //   4種の色はどれも中間の明るさなので、閾値ではなく「黒と白のうちコントラストの高いほう」を採る
+        function _gvBurstInk(hex) {
+            const v = (i) => {
+                const n = parseInt(hex.slice(i, i + 2), 16) / 255;
+                return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+            };
+            const L = 0.2126 * v(1) + 0.7152 * v(3) + 0.0722 * v(5);
+            return ((L + 0.05) / 0.05) >= (1.05 / (L + 0.05)) ? '#14161A' : '#FFFFFF';
+        }
         // 火力役の入り切り (2026-09-10)。★ キャラ名を onclick に埋めない — 描いた順の番号で受ける
         const GV_DPS_KEY = 'shirisu.growth.dps.v1';
         function _gvDpsPick() {
@@ -16576,9 +16596,10 @@
                            oninput="handleGrowthAnaSearch(this.value)">
                     ${attrPills}
                     <div class="gv-pills">${BURSTS.map(b => `<button type="button" class="${b === 'all' ? '' : 'gv-b'}"`
-                + `${b === 'all' ? '' : ` style="--b-c:${GV_BURST_COLOR[b] || '#8A9097'};"`}`
+                + `${b === 'all' ? '' : ` style="--b-c:${_gvBurstColor(b)};"`}`
                 + ` aria-pressed="${_gv.burst === b ? 'true' : 'false'}"`
-                + ` onclick="handleGrowthAnaBurst('${b}')">${b === 'all' ? 'すべて' : b}</button>`).join('')}
+                + ` onclick="handleGrowthAnaBurst('${b}')">`
+                + `${b === 'all' ? 'すべて' : `<i class="dot"></i>${b}`}</button>`).join('')}
                         <button type="button" class="gv-dps" aria-pressed="${_gv.dpsOnly ? 'true' : 'false'}"
                                 onclick="handleGrowthAnaDpsOnly()">⚡ 火力役だけ</button></div>
                     <div class="gv-grid">${idx.map(i => {
@@ -16587,13 +16608,19 @@
                     return `<button type="button" class="gv-tile${has(nm) ? '' : ' dim'}"`
                         + ` aria-pressed="${i === _gv.charIdx ? 'true' : 'false'}" onclick="handleGrowthAnaChar(${i})">`
                         + `<span class="wrap">${_gvIcon(nm, 46)}`
-                        + `${bs ? `<span class="gv-bg" style="--b-c:${GV_BURST_COLOR[bs] || '#14161A'};">${esc(bs)}</span>` : ''}</span>`
+                        + `${bs ? `<span class="gv-bg" style="--b-c:${_gvBurstColor(bs)};--b-ink:${_gvBurstInk(_gvBurstColor(bs))};">${esc(bs)}</span>` : ''}</span>`
                         + `<span class="cn">${esc(nm)}</span></button>`;
                 }).join('')}</div>
                     ${idx.length ? '' : '<p class="gc-empty" style="margin-top:9px;">みつかりません。</p>'}
                 </div>`;
             const name = _gv.charIdx >= 0 ? _gv.chars[_gv.charIdx] : null;
             if (!name) return picker + '<p class="gv-hint">キャラを選ぶと、ここにくらべた結果が出ます。</p>';
+            // ★ 絞り込みで一覧から消えた体の比較を出したままにしない (Codex指摘 2026-09-10) —
+            //   選んだタイルが無いのに中身だけ残り、絞り込みと食い違う。選択は捨てない (戻せば出る)
+            if (!idx.includes(_gv.charIdx)) {
+                return picker + `<p class="gv-hint">選んでいた <b>${esc(name)}</b> は、いまの絞り込みから外れています。`
+                    + '絞り込みを戻すか、別のキャラを選んでください。</p>';
+            }
             if (union) {
                 const sorts = '<div class="dc-card dc-card-tight" style="margin-top:10px;">'
                     + '<div class="gv-k">ならべかえ</div>'

@@ -6752,6 +6752,20 @@ console.log('\ngrowthDomain:');
         // 火力役が0体なら順位も出さない (誰でも「全部持っている」ことになってしまう)
         assert.deepEqual(dom.unionDpsRanking(by, players, [], 1), { list: [], myRank: null });
         assert.equal(dom.unionDpsRanking(by, players, ['A'], 9).myRank, null);
+        // ★ 同点は名前 → id で固定する (描き直すたびに順位が入れ替わると信用されない)
+        const tie = dom.byPlayerCharacter([
+            { player_id: 1, character_name: 'A', ...ol(50, 20) },
+            { player_id: 2, character_name: 'A', ...ol(50, 20) },
+            { player_id: 3, character_name: 'A', ...ol(50, 20) },
+        ]);
+        const t1 = dom.unionDpsRanking(tie, [{ id: 3, name: 'う' }, { id: 1, name: 'あ' }, { id: 2, name: 'い' }], ['A'], 1);
+        const t2 = dom.unionDpsRanking(tie, [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }], ['A'], 1);
+        assert.deepEqual(t1.list.map(x => x.name), ['あ', 'い', 'う'], '同点の並びが名前順でない');
+        assert.deepEqual(t1.list.map(x => x.playerId), t2.list.map(x => x.playerId), '渡す順で並びが変わる');
+        const same = [{ id: 2, name: 'あ' }, { id: 1, name: 'あ' }];
+        assert.deepEqual(dom.unionDpsRanking(tie, same, ['A'], 1).list.map(x => x.playerId),
+            dom.unionDpsRanking(tie, same.slice().reverse(), ['A'], 1).list.map(x => x.playerId),
+            '同名だと渡す順で並びが変わる');
     });
 
     test('★ quickCells: 出す値は持ち主・色は自分と相手のどちらが上か', () => {

@@ -60,7 +60,7 @@ function build({
         { id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false, ok: 14 },
     ],
     seasonId = 30, them = null, view = 'pt', base = 'mine', charIdx = -1, q = '', burst = 'all', attr = 'all',
-    sort = null, open = [], rosterOpen = false,   // null = growthDomain.DEFAULT_SORT (オーバーロード合計)
+    sort = null, open = [], rosterOpen = false, bursts = null,   // null = growthDomain.DEFAULT_SORT (オーバーロード合計)
 } = {}) {
     let out = '';
     const els = { growthAnaBody: { set innerHTML(v) { out = v; }, get innerHTML() { return out; } } };
@@ -81,7 +81,7 @@ function build({
         getCurrentIdentity: () => me,
         renderAvatarHtml: (p) => `<span class="av">${p && p.name ? p.name[0] : '?'}</span>`,
         resolveNikkeChar: (n) => ({ canonical: n, iconPath: `./character-images/${encodeURIComponent(n)}.webp` }),
-        _nikkeCharsByName: new Map([...BURSTS].map(([n, burst]) => [n, { canonical_name: n, burst }])),
+        _nikkeCharsByName: new Map([...BURSTS, ...Object.entries(bursts || {})].map(([n, burst]) => [n, { canonical_name: n, burst }])),
         TE_BURST_COLOR: { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' },
         PT_ATTRS: [
             { key: 'fire', name: '灼熱', icon: './属性アイコン/灼熱.png', color: '#FF3B30' },
@@ -329,9 +329,10 @@ test('キャラのアイコンを出す (名前だけだと編成が読めない
     const out = build({ ...BASE, them: 2 }).paint();
     assert.ok(/class="gv-ic [^"]*" src="\.\/character-images\//.test(out), 'アイコンが出ていない');
     const ch = build({ ...BASE, them: 2, view: 'char' }).paint();
-    assert.ok(/class="gv-bg" style="--b-c:#[0-9A-Fa-f]{6};">B[0-9Λ]<\/span>/.test(ch),
-        'バーストのバッジが無い / 色が付いていない');
-    assert.ok(/class="gv-b" style="--b-c:#[0-9A-Fa-f]{6};"/.test(ch), 'バーストのピルに色が付いていない');
+    assert.ok(/class="gv-bg" style="--b-c:#[0-9A-Fa-f]{6};--b-ink:#[0-9A-Fa-f]{6};">B[0-9Λ]<\/span>/.test(ch),
+        'バーストのバッジが無い / 色か文字色が付いていない');
+    assert.ok(/class="gv-b" style="--b-c:#[0-9A-Fa-f]{6};"[^>]*><i class="dot"><\/i>B/.test(ch),
+        'バーストのピルに色の点が無い');
 });
 
 test('★ 記録が無い人 (overload: null) を 0 として比べない', () => {
@@ -438,6 +439,50 @@ test('★ キャラ別を「火力役だけ」で絞れる', () => {
     assert.ok(/ヘルム/.test(out) && /紅蓮/.test(out), '残る顔ぶれが違う');
 });
 
+test('★ バーストの値が変でも style に流し込まない (constructor などの継承した鍵)', () => {
+    // 対応表に無い値なら既定色に倒れるが、Object.prototype 由来の鍵は「無い」とは限らない
+    const t = build({
+        rows: [growthRow(1, 'あやしい'), growthRow(2, 'あやしい')],
+        teams: [atk(1, ['あやしい'])], them: 2, view: 'char',
+        bursts: { あやしい: 'constructor' },
+    });
+    const out = t.paint();
+    assert.ok(!/--b-c:function|--b-c:\[object/.test(out), 'style に関数が流れ込んでいる');
+    assert.match(out, /--b-c:#8A9097;/, '既定の色に倒れていない');
+    // 見た目の崩れも防ぐ: 色は必ず #RRGGBB の形
+    for (const m of out.matchAll(/--b-c:([^;"]*)/g)) {
+        assert.match(m[1], /^#[0-9A-Fa-f]{6}$/, `色の形になっていない: ${m[1].slice(0, 40)}`);
+    }
+});
+
+test('★ 絞り込みで消えた体の比較を出したままにしない', () => {
+    // 選んだタイルが無いのに中身だけ残ると、絞り込みと食い違う (Codex指摘 2026-09-10)
+    const t = build({ ...BASE, them: 2, view: 'char' });
+    t.handleGrowthAnaChar(t.state.chars.indexOf('クラウン'));   // B2 = 火力役ではない
+    assert.match(t.paint(), /class="gc-char"/, '選んだ体の比較が出ていない');
+    t.handleGrowthAnaDpsOnly();
+    const out = t.paint();
+    assert.ok(!/class="gc-char"/.test(out), '一覧から消えたのに比較が残っている');
+    assert.match(out, /いまの絞り込みから外れています/, 'なぜ出ないのか言っていない');
+    // 選択は捨てない — 絞り込みを戻せばそのまま出る
+    t.handleGrowthAnaDpsOnly();
+    assert.match(t.paint(), /class="gc-char"/, '絞り込みを戻しても出ない (選択を捨てている)');
+});
+
+test('★ 絞り込みは重ねがけできる (火力役 × バースト × 属性 × 検索)', () => {
+    const t = build({ ...BASE, them: 2, view: 'char' });
+    t.handleGrowthAnaDpsOnly();
+    assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 2, '火力役だけに絞れていない');
+    t.handleGrowthAnaBurst('B3');
+    assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 2, '火力役 × B3 が効いていない');
+    t.handleGrowthAnaSearch('ヘルム');
+    assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 1,
+        '火力役だけのときに検索が無視されている');
+    t.handleGrowthAnaBurst('B2');
+    assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 0,
+        '火力役だけのときにバーストが無視されている');
+});
+
 test('★ 属性は属性アイコンで出す / バーストは色で見分ける', () => {
     const out = build({ ...BASE, them: 2, view: 'char' }).paint();
     // 属性アイコンは既にアプリが持っている素材 (PT_ATTRS.icon)
@@ -445,8 +490,20 @@ test('★ 属性は属性アイコンで出す / バーストは色で見分け�
         '属性アイコンを使っていない (5属性ぶん)');
     assert.match(out, /title="灼熱" aria-label="灼熱"/, '読み上げ用の名前が消えている');
     // バーストはアイコンが無いので色。編成エディタと同じ色づかいにそろえる
-    assert.match(out, /class="gv-b" style="--b-c:#1FA95C;"[^>]*>B1</, 'B1 の色が編成エディタと違う');
-    assert.match(out, /class="gv-b" style="--b-c:#E5484D;"[^>]*>B3</, 'B3 の色が編成エディタと違う');
+    assert.match(out, /style="--b-c:#1FA95C;"[^>]*><i class="dot"><\/i>B1</, 'B1 の色が編成エディタと違う');
+    assert.match(out, /style="--b-c:#E5484D;"[^>]*><i class="dot"><\/i>B3</, 'B3 の色が編成エディタと違う');
+    // ★ 押した状態を色で塗りつぶさない — B2 の黄色に白文字だと 1.8:1 で読めない
+    const pill = html.match(/\.gv-pills button\.gv-b\[aria-pressed="true"\][\s\S]*?\}/)?.[0] || '';
+    assert.ok(!/var\(--b-c/.test(pill), '押した状態をバーストの色で塗りつぶしている');
+    // バッジの文字色は背景に対して読めるほうを選ぶ
+    const ink = out.match(/--b-c:(#[0-9A-Fa-f]{6});--b-ink:(#[0-9A-Fa-f]{6})/);
+    assert.ok(ink, 'バッジに文字色を渡していない');
+    const lum = (h) => { const v = (i) => { const n = parseInt(h.slice(i, i + 2), 16) / 255;
+        return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4); };
+        return 0.2126 * v(1) + 0.7152 * v(3) + 0.0722 * v(5); };
+    const L = lum(ink[1]);
+    assert.equal(ink[2], (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#14161A' : '#FFFFFF',
+        '読みにくいほうの文字色を選んでいる');
 });
 
 test('★ 要約に「何体で上」を出さない (勝ち負けの見せ方にしない)', () => {
