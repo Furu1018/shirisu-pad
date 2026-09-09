@@ -1893,19 +1893,27 @@ window.supabaseLoadMyGrowthStatus = async function (playerId) {
 //   そこに引っ張られ、本番の回のデータが全部「未取得」に見える (実機FB 2026-09-09)。
 //   既定の選び方は growthDomain.defaultGrowthSeason が決める。
 window.supabaseLoadGrowthSeasonSummary = async function () {
-    const st = await supabase.from('member_growth_status')
-        .select('season_id, status').order('season_id', { ascending: false }).limit(5000);
-    if (st.error) {
-        if (_isMissingTableErr(st.error, 'member_growth_status')) return null;
-        throw st.error;
-    }
+    // ★ ページ送りする (Codex指摘 2026-09-09) — 1回のレイドで人数ぶんの行が積まれるので、
+    //   既定上限 1000 では 30回ほどで**古い回が選択肢から黙って消え**、境界の回は人数も過少になる
+    const STEP = 1000;
     const by = new Map();
-    for (const r of st.data || []) {
-        const k = Number(r.season_id);
-        if (!by.has(k)) by.set(k, { ok: 0, total: 0 });
-        const e = by.get(k);
-        e.total++;
-        if (r.status === 'ok') e.ok++;
+    for (let from = 0; ; from += STEP) {
+        const st = await supabase.from('member_growth_status')
+            .select('season_id, status').order('season_id', { ascending: false }).order('player_id')
+            .range(from, from + STEP - 1);
+        if (st.error) {
+            if (_isMissingTableErr(st.error, 'member_growth_status')) return null;
+            throw st.error;
+        }
+        const rows = st.data || [];
+        for (const r of rows) {
+            const k = Number(r.season_id);
+            if (!by.has(k)) by.set(k, { ok: 0, total: 0 });
+            const e = by.get(k);
+            e.total++;
+            if (r.status === 'ok') e.ok++;
+        }
+        if (rows.length < STEP) break;
     }
     if (!by.size) return [];
     const { data, error } = await supabase.from('seasons')

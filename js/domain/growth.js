@@ -995,7 +995,11 @@
             const value = row ? f.value(row) : null;
             return value == null ? null
                 : { playerId: p.id, name: String(p.name == null ? '' : p.name), row, value, text: f.text(row) };
-        }).filter(Boolean).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, 'ja'));
+        // ★ 同点は名前 → id で固定する。名前だけだと**同名のメンバー**同士で渡す順に左右され、
+        //   描き直すたびに順位が入れ替わる (Codex指摘 2026-09-09)
+        }).filter(Boolean).sort((a, b) => b.value - a.value
+            || a.name.localeCompare(b.name, 'ja')
+            || String(a.playerId).localeCompare(String(b.playerId)));
         const at = list.findIndex((x) => myId != null && String(x.playerId) === String(myId));
         return { field: { key: f.key, label: f.label }, list, myRank: at < 0 ? null : at + 1 };
     }

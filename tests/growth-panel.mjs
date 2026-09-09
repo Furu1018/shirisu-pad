@@ -421,11 +421,16 @@ await testAsync('読み込みに失敗しても、例外を投げずに隠すだ
 // ---- 📣 未公開の人に公開をお願いする (B3) の実行テスト ---------------------
 //   ★ ソースの文字列一致だけだと、privateTargets の行を残したまま送信側を
 //     全員に広げる変異がすり抜ける (Codex指摘 2026-09-09)。**実際の playerIds** を見る。
+//   ★ さらに「手元の写しを見直す」だけでは別端末の変更を防げない。
+//     確認のあと **DB を引き直している**ことまで見る。
 const ASK_SRC = cut('        async function handleGrowthAskPublish()');
 
-function runAsk({ players = [], statusRows = [], preview = true, sendFails = false } = {}) {
-    const calls = { sent: [], notes: [], previews: [] };
-    let resolvePreview = null;
+function runAsk({
+    players = [], statusRows = [], sendFails = false, holdSend = false,
+    fresh, freshPlayers, freshNull = false, freshThrows = false,
+} = {}) {
+    const calls = { sent: [], notes: [], previews: [], loads: 0 };
+    let resolvePreview = null, finishSend = null;
     const state = {
         gen: 0, seasons: null, picked: null, seasonId: 30, players, statusRows,
         used: [], wanted: null, busy: false, sending: false, msg: null, rosterOpen: false,
@@ -434,8 +439,17 @@ function runAsk({ players = [], statusRows = [], preview = true, sendFails = fal
         _growth: state,
         window: {
             growthDomain: dom,
+            // ★ 既定は「DB も画面と同じ」。テストで fresh を渡すと、別端末で変わった状況になる
+            supabaseLoadMemberGrowthStatus: async () => {
+                calls.loads++;
+                if (freshThrows) throw new Error('圏外');
+                if (freshNull) return null;
+                return fresh === undefined ? state.statusRows : fresh;
+            },
+            supabaseLoadPlayersWithOpenid: async () => (freshPlayers === undefined ? state.players : freshPlayers),
             sendPushNotification: async (payload) => {
                 calls.sent.push(payload);
+                if (holdSend) await new Promise((r) => { finishSend = r; });
                 if (sendFails) throw new Error('圏外');
                 return { ok: true, sent: payload.playerIds.length };
             },
@@ -451,7 +465,9 @@ function runAsk({ players = [], statusRows = [], preview = true, sendFails = fal
     return {
         state, calls,
         run: () => fn(),
-        answer: (v = preview) => { if (resolvePreview) resolvePreview(v); },
+        answer: (v = true) => { if (resolvePreview) resolvePreview(v); },
+        finish: () => { if (finishSend) finishSend(); },
+        tick: () => new Promise((r) => setTimeout(r, 0)),
         recipients: () => (calls.previews[0]?.[0]?.recipients || []).map(r => r.id),
         playerIds: () => (calls.sent[0]?.playerIds || []),
     };
@@ -465,65 +481,95 @@ const S4 = [
 
 await testAsync('★ 送るのは非公開の人だけ (取り込み済み・未ひも付け・失敗には送らない)', async () => {
     const t = runAsk({ players: P4, statusRows: S4 });
-    const p = t.run();
-    t.answer(true);
-    await p;
+    const p = t.run(); t.answer(true); await p;
     assert.deepEqual(t.recipients(), [1], '確認画面の顔ぶれが違う');
     assert.deepEqual(t.playerIds(), [1], `実際の送信先が違う: ${JSON.stringify(t.playerIds())}`);
     assert.equal(t.calls.notes.at(-1).kind, 'ok');
 });
 
-await testAsync('★ 確認している間に ok になった人には送らない (宛先を握ったままにしない)', async () => {
-    const t = runAsk({ players: P4, statusRows: [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'private' }] });
+await testAsync('★ 確認のあと DB を引き直す (手元の写しを見直すだけでは別端末の変更を防げない)', async () => {
+    const t = runAsk({
+        players: P4,
+        statusRows: [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'private' }],
+        // 別の運営が取り込んで 2 が ok になった。★ 自分の画面 (state) は古いまま
+        fresh: [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'ok' }],
+    });
     const p = t.run();
-    assert.deepEqual(t.recipients(), [1, 2]);
-    // 別の運営が取り込んで 2 が ok になった
-    t.state.statusRows = [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'ok' }];
-    t.answer(true);
-    await p;
+    assert.deepEqual(t.recipients(), [1, 2], '確認画面は自分の画面の顔ぶれ');
+    t.answer(true); await p;
+    assert.equal(t.calls.loads, 1, 'DB を引き直していない (手元の写しだけ見ている)');
     assert.deepEqual(t.playerIds(), [1], '状況が変わった人にも送っている');
     assert.match(t.calls.notes.at(-1).text, /1人は状況が変わったので外しました/);
 });
 
 await testAsync('★ 確認している間に書庫に入れた人には送らない (購読は残るので本当に届く)', async () => {
-    const t = runAsk({ players: P4, statusRows: [{ player_id: 1, status: 'private' }, { player_id: 4, status: 'private' }] });
+    const t = runAsk({
+        players: P4,
+        statusRows: [{ player_id: 1, status: 'private' }, { player_id: 4, status: 'private' }],
+        freshPlayers: P4.filter(x => x.id !== 4),      // 書庫入り = 一覧から消える
+    });
     const p = t.run();
     assert.deepEqual(t.recipients(), [1, 4]);
-    t.state.players = P4.filter(x => x.id !== 4);      // 書庫入り = 一覧から消える
-    t.answer(true);
-    await p;
+    t.answer(true); await p;
     assert.deepEqual(t.playerIds(), [1], 'PAD にいない人に送っている');
 });
 
+await testAsync('★ いまの状況を確認できなかったら送らない (古い顔ぶれで一斉送信しない)', async () => {
+    const nul = runAsk({ players: P4, statusRows: S4, freshNull: true });
+    let p = nul.run(); nul.answer(true); await p;
+    assert.equal(nul.calls.sent.length, 0, '確認できないのに送っている');
+    assert.equal(nul.calls.notes.at(-1).kind, 'warn');
+    // ★ 「確認できなかった」と「状況が変わった」は運営の次の行動が違う。文面まで固定する
+    assert.match(nul.calls.notes.at(-1).text, /確認できませんでした/,
+        '確認できなかったのに「状況が変わりました」と言っている (運営が原因を取り違える)');
+    assert.equal(nul.state.sending, false, '送信中のままになっている');
+    const err = runAsk({ players: P4, statusRows: S4, freshThrows: true });
+    p = err.run(); err.answer(true); await p;
+    assert.equal(err.calls.sent.length, 0, '確認に失敗したのに送っている');
+    assert.equal(err.calls.notes.at(-1).kind, 'err');
+    assert.equal(err.state.sending, false);
+});
+
 await testAsync('確認している間に全員いなくなったら送らない', async () => {
-    const t = runAsk({ players: P4, statusRows: [{ player_id: 1, status: 'private' }] });
-    const p = t.run();
-    t.state.statusRows = [{ player_id: 1, status: 'ok' }];
-    t.answer(true);
-    await p;
+    const t = runAsk({
+        players: P4, statusRows: [{ player_id: 1, status: 'private' }],
+        fresh: [{ player_id: 1, status: 'ok' }],
+    });
+    const p = t.run(); t.answer(true); await p;
     assert.equal(t.calls.sent.length, 0, '宛先ゼロなのに送っている');
     assert.equal(t.calls.notes.at(-1).kind, 'warn');
 });
 
-await testAsync('確認画面で断ったら送らない / 非公開の人が0なら確認画面も出さない', async () => {
+await testAsync('確認画面で断ったら送らない (次も送れる) / 相手が0なら確認画面も出さない', async () => {
     const no = runAsk({ players: P4, statusRows: S4 });
     const p = no.run(); no.answer(false); await p;
     assert.equal(no.calls.sent.length, 0, '断ったのに送っている');
+    assert.equal(no.calls.loads, 0, '断ったのに DB を引いている');
+    assert.equal(no.state.sending, false, '断ったあと送信中のままで、以後送れなくなる');
     const none = runAsk({ players: P4, statusRows: [{ player_id: 3, status: 'ok' }] });
     await none.run();
     assert.equal(none.calls.previews.length, 0, '相手がいないのに確認画面を出している');
     assert.equal(none.calls.notes.at(-1).kind, 'warn');
 });
 
-await testAsync('送信中は二重に走らない / 失敗しても実行中のままにしない', async () => {
+await testAsync('★ 送信中に押しても二重に送らない (通信が終わるまで塞ぐ)', async () => {
+    const t = runAsk({ players: P4, statusRows: S4, holdSend: true });
+    const p1 = t.run();
+    t.answer(true);
+    await t.tick();                       // 送信が始まり、返事を待っている状態
+    assert.equal(t.calls.sent.length, 1, '送信が始まっていない');
+    await t.run();                        // ここで二度押し
+    assert.equal(t.calls.previews.length, 1, '送信中なのに確認画面をもう一度出している');
+    assert.equal(t.calls.sent.length, 1, '二重に送っている');
+    t.finish(); await p1;
+    assert.equal(t.state.sending, false, '送り終わったのに送信中のままになっている');
+});
+
+await testAsync('送信に失敗しても実行中のままにしない', async () => {
     const t = runAsk({ players: P4, statusRows: S4, sendFails: true });
     const p = t.run(); t.answer(true); await p;
     assert.equal(t.calls.notes.at(-1).kind, 'err');
     assert.equal(t.state.sending, false, '失敗したのに送信中のままになっている');
-    // 送信中は入口で弾く
-    t.state.sending = true;
-    await t.run();
-    assert.equal(t.calls.previews.length, 1, '送信中にもう一度開けてしまう');
 });
 
 // ---- 育成の読み出しのページ送り -------------------------------------------
@@ -582,6 +628,64 @@ await testAsync('★ 途中のエラーは握りつぶさない / 43未適用だ
     await assert.rejects(() => boom.load(30), /network down/, '途中で失敗したのに半端な行を返している');
     const missing = runPager([new Error('relation "public.member_growth" does not exist')]);
     assert.equal(await missing.load(30), null, '43未適用を「育成ゼロ」と混同している');
+});
+
+// ---- レイド一覧のページ送り ------------------------------------------------
+//   ★ 1回のレイドで人数ぶんの行が積まれる。既定上限 1000 のままだと 30回ほどで
+//     **古い回が選択肢から黙って消え**、境界の回は取り込み人数も過少になる (Codex指摘 2026-09-09)
+const SUM_SRC = (CLIENT.match(/window\.supabaseLoadGrowthSeasonSummary = async function[\s\S]*?\n\};\n/) || [])[0];
+if (!SUM_SRC) { console.error('NG: supabaseLoadGrowthSeasonSummary を切り出せません'); process.exit(2); }
+
+function runSummary(pages, seasons = []) {
+    const ranges = [];
+    let call = 0;
+    const st = {
+        select: () => st, order: () => st,
+        range: async (from, to) => {
+            ranges.push([from, to]);
+            const p = pages[call++];
+            if (p instanceof Error) return { data: null, error: p };
+            return { data: p || [], error: null };
+        },
+    };
+    const se = { select: () => se, in: async (col, ids) => ({ data: seasons.filter(s => ids.includes(s.id)), error: null }) };
+    const win = {};
+    new Function('supabase', '_isMissingTableErr', 'window', `${SUM_SRC}\nreturn 0;`)(
+        { from: (t) => (t === 'member_growth_status' ? st : se) },
+        (e, t) => String(e?.message || '').includes(t),
+        win,
+    );
+    return { load: win.supabaseLoadGrowthSeasonSummary, ranges };
+}
+const stPage = (n, seasonId, okEvery = 2) =>
+    Array.from({ length: n }, (_, i) => ({ season_id: seasonId, status: i % okEvery === 0 ? 'ok' : 'private' }));
+
+await testAsync('★ レイド一覧も1000行で切れない (古い回が選択肢から消える)', async () => {
+    const t = runSummary(
+        [stPage(1000, 30), stPage(31, 26)],
+        [{ id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false },
+            { id: 26, month_key: '2026-08', hard_date: '2026-08-01', is_test: false }],
+    );
+    const out = await t.load();
+    assert.deepEqual(out.map(s => s.id), [30, 26], `古い回が消えている: ${JSON.stringify(out.map(s => s.id))}`);
+    assert.deepEqual(t.ranges, [[0, 999], [1000, 1999]], 'ページの取り方が違う');
+    assert.equal(out.find(s => s.id === 30).total, 1000);
+    assert.equal(out.find(s => s.id === 26).ok, 16, '取り込み人数を数え間違えている');
+});
+
+await testAsync('ちょうど1000行なら次のページまで見る / 1件も無ければ空', async () => {
+    const t = runSummary([stPage(1000, 30), []], [{ id: 30, month_key: '2026-09', is_test: false }]);
+    assert.equal((await t.load()).length, 1);
+    assert.equal(t.ranges.length, 2, '1ページ目で打ち切っている');
+    const none = runSummary([[]]);
+    assert.deepEqual(await none.load(), []);
+});
+
+await testAsync('43未適用は null / それ以外のエラーは投げる', async () => {
+    const missing = runSummary([new Error('relation "public.member_growth_status" does not exist')]);
+    assert.equal(await missing.load(), null, '未適用を「レイドが無い」と混同している');
+    const boom = runSummary([stPage(1000, 30), new Error('network down')]);
+    await assert.rejects(() => boom.load(), /network down/, '途中で失敗したのに半端な一覧を返している');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -6587,6 +6587,12 @@ console.log('\ngrowthDomain:');
         const t2 = dom.unionRanking(tie, [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }], 'ラピ', 'combat', 1);
         assert.deepEqual(t1.list.map(x => x.name), ['あ', 'い', 'う'], '同点の並びが名前順でない');
         assert.deepEqual(t1.list.map(x => x.playerId), t2.list.map(x => x.playerId), '渡す順で並びが変わる');
+        // ★ 同名のメンバーがいると、名前だけの並べ替えでは渡す順に左右される (Codex指摘)
+        const same = [{ id: 2, name: 'あ' }, { id: 1, name: 'あ' }];
+        const r1 = dom.unionRanking(tie, same, 'ラピ', 'combat', 1);
+        const r2 = dom.unionRanking(tie, same.slice().reverse(), 'ラピ', 'combat', 1);
+        assert.deepEqual(r1.list.map(x => x.playerId), r2.list.map(x => x.playerId), '同名だと渡す順で並びが変わる');
+        assert.equal(r1.myRank, r2.myRank, '同名だと自分の順位が渡す順で変わる');
     });
 
     test('★ teamGaps: 編成の並びのまま差を出す (並べ替えは rankSquad の仕事)', () => {

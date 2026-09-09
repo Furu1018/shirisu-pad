@@ -180,9 +180,14 @@ rm -f .claude/hooks/.codex-on      # OFF
     (`getCurrentIdentity()` が別人) 何も書かない。どちらも実行テストで変異検出する
   文面は `growthDomain.PUBLISH_ASK` (画面に散らさない)。送る前に必ず `showPushPreview` を通す。
   - ★ **確認ダイアログの前に握った宛先をそのまま使わない** (Codex指摘 2026-09-09)。await の間に
-    別の運営が取り込んで ok になる / その人を書庫に入れる、が起こる。await 後にもう一度
-    `privateTargets` を取り、**確認した顔ぶれとの積集合**だけに送る (広げない・減らすのは安全側)。
+    別の運営が取り込んで ok になる / その人を書庫に入れる、が起こる。
+    ★★ **手元の写し (`_growth.statusRows`) を見直すだけでは足りない** — 別端末の変更はこの状態に
+    来ないので、競合はそのまま残る (2回目の Codex 指摘)。確認のあと
+    `supabaseLoadMemberGrowthStatus` と `supabaseLoadPlayersWithOpenid` を**引き直し**、
+    **確認した顔ぶれとの積集合**だけに送る (広げない・減らすのは安全側)。引けなかったら送らない。
     書庫入りは特に危険で、プレイヤー一覧から消えても Push の購読は残る = PAD にいない人に届く。
+  - ★ `_growth.sending` は**確認のあと・通信の前**に立て、`finally` で外す。
+    プレビュー前に立てるとキャンセルで固まり、通信の後に立てると通信中に二重送信できる。
   - ★ 宛先はソースの文字列一致では守れない。`tests/growth-panel.mjs` が
     **await をまたいで実際に実行し `playerIds` を見る** (privateTargets の行を残したまま
     送信側だけ全員に広げる変異がすり抜けるため)。
