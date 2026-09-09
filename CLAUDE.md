@@ -153,6 +153,17 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ 主役は**分析タブの「🧬 育成」ビュー** (実績 / ふるり値 / 育成 / シミュレータ / GB の5つ)。
   全体の内訳 (取り込み済み / 非公開 / 未取得) を先に出し、その下にメンバー。運営タブ (残凸表の名前) の入口も残す。
   実行テスト `tests/growth-compare.mjs`
+- **🧬 未公開の人への働きかけ** (B3・2026-09-09)。取れるのは BlaBlaLINK で**ゲームカードを公開**している人だけで、
+  同じユニオンでも突破できない (`code 1301002`)。だから「取れなかった」は欠測ではなく**状態**として残し、
+  本人に頼むしかない。両側から声をかける:
+  - 運営タブ ④ に「📣 非公開の人に公開をお願いする」。相手は `growthDomain.privateTargets` が決める =
+    ★ **private の人だけ**。未ひも付け (no_openid) は**運営の作業待ち**なので送らない (本人には何もできない)
+  - 本人のホームに `#myGrowthNoticeCard`。★ 出すのは**自分が private のときだけ** —
+    43未適用 (`supabaseLoadMyGrowthStatus` が null) や取得失敗は「未取り込み」と混同せず、黙って隠す
+  - ★ 非同期の2つの守り: `_growthNoticeSeq` で**追い越した古い応答を捨てる** / 待機中に名乗り直したら
+    (`getCurrentIdentity()` が別人) 何も書かない。どちらも実行テストで変異検出する
+  文面は `growthDomain.PUBLISH_ASK` (画面に散らさない)。送る前に必ず `showPushPreview` を通す。
+  実行テスト `tests/growth-panel.mjs`
   **ソルバーを拘束するのは isFixed** (approved と承認済み起点の cancel_requested。requested は提案層で計算に効かせない)。
   `input.reservations` に `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
   ★ **予約はレベルを持たない** (2026-09-08)。メンバーの約束は「この時刻に・この弱点のボスへ・この編成で」で、

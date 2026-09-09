@@ -6523,6 +6523,41 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.squadsFor(lo, {}, attrs), [], '育成がゼロなのに編成を出している');
     });
 
+    test('★ privateTargets: 声をかけるのは非公開の人だけ (未ひも付けには送らない)', () => {
+        // 未ひも付けは**運営の作業待ち**。本人に言っても何もできないので送ってはいけない
+        const players = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }, { id: 4, name: 'え' }];
+        const rows = [
+            { player_id: 1, status: 'private' }, { player_id: 2, status: 'no_openid' },
+            { player_id: 3, status: 'ok' }, { player_id: 4, status: 'error' },
+        ];
+        assert.deepEqual(dom.privateTargets(rows, players).map(p => p.id), [1]);
+        assert.deepEqual(dom.privateTargets(null, players), []);
+        assert.deepEqual(dom.privateTargets(rows, null), []);
+        // 文面は「何をすればよいか」を言う
+        assert.match(dom.PUBLISH_ASK.body, /ゲームカードを公開/);
+        assert.ok(dom.PUBLISH_ASK.title && dom.PUBLISH_ASK.url, 'お願いの題と行き先が無い');
+    });
+
+    test('★ 配線: 未公開の人への働きかけ (B3 — 運営から声をかける / 本人のホームに出す)', () => {
+        const html = _grRd('index.html'), client = _grRd('js', 'supabase-client.js');
+        // 運営: 取り込みパネルの結果から、非公開の人にだけ送る
+        assert.ok(/handleGrowthAskPublish\(\)/.test(html), '運営から声をかける導線が無い');
+        const ask = (html.split('async function handleGrowthAskPublish()')[1] || '').split('async function handleGrowthSetOpenid')[0];
+        assert.ok(/dom\.privateTargets\(_growth\.statusRows, _growth\.players \|\| \[\]\)/.test(ask), '相手をドメインで決めていない');
+        assert.ok(/showPushPreview/.test(ask), '送る前に確認していない');
+        assert.ok(/dom\.PUBLISH_ASK/.test(ask), '文面をドメインに置いていない');
+        // 本人: 非公開のときだけホームに出す
+        assert.ok(/id="myGrowthNoticeCard"/.test(html), 'ホームの知らせが無い');
+        const notice = (html.split('async function renderMyGrowthNotice(identity)')[1] || '').split('===== 🧬 育成 (分析タブのビュー)')[0];
+        assert.ok(/row\.status === 'private' \? '' : 'none'/.test(notice), '非公開以外でも出している');
+        assert.ok(/_growthNoticeSeq/.test(notice), '追い越した古い応答を捨てていない');
+        assert.ok(/String\(me\.id\) !== String\(identity\.id\)/.test(notice), 'プレイヤー切替中に別人の状態を出し得る');
+        assert.ok(/renderMyGrowthNotice\(id\);/.test(html), 'ホームの描画から呼んでいない');
+        // 43未適用は null (「取り込み済みでない」と混同しない)
+        const cl = (client.split('window.supabaseLoadMyGrowthStatus =')[1] || '').split('\n};')[0];
+        assert.ok(/_isMissingTableErr\(error, 'member_growth_status'\)\) return null;/.test(cl), '未適用の判定が無い');
+        assert.ok(/order\('season_id', \{ ascending: false \}\)\.limit\(1\)/.test(cl), 'いちばん新しい回を見ていない');
+    });
     test('★ 配線: 浮かぶナビ (白い帯 + いま居るタブを黒い円で持ち上げ、名前を出す)', () => {
         // 2026-09-09 モック 6f9d0510 の決定 A。以前は黒い帯 + センターだけ大丸だった
         const html = _grRd('index.html');
@@ -6572,7 +6607,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}\)"/.test(html), '残凸表の名前から開けない');
         // ★ 主役は分析タブ (レイド後にスコアを詰める場所)。運営タブの入口も残す
         assert.ok(/data-slv-view="growth"/.test(html) && /id="growthAnaBody"/.test(html), '分析タブに育成ビューが無い');
-        assert.equal((html.match(/_(goto|set)SlvView\('growth'\)/g) || []).length, 2, '2つのセグメントから開けない');
+        assert.ok(/onclick="_gotoSlvView\('growth'\)"><span class="seg-ico">🧬 <\/span>育成/.test(html), '実績タブのセグメントから開けない');
+        assert.ok(/data-view="growth" onclick="_setSlvView\('growth'\)"/.test(html), 'ふるり値タブのセグメントから開けない');
         assert.ok(/if \(_slvView === 'growth'\) renderGrowthAnalysis\(\);/.test(html), 'ビューを開いたときに描いていない');
         const ana = html.match(/function _gAnaPaint\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/取り込み済み/.test(ana) && /非公開/.test(ana), '全体の内訳を出していない');

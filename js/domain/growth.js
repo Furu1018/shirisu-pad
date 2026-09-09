@@ -889,6 +889,28 @@
         };
     }
 
+    /**
+     * 未公開の人への働きかけ (B3・2026-09-09)。
+     * ★ 取れるのは BlaBlaLINK でゲームカードを公開している人だけで、同じユニオンでも突破できない。
+     *   だから「取れなかった」を欠測にせず状態として残し、**本人に頼む**しかない。
+     * ★ 声をかける相手は private の人だけ。未ひも付け (no_openid) は運営の作業待ちなので送らない。
+     * @param {{player_id:any, status:string}[]} statusRows
+     * @param {{id:any, name:string, push?:boolean}[]} players
+     */
+    function privateTargets(statusRows, players) {
+        const priv = new Set((Array.isArray(statusRows) ? statusRows : [])
+            .filter((r) => r && r.status === 'private').map((r) => String(r.player_id)));
+        return (Array.isArray(players) ? players : []).filter((p) => p && priv.has(String(p.id)));
+    }
+
+    /** 本人へのお願い。押す先はホーム (どこを触ればよいかは本文で言う) */
+    const PUBLISH_ASK = {
+        title: '🧬 育成データの公開のお願い',
+        body: 'BlaBlaLINK でゲームカードを公開にすると、あなたの育成が「育成くらべ」に並びます。'
+            + '公開していないと、運営からも他のメンバーからも見えません。設定 → ゲームカードの公開 をお願いします🙏',
+        url: './?tab=ranking',
+    };
+
     /** 戦闘力の読み方。並べて比べるので万単位に畳む (86.8万) */
     const fmtMan = (n) => (Number.isFinite(n) ? `${(n / 10000).toFixed(1)}万` : '—');
 
@@ -997,6 +1019,6 @@
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
-        byCharacter, squadsFor, rankSquad, fmtMan,
+        byCharacter, squadsFor, rankSquad, fmtMan, privateTargets, PUBLISH_ASK,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1874,6 +1874,20 @@ window.supabaseLoadLatestAttackSeasonId = async function () {
     return (data && data[0]) ? data[0].season_id : null;
 };
 
+// 本人の育成の状態 (ホームの「あなたの育成データが未公開です」)。いちばん新しい回の1件。
+// 43未適用は null (「取り込み済みでない」と混同しない)
+window.supabaseLoadMyGrowthStatus = async function (playerId) {
+    if (playerId == null) return null;
+    const { data, error } = await supabase.from('member_growth_status')
+        .select('season_id, status, detail, character_count, checked_at')
+        .eq('player_id', playerId).order('season_id', { ascending: false }).limit(1);
+    if (error) {
+        if (_isMissingTableErr(error, 'member_growth_status')) return null;
+        throw error;
+    }
+    return (data && data[0]) || null;
+};
+
 // 育成の取り込み状況 (分析タブの「育成」ビューの入口)。
 // いちばん新しい取り込み済みシーズンの結果を返す。43未適用は null
 window.supabaseLoadLatestGrowthStatus = async function () {

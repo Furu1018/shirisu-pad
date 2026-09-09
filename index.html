@@ -3454,6 +3454,22 @@
                 <div id="myPublishedPlanBody"></div>
             </div>
 
+            <!-- 🧬 育成データが未公開のお知らせ (B3・2026-09-09)。未公開のときだけ出る -->
+            <div class="dc-card" id="myGrowthNoticeCard" style="display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">🧬 育成データが未公開です</div>
+                    <span id="myGrowthNoticeMeta" style="font-size:10px;font-weight:700;color:#A4AAB0;"></span>
+                </div>
+                <p style="margin:0 0 10px;font-size:11.5px;font-weight:700;color:#8A9097;line-height:1.7;">
+                    BlaBlaLINK で<b>ゲームカードを公開</b>にすると、あなたの育成が分析タブの「🧬 育成くらべ」に並びます。
+                    非公開のままだと、運営からも他のメンバーからも見えません (同じユニオンでも見えない仕様です)。
+                </p>
+                <button type="button" onclick="_gotoSlvView('growth')"
+                        style="width:100%;border:none;border-radius:999px;padding:11px;font:inherit;font-size:12.5px;font-weight:900;color:#14161A;background:#F1F2F4;cursor:pointer;">
+                    🧬 育成くらべを見る
+                </button>
+            </div>
+
             <!-- 🔒 引き受けた凸 (予約) — L2 ⑧。予約が1件でもあるときだけ表示 -->
             <div class="dc-card" id="myReservationsCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
@@ -8318,6 +8334,7 @@
             renderMyPublishedPlan(id);
             renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
             renderMyAvailStrip(id);          // ⏰ あなたの戦闘可能時間 (2026-09-08)
+            renderMyGrowthNotice(id);        // 🧬 育成データが未公開です (B3・2026-09-09)
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
         }
@@ -15974,6 +15991,29 @@
             openOpsProxyAttackModal(Number(playerId));
         }
 
+        // ===== 🧬 育成データが未公開です (B3・2026-09-09) =====
+        //   ★ 出すのは**本人が非公開のときだけ**。取り込み済み・未ひも付け・43未適用では出さない。
+        //     未ひも付けは運営の作業待ちなので、本人に言っても何もできない。
+        let _growthNoticeSeq = 0;
+        async function renderMyGrowthNotice(identity) {
+            const card = document.getElementById('myGrowthNoticeCard');
+            const meta = document.getElementById('myGrowthNoticeMeta');
+            if (!card) return;
+            const seq = ++_growthNoticeSeq;
+            if (!identity?.id) { card.style.display = 'none'; return; }
+            let row = null;
+            try { row = await window.supabaseLoadMyGrowthStatus(identity.id); }
+            catch { row = null; }                       // 取れないときは黙って出さない (催促は運営から届く)
+            if (seq !== _growthNoticeSeq) return;
+            const me = getCurrentIdentity();
+            if (!me?.id || String(me.id) !== String(identity.id)) return;   // 待機中に切り替わった
+            card.style.display = row && row.status === 'private' ? '' : 'none';
+            if (meta && row) {
+                const d = row.checked_at ? new Date(row.checked_at) : null;
+                meta.textContent = d && !isNaN(d) ? `${d.getMonth() + 1}/${d.getDate()} に確認` : '';
+            }
+        }
+
         // ===== 🧬 育成 (分析タブのビュー) =====
         //   レイドが終わったあとにスコアを詰めるための場所なので、実績・ふるり値と同じタブに置く。
         //   ★ 名前は id → 名前 の地図から引く (属性に埋めない — 引用符で壊れる/注入できる)
@@ -16378,11 +16418,35 @@
                         <div class="h"><span class="n">4</span>取り込みの結果
                             <span style="font-weight:800;color:#8A9097;font-size:10.5px;">取れた ${ok.length}人${bad.length ? ` · 取れなかった ${bad.length}人` : ''}</span></div>
                         ${bad.length
-                        ? `<div class="d">「非公開」の人は本人が BlaBlaLINK で公開しないと取れません。声をかけてください。</div><div class="gr-rows">${badRows}</div>`
+                        ? `<div class="d">「非公開」の人は本人が BlaBlaLINK で公開しないと取れません。</div>`
+                        + (bad.some(x => x.s.status === 'private')
+                            ? `<button type="button" class="gr-btn sub" style="margin:8px 0 0;" onclick="handleGrowthAskPublish()">📣 非公開の人に公開をお願いする</button>` : '')
+                        + `<div class="gr-rows">${badRows}</div>`
                         : '<div class="d">全員ぶん取り込めています。</div>'}
                     </div>`;
             }
             box.innerHTML = step0 + step1 + step2 + step3 + step4;
+        }
+
+        // 未公開の人に「ゲームカードを公開してほしい」と送る (B3)。
+        // ★ 相手は private の人だけ。未ひも付けは運営の作業待ちなので送らない (本人には何もできない)
+        async function handleGrowthAskPublish() {
+            const dom = window.growthDomain;
+            if (!dom || _growth.busy) return;
+            const targets = dom.privateTargets(_growth.statusRows, _growth.players || [])
+                .map(p => ({ id: p.id, name: p.name }));
+            if (!targets.length) { _growthNote('warn', '非公開の人がいません。'); return; }
+            const ask = dom.PUBLISH_ASK;
+            const ok = await showPushPreview([{ title: ask.title, body: ask.body, recipients: targets }]);
+            if (!ok) return;
+            try {
+                const res = await window.sendPushNotification({
+                    title: ask.title, body: ask.body, url: ask.url, playerIds: targets.map(t => t.id),
+                });
+                _growthNote('ok', `📣 ${targets.length}人にお願いを送りました (${res?.sent ?? '?'} 端末)`);
+            } catch (e) {
+                _growthNote('err', `送信に失敗しました: ${e?.message || e}`);
+            }
         }
 
         // 識別子のひも付け。URL でも数字でも受ける (parseOpenid)。空にすると解除

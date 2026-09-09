@@ -328,5 +328,95 @@ await testAsync('壊れた貼り付けは理由を出して止まる (実行中�
     assert.ok(t.ta.value !== '', '失敗したのに貼り付けを消している');
 });
 
+test('★ 声かけの導線は「非公開の人がいるとき」だけ出す (未ひも付けは運営の作業待ち)', () => {
+    const priv = run({
+        players: [P(1, 'あ', '111111'), P(2, 'い')],
+        statusRows: [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'no_openid' }],
+    });
+    assert.ok(priv.html().includes('handleGrowthAskPublish()'), '非公開の人がいるのに導線が無い');
+    const noPriv = run({
+        players: [P(1, 'あ', '111111'), P(2, 'い')],
+        statusRows: [{ player_id: 1, status: 'error', detail: 'x' }, { player_id: 2, status: 'no_openid' }],
+    });
+    assert.ok(!noPriv.html().includes('handleGrowthAskPublish()'), '非公開の人がいないのに送れてしまう');
+    const allOk = run({ players: [P(1, 'あ', '111111')], statusRows: [{ player_id: 1, status: 'ok', character_count: 3 }] });
+    assert.ok(!allOk.html().includes('handleGrowthAskPublish()'), '全員取れているのに送れてしまう');
+});
+
+// ---- ホームの「育成データが未公開です」(B3・2026-09-09) --------------------
+//   遅い応答・人の入れ替わり・43未適用は**実行しないと出ない**ので、実際に動かす
+const NOTICE_DECL = (html.match(/\n(\s*let _growthNoticeSeq = 0;)/) || [])[1];
+if (!NOTICE_DECL) { console.error('NG: _growthNoticeSeq の宣言が無い'); process.exit(2); }
+const NOTICE_SRC = NOTICE_DECL + '\n' + cut('        async function renderMyGrowthNotice(identity)');
+
+function noticeHarness({ current = { id: 1, name: 'あ' } } = {}) {
+    const card = { style: { display: '?' } }, meta = { textContent: '?' };
+    const els = { myGrowthNoticeCard: card, myGrowthNoticeMeta: meta };
+    const pend = [], state = { current };
+    const env = {
+        document: { getElementById: (id) => els[id] || null },
+        window: { supabaseLoadMyGrowthStatus: (pid) => new Promise((res, rej) => pend.push({ pid, res, rej })) },
+        getCurrentIdentity: () => state.current,
+    };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, `${NOTICE_SRC}\nreturn renderMyGrowthNotice;`)(...keys.map(k => env[k]));
+    return { fn, card, meta, pend, state };
+}
+
+await testAsync('★ ホームの知らせ: 非公開のときだけ出す (取り込み済み・未ひも付け・43未適用では出さない)', async () => {
+    for (const [status, want] of [['private', ''], ['ok', 'none'], ['no_openid', 'none'], ['error', 'none']]) {
+        const h = noticeHarness();
+        const p = h.fn({ id: 1 });
+        h.pend[0].res({ status, checked_at: '2026-09-09T01:00:00Z' });
+        await p;
+        assert.equal(h.card.style.display, want, `${status} の出し方が違う`);
+    }
+    const none = noticeHarness();               // 43未適用 = null。「未取り込み」と混同しない
+    const p = none.fn({ id: 1 }); none.pend[0].res(null); await p;
+    assert.equal(none.card.style.display, 'none');
+    assert.equal(none.meta.textContent, '?', '中身が無いのに日付を書き換えている');
+});
+
+await testAsync('確認した日を出す (日付が無ければ空にする)', async () => {
+    const h = noticeHarness();
+    let p = h.fn({ id: 1 }); h.pend[0].res({ status: 'private', checked_at: '2026-09-09T01:00:00Z' }); await p;
+    assert.match(h.meta.textContent, /^\d+\/\d+ に確認$/, `日付が読めない: ${h.meta.textContent}`);
+    const h2 = noticeHarness();
+    p = h2.fn({ id: 1 }); h2.pend[0].res({ status: 'private', checked_at: null }); await p;
+    assert.equal(h2.meta.textContent, '', '日付が無いのに何か書いている');
+});
+
+await testAsync('★ 追い越した古い応答で上書きしない', async () => {
+    const h = noticeHarness();
+    const p1 = h.fn({ id: 1 });                 // 遅い方
+    const p2 = h.fn({ id: 1 });                 // 速い方
+    h.pend[1].res({ status: 'ok' }); await p2;
+    assert.equal(h.card.style.display, 'none');
+    h.pend[0].res({ status: 'private' }); await p1;
+    assert.equal(h.card.style.display, 'none', '古い応答で出してしまっている');
+});
+
+await testAsync('★ 待っている間に名乗り直したら、別人の状態を出さない', async () => {
+    const h = noticeHarness({ current: { id: 1 } });
+    const p = h.fn({ id: 1 });
+    h.state.current = { id: 2 };                // 途中でプレイヤーを切り替えた
+    h.pend[0].res({ status: 'private' }); await p;
+    assert.equal(h.card.style.display, '?', '別人の状態で書き換えている');
+});
+
+await testAsync('名乗る前は問い合わせず、黙って隠す', async () => {
+    const h = noticeHarness({ current: null });
+    await h.fn(null);
+    assert.equal(h.card.style.display, 'none');
+    assert.equal(h.pend.length, 0, '名乗る前に問い合わせている');
+});
+
+await testAsync('読み込みに失敗しても、例外を投げずに隠すだけ (ホームを巻き込まない)', async () => {
+    const h = noticeHarness();
+    const p = h.fn({ id: 1 });
+    h.pend[0].rej(new Error('boom'));
+    await p;
+    assert.equal(h.card.style.display, 'none');
+});
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
