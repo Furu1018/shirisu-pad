@@ -6130,6 +6130,93 @@ console.log('\ngrowthDomain:');
         assert.equal(dom.toRows({ details: [{ name_code: 1012 }], stateEffects: [], nameCodeMap: map }).rows[0].lv, null);
     });
 
+    test('★ parseRoster: 名前 + 識別子 の行を読む (タブ・カンマ・連続空白。見出しやゴミ行は飛ばす)', () => {
+        const r = dom.parseRoster([
+            'しりすこPAD 名簿 3人',
+            '名前とIDを確認して、そのままコピーしてPADに貼ってください',
+            '',
+            'なべりうす\t3273786220482814289',
+            'ふるり, 987654321',
+            '空白  区切り   111111222',
+            '(名前不明)\t222222333',
+            'ゴミ行',
+            'なべりうす\t3273786220482814289',   // 同じ識別子の重複は1回だけ
+        ].join('\n'));
+        assert.deepEqual(r, [
+            { name: 'なべりうす', openid: '3273786220482814289' },
+            { name: 'ふるり', openid: '987654321' },
+            { name: '空白 区切り', openid: '111111222' },   // 連続空白は1つに畳む
+            { name: '(名前不明)', openid: '222222333' },
+        ]);
+        // base64 のまま貼られても開く
+        const w = Buffer.from('29080-123456789', 'utf8').toString('base64');
+        assert.deepEqual(dom.parseRoster(`だれか\t${w}`), [{ name: 'だれか', openid: '123456789' }]);
+        assert.deepEqual(dom.parseRoster(''), []);
+        assert.deepEqual(dom.parseRoster(null), []);
+    });
+
+    test('★ matchRoster: 名前で突き合わせ、付け替えは先に外す (識別子は1人にしか付かない)', () => {
+        const players = [
+            { id: 1, name: 'なべりうす', blabla_openid: null },
+            { id: 2, name: 'ふるり', blabla_openid: '111111111' },
+            { id: 3, name: 'すでに同じ', blabla_openid: '333333333' },
+            { id: 4, name: '名簿にいない人', blabla_openid: null },
+        ];
+        const m = dom.matchRoster([
+            { name: 'なべりうす', openid: '999999999' },   // 新規
+            { name: 'ふるり', openid: '111111111' },        // 変化なし
+            { name: 'すでに同じ', openid: '444444444' },     // 付け替え (prev あり)
+            { name: '知らない人', openid: '555555555' },     // PAD にいない
+        ], players);
+        assert.deepEqual(m.apply.map(a => [a.playerId, a.openid, a.prev]),
+            [[1, '999999999', null], [3, '444444444', '333333333']]);
+        assert.deepEqual(m.same.map(s => s.playerId), [2]);
+        assert.deepEqual(m.unmatched.map(u => u.name), ['知らない人']);
+        assert.deepEqual(m.missing.map(x => x.playerName), ['名簿にいない人']);
+        assert.deepEqual(m.conflicts, []);
+        assert.deepEqual(m.clear, [], '外す必要が無いのに外そうとしている');
+    });
+
+    test('★ matchRoster: 識別子が別の人へ移るときは、先に外す人を出す (一意索引で落ちないように)', () => {
+        // A が持っていた識別子が、名簿では B に付いている (入れ替え・改名でよく起きる)
+        const players = [{ id: 1, name: 'A', blabla_openid: '777777777' }, { id: 2, name: 'B', blabla_openid: null }];
+        const m = dom.matchRoster([{ name: 'B', openid: '777777777' }], players);
+        assert.deepEqual(m.apply.map(a => [a.playerId, a.openid]), [[2, '777777777']]);
+        assert.deepEqual(m.clear.map(c => [c.playerId, c.openid]), [[1, '777777777']], '先に外す人を出していない');
+        // 自分が自分の識別子を持ち直すだけなら外さない
+        assert.deepEqual(dom.matchRoster([{ name: 'A', openid: '777777777' }], players).clear, []);
+    });
+
+    test('★ matchRoster: 決められないものは自動で当てない (同名が2人 / 同じ識別子が2回)', () => {
+        const dup = dom.matchRoster([{ name: 'かぶり', openid: '111111111' }],
+            [{ id: 1, name: 'かぶり' }, { id: 2, name: 'かぶり' }]);
+        assert.equal(dup.apply.length, 0, '同名が2人いるのに当てている');
+        assert.match(dup.conflicts[0].why, /2人います/);
+        const twice = dom.matchRoster(
+            [{ name: 'あ', openid: '111111111' }, { name: 'い', openid: '111111111' }],
+            [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }]);
+        assert.equal(twice.apply.length, 0, '同じ識別子を2人に当てている');
+        assert.equal(twice.conflicts.length, 2);
+    });
+
+    test('matchRoster: 全角半角・空白・大小文字の違いは同じ名前とみなす', () => {
+        assert.equal(dom.normName(' Ｆｕｒｕ Ｒｉ '), 'fururi');
+        const m = dom.matchRoster([{ name: 'ＮＡＢＥ りうす', openid: '123456789' }],
+            [{ id: 1, name: 'nabeりうす', blabla_openid: null }]);
+        assert.deepEqual(m.apply.map(a => a.playerId), [1]);
+    });
+
+    test('★ 名簿のブックマークレット: 1行の javascript: で、構文として通る', () => {
+        const code = dom.buildRosterSnippet();
+        assert.ok(code.startsWith('javascript:(function(){'), 'ブックマークレットの形になっていない');
+        assert.ok(!/\n/.test(code), '改行が入っている (URL欄に貼れない)');
+        assert.doesNotThrow(() => new Function(code.replace(/^javascript:/, '')), '生成したコードが構文エラー');
+        // 探し方は2段構え — リンクと、埋め込まれた状態の両方
+        assert.ok(/querySelectorAll\("a\[href\]"\)/.test(code), 'リンクから探していない');
+        assert.ok(/__NUXT__/.test(code) && /__NEXT_DATA__/.test(code), '埋め込まれた状態から探していない');
+        assert.ok(/atob/.test(code), 'base64 で包まれた識別子を開いていない');
+    });
+
     test('★ 壊れた応答を「成功」に化けさせない (Number([]) も Number("") も 0)', () => {
         assert.equal(dom.statusOfCode(0), 'ok');
         for (const bad of [[], '', '0', null, undefined, {}, NaN, '1301002']) {
@@ -6250,6 +6337,15 @@ console.log('\ngrowthDomain:');
         assert.ok(/supabaseLoadLatestAttackSeasonId\(\)/.test(rg), '既定 (凸記録のある最新) を取っていない');
         assert.ok(/_growth\.picked != null/.test(rg), '運営が選んだレイドを優先していない');
         assert.ok(/function handleGrowthPickSeason\(id\) \{/.test(html), 'レイドを選び直せない');
+        // 名簿からの一括ひも付け (メンバーの入れ替えが多い回のため — ユーザー要望 2026-09-09)
+        const ros = html.match(/async function handleGrowthApplyRoster\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.parseRoster\(ta\.value\)/.test(ros), '名簿の読み取りをドメインに任せていない');
+        assert.ok(/dom\.matchRoster\(entries, players\)/.test(ros), '突き合わせをドメインに任せていない');
+        // ★ 付け替えは先に外す (識別子は1人にしか付かない)。順番を逆にすると 23505 で落ちる
+        assert.ok(ros.indexOf('for (const c of m.clear)') > 0, '先に外す処理が無い');
+        assert.ok(ros.indexOf('for (const c of m.clear)') < ros.indexOf('for (const a of m.apply)'), '外すより先に付けている');
+        assert.ok(/confirm\(/.test(ros), '内訳を見せずにまとめて書き換えている');
+        assert.ok(/function handleGrowthCopyRosterSnippet\(\)/.test(html), '名簿のブックマークレットをコピーできない');
         // 押せない理由を必ず言う (実機FB 2026-09-09: 押せないだけで理由が分からなかった)
         const paint = html.match(/function _growthPaint\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/まず ① で識別子をひも付けてください/.test(paint), '識別子が無いときの理由を出していない');

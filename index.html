@@ -397,6 +397,9 @@
         .gr-row .st.error { color: #FF3D44; background: rgba(255,61,68,0.10); }
         .gr-row input { flex: none; width: 116px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 8px; padding: 5px 7px; background: #fff; color: #14161A; }
         .gr-row input.set { border-color: rgba(14,148,85,0.35); background: rgba(14,148,85,0.05); }
+        .gr-roster { margin-top: 9px; border: 1px solid rgba(20,22,26,0.08); border-radius: 10px; padding: 8px 10px; background: #F7F8F9; }
+        .gr-roster > summary { cursor: pointer; font-size: 11.5px; font-weight: 900; color: #5B2BE0; list-style: none; }
+        .gr-roster > summary::-webkit-details-marker { display: none; }
         .gr-bad { padding: 6px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
         .gr-bad:first-child { border-top: none; }
         .gr-bad > .gr-row { border-top: none; padding-top: 0; }
@@ -15884,7 +15887,7 @@
         //   流れは 4 段: ① 識別子の名寄せ → ② ブックマークレットを作る → ③ 貼り付けて取り込む → ④ 取れなかった人。
         //   ★ ブックマークレットにするのは blablalink.com の anti-debug 対策 (DevTools を開くと止まる)。
         //   ★ 対象は「今回のレイドで実際に使われたキャラ」だけ (usedCharacters) — 全キャラは要らない。
-        const _growth = { gen: 0, seasons: null, picked: null, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, msg: null };
+        const _growth = { gen: 0, seasons: null, picked: null, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, msg: null, rosterOpen: false };
         let _growthNameMap = null;   // data/blabla-name-codes.json の data (name_code → {jp, pad})
 
         async function _growthLoadNameMap() {
@@ -16001,6 +16004,15 @@
                 <div class="gr-step ${linked.length === players.length ? 'done' : ''}">
                     <div class="h"><span class="n">1</span>BlaBlaLINK の識別子をひも付ける</div>
                     <div class="d">ユニオン一覧で名前を開いたときの URL (<code>?uid=…</code>) をそのまま貼れます。1人1回だけの作業です。</div>
+                    <details class="gr-roster" ${_growth.rosterOpen ? 'open' : ''} ontoggle="_growth.rosterOpen = this.open;">
+                        <summary>📋 メンバー一覧からまとめて読み取る (入れ替えが多いときはこちら)</summary>
+                        <div class="d" style="margin-left:0;">BlaBlaLINK の<strong>ユニオンのメンバー一覧</strong>を開き、
+                            <strong>開発者ツールを閉じたまま</strong>このブックマークレットを実行します。
+                            出てきた「名前 と ID」の行をそのまま貼ってください。名前が違っていれば手で直せます。</div>
+                        <button type="button" class="gr-btn sub" style="margin-top:8px;" onclick="handleGrowthCopyRosterSnippet()">📋 名簿を読み取るブックマークレットをコピー</button>
+                        <textarea id="opsGrowthRoster" class="gr-paste" style="margin-top:8px;" placeholder="なべりうす&#9;3273786220482814289&#10;…" ${_growth.busy ? 'disabled' : ''}></textarea>
+                        <button type="button" class="gr-btn" style="margin-top:8px;" onclick="handleGrowthApplyRoster()" ${_growth.busy ? 'disabled' : ''}>名前で突き合わせてひも付ける</button>
+                    </details>
                     <div class="gr-rows">${rows}</div>
                 </div>`;
 
@@ -16084,6 +16096,73 @@
             }
         }
 
+        // 名簿の読み取り (ユニオン一覧で動かすブックマークレット)。入れ替えが多い回のための一括ひも付け
+        async function handleGrowthCopyRosterSnippet() {
+            const dom = window.growthDomain;
+            if (!dom) return;
+            await _growthCopy(dom.buildRosterSnippet(),
+                'コピーしました。ブックマークを新規作成して URL 欄に貼り、BlaBlaLINK のメンバー一覧で実行してください。');
+        }
+
+        // 名簿を名前で突き合わせて、識別子をまとめて保存する。
+        // ★ 付け替えは**先に外してから付ける** — 識別子は1人にしか付けられない (matchRoster の clear)
+        async function handleGrowthApplyRoster() {
+            const dom = window.growthDomain;
+            const ta = document.getElementById('opsGrowthRoster');
+            if (!dom || !ta || _growth.busy) return;
+            const entries = dom.parseRoster(ta.value);
+            if (!entries.length) { _growthNote('err', '名簿を読み取れませんでした。ブックマークレットが出した内容を貼り付けてください。'); return; }
+            const players = (_growth.players || []).slice();
+            const m = dom.matchRoster(entries, players);
+            const few = (list, f) => list.length ? ` (${list.slice(0, 5).map(f).join('、')}${list.length > 5 ? ' ほか' : ''})` : '';
+            const summary = [
+                `名簿 ${entries.length}人を読みました。`,
+                '',
+                `・ひも付ける: ${m.apply.length}人${m.clear.length ? ` (付け替えのため ${m.clear.length}人を先に外します)` : ''}`,
+                `・すでに同じ: ${m.same.length}人`,
+                `・PAD にいない名前: ${m.unmatched.length}人${few(m.unmatched, x => x.name || x.openid)}`,
+                `・名簿にいない PAD メンバー: ${m.missing.length}人${few(m.missing, x => x.playerName)}`,
+                `・手で決めるもの: ${m.conflicts.length}件${few(m.conflicts, x => `${x.name || x.openid}: ${x.why}`)}`,
+            ].join('\n');
+            if (!m.apply.length) { _growthNote('warn', summary.replace(/\n+/g, ' ')); return; }
+            if (!confirm(`${summary}\n\n[OK] ひも付ける / [キャンセル] やめる`)) return;
+            _growth.busy = true; _growth.msg = null; _growthPaint();
+            let done = 0, failed = 0;
+            try {
+                for (const c of m.clear) {
+                    try { await window.supabaseSetPlayerOpenid(c.playerId, null); } catch { failed++; }
+                }
+                for (const a of m.apply) {
+                    try { await window.supabaseSetPlayerOpenid(a.playerId, a.openid); done++; }
+                    catch { failed++; }
+                }
+            } finally {
+                _growth.busy = false;
+            }
+            ta.value = '';
+            await renderOpsGrowth(true);
+            _growthNote(failed ? 'warn' : 'ok',
+                `${done}人をひも付けました${failed ? ` / ${failed}人は失敗しました` : ''}。`
+                + `${m.unmatched.length ? ` PAD にいない名前が ${m.unmatched.length}人います (新加入や改名は手で当ててください)。` : ''}`);
+        }
+
+        // クリップボードへ。clipboard API が使えない環境 (非https 等) は textarea + execCommand に落ちる
+        async function _growthCopy(text, okMsg) {
+            try {
+                await navigator.clipboard.writeText(text);
+                _growthNote('ok', okMsg);
+                return;
+            } catch { /* 下のフォールバックへ */ }
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;opacity:0;';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); _growthNote('ok', okMsg); }
+            catch { _growthNote('err', 'コピーできませんでした。'); }
+            ta.remove();
+        }
+
         async function handleGrowthCopySnippet() {
             const dom = window.growthDomain;
             if (!dom) return;
@@ -16093,22 +16172,7 @@
             try {
                 code = dom.buildImportSnippet({ targets, wantedCodes: (_growth.wanted || {}).codes || [] });
             } catch (e) { _growthNote('err', e?.message || String(e)); return; }
-            try {
-                await navigator.clipboard.writeText(code);
-                _growthNote('ok', `コピーしました (${targets.length}人ぶん)。ブックマークを新規作成して URL 欄に貼り付けてください。`);
-            } catch {
-                // clipboard API が使えない環境 (非https 等)
-                const ta = document.createElement('textarea');
-                ta.value = code;
-                ta.style.cssText = 'position:fixed;opacity:0;';
-                document.body.appendChild(ta);
-                ta.select();
-                try {
-                    document.execCommand('copy');
-                    _growthNote('ok', `コピーしました (${targets.length}人ぶん)。ブックマークを新規作成して URL 欄に貼り付けてください。`);
-                } catch { _growthNote('err', 'コピーできませんでした。'); }
-                ta.remove();
-            }
+            await _growthCopy(code, `コピーしました (${targets.length}人ぶん)。ブックマークを新規作成して URL 欄に貼り付けてください。`);
         }
 
         // 貼り付け → 1人ずつ 判定 (prepareMember) → 保存 (upsert のみ) → 状態を残す

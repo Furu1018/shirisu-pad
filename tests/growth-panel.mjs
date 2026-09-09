@@ -83,6 +83,17 @@ test('★ 4段すべて実際に描ける (名寄せ → 生成 → 貼り付け
     noUndef(out);
 });
 
+test('★ ① 名簿からまとめて読み取る導線がある (入れ替えが多い回に1人ずつは現実的でない)', () => {
+    const t = run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }] });
+    const out = t.html();
+    assert.ok(/メンバー一覧からまとめて読み取る/.test(out), 'まとめて読み取る入口が無い');
+    assert.ok(/handleGrowthCopyRosterSnippet\(\)/.test(out), '名簿のブックマークレットをコピーできない');
+    assert.ok(/id="opsGrowthRoster"/.test(out), '名簿の貼り付け欄が無い');
+    assert.ok(/handleGrowthApplyRoster\(\)/.test(out), '突き合わせる導線が無い');
+    assert.ok(/開発者ツールを閉じたまま/.test(out), 'DevTools を閉じる注意が無い');
+    noUndef(out);
+});
+
 test('★ ⓪ レイドは選べる (アクティブとは限らない — 終わったレイドを後から取り込む)', () => {
     const t = run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }] });
     const out = t.html();

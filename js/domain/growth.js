@@ -594,6 +594,137 @@
     }
 
     /**
+     * ユニオンのメンバー一覧を読み取るブックマークレット。
+     * 名前と識別子を一度に集める — 32人ぶんを1人ずつ貼るのは現実的でないため (ユーザー要望 2026-09-09)。
+     *
+     * ★ 探し方は2段構え。ページの作りが変わっても片方が残る:
+     *   ① リンク (a[href]) の uid / openid パラメータ。名前はリンクの文字か、行全体の文字から拾う
+     *   ② 画面の裏に埋まっている状態 (__NUXT__ / __NEXT_DATA__ / __INITIAL_STATE__) を掘って、
+     *      「識別子らしきキー」と「名前らしきキー」を両方持つオブジェクトを集める
+     * ★ 識別子は base64 で包まれている (MjkwODAt… → 29080-3273786220482814289)。末尾の数字だけを採る。
+     * ★ 出力は「名前 <TAB> 識別子」の行。**人が読んで直せる形にする** — 名前が違えば手で直せばよい。
+     * ★ DevTools を閉じたまま使う (blablalink.com の anti-debug 対策) ので、結果はページ上の箱に出す。
+     */
+    function buildRosterSnippet() {
+        return 'javascript:(function(){' + [
+            'var box=document.createElement("textarea");',
+            'box.setAttribute("style","position:fixed;top:4%;left:4%;width:92%;height:70%;z-index:2147483647;'
+                + 'background:#03090f;color:#e8f6f5;font:12px monospace;padding:10px;border:2px solid #45d6d0");',
+            'document.body.appendChild(box);',
+            'var digits=function(raw){if(!raw)return "";var t=String(raw);',
+            'try{var g=atob(t.replace(/-/g,"+").replace(/_/g,"/"));if(g&&/^[\\x20-\\x7e]+$/.test(g)){t=g;}}catch(e){}',
+            'var m=t.match(/(\\d{6,})\\s*$/);return m?m[1]:"";};',
+            'var found=new Map();',
+            'var put=function(id,name){if(!id)return;var n=String(name||"").replace(/\\s+/g," ").trim().slice(0,40);',
+            'if(!found.has(id)||(!found.get(id)&&n)){found.set(id,n);}};',
+            'var KEYS=["uid","openid","intl_open_id","open_id"];',
+            'document.querySelectorAll("a[href]").forEach(function(a){',
+            'var u;try{u=new URL(a.getAttribute("href"),location.href);}catch(e){return;}',
+            'var v="";for(var i=0;i<KEYS.length;i++){v=u.searchParams.get(KEYS[i]);if(v)break;}',
+            'var id=digits(v);if(!id)return;',
+            'var name=(a.textContent||"").trim();',
+            'if(!name){var im=a.querySelector("img");name=im?(im.getAttribute("alt")||im.getAttribute("title")||""):"";}',
+            'if(!name){var p=a.closest("li,tr,[class*=item],[class*=member],[class*=card]");name=p?(p.textContent||"").trim():"";}',
+            'put(id,name);});',
+            'var seen=new Set();var walk=function(v,d){if(!v||d>8||typeof v!=="object")return;',
+            'if(seen.has(v))return;seen.add(v);',
+            'if(!Array.isArray(v)){var ik="",nk="";',
+            'for(var k in v){if(!ik&&/(^|_)(open_?id|uid)$/i.test(k)&&v[k])ik=k;',
+            'if(!nk&&/(nick|user_?name|name)$/i.test(k)&&typeof v[k]==="string"&&v[k])nk=k;}',
+            'if(ik){put(digits(v[ik]),nk?v[nk]:"");}}',
+            'for(var k2 in v){try{walk(v[k2],d+1);}catch(e){}}};',
+            'try{[window.__NUXT__,window.__NEXT_DATA__,window.__INITIAL_STATE__].forEach(function(s){walk(s,0);});}catch(e){}',
+            'var lines=[];found.forEach(function(n,id){lines.push((n||"(名前不明)")+"\\t"+id);});',
+            'lines.sort();',
+            'box.value=lines.length?("しりすこPAD 名簿 "+lines.length+"人\\n名前とIDを確認して、そのままコピーしてPADに貼ってください\\n\\n"+lines.join("\\n"))',
+            ':"メンバーが見つかりませんでした。ユニオンのメンバー一覧を開いた状態で実行してください。";',
+            'box.focus();box.select();try{document.execCommand("copy");}catch(e){}',
+        ].join('') + '})()';
+    }
+
+    /**
+     * 名簿の貼り付けを読む。「名前 <TAB> 識別子」の行 (見出しや空行は飛ばす)。
+     * ★ 人が手で直すことを前提にする — タブでもカンマでも連続空白でも受ける。
+     * ★ 名前が無い行 (識別子だけ) も拾う。名寄せは名前でやるが、手で当てることもできる。
+     */
+    function parseRoster(text) {
+        const out = [];
+        const seen = new Set();
+        for (const raw of String(text == null ? '' : text).split(/\r?\n/)) {
+            const line = raw.trim();
+            if (!line) continue;
+            // 行の末尾の数字が識別子。base64 で包まれたままでも開く
+            const parts = line.split(/\t|,|\s{2,}/).map(s => s.trim()).filter(Boolean);
+            if (!parts.length) continue;
+            const openid = parseOpenid(parts[parts.length - 1]);
+            if (!openid || seen.has(openid)) continue;
+            seen.add(openid);
+            const name = parts.length > 1 ? parts.slice(0, -1).join(' ').trim() : '';
+            out.push({ name, openid });
+        }
+        return out;
+    }
+
+    /** 名前の突き合わせ用。全角半角・空白・大小文字の違いは同じ名前とみなす */
+    const normName = (s) => String(s == null ? '' : s).normalize('NFKC').replace(/\s+/g, '').toLowerCase();
+
+    /**
+     * 名簿と PAD のメンバーを名前で突き合わせる。**判断はここだけ** (画面で書き足さない)。
+     * @param {{name:string, openid:string}[]} entries  parseRoster の結果
+     * @param {{id:any, name:string, blabla_openid?:string|null}[]} players
+     * @returns {{apply:Object[], same:Object[], unmatched:Object[], missing:Object[], conflicts:Object[]}}
+     *   apply     … ひも付けを変える (新規 or 付け替え)。prev があれば付け替え
+     *   same      … すでに同じ識別子が付いている
+     *   unmatched … 名簿にいるが PAD に同じ名前がいない (新加入・改名)
+     *   missing   … PAD にいるが名簿にいない (脱退した可能性)
+     *   conflicts … 同じ名前が PAD に2人以上 / 同じ識別子が名簿に2回。**自動で当てない**
+     *   clear     … 付け替えの前に外す必要がある人 (識別子は1人にしか付けられないため)
+     */
+    function matchRoster(entries, players) {
+        const es = Array.isArray(entries) ? entries : [];
+        const ps = Array.isArray(players) ? players : [];
+        const byName = new Map();
+        for (const p of ps) {
+            const k = normName(p && p.name);
+            if (!k) continue;
+            if (!byName.has(k)) byName.set(k, []);
+            byName.get(k).push(p);
+        }
+        const apply = [], same = [], unmatched = [], conflicts = [];
+        const hit = new Set();
+        // 同じ識別子が2回出てくる名簿は、どちらに当てるか決められない
+        const idCount = new Map();
+        for (const e of es) idCount.set(e.openid, (idCount.get(e.openid) || 0) + 1);
+        for (const e of es) {
+            const key = normName(e.name);
+            const cand = key ? (byName.get(key) || []) : [];
+            if (idCount.get(e.openid) > 1) {
+                conflicts.push({ ...e, why: '同じ識別子が名簿に2回あります' });
+                continue;
+            }
+            if (!cand.length) { unmatched.push(e); continue; }
+            if (cand.length > 1) {
+                conflicts.push({ ...e, why: `PAD に「${e.name}」が ${cand.length}人います` });
+                cand.forEach(p => hit.add(String(p.id)));
+                continue;
+            }
+            const p = cand[0];
+            hit.add(String(p.id));
+            const prev = p.blabla_openid || null;
+            if (prev === e.openid) same.push({ playerId: p.id, playerName: p.name, openid: e.openid });
+            else apply.push({ playerId: p.id, playerName: p.name, openid: e.openid, prev });
+        }
+        const missing = ps.filter(p => !hit.has(String(p.id))).map(p => ({ playerId: p.id, playerName: p.name }));
+        // ★ 識別子は1人にしか付けられない (部分一意索引)。付け替えるときは、いま持っている人を先に外さないと
+        //   保存が 23505 で落ちる。メンバーの入れ替えが多い回ほどここに当たる (ユーザー要望 2026-09-09)
+        const owner = new Map(apply.map(a => [a.openid, String(a.playerId)]));
+        const clear = ps
+            .filter(p => p.blabla_openid && owner.has(p.blabla_openid) && owner.get(p.blabla_openid) !== String(p.id))
+            .map(p => ({ playerId: p.id, playerName: p.name, openid: p.blabla_openid }));
+        return { apply, same, unmatched, missing, conflicts, clear };
+    }
+
+    /**
      * PAD のキャラ名 → BlaBlaLINK の name_code。ブックマークレットに埋める「取りたいキャラ」を決める。
      * ★ 対応表に無い名前は codes に入れず missing に出す — 黙って対象から外すと
      *   「そのキャラだけ取れていない」理由が分からなくなる (対応表に無い 3 体が実在する)。
@@ -660,5 +791,6 @@
         equipOf, toRows, statusOfCode, compare, compareSquad, usedCharacters,
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
+        buildRosterSnippet, parseRoster, matchRoster, normName,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
