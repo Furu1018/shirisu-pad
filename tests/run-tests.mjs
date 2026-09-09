@@ -6443,6 +6443,32 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(by['1'].X.overload, { 有利コード: 7 });
     });
 
+    test('★ 読む入口で null を {} に化けさせない (未取得の人が 0 として順位に混ざる)', () => {
+        // {} は「取り込めたが1枠も無い」= 本当に 0。null は「そもそも記録が無い」— 別物
+        const by = dom.byPlayerCharacter([
+            { player_id: 1, character_name: 'X', overload: null },
+            { player_id: 2, character_name: 'X', overload: {} },
+            { player_id: 3, character_name: 'X', overload: { 有利コード: 4, 攻撃力: 6 } },
+        ]);
+        assert.equal(by['1'].X.overload, null, 'null を {} に化けさせている');
+        assert.deepEqual(by['2'].X.overload, {});
+        assert.equal(dom.SUM_FIELD.value(by['1'].X), null);
+        assert.equal(dom.SUM_FIELD.value(by['2'].X), 0);
+
+        // ★ 実データの経路で順位に混ざらないこと (直接 overloadValue を呼ぶだけでは足りない)
+        const P = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }];
+        const rk = dom.unionRanking(by, P, 'X', dom.DEFAULT_SORT, 1);
+        assert.deepEqual(rk.list.map((x) => x.playerId), [3, 2], '記録の無い人が 0 として並んでいる');
+        assert.equal(rk.myRank, null, '記録が無いのに順位が付いている');
+
+        // ★ 編成のくらべでも「比べられない」に倒す
+        const rs = dom.rankSquad(['X'], { X: by['1'].X }, { X: by['3'].X });
+        assert.equal(rs.cells[0].comparable, false, '記録が無い側を比べられる扱いにしている');
+        assert.equal(rs.cells[0].gap, null);
+        assert.equal(rs.summary.comparable, 0);
+        assert.deepEqual(dom.teamGaps(['X'], { X: by['1'].X }, { X: by['3'].X })[0].gap, null);
+    });
+
     test('★ 並べ替えはオーバーロードが先頭・既定は「有利コード＋攻撃」', () => {
         // 戦闘力で順位を付けるとシンクロレベル順にしかならない (2026-09-09 ユーザー指摘)
         const labels = dom.SORT_FIELDS.map((f) => f.label);

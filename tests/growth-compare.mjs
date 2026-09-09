@@ -248,6 +248,18 @@ test('キャラのアイコンを出す (名前だけだと編成が読めない
     assert.ok(/class="gv-bg">B[0-9Λ]<\/span>/.test(ch), 'バーストのバッジが無い');
 });
 
+test('★ 記録が無い人 (overload: null) を 0 として比べない', () => {
+    // {} は「取り込めたが1枠も無い」= 本当に 0。null は記録そのものが無い — 別物
+    const rows = [
+        growthRow(1, 'ラピ', { overload: null }), growthRow(2, 'ラピ', ol(20)),
+        growthRow(1, 'モラン', { overload: {} }), growthRow(2, 'モラン', ol(20)),
+    ];
+    const out = build({ rows, teams: [atk(1, ['ラピ', 'モラン'])], them: 2 }).paint();
+    const cells = [...out.matchAll(/alt="([^"]+)"[\s\S]*?class="g [a-z]+">([^<]+)</g)].map(m => [m[1], m[2]]);
+    assert.deepEqual(cells, [['ラピ', '未取得'], ['モラン', '+20.00%']],
+        `記録が無い人を 0 として比べている: ${JSON.stringify(cells)}`);
+});
+
 test('★ 編成のアイコンと差がずれない (キャラ名の行そのものを回す)', () => {
     // 添字で teamGaps と突き合わせると、片方にしか無い体が落ちたときに1つずつずれる
     const rows = [

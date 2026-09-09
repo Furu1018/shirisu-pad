@@ -1044,7 +1044,12 @@
             if (!out[k]) out[k] = {};
             // ★ ここが育成データを読む唯一の入口。旧キー (属性ダメージ) をここで寄せておくと、
             //   下流 (比較・順位・チップ) が混在を気にしなくてよい
-            if (!out[k][r.character_name]) out[k][r.character_name] = { ...r, overload: normalizeOverload(r.overload) };
+            // ★ null は null のまま残す。{} にすると「オーバーロードを持っていない (=0)」に化け、
+            //   未取得の人が 0 として順位に混ざる (Codex指摘 2026-09-09)。
+            //   {} は「取り込めたが1枠も無い」= 本当に 0 なので、それとは区別する
+            if (!out[k][r.character_name]) {
+                out[k][r.character_name] = { ...r, overload: r.overload == null ? null : normalizeOverload(r.overload) };
+            }
         }
         return out;
     }
