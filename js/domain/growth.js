@@ -683,9 +683,14 @@
             'put(id,name,"anchors");});',
             'var seen=new Set();var walk=function(v,d,src){if(!v||d>10||typeof v!=="object")return;',
             'if(seen.has(v))return;seen.add(v);',
-            'if(!Array.isArray(v)){var ik="",nk="";',
+            // ★ ユニオン名を人の名前として拾わない (2026-09-09 実機: ギルド情報は
+            //   「ユニオン名 + 団長の識別子」を持っているので、素直に組むと団長がユニオン名になる)
+            'if(!Array.isArray(v)){var ik="",nk="",isG=false;',
             'for(var k in v){if(!ik&&/(^|_)(open_?id|uid)$/i.test(k)&&v[k])ik=k;',
-            'if(!nk&&/(nick|user_?name|name)$/i.test(k)&&typeof v[k]==="string"&&v[k])nk=k;}',
+            'if(/(guild|union|clan|team)_?id$/i.test(k)&&v[k])isG=true;',
+            'if(!nk&&/(nick|user_?name|name)$/i.test(k)&&!/(guild|union|clan|team)/i.test(k)',
+            '&&typeof v[k]==="string"&&v[k])nk=k;}',
+            'if(isG&&nk&&/^name$/i.test(nk))nk="";',
             'if(ik){put(digits(v[ik]),nk?v[nk]:"",src);}}',
             'for(var k2 in v){try{walk(v[k2],d+1,src);}catch(e){}}};',
             'try{[W.__NUXT__,W.__NEXT_DATA__,W.__INITIAL_STATE__].forEach(function(s2){walk(s2,0,"state");});}catch(e){}',

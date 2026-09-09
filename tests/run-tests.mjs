@@ -6393,6 +6393,26 @@ console.log('\ngrowthDomain:');
         // どの経路がどう答えたかを診断に残す (無い経路があっても止まらない)
         assert.ok(/GetMyGuildInfo:0/.test(out) && /GetGuildMemberList:-1/.test(out), '経路ごとの結果を残していない');
     });
+    await testAsync('★ 名簿のブックマークレット: ユニオン名を人の名前にしない (実機: 団長がユニオン名になった)', async () => {
+        // ギルド情報は「ユニオン名 + 団長の識別子」を持つ。素直に組むと団長の名前がユニオン名になり、
+        // しかも先に入った名前が勝つので、あとから来る本当の名前が入らない (2026-09-09 実機)
+        const me = B64('29080-12244701007106264814');
+        const out = await runRosterSnippet({
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { guild_id: 'g1', name: '推しりをすこれ部', master_openid: me } },
+                'GetUnionRaidData': { code: 0, data: { members: [{ openid: me, nickname: 'ふるり' }] } },
+            },
+        });
+        assert.ok(/ふるり	12244701007106264814/.test(out), `団長の名前が入っていない: ${out.slice(0, 300)}`);
+        assert.ok(!out.includes('推しりをすこれ部'), 'ユニオン名を人の名前として出している');
+        assert.ok(out.includes('名簿 1人'));
+        // guild_name / union_name のような欄も人の名前にしない
+        const out2 = await runRosterSnippet({
+            api: { 'GetMyGuildInfo': { code: 0, data: { guild_name: 'よそ', leader_openid: B64('29080-999999999999999999') } } },
+        });
+        assert.ok(!out2.includes('よそ'), 'guild_name を人の名前にしている');
+        assert.ok(/noname: 1/.test(out2), '名前の無い識別子として数えていない');
+    });
     await testAsync('★ 名簿のブックマークレット: 名前の無い識別子は出さない (突き合わせられない — 実機で169件出た)', async () => {
         const t1 = B64('29080-777777777777777777');
         const out = await runRosterSnippet({ html: `<div data-x="${t1}"></div>` });
