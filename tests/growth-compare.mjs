@@ -33,7 +33,7 @@ const SRC = html.slice(a, b);
 const RETURN = ['_gvPaint', '_gvViewPT', '_gvViewChar', '_gvUnionCard', '_gvCharCard', '_gcCls',
     'handleGrowthAnaSeason', 'handleGrowthAnaWho', 'handleGrowthAnaView', 'handleGrowthAnaBase',
     'handleGrowthAnaChar', 'handleGrowthAnaSort', 'handleGrowthAnaBurst', 'handleGrowthAnaSearch',
-    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr'];
+    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr', 'handleGrowthAnaDps'];
 
 // 育成1行ぶん。省略した項目は null (未取得) として扱われる
 const row = (o = {}) => ({
@@ -98,6 +98,18 @@ function test(name, f) {
 const noUndef = (out) => assert.ok(!/undefined|NaN|\[object Object\]/.test(out),
     `未定義参照: ${out.match(/.{40}(undefined|NaN|\[object Object\]).{40}/)?.[0]}`);
 
+// 編成の1枠ぶんを読む。★ アイコンとクイックが**同じ枠に入っているか**を見る
+function tmCells(out) {
+    return out.split('class="gv-tm').slice(1).map((chunk) => ({
+        name: chunk.match(/alt="([^"]+)"/)?.[1] || '',
+        dps: chunk.startsWith(' dps'),
+        q: [...chunk.matchAll(/class="q ([a-z]+)"><i>([^<]+)<\/i>([^<]*)</g)]
+            .map(m => ({ short: m[2], text: m[3], lead: m[1] })),
+        miss: chunk.match(/class="g none">([^<]+)</)?.[1] || null,
+    }));
+}
+const qOf = (c, short) => c.q.find(x => x.short === short) || {};
+
 const TEAM = ['ラピ', 'クラウン', 'モラン', 'ヘルム', '紅蓮'];
 const fullRows = (pid, mul) => TEAM.map(n => growthRow(pid, n, { combat: 400000 * mul, lv: 700 + mul, ...ol(10 * mul) }));
 const BASE = {
@@ -117,7 +129,7 @@ test('★ 実際に描ける: レイド選択・相手えらび・見方タブ�
     assert.ok(/くらべる相手/.test(out), '相手えらびが無い');
     assert.ok(/使った編成でくらべる/.test(out) && /キャラ別にくらべる/.test(out), '見方タブが無い');
     assert.ok(/class="gv-pt"/.test(out), '編成カードが出ていない');
-    assert.equal((out.match(/class="gv-tm"/g) || []).length, 5, '5体そろっていない');
+    assert.equal(tmCells(out).length, 5, '5体そろっていない');
 });
 
 test('★ ① レイドは選べる。テスト回も本番回も並び、いま見ている回が選ばれている', () => {
@@ -319,9 +331,11 @@ test('★ 記録が無い人 (overload: null) を 0 として比べない', () =
         growthRow(1, 'モラン', { overload: {} }), growthRow(2, 'モラン', ol(20)),
     ];
     const out = build({ rows, teams: [atk(1, ['ラピ', 'モラン'])], them: 2 }).paint();
-    const cells = [...out.matchAll(/alt="([^"]+)"[\s\S]*?class="g [a-z]+">([^<]+)</g)].map(m => [m[1], m[2]]);
-    assert.deepEqual(cells, [['ラピ', '未取得'], ['モラン', '+20.00%']],
-        `記録が無い人を 0 として比べている: ${JSON.stringify(cells)}`);
+    const [lapi, moran] = tmCells(out);
+    assert.equal(qOf(lapi, '攻').text, '—', '記録が無いのに 0.00% と出している');
+    assert.equal(qOf(lapi, '攻').lead, 'none', '記録が無い人を比べている');
+    assert.equal(qOf(moran, '攻').text, '0.00%', '本当に0の人を「未取得」にしている');
+    assert.equal(qOf(moran, '攻').lead, 'up', '0 と 20 を互角にしている');
 });
 
 test('★ 編成のアイコンと差がずれない (キャラ名の行そのものを回す)', () => {
@@ -333,9 +347,66 @@ test('★ 編成のアイコンと差がずれない (キャラ名の行その�
     ];
     const t = build({ rows, teams: [atk(1, ['ラピ', 'アリス', 'モラン'])], them: 2 });
     const out = t.paint();
-    const cells = [...out.matchAll(/alt="([^"]+)"[\s\S]*?class="g [a-z]+">([^<]+)</g)].map(m => [m[1], m[2]]);
-    assert.deepEqual(cells, [['ラピ', '+20.00%'], ['アリス', '未取得'], ['モラン', '差なし']],
-        `アイコンと差がずれている: ${JSON.stringify(cells)}`);
+    const cells = tmCells(out);
+    assert.deepEqual(cells.map(c => c.name), ['ラピ', 'アリス', 'モラン'], '並びが崩れている');
+    // 出す値は**この編成の持ち主** (既定は自分)。色は自分と相手のどちらが上か
+    assert.deepEqual(cells.map(c => [qOf(c, '攻').text, qOf(c, '攻').lead]),
+        [['5.00%', 'up'], ['25.00%', 'none'], ['10.00%', 'flat']],
+        `アイコンとクイックがずれている: ${JSON.stringify(cells.map(c => c.q))}`);
+    assert.equal(cells[1].miss, 'なべりうす は未取得', '片方しか無いことを言っていない');
+});
+
+test('★ アイコンの下に 突破/スキル/攻撃/有利コード を出す (開かずに読める)', () => {
+    const t = build({ ...BASE, them: 2 });
+    const [c] = tmCells(t.paint());
+    assert.deepEqual(c.q.map(x => x.short), ['凸', 'ｽｷﾙ', '攻', '有'], '出す項目か順番が違う');
+    assert.match(qOf(c, 'ｽｷﾙ').text, /^\d+\/\d+\/\d+$/, 'S1/S2/バーストが1行になっていない');
+});
+
+test('★ クイックに出すのは「この編成の持ち主」の値 (相手の編成なら相手の値)', () => {
+    const rows = [growthRow(1, 'ラピ', ol(10)), growthRow(2, 'ラピ', ol(30))];
+    const t = build({ rows, teams: [atk(1, ['ラピ']), atk(2, ['ラピ'], { damage_raw: 1e10 })], them: 2 });
+    assert.equal(qOf(tmCells(t.paint())[0], '攻').text, '5.00%', '自分の編成なのに自分の値を出していない');
+    t.handleGrowthAnaBase('them');
+    assert.equal(qOf(tmCells(t.paint())[0], '攻').text, '15.00%', '相手の編成なのに自分の値を出している');
+    // 色はどちらの編成でも「自分と相手のどちらが上か」
+    assert.equal(qOf(tmCells(t.paint())[0], '攻').lead, 'up', '色が持ち主基準になっている');
+});
+
+test('★ 火力役: 既定はバースト3。押すと入り切りでき、要約は火力役だけの合計', () => {
+    // ユニオンレイドの火力は火力役の 有利コード＋攻撃 で決まる。バフ役を混ぜると意味が薄れる
+    const t = build({ ...BASE, them: 2 });
+    let cells = tmCells(t.paint());
+    assert.deepEqual(cells.filter(c => c.dps).map(c => c.name), ['ヘルム', '紅蓮'],
+        `既定の火力役がバースト3になっていない: ${JSON.stringify(cells.map(c => [c.name, c.dps]))}`);
+    // 押すと入り切りできる (指定数に上限なし)
+    const i = cells.findIndex(c => c.name === 'クラウン');
+    t.handleGrowthAnaDps(i);
+    cells = tmCells(t.paint());
+    assert.ok(cells.find(c => c.name === 'クラウン').dps, '手で足せない');
+    t.handleGrowthAnaDps(cells.findIndex(c => c.name === 'ヘルム'));
+    cells = tmCells(t.paint());
+    assert.ok(!cells.find(c => c.name === 'ヘルム').dps, '既定の火力役を手で外せない');
+});
+
+test('★ 要約に「何体で上」を出さない (勝ち負けの見せ方にしない)', () => {
+    const out = build({ ...BASE, them: 2 }).paint();
+    assert.ok(!/体で上/.test(out), '「何体で上」が残っている (実機FB 2026-09-10)');
+    assert.ok(!/互角/.test(out), '勝ち負けの言い回しが残っている');
+    // ★ **火力役だけ**の合計。5体ぜんぶを足すと、バフ役の OP まで火力の差として読める
+    assert.match(out, /火力役 2体の 有利コード＋攻撃/,
+        '火力役だけで合計していない (ヘルムと紅蓮の2体のはず)');
+    assert.match(out, /自分 [\d.]+%/, '自分の値が出ていない');
+    assert.match(out, /差 [\d.]+%/, '差が出ていない');
+});
+
+test('★ 相手えらびの名前を1行で切らない (「ユニオン…」になっていた)', () => {
+    const css = html.match(/\.gv-who \.nm \{[\s\S]*?\}/)?.[0] || '';
+    assert.ok(!/white-space: nowrap/.test(css), '1行に固定していて名前が切れる');
+    assert.ok(/-webkit-line-clamp: 2/.test(css), '2行まで折り返していない');
+    const btn = html.match(/\.gv-who button \{[\s\S]*?\}/)?.[0] || '';
+    assert.ok(!/[^-]width: \d+px/.test(btn), 'ボタンの幅を決め打ちしている');
+    assert.ok(/min-width: 54px/.test(btn), '最小の幅が無い (1体だけのとき潰れる)');
 });
 
 test('★ いま選んでいる相手は、その回に育成が無くても相手えらびに残す', () => {

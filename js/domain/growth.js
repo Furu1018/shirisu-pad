@@ -578,6 +578,92 @@
     /** 比較・並べ替えで引ける全項目。 */
     const ALL_FIELDS = [...FIELDS, ...OVERLOAD_FIELDS, SUM_FIELD];
 
+    // ---- 火力役 (2026-09-10 ユーザー要望) --------------------------------
+    //   ★ ユニオンレイドの火力は**火力役の有利コードと攻撃の OP** で決まる。
+    //     バフ役まで混ぜて合計すると、実際の火力差と関係のない数字になる。
+    //   ★ 既定は**バースト3**。第44回の実データ (全凸 300 枠) の裏づけ:
+    //     B3 144枠 (1編成あたり2.4体) / B2 93 / B1 59 / BΛ 4。
+    //     使用トップも B3 は レッドフード・紅蓮・リバーレリオ・プリバティ、
+    //     B1/B2 は クラウン・アニス:スター・モラン・ナユタ ときれいに分かれる。
+    //   ★ 既定にすぎないので手で足し引きできる (指定数に上限なし)。
+    const DPS_BURST = 'B3';
+
+    /**
+     * 編成のうち火力役とみなす体。
+     * @param {string[]} team
+     * @param {(name:string)=>string} burstOf バーストを引く関数 (マスタ由来)
+     * @param {{on?:string[], off?:string[]}} pick 手で入り切りしたもの (既定より優先)
+     */
+    function dpsOf(team, burstOf, pick) {
+        const on = new Set((pick && Array.isArray(pick.on)) ? pick.on : []);
+        const off = new Set((pick && Array.isArray(pick.off)) ? pick.off : []);
+        return (Array.isArray(team) ? team : []).filter(Boolean).filter((n) => {
+            if (on.has(n)) return true;
+            if (off.has(n)) return false;
+            return typeof burstOf === 'function' && burstOf(n) === DPS_BURST;
+        });
+    }
+
+    /** その体が火力役か (画面の印つけ用) */
+    function isDps(name, burstOf, pick) { return dpsOf([name], burstOf, pick).length > 0; }
+
+    /**
+     * 火力役ぶんの「有利コード＋攻撃」を並べる。
+     * ★ **何体で上か、は出さない** — 勝ち負けの見せ方にしない (2026-09-10 ユーザー指摘)。
+     *   体数を数えても実際の火力差にはならない。
+     * ★ 合計は**両方そろっている体だけ**で出す (片方欠けを混ぜると違う顔ぶれの合計になる)。
+     * @returns {{n:number, missing:number, mine:number, theirs:number, diff:number}}
+     */
+    function dpsScore(names, mineByName, theirsByName) {
+        let mine = 0, theirs = 0, n = 0, missing = 0;
+        for (const name of (Array.isArray(names) ? names : [])) {
+            const a = SUM_FIELD.value((mineByName || {})[name] || null);
+            const b = SUM_FIELD.value((theirsByName || {})[name] || null);
+            if (a == null || b == null) { missing++; continue; }
+            n++; mine += a; theirs += b;
+        }
+        return {
+            n, missing,
+            mine: Number(mine.toFixed(4)), theirs: Number(theirs.toFixed(4)),
+            diff: Number((theirs - mine).toFixed(4)),
+        };
+    }
+
+    // ---- アイコンの下に出すクイック (2026-09-10 ユーザー要望) --------------
+    //   限界突破 / S1・S2・バースト / 攻撃 / 有利コード を、開かずに読めるようにする。
+    //   ★ 順番はユーザーの言った順 (突破 → スキル → 攻撃 → 有利コード)。
+    // ★ 「Lv7/Lv7/Lv7」だと5枠のクイックに収まらない。数字だけ並べる
+    const _lvNum = (v) => (val(v) == null ? '—' : String(val(v)));
+    const _skillText = (r) => (r ? `${_lvNum(r.skill1_lv)}/${_lvNum(r.skill2_lv)}/${_lvNum(r.ulti_skill_lv)}` : '—');
+    const _skillValue = (r) => {
+        if (!r) return null;
+        const a = val(r.skill1_lv), b = val(r.skill2_lv), c = val(r.ulti_skill_lv);
+        return (a == null && b == null && c == null) ? null : (a || 0) + (b || 0) + (c || 0);
+    };
+    const QUICK_FIELDS = [
+        { key: 'growth', short: '凸', text: FIELDS[0].text, value: FIELDS[0].value },
+        { key: 'skills', short: 'ｽｷﾙ', text: _skillText, value: _skillValue },
+        { key: OL_PREFIX + '攻撃力', short: '攻', text: (r) => pctText(overloadValue(r, '攻撃力')), value: (r) => overloadValue(r, '攻撃力') },
+        { key: OL_PREFIX + '有利コード', short: '有', text: (r) => pctText(overloadValue(r, '有利コード')), value: (r) => overloadValue(r, '有利コード') },
+    ];
+
+    /**
+     * クイックの1体ぶん。★ 出す値は**その編成の持ち主**のもの、色は自分と相手のどちらが上か。
+     * 「持っていない」を 0 として同点扱いにしない。
+     * @param {Object|null} owner 出す値の持ち主 (自分の編成なら自分、相手の編成なら相手)
+     */
+    function quickCells(owner, mine, theirs) {
+        return QUICK_FIELDS.map((f) => {
+            const a = mine ? f.value(mine) : null;
+            const b = theirs ? f.value(theirs) : null;
+            let lead = 'same';
+            if (a == null || b == null) lead = 'unknown';
+            else if (a > b) lead = 'mine';
+            else if (a < b) lead = 'theirs';
+            return { key: f.key, short: f.short, text: owner ? f.text(owner) : '—', lead };
+        });
+    }
+
     /**
      * 自分と相手を項目ごとに並べる。
      * ★ 片方しか持っていない項目を「差 0」にしない — 「持っていない」と「同じ」は違う。
@@ -1194,6 +1280,7 @@
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
         rankSquad, fmtMan, fmtPct, privateTargets, PUBLISH_ASK,
+        DPS_BURST, dpsOf, isDps, dpsScore, QUICK_FIELDS, quickCells,
         defaultGrowthSeason, usedTeams, byPlayerCharacter, charactersIn,
         SORT_FIELDS, SORT_KEYS, normalizeSortKey, unionRanking, teamGaps,
     };

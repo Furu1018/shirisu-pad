@@ -500,13 +500,17 @@
             border: 1px solid rgba(20,22,26,0.12); border-radius: 11px; padding: 9px 10px; background: #fff; }
         .gv-who { display: flex; gap: 7px; overflow-x: auto; padding: 2px 1px 4px; scrollbar-width: none; }
         .gv-who::-webkit-scrollbar { display: none; }
-        .gv-who button { flex: none; font: inherit; border: 0; background: transparent; cursor: pointer; width: 54px;
-            display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 2px 0; }
+        /* ★ 幅を決め打ちにしない — 「ユニオン全体」が「ユニオン…」に切れる (実機FB 2026-09-10)。
+           名前は2行まで折り返し、長い名前だけ落とす */
+        .gv-who button { flex: none; font: inherit; border: 0; background: transparent; cursor: pointer;
+            min-width: 54px; max-width: 76px; display: flex; flex-direction: column; align-items: center;
+            gap: 4px; padding: 2px 3px; }
         .gv-who .rim { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
             border: 2.5px solid transparent; }
         .gv-who button[aria-pressed="true"] .rim { border-color: #14161A; }
-        .gv-who .nm { font-size: 10px; font-weight: 800; color: #A4AAB0; max-width: 54px; overflow: hidden;
-            text-overflow: ellipsis; white-space: nowrap; }
+        .gv-who .nm { font-size: 10px; font-weight: 800; color: #A4AAB0; max-width: 100%; overflow: hidden;
+            line-height: 1.2; text-align: center; overflow-wrap: anywhere;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .gv-who button[aria-pressed="true"] .nm { color: #14161A; font-weight: 900; }
         .gv-who .all { width: 40px; height: 40px; border-radius: 50%; background: rgba(108,66,240,0.11);
             color: #5B2BE0; display: grid; place-items: center; font-size: 17px; }
@@ -555,6 +559,18 @@
         .gv-tm .gv-ic { width: 100%; height: auto; aspect-ratio: 1; }
         .gv-tm .g { font-size: 9.5px; font-weight: 900; border-radius: 6px; padding: 1px 3px; width: 100%;
             text-align: center; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* アイコンの下のクイック (突破 / スキル / 攻撃 / 有利コード) — 開かずに読めるように */
+        .gv-tm .pick { border: 0; background: transparent; padding: 0; width: 100%; cursor: pointer;
+            position: relative; display: block; line-height: 0; }
+        .gv-tm .zap { position: absolute; right: -3px; top: -3px; font-size: 8px; font-weight: 900; color: #fff;
+            background: #6C42F0; border-radius: 5px; padding: 0 3px; line-height: 1.5; border: 1.5px solid #fff; }
+        .gv-tm.dps .gv-ic { border-color: #6C42F0; }
+        .gv-tm .q { width: 100%; display: flex; gap: 3px; align-items: baseline; justify-content: center;
+            font-size: 9px; font-weight: 900; line-height: 1.4; font-variant-numeric: tabular-nums;
+            white-space: nowrap; overflow: hidden; }
+        .gv-tm .q i { font-style: normal; font-weight: 800; color: #C9CED4; flex: none; }
+        .gv-tm .q.up { color: #0E9455; } .gv-tm .q.mine { color: #5B2BE0; }
+        .gv-tm .q.flat { color: #6B7178; } .gv-tm .q.none { color: #C9CED4; }
         .gv-tm .g.up { color: #0E9455; background: rgba(24,194,107,0.12); }
         .gv-tm .g.mine { color: #5B2BE0; background: rgba(108,66,240,0.11); }
         .gv-tm .g.flat { color: #6B7178; background: #F1F2F4; }
@@ -16111,7 +16127,8 @@
         //     (Codex指摘 2026-09-09)。渡すのは番号 (_gv.chars の添字) と id だけ。
         const _growthNames = new Map();
         const _gv = {
-            gen: 0, seasons: null, players: [], seasonId: null, byPl: null, chars: [], status: null, elems: null,
+            gen: 0, seasons: null, players: [], seasonId: null, byPl: null, chars: [], status: null,
+            dps: null, tmNames: [], elems: null,
             teams: null, them: null, view: 'pt', base: 'mine', charIdx: -1, q: '', burst: 'all', attr: 'all',
             sort: null, open: new Set(), rosterOpen: false, focusQ: false,   // sort は null = growthDomain.DEFAULT_SORT (オーバーロード合計)
         };
@@ -16227,6 +16244,30 @@
             _gvPaint();
         }
         function handleGrowthAnaRoster() { _gv.rosterOpen = !_gv.rosterOpen; _gvPaint(); }
+        // 火力役の入り切り (2026-09-10)。★ キャラ名を onclick に埋めない — 描いた順の番号で受ける
+        const GV_DPS_KEY = 'shirisu.growth.dps.v1';
+        function _gvDpsPick() {
+            if (_gv.dps) return _gv.dps;
+            let o = null;
+            try { o = JSON.parse(localStorage.getItem(GV_DPS_KEY) || '{}'); } catch { o = null; }
+            _gv.dps = {
+                on: Array.isArray(o && o.on) ? o.on.filter(x => typeof x === 'string') : [],
+                off: Array.isArray(o && o.off) ? o.off.filter(x => typeof x === 'string') : [],
+            };
+            return _gv.dps;
+        }
+        function handleGrowthAnaDps(i) {
+            const dom = window.growthDomain;
+            const nm = (_gv.tmNames || [])[Number(i)];
+            if (!dom || !nm) return;
+            const pick = _gvDpsPick();
+            const on = new Set(pick.on), off = new Set(pick.off);
+            if (dom.isDps(nm, _gvBurst, pick)) { on.delete(nm); off.add(nm); }
+            else { off.delete(nm); on.add(nm); }
+            _gv.dps = { on: [...on], off: [...off] };
+            try { localStorage.setItem(GV_DPS_KEY, JSON.stringify(_gv.dps)); } catch { /* 保存できなくても動く */ }
+            _gvPaint();
+        }
         function handleGrowthAnaSearch(v) { _gv.q = String(v == null ? '' : v); _gv.focusQ = true; _gvPaint(); }
         function handleGrowthAnaOpen(key) {
             const k = String(key);
@@ -16367,6 +16408,8 @@
             }
             const mine = (_gv.byPl || {})[String(myId)] || {};
             const theirs = union ? null : ((_gv.byPl || {})[String(_gv.them)] || {});
+            const pick = _gvDpsPick();
+            _gv.tmNames = [];
             const head = union
                 ? '<div class="gc-verdict"><div class="gv-k">この回に自分が使った編成</div>'
                 + '<div class="gc-big">5体それぞれの <em class="mine">ユニオン内の順位</em></div>'
@@ -16377,20 +16420,33 @@
                 const open = _gv.open.has(key);
                 // ★ 添字で teamGaps と突き合わせない — 空の枠が落ちるとアイコンと差がずれる。
                 //   キャラ名を持つ行そのものを回す
+                // ★ 添字で teamGaps と突き合わせない — 空の枠が落ちるとアイコンと差がずれる
                 const cells = union ? t.team.map(nm => ({ character: nm })) : dom.teamGaps(t.team, mine, theirs);
                 const tm = cells.map((c) => {
                     const nm = c.character;
+                    const idx = _gv.tmNames.length;
+                    _gv.tmNames.push(nm);                    // 火力役の入り切りは**この番号**で受ける
+                    const dpsOn = dom.isDps(nm, _gvBurst, pick);
+                    const icon = `<button type="button" class="pick" onclick="handleGrowthAnaDps(${idx})"`
+                        + ` title="火力役の入り切り">${_gvIcon(nm, 44)}${dpsOn ? '<span class="zap">⚡</span>' : ''}</button>`;
                     if (union) {
                         const r = dom.unionRanking(_gv.byPl, _gv.players, nm, _gvSort(), myId);
                         const cls = r.myRank == null ? 'none'
                             : r.myRank === 1 ? 'mine' : (r.myRank * 2 <= r.list.length ? 'flat' : 'up');
                         const txt = r.myRank == null ? '未取得' : `${r.myRank}/${r.list.length}位`;
-                        return `<div class="gv-tm">${_gvIcon(nm, 44)}<span class="g ${cls}">${esc(txt)}</span></div>`;
+                        const q = dom.quickCells(mine[nm] || null, mine[nm] || null, null)
+                            .map(x => `<span class="q flat"><i>${esc(x.short)}</i>${esc(x.text)}</span>`).join('');
+                        return `<div class="gv-tm${dpsOn ? ' dps' : ''}">${icon}`
+                            + `<span class="g ${cls}">${esc(txt)}</span>${q}</div>`;
                     }
-                    const cls = c.gap == null ? 'none' : c.gap > 0 ? 'up' : c.gap < 0 ? 'mine' : 'flat';
-                    const txt = c.gap == null ? '未取得' : c.gap === 0 ? '差なし'
-                        : `${c.gap > 0 ? '+' : '−'}${dom.fmtPct(Math.abs(c.gap))}`;
-                    return `<div class="gv-tm">${_gvIcon(nm, 44)}<span class="g ${cls}">${esc(txt)}</span></div>`;
+                    // ★ 出す値は**この編成の持ち主**のもの。色は自分と相手のどちらが上か
+                    const owner = (_gv.base === 'mine' ? mine : theirs)[nm] || null;
+                    const q = dom.quickCells(owner, mine[nm] || null, theirs[nm] || null)
+                        .map(x => `<span class="q ${x.lead === 'theirs' ? 'up' : x.lead === 'mine' ? 'mine' : x.lead === 'same' ? 'flat' : 'none'}">`
+                            + `<i>${esc(x.short)}</i>${esc(x.text)}</span>`).join('');
+                    const miss = !c.hasBoth
+                        ? `<span class="g none">${(theirs[nm] ? '自分' : esc(_gvName(_gv.them)))} は未取得</span>` : '';
+                    return `<div class="gv-tm${dpsOn ? ' dps' : ''}">${icon}${miss}${q}</div>`;
                 }).join('');
                 const detail = !open ? ''
                     : (union ? t.team.map(nm => _gvUnionCard(nm, true)).join('')
@@ -16407,29 +16463,31 @@
             return baseSel + head + cards;
         }
 
+        // ★ **「何体で上」は出さない** (実機FB 2026-09-10)。勝ち負けの見せ方にしないし、
+        //   体数を数えても実際の火力差にはならない。火力役の「有利コード＋攻撃」だけを並べる。
         function _gvVerdict(teams, mine, theirs) {
             const dom = window.growthDomain, esc = escapeHtml;
             const names = [...new Set(teams.flatMap(t => t.team))];
-            const { summary } = dom.rankSquad(names, mine, theirs);
-            if (!summary.comparable) {
-                return '<div class="gc-verdict"><div class="gv-k">この回に使った編成</div>'
-                    + '<div class="gc-big">くらべられる体がありません</div></div>';
+            const dps = dom.dpsOf(names, _gvBurst, _gvDpsPick());
+            const s = dom.dpsScore(dps, mine, theirs);
+            const hint = '<p class="gv-hint" style="margin:7px 0 0;">火力役はバースト3を既定にしています。'
+                + 'アイコンを押すと入り切りできます (この端末に覚えます)。</p>';
+            if (!s.n) {
+                return '<div class="gc-verdict"><div class="gv-k">火力役の 有利コード＋攻撃</div>'
+                    + `<div class="gc-big">${dps.length ? 'くらべられる体がありません' : '火力役が選ばれていません'}</div>`
+                    + hint + '</div>';
             }
-            const lead = summary.aheadTheirs > summary.aheadMine
-                ? `<em>${esc(_gvName(_gv.them))}</em>が ${summary.aheadTheirs}/${summary.comparable}体で上`
-                : summary.aheadMine > summary.aheadTheirs
-                    ? `<em class="mine">自分</em>が ${summary.aheadMine}/${summary.comparable}体で上`
-                    : `${summary.comparable}体とも ほぼ互角`;
-            const tot = summary.sumMine + summary.sumTheirs;
-            const wMine = tot > 0 ? (summary.sumMine / tot * 100).toFixed(1) : 50;
+            const tot = s.mine + s.theirs;
+            const wMine = tot > 0 ? (s.mine / tot * 100).toFixed(1) : 50;
             const wThem = tot > 0 ? (100 - Number(wMine)).toFixed(1) : 50;
-            const diffTxt = summary.diff === 0 ? '同じ' : `${summary.diff > 0 ? '+' : '−'}${dom.fmtPct(Math.abs(summary.diff))}`;
             return `<div class="gc-verdict">
-                    <div class="gv-k">この回に使った ${names.length} 体</div>
-                    <div class="gc-big">${lead}</div>
-                    <div class="gc-bar"><i style="width:${wMine}%;background:#C9CED4"></i><i style="width:${wThem}%;background:#18C26B"></i></div>
-                    <div class="gc-legend"><span class="me">自分 計 ${dom.fmtPct(summary.sumMine)}</span>
-                        <span class="them">${esc(_gvName(_gv.them))} 計 ${dom.fmtPct(summary.sumTheirs)} (${diffTxt})</span></div>
+                    <div class="gv-k">火力役 ${s.n}体の 有利コード＋攻撃</div>
+                    <div class="gc-bar" style="margin-top:6px;"><i style="width:${wMine}%;background:#6C42F0"></i><i style="width:${wThem}%;background:#18C26B"></i></div>
+                    <div class="gc-legend"><span class="me" style="color:#5B2BE0;">自分 ${dom.fmtPct(s.mine)}</span>
+                        <span class="them">${esc(_gvName(_gv.them))} ${dom.fmtPct(s.theirs)}</span></div>
+                    <div class="gc-big" style="font-size:15px;margin:7px 0 0;">差 ${dom.fmtPct(Math.abs(s.diff))}</div>
+                    ${s.missing ? `<p class="gv-hint" style="margin:4px 0 0;">${s.missing}体は片方が未取得なので外しています。</p>` : ''}
+                    ${hint}
                 </div>`;
         }
 

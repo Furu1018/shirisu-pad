@@ -6700,6 +6700,55 @@ console.log('\ngrowthDomain:');
         assert.equal(r1.myRank, r2.myRank, '同名だと自分の順位が渡す順で変わる');
     });
 
+    test('★ dpsOf / dpsScore: 火力役だけの「有利コード＋攻撃」を出す', () => {
+        // ★ ユニオンレイドの火力は火力役の 有利コード と 攻撃 の OP で決まる。
+        //   バフ役まで混ぜて合計すると、実際の火力差と関係のない数字になる (2026-09-10 ユーザー指摘)。
+        //   既定がバースト3 なのは第44回の実データの裏づけ (全凸300枠のうち B3 が144枠)
+        const burst = (n) => ({ 火力A: 'B3', 火力B: 'B3', バフ: 'B2', 前衛: 'B1' })[n];
+        const team = ['火力A', 'バフ', '前衛', '火力B'];
+        assert.deepEqual(dom.dpsOf(team, burst, null), ['火力A', '火力B'], '既定がバースト3でない');
+        assert.deepEqual(dom.dpsOf(team, burst, { on: ['バフ'] }), ['火力A', 'バフ', '火力B'], '手で足せない');
+        assert.deepEqual(dom.dpsOf(team, burst, { off: ['火力A'] }), ['火力B'], '手で外せない');
+        assert.deepEqual(dom.dpsOf(team, burst, { on: ['前衛'], off: ['火力A', '火力B'] }), ['前衛'],
+            '足し引きを同時に指定できない');
+        assert.deepEqual(dom.dpsOf(null, burst, null), []);
+        assert.equal(dom.isDps('火力A', burst, null), true);
+        assert.equal(dom.isDps('バフ', burst, null), false);
+
+        const ol = (a, b) => ({ overload: { 有利コード: a, 攻撃力: b } });
+        const mine = { 火力A: ol(60, 30), 火力B: ol(50, 20), ひとりだけ: ol(99, 99) };
+        const theirs = { 火力A: ol(65, 35), 火力B: ol(40, 25) };
+        const s1 = dom.dpsScore(['火力A', '火力B'], mine, theirs);
+        assert.equal(s1.n, 2);
+        assert.equal(s1.mine, 160); assert.equal(s1.theirs, 165); assert.equal(s1.diff, 5);
+        // ★ 片方しか持っていない体は合計に混ぜない — 違う顔ぶれの合計を「差」と呼ぶことになる
+        const s2 = dom.dpsScore(['火力A', 'ひとりだけ'], mine, theirs);
+        assert.equal(s2.n, 1, '片方欠けを数に入れている');
+        assert.equal(s2.missing, 1, '外した体を数えていない');
+        assert.equal(s2.mine, 90, '片方欠けの体を自分の合計に足している');
+        assert.equal(s2.theirs, 100, '片方欠けの体を相手の合計に足している');
+        assert.deepEqual(dom.dpsScore([], mine, theirs), { n: 0, missing: 0, mine: 0, theirs: 0, diff: 0 });
+    });
+
+    test('★ quickCells: 出す値は持ち主・色は自分と相手のどちらが上か', () => {
+        const r = (o) => ({ grade: 3, core: 0, skill1_lv: 10, skill2_lv: 9, ulti_skill_lv: 10, overload: o });
+        const mine = r({ 攻撃力: 10, 有利コード: 50 });
+        const theirs = r({ 攻撃力: 30, 有利コード: 50 });
+        const cells = dom.quickCells(mine, mine, theirs);
+        assert.deepEqual(cells.map(c => c.short), ['凸', 'ｽｷﾙ', '攻', '有'], '項目か順番が違う');
+        assert.equal(cells[1].text, '10/9/10', 'S1/S2/バーストを1行にしていない');
+        assert.equal(cells[2].text, '10.00%', '持ち主の値を出していない');
+        assert.equal(cells[2].lead, 'theirs', '相手が上なのに色が付かない');
+        assert.equal(cells[3].lead, 'same', '同じなのに差が付いている');
+        // 相手の編成を見るときは相手の値を出す (色はそのまま「どちらが上か」)
+        const own = dom.quickCells(theirs, mine, theirs);
+        assert.equal(own[2].text, '30.00%');
+        assert.equal(own[2].lead, 'theirs');
+        // 記録が無い人を 0 として比べない
+        const none = dom.quickCells(mine, mine, null);
+        assert.equal(none[2].lead, 'unknown', '相手が居ないのに比べている');
+        assert.equal(dom.quickCells(null, mine, theirs)[2].text, '—');
+    });
     test('★ teamGaps: 編成の並びのまま差を出す (並べ替えは rankSquad の仕事)', () => {
         // 差はオーバーロード合計 (有利コード＋攻撃) で見る — 戦闘力はシンクロレベル順にしかならない
         const ol = (a, b) => ({ overload: { 有利コード: a, 攻撃力: b } });
