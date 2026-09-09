@@ -519,18 +519,27 @@
         .gv-pills button { font: inherit; font-size: 10.5px; font-weight: 900; border: 1px solid rgba(20,22,26,0.10);
             border-radius: 999px; padding: 5px 10px; background: #fff; color: #6B7178; cursor: pointer; }
         .gv-pills button[aria-pressed="true"] { background: #14161A; color: #fff; border-color: #14161A; }
+        /* 属性は色で覚えている人が多いので、選んだときはその属性の色で塗る */
+        .gv-attrs button[data-attr="fire"][aria-pressed="true"]     { background: #FF3D44; border-color: #FF3D44; }
+        .gv-attrs button[data-attr="water"][aria-pressed="true"]    { background: #2E8BFF; border-color: #2E8BFF; }
+        .gv-attrs button[data-attr="electric"][aria-pressed="true"] { background: #9B4DFF; border-color: #9B4DFF; }
+        .gv-attrs button[data-attr="iron"][aria-pressed="true"]     { background: #FF8A2B; border-color: #FF8A2B; }
+        .gv-attrs button[data-attr="wind"][aria-pressed="true"]     { background: #18C26B; border-color: #18C26B; }
         .gv-srch { width: 100%; font: inherit; font-size: 12px; font-weight: 700; border: 1px solid rgba(20,22,26,0.10);
             border-radius: 12px; padding: 9px 11px; background: #F7F8F9; color: #14161A; margin-bottom: 8px; }
+        /* ★ overflow-y だけ指定すると overflow-x が visible → auto に化け、横にもスクロールできてしまう
+           (CSS の仕様。2026-09-09 の実機FB)。縦だけスクロールさせたいので x は hidden と明示する */
         .gv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 7px; margin-top: 9px;
-            max-height: 262px; overflow-y: auto; }
-        .gv-tile { font: inherit; border: 0; background: transparent; cursor: pointer; padding: 0;
+            max-height: 262px; overflow-y: auto; overflow-x: hidden; }
+        /* min-width:0 が無いと 1fr が min-content より縮まず、トラックからはみ出す */
+        .gv-tile { font: inherit; border: 0; background: transparent; cursor: pointer; padding: 0; min-width: 0;
             display: flex; flex-direction: column; align-items: center; gap: 3px; }
         .gv-tile .wrap { position: relative; line-height: 0; }
         .gv-ic { border-radius: 12px; background: #23262C; object-fit: cover; display: block;
             border: 2.5px solid transparent; }
         .gv-ph { display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 15px; }
         .gv-tile[aria-pressed="true"] .gv-ic { border-color: #14161A; }
-        .gv-tile .cn { font-size: 9px; font-weight: 800; color: #A4AAB0; max-width: 58px; overflow: hidden;
+        .gv-tile .cn { font-size: 9px; font-weight: 800; color: #A4AAB0; max-width: 100%; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
         .gv-tile[aria-pressed="true"] .cn { color: #14161A; font-weight: 900; }
         .gv-tile.dim { opacity: .34; }
@@ -16102,8 +16111,8 @@
         //     (Codex指摘 2026-09-09)。渡すのは番号 (_gv.chars の添字) と id だけ。
         const _growthNames = new Map();
         const _gv = {
-            gen: 0, seasons: null, players: [], seasonId: null, byPl: null, chars: [], status: null,
-            teams: null, them: null, view: 'pt', base: 'mine', charIdx: -1, q: '', burst: 'all',
+            gen: 0, seasons: null, players: [], seasonId: null, byPl: null, chars: [], status: null, elems: null,
+            teams: null, them: null, view: 'pt', base: 'mine', charIdx: -1, q: '', burst: 'all', attr: 'all',
             sort: null, open: new Set(), rosterOpen: false, focusQ: false,   // sort は null = growthDomain.DEFAULT_SORT (オーバーロード合計)
         };
 
@@ -16137,6 +16146,16 @@
                         + '運営タブの「🧬 育成データの取り込み」で取り込むと、ここでくらべられます。</p></div>';
                     return;
                 }
+                if (_gv.elems === null) {
+                    // 属性は静的ファイルから。読めなくても本体は出す (属性の絞り込みが出ないだけ)
+                    try {
+                        const map = await _growthLoadNameMap();
+                        const m = new Map();
+                        for (const v of Object.values(map)) if (v && v.pad && v.element) m.set(v.pad, v.element);
+                        _gv.elems = m;
+                    } catch { _gv.elems = new Map(); }
+                    if (gen !== _gv.gen) return;
+                }
                 if (_gv.byPl === null) {
                     const [rows, status, teams] = await Promise.all([
                         window.supabaseLoadGrowthSeasonRows(_gv.seasonId),
@@ -16162,7 +16181,7 @@
             const sid = Number(id);
             if (!Number.isFinite(sid) || sid === Number(_gv.seasonId)) return;
             _gv.seasonId = sid;
-            _gv.byPl = null; _gv.chars = []; _gv.status = null; _gv.teams = null;
+            _gv.byPl = null; _gv.chars = []; _gv.status = null; _gv.teams = null;   // _gv.elems は静的なので捨てない
             _gv.them = null; _gv.charIdx = -1; _gv.open = new Set();
             renderGrowthAnalysis(true);
         }
@@ -16180,6 +16199,13 @@
         function handleGrowthAnaView(v) { _gv.view = v === 'char' ? 'char' : 'pt'; _gv.open = new Set(); _gvPaint(); }
         function handleGrowthAnaBase(b) { _gv.base = b === 'them' ? 'them' : 'mine'; _gv.open = new Set(); _gvPaint(); }
         function handleGrowthAnaBurst(b) { _gv.burst = String(b || 'all'); _gvPaint(); }
+        function handleGrowthAnaAttr(a) { _gv.attr = String(a || 'all'); _gvPaint(); }
+        /** キャラの属性 (fire/water/electric/iron/wind)。data/blabla-name-codes.json から引く。
+         *  ★ nikke_characters には属性の列が無い。CDN の element_details が唯一の出どころ */
+        function _gvAttr(name) {
+            if (!_gv.elems) return '';
+            return _gv.elems.get(name) || '';
+        }
         function handleGrowthAnaChar(i) { _gv.charIdx = Number(i); _gv.open = new Set(); _gvPaint(); }
         function handleGrowthAnaSort(k) { _gv.sort = String(k || 'combat'); _gvPaint(); }
         function handleGrowthAnaRoster() { _gv.rosterOpen = !_gv.rosterOpen; _gvPaint(); }
@@ -16400,16 +16426,26 @@
             const has = (n) => (union ? true : !!(mine[n] && theirs[n]));
             const idx = _gv.chars.map((n, i) => i).filter((i) => {
                 const nm = _gv.chars[i];
-                if (_gv.burst !== 'all' && _gvBurst(nm) !== _gv.burst) return false;
+                // 未設定 (undefined) は「すべて」に倒す — 絞り込みを増やしたときに全部消えないように
+                if (_gv.burst && _gv.burst !== 'all' && _gvBurst(nm) !== _gv.burst) return false;
+                if (_gv.attr && _gv.attr !== 'all' && _gvAttr(nm) !== _gv.attr) return false;
                 if (q && !nm.includes(q)) return false;
                 return true;
             });
             // くらべられる体 (両方が持っている) を先に。同じなら五十音のまま (sort は安定)
             idx.sort((a, b) => (has(_gv.chars[b]) ? 1 : 0) - (has(_gv.chars[a]) ? 1 : 0));
             const BURSTS = ['all', 'B1', 'B2', 'B3', 'BΛ'];
+            // 属性は PT を組むときの基準そのものなので、バーストと並べて出す
+            const ATTRS = [['all', 'すべて'], ['fire', '灼熱'], ['water', '水冷'], ['electric', '電撃'], ['iron', '鉄甲'], ['wind', '風圧']];
+            const attrPills = _gv.elems && _gv.elems.size
+                ? `<div class="gv-pills gv-attrs">${ATTRS.map(([k, lb]) => `<button type="button" data-attr="${k}"`
+                    + ` aria-pressed="${(_gv.attr || 'all') === k ? 'true' : 'false'}"`
+                    + ` onclick="handleGrowthAnaAttr('${k}')">${esc(lb)}</button>`).join('')}</div>`
+                : '';
             const picker = `<div class="dc-card">
                     <input type="text" class="gv-srch" id="gvQ" placeholder="キャラ名でさがす" value="${esc(_gv.q)}"
                            oninput="handleGrowthAnaSearch(this.value)">
+                    ${attrPills}
                     <div class="gv-pills">${BURSTS.map(b => `<button type="button" aria-pressed="${_gv.burst === b ? 'true' : 'false'}"`
                 + ` onclick="handleGrowthAnaBurst('${b}')">${b === 'all' ? 'すべて' : b}</button>`).join('')}</div>
                     <div class="gv-grid">${idx.map(i => {

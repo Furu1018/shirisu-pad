@@ -59,7 +59,7 @@ function build({
         { id: 33, month_key: 'TEST-2026', hard_date: '2026-09-08', is_test: true, ok: 1 },
         { id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false, ok: 14 },
     ],
-    seasonId = 30, them = null, view = 'pt', base = 'mine', charIdx = -1, q = '', burst = 'all',
+    seasonId = 30, them = null, view = 'pt', base = 'mine', charIdx = -1, q = '', burst = 'all', attr = 'all',
     sort = null, open = [], rosterOpen = false,   // null = growthDomain.DEFAULT_SORT (オーバーロード合計)
 } = {}) {
     let out = '';
@@ -67,7 +67,9 @@ function build({
     const calls = { reload: 0 };
     const _gv = {
         gen: 0, seasons, players, seasonId, byPl: dom.byPlayerCharacter(rows),
-        chars: dom.charactersIn(rows), status, teams, them, view, base, charIdx, q, burst, sort,
+        chars: dom.charactersIn(rows), status, teams, them, view, base, charIdx, q, burst, attr, sort,
+        // 属性は data/blabla-name-codes.json 由来。テストでは固定の表を渡す
+        elems: new Map([['ラピ', 'fire'], ['クラウン', 'water'], ['モラン', 'wind'], ['ヘルム', 'iron'], ['紅蓮', 'fire']]),
         open: new Set(open.map(String)), rosterOpen, focusQ: false,
     };
     const env = {
@@ -239,6 +241,35 @@ test('編成カードを開くと、差の大きい順に1体ずつ出る', () =
     assert.ok(!/class="gc-tbl"/.test(out), '全項目を畳んでいない');
     t.handleGrowthAnaOpen('pt0_0');
     assert.ok(/class="gc-tbl"/.test(t.paint()), '全項目を開けない');
+});
+
+test('★ キャラ別: 属性でも絞れる (バーストだけでは PT を組む基準に足りない)', () => {
+    const rows = TEAM.flatMap(n => [growthRow(1, n), growthRow(2, n)]);
+    const all = build({ rows, teams: [], them: 2, view: 'char' }).paint();
+    assert.ok(/data-attr="fire"/.test(all), '属性の絞り込みが出ていない');
+    const names = (out) => [...out.matchAll(/class="gv-tile[^"]*"[\s\S]*?class="cn">([^<]+)</g)].map(m => m[1]);
+    assert.equal(names(all).length, TEAM.length, '絞る前から全部出ていない');
+
+    // 灼熱はラピと紅蓮の2体 (ハーネスの固定表)
+    const fire = build({ rows, teams: [], them: 2, view: 'char', attr: 'fire' }).paint();
+    assert.deepEqual(names(fire).sort(), ['ラピ', '紅蓮'].sort(), '属性で絞れていない');
+    assert.ok(/data-attr="fire"[^>]*aria-pressed="true"/.test(fire), '選んだ属性が押された状態になっていない');
+
+    // 属性 × バースト の重ねがけ (ラピは B2 / 紅蓮は B3)
+    const fireB3 = build({ rows, teams: [], them: 2, view: 'char', attr: 'fire', burst: 'B3' }).paint();
+    assert.deepEqual(names(fireB3), ['紅蓮'], '属性とバーストを重ねられていない');
+    // 該当なしはそう言う
+    assert.ok(/みつかりません/.test(build({ rows, teams: [], them: 2, view: 'char', attr: 'water', burst: 'B3' }).paint()));
+});
+
+test('★ 属性表が読めなくても画面は出る (絞り込みが出ないだけ)', () => {
+    const rows = TEAM.flatMap(n => [growthRow(1, n), growthRow(2, n)]);
+    const t = build({ rows, teams: [], them: 2, view: 'char' });
+    t.state.elems = new Map();          // 静的ファイルの読み込みに失敗した状態
+    const out = t.paint();
+    assert.ok(!/data-attr=/.test(out), '引けないのに属性の絞り込みを出している');
+    const names = [...out.matchAll(/class="gv-tile[^"]*"[\s\S]*?class="cn">([^<]+)</g)].map(m => m[1]);
+    assert.equal(names.length, TEAM.length, '属性が引けないとキャラが消えてしまう');
 });
 
 test('キャラのアイコンを出す (名前だけだと編成が読めない)', () => {

@@ -7150,6 +7150,24 @@ console.log('\nswipeGuards:');
         assert.deepEqual(bad, [], `data-no-swipe が無い横スクロール要素:\n      ${bad.join('\n      ')}`);
     });
 
+    test('★ 縦だけスクロールさせたい箱は overflow-x を明示する (指定しないと auto に化ける)', () => {
+        // CSS の仕様: 片方が visible 以外だと、もう片方の visible は auto に計算される。
+        // overflow-y:auto だけ書くと横にもスクロールできてしまう (2026-09-09 の実機FB)
+        // ★ 既存分。中を見ずに overflow-x:hidden を足すと、横に長い中身が**見切れて読めなくなる**。
+        //   実機で「横に動く」と言われたものから順に直す。この一覧は**増やさない**ための線
+        const KNOWN = new Set(['drawer', 'help-toc', 'player-select-list', 'player-modal',
+            'fururi-help-body', 'tour-body-scroll']);
+        const blocks = [...html.matchAll(/\.([a-zA-Z][\w-]*)\s*\{([^{}]*)\}/g)];
+        const bad = blocks
+            .filter(([, cls, body]) => /overflow-y:\s*auto/.test(body) && !/overflow-x:/.test(body) && !KNOWN.has(cls))
+            .map(([, cls]) => cls);
+        assert.deepEqual(bad, [], `overflow-y だけ指定していて横にもスクロールできる: ${bad.join(', ')}`);
+        // 直した分が KNOWN に残り続けないように (直したら消す)
+        const stillKnown = blocks.filter(([, cls, body]) => KNOWN.has(cls)
+            && /overflow-y:\s*auto/.test(body) && !/overflow-x:/.test(body)).map(([, cls]) => cls);
+        assert.deepEqual([...KNOWN].sort(), stillKnown.sort(), 'KNOWN に、もう該当しないクラスが残っている');
+    });
+
     test('この検査自体が効いていること (セレクタの書き方・引用符・属性名で取りこぼさない)', () => {
         // 並記されたセレクタは両方が対象。子孫セレクタは末尾だけが対象
         // ★ 本番と同じ手順を通す (二重実装すると、直したつもりが検査だけ直っている、が起きる)

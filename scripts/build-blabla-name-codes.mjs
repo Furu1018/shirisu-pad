@@ -7,7 +7,8 @@
 //
 // 材料はどちらも BlaBlaLINK の CDN で、ブラウザもログインも要らない:
 //   ① /character/character_id_map.json      → name_code → resource_id
-//   ② /roledata/{resource_id}-v2-ja.json    → name_localkey (日本語名)
+//   ② /roledata/{resource_id}-v2-ja.json    → name_localkey (日本語名) と
+//                                              element_details[0].element (属性)
 //
 // ★ GB の data/blabla-map.json (手で維持している resource_id → 日本語名) には依存しない。
 //   あれは 177 件で止まっており、コラボや新キャラが抜ける。CDN から引けば毎回最新になる。
@@ -129,6 +130,11 @@ const OVERRIDES = {
 // ---- PAD のキャラマスタ (照合用。書き込みはしない) ----
 const norm = (s) => String(s).replace(/：/g, ':').replace(/\s+/g, '').trim();
 
+// CDN の属性名 → PAD の正規形 (js/domain/attributes.js の ATTR_KEYS)。
+// ★ 推測しない — CDN の element_details.element をそのまま引く。
+//   (2026-09-09: ラピを「電撃」と勘違いした。実際は灼熱。名前から推測すると必ず外す)
+const ELEMENT_KEY = { Fire: 'fire', Water: 'water', Wind: 'wind', Electronic: 'electric', Iron: 'iron' };
+
 async function loadPadCharacters() {
     const src = readFileSync(join(ROOT, 'js', 'supabase-client.js'), 'utf8');
     const url = src.match(/https:\/\/[a-z]+\.supabase\.co/)?.[0];
@@ -165,7 +171,9 @@ if (staleOverrides.length) {
 console.log(`② roledata から日本語名を取得 (${LOCALE})...`);
 const resourceIds = [...new Set(nameCodeToResource.values())];
 const nameByResource = new Map();
+const elementByResource = new Map();
 const missed = [];
+const noElement = [];
 const CHUNK = 8;
 for (let at = 0; at < resourceIds.length; at += CHUNK) {
     const slice = resourceIds.slice(at, at + CHUNK);
@@ -174,6 +182,10 @@ for (let at = 0; at < resourceIds.length; at += CHUNK) {
             const d = await cdnJson(`/roledata/${rid}-v2-${LOCALE}.json`);
             if (d && d.name_localkey) nameByResource.set(rid, String(d.name_localkey));
             else missed.push(`${rid} (name_localkey が無い)`);
+            const ed = (d && Array.isArray(d.element_details) ? d.element_details[0] : null) || {};
+            const key = ELEMENT_KEY[ed.element];
+            if (key) elementByResource.set(rid, { element: key, elementJp: String(ed.element_name_localekey || '') });
+            else if (d && d.name_localkey) noElement.push(`${rid} ${d.name_localkey} (element=${ed.element})`);
         } catch (e) {
             missed.push(`${rid} (${e.message})`);
         }
@@ -193,7 +205,13 @@ if (missed.length && APPLY && !ALLOW_MISSING) {
 const table = {};
 for (const [nameCode, rid] of nameCodeToResource) {
     const jp = nameByResource.get(rid);
-    if (jp) table[nameCode] = { jp, resource_id: rid };
+    if (!jp) continue;
+    const el = elementByResource.get(rid) || null;
+    table[nameCode] = { jp, resource_id: rid, ...(el ? { element: el.element, elementJp: el.elementJp } : {}) };
+}
+if (noElement.length) {
+    console.log(`\n   ⚠ 属性が読めなかった (${noElement.length}件):`);
+    for (const n of noElement.slice(0, 20)) console.log('      ', n);
 }
 console.log(`③ 日本語名が付いた name_code: ${Object.keys(table).length}`);
 
@@ -275,9 +293,12 @@ const out = {
     version: 1,
     generated: sameData ? prev.generated : new Date().toISOString(),
     source: 'blablalink CDN: /character/character_id_map.json + /roledata/{resource_id}-v2-ja.json',
-    note: 'name_code → { jp: CDNの日本語名, resource_id, pad: PADのcanonical_name (一致したものだけ) }。'
+    note: 'name_code → { jp: CDNの日本語名, resource_id, element/elementJp: 属性, pad: PADのcanonical_name (一致したものだけ) }。'
         + '再生成は node scripts/build-blabla-name-codes.mjs --apply',
-    counts: { name_codes: Object.keys(table).length, matched_pad: matchedPadNames.size, pad_total: pad.length },
+    counts: {
+        name_codes: Object.keys(table).length, matched_pad: matchedPadNames.size, pad_total: pad.length,
+        with_element: Object.values(table).filter((e) => e.element).length,
+    },
     data: table,
 };
 if (APPLY && sameData) {
