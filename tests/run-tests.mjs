@@ -5827,6 +5827,8 @@ console.log('\ngrowthDomain:');
     const dom = globalThis.growthDomain;
     const _fsG = (await import('node:fs')).default;
     const _grRd = (...p) => _fsG.readFileSync(new URL(`../${p.join('/')}`, import.meta.url), 'utf8');
+    // ブックマークレットは URL としてエスケープしてある。中身を見るときは復号する
+    const bmlBody = (url) => decodeURIComponent(String(url).replace(/^javascript:/, ''));
     const _pathG = (await import('node:path')).default;
     const _ROOTG = _pathG.resolve(_pathG.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
 
@@ -6029,12 +6031,13 @@ console.log('\ngrowthDomain:');
         assert.ok(snip.startsWith('javascript:'), 'ブックマークレットの形になっていない');
         assert.ok(!/\n/.test(snip), '改行があるとブックマークに登録できない');
         // 実際に構文として通ること (壊れたコードを配らない)
-        assert.doesNotThrow(() => new Function(snip.slice('javascript:'.length)));
-        assert.ok(snip.includes('3273786220482814289') && snip.includes('16669553168687894762'));
-        assert.ok(snip.includes('1012') && snip.includes('3015'), '取りたい name_code が入っていない');
+        assert.doesNotThrow(() => new Function(bmlBody(snip)));
+        const body = bmlBody(snip);
+        assert.ok(body.includes('3273786220482814289') && body.includes('16669553168687894762'));
+        assert.ok(body.includes('1012') && body.includes('3015'), '取りたい name_code が入っていない');
         // ★ DevTools を閉じて使うので、出力はページ上のボックス。console に出すと見えない
-        assert.ok(/document\.createElement\("textarea"\)/.test(snip), '出力先がページ上のボックスでない');
-        assert.ok(/credentials:"include"/.test(snip), 'ログイン状態を使っていない');
+        assert.ok(/document\.createElement\("textarea"\)/.test(body), '出力先がページ上のボックスでない');
+        assert.ok(/credentials:"include"/.test(body), 'ログイン状態を使っていない');
         // 識別子が数字でないものは落とす / 1人もいなければ作らない
         assert.throws(() => dom.buildImportSnippet({ targets: [{ openid: '' }, { openid: 'abc' }] }), /識別子/);
         assert.throws(() => dom.buildImportSnippet({}), /相手がいません/);
@@ -6232,11 +6235,24 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(m.apply.map(a => a.playerId), [1]);
     });
 
-    test('★ 名簿のブックマークレット: 1行の javascript: で、構文として通る', () => {
-        const code = dom.buildRosterSnippet();
-        assert.ok(code.startsWith('javascript:(function(){'), 'ブックマークレットの形になっていない');
-        assert.ok(!/\n/.test(code), '改行が入っている (URL欄に貼れない)');
-        assert.doesNotThrow(() => new Function(code.replace(/^javascript:/, '')), '生成したコードが構文エラー');
+    test('★ ブックマークレット: URL として安全 (# で切れない・生の日本語を置かない・閉じられる)', () => {
+        // 実機FB 2026-09-09: 生のまま URL に置いたら動かなくなった。
+        //   「#」以降は断片として捨てられ、「%」は復号で壊れ、日本語は環境で化ける
+        for (const [name, url] of [['名簿', dom.buildRosterSnippet()],
+            ['取り込み', dom.buildImportSnippet({ targets: [{ openid: '123456789', label: 'あ' }], wantedCodes: [1012] })]]) {
+            assert.ok(url.startsWith('javascript:'), `${name}: ブックマークレットの形になっていない`);
+            assert.ok(!/\n/.test(url), `${name}: 改行が入っている (URL欄に貼れない)`);
+            assert.ok(!url.includes('#'), `${name}: # がある (以降が捨てられる)`);
+            assert.ok(!/[^\x00-\x7f]/.test(url), `${name}: 生の非ASCII文字がある`);
+            const body = bmlBody(url);
+            assert.doesNotThrow(() => new Function(body), `${name}: 復号したコードが構文エラー`);
+            assert.ok(/spgBox/.test(body) && /\u9589\u3058\u308b/.test(body), `${name}: 閉じるボタンが無い`);
+            assert.ok(/Escape/.test(body), `${name}: Esc で閉じられない`);
+        }
+    });
+
+    test('★ 名簿のブックマークレット: 探し方が4段そろっている', () => {
+        const code = bmlBody(dom.buildRosterSnippet());
         // 探し方は2段構え — リンクと、埋め込まれた状態の両方
         assert.ok(/querySelectorAll\("a\[href\]"\)/.test(code), 'リンクから探していない');
         assert.ok(/__NUXT__/.test(code) && /__NEXT_DATA__/.test(code), '埋め込まれた状態から探していない');
@@ -6257,12 +6273,21 @@ console.log('\ngrowthDomain:');
     //   1行に畳んだコードは、目で読んでも動くか分からない。実機で空振りしたので疑似ページで動かす
     const B64 = (s) => Buffer.from(s, 'utf8').toString('base64');
     function runRosterSnippet({ html = '', anchors = [], state = null, bodies = [] } = {}) {
-        const code = dom.buildRosterSnippet().replace(/^javascript:/, '');
+        const code = bmlBody(dom.buildRosterSnippet());
         const boxes = [];
-        const mkBox = () => { const b = { value: '', setAttribute() {}, focus() {}, select() {} }; boxes.push(b); return b; };
+        const mkEl = (tag) => {
+            const e = {
+                tag, value: '', textContent: '', id: '',
+                setAttribute() {}, appendChild() {}, remove() {}, focus() {}, select() {},
+            };
+            if (tag === 'textarea') boxes.push(e);
+            return e;
+        };
         const document = {
             documentElement: { outerHTML: html },
-            createElement: mkBox,
+            createElement: mkEl,
+            getElementById: () => null,
+            addEventListener() {},
             body: { appendChild() {} },
             querySelectorAll: (sel) => (sel === 'a[href]' ? anchors : []),
             execCommand() { throw new Error('no clipboard'); },
@@ -6500,12 +6525,13 @@ console.log('\ngrowthDomain:');
 
     test('★ 生成コード: 1人が転んでも残りの取得を続ける / 要求数を記録する', () => {
         const snip = dom.buildImportSnippet({ targets: [{ openid: '1234567890' }], wantedCodes: [1012] });
-        assert.doesNotThrow(() => new Function(snip.slice('javascript:'.length)));
+        assert.doesNotThrow(() => new Function(bmlBody(snip)));
         // ここで throw を素通りさせると、1人の通信失敗で全員ぶんの結果が消える
-        assert.ok(/\}catch\(e\)\{if\(rec\.code===0\|\|rec\.code==null\)\{rec\.code=-1;\}/.test(snip),
+        const body2 = bmlBody(snip);
+        assert.ok(/\}catch\(e\)\{if\(rec\.code===0\|\|rec\.code==null\)\{rec\.code=-1;\}/.test(body2),
             '1人ぶんの失敗を捕まえていない (全員ぶんが消える)');
-        assert.ok(snip.includes('rec.requested=want.length'), '要求数を記録していない (部分取得を検出できない)');
-        assert.ok(!/continue;/.test(snip), 'continue で push を飛ばすと、その人の結果が記録から消える');
+        assert.ok(body2.includes('rec.requested=want.length'), '要求数を記録していない (部分取得を検出できない)');
+        assert.ok(!/continue;/.test(body2), 'continue で push を飛ばすと、その人の結果が記録から消える');
     });
 
     test('test() ハーネス: async を渡したら落とす (静かに通るテストを作らせない)', () => {

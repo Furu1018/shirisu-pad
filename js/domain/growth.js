@@ -244,6 +244,36 @@
     const AREAS = [81, 83, 84, 82, 85];
 
     /**
+     * ブックマークレットが結果を出す箱。**閉じられるようにする** (実機FB 2026-09-09)。
+     * ★ 色に # を使わない・大きさに % を使わない — javascript: の URL では
+     *   「#」以降が断片として切り捨てられ、「%」は復号で壊れる。rgb() と vw/vh にする。
+     */
+    const SNIPPET_BOX = [
+        'var old=document.getElementById("spgBox");if(old)old.remove();',
+        'var wrap=document.createElement("div");wrap.id="spgBox";',
+        'wrap.setAttribute("style","position:fixed;top:2vh;left:4vw;width:92vw;height:74vh;z-index:2147483647;'
+            + 'display:flex;flex-direction:column;gap:6px");',
+        'var bar=document.createElement("div");bar.setAttribute("style","display:flex;justify-content:flex-end");',
+        'var xb=document.createElement("button");xb.textContent="\u2715 \u9589\u3058\u308b";',
+        'xb.setAttribute("style","font:12px sans-serif;font-weight:700;padding:7px 14px;border:0;border-radius:9px;'
+            + 'background:rgb(69,214,208);color:rgb(3,9,15);cursor:pointer");',
+        'xb.onclick=function(){wrap.remove();};bar.appendChild(xb);',
+        'var box=document.createElement("textarea");',
+        'box.setAttribute("style","flex:1;min-height:0;background:rgb(3,9,15);color:rgb(232,246,245);'
+            + 'font:12px monospace;padding:10px;border:2px solid rgb(69,214,208);border-radius:9px");',
+        'wrap.appendChild(bar);wrap.appendChild(box);document.body.appendChild(wrap);',
+        'document.addEventListener("keydown",function(k){if(k.key==="Escape"&&document.getElementById("spgBox"))wrap.remove();});',
+    ].join('');
+
+    /**
+     * ブックマークレットとして安全な URL にする。
+     * ★ **必ず encodeURIComponent を通す** (実機FB 2026-09-09: 生のまま貼ると動かなくなった)。
+     *   日本語をそのまま URL に置くとブラウザ・OS の組み合わせで壊れ、
+     *   「#」があればそれ以降が消える。エスケープしておけば実行前に復号されるので中身は変わらない。
+     */
+    const asBookmarklet = (body) => 'javascript:' + encodeURIComponent('(function(){' + body + '})()');
+
+    /**
      * BlaBlaLINK で実行してもらうブックマークレットを組み立てる。
      *
      * ★ **コンソールではなくブックマークレット**にする。blablalink.com は `debugger` を
@@ -272,12 +302,9 @@
             prefix: IMPORT_PREFIX, privacy: [...PRIVACY_CODES],
         };
         // 生成されるコードは1行。テンプレート内では // コメントを使わない (行末で全部消える)
-        return 'javascript:(function(){' + [
+        return asBookmarklet([
             'var D=' + JSON.stringify(D) + ';',
-            'var box=document.createElement("textarea");',
-            'box.setAttribute("style","position:fixed;top:4%;left:4%;width:92%;height:70%;z-index:2147483647;'
-                + 'background:#03090f;color:#e8f6f5;font:12px monospace;padding:10px;border:2px solid #45d6d0");',
-            'document.body.appendChild(box);',
+            SNIPPET_BOX,
             'var L=[];var say=function(s){L.push(s);box.value=L.join("\\n");};',
             'var gap=function(){return new Promise(function(r){setTimeout(r,D.gap);});};',
             'var call=function(route,body){return fetch("https://api.blablalink.com/api/game/proxy/"+route,{',
@@ -332,7 +359,7 @@
             'try{document.execCommand("copy");}catch(e){}',
             '};',
             'run().catch(function(e){say("");say("途中で止まりました: "+(e&&e.message||e));});',
-        ].join('') + '})()';
+        ].join(''));
     }
 
     /**
@@ -618,12 +645,9 @@
      * ★ DevTools を閉じたまま使う (blablalink.com の anti-debug 対策) ので、結果はページ上の箱に出す。
      */
     function buildRosterSnippet() {
-        return 'javascript:(function(){' + [
+        return asBookmarklet([
             'var W=window;var S=W.__spgRoster||(W.__spgRoster={hooked:false,bodies:[],urls:[]});',
-            'var box=document.createElement("textarea");',
-            'box.setAttribute("style","position:fixed;top:4%;left:4%;width:92%;height:70%;z-index:2147483647;'
-                + 'background:#03090f;color:#e8f6f5;font:12px monospace;padding:10px;border:2px solid #45d6d0");',
-            'document.body.appendChild(box);',
+            SNIPPET_BOX,
             'var digits=function(raw){if(!raw)return "";var t=String(raw);',
             'try{var g=atob(String(t).replace(/-/g,"+").replace(/_/g,"/"));if(g&&/^[\\x20-\\x7e]+$/.test(g)){t=g;}}catch(e){}',
             'var m=String(t).match(/(\\d{6,})\\s*$/);return m?m[1]:"";};',
@@ -674,7 +698,7 @@
                 + '(在籍より多いときは、ユニオンのメンバー一覧を開いてからもう一度押すと絞り込めます)\\n\\n"+lines.join("\\n"))',
             ':"メンバーが見つかりませんでした。\\n\\nこの状態のまま、ユニオンのメンバー一覧を開き直す (またはスクロールする) と\\n通信を聞き取ります。そのあと、もう一度このブックマークレットを押してください。")+diag;',
             'box.focus();box.select();try{document.execCommand("copy");}catch(e){}',
-        ].join('') + '})()';
+        ].join(''));
     }
 
     /**
