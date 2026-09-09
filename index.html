@@ -131,30 +131,39 @@
         .tabular, [data-numeric] { font-feature-settings: 'tnum' 1; font-variant-numeric: tabular-nums; }
 
         /* ========== Header ========== */
+        /* 下部ナビと同じ「浮かぶピル」に揃える (2026-09-09 ユーザー要望)。
+           .bottom-nav と同じ 14px の余白・26px の角丸・白地・同じ影を使う。
+           背景は下部ナビに合わせて**べた白** — 半透明+ぼかしだと下のナビと質感が揃わない */
         .header {
             text-align: center;
-            padding: 12px 16px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,251,253,0.88));
-            backdrop-filter: saturate(180%) blur(10px);
-            -webkit-backdrop-filter: saturate(180%) blur(10px);
-            border-bottom: 1px solid rgba(20,22,26,0.08);
+            padding: 10px 14px;
+            margin: 10px 14px 0;
+            background: #FFFFFF;
+            border-radius: 26px;
+            box-shadow: 0 8px 26px rgba(20,22,26,0.16);
             position: sticky;
-            top: 0;
+            top: calc(env(safe-area-inset-top, 0px) + 10px);
             z-index: 100;
-            box-shadow: 0 2px 12px -8px rgba(112, 144, 168, 0.18);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            /* iOS Safari の sticky 合成バグ回避 (下部ナビと同じ理由で残す) */
+            transform: translateZ(0);
         }
         /* ヘッダーも下部ナビと同じスクロール方向連動で自動隠し (_navSetHidden が両方を制御)。
            モバイル限定 — PC はスクロール量が少なく隠す益より違和感が勝つため対象外 */
         @media (max-width: 767px) {
             .header {
                 transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+                will-change: transform;
             }
             .header.nav-hidden {
-                transform: translateY(calc(-100% - 14px));   /* 影ぶん余分に上へ */
+                /* 余白 (10px) と影ぶん余分に上へ — 端が覗かないように */
+                transform: translateY(calc(-100% - 34px)) translateZ(0);
             }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .header { transition: none; }
         }
 
         .header-left {
@@ -15130,7 +15139,9 @@
                     const el = document.getElementById(sectionId);
                     if (!el) return;
                     const rect = el.getBoundingClientRect();
-                    const headerH = document.querySelector('header.header')?.offsetHeight || 0;
+                    // ★ ヘッダーは浮かぶピル (余白がある) ので、隠れる高さは offsetHeight ではなく
+                    //   画面上の下端で測る。offsetHeight だと余白ぶん上にずれて見出しが隠れる
+                    const headerH = Math.max(0, document.querySelector('header.header')?.getBoundingClientRect().bottom || 0);
                     const targetY = Math.max(0, window.scrollY + rect.top - headerH - 8);
                     window.scrollTo({ top: targetY, behavior: 'smooth' });
                 });
@@ -17844,7 +17855,9 @@
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     const rect = target.getBoundingClientRect();
-                    const headerH = document.querySelector('header.header')?.offsetHeight || 0;
+                    // ★ ヘッダーは浮かぶピル (余白がある) ので、隠れる高さは offsetHeight ではなく
+                    //   画面上の下端で測る。offsetHeight だと余白ぶん上にずれて見出しが隠れる
+                    const headerH = Math.max(0, document.querySelector('header.header')?.getBoundingClientRect().bottom || 0);
                     const targetY = Math.max(0, window.scrollY + rect.top - headerH - 8);
                     window.scrollTo({ top: targetY, behavior: 'smooth' });
                 });
