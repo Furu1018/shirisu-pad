@@ -16246,6 +16246,10 @@
         // ★ 倒さないと、どのキャラとも一致せずキャラ一覧が丸ごと消える (Codex指摘 2026-09-09)
         const _GV_ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
         function _gvAttrSel() {
+            // ★ 属性表が読めていないときは必ず「すべて」に倒す (Codex指摘 2026-09-10)。
+            //   絞り込んだ状態で表が読めなくなると、_gvAttr が常に空を返して**全員消える**うえ、
+            //   属性のピル自体が出ないので戻す手立てが無くなる
+            if (!_gv.elems || !_gv.elems.size) return 'all';
             const a = _gv.attr;
             return _GV_ATTRS.includes(a) ? a : 'all';
         }
@@ -16517,10 +16521,14 @@
             }
             if (union) {
                 const r = dom.unionDpsRanking(_gv.byPl, _gv.players, dps, myId);
+                // ★ 「誰もいない」と「自分だけ揃っていない」を混ぜない (Codex指摘 2026-09-10)。
+                //   他の人は並んでいるのに「そろえている人がいません」と出ると、事実と食い違う
                 return `<div class="gv-dpsbar">⚡ 火力役 ${dps.length}体の合計`
-                    + (r.myRank == null
+                    + (!r.list.length
                         ? '<span class="n">この顔ぶれを全部そろえている人がいません</span>'
-                        : `<span>${r.myRank}位</span><span class="n">/ ${r.list.length}人中</span>`)
+                        : r.myRank == null
+                            ? `<span class="n">自分はこの顔ぶれが揃っていません (${r.list.length}人が揃っています)</span>`
+                            : `<span>${r.myRank}位</span><span class="n">/ ${r.list.length}人中</span>`)
                     + '</div>';
             }
             const s = dom.dpsScore(dps, mine, theirs);

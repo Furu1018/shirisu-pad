@@ -496,10 +496,43 @@ test('★ バーストの点は白地でも輪郭が見える (縁のコント�
     assert.ok(!/border-color: var\(--b-c/.test(pill), 'バーストの色を枠に使っている');
 });
 
-test('属性表が渡されなかったとき (elems: null) は絞り込みを出さない', () => {
+test('★ 属性表が読めないときは、絞り込みを出さず「すべて」に倒す', () => {
     const out = build({ ...BASE, them: 2, view: 'char', elems: null }).paint();
     assert.ok(!/gv-attrs/.test(out), '属性表が無いのに絞り込みを出している');
-    assert.match(out, /class="gv-tile/, '属性表が無いだけで一覧まで消えている');
+    assert.equal((out.match(/class="gv-tile/g) || []).length, 5, '属性表が無いだけで一覧まで消えている');
+    // ★ 絞り込んだ状態で表が読めなくなると、全員消えるうえ戻す手立てが無くなる
+    const stuck = build({ ...BASE, them: 2, view: 'char', elems: null, attr: 'fire' }).paint();
+    assert.equal((stuck.match(/class="gv-tile/g) || []).length, 5,
+        '属性で絞ったまま表が読めなくなると全員消える (戻すピルも出ないので詰む)');
+});
+
+test('★ ユニオン順位: 「誰もいない」と「自分だけ揃っていない」を混ぜない', () => {
+    // 他の人は並んでいるのに「そろえている人がいません」と出ると事実と食い違う
+    const ol = (n) => ({ overload: { 有利コード: n / 2, 攻撃力: n / 2 } });
+    const rows = [
+        growthRow(2, 'ヘルム', ol(20)), growthRow(2, '紅蓮', ol(20)),
+        growthRow(3, 'ヘルム', ol(30)), growthRow(3, '紅蓮', ol(30)),
+        growthRow(1, 'ヘルム', ol(10)),   // 自分は紅蓮を持っていない
+    ];
+    const mine = build({ rows, teams: [atk(1, ['ヘルム', '紅蓮'])], them: null }).paint();
+    assert.match(mine, /自分はこの顔ぶれが揃っていません \(2人が揃っています\)/,
+        '自分だけ揃っていないのに「誰もいない」と言っている');
+    assert.ok(!/そろえている人がいません/.test(mine));
+    // 本当に誰も揃っていないときだけ、そう言う
+    const none = build({ rows: [growthRow(1, 'ヘルム', ol(10))], teams: [atk(1, ['ヘルム', '紅蓮'])], them: null }).paint();
+    assert.match(none, /この顔ぶれを全部そろえている人がいません/);
+});
+
+test('押した状態でもバーストの点が見える (黒地とのコントラスト)', () => {
+    const colors = { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' };
+    const lin = (c) => { const n = c / 255; return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4); };
+    const lum = (h) => 0.2126 * lin(parseInt(h.slice(1, 3), 16)) + 0.7152 * lin(parseInt(h.slice(3, 5), 16))
+        + 0.0722 * lin(parseInt(h.slice(5, 7), 16));
+    const bg = lum('#14161A');
+    for (const [b, c] of Object.entries(colors)) {
+        const r = (Math.max(lum(c), bg) + 0.05) / (Math.min(lum(c), bg) + 0.05);
+        assert.ok(r >= 3, `${b} の点が押した黒地で見えない (${r.toFixed(2)}:1)`);
+    }
 });
 
 test('★ 絞り込みで消えた体の比較を出したままにしない', () => {
