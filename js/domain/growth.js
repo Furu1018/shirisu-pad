@@ -894,13 +894,18 @@
      * ★ 取れるのは BlaBlaLINK でゲームカードを公開している人だけで、同じユニオンでも突破できない。
      *   だから「取れなかった」を欠測にせず状態として残し、**本人に頼む**しかない。
      * ★ 声をかける相手は private の人だけ。未ひも付け (no_openid) は運営の作業待ちなので送らない。
+     * ★ **ひも付けが外れている人にも言わない** (Codex指摘 2026-09-09)。状態が private のまま
+     *   識別子だけ外されることがある (付け替えの途中など)。その人が公開しても、運営が識別子を
+     *   付け直すまで取れないので、本人には何もできない = これも運営の作業待ち。
+     *   → players には `blabla_openid` を載せて渡すこと (supabaseLoadPlayersWithOpenid の形)。
      * @param {{player_id:any, status:string}[]} statusRows
-     * @param {{id:any, name:string, push?:boolean}[]} players
+     * @param {{id:any, name:string, blabla_openid?:string|null}[]} players
      */
     function privateTargets(statusRows, players) {
         const priv = new Set((Array.isArray(statusRows) ? statusRows : [])
             .filter((r) => r && r.status === 'private').map((r) => String(r.player_id)));
-        return (Array.isArray(players) ? players : []).filter((p) => p && priv.has(String(p.id)));
+        return (Array.isArray(players) ? players : [])
+            .filter((p) => p && priv.has(String(p.id)) && p.blabla_openid);
     }
 
     /** 本人へのお願い。押す先はホーム (どこを触ればよいかは本文で言う) */

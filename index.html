@@ -16698,6 +16698,7 @@
             const shown = dom.privateTargets(_growth.statusRows, _growth.players || []).map(pick);
             if (!shown.length) { _growthNote('warn', '非公開の人がいません。'); return; }
             const ask = dom.PUBLISH_ASK;
+            const gen0 = _growth.gen, sid0 = _growth.seasonId;   // 確認したのは「この画面のこの回」
             const ok = await showPushPreview([{ title: ask.title, body: ask.body, recipients: shown }]);
             if (!ok) return;
             _growth.sending = true;
@@ -16711,6 +16712,11 @@
                     window.supabaseLoadPlayersWithOpenid(),
                 ]);
                 if (fresh === null) { _growthNote('warn', 'いまの取り込み状況を確認できませんでした。もう一度お願いします。'); return; }
+                // ★ 待っている間にパネルを開き直された / レイドを変えられたら送らない (Codex指摘 2026-09-09)。
+                //   古い画面で確認した顔ぶれを、いまの画面と関係なく送ることになる
+                if (_growth.gen !== gen0 || Number(_growth.seasonId) !== Number(sid0)) {
+                    _growthNote('warn', '画面が切り替わったので送信をやめました。もう一度お願いします。'); return;
+                }
                 // 確認した顔ぶれのうち、いまも非公開の人だけ。広げない (運営が承認したのはこの顔ぶれ)
                 const now = new Set(dom.privateTargets(fresh, freshPlayers || []).map(p => String(p.id)));
                 const targets = shown.filter(t => now.has(String(t.id)));

@@ -427,7 +427,7 @@ const ASK_SRC = cut('        async function handleGrowthAskPublish()');
 
 function runAsk({
     players = [], statusRows = [], sendFails = false, holdSend = false,
-    fresh, freshPlayers, freshNull = false, freshThrows = false,
+    fresh, freshPlayers, freshNull = false, freshThrows = false, freshPlayersThrows = false,
 } = {}) {
     const calls = { sent: [], notes: [], previews: [], loads: 0 };
     let resolvePreview = null, finishSend = null;
@@ -446,7 +446,10 @@ function runAsk({
                 if (freshNull) return null;
                 return fresh === undefined ? state.statusRows : fresh;
             },
-            supabaseLoadPlayersWithOpenid: async () => (freshPlayers === undefined ? state.players : freshPlayers),
+            supabaseLoadPlayersWithOpenid: async () => {
+                if (freshPlayersThrows) throw new Error('圏外');
+                return freshPlayers === undefined ? state.players : freshPlayers;
+            },
             sendPushNotification: async (payload) => {
                 calls.sent.push(payload);
                 if (holdSend) await new Promise((r) => { finishSend = r; });
@@ -473,7 +476,7 @@ function runAsk({
     };
 }
 
-const P4 = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }, { id: 4, name: 'え' }];
+const P4 = [1, 2, 3, 4].map(id => ({ id, name: `p${id}`, blabla_openid: `${id}00000` }));
 const S4 = [
     { player_id: 1, status: 'private' }, { player_id: 2, status: 'no_openid' },
     { player_id: 3, status: 'ok' }, { player_id: 4, status: 'error' },
@@ -565,6 +568,38 @@ await testAsync('★ 送信中に押しても二重に送らない (通信が終
     assert.equal(t.state.sending, false, '送り終わったのに送信中のままになっている');
 });
 
+await testAsync('★ 待っている間に画面が切り替わったら送らない (古い顔ぶれを送りつけない)', async () => {
+    // レイドを変える / ↻ で開き直す = パネルの世代が変わる。確認したのは「あの画面のあの回」
+    const gen = runAsk({ players: P4, statusRows: S4 });
+    let p = gen.run(); gen.state.gen++; gen.answer(true); await p;
+    assert.equal(gen.calls.sent.length, 0, '開き直したのに古い顔ぶれで送っている');
+    assert.match(gen.calls.notes.at(-1).text, /画面が切り替わった/);
+    assert.equal(gen.state.sending, false, '送信中のままになっている');
+    const sea = runAsk({ players: P4, statusRows: S4 });
+    p = sea.run(); sea.state.seasonId = 26; sea.answer(true); await p;
+    assert.equal(sea.calls.sent.length, 0, 'レイドを変えたのに前の回の顔ぶれで送っている');
+});
+
+await testAsync('★ 名簿の取得だけ失敗しても、送信中のまま固まらない', async () => {
+    const t = runAsk({ players: P4, statusRows: S4, freshPlayersThrows: true });
+    const p = t.run(); t.answer(true); await p;
+    assert.equal(t.calls.sent.length, 0, '名簿を引けなかったのに送っている');
+    assert.equal(t.calls.notes.at(-1).kind, 'err');
+    assert.equal(t.state.sending, false, '以後ずっと送れなくなる');
+});
+
+await testAsync('★ id の型が違っても取り違えない (画面が文字列 / DB が数値)', async () => {
+    // 積集合を生の比較で取ると、正しい宛先が黙って全部落ちる
+    const t = runAsk({
+        players: [{ id: '1', name: 'あ', blabla_openid: '100' }, { id: '2', name: 'い', blabla_openid: '200' }],
+        statusRows: [{ player_id: '1', status: 'private' }, { player_id: '2', status: 'private' }],
+        fresh: [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'ok' }],
+        freshPlayers: [{ id: 1, name: 'あ', blabla_openid: '100' }, { id: 2, name: 'い', blabla_openid: '200' }],
+    });
+    const p = t.run(); t.answer(true); await p;
+    assert.deepEqual(t.playerIds(), ['1'], `id の型で取り違えている: ${JSON.stringify(t.playerIds())}`);
+});
+
 await testAsync('送信に失敗しても実行中のままにしない', async () => {
     const t = runAsk({ players: P4, statusRows: S4, sendFails: true });
     const p = t.run(); t.answer(true); await p;
@@ -582,8 +617,10 @@ if (!ROWS_SRC) { console.error('NG: supabaseLoadGrowthSeasonRows を切り出せ
 function runPager(pages) {
     const ranges = [];
     let call = 0;
+    const orders = [];
     const b = {
-        select: () => b, eq: () => b, order: () => b,
+        select: () => b, eq: () => b,
+        order: (col, opt) => { orders.push([col, opt?.ascending !== false]); return b; },
         range: async (from, to) => {
             ranges.push([from, to]);
             const p = pages[call++];
@@ -597,7 +634,7 @@ function runPager(pages) {
         (e, t) => String(e?.message || '').includes(t),
         win,
     );
-    return { load: win.supabaseLoadGrowthSeasonRows, ranges };
+    return { load: win.supabaseLoadGrowthSeasonRows, ranges, orders };
 }
 const page = (n) => Array.from({ length: n }, (_, i) => ({ player_id: i, character_name: 'x' }));
 
@@ -606,6 +643,8 @@ await testAsync('★ 1000行を超えても全部読む (後ろのメンバー�
     const rows = await t.load(30);
     assert.equal(rows.length, 1318, `読み落としている: ${rows.length}`);
     assert.deepEqual(t.ranges, [[0, 999], [1000, 1999]], `ページの取り方が違う: ${JSON.stringify(t.ranges)}`);
+    // ★ ページ送りは並び順が固定されていて初めて成り立つ (順不定だと重複と欠落が出る)
+    assert.deepEqual(t.orders.slice(0, 2).map(o => o[0]), ['player_id', 'character_name'], '並び順を指定していない');
 });
 
 await testAsync('ちょうど1000行なら、空の次ページまで見て終わる', async () => {
@@ -639,8 +678,10 @@ if (!SUM_SRC) { console.error('NG: supabaseLoadGrowthSeasonSummary を切り出�
 function runSummary(pages, seasons = []) {
     const ranges = [];
     let call = 0;
+    const orders = [];
     const st = {
-        select: () => st, order: () => st,
+        select: () => st,
+        order: (col, opt) => { orders.push([col, opt?.ascending !== false]); return st; },
         range: async (from, to) => {
             ranges.push([from, to]);
             const p = pages[call++];
@@ -655,7 +696,7 @@ function runSummary(pages, seasons = []) {
         (e, t) => String(e?.message || '').includes(t),
         win,
     );
-    return { load: win.supabaseLoadGrowthSeasonSummary, ranges };
+    return { load: win.supabaseLoadGrowthSeasonSummary, ranges, orders };
 }
 const stPage = (n, seasonId, okEvery = 2) =>
     Array.from({ length: n }, (_, i) => ({ season_id: seasonId, status: i % okEvery === 0 ? 'ok' : 'private' }));
@@ -669,6 +710,10 @@ await testAsync('★ レイド一覧も1000行で切れない (古い回が選�
     const out = await t.load();
     assert.deepEqual(out.map(s => s.id), [30, 26], `古い回が消えている: ${JSON.stringify(out.map(s => s.id))}`);
     assert.deepEqual(t.ranges, [[0, 999], [1000, 1999]], 'ページの取り方が違う');
+    // ★ **古い順**に読む — 新しい回は season_id が大きいので、降順だと読んでいる途中に
+    //   新しい回が入ったとき先頭がずれ、二重計上と読み落としが起きる (Codex指摘)
+    assert.deepEqual(t.orders.slice(0, 2), [['season_id', true], ['player_id', true]],
+        '並び順の指定が違う (降順だと途中で追加された回で先頭がずれる)');
     assert.equal(out.find(s => s.id === 30).total, 1000);
     assert.equal(out.find(s => s.id === 26).ok, 16, '取り込み人数を数え間違えている');
 });

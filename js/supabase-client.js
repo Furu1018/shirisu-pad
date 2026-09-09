@@ -1898,8 +1898,11 @@ window.supabaseLoadGrowthSeasonSummary = async function () {
     const STEP = 1000;
     const by = new Map();
     for (let from = 0; ; from += STEP) {
+        // ★ **古い順**に読む (Codex指摘 2026-09-09)。新しい回ほど season_id が大きいので、
+        //   降順だと読んでいる途中に新しい回が入ったとき先頭がずれ、二重計上と読み落としが起きる。
+        //   昇順なら追加は末尾に付くだけで済む (並べ直すのは最後にまとめて)
         const st = await supabase.from('member_growth_status')
-            .select('season_id, status').order('season_id', { ascending: false }).order('player_id')
+            .select('season_id, status').order('season_id', { ascending: true }).order('player_id')
             .range(from, from + STEP - 1);
         if (st.error) {
             if (_isMissingTableErr(st.error, 'member_growth_status')) return null;

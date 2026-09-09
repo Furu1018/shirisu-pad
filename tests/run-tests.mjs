@@ -6609,12 +6609,19 @@ console.log('\ngrowthDomain:');
 
     test('★ privateTargets: 声をかけるのは非公開の人だけ (未ひも付けには送らない)', () => {
         // 未ひも付けは**運営の作業待ち**。本人に言っても何もできないので送ってはいけない
-        const players = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }, { id: 4, name: 'え' }];
+        const L = (id, name) => ({ id, name, blabla_openid: `${id}00` });
+        const players = [L(1, 'あ'), L(2, 'い'), L(3, 'う'), L(4, 'え')];
         const rows = [
             { player_id: 1, status: 'private' }, { player_id: 2, status: 'no_openid' },
             { player_id: 3, status: 'ok' }, { player_id: 4, status: 'error' },
         ];
         assert.deepEqual(dom.privateTargets(rows, players).map(p => p.id), [1]);
+        // ★ 状態は private のまま識別子だけ外れていることがある (付け替えの途中など)。
+        //   公開してもらっても運営が付け直すまで取れないので、本人には何もできない
+        const unlinked = [L(1, 'あ'), { id: 5, name: 'お', blabla_openid: null }];
+        const r5 = [{ player_id: 1, status: 'private' }, { player_id: 5, status: 'private' }];
+        assert.deepEqual(dom.privateTargets(r5, unlinked).map(p => p.id), [1],
+            'ひも付けの外れている人に「公開して」と言っている (公開しても取れない)');
         assert.deepEqual(dom.privateTargets(null, players), []);
         assert.deepEqual(dom.privateTargets(rows, null), []);
         // 文面は「何をすればよいか」を言う
