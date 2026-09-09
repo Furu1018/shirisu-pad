@@ -547,8 +547,23 @@
             text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
         .gv-tile[aria-pressed="true"] .cn { color: #14161A; font-weight: 900; }
         .gv-tile.dim { opacity: .34; }
+        /* ★ バーストはアイコンが無いので**色**で見分ける (2026-09-10 ユーザー要望)。
+           色は編成エディタの TE_BURST_COLOR と同じものを使う (2つの色づかいを増やさない) */
         .gv-bg { position: absolute; right: -3px; bottom: 1px; font-size: 8px; font-weight: 900; color: #fff;
-            background: #14161A; border-radius: 5px; padding: 1px 3px; line-height: 1.2; border: 1.5px solid #fff; }
+            background: var(--b-c, #14161A); border-radius: 5px; padding: 1px 3px; line-height: 1.2; border: 1.5px solid #fff; }
+        .gv-pills button.gv-b { border-color: var(--b-c, rgba(20,22,26,0.10)); color: var(--b-c, #6B7178); }
+        .gv-pills button.gv-b[aria-pressed="true"] { background: var(--b-c, #14161A); border-color: var(--b-c, #14161A); color: #fff; }
+        .gv-attrs button img { width: 19px; height: 19px; display: block; }
+        .gv-attrs button.gv-a { padding: 5px 8px; }
+        .gv-pills button.gv-dps { border-color: #6C42F0; color: #5B2BE0; }
+        .gv-pills button.gv-dps[aria-pressed="true"] { background: #6C42F0; border-color: #6C42F0; color: #fff; }
+        /* 編成カードの「火力役」の帯 — 選んだことの効き目をその場で見せる */
+        .gv-dpsbar { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin: 8px 0 0;
+            background: rgba(108,66,240,0.07); border-radius: 9px; padding: 5px 8px;
+            font-size: 10.5px; font-weight: 900; color: #5B2BE0; font-variant-numeric: tabular-nums; }
+        .gv-dpsbar .n { color: #8A9097; font-weight: 800; }
+        .gv-dpsbar .them { color: #0E9455; }
+        .gv-dpsbar.none { background: #F7F8F9; color: #8A9097; }
         .gv-pt { border: 1px solid rgba(20,22,26,0.07); border-radius: 14px; padding: 10px 11px; margin-bottom: 8px; background: #fff; }
         .gv-pt .h { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
         .gv-pt .h b { font-size: 12.5px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; }
@@ -16128,7 +16143,7 @@
         const _growthNames = new Map();
         const _gv = {
             gen: 0, seasons: null, players: [], seasonId: null, byPl: null, chars: [], status: null,
-            dps: null, tmNames: [], elems: null,
+            dps: null, tmNames: [], dpsOnly: false, elems: null,
             teams: null, them: null, view: 'pt', base: 'mine', charIdx: -1, q: '', burst: 'all', attr: 'all',
             sort: null, open: new Set(), rosterOpen: false, focusQ: false,   // sort は null = growthDomain.DEFAULT_SORT (オーバーロード合計)
         };
@@ -16244,6 +16259,9 @@
             _gvPaint();
         }
         function handleGrowthAnaRoster() { _gv.rosterOpen = !_gv.rosterOpen; _gvPaint(); }
+        function handleGrowthAnaDpsOnly() { _gv.dpsOnly = !_gv.dpsOnly; _gvPaint(); }
+        // ★ バーストのアイコンは無いので色で見分ける。編成エディタと同じ色づかいにそろえる
+        const GV_BURST_COLOR = TE_BURST_COLOR;
         // 火力役の入り切り (2026-09-10)。★ キャラ名を onclick に埋めない — 描いた順の番号で受ける
         const GV_DPS_KEY = 'shirisu.growth.dps.v1';
         function _gvDpsPick() {
@@ -16456,11 +16474,41 @@
                             <b>${(t.dmg / 1e8).toFixed(1)}億</b>
                             <span class="d">${t.count > 1 ? `${t.count}凸で使用` : '1凸'}</span></div>
                         <div class="gv-team">${tm}</div>
+                        ${_gvDpsBar(t.team, mine, theirs, union, myId)}
                         <button type="button" class="gc-more" onclick="handleGrowthAnaOpen('${key}')">${open ? '畳む ▴' : 'この5体を1体ずつくらべる ▾'}</button>
                         ${detail}
                     </div>`;
             }).join('');
             return baseSel + head + cards;
+        }
+
+        // 編成ごとの火力役の帯。★ 火力役を選んだ効き目を**その編成の場で**見せる —
+        //   全編成をまとめた要約だけだと、選んだ手ごたえが無い (実機FB 2026-09-10)
+        function _gvDpsBar(team, mine, theirs, union, myId) {
+            const dom = window.growthDomain, esc = escapeHtml;
+            const dps = dom.dpsOf(team, _gvBurst, _gvDpsPick());
+            if (!dps.length) {
+                return '<div class="gv-dpsbar none">⚡ 火力役が選ばれていません'
+                    + '<span class="n">アイコンを押すと選べます</span></div>';
+            }
+            if (union) {
+                const r = dom.unionDpsRanking(_gv.byPl, _gv.players, dps, myId);
+                return `<div class="gv-dpsbar">⚡ 火力役 ${dps.length}体の合計`
+                    + (r.myRank == null
+                        ? '<span class="n">この顔ぶれを全部そろえている人がいません</span>'
+                        : `<span>${r.myRank}位</span><span class="n">/ ${r.list.length}人中</span>`)
+                    + '</div>';
+            }
+            const s = dom.dpsScore(dps, mine, theirs);
+            if (!s.n) {
+                return `<div class="gv-dpsbar none">⚡ 火力役 ${dps.length}体<span class="n">くらべられる体がありません</span></div>`;
+            }
+            return `<div class="gv-dpsbar">⚡ 火力役 ${s.n}体 有利＋攻撃`
+                + `<span>自分 ${dom.fmtPct(s.mine)}</span>`
+                + `<span class="them">${esc(_gvName(_gv.them))} ${dom.fmtPct(s.theirs)}</span>`
+                + `<span class="n">差 ${dom.fmtPct(Math.abs(s.diff))}</span>`
+                + (s.missing ? `<span class="n">(${s.missing}体は片方が未取得)</span>` : '')
+                + '</div>';
         }
 
         // ★ **「何体で上」は出さない** (実機FB 2026-09-10)。勝ち負けの見せ方にしないし、
@@ -16505,31 +16553,41 @@
                 // 未設定 (undefined) は「すべて」に倒す — 絞り込みを増やしたときに全部消えないように
                 if (_gv.burst && _gv.burst !== 'all' && _gvBurst(nm) !== _gv.burst) return false;
                 if (_gvAttrSel() !== 'all' && _gvAttr(nm) !== _gvAttrSel()) return false;
+                if (_gv.dpsOnly && !dom.isDps(nm, _gvBurst, _gvDpsPick())) return false;
                 if (q && !nm.includes(q)) return false;
                 return true;
             });
             // くらべられる体 (両方が持っている) を先に。同じなら五十音のまま (sort は安定)
             idx.sort((a, b) => (has(_gv.chars[b]) ? 1 : 0) - (has(_gv.chars[a]) ? 1 : 0));
             const BURSTS = ['all', 'B1', 'B2', 'B3', 'BΛ'];
-            // 属性は PT を組むときの基準そのものなので、バーストと並べて出す
-            const ATTRS = [['all', 'すべて'], ['fire', '灼熱'], ['water', '水冷'], ['electric', '電撃'], ['iron', '鉄甲'], ['wind', '風圧']];
+            // ★ 属性は**属性アイコン**で出す (2026-09-10 ユーザー要望)。名前は title と読み上げに残す
             const attrPills = _gv.elems && _gv.elems.size
-                ? `<div class="gv-pills gv-attrs">${ATTRS.map(([k, lb]) => `<button type="button" data-attr="${k}"`
-                    + ` aria-pressed="${_gvAttrSel() === k ? 'true' : 'false'}"`
-                    + ` onclick="handleGrowthAnaAttr('${k}')">${esc(lb)}</button>`).join('')}</div>`
+                ? '<div class="gv-pills gv-attrs">'
+                + `<button type="button" data-attr="all" aria-pressed="${_gvAttrSel() === 'all' ? 'true' : 'false'}"`
+                + ' onclick="handleGrowthAnaAttr(\'all\')">すべて</button>'
+                + PT_ATTRS.map(a => `<button type="button" class="gv-a" data-attr="${esc(a.key)}"`
+                    + ` aria-pressed="${_gvAttrSel() === a.key ? 'true' : 'false'}" title="${esc(a.name)}" aria-label="${esc(a.name)}"`
+                    + ` onclick="handleGrowthAnaAttr('${esc(a.key)}')">`
+                    + `<img loading="lazy" decoding="async" src="${esc(a.icon)}" alt="${esc(a.name)}"></button>`).join('')
+                + '</div>'
                 : '';
             const picker = `<div class="dc-card">
                     <input type="text" class="gv-srch" id="gvQ" placeholder="キャラ名でさがす" value="${esc(_gv.q)}"
                            oninput="handleGrowthAnaSearch(this.value)">
                     ${attrPills}
-                    <div class="gv-pills">${BURSTS.map(b => `<button type="button" aria-pressed="${_gv.burst === b ? 'true' : 'false'}"`
-                + ` onclick="handleGrowthAnaBurst('${b}')">${b === 'all' ? 'すべて' : b}</button>`).join('')}</div>
+                    <div class="gv-pills">${BURSTS.map(b => `<button type="button" class="${b === 'all' ? '' : 'gv-b'}"`
+                + `${b === 'all' ? '' : ` style="--b-c:${GV_BURST_COLOR[b] || '#8A9097'};"`}`
+                + ` aria-pressed="${_gv.burst === b ? 'true' : 'false'}"`
+                + ` onclick="handleGrowthAnaBurst('${b}')">${b === 'all' ? 'すべて' : b}</button>`).join('')}
+                        <button type="button" class="gv-dps" aria-pressed="${_gv.dpsOnly ? 'true' : 'false'}"
+                                onclick="handleGrowthAnaDpsOnly()">⚡ 火力役だけ</button></div>
                     <div class="gv-grid">${idx.map(i => {
                     const nm = _gv.chars[i];
                     const bs = _gvBurst(nm);
                     return `<button type="button" class="gv-tile${has(nm) ? '' : ' dim'}"`
                         + ` aria-pressed="${i === _gv.charIdx ? 'true' : 'false'}" onclick="handleGrowthAnaChar(${i})">`
-                        + `<span class="wrap">${_gvIcon(nm, 46)}${bs ? `<span class="gv-bg">${esc(bs)}</span>` : ''}</span>`
+                        + `<span class="wrap">${_gvIcon(nm, 46)}`
+                        + `${bs ? `<span class="gv-bg" style="--b-c:${GV_BURST_COLOR[bs] || '#14161A'};">${esc(bs)}</span>` : ''}</span>`
                         + `<span class="cn">${esc(nm)}</span></button>`;
                 }).join('')}</div>
                     ${idx.length ? '' : '<p class="gc-empty" style="margin-top:9px;">みつかりません。</p>'}

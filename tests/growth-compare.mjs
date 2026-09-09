@@ -33,7 +33,7 @@ const SRC = html.slice(a, b);
 const RETURN = ['_gvPaint', '_gvViewPT', '_gvViewChar', '_gvUnionCard', '_gvCharCard', '_gcCls',
     'handleGrowthAnaSeason', 'handleGrowthAnaWho', 'handleGrowthAnaView', 'handleGrowthAnaBase',
     'handleGrowthAnaChar', 'handleGrowthAnaSort', 'handleGrowthAnaBurst', 'handleGrowthAnaSearch',
-    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr', 'handleGrowthAnaDps'];
+    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr', 'handleGrowthAnaDps', 'handleGrowthAnaDpsOnly'];
 
 // 育成1行ぶん。省略した項目は null (未取得) として扱われる
 const row = (o = {}) => ({
@@ -70,7 +70,7 @@ function build({
         chars: dom.charactersIn(rows), status, teams, them, view, base, charIdx, q, burst, attr, sort,
         // 属性は data/blabla-name-codes.json 由来。テストでは固定の表を渡す
         elems: new Map([['ラピ', 'fire'], ['クラウン', 'water'], ['モラン', 'wind'], ['ヘルム', 'iron'], ['紅蓮', 'fire']]),
-        open: new Set(open.map(String)), rosterOpen, focusQ: false,
+        open: new Set(open.map(String)), rosterOpen, focusQ: false, dps: null, tmNames: [], dpsOnly: false,
     };
     const env = {
         _gv,
@@ -82,6 +82,14 @@ function build({
         renderAvatarHtml: (p) => `<span class="av">${p && p.name ? p.name[0] : '?'}</span>`,
         resolveNikkeChar: (n) => ({ canonical: n, iconPath: `./character-images/${encodeURIComponent(n)}.webp` }),
         _nikkeCharsByName: new Map([...BURSTS].map(([n, burst]) => [n, { canonical_name: n, burst }])),
+        TE_BURST_COLOR: { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' },
+        PT_ATTRS: [
+            { key: 'fire', name: '灼熱', icon: './属性アイコン/灼熱.png', color: '#FF3B30' },
+            { key: 'water', name: '水冷', icon: './属性アイコン/水冷.png', color: '#007AFF' },
+            { key: 'electric', name: '電撃', icon: './属性アイコン/電撃.png', color: '#8E44AD' },
+            { key: 'iron', name: '鉄甲', icon: './属性アイコン/鉄甲.png', color: '#FF9500' },
+            { key: 'wind', name: '風圧', icon: './属性アイコン/風圧.png', color: '#34C759' },
+        ],
         renderGrowthAnalysis: () => { calls.reload++; },
         _gotoSlvView: (v) => { calls.goto = v; },
     };
@@ -321,7 +329,9 @@ test('キャラのアイコンを出す (名前だけだと編成が読めない
     const out = build({ ...BASE, them: 2 }).paint();
     assert.ok(/class="gv-ic [^"]*" src="\.\/character-images\//.test(out), 'アイコンが出ていない');
     const ch = build({ ...BASE, them: 2, view: 'char' }).paint();
-    assert.ok(/class="gv-bg">B[0-9Λ]<\/span>/.test(ch), 'バーストのバッジが無い');
+    assert.ok(/class="gv-bg" style="--b-c:#[0-9A-Fa-f]{6};">B[0-9Λ]<\/span>/.test(ch),
+        'バーストのバッジが無い / 色が付いていない');
+    assert.ok(/class="gv-b" style="--b-c:#[0-9A-Fa-f]{6};"/.test(ch), 'バーストのピルに色が付いていない');
 });
 
 test('★ 記録が無い人 (overload: null) を 0 として比べない', () => {
@@ -387,6 +397,56 @@ test('★ 火力役: 既定はバースト3。押すと入り切りでき、要�
     t.handleGrowthAnaDps(cells.findIndex(c => c.name === 'ヘルム'));
     cells = tmCells(t.paint());
     assert.ok(!cells.find(c => c.name === 'ヘルム').dps, '既定の火力役を手で外せない');
+});
+
+test('★ 火力役を選んだ効き目が、編成ごとに出る (選んで終わりにしない)', () => {
+    // 全編成をまとめた要約だけだと、選んだ手ごたえが無い (実機FB 2026-09-10)
+    const t = build({ ...BASE, them: 2 });
+    let out = t.paint();
+    const bar = () => out.match(/class="gv-dpsbar[^"]*">([\s\S]*?)<\/div>/)?.[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || '';
+    assert.match(bar(), /⚡ 火力役 2体 有利＋攻撃/, '編成ごとの火力役の帯が出ていない');
+    assert.match(bar(), /自分 [\d.]+% .* [\d.]+% 差 [\d.]+%/, '自分・相手・差が出ていない');
+    // 火力役を1体増やすと、その場の数字が変わる
+    const before = bar();
+    t.handleGrowthAnaDps(tmCells(out).findIndex(c => c.name === 'クラウン'));
+    out = t.paint();
+    assert.match(bar(), /⚡ 火力役 3体/, '足した火力役が帯に効いていない');
+    assert.notEqual(bar(), before, '火力役を変えても数字が動かない');
+    // 全部外すと、その旨を言う
+    for (const nm of ['ヘルム', '紅蓮', 'クラウン']) {
+        t.handleGrowthAnaDps(tmCells(t.paint()).findIndex(c => c.name === nm));
+    }
+    out = t.paint();
+    assert.match(bar(), /火力役が選ばれていません/, '0体のときに何も言わない');
+});
+
+test('★ ユニオン全体でも火力役が効く (編成の火力役の合計で何位か)', () => {
+    // ここで効かないと、いちばん使う画面で選んだ意味が無くなる
+    const t = build({ ...BASE, them: null, view: 'pt' });
+    const out = t.paint();
+    const bar = out.match(/class="gv-dpsbar[^"]*">([\s\S]*?)<\/div>/)?.[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || '';
+    assert.match(bar, /⚡ 火力役 2体の合計/, '火力役の合計を出していない');
+    assert.match(bar, /3位 \/ 3人中/, `ユニオン内の順位が出ていない: ${bar}`);
+});
+
+test('★ キャラ別を「火力役だけ」で絞れる', () => {
+    const t = build({ ...BASE, them: 2, view: 'char' });
+    assert.equal((t.paint().match(/class="gv-tile/g) || []).length, 5);
+    t.handleGrowthAnaDpsOnly();
+    const out = t.paint();
+    assert.equal((out.match(/class="gv-tile/g) || []).length, 2, '火力役だけに絞れていない');
+    assert.ok(/ヘルム/.test(out) && /紅蓮/.test(out), '残る顔ぶれが違う');
+});
+
+test('★ 属性は属性アイコンで出す / バーストは色で見分ける', () => {
+    const out = build({ ...BASE, them: 2, view: 'char' }).paint();
+    // 属性アイコンは既にアプリが持っている素材 (PT_ATTRS.icon)
+    assert.equal((out.match(/gv-attrs[\s\S]*?<\/div>/)?.[0].match(/属性アイコン\//g) || []).length, 5,
+        '属性アイコンを使っていない (5属性ぶん)');
+    assert.match(out, /title="灼熱" aria-label="灼熱"/, '読み上げ用の名前が消えている');
+    // バーストはアイコンが無いので色。編成エディタと同じ色づかいにそろえる
+    assert.match(out, /class="gv-b" style="--b-c:#1FA95C;"[^>]*>B1</, 'B1 の色が編成エディタと違う');
+    assert.match(out, /class="gv-b" style="--b-c:#E5484D;"[^>]*>B3</, 'B3 の色が編成エディタと違う');
 });
 
 test('★ 要約に「何体で上」を出さない (勝ち負けの見せ方にしない)', () => {

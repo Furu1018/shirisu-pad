@@ -629,6 +629,34 @@
         };
     }
 
+    /**
+     * 編成の火力役の合計 (有利コード＋攻撃) で**ユニオン内の順位**を出す。
+     * ★ その体を**すべて持っている人だけ**を並べる — 1体でも欠けている人を混ぜると、
+     *   違う顔ぶれの合計を並べて「順位」と呼ぶことになる。
+     * @returns {{list:{playerId:any,name:string,value:number}[], myRank:number|null}}
+     */
+    function unionDpsRanking(byPl, players, names, myId) {
+        const want = (Array.isArray(names) ? names : []).filter(Boolean);
+        const list = [];
+        if (want.length) {
+            for (const p of (Array.isArray(players) ? players : [])) {
+                if (!p || p.id == null) continue;
+                const own = (byPl || {})[String(p.id)] || {};
+                let sum = 0, ok = true;
+                for (const n of want) {
+                    const v = SUM_FIELD.value(own[n] || null);
+                    if (v == null) { ok = false; break; }
+                    sum += v;
+                }
+                if (ok) list.push({ playerId: p.id, name: String(p.name == null ? '' : p.name), value: Number(sum.toFixed(4)) });
+            }
+        }
+        list.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, 'ja')
+            || String(a.playerId).localeCompare(String(b.playerId)));
+        const at = list.findIndex((x) => myId != null && String(x.playerId) === String(myId));
+        return { list, myRank: at < 0 ? null : at + 1 };
+    }
+
     // ---- アイコンの下に出すクイック (2026-09-10 ユーザー要望) --------------
     //   限界突破 / S1・S2・バースト / 攻撃 / 有利コード を、開かずに読めるようにする。
     //   ★ 順番はユーザーの言った順 (突破 → スキル → 攻撃 → 有利コード)。
@@ -1284,7 +1312,7 @@
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
         rankSquad, fmtMan, fmtPct, privateTargets, PUBLISH_ASK,
-        DPS_BURST, dpsOf, isDps, dpsScore, QUICK_FIELDS, quickCells,
+        DPS_BURST, dpsOf, isDps, dpsScore, unionDpsRanking, QUICK_FIELDS, quickCells,
         defaultGrowthSeason, usedTeams, byPlayerCharacter, charactersIn,
         SORT_FIELDS, SORT_KEYS, normalizeSortKey, unionRanking, teamGaps,
     };

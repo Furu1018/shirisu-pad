@@ -6734,6 +6734,26 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.dpsScore([], mine, theirs), { n: 0, missing: 0, mine: 0, theirs: 0, diff: 0 });
     });
 
+    test('★ unionDpsRanking: 火力役の合計でユニオン内の順位を出す', () => {
+        // ★ その体を**すべて持っている人だけ**を並べる — 1体でも欠けている人を混ぜると、
+        //   違う顔ぶれの合計を並べて「順位」と呼ぶことになる
+        const ol = (a, b) => ({ overload: { 有利コード: a, 攻撃力: b } });
+        const by = dom.byPlayerCharacter([
+            { player_id: 1, character_name: 'A', ...ol(50, 20) }, { player_id: 1, character_name: 'B', ...ol(40, 10) },
+            { player_id: 2, character_name: 'A', ...ol(60, 30) }, { player_id: 2, character_name: 'B', ...ol(50, 20) },
+            { player_id: 3, character_name: 'A', ...ol(99, 99) },   // B を持っていない
+        ]);
+        const players = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }];
+        const r = dom.unionDpsRanking(by, players, ['A', 'B'], 1);
+        assert.deepEqual(r.list.map(x => x.playerId), [2, 1], '合計の大きい順になっていない');
+        assert.equal(r.list[0].value, 160); assert.equal(r.list[1].value, 120);
+        assert.equal(r.myRank, 2, '自分の順位が違う');
+        assert.equal(r.list.length, 2, '1体でも欠けている人を並べている');
+        // 火力役が0体なら順位も出さない (誰でも「全部持っている」ことになってしまう)
+        assert.deepEqual(dom.unionDpsRanking(by, players, [], 1), { list: [], myRank: null });
+        assert.equal(dom.unionDpsRanking(by, players, ['A'], 9).myRank, null);
+    });
+
     test('★ quickCells: 出す値は持ち主・色は自分と相手のどちらが上か', () => {
         const r = (o) => ({ grade: 3, core: 0, skill1_lv: 10, skill2_lv: 9, ulti_skill_lv: 10, overload: o });
         const mine = r({ 攻撃力: 10, 有利コード: 50 });
@@ -6886,6 +6906,14 @@ console.log('\ngrowthDomain:');
         assert.ok(/handleGrowthAnaWho\(''\)/.test(html), 'ユニオン全体を選べない');
         assert.ok(/dom\.unionRanking\(_gv\.byPl, _gv\.players/.test(html), '順位をドメインで決めていない');
         assert.ok(/dom\.SORT_FIELDS\.map/.test(html), '並べ替えの項目を画面が持っている');
+        // ★ 火力役は**選んで終わり**にしない — 編成ごとの帯とユニオン内順位に効かせる
+        assert.ok(/_gvDpsBar\(t\.team, mine, theirs, union, myId\)/.test(html), '編成ごとの火力役の帯が無い');
+        assert.ok(/dom\.unionDpsRanking\(_gv\.byPl, _gv\.players, dps, myId\)/.test(html), 'ユニオン全体で火力役が効いていない');
+        assert.ok(/_gv\.dpsOnly && !dom\.isDps\(nm, _gvBurst, _gvDpsPick\(\)\)/.test(html), 'キャラ別を火力役で絞れない');
+        // ★ バーストの色は編成エディタと同じものを使う (色づかいを2つに増やさない)
+        assert.ok(/const GV_BURST_COLOR = TE_BURST_COLOR;/.test(html), 'バーストの色を別に持っている');
+        // ★ 属性はアプリが持っている属性アイコンを使う
+        assert.ok(/PT_ATTRS\.map\(a => `<button type="button" class="gv-a"/.test(html), '属性アイコンを使っていない');
 
         // ★ ④ 名前・キャラ名を onclick に埋めない (引用符で壊れる / 注入できる)
         assert.ok(!/openGrowthCompare\([^)]*p\.name/.test(html), '名前を onclick に埋めている');
