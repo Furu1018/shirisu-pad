@@ -128,7 +128,24 @@ rm -f .claude/hooks/.codex-on      # OFF
   `_growth.players / used / seasonId` が次のシーズンに入れ替わる (Codex指摘)。
   ★ **識別子を外しただけで、取り込み済み (ok) の状態を `no_openid` で上書きしない**。
   ★ `parseImportPayload` は **非同期** (gzip 展開)。await を忘れると `box` が Promise になり取り込みが必ず失敗する —
-  実行テスト `tests/growth-panel.mjs` (描画7件 + 取り込み本体5件) がここを固定している。
+  実行テスト `tests/growth-panel.mjs` (描画 + 取り込み本体) がここを固定している。
+  ★ **名簿の一括読み取り** (`buildRosterSnippet`): ユニオンの情報を**自分から問い合わせる**
+  (GetMyGuildInfo → guild_id → GetGuildDetail / GetUnionRaidData / …)。待ち受け (fetch/XHR) は保険。
+  経路は自分のユニオンぶんだけ使い、他ユニオンの募集カード・掲示板 (CardList / Dynamics / Tourist) は捨てる。
+  **ユニオン名を人の名前にしない** (ギルド情報は「ユニオン名 + 団長の識別子」を持つので、素直に組むと団長が化ける)。
+  名前の無い識別子は出さない (名前でしか突き合わせられない)。空振りしたら**診断** (どのページ / 経路と応答コード /
+  聞こえた通信) を出す。突き合わせは `parseRoster` → `matchRoster` (apply / same / unmatched / missing / conflicts /
+  **clear = 付け替えの前に外す人**)。同名が2人・同じ識別子が2回・同じ人に2行は自動で当てない。
+  ★ **ブックマークレットは `asBookmarklet` (encodeURIComponent) を通す**。生のまま URL に置くと
+  「#」以降が捨てられ、日本語が化ける (実機で動かなくなった)。箱は右下の小さいパネルで、閉じるボタンと Esc がある。
+- **🧬 育成をくらべる** (D1・2026-09-09)。運営タブ「残り戦闘可能メンバー」の名前をタップ →
+  その人と自分の同じキャラを並べる。判定は `growthDomain.compare` が唯一 (画面で勝ち負けを書き足さない)。
+  材料は `byCharacter` (行→キャラ名の地図) と `squadsFor` (盤面の `loadoutsByAttr` から、育成が
+  1人でも取れている編成だけ)。★ シーズンは `supabaseLoadMemberGrowth(null, ids)` が
+  **両者そろっているいちばん新しい回**を選ぶ — 片方だけ新しい回を取り込んでいると、もう片方が全部「—」になり
+  「育っていない」と読める。★ 引き分け (same) を負けと同じ見た目にしない。
+  ★ **メンバー名を onclick に埋めない** — 引用符で属性が壊れて全員タップできなくなり、注入もできる (id だけ渡す)。
+  実行テスト `tests/growth-compare.mjs`
   **ソルバーを拘束するのは isFixed** (approved と承認済み起点の cancel_requested。requested は提案層で計算に効かせない)。
   `input.reservations` に `toSolverConstraints` の結果を渡すと、貪欲より先に盤面へ置かれる。
   ★ **予約はレベルを持たない** (2026-09-08)。メンバーの約束は「この時刻に・この弱点のボスへ・この編成で」で、
@@ -343,6 +360,7 @@ node tests/avail-strip.mjs    # ホーム「⏰ あなたの戦闘可能時間�
 node tests/submit-bar.mjs     # 模擬提出シートの提出バー (_renderTeamEditBar) の実行テスト
 node tests/ops-stage.mjs      # 運営タブの段階ヘッダ・ヒーロー・チェックリストの描画の実行テスト
 node tests/growth-panel.mjs   # 育成データの取り込みパネルの描画 + 取り込み本体 (handleGrowthImport) の実行テスト
+node tests/growth-compare.mjs # 🧬 育成をくらべるシート (_gcRender) の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で
