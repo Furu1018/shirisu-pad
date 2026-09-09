@@ -638,7 +638,11 @@
     const _skillValue = (r) => {
         if (!r) return null;
         const a = val(r.skill1_lv), b = val(r.skill2_lv), c = val(r.ulti_skill_lv);
-        return (a == null && b == null && c == null) ? null : (a || 0) + (b || 0) + (c || 0);
+        // ★ 1つでも欠けたら「比べられない」(Codex指摘 2026-09-10)。欠けを Lv0 として足すと、
+        //   取り込めていないだけの人に「育っていない」という色が付く。
+        //   ★ 合計は色の手がかりにすぎない (どのスキルに振ったかまでは表さない) ので、
+        //     はっきり差が読みたいときは「1体ずつくらべる」の全項目を見ること。
+        return (a == null || b == null || c == null) ? null : a + b + c;
     };
     const QUICK_FIELDS = [
         { key: 'growth', short: '凸', text: FIELDS[0].text, value: FIELDS[0].value },

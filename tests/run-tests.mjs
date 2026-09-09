@@ -6711,6 +6711,10 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.dpsOf(team, burst, { off: ['火力A'] }), ['火力B'], '手で外せない');
         assert.deepEqual(dom.dpsOf(team, burst, { on: ['前衛'], off: ['火力A', '火力B'] }), ['前衛'],
             '足し引きを同時に指定できない');
+        // ★ 壊れた保存データで同じ名前が両方に入ることがある。**on を優先**すると決めておく
+        assert.deepEqual(dom.dpsOf(['バフ'], burst, { on: ['バフ'], off: ['バフ'] }), ['バフ'],
+            'on と off が食い違ったときの向きが決まっていない');
+        assert.deepEqual(dom.dpsOf(['火力A'], burst, { on: ['火力A'], off: ['火力A'] }), ['火力A']);
         assert.deepEqual(dom.dpsOf(null, burst, null), []);
         assert.equal(dom.isDps('火力A', burst, null), true);
         assert.equal(dom.isDps('バフ', burst, null), false);
@@ -6748,6 +6752,14 @@ console.log('\ngrowthDomain:');
         const none = dom.quickCells(mine, mine, null);
         assert.equal(none[2].lead, 'unknown', '相手が居ないのに比べている');
         assert.equal(dom.quickCells(null, mine, theirs)[2].text, '—');
+        // ★ スキルが1つでも欠けたら比べない — 欠けを Lv0 として足すと、取り込めていない
+        //   だけの人に「育っていない」という色が付く (Codex指摘 2026-09-10)
+        const half = { grade: 3, core: 0, skill1_lv: 10, skill2_lv: null, ulti_skill_lv: null, overload: {} };
+        const full = { grade: 3, core: 0, skill1_lv: 7, skill2_lv: 7, ulti_skill_lv: 7, overload: {} };
+        assert.equal(dom.quickCells(half, half, full)[1].lead, 'unknown',
+            'スキルの欠けを Lv0 として比べている');
+        assert.equal(dom.quickCells(half, half, full)[1].text, '10/—/—', '欠けを 0 と書いている');
+        assert.equal(dom.quickCells(full, full, half)[1].lead, 'unknown', '相手側が欠けても同じ');
     });
     test('★ teamGaps: 編成の並びのまま差を出す (並べ替えは rankSquad の仕事)', () => {
         // 差はオーバーロード合計 (有利コード＋攻撃) で見る — 戦闘力はシンクロレベル順にしかならない
