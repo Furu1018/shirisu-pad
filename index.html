@@ -496,7 +496,7 @@
         .gv-who .rim { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
             border: 2.5px solid transparent; }
         .gv-who button[aria-pressed="true"] .rim { border-color: #14161A; }
-        .gv-who .nm { font-size: 9.5px; font-weight: 800; color: #A4AAB0; max-width: 54px; overflow: hidden;
+        .gv-who .nm { font-size: 10px; font-weight: 800; color: #A4AAB0; max-width: 54px; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap; }
         .gv-who button[aria-pressed="true"] .nm { color: #14161A; font-weight: 900; }
         .gv-who .all { width: 40px; height: 40px; border-radius: 50%; background: rgba(108,66,240,0.11);
@@ -3984,7 +3984,7 @@
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ランキング</div>
                     <span style="font-size:10.5px;color:#B6BBC1;">前月比あり</span>
                 </div>
-                <div class="dc-table-wrap">
+                <div class="dc-table-wrap" data-no-swipe>
                     <table id="resultsTable" class="dc-table">
                         <thead>
                             <tr>
@@ -4132,7 +4132,7 @@
                     <div style="font-size:14px;font-weight:800;color:#14161A;letter-spacing:0.2px;">ふるり値ランキング</div>
                     <div id="fururiActiveAttrLabel" style="font-size:10.5px;color:#B6BBC1;">全体</div>
                 </div>
-                <div class="dc-table-wrap">
+                <div class="dc-table-wrap" data-no-swipe>
                     <table id="fururiRankingTable" class="dc-table">
                         <thead>
                             <tr>
@@ -4207,7 +4207,7 @@
                             <div id="simCurrentDmgLabel" style="font-size: 12px; color: #8A9097; margin-top: 4px;"></div>
                         </div>
                         <div id="simError" style="display: none; padding: 12px 16px; background: #F7F8F9; border-radius: 10px; color: #8A9097; font-size: 13px;"></div>
-                        <div class="data-table" id="simTableWrapper" style="display: none; margin-top: 16px;">
+                        <div class="data-table" data-no-swipe id="simTableWrapper" style="display: none; margin-top: 16px;">
                             <table>
                                 <thead>
                                     <tr>
@@ -4303,7 +4303,7 @@
                         </div>
                         <div id="fsimError" style="display: none; padding: 12px 16px; background: #F7F8F9; border-radius: 10px; color: #8A9097; font-size: 13px;"></div>
 
-                        <div class="data-table" id="fsimTableWrapper" style="display: none; margin-top: 16px;">
+                        <div class="data-table" data-no-swipe id="fsimTableWrapper" style="display: none; margin-top: 16px;">
                             <table>
                                 <thead>
                                     <tr>
@@ -16274,7 +16274,7 @@
                 + `<span class="rim">${renderAvatarHtml(p, 40)}</span><span class="nm">${esc(p.name)}</span></button>`).join('');
             return `<div class="dc-card dc-card-tight" style="margin-bottom:10px;">
                     <div class="gv-k">くらべる相手</div>
-                    <div class="gv-who">${all}${rest}</div>
+                    <div class="gv-who" data-no-swipe>${all}${rest}</div>
                     ${mates.length ? '' : '<p class="gv-hint" style="margin:2px;">この回に取り込めた人がまだいません。</p>'}
                 </div>`;
         }
@@ -16410,7 +16410,7 @@
             if (union) {
                 const sorts = '<div class="dc-card dc-card-tight" style="margin-top:10px;">'
                     + '<div class="gv-k">ならべかえ</div>'
-                    + `<div class="gv-pills gv-sorts">${dom.SORT_FIELDS.map(f => `<button type="button"`
+                    + `<div class="gv-pills gv-sorts" data-no-swipe>${dom.SORT_FIELDS.map(f => `<button type="button"`
                         + ` aria-pressed="${_gv.sort === f.key ? 'true' : 'false'}" onclick="handleGrowthAnaSort('${f.key}')">${esc(f.label)}</button>`).join('')}</div>`
                     + '</div>';
                 return picker + sorts + `<div style="margin-top:10px;">${_gvUnionCard(name, false)}</div>`;
