@@ -412,6 +412,24 @@
         .gr-note.warn { color: #B45309; background: rgba(245,158,11,0.10); }
         .gr-note.err { color: #B91C1C; background: rgba(255,61,68,0.09); }
         .gr-note.ok { color: #0E9455; background: rgba(14,148,85,0.10); }
+        /* ---- 🧬 育成をくらべる (D1・2026-09-09) ---- */
+        .gc-seg { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
+        .gc-seg button { flex: none; font: inherit; font-size: 11.5px; font-weight: 900; border: 1px solid rgba(20,22,26,0.10); border-radius: 999px; padding: 6px 11px; background: #fff; color: #6B7178; cursor: pointer; white-space: nowrap; }
+        .gc-seg button[aria-pressed="true"] { background: #14161A; color: #fff; border-color: #14161A; }
+        .gc-char { border: 1px solid rgba(20,22,26,0.07); border-radius: 12px; padding: 9px 11px; margin-bottom: 8px; background: #fff; }
+        .gc-char > .n { font-size: 13px; font-weight: 900; color: #14161A; margin-bottom: 6px; display: flex; align-items: center; gap: 7px; }
+        .gc-char > .n .miss { font-size: 10px; font-weight: 800; color: #B45309; background: rgba(245,158,11,0.14); border-radius: 999px; padding: 2px 8px; }
+        .gc-row { display: grid; grid-template-columns: 5.5em 1fr 1fr; gap: 6px; align-items: center; padding: 3px 0; border-top: 1px solid rgba(20,22,26,0.05); }
+        .gc-row:first-of-type { border-top: none; }
+        .gc-row .k { font-size: 10.5px; font-weight: 800; color: #8A9097; }
+        .gc-row .v { font-size: 12px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; text-align: right; padding: 2px 7px; border-radius: 7px; }
+        .gc-row .v.win { background: rgba(24,194,107,0.13); color: #0E9455; }
+        .gc-row .v.lose { color: #8A9097; }
+        .gc-row .v.unknown { color: #C9CED4; }
+        .gc-head { display: grid; grid-template-columns: 5.5em 1fr 1fr; gap: 6px; font-size: 10px; font-weight: 900; color: #A4AAB0; letter-spacing: .04em; margin-bottom: 4px; }
+        .gc-head span:not(:first-child) { text-align: right; }
+        .gc-note { font-size: 11px; font-weight: 700; color: #8A9097; line-height: 1.6; margin: 0 0 10px; }
+        .gc-empty { font-size: 12px; font-weight: 700; color: #6B7178; line-height: 1.7; }
         .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: #8A9097; background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
         /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
         .dc-mb-seg { display:inline-flex; background:#F1F2F4; border-radius:999px; padding:3px; }
@@ -5791,6 +5809,17 @@
                 <div class="modal-damage-summary" id="modalDamageSummary"></div>
                 <div id="playerCompContainer"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- ========== 🧬 育成をくらべる (D1・2026-09-09)。純ロジックは js/domain/growth.js ========== -->
+    <div class="player-select-modal" id="growthCmpModal">
+        <div class="player-select-content" style="max-width:520px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <h2 id="growthCmpTitle" style="flex:1;min-width:0;font-size:16px;font-weight:900;color:#14161A;">🧬 育成をくらべる</h2>
+                <button onclick="closeGrowthCompare()" style="flex:none;padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
+            </div>
+            <div id="growthCmpBody"><p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p></div>
         </div>
     </div>
 
@@ -15882,6 +15911,95 @@
             openOpsProxyAttackModal(Number(playerId));
         }
 
+        // ===== 🧬 育成をくらべる (D1・2026-09-09) =====
+        //   「A さんのこの編成、ふるり値高いな」→ その人の育成と自分の同じキャラを並べる。
+        //   判定 (項目・勝ち負け・オーバーロードの突き合わせ) は js/domain/growth.js の compare が唯一。
+        //   ★ シーズンは**育成を取り込んだシーズン**を使う (アクティブとは限らない — 取り込みはレイドの後)。
+        const _gc = { gen: 0, them: null, squads: [], pick: 0, mine: null, theirs: null, seasonId: null, err: null };
+
+        async function openGrowthCompare(playerId, playerName) {
+            const modal = document.getElementById('growthCmpModal');
+            const body = document.getElementById('growthCmpBody');
+            const title = document.getElementById('growthCmpTitle');
+            if (!modal || !body) return;
+            const dom = window.growthDomain;
+            const me = getCurrentIdentity();
+            const gen = ++_gc.gen;
+            _gc.them = { id: Number(playerId), name: String(playerName || '') };
+            _gc.squads = []; _gc.pick = 0; _gc.mine = null; _gc.theirs = null; _gc.err = null;
+            if (title) title.textContent = `🧬 ${_gc.them.name} と くらべる`;
+            body.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p>';
+            modal.classList.add('open');
+            if (!dom) { body.innerHTML = '<p class="gc-empty">育成の機能を読み込めませんでした。再読み込みしてください。</p>'; return; }
+            if (!me?.id) { body.innerHTML = '<p class="gc-empty">先にホームで自分のプレイヤーを選んでください。</p>'; return; }
+            try {
+                const rows = await window.supabaseLoadMemberGrowth(null, [Number(playerId), Number(me.id)]);
+                if (gen !== _gc.gen) return;
+                if (rows === null) { body.innerHTML = '<p class="gc-empty">supabase/43_member_growth.sql を適用すると使えます。</p>'; return; }
+                _gc.seasonId = rows.length ? rows[0].season_id : null;
+                _gc.theirs = dom.byCharacter(rows.filter(r => Number(r.player_id) === Number(playerId)));
+                _gc.mine = dom.byCharacter(rows.filter(r => Number(r.player_id) === Number(me.id)));
+                // 編成は盤面から (属性ごと・ボス順)。育成が1人も取れていない編成は出さない
+                const snap = opsStore.get();
+                const p = (snap?.players || []).find(x => Number(x.id) === Number(playerId)) || null;
+                _gc.squads = dom.squadsFor(p?.loadoutsByAttr, _gc.theirs, _orderAttrsByBosses(snap?.bosses));
+                _gcRender();
+            } catch (e) {
+                if (gen !== _gc.gen) return;
+                body.innerHTML = `<p class="gc-empty" style="color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
+            }
+        }
+        function closeGrowthCompare() {
+            _gc.gen++;
+            document.getElementById('growthCmpModal')?.classList.remove('open');
+        }
+        function handleGrowthCmpPick(i) { _gc.pick = Number(i) || 0; _gcRender(); }
+
+        function _gcRender() {
+            const body = document.getElementById('growthCmpBody');
+            const dom = window.growthDomain;
+            if (!body || !dom) return;
+            const esc = escapeHtml;
+            const theirsN = Object.keys(_gc.theirs || {}).length;
+            const mineN = Object.keys(_gc.mine || {}).length;
+            if (!theirsN) {
+                body.innerHTML = `<p class="gc-empty">${esc(_gc.them.name)} の育成データはまだありません。<br>`
+                    + 'BlaBlaLINK でゲームカードを公開してもらってから、運営タブの「🧬 育成データの取り込み」で取り込みます。</p>';
+                return;
+            }
+            // 見る編成 (無ければ「取り込めたキャラ全部」を1つの束として出す)
+            const squads = _gc.squads.length ? _gc.squads
+                : [{ attrKey: '', attrName: '取り込めたキャラ', slot: 1, dmgB: 0, team: Object.keys(_gc.theirs).sort() }];
+            const pick = Math.min(_gc.pick, squads.length - 1);
+            const cur = squads[pick];
+            const seg = squads.length > 1
+                ? `<div class="gc-seg">${squads.map((s, i) => `<button type="button" aria-pressed="${i === pick ? 'true' : 'false'}" onclick="handleGrowthCmpPick(${i})">`
+                    + `${esc(s.attrName)}${s.slot > 1 ? esc(SLOT_JP[s.slot] || '') : ''}${s.dmgB > 0 ? ` ${s.dmgB.toFixed(1)}B` : ''}</button>`).join('')}</div>`
+                : '';
+            const cells = dom.compareSquad(cur.team, _gc.mine, _gc.theirs);
+            const cls = (lead, who) => (lead === 'unknown' ? 'unknown' : lead === who ? 'win' : 'lose');
+            const cards = cells.map(c => {
+                const theyHave = !!(_gc.theirs || {})[c.character];
+                const iHave = !!(_gc.mine || {})[c.character];
+                const miss = !theyHave ? '<span class="miss">相手は未取り込み</span>'
+                    : !iHave ? '<span class="miss">自分は未取り込み</span>' : '';
+                const rows = c.rows.map(r => `<div class="gc-row"><span class="k">${esc(r.label)}</span>`
+                    + `<span class="v ${cls(r.lead, 'mine')}">${esc(r.mine)}</span>`
+                    + `<span class="v ${cls(r.lead, 'theirs')}">${esc(r.theirs)}</span></div>`).join('');
+                const ov = (c.overload || []).map(r => `<div class="gc-row"><span class="k">${esc(r.label)}</span>`
+                    + `<span class="v ${cls(r.lead, 'mine')}">${esc(r.mine)}</span>`
+                    + `<span class="v ${cls(r.lead, 'theirs')}">${esc(r.theirs)}</span></div>`).join('');
+                return `<div class="gc-char"><div class="n">${esc(c.character)}${miss}</div>`
+                    + `<div class="gc-head"><span></span><span>自分</span><span>${esc(_gc.them.name)}</span></div>`
+                    + rows + (ov ? `<div class="gc-head" style="margin-top:6px;"><span>オーバーロード</span><span></span><span></span></div>${ov}` : '')
+                    + '</div>';
+            }).join('');
+            const note = !mineN
+                ? '<p class="gc-note" style="color:#B45309;">自分の育成がまだ取り込まれていません。自分のぶんを取り込むと差が出ます。</p>'
+                : `<p class="gc-note">緑がその項目で上のほう。「—」は取り込めていない項目です。</p>`;
+            body.innerHTML = seg + note + cards;
+        }
+
         // ===== 🧬 育成データの取り込み (43 / 2026-09-09) =====
         //   純ロジックは js/domain/growth.js。ここは DOM と保存の呼び出しだけ。
         //   流れは 4 段: ① 識別子の名寄せ → ② ブックマークレットを作る → ③ 貼り付けて取り込む → ④ 取れなかった人。
@@ -16784,8 +16902,9 @@
                     <div style="border-bottom:1px solid #F4F5F6;padding:6px 0 7px;">
                         <div style="display:flex;align-items:center;gap:9px;height:34px;">
                             <div style="flex:none;width:28px;height:28px;">${renderAvatarHtml(p, 28)}</div>
-                            <div style="flex:1;min-width:0;">
-                                <div style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</div>
+                            <div style="flex:1;min-width:0;cursor:pointer;" onclick="openGrowthCompare(${Number(p.id)}, ${JSON.stringify(String(p.name))})"
+                                 title="育成をくらべる (${escapeHtml(p.name)} と自分)">
+                                <div style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)} <span style="font-size:10px;font-weight:800;color:#A4AAB0;">🧬</span></div>
                                 <div style="display:flex;align-items:center;gap:5px;margin-top:1px;">
                                     <span style="font-size:10px;color:#A4AAB0;font-variant-numeric:tabular-nums;flex:none;">残 ${p.remain}/3</span>
                                     <div style="display:flex;gap:2px;flex:none;">${favChips}</div>

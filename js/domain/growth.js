@@ -889,6 +889,40 @@
         };
     }
 
+    /** 育成の行を「キャラ名 → 行」に畳む。比較はこの形で受ける (compare / compareSquad) */
+    function byCharacter(rows) {
+        const out = {};
+        for (const r of Array.isArray(rows) ? rows : []) {
+            const n = r && r.character_name;
+            if (n && !out[n]) out[n] = r;
+        }
+        return out;
+    }
+
+    /**
+     * その人の編成 (属性ごと) を、比較シートで選べる形に並べる。
+     * ★ 育成を取り込めたキャラが1人もいない編成は出さない — 開いても「—」しか並ばない
+     * @param {Object} loadoutsByAttr 盤面の p.loadoutsByAttr { attr: [{dmgB, team, slot}] }
+     * @param {Object} theirsByName   その人の育成 (byCharacter の結果)
+     * @param {{key:string,name:string}[]} attrOrder 出す順 (ボス順)
+     */
+    function squadsFor(loadoutsByAttr, theirsByName, attrOrder) {
+        const out = [];
+        for (const a of Array.isArray(attrOrder) ? attrOrder : []) {
+            const los = Array.isArray(loadoutsByAttr && loadoutsByAttr[a.key]) ? loadoutsByAttr[a.key] : [];
+            for (const lo of los) {
+                const team = (Array.isArray(lo && lo.team) ? lo.team : []).filter(Boolean);
+                if (!team.length) continue;
+                if (!team.some((n) => (theirsByName || {})[n])) continue;
+                out.push({
+                    attrKey: a.key, attrName: a.name, slot: Number(lo.slot) || 1,
+                    dmgB: Number(lo.dmgB) || 0, team,
+                });
+            }
+        }
+        return out;
+    }
+
     /** 今回のレイドで使われたキャラを、凸記録から集める (取り込む対象を決めるのに使う)。 */
     function usedCharacters(attacks) {
         const out = new Set();
@@ -908,5 +942,6 @@
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
+        byCharacter, squadsFor,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

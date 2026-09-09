@@ -6478,6 +6478,50 @@ console.log('\ngrowthDomain:');
         }, { nameCodeMap: map }).save, true);
     });
 
+    test('★ byCharacter / squadsFor: 比較の材料をそろえる (育成が1人も取れていない編成は出さない)', () => {
+        const rows = [
+            { character_name: 'ラピ', lv: 200 }, { character_name: 'アリス', lv: 300 },
+            { character_name: 'ラピ', lv: 999 },   // 同じキャラは先勝ち
+        ];
+        const by = dom.byCharacter(rows);
+        assert.equal(by['ラピ'].lv, 200, '同じキャラで後の行に上書きされている');
+        assert.equal(Object.keys(by).length, 2);
+        assert.deepEqual(dom.byCharacter(null), {});
+
+        const attrs = [{ key: 'fire', name: '灼熱' }, { key: 'water', name: '水冷' }];
+        const lo = {
+            fire: [{ slot: 1, dmgB: 33.1, team: ['ラピ', 'アリス'] }, { slot: 2, dmgB: 20, team: ['しらないキャラ'] }],
+            water: [{ slot: 1, dmgB: 28, team: [] }],
+        };
+        const sq = dom.squadsFor(lo, by, attrs);
+        // 育成が1人も取れていない編成 (fire②) と、キャラの入っていない編成 (water) は出さない
+        assert.deepEqual(sq.map(x => [x.attrKey, x.slot]), [['fire', 1]], `出す編成が違う: ${JSON.stringify(sq)}`);
+        assert.equal(sq[0].attrName, '灼熱'); assert.equal(sq[0].dmgB, 33.1);
+        assert.deepEqual(dom.squadsFor(null, by, attrs), []);
+        assert.deepEqual(dom.squadsFor(lo, {}, attrs), [], '育成がゼロなのに編成を出している');
+    });
+
+    test('★ 配線: 育成をくらべるシート (盤面から編成 / 取り込んだシーズンを使う / 入口は残凸表の名前)', () => {
+        const noCR = (x) => x.split(String.fromCharCode(13)).join('');   // CRLF のままだと関数の切り出しが当たらない
+        const html = noCR(_grRd('index.html')), client = noCR(_grRd('js', 'supabase-client.js'));
+        assert.ok(/id="growthCmpModal"/.test(html) && /id="growthCmpBody"/.test(html), 'シートの置き場が無い');
+        const op = html.match(/async function openGrowthCompare\([\s\S]*?\n        \}\n/)?.[0] || '';
+        // ★ シーズンは取り込んだもの (null = いちばん新しい)。アクティブシーズンとは限らない
+        assert.ok(/supabaseLoadMemberGrowth\(null, \[Number\(playerId\), Number\(me\.id\)\]\)/.test(op), '両者ぶんを最新シーズンで読んでいない');
+        assert.ok(/dom\.byCharacter\(/.test(op) && /dom\.squadsFor\(/.test(op), '材料をドメインで組んでいない');
+        assert.ok(/gen !== _gc\.gen/.test(op), '追い越した古い応答を捨てていない');
+        assert.ok(/rows === null/.test(op), '43未適用を案内していない');
+        // 判定は compare が唯一 — 画面で勝ち負けを書き足さない
+        const rn = html.match(/function _gcRender\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.compareSquad\(cur\.team, _gc\.mine, _gc\.theirs\)/.test(rn), '比較をドメインに任せていない');
+        assert.ok(!/r\.mine >|r\.theirs >/.test(rn), '画面で勝ち負けを計算している');
+        // 入口: 残凸表のメンバー名
+        assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}/.test(html), '残凸表の名前から開けない');
+        // 43 未適用は null を返す (「育成ゼロ」と混同しない)
+        const cl = client.match(/window\.supabaseLoadMemberGrowth = [\s\S]*?\n\};\n/)?.[0] || '';
+        assert.equal((cl.match(/_isMissingTableErr\(.*?'member_growth'\)\) return null;/g) || []).length, 2, '未適用の判定が足りない');
+        assert.ok(/order\('season_id', \{ ascending: false \}\)/.test(cl), 'いちばん新しいシーズンを選んでいない');
+    });
     test('★ parseOpenid: アドレスの openid は base64 で包まれている (生の数字を期待すると1件も読めない)', () => {
         // しりすこスクワッド personal-scan.ts が実機で確かめた形。これが読めないと名寄せが成立しない
         const wrapped = Buffer.from('123456789', 'utf8').toString('base64');   // 'MTIzNDU2Nzg5'

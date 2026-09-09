@@ -1874,6 +1874,33 @@ window.supabaseLoadLatestAttackSeasonId = async function () {
     return (data && data[0]) ? data[0].season_id : null;
 };
 
+// 育成の読み出し (比較用)。seasonId が null なら、その人たちの**いちばん新しい**シーズンを使う
+// (取り込みは終わったレイドに対して行うので、アクティブシーズンとは限らない)
+window.supabaseLoadMemberGrowth = async function (seasonId, playerIds) {
+    const ids = (Array.isArray(playerIds) ? playerIds : [playerIds]).filter(v => v != null);
+    if (!ids.length) return [];
+    let sid = seasonId;
+    if (sid == null) {
+        const r = await supabase.from('member_growth').select('season_id')
+            .in('player_id', ids).order('season_id', { ascending: false }).limit(1);
+        if (r.error) {
+            if (_isMissingTableErr(r.error, 'member_growth')) return null;
+            throw r.error;
+        }
+        if (!r.data || !r.data.length) return [];
+        sid = r.data[0].season_id;
+    }
+    const { data, error } = await supabase.from('member_growth')
+        .select('season_id, player_id, character_name, grade, core, lv, skill1_lv, skill2_lv, ulti_skill_lv,'
+            + ' combat, attractive_lv, harmony_cube_lv, favorite_item_lv, overload')
+        .eq('season_id', sid).in('player_id', ids);
+    if (error) {
+        if (_isMissingTableErr(error, 'member_growth')) return null;
+        throw error;
+    }
+    return data || [];
+};
+
 // 取り込み対象を決める材料: そのシーズンで実際に使われたキャラ (凸記録の characters)
 window.supabaseLoadSeasonAttackCharacters = async function (seasonId) {
     const { data, error } = await supabase.from('attacks')
