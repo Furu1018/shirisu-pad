@@ -7104,23 +7104,61 @@ console.log('\nswipeGuards:');
     // 付けなくてよいと判断したクラスはここに理由付きで書く (空なら「全部要る」)
     const EXEMPT = new Map([]);
 
+    /**
+     * CSS で overflow-x:auto を宣言している「横スクロールする側」のクラス名。
+     * ★ セレクタは並記 (.a, .b) も子孫 (.a .b) もある。並記は**両方**、子孫は**末尾だけ**が
+     *   スクロールする側なので、カンマで割ってから各片の最後のクラスを採る (Codex指摘 2026-09-09)
+     */
+    const scrollClasses = () => {
+        const out = new Set();
+        for (const m of html.matchAll(/([^{}]+)\{[^{}]*overflow-x:\s*auto[^{}]*\}/g)) {
+            for (const part of m[1].split(',')) {
+                const hits = [...part.matchAll(/\.([a-zA-Z][\w-]*)/g)];
+                if (hits.length) out.add(hits[hits.length - 1][1]);
+            }
+        }
+        return [...out];
+    };
+
     test('★ 横スクロールするクラスには data-no-swipe が付いている', () => {
-        // CSS で overflow-x:auto を宣言しているクラス名を集める
-        const classes = [...new Set([...html.matchAll(/\.([a-zA-Z][\w-]*)\s*\{[^}]*overflow-x:\s*auto/g)]
-            .map((m) => m[1]))];
-        assert.ok(classes.length >= 3, `横スクロールするクラスが見つからない (${classes.length})`);
+        const classes = scrollClasses();
+        assert.ok(classes.length >= 5, `横スクロールするクラスが見つからない (${classes.length})`);
         const bad = [];
         for (const cls of classes) {
             if (EXEMPT.has(cls)) continue;
             // そのクラスを持つタグを丸ごと取り出し、同じタグ内に data-no-swipe があるか見る
             //   (data-no-swipe は class の前にも後ろにも書けるので、タグ全体で判定する)
-            const tags = [...html.matchAll(new RegExp(`<[a-z]+[^>]*class="[^"]*\\b${cls}\\b[^"]*"[^>]*>`, 'g'))]
+            //   引用符は " も ' も許す。属性名は data-no-swipe-xxx のような別物と混同しない
+            const tags = [...html.matchAll(new RegExp(`<[a-z]+[^>]*class=["'][^"']*\\b${cls}\\b[^"']*["'][^>]*>`, 'g'))]
                 .map((m) => m[0]);
             for (const tag of tags) {
-                if (!/data-no-swipe/.test(tag)) bad.push(`${cls}: ${tag.slice(0, 90)}`);
+                if (!/data-no-swipe(?=[\s>=])/.test(tag)) bad.push(`${cls}: ${tag.slice(0, 90)}`);
             }
         }
         assert.deepEqual(bad, [], `data-no-swipe が無い横スクロール要素:\n      ${bad.join('\n      ')}`);
+    });
+
+    test('この検査自体が効いていること (セレクタの書き方・引用符・属性名で取りこぼさない)', () => {
+        // 並記されたセレクタは両方が対象。子孫セレクタは末尾だけが対象
+        const probe = (css) => {
+            const saved = html;
+            const out = new Set();
+            for (const m of css.matchAll(/([^{}]+)\{[^{}]*overflow-x:\s*auto[^{}]*\}/g)) {
+                for (const part of m[1].split(',')) {
+                    const hits = [...part.matchAll(/\.([a-zA-Z][\w-]*)/g)];
+                    if (hits.length) out.add(hits[hits.length - 1][1]);
+                }
+            }
+            void saved;
+            return [...out].sort();
+        };
+        assert.deepEqual(probe('.a, .b { overflow-x: auto; }'), ['a', 'b'], '並記の片方を落としている');
+        assert.deepEqual(probe('.wrap .inner { overflow-x: auto; }'), ['inner'], 'スクロールする側は末尾のクラス');
+        assert.deepEqual(probe('@media (max-width: 767px) { .m { overflow-x: auto; } }'), ['m'], 'メディア内を拾えない');
+        // 属性名の部分一致で合格にしない
+        assert.ok(!/data-no-swipe(?=[\s>=])/.test('<div data-no-swipe-old class="x">'), '別の属性名を通している');
+        assert.ok(/data-no-swipe(?=[\s>=])/.test('<div data-no-swipe class="x">'));
+        assert.ok(/data-no-swipe(?=[\s>=])/.test('<div class="x" data-no-swipe>'));
     });
 
     test('スワイプ側が data-no-swipe を見ている (属性名を変えたら気づく)', () => {
