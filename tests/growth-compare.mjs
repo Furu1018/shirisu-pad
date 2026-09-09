@@ -531,13 +531,19 @@ test('★ ユニオン順位: 「誰もいない」「持っていない」「�
     assert.ok(!/持っていません/.test(none), '所持の話にすり替えている');
 });
 
-test('属性表が戻れば、覚えていた属性の絞り込みがまた効く', () => {
-    const opts = { ...BASE, them: 2, view: 'char', attr: 'fire',
-        elems: { ラピ: 'fire', クラウン: 'water', モラン: 'wind', ヘルム: 'fire', 紅蓮: 'iron' } };
-    assert.equal((build({ ...opts, elems: null }).paint().match(/class="gv-tile/g) || []).length, 5,
-        '表が無いときに絞り込みが効いてしまっている');
-    assert.equal((build(opts).paint().match(/class="gv-tile/g) || []).length, 2,
-        '表が戻っても絞り込みが効かない (覚えていた値を捨てている)');
+test('★ 属性表が戻れば、覚えていた属性の絞り込みがまた効く (同じ画面のまま)', () => {
+    // ★ 表が読めない間に絞り込みを捨ててしまうと、戻ったときに全員のままになる。
+    //   別々に組み直すのではなく、**同じ状態のまま表だけ戻す**ことで遷移を確かめる
+    const t = build({ ...BASE, them: 2, view: 'char', attr: 'fire', elems: null });
+    const tiles = () => (t.paint().match(/class="gv-tile/g) || []).length;
+    assert.equal(tiles(), 5, '表が無いときに絞り込みが効いてしまっている');
+    assert.ok(!/gv-attrs/.test(t.paint()), '表が無いのに絞り込みのピルを出している');
+    assert.equal(t.state.attr, 'fire', '表が読めない間に覚えていた絞り込みを捨てている');
+    // 表が戻る (再読み込みで拾えた)
+    t.state.elems = new Map([['ラピ', 'fire'], ['クラウン', 'water'], ['モラン', 'wind'],
+        ['ヘルム', 'fire'], ['紅蓮', 'iron']]);
+    assert.equal(tiles(), 2, '表が戻っても絞り込みが効かない');
+    assert.ok(/gv-attrs/.test(t.paint()), '表が戻ったのに絞り込みのピルが出ない');
 });
 
 test('押した状態でもバーストの点が見える (黒地とのコントラスト)', () => {
