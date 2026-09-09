@@ -6241,6 +6241,75 @@ console.log('\ngrowthDomain:');
         assert.ok(/querySelectorAll\("a\[href\]"\)/.test(code), 'リンクから探していない');
         assert.ok(/__NUXT__/.test(code) && /__NEXT_DATA__/.test(code), '埋め込まれた状態から探していない');
         assert.ok(/atob/.test(code), 'base64 で包まれた識別子を開いていない');
+        // ★ ページ全体を識別子の署名で探す (2026-09-09 実機: リンクからは1件も取れなかった)
+        assert.equal(dom.OPENID_B64_PREFIX, Buffer.from('29080-', 'utf8').toString('base64'),
+            '署名が「29080-」の base64 になっていない');
+        assert.ok(code.includes(`var PFX="${dom.OPENID_B64_PREFIX}"`), 'ページ全体を署名で探していない');
+        assert.ok(/outerHTML/.test(code), 'HTML 全体を見ていない');
+        // ★ 通信にも耳を付ける (SPA は一覧を通信で取るだけで HTML に残らない)
+        assert.ok(/W\.fetch=function/.test(code) && /XMLHttpRequest\.prototype\.send/.test(code), '通信を聞き取っていない');
+        assert.ok(/__spgRoster/.test(code), '2回目の実行に持ち越す置き場が無い');
+        // ★ 空振りしたら「何が見えたか」を報告する — 「見つかりません」だけでは手が打てない
+        assert.ok(/---- 診断/.test(code) && /location\.href/.test(code), '診断を出していない');
+    });
+
+    // ---- 名簿のブックマークレットを**実際に走らせる** ----
+    //   1行に畳んだコードは、目で読んでも動くか分からない。実機で空振りしたので疑似ページで動かす
+    const B64 = (s) => Buffer.from(s, 'utf8').toString('base64');
+    function runRosterSnippet({ html = '', anchors = [], state = null, bodies = [] } = {}) {
+        const code = dom.buildRosterSnippet().replace(/^javascript:/, '');
+        const boxes = [];
+        const mkBox = () => { const b = { value: '', setAttribute() {}, focus() {}, select() {} }; boxes.push(b); return b; };
+        const document = {
+            documentElement: { outerHTML: html },
+            createElement: mkBox,
+            body: { appendChild() {} },
+            querySelectorAll: (sel) => (sel === 'a[href]' ? anchors : []),
+            execCommand() { throw new Error('no clipboard'); },
+        };
+        const win = { __NUXT__: state, __spgRoster: { hooked: false, bodies, urls: [] } };
+        const XHR = function () {}; XHR.prototype = { send() {}, open() {}, addEventListener() {} };
+        const location = { href: 'https://www.blablalink.com/union/members' };
+        new Function('window', 'document', 'location', 'atob', 'XMLHttpRequest', code)(
+            win, document, location, (b) => Buffer.from(b, 'base64').toString('binary'), XHR);
+        return boxes[0].value;
+    }
+    const anchorEl = (href, text) => ({
+        getAttribute: () => href, textContent: text,
+        querySelector: () => null, closest: () => null,
+    });
+
+    test('★ 名簿のブックマークレット: ページ全体の署名から拾える (リンクが無くても)', () => {
+        // 実機ではリンクから1件も取れなかった。属性や埋め込みJSONに残った識別子を署名で拾う
+        const t1 = B64('29080-3273786220482814289'), t2 = B64('29080-111111111111111111');
+        const out = runRosterSnippet({ html: `<div data-x="${t1}"></div><span>${t2}</span>` });
+        assert.ok(out.includes('3273786220482814289'), `署名から拾えていない: ${out.slice(0, 200)}`);
+        assert.ok(out.includes('111111111111111111'));
+        assert.ok(out.includes('名簿 2人'), '人数が合っていない');
+        assert.ok(out.includes('(名前不明)'), '名前が取れないことを示していない');
+        assert.ok(out.includes('---- 診断'), '診断が付いていない');
+    });
+
+    test('★ 名簿のブックマークレット: リンクからは名前も取れる / 埋め込み状態と通信の記録からも拾う', () => {
+        const t1 = B64('29080-123456789012345678');
+        const out = runRosterSnippet({
+            html: '<a></a>',
+            anchors: [anchorEl(`/user?uid=${t1}`, ' なべりうす ')],
+            state: { list: [{ open_id: B64('29080-222222222222222222'), nickname: 'ふるり' }] },
+            bodies: [JSON.stringify({ data: { members: [{ openid: B64('29080-333333333333333333'), name: 'さんばんめ' }] } })],
+        });
+        assert.ok(/なべりうす\t123456789012345678/.test(out), `リンクから名前と識別子が取れていない: ${out.slice(0, 300)}`);
+        assert.ok(/ふるり\t222222222222222222/.test(out), '埋め込み状態から取れていない');
+        assert.ok(/さんばんめ\t333333333333333333/.test(out), '通信の記録から取れていない');
+        assert.ok(out.includes('名簿 3人'));
+    });
+
+    test('★ 名簿のブックマークレット: 空振りしたら「何が見えたか」を出す (見つかりませんだけでは手が打てない)', () => {
+        const out = runRosterSnippet({ html: '<div>なにもない</div>' });
+        assert.ok(out.includes('メンバーが見つかりませんでした'), '空振りの案内が無い');
+        assert.ok(out.includes('もう一度このブックマークレットを押してください'), '2回目の案内が無い');
+        assert.ok(out.includes('address: https://www.blablalink.com/union/members'), 'どのページで走ったか出ていない');
+        assert.ok(/signature: 0/.test(out) && /links: 0/.test(out), '内訳が出ていない');
     });
 
     test('★ 壊れた応答を「成功」に化けさせない (Number([]) も Number("") も 0)', () => {

@@ -593,30 +593,42 @@
         return null;
     }
 
+    /** 識別子の署名。intl_open_id は "<ゲームID>-<数字>" を base64 で包んだもので、
+     *  ゲームID 29080 (NIKKE) なら必ず "MjkwODAt" で始まる (2026-09-09 実機で確認)。
+     *  この署名でページ全体を探せば、リンクの作りに依存せず拾える */
+    const OPENID_B64_PREFIX = 'MjkwODAt';
+
     /**
      * ユニオンのメンバー一覧を読み取るブックマークレット。
      * 名前と識別子を一度に集める — 32人ぶんを1人ずつ貼るのは現実的でないため (ユーザー要望 2026-09-09)。
      *
-     * ★ 探し方は2段構え。ページの作りが変わっても片方が残る:
-     *   ① リンク (a[href]) の uid / openid パラメータ。名前はリンクの文字か、行全体の文字から拾う
-     *   ② 画面の裏に埋まっている状態 (__NUXT__ / __NEXT_DATA__ / __INITIAL_STATE__) を掘って、
-     *      「識別子らしきキー」と「名前らしきキー」を両方持つオブジェクトを集める
-     * ★ 識別子は base64 で包まれている (MjkwODAt… → 29080-3273786220482814289)。末尾の数字だけを採る。
-     * ★ 出力は「名前 <TAB> 識別子」の行。**人が読んで直せる形にする** — 名前が違えば手で直せばよい。
+     * ★ 探し方は4段構え。ページの作りに依存しないものから順に効く:
+     *   ① ページ全体 (outerHTML) から "MjkwODAt…" を拾う — リンクでも属性でも埋め込みJSONでも当たる
+     *   ② リンク (a[href]) の uid / openid。ここは**名前も**取れる
+     *   ③ 画面の裏に埋まっている状態 (__NUXT__ / __NEXT_DATA__ / __INITIAL_STATE__)
+     *   ④ 通信の記録 — 1回目の実行で fetch/XHR に耳を付け、ページを操作してから2回目で拾う
+     *      (SPA は一覧を通信で取ってくるだけで、HTML には何も残らないことがある)
+     * ★ 見つからないときは**何が見えたかを報告する** (2026-09-09 実機で空振り)。
+     *   「見つかりません」だけだと、こちらで手の打ちようがない。
+     * ★ 出力は「名前 <TAB> 識別子」の行。**人が読んで直せる形にする**。
      * ★ DevTools を閉じたまま使う (blablalink.com の anti-debug 対策) ので、結果はページ上の箱に出す。
      */
     function buildRosterSnippet() {
         return 'javascript:(function(){' + [
+            'var W=window;var S=W.__spgRoster||(W.__spgRoster={hooked:false,bodies:[],urls:[]});',
             'var box=document.createElement("textarea");',
             'box.setAttribute("style","position:fixed;top:4%;left:4%;width:92%;height:70%;z-index:2147483647;'
                 + 'background:#03090f;color:#e8f6f5;font:12px monospace;padding:10px;border:2px solid #45d6d0");',
             'document.body.appendChild(box);',
             'var digits=function(raw){if(!raw)return "";var t=String(raw);',
-            'try{var g=atob(t.replace(/-/g,"+").replace(/_/g,"/"));if(g&&/^[\\x20-\\x7e]+$/.test(g)){t=g;}}catch(e){}',
-            'var m=t.match(/(\\d{6,})\\s*$/);return m?m[1]:"";};',
-            'var found=new Map();',
-            'var put=function(id,name){if(!id)return;var n=String(name||"").replace(/\\s+/g," ").trim().slice(0,40);',
-            'if(!found.has(id)||(!found.get(id)&&n)){found.set(id,n);}};',
+            'try{var g=atob(String(t).replace(/-/g,"+").replace(/_/g,"/"));if(g&&/^[\\x20-\\x7e]+$/.test(g)){t=g;}}catch(e){}',
+            'var m=String(t).match(/(\\d{6,})\\s*$/);return m?m[1]:"";};',
+            'var found=new Map();var stat={anchors:0,sig:0,state:0,net:0};',
+            'var put=function(id,name,src){if(!id)return;var n=String(name||"").replace(/\\s+/g," ").trim().slice(0,40);',
+            'if(!found.has(id)){found.set(id,n);if(src)stat[src]++;}else if(!found.get(id)&&n){found.set(id,n);}};',
+            'var PFX="' + OPENID_B64_PREFIX + '";',
+            'try{var H=document.documentElement.outerHTML;var re=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g");var mm;',
+            'while((mm=re.exec(H))){put(digits(mm[0]),"","sig");}}catch(e){}',
             'var KEYS=["uid","openid","intl_open_id","open_id"];',
             'document.querySelectorAll("a[href]").forEach(function(a){',
             'var u;try{u=new URL(a.getAttribute("href"),location.href);}catch(e){return;}',
@@ -625,19 +637,33 @@
             'var name=(a.textContent||"").trim();',
             'if(!name){var im=a.querySelector("img");name=im?(im.getAttribute("alt")||im.getAttribute("title")||""):"";}',
             'if(!name){var p=a.closest("li,tr,[class*=item],[class*=member],[class*=card]");name=p?(p.textContent||"").trim():"";}',
-            'put(id,name);});',
-            'var seen=new Set();var walk=function(v,d){if(!v||d>8||typeof v!=="object")return;',
+            'put(id,name,"anchors");});',
+            'var seen=new Set();var walk=function(v,d,src){if(!v||d>8||typeof v!=="object")return;',
             'if(seen.has(v))return;seen.add(v);',
             'if(!Array.isArray(v)){var ik="",nk="";',
             'for(var k in v){if(!ik&&/(^|_)(open_?id|uid)$/i.test(k)&&v[k])ik=k;',
             'if(!nk&&/(nick|user_?name|name)$/i.test(k)&&typeof v[k]==="string"&&v[k])nk=k;}',
-            'if(ik){put(digits(v[ik]),nk?v[nk]:"");}}',
-            'for(var k2 in v){try{walk(v[k2],d+1);}catch(e){}}};',
-            'try{[window.__NUXT__,window.__NEXT_DATA__,window.__INITIAL_STATE__].forEach(function(s){walk(s,0);});}catch(e){}',
+            'if(ik){put(digits(v[ik]),nk?v[nk]:"",src);}}',
+            'for(var k2 in v){try{walk(v[k2],d+1,src);}catch(e){}}};',
+            'try{[W.__NUXT__,W.__NEXT_DATA__,W.__INITIAL_STATE__].forEach(function(s){walk(s,0,"state");});}catch(e){}',
+            'S.bodies.forEach(function(t){try{walk(JSON.parse(t),0,"net");}catch(e){',
+            'try{var r2=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g"),m2;while((m2=r2.exec(t))){put(digits(m2[0]),"","net");}}catch(e2){}}});',
+            'if(!S.hooked){S.hooked=true;',
+            'var keep=function(u,t){try{if(S.bodies.length>40)return;if(!t)return;',
+            'if(t.indexOf("29080-")>=0||t.indexOf(PFX)>=0||/open_?id/i.test(t)){S.bodies.push(t);S.urls.push(String(u).slice(0,120));}}catch(e){}};',
+            'var of=W.fetch;if(of){W.fetch=function(){var u=arguments[0];var p=of.apply(this,arguments);',
+            'try{p.then(function(r){try{r.clone().text().then(function(t){keep((u&&u.url)||u,t);});}catch(e){}});}catch(e){}return p;};}',
+            'var os=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.send=function(){var x=this;',
+            'try{x.addEventListener("load",function(){try{keep(x.responseURL,x.responseText);}catch(e){}});}catch(e){}',
+            'return os.apply(this,arguments);};}',
             'var lines=[];found.forEach(function(n,id){lines.push((n||"(名前不明)")+"\\t"+id);});',
             'lines.sort();',
-            'box.value=lines.length?("しりすこPAD 名簿 "+lines.length+"人\\n名前とIDを確認して、そのままコピーしてPADに貼ってください\\n\\n"+lines.join("\\n"))',
-            ':"メンバーが見つかりませんでした。ユニオンのメンバー一覧を開いた状態で実行してください。";',
+            'var diag="\\n\\n---- 診断 (見つからないときは、この下ごと運営に見せてください) ----\\naddress: "+location.href',
+            '+"\\nlinks: "+document.querySelectorAll("a[href]").length+" / signature: "+stat.sig+" / anchors: "+stat.anchors',
+            '+"\\nstate: "+stat.state+" ("+[W.__NUXT__?"NUXT":"",W.__NEXT_DATA__?"NEXT":"",W.__INITIAL_STATE__?"INITIAL":""].filter(Boolean).join(",")+")"',
+            '+"\\nnetwork: "+stat.net+" / captured "+S.bodies.length+"\\n"+S.urls.slice(0,8).join("\\n");',
+            'box.value=(lines.length?("しりすこPAD 名簿 "+lines.length+"人\\n名前とIDを確認して、そのままコピーしてPADに貼ってください\\n\\n"+lines.join("\\n"))',
+            ':"メンバーが見つかりませんでした。\\n\\nこの状態のまま、ユニオンのメンバー一覧を開き直す (またはスクロールする) と\\n通信を聞き取ります。そのあと、もう一度このブックマークレットを押してください。")+diag;',
             'box.focus();box.select();try{document.execCommand("copy");}catch(e){}',
         ].join('') + '})()';
     }
@@ -807,6 +833,6 @@
         equipOf, toRows, statusOfCode, compare, compareSquad, usedCharacters,
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
-        buildRosterSnippet, parseRoster, matchRoster, normName,
+        buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
