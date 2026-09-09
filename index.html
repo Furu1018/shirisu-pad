@@ -485,6 +485,81 @@
         .gc-pill.ok { color: #0E9455; background: rgba(24,194,107,0.12); }
         .gc-pill.no { color: #B45309; background: rgba(245,158,11,0.14); }
         .gc-pill.wait { color: #8A9097; background: #F1F2F4; }
+        /* 🧬 育成くらべ (2026-09-09 作り直し) */
+        .gv-k { font-size: 10px; font-weight: 900; letter-spacing: .07em; color: #A4AAB0; margin-bottom: 6px; }
+        .gv-sel { width: 100%; font: inherit; font-size: 12.5px; font-weight: 900; color: #14161A;
+            border: 1px solid rgba(20,22,26,0.12); border-radius: 11px; padding: 9px 10px; background: #fff; }
+        .gv-who { display: flex; gap: 7px; overflow-x: auto; padding: 2px 1px 4px; scrollbar-width: none; }
+        .gv-who::-webkit-scrollbar { display: none; }
+        .gv-who button { flex: none; font: inherit; border: 0; background: transparent; cursor: pointer; width: 54px;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 2px 0; }
+        .gv-who .rim { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+            border: 2.5px solid transparent; }
+        .gv-who button[aria-pressed="true"] .rim { border-color: #14161A; }
+        .gv-who .nm { font-size: 9.5px; font-weight: 800; color: #A4AAB0; max-width: 54px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+        .gv-who button[aria-pressed="true"] .nm { color: #14161A; font-weight: 900; }
+        .gv-who .all { width: 40px; height: 40px; border-radius: 50%; background: rgba(108,66,240,0.11);
+            color: #5B2BE0; display: grid; place-items: center; font-size: 17px; }
+        .gv-who button[aria-pressed="true"] .all { background: #6C42F0; color: #fff; }
+        .gv-seg { display: flex; gap: 5px; background: #F1F2F4; border-radius: 999px; padding: 3px; margin-bottom: 10px; }
+        .gv-seg button { flex: 1; font: inherit; font-size: 11.5px; font-weight: 900; border: 0; border-radius: 999px;
+            padding: 8px 4px; background: transparent; color: #6B7178; cursor: pointer; }
+        .gv-seg button[aria-pressed="true"] { background: #14161A; color: #fff; }
+        .gv-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+        .gv-pills button { font: inherit; font-size: 10.5px; font-weight: 900; border: 1px solid rgba(20,22,26,0.10);
+            border-radius: 999px; padding: 5px 10px; background: #fff; color: #6B7178; cursor: pointer; }
+        .gv-pills button[aria-pressed="true"] { background: #14161A; color: #fff; border-color: #14161A; }
+        .gv-srch { width: 100%; font: inherit; font-size: 12px; font-weight: 700; border: 1px solid rgba(20,22,26,0.10);
+            border-radius: 12px; padding: 9px 11px; background: #F7F8F9; color: #14161A; margin-bottom: 8px; }
+        .gv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 7px; margin-top: 9px;
+            max-height: 262px; overflow-y: auto; }
+        .gv-tile { font: inherit; border: 0; background: transparent; cursor: pointer; padding: 0;
+            display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .gv-tile .wrap { position: relative; line-height: 0; }
+        .gv-ic { border-radius: 12px; background: #23262C; object-fit: cover; display: block;
+            border: 2.5px solid transparent; }
+        .gv-ph { display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 15px; }
+        .gv-tile[aria-pressed="true"] .gv-ic { border-color: #14161A; }
+        .gv-tile .cn { font-size: 9px; font-weight: 800; color: #A4AAB0; max-width: 58px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
+        .gv-tile[aria-pressed="true"] .cn { color: #14161A; font-weight: 900; }
+        .gv-tile.dim { opacity: .34; }
+        .gv-bg { position: absolute; right: -3px; bottom: 1px; font-size: 8px; font-weight: 900; color: #fff;
+            background: #14161A; border-radius: 5px; padding: 1px 3px; line-height: 1.2; border: 1.5px solid #fff; }
+        .gv-pt { border: 1px solid rgba(20,22,26,0.07); border-radius: 14px; padding: 10px 11px; margin-bottom: 8px; background: #fff; }
+        .gv-pt .h { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+        .gv-pt .h b { font-size: 12.5px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; }
+        .gv-pt .h .d { margin-left: auto; font-size: 10.5px; font-weight: 900; color: #A4AAB0; }
+        .gv-boss { font-size: 9.5px; font-weight: 900; border-radius: 6px; padding: 2px 6px; background: #F1F2F4; color: #6B7178; }
+        .gv-team { display: flex; gap: 6px; }
+        .gv-tm { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .gv-tm .gv-ic { width: 100%; height: auto; aspect-ratio: 1; }
+        .gv-tm .g { font-size: 9.5px; font-weight: 900; border-radius: 6px; padding: 1px 3px; width: 100%;
+            text-align: center; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .gv-tm .g.up { color: #0E9455; background: rgba(24,194,107,0.12); }
+        .gv-tm .g.mine { color: #5B2BE0; background: rgba(108,66,240,0.11); }
+        .gv-tm .g.flat { color: #6B7178; background: #F1F2F4; }
+        .gv-tm .g.none { color: #B45309; background: rgba(245,158,11,0.13); }
+        .gv-sorts { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        .gv-sorts::-webkit-scrollbar { display: none; }
+        .gv-sorts button { flex: none; white-space: nowrap; }
+        .gv-rowhd { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+        .gv-rowhd .t { flex: 1; min-width: 0; }
+        .gv-rowhd .t b { display: block; font-size: 14px; font-weight: 900; color: #14161A; }
+        .gv-rowhd .t small { display: block; font-size: 10.5px; font-weight: 800; color: #A4AAB0; }
+        .gv-rk { display: grid; grid-template-columns: 1.9em 28px minmax(0,1fr) auto; gap: 8px; align-items: center;
+            padding: 6px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
+        .gv-rk:first-child { border-top: 0; }
+        .gv-rk.me { background: rgba(108,66,240,0.09); border-radius: 10px; padding-left: 6px; padding-right: 6px; }
+        .gv-rk .no { font-size: 12px; font-weight: 900; color: #A4AAB0; text-align: center; font-variant-numeric: tabular-nums; }
+        .gv-rk.me .no { color: #5B2BE0; }
+        .gv-rk .nm { font-size: 12.5px; font-weight: 900; color: #14161A; min-width: 0; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+        .gv-rk .nm small { display: block; font-size: 10px; font-weight: 800; color: #A4AAB0; }
+        .gv-rk .val { font-size: 13px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; text-align: right; }
+        .gv-rk.me .val { color: #5B2BE0; }
+        .gv-hint { font-size: 10.5px; font-weight: 700; color: #A4AAB0; line-height: 1.7; margin: 7px 2px 0; }
         .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: #8A9097; background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
         /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
         .dc-mb-seg { display:inline-flex; background:#F1F2F4; border-radius:999px; padding:3px; }
@@ -5887,17 +5962,6 @@
                 <div class="modal-damage-summary" id="modalDamageSummary"></div>
                 <div id="playerCompContainer"></div>
             </div>
-        </div>
-    </div>
-
-    <!-- ========== 🧬 育成をくらべる (D1・2026-09-09)。純ロジックは js/domain/growth.js ========== -->
-    <div class="player-select-modal" id="growthCmpModal" onclick="if(event.target===this)closeGrowthCompare()">
-        <div class="player-select-content" style="max-width:520px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                <h2 id="growthCmpTitle" style="flex:1;min-width:0;font-size:16px;font-weight:900;color:#14161A;">🧬 育成をくらべる</h2>
-                <button onclick="closeGrowthCompare()" style="flex:none;padding:6px 12px;border-radius:9px;border:none;background:#F1F2F4;color:#14161A;font-size:12px;font-weight:800;cursor:pointer;">閉じる</button>
-            </div>
-            <div id="growthCmpBody"><p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p></div>
         </div>
     </div>
 
@@ -16014,214 +16078,406 @@
             }
         }
 
-        // ===== 🧬 育成 (分析タブのビュー) =====
-        //   レイドが終わったあとにスコアを詰めるための場所なので、実績・ふるり値と同じタブに置く。
-        //   ★ 名前は id → 名前 の地図から引く (属性に埋めない — 引用符で壊れる/注入できる)
+        // ===== 🧬 育成くらべ (分析タブのビュー・2026-09-09 作り直し) =====
+        //   レイドが終わったあとにスコアを詰める場所。判定は js/domain/growth.js が唯一。
+        //   ★ 「どのレイドを見ているか」を画面が持つ (実機FB 2026-09-09) — 以前は
+        //     member_growth_status の**最大シーズン**に張り付いていた。検証用のテスト回に
+        //     取り込みの跡が1件でも残っていると、本番の回で取れた14人が全員「未取得」に見える。
+        //     既定は growthDomain.defaultGrowthSeason (= 取り込めた人がいる本番の最新回)。
+        //   ★ 編成は**その回の凸記録**から作る (usedTeams)。盤面の loadoutsByAttr は
+        //     アクティブシーズンの模擬編成なので、終わったレイドの振り返りには使えない。
+        //   ★ 相手は「メンバー」か「ユニオン全体」。全体を選ぶと同じ画面がそのまま順位表になる。
+        //   ★ キャラ名・メンバー名を onclick に埋めない — 引用符でその場が壊れ、注入もできる
+        //     (Codex指摘 2026-09-09)。渡すのは番号 (_gv.chars の添字) と id だけ。
         const _growthNames = new Map();
-        const _gAna = { gen: 0 };
+        const _gv = {
+            gen: 0, seasons: null, players: [], seasonId: null, byPl: null, chars: [], status: null,
+            teams: null, them: null, view: 'pt', base: 'mine', charIdx: -1, q: '', burst: 'all',
+            sort: 'combat', open: new Set(), rosterOpen: false, focusQ: false,
+        };
 
-        async function renderGrowthAnalysis() {
+        async function renderGrowthAnalysis(reload) {
             const box = document.getElementById('growthAnaBody');
             if (!box) return;
             const dom = window.growthDomain;
-            const gen = ++_gAna.gen;
-            box.innerHTML = '<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:10px 0;">読み込み中…</p>';
-            if (!dom) { box.innerHTML = '<p class="gc-empty">育成の機能を読み込めませんでした。再読み込みしてください。</p>'; return; }
+            if (!dom) { box.innerHTML = '<div class="dc-card"><p class="gc-empty">育成の機能を読み込めませんでした。再読み込みしてください。</p></div>'; return; }
+            const gen = ++_gv.gen;
+            if (!_gv.seasons || reload) {
+                box.innerHTML = '<p style="margin:0;font-size:12px;color:#A4AAB0;text-align:center;padding:14px 0;">読み込み中…</p>';
+            }
             try {
-                const [st, players] = await Promise.all([
-                    window.supabaseLoadLatestGrowthStatus(),
-                    window.supabaseLoadAllPlayers(),
-                ]);
-                if (gen !== _gAna.gen) return;
-                if (st === null) {
-                    box.innerHTML = '<div class="dc-card"><p class="gc-empty">supabase/43_member_growth.sql を適用すると使えます。</p></div>';
+                if (!_gv.seasons) {
+                    const [seasons, players] = await Promise.all([
+                        window.supabaseLoadGrowthSeasonSummary(),
+                        window.supabaseLoadAllPlayers(),
+                    ]);
+                    if (gen !== _gv.gen) return;
+                    if (seasons === null) {
+                        box.innerHTML = '<div class="dc-card"><p class="gc-empty">supabase/43_member_growth.sql を適用すると使えます。</p></div>';
+                        return;
+                    }
+                    _gv.seasons = seasons;
+                    _gv.players = players || [];
+                    _gv.players.forEach(p => _growthNames.set(String(p.id), p.name));
+                    if (_gv.seasonId == null) _gv.seasonId = dom.defaultGrowthSeason(seasons);
+                }
+                if (_gv.seasonId == null) {
+                    box.innerHTML = '<div class="dc-card"><p class="gc-empty">まだ育成データがありません。'
+                        + '運営タブの「🧬 育成データの取り込み」で取り込むと、ここでくらべられます。</p></div>';
                     return;
                 }
-                players.forEach(p => _growthNames.set(String(p.id), p.name));
-                _gAnaPaint(st, players);
+                if (_gv.byPl === null) {
+                    const [rows, status, teams] = await Promise.all([
+                        window.supabaseLoadGrowthSeasonRows(_gv.seasonId),
+                        window.supabaseLoadMemberGrowthStatus(_gv.seasonId),
+                        window.supabaseLoadSeasonTeams(_gv.seasonId),
+                    ]);
+                    if (gen !== _gv.gen) return;
+                    _gv.byPl = dom.byPlayerCharacter(rows || []);
+                    _gv.chars = dom.charactersIn(rows || []);
+                    _gv.status = status || [];
+                    _gv.teams = teams || [];
+                    if (_gv.charIdx >= _gv.chars.length) _gv.charIdx = -1;
+                }
+                _gvPaint();
             } catch (e) {
-                if (gen !== _gAna.gen) return;
+                if (gen !== _gv.gen) return;
                 box.innerHTML = `<div class="dc-card"><p class="gc-empty" style="color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p></div>`;
             }
         }
 
-        function _gAnaPaint(st, players) {
+        // ---- 触ったときの動き。★ 相手・見方・並べ替えを変えても取り直さない (レイドを変えたときだけ) ----
+        function handleGrowthAnaSeason(id) {
+            const sid = Number(id);
+            if (!Number.isFinite(sid) || sid === Number(_gv.seasonId)) return;
+            _gv.seasonId = sid;
+            _gv.byPl = null; _gv.chars = []; _gv.status = null; _gv.teams = null;
+            _gv.them = null; _gv.charIdx = -1; _gv.open = new Set();
+            renderGrowthAnalysis(true);
+        }
+        function handleGrowthAnaWho(id) {
+            _gv.them = (id === '' || id == null) ? null : Number(id);
+            _gv.open = new Set();
+            _gvPaint();
+        }
+        function handleGrowthAnaView(v) { _gv.view = v === 'char' ? 'char' : 'pt'; _gv.open = new Set(); _gvPaint(); }
+        function handleGrowthAnaBase(b) { _gv.base = b === 'them' ? 'them' : 'mine'; _gv.open = new Set(); _gvPaint(); }
+        function handleGrowthAnaBurst(b) { _gv.burst = String(b || 'all'); _gvPaint(); }
+        function handleGrowthAnaChar(i) { _gv.charIdx = Number(i); _gv.open = new Set(); _gvPaint(); }
+        function handleGrowthAnaSort(k) { _gv.sort = String(k || 'combat'); _gvPaint(); }
+        function handleGrowthAnaRoster() { _gv.rosterOpen = !_gv.rosterOpen; _gvPaint(); }
+        function handleGrowthAnaSearch(v) { _gv.q = String(v == null ? '' : v); _gv.focusQ = true; _gvPaint(); }
+        function handleGrowthAnaOpen(key) {
+            const k = String(key);
+            if (_gv.open.has(k)) _gv.open.delete(k); else _gv.open.add(k);
+            _gvPaint();
+        }
+        // 運営タブ「残り戦闘可能メンバー」の名前から。分析タブの育成ビューに送り、その人を相手にする
+        function openGrowthCompare(playerId) {
+            _gv.them = Number(playerId);
+            _gv.view = 'pt'; _gv.base = 'them'; _gv.open = new Set();
+            _gotoSlvView('growth');
+        }
+
+        // ---- 小道具 ----
+        function _gvIcon(name, size, extra) {
+            const r = resolveNikkeChar(name);
+            const st = `width:${size}px;height:${size}px;`;
+            if (r && r.iconPath) {
+                return `<img loading="lazy" decoding="async" class="gv-ic ${extra || ''}" src="${escapeHtml(r.iconPath)}"`
+                    + ` alt="${escapeHtml(name)}" style="${st}">`;
+            }
+            return `<span class="gv-ic gv-ph ${extra || ''}" style="${st}">${escapeHtml(String(name).slice(0, 1))}</span>`;
+        }
+        function _gvBurst(name) {
+            if (typeof _nikkeCharsByName === 'undefined' || !_nikkeCharsByName) return '';
+            const c = _nikkeCharsByName.get(resolveNikkeChar(name)?.canonical || name);
+            return c && c.burst ? String(c.burst) : '';
+        }
+        const _gvPlayer = (id) => (_gv.players || []).find(p => String(p.id) === String(id)) || null;
+        const _gvName = (id) => (_gvPlayer(id)?.name) || _growthNames.get(String(id)) || `#${id}`;
+
+        function _gvPaint() {
             const box = document.getElementById('growthAnaBody');
             const dom = window.growthDomain;
-            if (!box || !dom) return;
+            if (!box || !dom || _gv.byPl === null) return;
             const esc = escapeHtml;
-            const by = new Map((st.rows || []).map(r => [String(r.player_id), r]));
-            const rows = players.map(p => ({ p, s: by.get(String(p.id)) || null }));
-            const n = { ok: 0, private: 0, other: 0 };
-            rows.forEach(({ s }) => { if (s?.status === 'ok') n.ok++; else if (s?.status === 'private') n.private++; else n.other++; });
+            const me = getCurrentIdentity();
+            const seasonJp = (s) => `${s.month_key || 'ID' + s.id}`
+                + `${s.hard_date ? ` (${String(s.hard_date).slice(5).replace('-', '/')})` : ''}${s.is_test ? ' 🧪テスト' : ''}`;
+            const bar = `<div class="dc-card" style="margin-bottom:10px;">
+                    <div class="gv-k">どのレイドの育成か</div>
+                    <select class="gv-sel" onchange="handleGrowthAnaSeason(this.value)">
+                        ${(_gv.seasons || []).map(s => `<option value="${Number(s.id)}"${Number(s.id) === Number(_gv.seasonId) ? ' selected' : ''}>`
+                + `${esc(seasonJp(s))} · 取り込み ${Number(s.ok) || 0}人</option>`).join('')}
+                    </select>
+                </div>`;
+            const mineN = Object.keys((_gv.byPl || {})[String(me && me.id != null ? me.id : '')] || {}).length;
+            const warn = !me || me.id == null
+                ? '<p class="gc-note warn" style="margin:0 2px 10px;">ホームで自分のプレイヤーを選ぶと、自分とくらべられます。</p>'
+                : (!mineN ? '<p class="gc-note warn" style="margin:0 2px 10px;">この回、自分の育成が取り込まれていません。'
+                    + '運営タブの「🧬 育成データの取り込み」で取り込むと差が出ます。</p>' : '');
+            box.innerHTML = bar + _gvSummary() + _gvWho(me) + _gvSeg() + warn
+                + (_gv.view === 'char' ? _gvViewChar(me) : _gvViewPT(me));
+            if (_gv.focusQ) {
+                _gv.focusQ = false;
+                const q = document.getElementById('gvQ');
+                if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+            }
+        }
+
+        function _gvSummary() {
+            const esc = escapeHtml;
+            const by = new Map((_gv.status || []).map(r => [String(r.player_id), r]));
+            const rows = (_gv.players || []).map(p => ({ p, s: by.get(String(p.id)) || null }));
+            const n = { ok: 0, priv: 0, other: 0 };
+            rows.forEach(({ s }) => { if (s && s.status === 'ok') n.ok++; else if (s && s.status === 'private') n.priv++; else n.other++; });
             const total = rows.length || 1;
             const pct = (v) => `${(v / total * 100).toFixed(1)}%`;
-            const head = `
-                <div class="dc-card" style="margin-bottom:10px;">
-                    <div class="gc-k">ユニオン全体</div>
-                    <div class="gc-big">育成が取れたのは <em>${n.ok}</em> / ${rows.length}人</div>
-                    <div class="gc-bar"><i style="width:${pct(n.ok)};background:#18C26B"></i><i style="width:${pct(n.private)};background:#F59E0B"></i><i style="width:${pct(n.other)};background:#C9CED4"></i></div>
-                    <div class="gc-legend"><span class="them">取り込み済み ${n.ok}</span><span class="me">非公開 ${n.private} · 未取得 ${n.other}</span></div>
-                    ${n.private ? `<p style="margin:9px 0 0;font-size:11px;font-weight:700;color:#8A9097;line-height:1.6;">非公開の人は BlaBlaLINK でゲームカードを公開してもらう必要があります。取り込みは運営タブの「🧬 育成データの取り込み」から。</p>` : ''}
-                </div>`;
-            // 取り込めた人が先。同じ状態なら名前順
             const order = { ok: 0, private: 1 };
-            rows.sort((a, b) => (order[a.s?.status] ?? 2) - (order[b.s?.status] ?? 2) || String(a.p.name).localeCompare(String(b.p.name), 'ja'));
-            const list = rows.map(({ p, s }) => {
-                const ok = s?.status === 'ok';
-                const sub = ok ? `${Number(s.character_count) || 0}体 取り込み済み`
-                    : s?.status === 'private' ? '本人が非公開にしています'
-                        : s?.status === 'no_openid' ? '識別子が未設定です' : '未取得';
-                const pill = ok ? '<span class="gc-pill ok">くらべる</span>'
-                    : s?.status === 'private' ? '<span class="gc-pill no">非公開</span>'
-                        : '<span class="gc-pill wait">未取得</span>';
-                const tap = ok ? ` onclick="openGrowthCompare(${Number(p.id)})" style="cursor:pointer;"` : '';
-                return `<div class="gc-mrow"${tap}>${renderAvatarHtml(p, 30)}`
-                    + `<span class="nm">${esc(p.name)}<small>${esc(sub)}</small></span>${pill}</div>`;
-            }).join('');
-            box.innerHTML = head + `<div class="dc-card dc-card-tight">${list}</div>`;
+            const list = !_gv.rosterOpen ? '' : `<div style="margin-top:9px;">${rows.slice()
+                .sort((a, b) => (order[a.s?.status] ?? 2) - (order[b.s?.status] ?? 2)
+                    || String(a.p.name).localeCompare(String(b.p.name), 'ja'))
+                .map(({ p, s }) => {
+                    const ok = s?.status === 'ok';
+                    const sub = ok ? `${Number(s.character_count) || 0}体 取り込み済み`
+                        : s?.status === 'private' ? '本人が非公開にしています'
+                            : s?.status === 'no_openid' ? '識別子が未設定です' : '未取得';
+                    const pill = ok ? '<span class="gc-pill ok">くらべられる</span>'
+                        : s?.status === 'private' ? '<span class="gc-pill no">非公開</span>'
+                            : '<span class="gc-pill wait">未取得</span>';
+                    return `<div class="gc-mrow">${renderAvatarHtml(p, 28)}`
+                        + `<span class="nm">${esc(p.name)}<small>${esc(sub)}</small></span>${pill}</div>`;
+                }).join('')}</div>`;
+            return `<div class="dc-card" style="margin-bottom:10px;">
+                    <div class="gv-k">この回のユニオン全体</div>
+                    <div class="gc-big">育成が取れたのは <em>${n.ok}</em> / ${rows.length}人</div>
+                    <div class="gc-bar"><i style="width:${pct(n.ok)};background:#18C26B"></i><i style="width:${pct(n.priv)};background:#F59E0B"></i><i style="width:${pct(n.other)};background:#C9CED4"></i></div>
+                    <div class="gc-legend"><span class="them">取り込み済み ${n.ok}</span><span class="me">非公開 ${n.priv} · 未取得 ${n.other}</span></div>
+                    <button type="button" class="gc-more" onclick="handleGrowthAnaRoster()">${_gv.rosterOpen ? '内訳を畳む ▴' : '誰が取れていないかを見る ▾'}</button>
+                    ${list}
+                </div>`;
         }
 
-        // ===== 🧬 育成をくらべる (D1・2026-09-09) =====
-        //   「A さんのこの編成、ふるり値高いな」→ その人の育成と自分の同じキャラを並べる。
-        //   判定 (項目・勝ち負け・オーバーロードの突き合わせ) は js/domain/growth.js の compare が唯一。
-        //   ★ シーズンは**育成を取り込んだシーズン**を使う (アクティブとは限らない — 取り込みはレイドの後)。
-        const _gc = { gen: 0, them: null, squads: [], pick: 0, mine: null, theirs: null, seasonId: null, err: null, open: new Set() };
-
-        // ★ 名前は**渡さない** (Codex指摘 2026-09-09)。名前を属性に埋めると引用符でその場が壊れ、
-        //   ` onmouseenter=…` のような名前を付けられると実行される。id だけ渡して盤面から引く
-        async function openGrowthCompare(playerId) {
-            const modal = document.getElementById('growthCmpModal');
-            const body = document.getElementById('growthCmpBody');
-            const title = document.getElementById('growthCmpTitle');
-            if (!modal || !body) return;
-            const dom = window.growthDomain;
-            const me = getCurrentIdentity();
-            const gen = ++_gc.gen;
-            let known = (opsStore.get()?.players || []).find(x => Number(x.id) === Number(playerId)) || null;
-            _gc.them = { id: Number(playerId), name: String(known?.name || _growthNames.get(String(playerId)) || `#${Number(playerId)}`) };
-            _gc.squads = []; _gc.pick = 0; _gc.mine = null; _gc.theirs = null; _gc.err = null; _gc.open = new Set();
-            if (title) title.textContent = `🧬 ${_gc.them.name} と くらべる`;   // textContent なので名前はそのままで安全
-            body.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p>';
-            modal.classList.add('open');
-            if (!dom) { body.innerHTML = '<p class="gc-empty">育成の機能を読み込めませんでした。再読み込みしてください。</p>'; return; }
-            if (!me?.id) { body.innerHTML = '<p class="gc-empty">先にホームで自分のプレイヤーを選んでください。</p>'; return; }
-            try {
-                const rows = await window.supabaseLoadMemberGrowth(null, [Number(playerId), Number(me.id)]);
-                if (gen !== _gc.gen) return;
-                if (rows === null) { body.innerHTML = '<p class="gc-empty">supabase/43_member_growth.sql を適用すると使えます。</p>'; return; }
-                _gc.seasonId = rows.length ? rows[0].season_id : null;
-                _gc.theirs = dom.byCharacter(rows.filter(r => Number(r.player_id) === Number(playerId)));
-                _gc.mine = dom.byCharacter(rows.filter(r => Number(r.player_id) === Number(me.id)));
-                // 編成は盤面から (属性ごと・ボス順)。育成が1人も取れていない編成は出さない
-                // 編成は盤面から。分析タブから開いたときはまだ読んでいないので、そのときだけ取りに行く
-                let snap = opsStore.get();
-                if (!known) {
-                    try { snap = await opsStore.load(); } catch { snap = null; }
-                    if (gen !== _gc.gen) return;
-                    known = (snap?.players || []).find(x => Number(x.id) === Number(playerId)) || null;
-                    if (known?.name) _gc.them.name = String(known.name);
-                }
-                _gc.squads = dom.squadsFor(known?.loadoutsByAttr, _gc.theirs, _orderAttrsByBosses(snap?.bosses));
-                _gcRender();
-            } catch (e) {
-                if (gen !== _gc.gen) return;
-                body.innerHTML = `<p class="gc-empty" style="color:#ef4444;">読み込みエラー: ${escapeHtml(e?.message || String(e))}</p>`;
-            }
-        }
-        function closeGrowthCompare() {
-            _gc.gen++;
-            document.getElementById('growthCmpModal')?.classList.remove('open');
-        }
-        // ★ 編成を変えたら開き具合を捨てる (Codex指摘 2026-09-09) —
-        //   開閉は番号で持っているので、そのままだと別のキャラが開いた状態になる
-        function handleGrowthCmpPick(i) { _gc.pick = Number(i) || 0; _gc.open = new Set(); _gcRender(); }
-
-        function handleGrowthCmpOpen(i) {
-            const k = String(i);
-            if (_gc.open.has(k)) _gc.open.delete(k); else _gc.open.add(k);
-            _gcRender();
-        }
-
-        function _gcRender() {
-            const body = document.getElementById('growthCmpBody');
-            const dom = window.growthDomain;
-            if (!body || !dom) return;
+        function _gvWho(me) {
             const esc = escapeHtml;
-            const theirsN = Object.keys(_gc.theirs || {}).length;
-            const mineN = Object.keys(_gc.mine || {}).length;
-            if (!theirsN) {
-                body.innerHTML = `<p class="gc-empty">${esc(_gc.them.name)} の育成データはまだありません。<br>`
-                    + 'BlaBlaLINK でゲームカードを公開してもらってから、運営タブの「🧬 育成データの取り込み」で取り込みます。</p>';
-                return;
-            }
-            // 見る編成 (無ければ「取り込めたキャラ全部」を1つの束として出す)
-            const squads = _gc.squads.length ? _gc.squads
-                : [{ attrKey: '', attrName: '取り込めたキャラ', slot: 1, dmgB: 0, team: Object.keys(_gc.theirs).sort() }];
-            const pick = Math.min(_gc.pick, squads.length - 1);
-            const cur = squads[pick];
-            const seg = squads.length > 1
-                ? `<div class="gc-seg">${squads.map((q, i) => `<button type="button" aria-pressed="${i === pick ? 'true' : 'false'}" onclick="handleGrowthCmpPick(${i})">`
-                    + `${esc(q.attrName)}${q.slot > 1 ? esc(SLOT_JP[q.slot] || '') : ''}${q.dmgB > 0 ? ` ${q.dmgB.toFixed(1)}B` : ''}</button>`).join('')}</div>`
-                : '';
+            const myId = me && me.id != null ? String(me.id) : '';
+            const have = new Set(Object.keys(_gv.byPl || {}));
+            const mates = (_gv.players || []).filter(p => have.has(String(p.id)) && String(p.id) !== myId);
+            const all = `<button type="button" aria-pressed="${_gv.them == null ? 'true' : 'false'}" onclick="handleGrowthAnaWho('')">`
+                + '<span class="rim"><span class="all">👥</span></span><span class="nm">ユニオン全体</span></button>';
+            const rest = mates.map(p => `<button type="button" aria-pressed="${String(_gv.them) === String(p.id) ? 'true' : 'false'}"`
+                + ` onclick="handleGrowthAnaWho(${Number(p.id)})">`
+                + `<span class="rim">${renderAvatarHtml(p, 40)}</span><span class="nm">${esc(p.name)}</span></button>`).join('');
+            return `<div class="dc-card dc-card-tight" style="margin-bottom:10px;">
+                    <div class="gv-k">くらべる相手</div>
+                    <div class="gv-who">${all}${rest}</div>
+                    ${mates.length ? '' : '<p class="gv-hint" style="margin:2px;">この回に取り込めた人がまだいません。</p>'}
+                </div>`;
+        }
 
-            // ★ 結論を先に出す。並びは差の大きい順 (rankSquad)
-            const { cells, summary } = dom.rankSquad(cur.team, _gc.mine, _gc.theirs);
+        function _gvSeg() {
+            return '<div class="gv-seg">'
+                + `<button type="button" aria-pressed="${_gv.view === 'pt' ? 'true' : 'false'}" onclick="handleGrowthAnaView('pt')">使った編成でくらべる</button>`
+                + `<button type="button" aria-pressed="${_gv.view === 'char' ? 'true' : 'false'}" onclick="handleGrowthAnaView('char')">キャラ別にくらべる</button>`
+                + '</div>';
+        }
+
+        // ---- 見方①: この回に使った編成 ----
+        function _gvViewPT(me) {
+            const dom = window.growthDomain, esc = escapeHtml;
+            const union = _gv.them == null;
+            const myId = me && me.id != null ? me.id : null;
+            const basePid = union ? myId : (_gv.base === 'mine' ? myId : _gv.them);
+            const baseSel = union ? '' : '<div class="gv-pills" style="margin-bottom:9px;">'
+                + `<button type="button" aria-pressed="${_gv.base === 'mine' ? 'true' : 'false'}" onclick="handleGrowthAnaBase('mine')">自分が使った編成</button>`
+                + `<button type="button" aria-pressed="${_gv.base === 'them' ? 'true' : 'false'}" onclick="handleGrowthAnaBase('them')">${esc(_gvName(_gv.them))}が使った編成</button>`
+                + '</div>';
+            if (basePid == null) {
+                return baseSel + '<div class="dc-card"><p class="gc-empty">ホームで自分のプレイヤーを選ぶと、自分が使った編成が出ます。</p></div>';
+            }
+            const teams = dom.usedTeams(_gv.teams || [], basePid);
+            if (!teams.length) {
+                return baseSel + `<div class="dc-card"><p class="gc-empty">この回、${esc(_gvName(basePid))} の凸には編成が残っていません。<br>`
+                    + '凸報告に編成を付けると、ここに並びます。</p></div>';
+            }
+            const mine = (_gv.byPl || {})[String(myId)] || {};
+            const theirs = union ? null : ((_gv.byPl || {})[String(_gv.them)] || {});
+            const head = union
+                ? '<div class="gc-verdict"><div class="gv-k">この回に自分が使った編成</div>'
+                + '<div class="gc-big">5体それぞれの <em class="mine">ユニオン内の順位</em></div>'
+                + '<p class="gv-hint" style="margin:0;">数字が小さいほど上位。順位の低い体ほど伸びしろがあります。</p></div>'
+                : _gvVerdict(teams, mine, theirs);
+            const cards = teams.map((t, ti) => {
+                const key = `pt${ti}`;
+                const open = _gv.open.has(key);
+                const cells = union ? null : dom.teamGaps(t.team, mine, theirs);
+                const tm = t.team.map((nm, k) => {
+                    if (union) {
+                        const r = dom.unionRanking(_gv.byPl, _gv.players, nm, 'combat', myId);
+                        const cls = r.myRank == null ? 'none'
+                            : r.myRank === 1 ? 'mine' : (r.myRank * 2 <= r.list.length ? 'flat' : 'up');
+                        const txt = r.myRank == null ? '未取得' : `${r.myRank}/${r.list.length}位`;
+                        return `<div class="gv-tm">${_gvIcon(nm, 44)}<span class="g ${cls}">${esc(txt)}</span></div>`;
+                    }
+                    const c = cells[k];
+                    const cls = c.gap == null ? 'none' : c.gap > 0 ? 'up' : c.gap < 0 ? 'mine' : 'flat';
+                    const txt = c.gap == null ? '未取得' : c.gap === 0 ? '差なし'
+                        : `${c.gap > 0 ? '+' : '−'}${dom.fmtMan(Math.abs(c.gap))}`;
+                    return `<div class="gv-tm">${_gvIcon(nm, 44)}<span class="g ${cls}">${esc(txt)}</span></div>`;
+                }).join('');
+                const detail = !open ? ''
+                    : (union ? t.team.map(nm => _gvUnionCard(nm, true)).join('')
+                        : _gvCharCards(t.team, mine, theirs, key));
+                return `<div class="gv-pt">
+                        <div class="h"><span class="gv-boss">B${t.bossNo} ${esc(t.bossCode)}</span>
+                            <b>${(t.dmg / 1e8).toFixed(1)}億</b>
+                            <span class="d">${t.count > 1 ? `${t.count}凸で使用` : '1凸'}</span></div>
+                        <div class="gv-team">${tm}</div>
+                        <button type="button" class="gc-more" onclick="handleGrowthAnaOpen('${key}')">${open ? '畳む ▴' : 'この5体を1体ずつくらべる ▾'}</button>
+                        ${detail}
+                    </div>`;
+            }).join('');
+            return baseSel + head + cards;
+        }
+
+        function _gvVerdict(teams, mine, theirs) {
+            const dom = window.growthDomain, esc = escapeHtml;
+            const names = [...new Set(teams.flatMap(t => t.team))];
+            const { summary } = dom.rankSquad(names, mine, theirs);
+            if (!summary.comparable) {
+                return '<div class="gc-verdict"><div class="gv-k">この回に使った編成</div>'
+                    + '<div class="gc-big">くらべられる体がありません</div></div>';
+            }
             const lead = summary.aheadTheirs > summary.aheadMine
-                ? `相手が <em>${summary.aheadTheirs}/${summary.comparable}体</em> で上`
+                ? `<em>${esc(_gvName(_gv.them))}</em>が ${summary.aheadTheirs}/${summary.comparable}体で上`
                 : summary.aheadMine > summary.aheadTheirs
-                    ? `自分が <em class="mine">${summary.aheadMine}/${summary.comparable}体</em> で上`
-                    : summary.comparable ? `${summary.comparable}体 とも ほぼ互角` : '比べられる体がありません';
+                    ? `<em class="mine">自分</em>が ${summary.aheadMine}/${summary.comparable}体で上`
+                    : `${summary.comparable}体とも ほぼ互角`;
             const tot = summary.sumMine + summary.sumTheirs;
             const wMine = tot > 0 ? (summary.sumMine / tot * 100).toFixed(1) : 50;
             const wThem = tot > 0 ? (100 - Number(wMine)).toFixed(1) : 50;
-            const diffTxt = summary.diff === 0 ? '同じ'
-                : `${summary.diff > 0 ? '+' : '−'}${dom.fmtMan(Math.abs(summary.diff))}`;
-            const verdict = `
-                <div class="gc-verdict">
-                    <div class="gc-k">この編成</div>
+            const diffTxt = summary.diff === 0 ? '同じ' : `${summary.diff > 0 ? '+' : '−'}${dom.fmtMan(Math.abs(summary.diff))}`;
+            return `<div class="gc-verdict">
+                    <div class="gv-k">この回に使った ${names.length} 体</div>
                     <div class="gc-big">${lead}</div>
                     <div class="gc-bar"><i style="width:${wMine}%;background:#C9CED4"></i><i style="width:${wThem}%;background:#18C26B"></i></div>
                     <div class="gc-legend"><span class="me">自分 計 ${dom.fmtMan(summary.sumMine)}</span>
-                        <span class="them">${esc(_gc.them.name)} 計 ${dom.fmtMan(summary.sumTheirs)} (${diffTxt})</span></div>
+                        <span class="them">${esc(_gvName(_gv.them))} 計 ${dom.fmtMan(summary.sumTheirs)} (${diffTxt})</span></div>
                 </div>`;
+        }
 
-            const cards = cells.map((c, i) => {
-                const open = _gc.open.has(String(i));
-                const gapPill = c.gap == null ? '<span class="gc-gap none">比べられない</span>'
-                    : c.gap > 0 ? `<span class="gc-gap up">+${dom.fmtMan(c.gap)}</span>`
-                        : c.gap < 0 ? `<span class="gc-gap mine">−${dom.fmtMan(-c.gap)}</span>`
-                            : '<span class="gc-gap flat">差なし</span>';
-                const top = Math.max(c.combatMine || 0, c.combatTheirs || 0) || 1;
-                const bar = (v, who) => `<div class="gc-dbar ${who}"><span class="w">${who === 'them' ? esc(_gc.them.name) : '自分'}</span>`
-                    + `<span class="track"><i style="width:${v == null ? 0 : (v / top * 100).toFixed(1)}%"></i></span>`
-                    + `<span class="v">${dom.fmtMan(v)}</span></div>`;
-                // 差のある項目だけをチップに。自分が上のものは別の色で見せる
-                const chips = c.diffs.map(r => `<span class="gc-chip ${r.lead === 'mine' ? 'mine' : 'up'}">${esc(r.label)} ${esc(r.lead === 'mine' ? r.mine : r.theirs)}</span>`).join('');
-                const table = !open ? '' : `<div class="gc-tbl">
-                    <div class="gc-tr"><span class="k"></span><span class="k r">自分</span><span class="k r">${esc(_gc.them.name)}</span></div>`
-                    + c.rows.map(r => `<div class="gc-tr"><span class="k">${esc(r.label)}</span>`
+        // ---- 見方②: キャラ別 ----
+        function _gvViewChar(me) {
+            const dom = window.growthDomain, esc = escapeHtml;
+            const union = _gv.them == null;
+            const myId = me && me.id != null ? me.id : null;
+            const mine = (_gv.byPl || {})[String(myId)] || {};
+            const theirs = union ? null : ((_gv.byPl || {})[String(_gv.them)] || {});
+            const q = String(_gv.q || '').trim();
+            const has = (n) => (union ? true : !!(mine[n] && theirs[n]));
+            const idx = _gv.chars.map((n, i) => i).filter((i) => {
+                const nm = _gv.chars[i];
+                if (_gv.burst !== 'all' && _gvBurst(nm) !== _gv.burst) return false;
+                if (q && !nm.includes(q)) return false;
+                return true;
+            });
+            // くらべられる体 (両方が持っている) を先に。同じなら五十音のまま (sort は安定)
+            idx.sort((a, b) => (has(_gv.chars[b]) ? 1 : 0) - (has(_gv.chars[a]) ? 1 : 0));
+            const BURSTS = ['all', 'B1', 'B2', 'B3', 'BΛ'];
+            const picker = `<div class="dc-card">
+                    <input type="text" class="gv-srch" id="gvQ" placeholder="キャラ名でさがす" value="${esc(_gv.q)}"
+                           oninput="handleGrowthAnaSearch(this.value)">
+                    <div class="gv-pills">${BURSTS.map(b => `<button type="button" aria-pressed="${_gv.burst === b ? 'true' : 'false'}"`
+                + ` onclick="handleGrowthAnaBurst('${b}')">${b === 'all' ? 'すべて' : b}</button>`).join('')}</div>
+                    <div class="gv-grid">${idx.map(i => {
+                    const nm = _gv.chars[i];
+                    const bs = _gvBurst(nm);
+                    return `<button type="button" class="gv-tile${has(nm) ? '' : ' dim'}"`
+                        + ` aria-pressed="${i === _gv.charIdx ? 'true' : 'false'}" onclick="handleGrowthAnaChar(${i})">`
+                        + `<span class="wrap">${_gvIcon(nm, 46)}${bs ? `<span class="gv-bg">${esc(bs)}</span>` : ''}</span>`
+                        + `<span class="cn">${esc(nm)}</span></button>`;
+                }).join('')}</div>
+                    ${idx.length ? '' : '<p class="gc-empty" style="margin-top:9px;">みつかりません。</p>'}
+                </div>`;
+            const name = _gv.charIdx >= 0 ? _gv.chars[_gv.charIdx] : null;
+            if (!name) return picker + '<p class="gv-hint">キャラを選ぶと、ここにくらべた結果が出ます。</p>';
+            if (union) {
+                const sorts = '<div class="dc-card dc-card-tight" style="margin-top:10px;">'
+                    + '<div class="gv-k">ならべかえ</div>'
+                    + `<div class="gv-pills gv-sorts">${dom.SORT_FIELDS.map(f => `<button type="button"`
+                        + ` aria-pressed="${_gv.sort === f.key ? 'true' : 'false'}" onclick="handleGrowthAnaSort('${f.key}')">${esc(f.label)}</button>`).join('')}</div>`
+                    + '</div>';
+                return picker + sorts + `<div style="margin-top:10px;">${_gvUnionCard(name, false)}</div>`;
+            }
+            const { cells } = dom.rankSquad([name], mine, theirs);
+            return picker + `<div style="margin-top:10px;">${_gvCharCard(cells[0], 'c0')}</div>`;
+        }
+
+        // ---- ユニオン内の順位 (1体ぶん) ----
+        function _gvUnionCard(name, compact) {
+            const dom = window.growthDomain, esc = escapeHtml;
+            const me = getCurrentIdentity();
+            const myId = me && me.id != null ? me.id : null;
+            const r = dom.unionRanking(_gv.byPl, _gv.players, name, _gv.sort, myId);
+            const rows = r.list.map((x, i) => {
+                const p = _gvPlayer(x.playerId);
+                const isMe = myId != null && String(x.playerId) === String(myId);
+                return `<div class="gv-rk${isMe ? ' me' : ''}"><span class="no">${i + 1}</span>`
+                    + `<span>${p ? renderAvatarHtml(p, 28) : ''}</span>`
+                    + `<span class="nm">${esc(x.name)}<small>${esc(dom.gradeText(x.row.grade, x.row.core))} · Lv${x.row.lv == null ? '—' : Number(x.row.lv)}</small></span>`
+                    + `<span class="val">${esc(x.text)}</span></div>`;
+            }).join('');
+            return `<div class="dc-card${compact ? ' dc-card-tight' : ''}" style="margin-top:${compact ? '8px' : '0'};">
+                    <div class="gv-rowhd">${_gvIcon(name, 38)}<span class="t"><b>${esc(name)}</b>
+                        <small>${r.list.length}人が所持 · ${r.myRank == null ? '自分は未取得' : `自分は ${r.myRank} 位`} · ${esc(r.field.label)}順</small></span></div>
+                    ${rows || '<p class="gc-empty">この回、持っている人がいません。</p>'}
+                </div>`;
+        }
+
+        // ---- 1体ぶんのくらべカード (差の大きい順に並べたものを受け取る) ----
+        function _gvCharCards(team, mine, theirs, keyPrefix) {
+            const dom = window.growthDomain;
+            const { cells } = dom.rankSquad(team, mine, theirs);
+            return cells.map((c, i) => _gvCharCard(c, `${keyPrefix}_${i}`)).join('');
+        }
+
+        function _gvCharCard(c, key) {
+            const dom = window.growthDomain, esc = escapeHtml;
+            if (!c) return '';
+            const themName = _gvName(_gv.them);
+            const open = _gv.open.has(key);
+            const gapPill = c.gap == null ? '<span class="gc-gap none">比べられない</span>'
+                : c.gap > 0 ? `<span class="gc-gap up">+${dom.fmtMan(c.gap)}</span>`
+                    : c.gap < 0 ? `<span class="gc-gap mine">−${dom.fmtMan(-c.gap)}</span>`
+                        : '<span class="gc-gap flat">差なし</span>';
+            const top = Math.max(c.combatMine || 0, c.combatTheirs || 0) || 1;
+            const bar = (v, who) => `<div class="gc-dbar ${who}"><span class="w">${who === 'them' ? esc(themName) : '自分'}</span>`
+                + `<span class="track"><i style="width:${v == null ? 0 : (v / top * 100).toFixed(1)}%"></i></span>`
+                + `<span class="v">${dom.fmtMan(v)}</span></div>`;
+            const chips = c.diffs.map(r => `<span class="gc-chip ${r.lead === 'mine' ? 'mine' : 'up'}">`
+                + `${esc(r.label)} ${esc(r.lead === 'mine' ? r.mine : r.theirs)}</span>`).join('');
+            const table = !open ? '' : `<div class="gc-tbl">
+                    <div class="gc-tr"><span class="k"></span><span class="k r">自分</span><span class="k r">${esc(themName)}</span></div>`
+                + c.rows.map(r => `<div class="gc-tr"><span class="k">${esc(r.label)}</span>`
+                    + `<span class="v ${_gcCls(r.lead, 'mine')}">${esc(r.mine)}</span>`
+                    + `<span class="v ${_gcCls(r.lead, 'theirs')}">${esc(r.theirs)}</span></div>`).join('')
+                + ((c.overload || []).length
+                    ? '<div class="gc-tr"><span class="k" style="color:#A4AAB0;">オーバーロード</span><span></span><span></span></div>'
+                    + c.overload.map(r => `<div class="gc-tr"><span class="k">${esc(r.label)}</span>`
                         + `<span class="v ${_gcCls(r.lead, 'mine')}">${esc(r.mine)}</span>`
                         + `<span class="v ${_gcCls(r.lead, 'theirs')}">${esc(r.theirs)}</span></div>`).join('')
-                    + ((c.overload || []).length
-                        ? `<div class="gc-tr"><span class="k" style="color:#A4AAB0;">オーバーロード</span><span></span><span></span></div>`
-                        + c.overload.map(r => `<div class="gc-tr"><span class="k">${esc(r.label)}</span>`
-                            + `<span class="v ${_gcCls(r.lead, 'mine')}">${esc(r.mine)}</span>`
-                            + `<span class="v ${_gcCls(r.lead, 'theirs')}">${esc(r.theirs)}</span></div>`).join('')
-                        : '')
-                    + '</div>';
-                const miss = !c.hasBoth
-                    ? `<div class="gc-miss">${(_gc.theirs || {})[c.character] ? '自分' : esc(_gc.them.name)} は未取り込み</div>` : '';
-                return `<div class="gc-char"><div class="gc-top"><span class="cn">${esc(c.character)}</span>${gapPill}</div>`
-                    + bar(c.combatMine, 'me') + bar(c.combatTheirs, 'them') + miss
-                    + (chips ? `<div class="gc-chips">${chips}</div>` : '')
-                    + table
-                    + `<button type="button" class="gc-more" onclick="handleGrowthCmpOpen(${i})">${open ? '畳む ▴' : '9項目すべてを見る ▾'}</button></div>`;
-            }).join('');
-
-            const note = !mineN
-                ? '<p class="gc-note warn">自分の育成がまだ取り込まれていません。自分のぶんを取り込むと差が出ます。</p>' : '';
-            body.innerHTML = seg + verdict + note + cards;
+                    : '')
+                + '</div>';
+            const miss = c.hasBoth ? ''
+                : `<div class="gc-miss">${c.combatTheirs == null ? esc(themName) : '自分'} は未取り込み</div>`;
+            return '<div class="gc-char">'
+                + `<div class="gc-top">${_gvIcon(c.character, 32)}<span class="cn">${esc(c.character)}</span>${gapPill}</div>`
+                + bar(c.combatMine, 'me') + bar(c.combatTheirs, 'them') + miss
+                + (chips ? `<div class="gc-chips">${chips}</div>` : '')
+                + table
+                + `<button type="button" class="gc-more" onclick="handleGrowthAnaOpen('${key}')">${open ? '畳む ▴' : '9項目すべてを見る ▾'}</button>`
+                + '</div>';
         }
         // 勝ち負けの色。引き分けは負けと同じ見た目にしない
         function _gcCls(lead, who) {
@@ -22799,7 +23055,6 @@
             ['myStrongAttrsModal', () => closeMyStrongAttrsModal()],
             ['myAttackModal', () => closeMyAttackModal()],
             ['myResvRequestModal', () => closeMyResvRequestModal()],
-            ['growthCmpModal', () => closeGrowthCompare()],
         ];
         function _enableSheetSwipeDismiss(modalId, closeFn) {
             const modal = document.getElementById(modalId);

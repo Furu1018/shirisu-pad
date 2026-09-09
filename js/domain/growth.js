@@ -914,6 +914,109 @@
     /** 戦闘力の読み方。並べて比べるので万単位に畳む (86.8万) */
     const fmtMan = (n) => (Number.isFinite(n) ? `${(n / 10000).toFixed(1)}万` : '—');
 
+    // ---- 「どのレイドを見ているか」(2026-09-09 実機FB) --------------------
+    /**
+     * 既定で見せる回。★ **本番の最新回**を選ぶ — 単に最大のシーズンを採ると、
+     * 検証用のテスト回に取り込みの跡が1件でも残っていると、そこに引っ張られて
+     * 「取り込み済み1人・他は未取得」に見える (実機FB 2026-09-09)。
+     * @param {{id:any, is_test?:boolean, ok?:number}[]} seasons ok = 取り込めた人数
+     */
+    function defaultGrowthSeason(seasons) {
+        const list = (Array.isArray(seasons) ? seasons : []).filter((s) => s && num(s.ok) > 0);
+        const real = list.filter((s) => !s.is_test);
+        const pick = (real.length ? real : list).slice()
+            .sort((a, b) => Number(b.id) - Number(a.id))[0];
+        return pick ? Number(pick.id) : null;
+    }
+
+    /**
+     * その人が**この回で実際に使った編成**を凸記録から集める。
+     * ★ 盤面の loadoutsByAttr は「アクティブシーズンの模擬編成」なので使わない —
+     *   終わったレイドを振り返っているのに、別の回の模擬が出ていた (実機FB 2026-09-09)。
+     * 同じ5人 (順不同) の凸はまとめ、いちばん大きいダメージを代表にする。
+     * @returns {{team:string[], bossNo:number, bossCode:string, dmg:number, count:number}[]} ダメージの大きい順
+     */
+    function usedTeams(attacks, playerId) {
+        const seen = new Map();
+        for (const a of Array.isArray(attacks) ? attacks : []) {
+            if (!a || playerId == null || String(a.player_id) !== String(playerId)) continue;
+            const team = (Array.isArray(a.characters) ? a.characters : [])
+                .map((c) => (typeof c === 'string' ? c : (c && c.name)))
+                .filter((c) => typeof c === 'string' && c.trim())
+                .map((c) => c.trim());
+            if (!team.length) continue;
+            const key = team.slice().sort().join('\n');
+            const dmg = num(a.damage_raw);
+            if (!seen.has(key)) {
+                seen.set(key, { team, bossNo: num(a.boss_number), bossCode: String(a.boss_code || ''), dmg: -1, count: 0 });
+            }
+            const e = seen.get(key);
+            e.count++;
+            if (dmg > e.dmg) { e.dmg = dmg; e.bossNo = num(a.boss_number); e.bossCode = String(a.boss_code || ''); }
+        }
+        return [...seen.values()].map((e) => ({ ...e, dmg: Math.max(0, e.dmg) }))
+            .sort((x, y) => y.dmg - x.dmg);
+    }
+
+    /** 育成行 → { プレイヤーid: { キャラ名: 行 } }。ユニオン全体を1回で引けるようにする */
+    function byPlayerCharacter(rows) {
+        const out = {};
+        for (const r of Array.isArray(rows) ? rows : []) {
+            if (!r || r.player_id == null || !r.character_name) continue;
+            const k = String(r.player_id);
+            if (!out[k]) out[k] = {};
+            if (!out[k][r.character_name]) out[k][r.character_name] = r;
+        }
+        return out;
+    }
+
+    /** その回に取り込めているキャラ名 (五十音順)。キャラえらびの元 */
+    function charactersIn(rows) {
+        return [...new Set((Array.isArray(rows) ? rows : [])
+            .map((r) => r && r.character_name).filter(Boolean))]
+            .sort((a, b) => String(a).localeCompare(String(b), 'ja'));
+    }
+
+    /** 並べ替えに使える項目。★ 画面に項目名を持たせない (compare と食い違わせない) */
+    const SORT_FIELDS = FIELDS.map((f) => ({ key: f.key, label: f.label }));
+    const _fieldOf = (key) => FIELDS.find((f) => f.key === key) || FIELDS[0];
+
+    /**
+     * 1体のキャラを**ユニオン内で並べる** (2026-09-09 ユーザー要望)。
+     * ★ 持っていない人・その項目が欠けている人は出さない — 0 として最下位に並べると
+     *   「持っているが育っていない」と区別が付かない。
+     * @returns {{field:{key:string,label:string}, list:Object[], myRank:number|null}}
+     */
+    function unionRanking(byPl, players, characterName, fieldKey, myId) {
+        const f = _fieldOf(fieldKey);
+        const list = (Array.isArray(players) ? players : []).map((p) => {
+            if (!p || p.id == null) return null;
+            const row = ((byPl || {})[String(p.id)] || {})[characterName] || null;
+            const value = row ? f.value(row) : null;
+            return value == null ? null
+                : { playerId: p.id, name: String(p.name == null ? '' : p.name), row, value, text: f.text(row) };
+        }).filter(Boolean).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, 'ja'));
+        const at = list.findIndex((x) => myId != null && String(x.playerId) === String(myId));
+        return { field: { key: f.key, label: f.label }, list, myRank: at < 0 ? null : at + 1 };
+    }
+
+    /**
+     * 編成の5体を**編成の並びのまま**くらべる (アイコンの下に出す差)。
+     * ★ 並べ替えるのは rankSquad の仕事。ここで並べ替えると編成の見た目が崩れる。
+     */
+    function teamGaps(team, mineByName, theirsByName) {
+        return (Array.isArray(team) ? team : []).filter(Boolean).map((name) => {
+            const a = (mineByName || {})[name] || null;
+            const b = (theirsByName || {})[name] || null;
+            const am = val(a && a.combat), bm = val(b && b.combat);
+            return {
+                character: name, mine: am, theirs: bm,
+                hasBoth: am != null && bm != null,
+                gap: (am == null || bm == null) ? null : bm - am,
+            };
+        });
+    }
+
     /**
      * 編成ぶんを**差の大きい順**に並べ、先に読む結論を添える (2026-09-09 モックの決定 C)。
      * ★ 9項目 × 5体を全部並べても差がどこにあるか読めない。並び順と要約が読み方そのもの。
@@ -966,40 +1069,6 @@
         };
     }
 
-    /** 育成の行を「キャラ名 → 行」に畳む。比較はこの形で受ける (compare / compareSquad) */
-    function byCharacter(rows) {
-        const out = {};
-        for (const r of Array.isArray(rows) ? rows : []) {
-            const n = r && r.character_name;
-            if (n && !out[n]) out[n] = r;
-        }
-        return out;
-    }
-
-    /**
-     * その人の編成 (属性ごと) を、比較シートで選べる形に並べる。
-     * ★ 育成を取り込めたキャラが1人もいない編成は出さない — 開いても「—」しか並ばない
-     * @param {Object} loadoutsByAttr 盤面の p.loadoutsByAttr { attr: [{dmgB, team, slot}] }
-     * @param {Object} theirsByName   その人の育成 (byCharacter の結果)
-     * @param {{key:string,name:string}[]} attrOrder 出す順 (ボス順)
-     */
-    function squadsFor(loadoutsByAttr, theirsByName, attrOrder) {
-        const out = [];
-        for (const a of Array.isArray(attrOrder) ? attrOrder : []) {
-            const los = Array.isArray(loadoutsByAttr && loadoutsByAttr[a.key]) ? loadoutsByAttr[a.key] : [];
-            for (const lo of los) {
-                const team = (Array.isArray(lo && lo.team) ? lo.team : []).filter(Boolean);
-                if (!team.length) continue;
-                if (!team.some((n) => (theirsByName || {})[n])) continue;
-                out.push({
-                    attrKey: a.key, attrName: a.name, slot: Number(lo.slot) || 1,
-                    dmgB: Number(lo.dmgB) || 0, team,
-                });
-            }
-        }
-        return out;
-    }
-
     /** 今回のレイドで使われたキャラを、凸記録から集める (取り込む対象を決めるのに使う)。 */
     function usedCharacters(attacks) {
         const out = new Set();
@@ -1019,6 +1088,8 @@
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
-        byCharacter, squadsFor, rankSquad, fmtMan, privateTargets, PUBLISH_ASK,
+        rankSquad, fmtMan, privateTargets, PUBLISH_ASK,
+        defaultGrowthSeason, usedTeams, byPlayerCharacter, charactersIn,
+        SORT_FIELDS, unionRanking, teamGaps,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

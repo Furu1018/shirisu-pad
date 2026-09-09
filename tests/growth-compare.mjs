@@ -1,13 +1,18 @@
 // ============================================================================
-// 🧬 育成をくらべる (_gcRender) の実行テスト
+// 🧬 育成くらべ (分析タブのビュー) の実行テスト
 //   node tests/growth-compare.mjs
 // ----------------------------------------------------------------------------
 // index.html から関数本体を切り出し、依存をスタブして**実際に実行**する。
-// 判定と並び (rankSquad / compare) は js/domain/growth.js の本物を使う。
+// 判定・並び・順位 (compare / rankSquad / unionRanking / usedTeams) は
+// js/domain/growth.js の本物を使う。
 //
-// ★ この画面の値は「読み方」そのもの (2026-09-09 のモックで決めた):
-//   結論を先に出す → 差の大きい順に並べる → 差のある項目だけ出す → 全項目は畳む。
-//   9項目 × 5体を全部並べた版は、差がどこにあるか読めなかった。
+// ★ この画面が守るべきこと (2026-09-09 実機FB とモックで決めた):
+//   ① 「どのレイドを見ているか」を画面が持つ — 最大シーズンに張り付くと、
+//      テスト回に取り込みの跡が1件あるだけで本番の全員が「未取得」に見える
+//   ② 編成は**その回の凸記録**から作る — 盤面 (loadoutsByAttr) はアクティブ
+//      シーズンの模擬なので、終わったレイドの振り返りには使えない
+//   ③ 相手は「メンバー」か「ユニオン全体」。全体なら同じ画面が順位表になる
+//   ④ キャラ名・メンバー名を onclick に埋めない (引用符で壊れる / 注入できる)
 // ============================================================================
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,48 +24,63 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
 const dom = globalThis.growthDomain;
 
-function cut(marker) {
-    const i = html.indexOf(marker);
-    if (i < 0) { console.error(`NG: ${marker} を切り出せません (目印が変わった?)`); process.exit(2); }
-    let paren = 0, bodyStart = -1;
-    for (let k = html.indexOf('(', i); k < html.length; k++) {
-        if (html[k] === '(') paren++;
-        else if (html[k] === ')') { paren--; if (!paren) { bodyStart = html.indexOf('{', k); break; } }
-    }
-    let d = 0, inStr = null, prev = '';
-    for (let k = bodyStart; k < html.length; k++) {
-        const ch = html[k];
-        if (inStr) { if (ch === inStr && prev !== '\\') inStr = null; }
-        else if (ch === '"' || ch === "'" || ch === '`') inStr = ch;
-        else if (ch === '{') d++;
-        else if (ch === '}') { d--; if (!d) return html.slice(i, k + 1); }
-        prev = ch;
-    }
-    console.error(`NG: ${marker} の終端を判定できません`); process.exit(2);
-}
-const SRC = [cut('        function _gcRender()'), cut('        function _gcCls(')].join('\n');
+const FROM = '        function handleGrowthAnaSeason(id) {';
+const TO = '        // ===== 🧬 育成データの取り込み (43 / 2026-09-09) =====';
+const a = html.indexOf(FROM), b = html.indexOf(TO);
+if (a < 0 || b < 0 || b < a) { console.error('NG: 目印を切り出せません (関数名が変わった?)'); process.exit(2); }
+const SRC = html.slice(a, b);
+
+const RETURN = ['_gvPaint', '_gvViewPT', '_gvViewChar', '_gvUnionCard', '_gvCharCard', '_gcCls',
+    'handleGrowthAnaSeason', 'handleGrowthAnaWho', 'handleGrowthAnaView', 'handleGrowthAnaBase',
+    'handleGrowthAnaChar', 'handleGrowthAnaSort', 'handleGrowthAnaBurst', 'handleGrowthAnaSearch',
+    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare'];
 
 // 育成1行ぶん。省略した項目は null (未取得) として扱われる
 const row = (o = {}) => ({
     character_name: 'ラピ', grade: 3, core: 0, lv: 200, skill1_lv: 7, skill2_lv: 7, ulti_skill_lv: 7,
     combat: 500000, attractive_lv: 20, harmony_cube_lv: 10, favorite_item_lv: 5, overload: null, ...o,
 });
-const SQ = (team, o = {}) => ({ attrKey: 'fire', attrName: '灼熱', slot: 1, dmgB: 33.1, team, ...o });
+const growthRow = (pid, name, o = {}) => ({ player_id: pid, ...row({ character_name: name, ...o }) });
+const atk = (pid, team, o = {}) => ({
+    player_id: pid, boss_number: 1, boss_code: 'Z.E.U.S.', characters: team, damage_raw: 2e10, ...o,
+});
 
-function run({ them = { id: 2, name: 'なべりうす' }, mine = {}, theirs = {}, squads = [], pick = 0, open = [] } = {}) {
+const BURSTS = new Map([['ラピ', 'B2'], ['クラウン', 'B2'], ['モラン', 'B1'], ['ヘルム', 'B3'], ['紅蓮', 'B3']]);
+
+function build({
+    players = [{ id: 1, name: 'ふるり' }, { id: 2, name: 'なべりうす' }, { id: 3, name: 'ゆき' }],
+    rows = [], teams = [], status = [], me = { id: 1, name: 'ふるり' },
+    seasons = [
+        { id: 33, month_key: 'TEST-2026', hard_date: '2026-09-08', is_test: true, ok: 1 },
+        { id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false, ok: 14 },
+    ],
+    seasonId = 30, them = null, view = 'pt', base = 'mine', charIdx = -1, q = '', burst = 'all',
+    sort = 'combat', open = [], rosterOpen = false,
+} = {}) {
     let out = '';
-    const els = { growthCmpBody: { set innerHTML(v) { out = v; }, get innerHTML() { return out; } } };
+    const els = { growthAnaBody: { set innerHTML(v) { out = v; }, get innerHTML() { return out; } } };
+    const calls = { reload: 0 };
+    const _gv = {
+        gen: 0, seasons, players, seasonId, byPl: dom.byPlayerCharacter(rows),
+        chars: dom.charactersIn(rows), status, teams, them, view, base, charIdx, q, burst, sort,
+        open: new Set(open.map(String)), rosterOpen, focusQ: false,
+    };
     const env = {
-        _gc: { gen: 0, them, squads, pick, mine, theirs, seasonId: 30, err: null, open: new Set(open.map(String)) },
+        _gv,
+        _growthNames: new Map(players.map(p => [String(p.id), p.name])),
         window: { growthDomain: dom },
         document: { getElementById: (id) => els[id] || null },
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
-        SLOT_JP: { 1: '①', 2: '②' },
+        getCurrentIdentity: () => me,
+        renderAvatarHtml: (p) => `<span class="av">${p && p.name ? p.name[0] : '?'}</span>`,
+        resolveNikkeChar: (n) => ({ canonical: n, iconPath: `./character-images/${encodeURIComponent(n)}.webp` }),
+        _nikkeCharsByName: new Map([...BURSTS].map(([n, burst]) => [n, { canonical_name: n, burst }])),
+        renderGrowthAnalysis: () => { calls.reload++; },
+        _gotoSlvView: (v) => { calls.goto = v; },
     };
     const keys = Object.keys(env);
-    const fn = new Function(...keys, `${SRC}\nreturn _gcRender;`)(...keys.map(k => env[k]));
-    fn();
-    return out;
+    const fns = new Function(...keys, `${SRC}\nreturn { ${RETURN.join(', ')} };`)(...keys.map(k => env[k]));
+    return { ...fns, state: _gv, calls, paint: () => { fns._gvPaint(); return out; } };
 }
 
 let pass = 0, fail = 0;
@@ -68,112 +88,167 @@ function test(name, f) {
     try { f(); console.log(`  ✅ ${name}`); pass++; }
     catch (e) { console.error(`  ❌ ${name}\n     ${e.constructor.name}: ${e.message}`); fail++; }
 }
-const noUndef = (o) => assert.ok(!/undefined|NaN|\[object Object\]/.test(o),
-    `未定義参照: ${o.match(/.{40}(undefined|NaN|\[object Object\]).{40}/)?.[0]}`);
+const noUndef = (out) => assert.ok(!/undefined|NaN|\[object Object\]/.test(out),
+    `未定義参照: ${out.match(/.{40}(undefined|NaN|\[object Object\]).{40}/)?.[0]}`);
 
-console.log('育成をくらべる:\n');
+const TEAM = ['ラピ', 'クラウン', 'モラン', 'ヘルム', '紅蓮'];
+const fullRows = (pid, mul) => TEAM.map(n => growthRow(pid, n, { combat: 400000 * mul, lv: 700 + mul }));
+const BASE = {
+    rows: [...fullRows(1, 1), ...fullRows(2, 2), ...fullRows(3, 3)],
+    teams: [atk(1, TEAM), atk(2, TEAM, { damage_raw: 3e10 })],
+    status: [{ player_id: 1, status: 'ok', character_count: 5 }, { player_id: 2, status: 'ok', character_count: 5 },
+        { player_id: 3, status: 'ok', character_count: 5 }],
+};
 
-test('★ 結論を先に出す (何体で上か / 合計と差)', () => {
-    const mine = { ラピ: row({ combat: 495120 }), アリス: row({ character_name: 'アリス', combat: 700000 }) };
-    const theirs = { ラピ: row({ combat: 868355 }), アリス: row({ character_name: 'アリス', combat: 720000 }) };
-    const out = run({ mine, theirs, squads: [SQ(['ラピ', 'アリス'])] });
-    assert.ok(/class="gc-verdict"/.test(out), '結論のカードが無い');
-    assert.ok(/相手が <em>2\/2体<\/em> で上/.test(out), `何体で上かが出ていない: ${out.slice(0, 400)}`);
-    assert.ok(/自分 計 119\.5万/.test(out), '自分の合計が違う');
-    assert.ok(/なべりうす 計 158\.8万 \(\+39\.3万\)/.test(out), `相手の合計と差が違う: ${out.match(/計 [^<]*/g)}`);
-    // 結論はカードより前に出る
-    assert.ok(out.indexOf('gc-verdict') < out.indexOf('gc-char'), '結論が後ろにある');
+console.log('育成くらべ (分析タブ):\n');
+
+test('★ 実際に描ける: レイド選択・相手えらび・見方タブ・編成カード', () => {
+    const t = build({ ...BASE, them: 2 });
+    const out = t.paint();
     noUndef(out);
+    assert.ok(/どのレイドの育成か/.test(out), 'レイド選択が無い');
+    assert.ok(/くらべる相手/.test(out), '相手えらびが無い');
+    assert.ok(/使った編成でくらべる/.test(out) && /キャラ別にくらべる/.test(out), '見方タブが無い');
+    assert.ok(/class="gv-pt"/.test(out), '編成カードが出ていない');
+    assert.equal((out.match(/class="gv-tm"/g) || []).length, 5, '5体そろっていない');
 });
 
-test('★ 差の大きい順に並べる (詰めるべきキャラが上に来る)', () => {
-    const mine = { A: row({ character_name: 'A', combat: 100000 }), B: row({ character_name: 'B', combat: 100000 }), C: row({ character_name: 'C', combat: 100000 }) };
-    const theirs = { A: row({ character_name: 'A', combat: 150000 }), B: row({ character_name: 'B', combat: 400000 }), C: row({ character_name: 'C', combat: 90000 }) };
-    const out = run({ mine, theirs, squads: [SQ(['A', 'B', 'C'])] });
-    const order = [...out.matchAll(/class="cn">([^<]+)</g)].map(m => m[1]);
-    assert.deepEqual(order, ['B', 'A', 'C'], `差の大きい順でない: ${order}`);
-    assert.ok(/class="gc-gap up">\+30\.0万/.test(out), '差の表示が無い');
-    assert.ok(/class="gc-gap mine">−1\.0万/.test(out), '自分が上のときの表示が無い');
+test('★ ① レイドは選べる。テスト回も本番回も並び、いま見ている回が選ばれている', () => {
+    const out = build({ ...BASE, them: 2 }).paint();
+    assert.ok(/<option value="33"[^>]*>TEST-2026/.test(out), 'テスト回が出ていない');
+    assert.ok(/<option value="30" selected>2026-09/.test(out), '見ている回が選ばれていない');
+    assert.ok(/取り込み 14人/.test(out), '何人取り込めた回かが分からない');
+    // ★ 既定は「取り込めた人がいる**本番**の最新回」— ドメインが決める
+    assert.equal(dom.defaultGrowthSeason([
+        { id: 33, is_test: true, ok: 1 }, { id: 30, is_test: false, ok: 14 },
+    ]), 30, 'テスト回に張り付いている (実機FB 2026-09-09 の再発)');
+});
+
+test('★ ② 編成は「その回の凸記録」から作る (盤面の模擬編成を使わない)', () => {
+    const t = build({ ...BASE, them: 2, base: 'them' });
+    const out = t.paint();
+    assert.ok(/300\.0億/.test(out), '凸記録のダメージが出ていない (相手の編成を見ていない)');
+    // 凸記録が無い人は「編成が残っていない」と言う (模擬で埋めない)
+    const none = build({ ...BASE, them: 2, teams: [atk(2, TEAM)] }).paint();
+    assert.ok(/編成が残っていません/.test(none), '凸記録が無いのに編成が出ている');
+    assert.ok(!/loadoutsByAttr|squadsFor/.test(SRC), '盤面の模擬編成をまだ見ている');
+});
+
+test('★ ③ ユニオン全体を選ぶと、同じ画面が順位表になる', () => {
+    const t = build({ ...BASE, them: null, view: 'pt', open: ['pt0'] });
+    const out = t.paint();
     noUndef(out);
+    assert.ok(/ユニオン内の順位/.test(out), '順位の見出しが無い');
+    assert.ok(/3\/3位/.test(out), '自分の順位が出ていない (自分がいちばん低い育成)');
+    assert.ok(/class="gv-rk/.test(out), '順位表が開かない');
+    assert.ok(/class="gv-rk me"/.test(out), '自分の行が分からない');
 });
 
-test('★ 差のある項目だけをチップに出す (同じ項目は出さない)', () => {
-    const mine = { ラピ: row({ lv: 500, skill2_lv: 7, harmony_cube_lv: 10, attractive_lv: 40 }) };
-    const theirs = { ラピ: row({ lv: 825, skill2_lv: 10, harmony_cube_lv: 15, attractive_lv: 30 }) };
-    const out = run({ mine, theirs, squads: [SQ(['ラピ'])] });
-    const chips = [...out.matchAll(/class="gc-chip[^"]*">([^<]+)</g)].map(m => m[1]);
-    assert.ok(chips.some(c => /レベル Lv825/.test(c)), `レベルの差が無い: ${chips}`);
-    assert.ok(chips.some(c => /スキル2 Lv10/.test(c)), 'スキル2の差が無い');
-    assert.ok(!chips.some(c => /スキル1/.test(c)), '同じ項目 (スキル1) までチップにしている');
-    // 自分が上の項目は別の色
-    assert.ok(/class="gc-chip mine">好感度 Lv40</.test(out), '自分が上の項目を分けていない');
-    noUndef(out);
-});
-
-test('★ 全項目は畳んでおき、押すと開く (9項目 + オーバーロード)', () => {
-    const mine = { ラピ: row({ overload: { 攻撃力: 32.6 } }) };
-    const theirs = { ラピ: row({ lv: 825, overload: { 攻撃力: 45.1, 装弾数: 170.7 } }) };
-    const shut = run({ mine, theirs, squads: [SQ(['ラピ'])] });
-    assert.ok(!/class="gc-tbl"/.test(shut), '畳んでいない');
-    assert.ok(/9項目すべてを見る/.test(shut), '開く導線が無い');
-    assert.ok(/onclick="handleGrowthCmpOpen\(0\)"/.test(shut), '番号で開いていない (名前を埋めない)');
-    const open = run({ mine, theirs, squads: [SQ(['ラピ'])], open: [0] });
-    assert.ok(/class="gc-tbl"/.test(open), '開いていない');
-    assert.equal((open.match(/class="gc-tr"/g) || []).length, 1 + 9 + 1 + 2, `行数が合わない`);
-    assert.ok(/オーバーロード/.test(open) && /装弾数/.test(open), 'オーバーロードが出ていない');
-    assert.ok(/畳む/.test(open), '畳む導線が無い');
-    noUndef(open);
-});
-
-test('★ 合計は比べられる体だけ (片方にしか無い体を混ぜない — Codex指摘 2026-09-09)', () => {
-    const out = run({
-        mine: { ラピ: row({ combat: 100000 }) },
-        theirs: { ラピ: row({ combat: 150000 }), アリス: row({ character_name: 'アリス', combat: 900000 }) },
-        squads: [SQ(['ラピ', 'アリス'])],
+test('★ ④ 名前・キャラ名を onclick に埋めない (引用符で壊れる / 注入できる)', () => {
+    const evil = 'ラピ" onmouseenter="alert(1)';
+    const t = build({
+        rows: [growthRow(1, evil), growthRow(2, evil)],
+        teams: [atk(1, [evil])], them: 2, view: 'char', charIdx: 0,
+        players: [{ id: 1, name: 'ふるり' }, { id: 2, name: '"><img src=x onerror=alert(1)>' }],
     });
-    assert.ok(/自分 計 10\.0万/.test(out), `自分の合計が違う: ${out.match(/計 [^<]*/g)}`);
-    assert.ok(/計 15\.0万 \(\+5\.0万\)/.test(out), '相手の合計に比べられない体が入っている');
-    assert.ok(/相手が <em>1\/1体<\/em> で上/.test(out), '比べられる体の数が違う');
-    // 比べられない体もカード自体は出す (最後に回す)
-    assert.equal((out.match(/class="gc-char"/g) || []).length, 2);
-    noUndef(out);
-});
-test('★ 引き分けは負けと同じ見た目にしない', () => {
-    const same = row({ lv: 500, combat: 700000 });
-    const out = run({ mine: { ラピ: same }, theirs: { ラピ: { ...same } }, squads: [SQ(['ラピ'])], open: [0] });
-    assert.ok(/class="v same">Lv500<\/span><span class="v same">Lv500</.test(out), `引き分けの見た目が違う: ${out.slice(0, 300)}`);
-    assert.ok(/class="gc-gap flat">差なし</.test(out), '戦闘力の差なしを出していない');
-    noUndef(out);
+    const out = t.paint();
+    assert.ok(!/onclick="handleGrowthAnaChar\([^)]*[^0-9)]/.test(out), 'キャラ名を onclick に渡している');
+    assert.ok(!/onmouseenter="alert/.test(out), '属性が壊れている (名前をそのまま埋めた)');
+    assert.ok(!/<img src=x onerror/.test(out), 'メンバー名から注入できる');
+    assert.ok(/&quot;/.test(out), 'エスケープされていない');
 });
 
-test('片方しか持っていないキャラは名指しで印を付け、最後に回す', () => {
-    const out = run({
-        mine: { ラピ: row() },
-        theirs: { ラピ: row({ combat: 900000 }), アリス: row({ character_name: 'アリス' }) },
-        squads: [SQ(['アリス', 'ラピ'])],
-    });
-    const order = [...out.matchAll(/class="cn">([^<]+)</g)].map(m => m[1]);
-    assert.deepEqual(order, ['ラピ', 'アリス'], '比べられない体を先に出している');
-    assert.ok(/class="gc-miss">自分 は未取り込み</.test(out), '誰の何が無いのか分からない');
-    assert.ok(/class="gc-gap none">比べられない</.test(out));
-    noUndef(out);
+test('キャラ別: 検索とバースト絞り込みが効く', () => {
+    const t = build({ ...BASE, them: 2, view: 'char' });
+    const all = t.paint();
+    assert.equal((all.match(/class="gv-tile/g) || []).length, 5, 'キャラが5体出ていない');
+    t.handleGrowthAnaBurst('B3');
+    const b3 = t.paint();
+    assert.equal((b3.match(/class="gv-tile/g) || []).length, 2, 'B3 で絞れていない (ヘルムと紅蓮)');
+    t.handleGrowthAnaBurst('all');
+    t.handleGrowthAnaSearch('クラ');
+    const q = t.paint();
+    assert.equal((q.match(/class="gv-tile/g) || []).length, 1, '名前でさがせていない');
+    assert.ok(/クラウン/.test(q));
+    t.handleGrowthAnaSearch('いない子');
+    assert.ok(/みつかりません/.test(t.paint()), '0件のときに何も言わない');
 });
 
-test('編成が複数あれば選べる / 相手の育成が無ければ案内だけ出す', () => {
-    const theirs = { ラピ: row(), アリス: row({ character_name: 'アリス' }) };
-    const two = run({
-        mine: {}, theirs, pick: 1,
-        squads: [SQ(['ラピ']), SQ(['アリス'], { attrName: '水冷', slot: 2, dmgB: 28.4 })],
-    });
-    assert.equal((two.match(/handleGrowthCmpPick\(\d+\)/g) || []).length, 2, '選択肢が2つ出ていない');
-    assert.ok(/aria-pressed="true"[^>]*onclick="handleGrowthCmpPick\(1\)"/.test(two), '選んでいる編成に印が無い');
-    assert.ok(two.includes('水冷② 28.4B'), '属性・編成枠・ダメージが出ていない');
-    assert.ok(/自分の育成がまだ取り込まれていません/.test(two), '自分が未取り込みの注意が無い');
+test('キャラ別 × ユニオン全体: 並べ替えが効く (順位が入れ替わる)', () => {
+    const rows = [
+        growthRow(1, 'ラピ', { combat: 900000, lv: 100 }),
+        growthRow(2, 'ラピ', { combat: 100000, lv: 900 }),
+    ];
+    const t = build({ rows, teams: [], them: null, view: 'char', charIdx: 0, sort: 'combat' });
+    const byCombat = t.paint();
+    // ★ 相手えらびにも class="nm" があるので、順位表の行だけを見る
+    const order = (s) => [...s.matchAll(/class="gv-rk[^>]*">[\s\S]*?class="nm">([^<]+)/g)].map(m => m[1]);
+    assert.deepEqual(order(byCombat).slice(0, 2), ['ふるり', 'なべりうす'], '戦闘力順になっていない');
+    t.handleGrowthAnaSort('lv');
+    const byLv = t.paint();
+    assert.deepEqual(order(byLv).slice(0, 2), ['なべりうす', 'ふるり'], 'レベル順に並べ替えられない');
+    assert.ok(/レベル順/.test(byLv), '何順なのか書いていない');
+});
 
-    const none = run({ mine: { ラピ: row() }, theirs: {} });
-    assert.ok(none.includes('育成データはまだありません') && none.includes('ゲームカードを公開'), '案内が無い');
-    assert.ok(!/gc-char/.test(none), '中身の無いカードを出している');
-    noUndef(two);
+test('★ 相手・見方・並べ替えを変えても取り直さない (レイドを変えたときだけ読む)', () => {
+    const t = build({ ...BASE, them: 2 });
+    t.handleGrowthAnaWho(3); t.handleGrowthAnaView('char'); t.handleGrowthAnaSort('lv');
+    t.handleGrowthAnaBase('them'); t.handleGrowthAnaBurst('B2'); t.handleGrowthAnaOpen('pt0');
+    assert.equal(t.calls.reload, 0, '相手を変えただけで取り直している');
+    t.handleGrowthAnaSeason(30);
+    assert.equal(t.calls.reload, 0, '同じレイドを選び直しただけで取り直している');
+    t.handleGrowthAnaSeason(33);
+    assert.equal(t.calls.reload, 1, 'レイドを変えたのに取り直していない');
+    assert.equal(t.state.byPl, null, '前の回のデータが残っている');
+    assert.equal(t.state.them, null, '前の回の相手が残っている (その回に居ないかもしれない)');
+});
+
+test('自分が未取り込み / 名乗っていない ときは、そう言う', () => {
+    const noMe = build({ ...BASE, them: 2, rows: [...fullRows(2, 2), ...fullRows(3, 3)] }).paint();
+    assert.ok(/自分の育成が取り込まれていません/.test(noMe), '自分のぶんが無いことを言っていない');
+    const anon = build({ ...BASE, them: 2, me: null }).paint();
+    assert.ok(/ホームで自分のプレイヤーを選ぶ/.test(anon), '名乗る前の案内が無い');
+});
+
+test('取り込みの内訳: 折り畳みを開くと、誰が取れていないか分かる', () => {
+    const st = [{ player_id: 1, status: 'ok', character_count: 5 }, { player_id: 2, status: 'private' },
+        { player_id: 3, status: 'no_openid' }];
+    const shut = build({ ...BASE, status: st, them: null }).paint();
+    assert.ok(/育成が取れたのは/.test(shut), '内訳の要約が無い');
+    assert.ok(!/本人が非公開にしています/.test(shut), '畳んでいるのに中身が出ている');
+    const open = build({ ...BASE, status: st, them: null, rosterOpen: true }).paint();
+    assert.ok(/本人が非公開にしています/.test(open) && /識別子が未設定です/.test(open), '理由が出ていない');
+});
+
+test('編成カードを開くと、差の大きい順に1体ずつ出る', () => {
+    const rows = [
+        growthRow(1, 'ラピ', { combat: 500000 }), growthRow(2, 'ラピ', { combat: 500000 }),
+        growthRow(1, 'クラウン', { combat: 100000 }), growthRow(2, 'クラウン', { combat: 900000 }),
+    ];
+    const t = build({ rows, teams: [atk(1, ['ラピ', 'クラウン'])], them: 2, open: ['pt0'] });
+    const out = t.paint();
+    noUndef(out);
+    const cards = [...out.matchAll(/class="cn">([^<]+)/g)].map(m => m[1]);
+    assert.deepEqual(cards, ['クラウン', 'ラピ'], '差の大きい順になっていない');
+    assert.ok(/\+80\.0万/.test(out), '差が出ていない');
+    assert.ok(!/class="gc-tbl"/.test(out), '全項目を畳んでいない');
+    t.handleGrowthAnaOpen('pt0_0');
+    assert.ok(/class="gc-tbl"/.test(t.paint()), '全項目を開けない');
+});
+
+test('キャラのアイコンを出す (名前だけだと編成が読めない)', () => {
+    const out = build({ ...BASE, them: 2 }).paint();
+    assert.ok(/class="gv-ic [^"]*" src="\.\/character-images\//.test(out), 'アイコンが出ていない');
+    const ch = build({ ...BASE, them: 2, view: 'char' }).paint();
+    assert.ok(/class="gv-bg">B[0-9Λ]<\/span>/.test(ch), 'バーストのバッジが無い');
+});
+
+test('運営タブの名前から開くと、その人を相手にして分析タブへ送る', () => {
+    const t = build({ ...BASE });
+    t.openGrowthCompare(2);
+    assert.equal(t.state.them, 2, '相手が選ばれていない');
+    assert.equal(t.calls.goto, 'growth', '育成ビューに送っていない');
+    assert.equal(t.state.base, 'them', 'その人が使った編成を出していない');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

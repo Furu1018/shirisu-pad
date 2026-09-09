@@ -6500,27 +6500,89 @@ console.log('\ngrowthDomain:');
         assert.ok(!byName.A.diffs.some(x => x.key === 'combat'), '戦闘力をチップにも出している');
         assert.deepEqual(cells.map(c => c.character), ['A', 'B', 'C'], '比べられない体を先に出している');
     });
-    test('★ byCharacter / squadsFor: 比較の材料をそろえる (育成が1人も取れていない編成は出さない)', () => {
-        const rows = [
-            { character_name: 'ラピ', lv: 200 }, { character_name: 'アリス', lv: 300 },
-            { character_name: 'ラピ', lv: 999 },   // 同じキャラは先勝ち
+    test('★ defaultGrowthSeason: 既定は「取り込めた人がいる本番の最新回」', () => {
+        // ★ 最大シーズンを採ると、検証用のテスト回に取り込みの跡が1件あるだけで
+        //   本番の回のデータが全部「未取得」に見える (実機FB 2026-09-09 の障害)
+        const seasons = [
+            { id: 33, is_test: true, ok: 1 }, { id: 30, is_test: false, ok: 14 },
+            { id: 26, is_test: false, ok: 9 },
         ];
-        const by = dom.byCharacter(rows);
-        assert.equal(by['ラピ'].lv, 200, '同じキャラで後の行に上書きされている');
-        assert.equal(Object.keys(by).length, 2);
-        assert.deepEqual(dom.byCharacter(null), {});
+        assert.equal(dom.defaultGrowthSeason(seasons), 30);
+        // 取り込めた人が0の回は選ばない (開いても何も出ない)
+        assert.equal(dom.defaultGrowthSeason([{ id: 40, is_test: false, ok: 0 }, { id: 30, is_test: false, ok: 14 }]), 30);
+        // 本番の回がまだ無いなら、テスト回でも出す (検証中に何も見えないと困る)
+        assert.equal(dom.defaultGrowthSeason([{ id: 33, is_test: true, ok: 2 }]), 33);
+        assert.equal(dom.defaultGrowthSeason([]), null);
+        assert.equal(dom.defaultGrowthSeason(null), null);
+    });
 
-        const attrs = [{ key: 'fire', name: '灼熱' }, { key: 'water', name: '水冷' }];
-        const lo = {
-            fire: [{ slot: 1, dmgB: 33.1, team: ['ラピ', 'アリス'] }, { slot: 2, dmgB: 20, team: ['しらないキャラ'] }],
-            water: [{ slot: 1, dmgB: 28, team: [] }],
-        };
-        const sq = dom.squadsFor(lo, by, attrs);
-        // 育成が1人も取れていない編成 (fire②) と、キャラの入っていない編成 (water) は出さない
-        assert.deepEqual(sq.map(x => [x.attrKey, x.slot]), [['fire', 1]], `出す編成が違う: ${JSON.stringify(sq)}`);
-        assert.equal(sq[0].attrName, '灼熱'); assert.equal(sq[0].dmgB, 33.1);
-        assert.deepEqual(dom.squadsFor(null, by, attrs), []);
-        assert.deepEqual(dom.squadsFor(lo, {}, attrs), [], '育成がゼロなのに編成を出している');
+    test('★ usedTeams: 編成は「その回の凸記録」から。同じ5人はまとめ、代表は最大ダメージ', () => {
+        // ★ 盤面の loadoutsByAttr は**アクティブシーズンの模擬**。終わったレイドの
+        //   振り返りに使うと、別の回の模擬編成が「使った編成」として出る (実機FB 2026-09-09)
+        const T = ['ラピ', 'アリス'], T2 = ['アリス', 'ラピ'];   // 同じ5人 (順ちがい)
+        const atk = [
+            { player_id: 1, boss_number: 1, boss_code: 'Z', characters: T, damage_raw: 100 },
+            { player_id: 1, boss_number: 2, boss_code: 'M', characters: T2, damage_raw: 300 },
+            { player_id: 1, boss_number: 3, boss_code: 'K', characters: ['ドロシー'], damage_raw: 200 },
+            { player_id: 1, boss_number: 4, boss_code: 'X', characters: [], damage_raw: 999 },
+            { player_id: 2, boss_number: 1, boss_code: 'Z', characters: T, damage_raw: 900 },
+        ];
+        const t = dom.usedTeams(atk, 1);
+        assert.equal(t.length, 2, `まとめ方が違う: ${JSON.stringify(t)}`);
+        assert.equal(t[0].dmg, 300, 'ダメージの大きい順になっていない');
+        assert.equal(t[0].count, 2, '同じ5人 (順ちがい) をまとめていない');
+        assert.equal(t[0].bossCode, 'M', '代表が最大ダメージの凸になっていない');
+        assert.deepEqual(t[1].team, ['ドロシー']);
+        assert.deepEqual(dom.usedTeams(atk, 99), [], '他人の凸を混ぜている');
+        assert.deepEqual(dom.usedTeams(atk, null), []);
+    });
+
+    test('★ byPlayerCharacter / charactersIn: ユニオン全体を1回で引ける形にする', () => {
+        const rows = [
+            { player_id: 1, character_name: 'ラピ', lv: 200 },
+            { player_id: 1, character_name: 'ラピ', lv: 999 },   // 同じキャラは先勝ち
+            { player_id: 1, character_name: 'アリス', lv: 300 },
+            { player_id: 2, character_name: 'ラピ', lv: 400 },
+            { player_id: null, character_name: null },
+        ];
+        const by = dom.byPlayerCharacter(rows);
+        assert.equal(by['1']['ラピ'].lv, 200, '同じキャラで後の行に上書きされている');
+        assert.equal(by['2']['ラピ'].lv, 400);
+        assert.deepEqual(Object.keys(by), ['1', '2'], '中身の無い行を数えている');
+        assert.deepEqual(dom.byPlayerCharacter(null), {});
+        assert.deepEqual(dom.charactersIn(rows), ['アリス', 'ラピ'], '五十音でそろえていない');
+        assert.deepEqual(dom.charactersIn(null), []);
+    });
+
+    test('★ unionRanking: 1体をユニオン内で並べる。持っていない人は出さない', () => {
+        const players = [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }, { id: 3, name: 'う' }];
+        const by = dom.byPlayerCharacter([
+            { player_id: 1, character_name: 'ラピ', combat: 100, lv: 900 },
+            { player_id: 2, character_name: 'ラピ', combat: 300, lv: 100 },
+            { player_id: 3, character_name: 'アリス', combat: 500 },
+        ]);
+        const r = dom.unionRanking(by, players, 'ラピ', 'combat', 1);
+        assert.deepEqual(r.list.map(x => x.playerId), [2, 1], '強い順になっていない');
+        assert.equal(r.myRank, 2, '自分の順位が違う');
+        assert.equal(r.field.label, '戦闘力');
+        // ★ 持っていない人を 0 として最下位に並べない (「持っていない」と「育っていない」は違う)
+        assert.equal(r.list.length, 2, '持っていない人まで並べている');
+        // 項目を変えると並びも変わる
+        assert.deepEqual(dom.unionRanking(by, players, 'ラピ', 'lv', 1).list.map(x => x.playerId), [1, 2]);
+        assert.equal(dom.unionRanking(by, players, 'ラピ', 'combat', 3).myRank, null, '持っていない自分に順位が付いている');
+        assert.deepEqual(dom.unionRanking(by, players, 'いないキャラ', 'combat', 1).list, []);
+    });
+
+    test('★ teamGaps: 編成の並びのまま差を出す (並べ替えは rankSquad の仕事)', () => {
+        const mine = { 'ラピ': { combat: 100 }, 'アリス': { combat: 500 } };
+        const theirs = { 'ラピ': { combat: 300 }, 'ドロシー': { combat: 900 } };
+        const g = dom.teamGaps(['ラピ', 'アリス', 'ドロシー'], mine, theirs);
+        assert.deepEqual(g.map(x => x.character), ['ラピ', 'アリス', 'ドロシー'], '編成の並びを崩している');
+        assert.equal(g[0].gap, 200);
+        assert.equal(g[1].gap, null, '片方しか無いのに差を出している');
+        assert.equal(g[1].hasBoth, false);
+        assert.equal(g[2].gap, null);
+        assert.deepEqual(dom.teamGaps(null, mine, theirs), []);
     });
 
     test('★ privateTargets: 声をかけるのは非公開の人だけ (未ひも付けには送らない)', () => {
@@ -6582,57 +6644,60 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.bottom-nav\.nav-hidden \{/.test(html), '自動隠しが消えている');
         assert.ok(/padding-bottom: calc\(112px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が足りない');
     });
-    test('★ 配線: 育成をくらべるシート (盤面から編成 / 取り込んだシーズンを使う / 入口は残凸表の名前)', () => {
-        const noCR = (x) => x.split(String.fromCharCode(13)).join('');   // CRLF のままだと関数の切り出しが当たらない
+    test('★ 配線: 育成くらべ (レイドを選ぶ / 編成は凸記録 / 相手はメンバーかユニオン全体)', () => {
+        const noCR = (x) => x.split(String.fromCharCode(13)).join('');
         const html = noCR(_grRd('index.html')), client = noCR(_grRd('js', 'supabase-client.js'));
-        assert.ok(/id="growthCmpModal"/.test(html) && /id="growthCmpBody"/.test(html), 'シートの置き場が無い');
-        const op = html.match(/async function openGrowthCompare\([\s\S]*?\n        \}\n/)?.[0] || '';
-        // ★ シーズンは取り込んだもの (null = いちばん新しい)。アクティブシーズンとは限らない
-        assert.ok(/supabaseLoadMemberGrowth\(null, \[Number\(playerId\), Number\(me\.id\)\]\)/.test(op), '両者ぶんを最新シーズンで読んでいない');
-        assert.ok(/dom\.byCharacter\(/.test(op) && /dom\.squadsFor\(/.test(op), '材料をドメインで組んでいない');
-        assert.ok(/gen !== _gc\.gen/.test(op), '追い越した古い応答を捨てていない');
-        assert.ok(/rows === null/.test(op), '43未適用を案内していない');
-        // 判定は compare が唯一 — 画面で勝ち負けを書き足さない
-        const rn = html.match(/function _gcRender\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/dom\.rankSquad\(cur\.team, _gc\.mine, _gc\.theirs\)/.test(rn), '比較と並びをドメインに任せていない');
-        // ★ 結論 → 差の大きい順 → 差のある項目だけ (2026-09-09 モックの決定)
-        assert.ok(/class="gc-verdict"/.test(rn), '結論のカードを出していない');
-        assert.ok(/c\.diffs\.map/.test(rn), '差のある項目だけを出していない');
-        assert.ok(/_gc\.open\.has\(String\(i\)\)/.test(rn), '全項目を畳んでいない');
-        assert.ok(/handleGrowthCmpOpen\(\$\{i\}\)/.test(rn), 'キャラ名で開いている (番号にすること)');
-        // 開閉は番号なので、編成を変えたら捨てないと別のキャラが開く (Codex指摘)
-        assert.ok(/function handleGrowthCmpPick\(i\) \{ _gc\.pick = Number\(i\) \|\| 0; _gc\.open = new Set\(\);/.test(html), '編成を変えたときに開き具合を捨てていない');
-        assert.ok(!/r\.mine >|r\.theirs >/.test(rn), '画面で勝ち負けを計算している');
-        // 入口: 残凸表のメンバー名
-        assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}\)"/.test(html), '残凸表の名前から開けない');
-        // ★ 主役は分析タブ (レイド後にスコアを詰める場所)。運営タブの入口も残す
+        // 主役は分析タブの育成ビュー。別シートは持たない (同じ画面を2つ育てない)
         assert.ok(/data-slv-view="growth"/.test(html) && /id="growthAnaBody"/.test(html), '分析タブに育成ビューが無い');
+        assert.ok(!/id="growthCmpModal"/.test(html), '古い比較シートが残っている');
         assert.ok(/onclick="_gotoSlvView\('growth'\)"><span class="seg-ico">🧬 <\/span>育成/.test(html), '実績タブのセグメントから開けない');
         assert.ok(/data-view="growth" onclick="_setSlvView\('growth'\)"/.test(html), 'ふるり値タブのセグメントから開けない');
         assert.ok(/if \(_slvView === 'growth'\) renderGrowthAnalysis\(\);/.test(html), 'ビューを開いたときに描いていない');
-        const ana = html.match(/function _gAnaPaint\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/取り込み済み/.test(ana) && /非公開/.test(ana), '全体の内訳を出していない');
-        assert.ok(/status === 'ok'/.test(ana), '取り込めた人だけ開けるようにしていない');
-        // ★ 名前を属性に埋めない (Codex指摘 2026-09-09) — 引用符でその場が壊れ、
-        //   ` onmouseenter=…` のような名前を付けられると実行される
-        assert.ok(!/openGrowthCompare\([^)]*p\.name/.test(html), '名前を onclick に埋めている (壊れる / 注入できる)');
-        assert.ok(/let known = \(opsStore\.get\(\)\?\.players \|\| \[\]\)/.test(op), '名前を盤面から引いていない');
-        assert.ok(/_growthNames\.get\(String\(playerId\)\)/.test(op), '分析タブから開いたときの名前を引けない');
-        // 引き分けを負けと同じ見た目にしない
-        assert.ok(/lead === 'same' \? 'same'/.test(html.match(/function _gcCls\([\s\S]*?\n        \}\n/)?.[0] || ''), '引き分けを負け扱いにしている');
-        // 閉じ方は button だけにしない (背景タップ / 下スワイプ)
-        assert.ok(/id="growthCmpModal" onclick="if\(event\.target===this\)closeGrowthCompare\(\)"/.test(html), '背景タップで閉じられない');
-        assert.ok(/\['growthCmpModal', \(\) => closeGrowthCompare\(\)\]/.test(html), '下スワイプで閉じられない');
 
-        // 43 未適用は null を返す (「育成ゼロ」と混同しない)
-        const cl = client.match(/window\.supabaseLoadMemberGrowth = [\s\S]*?\n\};\n/)?.[0] || '';
-        assert.equal((cl.match(/_isMissingTableErr\(.*?'member_growth'\)\) return null;/g) || []).length, 2, '未適用の判定が足りない');
-        assert.ok(/order\('season_id', \{ ascending: false \}\)/.test(cl), 'いちばん新しいシーズンを選んでいない');
-        // ★ 比較のシーズンは**両者そろっているいちばん新しい回** (Codex指摘 2026-09-09) —
-        //   単に最大の回を採ると、片方だけ新しい回を取り込んでいるときにもう片方が全部「—」になる
-        assert.ok(/bySeason/.test(cl), '回ごとに誰がいるかを見ていない');
-        assert.ok(/size >= want/.test(cl), '片方しか無い回を選び得る');
+        // ★ ① どのレイドを見ているかを画面が持つ。既定はドメインが決める
+        const ld = html.match(/async function renderGrowthAnalysis\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/supabaseLoadGrowthSeasonSummary\(\)/.test(ld), 'レイドの一覧を読んでいない');
+        assert.ok(/dom\.defaultGrowthSeason\(seasons\)/.test(ld), '既定のレイドをドメインで決めていない');
+        assert.ok(/supabaseLoadGrowthSeasonRows\(_gv\.seasonId\)/.test(ld), '選んだ回の育成を読んでいない');
+        assert.ok(/supabaseLoadSeasonTeams\(_gv\.seasonId\)/.test(ld), '選んだ回の凸記録を読んでいない');
+        assert.ok(/gen !== _gv\.gen/.test(ld), '追い越した古い応答を捨てていない');
+        assert.ok(/seasons === null/.test(ld), '43未適用を案内していない');
+
+        // ★ ② 編成は凸記録から。盤面 (アクティブシーズンの模擬) は材料にしない
+        const pt = html.match(/function _gvViewPT\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.usedTeams\(_gv\.teams \|\| \[\], basePid\)/.test(pt), '編成をドメインで組んでいない');
+        // ★ 盤面 (loadoutsByAttr) は運営タブ・ソルバーでは正しい材料。育成ビューだけが見てはいけない
+        const sec = (html.split('===== 🧬 育成くらべ (分析タブのビュー')[1] || '').split('===== 🧬 育成データの取り込み')[0];
+        assert.ok(sec, '育成ビューの塊を切り出せない');
+        assert.ok(!/loadoutsByAttr|squadsFor/.test(sec.replace(/^\s*\/\/.*$/gm, '')), '盤面の模擬編成をまだ材料にしている');
+        assert.ok(/handleGrowthAnaBase\('them'\)/.test(pt), '相手が使った編成に切り替えられない');
+
+        // ★ ③ ユニオン全体は「相手」のひとつ。全体を選ぶと順位表になる
+        assert.ok(/handleGrowthAnaWho\(''\)/.test(html), 'ユニオン全体を選べない');
+        assert.ok(/dom\.unionRanking\(_gv\.byPl, _gv\.players/.test(html), '順位をドメインで決めていない');
+        assert.ok(/dom\.SORT_FIELDS\.map/.test(html), '並べ替えの項目を画面が持っている');
+
+        // ★ ④ 名前・キャラ名を onclick に埋めない (引用符で壊れる / 注入できる)
+        assert.ok(!/openGrowthCompare\([^)]*p\.name/.test(html), '名前を onclick に埋めている');
+        assert.ok(/onclick="handleGrowthAnaChar\(\$\{i\}\)"/.test(html), 'キャラを番号で渡していない');
+        assert.ok(/onclick="handleGrowthAnaWho\(\$\{Number\(p\.id\)\}\)"/.test(html), '相手を id で渡していない');
+        // 判定は compare / rankSquad が唯一 — 画面で勝ち負けを書き足さない
+        const cc = html.match(/function _gvCharCard\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/c\.diffs\.map/.test(cc), '差のある項目だけを出していない');
+        assert.ok(!/r\.mine >|r\.theirs >/.test(cc), '画面で勝ち負けを計算している');
+        assert.ok(/lead === 'same' \? 'same'/.test(html.match(/function _gcCls\([\s\S]*?\n        \}\n/)?.[0] || ''), '引き分けを負け扱いにしている');
+        // 入口: 残凸表のメンバー名 → その人を相手にして分析タブへ
+        assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}\)"/.test(html), '残凸表の名前から開けない');
+
+        // 読み出し: 43未適用は null / 1000行で黙って切れない
+        const rows = client.match(/window\.supabaseLoadGrowthSeasonRows = [\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/_isMissingTableErr\(error, 'member_growth'\)\) return null;/.test(rows), '未適用の判定が無い');
+        assert.ok(/\.range\(from, from \+ STEP - 1\)/.test(rows), 'ページ送りしていない (1000行で黙って切れる)');
+        const sum = client.match(/window\.supabaseLoadGrowthSeasonSummary = [\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/_isMissingTableErr\(st\.error, 'member_growth_status'\)\) return null;/.test(sum), '未適用の判定が無い');
+        assert.ok(/status === 'ok'/.test(sum), '取り込めた人数を数えていない');
     });
+
     test('★ parseOpenid: アドレスの openid は base64 で包まれている (生の数字を期待すると1件も読めない)', () => {
         // しりすこスクワッド personal-scan.ts が実機で確かめた形。これが読めないと名寄せが成立しない
         const wrapped = Buffer.from('123456789', 'utf8').toString('base64');   // 'MTIzNDU2Nzg5'

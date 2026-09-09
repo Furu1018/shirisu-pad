@@ -1888,20 +1888,63 @@ window.supabaseLoadMyGrowthStatus = async function (playerId) {
     return (data && data[0]) || null;
 };
 
-// 育成の取り込み状況 (分析タブの「育成」ビューの入口)。
-// いちばん新しい取り込み済みシーズンの結果を返す。43未適用は null
-window.supabaseLoadLatestGrowthStatus = async function () {
-    const r = await supabase.from('member_growth_status')
-        .select('season_id, player_id, status, detail, character_count')
-        .order('season_id', { ascending: false }).limit(1000);
-    if (r.error) {
-        if (_isMissingTableErr(r.error, 'member_growth_status')) return null;
-        throw r.error;
+// 育成データのある回の一覧 (分析タブの「育成」ビューのレイド選択)。43未適用は null。
+// ★ **いちばん新しい回に固定しない** — テスト回に取り込みの跡が1件でも残っていると
+//   そこに引っ張られ、本番の回のデータが全部「未取得」に見える (実機FB 2026-09-09)。
+//   既定の選び方は growthDomain.defaultGrowthSeason が決める。
+window.supabaseLoadGrowthSeasonSummary = async function () {
+    const st = await supabase.from('member_growth_status')
+        .select('season_id, status').order('season_id', { ascending: false }).limit(5000);
+    if (st.error) {
+        if (_isMissingTableErr(st.error, 'member_growth_status')) return null;
+        throw st.error;
     }
-    const rows = r.data || [];
-    if (!rows.length) return { seasonId: null, rows: [] };
-    const sid = rows[0].season_id;
-    return { seasonId: sid, rows: rows.filter(x => x.season_id === sid) };
+    const by = new Map();
+    for (const r of st.data || []) {
+        const k = Number(r.season_id);
+        if (!by.has(k)) by.set(k, { ok: 0, total: 0 });
+        const e = by.get(k);
+        e.total++;
+        if (r.status === 'ok') e.ok++;
+    }
+    if (!by.size) return [];
+    const { data, error } = await supabase.from('seasons')
+        .select('id, month_key, hard_date, is_test').in('id', [...by.keys()]);
+    if (error) throw error;
+    return (data || [])
+        .map(s => ({ ...s, ok: by.get(Number(s.id))?.ok || 0, total: by.get(Number(s.id))?.total || 0 }))
+        .sort((a, b) => Number(b.id) - Number(a.id));
+};
+
+// その回の育成を**全員ぶん**。★ 1シーズン 600行を超えるのでページ送りする
+// (Supabase の既定上限 1000 で黙って切れると、後ろのメンバーだけ「未取得」に見える)
+window.supabaseLoadGrowthSeasonRows = async function (seasonId) {
+    if (seasonId == null) return [];
+    const cols = 'season_id, player_id, character_name, grade, core, lv, skill1_lv, skill2_lv, ulti_skill_lv,'
+        + ' combat, attractive_lv, harmony_cube_lv, favorite_item_lv, overload';
+    const STEP = 1000;
+    const out = [];
+    for (let from = 0; ; from += STEP) {
+        const { data, error } = await supabase.from('member_growth').select(cols)
+            .eq('season_id', seasonId).order('player_id').order('character_name')
+            .range(from, from + STEP - 1);
+        if (error) {
+            if (_isMissingTableErr(error, 'member_growth')) return null;
+            throw error;
+        }
+        out.push(...(data || []));
+        if (!data || data.length < STEP) return out;
+    }
+};
+
+// その回に**実際に使った編成** (凸記録)。編成の付いていない凸は落とす。
+// ★ 盤面 (loadoutsByAttr) はアクティブシーズンの模擬なので、振り返りには使えない
+window.supabaseLoadSeasonTeams = async function (seasonId) {
+    if (seasonId == null) return [];
+    const { data, error } = await supabase.from('attacks')
+        .select('player_id, boss_number, boss_code, characters, damage_raw').eq('season_id', seasonId);
+    if (error) throw error;
+    return (data || []).filter(a => Array.isArray(a.characters) && a.characters.length > 0);
 };
 
 // 育成の読み出し (比較用)。seasonId が null なら、その人たちの**いちばん新しい**シーズンを使う
