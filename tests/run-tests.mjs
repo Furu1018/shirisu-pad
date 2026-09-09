@@ -7027,6 +7027,24 @@ console.log('\nblablaNameCodes:');
         }
     });
 
+    test('★ すべての行に属性が付いている (キャラ別の絞り込みの材料)', () => {
+        // nikke_characters に属性の列が無いので、この表が唯一の出どころ。
+        // 欠けると絞り込みからそのキャラだけ消える (静かに消えるので気づきにくい)
+        const KEYS = new Set(['fire', 'water', 'electric', 'iron', 'wind']);
+        const rows = Object.entries(map.data);
+        const bad = rows.filter(([, e]) => !KEYS.has(e.element)).map(([nc, e]) => `${nc} ${e.jp} (${e.element})`);
+        assert.deepEqual(bad, [], `属性が無い/知らない値: ${bad.slice(0, 10).join(', ')}`);
+        assert.equal(map.counts.with_element, rows.length, 'counts.with_element が実データと合っていない');
+        // 5属性がそろっていること (片寄っていたら取り方を間違えている)
+        const byEl = {};
+        for (const [, e] of rows) byEl[e.element] = (byEl[e.element] || 0) + 1;
+        assert.deepEqual(Object.keys(byEl).sort(), [...KEYS].sort(), '出てこない属性がある');
+        for (const [k, n] of Object.entries(byEl)) assert.ok(n >= 20, `${k} が少なすぎる (${n})`);
+        // 日本語名も対で持つ (画面の表記に使う)
+        assert.equal(map.data['1010'].elementJp, '鉄甲', 'ラプラスの属性が変わっている');
+        assert.equal(map.data['1010'].element, 'iron');
+    });
+
     test('★ 表が痩せていない (CDN の一時不調で欠けたまま上書きされると気づけない)', () => {
         const rows = Object.entries(map.data);
         const withPad = rows.filter(([, e]) => e.pad);
