@@ -83,6 +83,13 @@ test('★ 4段すべて実際に描ける (名寄せ → 生成 → 貼り付け
     noUndef(out);
 });
 
+test('★ 一括のひも付け中は、個別の識別子欄を触らせない (計画が古くなる — Codex指摘)', () => {
+    const busy = run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }], busy: true }).html();
+    assert.ok(/<input[^>]*disabled/.test(busy), '実行中に個別の欄が触れる');
+    const idle = run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }] }).html();
+    assert.ok(!/<input[^>]*disabled/.test(idle), '実行中でないのに触れない');
+});
+
 test('★ ① 名簿からまとめて読み取る導線がある (入れ替えが多い回に1人ずつは現実的でない)', () => {
     const t = run({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }] });
     const out = t.html();
@@ -222,6 +229,44 @@ async function testAsync(name, f) {
     try { await f(); console.log('  ✅ ' + name); pass++; }
     catch (e) { console.error('  ❌ ' + name + '\n     ' + e.constructor.name + ': ' + e.message); fail++; }
 }
+
+// ---- 個別のひも付け (handleGrowthSetOpenid) ----
+const SRC_SETID = cut('        async function handleGrowthSetOpenid(');
+function runSetId({ players = [], busy = false } = {}) {
+    const calls = { saved: [], notes: [] };
+    const state = { players, busy, msg: null };
+    const env = {
+        _growth: state,
+        window: {
+            growthDomain: dom,
+            supabaseSetPlayerOpenid: async (id, v) => { calls.saved.push({ id, v }); },
+        },
+        _growthNote: (kind, text) => { calls.notes.push({ kind, text }); },
+    };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, SRC_SETID + '\nreturn handleGrowthSetOpenid;')(...keys.map(k => env[k]));
+    return { run: (id, v) => fn(id, v), calls };
+}
+
+await testAsync('★ 一括のひも付け中は個別の書き換えを受けない (計画が古くなる — Codex指摘)', async () => {
+    const busy = runSetId({ players: [{ id: 1, name: 'あ', blabla_openid: null }], busy: true });
+    await busy.run(1, '123456789');
+    assert.equal(busy.calls.saved.length, 0, '一括中なのに保存している');
+    assert.equal(busy.calls.notes.at(-1).kind, 'warn');
+    // 実行中でなければ普通に保存する (アドレスからも取り出す)
+    const idle = runSetId({ players: [{ id: 1, name: 'あ', blabla_openid: null }] });
+    await idle.run(1, 'https://www.blablalink.com/user?uid=123456789');
+    assert.deepEqual(idle.calls.saved, [{ id: 1, v: '123456789' }], 'アドレスから識別子を取り出して保存していない');
+    // 空にすると解除
+    const off = runSetId({ players: [{ id: 1, name: 'あ', blabla_openid: '1' }] });
+    await off.run(1, '');
+    assert.deepEqual(off.calls.saved, [{ id: 1, v: null }]);
+    // 読み取れない入力は保存しない
+    const bad = runSetId({ players: [{ id: 1, name: 'あ', blabla_openid: null }] });
+    await bad.run(1, 'よくわからない文字');
+    assert.equal(bad.calls.saved.length, 0, '読み取れないのに保存している');
+    assert.equal(bad.calls.notes.at(-1).kind, 'err');
+});
 
 console.log('\n取り込み本体:\n');
 

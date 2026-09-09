@@ -653,13 +653,20 @@
         for (const raw of String(text == null ? '' : text).split(/\r?\n/)) {
             const line = raw.trim();
             if (!line) continue;
-            // 行の末尾の数字が識別子。base64 で包まれたままでも開く
-            const parts = line.split(/\t|,|\s{2,}/).map(s => s.trim()).filter(Boolean);
+            // ★ タブがあればタブだけで割る (Codex指摘 2026-09-09) — 名前にカンマが入っていても壊さない。
+            //   ブックマークレットの出力はタブ区切り。手で書いた行だけカンマ/連続空白に落ちる
+            const parts = (line.includes('\t') ? line.split('\t') : line.split(/,|\s{2,}/))
+                .map(s => s.trim()).filter(Boolean);
             if (!parts.length) continue;
+            // 行の末尾が識別子。base64 で包まれたままでも開く
             const openid = parseOpenid(parts[parts.length - 1]);
-            if (!openid || seen.has(openid)) continue;
-            seen.add(openid);
+            if (!openid) continue;
             const name = parts.length > 1 ? parts.slice(0, -1).join(' ').trim() : '';
+            // ★ **同じ識別子を黙って捨てない** (Codex指摘) — 名前違いで2行あるのは名寄せの取り違えの元なので、
+            //   matchRoster に判断させる。まったく同じ行 (二重貼り付け) だけ畳む
+            const key = `${normName(name)}\u0001${openid}`;   // 名前と識別子を分けて畳む (区切りは制御文字)
+            if (seen.has(key)) continue;
+            seen.add(key);
             out.push({ name, openid });
         }
         return out;
@@ -692,6 +699,7 @@
         }
         const apply = [], same = [], unmatched = [], conflicts = [];
         const hit = new Set();
+        const claimed = new Map();   // playerId → 先にその人へ当たった行 (2行が同じ人に当たるのを防ぐ)
         // 同じ識別子が2回出てくる名簿は、どちらに当てるか決められない
         const idCount = new Map();
         for (const e of es) idCount.set(e.openid, (idCount.get(e.openid) || 0) + 1);
@@ -710,6 +718,14 @@
             }
             const p = cand[0];
             hit.add(String(p.id));
+            // ★ 書き方の違う2行が同じ人に当たると、あとの行が黙って前の行を上書きする (Codex指摘 2026-09-09)。
+            //   どちらが正しいかは決められないので、両方とも運営に返す
+            const already = claimed.get(String(p.id));
+            if (already) {
+                conflicts.push({ ...e, why: `「${p.name}」に当たる行が名簿に2つあります (${already.openid} と ${e.openid})` });
+                continue;
+            }
+            claimed.set(String(p.id), e);
             const prev = p.blabla_openid || null;
             if (prev === e.openid) same.push({ playerId: p.id, playerName: p.name, openid: e.openid });
             else apply.push({ playerId: p.id, playerName: p.name, openid: e.openid, prev });

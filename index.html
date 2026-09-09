@@ -15995,7 +15995,7 @@
             const rows = players.map(p => `
                 <div class="gr-row">
                     <span class="nm" title="${esc(p.name)}">${esc(p.name)}</span>
-                    <input type="text" inputmode="numeric" class="${p.blabla_openid ? 'set' : ''}"
+                    <input type="text" inputmode="numeric" class="${p.blabla_openid ? 'set' : ''}" ${_growth.busy ? 'disabled' : ''}
                            value="${esc(p.blabla_openid || '')}" placeholder="未設定"
                            title="BlaBlaLINK のリンク (?uid=…) をそのまま貼っても構いません"
                            onchange="handleGrowthSetOpenid(${Number(p.id)}, this.value)">
@@ -16082,6 +16082,9 @@
         // 識別子のひも付け。URL でも数字でも受ける (parseOpenid)。空にすると解除
         async function handleGrowthSetOpenid(playerId, raw) {
             const dom = window.growthDomain;
+            // ★ 一括のひも付け中は個別の書き換えを受けない (Codex指摘 2026-09-09) —
+            //   一括は開始時の写しで動くので、途中で1人だけ変えられると計画が古くなり、あとで上書きされる
+            if (_growth.busy) { _growthNote('warn', 'いま一括でひも付けています。終わってからにしてください。'); return; }
             const p = (_growth.players || []).find(x => Number(x.id) === Number(playerId));
             if (!dom || !p) return;
             const text = String(raw == null ? '' : raw).trim();
@@ -16127,23 +16130,33 @@
             if (!m.apply.length) { _growthNote('warn', summary.replace(/\n+/g, ' ')); return; }
             if (!confirm(`${summary}\n\n[OK] ひも付ける / [キャンセル] やめる`)) return;
             _growth.busy = true; _growth.msg = null; _growthPaint();
-            let done = 0, failed = 0;
+            let done = 0;
+            const failed = [];              // 失敗した**人**の名前 (操作の回数ではない — Codex指摘)
+            const undone = new Map();       // 外せたが、次の持ち主に付けられていない識別子 → 前の持ち主の名前
             try {
                 for (const c of m.clear) {
-                    try { await window.supabaseSetPlayerOpenid(c.playerId, null); } catch { failed++; }
+                    try { await window.supabaseSetPlayerOpenid(c.playerId, null); undone.set(c.openid, c.playerName); }
+                    catch { failed.push(`${c.playerName} (前のひも付けを外せませんでした)`); }
                 }
                 for (const a of m.apply) {
-                    try { await window.supabaseSetPlayerOpenid(a.playerId, a.openid); done++; }
-                    catch { failed++; }
+                    try { await window.supabaseSetPlayerOpenid(a.playerId, a.openid); done++; undone.delete(a.openid); }
+                    catch (e) { failed.push(`${a.playerName} (${e?.message || e})`); }
                 }
             } finally {
                 _growth.busy = false;
             }
-            ta.value = '';
+            // ★ 外したのに付け直せなかった人は**ひも付けが消えたまま**になる。名指しで伝える (Codex指摘)。
+            //   貼り付けも残す — もう一度押せばやり直せる
+            const orphan = [...undone.values()];
+            const ok = !failed.length && !orphan.length;
+            if (ok) ta.value = '';
             await renderOpsGrowth(true);
-            _growthNote(failed ? 'warn' : 'ok',
-                `${done}人をひも付けました${failed ? ` / ${failed}人は失敗しました` : ''}。`
-                + `${m.unmatched.length ? ` PAD にいない名前が ${m.unmatched.length}人います (新加入や改名は手で当ててください)。` : ''}`);
+            const few3 = (list) => list.slice(0, 3).join('、') + (list.length > 3 ? ' ほか' : '');
+            _growthNote(ok ? 'ok' : 'warn',
+                `${done}人をひも付けました。`
+                + (failed.length ? ` 失敗 ${failed.length}人: ${few3(failed)}。` : '')
+                + (orphan.length ? ` ⚠ ${few3(orphan)} はひも付けが外れたままです (貼り付けを残したので、もう一度押してください)。` : '')
+                + (m.unmatched.length ? ` PAD にいない名前が ${m.unmatched.length}人います (新加入や改名は手で当ててください)。` : ''));
         }
 
         // クリップボードへ。clipboard API が使えない環境 (非https 等) は textarea + execCommand に落ちる

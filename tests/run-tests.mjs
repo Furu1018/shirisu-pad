@@ -5826,6 +5826,7 @@ console.log('\ngrowthDomain:');
 {
     const dom = globalThis.growthDomain;
     const _fsG = (await import('node:fs')).default;
+    const _grRd = (...p) => _fsG.readFileSync(new URL(`../${p.join('/')}`, import.meta.url), 'utf8');
     const _pathG = (await import('node:path')).default;
     const _ROOTG = _pathG.resolve(_pathG.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
 
@@ -6130,6 +6131,18 @@ console.log('\ngrowthDomain:');
         assert.equal(dom.toRows({ details: [{ name_code: 1012 }], stateEffects: [], nameCodeMap: map }).rows[0].lv, null);
     });
 
+    test('★ ソースに生の制御文字が混ざっていない (編集ツールが2回混入させた — 2026-09-09)', () => {
+        // 見えないので目視では気づけない。混ざると文字列の意味が変わり、検索も当たらなくなる
+        const bad = [];
+        for (const rel of ['index.html', 'js/domain/growth.js', 'js/domain/reservations.js', 'js/domain/opsStage.js',
+            'js/domain/opsLayout.js', 'js/optimal-plan.js', 'js/supabase-client.js']) {
+            const src = _grRd(...rel.split('/'));
+            const m = src.match(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g);
+            if (m) bad.push(rel + ': ' + m.length + '個');
+        }
+        assert.deepEqual(bad, [], '生の制御文字がある (\\uXXXX のエスケープで書くこと): ' + bad.join(' / '));
+    });
+
     test('★ parseRoster: 名前 + 識別子 の行を読む (タブ・カンマ・連続空白。見出しやゴミ行は飛ばす)', () => {
         const r = dom.parseRoster([
             'しりすこPAD 名簿 3人',
@@ -6140,7 +6153,7 @@ console.log('\ngrowthDomain:');
             '空白  区切り   111111222',
             '(名前不明)\t222222333',
             'ゴミ行',
-            'なべりうす\t3273786220482814289',   // 同じ識別子の重複は1回だけ
+            'なべりうす\t3273786220482814289',   // まったく同じ行 (二重貼り付け) は1回だけ
         ].join('\n'));
         assert.deepEqual(r, [
             { name: 'なべりうす', openid: '3273786220482814289' },
@@ -6151,6 +6164,10 @@ console.log('\ngrowthDomain:');
         // base64 のまま貼られても開く
         const w = Buffer.from('29080-123456789', 'utf8').toString('base64');
         assert.deepEqual(dom.parseRoster(`だれか\t${w}`), [{ name: 'だれか', openid: '123456789' }]);
+        // ★ タブがあればタブだけで割る — 名前にカンマが入っていても壊さない (Codex指摘)
+        assert.deepEqual(dom.parseRoster('あ, い\t123456789'), [{ name: 'あ, い', openid: '123456789' }]);
+        // ★ 同じ識別子が名前違いで2行あるのは**捨てない** — 取り違えの元なので matchRoster に判断させる
+        assert.deepEqual(dom.parseRoster('あ\t123456789\nい\t123456789').length, 2);
         assert.deepEqual(dom.parseRoster(''), []);
         assert.deepEqual(dom.parseRoster(null), []);
     });
@@ -6197,6 +6214,15 @@ console.log('\ngrowthDomain:');
             [{ id: 1, name: 'あ' }, { id: 2, name: 'い' }]);
         assert.equal(twice.apply.length, 0, '同じ識別子を2人に当てている');
         assert.equal(twice.conflicts.length, 2);
+        // ★ 書き方の違う2行が同じ人に当たるとき、あとの行が黙って上書きしない (Codex指摘 2026-09-09)
+        const sameP = dom.matchRoster(
+            [{ name: 'FURURI', openid: '111111111' }, { name: 'ＦＵＲＵ ＲＩ', openid: '222222222' }],
+            [{ id: 1, name: 'FURURI' }]);
+        assert.equal(sameP.apply.length, 1, '同じ人に2行当たっているのに両方書こうとしている');
+        assert.equal(sameP.apply[0].openid, '111111111', '先の行を採っていない');
+        assert.equal(sameP.conflicts.length, 1);
+        assert.match(sameP.conflicts[0].why, /当たる行が名簿に2つあります/);
+        assert.equal(sameP.missing.length, 0, '当たっている人を「名簿にいない」に数えている');
     });
 
     test('matchRoster: 全角半角・空白・大小文字の違いは同じ名前とみなす', () => {
@@ -6319,7 +6345,7 @@ console.log('\ngrowthDomain:');
     });
 
     test('★ 配線: 育成の取り込みパネル (段階「終了」・upsert のみ・43未適用は止める)', () => {
-        const rd = (...p) => _fsG.readFileSync(new URL(`../${p.join('/')}`, import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
+        const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
         const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js');
         // 置き場所は運営タブの段階「終了」— 使われたキャラが確定するのはレイド後
         assert.ok(/id: 'opsSecGrowth',[^\n]*stages: \['end'\]/.test(layout), '取り込みカードが終了段階に無い');
