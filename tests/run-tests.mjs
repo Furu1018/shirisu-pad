@@ -7109,13 +7109,25 @@ console.log('\nswipeGuards:');
      * ★ セレクタは並記 (.a, .b) も子孫 (.a .b) もある。並記は**両方**、子孫は**末尾だけ**が
      *   スクロールする側なので、カンマで割ってから各片の最後のクラスを採る (Codex指摘 2026-09-09)
      */
+    // ★ 「宣言を見つけて、そこから前のセレクタへ遡る」形にする。
+    //   ブロック全体を1つの正規表現で取ると 1.5MB の index.html で 24 秒かかった (Codex指摘)
+    const selectorClasses = (selector) => {
+        const out = [];
+        for (const part of selector.split(',')) {
+            const hits = [...part.matchAll(/\.([a-zA-Z][\w-]*)/g)];
+            if (hits.length) out.push(hits[hits.length - 1][1]);
+        }
+        return out;
+    };
     const scrollClasses = () => {
         const out = new Set();
-        for (const m of html.matchAll(/([^{}]+)\{[^{}]*overflow-x:\s*auto[^{}]*\}/g)) {
-            for (const part of m[1].split(',')) {
-                const hits = [...part.matchAll(/\.([a-zA-Z][\w-]*)/g)];
-                if (hits.length) out.add(hits[hits.length - 1][1]);
-            }
+        for (const m of html.matchAll(/overflow-x:\s*auto/g)) {
+            // 宣言の手前の { までがそのルールの中身、その前が (メディアクエリを除いた) セレクタ
+            const brace = html.lastIndexOf('{', m.index);
+            if (brace < 0) continue;
+            const head = html.slice(Math.max(0, brace - 400), brace);
+            const sel = head.slice(Math.max(head.lastIndexOf('}'), head.lastIndexOf('{'), head.lastIndexOf(';')) + 1);
+            for (const c of selectorClasses(sel)) out.add(c);
         }
         return [...out];
     };
@@ -7140,25 +7152,30 @@ console.log('\nswipeGuards:');
 
     test('この検査自体が効いていること (セレクタの書き方・引用符・属性名で取りこぼさない)', () => {
         // 並記されたセレクタは両方が対象。子孫セレクタは末尾だけが対象
+        // ★ 本番と同じ手順を通す (二重実装すると、直したつもりが検査だけ直っている、が起きる)
         const probe = (css) => {
-            const saved = html;
             const out = new Set();
-            for (const m of css.matchAll(/([^{}]+)\{[^{}]*overflow-x:\s*auto[^{}]*\}/g)) {
-                for (const part of m[1].split(',')) {
-                    const hits = [...part.matchAll(/\.([a-zA-Z][\w-]*)/g)];
-                    if (hits.length) out.add(hits[hits.length - 1][1]);
-                }
+            for (const m of css.matchAll(/overflow-x:\s*auto/g)) {
+                const brace = css.lastIndexOf('{', m.index);
+                if (brace < 0) continue;
+                const head = css.slice(Math.max(0, brace - 400), brace);
+                const sel = head.slice(Math.max(head.lastIndexOf('}'), head.lastIndexOf('{'), head.lastIndexOf(';')) + 1);
+                for (const c of selectorClasses(sel)) out.add(c);
             }
-            void saved;
             return [...out].sort();
         };
         assert.deepEqual(probe('.a, .b { overflow-x: auto; }'), ['a', 'b'], '並記の片方を落としている');
         assert.deepEqual(probe('.wrap .inner { overflow-x: auto; }'), ['inner'], 'スクロールする側は末尾のクラス');
         assert.deepEqual(probe('@media (max-width: 767px) { .m { overflow-x: auto; } }'), ['m'], 'メディア内を拾えない');
+        assert.deepEqual(probe('.x { color: red; overflow-x: auto; }'), ['x'], '前に別の宣言があると拾えない');
+        assert.deepEqual(probe('.p > .c { overflow-x: auto; }'), ['c'], '結合子のあるセレクタで末尾を採れない');
         // 属性名の部分一致で合格にしない
         assert.ok(!/data-no-swipe(?=[\s>=])/.test('<div data-no-swipe-old class="x">'), '別の属性名を通している');
         assert.ok(/data-no-swipe(?=[\s>=])/.test('<div data-no-swipe class="x">'));
         assert.ok(/data-no-swipe(?=[\s>=])/.test('<div class="x" data-no-swipe>'));
+        // 単一引用符の class も取り出せること
+        const one = /<[a-z]+[^>]*class=["'][^"']*\bfoo\b[^"']*["'][^>]*>/.exec("<div class='foo bar' data-no-swipe>");
+        assert.ok(one && /data-no-swipe(?=[\s>=])/.test(one[0]), '単一引用符の class を取り出せていない');
     });
 
     test('スワイプ側が data-no-swipe を見ている (属性名を変えたら気づく)', () => {
