@@ -600,6 +600,20 @@ await testAsync('★ id の型が違っても取り違えない (画面が文字
     assert.deepEqual(t.playerIds(), ['1'], `id の型で取り違えている: ${JSON.stringify(t.playerIds())}`);
 });
 
+await testAsync('★ 確認している間にひも付けを外された人には送らない (公開しても取れない)', async () => {
+    // 状態は private のまま、識別子だけ外れることがある (付け替えの途中など)。
+    // 本人が公開しても運営が付け直すまで取れないので、言っても何もできない
+    const t = runAsk({
+        players: P4,
+        statusRows: [{ player_id: 1, status: 'private' }, { player_id: 2, status: 'private' }],
+        freshPlayers: P4.map(p => (p.id === 2 ? { ...p, blabla_openid: null } : p)),
+    });
+    const p = t.run();
+    assert.deepEqual(t.recipients(), [1, 2]);
+    t.answer(true); await p;
+    assert.deepEqual(t.playerIds(), [1], 'ひも付けの外れた人にも送っている');
+});
+
 await testAsync('送信に失敗しても実行中のままにしない', async () => {
     const t = runAsk({ players: P4, statusRows: S4, sendFails: true });
     const p = t.run(); t.answer(true); await p;
@@ -669,59 +683,65 @@ await testAsync('★ 途中のエラーは握りつぶさない / 43未適用だ
     assert.equal(await missing.load(30), null, '43未適用を「育成ゼロ」と混同している');
 });
 
-// ---- レイド一覧のページ送り ------------------------------------------------
+// ---- レイド一覧のページ送り (keyset) ---------------------------------------
 //   ★ 1回のレイドで人数ぶんの行が積まれる。既定上限 1000 のままだと 30回ほどで
 //     **古い回が選択肢から黙って消え**、境界の回は取り込み人数も過少になる (Codex指摘 2026-09-09)
+//   ★ オフセットでは送らない — 読んでいる途中に status が1行でも増えると境界がずれ、
+//     既読を二重に数えて新しい行を読み落とす (取り込みは過去のレイドにも書ける)
 const SUM_SRC = (CLIENT.match(/window\.supabaseLoadGrowthSeasonSummary = async function[\s\S]*?\n\};\n/) || [])[0];
 if (!SUM_SRC) { console.error('NG: supabaseLoadGrowthSeasonSummary を切り出せません'); process.exit(2); }
 
 function runSummary(pages, seasons = []) {
-    const ranges = [];
+    const queries = [], orders = [];
     let call = 0;
-    const orders = [];
-    const st = {
-        select: () => st,
-        order: (col, opt) => { orders.push([col, opt?.ascending !== false]); return st; },
-        range: async (from, to) => {
-            ranges.push([from, to]);
-            const p = pages[call++];
-            if (p instanceof Error) return { data: null, error: p };
-            return { data: p || [], error: null };
-        },
+    const makeQ = () => {
+        const q = {
+            _gt: null, _limit: null,
+            select: () => q,
+            order: (col, opt) => { orders.push([col, opt?.ascending !== false]); return q; },
+            limit: (n) => { q._limit = n; return q; },
+            gt: (col, v) => { q._gt = v; return q; },
+            then: (resolve) => {
+                queries.push({ gt: q._gt, limit: q._limit });
+                const p = pages[call++];
+                if (p instanceof Error) resolve({ data: null, error: p });
+                else resolve({ data: p || [], error: null });
+            },
+        };
+        return q;
     };
     const se = { select: () => se, in: async (col, ids) => ({ data: seasons.filter(s => ids.includes(s.id)), error: null }) };
     const win = {};
     new Function('supabase', '_isMissingTableErr', 'window', `${SUM_SRC}\nreturn 0;`)(
-        { from: (t) => (t === 'member_growth_status' ? st : se) },
+        { from: (t) => (t === 'member_growth_status' ? makeQ() : se) },
         (e, t) => String(e?.message || '').includes(t),
         win,
     );
-    return { load: win.supabaseLoadGrowthSeasonSummary, ranges, orders };
+    return { load: win.supabaseLoadGrowthSeasonSummary, queries, orders };
 }
-const stPage = (n, seasonId, okEvery = 2) =>
+const stRows = (seasonId, n, okEvery = 2) =>
     Array.from({ length: n }, (_, i) => ({ season_id: seasonId, status: i % okEvery === 0 ? 'ok' : 'private' }));
+const SE = [{ id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false },
+    { id: 26, month_key: '2026-08', hard_date: '2026-08-01', is_test: false }];
 
 await testAsync('★ レイド一覧も1000行で切れない (古い回が選択肢から消える)', async () => {
-    const t = runSummary(
-        [stPage(1000, 30), stPage(31, 26)],
-        [{ id: 30, month_key: '2026-09', hard_date: '2026-09-05', is_test: false },
-            { id: 26, month_key: '2026-08', hard_date: '2026-08-01', is_test: false }],
-    );
+    const t = runSummary([[...stRows(26, 500), ...stRows(30, 500)], stRows(30, 31)], SE);
     const out = await t.load();
     assert.deepEqual(out.map(s => s.id), [30, 26], `古い回が消えている: ${JSON.stringify(out.map(s => s.id))}`);
-    assert.deepEqual(t.ranges, [[0, 999], [1000, 1999]], 'ページの取り方が違う');
-    // ★ **古い順**に読む — 新しい回は season_id が大きいので、降順だと読んでいる途中に
-    //   新しい回が入ったとき先頭がずれ、二重計上と読み落としが起きる (Codex指摘)
-    assert.deepEqual(t.orders.slice(0, 2), [['season_id', true], ['player_id', true]],
-        '並び順の指定が違う (降順だと途中で追加された回で先頭がずれる)');
-    assert.equal(out.find(s => s.id === 30).total, 1000);
-    assert.equal(out.find(s => s.id === 26).ok, 16, '取り込み人数を数え間違えている');
+    assert.equal(out.find(s => s.id === 26).total, 500);
+    assert.equal(out.find(s => s.id === 26).ok, 250, '取り込み人数を数え間違えている');
+    assert.equal(out.find(s => s.id === 30).total, 31, '途中で切れた回を二重に数えている');
+    // ★ オフセットでなく**シーズンの区切り**で読み直す (途中で行が増えてもずれない)
+    assert.deepEqual(t.queries, [{ gt: null, limit: 1000 }, { gt: 26, limit: 1000 }],
+        `オフセットで送っている: ${JSON.stringify(t.queries)}`);
+    assert.deepEqual(t.orders.slice(0, 2), [['season_id', true], ['player_id', true]], '並び順の指定が違う');
 });
 
-await testAsync('ちょうど1000行なら次のページまで見る / 1件も無ければ空', async () => {
-    const t = runSummary([stPage(1000, 30), []], [{ id: 30, month_key: '2026-09', is_test: false }]);
-    assert.equal((await t.load()).length, 1);
-    assert.equal(t.ranges.length, 2, '1ページ目で打ち切っている');
+await testAsync('1回で1000行を超えても止まる / 1件も無ければ空', async () => {
+    const t = runSummary([stRows(30, 1000), []], SE);
+    const out = await t.load();
+    assert.deepEqual(out.map(s => s.id), [30]);
+    assert.deepEqual(t.queries.map(q => q.gt), [null, 30], '同じ回を読み続けている (終わらない)');
     const none = runSummary([[]]);
     assert.deepEqual(await none.load(), []);
 });
@@ -729,7 +749,7 @@ await testAsync('ちょうど1000行なら次のページまで見る / 1件も�
 await testAsync('43未適用は null / それ以外のエラーは投げる', async () => {
     const missing = runSummary([new Error('relation "public.member_growth_status" does not exist')]);
     assert.equal(await missing.load(), null, '未適用を「レイドが無い」と混同している');
-    const boom = runSummary([stPage(1000, 30), new Error('network down')]);
+    const boom = runSummary([[...stRows(26, 500), ...stRows(30, 500)], new Error('network down')], SE);
     await assert.rejects(() => boom.load(), /network down/, '途中で失敗したのに半端な一覧を返している');
 });
 

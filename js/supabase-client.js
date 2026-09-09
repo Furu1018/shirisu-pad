@@ -1893,30 +1893,40 @@ window.supabaseLoadMyGrowthStatus = async function (playerId) {
 //   そこに引っ張られ、本番の回のデータが全部「未取得」に見える (実機FB 2026-09-09)。
 //   既定の選び方は growthDomain.defaultGrowthSeason が決める。
 window.supabaseLoadGrowthSeasonSummary = async function () {
-    // ★ ページ送りする (Codex指摘 2026-09-09) — 1回のレイドで人数ぶんの行が積まれるので、
-    //   既定上限 1000 では 30回ほどで**古い回が選択肢から黙って消え**、境界の回は人数も過少になる
+    // ★ ページ送りが要る (Codex指摘 2026-09-09) — 1回のレイドで人数ぶんの行が積まれるので、
+    //   既定上限 1000 のままだと 30回ほどで**古い回が選択肢から黙って消え**、境界の回は人数も過少になる。
+    // ★ ただし**オフセットでは送らない**。読んでいる途中に status が1行でも増えると境界がずれ、
+    //   既読を二重に数えて新しい行を読み落とす (取り込みは過去のレイドにも書ける)。
+    //   シーズンの区切りを鍵にして「まだ読んでいない回」から読み直す (keyset)。
     const STEP = 1000;
     const by = new Map();
-    for (let from = 0; ; from += STEP) {
-        // ★ **古い順**に読む (Codex指摘 2026-09-09)。新しい回ほど season_id が大きいので、
-        //   降順だと読んでいる途中に新しい回が入ったとき先頭がずれ、二重計上と読み落としが起きる。
-        //   昇順なら追加は末尾に付くだけで済む (並べ直すのは最後にまとめて)
-        const st = await supabase.from('member_growth_status')
-            .select('season_id, status').order('season_id', { ascending: true }).order('player_id')
-            .range(from, from + STEP - 1);
+    const count = (r) => {
+        const k = Number(r.season_id);
+        if (!by.has(k)) by.set(k, { ok: 0, total: 0 });
+        const e = by.get(k);
+        e.total++;
+        if (r.status === 'ok') e.ok++;
+    };
+    let after = null;                       // この回より後ろだけを読む
+    for (;;) {
+        let q = supabase.from('member_growth_status').select('season_id, status')
+            .order('season_id', { ascending: true }).order('player_id', { ascending: true })
+            .limit(STEP);
+        if (after != null) q = q.gt('season_id', after);
+        const st = await q;
         if (st.error) {
             if (_isMissingTableErr(st.error, 'member_growth_status')) return null;
             throw st.error;
         }
         const rows = st.data || [];
-        for (const r of rows) {
-            const k = Number(r.season_id);
-            if (!by.has(k)) by.set(k, { ok: 0, total: 0 });
-            const e = by.get(k);
-            e.total++;
-            if (r.status === 'ok') e.ok++;
-        }
-        if (rows.length < STEP) break;
+        if (!rows.length) break;
+        if (rows.length < STEP) { rows.forEach(count); break; }
+        // いちばん後ろの回は途中で切れているかもしれないので、いったん置いて次の周で読み直す
+        const last = Number(rows[rows.length - 1].season_id);
+        const full = rows.filter(r => Number(r.season_id) !== last);
+        if (!full.length) { rows.forEach(count); after = last; continue; }   // 1回で1000人を超える異常時
+        full.forEach(count);
+        after = Number(full[full.length - 1].season_id);
     }
     if (!by.size) return [];
     const { data, error } = await supabase.from('seasons')
