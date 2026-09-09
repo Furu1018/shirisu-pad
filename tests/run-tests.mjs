@@ -6750,7 +6750,20 @@ console.log('\ngrowthDomain:');
         assert.equal(r.myRank, 2, '自分の順位が違う');
         assert.equal(r.list.length, 2, '1体でも欠けている人を並べている');
         // 火力役が0体なら順位も出さない (誰でも「全部持っている」ことになってしまう)
-        assert.deepEqual(dom.unionDpsRanking(by, players, [], 1), { list: [], myRank: null });
+        assert.deepEqual(dom.unionDpsRanking(by, players, [], 1), { list: [], myRank: null, myMissing: null });
+        // ★ 「持っていない」と「持っているが装備の記録が無い」を分ける — 直し方が違う
+        const mix = dom.byPlayerCharacter([
+            { player_id: 1, character_name: 'A', ...ol(50, 20) },
+            { player_id: 1, character_name: 'B', overload: null },   // 持っているが記録が無い
+            { player_id: 2, character_name: 'A', ...ol(60, 30) }, { player_id: 2, character_name: 'B', ...ol(50, 20) },
+        ]);
+        const r2 = dom.unionDpsRanking(mix, players, ['A', 'B'], 1);
+        assert.equal(r2.myRank, null);
+        assert.deepEqual(r2.myMissing, { character: 'B', reason: 'no_value' }, '記録が無いのを未所持にしている');
+        assert.deepEqual(r2.list.map(x => x.playerId), [2], '記録の無い人を並べている');
+        const r3 = dom.unionDpsRanking(by, players, ['A', 'B'], 3);   // 3 は B を持っていない
+        assert.deepEqual(r3.myMissing, { character: 'B', reason: 'no_char' }, '未所持を記録なしにしている');
+        assert.equal(dom.unionDpsRanking(by, players, ['A', 'B'], 1).myMissing, null, '揃っている人に理由が付いている');
         assert.equal(dom.unionDpsRanking(by, players, ['A'], 9).myRank, null);
         // ★ 同点は名前 → id で固定する (描き直すたびに順位が入れ替わると信用されない)
         const tie = dom.byPlayerCharacter([

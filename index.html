@@ -16521,13 +16521,20 @@
             }
             if (union) {
                 const r = dom.unionDpsRanking(_gv.byPl, _gv.players, dps, myId);
-                // ★ 「誰もいない」と「自分だけ揃っていない」を混ぜない (Codex指摘 2026-09-10)。
-                //   他の人は並んでいるのに「そろえている人がいません」と出ると、事実と食い違う
+                // ★ 「誰もいない」と「自分だけ足りない」を混ぜない (Codex指摘 2026-09-10)。
+                //   他の人は並んでいるのに「そろえている人がいません」と出ると、事実と食い違う。
+                // ★ さらに「持っていない」と「持っているが装備の記録が無い」も分ける — 直し方が違う
+                //   (前者は育てる / 後者は取り込み直す)
+                const why = r.myMissing
+                    ? (r.myMissing.reason === 'no_value'
+                        ? `自分の ${esc(r.myMissing.character)} に装備の記録がありません`
+                        : `自分は ${esc(r.myMissing.character)} を持っていません`)
+                    : '自分の記録が足りません';
                 return `<div class="gv-dpsbar">⚡ 火力役 ${dps.length}体の合計`
                     + (!r.list.length
-                        ? '<span class="n">この顔ぶれを全部そろえている人がいません</span>'
+                        ? '<span class="n">この顔ぶれ全員ぶんの記録がある人がいません</span>'
                         : r.myRank == null
-                            ? `<span class="n">自分はこの顔ぶれが揃っていません (${r.list.length}人が揃っています)</span>`
+                            ? `<span class="n">${why} (${r.list.length}人が揃っています)</span>`
                             : `<span>${r.myRank}位</span><span class="n">/ ${r.list.length}人中</span>`)
                     + '</div>';
             }

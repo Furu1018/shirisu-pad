@@ -506,25 +506,47 @@ test('★ 属性表が読めないときは、絞り込みを出さず「すべ�
         '属性で絞ったまま表が読めなくなると全員消える (戻すピルも出ないので詰む)');
 });
 
-test('★ ユニオン順位: 「誰もいない」と「自分だけ揃っていない」を混ぜない', () => {
-    // 他の人は並んでいるのに「そろえている人がいません」と出ると事実と食い違う
+test('★ ユニオン順位: 「誰もいない」「持っていない」「記録が無い」を言い分ける', () => {
+    // ★ 直し方が違うので混ぜてはいけない — 持っていないなら育てる、記録が無いなら取り込み直す
     const ol = (n) => ({ overload: { 有利コード: n / 2, 攻撃力: n / 2 } });
-    const rows = [
+    const others = [
         growthRow(2, 'ヘルム', ol(20)), growthRow(2, '紅蓮', ol(20)),
         growthRow(3, 'ヘルム', ol(30)), growthRow(3, '紅蓮', ol(30)),
-        growthRow(1, 'ヘルム', ol(10)),   // 自分は紅蓮を持っていない
     ];
-    const mine = build({ rows, teams: [atk(1, ['ヘルム', '紅蓮'])], them: null }).paint();
-    assert.match(mine, /自分はこの顔ぶれが揃っていません \(2人が揃っています\)/,
-        '自分だけ揃っていないのに「誰もいない」と言っている');
-    assert.ok(!/そろえている人がいません/.test(mine));
-    // 本当に誰も揃っていないときだけ、そう言う
-    const none = build({ rows: [growthRow(1, 'ヘルム', ol(10))], teams: [atk(1, ['ヘルム', '紅蓮'])], them: null }).paint();
-    assert.match(none, /この顔ぶれを全部そろえている人がいません/);
+    const team = [atk(1, ['ヘルム', '紅蓮'])];
+    // ① 自分が紅蓮を持っていない
+    const noChar = build({ rows: [...others, growthRow(1, 'ヘルム', ol(10))], teams: team, them: null }).paint();
+    assert.match(noChar, /自分は 紅蓮 を持っていません \(2人が揃っています\)/,
+        '持っていないことを言えていない');
+    // ② 持っているが装備の記録が無い (取り込みで拾えなかった)
+    const noVal = build({
+        rows: [...others, growthRow(1, 'ヘルム', ol(10)), growthRow(1, '紅蓮', { overload: null })],
+        teams: team, them: null,
+    }).paint();
+    assert.match(noVal, /自分の 紅蓮 に装備の記録がありません \(2人が揃っています\)/,
+        '持っているのに「持っていません」と言っている (取り込み直せば直るのに)');
+    // ③ 本当に誰も揃っていない
+    const none = build({ rows: [growthRow(1, 'ヘルム', ol(10))], teams: team, them: null }).paint();
+    assert.match(none, /この顔ぶれ全員ぶんの記録がある人がいません/);
+    assert.ok(!/持っていません/.test(none), '所持の話にすり替えている');
+});
+
+test('属性表が戻れば、覚えていた属性の絞り込みがまた効く', () => {
+    const opts = { ...BASE, them: 2, view: 'char', attr: 'fire',
+        elems: { ラピ: 'fire', クラウン: 'water', モラン: 'wind', ヘルム: 'fire', 紅蓮: 'iron' } };
+    assert.equal((build({ ...opts, elems: null }).paint().match(/class="gv-tile/g) || []).length, 5,
+        '表が無いときに絞り込みが効いてしまっている');
+    assert.equal((build(opts).paint().match(/class="gv-tile/g) || []).length, 2,
+        '表が戻っても絞り込みが効かない (覚えていた値を捨てている)');
 });
 
 test('押した状態でもバーストの点が見える (黒地とのコントラスト)', () => {
-    const colors = { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' };
+    // ★ 値を書き写さない — 本体のパレットが変わったら気づけなくなる
+    const src = html.match(/const TE_BURST_COLOR = \{[^}]*\}/)?.[0] || '';
+    assert.ok(src, 'バーストの色表を切り出せない');
+    const colors = Object.fromEntries([...src.matchAll(/'?([A-ZΛ0-9]+)'?:\s*'(#[0-9A-Fa-f]{6})'/g)]
+        .map(m => [m[1], m[2]]));
+    assert.equal(Object.keys(colors).length, 4, `色表が読めない: ${src}`);
     const lin = (c) => { const n = c / 255; return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4); };
     const lum = (h) => 0.2126 * lin(parseInt(h.slice(1, 3), 16)) + 0.7152 * lin(parseInt(h.slice(3, 5), 16))
         + 0.0722 * lin(parseInt(h.slice(5, 7), 16));

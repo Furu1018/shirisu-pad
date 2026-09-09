@@ -638,23 +638,32 @@
     function unionDpsRanking(byPl, players, names, myId) {
         const want = (Array.isArray(names) ? names : []).filter(Boolean);
         const list = [];
+        let myMissing = null;
         if (want.length) {
             for (const p of (Array.isArray(players) ? players : [])) {
                 if (!p || p.id == null) continue;
                 const own = (byPl || {})[String(p.id)] || {};
-                let sum = 0, ok = true;
+                let sum = 0, bad = null;
                 for (const n of want) {
-                    const v = SUM_FIELD.value(own[n] || null);
-                    if (v == null) { ok = false; break; }
+                    const row = own[n] || null;
+                    const v = SUM_FIELD.value(row);
+                    // ★ 「持っていない」と「持っているが装備の記録が無い」を分ける (Codex指摘 2026-09-10)。
+                    //   混ぜると、全員持っているのに「持っていません」と出て事実と食い違う。
+                    //   直し方も違う (前者は育てる / 後者は取り込み直す)
+                    if (v == null) { bad = { character: n, reason: row ? 'no_value' : 'no_char' }; break; }
                     sum += v;
                 }
-                if (ok) list.push({ playerId: p.id, name: String(p.name == null ? '' : p.name), value: Number(sum.toFixed(4)) });
+                if (bad) {
+                    if (myId != null && String(p.id) === String(myId)) myMissing = bad;
+                    continue;
+                }
+                list.push({ playerId: p.id, name: String(p.name == null ? '' : p.name), value: Number(sum.toFixed(4)) });
             }
         }
         list.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, 'ja')
             || String(a.playerId).localeCompare(String(b.playerId)));
         const at = list.findIndex((x) => myId != null && String(x.playerId) === String(myId));
-        return { list, myRank: at < 0 ? null : at + 1 };
+        return { list, myRank: at < 0 ? null : at + 1, myMissing };
     }
 
     // ---- アイコンの下に出すクイック (2026-09-10 ユーザー要望) --------------
