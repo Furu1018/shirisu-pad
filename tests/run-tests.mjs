@@ -6478,6 +6478,28 @@ console.log('\ngrowthDomain:');
         }, { nameCodeMap: map }).save, true);
     });
 
+    test('★ rankSquad: 合計は**比べられる体だけ** / 戦闘力はチップにしない (Codex指摘 2026-09-09)', () => {
+        const r = (o) => ({ character_name: 'x', grade: 3, core: 0, lv: 200, skill1_lv: 10, skill2_lv: 10,
+            ulti_skill_lv: 10, combat: 100000, attractive_lv: 10, harmony_cube_lv: 10, favorite_item_lv: 10, ...o });
+        // A は両方あり / B は相手だけ / C は行はあるが戦闘力が欠けている
+        const mine = { A: r({ combat: 100000 }), C: r({ combat: null }) };
+        const theirs = { A: r({ combat: 150000 }), B: r({ combat: 900000 }), C: r({ combat: 400000 }) };
+        const { cells, summary } = dom.rankSquad(['A', 'B', 'C'], mine, theirs);
+        // ★ 片方にしか無い体を混ぜると、違う顔ぶれの合計を「差」と言うことになる
+        assert.equal(summary.sumMine, 100000, '自分の合計に比べられない体が入っている');
+        assert.equal(summary.sumTheirs, 150000, '相手の合計に比べられない体が入っている');
+        assert.equal(summary.diff, 50000);
+        // ★ 行はあるが戦闘力が欠けている体 (C) を「互角」に数えない
+        assert.equal(summary.comparable, 1, `比べられる体の数が違う: ${summary.comparable}`);
+        assert.equal(summary.aheadTheirs, 1); assert.equal(summary.aheadMine, 0);
+        assert.equal(summary.total, 3, '全体の数は3体のまま');
+        const byName = Object.fromEntries(cells.map(c => [c.character, c]));
+        assert.equal(byName.C.comparable, false); assert.equal(byName.C.hasBoth, true, '行はある');
+        assert.equal(byName.B.gap, null, '片方欠けは差を出さない');
+        // ★ 戦闘力は横棒と差のピルで出しているので、チップに重ねない
+        assert.ok(!byName.A.diffs.some(x => x.key === 'combat'), '戦闘力をチップにも出している');
+        assert.deepEqual(cells.map(c => c.character), ['A', 'B', 'C'], '比べられない体を先に出している');
+    });
     test('★ byCharacter / squadsFor: 比較の材料をそろえる (育成が1人も取れていない編成は出さない)', () => {
         const rows = [
             { character_name: 'ラピ', lv: 200 }, { character_name: 'アリス', lv: 300 },
@@ -6519,6 +6541,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/c\.diffs\.map/.test(rn), '差のある項目だけを出していない');
         assert.ok(/_gc\.open\.has\(String\(i\)\)/.test(rn), '全項目を畳んでいない');
         assert.ok(/handleGrowthCmpOpen\(\$\{i\}\)/.test(rn), 'キャラ名で開いている (番号にすること)');
+        // 開閉は番号なので、編成を変えたら捨てないと別のキャラが開く (Codex指摘)
+        assert.ok(/function handleGrowthCmpPick\(i\) \{ _gc\.pick = Number\(i\) \|\| 0; _gc\.open = new Set\(\);/.test(html), '編成を変えたときに開き具合を捨てていない');
         assert.ok(!/r\.mine >|r\.theirs >/.test(rn), '画面で勝ち負けを計算している');
         // 入口: 残凸表のメンバー名
         assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}\)"/.test(html), '残凸表の名前から開けない');

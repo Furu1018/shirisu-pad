@@ -125,6 +125,19 @@ test('★ 全項目は畳んでおき、押すと開く (9項目 + オーバー�
     noUndef(open);
 });
 
+test('★ 合計は比べられる体だけ (片方にしか無い体を混ぜない — Codex指摘 2026-09-09)', () => {
+    const out = run({
+        mine: { ラピ: row({ combat: 100000 }) },
+        theirs: { ラピ: row({ combat: 150000 }), アリス: row({ character_name: 'アリス', combat: 900000 }) },
+        squads: [SQ(['ラピ', 'アリス'])],
+    });
+    assert.ok(/自分 計 10\.0万/.test(out), `自分の合計が違う: ${out.match(/計 [^<]*/g)}`);
+    assert.ok(/計 15\.0万 \(\+5\.0万\)/.test(out), '相手の合計に比べられない体が入っている');
+    assert.ok(/相手が <em>1\/1体<\/em> で上/.test(out), '比べられる体の数が違う');
+    // 比べられない体もカード自体は出す (最後に回す)
+    assert.equal((out.match(/class="gc-char"/g) || []).length, 2);
+    noUndef(out);
+});
 test('★ 引き分けは負けと同じ見た目にしない', () => {
     const same = row({ lv: 500, combat: 700000 });
     const out = run({ mine: { ラピ: same }, theirs: { ラピ: { ...same } }, squads: [SQ(['ラピ'])], open: [0] });

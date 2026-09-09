@@ -16076,7 +16076,9 @@
             _gc.gen++;
             document.getElementById('growthCmpModal')?.classList.remove('open');
         }
-        function handleGrowthCmpPick(i) { _gc.pick = Number(i) || 0; _gcRender(); }
+        // ★ 編成を変えたら開き具合を捨てる (Codex指摘 2026-09-09) —
+        //   開閉は番号で持っているので、そのままだと別のキャラが開いた状態になる
+        function handleGrowthCmpPick(i) { _gc.pick = Number(i) || 0; _gc.open = new Set(); _gcRender(); }
 
         function handleGrowthCmpOpen(i) {
             const k = String(i);

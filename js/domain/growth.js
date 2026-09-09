@@ -891,7 +891,6 @@
 
     /** 戦闘力の読み方。並べて比べるので万単位に畳む (86.8万) */
     const fmtMan = (n) => (Number.isFinite(n) ? `${(n / 10000).toFixed(1)}万` : '—');
-    const fmtCombat = (n) => (Number.isFinite(n) ? n.toLocaleString('ja-JP') : '—');
 
     /**
      * 編成ぶんを**差の大きい順**に並べ、先に読む結論を添える (2026-09-09 モックの決定 C)。
@@ -910,10 +909,14 @@
             return {
                 ...c,
                 combatMine: cm, combatTheirs: ct,
+                // ★ 「行がある」と「戦闘力を比べられる」は別 (Codex指摘 2026-09-09)。
+                //   行はあるが戦闘力が欠けている体を「互角」に数えると、カードの「比べられない」と食い違う
+                comparable: cm != null && ct != null,
                 gap: (cm == null || ct == null) ? null : ct - cm,
                 hasBoth: !!(m && t),
-                // ★ 差のある項目だけ。「同じ」を並べても読む手がかりにならない
-                diffs: c.rows.filter((r) => r.lead === 'mine' || r.lead === 'theirs'),
+                // ★ 差のある項目だけ。「同じ」を並べても読む手がかりにならない。
+                //   戦闘力は横棒と差のピルで既に出しているのでチップにはしない (Codex指摘)
+                diffs: c.rows.filter((r) => (r.lead === 'mine' || r.lead === 'theirs') && r.key !== 'combat'),
             };
         });
         // 相手が大きく上のものから。比べられない体 (片方欠け) は最後に回す
@@ -923,18 +926,20 @@
             if (b.gap == null) return -1;
             return b.gap - a.gap;
         });
-        const both = cells.filter((c) => c.hasBoth);
+        // ★ 合計は**比べられる体だけ**で出す (Codex指摘 2026-09-09)。
+        //   片方にしか無い体を混ぜると、違う顔ぶれの合計を並べて「差」と言うことになる
+        const cmp = cells.filter((c) => c.comparable);
         const sum = (list, k) => list.reduce((s, c) => s + (c[k] || 0), 0);
         return {
             cells: sorted,
             summary: {
                 total: cells.length,
-                comparable: both.length,
-                aheadTheirs: both.filter((c) => c.gap > 0).length,
-                aheadMine: both.filter((c) => c.gap < 0).length,
-                sumMine: sum(cells, 'combatMine'),
-                sumTheirs: sum(cells, 'combatTheirs'),
-                diff: sum(cells, 'combatTheirs') - sum(cells, 'combatMine'),
+                comparable: cmp.length,
+                aheadTheirs: cmp.filter((c) => c.gap > 0).length,
+                aheadMine: cmp.filter((c) => c.gap < 0).length,
+                sumMine: sum(cmp, 'combatMine'),
+                sumTheirs: sum(cmp, 'combatTheirs'),
+                diff: sum(cmp, 'combatTheirs') - sum(cmp, 'combatMine'),
             },
         };
     }
@@ -992,6 +997,6 @@
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
-        byCharacter, squadsFor, rankSquad, fmtMan, fmtCombat,
+        byCharacter, squadsFor, rankSquad, fmtMan,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
