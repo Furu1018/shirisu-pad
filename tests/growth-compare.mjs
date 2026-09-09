@@ -478,10 +478,28 @@ test('★ 色の値が壊れていたら既定に倒す / 文字色は読める�
     assert.equal(t._gvBurstInk('#F2B705'), '#14161A', 'B2 の黄色に白文字を選んでいる');
 });
 
-test('★ バーストの点は白地でも見える (縁を付ける)', () => {
-    // 7px の点をそのまま置くと、B2 の黄色は白地に対して 1.8:1 で見えない
+test('★ バーストの点は白地でも輪郭が見える (縁のコントラストを実際に計算する)', () => {
+    // ★ 縁があるだけでは足りない — 薄い縁は白に溶けて 1.9:1 にしかならなかった (Codex指摘)。
+    //   色そのものは文字にしない (B2 の黄色は白地で 1.8:1)。意味は文字が、色は縁のある点が担う
     const dot = html.match(/\.gv-pills button\.gv-b \.dot \{[\s\S]*?\}/)?.[0] || '';
-    assert.ok(/box-shadow: 0 0 0 1px/.test(dot), '点に縁が無い (白地で見えない色がある)');
+    const m = dot.match(/box-shadow: 0 0 0 1px rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+    assert.ok(m, '点に縁が無い (白地で見えない色がある)');
+    const a = Number(m[4]);
+    const over = (c) => c * a + 255 * (1 - a);            // 白地に重ねた実際の色
+    const lin = (c) => { const n = over(c) / 255; return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(Number(m[1])) + 0.7152 * lin(Number(m[2])) + 0.0722 * lin(Number(m[3]));
+    const ratio = 1.05 / (L + 0.05);
+    assert.ok(ratio >= 3, `縁が白地に溶けている (${ratio.toFixed(2)}:1 — 3:1 以上が要る)`);
+    // ★ バーストの色を文字や枠に使わない (使うと B2 が読めない)
+    const pill = html.match(/\.gv-pills button\.gv-b \{[\s\S]*?\}/)?.[0] || '';
+    assert.ok(!/color: var\(--b-c/.test(pill), 'バーストの色を文字に使っている');
+    assert.ok(!/border-color: var\(--b-c/.test(pill), 'バーストの色を枠に使っている');
+});
+
+test('属性表が渡されなかったとき (elems: null) は絞り込みを出さない', () => {
+    const out = build({ ...BASE, them: 2, view: 'char', elems: null }).paint();
+    assert.ok(!/gv-attrs/.test(out), '属性表が無いのに絞り込みを出している');
+    assert.match(out, /class="gv-tile/, '属性表が無いだけで一覧まで消えている');
 });
 
 test('★ 絞り込みで消えた体の比較を出したままにしない', () => {

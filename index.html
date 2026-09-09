@@ -554,11 +554,13 @@
         /* ★ バーストの色は**点**で見せ、押した状態は他のピルと同じ黒にそろえる。
            色で塗りつぶすと、B2 の黄色に白文字で 1.8:1 になり読めない (Codex指摘 2026-09-10)。
            点なら押しても押さなくても色が読め、押下の見分けも画面全体と同じ作法で済む */
+        /* ★ バーストの色を**文字や枠に使わない** (Codex指摘 2026-09-10)。B2 の黄色 #F2B705 は
+           白地に対して 1.8:1 しかなく、文字にすると読めず、薄い縁を足しても点は見えないまま。
+           意味は文字 (B1〜BΛ) が担い、色は**縁のある点**が担う。縁は白地に対して約 3.9:1 あるので、
+           どの色でも点の輪郭がはっきり出る。押した黒地では縁が沈み、明るい点だけが残る */
         .gv-pills button.gv-b { display: inline-flex; align-items: center; gap: 5px; }
-        /* ★ 点には**細い縁**を付ける — B2 の黄色は白地に置くと 1.8:1 で見えない (Codex指摘 2026-09-10)。
-           押した黒地では縁が沈み、明るい点だけが残るので邪魔にならない */
-        .gv-pills button.gv-b .dot { width: 7px; height: 7px; border-radius: 50%; flex: none;
-            background: var(--b-c, #8A9097); box-shadow: 0 0 0 1px rgba(20,22,26,0.28); }
+        .gv-pills button.gv-b .dot { width: 8px; height: 8px; border-radius: 50%; flex: none;
+            background: var(--b-c, #8A9097); box-shadow: 0 0 0 1px rgba(20,22,26,0.55); }
         .gv-attrs button img { width: 19px; height: 19px; display: block; }
         .gv-attrs button.gv-a { padding: 5px 8px; }
         .gv-pills button.gv-dps { border-color: #6C42F0; color: #5B2BE0; }
