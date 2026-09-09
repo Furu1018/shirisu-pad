@@ -6264,15 +6264,20 @@ console.log('\ngrowthDomain:');
         assert.ok(/outerHTML/.test(code), 'HTML 全体を見ていない');
         // ★ 通信にも耳を付ける (SPA は一覧を通信で取るだけで HTML に残らない)
         assert.ok(/W\.fetch=function/.test(code) && /XMLHttpRequest\.prototype\.send/.test(code), '通信を聞き取っていない');
+        // ★ 待ち受けだけでは、ページを操作してもらう二度手間になる。自分から取りに行く (実機FB 2026-09-09)
+        assert.ok(/Game\/GetMyGuildInfo/.test(code), '自分のユニオンを自分で問い合わせていない');
+        assert.ok(/Game\/GetUnionRaidData/.test(code) && /Game\/GetGuildDetail/.test(code), '取りに行く経路が足りない');
+        assert.ok(/credentials:"include"/.test(code), 'ログイン状態を使っていない');
         assert.ok(/__spgRoster/.test(code), '2回目の実行に持ち越す置き場が無い');
         // ★ 空振りしたら「何が見えたか」を報告する — 「見つかりません」だけでは手が打てない
-        assert.ok(/---- 診断/.test(code) && /location\.href/.test(code), '診断を出していない');
+        assert.ok(/location\.href/.test(code) && /"\\nsignature: "/.test(code), '診断を出していない');
+        assert.ok(/stat\.routes\.join/.test(code), 'どの経路を試したかを診断に出していない');
     });
 
     // ---- 名簿のブックマークレットを**実際に走らせる** ----
     //   1行に畳んだコードは、目で読んでも動くか分からない。実機で空振りしたので疑似ページで動かす
     const B64 = (s) => Buffer.from(s, 'utf8').toString('base64');
-    function runRosterSnippet({ html = '', anchors = [], state = null, bodies = [] } = {}) {
+    async function runRosterSnippet({ html = '', anchors = [], state = null, bodies = [], api = {} } = {}) {
         const code = bmlBody(dom.buildRosterSnippet());
         const boxes = [];
         const mkEl = (tag) => {
@@ -6295,8 +6300,16 @@ console.log('\ngrowthDomain:');
         const win = { __NUXT__: state, __spgRoster: { hooked: false, bodies, urls: [] } };
         const XHR = function () {}; XHR.prototype = { send() {}, open() {}, addEventListener() {} };
         const location = { href: 'https://www.blablalink.com/union/members' };
-        new Function('window', 'document', 'location', 'atob', 'XMLHttpRequest', code)(
-            win, document, location, (b) => Buffer.from(b, 'base64').toString('binary'), XHR);
+        // 自分から取りに行く経路。渡されていない route は code=-1 (無い経路) として返す
+        const calls = [];
+        const fetchStub = async (url) => {
+            const name = String(url).split('/').pop();
+            calls.push(name);
+            return { json: async () => (api[name] || { code: -1 }) };
+        };
+        new Function('window', 'document', 'location', 'atob', 'XMLHttpRequest', 'fetch', code)(
+            win, document, location, (b) => Buffer.from(b, 'base64').toString('binary'), XHR, fetchStub);
+        await new Promise((r) => setTimeout(r, 20));   // 自分で呼ぶぶんが片づくのを待つ
         return boxes[0].value;
     }
     const anchorEl = (href, text) => ({
@@ -6304,19 +6317,19 @@ console.log('\ngrowthDomain:');
         querySelector: () => null, closest: () => null,
     });
 
-    test('★ 名簿のブックマークレット: ページ全体の署名から拾える (リンクが無くても)', () => {
+    await testAsync('★ 名簿のブックマークレット: ページ全体の署名から拾える (リンクが無くても)', async () => {
         // 実機ではリンクから1件も取れなかった。属性や埋め込みJSONに残った識別子を署名で拾う
         const t1 = B64('29080-3273786220482814289'), t2 = B64('29080-111111111111111111');
-        const out = runRosterSnippet({ html: `<div data-x="${t1}"></div><span>${t2}</span>` });
+        const out = await runRosterSnippet({ html: `<div data-x="${t1}"></div><span>${t2}</span>` });
         // 署名では識別子は拾えるが名前は取れない。診断に件数として出る (名簿には出さない)
         assert.ok(/signature: 2/.test(out), `署名から拾えていない: ${out.slice(0, 300)}`);
         assert.ok(/noname: 2/.test(out), '名前の無い件数を出していない');
         assert.ok(out.includes('---- 診断'), '診断が付いていない');
     });
 
-    test('★ 名簿のブックマークレット: リンクからは名前も取れる / 埋め込み状態と通信の記録からも拾う', () => {
+    await testAsync('★ 名簿のブックマークレット: リンクからは名前も取れる / 埋め込み状態と通信の記録からも拾う', async () => {
         const t1 = B64('29080-123456789012345678');
-        const out = runRosterSnippet({
+        const out = await runRosterSnippet({
             html: '<a></a>',
             anchors: [anchorEl(`/user?uid=${t1}`, ' なべりうす ')],
             state: { list: [{ open_id: B64('29080-222222222222222222'), nickname: 'ふるり' }] },
@@ -6328,11 +6341,11 @@ console.log('\ngrowthDomain:');
         assert.ok(out.includes('名簿 3人'));
     });
 
-    test('★ 名簿のブックマークレット: 通信は経路で絞る (募集ページでは他ユニオンや掲示板が混ざる)', () => {
+    await testAsync('★ 名簿のブックマークレット: 通信は経路で絞る (募集ページでは他ユニオンや掲示板が混ざる)', async () => {
         // 実機 2026-09-09: 在籍32人のところ55人取れた。QueryGuildCardList (他ユニオンのカード) と
         // Dynamics/… (掲示板の投稿者) が混ざっていた
         const body = (openid, name) => JSON.stringify({ data: { list: [{ openid: B64(`29080-${openid}`), nickname: name }] } });
-        const out = runRosterSnippet({
+        const out = await runRosterSnippet({
             bodies: [
                 { u: 'https://api.blablalink.com/api/game/proxy/Game/GetUnionRaidData', t: body('111111111111111111', '身内') },
                 { u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardList', t: body('222222222222222222', 'よその人') },
@@ -6343,41 +6356,58 @@ console.log('\ngrowthDomain:');
         assert.ok(!out.includes('よその人'), '他ユニオンのカード一覧まで拾っている');
         assert.ok(!out.includes('投稿者'), '掲示板の投稿者まで拾っている');
         assert.ok(out.includes('名簿 1人'));
-        assert.ok(/used: own/.test(out), '自分のユニオンの経路を使ったと出していない');
+        assert.ok(/rejected: 2/.test(out), '他ユニオン・掲示板を捨てた件数を出していない');
         // ★ 他ユニオン・掲示板の経路しか無いなら、**何も出さない** (2026-09-09 実機: 169人の他人が出た)
-        const junk = runRosterSnippet({
+        const junk = await runRosterSnippet({
             bodies: [{ u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardList', t: body('444444444444444444', 'だれか') },
                 { u: 'https://api.blablalink.com/api/game/direct/Game/QueryGuildCardSupportersByTourist', t: body('555555555555555555', '') }],
         });
         assert.ok(!junk.includes('だれか'), '他ユニオンの募集カードを名簿として出している');
         assert.ok(junk.includes('メンバーが見つかりませんでした'), '空振りとして扱っていない');
-        assert.ok(junk.includes('自分のユニオンのページ'), 'どこを開けばよいか言っていない');
-        assert.ok(/used: none/.test(junk) && /rejected: 2/.test(junk), '捨てた件数を出していない');
+        assert.ok(junk.includes('ログインした状態'), '何をすればよいか言っていない');
+        assert.ok(/rejected: 2/.test(junk), '捨てた件数を出していない');
         // 知らない経路は使う (取りこぼすほうが困る)
-        const unknown = runRosterSnippet({
+        const unknown = await runRosterSnippet({
             bodies: [{ u: 'https://api.blablalink.com/api/game/proxy/Game/SomethingNew', t: body('666666666666666666', 'しらない経路') }],
         });
         assert.ok(/しらない経路\t666666666666666666/.test(unknown), '知らない経路を捨てている');
-        assert.ok(/used: other/.test(unknown));
+        assert.ok(/rejected: 0/.test(unknown), '知らない経路を捨てたことにしている');
         // 古い形 (文字列だけ) の記録も読める
-        assert.ok(/だれか/.test(runRosterSnippet({ bodies: [body('444444444444444444', 'だれか')] })), '古い形の記録を読めない');
+        assert.ok(/だれか/.test(await runRosterSnippet({ bodies: [body('444444444444444444', 'だれか')] })), '古い形の記録を読めない');
     });
 
-    test('★ 名簿のブックマークレット: 名前の無い識別子は出さない (突き合わせられない — 実機で169件出た)', () => {
+    await testAsync('★ 名簿のブックマークレット: 自分から取りに行く (ページを操作させない — 実機FB 2026-09-09)', async () => {
+        // 待ち受けだけだと「押す → 一覧を開き直す → もう一度押す」の二度手間になり、
+        // しかも窓が画面を覆って操作できなかった。ログインさえしていれば、どのページからでも取れるようにする
+        const member = (openid, name) => ({ openid: B64(`29080-${openid}`), nickname: name });
+        const out = await runRosterSnippet({
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { guild_id: 'g1' } },
+                'GetUnionRaidData': { code: 0, data: { members: [member('111111111111111111', 'なべりうす')] } },
+                'GetGuildDetail': { code: 0, data: { list: [member('222222222222222222', 'ふるり')] } },
+            },
+        });
+        assert.ok(/なべりうす\t111111111111111111/.test(out), `自分で呼んだ結果から取れていない: ${out.slice(0, 300)}`);
+        assert.ok(/ふるり\t222222222222222222/.test(out));
+        assert.ok(out.includes('名簿 2人'));
+        // どの経路がどう答えたかを診断に残す (無い経路があっても止まらない)
+        assert.ok(/GetMyGuildInfo:0/.test(out) && /GetGuildMemberList:-1/.test(out), '経路ごとの結果を残していない');
+    });
+    await testAsync('★ 名簿のブックマークレット: 名前の無い識別子は出さない (突き合わせられない — 実機で169件出た)', async () => {
         const t1 = B64('29080-777777777777777777');
-        const out = runRosterSnippet({ html: `<div data-x="${t1}"></div>` });
+        const out = await runRosterSnippet({ html: `<div data-x="${t1}"></div>` });
         assert.ok(!out.includes('777777777777777777'), '名前の無い識別子を名簿に出している');
         assert.ok(!out.includes('(名前不明)'), '名前不明の行を出している');
         assert.ok(/noname: 1/.test(out), '名前の無い件数を診断に出していない');
-        assert.ok(out.includes('名前が無いと PAD のメンバーと突き合わせられない'), 'なぜ出さないかを言っていない');
+        assert.ok(out.includes('名前が無いと突き合わせられません'), 'なぜ出さないかを言っていない');
     });
 
-    test('★ 名簿のブックマークレット: 空振りしたら「何が見えたか」を出す (見つかりませんだけでは手が打てない)', () => {
-        const out = runRosterSnippet({ html: '<div>なにもない</div>' });
+    await testAsync('★ 名簿のブックマークレット: 空振りしたら「何が見えたか」を出す (見つかりませんだけでは手が打てない)', async () => {
+        const out = await runRosterSnippet({ html: '<div>なにもない</div>' });
         assert.ok(out.includes('メンバーが見つかりませんでした'), '空振りの案内が無い');
-        assert.ok(out.includes('もう一度このブックマークレットを押してください'), '2回目の案内が無い');
+        assert.ok(out.includes('api: '), 'どの経路を試したかを出していない');
         assert.ok(out.includes('address: https://www.blablalink.com/union/members'), 'どのページで走ったか出ていない');
-        assert.ok(/signature: 0/.test(out) && /links: 0/.test(out), '内訳が出ていない');
+        assert.ok(/signature: 0/.test(out) && /anchors: 0/.test(out) && /state: 0/.test(out), '内訳が出ていない');
     });
 
     test('★ 壊れた応答を「成功」に化けさせない (Number([]) も Number("") も 0)', () => {
