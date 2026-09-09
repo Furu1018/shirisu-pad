@@ -1881,14 +1881,27 @@ window.supabaseLoadMemberGrowth = async function (seasonId, playerIds) {
     if (!ids.length) return [];
     let sid = seasonId;
     if (sid == null) {
-        const r = await supabase.from('member_growth').select('season_id')
-            .in('player_id', ids).order('season_id', { ascending: false }).limit(1);
+        // ★ **両者そろっているいちばん新しいシーズン**を選ぶ (Codex指摘 2026-09-09)。
+        //   単に最大のシーズンを採ると、片方だけ新しい回を取り込んでいるときに
+        //   もう片方が全部「—」になり、「育っていない」と読めてしまう。
+        //   そろっているシーズンが無ければ、いちばん新しいシーズンで出す (相手だけでも見える)
+        const r = await supabase.from('member_growth').select('season_id, player_id')
+            .in('player_id', ids).order('season_id', { ascending: false }).limit(2000);
         if (r.error) {
             if (_isMissingTableErr(r.error, 'member_growth')) return null;
             throw r.error;
         }
         if (!r.data || !r.data.length) return [];
-        sid = r.data[0].season_id;
+        const bySeason = new Map();
+        for (const x of r.data) {
+            const k = String(x.season_id);
+            if (!bySeason.has(k)) bySeason.set(k, new Set());
+            bySeason.get(k).add(String(x.player_id));
+        }
+        const seasons = [...bySeason.keys()].map(Number).filter(Number.isFinite).sort((a, b) => b - a);
+        const want = new Set(ids.map(String)).size;
+        sid = seasons.find(sn => bySeason.get(String(sn)).size >= want);
+        if (sid == null) sid = seasons[0];
     }
     const { data, error } = await supabase.from('member_growth')
         .select('season_id, player_id, character_name, grade, core, lv, skill1_lv, skill2_lv, ulti_skill_lv,'

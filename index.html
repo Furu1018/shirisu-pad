@@ -425,6 +425,7 @@
         .gc-row .v { font-size: 12px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; text-align: right; padding: 2px 7px; border-radius: 7px; }
         .gc-row .v.win { background: rgba(24,194,107,0.13); color: #0E9455; }
         .gc-row .v.lose { color: #8A9097; }
+        .gc-row .v.same { color: #14161A; }
         .gc-row .v.unknown { color: #C9CED4; }
         .gc-head { display: grid; grid-template-columns: 5.5em 1fr 1fr; gap: 6px; font-size: 10px; font-weight: 900; color: #A4AAB0; letter-spacing: .04em; margin-bottom: 4px; }
         .gc-head span:not(:first-child) { text-align: right; }
@@ -5813,7 +5814,7 @@
     </div>
 
     <!-- ========== 🧬 育成をくらべる (D1・2026-09-09)。純ロジックは js/domain/growth.js ========== -->
-    <div class="player-select-modal" id="growthCmpModal">
+    <div class="player-select-modal" id="growthCmpModal" onclick="if(event.target===this)closeGrowthCompare()">
         <div class="player-select-content" style="max-width:520px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                 <h2 id="growthCmpTitle" style="flex:1;min-width:0;font-size:16px;font-weight:900;color:#14161A;">🧬 育成をくらべる</h2>
@@ -15917,7 +15918,9 @@
         //   ★ シーズンは**育成を取り込んだシーズン**を使う (アクティブとは限らない — 取り込みはレイドの後)。
         const _gc = { gen: 0, them: null, squads: [], pick: 0, mine: null, theirs: null, seasonId: null, err: null };
 
-        async function openGrowthCompare(playerId, playerName) {
+        // ★ 名前は**渡さない** (Codex指摘 2026-09-09)。名前を属性に埋めると引用符でその場が壊れ、
+        //   ` onmouseenter=…` のような名前を付けられると実行される。id だけ渡して盤面から引く
+        async function openGrowthCompare(playerId) {
             const modal = document.getElementById('growthCmpModal');
             const body = document.getElementById('growthCmpBody');
             const title = document.getElementById('growthCmpTitle');
@@ -15925,9 +15928,10 @@
             const dom = window.growthDomain;
             const me = getCurrentIdentity();
             const gen = ++_gc.gen;
-            _gc.them = { id: Number(playerId), name: String(playerName || '') };
+            const known = (opsStore.get()?.players || []).find(x => Number(x.id) === Number(playerId)) || null;
+            _gc.them = { id: Number(playerId), name: String(known?.name || `#${Number(playerId)}`) };
             _gc.squads = []; _gc.pick = 0; _gc.mine = null; _gc.theirs = null; _gc.err = null;
-            if (title) title.textContent = `🧬 ${_gc.them.name} と くらべる`;
+            if (title) title.textContent = `🧬 ${_gc.them.name} と くらべる`;   // textContent なので名前はそのままで安全
             body.innerHTML = '<p style="color:#A4AAB0;font-size:12px;margin:0;">読み込み中…</p>';
             modal.classList.add('open');
             if (!dom) { body.innerHTML = '<p class="gc-empty">育成の機能を読み込めませんでした。再読み込みしてください。</p>'; return; }
@@ -15941,8 +15945,7 @@
                 _gc.mine = dom.byCharacter(rows.filter(r => Number(r.player_id) === Number(me.id)));
                 // 編成は盤面から (属性ごと・ボス順)。育成が1人も取れていない編成は出さない
                 const snap = opsStore.get();
-                const p = (snap?.players || []).find(x => Number(x.id) === Number(playerId)) || null;
-                _gc.squads = dom.squadsFor(p?.loadoutsByAttr, _gc.theirs, _orderAttrsByBosses(snap?.bosses));
+                _gc.squads = dom.squadsFor(known?.loadoutsByAttr, _gc.theirs, _orderAttrsByBosses(snap?.bosses));
                 _gcRender();
             } catch (e) {
                 if (gen !== _gc.gen) return;
@@ -15977,7 +15980,9 @@
                     + `${esc(s.attrName)}${s.slot > 1 ? esc(SLOT_JP[s.slot] || '') : ''}${s.dmgB > 0 ? ` ${s.dmgB.toFixed(1)}B` : ''}</button>`).join('')}</div>`
                 : '';
             const cells = dom.compareSquad(cur.team, _gc.mine, _gc.theirs);
-            const cls = (lead, who) => (lead === 'unknown' ? 'unknown' : lead === who ? 'win' : 'lose');
+            // ★ 引き分けは「負け」と同じ見た目にしない (Codex指摘 2026-09-09) — 並んでいるのに
+            //   両方とも薄字だと「どちらも足りない」に読める
+            const cls = (lead, who) => (lead === 'unknown' ? 'unknown' : lead === 'same' ? 'same' : lead === who ? 'win' : 'lose');
             const cards = cells.map(c => {
                 const theyHave = !!(_gc.theirs || {})[c.character];
                 const iHave = !!(_gc.mine || {})[c.character];
@@ -16902,7 +16907,7 @@
                     <div style="border-bottom:1px solid #F4F5F6;padding:6px 0 7px;">
                         <div style="display:flex;align-items:center;gap:9px;height:34px;">
                             <div style="flex:none;width:28px;height:28px;">${renderAvatarHtml(p, 28)}</div>
-                            <div style="flex:1;min-width:0;cursor:pointer;" onclick="openGrowthCompare(${Number(p.id)}, ${JSON.stringify(String(p.name))})"
+                            <div style="flex:1;min-width:0;cursor:pointer;" onclick="openGrowthCompare(${Number(p.id)})"
                                  title="育成をくらべる (${escapeHtml(p.name)} と自分)">
                                 <div style="font-size:12.5px;font-weight:800;color:#14161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)} <span style="font-size:10px;font-weight:800;color:#A4AAB0;">🧬</span></div>
                                 <div style="display:flex;align-items:center;gap:5px;margin-top:1px;">
@@ -22547,6 +22552,7 @@
             ['myStrongAttrsModal', () => closeMyStrongAttrsModal()],
             ['myAttackModal', () => closeMyAttackModal()],
             ['myResvRequestModal', () => closeMyResvRequestModal()],
+            ['growthCmpModal', () => closeGrowthCompare()],
         ];
         function _enableSheetSwipeDismiss(modalId, closeFn) {
             const modal = document.getElementById(modalId);

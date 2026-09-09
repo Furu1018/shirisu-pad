@@ -93,6 +93,17 @@ test('★ 編成が複数あれば選べる (属性・編成枠・ダメージ�
     noUndef(out);
 });
 
+test('★ 引き分けは「負け」と同じ見た目にしない (Codex指摘 2026-09-09)', () => {
+    // 同じ値なのに両方とも薄字だと「どちらも足りない」に読める
+    const same = { ラピ: row({ lv: 500, combat: 700000 }) };
+    const out = run({
+        mine: same, theirs: { ラピ: row({ lv: 500, combat: 700000 }) },
+        squads: [{ attrKey: 'fire', attrName: '灼熱', slot: 1, dmgB: 0, team: ['ラピ'] }],
+    });
+    assert.ok(/class="v same">Lv500<\/span><span class="v same">Lv500</.test(out), `引き分けの見た目が違う: ${out.slice(0, 400)}`);
+    assert.ok(!/class="v lose"/.test(out), '引き分けを負けにしている');
+    noUndef(out);
+});
 test('★ 相手の育成が無ければ、取り込みの案内を出す (空のカードを並べない)', () => {
     const out = run({ mine: { ラピ: row() }, theirs: {} });
     assert.ok(out.includes('育成データはまだありません'), '案内が無い');

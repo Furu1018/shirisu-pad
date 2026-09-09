@@ -6516,11 +6516,25 @@ console.log('\ngrowthDomain:');
         assert.ok(/dom\.compareSquad\(cur\.team, _gc\.mine, _gc\.theirs\)/.test(rn), '比較をドメインに任せていない');
         assert.ok(!/r\.mine >|r\.theirs >/.test(rn), '画面で勝ち負けを計算している');
         // 入口: 残凸表のメンバー名
-        assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}/.test(html), '残凸表の名前から開けない');
+        assert.ok(/onclick="openGrowthCompare\(\$\{Number\(p\.id\)\}\)"/.test(html), '残凸表の名前から開けない');
+        // ★ 名前を属性に埋めない (Codex指摘 2026-09-09) — 引用符でその場が壊れ、
+        //   ` onmouseenter=…` のような名前を付けられると実行される
+        assert.ok(!/openGrowthCompare\([^)]*p\.name/.test(html), '名前を onclick に埋めている (壊れる / 注入できる)');
+        assert.ok(/const known = \(opsStore\.get\(\)\?\.players \|\| \[\]\)/.test(op), '名前を盤面から引いていない');
+        // 引き分けを負けと同じ見た目にしない
+        assert.ok(/lead === 'same' \? 'same'/.test(rn), '引き分けを負け扱いにしている');
+        // 閉じ方は button だけにしない (背景タップ / 下スワイプ)
+        assert.ok(/id="growthCmpModal" onclick="if\(event\.target===this\)closeGrowthCompare\(\)"/.test(html), '背景タップで閉じられない');
+        assert.ok(/\['growthCmpModal', \(\) => closeGrowthCompare\(\)\]/.test(html), '下スワイプで閉じられない');
+
         // 43 未適用は null を返す (「育成ゼロ」と混同しない)
         const cl = client.match(/window\.supabaseLoadMemberGrowth = [\s\S]*?\n\};\n/)?.[0] || '';
         assert.equal((cl.match(/_isMissingTableErr\(.*?'member_growth'\)\) return null;/g) || []).length, 2, '未適用の判定が足りない');
         assert.ok(/order\('season_id', \{ ascending: false \}\)/.test(cl), 'いちばん新しいシーズンを選んでいない');
+        // ★ 比較のシーズンは**両者そろっているいちばん新しい回** (Codex指摘 2026-09-09) —
+        //   単に最大の回を採ると、片方だけ新しい回を取り込んでいるときにもう片方が全部「—」になる
+        assert.ok(/bySeason/.test(cl), '回ごとに誰がいるかを見ていない');
+        assert.ok(/size >= want/.test(cl), '片方しか無い回を選び得る');
     });
     test('★ parseOpenid: アドレスの openid は base64 で包まれている (生の数字を期待すると1件も読めない)', () => {
         // しりすこスクワッド personal-scan.ts が実機で確かめた形。これが読めないと名寄せが成立しない
