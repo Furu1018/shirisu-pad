@@ -6364,7 +6364,7 @@ console.log('\ngrowthDomain:');
         });
         assert.ok(!junk.includes('だれか'), '他ユニオンの募集カードを名簿として出している');
         assert.ok(junk.includes('メンバーが見つかりませんでした'), '空振りとして扱っていない');
-        assert.ok(junk.includes('ログインした状態'), '何をすればよいか言っていない');
+        assert.ok(junk.includes('メンバー一覧を開いて'), '何をすればよいか言っていない');
         assert.ok(/rejected: 2/.test(junk), '捨てた件数を出していない');
         // 知らない経路は使う (取りこぼすほうが困る)
         const unknown = await runRosterSnippet({
