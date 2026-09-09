@@ -7089,6 +7089,48 @@ console.log('\nblablaNameCodes:');
     });
 }
 
+// ---- 横スクロールとタブスワイプの干渉 ------------------------------------------
+//   このアプリはタブ領域の横スワイプでタブが切り替わる。横スクロールする要素に
+//   data-no-swipe を付け忘れると「スクロールしたいのにタブが切り替わる」。
+//   .claude/skills/shirisu-mobile-ui に明記してあるのに 2026-09-09 にまた踏んだので、
+//   個別のテストではなく**横断的に**守る。
+console.log('\nswipeGuards:');
+{
+    const fs = (await import('node:fs')).default;
+    const path = (await import('node:path')).default;
+    const ROOT = path.resolve(path.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+
+    // 付けなくてよいと判断したクラスはここに理由付きで書く (空なら「全部要る」)
+    const EXEMPT = new Map([]);
+
+    test('★ 横スクロールするクラスには data-no-swipe が付いている', () => {
+        // CSS で overflow-x:auto を宣言しているクラス名を集める
+        const classes = [...new Set([...html.matchAll(/\.([a-zA-Z][\w-]*)\s*\{[^}]*overflow-x:\s*auto/g)]
+            .map((m) => m[1]))];
+        assert.ok(classes.length >= 3, `横スクロールするクラスが見つからない (${classes.length})`);
+        const bad = [];
+        for (const cls of classes) {
+            if (EXEMPT.has(cls)) continue;
+            // そのクラスを持つタグを丸ごと取り出し、同じタグ内に data-no-swipe があるか見る
+            //   (data-no-swipe は class の前にも後ろにも書けるので、タグ全体で判定する)
+            const tags = [...html.matchAll(new RegExp(`<[a-z]+[^>]*class="[^"]*\\b${cls}\\b[^"]*"[^>]*>`, 'g'))]
+                .map((m) => m[0]);
+            for (const tag of tags) {
+                if (!/data-no-swipe/.test(tag)) bad.push(`${cls}: ${tag.slice(0, 90)}`);
+            }
+        }
+        assert.deepEqual(bad, [], `data-no-swipe が無い横スクロール要素:\n      ${bad.join('\n      ')}`);
+    });
+
+    test('スワイプ側が data-no-swipe を見ている (属性名を変えたら気づく)', () => {
+        assert.ok(/\[data-no-swipe\]/.test(html), 'スワイプ判定が data-no-swipe を見ていない');
+        // 内側のスクロールを殺さないための touch-action も対で要る
+        assert.ok(/\[data-no-swipe\]\s*\{[^}]*touch-action:\s*auto/.test(html),
+            'data-no-swipe の中で touch-action:auto を戻していない');
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
