@@ -16199,7 +16199,18 @@
         function handleGrowthAnaView(v) { _gv.view = v === 'char' ? 'char' : 'pt'; _gv.open = new Set(); _gvPaint(); }
         function handleGrowthAnaBase(b) { _gv.base = b === 'them' ? 'them' : 'mine'; _gv.open = new Set(); _gvPaint(); }
         function handleGrowthAnaBurst(b) { _gv.burst = String(b || 'all'); _gvPaint(); }
-        function handleGrowthAnaAttr(a) { _gv.attr = String(a || 'all'); _gvPaint(); }
+        // 絞り込める属性はこの5つだけ。知らない値は「すべて」に倒す —
+        // ★ 倒さないと、どのキャラとも一致せずキャラ一覧が丸ごと消える (Codex指摘 2026-09-09)
+        const _GV_ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
+        function _gvAttrSel() {
+            const a = _gv.attr;
+            return _GV_ATTRS.includes(a) ? a : 'all';
+        }
+        function handleGrowthAnaAttr(a) {
+            const v = String(a == null ? 'all' : a);
+            _gv.attr = _GV_ATTRS.includes(v) ? v : 'all';
+            _gvPaint();
+        }
         /** キャラの属性 (fire/water/electric/iron/wind)。data/blabla-name-codes.json から引く。
          *  ★ nikke_characters には属性の列が無い。CDN の element_details が唯一の出どころ */
         function _gvAttr(name) {
@@ -16428,7 +16439,7 @@
                 const nm = _gv.chars[i];
                 // 未設定 (undefined) は「すべて」に倒す — 絞り込みを増やしたときに全部消えないように
                 if (_gv.burst && _gv.burst !== 'all' && _gvBurst(nm) !== _gv.burst) return false;
-                if (_gv.attr && _gv.attr !== 'all' && _gvAttr(nm) !== _gv.attr) return false;
+                if (_gvAttrSel() !== 'all' && _gvAttr(nm) !== _gvAttrSel()) return false;
                 if (q && !nm.includes(q)) return false;
                 return true;
             });
@@ -16439,7 +16450,7 @@
             const ATTRS = [['all', 'すべて'], ['fire', '灼熱'], ['water', '水冷'], ['electric', '電撃'], ['iron', '鉄甲'], ['wind', '風圧']];
             const attrPills = _gv.elems && _gv.elems.size
                 ? `<div class="gv-pills gv-attrs">${ATTRS.map(([k, lb]) => `<button type="button" data-attr="${k}"`
-                    + ` aria-pressed="${(_gv.attr || 'all') === k ? 'true' : 'false'}"`
+                    + ` aria-pressed="${_gvAttrSel() === k ? 'true' : 'false'}"`
                     + ` onclick="handleGrowthAnaAttr('${k}')">${esc(lb)}</button>`).join('')}</div>`
                 : '';
             const picker = `<div class="dc-card">

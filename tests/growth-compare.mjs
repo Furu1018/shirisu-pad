@@ -33,7 +33,7 @@ const SRC = html.slice(a, b);
 const RETURN = ['_gvPaint', '_gvViewPT', '_gvViewChar', '_gvUnionCard', '_gvCharCard', '_gcCls',
     'handleGrowthAnaSeason', 'handleGrowthAnaWho', 'handleGrowthAnaView', 'handleGrowthAnaBase',
     'handleGrowthAnaChar', 'handleGrowthAnaSort', 'handleGrowthAnaBurst', 'handleGrowthAnaSearch',
-    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare'];
+    'handleGrowthAnaOpen', 'handleGrowthAnaRoster', 'openGrowthCompare', 'handleGrowthAnaAttr'];
 
 // 育成1行ぶん。省略した項目は null (未取得) として扱われる
 const row = (o = {}) => ({
@@ -260,6 +260,22 @@ test('★ キャラ別: 属性でも絞れる (バーストだけでは PT を�
     assert.deepEqual(names(fireB3), ['紅蓮'], '属性とバーストを重ねられていない');
     // 該当なしはそう言う
     assert.ok(/みつかりません/.test(build({ rows, teams: [], them: 2, view: 'char', attr: 'water', burst: 'B3' }).paint()));
+});
+
+test('★ 知らない属性キーでキャラ一覧を空にしない', () => {
+    // どのキャラとも一致せず全部消える = 画面が壊れたように見える (Codex指摘 2026-09-09)
+    const rows = TEAM.flatMap(n => [growthRow(1, n), growthRow(2, n)]);
+    const names = (out) => [...out.matchAll(/class="gv-tile[^"]*"[\s\S]*?class="cn">([^<]+)</g)].map(m => m[1]);
+    for (const bad of ['なにこれ', '', null, undefined, 'FIRE']) {
+        const out = build({ rows, teams: [], them: 2, view: 'char', attr: bad }).paint();
+        assert.equal(names(out).length, TEAM.length, `attr=${JSON.stringify(bad)} でキャラが消えた`);
+        assert.ok(/data-attr="all"[^>]*aria-pressed="true"/.test(out), `attr=${JSON.stringify(bad)} で「すべて」が押されていない`);
+    }
+    // 押したときも同じ — 知らない値は受け付けずに「すべて」に倒す
+    const t = build({ rows, teams: [], them: 2, view: 'char' });
+    t.handleGrowthAnaAttr('なにこれ');
+    assert.equal(t.state.attr, 'all', '知らない値をそのまま覚えている');
+    assert.equal(names(t.paint()).length, TEAM.length);
 });
 
 test('★ 属性表が読めなくても画面は出る (絞り込みが出ないだけ)', () => {

@@ -174,6 +174,7 @@ const nameByResource = new Map();
 const elementByResource = new Map();
 const missed = [];
 const noElement = [];
+const multiElement = [];
 const CHUNK = 8;
 for (let at = 0; at < resourceIds.length; at += CHUNK) {
     const slice = resourceIds.slice(at, at + CHUNK);
@@ -182,7 +183,10 @@ for (let at = 0; at < resourceIds.length; at += CHUNK) {
             const d = await cdnJson(`/roledata/${rid}-v2-${LOCALE}.json`);
             if (d && d.name_localkey) nameByResource.set(rid, String(d.name_localkey));
             else missed.push(`${rid} (name_localkey が無い)`);
-            const ed = (d && Array.isArray(d.element_details) ? d.element_details[0] : null) || {};
+            const eds = (d && Array.isArray(d.element_details)) ? d.element_details : [];
+            // ★ 複数属性のキャラが出たら先頭で決め打ちにしない (いまは全員1つ。増えたら気づけるように)
+            if (eds.length > 1) multiElement.push(`${rid} ${d.name_localkey} (${eds.map((e) => e.element).join('/')})`);
+            const ed = eds[0] || {};
             const key = ELEMENT_KEY[ed.element];
             if (key) elementByResource.set(rid, { element: key, elementJp: String(ed.element_name_localekey || '') });
             else if (d && d.name_localkey) noElement.push(`${rid} ${d.name_localkey} (element=${ed.element})`);
@@ -209,9 +213,16 @@ for (const [nameCode, rid] of nameCodeToResource) {
     const el = elementByResource.get(rid) || null;
     table[nameCode] = { jp, resource_id: rid, ...(el ? { element: el.element, elementJp: el.elementJp } : {}) };
 }
-if (noElement.length) {
-    console.log(`\n   ⚠ 属性が読めなかった (${noElement.length}件):`);
-    for (const n of noElement.slice(0, 20)) console.log('      ', n);
+if (multiElement.length) {
+    console.log(`\n   ⚠ 属性が複数あるキャラ (${multiElement.length}件) — 先頭を採っています:`);
+    for (const n of multiElement.slice(0, 20)) console.log('      ', n);
+}
+// ★ 属性は「キャラ別の絞り込み」の唯一の材料。欠けるとそのキャラだけ静かに消えるので、
+//   名前が取れなかったときと同じく**書かずに止める** (Codex指摘 2026-09-09)
+if (noElement.length && APPLY && !ALLOW_MISSING) {
+    stop(`属性を読めなかったキャラが ${noElement.length} 件あります。欠けた表で上書きしません`,
+        [...noElement.slice(0, 20), '', 'ゲーム側に属性が増えたなら ELEMENT_KEY に足してください。'
+            + ' 一時的な失敗ならもう一度実行、恒久的に属性が無いなら --allow-missing']);
 }
 console.log(`③ 日本語名が付いた name_code: ${Object.keys(table).length}`);
 

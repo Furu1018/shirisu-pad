@@ -7175,15 +7175,18 @@ console.log('\nswipeGuards:');
         //   実機で「横に動く」と言われたものから順に直す。この一覧は**増やさない**ための線
         const KNOWN = new Set(['drawer', 'help-toc', 'player-select-list', 'player-modal',
             'fururi-help-body', 'tour-body-scroll']);
-        const blocks = [...html.matchAll(/\.([a-zA-Z][\w-]*)\s*\{([^{}]*)\}/g)];
-        const bad = blocks
-            .filter(([, cls, body]) => /overflow-y:\s*auto/.test(body) && !/overflow-x:/.test(body) && !KNOWN.has(cls))
-            .map(([, cls]) => cls);
+        // ★ セレクタは並記もある。末尾の1クラスだけ見ると `.new, .drawer { ... }` で
+        //   新しいクラスを見逃す (Codex指摘 2026-09-09) — data-no-swipe の検査と同じ割り方をする
+        const hits = [];
+        for (const m of html.matchAll(/([^{}]+)\{([^{}]*overflow-y:\s*auto[^{}]*)\}/g)) {
+            if (/overflow-x:/.test(m[2])) continue;
+            for (const c of selectorClasses(m[1])) hits.push(c);
+        }
+        const bad = [...new Set(hits)].filter((c) => !KNOWN.has(c));
         assert.deepEqual(bad, [], `overflow-y だけ指定していて横にもスクロールできる: ${bad.join(', ')}`);
         // 直した分が KNOWN に残り続けないように (直したら消す)
-        const stillKnown = blocks.filter(([, cls, body]) => KNOWN.has(cls)
-            && /overflow-y:\s*auto/.test(body) && !/overflow-x:/.test(body)).map(([, cls]) => cls);
-        assert.deepEqual([...KNOWN].sort(), stillKnown.sort(), 'KNOWN に、もう該当しないクラスが残っている');
+        assert.deepEqual([...KNOWN].sort(), [...new Set(hits)].filter((c) => KNOWN.has(c)).sort(),
+            'KNOWN に、もう該当しないクラスが残っている');
     });
 
     test('この検査自体が効いていること (セレクタの書き方・引用符・属性名で取りこぼさない)', () => {
