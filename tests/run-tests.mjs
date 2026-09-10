@@ -7396,12 +7396,15 @@ console.log('\ngrowthDomain:');
         const glass = html.match(/@supports \(\(backdrop-filter[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(glass, 'ガラスの指定が無い');
         assert.ok(/\.header, \.bottom-nav \{/.test(glass), '上下の両方に掛かっていない');
-        // ★ 2つとも要る。片方だけ消えても気づけるように別々に見る
-        //   (webkit 接頭辞が無いと iOS Safari でガラスにならない = まさに直したい端末で効かない)
-        assert.ok(/\n\s*backdrop-filter: blur\(/.test(glass), '接頭辞なしの backdrop-filter が無い');
-        assert.ok(/-webkit-backdrop-filter: blur\(/.test(glass),
+        // ★ 条件文 (@supports (...)) にも同じ語が出るので、**ルールの中身だけ**を見る。
+        //   2つとも要る — webkit 接頭辞が無いと iOS Safari でガラスにならない
+        //   (= まさに直したい端末で効かない)
+        const rule = glass.match(/\.header, \.bottom-nav \{[\s\S]*?\n            \}/)?.[0] || '';
+        assert.ok(rule, 'ガラスのルール本体が読めない');
+        assert.ok(/\n\s*backdrop-filter: blur\(\d+px\)/.test(rule), '接頭辞なしの backdrop-filter が無い');
+        assert.ok(/\n\s*-webkit-backdrop-filter: blur\(\d+px\)/.test(rule),
             'webkit 接頭辞が無い (iOS Safari でガラスにならない)');
-        assert.ok(/rgba\(var\(--nav-surface-rgb\), 0\.\d+\)/.test(glass), '半透明になっていない');
+        assert.ok(/rgba\(var\(--nav-surface-rgb\), 0\.\d+\)/.test(rule), '半透明になっていない');
         // ★ 対応していない端末はべた塗りのまま (半透明だけ効くと文字が読めなくなる)
         assert.ok(/@supports \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter/.test(glass),
             '@supports で囲っていない');
