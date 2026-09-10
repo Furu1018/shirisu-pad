@@ -12,7 +12,49 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="しりすこPAD">
-    <meta name="theme-color" content="#fbfcfd">
+    <meta name="theme-color" content="#F1F3F6">
+    <!-- ★ 見た目 (ライト/ダーク) は**描画の前**に決める。あとから足すと一瞬ライトが見える。
+         保存値は 'light' | 'dark' | 'auto' の3つ。auto は端末の設定に従う。 -->
+    <script>
+        (function () {
+            var KEY = 'shirisuko_theme_v1';
+            window.PAD_THEME_KEY = KEY;
+            window.padThemePref = function () {
+                try { var v = localStorage.getItem(KEY); return (v === 'light' || v === 'dark') ? v : 'auto'; }
+                catch (_) { return 'auto'; }
+            };
+            window.padThemeResolve = function (pref) {
+                if (pref === 'light' || pref === 'dark') return pref;
+                try { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+                catch (_) { return 'light'; }
+            };
+            window.padApplyTheme = function (pref) {
+                var mode = window.padThemeResolve(pref || window.padThemePref());
+                document.documentElement.setAttribute('data-theme', mode);
+                window.padSyncThemeColor();
+                // ★ キャンバス/グラフは CSS 変数を読めないので、描き直しの合図を出す
+                try { window.dispatchEvent(new CustomEvent('padthemechange', { detail: { mode: mode } })); }
+                catch (_) { /* 古い環境 */ }
+                return mode;
+            };
+            // ブラウザのUI (アドレスバー等) も地の色に合わせる。
+            // ★ 色は書かずに --bg を読む。ただし <head> のこの時点では <style> がまだ無いので
+            //   最初の1回は何もしない (静的な meta の値のまま) → DOMContentLoaded でもう一度呼ぶ。
+            window.padSyncThemeColor = function () {
+                var m = document.querySelector('meta[name="theme-color"]');
+                if (!m) return;
+                var bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+                if (bg) m.setAttribute('content', bg);
+            };
+            window.padApplyTheme();
+            // auto のあいだは端末設定の変化に追随する
+            try {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+                    if (window.padThemePref() === 'auto') window.padApplyTheme('auto');
+                });
+            } catch (_) { /* 古い Safari */ }
+        })();
+    </script>
     <!-- 接続の先行確立 (CDN / Supabase / フォント) -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://djahnbzwupxcekneydid.supabase.co" crossorigin>
@@ -1884,6 +1926,15 @@
             letter-spacing: 0.3px;
             cursor: pointer;
             font-family: inherit}
+
+        /* ===== 見た目の切り替え (設定タブ) ===== */
+        .th-seg { display:flex; gap:4px; margin-top:13px; background:var(--s2); border-radius:12px; padding:4px; }
+        .th-b {
+            flex:1; min-width:0; border:none; cursor:pointer; font:inherit; font-size:11.5px; font-weight:800;
+            padding:9px 6px; border-radius:9px; background:transparent; color:var(--t-body);
+            display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap;
+            transition:background .15s ease, color .15s ease}
+        .th-b[aria-pressed="true"] { background:var(--card); color:var(--t-ink); box-shadow:0 1px 3px var(--hair)}
 
         /* ========== Notification ========== */
         .notification {
@@ -5089,6 +5140,17 @@
                     <div data-no-swipe style="overflow-x:auto;margin-top:8px;">
                         <div id="settingsCharList" style="font-size:12px;color:var(--t-muted);">読み込み中…</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ⑤ 見た目 (ライト / ダーク) -->
+            <div class="dc-card">
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">見た目</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.6;">この端末だけの設定です。「端末に合わせる」は OS のダークモードに従います。</div>
+                <div id="settingsThemeSeg" class="th-seg" role="group" aria-label="見た目">
+                    <button type="button" class="th-b" data-theme-pick="auto"  onclick="handleThemePick('auto')"><span data-sp-icon="refresh" data-sp-size="13"></span> 端末に合わせる</button>
+                    <button type="button" class="th-b" data-theme-pick="light" onclick="handleThemePick('light')"><span data-sp-icon="sun" data-sp-size="13"></span> ライト</button>
+                    <button type="button" class="th-b" data-theme-pick="dark"  onclick="handleThemePick('dark')"><span data-sp-icon="moon" data-sp-size="13"></span> ダーク</button>
                 </div>
             </div>
 
@@ -9597,6 +9659,9 @@
         // 宣言するだけで、initSpIcons() が SVG を流し込む (実体はここで一元管理)。
         const SP_ICONS = {
             // 戦闘系
+            sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+            moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+            monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
             swords: '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/>',
             sword: '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/>',
             shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
@@ -16813,6 +16878,25 @@
         function _gcCls(lead, who) {
             return lead === 'unknown' ? 'unknown' : lead === 'same' ? 'same' : lead === who ? 'win' : 'lose';
         }
+
+        // ===== 🌗 見た目 (ライト / ダーク) =====
+        // ★ 実際の切り替えは <head> の padApplyTheme が持つ (描画前に立てる必要があるため)。
+        //   ここは「押されたら保存して反映し、ボタンの見た目を合わせる」だけ。
+        function handleThemePick(pref) {
+            try {
+                if (pref === 'auto') localStorage.removeItem(window.PAD_THEME_KEY);
+                else localStorage.setItem(window.PAD_THEME_KEY, pref);
+            } catch (_) { /* 保存できなくても、その場では切り替わる */ }
+            window.padApplyTheme(pref);
+            syncThemeSeg();
+        }
+        function syncThemeSeg() {
+            const cur = window.padThemePref();
+            document.querySelectorAll('[data-theme-pick]').forEach((b) => {
+                b.setAttribute('aria-pressed', b.dataset.themePick === cur ? 'true' : 'false');
+            });
+        }
+        window.addEventListener('DOMContentLoaded', () => { syncThemeSeg(); window.padSyncThemeColor(); });
 
         // ===== 🧬 育成データの取り込み (43 / 2026-09-09) =====
         //   純ロジックは js/domain/growth.js。ここは DOM と保存の呼び出しだけ。
