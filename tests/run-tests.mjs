@@ -7353,21 +7353,90 @@ console.log('\ngrowthDomain:');
         assert.ok(/_isMissingTableErr\(error, 'member_growth_status'\)\) return null;/.test(cl), '未適用の判定が無い');
         assert.ok(/order\('season_id', \{ ascending: false \}\)\.limit\(1\)/.test(cl), 'いちばん新しい回を見ていない');
     });
-    test('★ 配線: 浮かぶナビ (白い帯 + いま居るタブを黒い円で持ち上げ、名前を出す)', () => {
-        // 2026-09-09 モック 6f9d0510 の決定 A。以前は黒い帯 + センターだけ大丸だった
+    test('★ メニューの帯は地と反対の色 (ライトで黒帯 / ダークで白帯)', () => {
+        // 2026-09-10 ユーザー要望「ライト、ダークと反対の色のメニューの方が見やすい」
         const html = _grRd('index.html');
+        const grab = (sel) => {
+            const i = html.indexOf(sel);
+            return Object.fromEntries([...html.slice(i, html.indexOf('}', i)).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)]
+                .map((m) => [m[1], m[2].trim()]));
+        };
+        const L = grab(':root, :root[data-theme="light"] {'), D = grab(':root[data-theme="dark"] {');
+        const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const lum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+            return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]); };
+        const R = (a, b) => { const x = lum(a) + 0.05, y = lum(b) + 0.05; return Math.max(x, y) / Math.min(x, y); };
+
+        for (const k of ['nav-surface', 'nav-ink', 'nav-dim', 'nav-line', 'nav-active-bg', 'nav-active-ink']) {
+            assert.ok(L[k] && D[k], `${k} が両テーマに無い`);
+        }
+        // ★ 帯は本文の地と**反対側**にいること (同じ側だと「反対の色」になっていない)
+        assert.ok(lum(L['nav-surface']) < lum(L.bg), 'ライトなのに帯が明るい (地と反対になっていない)');
+        assert.ok(lum(D['nav-surface']) > lum(D.bg), 'ダークなのに帯が暗い (地と反対になっていない)');
+        // 帯の上の文字が読めること
+        for (const [nm, T] of [['ライト', L], ['ダーク', D]]) {
+            assert.ok(R(T['nav-ink'], T['nav-surface']) >= 4.5, `${nm}: 帯の文字が読めない`);
+            assert.ok(R(T['nav-dim'], T['nav-surface']) >= 4.5, `${nm}: 帯の薄い文字が読めない`);
+            assert.ok(R(T['nav-active-ink'], T['nav-active-bg']) >= 4.5, `${nm}: 選択中の円の文字が読めない`);
+            // 選択中の円は帯の上で目立つこと (帯と同系色だと沈む)
+            assert.ok(R(T['nav-active-bg'], T['nav-surface']) >= 4.5, `${nm}: 選択中の円が帯に沈んでいる`);
+        }
+        // 上の帯も同じトークンを使う (下だけ反転していると別物に見える)
+        const hdr = html.match(/\n        \.header \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/background: var\(--nav-surface\);/.test(hdr), '上の帯が反転トークンでない');
+        assert.ok(/color: var\(--nav-ink\);/.test(hdr), '上の帯の文字が反転トークンでない');
+    });
+
+    test('★ 上の帯はスクロールで隠れる (PC も対象)', () => {
+        // 2026-09-10 ユーザー要望「スクロールしても消えない」。以前はモバイル限定だった
+        const html = _grRd('index.html');
+        const hidden = html.match(/\.header\.nav-hidden \{[\s\S]*?\}/)?.[0] || '';
+        assert.ok(/transform: translateY\(/.test(hidden), '隠す指定が無い');
+        // ★ モバイル限定のメディアクエリの中に入っていないこと
+        const mob = html.match(/@media \(max-width: 767px\) \{[\s\S]*?\n        \}/g) || [];
+        assert.ok(!mob.some((m) => /\.header\.nav-hidden/.test(m)), 'モバイル限定のままになっている');
+        // JS 側も画面幅で分けていないこと
+        assert.ok(/const hdrHide = _navAuto\.hidden;/.test(html), 'JS が画面幅で隠すかを分けている');
+    });
+
+    test('★ サイドバーの見出しはユニオンのロゴ (絵文字ではない)', () => {
+        // 2026-09-10 ユーザー要望「🎯しりすこPADが嫌だ」。GB と同じ 推しりすこれ部 のロゴ
+        const html = _grRd('index.html');
+        assert.ok(/<div class="side-brand"><img src="\.\/union-logo\.png"/.test(html), 'ロゴを出していない');
+        assert.ok(/alt="推しりすこれ部"/.test(html), '代替テキストが無い');
+        assert.ok(!/side-brand[^>]*>.*🎯/.test(html), '絵文字の見出しが残っている');
+        assert.ok(_fsG.existsSync(new URL('../union-logo.png', import.meta.url)), 'ロゴの実体が無い');
+    });
+
+    test('★ シーズンを終了したらタブの描画キャッシュも捨てる', () => {
+        // 捨てないと、ホームに戻っても 30 秒間は終わったシーズンの予約が残る (2026-09-10 実機FB)
+        const html = _grRd('index.html');
+        const fn = html.match(/async function handleOpsEndSeason\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(fn, '終了処理が見つからない');
+        assert.ok(/seasonStore\.invalidate\(\);/.test(fn) && /opsStore\.invalidate\(\);/.test(fn));
+        assert.ok(/_invalidateTabRenderCache\(\);/.test(fn), 'タブの描画キャッシュを捨てていない');
+    });
+
+    test('★ 配線: 浮かぶナビ (地と反対の色の帯 + いま居るタブを円で持ち上げ、名前を出す)', () => {
+        // 2026-09-09 モック 6f9d0510 の決定 A。2026-09-10 に帯を**地と反対の色**へ (ユーザー要望)
+        const html = _grRd('index.html');
+        // ★ 並びは操作する順: ホーム → 模擬 → 戦況 → 分析 → 設定 (2026-09-10 ユーザー決定)
+        const order = [...html.matchAll(/class="bottom-nav-btn[^"]*" data-tab="([a-z]+)"/g)].map(m => m[1]);
+        assert.deepEqual(order, ['mypage', 'mock', 'ops', 'ranking', 'settings'], '下のナビの並びが違う');
+        const pc = [...html.matchAll(/class="tab-button[^"]*" data-tab="([a-z]+)"/g)].map(m => m[1]);
+        assert.deepEqual(pc, ['mypage', 'mock', 'ops', 'ranking', 'settings'], 'PC のサイドバーの並びが違う');
         // 5つのタブすべてに名前が付いている (アイコンだけだと何のタブか分からない)
         for (const [tab, label] of [['mock', '模擬'], ['ops', '戦況'], ['mypage', 'ホーム'], ['ranking', '分析'], ['settings', '設定']]) {
             const re = new RegExp(`data-tab="${tab}"[^>]*><span class="nav-lb">${label}</span>`);
             assert.ok(re.test(html), `${label} タブに名前が無い`);
         }
         assert.equal((html.match(/class="nav-lb"/g) || []).length, 5, '名前が5つでない');
-        // 帯は白、いま居るタブは黒い円で**持ち上げる** (position:absolute + 上に出す)
+        // 帯は**地と反対の色**、いま居るタブは円で**持ち上げる** (position:absolute + 上に出す)
         const nav = html.match(/\.bottom-nav \{[\s\S]*?\n        \}/)?.[0] || '';
-        assert.ok(/background: var\(--card\);/.test(nav), '帯がカードの色でない (トークンを使っていない)');
+        assert.ok(/background: var\(--nav-surface\);/.test(nav), '帯が反転トークンでない');
         const on = html.match(/\.bottom-nav-btn\.active \.nav-icon-wrap \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/position: absolute;/.test(on) && /top: -26px;/.test(on), 'いま居るタブを持ち上げていない');
-        assert.ok(/background: var\(--t-ink\);/.test(on), '円が濃い色でない (決定 A: 黒い円で統一)');
+        assert.ok(/background: var\(--nav-active-bg\);/.test(on), '円が反転トークンでない (帯の上で目立たない)');
         assert.ok(/border: 5px solid var\(--nav-ring\)/.test(on), '地の色で切っていない (帯から飛び出して見えない)');
         assert.ok(/--nav-ring:/.test(nav), 'リングの色を持っていない');
         // ★ センターだけ特別、ではなくなった — 大丸の指定が残っていると2つ持ち上がる
