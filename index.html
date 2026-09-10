@@ -71,8 +71,8 @@
             /* 文字 — ★ 4段すべて地に対して 4.5:1 以上。文字にはこれ以外を使わない */
             --t-ink: #14161A;
             --t-strong: #5A6068;
-            --t-body: #6B7178;
-            --t-muted: #70767e;
+            --t-body: #62666d;
+            --t-muted: #62666e;
             /* 面・線 — ★ 文字には使わない (薄いままでよい) */
             --s1: #F7F8F9;
             --s2: #F1F2F4;
@@ -80,50 +80,60 @@
             --track: #C9CED3;
             --dim: #B6BBC1;
             --ghost: #A4AAB0;
-            /* 状態の色。solid=地に敷く / ink=その上の文字 / bg=薄く敷く / on=薄い地の上の文字 */
+            /* 状態の色。deep=もともと濃く書かれていた文字 (7:1) / solid=地に敷く /
+               ink=その上の文字 / bg=薄く敷く / on=薄い地の上の文字 */
             --ops: #6c42f0;
+            --ops-deep: #4b17ed;
             --ops-solid: #6C42F0;
             --ops-ink: #FFFFFF;
             --ops-bg: #f0ecfe;
             --ops-on: #6c42f0;
-            --ok: #11874a;
+            --ok: #107e45;
+            --ok-deep: #0c5e34;
             --ok-solid: #18C26B;
             --ok-ink: #000000;
             --ok-bg: #e8f9f0;
             --ok-on: #107e45;
-            --warn: #a36907;
+            --warn: #996206;
+            --warn-deep: #724905;
             --warn-solid: #F59E0B;
             --warn-ink: #000000;
             --warn-bg: #fef5e7;
             --warn-on: #996206;
-            --bad: #eb1515;
+            --bad: #d91313;
+            --bad-deep: #a50e0e;
             --bad-solid: #EF4444;
             --bad-ink: #000000;
             --bad-bg: #fdecec;
             --bad-on: #d91313;
             /* 属性の色 — ★ 状態の色とは別のトークン (同じ値から始まるだけ)。
                分けないと、危険の赤を調整したときに灼熱の赤まで動く */
-            --attr-fire: #ea0008;
+            --attr-fire: #db0008;
+            --attr-fire-deep: #a80006;
             --attr-fire-solid: #FF3D44;
             --attr-fire-ink: #000000;
             --attr-fire-bg: #ffecec;
             --attr-fire-on: #db0008;
-            --attr-water: #006ffa;
+            --attr-water: #0066e6;
+            --attr-water-deep: #004dae;
             --attr-water-solid: #2E8BFF;
             --attr-water-ink: #000000;
             --attr-water-bg: #eaf3ff;
             --attr-water-on: #0066e6;
-            --attr-electric: #9543ff;
+            --attr-electric: #8d33ff;
+            --attr-electric-deep: #6300e1;
             --attr-electric-solid: #9B4DFF;
             --attr-electric-ink: #000000;
             --attr-electric-bg: #f5edff;
             --attr-electric-on: #8d33ff;
-            --attr-iron: #bf5600;
+            --attr-iron: #b55100;
+            --attr-iron-deep: #873c00;
             --attr-iron-solid: #FF8A2B;
             --attr-iron-ink: #000000;
             --attr-iron-bg: #fff3ea;
             --attr-iron-on: #b55100;
-            --attr-wind: #11874a;
+            --attr-wind: #107e45;
+            --attr-wind-deep: #0c5e34;
             --attr-wind-solid: #18C26B;
             --attr-wind-ink: #000000;
             --attr-wind-bg: #e8f9f0;
@@ -146,23 +156,28 @@
             --track: #383D45;
             --dim: #565C64;
             --ghost: #7B828A;
-            /* 状態の色。solid=地に敷く / ink=その上の文字 / bg=薄く敷く / on=薄い地の上の文字 */
-            --ops: #8d6df3;
+            /* 状態の色。deep=もともと濃く書かれていた文字 (7:1) / solid=地に敷く /
+               ink=その上の文字 / bg=薄く敷く / on=薄い地の上の文字 */
+            --ops: #9171f4;
+            --ops-deep: #b29cf7;
             --ops-solid: #6C42F0;
             --ops-ink: #FFFFFF;
             --ops-bg: #282147;
             --ops-on: #987bf4;
             --ok: #18c26b;
+            --ok-deep: #18c26b;
             --ok-solid: #18C26B;
             --ok-ink: #000000;
             --ok-bg: #173b2d;
             --ok-on: #18c26b;
             --warn: #f59e0b;
+            --warn-deep: #f59e0b;
             --warn-solid: #F59E0B;
             --warn-ink: #000000;
             --warn-bg: #433419;
             --warn-on: #f59e0b;
-            --bad: #ef4444;
+            --bad: #ef4949;
+            --bad-deep: #f58f8f;
             --bad-solid: #EF4444;
             --bad-ink: #000000;
             --bad-bg: #422225;
@@ -170,50 +185,41 @@
             /* 属性の色 — ★ 状態の色とは別のトークン (同じ値から始まるだけ)。
                分けないと、危険の赤を調整したときに灼熱の赤まで動く */
             --attr-fire: #ff3d44;
+            --attr-fire-deep: #ff8489;
             --attr-fire-solid: #FF3D44;
             --attr-fire-ink: #000000;
             --attr-fire-bg: #452025;
             --attr-fire-on: #ff575d;
             --attr-water: #2e8bff;
+            --attr-water-deep: #6badff;
             --attr-water-solid: #2E8BFF;
             --attr-water-ink: #000000;
             --attr-water-bg: #1c304a;
             --attr-water-on: #4899ff;
-            --attr-electric: #a45cff;
+            --attr-electric: #a661ff;
+            --attr-electric-deep: #c394ff;
             --attr-electric-solid: #9B4DFF;
             --attr-electric-ink: #000000;
             --attr-electric-bg: #31234a;
             --attr-electric-on: #af71ff;
             --attr-iron: #ff8a2b;
+            --attr-iron-deep: #ff8a2b;
             --attr-iron-solid: #FF8A2B;
             --attr-iron-ink: #000000;
             --attr-iron-bg: #453020;
             --attr-iron-on: #ff8a2b;
             --attr-wind: #18c26b;
+            --attr-wind-deep: #18c26b;
             --attr-wind-solid: #18C26B;
             --attr-wind-ink: #000000;
             --attr-wind-bg: #173b2d;
             --attr-wind-on: #18c26b;
         }
-
         :root {
             /* === マーブル × エレガンス ブランドトークン === */
-            --brand-primary: #1a1a1a;            /* 黒ラベル (ボタン/強調) */
-            --brand-primary-soft: #f4f6f8;        /* 淡シルバー背景 */
-            --brand-primary-deep: #000000;        /* プレス時 */
-            --brand-secondary: #7090a8;           /* 淡水色 (副アクセント) */
-            --brand-tertiary: #c5dee5;            /* 真珠水色 (最薄) */
-            --brand-silver: #d4d8dc;              /* シルバー (区切り) */
-            --brand-success: #4ade80;
-            --brand-warning: #f59e0b;
-            --brand-danger: #ef4444;
-            --brand-info: #38bdf8;
-            /* NIKKE 5属性アクセント (ネオン寄り) */
-            --attr-fire: #ff5b6b;
-            --attr-water: #2cb6ff;
-            --attr-electric: #b277f5;
-            --attr-iron: #ff963c;
-            --attr-wind: #3fc97f;
+            --brand-primary: var(--t-ink);        /* 旧名。中身は新しいトークン */
+            --brand-primary-soft: var(--s1);      /* 旧名。中身は新しいトークン */
+            --brand-silver: var(--track);         /* 旧名。中身は新しいトークン */
             /* タイポ */
             --font-display: 'Manrope', 'Space Grotesk', 'Helvetica Neue', sans-serif;
             --font-body: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
@@ -267,8 +273,7 @@
                はみ出しが横スクロール/モバイルの自動縮小を誘発し「プルプル拡大縮小」になる。
                clip は hidden と違い overflow-y を auto に強制しない (縦スクロール/stickyを壊さない)。
                data-no-swipe の内側コンテナは自前の overflow-x:auto を持つので横スクロールは維持される。 */
-            overflow-x: clip;
-        }
+            overflow-x: clip}
         /* 見出しと数字は表示用フォントへ */
         h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em; }
         .tabular, [data-numeric] { font-feature-settings: 'tnum' 1; font-variant-numeric: tabular-nums; }
@@ -281,7 +286,7 @@
             text-align: center;
             padding: 10px 14px;
             margin: 10px 14px 0;
-            background: #FFFFFF;
+            background: var(--card);
             border-radius: 26px;
             box-shadow: 0 8px 26px rgba(20,22,26,0.16);
             position: sticky;
@@ -291,8 +296,7 @@
             align-items: center;
             justify-content: space-between;
             /* iOS Safari の sticky 合成バグ回避 (下部ナビと同じ理由で残す) */
-            transform: translateZ(0);
-        }
+            transform: translateZ(0)}
         /* ヘッダーも下部ナビと同じスクロール方向連動で自動隠し (_navSetHidden が両方を制御)。
            モバイル限定 — PC はスクロール量が少なく隠す益より違和感が勝つため対象外 */
         @media (max-width: 767px) {
@@ -325,8 +329,7 @@
 
         .header-subtitle {
             font-size: 12px;
-            color: #6B7178;
-        }
+            color: var(--t-body)}
 
 
         /* ========== Hamburger (mobile) ========== */
@@ -348,10 +351,9 @@
             display: block;
             width: 20px;
             height: 2px;
-            background: #14161A;
+            background: var(--t-ink);
             border-radius: 2px;
-            transition: all 0.3s;
-        }
+            transition: all 0.3s}
 
         @media (max-width: 767px) {
             .hamburger-btn { display: none; }   /* モバイルでは下メニューに統一 */
@@ -375,7 +377,7 @@
             left: 14px; right: 14px;
             bottom: calc(env(safe-area-inset-bottom, 12px) + 10px);
             z-index: 90;
-            background: #FFFFFF;
+            background: var(--card);
             border-radius: 26px;
             align-items: flex-end;
             justify-content: space-around;
@@ -384,8 +386,7 @@
             /* iOS Safari の fixed + backdrop-filter バグ回避の名残: 合成レイヤー固定は維持 */
             transform: translateZ(0);
             transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: transform;
-        }
+            will-change: transform}
         /* スクロール方向連動の自動隠し: 下スクロールで画面外へ、少し戻すと出現 (_initNavAutoHide) */
         .bottom-nav.nav-hidden {
             transform: translateY(calc(100% + 64px)) translateZ(0);   /* 🏠の張り出し+セーフエリアぶん余分に */
@@ -411,10 +412,9 @@
             font-size: 9.5px;
             font-weight: 700;
             letter-spacing: 0.02em;
-            color: #A4AAB0;
+            color: var(--t-muted);
             -webkit-tap-highlight-color: transparent;
-            transition: color 0.15s ease;
-        }
+            transition: color 0.15s ease}
         .bottom-nav-btn .nav-icon-wrap {
             display: inline-flex;
             align-items: center;
@@ -425,19 +425,18 @@
         /* ラベルは DOM 上はアイコンより前 (閉じタグが5つとも同じで目印に使えない) → order で下に出す */
         .bottom-nav-btn .nav-icon-wrap { order: 1; }
         .bottom-nav-btn .nav-lb { order: 2; line-height: 1; white-space: nowrap; }
-        .bottom-nav-btn:hover { color: #6B7178; }
+        .bottom-nav-btn:hover { color: var(--t-body)}
         /* いま居るタブ: 黒い円で持ち上げ、名前を太字にする */
-        .bottom-nav-btn.active { color: #14161A; font-weight: 900; }
+        .bottom-nav-btn.active { color: var(--t-ink); font-weight: 900}
         .bottom-nav-btn.active .nav-icon-wrap {
             position: absolute;
             top: -26px;
             width: 46px; height: 46px;
             border-radius: 50%;
-            background: #14161A;
+            background: var(--t-ink);
             border: 5px solid var(--nav-ring);   /* 地の色で切って、帯から飛び出して見せる */
             box-shadow: 0 6px 16px rgba(20,22,26,0.26);
-            color: #FFFFFF;
-        }
+            color: var(--card)}
         .bottom-nav-btn.active svg { width: 21px; height: 21px; stroke-width: 2; }
         /* センターが特別、ではなくなった (クラスは互換のため残す) */
         .bottom-nav-btn.nav-home .nav-icon-wrap { margin-top: 0; }
@@ -462,12 +461,11 @@
             position: fixed; top: 8px; left: 50%;
             transform: translate(-50%, -70px); opacity: 0;
             display: flex; align-items: center; gap: 7px;
-            background: #14161A; color: #fff;
+            background: var(--t-ink); color: var(--card);
             border-radius: 999px; padding: 9px 16px;
             font-size: 12px; font-weight: 800; letter-spacing: 0.2px;
             z-index: 9999; pointer-events: none;
-            box-shadow: 0 6px 18px rgba(20,22,26,0.35);
-        }
+            box-shadow: 0 6px 18px rgba(20,22,26,0.35)}
         @keyframes ptr-spin { to { transform: rotate(360deg); } }
         #ptrIcon { display: inline-flex; align-items: center; }
         #ptrIcon.spin { animation: ptr-spin .8s linear infinite; }
@@ -476,21 +474,18 @@
             display: flex; align-items: center; gap: 10px;
             padding: 12px 13px; cursor: pointer;
             border: 1.5px dashed rgba(20,22,26,0.14);
-            border-radius: 12px; background: #F7F8F9;
-        }
+            border-radius: 12px; background: var(--s1)}
         .dc-upload .dc-upload-ico { font-size: 18px; flex: none; }
-        .dc-upload .dc-upload-text { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: #14161A; }
+        .dc-upload .dc-upload-text { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: var(--t-ink)}
         .dc-upload .dc-upload-btn {
             flex: none; padding: 7px 13px; border-radius: 999px;
             background: linear-gradient(180deg, #7A5AF8, #5B2BE0); color: #fff;
-            font-size: 11px; font-weight: 800; box-shadow: 0 2px 6px rgba(108,66,240,0.35);
-        }
+            font-size: 11px; font-weight: 800; box-shadow: 0 2px 6px rgba(108,66,240,0.35)}
         /* ops タブ: セクションジャンプ + 運営モード */
         .dc-nav-chip {
             flex: none; padding: 7px 12px; border-radius: 999px;
-            border: 1px solid rgba(20,22,26,0.06); background: #fff; color: #5A6068;
-            font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap;
-        }
+            border: 1px solid rgba(20,22,26,0.06); background: var(--card); color: var(--t-strong);
+            font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap}
         #tab-ops .dc-card { scroll-margin-top: 64px; }
         /* 戦況タブ: 折りたたみカード + コックピット (定義は js/domain/opsLayout.js)。
            畳んでも DOM は残す — HP ポーリングや残凸表の更新関数はそのまま動く必要がある */
@@ -501,146 +496,146 @@
         .ops-card.ops-closed > .ops-card-head > :not(.ops-card-title):not(.ops-card-sum):not(.ops-card-car) { display: none !important; }
         /* 題名ブロックに副題がある場合 (一斉通知) は畳んだとき副題も隠す */
         .ops-card.ops-closed > .ops-card-head > .ops-card-title > :not(:first-child) { display: none !important; }
-        .ops-card-sum { margin-left: auto; flex: 1 1 auto; min-width: 0; font-size: 11px; font-weight: 700; color: #8A9097; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; display: none; }
-        .ops-card-sum.bad { color: #FF3D44; }
+        .ops-card-sum { margin-left: auto; flex: 1 1 auto; min-width: 0; font-size: 11px; font-weight: 700; color: var(--t-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; display: none}
+        .ops-card-sum.bad { color: var(--attr-fire)}
         .ops-card.ops-closed > .ops-card-head .ops-card-sum { display: inline-block; }
-        .ops-card-car { flex: none; font-size: 12px; color: #A4AAB0; margin-left: 6px; }
+        .ops-card-car { flex: none; font-size: 12px; color: var(--t-muted); margin-left: 6px}
         body:not(.ops-mode) .ops-card-car { display: none; }
         .ops-card.ops-closed > .ops-card-body { display: none; }
         .ops-card.ops-closed > .ops-card-head { margin-bottom: 0 !important; }
-        .ops-group-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: #A4AAB0; margin: 14px 6px 6px; }
+        .ops-group-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: var(--t-muted); margin: 14px 6px 6px}
         #opsTopBar { margin: 0 0 8px; }
         .ops-topbar-row { display: flex; justify-content: flex-end; padding: 4px 2px; }
         .ops-cockpit { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
         .ops-cockpit:empty { display: none; }
-        .ops-cockpit-tile { font-family: inherit; text-align: left; background: #fff; border: 1px solid rgba(20,22,26,0.06); border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
-        .ops-cockpit-tile .k { font-size: 10px; font-weight: 800; color: #8A9097; }
-        .ops-cockpit-tile .v { font-size: 16px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; }
-        .ops-cockpit-tile.bad .v { color: #FF3D44; }
+        .ops-cockpit-tile { font-family: inherit; text-align: left; background: var(--card); border: 1px solid rgba(20,22,26,0.06); border-radius: 12px; padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px}
+        .ops-cockpit-tile .k { font-size: 10px; font-weight: 800; color: var(--t-muted)}
+        .ops-cockpit-tile .v { font-size: 16px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums}
+        .ops-cockpit-tile.bad .v { color: var(--attr-fire)}
         /* ---- 運営モードの段階 (準備/前日/当日/終了) — 運営UI再設計 2026-09-08 ---- */
         body.ops-mode .ops-group-label { display: none; }   /* グループ見出しは段階の出し分けに置き換えた */
         body.ops-mode:not(.ops-stage-day) #opsCockpit, body.ops-mode:not(.ops-stage-day) #opsOverviewChips { display: none; }
         .ops-stage-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 2px 2px 4px; }
-        .ops-stage-name { font-size: 13px; font-weight: 900; color: #14161A; }
+        .ops-stage-name { font-size: 13px; font-weight: 900; color: var(--t-ink)}
         .ops-stage-seg button { padding: 4px 9px; font-size: 11px; }
-        .ops-stage-sub { font-size: 10.5px; font-weight: 800; color: #8A9097; margin: 0 2px 8px; }
-        .ops-stage-auto { font: inherit; font-size: 10.5px; font-weight: 900; color: #B45309; background: rgba(245,158,11,0.14); border: none; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
-        .ops-stage-auto.muted { color: #8A9097; background: transparent; padding: 0; }
-        .ops-stage-hero { border-radius: 14px; padding: 14px 14px 13px; background: linear-gradient(135deg,#7A5AF8,#5B2BE0); color: #fff; margin-bottom: 10px; box-shadow: 0 8px 22px rgba(91,43,224,0.22); }
-        .ops-stage-hero.day { background: linear-gradient(135deg,#23262C,#101114); box-shadow: 0 8px 22px rgba(0,0,0,0.22); }
-        .ops-stage-hero.end { background: linear-gradient(135deg,#0E9455,#0B6E41); box-shadow: 0 8px 22px rgba(14,148,85,0.22); }
+        .ops-stage-sub { font-size: 10.5px; font-weight: 800; color: var(--t-muted); margin: 0 2px 8px}
+        .ops-stage-auto { font: inherit; font-size: 10.5px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border: none; border-radius: 999px; padding: 3px 10px; cursor: pointer}
+        .ops-stage-auto.muted { color: var(--t-muted); background: transparent; padding: 0}
+        .ops-stage-hero { border-radius: 14px; padding: 14px 14px 13px; background: linear-gradient(135deg,#7A5AF8,#5B2BE0); color: #fff; margin-bottom: 10px; box-shadow: 0 8px 22px rgba(91,43,224,0.22)}
+        .ops-stage-hero.day { background: linear-gradient(135deg,#23262C,#101114); box-shadow: 0 8px 22px rgba(0,0,0,0.22)}
+        .ops-stage-hero.end { background: linear-gradient(135deg,#0E9455,#0B6E41); box-shadow: 0 8px 22px rgba(14,148,85,0.22)}
         .ops-stage-hero .k { font-size: 10.5px; font-weight: 900; letter-spacing: .06em; opacity: .8; margin-bottom: 4px; }
         .ops-stage-hero .h { font-size: 15px; font-weight: 900; line-height: 1.4; }
         .ops-stage-hero .s { font-size: 11.5px; opacity: .85; margin-top: 4px; line-height: 1.6; font-weight: 700; }
-        .ops-stage-hero .b { display: block; width: 100%; margin-top: 10px; border: none; border-radius: 999px; padding: 12px; font: inherit; font-size: 13px; font-weight: 900; color: #4B22C9; background: #fff; cursor: pointer; }
-        .ops-stage-hero.day .b { color: #14161A; }
-        .ops-stage-hero.end .b { color: #0B6E41; }
-        .ops-stage-list { border: 1px solid rgba(20,22,26,0.06); border-radius: 13px; padding: 9px 12px; background: #fff; margin-bottom: 10px; }
-        .ops-stage-list .tt { font-size: 10px; font-weight: 900; letter-spacing: .06em; color: #8A9097; margin-bottom: 4px; }
+        .ops-stage-hero .b { display: block; width: 100%; margin-top: 10px; border: none; border-radius: 999px; padding: 12px; font: inherit; font-size: 13px; font-weight: 900; color: var(--ops-deep); background: var(--card); cursor: pointer}
+        .ops-stage-hero.day .b { color: var(--t-ink)}
+        .ops-stage-hero.end .b { color: var(--ok-deep)}
+        .ops-stage-list { border: 1px solid rgba(20,22,26,0.06); border-radius: 13px; padding: 9px 12px; background: var(--card); margin-bottom: 10px}
+        .ops-stage-list .tt { font-size: 10px; font-weight: 900; letter-spacing: .06em; color: var(--t-muted); margin-bottom: 4px}
         .ops-stage-list .row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
         .ops-stage-list .row + .row { border-top: 1px solid rgba(20,22,26,0.05); }
-        .ops-stage-list .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 900; border: 2px solid #C9CED4; color: #8A9097; }
-        .ops-stage-list .row.done .dot { background: #18C26B; border-color: #18C26B; color: #fff; }
-        .ops-stage-list .row.todo .dot { border-color: #F59E0B; background: rgba(245,158,11,0.16); color: #B45309; }
-        .ops-stage-list .lbl { flex: 1 1 auto; min-width: 0; text-align: left; font: inherit; font-size: 12.5px; font-weight: 800; color: #14161A; background: none; border: none; padding: 0; cursor: pointer; }
-        .ops-stage-list .row.done .lbl { color: #8A9097; }
-        .ops-stage-list .cnt { font-size: 12px; font-weight: 900; color: #6B7178; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .ops-stage-list .act { flex: none; font: inherit; font-size: 10.5px; font-weight: 900; color: #5B2BE0; background: rgba(108,66,240,0.10); border: none; border-radius: 999px; padding: 4px 9px; cursor: pointer; }
+        .ops-stage-list .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 10px; font-weight: 900; border: 2px solid var(--track); color: var(--t-muted)}
+        .ops-stage-list .row.done .dot { background: var(--ok-solid); border-color: var(--ok-solid); color: var(--ok-ink)}
+        .ops-stage-list .row.todo .dot { border-color: var(--warn-solid); background: rgba(245,158,11,0.16); color: var(--warn-deep)}
+        .ops-stage-list .lbl { flex: 1 1 auto; min-width: 0; text-align: left; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--t-ink); background: none; border: none; padding: 0; cursor: pointer}
+        .ops-stage-list .row.done .lbl { color: var(--t-muted)}
+        .ops-stage-list .cnt { font-size: 12px; font-weight: 900; color: var(--t-body); font-variant-numeric: tabular-nums; white-space: nowrap}
+        .ops-stage-list .act { flex: none; font: inherit; font-size: 10.5px; font-weight: 900; color: var(--ops-deep); background: rgba(108,66,240,0.10); border: none; border-radius: 999px; padding: 4px 9px; cursor: pointer}
         .ops-etc { margin-top: 16px; }
-        .ops-etc-head { width: 100%; font: inherit; font-size: 12px; font-weight: 900; color: #6B7178; background: #F1F2F4; border: none; border-radius: 12px; padding: 11px; cursor: pointer; }
-        .ops-etc-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: #A4AAB0; margin: 14px 6px 6px; }
+        .ops-etc-head { width: 100%; font: inherit; font-size: 12px; font-weight: 900; color: var(--t-body); background: var(--s2); border: none; border-radius: 12px; padding: 11px; cursor: pointer}
+        .ops-etc-label { font-size: 10px; font-weight: 900; letter-spacing: .12em; color: var(--t-muted); margin: 14px 6px 6px}
         /* ---- 🧬 育成データの取り込み (2026-09-09) ---- */
-        .gr-step { border: 1px solid rgba(20,22,26,0.06); border-radius: 12px; padding: 10px 12px; margin-bottom: 9px; background: #fff; }
-        .gr-step > .h { font-size: 12px; font-weight: 900; color: #14161A; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-        .gr-step > .h .n { display: grid; place-items: center; width: 19px; height: 19px; flex: none; border-radius: 6px; background: #F1F2F4; font-size: 10.5px; font-weight: 900; color: #6B7178; }
-        .gr-step.done > .h .n { background: #18C26B; color: #fff; }
-        .gr-step > .d { font-size: 10.5px; font-weight: 700; color: #8A9097; line-height: 1.6; margin: 5px 0 0 26px; }
+        .gr-step { border: 1px solid rgba(20,22,26,0.06); border-radius: 12px; padding: 10px 12px; margin-bottom: 9px; background: var(--card)}
+        .gr-step > .h { font-size: 12px; font-weight: 900; color: var(--t-ink); display: flex; align-items: center; gap: 7px; flex-wrap: wrap}
+        .gr-step > .h .n { display: grid; place-items: center; width: 19px; height: 19px; flex: none; border-radius: 6px; background: var(--s2); font-size: 10.5px; font-weight: 900; color: var(--t-body)}
+        .gr-step.done > .h .n { background: var(--ok-solid); color: var(--ok-ink)}
+        .gr-step > .d { font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.6; margin: 5px 0 0 26px}
         .gr-rows { margin: 8px 0 0; max-height: 300px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
         .gr-row { display: flex; align-items: center; gap: 7px; padding: 5px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
         .gr-row:first-child { border-top: none; }
-        .gr-row .nm { flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 800; color: #14161A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .gr-row .nm { flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 800; color: var(--t-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap}
         .gr-row .st { flex: none; font-size: 10px; font-weight: 900; border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
-        .gr-row .st.ok { color: #0E9455; background: rgba(14,148,85,0.12); }
-        .gr-row .st.private { color: #B45309; background: rgba(245,158,11,0.14); }
-        .gr-row .st.no_openid { color: #6B7178; background: #F1F2F4; }
-        .gr-row .st.error { color: #FF3D44; background: rgba(255,61,68,0.10); }
-        .gr-row input { flex: none; width: 116px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 8px; padding: 5px 7px; background: #fff; color: #14161A; }
+        .gr-row .st.ok { color: var(--ok-deep); background: rgba(14,148,85,0.12)}
+        .gr-row .st.private { color: var(--warn-deep); background: rgba(245,158,11,0.14)}
+        .gr-row .st.no_openid { color: var(--t-body); background: var(--s2)}
+        .gr-row .st.error { color: var(--attr-fire); background: rgba(255,61,68,0.10)}
+        .gr-row input { flex: none; width: 116px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 8px; padding: 5px 7px; background: var(--card); color: var(--t-ink)}
         .gr-row input.set { border-color: rgba(14,148,85,0.35); background: rgba(14,148,85,0.05); }
-        .gr-roster { margin-top: 9px; border: 1px solid rgba(20,22,26,0.08); border-radius: 10px; padding: 8px 10px; background: #F7F8F9; }
-        .gr-roster > summary { cursor: pointer; font-size: 11.5px; font-weight: 900; color: #5B2BE0; list-style: none; }
+        .gr-roster { margin-top: 9px; border: 1px solid rgba(20,22,26,0.08); border-radius: 10px; padding: 8px 10px; background: var(--s1)}
+        .gr-roster > summary { cursor: pointer; font-size: 11.5px; font-weight: 900; color: var(--ops-deep); list-style: none}
         .gr-roster > summary::-webkit-details-marker { display: none; }
         .gr-bad { padding: 6px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
         .gr-bad:first-child { border-top: none; }
         .gr-bad > .gr-row { border-top: none; padding-top: 0; }
-        .gr-bad > .why { font-size: 10.5px; font-weight: 700; color: #8A9097; line-height: 1.5; word-break: break-word; }
-        .gr-btn { font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 999px; padding: 10px 14px; cursor: pointer; background: #14161A; color: #fff; }
-        .gr-btn.sub { background: #F1F2F4; color: #14161A; }
+        .gr-bad > .why { font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.5; word-break: break-word}
+        .gr-btn { font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 999px; padding: 10px 14px; cursor: pointer; background: var(--t-ink); color: var(--card)}
+        .gr-btn.sub { background: var(--s2); color: var(--t-ink)}
         .gr-btn[disabled] { opacity: .45; cursor: default; }
-        .gr-paste { width: 100%; box-sizing: border-box; min-height: 74px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 10px; padding: 8px 9px; background: #fff; color: #14161A; resize: vertical; }
+        .gr-paste { width: 100%; box-sizing: border-box; min-height: 74px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(20,22,26,0.12); border-radius: 10px; padding: 8px 9px; background: var(--card); color: var(--t-ink); resize: vertical}
         .gr-note { font-size: 10.5px; font-weight: 800; line-height: 1.6; border-radius: 9px; padding: 8px 10px; margin-top: 8px; }
-        .gr-note.warn { color: #B45309; background: rgba(245,158,11,0.10); }
-        .gr-note.err { color: #B91C1C; background: rgba(255,61,68,0.09); }
-        .gr-note.ok { color: #0E9455; background: rgba(14,148,85,0.10); }
+        .gr-note.warn { color: var(--warn-deep); background: rgba(245,158,11,0.10)}
+        .gr-note.err { color: var(--bad-deep); background: rgba(255,61,68,0.09)}
+        .gr-note.ok { color: var(--ok-deep); background: rgba(14,148,85,0.10)}
         /* ---- 🧬 育成をくらべる (D1・2026-09-09。結論 → 差の大きい順 → 差のある項目だけ) ---- */
         .gc-seg { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
-        .gc-seg button { flex: none; font: inherit; font-size: 11.5px; font-weight: 900; border: 1px solid rgba(20,22,26,0.10); border-radius: 999px; padding: 6px 11px; background: #fff; color: #6B7178; cursor: pointer; white-space: nowrap; }
-        .gc-seg button[aria-pressed="true"] { background: #14161A; color: #fff; border-color: #14161A; }
+        .gc-seg button { flex: none; font: inherit; font-size: 11.5px; font-weight: 900; border: 1px solid rgba(20,22,26,0.10); border-radius: 999px; padding: 6px 11px; background: var(--card); color: var(--t-body); cursor: pointer; white-space: nowrap}
+        .gc-seg button[aria-pressed="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink)}
         /* 結論 */
-        .gc-verdict { background: #fff; border: 1px solid rgba(20,22,26,0.07); border-radius: 16px; padding: 13px 14px; margin-bottom: 11px; }
-        .gc-k { font-size: 10.5px; font-weight: 900; letter-spacing: .06em; color: #A4AAB0; }
-        .gc-big { font-size: 19px; font-weight: 900; letter-spacing: -.01em; margin: 2px 0 8px; color: #14161A; }
-        .gc-big em { font-style: normal; color: #0E9455; }
-        .gc-big em.mine { color: #5B2BE0; }
-        .gc-bar { height: 9px; border-radius: 999px; background: #F1F2F4; display: flex; overflow: hidden; }
+        .gc-verdict { background: var(--card); border: 1px solid rgba(20,22,26,0.07); border-radius: 16px; padding: 13px 14px; margin-bottom: 11px}
+        .gc-k { font-size: 10.5px; font-weight: 900; letter-spacing: .06em; color: var(--t-muted)}
+        .gc-big { font-size: 19px; font-weight: 900; letter-spacing: -.01em; margin: 2px 0 8px; color: var(--t-ink)}
+        .gc-big em { font-style: normal; color: var(--ok-deep)}
+        .gc-big em.mine { color: var(--ops-deep)}
+        .gc-bar { height: 9px; border-radius: 999px; background: var(--s2); display: flex; overflow: hidden}
         .gc-bar i { display: block; height: 100%; }
         .gc-legend { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; font-weight: 900; margin-top: 5px; font-variant-numeric: tabular-nums; }
-        .gc-legend .me { color: #8A9097; } .gc-legend .them { color: #0E9455; text-align: right; }
+        .gc-legend .me { color: var(--t-muted)} .gc-legend .them { color: var(--ok-deep); text-align: right}
         /* キャラごと */
-        .gc-char { border: 1px solid rgba(20,22,26,0.07); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; background: #fff; }
+        .gc-char { border: 1px solid rgba(20,22,26,0.07); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; background: var(--card)}
         .gc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .gc-top .cn { flex: 1; min-width: 0; font-size: 13px; font-weight: 900; color: #14161A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gc-top .cn { flex: 1; min-width: 0; font-size: 13px; font-weight: 900; color: var(--t-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis}
         .gc-gap { flex: none; font-size: 10.5px; font-weight: 900; border-radius: 999px; padding: 3px 9px; font-variant-numeric: tabular-nums; }
-        .gc-gap.up { color: #0E9455; background: rgba(24,194,107,0.12); }
-        .gc-gap.mine { color: #5B2BE0; background: rgba(108,66,240,0.12); }
-        .gc-gap.flat, .gc-gap.none { color: #8A9097; background: #F1F2F4; }
-        .gc-dbar { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 900; color: #A4AAB0; font-variant-numeric: tabular-nums; margin-top: 4px; }
+        .gc-gap.up { color: var(--ok-deep); background: rgba(24,194,107,0.12)}
+        .gc-gap.mine { color: var(--ops-deep); background: rgba(108,66,240,0.12)}
+        .gc-gap.flat, .gc-gap.none { color: var(--t-muted); background: var(--s2)}
+        .gc-dbar { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 900; color: var(--t-muted); font-variant-numeric: tabular-nums; margin-top: 4px}
         .gc-dbar .w { flex: none; width: 4.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .gc-dbar .track { flex: 1; height: 7px; border-radius: 999px; background: #F1F2F4; overflow: hidden; }
-        .gc-dbar .track i { display: block; height: 100%; background: #C9CED4; border-radius: 999px; }
+        .gc-dbar .track { flex: 1; height: 7px; border-radius: 999px; background: var(--s2); overflow: hidden}
+        .gc-dbar .track i { display: block; height: 100%; background: var(--track); border-radius: 999px}
         .gc-dbar .v { flex: none; width: 4.2em; text-align: right; }
-        .gc-dbar.them .w, .gc-dbar.them .v { color: #0E9455; }
-        .gc-dbar.them .track i { background: #18C26B; }
-        .gc-miss { margin-top: 6px; font-size: 10px; font-weight: 900; color: #B45309; background: rgba(245,158,11,0.12); border-radius: 8px; padding: 4px 8px; display: inline-block; }
+        .gc-dbar.them .w, .gc-dbar.them .v { color: var(--ok-deep)}
+        .gc-dbar.them .track i { background: var(--ok-solid)}
+        .gc-miss { margin-top: 6px; font-size: 10px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.12); border-radius: 8px; padding: 4px 8px; display: inline-block}
         .gc-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-        .gc-chip { font-size: 10px; font-weight: 900; border-radius: 8px; padding: 3px 8px; background: rgba(24,194,107,0.12); color: #0E9455; font-variant-numeric: tabular-nums; }
-        .gc-chip.mine { background: rgba(108,66,240,0.10); color: #5B2BE0; }
-        .gc-more { width: 100%; margin-top: 8px; font: inherit; font-size: 10.5px; font-weight: 900; color: #6B7178; background: #F1F2F4; border: 0; border-radius: 9px; padding: 6px; cursor: pointer; }
+        .gc-chip { font-size: 10px; font-weight: 900; border-radius: 8px; padding: 3px 8px; background: rgba(24,194,107,0.12); color: var(--ok-deep); font-variant-numeric: tabular-nums}
+        .gc-chip.mine { background: rgba(108,66,240,0.10); color: var(--ops-deep)}
+        .gc-more { width: 100%; margin-top: 8px; font: inherit; font-size: 10.5px; font-weight: 900; color: var(--t-body); background: var(--s2); border: 0; border-radius: 9px; padding: 6px; cursor: pointer}
         /* 全項目 (開いたとき) */
         .gc-tbl { margin-top: 8px; border-top: 1px solid rgba(20,22,26,0.06); }
         .gc-tr { display: grid; grid-template-columns: 5.4em 1fr 1fr; gap: 6px; align-items: center; padding: 3px 0; border-top: 1px solid rgba(20,22,26,0.05); }
         .gc-tr:first-child { border-top: none; }
-        .gc-tr .k { font-size: 10px; font-weight: 900; color: #A4AAB0; }
+        .gc-tr .k { font-size: 10px; font-weight: 900; color: var(--t-muted)}
         .gc-tr .k.r { text-align: right; }
-        .gc-tr .v { font-size: 11.5px; font-weight: 900; text-align: right; padding: 2px 7px; border-radius: 7px; font-variant-numeric: tabular-nums; color: #14161A; }
-        .gc-tr .v.win { background: rgba(24,194,107,0.12); color: #0E9455; }
-        .gc-tr .v.lose { color: #8A9097; }
-        .gc-tr .v.unknown { color: #C9CED4; }
-        .gc-note { font-size: 11px; font-weight: 700; color: #8A9097; line-height: 1.6; margin: 0 0 10px; }
-        .gc-note.warn { color: #B45309; }
-        .gc-empty { font-size: 12px; font-weight: 700; color: #6B7178; line-height: 1.7; }
+        .gc-tr .v { font-size: 11.5px; font-weight: 900; text-align: right; padding: 2px 7px; border-radius: 7px; font-variant-numeric: tabular-nums; color: var(--t-ink)}
+        .gc-tr .v.win { background: rgba(24,194,107,0.12); color: var(--ok-deep)}
+        .gc-tr .v.lose { color: var(--t-muted)}
+        .gc-tr .v.unknown { color: var(--t-muted)}
+        .gc-note { font-size: 11px; font-weight: 700; color: var(--t-muted); line-height: 1.6; margin: 0 0 10px}
+        .gc-note.warn { color: var(--warn-deep)}
+        .gc-empty { font-size: 12px; font-weight: 700; color: var(--t-body); line-height: 1.7}
         /* 分析タブの育成ビュー */
         .gc-mrow { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
         .gc-mrow:first-child { border-top: none; }
-        .gc-mrow .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 900; color: #14161A; }
-        .gc-mrow .nm small { display: block; font-size: 10.5px; font-weight: 700; color: #A4AAB0; }
+        .gc-mrow .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 900; color: var(--t-ink)}
+        .gc-mrow .nm small { display: block; font-size: 10.5px; font-weight: 700; color: var(--t-muted)}
         .gc-pill { flex: none; font-size: 9.5px; font-weight: 900; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
-        .gc-pill.ok { color: #0E9455; background: rgba(24,194,107,0.12); }
-        .gc-pill.no { color: #B45309; background: rgba(245,158,11,0.14); }
-        .gc-pill.wait { color: #8A9097; background: #F1F2F4; }
+        .gc-pill.ok { color: var(--ok-deep); background: rgba(24,194,107,0.12)}
+        .gc-pill.no { color: var(--warn-deep); background: rgba(245,158,11,0.14)}
+        .gc-pill.wait { color: var(--t-muted); background: var(--s2)}
         /* 🧬 育成くらべ (2026-09-09 作り直し) */
-        .gv-k { font-size: 10px; font-weight: 900; letter-spacing: .07em; color: #A4AAB0; margin-bottom: 6px; }
-        .gv-sel { width: 100%; font: inherit; font-size: 12.5px; font-weight: 900; color: #14161A;
-            border: 1px solid rgba(20,22,26,0.12); border-radius: 11px; padding: 9px 10px; background: #fff; }
+        .gv-k { font-size: 10px; font-weight: 900; letter-spacing: .07em; color: var(--t-muted); margin-bottom: 6px}
+        .gv-sel { width: 100%; font: inherit; font-size: 12.5px; font-weight: 900; color: var(--t-ink);
+            border: 1px solid rgba(20,22,26,0.12); border-radius: 11px; padding: 9px 10px; background: var(--card)}
         .gv-who { display: flex; gap: 7px; overflow-x: auto; padding: 2px 1px 4px; scrollbar-width: none; }
         .gv-who::-webkit-scrollbar { display: none; }
         /* ★ 幅を決め打ちにしない — 「ユニオン全体」が「ユニオン…」に切れる (実機FB 2026-09-10)。
@@ -650,30 +645,30 @@
             gap: 4px; padding: 2px 3px; }
         .gv-who .rim { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
             border: 2.5px solid transparent; }
-        .gv-who button[aria-pressed="true"] .rim { border-color: #14161A; }
-        .gv-who .nm { font-size: 10px; font-weight: 800; color: #A4AAB0; max-width: 100%; overflow: hidden;
+        .gv-who button[aria-pressed="true"] .rim { border-color: var(--t-ink)}
+        .gv-who .nm { font-size: 10px; font-weight: 800; color: var(--t-muted); max-width: 100%; overflow: hidden;
             line-height: 1.2; text-align: center; overflow-wrap: anywhere;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .gv-who button[aria-pressed="true"] .nm { color: #14161A; font-weight: 900; }
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical}
+        .gv-who button[aria-pressed="true"] .nm { color: var(--t-ink); font-weight: 900}
         .gv-who .all { width: 40px; height: 40px; border-radius: 50%; background: rgba(108,66,240,0.11);
-            color: #5B2BE0; display: grid; place-items: center; font-size: 17px; }
-        .gv-who button[aria-pressed="true"] .all { background: #6C42F0; color: #fff; }
-        .gv-seg { display: flex; gap: 5px; background: #F1F2F4; border-radius: 999px; padding: 3px; margin-bottom: 10px; }
+            color: var(--ops-deep); display: grid; place-items: center; font-size: 17px}
+        .gv-who button[aria-pressed="true"] .all { background: var(--ops-solid); color: var(--ops-ink)}
+        .gv-seg { display: flex; gap: 5px; background: var(--s2); border-radius: 999px; padding: 3px; margin-bottom: 10px}
         .gv-seg button { flex: 1; font: inherit; font-size: 11.5px; font-weight: 900; border: 0; border-radius: 999px;
-            padding: 8px 4px; background: transparent; color: #6B7178; cursor: pointer; }
-        .gv-seg button[aria-pressed="true"] { background: #14161A; color: #fff; }
+            padding: 8px 4px; background: transparent; color: var(--t-body); cursor: pointer}
+        .gv-seg button[aria-pressed="true"] { background: var(--t-ink); color: var(--card)}
         .gv-pills { display: flex; gap: 5px; flex-wrap: wrap; }
         .gv-pills button { font: inherit; font-size: 10.5px; font-weight: 900; border: 1px solid rgba(20,22,26,0.10);
-            border-radius: 999px; padding: 5px 10px; background: #fff; color: #6B7178; cursor: pointer; }
-        .gv-pills button[aria-pressed="true"] { background: #14161A; color: #fff; border-color: #14161A; }
+            border-radius: 999px; padding: 5px 10px; background: var(--card); color: var(--t-body); cursor: pointer}
+        .gv-pills button[aria-pressed="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink)}
         /* 属性は色で覚えている人が多いので、選んだときはその属性の色で塗る */
-        .gv-attrs button[data-attr="fire"][aria-pressed="true"]     { background: #FF3D44; border-color: #FF3D44; }
-        .gv-attrs button[data-attr="water"][aria-pressed="true"]    { background: #2E8BFF; border-color: #2E8BFF; }
-        .gv-attrs button[data-attr="electric"][aria-pressed="true"] { background: #9B4DFF; border-color: #9B4DFF; }
-        .gv-attrs button[data-attr="iron"][aria-pressed="true"]     { background: #FF8A2B; border-color: #FF8A2B; }
-        .gv-attrs button[data-attr="wind"][aria-pressed="true"]     { background: #18C26B; border-color: #18C26B; }
+        .gv-attrs button[data-attr="fire"][aria-pressed="true"]     { background: var(--attr-fire-solid); border-color: var(--attr-fire-solid)}
+        .gv-attrs button[data-attr="water"][aria-pressed="true"]    { background: var(--attr-water-solid); border-color: var(--attr-water-solid)}
+        .gv-attrs button[data-attr="electric"][aria-pressed="true"] { background: var(--attr-electric-solid); border-color: var(--attr-electric-solid)}
+        .gv-attrs button[data-attr="iron"][aria-pressed="true"]     { background: var(--attr-iron-solid); border-color: var(--attr-iron-solid)}
+        .gv-attrs button[data-attr="wind"][aria-pressed="true"]     { background: var(--ok-solid); border-color: var(--ok-solid)}
         .gv-srch { width: 100%; font: inherit; font-size: 12px; font-weight: 700; border: 1px solid rgba(20,22,26,0.10);
-            border-radius: 12px; padding: 9px 11px; background: #F7F8F9; color: #14161A; margin-bottom: 8px; }
+            border-radius: 12px; padding: 9px 11px; background: var(--s1); color: var(--t-ink); margin-bottom: 8px}
         /* ★ overflow-y だけ指定すると overflow-x が visible → auto に化け、横にもスクロールできてしまう
            (CSS の仕様。2026-09-09 の実機FB)。縦だけスクロールさせたいので x は hidden と明示する */
         .gv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 7px; margin-top: 9px;
@@ -682,18 +677,18 @@
         .gv-tile { font: inherit; border: 0; background: transparent; cursor: pointer; padding: 0; min-width: 0;
             display: flex; flex-direction: column; align-items: center; gap: 3px; }
         .gv-tile .wrap { position: relative; line-height: 0; }
-        .gv-ic { border-radius: 12px; background: #23262C; object-fit: cover; display: block;
-            border: 2.5px solid transparent; }
-        .gv-ph { display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 15px; }
-        .gv-tile[aria-pressed="true"] .gv-ic { border-color: #14161A; }
-        .gv-tile .cn { font-size: 9px; font-weight: 800; color: #A4AAB0; max-width: 100%; overflow: hidden;
-            text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
-        .gv-tile[aria-pressed="true"] .cn { color: #14161A; font-weight: 900; }
+        .gv-ic { border-radius: 12px; background: var(--t-ink); object-fit: cover; display: block;
+            border: 2.5px solid transparent}
+        .gv-ph { display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 15px}
+        .gv-tile[aria-pressed="true"] .gv-ic { border-color: var(--t-ink)}
+        .gv-tile .cn { font-size: 9px; font-weight: 800; color: var(--t-muted); max-width: 100%; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; line-height: 1.3}
+        .gv-tile[aria-pressed="true"] .cn { color: var(--t-ink); font-weight: 900}
         .gv-tile.dim { opacity: .34; }
         /* ★ バーストはアイコンが無いので**色**で見分ける (2026-09-10 ユーザー要望)。
            色は編成エディタの TE_BURST_COLOR と同じものを使う (2つの色づかいを増やさない) */
-        .gv-bg { position: absolute; right: -3px; bottom: 1px; font-size: 8px; font-weight: 900; color: var(--b-ink, #fff);
-            background: var(--b-c, #14161A); border-radius: 5px; padding: 1px 3px; line-height: 1.2; border: 1.5px solid #fff; }
+        .gv-bg { position: absolute; right: -3px; bottom: 1px; font-size: 8px; font-weight: 900; color: var(--b-ink, var(--card));
+            background: var(--b-c, var(--t-ink)); border-radius: 5px; padding: 1px 3px; line-height: 1.2; border: 1.5px solid var(--card)}
         /* ★ バーストの色は**点**で見せ、押した状態は他のピルと同じ黒にそろえる。
            色で塗りつぶすと、B2 の黄色に白文字で 1.8:1 になり読めない (Codex指摘 2026-09-10)。
            点なら押しても押さなくても色が読め、押下の見分けも画面全体と同じ作法で済む */
@@ -703,23 +698,23 @@
            どの色でも点の輪郭がはっきり出る。押した黒地では縁が沈み、明るい点だけが残る */
         .gv-pills button.gv-b { display: inline-flex; align-items: center; gap: 5px; }
         .gv-pills button.gv-b .dot { width: 8px; height: 8px; border-radius: 50%; flex: none;
-            background: var(--b-c, #8A9097); box-shadow: 0 0 0 1px rgba(20,22,26,0.55); }
+            background: var(--b-c, #8A9097); box-shadow: 0 0 0 1px rgba(20,22,26,0.55)}
         .gv-attrs button img { width: 19px; height: 19px; display: block; }
         .gv-attrs button.gv-a { padding: 5px 8px; }
-        .gv-pills button.gv-dps { border-color: #6C42F0; color: #5B2BE0; }
-        .gv-pills button.gv-dps[aria-pressed="true"] { background: #6C42F0; border-color: #6C42F0; color: #fff; }
+        .gv-pills button.gv-dps { border-color: var(--ops-solid); color: var(--ops-deep)}
+        .gv-pills button.gv-dps[aria-pressed="true"] { background: var(--ops-solid); border-color: var(--ops-solid); color: var(--ops-ink)}
         /* 編成カードの「火力役」の帯 — 選んだことの効き目をその場で見せる */
         .gv-dpsbar { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin: 8px 0 0;
             background: rgba(108,66,240,0.07); border-radius: 9px; padding: 5px 8px;
-            font-size: 10.5px; font-weight: 900; color: #5B2BE0; font-variant-numeric: tabular-nums; }
-        .gv-dpsbar .n { color: #8A9097; font-weight: 800; }
-        .gv-dpsbar .them { color: #0E9455; }
-        .gv-dpsbar.none { background: #F7F8F9; color: #8A9097; }
-        .gv-pt { border: 1px solid rgba(20,22,26,0.07); border-radius: 14px; padding: 10px 11px; margin-bottom: 8px; background: #fff; }
+            font-size: 10.5px; font-weight: 900; color: var(--ops-deep); font-variant-numeric: tabular-nums}
+        .gv-dpsbar .n { color: var(--t-muted); font-weight: 800}
+        .gv-dpsbar .them { color: var(--ok-deep)}
+        .gv-dpsbar.none { background: var(--s1); color: var(--t-muted)}
+        .gv-pt { border: 1px solid rgba(20,22,26,0.07); border-radius: 14px; padding: 10px 11px; margin-bottom: 8px; background: var(--card)}
         .gv-pt .h { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
-        .gv-pt .h b { font-size: 12.5px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; }
-        .gv-pt .h .d { margin-left: auto; font-size: 10.5px; font-weight: 900; color: #A4AAB0; }
-        .gv-boss { font-size: 9.5px; font-weight: 900; border-radius: 6px; padding: 2px 6px; background: #F1F2F4; color: #6B7178; }
+        .gv-pt .h b { font-size: 12.5px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums}
+        .gv-pt .h .d { margin-left: auto; font-size: 10.5px; font-weight: 900; color: var(--t-muted)}
+        .gv-boss { font-size: 9.5px; font-weight: 900; border-radius: 6px; padding: 2px 6px; background: var(--s2); color: var(--t-body)}
         .gv-team { display: flex; gap: 6px; }
         .gv-tm { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
         .gv-tm .gv-ic { width: 100%; height: auto; aspect-ratio: 1; }
@@ -728,63 +723,63 @@
         /* アイコンの下のクイック (突破 / スキル / 攻撃 / 有利コード) — 開かずに読めるように */
         .gv-tm .pick { border: 0; background: transparent; padding: 0; width: 100%; cursor: pointer;
             position: relative; display: block; line-height: 0; }
-        .gv-tm .zap { position: absolute; right: -3px; top: -3px; font-size: 8px; font-weight: 900; color: #fff;
-            background: #6C42F0; border-radius: 5px; padding: 0 3px; line-height: 1.5; border: 1.5px solid #fff; }
-        .gv-tm.dps .gv-ic { border-color: #6C42F0; }
+        .gv-tm .zap { position: absolute; right: -3px; top: -3px; font-size: 8px; font-weight: 900; color: var(--ops-ink);
+            background: var(--ops-solid); border-radius: 5px; padding: 0 3px; line-height: 1.5; border: 1.5px solid var(--card)}
+        .gv-tm.dps .gv-ic { border-color: var(--ops-solid)}
         .gv-tm .q { width: 100%; display: flex; gap: 3px; align-items: baseline; justify-content: center;
             font-size: 9px; font-weight: 900; line-height: 1.4; font-variant-numeric: tabular-nums;
             white-space: nowrap; overflow: hidden; }
-        .gv-tm .q i { font-style: normal; font-weight: 800; color: #C9CED4; flex: none; }
-        .gv-tm .q.up { color: #0E9455; } .gv-tm .q.mine { color: #5B2BE0; }
-        .gv-tm .q.flat { color: #6B7178; } .gv-tm .q.none { color: #C9CED4; }
-        .gv-tm .g.up { color: #0E9455; background: rgba(24,194,107,0.12); }
-        .gv-tm .g.mine { color: #5B2BE0; background: rgba(108,66,240,0.11); }
-        .gv-tm .g.flat { color: #6B7178; background: #F1F2F4; }
-        .gv-tm .g.none { color: #B45309; background: rgba(245,158,11,0.13); }
+        .gv-tm .q i { font-style: normal; font-weight: 800; color: var(--t-muted); flex: none}
+        .gv-tm .q.up { color: var(--ok-deep)} .gv-tm .q.mine { color: var(--ops-deep)}
+        .gv-tm .q.flat { color: var(--t-body)} .gv-tm .q.none { color: var(--t-muted)}
+        .gv-tm .g.up { color: var(--ok-deep); background: rgba(24,194,107,0.12)}
+        .gv-tm .g.mine { color: var(--ops-deep); background: rgba(108,66,240,0.11)}
+        .gv-tm .g.flat { color: var(--t-body); background: var(--s2)}
+        .gv-tm .g.none { color: var(--warn-deep); background: rgba(245,158,11,0.13)}
         .gv-sorts { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
         .gv-sorts::-webkit-scrollbar { display: none; }
         .gv-sorts button { flex: none; white-space: nowrap; }
         .gv-rowhd { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
         .gv-rowhd .t { flex: 1; min-width: 0; }
-        .gv-rowhd .t b { display: block; font-size: 14px; font-weight: 900; color: #14161A; }
-        .gv-rowhd .t small { display: block; font-size: 10.5px; font-weight: 800; color: #A4AAB0; }
+        .gv-rowhd .t b { display: block; font-size: 14px; font-weight: 900; color: var(--t-ink)}
+        .gv-rowhd .t small { display: block; font-size: 10.5px; font-weight: 800; color: var(--t-muted)}
         .gv-rk { display: grid; grid-template-columns: 1.9em 28px minmax(0,1fr) auto; gap: 8px; align-items: center;
             padding: 6px 2px; border-top: 1px solid rgba(20,22,26,0.05); }
         .gv-rk:first-child { border-top: 0; }
         .gv-rk.me { background: rgba(108,66,240,0.09); border-radius: 10px; padding-left: 6px; padding-right: 6px; }
-        .gv-rk .no { font-size: 12px; font-weight: 900; color: #A4AAB0; text-align: center; font-variant-numeric: tabular-nums; }
-        .gv-rk.me .no { color: #5B2BE0; }
-        .gv-rk .nm { font-size: 12.5px; font-weight: 900; color: #14161A; min-width: 0; overflow: hidden;
-            text-overflow: ellipsis; white-space: nowrap; }
-        .gv-rk .nm small { display: block; font-size: 10px; font-weight: 800; color: #A4AAB0; }
-        .gv-rk .val { font-size: 13px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; text-align: right; }
-        .gv-rk.me .val { color: #5B2BE0; }
-        .gv-hint { font-size: 10.5px; font-weight: 700; color: #A4AAB0; line-height: 1.7; margin: 7px 2px 0; }
-        .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: #8A9097; background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
+        .gv-rk .no { font-size: 12px; font-weight: 900; color: var(--t-muted); text-align: center; font-variant-numeric: tabular-nums}
+        .gv-rk.me .no { color: var(--ops-deep)}
+        .gv-rk .nm { font-size: 12.5px; font-weight: 900; color: var(--t-ink); min-width: 0; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap}
+        .gv-rk .nm small { display: block; font-size: 10px; font-weight: 800; color: var(--t-muted)}
+        .gv-rk .val { font-size: 13px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; text-align: right}
+        .gv-rk.me .val { color: var(--ops-deep)}
+        .gv-hint { font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.7; margin: 7px 2px 0}
+        .dc-ops-testlink { font: inherit; font-size: 11px; font-weight: 800; color: var(--t-muted); background: transparent; border: 1px dashed rgba(108,66,240,0.4); border-radius: 999px; padding: 6px 11px; cursor: pointer}
         /* 👥 メンバー状況ボード (運営改修 #1) — スマホ: 行=カード / 760px以上: 4列グリッド */
-        .dc-mb-seg { display:inline-flex; background:#F1F2F4; border-radius:999px; padding:3px; }
-        .dc-mb-seg button { font:inherit; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:#6B7178; cursor:pointer; }
-        .dc-mb-seg button[aria-pressed="true"] { background:#14161A; color:#fff; }
-        .dc-mb-pill { font:inherit; font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px; border:1.5px solid transparent; background:#F1F2F4; color:#6B7178; cursor:pointer; }
-        .dc-mb-pill[aria-pressed="true"] { background:#14161A; color:#fff; }
+        .dc-mb-seg { display:inline-flex; background:var(--s2); border-radius:999px; padding:3px}
+        .dc-mb-seg button { font:inherit; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:var(--t-body); cursor:pointer}
+        .dc-mb-seg button[aria-pressed="true"] { background:var(--t-ink); color:var(--card)}
+        .dc-mb-pill { font:inherit; font-size:11px; font-weight:900; padding:4px 10px; border-radius:999px; border:1.5px solid transparent; background:var(--s2); color:var(--t-body); cursor:pointer}
+        .dc-mb-pill[aria-pressed="true"] { background:var(--t-ink); color:var(--card)}
         .dc-mb-summary { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:10px; }
         @media (min-width:560px) { .dc-mb-summary { grid-template-columns:repeat(4,1fr); } }
-        .dc-mb-sum { background:#F7F8F9; border-radius:10px; padding:7px 10px; }
-        .dc-mb-sum .k { font-size:10px; font-weight:800; color:#8A9097; letter-spacing:.04em; }
-        .dc-mb-sum .v { font-size:16px; font-weight:900; color:#14161A; font-variant-numeric:tabular-nums; }
-        .dc-mb-sum .v small { font-size:11px; color:#6B7178; font-weight:700; }
-        .dc-mb-sum.bad .v { color:#FF3D44; }
+        .dc-mb-sum { background:var(--s1); border-radius:10px; padding:7px 10px}
+        .dc-mb-sum .k { font-size:10px; font-weight:800; color:var(--t-muted); letter-spacing:.04em}
+        .dc-mb-sum .v { font-size:16px; font-weight:900; color:var(--t-ink); font-variant-numeric:tabular-nums}
+        .dc-mb-sum .v small { font-size:11px; color:var(--t-body); font-weight:700}
+        .dc-mb-sum.bad .v { color:var(--attr-fire)}
         .dc-mb-rows { display:flex; flex-direction:column; gap:6px; }
         .dc-mb-row { border:1px solid rgba(20,22,26,0.06); border-radius:12px; padding:8px 10px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; }
         .dc-mb-row.todo { border-color:rgba(245,158,11,0.45); background:rgba(245,158,11,0.04); }
         .dc-mb-row.done { opacity:.72; }
         .dc-mb-who { display:flex; align-items:center; gap:8px; min-width:0; }
-        .dc-mb-av { width:28px; height:28px; border-radius:50%; background:#F1F2F4; display:grid; place-items:center; font-weight:900; font-size:12px; color:#6B7178; flex:none; overflow:hidden; }
+        .dc-mb-av { width:28px; height:28px; border-radius:50%; background:var(--s2); display:grid; place-items:center; font-weight:900; font-size:12px; color:var(--t-body); flex:none; overflow:hidden}
         .dc-mb-av img { width:100%; height:100%; object-fit:cover; display:block; }
-        .dc-mb-nm { font-weight:900; font-size:13px; color:#14161A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .dc-mb-nm { font-weight:900; font-size:13px; color:var(--t-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
         .dc-mb-cols { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; min-width:0; }
-        .dc-mb-why { grid-column:1/-1; font-size:11.5px; color:#6B7178; line-height:1.4; }
-        .dc-mb-why b { color:#14161A; }
+        .dc-mb-why { grid-column:1/-1; font-size:11.5px; color:var(--t-body); line-height:1.4}
+        .dc-mb-why b { color:var(--t-ink)}
         .dc-mb-acts { grid-column:2; grid-row:1; display:flex; gap:4px; }
         @media (min-width:760px) {
             .dc-mb-row { grid-template-columns:minmax(130px,1.1fr) minmax(0,3fr) minmax(150px,1.3fr) auto; }
@@ -792,30 +787,29 @@
             .dc-mb-acts { grid-column:auto; grid-row:auto; justify-content:flex-end; }
         }
         .dc-mb-c { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:900; padding:3px 8px; border-radius:999px; white-space:nowrap; font-variant-numeric:tabular-nums; }
-        .dc-mb-c.ok { color:#18C26B; background:rgba(24,194,107,.12); }
-        .dc-mb-c.warn { color:#B45309; background:rgba(245,158,11,.14); }
-        .dc-mb-c.err { color:#FF3D44; background:rgba(255,61,68,.10); }
-        .dc-mb-c.mute { color:#8A9097; background:#F1F2F4; }
-        .dc-mb-c.acc { color:#6C42F0; background:rgba(108,66,240,.10); }
+        .dc-mb-c.ok { color:var(--ok); background:rgba(24,194,107,.12)}
+        .dc-mb-c.warn { color:var(--warn-deep); background:rgba(245,158,11,.14)}
+        .dc-mb-c.err { color:var(--attr-fire); background:rgba(255,61,68,.10)}
+        .dc-mb-c.mute { color:var(--t-muted); background:var(--s2)}
+        .dc-mb-c.acc { color:var(--ops); background:rgba(108,66,240,.10)}
         .dc-mb-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
         .dc-mb-strip { display:grid; grid-template-columns:repeat(24,1fr); gap:1px; height:12px; width:130px; }
-        .dc-mb-strip i { display:block; background:#F1F2F4; border-radius:2px; }
-        .dc-mb-strip i.on { background:#6C42F0; }
-        .dc-mb-strip i.now { outline:1.5px solid #FF3D44; outline-offset:-1px; }
-        .dc-mb-tz { font-size:10px; color:#8A9097; white-space:nowrap; }
+        .dc-mb-strip i { display:block; background:var(--s2); border-radius:2px}
+        .dc-mb-strip i.on { background:var(--ops-solid)}
+        .dc-mb-strip i.now { outline:1.5px solid var(--attr-fire-solid); outline-offset:-1px}
+        .dc-mb-tz { font-size:10px; color:var(--t-muted); white-space:nowrap}
         .dc-mb-atk { display:inline-flex; gap:3px; }
-        .dc-mb-atk i { display:inline-grid; place-items:center; width:22px; height:20px; border-radius:6px; font-style:normal; font-size:10px; font-weight:900; background:#F1F2F4; color:#A4AAB0; }
-        .dc-mb-atk i.d { background:#14161A; color:#fff; }
-        .dc-mb-btn { font:inherit; font-size:11px; font-weight:900; padding:6px 10px; border-radius:8px; border:none; background:#14161A; color:#fff; cursor:pointer; white-space:nowrap; }
-        .dc-mb-btn.sub { background:#F1F2F4; color:#14161A; }
+        .dc-mb-atk i { display:inline-grid; place-items:center; width:22px; height:20px; border-radius:6px; font-style:normal; font-size:10px; font-weight:900; background:var(--s2); color:var(--t-muted)}
+        .dc-mb-atk i.d { background:var(--t-ink); color:var(--card)}
+        .dc-mb-btn { font:inherit; font-size:11px; font-weight:900; padding:6px 10px; border-radius:8px; border:none; background:var(--t-ink); color:var(--card); cursor:pointer; white-space:nowrap}
+        .dc-mb-btn.sub { background:var(--s2); color:var(--t-ink)}
         .dc-mb-btn:disabled { opacity:.45; cursor:default; }
         body:not(.ops-mode) [data-ops-only] { display: none !important; }
         /* 運営モードOFF のときだけ出す (運営項目が隠れていることの案内など) */
         body.ops-mode [data-ops-off-only] { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
         .dc-dmg-panel.stacked {
-            box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14);
-        }
+            box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(20,22,26,0.14)}
         .dc-dmg-panel { position: relative; }
         /* 🔒 この編成で凸を予約している印 (2026-09-08)。
            右上のピルはダメージの数字と重なって読めなかった (実機FB) → カード全体に薄い鍵の透かし + 枠色 +
@@ -835,18 +829,17 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23B45309' fill-opacity='0.15'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E");
             border-color: rgba(180,83,9,0.40);
         }
-        .dc-dmg-panel.resv.unmet .dc-dmg-resvtag { color: #B45309; }
-        .dc-dmg-resvtag { font-size: 9px; font-weight: 900; letter-spacing: 0; margin-left: 4px; color: #5B2BE0; }
-        .dc-dmg-panel.resv.approved .dc-dmg-resvtag { color: #0E9455; }
-        .dc-dmg-panel.resv.cancel_requested .dc-dmg-resvtag { color: #B45309; }
+        .dc-dmg-panel.resv.unmet .dc-dmg-resvtag { color: var(--warn-deep)}
+        .dc-dmg-resvtag { font-size: 9px; font-weight: 900; letter-spacing: 0; margin-left: 4px; color: var(--ops-deep)}
+        .dc-dmg-panel.resv.approved .dc-dmg-resvtag { color: var(--ok-deep)}
+        .dc-dmg-panel.resv.cancel_requested .dc-dmg-resvtag { color: var(--warn-deep)}
         .dc-dmg-slotbadge {
             position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
             display: flex; align-items: center; gap: 2px;
             padding: 3px 8px; border-radius: 999px;
-            background: #14161A; color: #fff;
+            background: var(--t-ink); color: var(--card);
             font-size: 10px; font-weight: 900; cursor: pointer; z-index: 2;
-            box-shadow: 0 2px 6px rgba(20,22,26,0.25);
-        }
+            box-shadow: 0 2px 6px rgba(20,22,26,0.25)}
         @keyframes dmg-swap-out {
             to { transform: translateY(12px) rotate(2deg) scale(0.96); opacity: 0; }
         }
@@ -865,8 +858,7 @@
         .dc-dmg-panel.planpick {
             border: 1.5px solid var(--pkB);
             background: linear-gradient(180deg, var(--pkC), #F9FAFB 60%);
-            animation: planPickGlow 2.6s ease-in-out infinite;
-        }
+            animation: planPickGlow 2.6s ease-in-out infinite}
         /* 属性アイコンの周りを属性色でぼんやり光らせる (実機FB 2026-08-07:
            回転はイメージと違ったので静的な光に変更)。ラッパの ::before に
            リング + ソフトなハローを置き、アイコン本体を上に重ねる */
@@ -879,16 +871,15 @@
         /* 重ねカード (2編成持ち) は影で厚みを出しているので、光らせる影を後ろに足す */
         .dc-dmg-panel.stacked.planpick {
             animation: none;
-            box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
-                        0 0 0 1px var(--pkA), 0 0 9px 0 var(--pkC);
-        }
+            box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(20,22,26,0.14),
+                        0 0 0 1px var(--pkA), 0 0 9px 0 var(--pkC)}
         @media (prefers-reduced-motion: no-preference) {
             .dc-dmg-panel.stacked.planpick { animation: planPickStackGlow 2.6s ease-in-out infinite; }
             @keyframes planPickStackGlow {
-                0%, 100% { box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
-                                       0 0 0 1px var(--pkA), 0 0 9px 0 var(--pkC); }
-                50%      { box-shadow: 5px 6px 0 -2px #fff, 5px 6px 0 -1px rgba(20,22,26,0.14),
-                                       0 0 0 1px var(--pkB), 0 0 18px 3px var(--pkA); }
+                0%, 100% { box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(20,22,26,0.14),
+                                       0 0 0 1px var(--pkA), 0 0 9px 0 var(--pkC)}
+                50%      { box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(20,22,26,0.14),
+                                       0 0 0 1px var(--pkB), 0 0 18px 3px var(--pkA)}
             }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -905,15 +896,14 @@
             50%      { box-shadow: 0 2px 6px rgba(20,22,26,0.25), 0 0 0 5px transparent; }
         }
         .dc-dmg-slotbadge.pickhint {
-            background: var(--pk, #5B2BE0);
-            animation: pickHintPulse 2.2s ease-out infinite;
-        }
+            background: var(--pk, var(--ops-solid));
+            animation: pickHintPulse 2.2s ease-out infinite}
         @media (prefers-reduced-motion: reduce) {
             .dc-dmg-slotbadge.pickhint { animation: none; box-shadow: 0 0 0 2px var(--pkB); }
         }
 
         /* === 残り戦闘可能メンバー: 配信プランの採用PT + 2編成の入れ替え (実機FB 2026-08-07) === */
-        .dc-rem-cell.has2 { position: relative; cursor: pointer; box-shadow: 2px 2px 0 -0.5px #fff, 2px 2px 0 0 rgba(20,22,26,0.13); }
+        .dc-rem-cell.has2 { position: relative; cursor: pointer; box-shadow: 2px 2px 0 -0.5px var(--card), 2px 2px 0 0 rgba(20,22,26,0.13)}
         .dc-rem-cell.planpick { position: relative; animation: remPickGlow 2.6s ease-in-out infinite; }
         @keyframes remPickGlow {
             0%, 100% { box-shadow: inset 0 0 0 1.5px var(--pkA), 0 0 5px 0 var(--pkC); }
@@ -923,16 +913,15 @@
             animation: remPickStackGlow 2.6s ease-in-out infinite;
         }
         @keyframes remPickStackGlow {
-            0%, 100% { box-shadow: 2px 2px 0 -0.5px #fff, 2px 2px 0 0 rgba(20,22,26,0.13), inset 0 0 0 1.5px var(--pkA); }
-            50%      { box-shadow: 2px 2px 0 -0.5px #fff, 2px 2px 0 0 rgba(20,22,26,0.13), inset 0 0 0 1.5px var(--pkB), 0 0 11px 2px var(--pkA); }
+            0%, 100% { box-shadow: 2px 2px 0 -0.5px var(--card), 2px 2px 0 0 rgba(20,22,26,0.13), inset 0 0 0 1.5px var(--pkA)}
+            50%      { box-shadow: 2px 2px 0 -0.5px var(--card), 2px 2px 0 0 rgba(20,22,26,0.13), inset 0 0 0 1.5px var(--pkB), 0 0 11px 2px var(--pkA)}
         }
         /* めくった先が採用編成: スロットバッジ側を光らせる (カード本体は光らせない) */
         .dc-rem-slot {
             position: absolute; top: -4px; right: -4px; min-width: 13px; height: 13px;
-            border-radius: 999px; background: #14161A; color: #fff;
-            font-size: 9px; font-weight: 900; line-height: 13px; text-align: center;
-        }
-        .dc-rem-slot.pickhint { background: var(--pk, #5B2BE0); animation: pickHintPulse 2.2s ease-out infinite; }
+            border-radius: 999px; background: var(--t-ink); color: var(--card);
+            font-size: 9px; font-weight: 900; line-height: 13px; text-align: center}
+        .dc-rem-slot.pickhint { background: var(--pk, var(--ops-solid)); animation: pickHintPulse 2.2s ease-out infinite}
         .dc-rem-cell.swap-out { animation: dmg-swap-out 0.13s ease forwards; }
         .dc-rem-cell.swap-in  { animation: dmg-swap-in 0.18s ease; }
         @media (prefers-reduced-motion: reduce) {
@@ -971,23 +960,21 @@
             top: 0; left: -280px;
             width: 280px;
             height: 100%;
-            background: #ffffff;
+            background: var(--card);
             z-index: 201;
             padding: 24px 16px;
             transition: left 0.3s ease;
-            overflow-y: auto;
-        }
+            overflow-y: auto}
 
         .drawer.open { left: 0; }
 
         .drawer-title {
             font-size: 18px;
             font-weight: 700;
-            color: #14161A;
+            color: var(--t-ink);
             margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 1px solid rgba(20,22,26,0.08);
-        }
+            border-bottom: 1px solid rgba(20,22,26,0.08)}
 
         .drawer-menu-item {
             display: flex;
@@ -997,36 +984,32 @@
             padding: 12px 16px;
             border: none;
             background: transparent;
-            color: #14161A;
+            color: var(--t-ink);
             font-size: 15px;
             text-align: left;
             border-radius: 8px;
             cursor: pointer;
             margin-bottom: 4px;
-            transition: background 0.2s;
-        }
+            transition: background 0.2s}
 
         .drawer-menu-item:hover,
         .drawer-menu-item.active {
-            background: #F7F8F9;
-        }
+            background: var(--s1)}
 
         .drawer-menu-item.active {
-            color: #14161A;
-            font-weight: 700;
-        }
+            color: var(--t-ink);
+            font-weight: 700}
 
         /* ========== Tab Navigation ========== */
         .tab-navigation {
-            background: #ffffff;
+            background: var(--card);
             border-bottom: 1px solid rgba(20,22,26,0.08);
             display: flex;
             align-items: center;
             padding: 0 16px;
             position: sticky;
             top: 57px;
-            z-index: 99;
-        }
+            z-index: 99}
 
         .tab-buttons-wrapper {
             display: flex;
@@ -1041,7 +1024,7 @@
             padding: 10px 16px;
             border: none;
             background: transparent;
-            color: #6B7178;
+            color: var(--t-body);
             cursor: pointer;
             font-size: 12px;
             font-weight: 700;
@@ -1049,8 +1032,7 @@
             transition: all 0.2s;
             white-space: nowrap;
             position: relative;
-            overflow: hidden;
-        }
+            overflow: hidden}
 
         .tab-button.active {
             color: var(--brand-primary);
@@ -1086,15 +1068,14 @@
 
         /* ========== Card (C案: 大きめ角丸 + 桜色の柔らかい影) ========== */
         .card {
-            background: #ffffff;
+            background: var(--card);
             border-radius: var(--radius-lg);
             padding: var(--space-5);
             box-shadow: var(--shadow-card);
             border: 1px solid rgba(20,22,26,0.08);
             margin-bottom: var(--space-4);
             overflow: hidden;
-            transition: box-shadow 0.25s ease, transform 0.25s ease;
-        }
+            transition: box-shadow 0.25s ease, transform 0.25s ease}
         .card:hover { box-shadow: var(--shadow-card-hover); }
 
         /* ========== Button base (ブランド統一) ========== */
@@ -1113,8 +1094,7 @@
             background: linear-gradient(180deg, #2a2a2a 0%, var(--brand-primary) 100%) !important;
             color: #fff !important;
             border: none !important;
-            box-shadow: var(--shadow-btn);
-        }
+            box-shadow: var(--shadow-btn)}
         /* Outline button hover: 淡シルバー背景 (旧 --md-sys-color-surface 一致の後継)。
            #ffffff 長表記は旧Material由来のみ (置換前は0件) — CD既存の #fff/#F7F8F9 には広げない */
         button[style*="background:#ffffff"]:hover:not(:disabled),
@@ -1125,7 +1105,7 @@
             display: inline-flex; align-items: center; justify-content: center;
             gap: 6px;
             padding: 10px 18px;
-            border: 1px solid #2a2a2a;
+            border: 1px solid var(--t-ink);
             border-radius: var(--radius-sm);
             background: linear-gradient(180deg, #2a2a2a 0%, #0e0e0e 100%);
             color: #fff;
@@ -1136,8 +1116,7 @@
             cursor: pointer;
             box-shadow: var(--shadow-btn);
             transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease;
-            position: relative;
-        }
+            position: relative}
         .btn-elegant::before {
             /* 上端の細い銀ライン (高級感) */
             content: '';
@@ -1153,8 +1132,7 @@
             background: linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%);
             color: var(--brand-primary);
             border-color: var(--brand-silver);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 10px -4px rgba(112,144,168,0.20);
-        }
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 10px -4px rgba(112,144,168,0.20)}
         .btn-elegant.is-light::before { background: linear-gradient(90deg, transparent, rgba(112,144,168,0.25), transparent); }
         /* 5属性 戦闘準備 派生: 黒地 + 属性色のリム */
         .btn-elegant.attr-fire    { border-color: var(--attr-fire);     box-shadow: inset 0 0 0 1px var(--attr-fire),     0 0 0 2px rgba(255,91,107,0.18),  var(--shadow-btn); }
@@ -1173,18 +1151,16 @@
             display: inline-flex; align-items: center; gap: 4px;
             padding: 2px 10px;
             border-radius: var(--radius-pill);
-            background: #1a1a1a;
-            color: #fff;
+            background: var(--t-ink);
+            color: var(--card);
             font-size: 10px;
             font-weight: 700;
             letter-spacing: 0.05em;
-            text-transform: uppercase;
-        }
+            text-transform: uppercase}
         .badge-elegant.is-silver {
             background: linear-gradient(135deg, #f4f6f8, #d4d8dc);
             color: #1a1a1a;
-            border: 1px solid var(--brand-silver);
-        }
+            border: 1px solid var(--brand-silver)}
         .badge-elegant.is-attr-fire    { background: var(--attr-fire);     }
         .badge-elegant.is-attr-water   { background: var(--attr-water);    }
         .badge-elegant.is-attr-electric{ background: var(--attr-electric); }
@@ -1205,9 +1181,8 @@
             font-size: 10.5px;
             font-weight: 800;
             letter-spacing: 0.2px;
-            background: #F1F2F4;
-            color: #6B7178;
-        }
+            background: var(--s2);
+            color: var(--t-body)}
 
         /* ========== Table (ClaudeDesign) ========== */
         .data-table {
@@ -1222,37 +1197,35 @@
         }
 
         thead th {
-            background: #F7F8F9;
-            color: #9AA0A6;
+            background: var(--s1);
+            color: var(--t-muted);
             padding: 10px 14px;
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.6px;
             text-align: left;
-            border-bottom: 1px solid #F0F1F3;
-        }
+            border-bottom: 1px solid var(--s2)}
 
         tbody td {
             padding: 10px 14px;
-            border-bottom: 1px solid #F4F5F7;
+            border-bottom: 1px solid var(--s1);
             font-size: 13px;
-            color: #14161A;
-        }
+            color: var(--t-ink)}
 
         tbody tr:last-child td { border-bottom: none; }
 
         tbody tr { transition: background 0.15s ease; }
-        tbody tr:hover { background: #FAFBFC; cursor: pointer; }
+        tbody tr:hover { background: var(--card); cursor: pointer}
 
         .rank { text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
-        .rank-1 { color: #E8A400; }
-        .rank-2 { color: #9AA0A6; }
-        .rank-3 { color: #C97B3D; }
-        .rank-other { color: #A4AAB0; }
+        .rank-1 { color: var(--warn)}
+        .rank-2 { color: var(--t-muted)}
+        .rank-3 { color: var(--warn)}
+        .rank-other { color: var(--t-muted)}
 
-        .growth-positive { color: #18C26B; }
-        .growth-negative { color: #FF3D44; }
-        .growth-neutral  { color: #A4AAB0; }
+        .growth-positive { color: var(--ok)}
+        .growth-negative { color: var(--attr-fire)}
+        .growth-neutral  { color: var(--t-muted)}
 
         /* iOS Safari: 入力フォーカス時の自動ズームを防ぐため最低16pxを保証 */
         @media (hover: none) and (pointer: coarse) {
@@ -1275,18 +1248,16 @@
             border-radius: 20px;
             border: 1px solid rgba(20,22,26,0.14);
             background: transparent;
-            color: #14161A;
+            color: var(--t-ink);
             font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s;
-        }
+            transition: all 0.2s}
 
         .attribute-tab-btn:hover,
         .attribute-tab-btn.active {
-            background: #14161A;
-            color: #ffffff;
-            border-color: #14161A;
-        }
+            background: var(--t-ink);
+            color: var(--card);
+            border-color: var(--t-ink)}
 
         /* ふるり値シミュレータ: PT属性セレクタ (ClaudeDesign 縦カード型)
            上段=自分のPT (主役)、下段=⚔ 相手ボス。--fa / --fa-soft は各ボタンの inline style で注入 */
@@ -1303,14 +1274,13 @@
         .fsim-attr-btn .fsim-attr-name { font-size: 11px; font-weight: 900; color: var(--fa); letter-spacing: 0.2px; white-space: nowrap; }
         .fsim-attr-btn .fsim-attr-vs {
             display: inline-flex; align-items: center; gap: 2px;
-            font-size: 9px; font-weight: 800; color: #8A9097; white-space: nowrap;
-        }
+            font-size: 9px; font-weight: 800; color: var(--t-muted); white-space: nowrap}
         .fsim-attr-btn .fsim-attr-vs img { width: 11px; height: 11px; opacity: 0.85; }
         .fsim-attr-btn.active {
             background: var(--fa); border-color: var(--fa);
             box-shadow: 0 4px 12px rgba(20, 22, 26, 0.18);
         }
-        .fsim-attr-btn.active .fsim-attr-name { color: #fff; }
+        .fsim-attr-btn.active .fsim-attr-name { color: #fff}
         .fsim-attr-btn.active .fsim-attr-vs { color: rgba(255, 255, 255, 0.88); }
         .fsim-attr-btn.active .fsim-attr-vs img { opacity: 1; }
 
@@ -1322,73 +1292,63 @@
             padding: 8px 14px;
             border-radius: 10px;
             border: none;
-            background: #F1F2F4;
-            color: #6B7178;
+            background: var(--s2);
+            color: var(--t-body);
             font-size: 12px;
             font-weight: 800;
             font-family: inherit;
             cursor: pointer;
-            transition: all 0.15s ease;
-        }
+            transition: all 0.15s ease}
         .sim-mode-btn.active {
-            background: #14161A;
-            color: #fff;
-            box-shadow: 0 4px 10px rgba(20,22,26,0.24);
-        }
+            background: var(--t-ink);
+            color: var(--card);
+            box-shadow: 0 4px 10px rgba(20,22,26,0.24)}
 
         /* ========== Help tab ========== */
         .help-layout { display: grid; grid-template-columns: 240px 1fr; gap: 24px; }
         @media (max-width: 900px) { .help-layout { grid-template-columns: 1fr; } }
         .help-toc {
             position: sticky; top: 16px; align-self: start;
-            padding: 14px 12px; background: #F7F8F9;
-            border-radius: 12px; max-height: calc(100vh - 32px); overflow-y: auto;
-        }
+            padding: 14px 12px; background: var(--s1);
+            border-radius: 12px; max-height: calc(100vh - 32px); overflow-y: auto}
         @media (max-width: 900px) { .help-toc { position: static; max-height: none; } }
-        .help-toc-title { font-size: 12px; font-weight: 700; color: #6B7178; padding: 4px 8px 8px; }
+        .help-toc-title { font-size: 12px; font-weight: 700; color: var(--t-body); padding: 4px 8px 8px}
         .help-toc a {
             display: block; padding: 7px 10px; font-size: 13px;
-            color: #14161A; text-decoration: none;
-            border-radius: 6px; line-height: 1.4;
-        }
-        .help-toc a:hover { background: #ffffff; }
+            color: var(--t-ink); text-decoration: none;
+            border-radius: 6px; line-height: 1.4}
+        .help-toc a:hover { background: var(--card)}
         .help-section {
             padding: 22px; border-radius: 15px;
             border: 1px solid rgba(20,22,26,0.05);
-            background: #fff; margin-bottom: 14px;
+            background: var(--card); margin-bottom: 14px;
             box-shadow: 0 1px 2px rgba(20,22,26,0.03);
-            scroll-margin-top: 16px;
-        }
+            scroll-margin-top: 16px}
         .help-section h2 {
             margin: 0 0 12px 0; font-size: 18px; font-weight: 900; letter-spacing: 0.2px;
-            color: #14161A;
-            display: flex; align-items: center; gap: 8px;
-        }
+            color: var(--t-ink);
+            display: flex; align-items: center; gap: 8px}
         .help-section h3 {
             margin: 18px 0 6px 0; font-size: 14px; font-weight: 800;
-            color: #14161A;
-        }
+            color: var(--t-ink)}
         .help-section p, .help-section li {
             font-size: 13.5px; line-height: 1.75;
-            color: #5A6068;
-        }
+            color: var(--t-strong)}
         .help-section ul, .help-section ol { padding-left: 22px; margin: 6px 0 10px 0; }
-        .help-section strong { color: #14161A; font-weight: 700; }
+        .help-section strong { color: var(--t-ink); font-weight: 700}
         .help-callout {
             display: flex; gap: 10px; padding: 12px 14px; border-radius: 11px;
-            background: #F7F8F9; border: 1px solid rgba(20,22,26,0.05);
-            border-left: 3px solid #6C42F0; margin: 12px 0;
-        }
-        .help-callout.warn { border-left-color: #F59E0B; }
-        .help-callout.tip { border-left-color: #18C26B; }
-        .help-callout.danger { border-left-color: #FF3D44; }
+            background: var(--s1); border: 1px solid rgba(20,22,26,0.05);
+            border-left: 3px solid var(--ops-solid); margin: 12px 0}
+        .help-callout.warn { border-left-color: var(--warn-solid)}
+        .help-callout.tip { border-left-color: var(--ok-solid)}
+        .help-callout.danger { border-left-color: var(--attr-fire-solid)}
         .help-callout p { margin: 0; font-size: 12.5px; line-height: 1.65; }
         .help-callout .ico { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
         .help-pill {
             display: inline-block; padding: 2px 9px; border-radius: 999px;
-            background: #F1F2F4; color: #6B7178;
-            font-size: 11px; font-weight: 800;
-        }
+            background: var(--s2); color: var(--t-body);
+            font-size: 11px; font-weight: 800}
         .help-flow-step {
             display: flex; gap: 10px; padding: 8px 0;
             border-bottom: 1px dashed rgba(20,22,26,0.08);
@@ -1396,10 +1356,9 @@
         .help-flow-step:last-child { border-bottom: none; }
         .help-flow-num {
             flex-shrink: 0; width: 26px; height: 26px;
-            border-radius: 50%; background: #14161A; color: #fff;
+            border-radius: 50%; background: var(--t-ink); color: var(--card);
             font-size: 13px; font-weight: 900;
-            display: flex; align-items: center; justify-content: center;
-        }
+            display: flex; align-items: center; justify-content: center}
 
         /* ========== Loading/Error ========== */
         #loadingOverlay {
@@ -1415,21 +1374,19 @@
         #loadingOverlay.show { display: flex; }
 
         .loading-card {
-            background: #ffffff;
+            background: var(--card);
             border-radius: 16px;
             padding: 32px 40px;
             text-align: center;
-            box-shadow: var(--shadow-md);
-        }
+            box-shadow: var(--shadow-md)}
 
         .spinner {
             width: 40px; height: 40px;
             border: 4px solid rgba(20,22,26,0.08);
-            border-top-color: #14161A;
+            border-top-color: var(--t-ink);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin: 0 auto 16px;
-        }
+            margin: 0 auto 16px}
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -1437,13 +1394,12 @@
             display: none;
             padding: 16px;
             margin: 16px;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-left: 4px solid #ef4444;
+            background: var(--bad-bg);
+            border: 1px solid var(--bad-bg);
+            border-left: 4px solid var(--bad-solid);
             border-radius: 8px;
-            color: #991b1b;
-            font-size: 14px;
-        }
+            color: var(--bad-deep);
+            font-size: 14px}
 
 
         /* ========== Identity Pill (header の現在のプレイヤー表示) ========== */
@@ -1453,14 +1409,13 @@
             gap: 6px;
             padding: 4px 12px;
             border-radius: 999px;
-            background: #F7F8F9;
-            color: #14161A;
+            background: var(--s1);
+            color: var(--t-ink);
             font-size: 12px;
             cursor: pointer;
             border: 1px solid rgba(20,22,26,0.08);
-            transition: background 0.15s;
-        }
-        .identity-pill:hover { background: #F1F2F4; }
+            transition: background 0.15s}
+        .identity-pill:hover { background: var(--s2)}
         .identity-pill .name { font-weight: 700; }
         .identity-pill .hint { opacity: 0.7; }
 
@@ -1503,15 +1458,14 @@
         }
         .boot-loading-overlay.show { display: flex; }
         .boot-loading-box {
-            background: #fff; border-radius: 20px; padding: 12px 12px 10px;
+            background: var(--card); border-radius: 20px; padding: 12px 12px 10px;
             width: min(72vw, 250px); text-align: center;
             border: 1px solid rgba(20,22,26,0.05);
-            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 18px 44px rgba(20,22,26,0.13);
-        }
-        .boot-loading-box img { width: 100%; display: block; border-radius: 13px; background: #fff; }
-        .boot-loading-box p { margin: 6px 0 0; font-size: 11.5px; font-weight: 800; color: #6B7178; }
+            box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 18px 44px rgba(20,22,26,0.13)}
+        .boot-loading-box img { width: 100%; display: block; border-radius: 13px; background: var(--card)}
+        .boot-loading-box p { margin: 6px 0 0; font-size: 11.5px; font-weight: 800; color: var(--t-body)}
         .player-select-content {
-            background: #fff;
+            background: var(--card);
             border-radius: 20px;
             padding: 22px;
             max-width: 480px;
@@ -1525,31 +1479,27 @@
             border: 1px solid rgba(20,22,26,0.05);
             box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 18px 44px rgba(20,22,26,0.13);
             font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
-            animation: dcSlideInUp .24s cubic-bezier(.2,.9,.2,1);
-        }
+            animation: dcSlideInUp .24s cubic-bezier(.2,.9,.2,1)}
         .player-select-content h2 {
             margin: 0;
             font-size: 17px;
             font-weight: 900;
             letter-spacing: 0.2px;
-            color: #14161A;
-        }
+            color: var(--t-ink)}
         .player-select-content .subtitle {
             font-size: 12px;
             line-height: 1.6;
-            color: #8A9097;
-            margin: 0;
-        }
+            color: var(--t-muted);
+            margin: 0}
         .player-select-search {
             padding: 10px 14px;
             border-radius: 10px;
             border: 1px solid rgba(20,22,26,0.08);
-            background: #F7F8F9;
-            color: #14161A;
+            background: var(--s1);
+            color: var(--t-ink);
             font-size: 14px;
-            outline: none;
-        }
-        .player-select-search:focus { border-color: #14161A; }
+            outline: none}
+        .player-select-search:focus { border-color: var(--t-ink)}
         .player-select-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -1567,8 +1517,8 @@
             padding: 8px 12px;
             border-radius: 8px;
             border: 1px solid rgba(20,22,26,0.08);
-            background: #ffffff;
-            color: #14161A;
+            background: var(--card);
+            color: var(--t-ink);
             text-align: center;
             font-size: 13px;
             line-height: 1.3;
@@ -1577,21 +1527,18 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-family: inherit;
-        }
+            font-family: inherit}
         .player-select-item:hover {
-            background: #F1F2F4;
-            border-color: #14161A;
-        }
+            background: var(--s2);
+            border-color: var(--t-ink)}
         .player-select-item.empty {
             grid-column: 1 / -1;
             text-align: center;
-            color: #6B7178;
+            color: var(--t-body);
             background: transparent;
             border: none;
             cursor: default;
-            padding: 24px;
-        }
+            padding: 24px}
         .player-select-footer {
             display: flex;
             justify-content: space-between;
@@ -1615,7 +1562,7 @@
         .player-modal.open { display: flex; }
 
         .player-modal-content {
-            background: #fff;
+            background: var(--card);
             border-radius: 20px;
             width: 100%;
             max-width: 560px;
@@ -1624,8 +1571,7 @@
             border: 1px solid rgba(20,22,26,0.05);
             overflow: hidden;
             font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
-            animation: dcSlideInUp .26s cubic-bezier(.2,.9,.2,1);
-        }
+            animation: dcSlideInUp .26s cubic-bezier(.2,.9,.2,1)}
 
         .player-modal-header {
             display: flex;
@@ -1638,9 +1584,8 @@
             font-size: 17px;
             font-weight: 900;
             letter-spacing: 0.2px;
-            color: #14161A;
-            display: flex; align-items: center; gap: 9px;
-        }
+            color: var(--t-ink);
+            display: flex; align-items: center; gap: 9px}
 
         .close-btn {
             width: 32px; height: 32px;
@@ -1649,18 +1594,16 @@
             cursor: pointer;
             border-radius: 8px;
             font-size: 20px;
-            color: #6B7178;
-            display: flex; align-items: center; justify-content: center;
-        }
+            color: var(--t-body);
+            display: flex; align-items: center; justify-content: center}
 
-        .close-btn:hover { background: #F7F8F9; }
+        .close-btn:hover { background: var(--s1)}
 
         /* playerModal の × は ClaudeDesign の丸ボタンに */
         .player-modal .close-btn {
             width: 30px; height: 30px; flex: none;
-            border-radius: 50%; background: #F1F2F4; color: #8A9097; font-size: 15px;
-        }
-        .player-modal .close-btn:hover { background: #E7E9EC; }
+            border-radius: 50%; background: var(--s2); color: var(--t-muted); font-size: 15px}
+        .player-modal .close-btn:hover { background: var(--line)}
 
         .player-modal-body { padding: 0 18px 20px; }
 
@@ -1673,8 +1616,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            flex-wrap: wrap;
-        }
+            flex-wrap: wrap}
 
         /* ========== 編成比較 (ClaudeDesign) ========== */
         .comp-section {
@@ -1682,20 +1624,18 @@
             border-radius: 14px;
             border: 1px solid var(--comp-c, rgba(20,22,26,0.06));
             overflow: hidden;
-            background: #fff;
-        }
+            background: var(--card)}
 
         .comp-boss-header {
             display: flex;
             align-items: center;
             gap: 7px;
             padding: 9px 12px;
-            background: linear-gradient(180deg, var(--comp-bg, #F7F8F9), transparent);
-        }
+            background: linear-gradient(180deg, var(--comp-bg, #F7F8F9), transparent)}
 
         .comp-boss-header img { width: 18px; height: 18px; }
 
-        .comp-boss-title { font-weight: 900; font-size: 13px; color: #14161A; }
+        .comp-boss-title { font-weight: 900; font-size: 13px; color: var(--t-ink)}
 
         .comp-row {
             display: grid;
@@ -1709,9 +1649,8 @@
             text-align: center;
             padding: 9px 8px;
             border-radius: 11px;
-            background: #F7F8F9;
-            border: 1px solid rgba(20,22,26,0.04);
-        }
+            background: var(--s1);
+            border: 1px solid rgba(20,22,26,0.04)}
 
         .comp-side.is-current {
             background: var(--comp-bg, rgba(108,66,240,0.06));
@@ -1720,11 +1659,10 @@
 
         .comp-label {
             font-size:10.5px;
-            color: #A4AAB0;
+            color: var(--t-muted);
             margin-bottom: 7px;
             font-weight: 800;
-            letter-spacing: 0.4px;
-        }
+            letter-spacing: 0.4px}
 
         .comp-icons {
             display: grid;
@@ -1737,61 +1675,55 @@
             aspect-ratio: 1/1;
             border-radius: 6px;
             object-fit: cover;
-            background: #222;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-        }
+            background: var(--t-ink);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12)}
 
         .comp-icon-placeholder {
             width: 100%;
             aspect-ratio: 1/1;
             border-radius: 6px;
-            background: #EDEEF0;
-            border: 1px dashed #D5D9DD;
-        }
+            background: var(--s2);
+            border: 1px dashed var(--track)}
 
         .comp-damage {
             font-size: 13px;
             font-weight: 900;
             margin-top: 8px;
-            color: #14161A;
-            font-variant-numeric: tabular-nums;
-        }
+            color: var(--t-ink);
+            font-variant-numeric: tabular-nums}
 
         .comp-arrow {
             align-self: center;
             font-size: 15px;
             font-weight: 900;
-            color: #C9CED3;
-        }
+            color: var(--t-muted)}
 
-        .comp-diff-positive { color: #18C26B; }
-        .comp-diff-negative { color: #FF3D44; }
+        .comp-diff-positive { color: var(--ok)}
+        .comp-diff-negative { color: var(--attr-fire)}
 
         .comp-no-data {
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 58px;
-            color: #B6BBC1;
+            color: var(--t-muted);
             font-size: 11px;
             font-weight: 700;
-            background: #F7F8F9;
+            background: var(--s1);
             border-radius: 9px;
-            border: 1px dashed #E1E3E7;
-        }
+            border: 1px dashed var(--line)}
 
         /* ========== ふるり値 ========== */
         .fururi-help-btn {
             width: 24px; height: 24px;
             border-radius: 50%;
-            border: 2px solid #14161A;
+            border: 2px solid var(--t-ink);
             background: transparent;
-            color: #14161A;
+            color: var(--t-ink);
             font-size: 13px;
             font-weight: 700;
             cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
+            display: flex; align-items: center; justify-content: center}
 
         /* ========== Fururi Help Modal ========== */
         .fururi-help-modal {
@@ -1816,15 +1748,14 @@
             width: 90%;
             max-width: 520px;
             max-height: 85vh;
-            background: #fff;
+            background: var(--card);
             border-radius: 20px;
             border: 1px solid rgba(20,22,26,0.05);
             display: flex;
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 18px 44px rgba(20,22,26,0.13);
-            font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
-        }
+            font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif}
 
         .fururi-help-header {
             padding: 17px 20px 13px;
@@ -1832,7 +1763,7 @@
             align-items: center;
             justify-content: space-between;
         }
-        .fururi-help-header h2 { font-size: 17px !important; font-weight: 900 !important; letter-spacing: 0.2px; color: #14161A !important; }
+        .fururi-help-header h2 { font-size: 17px !important; font-weight: 900 !important; letter-spacing: 0.2px; color: var(--t-ink) !important}
 
         .fururi-help-body {
             padding: 4px 20px 20px;
@@ -1840,15 +1771,13 @@
             flex: 1;
             font-size: 13.5px;
             line-height: 1.7;
-            color: #5A6068;
-        }
+            color: var(--t-strong)}
 
         .fururi-help-body h3 {
             font-size: 14px;
             font-weight: 800;
-            color: #14161A;
-            margin: 16px 0 8px;
-        }
+            color: var(--t-ink);
+            margin: 16px 0 8px}
 
         .fururi-help-body p { margin-bottom: 12px; }
 
@@ -1860,16 +1789,15 @@
         .fururi-help-footer button {
             width: 100%;
             padding: 12px;
-            background: #14161A;
-            color: #fff;
+            background: var(--t-ink);
+            color: var(--card);
             border: none;
             border-radius: 12px;
             font-size: 13px;
             font-weight: 900;
             letter-spacing: 0.3px;
             cursor: pointer;
-            font-family: inherit;
-        }
+            font-family: inherit}
 
         /* ========== Notification ========== */
         .notification {
@@ -1887,8 +1815,7 @@
             pointer-events: none;
             white-space: nowrap;
             opacity: 0;
-            box-shadow: 0 10px 28px rgba(20,22,26,0.28);
-        }
+            box-shadow: 0 10px 28px rgba(20,22,26,0.28)}
         .notification.show {
             transform: translateX(-50%) translateY(0);
             opacity: 1;
@@ -1924,19 +1851,18 @@
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
-            background: #F7F8F9;
+            background: var(--s1);
             border: 1px solid rgba(20,22,26,0.06);
             border-radius: 12px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 800;
-            color: #14161A;
+            color: var(--t-ink);
             text-align: left;
             transition: background 0.2s;
-            font-family: inherit;
-        }
+            font-family: inherit}
 
-        .stats-toggle-btn:hover { background: #F1F2F4; }
+        .stats-toggle-btn:hover { background: var(--s2)}
 
         /* ========== Chart attribute toggle buttons ========== */
         .chart-toggle-btn {
@@ -1952,8 +1878,7 @@
             font-weight: 700;
             cursor: pointer;
             transition: opacity 0.2s, background 0.2s;
-            opacity: 1;
-        }
+            opacity: 1}
         .chart-toggle-btn.hidden {
             background: transparent;
             color: var(--btn-color);
@@ -1969,14 +1894,13 @@
         }
 
         .stat-card {
-            background: #F7F8F9;
+            background: var(--s1);
             border: 1px solid rgba(20,22,26,0.04);
             border-radius: 13px;
-            padding: 14px 16px;
-        }
+            padding: 14px 16px}
 
-        .stat-label { font-size:10.5px; font-weight: 800; letter-spacing: 0.6px; color: #A4AAB0; margin-bottom: 5px; }
-        .stat-value { font-size: 20px; font-weight: 900; color: #14161A; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
+        .stat-label { font-size:10.5px; font-weight: 800; letter-spacing: 0.6px; color: var(--t-muted); margin-bottom: 5px}
+        .stat-value { font-size: 20px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.3px}
 
         /* ========== Chart container ========== */
         .chart-container {
@@ -2008,37 +1932,33 @@
             background:
                 radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
                 radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
-                radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
-        }
+                radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1)}
         #tourOverlay .tour-topbar {
             display: flex; align-items: center; justify-content: space-between;
             padding: calc(env(safe-area-inset-top, 10px) + 12px) 18px 12px;
             flex: none;
         }
         #tourOverlay .tour-skip {
-            font-size: 12px; font-weight: 800; color: #8A9097;
+            font-size: 12px; font-weight: 800; color: var(--t-muted);
             letter-spacing: 0.2px; cursor: pointer; padding: 6px 10px;
-            background: transparent; border: none; font-family: inherit;
-        }
+            background: transparent; border: none; font-family: inherit}
         #tourOverlay .tour-dots { display: flex; gap: 6px; align-items: center; }
         #tourOverlay .tour-dot {
-            height: 6px; border-radius: 999px; background: #E4E6E9;
-            transition: width 0.25s ease, background 0.25s ease;
-        }
-        #tourOverlay .tour-dot.done { background: #C2C7CC; }
+            height: 6px; border-radius: 999px; background: var(--line);
+            transition: width 0.25s ease, background 0.25s ease}
+        #tourOverlay .tour-dot.done { background: var(--track)}
         #tourOverlay .tour-dot.current { width: 22px; }
         #tourOverlay .tour-dot:not(.current) { width: 6px; }
 
         #tourOverlay .tour-card {
             margin: 0 14px calc(env(safe-area-inset-bottom, 10px) + 14px);
             flex: 1; min-height: 0;
-            background: #fff; border-radius: 20px;
+            background: var(--card); border-radius: 20px;
             box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 14px 38px rgba(20,22,26,0.10);
             border: 1px solid rgba(20,22,26,0.045);
             display: flex; flex-direction: column; overflow: hidden;
             animation: tour-slide-up 0.28s cubic-bezier(.2,.9,.2,1);
-            max-width: 460px; width: calc(100% - 28px); align-self: center;
-        }
+            max-width: 460px; width: calc(100% - 28px); align-self: center}
         #tourOverlay .tour-hero {
             /* 絵文字アイコン+ラベルの横並びスリムバナー (本文を主役にする) */
             position: relative; flex: none; height: clamp(52px, 8vh, 76px); overflow: hidden;
@@ -2069,12 +1989,10 @@
             padding: 5px 13px; border-radius: 999px;
             background: rgba(255,255,255,0.22);
             backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            font-size: 10.5px; font-weight: 900; color: #fff; letter-spacing: 1.5px;
-        }
+            font-size: 10.5px; font-weight: 900; color: #fff; letter-spacing: 1.5px}
         #tourOverlay .tour-hero-label-dot {
-            width: 7px; height: 7px; border-radius: 50%; background: #fff;
-            animation: tour-pulse-dot 1.4s ease-in-out infinite;
-        }
+            width: 7px; height: 7px; border-radius: 50%; background: var(--card);
+            animation: tour-pulse-dot 1.4s ease-in-out infinite}
         #tourOverlay .tour-mini-screen {
             /* スリムバナー化に伴い装飾ミニスクリーンは非表示 */
             display: none;
@@ -2082,9 +2000,8 @@
         #tourOverlay .tour-mini-row { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
         #tourOverlay .tour-mini-avatar {
             width: 18px; height: 18px; border-radius: 50%;
-            background: linear-gradient(140deg, #7A5AF8, #5B2BE0);
-        }
-        #tourOverlay .tour-mini-bar { flex: 1; height: 6px; background: #F1F2F4; border-radius: 3px; }
+            background: linear-gradient(140deg, #7A5AF8, #5B2BE0)}
+        #tourOverlay .tour-mini-bar { flex: 1; height: 6px; background: var(--s2); border-radius: 3px}
         #tourOverlay .tour-mini-tiles { display: flex; gap: 4px; margin-bottom: 7px; }
         #tourOverlay .tour-mini-tile { flex: 1; height: 36px; border-radius: 7px; }
         #tourOverlay .tour-text-zone { padding: 22px 22px 8px; flex: none; }
@@ -2094,23 +2011,20 @@
         }
         #tourOverlay .tour-title {
             margin: 0 0 9px 0; font-size: 20px; font-weight: 900;
-            letter-spacing: 0.2px; line-height: 1.3; color: #14161A;
-            white-space: pre-line;
-        }
+            letter-spacing: 0.2px; line-height: 1.3; color: var(--t-ink);
+            white-space: pre-line}
         #tourOverlay .tour-body-scroll {
             flex: 1; min-height: 0; overflow-y: auto;
             padding: 0 22px 16px;
-            font-size: 14px; line-height: 1.7; color: #5A6068;
-        }
-        #tourOverlay .tour-body-scroll strong { color: #14161A; font-weight: 700; }
+            font-size: 14px; line-height: 1.7; color: var(--t-strong)}
+        #tourOverlay .tour-body-scroll strong { color: var(--t-ink); font-weight: 700}
         #tourOverlay .tour-tip {
             display: flex; align-items: flex-start; gap: 9px;
             margin-top: 14px; padding: 11px 13px; border-radius: 11px;
-            background: #F7F8F9; border: 1px solid rgba(20,22,26,0.05);
-            border-left: 3px solid #F5B400;
-        }
+            background: var(--s1); border: 1px solid rgba(20,22,26,0.05);
+            border-left: 3px solid var(--warn-solid)}
         #tourOverlay .tour-tip-emoji { font-size: 14px; flex: none; margin-top: 1px; }
-        #tourOverlay .tour-tip-text { font-size: 12.5px; font-weight: 700; color: #6B7178; line-height: 1.55; }
+        #tourOverlay .tour-tip-text { font-size: 12.5px; font-weight: 700; color: var(--t-body); line-height: 1.55}
         #tourOverlay .tour-jump {
             display: flex; align-items: center; justify-content: center;
             gap: 7px; margin-top: 13px; padding: 11px 14px;
@@ -2119,22 +2033,19 @@
         }
         #tourOverlay .tour-buttons {
             padding: 14px 18px calc(env(safe-area-inset-bottom, 8px) + 18px);
-            border-top: 1px solid #F0F1F3;
-            display: flex; align-items: center; gap: 10px; flex: none;
-        }
+            border-top: 1px solid var(--s2);
+            display: flex; align-items: center; gap: 10px; flex: none}
         #tourOverlay .tour-back-btn {
             padding: 11px 16px; border-radius: 11px; cursor: pointer;
-            font-size: 13px; font-weight: 800; color: #6B7178;
-            background: #F1F2F4; border: 1px solid rgba(20,22,26,0.06);
-            white-space: nowrap; font-family: inherit;
-        }
+            font-size: 13px; font-weight: 800; color: var(--t-body);
+            background: var(--s2); border: 1px solid rgba(20,22,26,0.06);
+            white-space: nowrap; font-family: inherit}
         #tourOverlay .tour-next-btn {
             position: relative; overflow: hidden;
             padding: 12px 22px; border-radius: 11px; cursor: pointer;
             font-size: 13.5px; font-weight: 900; color: #fff;
             border: none; letter-spacing: 0.3px; font-family: inherit;
-            animation: tour-glow 2.6s ease-in-out infinite;
-        }
+            animation: tour-glow 2.6s ease-in-out infinite}
         #tourOverlay .tour-next-btn::after {
             content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%;
             background: linear-gradient(180deg, rgba(255,255,255,0.30), transparent);
@@ -2145,44 +2056,40 @@
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 14px; border-radius: 8px;
             border: 1px solid rgba(20,22,26,0.08);
-            background: #ffffff; color: #14161A;
-            font-size: 13px; font-weight: 700; cursor: pointer;
-        }
-        .tour-guide-launcher:hover { background: #F7F8F9; }
+            background: var(--card); color: var(--t-ink);
+            font-size: 13px; font-weight: 700; cursor: pointer}
+        .tour-guide-launcher:hover { background: var(--s1)}
 
         /* インタラクティブ フロー (順番に光る 3 ステップ) */
         @keyframes tour-flow-cycle {
             0%   { background: var(--fc-on); border-color: var(--fc); box-shadow: 0 8px 18px var(--fc-sh); transform: scale(1.02); }
             25%  { background: var(--fc-on); border-color: var(--fc); box-shadow: 0 8px 18px var(--fc-sh); transform: scale(1.02); }
-            34%  { background: #F7F8F9; border-color: rgba(20,22,26,0.05); box-shadow: none; transform: scale(1); }
-            100% { background: #F7F8F9; border-color: rgba(20,22,26,0.05); box-shadow: none; transform: scale(1); }
+            34%  { background: var(--s1); border-color: rgba(20,22,26,0.05); box-shadow: none; transform: scale(1)}
+            100% { background: var(--s1); border-color: rgba(20,22,26,0.05); box-shadow: none; transform: scale(1)}
         }
         @keyframes tour-flow-num-cycle {
-            0%,25%   { background: var(--fc); color: #fff; transform: scale(1.1); }
-            34%,100% { background: #E4E6E9; color: #9AA0A6; transform: scale(1); }
+            0%,25%   { background: var(--fc); color: #fff; transform: scale(1.1)}
+            34%,100% { background: var(--line); color: var(--t-muted); transform: scale(1)}
         }
         @keyframes tour-flow-arrow { 0%,100% { opacity: .3; transform: translateY(-1px); } 50% { opacity: 1; transform: translateY(1px); } }
         #tourOverlay .tour-flow { display: flex; flex-direction: column; margin-top: 16px; }
         #tourOverlay .tour-flow-step {
             display: flex; align-items: flex-start; gap: 11px;
             padding: 12px 13px; border-radius: 14px;
-            background: #F7F8F9; border: 1px solid rgba(20,22,26,0.05);
-            animation: tour-flow-cycle 3.9s ease-in-out infinite;
-        }
+            background: var(--s1); border: 1px solid rgba(20,22,26,0.05);
+            animation: tour-flow-cycle 3.9s ease-in-out infinite}
         #tourOverlay .tour-flow-num {
             width: 27px; height: 27px; flex: none; border-radius: 50%;
-            background: #E4E6E9; color: #9AA0A6;
+            background: var(--line); color: var(--t-muted);
             display: flex; align-items: center; justify-content: center;
             font-size: 12.5px; font-weight: 900;
-            animation: tour-flow-num-cycle 3.9s ease-in-out infinite;
-        }
-        #tourOverlay .tour-flow-title { font-size: 13.5px; font-weight: 900; color: #14161A; letter-spacing: 0.2px; }
-        #tourOverlay .tour-flow-desc { font-size: 12px; font-weight: 700; color: #6B7178; line-height: 1.5; margin-top: 3px; }
+            animation: tour-flow-num-cycle 3.9s ease-in-out infinite}
+        #tourOverlay .tour-flow-title { font-size: 13.5px; font-weight: 900; color: var(--t-ink); letter-spacing: 0.2px}
+        #tourOverlay .tour-flow-desc { font-size: 12px; font-weight: 700; color: var(--t-body); line-height: 1.5; margin-top: 3px}
         #tourOverlay .tour-flow-arrow {
             align-self: center; margin: 2px 0; font-size: 12px; line-height: 1;
-            color: var(--fc, #8A9097);
-            animation: tour-flow-arrow 1.8s ease-in-out infinite;
-        }
+            color: var(--fc, var(--t-muted));
+            animation: tour-flow-arrow 1.8s ease-in-out infinite}
         @media (prefers-reduced-motion: reduce) {
             #tourOverlay .tour-flow-step,
             #tourOverlay .tour-flow-num,
@@ -2195,24 +2102,20 @@
         @keyframes tour-demo-hp { from { width: var(--hp-from, 100%); } to { width: var(--hp-to, 82%); } }
         #tourOverlay .tour-demo {
             margin-top: 14px; padding: 13px;
-            border-radius: 15px; background: #F7F8F9;
-            border: 1.5px dashed rgba(20,22,26,0.13);
-        }
+            border-radius: 15px; background: var(--s1);
+            border: 1.5px dashed rgba(20,22,26,0.13)}
         #tourOverlay .tour-demo-tag {
             display: inline-flex; align-items: center; gap: 5px;
-            font-size:10.5px; font-weight: 900; letter-spacing: 1px; color: #8A9097;
-            margin-bottom: 9px;
-        }
+            font-size:10.5px; font-weight: 900; letter-spacing: 1px; color: var(--t-muted);
+            margin-bottom: 9px}
         #tourOverlay .tour-demo-card {
-            background: #fff; border-radius: 13px; padding: 12px;
+            background: var(--card); border-radius: 13px; padding: 12px;
             border: 1px solid rgba(20,22,26,0.05);
             box-shadow: 0 1px 2px rgba(20,22,26,0.04);
-            animation: tour-demo-pop .22s ease;
-        }
+            animation: tour-demo-pop .22s ease}
         #tourOverlay .tour-demo-note {
-            font-size: 11px; font-weight: 700; color: #6B7178; line-height: 1.6;
-            margin-top: 9px; min-height: 16px;
-        }
+            font-size: 11px; font-weight: 700; color: var(--t-body); line-height: 1.6;
+            margin-top: 9px; min-height: 16px}
         #tourOverlay .tour-demo button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
 
         /* ===== ClaudeDesign 準拠 ホーム ===== */
@@ -2229,10 +2132,10 @@
         }
 
         /* 分析タブ: 実績⇄ふるり値 セグメント (見た目1タブ・実体2タブの切替UI — TAB_REGISTRY の navTab 参照) */
-        .ana-seg { display:flex; gap:2px; background:#E4E5EA; border-radius:999px; padding:3px; width:fit-content; margin:2px 2px 12px; }
-        .ana-seg button { border:none; background:transparent; color:#6B7178; font-family:inherit;
-            font-size:11.5px; font-weight:800; padding:7px 18px; border-radius:999px; cursor:pointer; white-space:nowrap; }
-        .ana-seg button.active { background:#FFFFFF; color:#14161A; box-shadow:0 1px 3px rgba(20,22,26,0.12); }
+        .ana-seg { display:flex; gap:2px; background:var(--line); border-radius:999px; padding:3px; width:fit-content; margin:2px 2px 12px}
+        .ana-seg button { border:none; background:transparent; color:var(--t-body); font-family:inherit;
+            font-size:11.5px; font-weight:800; padding:7px 18px; border-radius:999px; cursor:pointer; white-space:nowrap}
+        .ana-seg button.active { background:var(--card); color:var(--t-ink); box-shadow:0 1px 3px rgba(20,22,26,0.12)}
         /* 4分割セグ (実績/ふるり値/シミュレータ/GB比較) は fit-content だと画面幅を超える —
            全幅+均等割りで収め、狭い端末では絵文字を落として文字を守る (実機FB 2026-08-05) */
         .ana-seg-fill { width:auto; align-self:stretch; }
@@ -2252,8 +2155,7 @@
                 radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
                 linear-gradient(125deg, transparent 45%, rgba(20,22,26,0.022) 47%, transparent 49%),
                 radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
-            min-height: 100vh;
-        }
+            min-height: 100vh}
         .tab-page .container {
             display: flex; flex-direction: column; gap: 14px;
             padding: 16px 16px 80px;
@@ -2264,15 +2166,14 @@
         @keyframes maSlideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         @keyframes maDangerPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,61,68,0.0)} 50%{box-shadow:0 0 0 4px rgba(255,61,68,0.10)} }
         .ma-row { transition: background .12s; }
-        .ma-row:hover { background: #FAFBFC; }
+        .ma-row:hover { background: var(--card)}
         .ma-grad-btn {
             position:relative; overflow:hidden; border:none; cursor:pointer;
             padding:11px 16px; border-radius:11px;
             background:linear-gradient(180deg,#7A5AF8,#5B2BE0);
             box-shadow:0 4px 12px rgba(108,66,240,0.26);
             color:#fff; font-size:12.5px; font-weight:900; letter-spacing:0.3px;
-            font-family:inherit; text-shadow:0 1px 2px rgba(0,40,90,0.4);
-        }
+            font-family:inherit; text-shadow:0 1px 2px rgba(0,40,90,0.4)}
         .ma-grad-btn::before {
             content:''; position:absolute; inset:0;
             background:repeating-linear-gradient(125deg, rgba(255,255,255,0.16) 0 6px, transparent 6px 13px);
@@ -2287,51 +2188,45 @@
         .ma-input {
             box-sizing:border-box; border-radius:11px;
             border:1px solid rgba(20,22,26,0.08);
-            background:#F7F8F9; color:#14161A;
+            background:var(--s1); color:var(--t-ink);
             font-size:14px; font-family:inherit; outline:none;
-            padding:11px 13px;
-        }
-        .ma-input:focus { border-color:#7A5AF8; background:#fff; }
+            padding:11px 13px}
+        .ma-input:focus { border-color:var(--ops-solid); background:var(--card)}
 
         /* === Ops: ステータス概況 3カード === */
         .dc-stat-card {
             flex: 1;
-            background: #fff;
+            background: var(--card);
             border-radius: 16px;
             padding: 14px 12px;
             box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 10px 26px rgba(20,22,26,0.06);
-            border: 1px solid rgba(20,22,26,0.045);
-        }
+            border: 1px solid rgba(20,22,26,0.045)}
         .dc-stat-label {
-            font-size: 10.5px; font-weight: 800; color: #9AA0A6; letter-spacing: 0.3px;
-        }
+            font-size: 10.5px; font-weight: 800; color: var(--t-muted); letter-spacing: 0.3px}
         .dc-stat-value {
-            font-size: 28px; font-weight: 900; color: #14161A;
-            font-variant-numeric: tabular-nums; margin-top: 6px; line-height: 1;
-        }
+            font-size: 28px; font-weight: 900; color: var(--t-ink);
+            font-variant-numeric: tabular-nums; margin-top: 6px; line-height: 1}
 
         /* === Ops: ボス状況カード (横スクロール) === */
         .dc-boss-card {
             flex: none; width: 156px; box-sizing: border-box; scroll-snap-align: start;
-            background: #F9FAFB; border-radius: 16px; padding: 14px;
+            background: var(--s1); border-radius: 16px; padding: 14px;
             border: 1px solid rgba(20,22,26,0.05);
-            position: relative;
-        }
+            position: relative}
         /* HomeMind基調 (2026-07-24): 交戦中 = 黒カード (アクティブの対比表現)。
            テンプレートのインライン色に勝つため !important — 状態はポーリング中の
            _patchOpsBossCard の class 切替だけで色が追随する */
         .dc-boss-card.has-combat {
-            background: #101114;
+            background: var(--t-ink);
             border-color: transparent;
-            box-shadow: 0 0 0 1px var(--_attr-c, #FF3D44),
-                        0 8px 20px -4px color-mix(in srgb, var(--_attr-c, #FF3D44) 45%, transparent);
-        }
-        .dc-boss-card.has-combat .js-bnum { color: #fff !important; }
+            box-shadow: 0 0 0 1px var(--_attr-c, var(--attr-fire-solid)),
+                        0 8px 20px -4px color-mix(in srgb, var(--_attr-c, var(--attr-fire-solid)) 45%, transparent)}
+        .dc-boss-card.has-combat .js-bnum { color: #fff !important}
         .dc-boss-card.has-combat .js-name { color: rgba(255,255,255,0.55) !important; }
-        .dc-boss-card.has-combat .js-pct { color: #fff !important; }
+        .dc-boss-card.has-combat .js-pct { color: #fff !important}
         .dc-boss-card.has-combat .js-hptext { color: rgba(255,255,255,0.55) !important; }
         .dc-boss-card.has-combat .js-bartrack { background: rgba(255,255,255,0.16) !important; }
-        .dc-boss-card.has-combat [data-action="boss-edit"] { background: #2A2B31 !important; color: #C9CED3 !important; }
+        .dc-boss-card.has-combat [data-action="boss-edit"] { background: var(--t-ink) !important; color: var(--t-muted) !important}
         .dc-boss-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
@@ -2365,34 +2260,29 @@
             font-family: inherit; cursor: pointer;
             font-size: 12px; font-weight: 800; letter-spacing: 0.2px;
             padding: 7px 13px; border-radius: 999px;
-            background: #F1F2F4; color: #9AA0A6;
+            background: var(--s2); color: var(--t-muted);
             border: 1px solid transparent;
-            transition: all 0.15s ease;
-        }
+            transition: all 0.15s ease}
         .dc-pill-filter[data-on="1"] {
-            background: #14161A; color: #fff;
-        }
+            background: var(--t-ink); color: var(--card)}
         .dc-pill-attr {
             font-family: inherit; cursor: pointer;
             font-size: 12px; font-weight: 800; letter-spacing: 0.2px;
             min-width: 38px;
             padding: 6px 10px; border-radius: 999px;
-            background: var(--attr-c-soft, #F1F2F4); color: var(--attr-c, #9AA0A6);
+            background: var(--attr-c-soft, var(--s2)); color: var(--attr-c, var(--t-muted));
             border: 1px solid transparent;
-            transition: all 0.15s ease;
-        }
-        .dc-pill-attr[data-attr-filter=""]:not([data-on="1"]) { background: #F1F2F4; color: #9AA0A6; }
+            transition: all 0.15s ease}
+        .dc-pill-attr[data-attr-filter=""]:not([data-on="1"]) { background: var(--s2); color: var(--t-muted)}
         .dc-pill-attr:not([data-attr-filter=""]):not([data-on="1"]) {
             background: color-mix(in srgb, var(--attr-c) 12%, transparent);
             color: var(--attr-c);
         }
         .dc-pill-attr[data-on="1"]:not([data-attr-filter=""]) {
-            background: var(--attr-c, #14161A); color: #fff;
-            box-shadow: 0 3px 8px color-mix(in srgb, var(--attr-c) 35%, transparent);
-        }
+            background: var(--attr-c, var(--t-ink)); color: var(--card);
+            box-shadow: 0 3px 8px color-mix(in srgb, var(--attr-c) 35%, transparent)}
         .dc-pill-attr[data-on="1"][data-attr-filter=""] {
-            background: #14161A; color: #fff;
-        }
+            background: var(--t-ink); color: var(--card)}
 
         /* === 残り戦闘可能メンバー: ベースフィルタ (3ピル, 黒塗りアクティブ) === */
         .dc-rem-base {
@@ -2400,12 +2290,11 @@
             display: flex; align-items: center; justify-content: center; gap: 4px;
             height: 36px; border-radius: 10px; border: none;
             font-size: 11.5px; font-weight: 800; white-space: nowrap; cursor: pointer;
-            background: #F1F2F4; color: #9AA0A6;
+            background: var(--s2); color: var(--t-muted);
             transition: background 0.15s ease, color 0.15s ease;
             -webkit-tap-highlight-color: transparent;
-            font-family: inherit;
-        }
-        .dc-rem-base[data-on="1"] { background: #14161A; color: #fff; }
+            font-family: inherit}
+        .dc-rem-base[data-on="1"] { background: var(--t-ink); color: var(--card)}
 
         /* === 残り戦闘可能メンバー: 属性フィルタ (6ピル, soft塗り) === */
         .dc-rem-attr {
@@ -2422,17 +2311,15 @@
         .dc-rem-attr[data-on="1"] {
             background: var(--attr-c);
             color: #fff;
-            box-shadow: 0 3px 8px color-mix(in srgb, var(--attr-c) 35%, transparent);
-        }
-        .dc-rem-attr[data-attr-filter=""][data-on="1"] { background: #14161A; box-shadow: none; }
+            box-shadow: 0 3px 8px color-mix(in srgb, var(--attr-c) 35%, transparent)}
+        .dc-rem-attr[data-attr-filter=""][data-on="1"] { background: var(--t-ink); box-shadow: none}
 
         /* === 残り戦闘可能メンバー: 表領域 === */
         .dc-rem-attr-header {
             position: sticky; top: 0; z-index: 10;
             display: flex; align-items: center; gap: 9px;
-            background: #fff; padding: 6px 0 7px;
-            border-bottom: 1px solid #EDEEF0;
-        }
+            background: var(--card); padding: 6px 0 7px;
+            border-bottom: 1px solid var(--s2)}
         .dc-rem-attr-header-chip {
             width: 30px; height: 22px; flex: none; border-radius: 7px;
             display: flex; align-items: center; justify-content: center;
@@ -2441,62 +2328,53 @@
         .dc-rem-section-head {
             display: flex; align-items: center; gap: 8px;
             padding: 11px 2px 9px; cursor: pointer;
-            border-bottom: 1px solid #F4F5F6;
+            border-bottom: 1px solid var(--s1);
             -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
-        .dc-rem-section-head:hover { background: #FAFBFC; }
+            user-select: none}
+        .dc-rem-section-head:hover { background: var(--card)}
         .dc-rem-section-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
         .dc-rem-row {
             display: flex; align-items: center; gap: 9px;
-            height: 46px; border-bottom: 1px solid #F4F5F6;
-            cursor: default;
-        }
+            height: 46px; border-bottom: 1px solid var(--s1);
+            cursor: default}
         .dc-rem-cell {
             width: 30px; height: 30px; flex: none; border-radius: 7px;
             display: flex; align-items: center; justify-content: center;
             font-size:10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
         }
         .dc-rem-cell.used {
-            color: #B6BBC1; background: transparent;
-            text-decoration: line-through; opacity: 0.5; font-weight: 700;
-        }
+            color: var(--t-muted); background: transparent;
+            text-decoration: line-through; opacity: 0.5; font-weight: 700}
         .dc-rem-cell.unset {
-            color: #C9CED3; font-weight: 900; background: transparent;
-        }
+            color: var(--t-muted); font-weight: 900; background: transparent}
         /* 運営除外 (35): 提出は残るがプラン等には使われない行。🧹整理モードでは ✕ (除外) / ↩ (解除) を左上に重ねる */
         .dc-rem-cell.excl {
-            color: #B6BBC1; background: transparent; text-decoration: line-through;
-            border: 1.5px dashed #D9DDE2; box-sizing: border-box; font-size: 9px; font-weight: 900;
-        }
+            color: var(--t-muted); background: transparent; text-decoration: line-through;
+            border: 1.5px dashed var(--line); box-sizing: border-box; font-size: 9px; font-weight: 900}
         .dc-rem-cell.tidy { position: relative; }
         .dc-rem-x {
             position: absolute; top: -7px; left: -7px; width: 17px; height: 17px; border-radius: 999px;
-            border: 2px solid #fff; padding: 0; background: #FF3D44; color: #fff; font-size: 10px; font-weight: 900;
-            line-height: 13px; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(20,22,26,0.25); z-index: 1;
-        }
-        .dc-rem-x.undo { background: #18C26B; }
+            border: 2px solid var(--card); padding: 0; background: var(--attr-fire-solid); color: var(--attr-fire-ink); font-size: 10px; font-weight: 900;
+            line-height: 13px; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(20,22,26,0.25); z-index: 1}
+        .dc-rem-x.undo { background: var(--ok-solid)}
         /* 🔒 凸の予約 (L2) */
-        .dc-resv-head { font-size: 11px; font-weight: 900; color: #8A9097; letter-spacing: 0.04em; margin: 12px 0 6px; }
+        .dc-resv-head { font-size: 11px; font-weight: 900; color: var(--t-muted); letter-spacing: 0.04em; margin: 12px 0 6px}
         .dc-resv-head:first-child { margin-top: 0; }
         .dc-resv-row {
-            padding: 9px 11px; border-radius: 11px; background: #F7F8F9;
-            border: 1px solid rgba(20,22,26,0.05); margin-bottom: 7px;
-        }
+            padding: 9px 11px; border-radius: 11px; background: var(--s1);
+            border: 1px solid rgba(20,22,26,0.05); margin-bottom: 7px}
         .dc-resv-row.pending { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.28); }
         .dc-resv-row.approved { background: rgba(24,194,107,0.08); border-color: rgba(24,194,107,0.25); }
         .dc-resv-row.done { opacity: 0.6; }
         .dc-resv-btn {
             padding: 5px 11px; border-radius: 8px; border: none; cursor: pointer;
-            font-size: 11px; font-weight: 800; background: #F1F2F4; color: #5A6068;
-        }
-        .dc-resv-btn.primary { background: #14161A; color: #fff; }
+            font-size: 11px; font-weight: 800; background: var(--s2); color: var(--t-strong)}
+        .dc-resv-btn.primary { background: var(--t-ink); color: var(--card)}
         .dc-resv-btn:disabled { opacity: 0.45; cursor: default; }
         .dc-rem-fav-chip {
             width: 14px; height: 14px; border-radius: 4px; flex: none;
             display: flex; align-items: center; justify-content: center;
-            font-size:10px; font-weight: 900; color: #fff;
-        }
+            font-size:10px; font-weight: 900; color: #fff}
 
         /* === 共通: 詰めカード + テーブル === */
         .dc-card-tight { padding: 12px 14px; }
@@ -2511,35 +2389,33 @@
             font-size: 13px;
         }
         .dc-table thead th {
-            background: #F7F8F9;
-            color: #9AA0A6;
+            background: var(--s1);
+            color: var(--t-muted);
             padding: 9px 12px;
             font-size: 10.5px;
             font-weight: 800;
             letter-spacing: 1px;
             text-align: left;
-            border-bottom: 1px solid #F0F1F3;
+            border-bottom: 1px solid var(--s2);
             text-transform: uppercase;
-            position: sticky; top: 0;
-        }
+            position: sticky; top: 0}
         .dc-table tbody td {
             padding: 9px 12px;
-            border-bottom: 1px solid #F4F5F7;
+            border-bottom: 1px solid var(--s1);
             font-size: 13px;
-            color: #14161A;
+            color: var(--t-ink);
             vertical-align: middle;
-            line-height: 1.3;
-        }
+            line-height: 1.3}
         .dc-table tbody tr:last-child td { border-bottom: none; }
         .dc-table tbody tr { transition: background 0.15s ease; }
-        .dc-table tbody tr:hover { background: #FAFBFC; cursor: pointer; }
+        .dc-table tbody tr:hover { background: var(--card); cursor: pointer}
         /* Top-3 行ハイライト (#列の rank-1/2/3 を持つ tr) */
         .dc-table tbody tr.rank-row-1 td { background: rgba(255, 215, 0, 0.06); }
         .dc-table tbody tr.rank-row-2 td { background: rgba(192, 192, 192, 0.06); }
         .dc-table tbody tr.rank-row-3 td { background: rgba(205, 127, 50, 0.06); }
         .dc-table tbody tr.rank-row-1:hover td,
         .dc-table tbody tr.rank-row-2:hover td,
-        .dc-table tbody tr.rank-row-3:hover td { background: #FAFBFC; }
+        .dc-table tbody tr.rank-row-3:hover td { background: var(--card)}
 
         /* === NIKKE ゲーム内風 アクションボタン (角丸 + グラデ + 斜めストライプ) === */
         @keyframes btnNikkeRedGlow {
@@ -2556,10 +2432,9 @@
         }
         .btn-nikke {
             display: inline-block; padding: 2px; cursor: pointer;
-            background: #14161A; border: none;
+            background: var(--t-ink); border: none;
             -webkit-tap-highlight-color: transparent;
-            transition: transform 0.1s ease, filter 0.15s ease;
-        }
+            transition: transform 0.1s ease, filter 0.15s ease}
         .btn-nikke:active { transform: translateY(1px) scale(0.997); filter: brightness(1.05); }
         .btn-nikke-inner {
             position: relative; overflow: hidden;
@@ -2583,8 +2458,7 @@
         }
         .btn-nikke-title {
             position: relative; font-weight: 900; color: #fff;
-            line-height: 1.1;
-        }
+            line-height: 1.1}
 
         /* 青: 模擬戦データ提出 (コンパクトピル, タイトル行に配置 / 静的 — 戦闘ボタンの脈動を引き立てる) */
         .btn-nikke-blue {
@@ -2595,8 +2469,7 @@
             background: linear-gradient(180deg,#7A5AF8,#5B2BE0);
             padding: 7px 12px;
             border-radius: 6px;
-            display: flex; align-items: center; gap: 5px;
-        }
+            display: flex; align-items: center; gap: 5px}
         .btn-nikke-blue .btn-nikke-title {
             font-size: 11.5px; letter-spacing: 0.3px;
             text-shadow: 0 1px 2px rgba(0,40,90,0.4);
@@ -2613,8 +2486,7 @@
         .btn-nikke-red .btn-nikke-inner {
             background: linear-gradient(180deg,#FF5A52,#E8261F);
             padding: 16px 0;
-            border-radius: 11px;
-        }
+            border-radius: 11px}
         .btn-nikke-red .btn-nikke-inner::after {
             height: 48%;
             background: linear-gradient(180deg, rgba(255,255,255,0.30), transparent);
@@ -2628,13 +2500,12 @@
         .dc-status-chip {
             flex: 1; min-width: 0;
             border-radius: 12px; padding: 11px 9px;
-            background: #F7F8F9;
+            background: var(--s1);
             border: 1px solid rgba(20,22,26,0.05);
             cursor: pointer;
             transition: background 0.15s ease, transform 0.1s ease;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .dc-status-chip:hover { background: #F1F2F4; }
+            -webkit-tap-highlight-color: transparent}
+        .dc-status-chip:hover { background: var(--s2)}
         .dc-status-chip:active { transform: translateY(1px); }
         .dc-status-chip.error {
             background: rgba(255,61,68,0.06);
@@ -2642,51 +2513,46 @@
         }
         .dc-status-dot {
             width: 7px; height: 7px; border-radius: 50%; flex: none;
-            background: #18C26B;
-        }
-        .dc-status-chip.error .dc-status-dot { background: #FF3D44; }
-        .dc-status-chip.neutral .dc-status-dot { background: #9AA0A6; }
+            background: var(--ok-solid)}
+        .dc-status-chip.error .dc-status-dot { background: var(--attr-fire-solid)}
+        .dc-status-chip.neutral .dc-status-dot { background: var(--ghost)}
         .dc-status-label {
-            font-size:10px; font-weight: 800; color: #9AA0A6;
-            letter-spacing: 0.2px; white-space: nowrap;
-        }
+            font-size:10px; font-weight: 800; color: var(--t-muted);
+            letter-spacing: 0.2px; white-space: nowrap}
         .dc-status-val {
             font-size: 14px; font-weight: 900;
             margin-top: 6px; letter-spacing: 0.2px;
-            color: #14161A;
-            font-variant-numeric: tabular-nums;
-        }
-        .dc-status-chip.error .dc-status-val { color: #E23036; }
+            color: var(--t-ink);
+            font-variant-numeric: tabular-nums}
+        .dc-status-chip.error .dc-status-val { color: var(--bad)}
 
         /* === 設定タブ: ガイドチャプター 行 === */
         .dc-guide-row {
             display: flex; align-items: center; gap: 12px;
             padding: 11px 2px;
             border: none; background: transparent;
-            border-bottom: 1px solid #F0F1F3;
+            border-bottom: 1px solid var(--s2);
             text-align: left;
             font-family: inherit;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
-            transition: background 0.12s ease;
-        }
-        .dc-guide-row:hover { background: #FAFBFC; }
-        .dc-guide-row:active { background: #F4F5F7; }
+            transition: background 0.12s ease}
+        .dc-guide-row:hover { background: var(--card)}
+        .dc-guide-row:active { background: var(--s1)}
 
         /* === 設定タブ: デンジャーゾーン ボタン === */
         .dc-danger-btn {
             display: flex; align-items: center; gap: 9px;
             height: 46px; padding: 0 13px;
             border-radius: 11px;
-            background: #fff;
+            background: var(--card);
             border: 1px solid rgba(255,61,68,0.28);
-            color: #E23036;
+            color: var(--bad);
             font-size: 12.5px; font-weight: 800;
             cursor: pointer;
             font-family: inherit;
             transition: background 0.15s ease;
-            -webkit-tap-highlight-color: transparent;
-        }
+            -webkit-tap-highlight-color: transparent}
         .dc-danger-btn:hover { background: rgba(255,61,68,0.04); }
 
         /* === Ops: アクションボタン === */
@@ -2694,31 +2560,28 @@
             display: flex; align-items: center; justify-content: center; gap: 6px;
             padding: 12px 10px; border-radius: 10px;
             border: none;
-            background: #F1F2F4; color: #14161A;
+            background: var(--s2); color: var(--t-ink);
             font-size: 13px; font-weight: 800;
             cursor: pointer;
-            transition: transform 0.1s ease, box-shadow 0.15s ease;
-        }
+            transition: transform 0.1s ease, box-shadow 0.15s ease}
         .dc-ops-action:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 10px rgba(20,22,26,0.08);
         }
         .dc-ops-action:active { transform: translateY(0); }
         .dc-card {
-            background: #fff;
+            background: var(--card);
             border-radius: 22px;   /* HomeMind基調 (2026-07-24): 16px から拡大 */
             padding: 16px;
             box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 10px 26px rgba(20,22,26,0.06);
-            border: 1px solid rgba(20,22,26,0.045);
-        }
+            border: 1px solid rgba(20,22,26,0.045)}
         .dc-profile-card { position: relative; }
         /* HomeMind ヒーローカード: 「今やるべき1アクションがあるとき」だけ黒 (ホーム再構成 H2)。
            黒の意味論 = 行動要求/アクティブ (交戦中ボスカードと同じ) */
         .dc-card.dc-hero {
-            background: #101114;
+            background: var(--t-ink);
             border-color: transparent;
-            box-shadow: 0 8px 22px rgba(0,0,0,0.25);
-        }
+            box-shadow: 0 8px 22px rgba(0,0,0,0.25)}
         @keyframes dcGatePulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(108,66,240,0); }
             40%      { box-shadow: 0 0 0 5px rgba(108,66,240,0.45); }
@@ -2759,15 +2622,14 @@
            ★ 名前・×・％を画像に重ねると顔が隠れて誰か分からない (実機FB) ので、
               画像は正方形のまま無加工で見せ、名前は画像の**下**に出す。
               画像に乗せるのは上端のバンド1行 (バースト + 採用率) と解除の × だけ */
-        .te-step { font-size:10px; font-weight:900; letter-spacing:0.08em; color:#8A9097; margin:0 0 6px; }
-        .te-step b { color:#6C42F0; }
+        .te-step { font-size:10px; font-weight:900; letter-spacing:0.08em; color:var(--t-muted); margin:0 0 6px}
+        .te-step b { color:var(--ops)}
         .te-sec { border-top:1px solid rgba(20,22,26,0.08); margin-top:13px; padding-top:11px; }
         .te-head {
             display:flex; align-items:center; gap:7px; width:100%; padding:0; border:none; background:none;
-            cursor:pointer; font:inherit; font-size:10px; font-weight:900; letter-spacing:0.08em; color:#8A9097;
-        }
-        .te-head .cnt { font-size:9.5px; font-weight:900; color:#6C42F0; background:rgba(108,66,240,0.10); border-radius:999px; padding:1px 7px; letter-spacing:0; }
-        .te-head .arw { margin-left:auto; font-size:10px; color:#B6BBC1; }
+            cursor:pointer; font:inherit; font-size:10px; font-weight:900; letter-spacing:0.08em; color:var(--t-muted)}
+        .te-head .cnt { font-size:9.5px; font-weight:900; color:var(--ops); background:rgba(108,66,240,0.10); border-radius:999px; padding:1px 7px; letter-spacing:0}
+        .te-head .arw { margin-left:auto; font-size:10px; color:var(--t-muted)}
         .te-slots { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:10px; }
         .te-slot, .te-tile {
             display:flex; flex-direction:column; gap:3px; background:none; border:none; padding:0;
@@ -2777,84 +2639,73 @@
         .te-slot:active, .te-tile:active { transform:scale(0.96); }
         .te-thumb {
             position:relative; aspect-ratio:1/1; border-radius:10px; overflow:hidden;
-            background:#F1F2F4; border:1.5px dashed rgba(20,22,26,0.10);
-            display:flex; align-items:center; justify-content:center;
-        }
+            background:var(--s2); border:1.5px dashed rgba(20,22,26,0.10);
+            display:flex; align-items:center; justify-content:center}
         .te-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-        .te-slot.filled .te-thumb, .te-tile .te-thumb { border-style:solid; border-color:transparent; background:#0E1014; }
-        .te-slot.armed .te-thumb { border-color:#6C42F0; border-style:solid; box-shadow:0 0 0 3px rgba(108,66,240,0.14); }
-        .te-ph { font-size:16px; color:#B6BBC1; font-weight:900; line-height:1; }
-        .te-slot.armed .te-ph { color:#6C42F0; }
+        .te-slot.filled .te-thumb, .te-tile .te-thumb { border-style:solid; border-color:transparent; background:var(--t-ink)}
+        .te-slot.armed .te-thumb { border-color:var(--ops-solid); border-style:solid; box-shadow:0 0 0 3px rgba(108,66,240,0.14)}
+        .te-ph { font-size:16px; color:var(--t-muted); font-weight:900; line-height:1}
+        .te-slot.armed .te-ph { color:var(--ops)}
         .te-band {
             position:absolute; top:0; left:0; right:0; height:14px; z-index:2;
             display:flex; align-items:center; justify-content:center; gap:3px; padding:0 4px;
-            font-size:8.5px; font-weight:900; letter-spacing:0.04em; color:#fff;
-        }
+            font-size:8.5px; font-weight:900; letter-spacing:0.04em; color:#fff}
         .te-band.split { justify-content:space-between; }
         .te-band .pct { opacity:0.85; font-weight:800; }
         .te-cap {
-            display:block; max-width:100%; font-size:8.5px; font-weight:800; color:#6B7178; line-height:1.2;
-            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 1px;
-        }
-        .te-slot.armed .te-cap { color:#6C42F0; }
-        .te-tile .te-cap { font-size:9px; color:#14161A; }
+            display:block; max-width:100%; font-size:8.5px; font-weight:800; color:var(--t-body); line-height:1.2;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 1px}
+        .te-slot.armed .te-cap { color:var(--ops)}
+        .te-tile .te-cap { font-size:9px; color:var(--t-ink)}
         .te-x {
             position:absolute; bottom:2px; right:2px; z-index:3; width:16px; height:16px; border-radius:50%;
-            background:rgba(0,0,0,0.66); color:#fff; font-size:10px; line-height:16px; text-align:center; font-weight:900;
-        }
+            background:rgba(0,0,0,0.66); color:#fff; font-size:10px; line-height:16px; text-align:center; font-weight:900}
         .te-dup {
             position:absolute; bottom:2px; left:2px; z-index:3; width:15px; height:15px; border-radius:5px;
-            background:#F59E0B; color:#14161A; font-size:9px; font-weight:900; line-height:15px; text-align:center;
-        }
+            background:var(--warn-solid); color:var(--warn-ink); font-size:9px; font-weight:900; line-height:15px; text-align:center}
         .te-search {
-            width:100%; padding:9px 12px; border-radius:10px; border:1.5px solid #E3E5E8;
-            background:#F7F8F9; color:#14161A; font:inherit; font-size:13px; font-weight:700; margin:9px 0 8px;
-        }
+            width:100%; padding:9px 12px; border-radius:10px; border:1.5px solid var(--line);
+            background:var(--s1); color:var(--t-ink); font:inherit; font-size:13px; font-weight:700; margin:9px 0 8px}
         .te-filters { display:flex; gap:5px; margin-bottom:9px; flex-wrap:wrap; align-items:center; }
-        .te-chip { padding:5px 11px; border-radius:999px; border:none; cursor:pointer; font:inherit; font-size:11px; font-weight:900; background:#F1F2F4; color:#5A6068; }
-        .te-chip.on { color:#fff; }
-        .te-lock { font-size:10px; font-weight:800; color:#6C42F0; margin-left:auto; }
+        .te-chip { padding:5px 11px; border-radius:999px; border:none; cursor:pointer; font:inherit; font-size:11px; font-weight:900; background:var(--s2); color:var(--t-strong)}
+        .te-chip.on { color:#fff}
+        .te-lock { font-size:10px; font-weight:800; color:var(--ops); margin-left:auto}
         .te-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px 6px; padding:2px; margin:0 -2px; }
         .te-tile.used { opacity:0.34; }
         .te-tile.used .te-thumb::after {
             content:"選択中"; position:absolute; inset:0; display:grid; place-items:center;
-            font-size:9px; font-weight:900; color:#fff; background:rgba(0,0,0,0.5); z-index:4;
-        }
-        .te-tile.dup .te-thumb { border-color:#F59E0B; border-style:solid; }
+            font-size:9px; font-weight:900; color:#fff; background:rgba(0,0,0,0.5); z-index:4}
+        .te-tile.dup .te-thumb { border-color:var(--warn-solid); border-style:solid}
         .te-more {
             width:100%; margin-top:9px; padding:9px; border-radius:10px; border:1px solid rgba(20,22,26,0.08);
-            background:#F7F8F9; color:#6B7178; font:inherit; font-size:11.5px; font-weight:900; cursor:pointer;
-        }
-        .te-legend { font-size:10px; color:#8A9097; font-weight:700; margin-top:8px; display:flex; gap:11px; flex-wrap:wrap; }
+            background:var(--s1); color:var(--t-body); font:inherit; font-size:11.5px; font-weight:900; cursor:pointer}
+        .te-legend { font-size:10px; color:var(--t-muted); font-weight:700; margin-top:8px; display:flex; gap:11px; flex-wrap:wrap}
         .te-legend span { display:flex; align-items:center; gap:4px; }
         .te-legend .sw { width:9px; height:9px; border-radius:3px; display:inline-block; }
         /* レベル別ダメージの入力行 (Lv1〜Lv4 をまとめて登録) */
-        .te-lvbox { padding:11px 12px; border-radius:10px; background:#F7F8F9; }
-        .te-lvhead { margin:0 0 8px; font-size:11px; font-weight:800; color:#6B7178; }
+        .te-lvbox { padding:11px 12px; border-radius:10px; background:var(--s1)}
+        .te-lvhead { margin:0 0 8px; font-size:11px; font-weight:800; color:var(--t-body)}
         .te-lvrow { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
         .te-lvrow:last-child { margin-bottom:0; }
         .te-lvlabel {
             flex:none; width:38px; text-align:center; padding:5px 0; border-radius:7px;
-            background:#EDEFF1; color:#4E545B; font-size:11px; font-weight:900;
-        }
-        .te-lvlabel.unset { background:rgba(245,158,11,0.14); color:#B45309; }
-        .te-lvhint { flex:1; min-width:0; font-size:10px; font-weight:700; color:#8A9097;
-            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            background:var(--s2); color:var(--t-strong); font-size:11px; font-weight:900}
+        .te-lvlabel.unset { background:rgba(245,158,11,0.14); color:var(--warn-deep)}
+        .te-lvhint { flex:1; min-width:0; font-size:10px; font-weight:700; color:var(--t-muted);
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
         .te-lvinput {
-            flex:none; width:82px; padding:7px 9px; border-radius:8px; border:1.5px solid #E3E5E8;
-            background:#fff; color:#14161A; font:inherit; font-weight:700; font-size:14px; text-align:right;
-        }
-        .te-lvinput::placeholder { color:#C9CED3; font-weight:600; }
-        .te-lvunit { flex:none; font-size:11px; color:#8A9097; font-weight:700; }
-        .te-lvnote { margin:9px 0 0; font-size:11px; line-height:1.6; color:#8A9097; }
+            flex:none; width:82px; padding:7px 9px; border-radius:8px; border:1.5px solid var(--line);
+            background:var(--card); color:var(--t-ink); font:inherit; font-weight:700; font-size:14px; text-align:right}
+        .te-lvinput::placeholder { color:var(--t-muted); font-weight:600}
+        .te-lvunit { flex:none; font-size:11px; color:var(--t-muted); font-weight:700}
+        .te-lvnote { margin:9px 0 0; font-size:11px; line-height:1.6; color:var(--t-muted)}
 
         .te-ocr {
             display:flex; align-items:center; gap:9px; width:100%; padding:11px 12px; border-radius:12px;
-            border:1.5px dashed rgba(20,22,26,0.14); background:#F7F8F9; cursor:pointer;
-        }
+            border:1.5px dashed rgba(20,22,26,0.14); background:var(--s1); cursor:pointer}
         .te-ocr .txt { flex:1; min-width:0; font-size:12.5px; font-weight:800; line-height:1.35; }
-        .te-ocr .txt small { display:block; font-size:10.5px; font-weight:700; color:#8A9097; margin-top:1px; }
-        .te-ocr .go { flex:none; padding:6px 12px; border-radius:7px; background:#6C42F0; color:#fff; font-size:11.5px; font-weight:900; }
+        .te-ocr .txt small { display:block; font-size:10.5px; font-weight:700; color:var(--t-muted); margin-top:1px}
+        .te-ocr .go { flex:none; padding:6px 12px; border-radius:7px; background:var(--ops-solid); color:var(--ops-ink); font-size:11.5px; font-weight:900}
         /* ===== 模擬提出シート (2026-09-08 再設計): 本文はスクロール、提出バーは下に固定 ===== */
         .te-sheet { padding:0; gap:0; }
         .te-body { padding:18px 22px 10px; }
@@ -2865,35 +2716,32 @@
             padding:10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
             display:flex; flex-direction:column; gap:8px;
         }
-        .te-barsum { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11px; font-weight:800; color:#6B7178; min-height:16px; }
-        .te-barsum b { color:#14161A; font-size:12.5px; }
-        .te-barsum .ok { color:#0E9455; }
-        .te-barsum .todo { color:#B45309; }
-        .te-barsum .diff { color:#5B2BE0; font-variant-numeric:tabular-nums; }
+        .te-barsum { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11px; font-weight:800; color:var(--t-body); min-height:16px}
+        .te-barsum b { color:var(--t-ink); font-size:12.5px}
+        .te-barsum .ok { color:var(--ok-deep)}
+        .te-barsum .todo { color:var(--warn-deep)}
+        .te-barsum .diff { color:var(--ops-deep); font-variant-numeric:tabular-nums}
         .te-submit {
             width:100%; border:none; border-radius:999px; padding:14px; font:inherit; font-size:14px; font-weight:900;
-            background:#14161A; color:#fff; cursor:pointer; box-shadow:0 6px 16px rgba(20,22,26,0.22);
-            transition:background .15s ease, box-shadow .15s ease;
-        }
-        .te-submit.partial { background:#5A6068; box-shadow:none; }
-        .te-submit:disabled { background:#C9CED3; color:#fff; box-shadow:none; cursor:default; }
-        .te-barlinks { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:10.5px; font-weight:800; color:#8A9097; }
-        .te-resvlink { border:none; background:none; padding:0; font:inherit; font-size:10.5px; font-weight:900; color:#6C42F0; cursor:pointer; }
-        .te-dellink { border:none; background:none; padding:0; margin-left:auto; font:inherit; font-size:10.5px; font-weight:800; color:#FF3D44; cursor:pointer; }
-        .te-attrpill { flex:none; font-size:10.5px; font-weight:900; padding:3px 9px; border-radius:999px; color:#fff; background:#6C42F0; letter-spacing:0.2px; }
-        .te-segs { display:flex; gap:3px; background:#E7E9EC; border-radius:12px; padding:3px; margin:6px 0 12px; }
+            background:var(--t-ink); color:var(--card); cursor:pointer; box-shadow:0 6px 16px rgba(20,22,26,0.22);
+            transition:background .15s ease, box-shadow .15s ease}
+        .te-submit.partial { background:#5A6068; box-shadow:none}
+        .te-submit:disabled { background:var(--track); color:#fff; box-shadow:none; cursor:default}
+        .te-barlinks { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:10.5px; font-weight:800; color:var(--t-muted)}
+        .te-resvlink { border:none; background:none; padding:0; font:inherit; font-size:10.5px; font-weight:900; color:var(--ops); cursor:pointer}
+        .te-dellink { border:none; background:none; padding:0; margin-left:auto; font:inherit; font-size:10.5px; font-weight:800; color:var(--attr-fire); cursor:pointer}
+        .te-attrpill { flex:none; font-size:10.5px; font-weight:900; padding:3px 9px; border-radius:999px; color:var(--ops-ink); background:var(--ops-solid); letter-spacing:0.2px}
+        .te-segs { display:flex; gap:3px; background:var(--line); border-radius:12px; padding:3px; margin:6px 0 12px}
         .te-seg {
             flex:1; border:none; background:none; padding:8px 4px; border-radius:9px; cursor:pointer; font:inherit;
-            font-size:11.5px; font-weight:900; color:#6B7178; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        }
-        .te-seg.on { background:#fff; color:#14161A; box-shadow:0 1px 3px rgba(20,22,26,0.10); }
-        .te-seg small { font-weight:800; color:#8A9097; font-size:10px; margin-left:3px; }
-        .te-seg.on small { color:#5B2BE0; }
+            font-size:11.5px; font-weight:900; color:var(--t-body); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+        .te-seg.on { background:var(--card); color:var(--t-ink); box-shadow:0 1px 3px rgba(20,22,26,0.10)}
+        .te-seg small { font-weight:800; color:var(--t-muted); font-size:10px; margin-left:3px}
+        .te-seg.on small { color:var(--ops-deep)}
         .te-ocrmini {
-            margin-left:auto; flex:none; font-size:10px; font-weight:900; letter-spacing:0; color:#6C42F0;
-            background:rgba(108,66,240,0.12); padding:4px 10px; border-radius:999px; cursor:pointer;
-        }
-        .te-lvinput-big { width:120px; font-size:20px; font-weight:900; letter-spacing:-0.4px; border-color:#6C42F0; }
+            margin-left:auto; flex:none; font-size:10px; font-weight:900; letter-spacing:0; color:var(--ops);
+            background:rgba(108,66,240,0.12); padding:4px 10px; border-radius:999px; cursor:pointer}
+        .te-lvinput-big { width:120px; font-size:20px; font-weight:900; letter-spacing:-0.4px; border-color:var(--ops-solid)}
 
         /* ===== ホーム: 配信プランの自分の凸カード =====
            模擬タブの .dc-dmg-panel と同じ見た目にそろえる (ユーザー要望 2026-08-08)。
@@ -2909,11 +2757,10 @@
             position: relative;
             flex: none; width: 156px; box-sizing: border-box;
             scroll-snap-align: start;
-            background: #F9FAFB; border-radius: 14px; padding: 14px;
+            background: var(--s1); border-radius: 14px; padding: 14px;
             border: 1px solid rgba(20,22,26,0.05);
             display: block; cursor: pointer; text-align: left; font-family: inherit;
-            transition: transform 0.12s ease, box-shadow 0.15s ease;
-        }
+            transition: transform 0.12s ease, box-shadow 0.15s ease}
         .dc-plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
         .dc-plan-card:active { transform: translateY(0); }
         .dc-plan-card.on-hero {
@@ -2924,47 +2771,45 @@
            ★ opacity は子テキストにも掛かるので、カード全体を薄くすると
               文字のコントラストが道連れで落ちる (0.78 でも白カードで 3.1:1 — Codex指摘)。
               → 減光は使わず、背景と属性チップだけを落ち着かせて「済んだ感」を出す */
-        .dc-plan-card.done { background: #F1F2F4; }
+        .dc-plan-card.done { background: var(--s2)}
         /* 済みカードは背景が一段暗いので、サブ文字も一段濃くして 4.5:1 を保つ
            (#6B7178 は #F1F2F4 上で 4.40:1 と僅かに足りない) */
-        .dc-plan-card.done .dc-plan-sub { color: #5A6068; }
+        .dc-plan-card.done .dc-plan-sub { color: var(--t-strong)}
         .dc-plan-card.done .dc-dmg-chip { filter: grayscale(0.55); opacity: 0.75; }
         /* 減光は画像だけに掛ける。コンテナに掛けると、アイコン未解決時の
            代替文字 (キャラ名の頭文字) まで薄くなり 2.7:1 まで落ちる (Codex指摘) */
         .dc-plan-card.done .dc-plan-char img { opacity: 0.72; }
         .dc-plan-card.on-hero.done { background: rgba(255,255,255,0.045); }
         /* 🔒 予約で固定 (ホーム3枠・2026-09-08): 紫の枠と錠前で「動かない」を示す */
-        .dc-plan-card.fixed { border: 1.5px solid #6C42F0; background: rgba(108,66,240,0.06); }
-        .dc-plan-card.on-hero.fixed { border-color: #A99CFF; background: rgba(108,66,240,0.22); }
+        .dc-plan-card.fixed { border: 1.5px solid var(--ops-solid); background: rgba(108,66,240,0.06)}
+        .dc-plan-card.on-hero.fixed { border-color: #A99CFF; background: rgba(108,66,240,0.22)}
         .dc-plan-lock {
             position: absolute; top: 8px; right: 8px; font-size: 9px; font-weight: 900;
-            padding: 2px 7px; border-radius: 999px; background: #6C42F0; color: #fff; letter-spacing: 0.2px;
-        }
-        .dc-plan-card.fixed.pending .dc-plan-lock { background: #B45309; }
-        .dc-plan-card.fixed.notin .dc-plan-lock { background: #B45309; }
+            padding: 2px 7px; border-radius: 999px; background: var(--ops-solid); color: var(--ops-ink); letter-spacing: 0.2px}
+        .dc-plan-card.fixed.pending .dc-plan-lock { background: var(--warn-solid)}
+        .dc-plan-card.fixed.notin .dc-plan-lock { background: var(--warn-solid)}
         /* 置けていない予約 (キャラ被り等): 鍵ではなく ⚠。組み直し待ちとは別物 */
-        .dc-plan-card.fixed.unmet { border-color: #F59E0B; background: rgba(245,158,11,0.10); }
-        .dc-plan-card.on-hero.fixed.unmet { border-color: #FFC46B; background: rgba(245,158,11,0.22); }
-        .dc-plan-card.fixed.unmet .dc-plan-lock { background: #B45309; }
-        .dc-plan-warn { margin-top: 6px; font-size: 9.5px; font-weight: 800; color: #B45309; line-height: 1.4; white-space: normal; }
-        .dc-plan-card.on-hero .dc-plan-warn { color: #FFD28A; }
+        .dc-plan-card.fixed.unmet { border-color: var(--warn-solid); background: rgba(245,158,11,0.10)}
+        .dc-plan-card.on-hero.fixed.unmet { border-color: #FFC46B; background: rgba(245,158,11,0.22)}
+        .dc-plan-card.fixed.unmet .dc-plan-lock { background: var(--warn-solid)}
+        .dc-plan-warn { margin-top: 6px; font-size: 9.5px; font-weight: 800; color: var(--warn-deep); line-height: 1.4; white-space: normal}
+        .dc-plan-card.on-hero .dc-plan-warn { color: #FFD28A}
         /* 空き枠: 破線。理由を日本語で。タップで申請シート */
-        .dc-plan-card.empty { border: 1.5px dashed #C9CED3; background: transparent; }
+        .dc-plan-card.empty { border: 1.5px dashed var(--track); background: transparent}
         .dc-plan-card.on-hero.empty { border-color: rgba(255,255,255,0.28); }
-        .dc-plan-empty-title { font-size: 11px; font-weight: 900; color: #6B7178; }
+        .dc-plan-empty-title { font-size: 11px; font-weight: 900; color: var(--t-body)}
         .dc-plan-card.on-hero .dc-plan-empty-title { color: rgba(255,255,255,0.8); }
-        .dc-plan-empty-why { margin-top: 6px; font-size: 10px; font-weight: 700; color: #6B7178; line-height: 1.5; }
+        .dc-plan-empty-why { margin-top: 6px; font-size: 10px; font-weight: 700; color: var(--t-body); line-height: 1.5}
         .dc-plan-card.on-hero .dc-plan-empty-why { color: rgba(255,255,255,0.66); }
-        .dc-plan-empty-cta { margin-top: 9px; font-size: 10.5px; font-weight: 900; color: #6C42F0; }
-        .dc-plan-card.on-hero .dc-plan-empty-cta { color: #C3B2FF; }
+        .dc-plan-empty-cta { margin-top: 9px; font-size: 10.5px; font-weight: 900; color: var(--ops)}
+        .dc-plan-card.on-hero .dc-plan-empty-cta { color: #C3B2FF}
         .dc-plan-time {
-            font-size: 15px; font-weight: 900; color: #14161A;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.3px; line-height: 1;
-        }
-        .dc-plan-card.on-hero .dc-plan-time { color: #fff; }
+            font-size: 15px; font-weight: 900; color: var(--t-ink);
+            font-variant-numeric: tabular-nums; letter-spacing: -0.3px; line-height: 1}
+        .dc-plan-card.on-hero .dc-plan-time { color: #fff}
         /* 「B3 · 水冷PT」は意味のある情報なので薄文字 (#A4AAB0 = 2.2:1) ではなく
            ClaudeDesign のサブ色 #6B7178 を使う (Codex コントラスト指摘) */
-        .dc-plan-sub { font-size: 10px; font-weight: 800; color: #6B7178; letter-spacing: 0.2px; }
+        .dc-plan-sub { font-size: 10px; font-weight: 800; color: var(--t-body); letter-spacing: 0.2px}
         .dc-plan-card.on-hero .dc-plan-sub { color: rgba(255,255,255,0.72); }
         /* 「どのレベルのボスか」(ユーザー要望 2026-08-09)。
            ★ 時刻と同じ行に「Lv3 · B5 · 電撃PT」を並べると、時刻が「⏳隙間」のとき
@@ -2973,29 +2818,26 @@
         .dc-plan-lv {
             display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: 0;
             padding: 1px 5px; border-radius: 999px; margin-right: 4px;
-            background: #E7E9EC; color: #4E545B;
-        }
-        .dc-plan-card.on-hero .dc-plan-lv { background: rgba(255,255,255,0.18); color: #fff; }
-        .dc-plan-card.done .dc-plan-lv { background: #E1E3E6; color: #5A6068; }
+            background: var(--line); color: var(--t-strong)}
+        .dc-plan-card.on-hero .dc-plan-lv { background: rgba(255,255,255,0.18); color: #fff}
+        .dc-plan-card.done .dc-plan-lv { background: var(--line); color: var(--t-strong)}
         /* ★ .done は .on-hero より後に来るので、黒カードの報告済みで白ピルに戻ってしまう。
               明示的に打ち消す (実機ではヒーロー上の3枚目だけ浮いて見えた) */
         .dc-plan-card.on-hero.done .dc-plan-lv { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.82); }
         .dc-plan-value {
-            font-size: 17px; font-weight: 900; color: #14161A;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1;
-        }
-        .dc-plan-card.on-hero .dc-plan-value { color: #fff; }
-        .dc-plan-unit { font-size: 10px; color: #8A9097; font-weight: 800; margin-left: 1px; }
+            font-size: 17px; font-weight: 900; color: var(--t-ink);
+            font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1}
+        .dc-plan-card.on-hero .dc-plan-value { color: #fff}
+        .dc-plan-unit { font-size: 10px; color: var(--t-muted); font-weight: 800; margin-left: 1px}
         .dc-plan-card.on-hero .dc-plan-unit { color: rgba(255,255,255,0.72); }
         /* 編成5人 (模擬パネルの .dc-dmg-char と同寸) */
         .dc-plan-chars { display: flex; gap: 4px; margin-top: 11px; }
         .dc-plan-char {
             width: 24px; height: 24px; flex: 1; min-width: 0; max-width: 26px;
-            border-radius: 6px; background: #fff; overflow: hidden;
+            border-radius: 6px; background: var(--card); overflow: hidden;
             display: flex; align-items: center; justify-content: center;
-            font-size: 10px; font-weight: 800; color: #6B7178;
-            box-shadow: inset 0 0 0 1px rgba(20,22,26,0.08);
-        }
+            font-size: 10px; font-weight: 800; color: var(--t-body);
+            box-shadow: inset 0 0 0 1px rgba(20,22,26,0.08)}
         .dc-plan-card.on-hero .dc-plan-char {
             background: rgba(255,255,255,0.10);
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14);
@@ -3005,84 +2847,78 @@
         /* 編成①② と 報告済み。
            ★ 模擬パネルのように絶対配置の中央バッジにすると、幅156px では
               想定ダメージの数字と重なる (実際に重なった) → 数字の直下に置く */
-        .dc-plan-slot { font-size: 10px; font-weight: 900; color: #5B2BE0; letter-spacing: 0.2px; }
-        .dc-plan-card.on-hero .dc-plan-slot { color: #C3B2FF; }
-        .dc-plan-done { font-size: 10px; font-weight: 900; color: #0B7A44; letter-spacing: 0.2px; }
-        .dc-plan-card.on-hero .dc-plan-done { color: #3ED98C; }
+        .dc-plan-slot { font-size: 10px; font-weight: 900; color: var(--ops-deep); letter-spacing: 0.2px}
+        .dc-plan-card.on-hero .dc-plan-slot { color: #C3B2FF}
+        .dc-plan-done { font-size: 10px; font-weight: 900; color: var(--ok-deep); letter-spacing: 0.2px}
+        .dc-plan-card.on-hero .dc-plan-done { color: var(--ok)}
 
         /* ステータス切替 3ボタン (soft-fill) */
         .dc-status-btn {
             flex: 1; display: flex; align-items: center; justify-content: center;
             gap: 6px; height: 44px; border-radius: 12px; cursor: pointer;
             font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.3px;
-            border: 1px solid transparent; background: #F1F2F4; color: #A4AAB0;
+            border: 1px solid transparent; background: var(--s2); color: var(--t-muted);
             -webkit-tap-highlight-color: transparent;
-            transition: all .15s ease;
-        }
+            transition: all .15s ease}
         .dc-status-btn[data-active="1"] {
-            background: var(--_color, #14161A) 14;     /* fallback handled via JS */
+            background: var(--_color, var(--t-ink)) 14;     /* fallback handled via JS */
         }
         .dc-status-btn[disabled] { opacity: .9; cursor: not-allowed; }
 
         /* MY設定 行 */
         .dc-setting-row {
             display: flex; align-items: center; gap: 13px;
-            padding: 13px 8px; cursor: pointer; border-top: 1px solid #F0F1F3;
+            padding: 13px 8px; cursor: pointer; border-top: 1px solid var(--s2);
             -webkit-tap-highlight-color: transparent;
-            transition: background .12s ease;
-        }
-        .dc-setting-row:hover { background: #FAFBFC; }
+            transition: background .12s ease}
+        .dc-setting-row:hover { background: var(--card)}
         .dc-setting-icon {
             width: 34px; height: 34px; border-radius: 9px;
-            background: #F1F2F4; display: flex; align-items: center; justify-content: center; font-size: 16px;
-            flex: none;
-        }
+            background: var(--s2); display: flex; align-items: center; justify-content: center; font-size: 16px;
+            flex: none}
 
         /* 模擬タブ 模擬戦パネル (横スクロール scroll-snap カード) — Stage2でホーム(旧マイページ)から移設 */
         .dc-dmg-panel {
             flex: none; width: 156px; box-sizing: border-box;
             scroll-snap-align: start;
-            background: #F9FAFB; border-radius: 14px; padding: 14px;
+            background: var(--s1); border-radius: 14px; padding: 14px;
             border: 1px solid rgba(20,22,26,0.05);
             display: block;
             cursor: pointer;
             text-align: left;
             font-family: inherit;
-            transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.4s ease;
-        }
+            transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.4s ease}
         .dc-dmg-panel:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
         .dc-dmg-panel:active { transform: translateY(0); }
         .dc-dmg-panel.saved { animation: dcSavePulse 1.2s ease-out; }
 
-        .dc-dmg-name { color: #14161A; }
-        .dc-dmg-bossnum { color: #A4AAB0; }
+        .dc-dmg-name { color: var(--t-ink)}
+        .dc-dmg-bossnum { color: var(--t-muted)}
         /* 測定ボスレベル (2026-08-10)。Lv? = 未設定 = いまは全レベルで使われる状態。
            設定を促したいので警告色にする (放置しても壊れないが精度が上がらない) */
         .dc-dmg-lv {
             display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: 0;
             padding: 1px 5px; border-radius: 999px; vertical-align: 1px;
-            background: #EDEFF1; color: #4E545B;
-        }
-        .dc-dmg-lv.unset { background: rgba(245,158,11,0.14); color: #B45309; }
+            background: var(--s2); color: var(--t-strong)}
+        .dc-dmg-lv.unset { background: rgba(245,158,11,0.14); color: var(--warn-deep)}
         /* 提出状態の表現 v3 (2026-07-27 実機FB — 黒カード/属性色上バーとも不評):
            済み = 黒カード化以前の元の見た目 + 属性名横の✓のみ /
            まだ = 点線ゴースト (これは好評につき維持) のハイブリッド */
         .dc-dmg-panel { position: relative; }
-        .dc-dmg-panel.todo { border: 1.5px dashed #C9CED3; background: #FBFBFC; }
+        .dc-dmg-panel.todo { border: 1.5px dashed var(--track); background: var(--card)}
         .dc-dmg-panel.todo .dc-dmg-chip { opacity: 0.55; }
-        .dc-dmg-panel.todo .dc-dmg-name { color: #8A9097; }
+        .dc-dmg-panel.todo .dc-dmg-name { color: var(--t-muted)}
         .dc-dmg-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
         }
         .dc-dmg-value {
-            font-size: 17px; font-weight: 900; color: #14161A;
+            font-size: 17px; font-weight: 900; color: var(--t-ink);
             font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1;
-            padding-top: 4px;
-        }
-        .dc-dmg-value.empty { color: #C9CED3; }
-        .dc-dmg-unit { font-size: 10px; color: #A4AAB0; font-weight: 800; margin-left: 1px; }
+            padding-top: 4px}
+        .dc-dmg-value.empty { color: var(--t-muted)}
+        .dc-dmg-unit { font-size: 10px; color: var(--t-muted); font-weight: 800; margin-left: 1px}
 
         /* 編成 5キャラチップ (パネル内、被り検出枠付き) */
         .dc-dmg-chars-row {
@@ -3092,25 +2928,23 @@
         .dc-dmg-char {
             width: 24px; height: 24px; flex: 1; min-width: 0; max-width: 26px;
             border-radius: 6px;
-            background: #fff;
+            background: var(--card);
             display: flex; align-items: center; justify-content: center;
-            font-size: 10px; font-weight: 800; color: #6B7178;
+            font-size: 10px; font-weight: 800; color: var(--t-body);
             overflow: hidden;
             border: 2px solid transparent;
             box-sizing: border-box;
-            box-shadow: inset 0 0 0 1px rgba(20,22,26,0.08);
-        }
+            box-shadow: inset 0 0 0 1px rgba(20,22,26,0.08)}
         .dc-dmg-char img {
             width: 100%; height: 100%; object-fit: cover; display: block;
         }
         .dc-dmg-char.empty {
-            background: #EDEEF0; color: #C9CED3;
-        }
-        .dc-dmg-char.dup-1 { border-color: #F5B400; box-shadow: 0 0 0 1px #F5B400, inset 0 0 0 1px rgba(255,255,255,0.3); }
-        .dc-dmg-char.dup-2 { border-color: #E91E63; box-shadow: 0 0 0 1px #E91E63, inset 0 0 0 1px rgba(255,255,255,0.3); }
-        .dc-dmg-char.dup-3 { border-color: #00BCD4; box-shadow: 0 0 0 1px #00BCD4, inset 0 0 0 1px rgba(255,255,255,0.3); }
-        .dc-dmg-char.dup-4 { border-color: #9B4DFF; box-shadow: 0 0 0 1px #9B4DFF, inset 0 0 0 1px rgba(255,255,255,0.3); }
-        .dc-dmg-char.dup-5 { border-color: #FF8A2B; box-shadow: 0 0 0 1px #FF8A2B, inset 0 0 0 1px rgba(255,255,255,0.3); }
+            background: var(--s2); color: var(--t-muted)}
+        .dc-dmg-char.dup-1 { border-color: var(--warn-solid); box-shadow: 0 0 0 1px var(--warn-solid), inset 0 0 0 1px rgba(255,255,255,0.3)}
+        .dc-dmg-char.dup-2 { border-color: #E91E63; box-shadow: 0 0 0 1px #E91E63, inset 0 0 0 1px rgba(255,255,255,0.3)}
+        .dc-dmg-char.dup-3 { border-color: #00BCD4; box-shadow: 0 0 0 1px #00BCD4, inset 0 0 0 1px rgba(255,255,255,0.3)}
+        .dc-dmg-char.dup-4 { border-color: var(--attr-electric-solid); box-shadow: 0 0 0 1px var(--attr-electric-solid), inset 0 0 0 1px rgba(255,255,255,0.3)}
+        .dc-dmg-char.dup-5 { border-color: var(--attr-iron-solid); box-shadow: 0 0 0 1px var(--attr-iron-solid), inset 0 0 0 1px rgba(255,255,255,0.3)}
 
         /* ホーム ボスタイル (戦闘) */
         .dc-boss-tile {
@@ -3118,16 +2952,14 @@
             height: 72px; border-radius: 13px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             gap: 6px;
-            background: #F1F2F4; border: 1.5px solid transparent;
-            color: #A4AAB0;
+            background: var(--s2); border: 1.5px solid transparent;
+            color: var(--t-muted);
             transition: all .18s ease; overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
+            -webkit-tap-highlight-color: transparent}
         .dc-boss-tile[data-selected="1"] {
-            background: #FFF5F5; border-color: #FF3D44; color: #14161A;
+            background: var(--bad-bg); border-color: var(--attr-fire-solid); color: var(--t-ink);
             box-shadow: 0 8px 18px rgba(255,61,68,0.20);
-            transform: translateY(-3px);
-        }
+            transform: translateY(-3px)}
         .dc-boss-tile[data-fighting="1"]::before {
             content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 50px;
             background: radial-gradient(58% 100% at 50% 100%, rgba(255,170,40,0.95), rgba(255,61,68,0.55) 46%, transparent 76%);
@@ -3162,9 +2994,8 @@
         #myAttackModal .player-select-content::before {
             content: ""; display: block;
             width: 40px; height: 5px; border-radius: 99px;
-            background: #E1E3E7;
-            margin: 6px auto 14px;
-        }
+            background: var(--line);
+            margin: 6px auto 14px}
 
         /* === 凸報告モーダル (AttackReport.dc.html 準拠) === */
         @keyframes arShimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(220%)} }
@@ -3182,8 +3013,7 @@
             border-radius: 16px;
             background: linear-gradient(180deg, #F8F9FB, #EFF1F4);
             border: 1px solid rgba(20,22,26,0.05);
-            box-shadow: 0 1px 2px rgba(20,22,26,0.03);
-        }
+            box-shadow: 0 1px 2px rgba(20,22,26,0.03)}
         .ar-matchup-row {
             display: flex; align-items: center; gap: 11px;
             padding: 11px 12px; border-radius: 13px;
@@ -3207,25 +3037,21 @@
             display: flex; flex-direction: column; align-items: center; gap: 2px;
         }
         .ar-matchup-arrow-tri > div:nth-child(1) {
-            font-size: 11px; line-height: 1; color: #A4AAB0;
-            animation: arArrowFlow 1.4s ease-in-out infinite;
-        }
+            font-size: 11px; line-height: 1; color: var(--t-muted);
+            animation: arArrowFlow 1.4s ease-in-out infinite}
         .ar-matchup-arrow-tri > div:nth-child(2) {
             font-size:10.5px; line-height: 1; color: #C2C7CC;
-            animation: arArrowFlow 1.4s 0.2s ease-in-out infinite;
-        }
+            animation: arArrowFlow 1.4s 0.2s ease-in-out infinite}
         .ar-matchup-arrow-label {
             font-size:10px; font-weight: 900; letter-spacing: 1.5px;
-            color: #A4AAB0; margin-top: 2px;
-        }
+            color: var(--t-muted); margin-top: 2px}
 
         .ar-matchup-change {
             position: absolute; top: 8px; right: 8px;
             padding: 4px 10px; border-radius: 7px;
-            background: #fff; border: 1px solid rgba(20,22,26,0.08);
-            color: #6B7178; font-size: 10px; font-weight: 800; cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        }
+            background: var(--card); border: 1px solid rgba(20,22,26,0.08);
+            color: var(--t-body); font-size: 10px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06)}
         .ar-hpbar {
             position: relative; height: 8px; border-radius: 99px;
             background: rgba(20,22,26,0.08); overflow: hidden;
@@ -3236,8 +3062,7 @@
         }
         .ar-prediction-bar {
             position: relative; height: 14px; border-radius: 99px;
-            background: #EAECEF; overflow: hidden;
-        }
+            background: var(--line); overflow: hidden}
         .ar-prediction-rem {
             position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px;
             background: linear-gradient(90deg, rgba(180,184,190,0.85), rgba(140,144,150,0.85));
@@ -3250,8 +3075,7 @@
             align-items: center; justify-content: center;
             font-size:10.5px; font-weight: 900; color: #fff;
             text-shadow: 0 1px 2px rgba(0,0,0,0.4); letter-spacing: 0.3px;
-            pointer-events: none;
-        }
+            pointer-events: none}
         /* ピックボタン (シンプル 1 ボタン) */
         .ar-pick-btn {
             display: flex; align-items: center; gap: 11px;
@@ -3261,8 +3085,7 @@
             animation: arSoftGlow 2.4s ease-in-out infinite;
             position: relative; overflow: hidden;
             border: none; width: 100%; font-family: inherit;
-            -webkit-tap-highlight-color: transparent;
-        }
+            -webkit-tap-highlight-color: transparent}
         .ar-pick-btn::before {
             content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%;
             background: linear-gradient(180deg, rgba(255,255,255,0.28), transparent);
@@ -3295,17 +3118,15 @@
             position: absolute; top: 4px; right: 4px;
             padding: 2px 7px; border-radius: 999px;
             font-size:10px; font-weight: 900; color: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.22);
-        }
+            box-shadow: 0 2px 5px rgba(0,0,0,0.22)}
         .ar-thumb-spinner {
             position: absolute; inset: 0; background: rgba(0,0,0,0.32);
             display: flex; align-items: center; justify-content: center;
         }
         .ar-thumb-spinner > div {
             width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.24);
-            border-top-color: #fff; border-radius: 50%;
-            animation: spin .7s linear infinite;
-        }
+            border-top-color: var(--card); border-radius: 50%;
+            animation: spin .7s linear infinite}
 
         /* ===== BlaBlaLINK 3凸取込 ピル (BlaBla サインイン風・小型) ===== */
         @keyframes blablaShimmer {
@@ -3319,8 +3140,7 @@
             background: linear-gradient(180deg, #F1601E, #C8341A);
             box-shadow: 0 0 0 1.5px #E8B048, 0 3px 8px rgba(220,80,30,0.28);
             font-family: inherit; -webkit-tap-highlight-color: transparent;
-            border: none;
-        }
+            border: none}
         .blabla-pill::before {
             content: ''; position: absolute; left: 0; right: 0; top: 0; height: 48%;
             background: linear-gradient(180deg, rgba(255,255,255,0.30), transparent);
@@ -3332,8 +3152,7 @@
         .blabla-pill-label {
             position: relative; font-size: 11.5px; font-weight: 900; color: #fff;
             letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(120,30,0,0.4);
-            white-space: nowrap;
-        }
+            white-space: nowrap}
 
         /* ===== 戦闘可能時間: タイムライン (なぞって選択) ===== */
         @keyframes availPulseDot {
@@ -3351,31 +3170,26 @@
             -webkit-tap-highlight-color: transparent;
         }
         .avail-cell[data-on="1"] {
-            background: #18C26B;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
-        }
+            background: var(--ok-solid);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3)}
         .avail-cell[data-on="0"] {
-            background: #E4E6E9;
-            box-shadow: inset 0 1px 0 rgba(0,0,0,0.05);
-        }
+            background: var(--line);
+            box-shadow: inset 0 1px 0 rgba(0,0,0,0.05)}
         .avail-cell-current::before {
             content: ''; position: absolute; left: 50%; top: -8px;
             transform: translateX(-50%); width: 6px; height: 6px;
-            border-radius: 50%; background: #F59E0B;
-            animation: availPulseDot 1.2s ease-in-out infinite;
-        }
+            border-radius: 50%; background: var(--warn-solid);
+            animation: availPulseDot 1.2s ease-in-out infinite}
         .avail-cell-daybreak::after {
             content: ''; position: absolute; left: -2px; top: -4px; bottom: -4px;
-            width: 2px; background: #F59E0B; border-radius: 1px;
-        }
+            width: 2px; background: var(--warn-solid); border-radius: 1px}
         .avail-preset-pill {
             padding: 7px 11px; border-radius: 999px; cursor: pointer;
             font-size: 11px; font-weight: 800; letter-spacing: 0.2px;
-            background: #F1F2F4; color: #6B7178;
+            background: var(--s2); color: var(--t-body);
             border: 1px solid rgba(20,22,26,0.06); white-space: nowrap;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .avail-preset-pill:hover { background: #E9EBEE; }
+            -webkit-tap-highlight-color: transparent}
+        .avail-preset-pill:hover { background: var(--line)}
 
         /* ===== ホーム: ステータス切替 3ボタン ===== */
         #mypageStatusSwitcher button.status-btn {
@@ -3403,16 +3217,14 @@
             display: inline-flex; align-items: center; justify-content: center; gap: 6px;
             padding: 12px 14px; border-radius: 10px;
             border: 1px solid rgba(20,22,26,0.08);
-            background: #ffffff;
-            color: #14161A;
+            background: var(--card);
+            color: var(--t-ink);
             font-size: 13px; font-weight: 700; cursor: pointer;
-            transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
-        }
+            transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease}
         .my-setting-btn:hover {
-            background: #F7F8F9;
+            background: var(--s1);
             border-color: var(--brand-primary);
-            transform: translateY(-1px);
-        }
+            transform: translateY(-1px)}
         .my-setting-btn:active { transform: translateY(0); }
 
         /* ===== details の三角マーカーを置き換え ===== */
@@ -3429,9 +3241,8 @@
         /* ===== ボス戦闘中アニメーション (締め凸調整中の人がいる時) ===== */
         .boss-in-combat {
             position: relative;
-            border-color: #f59e0b !important;
-            animation: combat-glow 1.6s ease-in-out infinite;
-        }
+            border-color: var(--warn-solid) !important;
+            animation: combat-glow 1.6s ease-in-out infinite}
         @keyframes combat-glow {
             0%, 100% { box-shadow: 0 0 0 2px rgba(239,68,68,0.25), 0 0 10px 2px rgba(245,158,11,0.4); }
             50% { box-shadow: 0 0 0 4px rgba(239,68,68,0.35), 0 0 18px 6px rgba(245,158,11,0.65); }
@@ -3472,14 +3283,13 @@
             padding: 4px 8px;
             border-radius: 6px;
             background: linear-gradient(90deg, rgba(239,68,68,0.12), rgba(245,158,11,0.12));
-            border-left: 3px solid #f59e0b;
+            border-left: 3px solid var(--warn-solid);
             font-size: 11px;
             font-weight: 700;
-            color: #b45309;
+            color: var(--warn-deep);
             display: flex;
             align-items: center;
-            gap: 4px;
-        }
+            gap: 4px}
     </style>
 </head>
 <body>

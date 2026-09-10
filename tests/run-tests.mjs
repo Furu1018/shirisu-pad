@@ -6888,10 +6888,10 @@ console.log('\ngrowthDomain:');
         assert.equal((html.match(/class="nav-lb"/g) || []).length, 5, '名前が5つでない');
         // 帯は白、いま居るタブは黒い円で**持ち上げる** (position:absolute + 上に出す)
         const nav = html.match(/\.bottom-nav \{[\s\S]*?\n        \}/)?.[0] || '';
-        assert.ok(/background: #FFFFFF;/.test(nav), '帯が白くない');
+        assert.ok(/background: var\(--card\);/.test(nav), '帯がカードの色でない (トークンを使っていない)');
         const on = html.match(/\.bottom-nav-btn\.active \.nav-icon-wrap \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/position: absolute;/.test(on) && /top: -26px;/.test(on), 'いま居るタブを持ち上げていない');
-        assert.ok(/background: #14161A;/.test(on), '円が黒くない (決定 A: 黒い円で統一)');
+        assert.ok(/background: var\(--t-ink\);/.test(on), '円が濃い色でない (決定 A: 黒い円で統一)');
         assert.ok(/border: 5px solid var\(--nav-ring\)/.test(on), '地の色で切っていない (帯から飛び出して見えない)');
         assert.ok(/--nav-ring:/.test(nav), 'リングの色を持っていない');
         // ★ センターだけ特別、ではなくなった — 大丸の指定が残っていると2つ持ち上がる
@@ -7041,6 +7041,40 @@ console.log('\ngrowthDomain:');
         assert.ok(lum(L.card) > lum(L.bg), 'ライトでカードが地より暗い');
     });
 
+    test('★ 文字と地の組が、ライトでもダークでも読める (実際に測る)', () => {
+        // ★ 以前ダークを断念した原因はここ。「片方のテーマでしか成立しない組」が1つでもあれば落ちる。
+        //   トークンの値だけでなく、**同じルールの中の color と background の組**を測る
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const A = ':root, :root[data-theme="light"]', DK = ':root[data-theme="dark"]', B = '/* === マーブル';
+        const varsOf = (from, to) => Object.fromEntries(
+            [...html.slice(html.indexOf(from), html.indexOf(to)).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)]
+                .map(m => [m[1], m[2].trim()]));
+        const L = varsOf(A, DK), D = varsOf(DK, B);
+        assert.ok(Object.keys(L).length > 30 && Object.keys(D).length > 30, 'トークンを読めない');
+        const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const lum = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+            return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]); };
+        const ratio = (a, b) => { const x = lum(a) + 0.05, y = lum(b) + 0.05; return Math.max(x, y) / Math.min(x, y); };
+        const hex6 = /^#[0-9A-Fa-f]{6}$/;
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        const body = css.slice(0, css.indexOf(A)) + css.slice(css.indexOf(B));
+        const res = (v, T) => v.replace(/var\(--([a-z0-9-]+)\)/g, (w, k) => (T[k] !== undefined ? T[k] : w));
+        let checked = 0; const ng = [];
+        for (const [, sel, rule] of body.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+            const fg = (rule.match(/(?:^|;)\s*color\s*:\s*([^;]+)/) || [])[1];
+            const bg = (rule.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/) || [])[1];
+            if (!fg || !bg) continue;
+            for (const [mode, T] of [['ライト', L], ['ダーク', D]]) {
+                const a = res(fg, T).trim(), b = res(bg, T).trim();
+                if (!hex6.test(a) || !hex6.test(b)) continue;
+                checked++;
+                const r = ratio(a, b);
+                if (r < 4.5) ng.push(`${mode} ${r.toFixed(2)}:1 ${sel.replace(/\s+/g, ' ').trim().slice(-40)} (${a} on ${b})`);
+            }
+        }
+        assert.ok(checked >= 150, `測れた組が少なすぎる: ${checked}`);
+        assert.deepEqual(ng, [], `片方のテーマで読めない組がある:\n  ${ng.join('\n  ')}`);
+    });
     test('★ 色の直書きが増えていない (トークンへの置き換えの進み具合)', () => {
         // ★ 置き換えは段階的にやる。**増えていないこと**をここで見張る。
         //   直したら上限を下げること (下げ忘れると、戻ってしまっても気づけない)
@@ -7055,7 +7089,7 @@ console.log('\ngrowthDomain:');
         css = css.slice(0, a) + css.slice(b);
         const raw = (css.match(/#[0-9A-Fa-f]{3,8}\b/g) || []).length;
         const rgba = (css.match(/rgba?\([0-9]/g) || []).length;
-        const LIMIT_HEX = 727, LIMIT_RGBA = 304;   // 2026-09-10 の出発点
+        const LIMIT_HEX = 101, LIMIT_RGBA = 304;   // 2026-09-10 段階1で 727 → 101
         assert.ok(raw <= LIMIT_HEX, `<style> の直値が増えている: ${raw} (上限 ${LIMIT_HEX})`);
         assert.ok(rgba <= LIMIT_RGBA, `<style> の rgba() が増えている: ${rgba} (上限 ${LIMIT_RGBA})`);
         if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
