@@ -9556,12 +9556,22 @@
                 const boss = bosses.find(b => b.boss_number === r.boss_number);
                 if (boss && Number(boss.remaining_hp_raw) <= 0) return '';   // 既に撃破済みなら出さない
                 const label = boss ? `B${boss.boss_number} ${boss.name || boss.boss_code || ''}` : `B${r.boss_number}`;
+                // ★ 期限と「ほかの案と同時」は Push の文面には入っているが、通知を見逃した人には
+                //   画面でしか伝わらない (2026-09-10)。同時打診なのを伏せると、落ちたときに不信になる
+                const dl = r.deadline_at ? new Date(r.deadline_at) : null;
+                const dlTxt = dl && !Number.isNaN(dl.getTime())
+                    ? dl.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' }) : null;
+                const notes = [
+                    dlTxt ? `⏰ ${escapeHtml(dlTxt)} までにお返事ください` : '',
+                    r.offer_id ? 'ほかの案と同時にお願いしています。先に揃ったほうにお願いします' : '',
+                ].filter(Boolean);
                 return `
                 <div style="margin-bottom:12px;padding:12px 13px;border-radius:13px;background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.35);animation:dcFadeIn .2s ease;">
                     <div style="display:flex;align-items:center;gap:7px;">
                         <span style="font-size:15px;">📣</span>
                         <span style="flex:1;font-size:12.5px;font-weight:900;color:var(--warn-deep);">${escapeHtml(label)} の締め凸依頼が届いています</span>
                     </div>
+                    ${notes.length ? `<div style="margin-top:6px;font-size:11px;font-weight:800;color:var(--t-body);line-height:1.55;">${notes.map(n => `<div>${n}</div>`).join('')}</div>` : ''}
                     <div style="display:flex;gap:7px;margin-top:9px;">
                         <button onclick="handleMyFinishRequestRespond(${r.boss_number}, 'accepted', ${r.id == null ? 'null' : Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--ok-solid);color:var(--on-fill);font-size:12px;font-weight:900;cursor:pointer;">🗡 了承する</button>
                         <button onclick="handleMyFinishRequestRespond(${r.boss_number}, 'declined', ${r.id == null ? 'null' : Number(r.id)})" style="flex:none;width:96px;padding:10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-body);font-size:12px;font-weight:800;cursor:pointer;">難しい</button>

@@ -2989,6 +2989,18 @@ console.log('\n複数案の同時打診:');
             '削除より先に列を確かめていない (44 未適用だと既存の締め凸依頼が消える)');
     });
 
+    test('★ 本人の画面に期限と「ほかの案と同時」を出す (通知を見逃した人に伝わらない)', () => {
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        const fn = html.match(/function renderMyFinishRequestBanner\(identity\)[\s\S]*?\n        }\n/)?.[0] || '';
+        assert.ok(fn, '締め凸バナーが見つからない');
+        assert.ok(/r\.deadline_at/.test(fn), '期限を読んでいない');
+        assert.ok(/までにお返事ください/.test(fn), '期限を出していない');
+        assert.ok(/r\.offer_id \?/.test(fn), '同時打診かどうかを見ていない');
+        assert.ok(/ほかの案と同時にお願いしています/.test(fn), '同時打診であることを伏せている');
+        // 時刻は JST で出す (端末のタイムゾーンに引きずられない)
+        assert.ok(/timeZone: 'Asia\/Tokyo'/.test(fn), '期限の時刻がJSTでない');
+    });
+
     test('★ 配線: 返答は行 id を名指しできる (同じ人が2案に居ても片方だけ動く)', () => {
         const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
         const fn = client.match(/window\.supabaseRespondFinishRequest = async function[\s\S]*?\n};\n/)?.[0] || '';
