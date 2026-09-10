@@ -47,12 +47,15 @@
                 if (bg) m.setAttribute('content', bg);
             };
             window.padApplyTheme();
-            // auto のあいだは端末設定の変化に追随する
+            // auto のあいだは端末設定の変化に追随する。
+            // ★ 古い Safari は addEventListener を持たず addListener しか無い (Codex指摘 2026-09-10)。
+            //   try/catch だけだと「聞こえないまま静かに追随しない」ので、両方を見る。
             try {
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-                    if (window.padThemePref() === 'auto') window.padApplyTheme('auto');
-                });
-            } catch (_) { /* 古い Safari */ }
+                var mq = window.matchMedia('(prefers-color-scheme: dark)');
+                var onChange = function () { if (window.padThemePref() === 'auto') window.padApplyTheme('auto'); };
+                if (mq.addEventListener) mq.addEventListener('change', onChange);
+                else if (mq.addListener) mq.addListener(onChange);
+            } catch (_) { /* matchMedia が無い環境 */ }
         })();
     </script>
     <!-- 接続の先行確立 (CDN / Supabase / フォント) -->
@@ -6499,9 +6502,9 @@
                 const done = d.submitted.includes(a.key);
                 const active = d.picked === a.key;
                 return `<div onclick="_tourDemoMockPick('${a.key}')" style="flex:1;min-width:52px;padding:7px 2px;border-radius:10px;cursor:pointer;text-align:center;transition:all .15s;border:1.5px solid ${active ? DC_ATTR_COLORS[a.key] : 'transparent'};
-                    background:${done ? DC_ATTR_COLORS[a.key] : '#F1F2F4'};">
+                    background:${done ? DC_ATTR_COLORS[a.key] : 'var(--s2)'};">
                     <img loading="lazy" decoding="async" src="${a.icon}" style="width:18px;height:18px;display:block;margin:0 auto 2px;">
-                    <span style="font-size:10px;font-weight:900;color:${done ? '#fff' : '#6B7178'};">${done ? '✓提出済' : a.name}</span>
+                    <span style="font-size:10px;font-weight:900;color:${done ? _burstInk(DC_ATTR_COLORS[a.key]) : 'var(--t-body)'};">${done ? '✓提出済' : a.name}</span>
                 </div>`;
             }).join('');
             let detail = '';
@@ -6546,10 +6549,10 @@
                 const c = DC_ATTR_COLORS[b.attr];
                 const mine = d.boss === b.n && d.phase !== 'pick';
                 return `<div onclick="_tourDemoBattleTap(${b.n})" style="flex:1;padding:9px 2px;border-radius:11px;cursor:pointer;text-align:center;transition:all .15s;position:relative;
-                    border:1.5px solid ${mine ? c : 'rgba(var(--ink-rgb), 0.06)'};background:${mine ? `${c}14` : '#fff'};${mine ? `animation:tour-demo-ping 1.2s ease-out infinite;` : ''}">
+                    border:1.5px solid ${mine ? c : 'rgba(var(--ink-rgb), 0.06)'};background:${mine ? `${c}14` : 'var(--card)'};${mine ? `animation:tour-demo-ping 1.2s ease-out infinite;` : ''}">
                     ${mine ? '<span style="position:absolute;top:-7px;right:-3px;font-size:12px;">🔥</span>' : ''}
                     <img loading="lazy" decoding="async" src="${DC_ATTR_ICONS[b.attr] || ''}" style="width:16px;height:16px;display:block;margin:0 auto 2px;">
-                    <span style="font-size:11px;font-weight:900;color:${mine ? c : '#14161A'};">B${b.n}</span>
+                    <span style="font-size:11px;font-weight:900;color:${mine ? c : 'var(--t-ink)'};">B${b.n}</span>
                 </div>`;
             }).join('');
             let stage = '';
@@ -7486,9 +7489,9 @@
             card.style.display = '';
             card.classList.toggle('dc-hero', hero);
             card.style.borderLeft = hero ? 'none' : '4px solid var(--ops-solid)';   // 白バリアントだけ紫の左帯
-            const ink = hero ? '#fff' : '#14161A';
-            const sub = hero ? 'rgba(255,255,255,0.62)' : '#6B7178';
-            const label = hero ? '#A99CFF' : '#6C42F0';
+            const ink = hero ? 'var(--on-fill)' : 'var(--t-ink)';
+            const sub = hero ? 'rgba(255,255,255,0.62)' : 'var(--t-body)';
+            const label = hero ? 'var(--hero-text-ops)' : 'var(--ops)';
             card.innerHTML = `
                 <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:${label};margin-bottom:6px;">📌 次にやること</div>
                 <div style="font-size:${hero ? '15px' : '14px'};font-weight:900;color:${ink};line-height:1.5;margin-bottom:4px;">${lead}</div>
@@ -8337,7 +8340,7 @@
             const attrChips = PT_ATTRS.map(a => {
                 const on = a.key === _mockCmpAttr;
                 const c = DC_ATTR_COLORS[a.key];
-                return `<button type="button" onclick="_setMockCmpAttr('${a.key}')" style="flex:none;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : '#8A9097'};background:${on ? c + '14' : '#fff'};">
+                return `<button type="button" onclick="_setMockCmpAttr('${a.key}')" style="flex:none;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:900;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};color:${on ? c : 'var(--t-muted)'};background:${on ? c + '14' : 'var(--card)'};">
                     <span style="width:8px;height:8px;border-radius:50%;background:${c};"></span>${a.name}</button>`;
             }).join('');
             const notes = [];
@@ -8409,7 +8412,7 @@
                 const upper = a.key.toUpperCase();
                 const on = upper === activeUpper;
                 const c = DC_ATTR_COLORS[a.key];
-                return `<button type="button" onclick="${onclickName}('${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : '#fff'};">
+                return `<button type="button" onclick="${onclickName}('${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : 'var(--card)'};">
                     ${renderAttrIcon(a.key, 20, { title: a.name, style: on ? '' : 'filter:grayscale(0.7);opacity:0.65;' })}</button>`;
             }).join('');
         }
@@ -8571,7 +8574,7 @@
                         const upper = a.key.toUpperCase();
                         const on = upper === sel;
                         const c = DC_ATTR_COLORS[a.key];
-                        return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : '#fff'};">${renderAttrIcon(a.key, 20, { title: a.name, style: on ? '' : 'filter:grayscale(0.7);opacity:0.65;' })}</button>`;
+                        return `<button type="button" onclick="_setGbPick(${i}, '${upper}')" title="${a.name}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-family:inherit;cursor:pointer;border:1.5px solid ${on ? c : '#E3E5E8'};background:${on ? c + '14' : 'var(--card)'};">${renderAttrIcon(a.key, 20, { title: a.name, style: on ? '' : 'filter:grayscale(0.7);opacity:0.65;' })}</button>`;
                     }).join('')}
                 </div>`).join('');
             // SLv換算: 基準SLv → 表示SLv (上書き > 自分のSLv) への攻撃力係数比。
@@ -8603,7 +8606,7 @@
                 resultHtml = r.results.map((combo, ci) => `
                     <div style="margin-top:10px;border:1.5px solid ${ci === 0 ? '#6C42F0' : '#EDEFF2'};border-radius:14px;padding:10px 12px;">
                         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-                            <span style="font-size:11px;font-weight:900;color:${ci === 0 ? '#6C42F0' : '#8A9097'};">${ci === 0 ? '🏆 最適' : `案${ci + 1}`}</span>
+                            <span style="font-size:11px;font-weight:900;color:${ci === 0 ? 'var(--ops)' : 'var(--t-muted)'};">${ci === 0 ? '🏆 最適' : `案${ci + 1}`}</span>
                             <span style="font-size:12px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">推定合計 ${formatDamage(combo.total * scale)}</span>
                         </div>
                         ${combo.comps.map((c, si) => {
@@ -8692,7 +8695,7 @@
                 const k = _hourKey(h);
                 const on = set.has(k);
                 const cur = k === curSlot;
-                return `<div title="${h}時${on ? ' 戦闘可能' : ''}" style="flex:1;height:14px;border-radius:3px;background:${on ? '#6C42F0' : '#E7E9EC'};${cur ? 'outline:2px solid var(--attr-fire-solid);outline-offset:1px;' : ''}${h === 0 ? 'margin-left:4px;' : ''}"></div>`;
+                return `<div title="${h}時${on ? ' 戦闘可能' : ''}" style="flex:1;height:14px;border-radius:3px;background:${on ? 'var(--ops-solid)' : 'var(--line)'};${cur ? 'outline:2px solid var(--attr-fire-solid);outline-offset:1px;' : ''}${h === 0 ? 'margin-left:4px;' : ''}"></div>`;
             }).join('');
             const labels = [5, 9, 13, 17, 21, 0].map(h => `<span style="flex:1;font-size:9px;font-weight:800;color:var(--t-muted);">${h === 0 ? '翌0' : h}時</span>`).join('');
             const nowOn = set.has(curSlot);
@@ -8707,7 +8710,7 @@
                         : '時間帯が未登録です。登録すると通知とプランの割当に使われます');
             body.innerHTML = `
                 <div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${escapeHtml(summary)}</div>
-                <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? '#0E9455' : '#8A9097'};">${escapeHtml(nowText)}</div>
+                <div style="margin-top:4px;font-size:11px;font-weight:700;line-height:1.5;color:${nowOn ? 'var(--ok-deep)' : 'var(--t-muted)'};">${escapeHtml(nowText)}</div>
                 <div style="display:flex;gap:2px;margin-top:8px;">${cells}</div>
                 <div style="display:flex;margin-top:3px;">${labels}</div>`;
             card.style.display = '';
@@ -9256,7 +9259,7 @@
             const cur = Number(st.ctx.season.current_level) || 1;
             const lbl = (t) => `<div style="font-size:10.5px;font-weight:900;color:var(--t-muted);letter-spacing:0.4px;margin-bottom:7px;">${t}</div>`;
             const chip = (on, onclick, text, disabled = false) =>
-                `<button type="button" ${disabled ? 'disabled' : `onclick="${onclick}"`} style="font-family:inherit;font-size:12px;font-weight:800;padding:9px 0;border-radius:10px;border:1px solid ${on ? '#14161A' : 'rgba(var(--ink-rgb), 0.10)'};background:${on ? '#14161A' : '#fff'};color:${disabled ? '#C9CED3' : (on ? '#fff' : '#6B7178')};cursor:${disabled ? 'default' : 'pointer'};">${text}</button>`;
+                `<button type="button" ${disabled ? 'disabled' : `onclick="${onclick}"`} style="font-family:inherit;font-size:12px;font-weight:800;padding:9px 0;border-radius:10px;border:1px solid ${on ? 'var(--t-ink)' : 'rgba(var(--ink-rgb), 0.10)'};background:${on ? 'var(--t-ink)' : 'var(--card)'};color:${disabled ? 'var(--t-muted)' : (on ? 'var(--card)' : 'var(--t-body)')};cursor:${disabled ? 'default' : 'pointer'};">${text}</button>`;
             // ボスは選ばせない (ユーザー指摘 2026-09-08): 編成の弱点属性で行くボスが決まる。確認の1行だけ出す
             const bossOrder = new Map((st.ctx.bosses || []).map(b => [b.weakness, Number(b.boss_number)]));
             // ★ レベルは聞かない (2026-09-08): ボスは全レベル共通。どのレベルに置くかは運営の算出が時刻から決める
@@ -9279,7 +9282,7 @@
                     const on = st.lo && st.lo.attribute === l.attribute && st.lo.slot === l.slot;
                     const ac = DC_ATTR_COLORS[l.attribute] || '#A4AAB0';
                     const an = PT_ATTRS.find(x => x.key === l.attribute)?.name || '';
-                    return `<button type="button" onclick="_resvReqPick('lo', '${esc(l.attribute)}', ${l.slot})" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(var(--ink-rgb), 0.08)'};background:${on ? 'rgba(108,66,240,0.06)' : '#fff'};cursor:pointer;font-family:inherit;text-align:left;">
+                    return `<button type="button" onclick="_resvReqPick('lo', '${esc(l.attribute)}', ${l.slot})" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(var(--ink-rgb), 0.08)'};background:${on ? 'rgba(108,66,240,0.06)' : 'var(--card)'};cursor:pointer;font-family:inherit;text-align:left;">
                         <span style="flex:none;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:999px;color:var(--on-fill);background:${ac};">${esc(an)}${SLOT_JP[l.slot] || l.slot}</span>
                         <span style="display:flex;gap:2px;flex:1;min-width:0;overflow:hidden;">${l.characters.length ? renderTeamSnippet(l.characters, { size: 22 }) : '<span style="font-size:10.5px;color:var(--t-muted);font-weight:700;">編成は未登録</span>'}</span>
                         <span style="flex:none;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;">${l.dmgB.toFixed(1)}<span style="font-size:9px;color:var(--t-muted);">B</span></span>
@@ -9533,8 +9536,8 @@
             const stepper = [1, 2, 3].map(L => {
                 const inScope = L >= startLevel;
                 const done = clearedThrough >= L;
-                const bg = !inScope ? '#F1F2F4' : (done ? '#18C26B' : 'rgba(255,61,68,0.12)');
-                const col = !inScope ? '#C9CED3' : (done ? '#fff' : '#FF3D44');
+                const bg = !inScope ? 'var(--s2)' : (done ? 'var(--ok-solid)' : 'rgba(255,61,68,0.12)');
+                const col = !inScope ? 'var(--t-muted)' : (done ? 'var(--ok-ink)' : 'var(--attr-fire)');
                 const lbl = clearLabelByLv.get(L);
                 const t = done && lbl ? `<div style="font-size:9px;font-weight:800;opacity:.9;">⏱${esc(String(lbl))}</div>` : '';
                 return `<span style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:11px;font-weight:900;background:${bg};color:${col};line-height:1.2;">Lv${L}${done ? ' ✓' : ''}${t}</span>`;
@@ -9549,7 +9552,7 @@
                     const avatars = atks.slice(0, 5).map((a, i) => {
                         const me = a.memberId === viewerId;
                         const av = (typeof renderAvatarHtml === 'function') ? renderAvatarHtml(a.memberId, a.memberName, 22) : '';
-                        return `<span style="margin-left:${i > 0 ? '-7px' : '0'};display:inline-flex;border-radius:50%;box-shadow:0 0 0 2px ${me ? '#6C42F0' : '#fff'};">${av}</span>`;
+                        return `<span style="margin-left:${i > 0 ? '-7px' : '0'};display:inline-flex;border-radius:50%;box-shadow:0 0 0 2px ${me ? 'var(--ops-solid)' : 'var(--card)'};">${av}</span>`;
                     }).join('');
                     const clearHtml = (Number(b.targetHpB) || 0) <= 0 ? '<span style="font-size:10px;font-weight:800;color:var(--t-muted);">撃破済</span>'
                         : b.cleared ? `<span style="font-size:11px;font-weight:900;color:var(--ok);">${b.clearHourLabel ? esc(String(b.clearHourLabel)) : '撃破'}</span>`
@@ -10079,7 +10082,7 @@
             box.style.background = c.unavailable ? 'var(--s1)' : 'rgba(24,194,107,0.08)';
             box.style.border = c.unavailable ? '1px solid rgba(var(--ink-rgb), 0.08)' : '1px solid rgba(24,194,107,0.28)';
             box.innerHTML = `
-                <div style="font-size:12.5px;font-weight:900;color:${c.unavailable ? '#6B7178' : '#0E9455'};">
+                <div style="font-size:12.5px;font-weight:900;color:${c.unavailable ? 'var(--t-body)' : 'var(--ok-deep)'};">
                     ${c.unavailable ? '今回は難しいと伝えています' : '今回のレイドの確認が済んでいます'}
                 </div>
                 <div style="font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.6;margin-top:3px;">
@@ -10908,7 +10911,7 @@
                     ? `<img loading="lazy" decoding="async" onclick="openIconPickerForAttackSlot(${i})" src="${escapeHtml(r.iconPath)}" alt="${escapeHtml(r.canonical || name)}" title="${escapeHtml(r.canonical || name)} - クリックで変更" style="width:100%;max-width:46px;aspect-ratio:1/1;object-fit:cover;border-radius:7px;background:var(--t-ink);cursor:pointer;">`
                     : `<div onclick="openIconPickerForAttackSlot(${i})" title="クリックでマスタから選択" style="width:100%;max-width:46px;aspect-ratio:1/1;border-radius:7px;background:var(--s1);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--warn);cursor:pointer;border:1px dashed var(--warn-solid);">${name ? '⚠️' : '?'}</div>`;
                 const label = name
-                    ? `<div style="font-size:9.5px;text-align:center;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? '#14161A' : '#f59e0b'};">${escapeHtml(r?.canonical || name)}</div>`
+                    ? `<div style="font-size:9.5px;text-align:center;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${r?.iconPath ? 'var(--t-ink)' : 'var(--warn)'};">${escapeHtml(r?.canonical || name)}</div>`
                     : `<div style="font-size:10px;text-align:center;color:rgba(var(--ink-rgb), 0.08);">${i + 1}</div>`;
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;">${icon}${label}</div>`;
             }).join('');
@@ -10939,7 +10942,7 @@
                     <button type="button" onclick="applyTeamEditTopTeam(${i})" title="この編成を5枠に入れる"
                         style="display:block;width:100%;text-align:left;padding:9px 11px;border-radius:11px;border:1px solid ${color}33;background:${color}0D;cursor:pointer;font-family:inherit;${i > 0 ? 'margin-top:6px;' : ''}">
                         <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
-                            <span style="flex:none;font-size:11px;font-weight:900;color:${i === 0 ? color : '#B6BBC1'};">#${i + 1}</span>
+                            <span style="flex:none;font-size:11px;font-weight:900;color:${i === 0 ? color : 'var(--t-muted)'};">#${i + 1}</span>
                             <span style="flex:1;font-size:10.5px;font-weight:800;color:var(--t-muted);" title="${detail}">${g.count}人が使用 <span style="font-size:9px;font-weight:700;">(${detail})</span></span>
                             <span style="flex:none;padding:6px 14px;border-radius:999px;background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;">使う</span>
                         </div>
@@ -11423,7 +11426,7 @@
             const allUnique = st.topTeams.length > 0 && st.topTeams.every(g => g.count === 1);
             const topHtml = st.topTeams.map((g, i) => `
                 <div style="display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:11px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);${i > 0 ? 'margin-top:5px;' : ''}">
-                    <span style="flex:none;width:20px;font-size:11px;font-weight:900;color:${i === 0 ? a.color : '#B6BBC1'};">#${i + 1}</span>
+                    <span style="flex:none;width:20px;font-size:11px;font-weight:900;color:${i === 0 ? a.color : 'var(--t-muted)'};">#${i + 1}</span>
                     <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;">${g.team.map(c => _charIconHtml(c, 28)).join('')}</div>
                     <span style="flex:none;font-size:10px;font-weight:800;color:var(--t-strong);text-align:right;line-height:1.3;" title="模擬${g.mockCount || 0}件+過去の凸${g.histCount || 0}件">${g.count}人使用<br><span style="color:var(--t-muted);">模擬${g.mockCount || 0}+凸${g.histCount || 0}</span></span>
                     ${opts.copyable
@@ -11599,7 +11602,7 @@
             bodyEl.innerHTML = top.map((c, ci) => `
                 <div style="padding:9px 10px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);${ci > 0 ? 'margin-top:7px;' : ''}">
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                        <span style="font-size:11px;font-weight:900;color:${ci === 0 ? '#6C42F0' : '#B6BBC1'};">${ci === 0 ? '🥇 おすすめ' : '🥈 次点'}</span>
+                        <span style="font-size:11px;font-weight:900;color:${ci === 0 ? 'var(--ops)' : 'var(--t-muted)'};">${ci === 0 ? '🥇 おすすめ' : '🥈 次点'}</span>
                         <span style="font-size:10px;font-weight:800;color:var(--t-muted);">計${c.uses}件の提出で使用 · キャラ被りなし ✓</span>
 
                     </div>
@@ -12424,7 +12427,7 @@
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:10.5px;font-weight:800;letter-spacing:1px;color:var(--t-muted);">ダメージ</div>
-                    <div style="font-size:23px;font-weight:900;color:${dmgB ? '#14161A' : '#C9CED3'};font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB || '—'}${dmgB ? '<span style="font-size:11px;color:var(--t-muted);margin-left:2px;">B</span>' : ''}</div>
+                    <div style="font-size:23px;font-weight:900;color:${dmgB ? 'var(--t-ink)' : 'var(--t-muted)'};font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;">${dmgB || '—'}${dmgB ? '<span style="font-size:11px;color:var(--t-muted);margin-left:2px;">B</span>' : ''}</div>
                 </div>`;
 
             // 5 キャラ (タップで保存前に修正できる)
@@ -12763,7 +12766,7 @@
                 <!-- (1) 現状ステータス -->
                 <div style="background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid rgba(var(--ink-rgb), 0.05);">
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <div style="width:38px;height:38px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:${isNowOn ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${isNowOn ? '#0E8F4D' : '#D32630'};">${isNowOn ? '🔔' : '🔕'}</div>
+                        <div style="width:38px;height:38px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;background:${isNowOn ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)'};color:${isNowOn ? 'var(--ok-deep)' : 'var(--bad-deep)'};">${isNowOn ? '🔔' : '🔕'}</div>
                         <div style="flex:1;">
                             <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;color:var(--t-muted);">現在 ${nowLabel}</div>
                             <div style="font-size:14px;font-weight:900;color:var(--t-ink);margin-top:2px;">${isNowOn ? '通知 受信中' : '通知 OFF (時間帯外)'}</div>
@@ -13076,7 +13079,7 @@
 
             const controlsHtml = `
                 <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap;">
-                    <span style="font-size:11px;font-weight:900;color:${unreadRows.length > 0 ? '#6C42F0' : '#A4AAB0'};">${unreadRows.length > 0 ? `🔵 未読 ${unreadRows.length}件` : '未読なし'}</span>
+                    <span style="font-size:11px;font-weight:900;color:${unreadRows.length > 0 ? 'var(--ops)' : 'var(--t-muted)'};">${unreadRows.length > 0 ? `🔵 未読 ${unreadRows.length}件` : '未読なし'}</span>
                     ${unreadRows.length > 0 ? '<button onclick="markAllMyNotificationsRead()" style="padding:5px 11px;border-radius:999px;border:none;background:var(--t-ink);color:var(--card);font-size:10.5px;font-weight:800;cursor:pointer;">✔ すべて既読にする</button>' : ''}
                     <button onclick="toggleMyNotifShowRead()" style="margin-left:auto;padding:5px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:800;cursor:pointer;">${_myNotifShowRead ? '既読を隠す' : `既読も表示 (${readRows.length})`}</button>
                 </div>`;
@@ -13214,7 +13217,7 @@
             const noteValue = me?.note ? escapeHtml(me.note) : '';
 
             // ステータス切替ボタン
-            const btnStyle = (active, color) => `flex:1;padding:8px 10px;border-radius:8px;border:2px solid ${active ? color : 'rgba(var(--ink-rgb), 0.08)'};background:${active ? color : '#ffffff'};color:${active ? '#fff' : '#14161A'};font-size:12px;font-weight:700;cursor:pointer;`;
+            const btnStyle = (active, color) => `flex:1;padding:8px 10px;border-radius:8px;border:2px solid ${active ? color : 'rgba(var(--ink-rgb), 0.08)'};background:${active ? color : 'var(--card)'};color:${active ? _burstInk(color) : 'var(--t-ink)'};font-size:12px;font-weight:700;cursor:pointer;`;
             const statusBtnsHtml = `
                 <div style="display:flex;gap:6px;margin-bottom:10px;">
                     <button onclick="handleMyCoordSetStatus('off')" style="${btnStyle(currentStatus === 'off', '#6b7280')}">⚪ なし</button>
@@ -13765,7 +13768,7 @@
                     <span style="font-size:13px;color:var(--t-body);">シーズン:</span>
                     <strong style="font-size:13px;">${ctx.season.month_key}</strong>
                     <span style="font-size:13px;color:var(--t-body);margin-left:8px;">凸数:</span>
-                    <strong style="font-size:13px;color:${remaining === 0 ? '#22c55e' : '#14161A'};">${count}/3</strong>
+                    <strong style="font-size:13px;color:${remaining === 0 ? 'var(--ok)' : 'var(--t-ink)'};">${count}/3</strong>
                     ${remaining === 0 ? '<span style="font-size:12px;color:var(--ok);margin-left:6px;">🎉 完凸 お疲れさまでした！</span>' : ''}
                 </div>`;
             const doneBanner = remaining === 0 ? `
@@ -15982,7 +15985,7 @@
             sumEl.innerHTML = dom.summarize(all, phase).map(s =>
                 `<div class="dc-mb-sum ${s.bad ? 'bad' : ''}"><div class="k">${escapeHtml(s.label)}</div><div class="v">${s.value}${s.total != null ? `<small> / ${s.total}</small>` : ''}${s.sub ? `<small style="margin-left:6px;color:var(--t-muted);">${escapeHtml(s.sub)}</small>` : ''}</div></div>`).join('');
             // 行
-            const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || '#8A9097'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
+            const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || 'var(--ghost)'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
             const strip = (r) => {
                 if (!r.slots.length) return r.flex ? '<span class="dc-mb-c acc">⏳隙間型</span>' : '<span class="dc-mb-c err">時間帯 未登録</span>';
                 const on = new Set(r.slots.map(s => parseInt(String(s).slice(1), 10)).filter(Number.isFinite));
@@ -17463,7 +17466,7 @@
                 } else {
                     listEl.innerHTML = '<div style="font-size:12px;font-weight:800;color:var(--t-body);">キャラマスタ — 削除する行にチェック</div>' +
                         p.chars.map(c => `
-                        <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${c.defaultDelete ? 'rgba(239,68,68,0.35)' : '#E3E5E8'};border-radius:10px;background:${c.defaultDelete ? 'rgba(239,68,68,0.05)' : '#fff'};cursor:pointer;">
+                        <label style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${c.defaultDelete ? 'rgba(239,68,68,0.35)' : '#E3E5E8'};border-radius:10px;background:${c.defaultDelete ? 'rgba(239,68,68,0.05)' : 'var(--card)'};cursor:pointer;">
                             <input type="checkbox" class="ops-test-end-char" data-name="${escapeHtml(c.canonical_name)}" ${c.defaultDelete ? 'checked' : ''} onchange="_syncOpsTestEndBtn()" style="margin-top:3px;">
                             <span style="min-width:0;"><span style="font-weight:800;font-size:13px;">${escapeHtml(c.canonical_name)}</span><br><span style="font-size:11px;color:var(--t-body);">${escapeHtml(c.reason)}</span></span>
                         </label>`).join('');
@@ -18164,7 +18167,7 @@
                          押した先の締め凸候補検索カード自体が data-ops-only のため -->
                     <div data-ops-only style="display:flex;gap:6px;margin-top:10px;">
                         <button data-action="boss-edit" data-boss="${b.boss_number}" title="HP編集" style="flex:none;width:32px;height:32px;border-radius:8px;border:none;background:var(--s2);color:var(--t-body);font-size:14px;cursor:pointer;">${spIcon('pencil', 13)}</button>
-                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.finDisabled ? '#F1F2F4' : P.c};color:${P.finDisabled ? '#C9CED3' : '#fff'};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">${P.lv4B5 ? '♾️ 締め凸不要' : '締凸検索'}</button>
+                        <button data-action="finish-pick" data-weakness="${escapeHtml(b.weakness || '')}" class="js-finish" ${P.finDisabled ? 'disabled' : ''} title="${escapeHtml(P.finTitle)}" style="flex:1;padding:7px 10px;border-radius:8px;border:none;background:${P.finDisabled ? 'var(--s2)' : P.c};color:${P.finDisabled ? 'var(--t-muted)' : _burstInk(P.c)};font-size:11px;font-weight:800;cursor:${P.finDisabled ? 'not-allowed' : 'pointer'};">${P.lv4B5 ? '♾️ 締め凸不要' : '締凸検索'}</button>
                     </div>
                     <div class="js-reqs">${P.reqs}</div>
                 </div>`;
@@ -18239,7 +18242,7 @@
                     const latest = Math.max(...upds.map(t => new Date(t).getTime()));
                     const min = Math.floor((Date.now() - latest) / 60000);
                     const warn = min >= 30;
-                    freshTxt = ` · <span style="font-weight:800;color:${warn ? '#B45309' : '#B6BBC1'};" title="ボスHPが最後に更新された時刻">HP更新 ${min < 1 ? 'たった今' : (min < 60 ? `${min}分前` : `${Math.floor(min / 60)}時間前`)}${warn ? ' ⚠️' : ''}</span>`;
+                    freshTxt = ` · <span style="font-weight:800;color:${warn ? 'var(--warn-deep)' : 'var(--t-muted)'};" title="ボスHPが最後に更新された時刻">HP更新 ${min < 1 ? 'たった今' : (min < 60 ? `${min}分前` : `${Math.floor(min / 60)}時間前`)}${warn ? ' ⚠️' : ''}</span>`;
                 }
                 lvEl.innerHTML = season ? `Lv${season.current_level || 1} · 5体${freshTxt}` : '';
             }
@@ -18418,7 +18421,7 @@
             const curHourJst = _finishCurHour();
             const candidates = finishDomain.filterByWindow(candidatesAll, { curHour: curHourJst, hours: _opsFinish.hours });
 
-            const optChip = (on, onclick, text) => `<button type="button" onclick="${onclick}" style="font-family:inherit;font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:none;cursor:pointer;background:${on ? '#14161A' : '#F1F2F4'};color:${on ? '#fff' : '#5A6068'};">${text}</button>`;
+            const optChip = (on, onclick, text) => `<button type="button" onclick="${onclick}" style="font-family:inherit;font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;border:none;cursor:pointer;background:${on ? 'var(--t-ink)' : 'var(--s2)'};color:${on ? 'var(--card)' : 'var(--t-strong)'};">${text}</button>`;
             const windowNote = _opsFinish.hours
                 ? `${curHourJst}時〜${(curHourJst + _opsFinish.hours) % 24}時に出られる ${candidates.length}名 (全 ${candidatesAll.length}名)`
                 : '';
@@ -19486,8 +19489,8 @@
             const lvStepper = [1, 2, 3].map(L => {
                 const inScope = L >= plan.startLevel;
                 const done = plan.fullyClearedThrough >= L;
-                const bg = !inScope ? '#F1F2F4' : (done ? '#18C26B' : 'rgba(255,61,68,0.12)');
-                const col = !inScope ? '#C9CED3' : (done ? '#fff' : '#FF3D44');
+                const bg = !inScope ? 'var(--s2)' : (done ? 'var(--ok-solid)' : 'rgba(255,61,68,0.12)');
+                const col = !inScope ? 'var(--t-muted)' : (done ? 'var(--ok-ink)' : 'var(--attr-fire)');
                 const timeLabel = done && clearLabelByLv.get(L)
                     ? `<div style="font-size:10px;font-weight:800;opacity:0.85;margin-top:1px;">⏱${clearLabelByLv.get(L)}</div>` : '';
                 return `<span style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:11px;font-weight:900;letter-spacing:0.3px;background:${bg};color:${col};line-height:1.2;">Lv${L}${done ? ' ✓' : ''}${timeLabel}</span>`;
@@ -19567,7 +19570,7 @@
                         : b.targetHpB <= 0 ? '既に撃破済み'
                         : (b.timeConstrained ? '火力はありますが、時間内に凸できるメンバーがいません' : 'この属性で凸できる候補がいません');
                     const attacksHtml = b.attacks.length === 0
-                        ? `<div style="padding:10px 12px;font-size:11.5px;font-weight:700;color:${b.targetHpB <= 0 ? '#A4AAB0' : (b.timeConstrained ? '#B45309' : '#FF3D44')};">${emptyMsg}</div>`
+                        ? `<div style="padding:10px 12px;font-size:11.5px;font-weight:700;color:${b.targetHpB <= 0 ? 'var(--t-muted)' : (b.timeConstrained ? 'var(--warn-deep)' : 'var(--attr-fire)')};">${emptyMsg}</div>`
                         : b.attacks.map((a, i) => {
                             const isMe = _myId != null && a.memberId === _myId;
                             // 左端の固定幅 時刻カラム (配信版「わたしの凸」と同じ設計)。
@@ -19578,7 +19581,7 @@
                                 ? `<div style="width:54px;flex:none;text-align:center;" title="隙間時間型: 時間帯は本人の都合次第 (3凸は行う)"><div style="font-size:12px;font-weight:900;color:var(--warn-deep);">⏳隙間</div></div>`
                                 : a.hourLabel
                                 ? `<div style="width:54px;flex:none;text-align:center;" title="${a.isBottleneck ? 'この凸がこのレベルのクリア時刻を決めています (律速)' : ''}${a.timeUnknown ? '戦闘可能時間が未登録のため、開放後の最速枠に仮置き (この時刻に居られる保証はない)' : (a.isBottleneck ? '' : '凸予定の時間帯')}">
-                                        <div style="font-size:14px;font-weight:900;color:${a.isBottleneck ? '#E23036' : '#14161A'};font-variant-numeric:tabular-nums;">${esc(a.hourLabel)}</div>
+                                        <div style="font-size:14px;font-weight:900;color:${a.isBottleneck ? 'var(--bad-deep)' : 'var(--t-ink)'};font-variant-numeric:tabular-nums;">${esc(a.hourLabel)}</div>
                                         ${a.isBottleneck ? '<div style="font-size:10px;font-weight:900;color:var(--bad-deep);margin-top:1px;">⏱律速</div>' : ''}
                                         ${a.timeUnknown ? '<div style="margin-top:2px;"><span style="display:inline-block;font-size:10px;font-weight:900;color:var(--warn-deep);background:rgba(245,158,11,0.14);border-radius:999px;padding:1px 7px;">未登録</span></div>' : ''}
                                    </div>`
@@ -19627,7 +19630,7 @@
                                     <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);font-variant-numeric:tabular-nums;">${b.infinite ? '目標 ∞ · 何を入れても全額' : `目標 ${b.targetHpB.toFixed(1)}B`}</span>
                                 </div>
                             </div>
-                            ${b.targetHpB > 0 ? `<div style="height:4px;background:var(--s2);"><div style="height:100%;width:${remPct}%;background:${b.cleared ? '#18C26B' : c};transition:width .3s;"></div></div>` : ''}
+                            ${b.targetHpB > 0 ? `<div style="height:4px;background:var(--s2);"><div style="height:100%;width:${remPct}%;background:${b.cleared ? 'var(--ok-solid)' : c};transition:width .3s;"></div></div>` : ''}
                             ${attacksHtml}
                         </div>`;
                 }).join('');
@@ -19725,7 +19728,7 @@
                         ? ` (組み直しても +${Number(st.creditedGapB).toFixed(1)}B にとどまるため。目安 ${Number(st.thresholdB).toFixed(1)}B)`
                         : '');
                 stickyHtml = `<div style="margin-bottom:10px;padding:8px 11px;border-radius:9px;font-size:11px;font-weight:800;line-height:1.55;`
-                    + `background:${ok ? 'rgba(24,194,107,0.10)' : 'rgba(108,66,240,0.10)'};color:${ok ? '#0F7A45' : '#5B2BE0'};">`
+                    + `background:${ok ? 'rgba(24,194,107,0.10)' : 'rgba(108,66,240,0.10)'};color:${ok ? 'var(--ok-deep)' : 'var(--ops-deep)'};">`
                     + `${ok ? '🔗' : '🆕'} ${esc(REASON_JP[st.reason] || st.reason)}${esc(detail)}`
                     + `<span style="font-weight:700;opacity:0.8;"> · 前回の割当 ${Number(st.stickyCount)}件が基準</span></div>`;
             }
@@ -19748,15 +19751,19 @@
             // 色分け: あなた=青ベタ / 律速=赤枠 / 時間未確定(隙間・時間外・未登録)=グレー地+破線 / 通常=薄PT色
             // 未確定を「橙の塗り」にすると鉄甲PT列 (#FF8A2B) の薄橙と見分けがつかないため、
             // 色ではなくパターン (グレー地 + 破線枠 + ⏳⚠?マーク) で表現する — どの属性列でも衝突しない
-            let bg = `${color}14`, border = `1px solid ${color}33`, nameColor = '#14161A', dmgColor = '#8A9097';
-            if (hl) { bg = '#6C42F0'; border = '1px solid #6C42F0'; nameColor = '#fff'; dmgColor = 'rgba(255,255,255,0.85)'; }
-            else if (a.flex || a.timeMismatch || a.timeUnknown) { bg = '#F4F5F7'; border = '1px dashed #B6BBC1'; dmgColor = '#B45309'; }
+            // ★ 色はトークンで書く。地の `${color}14` は薄い膜なので、下の地 (カード) が
+            //   テーマで入れ替わると文字も一緒に入れ替わらないと読めなくなる
+            //   (以前は黒の直値だったので、ダークでは名前が見えなかった — Codex指摘 2026-09-10)。
+            //   トークンにしておくと**描き直さなくても**切り替えた瞬間に付いてくる。
+            let bg = `${color}14`, border = `1px solid ${color}33`, nameColor = 'var(--t-ink)', dmgColor = 'var(--t-muted)';
+            if (hl) { bg = 'var(--ops-solid)'; border = '1px solid var(--ops-solid)'; nameColor = 'var(--ops-ink)'; dmgColor = 'rgba(255,255,255,0.85)'; }
+            else if (a.flex || a.timeMismatch || a.timeUnknown) { bg = 'var(--s2)'; border = '1px dashed var(--dim)'; dmgColor = 'var(--warn-deep)'; }
             // 律速の赤枠は最優先 (あなたの律速凸でも赤枠を残す — 凡例の「赤枠=律速」と一致させる)
-            if (a.isBottleneck) { border = '1.5px solid #FF3D44'; if (!hl) dmgColor = '#FF3D44'; }
+            if (a.isBottleneck) { border = '1.5px solid var(--attr-fire-solid)'; if (!hl) dmgColor = 'var(--attr-fire)'; }
             const rawMark = a.isBottleneck ? '⏱'
                 : (a.timeMismatch ? '⚠' : (a.flex ? '⏳' : (a.timeUnknown ? '?' : (a.reserved ? '🔒' : ''))));
             // マークに状態色を付ける ('?' は素の文字なのでグレー地に沈む。あなた=青ベタ時は白のまま)
-            const markColor = hl ? nameColor : (a.isBottleneck ? '#E23036' : '#B45309');
+            const markColor = hl ? nameColor : (a.isBottleneck ? 'var(--bad-deep)' : 'var(--warn-deep)');
             const mark = rawMark ? `<span style="color:${markColor};">${rawMark}</span>` : '';
             const label = opts.label || esc(a.memberName);
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
@@ -21775,10 +21782,10 @@
             ];
             el.innerHTML = items.map(it => {
                 const on = _memberAdmin.filter === it.key;
-                const bg = on ? '#14161A' : '#F1F2F4';
-                const fg = on ? '#fff' : '#6B7178';
-                const bgChip = on ? 'rgba(255,255,255,0.18)' : 'rgba(var(--ink-rgb), 0.06)';
-                const fgChip = on ? '#fff' : '#8A9097';
+                const bg = on ? 'var(--t-ink)' : 'var(--s2)';
+                const fg = on ? 'var(--card)' : 'var(--t-body)';
+                const bgChip = on ? 'rgba(var(--paper-rgb), 0.18)' : 'rgba(var(--ink-rgb), 0.06)';
+                const fgChip = on ? 'var(--card)' : 'var(--t-muted)';
                 return `<div onclick="maSetFilter('${it.key}')" style="flex:1;min-width:0;height:38px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;font-weight:900;letter-spacing:0.2px;color:${fg};background:${bg};transition:all .15s;">
                     <span>${it.label}</span>
                     <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:${bgChip};color:${fgChip};font-variant-numeric:tabular-nums;">${it.count}</span>
@@ -21800,8 +21807,8 @@
             ];
             pillEl.innerHTML = sorts.map(so => {
                 const on = _memberAdmin.sort === so.key;
-                const bg = on ? '#fff' : 'transparent';
-                const fg = on ? '#14161A' : '#9AA0A6';
+                const bg = on ? 'var(--card)' : 'transparent';
+                const fg = on ? 'var(--t-ink)' : 'var(--t-muted)';
                 const bd = on ? 'rgba(var(--ink-rgb), 0.10)' : 'rgba(var(--ink-rgb), 0.05)';
                 const sh = on ? '0 1px 3px rgba(20,22,26,0.06)' : 'none';
                 return `<div onclick="maSetSort('${so.key}')" style="flex:1;min-width:0;height:30px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.2px;color:${fg};background:${bg};border:1px solid ${bd};box-shadow:${sh};transition:all .12s;">${so.label}</div>`;
@@ -21867,7 +21874,7 @@
             const avatarWrap = `<div onclick="maToggleExpand(${p.id})" style="position:relative;width:36px;height:36px;flex:none;border-radius:50%;cursor:pointer;${isArchived ? 'filter:grayscale(0.55);' : ''}">${avatar}</div>`;
 
             const checkbox = selectable ? `
-                <div onclick="maToggleSelect(${p.id})" style="width:22px;height:22px;flex:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--on-fill);background:${isSelected ? '#2E8BFF' : '#fff'};border:2px solid ${isSelected ? '#2E8BFF' : 'rgba(var(--ink-rgb), 0.16)'};transition:all .12s;">${isSelected ? '✓' : ''}</div>` : '';
+                <div onclick="maToggleSelect(${p.id})" style="width:22px;height:22px;flex:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--on-fill);background:${isSelected ? 'var(--attr-water-solid)' : 'var(--card)'};border:2px solid ${isSelected ? '#2E8BFF' : 'rgba(var(--ink-rgb), 0.16)'};transition:all .12s;">${isSelected ? '✓' : ''}</div>` : '';
 
             const attrChips = attrs.map(a => `<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:5px;flex:none;font-size:10px;font-weight:900;color:var(--on-fill);background:${_MA_ATTR_COLOR[a]};box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);">${_MA_ATTR_CHAR[a]}</span>`).join('');
 
@@ -21908,7 +21915,7 @@
                         </div>
                         <div style="flex:1;text-align:center;background:var(--card);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:10px;padding:9px 6px;">
                             <div style="font-size:10px;font-weight:800;letter-spacing:0.4px;color:var(--t-muted);white-space:nowrap;">状態</div>
-                            <div style="font-size:11px;font-weight:800;color:${isArchived ? '#B0750A' : '#0E8F4D'};margin-top:5px;">${isArchived ? '脱退済' : 'アクティブ'}</div>
+                            <div style="font-size:11px;font-weight:800;color:${isArchived ? 'var(--warn-deep)' : 'var(--ok-deep)'};margin-top:5px;">${isArchived ? '脱退済' : 'アクティブ'}</div>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:7px;margin-top:11px;padding:0 2px;font-size:10.5px;color:var(--t-muted);font-weight:700;">
@@ -22544,12 +22551,12 @@
                     scales: {
                         x: {
                             type: 'linear', min: minX - pad, max: maxX + pad,
-                            title: { display: true, text: 'SLv', font: { size: 11, weight: 800 }, color: '#8A9097' },
-                            ticks: { font: { size: 11 } }, grid: { color: '#EFF0F2' },
+                            title: { display: true, text: 'SLv', font: { size: 11, weight: 800 }, color: _cc.muted },
+                            ticks: { font: { size: 11 } }, grid: { color: _cc.line },
                         },
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: '#EFF0F2' },
+                            ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: _cc.line },
                         },
                     },
                     plugins: {
@@ -22607,6 +22614,7 @@
         // ========== Stacked Bar Chart ==========
         function createAttributeStackedBarChart() {
             applyChartTheme();
+            const _cc = chartColors();
             const canvas = document.getElementById('attributeStackedChart');
             if (!canvas || currentData.length === 0) return;
 
@@ -22644,7 +22652,7 @@
                 datasets.forEach(ds => {
                     const baseColor = ds.backgroundColor;
                     const N = sortedPlayers.length;
-                    ds.borderColor = Array.from({ length: N }, (_, i) => i === meIndex ? '#14161A' : baseColor);
+                    ds.borderColor = Array.from({ length: N }, (_, i) => i === meIndex ? _cc.ink : baseColor);
                     ds.borderWidth = Array.from({ length: N }, (_, i) => i === meIndex ? 2 : 0);
                 });
             }
@@ -22660,7 +22668,7 @@
                     transitions: { active: { animation: { duration: 0 } } },
                     scales: {
                         x: { stacked: true, ticks: { font: { size: 11 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
-                        y: { stacked: true, ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: '#EFF0F2' } }
+                        y: { stacked: true, ticks: { callback: v => (v / 1e9).toFixed(1) + 'B' }, grid: { color: _cc.line } }
                     },
                     plugins: {
                         legend: { display: false },

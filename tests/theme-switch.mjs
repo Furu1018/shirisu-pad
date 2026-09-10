@@ -25,7 +25,7 @@ const BOOT = slice("        (function () {\n            var KEY = 'shirisuko_the
 const PICK = slice('        function handleThemePick(pref) {', '        window.addEventListener(\'DOMContentLoaded\'', '切り替えの処理');
 
 // ---- 環境 ----------------------------------------------------------------
-function makeEnv({ stored = null, osDark = false, cssBg = '' } = {}) {
+function makeEnv({ stored = null, osDark = false, cssBg = '', legacyMq = false } = {}) {
     const store = new Map();
     if (stored) store.set('shirisuko_theme_v1', stored);
     const rootEl = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; } };
@@ -35,7 +35,11 @@ function makeEnv({ stored = null, osDark = false, cssBg = '' } = {}) {
         setAttribute(a, v) { this.attrs[a] = v; }, getAttribute(a) { return this.attrs[a]; },
     }));
     const mqListeners = [];
-    const mq = { matches: osDark, addEventListener: (_t, fn) => mqListeners.push(fn) };
+    // ★ 古い Safari は addEventListener を持たず addListener しか無い (Codex指摘 2026-09-10)。
+    //   legacy: true でその環境を作る
+    const mq = legacyMq
+        ? { matches: osDark, addListener: (fn) => mqListeners.push(fn) }
+        : { matches: osDark, addEventListener: (_t, fn) => mqListeners.push(fn) };
     const events = [];
     const win = {
         matchMedia: () => mq,
@@ -165,6 +169,16 @@ test('★ ブラウザのUIの色は --bg を読む (色を二重に書かない
     const u = boot({ osDark: true, cssBg: '#0E1013' });
     u.env.window.padSyncThemeColor();
     assert.equal(u.meta.getAttribute('content'), '#0E1013');
+});
+
+test('★ 古い Safari (addEventListener を持たない matchMedia) でも端末設定に追随する', () => {
+    // ★ try/catch だけだと「聞こえないまま静かに追随しない」= 実機でしか気づけない (Codex指摘 2026-09-10)
+    const t = boot({ osDark: false, legacyMq: true });
+    assert.equal(t.rootEl.getAttribute('data-theme'), 'light');
+    assert.equal(t.mqListeners.length, 1, '古い形の受け口を使っていない (端末設定の変化に追随しない)');
+    t.env.window.matchMedia().matches = true;
+    t.mqListeners[0]();
+    assert.equal(t.rootEl.getAttribute('data-theme'), 'dark', '追随していない');
 });
 
 test('★ 起動スクリプトは <style> より前にある (描画前に決まる = 一瞬ライトが見えない)', () => {

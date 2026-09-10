@@ -7126,7 +7126,7 @@ console.log('\ngrowthDomain:');
         // <meta theme-color> — 段階3 (グラフ・キャンバス) でまとめて扱う
         const outside = html.slice(0, s0) + html.slice(s1);
         const rawOut = (outside.match(/#[0-9A-Fa-f]{3,8}\b/g) || []).length;
-        const LIMIT_INLINE = 430;   // 段階3c: JS の style 代入もトークンへ
+        const LIMIT_INLINE = 320;   // 段階3d: 式の中の色もトークンへ (Codex指摘への対応)
         assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
         if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
     });
@@ -7183,6 +7183,24 @@ console.log('\ngrowthDomain:');
         // ★ 下のナビと二重に出さない (下のナビは 767px まで)
         assert.ok(/@media \(max-width: 767px\) \{\s*\.bottom-nav \{ display: flex; \}/.test(css),
             '下のナビの出る幅が変わっている (サイドバーと二重になる)');
+    });
+    test('★ 画面に描く文字の色を、色の直値で焼き込んでいない', () => {
+        // ★ Codex がここで実害を見つけた (2026-09-10: 時間割の凸チップ)。
+        //   innerHTML に色を焼き込むと、テーマを切り替えても**その場では変わらない**。
+        //   文字はトークンで書けば、描き直さなくても切り替えた瞬間に付いてくる。
+        //   引っかかる書き方は2つ:
+        //     style="…color:#14161A…"                 (直接書く)
+        //     style="…color:${on ? '#fff' : '#666'}…"  (式の中に混ぜる) ← これが見落とされていた
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const js = html.slice(0, html.indexOf('<style')) + '\n' + html.slice(html.lastIndexOf('</style>') + 8);
+        const bad = [];
+        for (const m of js.matchAll(/(?:^|[;"'`{])\s*color\s*:\s*(#[0-9A-Fa-f]{3,8})\b/g)) {
+            bad.push(`直書き ${m[1]} …${js.slice(Math.max(0, m.index - 60), m.index + 20).replace(/\s+/g, ' ').trim()}`);
+        }
+        for (const m of js.matchAll(/color\s*:\s*\$\{(?:[^{}]|\{[^{}]*\})*\}/g)) {
+            if (/'#[0-9A-Fa-f]{3,8}'/.test(m[0])) bad.push(`式の中 …${m[0].replace(/\s+/g, ' ').slice(0, 110)}`);
+        }
+        assert.deepEqual(bad, [], `文字の色を焼き込んでいる (テーマを切り替えても変わらない):\n  ${bad.join('\n  ')}`);
     });
     test('★ <style> に JavaScript が / <script> に CSS が紛れ込んでいない', () => {
         // ★ 2026-09-10: 節を移すときに JS のかたまりを丸ごと <style> の中へ入れてしまった。
