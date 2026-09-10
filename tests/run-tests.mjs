@@ -6919,8 +6919,8 @@ console.log('\ngrowthDomain:');
             .map(n => html.match(new RegExp(`const ${n} = [^\n]*`))?.[0])
             .join('\n');
         assert.ok(!/undefined/.test(helpers), `補助の定義を切り出せない: ${helpers}`);
-        const F = new Function(`${helpers}\n${cut('_burstInk')}\n${cut('_burstOnLight')}`
-            + '\nreturn { _burstInk, _burstOnLight };')();
+        const F = new Function(`${helpers}\n${cut('_burstInk')}\n${cut('_burstOnLight')}\n${cut('_burstTint')}`
+            + '\nreturn { _burstInk, _burstOnLight, _burstTint };')();
 
         const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
         const lum = (h) => 0.2126 * lin(parseInt(h.slice(1, 3), 16)) + 0.7152 * lin(parseInt(h.slice(3, 5), 16))
@@ -6938,19 +6938,44 @@ console.log('\ngrowthDomain:');
         const colors = Object.fromEntries([...src.matchAll(/'?([A-ZΛ0-9]+)'?:\s*'(#[0-9A-Fa-f]{6})'/g)]
             .map(m => [m[1], m[2]]));
         assert.equal(Object.keys(colors).length, 4, `色表が読めない: ${src}`);
+        const ratio = (x, y) => (Math.max(lum(x), lum(y)) + 0.05) / (Math.min(lum(x), lum(y)) + 0.05);
         for (const [b, c] of Object.entries(colors)) {
-            const t = F._burstOnLight(c);
+            // ① 薄く色を敷いた地 (CSS の `${色}1A`) に文字を置く場合
+            //    ★ 純白で測ると足りない — 実際の地はほんのり色が付いている (Codex指摘)
+            const bg = F._burstTint(c);
+            assert.match(bg, /^#[0-9a-f]{6}$/, `${b} の薄い地が色になっていない: ${bg}`);
+            const t = F._burstOnLight(c, bg);
             assert.match(t, /^#[0-9a-f]{6}$/, `${b} の文字色が色になっていない: ${t}`);
-            assert.ok(onWhite(t) >= 4.4, `${b} の文字が白地で読めない (${onWhite(t).toFixed(2)}:1)`);
-            const ink = F._burstInk(c);
-            const r = Math.max(lum(ink), lum(c)) + 0.05;
-            const q = Math.min(lum(ink), lum(c)) + 0.05;
-            assert.ok(r / q >= 4.5, `${b} の地に載せる文字が読めない (${(r / q).toFixed(2)}:1)`);
+            assert.ok(ratio(t, bg) >= 4.5, `${b} の文字が薄い地で読めない (${ratio(t, bg).toFixed(2)}:1)`);
+            // ② 地が透明 (枠だけ) の場合は白に対して
+            assert.ok(onWhite(F._burstOnLight(c)) >= 4.5, `${b} の枠が白地で読めない`);
+            // ③ 色をそのまま地にする場合
+            assert.ok(ratio(F._burstInk(c), c) >= 4.5, `${b} の地に載せる文字が読めない (${ratio(F._burstInk(c), c).toFixed(2)}:1)`);
         }
         // ★ 色の上に白を決め打ちしない / 「B2 だけ黒」と書き分けない
         assert.ok(!/background:\$\{o\.color\};color:#fff/.test(html), 'アイコンピッカーで白を決め打ちしている');
         assert.ok(!/background:\$\{color\};color:#fff/.test(html), 'バーストピッカーで白を決め打ちしている');
         assert.ok(!/=== 'B2' \? '#14161A'/.test(html), '「B2 だけ黒」と手で書き分けている');
+        assert.ok(!/=== 'B2' \? ' dark'/.test(html), '「B2 だけ暗い字」と手で書き分けている');
+        assert.ok(!/\.te-band\.dark \{/.test(html), '手書き分け用の CSS が残っている');
+
+        // ★ 関数が正しくても、呼ぶ側が地を渡していなければ意味が無い。
+        //   _burstOnLight は**必ず地を渡して**呼ぶ (純白の決め打ちは薄い地で足りない)
+        const calls = [...html.matchAll(/_burstOnLight\(([^)]*(?:\([^)]*\))?[^)]*)\)/g)]
+            .map(m => m[1]).filter(x => !x.startsWith('hex'));
+        assert.ok(calls.length >= 5, `_burstOnLight の呼び出しを拾えない: ${calls.length}`);
+        for (const args of calls) {
+            assert.ok(args.includes(','), `地を渡さずに呼んでいる: _burstOnLight(${args})`);
+        }
+        // 色を薄く敷いた地なら _burstTint を渡す (白の決め打ちでは足りない)
+        for (const m of html.matchAll(/background:\$\{([^}]+)\}1A;color:\$\{_burstOnLight\(([^)]*(?:\([^)]*\))?[^)]*)\)\}/g)) {
+            assert.ok(m[2].includes('_burstTint('), `薄い地なのに地を渡していない: ${m[0].slice(0, 80)}`);
+        }
+        // ★ 薄い地の濃さは CSS の `1A` と同じでなければ、測る地が実物とずれる
+        assert.ok(/background:\$\{[^}]+\}1A;/.test(html), 'CSS の薄い地が 1A でなくなっている');
+        assert.equal(F._burstTint('#000000'), '#e5e5e5',
+            '薄い地の濃さが CSS の 1A (10.2%) と合っていない');
+        assert.equal(F._burstTint('#FFFFFF'), '#ffffff');
     });
     test('★ バーストの色は1組だけ (同じ B1 が画面によって色違いにならない)', () => {
         // 2026-09-10 まで編成エディタ (B1緑/B2黄) とキャラ管理 (B1紫/B2緑) で色が違った。

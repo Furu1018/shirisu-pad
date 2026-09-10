@@ -2648,7 +2648,6 @@
             font-size:8.5px; font-weight:900; letter-spacing:0.04em; color:#fff;
         }
         .te-band.split { justify-content:space-between; }
-        .te-band.dark { color:#14161A; }
         .te-band .pct { opacity:0.85; font-weight:800; }
         .te-cap {
             display:block; max-width:100%; font-size:8.5px; font-weight:800; color:#6B7178; line-height:1.2;
@@ -10794,13 +10793,31 @@
             return ((L + 0.05) / 0.05) >= (1.05 / (L + 0.05)) ? '#000000' : '#FFFFFF';
         }
 
-        /** 白っぽい地に**文字や枠として**置ける濃さに落とした色 (白に対して 4.5:1 まで暗くする) */
-        function _burstOnLight(hex) {
+        /**
+         * その色を薄く敷いたときの実際の地の色。★ CSS の `${色}1A` (10%) を白に重ねた結果。
+         * 文字の濃さを決めるときは**この地**に対して測る — 純白で測ると足りない (Codex指摘 2026-09-10)
+         */
+        function _burstTint(hex) {
+            if (!_HEX6.test(String(hex))) return '#F1F2F4';
+            const a = 0x1A / 255;
+            return `#${_burstRgb(hex).map((c) => Math.round(c * a + 255 * (1 - a)).toString(16).padStart(2, '0')).join('')}`;
+        }
+
+        /**
+         * 薄い地に**文字や枠として**置ける濃さに落とした色。
+         * ★ 地は**必ず渡す**。純白を決め打ちすると、色を薄く敷いた地では足りない
+         *   (Codex指摘 2026-09-10: B3 は白基準で 4.5:1 でも実際の地では 3.97:1 だった)。
+         *   色を敷くなら `_burstTint(色)`、地が透明ならその下の色 (ふつうカードの `#FFFFFF`)。
+         * @param {string} hex もとの色
+         * @param {string} bg  置く先の地
+         */
+        function _burstOnLight(hex, bg) {
             if (!_HEX6.test(String(hex))) return '#8A9097';
+            const bgL = _HEX6.test(String(bg)) ? _burstLum(_burstRgb(bg)) : 1;
             const ch = _burstRgb(hex);
             let k = 1;
-            for (; k > 0.2; k -= 0.02) {
-                if (1.05 / (_burstLum(ch.map((c) => Math.round(c * k))) + 0.05) >= 4.5) break;
+            for (; k > 0.04; k -= 0.02) {
+                if ((bgL + 0.05) / (_burstLum(ch.map((c) => Math.round(c * k))) + 0.05) >= 4.5) break;
             }
             return `#${ch.map((c) => Math.round(c * k).toString(16).padStart(2, '0')).join('')}`;
         }
@@ -10891,9 +10908,9 @@
         function _teBand(c, pct) {
             const b = _teBurstOf(c) || '—';
             const col = TE_BURST_COLOR[b] || '#8A9097';
-            const dark = b === 'B2' ? ' dark' : '';
             const alt = c?.burst_alt ? ` / ${escapeHtml(c.burst_alt)}` : '';
-            return `<span class="te-band${dark}${pct ? ' split' : ''}" style="background:${col};">`
+            // ★ 「B2 だけ黒」と手で書き分けない (色表を変えると破綻する)
+            return `<span class="te-band${pct ? ' split' : ''}" style="background:${col};color:${_burstInk(col)};">`
                 + `<span>${escapeHtml(b)}${alt}</span>${pct ? `<span class="pct">${pct}%</span>` : ''}</span>`;
         }
         // もう一方のスロットで使っているキャラ (同キャラは1日1回なので被ると2凸目が出せない)
@@ -11437,11 +11454,11 @@
             }
             // ★ 薄い地 (色の 10%) に置くので、文字と枠は濃く落とした色を使う
             const c1 = _BURST_COLOR[entry.burst] || '#8A9097';
-            const t1 = _burstOnLight(c1);
+            const t1 = _burstOnLight(c1, _burstTint(c1));
             let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${t1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
             if (entry.burst_alt) {
                 const c2 = _BURST_COLOR[entry.burst_alt] || '#8A9097';
-                const t2 = _burstOnLight(c2);
+                const t2 = _burstOnLight(c2, '#FFFFFF');   // 枠だけ。地は透明なのでカードの白に対して測る
                 html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${t2};background:transparent;border:1px solid ${t2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
             }
             return html;
@@ -11620,7 +11637,8 @@
                     return `<button type="button" onclick="setIconPickerBurst('${o.v}')"`
                         + ` style="padding:5px 11px;border-radius:999px;border:1.5px solid ${on ? o.color : 'transparent'};`
                         + `font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;`
-                        + (on ? `background:${o.color};color:${_burstInk(o.color)};` : `background:${o.color}1A;color:${_burstOnLight(o.color)};`)
+                        + (on ? `background:${o.color};color:${_burstInk(o.color)};`
+                            : `background:${o.color}1A;color:${_burstOnLight(o.color, _burstTint(o.color))};`)
                         + (dim ? 'opacity:0.4;' : '')
                         + `">${o.label} <span style="font-weight:800;opacity:0.75;">${o.n}</span></button>`;
                 }).join('');
@@ -14666,10 +14684,10 @@
                     : '<span style="font-size:10px;color:rgba(20,22,26,0.08);">no icon</span>';
                 const bc = r.burst ? (_BURST_COLOR[r.burst] || '#8A9097') : null;
                 let burstBadge = bc
-                    ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${_burstOnLight(bc)};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
+                    ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${_burstOnLight(bc, _burstTint(bc))};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
                     : `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:#A4AAB0;background:#F1F2F4;">—</span>`;
                 if (r.burst_alt) {
-                    const ac = _burstOnLight(_BURST_COLOR[r.burst_alt] || '#8A9097');
+                    const ac = _burstOnLight(_BURST_COLOR[r.burst_alt] || '#8A9097', '#FFFFFF');   // 枠だけ (地は透明)
                     burstBadge += `<span title="${escapeHtml(r.burst_alt)}枠としても使える" style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 5px;border-radius:999px;color:${ac};background:transparent;border:1px solid ${ac}66;">+${escapeHtml(r.burst_alt)}</span>`;
                 }
                 return `
@@ -14767,7 +14785,8 @@
         function _burstPillStyle(color, on) {
             return `padding:5px 12px;border-radius:999px;border:1.5px solid ${on ? color : 'transparent'};`
                 + `font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;`
-                + (on ? `background:${color};color:${_burstInk(color)};` : `background:${color}1A;color:${_burstOnLight(color)};`);
+                + (on ? `background:${color};color:${_burstInk(color)};`
+                    : `background:${color}1A;color:${_burstOnLight(color, _burstTint(color))};`);
         }
         function _burstPickerHtml(groupId, current, emptyLabel = '未設定') {
             _burstState[groupId] = current || '';
