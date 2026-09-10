@@ -7091,7 +7091,7 @@ console.log('\ngrowthDomain:');
         const rgba = (css.match(/rgba?\([0-9]/g) || []).length;
         // 2026-09-10 段階1 完了: 727 → 14。残り14はコメントと、インラインの style を拾う
         // 属性セレクタ (button[style*="background:#14161A"]) — 段階2でインラインを直すまで動かせない
-        const LIMIT_HEX = 14, LIMIT_RGBA = 298;
+        const LIMIT_HEX = 14, LIMIT_RGBA = 212;   // 段階3a: 線・輪郭のベールを --ink-rgb へ
         assert.ok(raw <= LIMIT_HEX, `<style> の直値が増えている: ${raw} (上限 ${LIMIT_HEX})`);
         assert.ok(rgba <= LIMIT_RGBA, `<style> の rgba() が増えている: ${rgba} (上限 ${LIMIT_RGBA})`);
         if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
@@ -7105,6 +7105,26 @@ console.log('\ngrowthDomain:');
         const LIMIT_INLINE = 614;
         assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
         if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
+    });
+    test('★ ベールの素はテーマで裏返る / 線を黒の直書きに戻していない', () => {
+        // ★ ライトは「白い面に黒を薄く重ねて」線や淡い面を作っている。ダークで黒のままだと
+        //   地に沈んで**カードの輪郭がぜんぶ消える**。--ink-rgb / --paper-rgb で裏返す。
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        const A = ':root, :root[data-theme="light"]', DK = ':root[data-theme="dark"]', MB = '/* === マーブル';
+        const varsOf = (from, to) => Object.fromEntries(
+            [...css.slice(css.indexOf(from), css.indexOf(to)).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map(m => [m[1], m[2].trim()]));
+        const L = varsOf(A, DK), D = varsOf(DK, MB);
+        const near = (v) => v.replace(/\s/g, '');
+        assert.equal(near(L['ink-rgb'] || ''), '20,22,26', 'ライトのベールは黒であること');
+        assert.equal(near(D['ink-rgb'] || ''), '255,255,255', 'ダークのベールは白であること (黒のままだと線が消える)');
+        assert.equal(near(L['paper-rgb'] || ''), '255,255,255', 'ライトの裏返しは白であること');
+        assert.equal(near(D['paper-rgb'] || ''), '23,25,29', 'ダークの裏返しは暗いこと');
+        // 線を黒の直書きに戻していないこと (段階3a で 180 箇所を --ink-rgb にした)
+        const body = css.slice(0, css.indexOf(A)) + css.slice(css.indexOf(MB));
+        const rawBorders = [...body.matchAll(/border(?:-top|-bottom|-left|-right|-color)?\s*:\s*([^;}]*)/g)]
+            .map(m => m[1]).filter(v => /rgba\(\s*(20\s*,\s*22\s*,\s*26|0\s*,\s*0\s*,\s*0)\s*,/.test(v));
+        assert.deepEqual(rawBorders, [], `線を黒の直書きに戻している (ダークで消える):\n  ${rawBorders.join('\n  ')}`);
     });
     test('★ 定義されていない var(--…) を使っていない (置き換えの取りこぼし)', () => {
         // ★ 段階2 で「対応表に書いたが定義し忘れたトークン」を1つ作ってしまった。

@@ -483,18 +483,33 @@ test('★ 色の値が壊れていたら既定に倒す / 文字色は読める�
     // ★ 文字色そのものの検証は tests/run-tests.mjs (本物の _burstInk を動かす)
 });
 
-test('★ バーストの点は白地でも輪郭が見える (縁のコントラストを実際に計算する)', () => {
+test('★ バーストの点は、ライトでもダークでも輪郭が見える (縁のコントラストを実際に計算する)', () => {
     // ★ 縁があるだけでは足りない — 薄い縁は白に溶けて 1.9:1 にしかならなかった (Codex指摘)。
     //   色そのものは文字にしない (B2 の黄色は白地で 1.8:1)。意味は文字が、色は縁のある点が担う
+    // ★ 2026-09-10: 縁は rgba(var(--ink-rgb), α) になった。トークンを解いて**両テーマで**測る
+    //   (ダークで黒い縁のままだと、暗いカードの上で点の輪郭が消える)
     const dot = html.match(/\.gv-pills button\.gv-b \.dot \{[\s\S]*?\}/)?.[0] || '';
-    const m = dot.match(/box-shadow: 0 0 0 1px rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-    assert.ok(m, '点に縁が無い (白地で見えない色がある)');
-    const a = Number(m[4]);
-    const over = (c) => c * a + 255 * (1 - a);            // 白地に重ねた実際の色
-    const lin = (c) => { const n = over(c) / 255; return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4); };
-    const L = 0.2126 * lin(Number(m[1])) + 0.7152 * lin(Number(m[2])) + 0.0722 * lin(Number(m[3]));
-    const ratio = 1.05 / (L + 0.05);
-    assert.ok(ratio >= 3, `縁が白地に溶けている (${ratio.toFixed(2)}:1 — 3:1 以上が要る)`);
+    const m = dot.match(/box-shadow: 0 0 0 1px rgba\(var\(--ink-rgb\),\s*([\d.]+)\)/);
+    assert.ok(m, '点に縁が無い (どちらかのテーマで見えない色がある)');
+    const a = Number(m[1]);
+    const inkOf = (from, to) => {
+        const seg = html.slice(html.indexOf(from), html.indexOf(to, html.indexOf(from)));
+        const v = seg.match(/--ink-rgb:\s*([^;]+);/)?.[1] || '';
+        return v.split(',').map(x => Number(x.trim()));
+    };
+    const cases = [
+        ['ライト', inkOf(':root, :root[data-theme="light"]', ':root[data-theme="dark"]'), [255, 255, 255]],
+        ['ダーク', inkOf(':root[data-theme="dark"]', '/* === マーブル'), [23, 25, 29]],
+    ];
+    for (const [mode, ink, ground] of cases) {
+        assert.equal(ink.length, 3, `${mode}: --ink-rgb を読めない`);
+        const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+        const over = ink.map((c, i) => c * a + ground[i] * (1 - a));   // 地に重ねた実際の色
+        const x = lum(over) + 0.05, y = lum(ground) + 0.05;
+        const ratio = Math.max(x, y) / Math.min(x, y);
+        assert.ok(ratio >= 3, `${mode}: 縁が地に溶けている (${ratio.toFixed(2)}:1 — 3:1 以上が要る)`);
+    }
     // ★ バーストの色を文字や枠に使わない (使うと B2 が読めない)
     const pill = html.match(/\.gv-pills button\.gv-b \{[\s\S]*?\}/)?.[0] || '';
     assert.ok(!/color: var\(--b-c/.test(pill), 'バーストの色を文字に使っている');
