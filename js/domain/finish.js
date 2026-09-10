@@ -309,11 +309,22 @@
             for (const r of rs) {
                 const pk = String(r.player_id);
                 const cur = byPlayer.get(pk);
-                if (!cur || (rank[r.status] || 0) > (rank[cur.status] || 0)) byPlayer.set(pk, r);
+                // ★ 数えるのは1人でも、**行はすべて覚えておく** (Codex指摘 2026-09-10)。
+                //   1行しか持たないと、確定のときに落とし損ねた行が「確認中」で残り、
+                //   あとから二重に頼まれる。44 の一意索引が守っている前提に寄りかからない
+                if (!cur) {
+                    byPlayer.set(pk, { rep: r, rows: [r] });
+                } else {
+                    cur.rows.push(r);
+                    if ((rank[r.status] || 0) > (rank[cur.rep.status] || 0)) cur.rep = r;
+                }
             }
-            const members = [...byPlayer.values()].map(r => ({
+            const members = [...byPlayer.values()].map(({ rep: r, rows }) => ({
                 id: r.player_id,
                 rowId: r.id != null ? r.id : null,
+                // その人のその案の行すべて (落とすときはこちらを使う)
+                rowIds: rows.map(x => (x.id != null ? x.id : null)).filter(x => x != null),
+                missingRowIds: rows.filter(x => x.id == null).length,
                 name: r.name || (r.players && r.players.name) || String(r.player_id),
                 status: r.status,
                 respondedAt: r.responded_at || null,
@@ -386,17 +397,18 @@
         for (const p of progress.plans) {
             if (p.key === winnerKey) continue;
             for (const m of p.members) {
-                // ★ 行は**誰のものでも**落とす。勝った案に居る人の行を残すと、
+                // ★ 行は**誰のものでも・何行でも**落とす。勝った案に居る人の行を残すと、
                 //   その案が accepted のまま生き続けて「確定した」ことが記録に出ない
-                if (m.rowId != null) rowIds.push(m.rowId);
-                else missingRowIds += 1;
+                const mine = Array.isArray(m.rowIds) ? m.rowIds : (m.rowId != null ? [m.rowId] : []);
+                for (const rid of mine) rowIds.push(rid);
+                missingRowIds += Number(m.missingRowIds) || (mine.length === 0 ? 1 : 0);
                 if (winIds.has(String(m.id))) continue;     // 勝った案にも居る = 見送りではない
                 if (m.status === 'declined') continue;      // 断った人に「落ちました」は要らない
                 const k = String(m.id);
                 // ★ 同じ人が落ちた案に2つ居ることがある。**行はすべて**返す
                 //   (1行だけ落とすと、もう片方が「確認中」のまま残って二重に頼める)
                 const cur = out.get(k) || { id: m.id, name: m.name, rowIds: [] };
-                if (m.rowId != null) cur.rowIds.push(m.rowId);
+                for (const rid of mine) cur.rowIds.push(rid);
                 out.set(k, cur);
             }
         }

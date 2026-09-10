@@ -2923,6 +2923,25 @@ console.log('\n複数案の同時打診:');
         assert.deepEqual(lose.notify.map(m => m.name), ['う']);
     });
 
+    test('★ 同じ人の同じ案に行が2つあっても、落とすときは両方落とす', () => {
+        // 数えるのは1人でも、行はすべて覚えておく。1行しか持たないと、確定のときに
+        // 落とし損ねた行が「確認中」で残り、あとから二重に頼まれる (Codex指摘 2026-09-10)。
+        // 44 の一意索引が守っている前提に寄りかからない
+        const p = F.offerProgress([
+            { id: 11, plan_key: 'A', player_id: 1, name: 'あ', status: 'accepted' },
+            { id: 21, plan_key: 'B', player_id: 2, name: 'い', status: 'pending' },
+            { id: 22, plan_key: 'B', player_id: 2, name: 'い', status: 'accepted' },   // 同じ人・同じ案の2行目
+        ], { now: 0 });
+        const B = p.plans.find(x => x.key === 'B');
+        assert.equal(B.total, 1, '同じ人を2人として数えている');
+        assert.equal(B.members[0].status, 'accepted', 'より進んだ返事を採っていない');
+        assert.deepEqual(B.members[0].rowIds.slice().sort((a, b) => a - b), [21, 22], '行を1つしか覚えていない');
+        const lose = F.offerLosers(p, 'A');
+        assert.deepEqual(lose.rowIds.slice().sort((a, b) => a - b), [21, 22], '落とす行が足りない');
+        assert.equal(lose.missingRowIds, 0);
+        assert.deepEqual(lose.notify[0].rowIds.slice().sort((a, b) => a - b), [21, 22]);
+    });
+
     test('★ 行 id が無い古い行が混ざったら数を返す (確定させないため)', () => {
         const p = F.offerProgress([
             { plan_key: 'A', player_id: 1, name: 'あ', status: 'accepted', id: 1 },
