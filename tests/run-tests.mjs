@@ -7353,6 +7353,104 @@ console.log('\ngrowthDomain:');
         assert.ok(/_isMissingTableErr\(error, 'member_growth_status'\)\) return null;/.test(cl), '未適用の判定が無い');
         assert.ok(/order\('season_id', \{ ascending: false \}\)\.limit\(1\)/.test(cl), 'いちばん新しい回を見ていない');
     });
+    test('★ 済んだ凸を時間割の軸に載せる (全体の流れが追えるように)', () => {
+        // 2026-09-11 ユーザー要望「すでに凸報告があった終わった凸が表示された方が
+        // 全体の流れが追えていい」
+        const f = globalThis.doneAttacksByHour;
+        assert.equal(typeof f, 'function', 'doneAttacksByHour が無い');
+        const HO = [5, 6, 7, 8, 9, 10];
+        const jst = (iso) => {
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return null;
+            return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d));
+        };
+        const r = f([
+            { boss_number: 1, reported_at: '2026-09-11T00:30:00Z' },   // JST 9時 → idx 4
+            { boss_number: 1, reported_at: '2026-09-11T00:45:00Z' },
+            { boss_number: 3, reported_at: '2026-09-11T12:00:00Z' },   // JST 21時 = 表の外
+        ], HO, jst);
+        assert.deepEqual([...r.byHourBoss.keys()], ['4:1'], '時間×ボスの割り当てが違う');
+        assert.equal(r.byHourBoss.get('4:1').length, 2);
+        assert.equal(r.unknownTime.length, 1, '表の外の時間を捨てている');
+        assert.equal(r.total, 3, '合計が合わない');
+
+        // ★ 空の時刻を Date に渡さない。new Date(null) は 1970-01-01 として通ってしまい、
+        //   「時刻が無い凸」が表の 9 時に紛れ込む (2026-09-11 に実際に踏んだ)
+        for (const bad of [null, undefined, '', '   ', 'こわれてる', 0, {}]) {
+            const x = f([{ boss_number: 2, reported_at: bad }], HO, jst);
+            assert.equal(x.byHourBoss.size, 0, `reported_at=${JSON.stringify(bad)} が時刻ありに紛れている`);
+            assert.equal(x.unknownTime.length, 1, `reported_at=${JSON.stringify(bad)} を捨てている (報告したのに出てこない)`);
+        }
+        // ★ 報告された凸を落とさない (捨てると「報告したのに出てこない」になる)
+        assert.equal(f([{ boss_number: 1 }, { boss_number: 2 }], HO, jst).total, 2);
+        // 壊れた入力で落ちない
+        assert.deepEqual(f(null, null, null).total, 0);
+        assert.equal(f([null, {}, { boss_number: null }], HO, jst).total, 0, 'ボス番号の無い行を数えている');
+    });
+
+    test('★ 配線: 時間割は済んだ凸をプランに焼き込まず、描くたびに読み直す', () => {
+        const html = _grRd('index.html');
+        // ★ 焼き込むと配信した時点の凸で固定される
+        assert.ok(/_planDone\.byHourBoss\.get\(`\$\{h\}:\$\{bm\.bossNumber\}`\)/.test(html),
+            '時間割のセルに済んだ凸を入れていない');
+        assert.ok(/async function _ensurePlanDoneAttacks\(season\)/.test(html), '読み込みが無い');
+        // 運営の算出とホームの配信カード、両方で読む
+        const ops = html.match(/async function computeAndRenderOptimalPlan[\s\S]*?\n        \}/)?.[0] || '';
+        const home = html.match(/async function renderMyPublishedPlan[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/_ensurePlanDoneAttacks\(/.test(ops), '運営の算出で読んでいない');
+        assert.ok(/_ensurePlanDoneAttacks\(/.test(home), 'ホームの配信カードで読んでいない');
+        // 取れなくても時間割は出す (ここで throw すると「プランが丸ごと出ない」になる)
+        const load = html.match(/async function _ensurePlanDoneAttacks\(season\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/catch \(e\)/.test(load) && !/throw/.test(load), '読めないときにプランごと落としている');
+        // 済んだ凸だけがある時間にも行を作る (作らないと報告したのに出てこない)
+        assert.ok(/for \(const k of _planDone\.byHourBoss\.keys\(\)\)/.test(html), '済みだけの時間に行を作っていない');
+    });
+
+    test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
+        // 2026-09-11 ユーザー要望「戦況のボス一覧ほどの情報量じゃないが、属性アイコン、
+        // ちゃんとボスの並び順で、戦闘中かどうかだけぱっと見でわかるように」
+        const f = globalThis.homeBossStrip;
+        assert.equal(typeof f, 'function', 'homeBossStrip が無い');
+        const bosses = [
+            { boss_number: 3, attribute: 'IRON', remaining_hp_raw: 5 },
+            { boss_number: 1, attribute: 'fire', remaining_hp_raw: 0 },
+            { boss_number: 2, attribute: 'water', remaining_hp_raw: null },
+        ];
+        const coords = [
+            { status: 'coordinating', boss_number: 3, player_id: 9 },
+            { status: 'coordinating', boss_number: 3, player_id: 1 },
+            { status: 'available', boss_number: 2, player_id: 5 },   // ★ オンラインは戦闘中ではない
+            { status: 'practicing', boss_number: 2, player_id: 6 },
+        ];
+        const out = f(bosses, coords, 1);
+        // ★ 渡された順ではなく**ボスの並び順**
+        assert.deepEqual(out.map((x) => x.bossNumber), [1, 2, 3], 'ボスの並び順になっていない');
+        assert.deepEqual(out.map((x) => x.attr), ['fire', 'water', 'iron'], '属性を正規化していない');
+        assert.equal(out[2].live, 2, '戦闘中の人数が違う');
+        assert.equal(out[2].mine, true, '自分が戦っていることを印していない');
+        assert.equal(out[1].live, 0, 'オンライン/模擬中を戦闘中に数えている');
+        assert.equal(out[0].done, true, '撃破を見ていない');
+        // ★ 残HP が読めないときは「倒した」と決めつけない (未取得と 0 は違う)
+        assert.equal(out[1].done, false, '残HP 不明を撃破扱いにしている');
+        // 情報量を増やさない (残HP や凸数を返し始めたら、戦況タブの縮小版になっている)
+        assert.deepEqual(Object.keys(out[0]).sort(), ['attr', 'bossNumber', 'done', 'live', 'mine'].sort(),
+            '帯が持つ項目が増えている');
+        // 壊れた入力で落ちない
+        assert.deepEqual(f(null, null, null), []);
+        assert.deepEqual(f([{ boss_number: 'x' }], [{}, null], 1), []);
+    });
+
+    test('★ ボス帯は「戦闘」カードの中にあり、調整中の更新で描き直される', () => {
+        const html = _grRd('index.html');
+        // 戦闘に入る前に見るものなので、ゲートより前に置く
+        const card = html.slice(html.indexOf('<!-- ③ 戦闘 (ゲート'), html.indexOf('NIKKE風 戦闘に入る ゲート'));
+        assert.ok(/id="mypageBossStrip"/.test(card), 'ボス帯が戦闘カードの中に無い');
+        // 調整中 (戦闘中) が変わったら帯も更新する — ボスタイルと同じ経路
+        const tiles = (html.match(/renderMyNextAttackBosses\((identity|id)\)/g) || []).length;
+        const strip = (html.match(/renderMyBossStrip\((identity|id)\)/g) || []).length;
+        assert.ok(strip >= 3 && strip === tiles, `帯の更新箇所がボスタイルと揃っていない (帯 ${strip} / タイル ${tiles})`);
+    });
+
     test('★ メニューの帯は地と反対の色 (ライトで黒帯 / ダークで白帯)', () => {
         // 2026-09-10 ユーザー要望「ライト、ダークと反対の色のメニューの方が見やすい」
         const html = _grRd('index.html');

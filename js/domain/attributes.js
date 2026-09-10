@@ -69,7 +69,48 @@
             || null;
     }
 
+    /**
+     * ホームの細いボス帯 (2026-09-11 ユーザー要望)。
+     * 「属性」と「戦闘中かどうか」だけをボスの並び順で返す。
+     * ★ 残HPや凸数は返さない — 出すと戦況タブの縮小版になってしまう。
+     *   ここは「戦闘に入る前にぱっと見る」ための役
+     *
+     * @param {Object[]} bosses      盤面のボス (boss_number / attribute / remaining_hp_raw)
+     * @param {Object[]} coords      いまの調整中リスト (status / boss_number / player_id)
+     * @param {number|string|null} meId 自分のプレイヤーid (自分が戦っているボスに印を付ける)
+     * @returns {{bossNumber:number, attr:(string|null), live:number, mine:boolean, done:boolean}[]}
+     */
+    function homeBossStrip(bosses, coords, meId) {
+        const live = new Map();
+        const mine = new Set();
+        for (const c of Array.isArray(coords) ? coords : []) {
+            // ★ 「戦闘中」は coordinating だけ。available (オンライン) を混ぜると
+            //   誰も戦っていないボスまで光る
+            if (!c || c.status !== 'coordinating') continue;
+            const n = Number(c.boss_number);
+            if (!Number.isInteger(n)) continue;
+            live.set(n, (live.get(n) || 0) + 1);
+            if (meId != null && String(c.player_id) === String(meId)) mine.add(n);
+        }
+        return (Array.isArray(bosses) ? bosses : [])
+            .filter((b) => b && Number.isInteger(Number(b.boss_number)))
+            .slice()
+            .sort((a, b) => Number(a.boss_number) - Number(b.boss_number))
+            .map((b) => {
+                const n = Number(b.boss_number);
+                return {
+                    bossNumber: n,
+                    attr: normalizeAttrKey(b.attribute),
+                    live: live.get(n) || 0,
+                    mine: mine.has(n),
+                    // 残HP が読めないときは「倒した」と決めつけない (未取得と 0 は違う)
+                    done: b.remaining_hp_raw != null && Number(b.remaining_hp_raw) <= 0,
+                };
+            });
+    }
+
     root.ATTR_KEYS = ATTR_KEYS;
+    root.homeBossStrip = homeBossStrip;
     root.normalizeAttrKey = normalizeAttrKey;
     root.weaknessPtOf = weaknessPtOf;
     root.bossAttributeOf = bossAttributeOf;

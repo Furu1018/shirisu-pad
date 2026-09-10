@@ -2815,6 +2815,28 @@
             box-shadow: 0 1px 2px rgba(20,22,26,0.04), 0 10px 26px rgba(20,22,26,0.06);
             border: 1px solid rgba(var(--ink-rgb), 0.045)}
         .dc-profile-card { position: relative; }
+        /* ★ ホームの細いボス帯 (2026-09-11)。属性と「戦闘中か」だけを一列で。
+           情報を足したくなったら戦況タブへ行ってもらう — ここは"ぱっと見"の役 */
+        .mp-bossstrip { display: flex; gap: 6px; margin: 0 0 12px; }
+        .mp-bossstrip .bs {
+            flex: 1 1 0; min-width: 0;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+            height: 30px; border-radius: 9px;
+            background: var(--s1); border: 1px solid var(--line);
+            font-size: 10px; font-weight: 900; color: var(--t-muted);
+        }
+        .mp-bossstrip .bs img { width: 15px; height: 15px; object-fit: contain; display: block; }
+        /* 倒したボスは沈める (もう行き先ではない) */
+        .mp-bossstrip .bs.done { opacity: .38; }
+        .mp-bossstrip .bs.done img { filter: grayscale(1); }
+        /* 誰かが戦闘中: 属性色で縁取り、脈打つ点を出す */
+        .mp-bossstrip .bs.live { background: var(--card); border-color: var(--bs-c); color: var(--t-ink); }
+        .mp-bossstrip .bs .dot {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--bs-c);
+            animation: dcLivePulse 1s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) { .mp-bossstrip .bs .dot { animation: none; } }
+
         /* HomeMind ヒーローカード: 「今やるべき1アクションがあるとき」だけ黒 (ホーム再構成 H2)。
            黒の意味論 = 行動要求/アクティブ (交戦中ボスカードと同じ) */
         .dc-card.dc-hero {
@@ -3715,6 +3737,11 @@
                         <span style="width:7px;height:7px;border-radius:50%;background:var(--attr-fire-solid);animation:dcLivePulse 1s ease-in-out infinite;"></span>LIVE
                     </div>
                 </div>
+
+                <!-- ★ 戦況のボス一覧を細く一列で (2026-09-11 ユーザー要望)。
+                     「戦闘に入る前に確認したい」ので戦闘カードの中。属性と戦闘中かどうかだけ —
+                     残HPや凸数まで出すと戦況タブの縮小版になってしまう -->
+                <div id="mypageBossStrip" class="mp-bossstrip" aria-label="ボスの状況"></div>
 
                 <!-- NIKKE風 戦闘に入る ゲート (赤) -->
                 <div id="mypageBattleGate" onclick="enterBattleGate()" class="btn-nikke btn-nikke-red">
@@ -8685,6 +8712,7 @@
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
             renderMyNextAttackBosses(id);
+            renderMyBossStrip(id);
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
             renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
@@ -8906,6 +8934,9 @@
                             planId: pub.id, seasonId: pub.season_id, ack: ackState,
                             frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange,
                             resv: myResv, todayAttacks };
+            // 済んだ凸を時間割に混ぜるため読む (2026-09-11)。失敗しても本体は描く
+            await _ensurePlanDoneAttacks(seasonStore.get()?.season);
+            if (mySeq !== _myPubRenderSeq) return;   // 取得中に新しい render が始まっていたら降りる
             _renderMyPubBody();
             card.style.display = '';
             // ヒーローの割当ストリップは _myPubState 依存。プランの取得はこのカードが先に走るので、
@@ -13237,6 +13268,7 @@
                 // ホームの「次の凸」も同期
                 if (typeof renderMyNextAttackBosses === 'function') {
                     renderMyNextAttackBosses(identity);
+                    renderMyBossStrip(identity);   // 細いボス帯も同じ材料で更新
                 }
             } catch (e) {
                 console.warn('[coord poll]', e?.message || e);
@@ -13579,6 +13611,29 @@
             return seasonStore.ensure();   // 本体は js/state/seasonStore.js (挙動は同一・世代ガード付き)
         }
 
+        // ホームの細いボス帯: 属性と「戦闘中か」だけをボスの並び順で (2026-09-11 ユーザー要望)。
+        //   判定は attributes.js の homeBossStrip。ここは描くだけ。
+        //   ★ 残HP・凸数は出さない — 出すと戦況タブの縮小版になる
+        function renderMyBossStrip(identity) {
+            const el = document.getElementById('mypageBossStrip');
+            if (!el || typeof homeBossStrip !== 'function') return;
+            const ctx = seasonStore.get();
+            const cells = homeBossStrip(ctx?.bosses || [], _coordActiveCache || [], identity?.id ?? null);
+            if (!cells.length) { el.style.display = 'none'; return; }
+            el.style.display = 'flex';
+            el.innerHTML = cells.map(c => {
+                const v = ATTR_VISUAL[c.attr] || { color: 'var(--t-muted)', name: '?', icon: '' };
+                const cls = ['bs', c.done ? 'done' : '', c.live > 0 ? 'live' : ''].filter(Boolean).join(' ');
+                const title = `B${c.bossNumber} ${v.name}`
+                    + (c.done ? ' · 撃破' : c.live > 0 ? ` · ${c.live}人が戦闘中${c.mine ? ' (自分を含む)' : ''}` : '');
+                return `<div class="${cls}" style="--bs-c:${v.color};" title="${escapeHtml(title)}">`
+                    + (v.icon ? `<img src="${v.icon}" alt="${escapeHtml(v.name)}" loading="lazy" decoding="async">` : '')
+                    + `<span>B${c.bossNumber}</span>`
+                    + (c.live > 0 && !c.done ? '<span class="dot" aria-hidden="true"></span>' : '')
+                    + '</div>';
+            }).join('');
+        }
+
         // ========== ホーム: 次の凸 (ボスタップ起点フロー) ==========
         // タップ → 戦闘準備(coordinating) → 戦闘 → 「📷 報告する」で凸報告モーダル
         async function renderMyNextAttackBosses(identity) {
@@ -13669,7 +13724,7 @@
             if (gate) gate.style.display = 'none';
             if (expanded) expanded.style.display = 'block';
             const id = getCurrentIdentity();
-            if (id?.id) renderMyNextAttackBosses(id);
+            if (id?.id) { renderMyNextAttackBosses(id); renderMyBossStrip(id); }
         }
         async function releaseBattleGate() {
             // 戦闘中の場合は coordination をクリア
@@ -19708,6 +19763,8 @@
             el.innerHTML = '<p style="font-size:12px;color:var(--t-muted);">🧮 最適な3凸を計算中…</p>';
             await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
             if (seq !== _opsPlanSeq) return;
+            // 済んだ凸を時間割に混ぜるため先に読む (2026-09-11)。失敗しても算出は続ける
+            await _ensurePlanDoneAttacks(snapshot?.season);
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:var(--bad);">プラン算出に失敗しました。</p>';
@@ -20115,6 +20172,31 @@
 
         // 🗓 時間割モデル: 縦=時間 / 横=5ボス。画面表示 (_planTimetableHtml) と
         // 共有画像 (_renderPlanToImageTimetable) の両方で使う共通データ構造。
+        // ===== 済んだ凸を時間割に混ぜる (2026-09-11 ユーザー要望) =====
+        //   「すでに凸報告があった終わった凸が表示された方が全体の流れが追えていい」。
+        //   ★ プランには焼き込まない — 配信済みプランに混ぜると配信時点で固定されてしまう。
+        //     描くたびに、いまの凸記録から作り直す。
+        //   ★ 取れなくても時間割は出す (済みが出ないだけ)。ここで throw すると
+        //     「プランが丸ごと出ない」になり、本来の用が果たせない
+        let _planDone = { key: null, byHourBoss: new Map(), unknownTime: [], total: 0 };
+        const _planJstHour = (iso) => {
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return null;
+            return Number(new Intl.DateTimeFormat('en-US',
+                { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d));
+        };
+        async function _ensurePlanDoneAttacks(season) {
+            const key = season?.id != null ? `${season.id}:${season.hard_date || ''}` : null;
+            if (!key) { _planDone = { key: null, byHourBoss: new Map(), unknownTime: [], total: 0 }; return; }
+            try {
+                const rows = await window.supabaseLoadAllAttacksForSeason?.(season.id, season.hard_date);
+                _planDone = { key, ...doneAttacksByHour(rows || [], HOUR_ORDER, _planJstHour) };
+            } catch (e) {
+                console.warn('[plan] 済んだ凸を読めませんでした (時間割には出ません):', e);
+                _planDone = { key, byHourBoss: new Map(), unknownTime: [], total: 0 };
+            }
+        }
+
         function _planTimetableModel(plan) {
             if (!plan.timeAware || !Array.isArray(plan.levels) || plan.levels.length === 0) return null;
             const bosses = [...plan.levels[0].bosses]
@@ -20124,6 +20206,12 @@
                 const byBoss = new Map(lv.bosses.map(b => [b.bossNumber, b]));
                 const hourSet = new Set();
                 lv.bosses.forEach(b => b.attacks.forEach(a => { if (a.hourIdx != null && !a.flex) hourSet.add(a.hourIdx); }));
+                // ★ 済んだ凸だけがある時間にも行を作る。作らないと
+                //   「報告したのに時間割に出てこない」になり、流れが飛ぶ (2026-09-11)
+                for (const k of _planDone.byHourBoss.keys()) {
+                    const [hs, bs] = k.split(':');
+                    if (bosses.some(bm => String(bm.bossNumber) === bs)) hourSet.add(Number(hs));
+                }
                 const hours = [...hourSet].sort((x, y) => x - y);
                 const rows = [];
                 // ⏳ 隙間時間型の凸は時刻を約束しないので、セクション先頭の専用行にまとめる
@@ -20134,7 +20222,7 @@
                         label: '⏳隙間',
                         cells: bosses.map(bm => {
                             const b = byBoss.get(bm.bossNumber);
-                            return { attacks: (b?.attacks || []).filter(a => a.flex), clears: false };
+                            return { attacks: (b?.attacks || []).filter(a => a.flex), done: [], clears: false };
                         }),
                     });
                 }
@@ -20148,6 +20236,8 @@
                             const b = byBoss.get(bm.bossNumber);
                             return {
                                 attacks: (b?.attacks || []).filter(a => a.hourIdx === h && !a.flex),
+                                // ★ 済んだ凸も同じ時間の枠に置く (これから と 済み が並んで流れが読める)
+                                done: _planDone.byHourBoss.get(`${h}:${bm.bossNumber}`) || [],
                                 clears: b?.clearHourIdx === h,
                             };
                         }),
@@ -20252,7 +20342,17 @@
                         // メンバーチップは「持っていくPT属性 (弱点)」の色にする:
                         // 灼熱ボスの列でも中の人は水冷PTで凸るので青、が直感に合う
                         const c = DC_ATTR_COLORS[bm.weakness] || '#7A7C81';
-                        const chips = cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
+                        // ★ 済んだ凸を先に置く (時間順に「もう終わった → これから」と読める)。
+                        //   これからの凸と見分けが付くよう、薄く・✓付きにする
+                        const doneChips = (cell.done || []).map(d => {
+                            const nm = d.players?.name || d.name || '—';
+                            const dmg = Number(d.damage_raw) > 0 ? `${(Number(d.damage_raw) / 1e9).toFixed(2)}B` : '';
+                            return `<span title="${esc(`${nm} · 済 ${dmg}`)}" style="display:inline-flex;align-items:center;gap:2px;`
+                                + `max-width:100%;margin:1px;padding:1px 5px;border-radius:999px;font-size:9px;font-weight:800;`
+                                + `background:rgba(var(--ink-rgb), 0.06);color:var(--t-muted);border:1px dashed rgba(var(--ink-rgb), 0.18);`
+                                + `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">✓ ${esc(nm)}</span>`;
+                        }).join('');
+                        const chips = doneChips + cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
                         const clearMark = cell.clears ? '<div style="font-size:10px;font-weight:900;color:var(--ok);text-align:center;">💀撃破</div>' : '';
                         cells.push(`<div style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${isNow ? 'background:rgba(108,66,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
                     }

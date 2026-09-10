@@ -1816,5 +1816,42 @@
         };
     }
 
+    /**
+     * 済んだ凸を時間割の軸 (hourIdx) に載せる (2026-09-11 ユーザー要望
+     * 「すでに凸報告があった終わった凸が表示された方が全体の流れが追えていい」)。
+     *
+     * ★ プランに焼き込まない — 配信済みプランに混ぜると、配信した時点の凸で固定されてしまう。
+     *   描くときに毎回いまの凸記録から作る。
+     * ★ 時刻が読めない凸は捨てない。hourIdx=null で返し、呼び出し側が「時間不明」として扱う
+     *   (捨てると「報告したのに出てこない」になる)
+     *
+     * @param {Object[]} attacks   凸記録 (reported_at / boss_number / player_id / damage_raw / level)
+     * @param {number[]} hourOrder 時間割の並び (HOUR_ORDER)
+     * @param {(iso:string)=>number|null} hourOf ISO → その日の「時」(JST)。呼び出し側が渡す
+     * @returns {{byHourBoss: Map<string, Object[]>, unknownTime: Object[], total: number}}
+     *   byHourBoss のキーは `${hourIdx}:${bossNumber}`
+     */
+    function doneAttacksByHour(attacks, hourOrder, hourOf) {
+        const byHourBoss = new Map();
+        const unknownTime = [];
+        let total = 0;
+        for (const a of Array.isArray(attacks) ? attacks : []) {
+            if (!a || a.boss_number == null) continue;
+            total += 1;
+            const boss = Number(a.boss_number);
+            // ★ 空の時刻を hourOf に渡さない。new Date(null) は 1970-01-01 として通ってしまい、
+            //   「時刻が無い凸」が表の 9 時に紛れ込む (2026-09-11 に実際に踏んだ)
+            const at = typeof a.reported_at === 'string' ? a.reported_at.trim() : '';
+            const h = (at && typeof hourOf === 'function') ? hourOf(at) : null;
+            const idx = (h == null || !Array.isArray(hourOrder)) ? -1 : hourOrder.indexOf(h);
+            if (idx < 0) { unknownTime.push(a); continue; }
+            const k = `${idx}:${boss}`;
+            if (!byHourBoss.has(k)) byHourBoss.set(k, []);
+            byHourBoss.get(k).push(a);
+        }
+        return { byHourBoss, unknownTime, total };
+    }
+
+    root.doneAttacksByHour = doneAttacksByHour;
     root.computeOptimalPlanCore = computeOptimalPlanCore;
 })(typeof window !== 'undefined' ? window : globalThis);
