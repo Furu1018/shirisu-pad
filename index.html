@@ -9563,8 +9563,8 @@
                         <span style="flex:1;font-size:12.5px;font-weight:900;color:var(--warn-deep);">${escapeHtml(label)} の締め凸依頼が届いています</span>
                     </div>
                     <div style="display:flex;gap:7px;margin-top:9px;">
-                        <button onclick="handleMyFinishRequestRespond(${r.boss_number}, 'accepted')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--ok-solid);color:var(--on-fill);font-size:12px;font-weight:900;cursor:pointer;">🗡 了承する</button>
-                        <button onclick="handleMyFinishRequestRespond(${r.boss_number}, 'declined')" style="flex:none;width:96px;padding:10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-body);font-size:12px;font-weight:800;cursor:pointer;">難しい</button>
+                        <button onclick="handleMyFinishRequestRespond(${r.boss_number}, 'accepted', ${r.id == null ? 'null' : Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--ok-solid);color:var(--on-fill);font-size:12px;font-weight:900;cursor:pointer;">🗡 了承する</button>
+                        <button onclick="handleMyFinishRequestRespond(${r.boss_number}, 'declined', ${r.id == null ? 'null' : Number(r.id)})" style="flex:none;width:96px;padding:10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--card);color:var(--t-body);font-size:12px;font-weight:800;cursor:pointer;">難しい</button>
                     </div>
                 </div>`;
             }).join('');
@@ -9586,14 +9586,16 @@
             return best;
         }
 
-        async function handleMyFinishRequestRespond(bossNumber, status) {
+        // rowId を渡すと**その行だけ**に答える。★ 同じ人が2案に居るとき、
+        //   人+ボスで更新すると片方に答えただけで両案が動く (Codex指摘 2026-09-10)
+        async function handleMyFinishRequestRespond(bossNumber, status, rowId = null) {
             const id = getCurrentIdentity();
             if (!id?.id) return;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブシーズンなし');
                 await window.supabaseRespondFinishRequest(ctx.season.id, bossNumber, id.id, status,
-                    Number(ctx.season.current_level) || null);
+                    Number(ctx.season.current_level) || null, rowId);
                 // ★ 締め凸の了承は **即予約** (ユーザー決定 2026-09-07)。
                 //   了承したのにソルバーが別のボスへ回すと、依頼した意味が無くなる。
                 //   ⏳時刻は約束しない (flex) — 締め凸は「いまから行く」ものなので、
@@ -18527,6 +18529,9 @@
         async function handleOpsFinishOfferSend() {
             const cmp = _opsFinishCompare;
             const ctx = _opsFinishPushContext;
+            // 二重押しよけ (押すたびに全員へ通知が飛ぶ)。★ パネルの状態に置く —
+            //   関数の外に let を置くと、切り出して動かすテストから見えなくなる
+            if (_opsFinish.sending) return;
             if (!cmp || !ctx) { alert('候補データ無し'); return; }
             const picks = cmp.rows.filter(r => _opsFinish.pick.has(r.key) && r.plan);
             if (picks.length < 2) { alert('案を2つ選んでください'); return; }
@@ -18551,6 +18556,7 @@
             if (!ok) return;
             const seasonId = opsStore.get()?.season?.id;
             if (!seasonId) { alert('アクティブシーズンがありません'); return; }
+            _opsFinish.sending = true;
             try {
                 // ★ 先に記録してから送る。送ってから記録に失敗すると、
                 //   頼まれた人だけが居て運営側に進み具合が出ない状態になる
@@ -18559,15 +18565,29 @@
                     { raidLevel: Number(opsStore.get()?.season?.current_level) || null, deadlineAt: deadline });
                 _opsFinish.offerId = offerId;
                 _opsFinish.pick = new Set();
-                for (const m of msgs) {
-                    await window.sendPushNotification({ title: m.title, body: m.body, url: './?tab=mypage&focus=finishreq', playerIds: m.playerIds });
+                // ★ 通知が途中で落ちても、記録は残っている。どの案が届いていないかを言う
+                //   (黙って成功と出すと、運営が「返事が来ない」を待ち続ける)
+                const failed = [];
+                for (let i = 0; i < msgs.length; i += 1) {
+                    try {
+                        await window.sendPushNotification({ title: msgs[i].title, body: msgs[i].body, url: './?tab=mypage&focus=finishreq', playerIds: msgs[i].playerIds });
+                    } catch (pushErr) {
+                        console.error('[finishOffer] 打診の通知に失敗:', pushErr);
+                        failed.push(`案${i + 1} (${msgs[i].recipients.map(r => r.name).join('、')})`);
+                    }
                 }
-                showNotification(`✅ ${picks.length}案を同時に打診しました (${hhmm} まで)`);
+                if (failed.length) {
+                    alert(`⚠ 打診は記録できましたが、通知が送れなかった案があります。\n${failed.join('\n')}\n直接お伝えください。`);
+                } else {
+                    showNotification(`✅ ${picks.length}案を同時に打診しました (${hhmm} まで)`);
+                }
                 await _refreshFinishRequests();
                 if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
                 renderOpsBossSummary();
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
+            } finally {
+                _opsFinish.sending = false;
             }
         }
 
@@ -18625,24 +18645,44 @@
         async function handleOpsFinishOfferConfirm(winnerKey) {
             const dom = window.finishDomain, pr = _opsFinishOffer, ctx = _opsFinishPushContext;
             if (!dom || !pr || !ctx) return;
+            if (_opsFinish.confirming) return;   // 二重押しよけ (確定は取り消せない)
             const win = pr.plans.find(p => p.key === winnerKey);
             if (!win) return;
-            const losers = dom.offerLosers(pr, winnerKey);
+            const { rowIds, notify, missingRowIds } = dom.offerLosers(pr, winnerKey);
+            // ★ 行 id が分からない行があるまま確定しない (Codex指摘 2026-09-10)。
+            //   落とし損ねた行が「確認中」で残り、あとから二重に頼まれる
+            if (missingRowIds > 0) {
+                alert('❌ 古い形の依頼が混ざっているため確定できません。\n画面を更新してからもう一度お試しください。');
+                await _refreshFinishRequests();
+                if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+                return;
+            }
             const winNames = win.members.map(m => m.name).join('、');
             if (!confirm(`${winNames} さんの案で確定します。\n\n`
-                + (losers.length ? `${losers.map(m => m.name).join('、')} さんには「今回は見送り」をお伝えします。\n\n` : '')
+                + (notify.length ? `${notify.map(m => m.name).join('、')} さんには「今回は見送り」をお伝えします。\n\n` : '')
                 + '[OK] 確定する / [キャンセル] やめる')) return;
+            _opsFinish.confirming = true;
             try {
-                if (losers.length) {
-                    const title = '🙏 締め凸のお願い (今回は見送り)';
-                    const body = `${ctx.boss.name || ctx.boss.boss_code} は ${winNames} さんにお願いしました。`
-                        + `\n手を挙げてくださってありがとうございました。凸は温存でお願いします`;
-                    const ok = await showPushPreview([{ title, body, recipients: losers.map(m => ({ id: m.id, name: m.name })) }]);
+                const title = '🙏 締め凸のお願い (今回は見送り)';
+                const body = `${ctx.boss.name || ctx.boss.boss_code} は ${winNames} さんにお願いしました。`
+                    + `\n手を挙げてくださってありがとうございました。凸は温存でお願いします`;
+                if (notify.length) {
+                    const ok = await showPushPreview([{ title, body, recipients: notify.map(m => ({ id: m.id, name: m.name })) }]);
                     if (!ok) return;
-                    // ★ 先に記録してから送る。送ってから記録に失敗すると、
-                    //   「見送り」と伝えたのに画面では確認中のまま残る
-                    await window.supabaseDeclineFinishRows(losers.flatMap(m => m.rowIds));
-                    await window.sendPushNotification({ title, body, url: './?tab=mypage', playerIds: losers.map(m => m.id) });
+                }
+                // ★ 先に記録してから送る。送ってから記録に失敗すると、
+                //   「見送り」と伝えたのに画面では確認中のまま残る。
+                //   ★ 落とすのは**落ちた案の全行** — 勝った案にも居る人の行を残すと、
+                //     その案が accepted のまま生き続けて確定が記録に出ない
+                if (rowIds.length) await window.supabaseDeclineFinishRows(rowIds);
+                if (notify.length) {
+                    try {
+                        await window.sendPushNotification({ title, body, url: './?tab=mypage', playerIds: notify.map(m => m.id) });
+                    } catch (pushErr) {
+                        // 記録は済んでいる。通知だけ落ちたことを隠さない (口頭で伝えられるように)
+                        console.error('[finishOffer] 見送りの通知に失敗:', pushErr);
+                        alert(`⚠ 確定はできましたが、見送りの通知が送れませんでした。\n${notify.map(m => m.name).join('、')} さんには直接お伝えください。\n\n${pushErr?.message || pushErr}`);
+                    }
                 }
                 showNotification(`✅ ${winNames} さんの案で確定しました`);
                 _opsFinish.offerId = null;
@@ -18651,6 +18691,8 @@
                 renderOpsBossSummary();
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
+            } finally {
+                _opsFinish.confirming = false;
             }
         }
 

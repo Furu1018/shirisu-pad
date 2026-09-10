@@ -279,8 +279,14 @@ SELECT * FROM (
                       WHERE table_name = 'finish_requests' AND column_name = 'deadline_at')
          -- 同じ回・同じ案・同じ人の重複を止める一意索引まで見る
          -- (無いと「全員そろったか」を数えられなくなる)
+         -- ★ 名前だけでなく定義まで見る (UNIQUE でない/列が違う同名索引を「適用済み」にしない)
          AND EXISTS (SELECT 1 FROM pg_indexes
-                      WHERE schemaname = 'public' AND indexname = 'uq_finish_requests_offer_plan_player')),
+                      WHERE schemaname = 'public' AND indexname = 'uq_finish_requests_offer_plan_player'
+                        AND indexdef LIKE '%UNIQUE%'
+                        AND indexdef LIKE '%(offer_id, plan_key, player_id)%'
+                        -- 部分条件はここで終わっていること (AND で絞られていたら一意性が守られない)
+                        AND (indexdef LIKE '%WHERE (offer_id IS NOT NULL)'
+                          OR indexdef LIKE '%WHERE offer_id IS NOT NULL'))),
         '締め凸の複数案の同時打診 (未適用だと同時打診だけが使えない。1案の依頼は従来どおり動く)'
 
     UNION ALL SELECT '(storage bucket)',

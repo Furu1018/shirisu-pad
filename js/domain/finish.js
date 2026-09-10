@@ -365,15 +365,32 @@
      * 確定したときに「落ちた案の人」を返す。★ 黙って流さないための材料。
      * 勝った案にも入っている人は除く (その人には別途お願いが立っている)。
      */
+    /**
+     * 確定したときの後始末。**「見送りにする行」と「知らせる人」は別物**なので分けて返す
+     * (Codex指摘 2026-09-10 — 一緒にしていたため、勝った案にも居る人の落ちた行が
+     *  accepted のまま残り、DB 上で確定が表せていなかった)。
+     *
+     * @returns {{rowIds:(number|string)[], notify:{id,name,rowIds}[], missingRowIds:number}}
+     *   rowIds        落ちた案の行**すべて** (勝った案に居る人のぶんも含む)
+     *   notify        「今回は見送り」を知らせる人。勝った案にも居る人と、自分で断った人は除く
+     *   missingRowIds 行 id が分からなかった数。0 でなければ確定してはいけない
+     */
     function offerLosers(progress, winnerKey) {
-        if (!progress || !Array.isArray(progress.plans)) return [];
+        const empty = { rowIds: [], notify: [], missingRowIds: 0 };
+        if (!progress || !Array.isArray(progress.plans)) return empty;
         const win = progress.plans.find(p => p.key === winnerKey);
         const winIds = new Set((win ? win.members : []).map(m => String(m.id)));
+        const rowIds = [];
+        let missingRowIds = 0;
         const out = new Map();
         for (const p of progress.plans) {
             if (p.key === winnerKey) continue;
             for (const m of p.members) {
-                if (winIds.has(String(m.id))) continue;
+                // ★ 行は**誰のものでも**落とす。勝った案に居る人の行を残すと、
+                //   その案が accepted のまま生き続けて「確定した」ことが記録に出ない
+                if (m.rowId != null) rowIds.push(m.rowId);
+                else missingRowIds += 1;
+                if (winIds.has(String(m.id))) continue;     // 勝った案にも居る = 見送りではない
                 if (m.status === 'declined') continue;      // 断った人に「落ちました」は要らない
                 const k = String(m.id);
                 // ★ 同じ人が落ちた案に2つ居ることがある。**行はすべて**返す
@@ -383,7 +400,7 @@
                 out.set(k, cur);
             }
         }
-        return [...out.values()];
+        return { rowIds, notify: [...out.values()], missingRowIds };
     }
 
     root.finishDomain = {

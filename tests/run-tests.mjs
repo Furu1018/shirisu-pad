@@ -2815,8 +2815,14 @@ console.log('\n締め凸コンソール (今 vs 待つ):');
 console.log('\n複数案の同時打診:');
 {
     const F = globalThis.finishDomain;
+    const _fsF = (await import('node:fs')).default;
+    const _pathF = (await import('node:path')).default;
+    const _ROOTF = _pathF.resolve(_pathF.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
     const T = (m) => new Date(Date.UTC(2026, 8, 10, 12, m, 0)).toISOString();   // 12:MM
+    let _rowSeq = 0;
     const R = (plan, id, name, status, min) => ({
+        // ★ 行 id は実データには必ずある。確定は id を名指しで落とすので、テストも同じ形にする
+        id: ++_rowSeq,
         plan_key: plan, player_id: id, name, status,
         responded_at: min == null ? null : T(min), deadline_at: T(30),
     });
@@ -2897,7 +2903,34 @@ console.log('\n複数案の同時打診:');
             R('A', 1, 'あ', 'accepted', 3),
             R('B', 2, 'い', 'accepted', 5), R('B', 3, 'う', 'pending'),
         ], { now: Date.parse(T(10)) });
-        assert.deepEqual(F.offerLosers(p, 'A').map(m => m.name), ['い', 'う']);
+        const lose = F.offerLosers(p, 'A');
+        assert.deepEqual(lose.notify.map(m => m.name), ['い', 'う']);
+        assert.equal(lose.missingRowIds, 0);
+        // ★ 落とす行は「知らせる人」とは別 — 落ちた案の行はすべて落とす
+        assert.equal(lose.rowIds.length, 2, '落ちた案の行を落とし切っていない');
+    });
+
+    test('★ 確定: 勝った案にも居る人の「落ちた行」も必ず落とす (知らせないだけ)', () => {
+        // 落ちた案の行を残すと accepted のまま生き続け、確定が記録に出ない (Codex指摘 2026-09-10)
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'accepted', 3), R('A', 2, 'い', 'accepted', 3),
+            R('B', 2, 'い', 'accepted', 4), R('B', 3, 'う', 'pending'),
+        ], { now: Date.parse(T(10)) });
+        const lose = F.offerLosers(p, 'A');
+        // B案は2行 (い・う) とも落とす
+        assert.equal(lose.rowIds.length, 2, '勝った案にも居る人の行を残している');
+        // ただし知らせるのは「う」だけ
+        assert.deepEqual(lose.notify.map(m => m.name), ['う']);
+    });
+
+    test('★ 行 id が無い古い行が混ざったら数を返す (確定させないため)', () => {
+        const p = F.offerProgress([
+            { plan_key: 'A', player_id: 1, name: 'あ', status: 'accepted', id: 1 },
+            { plan_key: 'B', player_id: 2, name: 'い', status: 'pending' },   // id なし
+        ], { now: 0 });
+        const lose = F.offerLosers(p, 'A');
+        assert.equal(lose.missingRowIds, 1, '落とせない行があることを伝えていない');
+        assert.equal(lose.rowIds.length, 0);
     });
 
     test('★ 落ちた案でも「勝った案にも居る人」と「自分で断った人」には出さない', () => {
@@ -2905,10 +2938,77 @@ console.log('\n複数案の同時打診:');
             R('A', 1, 'あ', 'accepted', 3), R('A', 2, 'い', 'accepted', 3),
             R('B', 2, 'い', 'accepted', 4), R('B', 3, 'う', 'declined', 4), R('B', 4, 'え', 'pending'),
         ], { now: Date.parse(T(10)) });
-        const names = F.offerLosers(p, 'A').map(m => m.name);
+        const names = F.offerLosers(p, 'A').notify.map(m => m.name);
         assert.ok(!names.includes('い'), '勝った案にも居る人に「落ちました」と言っている');
         assert.ok(!names.includes('う'), '自分で断った人に「落ちました」と言っている');
         assert.deepEqual(names, ['え']);
+    });
+
+    test('★ 配線: 依頼の取得が打診の列も読む (読まないと進捗画面が必ず空になる)', () => {
+        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
+        const fn = client.match(/window\.supabaseLoadFinishRequests = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(fn, '取得関数が見つからない');
+        for (const col of ['offer_id', 'plan_key', 'deadline_at']) {
+            assert.ok(fn.includes(col), `${col} を読んでいない (進捗・確定の画面が空になる)`);
+        }
+        // 44 未適用でも落ちない: 列が無いときに読み直す道があること
+        assert.ok(/_isMissingColumnErr\(error, 'offer_id'\)/.test(fn), '44 未適用のときの読み直しが無い');
+        // 画面はこのキャッシュを offer_id で絞っている
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        assert.ok(/_finishReqCache \|\| \[\]\)\.filter\(r => String\(r\.offer_id \|\| ''\)/.test(html),
+            '進捗画面の絞り込みが変わった (テストの前提を見直すこと)');
+    });
+
+    test('44_finish_offers.sql: 冪等 / 判定は索引の定義まで見る', () => {
+        const sql = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '44_finish_offers.sql'), 'utf8').replace(/\r\n/g, '\n');
+        for (const col of ['offer_id', 'plan_key', 'deadline_at']) {
+            assert.ok(new RegExp(`ADD COLUMN IF NOT EXISTS ${col}`).test(sql), `${col} が無い`);
+        }
+        assert.ok(/CREATE UNIQUE INDEX IF NOT EXISTS uq_finish_requests_offer_plan_player[\s\S]*?WHERE offer_id IS NOT NULL/.test(sql),
+            '一意索引が無い、または部分索引になっていない');
+        assert.ok(/NOTIFY pgrst/.test(sql));
+        const check = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '99_check_applied.sql'), 'utf8');
+        assert.ok(/'44_finish_offers'/.test(check), '99 に判定行が無い');
+        // 名前だけの判定にしない (壊れた同名索引を「適用済み」にしてしまう)
+        assert.ok(/\(offer_id, plan_key, player_id\)/.test(check), '索引の列まで見ていない');
+        assert.ok(/WHERE offer_id IS NOT NULL'/.test(check), '部分条件を終端まで見ていない');
+    });
+
+    test('★ 配線: 44 未適用のときに既存の依頼を消してしまわない', () => {
+        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
+        const fn = client.match(/window\.supabaseSetFinishOffer = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(fn, '打診の保存関数が見つからない');
+        const probeAt = fn.indexOf("select('offer_id, plan_key, deadline_at')");
+        const deleteAt = fn.indexOf('.delete()');
+        assert.ok(probeAt >= 0, '列の有無を確かめていない');
+        assert.ok(deleteAt >= 0 && probeAt < deleteAt,
+            '削除より先に列を確かめていない (44 未適用だと既存の締め凸依頼が消える)');
+    });
+
+    test('★ 配線: 返答は行 id を名指しできる (同じ人が2案に居ても片方だけ動く)', () => {
+        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
+        const fn = client.match(/window\.supabaseRespondFinishRequest = async function[\s\S]*?\n};\n/)?.[0] || '';
+        assert.ok(/rowId = null\)/.test(fn), '行 id を受け取れない');
+        assert.ok(/if \(rowId != null\)[\s\S]{0,400}\.eq\('id', rowId\)/.test(fn), '行 id で更新していない');
+        // 画面から行 id が渡っていること
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        assert.ok(/handleMyFinishRequestRespond\(\$\{r\.boss_number\}, 'accepted', \$\{r\.id == null \? 'null' : Number\(r\.id\)\}\)/.test(html),
+            '本人の画面が行 id を渡していない');
+        assert.ok(/async function handleMyFinishRequestRespond\(bossNumber, status, rowId = null\)/.test(html));
+    });
+
+    test('★ 配線: 確定と打診に二重押しよけがある / 通知が落ちても黙らない', () => {
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        const send = html.match(/async function handleOpsFinishOfferSend\(\)[\s\S]*?\n        }\n/)?.[0] || '';
+        const conf = html.match(/async function handleOpsFinishOfferConfirm\(winnerKey\)[\s\S]*?\n        }\n/)?.[0] || '';
+        // ★ ガードは関数の外の let ではなく状態オブジェクトに置く (切り出して動かすテストから見えるように)
+        assert.ok(/if \(_opsFinish\.sending\) return;/.test(send) && /_opsFinish\.sending = false;/.test(send), '打診に二重押しよけが無い');
+        assert.ok(/if \(_opsFinish\.confirming\) return;/.test(conf) && /_opsFinish\.confirming = false;/.test(conf), '確定に二重押しよけが無い');
+        // 通知の失敗を握り潰さない (運営が「返事が来ない」と待ち続けることになる)
+        assert.ok(/打診の通知に失敗/.test(send) && /直接お伝えください/.test(send), '打診の通知失敗を伝えていない');
+        assert.ok(/見送りの通知に失敗/.test(conf) && /直接お伝えください/.test(conf), '見送りの通知失敗を伝えていない');
+        // 行 id が欠けていたら確定させない
+        assert.ok(/missingRowIds > 0/.test(conf), '行 id が欠けたまま確定できてしまう');
     });
 
     test('★ 同じ盤面なら毎回同じ答え (時刻が読めなくても決まる)', () => {
@@ -2925,6 +3025,7 @@ console.log('\n複数案の同時打診:');
         assert.doesNotThrow(() => F.offerProgress(null));
         assert.doesNotThrow(() => F.offerProgress([null, {}, { player_id: 1 }]));
         assert.doesNotThrow(() => F.offerLosers(null, 'A'));
+        assert.deepEqual(F.offerLosers(null, 'A'), { rowIds: [], notify: [], missingRowIds: 0 });
         assert.deepEqual(F.offerProgress([]).plans, []);
         assert.equal(F.offerProgress([]).allDead, false, '案が無いのに全滅と言っている');
     });

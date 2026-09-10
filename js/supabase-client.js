@@ -1452,6 +1452,19 @@ window.supabaseSetFinishOffer = async function (seasonId, bossNumber, plans, opt
         }
     }
     if (rows.length === 0) return null;
+    // ★ **消す前に**打診の列があるか確かめる (Codex指摘 2026-09-10)。
+    //   44 未適用だと insert が必ず失敗するが、delete は戻らないので
+    //   「同時打診を試したら既存の締め凸依頼が消えた」という壊し方をしていた
+    {
+        const probe = await supabase.from('finish_requests').select('offer_id, plan_key, deadline_at').limit(1);
+        if (probe.error) {
+            if (_isMissingColumnErr(probe.error, 'offer_id') || _isMissingColumnErr(probe.error, 'plan_key')
+                || _isMissingColumnErr(probe.error, 'deadline_at')) {
+                throw new Error('supabase/44_finish_offers.sql を SQL Editor で適用してください (1案ずつの依頼は今までどおり使えます)');
+            }
+            throw probe.error;
+        }
+    }
     // 同じレベルの同じボスの依頼を入れ替える (従来と同じ範囲)
     let del = supabase.from('finish_requests').delete()
         .eq('season_id', seasonId).eq('boss_number', bossNumber);
@@ -1505,18 +1518,24 @@ window.supabaseLoadFinishOffer = async function (offerId) {
 // currentLevel を渡すと「そのレベルの依頼」だけを返す (旧データ = raid_level NULL は除く)
 window.supabaseLoadFinishRequests = async function (seasonId, currentLevel = null) {
     if (!seasonId) return [];
-    const cols = 'id, boss_number, player_id, status, requested_at, players(name)';
-    const run = async (withLevel) => {
-        let q = supabase.from('finish_requests')
-            .select(withLevel ? `${cols}, raid_level` : cols)
+    const cols = 'id, boss_number, player_id, status, requested_at, responded_at, players(name)';
+    // ★ 同時打診の列 (44) も読む。読まないと進捗・確定の画面が**必ず空**になる
+    //   (offer_id が undefined のまま絞り込まれるため。Codex指摘 2026-09-10)
+    const OFFER = 'offer_id, plan_key, deadline_at';
+    const run = async (withLevel, withOffer) => {
+        const sel = [cols, withLevel ? 'raid_level' : null, withOffer ? OFFER : null].filter(Boolean).join(', ');
+        return await supabase.from('finish_requests').select(sel)
             .eq('season_id', seasonId)
             .order('requested_at', { ascending: true });
-        return await q;
     };
     try {
-        let { data, error } = await run(true);
-        // 36 未適用環境は列が無い → レベルなしで読む (従来どおり全件が「有効」に見える)
-        if (error && _isMissingColumnErr(error, 'raid_level')) ({ data, error } = await run(false));
+        let { data, error } = await run(true, true);
+        // 44 未適用環境は打診の列が無い → 打診なしで読む (1案ずつの依頼は従来どおり動く)
+        if (error && (_isMissingColumnErr(error, 'offer_id') || _isMissingColumnErr(error, 'plan_key')
+            || _isMissingColumnErr(error, 'deadline_at'))) ({ data, error } = await run(true, false));
+        // 36 未適用環境はレベルの列が無い → レベルなしで読む (従来どおり全件が「有効」に見える)
+        if (error && _isMissingColumnErr(error, 'raid_level')) ({ data, error } = await run(false, true));
+        if (error && _isMissingColumnErr(error, 'offer_id')) ({ data, error } = await run(false, false));
         if (error) throw error;
         const rows = (data || []).map(r => ({ ...r, name: r.players?.name || '?' }));
         const lv = Number(currentLevel);
@@ -1528,7 +1547,19 @@ window.supabaseLoadFinishRequests = async function (seasonId, currentLevel = nul
     } catch { return []; }   // テーブル未適用環境では空扱い
 };
 // 依頼への返答 (メンバー本人)。レベルを渡せばそのレベルの依頼だけに答える
-window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, playerId, status, raidLevel = null) {
+window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, playerId, status, raidLevel = null, rowId = null) {
+    // ★ 行 id が分かるならそれだけを更新する (Codex指摘 2026-09-10)。
+    //   人+ボスで更新すると、同じ人が2案に居るとき**片方に答えただけで両案が動く**
+    if (rowId != null) {
+        const { data, error } = await supabase.from('finish_requests')
+            .update({ status, responded_at: new Date().toISOString() })
+            .eq('id', rowId).eq('player_id', playerId).select('id');
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            throw new Error('この締め凸依頼はすでに解除されています (ボスが倒れたか、レベルが上がりました)');
+        }
+        return data.length;
+    }
     const lv = Number(raidLevel);
     const hasLv = Number.isInteger(lv) && lv >= 1 && lv <= 4;
     const build = (withLevel) => {

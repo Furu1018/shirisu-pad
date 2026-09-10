@@ -309,8 +309,11 @@ test('★ 確定: 見送りを**記録してから**知らせる / 落ちた行�
     const fn = new Function(...keys, `${SRC3}\nreturn handleOpsFinishOfferConfirm;`)(...keys.map(k => env[k]));
     return fn('A').then(() => {
         assert.deepEqual(order, ['記録', '送信'], '記録より先に送っている');
-        // ★ 落ちた案の「う」だけ。勝った案にも居る「い」と、自分で断った「え」は落とさない
-        assert.deepEqual(declinedIds, [32], `落とす行が違う: ${JSON.stringify(declinedIds)}`);
+        // ★ 落とすのは**落ちた案 (B) の全行**。勝った案にも居る「い」の B 行 (22) を残すと、
+        //   B 案が accepted のまま生き続けて確定が記録に出ない (Codex指摘 2026-09-10)
+        assert.deepEqual(declinedIds.slice().sort((a, b) => a - b), [22, 32, 42],
+            `落とす行が違う: ${JSON.stringify(declinedIds)}`);
+        // ★ 知らせるのは「う」だけ — 勝った案にも居る「い」と、自分で断った「え」には言わない
         assert.deepEqual(pushedTo, [3], `知らせる相手が違う: ${JSON.stringify(pushedTo)}`);
         assert.equal(env._opsFinish.offerId, null, '確定したのに打診中のまま');
     });
