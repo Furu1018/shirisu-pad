@@ -2811,6 +2811,125 @@ console.log('\n締め凸コンソール (今 vs 待つ):');
     });
 }
 
+// ---- finishDomain: 複数案の同時打診 (③) — 2026-09-10 ----------------------
+console.log('\n複数案の同時打診:');
+{
+    const F = globalThis.finishDomain;
+    const T = (m) => new Date(Date.UTC(2026, 8, 10, 12, m, 0)).toISOString();   // 12:MM
+    const R = (plan, id, name, status, min) => ({
+        plan_key: plan, player_id: id, name, status,
+        responded_at: min == null ? null : T(min), deadline_at: T(30),
+    });
+
+    test('★ 全員そろった案が「成立」。1人でも待ちがあれば成立しない', () => {
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'accepted', 5),
+            R('B', 2, 'い', 'accepted', 3), R('B', 3, 'う', 'pending'),
+        ], { now: Date.parse(T(10)) });
+        const A = p.plans.find(x => x.key === 'A'), B = p.plans.find(x => x.key === 'B');
+        assert.equal(A.ready, true, '1人の案が成立していない');
+        assert.equal(B.ready, false, '待ちがあるのに成立している');
+        assert.deepEqual(B.waitingNames, ['う']);
+        assert.equal(p.winner, 'A');
+        assert.deepEqual(p.waitingOn, ['う'], 'まだ返事が無い人を出していない');
+    });
+
+    test('★ 両方そろったら「先に揃ったほう」を採る (最後の了承が早い順)', () => {
+        // B は 2人だが 12:04 に揃う。A は 1人だが 12:09。→ B が勝ち
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'accepted', 9),
+            R('B', 2, 'い', 'accepted', 2), R('B', 3, 'う', 'accepted', 4),
+        ], { now: Date.parse(T(10)) });
+        assert.equal(p.winner, 'B', '先に揃ったほうを採っていない');
+        assert.equal(p.plans.find(x => x.key === 'B').readyAt, Date.parse(T(4)), '揃った時刻は最後の了承');
+    });
+
+    test('★ 同時に揃ったら人数の少ないほう (声をかける相手が減る)', () => {
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'accepted', 5),
+            R('B', 2, 'い', 'accepted', 5), R('B', 3, 'う', 'accepted', 5),
+        ], { now: Date.parse(T(10)) });
+        assert.equal(p.winner, 'A');
+    });
+
+    test('★ 1人でも断ったら、その案は死ぬ (待っても揃わない)', () => {
+        // ★ A は「あ が断った + か はまだ返事待ち」。案としてはもう死んでいるので、
+        //   か の返事を待っても意味が無い = 待ち人に出してはいけない
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'declined', 2), R('A', 4, 'か', 'pending'),
+            R('B', 2, 'い', 'pending'), R('B', 3, 'う', 'accepted', 3),
+        ], { now: Date.parse(T(10)) });
+        const A = p.plans.find(x => x.key === 'A');
+        assert.equal(A.dead, true, '断られた案が死んでいない');
+        assert.deepEqual(A.declinedNames, ['あ']);
+        assert.equal(p.winner, null);
+        assert.deepEqual(p.waitingOn, ['い'], '死んだ案の人を待ち続けている');
+    });
+
+    test('★ どの案も死んだら、そう言える (別の手を探す合図)', () => {
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'declined', 2),
+            R('B', 2, 'い', 'declined', 3), R('B', 3, 'う', 'accepted', 4),
+        ], { now: Date.parse(T(10)) });
+        assert.equal(p.allDead, true);
+        assert.equal(p.winner, null);
+    });
+
+    test('★ 期限を過ぎて誰も揃っていなければ「期限切れ」。揃っていれば期限は関係ない', () => {
+        const rows = [R('A', 1, 'あ', 'pending'), R('B', 2, 'い', 'pending')];
+        assert.equal(F.offerProgress(rows, { now: Date.parse(T(20)) }).expired, false, '期限前に切れている');
+        assert.equal(F.offerProgress(rows, { now: Date.parse(T(40)) }).expired, true, '期限を過ぎても言わない');
+        const done = [R('A', 1, 'あ', 'accepted', 5)];
+        assert.equal(F.offerProgress(done, { now: Date.parse(T(40)) }).expired, false, '揃っているのに期限切れにしている');
+    });
+
+    test('★ 同じ人が同じ案に2行あっても1人として数える (揃ったかの判定が狂う)', () => {
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'pending'), R('A', 1, 'あ', 'accepted', 3),
+        ], { now: Date.parse(T(10)) });
+        const A = p.plans.find(x => x.key === 'A');
+        assert.equal(A.total, 1, '同じ人を2人として数えている');
+        assert.equal(A.ready, true, 'より進んだ返事を採っていない');
+    });
+
+    test('★ 落ちた案の人を名指しで返す (黙って流さない)', () => {
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'accepted', 3),
+            R('B', 2, 'い', 'accepted', 5), R('B', 3, 'う', 'pending'),
+        ], { now: Date.parse(T(10)) });
+        assert.deepEqual(F.offerLosers(p, 'A').map(m => m.name), ['い', 'う']);
+    });
+
+    test('★ 落ちた案でも「勝った案にも居る人」と「自分で断った人」には出さない', () => {
+        const p = F.offerProgress([
+            R('A', 1, 'あ', 'accepted', 3), R('A', 2, 'い', 'accepted', 3),
+            R('B', 2, 'い', 'accepted', 4), R('B', 3, 'う', 'declined', 4), R('B', 4, 'え', 'pending'),
+        ], { now: Date.parse(T(10)) });
+        const names = F.offerLosers(p, 'A').map(m => m.name);
+        assert.ok(!names.includes('い'), '勝った案にも居る人に「落ちました」と言っている');
+        assert.ok(!names.includes('う'), '自分で断った人に「落ちました」と言っている');
+        assert.deepEqual(names, ['え']);
+    });
+
+    test('★ 同じ盤面なら毎回同じ答え (時刻が読めなくても決まる)', () => {
+        const rows = [
+            { plan_key: 'B', player_id: 2, name: 'い', status: 'accepted' },
+            { plan_key: 'A', player_id: 1, name: 'あ', status: 'accepted' },
+        ];
+        const a = F.offerProgress(rows, { now: 0 }), b = F.offerProgress([...rows].reverse(), { now: 0 });
+        assert.equal(a.winner, b.winner, '行の並びで答えが変わる');
+        assert.equal(a.winner, 'A', '時刻が読めないときは人数少 → 並び順で決めること');
+    });
+
+    test('★ 壊れた入力で落ちない', () => {
+        assert.doesNotThrow(() => F.offerProgress(null));
+        assert.doesNotThrow(() => F.offerProgress([null, {}, { player_id: 1 }]));
+        assert.doesNotThrow(() => F.offerLosers(null, 'A'));
+        assert.deepEqual(F.offerProgress([]).plans, []);
+        assert.equal(F.offerProgress([]).allDead, false, '案が無いのに全滅と言っている');
+    });
+}
+
 // ---- opsLayoutDomain (戦況タブの折りたたみ + コックピット) ----------------------
 console.log('\nopsLayoutDomain:');
 {

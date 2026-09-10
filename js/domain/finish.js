@@ -268,8 +268,121 @@
         return { rows, bestKey, gainB, killableAfterWait, anyKillable: !!best };
     }
 
+    /**
+     * 同時に出した複数の案の進み具合をまとめる (③ 複数案の同時打診・2026-09-10)。
+     *
+     * ★ なぜ要るか (運営ふるりの言葉):
+     *   「A さんが進言してくれても、理想を言えば B+C さんの方がキレイに削りきれるときに、
+     *     B と C さんどちらかが反応が無いとユニオン全体で進行できなくなる。
+     *     結果 A さんには待たせてしまう」
+     *   → 1案ずつ順に聞くと**返事待ちが直列に積み上がる**。同時に出して先に揃った案で確定する。
+     *
+     * ★ 決めごと:
+     *   - **成立 = その案の全員が了承**。1人でも断ったらその案は死ぬ (待っても揃わない)
+     *   - 成立した案が複数あるなら、**先に揃ったほう**を採る (最後の了承が早い順)。
+     *     同時刻なら人数の少ないほう → 案の並び順、で決める (毎回同じ答えになるように)
+     *   - **落ちた案の人は「待たされている人」ではない**。確定したら必ず伝える
+     *     (黙って流すと、次から返事が来なくなる)
+     *
+     * @param {{player_id:any, plan_key:string, status:string, responded_at?:string,
+     *          deadline_at?:string, name?:string}[]} rows 同じ offer_id の行
+     * @param {{now?: number}} [opts] now = 判定時刻 (ミリ秒)。省略時は現在時刻
+     * @returns {{plans:Array, winner:string|null, waitingOn:string[], allDead:boolean,
+     *            expired:boolean, deadlineAt:string|null, decided:boolean}}
+     */
+    function offerProgress(rows, opts = {}) {
+        const list = (Array.isArray(rows) ? rows : []).filter(r => r && r.player_id != null);
+        const now = Number.isFinite(opts.now) ? opts.now : Date.now();
+        const byPlan = new Map();
+        let deadlineAt = null;
+        for (const r of list) {
+            const k = r.plan_key == null ? '-' : String(r.plan_key);
+            if (!byPlan.has(k)) byPlan.set(k, []);
+            byPlan.get(k).push(r);
+            if (r.deadline_at && (!deadlineAt || String(r.deadline_at) < deadlineAt)) deadlineAt = String(r.deadline_at);
+        }
+        const ts = (v) => { const t = Date.parse(v || ''); return Number.isFinite(t) ? t : null; };
+        const plans = [...byPlan.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([key, rs]) => {
+            // ★ 同じ人が2行あっても1人として数える (揃ったかの判定が狂う)。より進んだ返事を採る
+            const rank = { declined: 3, accepted: 2, pending: 1 };
+            const byPlayer = new Map();
+            for (const r of rs) {
+                const pk = String(r.player_id);
+                const cur = byPlayer.get(pk);
+                if (!cur || (rank[r.status] || 0) > (rank[cur.status] || 0)) byPlayer.set(pk, r);
+            }
+            const members = [...byPlayer.values()].map(r => ({
+                id: r.player_id,
+                name: r.name || (r.players && r.players.name) || String(r.player_id),
+                status: r.status,
+                respondedAt: r.responded_at || null,
+            }));
+            const accepted = members.filter(m => m.status === 'accepted');
+            const declined = members.filter(m => m.status === 'declined');
+            const waiting = members.filter(m => m.status !== 'accepted' && m.status !== 'declined');
+            // 揃った時刻 = その案のいちばん遅い了承 (全員そろって初めて成立するので)
+            const readyAt = (declined.length === 0 && waiting.length === 0 && members.length > 0)
+                ? accepted.reduce((mx, m) => { const t = ts(m.respondedAt); return t != null && (mx == null || t > mx) ? t : mx; }, null)
+                : null;
+            return {
+                key, members,
+                acceptedCount: accepted.length,
+                total: members.length,
+                waitingNames: waiting.map(m => m.name),
+                declinedNames: declined.map(m => m.name),
+                ready: declined.length === 0 && waiting.length === 0 && members.length > 0,
+                dead: declined.length > 0,
+                readyAt,
+            };
+        });
+        // 先に揃った案が勝ち。時刻が同じ / 読めないときは 人数少 → 並び順
+        const readyPlans = plans.filter(p => p.ready);
+        let winner = null;
+        for (const p of readyPlans) {
+            if (!winner) { winner = p; continue; }
+            const a = p.readyAt, b = winner.readyAt;
+            if (a != null && b != null && a !== b) { if (a < b) winner = p; continue; }
+            if (a != null && b == null) { winner = p; continue; }
+            if (a == null && b != null) continue;
+            if (p.total !== winner.total) { if (p.total < winner.total) winner = p; continue; }
+            // ここまで同じなら並び順 (plans は key 昇順) = 先に来たほうを残す
+        }
+        const dl = ts(deadlineAt);
+        return {
+            plans,
+            winner: winner ? winner.key : null,
+            // まだ返事が無い人 (生きている案のぶんだけ。死んだ案の返事を待っても意味が無い)
+            waitingOn: [...new Set(plans.filter(p => !p.dead).flatMap(p => p.waitingNames))],
+            allDead: plans.length > 0 && plans.every(p => p.dead),
+            expired: dl != null && now > dl && !winner,
+            deadlineAt,
+            decided: !!winner,
+        };
+    }
+
+    /**
+     * 確定したときに「落ちた案の人」を返す。★ 黙って流さないための材料。
+     * 勝った案にも入っている人は除く (その人には別途お願いが立っている)。
+     */
+    function offerLosers(progress, winnerKey) {
+        if (!progress || !Array.isArray(progress.plans)) return [];
+        const win = progress.plans.find(p => p.key === winnerKey);
+        const winIds = new Set((win ? win.members : []).map(m => String(m.id)));
+        const out = new Map();
+        for (const p of progress.plans) {
+            if (p.key === winnerKey) continue;
+            for (const m of p.members) {
+                if (winIds.has(String(m.id))) continue;
+                if (m.status === 'declined') continue;      // 断った人に「落ちました」は要らない
+                out.set(String(m.id), m);
+            }
+        }
+        return [...out.values()];
+    }
+
     root.finishDomain = {
         computeFinishPlans, buildFinishLeaderTimeline, filterByWindow,
         FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere, filterByCommitments,
+        offerProgress, offerLosers,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
