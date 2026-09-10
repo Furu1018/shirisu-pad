@@ -6828,10 +6828,20 @@
         // ★ シーズンが変わったら、画面に出ているものは全部古い。
         //   invalidate の呼び出しは 14 か所あるので、**そのたびに書き足すのではなく**
         //   ここで一度だけ聞き手になる (2026-09-10: 終了処理にだけ足しても、作成・
-        //   テスト作成・テスト終了で同じ取りこぼしが起きると Codex に指摘された)
-        if (typeof seasonStore !== 'undefined' && seasonStore.onInvalidate) {
+        //   テスト作成・テスト終了で同じ取りこぼしが起きると Codex に指摘された)。
+        //   ★ seasonStore.js は defer なので、この場で登録すると**まだ居ない**。
+        //     DOMContentLoaded まで待つ (defer は必ずその前に走り終わる)。
+        //     居なければ黙って飛ばさず声を上げる — 黙って飛ばしていたから気づけなかった
+        function _registerSeasonInvalidateListener() {
+            if (typeof seasonStore === 'undefined' || !seasonStore.onInvalidate) {
+                console.error('[tabCache] seasonStore.onInvalidate が無い。'
+                    + 'シーズンを変えてもタブの描画キャッシュが残ります');
+                return false;
+            }
             seasonStore.onInvalidate(() => _invalidateTabRenderCache());
+            return true;
         }
+        document.addEventListener('DOMContentLoaded', _registerSeasonInvalidateListener);
         function _renderTabContent(name) {
             const def = _tabDef(name);
             if (!def?.render) return;   // render を持たないタブ (静的/専用経路) は何もしない

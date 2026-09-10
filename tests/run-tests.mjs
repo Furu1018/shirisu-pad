@@ -7419,6 +7419,14 @@ console.log('\ngrowthDomain:');
         assert.ok(/try \{ fn\(\); \} catch/.test(store), '聞き手が1つ転ぶと残りが呼ばれない');
         assert.ok(/seasonStore\.onInvalidate\(\(\) => _invalidateTabRenderCache\(\)\)/.test(html),
             '画面側が聞き手になっていない');
+        // ★ seasonStore.js は defer。インラインでその場で登録すると**まだ居ない**ので、
+        //   DOMContentLoaded まで待つこと (Codex指摘 2026-09-10 — 条件が常に偽で登録されていなかった)
+        assert.ok(/<script defer src="\.\/js\/state\/seasonStore\.js">/.test(html), 'seasonStore の読み込み方が変わった');
+        assert.ok(/document\.addEventListener\('DOMContentLoaded', _registerSeasonInvalidateListener\);/.test(html),
+            '登録を DOMContentLoaded まで待っていない (defer より先に走って登録されない)');
+        // 居なければ黙って飛ばさない (黙って飛ばしていたから気づけなかった)
+        const reg = html.match(/function _registerSeasonInvalidateListener\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/console\.error\(/.test(reg), '聞き手を登録できなかったときに黙っている');
         // 終了処理そのものは従来どおり両ストアを捨てる
         const fn = html.match(/async function handleOpsEndSeason\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/seasonStore\.invalidate\(\);/.test(fn) && /opsStore\.invalidate\(\);/.test(fn));
