@@ -115,6 +115,17 @@ test('★ 身元を切り替えたら、その人の記憶に合わせ直す', (
     assert.ok(/_opsMode = _opsModeForCurrent\(\);\s*\n\s*_applyOpsMode\(\);/.test(SRC), '起動時に記憶を当てていない');
 });
 
+test('★ 両方の人が運営ON でも、身元を切り替えたら運営画面を描き直す', () => {
+    // _applyOpsModeForIdentity は「変わっていない」で早戻りするので、それだけでは
+    // 表示中の運営タブが前の人の中身のまま残る (Codex指摘 2026-09-11)
+    const setIdent = cut('function setCurrentIdentity(player)');
+    assert.ok(/_applyOpsModeForIdentity\(\);/.test(setIdent), '身元切替で運営モードを当て直していない');
+    assert.ok(/renderOpsDashboard\(\);/.test(setIdent), '運営画面を描き直していない');
+    // 運営OFF のときや、運営タブを開いていないときは呼ばない (余計な取得をしない)
+    assert.ok(/_opsMode\s*\n?\s*&&\s*document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)/.test(setIdent),
+        '運営ON かつ運営タブが開いているとき、の条件になっていない');
+});
+
 test('★ トーストは自分で押したときだけ (復元では出さない)', () => {
     const toggle = cut('function toggleOpsMode()');
     assert.ok(/showNotification\(_opsMode \?/.test(toggle), '押したときに知らせていない');

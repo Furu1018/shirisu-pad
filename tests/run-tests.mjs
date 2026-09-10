@@ -7508,6 +7508,10 @@ console.log('\ngrowthDomain:');
             '選択中に斑点が色づかない');
         // 飛び出しが無くなったので、下端の余白も張り出しぶんを含めない
         assert.ok(/padding-bottom: calc\(92px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が張り出し前提のまま');
+        // ★ 隠すときはセーフエリアぶんを式に含める。固定値だと下の余白が大きい端末で上端が残る
+        const hide = html.match(/\.bottom-nav\.nav-hidden \{[\s\S]*?\}/)?.[0] || '';
+        assert.ok(/translateY\(calc\(100% \+ env\(safe-area-inset-bottom, 0px\) \+ \d+px\)\)/.test(hide),
+            '隠す量にセーフエリアが入っていない');
         // ★ センターだけ特別、ではなくなった — 大丸の指定が残っていると2つ持ち上がる
         assert.ok(!/\.bottom-nav-btn\.nav-home \.nav-icon-wrap \{[^}]*width: 60px/.test(html), 'センターの大丸が残っている');
         assert.ok(!/\.bottom-nav-btn\.nav-home\.active/.test(html), 'センターだけ別の見た目になっている');

@@ -527,7 +527,9 @@
             will-change: transform}
         /* スクロール方向連動の自動隠し: 下スクロールで画面外へ、少し戻すと出現 (_initNavAutoHide) */
         .bottom-nav.nav-hidden {
-            transform: translateY(calc(100% + 40px)) translateZ(0);   /* セーフエリアと影のぶん余分に */
+            /* ★ セーフエリアを式に含める (Codex指摘 2026-09-11)。
+               固定 40px だと、下の余白が大きい端末で帯の上端が画面に残る */
+            transform: translateY(calc(100% + env(safe-area-inset-bottom, 0px) + 40px)) translateZ(0);
         }
         @media (max-width: 767px) {
             .bottom-nav { display: flex; }
@@ -6970,6 +6972,14 @@
             // ★ 運営モードも「その人の記憶」に切り替える (2026-09-10)。
             //   前の人の ON を引き継ぐと、名乗り直したのに他人の設定で開くことになる
             if (typeof _applyOpsModeForIdentity === 'function') _applyOpsModeForIdentity();
+            // ★ 両方の人が運営ON だと _applyOpsModeForIdentity が「変わっていない」で早戻りする。
+            //   運営画面は身元で中身が変わる (調整中の表示など) ので、開いていれば描き直す
+            //   (Codex指摘 2026-09-11 — キャッシュを捨てるだけでは、表示中のタブは更新されない)
+            if (typeof _opsMode !== 'undefined' && _opsMode
+                && document.getElementById('tab-ops')?.classList.contains('active')
+                && typeof renderOpsDashboard === 'function') {
+                renderOpsDashboard();
+            }
             // プレイヤー固有データを使うタブのキャッシュを無効化
             if (typeof _invalidateTabRenderCache === 'function') {
                 _invalidateTabRenderCache('mypage');
