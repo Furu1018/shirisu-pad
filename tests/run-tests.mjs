@@ -2618,6 +2618,132 @@ console.log('\ntestSeasonDomain:');
     });
 }
 
+// ---- finishDomain: 締め凸コンソール (今 vs 待つ) — 2026-09-10 ----------------------
+console.log('\n締め凸コンソール (今 vs 待つ):');
+{
+    const F = globalThis.finishDomain;
+    // 出られる時間を 'hXX' で書く道具
+    const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
+    const P = (id, name, dmg, slots, attackCount = 0) => ({ id, name, dmg, availableSlots: slots, attackCount });
+
+    test('★ 窓ごとに「その窓で打てるいちばんきれいな手」が出る', () => {
+        // 21時: いま出られるのは A(70) だけ → 1人で 70 (残60 なので 10 超過)
+        // 23時まで待つと B(58) が出られる → 1人で 58 … 足りない。A+B なら 128 で 68 超過。
+        // ★ この盤面では「今すぐ」がいちばんきれい。待っても良くならないことを言えること
+        const cands = [P(1, 'A', 70, H(21, 22)), P(2, 'B', 58, H(23, 0))];
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21 });
+        assert.equal(r.rows.length, 4, '窓の数が違う');
+        assert.equal(r.rows[0].label, '今すぐ');
+        assert.equal(r.rows[0].plan.total, 70, '今すぐの手が違う');
+        assert.equal(r.bestKey, 'now', '待っても良くならないのに「待て」と言っている');
+        assert.equal(r.gainB, null, '得が無いのに得があることになっている');
+    });
+
+    test('★ 待つときれいになるなら、そう言える (何B節約できるか)', () => {
+        // いま出られるのは A(95) だけ → 35 超過。2時間待てば C(62) が出られて 2 超過
+        const cands = [P(1, 'A', 95, H(21)), P(3, 'C', 62, H(22, 23))];
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21 });
+        assert.equal(r.rows[0].plan.overkill, 35);
+        assert.equal(r.bestKey, 'h2', '待ったほうがきれいなのに今すぐを勧めている');
+        assert.equal(Math.round(r.gainB), 33, '節約できる量が違う');
+        // ★ 「なぜ待つと良くなるか」= 増えた人が読めること
+        assert.deepEqual(r.rows[1].newFaces, ['C'], '待って増えた人を出していない');
+    });
+
+    test('★ 同じきれいさなら早い窓を勧める (待つのはコスト)', () => {
+        const cands = [P(1, 'A', 60, H(21)), P(2, 'B', 60, H(23))];
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21 });
+        assert.equal(r.rows[0].plan.overkill, 0);
+        assert.equal(r.bestKey, 'now', '同じ結果なのに待たせている');
+    });
+
+    test('★ 同じきれいさなら人数が少ないほうを勧める (声をかける相手が減る)', () => {
+        // 今すぐ: A(30)+B(30) = 60 ちょうど (2人)。4時間待てば D(60) 単独で 60 ちょうど (1人)
+        const cands = [P(1, 'A', 30, H(21)), P(2, 'B', 30, H(21)), P(4, 'D', 60, H(0))];
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21 });
+        assert.equal(r.rows[0].plan.shots, 2);
+        assert.equal(r.bestKey, 'h4', '同じきれいさなら人数の少ないほうを勧めること');
+        assert.equal(r.gainB, 0, 'きれいさは同じなので節約は 0');
+    });
+
+    test('★ 今は倒しきれないが待てば倒せる、を言い分ける', () => {
+        const cands = [P(1, 'A', 20, H(21)), P(2, 'B', 90, H(0, 1))];
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21 });
+        assert.equal(r.rows[0].plan, null, '今すぐ倒せることになっている');
+        assert.ok(r.rows[0].cannotKill, '倒せないと言っていない');
+        assert.equal(r.killableAfterWait, true, '「待てば倒せる」を言っていない');
+        assert.equal(r.bestKey, 'h4');
+    });
+
+    test('★ 誰にも倒せないときは、どの窓でも倒せないと言う', () => {
+        const cands = [P(1, 'A', 5, H(21)), P(2, 'B', 6, H(23))];
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 600, curHour: 21 });
+        assert.equal(r.anyKillable, false);
+        assert.equal(r.bestKey, null);
+        assert.equal(r.killableAfterWait, false, '倒せないのに「待てば倒せる」と言っている');
+        assert.ok(r.rows.every(x => x.cannotKill), 'どこかの窓で倒せることになっている');
+    });
+
+    test('★ ⏳隙間型はどの窓にも出る / 時間帯が分からない人は窓を指定したら外れる', () => {
+        const flex = { id: 9, name: 'F', dmg: 60, flexTime: true, attackCount: 0 };
+        const unknown = { id: 8, name: 'U', dmg: 60, availableSlots: [], attackCount: 0 };
+        const r = F.compareFinishWindows({ candidates: [flex, unknown], remHP: 60, curHour: 21 });
+        assert.equal(r.rows[0].count, 1, '隙間型が今すぐに入っていない / 未登録が混ざっている');
+        assert.equal(r.rows[3].count, 2, '制限なしなら未登録も入ること');
+    });
+
+    test('★ 別のボスで「了承済み」の人は候補から外す (1人の持ち凸は3つしかない)', () => {
+        // A は 2凸済み + 別のボスで1件了承 = 残り0。混ぜると足し算が合わない
+        const cands = [P(1, 'A', 90, H(21), 2), P(2, 'B', 60, H(21), 0)];
+        const reqs = [{ player_id: 1, boss_number: 4, status: 'accepted' }];
+        const com = F.commitmentsElsewhere(reqs, 3);
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21, commitments: com });
+        assert.equal(r.rows[0].count, 1, '了承済みで凸が埋まった人を外していない');
+        assert.equal(r.rows[0].plan.members[0].name, 'B');
+    });
+
+    test('★ 「確認中」はまだ約束ではないので外さない。印だけ付ける', () => {
+        // ★ 2凸済み + 別のボスで確認中1件。確認中を「使った凸」と数えると残り0で消えてしまうが、
+        //   まだ返事が来ていない = 約束ではないので、この人は候補に残さなければならない
+        const cands = [P(1, 'A', 60, H(21), 2)];
+        const com = F.commitmentsElsewhere([{ player_id: 1, boss_number: 4, status: 'pending' }], 3);
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21, commitments: com });
+        assert.equal(r.rows[0].count, 1, '確認中で外してしまっている');
+        assert.deepEqual(r.rows[0].pendingNames, ['A'], '別のボスで確認中であることを出していない');
+    });
+
+    test('★ 依頼の数え方: 同じボスの依頼は数えない / 断られた依頼は数えない', () => {
+        const reqs = [
+            { player_id: 1, boss_number: 3, status: 'accepted' },   // いま見ているボス = 自分自身
+            { player_id: 1, boss_number: 4, status: 'declined' },   // 断られた = 凸は空いている
+            { player_id: 2, boss_number: 5, status: 'accepted' },
+            { player_id: 2, boss_number: 4, status: 'pending' },
+        ];
+        const m = F.commitmentsElsewhere(reqs, 3);
+        assert.equal(m.has('1'), false, '自分のボス / 断られた依頼を数えている');
+        assert.deepEqual(m.get('2'), { accepted: 1, pending: 1 });
+    });
+
+    test('★ 了承済みでも凸が残っていれば候補に残す (1件了承・0凸なら残り2)', () => {
+        const cands = [P(1, 'A', 60, H(21), 0)];
+        const com = F.commitmentsElsewhere([{ player_id: 1, boss_number: 4, status: 'accepted' }], 3);
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21, commitments: com });
+        assert.equal(r.rows[0].count, 1, '凸が残っているのに外している');
+    });
+
+    test('★ 人数を指定したら、どの窓でもその人数の手だけを出す', () => {
+        const cands = [P(1, 'A', 60, H(21)), P(2, 'B', 40, H(21)), P(3, 'C', 40, H(21))];
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21, shots: 2 });
+        assert.ok(r.rows[0].plan.shots === 2, '2人の手を出していない');
+    });
+
+    test('★ 壊れた入力で落ちない', () => {
+        assert.doesNotThrow(() => F.compareFinishWindows({ candidates: null, remHP: 60, curHour: 21 }));
+        assert.doesNotThrow(() => F.commitmentsElsewhere(null, 3));
+        assert.doesNotThrow(() => F.commitmentsElsewhere([null, {}, { player_id: 1 }], 3));
+    });
+}
+
 // ---- opsLayoutDomain (戦況タブの折りたたみ + コックピット) ----------------------
 console.log('\nopsLayoutDomain:');
 {
@@ -5064,7 +5190,12 @@ console.log('\nfinishDomain (人数・時間範囲):');
         const fn = html.match(/function renderOpsFinishList\(attrKey\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const candidates = finishDomain\.filterByWindow\(candidatesAll, \{ curHour: curHourJst, hours: _opsFinish\.hours \}\);/.test(fn), '範囲で候補を絞っていない');
         assert.ok(fn.includes("handleOpsFinishOpt('shots'") && fn.includes("handleOpsFinishOpt('hours'"), 'チップが無い');
-        assert.ok(/listEl\.innerHTML = controls \+ header \+ rows \+ pushBtn \+ timelineHtml;/.test(fn), 'チップを描いていない');
+        assert.ok(/listEl\.innerHTML = header \+ consoleHtml \+ controls \+ rows \+ pushBtn \+ timelineHtml;/.test(fn),
+            'チップ / コンソールを描いていない');
+        // ★ コンソールには**窓で絞る前の全員**を渡す — 絞ったあとだと「待つと増える人」が出せない
+        assert.ok(/_opsFinishConsoleHtml\(boss, candidatesAll, remainingHpB\)/.test(fn),
+            'コンソールに窓で絞ったあとの候補を渡している (待って増える人が出せない)');
+        assert.ok(!/_opsFinishConsoleHtml\(boss, candidates,/.test(fn), '同上');
         assert.ok(/return finishDomain\.computeFinishPlans\(candidates, remHP, \{ shots: _opsFinish\.shots \}\);/.test(html), '人数を組合せに渡していない');
         assert.ok(/if \(_opsCurrentAttr\) renderOpsFinishList\(_opsCurrentAttr\);/.test(html), 'チップを押しても描き直さない');
     });

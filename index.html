@@ -9040,7 +9040,7 @@
             const cur = rv.findActiveFor(rows, { playerId: viewerId, level, bossNumber: boss, loadoutSlot: slot });
             if (cur) {
                 const jp = rv.STATUS_JP[cur.status] || cur.status;
-                const col = cur.status === 'approved' ? '#0E9455' : (cur.status === 'cancel_requested' ? '#B45309' : '#5B2BE0');
+                const col = cur.status === 'approved' ? 'var(--ok-deep)' : (cur.status === 'cancel_requested' ? 'var(--warn-deep)' : 'var(--ops-deep)');
                 const who = cur.status === 'approved' && cur.approved_by ? ` (${escapeHtml(String(cur.approved_by))}が承認)` : '';
                 return `<div style="margin-top:6px;font-size:10.5px;font-weight:900;color:${col};">🔒 ${escapeHtml(jp)}${who}</div>`;
             }
@@ -9090,12 +9090,12 @@
             const done = _myResvRows.filter(r => !rv.isActive(r));
             const row = (r) => {
                 const jp = rv.STATUS_JP[r.status] || r.status;
-                const col = r.status === 'approved' ? '#0E9455'
-                    : r.status === 'requested' ? '#5B2BE0'
-                    : r.status === 'cancel_requested' ? '#B45309' : '#A4AAB0';
-                const bg = r.status === 'approved' ? 'rgba(24,194,107,0.10)'
-                    : r.status === 'requested' ? 'rgba(108,66,240,0.10)'
-                    : r.status === 'cancel_requested' ? 'rgba(245,158,11,0.12)' : '#F1F2F4';
+                const col = r.status === 'approved' ? 'var(--ok-deep)'
+                    : r.status === 'requested' ? 'var(--ops-deep)'
+                    : r.status === 'cancel_requested' ? 'var(--warn-deep)' : 'var(--t-muted)';
+                const bg = r.status === 'approved' ? 'var(--ok-bg)'
+                    : r.status === 'requested' ? 'var(--ops-bg)'
+                    : r.status === 'cancel_requested' ? 'var(--warn-bg)' : 'var(--s2)';
                 const when = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定');
                 const who = r.status === 'approved' && r.approved_by ? `${escapeHtml(String(r.approved_by))}が承認` : '';
                 const why = !rv.isActive(r) && r.release_reason
@@ -13355,9 +13355,9 @@
             } catch { /* noop */ }
         }
         const _FINISH_REQ_STATUS = {
-            pending:  { label: '確認中',   color: '#B45309', bg: 'rgba(245,158,11,0.12)' },
-            accepted: { label: '了承済み', color: '#0E9455', bg: 'rgba(24,194,107,0.12)' },
-            declined: { label: '不可',     color: '#8A9097', bg: '#F1F2F4' },
+            pending:  { label: '確認中',   color: 'var(--warn-deep)', bg: 'var(--warn-bg)' },
+            accepted: { label: '了承済み', color: 'var(--ok-deep)',   bg: 'var(--ok-bg)' },
+            declined: { label: '不可',     color: 'var(--t-muted)',   bg: 'var(--s2)' },
         };
 
         function _startCoordPolling() {
@@ -18435,7 +18435,7 @@
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                         <span style="font-size:10.5px;font-weight:900;color:var(--t-muted);min-width:52px;">今から</span>
                         ${optChip(_opsFinish.hours == null, "handleOpsFinishOpt('hours', null)", '制限なし')}
-                        ${[1, 2, 3, 6].map(h => optChip(_opsFinish.hours === h, `handleOpsFinishOpt('hours', ${h})`, `${h}時間`)).join('')}
+                        ${[1, 2, 4, 6].map(h => optChip(_opsFinish.hours === h, `handleOpsFinishOpt('hours', ${h})`, `${h}時間`)).join('')}
                         ${windowNote ? `<span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">${windowNote}</span>` : ''}
                     </div>
                 </div>`;
@@ -18446,7 +18446,8 @@
                 </div>`;
 
             if (candidates.length === 0) {
-                listEl.innerHTML = controls + header + '<p style="color:var(--t-body);font-size:13px;">この属性で凸できるメンバーがいません（ダメージ未登録か全員3凸済み）。</p>';
+                listEl.innerHTML = header + _opsFinishConsoleHtml(boss, candidatesAll, remainingHpB) + controls
+                    + '<p style="color:var(--t-body);font-size:13px;">この時間に出られるメンバーがいません。上の「いま打つか、待つか」で、待てば出られるかを確かめてください。</p>';
                 return;
             }
 
@@ -18484,7 +18485,8 @@
             // 「何時まで待てば誰が最適？」は先の時間の判断なので、範囲で絞る前の全員で見る (Codex指摘)
             const timelineHtml = _buildFinishTimeline(attrKey, candidatesAll, remainingHpB);
 
-            listEl.innerHTML = controls + header + rows + pushBtn + timelineHtml;
+            const consoleHtml = _opsFinishConsoleHtml(boss, candidatesAll, remainingHpB);
+            listEl.innerHTML = header + consoleHtml + controls + rows + pushBtn + timelineHtml;
 
             // 推薦プラン (ギリギリ / 余裕) を計算して表示
             renderOpsFinishPlans(attrKey, boss, ptInfo, remainingHpB, candidates);
@@ -18528,6 +18530,78 @@
         // 本体は js/domain/finish.js (リアーキ ステップ2 — テスト済み)。
         function computeFinishPlans(candidates, remHP) {
             return finishDomain.computeFinishPlans(candidates, remHP, { shots: _opsFinish.shots });
+        }
+
+        // ===== 🏁 締め凸コンソール: 「今」打てる手と「待って」打てる手を並べる (2026-09-10) =====
+        // ★ 運営の言葉:「『今』打てる手と、向こう何時までを見て打てる手をくらべれると指示が出しやすい」
+        //   判断は finishDomain.compareFinishWindows が唯一。ここは並べるだけ (画面で勝ち負けを書き足さない)。
+        //   ★ 候補は**窓で絞る前の全員**を渡す — 絞ったあとを渡すと「待つと増える人」が出せない。
+        let _opsFinishCompare = null;
+        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB) {
+            const dom = window.finishDomain;
+            if (!dom || !dom.compareFinishWindows) return '';
+            const com = dom.commitmentsElsewhere(_finishReqCache || [], boss && boss.boss_number);
+            const cmp = dom.compareFinishWindows({
+                candidates: candidatesAll, remHP: remHpB, curHour: _finishCurHour(),
+                shots: _opsFinish.shots, commitments: com,
+            });
+            _opsFinishCompare = cmp;
+            const esc = escapeHtml;
+            const bn = (v) => Number(v || 0).toFixed(2);
+            // 見出しの1行 = 運営がいちばん知りたい結論
+            let lead;
+            if (!cmp.anyKillable) {
+                lead = '<b>いまは誰の組み合わせでも倒しきれません。</b>削れるだけ削って次のレベルを待ちます。';
+            } else if (cmp.killableAfterWait) {
+                const w = cmp.rows.find(r => r.key === cmp.bestKey);
+                lead = `いますぐは倒しきれません。<b>${esc(w.label)}</b>なら <b>${w.plan.shots}人</b>で倒せます。`;
+            } else if (cmp.bestKey === 'now') {
+                lead = '<b>いま打つのがいちばんきれいです。</b>待っても縮みません。';
+            } else {
+                const w = cmp.rows.find(r => r.key === cmp.bestKey);
+                lead = `<b>${esc(w.label)}</b>まで待つと ${bn(cmp.gainB)}B ぶんきれいに削れます`
+                    + (w.newFaces.length ? ` (${esc(w.newFaces.slice(0, 3).join('・'))} が出られるため)` : '') + '。';
+            }
+            const rows = cmp.rows.map((r) => {
+                const on = r.hours === _opsFinish.hours || (r.hours == null && _opsFinish.hours == null);
+                const isBest = r.key === cmp.bestKey;
+                const who = r.plan
+                    ? r.plan.members.map(m => esc(m.name)).join(' ＋ ')
+                    : '<span style="color:var(--t-muted);">この時間では倒しきれません</span>';
+                const okOver = r.plan && r.plan.overkill <= remHpB * 0.05;
+                const over = r.plan
+                    ? `<span style="font-variant-numeric:tabular-nums;color:${okOver ? 'var(--ok-deep)' : 'var(--warn-deep)'};">+${bn(r.plan.overkill)}B</span>`
+                    : '<span style="color:var(--t-muted);">—</span>';
+                const grew = r.newFaces.length
+                    ? `<div style="font-size:10px;font-weight:700;color:var(--t-muted);margin-top:2px;">待って増える: ${esc(r.newFaces.slice(0, 4).join('・'))}${r.newFaces.length > 4 ? ` ほか${r.newFaces.length - 4}人` : ''}</div>`
+                    : '';
+                return `<button type="button" onclick="handleOpsFinishOpt('hours', ${r.hours == null ? 'null' : r.hours})"
+                    style="display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;margin-bottom:6px;padding:9px 11px;border-radius:11px;
+                    border:1px solid ${isBest ? 'var(--ok-solid)' : 'rgba(var(--ink-rgb), 0.08)'};background:${on ? 'var(--s1)' : 'var(--card)'};">
+                    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+                        <b style="font-size:12.5px;color:var(--t-ink);">${esc(r.label)}</b>
+                        <span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">${r.count}人</span>
+                        ${isBest ? '<span style="font-size:10px;font-weight:900;color:var(--ok-ink);background:var(--ok-solid);border-radius:999px;padding:1px 8px;">いちばんきれい</span>' : ''}
+                        <span style="margin-left:auto;font-size:11px;font-weight:900;color:var(--t-body);">${r.plan ? `${r.plan.shots}人で締め` : ''}</span>
+                        <span style="font-size:12px;font-weight:900;">${over}</span>
+                    </div>
+                    <div style="font-size:11px;font-weight:800;color:var(--t-body);margin-top:3px;">${who}</div>
+                    ${grew}
+                </button>`;
+            }).join('');
+            // ★ 別のボスで確認中の人が混ざっていたら言う (二重に頼まないため)
+            const pend = [...new Set(cmp.rows.reduce((acc, r) => acc.concat(r.pendingNames), []))];
+            const pendNote = pend.length
+                ? `<div style="margin-top:2px;font-size:10.5px;font-weight:800;color:var(--warn-deep);">⏳ ${esc(pend.join('・'))} は別のボスで確認中です (返事しだいで凸が埋まります)</div>`
+                : '';
+            return `<div style="margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap;">
+                    <span style="font-size:12.5px;font-weight:900;color:var(--t-ink);">🏁 いま打つか、待つか</span>
+                    <span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">押すと下の候補がその時間で絞られます</span>
+                </div>
+                <div style="font-size:12px;font-weight:800;color:var(--t-body);line-height:1.7;margin-bottom:8px;">${lead}</div>
+                ${rows}${pendNote}
+            </div>`;
         }
 
         function renderOpsFinishPlans(attrKey, boss, ptInfo, remHpB, candidates) {

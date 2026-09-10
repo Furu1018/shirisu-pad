@@ -126,5 +126,112 @@
         });
     }
 
-    root.finishDomain = { computeFinishPlans, buildFinishLeaderTimeline, filterByWindow };
+    /**
+     * 締め凸コンソールの窓 (2026-09-10)。運営が当日いちばん知りたいのは
+     * 「今すぐ打つか / もう少し待つか」なので、待つ長さで並べる。
+     * hours = null は「今日いっぱい (制限なし)」。
+     */
+    const FINISH_WINDOWS = [
+        { key: 'now', label: '今すぐ',     hours: 1 },
+        { key: 'h2',  label: '2時間以内',  hours: 2 },
+        { key: 'h4',  label: '4時間以内',  hours: 4 },
+        { key: 'all', label: '今日いっぱい', hours: null },
+    ];
+
+    /**
+     * 別のボスの締め凸依頼で、その人の凸がもう埋まっているかを数える。
+     * ★ 1人の持ち凸は3つしかないので、別のボスの案に同じ人が出ていると足し算が合わない。
+     *   了承済み (accepted) は**使う約束が済んでいる**ので凸を1つ消費したものとして扱い、
+     *   確認中 (pending) はまだ約束ではないので数えず、印だけ付ける。
+     * @param {{player_id:any, boss_number:number, status:string}[]} requests
+     * @param {number} bossNumber いま見ているボス (ここへの依頼は自分自身なので数えない)
+     * @returns {Map<string, {accepted:number, pending:number}>} key は String(player_id)
+     */
+    function commitmentsElsewhere(requests, bossNumber) {
+        const m = new Map();
+        for (const r of (Array.isArray(requests) ? requests : [])) {
+            if (r == null || r.player_id == null) continue;
+            if (Number(r.boss_number) === Number(bossNumber)) continue;   // 自分のボスは対象外
+            const st = r.status;
+            if (st !== 'accepted' && st !== 'pending') continue;          // 断られた依頼は数えない
+            const k = String(r.player_id);
+            const cur = m.get(k) || { accepted: 0, pending: 0 };
+            cur[st] += 1;
+            m.set(k, cur);
+        }
+        return m;
+    }
+
+    /**
+     * 「今」打てる手と「もう少し待って」打てる手を、窓ごとに並べて比べる。
+     *
+     * ★ 決めごと:
+     *   - **きれい = オーバーキルが小さい**。同点なら人数が少ないほう、さらに同点なら早い窓
+     *     (待つのはコストなので、同じ結果なら早いほうを採る)
+     *   - **待って増える人 (newFaces) を出す**。これが無いと「なぜ待つと良くなるのか」が読めない
+     *   - **別のボスで凸が埋まっている人は候補から外す** (了承済みのみ)。
+     *     確認中は約束ではないので残し、印だけ付ける
+     *
+     * @param {Object} args
+     * @param {FinishCandidate[]} args.candidates dmg降順。availableSlots / flexTime / id を持つ
+     * @param {number} args.remHP 残HP (B)
+     * @param {number} args.curHour 0-23 (JST)
+     * @param {number|null} [args.shots] 何人で締めるか (null = 自動)
+     * @param {Map<string,{accepted:number,pending:number}>} [args.commitments] commitmentsElsewhere の結果
+     * @param {{key:string,label:string,hours:number|null}[]} [args.windows]
+     */
+    function compareFinishWindows({ candidates, remHP, curHour, shots = null, commitments = null, windows = FINISH_WINDOWS }) {
+        const all = Array.isArray(candidates) ? candidates : [];
+        const usedOf = (p) => (commitments && p && p.id != null) ? (commitments.get(String(p.id)) || null) : null;
+        // ★ 了承済みのぶん凸が埋まっている人は、この ボスの候補から外す
+        //   (attackCount は「報告済み」しか数えないので、了承済みの約束はここで引く)
+        const pool = all.filter(p => {
+            const c = usedOf(p);
+            if (!c || !c.accepted) return true;
+            const left = 3 - (Number(p.attackCount) || 0) - c.accepted;
+            return left > 0;
+        });
+        const rows = [];
+        let prevNames = null;
+        for (const w of windows) {
+            const inWin = filterByWindow(pool, { curHour, hours: w.hours });
+            const names = new Set(inWin.map(p => p.name));
+            // 待って**増えた**人 (ひとつ前の窓に居なかった人)。最初の窓は空
+            const newFaces = prevNames === null ? [] : inWin.filter(p => !prevNames.has(p.name)).map(p => p.name);
+            prevNames = names;
+            const r = computeFinishPlans(inWin, remHP, { shots });
+            rows.push({
+                key: w.key, label: w.label, hours: w.hours,
+                count: inWin.length,
+                newFaces,
+                plan: r.tight || null,
+                safe: r.safe || null,
+                cannotKill: !!r.cannotKill || !r.tight,
+                // 確認中の依頼がある人は印を付ける (外しはしない)
+                pendingNames: inWin.filter(p => { const c = usedOf(p); return !!(c && c.pending); }).map(p => p.name),
+            });
+        }
+        // いちばんきれいな窓: オーバーキル小 → 人数少 → 早い窓
+        let best = null;
+        rows.forEach((r, i) => {
+            if (!r.plan) return;
+            if (!best) { best = { row: r, i }; return; }
+            const a2 = r.plan, b2 = best.row.plan;
+            if (a2.overkill < b2.overkill - 1e-9
+                || (Math.abs(a2.overkill - b2.overkill) <= 1e-9 && a2.shots < b2.shots)) best = { row: r, i };
+        });
+        const now = rows[0] || null;
+        const bestKey = best ? best.row.key : null;
+        // 待つと何B節約できるか (今すぐ倒せる場合だけ意味がある)
+        const gainB = (best && now && now.plan && best.row !== now)
+            ? Math.max(0, now.plan.overkill - best.row.plan.overkill) : null;
+        // 今は倒しきれないが、待てば倒せる
+        const killableAfterWait = !!(now && !now.plan && best);
+        return { rows, bestKey, gainB, killableAfterWait, anyKillable: !!best };
+    }
+
+    root.finishDomain = {
+        computeFinishPlans, buildFinishLeaderTimeline, filterByWindow,
+        FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere,
+    };
 })(typeof window !== 'undefined' ? window : globalThis);
