@@ -211,6 +211,9 @@
             --toast-ink: #FFFFFF;
             --marble-a: #EAF2F5;
             --marble-b: #EEF3F6;
+            /* バーストのバッジが載り得る、いちばん厳しい地。★ ライトは暗いほう / ダークは明るいほう
+               (バッジの色は「地に対して 4.5:1 まで寄せる」計算をするので、地の取り違えが直に効く) */
+            --burst-bg: #F7F8F9;   /* いちばん暗いホバー色 (= --s1) */
             /* ページの地 (マーブルのグラデーション)。★ テーマで反転する */
             --marble-base: #F5F6F8;
             --page-a: #ffffff;
@@ -335,6 +338,9 @@
             --toast-ink: #FFFFFF;
             --marble-a: #141A1D;
             --marble-b: #12181B;
+            /* バーストのバッジが載り得る、いちばん厳しい地。★ ライトは暗いほう / ダークは明るいほう
+               (バッジの色は「地に対して 4.5:1 まで寄せる」計算をするので、地の取り違えが直に効く) */
+            --burst-bg: #17191D;   /* いちばん明るいホバー色 (= --card) */
             /* ページの地 (マーブルのグラデーション)。★ テーマで反転する */
             --marble-base: #0E1013;
             --page-a: #15181d;
@@ -7094,11 +7100,11 @@
                     await applyMyAvatarToHeader(id.id);
                     const msg = document.getElementById('avatarEditMessage');
                     msg.textContent = '✅ アバターを変更しました';
-                    msg.style.color = '#22c55e';
+                    msg.style.color = 'var(--ok)';
                 } catch (e) {
                     const msg = document.getElementById('avatarEditMessage');
                     msg.textContent = `❌ ${e?.message || e}`;
-                    msg.style.color = '#ef4444';
+                    msg.style.color = 'var(--bad)';
                 }
             }, '📚 キャラから選ぶ');
         }
@@ -7110,17 +7116,17 @@
             if (!id?.id) return;
             const msg = document.getElementById('avatarEditMessage');
             msg.textContent = '⏳ アップロード中...';
-            msg.style.color = '#6B7178';
+            msg.style.color = 'var(--t-body)';
             try {
                 const publicUrl = await window.supabaseUploadAvatarImage(id.id, file);
                 await window.supabaseUpdatePlayerAvatar(id.id, { url: publicUrl, character: null });
                 _invalidateAvatarCache(id.id);
                 await applyMyAvatarToHeader(id.id);
                 msg.textContent = '✅ アバターを変更しました';
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
         async function handleAvatarClear() {
@@ -7133,11 +7139,11 @@
                 await applyMyAvatarToHeader(id.id);
                 const msg = document.getElementById('avatarEditMessage');
                 msg.textContent = '🗑️ アバターを削除しました';
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
             } catch (e) {
                 const msg = document.getElementById('avatarEditMessage');
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
 
@@ -7397,7 +7403,7 @@
             }
             card.style.display = '';
             card.classList.toggle('dc-hero', hero);
-            card.style.borderLeft = hero ? 'none' : '4px solid #6C42F0';   // 白バリアントだけ紫の左帯
+            card.style.borderLeft = hero ? 'none' : '4px solid var(--ops-solid)';   // 白バリアントだけ紫の左帯
             const ink = hero ? '#fff' : '#14161A';
             const sub = hero ? 'rgba(255,255,255,0.62)' : '#6B7178';
             const label = hero ? '#A99CFF' : '#6C42F0';
@@ -9641,8 +9647,8 @@
             const msg = document.getElementById('mySlvMessage');
             if (!id?.id) return;
             const val = Math.max(0, Math.min(999, parseInt(input?.value) || 0));
-            if (!val) { if (msg) { msg.style.color = '#FF3D44'; msg.textContent = 'SLv を入力してください'; } return; }
-            if (!_mySlvSeasonId) { if (msg) { msg.style.color = '#FF3D44'; msg.textContent = 'アクティブシーズンが見つかりません'; } return; }
+            if (!val) { if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = 'SLv を入力してください'; } return; }
+            if (!_mySlvSeasonId) { if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = 'アクティブシーズンが見つかりません'; } return; }
             try {
                 await window.supabaseUpsertSyncLevel(_mySlvSeasonId, id.id, val);
                 _mySlvCurrent = val;
@@ -9659,7 +9665,7 @@
                     try { renderMyFururiRadar(_myRadarLastIdentity, _myRadarLastDamages); } catch { /* noop */ }
                 }
             } catch (e) {
-                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+                if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `保存失敗: ${e?.message || e}`; }
             }
         }
 
@@ -9818,8 +9824,8 @@
                     btn.style.border = '1px solid ' + c + '4D';
                     btn.style.boxShadow = 'inset 0 0 0 1px ' + c + '1F';
                 } else {
-                    btn.style.background = '#F1F2F4';
-                    btn.style.color = '#A4AAB0';
+                    btn.style.background = 'var(--s2)';
+                    btn.style.color = 'var(--t-muted)';
                     btn.style.border = '1px solid transparent';
                     btn.style.boxShadow = 'none';
                 }
@@ -9926,19 +9932,19 @@
             if (c && c.loadFailed) {   // 取得できなかっただけ。「未確認」と断定しない
                 el.style.display = 'inline-block';
                 el.textContent = '今期 確認状態不明';
-                el.style.color = '#8A9097'; el.style.background = '#F1F2F4';
+                el.style.color = 'var(--t-muted)'; el.style.background = 'var(--s2)';
                 return;
             }
             if (!c) {
                 el.style.display = 'inline-block';
                 el.textContent = '今期 未確認';
-                el.style.color = '#B45309'; el.style.background = 'rgba(245,158,11,0.14)';
+                el.style.color = 'var(--warn-deep)'; el.style.background = 'rgba(245,158,11,0.14)';
                 return;
             }
             el.style.display = 'inline-block';
             el.textContent = c.unavailable ? '今期 参加むずかしい' : '今期 確認済み';
-            el.style.color = c.unavailable ? '#8A9097' : '#0E9455';
-            el.style.background = c.unavailable ? '#F1F2F4' : 'rgba(24,194,107,0.12)';
+            el.style.color = c.unavailable ? 'var(--t-muted)' : 'var(--ok-deep)';
+            el.style.background = c.unavailable ? 'var(--s2)' : 'rgba(24,194,107,0.12)';
         }
         // モーダル内の確認ブロック
         function _renderMyAvailConfirm() {
@@ -9953,7 +9959,7 @@
             // 取得できなかった: 確認済みかどうか分からないので、確認ボタンは出さない
             if (c && c.loadFailed) {
                 box.style.display = 'block';
-                box.style.background = '#F1F2F4';
+                box.style.background = 'var(--s2)';
                 box.style.border = '1px solid rgba(var(--ink-rgb), 0.08)';
                 box.innerHTML = `
                     <div style="font-size:12.5px;font-weight:900;color:var(--t-body);">確認の状態を取得できませんでした</div>
@@ -9988,7 +9994,7 @@
                 return;
             }
             const when = c.confirmed_at ? new Date(c.confirmed_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-            box.style.background = c.unavailable ? '#F7F8F9' : 'rgba(24,194,107,0.08)';
+            box.style.background = c.unavailable ? 'var(--s1)' : 'rgba(24,194,107,0.08)';
             box.style.border = c.unavailable ? '1px solid rgba(var(--ink-rgb), 0.08)' : '1px solid rgba(24,194,107,0.28)';
             box.innerHTML = `
                 <div style="font-size:12.5px;font-weight:900;color:${c.unavailable ? '#6B7178' : '#0E9455'};">
@@ -10041,9 +10047,9 @@
                     slot_count: unavailable ? null : cur.length, slots_snapshot: unavailable ? null : cur };
                 _renderMyAvailConfirm();
                 opsStore.invalidate();   // メンバー状況ボードに即反映
-                if (msg) { msg.style.color = '#18C26B'; msg.textContent = unavailable ? '✅ 今回は難しいと伝えました' : '✅ 今回の参加時間を確認しました'; }
+                if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = unavailable ? '✅ 今回は難しいと伝えました' : '✅ 今回の参加時間を確認しました'; }
             } catch (e) {
-                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+                if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `保存失敗: ${e?.message || e}`; }
             } finally {
                 _availConfirmBusy = false;
                 _availConfirmSetBusy(false);   // 再描画で作り直された分も含めて戻す
@@ -10070,9 +10076,9 @@
                 await window.supabaseUpdateAvailabilityPrefs(id.id, { flexTime, notifyAllHours });
                 opsStore.invalidate();   // プラン算出に即反映
                 _invalidateSetupNeeds(); renderMyNextAction(id);   // ⏳隙間型ONでS2解除に追随
-                if (msg) { msg.style.color = '#18C26B'; msg.textContent = '✅ 設定を保存しました'; }
+                if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = '✅ 設定を保存しました'; }
             } catch (e) {
-                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `保存失敗: ${e?.message || e}`; }
+                if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `保存失敗: ${e?.message || e}`; }
             }
         }
 
@@ -10656,7 +10662,7 @@
             const pill = document.getElementById('myTeamEditAttrPill');
             if (pill) {
                 pill.textContent = `${ptName}PT`;
-                pill.style.background = (PT_ATTRS.find(x => x.key === attrKey)?.color) || DC_ATTR_COLORS?.[attrKey] || '#6C42F0';
+                pill.style.background = (PT_ATTRS.find(x => x.key === attrKey)?.color) || DC_ATTR_COLORS?.[attrKey] || 'var(--ops-solid)';
             }
             document.getElementById('myTeamEditOcrStatus').textContent = '';
             document.getElementById('myTeamEditMessage').textContent = '';
@@ -10879,7 +10885,7 @@
             const msg = document.getElementById('myTeamEditMessage');
             if (msg) {
                 msg.textContent = '⭐ よく使う編成を入れました。ダメージ欄は自分の模擬結果を入力してください';
-                msg.style.color = '#6C42F0';
+                msg.style.color = 'var(--ops)';
             }
         }
         // ===== 編成編集モーダルのタイルピッカー (2026-08-12) =====
@@ -10893,10 +10899,13 @@
         //     どちらも読めない。手で「B2 のときだけ黒」と書き分けていた箇所もあったが、
         //     色表を変えた瞬間に破綻するので**計算で決める**。
         const _HEX6 = /^#[0-9A-Fa-f]{6}$/;
-        // ★ バッジが載り得る**いちばん暗い地**。行やタイルはホバーで #F7F8F9 になる
+        // ★ バッジが載り得る**いちばん厳しい地**。行やタイルはホバーで色が変わる
         //   (Codex指摘 2026-09-10: 白だけを見ていたので、ホバー中は 4.5:1 を割っていた)。
-        //   いちばん暗い地に合わせておけば、白いカードの上ではさらに読みやすくなる
-        const _BURST_BG = '#F7F8F9';
+        //   ★ 厳しい側はテーマで入れ替わる — ライトはいちばん暗い地 (--s1)、
+        //     ダークはいちばん明るい地 (--card)。どちらかを --burst-bg が持つので、
+        //     色ではなく**そのつどトークンを読む**。
+        const _BURST_BG_FALLBACK = '#F7F8F9';   // トークンを読めないとき (テスト等) の保険
+        function _burstBg() { return themeVar('burst-bg', _BURST_BG_FALLBACK); }
         const _burstLin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
         const _burstLum = (rgb) => 0.2126 * _burstLin(rgb[0]) + 0.7152 * _burstLin(rgb[1]) + 0.0722 * _burstLin(rgb[2]);
         const _burstRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -10915,32 +10924,41 @@
         /**
          * その色を薄く敷いたときの実際の地の色。★ CSS の `${色}1A` (10%) を地に重ねた結果。
          * 文字の濃さを決めるときは**この地**に対して測る — 純白で測ると足りない (Codex指摘 2026-09-10)。
-         * 地の既定は _BURST_BG (ホバー中のいちばん暗い地)。
+         * 地の既定は _burstBg() (そのテーマでの、ホバー中のいちばん暗い地)。
          */
         function _burstTint(hex, base) {
             if (!_HEX6.test(String(hex))) return '#F1F2F4';
-            const b = _burstRgb(_HEX6.test(String(base)) ? base : _BURST_BG);
+            const b = _burstRgb(_HEX6.test(String(base)) ? base : _burstBg());
             const a = 0x1A / 255;
             return `#${_burstRgb(hex).map((c, i) => Math.round(c * a + b[i] * (1 - a)).toString(16).padStart(2, '0')).join('')}`;
         }
 
         /**
-         * 薄い地に**文字や枠として**置ける濃さに落とした色。
+         * その地に**文字や枠として**置ける色に寄せたもの。
          * ★ 地は**必ず渡す**。純白を決め打ちすると、色を薄く敷いた地では足りない
          *   (Codex指摘 2026-09-10: B3 は白基準で 4.5:1 でも実際の地では 3.97:1 だった)。
-         *   色を敷くなら `_burstTint(色)`、地が透明ならその下の色 (ふつうカードの `#FFFFFF`)。
+         *   色を敷くなら `_burstTint(色)`、地が透明ならその下の色 (ふつうカードの `var(--card)`)。
+         * ★ 寄せる先は**地の明るさで決める** (2026-09-10 ダーク対応)。
+         *   明るい地なら黒へ、暗い地なら白へ。以前は暗くする方向にしか動かず、
+         *   ダークでは寄せるほど地に沈んだ (B1 の緑が 1.3:1 になった)。
          * @param {string} hex もとの色
          * @param {string} bg  置く先の地
          */
-        function _burstOnLight(hex, bg) {
+        function _burstOnBg(hex, bg) {
             if (!_HEX6.test(String(hex))) return '#8A9097';
-            const bgL = _HEX6.test(String(bg)) ? _burstLum(_burstRgb(bg)) : 1;
+            const bgRgb = _HEX6.test(String(bg)) ? _burstRgb(bg) : [255, 255, 255];
+            const bgL = _burstLum(bgRgb);
             const ch = _burstRgb(hex);
-            let k = 1;
-            for (; k > 0.04; k -= 0.02) {
-                if ((bgL + 0.05) / (_burstLum(ch.map((c) => Math.round(c * k))) + 0.05) >= 4.5) break;
+            const toBlack = bgL > 0.18;   // 地が明るいか (中間の灰より上か)
+            const hex2 = (c) => `#${c.map((x) => x.toString(16).padStart(2, '0')).join('')}`;
+            for (let k = 0; k <= 1.0001; k += 0.02) {
+                const c = toBlack
+                    ? ch.map((v) => Math.round(v * (1 - k)))             // 黒へ寄せる
+                    : ch.map((v) => Math.round(v + (255 - v) * k));      // 白へ寄せる
+                const l = _burstLum(c);
+                if ((Math.max(bgL, l) + 0.05) / (Math.min(bgL, l) + 0.05) >= 4.5) return hex2(c);
             }
-            return `#${ch.map((c) => Math.round(c * k).toString(16).padStart(2, '0')).join('')}`;
+            return toBlack ? '#000000' : '#FFFFFF';
         }
         const TE_WANT = ['B1', 'B2', 'B3', null, null];   // 4・5人目は自由枠
         const TE_GRID_TOP = 10;                            // 上位何体まで開いて出すか
@@ -11403,7 +11421,7 @@
             const msg = document.getElementById('myTeamEditMessage');
             if (msg) {
                 msg.textContent = '⬇️ 人気編成をコピーしました。ダメージ欄は自分の模擬結果に合わせて入力してください';
-                msg.style.color = '#6C42F0';
+                msg.style.color = 'var(--ops)';
             }
         }
         // ホームの独立カード (既定は折りたたみ / 初回展開時にロード)
@@ -11575,11 +11593,11 @@
             }
             // ★ 薄い地 (色の 10%) に置くので、文字と枠は濃く落とした色を使う
             const c1 = _BURST_COLOR[entry.burst] || '#8A9097';
-            const t1 = _burstOnLight(c1, _burstTint(c1));
+            const t1 = _burstOnBg(c1, _burstTint(c1));
             let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${t1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
             if (entry.burst_alt) {
                 const c2 = _BURST_COLOR[entry.burst_alt] || '#8A9097';
-                const t2 = _burstOnLight(c2, _BURST_BG);   // 枠だけ。地は透明なので、その下のいちばん暗い地で測る
+                const t2 = _burstOnBg(c2, _burstBg());   // 枠だけ。地は透明なので、その下のいちばん暗い地で測る
                 html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${t2};background:transparent;border:1px solid ${t2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
             }
             return html;
@@ -11759,7 +11777,7 @@
                         + ` style="padding:5px 11px;border-radius:999px;border:1.5px solid ${on ? o.color : 'transparent'};`
                         + `font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;`
                         + (on ? `background:${o.color};color:${_burstInk(o.color)};`
-                            : `background:${o.color}1A;color:${_burstOnLight(o.color, _burstTint(o.color))};`)
+                            : `background:${o.color}1A;color:${_burstOnBg(o.color, _burstTint(o.color))};`)
                         + (dim ? 'opacity:0.4;' : '')
                         + `">${o.label} <span style="font-weight:800;opacity:0.75;">${o.n}</span></button>`;
                 }).join('');
@@ -11782,7 +11800,7 @@
                 // 名前は data 属性で渡し、クリックは委譲で拾う (インライン onclick に名前を
                 // 埋めると escapeHtml 済みでも属性のHTMLデコード後に ' で脱出されXSSになる)
                 return `
-                    <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--card);min-width:0;" onmouseover="this.style.background='#F7F8F9'" onmouseout="this.style.background='#fff'">
+                    <div data-pick-name="${escapeHtml(c.canonical_name)}" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.06);background:var(--card);min-width:0;" onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background='var(--card)'">
                         ${icon}
                         <div style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">${_burstBadgeHtml(c)}${useBadgeHtml(c)}</div>
                         <div style="font-size:10px;text-align:center;line-height:1.2;word-break:break-word;">${escapeHtml(c.canonical_name)}</div>
@@ -11885,7 +11903,7 @@
             const stale = () => seq !== _teamEditOcrSeq
                 || _myTeamEditAttr !== forAttr || _myTeamEditSlot !== forSlot;
             statusEl.textContent = `🔍 ${files.length}枚をAIで解析中... (1枚あたり10〜20秒)`;
-            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
+            statusEl.style.color = 'var(--t-muted)';   // CD ニュートラル (静的HTML側の初期色と統一)
             try {
                 const r = await _ocrAttackMultiAndMerge(files);
                 // ★ OCR は { characters, totalDamage, bossName } を返す。
@@ -11925,11 +11943,11 @@
                 }
                 if (typeof _renderTeamEditLevelNote === 'function') _renderTeamEditLevelNote();
                 statusEl.textContent = `✅ ${done.join(' / ')} を取り込みました${skippedDmg ? ' (ダメージは据え置き)' : ''}`;
-                statusEl.style.color = '#B45309';
+                statusEl.style.color = 'var(--warn-deep)';
             } catch (e) {
                 if (stale()) return;   // 古い解析の失敗で新しい解析の表示を潰さない
                 statusEl.textContent = `❌ ${e?.message || e}`;
-                statusEl.style.color = '#ef4444';
+                statusEl.style.color = 'var(--bad)';
             }
         }
 
@@ -11952,7 +11970,7 @@
             const setMsg = (t, err = false) => {
                 if (movedOn()) return;
                 msgEl.textContent = t;
-                msgEl.style.color = err ? '#ef4444' : '#22c55e';
+                msgEl.style.color = err ? 'var(--bad)' : 'var(--ok)';
             };
             // 入力欄の内容 = 保存後に残る値。測定ボスレベルは廃止したので '0' (レベル未指定) 固定で持つ
             const dmgVal = _teDamageValue();
@@ -12248,7 +12266,7 @@
             const analyzeNames = document.getElementById('mypageDmgAnalyzedNames');
             if (files.length === 0) return;
             const id = getCurrentIdentity();
-            if (!id?.id) { statusEl.textContent = '❌ プレイヤー未選択'; statusEl.style.color = '#ef4444'; return; }
+            if (!id?.id) { statusEl.textContent = '❌ プレイヤー未選択'; statusEl.style.color = 'var(--bad)'; return; }
 
             // 解析中バナーを表示
             if (analyzeBanner) analyzeBanner.style.display = 'flex';
@@ -12278,7 +12296,7 @@
                 openMyDmgPreviewModal();
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
-                statusEl.style.color = '#ef4444';
+                statusEl.style.color = 'var(--bad)';
             } finally {
                 if (analyzeBanner) analyzeBanner.style.display = 'none';
             }
@@ -12421,7 +12439,7 @@
             const statusEl = document.getElementById('mypageDmgOcrStatus');
             const attr = d.selectedAttr;
             if (!attr || d.totalDamage == null) {
-                if (msg) { msg.textContent = '❌ 属性とダメージの両方が必要です'; msg.style.color = '#ef4444'; }
+                if (msg) { msg.textContent = '❌ 属性とダメージの両方が必要です'; msg.style.color = 'var(--bad)'; }
                 return;
             }
             try {
@@ -12444,7 +12462,7 @@
                 if (statusEl) {
                     const slotJp = res?.redirected ? ` — 同一編成のため編成${SLOT_JP[res.slot] || res.slot}に統合` : '';
                     statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で保存しました${slotJp}`;
-                    statusEl.style.color = '#22c55e';
+                    statusEl.style.color = 'var(--ok)';
                 }
                 closeMyDmgPreviewModal();
                 await renderMyDamagePanels(id);
@@ -12458,7 +12476,7 @@
                     }
                 });
             } catch (e) {
-                if (msg) { msg.textContent = `❌ 保存失敗: ${e?.message || e}`; msg.style.color = '#ef4444'; }
+                if (msg) { msg.textContent = `❌ 保存失敗: ${e?.message || e}`; msg.style.color = 'var(--bad)'; }
             }
         }
 
@@ -12535,11 +12553,11 @@
                 await window.supabaseUpdatePlayerStrongAttrs(id.id, next);
                 if (me) me.strong_attributes = next;
                 opsStore.invalidate();
-                if (msg) { msg.textContent = `✅ 得意属性 ${next.length} 件で保存しました`; msg.style.color = '#22c55e'; }
+                if (msg) { msg.textContent = `✅ 得意属性 ${next.length} 件で保存しました`; msg.style.color = 'var(--ok)'; }
                 renderMyStrongAttrs(id);
                 renderMypageStrongAttrsBadge(id);   // プロフィール側バッジも即時同期
             } catch (e) {
-                if (msg) { msg.textContent = `❌ ${e?.message || e}`; msg.style.color = '#ef4444'; }
+                if (msg) { msg.textContent = `❌ ${e?.message || e}`; msg.style.color = 'var(--bad)'; }
             }
         }
 
@@ -12590,9 +12608,9 @@
             _renderAvailUI();
             if (isFirstTime) {
                 msgEl.textContent = 'ℹ️ 初期は全時間帯OFF。通知を受け取りたい時間帯をなぞって ON にしてください。';
-                msgEl.style.color = '#f59e0b';
+                msgEl.style.color = 'var(--warn)';
             } else {
-                msgEl.style.color = '#6B7178';
+                msgEl.style.color = 'var(--t-body)';
             }
         }
 
@@ -12803,7 +12821,7 @@
                 await window.supabaseSaveAvailability(id.id, slots);
                 _invalidateSetupNeeds(); renderMyNextAction(id);   // 📌次にやることのS2を即解除
                 if (msgEl) {
-                    msgEl.style.color = slots.length === 0 ? '#f59e0b' : '#22c55e';
+                    msgEl.style.color = slots.length === 0 ? 'var(--warn)' : 'var(--ok)';
                     msgEl.textContent = slots.length === 0
                         ? '⚠️ 全時間帯OFF: 通知は一切来ません'
                         : `✅ 保存しました (${slots.length}/24)`;
@@ -12816,7 +12834,7 @@
             } catch (e) {
                 if (msgEl) {
                     msgEl.textContent = `❌ ${e?.message || e}`;
-                    msgEl.style.color = '#ef4444';
+                    msgEl.style.color = 'var(--bad)';
                 }
                 if (opts.rethrow) throw e;
                 return null;
@@ -12898,12 +12916,12 @@
                 msgEl.textContent = slots.length === 0
                     ? '⚠️ 全時間帯OFF: 通知は一切来ません'
                     : `✅ 保存しました (現在は ${ok ? '受信ON' : '受信OFF'})`;
-                msgEl.style.color = slots.length === 0 ? '#f59e0b' : '#22c55e';
+                msgEl.style.color = slots.length === 0 ? 'var(--warn)' : 'var(--ok)';
                 // ステータス行を再描画
                 await renderMyAvailabilitySettings(id);
             } catch (e) {
                 msgEl.textContent = `❌ ${e?.message || e}`;
-                msgEl.style.color = '#ef4444';
+                msgEl.style.color = 'var(--bad)';
             }
         }
 
@@ -13371,32 +13389,32 @@
         async function handleMyLocalTestNotification() {
             const msg = document.getElementById('mypagePushMessage');
             msg.textContent = '🔔 通知を呼び出し中...';
-            msg.style.color = '#6B7178';
+            msg.style.color = 'var(--t-body)';
             try {
                 await window.showLocalTestNotification('しりすこPAD', 'ローカル通知テストです🧪');
                 msg.textContent = '✅ ローカル通知を表示しました (見えない場合は OS/ブラウザの通知設定を確認)';
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
 
         async function handleMyPushSubscribe() {
             const msg = document.getElementById('mypagePushMessage');
             const id = getCurrentIdentity();
-            if (!id?.id) { msg.textContent = '❌ プレイヤー未選択'; msg.style.color = '#ef4444'; return; }
+            if (!id?.id) { msg.textContent = '❌ プレイヤー未選択'; msg.style.color = 'var(--bad)'; return; }
             try {
                 msg.textContent = '🔔 購読中...';
-                msg.style.color = '#6B7178';
+                msg.style.color = 'var(--t-body)';
                 await window.subscribeToPush(id.id);
                 msg.textContent = '✅ Push通知を有効化しました';
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
                 await renderMyPushSettings(id);
                 _invalidateSetupNeeds(); renderMyNextAction(id);   // 📌次にやることのS1を即解除
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
 
@@ -13406,11 +13424,11 @@
             try {
                 await window.unsubscribeFromPush(id?.id || null);
                 msg.textContent = '🛑 Push通知を解除しました';
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
                 if (id) await renderMyPushSettings(id);
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
 
@@ -13832,14 +13850,14 @@
             document.querySelectorAll('#myAttackBossButtons button').forEach(b => {
                 const attr = b.dataset.attr;
                 const v = ATTR_VISUAL[attr] || { color:'#8A9097' };
-                b.style.background = '#fff';
+                b.style.background = 'var(--card)';
                 b.style.color = v.color;
                 b.style.boxShadow = 'none';
             });
             const attr = btn.dataset.attr;
             const v = ATTR_VISUAL[attr] || { color:'#8A9097' };
             btn.style.background = v.color;
-            btn.style.color = '#fff';
+            btn.style.color = _burstInk(v.color);   // ★ 緑や橙に白だと 2.3:1。読めるほうを選ぶ
             btn.style.boxShadow = `0 3px 8px ${v.color}40`;
 
             _renderMatchupCard(bossNumber);
@@ -13910,17 +13928,17 @@
 
             if (!boss) {
                 bossIcon.innerHTML = '<span style="font-size:30px;">⚔️</span>';
-                bossIcon.style.background = 'linear-gradient(180deg,#8A9097,#5A6068)';
+                bossIcon.style.background = 'linear-gradient(180deg,var(--ghost),var(--fill-muted))';
                 bossAttrNameEl.textContent = 'ボス未選択';
-                bossAttrNameEl.style.color = '#14161A';
+                bossAttrNameEl.style.color = 'var(--t-ink)';
                 bossLabelEl.textContent = '';
                 bossRow.style.background = 'linear-gradient(180deg, rgba(180,180,180,0.06), rgba(180,180,180,0.02))';
                 bossRow.style.borderColor = 'rgba(var(--ink-rgb), 0.10)';
                 bossHpWrap.style.display = 'none';
                 ptIcon.innerHTML = '<span style="font-size:30px;">⚔️</span>';
-                ptIcon.style.background = 'linear-gradient(180deg,#8A9097,#5A6068)';
+                ptIcon.style.background = 'linear-gradient(180deg,var(--ghost),var(--fill-muted))';
                 ptAttrNameEl.textContent = '—';
-                ptAttrNameEl.style.color = '#14161A';
+                ptAttrNameEl.style.color = 'var(--t-ink)';
                 ptCharsEl.innerHTML = '';
                 ptDmgEl.textContent = '—';
                 ptRow.style.background = 'linear-gradient(180deg, rgba(180,180,180,0.06), rgba(180,180,180,0.02))';
@@ -14134,7 +14152,7 @@
                 btn.style.boxShadow = '0 6px 16px rgba(24,194,107,0.32)';
                 btn.textContent = '✓ 内容を確認して保存';
             } else {
-                btn.style.background = 'linear-gradient(180deg,#14161A,#000)';
+                btn.style.background = 'linear-gradient(180deg,var(--t-ink),var(--t-ink))';
                 btn.style.boxShadow = '0 6px 16px rgba(20,22,26,0.25)';
                 btn.textContent = '保存';
             }
@@ -14147,7 +14165,7 @@
             const msgEl = document.getElementById('myAttackMessage');
             const dmgRaw = document.getElementById('myAttackDamageInput').value.trim();
             const dmgB = Number(dmgRaw);
-            const setMsg = (t, err = false) => { msgEl.textContent = t; msgEl.style.color = err ? '#ef4444' : '#22c55e'; };
+            const setMsg = (t, err = false) => { msgEl.textContent = t; msgEl.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
 
             if (!dmgRaw || isNaN(dmgB) || dmgB < 0) { setMsg('❌ ダメージを正しく入力してください', true); return; }
             const damageRaw = Math.round(dmgB * 1e9);
@@ -14380,7 +14398,7 @@
             if (_myBulkAttacks.length === 0) return;
             const msg = document.getElementById('myBulkAttackMessage');
             const btn = document.getElementById('myBulkAttackSaveBtn');
-            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
             btn.disabled = true;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
@@ -14513,7 +14531,7 @@
                     if (r.totalDamage != null) parts.push(`ダメージ: ${(Number(r.totalDamage) / 1e9).toFixed(3)} B`);
                     if (_myAttackOcrCharacters) parts.push(`編成: ${_myAttackOcrCharacters.length} 名`);
                     msgEl.textContent = parts.length ? `✓ ${parts.join(' / ')}` : '';
-                    msgEl.style.color = '#0E8F4D';
+                    msgEl.style.color = 'var(--ok-deep)';
                 }
             } catch (e) {
                 _attackReport.view = 'fresh';
@@ -14521,7 +14539,7 @@
                 _attackReport.extracted = null;
                 _renderAttackSlots();
                 _renderAttackCardState();
-                if (msgEl) { msgEl.textContent = `❌ ${e?.message || e}`; msgEl.style.color = '#E23036'; }
+                if (msgEl) { msgEl.textContent = `❌ ${e?.message || e}`; msgEl.style.color = 'var(--bad-deep)'; }
             }
         }
 
@@ -14738,7 +14756,7 @@
             const input = document.getElementById('settingsNewCharName');
             const msg = document.getElementById('settingsNewCharMsg');
             const name = (input?.value || '').trim();
-            const setMsg = (t, c) => { if (msg) { msg.style.color = c || '#A4AAB0'; msg.textContent = t; } };
+            const setMsg = (t, c) => { if (msg) { msg.style.color = c || 'var(--t-muted)'; msg.textContent = t; } };
             const dom = window.charMasterDomain;
             const burst = _readBurst('newChar');
             const source = (document.getElementById('settingsNewCharSource')?.value || '').trim();
@@ -14807,14 +14825,14 @@
                     : '<span style="font-size:10px;color:rgba(var(--ink-rgb), 0.08);">no icon</span>';
                 const bc = r.burst ? (_BURST_COLOR[r.burst] || '#8A9097') : null;
                 let burstBadge = bc
-                    ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${_burstOnLight(bc, _burstTint(bc))};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
+                    ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${_burstOnBg(bc, _burstTint(bc))};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
                     : `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:var(--t-muted);background:var(--s2);">—</span>`;
                 if (r.burst_alt) {
-                    const ac = _burstOnLight(_BURST_COLOR[r.burst_alt] || '#8A9097', _BURST_BG);   // 枠だけ (地は透明)
+                    const ac = _burstOnBg(_BURST_COLOR[r.burst_alt] || '#8A9097', _burstBg());   // 枠だけ (地は透明)
                     burstBadge += `<span title="${escapeHtml(r.burst_alt)}枠としても使える" style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 5px;border-radius:999px;color:${ac};background:transparent;border:1px solid ${ac}66;">+${escapeHtml(r.burst_alt)}</span>`;
                 }
                 return `
-                    <div onclick="openCharMasterEditModal(${safeName})" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid rgba(var(--ink-rgb), 0.08);font-size:12px;align-items:center;" onmouseover="this.style.background='#F7F8F9'" onmouseout="this.style.background=''">
+                    <div onclick="openCharMasterEditModal(${safeName})" style="cursor:pointer;display:grid;grid-template-columns: 50px minmax(140px, 1.4fr) 60px 70px 1fr 90px;gap:6px;padding:6px 8px;border-bottom:1px solid rgba(var(--ink-rgb), 0.08);font-size:12px;align-items:center;" onmouseover="this.style.background='var(--s1)'" onmouseout="this.style.background=''">
                         <div style="display:flex;align-items:center;gap:2px;">${icons}</div>
                         <div style="display:flex;align-items:center;gap:5px;overflow:hidden;" title="${escapeHtml(r.canonical_name)}">${burstBadge}<strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.canonical_name)}</strong></div>
                         <div style="text-align:center;font-variant-numeric:tabular-nums;">${r.sighting_count}</div>
@@ -14862,11 +14880,11 @@
             const actions = document.getElementById('charEditVerifyActions');
             if (vs.kind === 'verified') {
                 title.textContent = '✅ 確認済みの手動登録';
-                title.style.color = '#18C26B';
+                title.style.color = 'var(--ok)';
                 actions.style.display = 'none';
             } else {
                 title.textContent = '🔍 要確認 — 登録者とは別の運営が根拠を見て確定してください';
-                title.style.color = '#6C42F0';
+                title.style.color = 'var(--ops)';
                 actions.style.display = 'flex';
                 const cv = dom.canVerify({ registeredBy: entry.registered_by, registeredAt: entry.first_seen, actorName: me?.name });
                 const btn = document.getElementById('charEditVerifyBtn');
@@ -14884,7 +14902,7 @@
         async function handleCharMasterVerify() {
             if (!_charEditOriginal || !_charEditEntry) return;
             const msg = document.getElementById('charEditMessage');
-            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
             const dom = window.charMasterDomain;
             const me = getCurrentIdentity();
             const cv = dom.canVerify({ registeredBy: _charEditEntry.registered_by, registeredAt: _charEditEntry.first_seen, actorName: me?.name });
@@ -14909,7 +14927,7 @@
             return `padding:5px 12px;border-radius:999px;border:1.5px solid ${on ? color : 'transparent'};`
                 + `font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;`
                 + (on ? `background:${color};color:${_burstInk(color)};`
-                    : `background:${color}1A;color:${_burstOnLight(color, _burstTint(color))};`);
+                    : `background:${color}1A;color:${_burstOnBg(color, _burstTint(color))};`);
         }
         function _burstPickerHtml(groupId, current, emptyLabel = '未設定') {
             _burstState[groupId] = current || '';
@@ -14948,13 +14966,13 @@
             const alt = _readBurst('charEditAlt');
             if (!main) {
                 el.textContent = 'サブを設定するには先に主バーストを選んでください';
-                el.style.color = '#A4AAB0';
+                el.style.color = 'var(--t-muted)';
             } else if (alt) {
                 el.textContent = `一覧では ${main} 表示のまま、${alt} 枠の候補にも出るようになります`;
-                el.style.color = '#6C42F0';
+                el.style.color = 'var(--ops)';
             } else {
                 el.textContent = '主バースト以外の枠でも使えるキャラだけ設定します (例: ラピ:レッドフード = 表示B3・B1枠でも可)';
-                el.style.color = '#8A9097';
+                el.style.color = 'var(--t-muted)';
             }
         }
 
@@ -15009,7 +15027,7 @@
         async function handleCharMasterSave() {
             if (!_charEditOriginal) return;
             const msg = document.getElementById('charEditMessage');
-            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const setMsg = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
             const newCanonical = document.getElementById('charEditCanonical').value.trim();
             const aliasesRaw = document.getElementById('charEditAliases').value;
             const aliases = aliasesRaw.split(/[、,]/).map(s => s.trim()).filter(Boolean);
@@ -15066,13 +15084,13 @@
             try {
                 await window.supabaseDeleteCharacterMasterEntry(_charEditOriginal);
                 msg.textContent = '🗑️ 削除しました';
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
                 invalidateNikkeCharsCache();
                 await renderSettingsCharMaster();
                 setTimeout(() => closeCharMasterEditModal(), 700);
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
 
@@ -15190,9 +15208,9 @@
                     .reduce((s, v) => s + (Array.isArray(v) ? v.length : 0), 0);
                 _downloadBackupJson(dump, 'shirisuko-pad-backup');
                 try { localStorage.setItem('shirisuko_backup_saved_at_v1', new Date().toISOString()); } catch { /* 段階のチェックリスト用の記憶 (端末ごと) */ }
-                if (msg) { msg.style.color = '#18C26B'; msg.textContent = `✅ ${rowCount} 行をエクスポートしました`; }
+                if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = `✅ ${rowCount} 行をエクスポートしました`; }
             } catch (e) {
-                if (msg) { msg.style.color = '#FF3D44'; msg.textContent = `エクスポート失敗: ${e?.message || e}`; }
+                if (msg) { msg.style.color = 'var(--attr-fire)'; msg.textContent = `エクスポート失敗: ${e?.message || e}`; }
             } finally {
                 btn.disabled = false;
                 btn.style.opacity = '';
@@ -15218,7 +15236,7 @@
             if (!file) return;
             const msg = document.getElementById('settingsBackupMsg');
             const btn = document.getElementById('settingsRestoreBtn');
-            const setMsg = (t, color) => { if (msg) { msg.style.color = color || '#A4AAB0'; msg.textContent = t; } };
+            const setMsg = (t, color) => { if (msg) { msg.style.color = color || 'var(--t-muted)'; msg.textContent = t; } };
 
             // 1) 検証
             let dump;
@@ -15574,8 +15592,8 @@
             document.querySelectorAll('[data-setlog-filter]').forEach(btn => {
                 const f = _SETLOG_FILTERS.find(x => x.key === btn.dataset.setlogFilter);
                 const on = btn.dataset.setlogFilter === _setLogState.filter;
-                btn.style.background = on ? '#14161A' : '#F1F2F4';
-                btn.style.color = on ? '#fff' : '#5A6068';
+                btn.style.background = on ? 'var(--t-ink)' : 'var(--s2)';
+                btn.style.color = on ? 'var(--card)' : 'var(--t-strong)';
                 btn.textContent = f?.label || '';
             });
             const orderBtn = document.getElementById('setlogOrderBtn');
@@ -17428,8 +17446,8 @@
             if (btn) {
                 const t = _opsRemainingSort === 'time';
                 btn.textContent = t ? '💥 火力順' : '⏰ 時間順';
-                btn.style.background = t ? '#9B4DFF' : '#F1F2F4';
-                btn.style.color = t ? '#fff' : '#5A6068';
+                btn.style.background = t ? 'var(--attr-electric-solid)' : 'var(--s2)';
+                btn.style.color = t ? 'var(--attr-electric-ink)' : 'var(--t-strong)';
             }
             renderOpsRemainingList();
         }
@@ -17450,8 +17468,8 @@
             if (btn) {
                 const fururi = _opsRemainingMode === 'fururi';
                 btn.textContent = fururi ? '💥 ダメージで見る' : '⚖️ ふるり値で見る';
-                btn.style.background = fururi ? '#6C42F0' : '#F1F2F4';
-                btn.style.color = fururi ? '#fff' : '#5A6068';
+                btn.style.background = fururi ? 'var(--ops-solid)' : 'var(--s2)';
+                btn.style.color = fururi ? 'var(--ops-ink)' : 'var(--t-strong)';
             }
             renderOpsRemainingList();
         }
@@ -17468,8 +17486,8 @@
             const btn = document.getElementById('opsRemTidyBtn');
             if (btn) {
                 btn.textContent = _opsRemTidy ? '🧹 整理中' : '🧹 整理';
-                btn.style.background = _opsRemTidy ? '#F59E0B' : '#F1F2F4';
-                btn.style.color = _opsRemTidy ? '#fff' : '#5A6068';
+                btn.style.background = _opsRemTidy ? 'var(--warn-solid)' : 'var(--s2)';
+                btn.style.color = _opsRemTidy ? 'var(--warn-ink)' : 'var(--t-strong)';
             }
             renderOpsRemainingList();
         }
@@ -18103,8 +18121,8 @@
                 fin.dataset.weakness = b.weakness || '';   // 弱点変更が締凸検索の対象に反映されるように
                 fin.title = P.finTitle;
                 fin.textContent = P.lv4B5 ? '♾️ 締め凸不要' : '締凸検索';
-                fin.style.background = P.finDisabled ? '#F1F2F4' : P.c;
-                fin.style.color = P.finDisabled ? '#C9CED3' : '#fff';
+                fin.style.background = P.finDisabled ? 'var(--s2)' : P.c;
+                fin.style.color = P.finDisabled ? 'var(--t-muted)' : _burstInk(P.c);
                 fin.style.cursor = P.finDisabled ? 'not-allowed' : 'pointer';
             }
         }
@@ -19114,8 +19132,8 @@
             if (btn) {
                 const day = _opsPlanStartMode === 'day';
                 btn.textContent = day ? '🌅 朝5時から' : '🕐 今から';
-                btn.style.background = day ? 'rgba(245,158,11,0.10)' : '#fff';
-                btn.style.color = day ? '#B45309' : '#5A6068';
+                btn.style.background = day ? 'rgba(245,158,11,0.10)' : 'var(--card)';
+                btn.style.color = day ? 'var(--warn-deep)' : 'var(--t-strong)';
                 btn.style.borderColor = day ? 'rgba(245,158,11,0.45)' : 'rgba(var(--ink-rgb), 0.18)';
             }
             if (_opsLastPlan) {
@@ -19158,8 +19176,8 @@
             const btn = document.getElementById('opsPlanStickyBtn');
             if (!btn) return;
             btn.textContent = _opsPlanSticky ? '🔗 前回を尊重' : '🆕 ゼロから';
-            btn.style.background = _opsPlanSticky ? 'rgba(24,194,107,0.12)' : '#fff';
-            btn.style.color = _opsPlanSticky ? '#0F7A45' : '#5A6068';
+            btn.style.background = _opsPlanSticky ? 'rgba(24,194,107,0.12)' : 'var(--card)';
+            btn.style.color = _opsPlanSticky ? 'var(--ok-deep)' : 'var(--t-strong)';
             btn.style.borderColor = _opsPlanSticky ? 'rgba(24,194,107,0.45)' : 'rgba(var(--ink-rgb), 0.18)';
         }
         function toggleOpsPlanSticky() {
@@ -20107,13 +20125,13 @@
             if (!el) return;
             if (failed) {
                 el.style.display = '';
-                el.style.background = '#F1F2F4'; el.style.color = '#6B7178';
+                el.style.background = 'var(--s2)'; el.style.color = 'var(--t-body)';
                 el.textContent = '配信の状況を取得できませんでした (通信を確認してください)';
                 return;
             }
             el.style.display = '';
             if (!published) {
-                el.style.background = 'rgba(255,61,68,0.10)'; el.style.color = '#B91C1C';
+                el.style.background = 'rgba(255,61,68,0.10)'; el.style.color = 'var(--bad-deep)';
                 el.textContent = '🚫 いま配信中のプランはありません — メンバーは自分の割当を見られません';
                 return;
             }
@@ -20122,7 +20140,7 @@
                 try {
                     fWhen = new Date(published.frozen_at).toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' });
                 } catch { /* 表示だけの劣化 */ }
-                el.style.background = 'rgba(245,158,11,0.14)'; el.style.color = '#B45309';
+                el.style.background = 'rgba(245,158,11,0.14)'; el.style.color = 'var(--warn-deep)';
                 el.textContent = `⏳ 組み直し中${fWhen ? ` (${fWhen}〜)` : ''}${published.frozen_by ? ` · ${published.frozen_by}` : ''}`
                     + ' — メンバーには前のプランが残ったまま「組み直し中」と出ています';
                 return;
@@ -20145,7 +20163,7 @@
             // 古い配信ほど「盤面と食い違っている」可能性が高いので色で段階を出す
             const stale = (mins != null && mins >= 180) || pending > 0;
             el.style.background = stale ? 'rgba(245,158,11,0.12)' : 'rgba(24,194,107,0.10)';
-            el.style.color = stale ? '#B45309' : '#0F7A45';
+            el.style.color = stale ? 'var(--warn-deep)' : 'var(--ok-deep)';
             el.textContent = `${stale ? '⚠️' : '📤'} 配信中: ${when}${ago}${who}`
                 + (pending > 0 ? ` — 🔒 配信後の予約が ${pending}件あります。固定して組み直し、配信し直してください`
                     : (stale ? ' — 盤面が動いていないか確認してください' : ''));
@@ -20194,7 +20212,7 @@
             const statusEl = document.getElementById('opsBossHpOcrStatus');
             if (!file) return;
             statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
-            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
+            statusEl.style.color = 'var(--t-muted)';   // CD ニュートラル (静的HTML側の初期色と統一)
 
             try {
                 const dataUrl = await window.fileToDataUrl(file);
@@ -20231,10 +20249,10 @@
 
                 const lvText = r.level ? ` / レベル${r.level}検出` : '';
                 statusEl.textContent = `✅ ${filled}/${rows.length} ボスを自動入力${lvText}。確認後「全ボスを一括保存」をクリック`;
-                statusEl.style.color = '#22c55e';
+                statusEl.style.color = 'var(--ok)';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
-                statusEl.style.color = '#ef4444';
+                statusEl.style.color = 'var(--bad)';
             }
         }
 
@@ -20264,7 +20282,7 @@
             msg.textContent = (fail === 0)
                 ? `✅ ${ok}ボス保存完了`
                 : `⚠️ ${ok}保存 / ${fail}失敗: ${errs.join(', ')}`;
-            msg.style.color = fail === 0 ? '#22c55e' : '#f59e0b';
+            msg.style.color = fail === 0 ? 'var(--ok)' : 'var(--warn)';
             // ★ invalidate の前に検知する — キャッシュ (= 保存前の盤面) を
             //   前回の盤面として使うため。invalidate 後だと比較対象が消える
             _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
@@ -20359,21 +20377,21 @@
             const msg = document.getElementById('opsBossHpMessage');
             if (isNaN(remB) || isNaN(totalB) || remB < 0 || totalB <= 0 || remB > totalB) {
                 msg.textContent = `❌ B${bossNumber}: 値が不正です (0 ≤ 残HP ≤ 総HP > 0)`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
                 return;
             }
             try {
                 await window.supabaseUpdateBossHp(seasonId, bossNumber, Math.round(totalB * 1e9), Math.round(remB * 1e9));
                 _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
                 msg.textContent = `✅ B${bossNumber} のHPを更新しました`;
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
                 opsStore.invalidate();
                 seasonStore.invalidate();
                 // 運営ダッシュボードの締め凸候補等を再描画
                 renderOpsDashboard();
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
 
@@ -20442,10 +20460,10 @@
             _opsProxyBossNumber = bossNumber;
             document.querySelectorAll('#opsProxyBossButtons button').forEach(b => {
                 b.style.borderColor = 'rgba(var(--ink-rgb), 0.08)';
-                b.style.background = '#ffffff';
+                b.style.background = 'var(--card)';
             });
-            btn.style.borderColor = '#14161A';
-            btn.style.background = '#F1F2F4';
+            btn.style.borderColor = 'var(--t-ink)';
+            btn.style.background = 'var(--s2)';
         }
         async function onOpsProxyMemberChange() {
             const sel = document.getElementById('opsProxyMemberSelect');
@@ -20456,7 +20474,7 @@
             try {
                 const atks = await window.supabaseLoadMyAttacks(parseInt(sel.value), ctx.season.id, ctx.season.hard_date);
                 hint.textContent = `現在の凸数: ${atks.length}/3${atks.length >= 3 ? ' (既に3凸済みのため追加できません)' : ''}`;
-                hint.style.color = atks.length >= 3 ? '#ef4444' : '#6B7178';
+                hint.style.color = atks.length >= 3 ? 'var(--bad)' : 'var(--t-body)';
             } catch { hint.textContent = ''; }
         }
         function switchOpsProxyMode(mode) {
@@ -20467,18 +20485,18 @@
             const secB = document.getElementById('opsProxyBulkSection');
             const saveBtn = document.getElementById('opsProxySaveBtn');
             if (_opsProxyMode === 'simple') {
-                tabS.style.borderBottomColor = '#14161A';
-                tabS.style.color = '#14161A';
+                tabS.style.borderBottomColor = 'var(--t-ink)';
+                tabS.style.color = 'var(--t-ink)';
                 tabB.style.borderBottomColor = 'transparent';
-                tabB.style.color = '#6B7178';
+                tabB.style.color = 'var(--t-body)';
                 secS.style.display = '';
                 secB.style.display = 'none';
                 saveBtn.textContent = '💾 保存';
             } else {
-                tabB.style.borderBottomColor = '#14161A';
-                tabB.style.color = '#14161A';
+                tabB.style.borderBottomColor = 'var(--t-ink)';
+                tabB.style.color = 'var(--t-ink)';
                 tabS.style.borderBottomColor = 'transparent';
-                tabS.style.color = '#6B7178';
+                tabS.style.color = 'var(--t-body)';
                 secS.style.display = 'none';
                 secB.style.display = '';
                 saveBtn.textContent = '💾 3凸一括保存';
@@ -20493,7 +20511,7 @@
             const statusEl = document.getElementById('opsProxyBulkStatus');
             const previewEl = document.getElementById('opsProxyBulkPreview');
             statusEl.textContent = '🔍 BlaBlaLINK 画像を解析中... (10〜20秒)';
-            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
+            statusEl.style.color = 'var(--t-muted)';   // CD ニュートラル (静的HTML側の初期色と統一)
             try {
                 const dataUrl = await window.fileToDataUrl(file);
                 const res = await window.callAiVision(dataUrl, 'bla_my_attacks');
@@ -20526,10 +20544,10 @@
                         </div>`;
                 }).join('');
                 statusEl.textContent = `✅ ${_opsProxyBulkAttacks.length}凸分を抽出。「3凸一括保存」で登録`;
-                statusEl.style.color = '#22c55e';
+                statusEl.style.color = 'var(--ok)';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
-                statusEl.style.color = '#ef4444';
+                statusEl.style.color = 'var(--bad)';
                 _opsProxyBulkAttacks = [];
                 previewEl.innerHTML = '';
             }
@@ -20538,7 +20556,7 @@
         async function handleOpsProxyAttackSave() {
             const sel = document.getElementById('opsProxyMemberSelect');
             const msg = document.getElementById('opsProxyMessage');
-            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
 
             const playerId = parseInt(sel.value);
             if (!playerId) { set('❌ メンバーを選択してください', true); return; }
@@ -20668,7 +20686,7 @@
                 const gameMembers = new Map();
                 for (let i = 0; i < files.length; i++) {
                     statusEl.textContent = `🔍 解析中... (${i + 1}/${files.length}枚)`;
-                    statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
+                    statusEl.style.color = 'var(--t-muted)';   // CD ニュートラル (静的HTML側の初期色と統一)
                     const dataUrl = await window.fileToDataUrl(files[i]);
                     const res = await window.callAiVision(dataUrl, 'bla_union_overview', { prompt: _OPS_AUDIT_PROMPT });
                     (res.result?.members || []).forEach(m => {
@@ -20712,7 +20730,7 @@
                 const missingRows = _opsAuditRows.filter(r => r.missing > 0 && r.matched);
                 const unmatchedRows = _opsAuditRows.filter(r => !r.matched);
                 statusEl.textContent = `✅ ${gameMembers.size}名を照合: ⚠️未提出 ${missingRows.length}名 / ❓名前不一致 ${unmatchedRows.length}名`;
-                statusEl.style.color = missingRows.length > 0 ? '#F59E0B' : '#22c55e';
+                statusEl.style.color = missingRows.length > 0 ? 'var(--warn)' : 'var(--ok)';
 
                 resultEl.innerHTML = _opsAuditRows.map(r => {
                     let badge, border;
@@ -20756,7 +20774,7 @@
                 actionsEl.style.display = missingRows.length > 0 ? 'flex' : 'none';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
-                statusEl.style.color = '#ef4444';
+                statusEl.style.color = 'var(--bad)';
             }
         }
 
@@ -20920,13 +20938,13 @@
                 // 編集で残HPが動く → 検知 (invalidate の前に呼ぶ)
                 _checkRaidEvents().catch(() => { /* 通知は本処理を止めない */ });
                 msg.textContent = `✅ ダメージを ${newB} B に更新しました`;
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
                 opsStore.invalidate();
                 await reloadOpsAttacksList();
                 renderOpsDashboard();
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
         async function handleOpsAttackDelete(attackId, attackNumber, playerName) {
@@ -20937,13 +20955,13 @@
                 // 削除はHPを戻す。通知は出ないが _raidSeen を追随させる (差分の取りこぼし防止)
                 _checkRaidEvents().catch(() => { /* noop */ });
                 msg.textContent = `🗑️ ${playerName} の ${attackNumber}凸目 を削除しました`;
-                msg.style.color = '#22c55e';
+                msg.style.color = 'var(--ok)';
                 opsStore.invalidate();
                 await reloadOpsAttacksList();
                 renderOpsDashboard();
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = '#ef4444';
+                msg.style.color = 'var(--bad)';
             }
         }
 
@@ -20962,14 +20980,14 @@
             const titleRaw = document.getElementById('opsPushTitle').value.trim();
             const bodyText = document.getElementById('opsPushBody').value.trim();
             const msg = document.getElementById('opsPushMessage');
-            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
             if (!titleRaw && !bodyText) { set('❌ タイトルまたは本文を入力してください', true); return; }
             const title = titleRaw || 'しりすこPAD';
             const ok = await showPushPreview([{ title, body: bodyText, allSubscribers: true }]);
             if (!ok) return;
             try {
                 set('🔔 送信中...');
-                msg.style.color = '#6B7178';
+                msg.style.color = 'var(--t-body)';
                 const res = await window.sendPushNotification({
                     title,
                     body: bodyText,
@@ -21188,7 +21206,7 @@
             const ctx = _opsSeasonEditCtx;
             if (!ctx) return;
             const msg = document.getElementById('opsSeasonEditMessage');
-            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
             const hardDate = document.getElementById('opsSeasonEditHardDate').value;
             const monthKey = document.getElementById('opsSeasonEditMonthKey').value.trim();
             if (!hardDate) { set('❌ ハード日を入力してください', true); return; }
@@ -21271,7 +21289,7 @@
             const statusEl = document.getElementById('opsSeasonOcrStatus');
             if (!file) return;
             statusEl.textContent = '🔍 AI解析中... (15〜30秒)';
-            statusEl.style.color = '#8A9097';   // CD ニュートラル (静的HTML側の初期色と統一)
+            statusEl.style.color = 'var(--t-muted)';   // CD ニュートラル (静的HTML側の初期色と統一)
 
             try {
                 const dataUrl = await window.fileToDataUrl(file);
@@ -21330,10 +21348,10 @@
 
                 const filled = r.bosses.length;
                 statusEl.textContent = `✅ ${filled}/5 ボスを自動入力 (ハード日 +1日補正済み)。内容を確認して「作成」をクリック`;
-                statusEl.style.color = '#22c55e';
+                statusEl.style.color = 'var(--ok)';
             } catch (e) {
                 statusEl.textContent = `❌ ${e?.message || e}`;
-                statusEl.style.color = '#ef4444';
+                statusEl.style.color = 'var(--bad)';
             }
         }
 
@@ -21341,7 +21359,7 @@
             const hardDate = document.getElementById('opsSeasonHardDate').value;
             const monthKey = document.getElementById('opsSeasonMonthKey').value.trim();
             const msg = document.getElementById('opsSeasonMessage');
-            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? '#ef4444' : '#22c55e'; };
+            const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
 
             if (!hardDate) { set('❌ ハード日を入力してください', true); return; }
             if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) { set('❌ 月キーは YYYY-MM 形式 (月は01〜12)', true); return; }
@@ -21377,7 +21395,7 @@
             if (!confirm(confirmMsg)) return;
 
             try {
-                set('作成中...'); msg.style.color = '#6B7178';
+                set('作成中...'); msg.style.color = 'var(--t-body)';
                 const r = await window.supabaseCreateSeason({ hardDate, monthKey, bosses, isTest });
                 set(`✅ ${isTest ? '🧪 テスト' : ''}シーズン ${monthKey} を作成しました`);
                 seasonStore.invalidate();
@@ -21518,7 +21536,7 @@
         function setMemberManageMessage(text, isError = false) {
             const el = document.getElementById('memberManageMessage');
             el.textContent = text;
-            el.style.color = isError ? '#ef4444' : '#22c55e';
+            el.style.color = isError ? 'var(--bad)' : 'var(--ok)';
             if (text) setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 4000);
         }
 
@@ -21739,9 +21757,9 @@
                 selTog.style.display = isActive ? 'block' : 'none';
                 const sm = _memberAdmin.selectMode;
                 selTog.textContent = sm ? '完了' : '選択';
-                selTog.style.color = sm ? '#fff' : '#6B7178';
-                selTog.style.background = sm ? '#2E8BFF' : '#F1F2F4';
-                selTog.style.border = '1px solid ' + (sm ? '#2E8BFF' : 'rgba(var(--ink-rgb), 0.06)');
+                selTog.style.color = sm ? 'var(--attr-water-ink)' : 'var(--t-body)';
+                selTog.style.background = sm ? 'var(--attr-water-solid)' : 'var(--s2)';
+                selTog.style.border = '1px solid ' + (sm ? 'var(--attr-water-solid)' : 'rgba(var(--ink-rgb), 0.06)');
             }
             if (filtered.length === 0) {
                 if (listEl) listEl.innerHTML = `<div style="text-align:center;padding:32px 12px;font-size:12.5px;color:var(--t-muted);">${isActive ? 'アクティブメンバーはいません' : '脱退済みメンバーはいません'}</div>`;
@@ -21988,7 +22006,7 @@
             if (!el) return;
             el.textContent = text;
             el.style.display = 'block';
-            el.style.color = ok ? '#0E8F4D' : '#E23036';
+            el.style.color = ok ? 'var(--ok-deep)' : 'var(--bad-deep)';
             el.style.background = ok ? 'rgba(24,194,107,0.10)' : 'rgba(255,61,68,0.08)';
             el.style.border = '1px solid ' + (ok ? 'rgba(24,194,107,0.25)' : 'rgba(255,61,68,0.22)');
             clearTimeout(_maFlash._t);
@@ -22868,7 +22886,7 @@
             document.getElementById('simPredictedDmg').textContent = formatDamage(predictedDamage);
             const diffEl = document.getElementById('simDiff');
             diffEl.textContent = `${diff >= 0 ? '+' : ''}${formatDamage(diff)} (${diff >= 0 ? '+' : ''}${pct}%)`;
-            diffEl.style.color = diff > 0 ? '#22c55e' : diff < 0 ? '#ef4444' : 'inherit';
+            diffEl.style.color = diff > 0 ? 'var(--ok)' : diff < 0 ? 'var(--bad)' : 'inherit';
             document.getElementById('simCurrentDmgLabel').textContent = `現在: ${formatDamage(player.damage)}  SLv ${player.syncLevel} → ${targetSlv}`;
 
             // 比較テーブル生成
@@ -24016,6 +24034,8 @@
             try { applyChartTheme(); } catch (_) { /* Chart.js 未読込 */ }
             // ★ 散布図の点は「縁の色を焼き込んだ canvas」を使い回すので、捨てないと古い色のまま出る
             try { if (typeof _scatterIconCache !== 'undefined') _scatterIconCache.clear(); } catch (_) { /* noop */ }
+            // ★ バーストのバッジは色を計算して innerHTML に焼き込むので、描き直しが要る
+            try { if (typeof _gvPaint === 'function' && _gv && _gv.byPl) _gvPaint(); } catch (_) { /* 画面に無い */ }
             try { if (typeof createRankingChart === 'function') createRankingChart(); } catch (_) { /* 画面に無い */ }
             try {
                 if (typeof renderMyFururiRadar === 'function' && _myRadarLastIdentity) {
@@ -24696,15 +24716,15 @@
             const b = document.getElementById('opsModeBtn');
             if (b) {
                 b.textContent = _opsMode ? '🛠 運営 ON' : '🛠 運営';
-                b.style.background = _opsMode ? '#14161A' : '#fff';
-                b.style.color = _opsMode ? '#fff' : '#5A6068';
+                b.style.background = _opsMode ? 'var(--t-ink)' : 'var(--card)';
+                b.style.color = _opsMode ? 'var(--card)' : 'var(--t-strong)';
             }
             // 設定タブ側のトグル (ops タブのナビチップとは地の色が違うので個別に塗る)
             const s = document.getElementById('settingsOpsModeBtn');
             if (s) {
                 s.textContent = _opsMode ? '🛠 運営 ON' : '🛠 運営';
-                s.style.background = _opsMode ? '#14161A' : '#F1F2F4';
-                s.style.color = _opsMode ? '#fff' : '#5A6068';
+                s.style.background = _opsMode ? 'var(--t-ink)' : 'var(--s2)';
+                s.style.color = _opsMode ? 'var(--card)' : 'var(--t-strong)';
             }
         }
         function toggleOpsMode() {

@@ -6901,7 +6901,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.bottom-nav\.nav-hidden \{/.test(html), '自動隠しが消えている');
         assert.ok(/padding-bottom: calc\(112px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が足りない');
     });
-    test('★ バーストの色を読める形にして使う (_burstInk / _burstOnLight)', () => {
+    test('★ バーストの色を読める形にして使う (_burstInk / _burstOnBg)', () => {
         // ★ 色をそのまま文字にしない。B2 の黄色 #F2B705 は白地でも白文字でも 1.8:1 で読めない。
         //   「B2 のときだけ黒」と手で書き分けていた箇所もあったが、色表を変えた瞬間に破綻する
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
@@ -6915,12 +6915,24 @@ console.log('\ngrowthDomain:');
             }
             throw new Error(`${name} の終端が分からない`);
         };
-        const helpers = ['_HEX6', '_BURST_BG', '_burstLin', '_burstLum', '_burstRgb']
+        const helpers = ['_HEX6', '_BURST_BG_FALLBACK', '_burstLin', '_burstLum', '_burstRgb']
             .map(n => html.match(new RegExp(`const ${n} = [^\n]*`))?.[0])
             .join('\n');
         assert.ok(!/undefined/.test(helpers), `補助の定義を切り出せない: ${helpers}`);
-        const F = new Function(`${helpers}\n${cut('_burstInk')}\n${cut('_burstOnLight')}\n${cut('_burstTint')}`
-            + '\nreturn { _burstInk, _burstOnLight, _burstTint };')();
+        // ★ 地はテーマで変わる。themeVar を差し替えて**両方のテーマで**動かす
+        const build = (groundHex) => new Function('__bg',
+            `${helpers}\nconst themeVar = () => __bg;\n${cut('_burstBg')}\n${cut('_burstInk')}\n${cut('_burstOnBg')}\n${cut('_burstTint')}`
+            + '\nreturn { _burstInk, _burstOnBg, _burstTint, _burstBg };')(groundHex);
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        const tokOf = (from, to, name) => css.slice(css.indexOf(from), css.indexOf(to, css.indexOf(from)))
+            .match(new RegExp('--' + name + ':\\s*(#[0-9A-Fa-f]{6});'))?.[1];
+        const s1Of = (from, to) => tokOf(from, to, 'burst-bg');
+        const GROUND = {
+            ライト: s1Of(':root, :root[data-theme="light"]', ':root[data-theme="dark"]'),
+            ダーク: s1Of(':root[data-theme="dark"]', '/* === マーブル'),
+        };
+        assert.ok(GROUND.ライト && GROUND.ダーク, `地のトークンを読めない: ${JSON.stringify(GROUND)}`);
+        const F = build(GROUND.ライト);
 
         const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
         const lum = (h) => 0.2126 * lin(parseInt(h.slice(1, 3), 16)) + 0.7152 * lin(parseInt(h.slice(3, 5), 16))
@@ -6931,7 +6943,7 @@ console.log('\ngrowthDomain:');
         assert.equal(F._burstInk('#FFFFFF'), '#000000', '白地に白文字を選んでいる');
         assert.equal(F._burstInk('#000000'), '#FFFFFF', '黒地に黒文字を選んでいる');
         assert.equal(F._burstInk('こわれた値'), '#FFFFFF', '色でない値で落ちている');
-        assert.equal(F._burstOnLight('こわれた値'), '#8A9097', '色でない値で落ちている');
+        assert.equal(F._burstOnBg('こわれた値'), '#8A9097', '色でない値で落ちている');
 
         // ★ 色表の4色すべてで、白地の文字が 4.5:1 以上・色地の文字が 4.5:1 以上
         const src = html.match(/const TE_BURST_COLOR = \{[^}]*\}/)?.[0] || '';
@@ -6940,32 +6952,43 @@ console.log('\ngrowthDomain:');
         assert.equal(Object.keys(colors).length, 4, `色表が読めない: ${src}`);
         const ratio = (x, y) => (Math.max(lum(x), lum(y)) + 0.05) / (Math.min(lum(x), lum(y)) + 0.05);
         // ★ バッジは白いカードだけでなく、**ホバー中の行やタイル**の上にも載る (Codex指摘)
-        const BG = html.match(/const _BURST_BG = '(#[0-9A-Fa-f]{6})'/)?.[1];
-        assert.ok(BG, 'いちばん暗い地の定義が無い');
-        const hovers = [...new Set([...html.matchAll(/this\.style\.background='(#[0-9A-Fa-f]{6})'/g)].map(m => m[1].toUpperCase()))];
-        assert.ok(hovers.includes(BG.toUpperCase()),
-            `いちばん暗い地 ${BG} が実際のホバー色 ${JSON.stringify(hovers)} と合っていない`);
-        // ★ 「どこかに同じ色がある」だけでは足りない (Codex指摘 2026-09-10)。
-        //   _BURST_BG は**いちばん暗いホバー色**でなければならない — これより暗い地が増えたら、
-        //   バッジがその上に載らないか確かめる必要がある
-        for (const h of hovers) {
-            assert.ok(lum(h) >= lum(BG) - 1e-9,
-                `${BG} より暗いホバー色 ${h} がある — バッジがその上に載らないか確かめること`);
+        // ★ 地は --burst-bg というトークンになった (ホバー色もトークン)。
+        //   --burst-bg は、実際のホバー色のうち**バッジにいちばん厳しいもの**であること。
+        //   厳しい = ライトなら「いちばん暗い」/ ダークなら「いちばん明るい」(向きが逆になる)
+        assert.ok(/function _burstBg\(\) \{ return themeVar\('burst-bg'/.test(html),
+            'バッジの地をトークンから読んでいない');
+        const hoverToks = [...new Set([...html.matchAll(/this\.style\.background='var\(--([a-z0-9-]+)\)'/g)].map(m => m[1]))];
+        assert.ok(hoverToks.length >= 2, `ホバー色を拾えない: ${JSON.stringify(hoverToks)}`);
+        for (const [mode, g] of Object.entries(GROUND)) {
+            const from = mode === 'ライト' ? ':root, :root[data-theme="light"]' : ':root[data-theme="dark"]';
+            const to = mode === 'ライト' ? ':root[data-theme="dark"]' : '/* === マーブル';
+            const others = hoverToks.map(t => tokOf(from, to, t)).filter(Boolean);
+            assert.ok(others.length >= 2, `${mode}: ホバー色のトークンを解決できない`);
+            for (const h of others) {
+                // 「地から遠いほど厳しい」= バッジの色は地に寄せて作るので、地が端から離れるほど余裕が無い
+                const far = (x) => Math.abs(lum(x) - lum(mode === 'ライト' ? '#FFFFFF' : '#000000'));
+                assert.ok(far(h) <= far(g) + 1e-9,
+                    `${mode}: ${g} よりバッジに厳しいホバー色 ${h} がある — その上に載らないか確かめること`);
+            }
         }
-        for (const [b, c] of Object.entries(colors)) {
+        const BG = GROUND.ライト;
+        for (const [mode, GB] of Object.entries(GROUND)) {
+          const F = build(GB);
+          for (const [b, c] of Object.entries(colors)) {
             // ① 薄く色を敷いた地 (CSS の `${色}1A`) に文字を置く場合
             //    ★ 純白で測ると足りない — 実際の地はほんのり色が付いている (Codex指摘)
             const bg = F._burstTint(c);
             assert.match(bg, /^#[0-9a-f]{6}$/, `${b} の薄い地が色になっていない: ${bg}`);
-            const t = F._burstOnLight(c, bg);
+            const t = F._burstOnBg(c, bg);
             assert.match(t, /^#[0-9a-f]{6}$/, `${b} の文字色が色になっていない: ${t}`);
-            assert.ok(ratio(t, bg) >= 4.5, `${b} の文字が薄い地で読めない (${ratio(t, bg).toFixed(2)}:1)`);
+            assert.ok(ratio(t, bg) >= 4.5, `${mode}: ${b} の文字が薄い地で読めない (${ratio(t, bg).toFixed(2)}:1)`);
             // ② 地が透明 (枠だけ) の場合は、その下のいちばん暗い地に対して
-            const edge = F._burstOnLight(c, BG);
-            assert.ok(ratio(edge, BG) >= 4.5, `${b} の枠がホバー中に読めない (${ratio(edge, BG).toFixed(2)}:1)`);
-            assert.ok(onWhite(edge) >= 4.5, `${b} の枠が白地で読めない`);
+            const edge = F._burstOnBg(c, GB);
+            assert.ok(ratio(edge, GB) >= 4.5, `${mode}: ${b} の枠がホバー中に読めない (${ratio(edge, GB).toFixed(2)}:1)`);
+            assert.ok(ratio(edge, mode === 'ライト' ? '#FFFFFF' : '#17191D') >= 4.5, `${mode}: ${b} の枠がカードの上で読めない`);
             // ③ 色をそのまま地にする場合
-            assert.ok(ratio(F._burstInk(c), c) >= 4.5, `${b} の地に載せる文字が読めない (${ratio(F._burstInk(c), c).toFixed(2)}:1)`);
+            assert.ok(ratio(F._burstInk(c), c) >= 4.5, `${mode}: ${b} の地に載せる文字が読めない (${ratio(F._burstInk(c), c).toFixed(2)}:1)`);
+          }
         }
         // ★ 色の上に白を決め打ちしない / 「B2 だけ黒」と書き分けない
         assert.ok(!/background:\$\{o\.color\};color:#fff/.test(html), 'アイコンピッカーで白を決め打ちしている');
@@ -6975,20 +6998,20 @@ console.log('\ngrowthDomain:');
         assert.ok(!/\.te-band\.dark \{/.test(html), '手書き分け用の CSS が残っている');
 
         // ★ 関数が正しくても、呼ぶ側が地を渡していなければ意味が無い。
-        //   _burstOnLight は**必ず地を渡して**呼ぶ (純白の決め打ちは薄い地で足りない)
-        const calls = [...html.matchAll(/_burstOnLight\(([^)]*(?:\([^)]*\))?[^)]*)\)/g)]
+        //   _burstOnBg は**必ず地を渡して**呼ぶ (純白の決め打ちは薄い地で足りない)
+        const calls = [...html.matchAll(/_burstOnBg\(((?:[^()]|\([^()]*\))*)\)/g)]
             .map(m => m[1]).filter(x => !x.startsWith('hex'));
-        assert.ok(calls.length >= 5, `_burstOnLight の呼び出しを拾えない: ${calls.length}`);
+        assert.ok(calls.length >= 5, `_burstOnBg の呼び出しを拾えない: ${calls.length}`);
         for (const args of calls) {
-            assert.ok(args.includes(','), `地を渡さずに呼んでいる: _burstOnLight(${args})`);
-            // ★ 渡す地は _burstTint(色) か _BURST_BG のどちらか。**白を書かない** —
-            //   バッジはホバー中の行やタイル (#F7F8F9) の上にも載る (Codex指摘 2026-09-10)
+            assert.ok(args.includes(','), `地を渡さずに呼んでいる: _burstOnBg(${args})`);
+            // ★ 渡す地は _burstTint(色) か _burstBg() のどちらか。**色を書かない** —
+            //   バッジはホバー中の行やタイルの上にも載るし、地はテーマで入れ替わる
             const bg = args.slice(args.indexOf(',') + 1).trim();
-            assert.ok(bg.startsWith('_burstTint(') || bg === '_BURST_BG',
-                `地の指定が白の決め打ちになっている: _burstOnLight(${args})`);
+            assert.ok(bg.startsWith('_burstTint(') || bg === '_burstBg()',
+                `地の指定が決め打ちになっている: _burstOnBg(${args})`);
         }
         // 色を薄く敷いた地なら _burstTint を渡す (白の決め打ちでは足りない)
-        for (const m of html.matchAll(/background:\$\{([^}]+)\}1A;color:\$\{_burstOnLight\(([^)]*(?:\([^)]*\))?[^)]*)\)\}/g)) {
+        for (const m of html.matchAll(/background:\$\{([^}]+)\}1A;color:\$\{_burstOnBg\(((?:[^()]|\([^()]*\))*)\)\}/g)) {
             assert.ok(m[2].includes('_burstTint('), `薄い地なのに地を渡していない: ${m[0].slice(0, 80)}`);
         }
         // ★ 薄い地の濃さは CSS の `1A` と同じでなければ、測る地が実物とずれる
@@ -7102,7 +7125,7 @@ console.log('\ngrowthDomain:');
         // <meta theme-color> — 段階3 (グラフ・キャンバス) でまとめて扱う
         const outside = html.slice(0, s0) + html.slice(s1);
         const rawOut = (outside.match(/#[0-9A-Fa-f]{3,8}\b/g) || []).length;
-        const LIMIT_INLINE = 614;
+        const LIMIT_INLINE = 430;   // 段階3c: JS の style 代入もトークンへ
         assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
         if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
     });
