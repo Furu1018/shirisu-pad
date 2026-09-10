@@ -8930,8 +8930,13 @@
                 myResv = await window.supabaseLoadMyReservations?.(pub.season_id, identity.id) ?? null;
             } catch (e) { console.warn('[my plan] 予約の取得skip:', e?.message || e); myResv = null; }
             if (mySeq !== _myPubRenderSeq) return;
+            // ★ 済み凸を混ぜてよいのは「配信中のプランと同じシーズン」のときだけ。
+            //   違えば doneSeason は null になり、時間割は済み凸なしで出る (安全側)
+            const _liveSeason = seasonStore.get()?.season || null;
+            const doneSeason = (_liveSeason?.id != null && String(_liveSeason.id) === String(pub.season_id))
+                ? _liveSeason : null;
             _myPubState = { plan, viewerId: identity.id, doneCounts, stale, liveLevel,
-                            planId: pub.id, seasonId: pub.season_id, ack: ackState,
+                            planId: pub.id, seasonId: pub.season_id, doneSeason, ack: ackState,
                             frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange,
                             resv: myResv, todayAttacks };
             // 済んだ凸を時間割に混ぜるため読む (2026-09-11)。失敗しても本体は描く
@@ -8984,7 +8989,7 @@
             let inner;
             try {
                 if (_myPlanViewMode === 'overview') inner = _planOverviewHtml(plan, viewerId);
-                else if (_myPlanViewMode === 'timetable') inner = _planTimetableHtml(plan, { seasonId: _myPubState.seasonId, highlightPlayerId: viewerId, filterKey: 'my' });
+                else if (_myPlanViewMode === 'timetable') inner = _planTimetableHtml(plan, { season: _myPubState.doneSeason, highlightPlayerId: viewerId, filterKey: 'my' });
                 else inner = _planMineHtml(plan, viewerId, doneCounts, liveLevel);
             } catch (e) {
                 console.warn('[配信プラン] 描画失敗:', e);
@@ -14452,7 +14457,9 @@
                             // ★ 手元の写しを書き換えたら画面も直す (Codex指摘 2026-09-11)。
                             //   直さないと、次のポーリングまでボスタイルと細いボス帯が
                             //   「戦闘中」のまま残る (帯とタイルは同じ材料なので必ず揃えて呼ぶ)
-                            renderMyNextAttackBosses(id);
+                            //   ★ タイルの描画は async。await しないと失敗が外の catch を
+                            //      すり抜けて未処理 Promise になる (Codex指摘 2026-09-11)
+                            await renderMyNextAttackBosses(id);
                             renderMyBossStrip(id);
                         }
                     } catch (e) { console.warn('[coord auto-release]', e?.message || e); }
@@ -20108,7 +20115,7 @@
             const teamsBtn = `<button onclick="toggleOpsPlanTeams()" title="時間割チップに編成5キャラを表示 (共有画像にも反映)" style="flex:none;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;${_opsPlanShowTeams ? 'background:var(--ops-solid);color:var(--ops-ink);' : 'background:var(--s2);color:var(--t-strong);'}">👥 編成</button>`;
             const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${teamsBtn}</div>`;
             const bodyHtml = _opsPlanViewMode === 'timetable'
-                ? _planTimetableHtml(plan, { seasonId: opsStore.get()?.season?.id ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops' })
+                ? _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops' })
                 : levelSections;
             // ★ L1 の結果を運営に見せる。何も出さないと「なぜこの割当なのか」が分からず、
             //   安定化が効いているのか壊れているのかを運営が判断できない
@@ -20194,8 +20201,13 @@
                 { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d));
         };
         const _PLAN_DONE_EMPTY = { key: null, byHourBoss: new Map(), unknownTime: [], total: 0 };
+        // ★ 持ち主は「シーズン + そのレイド日」(Codex指摘 2026-09-11)。読み出しは season_id と
+        //   attack_date の両方で絞っているので、id だけを鍵にすると運営が ✏️ で hard_date を
+        //   直したときに「前の日の凸」を同じ文脈として使ってしまう
+        const _planDoneKeyOf = (season) =>
+            (season?.id != null ? `${season.id}:${season.hard_date ?? ''}` : null);
         async function _ensurePlanDoneAttacks(season) {
-            const key = season?.id != null ? String(season.id) : null;
+            const key = _planDoneKeyOf(season);
             if (!key) { _planDone = _PLAN_DONE_EMPTY; return; }
             try {
                 const rows = await window.supabaseLoadAllAttacksForSeason?.(season.id, season.hard_date);
@@ -20210,8 +20222,9 @@
          * 返さないと、運営が別シーズンを算出したあとにホームの配信カードを描くと
          * 別のシーズンの済み凸が混ざる
          */
-        function _planDoneFor(seasonId) {
-            if (seasonId == null || _planDone.key !== String(seasonId)) return _PLAN_DONE_EMPTY;
+        function _planDoneFor(season) {
+            const key = _planDoneKeyOf(season);
+            if (key == null || _planDone.key !== key) return _PLAN_DONE_EMPTY;
             return _planDone;
         }
 
@@ -20303,7 +20316,7 @@
         function _planTimetableHtml(plan, opts = {}) {
             const esc = escapeHtml;
             // ★ 済んだ凸は**そのプランのシーズンのぶんだけ**。持ち主が違えば空が返る
-            const done = _planDoneFor(opts.seasonId ?? null);
+            const done = _planDoneFor(opts.season ?? null);
             const model = _planTimetableModel(plan, done);
             if (!model) return '<p style="font-size:12px;color:var(--t-muted);">時間データがないため時間割表示できません。再度プランを算出してください。</p>';
             const nowIdx = _planNowIdx(plan);

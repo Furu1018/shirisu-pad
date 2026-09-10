@@ -7410,8 +7410,15 @@ console.log('\ngrowthDomain:');
         const model = html.match(/function _planTimetableModel\(plan, done[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(model, '_planTimetableModel が done を受け取っていない');
         assert.ok(!/_planDone\b/.test(model), 'モデルがグローバルの _planDone を直に読んでいる');
-        assert.ok(/function _planDoneFor\(seasonId\)[\s\S]*?_planDone\.key !== String\(seasonId\)/.test(html),
+        assert.ok(/function _planDoneFor\(season\)[\s\S]*?_planDone\.key !== key/.test(html),
             '持ち主 (シーズン) を照合していない');
+        // ★ 持ち主は「シーズン + そのレイド日」。読み出しが season_id と attack_date の
+        //   両方で絞っている以上、id だけを鍵にすると hard_date を直したとき前の日の凸が残る
+        assert.ok(/_planDoneKeyOf = \(season\) =>[\s\S]{0,160}season\.hard_date/.test(html),
+            '済み凸の鍵にレイド日を含めていない');
+        // ★ タイルの描画は async。await しないと外の catch をすり抜けて未処理 Promise になる
+        assert.ok(/await renderMyNextAttackBosses\(id\);\s*\n\s*renderMyBossStrip\(id\);/.test(html),
+            '自動解除の再描画を await していない');
         assert.ok(/async function _ensurePlanDoneAttacks\(season\)/.test(html), '読み込みが無い');
         // 運営の算出とホームの配信カード、両方で読む
         const ops = html.match(/async function computeAndRenderOptimalPlan[\s\S]*?\n        \}/)?.[0] || '';
