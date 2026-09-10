@@ -7106,6 +7106,60 @@ console.log('\ngrowthDomain:');
         assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
         if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
     });
+    test('★ <style> に JavaScript が / <script> に CSS が紛れ込んでいない', () => {
+        // ★ 2026-09-10: 節を移すときに JS のかたまりを丸ごと <style> の中へ入れてしまった。
+        //   ブラウザは黙って捨てるだけ (エラーも出ない) で、構文チェックもテストも全部通った。
+        //   = 実機を開くまで気づけない。ここで見張る。
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const s0 = html.indexOf('<style'), s1 = html.lastIndexOf('</style>');
+        assert.ok(s0 > 0 && s1 > s0, '<style> を切り出せない');
+        const css = html.slice(html.indexOf('>', s0) + 1, s1);
+        const jsInCss = [];
+        for (const re of [/^\s*(?:async\s+)?function\s+\w+\s*\(/m, /^\s*(?:const|let|var)\s+\w+\s*=/m,
+            /^\s*window\.addEventListener\(/m, /^\s*document\.querySelector/m, /^\s*try\s*\{/m]) {
+            const m = css.match(re);
+            if (m) jsInCss.push(m[0].trim());
+        }
+        assert.deepEqual(jsInCss, [], `<style> の中に JavaScript がある (ブラウザは黙って捨てる):\n  ${jsInCss.join('\n  ')}`);
+
+        // 逆向き: <script> の中に CSS のルールが落ちていないか
+        const js = html.slice(s1 + 8);
+        const cssInJs = [...js.matchAll(/^ {8}\.[a-zA-Z][\w-]*(?:[.:#>\[][^\n{]*)?\s*\{\s*$/gm)].map(m => m[0].trim());
+        assert.deepEqual(cssInJs, [], `<script> の中に CSS のルールがある:\n  ${cssInJs.join('\n  ')}`);
+    });
+    test('★ キャンバス / グラフに渡す色にトークン名を書いていない (var() は解決されない)', () => {
+        // ★ 2026-09-10: rgba() の一括置き換えで、共有画像 (canvas) の色表まで var(--…) にしてしまった。
+        //   canvas は var() を解決できず、指定が黙って無視される (前の色のまま描かれる)。
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const js = html.slice(html.lastIndexOf('</style>'));
+        const bad = [];
+        // ① ctx.fillStyle / strokeStyle / shadowColor への直接代入
+        for (const m of js.matchAll(/\b\w*[cC]tx?\.(fillStyle|strokeStyle|shadowColor)\s*=\s*([^;\n]+)/g)) {
+            if (/var\(--/.test(m[2])) bad.push(m[0].trim().slice(0, 90));
+        }
+        // ② canvas 用の色表 (COL = { ... }) の中身
+        for (const m of js.matchAll(/const COL = \{[\s\S]{0,600}?\}/g)) {
+            if (/var\(--/.test(m[0])) bad.push('COL: ' + (m[0].match(/[^\n]*var\(--[^\n]*/) || [''])[0].trim().slice(0, 90));
+        }
+        assert.deepEqual(bad, [], `canvas にトークン名を渡している (色が反映されない):\n  ${bad.join('\n  ')}`);
+    });
+    test('★ グラフは見た目の切り替えで描き直す (Chart.js は既定色を後から変えても反映されない)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(/function applyChartTheme\(\)/.test(html), 'グラフの既定色を作る関数が無い');
+        assert.ok(/Chart\.defaults\.color = c\.body;/.test(html), '目盛りの文字色をトークンから入れていない');
+        assert.ok(/Chart\.defaults\.borderColor = c\.line;/.test(html), '目盛り線の色をトークンから入れていない');
+        const hook = html.match(/window\.addEventListener\('padthemechange',[\s\S]*?\n        \}\);/)?.[0] || '';
+        assert.ok(hook, '切り替えの合図を受け取っていない');
+        assert.ok(/createRankingChart\(\)/.test(hook), 'ランキングのグラフを描き直していない');
+        assert.ok(/renderMyFururiRadar\(/.test(hook), 'レーダーを描き直していない');
+        assert.ok(/_scatterIconCache\.clear\(\)/.test(hook),
+            '散布図の点 (縁の色を焼き込んだ canvas) のキャッシュを捨てていない = 古い色のまま出る');
+        // 描く直前に既定色を入れ直していること (Chart.js は生成時の値しか見ない)
+        for (const fn of ['createSlvScatterChart', 'createAttributeStackedBarChart']) {
+            const body = html.match(new RegExp('function ' + fn + '\\(\\) \\{[\\s\\S]{0,200}'))?.[0] || '';
+            assert.ok(/applyChartTheme\(\);/.test(body), `${fn} が描く前に既定色を入れ直していない`);
+        }
+    });
     test('★ ベールの素はテーマで裏返る / 線を黒の直書きに戻していない', () => {
         // ★ ライトは「白い面に黒を薄く重ねて」線や淡い面を作っている。ダークで黒のままだと
         //   地に沈んで**カードの輪郭がぜんぶ消える**。--ink-rgb / --paper-rgb で裏返す。

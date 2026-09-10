@@ -38,7 +38,7 @@
                 return mode;
             };
             // ブラウザのUI (アドレスバー等) も地の色に合わせる。
-            // ★ 色は書かずに --bg を読む。ただし <head> のこの時点では <style> がまだ無いので
+            // ★ 色は書かずに --bg を読む。ただし <head> のこの時点ではスタイルシートがまだ無いので
             //   最初の1回は何もしない (静的な meta の値のまま) → DOMContentLoaded でもう一度呼ぶ。
             window.padSyncThemeColor = function () {
                 var m = document.querySelector('meta[name="theme-color"]');
@@ -2748,24 +2748,6 @@
         .dc-poyon { animation: dcPoyon 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @media (prefers-reduced-motion: reduce) { .dc-poyon { animation: none; } }
 
-        // ===== 🌗 見た目 (ライト / ダーク) =====
-        // ★ 実際の切り替えは <head> の padApplyTheme が持つ (描画前に立てる必要があるため)。
-        //   ここは「押されたら保存して反映し、ボタンの見た目を合わせる」だけ。
-        function handleThemePick(pref) {
-            try {
-                if (pref === 'auto') localStorage.removeItem(window.PAD_THEME_KEY);
-                else localStorage.setItem(window.PAD_THEME_KEY, pref);
-            } catch (_) { /* 保存できなくても、その場では切り替わる */ }
-            window.padApplyTheme(pref);
-            syncThemeSeg();
-        }
-        function syncThemeSeg() {
-            const cur = window.padThemePref();
-            document.querySelectorAll('[data-theme-pick]').forEach((b) => {
-                b.setAttribute('aria-pressed', b.dataset.themePick === cur ? 'true' : 'false');
-            });
-        }
-        window.addEventListener('DOMContentLoaded', () => { syncThemeSeg(); window.padSyncThemeColor(); });
 
         /* タップ地点の波紋 (リップル — ユーザー要望 2026-07-24)。画面のどこをタップしても
            指の位置からグレーの円がふわっと広がって消える。pointer-events:none で操作に非干渉 */
@@ -12194,15 +12176,17 @@
 
             if (mypageRadarChartInstance) { mypageRadarChartInstance.destroy(); mypageRadarChartInstance = null; }
             const maxV = Math.max(1.2, ...values);
+            applyChartTheme();
+            const _cc = chartColors();
             const datasets = [{
                 label: '模擬ふるり値 (ベスト編成)',
                 data: values,
                 fill: true,
                 backgroundColor: 'rgba(59,130,246,0.18)',
-                borderColor: '#3b82f6',
+                borderColor: _cc.water,
                 borderWidth: 2,
                 pointBackgroundColor: PT_ATTRS.map(a => a.color),
-                pointBorderColor: '#fff',
+                pointBorderColor: _cc.card,
                 pointRadius: 4,
             }];
             if (hasDual) {
@@ -12215,7 +12199,7 @@
                     borderDash: [5, 4],
                     borderWidth: 1.5,
                     pointRadius: PT_ATTRS.map(a => dmgAltByAttr[a.key] > 0 ? 3 : 0),
-                    pointBackgroundColor: '#fff',
+                    pointBackgroundColor: _cc.card,
                     pointBorderColor: 'rgba(108,66,240,0.8)',
                 });
             }
@@ -18667,7 +18651,7 @@
             const W = 1080, PAD = 46;
             const COL = {
                 text: '#14161A', sub: '#6B7178', faint: '#A4AAB0',
-                bg: '#FFFFFF', card: '#F7F8F9', line: 'rgba(var(--ink-rgb), 0.07)',
+                bg: '#FFFFFF', card: '#F7F8F9', line: 'rgba(20,22,26,0.07)',   /* ★ canvas は var() を解決できない。共有画像は明るい見た目で固定 */
                 green: '#18C26B', red: '#FF3D44', amber: '#F59E0B', blue: '#6C42F0',
             };
             const attrColor = (attr) => DC_ATTR_COLORS[attr] || '#A4AAB0';
@@ -18888,7 +18872,7 @@
             const BW = Math.floor((W - PAD * 2 - TW) / 5);
             const COL = {
                 text: '#14161A', sub: '#6B7178', faint: '#A4AAB0',
-                bg: '#FFFFFF', line: 'rgba(var(--ink-rgb), 0.07)',
+                bg: '#FFFFFF', line: 'rgba(20,22,26,0.07)',   /* ★ canvas は var() を解決できない。共有画像は明るい見た目で固定 */
                 green: '#18C26B', red: '#FF3D44', amber: '#F59E0B', blue: '#6C42F0',
             };
             const attrColor = (attr) => DC_ATTR_COLORS[attr] || '#A4AAB0';
@@ -22326,8 +22310,8 @@
             // セグメント型の控えめトグル: 選択中だけ白く浮かせる
             const styleModeBtn = (btn, on) => {
                 if (!btn) return;
-                btn.style.background = on ? '#fff' : 'transparent';
-                btn.style.color = on ? '#14161A' : '#8A9097';
+                btn.style.background = on ? 'var(--card)' : 'transparent';
+                btn.style.color = on ? 'var(--t-ink)' : 'var(--t-muted)';
                 btn.style.boxShadow = on ? '0 1px 3px rgba(20,22,26,0.12)' : 'none';
             };
             styleModeBtn(document.getElementById('rankChartModeBtnSlv'), slv);
@@ -22370,7 +22354,8 @@
                     cx.drawImage(img, ring, ring, S - ring * 2, S - ring * 2);
                     cx.restore();
                     cx.beginPath(); cx.arc(r, r, r - ring / 2, 0, Math.PI * 2);
-                    cx.lineWidth = ring; cx.strokeStyle = isMe ? '#6C42F0' : '#ffffff'; cx.stroke();
+                    const _ic = chartColors();   /* ★ 別関数なので、ここで読み直す */
+                    cx.lineWidth = ring; cx.strokeStyle = isMe ? _ic.ops : _ic.card; cx.stroke();
                     finish(cvs);
                 } catch { finish(null); }
             };
@@ -22381,6 +22366,8 @@
         // 📈 SLv×ダメージ散布図: 「SLvの割にダメージが出ている人」を可視化する。
         // 破線はユニオン全体の傾向線 (最小二乗)。線より上 = SLv比で火力が出ている
         function createSlvScatterChart() {
+            applyChartTheme();
+            const _cc = chartColors();
             const canvas = document.getElementById('attributeStackedChart');
             if (!canvas || currentData.length === 0) return;
             if (attributeChartInstance) {
@@ -22430,7 +22417,7 @@
                 pointHoverRadius: pts.map(p => p.name === myName ? 9 : 7),
                 pointHitRadius: pts.map(p => p.name === myName ? 22 : 16),   // アイコンぶんタップ判定を広げる
                 backgroundColor: pts.map(p => p.name === myName ? '#6C42F0' : 'rgba(108,66,240,0.55)'),
-                borderColor: pts.map(p => p.name === myName ? '#14161A' : 'rgba(108,66,240,0.8)'),
+                borderColor: pts.map(p => p.name === myName ? _cc.ink : 'rgba(108,66,240,0.8)'),
                 borderWidth: pts.map(p => p.name === myName ? 2 : 1),
                 order: 1,
             }];
@@ -22441,7 +22428,7 @@
                         { x: minX - pad, y: trend.a + trend.b * (minX - pad) },
                         { x: maxX + pad, y: trend.a + trend.b * (maxX + pad) },
                     ],
-                    borderColor: '#B6BBC1', borderWidth: 1.5, borderDash: [6, 5],
+                    borderColor: _cc.muted, borderWidth: 1.5, borderDash: [6, 5],
                     pointRadius: 0, pointHitRadius: 0, fill: false, order: 2,
                 });
             }
@@ -22519,6 +22506,7 @@
 
         // ========== Stacked Bar Chart ==========
         function createAttributeStackedBarChart() {
+            applyChartTheme();
             const canvas = document.getElementById('attributeStackedChart');
             if (!canvas || currentData.length === 0) return;
 
@@ -23985,6 +23973,64 @@
         document.addEventListener('animationend', (e) => {
             if (e.animationName === 'dcPoyon') e.target.classList.remove('dc-poyon');
         }, true);
+
+        // ===== 🌗 見た目 (ライト / ダーク) =====
+        // ★ 実際の切り替えは <head> の padApplyTheme が持つ (描画前に立てる必要があるため)。
+        //   ここは「押されたら保存して反映し、ボタンの見た目を合わせる」だけ。
+        function handleThemePick(pref) {
+            try {
+                if (pref === 'auto') localStorage.removeItem(window.PAD_THEME_KEY);
+                else localStorage.setItem(window.PAD_THEME_KEY, pref);
+            } catch (_) { /* 保存できなくても、その場では切り替わる */ }
+            window.padApplyTheme(pref);
+            syncThemeSeg();
+        }
+        // ★ キャンバスと Chart.js は CSS 変数を解決できない (トークン名のまま渡しても無視されるだけで
+        //   エラーも出ない)。描くときにトークンを**実際の色**にして渡す。
+        function themeVar(name, fallback) {
+            try {
+                const v = getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim();
+                return v || fallback;
+            } catch (_) { return fallback; }
+        }
+        // グラフで使う色をひとまとめに (既定値はライトの値 = 読めなくても今までどおり描ける)
+        function chartColors() {
+            return {
+                ink: themeVar('t-ink', '#14161A'),
+                body: themeVar('t-body', '#52575E'),
+                muted: themeVar('t-muted', '#62666E'),
+                line: themeVar('line', '#E3E5E8'),
+                card: themeVar('card', '#FFFFFF'),
+                ops: themeVar('ops-solid', '#6C42F0'),
+                water: themeVar('attr-water-solid', '#2E8BFF'),
+            };
+        }
+        function applyChartTheme() {
+            if (typeof Chart === 'undefined') return;
+            const c = chartColors();
+            Chart.defaults.color = c.body;        // 目盛り・ラベルの文字
+            Chart.defaults.borderColor = c.line;  // 目盛り線・枠
+        }
+        // ★ 見た目を切り替えたらグラフは描き直す (Chart.js は既定色を後から変えても反映されない)
+        window.addEventListener('padthemechange', () => {
+            try { applyChartTheme(); } catch (_) { /* Chart.js 未読込 */ }
+            // ★ 散布図の点は「縁の色を焼き込んだ canvas」を使い回すので、捨てないと古い色のまま出る
+            try { if (typeof _scatterIconCache !== 'undefined') _scatterIconCache.clear(); } catch (_) { /* noop */ }
+            try { if (typeof createRankingChart === 'function') createRankingChart(); } catch (_) { /* 画面に無い */ }
+            try {
+                if (typeof renderMyFururiRadar === 'function' && _myRadarLastIdentity) {
+                    renderMyFururiRadar(_myRadarLastIdentity, _myRadarLastDamages);
+                }
+            } catch (_) { /* 画面に無い */ }
+        });
+
+        function syncThemeSeg() {
+            const cur = window.padThemePref();
+            document.querySelectorAll('[data-theme-pick]').forEach((b) => {
+                b.setAttribute('aria-pressed', b.dataset.themePick === cur ? 'true' : 'false');
+            });
+        }
+        window.addEventListener('DOMContentLoaded', () => { syncThemeSeg(); window.padSyncThemeColor(); });
 
         // ===== タップ地点の波紋 (リップル) =====
         // どこをタップしても指の位置から波紋。要素に紐づかないオーバーレイ方式なので
