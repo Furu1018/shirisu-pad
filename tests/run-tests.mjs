@@ -6901,6 +6901,57 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.bottom-nav\.nav-hidden \{/.test(html), '自動隠しが消えている');
         assert.ok(/padding-bottom: calc\(112px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が足りない');
     });
+    test('★ バーストの色を読める形にして使う (_burstInk / _burstOnLight)', () => {
+        // ★ 色をそのまま文字にしない。B2 の黄色 #F2B705 は白地でも白文字でも 1.8:1 で読めない。
+        //   「B2 のときだけ黒」と手で書き分けていた箇所もあったが、色表を変えた瞬間に破綻する
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const cut = (name) => {
+            const i = html.indexOf(`function ${name}(`);
+            assert.ok(i > 0, `${name} が無い`);
+            let d = 0, started = false;
+            for (let k = html.indexOf('{', i); k < html.length; k++) {
+                if (html[k] === '{') { d++; started = true; }
+                else if (html[k] === '}') { d--; if (started && !d) return html.slice(i, k + 1); }
+            }
+            throw new Error(`${name} の終端が分からない`);
+        };
+        const helpers = ['_HEX6', '_burstLin', '_burstLum', '_burstRgb']
+            .map(n => html.match(new RegExp(`const ${n} = [^\n]*`))?.[0])
+            .join('\n');
+        assert.ok(!/undefined/.test(helpers), `補助の定義を切り出せない: ${helpers}`);
+        const F = new Function(`${helpers}\n${cut('_burstInk')}\n${cut('_burstOnLight')}`
+            + '\nreturn { _burstInk, _burstOnLight };')();
+
+        const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const lum = (h) => 0.2126 * lin(parseInt(h.slice(1, 3), 16)) + 0.7152 * lin(parseInt(h.slice(3, 5), 16))
+            + 0.0722 * lin(parseInt(h.slice(5, 7), 16));
+        const onWhite = (h) => 1.05 / (lum(h) + 0.05);
+
+        // 端: 白地なら黒文字、黒地なら白文字
+        assert.equal(F._burstInk('#FFFFFF'), '#000000', '白地に白文字を選んでいる');
+        assert.equal(F._burstInk('#000000'), '#FFFFFF', '黒地に黒文字を選んでいる');
+        assert.equal(F._burstInk('こわれた値'), '#FFFFFF', '色でない値で落ちている');
+        assert.equal(F._burstOnLight('こわれた値'), '#8A9097', '色でない値で落ちている');
+
+        // ★ 色表の4色すべてで、白地の文字が 4.5:1 以上・色地の文字が 4.5:1 以上
+        const src = html.match(/const TE_BURST_COLOR = \{[^}]*\}/)?.[0] || '';
+        const colors = Object.fromEntries([...src.matchAll(/'?([A-ZΛ0-9]+)'?:\s*'(#[0-9A-Fa-f]{6})'/g)]
+            .map(m => [m[1], m[2]]));
+        assert.equal(Object.keys(colors).length, 4, `色表が読めない: ${src}`);
+        for (const [b, c] of Object.entries(colors)) {
+            const t = F._burstOnLight(c);
+            assert.match(t, /^#[0-9a-f]{6}$/, `${b} の文字色が色になっていない: ${t}`);
+            assert.ok(onWhite(t) >= 4.4, `${b} の文字が白地で読めない (${onWhite(t).toFixed(2)}:1)`);
+            const ink = F._burstInk(c);
+            const r = Math.max(lum(ink), lum(c)) + 0.05;
+            const q = Math.min(lum(ink), lum(c)) + 0.05;
+            assert.ok(r / q >= 4.5, `${b} の地に載せる文字が読めない (${(r / q).toFixed(2)}:1)`);
+        }
+        // ★ 色の上に白を決め打ちしない / 「B2 だけ黒」と書き分けない
+        assert.ok(!/background:\$\{o\.color\};color:#fff/.test(html), 'アイコンピッカーで白を決め打ちしている');
+        assert.ok(!/background:\$\{color\};color:#fff/.test(html), 'バーストピッカーで白を決め打ちしている');
+        assert.ok(!/=== 'B2' \? '#14161A'/.test(html), '「B2 だけ黒」と手で書き分けている');
+    });
     test('★ バーストの色は1組だけ (同じ B1 が画面によって色違いにならない)', () => {
         // 2026-09-10 まで編成エディタ (B1緑/B2黄) とキャラ管理 (B1紫/B2緑) で色が違った。
         // ユーザー決定「編成エディタの色でOK」で1組に寄せた

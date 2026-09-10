@@ -10774,6 +10774,36 @@
         //   既存の読み書き経路 (handleMyTeamEditSave / updateMyTeamEditIcon 等) を一切変えない。
         //   マスタに無いキャラは手入力に落とせるよう、入力欄は折りたたみで残す。
         const TE_BURST_COLOR = { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' };
+        // ---- バーストの色の使い方 (2026-09-10) ----------------------------------
+        //   ★ 色をそのまま文字にしない。B2 の黄色 #F2B705 は白地で 1.8:1、白文字を載せても 1.8:1 で
+        //     どちらも読めない。手で「B2 のときだけ黒」と書き分けていた箇所もあったが、
+        //     色表を変えた瞬間に破綻するので**計算で決める**。
+        const _HEX6 = /^#[0-9A-Fa-f]{6}$/;
+        const _burstLin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const _burstLum = (rgb) => 0.2126 * _burstLin(rgb[0]) + 0.7152 * _burstLin(rgb[1]) + 0.0722 * _burstLin(rgb[2]);
+        const _burstRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+        /**
+         * その色を背景に敷いたときに読める文字色 (黒と白のうちコントラストの高いほう)。
+         * ★ ふだんのインク #14161A ではなく**真っ黒**を使う — BΛ の紫 #8B5CF6 に #14161A だと
+         *   4.36:1 にしかならず 4.5:1 を切る。8px のバッジでは見た目の違いは分からない。
+         */
+        function _burstInk(hex) {
+            if (!_HEX6.test(String(hex))) return '#FFFFFF';
+            const L = _burstLum(_burstRgb(hex));
+            return ((L + 0.05) / 0.05) >= (1.05 / (L + 0.05)) ? '#000000' : '#FFFFFF';
+        }
+
+        /** 白っぽい地に**文字や枠として**置ける濃さに落とした色 (白に対して 4.5:1 まで暗くする) */
+        function _burstOnLight(hex) {
+            if (!_HEX6.test(String(hex))) return '#8A9097';
+            const ch = _burstRgb(hex);
+            let k = 1;
+            for (; k > 0.2; k -= 0.02) {
+                if (1.05 / (_burstLum(ch.map((c) => Math.round(c * k))) + 0.05) >= 4.5) break;
+            }
+            return `#${ch.map((c) => Math.round(c * k).toString(16).padStart(2, '0')).join('')}`;
+        }
         const TE_WANT = ['B1', 'B2', 'B3', null, null];   // 4・5人目は自由枠
         const TE_GRID_TOP = 10;                            // 上位何体まで開いて出すか
         let _teArmed = 0;            // 選択中の枠 (null = なし)
@@ -10956,7 +10986,7 @@
                 const chip = (k, label) => {
                     const on = k === cur;
                     const col = k === 'all' ? '#14161A' : TE_BURST_COLOR[k];
-                    const fg = k === 'B2' ? '#14161A' : '#fff';
+                    const fg = _burstInk(col);        // ★ 手で「B2 だけ黒」と書かない (色表を変えると破綻する)
                     return `<button type="button" class="te-chip${on ? ' on' : ''}" onclick="teSetFilter('${k}')"`
                         + `${on ? ` style="background:${col};color:${fg};"` : ''}>${label}</button>`;
                 };
@@ -11405,11 +11435,14 @@
             if (!entry || !entry.burst) {
                 return `<span title="バースト未設定" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:#A4AAB0;background:#F1F2F4;">?</span>`;
             }
+            // ★ 薄い地 (色の 10%) に置くので、文字と枠は濃く落とした色を使う
             const c1 = _BURST_COLOR[entry.burst] || '#8A9097';
-            let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${c1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
+            const t1 = _burstOnLight(c1);
+            let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${t1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
             if (entry.burst_alt) {
                 const c2 = _BURST_COLOR[entry.burst_alt] || '#8A9097';
-                html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${c2};background:transparent;border:1px solid ${c2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
+                const t2 = _burstOnLight(c2);
+                html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${t2};background:transparent;border:1px solid ${t2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
             }
             return html;
         }
@@ -11587,7 +11620,7 @@
                     return `<button type="button" onclick="setIconPickerBurst('${o.v}')"`
                         + ` style="padding:5px 11px;border-radius:999px;border:1.5px solid ${on ? o.color : 'transparent'};`
                         + `font-size:11px;font-weight:900;cursor:pointer;font-family:inherit;`
-                        + (on ? `background:${o.color};color:#fff;` : `background:${o.color}1A;color:${o.color};`)
+                        + (on ? `background:${o.color};color:${_burstInk(o.color)};` : `background:${o.color}1A;color:${_burstOnLight(o.color)};`)
                         + (dim ? 'opacity:0.4;' : '')
                         + `">${o.label} <span style="font-weight:800;opacity:0.75;">${o.n}</span></button>`;
                 }).join('');
@@ -14633,10 +14666,10 @@
                     : '<span style="font-size:10px;color:rgba(20,22,26,0.08);">no icon</span>';
                 const bc = r.burst ? (_BURST_COLOR[r.burst] || '#8A9097') : null;
                 let burstBadge = bc
-                    ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${bc};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
+                    ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${_burstOnLight(bc)};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
                     : `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:#A4AAB0;background:#F1F2F4;">—</span>`;
                 if (r.burst_alt) {
-                    const ac = _BURST_COLOR[r.burst_alt] || '#8A9097';
+                    const ac = _burstOnLight(_BURST_COLOR[r.burst_alt] || '#8A9097');
                     burstBadge += `<span title="${escapeHtml(r.burst_alt)}枠としても使える" style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 5px;border-radius:999px;color:${ac};background:transparent;border:1px solid ${ac}66;">+${escapeHtml(r.burst_alt)}</span>`;
                 }
                 return `
@@ -14734,7 +14767,7 @@
         function _burstPillStyle(color, on) {
             return `padding:5px 12px;border-radius:999px;border:1.5px solid ${on ? color : 'transparent'};`
                 + `font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;`
-                + (on ? `background:${color};color:#fff;` : `background:${color}1A;color:${color};`);
+                + (on ? `background:${color};color:${_burstInk(color)};` : `background:${color}1A;color:${_burstOnLight(color)};`);
         }
         function _burstPickerHtml(groupId, current, emptyLabel = '未設定') {
             _burstState[groupId] = current || '';
@@ -16282,16 +16315,8 @@
             const c = Object.prototype.hasOwnProperty.call(GV_BURST_COLOR, b) ? GV_BURST_COLOR[b] : null;
             return (typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.test(c)) ? c : '#8A9097';
         }
-        // 背景に対して**読めるほうの**文字色。★ B2 の黄色に白は 1.8:1 しかない (Codex指摘 2026-09-10)。
-        //   4種の色はどれも中間の明るさなので、閾値ではなく「黒と白のうちコントラストの高いほう」を採る
-        function _gvBurstInk(hex) {
-            const v = (i) => {
-                const n = parseInt(hex.slice(i, i + 2), 16) / 255;
-                return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
-            };
-            const L = 0.2126 * v(1) + 0.7152 * v(3) + 0.0722 * v(5);
-            return ((L + 0.05) / 0.05) >= (1.05 / (L + 0.05)) ? '#14161A' : '#FFFFFF';
-        }
+        // 文字色は共有の _burstInk (色表の近くで定義) を使う。ここに別の計算を置かない
+        const _gvBurstInk = _burstInk;
         // 火力役の入り切り (2026-09-10)。★ キャラ名を onclick に埋めない — 描いた順の番号で受ける
         const GV_DPS_KEY = 'shirisu.growth.dps.v1';
         function _gvDpsPick() {

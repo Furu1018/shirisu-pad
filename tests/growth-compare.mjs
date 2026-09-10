@@ -84,6 +84,14 @@ function build({
         resolveNikkeChar: (n) => ({ canonical: n, iconPath: `./character-images/${encodeURIComponent(n)}.webp` }),
         _nikkeCharsByName: new Map([...BURSTS, ...Object.entries(bursts || {})].map(([n, burst]) => [n, { canonical_name: n, burst }])),
         TE_BURST_COLOR: burstColors || { B1: '#1FA95C', B2: '#F2B705', B3: '#E5484D', 'BΛ': '#8B5CF6' },
+        // 共有の文字色の関数 (index.html の色表の近くで定義)。中身の検証は tests/run-tests.mjs
+        _burstInk: (hex) => {
+            if (!/^#[0-9A-Fa-f]{6}$/.test(String(hex))) return '#FFFFFF';
+            const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+            const L = 0.2126 * lin(parseInt(hex.slice(1, 3), 16)) + 0.7152 * lin(parseInt(hex.slice(3, 5), 16))
+                + 0.0722 * lin(parseInt(hex.slice(5, 7), 16));
+            return ((L + 0.05) / 0.05) >= (1.05 / (L + 0.05)) ? '#000000' : '#FFFFFF';
+        },
         PT_ATTRS: [
             { key: 'fire', name: '灼熱', icon: './属性アイコン/灼熱.png', color: '#FF3B30' },
             { key: 'water', name: '水冷', icon: './属性アイコン/水冷.png', color: '#007AFF' },
@@ -472,10 +480,7 @@ test('★ 色の値が壊れていたら既定に倒す / 文字色は読める�
     assert.equal(t._gvBurstColor('B3'), '#8A9097', '数値を色として通している');
     assert.equal(t._gvBurstColor('BΛ'), '#E5484D', '正しい色まで落としている');
     assert.equal(t._gvBurstColor('constructor'), '#8A9097', '継承した鍵を使っている');
-    // ★ 文字色は「黒と白のうちコントラストの高いほう」— 端まで確かめる
-    assert.equal(t._gvBurstInk('#FFFFFF'), '#14161A', '白地に白文字を選んでいる');
-    assert.equal(t._gvBurstInk('#000000'), '#FFFFFF', '黒地に黒文字を選んでいる');
-    assert.equal(t._gvBurstInk('#F2B705'), '#14161A', 'B2 の黄色に白文字を選んでいる');
+    // ★ 文字色そのものの検証は tests/run-tests.mjs (本物の _burstInk を動かす)
 });
 
 test('★ バーストの点は白地でも輪郭が見える (縁のコントラストを実際に計算する)', () => {
@@ -619,7 +624,7 @@ test('★ 属性は属性アイコンで出す / バーストは色で見分け�
         return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4); };
         return 0.2126 * v(1) + 0.7152 * v(3) + 0.0722 * v(5); };
     const L = lum(ink[1]);
-    assert.equal(ink[2], (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#14161A' : '#FFFFFF',
+    assert.equal(ink[2], (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#000000' : '#FFFFFF',
         '読みにくいほうの文字色を選んでいる');
 });
 
