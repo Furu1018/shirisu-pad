@@ -139,27 +139,63 @@
     ];
 
     /**
-     * 別のボスの締め凸依頼で、その人の凸がもう埋まっているかを数える。
+     * 別のボスの締め凸依頼を、その人ごとに畳む。
      * ★ 1人の持ち凸は3つしかないので、別のボスの案に同じ人が出ていると足し算が合わない。
-     *   了承済み (accepted) は**使う約束が済んでいる**ので凸を1つ消費したものとして扱い、
-     *   確認中 (pending) はまだ約束ではないので数えず、印だけ付ける。
+     * ★ **ボス番号で持つ** (件数で数えない) — 理由は2つ (Codex指摘 2026-09-10):
+     *   ① 同じ人・同じボスに依頼行が2つあると、件数だと二重に引いてしまう
+     *   ② 了承済みの依頼は、本人がそのボスへ凸を報告したあとも**撃破まで残る**。
+     *      件数だと「報告済みの凸 (attackCount)」と「了承済み」で同じ1凸を二重に引く。
+     *      ボス番号で持てば「もうそのボスへ凸したか」で消し込める。
      * @param {{player_id:any, boss_number:number, status:string}[]} requests
      * @param {number} bossNumber いま見ているボス (ここへの依頼は自分自身なので数えない)
-     * @returns {Map<string, {accepted:number, pending:number}>} key は String(player_id)
+     * @returns {Map<string, {accepted:Set<number>, pending:Set<number>}>} key は String(player_id)
      */
     function commitmentsElsewhere(requests, bossNumber) {
         const m = new Map();
         for (const r of (Array.isArray(requests) ? requests : [])) {
             if (r == null || r.player_id == null) continue;
-            if (Number(r.boss_number) === Number(bossNumber)) continue;   // 自分のボスは対象外
+            const bn = Number(r.boss_number);
+            if (!Number.isFinite(bn)) continue;
+            if (bn === Number(bossNumber)) continue;                      // 自分のボスは対象外
             const st = r.status;
             if (st !== 'accepted' && st !== 'pending') continue;          // 断られた依頼は数えない
             const k = String(r.player_id);
-            const cur = m.get(k) || { accepted: 0, pending: 0 };
-            cur[st] += 1;
+            const cur = m.get(k) || { accepted: new Set(), pending: new Set() };
+            cur[st].add(bn);
             m.set(k, cur);
         }
+        // ★ 同じボスに accepted と pending が両方あるなら accepted が勝つ (確認中とは出さない)
+        for (const v of m.values()) for (const bn of v.accepted) v.pending.delete(bn);
         return m;
+    }
+
+    /** その人が「まだ果たしていない」約束の数。約束したボスへ既に凸していれば済んでいる */
+    function _openAccepted(p, com) {
+        const c = com && p && p.id != null ? com.get(String(p.id)) : null;
+        if (!c || c.accepted.size === 0) return 0;
+        const done = new Set((p.attacks || []).map(a => Number(a && a.boss_number)));
+        let open = 0;
+        for (const bn of c.accepted) if (!done.has(bn)) open++;
+        return open;
+    }
+    /** 別のボスで「確認中」の返事待ちが残っているか (済んだボスのぶんは数えない) */
+    function _hasOpenPending(p, com) {
+        const c = com && p && p.id != null ? com.get(String(p.id)) : null;
+        if (!c || c.pending.size === 0) return false;
+        const done = new Set((p.attacks || []).map(a => Number(a && a.boss_number)));
+        for (const bn of c.pending) if (!done.has(bn)) return true;
+        return false;
+    }
+
+    /**
+     * 別のボスの約束で凸が埋まった人を外す。
+     * ★ **候補を作るところで1回だけ**通し、一覧・推薦プラン・Push で同じ顔ぶれを使うこと
+     *   (コンソールだけで外すと、下の一覧や Push には残って二重に頼める — Codex指摘 2026-09-10)
+     */
+    function filterByCommitments(candidates, commitments) {
+        const list = Array.isArray(candidates) ? candidates : [];
+        if (!commitments || commitments.size === 0) return list.slice();
+        return list.filter(p => (3 - (Number(p.attackCount) || 0) - _openAccepted(p, commitments)) > 0);
     }
 
     /**
@@ -182,18 +218,19 @@
      */
     function compareFinishWindows({ candidates, remHP, curHour, shots = null, commitments = null, windows = FINISH_WINDOWS }) {
         const all = Array.isArray(candidates) ? candidates : [];
-        const usedOf = (p) => (commitments && p && p.id != null) ? (commitments.get(String(p.id)) || null) : null;
-        // ★ 了承済みのぶん凸が埋まっている人は、この ボスの候補から外す
-        //   (attackCount は「報告済み」しか数えないので、了承済みの約束はここで引く)
-        const pool = all.filter(p => {
-            const c = usedOf(p);
-            if (!c || !c.accepted) return true;
-            const left = 3 - (Number(p.attackCount) || 0) - c.accepted;
-            return left > 0;
-        });
+        // ★ もう倒れているボスに「倒しきれません」と出さない (Codex指摘 2026-09-10)。
+        //   computeFinishPlans は remHP<=0 で cannotKill:false を返すので、ここで見分ける
+        if (!(Number(remHP) > 0)) {
+            return { rows: [], bestKey: null, gainB: null, killableAfterWait: false, anyKillable: false, alreadyDead: true };
+        }
+        const pool = filterByCommitments(all, commitments);
+        // ★ 窓は**待つ長さの順**に正規化してから使う (呼ぶ側の並びに結論が左右されないように)。
+        //   制限なし (hours == null) はいちばん長く待つ扱い
+        const ws = [...(Array.isArray(windows) ? windows : FINISH_WINDOWS)]
+            .sort((a, b) => (a.hours == null ? Infinity : a.hours) - (b.hours == null ? Infinity : b.hours));
         const rows = [];
         let prevNames = null;
-        for (const w of windows) {
+        for (const w of ws) {
             const inWin = filterByWindow(pool, { curHour, hours: w.hours });
             const names = new Set(inWin.map(p => p.name));
             // 待って**増えた**人 (ひとつ前の窓に居なかった人)。最初の窓は空
@@ -208,7 +245,7 @@
                 safe: r.safe || null,
                 cannotKill: !!r.cannotKill || !r.tight,
                 // 確認中の依頼がある人は印を付ける (外しはしない)
-                pendingNames: inWin.filter(p => { const c = usedOf(p); return !!(c && c.pending); }).map(p => p.name),
+                pendingNames: inWin.filter(p => _hasOpenPending(p, commitments)).map(p => p.name),
             });
         }
         // いちばんきれいな窓: オーバーキル小 → 人数少 → 早い窓
@@ -220,7 +257,8 @@
             if (a2.overkill < b2.overkill - 1e-9
                 || (Math.abs(a2.overkill - b2.overkill) <= 1e-9 && a2.shots < b2.shots)) best = { row: r, i };
         });
-        const now = rows[0] || null;
+        // ★ 「今」は並びの先頭ではなく**いちばん短く待つ窓**で決める
+        const now = rows.length ? rows.reduce((a, b) => ((a.hours == null ? Infinity : a.hours) <= (b.hours == null ? Infinity : b.hours) ? a : b)) : null;
         const bestKey = best ? best.row.key : null;
         // 待つと何B節約できるか (今すぐ倒せる場合だけ意味がある)
         const gainB = (best && now && now.plan && best.row !== now)
@@ -232,6 +270,6 @@
 
     root.finishDomain = {
         computeFinishPlans, buildFinishLeaderTimeline, filterByWindow,
-        FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere,
+        FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere, filterByCommitments,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

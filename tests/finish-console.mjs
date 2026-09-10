@@ -29,7 +29,7 @@ function cut(marker) {
     }
     console.error(`NG: ${marker} の終端を判定できません`); process.exit(2);
 }
-const SRC = cut('        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB)');
+const SRC = cut('        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB, commitments)');
 
 const H = (...hs) => hs.map(h => `h${String(h).padStart(2, '0')}`);
 const P = (id, name, dmg, slots, attackCount = 0) => ({ id, name, dmg, availableSlots: slots, attackCount });

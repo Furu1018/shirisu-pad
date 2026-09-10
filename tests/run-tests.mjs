@@ -2721,7 +2721,74 @@ console.log('\n締め凸コンソール (今 vs 待つ):');
         ];
         const m = F.commitmentsElsewhere(reqs, 3);
         assert.equal(m.has('1'), false, '自分のボス / 断られた依頼を数えている');
-        assert.deepEqual(m.get('2'), { accepted: 1, pending: 1 });
+        assert.deepEqual([...m.get('2').accepted], [5]);
+        assert.deepEqual([...m.get('2').pending], [4]);
+    });
+
+    test('★ 同じ人・同じボスに依頼行が2つあっても、凸は1つぶんしか引かない', () => {
+        // ★ 件数で数えていたときは 2凸ぶん引いてしまい、残っている人を候補から外していた
+        const reqs = [
+            { player_id: 1, boss_number: 4, status: 'accepted' },
+            { player_id: 1, boss_number: 4, status: 'accepted' },
+        ];
+        const m = F.commitmentsElsewhere(reqs, 3);
+        assert.equal(m.get('1').accepted.size, 1, '同じボスの重複を二重に数えている');
+        const cands = [P(1, 'A', 60, H(21), 1)];   // 1凸済み + 別ボスで1件了承 = 残り1
+        const r = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21, commitments: m });
+        assert.equal(r.rows[0].count, 1, '重複行のせいで候補から消えている');
+    });
+
+    test('★ 同じボスに了承と確認中が両方あるなら、了承が勝つ (「確認中」と出さない)', () => {
+        const m = F.commitmentsElsewhere([
+            { player_id: 1, boss_number: 4, status: 'pending' },
+            { player_id: 1, boss_number: 4, status: 'accepted' },
+        ], 3);
+        assert.equal(m.get('1').pending.size, 0, '了承済みなのに確認中として残っている');
+    });
+
+    test('★ 約束したボスへ既に凸していたら、その約束は済んだものとして数えない', () => {
+        // ★ 了承済みの依頼行はボス撃破まで残る。報告済みの凸 (attackCount) と二重に引くと、
+        //   まだ凸が残っている人を候補から外してしまう (Codex指摘 2026-09-10)
+        const p = { id: 1, name: 'A', dmg: 60, availableSlots: H(21), attackCount: 2,
+            attacks: [{ boss_number: 4 }, { boss_number: 1 }] };
+        const m = F.commitmentsElsewhere([{ player_id: 1, boss_number: 4, status: 'accepted' }], 3);
+        const r = F.compareFinishWindows({ candidates: [p], remHP: 60, curHour: 21, commitments: m });
+        assert.equal(r.rows[0].count, 1, 'ボス4へ凸済みなのに、約束ぶんをもう一度引いている');
+        // まだ凸していなければ、約束ぶんを引いて候補から外れる
+        const q = { ...p, attacks: [{ boss_number: 1 }, { boss_number: 2 }] };
+        const r2 = F.compareFinishWindows({ candidates: [q], remHP: 60, curHour: 21, commitments: m });
+        assert.equal(r2.rows[0].count, 0, '果たしていない約束を数えていない');
+    });
+
+    test('★ もう倒れているボスに「倒しきれません」と言わない', () => {
+        // ★ computeFinishPlans は remHP<=0 で cannotKill:false を返すので、ここで見分ける
+        const r = F.compareFinishWindows({ candidates: [P(1, 'A', 60, H(21))], remHP: 0, curHour: 21 });
+        assert.equal(r.alreadyDead, true, '撃破済みを見分けていない');
+        assert.deepEqual(r.rows, [], '撃破済みなのに窓を出している');
+        assert.equal(r.anyKillable, false);
+        assert.equal(r.killableAfterWait, false, '撃破済みなのに「待てば倒せる」と言っている');
+    });
+
+    test('★ 窓を並べ替えて渡しても、結論と「増えた人」は変わらない', () => {
+        // ★ 呼ぶ側の並びに結論が左右されると、画面と判断がずれる
+        const cands = [P(1, 'A', 95, H(21)), P(3, 'C', 62, H(22, 23))];
+        const asc = F.compareFinishWindows({ candidates: cands, remHP: 60, curHour: 21 });
+        const shuffled = F.compareFinishWindows({
+            candidates: cands, remHP: 60, curHour: 21,
+            windows: [...F.FINISH_WINDOWS].reverse(),
+        });
+        assert.equal(shuffled.bestKey, asc.bestKey, '並べ替えると結論が変わる');
+        assert.equal(shuffled.gainB, asc.gainB, '並べ替えると節約量が変わる');
+        assert.deepEqual(shuffled.rows.map(r => r.key), asc.rows.map(r => r.key), '待つ長さの順に直していない');
+        assert.deepEqual(shuffled.rows.map(r => r.newFaces), asc.rows.map(r => r.newFaces), '増えた人が変わる');
+    });
+
+    test('★ filterByCommitments: 一覧・プラン・Push が同じ顔ぶれを見られる', () => {
+        // ★ コンソールだけで外すと、下の一覧や Push には残って二重に頼めた (Codex指摘)
+        const cands = [P(1, 'A', 90, H(21), 2), P(2, 'B', 60, H(21), 0)];
+        const m = F.commitmentsElsewhere([{ player_id: 1, boss_number: 4, status: 'accepted' }], 3);
+        assert.deepEqual(F.filterByCommitments(cands, m).map(p => p.name), ['B'], '凸が埋まった人を外していない');
+        assert.deepEqual(F.filterByCommitments(cands, null).map(p => p.name), ['A', 'B'], '依頼が無いのに外している');
     });
 
     test('★ 了承済みでも凸が残っていれば候補に残す (1件了承・0凸なら残り2)', () => {
@@ -5193,9 +5260,15 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(/listEl\.innerHTML = header \+ consoleHtml \+ controls \+ rows \+ pushBtn \+ timelineHtml;/.test(fn),
             'チップ / コンソールを描いていない');
         // ★ コンソールには**窓で絞る前の全員**を渡す — 絞ったあとだと「待つと増える人」が出せない
-        assert.ok(/_opsFinishConsoleHtml\(boss, candidatesAll, remainingHpB\)/.test(fn),
+        assert.ok(/_opsFinishConsoleHtml\(boss, candidatesAll, remainingHpB, _finishCom\)/.test(fn),
             'コンソールに窓で絞ったあとの候補を渡している (待って増える人が出せない)');
         assert.ok(!/_opsFinishConsoleHtml\(boss, candidates,/.test(fn), '同上');
+        // ★ 別のボスの約束で凸が埋まった人は**候補を作るところで1回だけ**外す。
+        //   コンソールだけで外すと、下の一覧・推薦プラン・Push には残って二重に頼める (Codex指摘)
+        assert.ok(/const _finishCom = finishDomain\.commitmentsElsewhere\(_finishReqCache \|\| \[\], boss\.boss_number\);/.test(fn),
+            '別のボスの約束を見ていない');
+        assert.ok(/const candidatesAll = finishDomain\.filterByCommitments\(candidatesAllRaw, _finishCom\);/.test(fn),
+            '候補を作るところで外していない (一覧・プラン・Push に残る)');
         assert.ok(/return finishDomain\.computeFinishPlans\(candidates, remHP, \{ shots: _opsFinish\.shots \}\);/.test(html), '人数を組合せに渡していない');
         assert.ok(/if \(_opsCurrentAttr\) renderOpsFinishList\(_opsCurrentAttr\);/.test(html), 'チップを押しても描き直さない');
     });

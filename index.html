@@ -18350,7 +18350,7 @@
             //   1) 3凸未満 (まだ残凸あり)
             //   2) 該当属性のダメージ登録あり
             //   3) 該当属性をまだ使っていない (既に[attr]PTで凸済みは候補から除外)
-            const candidatesAll = players
+            const candidatesAllRaw = players
                 .filter(p => p.attackCount < 3)
                 .filter(p => !p.unavailableThisSeason)   // 今期「参加が難しい」人には締めを頼まない
                 .map(p => {
@@ -18384,6 +18384,12 @@
                 .filter(p => p.dmg > 0)
                 // ダメージ降順。同ダメージなら凸残数が多い人を優先 (旧AI推薦のルール②をシステム側に吸収)
                 .sort((a, b) => (b.dmg - a.dmg) || ((3 - b.attackCount) - (3 - a.attackCount)));
+            // ★ 別のボスの約束 (了承済み) で凸が埋まった人を**ここで1回だけ**外す。
+            //   コンソールだけで外すと、下の一覧・推薦プラン・Push には残って二重に頼めてしまう
+            //   (Codex指摘 2026-09-10)。この1本で全部が同じ顔ぶれを見る。
+            const _finishCom = finishDomain.commitmentsElsewhere(_finishReqCache || [], boss.boss_number);
+            const candidatesAll = finishDomain.filterByCommitments(candidatesAllRaw, _finishCom);
+
             // 「今から N 時間」の範囲に出られる人だけ (判定は finishDomain.filterByWindow)
             const curHourJst = _finishCurHour();
             const candidates = finishDomain.filterByWindow(candidatesAll, { curHour: curHourJst, hours: _opsFinish.hours });
@@ -18413,7 +18419,7 @@
                 </div>`;
 
             if (candidates.length === 0) {
-                listEl.innerHTML = header + _opsFinishConsoleHtml(boss, candidatesAll, remainingHpB) + controls
+                listEl.innerHTML = header + _opsFinishConsoleHtml(boss, candidatesAll, remainingHpB, _finishCom) + controls
                     + '<p style="color:var(--t-body);font-size:13px;">この時間に出られるメンバーがいません。上の「いま打つか、待つか」で、待てば出られるかを確かめてください。</p>';
                 return;
             }
@@ -18452,7 +18458,7 @@
             // 「何時まで待てば誰が最適？」は先の時間の判断なので、範囲で絞る前の全員で見る (Codex指摘)
             const timelineHtml = _buildFinishTimeline(attrKey, candidatesAll, remainingHpB);
 
-            const consoleHtml = _opsFinishConsoleHtml(boss, candidatesAll, remainingHpB);
+            const consoleHtml = _opsFinishConsoleHtml(boss, candidatesAll, remainingHpB, _finishCom);
             listEl.innerHTML = header + consoleHtml + controls + rows + pushBtn + timelineHtml;
 
             // 推薦プラン (ギリギリ / 余裕) を計算して表示
@@ -18504,10 +18510,10 @@
         //   判断は finishDomain.compareFinishWindows が唯一。ここは並べるだけ (画面で勝ち負けを書き足さない)。
         //   ★ 候補は**窓で絞る前の全員**を渡す — 絞ったあとを渡すと「待つと増える人」が出せない。
         let _opsFinishCompare = null;
-        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB) {
+        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB, commitments) {
             const dom = window.finishDomain;
             if (!dom || !dom.compareFinishWindows) return '';
-            const com = dom.commitmentsElsewhere(_finishReqCache || [], boss && boss.boss_number);
+            const com = commitments || dom.commitmentsElsewhere(_finishReqCache || [], boss && boss.boss_number);
             const cmp = dom.compareFinishWindows({
                 candidates: candidatesAll, remHP: remHpB, curHour: _finishCurHour(),
                 shots: _opsFinish.shots, commitments: com,
