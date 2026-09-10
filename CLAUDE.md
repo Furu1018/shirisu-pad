@@ -496,16 +496,79 @@ UI の目視確認は実機 (GitHub Pages) で行う運用。
 - 白カード + 大きめ角丸 + ソフトシャドウ。フォントは Noto Sans JP、見出しは font-weight 900
 - 属性カラーを機能的に使う (枠線・ピル・バー・アイコン背景)
 
-### カラー
+### カラー — ★ 2026-09-10 に**トークン制**へ移行。色を直に書かない
 
-```js
-// 属性 (DC_ATTR_COLORS)
-fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C26B'
-// 状態
-成功/撃破: #18C26B   警告: #F59E0B   エラー/交戦: #FF3D44   アクセント紫: #6C42F0 (2026-07-24 HomeMind基調で旧青 #1E78F0 から刷新)
-// ニュートラル
-文字: #14161A  サブ: #6B7178 / #8A9097  薄文字: #A4AAB0 / #B6BBC1  背景: #F7F8F9 / #F1F2F4
+```css
+/* 文字 (4段・どれも地に対して 4.5:1 以上)。★ 文字にはこれ以外を使わない */
+var(--t-ink)     /* いちばん濃い (見出し・数字) */
+var(--t-strong)  /* 強めの本文 */
+var(--t-body)    /* 本文 */
+var(--t-muted)   /* 添え字。これより薄い文字は無い */
+
+/* 面・線。★ 文字には使わない (薄いままでよい) */
+var(--card) var(--bg) var(--s1) var(--s2) var(--line) var(--track) var(--dim) var(--ghost)
+
+/* 状態・属性。4つの顔を持つ:
+   (無印)=文字 / -deep=濃い文字(7:1) / -solid=塗り / -ink=その塗りの上の文字 /
+   -bg=薄く敷く / -on=薄い地の上の文字 */
+var(--ops) var(--ok) var(--warn) var(--bad)
+var(--attr-fire) var(--attr-water) var(--attr-electric) var(--attr-iron) var(--attr-wind)
+
+/* 塗りの上の文字 */
+var(--on-fill)      /* 色つきの塗り (紫・黒いオーバーレイ) の上。両テーマとも白 */
+var(--card)         /* ★ var(--t-ink) を塗りに使ったときの上の文字 (ダークで反転する) */
+var(--X-ink)        /* ★ 明るい塗り (緑 --ok-solid / 橙 --attr-iron-solid) の上は白だと 2.3:1 */
+
+/* 地に薄く重ねるベール。★ ライトは黒・ダークは白に裏返る */
+rgba(var(--ink-rgb), 0.08)    /* 線・輪郭・淡い面 */
+rgba(var(--paper-rgb), 0.7)   /* その裏返し (濃い地の上に置く半透明の面) */
 ```
+
+**★ 決めごと (ユーザー決定 2026-09-10 「B」)**: 「文字の色」と「線・面の色」を分ける。
+文字は4段とも **4.5:1 以上**、線・面は薄いままでよい。混ぜない
+(以前は同じ `#8A9097` を薄文字にも枠にも使っていて、文字だけ濃くすると枠まで濃くなった)。
+
+**★ 2つのテーマは同じ顔ぶれ**。`:root, :root[data-theme="light"]` と `:root[data-theme="dark"]` に
+同じ名前が並ぶ。片方にしか無いトークンはテストで落ちる。
+
+**★ 直書きの上限がテストで固定されている** (`<style>` の hex 14 / rgba 212 / インライン 430)。
+増やすと落ちる。**減らしたら上限も下げること** (下げ忘れると戻っても気づけない)。
+
+### 見た目の切り替え (ライト / ダーク / 端末に合わせる)
+
+設定タブの「見た目」。保存は `localStorage['shirisuko_theme_v1']` で、値は `'light' | 'dark'`
+(auto は**キーを消す**)。実体は `<head>` の起動スクリプト:
+- ★ **描画の前に `<html data-theme>` を立てる**。あとから立てると一瞬ライトが見える
+- ★ **auto でも明示で立てる** (matchMedia で解決)。こうするとトークンは2ブロックのままでよく、
+  `@media (prefers-color-scheme)` に同じ 100 行超を二重に書かずに済む
+- auto のあいだだけ端末設定の変化に追随する
+- ブラウザUI (`<meta name="theme-color">`) は色を書かず `--bg` を読む。
+  `<head>` の時点ではスタイルシートがまだ無いので、DOMContentLoaded でもう一度合わせる
+
+**★ キャンバスと Chart.js は CSS 変数を解決できない** — トークン名のまま渡しても
+**黙って無視される** (エラーも出ない)。描くときに `themeVar()` / `chartColors()` で
+実際の色にして渡し、切り替えの合図 `window 'padthemechange'` で描き直す。
+**色を焼き込んで innerHTML に入れている画面も同じ** (散布図の点のキャッシュ `_scatterIconCache`、
+育成くらべ `_gvPaint`)。焼き込む画面を増やしたら合図の受け口に足すこと。
+★ 共有画像 (Discord 用の canvas・`const COL = {...}`) は**明るい見た目で固定**する —
+配る紙なので端末のテーマに左右させない。
+
+**★ バーストの色** (`_burstInk` / `_burstTint` / `_burstOnBg`) は地に合わせて計算する。
+地は `--burst-bg` = **バッジが載り得るいちばん厳しい地**で、★ 厳しい側はテーマで入れ替わる
+(ライトはいちばん暗い `--s1` / ダークはいちばん明るい `--card`)。
+`_burstOnBg` は地の明暗を見て黒へ寄せるか白へ寄せるかを変える —
+以前の `_burstOnLight` は暗くする方向にしか動かず、ダークでは寄せるほど沈んだ。
+
+### PC版レイアウト (2026-09-10)
+
+★ **CSS だけで完結**させている。タブの切り替え・カードの折りたたみ・段階の出し分けは
+モバイルと同じ JS がそのまま動く (DOM は1つ・PC用に作り分けない)。段は2つ:
+- **1100px〜**: 戦況タブのカードを12カラムに並べる。★ 幅を決めるのは
+  `opsLayout.CARDS` の `span` **だけ** (span → `data-span` → CSS の `[data-span="N"]`)。
+  表を持つカード (残り戦闘可能メンバー・メンバー状況・最適凸プラン) は全幅で固定 —
+  横に切れると当日いちばん見る画面が使えなくなる。コックピットは 2×2 → 1×4
+- **1180px〜**: 上の横タブ (`.tab-navigation`) を 232px の左サイドバーにし、
+  `body { padding-left }` で本文を寄せる。戦況タブだけ 1500px、ほかは 1080px
 
 ### 下メニュー (2026-09-09 刷新)
 
@@ -531,11 +594,14 @@ fire:'#FF3D44'  water:'#2E8BFF'  electric:'#9B4DFF'  iron:'#FF8A2B'  wind:'#18C2
 
 ### 頻出パターン
 
-- **ピル**: `border-radius:999px; font-size:10-11px; font-weight:800-900; padding:3px 9px; color:{色}; background:{色}1A`
-- **カード**: `.dc-card` / 白背景 + `border-radius:13-15px` + `border:1px solid rgba(20,22,26,0.05)`
+- **ピル**: `border-radius:999px; font-size:10-11px; font-weight:800-900; padding:3px 9px; color:var(--X-on); background:var(--X-bg)`
+- **カード**: `.dc-card` / `background:var(--card)` + `border-radius:13-15px` + `border:1px solid rgba(var(--ink-rgb), 0.05)`
 - **ボトムシート**: `player-select-modal` 系。ハンドル(::before) + 下スワイプで閉じる (`_enableSheetSwipeDismiss`)
-- **ボタン**: 黒 `#14161A` が主ボタン、`#F1F2F4` がサブ。紫グラデ (`#7A5AF8→#5B2BE0`) は誘導ボタン
-- 16進カラー+alpha は `${c}1A` `${c}33` 形式の連結を多用
+- **ボタン**: `var(--t-ink)` が主ボタン (上の文字は `var(--card)`)、`var(--s2)` がサブ。
+  誘導ボタンは紫グラデ `linear-gradient(var(--grad-ops-a), var(--grad-ops-b))` + `var(--on-fill)`
+- ★ **16進+alpha の連結 (`${c}1A` `${c}33`) はトークンにできない** — 連結する値だけは実際の色である必要がある
+  (`var(--x)1A` は無効)。色表 (`TE_BURST_COLOR` / `DC_ATTR_COLORS` / `ATTR_VISUAL`) が
+  直値のまま残っているのはこのため。`color-mix()` に寄せるまでは触らないこと
 
 ## データモデルの要注意ポイント
 
