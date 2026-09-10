@@ -2964,7 +2964,7 @@ console.log('\n複数案の同時打診:');
     });
 
     test('★ 配線: 依頼の取得が打診の列も読む (読まないと進捗画面が必ず空になる)', () => {
-        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
+        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         const fn = client.match(/window\.supabaseLoadFinishRequests = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(fn, '取得関数が見つからない');
         // ★ 関数のどこかに文字列があるだけでは足りない (_isMissingColumnErr の引数にも出てくる)。
@@ -2977,7 +2977,7 @@ console.log('\n複数案の同時打診:');
         // 44 未適用でも落ちない: 列が無いときに読み直す道があること
         assert.ok(/_isMissingColumnErr\(error, 'offer_id'\)/.test(fn), '44 未適用のときの読み直しが無い');
         // 画面はこのキャッシュを offer_id で絞っている
-        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/_finishReqCache \|\| \[\]\)\.filter\(r => String\(r\.offer_id \|\| ''\)/.test(html),
             '進捗画面の絞り込みが変わった (テストの前提を見直すこと)');
     });
@@ -2986,7 +2986,7 @@ console.log('\n複数案の同時打診:');
         // to_regproc は**関数名だけ**しか受け取らない。引数リスト付きの文字列を渡すと
         // 解釈できずに必ず NULL を返し、適用済みでも「未適用」と出る
         // (2026-09-10 に発覚。39/40 がずっと false と出ていた)
-        const check = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '99_check_applied.sql'), 'utf8');
+        const check = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '99_check_applied.sql'), 'utf8').replace(/\r\n/g, '\n');
         const bad = [...check.matchAll(/to_regproc\('([^']*\([^']*\))'\)/g)].map((m) => m[1]);
         assert.deepEqual(bad, [], `引数付きなのに to_regproc を使っている: ${bad.join(' / ')}`);
         // 引数なしの名前引きは to_regproc のままでよい (使い分けができていること)
@@ -3003,7 +3003,7 @@ console.log('\n複数案の同時打診:');
         assert.ok(/CREATE UNIQUE INDEX IF NOT EXISTS uq_finish_requests_offer_plan_player[\s\S]*?WHERE offer_id IS NOT NULL/.test(sql),
             '一意索引が無い、または部分索引になっていない');
         assert.ok(/NOTIFY pgrst/.test(sql));
-        const check = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '99_check_applied.sql'), 'utf8');
+        const check = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '99_check_applied.sql'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/'44_finish_offers'/.test(check), '99 に判定行が無い');
         // 名前だけの判定にしない (壊れた同名索引を「適用済み」にしてしまう)
         assert.ok(/\(offer_id, plan_key, player_id\)/.test(check), '索引の列まで見ていない');
@@ -3011,7 +3011,7 @@ console.log('\n複数案の同時打診:');
     });
 
     test('★ 配線: 44 未適用のときに既存の依頼を消してしまわない', () => {
-        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
+        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         const fn = client.match(/window\.supabaseSetFinishOffer = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(fn, '打診の保存関数が見つからない');
         const probeAt = fn.indexOf("select('offer_id, plan_key, deadline_at')");
@@ -3022,7 +3022,7 @@ console.log('\n複数案の同時打診:');
     });
 
     test('★ 本人の画面に期限と「ほかの案と同時」を出す (通知を見逃した人に伝わらない)', () => {
-        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/function renderMyFinishRequestBanner\(identity\)[\s\S]*?\n        }\n/)?.[0] || '';
         assert.ok(fn, '締め凸バナーが見つからない');
         assert.ok(/r\.deadline_at/.test(fn), '期限を読んでいない');
@@ -3037,19 +3037,19 @@ console.log('\n複数案の同時打診:');
     });
 
     test('★ 配線: 返答は行 id を名指しできる (同じ人が2案に居ても片方だけ動く)', () => {
-        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
+        const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         const fn = client.match(/window\.supabaseRespondFinishRequest = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(/rowId = null\)/.test(fn), '行 id を受け取れない');
         assert.ok(/if \(rowId != null\)[\s\S]{0,400}\.eq\('id', rowId\)/.test(fn), '行 id で更新していない');
         // 画面から行 id が渡っていること
-        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/handleMyFinishRequestRespond\(\$\{r\.boss_number\}, 'accepted', \$\{r\.id == null \? 'null' : Number\(r\.id\)\}\)/.test(html),
             '本人の画面が行 id を渡していない');
         assert.ok(/async function handleMyFinishRequestRespond\(bossNumber, status, rowId = null\)/.test(html));
     });
 
     test('★ 配線: 確定と打診に二重押しよけがある / 通知が落ちても黙らない', () => {
-        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8');
+        const html = _fsF.readFileSync(_pathF.join(_ROOTF, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const send = html.match(/async function handleOpsFinishOfferSend\(\)[\s\S]*?\n        }\n/)?.[0] || '';
         const conf = html.match(/async function handleOpsFinishOfferConfirm\(winnerKey\)[\s\S]*?\n        }\n/)?.[0] || '';
         // ★ ガードは関数の外の let ではなく状態オブジェクトに置く (切り出して動かすテストから見えるように)
@@ -3202,7 +3202,7 @@ console.log('\nopsStageDomain:');
         assert.equal(dom.detect({ season, now: Date.parse('2026-09-12T04:59:00+09:00') }).auto, 'day');
         assert.equal(dom.detect({ season, now: Date.parse('2026-09-12T05:00:00+09:00') }).auto, 'end');
         // ソースにフォールバックがあること
-        const src = _fsStage.readFileSync(_pathStage.join(_ROOTStage, 'js', 'domain', 'opsStage.js'), 'utf8');
+        const src = _fsStage.readFileSync(_pathStage.join(_ROOTStage, 'js', 'domain', 'opsStage.js'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/function jstDate\(now\) \{\s*\n\s*try \{/.test(src), 'Intl を try で囲んでいない');
         assert.ok(/\} catch \{\s*\n\s*return jstDateNoIntl\(now\);/.test(src), 'フォールバックに落ちていない');
     });
@@ -3231,7 +3231,7 @@ console.log('\nopsStageDomain:');
         // 終了の段階では終了へ
         assert.equal(dom.hero({ stage: 'end', season, attacksDone: 60, attackCap: 90 }).action, 'end');
         // index.html 側: 自動判定が当日なら handleOpsEndSeason を止める / 未ロードは null のまま渡す / 配信はこのシーズンだけ
-        const html = _fsStage.readFileSync(_pathStage.join(_ROOTStage, 'index.html'), 'utf8');
+        const html = _fsStage.readFileSync(_pathStage.join(_ROOTStage, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/async function handleOpsEndSeason\(\) \{[\s\S]{0,900}/)?.[0] || '';
         assert.ok(/if \(stNow && stNow\.auto === 'day'\) \{/.test(fn), '当日の終了を止めていない');
         assert.ok(/レイド当日はシーズンを終了できません/.test(fn));
@@ -6301,7 +6301,7 @@ console.log('\ngrowthDomain:');
 {
     const dom = globalThis.growthDomain;
     const _fsG = (await import('node:fs')).default;
-    const _grRd = (...p) => _fsG.readFileSync(new URL(`../${p.join('/')}`, import.meta.url), 'utf8');
+    const _grRd = (...p) => _fsG.readFileSync(new URL(`../${p.join('/')}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
     const _grLayout = globalThis.opsLayoutDomain;
     // ブックマークレットは URL としてエスケープしてある。中身を見るときは復号する
     const bmlBody = (url) => decodeURIComponent(String(url).replace(/^javascript:/, ''));
@@ -8005,6 +8005,23 @@ console.log('\ngrowthDomain:');
         }
         assert.deepEqual(bad, [], `文字の色を焼き込んでいる (テーマを切り替えても変わらない):\n  ${bad.join('\n  ')}`);
     });
+    test('★ テストがソースを読むときは改行をそろえる (PCによって落ちるテストを作らない)', () => {
+        // ★ core.autocrlf=true の PC (職場PC) では作業ツリーが CRLF になる。
+        //   `\n};\n` のように**改行をまたぐ正規表現**は、そのPCでだけ外れる。
+        //   中身は正しいのにテストが落ちる = 直しようのない偽の失敗になる。
+        //   2026-09-11 に実際に5件やった (③ 複数案の同時打診の配線テスト)。
+        //   読んだ直後にそろえる、を機械で強制する。
+        const src = _grRd('tests', 'run-tests.mjs').split(String.fromCharCode(13)).join('');
+        const bad = [];
+        for (const m of src.matchAll(/readFileSync\([^;\n]*?,\s*'utf8'\)(.{0,40})/g)) {
+            const after = m[1];
+            if (/^\s*\.replace\(\/\\r\\n\/g/.test(after)) continue;
+            if (/^\s*\.split\(String\.fromCharCode\(13\)\)/.test(after)) continue;
+            bad.push(m[0].replace(/\s+/g, ' ').slice(0, 90));
+        }
+        assert.deepEqual(bad, [],
+            `読んだ直後に改行をそろえていない (CRLF の PC で落ちる):\n  ${bad.join('\n  ')}`);
+    });
     test('★ <style> に JavaScript が / <script> に CSS が紛れ込んでいない', () => {
         // ★ 2026-09-10: 節を移すときに JS のかたまりを丸ごと <style> の中へ入れてしまった。
         //   ブラウザは黙って捨てるだけ (エラーも出ない) で、構文チェックもテストも全部通った。
@@ -8334,7 +8351,7 @@ console.log('\ngrowthDomain:');
     });
 
     test('test() ハーネス: async を渡したら落とす (静かに通るテストを作らせない)', () => {
-        const src = _fsG.readFileSync(_pathG.join(_ROOTG, 'tests', 'run-tests.mjs'), 'utf8');
+        const src = _fsG.readFileSync(_pathG.join(_ROOTG, 'tests', 'run-tests.mjs'), 'utf8').replace(/\r\n/g, '\n');
         const fn = src.match(/function test\(name, fn\) \{[\s\S]*?\n\}/)?.[0] || '';
         assert.ok(/typeof r\.then === 'function'/.test(fn), 'async のテストを検出していない');
         assert.ok(/testAsync/.test(fn), '正しい使い方を案内していない');
@@ -8358,7 +8375,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/DROP CONSTRAINT IF EXISTS member_growth_status_status_check/.test(sql), '再実行できない');
         assert.ok(/ENABLE ROW LEVEL SECURITY/.test(sql) && /NOTIFY pgrst/.test(sql));
         // 99 の判定行 (SQL Editor で 99 を1回流せば未適用が見える、を保つ)
-        const check = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '99_check_applied.sql'), 'utf8');
+        const check = _fsG.readFileSync(_pathG.join(_ROOTG, 'supabase', '99_check_applied.sql'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/'43_member_growth'/.test(check), '99_check_applied.sql に判定行が無い');
         // 予約の部分索引 (42) も同じ穴を持っていたので塞いである — 3状態を含んでいても
         // さらに AND で絞られていたら一意性は守られない
@@ -8383,7 +8400,7 @@ console.log('\nblablaNameCodes:');
     const fs = (await import('node:fs')).default;
     const path = (await import('node:path')).default;
     const ROOT = path.resolve(path.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
-    const map = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'blabla-name-codes.json'), 'utf8'));
+    const map = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'blabla-name-codes.json'), 'utf8').replace(/\r\n/g, '\n'));
 
     // 手当ての正解表。★ここを正としてピン留めする — 生成スクリプトの OVERRIDES を
     //   書き換えても、宛先が変われば必ずここで落ちる (Codex指摘 2026-09-08)
@@ -8478,7 +8495,7 @@ console.log('\nblablaNameCodes:');
     test('★ 生成スクリプトの OVERRIDES と JSON がずれていない (生成し直し忘れの検出)', () => {
         // ここまでのテストは生成物 (JSON) しか見ないので、**スクリプトだけ直して生成し直さない**と
         // 気づけない。スクリプト側の表も読んで突き合わせ、三者 (スクリプト/JSON/期待値) を揃える
-        const src = fs.readFileSync(path.join(ROOT, 'scripts', 'build-blabla-name-codes.mjs'), 'utf8');
+        const src = fs.readFileSync(path.join(ROOT, 'scripts', 'build-blabla-name-codes.mjs'), 'utf8').replace(/\r\n/g, '\n');
         const block = src.match(/const OVERRIDES = \{([\s\S]*?)\n\};/);
         assert.ok(block, '生成スクリプトから OVERRIDES を読み取れない (書き方が変わった?)');
         const inScript = {};
@@ -8501,7 +8518,7 @@ console.log('\nswipeGuards:');
     const fs = (await import('node:fs')).default;
     const path = (await import('node:path')).default;
     const ROOT = path.resolve(path.dirname((await import('node:url')).fileURLToPath(import.meta.url)), '..');
-    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
 
     // 付けなくてよいと判断したクラスはここに理由付きで書く (空なら「全部要る」)
     const EXEMPT = new Map([]);
