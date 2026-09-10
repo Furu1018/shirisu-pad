@@ -5827,6 +5827,7 @@ console.log('\ngrowthDomain:');
     const dom = globalThis.growthDomain;
     const _fsG = (await import('node:fs')).default;
     const _grRd = (...p) => _fsG.readFileSync(new URL(`../${p.join('/')}`, import.meta.url), 'utf8');
+    const _grLayout = globalThis.opsLayoutDomain;
     // ブックマークレットは URL としてエスケープしてある。中身を見るときは復号する
     const bmlBody = (url) => decodeURIComponent(String(url).replace(/^javascript:/, ''));
     const _pathG = (await import('node:path')).default;
@@ -7128,6 +7129,60 @@ console.log('\ngrowthDomain:');
         const LIMIT_INLINE = 430;   // 段階3c: JS の style 代入もトークンへ
         assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
         if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
+    });
+    test('★ PC版: カードの幅は opsLayout.CARDS が決め、CSS に受け皿がある', () => {
+        // ★ 幅を index.html 側に書き足さない (カードを足すたびに2箇所直すことになる)。
+        //   CARDS の span → data-span → CSS の [data-span="N"] という一本道であること。
+        const dom = _grLayout;
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const noSpan = dom.CARDS.filter(c => !(c.span >= 1 && c.span <= 12)).map(c => c.id);
+        assert.deepEqual(noSpan, [], `幅を決めていないカードがある: ${noSpan.join(', ')}`);
+        // 表を持つカードは全幅でないと読めない (横に切れると当日いちばん見る画面が使えなくなる)
+        for (const id of ['opsSecRemaining', 'opsSecMembers', 'opsSecPlan']) {
+            const c = dom.CARDS.find(x => x.id === id);
+            assert.equal(c && c.span, 12, `${id} は表を持つので全幅であること`);
+        }
+        // 配線: 初期化が CARDS の span を data-span に写している
+        assert.ok(/if \(def\.span\) card\.setAttribute\('data-span', String\(def\.span\)\);/.test(html),
+            'span を data-span に写していない (CSS 側に届かない)');
+        // 受け皿: 使っている幅すべてに CSS がある (無いと黙って全幅になる)
+        const used = [...new Set(dom.CARDS.map(c => c.span))].filter(v => v !== 12).sort((a, b) => a - b);
+        const missing = used.filter(v => !html.includes(`> [data-span="${v}"] { grid-column: span ${v}; }`));
+        assert.deepEqual(missing, [], `CSS の受け皿が無い幅がある (黙って全幅になる): ${missing.join(', ')}`);
+    });
+    test('★ PC版: 左サイドバーと12カラムの段が入っている', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        const at = (px) => {
+            const i = css.indexOf(`@media (min-width: ${px}px) {`);
+            assert.ok(i > 0, `${px}px の段が無い`);
+            let d = 0, k = css.indexOf('{', i);
+            for (let j = k; j < css.length; j++) {
+                if (css[j] === '{') d++;
+                else if (css[j] === '}') { d--; if (!d) return css.slice(i, j + 1); }
+            }
+            throw new Error(`${px}px の段の終端が分からない`);
+        };
+        // ① カードのグリッド
+        const grid = at(1100);
+        assert.ok(/#tab-ops > \.container \{[^}]*display: grid;/.test(grid), '戦況タブがグリッドになっていない');
+        assert.ok(/grid-template-columns: repeat\(12, minmax\(0, 1fr\)\);/.test(grid), '12カラムでない');
+        assert.ok(/#tab-ops > \.container > \* \{ grid-column: 1 \/ -1;/.test(grid),
+            '既定が全幅でない (見出しや段階バーが横に割れる)');
+        assert.ok(/align-items: start;/.test(grid), '背の低いカードを引き伸ばしている');
+        // ② 左サイドバー
+        const side = at(1180);
+        assert.ok(/body \{ padding-left: 232px; \}/.test(side), '本文をサイドバーぶん寄せていない (重なる)');
+        assert.ok(/\.tab-navigation \{[^}]*position: fixed;[^}]*width: 232px;/.test(side), 'サイドバーになっていない');
+        assert.ok(/\.tab-buttons-wrapper \{ flex-direction: column;/.test(side), 'タブが縦に並んでいない');
+        assert.ok(/\.side-brand \{\s*display: flex;/.test(side), '見出しを出していない');
+        assert.ok(/\.tab-button\.active::after \{ display: none; \}/.test(side),
+            '横タブの下線の印が残っている (サイドバーでは位置が合わない)');
+        // ★ 幅が狭いときに見出しが出てしまわないこと (横タブの中に文字が挟まる)
+        assert.ok(/\.side-brand \{ display: none; \}/.test(css), '狭いときに見出しを隠していない');
+        // ★ 下のナビと二重に出さない (下のナビは 767px まで)
+        assert.ok(/@media \(max-width: 767px\) \{\s*\.bottom-nav \{ display: flex; \}/.test(css),
+            '下のナビの出る幅が変わっている (サイドバーと二重になる)');
     });
     test('★ <style> に JavaScript が / <script> に CSS が紛れ込んでいない', () => {
         // ★ 2026-09-10: 節を移すときに JS のかたまりを丸ごと <style> の中へ入れてしまった。

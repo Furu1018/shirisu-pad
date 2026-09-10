@@ -17,26 +17,27 @@
     /**
      * 戦況タブのカード。id は DOM の id、title はカード内の見出し文字列 (タグ付けに使う)。
      * open = フェーズ別の既定 (always は常時開・折りたたみ不可)。opsOnly = 運営ONのときだけ表示。
+     * span = PC版 (1100px〜) の12カラムでの幅。表を持つカードは全幅 (12) でないと読めない。
      * group = 見出しラベル (DOM 順に連続するよう、締め凸候補は初期化時にメンバー状況の直後へ移す)
      */
     const CARDS = [
         // stages = 運営ONで本文に出す段階 (opsStage.js の 準備 prep / 前日 pre / 当日 day / 終了 end)。
         // 段階外は末尾の「その他」へ (消さない)。[] = どの段階でも「その他」。運営OFF (メンバー) は従来どおり全部
-        { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'] },
-        { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [] },
-        { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'] },
-        { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'] },
+        { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7 },
+        { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [], span: 6 },
+        { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12 },
+        { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'], span: 12 },
         // 当日は畳む — 承認待ちの件数は見出しの1行サマリーに出るので気づける
         // (当日に開くカードを増やすと縦に長くなり、折りたたみを入れた意味が消える)
-        { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre'] },
-        { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'] },
-        { id: 'opsSecPlan',      title: '最適凸プラン算出',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'] },
-        { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'] },
-        { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: [] },
-        { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'] },
+        { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre'], span: 7 },
+        { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5 },
+        { id: 'opsSecPlan',      title: '最適凸プラン算出',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12 },
+        { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'], span: 5 },
+        { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: [], span: 6 },
+        { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 6 },
         // 使われたキャラが確定するのはレイド後なので、終了段階だけに出す (2026-09-09)
-        { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['end'] },
-        { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre'] },
+        { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['end'], span: 12 },
+        { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre'], span: 6 },
     ];
     const STORAGE_KEY = 'shirisuko_ops_card_open_v1';
 

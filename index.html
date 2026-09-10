@@ -1997,6 +1997,85 @@
             .mobile-only { display: none !important; }
         }
 
+        /* ========== PC版レイアウト (2026-09-10) ==========
+           ★ 見た目だけを幅で変える。タブの切り替え・カードの折りたたみ・段階の出し分けは
+             いまの JS がそのまま動く (DOM は1つ・作り分けない)。
+           ★ 段は2つ: 1100px でカードを横に並べ、1180px で左サイドバーにする。 */
+        .side-brand { display: none; }
+
+        /* --- ① 1100px〜: 戦況タブのカードを12カラムに並べる --- */
+        @media (min-width: 1100px) {
+            #tab-ops > .container {
+                display: grid;
+                grid-template-columns: repeat(12, minmax(0, 1fr));
+                gap: 12px;
+                align-items: start;       /* 背の低いカードを引き伸ばさない */
+            }
+            /* ★ 既定は全幅。幅を持つのは data-span を付けたカードだけ
+                 (見出し・段階バー・ヒーロー・その他 は全幅のまま) */
+            #tab-ops > .container > * { grid-column: 1 / -1; min-width: 0; }
+            #tab-ops > .container > .dc-card { margin-bottom: 0; }
+            #tab-ops > .container > [data-span="4"] { grid-column: span 4; }
+            #tab-ops > .container > [data-span="5"] { grid-column: span 5; }
+            #tab-ops > .container > [data-span="6"] { grid-column: span 6; }
+            #tab-ops > .container > [data-span="7"] { grid-column: span 7; }
+            #tab-ops > .container > [data-span="8"] { grid-column: span 8; }
+            /* コックピットは 2×2 → 1×4 に。数字も大きくして、離れた席からでも読めるようにする
+               (ブリーフィング中に画面を見せる用途・ユーザー要望 2026-09-10) */
+            #tab-ops .ops-cockpit { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+            #tab-ops .ops-cockpit-tile { padding: 11px 14px; }
+            #tab-ops .ops-cockpit-tile .k { font-size: 11px; }
+            #tab-ops .ops-cockpit-tile .v { font-size: 23px; letter-spacing: -0.02em; }
+        }
+
+        /* --- ② 1180px〜: 上の横タブを左のサイドバーにする --- */
+        @media (min-width: 1180px) {
+            body { padding-left: 232px; }
+            .tab-navigation {
+                position: fixed;
+                left: 0; top: 0; bottom: 0;
+                width: 232px;
+                flex-direction: column;
+                align-items: stretch;
+                padding: 18px 14px;
+                border-bottom: none;
+                border-right: 1px solid var(--hair);
+                overflow-y: auto;
+                overflow-x: hidden;   /* 指定しないと auto に化けて横にも動く */
+                gap: 4px;
+            }
+            .side-brand {
+                display: flex; align-items: center; gap: 8px;
+                font-size: 16px; font-weight: 900; letter-spacing: -0.01em;
+                color: var(--t-ink); padding: 4px 10px 16px;
+            }
+            .side-brand span { font-size: 18px; }
+            .tab-buttons-wrapper { flex-direction: column; gap: 3px; }
+            .tab-button {
+                flex-direction: row;
+                justify-content: flex-start;
+                gap: 10px;
+                padding: 10px 12px;
+                border-radius: 11px;
+                font-size: 13px;
+                font-weight: 800;
+                border-bottom: none;
+                color: var(--t-body);
+            }
+            .tab-button .tab-icon { width: 18px; height: 18px; flex: none; }
+            .tab-button.active {
+                background: var(--t-ink);
+                color: var(--card);
+                font-weight: 900;
+                border-bottom: none;
+            }
+            .tab-button:hover:not(.active) { background: var(--s2); }
+            .tab-button.active::after { display: none; }   /* 下線の印は横タブのときだけ */
+            /* 本文はサイドバーぶん右へ寄る。戦況タブだけ広く使う (ブリーフィング用) */
+            .container { max-width: 1080px; }
+            #tab-ops > .container { max-width: 1500px; }
+        }
+
         /* ========== Stats toggle ========== */
         .stats-toggle-btn {
             width: 100%;
@@ -3523,6 +3602,8 @@
 
     <!-- Tab Navigation (PC) -->
     <nav class="tab-navigation pc-only">
+        <!-- サイドバーのときだけ出す見出し (横タブのときは CSS で隠す) -->
+        <div class="side-brand" aria-hidden="true"><span>🎯</span> しりすこPAD</div>
         <div class="tab-buttons-wrapper">
             <button class="tab-button" data-tab="mock" onclick="switchTab('mock')" title="模擬">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
@@ -25131,6 +25212,8 @@
                 card.id = card.id || def.id;
                 card.dataset._secTagged = '1';
                 if (def.opsOnly) card.setAttribute('data-ops-only', '');
+                // PC版 (1100px〜) の12カラムでの幅。★ 決めるのは opsLayout.CARDS だけ
+                if (def.span) card.setAttribute('data-span', String(def.span));
                 card.classList.add('ops-card');
                 const head = card.firstElementChild;
                 if (!head) continue;
