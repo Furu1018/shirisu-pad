@@ -6945,6 +6945,13 @@ console.log('\ngrowthDomain:');
         const hovers = [...new Set([...html.matchAll(/this\.style\.background='(#[0-9A-Fa-f]{6})'/g)].map(m => m[1].toUpperCase()))];
         assert.ok(hovers.includes(BG.toUpperCase()),
             `いちばん暗い地 ${BG} が実際のホバー色 ${JSON.stringify(hovers)} と合っていない`);
+        // ★ 「どこかに同じ色がある」だけでは足りない (Codex指摘 2026-09-10)。
+        //   _BURST_BG は**いちばん暗いホバー色**でなければならない — これより暗い地が増えたら、
+        //   バッジがその上に載らないか確かめる必要がある
+        for (const h of hovers) {
+            assert.ok(lum(h) >= lum(BG) - 1e-9,
+                `${BG} より暗いホバー色 ${h} がある — バッジがその上に載らないか確かめること`);
+        }
         for (const [b, c] of Object.entries(colors)) {
             // ① 薄く色を敷いた地 (CSS の `${色}1A`) に文字を置く場合
             //    ★ 純白で測ると足りない — 実際の地はほんのり色が付いている (Codex指摘)
