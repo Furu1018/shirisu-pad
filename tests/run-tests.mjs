@@ -7367,7 +7367,7 @@ console.log('\ngrowthDomain:');
             return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]); };
         const R = (a, b) => { const x = lum(a) + 0.05, y = lum(b) + 0.05; return Math.max(x, y) / Math.min(x, y); };
 
-        for (const k of ['nav-surface', 'nav-ink', 'nav-dim', 'nav-line', 'nav-active-bg', 'nav-active-ink']) {
+        for (const k of ['nav-surface', 'nav-surface-rgb', 'nav-ink', 'nav-dim', 'nav-line', 'nav-accent']) {
             assert.ok(L[k] && D[k], `${k} が両テーマに無い`);
         }
         // ★ 帯は本文の地と**反対側**にいること (同じ側だと「反対の色」になっていない)
@@ -7377,14 +7377,49 @@ console.log('\ngrowthDomain:');
         for (const [nm, T] of [['ライト', L], ['ダーク', D]]) {
             assert.ok(R(T['nav-ink'], T['nav-surface']) >= 4.5, `${nm}: 帯の文字が読めない`);
             assert.ok(R(T['nav-dim'], T['nav-surface']) >= 4.5, `${nm}: 帯の薄い文字が読めない`);
-            assert.ok(R(T['nav-active-ink'], T['nav-active-bg']) >= 4.5, `${nm}: 選択中の円の文字が読めない`);
-            // 選択中の円は帯の上で目立つこと (帯と同系色だと沈む)
-            assert.ok(R(T['nav-active-bg'], T['nav-surface']) >= 4.5, `${nm}: 選択中の円が帯に沈んでいる`);
+            // ★ 選択中の斑点は帯の上で目立つこと (帯と同系色だと「どこに居るか」が読めない)
+            assert.ok(R(T['nav-accent'], T['nav-surface']) >= 4.5, `${nm}: 選択中の斑点が帯に沈んでいる`);
+            // ガラス用の rgb は --nav-surface と同じ色であること (ずれると透けたとき色が変わる)
+            const rgb = T['nav-surface-rgb'].split(',').map((x) => Number(x.trim()));
+            const hex = `#${rgb.map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+            assert.equal(hex.toLowerCase(), T['nav-surface'].toLowerCase(), `${nm}: ガラス用の rgb が帯の色と違う`);
         }
         // 上の帯も同じトークンを使う (下だけ反転していると別物に見える)
         const hdr = html.match(/\n        \.header \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/background: var\(--nav-surface\);/.test(hdr), '上の帯が反転トークンでない');
         assert.ok(/color: var\(--nav-ink\);/.test(hdr), '上の帯の文字が反転トークンでない');
+    });
+
+    test('★ 上下のメニューはウェットガラス (半透明 + 背面ぼかし)', () => {
+        // 2026-09-10 ユーザー要望「最近の iPhone にならって」
+        const html = _grRd('index.html');
+        const glass = html.match(/@supports \(\(backdrop-filter[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(glass, 'ガラスの指定が無い');
+        assert.ok(/\.header, \.bottom-nav \{/.test(glass), '上下の両方に掛かっていない');
+        assert.ok(/backdrop-filter: blur\(/.test(glass) && /-webkit-backdrop-filter: blur\(/.test(glass),
+            'ぼかしが無い (webkit 接頭辞も要る)');
+        assert.ok(/rgba\(var\(--nav-surface-rgb\), 0\.\d+\)/.test(glass), '半透明になっていない');
+        // ★ 対応していない端末はべた塗りのまま (半透明だけ効くと文字が読めなくなる)
+        assert.ok(/@supports \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter/.test(glass),
+            '@supports で囲っていない');
+        const nav = html.match(/\.bottom-nav \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/background: var\(--nav-surface\);/.test(nav), '対応していない端末の受け皿 (べた塗り) が無い');
+    });
+
+    test('★ スワイプの並びも操作する順 (見た目だけ直しても中身が中央のまま)', () => {
+        // 2026-09-10 実機FB「メニューの位置の見え方だけ変わってて、横スクロールした時の
+        // 並びが治っていない (ホームが真ん中にあるまま)」。並びの出どころは TAB_REGISTRY
+        const html = _grRd('index.html');
+        const i = html.indexOf('const TAB_REGISTRY = [');
+        const reg = html.slice(i, html.indexOf('];', i));
+        const swipe = [...reg.matchAll(/name: '([a-z-]+)'[^\n]*swipe: (true|false)/g)]
+            .filter((m) => m[2] === 'true').map((m) => m[1]);
+        assert.deepEqual(swipe, ['mypage', 'mock', 'ops', 'ranking', 'slv-ranking', 'settings'],
+            'スワイプの並びが操作する順になっていない');
+        // タブ本体の DOM 並びとも一致していること (ずれると隣が入れ替わって見える)
+        const dom = [...html.matchAll(/id="tab-([a-z-]+)"/g)].map((m) => m[1]);
+        assert.deepEqual(dom.slice(0, 5), ['mypage', 'mock', 'ops', 'ranking', 'slv-ranking'],
+            'タブ本体の並びがスワイプ順と違う');
     });
 
     test('★ 上の帯はスクロールで隠れる (PC も対象)', () => {
@@ -7458,17 +7493,21 @@ console.log('\ngrowthDomain:');
         // 帯は**地と反対の色**、いま居るタブは円で**持ち上げる** (position:absolute + 上に出す)
         const nav = html.match(/\.bottom-nav \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/background: var\(--nav-surface\);/.test(nav), '帯が反転トークンでない');
-        const on = html.match(/\.bottom-nav-btn\.active \.nav-icon-wrap \{[\s\S]*?\n        \}/)?.[0] || '';
-        assert.ok(/position: absolute;/.test(on) && /top: -26px;/.test(on), 'いま居るタブを持ち上げていない');
-        assert.ok(/background: var\(--nav-active-bg\);/.test(on), '円が反転トークンでない (帯の上で目立たない)');
-        assert.ok(/border: 5px solid var\(--nav-ring\)/.test(on), '地の色で切っていない (帯から飛び出して見えない)');
-        assert.ok(/--nav-ring:/.test(nav), 'リングの色を持っていない');
+        // ★ 2026-09-10: 帯から飛び出す円をやめ、**色の斑点**にした (ユーザー要望)
+        assert.ok(!/top: -26px;/.test(html), '飛び出す円が残っている');
+        const dot = html.match(/\.bottom-nav-btn::after \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/border-radius: 50%;/.test(dot) && /width: 5px; height: 5px;/.test(dot), '斑点が無い');
+        assert.ok(/order: 3;/.test(dot), '斑点がアイコン・名前より下に来ていない');
+        assert.ok(/\.bottom-nav-btn\.active::after \{ background: var\(--nav-accent\)\}/.test(html),
+            '選択中に斑点が色づかない');
+        // 飛び出しが無くなったので、下端の余白も張り出しぶんを含めない
+        assert.ok(/padding-bottom: calc\(92px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が張り出し前提のまま');
         // ★ センターだけ特別、ではなくなった — 大丸の指定が残っていると2つ持ち上がる
         assert.ok(!/\.bottom-nav-btn\.nav-home \.nav-icon-wrap \{[^}]*width: 60px/.test(html), 'センターの大丸が残っている');
         assert.ok(!/\.bottom-nav-btn\.nav-home\.active/.test(html), 'センターだけ別の見た目になっている');
         // 自動隠しと下端の余白は据え置き (張り出しぶんを含む)
         assert.ok(/\.bottom-nav\.nav-hidden \{/.test(html), '自動隠しが消えている');
-        assert.ok(/padding-bottom: calc\(112px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が足りない');
+
     });
     test('★ バーストの色を読める形にして使う (_burstInk / _burstOnBg)', () => {
         // ★ 色をそのまま文字にしない。B2 の黄色 #F2B705 は白地でも白文字でも 1.8:1 で読めない。

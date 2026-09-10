@@ -204,11 +204,17 @@ await testAsync('extras 待機中に opsStore.invalidate() (凸登録等) が走
 });
 // toggleOpsMode 本体を切り出して実行 (OFF 側で _mb.gen を進める実装そのものを検証する)
 globalThis._applyOpsMode = () => {};
+// 運営モードは名乗っている人ごとに覚える (2026-09-10)。ここでは記憶そのものは対象外なので黙らせる
+globalThis._rememberOpsMode = () => {};
+globalThis.showNotification = () => {};
 globalThis._applyOpsCardStates = () => {};      // 戦況タブの折りたたみ (toggleOpsMode が呼ぶ。ここでは対象外)
 globalThis._renderOpsCockpitSoon = () => {};
 globalThis.showNotification = () => {};
 globalThis._invalidateTabRenderCache = () => {};
 globalThis.renderOpsMemberStatus = renderOpsMemberStatus;
+// ★ 後始末は _afterOpsModeChanged に切り出されている (toggle と身元切替で同じ道を通すため)。
+//   OFF 側で _mb.gen を進めるのはそちら側なので、両方を取り込む
+globalThis._afterOpsModeChanged = eval(`(${extract('        function _afterOpsModeChanged(').trim()})`);
 const toggleOpsMode = eval(`(${extract('        function toggleOpsMode(').trim()})`);
 await testAsync('extras 待機中に toggleOpsMode() で運営OFF になったら、隠れた盤面を更新しない (ON に戻すときは世代を進めない)', async () => {
     Object.assign(_mb, { phase: null, filter: 'todo', sort: 'why', rows: [], players: null, extras: null, season: null, gen: 0 });

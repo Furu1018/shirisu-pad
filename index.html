@@ -116,8 +116,10 @@
             --nav-ink: #F3F5F7;
             --nav-dim: #A7AEB6;
             --nav-line: rgba(255,255,255,0.14);
-            --nav-active-bg: #FFFFFF;
-            --nav-active-ink: #14161A;
+            /* 選択中の斑点。帯 (#1B1E23) の上で目立つ色 */
+            --nav-accent: #7FD1FF;
+            /* ガラス (半透明 + ぼかし) 用。--nav-surface と同じ色を rgb で持つ */
+            --nav-surface-rgb: 27, 30, 35;
 
             /* 地とカード */
             --bg: #F1F3F6;
@@ -240,8 +242,8 @@
             --nav-ink: #14161A;
             --nav-dim: #5C626A;
             --nav-line: rgba(20,22,26,0.12);
-            --nav-active-bg: #14161A;
-            --nav-active-ink: #FFFFFF;
+            --nav-accent: #1A5FD0;   /* 白い帯の上で 4.5:1 以上 */
+            --nav-surface-rgb: 238, 241, 244;
 
             /* 地とカード */
             --bg: #0E1013;
@@ -494,7 +496,7 @@
         @media (max-width: 767px) {
             .hamburger-btn { display: none; }   /* モバイルでは下メニューに統一 */
             .pc-only { display: none !important; }
-            body { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }      /* 浮きナビ + センター🏠の張り出しぶんの余白 */
+            body { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }      /* 浮きナビ (斑点式なので張り出し無し) */
         }
 
         /* ========== Bottom Navigation (mobile) — HomeMind 黒ブロブ (2026-07-24 基調刷新) ==========
@@ -507,7 +509,6 @@
            ★ 円のまわりのリングは地の色で切る。地はマーブル (ほぼ白) なので --nav-ring で近い色を持つ。
            ★ センターが特別、ではなくなった (nav-home は互換のため残すが見た目の差は無い)。 */
         .bottom-nav {
-            --nav-ring: var(--bg);   /* 円を地の色で切って、帯から飛び出して見せる */
             display: none;
             position: fixed;
             left: 14px; right: 14px;
@@ -526,16 +527,29 @@
             will-change: transform}
         /* スクロール方向連動の自動隠し: 下スクロールで画面外へ、少し戻すと出現 (_initNavAutoHide) */
         .bottom-nav.nav-hidden {
-            transform: translateY(calc(100% + 64px)) translateZ(0);   /* 🏠の張り出し+セーフエリアぶん余分に */
+            transform: translateY(calc(100% + 40px)) translateZ(0);   /* セーフエリアと影のぶん余分に */
         }
         @media (max-width: 767px) {
             .bottom-nav { display: flex; }
+        }
+        /* ★ 近ごろの iPhone にならった「ウェットガラス」(2026-09-10 ユーザー要望)。
+           半透明 + 背面ぼかしで、下の内容がうっすら透ける。
+           ★ backdrop-filter に対応していない端末では**べた塗りのまま**にする —
+             半透明だけ効くと、文字が下の内容と重なって読めなくなる */
+        @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+            .header, .bottom-nav {
+                background: rgba(var(--nav-surface-rgb), 0.72);
+                -webkit-backdrop-filter: blur(22px) saturate(180%);
+                backdrop-filter: blur(22px) saturate(180%);
+                /* ガラスの縁。上辺の細い明るい線で厚みを出す */
+                border: 1px solid var(--nav-line);
+            }
         }
         .bottom-nav-btn {
             position: relative;
             flex: 1 1 0;
             min-width: 0;
-            height: 42px;
+            height: 48px;                 /* アイコン + 名前 + 斑点 */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -563,20 +577,21 @@
         .bottom-nav-btn .nav-icon-wrap { order: 1; }
         .bottom-nav-btn .nav-lb { order: 2; line-height: 1; white-space: nowrap; }
         .bottom-nav-btn:hover { color: var(--nav-ink)}
-        /* いま居るタブ: 黒い円で持ち上げ、名前を太字にする */
+        /* ★ いま居るタブ: 帯から飛び出す円をやめ、**色の斑点**だけにした
+           (2026-09-10 ユーザー要望)。持ち上げると帯の外に出るぶん場所を食い、
+           下端の余白も余計に要る。斑点なら帯の中で完結する */
         .bottom-nav-btn.active { color: var(--nav-ink); font-weight: 900}
-        .bottom-nav-btn.active .nav-icon-wrap {
-            position: absolute;
-            top: -26px;
-            width: 46px; height: 46px;
+        .bottom-nav-btn.active svg { stroke-width: 2.2; }
+        .bottom-nav-btn::after {
+            content: '';
+            order: 3;                     /* アイコン(1) → 名前(2) → 斑点(3) */
+            width: 5px; height: 5px;
             border-radius: 50%;
-            background: var(--nav-active-bg);
-            border: 5px solid var(--nav-ring);   /* 地の色で切って、帯から飛び出して見せる */
-            box-shadow: 0 6px 16px rgba(20,22,26,0.26);
-            color: var(--nav-active-ink)}
-        .bottom-nav-btn.active svg { width: 21px; height: 21px; stroke-width: 2; }
+            background: transparent;
+            margin-top: 3px;
+            transition: background 0.15s ease}
+        .bottom-nav-btn.active::after { background: var(--nav-accent)}
         /* センターが特別、ではなくなった (クラスは互換のため残す) */
-        .bottom-nav-btn.nav-home .nav-icon-wrap { margin-top: 0; }
         @media (prefers-reduced-motion: reduce) {
             .bottom-nav, .bottom-nav-btn { transition: none; }
         }
@@ -6797,9 +6812,9 @@
         // ※ タブ追加時に必要な残作業 (HTML: tab-content div / bottom-nav / tab-button / drawer、
         //    CSS: マーブル背景・.container 列挙) は Stage3 で削減予定 — 現状は併せて追加すること
         const TAB_REGISTRY = [
+            { name: 'mypage',       render: () => renderMyPage(),                  swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },
             { name: 'mock',         render: () => renderMockTab(),                 swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },   // 模擬 (Stage2 新設)
             { name: 'ops',          render: () => renderOpsDashboard(),            swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 15_000 },   // ボスHP/coordはポーリングで別途更新
-            { name: 'mypage',       render: () => renderMyPage(),                  swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 30_000 },
             { name: 'ranking',      render: null,                                  swipe: true,  prerender: true,  ptr: false, renderTtlMs: 300_000 },  // 描画/PTRとも専用経路 (autoLoadData)
             { name: 'slv-ranking',  render: () => renderFururiRanking(),           swipe: true,  prerender: true,  ptr: true,  renderTtlMs: 300_000, navTab: 'ranking' },
             { name: 'help',         render: null,                                  swipe: false, prerender: false, ptr: false, renderTtlMs: null },     // 静的
@@ -6952,6 +6967,9 @@
             document.getElementById('heroPlanStrip')?.remove();
             const _pubCard = document.getElementById('myPublishedPlanCard');
             if (_pubCard) _pubCard.style.display = 'none';
+            // ★ 運営モードも「その人の記憶」に切り替える (2026-09-10)。
+            //   前の人の ON を引き継ぐと、名乗り直したのに他人の設定で開くことになる
+            if (typeof _applyOpsModeForIdentity === 'function') _applyOpsModeForIdentity();
             // プレイヤー固有データを使うタブのキャッシュを無効化
             if (typeof _invalidateTabRenderCache === 'function') {
                 _invalidateTabRenderCache('mypage');
@@ -25101,8 +25119,36 @@
         //   URL を知っていれば UI を介さず REST API を直接叩ける。UI 側で何を隠しても保護にはならない。
         //   本当に保護が要る日が来たら Supabase Auth + RLS を auth.uid() ベースに差し替える
         //   (02_rls.sql 冒頭に移行手順あり)。UI は最後まで補助でしかない。
-        // 運営モードは常に OFF で起動する (前回 ON でも引き継がない = 誤操作防止 + 通常メンバーの初期表示をすっきり)。
-        // セッション中の切り替えは _opsMode 変数だけで保持し、localStorage には残さない。
+        // 運営モードは**名乗っている人ごとに**覚える (2026-09-10 ユーザー決定)。
+        //   「ふるり で名乗ったら運営ON、OFF にしたら次回も OFF」。
+        //   ★ 端末ごとではなく人ごと — 同じ端末を家族と使う / 別の人が名乗る、で混ざらないように。
+        //   ★ 名乗っていないうちは常に OFF (誰の設定か決められないので覚えない)。
+        //   ⚠️ これは認可ではない (上のコメント参照)。覚えても安全性は変わらない —
+        //     UI で隠しても REST は直接叩けるため。手間を減らすためだけの記憶。
+        const OPS_MODE_KEY = 'shirisuko_ops_mode_v1';
+        /** @returns {Object<string, boolean>} プレイヤーid → 運営モード */
+        function _opsModeMap() {
+            try {
+                const raw = localStorage.getItem(OPS_MODE_KEY);
+                const o = raw ? JSON.parse(raw) : null;
+                return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+            } catch { return {}; }
+        }
+        /** いま名乗っている人の記憶。名乗っていなければ false */
+        function _opsModeForCurrent() {
+            const me = getCurrentIdentity();
+            if (!me || me.id == null) return false;
+            return _opsModeMap()[String(me.id)] === true;
+        }
+        function _rememberOpsMode(on) {
+            const me = getCurrentIdentity();
+            if (!me || me.id == null) return;   // 名乗っていない = 誰の設定か決められない
+            try {
+                const m = _opsModeMap();
+                if (on) m[String(me.id)] = true; else delete m[String(me.id)];
+                localStorage.setItem(OPS_MODE_KEY, JSON.stringify(m));
+            } catch { /* 保存できなくてもセッション中は _opsMode で成立する */ }
+        }
         let _opsMode = false;
         function _opsJump(id) {
             const card = document.getElementById(id);
@@ -25130,7 +25176,22 @@
         }
         function toggleOpsMode() {
             _opsMode = !_opsMode;
-            // 永続化しない: 次回起動は必ず OFF から (誤操作防止)
+            _rememberOpsMode(_opsMode);   // 名乗っている人ごとに覚える (名乗っていなければ覚えない)
+            _afterOpsModeChanged();
+            showNotification(_opsMode ? '🛠 運営モードON — 操作パネルを表示します' : '運営モードOFF — 操作パネルを隠しました');
+        }
+        /**
+         * 名乗っている人の記憶に合わせる。名乗り直しと起動時に通す。
+         * ★ 記憶を書かない — 読むだけ (書くのは toggleOpsMode の役目)
+         */
+        function _applyOpsModeForIdentity() {
+            const want = _opsModeForCurrent();
+            if (want === _opsMode) { _applyOpsMode(); return; }   // 見た目だけ念のため合わせる
+            _opsMode = want;
+            _afterOpsModeChanged();
+        }
+        /** 運営モードが変わったあとの後始末。★ toggle と身元切替で同じ道を通す */
+        function _afterOpsModeChanged() {
             _applyOpsMode();
             if (typeof _opsEtcRendered !== 'undefined') _opsEtcRendered = false;  // 「その他 › メンテナンス」は次に開いたときに描き直す (切り出し実行テストでは未定義)
             _applyOpsCardStates();   // 運営OFF は全カード全開 / ON は前日・当日の既定 + 記憶
@@ -25157,7 +25218,6 @@
                 && typeof renderOpsMemberStatus === 'function') {
                 renderOpsMemberStatus();
             }
-            showNotification(_opsMode ? '🛠 運営モードON — 操作パネルを表示します' : '運営モードOFF — 操作パネルを隠しました');
         }
         // ---- 戦況タブの折りたたみ (前日/当日の既定 + 手動開閉の記憶) と最上部コックピット ----
         //   純ロジック (定義・開閉の解決・サマリー・コックピット値) は js/domain/opsLayout.js。
@@ -25613,6 +25673,8 @@
                 rem.insertAdjacentElement('afterend', link);
             }
             _initOpsEtc();           // 「その他」(段階外のカード + 設定タブから移した運営ブロック)
+            // ★ 名乗っている人の記憶を当てる (2026-09-10)。名乗っていなければ OFF のまま
+            _opsMode = _opsModeForCurrent();
             _applyOpsMode();
             _applyOpsCardStates();   // 初期表示 (シーズン未取得 = 前日の既定。盤面取得後に renderOpsDashboard が再適用)
             _renderOpsStage();       // 段階ヘッダ・ヒーロー・チェックリスト (盤面が来たらコックピットと一緒に描き直す)
