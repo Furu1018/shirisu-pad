@@ -138,6 +138,49 @@
             --attr-wind-ink: #000000;
             --attr-wind-bg: #e8f9f0;
             --attr-wind-on: #107e45;
+            /* 色つきの塗りの上に乗る文字。塗りは両テーマで同じ色なので、これも同じ */
+            --on-fill: #FFFFFF;
+            /* ブランドのグラデーション。塗りなので両テーマで同じ */
+            --grad-ops-a: #7A5AF8;
+            --grad-ops-b: #5B2BE0;
+            --grad-ok-a: #0E9455;
+            --grad-ok-b: #0B6E41;
+            --grad-bad-a: #FF5A52;
+            --grad-bad-b: #E8261F;
+            /* 濃いヒーロー / 黒ラベルのボタン。★ テーマで反転する (ダークで暗いままだと地に沈む) */
+            --grad-dark-a: #23262C;
+            --grad-dark-b: #101114;
+            --grad-btn-a: #2A2A2A;
+            --grad-btn-b: #0E0E0E;
+            --grad-btn-ink: #FFFFFF;
+            /* 濃いヒーローの上のアクセント。ヒーローは両テーマとも濃いので、これも同じ */
+            --hero-line-ops: #A99CFF;
+            --hero-line-warn: #FFC46B;
+            --hero-text-ops: #C3B2FF;
+            --hero-text-warn: #FFD28A;
+            /* そのほかの塗り */
+            --fill-muted: #5A6068;
+            --toast-bg: #151A26;
+            --toast-ink: #FFFFFF;
+            --marble-a: #EAF2F5;
+            --marble-b: #EEF3F6;
+            /* ページの地 (マーブルのグラデーション)。★ テーマで反転する */
+            --marble-base: #F5F6F8;
+            --page-a: #ffffff;
+            --page-b: #f5f6f8;
+            --page-c: #eceef1;
+            /* 地に重ねるごく薄いベール。★ ライトは黒、ダークは白 */
+            --veil-a: rgba(20,22,26,0.018);
+            --veil-b: rgba(20,22,26,0.022);
+            /* --t-ink を塗りに使ったときの、その上の文字 (= --card と同じ役割の薄い版) */
+            --on-ink-soft: rgba(255,255,255,0.55);
+            /* 重複マーカー (2人目/3人目)。塗りではなく輪郭なので両テーマで同じ */
+            --dup-2: #E91E63;
+            --dup-3: #00BCD4;
+            /* BlaBlaLINK のブランド色。よそのサービスの色なので両テーマで同じ */
+            --bbl-a: #F1601E;
+            --bbl-b: #C8341A;
+            --bbl-ring: #E8B048;
         }
         :root[data-theme="dark"] {
             /* 地とカード */
@@ -214,6 +257,49 @@
             --attr-wind-ink: #000000;
             --attr-wind-bg: #173b2d;
             --attr-wind-on: #18c26b;
+            /* 色つきの塗りの上に乗る文字。塗りは両テーマで同じ色なので、これも同じ */
+            --on-fill: #FFFFFF;
+            /* ブランドのグラデーション。塗りなので両テーマで同じ */
+            --grad-ops-a: #7A5AF8;
+            --grad-ops-b: #5B2BE0;
+            --grad-ok-a: #0E9455;
+            --grad-ok-b: #0B6E41;
+            --grad-bad-a: #FF5A52;
+            --grad-bad-b: #E8261F;
+            /* 濃いヒーロー / 黒ラベルのボタン。★ ダークでは地より**明るく**して浮かせる */
+            --grad-dark-a: #2E333B;
+            --grad-dark-b: #232830;
+            --grad-btn-a: #F2F4F6;
+            --grad-btn-b: #D8DCE1;
+            --grad-btn-ink: #14161A;
+            /* 濃いヒーローの上のアクセント。ヒーローは両テーマとも濃いので、これも同じ */
+            --hero-line-ops: #A99CFF;
+            --hero-line-warn: #FFC46B;
+            --hero-text-ops: #C3B2FF;
+            --hero-text-warn: #FFD28A;
+            /* そのほかの塗り */
+            --fill-muted: #8A9198;
+            --toast-bg: #2A3040;
+            --toast-ink: #FFFFFF;
+            --marble-a: #141A1D;
+            --marble-b: #12181B;
+            /* ページの地 (マーブルのグラデーション)。★ テーマで反転する */
+            --marble-base: #0E1013;
+            --page-a: #15181d;
+            --page-b: #101216;
+            --page-c: #0b0d10;
+            /* 地に重ねるごく薄いベール。★ ライトは黒、ダークは白 */
+            --veil-a: rgba(255,255,255,0.022);
+            --veil-b: rgba(255,255,255,0.028);
+            /* --t-ink を塗りに使ったときの、その上の文字 (= --card と同じ役割の薄い版) */
+            --on-ink-soft: rgba(23,25,29,0.62);
+            /* 重複マーカー (2人目/3人目)。塗りではなく輪郭なので両テーマで同じ */
+            --dup-2: #E91E63;
+            --dup-3: #00BCD4;
+            /* BlaBlaLINK のブランド色。よそのサービスの色なので両テーマで同じ */
+            --bbl-a: #F1601E;
+            --bbl-b: #C8341A;
+            --bbl-ring: #E8B048;
         }
         :root {
             /* === マーブル × エレガンス ブランドトークン === */
@@ -257,15 +343,15 @@
             font-family: var(--font-body);
             background:
                 /* マーブルの脈動 (淡水色) */
-                radial-gradient(800px 500px at 100% 0%, #eaf2f5 0%, transparent 55%),
-                radial-gradient(700px 420px at 0% 80%, #eef3f6 0%, transparent 55%),
+                radial-gradient(800px 500px at 100% 0%, var(--marble-a) 0%, transparent 55%),
+                radial-gradient(700px 420px at 0% 80%, var(--marble-b) 0%, transparent 55%),
                 radial-gradient(500px 300px at 50% 50%, rgba(212, 216, 220, 0.15) 0%, transparent 60%),
                 /* 銀のラメ感を SVG ノイズで添える */
                 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.82  0 0 0 0 0.85  0 0 0 0 0.88  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
-                #F5F6F8;
+                var(--marble-base);
             background-attachment: fixed;
             background-size: auto, auto, auto, 280px 280px, auto;
-            color: #14161A;
+            color: var(--t-ink);
             line-height: 1.55;
             font-size: 15px;
             font-feature-settings: 'cv11', 'ss01', 'ss02';
@@ -371,7 +457,7 @@
            ★ 円のまわりのリングは地の色で切る。地はマーブル (ほぼ白) なので --nav-ring で近い色を持つ。
            ★ センターが特別、ではなくなった (nav-home は互換のため残すが見た目の差は無い)。 */
         .bottom-nav {
-            --nav-ring: #F1F3F6;
+            --nav-ring: var(--bg);
             display: none;
             position: fixed;
             left: 14px; right: 14px;
@@ -479,7 +565,7 @@
         .dc-upload .dc-upload-text { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; color: var(--t-ink)}
         .dc-upload .dc-upload-btn {
             flex: none; padding: 7px 13px; border-radius: 999px;
-            background: linear-gradient(180deg, #7A5AF8, #5B2BE0); color: #fff;
+            background: linear-gradient(180deg, var(--grad-ops-a), var(--grad-ops-b)); color: var(--on-fill);
             font-size: 11px; font-weight: 800; box-shadow: 0 2px 6px rgba(108,66,240,0.35)}
         /* ops タブ: セクションジャンプ + 運営モード */
         .dc-nav-chip {
@@ -521,9 +607,9 @@
         .ops-stage-sub { font-size: 10.5px; font-weight: 800; color: var(--t-muted); margin: 0 2px 8px}
         .ops-stage-auto { font: inherit; font-size: 10.5px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border: none; border-radius: 999px; padding: 3px 10px; cursor: pointer}
         .ops-stage-auto.muted { color: var(--t-muted); background: transparent; padding: 0}
-        .ops-stage-hero { border-radius: 14px; padding: 14px 14px 13px; background: linear-gradient(135deg,#7A5AF8,#5B2BE0); color: #fff; margin-bottom: 10px; box-shadow: 0 8px 22px rgba(91,43,224,0.22)}
-        .ops-stage-hero.day { background: linear-gradient(135deg,#23262C,#101114); box-shadow: 0 8px 22px rgba(0,0,0,0.22)}
-        .ops-stage-hero.end { background: linear-gradient(135deg,#0E9455,#0B6E41); box-shadow: 0 8px 22px rgba(14,148,85,0.22)}
+        .ops-stage-hero { border-radius: 14px; padding: 14px 14px 13px; background: linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b)); color: var(--on-fill); margin-bottom: 10px; box-shadow: 0 8px 22px rgba(91,43,224,0.22)}
+        .ops-stage-hero.day { background: linear-gradient(135deg,var(--grad-dark-a),var(--grad-dark-b)); box-shadow: 0 8px 22px rgba(0,0,0,0.22)}
+        .ops-stage-hero.end { background: linear-gradient(135deg,var(--grad-ok-a),var(--grad-ok-b)); box-shadow: 0 8px 22px rgba(14,148,85,0.22)}
         .ops-stage-hero .k { font-size: 10.5px; font-weight: 900; letter-spacing: .06em; opacity: .8; margin-bottom: 4px; }
         .ops-stage-hero .h { font-size: 15px; font-weight: 900; line-height: 1.4; }
         .ops-stage-hero .s { font-size: 11.5px; opacity: .85; margin-top: 4px; line-height: 1.6; font-weight: 700; }
@@ -679,7 +765,7 @@
         .gv-tile .wrap { position: relative; line-height: 0; }
         .gv-ic { border-radius: 12px; background: var(--t-ink); object-fit: cover; display: block;
             border: 2.5px solid transparent}
-        .gv-ph { display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 15px}
+        .gv-ph { display: grid; place-items: center; color: var(--card); font-weight: 900; font-size: 15px}
         .gv-tile[aria-pressed="true"] .gv-ic { border-color: var(--t-ink)}
         .gv-tile .cn { font-size: 9px; font-weight: 800; color: var(--t-muted); max-width: 100%; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap; line-height: 1.3}
@@ -698,7 +784,7 @@
            どの色でも点の輪郭がはっきり出る。押した黒地では縁が沈み、明るい点だけが残る */
         .gv-pills button.gv-b { display: inline-flex; align-items: center; gap: 5px; }
         .gv-pills button.gv-b .dot { width: 8px; height: 8px; border-radius: 50%; flex: none;
-            background: var(--b-c, #8A9097); box-shadow: 0 0 0 1px rgba(20,22,26,0.55)}
+            background: var(--b-c, var(--ghost)); box-shadow: 0 0 0 1px rgba(20,22,26,0.55)}
         .gv-attrs button img { width: 19px; height: 19px; display: block; }
         .gv-attrs button.gv-a { padding: 5px 8px; }
         .gv-pills button.gv-dps { border-color: var(--ops-solid); color: var(--ops-deep)}
@@ -857,7 +943,7 @@
         }
         .dc-dmg-panel.planpick {
             border: 1.5px solid var(--pkB);
-            background: linear-gradient(180deg, var(--pkC), #F9FAFB 60%);
+            background: linear-gradient(180deg, var(--pkC), var(--s1) 60%);
             animation: planPickGlow 2.6s ease-in-out infinite}
         /* 属性アイコンの周りを属性色でぼんやり光らせる (実機FB 2026-08-07:
            回転はイメージと違ったので静的な光に変更)。ラッパの ::before に
@@ -1091,8 +1177,8 @@
         .btn-primary,
         button[style*="background:#14161A"],
         button[style*="background: #14161A"] {
-            background: linear-gradient(180deg, #2a2a2a 0%, var(--brand-primary) 100%) !important;
-            color: #fff !important;
+            background: linear-gradient(180deg, var(--grad-btn-a) 0%, var(--grad-btn-b) 100%) !important;
+            color: var(--grad-btn-ink) !important;
             border: none !important;
             box-shadow: var(--shadow-btn)}
         /* Outline button hover: 淡シルバー背景 (旧 --md-sys-color-surface 一致の後継)。
@@ -1107,8 +1193,8 @@
             padding: 10px 18px;
             border: 1px solid var(--t-ink);
             border-radius: var(--radius-sm);
-            background: linear-gradient(180deg, #2a2a2a 0%, #0e0e0e 100%);
-            color: #fff;
+            background: linear-gradient(180deg, var(--grad-btn-a) 0%, var(--grad-btn-b) 100%);
+            color: var(--grad-btn-ink);
             font-family: var(--font-body);
             font-size: 13px;
             font-weight: 700;
@@ -1129,7 +1215,7 @@
         .btn-elegant:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0,0,0,0.18); }
         .btn-elegant:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-elegant.is-light {
-            background: linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%);
+            background: linear-gradient(180deg, var(--card) 0%, var(--s1) 100%);
             color: var(--brand-primary);
             border-color: var(--brand-silver);
             box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 10px -4px rgba(112,144,168,0.20)}
@@ -1158,8 +1244,8 @@
             letter-spacing: 0.05em;
             text-transform: uppercase}
         .badge-elegant.is-silver {
-            background: linear-gradient(135deg, #f4f6f8, #d4d8dc);
-            color: #1a1a1a;
+            background: linear-gradient(135deg, var(--s1), var(--track));
+            color: var(--t-ink);
             border: 1px solid var(--brand-silver)}
         .badge-elegant.is-attr-fire    { background: var(--attr-fire);     }
         .badge-elegant.is-attr-water   { background: var(--attr-water);    }
@@ -1280,7 +1366,7 @@
             background: var(--fa); border-color: var(--fa);
             box-shadow: 0 4px 12px rgba(20, 22, 26, 0.18);
         }
-        .fsim-attr-btn.active .fsim-attr-name { color: #fff}
+        .fsim-attr-btn.active .fsim-attr-name { color: var(--on-fill)}
         .fsim-attr-btn.active .fsim-attr-vs { color: rgba(255, 255, 255, 0.88); }
         .fsim-attr-btn.active .fsim-attr-vs img { opacity: 1; }
 
@@ -1609,7 +1695,7 @@
 
         .modal-damage-summary {
             padding: 14px 15px;
-            background: linear-gradient(180deg, #F7F8F9, #F1F3F5);
+            background: linear-gradient(180deg, var(--s1), var(--s2));
             border: 1px solid rgba(20,22,26,0.05);
             border-radius: 15px;
             margin-bottom: 18px;
@@ -1631,7 +1717,7 @@
             align-items: center;
             gap: 7px;
             padding: 9px 12px;
-            background: linear-gradient(180deg, var(--comp-bg, #F7F8F9), transparent)}
+            background: linear-gradient(180deg, var(--comp-bg, var(--s1)), transparent)}
 
         .comp-boss-header img { width: 18px; height: 18px; }
 
@@ -1805,8 +1891,8 @@
             top: calc(env(safe-area-inset-top, 0px) + 12px);
             left: 50%;
             transform: translateX(-50%) translateY(-180%);
-            background: hsl(222.2 47.4% 11.2%);
-            color: #fff;
+            background: var(--toast-bg);
+            color: var(--toast-ink);
             padding: 12px 24px;
             border-radius: 24px;
             font-size: 14px;
@@ -1873,7 +1959,7 @@
             border-radius: 20px;
             border: 2px solid var(--btn-color);
             background: var(--btn-color);
-            color: #fff;
+            color: var(--on-fill);
             font-size: 13px;
             font-weight: 700;
             cursor: pointer;
@@ -1927,12 +2013,12 @@
             position: fixed; inset: 0; z-index: 10000;
             display: flex; flex-direction: column;
             font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
-            color: #14161A;
+            color: var(--t-ink);
             animation: tour-fade 0.22s ease-out;
             background:
-                radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
-                radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
-                radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1)}
+                radial-gradient(60% 42% at 82% 16%, var(--veil-a), transparent 60%),
+                radial-gradient(50% 34% at 8% 72%, var(--veil-b), transparent 62%),
+                radial-gradient(135% 100% at 14% -12%, var(--page-a), var(--page-b) 54%, var(--page-c))}
         #tourOverlay .tour-topbar {
             display: flex; align-items: center; justify-content: space-between;
             padding: calc(env(safe-area-inset-top, 10px) + 12px) 18px 12px;
@@ -1989,7 +2075,7 @@
             padding: 5px 13px; border-radius: 999px;
             background: rgba(255,255,255,0.22);
             backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            font-size: 10.5px; font-weight: 900; color: #fff; letter-spacing: 1.5px}
+            font-size: 10.5px; font-weight: 900; color: var(--on-fill); letter-spacing: 1.5px}
         #tourOverlay .tour-hero-label-dot {
             width: 7px; height: 7px; border-radius: 50%; background: var(--card);
             animation: tour-pulse-dot 1.4s ease-in-out infinite}
@@ -2000,7 +2086,7 @@
         #tourOverlay .tour-mini-row { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
         #tourOverlay .tour-mini-avatar {
             width: 18px; height: 18px; border-radius: 50%;
-            background: linear-gradient(140deg, #7A5AF8, #5B2BE0)}
+            background: linear-gradient(140deg, var(--grad-ops-a), var(--grad-ops-b))}
         #tourOverlay .tour-mini-bar { flex: 1; height: 6px; background: var(--s2); border-radius: 3px}
         #tourOverlay .tour-mini-tiles { display: flex; gap: 4px; margin-bottom: 7px; }
         #tourOverlay .tour-mini-tile { flex: 1; height: 36px; border-radius: 7px; }
@@ -2043,7 +2129,7 @@
         #tourOverlay .tour-next-btn {
             position: relative; overflow: hidden;
             padding: 12px 22px; border-radius: 11px; cursor: pointer;
-            font-size: 13.5px; font-weight: 900; color: #fff;
+            font-size: 13.5px; font-weight: 900; color: var(--on-fill);
             border: none; letter-spacing: 0.3px; font-family: inherit;
             animation: tour-glow 2.6s ease-in-out infinite}
         #tourOverlay .tour-next-btn::after {
@@ -2068,7 +2154,7 @@
             100% { background: var(--s1); border-color: rgba(20,22,26,0.05); box-shadow: none; transform: scale(1)}
         }
         @keyframes tour-flow-num-cycle {
-            0%,25%   { background: var(--fc); color: #fff; transform: scale(1.1)}
+            0%,25%   { background: var(--fc); color: var(--on-fill); transform: scale(1.1)}
             34%,100% { background: var(--line); color: var(--t-muted); transform: scale(1)}
         }
         @keyframes tour-flow-arrow { 0%,100% { opacity: .3; transform: translateY(-1px); } 50% { opacity: 1; transform: translateY(1px); } }
@@ -2151,10 +2237,10 @@
            (help は意図的に非対象なので付けていない) */
         .tab-page.tab-content.active {
             background:
-                radial-gradient(60% 42% at 82% 16%, rgba(20,22,26,0.018), transparent 60%),
-                radial-gradient(50% 34% at 8% 72%, rgba(20,22,26,0.022), transparent 62%),
-                linear-gradient(125deg, transparent 45%, rgba(20,22,26,0.022) 47%, transparent 49%),
-                radial-gradient(135% 100% at 14% -12%, #ffffff, #f5f6f8 54%, #eceef1);
+                radial-gradient(60% 42% at 82% 16%, var(--veil-a), transparent 60%),
+                radial-gradient(50% 34% at 8% 72%, var(--veil-b), transparent 62%),
+                linear-gradient(125deg, transparent 45%, var(--veil-b) 47%, transparent 49%),
+                radial-gradient(135% 100% at 14% -12%, var(--page-a), var(--page-b) 54%, var(--page-c));
             min-height: 100vh}
         .tab-page .container {
             display: flex; flex-direction: column; gap: 14px;
@@ -2170,9 +2256,9 @@
         .ma-grad-btn {
             position:relative; overflow:hidden; border:none; cursor:pointer;
             padding:11px 16px; border-radius:11px;
-            background:linear-gradient(180deg,#7A5AF8,#5B2BE0);
+            background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));
             box-shadow:0 4px 12px rgba(108,66,240,0.26);
-            color:#fff; font-size:12.5px; font-weight:900; letter-spacing:0.3px;
+            color:var(--on-fill); font-size:12.5px; font-weight:900; letter-spacing:0.3px;
             font-family:inherit; text-shadow:0 1px 2px rgba(0,40,90,0.4)}
         .ma-grad-btn::before {
             content:''; position:absolute; inset:0;
@@ -2221,9 +2307,9 @@
             border-color: transparent;
             box-shadow: 0 0 0 1px var(--_attr-c, var(--attr-fire-solid)),
                         0 8px 20px -4px color-mix(in srgb, var(--_attr-c, var(--attr-fire-solid)) 45%, transparent)}
-        .dc-boss-card.has-combat .js-bnum { color: #fff !important}
-        .dc-boss-card.has-combat .js-name { color: rgba(255,255,255,0.55) !important; }
-        .dc-boss-card.has-combat .js-pct { color: #fff !important}
+        .dc-boss-card.has-combat .js-bnum { color: var(--card) !important}
+        .dc-boss-card.has-combat .js-name { color: var(--on-ink-soft) !important; }
+        .dc-boss-card.has-combat .js-pct { color: var(--card) !important}
         .dc-boss-card.has-combat .js-hptext { color: rgba(255,255,255,0.55) !important; }
         .dc-boss-card.has-combat .js-bartrack { background: rgba(255,255,255,0.16) !important; }
         .dc-boss-card.has-combat [data-action="boss-edit"] { background: var(--t-ink) !important; color: var(--t-muted) !important}
@@ -2310,9 +2396,9 @@
         }
         .dc-rem-attr[data-on="1"] {
             background: var(--attr-c);
-            color: #fff;
+            color: var(--on-fill);
             box-shadow: 0 3px 8px color-mix(in srgb, var(--attr-c) 35%, transparent)}
-        .dc-rem-attr[data-attr-filter=""][data-on="1"] { background: var(--t-ink); box-shadow: none}
+        .dc-rem-attr[data-attr-filter=""][data-on="1"] { background: var(--t-ink); color: var(--card); box-shadow: none}
 
         /* === 残り戦闘可能メンバー: 表領域 === */
         .dc-rem-attr-header {
@@ -2374,7 +2460,7 @@
         .dc-rem-fav-chip {
             width: 14px; height: 14px; border-radius: 4px; flex: none;
             display: flex; align-items: center; justify-content: center;
-            font-size:10px; font-weight: 900; color: #fff}
+            font-size:10px; font-weight: 900; color: var(--on-fill)}
 
         /* === 共通: 詰めカード + テーブル === */
         .dc-card-tight { padding: 12px 14px; }
@@ -2457,7 +2543,7 @@
             animation: btnNikkeShimmer 2.8s ease-in-out infinite;
         }
         .btn-nikke-title {
-            position: relative; font-weight: 900; color: #fff;
+            position: relative; font-weight: 900; color: var(--on-fill);
             line-height: 1.1}
 
         /* 青: 模擬戦データ提出 (コンパクトピル, タイトル行に配置 / 静的 — 戦闘ボタンの脈動を引き立てる) */
@@ -2466,7 +2552,7 @@
             box-shadow: 0 4px 11px rgba(108,66,240,0.28);
         }
         .btn-nikke-blue .btn-nikke-inner {
-            background: linear-gradient(180deg,#7A5AF8,#5B2BE0);
+            background: linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));
             padding: 7px 12px;
             border-radius: 6px;
             display: flex; align-items: center; gap: 5px}
@@ -2484,7 +2570,7 @@
             animation: btnNikkeRedGlow 2.2s ease-in-out infinite;
         }
         .btn-nikke-red .btn-nikke-inner {
-            background: linear-gradient(180deg,#FF5A52,#E8261F);
+            background: linear-gradient(180deg,var(--grad-bad-a),var(--grad-bad-b));
             padding: 16px 0;
             border-radius: 11px}
         .btn-nikke-red .btn-nikke-inner::after {
@@ -2649,7 +2735,7 @@
         .te-band {
             position:absolute; top:0; left:0; right:0; height:14px; z-index:2;
             display:flex; align-items:center; justify-content:center; gap:3px; padding:0 4px;
-            font-size:8.5px; font-weight:900; letter-spacing:0.04em; color:#fff}
+            font-size:8.5px; font-weight:900; letter-spacing:0.04em; color:var(--on-fill)}
         .te-band.split { justify-content:space-between; }
         .te-band .pct { opacity:0.85; font-weight:800; }
         .te-cap {
@@ -2659,7 +2745,7 @@
         .te-tile .te-cap { font-size:9px; color:var(--t-ink)}
         .te-x {
             position:absolute; bottom:2px; right:2px; z-index:3; width:16px; height:16px; border-radius:50%;
-            background:rgba(0,0,0,0.66); color:#fff; font-size:10px; line-height:16px; text-align:center; font-weight:900}
+            background:rgba(0,0,0,0.66); color:var(--on-fill); font-size:10px; line-height:16px; text-align:center; font-weight:900}
         .te-dup {
             position:absolute; bottom:2px; left:2px; z-index:3; width:15px; height:15px; border-radius:5px;
             background:var(--warn-solid); color:var(--warn-ink); font-size:9px; font-weight:900; line-height:15px; text-align:center}
@@ -2668,13 +2754,13 @@
             background:var(--s1); color:var(--t-ink); font:inherit; font-size:13px; font-weight:700; margin:9px 0 8px}
         .te-filters { display:flex; gap:5px; margin-bottom:9px; flex-wrap:wrap; align-items:center; }
         .te-chip { padding:5px 11px; border-radius:999px; border:none; cursor:pointer; font:inherit; font-size:11px; font-weight:900; background:var(--s2); color:var(--t-strong)}
-        .te-chip.on { color:#fff}
+        .te-chip.on { color:var(--on-fill)}
         .te-lock { font-size:10px; font-weight:800; color:var(--ops); margin-left:auto}
         .te-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px 6px; padding:2px; margin:0 -2px; }
         .te-tile.used { opacity:0.34; }
         .te-tile.used .te-thumb::after {
             content:"選択中"; position:absolute; inset:0; display:grid; place-items:center;
-            font-size:9px; font-weight:900; color:#fff; background:rgba(0,0,0,0.5); z-index:4}
+            font-size:9px; font-weight:900; color:var(--on-fill); background:rgba(0,0,0,0.5); z-index:4}
         .te-tile.dup .te-thumb { border-color:var(--warn-solid); border-style:solid}
         .te-more {
             width:100%; margin-top:9px; padding:9px; border-radius:10px; border:1px solid rgba(20,22,26,0.08);
@@ -2725,8 +2811,8 @@
             width:100%; border:none; border-radius:999px; padding:14px; font:inherit; font-size:14px; font-weight:900;
             background:var(--t-ink); color:var(--card); cursor:pointer; box-shadow:0 6px 16px rgba(20,22,26,0.22);
             transition:background .15s ease, box-shadow .15s ease}
-        .te-submit.partial { background:#5A6068; box-shadow:none}
-        .te-submit:disabled { background:var(--track); color:#fff; box-shadow:none; cursor:default}
+        .te-submit.partial { background:var(--fill-muted); box-shadow:none}
+        .te-submit:disabled { background:var(--s2); color:var(--t-muted); box-shadow:none; cursor:default}
         .te-barlinks { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:10.5px; font-weight:800; color:var(--t-muted)}
         .te-resvlink { border:none; background:none; padding:0; font:inherit; font-size:10.5px; font-weight:900; color:var(--ops); cursor:pointer}
         .te-dellink { border:none; background:none; padding:0; margin-left:auto; font:inherit; font-size:10.5px; font-weight:800; color:var(--attr-fire); cursor:pointer}
@@ -2782,7 +2868,7 @@
         .dc-plan-card.on-hero.done { background: rgba(255,255,255,0.045); }
         /* 🔒 予約で固定 (ホーム3枠・2026-09-08): 紫の枠と錠前で「動かない」を示す */
         .dc-plan-card.fixed { border: 1.5px solid var(--ops-solid); background: rgba(108,66,240,0.06)}
-        .dc-plan-card.on-hero.fixed { border-color: #A99CFF; background: rgba(108,66,240,0.22)}
+        .dc-plan-card.on-hero.fixed { border-color: var(--hero-line-ops); background: rgba(108,66,240,0.22)}
         .dc-plan-lock {
             position: absolute; top: 8px; right: 8px; font-size: 9px; font-weight: 900;
             padding: 2px 7px; border-radius: 999px; background: var(--ops-solid); color: var(--ops-ink); letter-spacing: 0.2px}
@@ -2790,10 +2876,10 @@
         .dc-plan-card.fixed.notin .dc-plan-lock { background: var(--warn-solid)}
         /* 置けていない予約 (キャラ被り等): 鍵ではなく ⚠。組み直し待ちとは別物 */
         .dc-plan-card.fixed.unmet { border-color: var(--warn-solid); background: rgba(245,158,11,0.10)}
-        .dc-plan-card.on-hero.fixed.unmet { border-color: #FFC46B; background: rgba(245,158,11,0.22)}
+        .dc-plan-card.on-hero.fixed.unmet { border-color: var(--hero-line-warn); background: rgba(245,158,11,0.22)}
         .dc-plan-card.fixed.unmet .dc-plan-lock { background: var(--warn-solid)}
         .dc-plan-warn { margin-top: 6px; font-size: 9.5px; font-weight: 800; color: var(--warn-deep); line-height: 1.4; white-space: normal}
-        .dc-plan-card.on-hero .dc-plan-warn { color: #FFD28A}
+        .dc-plan-card.on-hero .dc-plan-warn { color: var(--hero-text-warn)}
         /* 空き枠: 破線。理由を日本語で。タップで申請シート */
         .dc-plan-card.empty { border: 1.5px dashed var(--track); background: transparent}
         .dc-plan-card.on-hero.empty { border-color: rgba(255,255,255,0.28); }
@@ -2802,11 +2888,11 @@
         .dc-plan-empty-why { margin-top: 6px; font-size: 10px; font-weight: 700; color: var(--t-body); line-height: 1.5}
         .dc-plan-card.on-hero .dc-plan-empty-why { color: rgba(255,255,255,0.66); }
         .dc-plan-empty-cta { margin-top: 9px; font-size: 10.5px; font-weight: 900; color: var(--ops)}
-        .dc-plan-card.on-hero .dc-plan-empty-cta { color: #C3B2FF}
+        .dc-plan-card.on-hero .dc-plan-empty-cta { color: var(--hero-text-ops)}
         .dc-plan-time {
             font-size: 15px; font-weight: 900; color: var(--t-ink);
             font-variant-numeric: tabular-nums; letter-spacing: -0.3px; line-height: 1}
-        .dc-plan-card.on-hero .dc-plan-time { color: #fff}
+        .dc-plan-card.on-hero .dc-plan-time { color: var(--on-fill)}
         /* 「B3 · 水冷PT」は意味のある情報なので薄文字 (#A4AAB0 = 2.2:1) ではなく
            ClaudeDesign のサブ色 #6B7178 を使う (Codex コントラスト指摘) */
         .dc-plan-sub { font-size: 10px; font-weight: 800; color: var(--t-body); letter-spacing: 0.2px}
@@ -2819,7 +2905,7 @@
             display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: 0;
             padding: 1px 5px; border-radius: 999px; margin-right: 4px;
             background: var(--line); color: var(--t-strong)}
-        .dc-plan-card.on-hero .dc-plan-lv { background: rgba(255,255,255,0.18); color: #fff}
+        .dc-plan-card.on-hero .dc-plan-lv { background: rgba(255,255,255,0.18); color: var(--on-fill)}
         .dc-plan-card.done .dc-plan-lv { background: var(--line); color: var(--t-strong)}
         /* ★ .done は .on-hero より後に来るので、黒カードの報告済みで白ピルに戻ってしまう。
               明示的に打ち消す (実機ではヒーロー上の3枚目だけ浮いて見えた) */
@@ -2827,7 +2913,7 @@
         .dc-plan-value {
             font-size: 17px; font-weight: 900; color: var(--t-ink);
             font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1}
-        .dc-plan-card.on-hero .dc-plan-value { color: #fff}
+        .dc-plan-card.on-hero .dc-plan-value { color: var(--on-fill)}
         .dc-plan-unit { font-size: 10px; color: var(--t-muted); font-weight: 800; margin-left: 1px}
         .dc-plan-card.on-hero .dc-plan-unit { color: rgba(255,255,255,0.72); }
         /* 編成5人 (模擬パネルの .dc-dmg-char と同寸) */
@@ -2848,7 +2934,7 @@
            ★ 模擬パネルのように絶対配置の中央バッジにすると、幅156px では
               想定ダメージの数字と重なる (実際に重なった) → 数字の直下に置く */
         .dc-plan-slot { font-size: 10px; font-weight: 900; color: var(--ops-deep); letter-spacing: 0.2px}
-        .dc-plan-card.on-hero .dc-plan-slot { color: #C3B2FF}
+        .dc-plan-card.on-hero .dc-plan-slot { color: var(--hero-text-ops)}
         .dc-plan-done { font-size: 10px; font-weight: 900; color: var(--ok-deep); letter-spacing: 0.2px}
         .dc-plan-card.on-hero .dc-plan-done { color: var(--ok)}
 
@@ -2941,8 +3027,8 @@
         .dc-dmg-char.empty {
             background: var(--s2); color: var(--t-muted)}
         .dc-dmg-char.dup-1 { border-color: var(--warn-solid); box-shadow: 0 0 0 1px var(--warn-solid), inset 0 0 0 1px rgba(255,255,255,0.3)}
-        .dc-dmg-char.dup-2 { border-color: #E91E63; box-shadow: 0 0 0 1px #E91E63, inset 0 0 0 1px rgba(255,255,255,0.3)}
-        .dc-dmg-char.dup-3 { border-color: #00BCD4; box-shadow: 0 0 0 1px #00BCD4, inset 0 0 0 1px rgba(255,255,255,0.3)}
+        .dc-dmg-char.dup-2 { border-color: var(--dup-2); box-shadow: 0 0 0 1px var(--dup-2), inset 0 0 0 1px rgba(255,255,255,0.3)}
+        .dc-dmg-char.dup-3 { border-color: var(--dup-3); box-shadow: 0 0 0 1px var(--dup-3), inset 0 0 0 1px rgba(255,255,255,0.3)}
         .dc-dmg-char.dup-4 { border-color: var(--attr-electric-solid); box-shadow: 0 0 0 1px var(--attr-electric-solid), inset 0 0 0 1px rgba(255,255,255,0.3)}
         .dc-dmg-char.dup-5 { border-color: var(--attr-iron-solid); box-shadow: 0 0 0 1px var(--attr-iron-solid), inset 0 0 0 1px rgba(255,255,255,0.3)}
 
@@ -3011,7 +3097,7 @@
             position: relative;
             padding: 14px 12px 12px;
             border-radius: 16px;
-            background: linear-gradient(180deg, #F8F9FB, #EFF1F4);
+            background: linear-gradient(180deg, var(--s1), var(--s2));
             border: 1px solid rgba(20,22,26,0.05);
             box-shadow: 0 1px 2px rgba(20,22,26,0.03)}
         .ar-matchup-row {
@@ -3040,7 +3126,7 @@
             font-size: 11px; line-height: 1; color: var(--t-muted);
             animation: arArrowFlow 1.4s ease-in-out infinite}
         .ar-matchup-arrow-tri > div:nth-child(2) {
-            font-size:10.5px; line-height: 1; color: #C2C7CC;
+            font-size:10.5px; line-height: 1; color: var(--dim);
             animation: arArrowFlow 1.4s 0.2s ease-in-out infinite}
         .ar-matchup-arrow-label {
             font-size:10px; font-weight: 900; letter-spacing: 1.5px;
@@ -3073,14 +3159,14 @@
         .ar-prediction-label {
             position: absolute; inset: 0; display: flex;
             align-items: center; justify-content: center;
-            font-size:10.5px; font-weight: 900; color: #fff;
+            font-size:10.5px; font-weight: 900; color: var(--on-fill);
             text-shadow: 0 1px 2px rgba(0,0,0,0.4); letter-spacing: 0.3px;
             pointer-events: none}
         /* ピックボタン (シンプル 1 ボタン) */
         .ar-pick-btn {
             display: flex; align-items: center; gap: 11px;
             padding: 16px 14px; border-radius: 13px;
-            background: linear-gradient(180deg, #7A5AF8, #5B2BE0);
+            background: linear-gradient(180deg, var(--grad-ops-a), var(--grad-ops-b));
             cursor: pointer; box-shadow: 0 4px 12px rgba(108,66,240,0.30);
             animation: arSoftGlow 2.4s ease-in-out infinite;
             position: relative; overflow: hidden;
@@ -3117,7 +3203,7 @@
         .ar-thumb-badge {
             position: absolute; top: 4px; right: 4px;
             padding: 2px 7px; border-radius: 999px;
-            font-size:10px; font-weight: 900; color: #fff;
+            font-size:10px; font-weight: 900; color: var(--on-fill);
             box-shadow: 0 2px 5px rgba(0,0,0,0.22)}
         .ar-thumb-spinner {
             position: absolute; inset: 0; background: rgba(0,0,0,0.32);
@@ -3137,8 +3223,8 @@
             position: relative; overflow: hidden; cursor: pointer;
             display: inline-flex; align-items: center; gap: 7px;
             padding: 7px 13px; border-radius: 999px;
-            background: linear-gradient(180deg, #F1601E, #C8341A);
-            box-shadow: 0 0 0 1.5px #E8B048, 0 3px 8px rgba(220,80,30,0.28);
+            background: linear-gradient(180deg, var(--bbl-a), var(--bbl-b));
+            box-shadow: 0 0 0 1.5px var(--bbl-ring), 0 3px 8px rgba(220,80,30,0.28);
             font-family: inherit; -webkit-tap-highlight-color: transparent;
             border: none}
         .blabla-pill::before {
@@ -3150,7 +3236,7 @@
         .blabla-pill-shimmer-wrap { display: none; }
         .blabla-pill svg { position: relative; }
         .blabla-pill-label {
-            position: relative; font-size: 11.5px; font-weight: 900; color: #fff;
+            position: relative; font-size: 11.5px; font-weight: 900; color: var(--on-fill);
             letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(120,30,0,0.4);
             white-space: nowrap}
 

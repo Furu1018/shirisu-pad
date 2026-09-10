@@ -7089,7 +7089,9 @@ console.log('\ngrowthDomain:');
         css = css.slice(0, a) + css.slice(b);
         const raw = (css.match(/#[0-9A-Fa-f]{3,8}\b/g) || []).length;
         const rgba = (css.match(/rgba?\([0-9]/g) || []).length;
-        const LIMIT_HEX = 101, LIMIT_RGBA = 304;   // 2026-09-10 段階1で 727 → 101
+        // 2026-09-10 段階1 完了: 727 → 14。残り14はコメントと、インラインの style を拾う
+        // 属性セレクタ (button[style*="background:#14161A"]) — 段階2でインラインを直すまで動かせない
+        const LIMIT_HEX = 14, LIMIT_RGBA = 298;
         assert.ok(raw <= LIMIT_HEX, `<style> の直値が増えている: ${raw} (上限 ${LIMIT_HEX})`);
         assert.ok(rgba <= LIMIT_RGBA, `<style> の rgba() が増えている: ${rgba} (上限 ${LIMIT_RGBA})`);
         if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
