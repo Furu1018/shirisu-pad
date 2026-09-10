@@ -82,7 +82,7 @@ await test('★ 要約・24コマ・いまの時刻・確認バッジが実際�
     assert.ok(out.includes('5〜9時・21〜翌2時 (11時間)'), `要約が無い: ${out.slice(0, 200)}`);
     assert.ok(out.includes('いま (7時) は戦闘可能時間です — 5〜9時'), '今の時刻の説明が無い');
     assert.equal((out.match(/height:14px/g) || []).length, 24, '24コマ出ていない');
-    assert.equal((out.match(/outline:2px solid #FF3D44/g) || []).length, 1, 'いまの時刻の印が1つでない');
+    assert.equal((out.match(/outline:2px solid var\(--attr-fire-solid\)/g) || []).length, 1, 'いまの時刻の印が1つでない');
     assert.equal((out.match(/background:#6C42F0/g) || []).length, 11, 'ON のコマ数が違う');
     assert.equal(t.els.myAvailStripCard.style.display, '');
     assert.equal(t.els.myAvailStripBadge.textContent, '今期 確認済み');

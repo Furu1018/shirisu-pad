@@ -5074,7 +5074,7 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(html.includes('<script defer src="./js/domain/availability.js"></script>'));
         const fn = html.match(/async function renderMyAvailStrip\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/dom\.labelOf\(slots, \{ flexTime: !!prefs\.flexTime \}\)/.test(fn), '要約をドメインで作っていない');
-        assert.ok(/HOUR_ORDER\.map\(h => \{/.test(fn) && /outline:2px solid #FF3D44/.test(fn), '24コマと今の時刻の印が無い');
+        assert.ok(/HOUR_ORDER\.map\(h => \{/.test(fn) && /outline:2px solid var\(--attr-fire-solid\)/.test(fn), '24コマと今の時刻の印が無い');
         assert.ok(/const seq = \+\+_availStripSeq;/.test(fn) && (fn.match(/if \(seq !== _availStripSeq\) return;/g) || []).length >= 2, '世代ガードが無い');
         assert.ok(/renderMyAvailStrip\(id\);\s*\/\/ ⏰/.test(html), 'ホームの描画から呼んでいない');
         assert.ok(/renderMyAvailStrip\(null\);/.test(html), '未選択で隠していない');
@@ -7097,6 +7097,67 @@ console.log('\ngrowthDomain:');
         if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
             assert.fail(`置き換えが進んだので上限を下げてください: hex ${raw} / rgba ${rgba}`);
         }
+        // <style> の外 (インラインの style / JS のテンプレート文字列) も同じように見張る。
+        // 2026-09-10 段階2 完了: 2340 → 614。残りは JS の色表・SVG の fill=/stroke=・
+        // <meta theme-color> — 段階3 (グラフ・キャンバス) でまとめて扱う
+        const outside = html.slice(0, s0) + html.slice(s1);
+        const rawOut = (outside.match(/#[0-9A-Fa-f]{3,8}\b/g) || []).length;
+        const LIMIT_INLINE = 614;
+        assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
+        if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
+    });
+    test('★ 定義されていない var(--…) を使っていない (置き換えの取りこぼし)', () => {
+        // ★ 段階2 で「対応表に書いたが定義し忘れたトークン」を1つ作ってしまった。
+        //   var(--未定義) は黙って無効になり、色が親から降ってくるだけなので画面では気づけない
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const defined = new Set([...html.matchAll(/(?:^|[;"'`{\s])(--[a-z0-9-]+)\s*:/g)].map(m => m[1]));
+        const bad = new Map();
+        for (const m of html.matchAll(/var\((--[a-z0-9-]+)(\s*,)?/g)) {
+            if (defined.has(m[1]) || m[2]) continue;       // 既定値つきは可
+            bad.set(m[1], (bad.get(m[1]) || 0) + 1);
+        }
+        assert.deepEqual([...bad.keys()], [], `定義が無い: ${[...bad].map(([k, v]) => k + '×' + v).join(', ')}`);
+    });
+    test('★ インラインの style も、ライトとダークの両方で文字が読める (実際に測る)', () => {
+        // ★ <style> だけ測っても足りない。画面の色の大半はテンプレート文字列の中にある。
+        //   同じ style 文字列に color と background が両方あるものを、両テーマで測る
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const S = html.indexOf('<style'), E = html.lastIndexOf('</style>') + 8;
+        const css = html.slice(S, E);
+        const A = ':root, :root[data-theme="light"]', DK = ':root[data-theme="dark"]', MB = '/* === マーブル';
+        const varsOf = (from, to) => Object.fromEntries(
+            [...css.slice(css.indexOf(from), css.indexOf(to)).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map(m => [m[1], m[2].trim()]));
+        const L = varsOf(A, DK), D = varsOf(DK, MB);
+        assert.ok(Object.keys(L).length > 30 && Object.keys(D).length > 30, 'トークンを読めない');
+        const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const norm = (h) => h.length === 4 ? '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3] : h;
+        const lum = (h) => { const c = [1, 3, 5].map(i => parseInt(norm(h).slice(i, i + 2), 16));
+            return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]); };
+        const ratio = (x, y) => { const p = lum(x) + 0.05, q = lum(y) + 0.05; return Math.max(p, q) / Math.min(p, q); };
+        const hex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+        const res = (v, T, d = 0) => d > 6 ? v : v.replace(/var\(--([a-z0-9-]+)(?:,\s*([^()]*))?\)/g,
+            (w, k, fb) => (T[k] !== undefined ? res(T[k], T, d + 1) : (fb !== undefined ? res(fb, T, d + 1) : w)));
+        const outside = html.slice(0, S) + '\n' + html.slice(E);
+        let checked = 0; const ng = [];
+        for (const m of outside.matchAll(/(["'`])((?:[^"'`\\]|\\.){0,1400}?)\1/g)) {
+            const ck = m[2];
+            if (!/color\s*:/.test(ck) || !/background(?:-color)?\s*:/.test(ck)) continue;
+            const fg = (ck.match(/(?:^|[;{])\s*color\s*:\s*([^;]+)/) || [])[1];
+            if (!fg) continue;
+            for (const [mode, T] of [['ライト', L], ['ダーク', D]]) {
+                const a = res(fg.trim(), T);
+                if (!hex.test(a)) continue;
+                for (const bgm of ck.matchAll(/background(?:-color)?\s*:\s*([^;]+)/g)) {
+                    const b = res(bgm[1].trim(), T);
+                    if (!hex.test(b)) continue;
+                    checked++;
+                    const r = ratio(a, b);
+                    if (r < 4.5) ng.push(`${mode} ${r.toFixed(2)}:1 (${a} on ${b}) …${ck.replace(/\s+/g, ' ').slice(0, 110)}`);
+                }
+            }
+        }
+        assert.ok(checked >= 150, `測れた組が少なすぎる: ${checked}`);
+        assert.deepEqual(ng, [], `片方のテーマで読めない組がある:\n  ${ng.join('\n  ')}`);
     });
     test('★ バーストの色は1組だけ (同じ B1 が画面によって色違いにならない)', () => {
         // 2026-09-10 まで編成エディタ (B1緑/B2黄) とキャラ管理 (B1紫/B2緑) で色が違った。
