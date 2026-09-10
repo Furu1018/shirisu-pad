@@ -7315,6 +7315,63 @@ console.log('\ngrowthDomain:');
         assert.ok(/@media \(max-width: 767px\) \{\s*\.bottom-nav \{ display: flex; \}/.test(css),
             '下のナビの出る幅が変わっている (サイドバーと二重になる)');
     });
+    test('★ 変数に入れた文字色も、ライトとダークの両方で読める (実際に測る)', () => {
+        // ★ ここが最後の抜け道だった。color:${x} の x が**変数**だと、
+        //   「直値を焼き込んでいない」の検査も「文字と地の組を測る」検査も通ってしまう。
+        //   → color: に流れる式の識別子を、**同じ関数の中の宣言**まで遡って中身を見る。
+        //   引っかかるのは主に「色表を引けなかったときの予備の色」。連結 (`${c}14`) に使うので
+        //   トークンにできず、両テーマでいちばんマシな1色に寄せてある (#7A7C81 = 4.18 / 4.21)。
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const js = html.slice(0, html.indexOf('<style')) + '\n' + html.slice(html.lastIndexOf('</style>') + 8);
+        const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const lum = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+            return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]); };
+        const ratio = (a, b) => { const x = lum(a) + 0.05, y = lum(b) + 0.05; return Math.max(x, y) / Math.min(x, y); };
+        // その位置を含むいちばん内側の関数の本文
+        const enclosing = (idx) => {
+            let start = -1;
+            for (const m of js.matchAll(/(?:^|\n)\s*(?:async\s+)?function\s+[\w$]*\s*\(/g)) {
+                if (m.index < idx) start = m.index; else break;
+            }
+            if (start < 0) return null;
+            let d = 0, began = false, inStr = null, prev = '';
+            for (let k = js.indexOf('{', start); k < js.length; k++) {
+                const ch = js[k];
+                if (inStr) { if (ch === inStr && prev !== '\\') inStr = null; }
+                else if (ch === '"' || ch === "'" || ch === '`') inStr = ch;
+                else if (ch === '{') { d++; began = true; }
+                else if (ch === '}') { d--; if (began && !d) return { body: js.slice(start, k + 1), start }; }
+                prev = ch;
+            }
+            return null;
+        };
+        // ★ 現状のいちばん厳しい値。これより悪いものを増やさない
+        //   (下げられたら**この数字も上げること** — 上げ忘れると戻っても気づけない)
+        const FLOOR = 3.8;
+        const bad = [];
+        for (const m of js.matchAll(/(?:^|[;"'`{])\s*color\s*:\s*\$\{((?:[^{}]|\{[^{}]*\})*)\}/g)) {
+            const expr = m[1];
+            if (/'#[0-9A-Fa-f]{3,8}'/.test(expr)) continue;   // 直値は別のテストが見ている
+            const ids = [...new Set((expr.match(/[A-Za-z_$][\w$]*/g) || []))]
+                .filter(x => !/^(true|false|null|undefined|var|rgba|rgb)$/.test(x));
+            const enc = enclosing(m.index);
+            if (!enc) continue;
+            const rel = m.index - enc.start;
+            for (const id of ids) {
+                const decls = [...enc.body.matchAll(new RegExp(`(?:const|let|var)\\s+${id}\\s*=\\s*([^\\n]*)`, 'g'))]
+                    .filter(d => d.index < rel);
+                for (const d of decls) {
+                    for (const hex of (d[1].match(/#[0-9A-Fa-f]{6}\b/g) || [])) {
+                        const light = ratio(hex, '#FFFFFF'), dark = ratio(hex, '#17191D');
+                        if (Math.min(light, dark) >= FLOOR) continue;
+                        bad.push(`${hex} (白地 ${light.toFixed(2)} / ダーク ${dark.toFixed(2)}) — ${id} = ${d[1].trim().slice(0, 70)}`);
+                    }
+                }
+            }
+        }
+        assert.deepEqual([...new Set(bad)], [],
+            `片方のテーマで沈む文字色が変数に入っている:\n  ${[...new Set(bad)].join('\n  ')}`);
+    });
     test('★ 画面に描く文字の色を、色の直値で焼き込んでいない', () => {
         // ★ Codex がここで実害を見つけた (2026-09-10: 時間割の凸チップ)。
         //   innerHTML に色を焼き込むと、テーマを切り替えても**その場では変わらない**。

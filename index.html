@@ -6616,11 +6616,11 @@
             const total = TOUR_STEPS.length;
             const isLast = _tourCurrentIdx === total - 1;
             const accent = step.accentColor || '#7A5AF8';
-            const accentDark = step.accentDark || '#6C42F0';
+            const accentDark = step.accentDark || '#7A7C81';
 
             const dotsHtml = TOUR_STEPS.map((_, i) => {
                 const cls = i === _tourCurrentIdx ? 'tour-dot current' : (i < _tourCurrentIdx ? 'tour-dot done' : 'tour-dot');
-                const bg = i === _tourCurrentIdx ? accent : (i < _tourCurrentIdx ? '#C2C7CC' : '#E4E6E9');
+                const bg = i === _tourCurrentIdx ? accent : (i < _tourCurrentIdx ? 'var(--track)' : 'var(--line)');
                 return `<div class="${cls}" style="background:${bg};"></div>`;
             }).join('');
 
@@ -7528,7 +7528,7 @@
         function _homeStaleBannerHtml(h, onHero) {
             if (!h || !h.stale) return '';
             const bg = onHero ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.14)';
-            const col = onHero ? '#FFD28A' : '#B45309';
+            const col = onHero ? 'var(--hero-text-warn)' : 'var(--warn-deep)';
             return `<div style="margin:0 0 8px;padding:8px 11px;border-radius:9px;background:${bg};font-size:11px;font-weight:800;color:${col};line-height:1.55;">🔒 予約が承認されました。運営が組み直し中です — 予約の枠は動きません。ほかの枠は配信し直しで変わることがあります。</div>`;
         }
         // 1枠を模擬カードと同じ見た目で描く
@@ -7537,7 +7537,7 @@
             const bosses = _seasonBossesForResv() || [];
             const boss = slot.bossNumber != null ? bosses.find(b => Number(b.boss_number) === Number(slot.bossNumber)) : null;
             const ptKey = slot.weakness || boss?.weakness || null;
-            const ptc = DC_ATTR_COLORS[ptKey] || '#A4AAB0';
+            const ptc = DC_ATTR_COLORS[ptKey] || '#7A7C81';
             const icon = DC_ATTR_ICONS[ptKey] || '';
             const ptName = PT_ATTRS.find(x => x.key === ptKey)?.name || '';
             const bossName = slot.bossName || boss?.name || (slot.bossNumber != null ? `B${slot.bossNumber}` : '');
@@ -7637,7 +7637,7 @@
             const st = _myPubState;
             if (!Array.isArray(_myResvRows) && !(st && st.plan && st.viewerId === identity?.id)) { _heroPlanKey = ''; return ''; }
             _heroPlanKey = _homeSlotsKey(h);
-            const sub = hero ? 'rgba(255,255,255,0.55)' : '#8A9097';
+            const sub = hero ? 'rgba(255,255,255,0.55)' : 'var(--t-muted)';
             const cards = h.slots.map((slot, i) => _homeSlotCardHtml(slot, i, hero)).join('');
             return `
                 <div id="heroPlanStrip" style="margin:2px 0 4px;">
@@ -7726,9 +7726,9 @@
             });
             const infinite = bn === 5 && lv3Recorded
                 && typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(season, bosses);
-            const bossV = ATTR_VISUAL[boss.attribute] || { color: '#8A9097', dark: '#5A6068', name: '?', icon: '' };
+            const bossV = ATTR_VISUAL[boss.attribute] || { color: '#7A7C81', dark: '#7A7C81', name: '?', icon: '' };
             const ptKey = weaknessPtOf(boss);
-            const ptV = ATTR_VISUAL[ptKey] || { color: '#8A9097', dark: '#5A6068', name: '?', icon: '' };
+            const ptV = ATTR_VISUAL[ptKey] || { color: '#7A7C81', dark: '#7A7C81', name: '?', icon: '' };
             // 残HPの鮮度 (20_bosses_updated_at.sql 未適用環境では出さない)
             let fresh = '';
             if (boss.updated_at) {
@@ -8314,7 +8314,7 @@
             });
             const myId = getCurrentIdentity()?.id;
             const attrDef = PT_ATTRS.find(a => a.key === _mockCmpAttr) || PT_ATTRS[0];
-            const color = DC_ATTR_COLORS[_mockCmpAttr] || '#6C42F0';
+            const color = DC_ATTR_COLORS[_mockCmpAttr] || '#7A7C81';
             const maxVal = model.rows.length ? model.rows[0].value : 0;
             const isDmg = model.meta.mode === 'damage';
             // ふるり値は SLv に依存する — 推定SLv (自己申告なし・出力近傍者から借用) の行は
@@ -8503,7 +8503,7 @@
             const rowHtml = rows.map((r, i) => {
                 const mine = myName != null && r.name === myName;
                 const pills = r.atks.map(x => {
-                    const c = DC_ATTR_COLORS[x.attr.toLowerCase()] || '#8A9097';
+                    const c = DC_ATTR_COLORS[x.attr.toLowerCase()] || '#7A7C81';
                     return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${c};background:${c}14;border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;">${renderAttrIcon(x.attr.toLowerCase(), 12)}${x.pct != null ? Math.round(x.pct) + '%' : '—'}</span>`;
                 }).join('');
                 return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
@@ -8610,7 +8610,7 @@
                             <span style="font-size:12px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">推定合計 ${formatDamage(combo.total * scale)}</span>
                         </div>
                         ${combo.comps.map((c, si) => {
-                            const col = DC_ATTR_COLORS[c.attr.toLowerCase()] || '#8A9097';
+                            const col = DC_ATTR_COLORS[c.attr.toLowerCase()] || '#7A7C81';
                             const g = idx.attrs[c.attr];
                             const medPct = g && g.attackMedianFururi > 0 ? Math.round(c.medianFururi / g.attackMedianFururi * 100) : null;
                             return `<div style="display:flex;align-items:center;gap:6px;margin-top:7px;">
@@ -9280,7 +9280,7 @@
                 ? '<p style="margin:0;font-size:11.5px;font-weight:700;color:var(--warn-deep);line-height:1.6;">模擬を提出すると、その編成で申請できます。</p>'
                 : los.map(l => {
                     const on = st.lo && st.lo.attribute === l.attribute && st.lo.slot === l.slot;
-                    const ac = DC_ATTR_COLORS[l.attribute] || '#A4AAB0';
+                    const ac = DC_ATTR_COLORS[l.attribute] || '#7A7C81';
                     const an = PT_ATTRS.find(x => x.key === l.attribute)?.name || '';
                     return `<button type="button" onclick="_resvReqPick('lo', '${esc(l.attribute)}', ${l.slot})" style="display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:12px;border:${on ? '2px solid #6C42F0' : '1px solid rgba(var(--ink-rgb), 0.08)'};background:${on ? 'rgba(108,66,240,0.06)' : 'var(--card)'};cursor:pointer;font-family:inherit;text-align:left;">
                         <span style="flex:none;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:999px;color:var(--on-fill);background:${ac};">${esc(an)}${SLOT_JP[l.slot] || l.slot}</span>
@@ -9294,7 +9294,7 @@
                 const b = st.boss;
                 if (!b) return '';
                 const dead = Number(b.remaining_hp_raw) <= 0;
-                const bc = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                const bc = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
                 return `<p style="margin:8px 2px 0;font-size:11px;font-weight:800;color:var(--t-strong);line-height:1.55;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <span style="width:9px;height:9px;border-radius:3px;background:${bc};flex:none;"></span>→ ${esc(String(b.name || b.boss_code || ('B' + b.boss_number)))} に行きます
                     ${dead ? '<span style="font-size:9.5px;font-weight:900;color:var(--warn-deep);">いまのLvでは撃破済み (次のレベルで出てくれば、そこに置かれます)</span>' : ''}
@@ -9449,8 +9449,8 @@
                 const attr = a.attribute || boss?.attribute || null;
                 const weak = a.weakness || boss?.weakness || null;
                 const bossName = a.bossName || boss?.name || (a.bossNumber != null ? `B${a.bossNumber}` : '');
-                const c = DC_ATTR_COLORS[attr] || '#A4AAB0';
-                const ptc = DC_ATTR_COLORS[weak] || '#A4AAB0';
+                const c = DC_ATTR_COLORS[attr] || '#7A7C81';
+                const ptc = DC_ATTR_COLORS[weak] || '#7A7C81';
                 const ptName = PT_ATTRS.find(x => x.key === weak)?.name || '';
                 const done = !!a.done || a.kind === 'done';
                 if (done) doneCount++;
@@ -9493,7 +9493,7 @@
                 if (a.kind === 'fixed') {
                     const jp = a.unmet ? `⚠ 置けていません — ${esc(a.unmetText || '')}`
                         : a.status === 'cancel_requested' ? '取り消し希望中' : (a.inPlan ? '🔒 予約で固定' : '🔒 予約で固定 (運営が組み直し中)');
-                    const col = (a.unmet || a.status === 'cancel_requested') ? '#B45309' : '#0E9455';
+                    const col = (a.unmet || a.status === 'cancel_requested') ? 'var(--warn-deep)' : 'var(--ok-deep)';
                     const who = a.approvedBy ? ` · ${esc(String(a.approvedBy))}が承認` : '';
                     const cancel = (!done && a.status === 'approved')
                         ? `<button type="button" onclick="handleRequestCancelReservation(${Number(a.reservationId)})" style="margin-left:8px;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:3px 9px;font-family:inherit;font-size:10px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消しを希望</button>`
@@ -9546,7 +9546,7 @@
                 const bossesArr = Array.isArray(lv.bosses) ? lv.bosses : [];
                 const rows = bossesArr.filter(b => (Number(b.targetHpB) || 0) > 0.0001 || (Array.isArray(b.attacks) && b.attacks.length)).map(b => {
                     const atks = Array.isArray(b.attacks) ? b.attacks : [];
-                    const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                    const c = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
                     const ptName = PT_ATTRS.find(x => x.key === b.weakness)?.name || '';
                     const attrName = ATTR_VISUAL[b.attribute]?.name || '?';
                     const avatars = atks.slice(0, 5).map((a, i) => {
@@ -9861,7 +9861,7 @@
             // 得意属性: 全5属性のアイコン (ONは塗りリング、OFFは半透明)
             el.innerHTML = PT_ATTRS.map(a => {
                 const on = attrs.has(a.key);
-                const c = DC_ATTR_COLORS[a.key] || '#A4AAB0';
+                const c = DC_ATTR_COLORS[a.key] || '#7A7C81';
                 if (on) {
                     return `<div title="${a.name}PT 得意" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${c};box-shadow:0 3px 8px ${c}59;"><img loading="lazy" decoding="async" src="${a.icon}" alt="${a.name}" style="width:22px;height:22px;"></div>`;
                 }
@@ -10446,7 +10446,7 @@
                 } else {
                     const items = [];
                     dupPairs.forEach((attrSet, gNum) => {
-                        const color = DUP_COLORS[gNum - 1] || '#9AA0A6';
+                        const color = DUP_COLORS[gNum - 1] || '#7A7C81';
                         const attrs = [...attrSet].map(k => PT_ATTRS.find(x => x.key === k)?.name || k).join('⇔');
                         items.push(`
                             <div style="display:flex;align-items:center;gap:6px;">
@@ -10930,7 +10930,7 @@
             if (top.length === 0) { el.innerHTML = ''; return; }
             const a = PT_ATTRS.find(x => x.key === _myTeamEditAttr);
             const ptName = a?.name || '';
-            const color = a?.color || '#6C42F0';
+            const color = a?.color || '#7A7C81';
             // モバイルで横に詰め込むと折り返して2段化するので、1カード=縦2段にする。
             // 上段: 順位 + 使用率 + 「使う」ボタン / 下段: 5キャラを1行 (はみ出す時は横スクロール)。
             const cards = top.map((g, i) => {
@@ -11131,7 +11131,7 @@
         function _teBurstOf(c) { return c?.burst || null; }
         function _teBand(c, pct) {
             const b = _teBurstOf(c) || '—';
-            const col = TE_BURST_COLOR[b] || '#8A9097';
+            const col = TE_BURST_COLOR[b] || '#7A7C81';
             const alt = c?.burst_alt ? ` / ${escapeHtml(c.burst_alt)}` : '';
             // ★ 「B2 だけ黒」と手で書き分けない (色表を変えると破綻する)
             return `<span class="te-band${pct ? ' split' : ''}" style="background:${col};color:${_burstInk(col)};">`
@@ -11677,11 +11677,11 @@
                 return `<span title="バースト未設定" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:var(--t-muted);background:var(--s2);">?</span>`;
             }
             // ★ 薄い地 (色の 10%) に置くので、文字と枠は濃く落とした色を使う
-            const c1 = _BURST_COLOR[entry.burst] || '#8A9097';
+            const c1 = _BURST_COLOR[entry.burst] || '#7A7C81';
             const t1 = _burstOnBg(c1, _burstTint(c1));
             let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${t1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
             if (entry.burst_alt) {
-                const c2 = _BURST_COLOR[entry.burst_alt] || '#8A9097';
+                const c2 = _BURST_COLOR[entry.burst_alt] || '#7A7C81';
                 const t2 = _burstOnBg(c2, _burstBg());   // 枠だけ。地は透明なので、その下のいちばん暗い地で測る
                 html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${t2};background:transparent;border:1px solid ${t2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
             }
@@ -13302,8 +13302,8 @@
                     ? ([ptLabel, bossLabel].filter(Boolean).join(' / ') || '<span style="color:rgba(var(--ink-rgb), 0.08);">対象指定なし</span>')
                     : '';
                 const noteHtml = c.note ? `<div style="font-size:11px;color:var(--t-body);margin-top:3px;">💬 ${escapeHtml(c.note)}</div>` : '';
-                const borderColor = isMe ? '#22c55e' : (isCoord ? '#3b82f6' : 'rgba(var(--ink-rgb), 0.08)');
-                const bg = isMe ? 'rgba(34,197,94,0.06)' : (isCoord ? 'rgba(59,130,246,0.04)' : '#ffffff');
+                const borderColor = isMe ? 'var(--ok-solid)' : (isCoord ? 'var(--attr-water-solid)' : 'rgba(var(--ink-rgb), 0.08)');
+                const bg = isMe ? 'rgba(34,197,94,0.06)' : (isCoord ? 'rgba(59,130,246,0.04)' : 'var(--card)');
                 return `
                     <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${borderColor};border-radius:8px;background:${bg};margin-bottom:6px;">
                         <span style="font-size:14px;line-height:1.4;">${statusIcon}</span>
@@ -13576,7 +13576,7 @@
                 const inCombat = coordsByBoss.has(b.boss_number);
                 const isMyCombat = b.boss_number === myBossNum;
                 // ボス本来の属性 (attribute) で表示。weakness=持っていくPT属性 とは別物。
-                const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+                const c = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
                 const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
                 const onClick = dead
                     ? ''
@@ -13891,7 +13891,7 @@
             const pickerLv4 = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(ctx.season, ctx.bosses);
             bossButtonsEl.innerHTML = ctx.bosses.map(b => {
                 const playerAttr = weaknessPtOf(b);
-                const bossVisual = ATTR_VISUAL[b.attribute] || { color:'#8A9097', name:'?', icon:'' };
+                const bossVisual = ATTR_VISUAL[b.attribute] || { color:'#7A7C81', name:'?', icon:'' };
                 const dimmed = pickerLv4 && b.boss_number !== 5;
                 return `
                     <button type="button" data-boss="${b.boss_number}" data-code="${b.boss_code}" data-attr="${b.attribute}" data-pt="${playerAttr}"
@@ -13934,13 +13934,13 @@
             _myAttackSelectedBossNumber = bossNumber;
             document.querySelectorAll('#myAttackBossButtons button').forEach(b => {
                 const attr = b.dataset.attr;
-                const v = ATTR_VISUAL[attr] || { color:'#8A9097' };
+                const v = ATTR_VISUAL[attr] || { color:'#7A7C81' };
                 b.style.background = 'var(--card)';
                 b.style.color = v.color;
                 b.style.boxShadow = 'none';
             });
             const attr = btn.dataset.attr;
-            const v = ATTR_VISUAL[attr] || { color:'#8A9097' };
+            const v = ATTR_VISUAL[attr] || { color:'#7A7C81' };
             btn.style.background = v.color;
             btn.style.color = _burstInk(v.color);   // ★ 緑や橙に白だと 2.3:1。読めるほうを選ぶ
             btn.style.boxShadow = `0 3px 8px ${v.color}40`;
@@ -14033,7 +14033,7 @@
             }
 
             // ボス側
-            const bossV = ATTR_VISUAL[boss.attribute] || { color:'#8A9097', dark:'#5A6068', name:'?', icon:'' };
+            const bossV = ATTR_VISUAL[boss.attribute] || { color:'#7A7C81', dark:'#7A7C81', name:'?', icon:'' };
             bossIcon.innerHTML = bossV.icon
                 ? `<img loading="lazy" decoding="async" src="${bossV.icon}" alt="${bossV.name}">`
                 : `<span style="font-size:30px;">⚔️</span>`;
@@ -14061,7 +14061,7 @@
 
             // PT 側 (弱点属性)
             const ptAttr = weaknessPtOf(boss);
-            const ptV = ATTR_VISUAL[ptAttr] || { color:'#8A9097', dark:'#5A6068', name:'?', icon:'' };
+            const ptV = ATTR_VISUAL[ptAttr] || { color:'#7A7C81', dark:'#7A7C81', name:'?', icon:'' };
             ptIcon.innerHTML = ptV.icon
                 ? `<img loading="lazy" decoding="async" src="${ptV.icon}" alt="${ptV.name}">`
                 : `<span style="font-size:30px;">⚔️</span>`;
@@ -14908,12 +14908,12 @@
                 const icons = Array.isArray(r.icon_paths) && r.icon_paths.length > 0
                     ? r.icon_paths.map(p => `<img loading="lazy" decoding="async" src="${escapeHtml(p)}" style="width:22px;height:22px;border-radius:4px;margin-right:2px;" title="${escapeHtml(p)}">`).join('')
                     : '<span style="font-size:10px;color:rgba(var(--ink-rgb), 0.08);">no icon</span>';
-                const bc = r.burst ? (_BURST_COLOR[r.burst] || '#8A9097') : null;
+                const bc = r.burst ? (_BURST_COLOR[r.burst] || '#7A7C81') : null;
                 let burstBadge = bc
                     ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${_burstOnBg(bc, _burstTint(bc))};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
                     : `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:var(--t-muted);background:var(--s2);">—</span>`;
                 if (r.burst_alt) {
-                    const ac = _burstOnBg(_BURST_COLOR[r.burst_alt] || '#8A9097', _burstBg());   // 枠だけ (地は透明)
+                    const ac = _burstOnBg(_BURST_COLOR[r.burst_alt] || '#7A7C81', _burstBg());   // 枠だけ (地は透明)
                     burstBadge += `<span title="${escapeHtml(r.burst_alt)}枠としても使える" style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 5px;border-radius:999px;color:${ac};background:transparent;border:1px solid ${ac}66;">+${escapeHtml(r.burst_alt)}</span>`;
                 }
                 return `
@@ -15020,7 +15020,7 @@
                 { v: 'B1' }, { v: 'B2' }, { v: 'B3' }, { v: 'BΛ' }, { v: '', label: emptyLabel, color: '#8A9097' },
             ];
             const btns = opts.map(o => {
-                const color = o.color || _BURST_COLOR[o.v] || '#8A9097';
+                const color = o.color || _BURST_COLOR[o.v] || '#7A7C81';
                 const on = (_burstState[groupId] || '') === o.v;
                 return `<button type="button" data-burst-btn data-burst-val="${o.v}"`
                     + ` onclick="_selectBurst('${groupId}', this.getAttribute('data-burst-val'))"`
@@ -15035,7 +15035,7 @@
             if (box) {
                 box.querySelectorAll('[data-burst-btn]').forEach(b => {
                     const v = b.getAttribute('data-burst-val');
-                    const color = v ? (_BURST_COLOR[v] || '#8A9097') : '#8A9097';
+                    const color = v ? (_BURST_COLOR[v] || '#7A7C81') : '#8A9097';
                     b.style.cssText = _burstPillStyle(color, v === (val || ''));
                 });
             }
@@ -15579,9 +15579,9 @@
             const body = rows.map(r => {
                 const lowWindow = r.subscribed && r.slotsOn <= 6 && !r.flexTime;   // ⏳隙間時間型は時間帯0でも意図的
                 const flagged = !r.subscribed || lowWindow;
-                const pushIconBg = r.subscribed ? 'rgba(24,194,107,0.14)' : '#EDEEF0';
+                const pushIconBg = r.subscribed ? 'rgba(24,194,107,0.14)' : 'var(--s2)';
                 const pushIcon = r.subscribed ? '🔔' : '🔕';
-                const barColor = lowWindow ? '#FF8A2B' : '#18C26B';
+                const barColor = lowWindow ? 'var(--attr-iron-solid)' : 'var(--ok-solid)';
                 const barPct = Math.min(100, (r.slotsOn / 24) * 100);
                 const last = r.lastDmgUpdate ? SETTINGS_TS_FMT(new Date(r.lastDmgUpdate).toISOString()) : '—';
                 return `
@@ -15702,7 +15702,7 @@
             const countEl = document.getElementById('settingsActivityCount');
             if (countEl) countEl.textContent = `${shown.length} / ${events.length}件`;
             const rowsHtml = shown.map(e => {
-                const t = _SETLOG_TYPES[e.type] || { label: 'その他', color: '#9AA0A6' };
+                const t = _SETLOG_TYPES[e.type] || { label: 'その他', color: '#7A7C81' };
                 const who = e.player ? `<strong>${escapeHtml(e.player)}</strong> ` : '';
                 const actor = e.actor ? ` <span style="font-size:10px;font-weight:800;color:var(--attr-iron);">(入力: ${escapeHtml(e.actor)})</span>` : '';
                 const pillStyle = t.color === '#14161A'
@@ -15764,7 +15764,7 @@
                 } catch { return ''; }
             };
             const rows = events.map(e => {
-                const t = TAG[e.type] || { label: 'その他', color: '#9AA0A6' };
+                const t = TAG[e.type] || { label: 'その他', color: '#7A7C81' };
                 return `
                     <div style="position:relative;padding-bottom:16px;">
                         <div style="position:absolute;left:-20px;top:2px;width:9px;height:9px;border-radius:50%;background:${t.color};box-shadow:0 0 0 3px var(--card);"></div>
@@ -18069,7 +18069,7 @@
             const remainPct = lv4B5 ? 100 : (totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0);
             const dead = !lv4B5 && remainPct <= 0.01;
             // チップ表示はボス本来の属性 (attribute)。weakness は締め凸ボタン側だけで使う。
-            const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
+            const c = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
             const active = inCombat && !dead;
             const statusTag = lv4B5
                 ? `<span class="dc-boss-status-tag" style="color:var(--ops);background:rgba(123,91,214,0.12);">🏁 スコアレース中${active ? ` · ${combatList.length}名` : ''}</span>`
@@ -18616,7 +18616,7 @@
             }
             const card = (title, plan, kind) => {
                 if (!plan) return '';
-                const accent = kind === 'tight' ? '#22c55e' : '#3b82f6';
+                const accent = kind === 'tight' ? 'var(--ok)' : 'var(--attr-water)';
                 const bg = kind === 'tight' ? 'rgba(34,197,94,0.08)' : 'rgba(59,130,246,0.08)';
                 // 締め役は小さいダメージの人にして、書き残しを最小化
                 const ordered = [...plan.members].sort((a, b) => b.dmg - a.dmg);
@@ -18831,7 +18831,7 @@
                 bg: '#FFFFFF', card: '#F7F8F9', line: 'rgba(20,22,26,0.07)',   /* ★ canvas は var() を解決できない。共有画像は明るい見た目で固定 */
                 green: '#18C26B', red: '#FF3D44', amber: '#F59E0B', blue: '#6C42F0',
             };
-            const attrColor = (attr) => DC_ATTR_COLORS[attr] || '#A4AAB0';
+            const attrColor = (attr) => DC_ATTR_COLORS[attr] || '#7A7C81';
             const f = (px, w = 700) => `${w} ${px}px 'Noto Sans JP', -apple-system, sans-serif`;
             const ROW_H = 46, BOSS_HEAD_H = 62, LV_HEAD_H = 64, CARD_GAP = 14;
 
@@ -19052,7 +19052,7 @@
                 bg: '#FFFFFF', line: 'rgba(20,22,26,0.07)',   /* ★ canvas は var() を解決できない。共有画像は明るい見た目で固定 */
                 green: '#18C26B', red: '#FF3D44', amber: '#F59E0B', blue: '#6C42F0',
             };
-            const attrColor = (attr) => DC_ATTR_COLORS[attr] || '#A4AAB0';
+            const attrColor = (attr) => DC_ATTR_COLORS[attr] || '#7A7C81';
             const f = (px, w = 700) => `${w} ${px}px 'Noto Sans JP', -apple-system, sans-serif`;
             const CHIP_H = 30, CHIP_STEP = 34, CLEAR_H = 18;
             const TEAM_ICON = 15, TEAM_H = TEAM_ICON + 6;
@@ -19622,8 +19622,8 @@
                 const lvOpenLabel = (plan.timeAware && lv.openHourLabel && lv.level > plan.startLevel)
                     ? `<span style="font-size:10px;font-weight:800;color:var(--t-muted);">${lv.openHourLabel}〜 開放見込み</span>` : '';
                 const bossCards = lv.bosses.map(b => {
-                    const c = DC_ATTR_COLORS[b.attribute] || '#A4AAB0';
-                    const ptc = DC_ATTR_COLORS[b.weakness] || '#A4AAB0';
+                    const c = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
+                    const ptc = DC_ATTR_COLORS[b.weakness] || '#7A7C81';
                     const bIcon = DC_ATTR_ICONS[b.attribute] || '';
                     const bName = ATTR_VISUAL[b.attribute]?.name || '';
                     const ptInfo = PT_ATTRS.find(x => x.key === b.weakness);
@@ -19944,7 +19944,7 @@
             const filterRow = filterKey ? `
                 <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;">
                     ${model.bosses.map(bm => {
-                        const c = DC_ATTR_COLORS[bm.attribute] || '#A4AAB0';
+                        const c = DC_ATTR_COLORS[bm.attribute] || '#7A7C81';
                         const on = !filter || filter.includes(bm.bossNumber);
                         const attrName = ATTR_VISUAL[bm.attribute]?.name || '';
                         return `<button onclick="togglePlanBossFilter('${filterKey}', ${bm.bossNumber})" title="タップで B${bm.bossNumber} の表示を切替 (全表示中は単独表示に)" style="flex:1;min-width:56px;padding:5px 4px;border-radius:999px;border:none;cursor:pointer;font-size:10px;font-weight:900;letter-spacing:0.2px;white-space:nowrap;transition:all .15s;${on ? `background:${c};color:var(--on-fill);box-shadow:0 2px 6px ${c}55;` : 'background:var(--s2);color:var(--t-muted);'}">B${bm.bossNumber} ${esc(attrName)}</button>`;
@@ -19955,7 +19955,7 @@
             // ヘッダー行: 表示中のボスのみ (タップでも絞り込み可)
             cells.push('<div></div>');
             for (const { bm } of visible) {
-                const c = DC_ATTR_COLORS[bm.attribute] || '#A4AAB0';
+                const c = DC_ATTR_COLORS[bm.attribute] || '#7A7C81';
                 const bIcon = DC_ATTR_ICONS[bm.attribute] || '';
                 const attrName = ATTR_VISUAL[bm.attribute]?.name || '';
                 const ptName = PT_ATTRS.find(x => x.key === bm.weakness)?.name || '';
@@ -19974,7 +19974,7 @@
                     ? `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'} · 撃破は狙わず与ダメ吸収 (${sec.absorbedB.toFixed(1)}B)`
                     : `Lv${sec.level} ─ ${sec.timeConstrained ? '時間不足' : '火力不足'}でストップ`;
                 const bandBg = sec.infinite ? 'rgba(108,66,240,0.08)' : (sec.cleared ? 'rgba(24,194,107,0.10)' : (sec.frontier ? 'rgba(245,158,11,0.10)' : 'rgba(255,61,68,0.08)'));
-                const bandCol = sec.infinite ? '#6C42F0' : (sec.cleared ? '#0E9455' : (sec.frontier ? '#B45309' : '#E23036'));
+                const bandCol = sec.infinite ? 'var(--ops)' : (sec.cleared ? 'var(--ok-deep)' : (sec.frontier ? 'var(--warn-deep)' : 'var(--bad-deep)'));
                 cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${bandBg};color:${bandCol};font-size:10px;font-weight:900;letter-spacing:0.2px;line-height:1.35;">${bandText}</div>`);
                 for (const r of sec.rows) {
                     if (r.gap) {
@@ -19982,13 +19982,13 @@
                         continue;
                     }
                     const isNow = r.hourIdx === nowIdx;
-                    const labelColor = r.flexRow ? '#B45309' : (isNow ? '#6C42F0' : '#8A9097');
+                    const labelColor = r.flexRow ? 'var(--warn-deep)' : (isNow ? 'var(--ops)' : 'var(--t-muted)');
                     cells.push(`<div title="${r.flexRow ? '隙間時間型: 時間帯は本人の都合次第' : ''}" style="font-size:9px;font-weight:900;color:${labelColor};display:flex;align-items:center;justify-content:flex-end;padding:5px 2px 0 0;border-top:1px solid rgba(var(--ink-rgb), 0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
                     for (const { bm, ci } of visible) {
                         const cell = r.cells[ci];
                         // メンバーチップは「持っていくPT属性 (弱点)」の色にする:
                         // 灼熱ボスの列でも中の人は水冷PTで凸るので青、が直感に合う
-                        const c = DC_ATTR_COLORS[bm.weakness] || '#A4AAB0';
+                        const c = DC_ATTR_COLORS[bm.weakness] || '#7A7C81';
                         const chips = cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
                         const clearMark = cell.clears ? '<div style="font-size:10px;font-weight:900;color:var(--ok);text-align:center;">💀撃破</div>' : '';
                         cells.push(`<div style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${isNow ? 'background:rgba(108,66,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
@@ -21303,7 +21303,7 @@
                 if (!isNaN(d)) hdLabel = `${d.getMonth() + 1}/${d.getDate()}(${'日月火水木金土'[d.getDay()]})`;
             }
             const pills = (bosses || []).slice().sort((a, b) => a.boss_number - b.boss_number).map(b => {
-                const v = ATTR_VISUAL[b.attribute] || { color: '#8A9097' };
+                const v = ATTR_VISUAL[b.attribute] || { color: '#7A7C81' };
                 return `<span style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:900;color:${v.color};background:${v.color}1A;white-space:nowrap;">B${b.boss_number} ${escapeHtml(b.boss_code)}</span>`;
             }).join('');
             el.innerHTML = `
@@ -21335,7 +21335,7 @@
             const TIER_LABEL = { tyrant: 'タイラント級', lord: 'ロード級' };
             const field = 'width:100%;min-width:0;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12.5px;';
             document.getElementById('opsSeasonEditBossRows').innerHTML = bosses.map(b => {
-                const v = ATTR_VISUAL[b.attribute] || { color: '#8A9097', name: '?' };
+                const v = ATTR_VISUAL[b.attribute] || { color: '#7A7C81', name: '?' };
                 // 属性 (=ボスコード) はセレクトで修正可能 (実機FB 2026-07-28)。表示は
                 // 「コード (属性名)」— 対応は supabase-client.js の seasonBossMetaFromCode が正
                 const opts = BOSS_CODES.map(c => {
@@ -21362,7 +21362,7 @@
             const row = sel.closest('[data-pos]');
             const pill = row?.querySelector('.ops-se-pill');
             const meta = window.seasonBossMetaFromCode?.(sel.value);
-            const v = meta ? (ATTR_VISUAL[meta.attribute] || { color: '#8A9097' }) : { color: '#8A9097' };
+            const v = meta ? (ATTR_VISUAL[meta.attribute] || { color: '#7A7C81' }) : { color: '#7A7C81' };
             if (pill) { pill.style.color = v.color; pill.style.background = `${v.color}1A`; }
         }
         async function handleOpsSeasonEditSave() {
@@ -21769,7 +21769,8 @@
         }
 
         // ========== メンバー管理: 専用ページ (ClaudeDesign MemberAdmin.dc.html 準拠) ==========
-        const _MA_ATTR_COLOR = { fire:'#FF3D44', water:'#2E8BFF', electric:'#9B4DFF', iron:'#FF8A2B', wind:'#18C26B' };
+        // ★ 塗りに使う (連結はしない) のでトークンでよい。属性色は両テーマで同じ
+        const _MA_ATTR_COLOR = { fire:'var(--attr-fire-solid)', water:'var(--attr-water-solid)', electric:'var(--attr-electric-solid)', iron:'var(--attr-iron-solid)', wind:'var(--ok-solid)' };
         const _MA_ATTR_CHAR  = { fire:'火', water:'水', electric:'電', iron:'鉄', wind:'風' };
         const _MA_MAX_SLOTS  = 30;
         const _memberAdmin = {
@@ -22872,7 +22873,7 @@
                 const bossCodes = attacksByAttr[attr];
                 const info = Object.values(BOSS_ATTRIBUTES).find(b => b.attribute === attr);
                 // 大文字ドメイン ('WATER') → 小文字正規形の境界は normalizeAttrKey を通す
-                const accentC = DC_ATTR_COLORS[normalizeAttrKey(attr)] || '#A4AAB0';
+                const accentC = DC_ATTR_COLORS[normalizeAttrKey(attr)] || '#7A7C81';
 
                 // 今月データがあるボスを先に。同じ区分の中は「今月の記録順」を保つ
                 // (ダメージ順に並べ替えると、画面の並びが実際の凸の流れと食い違う)
