@@ -7396,8 +7396,11 @@ console.log('\ngrowthDomain:');
         const glass = html.match(/@supports \(\(backdrop-filter[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(glass, 'ガラスの指定が無い');
         assert.ok(/\.header, \.bottom-nav \{/.test(glass), '上下の両方に掛かっていない');
-        assert.ok(/backdrop-filter: blur\(/.test(glass) && /-webkit-backdrop-filter: blur\(/.test(glass),
-            'ぼかしが無い (webkit 接頭辞も要る)');
+        // ★ 2つとも要る。片方だけ消えても気づけるように別々に見る
+        //   (webkit 接頭辞が無いと iOS Safari でガラスにならない = まさに直したい端末で効かない)
+        assert.ok(/\n\s*backdrop-filter: blur\(/.test(glass), '接頭辞なしの backdrop-filter が無い');
+        assert.ok(/-webkit-backdrop-filter: blur\(/.test(glass),
+            'webkit 接頭辞が無い (iOS Safari でガラスにならない)');
         assert.ok(/rgba\(var\(--nav-surface-rgb\), 0\.\d+\)/.test(glass), '半透明になっていない');
         // ★ 対応していない端末はべた塗りのまま (半透明だけ効くと文字が読めなくなる)
         assert.ok(/@supports \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter/.test(glass),
