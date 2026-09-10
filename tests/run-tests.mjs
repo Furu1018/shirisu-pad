@@ -2948,9 +2948,13 @@ console.log('\n複数案の同時打診:');
         const client = _fsF.readFileSync(_pathF.join(_ROOTF, 'js', 'supabase-client.js'), 'utf8');
         const fn = client.match(/window\.supabaseLoadFinishRequests = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(fn, '取得関数が見つからない');
+        // ★ 関数のどこかに文字列があるだけでは足りない (_isMissingColumnErr の引数にも出てくる)。
+        //   **SELECT に渡す列の並び**を見る
+        const sel = /const OFFER = '([^']*)'/.exec(fn)?.[1] || '';
         for (const col of ['offer_id', 'plan_key', 'deadline_at']) {
-            assert.ok(fn.includes(col), `${col} を読んでいない (進捗・確定の画面が空になる)`);
+            assert.ok(sel.split(/\s*,\s*/).includes(col), `${col} を SELECT していない (進捗・確定の画面が空になる)`);
         }
+        assert.ok(/withOffer \? OFFER : null/.test(fn), 'OFFER を SELECT の組み立てに使っていない');
         // 44 未適用でも落ちない: 列が無いときに読み直す道があること
         assert.ok(/_isMissingColumnErr\(error, 'offer_id'\)/.test(fn), '44 未適用のときの読み直しが無い');
         // 画面はこのキャッシュを offer_id で絞っている
