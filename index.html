@@ -53,6 +53,149 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* ============================================================
+           色のトークン (2026-09-10)。ライト / ダークの2テーマ。
+           ★ 色を直に書かない。ここのトークンから引く。
+           ★ 文字の色 (--t-*) は両テーマで**カードに対して 4.5:1 以上**になるよう計算で決めた。
+             面・線の色 (--s1/--s2/--line/--track/--dim/--ghost) は薄いままでよいので、
+             **文字には使わない**。この2つを混ぜると、以前のように片方のテーマで読めなくなる。
+           ★ 属性の色 (--attr-*) と状態の色 (--ok/--warn/--bad) は**別のトークン**。
+             いま同じ値から始まっているが、片方を調整してももう片方は動かない。
+           生成: scratchpad/build-theme2.mjs (色相と彩度を保ち、明度だけ地に合わせる)
+           ============================================================ */
+        :root, :root[data-theme="light"] {
+            /* 地とカード */
+            --bg: #F1F3F6;
+            --card: #FFFFFF;
+            --hair: rgba(20,22,26,0.08);
+            /* 文字 — ★ 4段すべて地に対して 4.5:1 以上。文字にはこれ以外を使わない */
+            --t-ink: #14161A;
+            --t-strong: #5A6068;
+            --t-body: #6B7178;
+            --t-muted: #70767e;
+            /* 面・線 — ★ 文字には使わない (薄いままでよい) */
+            --s1: #F7F8F9;
+            --s2: #F1F2F4;
+            --line: #E3E5E8;
+            --track: #C9CED3;
+            --dim: #B6BBC1;
+            --ghost: #A4AAB0;
+            /* 状態の色。solid=地に敷く / ink=その上の文字 / bg=薄く敷く / on=薄い地の上の文字 */
+            --ops: #6c42f0;
+            --ops-solid: #6C42F0;
+            --ops-ink: #FFFFFF;
+            --ops-bg: #f0ecfe;
+            --ops-on: #6c42f0;
+            --ok: #11874a;
+            --ok-solid: #18C26B;
+            --ok-ink: #000000;
+            --ok-bg: #e8f9f0;
+            --ok-on: #107e45;
+            --warn: #a36907;
+            --warn-solid: #F59E0B;
+            --warn-ink: #000000;
+            --warn-bg: #fef5e7;
+            --warn-on: #996206;
+            --bad: #eb1515;
+            --bad-solid: #EF4444;
+            --bad-ink: #000000;
+            --bad-bg: #fdecec;
+            --bad-on: #d91313;
+            /* 属性の色 — ★ 状態の色とは別のトークン (同じ値から始まるだけ)。
+               分けないと、危険の赤を調整したときに灼熱の赤まで動く */
+            --attr-fire: #ea0008;
+            --attr-fire-solid: #FF3D44;
+            --attr-fire-ink: #000000;
+            --attr-fire-bg: #ffecec;
+            --attr-fire-on: #db0008;
+            --attr-water: #006ffa;
+            --attr-water-solid: #2E8BFF;
+            --attr-water-ink: #000000;
+            --attr-water-bg: #eaf3ff;
+            --attr-water-on: #0066e6;
+            --attr-electric: #9543ff;
+            --attr-electric-solid: #9B4DFF;
+            --attr-electric-ink: #000000;
+            --attr-electric-bg: #f5edff;
+            --attr-electric-on: #8d33ff;
+            --attr-iron: #bf5600;
+            --attr-iron-solid: #FF8A2B;
+            --attr-iron-ink: #000000;
+            --attr-iron-bg: #fff3ea;
+            --attr-iron-on: #b55100;
+            --attr-wind: #11874a;
+            --attr-wind-solid: #18C26B;
+            --attr-wind-ink: #000000;
+            --attr-wind-bg: #e8f9f0;
+            --attr-wind-on: #107e45;
+        }
+        :root[data-theme="dark"] {
+            /* 地とカード */
+            --bg: #0E1013;
+            --card: #17191D;
+            --hair: rgba(255,255,255,0.09);
+            /* 文字 — ★ 4段すべて地に対して 4.5:1 以上。文字にはこれ以外を使わない */
+            --t-ink: #F2F4F6;
+            --t-strong: #CFD4D9;
+            --t-body: #B4BAC1;
+            --t-muted: #979EA6;
+            /* 面・線 — ★ 文字には使わない (薄いままでよい) */
+            --s1: #131519;
+            --s2: #1C1F24;
+            --line: #272B31;
+            --track: #383D45;
+            --dim: #565C64;
+            --ghost: #7B828A;
+            /* 状態の色。solid=地に敷く / ink=その上の文字 / bg=薄く敷く / on=薄い地の上の文字 */
+            --ops: #8d6df3;
+            --ops-solid: #6C42F0;
+            --ops-ink: #FFFFFF;
+            --ops-bg: #282147;
+            --ops-on: #987bf4;
+            --ok: #18c26b;
+            --ok-solid: #18C26B;
+            --ok-ink: #000000;
+            --ok-bg: #173b2d;
+            --ok-on: #18c26b;
+            --warn: #f59e0b;
+            --warn-solid: #F59E0B;
+            --warn-ink: #000000;
+            --warn-bg: #433419;
+            --warn-on: #f59e0b;
+            --bad: #ef4444;
+            --bad-solid: #EF4444;
+            --bad-ink: #000000;
+            --bad-bg: #422225;
+            --bad-on: #f26565;
+            /* 属性の色 — ★ 状態の色とは別のトークン (同じ値から始まるだけ)。
+               分けないと、危険の赤を調整したときに灼熱の赤まで動く */
+            --attr-fire: #ff3d44;
+            --attr-fire-solid: #FF3D44;
+            --attr-fire-ink: #000000;
+            --attr-fire-bg: #452025;
+            --attr-fire-on: #ff575d;
+            --attr-water: #2e8bff;
+            --attr-water-solid: #2E8BFF;
+            --attr-water-ink: #000000;
+            --attr-water-bg: #1c304a;
+            --attr-water-on: #4899ff;
+            --attr-electric: #a45cff;
+            --attr-electric-solid: #9B4DFF;
+            --attr-electric-ink: #000000;
+            --attr-electric-bg: #31234a;
+            --attr-electric-on: #af71ff;
+            --attr-iron: #ff8a2b;
+            --attr-iron-solid: #FF8A2B;
+            --attr-iron-ink: #000000;
+            --attr-iron-bg: #453020;
+            --attr-iron-on: #ff8a2b;
+            --attr-wind: #18c26b;
+            --attr-wind-solid: #18C26B;
+            --attr-wind-ink: #000000;
+            --attr-wind-bg: #173b2d;
+            --attr-wind-on: #18c26b;
+        }
+
         :root {
             /* === マーブル × エレガンス ブランドトークン === */
             --brand-primary: #1a1a1a;            /* 黒ラベル (ボタン/強調) */

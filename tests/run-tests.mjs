@@ -6999,6 +6999,69 @@ console.log('\ngrowthDomain:');
         // 既定の地は _BURST_BG (ホバー中) — 白を決め打ちしない
         assert.notEqual(F._burstTint('#FFFFFF'), '#ffffff', '既定の地が白のままになっている');
     });
+    test('★ 色のトークン: ライトとダークが同じ顔ぶれで、文字は両方 4.5:1 以上', () => {
+        // ★ 以前ダークモードを断念した原因は「色を直に書いていた」こと。トークンに寄せ、
+        //   文字の色は**計算で**地に合わせる。ここが崩れると片方のテーマで読めなくなる
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const block = (sel) => html.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}'))?.[1] || '';
+        const vars = (sel) => Object.fromEntries([...block(sel).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)]
+            .map(m => [m[1], m[2].trim()]));
+        const L = vars(':root, :root[data-theme="light"]');
+        const Dk = vars(':root[data-theme="dark"]');
+        assert.ok(Object.keys(L).length >= 40, `ライトのトークンが少なすぎる: ${Object.keys(L).length}`);
+        assert.deepEqual(Object.keys(Dk).sort(), Object.keys(L).sort(),
+            'ライトとダークでトークンの顔ぶれが違う (片方だけ定義された色は、もう片方で必ず崩れる)');
+
+        const lin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        const lum = (h) => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+            return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]); };
+        const ratio = (a, b) => { const x = lum(a) + 0.05, y = lum(b) + 0.05; return Math.max(x, y) / Math.min(x, y); };
+        const hex6 = /^#[0-9A-Fa-f]{6}$/;
+
+        for (const [mode, t] of [['ライト', L], ['ダーク', Dk]]) {
+            // ★ 文字の4段は、カードに対して 4.5:1 以上
+            for (const k of ['t-ink', 't-strong', 't-body', 't-muted']) {
+                assert.ok(hex6.test(t[k]), `${mode} --${k} が色になっていない: ${t[k]}`);
+                const r = ratio(t[k], t.card);
+                assert.ok(r >= 4.5, `${mode} --${k} がカードの上で読めない (${r.toFixed(2)}:1)`);
+            }
+            // ★ 状態・属性の色も、文字 / 薄い地 / 色地 の3通りすべてで 4.5:1 以上
+            const roles = ['ops', 'ok', 'warn', 'bad', 'attr-fire', 'attr-water', 'attr-electric', 'attr-iron', 'attr-wind'];
+            for (const k of roles) {
+                assert.ok(hex6.test(t[k]), `${mode} --${k} が無い`);
+                assert.ok(ratio(t[k], t.card) >= 4.5, `${mode} --${k} がカードの上で読めない`);
+                assert.ok(ratio(t[`${k}-on`], t[`${k}-bg`]) >= 4.5, `${mode} --${k}-on が薄い地で読めない`);
+                assert.ok(ratio(t[`${k}-ink`], t[`${k}-solid`]) >= 4.5, `${mode} --${k}-ink が色地で読めない`);
+            }
+            // ★ 属性の色と状態の色は**別のトークン**。同じ名前に寄せない
+            assert.ok(t['attr-fire'] !== undefined && t.bad !== undefined, `${mode} 属性と状態が分かれていない`);
+        }
+        // ★ ダークの地はカードより暗い (カードが浮いて見えないと、線を引く羽目になる)
+        assert.ok(lum(Dk.card) > lum(Dk.bg), 'ダークでカードが地より暗い');
+        assert.ok(lum(L.card) > lum(L.bg), 'ライトでカードが地より暗い');
+    });
+
+    test('★ 色の直書きが増えていない (トークンへの置き換えの進み具合)', () => {
+        // ★ 置き換えは段階的にやる。**増えていないこと**をここで見張る。
+        //   直したら上限を下げること (下げ忘れると、戻ってしまっても気づけない)
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const s0 = html.indexOf('<style'), s1 = html.lastIndexOf('</style>');
+        assert.ok(s0 > 0 && s1 > s0, '<style> を切り出せない');
+        let css = html.slice(s0, s1);
+        // トークンの定義そのものは色を書いてよい
+        const a = css.indexOf(':root, :root[data-theme="light"]');
+        const b = css.indexOf('/* === マーブル');
+        assert.ok(a > 0 && b > a, 'トークンの定義ブロックを切り出せない');
+        css = css.slice(0, a) + css.slice(b);
+        const raw = (css.match(/#[0-9A-Fa-f]{3,8}\b/g) || []).length;
+        const rgba = (css.match(/rgba?\([0-9]/g) || []).length;
+        const LIMIT_HEX = 727, LIMIT_RGBA = 304;   // 2026-09-10 の出発点
+        assert.ok(raw <= LIMIT_HEX, `<style> の直値が増えている: ${raw} (上限 ${LIMIT_HEX})`);
+        assert.ok(rgba <= LIMIT_RGBA, `<style> の rgba() が増えている: ${rgba} (上限 ${LIMIT_RGBA})`);
+        if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
+            assert.fail(`置き換えが進んだので上限を下げてください: hex ${raw} / rgba ${rgba}`);
+        }
+    });
     test('★ バーストの色は1組だけ (同じ B1 が画面によって色違いにならない)', () => {
         // 2026-09-10 まで編成エディタ (B1緑/B2黄) とキャラ管理 (B1紫/B2緑) で色が違った。
         // ユーザー決定「編成エディタの色でOK」で1組に寄せた
