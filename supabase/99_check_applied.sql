@@ -219,11 +219,15 @@ SELECT * FROM (
         (to_regclass('public.plan_reservations') IS NOT NULL
          AND to_regclass('public.plan_reservation_events') IS NOT NULL
          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'attacks' AND column_name = 'reservation_id')
-         AND to_regproc('public.reservation_set_status(bigint,text,text,text,text,bigint,jsonb,numeric)') IS NOT NULL),
+         -- ★ 引数まで指定して引くなら to_regprocedure。to_regproc は**関数名だけ**しか受け取らず、
+         --   引数リスト付きの文字列は解釈できずに必ず NULL を返す = 適用済みでも「未適用」と出る
+         --   (2026-09-10 に発覚。39/40 がずっと false と出ていた原因)
+         AND to_regprocedure('public.reservation_set_status(bigint,text,text,text,text,bigint,jsonb,numeric)') IS NOT NULL),
         'plan_reservations / plan_reservation_events / attacks.reservation_id / reservation_set_status() (凸の予約。未適用だと予約の作成・承認がエラーで止まり適用を案内する)'
 
     UNION ALL SELECT '40_attack_with_reservation_rpc',
-        to_regproc('public.report_attack(bigint,bigint,date,integer,text,bigint,integer,jsonb,bigint,boolean,text)') IS NOT NULL,
+        -- ★ 同上。引数付きは to_regprocedure (to_regproc だと常に NULL = 常に「未適用」)
+        to_regprocedure('public.report_attack(bigint,bigint,date,integer,text,bigint,integer,jsonb,bigint,boolean,text)') IS NOT NULL,
         'report_attack() (凸報告の採番・insert・残HP減算・予約の消し込みを1トランザクションで。未適用だと従来の3リクエスト方式に静かに劣化する)'
 
     UNION ALL SELECT '41_client_gate',

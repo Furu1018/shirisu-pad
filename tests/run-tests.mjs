@@ -2963,6 +2963,19 @@ console.log('\n複数案の同時打診:');
             '進捗画面の絞り込みが変わった (テストの前提を見直すこと)');
     });
 
+    test('★ 99: 引数付きで関数を引くなら to_regprocedure (to_regproc は常に NULL)', () => {
+        // to_regproc は**関数名だけ**しか受け取らない。引数リスト付きの文字列を渡すと
+        // 解釈できずに必ず NULL を返し、適用済みでも「未適用」と出る
+        // (2026-09-10 に発覚。39/40 がずっと false と出ていた)
+        const check = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '99_check_applied.sql'), 'utf8');
+        const bad = [...check.matchAll(/to_regproc\('([^']*\([^']*\))'\)/g)].map((m) => m[1]);
+        assert.deepEqual(bad, [], `引数付きなのに to_regproc を使っている: ${bad.join(' / ')}`);
+        // 引数なしの名前引きは to_regproc のままでよい (使い分けができていること)
+        assert.ok(/to_regproc\('public\.restore_fix_sequences'\)/.test(check), '名前引きまで変えている');
+        assert.ok(/to_regprocedure\('public\.report_attack\(/.test(check), '40 の判定が直っていない');
+        assert.ok(/to_regprocedure\('public\.reservation_set_status\(/.test(check), '39 の判定が直っていない');
+    });
+
     test('44_finish_offers.sql: 冪等 / 判定は索引の定義まで見る', () => {
         const sql = _fsF.readFileSync(_pathF.join(_ROOTF, 'supabase', '44_finish_offers.sql'), 'utf8').replace(/\r\n/g, '\n');
         for (const col of ['offer_id', 'plan_key', 'deadline_at']) {
