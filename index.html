@@ -1145,7 +1145,9 @@
             align-items: center;
             padding: 0 16px;
             position: sticky;
-            top: 57px;
+            /* ★ 帯が隠れたら詰める (_navSyncHeader が --hdr-offset を 0 にする)。
+               詰めないと、帯を隠しても上に 57px の空白が残る (Codex指摘 2026-09-10) */
+            top: var(--hdr-offset, 57px);
             z-index: 99}
 
         .tab-buttons-wrapper {
@@ -6822,6 +6824,13 @@
         function _invalidateTabRenderCache(name) {
             if (name) delete _tabRenderedAt[name];
             else Object.keys(_tabRenderedAt).forEach(k => delete _tabRenderedAt[k]);
+        }
+        // ★ シーズンが変わったら、画面に出ているものは全部古い。
+        //   invalidate の呼び出しは 14 か所あるので、**そのたびに書き足すのではなく**
+        //   ここで一度だけ聞き手になる (2026-09-10: 終了処理にだけ足しても、作成・
+        //   テスト作成・テスト終了で同じ取りこぼしが起きると Codex に指摘された)
+        if (typeof seasonStore !== 'undefined' && seasonStore.onInvalidate) {
+            seasonStore.onInvalidate(() => _invalidateTabRenderCache());
         }
         function _renderTabContent(name) {
             const def = _tabDef(name);
@@ -21804,9 +21813,6 @@
                 await window.supabaseEndActiveSeason(ur);
                 seasonStore.invalidate();
                 opsStore.invalidate();
-                // ★ タブの描画キャッシュも捨てる (2026-09-10 実機FB)。捨てないと、
-                //   ホームに戻っても 30 秒間は終わったシーズンの予約や凸枠が残ったままになる
-                if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache();
                 showNotification(`シーズン ${ctx.season.month_key} を終了しました`);
                 renderOpsDashboard();
             } catch (e) {

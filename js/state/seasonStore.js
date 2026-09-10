@@ -27,6 +27,7 @@
     let data = null;
     let loadFn = null;        // テスト用差し替え。既定は supabaseLoadActiveSeasonWithBosses (遅延解決)
     let generation = 0;       // 世代番号: invalidate で進む (進行中ロードの結果を破棄)
+    const listeners = [];     // invalidate のたびに呼ぶ (画面側の描画キャッシュ破棄など)
 
     const seasonStore = {
         /** 現在のキャッシュ (未ロード/無効化後は null。例外は投げない) */
@@ -64,7 +65,20 @@
         },
 
         /** 書き込み操作 (凸報告・HP更新・シーズン切替) 後の無効化 */
-        invalidate() { generation++; data = null; },
+        /**
+         * キャッシュを捨てる。
+         * ★ シーズンが変われば**画面に出ているものは全部古い**ので、聞き手 (画面側) にも知らせる。
+         *   呼び出し箇所は 14 か所あり、そのたびに画面側の後始末を書き足すのは必ず忘れる
+         *   (2026-09-10: シーズンを終了してもホームに予約が残った。終了処理にだけ足しても
+         *    作成・テスト作成・テスト終了で同じことが起きる、と Codex に指摘された)
+         */
+        invalidate() {
+            generation++;
+            data = null;
+            for (const fn of listeners) { try { fn(); } catch { /* 1つ転んでも残りは呼ぶ */ } }
+        },
+        /** 無効化のたびに呼ばれる。画面側が描画キャッシュを捨てるのに使う。 */
+        onInvalidate(fn) { if (typeof fn === 'function') listeners.push(fn); },
 
         /** ポーリングの軽量差し替え: シーズン一致時のみ bosses を差し替える */
         patchBosses(seasonId, bosses) {

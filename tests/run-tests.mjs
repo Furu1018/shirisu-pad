@@ -7408,13 +7408,29 @@ console.log('\ngrowthDomain:');
         assert.ok(_fsG.existsSync(new URL('../union-logo.png', import.meta.url)), 'ロゴの実体が無い');
     });
 
-    test('★ シーズンを終了したらタブの描画キャッシュも捨てる', () => {
-        // 捨てないと、ホームに戻っても 30 秒間は終わったシーズンの予約が残る (2026-09-10 実機FB)
+    test('★ シーズンが変わったらタブの描画キャッシュを捨てる (呼び出し箇所ごとに書き足さない)', () => {
+        // 捨てないと、ホームに戻っても 30 秒間は終わったシーズンの予約が残る (2026-09-10 実機FB)。
+        // ★ 終了処理にだけ足すと、作成・テスト作成・テスト終了で同じ取りこぼしが起きる
+        //   (Codex指摘)。invalidate の呼び出しは 14 か所あるので、**聞き手を1つ置く**
         const html = _grRd('index.html');
+        const store = _grRd('js', 'state', 'seasonStore.js');
+        assert.ok(/onInvalidate\(fn\)/.test(store), 'seasonStore に聞き手の口が無い');
+        assert.ok(/for \(const fn of listeners\)/.test(store), 'invalidate で聞き手を呼んでいない');
+        assert.ok(/try \{ fn\(\); \} catch/.test(store), '聞き手が1つ転ぶと残りが呼ばれない');
+        assert.ok(/seasonStore\.onInvalidate\(\(\) => _invalidateTabRenderCache\(\)\)/.test(html),
+            '画面側が聞き手になっていない');
+        // 終了処理そのものは従来どおり両ストアを捨てる
         const fn = html.match(/async function handleOpsEndSeason\(\)[\s\S]*?\n        \}/)?.[0] || '';
-        assert.ok(fn, '終了処理が見つからない');
         assert.ok(/seasonStore\.invalidate\(\);/.test(fn) && /opsStore\.invalidate\(\);/.test(fn));
-        assert.ok(/_invalidateTabRenderCache\(\);/.test(fn), 'タブの描画キャッシュを捨てていない');
+    });
+
+    test('★ 帯を隠したら、その下の横タブも詰める (768〜1179px で空白が残る)', () => {
+        const html = _grRd('index.html');
+        const nav = html.match(/\.tab-navigation \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/top: var\(--hdr-offset, 57px\);/.test(nav), '帯の高さに追随していない');
+        // _navSyncHeader が隠れているときだけ 0 にする
+        assert.ok(/setProperty\('--hdr-offset', '0px'\)/.test(html), '隠れたときに詰めていない');
+        assert.ok(/removeProperty\('--hdr-offset'\)/.test(html), '出したときに戻していない');
     });
 
     test('★ 配線: 浮かぶナビ (地と反対の色の帯 + いま居るタブを円で持ち上げ、名前を出す)', () => {
