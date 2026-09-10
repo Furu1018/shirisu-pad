@@ -451,7 +451,7 @@ node tests/ops-stage.mjs      # 運営タブの段階ヘッダ・ヒーロー・
 node tests/growth-panel.mjs   # 育成データの取り込みパネルの描画 + 取り込み本体 (handleGrowthImport) の実行テスト
 node tests/growth-compare.mjs # 🧬 育成をくらべるシート (_gcRender) の実行テスト
 node tests/theme-switch.mjs   # 見た目 (ライト/ダーク) の切り替えの実行テスト
-node tests/finish-console.mjs # 🏁 締め凸コンソール (今 vs 待つ) の描画の実行テスト
+node tests/finish-console.mjs # 🏁 締め凸コンソール (今 vs 待つ) + 複数案の同時打診 の実行テスト
 ```
 `plan-hp-modal.mjs` は index.html の関数本体を切り出してスタブ実行する。
 **単体テストでは絶対に出ない実行経路のバグ** (2026-08-08 に const の TDZ で

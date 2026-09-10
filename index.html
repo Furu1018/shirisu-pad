@@ -15758,7 +15758,7 @@
         // 直接代入・部分書き換えは禁止 — get/load/isStale/invalidate/patchBosses/patchPlayer を使う
         let _opsCurrentAttr = null;
         // 締め凸検索の条件 (2026-09-08 ユーザー要望): 何人で締めるか / 今から何時間の範囲で探すか。端末内だけの状態
-        const _opsFinish = { shots: null, hours: null };
+        const _opsFinish = { shots: null, hours: null, pick: new Set(), deadlineMin: 15, offerId: null };
         function handleOpsFinishOpt(kind, val) {
             if (kind === 'shots') _opsFinish.shots = (val == null) ? null : Number(val);
             else if (kind === 'hours') _opsFinish.hours = (val == null) ? null : Number(val);
@@ -18505,6 +18505,155 @@
             return finishDomain.computeFinishPlans(candidates, remHP, { shots: _opsFinish.shots });
         }
 
+        // ===== 📣 複数案の同時打診 (③・2026-09-10) =====
+        // ★ 1案ずつ順に聞くと**返事待ちが直列に積み上がる** (2026-09-10 の聞き取り)。
+        //   「A さんが進言してくれても、理想を言えば B+C の方がキレイに削りきれるときに、
+        //     B と C どちらかが反応が無いとユニオン全体で進行できなくなる。結果 A さんも待たされる」
+        //   → 案を2つ選んで**同時に、期限つきで**出し、先に揃った案で確定する。
+        //   判断 (どちらが勝ちか・誰を待っているか) は finishDomain.offerProgress が唯一。
+        function handleOpsFinishPick(key) {
+            const set = _opsFinish.pick;
+            if (set.has(key)) set.delete(key);
+            else if (set.size < 2) set.add(key);        // ★ 3案以上は同時に出さない (誰に何を頼んだか分からなくなる)
+            else { showNotification('同時に出せるのは2案までです。片方を外してください'); return; }
+            if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+        }
+        function handleOpsFinishDeadline(min) {
+            _opsFinish.deadlineMin = Number(min) || 15;
+            if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+        }
+
+        // 選んだ案を同時に打診する
+        async function handleOpsFinishOfferSend() {
+            const cmp = _opsFinishCompare;
+            const ctx = _opsFinishPushContext;
+            if (!cmp || !ctx) { alert('候補データ無し'); return; }
+            const picks = cmp.rows.filter(r => _opsFinish.pick.has(r.key) && r.plan);
+            if (picks.length < 2) { alert('案を2つ選んでください'); return; }
+            const min = Number(_opsFinish.deadlineMin) || 15;
+            const deadline = new Date(Date.now() + min * 60000);
+            const hhmm = deadline.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
+            const bossName = ctx.boss.name || ctx.boss.boss_code;
+            // ★ 送る文面に「ほかの案と同時」と「期限」を必ず入れる —
+            //   同時に頼まれていることを伏せると、落ちたときに不信になる
+            const msgs = picks.map((r, i) => {
+                const names = r.plan.members.map(m => m.name).join('、');
+                return {
+                    key: r.key,
+                    playerIds: r.plan.members.map(m => m.id),
+                    title: `📣 ${ctx.ptInfo?.name}PT 締め凸 (案${i + 1})`,
+                    body: `${bossName} 残HP ${ctx.remainingHpB.toFixed(2)}B → ${names} さんでお願いできますか🙏`
+                        + `\nほかの案と同時にお願いしています。先に揃ったほうにお願いします (${hhmm} までにお返事ください)`,
+                    recipients: r.plan.members.map(m => ({ id: m.id, name: m.name })),
+                };
+            });
+            const ok = await showPushPreview(msgs.map(m => ({ title: m.title, body: m.body, recipients: m.recipients })));
+            if (!ok) return;
+            const seasonId = opsStore.get()?.season?.id;
+            if (!seasonId) { alert('アクティブシーズンがありません'); return; }
+            try {
+                // ★ 先に記録してから送る。送ってから記録に失敗すると、
+                //   頼まれた人だけが居て運営側に進み具合が出ない状態になる
+                const offerId = await window.supabaseSetFinishOffer(seasonId, ctx.boss.boss_number,
+                    msgs.map(m => ({ key: m.key, playerIds: m.playerIds })),
+                    { raidLevel: Number(opsStore.get()?.season?.current_level) || null, deadlineAt: deadline });
+                _opsFinish.offerId = offerId;
+                _opsFinish.pick = new Set();
+                for (const m of msgs) {
+                    await window.sendPushNotification({ title: m.title, body: m.body, url: './?tab=mypage&focus=finishreq', playerIds: m.playerIds });
+                }
+                showNotification(`✅ ${picks.length}案を同時に打診しました (${hhmm} まで)`);
+                await _refreshFinishRequests();
+                if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+                renderOpsBossSummary();
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+
+        // 打診の進み具合。★ 判断はドメイン、ここは並べるだけ
+        function _opsFinishOfferHtml() {
+            const dom = window.finishDomain;
+            const offerId = _opsFinish.offerId;
+            if (!dom || !dom.offerProgress || !offerId) return '';
+            const rows = (_finishReqCache || []).filter(r => String(r.offer_id || '') === String(offerId));
+            if (rows.length === 0) return '';
+            const pr = dom.offerProgress(rows);
+            _opsFinishOffer = pr;
+            const esc = escapeHtml;
+            const dl = pr.deadlineAt ? new Date(pr.deadlineAt).toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' }) : null;
+            const mark = (st) => st === 'accepted' ? '<span style="color:var(--ok-deep);">✅</span>'
+                : st === 'declined' ? '<span style="color:var(--t-muted);">✕</span>'
+                    : '<span style="color:var(--warn-deep);">⏳</span>';
+            const planRows = pr.plans.map((p, i) => {
+                const win = p.key === pr.winner;
+                const who = p.members.map(m => `${mark(m.status)} ${esc(m.name)}`).join('　');
+                const state = p.dead ? `<span style="color:var(--t-muted);font-weight:900;">見送り (${esc(p.declinedNames.join('・'))} が不可)</span>`
+                    : p.ready ? '<span style="color:var(--ok-deep);font-weight:900;">全員そろいました</span>'
+                        : `<span style="color:var(--warn-deep);font-weight:900;">${p.acceptedCount}/${p.total} · ${esc(p.waitingNames.join('・'))} 待ち</span>`;
+                return `<div style="border:1px solid ${win ? 'var(--ok-solid)' : 'rgba(var(--ink-rgb), 0.08)'};border-radius:11px;padding:9px 11px;margin-bottom:6px;background:${win ? 'var(--ok-bg)' : 'var(--card)'};">
+                    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+                        <b style="font-size:12.5px;color:var(--t-ink);">案${i + 1}</b>
+                        <span style="font-size:11px;font-weight:800;">${state}</span>
+                        ${win ? `<button type="button" onclick="handleOpsFinishOfferConfirm('${esc(p.key)}')" style="margin-left:auto;font-family:inherit;font-size:11px;font-weight:900;padding:5px 12px;border-radius:999px;border:none;cursor:pointer;background:var(--ok-solid);color:var(--ok-ink);">この案で確定</button>` : ''}
+                    </div>
+                    <div style="font-size:11.5px;font-weight:800;color:var(--t-body);margin-top:4px;">${who}</div>
+                </div>`;
+            }).join('');
+            const lead = pr.allDead ? '<b>どちらの案も見送りになりました。</b>別の組み合わせを探してください。'
+                : pr.winner ? '<b>先に揃った案があります。</b>確定すると、もう片方の人に「今回は見送り」を伝えます。'
+                    : pr.expired ? `<b>${dl} を過ぎました。</b>返事が無い人を外して組み直すか、もう少し待つか決めてください。`
+                        : `返事を待っています${pr.waitingOn.length ? ` — ${esc(pr.waitingOn.join('・'))}` : ''}${dl ? ` (${dl} まで)` : ''}`;
+            return `<div style="margin-bottom:12px;border-radius:13px;padding:11px 12px;background:var(--s1);">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap;">
+                    <span style="font-size:12.5px;font-weight:900;color:var(--t-ink);">📣 打診中</span>
+                    <button type="button" onclick="handleOpsFinishOfferClose()" style="margin-left:auto;font-family:inherit;font-size:10.5px;font-weight:800;border:none;background:none;color:var(--t-muted);cursor:pointer;text-decoration:underline;">閉じる</button>
+                </div>
+                <div style="font-size:11.5px;font-weight:800;color:var(--t-body);line-height:1.7;margin-bottom:8px;">${lead}</div>
+                ${planRows}
+            </div>`;
+        }
+        let _opsFinishOffer = null;
+
+        function handleOpsFinishOfferClose() {
+            _opsFinish.offerId = null;
+            if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+        }
+
+        // 確定: 落ちた案の人に「今回は見送り」を伝えて、その行を declined にする
+        // ★ 黙って流さない。伝えないと次から返事が来なくなる
+        async function handleOpsFinishOfferConfirm(winnerKey) {
+            const dom = window.finishDomain, pr = _opsFinishOffer, ctx = _opsFinishPushContext;
+            if (!dom || !pr || !ctx) return;
+            const win = pr.plans.find(p => p.key === winnerKey);
+            if (!win) return;
+            const losers = dom.offerLosers(pr, winnerKey);
+            const winNames = win.members.map(m => m.name).join('、');
+            if (!confirm(`${winNames} さんの案で確定します。\n\n`
+                + (losers.length ? `${losers.map(m => m.name).join('、')} さんには「今回は見送り」をお伝えします。\n\n` : '')
+                + '[OK] 確定する / [キャンセル] やめる')) return;
+            try {
+                if (losers.length) {
+                    const title = '🙏 締め凸のお願い (今回は見送り)';
+                    const body = `${ctx.boss.name || ctx.boss.boss_code} は ${winNames} さんにお願いしました。`
+                        + `\n手を挙げてくださってありがとうございました。凸は温存でお願いします`;
+                    const ok = await showPushPreview([{ title, body, recipients: losers.map(m => ({ id: m.id, name: m.name })) }]);
+                    if (!ok) return;
+                    // ★ 先に記録してから送る。送ってから記録に失敗すると、
+                    //   「見送り」と伝えたのに画面では確認中のまま残る
+                    await window.supabaseDeclineFinishRows(losers.flatMap(m => m.rowIds));
+                    await window.sendPushNotification({ title, body, url: './?tab=mypage', playerIds: losers.map(m => m.id) });
+                }
+                showNotification(`✅ ${winNames} さんの案で確定しました`);
+                _opsFinish.offerId = null;
+                await _refreshFinishRequests();
+                if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
+                renderOpsBossSummary();
+            } catch (e) {
+                alert(`❌ ${e?.message || e}`);
+            }
+        }
+
         // ===== 🏁 締め凸コンソール: 「今」打てる手と「待って」打てる手を並べる (2026-09-10) =====
         // ★ 運営の言葉:「『今』打てる手と、向こう何時までを見て打てる手をくらべれると指示が出しやすい」
         //   判断は finishDomain.compareFinishWindows が唯一。ここは並べるだけ (画面で勝ち負けを書き足さない)。
@@ -18535,6 +18684,7 @@
                 lead = `<b>${esc(w.label)}</b>まで待つと ${bn(cmp.gainB)}B ぶんきれいに削れます`
                     + (w.newFaces.length ? ` (${esc(w.newFaces.slice(0, 3).join('・'))} が出られるため)` : '') + '。';
             }
+            const picked = _opsFinish.pick;
             const rows = cmp.rows.map((r) => {
                 const on = r.hours === _opsFinish.hours || (r.hours == null && _opsFinish.hours == null);
                 const isBest = r.key === cmp.bestKey;
@@ -18560,20 +18710,43 @@
                     </div>
                     <div style="font-size:11px;font-weight:800;color:var(--t-body);margin-top:3px;">${who}</div>
                     ${grew}
-                </button>`;
+                </button>`
+                // ★ 案を2つ選んで同時に打診できる。行そのものは「窓を絞る」ボタンなので、
+                //   選ぶほうは中に入れずに**隣に**置く (押し間違えると打診が飛ぶ)
+                + (r.plan ? `<button type="button" onclick="handleOpsFinishPick('${r.key}')"
+                    style="display:block;width:100%;text-align:left;font-family:inherit;font-size:10.5px;font-weight:800;cursor:pointer;
+                    margin:-4px 0 8px;padding:4px 11px;border:none;background:none;color:${picked.has(r.key) ? 'var(--ops)' : 'var(--t-muted)'};">
+                    ${picked.has(r.key) ? '☑' : '☐'} 同時打診に選ぶ</button>` : '');
             }).join('');
             // ★ 別のボスで確認中の人が混ざっていたら言う (二重に頼まないため)
             const pend = [...new Set(cmp.rows.reduce((acc, r) => acc.concat(r.pendingNames), []))];
             const pendNote = pend.length
                 ? `<div style="margin-top:2px;font-size:10.5px;font-weight:800;color:var(--warn-deep);">⏳ ${esc(pend.join('・'))} は別のボスで確認中です (返事しだいで凸が埋まります)</div>`
                 : '';
+            // ★ 2案そろって初めて「同時打診」が押せる。1案なら従来どおり下の Push を使う
+            const dlChip = (m) => `<button type="button" onclick="handleOpsFinishDeadline(${m})"
+                style="font-family:inherit;font-size:10.5px;font-weight:900;padding:3px 9px;border-radius:999px;border:none;cursor:pointer;
+                background:${_opsFinish.deadlineMin === m ? 'var(--t-ink)' : 'var(--s2)'};color:${_opsFinish.deadlineMin === m ? 'var(--card)' : 'var(--t-strong)'};">${m}分</button>`;
+            const offerBar = picked.size > 0 ? `<div style="margin-top:2px;padding:9px 11px;border-radius:11px;background:var(--ops-bg);">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <b style="font-size:11.5px;color:var(--ops-on);">${picked.size}案を選択中</b>
+                    <span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">返事の期限</span>
+                    ${[5, 10, 15, 30].map(dlChip).join('')}
+                    <button type="button" onclick="handleOpsFinishOfferSend()" ${picked.size < 2 ? 'disabled' : ''}
+                        style="margin-left:auto;font-family:inherit;font-size:11.5px;font-weight:900;padding:6px 14px;border-radius:999px;border:none;
+                        cursor:${picked.size < 2 ? 'default' : 'pointer'};background:${picked.size < 2 ? 'var(--s2)' : 'var(--ops-solid)'};
+                        color:${picked.size < 2 ? 'var(--t-muted)' : 'var(--ops-ink)'};">📣 同時に打診</button>
+                </div>
+                ${picked.size < 2 ? '<div style="font-size:10.5px;font-weight:700;color:var(--t-muted);margin-top:4px;">もう1案選ぶと、両方に同時にお願いできます (先に揃ったほうで確定)</div>' : ''}
+            </div>` : '';
             return `<div style="margin-bottom:12px;">
+                ${_opsFinishOfferHtml()}
                 <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap;">
                     <span style="font-size:12.5px;font-weight:900;color:var(--t-ink);">🏁 いま打つか、待つか</span>
                     <span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">押すと下の候補がその時間で絞られます</span>
                 </div>
                 <div style="font-size:12px;font-weight:800;color:var(--t-body);line-height:1.7;margin-bottom:8px;">${lead}</div>
-                ${rows}${pendNote}
+                ${rows}${offerBar}${pendNote}
             </div>`;
         }
 

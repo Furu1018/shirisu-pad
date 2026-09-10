@@ -270,6 +270,19 @@ SELECT * FROM (
                         AND pg_get_constraintdef(oid) LIKE '%no_openid%')),
         'ユニオンメンバーの育成スナップショット + 取り込み状態 + players.blabla_openid (未適用だと取り込みが丸ごと使えない)'
 
+    UNION ALL SELECT '44_finish_offers',
+        (EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_name = 'finish_requests' AND column_name = 'offer_id')
+         AND EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_name = 'finish_requests' AND column_name = 'plan_key')
+         AND EXISTS (SELECT 1 FROM information_schema.columns
+                      WHERE table_name = 'finish_requests' AND column_name = 'deadline_at')
+         -- 同じ回・同じ案・同じ人の重複を止める一意索引まで見る
+         -- (無いと「全員そろったか」を数えられなくなる)
+         AND EXISTS (SELECT 1 FROM pg_indexes
+                      WHERE schemaname = 'public' AND indexname = 'uq_finish_requests_offer_plan_player')),
+        '締め凸の複数案の同時打診 (未適用だと同時打診だけが使えない。1案の依頼は従来どおり動く)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

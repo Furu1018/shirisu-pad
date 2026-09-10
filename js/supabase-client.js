@@ -1429,6 +1429,78 @@ window.supabaseSetFinishRequests = async function (seasonId, bossNumber, playerI
         throw error;
     }
 };
+// ===== 締め凸の複数案の同時打診 (44_finish_offers.sql) =====
+// ★ 1案ずつ順に聞くと返事待ちが直列に積み上がる (2026-09-10 の聞き取り)。
+//   A案と B+C案を**同時に、期限つきで**出し、先に揃った案で確定する。
+// ★ 既存の依頼と同じ行に入れる (行の意味は変えない)。入れ替えの範囲も従来と同じ
+//   = 同じレベルの同じボスの依頼をまとめて差し替える。
+window.supabaseSetFinishOffer = async function (seasonId, bossNumber, plans, opts = {}) {
+    if (!seasonId || !bossNumber || !Array.isArray(plans) || plans.length === 0) return null;
+    const lv = Number(opts.raidLevel);
+    const hasLv = Number.isInteger(lv) && lv >= 1 && lv <= 4;
+    const offerId = String(opts.offerId || `o${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    const deadlineAt = opts.deadlineAt ? new Date(opts.deadlineAt).toISOString() : null;
+    const rows = [];
+    for (const p of plans) {
+        const key = String(p && p.key || '');
+        for (const pid of (p && Array.isArray(p.playerIds) ? p.playerIds : [])) {
+            const r = { season_id: seasonId, boss_number: bossNumber, player_id: pid,
+                offer_id: offerId, plan_key: key };
+            if (hasLv) r.raid_level = lv;
+            if (deadlineAt) r.deadline_at = deadlineAt;
+            rows.push(r);
+        }
+    }
+    if (rows.length === 0) return null;
+    // 同じレベルの同じボスの依頼を入れ替える (従来と同じ範囲)
+    let del = supabase.from('finish_requests').delete()
+        .eq('season_id', seasonId).eq('boss_number', bossNumber);
+    del = hasLv ? del.eq('raid_level', lv) : del.is('raid_level', null);
+    const delRes = await del;
+    if (delRes.error && !_isMissingColumnErr(delRes.error, 'raid_level')) throw delRes.error;
+    if (delRes.error) {
+        await supabase.from('finish_requests').delete()
+            .eq('season_id', seasonId).eq('boss_number', bossNumber);
+        for (const r of rows) delete r.raid_level;
+    }
+    const { error } = await supabase.from('finish_requests').insert(rows);
+    if (error) {
+        // ★ 44 未適用なら「同時打診だけ」が使えない。1案の依頼は従来どおり動くので、そう伝える
+        if (_isMissingColumnErr(error, 'offer_id') || _isMissingColumnErr(error, 'plan_key')
+            || _isMissingColumnErr(error, 'deadline_at')) {
+            throw new Error('supabase/44_finish_offers.sql を SQL Editor で適用してください (1案ずつの依頼は今までどおり使えます)');
+        }
+        throw error;
+    }
+    return offerId;
+};
+
+// 落ちた案の行だけを「見送り」にする。★ 行 id を名指しする —
+//   人+ボスで更新すると、勝った案にも居る人の行まで落としてしまう
+window.supabaseDeclineFinishRows = async function (rowIds) {
+    const ids = (Array.isArray(rowIds) ? rowIds : []).filter(x => x != null);
+    if (ids.length === 0) return 0;
+    const { data, error } = await supabase.from('finish_requests')
+        .update({ status: 'declined', responded_at: new Date().toISOString() })
+        .in('id', ids).select('id');
+    if (error) throw error;
+    return (data || []).length;
+};
+
+// 打診1回ぶんの行を引く (進み具合の表示用)。44 未適用なら null を返す
+//   ★ [] ではなく null — 「44 適用済みで打診が無い」と区別がつかなくなる
+window.supabaseLoadFinishOffer = async function (offerId) {
+    if (!offerId) return null;
+    const { data, error } = await supabase.from('finish_requests')
+        .select('id, boss_number, player_id, status, plan_key, offer_id, deadline_at, responded_at, players(name)')
+        .eq('offer_id', offerId);
+    if (error) {
+        if (_isMissingColumnErr(error, 'offer_id')) return null;
+        throw error;
+    }
+    return (data || []).map(r => ({ ...r, name: r.players?.name || null }));
+};
+
 // シーズンの依頼一覧 (プレイヤー名つき)。
 // currentLevel を渡すと「そのレベルの依頼」だけを返す (旧データ = raid_level NULL は除く)
 window.supabaseLoadFinishRequests = async function (seasonId, currentLevel = null) {

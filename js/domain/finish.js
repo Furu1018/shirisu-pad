@@ -313,6 +313,7 @@
             }
             const members = [...byPlayer.values()].map(r => ({
                 id: r.player_id,
+                rowId: r.id != null ? r.id : null,
                 name: r.name || (r.players && r.players.name) || String(r.player_id),
                 status: r.status,
                 respondedAt: r.responded_at || null,
@@ -374,7 +375,12 @@
             for (const m of p.members) {
                 if (winIds.has(String(m.id))) continue;
                 if (m.status === 'declined') continue;      // 断った人に「落ちました」は要らない
-                out.set(String(m.id), m);
+                const k = String(m.id);
+                // ★ 同じ人が落ちた案に2つ居ることがある。**行はすべて**返す
+                //   (1行だけ落とすと、もう片方が「確認中」のまま残って二重に頼める)
+                const cur = out.get(k) || { id: m.id, name: m.name, rowIds: [] };
+                if (m.rowId != null) cur.rowIds.push(m.rowId);
+                out.set(k, cur);
             }
         }
         return [...out.values()];
