@@ -6915,7 +6915,7 @@ console.log('\ngrowthDomain:');
             }
             throw new Error(`${name} の終端が分からない`);
         };
-        const helpers = ['_HEX6', '_burstLin', '_burstLum', '_burstRgb']
+        const helpers = ['_HEX6', '_BURST_BG', '_burstLin', '_burstLum', '_burstRgb']
             .map(n => html.match(new RegExp(`const ${n} = [^\n]*`))?.[0])
             .join('\n');
         assert.ok(!/undefined/.test(helpers), `補助の定義を切り出せない: ${helpers}`);
@@ -6939,6 +6939,12 @@ console.log('\ngrowthDomain:');
             .map(m => [m[1], m[2]]));
         assert.equal(Object.keys(colors).length, 4, `色表が読めない: ${src}`);
         const ratio = (x, y) => (Math.max(lum(x), lum(y)) + 0.05) / (Math.min(lum(x), lum(y)) + 0.05);
+        // ★ バッジは白いカードだけでなく、**ホバー中の行やタイル**の上にも載る (Codex指摘)
+        const BG = html.match(/const _BURST_BG = '(#[0-9A-Fa-f]{6})'/)?.[1];
+        assert.ok(BG, 'いちばん暗い地の定義が無い');
+        const hovers = [...new Set([...html.matchAll(/this\.style\.background='(#[0-9A-Fa-f]{6})'/g)].map(m => m[1].toUpperCase()))];
+        assert.ok(hovers.includes(BG.toUpperCase()),
+            `いちばん暗い地 ${BG} が実際のホバー色 ${JSON.stringify(hovers)} と合っていない`);
         for (const [b, c] of Object.entries(colors)) {
             // ① 薄く色を敷いた地 (CSS の `${色}1A`) に文字を置く場合
             //    ★ 純白で測ると足りない — 実際の地はほんのり色が付いている (Codex指摘)
@@ -6947,8 +6953,10 @@ console.log('\ngrowthDomain:');
             const t = F._burstOnLight(c, bg);
             assert.match(t, /^#[0-9a-f]{6}$/, `${b} の文字色が色になっていない: ${t}`);
             assert.ok(ratio(t, bg) >= 4.5, `${b} の文字が薄い地で読めない (${ratio(t, bg).toFixed(2)}:1)`);
-            // ② 地が透明 (枠だけ) の場合は白に対して
-            assert.ok(onWhite(F._burstOnLight(c)) >= 4.5, `${b} の枠が白地で読めない`);
+            // ② 地が透明 (枠だけ) の場合は、その下のいちばん暗い地に対して
+            const edge = F._burstOnLight(c, BG);
+            assert.ok(ratio(edge, BG) >= 4.5, `${b} の枠がホバー中に読めない (${ratio(edge, BG).toFixed(2)}:1)`);
+            assert.ok(onWhite(edge) >= 4.5, `${b} の枠が白地で読めない`);
             // ③ 色をそのまま地にする場合
             assert.ok(ratio(F._burstInk(c), c) >= 4.5, `${b} の地に載せる文字が読めない (${ratio(F._burstInk(c), c).toFixed(2)}:1)`);
         }
@@ -6966,6 +6974,11 @@ console.log('\ngrowthDomain:');
         assert.ok(calls.length >= 5, `_burstOnLight の呼び出しを拾えない: ${calls.length}`);
         for (const args of calls) {
             assert.ok(args.includes(','), `地を渡さずに呼んでいる: _burstOnLight(${args})`);
+            // ★ 渡す地は _burstTint(色) か _BURST_BG のどちらか。**白を書かない** —
+            //   バッジはホバー中の行やタイル (#F7F8F9) の上にも載る (Codex指摘 2026-09-10)
+            const bg = args.slice(args.indexOf(',') + 1).trim();
+            assert.ok(bg.startsWith('_burstTint(') || bg === '_BURST_BG',
+                `地の指定が白の決め打ちになっている: _burstOnLight(${args})`);
         }
         // 色を薄く敷いた地なら _burstTint を渡す (白の決め打ちでは足りない)
         for (const m of html.matchAll(/background:\$\{([^}]+)\}1A;color:\$\{_burstOnLight\(([^)]*(?:\([^)]*\))?[^)]*)\)\}/g)) {
@@ -6973,9 +6986,11 @@ console.log('\ngrowthDomain:');
         }
         // ★ 薄い地の濃さは CSS の `1A` と同じでなければ、測る地が実物とずれる
         assert.ok(/background:\$\{[^}]+\}1A;/.test(html), 'CSS の薄い地が 1A でなくなっている');
-        assert.equal(F._burstTint('#000000'), '#e5e5e5',
+        assert.equal(F._burstTint('#000000', '#FFFFFF'), '#e5e5e5',
             '薄い地の濃さが CSS の 1A (10.2%) と合っていない');
-        assert.equal(F._burstTint('#FFFFFF'), '#ffffff');
+        assert.equal(F._burstTint('#FFFFFF', '#FFFFFF'), '#ffffff');
+        // 既定の地は _BURST_BG (ホバー中) — 白を決め打ちしない
+        assert.notEqual(F._burstTint('#FFFFFF'), '#ffffff', '既定の地が白のままになっている');
     });
     test('★ バーストの色は1組だけ (同じ B1 が画面によって色違いにならない)', () => {
         // 2026-09-10 まで編成エディタ (B1緑/B2黄) とキャラ管理 (B1紫/B2緑) で色が違った。

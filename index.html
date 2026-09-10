@@ -10778,6 +10778,10 @@
         //     どちらも読めない。手で「B2 のときだけ黒」と書き分けていた箇所もあったが、
         //     色表を変えた瞬間に破綻するので**計算で決める**。
         const _HEX6 = /^#[0-9A-Fa-f]{6}$/;
+        // ★ バッジが載り得る**いちばん暗い地**。行やタイルはホバーで #F7F8F9 になる
+        //   (Codex指摘 2026-09-10: 白だけを見ていたので、ホバー中は 4.5:1 を割っていた)。
+        //   いちばん暗い地に合わせておけば、白いカードの上ではさらに読みやすくなる
+        const _BURST_BG = '#F7F8F9';
         const _burstLin = (n) => { const v = n / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
         const _burstLum = (rgb) => 0.2126 * _burstLin(rgb[0]) + 0.7152 * _burstLin(rgb[1]) + 0.0722 * _burstLin(rgb[2]);
         const _burstRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -10794,13 +10798,15 @@
         }
 
         /**
-         * その色を薄く敷いたときの実際の地の色。★ CSS の `${色}1A` (10%) を白に重ねた結果。
-         * 文字の濃さを決めるときは**この地**に対して測る — 純白で測ると足りない (Codex指摘 2026-09-10)
+         * その色を薄く敷いたときの実際の地の色。★ CSS の `${色}1A` (10%) を地に重ねた結果。
+         * 文字の濃さを決めるときは**この地**に対して測る — 純白で測ると足りない (Codex指摘 2026-09-10)。
+         * 地の既定は _BURST_BG (ホバー中のいちばん暗い地)。
          */
-        function _burstTint(hex) {
+        function _burstTint(hex, base) {
             if (!_HEX6.test(String(hex))) return '#F1F2F4';
+            const b = _burstRgb(_HEX6.test(String(base)) ? base : _BURST_BG);
             const a = 0x1A / 255;
-            return `#${_burstRgb(hex).map((c) => Math.round(c * a + 255 * (1 - a)).toString(16).padStart(2, '0')).join('')}`;
+            return `#${_burstRgb(hex).map((c, i) => Math.round(c * a + b[i] * (1 - a)).toString(16).padStart(2, '0')).join('')}`;
         }
 
         /**
@@ -11458,7 +11464,7 @@
             let html = `<span style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 7px;color:${t1};background:${c1}1A;">${escapeHtml(entry.burst)}</span>`;
             if (entry.burst_alt) {
                 const c2 = _BURST_COLOR[entry.burst_alt] || '#8A9097';
-                const t2 = _burstOnLight(c2, '#FFFFFF');   // 枠だけ。地は透明なのでカードの白に対して測る
+                const t2 = _burstOnLight(c2, _BURST_BG);   // 枠だけ。地は透明なので、その下のいちばん暗い地で測る
                 html += `<span title="${escapeHtml(entry.burst_alt)}枠としても使える" style="border-radius:999px;font-size:10px;font-weight:900;padding:2px 6px;color:${t2};background:transparent;border:1px solid ${t2}66;">+${escapeHtml(entry.burst_alt)}</span>`;
             }
             return html;
@@ -14687,7 +14693,7 @@
                     ? `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:${_burstOnLight(bc, _burstTint(bc))};background:${bc}1A;">${escapeHtml(r.burst)}</span>`
                     : `<span style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px;color:#A4AAB0;background:#F1F2F4;">—</span>`;
                 if (r.burst_alt) {
-                    const ac = _burstOnLight(_BURST_COLOR[r.burst_alt] || '#8A9097', '#FFFFFF');   // 枠だけ (地は透明)
+                    const ac = _burstOnLight(_BURST_COLOR[r.burst_alt] || '#8A9097', _BURST_BG);   // 枠だけ (地は透明)
                     burstBadge += `<span title="${escapeHtml(r.burst_alt)}枠としても使える" style="flex-shrink:0;font-size:10px;font-weight:900;padding:2px 5px;border-radius:999px;color:${ac};background:transparent;border:1px solid ${ac}66;">+${escapeHtml(r.burst_alt)}</span>`;
                 }
                 return `
