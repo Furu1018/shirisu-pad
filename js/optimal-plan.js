@@ -1829,7 +1829,9 @@
      * @param {number[]} hourOrder 時間割の並び (HOUR_ORDER)
      * @param {(iso:string)=>number|null} hourOf ISO → その日の「時」(JST)。呼び出し側が渡す
      * @returns {{byHourBoss: Map<string, Object[]>, unknownTime: Object[], total: number}}
-     *   byHourBoss のキーは `${hourIdx}:${bossNumber}`
+     *   byHourBoss のキーは `${level}:${hourIdx}:${bossNumber}`。
+     *   ★ レベルを含める — 含めないと同じ済み凸が Lv1/Lv2/Lv3 の同じ時刻に**全部出る**
+     *     (Codex指摘 2026-09-11)。凸はどれか1つのレベルで行われたもの
      */
     function doneAttacksByHour(attacks, hourOrder, hourOf) {
         const byHourBoss = new Map();
@@ -1845,7 +1847,13 @@
             const h = (at && typeof hourOf === 'function') ? hourOf(at) : null;
             const idx = (h == null || !Array.isArray(hourOrder)) ? -1 : hourOrder.indexOf(h);
             if (idx < 0) { unknownTime.push(a); continue; }
-            const k = `${idx}:${boss}`;
+            // ★ レベルも鍵に含める (Codex指摘 2026-09-11)。含めないと B1 の済み凸が
+            //   Lv1/Lv2/Lv3 の同じ時刻の行に全部出て、3倍に見える。
+            //   レベルが読めない凸は置ける行が決まらないので unknownTime へ
+            //   (0 を鍵にすると、どの節にも一致せず黙って消える)
+            const lv = Number(a.level);
+            if (!Number.isInteger(lv) || lv <= 0) { unknownTime.push(a); continue; }
+            const k = `${lv}:${idx}:${boss}`;
             if (!byHourBoss.has(k)) byHourBoss.set(k, []);
             byHourBoss.get(k).push(a);
         }

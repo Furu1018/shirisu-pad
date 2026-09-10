@@ -8984,7 +8984,7 @@
             let inner;
             try {
                 if (_myPlanViewMode === 'overview') inner = _planOverviewHtml(plan, viewerId);
-                else if (_myPlanViewMode === 'timetable') inner = _planTimetableHtml(plan, { highlightPlayerId: viewerId, filterKey: 'my' });
+                else if (_myPlanViewMode === 'timetable') inner = _planTimetableHtml(plan, { seasonId: _myPubState.seasonId, highlightPlayerId: viewerId, filterKey: 'my' });
                 else inner = _planMineHtml(plan, viewerId, doneCounts, liveLevel);
             } catch (e) {
                 console.warn('[配信プラン] 描画失敗:', e);
@@ -14449,6 +14449,11 @@
                             // ポーリングが拾うまで時間あるので即座にローカル反映
                             _coordSelfCache = null;
                             _coordActiveCache = (_coordActiveCache || []).filter(c => c.player_id !== id.id);
+                            // ★ 手元の写しを書き換えたら画面も直す (Codex指摘 2026-09-11)。
+                            //   直さないと、次のポーリングまでボスタイルと細いボス帯が
+                            //   「戦闘中」のまま残る (帯とタイルは同じ材料なので必ず揃えて呼ぶ)
+                            renderMyNextAttackBosses(id);
+                            renderMyBossStrip(id);
                         }
                     } catch (e) { console.warn('[coord auto-release]', e?.message || e); }
                     // 撃破/レベル開放の検知は盤面を見る _checkRaidEvents に一本化してある。
@@ -19765,6 +19770,9 @@
             if (seq !== _opsPlanSeq) return;
             // 済んだ凸を時間割に混ぜるため先に読む (2026-09-11)。失敗しても算出は続ける
             await _ensurePlanDoneAttacks(snapshot?.season);
+            // ★ await のあとは必ず世代を見る (Codex指摘 2026-09-11)。
+            //   見ないと、待っている間に押し直された新しい算出を古い結果が上書きする
+            if (seq !== _opsPlanSeq) return;
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:var(--bad);">プラン算出に失敗しました。</p>';
@@ -20100,7 +20108,7 @@
             const teamsBtn = `<button onclick="toggleOpsPlanTeams()" title="時間割チップに編成5キャラを表示 (共有画像にも反映)" style="flex:none;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;${_opsPlanShowTeams ? 'background:var(--ops-solid);color:var(--ops-ink);' : 'background:var(--s2);color:var(--t-strong);'}">👥 編成</button>`;
             const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${teamsBtn}</div>`;
             const bodyHtml = _opsPlanViewMode === 'timetable'
-                ? _planTimetableHtml(plan, { highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops' })
+                ? _planTimetableHtml(plan, { seasonId: opsStore.get()?.season?.id ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops' })
                 : levelSections;
             // ★ L1 の結果を運営に見せる。何も出さないと「なぜこの割当なのか」が分からず、
             //   安定化が効いているのか壊れているのかを運営が判断できない
@@ -20185,9 +20193,10 @@
             return Number(new Intl.DateTimeFormat('en-US',
                 { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d));
         };
+        const _PLAN_DONE_EMPTY = { key: null, byHourBoss: new Map(), unknownTime: [], total: 0 };
         async function _ensurePlanDoneAttacks(season) {
-            const key = season?.id != null ? `${season.id}:${season.hard_date || ''}` : null;
-            if (!key) { _planDone = { key: null, byHourBoss: new Map(), unknownTime: [], total: 0 }; return; }
+            const key = season?.id != null ? String(season.id) : null;
+            if (!key) { _planDone = _PLAN_DONE_EMPTY; return; }
             try {
                 const rows = await window.supabaseLoadAllAttacksForSeason?.(season.id, season.hard_date);
                 _planDone = { key, ...doneAttacksByHour(rows || [], HOUR_ORDER, _planJstHour) };
@@ -20196,8 +20205,17 @@
                 _planDone = { key, byHourBoss: new Map(), unknownTime: [], total: 0 };
             }
         }
+        /**
+         * そのシーズンの済んだ凸。**持ち主が違えば空を返す** (Codex指摘 2026-09-11)。
+         * 返さないと、運営が別シーズンを算出したあとにホームの配信カードを描くと
+         * 別のシーズンの済み凸が混ざる
+         */
+        function _planDoneFor(seasonId) {
+            if (seasonId == null || _planDone.key !== String(seasonId)) return _PLAN_DONE_EMPTY;
+            return _planDone;
+        }
 
-        function _planTimetableModel(plan) {
+        function _planTimetableModel(plan, done = _PLAN_DONE_EMPTY) {
             if (!plan.timeAware || !Array.isArray(plan.levels) || plan.levels.length === 0) return null;
             const bosses = [...plan.levels[0].bosses]
                 .sort((a, b) => a.bossNumber - b.bossNumber)
@@ -20208,8 +20226,9 @@
                 lv.bosses.forEach(b => b.attacks.forEach(a => { if (a.hourIdx != null && !a.flex) hourSet.add(a.hourIdx); }));
                 // ★ 済んだ凸だけがある時間にも行を作る。作らないと
                 //   「報告したのに時間割に出てこない」になり、流れが飛ぶ (2026-09-11)
-                for (const k of _planDone.byHourBoss.keys()) {
-                    const [hs, bs] = k.split(':');
+                for (const k of done.byHourBoss.keys()) {
+                    const [ls, hs, bs] = k.split(':');
+                    if (Number(ls) !== Number(lv.level)) continue;   // その節のレベルのぶんだけ
                     if (bosses.some(bm => String(bm.bossNumber) === bs)) hourSet.add(Number(hs));
                 }
                 const hours = [...hourSet].sort((x, y) => x - y);
@@ -20237,7 +20256,7 @@
                             return {
                                 attacks: (b?.attacks || []).filter(a => a.hourIdx === h && !a.flex),
                                 // ★ 済んだ凸も同じ時間の枠に置く (これから と 済み が並んで流れが読める)
-                                done: _planDone.byHourBoss.get(`${h}:${bm.bossNumber}`) || [],
+                                done: done.byHourBoss.get(`${lv.level}:${h}:${bm.bossNumber}`) || [],
                                 clears: b?.clearHourIdx === h,
                             };
                         }),
@@ -20283,7 +20302,9 @@
         // 🗓 属性×時間 時間割表示: 横=ボス / 縦=時間。表の中だけ横スクロール (data-no-swipe)
         function _planTimetableHtml(plan, opts = {}) {
             const esc = escapeHtml;
-            const model = _planTimetableModel(plan);
+            // ★ 済んだ凸は**そのプランのシーズンのぶんだけ**。持ち主が違えば空が返る
+            const done = _planDoneFor(opts.seasonId ?? null);
+            const model = _planTimetableModel(plan, done);
             if (!model) return '<p style="font-size:12px;color:var(--t-muted);">時間データがないため時間割表示できません。再度プランを算出してください。</p>';
             const nowIdx = _planNowIdx(plan);
             const filterKey = opts.filterKey || null;
@@ -20363,10 +20384,16 @@
             // 編成表示(showTeams)時は5キャラが潰れて縦に膨らむため、列に最小幅を持たせて
             // その場合だけコンテナ内を横スクロールさせる。通常(名前+ダメージのみ)は0で全幅フィット。
             const colMin = opts.showTeams ? '76px' : '0';
+            // ★ 時刻の読めない / 表に無いレベルの済み凸は行に置けない。黙って消すと
+            //   「報告したのに時間割に出てこない」になるので、件数だけ添える (Codex指摘 2026-09-11)
+            const unknownDone = (done.unknownTime || []).length;
+            const unknownNote = unknownDone
+                ? `<span style="color:var(--t-muted);font-weight:800;"> · ✓時刻の分からない済んだ凸 ${unknownDone}件は表に出ません</span>`
+                : '';
             return `${filterRow}<div data-no-swipe style="border:1px solid rgba(var(--ink-rgb), 0.06);border-radius:12px;padding:8px 5px;background:var(--card);overflow-x:auto;-webkit-overflow-scrolling:touch;">
                     <div style="display:grid;grid-template-columns:36px repeat(${nCols},minmax(${colMin},1fr));gap:2px;">${cells.join('')}</div>
                 </div>
-                <p style="margin:7px 0 0 0;font-size:10.5px;color:var(--t-muted);">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替)。' : ''}<span style="color:var(--ops);font-weight:800;">青</span>=あなた · <span style="color:var(--attr-fire);font-weight:800;">赤枠</span>=律速 · <span style="color:var(--warn-deep);font-weight:800;">グレー破線</span>=時間未確定 (⏳隙間/⚠時間外/?未登録) · ▼=現在時刻 · ⋯=凸のない時間を省略。📸共有画像もこの形。</p>`;
+                <p style="margin:7px 0 0 0;font-size:10.5px;color:var(--t-muted);">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替)。' : ''}<span style="color:var(--ops);font-weight:800;">青</span>=あなた · <span style="color:var(--attr-fire);font-weight:800;">赤枠</span>=律速 · <span style="color:var(--warn-deep);font-weight:800;">グレー破線</span>=時間未確定 (⏳隙間/⚠時間外/?未登録) · <span style="color:var(--t-muted);font-weight:800;">✓グレー</span>=済んだ凸 · ▼=現在時刻 · ⋯=凸のない時間を省略。📸共有画像はこれからの凸だけ。${unknownNote}</p>`;
         }
 
         // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのホームに表示。

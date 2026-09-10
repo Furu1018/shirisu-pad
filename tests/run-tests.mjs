@@ -7365,19 +7365,31 @@ console.log('\ngrowthDomain:');
             return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d));
         };
         const r = f([
-            { boss_number: 1, reported_at: '2026-09-11T00:30:00Z' },   // JST 9時 → idx 4
-            { boss_number: 1, reported_at: '2026-09-11T00:45:00Z' },
-            { boss_number: 3, reported_at: '2026-09-11T12:00:00Z' },   // JST 21時 = 表の外
+            { boss_number: 1, level: 1, reported_at: '2026-09-11T00:30:00Z' },   // JST 9時 → idx 4
+            { boss_number: 1, level: 1, reported_at: '2026-09-11T00:45:00Z' },
+            { boss_number: 3, level: 1, reported_at: '2026-09-11T12:00:00Z' },   // JST 21時 = 表の外
         ], HO, jst);
-        assert.deepEqual([...r.byHourBoss.keys()], ['4:1'], '時間×ボスの割り当てが違う');
-        assert.equal(r.byHourBoss.get('4:1').length, 2);
+        // ★ 鍵はレベルを含む (`レベル:時刻:ボス`)。含めないと B1 の済み凸が
+        //   Lv1/Lv2/Lv3 の同じ時刻の行に全部出る (Codex指摘 2026-09-11)
+        assert.deepEqual([...r.byHourBoss.keys()], ['1:4:1'], '時間×ボスの割り当てが違う');
+        assert.equal(r.byHourBoss.get('1:4:1').length, 2);
+        // ★ レベルの読めない凸は行が決まらない → 黙って消さず unknownTime へ
+        const noLv = f([{ boss_number: 1, reported_at: '2026-09-11T00:30:00Z' }], HO, jst);
+        assert.equal(noLv.byHourBoss.size, 0, 'レベル不明の凸を表に置いている');
+        assert.equal(noLv.unknownTime.length, 1, 'レベル不明の凸を黙って捨てている');
+        const lv = f([
+            { boss_number: 1, level: 2, reported_at: '2026-09-11T00:30:00Z' },
+            { boss_number: 1, level: 3, reported_at: '2026-09-11T00:30:00Z' },
+        ], HO, jst);
+        assert.deepEqual([...lv.byHourBoss.keys()].sort(), ['2:4:1', '3:4:1'],
+            'レベルを鍵に含めていない (同じ済み凸が全レベルの行に出る)');
         assert.equal(r.unknownTime.length, 1, '表の外の時間を捨てている');
         assert.equal(r.total, 3, '合計が合わない');
 
         // ★ 空の時刻を Date に渡さない。new Date(null) は 1970-01-01 として通ってしまい、
         //   「時刻が無い凸」が表の 9 時に紛れ込む (2026-09-11 に実際に踏んだ)
         for (const bad of [null, undefined, '', '   ', 'こわれてる', 0, {}]) {
-            const x = f([{ boss_number: 2, reported_at: bad }], HO, jst);
+            const x = f([{ boss_number: 2, level: 1, reported_at: bad }], HO, jst);
             assert.equal(x.byHourBoss.size, 0, `reported_at=${JSON.stringify(bad)} が時刻ありに紛れている`);
             assert.equal(x.unknownTime.length, 1, `reported_at=${JSON.stringify(bad)} を捨てている (報告したのに出てこない)`);
         }
@@ -7391,8 +7403,15 @@ console.log('\ngrowthDomain:');
     test('★ 配線: 時間割は済んだ凸をプランに焼き込まず、描くたびに読み直す', () => {
         const html = _grRd('index.html');
         // ★ 焼き込むと配信した時点の凸で固定される
-        assert.ok(/_planDone\.byHourBoss\.get\(`\$\{h\}:\$\{bm\.bossNumber\}`\)/.test(html),
+        assert.ok(/done\.byHourBoss\.get\(`\$\{lv\.level\}:\$\{h\}:\$\{bm\.bossNumber\}`\)/.test(html),
             '時間割のセルに済んだ凸を入れていない');
+        // ★ モデルは引数だけで決まること (グローバルを直に読むと、別シーズンを算出した
+        //   直後にホームを描いたときに他のシーズンの済み凸が混ざる — Codex指摘 2026-09-11)
+        const model = html.match(/function _planTimetableModel\(plan, done[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(model, '_planTimetableModel が done を受け取っていない');
+        assert.ok(!/_planDone\b/.test(model), 'モデルがグローバルの _planDone を直に読んでいる');
+        assert.ok(/function _planDoneFor\(seasonId\)[\s\S]*?_planDone\.key !== String\(seasonId\)/.test(html),
+            '持ち主 (シーズン) を照合していない');
         assert.ok(/async function _ensurePlanDoneAttacks\(season\)/.test(html), '読み込みが無い');
         // 運営の算出とホームの配信カード、両方で読む
         const ops = html.match(/async function computeAndRenderOptimalPlan[\s\S]*?\n        \}/)?.[0] || '';
@@ -7403,7 +7422,12 @@ console.log('\ngrowthDomain:');
         const load = html.match(/async function _ensurePlanDoneAttacks\(season\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/catch \(e\)/.test(load) && !/throw/.test(load), '読めないときにプランごと落としている');
         // 済んだ凸だけがある時間にも行を作る (作らないと報告したのに出てこない)
-        assert.ok(/for \(const k of _planDone\.byHourBoss\.keys\(\)\)/.test(html), '済みだけの時間に行を作っていない');
+        assert.ok(/for \(const k of done\.byHourBoss\.keys\(\)\)/.test(html), '済みだけの時間に行を作っていない');
+        // ★ await のあとに世代を見る (見ないと古い算出が新しい結果を上書きする)
+        const after = ops.slice(ops.indexOf('_ensurePlanDoneAttacks('));
+        assert.ok(/seq !== _opsPlanSeq/.test(after.slice(0, 300)), '読み込みの await のあとに世代を見ていない');
+        // ★ 行に置けなかった済み凸を黙って捨てない (報告したのに出てこない、になる)
+        assert.ok(/unknownTime \|\| \[\]\)\.length/.test(html), '時刻の分からない済み凸を画面に出していない');
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
