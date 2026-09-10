@@ -6901,6 +6901,22 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.bottom-nav\.nav-hidden \{/.test(html), '自動隠しが消えている');
         assert.ok(/padding-bottom: calc\(112px \+ env\(safe-area-inset-bottom/.test(html), '下端の余白が足りない');
     });
+    test('★ バーストの色は1組だけ (同じ B1 が画面によって色違いにならない)', () => {
+        // 2026-09-10 まで編成エディタ (B1緑/B2黄) とキャラ管理 (B1紫/B2緑) で色が違った。
+        // ユーザー決定「編成エディタの色でOK」で1組に寄せた
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const defs = [...html.matchAll(/const (\w*BURST_COLOR) = (\{[^}]*\}|\w+);/g)].map(m => [m[1], m[2]]);
+        const literals = defs.filter(([, v]) => v.startsWith('{'));
+        assert.equal(literals.length, 1,
+            `バーストの色の表が ${literals.length} 組ある: ${JSON.stringify(defs)}`);
+        assert.equal(literals[0][0], 'TE_BURST_COLOR', '色の出どころが編成エディタでない');
+        // 他の表はそこを指すだけ
+        for (const [name, v] of defs.filter(([, x]) => !x.startsWith('{'))) {
+            assert.equal(v, 'TE_BURST_COLOR', `${name} が別の色を指している: ${v}`);
+        }
+        assert.ok(defs.some(([n]) => n === '_BURST_COLOR'), 'キャラ管理の色表が消えている');
+        assert.ok(defs.some(([n]) => n === 'GV_BURST_COLOR'), '育成くらべの色表が消えている');
+    });
     test('★ 配線: 育成くらべ (レイドを選ぶ / 編成は凸記録 / 相手はメンバーかユニオン全体)', () => {
         const noCR = (x) => x.split(String.fromCharCode(13)).join('');
         const html = noCR(_grRd('index.html')), client = noCR(_grRd('js', 'supabase-client.js'));
