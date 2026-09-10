@@ -212,19 +212,9 @@
             --fill-muted: #5A6068;
             --toast-bg: #151A26;
             --toast-ink: #FFFFFF;
-            --marble-a: #EAF2F5;
-            --marble-b: #EEF3F6;
             /* バーストのバッジが載り得る、いちばん厳しい地。★ ライトは暗いほう / ダークは明るいほう
                (バッジの色は「地に対して 4.5:1 まで寄せる」計算をするので、地の取り違えが直に効く) */
             --burst-bg: #F7F8F9;   /* いちばん暗いホバー色 (= --s1) */
-            /* ページの地 (マーブルのグラデーション)。★ テーマで反転する */
-            --marble-base: #F5F6F8;
-            --page-a: #ffffff;
-            --page-b: #f5f6f8;
-            --page-c: #eceef1;
-            /* 地に重ねるごく薄いベール。★ ライトは黒、ダークは白 */
-            --veil-a: rgba(20,22,26,0.018);
-            --veil-b: rgba(20,22,26,0.022);
             /* --t-ink を塗りに使ったときの、その上の文字 (= --card と同じ役割の薄い版) */
             --on-ink-soft: rgba(255,255,255,0.55);
             /* 重複マーカー (2人目/3人目)。塗りではなく輪郭なので両テーマで同じ */
@@ -339,19 +329,9 @@
             --fill-muted: #8A9198;
             --toast-bg: #2A3040;
             --toast-ink: #FFFFFF;
-            --marble-a: #141A1D;
-            --marble-b: #12181B;
             /* バーストのバッジが載り得る、いちばん厳しい地。★ ライトは暗いほう / ダークは明るいほう
                (バッジの色は「地に対して 4.5:1 まで寄せる」計算をするので、地の取り違えが直に効く) */
             --burst-bg: #17191D;   /* いちばん明るいホバー色 (= --card) */
-            /* ページの地 (マーブルのグラデーション)。★ テーマで反転する */
-            --marble-base: #0E1013;
-            --page-a: #15181d;
-            --page-b: #101216;
-            --page-c: #0b0d10;
-            /* 地に重ねるごく薄いベール。★ ライトは黒、ダークは白 */
-            --veil-a: rgba(255,255,255,0.022);
-            --veil-b: rgba(255,255,255,0.028);
             /* --t-ink を塗りに使ったときの、その上の文字 (= --card と同じ役割の薄い版) */
             --on-ink-soft: rgba(23,25,29,0.62);
             /* 重複マーカー (2人目/3人目)。塗りではなく輪郭なので両テーマで同じ */
@@ -402,16 +382,10 @@
 
         body {
             font-family: var(--font-body);
-            background:
-                /* マーブルの脈動 (淡水色) */
-                radial-gradient(800px 500px at 100% 0%, var(--marble-a) 0%, transparent 55%),
-                radial-gradient(700px 420px at 0% 80%, var(--marble-b) 0%, transparent 55%),
-                radial-gradient(500px 300px at 50% 50%, rgba(212, 216, 220, 0.15) 0%, transparent 60%),
-                /* 銀のラメ感を SVG ノイズで添える */
-                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.82  0 0 0 0 0.85  0 0 0 0 0.88  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
-                var(--marble-base);
-            background-attachment: fixed;
-            background-size: auto, auto, auto, 280px 280px, auto;
+            /* ★ 背景は単色 (実機FB 2026-09-10「斜めの線が見える / 単色にしてほしい」)。
+               以前は 放射グラデーション3枚 + SVG ノイズ + マーブルの筋 を重ねていたが、
+               ダークだと薄い白の筋として見えてしまう。地は --bg の1色だけにする。 */
+            background: var(--bg);
             color: var(--t-ink);
             line-height: 1.55;
             font-size: 15px;
@@ -2164,10 +2138,7 @@
             font-family: 'Noto Sans JP', -apple-system, system-ui, sans-serif;
             color: var(--t-ink);
             animation: tour-fade 0.22s ease-out;
-            background:
-                radial-gradient(60% 42% at 82% 16%, var(--veil-a), transparent 60%),
-                radial-gradient(50% 34% at 8% 72%, var(--veil-b), transparent 62%),
-                radial-gradient(135% 100% at 14% -12%, var(--page-a), var(--page-b) 54%, var(--page-c))}
+            background: var(--bg)}
         #tourOverlay .tour-topbar {
             display: flex; align-items: center; justify-content: space-between;
             padding: calc(env(safe-area-inset-top, 10px) + 12px) 18px 12px;
@@ -2385,11 +2356,7 @@
            タブ追加時は自分の tab-content div に tab-page クラスを付けるだけ — このCSSは触らない。
            (help は意図的に非対象なので付けていない) */
         .tab-page.tab-content.active {
-            background:
-                radial-gradient(60% 42% at 82% 16%, var(--veil-a), transparent 60%),
-                radial-gradient(50% 34% at 8% 72%, var(--veil-b), transparent 62%),
-                linear-gradient(125deg, transparent 45%, var(--veil-b) 47%, transparent 49%),
-                radial-gradient(135% 100% at 14% -12%, var(--page-a), var(--page-b) 54%, var(--page-c));
+            background: var(--bg);   /* ★ 単色。以前の斜めの筋 (125deg のグラデーション) は撤去 */
             min-height: 100vh}
         .tab-page .container {
             display: flex; flex-direction: column; gap: 14px;

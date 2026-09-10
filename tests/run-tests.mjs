@@ -7246,7 +7246,7 @@ console.log('\ngrowthDomain:');
         const rgba = (css.match(/rgba?\([0-9]/g) || []).length;
         // 2026-09-10 段階1 完了: 727 → 14。残り14はコメントと、インラインの style を拾う
         // 属性セレクタ (button[style*="background:#14161A"]) — 段階2でインラインを直すまで動かせない
-        const LIMIT_HEX = 14, LIMIT_RGBA = 212;   // 段階3a: 線・輪郭のベールを --ink-rgb へ
+        const LIMIT_HEX = 14, LIMIT_RGBA = 211;   // 段階3a: 線・輪郭のベールを --ink-rgb へ
         assert.ok(raw <= LIMIT_HEX, `<style> の直値が増えている: ${raw} (上限 ${LIMIT_HEX})`);
         assert.ok(rgba <= LIMIT_RGBA, `<style> の rgba() が増えている: ${rgba} (上限 ${LIMIT_RGBA})`);
         if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
@@ -7257,7 +7257,7 @@ console.log('\ngrowthDomain:');
         // <meta theme-color> — 段階3 (グラフ・キャンバス) でまとめて扱う
         const outside = html.slice(0, s0) + html.slice(s1);
         const rawOut = (outside.match(/#[0-9A-Fa-f]{3,8}\b/g) || []).length;
-        const LIMIT_INLINE = 320;   // 段階3d: 式の中の色もトークンへ (Codex指摘への対応)
+        const LIMIT_INLINE = 281;   // 段階3d: 式の中の色もトークンへ (Codex指摘への対応)
         assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
         if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
     });
