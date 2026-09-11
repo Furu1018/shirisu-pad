@@ -16081,7 +16081,10 @@
                     }).join(' ');
                     const bad = a.state === 'expired' || a.state === 'dead';
                     const dl = a.deadlineMs != null ? `〜${_opsHm(a.deadlineMs)}` : '';
-                    return `<div class="ops-recent-row" title="${esc(STATE_JP[a.state] || '')}${a.offer ? ' · 同時打診' : ''}">${bossChip(a.boss)}<span class="n">${names}</span><span class="d ${bad ? 'bad' : ''}">${bad ? esc(STATE_JP[a.state]) : esc(dl)}</span></div>`;
+                    // ★ 先頭に**依頼した時刻**を出す (Codex指摘 2026-09-11)。同じボスの新しい「返事待ち」と
+                    //   古い「不可あり」が並んだとき、時刻が無いとどちらが今の依頼か分からない
+                    const at = a.requestedMs != null ? _opsHm(a.requestedMs) : '—';
+                    return `<div class="ops-recent-row" title="${esc(at)} に依頼 · ${esc(STATE_JP[a.state] || '')}${a.offer ? ' · 同時打診' : ''}"><span class="t">${esc(at)}</span>${bossChip(a.boss)}<span class="n">${names}</span><span class="d ${bad ? 'bad' : ''}">${bad ? esc(STATE_JP[a.state]) : esc(dl)}</span></div>`;
                 }).join('')
                 : '<p class="ops-recent-empty">いま出している打診はありません。</p>';
             const more = m.asksTotal > m.asks.length ? `<p class="ops-recent-empty">ほか ${m.asksTotal - m.asks.length} 件は締め凸候補検索で。</p>` : '';

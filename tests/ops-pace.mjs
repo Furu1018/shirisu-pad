@@ -154,13 +154,16 @@ test('★ 🔁 打診の状態 (名前 + 返事のチップ + 期限) が主役�
     assert.ok(/C<span class="st"[^>]*>不可<\/span>/.test(out), '不可のチップが無い');
     assert.ok(/class="d bad">不可あり</.test(out), '不可の案を目立たせていない');
     assert.ok(/class="d ">〜\d{2}:\d{2}</.test(out), '期限の時刻が無い');
-    assert.ok(out.includes('title="返事待ち · 同時打診"'), '同時打診の印が無い');
+    assert.ok(/title="\d{2}:\d{2} に依頼 · 返事待ち · 同時打診"/.test(out), '同時打診の印 / 依頼時刻が無い');
+    // ★ 打診の行にも**依頼した時刻**を出す (Codex指摘 2026-09-11): 同じボスの古い回と新しい回を見分ける唯一の手がかり
+    const asksHtml = out.slice(out.indexOf('🏁'), out.indexOf('⚔️'));
+    assert.equal((asksHtml.match(/class="t">\d{2}:\d{2}</g) || []).length, 2, '打診の行に依頼時刻が出ていない');
     // ボスのチップは属性色の薄い地 (B3 は鉄甲)
     assert.ok(out.includes('style="background:#FF8A2B1f;">B3</span>'), 'ボスの色が属性に合っていない');
     // 添えの凸: 新しい順 (B3 12.1B が先)
     const i1 = out.indexOf('12.1B'), i2 = out.indexOf('34.2B');
     assert.ok(i1 > 0 && i2 > i1, `直近の凸が新しい順でない: ${out.slice(out.indexOf('⚔️'))}`);
-    assert.ok((out.match(/class="t">\d{2}:\d{2}</g) || []).length === 2, '凸の時刻が出ていない');
+    assert.ok((out.slice(out.indexOf('⚔️')).match(/class="t">\d{2}:\d{2}</g) || []).length === 2, '凸の時刻が出ていない');
     // 打診が無いとき
     const none = run({ finishReqs: [], snap: { season, bosses, players: players([]) } });
     none.renderOpsRecent();
