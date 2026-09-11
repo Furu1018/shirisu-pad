@@ -139,6 +139,9 @@ test('★ HP更新の鮮度: 30分以上は warn (⚠️)、読めなければ�
     const stale = bosses.map(b => ({ ...b, updated_at: ago(45) }));
     assert.ok(/class="hp-fresh warn"[^>]*>HP更新 45分前 ⚠️</.test(t._hpFreshHtml(stale)), '30分以上を警告にしていない');
     assert.ok(/HP更新 2時間前 ⚠️/.test(t._hpFreshHtml(bosses.map(b => ({ ...b, updated_at: ago(150) })))));
+    // ★ 境界 (Codex指摘 2026-09-11): 30 分ちょうどで警告、29 分では警告しない (>= を > に変えると落ちる)
+    assert.ok(/class="hp-fresh warn"[^>]*>HP更新 30分前 ⚠️</.test(t._hpFreshHtml(bosses.map(b => ({ ...b, updated_at: ago(30) })))), '30分ちょうどで警告していない');
+    assert.ok(/class="hp-fresh"[^>]*>HP更新 29分前</.test(t._hpFreshHtml(bosses.map(b => ({ ...b, updated_at: ago(29) })))), '29分で警告している');
     assert.equal(t._hpFreshHtml(bosses.map(b => ({ ...b, updated_at: null }))), '', '読めないのに何か出している');
     assert.equal(t._hpFreshHtml([]), '');
     // ボード側にも warn が伝わる

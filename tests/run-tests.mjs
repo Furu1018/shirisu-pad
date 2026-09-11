@@ -8201,6 +8201,12 @@ console.log('\ngrowthDomain:');
         const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/\(_opsSeasonLoaded \|\| seasonStore\.get\(\)\?\.season\)/.test(poll), 'ホームだけの端末がボスHPを取り直していない');
         assert.ok(/homePatched && document\.getElementById\('tab-mypage'\)/.test(poll), 'ホームのボス状況を描き直していない');
+        // ★ 取得の間に名乗り直していたら描かない (Codex指摘 2026-09-11)。async の描画は catch する
+        assert.ok(/contains\('active'\)\s*\n\s*&& getCurrentIdentity\(\)\?\.id === id\.id\) \{\s*\n\s*renderMyNextAttackBosses\(id\)\.catch\(/.test(poll), '本人の切り替えを見ずに前の人のホームを描く / 描画の失敗を catch していない');
+        // 交戦者の名前は1行に収める (長い名前が並んでもカードの幅を壊さない)
+        assert.ok(/\.mp-bossboard \.bb \.who \{[^}]*overflow: hidden; text-overflow: ellipsis; white-space: nowrap;/.test(css), '交戦者の名前が省略されない');
+        // 人数バッジは状態色を継承しない (自分の状態ボタンの緑/青/赤の上では薄い)
+        assert.ok(/\.dc-status-cnt \{[^}]*color: var\(--t-strong\);/.test(css) && !/\.dc-status-cnt \{[^}]*color: inherit/.test(css), '人数バッジが状態色を継承している');
         assert.ok(/if \(_opsSeasonLoaded\) _checkRaidEvents\(\)/.test(poll), '撃破の検知を運営側 (opsStore あり) に限っていない');
         assert.ok(/if \(_opsSeasonLoaded\) \{[\s\S]*?_releaseInfeasibleReservations\([\s\S]*?_checkAvailReminders\([\s\S]*?\n\s*\}\n\s*\/\/ ホーム側の盤面/.test(poll), '予約の点検・時間の通知を運営側 (opsStore あり) に限っていない');
     });

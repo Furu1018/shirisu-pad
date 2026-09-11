@@ -2889,7 +2889,9 @@
         .hp-fresh { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; letter-spacing: 0.2px; background: rgba(var(--ink-rgb), 0.06); color: var(--t-strong); white-space: nowrap; }
         .hp-fresh.warn { background: var(--warn-bg); color: var(--warn-deep); }
         /* ホームの状態ボタンの人数 (スマホ縦だけ。横画面はタイルに名前ごと出すので隠す) */
-        .dc-status-cnt { display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 10.5px; font-weight: 900; line-height: 18px; text-align: center; background: rgba(var(--ink-rgb), 0.08); color: inherit; font-variant-numeric: tabular-nums; }
+        /* ★ 色は継承しない (Codex指摘 2026-09-11): 自分の状態ボタンは状態色 (緑/青/赤) の文字なので、10.5px の数字には薄い。
+           数字はいつも濃い文字 + 墨のベールで */
+        .dc-status-cnt { display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 10.5px; font-weight: 900; line-height: 18px; text-align: center; background: rgba(var(--ink-rgb), 0.10); color: var(--t-strong); font-variant-numeric: tabular-nums; }
         .dc-status-cnt.on { display: inline-block; }
         .mp-status-tiles { display: none; }
         .mp-bbcard { display: none; }
@@ -13674,8 +13676,12 @@
                         if (r?.season && opsStore.patchBosses(r.season.id, r.bosses)) {
                             renderOpsBossSummary();
                         }
-                        if (homePatched && document.getElementById('tab-mypage')?.classList.contains('active')) {
-                            renderMyNextAttackBosses(id); renderMyBossStrip(id); renderMyBossBoard(id);
+                        // ★ 取得の間に名乗り直していたら描かない (Codex指摘 2026-09-11)。tick 開始時の id で描くと、
+                        //   切り替え後のホームに前の人の「あなた」と戦闘ボタンが出る。描画の失敗で tick を止めない
+                        if (homePatched && document.getElementById('tab-mypage')?.classList.contains('active')
+                            && getCurrentIdentity()?.id === id.id) {
+                            renderMyNextAttackBosses(id).catch(() => { /* 次の周期で */ });
+                            renderMyBossStrip(id); renderMyBossBoard(id);
                         }
                     }).catch(() => { /* noop */ });
                 }
