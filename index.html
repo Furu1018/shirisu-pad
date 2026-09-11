@@ -579,6 +579,11 @@
         /* ラベルは DOM 上はアイコンより前 (閉じタグが5つとも同じで目印に使えない) → order で下に出す */
         .bottom-nav-btn .nav-icon-wrap { order: 1; }
         .bottom-nav-btn .nav-lb { order: 2; line-height: 1; white-space: nowrap; }
+        /* 運営ONのときはナビの「戦況」が「運営」になり、アイコンも変わる (2026-09-11 ユーザー要望)。
+           文字と title は _applyOpsMode が入れ替える。アイコンは body.ops-mode で CSS が切り替える (下と左の両方で同じ規則) */
+        .nav-ic-ops { display: none; }
+        body.ops-mode [data-tab="ops"] .nav-ic-std { display: none; }
+        body.ops-mode [data-tab="ops"] .nav-ic-ops { display: block; }
         .bottom-nav-btn:hover { color: var(--nav-ink)}
         /* ★ いま居るタブ: 帯から飛び出す円をやめ、**色の斑点**だけにした
            (2026-09-10 ユーザー要望)。持ち上げると帯の外に出るぶん場所を食い、
@@ -2880,6 +2885,43 @@
         .ops-recent-row .d.bad { color: var(--bad-deep); }
         .ops-recent-row .v { flex: none; font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
         .ops-recent-empty { margin: 0; font-size: 11.5px; color: var(--t-muted); }
+        /* HP更新の鮮度 (「HP更新 ○分前」) は目立つピルで (2026-09-11 ユーザー要望)。30 分以上で警告色 */
+        .hp-fresh { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; letter-spacing: 0.2px; background: rgba(var(--ink-rgb), 0.06); color: var(--t-strong); white-space: nowrap; }
+        .hp-fresh.warn { background: var(--warn-bg); color: var(--warn-deep); }
+        /* ホームの状態ボタンの人数 (スマホ縦だけ。横画面はタイルに名前ごと出すので隠す) */
+        .dc-status-cnt { display: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 10.5px; font-weight: 900; line-height: 18px; text-align: center; background: rgba(var(--ink-rgb), 0.08); color: inherit; font-variant-numeric: tabular-nums; }
+        .dc-status-cnt.on { display: inline-block; }
+        .mp-status-tiles { display: none; }
+        .mp-bbcard { display: none; }
+        /* ホームの横画面 (700px〜): 数字はタイルに、細い帯はボス状況カードに置き換える (2026-09-11 ユーザー要望) */
+        @media (min-width: 700px) {
+            .dc-status-cnt { display: none !important; }
+            .mp-status-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+            .mp-status-tiles .st { min-width: 0; padding: 9px 10px; border-radius: 12px; background: var(--s1); border: 1px solid var(--line); }
+            .mp-status-tiles .st .k { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 900; letter-spacing: 0.3px; color: var(--t-muted); white-space: nowrap; }
+            .mp-status-tiles .st .k i { width: 7px; height: 7px; border-radius: 50%; background: var(--track); }
+            .mp-status-tiles .st.on.available .k i { background: var(--ok-solid); }
+            .mp-status-tiles .st.on.practicing .k i { background: var(--attr-water-solid); }
+            .mp-status-tiles .st.on.coordinating .k i { background: var(--attr-fire-solid); }
+            .mp-status-tiles .st .v { margin-top: 2px; font-size: 20px; font-weight: 900; line-height: 1.2; color: var(--t-ink); font-variant-numeric: tabular-nums; }
+            .mp-status-tiles .st .n { margin-top: 2px; font-size: 10.5px; font-weight: 700; color: var(--t-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .mp-bbcard { display: block; }
+            .mp-bossstrip { display: none !important; }
+        }
+        .mp-bossboard { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+        .mp-bossboard .bb { flex: 1 0 96px; min-width: 96px; padding: 10px 10px 9px; border-radius: 12px; background: var(--s1); border: 1px solid var(--line); }
+        .mp-bossboard .bb.done { opacity: 0.55; }
+        .mp-bossboard .bb.live { border-color: var(--bb-c); box-shadow: inset 0 0 0 1px var(--bb-c); }
+        .mp-bossboard .bb .top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .mp-bossboard .bb .top img { width: 22px; height: 22px; object-fit: contain; display: block; }
+        .mp-bossboard .bb .pct { font-size: 15px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
+        .mp-bossboard .bb .id { margin-top: 6px; font-size: 12px; font-weight: 900; color: var(--t-ink); }
+        .mp-bossboard .bb .nm { font-size: 10px; font-weight: 700; color: var(--t-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mp-bossboard .bb .bar { margin-top: 8px; height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
+        .mp-bossboard .bb .bar i { display: block; height: 100%; border-radius: 999px; background: var(--bb-c, var(--ops-solid)); }
+        .mp-bossboard .bb .hp { margin-top: 4px; font-size: 9.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .mp-bossboard .bb .who { margin-top: 6px; font-size: 10.5px; font-weight: 800; color: var(--t-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mp-bossboard .bb.live .who { color: var(--bb-t, var(--t-ink)); }
         .mp-bossstrip { display: flex; gap: 6px; margin: 0 0 12px; }
         .mp-bossstrip .bs {
             flex: 1 1 0; min-width: 0;
@@ -3706,9 +3748,11 @@
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
                 模擬
             </button>
+            <!-- 運営ONのときは「運営」+ レンチのアイコンになる (2026-09-11 ユーザー要望)。文字は _applyOpsMode、アイコンは CSS (body.ops-mode) -->
             <button class="tab-button" data-tab="ops" onclick="switchTab('ops')" title="戦況">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
-                戦況
+                <svg class="tab-icon nav-ic-std" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+                <svg class="tab-icon nav-ic-ops" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                <span class="tab-lb">戦況</span>
             </button>
             <button class="tab-button" data-tab="ranking" onclick="switchTab('ranking')" title="分析">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
@@ -3773,16 +3817,18 @@
                 <!-- ステータス切替 3ボタン (soft-fill) -->
                 <div id="mypageStatusSwitcher" style="display:flex;gap:8px;margin-top:18px;">
                     <button data-status="available"    data-color="#18C26B" onclick="handleMyStatusSwitch('available')"    class="dc-status-btn">
-                        <span data-sp-icon="gamepad" data-sp-size="15"></span> オンライン
+                        <span data-sp-icon="gamepad" data-sp-size="15"></span> オンライン<span class="dc-status-cnt" aria-hidden="true"></span>
                     </button>
                     <button data-status="practicing"   data-color="#2E8BFF" onclick="handleMyStatusSwitch('practicing')"   class="dc-status-btn">
-                        <span data-sp-icon="sword" data-sp-size="14"></span> 模擬中
+                        <span data-sp-icon="sword" data-sp-size="14"></span> 模擬中<span class="dc-status-cnt" aria-hidden="true"></span>
                     </button>
                     <button data-status="coordinating" data-color="#FF3D44" onclick="handleMyStatusSwitch('coordinating')" class="dc-status-btn" disabled title="戦闘中はボス選択時に自動でONになります">
-                        <span data-sp-icon="shield" data-sp-size="14"></span> 戦闘中
+                        <span data-sp-icon="shield" data-sp-size="14"></span> 戦闘中<span class="dc-status-cnt" aria-hidden="true"></span>
                     </button>
                 </div>
                 <p id="mypageStatusHint" style="margin:8px 0 0 0;font-size:11px;color:var(--t-muted);min-height:14px;text-align:center;">プレイヤーを選択してください。</p>
+                <!-- 横画面 (700px〜) だけ: いま誰がオンライン / 模擬中 / 戦闘中か (名前ごと)。スマホ縦は上のボタンの数字 (2026-09-11 ユーザー要望) -->
+                <div id="mypageStatusTiles" class="mp-status-tiles" aria-label="メンバーの状態"></div>
             </div>
 
             <!-- 🤝 締め凸依頼バナー (来ているときだけの割込み — ホーム再構成 H1 で戦闘カード内から独立。
@@ -3849,6 +3895,18 @@
                     </div>
                     <button id="myAttackAddBtn" onclick="openMyAttackModal()" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;border:1px dashed rgba(var(--ink-rgb), 0.15);background:transparent;color:var(--t-body);font-size:12px;font-weight:700;cursor:pointer;">＋ 手動で凸を報告</button>
                 </div>
+            </div>
+
+            <!-- 🐙 ボス状況 (横画面 700px〜 だけ・2026-09-11 ユーザー要望「ホームの空きに戦況のボス状況を」)。
+                 スマホ縦は戦闘カードの細い帯 (mypageBossStrip) のまま。描画は renderMyBossBoard、判定は homeBossBoard (attributes.js)。
+                 ★ 戦闘カードの直後に置くのは、2列のとき右列 (ヒーローの下) の空きに入るため -->
+            <div class="dc-card mp-bbcard" data-span="6" id="myBossBoardCard">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ボス状況</div>
+                    <span id="myBossBoardMeta" style="display:inline-flex;align-items:center;gap:6px;"></span>
+                    <button type="button" onclick="switchTab('ops')" style="margin-left:auto;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">戦況を見る ›</button>
+                </div>
+                <div id="myBossBoard" class="mp-bossboard" data-no-swipe aria-label="ボスの状況"></div>
             </div>
 
             <!-- 📤 配信された凸プラン (運営が配信したときだけ表示 — ホーム再構成 H1 で主行動群の下へ降格。
@@ -8797,7 +8855,7 @@
             renderMyNotificationsInbox(id);
             renderMyFinishCoord(id);
             renderMyNextAttackBosses(id);
-            renderMyBossStrip(id);
+            renderMyBossStrip(id); renderMyBossBoard(id);
             renderMypageStrongAttrsBadge(id);
             renderMyPublishedPlan(id);
             renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
@@ -10080,6 +10138,27 @@
                     btn.style.boxShadow = 'none';
                 }
             });
+            // 人数 (2026-09-11 ユーザー要望): スマホ縦はボタンの数字、横画面 (700px〜) は下のタイルに名前ごと (出し分けは CSS)。
+            // 数え方は homeStatusCounts (attributes.js) が唯一
+            if (typeof homeStatusCounts === 'function') {
+                const cnt = homeStatusCounts(_coordActiveCache || [], identity?.id ?? null);
+                buttons.forEach(btn => {
+                    const el = btn.querySelector('.dc-status-cnt');
+                    if (!el) return;
+                    const n = cnt[btn.dataset.status]?.count || 0;
+                    el.textContent = n ? String(n) : '';
+                    el.classList.toggle('on', n > 0);
+                });
+                const tiles = document.getElementById('mypageStatusTiles');
+                if (tiles) {
+                    const DEF = [['available', 'オンライン'], ['practicing', '模擬中'], ['coordinating', '戦闘中']];
+                    tiles.innerHTML = DEF.map(([st, label]) => {
+                        const c = cnt[st];
+                        const names = c.names.length ? c.names.join(' / ') : '—';
+                        return `<div class="st ${st}${c.count ? ' on' : ''}" title="${escapeHtml(`${label}: ${names}`)}"><div class="k"><i></i>${label}</div><div class="v">${c.count}</div><div class="n">${escapeHtml(names)}</div></div>`;
+                    }).join('');
+                }
+            }
             // 戦闘中ライブインジケーター
             const liveEl = document.getElementById('mypageBattleLive');
             if (liveEl) liveEl.style.display = (cur === 'coordinating') ? 'flex' : 'none';
@@ -13358,7 +13437,7 @@
                 // ホームの「次の凸」も同期
                 if (typeof renderMyNextAttackBosses === 'function') {
                     renderMyNextAttackBosses(identity);
-                    renderMyBossStrip(identity);   // 細いボス帯も同じ材料で更新
+                    renderMyBossStrip(identity); renderMyBossBoard(identity);   // 細いボス帯も同じ材料で更新
                 }
             } catch (e) {
                 console.warn('[coord poll]', e?.message || e);
@@ -13561,30 +13640,42 @@
                 if (document.getElementById('tab-mypage')?.classList.contains('active')
                     && typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(id);
                 _coordPollTick = (_coordPollTick + 1) % 3;
-                if (_coordPollTick === 0 && opsStore.get()?.season) {
+                // ★ ホームだけ開いている端末も 30 秒ごとにボスHPを追う (2026-09-11)。以前は戦況タブを
+                //   開いたことのある端末 (opsStore あり) しか取り直さず、ホームのボス状況が止まっていた。
+                //   撃破の検知・予約の点検・時間の通知は従来どおり運営側 (opsStore あり) だけ
+                const _opsSeasonLoaded = !!opsStore.get()?.season;
+                if (_coordPollTick === 0 && (_opsSeasonLoaded || seasonStore.get()?.season)) {
                     // 撃破/レベル開放の検知 (30秒ごと)。報告した本人以外の端末でも気づけるように。
                     // 誰が気づいても送信は DB の一意制約で1回だけになる
-                    _checkRaidEvents().catch(() => { /* noop */ });
+                    if (_opsSeasonLoaded) _checkRaidEvents().catch(() => { /* noop */ });
                     window.supabaseLoadActiveSeasonWithBosses().then(r => {
-                        // ★ 予約の定期点検 (Codex指摘 2026-09-07): イベント差分を取り逃しても
-                        //   (一時的な失敗・他端末の検知) 取り残しが恒久化しないよう、運営端末は
-                        //   30秒ごとに「レベル通過」分だけ見直す。撃破分は bosses を渡さない —
-                        //   手動HP更新の途中で新レベルの予約を誤って外さないため。撃破の取り残しは
-                        //   次のレベル通過でまとめて外れる (締め凸依頼と同じ)
-                        if (_opsMode && r?.season?.id && typeof _releaseInfeasibleReservations === 'function') {
-                            _releaseInfeasibleReservations(r.season.id,
-                                { currentLevel: Number(r.season.current_level) || 1, bosses: [] }, '定期点検')
-                                .catch(() => { /* 次の周期で */ });
+                        // ★ 予約の点検・時間の通知は運営側 (戦況を開いている端末 = opsStore あり) だけ。
+                        //   ホームだけの端末は下のボスHPの差し替えだけを受け取る (2026-09-11)
+                        if (_opsSeasonLoaded) {
+                            // ★ 予約の定期点検 (Codex指摘 2026-09-07): イベント差分を取り逃しても
+                            //   (一時的な失敗・他端末の検知) 取り残しが恒久化しないよう、運営端末は
+                            //   30秒ごとに「レベル通過」分だけ見直す。撃破分は bosses を渡さない —
+                            //   手動HP更新の途中で新レベルの予約を誤って外さないため。撃破の取り残しは
+                            //   次のレベル通過でまとめて外れる (締め凸依頼と同じ)
+                            if (_opsMode && r?.season?.id && typeof _releaseInfeasibleReservations === 'function') {
+                                _releaseInfeasibleReservations(r.season.id,
+                                    { currentLevel: Number(r.season.current_level) || 1, bosses: [] }, '定期点検')
+                                    .catch(() => { /* 次の周期で */ });
+                            }
+                            // ⏰ 戦闘可能時間の始まりを本人に知らせる (当日だけ・運営端末が送り手・二重送信は一意制約で防ぐ)
+                            if (_opsMode && r?.season?.id && typeof _checkAvailReminders === 'function') {
+                                _checkAvailReminders(r.season).catch(() => { /* 次の周期で */ });
+                            }
+                            // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
+                            // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
                         }
-                        // ⏰ 戦闘可能時間の始まりを本人に知らせる (当日だけ・運営端末が送り手・二重送信は一意制約で防ぐ)
-                        if (_opsMode && r?.season?.id && typeof _checkAvailReminders === 'function') {
-                            _checkAvailReminders(r.season).catch(() => { /* 次の周期で */ });
-                        }
-                        // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
-                        // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
+                        // ホーム側の盤面 (seasonStore) は運営盤面と独立に差し替える (どちらもシーズン一致時のみ)
+                        const homePatched = !!(r?.season && seasonStore.patchBosses(r.season.id, r.bosses));
                         if (r?.season && opsStore.patchBosses(r.season.id, r.bosses)) {
-                            seasonStore.patchBosses(r.season.id, r.bosses);
                             renderOpsBossSummary();
+                        }
+                        if (homePatched && document.getElementById('tab-mypage')?.classList.contains('active')) {
+                            renderMyNextAttackBosses(id); renderMyBossStrip(id); renderMyBossBoard(id);
                         }
                     }).catch(() => { /* noop */ });
                 }
@@ -13727,6 +13818,48 @@
             }).join('');
         }
 
+        // HP更新の鮮度 (「HP更新 ○分前」)。30 分以上で警告。★ 目立つピルにする (2026-09-11 ユーザー要望)。
+        // 戦況のボス状況の見出しと、ホームのボス状況カードの両方がこれを使う。判定は opsLayoutDomain.hpFreshnessMin (コックピットと同じ材料)
+        function _hpFreshHtml(bosses) {
+            const dom = window.opsLayoutDomain;
+            const min = dom && typeof dom.hpFreshnessMin === 'function' ? dom.hpFreshnessMin(bosses) : null;
+            if (min == null) return '';
+            const warn = min >= 30;
+            const ago = min < 1 ? 'たった今' : min < 60 ? `${min}分前` : `${Math.floor(min / 60)}時間前`;
+            return `<span class="hp-fresh${warn ? ' warn' : ''}" title="ボスHPが最後に更新された時刻${warn ? ' (30分以上たっています)' : ''}">HP更新 ${ago}${warn ? ' ⚠️' : ''}</span>`;
+        }
+
+        // 横画面 (700px〜) のホームのボス状況カード (2026-09-11 ユーザー要望)。判定は homeBossBoard (attributes.js) が唯一。
+        // 細い帯 (renderMyBossStrip) と同じ材料・同じタイミングで描く (呼ぶ場所を揃えるテストがある)
+        function renderMyBossBoard(identity) {
+            const el = document.getElementById('myBossBoard');
+            const meta = document.getElementById('myBossBoardMeta');
+            const card = document.getElementById('myBossBoardCard');
+            if (!el || typeof homeBossBoard !== 'function') return;
+            const ctx = seasonStore.get();
+            const rows = homeBossBoard(ctx?.bosses || [], _coordActiveCache || [], identity?.id ?? null);
+            if (!ctx?.season || !rows.length) { if (card) card.style.display = 'none'; return; }
+            if (card) card.style.display = '';   // 出す/隠すの本決めは CSS (700px 未満は隠す)
+            const esc = escapeHtml;
+            if (meta) meta.innerHTML = `<span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">Lv${Number(ctx.season.current_level) || 1}</span>${_hpFreshHtml(ctx.bosses)}`;
+            el.innerHTML = rows.map(r => {
+                const v = ATTR_VISUAL[r.attr] || null;
+                const tk = r.attr ? `--attr-${r.attr}` : '--ops';
+                const cls = ['bb', r.done ? 'done' : '', r.live > 0 && !r.done ? 'live' : ''].filter(Boolean).join(' ');
+                const pct = r.hpPct == null ? '—' : `${Math.round(r.hpPct)}%`;
+                const hp = r.remainingRaw != null && r.totalRaw != null
+                    ? `${(r.remainingRaw / 1e9).toFixed(2)} / ${(r.totalRaw / 1e9).toFixed(2)} B`
+                    : r.remainingRaw != null ? `残 ${(r.remainingRaw / 1e9).toFixed(2)} B` : 'HP 未取得';
+                const who = r.done ? '💀 撃破' : r.live > 0 ? `⚔ ${r.liveNames.join(' / ')}` : '交戦者なし';
+                const title = `B${r.bossNumber} ${v?.name || ''}${r.done ? ' · 撃破' : r.live > 0 ? ` · ${r.live}人が戦闘中${r.mine ? ' (自分を含む)' : ''}` : ''}`;
+                return `<div class="${cls}" style="--bb-c:var(${tk}-solid);--bb-t:var(${tk});" title="${esc(title)}">`
+                    + `<div class="top">${v?.icon ? `<img src="${v.icon}" alt="${esc(v.name)}" loading="lazy" decoding="async">` : '<span></span>'}<span class="pct">${pct}</span></div>`
+                    + `<div class="id">B${r.bossNumber}</div><div class="nm">${esc(r.name)}</div>`
+                    + `<div class="bar"><i style="width:${r.hpPct == null ? 0 : Math.round(r.hpPct)}%"></i></div>`
+                    + `<div class="hp">${esc(hp)}</div><div class="who">${esc(who)}</div></div>`;
+            }).join('');
+        }
+
         // ========== ホーム: 次の凸 (ボスタップ起点フロー) ==========
         // タップ → 戦闘準備(coordinating) → 戦闘 → 「📷 報告する」で凸報告モーダル
         async function renderMyNextAttackBosses(identity) {
@@ -13817,7 +13950,7 @@
             if (gate) gate.style.display = 'none';
             if (expanded) expanded.style.display = 'block';
             const id = getCurrentIdentity();
-            if (id?.id) { renderMyNextAttackBosses(id); renderMyBossStrip(id); }
+            if (id?.id) { renderMyNextAttackBosses(id); renderMyBossStrip(id); renderMyBossBoard(id); }
         }
         async function releaseBattleGate() {
             // 戦闘中の場合は coordination をクリア
@@ -14548,7 +14681,7 @@
                             //   ★ タイルの描画は async。await しないと失敗が外の catch を
                             //      すり抜けて未処理 Promise になる (Codex指摘 2026-09-11)
                             await renderMyNextAttackBosses(id);
-                            renderMyBossStrip(id);
+                            renderMyBossStrip(id); renderMyBossBoard(id);
                         }
                     } catch (e) { console.warn('[coord auto-release]', e?.message || e); }
                     // 撃破/レベル開放の検知は盤面を見る _checkRaidEvents に一本化してある。
@@ -18531,15 +18664,8 @@
             }
             if (lvEl) {
                 // HP鮮度: 最後にHPが動いた時刻 (20_bosses_updated_at.sql 適用後のみ)
-                let freshTxt = '';
-                const upds = (bosses || []).map(b => b.updated_at).filter(Boolean);
-                if (season && upds.length > 0) {
-                    const latest = Math.max(...upds.map(t => new Date(t).getTime()));
-                    const min = Math.floor((Date.now() - latest) / 60000);
-                    const warn = min >= 30;
-                    freshTxt = ` · <span style="font-weight:800;color:${warn ? 'var(--warn-deep)' : 'var(--t-muted)'};" title="ボスHPが最後に更新された時刻">HP更新 ${min < 1 ? 'たった今' : (min < 60 ? `${min}分前` : `${Math.floor(min / 60)}時間前`)}${warn ? ' ⚠️' : ''}</span>`;
-                }
-                lvEl.innerHTML = season ? `Lv${season.current_level || 1} · 5体${freshTxt}` : '';
+                // ★ HP更新の鮮度は目立つピルで (2026-09-11 ユーザー要望)。ホームのボス状況カードと同じ _hpFreshHtml
+                lvEl.innerHTML = season ? `Lv${season.current_level || 1} · 5体 ${_hpFreshHtml(bosses)}` : '';
             }
 
             // 戦闘中(調整中)のボス番号 → 人リスト
@@ -25500,6 +25626,15 @@
                 b.style.background = _opsMode ? 'var(--t-ink)' : 'var(--card)';
                 b.style.color = _opsMode ? 'var(--card)' : 'var(--t-strong)';
             }
+            // ナビの「戦況」⇄「運営」(2026-09-11 ユーザー要望)。文字と title はここで、アイコンは CSS (body.ops-mode) で。
+            // ★ ON/OFF と名乗り直しの両方がここを通る (唯一の場所)
+            const navLabel = _opsMode ? '運営' : '戦況';
+            document.querySelectorAll('.tab-button[data-tab="ops"], .bottom-nav-btn[data-tab="ops"]').forEach(btn => {
+                btn.title = navLabel;
+                btn.setAttribute('aria-label', navLabel);
+                const lb = btn.querySelector('.nav-lb, .tab-lb');
+                if (lb) lb.textContent = navLabel;
+            });
             // 設定タブ側のトグル (ops タブのナビチップとは地の色が違うので個別に塗る)
             const s = document.getElementById('settingsOpsModeBtn');
             if (s) {
@@ -26038,7 +26173,7 @@
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6l5.5 9.5a2 2 0 0 1-1.7 3H6.2a2 2 0 0 1-1.7-3L10 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg></span>
         </button>
         <button class="bottom-nav-btn" data-tab="ops" onclick="switchTab('ops')" aria-label="戦況" title="戦況"><span class="nav-lb">戦況</span>
-            <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span>
+            <span class="nav-icon-wrap"><svg class="nav-ic-std" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg><svg class="nav-ic-ops" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
         </button>
         <button class="bottom-nav-btn" data-tab="ranking" onclick="switchTab('ranking')" aria-label="分析" title="分析"><span class="nav-lb">分析</span>
             <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>

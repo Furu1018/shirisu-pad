@@ -304,6 +304,26 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ シーズン制御のボタンは `data-stage="prep"` (作成・テスト作成は小リンク) / `data-stage="end"` (終了・リセット) で段階の描画が出し分ける。
   催促 (`_opsNudgeGroup`) は `memberStatus.nudgeMessage` の1人ずつの文面で、通知購読者かつ「今回は難しい」でない人にだけ送る。
   実行テスト `tests/ops-stage.mjs`
+- **ホームの一目 (2026-09-11 ユーザー要望「空いているスペースにオンライン表示とボス状況を」)**。判定は `js/domain/attributes.js` の
+  `homeStatusCounts` / `homeBossBoard` (細い帯の `homeBossStrip` の隣) が唯一。出し分けは**幅だけ** (CSS、700px が境):
+  - **スマホ縦 (〜699px)**: ボス状況は戦闘カードの細い帯 (`#mypageBossStrip`) のまま。オンライン状況は
+    **自分の状態ボタン (オンライン / 模擬中 / 戦闘中) の人数バッジ** (`.dc-status-cnt`、0 なら消える)
+  - **横画面 (700px〜)**: プロフィール直下に3枚のタイル (`#mypageStatusTiles`、人数 + 名前)、右列の空きに
+    **ボス状況カード** (`#myBossBoardCard`・`data-span="6"`・戦闘カードの直後に置くと2列の右列に入る)。
+    残HP% / 残・総HP / 交戦者の名前 / 撃破。細い帯とバッジは隠す
+  ★ カードのクラスは `mp-bbcard` — `mp-bossboard-card` にすると横スクロール走査 (`\bmp-bossboard\b`) が
+  カード本体まで拾って data-no-swipe を要求する。
+  ★ 帯を描く場所 (`renderMyBossStrip`) では必ず `renderMyBossBoard` も描く (呼ぶ数が揃うテストがある)。
+  ★ **30 秒ごとのボスHP取り直しはホームだけの端末でも動く** — 以前は戦況タブを開いたことのある端末
+  (opsStore あり) しか取り直さず、ホームのボス状況が止まっていた。撃破の検知・予約の点検・時間の通知は
+  従来どおり運営側 (opsStore あり) だけ (`if (_opsSeasonLoaded) { ... }` で包む。中の if 文はテストが文字列で固定)。
+  ★ **HP更新の鮮度は目立つピル** (`_hpFreshHtml` → `.hp-fresh` / 30分以上で `.warn`)。戦況のボス状況の見出しと
+  ホームのカードの両方が同じ関数を使う。判定は `opsLayoutDomain.hpFreshnessMin`。
+  実行テスト `tests/home-glance.mjs`
+- **ナビの「戦況」⇄「運営」** (2026-09-11 ユーザー要望)。運営ONのときは下メニュー・左メニューとも
+  「運営」+ レンチのアイコンになる。文字と title/aria-label は `_applyOpsMode` (ON/OFF と名乗り直しの両方が通る唯一の場所)、
+  アイコンは CSS (`body.ops-mode [data-tab="ops"] .nav-ic-std/.nav-ic-ops`)。HTML の文字は「戦況」のまま
+  (ナビの名前を数えるテストがある)。左メニューの文字は `<span class="tab-lb">` で包んである
 - **📈 消化のペース / 🔁 直近の動き** (運営ボード 当日・2列表示の段階4・2026-09-11)。当日の運営は交代しながら
   見るので、入った人が 10 秒で「どこまで消化したか / 誰に何を頼んでいて誰の返事を待っているか」を読むための2枚。
   純ロジックは `js/domain/pace.js` (`paceModel` / `recentModel`) が唯一で、画面は材料集めと描画だけ。
@@ -468,6 +488,7 @@ node tests/growth-compare.mjs # 🧬 育成をくらべるシート (_gcRender) 
 node tests/theme-switch.mjs   # 見た目 (ライト/ダーク) の切り替えの実行テスト
 node tests/finish-console.mjs # 🏁 締め凸コンソール (今 vs 待つ) + 複数案の同時打診 の実行テスト
 node tests/ops-pace.mjs       # 📈 消化のペース / 🔁 直近の動き (運営ボード 当日) の描画の実行テスト
+node tests/home-glance.mjs    # ホームの一目: 横画面のボス状況カード / 状態ボタンの人数とタイル / HP鮮度ピル の実行テスト
 ```
 **変異テスト (ガードが本当に効くかを確かめる)** — 新しいテストを足したら必ず1周する。
 わざと壊して、落ちなければそのテストは無意味。scratchpad にスクリプトを書いて回す。

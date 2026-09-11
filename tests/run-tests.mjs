@@ -8116,6 +8116,120 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.ops-pace i\.on \{ background: var\(--ops\); \}/.test(css), '棒の色がトークンでない');
         assert.ok(!/canvas/.test(pace), 'ペースを canvas で描いている (テーマ切り替えに追随しない)');
     });
+    // ===== ホームの空きに オンライン / ボス状況 (2026-09-11 ユーザー要望) + ナビの「戦況」⇄「運営」 =====
+    test('★ homeStatusCounts: オンライン / 模擬中 / 戦闘中 の人数と名前 (同じ人は1人・自分は「あなた」で先頭)', () => {
+        const f = globalThis.homeStatusCounts;
+        assert.equal(typeof f, 'function', 'homeStatusCounts が無い');
+        const r = f([
+            { player_id: 1, name: 'A', status: 'available' },
+            { player_id: 2, name: 'B', status: 'available' },
+            { player_id: 2, name: 'B', status: 'available' },      // 同じ人が2行
+            { player_id: 3, name: 'C', status: 'practicing' },
+            { player_id: 9, players: { name: 'Me' }, status: 'coordinating', boss_number: 3 },
+            { player_id: 4, name: 'D', status: 'coordinating', boss_number: 3 },
+            { player_id: 5, name: 'E', status: 'off' },            // 数えない
+            null, {}, { status: 'available' },
+        ], 9);
+        assert.equal(r.available.count, 2); assert.deepEqual(r.available.names, ['A', 'B']); assert.equal(r.available.mine, false);
+        assert.equal(r.practicing.count, 1); assert.deepEqual(r.practicing.names, ['C']);
+        assert.equal(r.coordinating.count, 2); assert.deepEqual(r.coordinating.names, ['あなた', 'D']); assert.equal(r.coordinating.mine, true);
+        assert.deepEqual(f(null, null).available, { count: 0, names: [], mine: false });
+        // 情報を増やさない (ボスや残HPを返し始めたら役目が変わっている)
+        assert.deepEqual(Object.keys(r).sort(), ['available', 'coordinating', 'practicing']);
+    });
+    test('★ homeBossBoard: 残HP% / 残・総HP / 交戦者の名前 / 撃破 — ボスの並び順', () => {
+        const f = globalThis.homeBossBoard;
+        assert.equal(typeof f, 'function', 'homeBossBoard が無い');
+        const bosses = [
+            { boss_number: 3, attribute: 'IRON', name: 'ボス3', remaining_hp_raw: 50e9, total_hp_raw: 100e9 },
+            { boss_number: 1, attribute: 'fire', boss_code: 'B1', remaining_hp_raw: 0, total_hp_raw: 100e9 },
+            { boss_number: 2, attribute: 'water', name: 'ボス2', remaining_hp_raw: null, total_hp_raw: 100e9 },
+            { boss_number: 4, attribute: 'wind', name: 'ボス4', remaining_hp_raw: 120e9, total_hp_raw: 100e9 },   // 総HPを超える → 100% で止める
+            { boss_number: 5, attribute: 'electric', name: 'ボス5', remaining_hp_raw: 30e9, total_hp_raw: null },  // 総HP不明 → % は出さない
+        ];
+        const coords = [
+            { status: 'coordinating', boss_number: 3, player_id: 9, name: 'Me' },
+            { status: 'coordinating', boss_number: 3, player_id: 4, name: 'D' },
+            { status: 'available', boss_number: 3, player_id: 5, name: 'E' },   // オンラインは交戦者ではない
+        ];
+        const out = f(bosses, coords, 9);
+        assert.deepEqual(out.map(x => x.bossNumber), [1, 2, 3, 4, 5], 'ボスの並び順になっていない');
+        assert.deepEqual(out.map(x => x.attr), ['fire', 'water', 'iron', 'wind', 'electric'], '属性を正規化していない');
+        assert.equal(out[2].hpPct, 50); assert.equal(out[2].remainingRaw, 50e9); assert.equal(out[2].totalRaw, 100e9);
+        assert.equal(out[2].live, 2); assert.deepEqual(out[2].liveNames, ['あなた', 'D']); assert.equal(out[2].mine, true);
+        assert.equal(out[2].name, 'ボス3'); assert.equal(out[0].name, 'B1', 'name が無ければ boss_code');
+        assert.equal(out[0].done, true); assert.equal(out[0].hpPct, 0); assert.equal(out[0].live, 0);
+        assert.equal(out[1].done, false, '残HP 不明を撃破扱いにしている'); assert.equal(out[1].hpPct, null); assert.equal(out[1].remainingRaw, null);
+        assert.equal(out[3].hpPct, 100); assert.equal(out[4].hpPct, null); assert.equal(out[4].remainingRaw, 30e9); assert.equal(out[4].totalRaw, null);
+        assert.deepEqual(f(null, null, null), []);
+        assert.deepEqual(f([{ boss_number: 'x' }], [{}, null], 1), []);
+    });
+    test('★ 配線: ホームのオンライン表示 — スマホ縦はボタンの数字、横画面はプロフィール直下のタイル', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const sw = html.slice(html.indexOf('id="mypageStatusSwitcher"'), html.indexOf('id="mypageStatusHint"'));
+        assert.equal((sw.match(/class="dc-status-cnt"/g) || []).length, 3, '3つのボタンに人数の枠が無い');
+        assert.ok(/id="mypageStatusTiles" class="mp-status-tiles"/.test(html), '横画面のタイルの置き場が無い');
+        const fn = html.match(/function _refreshMyStatusSwitcher\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/homeStatusCounts\(_coordActiveCache \|\| \[\], identity\?\.id/.test(fn), '人数をドメインで数えていない');
+        assert.ok(/\.dc-status-cnt/.test(fn) && /mypageStatusTiles/.test(fn), 'ボタンの数字とタイルを描いていない');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        // 出し分けは CSS: 700px 未満 = 数字だけ / 700px〜 = タイル (数字は隠す)
+        assert.ok(/\.mp-status-tiles \{ display: none; \}/.test(css), 'タイルが既定で隠れていない');
+        const wide = css.slice(css.indexOf('/* ホームの横画面 (700px〜)'));
+        assert.ok(wide.length > 0, '横画面のブロックが無い');
+        assert.ok(/@media \(min-width: 700px\) \{[\s\S]*?\.mp-status-tiles \{ display: grid;/.test(wide), '700px〜 でタイルが出ない');
+        assert.ok(/@media \(min-width: 700px\) \{[\s\S]*?\.dc-status-cnt \{ display: none !important; \}/.test(wide), '700px〜 でボタンの数字を隠していない');
+    });
+    test('★ 配線: 横画面のホームに ボス状況カード (戦闘カードの隣)。スマホ縦は細い帯のまま', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const i = html.indexOf('id="mypageBossStrip"'), j = html.indexOf('id="myBossBoardCard"'), k = html.indexOf('id="myAvailStripCard"');
+        assert.ok(i > 0 && j > i && k > j, 'ボス状況カードが 戦闘カードの直後・戦闘可能時間の前 にない (右列の空きに入らない)');
+        assert.ok(/class="dc-card mp-bbcard" data-span="6" id="myBossBoardCard"/.test(html), 'カードの幅 (6) が無い');
+        assert.ok(/id="myBossBoard" class="mp-bossboard" data-no-swipe/.test(html), '横スクロールの箱に data-no-swipe が無い');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/\.mp-bbcard \{ display: none; \}/.test(css), 'スマホ縦でカードが隠れていない');
+        const wide = css.slice(css.indexOf('/* ホームの横画面 (700px〜)'));
+        assert.ok(/\.mp-bbcard \{ display: block; \}/.test(wide) && /\.mp-bossstrip \{ display: none !important; \}/.test(wide), '横画面でカードを出し、細い帯を隠す規則が無い');
+        // 帯を描くところでは必ずカードも描く (材料が同じ)
+        const strip = (html.match(/renderMyBossStrip\((identity|id)\)/g) || []).length;
+        const board = (html.match(/renderMyBossBoard\((identity|id)\)/g) || []).length;
+        assert.ok(board >= 4 && board === strip, `カードの更新箇所が帯と揃っていない (帯 ${strip} / カード ${board})`);
+        const fn = html.match(/function renderMyBossBoard\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/homeBossBoard\(ctx\?\.bosses \|\| \[\], _coordActiveCache \|\| \[\]/.test(fn), '判定をドメインに任せていない');
+        assert.ok(/_hpFreshHtml\(/.test(fn), 'HP更新の鮮度を出していない');
+        // 30 秒ごとのボスHP取り直しをホームにも (戦況タブを開いたことのない端末でも動く)
+        const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/\(_opsSeasonLoaded \|\| seasonStore\.get\(\)\?\.season\)/.test(poll), 'ホームだけの端末がボスHPを取り直していない');
+        assert.ok(/homePatched && document\.getElementById\('tab-mypage'\)/.test(poll), 'ホームのボス状況を描き直していない');
+        assert.ok(/if \(_opsSeasonLoaded\) _checkRaidEvents\(\)/.test(poll), '撃破の検知を運営側 (opsStore あり) に限っていない');
+        assert.ok(/if \(_opsSeasonLoaded\) \{[\s\S]*?_releaseInfeasibleReservations\([\s\S]*?_checkAvailReminders\([\s\S]*?\n\s*\}\n\s*\/\/ ホーム側の盤面/.test(poll), '予約の点検・時間の通知を運営側 (opsStore あり) に限っていない');
+    });
+    test('★ HP更新の鮮度は目立つピル (戦況のボス状況とホームのボス状況で同じ _hpFreshHtml)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const fn = html.match(/function _hpFreshHtml\(bosses\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.hpFreshnessMin\(bosses\)/.test(fn), '鮮度の判定を opsLayoutDomain に任せていない');
+        assert.ok(/class="hp-fresh\$\{warn \? ' warn' : ''\}"/.test(fn), '30分以上で warn を付けていない');
+        assert.ok(/lvEl\.innerHTML = season \? `Lv\$\{season\.current_level \|\| 1\} · 5体 \$\{_hpFreshHtml\(bosses\)\}`/.test(html), '戦況のボス状況の見出しがピルになっていない');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/\.hp-fresh \{[^}]*font-weight: 900/.test(css) && /\.hp-fresh\.warn \{[^}]*var\(--warn-deep\)/.test(css), 'ピルの見た目 (太字 / 警告色) が無い');
+    });
+    test('★ 配線: 運営ONのときナビの「戦況」は「運営」になり、アイコンも変わる (下メニュー・左メニューの両方)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const side = html.match(/<button class="tab-button" data-tab="ops"[\s\S]*?<\/button>/)?.[0] || '';
+        const bottom = html.match(/<button class="bottom-nav-btn" data-tab="ops"[\s\S]*?<\/button>/)?.[0] || '';
+        for (const [nm, b] of [['左メニュー', side], ['下メニュー', bottom]]) {
+            assert.ok(b, `${nm}: 戦況のボタンが無い`);
+            assert.ok(/class="[^"]*nav-ic-std"/.test(b) && /class="[^"]*nav-ic-ops"/.test(b), `${nm}: 戦況用と運営用のアイコンが両方無い`);
+        }
+        assert.ok(/<span class="tab-lb">戦況<\/span>/.test(side), '左メニューの文字が入れ替えられる形になっていない');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/\.nav-ic-ops \{ display: none; \}/.test(css), '運営用アイコンが既定で隠れていない');
+        assert.ok(/body\.ops-mode \[data-tab="ops"\] \.nav-ic-std \{ display: none; \}/.test(css) && /body\.ops-mode \[data-tab="ops"\] \.nav-ic-ops \{ display: block; \}/.test(css), '運営ONでアイコンが入れ替わらない');
+        const fn = html.match(/function _applyOpsMode\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const navLabel = _opsMode \? '運営' : '戦況';/.test(fn), '文字の入れ替えが _applyOpsMode に無い (ON/OFF・名乗り直しの両方が通る唯一の場所)');
+        assert.ok(/\.tab-button\[data-tab="ops"\], \.bottom-nav-btn\[data-tab="ops"\]/.test(fn) && /querySelector\('\.nav-lb, \.tab-lb'\)/.test(fn), '両方のナビの文字を入れ替えていない');
+        assert.ok(/btn\.title = navLabel/.test(fn) && /setAttribute\('aria-label', navLabel\)/.test(fn), 'title / aria-label も入れ替えていない');
+    });
     test('★ 2列/12カラム: 各段階とメンバー画面で、行の span 合計が 12 に揃う (7 の隣に 12 が来ると 7 が独りになる)', () => {
         // ★ 2026-09-11 まで実際そうなっていた: ボス7 → 残り12 → 締め凸5 の順で、7 と 5 が一度も隣り合わず全段階で1列。
         //   「span がある」「表は 12」だけでは気づけない。グリッドの自動配置をなぞって行を切り、合計を見る。

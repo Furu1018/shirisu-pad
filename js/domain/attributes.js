@@ -110,7 +110,78 @@
     }
 
     root.ATTR_KEYS = ATTR_KEYS;
+    /**
+     * ホームの「オンライン / 模擬中 / 戦闘中」の人数と名前 (2026-09-11 ユーザー要望)。
+     * スマホ縦は自分の状態ボタンに人数だけ、横画面 (700px〜) はプロフィール直下のタイルに名前ごと出す。
+     * ★ 同じ人が2行あっても1人。自分は「あなた」で先頭に。off などは数えない
+     * @returns {{available:{count:number,names:string[],mine:boolean}, practicing:..., coordinating:...}}
+     */
+    function homeStatusCounts(coords, meId) {
+        const out = {
+            available: { count: 0, names: [], mine: false },
+            practicing: { count: 0, names: [], mine: false },
+            coordinating: { count: 0, names: [], mine: false },
+        };
+        const seen = new Set();
+        for (const c of Array.isArray(coords) ? coords : []) {
+            if (!c || c.player_id == null || !Object.prototype.hasOwnProperty.call(out, c.status)) continue;
+            const key = String(c.player_id);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const slot = out[c.status];
+            slot.count += 1;
+            if (meId != null && key === String(meId)) { slot.mine = true; slot.names.unshift('あなた'); }
+            else slot.names.push(c.name || (c.players && c.players.name) || '?');
+        }
+        return out;
+    }
+
+    /**
+     * 横画面のホームに置くボス状況 (2026-09-11 ユーザー要望「空いているスペースにボス状況を」)。
+     * 細い帯 (homeBossStrip) より一段詳しい: 残HP% と 残/総HP、交戦者の名前まで。
+     * ★ 残HP が読めないときは % も「倒した」も出さない (未取得と 0 は違う)。総HPを超える残HPは 100% で止める
+     * @returns {{bossNumber:number, attr:(string|null), name:string, hpPct:(number|null), remainingRaw:(number|null), totalRaw:(number|null), live:number, liveNames:string[], mine:boolean, done:boolean}[]}
+     */
+    function homeBossBoard(bosses, coords, meId) {
+        const live = new Map();
+        const mine = new Set();
+        for (const c of Array.isArray(coords) ? coords : []) {
+            if (!c || c.status !== 'coordinating') continue;   // オンライン (available) は交戦者ではない
+            const n = Number(c.boss_number);
+            if (!Number.isInteger(n)) continue;
+            if (!live.has(n)) live.set(n, []);
+            if (meId != null && String(c.player_id) === String(meId)) { mine.add(n); live.get(n).unshift('あなた'); }
+            else live.get(n).push(c.name || (c.players && c.players.name) || '?');
+        }
+        return (Array.isArray(bosses) ? bosses : [])
+            .filter((b) => b && Number.isInteger(Number(b.boss_number)))
+            .slice()
+            .sort((a, b) => Number(a.boss_number) - Number(b.boss_number))
+            .map((b) => {
+                const n = Number(b.boss_number);
+                const rem = b.remaining_hp_raw == null ? null : Number(b.remaining_hp_raw);
+                const total = b.total_hp_raw == null ? null : Number(b.total_hp_raw);
+                const hasRem = rem != null && Number.isFinite(rem);
+                const hasTotal = total != null && Number.isFinite(total) && total > 0;
+                const names = live.get(n) || [];
+                return {
+                    bossNumber: n,
+                    attr: normalizeAttrKey(b.attribute),
+                    name: String(b.name || b.boss_code || ''),
+                    hpPct: hasRem && hasTotal ? Math.max(0, Math.min(100, (rem / total) * 100)) : null,
+                    remainingRaw: hasRem ? Math.max(0, rem) : null,
+                    totalRaw: hasTotal ? total : null,
+                    live: names.length,
+                    liveNames: names,
+                    mine: mine.has(n),
+                    done: hasRem && rem <= 0,
+                };
+            });
+    }
+
     root.homeBossStrip = homeBossStrip;
+    root.homeStatusCounts = homeStatusCounts;
+    root.homeBossBoard = homeBossBoard;
     root.normalizeAttrKey = normalizeAttrKey;
     root.weaknessPtOf = weaknessPtOf;
     root.bossAttributeOf = bossAttributeOf;
