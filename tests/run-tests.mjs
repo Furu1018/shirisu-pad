@@ -8300,6 +8300,7 @@ console.log('\ngrowthDomain:');
         const cue = html.match(/async function renderOpsPlanCue\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(seq !== _planCueSeq\) return;/.test(cue), 'きっかけの取得に世代ガードが無い (遅い応答が新しい結果を上書きする)');
         assert.ok(/onclick="_opsJump\('opsSecPlan'\)"[^>]*>プランを組み直す ›/.test(html), '締め凸の手詰まりからプランへ飛べない');
+        assert.ok(/\$\{emptyMsg\}\$\{replanLink\}/.test(html), '「プランを組み直す」を候補なしの文の横に置いていない (定義だけで使っていない)');
         // 算出のあとに「きっかけ」を消す / 盤面の描画で条件パネルとチップを合わせる
         assert.ok(/_opsLastPlan = plan;[\s\S]*?renderOpsPlanCue\(\);/.test(fn), '算出し直したのに「模擬が更新」が残る');
         const dash = html.match(/async function renderOpsDashboard\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -8323,7 +8324,7 @@ console.log('\ngrowthDomain:');
         assert.ok(!/filterKey: 'my'[^)]*stiffOf/.test(html), 'ホームの時間割に動かせる幅を出している');
         // 算出し直したら前の選択を捨てる
         const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/_opsPlanFocus = null;/.test(fn), '算出し直しても前の選択が残る');
+        assert.ok(/\n\s*_opsPlanFocus = null;/.test(fn), '算出し直しても前の選択が残る (コメントアウトも不可)');
     });
     test('★ 2列/12カラム: 各段階とメンバー画面で、行の span 合計が 12 に揃う (7 の隣に 12 が来ると 7 が独りになる)', () => {
         // ★ 2026-09-11 まで実際そうなっていた: ボス7 → 残り12 → 締め凸5 の順で、7 と 5 が一度も隣り合わず全段階で1列。
