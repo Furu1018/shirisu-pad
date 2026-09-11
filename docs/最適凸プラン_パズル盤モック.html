@@ -133,6 +133,38 @@
     .act button.x { background: transparent; opacity: .7; }
     .sp .act .sp1 { flex-basis: 100%; height: 0; }
 
+    /* ---- 駒箱 (提出された模擬カード = 駒) ---- */
+    .board { display: grid; grid-template-columns: minmax(0, 1fr) 262px; gap: 12px; align-items: start; }
+    .sp .board { grid-template-columns: 1fr; }
+    .tray { border: 1px solid var(--line); border-radius: 12px; background: var(--s1); padding: 10px; position: sticky; top: 8px; }
+    .sp .tray { position: static; }
+    .tray .th { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .tray .th h3 { margin: 0; font-size: 12px; font-weight: 900; color: var(--t-ink); }
+    .tray .th .n { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+    .tray .th .tog { margin-left: auto; font: inherit; font-size: 10.5px; font-weight: 900; border: none; background: var(--s2); color: var(--t-strong); border-radius: 999px; padding: 4px 9px; cursor: pointer; }
+    .tray .filt { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .tray .filt button { font: inherit; font-size: 10px; font-weight: 900; border: none; cursor: pointer; border-radius: 999px; padding: 4px 8px; background: var(--s2); color: var(--t-body); }
+    .tray .filt button[aria-pressed="true"] { background: var(--t-ink); color: var(--card); }
+    .tray .filt button.attr[aria-pressed="true"] { background: var(--fc); color: #fff; }
+    .tray .list { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; overflow-x: hidden; }
+    .sp .tray .list { max-height: 210px; }
+    .tray .mem { font-size: 10px; font-weight: 900; color: var(--t-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+    .tray .mem .rem { padding: 1px 6px; border-radius: 999px; background: var(--s2); color: var(--t-strong); font-variant-numeric: tabular-nums; }
+    .tray .mem .rem.zero { color: var(--t-muted); }
+    .piece { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 9px; background: var(--card); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); box-shadow: inset 3px 0 0 var(--c); cursor: pointer; user-select: none; -webkit-user-select: none; min-width: 0; }
+    .pc .piece:not(.placed) { cursor: grab; }
+    .piece .pt { font-size: 9.5px; font-weight: 900; color: var(--c); white-space: nowrap; }
+    .piece .team { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
+    .piece .team i { width: 16px; height: 16px; border-radius: 4px; background: color-mix(in srgb, var(--c) 18%, var(--s2)); display: block; flex: none; font-style: normal; font-size: 8px; font-weight: 900; line-height: 16px; text-align: center; color: var(--t-strong); }
+    .piece .dm { font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .piece .where { grid-column: 1 / -1; font-size: 9.5px; font-weight: 800; color: var(--t-muted); }
+    .piece.placed { opacity: .5; cursor: default; }
+    .piece.sel { box-shadow: 0 0 0 2px var(--ops-solid), inset 3px 0 0 var(--c); }
+    .piece.dim { opacity: .35; }
+    .piece.drag { opacity: .35; }
+    .tray .empty { font-size: 11px; color: var(--t-muted); font-weight: 700; padding: 8px 2px; }
+    .sp .tray.closed .filt, .sp .tray.closed .list { display: none; }
+
     /* ---- 差分 / 次にやること ---- */
     .diff { margin-top: 10px; padding: 9px 12px; border-radius: 10px; background: var(--s1); font-size: 11.5px; font-weight: 800; color: var(--t-strong); line-height: 1.55; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .diff .undo { margin-left: auto; }
@@ -155,7 +187,7 @@
     <div class="doc">
         <h1>最適凸プラン パズル盤</h1>
         <p class="lead">運営ボードの「最適凸プラン算出」カードを、<b>条件を選んで → 算出 → 時間割の上で手を打つ</b>、の順に組み直した案です。
-            条件は結果に焼き込まれ、時間割のチップは <b>スマホならタップ、PC ならドラッグ</b>で 📌ピン（運営の下書き）を置けます。ピンは本人に「📣お願い」した瞬間だけ約束（🔒）になります。
+            条件は結果に焼き込まれ、時間割のチップは <b>スマホならタップ、PC ならドラッグ</b>で 📌ピン（運営の下書き）を置けます。<b>🧩駒箱（提出された模擬カード）からも盤へ置けます</b>。ピンは本人に「📣お願い」した瞬間だけ約束（🔒）になります。
             数字と名前は見本です。</p>
         <div class="legend">
             <span><i class="dot" style="background:var(--ok-solid)"></i>🔒 本人が引き受けた約束 — 動かせない</span>
@@ -181,13 +213,14 @@
             <li><b>ドラッグは PC の近道</b>で、全部タップでもできる。出し分けは幅ではなく <code>(hover: hover) and (pointer: fine)</code>（マウスがある環境）</li>
             <li>置ける場所は<b>つかんだ瞬間に光る</b>（その人の戦闘可能時間の行 × 編成の属性が合うボスの列）。落とせないときは理由を日本語で</li>
             <li>チップ右上の「硬い / 柔らかい」は<b>動かせる幅</b>（その人が出られる時間が1つしかない = 硬い）。パズルで先に動かすべき駒が分かる</li>
+            <li><b>🧩 駒箱 = 提出された模擬カードそのもの</b>（人 × 編成 × ダメージ）。盤の外からも置ける。人ごとに「残N」、残凸が多い人 → 強い駒の順に並ぶので<b>余っている強い駒</b>が上に来る。属性で絞れる。置くと 📌 になり、残凸を使い切っている / 同じキャラを2回 / 属性が合わない / 時間外 は置けない（理由を出す）</li>
         </ul>
         <h3>作る順</h3>
         <table>
             <tr><th>段</th><th>内容</th><th>大きさ</th></tr>
             <tr><td>①</td><td>条件パネル + 結果への焼き込み + きっかけ（模擬の更新 / 手詰まり）</td><td>小〜中（今回）</td></tr>
             <tr><td>②</td><td>時間割の読みやすさ: 選ぶとその人の時間が光る / 硬い・柔らかい</td><td>小（今回）</td></tr>
-            <tr><td>③</td><td>📌ピン（運営の下書き）→ 算出し直し。DB に持って交代で引き継ぐ。PC はドラッグ</td><td>中（次）</td></tr>
+            <tr><td>③</td><td>📌ピン（運営の下書き）→ 算出し直し。DB に持って交代で引き継ぐ。PC はドラッグ。<b>🧩駒箱から盤へも置ける</b></td><td>中（次）</td></tr>
             <tr><td>④</td><td>📣お願い → 本人が引き受けると 🔒 に昇格（予約の状態に「運営発・未承諾」を足す）</td><td>中（次・③と一緒に）</td></tr>
         </table>
     </div>
@@ -221,8 +254,26 @@
         { id: 10, nm: 'G',         dm: 24.4, pt: '水冷', boss: 3, h: 0,  win: [23, 0] },
         { id: 11, nm: 'H',         dm: 21.0, pt: '電撃', boss: 4, h: 1,  win: [1] , stiff: true },
     ];
-    var S = { dev: 'pc', stage: 'cond', theme: 'auto', cond: { who: 'all', from: 'now', prev: 'keep' }, sel: null, hist: [], diff: null, asks: [], chips: [] };
-    function reset() { S.chips = BASE.map(function (c) { return Object.assign({}, c); }); S.hist = []; S.diff = null; S.asks = []; S.sel = null; }
+    // 駒箱 = 提出された模擬カード (人 × 編成 × ダメージ)。盤に置かれている駒は BASE の id と同じ id を持つ
+    var TEAMS = { '水冷': ['ラ', 'ド', '紅', 'ア', 'ク'], '電撃': ['レ', 'モ', 'リ', 'ア', 'ク'], '風圧': ['ス', 'ナ', 'ヘ', 'ア', 'ク'], '鉄甲': ['紅', 'マ', 'ビ', 'ア', 'ク'], '灼熱': ['レ', 'ド', 'ラ', 'ア', 'ク'] };
+    var PIECES = [
+        { id: 1, nm: 'ふるり', pt: '水冷', dm: 34.2 }, { id: 101, nm: 'ふるり', pt: '鉄甲', dm: 36.1 }, { id: 102, nm: 'ふるり', pt: '電撃', dm: 30.9 },
+        { id: 2, nm: 'なべりうす', pt: '電撃', dm: 31.8 }, { id: 103, nm: 'なべりうす', pt: '水冷', dm: 26.3 },
+        { id: 3, nm: 'ENTER95', pt: '風圧', dm: 29.5 }, { id: 104, nm: 'ENTER95', pt: '鉄甲', dm: 28.7 },
+        { id: 4, nm: 'A', pt: '電撃', dm: 27.0 },
+        { id: 5, nm: 'B', pt: '鉄甲', dm: 36.4 }, { id: 105, nm: 'B', pt: '灼熱', dm: 33.0 },
+        { id: 6, nm: 'C', pt: '水冷', dm: 22.1 },
+        { id: 7, nm: 'D', pt: '風圧', dm: 25.9 }, { id: 106, nm: 'D', pt: '電撃', dm: 24.2 },
+        { id: 8, nm: 'E', pt: '電撃', dm: 19.6 },
+        { id: 9, nm: 'F', pt: '鉄甲', dm: 30.2 }, { id: 107, nm: 'F', pt: '水冷', dm: 27.5 },
+        { id: 10, nm: 'G', pt: '水冷', dm: 24.4 },
+        { id: 11, nm: 'H', pt: '電撃', dm: 21.0 },
+        // まだ盤に1つも置かれていない人 (残3)。「強い駒が余っている」の見本
+        { id: 108, nm: 'I', pt: '鉄甲', dm: 35.2 }, { id: 109, nm: 'I', pt: '風圧', dm: 31.4 }, { id: 110, nm: 'I', pt: '水冷', dm: 23.8 },
+    ];
+    var WIN = { 'ふるり': [20, 21, 22, 23], 'なべりうす': [21, 22], 'ENTER95': [20, 21, 22, 23, 0, 1], 'A': [22, 23, 0], 'B': [22], 'C': [21, 22, 23], 'D': [23, 0, 1], 'E': [20, 21, 22, 23, 0, 1], 'F': [0, 1], 'G': [23, 0], 'H': [1], 'I': [22, 23, 0, 1] };
+    var S = { dev: 'pc', stage: 'cond', theme: 'auto', cond: { who: 'all', from: 'now', prev: 'keep' }, sel: null, selPiece: null, hist: [], diff: null, asks: [], chips: [], tray: { attr: null, unusedOnly: true, open: true } };
+    function reset() { S.chips = BASE.map(function (c) { return Object.assign({}, c); }); S.hist = []; S.diff = null; S.asks = []; S.sel = null; S.selPiece = null; }
     reset();
     var DEV = [{ k: 'pc', n: 'PC (1120px) · ドラッグ' }, { k: 'sp', n: 'スマホ (390px) · タップ' }];
     var STAGE = [{ k: 'cond', n: '① 条件を選ぶ' }, { k: 'result', n: '② 算出した' }, { k: 'puzzle', n: '③ 盤の上で手を打つ' }];
@@ -260,7 +311,26 @@
         var b = BOSS[boss - 1];
         if (b.pt !== c.pt) return { ok: false, why: b.pt + 'PT のボスです (' + c.nm + ' の編成は ' + c.pt + 'PT)' };
         if (c.win.indexOf(h) < 0 && !c.flex) return { ok: false, why: label(h) + ' は ' + c.nm + ' の戦闘可能時間の外です' };
+        // 駒箱から新しく置くとき: 残凸と、同じキャラを1日2回使わない (本番のソルバーと同じ縛り)
+        var others = S.chips.filter(function (x) { return x.nm === c.nm && x.id !== c.id; });
+        if (!onBoard(c.id) && others.length >= 3) return { ok: false, why: c.nm + ' は 3凸を使い切っています' };
+        var mine = TEAMS[c.pt] || [];
+        var clash = others.filter(function (x) { return (TEAMS[x.pt] || []).some(function (ch) { return ch !== 'ア' && ch !== 'ク' && mine.indexOf(ch) >= 0; }); })[0];
+        if (clash) return { ok: false, why: c.nm + ' の ' + clash.pt + 'PT (B' + clash.boss + ' ' + label(clash.h) + ') と同じキャラを使います (1日1回)' };
         return { ok: true };
+    }
+    function onBoard(id) { return S.chips.some(function (x) { return x.id === id; }); }
+    // 駒箱の駒を盤に置く (= 新しいチップを作って📌)。盤の中の移動 (pin) と同じ判定・同じ組み直し
+    function place(pc, boss, h) {
+        var c = { id: pc.id, nm: pc.nm, dm: pc.dm, pt: pc.pt, boss: boss, h: h, win: WIN[pc.nm] || [], me: pc.nm === 'ふるり' };
+        var r = canPlace(c, boss, h);
+        if (!r.ok) { toast('置けません: ' + r.why); return; }
+        snapshot();
+        c.pin = true; S.chips.push(c);
+        var moved = resolve(c.id);
+        S.diff = { pinned: pc.nm + ' の ' + pc.pt + 'PT (' + pc.dm.toFixed(1) + 'B) を駒箱から B' + boss + ' ' + label(h) + ' に置いて固定', moved: moved };
+        S.sel = null; S.selPiece = null; S.stage = 'puzzle';
+        render(); toast('🧩 駒箱から置いて組み直しました' + (moved.length ? ' — 動いた人 ' + moved.length : ''));
     }
     function pin(c, boss, h) {
         var r = canPlace(c, boss, h);
@@ -314,7 +384,10 @@
     function ttHtml(dragging) {
         var sel = S.chips.filter(function (c) { return c.id === S.sel; })[0] || null;
         var drg = S.chips.filter(function (c) { return c.id === dragging; })[0] || null;
-        var focus = drg || sel;
+        var pcSel = S.selPiece != null ? PIECES.filter(function (p) { return p.id === S.selPiece; })[0] : null;
+        var pcDrg = (typeof dragging === 'string' && dragging.indexOf('p:') === 0) ? PIECES.filter(function (p) { return 'p:' + p.id === dragging; })[0] : null;
+        var piece = pcDrg || pcSel;
+        var focus = drg || sel || (piece ? { pt: piece.pt, win: WIN[piece.nm] || [], flex: false } : null);
         var cells = ['<div></div>'];
         BOSS.forEach(function (b) { cells.push('<div class="bh" style="background:' + b.c + '">' + b.attr + '<small>' + b.pt + 'PT</small></div>'); });
         cells.push('<div class="band">Lv2 ─ 20時開始 → 💀翌1時 全撃破想定</div>');
@@ -333,7 +406,43 @@
             + '<div class="legend-tt"><span><b style="color:var(--ops)">青</b>=あなた</span><span>🔒=約束 (動かせない)</span><span>📌=運営の固定</span><span>📣=お願い中</span><span>⏳=隙間型</span><span>▼=いま</span>'
             + (S.stage === 'puzzle' ? '<span>' + (S.dev === 'pc' ? 'チップを<b>つかんで</b>別のマスへ。置ける場所が光ります' : 'チップを<b>タップ</b>すると下に操作が出ます。その人が出られる時間が光ります') + '</span>' : '') + '</div>';
     }
+    function trayHtml(dragging) {
+        var t = S.tray;
+        var ATTRS = ['電撃', '風圧', '水冷', '鉄甲', '灼熱'];
+        var list = PIECES.filter(function (p) { return !t.attr || p.pt === t.attr; }).filter(function (p) { return !t.unusedOnly || !onBoard(p.id); });
+        var byMem = {}; var order = [];
+        list.forEach(function (p) { if (!byMem[p.nm]) { byMem[p.nm] = []; order.push(p.nm); } byMem[p.nm].push(p); });
+        // 残凸が多い人 → 強い駒、の順 (「余っている強い駒」が上に来る)
+        order.sort(function (a, b) { var ra = 3 - S.chips.filter(function (x) { return x.nm === a; }).length, rb = 3 - S.chips.filter(function (x) { return x.nm === b; }).length; if (ra !== rb) return rb - ra; return Math.max.apply(null, byMem[b].map(function (p) { return p.dm; })) - Math.max.apply(null, byMem[a].map(function (p) { return p.dm; })); });
+        var focusPt = t.attr;
+        var unused = PIECES.filter(function (p) { return !onBoard(p.id); }).length;
+        var body = order.map(function (nm) {
+            var rem = 3 - S.chips.filter(function (x) { return x.nm === nm; }).length;
+            return '<div class="mem">' + esc(nm) + '<span class="rem' + (rem <= 0 ? ' zero' : '') + '">残' + rem + '</span></div>'
+                + byMem[nm].sort(function (a, b) { return b.dm - a.dm; }).map(function (p) {
+                    var placed = onBoard(p.id); var on = S.chips.filter(function (x) { return x.id === p.id; })[0];
+                    var cls = ['piece']; if (placed) cls.push('placed'); if (S.selPiece === p.id) cls.push('sel'); if (dragging === 'p:' + p.id) cls.push('drag');
+                    if (focusPt && p.pt !== focusPt) cls.push('dim');
+                    var draggable = S.dev === 'pc' && !placed;
+                    return '<div class="' + cls.join(' ') + '" data-piece="' + p.id + '" draggable="' + draggable + '" style="--c:' + PTC[p.pt] + '" title="' + esc(nm + ' · ' + p.pt + 'PT · ' + p.dm.toFixed(1) + 'B · 出られる時間 ' + (WIN[nm] || []).map(label).join('/')) + '">'
+                        + '<span class="pt">' + esc(p.pt) + 'PT</span><span class="team">' + (TEAMS[p.pt] || []).map(function (ch) { return '<i>' + esc(ch) + '</i>'; }).join('') + '</span><span class="dm">' + p.dm.toFixed(1) + 'B</span>'
+                        + (placed && on ? '<span class="where">盤にある: B' + on.boss + ' ' + label(on.h) + (on.lock ? ' 🔒' : on.pin ? ' 📌' : '') + '</span>' : '')
+                        + '</div>';
+                }).join('');
+        }).join('');
+        return '<div class="tray' + (S.dev === 'sp' && !t.open ? ' closed' : '') + '">'
+            + '<div class="th"><h3>🧩 駒箱</h3><span class="n">提出された模擬カード · 未使用 ' + unused + '</span>' + (S.dev === 'sp' ? '<button type="button" class="tog" data-act="tray">' + (t.open ? '畳む' : '開く') + '</button>' : '') + '</div>'
+            + '<div class="filt"><button type="button" data-tray-attr="" aria-pressed="' + (!t.attr) + '">全部</button>' + ATTRS.map(function (a) { return '<button type="button" class="attr" data-tray-attr="' + a + '" aria-pressed="' + (t.attr === a) + '" style="--fc:' + PTC[a] + '">' + a + '</button>'; }).join('')
+            + '<button type="button" data-act="unused" aria-pressed="' + t.unusedOnly + '">未使用だけ</button></div>'
+            + '<div class="list">' + (body || '<div class="empty">この条件の駒はありません</div>') + '</div>'
+            + '<div class="empty" style="padding-top:8px;">' + (S.dev === 'pc' ? '駒を<b>つかんで</b>時間割のマスへ。置ける場所が光ります' : '駒を<b>タップ</b>して、時間割のマスをタップ') + '</div>'
+            + '</div>';
+    }
     function actHtml() {
+        var pc = S.selPiece != null ? PIECES.filter(function (p) { return p.id === S.selPiece; })[0] : null;
+        if (pc) {
+            return '<div class="act on"><div class="who"><span>🧩 ' + esc(pc.nm) + ' · ' + esc(pc.pt) + 'PT · ' + pc.dm.toFixed(1) + 'B</span><small>出られる時間 ' + (WIN[pc.nm] || []).map(label).join(' / ') + ' — 置きたい<b>マスをタップ</b>してください (光っているところ)</small></div><span class="sp1"></span><button type="button" class="x" data-act="close">やめる</button></div>';
+        }
         var c = S.chips.filter(function (x) { return x.id === S.sel; })[0];
         if (!c) return '<div class="act"></div>';
         var here = 'B' + c.boss + ' ' + label(c.h);
@@ -357,6 +466,9 @@
     function cardHtml(dragging) {
         var head = '<div class="head"><h2>最適凸プラン算出</h2><span class="sum">' + (S.stage === 'cond' ? '未算出' : '算出済み (未配信)') + '</span></div>';
         if (S.stage === 'cond') return head + condHtml() + '<p style="margin:0;font-size:12px;color:var(--t-muted);">「この条件で算出」を押すと、ここに時間割が出ます。</p>';
+        if (S.stage === 'puzzle') {
+            return head + stampHtml() + '<div class="board"><div>' + ttHtml(dragging) + actHtml() + diffHtml() + '</div>' + trayHtml(dragging) + '</div>' + asksHtml() + nextHtml();
+        }
         return head + stampHtml() + ttHtml(dragging) + actHtml() + diffHtml() + asksHtml() + nextHtml();
     }
     var toastTimer = 0;
@@ -394,7 +506,9 @@
                 case 'pinhere': if (c) pin(c, c.boss, c.h); return;
                 case 'unpin': if (c) unpin(c); return;
                 case 'ask': if (c) ask(c); return;
-                case 'close': S.sel = null; render(); return;
+                case 'close': S.sel = null; S.selPiece = null; render(); return;
+                case 'tray': S.tray.open = !S.tray.open; render(); return;
+                case 'unused': S.tray.unusedOnly = !S.tray.unusedOnly; render(); return;
                 case 'undo': undo(); return;
                 case 'publish': toast('📤 配信しました (見本なので何も起きません)'); return;
                 case 'share': toast('📸 共有画像を作りました (見本)'); return;
@@ -402,24 +516,38 @@
         }
         var sg = e.target.closest('[data-seg]');
         if (sg) { S.cond[sg.dataset.seg] = sg.dataset.k; render(); return; }
+        var fa = e.target.closest('[data-tray-attr]');
+        if (fa) { S.tray.attr = fa.dataset.trayAttr || null; render(); return; }
+        var pe = e.target.closest('.piece');
+        if (pe) {
+            var pid = Number(pe.dataset.piece);
+            if (onBoard(pid)) { var on = S.chips.filter(function (x) { return x.id === pid; })[0]; S.sel = on ? on.id : null; S.selPiece = null; render(); return; }
+            S.selPiece = (S.selPiece === pid) ? null : pid; S.sel = null; render(); return;
+        }
         var chip = e.target.closest('.chip');
         if (chip && S.stage !== 'cond') {
             var id = Number(chip.dataset.id);
             if (S.stage === 'result') S.stage = 'puzzle';
             S.sel = (S.sel === id) ? null : id; render(); return;
         }
-        if (e.target.closest('.cell') && S.sel != null) {
-            // タップで置く: 選んでいる駒を、押したマスへ (スマホの近道)
-            var cell = e.target.closest('.cell'); var cc = S.chips.filter(function (x) { return x.id === S.sel; })[0];
-            if (cc && S.stage === 'puzzle') pin(cc, Number(cell.dataset.boss), Number(cell.dataset.h));
+        if (e.target.closest('.cell') && (S.sel != null || S.selPiece != null)) {
+            // タップで置く: 選んでいる駒 (盤の上 / 駒箱) を、押したマスへ (スマホの近道)
+            var cell = e.target.closest('.cell'); var boss = Number(cell.dataset.boss), hh = Number(cell.dataset.h);
+            if (S.stage !== 'puzzle') return;
+            if (S.selPiece != null) { var pp = PIECES.filter(function (p) { return p.id === S.selPiece; })[0]; if (pp) place(pp, boss, hh); return; }
+            var cc = S.chips.filter(function (x) { return x.id === S.sel; })[0];
+            if (cc) pin(cc, boss, hh);
         }
     });
     // PC: ドラッグ (HTML5 DnD)。つかんだ瞬間に置ける場所を光らせ、落としたら pin() — タップと同じ関数
     var dragId = null;
     var frameEl = document.getElementById('frame');
     frameEl.addEventListener('dragstart', function (e) {
-        var chip = e.target.closest('.chip'); if (!chip || S.dev !== 'pc') return;
-        dragId = Number(chip.dataset.id); S.sel = null;
+        if (S.dev !== 'pc') return;
+        var pe = e.target.closest('.piece');
+        if (pe) { if (onBoard(Number(pe.dataset.piece))) { e.preventDefault(); return; } dragId = 'p:' + pe.dataset.piece; S.sel = null; S.selPiece = null; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragId); } catch (_) { /* noop */ } setTimeout(function () { render(dragId); }, 0); return; }
+        var chip = e.target.closest('.chip'); if (!chip) return;
+        dragId = Number(chip.dataset.id); S.sel = null; S.selPiece = null;
         e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(dragId)); } catch (_) { /* noop */ }
         setTimeout(function () { render(dragId); }, 0);
     });
@@ -432,7 +560,9 @@
     frameEl.addEventListener('drop', function (e) {
         var cell = e.target.closest('.cell'); if (!cell || dragId == null) return;
         e.preventDefault();
-        var c = S.chips.filter(function (x) { return x.id === dragId; })[0]; var id = dragId; dragId = null;
+        var id = dragId; dragId = null;
+        if (typeof id === 'string') { var pp = PIECES.filter(function (p) { return 'p:' + p.id === id; })[0]; if (pp) place(pp, Number(cell.dataset.boss), Number(cell.dataset.h)); else render(); return; }
+        var c = S.chips.filter(function (x) { return x.id === id; })[0];
         if (c) pin(c, Number(cell.dataset.boss), Number(cell.dataset.h)); else render();
     });
     frameEl.addEventListener('dragend', function () { if (dragId != null) { dragId = null; render(); } });
