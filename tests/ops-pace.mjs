@@ -170,6 +170,23 @@ test('★ 🔁 打診の状態 (名前 + 返事のチップ + 期限) が主役�
     assert.ok(none.els.opsRecentBody.innerHTML.includes('いま出している打診はありません'), '打診なしの言い方が無い');
     assert.ok(none.els.opsRecentBody.innerHTML.includes('まだ凸の報告がありません'), '凸なしの言い方が無い');
     assert.equal(none.els.opsRecentMeta.textContent, '');
+    // ★ 各行の時刻はその回の requested_at に対応し、同じボスの古い回と新しい回が見分けられる (Codex指摘 2026-09-11)。
+    //   時刻の無い行は「—」。並びは 返事待ち (新しい順) → 不可あり
+    const hm = (isoStr) => new Date(isoStr).toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
+    const oldAt = iso(-30), newAt = iso(-2);
+    const rounds = run({ finishReqs: [
+        { id: 20, boss_number: 2, player_id: 13, name: 'C', status: 'declined', requested_at: oldAt, raid_level: 2 },
+        { id: 21, boss_number: 2, player_id: 16, name: 'F', status: 'pending',  requested_at: newAt, raid_level: 2 },
+        { id: 22, boss_number: 1, player_id: 17, name: 'H', status: 'pending',  requested_at: null,  raid_level: 2 },
+    ], snap: { season, bosses, players: players([]) } });
+    rounds.renderOpsRecent();
+    const ro = rounds.els.opsRecentBody.innerHTML;
+    const askRows = ro.slice(ro.indexOf('🏁'), ro.indexOf('⚔️'));
+    assert.deepEqual([...askRows.matchAll(/class="t">([^<]*)</g)].map(x => x[1]), [hm(newAt), '—', hm(oldAt)],
+        '打診の行の時刻が各回の requested_at に対応していない / 時刻の無い行が「—」でない');
+    assert.ok(/class="t">—<\/span>[\s\S]*?H<span class="st"/.test(askRows), '時刻の無い行に H が出ていない');
+    assert.ok(new RegExp(`title="${hm(oldAt)} に依頼 · 不可あり"`).test(askRows), '古い回の title に依頼時刻が無い');
+    assert.ok(new RegExp(`title="— に依頼 · 返事待ち"`).test(askRows), '時刻の無い行の title が違う');
     // 上限を超えたぶんは件数だけ
     const many = run({ finishReqs: Array.from({ length: 8 }, (_, i) => ({ id: i, boss_number: (i % 5) + 1, player_id: 10 + i, name: `P${i}`, status: 'pending', requested_at: iso(-i), offer_id: `o${i}`, plan_key: 'p', deadline_at: iso(9), raid_level: 2 })), snap: { season, bosses, players: players([]) } });
     many.renderOpsRecent();
