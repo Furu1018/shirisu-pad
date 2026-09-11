@@ -2009,29 +2009,47 @@
             .mobile-only { display: none !important; }
         }
 
-        /* ========== PC版レイアウト (2026-09-10) ==========
+        /* ========== PC版 / 2列レイアウト (2026-09-10 戦況タブ → 2026-09-11 全タブへ) ==========
            ★ 見た目だけを幅で変える。タブの切り替え・カードの折りたたみ・段階の出し分けは
              いまの JS がそのまま動く (DOM は1つ・作り分けない)。
-           ★ 段は2つ: 1100px でカードを横に並べ、1180px で左サイドバーにする。 */
+           ★ 段は3つ:
+             ① 700px〜  カードを2列に。data-span のあるカードは半分ずつ (12 だけ全幅)
+             ② 1100px〜 12カラム。7:5 など細かい幅は data-span の値どおり
+             ③ 1180px〜、または 768px〜で縦が559px以下 (スマホ横): 上のタブ帯を左のサイドバーに
+           ★ 幅を持つのは data-span を付けたカードだけ。見出し・段階バー・ヒーロー・その他 は全幅のまま。
+           ★ 行の組み方は**カードの並び順**で決まる (7 の次に 12 が来ると改行して 7 は独りになる)。
+             戦況タブの並びは opsLayout.CARDS が唯一で、各段階の行が 12 に揃うことはテストが見張る。
+           ★ セレクタを .tab-page.tab-content > .container と重ねているのは、後ろの「Tab Content」節の
+             `.tab-page .container { display:flex }` に負けないため (ID で勝つと5タブぶん書くことになる)。
+           ★ 「その他」(#opsEtcCards / #opsEtcMaint) は入れ子で親のグリッドが届かないので、同じ規則の
+             グリッドを中に作る。:is() で3か所をまとめる (特異性は ID 相当になるが、それで困る規則は無い)。 */
         .side-brand { display: none; }
+        /* 運営アクションのボタン列 (戦況タブ「戦闘中の運営アクション」)。〜699px は2列、700px〜 は横一列の帯 */
+        .ops-action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-        /* --- ① 1100px〜: 戦況タブのカードを12カラムに並べる --- */
-        @media (min-width: 1100px) {
-            #tab-ops > .container {
+        /* --- ① 700px〜: 2列 --- */
+        @media (min-width: 700px) {
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) {
                 display: grid;
                 grid-template-columns: repeat(12, minmax(0, 1fr));
                 gap: 12px;
                 align-items: start;       /* 背の低いカードを引き伸ばさない */
             }
-            /* ★ 既定は全幅。幅を持つのは data-span を付けたカードだけ
-                 (見出し・段階バー・ヒーロー・その他 は全幅のまま) */
-            #tab-ops > .container > * { grid-column: 1 / -1; min-width: 0; }
-            #tab-ops > .container > .dc-card { margin-bottom: 0; }
-            #tab-ops > .container > [data-span="4"] { grid-column: span 4; }
-            #tab-ops > .container > [data-span="5"] { grid-column: span 5; }
-            #tab-ops > .container > [data-span="6"] { grid-column: span 6; }
-            #tab-ops > .container > [data-span="7"] { grid-column: span 7; }
-            #tab-ops > .container > [data-span="8"] { grid-column: span 8; }
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > * { grid-column: 1 / -1; min-width: 0; }
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > .dc-card { margin-bottom: 0; }
+            /* 700〜1099px は幅があれば半分ずつ — 条件つきで消えるカードがあっても必ず2列に収まる */
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > [data-span] { grid-column: span 6; }
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > [data-span="12"] { grid-column: 1 / -1; }
+            .ops-action-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+        }
+
+        /* --- ② 1100px〜: 12カラムの細かい幅 --- */
+        @media (min-width: 1100px) {
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > [data-span="4"] { grid-column: span 4; }
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > [data-span="5"] { grid-column: span 5; }
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > [data-span="6"] { grid-column: span 6; }
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > [data-span="7"] { grid-column: span 7; }
+            :is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint) > [data-span="8"] { grid-column: span 8; }
             /* コックピットは 2×2 → 1×4 に。数字も大きくして、離れた席からでも読めるようにする
                (ブリーフィング中に画面を見せる用途・ユーザー要望 2026-09-10) */
             #tab-ops .ops-cockpit { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
@@ -2040,13 +2058,16 @@
             #tab-ops .ops-cockpit-tile .v { font-size: 23px; letter-spacing: -0.02em; }
         }
 
-        /* --- ② 1180px〜: 上の横タブを左のサイドバーにする --- */
-        @media (min-width: 1180px) {
-            body { padding-left: 232px; }
+        /* --- ③ 左サイドバー: 1180px〜、または スマホ横 (768px〜 で縦が559px以下) ---
+           ★ 置き換えるのは「上のタブ帯」(768px〜)。下の浮きナビ (〜767px) は置き換えない。
+             横画面は縦が 400px 弱しかなく、上に帯を置くと本文がほとんど残らない */
+        @media (min-width: 1180px), (min-width: 768px) and (max-height: 559px) {
+            :root { --side-w: 232px; }
+            body { padding-left: var(--side-w); }
             .tab-navigation {
                 position: fixed;
                 left: 0; top: 0; bottom: 0;
-                width: 232px;
+                width: var(--side-w);
                 flex-direction: column;
                 align-items: stretch;
                 padding: 18px 14px;
@@ -2088,6 +2109,14 @@
             /* 本文はサイドバーぶん右へ寄る。戦況タブだけ広く使う (ブリーフィング用) */
             .container { max-width: 1080px; }
             #tab-ops > .container { max-width: 1500px; }
+        }
+        /* --- ③' スマホ横だけサイドバーを細く。232px だと本文が 620px になり、2列の1枚が縦持ち (366px) より狭くなる。
+               PC (1180px〜) の 232px は触らない (実機確認済み) --- */
+        @media (min-width: 768px) and (max-width: 1179px) and (max-height: 559px) {
+            :root { --side-w: 176px; }
+            .side-brand img { max-width: 120px; }
+            .side-brand { padding-bottom: 10px; }
+            .tab-button { padding: 8px 10px; font-size: 12px; }
         }
 
         /* ========== Stats toggle ========== */
@@ -4127,7 +4156,7 @@
             <!-- 運営アクション (戦闘中) -->
             <div class="dc-card">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:12px;">戦闘中の運営アクション</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="ops-action-grid">
                     <button onclick="openOpsBossHpModal()" class="dc-ops-action"><span data-sp-icon="hexTarget" data-sp-size="14"></span> ボスHP更新</button>
                     <button onclick="openOpsProxyAttackModal()" class="dc-ops-action"><span data-sp-icon="pencil" data-sp-size="14"></span> 代理凸を報告</button>
                     <button onclick="openOpsAttacksEditModal()" class="dc-ops-action"><span data-sp-icon="clipboard" data-sp-size="14"></span> 凸履歴・編集</button>
@@ -25776,9 +25805,21 @@
                     });
                 }
             }
-            // 2) 締め凸候補をメンバー状況の直後へ移し、グループ「判断・配信」を DOM 上でも連続させる
-            const fin = document.getElementById('opsSecFinish'), mem = document.getElementById('opsSecMembers');
-            if (fin && mem) mem.insertAdjacentElement('afterend', fin);
+            // 2) カードを CARDS の順に並べ直す。★ 並び順は CARDS が唯一 (HTML の順は使わない)。
+            //    2列/12カラム (700px〜) では「隣り合う幅の組」で行が決まるので、順番そのものが見た目を決める
+            //    (7 の次に 12 が来ると改行して 7 は独りになる — 2026-09-11 まで実際そうなっていた)。
+            //    運営ONは _applyOpsStageCards が同じ順で出し入れするが、OFF のまま開いたときは
+            //    ここでしか並ばないので、初期化の時点で揃えておく。
+            const firstCard = cards.find(c => c.dataset._secTagged);
+            if (firstCard) {
+                const mark = document.createComment('ops-cards');
+                firstCard.before(mark);
+                for (const def of dom.CARDS) {
+                    const card = document.getElementById(def.id);
+                    if (card) mark.before(card);
+                }
+                mark.remove();
+            }
             // 3) グループ見出し (運営ONのときだけ表示)
             let lastGroup = null;
             for (const def of dom.CARDS) {

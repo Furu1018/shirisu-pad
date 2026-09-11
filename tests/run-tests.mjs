@@ -3088,10 +3088,11 @@ console.log('\nopsLayoutDomain:');
     const dom = globalThis.opsLayoutDomain;
     test('resolveOpen: 前日/当日の既定 (当日はボス・残凸・メンバー状況・運営アクションだけ開く) / always は常に開 / 運営OFFは全開', () => {
         const ids = dom.CARDS.map(c => c.id);
-        const openDay = ids.filter(id => dom.resolveOpen(id, 'day', null, true));
-        assert.deepEqual(openDay, ['opsSecBoss', 'opsSecRemaining', 'opsSecMembers', 'opsSecActions']);
-        const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true));
-        assert.deepEqual(openPre, ['opsSecMembers', 'opsSecReserve', 'opsSecPlan', 'opsSecActions']);
+        // (順番は別のテストが見る — ここは「どれが開くか」だけ)
+        const openDay = ids.filter(id => dom.resolveOpen(id, 'day', null, true)).sort();
+        assert.deepEqual(openDay, ['opsSecActions', 'opsSecBoss', 'opsSecMembers', 'opsSecRemaining']);
+        const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true)).sort();
+        assert.deepEqual(openPre, ['opsSecActions', 'opsSecMembers', 'opsSecPlan', 'opsSecReserve']);
         assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
         assert.equal(dom.resolveOpen('opsSecActions', 'day', { day: { opsSecActions: false } }, true), true, 'always は畳めない');
         assert.equal(dom.resolveOpen('unknown', 'day', null, true), true);
@@ -3324,13 +3325,14 @@ console.log('\nopsStageDomain:');
         assert.deepEqual(dom.nudgeTargets(rows, 'avail').map(r => r.id), [4, 5]);
         assert.deepEqual(dom.nudgeTargets(rows, 'x'), []);
     });
-    test('opsLayout CARDS の段階: 前日=メンバー状況・予約・プラン・Discord / 当日=ボス・残り・締め凸・プラン・運営アクション / 準備・終了=シーズン制御', () => {
+    test('opsLayout CARDS の段階と並び: 前日=メンバー状況・予約・Discord・プラン / 当日=運営アクション・ボス・締め凸・残り・プラン / 準備=シーズン制御・一斉通知 / 終了=Discord・シーズン制御・育成', () => {
         const lay = globalThis.opsLayoutDomain;
+        // ★ 順番も見る — 2列/12カラムでは並び順が行の組み方を決める (各行が 12 に揃うかは別のテスト)
         const vis = (s) => lay.CARDS.filter(c => dom.visibleIn(c, s)).map(c => c.id);
-        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecReserve', 'opsSecPlan', 'opsSecDiscord']);
-        assert.deepEqual(vis('day'), ['opsSecBoss', 'opsSecRemaining', 'opsSecFinish', 'opsSecPlan', 'opsSecActions']);
-        assert.deepEqual(vis('prep'), ['opsSecSeason']);
-        assert.deepEqual(vis('end'), ['opsSecSeason', 'opsSecGrowth']);
+        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan']);
+        assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecRemaining', 'opsSecPlan']);
+        assert.deepEqual(vis('prep'), ['opsSecSeason', 'opsSecPush']);
+        assert.deepEqual(vis('end'), ['opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
     const html = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
@@ -7896,39 +7898,99 @@ console.log('\ngrowthDomain:');
         const missing = used.filter(v => !html.includes(`> [data-span="${v}"] { grid-column: span ${v}; }`));
         assert.deepEqual(missing, [], `CSS の受け皿が無い幅がある (黙って全幅になる): ${missing.join(', ')}`);
     });
-    test('★ PC版: 左サイドバーと12カラムの段が入っている', () => {
+    test('★ 2列/12カラム: 700px の2列・1100px の細かい幅・左サイドバー (1180px〜 と スマホ横) の3段が入っている', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
-        const at = (px) => {
-            const i = css.indexOf(`@media (min-width: ${px}px) {`);
-            assert.ok(i > 0, `${px}px の段が無い`);
+        const at = (q) => {
+            const i = css.indexOf(`${q} {`);
+            assert.ok(i > 0, `${q} の段が無い`);
             let d = 0, k = css.indexOf('{', i);
             for (let j = k; j < css.length; j++) {
                 if (css[j] === '{') d++;
                 else if (css[j] === '}') { d--; if (!d) return css.slice(i, j + 1); }
             }
-            throw new Error(`${px}px の段の終端が分からない`);
+            throw new Error(`${q} の段の終端が分からない`);
         };
-        // ① カードのグリッド
-        const grid = at(1100);
-        assert.ok(/#tab-ops > \.container \{[^}]*display: grid;/.test(grid), '戦況タブがグリッドになっていない');
-        assert.ok(/grid-template-columns: repeat\(12, minmax\(0, 1fr\)\);/.test(grid), '12カラムでない');
-        assert.ok(/#tab-ops > \.container > \* \{ grid-column: 1 \/ -1;/.test(grid),
-            '既定が全幅でない (見出しや段階バーが横に割れる)');
-        assert.ok(/align-items: start;/.test(grid), '背の低いカードを引き伸ばしている');
-        // ② 左サイドバー
-        const side = at(1180);
-        assert.ok(/body \{ padding-left: 232px; \}/.test(side), '本文をサイドバーぶん寄せていない (重なる)');
-        assert.ok(/\.tab-navigation \{[^}]*position: fixed;[^}]*width: 232px;/.test(side), 'サイドバーになっていない');
+        // 3か所 (5タブの本文 + その他の2つの箱) を同じ規則で組む
+        const HOSTS = ':is(.tab-page.tab-content > .container, #opsEtcCards, #opsEtcMaint)';
+        const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // ① 700px: 2列
+        const two = at('@media (min-width: 700px)');
+        assert.ok(new RegExp(`${escRe(HOSTS)} \\{[^}]*display: grid;`).test(two), '700px でグリッドになっていない');
+        assert.ok(/grid-template-columns: repeat\(12, minmax\(0, 1fr\)\);/.test(two), '12カラムでない');
+        assert.ok(two.includes(`${HOSTS} > * { grid-column: 1 / -1;`), '既定が全幅でない (見出しや段階バーが横に割れる)');
+        assert.ok(/align-items: start;/.test(two), '背の低いカードを引き伸ばしている');
+        assert.ok(two.includes(`${HOSTS} > [data-span] { grid-column: span 6; }`), '700〜1099px で半分ずつになっていない');
+        assert.ok(two.includes(`${HOSTS} > [data-span="12"] { grid-column: 1 / -1; }`), '12 が全幅に戻っていない (半分に化ける)');
+        // ★ 後ろの「Tab Content」節に `.tab-page .container { display:flex }` があり、それより強くないと flex に戻される。
+        //   (以前は #tab-ops の ID で勝っていた。5タブに広げるので、クラスを3つ重ねて勝つ)
+        assert.ok(/\.tab-page \.container \{\s*display: flex;/.test(css), '前提が変わった: .tab-page .container の flex 指定が無い (このガードの理由を確かめること)');
+        assert.ok(HOSTS.includes('.tab-page.tab-content > .container'), 'クラスを3つ重ねていない (.tab-page .container の flex に負ける)');
+        // その他の箱: :is() に並べた id が実際に作られる
+        for (const id of ['opsEtcCards', 'opsEtcMaint']) assert.ok(html.includes(`id="${id}"`), `${id} が作られていない (その他の中がグリッドにならない)`);
+        // ② 1100px: 細かい幅 (グリッドを作るのは 700px の段だけ。ここは幅の受け皿だけ)
+        const fine = at('@media (min-width: 1100px)');
+        for (const v of [4, 5, 6, 7, 8]) assert.ok(fine.includes(`${HOSTS} > [data-span="${v}"] { grid-column: span ${v}; }`), `1100px に幅 ${v} の受け皿が無い`);
+        assert.ok(!/display: grid;/.test(fine), '1100px でグリッドを作り直している (700px の段だけが作る)');
+        // ③ 左サイドバー: 1180px〜 と、スマホ横 (768px〜 で縦が559px以下)。置き換えるのは上のタブ帯であって下の浮きナビではない
+        const side = at('@media (min-width: 1180px), (min-width: 768px) and (max-height: 559px)');
+        assert.ok(/body \{ padding-left: var\(--side-w\); \}/.test(side), '本文をサイドバーぶん寄せていない (重なる)');
+        assert.ok(/:root \{ --side-w: 232px; \}/.test(side), 'PC のサイドバー幅が 232px でない (実機確認済みの値)');
+        assert.ok(/\.tab-navigation \{[^}]*position: fixed;[^}]*width: var\(--side-w\);/.test(side), 'サイドバーになっていない');
         assert.ok(/\.tab-buttons-wrapper \{ flex-direction: column;/.test(side), 'タブが縦に並んでいない');
         assert.ok(/\.side-brand \{\s*display: flex;/.test(side), '見出しを出していない');
-        assert.ok(/\.tab-button\.active::after \{ display: none; \}/.test(side),
-            '横タブの下線の印が残っている (サイドバーでは位置が合わない)');
+        assert.ok(/\.tab-button\.active::after \{ display: none; \}/.test(side), '横タブの下線の印が残っている (サイドバーでは位置が合わない)');
+        // ③' スマホ横だけ細く (232px だと本文 620px → 2列の1枚が縦持ちより狭い)
+        const narrow = at('@media (min-width: 768px) and (max-width: 1179px) and (max-height: 559px)');
+        assert.ok(/--side-w: 176px;/.test(narrow), 'スマホ横のサイドバーを細くしていない');
+        assert.ok(css.indexOf('--side-w: 176px') > css.indexOf('--side-w: 232px'), 'スマホ横の細い幅が PC の幅より前にある (後の方が勝つので効かない)');
         // ★ 幅が狭いときに見出しが出てしまわないこと (横タブの中に文字が挟まる)
         assert.ok(/\.side-brand \{ display: none; \}/.test(css), '狭いときに見出しを隠していない');
-        // ★ 下のナビと二重に出さない (下のナビは 767px まで)
-        assert.ok(/@media \(max-width: 767px\) \{\s*\.bottom-nav \{ display: flex; \}/.test(css),
-            '下のナビの出る幅が変わっている (サイドバーと二重になる)');
+        // ★ 下のナビと二重に出さない (下のナビは 767px まで。サイドバーは 768px から)
+        assert.ok(/@media \(max-width: 767px\) \{\s*\.bottom-nav \{ display: flex; \}/.test(css), '下のナビの出る幅が変わっている (サイドバーと二重になる)');
+    });
+    test('★ 2列/12カラム: 各段階とメンバー画面で、行の span 合計が 12 に揃う (7 の隣に 12 が来ると 7 が独りになる)', () => {
+        // ★ 2026-09-11 まで実際そうなっていた: ボス7 → 残り12 → 締め凸5 の順で、7 と 5 が一度も隣り合わず全段階で1列。
+        //   「span がある」「表は 12」だけでは気づけない。グリッドの自動配置をなぞって行を切り、合計を見る。
+        const lay = _grLayout, st = globalThis.opsStageDomain;
+        const rows = (spans) => {
+            const out = []; let cur = [], w = 0;
+            for (const s of spans) { if (w + s > 12) { out.push(cur); cur = []; w = 0; } cur.push(s); w += s; }
+            if (cur.length) out.push(cur);
+            return out;
+        };
+        assert.deepEqual(rows([7, 12, 5]), [[7], [12], [5]], 'この検査自体が効いていること (改行をなぞれていない)');
+        const views = {
+            '準備': lay.CARDS.filter(c => st.visibleIn(c, 'prep')),
+            '前日': lay.CARDS.filter(c => st.visibleIn(c, 'pre')),
+            '当日': lay.CARDS.filter(c => st.visibleIn(c, 'day')),
+            '終了': lay.CARDS.filter(c => st.visibleIn(c, 'end')),
+            'メンバー (運営OFF)': lay.CARDS.filter(c => !c.opsOnly),
+        };
+        for (const [name, cards] of Object.entries(views)) {
+            assert.ok(cards.length > 0, `${name}: カードが1枚も無い`);
+            const rs = rows(cards.map(c => c.span));
+            const bad = rs.filter(r => r.reduce((a, b) => a + b, 0) !== 12);
+            assert.deepEqual(bad, [], `${name}: 12 に揃わない行がある ${JSON.stringify(rs)} — 並び: ${cards.map(c => `${c.id}(${c.span})`).join(' → ')}`);
+        }
+    });
+    test('★ 配線: 戦況タブのカードは初期化で CARDS の順に並べ直す / 運営アクションのボタン列は横一列の帯にできる', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const init = html.match(/function _initOpsTabStructure\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(init.length > 0, '_initOpsTabStructure が見つからない');
+        // 並び順は CARDS が唯一。HTML の順や個別の移動 (以前の「締め凸をメンバー状況の直後へ」) を使わない
+        assert.ok(/for \(const def of dom\.CARDS\) \{\s*const card = document\.getElementById\(def\.id\);\s*if \(card\) mark\.before\(card\);/.test(init),
+            'CARDS の順に並べ直していない (運営OFFで開いたとき HTML の順のまま = 行が揃わない)');
+        assert.ok(!/mem\.insertAdjacentElement\('afterend', fin\)/.test(init), '個別の移動が残っている (CARDS の順と食い違う)');
+        // 並べ直しは「ホームへの導線」を置くより前 (導線は残凸カードの直後に付くので、後から並べ直すと離れる)
+        assert.ok(init.indexOf('mark.before(card)') < init.indexOf("link.id = 'opsHomeCrosslink'"), '並べ直しがホームへの導線より後にある');
+        // 運営アクション: インラインの 2列固定をやめてクラスに (700px〜 で横一列の帯にするため)
+        assert.ok(html.includes('<div class="ops-action-grid">'), '運営アクションのボタン列がクラスになっていない');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/\.ops-action-grid \{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; \}/.test(css), 'ボタン列の基本 (2列) が無い');
+        assert.ok(/\.ops-action-grid \{ grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\); \}/.test(css), '700px〜 で横一列にしていない');
+        const act = _grLayout.CARDS.find(c => c.id === 'opsSecActions');
+        assert.equal(act && act.span, 12, '運営アクションは帯 (幅12) であること');
     });
     test('★ 変数に入れた文字色も、ライトとダークの両方で読める (実際に測る)', () => {
         // ★ ここが最後の抜け道だった。color:${x} の x が**変数**だと、

@@ -17,27 +17,41 @@
     /**
      * 戦況タブのカード。id は DOM の id、title はカード内の見出し文字列 (タグ付けに使う)。
      * open = フェーズ別の既定 (always は常時開・折りたたみ不可)。opsOnly = 運営ONのときだけ表示。
-     * span = PC版 (1100px〜) の12カラムでの幅。表を持つカードは全幅 (12) でないと読めない。
-     * group = 見出しラベル (DOM 順に連続するよう、締め凸候補は初期化時にメンバー状況の直後へ移す)
+     * span = 2列/12カラム (700px〜) での幅。700〜1099px は 12 以外すべて半分。表を持つカードは全幅 (12) でないと読めない。
+     * stages = 運営ONで本文に出す段階 (opsStage.js の 準備 prep / 前日 pre / 当日 day / 終了 end)。
+     *          段階外は末尾の「その他」へ (消さない)。[] = どの段階でも「その他」。運営OFF (メンバー) は従来どおり全部
+     * group = 見出しラベル (いまはどちらのモードでも隠している)
+     *
+     * ★ 配列の順 = 画面の並び (HTML の順は使わない。index.html の _initOpsTabStructure が並べ直す)。
+     *   2列/12カラムでは隣り合うカードの幅の組で行が決まるので、順番そのものが見た目を決める
+     *   (7 の次に 12 が来ると改行して 7 は独りになる — 2026-09-11 まで実際そうなっていて全段階が1列だった)。
+     *   1本の順で 準備/前日/当日/終了/メンバー のどれを取り出しても各行が 12 に揃うように並べてある:
+     *     当日     = 運営アクション12 / ボス7 + 締め凸5 / 残り12 / プラン12
+     *     前日     = メンバー状況12 / 予約7 + Discord5 / プラン12
+     *     準備     = シーズン制御7 + 一斉通知5
+     *     終了     = Discord5 + シーズン制御7 / 育成12
+     *     メンバー = ボス7 + オンライン5 / 残り12
+     *   崩すとテスト (各行の span 合計 = 12) が落ちる。カードを足すときは相方も決めること。
      */
     const CARDS = [
-        // stages = 運営ONで本文に出す段階 (opsStage.js の 準備 prep / 前日 pre / 当日 day / 終了 end)。
-        // 段階外は末尾の「その他」へ (消さない)。[] = どの段階でも「その他」。運営OFF (メンバー) は従来どおり全部
-        { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7 },
-        { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [], span: 6 },
-        { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12 },
+        // 当日の最上部: コックピットの直下に帯として置く (幅12・常時開)
+        { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'], span: 12 },
         { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'], span: 12 },
+        { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7 },
+        { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5 },
+        { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [], span: 5 },
+        { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12 },
         // 当日は畳む — 承認待ちの件数は見出しの1行サマリーに出るので気づける
         // (当日に開くカードを増やすと縦に長くなり、折りたたみを入れた意味が消える)
         { id: 'opsSecReserve',   title: '凸の予約',              group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre'], span: 7 },
-        { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5 },
+        // 前日 (告知) と終了 (結果報告) の両方で使う
+        { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre', 'end'], span: 5 },
         { id: 'opsSecPlan',      title: '最適凸プラン算出',       group: '判断・配信', opsOnly: true,  open: { pre: true,  day: false }, stages: ['pre', 'day'], span: 12 },
-        { id: 'opsSecActions',   title: '戦闘中の運営アクション', group: '実行',       opsOnly: true,  always: true,                    stages: ['day'], span: 5 },
-        { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: [], span: 6 },
-        { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 6 },
+        { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 7 },
+        // 一斉通知は準備段階の道具に (告知を出す段階。2026-09-11 ユーザー判断)
+        { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: ['prep'], span: 5 },
         // 使われたキャラが確定するのはレイド後なので、終了段階だけに出す (2026-09-09)
         { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['end'], span: 12 },
-        { id: 'opsSecDiscord',   title: 'Discord 告知テンプレ',  group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['pre'], span: 6 },
     ];
     const STORAGE_KEY = 'shirisuko_ops_card_open_v1';
 
