@@ -656,6 +656,11 @@ rgba(var(--paper-rgb), 0.7)   /* その裏返し (濃い地の上に置く半透
   帯にあった 名前の切替 と 再読み込み はサイドバーの足元 `.side-foot` に置く。名前と絵は `updateIdentityHeader` が
   `[data-identity-name]` / `[data-identity-avatar]` にも書き、↻ の回転は `handleHeaderReload` が `.hdr-reload-ic` を全部回す
   (帯と足元で別の関数にしない — 片方だけ古くなる)。隠すのはサイドバーの幅だけ (他の幅で隠すと切替と再読み込みが消える)
+  ★ 足元は `position: sticky; bottom: 0` — 縦が短いスマホ横ではロゴ + 5タブ + 足元が可視高を超え、末尾に押し出されて
+  初期表示で見えない (Codex指摘)。スマホ横は足元を1行 (名前 + ↻ のアイコンだけ) にする。
+  ★ `updateIdentityHeader` の写真は `_identityAvatarSeq` で追い越しを捨てる (A→B と素早く名乗り直すと「B の名前 + A の写真」)。
+  未選択・名簿にいない人は写真を消す。名簿がまだ無いときは触らない。
+  ★ 帯の月表示 (`#headerSubtitle`) は移さない — 分析タブの見出しが同じことを出している (判断)
 
 **幅の決め方 (`data-span`)**
 - 戦況タブ: `opsLayout.CARDS` の `span` **だけ**が唯一 (span → `data-span` → CSS)。

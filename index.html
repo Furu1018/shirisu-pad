@@ -2105,12 +2105,17 @@
             /* ★ 上の帯は出さない (2026-09-11 ユーザー要望「左からメニューが出るモードでは上部帯も不要」)。
                見出しはロゴが担う。帯にあった 名前の切替 と 再読み込み はサイドバーの足元 (.side-foot) へ。
                書き込むのは帯と同じ関数 (updateIdentityHeader / handleHeaderReload) — 片方だけ古くならない。
-               ★ 隠すのはこの幅だけ。他の幅で隠すと名前の切替と再読み込みが画面から消える */
+               ★ 隠すのはこの幅だけ。他の幅で隠すと名前の切替と再読み込みが画面から消える。
+               ★ 帯の月表示 (#headerSubtitle「2026-08 → 2026-09 比較」) は移さない — 分析タブの見出し
+                 (#rankingComparisonLabel / #rankingPageSubtitle) が同じことを出している (Codex指摘 2026-09-11 に対する判断) */
             .header { display: none; }
             .side-foot {
                 display: flex; flex-direction: column; gap: 6px;
                 margin-top: auto; padding-top: 12px;
                 border-top: 1px solid var(--hair);
+                /* ★ 縦が短い (スマホ横 ~360px) とロゴ + 5タブ + 足元が可視高を超え、足元がスクロールの末尾に
+                   押し出されて初期表示で見えない (Codex指摘 2026-09-11)。sticky で下端に留め、タブは下をくぐる */
+                position: sticky; bottom: 0; background: var(--card); padding-bottom: 2px;
             }
             .side-me, .side-reload {
                 display: flex; align-items: center; gap: 8px; width: 100%;
@@ -2156,7 +2161,13 @@
             .side-brand img { max-width: 120px; }
             .side-brand { padding-bottom: 10px; }
             .tab-button { padding: 8px 10px; font-size: 12px; }
+            /* 足元は1行に: 名前 + ↻ のアイコンだけ (縦が 400px 弱しかないので 2 段は重い) */
+            .side-foot { flex-direction: row; align-items: stretch; gap: 4px; padding-top: 8px; }
             .side-me, .side-reload { padding: 6px 8px; font-size: 11px; }
+            .side-me { flex: 1; min-width: 0; }
+            .side-me-hint { display: none; }
+            .side-reload { width: auto; flex: none; }
+            .side-reload span { display: none; }
         }
 
         /* ========== Stats toggle ========== */
@@ -7276,6 +7287,7 @@
             }
         }
 
+        let _identityAvatarSeq = 0;   // 名乗り直しの競合よけ: 遅れて着いた前の人の写真を捨てる (Codex指摘 2026-09-11)
         function updateIdentityHeader() {
             const pill = document.getElementById('identityPill');
             const nameEl = document.getElementById('identityName');
@@ -7286,21 +7298,26 @@
             // ★ サイドバーの足元 (上の帯を出さない幅・2026-09-11) にも同じ名前を書く。片方だけだと名乗り直しても古い名前が残る
             document.querySelectorAll('[data-identity-name]').forEach((el) => { el.textContent = nameText; });
             // 識別ピル内の絵文字を実アバターに差し替え (非同期)。足元の丸 ([data-identity-avatar]) も同じ絵にする
-            if (id?.id && _allPlayersCache) {
-                const me = _allPlayersCache.find(p => p.id === id.id);
-                if (me) {
-                    resolveAvatarFor(me).then(url => {
-                        const targets = [pill?.querySelector('.hint'), ...document.querySelectorAll('[data-identity-avatar]')].filter(Boolean);
-                        for (const hintEl of targets) {
-                            if (url) {
-                                hintEl.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
-                            } else {
-                                hintEl.innerHTML = spIcon('user', 16);
-                            }
-                        }
-                    });
+            const avatars = [pill?.querySelector('.hint'), ...document.querySelectorAll('[data-identity-avatar]')].filter(Boolean);
+            const paintAvatar = (url) => {
+                for (const hintEl of avatars) {
+                    if (url) {
+                        hintEl.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
+                    } else {
+                        hintEl.innerHTML = spIcon('user', 16);
+                    }
                 }
-            }
+            };
+            const seq = ++_identityAvatarSeq;
+            // ★ 未選択、または名簿にいない人 → 前の人の写真を残さない。名簿がまだ無いときは触らない (分からないだけ)
+            const me = (id?.id && _allPlayersCache) ? _allPlayersCache.find(p => p.id === id.id) : null;
+            if (!id?.id || (_allPlayersCache && !me)) { paintAvatar(null); return; }
+            if (!me) return;
+            resolveAvatarFor(me).then(url => {
+                // ★ A→B と素早く名乗り直して A の解決が後着すると「B の名前 + A の写真」になる → 追い越された結果は捨てる
+                if (seq !== _identityAvatarSeq) return;
+                paintAvatar(url);
+            }).catch((e) => console.warn('[identity] アバターの解決に失敗:', e));
         }
 
         // 全プレイヤーキャッシュ (モーダル表示の高速化用)

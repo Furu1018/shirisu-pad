@@ -8093,8 +8093,21 @@ console.log('\ngrowthDomain:');
         const fn = html.match(/function updateIdentityHeader\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/querySelectorAll\('\[data-identity-name\]'\)\.forEach\(\(el\) => \{ el\.textContent = nameText; \}\)/.test(fn), '足元に名前を書いていない');
         assert.ok(/nameEl\.textContent = nameText;/.test(fn), '帯の名前を書かなくなっている');
-        assert.ok(/\.\.\.document\.querySelectorAll\('\[data-identity-avatar\]'\)/.test(fn), '足元に絵を書いていない');
-        assert.ok(/for \(const hintEl of targets\)/.test(fn), '絵を全部の置き場に書いていない');
+        assert.ok(/const avatars = \[pill\?\.querySelector\('\.hint'\), \.\.\.document\.querySelectorAll\('\[data-identity-avatar\]'\)\]/.test(fn), '足元に絵を書いていない');
+        assert.ok(/for \(const hintEl of avatars\)/.test(fn), '絵を全部の置き場に書いていない');
+        // ★ 名乗り直しの競合 (Codex指摘): A→B と素早く切り替えて A の解決が後着しても A の写真を描かない
+        assert.ok(/const seq = \+\+_identityAvatarSeq;/.test(fn) && /if \(seq !== _identityAvatarSeq\) return;\s*paintAvatar\(url\);/.test(fn),
+            '追い越された写真を捨てていない (B の名前 + A の写真になる)');
+        // ★ 未選択・名簿にいない人は写真を消す。名簿がまだ無いときは触らない (分からないだけ)
+        assert.ok(/if \(!id\?\.id \|\| \(_allPlayersCache && !me\)\) \{ paintAvatar\(null\); return; \}/.test(fn), '未選択で前の人の写真が残る');
+        assert.ok(/if \(!me\) return;/.test(fn), '名簿が無いだけで写真を消している');
+        // ★ 足元は sticky で下端に留める (縦が短いスマホ横では末尾に押し出されて初期表示で見えない: Codex指摘)
+        assert.ok(/\.side-foot \{[^}]*position: sticky; bottom: 0; background: var\(--card\);/.test(side), '足元が下端に留まらない');
+        const narrow = at('@media (min-width: 768px) and (max-width: 1179px) and (max-height: 559px)');
+        assert.ok(/\.side-foot \{ flex-direction: row;/.test(narrow), 'スマホ横で足元が1行になっていない');
+        assert.ok(/\.side-reload span \{ display: none; \}/.test(narrow), 'スマホ横で ↻ の文字を消していない');
+        // ★ 帯の月表示は移さない (分析タブに同じものがある) — 消したままにする判断をコメントで残す
+        assert.ok(/#headerSubtitle[^\n]*は移さない/.test(side) && html.includes('id="rankingComparisonLabel"'), '月表示を移さない判断が残っていない');
         // 再読み込みの回転は id でなくクラスで (足元から押しても回る)。戻すのも同じ集合
         const rl = html.match(/async function handleHeaderReload\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/const icons = \[\.\.\.document\.querySelectorAll\('\.hdr-reload-ic'\)\];/.test(rl), '↻ をクラスで集めていない');
