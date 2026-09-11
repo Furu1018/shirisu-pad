@@ -2364,6 +2364,17 @@ window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
     return data || [];
 };
 
+// 前回の算出のあとに更新された模擬提出の数 (パズル盤 ① きっかけ・2026-09-11)。
+// player_damages はシーズンを持たない現在の提出なので、updated_at だけで数える。head:true で行は運ばない
+window.supabaseCountMockUpdatesSince = async function (sinceIso) {
+    if (typeof sinceIso !== 'string' || !sinceIso) return null;
+    const { count, error } = await supabase.from('player_damages')
+        .select('id', { count: 'exact', head: true })
+        .gt('updated_at', sinceIso);
+    if (error) throw error;
+    return Number.isFinite(count) ? count : 0;
+};
+
 // 凸のボスを変更
 window.supabaseUpdateAttackBoss = async function (attackId, bossNumber, bossCode) {
     const { error } = await supabase

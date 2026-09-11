@@ -24,6 +24,7 @@ import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動�
 import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メンバー状況ボード)
 import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タブの折りたたみ + コックピット)
 import '../js/domain/pace.js';          // globalThis.paceDomain (📈消化のペース / 🔁直近の動き — 運営ボード 当日・段階4)
+import '../js/domain/planBoard.js';     // globalThis.planBoardDomain (最適凸プランの条件と盤の読みやすさ — パズル盤 ①②)
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
@@ -8240,6 +8241,89 @@ console.log('\ngrowthDomain:');
         assert.ok(/const navLabel = _opsMode \? '運営' : '戦況';/.test(fn), '文字の入れ替えが _applyOpsMode に無い (ON/OFF・名乗り直しの両方が通る唯一の場所)');
         assert.ok(/\.tab-button\[data-tab="ops"\], \.bottom-nav-btn\[data-tab="ops"\]/.test(fn) && /querySelector\('\.nav-lb, \.tab-lb'\)/.test(fn), '両方のナビの文字を入れ替えていない');
         assert.ok(/btn\.title = navLabel/.test(fn) && /setAttribute\('aria-label', navLabel\)/.test(fn), 'title / aria-label も入れ替えていない');
+    });
+    // ===== 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②・2026-09-11) =====
+    test('★ planBoard: 条件の正規化と要約 (壊れた値は既定へ / 0 のものは省く・予約は常に出す)', () => {
+        const d = globalThis.planBoardDomain;
+        assert.equal(typeof d?.conditionsOf, 'function', 'planBoardDomain が無い');
+        const c = d.conditionsOf({ who: 'now', from: 'day', prev: 'fresh', reservations: 3, excluded: '2', unavailable: -1, publishedBy: ' A ', publishedAt: 'x', computedBy: '', computedAt: '2026-09-11T12:04:00Z' });
+        assert.deepEqual(c, { who: 'now', from: 'day', prev: 'fresh', reservations: 3, excluded: 2, unavailable: 0, publishedBy: 'A', publishedAt: 'x', computedBy: null, computedAt: '2026-09-11T12:04:00Z' });
+        assert.deepEqual(d.conditionsOf({ who: 'x', from: null, prev: undefined }), { who: 'all', from: 'now', prev: 'keep', reservations: 0, excluded: 0, unavailable: 0, publishedBy: null, publishedAt: null, computedBy: null, computedAt: null });
+        assert.equal(d.conditionSummary(c), '今動ける人だけ · 朝5時から · ゼロから · 🔒予約 3 · 🚫除外 2');
+        assert.equal(d.conditionSummary({ who: 'all', reservations: 0, excluded: 0, unavailable: 2 }), '全員 · 今から · 前回を尊重 · 🔒予約 0 · ✋難しい 2');
+        assert.equal(d.conditionSummary(null), '全員 · 今から · 前回を尊重 · 🔒予約 0');
+    });
+    test('★ planBoard: 戦闘可能時間 → 行番号 / 動かせる幅 (硬い・狭い・柔らかい) / 模擬の更新数', () => {
+        const d = globalThis.planBoardDomain;
+        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
+        const w = d.windowOf({ availableSlots: ['h21', 'h22', 'h00', 'x', 'h99', 7] }, HO);
+        assert.deepEqual([...w].sort((a, b) => a - b), [16, 17, 19], '読めない値を捨てていない / 添字が違う');
+        assert.equal(d.windowOf({ flexTime: true, availableSlots: [] }, HO).size, 24, '隙間型はいつでも');
+        assert.equal(d.windowOf(null, HO).size, 0);
+        // 動かせる幅は「これから」(fromIdx 以降) だけ数える
+        assert.deepEqual(d.stiffness(w, 16), { count: 3, label: '狭い', rigid: false });
+        assert.deepEqual(d.stiffness(w, 17), { count: 2, label: '狭い', rigid: false });
+        assert.deepEqual(d.stiffness(w, 19), { count: 1, label: '硬い', rigid: true });
+        assert.deepEqual(d.stiffness(w, 20), { count: 0, label: '出られない', rigid: true });
+        assert.equal(d.stiffness(new Set([0, 1, 2, 3, 4]), 0).label, '柔らかい');
+        assert.equal(d.stiffness(null, 0).count, 0);
+        // 模擬の更新数: since より後だけ。since が読めなければ null (きっかけを出さない)
+        const rows = [{ updated_at: '2026-09-11T12:05:00Z' }, { updated_at: '2026-09-11T12:03:00Z' }, { updated_at: null }, null, { updated_at: 'x' }];
+        assert.equal(d.mockUpdatesSince(rows, '2026-09-11T12:04:00Z'), 1);
+        assert.equal(d.mockUpdatesSince(rows, '2026-09-11T11:00:00Z'), 2);
+        assert.equal(d.mockUpdatesSince(rows, null), null);
+        assert.equal(d.mockUpdatesSince(null, '2026-09-11T12:04:00Z'), 0);
+    });
+    test('★ 配線: 最適凸プランは「条件を選んで → 算出」。条件は結果に焼き込み、配信されたプランにも残る', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(html.includes('<script defer src="./js/domain/planBoard.js"></script>'), 'planBoard.js を読み込んでいない');
+        // カード: 3つのセグメント (対象 / 起点 / 前回の配信) + 自動で効くもの + 算出ボタン。以前の 7 ボタン (条件がボタン名) は無い
+        const card = html.slice(html.indexOf('<!-- 最適凸プラン (パズル盤'), html.indexOf('<!-- 運営アクション (戦闘中) -->'));
+        assert.ok(card.length > 0, '最適凸プランのカードが見つからない');
+        for (const lb of ['対象', '起点', '前回の配信']) assert.ok(card.includes(`aria-label="${lb}"`), `${lb} のセグメントが無い`);
+        assert.ok(card.includes('id="opsPlanAutoChips"') && card.includes('id="opsPlanCue"'), '自動で効くもの / きっかけ の置き場が無い');
+        assert.ok(/class="plan-go" onclick="computeAndRenderOptimalPlan\(\)"/.test(card), '算出ボタンが1つでない');
+        assert.ok(!/computeAndRenderOptimalPlan\(\{onlyAvailableNow:true\}\)/.test(html) && !/id="opsPlanStartModeBtn"/.test(html), '条件がボタン名に埋まった旧ボタンが残っている');
+        // 算出のあとの操作は結果の下 (次にやること)
+        assert.ok(/id="opsPlanNext" class="plan-next"[\s\S]*?id="opsPlanPublishBtn"[\s\S]*?id="opsPlanShareBtn"/.test(card), '配信 / 共有画像 が結果の下にない');
+        // 対象は状態 (_opsPlanWho)。呼び出し側が明示したときはそちら (承認後の組み直しは「全員」)
+        const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const onlyNow = options\.onlyAvailableNow != null \? !!options\.onlyAvailableNow : _opsPlanWho === 'now';/.test(fn), '対象を条件パネルから取っていない');
+        // 焼き込み: planBoardDomain.conditionsOf で作り、_opsLastPlan に入れる前に付ける
+        assert.ok(/plan\.conditions = window\.planBoardDomain \? window\.planBoardDomain\.conditionsOf\(\{[\s\S]*?computedAt: new Date\(\)\.toISOString\(\),[\s\S]*?\}\) : null;\s*\n\s*_opsLastPlan = plan;/.test(fn), '条件を焼き込んでいない (または _opsLastPlan の後)');
+        assert.ok(/reservations\.filter\(r => window\.reservationsDomain\.isFixed\(r\)\)\.length/.test(fn), '予約は拘束 (isFixed) だけを数える');
+        // 結果の頭にスタンプ。ホームの配信カードにも1行
+        assert.ok(/summary = _planCondStampHtml\(plan\.conditions\) \+ summary;/.test(html), '結果にスタンプを出していない');
+        assert.ok(/const condLine = \(plan\?\.conditions && window\.planBoardDomain\)/.test(html) && /\$\{condLine\}\s*\n\s*\$\{updatedBanner\}/.test(html), 'ホームの配信カードに条件の1行が無い');
+        // きっかけ: 模擬の更新数 (head:true で数えるだけ) と、締め凸の手詰まりからの導線
+        assert.ok(/window\.supabaseCountMockUpdatesSince = async function \(sinceIso\)/.test(_grRd('js/supabase-client.js')), '模擬の更新数を数える関数が無い');
+        const cue = html.match(/async function renderOpsPlanCue\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(seq !== _planCueSeq\) return;/.test(cue), 'きっかけの取得に世代ガードが無い (遅い応答が新しい結果を上書きする)');
+        assert.ok(/onclick="_opsJump\('opsSecPlan'\)"[^>]*>プランを組み直す ›/.test(html), '締め凸の手詰まりからプランへ飛べない');
+        // 算出のあとに「きっかけ」を消す / 盤面の描画で条件パネルとチップを合わせる
+        assert.ok(/_opsLastPlan = plan;[\s\S]*?renderOpsPlanCue\(\);/.test(fn), '算出し直したのに「模擬が更新」が残る');
+        const dash = html.match(/async function renderOpsDashboard\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_syncOpsPlanCondUi\(\);/.test(dash) && /renderOpsPlanCue\(\);/.test(dash), '盤面の描画で条件パネル / きっかけを描いていない');
+        const ck = html.match(/function _renderOpsCockpit\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_renderOpsPlanAutoChips\(\);/.test(ck), '自動で効くもののチップを描いていない');
+    });
+    test('★ 配線: 時間割の読みやすさ (運営だけ) — チップをタップするとその人の時間が光る / 硬い・狭い の札', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const chip = html.match(/function _planChipHtml\(a, color, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/data-member="\$\{esc\(String\(a\.memberId \?\? ''\)\)\}"/.test(chip), 'チップに data-member が無い (タップで誰か分からない)');
+        assert.ok(/const stiff = typeof opts\.stiffOf === 'function' \? opts\.stiffOf\(a\.memberId\) : null;/.test(chip), '動かせる幅をチップに出していない');
+        const tt = html.match(/function _planTimetableHtml\(plan, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const inWin = opts\.focusWindow instanceof Set \? \(r\.flexRow \|\| opts\.focusWindow\.has\(r\.hourIdx\)\) : null;/.test(tt), '選んだ人の時間で行を光らせていない');
+        assert.ok(/data-h="\$\{r\.hourIdx \?\? ''\}"/.test(tt), '行 / セルに data-h が無い');
+        const view = html.match(/function renderOpsPlanView\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/focusMemberId: _opsPlanFocus, focusWindow, stiffOf/.test(view), '運営の時間割に focus / stiff を渡していない');
+        assert.ok(/return st\.count <= 3 \? st\.label : null;/.test(view), '柔らかい人にまで札を出している (硬い / 狭い だけ)');
+        assert.ok(/el\.dataset\.focusDelegated/.test(view) && /_opsPlanToggleFocus\(chip\.dataset\.member\)/.test(view), 'チップのタップを受けていない (委譲)');
+        // ホームの時間割には渡さない (メンバーの画面に運営の道具を出さない)
+        assert.ok(!/filterKey: 'my'[^)]*stiffOf/.test(html), 'ホームの時間割に動かせる幅を出している');
+        // 算出し直したら前の選択を捨てる
+        const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_opsPlanFocus = null;/.test(fn), '算出し直しても前の選択が残る');
     });
     test('★ 2列/12カラム: 各段階とメンバー画面で、行の span 合計が 12 に揃う (7 の隣に 12 が来ると 7 が独りになる)', () => {
         // ★ 2026-09-11 まで実際そうなっていた: ボス7 → 残り12 → 締め凸5 の順で、7 と 5 が一度も隣り合わず全段階で1列。

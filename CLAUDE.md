@@ -304,6 +304,26 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ シーズン制御のボタンは `data-stage="prep"` (作成・テスト作成は小リンク) / `data-stage="end"` (終了・リセット) で段階の描画が出し分ける。
   催促 (`_opsNudgeGroup`) は `memberStatus.nudgeMessage` の1人ずつの文面で、通知購読者かつ「今回は難しい」でない人にだけ送る。
   実行テスト `tests/ops-stage.mjs`
+- **最適凸プランの「条件を選んで → 算出」(パズル盤 ①②・2026-09-11)**。ユーザーの言葉「今の算出がどのような状態で
+  算出されたものか分かりにくかった」。純ロジックは `js/domain/planBoard.js` (`conditionsOf` / `conditionSummary` /
+  `windowOf` / `stiffness` / `mockUpdatesSince`) が唯一。モックは `docs/最適凸プラン_パズル盤モック.html`。
+  - 条件は **3つだけ** (対象 `_opsPlanWho` / 起点 `_opsPlanStartMode` / 前回の配信 `_opsPlanSticky`) をセグメントで選び、
+    `🧮 この条件で算出` が**唯一の算出ボタン**。以前は「全員」「⏰凸可能のみ」という2つの算出ボタンが条件を兼ね、
+    状態トグルと同じ列に並んでいた。自動で効くもの (🔒予約・🚫除外・✋難しい・📤配信中) は読み取り専用のチップ
+    (`_renderOpsPlanAutoChips`、コックピットと同じ材料で描く。未ロードは 0 でなく —)
+  - ★ **結果に「この条件で組んだ」を焼き込む** (`plan.conditions`、`_opsLastPlan = plan` の前に付ける)。
+    配信されたプランにも残るので、交代した運営が読める。結果の頭にスタンプ (`_planCondStampHtml`)、ホームの配信カードにも1行
+  - ★ 承認後の組み直しなど、呼び出し側が `onlyAvailableNow` を明示したときは**そちら**を使い、画面の選択は変えない
+    (`options = { ...options, onlyAvailableNow: onlyNow }` に畳んでから渡す — `computeOptimalPlan({ ...options, previousPlan, reservations: … })`
+    の行はテストが文字列で固定している)
+  - きっかけ: `renderOpsPlanCue` が「前回の算出 (無ければ配信) のあとに模擬が N 件更新」を出す
+    (`supabaseCountMockUpdatesSince` は head:true で数えるだけ。世代ガードあり)。締め凸の手詰まり (候補なし) には「プランを組み直す ›」
+  - ② 時間割 (運営だけ): チップをタップ (`data-member`、委譲) → その人の戦闘可能時間の行だけ残して他を沈める
+    (`opts.focusWindow`) + 黒い帯に「出られる時間 / 動かせる幅」。チップには **硬い / 狭い** の札だけ出す (柔らかい人には出さない)。
+    ホームの時間割には渡さない。算出し直したら選択は捨てる
+  - ★ 旧トグル `toggleOpsPlanSticky()` / `toggleOpsPlanStartMode()` は互換のため残す (テストが名前を固定)。
+    実体は `setOpsPlanSticky(on)` / `setOpsPlanStartMode(mode)` / `setOpsPlanWho(who)` → `_syncOpsPlanCondUi()`
+  - ③④ (📌ピン = 運営のレベル無し予約 / 🧩模擬ピースから盤へ / 📣お願い → 🔒) は未着手。ROADMAP 🧩 の項
 - **ホームの一目 (2026-09-11 ユーザー要望「空いているスペースにオンライン表示とボス状況を」)**。判定は `js/domain/attributes.js` の
   `homeStatusCounts` / `homeBossBoard` (細い帯の `homeBossStrip` の隣) が唯一。出し分けは**幅だけ** (CSS、700px が境):
   - **スマホ縦 (〜699px)**: ボス状況は戦闘カードの細い帯 (`#mypageBossStrip`) のまま。オンライン状況は
@@ -489,6 +509,7 @@ node tests/theme-switch.mjs   # 見た目 (ライト/ダーク) の切り替え�
 node tests/finish-console.mjs # 🏁 締め凸コンソール (今 vs 待つ) + 複数案の同時打診 の実行テスト
 node tests/ops-pace.mjs       # 📈 消化のペース / 🔁 直近の動き (運営ボード 当日) の描画の実行テスト
 node tests/home-glance.mjs    # ホームの一目: 横画面のボス状況カード / 状態ボタンの人数とタイル / HP鮮度ピル の実行テスト
+node tests/plan-cond.mjs      # 最適凸プランの条件: 焼き込みのスタンプ / 自動で効くもの / きっかけ / 動かせる幅 の実行テスト
 ```
 **変異テスト (ガードが本当に効くかを確かめる)** — 新しいテストを足したら必ず1周する。
 わざと壊して、落ちなければそのテストは無意味。scratchpad にスクリプトを書いて回す。

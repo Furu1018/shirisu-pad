@@ -89,7 +89,8 @@
     <script defer src="./js/domain/charMaster.js"></script>
     <script defer src="./js/domain/memberStatus.js"></script>
     <script defer src="./js/domain/opsLayout.js"></script>
-    <script defer src="./js/domain/pace.js"></script>   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
+    <script defer src="./js/domain/pace.js"></script>
+    <script defer src="./js/domain/planBoard.js"></script>   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
     <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
     <script defer src="./js/domain/growth.js"></script>         <!-- ユニオンメンバーの育成データ (BlaBlaLINK 由来) -->
     <script defer src="./js/state/opsStore.js"></script>
@@ -2861,6 +2862,33 @@
         .dc-profile-card { position: relative; }
         /* ★ ホームの細いボス帯 (2026-09-11)。属性と「戦闘中か」だけを一列で。
            情報を足したくなったら戦況タブへ行ってもらう — ここは"ぱっと見"の役 */
+        /* 🧮 最適凸プラン: 条件を選んで → 算出 (パズル盤 ①・2026-09-11)。色はトークンだけ */
+        .plan-cue { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 12px; border-radius: 11px; background: var(--ops-bg); color: var(--ops-deep); font-size: 11.5px; font-weight: 800; line-height: 1.5; margin: 0 0 10px; }
+        .plan-cue small { font-weight: 700; color: var(--t-body); }
+        .plan-cue .go { margin-left: auto; font: inherit; font-weight: 900; border: none; cursor: pointer; background: var(--ops-solid); color: var(--ops-ink); padding: 6px 11px; border-radius: 999px; white-space: nowrap; }
+        .plan-cond { border: 1px solid var(--line); border-radius: 13px; padding: 10px 13px; background: var(--s1); margin: 0 0 12px; }
+        .plan-cond .row { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 6px 10px; padding: 6px 0; }
+        .plan-cond .row .k { font-size: 11px; font-weight: 900; color: var(--t-strong); letter-spacing: 0.3px; }
+        .plan-cond .row .hint { grid-column: 2; font-size: 10.5px; color: var(--t-muted); font-weight: 700; line-height: 1.5; }
+        @media (max-width: 480px) { .plan-cond .row { grid-template-columns: 1fr; gap: 4px; } .plan-cond .row .hint { grid-column: 1; } }
+        .plan-seg { display: inline-flex; gap: 2px; background: var(--s2); border-radius: 10px; padding: 2px; flex-wrap: wrap; }
+        .plan-seg button { font-family: inherit; font-size: 11.5px; font-weight: 800; border: none; cursor: pointer; border-radius: 8px; padding: 6px 11px; background: transparent; color: var(--t-body); white-space: nowrap; }
+        .plan-seg button[aria-pressed="true"] { background: var(--card); color: var(--t-ink); box-shadow: 0 1px 3px rgba(var(--ink-rgb), 0.14); }
+        .plan-cond .auto { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 0 2px; border-top: 1px dashed var(--line); margin-top: 4px; }
+        .plan-cond .auto .k { font-size: 10.5px; font-weight: 900; color: var(--t-muted); margin-right: 2px; }
+        .plan-cond .auto .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 900; white-space: nowrap; background: var(--s2); color: var(--t-strong); }
+        .plan-cond .auto .pill.ok { background: var(--ok-bg); color: var(--ok-on); }
+        .plan-cond .auto .pill.ops { background: var(--ops-bg); color: var(--ops-on); }
+        .plan-cond .go { display: flex; justify-content: flex-end; margin-top: 10px; }
+        .plan-go { font-family: inherit; font-weight: 900; font-size: 13px; border: none; cursor: pointer; border-radius: 11px; padding: 11px 18px; background: var(--ops-solid); color: var(--ops-ink); }
+        .plan-stamp { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; font-weight: 800; color: var(--t-body); padding: 8px 11px; border-radius: 10px; background: var(--s1); margin: 0 0 10px; line-height: 1.5; }
+        .plan-stamp b { color: var(--t-ink); font-weight: 900; }
+        .plan-stamp .lk { margin-left: auto; font-family: inherit; font-size: 11px; font-weight: 900; color: var(--ops); background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
+        .plan-focus { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; padding: 9px 12px; border-radius: 12px; background: var(--t-ink); color: var(--card); font-size: 11.5px; font-weight: 800; line-height: 1.45; }
+        .plan-focus small { font-weight: 700; opacity: 0.8; font-size: 10.5px; }
+        .plan-focus .x { margin-left: auto; font-family: inherit; font-size: 11px; font-weight: 900; border: none; cursor: pointer; border-radius: 999px; padding: 6px 11px; background: rgba(var(--paper-rgb), 0.14); color: var(--card); }
+        .plan-next { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+        .plan-next .k { font-size: 10.5px; font-weight: 900; letter-spacing: 0.3px; color: var(--t-muted); margin-right: 4px; }
         /* 📈 消化のペース (運営ボード 当日・段階4)。色はトークンだけ — canvas ではなく div なので切り替えに追随する */
         .ops-pace { display: flex; align-items: flex-end; gap: 2px; height: 64px; padding: 0 1px; }
         .ops-pace i { flex: 1 1 0; min-width: 0; display: block; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--track); }
@@ -4246,26 +4274,41 @@
                 <div id="opsResvList"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
-            <!-- 最適凸プラン -->
+            <!-- 最適凸プラン (パズル盤 ①・2026-09-11: 条件を選んで → 算出。判定は js/domain/planBoard.js) -->
             <div class="dc-card">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">最適凸プラン算出</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button id="opsPlanStickyBtn" onclick="toggleOpsPlanSticky()" title="前回配信した割当をどう扱うか。「前回を尊重」= 実現不能か、変えると明確に得なとき以外は前回どおりの割当にする (メンバーを振り回さない)。「ゼロから」= 毎回まっさらに組み直す (従来の動き)" style="padding:7px 11px;border-radius:8px;border:1px dashed rgba(var(--ink-rgb), 0.18);background:var(--card);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">🔗 前回を尊重</button>
-                        <button id="opsPlanStartModeBtn" onclick="toggleOpsPlanStartMode()" title="プランの起点時刻: 当日中は「今から」、前日の準備は「朝5時から」でレイド日フルのプランを組めます" style="padding:7px 11px;border-radius:8px;border:1px dashed rgba(var(--ink-rgb), 0.18);background:var(--card);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">🕐 今から</button>
-                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:false})" style="padding:7px 11px;border-radius:8px;border:none;background:var(--t-ink);color:var(--card);font-size:11px;font-weight:800;cursor:pointer;"><span data-sp-icon="users" data-sp-size="12"></span> 全員</button>
-                        <button onclick="computeAndRenderOptimalPlan({onlyAvailableNow:true})" style="padding:7px 11px;border-radius:8px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;">⏰ 凸可能のみ</button>
-                        <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));color:var(--on-fill);font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(108,66,240,0.35);"><span data-sp-icon="camera" data-sp-size="13"></span> 共有画像</button>
-                        <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのホームにこのプランを配信 (通知なし)" style="padding:7px 11px;border-radius:8px;border:none;background:linear-gradient(180deg,var(--ok-solid),var(--ok-solid));color:var(--on-fill);font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(24,194,107,0.35);"><span data-sp-icon="send" data-sp-size="13"></span> 配信</button>
-                        <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランを取り下げてメンバーの画面から消す" style="display:none;padding:7px 11px;border-radius:8px;border:1px solid rgba(255,61,68,0.35);background:var(--card);color:var(--attr-fire);font-size:11px;font-weight:800;cursor:pointer;">🚫 配信中止</button>
-                    </div>
                 </div>
                 <!-- 最終配信の状況 (L5 運営ガード・2026-09-07)。運営3人が別々に組み直していた第44回は、
                      いま誰の配信が生きているのかが画面から分からなかった。配信が無いまま時間が経つのも警告する -->
-                <div id="opsPlanPubStatus" data-ops-only style="display:none;margin:0 0 10px 0;padding:8px 11px;border-radius:10px;font-size:11px;font-weight:800;line-height:1.55;"></div>
-                <p style="margin:0 0 12px 0;font-size:11px;color:var(--t-muted);line-height:1.5;">現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します。低レベルは低SLv・高レベルは高SLvに割当（高SLvを後半に温存）。火力が尽きたレベルで停止し、攻略可能範囲を表示します。</p>
+                <div id="opsPlanPubStatus" data-ops-only style="display:none;margin:0 0 6px 0;padding:8px 11px;border-radius:10px;font-size:11px;font-weight:800;line-height:1.55;"></div>
+                <div style="display:flex;justify-content:flex-end;margin:0 0 10px 0;">
+                    <button id="opsPlanUnpublishBtn" onclick="handleOpsUnpublishPlan()" title="配信中のプランをメンバーの画面に残したまま「運営が組み直し中です」と表示する" style="display:none;padding:6px 11px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11px;font-weight:800;cursor:pointer;"></button>
+                </div>
+                <!-- きっかけ: 前回の算出のあとに模擬が更新された / 締め凸コンソールの手詰まり (renderOpsPlanCue が描く) -->
+                <div id="opsPlanCue" class="plan-cue" style="display:none;"></div>
+                <!-- 条件: 3つだけ選ぶ。自動で効くものは見せるだけ -->
+                <div class="plan-cond" id="opsPlanCond">
+                    <div class="row"><span class="k">対象</span>
+                        <div class="plan-seg" role="group" aria-label="対象"><button type="button" data-k="all" onclick="setOpsPlanWho('all')">全員</button><button type="button" data-k="now" onclick="setOpsPlanWho('now')">今動ける人だけ</button></div>
+                        <span class="hint">残り凸のあるメンバー全員 / いま戦闘可能時間の人だけ (締め凸の相談向け)</span></div>
+                    <div class="row"><span class="k">起点</span>
+                        <div class="plan-seg" role="group" aria-label="起点"><button type="button" data-k="now" onclick="setOpsPlanStartMode('now')">今から</button><button type="button" data-k="day" onclick="setOpsPlanStartMode('day')">朝5時から</button></div>
+                        <span class="hint">当日は「今から」。前日の準備は「朝5時から」でレイド日いちにちぶんを組む</span></div>
+                    <div class="row"><span class="k">前回の配信</span>
+                        <div class="plan-seg" role="group" aria-label="前回の配信"><button type="button" id="opsPlanStickyBtn" data-k="keep" onclick="setOpsPlanSticky(true)">尊重する</button><button type="button" data-k="fresh" onclick="setOpsPlanSticky(false)">ゼロから</button></div>
+                        <span class="hint">尊重 = 実現不能か、変えると明確に得なとき以外は前回どおり (メンバーを振り回さない)。ゼロから = まっさらに組み直す</span></div>
+                    <div class="auto"><span class="k">自動で効くもの</span><span id="opsPlanAutoChips"></span></div>
+                    <div class="go"><button type="button" class="plan-go" onclick="computeAndRenderOptimalPlan()">🧮 この条件で算出</button></div>
+                </div>
                 <div id="opsOptimalPlan">
-                    <p style="color:var(--t-muted);font-size:12px;">「プラン算出」を押して計算してください。</p>
+                    <p style="color:var(--t-muted);font-size:12px;">「この条件で算出」を押すと、ここに凸順と時間割が出ます。現在の残りHPから Lv1〜3 を通しで攻略する凸順を提案します (低レベルは低SLv・高レベルは高SLv優先、Lv3踏破後はボス5♾️へ)。</p>
+                </div>
+                <!-- 算出したあとの操作 (以前は条件と同じ列に混ざっていた) -->
+                <div id="opsPlanNext" class="plan-next" style="display:none;">
+                    <span class="k">次にやること</span>
+                    <button id="opsPlanPublishBtn" onclick="handleOpsPublishPlan()" title="全メンバーのホームにこのプランを配信 (通知なし)" style="padding:9px 14px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:900;cursor:pointer;">📤 このプランを配信</button>
+                    <button id="opsPlanShareBtn" onclick="handleOpsPlanImageExport()" title="Discord に貼れる画像を生成 (リスト/時間割の表示モードに連動)" style="padding:8px 12px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:11.5px;font-weight:800;cursor:pointer;">📸 共有画像</button>
                 </div>
             </div>
 
@@ -9141,6 +9184,10 @@
                 inner = '<p style="font-size:12px;color:var(--attr-fire);font-weight:700;">プランの表示に失敗しました。運営に再配信を依頼してください。</p>';
             }
             // 🔄 自分が確認したあとに運営が組み直した → 割当が変わっている可能性がある
+            // 「この条件で組んだ」(パズル盤 ①): 運営が焼き込んだ条件を本人にも1行で見せる (無い古いプランは何も出さない)
+            const condLine = (plan?.conditions && window.planBoardDomain)
+                ? `<p style="margin:0 0 8px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">🧮 ${escapeHtml(window.planBoardDomain.conditionSummary(plan.conditions))}${plan.conditions.computedBy ? ` · ${escapeHtml(plan.conditions.computedBy)} が算出` : ''}</p>`
+                : '';
             const updatedBanner = ack?.updated
                 ? `<p style="margin:0 0 8px 0;padding:9px 12px;border-radius:10px;background:rgba(108,66,240,0.12);font-size:12px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🔄 <b>プランが更新されました</b><br><span style="font-weight:700;font-size:11px;">前に確認したときから割当が変わっているかもしれません。下の内容をもう一度ご確認ください。</span></p>`
                 : '';
@@ -9164,6 +9211,7 @@
                     : '<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:rgba(24,194,107,0.10);font-size:11.5px;font-weight:800;color:var(--ok-deep);">✅ 前回の配信から、あなたの割当は変わっていません</p>';
             body.innerHTML = `
                 ${resvStaleBanner}${frozenBanner}${changeBanner}
+                ${condLine}
                 ${updatedBanner}
                 ${stale ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:var(--warn-deep);">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
                 ${tabs}
@@ -16314,6 +16362,8 @@
             renderOpsRemainingList();
             renderOpsPace();                       // 📈 消化のペース (盤面と同じ鮮度)
             renderOpsRecent();                     // 🔁 直近の動き (打診は 10 秒のポーリングでも描き直す)
+            _syncOpsPlanCondUi();                  // 🧮 条件パネル (対象 / 起点 / 前回の配信) を状態に合わせる
+            renderOpsPlanCue();                    // 🧮 きっかけ (前回の算出のあとに模擬が更新されたか)
             renderOpsMemberStatus(snapshot);       // 👥 メンバー状況 (運営ONのときだけ中で取得・描画)
             renderOpsReservations();               // 🔒 凸の予約 (同上)
             renderOpsGrowth();                     // 🧬 育成データの取り込み (同上)
@@ -19939,20 +19989,29 @@
         //   'now' = 現在時刻から (当日運用)
         //   'day' = 朝5時(リセット直後)から — 前日の夜に翌日フルのプランを準備できる
         let _opsPlanStartMode = 'now';
-        function toggleOpsPlanStartMode() {
-            _opsPlanStartMode = _opsPlanStartMode === 'now' ? 'day' : 'now';
-            const btn = document.getElementById('opsPlanStartModeBtn');
-            if (btn) {
-                const day = _opsPlanStartMode === 'day';
-                btn.textContent = day ? '🌅 朝5時から' : '🕐 今から';
-                btn.style.background = day ? 'rgba(245,158,11,0.10)' : 'var(--card)';
-                btn.style.color = day ? 'var(--warn-deep)' : 'var(--t-strong)';
-                btn.style.borderColor = day ? 'rgba(245,158,11,0.45)' : 'rgba(var(--ink-rgb), 0.18)';
-            }
-            if (_opsLastPlan) {
-                // 直前と同じ対象範囲で再算出
-                computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
-            }
+        // 対象 (全員 / 今動ける人だけ)。以前は「全員」「⏰凸可能のみ」という2つの算出ボタンが条件を兼ねていた (パズル盤 ①)
+        const _OPS_PLAN_WHO_KEY = 'shirisuko_ops_plan_who';
+        let _opsPlanWho = 'all';
+        try { _opsPlanWho = localStorage.getItem(_OPS_PLAN_WHO_KEY) === 'now' ? 'now' : 'all'; } catch (_) { /* 記憶できなくても動く */ }
+        // 条件パネルの3つのセグメントを状態に合わせる (どれを押しても、ここが唯一の描き直し)
+        function _syncOpsPlanCondUi() {
+            const set = (label, cur) => document.querySelectorAll(`#opsPlanCond .plan-seg[aria-label="${label}"] button`)
+                .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === cur)));
+            set('対象', _opsPlanWho);
+            set('起点', _opsPlanStartMode);
+            set('前回の配信', _opsPlanSticky ? 'keep' : 'fresh');
+        }
+        function setOpsPlanWho(who) {
+            _opsPlanWho = who === 'now' ? 'now' : 'all';
+            try { localStorage.setItem(_OPS_PLAN_WHO_KEY, _opsPlanWho); } catch (_) { /* noop */ }
+            _syncOpsPlanCondUi();
+        }
+        function setOpsPlanStartMode(mode) {
+            _opsPlanStartMode = mode === 'day' ? 'day' : 'now';
+            _syncOpsPlanCondUi();
+        }
+        function toggleOpsPlanStartMode() {   // 旧トグル (互換)。条件パネルは setOpsPlanStartMode を使う
+            setOpsPlanStartMode(_opsPlanStartMode === 'now' ? 'day' : 'now');
         }
         // snapshot を渡せば「そのロードで得た盤面」で算出する (並行ロード時に
         // opsStore が世代ガードで古い結果を保存しない契約のため、load() の戻り値を使う)
@@ -19985,19 +20044,14 @@
         const _OPS_PLAN_STICKY_KEY = 'shirisuko_ops_plan_sticky';
         let _opsPlanSticky = true;
         try { _opsPlanSticky = localStorage.getItem(_OPS_PLAN_STICKY_KEY) !== '0'; } catch (_) { /* private mode 等 */ }
-        function _syncOpsPlanStickyBtn() {
-            const btn = document.getElementById('opsPlanStickyBtn');
-            if (!btn) return;
-            btn.textContent = _opsPlanSticky ? '🔗 前回を尊重' : '🆕 ゼロから';
-            btn.style.background = _opsPlanSticky ? 'rgba(24,194,107,0.12)' : 'var(--card)';
-            btn.style.color = _opsPlanSticky ? 'var(--ok-deep)' : 'var(--t-strong)';
-            btn.style.borderColor = _opsPlanSticky ? 'rgba(24,194,107,0.45)' : 'rgba(var(--ink-rgb), 0.18)';
-        }
-        function toggleOpsPlanSticky() {
-            _opsPlanSticky = !_opsPlanSticky;
+        function _syncOpsPlanStickyBtn() { _syncOpsPlanCondUi(); }   // 条件パネルのセグメントに反映 (id=opsPlanStickyBtn は「尊重する」)
+        function setOpsPlanSticky(on) {
+            _opsPlanSticky = !!on;
             try { localStorage.setItem(_OPS_PLAN_STICKY_KEY, _opsPlanSticky ? '1' : '0'); } catch (_) { /* 記憶できなくても動く */ }
             _syncOpsPlanStickyBtn();
-            if (_opsLastPlan) computeAndRenderOptimalPlan({ onlyAvailableNow: !!_opsLastPlan.onlyAvailableNow });
+        }
+        function toggleOpsPlanSticky() {   // 旧トグル (互換)
+            setOpsPlanSticky(!_opsPlanSticky);
         }
         _syncOpsPlanStickyBtn();
 
@@ -20062,6 +20116,7 @@
             //   別シーズンの配信は基準にしない (盤面が違うので比べる意味がない)
             let previousPlan = null;
             let basisPlanId = null;   // 何を基準に組んだか。配信直前に「基準が変わっていないか」を照合する
+            let basisPub = null;      // 条件の焼き込み用 (誰が・いつ配信したものを尊重したか)
             if (_opsPlanSticky) {
                 try {
                     const pub = typeof window.supabaseGetPublishedPlan === 'function'
@@ -20069,6 +20124,7 @@
                     if (pub && Number(pub.season_id) === Number(snapshot?.season?.id)) {
                         previousPlan = pub.plan || null;
                         basisPlanId = pub.id ?? null;
+                        basisPub = pub;
                     }
                 } catch (e) { console.warn('[plan] 配信中プランの取得skip (安定化なしで算出):', e?.message || e); }
                 if (seq !== _opsPlanSeq) return;
@@ -20104,6 +20160,9 @@
             // ★ await のあとは必ず世代を見る (Codex指摘 2026-09-11)。
             //   見ないと、待っている間に押し直された新しい算出を古い結果が上書きする
             if (seq !== _opsPlanSeq) return;
+            // 対象は条件パネル (_opsPlanWho)。承認後の組み直しなど、呼び出し側が明示したときはそちら (画面の選択は変えない)
+            const onlyNow = options.onlyAvailableNow != null ? !!options.onlyAvailableNow : _opsPlanWho === 'now';
+            options = { ...options, onlyAvailableNow: onlyNow };
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:var(--bad);">プラン算出に失敗しました。</p>';
@@ -20123,10 +20182,105 @@
             //   配信直前にこの ID と最新を照合して、ずれていたら組み直させる
             plan.basisPlanId = basisPlanId;
             plan.stickyOn = !!_opsPlanSticky;
+            // ★ 「この条件で組んだ」を焼き込む (パズル盤 ①・2026-09-11)。配信されたプランにも残るので、
+            //   交代した運営が「どんな状態で算出されたものか」を読める。判定は planBoardDomain が唯一
+            plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
+                who: onlyNow ? 'now' : 'all',
+                from: _opsPlanStartMode,
+                prev: _opsPlanSticky ? 'keep' : 'fresh',
+                reservations: (Array.isArray(reservations) && window.reservationsDomain)
+                    ? reservations.filter(r => window.reservationsDomain.isFixed(r)).length : 0,
+                excluded: (snapshot?.players || []).reduce((n, p) => n + Object.keys(p.excludedByAttr || {}).length, 0),
+                unavailable: (snapshot?.players || []).filter(p => p.unavailableThisSeason).length,
+                publishedBy: basisPub?.published_by_name ?? null,
+                publishedAt: basisPub?.published_at ?? null,
+                computedBy: getCurrentIdentity()?.name ?? null,
+                computedAt: new Date().toISOString(),
+            }) : null;
             _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
             _setOpsPlanPicks(plan, 'local');   // 残凸表の「採用PT」枠取りに反映
+            _opsPlanFocus = null;              // 前の算出で選んでいたチップは新しい盤には無いかもしれない
             renderOpsPlanView();
             _syncOpsUnpublishBtn();
+            renderOpsPlanCue();                // 「模擬が N 件更新」は算出し直したら消える
+        }
+
+        // ===== 条件の焼き込み / 自動で効くもの / きっかけ (パズル盤 ①・2026-09-11) =====
+        const _hhmm = (iso) => {
+            const d = new Date(iso || '');
+            if (Number.isNaN(d.getTime())) return '';
+            return d.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
+        };
+        // 結果の上に出す「この条件で組みました」
+        function _planCondStampHtml(c) {
+            const dom = window.planBoardDomain;
+            if (!dom || !c) return '';
+            const esc = escapeHtml;
+            const at = _hhmm(c.computedAt);
+            const by = c.computedBy ? ` ${esc(c.computedBy)} が算出` : ' 算出';
+            const basis = (c.prev === 'keep' && c.publishedBy) ? ` (基準: ${esc(c.publishedBy)} ${_hhmm(c.publishedAt)} の配信)` : '';
+            return `<div class="plan-stamp">🧮 <b>${esc(dom.conditionSummary(c))}</b><span>${at ? `· ${at} に` : '·'}${by}${basis}</span>`
+                + `<button type="button" class="lk" onclick="_opsPlanShowCond()">条件を変える</button></div>`;
+        }
+        function _opsPlanShowCond() {
+            const el = document.getElementById('opsPlanCond');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        // 「自動で効くもの」のチップ (押した時点の材料で描く。取れていないものは — で出し、0 と混同させない)
+        function _renderOpsPlanAutoChips() {
+            const el = document.getElementById('opsPlanAutoChips');
+            if (!el) return;
+            const snap = opsStore.get();
+            const rv = window.reservationsDomain;
+            const resv = (typeof _resv !== 'undefined' && Array.isArray(_resv.rows) && rv) ? _resv.rows.filter(r => rv.isFixed(r)).length : null;
+            const players = snap?.players || [];
+            const excluded = players.reduce((n, p) => n + Object.keys(p.excludedByAttr || {}).length, 0);
+            const unavailable = players.filter(p => p.unavailableThisSeason).length;
+            const pub = (typeof _opsPublishedPlan !== 'undefined' && _opsPublishedPlan && snap?.season && Number(_opsPublishedPlan.season_id) === Number(snap.season.id)) ? _opsPublishedPlan : null;
+            const esc = escapeHtml;
+            el.innerHTML = `<span class="pill ok" title="本人が引き受けた予約。ソルバーが先に置いて残りを組む">🔒 予約 ${resv == null ? '—' : resv}</span>`
+                + `<span class="pill" title="運営が除外した模擬提出 (残凸表の🧹整理)">🚫 除外 ${snap ? excluded : '—'}</span>`
+                + `<span class="pill" title="「今回は難しい」と申告した人。候補から外れる">✋ 難しい ${snap ? unavailable : '—'}</span>`
+                + (pub ? `<span class="pill ops" title="「尊重する」の基準になる配信">📤 配信中: ${esc(pub.published_by_name || '運営')} ${_hhmm(pub.published_at)}</span>`
+                       : `<span class="pill" title="配信が無いので「尊重する」は効かない (ゼロからと同じ)">📤 配信なし</span>`);
+        }
+        // きっかけ: 前回の算出 (無ければ配信) のあとに模擬が更新されていたら「組み直す」を促す
+        let _planCueSeq = 0;
+        async function renderOpsPlanCue() {
+            const el = document.getElementById('opsPlanCue');
+            if (!el) return;
+            const seq = ++_planCueSeq;
+            const since = _opsLastPlan?.conditions?.computedAt
+                || ((typeof _opsPublishedPlan !== 'undefined' && _opsPublishedPlan && opsStore.get()?.season
+                    && Number(_opsPublishedPlan.season_id) === Number(opsStore.get().season.id)) ? _opsPublishedPlan.published_at : null);
+            if (!since || typeof window.supabaseCountMockUpdatesSince !== 'function' || !_opsMode) { el.style.display = 'none'; return; }
+            let n = null;
+            try { n = await window.supabaseCountMockUpdatesSince(since); } catch { n = null; }
+            if (seq !== _planCueSeq) return;
+            if (!n) { el.style.display = 'none'; return; }
+            el.style.display = '';
+            el.innerHTML = `🔔 <span>前回の${_opsLastPlan?.conditions?.computedAt ? '算出' : '配信'} (${_hhmm(since)}) のあと、<b>模擬の提出が ${n} 件</b>更新されました`
+                + `<br><small>締め凸コンソールで「今」も「待つ」も無い (手詰まり) ときも、ここから組み直します</small></span>`
+                + `<button type="button" class="go" onclick="computeAndRenderOptimalPlan()">組み直す</button>`;
+        }
+        // ② 時間割で選んだチップ (運営だけ)。その人の戦闘可能時間を光らせ、動かせる幅を出す
+        let _opsPlanFocus = null;
+        function _opsPlanToggleFocus(memberId) {
+            _opsPlanFocus = (_opsPlanFocus != null && String(_opsPlanFocus) === String(memberId)) ? null : memberId;
+            renderOpsPlanView();
+        }
+        function _opsPlanFocusBarHtml(plan) {
+            if (_opsPlanFocus == null || !_opsLastPlan) return '';
+            const dom = window.planBoardDomain, av = window.availabilityDomain;
+            const p = (opsStore.get()?.players || []).find(x => String(x.id) === String(_opsPlanFocus));
+            if (!p || !dom) return '';
+            const esc = escapeHtml;
+            const win = dom.windowOf(p, HOUR_ORDER);
+            const st = dom.stiffness(win, _planNowIdx(plan) ?? 0);
+            const hours = av && typeof av.labelOf === 'function' ? av.labelOf(p.availableSlots || []) : '';
+            return `<div class="plan-focus"><span>${esc(p.name)}${p.flexTime ? ' · ⏳隙間型' : ''}</span>`
+                + `<small>出られる時間 ${esc(hours || (p.flexTime ? 'いつでも' : '未登録'))} · 動かせる幅 <b>${esc(st.label)}</b> (これから ${st.count} コマ)</small>`
+                + `<button type="button" class="x" onclick="_opsPlanToggleFocus(null)">閉じる</button></div>`;
         }
 
         // ===== 残凸表に出す「プランで採用された属性/編成」 =====
@@ -20246,7 +20400,7 @@
                     <div style="font-size:16px;font-weight:900;color:${color};font-variant-numeric:tabular-nums;margin-top:2px;">${val}</div>
                 </div>`;
 
-            const summary = `
+            let summary = `
                 <div style="border-radius:15px;background:${heroBg};border:1px solid ${heroColor}33;padding:14px;margin-bottom:14px;">
                     <div style="display:flex;align-items:center;gap:11px;">
                         <div style="width:42px;height:42px;flex:none;border-radius:12px;background:${heroColor};display:flex;align-items:center;justify-content:center;font-size:21px;box-shadow:0 4px 11px ${heroColor}55;">${reachedAll ? '🏆' : (reachedSome ? '⚔️' : '⚠️')}</div>
@@ -20302,8 +20456,11 @@
                     const emptyMsg = b.infinite ? 'ボス5の弱点属性で出せる候補がいません (残凸なし or 未提出)'
                         : b.targetHpB <= 0 ? '既に撃破済み'
                         : (b.timeConstrained ? '火力はありますが、時間内に凸できるメンバーがいません' : 'この属性で凸できる候補がいません');
+                    // 手詰まり (倒したいのに出せる人がいない) は、プランを組み直す入口をここに置く (パズル盤 ①・2026-09-11)
+                    const replanLink = (b.attacks.length === 0 && b.targetHpB > 0)
+                        ? ` <button type="button" onclick="_opsJump('opsSecPlan')" style="margin-left:6px;padding:4px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-strong);font-size:10.5px;font-weight:900;cursor:pointer;">プランを組み直す ›</button>` : '';
                     const attacksHtml = b.attacks.length === 0
-                        ? `<div style="padding:10px 12px;font-size:11.5px;font-weight:700;color:${b.targetHpB <= 0 ? 'var(--t-muted)' : (b.timeConstrained ? 'var(--warn-deep)' : 'var(--attr-fire)')};">${emptyMsg}</div>`
+                        ? `<div style="padding:10px 12px;font-size:11.5px;font-weight:700;color:${b.targetHpB <= 0 ? 'var(--t-muted)' : (b.timeConstrained ? 'var(--warn-deep)' : 'var(--attr-fire)')};">${emptyMsg}${replanLink}</div>`
                         : b.attacks.map((a, i) => {
                             const isMe = _myId != null && a.memberId === _myId;
                             // 左端の固定幅 時刻カラム (配信版「わたしの凸」と同じ設計)。
@@ -20438,8 +20595,21 @@
             const viewBtn = (mode, icon, label) => `<button onclick="setOpsPlanViewMode('${mode}')" style="flex:1;padding:7px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;letter-spacing:0.2px;${_opsPlanViewMode === mode ? 'background:var(--t-ink);color:var(--card);' : 'background:var(--s2);color:var(--t-strong);'}">${icon} ${label}</button>`;
             const teamsBtn = `<button onclick="toggleOpsPlanTeams()" title="時間割チップに編成5キャラを表示 (共有画像にも反映)" style="flex:none;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;${_opsPlanShowTeams ? 'background:var(--ops-solid);color:var(--ops-ink);' : 'background:var(--s2);color:var(--t-strong);'}">👥 編成</button>`;
             const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${teamsBtn}</div>`;
+            // ② 時間割の読みやすさ (運営だけ): 選んだ人の戦闘可能時間を光らせ、チップに「硬い / 狭い」を出す
+            const pbd = window.planBoardDomain;
+            const playersById = new Map((opsStore.get()?.players || []).map(p => [String(p.id), p]));
+            const fromIdx = _planNowIdx(plan) ?? 0;
+            const focusPlayer = _opsPlanFocus != null ? playersById.get(String(_opsPlanFocus)) : null;
+            const focusWindow = (pbd && focusPlayer) ? pbd.windowOf(focusPlayer, HOUR_ORDER) : null;
+            const stiffOf = pbd ? (memberId) => {
+                const p = playersById.get(String(memberId));
+                if (!p) return null;
+                const st = pbd.stiffness(pbd.windowOf(p, HOUR_ORDER), fromIdx);
+                return st.count <= 3 ? st.label : null;   // 柔らかい人は書かない (硬い / 狭い だけが目立てばよい)
+            } : null;
             const bodyHtml = _opsPlanViewMode === 'timetable'
-                ? _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops' })
+                ? _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops',
+                    focusMemberId: _opsPlanFocus, focusWindow, stiffOf }) + _opsPlanFocusBarHtml(plan)
                 : levelSections;
             // ★ L1 の結果を運営に見せる。何も出さないと「なぜこの割当なのか」が分からず、
             //   安定化が効いているのか壊れているのかを運営が判断できない
@@ -20465,7 +20635,21 @@
                     + `${ok ? '🔗' : '🆕'} ${esc(REASON_JP[st.reason] || st.reason)}${esc(detail)}`
                     + `<span style="font-weight:700;opacity:0.8;"> · 前回の割当 ${Number(st.stickyCount)}件が基準</span></div>`;
             }
+            summary = _planCondStampHtml(plan.conditions) + summary;   // 🧮 「この条件で組みました」を結果の頭に (パズル盤 ①)
             el.innerHTML = summary + stickyHtml + viewToggle + bodyHtml + warnHtml;
+            // 算出したあとの操作 (配信 / 共有画像) は結果の下に
+            const next = document.getElementById('opsPlanNext');
+            if (next) next.style.display = '';
+            // チップのタップで「その人の時間」を光らせる (委譲。innerHTML で描き直しても生きる)
+            if (!el.dataset.focusDelegated) {
+                el.dataset.focusDelegated = '1';
+                el.addEventListener('click', (ev) => {
+                    if (ev.target.closest('button, a, input, select, label')) return;
+                    const chip = ev.target.closest('[data-member]');
+                    if (!chip) return;
+                    _opsPlanToggleFocus(chip.dataset.member);
+                });
+            }
         }
 
         // ===== 時間割ビュー 共通ヘルパー =====
@@ -20502,10 +20686,14 @@
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
                 ? `<div style="display:flex;flex-wrap:wrap;justify-content:center;row-gap:2px;margin-top:2px;">${renderTeamSnippet(a.team, { size: 12 })}</div>` : '';
             const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeMismatch ? ` (時間外·希望${a.nearestHourLabel || '?'})` : ''}${a.flex ? ' (隙間時間型)' : ''}${a.timeUnknown ? ' (戦闘可能時間 未登録)' : ''}${a.reserved ? ' (🔒踏破に使わずボス5温存)' : ''}`;
-            return `<div title="${esc(tip)}" style="background:${bg};border:${border};border-radius:6px;padding:2px 3px;overflow:hidden;">
+            // ② 動かせる幅 (運営の時間割だけ): 硬い / 狭い の人にだけ小さく書く (パズル盤・2026-09-11)
+            const stiff = typeof opts.stiffOf === 'function' ? opts.stiffOf(a.memberId) : null;
+            const stiffRow = stiff ? `<div style="font-size:8px;font-weight:900;color:${hl ? nameColor : 'var(--warn-deep)'};text-align:center;line-height:1.1;">${esc(stiff)}</div>` : '';
+            const focused = opts.focusMemberId != null && String(a.memberId) === String(opts.focusMemberId);
+            return `<div data-member="${esc(String(a.memberId ?? ''))}" title="${esc(tip)}" style="background:${bg};border:${border};border-radius:6px;padding:2px 3px;overflow:hidden;${focused ? 'box-shadow:0 0 0 2px var(--ops-solid);' : ''}${opts.filterKey === 'ops' ? 'cursor:pointer;' : ''}">
                 <div style="font-size:9px;font-weight:800;color:${nameColor};line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${mark ? mark + ' ' : ''}${label}</div>
                 <div style="font-size:9px;font-weight:900;color:${dmgColor};text-align:center;font-variant-numeric:tabular-nums;line-height:1.15;">${a.dmgB.toFixed(1)}</div>
-                ${teamRow}
+                ${stiffRow}${teamRow}
             </div>`;
         }
 
@@ -20694,7 +20882,10 @@
                     }
                     const isNow = r.hourIdx === nowIdx;
                     const labelColor = r.flexRow ? 'var(--warn-deep)' : (isNow ? 'var(--ops)' : 'var(--t-muted)');
-                    cells.push(`<div title="${r.flexRow ? '隙間時間型: 時間帯は本人の都合次第' : ''}" style="font-size:9px;font-weight:900;color:${labelColor};display:flex;align-items:center;justify-content:flex-end;padding:5px 2px 0 0;border-top:1px solid rgba(var(--ink-rgb), 0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
+                    // ② 選んだ人の戦闘可能時間の行だけ残し、他は沈める (パズル盤・運営だけ)
+                    const inWin = opts.focusWindow instanceof Set ? (r.flexRow || opts.focusWindow.has(r.hourIdx)) : null;
+                    const rowLabelColor = inWin === true ? 'var(--ops)' : labelColor;
+                    cells.push(`<div data-h="${r.hourIdx ?? ''}" title="${r.flexRow ? '隙間時間型: 時間帯は本人の都合次第' : ''}" style="font-size:9px;font-weight:900;color:${rowLabelColor};${inWin === false ? 'opacity:0.45;' : ''}display:flex;align-items:center;justify-content:flex-end;padding:5px 2px 0 0;border-top:1px solid rgba(var(--ink-rgb), 0.05);white-space:nowrap;">${isNow ? '▼' : ''}${r.label}</div>`);
                     for (const { bm, ci } of visible) {
                         const cell = r.cells[ci];
                         // メンバーチップは「持っていくPT属性 (弱点)」の色にする:
@@ -20712,7 +20903,7 @@
                         }).join('');
                         const chips = doneChips + cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
                         const clearMark = cell.clears ? '<div style="font-size:10px;font-weight:900;color:var(--ok);text-align:center;">💀撃破</div>' : '';
-                        cells.push(`<div style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${isNow ? 'background:rgba(108,66,240,0.04);' : ''}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
+                        cells.push(`<div data-h="${r.hourIdx ?? ''}" style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${isNow ? 'background:rgba(108,66,240,0.04);' : ''}${inWin === true ? 'background:var(--ops-bg);' : (inWin === false ? 'opacity:0.45;' : '')}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
                     }
                 }
             }
@@ -26055,6 +26246,7 @@
                     }
                     : null,
             });
+            _renderOpsPlanAutoChips();   // 🧮 条件パネルの「自動で効くもの」も同じ材料で描く
             for (const [id, s] of Object.entries(summaries)) {
                 const el = document.querySelector(`#${id} > .ops-card-head .ops-card-sum`);
                 if (el) { el.textContent = s.text; el.classList.toggle('bad', !!s.bad); }
