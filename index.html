@@ -20847,6 +20847,8 @@
         function setOpsPlanChipFilter(f) {
             const ok = window.planBoardDomain?.CHIP_FILTERS || ['all', 'promise', 'pinned', 'fixed'];
             _opsPlanChipFilter = ok.includes(f) ? f : 'all';
+            // ★ 選んでいた駒は捨てる (Codex指摘 2026-09-12): 絞り込みで消えたチップが選ばれたままだと、空に見えるマスをタップして見えない凸を置ける
+            _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
             if (_opsLastPlan) renderOpsPlanView();
         }
 

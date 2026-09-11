@@ -350,7 +350,8 @@ rm -f .claude/hooks/.codex-on      # OFF
     `canPin` を通す (置けないものは固定せず算出に任せる)。入れた固定は `rows` に足して次の判定が数える。
   - **🔒📌 だけ表示** (2026-09-12 ユーザー要望)。時間割の上の「表示: すべて / 🔒 約束 N / 📌 固定 N / 両方」。
     状態 `_opsPlanChipFilter` (端末に覚えない) → `.plan-board[data-chipfilter]` の **CSS だけ**で絞る (チップの札
-    `data-promise` / `data-pinned`、✓済み凸は `.plan-done`)。ピース箱は `data-piece` なので効かない。件数は `planBoardDomain.chipCounts`
+    `data-promise` / `data-pinned`、✓済み凸は `.plan-done`)。ピース箱は `data-piece` なので効かない。件数は `planBoardDomain.chipCounts`。
+    ★ 切り替えは選んでいた駒を捨てる (消えたチップが選ばれたままだと、空に見えるマスに見えない凸を置ける: Codex指摘)
   - **算出し直しても画面の位置を保つ** (2026-09-12 実機FB)。`_opsPlanKeepStart(el, seq)` が算出の頭でカードの高さを
     `min-height` で保ち (計算中の短い表示で文書が縮むと上に詰まる)、`_opsPlanKeepDone(seq)` が描き終えた道と中断する道の
     **全部**で高さを戻して元の位置へ (テストが return の数と突き合わせる)。世代を持つので追い越された古い算出は触らない。

@@ -8648,6 +8648,8 @@ console.log('\ngrowthDomain:');
         // 切り替え: 知らない値は all に倒し、描き直す
         const setter = html.match(/function setOpsPlanChipFilter\(f\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/_opsPlanChipFilter = ok\.includes\(f\) \? f : 'all';/.test(setter) && /if \(_opsLastPlan\) renderOpsPlanView\(\);/.test(setter), '切り替えが値を確かめて描き直していない');
+        // ★ 選んでいた駒は捨てる (Codex指摘): 絞り込みで消えたチップが選ばれたままだと、空に見えるマスをタップして見えない凸を置ける
+        assert.ok(/_opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;\s*if \(_opsLastPlan\) renderOpsPlanView\(\);/.test(setter), '切り替えで選んでいた駒を捨てていない');
         assert.ok(/let _opsPlanChipFilter = 'all';/.test(html) && !/localStorage\.setItem\('shirisuko_plan_chipfilter/.test(html), '既定が all でない / 端末に覚えている (開き直したら全部見えるのが安全)');
         // セグメントは時間割のとき・運営だけ。件数は chipCounts
         const view = html.match(/function renderOpsPlanView\(\)[\s\S]*?\n        \}/)?.[0] || '';
