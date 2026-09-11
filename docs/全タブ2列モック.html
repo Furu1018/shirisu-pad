@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>*{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>全タブ2列モック</title>
+<style>
+    :root {
+        --bg: #F1F3F6; --card: #FFFFFF; --hair: rgba(20,22,26,0.08);
+        --t-ink: #14161A; --t-strong: #3D4249; --t-body: #52575E; --t-muted: #62666e;
+        --s1: #F7F8F9; --s2: #F1F2F4; --line: #E3E5E8; --track: #C9CED3; --dim: #B6BBC1;
+        --ops: #6c42f0; --ops-solid: #6C42F0; --ops-bg: #f0ecfe;
+        --ok: #107e45; --ok-solid: #18C26B; --ok-bg: #e8f9f0;
+        --warn: #996206; --warn-solid: #F59E0B; --warn-bg: #fef5e7;
+        --bad: #d91313; --bad-solid: #EF4444; --bad-bg: #fdecec;
+        --fire: #FF3D44; --water: #2E8BFF; --elec: #9B4DFF; --iron: #FF8A2B; --wind: #18C26B;
+        --nav-surface: #1B1E23; --nav-ink: #F3F5F7; --nav-dim: #A7AEB6; --nav-accent: #7FD1FF;
+        --doc-bg: #E9ECF1; --doc-ink: #14161A; --doc-muted: #5A6069;
+        --new: #6C42F0; --new-bg: #f0ecfe; --move: #996206; --move-bg: #fef5e7;
+    }
+    :root:not([data-theme="light"]) { }
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+            --bg: #14161A; --card: #1C1F25; --hair: rgba(255,255,255,0.10);
+            --t-ink: #F3F5F7; --t-strong: #D6DAE0; --t-body: #B7BCC4; --t-muted: #8D939B;
+            --s1: #22262C; --s2: #2A2F36; --line: #343940; --track: #454B53; --dim: #5C636B;
+            --ops: #A98CFF; --ops-bg: #2A2340; --ok: #4FD98F; --ok-bg: #14301F;
+            --warn: #F0B44B; --warn-bg: #33260C; --bad: #FF7B7B; --bad-bg: #3A1717;
+            --doc-bg: #0E1013; --doc-ink: #F3F5F7; --doc-muted: #9AA1AA;
+            --new: #A98CFF; --new-bg: #2A2340; --move: #F0B44B; --move-bg: #33260C;
+        }
+    }
+    :root[data-theme="dark"] {
+        --bg: #14161A; --card: #1C1F25; --hair: rgba(255,255,255,0.10);
+        --t-ink: #F3F5F7; --t-strong: #D6DAE0; --t-body: #B7BCC4; --t-muted: #8D939B;
+        --s1: #22262C; --s2: #2A2F36; --line: #343940; --track: #454B53; --dim: #5C636B;
+        --ops: #A98CFF; --ops-bg: #2A2340; --ok: #4FD98F; --ok-bg: #14301F;
+        --warn: #F0B44B; --warn-bg: #33260C; --bad: #FF7B7B; --bad-bg: #3A1717;
+        --doc-bg: #0E1013; --doc-ink: #F3F5F7; --doc-muted: #9AA1AA;
+        --new: #A98CFF; --new-bg: #2A2340; --move: #F0B44B; --move-bg: #33260C;
+    }
+
+    body {
+        margin: 0; background: var(--doc-bg); color: var(--doc-ink);
+        font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 16px 60px; }
+
+    /* ---- 説明 ---- */
+    .doc h1 { font-size: 21px; font-weight: 900; letter-spacing: .3px; margin: 0 0 6px; text-wrap: balance; }
+    .doc .lead { font-size: 13px; line-height: 1.75; color: var(--doc-muted); margin: 0 0 14px; max-width: 68ch; }
+    .doc .lead b { color: var(--doc-ink); }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 11.5px; font-weight: 700; color: var(--doc-muted); margin-bottom: 18px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+    /* ---- 操作パネル ---- */
+    .ctl { background: var(--card); border: 1px solid var(--hair); border-radius: 14px; padding: 13px 14px; margin-bottom: 16px;
+           display: flex; flex-direction: column; gap: 11px; }
+    .ctlrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .ctlrow > .k { font-size: 10.5px; font-weight: 900; letter-spacing: .6px; color: var(--t-muted); width: 68px; flex: none; }
+    .seg { display: flex; gap: 2px; background: var(--s2); border-radius: 10px; padding: 2px; flex-wrap: wrap; }
+    .seg button { font: inherit; font-size: 11.5px; font-weight: 800; border: none; cursor: pointer; border-radius: 8px;
+                  padding: 6px 11px; background: transparent; color: var(--t-body); white-space: nowrap; }
+    .seg button[aria-pressed="true"] { background: var(--card); color: var(--t-ink); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+    .seg button .sz { font-size: 9.5px; font-weight: 700; color: var(--t-muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+    .seg button[aria-pressed="true"] .sz { color: var(--t-body); }
+    .swt { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 800; color: var(--t-body);
+           background: var(--s2); border: none; border-radius: 999px; padding: 6px 12px; cursor: pointer; font-family: inherit; }
+    .swt[aria-pressed="true"] { background: var(--ops); color: #fff; }
+
+    /* ---- 端末フレーム ---- */
+    .stagewrap { position: relative; overflow: hidden; margin-bottom: 8px; }
+    .scaler { transform-origin: top left; }
+    .frame { background: var(--bg); border-radius: 16px; overflow: hidden; position: relative;
+             box-shadow: 0 10px 34px rgba(0,0,0,.20); border: 1px solid var(--hair); display: flex; }
+    .meta { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 11px; font-weight: 700;
+            color: var(--doc-muted); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+    .meta b { color: var(--doc-ink); font-weight: 900; }
+
+    /* ---- ナビ ---- */
+    .rail { width: 200px; flex: none; background: var(--nav-surface); color: var(--nav-ink); padding: 14px 10px;
+            display: flex; flex-direction: column; gap: 3px; }
+    .rail .brand { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 900; padding: 4px 8px 14px; letter-spacing: .3px; }
+    .rail .nv { display: flex; align-items: center; gap: 9px; font-size: 12.5px; font-weight: 800; color: var(--nav-dim);
+                padding: 9px 10px; border-radius: 10px; }
+    .rail .nv.on { background: rgba(255,255,255,.10); color: var(--nav-ink); }
+    .rail .nv .bdg { margin-left: auto; font-size: 8.5px; font-weight: 900; background: var(--ops-solid); color: #fff;
+                     padding: 2px 6px; border-radius: 999px; letter-spacing: .3px; }
+    .rail .gap { flex: 1; }
+    .rail .stg { background: rgba(255,255,255,.07); border-radius: 10px; padding: 9px 10px; }
+    .rail .stg .k { font-size: 9px; font-weight: 900; letter-spacing: .8px; color: var(--nav-dim); }
+    .rail .stg .v { font-size: 14px; font-weight: 900; margin: 2px 0 6px; }
+    .rail .stg .bars { display: flex; gap: 3px; }
+    .rail .stg .bars i { flex: 1; height: 3px; border-radius: 999px; background: rgba(255,255,255,.18); }
+    .rail .stg .bars i.on { background: var(--nav-accent); }
+
+    .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .fbody { flex: 1; overflow: auto; padding: 12px; }
+    .botnav { flex: none; height: 54px; background: var(--nav-surface); display: flex; align-items: center; }
+    .botnav .nv { flex: 1; text-align: center; font-size: 9.5px; font-weight: 800; color: var(--nav-dim); }
+    .botnav .nv i { display: block; font-size: 16px; font-style: normal; margin-bottom: 2px; }
+    .botnav .nv.on { color: var(--nav-ink); }
+
+    /* ---- ページ内グリッド ---- */
+    .ttl { font-size: 17px; font-weight: 900; letter-spacing: .3px; color: var(--t-ink); margin-bottom: 2px; }
+    .ttl .sub { display: block; font-size: 10px; font-weight: 700; color: var(--t-muted); margin-top: 3px; letter-spacing: .2px; }
+    .grid { display: grid; gap: 10px; align-items: start; margin-top: 11px; }
+    .grid.c1 { grid-template-columns: minmax(0,1fr); }
+    .grid.c2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.c12 { grid-template-columns: repeat(12, minmax(0,1fr)); }
+    .grid.c1 > * { grid-column: 1 / -1; }
+    .grid.c2 > * { grid-column: span 1; }
+    .grid.c2 > [data-wide] { grid-column: 1 / -1; }
+
+    /* ---- カード ---- */
+    .cd { background: var(--card); border: 1px solid var(--hair); border-radius: 13px; padding: 11px 12px; min-width: 0;
+          position: relative; overflow: hidden; }
+    .cd > h3 { font-size: 12.5px; font-weight: 900; color: var(--t-ink); margin: 0 0 3px; display: flex; align-items: center;
+               gap: 6px; letter-spacing: .2px; }
+    .cd > h3 .s { font-size: 9.5px; font-weight: 700; color: var(--t-muted); letter-spacing: 0; }
+    .cd > h3 .tag { font-size: 8.5px; font-weight: 900; padding: 2px 6px; border-radius: 999px; letter-spacing: .3px; margin-left: auto; flex: none; }
+    .tag.new { background: var(--new-bg); color: var(--new); }
+    .tag.move { background: var(--move-bg); color: var(--move); }
+    .tag.ops { background: var(--ops-bg); color: var(--ops); }
+    .cd .bd { margin-top: 8px; }
+
+    /* skeleton parts */
+    .bar { height: 7px; border-radius: 999px; background: var(--s2); overflow: hidden; }
+    .bar > i { display: block; height: 100%; border-radius: 999px; }
+    .row { display: flex; align-items: center; gap: 7px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 10.5px; }
+    .row:first-child { border-top: none; }
+    .row .no { width: 20px; height: 20px; border-radius: 6px; flex: none; display: grid; place-items: center;
+               color: #fff; font-size: 9.5px; font-weight: 900; }
+    .row .nm { font-weight: 800; color: var(--t-strong); flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row .num { margin-left: auto; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; flex: none; font-size: 10px; }
+    .av { width: 20px; height: 20px; border-radius: 50%; flex: none; background: var(--s2); display: grid; place-items: center;
+          font-size: 9px; font-weight: 900; color: var(--t-body); }
+    .tiles { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; }
+    .tiles.four { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .tile { background: var(--s1); border-radius: 10px; padding: 8px 9px; border: 1px solid var(--line); }
+    .tile .k { font-size: 8.5px; font-weight: 900; letter-spacing: .5px; color: var(--t-muted); }
+    .tile .v { font-size: 15px; font-weight: 900; color: var(--t-ink); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .tile.bad .v { color: var(--bad); }
+    .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+    .chip { font-size: 9.5px; font-weight: 800; padding: 4px 8px; border-radius: 999px; background: var(--s2); color: var(--t-body); white-space: nowrap; }
+    .chip.a { background: var(--ops-bg); color: var(--ops); }
+    .chip.g { background: var(--ok-bg); color: var(--ok); }
+    .chip.r { background: var(--bad-bg); color: var(--bad); }
+    .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn { flex: 1; min-width: 74px; text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 999px; padding: 7px 8px;
+           background: var(--s2); color: var(--t-strong); }
+    .btn.p { background: var(--ops); color: #fff; }
+    .chart { display: flex; align-items: flex-end; gap: 3px; height: 62px; padding-top: 4px; }
+    .chart i { flex: 1; border-radius: 3px 3px 0 0; background: var(--ops); opacity: .8; }
+    .xax { display: flex; gap: 3px; margin-top: 3px; }
+    .xax span { flex: 1; text-align: center; font-size: 7.5px; font-weight: 800; color: var(--t-muted); }
+    table.tb { width: 100%; border-collapse: collapse; font-size: 10px; }
+    table.tb th { text-align: left; font-size: 8.5px; font-weight: 900; color: var(--t-muted); letter-spacing: .4px;
+                  padding: 0 4px 4px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    table.tb td { padding: 4px 4px 4px 0; border-bottom: 1px solid var(--line); color: var(--t-body); font-weight: 700;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    table.tb td.n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 900; color: var(--t-ink); }
+    .hrs { display: flex; gap: 1px; margin-top: 5px; }
+    .hrs i { flex: 1; height: 13px; border-radius: 2px; background: var(--s2); }
+    .hrs i.on { background: var(--ok-solid); }
+    .hrs i.now { background: var(--ops); }
+    .sq { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 5px; }
+    .sq div { aspect-ratio: 3/4; border-radius: 7px; background: var(--s2); border: 1px solid var(--line); }
+    .pan { display: flex; gap: 7px; overflow: hidden; }
+    .pan > div { flex: none; width: 96px; background: var(--s1); border: 1px solid var(--line); border-radius: 9px; padding: 7px; }
+    .ln { height: 6px; border-radius: 999px; background: var(--s2); margin-top: 5px; }
+    .ln.s { width: 60%; } .ln.m { width: 80%; }
+    .prof { display: flex; gap: 10px; align-items: center; }
+    .prof .big { width: 46px; height: 46px; border-radius: 50%; background: var(--s2); flex: none; }
+    .seg2 { display: flex; gap: 2px; background: var(--s2); border-radius: 8px; padding: 2px; }
+    .seg2 span { flex: 1; text-align: center; font-size: 9.5px; font-weight: 800; color: var(--t-muted); padding: 5px 4px; border-radius: 6px; }
+    .seg2 span.on { background: var(--card); color: var(--t-ink); }
+    .note { font-size: 9.5px; color: var(--t-muted); font-weight: 700; line-height: 1.6; }
+
+    /* ---- ルール表 ---- */
+    .rules { margin-top: 26px; display: grid; gap: 14px; grid-template-columns: minmax(0,1fr); }
+    @media (min-width: 860px) { .rules { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    .panel { background: var(--card); border: 1px solid var(--hair); border-radius: 14px; padding: 14px 15px; }
+    .panel h2 { font-size: 13px; font-weight: 900; margin: 0 0 4px; color: var(--t-ink); letter-spacing: .3px; }
+    .panel .cap { font-size: 11px; color: var(--t-muted); margin: 0 0 10px; line-height: 1.6; }
+    .panel table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    .panel th { text-align: left; font-size: 9.5px; font-weight: 900; letter-spacing: .5px; color: var(--t-muted);
+                padding: 0 8px 6px 0; border-bottom: 1px solid var(--line); }
+    .panel td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); color: var(--t-body); font-weight: 700; vertical-align: top; }
+    .panel td b { color: var(--t-ink); font-weight: 900; }
+    .panel td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .kbd { font-size: 10px; font-weight: 900; background: var(--s2); color: var(--t-strong); border-radius: 5px; padding: 1px 5px;
+           font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ovf { overflow-x: auto; }
+</style>
+
+<div class="wrap">
+    <div class="doc">
+        <h1>全タブ 2列表示モック</h1>
+        <p class="lead">しりすこPAD の<b>5タブすべて</b>を、5つの画面幅で並べたものです。カードの中身は形だけの模型で、
+            見るのは<b>何列になるか・一画面にどこまで入るか</b>の2点です。<br>
+            <b>モバイル縦はいまのまま(1列)</b>。2列にするのは横幅 700px 以上からで、<b>モバイルを横に倒したとき</b>も対象に入ります。</p>
+        <div class="legend">
+            <span><i class="dot" style="background:var(--dim)"></i>いまあるカード（並べ替えるだけ）</span>
+            <span><i class="dot" style="background:var(--new)"></i>新しく作るカード</span>
+            <span><i class="dot" style="background:var(--move)"></i>別のタブから移すカード</span>
+            <span><i class="dot" style="background:var(--ops)"></i>運営モードON のときだけ出るもの</span>
+        </div>
+    </div>
+
+    <div class="ctl">
+        <div class="ctlrow"><span class="k">画面の幅</span><div class="seg" id="segW"></div></div>
+        <div class="ctlrow"><span class="k">タブ</span><div class="seg" id="segT"></div></div>
+        <div class="ctlrow" id="rowOps">
+            <span class="k">運営</span>
+            <button class="swt" id="btnOps" aria-pressed="false">🛠 運営モード</button>
+            <div class="seg" id="segS"></div>
+        </div>
+        <div class="ctlrow"><span class="k">その他</span>
+            <button class="swt" id="btnCond" aria-pressed="true">条件つきカードも出す</button>
+            <button class="swt" id="btnTheme" aria-pressed="false">🌙 ダーク</button>
+        </div>
+    </div>
+
+    <div class="meta"><div id="metaL"></div><div id="metaR"></div></div>
+    <div class="stagewrap" id="stagewrap"><div class="scaler" id="scaler"><div class="frame" id="frame"></div></div></div>
+
+    <div class="rules">
+        <div class="panel">
+            <h2>いくつの列にするか</h2>
+            <p class="cap">幅だけで決めます。段階やタブでは変えません。<b>縦が短いとき（＝スマホを横にしたとき）だけ、下のメニューを左に移します</b> — 横画面は縦の余白が足りないためです。</p>
+            <div class="ovf"><table>
+                <thead><tr><th>幅</th><th>列</th><th>メニュー</th><th>あてはまる端末</th></tr></thead>
+                <tbody id="ruleBody"></tbody>
+            </table></div>
+        </div>
+        <div class="panel">
+            <h2>カードの幅（12カラムのうち何本）</h2>
+            <p class="cap">700〜1099px では <b>すべて半分ずつ（6）</b>。1100px 以上でだけ、下の表の細かい幅になります。
+                <b>12 のカードは常に全幅</b> — 表やグラフは横に切ると読めなくなるためです。</p>
+            <div class="ovf"><table>
+                <thead><tr><th>タブ</th><th>カード</th><th class="n">幅</th></tr></thead>
+                <tbody id="spanBody"></tbody>
+            </table></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
+    var rep = function (n, f) { var o = ''; for (var i = 0; i < n; i++) o += f(i); return o; };
+
+    // ---- 端末プリセット ------------------------------------------------
+    var WIDTHS = [
+        { key: 'p',  label: 'モバイル縦',  w: 390,  h: 780, dev: 'iPhone を縦', cols: 1 },
+        { key: 'l',  label: 'モバイル横',  w: 852,  h: 393, dev: 'iPhone を横', cols: 2 },
+        { key: 't',  label: 'タブレット',  w: 834,  h: 700, dev: 'iPad を縦',   cols: 2 },
+        { key: 'd',  label: 'PC',          w: 1280, h: 760, dev: 'ノートPC',    cols: 12 },
+        { key: 'dw', label: 'PC 広い',     w: 1600, h: 820, dev: '外部モニタ',  cols: 12 }
+    ];
+    // 左メニューにする条件: 縦が短い(横画面) か、1180px 以上
+    var useRail = function (p) { return p.h < 560 || p.w >= 1180; };
+
+    var STAGES = [{ k: 'prep', n: '準備' }, { k: 'pre', n: '前日' }, { k: 'day', n: '当日' }, { k: 'end', n: '終了' }];
+
+    // ---- カード定義 ----------------------------------------------------
+    // span = 1100px 以上での幅(12カラム中) / wide = 常に全幅 / cond = 条件つき表示
+    // tag  = 'new'(新規) / 'move'(移動) / 'ops'(運営限定) / null
+    var C = function (t, span, kind, o) { o = o || {}; return { t: t, span: span, kind: kind, sub: o.sub, tag: o.tag, cond: o.cond, stages: o.stages }; };
+
+    var TABS = {
+        home: {
+            label: 'ホーム', icon: '🏠', title: 'ホーム', sub: 'ふるり · 第45回 進行中',
+            cards: [
+                C('得意属性 / プロフィール', 5, 'prof'),
+                C('戦闘', 7, 'battle', { sub: 'ボスの状況と自分の3凸' }),
+                C('🏁 締め凸のお願い', 6, 'ask', { cond: 1, sub: '運営から届いた打診' }),
+                C('次のアクション', 6, 'next', { cond: 1 }),
+                C('⏰ あなたの戦闘可能時間', 12, 'hours', { cond: 1 }),
+                C('📣 配信中のプラン', 6, 'plan', { cond: 1 }),
+                C('🔒 引き受けた凸', 6, 'rows3', { cond: 1 }),
+                C('🧬 育成データが未公開です', 6, 'text', { cond: 1 }),
+                C('📨 受け取った通知', 6, 'rows3'),
+                C('MY設定', 6, 'myset')
+            ]
+        },
+        mock: {
+            label: '模擬', icon: '🎯', title: '模擬戦', sub: '本番前の火力チェック',
+            cards: [
+                C('模擬戦データ', 7, 'dmg', { sub: '5属性ぶんのダメージとふるり値' }),
+                C('人気編成', 5, 'teams'),
+                C('編成の比較', 12, 'compare', { cond: 1 })
+            ]
+        },
+        ops: {
+            label: '戦況', icon: '⚔️', title: '戦況', sub: '第45回 · Lv1',
+            cards: [
+                C('ステータス概況', 12, 'ovchips'),
+                C('ボス状況', 7, 'boss'),
+                C('オンライン / 調整中 メンバー', 5, 'rows3'),
+                C('残り戦闘可能メンバー', 12, 'members')
+            ]
+        },
+        rank: {
+            label: '分析', icon: '📊', title: '分析', sub: '火力の比較とふるり値',
+            cards: [
+                C('回とボスの絞り込み', 12, 'toolbar'),
+                C('属性別ダメージ分析', 7, 'chart', { sub: 'SLv×ダメージ / 属性内訳' }),
+                C('ランキング', 5, 'rank'),
+                C('NIKKE編成', 12, 'teams12')
+            ]
+        },
+        set: {
+            label: '設定', icon: '⚙️', title: '設定', sub: 'この端末とユニオンの設定',
+            cards: [
+                C('見た目', 6, 'look'),
+                C('ガイド / チュートリアル', 6, 'rows3'),
+                C('このブラウザの設定', 6, 'rows3'),
+                C('システム状態', 6, 'sys'),
+                C('アプリの版のしめ切り', 6, 'rows3', { tag: 'ops' }),
+                C('メンバーの通知状況', 6, 'rows3', { tag: 'ops' }),
+                C('メンバー管理', 12, 'members', { tag: 'ops' }),
+                C('最近のアクティビティ', 6, 'rows3', { tag: 'ops' }),
+                C('キャラクターマスタ管理', 6, 'teams', { tag: 'ops' }),
+                C('バックアップ / 復元', 6, 'rows3', { tag: 'ops' })
+            ]
+        }
+    };
+
+    // 運営ボード = 戦況タブの運営ON。段階ごとに出すカードを入れ替える
+    var OPSBOARD = {
+        prep: [
+            C('シーズン制御', 7, 'season'),
+            C('一斉通知', 5, 'push', { tag: 'move', sub: '準備段階へ移動' })
+        ],
+        pre: [
+            C('コックピット', 12, 'cockpit'),
+            C('👥 メンバー状況', 12, 'members'),
+            C('🔒 凸の予約', 7, 'reserve'),
+            C('📣 Discord 告知テンプレ', 5, 'text'),
+            C('最適凸プラン算出', 12, 'plantable')
+        ],
+        day: [
+            C('コックピット', 12, 'cockpit'),
+            C('戦闘中の運営アクション', 12, 'actions', { tag: 'move', sub: '帯にして最上部へ' }),
+            C('ボス状況', 7, 'boss'),
+            C('🏁 締め凸コンソール', 5, 'finish'),
+            C('📈 消化のペース', 7, 'pace', { tag: 'new', sub: '時間帯ごとの消化' }),
+            C('🔁 直近の動き', 5, 'log', { tag: 'new', sub: '交代の引き継ぎ用' }),
+            C('残り戦闘可能メンバー', 12, 'members'),
+            C('最適凸プラン算出', 12, 'plantable')
+        ],
+        end: [
+            C('シーズン制御', 7, 'season'),
+            C('📣 Discord 告知テンプレ', 5, 'text'),
+            C('🧬 育成データの取り込み', 12, 'growth')
+        ]
+    };
+
+    // ---- カードの中身（形だけの模型）------------------------------------
+    var BOSS = [
+        { n: 1, nm: 'ブラストA', c: 'var(--fire)', p: 62 }, { n: 2, nm: 'カウンターB', c: 'var(--water)', p: 38 },
+        { n: 3, nm: 'ピアスC', c: 'var(--elec)', p: 91 }, { n: 4, nm: 'ブラストD', c: 'var(--iron)', p: 12 },
+        { n: 5, nm: 'カウンターE', c: 'var(--wind)', p: 0 }
+    ];
+    var NAMES = ['ふるり', 'メンバーA', 'メンバーB', 'メンバーC', 'メンバーD', 'メンバーE', 'メンバーF'];
+
+    var BODY = {
+        prof: function () {
+            return '<div class="prof"><div class="big"></div><div style="min-width:0;flex:1;">' +
+                '<div style="font-size:13px;font-weight:900;color:var(--t-ink);">ふるり</div>' +
+                '<div class="chips" style="margin-top:5px;"><span class="chip a">SLv 412</span><span class="chip">灼熱</span><span class="chip">電撃</span></div>' +
+                '</div></div><div class="seg2" style="margin-top:9px;"><span class="on">待機</span><span>模擬中</span><span>戦闘中</span></div>';
+        },
+        battle: function () {
+            return '<div class="chips" style="margin-bottom:7px;">' + BOSS.map(function (b) {
+                return '<span class="chip" style="background:' + b.c + '1f;color:var(--t-strong);">B' + b.n + ' ' + (b.p ? b.p + '%' : '撃破') + '</span>';
+            }).join('') + '</div>' +
+                '<div class="btn p" style="margin-bottom:8px;">⚔ 戦闘に入る</div>' +
+                rep(3, function (i) {
+                    return '<div class="row"><span class="no" style="background:' + BOSS[i].c + '">B' + (i + 1) + '</span>' +
+                        '<span class="nm">' + (i < 2 ? '報告済み' : '未報告') + '</span><span class="num">' + (i < 2 ? '1,2' + i + '万' : '—') + '</span></div>';
+                });
+        },
+        ask: function () {
+            return '<div class="note" style="margin-bottom:7px;">B3 を <b>いま</b> か <b>22:40</b> に締められますか？</div>' +
+                '<div class="btns"><span class="btn p">いまなら</span><span class="btn">22:40 なら</span><span class="btn">難しい</span></div>';
+        },
+        next: function () { return '<div class="note">残り 2凸。<b>B4</b> が撃破まであと少しです。</div><div class="btns" style="margin-top:7px;"><span class="btn p">B4 に入る</span></div>'; },
+        hours: function () {
+            return '<div class="note">5時 → 翌4時</div><div class="hrs">' + rep(24, function (i) {
+                return '<i class="' + (i >= 14 && i <= 19 ? 'on' : (i === 16 ? 'now' : '')) + '"></i>';
+            }) + '</div>';
+        },
+        plan: function () { return rep(3, function (i) { return '<div class="row"><span class="no" style="background:' + BOSS[i].c + '">B' + (i + 1) + '</span><span class="nm">' + NAMES[i + 1] + '</span><span class="num">3凸</span></div>'; }); },
+        rows3: function () { return rep(3, function (i) { return '<div class="row"><span class="av">' + NAMES[i][0] + '</span><span class="nm" style="flex:1;">' + NAMES[i] + '</span><span class="num">' + (18 - i * 3) + ':0' + i + '</span></div>'; }); },
+        text: function () { return '<div class="note">まだ公開されていません。設定 → 育成データ から公開できます。</div><div class="btns" style="margin-top:7px;"><span class="btn">公開する</span></div>'; },
+        myset: function () { return '<div class="chips"><span class="chip">SLv</span><span class="chip">得意属性</span><span class="chip">アバター</span><span class="chip">戦闘可能時間</span></div>'; },
+        dmg: function () {
+            return '<div class="pan">' + rep(5, function (i) {
+                return '<div><div style="font-size:9.5px;font-weight:900;color:var(--t-strong);">' + ['灼熱', '水冷', '電撃', '鉄甲', '風圧'][i] + '</div>' +
+                    '<div class="ln m"></div><div class="ln s"></div><div class="ln"></div></div>';
+            }) + '</div><div class="seg2" style="margin-top:9px;"><span class="on">▼ レーダーチャート</span></div>';
+        },
+        teams: function () { return '<div class="sq">' + rep(5, function () { return '<div></div>'; }) + '</div><div class="sq" style="margin-top:5px;">' + rep(5, function () { return '<div></div>'; }) + '</div>'; },
+        teams12: function () { return '<div class="chips" style="margin-bottom:7px;"><span class="chip a">灼熱</span><span class="chip">水冷</span><span class="chip">電撃</span><span class="chip">鉄甲</span><span class="chip">風圧</span></div>' + BODY.teams(); },
+        compare: function () { return '<div class="chart">' + rep(10, function (i) { return '<i style="height:' + (30 + (i * 13) % 62) + '%"></i>'; }) + '</div>'; },
+        ovchips: function () { return '<div class="tiles"><div class="tile"><div class="k">オンライン</div><div class="v">12</div></div><div class="tile"><div class="k">模擬中</div><div class="v">3</div></div></div>'; },
+        boss: function () {
+            return BOSS.map(function (b) {
+                return '<div class="row"><span class="no" style="background:' + b.c + '">B' + b.n + '</span>' +
+                    '<span class="nm" style="width:66px;">' + b.nm + '</span>' +
+                    '<span class="bar" style="flex:1;"><i style="width:' + b.p + '%;background:' + b.c + '"></i></span>' +
+                    '<span class="num">' + (b.p ? b.p + '%' : '撃破') + '</span></div>';
+            }).join('');
+        },
+        members: function () {
+            return '<table class="tb"><thead><tr><th>名前</th><th>状態</th><th>戦闘可能な時間帯</th><th style="text-align:right">残</th></tr></thead><tbody>' +
+                rep(6, function (i) {
+                    return '<tr><td style="font-weight:900;color:var(--t-ink)">' + NAMES[i] + '</td><td>' + (i % 3 === 0 ? '待機' : '—') + '</td>' +
+                        '<td><span class="hrs" style="display:flex">' + rep(18, function (j) { return '<i class="' + ((j + i) % 5 < 2 ? 'on' : '') + '" style="height:9px"></i>'; }) + '</span></td>' +
+                        '<td class="n">' + (3 - i % 3) + '</td></tr>';
+                }) + '</tbody></table>';
+        },
+        cockpit: function () {
+            return '<div class="tiles four">' +
+                '<div class="tile bad"><div class="k">HP更新</div><div class="v">42分前</div></div>' +
+                '<div class="tile bad"><div class="k">残凸 合計</div><div class="v">18</div></div>' +
+                '<div class="tile bad"><div class="k">未完メンバー</div><div class="v">7</div></div>' +
+                '<div class="tile"><div class="k">締め凸 未返答</div><div class="v">2</div></div></div>';
+        },
+        actions: function () { return '<div class="btns"><span class="btn p">📷 ボスHP更新</span><span class="btn">代理で凸を報告</span><span class="btn">一斉通知</span><span class="btn">凸プランを配信</span></div>'; },
+        finish: function () {
+            return '<div class="chips" style="margin-bottom:7px;"><span class="chip r">B3 残 9.1%</span></div>' +
+                rep(2, function (i) {
+                    return '<div class="row" style="align-items:flex-start;"><span class="av">' + NAMES[i + 1][0] + '</span><div style="flex:1;min-width:0;">' +
+                        '<div style="font-weight:900;color:var(--t-ink);font-size:10.5px;">' + NAMES[i + 1] + (i ? ' · 22:40 まで待つ' : ' · いますぐ') + '</div>' +
+                        '<div class="note">見込み ' + (i ? '112' : '96') + '% · 期限 15分</div></div>' +
+                        '<span class="chip ' + (i ? '' : 'g') + '">' + (i ? '打診中' : '了承') + '</span></div>';
+                }) + '<div class="btns" style="margin-top:7px;"><span class="btn p">2案を同時に打診</span></div>';
+        },
+        pace: function () {
+            return '<div class="chart">' + rep(14, function (i) { return '<i style="height:' + [18, 26, 22, 40, 55, 38, 30, 44, 62, 78, 90, 70, 48, 30][i] + '%"></i>'; }) + '</div>' +
+                '<div class="xax">' + rep(14, function (i) { return '<span>' + (i + 9) % 24 + '</span>'; }) + '</div>' +
+                '<div class="note" style="margin-top:5px;">75 / 93凸 · このペースなら <b>1:20 に使い切る</b></div>';
+        },
+        log: function () {
+            return rep(4, function (i) {
+                return '<div class="row"><span class="num" style="margin:0;width:30px;color:var(--t-muted)">2' + (1 - Math.floor(i / 2)) + ':' + (10 + i * 7) + '</span>' +
+                    '<span class="nm" style="flex:1">' + NAMES[i + 1] + '</span>' +
+                    '<span class="chip" style="background:' + BOSS[i].c + '1f">B' + (i + 1) + '</span></div>';
+            }) + '<div class="note" style="margin-top:6px;">23:00 に <b>なべりうす</b> へ交代</div>';
+        },
+        reserve: function () {
+            return rep(3, function (i) {
+                return '<div class="row"><span class="av">' + NAMES[i + 1][0] + '</span><span class="nm" style="flex:1">' + NAMES[i + 1] + '</span>' +
+                    '<span class="chip ' + (i === 0 ? '' : 'g') + '">' + (i === 0 ? '承認待ち' : '固定中') + '</span></div>';
+            }) + '<div class="btns" style="margin-top:7px;"><span class="btn p">まとめて承認</span></div>';
+        },
+        plantable: function () {
+            return '<table class="tb"><thead><tr><th>ボス</th><th>担当</th><th>編成</th><th style="text-align:right">見込み</th></tr></thead><tbody>' +
+                rep(5, function (i) {
+                    return '<tr><td><span class="chip" style="background:' + BOSS[i].c + '1f">B' + (i + 1) + '</span></td>' +
+                        '<td style="font-weight:900;color:var(--t-ink)">' + NAMES[i + 1] + '</td><td>ラピ / ドロシー / 紅蓮 …</td><td class="n">' + (120 - i * 9) + '%</td></tr>';
+                }) + '</tbody></table>';
+        },
+        season: function () { return '<div class="note">第45回 · Lv1 · ハード日 2026-09-11</div><div class="btns" style="margin-top:7px;"><span class="btn p">レベルを上げる</span><span class="btn">シーズンを終了</span></div>'; },
+        push: function () { return '<div class="note">全員へ通知を送ります。</div><div class="btns" style="margin-top:7px;"><span class="btn p">送信</span></div>'; },
+        growth: function () { return '<div class="note">レイド後に使われたキャラを取り込みます。</div><div class="sq" style="margin-top:7px;">' + rep(5, function () { return '<div></div>'; }) + '</div>'; },
+        toolbar: function () { return '<div class="chips"><span class="chip a">第45回</span><span class="chip">第44回</span><span class="chip">全ボス</span><span class="chip">B1</span><span class="chip">B2</span><span class="chip">B3</span></div>'; },
+        chart: function () {
+            return '<div class="seg2" style="margin-bottom:7px;"><span class="on">📊 属性内訳</span><span>📈 SLv×ダメージ</span></div>' +
+                '<div class="chart">' + rep(12, function (i) { return '<i style="height:' + (28 + (i * 21) % 66) + '%"></i>'; }) + '</div>' +
+                '<div class="xax">' + rep(12, function (i) { return '<span>' + NAMES[i % 7][0] + '</span>'; }) + '</div>';
+        },
+        rank: function () {
+            return '<table class="tb"><thead><tr><th>#</th><th>名前</th><th style="text-align:right">合計</th></tr></thead><tbody>' +
+                rep(6, function (i) {
+                    return '<tr><td style="width:16px">' + (i + 1) + '</td><td style="font-weight:900;color:var(--t-ink)">' + NAMES[i] + '</td><td class="n">' + (48 - i * 4) + '.2万</td></tr>';
+                }) + '</tbody></table>';
+        },
+        look: function () { return '<div class="seg2"><span>ライト</span><span class="on">端末に合わせる</span><span>ダーク</span></div><div class="note" style="margin-top:7px;">画面の明るさに合わせて自動で切り替わります。</div>'; },
+        sys: function () { return '<div class="tiles"><div class="tile"><div class="k">接続</div><div class="v" style="color:var(--ok)">正常</div></div><div class="tile"><div class="k">版</div><div class="v">v45</div></div></div>'; }
+    };
+
+    // ---- 状態 -----------------------------------------------------------
+    var S = { w: 'd', t: 'ops', ops: true, stage: 'day', cond: true, dark: false };
+
+    function cardsFor() {
+        if (S.t === 'ops' && S.ops) return OPSBOARD[S.stage];
+        var list = TABS[S.t].cards;
+        if (!S.cond) list = list.filter(function (c) { return !c.cond; });
+        if (!S.ops) list = list.filter(function (c) { return c.tag !== 'ops'; });
+        return list;
+    }
+
+    function cardHtml(c, mode) {
+        var span = mode === 12 ? c.span : null;
+        var wide = mode === 2 && c.span === 12;
+        var st = span ? ' style="grid-column:span ' + span + '"' : '';
+        var tag = c.tag === 'new' ? '<span class="tag new">新規</span>'
+            : c.tag === 'move' ? '<span class="tag move">移動</span>'
+                : c.tag === 'ops' ? '<span class="tag ops">運営</span>' : '';
+        var body = (BODY[c.kind] || function () { return '<div class="note">—</div>'; })();
+        return '<div class="cd"' + st + (wide ? ' data-wide' : '') + '>' +
+            '<h3>' + esc(c.t) + (c.sub ? '<span class="s">' + esc(c.sub) + '</span>' : '') + tag + '</h3>' +
+            '<div class="bd">' + body + '</div></div>';
+    }
+
+    function paint() {
+        var p = WIDTHS.filter(function (x) { return x.key === S.w; })[0];
+        var rail = useRail(p), mode = p.cols;
+        var isBoard = S.t === 'ops' && S.ops;
+        var tabTitle = isBoard ? '運営ボード' : TABS[S.t].title;
+        var tabSub = isBoard ? '第45回 · ' + STAGES.filter(function (s) { return s.k === S.stage; })[0].n + ' · 21:27 · 担当 ふるり → 23:00 交代' : TABS[S.t].sub;
+
+        var navItems = [['home', '🏠', 'ホーム'], ['mock', '🎯', '模擬'],
+            ['ops', '⚔️', isBoard ? '運営ボード' : '戦況'], ['rank', '📊', '分析'], ['set', '⚙️', '設定']];
+
+        var railHtml = '<aside class="rail"><div class="brand"><span>🛡</span>しりすこPAD</div>' +
+            navItems.map(function (n) {
+                return '<div class="nv' + (n[0] === S.t ? ' on' : '') + '"><span>' + n[1] + '</span>' + esc(n[2]) +
+                    (n[0] === 'ops' && isBoard ? '<span class="bdg">運営</span>' : '') + '</div>';
+            }).join('') + '<div class="gap"></div>' +
+            (isBoard ? '<div class="stg"><div class="k">いまの段階</div><div class="v">' +
+                STAGES.filter(function (s) { return s.k === S.stage; })[0].n + '</div><div class="bars">' +
+                STAGES.map(function (s, i) {
+                    var cur = STAGES.map(function (x) { return x.k; }).indexOf(S.stage);
+                    return '<i class="' + (i <= cur ? 'on' : '') + '"></i>';
+                }).join('') + '</div></div>' : '') + '</aside>';
+
+        var botHtml = '<div class="botnav">' + navItems.map(function (n) {
+            return '<div class="nv' + (n[0] === S.t ? ' on' : '') + '"><i>' + n[1] + '</i>' + esc(n[2] === '運営ボード' ? '運営' : n[2]) + '</div>';
+        }).join('') + '</div>';
+
+        var cards = cardsFor().map(function (c) { return cardHtml(c, mode); }).join('');
+        var gridCls = mode === 12 ? 'c12' : mode === 2 ? 'c2' : 'c1';
+
+        document.getElementById('frame').innerHTML =
+            (rail ? railHtml : '') +
+            '<div class="col"><div class="fbody">' +
+            '<div class="ttl">' + esc(tabTitle) + '<span class="sub">' + esc(tabSub) + '</span></div>' +
+            '<div class="grid ' + gridCls + '">' + cards + '</div>' +
+            '</div>' + (rail ? '' : botHtml) + '</div>';
+
+        var frame = document.getElementById('frame');
+        frame.style.width = p.w + 'px'; frame.style.height = p.h + 'px';
+
+        var wrap = document.getElementById('stagewrap');
+        var avail = wrap.clientWidth || 900;
+        var k = Math.min(1, avail / p.w);
+        document.getElementById('scaler').style.transform = 'scale(' + k + ')';
+        wrap.style.height = Math.ceil(p.h * k) + 'px';
+
+        document.getElementById('metaL').innerHTML = '<b>' + p.w + ' × ' + p.h + '</b> · ' + esc(p.dev) +
+            ' · ' + (mode === 12 ? '12カラム' : mode === 2 ? '2列' : '1列') + ' · メニューは' + (rail ? '左' : '下');
+        document.getElementById('metaR').innerHTML = (k < 1 ? '実寸の ' + Math.round(k * 100) + '% で表示' : '実寸');
+        document.getElementById('rowOps').style.display = 'flex';
+        document.getElementById('segS').style.display = (S.t === 'ops' && S.ops) ? 'flex' : 'none';
+    }
+
+    // ---- 操作 -----------------------------------------------------------
+    function seg(host, items, get, set) {
+        host.innerHTML = items.map(function (it) {
+            return '<button data-k="' + it.k + '" aria-pressed="' + (get() === it.k) + '">' + it.n +
+                (it.sz ? '<span class="sz">' + it.sz + '</span>' : '') + '</button>';
+        }).join('');
+        host.onclick = function (e) { var b = e.target.closest('button'); if (!b) return; set(b.dataset.k); render(); };
+    }
+    function render() {
+        seg(document.getElementById('segW'), WIDTHS.map(function (p) { return { k: p.key, n: p.label, sz: p.w }; }),
+            function () { return S.w; }, function (v) { S.w = v; });
+        seg(document.getElementById('segT'), Object.keys(TABS).map(function (k) { return { k: k, n: TABS[k].icon + ' ' + TABS[k].label }; }),
+            function () { return S.t; }, function (v) { S.t = v; });
+        seg(document.getElementById('segS'), STAGES.map(function (s) { return { k: s.k, n: s.n }; }),
+            function () { return S.stage; }, function (v) { S.stage = v; });
+        document.getElementById('btnOps').setAttribute('aria-pressed', String(S.ops));
+        document.getElementById('btnCond').setAttribute('aria-pressed', String(S.cond));
+        document.getElementById('btnTheme').setAttribute('aria-pressed', String(S.dark));
+        paint();
+    }
+    document.getElementById('btnOps').onclick = function () { S.ops = !S.ops; render(); };
+    document.getElementById('btnCond').onclick = function () { S.cond = !S.cond; render(); };
+    document.getElementById('btnTheme').onclick = function () {
+        S.dark = !S.dark;
+        document.documentElement.setAttribute('data-theme', S.dark ? 'dark' : 'light');
+        render();
+    };
+    window.addEventListener('resize', paint);
+
+    // ---- ルール表 -------------------------------------------------------
+    document.getElementById('ruleBody').innerHTML = [
+        ['〜699px', '1列', '下', 'スマホを縦に持ったとき（いまのまま）'],
+        ['700〜1099px', '2列', '下', 'タブレットを縦に / 小さめのウィンドウ'],
+        ['700〜1099px かつ 縦559px以下', '2列', '<b>左</b>', '<b>スマホを横に倒したとき</b>'],
+        ['1100〜1179px', '12カラム', '下', 'ノートPCの小さめウィンドウ'],
+        ['1180px〜', '12カラム', '<b>左</b>', 'ノートPC / 外部モニタ（いまのまま）']
+    ].map(function (r) { return '<tr><td class="n">' + r[0] + '</td><td><b>' + r[1] + '</b></td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>'; }).join('');
+
+    var spanRows = [];
+    Object.keys(TABS).forEach(function (k) {
+        TABS[k].cards.forEach(function (c, i) {
+            spanRows.push([i === 0 ? TABS[k].icon + ' ' + TABS[k].label : '', c.t, c.span]);
+        });
+    });
+    Object.keys(OPSBOARD).forEach(function (st) {
+        OPSBOARD[st].forEach(function (c, i) {
+            spanRows.push([i === 0 ? '⚔️ 運営ボード / ' + STAGES.filter(function (s) { return s.k === st; })[0].n : '', c.t, c.span]);
+        });
+    });
+    document.getElementById('spanBody').innerHTML = spanRows.map(function (r) {
+        return '<tr><td><b>' + r[0] + '</b></td><td>' + esc(r[1]) + '</td><td class="n"><b>' + r[2] + '</b></td></tr>';
+    }).join('');
+
+    render();
+})();
+</script>
+
+</body>
+</html>
