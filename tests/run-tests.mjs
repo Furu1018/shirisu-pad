@@ -8025,7 +8025,13 @@ console.log('\ngrowthDomain:');
         // ホームの締め凸依頼の箱 (カードでない空の div): 空のとき行を占有しない
         assert.ok(html.includes('<div id="myFinishRequestArea"></div>'), '締め凸依頼の箱の形が変わった (:empty の前提を確かめること)');
         assert.ok(/#myFinishRequestArea:empty \{ display: none; \}/.test(css), '空の締め凸依頼の箱を隠していない (0 高さで 1 行ぶん占有する)');
-        assert.ok(/area\.innerHTML = '';/.test(html), '締め凸依頼の箱を空文字で消していない (空白が残ると :empty が効かない)');
+        // ★ 「どこかに innerHTML = '' がある」では弱い (2 か所のうち 1 か所を空白にしても通る — 変異で発覚)。
+        //   関数の中の代入を全部見る: 文字列の代入はすべて空文字、依頼の並びの繋ぎも空文字 (全部撃破済みで空になる経路)
+        const fn = html.match(/function renderMyFinishRequestBanner\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn.length > 0, 'renderMyFinishRequestBanner が見つからない');
+        const lits = [...fn.matchAll(/area\.innerHTML = '([^']*)'/g)].map(m => m[1]);
+        assert.ok(lits.length >= 2 && lits.every(v => v === ''), `締め凸依頼の箱を空文字以外で消している (空白が残ると :empty が効かない): ${JSON.stringify(lits)}`);
+        assert.ok(/\}\)\.join\(''\);\s*\}\s*$/.test(fn), '依頼の並びを空文字で繋いでいない (全部撃破済みのとき空白だけが残って :empty が効かない)');
     });
     test('★ 配線: 戦況タブのカードは初期化で CARDS の順に並べ直す / 運営アクションのボタン列は横一列の帯にできる', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
