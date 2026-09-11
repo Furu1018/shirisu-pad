@@ -8469,7 +8469,7 @@ console.log('\ngrowthDomain:');
         // 置く: 判定はドメイン (属性/時間 → canPlace、衝突/残凸/被り → canPin)、予約は押した時点の DB、レベルは null
         const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/dom\.canPlace\(\{ player, attr: sel\.attr, boss, hourIdx, hourOrder: HOUR_ORDER \}\)/.test(place), '属性 / 時間の判定をドメインに任せていない');
-        assert.ok(/rows = await window\.supabaseLoadReservations\(snap\.season\.id\)/.test(place) && /rv\.canPin\(rows, \{/.test(place), '押した時点の予約で衝突 / 残凸 / 被りを見ていない');
+        assert.ok(/rows = await window\.supabaseLoadReservations\(snap\.season\.id\)/.test(place) && /const chk = rv\.canPin\(rows, \{[\s\S]*?\n\s*if \(!chk\.ok\) \{ showNotification/.test(place), '押した時点の予約で衝突 / 残凸 / 被りを見ていない (canPin の結果で止めていない)');
         assert.ok(/raidLevel: null, bossNumber, timeSlot,/.test(place) && /status: 'pinned'/.test(place), 'レベル無しの pinned で作っていない');
         assert.ok(/await window\.supabaseMovePin\(existing\.id,/.test(place), '置き直しが新規作成になっている');
         assert.ok(/await computeAndRenderOptimalPlan\(\);/.test(place), '置いたあとに算出し直していない');
