@@ -8203,6 +8203,11 @@ console.log('\ngrowthDomain:');
         assert.ok(/homePatched && document\.getElementById\('tab-mypage'\)/.test(poll), 'ホームのボス状況を描き直していない');
         // ★ 取得の間に名乗り直していたら描かない (Codex指摘 2026-09-11)。async の描画は catch する
         assert.ok(/contains\('active'\)\s*\n\s*&& getCurrentIdentity\(\)\?\.id === id\.id\) \{\s*\n\s*renderMyNextAttackBosses\(id\)\.catch\(/.test(poll), '本人の切り替えを見ずに前の人のホームを描く / 描画の失敗を catch していない');
+        // ★ 描く側 (renderMyNextAttackBosses) も各 await の直後に本人を見る。失敗は中で受ける (Codex指摘 2026-09-11)
+        const nab = html.match(/async function renderMyNextAttackBosses\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const ctx = await ensureActiveSeasonLoaded\(\);\s*\n\s*if \(getCurrentIdentity\(\)\?\.id !== identity\.id\) return;/.test(nab), '待っている間の名乗り直しを見ていない');
+        assert.ok(/await ensureAllPlayersLoaded\(\);[^\n]*\n\s*if \(getCurrentIdentity\(\)\?\.id !== identity\.id\) return;/.test(nab), '2つめの await のあとも本人を見る');
+        assert.ok(/\} catch \(e\) \{\s*\n\s*console\.warn\('\[次の凸\] 描画に失敗:'/.test(nab), '描画の失敗を中で受けていない (呼び出し側は await しない)');
         // 交戦者の名前は1行に収める (長い名前が並んでもカードの幅を壊さない)
         assert.ok(/\.mp-bossboard \.bb \.who \{[^}]*overflow: hidden; text-overflow: ellipsis; white-space: nowrap;/.test(css), '交戦者の名前が省略されない');
         // 人数バッジは状態色を継承しない (自分の状態ボタンの緑/青/赤の上では薄い)

@@ -185,5 +185,44 @@ test('誰もいなければ数字は消え、タイルは「—」', () => {
     assert.ok(!/class="st [a-z]+ on"/.test(tiles), '0人のタイルが点いている');
 });
 
+// ===== 次の凸 (ボスタイル): 待っている間の名乗り直し / 読み込み失敗 (Codex指摘 2026-09-11) =====
+const SRC2 = cut('        async function renderMyNextAttackBosses(identity)');
+function run2({ current, loader }) {
+    const el = mkEl();
+    const warns = [];
+    const env = {
+        document: { getElementById: (id) => (id === 'mypageNextAttackBosses' ? el : null) },
+        getCurrentIdentity: () => current.value,
+        ensureActiveSeasonLoaded: loader,
+        console: { warn: (...a) => warns.push(a.join(' ')), log: () => {}, error: () => {} },
+    };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, `${SRC2}\nreturn renderMyNextAttackBosses;`)(...keys.map(k => env[k]));
+    return { fn, el, warns };
+}
+async function testAsync(name, f) {
+    try { await f(); console.log(`  ✅ ${name}`); pass++; }
+    catch (e) { console.error(`  ❌ ${name}\n     ${e.constructor.name}: ${e.message}`); fail++; }
+}
+await testAsync('★ 次の凸: 待っている間に名乗り直したら DOM を書かない / 読み込み失敗は中で受けて reject しない', async () => {
+    // 待っている間に別人へ → 何も書かない
+    const cur = { value: { id: 9 } };
+    const a = run2({ current: cur, loader: async () => { cur.value = { id: 10 }; return { season: null }; } });
+    await a.fn({ id: 9 });
+    assert.equal(a.el.innerHTML, '', '前の人のまま描いている');
+    // 同じ人のまま → 描く (ガードが厳しすぎない)
+    const cur2 = { value: { id: 9 } };
+    const b = run2({ current: cur2, loader: async () => ({ season: null }) });
+    await b.fn({ id: 9 });
+    assert.ok(b.el.innerHTML.includes('アクティブシーズン無し'), '同じ人なのに描かない');
+    // 読み込みが失敗しても reject しない (呼び出し側は await しない)
+    const c = run2({ current: { value: { id: 9 } }, loader: async () => { throw new Error('boom'); } });
+    let rejected = false;
+    await c.fn({ id: 9 }).catch(() => { rejected = true; });
+    assert.equal(rejected, false, '失敗が外へ漏れている (未処理 Promise になる)');
+    assert.equal(c.warns.length, 1, '失敗を黙って捨てている'); assert.ok(c.warns[0].includes('boom'));
+    assert.equal(c.el.innerHTML, '');
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

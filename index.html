@@ -13871,81 +13871,89 @@
         async function renderMyNextAttackBosses(identity) {
             const el = document.getElementById('mypageNextAttackBosses');
             if (!el) return;
-            if (!identity?.id) {
-                el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:13px;">プレイヤーを選択してください。</p>';
-                return;
-            }
-            const ctx = await ensureActiveSeasonLoaded();
-            if (!ctx?.season) {
-                el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:13px;">アクティブシーズン無し</p>';
-                return;
-            }
-            const bosses = [...(ctx.bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
+            // ★ 呼び出し側は await しない (renderMyPage / ポーリング / ゲート / 30秒ティック) — 失敗はここで受けて
+            //   未処理 Promise にしない。待っている間の名乗り直しは各 await の直後で見る (Codex指摘 2026-09-11)
+            try {
+                if (!identity?.id) {
+                    el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:13px;">プレイヤーを選択してください。</p>';
+                    return;
+                }
+                const ctx = await ensureActiveSeasonLoaded();
+                if (getCurrentIdentity()?.id !== identity.id) return;   // 待っている間に切り替わっていたら描かない
+                if (!ctx?.season) {
+                    el.innerHTML = '<p style="grid-column:1/-1;color:var(--t-body);font-size:13px;">アクティブシーズン無し</p>';
+                    return;
+                }
+                const bosses = [...(ctx.bosses || [])].sort((a, b) => a.boss_number - b.boss_number);
 
-            // 戦闘中マップ: boss_number → [name,...]
-            const coordsByBoss = new Map();
-            (_coordActiveCache || []).forEach(c => {
-                if (c.status !== 'coordinating' || !c.boss_number) return;
-                if (!coordsByBoss.has(c.boss_number)) coordsByBoss.set(c.boss_number, []);
-                coordsByBoss.get(c.boss_number).push({ player_id: c.player_id, name: c.name });
-            });
-            // 既存プレイヤー一覧キャッシュをロード (アバター描画用)
-            if (typeof ensureAllPlayersLoaded === 'function') { try { await ensureAllPlayersLoaded(); } catch { /* noop */ } }
+                // 戦闘中マップ: boss_number → [name,...]
+                const coordsByBoss = new Map();
+                (_coordActiveCache || []).forEach(c => {
+                    if (c.status !== 'coordinating' || !c.boss_number) return;
+                    if (!coordsByBoss.has(c.boss_number)) coordsByBoss.set(c.boss_number, []);
+                    coordsByBoss.get(c.boss_number).push({ player_id: c.player_id, name: c.name });
+                });
+                // 既存プレイヤー一覧キャッシュをロード (アバター描画用)
+                if (typeof ensureAllPlayersLoaded === 'function') { try { await ensureAllPlayersLoaded(); } catch { /* noop */ } }
+                if (getCurrentIdentity()?.id !== identity.id) return;   // こちらの待ちでも同じ
 
-            // ClaudeDesign 仕様: 横一列のボスタイル (B1〜B5)。タップで戦闘準備、自分戦闘中はハイライト+炎。
-            const myCoord = (_coordActiveCache || []).find(c => c.player_id === identity.id && c.status === 'coordinating');
-            const myBossNum = myCoord?.boss_number || null;
+                // ClaudeDesign 仕様: 横一列のボスタイル (B1〜B5)。タップで戦闘準備、自分戦闘中はハイライト+炎。
+                const myCoord = (_coordActiveCache || []).find(c => c.player_id === identity.id && c.status === 'coordinating');
+                const myBossNum = myCoord?.boss_number || null;
 
-            // Lv4-live (Lv3踏破後): B5 のみ ♾️ で凸可能、B1〜B4 は暗転して選択不可 (ゲーム仕様)
-            const lv4Live = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(ctx.season, bosses);
-            el.innerHTML = bosses.map(b => {
-                const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
-                const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
-                const pct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
-                const lv4B5 = lv4Live && b.boss_number === 5;
-                const dead = !lv4B5 && pct <= 0.01;
-                const inCombat = coordsByBoss.has(b.boss_number);
-                const isMyCombat = b.boss_number === myBossNum;
-                // ボス本来の属性 (attribute) で表示。weakness=持っていくPT属性 とは別物。
-                const c = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
-                const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
-                const onClick = dead
-                    ? ''
-                    : isMyCombat
-                        ? `onclick="handleMyNextAttackReport(${b.boss_number})"`
-                        : inCombat
-                            ? `onclick="handleMyNextAttackClaim(${b.boss_number}, true)"`
-                            : `onclick="handleMyNextAttackClaim(${b.boss_number}, false)"`;
-                const iconBox = iconSrc
-                    ? `<img loading="lazy" decoding="async" src="${iconSrc}" alt="" style="width:18px;height:18px;position:relative;z-index:2;${isMyCombat ? `filter:drop-shadow(0 0 4px ${c});` : ''}">`
-                    : `<div style="width:7px;height:7px;border-radius:99px;background:${c};position:relative;z-index:2;"></div>`;
-                return `
-                    <div class="dc-boss-tile" ${onClick}
-                         data-selected="${isMyCombat ? '1' : '0'}"
-                         data-fighting="${isMyCombat ? '1' : '0'}"
-                         ${lv4B5 ? 'title="Lv4: HP無限のスコアレース — ここに全員で凸"' : ''}
-                         style="${dead ? 'opacity:0.4;' : ''}${lv4B5 ? 'border:2px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,var(--attr-electric-solid),var(--ops-solid)) border-box;' : ''}">
-                        ${iconBox}
-                        <div style="font-size:19px;font-weight:900;letter-spacing:0.5px;position:relative;z-index:2;font-variant-numeric:tabular-nums;">B${b.boss_number}</div>
-                        ${lv4B5 ? '<div style="font-size:10px;font-weight:900;color:var(--ops);position:relative;z-index:2;">♾️</div>' : (dead ? '<div style="font-size:10px;color:var(--t-muted);position:relative;z-index:2;">💀</div>' : '')}
-                    </div>`;
-            }).join('');
+                // Lv4-live (Lv3踏破後): B5 のみ ♾️ で凸可能、B1〜B4 は暗転して選択不可 (ゲーム仕様)
+                const lv4Live = typeof isLv4LiveBoard === 'function' && isLv4LiveBoard(ctx.season, bosses);
+                el.innerHTML = bosses.map(b => {
+                    const totalB = (Number(b.total_hp_raw) || 0) / 1e9;
+                    const remB = (Number(b.remaining_hp_raw) || 0) / 1e9;
+                    const pct = totalB > 0 ? Math.max(0, Math.min(100, (remB / totalB) * 100)) : 0;
+                    const lv4B5 = lv4Live && b.boss_number === 5;
+                    const dead = !lv4B5 && pct <= 0.01;
+                    const inCombat = coordsByBoss.has(b.boss_number);
+                    const isMyCombat = b.boss_number === myBossNum;
+                    // ボス本来の属性 (attribute) で表示。weakness=持っていくPT属性 とは別物。
+                    const c = DC_ATTR_COLORS[b.attribute] || '#7A7C81';
+                    const iconSrc = DC_ATTR_ICONS[b.attribute] || '';
+                    const onClick = dead
+                        ? ''
+                        : isMyCombat
+                            ? `onclick="handleMyNextAttackReport(${b.boss_number})"`
+                            : inCombat
+                                ? `onclick="handleMyNextAttackClaim(${b.boss_number}, true)"`
+                                : `onclick="handleMyNextAttackClaim(${b.boss_number}, false)"`;
+                    const iconBox = iconSrc
+                        ? `<img loading="lazy" decoding="async" src="${iconSrc}" alt="" style="width:18px;height:18px;position:relative;z-index:2;${isMyCombat ? `filter:drop-shadow(0 0 4px ${c});` : ''}">`
+                        : `<div style="width:7px;height:7px;border-radius:99px;background:${c};position:relative;z-index:2;"></div>`;
+                    return `
+                        <div class="dc-boss-tile" ${onClick}
+                             data-selected="${isMyCombat ? '1' : '0'}"
+                             data-fighting="${isMyCombat ? '1' : '0'}"
+                             ${lv4B5 ? 'title="Lv4: HP無限のスコアレース — ここに全員で凸"' : ''}
+                             style="${dead ? 'opacity:0.4;' : ''}${lv4B5 ? 'border:2px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,var(--attr-electric-solid),var(--ops-solid)) border-box;' : ''}">
+                            ${iconBox}
+                            <div style="font-size:19px;font-weight:900;letter-spacing:0.5px;position:relative;z-index:2;font-variant-numeric:tabular-nums;">B${b.boss_number}</div>
+                            ${lv4B5 ? '<div style="font-size:10px;font-weight:900;color:var(--ops);position:relative;z-index:2;">♾️</div>' : (dead ? '<div style="font-size:10px;color:var(--t-muted);position:relative;z-index:2;">💀</div>' : '')}
+                        </div>`;
+                }).join('');
 
-            // 戦闘中バーの表示制御 (③カード内)
-            const inProgress = document.getElementById('mypageBattleInProgressBar');
-            const actions = document.getElementById('mypageBattleActions');
-            const closeBar = document.getElementById('mypageBattleCloseBar');
-            const targetLabel = document.getElementById('mypageBattleTargetLabel');
-            const myBoss = myBossNum ? bosses.find(x => x.boss_number === myBossNum) : null;
-            if (myBoss) {
-                if (inProgress) inProgress.style.display = 'flex';
-                if (actions) actions.style.display = 'flex';
-                if (closeBar) closeBar.style.display = 'none';
-                if (targetLabel) targetLabel.textContent = `B${myBoss.boss_number} ${myBoss.name || myBoss.boss_code} と交戦中`;
-            } else {
-                if (inProgress) inProgress.style.display = 'none';
-                if (actions) actions.style.display = 'none';
-                if (closeBar) closeBar.style.display = 'flex';
+                // 戦闘中バーの表示制御 (③カード内)
+                const inProgress = document.getElementById('mypageBattleInProgressBar');
+                const actions = document.getElementById('mypageBattleActions');
+                const closeBar = document.getElementById('mypageBattleCloseBar');
+                const targetLabel = document.getElementById('mypageBattleTargetLabel');
+                const myBoss = myBossNum ? bosses.find(x => x.boss_number === myBossNum) : null;
+                if (myBoss) {
+                    if (inProgress) inProgress.style.display = 'flex';
+                    if (actions) actions.style.display = 'flex';
+                    if (closeBar) closeBar.style.display = 'none';
+                    if (targetLabel) targetLabel.textContent = `B${myBoss.boss_number} ${myBoss.name || myBoss.boss_code} と交戦中`;
+                } else {
+                    if (inProgress) inProgress.style.display = 'none';
+                    if (actions) actions.style.display = 'none';
+                    if (closeBar) closeBar.style.display = 'flex';
+                }
+            } catch (e) {
+                console.warn('[次の凸] 描画に失敗:', e?.message || e);
             }
         }
 
