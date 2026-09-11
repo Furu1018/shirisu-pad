@@ -2028,6 +2028,8 @@
         .side-brand { display: none; }
         /* 運営アクションのボタン列 (戦況タブ「戦闘中の運営アクション」)。〜699px は2列、700px〜 は横一列の帯 */
         .ops-action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        /* ホームの締め凸依頼の箱 (JS が中身を描く)。空のまま置くと 0 高さで 1 行ぶん占有し、前後のカードの組を割る */
+        #myFinishRequestArea:empty { display: none; }
 
         /* --- ① 700px〜: 2列 --- */
         @media (min-width: 700px) {
@@ -3711,7 +3713,7 @@
             </div>
 
             <!-- ① プロフィール: ClaudeDesign 準拠 (シルバーリング + 名前/Lv + 得意属性チップ + 編集ピル + soft-fill 切替) -->
-            <div class="dc-card dc-profile-card">
+            <div class="dc-card dc-profile-card" data-span="6">
                 <div style="display:flex;gap:14px;align-items:flex-start;position:relative;">
                     <!-- avatar (gradient silver ring) -->
                     <div id="mypageAvatarFrame" onclick="openAvatarEditModal()" title="クリックでアバター変更" style="position:relative;flex:none;width:78px;height:78px;cursor:pointer;">
@@ -3763,10 +3765,10 @@
             <div id="myFinishRequestArea"></div>
 
             <!-- 📌 次にやること (Stage2 ホーム化: 時期依存の主行動を1件だけ提示。詳細は renderMyNextAction) -->
-            <div class="dc-card" id="myNextActionCard" style="display:none;border-left:4px solid var(--ops-solid);"></div>
+            <div class="dc-card" data-span="6" id="myNextActionCard" style="display:none;border-left:4px solid var(--ops-solid);"></div>
 
             <!-- ③ 戦闘 (ゲート → ボス選択 → 戦闘中) -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="6">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">戦闘</div>
                     <div id="mypageBattleLive" style="display:none;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:0.8px;color:var(--attr-fire);">
@@ -3827,7 +3829,7 @@
             <!-- 📤 配信された凸プラン (運営が配信したときだけ表示 — ホーム再構成 H1 で主行動群の下へ降格。
                  遅延ロードのレイアウトシフトが主行動を押し下げない位置) -->
             <!-- ⏰ あなたの戦闘可能時間 (2026-09-08 ユーザー要望: 自分の設定を認識していないメンバーがいた) -->
-            <div class="dc-card" id="myAvailStripCard" style="display:none;padding:12px 14px;">
+            <div class="dc-card" data-span="12" id="myAvailStripCard" style="display:none;padding:12px 14px;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                     <div style="font-size:13px;font-weight:900;color:var(--t-ink);">⏰ あなたの戦闘可能時間</div>
                     <span id="myAvailStripBadge" style="display:none;font-size:9.5px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;"></span>
@@ -3836,7 +3838,7 @@
                 <div id="myAvailStripBody"></div>
             </div>
 
-            <div class="dc-card" id="myPublishedPlanCard" style="display:none;">
+            <div class="dc-card" data-span="6" id="myPublishedPlanCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;"><span data-sp-icon="inbox" data-sp-size="15"></span> 配信された凸プラン</div>
                     <span id="myPublishedPlanMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
@@ -3845,7 +3847,7 @@
             </div>
 
             <!-- 🧬 育成データが未公開のお知らせ (B3・2026-09-09)。未公開のときだけ出る -->
-            <div class="dc-card" id="myGrowthNoticeCard" style="display:none;">
+            <div class="dc-card" data-span="6" id="myGrowthNoticeCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🧬 育成データが未公開です</div>
                     <span id="myGrowthNoticeMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
@@ -3861,7 +3863,7 @@
             </div>
 
             <!-- 🔒 引き受けた凸 (予約) — L2 ⑧。予約が1件でもあるときだけ表示 -->
-            <div class="dc-card" id="myReservationsCard" style="display:none;">
+            <div class="dc-card" data-span="6" id="myReservationsCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔒 引き受けた凸</div>
                     <span id="myReservationsMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
@@ -3873,7 +3875,7 @@
             </div>
 
             <!-- ④ 受け取った通知 (id はヘッダー🔔のスクロール先) -->
-            <div class="dc-card" id="myNotificationsCard">
+            <div class="dc-card" data-span="6" id="myNotificationsCard">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📨 受け取った通知</div>
                     <button onclick="renderMyNotificationsInbox(getCurrentIdentity())" style="background:transparent;border:none;font-size:11px;font-weight:700;color:var(--t-muted);cursor:pointer;"><span data-sp-icon="refresh" data-sp-size="11"></span> 更新</button>
@@ -3884,7 +3886,7 @@
             </div>
 
             <!-- ⑤ MY設定 (リスト行スタイル) -->
-            <div class="dc-card" style="padding:8px 8px 6px;">
+            <div class="dc-card" data-span="6" style="padding:8px 8px 6px;">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
                 <div onclick="openMyAvailModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
@@ -3933,7 +3935,7 @@
             </div>
 
             <!-- ① 模擬戦データ (横スクロール scroll-snap パネル + 解析バナー + キャラ被り凡例) — Stage2でホームから移設 -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="7">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">模擬戦データ</div>
@@ -3979,7 +3981,7 @@
             </div>
 
             <!-- 📚 人気編成 (みんなの模擬提出から集計 / NIKKE知識ゼロの純統計 / 既定は折りたたみ) -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="5">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;"><span data-sp-icon="bookOpen" data-sp-size="15"></span> 人気編成</div>
                     <span style="font-size:10.5px;color:var(--t-muted);">今期の模擬+過去シーズンの凸から集計</span>
@@ -3999,7 +4001,7 @@
             </div>
 
             <!-- ② ユニオン事前比較 (Stage2 新設 — js/domain/mockCompare.js を消費。UIの組込は後続コミット) -->
-            <div class="dc-card" id="mockCompareCard" style="display:none;"></div>
+            <div class="dc-card" data-span="12" id="mockCompareCard" style="display:none;"></div>
         </div>
     </div>
 
@@ -4252,7 +4254,7 @@
             </div>
 
             <!-- ① グラフ + 統計 -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="7">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:8px;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">属性別ダメージ分析</div>
@@ -4294,7 +4296,7 @@
             </div>
 
             <!-- ② ランキングテーブル -->
-            <div class="dc-card dc-card-tight">
+            <div class="dc-card dc-card-tight" data-span="5">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ランキング</div>
                     <span style="font-size:10.5px;color:var(--t-muted);">前月比あり</span>
@@ -4325,7 +4327,7 @@
             </div>
 
             <!-- ③ NIKKE編成 (折り畳み) -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="12">
                 <div onclick="toggleCharactersSection()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">NIKKE編成</div>
@@ -5134,7 +5136,7 @@
             </div>
 
             <!-- ⓪ ガイド / チュートリアル (折り畳み, デフォルト開) -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="6">
                 <div onclick="toggleSettingsGuide()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">ガイド / チュートリアル</div>
@@ -5189,7 +5191,7 @@
             </div>
 
             <!-- ① システム状態 -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="6">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:13px;">システム状態</div>
                 <div id="settingsStatusChips" style="display:flex;gap:7px;">
                     <div class="dc-status-chip"><div style="display:flex;align-items:center;gap:5px;"><span class="dc-status-dot"></span><span class="dc-status-label">読み込み中</span></div><div class="dc-status-val">—</div></div>
@@ -5204,7 +5206,7 @@
             </div>
 
             <!-- ①-2 互換ゲート (運営) — L2 ⑦ -->
-            <div class="dc-card" data-ops-only>
+            <div class="dc-card" data-span="6" data-ops-only>
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:6px;">アプリの版のしめ切り</div>
                 <div style="font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.7;margin-bottom:11px;">
                     予約を知らない古いアプリが「凸プランの表示・凸の報告・プランの配信」をするのを止めます。<br>
@@ -5218,7 +5220,7 @@
             </div>
 
             <!-- ② メンバーの通知状況 (運営) -->
-            <div class="dc-card dc-card-tight" data-ops-only>
+            <div class="dc-card dc-card-tight" data-span="6" data-ops-only>
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">メンバーの通知状況</div>
                     <div id="settingsNotifySummary" style="font-size:10.5px;color:var(--t-muted);">—</div>
@@ -5233,7 +5235,7 @@
             </div>
 
             <!-- ②' メンバー管理 (運営) -->
-            <div class="dc-card" data-ops-only>
+            <div class="dc-card" data-span="12" data-ops-only>
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">メンバー管理</div>
@@ -5251,7 +5253,7 @@
             </div>
 
             <!-- ③ 最近のアクティビティ (運営 · 折り畳み) -->
-            <div class="dc-card" data-ops-only>
+            <div class="dc-card" data-span="6" data-ops-only>
                 <div onclick="toggleSettingsActivity()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div style="display:flex;align-items:baseline;gap:8px;">
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">最近のアクティビティ</div>
@@ -5267,7 +5269,7 @@
             </div>
 
             <!-- ④ キャラクターマスタ管理 (運営 · 折り畳み) -->
-            <div class="dc-card" data-ops-only>
+            <div class="dc-card" data-span="12" data-ops-only>
                 <div onclick="toggleSettingsMaster()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">キャラクターマスタ管理</div>
@@ -5313,7 +5315,7 @@
             </div>
 
             <!-- ⑤ 見た目 (ライト / ダーク) -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="6">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">見た目</div>
                 <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.6;">この端末だけの設定です。「端末に合わせる」は OS のダークモードに従います。</div>
                 <div id="settingsThemeSeg" class="th-seg" role="group" aria-label="見た目">
@@ -5324,7 +5326,7 @@
             </div>
 
             <!-- ⑤ このブラウザの設定 (デンジャーゾーン) -->
-            <div class="dc-card">
+            <div class="dc-card" data-span="6">
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">このブラウザの設定</div>
                 <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.6;">この端末・ブラウザに保存された情報の管理</div>
 
@@ -5369,7 +5371,7 @@
             </div>
 
             <!-- ⑥ バックアップ / 復元 (運営 · 折り畳み · 最下部配置で誤操作防止) -->
-            <div class="dc-card" data-ops-only>
+            <div class="dc-card" data-span="6" data-ops-only>
                 <div onclick="toggleSettingsBackup()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">バックアップ / 復元</div>

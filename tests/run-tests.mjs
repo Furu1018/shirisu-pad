@@ -7979,6 +7979,54 @@ console.log('\ngrowthDomain:');
             assert.deepEqual(bad, [], `${name}: 12 に揃わない行がある ${JSON.stringify(rs)} — 並び: ${cards.map(c => `${c.id}(${c.span})`).join(' → ')}`);
         }
     });
+    test('★ 2列/12カラム: 戦況以外の4タブは本文直下のカード全部に data-span がある (無いと黙って全幅 = 1列のまま)', () => {
+        // ★ 戦況タブは opsLayout.CARDS → data-span を初期化で写す (別のテスト)。他の4タブは HTML に直接書く。
+        //   700px〜 は 12 以外すべて半分なので、値の細かさより「付いているか」が効く。
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        // タブ本文を切り出し、.container 直下の .dc-card だけ集める (入れ子のカードは数えない)
+        const topCards = (tabId) => {
+            const start = html.indexOf(`<div id="${tabId}" class="tab-content`);
+            assert.ok(start > 0, `${tabId} が無い`);
+            const from = html.indexOf('<div class="container"', start);
+            const re = /<div\b[^>]*>|<\/div>/g; re.lastIndex = html.indexOf('>', from) + 1;
+            const out = []; let d = 0, m;
+            while ((m = re.exec(html))) {
+                if (m[0][1] === '/') { d--; if (d < 0) break; continue; }
+                if (d === 0 && /^<div class="dc-card/.test(m[0])) {
+                    const chunk = html.slice(m.index, m.index + 600);
+                    const t = chunk.match(/>([^<]{2,40})<\/div>/);
+                    out.push({ tag: m[0], title: t ? t[1].trim() : '' });
+                }
+                d++;
+            }
+            return out;
+        };
+        const missing = [], bad = [];
+        const found = {};
+        for (const tab of ['tab-mypage', 'tab-mock', 'tab-ranking', 'tab-settings']) {
+            const cards = topCards(tab);
+            assert.ok(cards.length >= 3, `${tab}: 本文直下のカードが少なすぎる (${cards.length}) — 切り出しが壊れている`);
+            found[tab] = cards;
+            for (const c of cards) {
+                const m = c.tag.match(/ data-span="(\d+)"/);
+                if (!m) missing.push(`${tab}: ${c.tag.slice(0, 70)}`);
+                else if (!['4', '5', '6', '7', '8', '12'].includes(m[1])) bad.push(`${tab}: data-span="${m[1]}" (CSS に受け皿が無い)`);
+            }
+        }
+        assert.deepEqual(missing, [], `data-span の無いカード:\n  ${missing.join('\n  ')}`);
+        assert.deepEqual(bad, [], bad.join('\n'));
+        // 表・横に広い中身は全幅 (半分に切ると読めない)
+        const spanOf = (tab, id) => (found[tab].find(c => c.tag.includes(`id="${id}"`)) || {}).tag?.match(/ data-span="(\d+)"/)?.[1];
+        assert.equal(spanOf('tab-mypage', 'myAvailStripCard'), '12', '戦闘可能時間 (24時間の帯) は全幅であること');
+        assert.equal(spanOf('tab-mock', 'mockCompareCard'), '12', '編成の比較は全幅であること');
+        const setSpans = found['tab-settings'].map(c => c.tag.match(/ data-span="(\d+)"/)?.[1]);
+        assert.equal(setSpans.filter(v => v === '12').length, 2, '設定の全幅は メンバー管理 と キャラクターマスタ管理 の 2 枚だけ');
+        // ホームの締め凸依頼の箱 (カードでない空の div): 空のとき行を占有しない
+        assert.ok(html.includes('<div id="myFinishRequestArea"></div>'), '締め凸依頼の箱の形が変わった (:empty の前提を確かめること)');
+        assert.ok(/#myFinishRequestArea:empty \{ display: none; \}/.test(css), '空の締め凸依頼の箱を隠していない (0 高さで 1 行ぶん占有する)');
+        assert.ok(/area\.innerHTML = '';/.test(html), '締め凸依頼の箱を空文字で消していない (空白が残ると :empty が効かない)');
+    });
     test('★ 配線: 戦況タブのカードは初期化で CARDS の順に並べ直す / 運営アクションのボタン列は横一列の帯にできる', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const init = html.match(/function _initOpsTabStructure\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
