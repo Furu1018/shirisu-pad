@@ -105,6 +105,7 @@
     .chip { position: relative; display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 8px; font-size: 10.5px; font-weight: 800; line-height: 1.3; border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); background: color-mix(in srgb, var(--c) 8%, var(--card)); color: var(--t-ink); cursor: pointer; user-select: none; -webkit-user-select: none; min-width: 0; }
     .chip .nm { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .chip .dm { flex: none; font-size: 10px; font-weight: 900; color: var(--t-strong); font-variant-numeric: tabular-nums; }
+    .chip .lv { flex: none; font-size: 8.5px; font-weight: 900; color: var(--t-muted); padding: 0 4px; border-radius: 999px; background: rgba(var(--ink-rgb), 0.06); }
     .chip .mk { flex: none; font-size: 10px; line-height: 1; }
     .chip.me { outline: 2px solid var(--ops); outline-offset: -1px; }
     .chip.lock { border-style: solid; border-color: var(--ok-solid); box-shadow: inset 3px 0 0 var(--ok-solid); cursor: default; }
@@ -117,6 +118,8 @@
     .pc .chip:not(.lock):active { cursor: grabbing; }
     .chip .stiff { position: absolute; right: -2px; top: -5px; font-size: 8.5px; font-weight: 900; padding: 1px 5px; border-radius: 999px; background: var(--s2); color: var(--t-muted); }
     .chip .stiff.hard { background: var(--warn-bg); color: var(--warn); }
+    .lvnote { margin: 0 0 8px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); line-height: 1.5; }
+    .lvnote b { color: var(--t-strong); }
     .legend-tt { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
     .legend-tt b { font-weight: 900; }
 
@@ -133,7 +136,7 @@
     .act button.x { background: transparent; opacity: .7; }
     .sp .act .sp1 { flex-basis: 100%; height: 0; }
 
-    /* ---- 駒箱 (提出された模擬カード = 駒) ---- */
+    /* ---- 模擬ピース (提出された模擬カード = 駒) ---- */
     .board { display: grid; grid-template-columns: minmax(0, 1fr) 262px; gap: 12px; align-items: start; }
     .sp .board { grid-template-columns: 1fr; }
     .tray { border: 1px solid var(--line); border-radius: 12px; background: var(--s1); padding: 10px; position: sticky; top: 8px; }
@@ -187,7 +190,7 @@
     <div class="doc">
         <h1>最適凸プラン パズル盤</h1>
         <p class="lead">運営ボードの「最適凸プラン算出」カードを、<b>条件を選んで → 算出 → 時間割の上で手を打つ</b>、の順に組み直した案です。
-            条件は結果に焼き込まれ、時間割のチップは <b>スマホならタップ、PC ならドラッグ</b>で 📌ピン（運営の下書き）を置けます。<b>🧩駒箱（提出された模擬カード）からも盤へ置けます</b>。ピンは本人に「📣お願い」した瞬間だけ約束（🔒）になります。
+            条件は結果に焼き込まれ、時間割のチップは <b>スマホならタップ、PC ならドラッグ</b>で 📌ピン（運営の下書き）を置けます。<b>🧩模擬ピース（提出された模擬カード）からも盤へ置けます</b>。ピンは本人に「📣お願い」した瞬間だけ約束（🔒）になります。
             数字と名前は見本です。</p>
         <div class="legend">
             <span><i class="dot" style="background:var(--ok-solid)"></i>🔒 本人が引き受けた約束 — 動かせない</span>
@@ -213,14 +216,16 @@
             <li><b>ドラッグは PC の近道</b>で、全部タップでもできる。出し分けは幅ではなく <code>(hover: hover) and (pointer: fine)</code>（マウスがある環境）</li>
             <li>置ける場所は<b>つかんだ瞬間に光る</b>（その人の戦闘可能時間の行 × 編成の属性が合うボスの列）。落とせないときは理由を日本語で</li>
             <li>チップ右上の「硬い / 柔らかい」は<b>動かせる幅</b>（その人が出られる時間が1つしかない = 硬い）。パズルで先に動かすべき駒が分かる</li>
-            <li><b>🧩 駒箱 = 提出された模擬カードそのもの</b>（人 × 編成 × ダメージ）。盤の外からも置ける。人ごとに「残N」、残凸が多い人 → 強い駒の順に並ぶので<b>余っている強い駒</b>が上に来る。属性で絞れる。置くと 📌 になり、残凸を使い切っている / 同じキャラを2回 / 属性が合わない / 時間外 は置けない（理由を出す）</li>
+            <li><b>🧩 模擬ピース = 提出された模擬カードそのもの</b>（人 × 編成 × ダメージ）。盤の外からも置ける。人ごとに「残N」、残凸が多い人 → 強いピースの順に並ぶので<b>余っている強いピース</b>が上に来る。属性で絞れる</li>
+            <li><b>置ける場所の決め（ユーザー指定 2026-09-11）</b>: ① そのピースの<b>有利属性のボスだけ</b>（握った瞬間に光る） ② <b>その人の戦闘可能時間だけ</b> ③ <b>同じキャラを2回使わない</b>（その人の他の編成との被り） ④ 残凸の範囲内。外れる場所は沈み、落とすと理由が出る</li>
+            <li><b>レベルは置くときに選ばない</b>。置くのは 時刻 × ボス だけで、算出が「その時刻にそのボスがいるレベル」に当てはめる — 予約と同じ決め（予約はレベルを持たない・2026-09-08）。その時刻にそのボスがどのレベルにもいなければ「置けませんでした: 理由」で返す（黙って捨てない）</li>
         </ul>
         <h3>作る順</h3>
         <table>
             <tr><th>段</th><th>内容</th><th>大きさ</th></tr>
             <tr><td>①</td><td>条件パネル + 結果への焼き込み + きっかけ（模擬の更新 / 手詰まり）</td><td>小〜中（今回）</td></tr>
             <tr><td>②</td><td>時間割の読みやすさ: 選ぶとその人の時間が光る / 硬い・柔らかい</td><td>小（今回）</td></tr>
-            <tr><td>③</td><td>📌ピン（運営の下書き）→ 算出し直し。DB に持って交代で引き継ぐ。PC はドラッグ。<b>🧩駒箱から盤へも置ける</b></td><td>中（次）</td></tr>
+            <tr><td>③</td><td>📌ピン（運営の下書き）→ 算出し直し。DB に持って交代で引き継ぐ。PC はドラッグ。<b>🧩模擬ピースから盤へも置ける</b></td><td>中（次）</td></tr>
             <tr><td>④</td><td>📣お願い → 本人が引き受けると 🔒 に昇格（予約の状態に「運営発・未承諾」を足す）</td><td>中（次・③と一緒に）</td></tr>
         </table>
     </div>
@@ -254,7 +259,7 @@
         { id: 10, nm: 'G',         dm: 24.4, pt: '水冷', boss: 3, h: 0,  win: [23, 0] },
         { id: 11, nm: 'H',         dm: 21.0, pt: '電撃', boss: 4, h: 1,  win: [1] , stiff: true },
     ];
-    // 駒箱 = 提出された模擬カード (人 × 編成 × ダメージ)。盤に置かれている駒は BASE の id と同じ id を持つ
+    // 模擬ピース = 提出された模擬カード (人 × 編成 × ダメージ)。盤に置かれている駒は BASE の id と同じ id を持つ
     var TEAMS = { '水冷': ['ラ', 'ド', '紅', 'ア', 'ク'], '電撃': ['レ', 'モ', 'リ', 'ア', 'ク'], '風圧': ['ス', 'ナ', 'ヘ', 'ア', 'ク'], '鉄甲': ['紅', 'マ', 'ビ', 'ア', 'ク'], '灼熱': ['レ', 'ド', 'ラ', 'ア', 'ク'] };
     var PIECES = [
         { id: 1, nm: 'ふるり', pt: '水冷', dm: 34.2 }, { id: 101, nm: 'ふるり', pt: '鉄甲', dm: 36.1 }, { id: 102, nm: 'ふるり', pt: '電撃', dm: 30.9 },
@@ -301,6 +306,10 @@
         return moved;
     }
     function label(h) { return (h < 5 ? '翌' : '') + h + '時'; }
+    // ★ レベルは置くときに選ばない。算出が「その時刻にそのボスがいるレベル」に当てはめる (予約と同じ決め・2026-09-08)。
+    //   見本の開始見込み: Lv1 20時 / Lv2 22時 / Lv3 翌0時
+    var LV_OPEN = [[20, 1], [22, 2], [0, 3]];
+    function lvOf(h) { var i = HOURS.indexOf(h); var lv = 1; LV_OPEN.forEach(function (o) { if (HOURS.indexOf(o[0]) <= i) lv = o[1]; }); return lv; }
     function snapshot() { S.hist.push(JSON.stringify({ chips: S.chips, asks: S.asks })); if (S.hist.length > 20) S.hist.shift(); }
     function undo() {
         var prev = S.hist.pop(); if (!prev) return;
@@ -311,7 +320,7 @@
         var b = BOSS[boss - 1];
         if (b.pt !== c.pt) return { ok: false, why: b.pt + 'PT のボスです (' + c.nm + ' の編成は ' + c.pt + 'PT)' };
         if (c.win.indexOf(h) < 0 && !c.flex) return { ok: false, why: label(h) + ' は ' + c.nm + ' の戦闘可能時間の外です' };
-        // 駒箱から新しく置くとき: 残凸と、同じキャラを1日2回使わない (本番のソルバーと同じ縛り)
+        // 模擬ピースから新しく置くとき: 残凸と、同じキャラを1日2回使わない (本番のソルバーと同じ縛り)
         var others = S.chips.filter(function (x) { return x.nm === c.nm && x.id !== c.id; });
         if (!onBoard(c.id) && others.length >= 3) return { ok: false, why: c.nm + ' は 3凸を使い切っています' };
         var mine = TEAMS[c.pt] || [];
@@ -320,7 +329,7 @@
         return { ok: true };
     }
     function onBoard(id) { return S.chips.some(function (x) { return x.id === id; }); }
-    // 駒箱の駒を盤に置く (= 新しいチップを作って📌)。盤の中の移動 (pin) と同じ判定・同じ組み直し
+    // 模擬ピースの駒を盤に置く (= 新しいチップを作って📌)。盤の中の移動 (pin) と同じ判定・同じ組み直し
     function place(pc, boss, h) {
         var c = { id: pc.id, nm: pc.nm, dm: pc.dm, pt: pc.pt, boss: boss, h: h, win: WIN[pc.nm] || [], me: pc.nm === 'ふるり' };
         var r = canPlace(c, boss, h);
@@ -328,9 +337,9 @@
         snapshot();
         c.pin = true; S.chips.push(c);
         var moved = resolve(c.id);
-        S.diff = { pinned: pc.nm + ' の ' + pc.pt + 'PT (' + pc.dm.toFixed(1) + 'B) を駒箱から B' + boss + ' ' + label(h) + ' に置いて固定', moved: moved };
+        S.diff = { pinned: pc.nm + ' の ' + pc.pt + 'PT (' + pc.dm.toFixed(1) + 'B) を模擬ピースから B' + boss + ' ' + label(h) + ' に置いて固定 → 算出が Lv' + lvOf(h) + ' に当てはめ', moved: moved };
         S.sel = null; S.selPiece = null; S.stage = 'puzzle';
-        render(); toast('🧩 駒箱から置いて組み直しました' + (moved.length ? ' — 動いた人 ' + moved.length : ''));
+        render(); toast('🧩 模擬ピースから置いて組み直しました' + (moved.length ? ' — 動いた人 ' + moved.length : ''));
     }
     function pin(c, boss, h) {
         var r = canPlace(c, boss, h);
@@ -338,7 +347,7 @@
         snapshot();
         c.boss = boss; c.h = h; c.pin = true; c.ask = false;
         var moved = resolve(c.id);
-        S.diff = { pinned: c.nm + ' を B' + boss + ' ' + label(h) + ' に固定', moved: moved };
+        S.diff = { pinned: c.nm + ' を B' + boss + ' ' + label(h) + ' に固定 → 算出が Lv' + lvOf(h) + ' に当てはめ', moved: moved };
         S.sel = null; S.stage = 'puzzle';
         render(); toast('📌 固定して組み直しました' + (moved.length ? ' — 動いた人 ' + moved.length : ''));
     }
@@ -379,7 +388,7 @@
         var stiff = S.stage === 'puzzle' && !c.lock ? '<span class="stiff' + (c.win.length <= 1 ? ' hard' : '') + '">' + (c.win.length <= 1 ? '硬い' : c.win.length <= 2 ? '狭い' : '柔らかい') + '</span>' : '';
         var draggable = S.dev === 'pc' && S.stage === 'puzzle' && !c.lock;
         return '<div class="' + cls.join(' ') + '" data-id="' + c.id + '" draggable="' + draggable + '" style="--c:' + PTC[c.pt] + '" title="' + esc(c.nm + ' · ' + c.pt + 'PT · 出られる時間 ' + c.win.map(label).join('/')) + '">'
-            + (mk ? '<span class="mk">' + mk + '</span>' : '') + '<span class="nm">' + esc(c.nm) + '</span><span class="dm">' + c.dm.toFixed(1) + 'B</span>' + stiff + '</div>';
+            + (mk ? '<span class="mk">' + mk + '</span>' : '') + '<span class="nm">' + esc(c.nm) + '</span><span class="lv">L' + lvOf(c.h) + '</span><span class="dm">' + c.dm.toFixed(1) + 'B</span>' + stiff + '</div>';
     }
     function ttHtml(dragging) {
         var sel = S.chips.filter(function (c) { return c.id === S.sel; })[0] || null;
@@ -390,9 +399,10 @@
         var focus = drg || sel || (piece ? { pt: piece.pt, win: WIN[piece.nm] || [], flex: false } : null);
         var cells = ['<div></div>'];
         BOSS.forEach(function (b) { cells.push('<div class="bh" style="background:' + b.c + '">' + b.attr + '<small>' + b.pt + 'PT</small></div>'); });
-        cells.push('<div class="band">Lv2 ─ 20時開始 → 💀翌1時 全撃破想定</div>');
+        if (S.stage !== 'puzzle') cells.push('<div class="band">Lv1 ─ 20時開始 → 💀22時 全撃破想定</div>');
         HOURS.forEach(function (h, i) {
-            if (i > 0 && h === 23) { /* 見本では省略なし */ }
+            if (S.stage !== 'puzzle' && h === 22) cells.push('<div class="band">Lv2 ─ 22時開始 → 💀翌0時 全撃破想定</div>');
+            if (S.stage !== 'puzzle' && h === 0) cells.push('<div class="band">Lv3 ─ 翌0時開始 → 💀翌2時 全撃破想定</div>');
             var canRow = focus && (focus.win.indexOf(h) >= 0 || focus.flex);
             cells.push('<div class="hl' + (h === NOW ? ' now' : '') + (focus && canRow ? ' can' : '') + '">' + (h === NOW ? '▼' : '') + label(h) + '</div>');
             BOSS.forEach(function (b) {
@@ -402,7 +412,8 @@
                 cells.push('<div class="' + cls.join(' ') + '" data-boss="' + b.n + '" data-h="' + h + '">' + inCell.map(function (c) { return chipHtml(c, dragging); }).join('') + '</div>');
             });
         });
-        return '<div class="tt-wrap" data-no-swipe><div class="tt">' + cells.join('') + '</div></div>'
+        var lvNote = S.stage === 'puzzle' ? '<p class="lvnote">置くのは <b>時刻 × ボス</b> だけ。レベルは算出が「その時刻にそのボスがいるレベル」に当てはめます (予約と同じ)。チップの L1/L2/L3 は前回の算出の当てはめ</p>' : '';
+        return lvNote + '<div class="tt-wrap" data-no-swipe><div class="tt">' + cells.join('') + '</div></div>'
             + '<div class="legend-tt"><span><b style="color:var(--ops)">青</b>=あなた</span><span>🔒=約束 (動かせない)</span><span>📌=運営の固定</span><span>📣=お願い中</span><span>⏳=隙間型</span><span>▼=いま</span>'
             + (S.stage === 'puzzle' ? '<span>' + (S.dev === 'pc' ? 'チップを<b>つかんで</b>別のマスへ。置ける場所が光ります' : 'チップを<b>タップ</b>すると下に操作が出ます。その人が出られる時間が光ります') + '</span>' : '') + '</div>';
     }
@@ -431,7 +442,7 @@
                 }).join('');
         }).join('');
         return '<div class="tray' + (S.dev === 'sp' && !t.open ? ' closed' : '') + '">'
-            + '<div class="th"><h3>🧩 駒箱</h3><span class="n">提出された模擬カード · 未使用 ' + unused + '</span>' + (S.dev === 'sp' ? '<button type="button" class="tog" data-act="tray">' + (t.open ? '畳む' : '開く') + '</button>' : '') + '</div>'
+            + '<div class="th"><h3>🧩 模擬ピース</h3><span class="n">提出された模擬カードそのもの · 未使用 ' + unused + '</span>' + (S.dev === 'sp' ? '<button type="button" class="tog" data-act="tray">' + (t.open ? '畳む' : '開く') + '</button>' : '') + '</div>'
             + '<div class="filt"><button type="button" data-tray-attr="" aria-pressed="' + (!t.attr) + '">全部</button>' + ATTRS.map(function (a) { return '<button type="button" class="attr" data-tray-attr="' + a + '" aria-pressed="' + (t.attr === a) + '" style="--fc:' + PTC[a] + '">' + a + '</button>'; }).join('')
             + '<button type="button" data-act="unused" aria-pressed="' + t.unusedOnly + '">未使用だけ</button></div>'
             + '<div class="list">' + (body || '<div class="empty">この条件の駒はありません</div>') + '</div>'
@@ -531,7 +542,7 @@
             S.sel = (S.sel === id) ? null : id; render(); return;
         }
         if (e.target.closest('.cell') && (S.sel != null || S.selPiece != null)) {
-            // タップで置く: 選んでいる駒 (盤の上 / 駒箱) を、押したマスへ (スマホの近道)
+            // タップで置く: 選んでいる駒 (盤の上 / 模擬ピース) を、押したマスへ (スマホの近道)
             var cell = e.target.closest('.cell'); var boss = Number(cell.dataset.boss), hh = Number(cell.dataset.h);
             if (S.stage !== 'puzzle') return;
             if (S.selPiece != null) { var pp = PIECES.filter(function (p) { return p.id === S.selPiece; })[0]; if (pp) place(pp, boss, hh); return; }
