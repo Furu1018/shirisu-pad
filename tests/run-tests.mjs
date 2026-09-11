@@ -8058,6 +8058,50 @@ console.log('\ngrowthDomain:');
         // ★ 下のナビと二重に出さない (下のナビは 767px まで。サイドバーは 768px から)
         assert.ok(/@media \(max-width: 767px\) \{\s*\.bottom-nav \{ display: flex; \}/.test(css), '下のナビの出る幅が変わっている (サイドバーと二重になる)');
     });
+    test('★ サイドバーのときは上の帯を出さない (名前の切替と再読み込みはサイドバーの足元へ)', () => {
+        // 2026-09-11 ユーザー要望「PC と横画面で左からメニューが出るモードの時は上部帯も不要」。
+        // 見出しはロゴが担う。帯にあった 名前の切替 と 再読み込み だけ足元 (.side-foot) に置く
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        const at = (q) => {
+            const i = css.indexOf(`${q} {`);
+            assert.ok(i > 0, `${q} の段が無い`);
+            let d = 0, k = css.indexOf('{', i);
+            for (let j = k; j < css.length; j++) {
+                if (css[j] === '{') d++;
+                else if (css[j] === '}') { d--; if (!d) return css.slice(i, j + 1); }
+            }
+            throw new Error(`${q} の段の終端が分からない`);
+        };
+        const side = at('@media (min-width: 1180px), (min-width: 768px) and (max-height: 559px)');
+        assert.ok(/\n\s*\.header \{ display: none; \}/.test(side), 'サイドバーのときに上の帯を隠していない');
+        assert.ok(/\.side-foot \{\s*display: flex;/.test(side), '足元を出していない');
+        assert.ok(/\.side-foot \{[^}]*margin-top: auto;/.test(side), '足元がサイドバーの下端に寄っていない');
+        // ★ 帯を隠すのはサイドバーの幅だけ。他の幅で隠すと名前の切替と再読み込みが画面から消える
+        assert.equal((css.match(/\.header \{ display: none; \}/g) || []).length, 1, '上の帯をサイドバー以外の幅でも隠している');
+        assert.ok(/\n\s*\.side-foot \{ display: none; \}/.test(css), '狭いときに足元を隠していない (横タブの中に名前が挟まる)');
+        // 足元はサイドバー (tab-navigation) の中にあり、帯と同じ関数につながる
+        const navI = html.indexOf('<nav class="tab-navigation');
+        const nav = html.slice(navI, html.indexOf('</nav>', navI));
+        const foot = nav.match(/<div class="side-foot">[\s\S]*?\n        <\/div>/)?.[0] || '';
+        assert.ok(foot, '足元がサイドバーの中に無い');
+        assert.ok(/onclick="openPlayerSelectModal\(\)"/.test(foot), '足元から名乗り直せない');
+        assert.ok(/onclick="handleHeaderReload\(\)"/.test(foot), '足元から再読み込みできない');
+        assert.ok(/data-identity-name/.test(foot) && /data-identity-avatar/.test(foot), '足元に名前と絵の置き場が無い');
+        assert.ok(/class="hdr-reload-ic"/.test(foot), '足元の ↻ に回転のクラスが無い');
+        // 名前と絵は帯と足元の両方に書く (片方だけだと名乗り直しても古い名前が残る)
+        const fn = html.match(/function updateIdentityHeader\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/querySelectorAll\('\[data-identity-name\]'\)\.forEach\(\(el\) => \{ el\.textContent = nameText; \}\)/.test(fn), '足元に名前を書いていない');
+        assert.ok(/nameEl\.textContent = nameText;/.test(fn), '帯の名前を書かなくなっている');
+        assert.ok(/\.\.\.document\.querySelectorAll\('\[data-identity-avatar\]'\)/.test(fn), '足元に絵を書いていない');
+        assert.ok(/for \(const hintEl of targets\)/.test(fn), '絵を全部の置き場に書いていない');
+        // 再読み込みの回転は id でなくクラスで (足元から押しても回る)。戻すのも同じ集合
+        const rl = html.match(/async function handleHeaderReload\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/const icons = \[\.\.\.document\.querySelectorAll\('\.hdr-reload-ic'\)\];/.test(rl), '↻ をクラスで集めていない');
+        assert.ok(!/getElementById\('headerReloadIcon'\)/.test(rl), 'id で1つだけ回している');
+        assert.equal((rl.match(/icons\.forEach\(\(ic\) => \{ ic\.style\.transform = /g) || []).length, 2, '回す・戻すの両方を全部に掛けていない');
+        assert.ok(/id="headerReloadIcon" class="hdr-reload-ic"/.test(html), '帯の ↻ にクラスが無い (帯の方が回らなくなる)');
+    });
     // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====
     test('★ paceModel: 時間帯ごとの本数・定員・直近のペースから「使い切る時刻」を出す', () => {
         const dom = globalThis.paceDomain;

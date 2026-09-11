@@ -2033,6 +2033,7 @@
              **全幅の縦並び**にする (Codex 監査 de2bb0d: 5 の次に 12 が来て空き列が出ていた)。
              :is() で3か所をまとめる (特異性は ID 相当になるが、それで困る規則は無い)。 */
         .side-brand { display: none; }
+        .side-foot { display: none; }    /* サイドバーの足元 (名前の切替 + 再読み込み)。横タブ・下ナビの幅では上の帯が担う */
         /* 運営アクションのボタン列 (戦況タブ「戦闘中の運営アクション」)。〜699px は2列、700px〜 は横一列の帯 */
         .ops-action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         /* ホームの締め凸依頼の箱 (JS が中身を描く)。空のまま置くと 0 高さで 1 行ぶん占有し、前後のカードの組を割る */
@@ -2101,6 +2102,28 @@
                 color: var(--t-ink); padding: 4px 10px 16px;
             }
             .side-brand span { font-size: 18px; }
+            /* ★ 上の帯は出さない (2026-09-11 ユーザー要望「左からメニューが出るモードでは上部帯も不要」)。
+               見出しはロゴが担う。帯にあった 名前の切替 と 再読み込み はサイドバーの足元 (.side-foot) へ。
+               書き込むのは帯と同じ関数 (updateIdentityHeader / handleHeaderReload) — 片方だけ古くならない。
+               ★ 隠すのはこの幅だけ。他の幅で隠すと名前の切替と再読み込みが画面から消える */
+            .header { display: none; }
+            .side-foot {
+                display: flex; flex-direction: column; gap: 6px;
+                margin-top: auto; padding-top: 12px;
+                border-top: 1px solid var(--hair);
+            }
+            .side-me, .side-reload {
+                display: flex; align-items: center; gap: 8px; width: 100%;
+                padding: 8px 10px; border-radius: 11px; border: none; cursor: pointer;
+                font-size: 12px; font-weight: 800; text-align: left; font-family: inherit;
+                background: var(--s1); color: var(--t-ink);
+            }
+            .side-me:hover, .side-reload:hover { background: var(--s2); }
+            .side-me-av { flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; color: var(--t-body); }
+            .side-me-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .side-me-hint { flex: none; font-size: 10px; font-weight: 900; color: var(--t-muted); }
+            .side-reload { color: var(--t-body); }
+            .side-reload svg { flex: none; width: 16px; height: 16px; transition: transform 0.5s; }
             .tab-buttons-wrapper { flex-direction: column; gap: 3px; }
             .tab-button {
                 flex-direction: row;
@@ -2133,6 +2156,7 @@
             .side-brand img { max-width: 120px; }
             .side-brand { padding-bottom: 10px; }
             .tab-button { padding: 8px 10px; font-size: 12px; }
+            .side-me, .side-reload { padding: 6px 8px; font-size: 11px; }
         }
 
         /* ========== Stats toggle ========== */
@@ -3772,7 +3796,7 @@
         </div>
         <div class="header-right" style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
             <button id="headerReloadBtn" onclick="handleHeaderReload()" title="データを再読み込み" aria-label="再読み込み" style="background:transparent;border:1px solid var(--nav-line);color:var(--nav-ink);border-radius:8px;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">
-                <svg id="headerReloadIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.5s;"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+                <svg id="headerReloadIcon" class="hdr-reload-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.5s;"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
             </button>
             <button class="identity-pill" id="identityPill" onclick="openPlayerSelectModal()" style="display:none;">
                 <span class="hint" data-sp-icon="user" data-sp-size="16"></span>
@@ -3819,6 +3843,19 @@
             <button class="tab-button" data-tab="settings" onclick="switchTab('settings')" title="設定">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 設定
+            </button>
+        </div>
+        <!-- サイドバーの足元 (1180px〜 / スマホ横): 上の帯を出さないので、名前の切替と再読み込みをここに置く (2026-09-11)。
+             名前と絵は updateIdentityHeader、↻ の回転は handleHeaderReload が帯と一緒に書く。横タブの幅では CSS が隠す -->
+        <div class="side-foot">
+            <button class="side-me" onclick="openPlayerSelectModal()" title="プレイヤー変更">
+                <span class="side-me-av" data-identity-avatar><span data-sp-icon="user" data-sp-size="14"></span></span>
+                <span class="side-me-name" data-identity-name>未選択</span>
+                <span class="side-me-hint">切替</span>
+            </button>
+            <button class="side-reload" onclick="handleHeaderReload()" title="データを再読み込み" aria-label="再読み込み">
+                <svg class="hdr-reload-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+                <span>再読み込み</span>
             </button>
         </div>
     </nav>
@@ -7004,8 +7041,9 @@
         async function handleHeaderReload() {
             if (_headerReloadBusy) return;
             _headerReloadBusy = true;
-            const icon = document.getElementById('headerReloadIcon');
-            if (icon) icon.style.transform = 'rotate(360deg)';
+            // 帯の ↻ とサイドバー足元の ↻ の両方を回す (id で1つだけだと、足元から押しても回らない)
+            const icons = [...document.querySelectorAll('.hdr-reload-ic')];
+            icons.forEach((ic) => { ic.style.transform = 'rotate(360deg)'; });
             try {
                 // 主要キャッシュをクリア
                 seasonStore.invalidate();
@@ -7029,7 +7067,7 @@
                 showNotification(`❌ 再読み込みに失敗: ${e?.message || e}`);
             } finally {
                 setTimeout(() => {
-                    if (icon) icon.style.transform = '';
+                    icons.forEach((ic) => { ic.style.transform = ''; });
                     _headerReloadBusy = false;
                 }, 600);
             }
@@ -7242,24 +7280,23 @@
             const pill = document.getElementById('identityPill');
             const nameEl = document.getElementById('identityName');
             const id = getCurrentIdentity();
-            if (id?.name) {
-                pill.style.display = 'inline-flex';
-                nameEl.textContent = id.name;
-            } else {
-                pill.style.display = 'inline-flex';
-                nameEl.textContent = 'プレイヤー未選択';
-            }
-            // 識別ピル内の絵文字を実アバターに差し替え (非同期)
+            const nameText = id?.name ? id.name : 'プレイヤー未選択';
+            pill.style.display = 'inline-flex';
+            nameEl.textContent = nameText;
+            // ★ サイドバーの足元 (上の帯を出さない幅・2026-09-11) にも同じ名前を書く。片方だけだと名乗り直しても古い名前が残る
+            document.querySelectorAll('[data-identity-name]').forEach((el) => { el.textContent = nameText; });
+            // 識別ピル内の絵文字を実アバターに差し替え (非同期)。足元の丸 ([data-identity-avatar]) も同じ絵にする
             if (id?.id && _allPlayersCache) {
                 const me = _allPlayersCache.find(p => p.id === id.id);
                 if (me) {
                     resolveAvatarFor(me).then(url => {
-                        const hintEl = pill?.querySelector('.hint');
-                        if (!hintEl) return;
-                        if (url) {
-                            hintEl.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
-                        } else {
-                            hintEl.innerHTML = spIcon('user', 16);
+                        const targets = [pill?.querySelector('.hint'), ...document.querySelectorAll('[data-identity-avatar]')].filter(Boolean);
+                        for (const hintEl of targets) {
+                            if (url) {
+                                hintEl.innerHTML = `<img loading="lazy" decoding="async" src="${escapeHtml(url)}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
+                            } else {
+                                hintEl.innerHTML = spIcon('user', 16);
+                            }
                         }
                     });
                 }

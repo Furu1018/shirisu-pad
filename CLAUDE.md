@@ -652,6 +652,10 @@ rgba(var(--paper-rgb), 0.7)   /* その裏返し (濃い地の上に置く半透
   `--side-w` 幅の左サイドバーにし、`body { padding-left }` で本文を寄せる。
   PC は 232px、スマホ横だけ 176px (232px だと本文が620pxになり、2列の1枚が縦持ちより狭い)。
   ★ 置き換えるのは**上のタブ帯 (768px〜)** であって、下の浮きナビ (〜767px) ではない
+  ★ **サイドバーのときは上の帯 (`.header`) も出さない** (2026-09-11 ユーザー要望)。見出しはロゴが担い、
+  帯にあった 名前の切替 と 再読み込み はサイドバーの足元 `.side-foot` に置く。名前と絵は `updateIdentityHeader` が
+  `[data-identity-name]` / `[data-identity-avatar]` にも書き、↻ の回転は `handleHeaderReload` が `.hdr-reload-ic` を全部回す
+  (帯と足元で別の関数にしない — 片方だけ古くなる)。隠すのはサイドバーの幅だけ (他の幅で隠すと切替と再読み込みが消える)
 
 **幅の決め方 (`data-span`)**
 - 戦況タブ: `opsLayout.CARDS` の `span` **だけ**が唯一 (span → `data-span` → CSS)。
