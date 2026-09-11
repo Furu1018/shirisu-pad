@@ -4050,6 +4050,9 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, time_slot: 'h23' }]), '固定を置き直しても指紋が変わらない (置き直す前の算出を配信できる)');
         assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, boss_number: 5 }]));
         assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, loadout_slot: 1 }]));
+        // 編成・火力だけの置き直し (同じマスのまま) も指紋が変わる (Codex再指摘)
+        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, characters_snapshot: ['b', 'c'] }]), '編成を変えても指紋が変わらない');
+        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, expected_damage_b: 12.5 }]), '火力を変えても指紋が変わらない');
         assert.equal(rv.fingerprint([P]), '1:approved', '約束の指紋の形が変わっている');
         const cons = rv.toSolverConstraints([P, pin, req]);
         // 並びは仕様化したキー (レベル → ボス → 人 → 枠): 固定 (B2) が約束 (B3) より先
@@ -4769,6 +4772,11 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/status IN \('approved', 'pinned'\) OR \(status = 'cancel_requested' AND approved_at IS NOT NULL\)/.test(pinFn), '数える集合が JS の canPin (約束 + 固定) と違う');
         assert.ok(/IF v_held \+ v_done \+ 1 > 3 THEN/.test(pinFn), '上限の式が違う');
         assert.ok(/CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_reservations_pin_card\s*\n\s*ON plan_reservations\(season_id, player_id, boss_number, loadout_slot\) WHERE status = 'pinned';/.test(_sqlPins), '同じカードの固定の重複を DB で止めていない');
+        // ★ 索引の前に重複を片づける (索引の無い版を先に流した環境で止まらない)。新しい方を残し、古い方は superseded で履歴も残す
+        const dedupeAt = _sqlPins.indexOf("row_number() OVER (PARTITION BY season_id, player_id, boss_number, loadout_slot ORDER BY id DESC)");
+        const indexAt = _sqlPins.indexOf('CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_reservations_pin_card');
+        assert.ok(dedupeAt > 0 && dedupeAt < indexAt, '重複の片づけが索引の前に無い (重複があると 45 が途中で止まる)');
+        assert.ok(/PERFORM set_config\('app\.reservation_rpc', 'on', true\);[\s\S]*?SET status = 'released', released_by = 'migration 45'[\s\S]*?INSERT INTO plan_reservation_events \(reservation_id, from_status, to_status, actor_name, reason\)\s*\n\s*VALUES \(r\.id, 'pinned', 'released', 'migration 45', 'superseded'\)/.test(_sqlPins), '片づけが 39 の守りを通らない / 履歴を残していない');
         assert.ok(/CREATE TRIGGER trg_plan_reservations_pin_check\s*\n\s*BEFORE INSERT OR UPDATE OF status, player_id, season_id ON plan_reservations/.test(_sqlPins), 'トリガが張られていない');
         const clientPins = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/運営の固定が残凸を超え/.test(clientPins) && (clientPins.match(/uq_plan_reservations_pin_card/g) || []).length >= 2, 'DB の拒否を日本語にしていない (作る / 置き直す の両方)');

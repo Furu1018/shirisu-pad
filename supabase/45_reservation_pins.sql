@@ -93,6 +93,28 @@ $$ LANGUAGE plpgsql;
 --   画面側の canPin (押した時点の DB で数えるだけ) は破れる。残凸の枠 (39 の容量トリガ) は pinned を数えない設計のままにし、
 --   **pinned の行だけ**を見る別のトリガで「約束 + 固定 + 実凸 ≤ 3」を守る (JS の canPin と同じ式)。
 --   鍵は 39 / 40 と同一 (同じ人の予約・固定・実凸を1本に直列化する)
+-- ★ 索引を作る前に、すでにある同じカードの重複 📌 を片づける (Codex再指摘): 索引の無い版の 45 を先に流した環境で
+--   重複が入っていると CREATE UNIQUE INDEX で止まり、後ろのトリガまで作られない。新しい方 (id 大) を残し、古い方は
+--   released (superseded) にして履歴も残す。状態の直接更新は 39 の守りが弾くので、RPC と同じく自分を名乗ってから更新する
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    PERFORM set_config('app.reservation_rpc', 'on', true);
+    FOR r IN
+        SELECT id FROM (
+            SELECT id, row_number() OVER (PARTITION BY season_id, player_id, boss_number, loadout_slot ORDER BY id DESC) AS rn
+              FROM plan_reservations WHERE status = 'pinned'
+        ) d WHERE rn > 1
+    LOOP
+        UPDATE plan_reservations
+           SET status = 'released', released_by = 'migration 45', released_at = NOW(), release_reason = 'superseded', updated_at = NOW()
+         WHERE id = r.id;
+        INSERT INTO plan_reservation_events (reservation_id, from_status, to_status, actor_name, reason)
+        VALUES (r.id, 'pinned', 'released', 'migration 45', 'superseded');
+    END LOOP;
+END $$;
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_reservations_pin_card
     ON plan_reservations(season_id, player_id, boss_number, loadout_slot) WHERE status = 'pinned';
 
