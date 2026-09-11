@@ -1,0 +1,442 @@
+<meta charset="utf-8">
+<title>最適凸プラン パズル盤</title>
+<style>
+    :root {
+        --bg: #F1F3F6; --card: #FFFFFF; --hair: rgba(20,22,26,0.08); --ink-rgb: 20,22,26;
+        --t-ink: #14161A; --t-strong: #3D4249; --t-body: #52575E; --t-muted: #62666e;
+        --s1: #F7F8F9; --s2: #F1F2F4; --line: #E3E5E8; --track: #C9CED3; --dim: #B6BBC1;
+        --ops: #6c42f0; --ops-deep: #4b2bc0; --ops-solid: #6C42F0; --ops-bg: #f0ecfe;
+        --ok: #107e45; --ok-solid: #18C26B; --ok-bg: #e8f9f0;
+        --warn: #996206; --warn-solid: #F59E0B; --warn-bg: #fef5e7;
+        --bad: #d91313; --bad-solid: #EF4444; --bad-bg: #fdecec;
+        --fire: #FF3D44; --water: #2E8BFF; --elec: #9B4DFF; --iron: #FF8A2B; --wind: #18C26B;
+        --doc-bg: #E9ECF1; --doc-ink: #14161A; --doc-muted: #5A6069;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+            --bg: #14161A; --card: #1C1F25; --hair: rgba(255,255,255,0.10); --ink-rgb: 255,255,255;
+            --t-ink: #F3F5F7; --t-strong: #D6DAE0; --t-body: #B7BCC4; --t-muted: #8D939B;
+            --s1: #22262C; --s2: #2A2F36; --line: #343940; --track: #454B53; --dim: #5C636B;
+            --ops: #A98CFF; --ops-deep: #C4B0FF; --ops-bg: #2A2340; --ok: #4FD98F; --ok-bg: #14301F;
+            --warn: #F0B44B; --warn-bg: #33260C; --bad: #FF7B7B; --bad-bg: #3A1717;
+            --doc-bg: #0E1013; --doc-ink: #F3F5F7; --doc-muted: #9AA1AA;
+        }
+    }
+    :root[data-theme="dark"] {
+        --bg: #14161A; --card: #1C1F25; --hair: rgba(255,255,255,0.10); --ink-rgb: 255,255,255;
+        --t-ink: #F3F5F7; --t-strong: #D6DAE0; --t-body: #B7BCC4; --t-muted: #8D939B;
+        --s1: #22262C; --s2: #2A2F36; --line: #343940; --track: #454B53; --dim: #5C636B;
+        --ops: #A98CFF; --ops-deep: #C4B0FF; --ops-bg: #2A2340; --ok: #4FD98F; --ok-bg: #14301F;
+        --warn: #F0B44B; --warn-bg: #33260C; --bad: #FF7B7B; --bad-bg: #3A1717;
+        --doc-bg: #0E1013; --doc-ink: #F3F5F7; --doc-muted: #9AA1AA;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--doc-bg); color: var(--doc-ink);
+        font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding-block: 22px 60px; padding-inline: 16px; }
+    .doc h1 { font-size: 21px; font-weight: 900; letter-spacing: .3px; margin: 0 0 6px; text-wrap: balance; }
+    .doc .lead { font-size: 13px; line-height: 1.75; color: var(--doc-muted); margin: 0 0 12px; max-width: 68ch; }
+    .doc .lead b { color: var(--doc-ink); }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 11.5px; font-weight: 700; color: var(--doc-muted); margin-bottom: 16px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .ctl { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin-bottom: 14px; }
+    .ctlrow { display: flex; align-items: center; gap: 8px; }
+    .ctlrow .k { font-size: 11px; font-weight: 900; letter-spacing: .4px; color: var(--doc-muted); }
+    .seg { display: flex; gap: 2px; background: var(--s2); border-radius: 10px; padding: 2px; flex-wrap: wrap; }
+    .seg button { font: inherit; font-size: 11.5px; font-weight: 800; border: none; cursor: pointer; border-radius: 8px; padding: 6px 11px; background: transparent; color: var(--t-body); white-space: nowrap; }
+    .seg button[aria-pressed="true"] { background: var(--card); color: var(--t-ink); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+    .seg button:focus-visible { outline: 2px solid var(--ops); outline-offset: 1px; }
+    .stagewrap { overflow-x: auto; padding-bottom: 6px; }
+    .frame { background: var(--bg); border-radius: 16px; position: relative; padding: 14px; margin: 0 auto; }
+    .frame.pc { width: 1120px; }
+    .frame.sp { width: 390px; padding: 10px; }
+
+    /* ---- カード (本番の .dc-card) ---- */
+    .card { background: var(--card); border-radius: 15px; border: 1px solid rgba(var(--ink-rgb), 0.05); padding: 16px 16px 14px; }
+    .sp .card { padding: 13px 12px 12px; }
+    .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .head h2 { font-size: 14px; font-weight: 800; color: var(--t-ink); letter-spacing: .2px; margin: 0; }
+    .sum { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--t-muted); white-space: nowrap; }
+    .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 900; white-space: nowrap; background: var(--s2); color: var(--t-strong); }
+    .pill.ops { background: var(--ops-bg); color: var(--ops); }
+    .pill.ok { background: var(--ok-bg); color: var(--ok); }
+    .pill.warn { background: var(--warn-bg); color: var(--warn); }
+    .pill.bad { background: var(--bad-bg); color: var(--bad); }
+
+    /* ---- きっかけ ---- */
+    .cue { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 12px; border-radius: 11px; background: var(--ops-bg); color: var(--ops); font-size: 11.5px; font-weight: 800; line-height: 1.5; margin-bottom: 12px; }
+    .cue small { font-weight: 700; color: var(--t-body); }
+    .cue .go { margin-left: auto; font: inherit; font-weight: 900; border: none; cursor: pointer; background: var(--ops-solid); color: #fff; padding: 6px 11px; border-radius: 999px; }
+
+    /* ---- 条件パネル ---- */
+    .cond { border: 1px solid var(--line); border-radius: 13px; padding: 12px 13px; background: var(--s1); margin-bottom: 12px; }
+    .cond .row { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 8px 10px; padding: 6px 0; }
+    .sp .cond .row { grid-template-columns: 1fr; gap: 4px; }
+    .cond .row .k { font-size: 11px; font-weight: 900; color: var(--t-strong); letter-spacing: .3px; }
+    .cond .row .hint { grid-column: 2; font-size: 10.5px; color: var(--t-muted); font-weight: 700; line-height: 1.5; }
+    .sp .cond .row .hint { grid-column: 1; }
+    .cond .auto { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 0 2px; border-top: 1px dashed var(--line); margin-top: 4px; }
+    .cond .auto .k { font-size: 10.5px; font-weight: 900; color: var(--t-muted); margin-right: 2px; }
+    .cond .go { display: flex; justify-content: flex-end; margin-top: 10px; }
+    .btn { font: inherit; font-weight: 900; border: none; cursor: pointer; border-radius: 11px; padding: 11px 18px; font-size: 13px; }
+    .btn.primary { background: var(--t-ink); color: var(--card); }
+    .btn.accent { background: var(--ops-solid); color: #fff; }
+    .btn.sub { background: var(--s2); color: var(--t-strong); font-size: 11.5px; padding: 8px 12px; border-radius: 999px; }
+    .btn:focus-visible { outline: 2px solid var(--ops); outline-offset: 2px; }
+    .stamp { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; font-weight: 800; color: var(--t-body); padding: 8px 11px; border-radius: 10px; background: var(--s1); margin-bottom: 10px; }
+    .stamp .lk { margin-left: auto; font: inherit; font-size: 11px; font-weight: 900; color: var(--ops); background: none; border: none; cursor: pointer; text-decoration: underline; }
+
+    /* ---- 時間割 ---- */
+    .tt-wrap { border: 1px solid rgba(var(--ink-rgb), 0.06); border-radius: 12px; padding: 8px 5px; background: var(--card); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tt { display: grid; grid-template-columns: 36px repeat(5, minmax(0, 1fr)); gap: 2px; min-width: 100%; }
+    .sp .tt { grid-template-columns: 34px repeat(5, minmax(96px, 1fr)); }
+    .tt .bh { min-width: 0; padding: 4px 1px; border-radius: 8px 8px 0 0; text-align: center; color: #fff; font-size: 9.5px; font-weight: 900; line-height: 1.2; }
+    .tt .bh small { display: block; font-size: 8px; font-weight: 800; opacity: .9; }
+    .tt .band { grid-column: 1 / -1; margin-top: 8px; padding: 5px 9px; border-radius: 8px; font-size: 10px; font-weight: 900; letter-spacing: .2px; background: var(--ok-bg); color: var(--ok); }
+    .tt .hl { font-size: 9px; font-weight: 900; color: var(--t-muted); display: flex; align-items: center; justify-content: flex-end; padding: 5px 2px 0 0; border-top: 1px solid rgba(var(--ink-rgb), 0.05); white-space: nowrap; }
+    .tt .hl.now { color: var(--ops); }
+    .tt .hl.can { color: var(--ops); }
+    .tt .gap { grid-column: 1 / -1; text-align: center; color: var(--t-muted); font-size: 10px; font-weight: 900; line-height: 1; padding: 2px 0; }
+    .tt .cell { min-width: 0; min-height: 26px; padding: 4px 2px; border-top: 1px solid rgba(var(--ink-rgb), 0.05); display: flex; flex-direction: column; gap: 3px; border-radius: 6px; transition: background .12s; }
+    .tt .cell.now { background: rgba(108,66,240,0.04); }
+    .tt .cell.can { background: var(--ops-bg); outline: 1.5px dashed var(--ops); outline-offset: -2px; }
+    .tt .cell.no { opacity: .45; }
+    .tt .cell.over { background: var(--ops-bg); outline: 2px solid var(--ops-solid); outline-offset: -2px; }
+    .chip { position: relative; display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 8px; font-size: 10.5px; font-weight: 800; line-height: 1.3; border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); background: color-mix(in srgb, var(--c) 8%, var(--card)); color: var(--t-ink); cursor: pointer; user-select: none; -webkit-user-select: none; min-width: 0; }
+    .chip .nm { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chip .dm { flex: none; font-size: 10px; font-weight: 900; color: var(--t-strong); font-variant-numeric: tabular-nums; }
+    .chip .mk { flex: none; font-size: 10px; line-height: 1; }
+    .chip.me { outline: 2px solid var(--ops); outline-offset: -1px; }
+    .chip.lock { border-style: solid; border-color: var(--ok-solid); box-shadow: inset 3px 0 0 var(--ok-solid); cursor: default; }
+    .chip.pin { border-color: var(--ops-solid); box-shadow: inset 3px 0 0 var(--ops-solid); }
+    .chip.ask { border-color: var(--warn-solid); box-shadow: inset 3px 0 0 var(--warn-solid); }
+    .chip.flex { border-style: dashed; background: var(--s1); color: var(--t-body); }
+    .chip.sel { box-shadow: 0 0 0 2px var(--ops-solid), inset 3px 0 0 var(--ops-solid); }
+    .chip.drag { opacity: .35; }
+    .pc .chip:not(.lock) { cursor: grab; }
+    .pc .chip:not(.lock):active { cursor: grabbing; }
+    .chip .stiff { position: absolute; right: -2px; top: -5px; font-size: 8.5px; font-weight: 900; padding: 1px 5px; border-radius: 999px; background: var(--s2); color: var(--t-muted); }
+    .chip .stiff.hard { background: var(--warn-bg); color: var(--warn); }
+    .legend-tt { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+    .legend-tt b { font-weight: 900; }
+
+    /* ---- 選んだチップの操作 ---- */
+    .act { display: none; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--t-ink); color: var(--card); font-size: 11.5px; font-weight: 800; }
+    .act.on { display: flex; }
+    .sp .act.on { position: sticky; bottom: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+    .act .who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .act .who small { font-weight: 700; opacity: .75; font-size: 10.5px; }
+    .act .sp1 { flex: 1 1 auto; }
+    .act button { font: inherit; font-size: 11px; font-weight: 900; border: none; cursor: pointer; border-radius: 999px; padding: 7px 11px; background: rgba(255,255,255,.14); color: var(--card); white-space: nowrap; }
+    .act button.pin { background: var(--ops-solid); color: #fff; }
+    .act button.ask { background: var(--warn-solid); color: #14161A; }
+    .act button.x { background: transparent; opacity: .7; }
+    .sp .act .sp1 { flex-basis: 100%; height: 0; }
+
+    /* ---- 差分 / 次にやること ---- */
+    .diff { margin-top: 10px; padding: 9px 12px; border-radius: 10px; background: var(--s1); font-size: 11.5px; font-weight: 800; color: var(--t-strong); line-height: 1.55; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .diff .undo { margin-left: auto; }
+    .next { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .next .k { font-size: 10.5px; font-weight: 900; letter-spacing: .3px; color: var(--t-muted); margin-right: 4px; }
+    .asks { margin-top: 10px; font-size: 11px; font-weight: 800; color: var(--t-body); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: var(--t-ink); color: var(--card); font-size: 12px; font-weight: 800; padding: 9px 14px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity .15s; white-space: nowrap; max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis; }
+    .toast.on { opacity: 1; }
+    .notes { margin-top: 22px; }
+    .notes h3 { font-size: 13px; font-weight: 900; margin: 16px 0 6px; }
+    .notes ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.75; color: var(--doc-muted); }
+    .notes li b { color: var(--doc-ink); }
+    .notes table { border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+    .notes th, .notes td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; line-height: 1.55; }
+    .notes th { font-size: 10.5px; font-weight: 900; letter-spacing: .3px; color: var(--doc-muted); }
+    @media (prefers-reduced-motion: reduce) { .tt .cell, .toast { transition: none; } }
+</style>
+
+<div class="wrap">
+    <div class="doc">
+        <h1>最適凸プラン パズル盤</h1>
+        <p class="lead">運営ボードの「最適凸プラン算出」カードを、<b>条件を選んで → 算出 → 時間割の上で手を打つ</b>、の順に組み直した案です。
+            条件は結果に焼き込まれ、時間割のチップは <b>スマホならタップ、PC ならドラッグ</b>で 📌ピン（運営の下書き）を置けます。ピンは本人に「📣お願い」した瞬間だけ約束（🔒）になります。
+            数字と名前は見本です。</p>
+        <div class="legend">
+            <span><i class="dot" style="background:var(--ok-solid)"></i>🔒 本人が引き受けた約束 — 動かせない</span>
+            <span><i class="dot" style="background:var(--ops-solid)"></i>📌 運営の下書きの固定 — 置き直せる</span>
+            <span><i class="dot" style="background:var(--warn-solid)"></i>📣 お願い中 — 返事待ち</span>
+            <span><i class="dot" style="background:var(--dim)"></i>⏳ 隙間型 / ⚠ 時間外 / ? 時間未登録</span>
+        </div>
+    </div>
+    <div class="ctl">
+        <div class="ctlrow"><span class="k">画面</span><div class="seg" id="segDev"></div></div>
+        <div class="ctlrow"><span class="k">見せ方</span><div class="seg" id="segStage"></div></div>
+        <div class="ctlrow"><span class="k">見た目</span><div class="seg" id="segTheme"></div></div>
+    </div>
+    <div class="stagewrap"><div class="frame pc" id="frame"></div></div>
+
+    <div class="doc notes">
+        <h3>決めごと（この案で前提にしていること）</h3>
+        <ul>
+            <li><b>条件は3つだけ選ぶ</b>: 対象 / 起点 / 前回の配信。自動で効くもの（🔒予約・🚫除外・✋難しい・📤配信中）は読み取り専用のチップで見せる。段階ごとの既定は入れるが、パネルは畳まない</li>
+            <li><b>結果には「この条件で組んだ」を必ず残す</b>。配信されたプランにも同じ1行が付き、交代した運営が読める</li>
+            <li><b>📌ピンは運営の下書き</b>。本人には届かない。「📣お願いする」を押した瞬間だけ本人のホームに届き、引き受けると 🔒 になる（締め凸の同時打診と同じ仕組みを締め凸以外にも広げる）</li>
+            <li><b>🔒は掴めない</b>。第45回の趣旨「一度決めた約束が覆らない」— 約束を運営の手で動かさない</li>
+            <li><b>ドラッグは PC の近道</b>で、全部タップでもできる。出し分けは幅ではなく <code>(hover: hover) and (pointer: fine)</code>（マウスがある環境）</li>
+            <li>置ける場所は<b>つかんだ瞬間に光る</b>（その人の戦闘可能時間の行 × 編成の属性が合うボスの列）。落とせないときは理由を日本語で</li>
+            <li>チップ右上の「硬い / 柔らかい」は<b>動かせる幅</b>（その人が出られる時間が1つしかない = 硬い）。パズルで先に動かすべき駒が分かる</li>
+        </ul>
+        <h3>作る順</h3>
+        <table>
+            <tr><th>段</th><th>内容</th><th>大きさ</th></tr>
+            <tr><td>①</td><td>条件パネル + 結果への焼き込み + きっかけ（模擬の更新 / 手詰まり）</td><td>小〜中（今回）</td></tr>
+            <tr><td>②</td><td>時間割の読みやすさ: 選ぶとその人の時間が光る / 硬い・柔らかい</td><td>小（今回）</td></tr>
+            <tr><td>③</td><td>📌ピン（運営の下書き）→ 算出し直し。DB に持って交代で引き継ぐ。PC はドラッグ</td><td>中（次）</td></tr>
+            <tr><td>④</td><td>📣お願い → 本人が引き受けると 🔒 に昇格（予約の状態に「運営発・未承諾」を足す）</td><td>中（次・③と一緒に）</td></tr>
+        </table>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    // ---------- 見本のデータ ----------
+    var BOSS = [
+        { n: 1, attr: '風圧', pt: '電撃', c: 'var(--wind)' },
+        { n: 2, attr: '鉄甲', pt: '風圧', c: 'var(--iron)' },
+        { n: 3, attr: '灼熱', pt: '水冷', c: 'var(--fire)' },
+        { n: 4, attr: '水冷', pt: '電撃', c: 'var(--water)' },
+        { n: 5, attr: '電撃', pt: '鉄甲', c: 'var(--elec)' },
+    ];
+    var PTC = { '電撃': 'var(--elec)', '風圧': 'var(--wind)', '水冷': 'var(--water)', '鉄甲': 'var(--iron)', '灼熱': 'var(--fire)' };
+    var HOURS = [20, 21, 22, 23, 0, 1];   // 見本は夜だけ (実物は 5〜翌4 で、凸の無い時間は ⋯ で省く)
+    var NOW = 21;
+    // window = 出られる時間 (戦闘可能時間)。boss = いま置かれているボス、h = 時刻
+    var BASE = [
+        { id: 1, nm: 'ふるり',     dm: 34.2, pt: '水冷', boss: 3, h: 21, win: [20, 21, 22, 23], me: true },
+        { id: 2, nm: 'なべりうす', dm: 31.8, pt: '電撃', boss: 1, h: 21, win: [21, 22] },
+        { id: 3, nm: 'ENTER95',    dm: 29.5, pt: '風圧', boss: 2, h: 21, win: [20, 21, 22, 23, 0, 1] },
+        { id: 4, nm: 'A',          dm: 27.0, pt: '電撃', boss: 4, h: 22, win: [22, 23, 0], lock: true },
+        { id: 5, nm: 'B',          dm: 36.4, pt: '鉄甲', boss: 5, h: 22, win: [22], stiff: true },
+        { id: 6, nm: 'C',          dm: 22.1, pt: '水冷', boss: 3, h: 22, win: [21, 22, 23] },
+        { id: 7, nm: 'D',          dm: 25.9, pt: '風圧', boss: 2, h: 23, win: [23, 0, 1] },
+        { id: 8, nm: 'E',          dm: 19.6, pt: '電撃', boss: 1, h: 23, win: [20, 21, 22, 23, 0, 1], flex: true },
+        { id: 9, nm: 'F',          dm: 30.2, pt: '鉄甲', boss: 5, h: 0,  win: [0, 1] },
+        { id: 10, nm: 'G',         dm: 24.4, pt: '水冷', boss: 3, h: 0,  win: [23, 0] },
+        { id: 11, nm: 'H',         dm: 21.0, pt: '電撃', boss: 4, h: 1,  win: [1] , stiff: true },
+    ];
+    var S = { dev: 'pc', stage: 'cond', theme: 'auto', cond: { who: 'all', from: 'now', prev: 'keep' }, sel: null, hist: [], diff: null, asks: [], chips: [] };
+    function reset() { S.chips = BASE.map(function (c) { return Object.assign({}, c); }); S.hist = []; S.diff = null; S.asks = []; S.sel = null; }
+    reset();
+    var DEV = [{ k: 'pc', n: 'PC (1120px) · ドラッグ' }, { k: 'sp', n: 'スマホ (390px) · タップ' }];
+    var STAGE = [{ k: 'cond', n: '① 条件を選ぶ' }, { k: 'result', n: '② 算出した' }, { k: 'puzzle', n: '③ 盤の上で手を打つ' }];
+    var THEME = [{ k: 'auto', n: '端末に合わせる' }, { k: 'light', n: 'ライト' }, { k: 'dark', n: 'ダーク' }];
+
+    // ---------- 見本のソルバー: 置いた駒を守って、同じマスに増えたぶんを1つ後ろへずらす ----------
+    function resolve(movedId) {
+        var moved = [];
+        for (var pass = 0; pass < 3; pass++) {
+            var byCell = {};
+            S.chips.forEach(function (c) { var k = c.boss + ':' + c.h; (byCell[k] = byCell[k] || []).push(c); });
+            Object.keys(byCell).forEach(function (k) {
+                var arr = byCell[k];
+                if (arr.length <= 2) return;
+                var free = arr.filter(function (c) { return !c.lock && !c.pin && !c.ask && c.id !== movedId; });
+                var v = free[free.length - 1];
+                if (!v) return;
+                var i = HOURS.indexOf(v.h);
+                var next = HOURS.slice(i + 1).filter(function (h) { return v.win.indexOf(h) >= 0; })[0];
+                if (next == null) return;
+                moved.push(v.nm + ' ' + label(v.h) + ' → ' + label(next));
+                v.h = next;
+            });
+        }
+        return moved;
+    }
+    function label(h) { return (h < 5 ? '翌' : '') + h + '時'; }
+    function snapshot() { S.hist.push(JSON.stringify({ chips: S.chips, asks: S.asks })); if (S.hist.length > 20) S.hist.shift(); }
+    function undo() {
+        var prev = S.hist.pop(); if (!prev) return;
+        var o = JSON.parse(prev); S.chips = o.chips; S.asks = o.asks; S.diff = null; S.sel = null; render(); toast('元に戻しました');
+    }
+    function canPlace(c, boss, h) {
+        if (c.lock) return { ok: false, why: '本人が引き受けた約束は動かせません' };
+        var b = BOSS[boss - 1];
+        if (b.pt !== c.pt) return { ok: false, why: b.pt + 'PT のボスです (' + c.nm + ' の編成は ' + c.pt + 'PT)' };
+        if (c.win.indexOf(h) < 0 && !c.flex) return { ok: false, why: label(h) + ' は ' + c.nm + ' の戦闘可能時間の外です' };
+        return { ok: true };
+    }
+    function pin(c, boss, h) {
+        var r = canPlace(c, boss, h);
+        if (!r.ok) { toast('置けません: ' + r.why); return; }
+        snapshot();
+        c.boss = boss; c.h = h; c.pin = true; c.ask = false;
+        var moved = resolve(c.id);
+        S.diff = { pinned: c.nm + ' を B' + boss + ' ' + label(h) + ' に固定', moved: moved };
+        S.sel = null; S.stage = 'puzzle';
+        render(); toast('📌 固定して組み直しました' + (moved.length ? ' — 動いた人 ' + moved.length : ''));
+    }
+    function unpin(c) { snapshot(); c.pin = false; S.diff = { pinned: c.nm + ' の固定を外して組み直し', moved: resolve(null) }; S.sel = null; render(); }
+    function ask(c) {
+        snapshot(); c.ask = true; c.pin = true;
+        S.asks.push({ nm: c.nm, boss: c.boss, h: c.h });
+        S.sel = null; render(); toast('📣 ' + c.nm + ' さんに「B' + c.boss + ' ' + label(c.h) + '」をお願いしました (期限 15分)');
+    }
+
+    // ---------- 描画 ----------
+    function esc(s) { return String(s).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
+    function segHtml(name, items, cur) {
+        return '<div class="seg" role="group" aria-label="' + esc(name) + '">' + items.map(function (it) {
+            return '<button type="button" data-seg="' + name + '" data-k="' + it.k + '" aria-pressed="' + (cur === it.k) + '">' + esc(it.n) + '</button>';
+        }).join('') + '</div>';
+    }
+    function condHtml() {
+        var c = S.cond;
+        return '<div class="cue">🔔 <span>前回の算出 (13:02) のあと、<b>模擬の提出が 4 件</b>更新されました<br><small>締め凸コンソールで「今」も「待つ」も無い (手詰まり) ときも、ここから組み直します</small></span><button type="button" class="go" data-act="compute">組み直す</button></div>'
+            + '<div class="cond">'
+            + '<div class="row"><span class="k">対象</span>' + segHtml('who', [{ k: 'all', n: '全員' }, { k: 'now', n: '今動ける人だけ' }], c.who) + '<span class="hint">残り凸のあるメンバー全員 / いま戦闘可能時間の人だけ (締め凸の相談向け)</span></div>'
+            + '<div class="row"><span class="k">起点</span>' + segHtml('from', [{ k: 'now', n: '今から' }, { k: 'day', n: 'レイド開始 (朝5時) から' }], c.from) + '<span class="hint">当日は「今から」。前日の準備は「朝5時から」で一日ぶんを組む</span></div>'
+            + '<div class="row"><span class="k">前回の配信</span>' + segHtml('prev', [{ k: 'keep', n: '尊重する' }, { k: 'fresh', n: 'ゼロから' }], c.prev) + '<span class="hint">尊重 = 変えると明確に得なとき以外は前回どおり (メンバーを振り回さない)。ゼロから = まっさらに組み直す</span></div>'
+            + '<div class="auto"><span class="k">自動で効くもの</span><span class="pill ok">🔒 予約 3件</span><span class="pill">🚫 除外した模擬 1</span><span class="pill">✋ 今回は難しい 2人</span><span class="pill ops">📤 配信中: ふるり 13:02</span></div>'
+            + '<div class="go"><button type="button" class="btn accent" data-act="compute">🧮 この条件で算出</button></div>'
+            + '</div>';
+    }
+    function stampHtml() {
+        var c = S.cond;
+        var t = [c.who === 'all' ? '全員' : '今動ける人だけ', c.from === 'now' ? '今から (21:04)' : '朝5時から', c.prev === 'keep' ? '前回を尊重' : 'ゼロから'].join(' · ');
+        return '<div class="stamp">🧮 <b>' + esc(t) + '</b> · 🔒予約 3 · 🚫除外 1 · ✋難しい 2 — 21:04 に ふるり が算出<button type="button" class="lk" data-act="recond">条件を変える</button></div>';
+    }
+    function chipHtml(c, dragging) {
+        var cls = ['chip']; if (c.me) cls.push('me'); if (c.lock) cls.push('lock'); if (c.pin) cls.push('pin'); if (c.ask) cls.push('ask'); if (c.flex) cls.push('flex');
+        if (S.sel === c.id) cls.push('sel'); if (dragging === c.id) cls.push('drag');
+        var mk = c.lock ? '🔒' : c.ask ? '📣' : c.pin ? '📌' : c.flex ? '⏳' : '';
+        var stiff = S.stage === 'puzzle' && !c.lock ? '<span class="stiff' + (c.win.length <= 1 ? ' hard' : '') + '">' + (c.win.length <= 1 ? '硬い' : c.win.length <= 2 ? '狭い' : '柔らかい') + '</span>' : '';
+        var draggable = S.dev === 'pc' && S.stage === 'puzzle' && !c.lock;
+        return '<div class="' + cls.join(' ') + '" data-id="' + c.id + '" draggable="' + draggable + '" style="--c:' + PTC[c.pt] + '" title="' + esc(c.nm + ' · ' + c.pt + 'PT · 出られる時間 ' + c.win.map(label).join('/')) + '">'
+            + (mk ? '<span class="mk">' + mk + '</span>' : '') + '<span class="nm">' + esc(c.nm) + '</span><span class="dm">' + c.dm.toFixed(1) + 'B</span>' + stiff + '</div>';
+    }
+    function ttHtml(dragging) {
+        var sel = S.chips.filter(function (c) { return c.id === S.sel; })[0] || null;
+        var drg = S.chips.filter(function (c) { return c.id === dragging; })[0] || null;
+        var focus = drg || sel;
+        var cells = ['<div></div>'];
+        BOSS.forEach(function (b) { cells.push('<div class="bh" style="background:' + b.c + '">' + b.attr + '<small>' + b.pt + 'PT</small></div>'); });
+        cells.push('<div class="band">Lv2 ─ 20時開始 → 💀翌1時 全撃破想定</div>');
+        HOURS.forEach(function (h, i) {
+            if (i > 0 && h === 23) { /* 見本では省略なし */ }
+            var canRow = focus && (focus.win.indexOf(h) >= 0 || focus.flex);
+            cells.push('<div class="hl' + (h === NOW ? ' now' : '') + (focus && canRow ? ' can' : '') + '">' + (h === NOW ? '▼' : '') + label(h) + '</div>');
+            BOSS.forEach(function (b) {
+                var inCell = S.chips.filter(function (c) { return c.boss === b.n && c.h === h; });
+                var cls = ['cell']; if (h === NOW) cls.push('now');
+                if (focus) { var ok = canRow && b.pt === focus.pt; cls.push(ok ? 'can' : 'no'); }
+                cells.push('<div class="' + cls.join(' ') + '" data-boss="' + b.n + '" data-h="' + h + '">' + inCell.map(function (c) { return chipHtml(c, dragging); }).join('') + '</div>');
+            });
+        });
+        return '<div class="tt-wrap" data-no-swipe><div class="tt">' + cells.join('') + '</div></div>'
+            + '<div class="legend-tt"><span><b style="color:var(--ops)">青</b>=あなた</span><span>🔒=約束 (動かせない)</span><span>📌=運営の固定</span><span>📣=お願い中</span><span>⏳=隙間型</span><span>▼=いま</span>'
+            + (S.stage === 'puzzle' ? '<span>' + (S.dev === 'pc' ? 'チップを<b>つかんで</b>別のマスへ。置ける場所が光ります' : 'チップを<b>タップ</b>すると下に操作が出ます。その人が出られる時間が光ります') + '</span>' : '') + '</div>';
+    }
+    function actHtml() {
+        var c = S.chips.filter(function (x) { return x.id === S.sel; })[0];
+        if (!c) return '<div class="act"></div>';
+        var here = 'B' + c.boss + ' ' + label(c.h);
+        return '<div class="act on"><div class="who"><span>' + esc(c.nm) + ' · ' + esc(c.pt) + 'PT · ' + c.dm.toFixed(1) + 'B</span><small>出られる時間 ' + c.win.map(label).join(' / ') + (c.lock ? ' · 🔒 本人が引き受けた約束' : c.ask ? ' · 📣 返事待ち' : c.pin ? ' · 📌 運営の固定' : '') + '</small></div><span class="sp1"></span>'
+            + (c.lock ? '' : (c.pin ? '<button type="button" data-act="unpin">固定を外す</button>' : '<button type="button" class="pin" data-act="pinhere">📌 ' + esc(here) + ' に固定</button>')
+            + (c.ask ? '' : '<button type="button" class="ask" data-act="ask">📣 この凸をお願いする</button>'))
+            + '<button type="button" class="x" data-act="close">閉じる</button></div>';
+    }
+    function diffHtml() {
+        if (!S.diff) return '';
+        var d = S.diff;
+        return '<div class="diff"><span>📌 ' + esc(d.pinned) + '。' + (d.moved.length ? '組み直しで動いた人 <b>' + d.moved.length + '</b>: ' + esc(d.moved.join(' / ')) : '他は動いていません') + '</span><button type="button" class="btn sub undo" data-act="undo">↶ 元に戻す</button></div>';
+    }
+    function asksHtml() {
+        if (!S.asks.length) return '';
+        return '<div class="asks">📣 お願い中:' + S.asks.map(function (a) { return '<span class="pill warn">' + esc(a.nm) + ' → B' + a.boss + ' ' + label(a.h) + ' · 〜21:19</span>'; }).join('') + '<span style="color:var(--t-muted);font-weight:700;">引き受けると 🔒 に変わり、以後の算出でも動きません</span></div>';
+    }
+    function nextHtml() {
+        return '<div class="next"><span class="k">次にやること</span><button type="button" class="btn primary" style="padding:9px 14px;font-size:12px;" data-act="publish">📤 このプランを配信する</button><button type="button" class="btn sub" data-act="share">📸 共有画像</button><span style="font-size:11px;font-weight:800;color:var(--t-body);">前回の配信から動いた人 <b>2</b> — 配信すると本人に知らせます</span></div>';
+    }
+    function cardHtml(dragging) {
+        var head = '<div class="head"><h2>最適凸プラン算出</h2><span class="sum">' + (S.stage === 'cond' ? '未算出' : '算出済み (未配信)') + '</span></div>';
+        if (S.stage === 'cond') return head + condHtml() + '<p style="margin:0;font-size:12px;color:var(--t-muted);">「この条件で算出」を押すと、ここに時間割が出ます。</p>';
+        return head + stampHtml() + ttHtml(dragging) + actHtml() + diffHtml() + asksHtml() + nextHtml();
+    }
+    var toastTimer = 0;
+    function toast(msg) {
+        var el = document.getElementById('toast'); if (!el) return;
+        el.textContent = msg; el.classList.add('on'); clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove('on'); }, 2600);
+    }
+    function render(dragging) {
+        var frame = document.getElementById('frame');
+        frame.className = 'frame ' + S.dev;
+        frame.innerHTML = '<div class="card" id="card">' + cardHtml(dragging) + '</div><div class="toast" id="toast"></div>';
+        document.documentElement.dataset.theme = S.theme === 'auto' ? '' : S.theme;
+        if (S.theme === 'auto') delete document.documentElement.dataset.theme;
+        ctl();
+    }
+    function ctl() {
+        function segTop(host, items, cur, set) {
+            host.innerHTML = items.map(function (it) { return '<button type="button" data-k="' + it.k + '" aria-pressed="' + (cur === it.k) + '">' + esc(it.n) + '</button>'; }).join('');
+            host.onclick = function (e) { var b = e.target.closest('button'); if (!b) return; set(b.dataset.k); render(); };
+        }
+        segTop(document.getElementById('segDev'), DEV, S.dev, function (k) { S.dev = k; S.sel = null; });
+        segTop(document.getElementById('segStage'), STAGE, S.stage, function (k) { S.stage = k; S.sel = null; if (k === 'puzzle' && !S.chips.some(function (c) { return c.pin; })) { var b5 = S.chips.filter(function (c) { return c.id === 5; })[0]; if (b5) { b5.pin = true; } } });
+        segTop(document.getElementById('segTheme'), THEME, S.theme, function (k) { S.theme = k; });
+    }
+
+    // ---------- 操作 ----------
+    document.getElementById('frame').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-act]');
+        if (b) {
+            var c = S.chips.filter(function (x) { return x.id === S.sel; })[0];
+            switch (b.dataset.act) {
+                case 'compute': S.stage = 'result'; S.sel = null; S.diff = null; render(); toast('🧮 算出しました — 全員 · 今から · 前回を尊重'); return;
+                case 'recond': S.stage = 'cond'; render(); return;
+                case 'pinhere': if (c) pin(c, c.boss, c.h); return;
+                case 'unpin': if (c) unpin(c); return;
+                case 'ask': if (c) ask(c); return;
+                case 'close': S.sel = null; render(); return;
+                case 'undo': undo(); return;
+                case 'publish': toast('📤 配信しました (見本なので何も起きません)'); return;
+                case 'share': toast('📸 共有画像を作りました (見本)'); return;
+            }
+        }
+        var sg = e.target.closest('[data-seg]');
+        if (sg) { S.cond[sg.dataset.seg] = sg.dataset.k; render(); return; }
+        var chip = e.target.closest('.chip');
+        if (chip && S.stage !== 'cond') {
+            var id = Number(chip.dataset.id);
+            if (S.stage === 'result') S.stage = 'puzzle';
+            S.sel = (S.sel === id) ? null : id; render(); return;
+        }
+        if (e.target.closest('.cell') && S.sel != null) {
+            // タップで置く: 選んでいる駒を、押したマスへ (スマホの近道)
+            var cell = e.target.closest('.cell'); var cc = S.chips.filter(function (x) { return x.id === S.sel; })[0];
+            if (cc && S.stage === 'puzzle') pin(cc, Number(cell.dataset.boss), Number(cell.dataset.h));
+        }
+    });
+    // PC: ドラッグ (HTML5 DnD)。つかんだ瞬間に置ける場所を光らせ、落としたら pin() — タップと同じ関数
+    var dragId = null;
+    var frameEl = document.getElementById('frame');
+    frameEl.addEventListener('dragstart', function (e) {
+        var chip = e.target.closest('.chip'); if (!chip || S.dev !== 'pc') return;
+        dragId = Number(chip.dataset.id); S.sel = null;
+        e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(dragId)); } catch (_) { /* noop */ }
+        setTimeout(function () { render(dragId); }, 0);
+    });
+    frameEl.addEventListener('dragover', function (e) {
+        var cell = e.target.closest('.cell'); if (!cell || dragId == null) return;
+        e.preventDefault();
+        frameEl.querySelectorAll('.cell.over').forEach(function (x) { x.classList.remove('over'); });
+        cell.classList.add('over');
+    });
+    frameEl.addEventListener('drop', function (e) {
+        var cell = e.target.closest('.cell'); if (!cell || dragId == null) return;
+        e.preventDefault();
+        var c = S.chips.filter(function (x) { return x.id === dragId; })[0]; var id = dragId; dragId = null;
+        if (c) pin(c, Number(cell.dataset.boss), Number(cell.dataset.h)); else render();
+    });
+    frameEl.addEventListener('dragend', function () { if (dragId != null) { dragId = null; render(); } });
+
+    render();
+})();
+</script>
