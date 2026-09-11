@@ -145,7 +145,9 @@
     function fingerprint(rows) {
         return (Array.isArray(rows) ? rows : [])
             .filter(isFixed)
-            .map(r => `${r.id}:${r.status}`)
+            // ★ 📌 は置き直せる (約束と違って中身が動く) ので、ボス・時刻・編成枠も指紋に入れる (Codex指摘 2026-09-11)。
+            //   入れないと、置き直しても指紋が変わらず、置き直す前の算出結果を配信できてしまう
+            .map(r => `${r.id}:${r.status}` + (isPin(r) ? `:${r.boss_number}:${r.time_mode || 'fixed'}:${r.time_slot || ''}:${r.loadout_slot}` : ''))
             .sort()
             .join('|');
     }

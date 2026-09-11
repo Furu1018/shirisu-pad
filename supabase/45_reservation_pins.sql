@@ -89,4 +89,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ★ 📌 の上限と重複は DB でも守る (Codex指摘 2026-09-11): 複数の運営が同時に同じ人へ置くと、
+--   画面側の canPin (押した時点の DB で数えるだけ) は破れる。残凸の枠 (39 の容量トリガ) は pinned を数えない設計のままにし、
+--   **pinned の行だけ**を見る別のトリガで「約束 + 固定 + 実凸 ≤ 3」を守る (JS の canPin と同じ式)。
+--   鍵は 39 / 40 と同一 (同じ人の予約・固定・実凸を1本に直列化する)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_reservations_pin_card
+    ON plan_reservations(season_id, player_id, boss_number, loadout_slot) WHERE status = 'pinned';
+
+CREATE OR REPLACE FUNCTION plan_reservations_pin_check()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_hard_date DATE;
+    v_held INT;
+    v_done INT;
+BEGIN
+    IF NEW.status <> 'pinned' THEN
+        RETURN NEW;
+    END IF;
+    PERFORM pg_advisory_xact_lock(hashtextextended('attack:' || NEW.season_id || ':' || NEW.player_id, 0));
+    SELECT hard_date INTO v_hard_date FROM seasons WHERE id = NEW.season_id;
+    -- 約束 (approved / 承認済み起点の cancel_requested) + 固定 (pinned)。JS の canPin の held と同じ集合
+    SELECT COUNT(*) INTO v_held FROM plan_reservations
+     WHERE season_id = NEW.season_id AND player_id = NEW.player_id
+       AND (status IN ('approved', 'pinned') OR (status = 'cancel_requested' AND approved_at IS NOT NULL))
+       AND id <> COALESCE(NEW.id, -1);
+    SELECT COUNT(*) INTO v_done FROM attacks
+     WHERE season_id = NEW.season_id AND player_id = NEW.player_id
+       AND (v_hard_date IS NULL OR attack_date = v_hard_date);
+    IF v_held + v_done + 1 > 3 THEN
+        RAISE EXCEPTION '運営の固定が残凸を超えます (約束・固定 % 件 + 実凸 % 件)', v_held, v_done
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_plan_reservations_pin_check ON plan_reservations;
+CREATE TRIGGER trg_plan_reservations_pin_check
+    BEFORE INSERT OR UPDATE OF status, player_id, season_id ON plan_reservations
+    FOR EACH ROW EXECUTE FUNCTION plan_reservations_pin_check();
+
 NOTIFY pgrst, 'reload schema';

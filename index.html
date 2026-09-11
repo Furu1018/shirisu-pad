@@ -16944,7 +16944,11 @@
             if (!rv || typeof window.computeOptimalPlanCore !== 'function') return null;
             const snap = await opsStore.load();
             if (!snap) return null;
-            const base = (_resv.rows || []).filter(r => window.reservationsDomain.isFixed(r));   // 実際のソルバー条件と同じ集合
+            // 実際のソルバー条件と同じ集合。★ ただし**同じカードの 📌 (運営の下書き) は外す** (Codex指摘 2026-09-11) —
+            //   本人が同じカードを申請してきたら、承認で 📌 は superseded になる。外さずに解くと候補と 📌 が同じ編成を
+            //   奪い合って「置けない」になり、📌 を手で外すまで承認できない
+            const samePin = rv.pinFor(_resv.rows || [], { playerId: row.player_id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot });
+            const base = (_resv.rows || []).filter(r => rv.isFixed(r) && !(samePin && Number(r.id) === Number(samePin.id)));
             const solve = (rows) => window.computeOptimalPlanCore({
                 season: snap.season, bosses: snap.bosses, players: snap.players,
                 currentSlot: getCurrentSlotJST(), timeAware: true, onlyAvailableNow: false,

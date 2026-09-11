@@ -299,7 +299,8 @@ SELECT * FROM (
                   AND column_name = 'asked_at')
         AND EXISTS (SELECT 1 FROM pg_constraint
                     WHERE conname = 'plan_reservations_status_check'
-                      AND pg_get_constraintdef(oid) LIKE '%''pinned''%'),
+                      AND pg_get_constraintdef(oid) LIKE '%''pinned''%')
+        AND EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'uq_plan_reservations_pin_card'),
         '📌 運営の固定 (パズル盤 ③④。未適用だと運営が時間割に固定を置けないだけで、予約と算出は従来どおり動く)'
 
     UNION ALL SELECT '(storage bucket)',

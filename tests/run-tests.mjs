@@ -4046,6 +4046,11 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(rv.STATUS_JP.pinned, '運営の固定'); assert.deepEqual(rv.TRANSITIONS.pinned, ['approved', 'released']);
         // 指紋に入る (配信直前に固定が動いていたら止める) / ソルバーの拘束に pinned の印が付く
         assert.ok(rv.fingerprint([P, pin]).includes('2:pinned'), '指紋に固定が入らない');
+        // ★ 📌 は置き直せるので、ボス・時刻・編成枠が変われば指紋も変わる (Codex指摘 2026-09-11)。約束は id:status だけ
+        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, time_slot: 'h23' }]), '固定を置き直しても指紋が変わらない (置き直す前の算出を配信できる)');
+        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, boss_number: 5 }]));
+        assert.notEqual(rv.fingerprint([pin]), rv.fingerprint([{ ...pin, loadout_slot: 1 }]));
+        assert.equal(rv.fingerprint([P]), '1:approved', '約束の指紋の形が変わっている');
         const cons = rv.toSolverConstraints([P, pin, req]);
         // 並びは仕様化したキー (レベル → ボス → 人 → 枠): 固定 (B2) が約束 (B3) より先
         assert.deepEqual(cons.map(c => [c.reservationId, c.pinned]), [[2, true], [1, false]]);
@@ -4756,6 +4761,17 @@ console.log('\nreservationsDomain (凸の予約):');
         // 📌 は残凸の枠 (容量トリガ・部分一意索引・RPC) に**数えない**: 45 はそれらの集合に触らない
         assert.ok(!/plan_reservations_capacity_check|uq_plan_reservations_active_card|report_attack/.test(_sqlPins), '45 が残凸の枠の集合に触っている');
         assert.ok(/ADD COLUMN IF NOT EXISTS asked_at TIMESTAMPTZ/.test(_sqlPins) && /ADD COLUMN IF NOT EXISTS pinned_by TEXT/.test(_sqlPins), '45 の列が無い');
+        // ★ 📌 の上限と重複は DB でも守る (Codex指摘 2026-09-11): pinned だけを見る別トリガ + 同じカードの部分一意索引
+        const pinFn = _sqlPins.match(/CREATE OR REPLACE FUNCTION plan_reservations_pin_check\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/)?.[0] || '';
+        assert.ok(pinFn, '📌 の上限トリガが無い (同時操作で 4 件目が入る)');
+        assert.ok(/IF NEW\.status <> 'pinned' THEN\s*\n\s*RETURN NEW;/.test(pinFn), 'pinned 以外の行を見ている (本人の申請を塞ぐ)');
+        assert.ok(/hashtextextended\('attack:' \|\| NEW\.season_id \|\| ':' \|\| NEW\.player_id, 0\)/.test(pinFn), '鍵が 39 / 40 と違う');
+        assert.ok(/status IN \('approved', 'pinned'\) OR \(status = 'cancel_requested' AND approved_at IS NOT NULL\)/.test(pinFn), '数える集合が JS の canPin (約束 + 固定) と違う');
+        assert.ok(/IF v_held \+ v_done \+ 1 > 3 THEN/.test(pinFn), '上限の式が違う');
+        assert.ok(/CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_reservations_pin_card\s*\n\s*ON plan_reservations\(season_id, player_id, boss_number, loadout_slot\) WHERE status = 'pinned';/.test(_sqlPins), '同じカードの固定の重複を DB で止めていない');
+        assert.ok(/CREATE TRIGGER trg_plan_reservations_pin_check\s*\n\s*BEFORE INSERT OR UPDATE OF status, player_id, season_id ON plan_reservations/.test(_sqlPins), 'トリガが張られていない');
+        const clientPins = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/運営の固定が残凸を超え/.test(clientPins) && (clientPins.match(/uq_plan_reservations_pin_card/g) || []).length >= 2, 'DB の拒否を日本語にしていない (作る / 置き直す の両方)');
         const check99 = _fs.readFileSync(_path.join(_ROOT, 'supabase', '99_check_applied.sql'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/'45_reservation_pins'[\s\S]*?column_name = 'asked_at'/.test(check99), '99 に 45 の判定行が無い');
         // 「枠を押さえている状態」も同じ集合であること (残凸の検査が食い違うと予約を作れない/作りすぎる)
@@ -8494,6 +8510,10 @@ console.log('\ngrowthDomain:');
         const paint = html.match(/function _paintOpsReservations\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const pins = rows\.filter\(r => r\.status === 'pinned'\);/.test(paint) && /📌 運営の固定 \(\$\{pins\.length\}\)/.test(paint), '予約カードに 📌 のグループが無い');
         assert.ok(/btn\('📣 お願いする', `_opsPlanAsk\(\$\{Number\(r\.id\)\}\)`/.test(paint) && /btn\('外す', `_opsPlanUnpin\(\$\{Number\(r\.id\)\}\)`/.test(paint), '📌 に お願いする / 外す が無い');
+        // ★ 承認前の影響計算は同じカードの 📌 を拘束から外す (外さないと候補と奪い合って承認が止まる — Codex指摘 2026-09-11)
+        const imp = html.match(/async function _reservationImpact\(row\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const samePin = rv\.pinFor\(_resv\.rows \|\| \[\], \{ playerId: row\.player_id, bossNumber: row\.boss_number, loadoutSlot: row\.loadout_slot \}\);/.test(imp)
+            && /rv\.isFixed\(r\) && !\(samePin && Number\(r\.id\) === Number\(samePin\.id\)\)/.test(imp), '承認の影響計算が同じカードの 📌 を拘束にしている');
         // 承認したら同じカードの 📌 を superseded で外す
         const tr = html.match(/async function _resvTransition\(id, to, o = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(to === 'approved' && row && window\.reservationsDomain\?\.pinFor\)/.test(tr) && /reason: 'superseded'/.test(tr), '承認で同じカードの 📌 を外していない (二重の拘束)');
