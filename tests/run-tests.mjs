@@ -8021,6 +8021,12 @@ console.log('\ngrowthDomain:');
             { id: 4, boss_number: 3, player_id: 11, name: 'A', status: 'pending',  requested_at: iso(-9),  offer_id: 'o1', plan_key: 'p2', deadline_at: iso(5), raid_level: 2 },
             // 1案ずつの依頼 (offer 無し): B2 に C 不可 → dead
             { id: 5, boss_number: 2, player_id: 13, name: 'C', status: 'declined', requested_at: iso(-30), raid_level: 2 },
+            // ★ 同じボス・同じレベルでも**別の回** (別の requested_at) の依頼は別の案 (Codex指摘 2026-09-11)。
+            //   同じ回なら1組 (F と G は同じ文の insert = 同じ時刻)
+            { id: 8, boss_number: 2, player_id: 16, name: 'F', status: 'pending', requested_at: iso(-2), raid_level: 2 },
+            { id: 9, boss_number: 2, player_id: 17, name: 'G', status: 'pending', requested_at: iso(-2), raid_level: 2 },
+            // 同じ人 C が新しい回で確認中 → 古い回の「不可」に上書きされない
+            { id: 10, boss_number: 2, player_id: 13, name: 'C', status: 'pending', requested_at: iso(-2), raid_level: 2 },
             // 期限切れ: B1 に D 返事待ちのまま期限を過ぎた
             { id: 6, boss_number: 1, player_id: 14, players: { name: 'D' }, status: 'pending', requested_at: iso(-40), deadline_at: iso(-1), raid_level: 2 },
             // 揃った: B4 に E 了承
@@ -8032,10 +8038,16 @@ console.log('\ngrowthDomain:');
             { boss_number: 3, level: 2, damage_raw: 0,    reported_at: 'こわれてる', name: 'Z' },
         ];
         const m = dom.recentModel({ finishRequests: reqs, attacks, now });
-        assert.equal(m.asksTotal, 5);
-        assert.equal(m.waiting, 2, '返事待ちの人数 (A の p1 と D)');
+        assert.equal(m.asksTotal, 6);
+        assert.equal(m.waiting, 5, '返事待ちの人数 (A の p1 / D / F・G・C の新しい回)');
         // 手を打つべきもの (返事待ち・期限切れ) が上、その中では新しい順。次に揃ったもの、最後に不可
-        assert.deepEqual(m.asks.map(a => a.state), ['waiting', 'expired', 'ready', 'ready', 'dead']);
+        assert.deepEqual(m.asks.map(a => a.state), ['waiting', 'waiting', 'expired', 'ready', 'ready', 'dead']);
+        // ★ 別の回の依頼は混ざらない: B2 の新しい回 (F・G・C 確認中) と古い回 (C 不可) は別の案
+        const b2 = m.asks.filter(a => a.boss === 2);
+        assert.equal(b2.length, 2, '同じボス・レベルの別の回を1つに束ねている');
+        assert.deepEqual(b2.map(a => a.state), ['waiting', 'dead']);
+        assert.deepEqual(b2[0].members.map(mm => `${mm.name}:${mm.status}`).sort(), ['C:pending', 'F:pending', 'G:pending'], '新しい回の C が古い「不可」に上書きされている');
+        assert.equal(b2[0].members.length, 3, '同じ回の人数が違う');
         const p1 = m.asks.find(a => a.key === 'o:o1:p1');
         assert.ok(p1 && p1.offer, '同時打診の印が無い');
         assert.deepEqual(p1.members.map(mm => `${mm.name}:${mm.status}`), ['A:pending', 'B:accepted']);
@@ -8046,14 +8058,14 @@ console.log('\ngrowthDomain:');
         assert.equal(p2.state, 'ready');
         assert.equal(m.asks.find(a => a.boss === 1).state, 'expired');
         assert.equal(m.asks.find(a => a.boss === 1).members[0].name, 'D', 'players.name から名前を取れていない');
-        assert.equal(m.asks.find(a => a.boss === 2).state, 'dead');
+        assert.equal(m.asks.filter(a => a.boss === 2).at(-1).state, 'dead');
         // 添えの凸: 新しい順・時刻の読めないものは数だけ
         assert.deepEqual(m.attacks.map(a => a.name), ['Y', 'X']);
         assert.equal(m.attacks[0].damageRaw, 42e9); assert.equal(m.attacks[0].level, 2);
         assert.equal(m.unknownTime, 1);
         // 件数の上限と「ほか N 件」の材料
         const few = dom.recentModel({ finishRequests: reqs, attacks, now, limit: 1, askLimit: 2 });
-        assert.equal(few.asks.length, 2); assert.equal(few.asksTotal, 5); assert.equal(few.attacks.length, 1);
+        assert.equal(few.asks.length, 2); assert.equal(few.asksTotal, 6); assert.equal(few.attacks.length, 1);
         // 壊れた入力で落ちない
         const e = dom.recentModel();
         assert.deepEqual(e.asks, []); assert.equal(e.waiting, 0); assert.deepEqual(e.attacks, []);

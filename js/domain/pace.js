@@ -109,17 +109,22 @@
         const nowMs = Number.isFinite(now) ? now : Date.now();
         const rows = (Array.isArray(finishRequests) ? finishRequests : []).filter(r => r && r.boss_number != null);
 
-        // 同時打診 (44) は offer_id + plan_key が1案。1案ずつの依頼は「同じボス・同じレベル」で1組にする
+        // 同時打診 (44) は offer_id + plan_key が1案。
+        // 1案ずつの依頼は「同じボス・同じレベル・**同じ依頼時刻**」で1組にする。
+        // ★ 時刻を鍵に入れないと、別の回に出した依頼 (古い「不可」と新しい「確認中」) が同じ案に混ざり
+        //   「不可あり」に見える (Codex指摘 2026-09-11)。1回の依頼は1文の insert なので requested_at が
+        //   そろう (NOW() は文の開始時刻)。削除→挿入が非原子的で混在しても、回ごとに分かれて出る
         const groups = new Map();
         for (const r of rows) {
             const key = r.offer_id != null
                 ? `o:${r.offer_id}:${r.plan_key == null ? '' : r.plan_key}`
-                : `s:${r.boss_number}:${r.raid_level == null ? '' : r.raid_level}`;
+                : `s:${r.boss_number}:${r.raid_level == null ? '' : r.raid_level}:${ms(r.requested_at) ?? ''}`;
             if (!groups.has(key)) groups.set(key, { key, boss: Number(r.boss_number), level: r.raid_level == null ? null : Number(r.raid_level), offer: r.offer_id != null, rows: [] });
             groups.get(key).rows.push(r);
         }
         const asks = [...groups.values()].map(g => {
-            // ★ 同じ人が2行あっても1人 (finishDomain.offerProgress と同じ: より進んだ返事を採る)
+            // ★ 同じ人が2行あっても1人 (finishDomain.offerProgress と同じ: より進んだ返事を採る)。
+            //   同じ回の中だけで畳む — 別の回は別の案なので、古い返事が新しい依頼を上書きしない
             const byPlayer = new Map();
             for (const r of g.rows) {
                 const pk = String(r.player_id);
