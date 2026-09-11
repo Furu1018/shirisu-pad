@@ -57,7 +57,7 @@
   fururi-help-body / tour-body-scroll)。横にも動くはずだが、中を見ずに塞ぐと見切れるので未着手。
   実機で「ここも横に動く」と気づいたものから直す
 
-## 🧩 最適凸プランのパズル盤 (2026-09-11 — ①〜④ 実装済み。**SQL 45 の適用待ち**)
+## 🧩 最適凸プランのパズル盤 (2026-09-11 — ①〜④ 実装済み・SQL 45 適用済み)
 
 **モック**: https://claude.ai/code/artifact/e289d4f6-75da-4b84-a7a9-1bc160bc40db
 ソースは `docs/最適凸プラン_パズル盤モック.html` (GitHub Pages: https://furu1018.github.io/shirisu-pad/docs/最適凸プラン_パズル盤モック.html)。
@@ -96,8 +96,8 @@
 | ③ | ✅ 📌 運営の固定 (下書き) → 算出し直し。DB (`pinned`) に持って交代で引き継ぐ。PC はドラッグ、🧩模擬ピースから盤へ | 済 (2026-09-11 夜) |
 | ④ | ✅ 📣 お願い → 本人が引き受けると 🔒。予約の状態遷移に `pinned → approved / released` (SQL 45 + JS) | 済 (同上) |
 
-**⚠ 前提SQL: `supabase/45_reservation_pins.sql` を SQL Editor で実行** (`99_check_applied.sql` に判定行あり)。
-未適用でも予約・算出・配信は従来どおり動き、📌 を置こうとしたときだけ案内が出る。
+**✅ 前提SQL `supabase/45_reservation_pins.sql` は 2026-09-11 夜に適用済み** (列 / pinned / 遷移 / 重複の片づけ / 部分一意索引 / 上限トリガ)。
+`99_check_applied.sql` の `45_reservation_pins` が true なら完了。未適用の環境でも予約・算出・配信は従来どおり動き、📌 を置こうとしたときだけ案内が出る。
 
 ### 運営パネルの使いやすさ (聞き取り待ち)
 コードから見える引っかかり: 締め凸の入口がボス状況の中に隠れている / 運営アクション帯の5ボタンが同じ重さ (当日は HP更新が圧倒的) /

@@ -4776,6 +4776,7 @@ console.log('\nreservationsDomain (凸の予約):');
         const dedupeAt = _sqlPins.indexOf("row_number() OVER (PARTITION BY season_id, player_id, boss_number, loadout_slot ORDER BY id DESC)");
         const indexAt = _sqlPins.indexOf('CREATE UNIQUE INDEX IF NOT EXISTS uq_plan_reservations_pin_card');
         assert.ok(dedupeAt > 0 && dedupeAt < indexAt, '重複の片づけが索引の前に無い (重複があると 45 が途中で止まる)');
+        assert.ok(/ORDER BY id DESC\) AS rn\s*\n\s*FROM plan_reservations WHERE status = 'pinned'\s*\n\s*\) d WHERE rn > 1\s*\n/.test(_sqlPins), '「新しい方 (id 大) を残して 2 件目以降を外す」になっていない');
         assert.ok(/PERFORM set_config\('app\.reservation_rpc', 'on', true\);[\s\S]*?SET status = 'released', released_by = 'migration 45'[\s\S]*?INSERT INTO plan_reservation_events \(reservation_id, from_status, to_status, actor_name, reason\)\s*\n\s*VALUES \(r\.id, 'pinned', 'released', 'migration 45', 'superseded'\)/.test(_sqlPins), '片づけが 39 の守りを通らない / 履歴を残していない');
         assert.ok(/CREATE TRIGGER trg_plan_reservations_pin_check\s*\n\s*BEFORE INSERT OR UPDATE OF status, player_id, season_id ON plan_reservations/.test(_sqlPins), 'トリガが張られていない');
         const clientPins = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
