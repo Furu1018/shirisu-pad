@@ -232,6 +232,10 @@ await test('★ 入れ替えの確認 (⑤): 自由な凸だけ選べる / 約�
     assert.ok(!out.includes('name="planSwapPick"'), '被りで外れるのにラジオが出ている');
     assert.ok(/<label class="ps-row conflict"><span class="ps-ic">✕<\/span>/.test(out) && out.includes('同じキャラ — 必ず外れます'), '被りの行が無い');
     assert.ok(out.includes('同じキャラの凸が外れます。残りは 📌 で固定して残します'), '被りのときの説明が無い');
+    // 本人の申請中のカードは 📝 で選べない (Codex指摘)
+    out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: ['q1'], doneAttacks: 0, reservations: [{ player_id: 1, boss_number: 2, loadout_slot: 1, status: 'requested' }] }), piece);
+    assert.ok(/<label class="ps-row requested"><span class="ps-ic">📝<\/span>/.test(out) && out.includes('📝 本人の申請中 — 承認か却下で決めます'), '申請中の行が無い');
+    assert.ok(/name="planSwapPick" value="2:3:2" checked/.test(out) && (out.match(/name="planSwapPick"/g) || []).length === 1, '申請中を外して残りの 1 つを選んでおく形になっていない');
     // 2 つ多い → 算出に任せる
     out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: ['q1'], doneAttacks: 1 }), piece);
     assert.ok(out.includes('2 つ多くなります。外す凸は<b>算出に任せて</b>ください') && !out.includes('name="planSwapPick"'), '2 つ多いときに選ばせている');

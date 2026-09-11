@@ -8567,6 +8567,16 @@ console.log('\ngrowthDomain:');
         // 実凸が増えて 2 つ多い → 選ばせない (算出に任せる)
         sw = dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 1 });
         assert.equal(sw.over, 2); assert.equal(sw.pickable, false);
+        // ★ 本人の申請中のカード (requested) は選べない・📌 にもしない (canPin が本人の申請と同じカードの固定を禁じる: Codex指摘)。
+        //   生きていない予約 (released) は関係ない。判定は isActive を渡す (無ければ既定の集合)
+        const resv = [{ player_id: 7, boss_number: 2, loadout_slot: 1, status: 'requested' }, { player_id: 7, boss_number: 3, loadout_slot: 2, status: 'released' }];
+        sw = dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 0, reservations: resv, isActive: globalThis.reservationsDomain.isActive });
+        assert.deepEqual(sw.rows.map(r => r.status), ['promise', 'requested', 'free']);
+        assert.deepEqual(sw.free.map(r => r.key), ['2:3:2']); assert.equal(sw.pickable, true);
+        assert.equal(sw.rows[1].label, '📝 本人の申請中 — 承認か却下で決めます (固定はしません)');
+        assert.deepEqual(dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 0, reservations: resv }).rows.map(r => r.status), ['promise', 'requested', 'free'], 'isActive 無しの既定でも同じ');
+        // 同じキャラなら申請中でも「必ず外れる」(置けないものは置けない)
+        assert.equal(dom.swapOptions({ plan, memberId: 7, team: ['y1'], doneAttacks: 0, reservations: resv }).rows[1].status, 'conflict');
     });
     test('★ 配線: ピースを置く前に入れ替えの確認 (planSwapModal) → 選ばなかった自由な凸は 📌 で固定して残す / 算出し直しても画面の位置を保つ', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
@@ -8574,13 +8584,22 @@ console.log('\ngrowthDomain:');
         // 置く前 (canPin の後・insert の前) に、ピースのときだけ聞く。チップの置き直しでは聞かない
         const iChk = place.indexOf('if (!chk.ok)'), iSw = place.indexOf("if (sel.kind === 'piece' && _opsLastPlan && typeof dom.swapOptions === 'function')"), iCreate = place.indexOf('await window.supabaseCreateReservation(');
         assert.ok(iChk > 0 && iSw > iChk && iSw < iCreate, '入れ替えの確認が canPin の後・insert の前に無い');
-        assert.ok(/const sw = dom\.swapOptions\(\{ plan: _opsLastPlan, memberId: player\.id, team: lo\.team, doneAttacks: Number\(player\.attackCount\) \|\| 0 \}\);/.test(place), '判定を planBoardDomain に任せていない');
+        assert.ok(/const sw = dom\.swapOptions\(\{ plan: _opsLastPlan, memberId: player\.id, team: lo\.team, doneAttacks: Number\(player\.attackCount\) \|\| 0, reservations: rows, isActive: rv\.isActive \}\);/.test(place), '判定を planBoardDomain に任せていない (予約も渡す)');
+        // ★ 確認している間に状況が変わる (Codex指摘): 答えのあとに予約を取り直して canPin をやり直す
+        const iAns = place.indexOf('if (!ans) return;'), iRe = place.indexOf('rows = await window.supabaseLoadReservations(snap.season.id); } catch', iAns), iAgain = place.indexOf('const again = rv.canPin(rows, ');   // 取り直しは答えの**あと**の方 (最初の取得ではない)
+        assert.ok(iAns > 0 && iRe > iAns && iAgain > iRe && iAgain < iCreate, '答えのあとに予約を取り直して置けるかを見直していない');
+        assert.ok(/if \(!again\.ok\) \{ showNotification\(`置けません \(確認している間に状況が変わりました\): \$\{again\.label\}`\); return; \}/.test(place), '見直しで置けなくなったのに置いている');
         assert.ok(/if \(sw\.ask\) \{[\s\S]*?const ans = await _opsPlanSwapModal\(sw, /.test(place), '確認を出していない');
         assert.ok(/if \(!ans\) return;/.test(place), 'やめる で置いてしまう');
         assert.ok(/if \(ans\.mode === 'pick'\) keeps = sw\.free\.filter\(r => r\.key !== ans\.key\);/.test(place), '選ばなかった自由な凸を残す対象にしていない');
         // 残す凸は 📌 (pinned) で固定。時刻の無い凸 (⏳) は flex で
         const keep = place.match(/for \(const k of keeps\) \{[\s\S]*?\n                \}/)?.[0] || '';
         assert.ok(/status: 'pinned'/.test(keep) && /flex: k\.flex \|\| k\.hourIdx == null/.test(keep) && /characters: k\.team/.test(keep), '残す凸を 📌 で固定していない');
+        // ★ 残す凸も canPin を通す (本人の申請と同じカード / 被り / 上限)。新しい固定と残した固定を rows に足して数える
+        assert.ok(/const ok = rv\.canPin\(rows, \{ playerId: player\.id, bossNumber: k\.bossNumber, loadoutSlot: k\.loadoutSlot, characters: k\.team/.test(keep), '残す凸を canPin に通していない');
+        assert.ok(/if \(!ok\.ok\) \{ showNotification\(`⚠ B\$\{k\.bossNumber\} の凸は固定せず算出に任せます: \$\{ok\.label\}`\); continue; \}/.test(keep), '置けない残す凸を固定している');
+        assert.ok(keep.indexOf('const ok = rv.canPin(') < keep.indexOf('await window.supabaseCreateReservation('), '見直しが insert より後');
+        assert.ok(/if \(created\) rows = rows\.concat\(\[created\]\);/.test(place) && /if \(kr\) rows = rows\.concat\(\[kr\]\);/.test(keep), '入れた固定を rows に足していない (上限・被りの数え漏れ)');
         assert.ok(/catch \(e\) \{ showNotification\(`⚠ B\$\{k\.bossNumber\} の凸を残す固定に失敗/.test(keep), '残す固定の失敗を黙っている');
         assert.ok(place.indexOf('for (const k of keeps)') > iCreate, '新しい固定より先に残す固定を入れている (新しい方が失敗すると残す固定だけ入る)');
         // モーダルの箱と待ち手

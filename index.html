@@ -2942,7 +2942,7 @@
         .ps-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 12px; color: var(--t-body); }
         .ps-row.pick { cursor: pointer; }
         .ps-row.pick:hover { background: var(--s1); }
-        .ps-row.promise, .ps-row.pinned { opacity: 0.6; }
+        .ps-row.promise, .ps-row.pinned, .ps-row.requested { opacity: 0.6; }
         .ps-row.conflict { border-color: var(--bad-solid); }
         .ps-row input { width: 16px; height: 16px; accent-color: var(--ops-solid); margin: 0; }
         .ps-ic { text-align: center; }
@@ -20573,11 +20573,17 @@
                 //   選んだ以外の自由な凸は 📌 で固定して残す (算出で動かないように)。「算出に任せる」なら新しい固定だけ置く
                 let keeps = [];
                 if (sel.kind === 'piece' && _opsLastPlan && typeof dom.swapOptions === 'function') {
-                    const sw = dom.swapOptions({ plan: _opsLastPlan, memberId: player.id, team: lo.team, doneAttacks: Number(player.attackCount) || 0 });
+                    const sw = dom.swapOptions({ plan: _opsLastPlan, memberId: player.id, team: lo.team, doneAttacks: Number(player.attackCount) || 0, reservations: rows, isActive: rv.isActive });
                     if (sw.ask) {
                         const ans = await _opsPlanSwapModal(sw, { name: player.name, attr: sel.attr, slot: sel.loadoutSlot, dmgB: lo.dmgB, team: lo.team, bossNumber, hourLabel: _planHourHeadLabel(hourIdx) });
                         if (!ans) return;
                         if (ans.mode === 'pick') keeps = sw.free.filter(r => r.key !== ans.key);
+                        // ★ 確認している間に別の運営・本人が予約や固定を作ったかもしれない → 予約を取り直して、置けるかを見直す (Codex指摘 2026-09-12)
+                        try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
+                        if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39) が未適用のため固定できません'); return; }
+                        const again = rv.canPin(rows, { playerId: player.id, bossNumber, loadoutSlot: sel.loadoutSlot, characters: lo.team,
+                                                        doneAttacks: Number(player.attackCount) || 0, excludeId: sel.pinned ? sel.reservationId : null });
+                        if (!again.ok) { showNotification(`置けません (確認している間に状況が変わりました): ${again.label}`); return; }
                     }
                 }
                 const me = getCurrentIdentity();
@@ -20586,22 +20592,27 @@
                 if (existing) {
                     await window.supabaseMovePin(existing.id, { bossNumber, timeSlot, loadoutSlot: sel.loadoutSlot, characters: lo.team, expectedDamageB: lo.dmgB });
                 } else {
-                    await window.supabaseCreateReservation({
+                    const created = await window.supabaseCreateReservation({
                         seasonId: snap.season.id, playerId: player.id, raidLevel: null, bossNumber, timeSlot,
                         loadoutSlot: sel.loadoutSlot, characters: lo.team, expectedDamageB: lo.dmgB,
                         sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
                     });
+                    if (created) rows = rows.concat([created]);   // 残す固定の canPin (上限・被り) がこの固定も数えるように
                 }
                 // ⑤ 残す凸を 📌 で固定 (選ばなかった自由な凸が算出で動かないように)。新しい固定は入っているので、失敗しても知らせて続ける
                 let kept = 0;
                 for (const k of keeps) {
+                    // ★ 残す凸も置けるかを見直す (本人の申請と同じカード / キャラ被り / 上限)。置けないものは固定せず算出に任せる (Codex指摘 2026-09-12)
+                    const ok = rv.canPin(rows, { playerId: player.id, bossNumber: k.bossNumber, loadoutSlot: k.loadoutSlot, characters: k.team, doneAttacks: Number(player.attackCount) || 0 });
+                    if (!ok.ok) { showNotification(`⚠ B${k.bossNumber} の凸は固定せず算出に任せます: ${ok.label}`); continue; }
                     try {
-                        await window.supabaseCreateReservation({
+                        const kr = await window.supabaseCreateReservation({
                             seasonId: snap.season.id, playerId: player.id, raidLevel: null, bossNumber: k.bossNumber,
                             flex: k.flex || k.hourIdx == null, timeSlot: (!k.flex && k.hourIdx != null) ? _hourKey(HOUR_ORDER[k.hourIdx]) : null,
                             loadoutSlot: k.loadoutSlot, characters: k.team, expectedDamageB: k.dmgB,
                             sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
                         });
+                        if (kr) rows = rows.concat([kr]);
                         kept += 1;
                     } catch (e) { showNotification(`⚠ B${k.bossNumber} の凸を残す固定に失敗: ${e?.message || e}`); }
                 }
@@ -20624,7 +20635,7 @@
             const pt = (attr, slot) => `${esc(JP[attr] || attr || '')}PT${Number(slot) === 2 ? '②' : ''}`;
             const single = sw.pickable && sw.free.length === 1 ? sw.free[0].key : null;   // 選べるのが 1 つなら選んでおく
             const head = `<div class="ps-new"><b>📌 置く</b> ${esc(piece.name)} · ${pt(piece.attr, piece.slot)} ${Number(piece.dmgB || 0).toFixed(1)}B → B${Number(piece.bossNumber)} ${esc(piece.hourLabel || '')}<span class="ps-team">${snip(piece.team)}</span></div>`;
-            const ICON = { promise: '🔒', pinned: '📌', conflict: '✕', free: '·' };
+            const ICON = { promise: '🔒', pinned: '📌', requested: '📝', conflict: '✕', free: '·' };
             const rows = sw.rows.map(r => {
                 const pick = sw.pickable && r.status === 'free';
                 const ctl = pick ? `<input type="radio" name="planSwapPick" value="${esc(r.key)}"${single === r.key ? ' checked' : ''}>` : `<span class="ps-ic">${ICON[r.status] || '·'}</span>`;

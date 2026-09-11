@@ -177,6 +177,7 @@
     const SWAP_JP = {
         promise: '🔒 本人の約束 — 入れ替えられません',
         pinned: '📌 固定 — 外すなら固定を外してから',
+        requested: '📝 本人の申請中 — 承認か却下で決めます (固定はしません)',
         conflict: '同じキャラ — 必ず外れます',
         free: '入れ替えられます',
     };
@@ -184,6 +185,7 @@
      * 🔁 入れ替えの候補 (パズル盤 ⑤・2026-09-12 実機FB「3凸が埋まっている人にピースを置くと、どれが外れるのか分からない」)。
      *   いまのプランに入っているその人の凸を並べ、新しいピース (team) と両立できるかを付ける:
      *     promise = 🔒 本人の約束 (入れ替えられない) / pinned = 📌 固定 (外すなら固定を外してから)
+     *     requested = 📝 本人の申請中のカード (選べない・📌 にもしない: canPin が本人の申請と同じカードの固定を禁じる。Codex指摘 2026-09-12)
      *     conflict = 同じキャラ (必ず外れる) / free = 入れ替えられる
      *   over = 被りを外してもなお残凸を超える数 (普通は 0 か 1)。1 なら free から 1 つ選んでもらう (pickable)。
      *   ask = 確認を出す必要がある (何かが外れる)。rows が空 (その人の凸がプランに無い) なら聞かない。
@@ -194,15 +196,22 @@
      * @param {*} a.memberId
      * @param {string[]=} a.team        新しいピースの編成 (キャラ被りの判定に使う)
      * @param {number=} a.doneAttacks   実凸 (残凸 = 3 - 実凸)
+     * @param {Object[]=} a.reservations 予約 (本人の申請中のカードを見る)
+     * @param {(r:Object)=>boolean=} a.isActive 予約が生きているかの判定 (reservationsDomain.isActive)
      */
-    function swapOptions({ plan, memberId, team, doneAttacks } = {}) {
+    function swapOptions({ plan, memberId, team, doneAttacks, reservations, isActive } = {}) {
         const mine = new Set(charKeys(team));
+        const activeFn = typeof isActive === 'function' ? isActive : (r) => ['requested', 'approved', 'cancel_requested'].includes(r && r.status);
+        const asked = new Set((Array.isArray(reservations) ? reservations : [])
+            .filter(r => r && String(r.player_id) === String(memberId) && activeFn(r))
+            .map(r => `${Number(r.boss_number)}:${Number(r.loadout_slot) || 1}`));
         const rows = [];
         (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
             if (!a || String(a.memberId) !== String(memberId)) return;
             const t = Array.isArray(a.team) ? a.team.filter(Boolean) : [];
             const clash = mine.size > 0 && charKeys(t).some(k => mine.has(k));
-            const status = (a.fromReservation && !a.pinned) ? 'promise' : a.pinned ? 'pinned' : clash ? 'conflict' : 'free';
+            const status = (a.fromReservation && !a.pinned) ? 'promise' : a.pinned ? 'pinned' : clash ? 'conflict'
+                : asked.has(`${Number(b.bossNumber)}:${Number(a.loadoutSlot) || 1}`) ? 'requested' : 'free';
             rows.push({
                 key: `${lv.level}:${Number(b.bossNumber)}:${Number(a.loadoutSlot) || 1}`,
                 level: lv.level, bossNumber: Number(b.bossNumber), bossName: b.name || '', weakness: b.weakness || null,
