@@ -227,5 +227,21 @@
         return { rows, capacity, conflicts, free, over, pickable: over === 1 && free.length >= 1, ask: rows.length > 0 && (conflicts.length > 0 || over > 0) };
     }
 
-    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, swapOptions, WHO, FROM, PREV, ATTR_JP, SWAP_JP };
+    /**
+     * 🔒📌 の数 (時間割の「表示」の切り替えに出す・2026-09-12 ユーザー要望「ロックしたカード / 仮組みのカードのみ表示できる？」)。
+     *   promise = 🔒 本人が引き受けた約束 (fromReservation で pinned でない) / pinned = 📌 運営の固定 / auto = 算出が置いた凸
+     */
+    function chipCounts(plan) {
+        const c = { promise: 0, pinned: 0, auto: 0 };
+        (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+            if (!a) return;
+            if (a.pinned) c.pinned += 1;
+            else if (a.fromReservation) c.promise += 1;
+            else c.auto += 1;
+        })));
+        return c;
+    }
+    const CHIP_FILTERS = ['all', 'promise', 'pinned', 'fixed'];
+
+    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, swapOptions, chipCounts, CHIP_FILTERS, WHO, FROM, PREV, ATTR_JP, SWAP_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

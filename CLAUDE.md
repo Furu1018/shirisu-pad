@@ -348,6 +348,9 @@ rm -f .claude/hooks/.codex-on      # OFF
     ★ 本人の申請中 (requested) のカードは `requested` で選べず 📌 にもしない (`canPin` が同じカードの固定を禁じる)。
     ★ 確認している間に状況が変わる (Codex指摘): 答えのあとに予約を**取り直して** `canPin` をやり直し、残す凸も 1 件ずつ
     `canPin` を通す (置けないものは固定せず算出に任せる)。入れた固定は `rows` に足して次の判定が数える。
+  - **🔒📌 だけ表示** (2026-09-12 ユーザー要望)。時間割の上の「表示: すべて / 🔒 約束 N / 📌 固定 N / 両方」。
+    状態 `_opsPlanChipFilter` (端末に覚えない) → `.plan-board[data-chipfilter]` の **CSS だけ**で絞る (チップの札
+    `data-promise` / `data-pinned`、✓済み凸は `.plan-done`)。ピース箱は `data-piece` なので効かない。件数は `planBoardDomain.chipCounts`
   - **算出し直しても画面の位置を保つ** (2026-09-12 実機FB)。`_opsPlanKeepStart(el, seq)` が算出の頭でカードの高さを
     `min-height` で保ち (計算中の短い表示で文書が縮むと上に詰まる)、`_opsPlanKeepDone(seq)` が描き終えた道と中断する道の
     **全部**で高さを戻して元の位置へ (テストが return の数と突き合わせる)。世代を持つので追い越された古い算出は触らない。

@@ -8624,6 +8624,38 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!k \|\| k\.seq !== seq\) return;/.test(doneFn), '追い越された古い算出が位置を戻してしまう');
         assert.ok(/k\.el\.style\.minHeight = '';/.test(doneFn) && /window\.scrollTo\(0, k\.y\);/.test(doneFn), '高さを戻す / 位置へ戻す が無い');
     });
+    test('★ 🔒📌 だけ表示: chipCounts の数え方 / 時間割の「表示」の切り替え (CSS で絞る・描き直さない・ピース箱には効かない)', () => {
+        // 2026-09-12 ユーザー要望「🔒ロックしたカードの表示や 📌仮ぐみのカードのみ表示できる？」
+        const dom = globalThis.planBoardDomain;
+        assert.equal(typeof dom?.chipCounts, 'function');
+        const plan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, pinned: true, fromReservation: true }, { memberId: 2, fromReservation: true }, { memberId: 3 }, { memberId: 4, fromReservation: true }] }] },
+                                { level: 2, bosses: [{ bossNumber: 2, attacks: [{ memberId: 5, pinned: true }] }] }] };
+        assert.deepEqual(dom.chipCounts(plan), { promise: 2, pinned: 2, auto: 1 }, '📌 は fromReservation でも 📌 に数える');
+        assert.deepEqual(dom.chipCounts(null), { promise: 0, pinned: 0, auto: 0 });
+        assert.deepEqual(dom.CHIP_FILTERS, ['all', 'promise', 'pinned', 'fixed']);
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        // CSS: 4 つの絞り込み。算出の凸と ✓済み凸は消える。ピース箱 (data-piece) には効かない (data-member で絞る)
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        for (const sel of ['.plan-board[data-chipfilter="promise"] [data-member]:not([data-promise="1"])',
+                           '.plan-board[data-chipfilter="pinned"] [data-member]:not([data-pinned="1"])',
+                           '.plan-board[data-chipfilter="fixed"] [data-member]:not([data-promise="1"]):not([data-pinned="1"])',
+                           '.plan-board:not([data-chipfilter="all"]) .plan-done']) {
+            assert.ok(css.includes(sel), `絞り込みの CSS が無い: ${sel}`);
+        }
+        assert.ok(/\.plan-done \{ display: none; \}/.test(css), '絞り込みで消していない');
+        assert.ok(/return `<span class="plan-done" title="\$\{esc\(`\$\{nm\} · 済 \$\{dmg\}`\)\}"/.test(html), '✓済み凸に札 (plan-done) が無い');
+        assert.ok(/<div class="plan-board\$\{_opsPlanTrayOpen \? ' with-tray' : ''\}" data-chipfilter="\$\{_opsPlanChipFilter\}"><div>/.test(html), '盤に data-chipfilter を付けていない');
+        // 切り替え: 知らない値は all に倒し、描き直す
+        const setter = html.match(/function setOpsPlanChipFilter\(f\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/_opsPlanChipFilter = ok\.includes\(f\) \? f : 'all';/.test(setter) && /if \(_opsLastPlan\) renderOpsPlanView\(\);/.test(setter), '切り替えが値を確かめて描き直していない');
+        assert.ok(/let _opsPlanChipFilter = 'all';/.test(html) && !/localStorage\.setItem\('shirisuko_plan_chipfilter/.test(html), '既定が all でない / 端末に覚えている (開き直したら全部見えるのが安全)');
+        // セグメントは時間割のとき・運営だけ。件数は chipCounts
+        const view = html.match(/function renderOpsPlanView\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/const chipFilter = \(_opsPlanViewMode === 'timetable' && _opsMode\)/.test(view), 'リスト表示や運営OFFでも出している');
+        assert.ok(/const cc = window\.planBoardDomain \? window\.planBoardDomain\.chipCounts\(plan\)/.test(view), '件数を planBoardDomain に任せていない');
+        for (const f of ['all', 'promise', 'pinned', 'fixed']) assert.ok(view.includes(`filtBtn('${f}', `), `${f} のボタンが無い`);
+        assert.ok(/\$\{teamsBtn\}<\/div>\$\{chipFilter\}`;/.test(view), 'セグメントが viewToggle に入っていない (el.innerHTML の並びはテストが固定)');
+    });
     test('★ piecesOf: 模擬ピースは 残凸が多い人 → 強い順、置かれているものは placed + どこにあるか', () => {
         const d = globalThis.planBoardDomain;
         const players = [

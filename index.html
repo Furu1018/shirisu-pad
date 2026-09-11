@@ -2927,6 +2927,12 @@
         .plan-next .k { font-size: 10.5px; font-weight: 900; letter-spacing: 0.3px; color: var(--t-muted); margin-right: 4px; }
         /* 🧩 パズル盤 ③: 時間割 + 模擬ピース (PC は横並び)。置ける場所は点線で光り、置けない場所は沈む */
         .plan-board { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+        /* 🔒📌 だけ表示 (2026-09-12 ユーザー要望「ロックしたカードや仮組みのカードのみ表示できる？」)。
+           チップの札 data-promise / data-pinned で絞る (描き直さない・CSS だけ)。算出の凸と ✓済み凸は消える。ピース箱には効かない (data-piece) */
+        .plan-board[data-chipfilter="promise"] [data-member]:not([data-promise="1"]),
+        .plan-board[data-chipfilter="pinned"] [data-member]:not([data-pinned="1"]),
+        .plan-board[data-chipfilter="fixed"] [data-member]:not([data-promise="1"]):not([data-pinned="1"]),
+        .plan-board:not([data-chipfilter="all"]) .plan-done { display: none; }
         @media (min-width: 1100px) {
             .plan-board.with-tray { grid-template-columns: minmax(0, 1fr) 262px; }
             /* ★ ピース箱は画面に留まる (2026-09-11 実機FB「Lv3 を埋めるときピースが上の方にあって持ってきづらい」)。
@@ -20836,6 +20842,13 @@
             try { localStorage.setItem('shirisuko_plan_teams', _opsPlanShowTeams ? '1' : '0'); } catch { /* noop */ }
             if (_opsLastPlan) renderOpsPlanView();
         }
+        // 🔒📌 だけ表示 (時間割の「表示」: すべて / 🔒 約束 / 📌 固定 / 両方)。端末に覚えない — 開き直したら全部見えるのが安全
+        let _opsPlanChipFilter = 'all';
+        function setOpsPlanChipFilter(f) {
+            const ok = window.planBoardDomain?.CHIP_FILTERS || ['all', 'promise', 'pinned', 'fixed'];
+            _opsPlanChipFilter = ok.includes(f) ? f : 'all';
+            if (_opsLastPlan) renderOpsPlanView();
+        }
 
         function renderOpsPlanView() {
             // ★ セッションの途中で締められたら、手元に残っている算出結果も出さない。
@@ -21093,7 +21106,13 @@
 
             const viewBtn = (mode, icon, label) => `<button onclick="setOpsPlanViewMode('${mode}')" style="flex:1;padding:7px 4px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;letter-spacing:0.2px;${_opsPlanViewMode === mode ? 'background:var(--t-ink);color:var(--card);' : 'background:var(--s2);color:var(--t-strong);'}">${icon} ${label}</button>`;
             const teamsBtn = `<button onclick="toggleOpsPlanTeams()" title="時間割チップに編成5キャラを表示 (共有画像にも反映)" style="flex:none;padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:800;${_opsPlanShowTeams ? 'background:var(--ops-solid);color:var(--ops-ink);' : 'background:var(--s2);color:var(--t-strong);'}">👥 編成</button>`;
-            const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${teamsBtn}</div>`;
+            // 🔒📌 だけ表示 (2026-09-12): 時間割のときだけ。件数は planBoardDomain.chipCounts
+            const cc = window.planBoardDomain ? window.planBoardDomain.chipCounts(plan) : { promise: 0, pinned: 0, auto: 0 };
+            const filtBtn = (f, label) => `<button type="button" onclick="setOpsPlanChipFilter('${f}')" aria-pressed="${_opsPlanChipFilter === f}" style="flex:none;padding:5px 9px;border-radius:999px;border:none;cursor:pointer;font-family:inherit;font-size:10.5px;font-weight:900;${_opsPlanChipFilter === f ? 'background:var(--t-ink);color:var(--card);' : 'background:var(--s2);color:var(--t-body);'}">${label}</button>`;
+            const chipFilter = (_opsPlanViewMode === 'timetable' && _opsMode)
+                ? `<div class="plan-chipfilt" style="display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:-6px 0 10px;"><span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">表示</span>${filtBtn('all', 'すべて')}${filtBtn('promise', `🔒 約束 ${cc.promise}`)}${filtBtn('pinned', `📌 固定 ${cc.pinned}`)}${filtBtn('fixed', '🔒📌 両方')}</div>`
+                : '';
+            const viewToggle = `<div style="display:flex;gap:6px;margin-bottom:12px;">${viewBtn('list', '📋', 'リスト')}${viewBtn('timetable', '🗓', '時間割')}${teamsBtn}</div>${chipFilter}`;
             // ② 時間割の読みやすさ (運営だけ): 選んだ人の戦闘可能時間を光らせ、チップに「硬い / 狭い」を出す
             const pbd = window.planBoardDomain;
             const playersById = new Map((opsStore.get()?.players || []).map(p => [String(p.id), p]));
@@ -21109,7 +21128,7 @@
             // ③ 盤の上で手を打つ: 選んでいる駒 (チップ / 模擬ピース) の属性で置ける列を光らせ、PC は掴める
             const sel = _opsPlanSel;
             const bodyHtml = _opsPlanViewMode === 'timetable'
-                ? `<div class="plan-board${_opsPlanTrayOpen ? ' with-tray' : ''}"><div>`
+                ? `<div class="plan-board${_opsPlanTrayOpen ? ' with-tray' : ''}" data-chipfilter="${_opsPlanChipFilter}"><div>`
                     + _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops',
                         focusMemberId: _opsPlanFocus, focusWindow, stiffOf, placeAttr: sel ? sel.attr : null, draggable: _opsPlanDragOk() })
                     + _opsPlanFocusBarHtml(plan) + '</div>' + _opsPlanTrayHtml(plan) + '</div>'
@@ -21434,7 +21453,7 @@
                         const doneChips = (cell.done || []).map(d => {
                             const nm = d.players?.name || d.name || '—';
                             const dmg = Number(d.damage_raw) > 0 ? `${(Number(d.damage_raw) / 1e9).toFixed(2)}B` : '';
-                            return `<span title="${esc(`${nm} · 済 ${dmg}`)}" style="display:inline-flex;align-items:center;gap:2px;`
+                            return `<span class="plan-done" title="${esc(`${nm} · 済 ${dmg}`)}" style="display:inline-flex;align-items:center;gap:2px;`
                                 + `max-width:100%;margin:1px;padding:1px 5px;border-radius:999px;font-size:9px;font-weight:800;`
                                 + `background:rgba(var(--ink-rgb), 0.06);color:var(--t-muted);border:1px dashed rgba(var(--ink-rgb), 0.18);`
                                 + `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">✓ ${esc(nm)}</span>`;
