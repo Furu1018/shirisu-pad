@@ -2022,7 +2022,9 @@
            ★ セレクタを .tab-page.tab-content > .container と重ねているのは、後ろの「Tab Content」節の
              `.tab-page .container { display:flex }` に負けないため (ID で勝つと5タブぶん書くことになる)。
            ★ 「その他」(#opsEtcCards / #opsEtcMaint) は入れ子で親のグリッドが届かないので、同じ規則の
-             グリッドを中に作る。:is() で3か所をまとめる (特異性は ID 相当になるが、それで困る規則は無い)。 */
+             グリッドを中に作る (間隔を本文と揃えるため)。ただし中身は段階外の寄せ集めで幅の組が揃わないので、
+             **全幅の縦並び**にする (Codex 監査 de2bb0d: 5 の次に 12 が来て空き列が出ていた)。
+             :is() で3か所をまとめる (特異性は ID 相当になるが、それで困る規則は無い)。 */
         .side-brand { display: none; }
         /* 運営アクションのボタン列 (戦況タブ「戦闘中の運営アクション」)。〜699px は2列、700px〜 は横一列の帯 */
         .ops-action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -2056,6 +2058,11 @@
             #tab-ops .ops-cockpit-tile { padding: 11px 14px; }
             #tab-ops .ops-cockpit-tile .k { font-size: 11px; }
             #tab-ops .ops-cockpit-tile .v { font-size: 23px; letter-spacing: -0.02em; }
+        }
+        /* --- ②' 「その他」の中は全幅の縦並び (段階外の寄せ集めなので幅の組が揃わない) ---
+           ★ 上の 1100px の細かい幅指定と同じ特異性なので、**必ずこの位置 (後ろ)** に置く。前に置くと負ける */
+        @media (min-width: 700px) {
+            #opsEtcCards > [data-span], #opsEtcMaint > [data-span] { grid-column: 1 / -1; }
         }
 
         /* --- ③ 左サイドバー: 1180px〜、または スマホ横 (768px〜 で縦が559px以下) ---

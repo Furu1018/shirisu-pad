@@ -7932,6 +7932,11 @@ console.log('\ngrowthDomain:');
         const fine = at('@media (min-width: 1100px)');
         for (const v of [4, 5, 6, 7, 8]) assert.ok(fine.includes(`${HOSTS} > [data-span="${v}"] { grid-column: span ${v}; }`), `1100px に幅 ${v} の受け皿が無い`);
         assert.ok(!/display: grid;/.test(fine), '1100px でグリッドを作り直している (700px の段だけが作る)');
+        // ②' その他の中は全幅の縦並び (Codex 監査 de2bb0d)。★ 1100px の細かい幅指定より**後ろ**にないと負ける (同じ特異性・後勝ち)
+        const etcRule = '#opsEtcCards > [data-span], #opsEtcMaint > [data-span] { grid-column: 1 / -1; }';
+        assert.ok(css.includes(etcRule), 'その他の中を全幅にしていない (5 の次に 12 が来て空き列が出る)');
+        assert.ok(css.indexOf(etcRule) > css.indexOf(`${HOSTS} > [data-span="8"] { grid-column: span 8; }`), 'その他の全幅指定が 1100px の幅指定より前にある (後勝ちで負ける)');
+        assert.ok(/@media \(min-width: 700px\) \{\s*#opsEtcCards > \[data-span\]/.test(css), 'その他の全幅指定が 700px の段に入っていない (2列になる幅で効かせる)');
         // ③ 左サイドバー: 1180px〜 と、スマホ横 (768px〜 で縦が559px以下)。置き換えるのは上のタブ帯であって下の浮きナビではない
         const side = at('@media (min-width: 1180px), (min-width: 768px) and (max-height: 559px)');
         assert.ok(/body \{ padding-left: var\(--side-w\); \}/.test(side), '本文をサイドバーぶん寄せていない (重なる)');
