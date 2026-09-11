@@ -26,7 +26,7 @@
      *   2列/12カラムでは隣り合うカードの幅の組で行が決まるので、順番そのものが見た目を決める
      *   (7 の次に 12 が来ると改行して 7 は独りになる — 2026-09-11 まで実際そうなっていて全段階が1列だった)。
      *   1本の順で 準備/前日/当日/終了/メンバー のどれを取り出しても各行が 12 に揃うように並べてある:
-     *     当日     = 運営アクション12 / ボス7 + 締め凸5 / 残り12 / プラン12
+     *     当日     = 運営アクション12 / ボス7 + 締め凸5 / ペース7 + 直近5 / 残り12 / プラン12
      *     前日     = メンバー状況12 / 予約7 + Discord5 / プラン12
      *     準備     = シーズン制御7 + 一斉通知5
      *     終了     = Discord5 + シーズン制御7 / 育成12
@@ -39,6 +39,9 @@
         { id: 'opsSecMembers',   title: 'メンバー状況',          group: 'ライブ盤面', opsOnly: true,  open: { pre: true,  day: true },  stages: ['pre'], span: 12 },
         { id: 'opsSecBoss',      title: 'ボス状況',              group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 7 },
         { id: 'opsSecFinish',    title: '締め凸候補検索',         group: '判断・配信', opsOnly: true,  open: { pre: false, day: false }, stages: ['day'], span: 5 },
+        // 段階4 (2026-09-11): 交代して入った運営が 10 秒で状況を読むための2枚。純ロジックは js/domain/pace.js
+        { id: 'opsSecPace',      title: '消化のペース',          group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 7 },
+        { id: 'opsSecRecent',    title: '直近の動き',            group: 'ライブ盤面', opsOnly: true,  open: { pre: false, day: true },  stages: ['day'], span: 5 },
         { id: 'opsSecCoord',     title: 'オンライン / 調整中',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: false }, stages: [], span: 5 },
         { id: 'opsSecRemaining', title: '残り戦闘可能メンバー',   group: 'ライブ盤面', opsOnly: false, open: { pre: false, day: true },  stages: ['day'], span: 12 },
         // 当日は畳む — 承認待ちの件数は見出しの1行サマリーに出るので気づける
@@ -111,10 +114,11 @@
      * @param {boolean=} args.planComputed  算出済みプランがあるか
      * @param {string|null=} args.finishAttr  締め凸検索中の属性キー
      * @param {{pending:number, approved:number}|null=} args.reservations  予約の件数 (未ロード/未適用なら null)
+     * @param {Object[]|null=} args.finishRequests  締め凸依頼の行 (現在レベル。未ロードなら null = 何も出さない)
      * @param {number=} args.now
      * @returns {{summaries: Record<string,{text:string,bad:boolean}>, cockpit: {id:string,key:string,label:string,value:string|number,bad:boolean}[]}}
      */
-    function summarize({ season, bosses, players, mbRows, coordList, published, planComputed, finishAttr, reservations, now } = {}) {
+    function summarize({ season, bosses, players, mbRows, coordList, published, planComputed, finishAttr, reservations, finishRequests, now } = {}) {
         const bs = Array.isArray(bosses) ? bosses : [];
         const ps = Array.isArray(players) ? players : [];
         const lvl = season ? Number(season.current_level) || 1 : null;
@@ -126,6 +130,11 @@
         const online = (Array.isArray(coordList) ? coordList : []).filter(c => c && (c.status === 'available' || c.status === 'coordinating')).length;
         const coordinating = (Array.isArray(coordList) ? coordList : []).filter(c => c && c.status === 'coordinating').length;
         const todo = Array.isArray(mbRows) ? mbRows.filter(r => r.todo).length : null;
+        // 📈 消化: 定員 = 今回参加できる人 × 3。凸が定員を超えていたら定員を合わせる (pace.js と同じ決め)
+        const doneAttacks = ps.reduce((s, p) => s + (Number(p.attackCount) || 0), 0);
+        const capacity = Math.max(doneAttacks, ps.filter(p => !p.unavailableThisSeason).length * MAX_ATTACKS);
+        // 🔁 返事待ち = 締め凸依頼で status が pending の行 (未ロードなら null)
+        const askWaiting = Array.isArray(finishRequests) ? finishRequests.filter(r => r && r.status === 'pending').length : null;
         const finPending = Array.isArray(mbRows) ? mbRows.filter(r => r.finish === 'pending').length : null;
 
         const summaries = {
@@ -140,6 +149,9 @@
                 ? { text: `承認待ち ${reservations.pending} · 固定中 ${reservations.approved}`, bad: (reservations.pending || 0) > 0 }
                 : { text: '', bad: false },
             opsSecFinish: { text: finishAttr ? `${ATTR_JP[finishAttr] || finishAttr} 締め凸を検索中` : '', bad: false },
+            opsSecPace: { text: season ? `${doneAttacks} / ${capacity}凸` : '', bad: false },
+            // 返事待ちは「誰かが待っている」状態なので目立たせる
+            opsSecRecent: { text: askWaiting == null ? '' : (askWaiting ? `返事待ち ${askWaiting}` : '返事待ちなし'), bad: (askWaiting || 0) > 0 },
             // published: true=配信中 / false=未配信 / null=まだ取得できていない (未配信と混同させない。Codex再監査 2026-09-08)
             opsSecPlan: { text: published === null ? '配信を確認中' : published ? '配信中' : planComputed ? '算出済み (未配信)' : '未算出', bad: false },
             opsSecActions: { text: '', bad: false },

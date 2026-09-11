@@ -89,6 +89,7 @@
     <script defer src="./js/domain/charMaster.js"></script>
     <script defer src="./js/domain/memberStatus.js"></script>
     <script defer src="./js/domain/opsLayout.js"></script>
+    <script defer src="./js/domain/pace.js"></script>   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
     <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
     <script defer src="./js/domain/growth.js"></script>         <!-- ユニオンメンバーの育成データ (BlaBlaLINK 由来) -->
     <script defer src="./js/state/opsStore.js"></script>
@@ -2855,6 +2856,30 @@
         .dc-profile-card { position: relative; }
         /* ★ ホームの細いボス帯 (2026-09-11)。属性と「戦闘中か」だけを一列で。
            情報を足したくなったら戦況タブへ行ってもらう — ここは"ぱっと見"の役 */
+        /* 📈 消化のペース (運営ボード 当日・段階4)。色はトークンだけ — canvas ではなく div なので切り替えに追随する */
+        .ops-pace { display: flex; align-items: flex-end; gap: 2px; height: 64px; padding: 0 1px; }
+        .ops-pace i { flex: 1 1 0; min-width: 0; display: block; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--track); }
+        .ops-pace i.on { background: var(--ops); }
+        .ops-pace i.future { opacity: 0.45; }
+        .ops-pace i.now { box-shadow: 0 0 0 1.5px var(--ops); }
+        .ops-pace-x { display: flex; gap: 2px; padding: 3px 1px 0; }
+        .ops-pace-x span { flex: 1 1 0; min-width: 0; text-align: center; font-size: 8.5px; font-weight: 800; color: var(--t-muted); line-height: 1; }
+        .ops-pace-x span.now { color: var(--ops-deep); }
+        .ops-pace-note { margin: 8px 0 0; font-size: 11.5px; font-weight: 700; color: var(--t-body); line-height: 1.55; }
+        .ops-pace-note b { color: var(--t-ink); font-weight: 900; }
+        .ops-pace-note .bad { color: var(--bad-deep); }
+        /* 🔁 直近の動き */
+        .ops-recent-h { margin: 0 0 4px; font-size: 10px; font-weight: 900; letter-spacing: 0.3px; color: var(--t-muted); }
+        .ops-recent-row { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.4; min-width: 0; }
+        .ops-recent-row:first-of-type { border-top: none; }
+        .ops-recent-row .t { flex: none; width: 34px; font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .ops-recent-row .b { flex: none; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 900; color: var(--t-ink); }
+        .ops-recent-row .n { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--t-strong); }
+        .ops-recent-row .n .st { font-size: 9.5px; font-weight: 900; padding: 1px 5px; border-radius: 999px; margin-left: 2px; }
+        .ops-recent-row .d { flex: none; font-size: 10px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
+        .ops-recent-row .d.bad { color: var(--bad-deep); }
+        .ops-recent-row .v { flex: none; font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
+        .ops-recent-empty { margin: 0; font-size: 11.5px; color: var(--t-muted); }
         .mp-bossstrip { display: flex; gap: 6px; margin: 0 0 12px; }
         .mp-bossstrip .bs {
             flex: 1 1 0; min-width: 0;
@@ -4055,6 +4080,28 @@
                 <div id="opsFinishPlans" style="margin-bottom:14px;"></div>
                 <div id="opsFinishList">
                     <p style="color:var(--t-muted);font-size:12px;">ボス状況カードから対象ボスをタップしてください。</p>
+                </div>
+            </div>
+
+            <!-- 📈 消化のペース (運営ボード 当日・段階4・2026-09-11)。並びと幅は opsLayout.CARDS が決める -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📈 消化のペース</div>
+                    <span id="opsPaceMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);white-space:nowrap;"></span>
+                </div>
+                <div id="opsPaceBody">
+                    <p style="color:var(--t-muted);font-size:12px;">読み込み中...</p>
+                </div>
+            </div>
+
+            <!-- 🔁 直近の動き (同上)。主役は締め凸の打診の状態、添えが直近の凸。運営の交代は扱わない -->
+            <div class="dc-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🔁 直近の動き</div>
+                    <span id="opsRecentMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);white-space:nowrap;"></span>
+                </div>
+                <div id="opsRecentBody">
+                    <p style="color:var(--t-muted);font-size:12px;">読み込み中...</p>
                 </div>
             </div>
 
@@ -13487,7 +13534,10 @@
                 _refreshFinishRequests().then(() => {
                     const myId = getCurrentIdentity();
                     if (myId?.id && typeof renderMyFinishRequestBanner === 'function') renderMyFinishRequestBanner(myId);
-                    if (document.getElementById('tab-ops')?.classList.contains('active') && opsStore.get()) renderOpsBossSummary();
+                    if (document.getElementById('tab-ops')?.classList.contains('active') && opsStore.get()) {
+                        renderOpsBossSummary();
+                        renderOpsRecent();   // 🔁 打診の返事はここでしか新しくならない (盤面の取り直しを待たない)
+                    }
                 });
                 // ★ 互換ゲートも同じ周期で見る (Codex指摘 2026-09-07)。
                 //   前面に開きっぱなしだと visibilitychange が起きないので、これが無いと
@@ -15952,6 +16002,96 @@
             return parseInt(s, 10) % 24;
         }
 
+        // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====
+        // 純ロジックは js/domain/pace.js (paceDomain)。ここは材料集め (盤面の凸・締め凸依頼) と描画だけ。
+        // 鮮度は残り戦闘可能メンバーと同じ (盤面 = renderOpsDashboard で取り直す)。
+        // 打診の状態だけは 10 秒のポーリング (_refreshFinishRequests) に乗せて描き直す。
+        // ★ 運営の交代 (誰が当番か) は扱わない (ユーザー決定 2026-09-11)
+        const _opsHm = (msv) => {
+            const d = new Date(msv);
+            if (Number.isNaN(d.getTime())) return '—';
+            return d.toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
+        };
+        // レイド日の終わり = ハード日の翌 5 時 (JST)。読めなければ null (「使い切れない」判定をしない)
+        function _opsRaidEndMs(season) {
+            const hd = typeof season?.hard_date === 'string' ? season.hard_date.slice(0, 10) : '';
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(hd)) return null;
+            const t = Date.parse(`${hd}T05:00:00+09:00`);
+            return Number.isFinite(t) ? t + 24 * 3600 * 1000 : null;
+        }
+        // 盤面の凸を平らにする (名前つき)。盤面が無ければ空
+        function _opsFlatAttacks(snap) {
+            return (snap?.players || []).flatMap(p => (Array.isArray(p.attacks) ? p.attacks : []).map(a => ({ ...a, name: p.name })));
+        }
+        function renderOpsPace() {
+            const el = document.getElementById('opsPaceBody');
+            const meta = document.getElementById('opsPaceMeta');
+            if (!el) return;
+            const dom = window.paceDomain;
+            const snap = opsStore.get();
+            if (!dom || !snap?.season) {
+                el.innerHTML = '<p class="ops-recent-empty">シーズンが始まると、時間帯ごとの消化がここに出ます。</p>';
+                if (meta) meta.textContent = '';
+                return;
+            }
+            const m = dom.paceModel({
+                attacks: _opsFlatAttacks(snap), players: snap.players,
+                hourOrder: HOUR_ORDER, hourOf: _planJstHour, now: Date.now(), endMs: _opsRaidEndMs(snap.season),
+            });
+            if (meta) meta.textContent = `${m.done} / ${m.capacity}凸`;
+            const max = Math.max(1, ...m.byHour.map(x => x.count));
+            const bars = m.byHour.map(x =>
+                `<i class="${x.count ? 'on' : ''}${x.now ? ' now' : ''}${x.future ? ' future' : ''}" style="height:${Math.max(3, Math.round(x.count / max * 100))}%" title="${x.hour}時 ${x.count}凸"></i>`).join('');
+            // 目盛りは 3 時間おき (24 本ぶん全部書くと潰れる)
+            const axis = m.byHour.map((x, i) => `<span class="${x.now ? 'now' : ''}">${i % 3 === 0 ? x.hour : ''}</span>`).join('');
+            let note;
+            if (m.done === 0) note = 'まだ凸の報告がありません。';
+            else if (m.exhausted) note = `<b>${m.done}凸すべて消化</b>しました。`;
+            else if (m.perHour <= 0) note = `残り <b>${m.remaining}凸</b> · 直近 ${Math.round(m.windowHours * 60)} 分は凸がありません。`;
+            else if (m.overrun) note = `残り <b>${m.remaining}凸</b> · 直近は ${m.perHour.toFixed(1)}凸/時 → <span class="bad">このペースだと翌5時までに使い切れません</span> (見込み ${_opsHm(m.etaMs)})`;
+            else note = `残り <b>${m.remaining}凸</b> · 直近は ${m.perHour.toFixed(1)}凸/時 → このペースなら <b>${_opsHm(m.etaMs)} に使い切る</b>見込み`;
+            if (m.unknownTime) note += ` <span style="color:var(--t-muted);">(時刻の分からない凸 ${m.unknownTime})</span>`;
+            el.innerHTML = `<div class="ops-pace">${bars}</div><div class="ops-pace-x">${axis}</div><p class="ops-pace-note">${note}</p>`;
+        }
+        function renderOpsRecent() {
+            const el = document.getElementById('opsRecentBody');
+            const meta = document.getElementById('opsRecentMeta');
+            if (!el) return;
+            const dom = window.paceDomain;
+            const snap = opsStore.get();
+            if (!dom || !snap?.season) {
+                el.innerHTML = '<p class="ops-recent-empty">シーズンが始まると、締め凸の打診と直近の凸がここに出ます。</p>';
+                if (meta) meta.textContent = '';
+                return;
+            }
+            const m = dom.recentModel({ finishRequests: _finishReqCache, attacks: _opsFlatAttacks(snap), now: Date.now() });
+            const esc = escapeHtml;
+            const bossOf = (n) => (snap.bosses || []).find(b => Number(b.boss_number) === Number(n)) || null;
+            const bossChip = (n) => {
+                const c = DC_ATTR_COLORS[bossOf(n)?.attribute] || DC_ATTR_COLORS.iron;
+                return `<span class="b" style="background:${c}1f;">B${esc(String(n))}</span>`;
+            };
+            if (meta) meta.textContent = m.asksTotal ? `返事待ち ${m.waiting}` : '';
+            const STATE_JP = { waiting: '返事待ち', expired: '期限切れ', ready: 'そろった', dead: '不可あり' };
+            const asks = m.asks.length
+                ? m.asks.map(a => {
+                    const names = a.members.map(mm => {
+                        const st = _FINISH_REQ_STATUS[mm.status] || _FINISH_REQ_STATUS.pending;
+                        return `${esc(mm.name)}<span class="st" style="color:${st.color};background:${st.bg};">${st.label}</span>`;
+                    }).join(' ');
+                    const bad = a.state === 'expired' || a.state === 'dead';
+                    const dl = a.deadlineMs != null ? `〜${_opsHm(a.deadlineMs)}` : '';
+                    return `<div class="ops-recent-row" title="${esc(STATE_JP[a.state] || '')}${a.offer ? ' · 同時打診' : ''}">${bossChip(a.boss)}<span class="n">${names}</span><span class="d ${bad ? 'bad' : ''}">${bad ? esc(STATE_JP[a.state]) : esc(dl)}</span></div>`;
+                }).join('')
+                : '<p class="ops-recent-empty">いま出している打診はありません。</p>';
+            const more = m.asksTotal > m.asks.length ? `<p class="ops-recent-empty">ほか ${m.asksTotal - m.asks.length} 件は締め凸候補検索で。</p>` : '';
+            const atks = m.attacks.length
+                ? m.attacks.map(a =>
+                    `<div class="ops-recent-row"><span class="t">${esc(_opsHm(a.atMs))}</span>${bossChip(a.boss)}<span class="n">${esc(a.name)}</span><span class="v">${(a.damageRaw / 1e9).toFixed(1)}B</span></div>`).join('')
+                : '<p class="ops-recent-empty">まだ凸の報告がありません。</p>';
+            el.innerHTML = `<p class="ops-recent-h">🏁 締め凸の打診</p>${asks}${more}<p class="ops-recent-h" style="margin-top:10px;">⚔️ 直近の凸</p>${atks}`;
+        }
+
         async function renderOpsDashboard() {
             const labelEl = document.getElementById('opsSeasonLabel');
             const remListEl = document.getElementById('opsRemainingList');
@@ -15988,6 +16128,7 @@
                 renderOpsSeasonCtlSummary(null, []);
                 if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snapshot);   // 👥 も「シーズン無し」に
                 if (typeof renderOpsReservations === 'function') renderOpsReservations();           // 🔒 も同様
+                renderOpsPace(); renderOpsRecent();                                                 // 📈🔁 も「シーズン無し」に
                 _applyOpsCardStates();     // シーズン終了直後も前シーズンの開閉状態を残さない (Codex指摘)
                 _renderOpsCockpitSoon();   // コックピット・見出しサマリーを「シーズン無し」に
                 return;
@@ -16021,6 +16162,8 @@
             renderOpsSeasonCtlSummary(season, bosses);
             renderOpsBossSummary();
             renderOpsRemainingList();
+            renderOpsPace();                       // 📈 消化のペース (盤面と同じ鮮度)
+            renderOpsRecent();                     // 🔁 直近の動き (打診は 10 秒のポーリングでも描き直す)
             renderOpsMemberStatus(snapshot);       // 👥 メンバー状況 (運営ONのときだけ中で取得・描画)
             renderOpsReservations();               // 🔒 凸の予約 (同上)
             renderOpsGrowth();                     // 🧬 育成データの取り込み (同上)
@@ -25751,6 +25894,7 @@
                 published: _opsPublishedFor(snap?.season || null),   // null = 未取得 → 「配信を確認中」
                 planComputed: (typeof _opsLastPlan !== 'undefined') && !!_opsLastPlan,
                 finishAttr: (typeof _opsCurrentAttr !== 'undefined') ? _opsCurrentAttr : null,
+                finishRequests: (typeof _finishReqCache !== 'undefined' && Array.isArray(_finishReqCache)) ? _finishReqCache : null,
                 // 予約の件数 (未ロード / 39未適用は null = 何も出さない。「0件」と混同させない)
                 reservations: (typeof _resv !== 'undefined' && Array.isArray(_resv.rows))
                     ? {

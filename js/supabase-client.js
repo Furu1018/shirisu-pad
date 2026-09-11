@@ -4692,7 +4692,8 @@ window.supabaseLoadOpsDashboardData = async function () {
         // 未記録 (代理凸・一括登録) の場合は [] のままで best-effort 扱い。
         // ⚠ characters 列が無い環境 (新規プロジェクト等) でも運営盤面全体が落ちないよう、
         //   列エラーなら旧列構成で取り直す (被り判定だけ静かに劣化する)
-        const ATK_COLS = 'id, player_id, attack_number, boss_number, boss_code, damage_raw, level';
+        // reported_at は 📈消化のペース / 🔁直近の動き (2026-09-11) が読む。盤面と同じ鮮度でよいので別クエリにしない
+        const ATK_COLS = 'id, player_id, attack_number, boss_number, boss_code, damage_raw, level, reported_at';
         let { data: atks, error: aErr } = await supabase
             .from('attacks')
             .select(`${ATK_COLS}, characters`)

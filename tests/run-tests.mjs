@@ -23,6 +23,7 @@ import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テス�
 import '../js/domain/charMaster.js';    // globalThis.charMasterDomain (手動登録の二者確認)
 import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メンバー状況ボード)
 import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タブの折りたたみ + コックピット)
+import '../js/domain/pace.js';          // globalThis.paceDomain (📈消化のペース / 🔁直近の動き — 運営ボード 当日・段階4)
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
@@ -3090,7 +3091,8 @@ console.log('\nopsLayoutDomain:');
         const ids = dom.CARDS.map(c => c.id);
         // (順番は別のテストが見る — ここは「どれが開くか」だけ)
         const openDay = ids.filter(id => dom.resolveOpen(id, 'day', null, true)).sort();
-        assert.deepEqual(openDay, ['opsSecActions', 'opsSecBoss', 'opsSecMembers', 'opsSecRemaining']);
+        // 段階4 (2026-09-11): 📈ペース / 🔁直近 は当日に開く (交代した運営が最初に読む2枚)
+        assert.deepEqual(openDay, ['opsSecActions', 'opsSecBoss', 'opsSecMembers', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining']);
         const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true)).sort();
         assert.deepEqual(openPre, ['opsSecActions', 'opsSecMembers', 'opsSecPlan', 'opsSecReserve']);
         assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
@@ -3330,7 +3332,8 @@ console.log('\nopsStageDomain:');
         // ★ 順番も見る — 2列/12カラムでは並び順が行の組み方を決める (各行が 12 に揃うかは別のテスト)
         const vis = (s) => lay.CARDS.filter(c => dom.visibleIn(c, s)).map(c => c.id);
         assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan']);
-        assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecRemaining', 'opsSecPlan']);
+        // ★ ボス7+締め凸5 の次に ペース7+直近5 (各行 12)。順を崩すと 7 が独りになる
+        assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining', 'opsSecPlan']);
         assert.deepEqual(vis('prep'), ['opsSecSeason', 'opsSecPush']);
         assert.deepEqual(vis('end'), ['opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
@@ -7953,6 +7956,153 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.side-brand \{ display: none; \}/.test(css), '狭いときに見出しを隠していない');
         // ★ 下のナビと二重に出さない (下のナビは 767px まで。サイドバーは 768px から)
         assert.ok(/@media \(max-width: 767px\) \{\s*\.bottom-nav \{ display: flex; \}/.test(css), '下のナビの出る幅が変わっている (サイドバーと二重になる)');
+    });
+    // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====
+    test('★ paceModel: 時間帯ごとの本数・定員・直近のペースから「使い切る時刻」を出す', () => {
+        const dom = globalThis.paceDomain;
+        assert.equal(typeof dom?.paceModel, 'function', 'paceDomain.paceModel が無い');
+        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
+        const jst = (iso) => { const d = new Date(iso); if (Number.isNaN(d.getTime())) return null;
+            return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d)); };
+        const now = Date.parse('2026-09-11T12:30:00Z');   // JST 21:30
+        const players = [
+            { id: 1, name: 'A' }, { id: 2, name: 'B' }, { id: 3, name: 'C' },
+            { id: 4, name: 'D', unavailableThisSeason: true },   // 今回は難しい → 定員に数えない
+        ];
+        const attacks = [
+            { boss_number: 1, reported_at: '2026-09-11T11:10:00Z' },   // JST 20:10
+            { boss_number: 2, reported_at: '2026-09-11T11:40:00Z' },   // JST 20:40
+            { boss_number: 3, reported_at: '2026-09-11T12:05:00Z' },   // JST 21:05
+            { boss_number: 1, reported_at: 'こわれてる' },              // 時刻不明
+        ];
+        const m = dom.paceModel({ attacks, players, hourOrder: HO, hourOf: jst, now, endMs: Date.parse('2026-09-11T20:00:00Z') });
+        assert.equal(m.done, 4); assert.equal(m.capacity, 9, '定員は参加できる人 × 3'); assert.equal(m.remaining, 5);
+        assert.equal(m.unknownTime, 1, '時刻の読めない凸を黙って捨てている');
+        assert.equal(m.byHour.length, 24);
+        assert.equal(m.byHour.find(x => x.hour === 20).count, 2);
+        assert.equal(m.byHour.find(x => x.hour === 21).count, 1);
+        assert.equal(m.byHour.find(x => x.hour === 21).now, true, 'いまの時間帯に印が無い');
+        assert.equal(m.byHour.find(x => x.hour === 22).future, true, 'これからの時間帯を薄くする印が無い');
+        assert.equal(m.byHour.find(x => x.hour === 20).future, false);
+        // ★ 窓は最初の凸より前に遡らない: 20:10〜21:30 の 80 分で 3 凸 = 2.25 凸/時
+        assert.equal(m.recentCount, 3);
+        assert.ok(Math.abs(m.windowHours - 80 / 60) < 1e-9, `窓の幅が違う ${m.windowHours}`);
+        assert.ok(Math.abs(m.perHour - 2.25) < 1e-9, `ペースが違う ${m.perHour}`);
+        // 残り 5 凸 ÷ 2.25 = 2.22 時間 → 23:43 ごろ
+        assert.ok(Math.abs(m.etaMs - (now + 5 / 2.25 * 3600e3)) < 1, '使い切る時刻の見込みが違う');
+        assert.equal(m.exhausted, false); assert.equal(m.overrun, false);
+        // レイド日の終わりを越えるなら「使い切れない」
+        assert.equal(dom.paceModel({ attacks, players, hourOrder: HO, hourOf: jst, now, endMs: now + 3600e3 }).overrun, true, '翌5時までに使い切れないことを言っていない');
+        assert.equal(dom.paceModel({ attacks, players, hourOrder: HO, hourOf: jst, now, endMs: null }).overrun, false, '終わりが分からないときに決めつけている');
+        // 直近に凸が無ければペース 0 → 見込みは出さない (0 割りしない)
+        const stale = dom.paceModel({ attacks: [{ boss_number: 1, reported_at: '2026-09-11T05:00:00Z' }], players, hourOrder: HO, hourOf: jst, now });
+        assert.equal(stale.perHour, 0); assert.equal(stale.etaMs, null);
+        // 全部消化
+        const full = dom.paceModel({ attacks: Array.from({ length: 9 }, (_, i) => ({ boss_number: 1, reported_at: `2026-09-11T12:0${i}:00Z` })), players, hourOrder: HO, hourOf: jst, now });
+        assert.equal(full.exhausted, true); assert.equal(full.remaining, 0); assert.equal(full.etaMs, null);
+        // ★ 「難しい」と申告した人が結局凸した → 定員を凸数に合わせる (34/33 のような数字にしない)
+        const over = dom.paceModel({ attacks: [1, 2, 3, 4].map(() => ({ boss_number: 1, reported_at: '2026-09-11T12:00:00Z' })), players: [{ id: 1 }, { id: 4, unavailableThisSeason: true }], hourOrder: HO, hourOf: jst, now });
+        assert.equal(over.capacity, 4); assert.equal(over.remaining, 0);
+        // 壊れた入力で落ちない
+        const e = dom.paceModel();
+        assert.equal(e.done, 0); assert.equal(e.capacity, 0); assert.deepEqual(e.byHour, []); assert.equal(e.etaMs, null);
+        assert.equal(dom.paceModel({ attacks: [null, {}, { boss_number: null }], players: null, hourOrder: HO, hourOf: jst, now }).done, 0, 'ボス番号の無い行を数えている');
+    });
+    test('★ recentModel: 締め凸の打診の状態 (主役) + 直近の凸 (添え)。運営の交代は扱わない', () => {
+        const dom = globalThis.paceDomain;
+        const now = Date.parse('2026-09-11T12:30:00Z');
+        const iso = (dMin) => new Date(now + dMin * 60e3).toISOString();
+        const reqs = [
+            // 同時打診 o1 の案 p1: A 返事待ち / B 了承 (期限はまだ先)
+            { id: 1, boss_number: 3, player_id: 11, name: 'A', status: 'pending',  requested_at: iso(-10), offer_id: 'o1', plan_key: 'p1', deadline_at: iso(5), raid_level: 2 },
+            { id: 2, boss_number: 3, player_id: 12, name: 'B', status: 'accepted', requested_at: iso(-10), offer_id: 'o1', plan_key: 'p1', deadline_at: iso(5), raid_level: 2 },
+            // 同じ人が2行 (古い pending と新しい accepted) → 1人として数え、進んだほうを採る
+            { id: 3, boss_number: 3, player_id: 11, name: 'A', status: 'accepted', requested_at: iso(-9),  offer_id: 'o1', plan_key: 'p2', deadline_at: iso(5), raid_level: 2 },
+            { id: 4, boss_number: 3, player_id: 11, name: 'A', status: 'pending',  requested_at: iso(-9),  offer_id: 'o1', plan_key: 'p2', deadline_at: iso(5), raid_level: 2 },
+            // 1案ずつの依頼 (offer 無し): B2 に C 不可 → dead
+            { id: 5, boss_number: 2, player_id: 13, name: 'C', status: 'declined', requested_at: iso(-30), raid_level: 2 },
+            // 期限切れ: B1 に D 返事待ちのまま期限を過ぎた
+            { id: 6, boss_number: 1, player_id: 14, players: { name: 'D' }, status: 'pending', requested_at: iso(-40), deadline_at: iso(-1), raid_level: 2 },
+            // 揃った: B4 に E 了承
+            { id: 7, boss_number: 4, player_id: 15, name: 'E', status: 'accepted', requested_at: iso(-3), raid_level: 2 },
+        ];
+        const attacks = [
+            { boss_number: 1, level: 2, damage_raw: 31e9, reported_at: iso(-50), name: 'X' },
+            { boss_number: 2, level: 2, damage_raw: 42e9, reported_at: iso(-5),  players: { name: 'Y' } },
+            { boss_number: 3, level: 2, damage_raw: 0,    reported_at: 'こわれてる', name: 'Z' },
+        ];
+        const m = dom.recentModel({ finishRequests: reqs, attacks, now });
+        assert.equal(m.asksTotal, 5);
+        assert.equal(m.waiting, 2, '返事待ちの人数 (A の p1 と D)');
+        // 手を打つべきもの (返事待ち・期限切れ) が上、その中では新しい順。次に揃ったもの、最後に不可
+        assert.deepEqual(m.asks.map(a => a.state), ['waiting', 'expired', 'ready', 'ready', 'dead']);
+        const p1 = m.asks.find(a => a.key === 'o:o1:p1');
+        assert.ok(p1 && p1.offer, '同時打診の印が無い');
+        assert.deepEqual(p1.members.map(mm => `${mm.name}:${mm.status}`), ['A:pending', 'B:accepted']);
+        assert.equal(p1.deadlineMs, now + 5 * 60e3);
+        const p2 = m.asks.find(a => a.key === 'o:o1:p2');
+        assert.equal(p2.members.length, 1, '同じ人を2人に数えている');
+        assert.equal(p2.members[0].status, 'accepted', '進んだ返事を採っていない');
+        assert.equal(p2.state, 'ready');
+        assert.equal(m.asks.find(a => a.boss === 1).state, 'expired');
+        assert.equal(m.asks.find(a => a.boss === 1).members[0].name, 'D', 'players.name から名前を取れていない');
+        assert.equal(m.asks.find(a => a.boss === 2).state, 'dead');
+        // 添えの凸: 新しい順・時刻の読めないものは数だけ
+        assert.deepEqual(m.attacks.map(a => a.name), ['Y', 'X']);
+        assert.equal(m.attacks[0].damageRaw, 42e9); assert.equal(m.attacks[0].level, 2);
+        assert.equal(m.unknownTime, 1);
+        // 件数の上限と「ほか N 件」の材料
+        const few = dom.recentModel({ finishRequests: reqs, attacks, now, limit: 1, askLimit: 2 });
+        assert.equal(few.asks.length, 2); assert.equal(few.asksTotal, 5); assert.equal(few.attacks.length, 1);
+        // 壊れた入力で落ちない
+        const e = dom.recentModel();
+        assert.deepEqual(e.asks, []); assert.equal(e.waiting, 0); assert.deepEqual(e.attacks, []);
+        assert.equal(dom.recentModel({ finishRequests: [null, {}, { boss_number: null }], attacks: [null], now }).asksTotal, 0);
+        // ★ 交代 (誰が当番か) を持ち込まない (ユーザー決定 2026-09-11)
+        assert.ok(!Object.keys(m).some(k => /shift|handover|duty|交代/i.test(k)), '運営の交代をモデルに持ち込んでいる');
+    });
+    test('★ summarize: 📈 は「消化 / 定員」、🔁 は「返事待ち N」(未ロードなら何も出さない)', () => {
+        const lay = _grLayout;
+        const players = [{ attackCount: 3 }, { attackCount: 1 }, { attackCount: 0, unavailableThisSeason: true }];
+        const s = lay.summarize({ season: { current_level: 2 }, players, finishRequests: [{ status: 'pending' }, { status: 'accepted' }, { status: 'pending' }] });
+        assert.equal(s.summaries.opsSecPace.text, '4 / 6凸');
+        assert.equal(s.summaries.opsSecRecent.text, '返事待ち 2');
+        assert.equal(s.summaries.opsSecRecent.bad, true, '返事待ちがあるなら目立たせる');
+        const none = lay.summarize({ season: { current_level: 2 }, players, finishRequests: [] });
+        assert.equal(none.summaries.opsSecRecent.text, '返事待ちなし'); assert.equal(none.summaries.opsSecRecent.bad, false);
+        assert.equal(lay.summarize({ season: { current_level: 2 }, players }).summaries.opsSecRecent.text, '', '未ロードを「0件」に見せている');
+        assert.equal(lay.summarize({ season: null, players }).summaries.opsSecPace.text, '');
+        // 定員は凸数を下回らない
+        assert.equal(lay.summarize({ season: { current_level: 1 }, players: [{ attackCount: 2, unavailableThisSeason: true }] }).summaries.opsSecPace.text, '2 / 2凸');
+    });
+    test('★ 配線: 📈🔁 は当日の運営ボードに ボス7+締め凸5 の次の行として出て、盤面と打診の更新で描き直される', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(html.includes('<script defer src="./js/domain/pace.js"></script>'), 'pace.js を読み込んでいない');
+        const ops = html.slice(html.indexOf('<div id="tab-ops" class="tab-content'), html.indexOf('<div id="tab-ranking"'));
+        assert.ok(/📈 消化のペース[\s\S]*?id="opsPaceBody"/.test(ops), '📈 のカードが戦況タブに無い');
+        assert.ok(/🔁 直近の動き[\s\S]*?id="opsRecentBody"/.test(ops), '🔁 のカードが戦況タブに無い');
+        // 盤面の凸に reported_at が無いとペースが組めない (別クエリにせず盤面と同じ鮮度で読む)
+        const client = _grRd('js/supabase-client.js');
+        assert.ok(/const ATK_COLS = '[^']*reported_at[^']*'/.test(client), '盤面ローダの attacks に reported_at が無い');
+        // 盤面を描き直すたびに両方描く (シーズン無しの分岐も)
+        const dash = html.match(/async function renderOpsDashboard\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok((dash.match(/renderOpsPace\(\)/g) || []).length >= 2 && (dash.match(/renderOpsRecent\(\)/g) || []).length >= 2, '盤面の描画で 📈🔁 を描いていない (シーズン無しの分岐も)');
+        // 打診の返事は 10 秒のポーリングでしか新しくならない → そこで 🔁 を描き直す
+        const poll = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        const i = poll.indexOf('_refreshFinishRequests()'), j = poll.indexOf('renderOpsRecent()');
+        assert.ok(i >= 0 && j > i, 'ポーリングで打診を取り直したあとに 🔁 を描き直していない');
+        // 見出しのサマリーに締め凸依頼を渡す
+        const ck = html.match(/function _renderOpsCockpit\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/finishRequests:/.test(ck), 'サマリーに締め凸依頼を渡していない (🔁 の「返事待ち N」が出ない)');
+        // 描画は paceDomain だけを見る (画面で判定を書き足さない)
+        const pace = html.match(/function renderOpsPace\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        const recent = html.match(/function renderOpsRecent\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.paceModel\(/.test(pace) && /dom\.recentModel\(/.test(recent), '描画がドメインを通っていない');
+        assert.ok(/_opsRaidEndMs\(snap\.season\)/.test(pace), '「翌5時までに使い切れない」の判定に終わりを渡していない');
+        // 棒は div + トークン (canvas に色を焼き込まない)
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/\.ops-pace i\.on \{ background: var\(--ops\); \}/.test(css), '棒の色がトークンでない');
+        assert.ok(!/canvas/.test(pace), 'ペースを canvas で描いている (テーマ切り替えに追随しない)');
     });
     test('★ 2列/12カラム: 各段階とメンバー画面で、行の span 合計が 12 に揃う (7 の隣に 12 が来ると 7 が独りになる)', () => {
         // ★ 2026-09-11 まで実際そうなっていた: ボス7 → 残り12 → 締め凸5 の順で、7 と 5 が一度も隣り合わず全段階で1列。
