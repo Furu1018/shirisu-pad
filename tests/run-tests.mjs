@@ -8289,6 +8289,16 @@ console.log('\ngrowthDomain:');
         // 対象は状態 (_opsPlanWho)。呼び出し側が明示したときはそちら (承認後の組み直しは「全員」)
         const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const onlyNow = options\.onlyAvailableNow != null \? !!options\.onlyAvailableNow : _opsPlanWho === 'now';/.test(fn), '対象を条件パネルから取っていない');
+        // ★ 決めた対象を options に畳んでから、固定された呼び出し行に渡す (Codex指摘 2026-09-11: 畳む行を見ていなかった)
+        assert.ok(/const onlyNow = [^\n]*\n\s*options = \{ \.\.\.options, onlyAvailableNow: onlyNow \};\s*\n\s*const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations:/.test(fn),
+            '対象を options に畳んでから算出に渡していない (画面の選択が効かない / 明示した対象が上書きされる)');
+        // 優先順位を式で固定: 明示 (null でない) が勝ち、無ければ画面の選択。ここを実行で確かめる
+        const pick = new Function('options', '_opsPlanWho', "return options.onlyAvailableNow != null ? !!options.onlyAvailableNow : _opsPlanWho === 'now';");
+        assert.equal(pick({}, 'now'), true, '画面で「今動ける人だけ」を選んでいるのに全員になる');
+        assert.equal(pick({}, 'all'), false);
+        assert.equal(pick({ onlyAvailableNow: false }, 'now'), false, '承認後の組み直し (全員を明示) が画面の選択に負けている');
+        assert.equal(pick({ onlyAvailableNow: true }, 'all'), true);
+        assert.ok(fn.includes("return options.onlyAvailableNow != null ? !!options.onlyAvailableNow : _opsPlanWho === 'now';".replace('return ', 'const onlyNow = ')), '上の式が本体と同じでない');
         // 焼き込み: planBoardDomain.conditionsOf で作り、_opsLastPlan に入れる前に付ける
         assert.ok(/plan\.conditions = window\.planBoardDomain \? window\.planBoardDomain\.conditionsOf\(\{[\s\S]*?computedAt: new Date\(\)\.toISOString\(\),[\s\S]*?\}\) : null;\s*\n\s*_opsLastPlan = plan;/.test(fn), '条件を焼き込んでいない (または _opsLastPlan の後)');
         assert.ok(/reservations\.filter\(r => window\.reservationsDomain\.isFixed\(r\)\)\.length/.test(fn), '予約は拘束 (isFixed) だけを数える');
