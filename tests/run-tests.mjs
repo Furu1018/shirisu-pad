@@ -8528,6 +8528,83 @@ console.log('\ngrowthDomain:');
         assert.ok(/\n\s*_opsPlanFocus = null;/.test(fn), '算出し直しても前の選択が残る (コメントアウトも不可)');
     });
     // ===== パズル盤 ③④: 📌 運営の固定 / 🧩 模擬ピース / 📣 お願い → 🔒 (2026-09-11) =====
+    test('★ swapOptions: 3凸が埋まっている人にピースを置くとき、どれが外れるか (約束は不可 / 固定は不可 / 同じキャラは必ず外れる / 自由は選べる)', () => {
+        // 2026-09-12 実機FB「3凸分自動で埋まっている → 1つピースより移動で、キャンセルする凸は何を基準に選ぶのか？」
+        const dom = globalThis.planBoardDomain;
+        assert.equal(typeof dom?.swapOptions, 'function', 'planBoardDomain.swapOptions が無い');
+        const plan = { levels: [
+            { level: 1, bosses: [
+                { bossNumber: 1, name: 'A', weakness: 'fire', attacks: [{ memberId: 7, loadoutSlot: 1, dmgB: 20, team: ['x1', 'x2'], hourIdx: 0, hourLabel: '5時', fromReservation: true }] },
+                { bossNumber: 2, name: 'B', weakness: 'water', attacks: [{ memberId: 7, loadoutSlot: 1, dmgB: 18, team: ['y1', 'y2'], hourIdx: 1, hourLabel: '6時' },
+                                                                            { memberId: 8, loadoutSlot: 1, dmgB: 30, team: ['z1'] }] },
+            ] },
+            { level: 2, bosses: [
+                { bossNumber: 3, name: 'C', weakness: 'electric', attacks: [{ memberId: 7, loadoutSlot: 2, dmgB: 15, team: ['w1', 'W2 '], hourIdx: 2, flex: true }] },
+            ] },
+        ] };
+        // 自由 2 + 約束 1 (残凸 3) にピースを置く → 1 つ外す。約束は選べない。同じキャラが無ければ自由の 2 つから選ぶ
+        let sw = dom.swapOptions({ plan, memberId: 7, team: ['q1', 'q2'], doneAttacks: 0 });
+        assert.deepEqual(sw.rows.map(r => [r.key, r.status]), [['1:1:1', 'promise'], ['1:2:1', 'free'], ['2:3:2', 'free']]);
+        assert.equal(sw.capacity, 3); assert.equal(sw.over, 1); assert.equal(sw.pickable, true); assert.equal(sw.ask, true);
+        assert.deepEqual(sw.free.map(r => r.key), ['1:2:1', '2:3:2']);
+        assert.equal(sw.rows[0].label, '🔒 本人の約束 — 入れ替えられません');
+        assert.deepEqual([sw.rows[1].hourLabel, sw.rows[2].hourLabel, sw.rows[2].flex, sw.rows[2].bossName, sw.rows[2].weakness], ['6時', null, true, 'C', 'electric']);
+        // 同じキャラ (全角/空白/大文字の違いは同じ) の凸は必ず外れる → over は 0 になり、選ばせない
+        sw = dom.swapOptions({ plan, memberId: 7, team: ['ｗ2', 'q9'], doneAttacks: 0 });
+        assert.deepEqual(sw.conflicts.map(r => r.key), ['2:3:2']);
+        assert.equal(sw.over, 0); assert.equal(sw.pickable, false); assert.equal(sw.ask, true, '被りがあるので確認は出す');
+        assert.equal(sw.rows[2].label, '同じキャラ — 必ず外れます');
+        // 📌 固定は選べない
+        const pinnedPlan = { levels: [{ level: 1, bosses: [{ bossNumber: 1, name: 'A', weakness: 'fire', attacks: [{ memberId: 7, loadoutSlot: 1, dmgB: 20, team: ['x1'], pinned: true, fromReservation: true }] }] }] };
+        sw = dom.swapOptions({ plan: pinnedPlan, memberId: 7, team: ['q1'], doneAttacks: 2 });
+        assert.deepEqual(sw.rows.map(r => r.status), ['pinned']); assert.equal(sw.over, 1); assert.equal(sw.pickable, false, '固定しか無いのに選ばせている');
+        assert.equal(sw.rows[0].label, '📌 固定 — 外すなら固定を外してから');
+        // 空きがある (残凸 3 に 1 凸) なら聞かない / その人の凸がプランに無ければ聞かない
+        sw = dom.swapOptions({ plan: pinnedPlan, memberId: 7, team: ['q1'], doneAttacks: 0 });
+        assert.equal(sw.ask, false, '空きがあるのに聞いている');
+        assert.equal(dom.swapOptions({ plan, memberId: 99, team: ['x1'], doneAttacks: 0 }).ask, false);
+        assert.equal(dom.swapOptions({ plan: null, memberId: 7 }).ask, false);
+        // 実凸が増えて 2 つ多い → 選ばせない (算出に任せる)
+        sw = dom.swapOptions({ plan, memberId: 7, team: ['q1'], doneAttacks: 1 });
+        assert.equal(sw.over, 2); assert.equal(sw.pickable, false);
+    });
+    test('★ 配線: ピースを置く前に入れ替えの確認 (planSwapModal) → 選ばなかった自由な凸は 📌 で固定して残す / 算出し直しても画面の位置を保つ', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\)[\s\S]*?\n        \}/)?.[0] || '';
+        // 置く前 (canPin の後・insert の前) に、ピースのときだけ聞く。チップの置き直しでは聞かない
+        const iChk = place.indexOf('if (!chk.ok)'), iSw = place.indexOf("if (sel.kind === 'piece' && _opsLastPlan && typeof dom.swapOptions === 'function')"), iCreate = place.indexOf('await window.supabaseCreateReservation(');
+        assert.ok(iChk > 0 && iSw > iChk && iSw < iCreate, '入れ替えの確認が canPin の後・insert の前に無い');
+        assert.ok(/const sw = dom\.swapOptions\(\{ plan: _opsLastPlan, memberId: player\.id, team: lo\.team, doneAttacks: Number\(player\.attackCount\) \|\| 0 \}\);/.test(place), '判定を planBoardDomain に任せていない');
+        assert.ok(/if \(sw\.ask\) \{[\s\S]*?const ans = await _opsPlanSwapModal\(sw, /.test(place), '確認を出していない');
+        assert.ok(/if \(!ans\) return;/.test(place), 'やめる で置いてしまう');
+        assert.ok(/if \(ans\.mode === 'pick'\) keeps = sw\.free\.filter\(r => r\.key !== ans\.key\);/.test(place), '選ばなかった自由な凸を残す対象にしていない');
+        // 残す凸は 📌 (pinned) で固定。時刻の無い凸 (⏳) は flex で
+        const keep = place.match(/for \(const k of keeps\) \{[\s\S]*?\n                \}/)?.[0] || '';
+        assert.ok(/status: 'pinned'/.test(keep) && /flex: k\.flex \|\| k\.hourIdx == null/.test(keep) && /characters: k\.team/.test(keep), '残す凸を 📌 で固定していない');
+        assert.ok(/catch \(e\) \{ showNotification\(`⚠ B\$\{k\.bossNumber\} の凸を残す固定に失敗/.test(keep), '残す固定の失敗を黙っている');
+        assert.ok(place.indexOf('for (const k of keeps)') > iCreate, '新しい固定より先に残す固定を入れている (新しい方が失敗すると残す固定だけ入る)');
+        // モーダルの箱と待ち手
+        assert.ok(/<div class="player-select-modal" id="planSwapModal">/.test(html) && /id="planSwapBody"/.test(html), 'モーダルの箱が無い');
+        assert.ok(/id="planSwapAutoBtn" onclick="closePlanSwap\('auto'\)"/.test(html) && /id="planSwapGoBtn" onclick="closePlanSwap\('pick'\)"/.test(html), '2つの答えのボタンが無い');
+        const close = html.match(/function closePlanSwap\(mode\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(modal && modal\.dataset\.pick === '1' && !picked\) \{ showNotification\('外す凸を選んでください'\); return; \}/.test(close), '選ばずに決定できてしまう');
+        const open = html.match(/function _opsPlanSwapModal\(sw, piece\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(_planSwapResolver\) \{ const prev = _planSwapResolver; _planSwapResolver = null; prev\(null\); \}/.test(open), '二重に開いたとき先の待ち手が返らない');
+        // ★ 画面の位置を保つ: 算出の頭で高さを覚え、描き終えた道と中断する道の両方で戻す
+        const run = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_opsPlanKeepStart\(el, seq\);/.test(run), '算出の頭で高さを覚えていない');
+        const dones = (run.match(/_opsPlanKeepDone\(seq\);/g) || []).length;
+        const returns = (run.match(/\n\s+return;\n/g) || []).length;
+        assert.ok(dones >= 6, `戻す道が足りない (${dones})`);
+        assert.equal(returns, dones - 1, `中断する return (${returns}) と戻す呼び出し (${dones} = return + 描き終えた 1) が合わない`);
+        assert.ok(/renderOpsPlanView\(\);\n\s*_opsPlanKeepDone\(seq\);/.test(run), '描き終えたあとに戻していない');
+        const keepFn = html.match(/function _opsPlanKeepStart\(el, seq\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/el\.style\.minHeight = `\$\{el\.offsetHeight\}px`;/.test(keepFn), '計算中にカードの高さを保っていない (文書が縮んで上に詰まる)');
+        assert.ok(/document\.body\.classList\.contains\('modal-lock'\) \? \(typeof _modalLockY === 'number' \? _modalLockY : 0\)/.test(keepFn), 'モーダルで固定中は本来の位置 (_modalLockY) を使っていない');
+        const doneFn = html.match(/function _opsPlanKeepDone\(seq\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(!k \|\| k\.seq !== seq\) return;/.test(doneFn), '追い越された古い算出が位置を戻してしまう');
+        assert.ok(/k\.el\.style\.minHeight = '';/.test(doneFn) && /window\.scrollTo\(0, k\.y\);/.test(doneFn), '高さを戻す / 位置へ戻す が無い');
+    });
     test('★ piecesOf: 模擬ピースは 残凸が多い人 → 強い順、置かれているものは placed + どこにあるか', () => {
         const d = globalThis.planBoardDomain;
         const players = [

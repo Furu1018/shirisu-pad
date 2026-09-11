@@ -43,6 +43,7 @@ const SRC = [
     cut('        function _renderOpsPlanAutoChips()'),
     cut('        async function renderOpsPlanCue()'),
     cut('        function _opsPlanFocusBarHtml(plan)'),
+    cut('        function _opsPlanSwapHtml(sw, piece)'),
 ].join('\n');
 const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
 const mkEl = () => ({ innerHTML: '', textContent: '', style: {} });
@@ -64,10 +65,11 @@ function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, o
         HOUR_ORDER,
         _planNowIdx: () => 16,   // 21時
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
+        renderTeamSnippet: (t) => `<i>${t.length}人</i>`,
         console: { warn: () => {}, log: () => {}, error: () => {} },
     };
     const keys = Object.keys(env);
-    const api = new Function(...keys, `${SRC}\nreturn { _planCondStampHtml, _renderOpsPlanAutoChips, renderOpsPlanCue, _opsPlanFocusBarHtml };`)(...keys.map(k => env[k]));
+    const api = new Function(...keys, `${SRC}\nreturn { _planCondStampHtml, _renderOpsPlanAutoChips, renderOpsPlanCue, _opsPlanFocusBarHtml, _opsPlanSwapHtml };`)(...keys.map(k => env[k]));
     return { ...api, els };
 }
 const season = { id: 45, current_level: 2 };
@@ -194,6 +196,45 @@ await test('★ 盤の上の操作帯 (③): 📌 の固定は お願いする /
     const od = d._opsPlanFocusBarHtml(plan);
     assert.ok(od.includes('🔒 本人が引き受けた約束 — 運営の手では動かしません'), '約束を動かさない注意が無い');
     assert.ok(od.includes('onclick="_opsPlanClearSel()">閉じる'), '閉じるが選択も捨てる形になっていない');
+});
+
+await test('★ 入れ替えの確認 (⑤): 自由な凸だけ選べる / 約束と固定は選べない / 同じキャラは必ず外れる / 選べるのが 1 つなら選んでおく', async () => {
+    const dom = globalThis.planBoardDomain;
+    const plan = { levels: [
+        { level: 1, bosses: [
+            { bossNumber: 1, name: 'A<b>', weakness: 'fire', attacks: [{ memberId: 1, loadoutSlot: 1, dmgB: 20, team: ['x1'], hourIdx: 0, hourLabel: '5時', fromReservation: true }] },
+            { bossNumber: 2, name: 'B', weakness: 'water', attacks: [{ memberId: 1, loadoutSlot: 1, dmgB: 18.25, team: ['y1'], hourIdx: 1, hourLabel: '6時' }] },
+        ] },
+        { level: 2, bosses: [{ bossNumber: 3, name: 'C', weakness: 'electric', attacks: [{ memberId: 1, loadoutSlot: 2, dmgB: 15, team: ['w1'], hourIdx: 2, flex: true }] }] },
+    ] };
+    const piece = { name: 'ふるり', attr: 'iron', slot: 2, dmgB: 22, team: ['q1', 'q2'], bossNumber: 4, hourLabel: '22時' };
+    const t = run();
+    // 自由 2 + 約束 1 → 1 つ外す: 自由の 2 つにラジオ、約束にはラジオ無し
+    let out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: piece.team, doneAttacks: 0 }), piece);
+    noUndef(out);
+    assert.ok(out.includes('<b>📌 置く</b> ふるり · 鉄甲PT② 22.0B → B4 22時'), `置くものの見出しが無い: ${out}`);
+    assert.equal((out.match(/name="planSwapPick"/g) || []).length, 2, '自由な 2 つだけにラジオ');
+    assert.ok(out.includes('<label class="ps-row promise"><span class="ps-ic">🔒</span><span class="ps-main"><b>Lv1 B1</b> A&lt;b&gt; · 5時 · 灼熱PT 20.0B'), `約束の行 (エスケープ込み・ラジオ無し) が無い: ${out}`);
+    assert.ok(out.includes('🔒 本人の約束 — 入れ替えられません'), '約束の理由が無い');
+    assert.ok(/value="2:3:2"[^>]*>[\s\S]*?<b>Lv2 B3<\/b> C · ⏳ 隙間 · 電撃PT② 15\.0B/.test(out), '隙間の凸が ⏳ で出ていない');
+    assert.ok(out.includes('<i>1人</i>'), '編成を出していない');
+    assert.ok(out.includes('1 つ外します。<b>外す凸を選ぶ</b>と、残りは 📌 で固定して残します'), '入れ替えの意味 (残りは固定) を言っていない');
+    assert.ok(!out.includes(' checked'), '2 つから選ぶのに片方が選ばれている');
+    // 選べるのが 1 つ (自由 1 + 約束 2 のような形) なら選んでおく
+    const plan2 = { levels: [{ level: 1, bosses: [
+        { bossNumber: 1, name: 'A', weakness: 'fire', attacks: [{ memberId: 1, loadoutSlot: 1, dmgB: 20, team: ['x1'], fromReservation: true }] },
+        { bossNumber: 2, name: 'B', weakness: 'water', attacks: [{ memberId: 1, loadoutSlot: 1, dmgB: 18, team: ['y1'], hourLabel: '6時' }] },
+    ] }] };
+    out = t._opsPlanSwapHtml(dom.swapOptions({ plan: plan2, memberId: 1, team: ['q1'], doneAttacks: 1 }), piece);
+    assert.ok(/name="planSwapPick" value="1:2:1" checked/.test(out), '選べるのが 1 つなのに選んでいない');
+    // 同じキャラ → 必ず外れる (ラジオ無し・✕)。残りは固定
+    out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: ['w1'], doneAttacks: 0 }), piece);
+    assert.ok(!out.includes('name="planSwapPick"'), '被りで外れるのにラジオが出ている');
+    assert.ok(/<label class="ps-row conflict"><span class="ps-ic">✕<\/span>/.test(out) && out.includes('同じキャラ — 必ず外れます'), '被りの行が無い');
+    assert.ok(out.includes('同じキャラの凸が外れます。残りは 📌 で固定して残します'), '被りのときの説明が無い');
+    // 2 つ多い → 算出に任せる
+    out = t._opsPlanSwapHtml(dom.swapOptions({ plan, memberId: 1, team: ['q1'], doneAttacks: 1 }), piece);
+    assert.ok(out.includes('2 つ多くなります。外す凸は<b>算出に任せて</b>ください') && !out.includes('name="planSwapPick"'), '2 つ多いときに選ばせている');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

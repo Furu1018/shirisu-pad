@@ -169,5 +169,54 @@
     }
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
 
-    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, WHO, FROM, PREV, ATTR_JP };
+    // キャラの突き合わせ (reservationsDomain と同じ正規化: 全角/半角・前後の空白・大文字小文字を揃える)
+    const charKeys = (list) => (Array.isArray(list) ? list : [])
+        .filter(c => typeof c === 'string')
+        .map(c => c.normalize('NFKC').trim().toLowerCase())
+        .filter(Boolean);
+    const SWAP_JP = {
+        promise: '🔒 本人の約束 — 入れ替えられません',
+        pinned: '📌 固定 — 外すなら固定を外してから',
+        conflict: '同じキャラ — 必ず外れます',
+        free: '入れ替えられます',
+    };
+    /**
+     * 🔁 入れ替えの候補 (パズル盤 ⑤・2026-09-12 実機FB「3凸が埋まっている人にピースを置くと、どれが外れるのか分からない」)。
+     *   いまのプランに入っているその人の凸を並べ、新しいピース (team) と両立できるかを付ける:
+     *     promise = 🔒 本人の約束 (入れ替えられない) / pinned = 📌 固定 (外すなら固定を外してから)
+     *     conflict = 同じキャラ (必ず外れる) / free = 入れ替えられる
+     *   over = 被りを外してもなお残凸を超える数 (普通は 0 か 1)。1 なら free から 1 つ選んでもらう (pickable)。
+     *   ask = 確認を出す必要がある (何かが外れる)。rows が空 (その人の凸がプランに無い) なら聞かない。
+     *   ★ 選んだ以外の free は 📌 で固定して残す (算出で動かないように)。それが「入れ替え」の意味。
+     *     「算出に任せる」は新しい固定だけ置き、どれを外すかは算出が決める (総与ダメが最大になる組み合わせ)
+     * @param {Object} a
+     * @param {Object|null} a.plan     いまのプラン (levels[].bosses[].attacks[])
+     * @param {*} a.memberId
+     * @param {string[]=} a.team        新しいピースの編成 (キャラ被りの判定に使う)
+     * @param {number=} a.doneAttacks   実凸 (残凸 = 3 - 実凸)
+     */
+    function swapOptions({ plan, memberId, team, doneAttacks } = {}) {
+        const mine = new Set(charKeys(team));
+        const rows = [];
+        (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+            if (!a || String(a.memberId) !== String(memberId)) return;
+            const t = Array.isArray(a.team) ? a.team.filter(Boolean) : [];
+            const clash = mine.size > 0 && charKeys(t).some(k => mine.has(k));
+            const status = (a.fromReservation && !a.pinned) ? 'promise' : a.pinned ? 'pinned' : clash ? 'conflict' : 'free';
+            rows.push({
+                key: `${lv.level}:${Number(b.bossNumber)}:${Number(a.loadoutSlot) || 1}`,
+                level: lv.level, bossNumber: Number(b.bossNumber), bossName: b.name || '', weakness: b.weakness || null,
+                hourIdx: a.hourIdx ?? null, hourLabel: a.hourLabel || null, flex: !!a.flex,
+                loadoutSlot: Number(a.loadoutSlot) || 1, dmgB: Number(a.dmgB) || 0, team: t,
+                status, label: SWAP_JP[status],
+            });
+        })));
+        const capacity = Math.max(0, 3 - (Number(doneAttacks) || 0));
+        const conflicts = rows.filter(r => r.status === 'conflict');
+        const free = rows.filter(r => r.status === 'free');
+        const over = Math.max(0, (rows.length - conflicts.length) + 1 - capacity);
+        return { rows, capacity, conflicts, free, over, pickable: over === 1 && free.length >= 1, ask: rows.length > 0 && (conflicts.length > 0 || over > 0) };
+    }
+
+    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, swapOptions, WHO, FROM, PREV, ATTR_JP, SWAP_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

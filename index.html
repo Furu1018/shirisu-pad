@@ -2936,6 +2936,23 @@
             .plan-board.with-tray > .plan-tray .list { flex: 1; min-height: 0; max-height: none; }
         }
         .plan-tray .hint.warn { margin: 0 0 8px; color: var(--bad-deep); }
+        /* 🔁 入れ替えの確認 (パズル盤 ⑤・2026-09-12): 3凸が埋まっている人にピースを置くとき、どれを外すかを運営が選ぶ */
+        .ps-new { font-size: 12.5px; font-weight: 800; color: var(--t-ink); padding: 8px 10px; border-radius: 10px; background: var(--ops-bg); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .ps-list { display: flex; flex-direction: column; gap: 6px; }
+        .ps-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 12px; color: var(--t-body); }
+        .ps-row.pick { cursor: pointer; }
+        .ps-row.pick:hover { background: var(--s1); }
+        .ps-row.promise, .ps-row.pinned { opacity: 0.6; }
+        .ps-row.conflict { border-color: var(--bad-solid); }
+        .ps-row input { width: 16px; height: 16px; accent-color: var(--ops-solid); margin: 0; }
+        .ps-ic { text-align: center; }
+        .ps-main { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+        .ps-main b { color: var(--t-ink); }
+        .ps-team { display: inline-flex; gap: 2px; }
+        .ps-st { font-size: 10.5px; font-weight: 900; color: var(--t-muted); white-space: nowrap; }
+        .ps-row.conflict .ps-st { color: var(--bad-deep); }
+        .ps-row.pick .ps-st { color: var(--ops-deep); }
+        .ps-note { margin: 0; font-size: 11.5px; font-weight: 700; color: var(--t-muted); line-height: 1.6; }
         .plan-tray { border: 1px solid var(--line); border-radius: 12px; background: var(--s1); padding: 10px; }
         .plan-tray .th { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
         .plan-tray .th h4 { margin: 0; font-size: 12px; font-weight: 900; color: var(--t-ink); }
@@ -5851,6 +5868,23 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closePushPreview(false)" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
                 <button id="pushPreviewSendBtn" onclick="closePushPreview(true)" style="padding:10px 18px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:13px;font-weight:700;cursor:pointer;"><span data-sp-icon="megaphone" data-sp-size="13"></span> 送信する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔁 パズル盤 ⑤: 3凸が埋まっている人にピースを置くとき、どの凸と入れ替えるかを運営が選ぶ (2026-09-12 実機FB)。
+         中身は _opsPlanSwapHtml が描き、答えは closePlanSwap が _opsPlanPlace の待ち手へ返す -->
+    <div class="player-select-modal" id="planSwapModal">
+        <div class="player-select-content" style="max-width:560px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2>🔁 どの凸と入れ替えますか？</h2>
+                <button onclick="closePlanSwap(null)" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <div id="planSwapBody" style="display:flex;flex-direction:column;gap:10px;max-height:55vh;overflow-y:auto;overflow-x:hidden;padding-right:4px;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+                <button onclick="closePlanSwap(null)" style="padding:10px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
+                <button id="planSwapAutoBtn" onclick="closePlanSwap('auto')" style="padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--t-strong);font-size:13px;font-weight:800;cursor:pointer;">外す凸は算出に任せる</button>
+                <button id="planSwapGoBtn" onclick="closePlanSwap('pick')" style="padding:10px 18px;border-radius:8px;border:1px solid var(--ops-solid);background:var(--ops-solid);color:var(--on-fill);font-size:13px;font-weight:900;cursor:pointer;">入れ替えて固定する</button>
             </div>
         </div>
     </div>
@@ -20216,10 +20250,31 @@
         _syncOpsPlanStickyBtn();
 
         let _opsPlanSeq = 0;   // プラン算出の世代番号 (連打・再描画の競合で古い結果を描かない)
+        // ★ 算出し直しても画面の位置を保つ (実機FB 2026-09-12「入れ替えたあとに最適凸プランの一番上まで戻ってしまう」)。
+        //   計算中の短い表示に差し替えると文書が縮み、ブラウザがスクロールを上に詰める。カードの高さを保っておき、描き終えたら元の位置へ戻す。
+        //   世代 (seq) を持つので、後発の算出に追い越された古い算出は触らない。モーダルで body を固定中は _modalLockY が本来の位置
+        let _opsPlanKeep = null;
+        function _opsPlanKeepStart(el, seq) {
+            if (!el || !(el.offsetHeight > 0)) { _opsPlanKeep = null; return; }
+            const y = document.body.classList.contains('modal-lock') ? (typeof _modalLockY === 'number' ? _modalLockY : 0) : (window.scrollY || 0);
+            el.style.minHeight = `${el.offsetHeight}px`;
+            _opsPlanKeep = { seq, y, el };
+        }
+        function _opsPlanKeepDone(seq) {
+            const k = _opsPlanKeep;
+            if (!k || k.seq !== seq) return;
+            _opsPlanKeep = null;
+            k.el.style.minHeight = '';
+            if (Math.abs((window.scrollY || 0) - k.y) > 2) {
+                if (typeof _navShowNow === 'function') _navShowNow();   // 飛ばした分を下ナビの自動隠しに数えさせない
+                window.scrollTo(0, k.y);
+            }
+        }
         async function computeAndRenderOptimalPlan(options = {}) {
             if (typeof expandOpsCard === 'function') expandOpsCard('opsSecPlan');   // 当日は既定で畳まれている
             const seq = ++_opsPlanSeq;   // 関数冒頭で採番: マスタ先読みの待機中に来た後発クリックも先行を無効化できる
             const el = document.getElementById('opsOptimalPlan');
+            _opsPlanKeepStart(el, seq);   // 画面の位置を保つ (中断する道でも _opsPlanKeepDone(seq) で戻す)
             // ★ 互換ゲート (L2 ⑦): 運営側の算出・表示も止める (Codex指摘 2026-09-07)。
             //   本人向けの配信カードだけ隠しても、古いアプリの運営画面でプランを組めてしまう。
             //   予約を知らないクライアントが組んだプランは、約束を無視した指示になる。
@@ -20230,6 +20285,7 @@
                     el.innerHTML = '<p style="font-size:12px;color:var(--bad-deep);font-weight:800;line-height:1.7;">'
                         + 'アプリが古いため、いまは凸プランを組めません。<br>ページを再読み込みしてください。</p>';
                 }
+                _opsPlanKeepDone(seq);
                 return;
             }
             // 編成アイコン表示のためマスタを先読み
@@ -20258,6 +20314,7 @@
                     if (seq === _opsPlanSeq) {
                         el.innerHTML = '<p style="font-size:12px;color:var(--warn-deep);font-weight:700;">盤面が更新されました (凸の登録などが入りました)。もう一度「算出」を押してください。</p>';
                     }
+                    _opsPlanKeepDone(seq);
                     return;
                 }
             } catch (e) {
@@ -20268,6 +20325,7 @@
                 if (seq === _opsPlanSeq) {
                     el.innerHTML = `<p style="font-size:13px;color:var(--bad);">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}<br><span style="font-size:11.5px;color:var(--t-muted);font-weight:700;">通信を確認して、もう一度「算出」を押してください。</span></p>`;
                 }
+                _opsPlanKeepDone(seq);
                 return;
             }
             if (seq !== _opsPlanSeq) return;   // 後発の算出が始まっていたらこの結果は捨てる
@@ -20301,6 +20359,7 @@
                     if (seq === _opsPlanSeq) {
                         el.innerHTML = `<p style="font-size:12px;color:var(--bad-deep);font-weight:800;">予約の取得に失敗したため算出を止めました (${escapeHtml(e?.message || String(e))})。もう一度「算出」を押してください。</p>`;
                     }
+                    _opsPlanKeepDone(seq);
                     return;
                 }
                 if (seq !== _opsPlanSeq) return;
@@ -20326,6 +20385,7 @@
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:var(--bad);">プラン算出に失敗しました。</p>';
+                _opsPlanKeepDone(seq);
                 return;
             }
             // 算出元シーズンを焼き込む: これが無いと「旧シーズンで算出 → シーズン切替 → 配信」で
@@ -20362,6 +20422,7 @@
             _opsPlanFocus = null;              // 前の算出で選んでいたチップは新しい盤には無いかもしれない
             _opsPlanSel = null;
             renderOpsPlanView();
+            _opsPlanKeepDone(seq);             // 描き終えたので元の位置へ
             _syncOpsUnpublishBtn();
             renderOpsPlanCue();                // 「模擬が N 件更新」は算出し直したら消える
         }
@@ -20507,6 +20568,18 @@
                 const chk = rv.canPin(rows, { playerId: player.id, bossNumber, loadoutSlot: sel.loadoutSlot, characters: lo.team,
                                               doneAttacks: Number(player.attackCount) || 0, excludeId: sel.pinned ? sel.reservationId : null });
                 if (!chk.ok) { showNotification(`置けません: ${chk.label}`); return; }
+                // ⑤ 3凸が埋まっている人にピースを置く → どの凸と入れ替えるかを運営が選ぶ (実機FB 2026-09-12)。
+                //   判定は planBoardDomain.swapOptions が唯一。チップの置き直し (同じ編成の移動) では聞かない。
+                //   選んだ以外の自由な凸は 📌 で固定して残す (算出で動かないように)。「算出に任せる」なら新しい固定だけ置く
+                let keeps = [];
+                if (sel.kind === 'piece' && _opsLastPlan && typeof dom.swapOptions === 'function') {
+                    const sw = dom.swapOptions({ plan: _opsLastPlan, memberId: player.id, team: lo.team, doneAttacks: Number(player.attackCount) || 0 });
+                    if (sw.ask) {
+                        const ans = await _opsPlanSwapModal(sw, { name: player.name, attr: sel.attr, slot: sel.loadoutSlot, dmgB: lo.dmgB, team: lo.team, bossNumber, hourLabel: _planHourHeadLabel(hourIdx) });
+                        if (!ans) return;
+                        if (ans.mode === 'pick') keeps = sw.free.filter(r => r.key !== ans.key);
+                    }
+                }
                 const me = getCurrentIdentity();
                 const timeSlot = _hourKey(HOUR_ORDER[hourIdx]);
                 const existing = sel.pinned && sel.reservationId ? rows.find(r => Number(r.id) === Number(sel.reservationId) && r.status === 'pinned') : null;
@@ -20519,8 +20592,21 @@
                         sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
                     });
                 }
-                window.supabaseLogActivity?.('ops', `📌 固定: ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} 編成${Number(sel.loadoutSlot) === 2 ? '②' : '①'} に${existing ? '置き直し' : ''}`, { actorName: me?.name || null });
-                showNotification(`📌 ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} に固定して組み直します`);
+                // ⑤ 残す凸を 📌 で固定 (選ばなかった自由な凸が算出で動かないように)。新しい固定は入っているので、失敗しても知らせて続ける
+                let kept = 0;
+                for (const k of keeps) {
+                    try {
+                        await window.supabaseCreateReservation({
+                            seasonId: snap.season.id, playerId: player.id, raidLevel: null, bossNumber: k.bossNumber,
+                            flex: k.flex || k.hourIdx == null, timeSlot: (!k.flex && k.hourIdx != null) ? _hourKey(HOUR_ORDER[k.hourIdx]) : null,
+                            loadoutSlot: k.loadoutSlot, characters: k.team, expectedDamageB: k.dmgB,
+                            sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
+                        });
+                        kept += 1;
+                    } catch (e) { showNotification(`⚠ B${k.bossNumber} の凸を残す固定に失敗: ${e?.message || e}`); }
+                }
+                window.supabaseLogActivity?.('ops', `📌 固定: ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} 編成${Number(sel.loadoutSlot) === 2 ? '②' : '①'} に${existing ? '置き直し' : ''}${kept ? ` / 残す ${kept} 凸も固定` : ''}`, { actorName: me?.name || null });
+                showNotification(`📌 ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} に固定して組み直します${kept ? ` (残す ${kept} 凸も固定)` : ''}`);
                 _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
                 opsStore.invalidate();
                 if (typeof renderOpsReservations === 'function') renderOpsReservations(true).catch(() => { /* 次の周期で */ });
@@ -20530,6 +20616,58 @@
             } finally {
                 _opsPlanPlacing = false;
             }
+        }
+        // 🔁 入れ替えの確認 (パズル盤 ⑤): いまのその人の凸を並べ、外す 1 つを選んでもらう。判定は planBoardDomain.swapOptions が唯一
+        function _opsPlanSwapHtml(sw, piece) {
+            const esc = escapeHtml, JP = (window.planBoardDomain && window.planBoardDomain.ATTR_JP) || {};
+            const snip = (t) => (Array.isArray(t) && t.length && typeof renderTeamSnippet === 'function') ? renderTeamSnippet(t, { size: 18 }) : '';
+            const pt = (attr, slot) => `${esc(JP[attr] || attr || '')}PT${Number(slot) === 2 ? '②' : ''}`;
+            const single = sw.pickable && sw.free.length === 1 ? sw.free[0].key : null;   // 選べるのが 1 つなら選んでおく
+            const head = `<div class="ps-new"><b>📌 置く</b> ${esc(piece.name)} · ${pt(piece.attr, piece.slot)} ${Number(piece.dmgB || 0).toFixed(1)}B → B${Number(piece.bossNumber)} ${esc(piece.hourLabel || '')}<span class="ps-team">${snip(piece.team)}</span></div>`;
+            const ICON = { promise: '🔒', pinned: '📌', conflict: '✕', free: '·' };
+            const rows = sw.rows.map(r => {
+                const pick = sw.pickable && r.status === 'free';
+                const ctl = pick ? `<input type="radio" name="planSwapPick" value="${esc(r.key)}"${single === r.key ? ' checked' : ''}>` : `<span class="ps-ic">${ICON[r.status] || '·'}</span>`;
+                const when = r.hourLabel ? esc(r.hourLabel) : (r.flex ? '⏳ 隙間' : '時刻未定');
+                return `<label class="ps-row ${esc(r.status)}${pick ? ' pick' : ''}">${ctl}<span class="ps-main"><b>Lv${esc(String(r.level))} B${r.bossNumber}</b> ${esc(r.bossName)} · ${when} · ${pt(r.weakness, r.loadoutSlot)} ${r.dmgB.toFixed(1)}B<span class="ps-team">${snip(r.team)}</span></span><span class="ps-st">${esc(r.label)}</span></label>`;
+            }).join('');
+            const title = `いまのプランの ${esc(piece.name)} さんの凸 (${sw.rows.length} / 残り凸 ${sw.capacity})`;
+            let note;
+            if (sw.over > 1) note = `残り凸 ${sw.capacity} に対して ${sw.over} つ多くなります。外す凸は<b>算出に任せて</b>ください`;
+            else if (sw.over === 1) note = sw.pickable
+                ? `1 つ外します。<b>外す凸を選ぶ</b>と、残りは 📌 で固定して残します (算出で動かないように)`
+                : `1 つ外す必要がありますが、選べる凸がありません (約束・固定だけ)。外す凸は<b>算出に任せて</b>ください`;
+            else note = `同じキャラの凸が外れます。残りは 📌 で固定して残します`;
+            return `${head}<p class="ps-note" style="font-weight:900;color:var(--t-strong);">${title}</p><div class="ps-list">${rows}</div>`
+                + `<p class="ps-note">${note}。「算出に任せる」は新しい固定だけ置き、どれを外すかは算出が決めます (総与ダメが最大になる組み合わせ)</p>`;
+        }
+        let _planSwapResolver = null;
+        function _opsPlanSwapModal(sw, piece) {
+            return new Promise(resolve => {
+                // 表示中にもう一度呼ばれたら、先の待ち手を「やめる」で解決してから差し替える (上書きすると先の await が返らない)
+                if (_planSwapResolver) { const prev = _planSwapResolver; _planSwapResolver = null; prev(null); }
+                const modal = document.getElementById('planSwapModal'), body = document.getElementById('planSwapBody');
+                if (!modal || !body) { resolve(null); return; }
+                _planSwapResolver = resolve;
+                body.innerHTML = _opsPlanSwapHtml(sw, piece);
+                modal.dataset.pick = sw.pickable ? '1' : '0';
+                const go = document.getElementById('planSwapGoBtn');
+                // 「入れ替えて固定する」は 選べるとき か 何も選ばなくてよいとき (被りが外れるだけ) に押せる
+                if (go) { const can = sw.pickable || sw.over === 0; go.disabled = !can; go.style.opacity = can ? '' : '0.45'; }
+                modal.classList.add('open');
+            });
+        }
+        function closePlanSwap(mode) {
+            const modal = document.getElementById('planSwapModal');
+            let ans = null;
+            if (mode === 'pick') {
+                const picked = modal ? modal.querySelector('input[name="planSwapPick"]:checked') : null;
+                if (modal && modal.dataset.pick === '1' && !picked) { showNotification('外す凸を選んでください'); return; }
+                ans = { mode: 'pick', key: picked ? picked.value : null };
+            } else if (mode === 'auto') ans = { mode: 'auto' };
+            if (modal) modal.classList.remove('open');
+            const r = _planSwapResolver; _planSwapResolver = null;
+            if (r) r(ans);
         }
         // 固定を外す (下書きなので確認は軽く)。約束 (approved) はここでは扱わない
         async function _opsPlanUnpin(id) {

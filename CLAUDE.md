@@ -337,6 +337,18 @@ rm -f .claude/hooks/.codex-on      # OFF
     📣 お願い = `supabaseAskPin` + Push → 本人のホーム「引き受けた凸」に出て `handleAcceptPin` (→ approved) / `handleDeclinePin`
     (→ released・member_declined)。本人の申請を承認したら同じカードの 📌 は `superseded` で外す (`_resvTransition`)。
     実行テスト `tests/plan-cond.mjs` (操作帯)
+  - **⑤ 🔁 入れ替えの確認** (2026-09-12 実機FB「3凸が埋まっている人にピースを置くと、どれが外れるのか分からない」)。
+    判定は `planBoardDomain.swapOptions({plan, memberId, team, doneAttacks})` が唯一: その人のプランの凸を
+    promise (🔒 約束・不可) / pinned (📌 固定・不可) / conflict (同じキャラ・必ず外れる) / free (選べる) に分け、
+    `over` (被りを外してもなお残凸を超える数) が 1 なら free から 1 つ選ばせる (`pickable`)。`ask` が真のときだけ
+    `_opsPlanPlace` が `_opsPlanSwapModal` (箱 `#planSwapModal`) を出す — **ピースのときだけ**。チップの置き直しは同じ編成なので聞かない。
+    ★ **「入れ替えて固定する」= 選ばなかった free を 📌 で固定して残す** (算出で動かないように。それが入れ替えの意味)。
+    「算出に任せる」= 新しい固定だけ置き、どれを外すかは算出が決める。残す固定は新しい固定の**後**に入れる
+    (先に入れると新しい方が失敗したとき残す固定だけ残る)。⏳ 隙間の凸は flex で固定する。
+  - **算出し直しても画面の位置を保つ** (2026-09-12 実機FB)。`_opsPlanKeepStart(el, seq)` が算出の頭でカードの高さを
+    `min-height` で保ち (計算中の短い表示で文書が縮むと上に詰まる)、`_opsPlanKeepDone(seq)` が描き終えた道と中断する道の
+    **全部**で高さを戻して元の位置へ (テストが return の数と突き合わせる)。世代を持つので追い越された古い算出は触らない。
+    モーダルで body を固定中は `_modalLockY` が本来の位置
 - **ホームの一目 (2026-09-11 ユーザー要望「空いているスペースにオンライン表示とボス状況を」)**。判定は `js/domain/attributes.js` の
   `homeStatusCounts` / `homeBossBoard` (細い帯の `homeBossStrip` の隣) が唯一。出し分けは**幅だけ** (CSS、700px が境):
   - **スマホ縦 (〜699px)**: ボス状況は戦闘カードの細い帯 (`#mypageBossStrip`) のまま。オンライン状況は
