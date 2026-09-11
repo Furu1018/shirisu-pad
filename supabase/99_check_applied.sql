@@ -293,6 +293,15 @@ SELECT * FROM (
                           OR indexdef LIKE '%WHERE offer_id IS NOT NULL'))),
         '締め凸の複数案の同時打診 (未適用だと同時打診だけが使えない。1案の依頼は従来どおり動く)'
 
+    UNION ALL SELECT '45_reservation_pins',
+        EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'plan_reservations'
+                  AND column_name = 'asked_at')
+        AND EXISTS (SELECT 1 FROM pg_constraint
+                    WHERE conname = 'plan_reservations_status_check'
+                      AND pg_get_constraintdef(oid) LIKE '%''pinned''%'),
+        '📌 運営の固定 (パズル盤 ③④。未適用だと運営が時間割に固定を置けないだけで、予約と算出は従来どおり動く)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

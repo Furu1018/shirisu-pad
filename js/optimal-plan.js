@@ -796,6 +796,7 @@
                     //   全凸に null で付けると配信 JSON と指紋テストの出力が変わる
                     placed.fromReservation = true;
                     placed.reservationId = s.reservationId ?? null;
+                    if (s.pinned) placed.pinned = true;   // 📌 運営の固定 (画面で 🔒 約束 と見分ける)。true のときだけ付ける (指紋を変えない)
                 };
                 if (Array.isArray(opts.reservations) && opts.reservations.length > 0) {
                     for (const s of opts.reservations) placeReservation(s);
@@ -997,6 +998,7 @@
                         isBottleneck: false,
                         fromReservation: true,
                         reservationId: r.reservationId ?? null,
+                        ...(r.pinned ? { pinned: true } : {}),
                     });
                     if (teamRegistered) cand.team.forEach(c => addUsedChar(m.usedChars, c));
                     if (real) {
@@ -1093,6 +1095,7 @@
                 out.push({
                     reservationId: r.reservationId ?? null,
                     memberId: r.memberId, level, bossNumber, loadoutSlot,
+                    pinned: !!r.pinned,   // 📌 運営の固定 (下書き)。置き方は約束と同じ
                     flex: !!r.flex,
                     timeSlot: r.flex ? null : (r.timeSlot || null),
                     // ★ 承認時のスナップショット。**捨ててはいけない** (Codex指摘 2026-09-07)。

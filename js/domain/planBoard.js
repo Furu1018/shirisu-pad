@@ -101,5 +101,73 @@
         return n;
     }
 
-    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, WHO, FROM, PREV };
+    /**
+     * 🧩 模擬ピース = 提出された模擬カード (人 × 編成 × ダメージ) を、盤に置く駒として並べる (パズル盤 ③)。
+     *   placed = いまのプラン (or 固定・約束) にその編成が入っている。人ごとの残凸 (3 - 実凸)。
+     *   並びは 残凸が多い人 → その人の最大ダメージ (余っている強いピースが上)。
+     * @param {Object} a
+     * @param {Object[]} a.players   盤面の players ({id, name, attackCount, unavailableThisSeason, loadoutsByAttr:{attr:[{slot,dmgB,team}]}})
+     * @param {Object|null=} a.plan  いまのプラン (levels[].bosses[].attacks[] に memberId / loadoutSlot、bosses[].weakness)
+     * @param {Object[]=} a.reservations 予約 (固定・約束のカードは placed 扱い)
+     * @param {(r:Object)=>boolean=} a.isFixed 予約が固定かの判定 (reservationsDomain.isFixed)
+     */
+    function piecesOf({ players, plan, reservations, isFixed } = {}) {
+        const placedKey = new Set();   // `${memberId}:${weakness}:${slot}`
+        const where = new Map();       // 同じ鍵 → { bossNumber, hourIdx, hourLabel, pinned, promise }
+        (Array.isArray(plan && plan.levels) ? plan.levels : []).forEach(lv => (lv.bosses || []).forEach(b => (b.attacks || []).forEach(a => {
+            const k = `${a.memberId}:${b.weakness}:${Number(a.loadoutSlot) || 1}`;
+            placedKey.add(k);
+            if (!where.has(k)) where.set(k, { bossNumber: Number(b.bossNumber), hourIdx: a.hourIdx ?? null, hourLabel: a.hourLabel || null, pinned: !!a.pinned, promise: !!a.fromReservation && !a.pinned });
+        })));
+        const fixedFn = typeof isFixed === 'function' ? isFixed : () => false;
+        const bossWeak = new Map((Array.isArray(plan && plan.levels) && plan.levels[0] ? plan.levels[0].bosses : []).map(b => [Number(b.bossNumber), b.weakness]));
+        (Array.isArray(reservations) ? reservations : []).forEach(r => {
+            if (!fixedFn(r)) return;
+            const w = bossWeak.get(Number(r.boss_number));
+            if (!w) return;
+            const k = `${r.player_id}:${w}:${Number(r.loadout_slot) || 1}`;
+            placedKey.add(k);
+            if (!where.has(k)) where.set(k, { bossNumber: Number(r.boss_number), hourIdx: null, hourLabel: r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : null, pinned: r.status === 'pinned', promise: r.status !== 'pinned' });
+        });
+        const out = [];
+        for (const p of Array.isArray(players) ? players : []) {
+            if (!p || p.unavailableThisSeason) continue;
+            const remaining = Math.max(0, 3 - (Number(p.attackCount) || 0));
+            const lo = p.loadoutsByAttr && typeof p.loadoutsByAttr === 'object' ? p.loadoutsByAttr : {};
+            for (const attr of Object.keys(lo)) {
+                for (const l of Array.isArray(lo[attr]) ? lo[attr] : []) {
+                    if (!l || !(Number(l.dmgB) > 0)) continue;
+                    const slot = Number(l.slot) || 1;
+                    const k = `${p.id}:${attr}:${slot}`;
+                    out.push({ memberId: p.id, name: p.name, attr, slot, dmgB: Number(l.dmgB), team: Array.isArray(l.team) ? l.team.filter(Boolean) : [],
+                               remaining, placed: placedKey.has(k), where: where.get(k) || null });
+                }
+            }
+        }
+        const maxDmg = new Map();
+        out.forEach(x => maxDmg.set(String(x.memberId), Math.max(maxDmg.get(String(x.memberId)) || 0, x.dmgB)));
+        out.sort((a, b) => (b.remaining - a.remaining)
+            || ((maxDmg.get(String(b.memberId)) || 0) - (maxDmg.get(String(a.memberId)) || 0))
+            || (String(a.memberId) < String(b.memberId) ? -1 : String(a.memberId) > String(b.memberId) ? 1 : 0)
+            || (b.dmgB - a.dmgB));
+        return out;
+    }
+
+    /**
+     * 盤の上の判定 (ユーザー指定 2026-09-11): ① 有利属性のボスだけ ② その人の戦闘可能時間だけ (⏳隙間型は例外)。
+     * 残凸・キャラ被り・本人の申請は reservationsDomain.canPin が見る。レベルは見ない (算出が決める)
+     */
+    function canPlace({ player, attr, boss, hourIdx, hourOrder } = {}) {
+        if (!player) return { ok: false, reason: 'no_player', label: 'メンバーが盤面にいません' };
+        if (!boss) return { ok: false, reason: 'no_boss', label: 'ボスがありません' };
+        if (!attr || boss.weakness !== attr) return { ok: false, reason: 'attr', label: `${boss.weakness ? (ATTR_JP[boss.weakness] || boss.weakness) + 'PT' : '別の属性'} のボスです` };
+        if (!player.flexTime) {
+            const win = windowOf(player, hourOrder);
+            if (!Number.isInteger(hourIdx) || !win.has(hourIdx)) return { ok: false, reason: 'time', label: `${player.name || ''} の戦闘可能時間の外です` };
+        }
+        return { ok: true };
+    }
+    const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
+
+    root.planBoardDomain = { conditionsOf, conditionSummary, windowOf, stiffness, mockUpdatesSince, piecesOf, canPlace, WHO, FROM, PREV, ATTR_JP };
 })(typeof window !== 'undefined' ? window : globalThis);

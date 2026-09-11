@@ -323,7 +323,20 @@ rm -f .claude/hooks/.codex-on      # OFF
     ホームの時間割には渡さない。算出し直したら選択は捨てる
   - ★ 旧トグル `toggleOpsPlanSticky()` / `toggleOpsPlanStartMode()` は互換のため残す (テストが名前を固定)。
     実体は `setOpsPlanSticky(on)` / `setOpsPlanStartMode(mode)` / `setOpsPlanWho(who)` → `_syncOpsPlanCondUi()`
-  - ③④ (📌ピン = 運営のレベル無し予約 / 🧩模擬ピースから盤へ / 📣お願い → 🔒) は未着手。ROADMAP 🧩 の項
+  - **③④ 📌 運営の固定 / 🧩 模擬ピース / 📣 お願い → 🔒** (2026-09-11・前提SQL `45_reservation_pins.sql`)。
+    📌 = `plan_reservations.status = 'pinned'` の**運営の下書き** (レベル無し・`pinned_by/at`・`asked_at/ask_deadline_at`)。
+    ★ **拘束にはなるが約束ではない**: `isFixed` (ソルバー・指紋) には入り、`ACTIVE` (残凸の枠・部分一意索引・凸報告 RPC) には**入れない**。
+    凸報告の消し込み `matchForAttack` と本人の3枠 `homeSlots` は `isPromise` (approved 系) を見る。
+    `homeSlots` は **お願い済み (`isAskedPin`) の固定だけ**本人に見せる。状態遷移は `pinned → approved | released` (SQL 45 と JS で同じ表)。
+    ★ 置ける場所は `planBoardDomain.canPlace` (有利属性 × 戦闘可能時間) と `reservationsDomain.canPin`
+    (本人の申請・予約があるカードには置かない / 残凸 = 約束 + 固定 + 実凸 / キャラ被り) が唯一。**レベルは見ない** (算出が決める)。
+    置く = `_opsPlanPlace(boss, hourIdx)` — 予約は押した時点の DB から取り直す → `supabaseCreateReservation({status:'pinned'})` か
+    `supabaseMovePin` (置き直し) → `computeAndRenderOptimalPlan()`。**タップもドロップも同じ関数**。ドラッグは
+    `(hover: hover) and (pointer: fine)` のときだけ。ドラッグ中は描き直さず `_opsPlanPaintTargets` で塗る (描き直すと掴んだ要素が消える)。
+    🔒 (約束) は掴めない。🧩 模擬ピース = `planBoardDomain.piecesOf` (残凸が多い人 → 強い順、placed とどこにあるか)。
+    📣 お願い = `supabaseAskPin` + Push → 本人のホーム「引き受けた凸」に出て `handleAcceptPin` (→ approved) / `handleDeclinePin`
+    (→ released・member_declined)。本人の申請を承認したら同じカードの 📌 は `superseded` で外す (`_resvTransition`)。
+    実行テスト `tests/plan-cond.mjs` (操作帯)
 - **ホームの一目 (2026-09-11 ユーザー要望「空いているスペースにオンライン表示とボス状況を」)**。判定は `js/domain/attributes.js` の
   `homeStatusCounts` / `homeBossBoard` (細い帯の `homeBossStrip` の隣) が唯一。出し分けは**幅だけ** (CSS、700px が境):
   - **スマホ縦 (〜699px)**: ボス状況は戦闘カードの細い帯 (`#mypageBossStrip`) のまま。オンライン状況は
@@ -367,6 +380,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   proxy_attack を数える (v2 で attacks.is_proxy/reported_by を足す予定)
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
   バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
+  📌 運営の固定 (パズル盤 ③④) は `45_reservation_pins.sql` (未適用だと固定を置けないだけで、予約と算出は従来どおり)。
   凸プラン配信 (📤) は `17_published_plans.sql`、戦闘可能時間の運用オプション
   (⏳隙間時間型 / 🔔いつでも通知) は `18_availability_prefs.sql`、
   設定タブの詳細アクティビティログは `19_activity_log.sql`、

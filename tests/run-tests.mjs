@@ -3900,6 +3900,8 @@ console.log('\nreservationsDomain (凸の予約):');
     const _ROOT = _path.resolve(_path.dirname(_f2p(import.meta.url)), '..');
     const _sqlRes = _fs.readFileSync(_path.join(_ROOT, 'supabase', '39_plan_reservations.sql'), 'utf8').replace(/\r\n/g, '\n');
     const _sqlRpc = _fs.readFileSync(_path.join(_ROOT, 'supabase', '40_attack_with_reservation_rpc.sql'), 'utf8').replace(/\r\n/g, '\n');
+    // 45 (📌 運営の固定) が状態と遷移表の**最新の定義** — 39 の CHECK と関数を上書きする
+    const _sqlPins = _fs.readFileSync(_path.join(_ROOT, 'supabase', '45_reservation_pins.sql'), 'utf8').replace(/\r\n/g, '\n');
     // クライアント側と SQL の食い違いも見るので読んでおく
     const _client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
     const res = (o = {}) => ({
@@ -4031,6 +4033,65 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(rv.capacityLeft(rows, 'p9', 0), 3, '別人は影響しない');
     });
 
+    test('★ 📌 運営の固定 (pinned): 拘束にはなるが約束ではない — 指紋・ソルバー・消し込み・本人の3枠', () => {
+        const P = { id: 1, player_id: 7, status: 'approved', boss_number: 3, loadout_slot: 1, time_mode: 'fixed', time_slot: 'h21', characters_snapshot: ['a'] };
+        const pin = { id: 2, player_id: 7, status: 'pinned', boss_number: 2, loadout_slot: 2, time_mode: 'fixed', time_slot: 'h22', characters_snapshot: ['b'], pinned_by: 'ふるり' };
+        const asked = { ...pin, id: 3, boss_number: 4, asked_at: '2026-09-11T12:00:00Z', ask_deadline_at: '2026-09-11T12:15:00Z' };
+        const req = { id: 4, player_id: 7, status: 'requested', boss_number: 5, loadout_slot: 1 };
+        assert.equal(rv.isPromise(P), true); assert.equal(rv.isPromise(pin), false); assert.equal(rv.isPromise(asked), false);
+        assert.equal(rv.isPin(pin), true); assert.equal(rv.isAskedPin(pin), false); assert.equal(rv.isAskedPin(asked), true);
+        assert.equal(rv.isFixed(pin), true, '固定はソルバーを拘束する'); assert.equal(rv.isFixed(req), false);
+        assert.equal(rv.isActive(pin), false, '固定は残凸の枠 (ACTIVE) に数えない');
+        assert.deepEqual([...rv.ACTIVE].sort(), ['approved', 'cancel_requested', 'requested']);
+        assert.equal(rv.STATUS_JP.pinned, '運営の固定'); assert.deepEqual(rv.TRANSITIONS.pinned, ['approved', 'released']);
+        // 指紋に入る (配信直前に固定が動いていたら止める) / ソルバーの拘束に pinned の印が付く
+        assert.ok(rv.fingerprint([P, pin]).includes('2:pinned'), '指紋に固定が入らない');
+        const cons = rv.toSolverConstraints([P, pin, req]);
+        // 並びは仕様化したキー (レベル → ボス → 人 → 枠): 固定 (B2) が約束 (B3) より先
+        assert.deepEqual(cons.map(c => [c.reservationId, c.pinned]), [[2, true], [1, false]]);
+        // 凸報告の消し込みは約束だけ (RPC も pinned は弾く)
+        assert.equal(rv.matchForAttack([pin], { playerId: 7, level: 1, bossNumber: 2, characters: ['b'] }).id, null, '固定を凸報告に紐づけている');
+        assert.equal(rv.matchForAttack([P], { playerId: 7, level: 1, bossNumber: 3, characters: ['a'] }).id, 1);
+        // 本人の3枠: 下書きは見せない / お願いされた固定は status: 'pinned' で出る
+        const hs = rv.homeSlots({ plan: null, viewerId: 7, reservations: [pin, asked, P] });
+        assert.deepEqual(hs.slots.filter(s => s.kind === 'fixed').map(s => [s.reservationId, s.status]), [[1, 'approved'], [3, 'pinned']]);
+        assert.equal(hs.slots.find(s => s.reservationId === 3).pinnedBy, 'ふるり');
+        assert.equal(hs.fixedCount, 2);
+        // 配信後の固定は「配信後の予約」に数える (組み直しの合図)
+        assert.equal(rv.pendingRepublish([pin], { levels: [] }).count, 1);
+    });
+    test('★ 📌 canPin / pinFor: 本人の申請・予約があるカードには置かない / 残凸 / キャラ被り / 置き直しは自分を数えない', () => {
+        const rows = [
+            { id: 1, player_id: 7, status: 'approved', boss_number: 3, loadout_slot: 1, characters_snapshot: ['ラピ', 'ドロシー'] },
+            { id: 2, player_id: 7, status: 'pinned', boss_number: 2, loadout_slot: 2, characters_snapshot: ['紅蓮'] },
+            { id: 3, player_id: 8, status: 'requested', boss_number: 1, loadout_slot: 1, characters_snapshot: ['x'] },
+        ];
+        assert.equal(rv.pinFor(rows, { playerId: 7, bossNumber: 2, loadoutSlot: 2 }).id, 2);
+        assert.equal(rv.pinFor(rows, { playerId: 7, bossNumber: 3, loadoutSlot: 1 }), null, '約束を固定として返している');
+        assert.equal(rv.canPin(rows, { playerId: 7, bossNumber: 3, loadoutSlot: 1, characters: ['z'] }).reason, 'promise_exists');
+        assert.equal(rv.canPin(rows, { playerId: 8, bossNumber: 1, loadoutSlot: 1, characters: ['z'] }).reason, 'promise_exists', '申請中のカードにも置かない');
+        assert.equal(rv.canPin(rows, { playerId: 7, bossNumber: 5, loadoutSlot: 1, characters: ['アニス'], doneAttacks: 1 }).reason, 'no_capacity', '約束1 + 固定1 + 実凸1 = 3');
+        assert.equal(rv.canPin(rows, { playerId: 7, bossNumber: 5, loadoutSlot: 1, characters: ['ラピ'] }).reason, 'char_conflict');
+        assert.equal(rv.canPin(rows, { playerId: 7, bossNumber: 5, loadoutSlot: 1, characters: ['紅蓮'] }).reason, 'char_conflict', '他の固定とのキャラ被りを見ていない');
+        const ok = rv.canPin(rows, { playerId: 7, bossNumber: 5, loadoutSlot: 1, characters: ['アニス'] });
+        assert.equal(ok.ok, true); assert.equal(ok.left, 1);
+        // 置き直し: 自分の固定は数えない (残凸もキャラも)
+        const mv = rv.canPin(rows, { playerId: 7, bossNumber: 4, loadoutSlot: 2, characters: ['紅蓮'], excludeId: 2, doneAttacks: 1 });
+        assert.equal(mv.ok, true, `置き直しで自分を数えている: ${mv.reason}`);
+        assert.equal(rv.canPin(null, { playerId: 1, bossNumber: 1, loadoutSlot: 1 }).ok, true);
+    });
+    test('★ 配線: 📌 は盤面の凸に印が付き (pinned)、クライアントは 45 未適用でも予約を読める', () => {
+        const solver = _fs.readFileSync(_path.join(_ROOT, 'js', 'optimal-plan.js'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/pinned: !!r\.pinned,/.test(solver), 'ソルバーが pinned を正規化で落としている');
+        assert.ok(/if \(s\.pinned\) placed\.pinned = true;/.test(solver) && /\.\.\.\(r\.pinned \? \{ pinned: true \} : \{\}\),/.test(solver), '置いた凸に pinned の印が付かない');
+        const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/const _RESV_PIN_COLS = 'pinned_by, pinned_at, asked_at, ask_deadline_at';/.test(client), '固定の列が無い');
+        assert.ok((client.match(/if \(error && _isMissingPinCols\(error\)\) \(\{ data, error \} = await run\(false\)\);/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
+        assert.ok(/if \(row\.status === 'pinned'\) \{\s*\n\s*row\.pinned_by = /.test(client), '固定のときだけ列を足す形になっていない (普通の申請が 45 未適用で壊れる)');
+        assert.ok(/window\.supabaseMovePin = async function \(id, o = \{\}\)/.test(client) && /\.eq\('status', 'pinned'\)\.select\('\*'\)/.test(client), '置き直しが status = pinned の行に限られていない');
+        assert.ok(/window\.supabaseAskPin = async function \(id, o = \{\}\)/.test(client), 'お願いの関数が無い');
+        assert.ok(/この固定は別の運営が動かしました/.test(client), '0 行更新 (別の運営が動かした) を黙って通している');
+    });
     test('予約: 遷移表は DB (reservation_set_status) と同じ', () => {
         assert.equal(rv.canTransition('requested', 'approved'), true);
         assert.equal(rv.canTransition('requested', 'fulfilled'), false, '承認を飛ばして実行済みにできてはいけない');
@@ -4671,18 +4732,32 @@ console.log('\nreservationsDomain (凸の予約):');
     }
 
     test('予約: SQL と JS が同じ状態・同じ遷移表を持っている', () => {
-        // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる
-        const m = _sqlRes.match(/status TEXT NOT NULL DEFAULT 'requested'\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
-        assert.ok(m, 'status の CHECK が見つからない');
+        // ★ 片方だけ変えると「画面では押せるのにサーバで弾かれる」になる。機械的に突き合わせる。
+        //   最新の定義は 45 (📌 運営の固定で pinned を足した)。39 の CHECK は 45 が DROP/ADD で置き換える
+        const m = _sqlPins.match(/ADD CONSTRAINT plan_reservations_status_check\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
+        assert.ok(m, '45 の status の CHECK が見つからない');
         const sqlStatuses = [...m[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]).sort();
         assert.deepEqual(sqlStatuses, [...rv.STATUS].sort(), 'SQL と JS で状態の集合が違う');
+        // 39 の元の集合 + pinned であること (45 が 39 を取りこぼしていない)
+        const m39 = _sqlRes.match(/status TEXT NOT NULL DEFAULT 'requested'\s*\n\s*CHECK \(status IN \(([^)]*)\)\)/);
+        assert.deepEqual(sqlStatuses, [...[...m39[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]), 'pinned'].sort(), '45 の集合が 39 + pinned でない');
         const pick = (from) => {
-            const mm = _sqlRes.match(new RegExp(`v_from = '${from}'\\s*AND p_to IN \\(([^)]*)\\)`));
+            const mm = _sqlPins.match(new RegExp(`v_from = '${from}'\\s*AND p_to IN \\(([^)]*)\\)`));
             return mm ? [...mm[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]).sort() : null;
         };
-        for (const from of ['requested', 'approved', 'cancel_requested']) {
+        for (const from of ['requested', 'approved', 'cancel_requested', 'pinned']) {
             assert.deepEqual(pick(from), [...rv.TRANSITIONS[from]].sort(), `${from} の遷移が SQL と違う`);
         }
+        // 45 の関数は 39 の遷移をそのまま持っている (置き換えで落としていない)
+        for (const from of ['requested', 'approved', 'cancel_requested']) {
+            const mm = _sqlRes.match(new RegExp(`v_from = '${from}'\\s*AND p_to IN \\(([^)]*)\\)`));
+            assert.deepEqual(pick(from), [...mm[1].matchAll(/'([a-z_]+)'/g)].map(x => x[1]).sort(), `45 が 39 の ${from} の遷移を変えている`);
+        }
+        // 📌 は残凸の枠 (容量トリガ・部分一意索引・RPC) に**数えない**: 45 はそれらの集合に触らない
+        assert.ok(!/plan_reservations_capacity_check|uq_plan_reservations_active_card|report_attack/.test(_sqlPins), '45 が残凸の枠の集合に触っている');
+        assert.ok(/ADD COLUMN IF NOT EXISTS asked_at TIMESTAMPTZ/.test(_sqlPins) && /ADD COLUMN IF NOT EXISTS pinned_by TEXT/.test(_sqlPins), '45 の列が無い');
+        const check99 = _fs.readFileSync(_path.join(_ROOT, 'supabase', '99_check_applied.sql'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/'45_reservation_pins'[\s\S]*?column_name = 'asked_at'/.test(check99), '99 に 45 の判定行が無い');
         // 「枠を押さえている状態」も同じ集合であること (残凸の検査が食い違うと予約を作れない/作りすぎる)
         const cap = _sqlRes.match(/status IN \('requested', 'approved', 'cancel_requested'\)/g) || [];
         assert.ok(cap.length >= 2, `残凸トリガーと部分一意索引が同じ集合を使っていない (${cap.length})`);
@@ -8329,12 +8404,102 @@ console.log('\ngrowthDomain:');
         const view = html.match(/function renderOpsPlanView\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/focusMemberId: _opsPlanFocus, focusWindow, stiffOf/.test(view), '運営の時間割に focus / stiff を渡していない');
         assert.ok(/return st\.count <= 3 \? st\.label : null;/.test(view), '柔らかい人にまで札を出している (硬い / 狭い だけ)');
-        assert.ok(/el\.dataset\.focusDelegated/.test(view) && /_opsPlanToggleFocus\(chip\.dataset\.member\)/.test(view), 'チップのタップを受けていない (委譲)');
+        assert.ok(/el\.dataset\.focusDelegated/.test(view) && /_opsPlanSelectChip\(chip\.dataset\)/.test(view), 'チップのタップを受けていない (委譲)');
         // ホームの時間割には渡さない (メンバーの画面に運営の道具を出さない)
         assert.ok(!/filterKey: 'my'[^)]*stiffOf/.test(html), 'ホームの時間割に動かせる幅を出している');
         // 算出し直したら前の選択を捨てる
         const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/\n\s*_opsPlanFocus = null;/.test(fn), '算出し直しても前の選択が残る (コメントアウトも不可)');
+    });
+    // ===== パズル盤 ③④: 📌 運営の固定 / 🧩 模擬ピース / 📣 お願い → 🔒 (2026-09-11) =====
+    test('★ piecesOf: 模擬ピースは 残凸が多い人 → 強い順、置かれているものは placed + どこにあるか', () => {
+        const d = globalThis.planBoardDomain;
+        const players = [
+            { id: 1, name: 'A', attackCount: 2, loadoutsByAttr: { fire: [{ slot: 1, dmgB: 30, team: ['x'] }], water: [{ slot: 1, dmgB: 20, team: [] }] } },
+            { id: 2, name: 'B', attackCount: 0, loadoutsByAttr: { iron: [{ slot: 1, dmgB: 36, team: ['y'] }, { slot: 2, dmgB: 12, team: [] }] } },
+            { id: 3, name: 'C', attackCount: 0, unavailableThisSeason: true, loadoutsByAttr: { iron: [{ slot: 1, dmgB: 99, team: [] }] } },   // 難しい人は出さない
+            { id: 4, name: 'D', attackCount: 3, loadoutsByAttr: { wind: [{ slot: 1, dmgB: 40, team: [] }, { slot: 1, dmgB: 0, team: [] }] } },   // 0 のピースは出さない
+        ];
+        const plan = { levels: [{ level: 1, bosses: [
+            { bossNumber: 3, weakness: 'fire', attacks: [{ memberId: 1, loadoutSlot: 1, hourIdx: 16, hourLabel: '21時', pinned: true, fromReservation: true }] },
+            { bossNumber: 5, weakness: 'iron', attacks: [] },
+        ] }] };
+        const rv = globalThis.reservationsDomain;
+        const resv = [{ id: 9, player_id: 2, status: 'approved', boss_number: 5, loadout_slot: 2, time_slot: 'h22' }];
+        const out = d.piecesOf({ players, plan, reservations: resv, isFixed: rv.isFixed });
+        assert.deepEqual(out.map(x => `${x.name}:${x.attr}${x.slot}`), ['B:iron1', 'B:iron2', 'A:fire1', 'A:water1', 'D:wind1'], '並びが 残凸 → 強い順 でない / 難しい人や 0 を出している');
+        assert.deepEqual(out.map(x => x.remaining), [3, 3, 1, 1, 0]);
+        const a = out.find(x => x.name === 'A' && x.attr === 'fire');
+        assert.equal(a.placed, true); assert.deepEqual(a.where, { bossNumber: 3, hourIdx: 16, hourLabel: '21時', pinned: true, promise: false });
+        const b2 = out.find(x => x.name === 'B' && x.slot === 2);
+        assert.equal(b2.placed, true, '約束 (予約) で置かれている編成を placed にしていない'); assert.equal(b2.where.promise, true); assert.equal(b2.where.hourLabel, '22時');
+        assert.equal(out.find(x => x.name === 'B' && x.slot === 1).placed, false);
+        assert.deepEqual(d.piecesOf(), []);
+        assert.deepEqual(d.piecesOf({ players: [null, {}], plan: null }), []);
+    });
+    test('★ canPlace: 有利属性のボスだけ / その人の戦闘可能時間だけ (⏳隙間型は例外)。レベルは見ない', () => {
+        const d = globalThis.planBoardDomain;
+        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
+        const p = { name: 'A', availableSlots: ['h21', 'h22'] };
+        const boss = { boss_number: 3, weakness: 'water' };
+        assert.equal(d.canPlace({ player: p, attr: 'water', boss, hourIdx: 16, hourOrder: HO }).ok, true);
+        assert.equal(d.canPlace({ player: p, attr: 'fire', boss, hourIdx: 16, hourOrder: HO }).reason, 'attr');
+        assert.ok(d.canPlace({ player: p, attr: 'fire', boss, hourIdx: 16, hourOrder: HO }).label.includes('水冷PT'), '理由が日本語でない');
+        assert.equal(d.canPlace({ player: p, attr: 'water', boss, hourIdx: 18, hourOrder: HO }).reason, 'time');
+        assert.equal(d.canPlace({ player: { ...p, flexTime: true, availableSlots: [] }, attr: 'water', boss, hourIdx: 3, hourOrder: HO }).ok, true, '隙間型はいつでも');
+        assert.equal(d.canPlace({ player: null, attr: 'water', boss, hourIdx: 16, hourOrder: HO }).reason, 'no_player');
+        assert.equal(d.canPlace({ player: p, attr: 'water', boss: null, hourIdx: 16, hourOrder: HO }).reason, 'no_boss');
+    });
+    test('★ 配線: 📌 盤の上で手を打つ — 掴める札 / 置ける先の光り方 / タップとドロップが同じ _opsPlanPlace / 🔒 は掴めない', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const chip = html.match(/function _planChipHtml\(a, color, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const resvMark = a\.pinned \? '📌' : \(a\.fromReservation \? '🔒' : ''\);/.test(chip), '📌 / 🔒 の印が無い');
+        assert.ok(/const promise = !!a\.fromReservation && !a\.pinned;\s*\n\s*const dragOk = !!opts\.draggable && !promise;/.test(chip), '約束 (🔒) を掴めなくしていない');
+        assert.ok(/data-slot="\$\{Number\(a\.loadoutSlot\) \|\| 1\}" data-attr="\$\{esc\(String\(opts\.cellAttr \|\| ''\)\)\}" data-resv=/.test(chip), 'チップに 編成枠 / 属性 / 予約id の札が無い');
+        const tt = html.match(/function _planTimetableHtml\(plan, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const attrOk = opts\.placeAttr \? \(bm\.weakness === opts\.placeAttr\) : null;/.test(tt) && /data-boss="\$\{bm\.bossNumber\}"/.test(tt), '置ける先 (有利属性 × 時間) を光らせていない / セルにボス番号が無い');
+        assert.ok(/_planChipHtml\(a, c, \{ \.\.\.opts, cellAttr: bm\.weakness \}\)/.test(tt), 'チップに列の属性を渡していない');
+        const view = html.match(/function renderOpsPlanView\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/placeAttr: sel \? sel\.attr : null, draggable: _opsPlanDragOk\(\)/.test(view), '選んだ駒の属性 / ドラッグ可否を時間割に渡していない');
+        assert.ok(/_opsPlanTrayHtml\(plan\)/.test(view), '模擬ピースを描いていない');
+        // タップとドロップは同じ関数へ
+        assert.ok(/if \(cell && _opsPlanSel && cell\.dataset\.h !== ''\) _opsPlanPlace\(Number\(cell\.dataset\.boss\), Number\(cell\.dataset\.h\)\);/.test(view), 'マスのタップで置いていない');
+        assert.ok(/el\.addEventListener\('drop', [\s\S]*?_opsPlanPlace\(Number\(cell\.dataset\.boss\), Number\(cell\.dataset\.h\)\);/.test(view), 'ドロップで置いていない');
+        assert.ok(/window\.matchMedia\('\(hover: hover\) and \(pointer: fine\)'\)/.test(html), 'ドラッグの出し分けが入力装置でない');
+        // 置く: 判定はドメイン (属性/時間 → canPlace、衝突/残凸/被り → canPin)、予約は押した時点の DB、レベルは null
+        const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.canPlace\(\{ player, attr: sel\.attr, boss, hourIdx, hourOrder: HOUR_ORDER \}\)/.test(place), '属性 / 時間の判定をドメインに任せていない');
+        assert.ok(/rows = await window\.supabaseLoadReservations\(snap\.season\.id\)/.test(place) && /rv\.canPin\(rows, \{/.test(place), '押した時点の予約で衝突 / 残凸 / 被りを見ていない');
+        assert.ok(/raidLevel: null, bossNumber, timeSlot,/.test(place) && /status: 'pinned'/.test(place), 'レベル無しの pinned で作っていない');
+        assert.ok(/await window\.supabaseMovePin\(existing\.id,/.test(place), '置き直しが新規作成になっている');
+        assert.ok(/await computeAndRenderOptimalPlan\(\);/.test(place), '置いたあとに算出し直していない');
+        assert.ok(/_opsPlanPlacing = true;[\s\S]*?finally \{\s*\n\s*_opsPlanPlacing = false;/.test(place), '二重に置ける (busy を立てていない)');
+    });
+    test('★ 配線: 📣 お願い → 本人が引き受けると 🔒 / 予約カードの 📌 グループ / 承認で同じカードの 📌 を外す', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const ask = html.match(/async function _opsPlanAsk\(id\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/await window\.supabaseAskPin\(row\.id, \{ deadlineAt:/.test(ask) && /sendPushNotification\(\{\s*\n\s*title: '📣 運営から凸のお願い'/.test(ask), 'お願いで asked_at を入れて Push していない');
+        assert.ok(/if \(row\.asked_at\) \{ showNotification\('もうお願い済みです'\); return; \}/.test(ask), '二重にお願いできる');
+        const unpin = html.match(/async function _opsPlanUnpin\(id\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_resvTransition\(Number\(id\), 'released', \{ expectFrom: 'pinned', reason: 'ops'/.test(unpin), '外すが RPC の遷移 (履歴が残る) を通っていない');
+        // 本人の返事: 引き受ける = approved / 難しい = released (member_declined)。自分あてだけ
+        const ans = html.match(/async function _answerPin\(id, accept\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/'approved', \{ expectFrom: 'pinned', actor: me\.name \|\| '本人'/.test(ans) && /'released', \{ expectFrom: 'pinned', actor: me\.name \|\| '本人', reason: 'member_declined' \}/.test(ans), '返事の遷移が違う');
+        assert.ok(/if \(String\(row\.player_id\) !== String\(me\.id\)\)/.test(ans), '他人のお願いに返事できる');
+        assert.ok(/function handleAcceptPin\(id\)/.test(html) && /function handleDeclinePin\(id\)/.test(html), '引き受ける / 難しい のハンドラが無い');
+        const home = html.match(/async function renderMyReservations\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const asks = _myResvRows\.filter\(r => rv\.isAskedPin\(r\)\);/.test(home), 'お願い済みの固定だけを本人に見せていない (下書きが見える / 何も見えない)');
+        assert.ok(/onclick="handleAcceptPin\(\$\{Number\(r\.id\)\}\)"/.test(home) && /onclick="handleDeclinePin\(\$\{Number\(r\.id\)\}\)"/.test(home), '返事のボタンが無い');
+        // 運営の予約カード: 📌 のグループ (お願いする / 外す)
+        const paint = html.match(/function _paintOpsReservations\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const pins = rows\.filter\(r => r\.status === 'pinned'\);/.test(paint) && /📌 運営の固定 \(\$\{pins\.length\}\)/.test(paint), '予約カードに 📌 のグループが無い');
+        assert.ok(/btn\('📣 お願いする', `_opsPlanAsk\(\$\{Number\(r\.id\)\}\)`/.test(paint) && /btn\('外す', `_opsPlanUnpin\(\$\{Number\(r\.id\)\}\)`/.test(paint), '📌 に お願いする / 外す が無い');
+        // 承認したら同じカードの 📌 を superseded で外す
+        const tr = html.match(/async function _resvTransition\(id, to, o = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(to === 'approved' && row && window\.reservationsDomain\?\.pinFor\)/.test(tr) && /reason: 'superseded'/.test(tr), '承認で同じカードの 📌 を外していない (二重の拘束)');
+        // ホームの3枠と「わたしの凸」で 📣 が読める
+        assert.ok(/slot\.status === 'pinned' \? '📣 運営からのお願い \(返事してください\)'/.test(html), '3枠で 📣 が読めない');
+        assert.ok(/a\.status === 'pinned' \? `📣 運営からのお願い/.test(html), '「わたしの凸」で 📣 が読めない');
     });
     test('★ 2列/12カラム: 各段階とメンバー画面で、行の span 合計が 12 に揃う (7 の隣に 12 が来ると 7 が独りになる)', () => {
         // ★ 2026-09-11 まで実際そうなっていた: ボス7 → 残り12 → 締め凸5 の順で、7 と 5 が一度も隣り合わず全段階で1列。

@@ -24,7 +24,10 @@
 (function (root) {
     'use strict';
 
-    const STATUS = ['requested', 'approved', 'cancel_requested', 'fulfilled', 'released', 'rejected'];
+    // pinned = 📌 運営の固定 (パズル盤 ③・2026-09-11)。運営が時間割に置いた**下書き**で、本人はまだ引き受けていない。
+    //   ソルバーは approved と同じく先に置く (isFixed) が、残凸の枠 (ACTIVE) には数えない — 約束ではない下書きが
+    //   本人の実凸や申請を塞いではいけない。「📣 お願い」(asked_at) で本人に届き、引き受けると approved
+    const STATUS = ['requested', 'approved', 'cancel_requested', 'fulfilled', 'released', 'rejected', 'pinned'];
     // 残凸の枠を押さえている状態 (DB のトリガーと同じ集合にすること)
     const ACTIVE = ['requested', 'approved', 'cancel_requested'];
     const STATUS_JP = {
@@ -34,6 +37,7 @@
         fulfilled: '実行済み',
         released: '解除',
         rejected: '見送り',
+        pinned: '運営の固定',
     };
     const RELEASE_JP = {
         fulfilled: '凸が入った',
@@ -43,6 +47,8 @@
         member_request: '本人の希望',
         ops: '運営の判断',
         infeasible: '実行できなくなった',
+        member_declined: '本人が「難しい」と返事',
+        superseded: '本人の申請・予約に置き換わった',
     };
     // 許可する遷移。DB の reservation_set_status と**同じ表**にすること
     // (片方だけ変えると、画面では押せるのにサーバで弾かれる)
@@ -50,6 +56,7 @@
         requested: ['approved', 'rejected', 'cancel_requested'],
         approved: ['cancel_requested', 'fulfilled', 'released'],
         cancel_requested: ['released', 'approved'],
+        pinned: ['approved', 'released'],   // 本人が引き受けた / 運営が外した・本人が難しいと返事
         fulfilled: [],
         released: [],
         rejected: [],
@@ -104,6 +111,8 @@
 
     const isActive = (r) => !!r && ACTIVE.includes(r.status);
     const isApproved = (r) => !!r && r.status === 'approved';
+    const isPin = (r) => !!r && r.status === 'pinned';
+    const isAskedPin = (r) => isPin(r) && r.asked_at != null;   // 📣 本人に届いている下書き
     const canTransition = (from, to) => (TRANSITIONS[from] || []).includes(to);
 
     /**
@@ -117,10 +126,15 @@
     // ★ cancel_requested は「承認済みからの取り消し希望」だけ固定 (Codex指摘 2026-09-07)。
     //   requested → cancel_requested (未承認の申請を本人が引っ込めた) も同じ状態名なので、
     //   approved_at の有無で区別する。未承認の申請が突然ソルバーの拘束になってはいけない
-    function isFixed(r) {
+    // 約束 (本人が引き受け、運営が承認した) — 凸報告の消し込みや本人の3枠はこちらを見る
+    function isPromise(r) {
         if (!r) return false;
         if (r.status === 'approved') return true;
         return r.status === 'cancel_requested' && r.approved_at != null;
+    }
+    // ソルバーを拘束するもの = 約束 + 📌 運営の固定 (下書き)。配信直前の指紋もこの集合
+    function isFixed(r) {
+        return isPromise(r) || isPin(r);
     }
 
     /**
@@ -162,6 +176,7 @@
                 timeSlot: r.time_mode === 'flex' ? null : (r.time_slot || null),
                 team: Array.isArray(r.characters_snapshot) ? r.characters_snapshot.filter(Boolean) : [],
                 expectedB: Number(r.expected_damage_b) || 0,
+                pinned: isPin(r),   // 📌 画面で 🔒 (約束) と見分けるため。ソルバーの置き方は同じ
             });
         });
         const idKey = (v) => String(v);
@@ -368,6 +383,34 @@
             && _charKeys(r.characters_snapshot).some(k => mine.has(k))) || null;
     }
 
+    /** その人・そのボス・その編成枠の 📌 (下書き) があれば返す */
+    function pinFor(rows, { playerId, bossNumber, loadoutSlot }) {
+        return (Array.isArray(rows) ? rows : []).find(r => isPin(r)
+            && String(r.player_id) === String(playerId)
+            && Number(r.boss_number) === Number(bossNumber)
+            && Number(r.loadout_slot) === Number(loadoutSlot)) || null;
+    }
+
+    /**
+     * 運営が 📌 を置いてよいか (パズル盤 ③)。置き直し (excludeId) は自分自身を数えない。
+     *   promise_exists = 本人の申請・予約がそのカードにある (下書きで上書きしない)
+     *   no_capacity    = 約束 + 固定 + 実凸 で 3 を超える
+     *   char_conflict  = 同じ人の生きている予約・固定と同じキャラを使う (1日1回)
+     */
+    function canPin(rows, { playerId, bossNumber, loadoutSlot, doneAttacks, characters, excludeId }) {
+        const list = (Array.isArray(rows) ? rows : []).filter(r => r && String(r.player_id) === String(playerId)
+            && (excludeId == null || String(r.id) !== String(excludeId)));
+        if (list.some(r => isActive(r) && Number(r.boss_number) === Number(bossNumber) && Number(r.loadout_slot) === Number(loadoutSlot))) {
+            return { ok: false, reason: 'promise_exists', label: '本人の申請・予約があります' };
+        }
+        const held = list.filter(r => isPromise(r) || isPin(r)).length;
+        if (held + (Number(doneAttacks) || 0) >= 3) return { ok: false, reason: 'no_capacity', label: '残り凸がありません' };
+        const mine = new Set(_charKeys(characters));
+        const clash = mine.size ? list.find(r => (isActive(r) || isPin(r)) && _charKeys(r.characters_snapshot).some(k => mine.has(k))) : null;
+        if (clash) return { ok: false, reason: 'char_conflict', label: '同じキャラを使う予約・固定があります', with: clash };
+        return { ok: true, left: 3 - held - (Number(doneAttacks) || 0) };
+    }
+
     function canRequest(rows, { playerId, bossNumber, loadoutSlot, doneAttacks, characters }) {
         if (findActiveFor(rows, { playerId, bossNumber, loadoutSlot })) {
             return { ok: false, reason: 'already', label: '申請済み' };
@@ -389,7 +432,7 @@
      */
     function matchForAttack(rows, { playerId, level, bossNumber, characters }) {
         const cand = (Array.isArray(rows) ? rows : []).filter(r => r
-            && isFixed(r)   // approved / 承認済み起点の cancel_requested (取り消し希望中に本人が凸したら消し込む)
+            && isPromise(r)   // approved / 承認済み起点の cancel_requested (取り消し希望中に本人が凸したら消し込む)。📌 は約束でないので紐づけない (RPC も弾く)
             && String(r.player_id) === String(playerId)
             && Number(r.boss_number) === Number(bossNumber)
             // レベルは進行とずれることがあるので、指定が無ければ見ない。
@@ -515,7 +558,8 @@
      *   stale = 配信が予約より古い (固定した予約が配信に入っていない) → 「運営が組み直し中」を出す
      */
     function homeSlots({ plan, viewerId, reservations, doneCounts, todayAttacks } = {}) {
-        const fixed = (Array.isArray(reservations) ? reservations : []).filter(isFixed)
+        // 本人に見せるのは 約束 と、📣 お願いされた運営の固定 (asked_at あり)。まだ下書きの 📌 は出さない
+        const fixed = (Array.isArray(reservations) ? reservations : []).filter(r => isPromise(r) || isAskedPin(r))
             .slice().sort((a, b) => {
                 const ta = a.time_mode === 'flex' ? 'zz' : String(a.time_slot || 'zz');
                 const tb = b.time_mode === 'flex' ? 'zz' : String(b.time_slot || 'zz');
@@ -547,6 +591,7 @@
                 level: a ? a.level : null, inPlan: !!a, done: !!(a && a.done),
                 bossName: a ? a.bossName : null, weakness: a ? a.weakness : null, attribute: a ? a.attribute : null,
                 approvedBy: r.approved_by || null,
+                pinnedBy: r.pinned_by || null, askDeadlineAt: r.ask_deadline_at || null,   // 📣 運営からのお願い (status = 'pinned')
                 unmet: um ? um.reason : null, unmetText: um ? unmetText(um) : '',
             });
         }
@@ -599,7 +644,7 @@
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP,
         unmetText, planRowsOf, homeSlots, pendingRepublish, slotIdxOf, rowHonorsTime,
-        isActive, isApproved, isFixed, fingerprint, canTransition,
+        isActive, isApproved, isFixed, isPromise, isPin, isAskedPin, pinFor, canPin, fingerprint, canTransition,
         toSolverConstraints,
         findInfeasible,
         capacityLeft,

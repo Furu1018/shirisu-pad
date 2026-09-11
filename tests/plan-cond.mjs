@@ -47,7 +47,7 @@ const SRC = [
 const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
 const mkEl = () => ({ innerHTML: '', textContent: '', style: {} });
 
-function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, opsMode = true, count = async () => 0, focus = null } = {}) {
+function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, opsMode = true, count = async () => 0, focus = null, sel = null, promiseNote = false } = {}) {
     const els = { opsPlanAutoChips: mkEl(), opsPlanCue: mkEl(), opsPlanCond: mkEl() };
     const env = {
         document: { getElementById: (id) => els[id] || null },
@@ -58,6 +58,8 @@ function run({ snap = null, resvRows = undefined, pub = null, lastPlan = null, o
         _opsLastPlan: lastPlan,
         _opsMode: opsMode,
         _opsPlanFocus: focus,
+        _opsPlanSel: sel,
+        _opsPlanPromiseNote: promiseNote,
         _planCueSeq: 0,
         HOUR_ORDER,
         _planNowIdx: () => 16,   // 21時
@@ -169,6 +171,29 @@ await test('★ 選んだ人: 出られる時間と動かせる幅 (硬い / 狭
     assert.ok(/出られる時間 20〜/.test(fo), '出られる時間の要約が無い');
     assert.equal(run({ snap: { season, players }, lastPlan: plan, focus: null })._opsPlanFocusBarHtml(plan), '');
     assert.equal(run({ snap: { season, players }, lastPlan: plan, focus: 999 })._opsPlanFocusBarHtml(plan), '', '盤面にいない人で落ちる/出る');
+});
+
+await test('★ 盤の上の操作帯 (③): 📌 の固定は お願いする / 外す、お願い中は期限だけ、駒を選んだら「マスをタップ」、約束は動かさない', async () => {
+    const plan = {};
+    const pinRow = { id: 21, status: 'pinned', asked_at: null, ask_deadline_at: null };
+    const askedRow = { id: 22, status: 'pinned', asked_at: '2026-09-11T12:00:00Z', ask_deadline_at: '2026-09-11T12:15:00Z' };
+    const a = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 21, pinned: true } });
+    const oa = a._opsPlanFocusBarHtml(plan);
+    noUndef(oa);
+    assert.ok(oa.includes('📌 運営の固定 (本人にはまだ見えていません) · 別のマスをタップで置き直し'), `下書きの説明が無い: ${oa}`);
+    assert.ok(oa.includes('onclick="_opsPlanAsk(21)">📣 お願いする') && oa.includes('onclick="_opsPlanUnpin(21)">固定を外す'), 'お願いする / 外す のボタンが無い');
+    const b = run({ snap: { season, players }, lastPlan: plan, focus: 2, resvRows: [pinRow, askedRow], sel: { kind: 'chip', memberId: 2, loadoutSlot: 1, attr: 'iron', reservationId: 22, pinned: true } });
+    const ob = b._opsPlanFocusBarHtml(plan);
+    assert.ok(ob.includes('📣 お願い中 〜21:15') && !ob.includes('_opsPlanAsk('), 'お願い中なのに二重にお願いできる / 期限が無い');
+    assert.ok(ob.includes('onclick="_opsPlanUnpin(22)">固定を外す'), 'お願い中でも外せること');
+    const c = run({ snap: { season, players }, lastPlan: plan, focus: 4, sel: { kind: 'piece', memberId: 4, loadoutSlot: 2, attr: 'fire', reservationId: null, pinned: false } });
+    const oc = c._opsPlanFocusBarHtml(plan);
+    assert.ok(oc.includes('🧩 模擬ピース') && oc.includes('マスをタップ') && oc.includes('レベルは算出が決めます'), `ピースの案内が無い: ${oc}`);
+    assert.ok(!oc.includes('_opsPlanAsk(') && !oc.includes('_opsPlanUnpin('), 'まだ置いていない駒に お願い / 外す が出ている');
+    const d = run({ snap: { season, players }, lastPlan: plan, focus: 1, sel: null, promiseNote: true });
+    const od = d._opsPlanFocusBarHtml(plan);
+    assert.ok(od.includes('🔒 本人が引き受けた約束 — 運営の手では動かしません'), '約束を動かさない注意が無い');
+    assert.ok(od.includes('onclick="_opsPlanClearSel()">閉じる'), '閉じるが選択も捨てる形になっていない');
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

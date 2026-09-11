@@ -3450,16 +3450,20 @@ const RESERVATION_SQL_HINT = '凸の予約には supabase/39_plan_reservations.s
 // そのシーズンの予約を全部読む (終わったものも含む — 履歴として画面に出すため)。
 // ★ 未適用環境は **null** を返す (空配列にしない — 「機能が無い」と「予約が0件」は別物。
 //   [] にすると「予約はまだありません」と出て、押しても適用エラーになる)
+// 📌 運営の固定 (45) の列。未適用環境は列が無いので、無ければ落として読み直す (固定は存在しないので欠けても正しい)
+const _RESV_PIN_COLS = 'pinned_by, pinned_at, asked_at, ask_deadline_at';
+const _isMissingPinCols = (error) => ['pinned_by', 'pinned_at', 'asked_at', 'ask_deadline_at'].some(c => _isMissingColumnErr(error, c));
 window.supabaseLoadReservations = async function (seasonId) {
     if (!seasonId) return [];
-    const { data, error } = await supabase
-        .from('plan_reservations')
-        .select('id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
+    const base = 'id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
               + 'characters_snapshot, expected_damage_b, source_type, source_plan_id, source_finish_request_id, '
-              + 'status, requested_by, requested_at, approved_by, approved_at, released_by, released_at, release_reason, '
-              + 'players(name)')
+              + 'status, requested_by, requested_at, approved_by, approved_at, released_by, released_at, release_reason';
+    const run = (withPins) => supabase.from('plan_reservations')
+        .select(`${base}, ${withPins ? _RESV_PIN_COLS + ', ' : ''}players(name)`)
         .eq('season_id', seasonId)
         .order('id', { ascending: true });
+    let { data, error } = await run(true);
+    if (error && _isMissingPinCols(error)) ({ data, error } = await run(false));
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3472,13 +3476,15 @@ window.supabaseLoadReservations = async function (seasonId) {
 //   申請ボタンを出しておいて押した瞬間に「SQLを適用してください」になる
 window.supabaseLoadMyReservations = async function (seasonId, playerId) {
     if (!seasonId || !playerId) return [];
-    const { data, error } = await supabase
-        .from('plan_reservations')
-        .select('id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
+    const base = 'id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
               + 'characters_snapshot, expected_damage_b, source_type, status, '
-              + 'requested_at, approved_by, approved_at, released_by, release_reason')
+              + 'requested_at, approved_by, approved_at, released_by, release_reason';
+    const run = (withPins) => supabase.from('plan_reservations')
+        .select(withPins ? `${base}, ${_RESV_PIN_COLS}` : base)
         .eq('season_id', seasonId).eq('player_id', playerId)
         .order('id', { ascending: true });
+    let { data, error } = await run(true);
+    if (error && _isMissingPinCols(error)) ({ data, error } = await run(false));
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3507,11 +3513,19 @@ window.supabaseCreateReservation = async function (o = {}) {
         status: o.status || 'requested',
         requested_by: o.requestedBy || null,
     };
+    // 📌 運営の固定 (45)。固定のときだけ列を足す — 普通の申請は 45 未適用でも従来どおり通す
+    if (row.status === 'pinned') {
+        row.pinned_by = o.pinnedBy || o.requestedBy || null;
+        row.pinned_at = new Date().toISOString();
+    }
     if (!row.season_id || !row.player_id) throw new Error('シーズンとメンバーが必要です');
     if (!flex && !row.time_slot) throw new Error('時刻を選んでください');
     const { data, error } = await supabase.from('plan_reservations').insert(row).select('*').single();
     if (error) {
         if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
+        if (row.status === 'pinned' && (_isMissingPinCols(error) || /plan_reservations_status_check/.test(String(error.message || '')))) {
+            throw new Error(PIN_SQL_HINT);
+        }
         // トリガー / 部分一意索引のエラーを、運営とメンバーに意味の分かる文言へ
         const msg = String(error.message || '');
         if (/残凸を超える予約/.test(msg)) throw new Error('残りの凸数を超える予約はできません');
@@ -3525,6 +3539,43 @@ window.supabaseCreateReservation = async function (o = {}) {
         throw error;
     }
     return data;
+};
+
+const PIN_SQL_HINT = '運営の固定 (📌) を使うには supabase/45_reservation_pins.sql の適用が必要です';
+// 📌 を置き直す (ボス・時刻・編成)。約束ではない下書きなので直接 UPDATE できる (39 の守りの対象外)。
+// ★ status = 'pinned' の行だけ動かす — 別の運営がその間に「お願い」→ 本人が引き受けて approved になっていたら動かさない
+window.supabaseMovePin = async function (id, o = {}) {
+    if (!id) throw new Error('固定が指定されていません');
+    const flex = !!o.flex;
+    const patch = { updated_at: new Date().toISOString() };
+    if (o.bossNumber != null) patch.boss_number = Number(o.bossNumber);
+    if (o.flex != null || o.timeSlot != null) { patch.time_mode = flex ? 'flex' : 'fixed'; patch.time_slot = flex ? null : (o.timeSlot || null); }
+    if (o.loadoutSlot != null) patch.loadout_slot = Number(o.loadoutSlot) || 1;
+    if (Array.isArray(o.characters)) patch.characters_snapshot = o.characters.filter(Boolean);
+    if (o.expectedDamageB != null) patch.expected_damage_b = Number(o.expectedDamageB) || null;
+    const { data, error } = await supabase.from('plan_reservations').update(patch)
+        .eq('id', Number(id)).eq('status', 'pinned').select('*');
+    if (error) {
+        if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
+        if (_isMissingPinCols(error)) throw new Error(PIN_SQL_HINT);
+        throw error;
+    }
+    if (!Array.isArray(data) || data.length === 0) throw new Error('この固定は別の運営が動かしました。画面を更新してから、もう一度お試しください');
+    return data[0];
+};
+// 📣 お願いする: 下書きを本人に見せる (asked_at)。期限は表示だけ (過ぎても自動で外さない)
+window.supabaseAskPin = async function (id, o = {}) {
+    if (!id) throw new Error('固定が指定されていません');
+    const { data, error } = await supabase.from('plan_reservations')
+        .update({ asked_at: new Date().toISOString(), ask_deadline_at: o.deadlineAt || null, updated_at: new Date().toISOString() })
+        .eq('id', Number(id)).eq('status', 'pinned').select('*');
+    if (error) {
+        if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
+        if (_isMissingPinCols(error)) throw new Error(PIN_SQL_HINT);
+        throw error;
+    }
+    if (!Array.isArray(data) || data.length === 0) throw new Error('この固定は別の運営が動かしました。画面を更新してから、もう一度お試しください');
+    return data[0];
 };
 
 // 状態を進める。**更新と履歴の追記をサーバ側の1操作で**やる (RPC)。

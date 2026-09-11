@@ -2889,6 +2889,34 @@
         .plan-focus .x { margin-left: auto; font-family: inherit; font-size: 11px; font-weight: 900; border: none; cursor: pointer; border-radius: 999px; padding: 6px 11px; background: rgba(var(--paper-rgb), 0.14); color: var(--card); }
         .plan-next { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
         .plan-next .k { font-size: 10.5px; font-weight: 900; letter-spacing: 0.3px; color: var(--t-muted); margin-right: 4px; }
+        /* 🧩 パズル盤 ③: 時間割 + 模擬ピース (PC は横並び)。置ける場所は点線で光り、置けない場所は沈む */
+        .plan-board { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+        @media (min-width: 1100px) { .plan-board.with-tray { grid-template-columns: minmax(0, 1fr) 262px; } }
+        .plan-tray { border: 1px solid var(--line); border-radius: 12px; background: var(--s1); padding: 10px; }
+        .plan-tray .th { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+        .plan-tray .th h4 { margin: 0; font-size: 12px; font-weight: 900; color: var(--t-ink); }
+        .plan-tray .th .n { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .plan-tray .th .tog { margin-left: auto; font-family: inherit; font-size: 10.5px; font-weight: 900; border: none; background: var(--s2); color: var(--t-strong); border-radius: 999px; padding: 4px 9px; cursor: pointer; }
+        .plan-tray .filt { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+        .plan-tray .filt button { font-family: inherit; font-size: 10px; font-weight: 900; border: none; cursor: pointer; border-radius: 999px; padding: 4px 8px; background: var(--s2); color: var(--t-body); }
+        .plan-tray .filt button[aria-pressed="true"] { background: var(--t-ink); color: var(--card); }
+        .plan-tray .list { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; overflow-x: hidden; }
+        .plan-tray.closed .filt, .plan-tray.closed .list, .plan-tray.closed .hint { display: none; }
+        .plan-tray .mem { font-size: 10px; font-weight: 900; color: var(--t-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+        .plan-tray .mem .rem { padding: 1px 6px; border-radius: 999px; background: var(--s2); color: var(--t-strong); font-variant-numeric: tabular-nums; }
+        .plan-tray .hint { margin: 8px 0 0; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
+        .plan-piece { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 9px; background: var(--card); border: 1px solid var(--line); box-shadow: inset 3px 0 0 var(--pc, var(--ops-solid)); cursor: pointer; user-select: none; -webkit-user-select: none; min-width: 0; }
+        .plan-piece .pt { font-size: 9.5px; font-weight: 900; color: var(--pt, var(--t-strong)); white-space: nowrap; }
+        .plan-piece .team { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
+        .plan-piece .dm { font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .plan-piece .where { grid-column: 1 / -1; font-size: 9.5px; font-weight: 800; color: var(--t-muted); }
+        .plan-piece.placed { opacity: 0.5; }
+        .plan-piece.sel { box-shadow: 0 0 0 2px var(--ops-solid), inset 3px 0 0 var(--pc, var(--ops-solid)); }
+        .plan-piece.dim { opacity: 0.35; }
+        .plan-piece[draggable="true"] { cursor: grab; }
+        .plan-focus .act { font-family: inherit; font-size: 11px; font-weight: 900; border: none; cursor: pointer; border-radius: 999px; padding: 6px 11px; background: rgba(var(--paper-rgb), 0.14); color: var(--card); white-space: nowrap; }
+        .plan-focus .act.pin { background: var(--ops-solid); color: var(--ops-ink); }
+        .plan-focus .act.ask { background: var(--warn-solid); color: var(--warn-ink); }
         /* 📈 消化のペース (運営ボード 当日・段階4)。色はトークンだけ — canvas ではなく div なので切り替えに追随する */
         .ops-pace { display: flex; align-items: flex-end; gap: 2px; height: 64px; padding: 0 1px; }
         .ops-pace i { flex: 1 1 0; min-width: 0; display: block; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--track); }
@@ -7826,7 +7854,8 @@
             if (slot.kind === 'fixed') {
                 const pending = slot.status === 'cancel_requested';
                 // 置けていない予約 (キャラ被り等) は「組み直し待ち」ではなく ⚠ で出す (2026-09-08 実機FB)
-                const lock = slot.unmet ? '⚠ 置けていません' : pending ? '取り消し希望中' : (slot.inPlan ? '🔒 予約' : '🔒 予約 (組み直し待ち)');
+                const lock = slot.status === 'pinned' ? '📣 運営からのお願い (返事してください)'
+                    : slot.unmet ? '⚠ 置けていません' : pending ? '取り消し希望中' : (slot.inPlan ? '🔒 予約' : '🔒 予約 (組み直し待ち)');
                 return `
                 <button type="button" onclick="_homeGotoResvCard()" class="dc-plan-card fixed${pending ? ' pending' : ''}${slot.unmet ? ' unmet' : (slot.inPlan ? '' : ' notin')}${slot.done ? ' done' : ''}${on}"
                         title="予約で固定された凸 — タップで予約の状態へ">
@@ -9347,8 +9376,10 @@
             //   (モック①: 予約が無くても申請ボタンは常にある)
             if (!Array.isArray(_myResvRows)) { card.style.display = 'none'; return; }
             const bossName = new Map((ctx.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code || `B${b.boss_number}`]));
+            // 📣 運営からのお願い (お願い済みの固定だけ。下書きは本人に見せない)
+            const asks = _myResvRows.filter(r => rv.isAskedPin(r));
             const live = _myResvRows.filter(r => rv.isActive(r));
-            const done = _myResvRows.filter(r => !rv.isActive(r));
+            const done = _myResvRows.filter(r => !rv.isActive(r) && !rv.isPin(r));
             const row = (r) => {
                 const jp = rv.STATUS_JP[r.status] || r.status;
                 const col = r.status === 'approved' ? 'var(--ok-deep)'
@@ -9382,10 +9413,26 @@
                     <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">自分から凸を申請する</button>
                     <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「この時間にこのボスを凸したい」を先に出しておけます。運営が承認すると予約になります。</p>
                 </div>`;
-            body.innerHTML = (_myResvRows.length
+            // 📣 運営からのお願い: 引き受けると 🔒 (約束)、難しければ外れる。返事は本人だけができる (パズル盤 ④)
+            const askRows = asks.map(r => {
+                const when = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定');
+                const team = Array.isArray(r.characters_snapshot) && r.characters_snapshot.length ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
+                const dl = r.ask_deadline_at ? ` · 返事の期限 ${escapeHtml(_hhmm(r.ask_deadline_at))}` : '';
+                return `<div style="padding:11px 12px;border-radius:12px;background:var(--warn-bg);border:1px solid var(--warn-solid);margin-bottom:8px;">
+                    <div style="font-size:12px;font-weight:900;color:var(--warn-deep);">📣 運営からのお願い${r.pinned_by ? ` (${escapeHtml(String(r.pinned_by))})` : ''}${dl}</div>
+                    <div style="margin-top:6px;font-size:13px;font-weight:900;color:var(--t-ink);">${escapeHtml(bossName.get(Number(r.boss_number)) || `B${r.boss_number}`)} · ${escapeHtml(when)} · 編成${Number(r.loadout_slot) === 2 ? '②' : '①'}${r.expected_damage_b != null ? ` · ${Number(r.expected_damage_b).toFixed(1)}B` : ''}</div>
+                    ${team ? `<div style="margin-top:6px;display:flex;gap:2px;flex-wrap:wrap;">${team}</div>` : ''}
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button type="button" onclick="handleAcceptPin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:12.5px;font-weight:900;cursor:pointer;">引き受ける</button>
+                        <button type="button" onclick="handleDeclinePin(${Number(r.id)})" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-strong);font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;">難しい</button>
+                    </div>
+                    <p style="margin:8px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;line-height:1.5;">引き受けると予約 (🔒) になり、運営が組み直しても動きません。難しければ遠慮なく。</p>
+                </div>`;
+            }).join('');
+            body.innerHTML = askRows + ((live.length + done.length)
                 ? live.map(row).join('') + done.map(row).join('')
-                : '<p style="margin:0;font-size:12px;font-weight:700;color:var(--t-muted);">まだ引き受けた凸はありません。</p>') + cta;
-            if (meta) meta.textContent = _myResvRows.length ? `固定 ${live.filter(r => r.status === 'approved').length} / 申請中 ${live.filter(r => r.status === 'requested').length}` : '';
+                : (asks.length ? '' : '<p style="margin:0;font-size:12px;font-weight:700;color:var(--t-muted);">まだ引き受けた凸はありません。</p>')) + cta;
+            if (meta) meta.textContent = _myResvRows.length ? `${asks.length ? `お願い ${asks.length} / ` : ''}固定 ${live.filter(r => r.status === 'approved').length} / 申請中 ${live.filter(r => r.status === 'requested').length}` : '';
             card.style.display = '';
             // ホームの3枠は予約にも依存する。内容が変わっていたらヒーローと配信カードを描き直す
             try {
@@ -9396,6 +9443,33 @@
         }
 
         // 取り消しは希望を出すだけ。解除には運営の承認が要る (ユーザー決定 2026-09-07)
+        // 📣 運営からのお願いに返事する (パズル盤 ④)。引き受ける = pinned → approved (約束)、難しい = pinned → released (member_declined)
+        async function _answerPin(id, accept) {
+            const me = getCurrentIdentity();
+            if (!me?.id) return;
+            const row = (_myResvRows || []).find(r => Number(r.id) === Number(id));
+            if (!row || row.status !== 'pinned') { showNotification('このお願いはもう終わっています'); await renderMyReservations(me); return; }
+            if (String(row.player_id) !== String(me.id)) { showNotification('自分あてのお願いだけに返事できます'); return; }
+            try {
+                if (accept) {
+                    await window.supabaseSetReservationStatus(Number(id), 'approved', { expectFrom: 'pinned', actor: me.name || '本人',
+                        characters: Array.isArray(row.characters_snapshot) ? row.characters_snapshot : null, expectedDamageB: row.expected_damage_b });
+                    window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${row.time_slot || '⏳'} B${row.boss_number} 編成${Number(row.loadout_slot) === 2 ? '②' : '①'}`, { playerId: me.id, actorName: me.name });
+                    showNotification('🔒 引き受けました。運営が組み直したプランに固定で入ります');
+                } else {
+                    await window.supabaseSetReservationStatus(Number(id), 'released', { expectFrom: 'pinned', actor: me.name || '本人', reason: 'member_declined' });
+                    window.supabaseLogActivity?.('reservation', `📣 お願いを見送り: ${row.time_slot || '⏳'} B${row.boss_number}`, { playerId: me.id, actorName: me.name });
+                    showNotification('返事を送りました (難しい)');
+                }
+            } catch (e) { showNotification(`❌ ${e?.message || e}`); }
+            seasonStore.invalidate();
+            await renderMyReservations(me);
+            if (typeof renderMyNextAction === 'function') renderMyNextAction(me);
+            if (typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(me);
+        }
+        function handleAcceptPin(id) { return _answerPin(id, true); }
+        function handleDeclinePin(id) { return _answerPin(id, false); }
+
         async function handleRequestCancelReservation(id) {
             const rv = window.reservationsDomain;
             const r = (_myResvRows || []).find(x => Number(x.id) === Number(id));
@@ -9752,9 +9826,10 @@
                 else right = `<div style="flex:none;text-align:right;">${dmgHtml}${a.level != null ? `<div style="font-size:8.5px;font-weight:800;color:var(--t-muted);margin-top:1px;">Lv${Number(a.level)}になったら</div>` : ''}</div>`;
                 let status = '';
                 if (a.kind === 'fixed') {
-                    const jp = a.unmet ? `⚠ 置けていません — ${esc(a.unmetText || '')}`
+                    const jp = a.status === 'pinned' ? `📣 運営からのお願い${a.pinnedBy ? ` (${esc(String(a.pinnedBy))})` : ''} — 「引き受けた凸」から返事してください`
+                        : a.unmet ? `⚠ 置けていません — ${esc(a.unmetText || '')}`
                         : a.status === 'cancel_requested' ? '取り消し希望中' : (a.inPlan ? '🔒 予約で固定' : '🔒 予約で固定 (運営が組み直し中)');
-                    const col = (a.unmet || a.status === 'cancel_requested') ? 'var(--warn-deep)' : 'var(--ok-deep)';
+                    const col = (a.unmet || a.status === 'cancel_requested' || a.status === 'pinned') ? 'var(--warn-deep)' : 'var(--ok-deep)';
                     const who = a.approvedBy ? ` · ${esc(String(a.approvedBy))}が承認` : '';
                     const cancel = (!done && a.status === 'approved')
                         ? `<button type="button" onclick="handleRequestCancelReservation(${Number(a.reservationId)})" style="margin-left:8px;border:1px solid rgba(var(--ink-rgb), 0.10);border-radius:999px;padding:3px 9px;font-family:inherit;font-size:10px;font-weight:800;color:var(--t-body);background:var(--card);cursor:pointer;">取り消しを希望</button>`
@@ -16599,8 +16674,9 @@
             const pending = rows.filter(r => r.status === 'requested');
             const cancelReq = rows.filter(r => r.status === 'cancel_requested');
             const approved = rows.filter(r => r.status === 'approved');
+            const pins = rows.filter(r => r.status === 'pinned');   // 📌 運営の下書き (パズル盤 ③)
             const done = rows.filter(r => ['fulfilled', 'released', 'rejected'].includes(r.status));
-            if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 固定中 ${approved.length}`;
+            if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 固定中 ${approved.length}${pins.length ? ` · 📌 ${pins.length}` : ''}`;
 
             const who = (r) => escapeHtml(r.player_name || `#${r.player_id}`);
             const what = (r) => escapeHtml(rv.describe(r, bossName));
@@ -16641,6 +16717,15 @@
                     + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.approved_by || '')}${r.approved_by ? ' が承認' : ''}</span>`,
                     'approved')).join(''));
             }
+            if (pins.length) {
+                sections.push(`<div class="dc-resv-head">📌 運営の固定 (${pins.length})</div>` + pins.map(r => card(r,
+                    (r.asked_at
+                        ? `<span style="font-size:10px;font-weight:800;color:var(--warn-deep);align-self:center;">📣 お願い中${r.ask_deadline_at ? ` 〜${escapeHtml(_hhmm(r.ask_deadline_at))}` : ''}</span>`
+                        : btn('📣 お願いする', `_opsPlanAsk(${Number(r.id)})`, 'primary', r.id))
+                    + btn('外す', `_opsPlanUnpin(${Number(r.id)})`, '', r.id)
+                    + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.pinned_by || '')}${r.pinned_by ? ' が固定' : ''}${r.asked_at ? '' : ' · 本人には見えていません'}</span>`,
+                    'pending')).join(''));
+            }
             if (done.length) {
                 sections.push(`<div class="dc-resv-head">終わったもの (${done.length})</div>`
                     + done.slice(-8).map(r => card(r,
@@ -16667,6 +16752,14 @@
                     `凸の予約: ${row ? (row.player_name || '#' + row.player_id) : '#' + rid} を ${window.reservationsDomain?.STATUS_JP[to] || to}`,
                     { actorName: me?.name || null });
                 showNotification(o.done || '更新しました');
+                // ★ 本人の申請を承認したら、同じカードの 📌 (運営の下書き) は役目を終える → 外す (二重の拘束にしない)
+                if (to === 'approved' && row && window.reservationsDomain?.pinFor) {
+                    const pin = window.reservationsDomain.pinFor(_resv.rows || [], { playerId: row.player_id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot });
+                    if (pin && Number(pin.id) !== rid) {
+                        try { await window.supabaseSetReservationStatus(Number(pin.id), 'released', { expectFrom: 'pinned', actor: me?.name || '運営', reason: 'superseded' }); }
+                        catch (e) { console.warn('[reservation] 同じカードの固定を外せませんでした:', e?.message || e); }
+                    }
+                }
                 // 予約が変わるとプランの前提が変わる。盤面を捨てて読み直す
                 opsStore.invalidate();
                 ok = true;
@@ -20200,6 +20293,7 @@
             _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
             _setOpsPlanPicks(plan, 'local');   // 残凸表の「採用PT」枠取りに反映
             _opsPlanFocus = null;              // 前の算出で選んでいたチップは新しい盤には無いかもしれない
+            _opsPlanSel = null;
             renderOpsPlanView();
             _syncOpsUnpublishBtn();
             renderOpsPlanCue();                // 「模擬が N 件更新」は算出し直したら消える
@@ -20267,7 +20361,175 @@
         let _opsPlanFocus = null;
         function _opsPlanToggleFocus(memberId) {
             _opsPlanFocus = (_opsPlanFocus != null && String(_opsPlanFocus) === String(memberId)) ? null : memberId;
+            if (_opsPlanFocus == null) _opsPlanSel = null;
             renderOpsPlanView();
+        }
+        // ===== ③ 盤の上で手を打つ (パズル盤・2026-09-11) =====
+        // 選んでいる駒: チップ (盤の上) か 🧩模擬ピース (盤の外)。置く先のマスをタップ / PC はドロップ → _opsPlanPlace。
+        // 📌 = 運営の下書きの予約 (status pinned・レベル無し)。本人には届かない。「📣 お願い」で届き、引き受けると 🔒。
+        // 🔒 (約束) は掴めない — 約束を運営の手で動かさない (第45回の趣旨)
+        let _opsPlanSel = null;
+        let _opsPlanPromiseNote = false;
+        let _opsPlanTrayOpen = true;
+        let _opsPlanTrayAttr = null;
+        let _opsPlanTrayUnusedOnly = true;
+        let _opsPlanPlacing = false;
+        const _opsPlanDragOk = () => typeof window.matchMedia === 'function' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        function _opsPlanSelectChip(ds, o = {}) {
+            if (ds.promise === '1') {   // 約束は選べる (時間を見る) が、置き直せない
+                _opsPlanSel = null;
+                _opsPlanFocus = (_opsPlanFocus != null && String(_opsPlanFocus) === String(ds.member)) ? null : ds.member;
+                _opsPlanPromiseNote = _opsPlanFocus != null;
+                if (!o.silent) renderOpsPlanView();
+                return;
+            }
+            _opsPlanPromiseNote = false;
+            const same = _opsPlanSel && _opsPlanSel.kind === 'chip' && String(_opsPlanSel.memberId) === String(ds.member) && String(_opsPlanSel.loadoutSlot) === String(ds.slot || 1);
+            if (same && !o.silent) { _opsPlanSel = null; _opsPlanFocus = null; renderOpsPlanView(); return; }
+            _opsPlanSel = { kind: 'chip', memberId: ds.member, loadoutSlot: Number(ds.slot) || 1, attr: ds.attr || null,
+                            reservationId: ds.resv ? Number(ds.resv) : null, pinned: ds.pinned === '1' };
+            _opsPlanFocus = ds.member;
+            if (!o.silent) renderOpsPlanView();
+        }
+        function _opsPlanSelectPiece(ds, o = {}) {
+            const same = _opsPlanSel && _opsPlanSel.kind === 'piece' && String(_opsPlanSel.memberId) === String(ds.piece) && _opsPlanSel.attr === ds.attr && String(_opsPlanSel.loadoutSlot) === String(ds.slot);
+            if (same && !o.silent) { _opsPlanSel = null; _opsPlanFocus = null; renderOpsPlanView(); return; }
+            _opsPlanPromiseNote = false;
+            _opsPlanSel = { kind: 'piece', memberId: ds.piece, loadoutSlot: Number(ds.slot) || 1, attr: ds.attr || null, reservationId: null, pinned: false };
+            _opsPlanFocus = ds.piece;
+            if (!o.silent) renderOpsPlanView();
+        }
+        function _opsPlanClearSel() { _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false; renderOpsPlanView(); }
+        // ドラッグ中: 描き直さずに、置けるマスに印を付ける (描き直すと掴んだ要素が消えてドラッグが切れる)
+        function _opsPlanPaintTargets() {
+            const el = document.getElementById('opsOptimalPlan');
+            const sel = _opsPlanSel, dom = window.planBoardDomain, snap = opsStore.get();
+            if (!el || !sel || !dom || !snap) return;
+            const p = (snap.players || []).find(x => String(x.id) === String(sel.memberId));
+            el.querySelectorAll('[data-boss][data-h]').forEach(cell => {
+                const boss = (snap.bosses || []).find(b => Number(b.boss_number) === Number(cell.dataset.boss));
+                const h = cell.dataset.h === '' ? null : Number(cell.dataset.h);
+                const ok = h != null && dom.canPlace({ player: p, attr: sel.attr, boss, hourIdx: h, hourOrder: HOUR_ORDER }).ok;
+                cell.dataset.can = ok ? '1' : '0';
+                cell.style.outline = ok ? '1.5px dashed var(--ops-solid)' : '';
+                cell.style.outlineOffset = ok ? '-2px' : '';
+                cell.style.opacity = ok ? '' : '0.35';
+            });
+        }
+        // 置く: 判定 (属性 / 時間 → planBoardDomain.canPlace、予約の衝突 / 残凸 / キャラ被り → reservationsDomain.canPin) →
+        //   📌 を作る (or 置き直す) → 算出し直す。レベルは選ばない (算出が「その時刻にそのボスがいるレベル」に当てはめる)
+        async function _opsPlanPlace(bossNumber, hourIdx) {
+            const sel = _opsPlanSel;
+            if (!sel || _opsPlanPlacing) return;
+            const dom = window.planBoardDomain, rv = window.reservationsDomain, snap = opsStore.get();
+            if (!dom || !rv || !snap?.season) return;
+            const player = (snap.players || []).find(x => String(x.id) === String(sel.memberId));
+            const boss = (snap.bosses || []).find(b => Number(b.boss_number) === Number(bossNumber));
+            const place = dom.canPlace({ player, attr: sel.attr, boss, hourIdx, hourOrder: HOUR_ORDER });
+            if (!place.ok) { showNotification(`置けません: ${place.label}`); return; }
+            const lo = ((player.loadoutsByAttr || {})[sel.attr] || []).find(l => Number(l.slot) === Number(sel.loadoutSlot));
+            if (!lo) { showNotification('置けません: その編成の模擬提出が見つかりません'); return; }
+            _opsPlanPlacing = true;
+            try {
+                // ★ 予約は押した時点の DB から取り直す (別の運営が承認・固定していたら、それを見て判断する)
+                let rows = null;
+                try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
+                if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39) が未適用のため固定できません'); return; }
+                const chk = rv.canPin(rows, { playerId: player.id, bossNumber, loadoutSlot: sel.loadoutSlot, characters: lo.team,
+                                              doneAttacks: Number(player.attackCount) || 0, excludeId: sel.pinned ? sel.reservationId : null });
+                if (!chk.ok) { showNotification(`置けません: ${chk.label}`); return; }
+                const me = getCurrentIdentity();
+                const timeSlot = _hourKey(HOUR_ORDER[hourIdx]);
+                const existing = sel.pinned && sel.reservationId ? rows.find(r => Number(r.id) === Number(sel.reservationId) && r.status === 'pinned') : null;
+                if (existing) {
+                    await window.supabaseMovePin(existing.id, { bossNumber, timeSlot, loadoutSlot: sel.loadoutSlot, characters: lo.team, expectedDamageB: lo.dmgB });
+                } else {
+                    await window.supabaseCreateReservation({
+                        seasonId: snap.season.id, playerId: player.id, raidLevel: null, bossNumber, timeSlot,
+                        loadoutSlot: sel.loadoutSlot, characters: lo.team, expectedDamageB: lo.dmgB,
+                        sourceType: 'plan', status: 'pinned', requestedBy: me?.name || '運営', pinnedBy: me?.name || '運営',
+                    });
+                }
+                window.supabaseLogActivity?.('ops', `📌 固定: ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} 編成${Number(sel.loadoutSlot) === 2 ? '②' : '①'} に${existing ? '置き直し' : ''}`, { actorName: me?.name || null });
+                showNotification(`📌 ${player.name} を B${bossNumber} ${_planHourHeadLabel(hourIdx)} に固定して組み直します`);
+                _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
+                opsStore.invalidate();
+                if (typeof renderOpsReservations === 'function') renderOpsReservations(true).catch(() => { /* 次の周期で */ });
+                await computeAndRenderOptimalPlan();
+            } catch (e) {
+                showNotification(`❌ ${e?.message || e}`);
+            } finally {
+                _opsPlanPlacing = false;
+            }
+        }
+        // 固定を外す (下書きなので確認は軽く)。約束 (approved) はここでは扱わない
+        async function _opsPlanUnpin(id) {
+            const row = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || null;
+            if (row && row.status !== 'pinned') { showNotification('この固定はもう下書きではありません (本人が引き受けた / 外れた)'); return; }
+            if (row && row.asked_at && !confirm('本人にお願い済みの固定です。外すと本人の画面からも消えます。外しますか？')) return;
+            const ok = await _resvTransition(Number(id), 'released', { expectFrom: 'pinned', reason: 'ops', done: '📌 固定を外しました' });
+            if (ok) { _opsPlanSel = null; _opsPlanFocus = null; await computeAndRenderOptimalPlan(); }
+        }
+        // 📣 お願いする: 下書きを本人に見せる + Push。期限は 15 分 (表示だけ。過ぎても自動で外さない)
+        async function _opsPlanAsk(id) {
+            const rv = window.reservationsDomain;
+            const row = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || null;
+            if (!row || row.status !== 'pinned') { showNotification('この固定はもう下書きではありません'); return; }
+            if (row.asked_at) { showNotification('もうお願い済みです'); return; }
+            const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
+            const what = rv.describe(row, bossName);
+            if (!confirm(`📣 ${row.player_name || '#' + row.player_id} さんに「${what}」をお願いしますか？\n\n本人のホームに出て、引き受けると 🔒 (約束) になります。返事の期限は 15 分です。`)) return;
+            const me = getCurrentIdentity();
+            try {
+                await window.supabaseAskPin(row.id, { deadlineAt: new Date(Date.now() + 15 * 60000).toISOString() });
+                try {
+                    await window.sendPushNotification({
+                        title: '📣 運営から凸のお願い',
+                        body: `${what} をお願いできますか？ ホームの「引き受けた凸」から返事してください (期限 15 分)`,
+                        playerIds: [row.player_id], tag: 'pin-ask',
+                    }, { senderPlayerId: me?.id });
+                } catch (e) { console.warn('[pin ask push]', e?.message || e); }
+                window.supabaseLogActivity?.('ops', `📣 凸のお願い: ${row.player_name || '#' + row.player_id} に ${what}`, { actorName: me?.name || null });
+                showNotification('📣 お願いしました (返事はホームの「引き受けた凸」に届きます)');
+                _opsPlanSel = null;
+                if (typeof renderOpsReservations === 'function') await renderOpsReservations(true);
+                renderOpsPlanView();
+            } catch (e) { showNotification(`❌ ${e?.message || e}`); }
+        }
+        function _opsPlanTrayToggle() { _opsPlanTrayOpen = !_opsPlanTrayOpen; renderOpsPlanView(); }
+        function _opsPlanTrayFilter(attr) { _opsPlanTrayAttr = attr || null; renderOpsPlanView(); }
+        function _opsPlanTrayUnused() { _opsPlanTrayUnusedOnly = !_opsPlanTrayUnusedOnly; renderOpsPlanView(); }
+        // 🧩 模擬ピース = 提出された模擬カード。並び・placed の判定は planBoardDomain.piecesOf
+        function _opsPlanTrayHtml(plan) {
+            const dom = window.planBoardDomain, rv = window.reservationsDomain, snap = opsStore.get();
+            if (!dom || !snap) return '';
+            const esc = escapeHtml;
+            const all = dom.piecesOf({ players: snap.players || [], plan, reservations: (typeof _resv !== 'undefined' && Array.isArray(_resv.rows)) ? _resv.rows : [], isFixed: rv ? rv.isFixed : null });
+            const unused = all.filter(x => !x.placed).length;
+            const list = all.filter(x => !_opsPlanTrayAttr || x.attr === _opsPlanTrayAttr).filter(x => !_opsPlanTrayUnusedOnly || !x.placed);
+            const drag = _opsPlanDragOk();
+            const groups = []; const seen = new Map();
+            for (const x of list) { const k = String(x.memberId); if (!seen.has(k)) { seen.set(k, { name: x.name, remaining: x.remaining, items: [] }); groups.push(seen.get(k)); } seen.get(k).items.push(x); }
+            const body = groups.map(g => `<div class="mem">${esc(g.name)}<span class="rem${g.remaining <= 0 ? ' zero' : ''}">残${g.remaining}</span></div>`
+                + g.items.map(x => {
+                    const v = ATTR_VISUAL[x.attr] || null;
+                    const cls = ['plan-piece']; if (x.placed) cls.push('placed');
+                    if (_opsPlanSel && _opsPlanSel.kind === 'piece' && String(_opsPlanSel.memberId) === String(x.memberId) && _opsPlanSel.attr === x.attr && Number(_opsPlanSel.loadoutSlot) === Number(x.slot)) cls.push('sel');
+                    if (_opsPlanSel && _opsPlanSel.attr && _opsPlanSel.attr !== x.attr) cls.push('dim');
+                    const where = x.placed && x.where ? `<span class="where">盤にある: B${x.where.bossNumber}${x.where.hourLabel ? ' ' + esc(String(x.where.hourLabel)) : ''}${x.where.pinned ? ' 📌' : x.where.promise ? ' 🔒' : ''}</span>` : '';
+                    const team = Array.isArray(x.team) && x.team.length && typeof renderTeamSnippet === 'function' ? renderTeamSnippet(x.team, { size: 16 }) : '';
+                    const tk = `--attr-${esc(x.attr)}`;   // トークン名は変数に組んでから var() に入れる (走査が動的な名前を未定義と読む)
+                    return `<div class="${cls.join(' ')}" data-piece="${esc(String(x.memberId))}" data-attr="${esc(x.attr)}" data-slot="${x.slot}" draggable="${drag && !x.placed ? 'true' : 'false'}" style="--pc:var(${tk}-solid);--pt:var(${tk});" title="${esc(`${x.name} · ${v ? v.name : x.attr}PT 編成${x.slot === 2 ? '②' : '①'} · ${x.dmgB.toFixed(1)}B`)}">`
+                        + `<span class="pt">${esc(v ? v.name : x.attr)}PT${x.slot === 2 ? '②' : ''}</span><span class="team">${team}</span><span class="dm">${x.dmgB.toFixed(1)}B</span>${where}</div>`;
+                }).join('')).join('');
+            const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
+            return `<div class="plan-tray${_opsPlanTrayOpen ? '' : ' closed'}">`
+                + `<div class="th"><h4>🧩 模擬ピース</h4><span class="n">提出された模擬カード · 未使用 ${unused}</span><button type="button" class="tog" onclick="_opsPlanTrayToggle()">${_opsPlanTrayOpen ? '畳む' : '開く'}</button></div>`
+                + `<div class="filt"><button type="button" onclick="_opsPlanTrayFilter('')" aria-pressed="${!_opsPlanTrayAttr}">全部</button>`
+                + ATTRS.map(a => { const tk = `--attr-${a}`; return `<button type="button" onclick="_opsPlanTrayFilter('${a}')" aria-pressed="${_opsPlanTrayAttr === a}" style="${_opsPlanTrayAttr === a ? `background:var(${tk}-solid);color:var(${tk}-ink);` : ''}">${esc((ATTR_VISUAL[a] || {}).name || a)}</button>`; }).join('')
+                + `<button type="button" onclick="_opsPlanTrayUnused()" aria-pressed="${_opsPlanTrayUnusedOnly}">未使用だけ</button></div>`
+                + `<div class="list">${body || '<p class="hint" style="margin:0;">この条件のピースはありません</p>'}</div>`
+                + `<p class="hint">${drag ? 'ピースを<b>つかんで</b>時間割のマスへ。置ける場所が光ります' : 'ピースを<b>タップ</b>して、光ったマスをタップ'}。レベルは算出が決めます</p></div>`;
         }
         function _opsPlanFocusBarHtml(plan) {
             if (_opsPlanFocus == null || !_opsLastPlan) return '';
@@ -20278,9 +20540,25 @@
             const win = dom.windowOf(p, HOUR_ORDER);
             const st = dom.stiffness(win, _planNowIdx(plan) ?? 0);
             const hours = av && typeof av.labelOf === 'function' ? av.labelOf(p.availableSlots || []) : '';
+            const sel = _opsPlanSel;
+            let acts = '';
+            if (sel) {
+                const row = sel.reservationId != null && typeof _resv !== 'undefined' && Array.isArray(_resv.rows) ? _resv.rows.find(r => Number(r.id) === Number(sel.reservationId)) : null;
+                if (sel.pinned && sel.reservationId != null) {
+                    const asked = !!(row && row.asked_at);
+                    acts = `<small>📌 運営の固定${asked ? ` · 📣 お願い中${row.ask_deadline_at ? ` 〜${esc(_hhmm(row.ask_deadline_at))}` : ''}` : ' (本人にはまだ見えていません)'} · 別のマスをタップで置き直し</small>`
+                        + (asked ? '' : `<button type="button" class="act ask" onclick="_opsPlanAsk(${Number(sel.reservationId)})">📣 お願いする</button>`)
+                        + `<button type="button" class="act" onclick="_opsPlanUnpin(${Number(sel.reservationId)})">固定を外す</button>`;
+                } else {
+                    acts = `<small>${sel.kind === 'piece' ? '🧩 模擬ピース' : 'プランの割当'} · 光っている<b>マスをタップ</b>すると 📌 固定して組み直します (レベルは算出が決めます)</small>`;
+                }
+            } else if (_opsPlanPromiseNote) {
+                acts = '<small>🔒 本人が引き受けた約束 — 運営の手では動かしません (取り下げは「凸の予約」カードから)</small>';
+            }
             return `<div class="plan-focus"><span>${esc(p.name)}${p.flexTime ? ' · ⏳隙間型' : ''}</span>`
                 + `<small>出られる時間 ${esc(hours || (p.flexTime ? 'いつでも' : '未登録'))} · 動かせる幅 <b>${esc(st.label)}</b> (これから ${st.count} コマ)</small>`
-                + `<button type="button" class="x" onclick="_opsPlanToggleFocus(null)">閉じる</button></div>`;
+                + acts
+                + `<button type="button" class="x" onclick="_opsPlanClearSel()">閉じる</button></div>`;
         }
 
         // ===== 残凸表に出す「プランで採用された属性/編成」 =====
@@ -20480,7 +20758,7 @@
                             const meTag = isMe ? '<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.12);padding:1px 7px;border-radius:999px;">あなた</span>' : '';
                             const reservedTag = a.reserved ? `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.10);padding:1px 7px;border-radius:999px;" title="踏破には使わずボス5(無限)へ温存 — 全額スコアに入る">🔒温存</span>` : '';
                             // 予約で固定した凸 (モック④)。組み直しても動かない
-                            const resvPin = a.fromReservation ? `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops-ink);background:var(--ops-solid);padding:1px 7px;border-radius:999px;" title="本人が引き受け、運営が承認した凸。組み直しても動きません">🔒予約</span>` : '';
+                            const resvPin = a.fromReservation ? (a.pinned ? `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops-ink);background:var(--ops-solid);padding:1px 7px;border-radius:999px;" title="運営が時間割に置いた固定 (下書き)。本人が引き受けると 🔒 になります">📌固定</span>` : `<span style="flex:none;font-size:10px;font-weight:900;color:var(--ops-ink);background:var(--ops-solid);padding:1px 7px;border-radius:999px;" title="本人が引き受け、運営が承認した凸。組み直しても動きません">🔒予約</span>`) : '';
                             // 編成は専用の2行目 (flex-wrap) — 他の要素と同じ行に置くと潰し合う
                             const teamRow = a.team
                                 ? `<div style="display:flex;align-items:center;flex-wrap:wrap;row-gap:2px;margin-top:4px;">${renderTeamSnippet(a.team, { size: 18 })}</div>`
@@ -20607,9 +20885,13 @@
                 const st = pbd.stiffness(pbd.windowOf(p, HOUR_ORDER), fromIdx);
                 return st.count <= 3 ? st.label : null;   // 柔らかい人は書かない (硬い / 狭い だけが目立てばよい)
             } : null;
+            // ③ 盤の上で手を打つ: 選んでいる駒 (チップ / 模擬ピース) の属性で置ける列を光らせ、PC は掴める
+            const sel = _opsPlanSel;
             const bodyHtml = _opsPlanViewMode === 'timetable'
-                ? _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops',
-                    focusMemberId: _opsPlanFocus, focusWindow, stiffOf }) + _opsPlanFocusBarHtml(plan)
+                ? `<div class="plan-board${_opsPlanTrayOpen ? ' with-tray' : ''}"><div>`
+                    + _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops',
+                        focusMemberId: _opsPlanFocus, focusWindow, stiffOf, placeAttr: sel ? sel.attr : null, draggable: _opsPlanDragOk() })
+                    + _opsPlanFocusBarHtml(plan) + '</div>' + _opsPlanTrayHtml(plan) + '</div>'
                 : levelSections;
             // ★ L1 の結果を運営に見せる。何も出さないと「なぜこの割当なのか」が分からず、
             //   安定化が効いているのか壊れているのかを運営が判断できない
@@ -20645,10 +20927,37 @@
                 el.dataset.focusDelegated = '1';
                 el.addEventListener('click', (ev) => {
                     if (ev.target.closest('button, a, input, select, label')) return;
+                    const piece = ev.target.closest('[data-piece]');
+                    if (piece) { _opsPlanSelectPiece(piece.dataset); return; }
                     const chip = ev.target.closest('[data-member]');
-                    if (!chip) return;
-                    _opsPlanToggleFocus(chip.dataset.member);
+                    if (chip) { _opsPlanSelectChip(chip.dataset); return; }
+                    // 置く先のマスをタップ (選んでいる駒があるときだけ)
+                    const cell = ev.target.closest('[data-boss][data-h]');
+                    if (cell && _opsPlanSel && cell.dataset.h !== '') _opsPlanPlace(Number(cell.dataset.boss), Number(cell.dataset.h));
                 });
+                // PC: つかんで落とす = タップと同じ関数 (_opsPlanPlace)。つかんだ瞬間に置ける場所を光らせる (描き直さずに塗る)
+                el.addEventListener('dragstart', (ev) => {
+                    const t = ev.target.closest('[draggable="true"]');
+                    if (!t || !_opsPlanDragOk()) return;
+                    if (t.dataset.piece != null) _opsPlanSelectPiece(t.dataset, { silent: true });
+                    else if (t.dataset.member != null) _opsPlanSelectChip(t.dataset, { silent: true });
+                    if (!_opsPlanSel) { ev.preventDefault(); return; }
+                    ev.dataTransfer.effectAllowed = 'move';
+                    try { ev.dataTransfer.setData('text/plain', 'plan'); } catch { /* noop */ }
+                    _opsPlanPaintTargets();
+                });
+                el.addEventListener('dragover', (ev) => {
+                    const cell = ev.target.closest('[data-boss][data-h]');
+                    if (!cell || !_opsPlanSel || cell.dataset.can !== '1') return;
+                    ev.preventDefault();
+                });
+                el.addEventListener('drop', (ev) => {
+                    const cell = ev.target.closest('[data-boss][data-h]');
+                    if (!cell || !_opsPlanSel) return;
+                    ev.preventDefault();
+                    _opsPlanPlace(Number(cell.dataset.boss), Number(cell.dataset.h));
+                });
+                el.addEventListener('dragend', () => { if (_opsPlanSel && !_opsPlanPlacing) { _opsPlanSel = null; _opsPlanFocus = null; renderOpsPlanView(); } });
             }
         }
 
@@ -20677,8 +20986,10 @@
             else if (a.flex || a.timeMismatch || a.timeUnknown) { bg = 'var(--s2)'; border = '1px dashed var(--dim)'; dmgColor = 'var(--warn-deep)'; }
             // 律速の赤枠は最優先 (あなたの律速凸でも赤枠を残す — 凡例の「赤枠=律速」と一致させる)
             if (a.isBottleneck) { border = '1.5px solid var(--attr-fire-solid)'; if (!hl) dmgColor = 'var(--attr-fire)'; }
-            const rawMark = a.isBottleneck ? '⏱'
-                : (a.timeMismatch ? '⚠' : (a.flex ? '⏳' : (a.timeUnknown ? '?' : (a.reserved ? '🔒' : ''))));
+            // 📌 運営の固定 (下書き) / 🔒 本人が引き受けた約束 — 予約で置いた凸の印を先頭に (パズル盤 ③)
+            const resvMark = a.pinned ? '📌' : (a.fromReservation ? '🔒' : '');
+            const rawMark = resvMark + (a.isBottleneck ? '⏱'
+                : (a.timeMismatch ? '⚠' : (a.flex ? '⏳' : (a.timeUnknown ? '?' : (a.reserved ? '🔒' : '')))));
             // マークに状態色を付ける ('?' は素の文字なのでグレー地に沈む。あなた=青ベタ時は白のまま)
             const markColor = hl ? nameColor : (a.isBottleneck ? 'var(--bad-deep)' : 'var(--warn-deep)');
             const mark = rawMark ? `<span style="color:${markColor};">${rawMark}</span>` : '';
@@ -20690,7 +21001,13 @@
             const stiff = typeof opts.stiffOf === 'function' ? opts.stiffOf(a.memberId) : null;
             const stiffRow = stiff ? `<div style="font-size:8px;font-weight:900;color:${hl ? nameColor : 'var(--warn-deep)'};text-align:center;line-height:1.1;">${esc(stiff)}</div>` : '';
             const focused = opts.focusMemberId != null && String(a.memberId) === String(opts.focusMemberId);
-            return `<div data-member="${esc(String(a.memberId ?? ''))}" title="${esc(tip)}" style="background:${bg};border:${border};border-radius:6px;padding:2px 3px;overflow:hidden;${focused ? 'box-shadow:0 0 0 2px var(--ops-solid);' : ''}${opts.filterKey === 'ops' ? 'cursor:pointer;' : ''}">
+            // 盤の上で選ぶ・つかむための札 (運営だけ)。約束 (🔒) は掴めない
+            const promise = !!a.fromReservation && !a.pinned;
+            const dragOk = !!opts.draggable && !promise;
+            const dataAttrs = opts.filterKey === 'ops'
+                ? ` data-slot="${Number(a.loadoutSlot) || 1}" data-attr="${esc(String(opts.cellAttr || ''))}" data-resv="${esc(String(a.reservationId ?? ''))}" data-pinned="${a.pinned ? 1 : 0}" data-promise="${promise ? 1 : 0}" draggable="${dragOk ? 'true' : 'false'}"`
+                : '';
+            return `<div data-member="${esc(String(a.memberId ?? ''))}"${dataAttrs} title="${esc(tip)}" style="background:${bg};border:${border};border-radius:6px;padding:2px 3px;overflow:hidden;${focused ? 'box-shadow:0 0 0 2px var(--ops-solid);' : ''}${opts.filterKey === 'ops' ? (dragOk ? 'cursor:grab;' : 'cursor:pointer;') : ''}">
                 <div style="font-size:9px;font-weight:800;color:${nameColor};line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${mark ? mark + ' ' : ''}${label}</div>
                 <div style="font-size:9px;font-weight:900;color:${dmgColor};text-align:center;font-variant-numeric:tabular-nums;line-height:1.15;">${a.dmgB.toFixed(1)}</div>
                 ${stiffRow}${teamRow}
@@ -20901,9 +21218,15 @@
                                 + `background:rgba(var(--ink-rgb), 0.06);color:var(--t-muted);border:1px dashed rgba(var(--ink-rgb), 0.18);`
                                 + `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">✓ ${esc(nm)}</span>`;
                         }).join('');
-                        const chips = doneChips + cell.attacks.map(a => _planChipHtml(a, c, opts)).join('');
+                        const chips = doneChips + cell.attacks.map(a => _planChipHtml(a, c, { ...opts, cellAttr: bm.weakness })).join('');
                         const clearMark = cell.clears ? '<div style="font-size:10px;font-weight:900;color:var(--ok);text-align:center;">💀撃破</div>' : '';
-                        cells.push(`<div data-h="${r.hourIdx ?? ''}" style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${isNow ? 'background:rgba(108,66,240,0.04);' : ''}${inWin === true ? 'background:var(--ops-bg);' : (inWin === false ? 'opacity:0.45;' : '')}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
+                        // ③ 置く先を選んでいるとき: 有利属性の列 × 出られる時間の行 だけ点線で光らせ、他は沈める
+                        const attrOk = opts.placeAttr ? (bm.weakness === opts.placeAttr) : null;
+                        const canHere = attrOk !== null ? (attrOk && inWin === true) : null;
+                        const cellHl = canHere === true ? 'background:var(--ops-bg);outline:1.5px dashed var(--ops-solid);outline-offset:-2px;cursor:pointer;'
+                            : canHere === false ? 'opacity:0.35;'
+                            : (inWin === true ? 'background:var(--ops-bg);' : (inWin === false ? 'opacity:0.45;' : ''));
+                        cells.push(`<div data-h="${r.hourIdx ?? ''}" data-boss="${bm.bossNumber}" style="min-width:0;overflow:hidden;padding:4px 2px;border-top:1px solid rgba(var(--ink-rgb), 0.05);${isNow ? 'background:rgba(108,66,240,0.04);' : ''}${cellHl}display:flex;flex-direction:column;gap:3px;min-height:24px;">${chips}${clearMark}</div>`);
                     }
                 }
             }
