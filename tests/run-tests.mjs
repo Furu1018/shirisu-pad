@@ -4094,7 +4094,8 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/if \(s\.pinned\) placed\.pinned = true;/.test(solver) && /\.\.\.\(r\.pinned \? \{ pinned: true \} : \{\}\),/.test(solver), '置いた凸に pinned の印が付かない');
         const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/const _RESV_PIN_COLS = 'pinned_by, pinned_at, asked_at, ask_deadline_at';/.test(client), '固定の列が無い');
-        assert.ok((client.match(/if \(error && _isMissingPinCols\(error\)\) \(\{ data, error \} = await run\(false\)\);/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
+        // (2026-09-11 実機のあと) 読み直すときに「45 の列が無い」を覚える形になった
+        assert.ok((client.match(/if \(error && _isMissingPinCols\(error\)\) \{ _resvPinColsMissing = true; \(\{ data, error \} = await run\(false\)\); \}/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
         assert.ok(/if \(row\.status === 'pinned'\) \{\s*\n\s*row\.pinned_by = /.test(client), '固定のときだけ列を足す形になっていない (普通の申請が 45 未適用で壊れる)');
         assert.ok(/window\.supabaseMovePin = async function \(id, o = \{\}\)/.test(client) && /\.eq\('status', 'pinned'\)\.select\('\*'\)/.test(client), '置き直しが status = pinned の行に限られていない');
         assert.ok(/window\.supabaseAskPin = async function \(id, o = \{\}\)/.test(client), 'お願いの関数が無い');
@@ -8114,6 +8115,39 @@ console.log('\ngrowthDomain:');
         assert.ok(!/getElementById\('headerReloadIcon'\)/.test(rl), 'id で1つだけ回している');
         assert.equal((rl.match(/icons\.forEach\(\(ic\) => \{ ic\.style\.transform = /g) || []).length, 2, '回す・戻すの両方を全部に掛けていない');
         assert.ok(/id="headerReloadIcon" class="hdr-reload-ic"/.test(html), '帯の ↻ にクラスが無い (帯の方が回らなくなる)');
+    });
+    test('★ 45 未適用の 📌 は「45 を適用してください」と言う (39 と誤読しない) / 置く前に分かる / ピース箱は画面に留まる', () => {
+        // 2026-09-11 実機: 45 未適用で 📌 を置くと「39 を適用してください」と出た。PostgREST の
+        // 「Could not find the 'pinned_by' column of 'plan_reservations' in the schema cache」が
+        // _isMissingReservationTable (plan_reservations + schema cache) にも当たるため
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        // ① insert の誤読: 📌 の判定が 39 の判定より先
+        const cf = client.match(/window\.supabaseCreateReservation = async function[\s\S]*?\n\};/)?.[0] || '';
+        const iPin = cf.search(/row\.status === 'pinned' && \(_isMissingPinCols\(error\)/);
+        const iTbl = cf.indexOf('if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);');
+        assert.ok(iPin > 0 && iTbl > 0 && iPin < iTbl, '📌 の列欠損を 39 より先に判定していない (39 を適用しろと誤案内する)');
+        // 実際のエラーで確かめる (文字列の位置だけでは、両方の条件が同じ形になったときに気づけない)
+        const isTbl = new Function('error', client.match(/function _isMissingReservationTable\(error\) \{[\s\S]*?\n\}/)[0] + ' return _isMissingReservationTable(error);');
+        const pgrst = { code: 'PGRST204', message: "Could not find the 'pinned_by' column of 'plan_reservations' in the schema cache" };
+        assert.ok(isTbl(pgrst), '前提が変わった: このエラーが 39 未適用の判定に当たらなくなっている (順序のガードの理由を確かめること)');
+        // ② 読み出しが列の有無を覚え、置く前に止める
+        assert.equal((client.match(/if \(error && _isMissingPinCols\(error\)\) \{ _resvPinColsMissing = true; \(\{ data, error \} = await run\(false\)\); \}\s*else if \(!error\) _resvPinColsMissing = false;/g) || []).length, 2,
+            '両方の読み出しで 45 の列の有無を覚えていない');
+        assert.ok(/window\.supabaseReservationPinColsMissing = \(\) => _resvPinColsMissing;/.test(client), '画面から読めない');
+        const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\)[\s\S]*?\n        \}/)?.[0] || '';
+        const iLoad = place.indexOf('await window.supabaseLoadReservations(snap.season.id)');
+        const iGate = place.search(/if \(window\.supabaseReservationPinColsMissing\?\.\(\) === true\) \{ showNotification\('📌 固定を置くには supabase\/45_reservation_pins\.sql/);
+        const iCreate = place.indexOf('await window.supabaseCreateReservation(');
+        assert.ok(iLoad > 0 && iGate > iLoad && iGate < iCreate, '置く前 (読み出しの後・insert の前) に 45 の有無を見ていない');
+        const tray = html.match(/function _opsPlanTrayHtml\(plan\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/const noPinsHtml = noPins \? '<p class="hint warn">⚠ 📌 固定を置くには supabase\/45_reservation_pins\.sql/.test(tray) && /\$\{noPinsHtml\}/.test(tray),
+            'ピース箱の頭で 45 未適用を言っていない');
+        // ③ ピース箱は sticky (Lv3 を埋めるときにピースが上に残って持ってきづらい: 実機FB)
+        assert.ok(/\.plan-board\.with-tray > \.plan-tray \{ position: sticky; top: var\(--stick-top, 128px\); max-height: calc\(100vh - var\(--stick-top, 128px\) - 12px\); display: flex; flex-direction: column; \}/.test(html), 'ピース箱が画面に留まらない');
+        assert.ok(/\.plan-board\.with-tray > \.plan-tray \.list \{ flex: 1; min-height: 0; max-height: none; \}/.test(html), '箱の中の一覧が伸縮しない (sticky にしても箱がはみ出す)');
+        const sideBlk = html.slice(html.indexOf('@media (min-width: 1180px), (min-width: 768px) and (max-height: 559px) {'), html.indexOf('/* --- ③\' スマホ横だけ'));
+        assert.ok(/:root \{ --stick-top: 12px; \}/.test(sideBlk), 'サイドバーの幅で sticky の上端を縮めていない (帯が無いのに 128px 空く)');
     });
     // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====
     test('★ paceModel: 時間帯ごとの本数・定員・直近のペースから「使い切る時刻」を出す', () => {

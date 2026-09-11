@@ -381,6 +381,9 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **supabase/** — スキーマ・RLS・シードSQL。RLSは anon 全許可 (内輪運用の割り切り)。
   バックアップ復元 (設定タブ) は `23_restore_helpers.sql` の RPC が SQL Editor で適用済みであること。
   📌 運営の固定 (パズル盤 ③④) は `45_reservation_pins.sql` (未適用だと固定を置けないだけで、予約と算出は従来どおり)。
+  ★ 45 未適用の判定は**読み出し**が覚える (`supabaseReservationPinColsMissing`)。insert まで行かせると PostgREST の
+  「pinned_by 列が schema cache に無い」が `plan_reservations` の名を含み、39 未適用と誤読する (2026-09-11 実機で起きた) —
+  `supabaseCreateReservation` は 📌 の列欠損を 39 より先に判定し、`_opsPlanPlace` は置く前に止め、ピース箱の頭にも出す。
   凸プラン配信 (📤) は `17_published_plans.sql`、戦闘可能時間の運用オプション
   (⏳隙間時間型 / 🔔いつでも通知) は `18_availability_prefs.sql`、
   設定タブの詳細アクティビティログは `19_activity_log.sql`、

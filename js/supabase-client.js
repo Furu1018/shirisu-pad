@@ -3453,6 +3453,10 @@ const RESERVATION_SQL_HINT = '凸の予約には supabase/39_plan_reservations.s
 // 📌 運営の固定 (45) の列。未適用環境は列が無いので、無ければ落として読み直す (固定は存在しないので欠けても正しい)
 const _RESV_PIN_COLS = 'pinned_by, pinned_at, asked_at, ask_deadline_at';
 const _isMissingPinCols = (error) => ['pinned_by', 'pinned_at', 'asked_at', 'ask_deadline_at'].some(c => _isMissingColumnErr(error, c));
+// ★ 45 の列が無い環境かを読み出しで覚える (null = まだ読んでいない)。画面は置く前にこれを見て「45 を適用してください」を出す —
+//   insert まで行くと PostgREST の「列が schema cache に無い」が plan_reservations の名を含み、39 未適用と誤読する (2026-09-11 実機)
+let _resvPinColsMissing = null;
+window.supabaseReservationPinColsMissing = () => _resvPinColsMissing;
 window.supabaseLoadReservations = async function (seasonId) {
     if (!seasonId) return [];
     const base = 'id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
@@ -3463,7 +3467,8 @@ window.supabaseLoadReservations = async function (seasonId) {
         .eq('season_id', seasonId)
         .order('id', { ascending: true });
     let { data, error } = await run(true);
-    if (error && _isMissingPinCols(error)) ({ data, error } = await run(false));
+    if (error && _isMissingPinCols(error)) { _resvPinColsMissing = true; ({ data, error } = await run(false)); }
+    else if (!error) _resvPinColsMissing = false;
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3484,7 +3489,8 @@ window.supabaseLoadMyReservations = async function (seasonId, playerId) {
         .eq('season_id', seasonId).eq('player_id', playerId)
         .order('id', { ascending: true });
     let { data, error } = await run(true);
-    if (error && _isMissingPinCols(error)) ({ data, error } = await run(false));
+    if (error && _isMissingPinCols(error)) { _resvPinColsMissing = true; ({ data, error } = await run(false)); }
+    else if (!error) _resvPinColsMissing = false;
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3522,10 +3528,12 @@ window.supabaseCreateReservation = async function (o = {}) {
     if (!flex && !row.time_slot) throw new Error('時刻を選んでください');
     const { data, error } = await supabase.from('plan_reservations').insert(row).select('*').single();
     if (error) {
-        if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
+        // ★ 📌 の判定を 39 より**先**に。45 未適用の insert は「Could not find the 'pinned_by' column of 'plan_reservations' in the schema cache」で、
+        //   _isMissingReservationTable も真になる (plan_reservations + schema cache) → 39 を適用しろと誤案内した (2026-09-11 実機)
         if (row.status === 'pinned' && (_isMissingPinCols(error) || /plan_reservations_status_check/.test(String(error.message || '')))) {
             throw new Error(PIN_SQL_HINT);
         }
+        if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
         if (/運営の固定が残凸を超え/.test(String(error.message || ''))) throw new Error('残りの凸数を超える固定はできません (約束 + 固定 + 実凸 で 3 まで)');
         if (/uq_plan_reservations_pin_card/.test(String(error.message || ''))) throw new Error('同じカードの固定がすでにあります (別の運営が置きました)');
         // トリガー / 部分一意索引のエラーを、運営とメンバーに意味の分かる文言へ

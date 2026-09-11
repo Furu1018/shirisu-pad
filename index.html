@@ -2080,6 +2080,7 @@
              横画面は縦が 400px 弱しかなく、上に帯を置くと本文がほとんど残らない */
         @media (min-width: 1180px), (min-width: 768px) and (max-height: 559px) {
             :root { --side-w: 232px; }
+            :root { --stick-top: 12px; }   /* 帯が無いので sticky の上端 (ピース箱) は 12px でよい */
             body { padding-left: var(--side-w); }
             .tab-navigation {
                 position: fixed;
@@ -2926,7 +2927,15 @@
         .plan-next .k { font-size: 10.5px; font-weight: 900; letter-spacing: 0.3px; color: var(--t-muted); margin-right: 4px; }
         /* 🧩 パズル盤 ③: 時間割 + 模擬ピース (PC は横並び)。置ける場所は点線で光り、置けない場所は沈む */
         .plan-board { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
-        @media (min-width: 1100px) { .plan-board.with-tray { grid-template-columns: minmax(0, 1fr) 262px; } }
+        @media (min-width: 1100px) {
+            .plan-board.with-tray { grid-template-columns: minmax(0, 1fr) 262px; }
+            /* ★ ピース箱は画面に留まる (2026-09-11 実機FB「Lv3 を埋めるときピースが上の方にあって持ってきづらい」)。
+               盤の右列で sticky にし、箱の中の一覧だけがスクロールする。上端は帯 + タブ帯のぶん空ける
+               (--stick-top。サイドバーの幅では帯が無いので 12px に縮む) */
+            .plan-board.with-tray > .plan-tray { position: sticky; top: var(--stick-top, 128px); max-height: calc(100vh - var(--stick-top, 128px) - 12px); display: flex; flex-direction: column; }
+            .plan-board.with-tray > .plan-tray .list { flex: 1; min-height: 0; max-height: none; }
+        }
+        .plan-tray .hint.warn { margin: 0 0 8px; color: var(--bad-deep); }
         .plan-tray { border: 1px solid var(--line); border-radius: 12px; background: var(--s1); padding: 10px; }
         .plan-tray .th { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
         .plan-tray .th h4 { margin: 0; font-size: 12px; font-weight: 900; color: var(--t-ink); }
@@ -20493,6 +20502,8 @@
                 let rows = null;
                 try { rows = await window.supabaseLoadReservations(snap.season.id); } catch (e) { showNotification(`❌ ${e?.message || e}`); return; }
                 if (!Array.isArray(rows)) { showNotification('凸の予約 (supabase/39) が未適用のため固定できません'); return; }
+                // ★ 45 未適用はここで止める (insert まで行くと 39 未適用と誤読する。読み出しが列の有無を覚えている)
+                if (window.supabaseReservationPinColsMissing?.() === true) { showNotification('📌 固定を置くには supabase/45_reservation_pins.sql を SQL Editor で適用してください (99_check_applied.sql で確認できます)'); return; }
                 const chk = rv.canPin(rows, { playerId: player.id, bossNumber, loadoutSlot: sel.loadoutSlot, characters: lo.team,
                                               doneAttacks: Number(player.attackCount) || 0, excludeId: sel.pinned ? sel.reservationId : null });
                 if (!chk.ok) { showNotification(`置けません: ${chk.label}`); return; }
@@ -20581,7 +20592,10 @@
                         + `<span class="pt">${esc(v ? v.name : x.attr)}PT${x.slot === 2 ? '②' : ''}</span><span class="team">${team}</span><span class="dm">${x.dmgB.toFixed(1)}B</span>${where}</div>`;
                 }).join('')).join('');
             const ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
-            return `<div class="plan-tray${_opsPlanTrayOpen ? '' : ' closed'}">`
+            // ★ 45 未適用なら箱の頭で言う (置こうとして初めて分かるのでは遅い。読み出しが列の有無を覚えている)
+            const noPins = (typeof window !== 'undefined' && typeof window.supabaseReservationPinColsMissing === 'function') ? window.supabaseReservationPinColsMissing() === true : false;
+            const noPinsHtml = noPins ? '<p class="hint warn">⚠ 📌 固定を置くには supabase/45_reservation_pins.sql を SQL Editor で適用してください (99_check_applied.sql の 45 が true になれば OK)</p>' : '';
+            return `<div class="plan-tray${_opsPlanTrayOpen ? '' : ' closed'}">${noPinsHtml}`
                 + `<div class="th"><h4>🧩 模擬ピース</h4><span class="n">提出された模擬カード · 未使用 ${unused}</span><button type="button" class="tog" onclick="_opsPlanTrayToggle()">${_opsPlanTrayOpen ? '畳む' : '開く'}</button></div>`
                 + `<div class="filt"><button type="button" onclick="_opsPlanTrayFilter('')" aria-pressed="${!_opsPlanTrayAttr}">全部</button>`
                 + ATTRS.map(a => { const tk = `--attr-${a}`; return `<button type="button" onclick="_opsPlanTrayFilter('${a}')" aria-pressed="${_opsPlanTrayAttr === a}" style="${_opsPlanTrayAttr === a ? `background:var(${tk}-solid);color:var(${tk}-ink);` : ''}">${esc((ATTR_VISUAL[a] || {}).name || a)}</button>`; }).join('')
