@@ -8199,7 +8199,10 @@ console.log('\ngrowthDomain:');
         const etcFn = html.match(/function _initOpsEtc\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(!/opsMaintRoles|opsMaintGate|opsMaintMembers/.test(etcFn) && /opsMaintBackup/.test(etcFn) && /opsMaintNotify/.test(etcFn), 'master の区画をメンテナンスへ移している');
         assert.ok(/<div class="dc-card" data-span="6" data-master-only>\s*<div style="[^"]*">アプリの版のしめ切り<\/div>/.test(html), '互換ゲートが master 専用になっていない');
-        assert.ok(/<div class="dc-card" data-span="12" data-master-only>[\s\S]{0,400}メンバー管理<\/div>/.test(html), 'メンバー管理が master 専用になっていない');
+        assert.ok(/<div class="dc-card" data-span="6" data-master-only>[\s\S]{0,400}メンバー管理<\/div>/.test(html), 'メンバー管理が master 専用になっていない');
+        // 👑 区画の行は 6+6 / 6+6 で 12 に揃える (12 を混ぜると復元が独りで残る: Codex指摘)。並びは 互換ゲート → 運営担当 → 復元 → メンバー管理
+        const spans = [...html.matchAll(/<div class="dc-card" data-span="(\d+)" data-master-only>/g)].map(m => Number(m[1]));
+        assert.deepEqual(spans, [6, 6, 6, 6], `master 区画の幅が 2 行 × 12 になっていない: ${spans}`);
         assert.ok(/<div class="dc-card" data-span="6" data-master-only>\s*<div style="[^"]*">復元 \(巻き戻し\)<\/div>[\s\S]*?id="settingsRestoreFile"/.test(html), '復元が master 専用のカードになっていない');
         assert.equal((html.match(/id="settingsRestoreFile"/g) || []).length, 1, '復元の入口が 2 つある');
         const bk = html.match(/<div class="dc-card" data-span="6" data-ops-only>\s*<div onclick="toggleSettingsBackup\(\)"[\s\S]*?\n            <\/div>/)?.[0] || '';
