@@ -8934,7 +8934,7 @@ console.log('\ngrowthDomain:');
         assert.equal(spanOf('tab-mypage', 'myAvailStripCard'), '12', '戦闘可能時間 (24時間の帯) は全幅であること');
         assert.equal(spanOf('tab-mock', 'mockCompareCard'), '12', '編成の比較は全幅であること');
         const setSpans = found['tab-settings'].map(c => c.tag.match(/ data-span="(\d+)"/)?.[1]);
-        assert.equal(setSpans.filter(v => v === '12').length, 2, '設定の全幅は メンバー管理 と キャラクターマスタ管理 の 2 枚だけ');
+        assert.equal(setSpans.filter(v => v === '12').length, 1, '設定の全幅は キャラクターマスタ管理 の 1 枚だけ (メンバー管理は 2026-09-12 に 👑 区画で 6 に)');
         // ホームの締め凸依頼の箱 (カードでない空の div): 空のとき行を占有しない
         assert.ok(html.includes('<div id="myFinishRequestArea"></div>'), '締め凸依頼の箱の形が変わった (:empty の前提を確かめること)');
         assert.ok(/#myFinishRequestArea:empty \{ display: none; \}/.test(css), '空の締め凸依頼の箱を隠していない (0 高さで 1 行ぶん占有する)');
