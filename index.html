@@ -4774,7 +4774,7 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">プレイヤー選択</label>
-                                <select id="simPlayerSelect" onchange="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
+                                <select id="simPlayerSelect" onchange="_simRefresh()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;">
                                     <option value="">-- 選択してください --</option>
                                 </select>
                             </div>
@@ -24520,7 +24520,13 @@
             });
             if (current) select.value = current;
             else select.value = _simDefaultPlayer();   // 既定はいま名乗っている人 (2026-09-13 ユーザー要望)
-            runSimulator();
+            _simRefresh();
+        }
+        // 人を変えた / データを読み直した: 逆引きに目標があればその人で逆引きし直す (目標 SLv も写る)。無ければ予測だけ。
+        // ★ 逆引きの表示を前の人のまま残さない (Codex指摘 2026-09-13)
+        function _simRefresh() {
+            const inp = document.getElementById('simTargetDmgB');
+            if (inp && inp.value !== '' && Number.isFinite(parseFloat(inp.value))) runSimReverse(); else runSimulator();
         }
         // 名乗っている人が分析データにいればその人。いなければ未選択 ('')
         function _simDefaultPlayer() {

@@ -8287,6 +8287,11 @@ console.log('\ngrowthDomain:');
         // 最大でも届かない
         r = dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 5000, table, maxSlv: 10 });
         assert.deepEqual([r.ok, r.reason, r.maxSlv], [false, 'unreachable', 10]); assert.ok(Math.abs(r.maxPredicted - 1000 * 236 / 110) < 1e-9);
+        // ★ 欠番のあるテーブルでも最小の SLv (存在するキーの列で探す。欠番を未達と読むと 10 を返す: Codex指摘)
+        const gapped = { 1: 100, 2: 200, 10: 300 };
+        assert.deepEqual([dom.requiredSlv({ damage: 100, curSlv: 1, targetDamage: 200, table: gapped, maxSlv: 10 }).slv,
+                          dom.requiredSlv({ damage: 100, curSlv: 1, targetDamage: 201, table: gapped, maxSlv: 10 }).slv], [2, 10], '欠番で最小の SLv を外している');
+        assert.equal(dom.requiredSlv({ damage: 100, curSlv: 1, targetDamage: 250, table: gapped, maxSlv: 8 }).ok, false, 'maxSlv より上の鍵を候補にしている');
         // maxSlv を渡さなければテーブルの最大
         assert.equal(dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 2000, table }).slv, 10);
         // 材料が無い
@@ -8311,6 +8316,11 @@ console.log('\ngrowthDomain:');
         const def = html.match(/function _simDefaultPlayer\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/currentData\.some\(p => p\.player === me\.name\)\) \? me\.name : ''/.test(def), '分析データにいない人を選んでいる');
         assert.ok(/<input id="simTargetDmgB" type="number" min="0" step="0\.1" inputmode="decimal"[^>]*oninput="runSimReverse\(\)"/.test(html), '逆引きの入力が無い');
+        // ★ 人を変えたら逆引きもその人でやり直す (前の人の結果を残さない: Codex指摘)
+        assert.ok(/<select id="simPlayerSelect" onchange="_simRefresh\(\)"/.test(html), '人を変えたとき逆引きが前の人のまま残る');
+        const rf = html.match(/function _simRefresh\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/Number\.isFinite\(parseFloat\(inp\.value\)\)\) runSimReverse\(\); else runSimulator\(\);/.test(rf), '逆引きの目標があるときに逆引きし直していない');
+        assert.ok(/else select\.value = _simDefaultPlayer\(\);[^\n]*\n\s*_simRefresh\(\);/.test(upd), 'データを読み直したときに逆引きし直していない');
         assert.ok(/<input id="simTargetSlv" type="number" min="1" max="1183" oninput="onSimTargetSlvInput\(\)"/.test(html), '目標 SLv の入力が逆引きを消す道を通っていない');
         const on = html.match(/function onSimTargetSlvInput\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/getElementById\('simTargetDmgB'\); if \(r\) r\.value = '';/.test(on) && /runSimulator\(\);/.test(on), '目標 SLv を変えたとき逆引きが残る');
