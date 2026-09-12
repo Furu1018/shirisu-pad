@@ -328,13 +328,17 @@ window.supabaseLoadAllPlayers = async function (includeArchived = false) {
     const minCols = 'id, name, is_temp, archived';
     const fullCols = minCols + ', avatar_url, avatar_character, strong_attributes';
     const midCols = minCols + ', avatar_url, avatar_character';
+    const roleCols = fullCols + ', ops_role';   // 👑 運営担当 (46)。無ければ落として読み直す
     let data, error;
     const tryQuery = async (cols) => {
         let q = supabase.from('players').select(cols).order('name', { ascending: true });
         if (!includeArchived) q = q.or('archived.is.null,archived.eq.false');
         return await q;
     };
-    let r = await tryQuery(fullCols);
+    let r = await tryQuery(roleCols);
+    if (r.error && /column .*ops_role/i.test(String(r.error?.message))) {
+        r = await tryQuery(fullCols);
+    }
     if (r.error && /column .*strong_attributes/i.test(String(r.error?.message))) {
         r = await tryQuery(midCols);
     }
@@ -342,7 +346,38 @@ window.supabaseLoadAllPlayers = async function (includeArchived = false) {
         r = await tryQuery(minCols);
     }
     if (r.error) throw r.error;
-    return (r.data || []).map(p => ({ strong_attributes: [], ...p }));
+    return (r.data || []).map(p => ({ strong_attributes: [], ops_role: null, ...p }));
+};
+
+// ============ 👑 運営担当 (46_ops_roles.sql) ============
+// 役割は players.ops_role。判定は js/domain/opsRole.js が唯一。未適用環境は「役割なし」に静かに劣化する
+const OPS_ROLE_SQL_HINT = '運営担当の任命には supabase/46_ops_roles.sql を SQL Editor で適用してください';
+const _isMissingOpsRoleCol = (error) => _isMissingColumnErr(error, 'ops_role');
+// 名乗っている人の役割。列が無い (46 未適用) / 見つからない → null。通信失敗は throw (呼び出し側が前の値を残す)
+window.supabaseLoadOpsRole = async function (playerId) {
+    if (!playerId) return null;
+    const { data, error } = await supabase.from('players').select('id, ops_role').eq('id', playerId).maybeSingle();
+    if (error) { if (_isMissingOpsRoleCol(error)) return null; throw error; }
+    return data ? (data.ops_role || null) : null;
+};
+// 運営あての通知の宛先 (master + ops)。46 未適用なら [] (誰にも送らない = 従来どおり)
+window.supabaseLoadOpsPlayerIds = async function () {
+    const { data, error } = await supabase.from('players').select('id, ops_role, archived').in('ops_role', ['master', 'ops']);
+    if (error) { if (_isMissingOpsRoleCol(error)) return []; throw error; }
+    return (data || []).filter(p => !p.archived).map(p => p.id);
+};
+// 任命 / 解任。★ master はクライアントから付けない・外さない (46 が1回だけ付ける・1人だけ)
+window.supabaseSetOpsRole = async function (playerId, role, { by } = {}) {
+    if (!playerId) throw new Error('playerId 必須');
+    if (role !== 'ops' && role !== null) throw new Error('役割は ops か null だけです');
+    const { data, error } = await supabase.from('players')
+        .update({ ops_role: role, ops_appointed_by: role ? (by || null) : null, ops_appointed_at: role ? new Date().toISOString() : null })
+        .eq('id', playerId)
+        .or('ops_role.is.null,ops_role.neq.master')   // ★ neq だけだと NULL の行が落ちる
+        .select('id, ops_role').maybeSingle();
+    if (error) { if (_isMissingOpsRoleCol(error)) throw new Error(OPS_ROLE_SQL_HINT); throw error; }
+    if (!data) throw new Error('マスター運営は変えられません');
+    return data;
 };
 
 // 得意属性を上書き更新

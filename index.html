@@ -90,6 +90,7 @@
     <script defer src="./js/domain/memberStatus.js"></script>
     <script defer src="./js/domain/opsLayout.js"></script>
     <script defer src="./js/domain/pace.js"></script>
+    <script defer src="./js/domain/opsRole.js"></script>     <!-- 👑 運営担当 (master / ops / メンバー) の判定 -->
     <script defer src="./js/domain/planBoard.js"></script>   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
     <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
     <script defer src="./js/domain/growth.js"></script>         <!-- ユニオンメンバーの育成データ (BlaBlaLINK 由来) -->
@@ -966,6 +967,8 @@
         .dc-mb-btn.sub { background:var(--s2); color:var(--t-ink)}
         .dc-mb-btn:disabled { opacity:.45; cursor:default; }
         body:not(.ops-mode) [data-ops-only] { display: none !important; }
+        /* 👑 マスター運営 (ふるり) にだけ見せるもの (任命パネル)。_applyOpsMode が body.ops-master を立てる */
+        body:not(.ops-master) [data-master-only] { display: none !important; }
         /* 運営モードOFF のときだけ出す (運営項目が隠れていることの案内など) */
         body.ops-mode [data-ops-off-only] { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
@@ -2959,6 +2962,12 @@
         .ps-row.conflict .ps-st { color: var(--bad-deep); }
         .ps-row.pick .ps-st { color: var(--ops-deep); }
         .ps-note { margin: 0; font-size: 11.5px; font-weight: 700; color: var(--t-muted); line-height: 1.6; }
+        /* 👑 運営担当の任命 (設定 → その他 › メンテナンス。master だけ) */
+        .roles-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px; background: var(--s1); font-size: 12px; font-weight: 800; color: var(--t-ink); cursor: pointer; }
+        .roles-row.on { background: var(--ops-bg); }
+        .roles-row input { width: 16px; height: 16px; accent-color: var(--ops-solid); margin: 0; }
+        .roles-row .rr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .roles-row .rr-role { font-size: 10.5px; font-weight: 900; color: var(--ops-deep); white-space: nowrap; }
         .plan-tray { border: 1px solid var(--line); border-radius: 12px; background: var(--s1); padding: 10px; }
         .plan-tray .th { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
         .plan-tray .th h4 { margin: 0; font-size: 12px; font-weight: 900; color: var(--t-ink); }
@@ -5478,6 +5487,16 @@
             </div>
 
             <!-- ② メンバーの通知状況 (運営) -->
+            <!-- 👑 運営担当の任命 (2026-09-12): マスター運営 (ふるり) にだけ出る (data-master-only)。_initOpsEtc が「その他 › メンテナンス」へ移す。
+                 任命された人は名乗った時点で運営画面になり、運営あての通知 (申請・返事) を受け取る。判定は opsRoleDomain -->
+            <div class="dc-card" data-span="6" data-ops-only data-master-only>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                    <div style="font-size:14px;font-weight:900;color:var(--t-ink);">👑 運営担当</div>
+                    <div id="settingsRolesCount" style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;">—</div>
+                </div>
+                <p style="margin:0 0 10px;font-size:11px;color:var(--t-muted);line-height:1.6;">任命した人は名乗った時点で運営画面になり、予約の申請・取消希望・📣 や締め凸の返事が Push で届きます。任命と解任はマスター運営だけができます。</p>
+                <div id="settingsRolesBody" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;">読み込み中…</div>
+            </div>
             <div class="dc-card dc-card-tight" data-span="6" data-ops-only>
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
                     <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">メンバーの通知状況</div>
@@ -7313,6 +7332,7 @@
             // ★ 運営モードも「その人の記憶」に切り替える (2026-09-10)。
             //   前の人の ON を引き継ぐと、名乗り直したのに他人の設定で開くことになる
             if (typeof _applyOpsModeForIdentity === 'function') _applyOpsModeForIdentity();
+            if (typeof _syncOpsRole === 'function') _syncOpsRole();   // 👑 役割 (master / 運営担当 / メンバー) を読んで画面を合わせる
             // ★ 両方の人が運営ON だと _applyOpsModeForIdentity が「変わっていない」で早戻りする。
             //   運営画面は身元で中身が変わる (調整中の表示など) ので、開いていれば描き直す
             //   (Codex指摘 2026-09-11 — キャッシュを捨てるだけでは、表示中のタブは更新されない)
@@ -8345,7 +8365,7 @@
                     ? `${bn} Lv${r.raid_level} は撃破されたため、${when}の予約は外れました。新しいプランを確認してください。`
                     : `Lv${r.raid_level} が終わったため、${bn} ${when}の予約は外れました。新しいプランを確認してください。`;
                 try {
-                    await window.sendPushNotification?.({ title, body, url: './?tab=mypage', tag: `resv-released-${h.id}`, playerIds: [r.player_id], requireInteraction: true });
+                    await window.sendPushNotification?.({ title, body, url: './?tab=mypage', tag: `resv-released-${h.id}`, playerIds: [r.player_id], ignoreAvailability: true, requireInteraction: true });
                 } catch (e) {
                     // ★ 予約はもう外れている。届かなかったことを運営が見える形で残す (Codex指摘 2026-09-07)。
                     //   本人の画面 (🔒引き受けた凸) には理由つきで出るので、運営が口頭で補える
@@ -8412,7 +8432,7 @@
                     await window.sendPushNotification({
                         title: '締め凸は不要になりました',
                         body: `${whatJp} は撃破されました。了承いただいた締め凸は解除されています。`,
-                        url: './?tab=mypage', playerIds: notify,
+                        url: './?tab=mypage', playerIds: notify, ignoreAvailability: true,
                     });
                 } catch (e) { console.warn('[finish req] 解除通知に失敗:', e?.message || e); }
             }
@@ -9559,10 +9579,12 @@
                         characters: Array.isArray(row.characters_snapshot) ? row.characters_snapshot : null, expectedDamageB: row.expected_damage_b });
                     window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${row.time_slot || '⏳'} B${row.boss_number} 編成${Number(row.loadout_slot) === 2 ? '②' : '①'}`, { playerId: me.id, actorName: me.name });
                     showNotification('🔒 引き受けました。運営が組み直したプランに固定で入ります');
+                    _notifyOps({ title: '🔒 お願いを引き受けました', body: `${me.name || '#' + me.id}: ${_resvRowJp(row)}`, tag: 'ops-pin-answer', except: me.id });
                 } else {
                     await window.supabaseSetReservationStatus(Number(id), 'released', { expectFrom: 'pinned', actor: me.name || '本人', reason: 'member_declined' });
                     window.supabaseLogActivity?.('reservation', `📣 お願いを見送り: ${row.time_slot || '⏳'} B${row.boss_number}`, { playerId: me.id, actorName: me.name });
                     showNotification('返事を送りました (難しい)');
+                    _notifyOps({ title: '✋ お願いは難しいそうです', body: `${me.name || '#' + me.id}: ${_resvRowJp(row)}`, tag: 'ops-pin-answer', except: me.id });
                 }
             } catch (e) { showNotification(`❌ ${e?.message || e}`); }
             seasonStore.invalidate();
@@ -9592,6 +9614,7 @@
                     expectFrom: r.status, actor: me?.name || null, reason: 'member_request',
                 });
                 showNotification('運営に取り消しの希望を伝えました');
+                _notifyOps({ title: '🔓 予約の取り消し希望', body: `${me?.name || '#' + me?.id}: ${_resvRowJp(r)}`, tag: 'ops-resv-cancel', except: me?.id });
                 await renderMyReservations(me);
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
@@ -9801,6 +9824,7 @@
                     seasonId: st.ctx.season.id, playerId: me.id,
                     ...d.draft, requestedBy: me.name || null,
                 });
+                _notifyOps({ title: '🔒 予約の申請', body: `${me.name || '#' + me.id}: ${_resvDraftJp(d.draft)} (承認待ち)`, tag: 'ops-resv-request', except: me.id });
                 if (seq !== st.seq) return;   // 完了前に閉じて別の世代が開いていたら、そちらは触らない
                 showNotification('🔒 申請しました (運営の承認待ちです)');
                 closeMyResvRequestModal();
@@ -9861,6 +9885,7 @@
                     sourcePlanId: st.planId,
                     requestedBy: me?.name || null,
                 });
+                _notifyOps({ title: '🔒 予約の申請 (配信の凸を引き受け)', body: `${me?.name || '#' + st.viewerId}: ${_resvDraftJp(draft.draft)} (承認待ち)`, tag: 'ops-resv-request', except: st.viewerId });
                 showNotification('🔒 申請しました (運営の承認待ちです)');
                 // 一覧を取り直して、同じ行を「申請中」に変える
                 st.resv = await window.supabaseLoadMyReservations?.(st.seasonId, st.viewerId) ?? st.resv;
@@ -10095,6 +10120,7 @@
                     }
                 }
                 await _refreshFinishRequests();
+                _notifyOps({ title: status === 'accepted' ? '🗡 締め凸を了承' : '✕ 締め凸は難しい', body: `${id.name || '#' + id.id}: B${Number(bossNumber)}`, tag: 'ops-finish-answer', except: id.id });
                 renderMyFinishRequestBanner(id);
                 showNotification(status === 'accepted'
                     ? '🗡 了承を運営に伝えました。準備ができたらボスを選んで戦闘へ！'
@@ -13867,6 +13893,11 @@
                 // renderMyPublishedPlan は世代ガード付きなので多重呼び出しでも安全
                 if (document.getElementById('tab-mypage')?.classList.contains('active')
                     && typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(id);
+                // 🔒 承認・却下・📣 の返事はホームを開きっぱなしでも追従させる (監査 A3・2026-09-12)
+                if (document.getElementById('tab-mypage')?.classList.contains('active')
+                    && typeof renderMyReservations === 'function') Promise.resolve(renderMyReservations(id)).catch(() => { /* 次の周期で */ });
+                // 👑 任命されたら開き直さなくても運営画面になる (90 秒ごと)
+                if (_coordPollTick === 0 && typeof _syncOpsRole === 'function') _syncOpsRole();
                 _coordPollTick = (_coordPollTick + 1) % 3;
                 // ★ ホームだけ開いている端末も 30 秒ごとにボスHPを追う (2026-09-11)。以前は戦況タブを
                 //   開いたことのある端末 (opsStore あり) しか取り直さず、ホームのボス状況が止まっていた。
@@ -16998,6 +17029,7 @@
                 characters: snap?.characters || null, expectedDamageB: snap?.expectedDamageB || null,
             });
             if (!ok) return;
+            _notifyMemberResv((_resv.rows || []).find(r => Number(r.id) === Number(id)), '🔒 予約が承認されました', '固定されました。プランは運営が組み直して配信します');
             // B: 固定して組み直し → 配信 (1タップ)。
             // ★ 承認待ちが他にも残っている間は配信の確認を出さない (ユーザー決定 2026-09-08)。
             //   5件続けて承認するたびに配信の確認が出て、そのたび配信するとメンバーに通知が5回届く。
@@ -17022,7 +17054,9 @@
         async function handleReservationReject(id) {
             const reason = prompt('見送る理由 (本人に表示されます):', '');
             if (reason === null) return;
-            await _resvTransition(id, 'rejected', { expectFrom: 'requested', reason, done: '見送りました' });
+            const row = (_resv.rows || []).find(r => Number(r.id) === Number(id));
+            const ok = await _resvTransition(id, 'rejected', { expectFrom: 'requested', reason, done: '見送りました' });
+            if (ok) _notifyMemberResv(row, '予約は見送りになりました', `${_resvRowJp(row)}${reason ? ' — ' + reason : ''}`);
         }
 
         async function handleReservationRelease(id, reason) {
@@ -17033,12 +17067,15 @@
             const jp = rv?.RELEASE_JP[reason] || reason;
             if (!confirm(`${label} の予約を取り下げますか？ (${jp})\n\n固定が外れ、次の算出からその枠は自由に使われます。`)) return;
             const ok = await _resvTransition(id, 'released', { expectFrom: from, reason, done: '予約を取り下げました' });
+            if (ok) _notifyMemberResv(row, '予約が取り下げられました', `${_resvRowJp(row)} (${jp})`);
             if (ok) showNotification('取り下げた枠を使うには、プランを算出し直して配信してください');
         }
 
         async function handleReservationKeep(id) {
             if (!confirm('取り消しの希望を却下し、予約を続けてもらいますか？')) return;
-            await _resvTransition(id, 'approved', { expectFrom: 'cancel_requested', done: '予約を続行にしました' });
+            const row = (_resv.rows || []).find(r => Number(r.id) === Number(id));
+            const ok = await _resvTransition(id, 'approved', { expectFrom: 'cancel_requested', done: '予約を続行にしました' });
+            if (ok) _notifyMemberResv(row, '予約は続行になりました', `${_resvRowJp(row)} — 取り消しの希望は通りませんでした`);
         }
 
         // 承認前の影響: 同じ盤面を「いまの承認済みだけ」と「+この候補」で解いて差を出す
@@ -17076,7 +17113,7 @@
             const ok = await showPushPreview([{ title: msg.title, body: msg.body, recipients: [{ id: row.id, name: row.name }] }]);
             if (!ok) return;
             try {
-                const res = await window.sendPushNotification({ title: msg.title, body: msg.body, url: msg.url, playerIds: [row.id] });
+                const res = await window.sendPushNotification({ title: msg.title, body: msg.body, url: msg.url, playerIds: [row.id], ignoreAvailability: true });
                 showNotification(`✅ ${row.name} に送信 (${res.sent}/${res.target} 端末)`);
             } catch (e) {
                 alert(`❌ ${e?.message || e}`);
@@ -19286,7 +19323,7 @@
                 const failed = [];
                 for (let i = 0; i < msgs.length; i += 1) {
                     try {
-                        await window.sendPushNotification({ title: msgs[i].title, body: msgs[i].body, url: './?tab=mypage&focus=finishreq', playerIds: msgs[i].playerIds });
+                        await window.sendPushNotification({ title: msgs[i].title, body: msgs[i].body, url: './?tab=mypage&focus=finishreq', playerIds: msgs[i].playerIds, ignoreAvailability: true });
                     } catch (pushErr) {
                         console.error('[finishOffer] 打診の通知に失敗:', pushErr);
                         failed.push(`案${i + 1} (${msgs[i].recipients.map(r => r.name).join('、')})`);
@@ -19393,7 +19430,7 @@
                 if (rowIds.length) await window.supabaseDeclineFinishRows(rowIds);
                 if (notify.length) {
                     try {
-                        await window.sendPushNotification({ title, body, url: './?tab=mypage', playerIds: notify.map(m => m.id) });
+                        await window.sendPushNotification({ title, body, url: './?tab=mypage', playerIds: notify.map(m => m.id), ignoreAvailability: true });
                     } catch (pushErr) {
                         // 記録は済んでいる。通知だけ落ちたことを隠さない (口頭で伝えられるように)
                         console.error('[finishOffer] 見送りの通知に失敗:', pushErr);
@@ -19641,7 +19678,7 @@
             const ok = await showPushPreview([{ title, body: bodyText, recipients: plan.members.map(m => ({ id: m.id, name: m.name })) }]);
             if (!ok) return;
             try {
-                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds: ids });
+                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds: ids, ignoreAvailability: true });
                 showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
                 // 依頼ステータスの追跡を開始 (確認中として記録 → ボスカードに表示)
                 try {
@@ -19668,7 +19705,7 @@
             const ok = await showPushPreview([{ title, body: bodyText, recipients: ctx.candidates.map(c => ({ id: c.id, name: c.name })) }]);
             if (!ok) return;
             try {
-                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds });
+                const res = await window.sendPushNotification({ title, body: bodyText, url: './?tab=mypage&focus=finishreq', playerIds, ignoreAvailability: true });
                 showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
                 // 依頼ステータスの追跡を開始
                 try {
@@ -20710,7 +20747,7 @@
                     await window.sendPushNotification({
                         title: '📣 運営から凸のお願い',
                         body: `${what} をお願いできますか？ ホームの「引き受けた凸」から返事してください (期限 15 分)`,
-                        playerIds: [row.player_id], tag: 'pin-ask',
+                        playerIds: [row.player_id], tag: 'pin-ask', ignoreAvailability: true,
                     }, { senderPlayerId: me?.id });
                 } catch (e) { console.warn('[pin ask push]', e?.message || e); }
                 window.supabaseLogActivity?.('ops', `📣 凸のお願い: ${row.player_name || '#' + row.player_id} に ${what}`, { actorName: me?.name || null });
@@ -22436,7 +22473,7 @@
                 const res = await window.sendPushNotification({
                     title, body: bodyText,
                     url: './?tab=mypage',
-                    playerIds: targets.map(r => r.playerId),
+                    playerIds: targets.map(r => r.playerId), ignoreAvailability: true,
                 });
                 showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
             } catch (e) {
@@ -22506,7 +22543,7 @@
                 const res = await window.sendPushNotification({
                     title, body: bodyText,
                     url: './?tab=mypage',
-                    playerIds: targets.map(r => r.id),
+                    playerIds: targets.map(r => r.id), ignoreAvailability: true,
                 });
                 showNotification(`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`);
             } catch (e) {
@@ -25574,6 +25611,7 @@
                 _bootLoadingEnd();   // 失敗経路でも必ず閉じる (エラー表示は既存バナーが担当)
             }
             updateIdentityHeader();
+            if (typeof _syncOpsRole === 'function') _syncOpsRole();   // 👑 名乗っている人の役割 (読めるまでは端末の記憶どおり)
             // 初期アクティブタブ (ホーム) のコンテンツを描画
             // switchTab を経由しないと renderMyPage が呼ばれないため、ここで明示的に。
             const initialTab = document.querySelector('.tab-content.active');
@@ -26380,6 +26418,92 @@
             } catch { /* 保存できなくてもセッション中は _opsMode で成立する */ }
         }
         let _opsMode = false;
+        // ===== 👑 運営担当 (2026-09-12 ユーザー決定) =====
+        // 判定は opsRoleDomain が唯一。master = ふるり (🛠 で運営/メンバーを行き来) / ops = 任命された人 (常に運営画面) / null = メンバー。
+        // 役割は players.ops_role (46)。名乗った人ごとに DB から読む (_syncOpsRole)。読めるまで (undefined) は端末の記憶どおり (ちらつき防止)
+        let _opsRole = { playerId: null, role: undefined };
+        function _opsRoleForCurrent() {
+            const me = getCurrentIdentity();
+            if (!me || me.id == null) return null;
+            return String(_opsRole.playerId) === String(me.id) ? _opsRole.role : undefined;
+        }
+        function _opsCanToggle() {
+            const dom = window.opsRoleDomain;
+            return dom ? dom.resolveMode({ role: _opsRoleForCurrent(), remembered: _opsModeForCurrent() }).canToggle : true;
+        }
+        async function _syncOpsRole() {
+            const me = getCurrentIdentity();
+            if (!me || me.id == null) { _opsRole = { playerId: null, role: undefined }; _applyOpsModeForIdentity(); return; }
+            let role;
+            try {
+                const raw = typeof window.supabaseLoadOpsRole === 'function' ? await window.supabaseLoadOpsRole(me.id) : null;
+                role = window.opsRoleDomain ? window.opsRoleDomain.roleOf({ ops_role: raw }) : null;
+            } catch (e) {
+                // 通信断で運営担当をメンバーに落とさない: 同じ人の前の値を残す。初めてなら分からないまま (端末の記憶どおり)
+                console.warn('[ops role] 読めませんでした:', e?.message || e);
+                role = String(_opsRole.playerId) === String(me.id) ? _opsRole.role : undefined;
+            }
+            if (String(getCurrentIdentity()?.id) !== String(me.id)) return;   // 待っている間に名乗り直した
+            const changed = _opsRole.role !== role || String(_opsRole.playerId) !== String(me.id);
+            _opsRole = { playerId: me.id, role };
+            _applyOpsModeForIdentity();
+            if (changed && typeof renderSettingsRoles === 'function') renderSettingsRoles();
+        }
+        // 運営あての Push: master + 運営担当の全員へ (押した本人は除く)。時間帯フィルタは通さない (迅速に対応するため)。46 未適用なら誰にも送らない
+        async function _notifyOps({ title, body, url = './?tab=ops', tag = null, except = null } = {}) {
+            try {
+                const ids = typeof window.supabaseLoadOpsPlayerIds === 'function' ? await window.supabaseLoadOpsPlayerIds() : [];
+                const targets = ids.filter(id => except == null || String(id) !== String(except));
+                if (targets.length === 0) return null;
+                return await window.sendPushNotification({ title, body, url, tag: tag || undefined, playerIds: targets, ignoreAvailability: true, requireInteraction: true },
+                    { senderPlayerId: except });
+            } catch (e) { console.warn('[notify ops]', e?.message || e); return null; }
+        }
+        // 本人あての Push (承認・却下・取り下げ・続行)。時間帯フィルタは通さない (自分の約束の話は時間に関係なく届ける)
+        async function _notifyMemberResv(row, title, body) {
+            if (!row || row.player_id == null) return null;
+            try {
+                return await window.sendPushNotification({ title, body, url: './?tab=mypage', tag: `resv-${row.id}`, playerIds: [row.player_id], ignoreAvailability: true, requireInteraction: true },
+                    { senderPlayerId: getCurrentIdentity()?.id ?? null });
+            } catch (e) { console.warn('[notify member]', e?.message || e); return null; }
+        }
+        // 通知用の言い方: B3 22時 編成② (申請の下書き / 予約の行のどちらからも)
+        function _resvDraftJp(d) {
+            const t = d?.flex ? '⏳' : (d?.timeSlot ? `${Number(String(d.timeSlot).slice(1))}時` : '');
+            return `B${Number(d?.bossNumber)} ${t} 編成${Number(d?.loadoutSlot) === 2 ? '②' : '①'}`.replace(/\s+/g, ' ');
+        }
+        function _resvRowJp(r) {
+            return _resvDraftJp({ bossNumber: r?.boss_number, timeSlot: r?.time_slot, flex: r?.time_mode === 'flex', loadoutSlot: r?.loadout_slot });
+        }
+        // 👑 任命パネル (設定 → その他 › メンテナンス)。master にだけ見える (body.ops-master)
+        async function renderSettingsRoles() {
+            const body = document.getElementById('settingsRolesBody'), cnt = document.getElementById('settingsRolesCount');
+            if (!body) return;
+            const dom = window.opsRoleDomain;
+            if (!dom || !dom.canAppoint({ ops_role: _opsRoleForCurrent() })) { body.innerHTML = '<p style="margin:0;font-size:11.5px;color:var(--t-muted);">任命できるのはマスター運営だけです</p>'; return; }
+            let players = [];
+            try { _allPlayersCache = null; players = await ensureAllPlayersLoaded(); }
+            catch (e) { body.innerHTML = `<p style="margin:0;font-size:11.5px;color:var(--bad-deep);">読み込めませんでした: ${escapeHtml(e?.message || e)}</p>`; return; }
+            const rows = dom.appointable(players);
+            const esc = escapeHtml;
+            body.innerHTML = rows.map(p => `<label class="roles-row${p.role ? ' on' : ''}">`
+                + `<input type="checkbox"${p.role ? ' checked' : ''}${p.role === 'master' ? ' disabled' : ''} onchange="handleOpsRoleToggle(${Number(p.id)}, this.checked)">`
+                + `<span class="rr-name">${esc(p.name)}</span><span class="rr-role">${p.role ? esc(dom.ROLE_JP[p.role]) : ''}</span></label>`).join('')
+                || '<p style="margin:0;font-size:11.5px;color:var(--t-muted);">メンバーがいません</p>';
+            if (cnt) cnt.textContent = `運営 ${rows.filter(p => p.role).length} 人`;
+        }
+        async function handleOpsRoleToggle(playerId, on) {
+            const dom = window.opsRoleDomain, me = getCurrentIdentity();
+            if (!dom || !dom.canAppoint({ ops_role: _opsRoleForCurrent() })) { showNotification('任命できるのはマスター運営だけです'); renderSettingsRoles(); return; }
+            try {
+                await window.supabaseSetOpsRole(playerId, on ? 'ops' : null, { by: me?.name || 'master' });
+                const p = (_allPlayersCache || []).find(x => String(x.id) === String(playerId));
+                window.supabaseLogActivity?.('ops', `👑 運営担当: ${p?.name || '#' + playerId} を${on ? '任命' : '解任'}`, { actorName: me?.name || null });
+                showNotification(on ? '🛠 運営担当にしました (本人が名乗った時点で運営画面になります)' : '運営担当を解きました');
+            } catch (e) { showNotification(`❌ ${e?.message || e}`); }
+            _allPlayersCache = null;
+            renderSettingsRoles();
+        }
         function _opsJump(id) {
             const card = document.getElementById(id);
             if (card && card.closest('#opsEtcBody') && typeof _setOpsEtcOpen === 'function') _setOpsEtcOpen(true);   // 「その他」に畳まれていたら開く
@@ -26412,8 +26536,23 @@
                 s.style.background = _opsMode ? 'var(--t-ink)' : 'var(--s2)';
                 s.style.color = _opsMode ? 'var(--card)' : 'var(--t-strong)';
             }
+            // 👑 役割で見せ方を変える (2026-09-12): master = トグル / ops = 「運営担当」の固定表示 / メンバー = 出さない / まだ読めていない = 従来どおり
+            const role = typeof _opsRoleForCurrent === 'function' ? _opsRoleForCurrent() : undefined;
+            document.body.classList.toggle('ops-master', role === 'master');
+            for (const el of [b, s]) {
+                if (!el) continue;
+                if (role === 'ops') { el.textContent = '🛠 運営担当'; el.disabled = true; el.style.display = ''; el.title = '運営担当は常に運営画面です'; }
+                else if (role === null) { el.style.display = 'none'; }
+                else { el.disabled = false; el.style.display = ''; }
+            }
         }
         function toggleOpsMode() {
+            // 👑 切り替えられるのは master だけ (運営担当は常に運営画面・メンバーは常にメンバー画面)
+            if (typeof _opsCanToggle === 'function' && !_opsCanToggle()) {
+                showNotification(_opsRoleForCurrent() === 'ops' ? '運営担当は常に運営画面です' : '運営画面はマスター運営が任命した人だけです');
+                _applyOpsMode();
+                return;
+            }
             _opsMode = !_opsMode;
             _rememberOpsMode(_opsMode);   // 名乗っている人ごとに覚える (名乗っていなければ覚えない)
             _afterOpsModeChanged();
@@ -26424,7 +26563,9 @@
          * ★ 記憶を書かない — 読むだけ (書くのは toggleOpsMode の役目)
          */
         function _applyOpsModeForIdentity() {
-            const want = _opsModeForCurrent();
+            // 👑 役割で決める (opsRoleDomain.resolveMode): master = 端末の記憶 / ops = 常に ON / メンバー = 常に OFF / まだ読めていない = 端末の記憶
+            const dom = window.opsRoleDomain;
+            const want = dom ? dom.resolveMode({ role: _opsRoleForCurrent(), remembered: _opsModeForCurrent() }).mode : _opsModeForCurrent();
             if (want === _opsMode) { _applyOpsMode(); return; }   // 見た目だけ念のため合わせる
             _opsMode = want;
             _afterOpsModeChanged();
@@ -26674,6 +26815,7 @@
                 : card.querySelector('#settingsMemberCount') ? 'opsMaintMembers'
                 : card.querySelector('#settingsActivityList') ? 'opsMaintActivity'
                 : card.querySelector('#settingsMasterBody') ? 'opsMaintMaster'
+                : card.querySelector('#settingsRolesBody') ? 'opsMaintRoles'
                 : card.querySelector('[onclick*="handleSettingsBackup"]') ? 'opsMaintBackup' : null;
             document.querySelectorAll('#tab-settings .dc-card[data-ops-only]').forEach(card => {
                 const id = idOf(card);
@@ -26696,6 +26838,7 @@
                     renderSettingsActivity();
                     renderSettingsCharMaster();
                     renderClientGateSettings();
+                    renderSettingsRoles();       // 👑 任命パネル (master だけ見える)
                 } catch (e) { console.warn('[ops] その他の描画:', e?.message || e); }
             }
         }
@@ -26747,7 +26890,7 @@
             let sent = 0, fail = 0;
             for (const g of groups) {
                 try {
-                    const res = await window.sendPushNotification({ title: g.title, body: g.body, url: g.url, playerIds: [g.recipients[0].id] });
+                    const res = await window.sendPushNotification({ title: g.title, body: g.body, url: g.url, playerIds: [g.recipients[0].id], ignoreAvailability: true });
                     sent += Number(res?.sent) || 0;
                 } catch { fail++; }
             }

@@ -258,6 +258,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   状態と遷移表は **SQL と JS の両方**にあり、`tests/run-tests.mjs` が機械的に突き合わせる —
   片方だけ変えると「画面では押せるのにサーバで弾かれる」。
   凸報告は `report_attack` RPC (採番・insert・残HP減算・予約の消し込みを1トランザクション)。
+  👑 運営担当 (master / ops) は `46_ops_roles.sql` (未適用だと全員が従来どおり 🛠 トグル、運営あての通知は誰にも送らない)。
   **従来の3リクエスト方式へ落ちるのは RPC が存在しないときだけ** — 「3凸済み」等の
   意味のある拒否を握り潰して落ちると、拒否したはずの凸が入る。
   attacks ⇄ 予約のリンクは **`attacks.reservation_id` の片方向だけ**
@@ -511,6 +512,17 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **sw.js** — Web Push 用 Service Worker。キャッシュは実質不変の画像のみ
   (character-images/属性アイコン)。HTML/JS/データは即時反映のため非キャッシュ
 - 認証なし。プレイヤーは自己申告で選択 (localStorage)
+- **👑 運営担当** (2026-09-12 ユーザー決定「ふるり がマスター運営。ふるり だけが運営担当を任命でき、任命された人が運営判定」)。
+  前提SQL `46_ops_roles.sql` (`players.ops_role`: master = ふるり 1人 / ops = 任命された人 / NULL = メンバー)。判定は `js/domain/opsRole.js` が唯一。
+  ★ **認可ではない** (RLS anon 全許可・名乗りは自己申告) — 誤操作防止の役割分けと、通知の宛先のため。
+  画面 (`resolveMode`): master = 🛠 トグルで運営⇄メンバーを行き来 (開発中の確認用・記憶は端末ごと) / ops = 名乗った時点で**常に運営画面** (トグルは「運営担当」の固定表示) /
+  メンバー = 常にメンバー画面 (トグルを出さない) / **役割がまだ読めていない (undefined) = 従来どおり端末の記憶** (起動直後のちらつきと、通信断で運営担当を落とすのを防ぐ)。
+  役割は `_syncOpsRole` が 名乗り直し・起動・90秒ごと に読む (任命されたら開き直さなくても運営画面になる)。任命パネルは 設定 → その他 › メンテナンス (`data-master-only` = `body.ops-master`)。
+  クライアントは `ops` と `NULL` しか書かない (master は 46 が1回だけ付ける・部分一意索引で1人)。46 未適用は「役割なし」に静かに劣化 = 全員が従来どおりトグル。
+- **通知の配管** (監査 2026-09-12 A1〜A4)。★ send-push の**時間帯フィルタは「戦闘可能時間」で絞る**ので、本人あて・行動が要る通知は `ignoreAvailability: true` を必ず付ける
+  (締め凸依頼・見送り・📣 お願い・予約の解除/承認/却下・催促・凸報告/模擬提出のお願い)。フィルタを通すのは情報の一斉 (撃破・Lv開放) だけ。
+  ★ 運営あては `_notifyOps({title, body, tag, except})` = master + 運営担当の全員 (押した本人は除く)。メンバーの 予約の申請 (2経路)・取消希望・📣 の返事・締め凸の返事 で送る。
+  ★ 本人あては `_notifyMemberResv(row, title, body)` = 承認・却下・取り下げ・続行。ホームの 30 秒ティックは配信プランだけでなく `renderMyReservations` も取り直す。
 - **運営モード (`_opsMode` / `body.ops-mode` / `data-ops-only`)**: `🛠運営` スイッチで運営向けUIを
   出し入れする仕組み。戦況タブ (旧ユニレ管理) と設定タブで共有 (localStorage `shirisuko_ops_mode`)。
   CSS は `body:not(.ops-mode) [data-ops-only]{display:none}` のグローバル1行なので、

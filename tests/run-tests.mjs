@@ -25,6 +25,7 @@ import '../js/domain/memberStatus.js';  // globalThis.memberStatusDomain (メン
 import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タブの折りたたみ + コックピット)
 import '../js/domain/pace.js';          // globalThis.paceDomain (📈消化のペース / 🔁直近の動き — 運営ボード 当日・段階4)
 import '../js/domain/planBoard.js';     // globalThis.planBoardDomain (最適凸プランの条件と盤の読みやすさ — パズル盤 ①②)
+import '../js/domain/opsRole.js';       // globalThis.opsRoleDomain (👑 運営担当: master / ops / メンバー)
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
@@ -8148,6 +8149,99 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.plan-board\.with-tray > \.plan-tray \.list \{ flex: 1; min-height: 0; max-height: none; \}/.test(html), '箱の中の一覧が伸縮しない (sticky にしても箱がはみ出す)');
         const sideBlk = html.slice(html.indexOf('@media (min-width: 1180px), (min-width: 768px) and (max-height: 559px) {'), html.indexOf('/* --- ③\' スマホ横だけ'));
         assert.ok(/:root \{ --stick-top: 12px; \}/.test(sideBlk), 'サイドバーの幅で sticky の上端を縮めていない (帯が無いのに 128px 空く)');
+    });
+    // ===== 👑 運営担当 (2026-09-12 ユーザー決定「ふるり がマスター運営。ふるり だけが任命でき、任命された人が運営判定」) =====
+    test('★ opsRoleDomain: 役割の読み方 / 任命できるのは master だけ / 宛先 / 画面の出し分け / 任命パネルの並び', () => {
+        const dom = globalThis.opsRoleDomain;
+        assert.ok(dom, 'opsRoleDomain が無い');
+        assert.deepEqual(dom.ROLES, ['master', 'ops']);
+        assert.equal(dom.roleOf({ ops_role: 'master' }), 'master'); assert.equal(dom.roleOf({ ops_role: 'ops' }), 'ops');
+        assert.equal(dom.roleOf({ ops_role: 'admin' }), null, '知らない値はメンバー'); assert.equal(dom.roleOf(null), null); assert.equal(dom.roleOf({}), null);
+        assert.equal(dom.canAppoint({ ops_role: 'master' }), true); assert.equal(dom.canAppoint({ ops_role: 'ops' }), false, '運営担当は任命できない'); assert.equal(dom.canAppoint(null), false);
+        const players = [{ id: 1, name: 'ふるり', ops_role: 'master' }, { id: 2, name: 'B', ops_role: 'ops' }, { id: 3, name: 'C' }, { id: 4, name: 'D', ops_role: 'ops', archived: true }, { id: 5, name: 'E', ops_role: 'ops', is_temp: true }];
+        assert.deepEqual(dom.opsIds(players), [1, 2, 5], '宛先は master + ops (書庫は除く)');
+        assert.deepEqual(dom.opsIds(players, { except: 2 }), [1, 5], '押した本人は除く');
+        assert.deepEqual(dom.opsIds(players, { except: '1' }), [2, 5], '文字列の id でも除ける');
+        // 画面: master = 端末の記憶 / ops = 常に ON (トグル無し) / メンバー = 常に OFF (トグル無し) / まだ読めていない = 端末の記憶 (ちらつかせない)
+        assert.deepEqual(dom.resolveMode({ role: 'master', remembered: true }), { mode: true, canToggle: true, why: 'master' });
+        assert.deepEqual(dom.resolveMode({ role: 'master', remembered: false }), { mode: false, canToggle: true, why: 'master' });
+        assert.deepEqual(dom.resolveMode({ role: 'ops', remembered: false }), { mode: true, canToggle: false, why: 'ops' });
+        assert.deepEqual(dom.resolveMode({ role: null, remembered: true }), { mode: false, canToggle: false, why: 'member' }, '任命されていない人は記憶が ON でもメンバー画面');
+        assert.deepEqual(dom.resolveMode({ role: undefined, remembered: true }), { mode: true, canToggle: true, why: 'unknown' });
+        assert.deepEqual(dom.resolveMode({}), { mode: false, canToggle: true, why: 'unknown' });
+        // 任命パネル: master → ops → 名前順。書庫・仮は出さない
+        assert.deepEqual(dom.appointable(players).map(p => [p.name, p.role]), [['ふるり', 'master'], ['B', 'ops'], ['C', null]]);
+    });
+    test('★ 配線: 役割で運営画面が決まる (名乗り直し・起動・90秒ごとに読む) / master だけ 🛠 / 任命パネル / SQL 46 ⇄ JS', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        assert.ok(/<script defer src="\.\/js\/domain\/opsRole\.js"><\/script>/.test(html), 'opsRole.js を読んでいない');
+        // 判定は opsRoleDomain.resolveMode が唯一 (画面で書き足さない)
+        const apply = html.match(/function _applyOpsModeForIdentity\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/dom\.resolveMode\(\{ role: _opsRoleForCurrent\(\), remembered: _opsModeForCurrent\(\) \}\)\.mode/.test(apply), '役割で運営画面を決めていない');
+        const tog = html.match(/function toggleOpsMode\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(typeof _opsCanToggle === 'function' && !_opsCanToggle\(\)\) \{[\s\S]*?return;\s*\}/.test(tog), 'master 以外がトグルで切り替えられる');
+        // 読む場所: 名乗り直し / 起動 / 90 秒ごと。通信断で運営担当を落とさない
+        assert.ok((html.match(/_syncOpsRole\(\);/g) || []).length >= 3, '役割を読む場所が足りない (名乗り直し・起動・ティック)');
+        const sync = html.match(/async function _syncOpsRole\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/role = String\(_opsRole\.playerId\) === String\(me\.id\) \? _opsRole\.role : undefined;/.test(sync), '通信断で運営担当をメンバーに落としている');
+        assert.ok(/if \(String\(getCurrentIdentity\(\)\?\.id\) !== String\(me\.id\)\) return;/.test(sync), '待っている間に名乗り直した人に前の人の役割を当てる');
+        // 見せ方: master だけ body.ops-master (任命パネル) / ops は「運営担当」固定 / メンバーはトグルを出さない
+        const applyMode = html.match(/function _applyOpsMode\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/document\.body\.classList\.toggle\('ops-master', role === 'master'\);/.test(applyMode), 'body.ops-master を立てていない');
+        assert.ok(/if \(role === 'ops'\) \{ el\.textContent = '🛠 運営担当'; el\.disabled = true;/.test(applyMode) && /else if \(role === null\) \{ el\.style\.display = 'none'; \}/.test(applyMode), '役割でトグルの見せ方を変えていない');
+        assert.ok(/body:not\(\.ops-master\) \[data-master-only\] \{ display: none !important; \}/.test(html), 'master 限定の CSS が無い');
+        assert.ok(/<div class="dc-card" data-span="6" data-ops-only data-master-only>/.test(html) && /id="settingsRolesBody"/.test(html), '任命パネルが無い');
+        assert.ok(/: card\.querySelector\('#settingsRolesBody'\) \? 'opsMaintRoles'/.test(html) && /renderSettingsRoles\(\);\s*\/\/ 👑/.test(html), '任命パネルを「その他 › メンテナンス」に移して描いていない');
+        const roles = html.match(/async function renderSettingsRoles\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(!dom \|\| !dom\.canAppoint\(\{ ops_role: _opsRoleForCurrent\(\) \}\)\)/.test(roles), '任命パネルを master 以外にも描いている');
+        const tg = html.match(/async function handleOpsRoleToggle\(playerId, on\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/await window\.supabaseSetOpsRole\(playerId, on \? 'ops' : null, /.test(tg), '任命が ops / null 以外を書ける');
+        // クライアント: 3 関数。master は書かない・外さない (NULL の行も更新できる or 条件)。46 未適用は静かに劣化
+        assert.ok(/window\.supabaseLoadOpsRole = async function \(playerId\)/.test(client) && /window\.supabaseLoadOpsPlayerIds = async function \(\)/.test(client) && /window\.supabaseSetOpsRole = async function \(playerId, role/.test(client), '関数が足りない');
+        assert.ok(/if \(role !== 'ops' && role !== null\) throw new Error/.test(client), 'クライアントから master を付けられる');
+        assert.ok(/\.or\('ops_role\.is\.null,ops_role\.neq\.master'\)/.test(client), 'master を守る条件が無い (neq だけだと NULL の行が落ちる)');
+        assert.ok(/if \(error\) \{ if \(_isMissingOpsRoleCol\(error\)\) return null; throw error; \}/.test(client) && /if \(error\) \{ if \(_isMissingOpsRoleCol\(error\)\) return \[\]; throw error; \}/.test(client), '46 未適用で静かに劣化しない');
+        assert.ok(/const roleCols = fullCols \+ ', ops_role';/.test(client) && /if \(r\.error && \/column \.\*ops_role\/i\.test\(String\(r\.error\?\.message\)\)\) \{\s*r = await tryQuery\(fullCols\);/.test(client), 'players の読み込みが ops_role 無しに落ちない');
+        // SQL 46 ⇄ JS: 役割の集合が同じ / 99 に判定行
+        const sql = _grRd('supabase/46_ops_roles.sql');
+        const m = sql.match(/CHECK \(ops_role IS NULL OR ops_role IN \(([^)]*)\)\)/);
+        assert.ok(m, '46 の CHECK が無い');
+        assert.deepEqual(m[1].split(',').map(x => x.trim().replace(/'/g, '')), globalThis.opsRoleDomain.ROLES, 'SQL と JS の役割の集合が違う');
+        assert.ok(/WHERE name = 'ふるり' AND ops_role IS NULL/.test(sql) && /CREATE UNIQUE INDEX IF NOT EXISTS uq_players_ops_master ON players\(\(true\)\) WHERE ops_role = 'master'/.test(sql), 'master = ふるり 1 人 になっていない');
+        assert.ok(/UNION ALL SELECT '46_ops_roles',/.test(_grRd('supabase/99_check_applied.sql')), '99 に判定行が無い');
+    });
+    test('★ 配線: 通知の配管 — 運営あては master + 運営担当へ (本人は除く・時間帯フィルタ無視) / 本人あての承認・却下 / 緊急通知はフィルタを通さない / ホームが追従する', () => {
+        // 監査 2026-09-12 (A1〜A4): 届くべき通知が届かない・受け取った側が気づけない
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const no = html.match(/async function _notifyOps\(\{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/await window\.supabaseLoadOpsPlayerIds\(\)/.test(no) && /except == null \|\| String\(id\) !== String\(except\)/.test(no) && /ignoreAvailability: true, requireInteraction: true/.test(no), '運営あての通知の作りが違う');
+        // メンバー → 運営: 申請 (2 経路) / 取消希望 / 📣 の返事 (2) / 締め凸の返事
+        const tags = (html.match(/_notifyOps\(\{ title: [^\n]*?tag: '([a-z-]+)'/g) || []).map(x => x.match(/tag: '([a-z-]+)'/)[1]);
+        assert.deepEqual(tags.sort(), ['ops-finish-answer', 'ops-pin-answer', 'ops-pin-answer', 'ops-resv-cancel', 'ops-resv-request', 'ops-resv-request'], `運営あての通知の場所が違う: ${tags}`);
+        for (const site of ["_notifyOps({ title: '🔒 予約の申請', body: `${me.name || '#' + me.id}: ${_resvDraftJp(d.draft)} (承認待ち)`, tag: 'ops-resv-request', except: me.id });",
+                            "_notifyOps({ title: '🔒 予約の申請 (配信の凸を引き受け)',", "tag: 'ops-resv-cancel', except: me?.id });",
+                            "_notifyOps({ title: '🔒 お願いを引き受けました',", "_notifyOps({ title: '✋ お願いは難しいそうです',",
+                            "_notifyOps({ title: status === 'accepted' ? '🗡 締め凸を了承' : '✕ 締め凸は難しい',"]) {
+            assert.ok(html.includes(site), `運営あての通知が無い: ${site.slice(0, 40)}`);
+        }
+        // 運営 → 本人: 承認 / 却下 / 取り下げ / 続行 (時間帯フィルタ無視)
+        const nm = html.match(/async function _notifyMemberResv\(row, title, body\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/playerIds: \[row\.player_id\], ignoreAvailability: true, requireInteraction: true/.test(nm), '本人あての通知がフィルタを通る');
+        for (const t of ['🔒 予約が承認されました', '予約は見送りになりました', '予約が取り下げられました', '予約は続行になりました']) assert.ok(html.includes(`_notifyMemberResv(`) && html.includes(`'${t}'`), `本人あての通知が無い: ${t}`);
+        assert.ok(/const ok = await _resvTransition\(id, 'rejected', \{ expectFrom: 'requested', reason, done: '見送りました' \}\);\s*if \(ok\) _notifyMemberResv\(row,/.test(html), '却下の通知が結果を見ていない');
+        // 緊急・本人あての通知は時間帯フィルタを通さない (11 か所)。情報の一斉 (撃破・Lv開放) だけがフィルタを通る
+        const calls = html.match(/sendPushNotification\(\{[\s\S]*?\}\)/g) || [];
+        const withFlag = calls.filter(c => /ignoreAvailability: true/.test(c)).length;
+        assert.ok(withFlag >= 17, `時間帯フィルタを通さない通知が足りない (${withFlag} / 呼び出し ${calls.length})`);
+        for (const key of ["tag: 'pin-ask', ignoreAvailability: true", "playerIds: ids, ignoreAvailability: true", "playerIds, ignoreAvailability: true", "playerIds: msgs[i].playerIds, ignoreAvailability: true",
+                           "playerIds: [r.player_id], ignoreAvailability: true, requireInteraction: true", "playerIds: notify, ignoreAvailability: true", "playerIds: notify.map(m => m.id), ignoreAvailability: true",
+                           "playerIds: [row.id], ignoreAvailability: true", "playerIds: [g.recipients[0].id], ignoreAvailability: true", "playerIds: targets.map(r => r.playerId), ignoreAvailability: true", "playerIds: targets.map(r => r.id), ignoreAvailability: true"]) {
+            assert.ok(html.includes(key), `フィルタを通してしまう通知がある: ${key}`);
+        }
+        // ホームを開きっぱなしでも承認・📣 に追従する (30 秒ティック)
+        assert.ok(/&& typeof renderMyReservations === 'function'\) Promise\.resolve\(renderMyReservations\(id\)\)\.catch/.test(html), 'ホームのティックで予約を取り直していない');
+        assert.ok(/if \(_coordPollTick === 0 && typeof _syncOpsRole === 'function'\) _syncOpsRole\(\);/.test(html), '任命されても開き直すまで運営画面にならない');
     });
     // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====
     test('★ paceModel: 時間帯ごとの本数・定員・直近のペースから「使い切る時刻」を出す', () => {

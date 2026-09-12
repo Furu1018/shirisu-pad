@@ -303,6 +303,13 @@ SELECT * FROM (
         AND EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'uq_plan_reservations_pin_card'),
         '📌 運営の固定 (パズル盤 ③④。未適用だと運営が時間割に固定を置けないだけで、予約と算出は従来どおり動く)'
 
+    UNION ALL SELECT '46_ops_roles',
+        EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'players' AND column_name = 'ops_role')
+        AND EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'uq_players_ops_master')
+        AND EXISTS (SELECT 1 FROM players WHERE ops_role = 'master'),
+        '👑 運営担当 (master = ふるり / ops = 任命された人)。未適用だと全員が従来どおり 🛠 トグルで切り替える'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'
