@@ -299,9 +299,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   → コックピット (当日だけ)。すべて `_renderOpsStage` が `_renderOpsCockpit` と同じ材料 (盤面・_mb.rows・_resv.rows・配信) で描く。
   ★ 段階外のカードは消さず末尾の「その他」(`#opsEtc`) へ移す — **`opsLayout.CARDS` の `stages` が唯一の定義** (`[]` = 常にその他)。
   DOM は残るので各 renderer はそのまま更新し続ける。運営OFF (メンバー) は何もせずカードを元の並びに戻す (`_applyOpsStageCards(null)`)。
-  ★ **設定タブの運営ブロック (版のしめ切り・通知状況・メンバー管理・アクティビティ・キャラマスタ・バックアップ) は
-  「その他 › メンテナンス」へ移した** (`_initOpsEtc` が DOM ごと移し `opsMaint*` の id を付ける)。中身は「その他」を開いたときに描く
-  (`_setOpsEtcOpen`)。`renderSettingsTab` はもう運営ブロックを描かない。
+  ★ **設定タブの運営ブロックのうち「運営の作業」(通知状況・アクティビティ・キャラマスタ・バックアップ保存) は
+  「その他 › メンテナンス」へ移す** (`_initOpsEtc` が `data-ops-only` の DOM ごと移し `opsMaint*` の id を付ける)。中身は「その他」を開いたときに描く (`_setOpsEtcOpen`)。
+  ★ **「役割で決まる・当日は触らない・取り返しがつきにくい」もの = 互換ゲート (版のしめ切り)・👑 運営担当の任命・メンバー管理・復元 は
+  設定タブの「👑 マスター運営」区画** (`data-master-only`。ふるり だけ・🛠 に関係なく) に残す (2026-09-12・Codex と合意。復元は保存と分けた:
+  保存は終了チェックリストから飛ぶ運営の作業、復元は全員を巻き戻す最高危険操作)。`renderSettingsTab` が役割で描く。`renderClientGateSettings` の門も役割。
   ★ シーズン制御のボタンは `data-stage="prep"` (作成・テスト作成は小リンク) / `data-stage="end"` (終了・リセット) で段階の描画が出し分ける。
   催促 (`_opsNudgeGroup`) は `memberStatus.nudgeMessage` の1人ずつの文面で、通知購読者かつ「今回は難しい」でない人にだけ送る。
   実行テスト `tests/ops-stage.mjs`
@@ -517,7 +519,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ **認可ではない** (RLS anon 全許可・名乗りは自己申告) — 誤操作防止の役割分けと、通知の宛先のため。
   画面 (`resolveMode`): master = 🛠 トグルで運営⇄メンバーを行き来 (開発中の確認用・記憶は端末ごと) / ops = 名乗った時点で**常に運営画面** (トグルは「運営担当」の固定表示) /
   メンバー = 常にメンバー画面 (トグルを出さない) / **役割がまだ読めていない (undefined) = 従来どおり端末の記憶** (起動直後のちらつきと、通信断で運営担当を落とすのを防ぐ)。
-  役割は `_syncOpsRole` が 名乗り直し・起動・30秒ごと に読む (任命されたら開き直さなくても運営画面になる)。任命パネルは **運営タブ (戦況) の一番下「その他 ▾」› メンテナンス** (HTML は設定タブに置き、`_initOpsEtc` が移す。`data-master-only` = `body.ops-master`)。
+  役割は `_syncOpsRole` が 名乗り直し・起動・30秒ごと に読む (任命されたら開き直さなくても運営画面になる)。任命パネルは **設定タブの「👑 マスター運営」区画** (`data-master-only` = `body.ops-master`。🛠 の ON/OFF に関係なく役割で出す)。
   クライアントは `ops` と `NULL` しか書かない (master は 46 が1回だけ付ける・部分一意索引で1人)。**46 未適用は `supabaseLoadOpsRole` が `undefined` を返し「分からない」のまま**
   = 全員が従来どおりトグル (null を返すと未適用のまま配ったときに全員のトグルが消える: Codex指摘)。
 - **通知の配管** (監査 2026-09-12 A1〜A4)。★ send-push の**時間帯フィルタは「戦闘可能時間」で絞る**ので、本人あて・行動が要る通知は `ignoreAvailability: true` を必ず付ける

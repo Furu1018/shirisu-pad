@@ -5473,7 +5473,11 @@
             </div>
 
             <!-- ①-2 互換ゲート (運営) — L2 ⑦ -->
-            <div class="dc-card" data-span="6" data-ops-only>
+            <!-- 👑 マスター運営の区画 (2026-09-12・Codex と合意): 役割で出す (🛠 の ON/OFF に関係なく body.ops-master)。
+                 当日の運営作業ではなく・取り返しがつきにくいもの = 互換ゲート / 運営担当の任命 / メンバー管理 / 復元。
+                 通知状況・アクティビティ・キャラマスタ・バックアップ保存は運営の作業なので 運営タブ › その他 › メンテナンス のまま -->
+            <div class="ops-group-label" data-master-only style="margin-top:4px;">👑 マスター運営 — ふるり だけに見えます</div>
+            <div class="dc-card" data-span="6" data-master-only>
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:6px;">アプリの版のしめ切り</div>
                 <div style="font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.7;margin-bottom:11px;">
                     予約を知らない古いアプリが「凸プランの表示・凸の報告・プランの配信」をするのを止めます。<br>
@@ -5487,15 +5491,26 @@
             </div>
 
             <!-- ② メンバーの通知状況 (運営) -->
-            <!-- 👑 運営担当の任命 (2026-09-12): マスター運営 (ふるり) にだけ出る (data-master-only)。_initOpsEtc が運営タブの一番下「その他 ▾」› メンテナンス へ移す。
+            <!-- 👑 運営担当の任命 (2026-09-12): マスター運営 (ふるり) にだけ出る (data-master-only)。設定タブの 👑 区画に置く (🛠 に関係なく)。
                  任命された人は名乗った時点で運営画面になり、運営あての通知 (申請・返事) を受け取る。判定は opsRoleDomain -->
-            <div class="dc-card" data-span="6" data-ops-only data-master-only>
+            <div class="dc-card" data-span="6" data-master-only>
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
                     <div style="font-size:14px;font-weight:900;color:var(--t-ink);">👑 運営担当</div>
                     <div id="settingsRolesCount" style="font-size:10.5px;color:var(--t-muted);font-variant-numeric:tabular-nums;">—</div>
                 </div>
                 <p style="margin:0 0 10px;font-size:11px;color:var(--t-muted);line-height:1.6;">任命した人は名乗った時点で運営画面になり、予約の申請・取消希望・📣 や締め凸の返事が Push で届きます。任命と解任はマスター運営だけができます。</p>
                 <div id="settingsRolesBody" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;">読み込み中…</div>
+            </div>
+            <!-- 復元 (巻き戻し) は全員のデータを戻す最高危険操作なので master 専用。保存 (ダウンロード) は運営の作業なのでメンテナンスに残す (Codex 提案) -->
+            <div class="dc-card" data-span="6" data-master-only>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">復元 (巻き戻し)</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">バックアップの JSON から全データを戻します。保存は 運営タブ › その他 › メンテナンス の「バックアップ」から。</div>
+                <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
+                    <div style="font-size:10.5px;font-weight:800;color:var(--bad-deep);margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
+                    <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
+                    <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span data-sp-icon="upload" data-sp-size="15"></span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
+                </div>
+                <p id="settingsRestoreMsg" style="margin:8px 0 0 0;font-size:11px;color:var(--t-muted);min-height:14px;text-align:center;"></p>
             </div>
             <div class="dc-card dc-card-tight" data-span="6" data-ops-only>
                 <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;padding:0 4px;">
@@ -5512,7 +5527,7 @@
             </div>
 
             <!-- ②' メンバー管理 (運営) -->
-            <div class="dc-card" data-span="12" data-ops-only>
+            <div class="dc-card" data-span="12" data-master-only>
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
                     <div>
                         <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">メンバー管理</div>
@@ -5651,18 +5666,13 @@
             <div class="dc-card" data-span="6" data-ops-only>
                 <div onclick="toggleSettingsBackup()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
                     <div>
-                        <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">バックアップ / 復元</div>
-                        <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">全データの JSON 保存と巻き戻し。レイド前後に保存推奨。</div>
+                        <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">バックアップ</div>
+                        <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">全データの JSON 保存。レイド前後に保存推奨。復元は 設定タブ › 👑 マスター運営 から (ふるり だけ)。</div>
                     </div>
                     <div id="settingsBackupCaret" style="width:28px;height:28px;flex:none;border-radius:8px;background:var(--s2);color:var(--t-muted);display:flex;align-items:center;justify-content:center;font-size:11px;">▼</div>
                 </div>
                 <div id="settingsBackupBody" style="display:none;animation:dcFadeIn 0.2s ease;margin-top:14px;">
                     <button id="settingsBackupBtn" onclick="handleSettingsBackup()" style="width:100%;padding:12px;border-radius:11px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--s1);color:var(--t-ink);font-size:13px;font-weight:900;cursor:pointer;font-family:inherit;"><span data-sp-icon="download" data-sp-size="14"></span> バックアップをダウンロード</button>
-                    <div style="margin-top:12px;background:rgba(255,61,68,0.04);border:1px solid rgba(255,61,68,0.16);border-radius:13px;padding:12px;">
-                        <div style="font-size:10.5px;font-weight:800;color:var(--bad-deep);margin-bottom:8px;">⚠️ 復元は全メンバーのデータをバックアップ時点に巻き戻します (以降の凸報告等は消えます)</div>
-                        <input type="file" id="settingsRestoreFile" accept="application/json,.json" onchange="handleSettingsRestore(event)" style="display:none;">
-                        <button id="settingsRestoreBtn" onclick="document.getElementById('settingsRestoreFile').click()" class="dc-danger-btn" style="width:100%;"><span data-sp-icon="upload" data-sp-size="15"></span><span style="flex:1;text-align:left;">バックアップから復元</span><span style="color:var(--bad);font-size:18px;font-weight:300;">›</span></button>
-                    </div>
                     <p id="settingsBackupMsg" style="margin:8px 0 0 0;font-size:11px;color:var(--t-muted);min-height:14px;text-align:center;"></p>
                 </div>
             </div>
@@ -15269,6 +15279,10 @@
         async function renderSettingsTab() {
             renderSettingsBrowserCard();   // 新: アバター + ストレージ
             const tasks = [renderSettingsSystemInfo()];
+            // 👑 マスター運営の区画 (互換ゲート・運営担当・メンバー管理・復元) は役割で出す (🛠 に関係なく)。描くのも役割で (2026-09-12)
+            if (typeof _opsRoleForCurrent === 'function' && _opsRoleForCurrent() === 'master') {
+                tasks.push(renderSettingsMemberCount(), renderClientGateSettings(), renderSettingsRoles());
+            }
             // 運営ブロック (通知状況・メンバー管理・アクティビティ・キャラマスタ・版のしめ切り・バックアップ) は
             // 運営タブの「その他 › メンテナンス」へ移した (ユーザー決定 B・2026-09-08)。描くのは _setOpsEtcOpen
             await Promise.all(tasks);
@@ -15925,7 +15939,7 @@
             const file = fileInput.files?.[0];
             fileInput.value = '';   // 同じファイルを再選択できるように
             if (!file) return;
-            const msg = document.getElementById('settingsBackupMsg');
+            const msg = (document.getElementById('settingsRestoreMsg') || document.getElementById('settingsBackupMsg'));
             const btn = document.getElementById('settingsRestoreBtn');
             const setMsg = (t, color) => { if (msg) { msg.style.color = color || 'var(--t-muted)'; msg.textContent = t; } };
 
@@ -25411,7 +25425,8 @@
         async function renderClientGateSettings() {
             const el = document.getElementById('settingsGateState');
             if (!el) return;
-            if (!_opsMode) { el.textContent = ''; return; }
+            // 👑 master の区画にある (2026-09-12)。🛠 ではなく役割で描く
+            if (typeof _opsRoleForCurrent === 'function' ? _opsRoleForCurrent() !== 'master' : !_opsMode) { el.textContent = ''; return; }
             // ★ ここで直接取って _gateRaw に代入すると、_loadClientGate と並行したときに
             //   古い値が戻り、配信の表示可否が古い min_plan_schema で判定される (Codex指摘 2026-09-07)。
             //   取得経路は _loadClientGate 1本に寄せる (single-flight + 世代つき)
@@ -26451,7 +26466,7 @@
             const changed = _opsRole.role !== role || String(_opsRole.playerId) !== String(me.id);
             _opsRole = { playerId: me.id, role };
             _applyOpsModeForIdentity();
-            if (changed && typeof renderSettingsRoles === 'function') renderSettingsRoles();
+            if (changed && typeof renderSettingsTab === 'function') renderSettingsTab().catch(() => { /* 次に開いたとき */ });   // 👑 区画 (互換ゲート・運営担当・メンバー管理) を役割で描き直す
         }
         // 運営あての Push: master + 運営担当の全員へ (押した本人は除く)。時間帯フィルタは通さない (迅速に対応するため)。46 未適用なら誰にも送らない
         async function _notifyOps({ title, body, url = './?tab=ops', tag = null, except = null } = {}) {
@@ -26814,12 +26829,11 @@
             container.appendChild(etc);
             // 設定タブの運営ブロック → メンテナンス (ユーザー決定 B)。id を付けてヒーロー/チェックリストから飛べるようにする
             const maint = etc.querySelector('#opsEtcMaint');
-            const idOf = (card) => card.querySelector('#settingsGateState') ? 'opsMaintGate'
-                : card.querySelector('#settingsNotifyTable') ? 'opsMaintNotify'
-                : card.querySelector('#settingsMemberCount') ? 'opsMaintMembers'
+            // ★ 移すのは運営の作業 (通知状況・アクティビティ・キャラマスタ・バックアップ保存) だけ。互換ゲート・運営担当・メンバー管理・復元は
+            //   設定タブの 👑 マスター運営 (data-master-only) に残る (2026-09-12・Codex と合意)
+            const idOf = (card) => card.querySelector('#settingsNotifyTable') ? 'opsMaintNotify'
                 : card.querySelector('#settingsActivityList') ? 'opsMaintActivity'
                 : card.querySelector('#settingsMasterBody') ? 'opsMaintMaster'
-                : card.querySelector('#settingsRolesBody') ? 'opsMaintRoles'
                 : card.querySelector('[onclick*="handleSettingsBackup"]') ? 'opsMaintBackup' : null;
             document.querySelectorAll('#tab-settings .dc-card[data-ops-only]').forEach(card => {
                 const id = idOf(card);
@@ -26834,15 +26848,12 @@
             body.style.display = open ? '' : 'none';
             if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
             if (open && !_opsEtcRendered && _opsMode) {
-                // メンテナンスの中身は開いたときに1回だけ取りに行く (設定タブにあった頃と同じ 5 つの描画)
+                // メンテナンスの中身は開いたときに1回だけ取りに行く (通知状況・アクティビティ・キャラマスタ。互換ゲート・運営担当・メンバー管理は設定タブの 👑 区画)
                 _opsEtcRendered = true;
                 try {
-                    renderSettingsMemberCount();
                     renderSettingsNotifyStatus();
                     renderSettingsActivity();
                     renderSettingsCharMaster();
-                    renderClientGateSettings();
-                    renderSettingsRoles();       // 👑 任命パネル (master だけ見える)
                 } catch (e) { console.warn('[ops] その他の描画:', e?.message || e); }
             }
         }
