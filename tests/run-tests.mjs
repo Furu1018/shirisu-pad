@@ -8278,8 +8278,9 @@ console.log('\ngrowthDomain:');
         let r = dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 1400, table, maxSlv: 10 });
         assert.deepEqual([r.ok, r.slv, r.delta], [true, 6, 4]); assert.ok(Math.abs(r.predicted - 1000 * 161 / 110) < 1e-9);
         // ちょうど届く境界 (>=)
-        r = dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 1000 * 146 / 110, table, maxSlv: 10 });
-        assert.equal(r.slv, 5, '等しいときはその SLv');
+        // ★ 目標は predictDamage の値そのもの (同じ式で作る)。手で 1000*146/110 と書くと丸めが 1 ulp ずれて >= と > の違いを見逃す (変異で穴)
+        r = dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: dom.predictDamage({ damage: 1000, curSlv: 2, targetSlv: 5, table }), table, maxSlv: 10 });
+        assert.equal(r.slv, 5, '等しいときはその SLv (>= でないと 1 つ上になる)');
         // いまより低くても届く → 下げた SLv (delta 負)
         r = dom.requiredSlv({ damage: 1000, curSlv: 5, targetDamage: 800, table, maxSlv: 10 });
         assert.deepEqual([r.ok, r.slv, r.delta], [true, 3, -2], '下げても届くなら最小の SLv (delta 負): 1000×121/146 = 829 ≥ 800、SLv2 は 753 で届かない');
