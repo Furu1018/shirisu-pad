@@ -277,6 +277,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   「Lv1B1が23時 / Lv2B3が21時」の入れ替えを見逃す (最初の実装がこれで、変異テストで発覚)。
   `rowsByPlayer` が (level, bossNumber, hourIdx, loadoutSlot) で決定的に並べるのが前提。
   時刻と編成も約束の一部なので変化に数える (2026-09-07 ユーザー決定)。⏳隙間型は flex に畳む
+- **js/domain/slvSim.js** — 分析タブ › シミュレーター (2026-09-13)。`predictDamage` (SLv → 予測) と **`requiredSlv` (目標ダメージ → 届く最小の SLv、二分探索)**。
+  画面は `runSimReverse` が B×1e9 で渡し、届く SLv を目標 SLv に写して予測と順位表も動かす。目標 SLv を手で変えたら逆引きの入力は消す (`onSimTargetSlvInput`)。
+  ★ 既定の選択はいま名乗っている人 (`_simDefaultPlayer`: 分析データにその名前があれば)。ダメージ予測とふるり値試算の両方
+- **🌏 GB比較の凍結エクスポート** (`data/gb-export/<month>.json`) は GB リポ (`~/Desktop/shirisu-pad-global`) で `node scripts/export-season.mjs`
+  → 本家へコピー。**取り込んだら `tests/run-tests.mjs` が本家の `BOSS_ATTRIBUTES` と突合する** (dropped 無し・5属性)。2026-08 / 2026-09 取り込み済み
 - **js/domain/** (fururi/ocr/finish/format/mockCompare) — ふるり値計算・OCR後処理・締め凸候補選別・
   ダメージ整形・ユニオン事前比較 (模擬タブ) の純ロジック。全て引数渡し・テストあり。
   該当領域の計算式を index.html に書き足さないこと。mockCompare のふるり値は

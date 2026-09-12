@@ -28,6 +28,7 @@ import '../js/domain/planBoard.js';     // globalThis.planBoardDomain (最適凸
 import '../js/domain/opsRole.js';       // globalThis.opsRoleDomain (👑 運営担当: master / ops / メンバー)
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
+import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -8264,6 +8265,76 @@ console.log('\ngrowthDomain:');
         const rmr = html.match(/async function renderMyReservations\(identity\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/rows = await window\.supabaseLoadMyReservations\?\.\(ctx\.season\.id, identity\.id\)[\s\S]*?if \(String\(getCurrentIdentity\(\)\?\.id\) !== String\(identity\.id\)\) return;\s*_myResvRows = rows;/.test(rmr), '予約を読んだあとに名乗り直しを見ていない');
         assert.ok(/if \(_coordPollTick === 0 && typeof _syncOpsRole === 'function'\) _syncOpsRole\(\);/.test(html), '任命されても開き直すまで運営画面にならない');
+    });
+    // ===== SLv シミュレーター (2026-09-13 ユーザー要望: 既定でいま名乗っている人 / 目標ダメージ → 必要 SLv の逆引き) =====
+    test('★ slvSim: 予測と逆引き (届く最小の SLv / 下げても届く / 最大でも届かない / 材料が無い)', () => {
+        const dom = globalThis.slvSimDomain;
+        assert.ok(dom, 'slvSimDomain が無い');
+        const table = { 1: 100, 2: 110, 3: 121, 4: 133, 5: 146, 6: 161, 7: 177, 8: 195, 9: 214, 10: 236 };
+        assert.equal(dom.predictDamage({ damage: 1000, curSlv: 2, targetSlv: 4, table }), 1000 * 133 / 110);
+        assert.equal(dom.predictDamage({ damage: 1000, curSlv: 2, targetSlv: 99, table }), null, 'テーブルに無い SLv');
+        assert.equal(dom.predictDamage({ damage: 0, curSlv: 2, targetSlv: 4, table }), null);
+        // 1000 @SLv2 → SLv5 で 1327, SLv6 で 1464。目標 1400 は SLv6 が最小
+        let r = dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 1400, table, maxSlv: 10 });
+        assert.deepEqual([r.ok, r.slv, r.delta], [true, 6, 4]); assert.ok(Math.abs(r.predicted - 1000 * 161 / 110) < 1e-9);
+        // ちょうど届く境界 (>=)
+        r = dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 1000 * 146 / 110, table, maxSlv: 10 });
+        assert.equal(r.slv, 5, '等しいときはその SLv');
+        // いまより低くても届く → 下げた SLv (delta 負)
+        r = dom.requiredSlv({ damage: 1000, curSlv: 5, targetDamage: 800, table, maxSlv: 10 });
+        assert.deepEqual([r.ok, r.slv, r.delta], [true, 3, -2], '下げても届くなら最小の SLv (delta 負): 1000×121/146 = 829 ≥ 800、SLv2 は 753 で届かない');
+        // 最大でも届かない
+        r = dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 5000, table, maxSlv: 10 });
+        assert.deepEqual([r.ok, r.reason, r.maxSlv], [false, 'unreachable', 10]); assert.ok(Math.abs(r.maxPredicted - 1000 * 236 / 110) < 1e-9);
+        // maxSlv を渡さなければテーブルの最大
+        assert.equal(dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 2000, table }).slv, 10);
+        // 材料が無い
+        assert.equal(dom.requiredSlv({ damage: 1000, curSlv: 99, targetDamage: 1400, table }), null, 'いまの SLv がテーブルに無い');
+        assert.equal(dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 0, table }), null);
+        assert.equal(dom.requiredSlv({ damage: 1000, curSlv: 2, targetDamage: 1400, table: {} }), null, '空のテーブル');
+        // 本物のテーブルでも単調 (二分探索の前提)
+        const real = JSON.parse(_grRd('data/slv-ratio.json')).data;
+        const keys = Object.keys(real).map(Number).sort((a, b) => a - b);
+        for (let i = 1; i < keys.length; i++) assert.ok(real[keys[i]] >= real[keys[i - 1]], `slv-ratio が単調でない: ${keys[i - 1]} → ${keys[i]}`);
+        const rr = dom.requiredSlv({ damage: 30e9, curSlv: 700, targetDamage: 35e9, table: real, maxSlv: keys[keys.length - 1] });
+        assert.ok(rr.ok && rr.slv > 700 && dom.predictDamage({ damage: 30e9, curSlv: 700, targetSlv: rr.slv, table: real }) >= 35e9
+            && dom.predictDamage({ damage: 30e9, curSlv: 700, targetSlv: rr.slv - 1, table: real }) < 35e9, '本物のテーブルで最小の SLv になっていない');
+    });
+    test('★ 配線: シミュレーターは既定でいま名乗っている人 / 逆引きの入力 → 目標 SLv に写して予測も動く / 目標 SLv を手で変えたら逆引きを消す', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(/<script defer src="\.\/js\/domain\/slvSim\.js"><\/script>/.test(html), 'slvSim.js を読んでいない');
+        const upd = html.match(/function updateSimulatorPlayerList\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(current\) select\.value = current;\s*else select\.value = _simDefaultPlayer\(\);/.test(upd), 'ダメージ予測の既定が名乗っている人でない');
+        const fs2 = html.match(/function updateFururiSimPlayerList\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(current\) select\.value = current;\s*else select\.value = _simDefaultPlayer\(\);/.test(fs2), 'ふるり値試算の既定が名乗っている人でない');
+        const def = html.match(/function _simDefaultPlayer\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/currentData\.some\(p => p\.player === me\.name\)\) \? me\.name : ''/.test(def), '分析データにいない人を選んでいる');
+        assert.ok(/<input id="simTargetDmgB" type="number" min="0" step="0\.1" inputmode="decimal"[^>]*oninput="runSimReverse\(\)"/.test(html), '逆引きの入力が無い');
+        assert.ok(/<input id="simTargetSlv" type="number" min="1" max="1183" oninput="onSimTargetSlvInput\(\)"/.test(html), '目標 SLv の入力が逆引きを消す道を通っていない');
+        const on = html.match(/function onSimTargetSlvInput\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/getElementById\('simTargetDmgB'\); if \(r\) r\.value = '';/.test(on) && /runSimulator\(\);/.test(on), '目標 SLv を変えたとき逆引きが残る');
+        const rev = html.match(/function runSimReverse\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/window\.slvSimDomain\.requiredSlv\(\{ damage: player\.damage, curSlv: player\.syncLevel, targetDamage: b \* 1e9, table: slvRatioTable, maxSlv: _slvMax \}\)/.test(rev), '逆引きを slvSimDomain に任せていない (B → raw は ×1e9)');
+        assert.ok(/if \(slvInput\) \{ slvInput\.value = String\(r\.slv\); runSimulator\(\); \}/.test(rev), '届く SLv を目標 SLv に写して予測を動かしていない');
+        assert.ok(/SLv \$\{r\.maxSlv\} まで上げても届きません/.test(rev), '届かないときの言い方が無い');
+    });
+    // ===== 🌏 GB比較: 凍結エクスポートは本家のボスと突合できること (取り込むたびに確かめる) =====
+    test('★ data/gb-export/*.json は本家の BOSS_ATTRIBUTES と突合できる (dropped 無し・5属性そろう)', () => {
+        const fsG = _fsG, dir = new URL('../data/gb-export/', import.meta.url);
+        const files = fsG.readdirSync(dir).filter(f => /^\d{4}-\d{2}\.json$/.test(f)).sort();
+        assert.ok(files.length >= 2, `凍結エクスポートが足りない: ${files}`);
+        assert.ok(files.includes('2026-09.json'), '2026-09 の GB エクスポートが取り込まれていない');
+        const html = _grRd('index.html');
+        const BOSS_ATTRIBUTES = new Function(html.match(/const BOSS_ATTRIBUTES = \{[\s\S]*?\n        \};/)[0] + ' return BOSS_ATTRIBUTES;')();
+        const codeMap = {}; Object.keys(BOSS_ATTRIBUTES).forEach(c => { codeMap[BOSS_ATTRIBUTES[c].attribute] = c; });
+        for (const f of files) {
+            const ex = JSON.parse(fsG.readFileSync(new URL(f, dir), 'utf8').replace(/\r\n/g, '\n'));
+            assert.equal(ex.season, f.replace('.json', ''), `${f}: season がファイル名と違う`);
+            const idx = globalThis.gbCompareDomain.buildIndex(ex, codeMap);
+            assert.deepEqual(idx.dropped, [], `${f}: 突合できない属性がある (別シーズンのエクスポート?)`);
+            assert.deepEqual(Object.keys(idx.attrs).sort(), ['ELECTRIC', 'FIRE', 'IRON', 'WATER', 'WIND'], `${f}: 属性がそろっていない`);
+            for (const a of Object.keys(idx.attrs)) assert.ok(idx.attrs[a].attackMedianFururi > 0 && idx.attrs[a].baseDamage > 0, `${f} ${a}: 中央値か基準ダメージが無い`);
+        }
     });
     // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====
     test('★ paceModel: 時間帯ごとの本数・定員・直近のペースから「使い切る時刻」を出す', () => {

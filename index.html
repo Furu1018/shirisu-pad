@@ -91,7 +91,8 @@
     <script defer src="./js/domain/opsLayout.js"></script>
     <script defer src="./js/domain/pace.js"></script>
     <script defer src="./js/domain/opsRole.js"></script>     <!-- 👑 運営担当 (master / ops / メンバー) の判定 -->
-    <script defer src="./js/domain/planBoard.js"></script>   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
+    <script defer src="./js/domain/planBoard.js"></script>
+    <script defer src="./js/domain/slvSim.js"></script>      <!-- SLv シミュレーター (予測 / 目標ダメージ → 必要 SLv の逆引き) -->   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
     <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
     <script defer src="./js/domain/growth.js"></script>         <!-- ユニオンメンバーの育成データ (BlaBlaLINK 由来) -->
     <script defer src="./js/state/opsStore.js"></script>
@@ -4779,8 +4780,17 @@
                             </div>
                             <div>
                                 <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">目標SLv <span id="simCurrentSlvLabel" style="font-weight: 700; color: var(--t-muted);"></span></label>
-                                <input id="simTargetSlv" type="number" min="1" max="1183" oninput="runSimulator()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;" placeholder="例: 160">
+                                <input id="simTargetSlv" type="number" min="1" max="1183" oninput="onSimTargetSlvInput()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-weight: 700; font-size: 14px;" placeholder="例: 160">
                             </div>
+                        </div>
+                        <!-- 逆引き (2026-09-13 ユーザー要望「〇〇ダメージ上げるのに必要な SLv」): 目標ダメージ → 届く最小の SLv。
+                             入れると目標 SLv に写して予測と順位表も動く。判定は slvSimDomain.requiredSlv -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: end;">
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 800; color: var(--t-body); margin-bottom: 6px;">逆引き: 目標ダメージ (B)</label>
+                                <input id="simTargetDmgB" type="number" min="0" step="0.1" inputmode="decimal" placeholder="例: 35" oninput="runSimReverse()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--s1); color: var(--t-ink); font-size: 14px; font-family: inherit; box-sizing: border-box;">
+                            </div>
+                            <div id="simReverseResult" style="font-size: 12.5px; font-weight: 800; color: var(--t-ink); line-height: 1.5; min-height: 20px;"></div>
                         </div>
                         <div id="simResult" style="display: none; padding: 16px; background: var(--s1); border-radius: 12px; border-left: 4px solid var(--ops-solid);">
                             <div style="font-size: 12px; color: var(--t-muted); margin-bottom: 4px;">予測ダメージ</div>
@@ -24509,7 +24519,40 @@
                 select.appendChild(opt);
             });
             if (current) select.value = current;
+            else select.value = _simDefaultPlayer();   // 既定はいま名乗っている人 (2026-09-13 ユーザー要望)
             runSimulator();
+        }
+        // 名乗っている人が分析データにいればその人。いなければ未選択 ('')
+        function _simDefaultPlayer() {
+            const me = typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null;
+            return (me && me.name && currentData.some(p => p.player === me.name)) ? me.name : '';
+        }
+        // 目標 SLv を手で変えたら逆引きの入力は消す (2 つの入力が食い違ったまま残らないように)
+        function onSimTargetSlvInput() {
+            const r = document.getElementById('simTargetDmgB'); if (r) r.value = '';
+            const out = document.getElementById('simReverseResult'); if (out) out.textContent = '';
+            runSimulator();
+        }
+        // 逆引き: 目標ダメージ (B) → 届く最小の SLv (slvSimDomain.requiredSlv)。届く SLv を目標 SLv に写して予測と順位表も動かす
+        function runSimReverse() {
+            const select = document.getElementById('simPlayerSelect');
+            const inp = document.getElementById('simTargetDmgB');
+            const out = document.getElementById('simReverseResult');
+            const slvInput = document.getElementById('simTargetSlv');
+            if (!select || !inp || !out) return;
+            const b = parseFloat(inp.value);
+            const player = currentData.find(p => p.player === select.value);
+            if (!Number.isFinite(b) || b <= 0 || !player) { out.textContent = ''; return; }
+            if (!player.syncLevel || !slvRatioTable) { out.textContent = 'SLv の材料がありません'; return; }
+            const r = window.slvSimDomain ? window.slvSimDomain.requiredSlv({ damage: player.damage, curSlv: player.syncLevel, targetDamage: b * 1e9, table: slvRatioTable, maxSlv: _slvMax }) : null;
+            if (!r) { out.textContent = '計算できません'; return; }
+            if (!r.ok) {
+                out.innerHTML = `<span style="color:var(--bad-deep);">SLv ${r.maxSlv} まで上げても届きません</span><br><span style="font-weight:700;color:var(--t-muted);">最大 ${escapeHtml(formatDamage(r.maxPredicted))}</span>`;
+                return;
+            }
+            const sign = r.delta > 0 ? '+' : '';
+            out.innerHTML = `<span style="color:var(--ops);font-size:18px;">SLv ${r.slv}</span> <span style="color:${r.delta > 0 ? 'var(--ok)' : 'var(--t-muted)'};">(${sign}${r.delta})</span><br><span style="font-weight:700;color:var(--t-muted);">${escapeHtml(formatDamage(r.predicted))} に届きます</span>`;
+            if (slvInput) { slvInput.value = String(r.slv); runSimulator(); }
         }
 
         // シミュレータタブ内の2モード切替 (ダメージ予測 / ふるり値試算)
@@ -24642,6 +24685,7 @@
                 select.appendChild(opt);
             });
             if (current) select.value = current;
+            else select.value = _simDefaultPlayer();   // 既定はいま名乗っている人
             onFururiSimPlayerChange();
         }
 
