@@ -8201,7 +8201,9 @@ console.log('\ngrowthDomain:');
         assert.ok(/window\.supabaseLoadOpsRole = async function \(playerId\)/.test(client) && /window\.supabaseLoadOpsPlayerIds = async function \(\)/.test(client) && /window\.supabaseSetOpsRole = async function \(playerId, role/.test(client), '関数が足りない');
         assert.ok(/if \(role !== 'ops' && role !== null\) throw new Error/.test(client), 'クライアントから master を付けられる');
         assert.ok(/\.or\('ops_role\.is\.null,ops_role\.neq\.master'\)/.test(client), 'master を守る条件が無い (neq だけだと NULL の行が落ちる)');
-        assert.ok(/if \(error\) \{ if \(_isMissingOpsRoleCol\(error\)\) return null; throw error; \}/.test(client) && /if \(error\) \{ if \(_isMissingOpsRoleCol\(error\)\) return \[\]; throw error; \}/.test(client), '46 未適用で静かに劣化しない');
+        // ★ 46 未適用は「分からない (undefined)」— null にすると未適用のまま配ったときに全員のトグルが消える (Codex指摘)
+        assert.ok(/if \(error\) \{ if \(_isMissingOpsRoleCol\(error\)\) return undefined; throw error; \}/.test(client) && /if \(error\) \{ if \(_isMissingOpsRoleCol\(error\)\) return \[\]; throw error; \}/.test(client), '46 未適用で静かに劣化しない');
+        assert.ok(/role = raw === undefined \? undefined : \(window\.opsRoleDomain \? window\.opsRoleDomain\.roleOf\(\{ ops_role: raw \}\) : null\);/.test(sync), '46 未適用をメンバー扱いにしている (全員のトグルが消える)');
         assert.ok(/const roleCols = fullCols \+ ', ops_role';/.test(client) && /if \(r\.error && \/column \.\*ops_role\/i\.test\(String\(r\.error\?\.message\)\)\) \{\s*r = await tryQuery\(fullCols\);/.test(client), 'players の読み込みが ops_role 無しに落ちない');
         // SQL 46 ⇄ JS: 役割の集合が同じ / 99 に判定行
         const sql = _grRd('supabase/46_ops_roles.sql');
@@ -8240,7 +8242,10 @@ console.log('\ngrowthDomain:');
             assert.ok(html.includes(key), `フィルタを通してしまう通知がある: ${key}`);
         }
         // ホームを開きっぱなしでも承認・📣 に追従する (30 秒ティック)
-        assert.ok(/&& typeof renderMyReservations === 'function'\) Promise\.resolve\(renderMyReservations\(id\)\)\.catch/.test(html), 'ホームのティックで予約を取り直していない');
+        assert.ok(/if \(_coordPollTick === 1 && document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\)\s*&& typeof renderMyReservations === 'function'\) Promise\.resolve\(renderMyReservations\(id\)\)\.catch/.test(html), 'ホームのティックで予約を取り直していない (or 10 秒ごとに取り直している)');
+        // 名乗り直しの後着ガード: 前の人の予約をホームに出さない
+        const rmr = html.match(/async function renderMyReservations\(identity\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/rows = await window\.supabaseLoadMyReservations\?\.\(ctx\.season\.id, identity\.id\)[\s\S]*?if \(String\(getCurrentIdentity\(\)\?\.id\) !== String\(identity\.id\)\) return;\s*_myResvRows = rows;/.test(rmr), '予約を読んだあとに名乗り直しを見ていない');
         assert.ok(/if \(_coordPollTick === 0 && typeof _syncOpsRole === 'function'\) _syncOpsRole\(\);/.test(html), '任命されても開き直すまで運営画面にならない');
     });
     // ===== 📈 消化のペース / 🔁 直近の動き (運営ボード 当日・段階4・2026-09-11) =====

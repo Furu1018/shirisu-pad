@@ -9491,9 +9491,11 @@
             let ctx = null;
             try { ctx = await ensureActiveSeasonLoaded(); } catch { /* 下で null 扱い */ }
             if (!ctx?.season?.id) { card.style.display = 'none'; return; }
-            try {
-                _myResvRows = await window.supabaseLoadMyReservations?.(ctx.season.id, identity.id) ?? null;
-            } catch { _myResvRows = null; }
+            let rows = null;
+            try { rows = await window.supabaseLoadMyReservations?.(ctx.season.id, identity.id) ?? null; } catch { rows = null; }
+            // ★ 待っている間に名乗り直したら描かない (前の人の予約をホームに出さない: Codex指摘 2026-09-12)
+            if (String(getCurrentIdentity()?.id) !== String(identity.id)) return;
+            _myResvRows = rows;
             // ★ 39未適用 (null) ならカードごと出さない。0件 ([]) でもカードは出す —
             //   ここが「自分から凸を申請する」の入口なので、予約が無いうちこそ見えている必要がある
             //   (モック①: 予約が無くても申請ボタンは常にある)
@@ -13893,10 +13895,11 @@
                 // renderMyPublishedPlan は世代ガード付きなので多重呼び出しでも安全
                 if (document.getElementById('tab-mypage')?.classList.contains('active')
                     && typeof renderMyPublishedPlan === 'function') renderMyPublishedPlan(id);
-                // 🔒 承認・却下・📣 の返事はホームを開きっぱなしでも追従させる (監査 A3・2026-09-12)
-                if (document.getElementById('tab-mypage')?.classList.contains('active')
+                // 🔒 承認・却下・📣 の返事はホームを開きっぱなしでも追従させる (監査 A3・2026-09-12)。
+                //   ★ このティックは 10 秒。3 回に 1 回 (30 秒) だけ取り直す (Codex指摘: 毎回だと 10 秒ごとになる)
+                if (_coordPollTick === 1 && document.getElementById('tab-mypage')?.classList.contains('active')
                     && typeof renderMyReservations === 'function') Promise.resolve(renderMyReservations(id)).catch(() => { /* 次の周期で */ });
-                // 👑 任命されたら開き直さなくても運営画面になる (90 秒ごと)
+                // 👑 任命されたら開き直さなくても運営画面になる (30 秒ごと)
                 if (_coordPollTick === 0 && typeof _syncOpsRole === 'function') _syncOpsRole();
                 _coordPollTick = (_coordPollTick + 1) % 3;
                 // ★ ホームだけ開いている端末も 30 秒ごとにボスHPを追う (2026-09-11)。以前は戦況タブを
@@ -26436,8 +26439,9 @@
             if (!me || me.id == null) { _opsRole = { playerId: null, role: undefined }; _applyOpsModeForIdentity(); return; }
             let role;
             try {
-                const raw = typeof window.supabaseLoadOpsRole === 'function' ? await window.supabaseLoadOpsRole(me.id) : null;
-                role = window.opsRoleDomain ? window.opsRoleDomain.roleOf({ ops_role: raw }) : null;
+                const raw = typeof window.supabaseLoadOpsRole === 'function' ? await window.supabaseLoadOpsRole(me.id) : undefined;
+                // undefined = 46 未適用 (列が無い) → 役割は「分からない」のまま = 従来どおり端末の記憶で切り替える (未適用のまま配っても壊れない)
+                role = raw === undefined ? undefined : (window.opsRoleDomain ? window.opsRoleDomain.roleOf({ ops_role: raw }) : null);
             } catch (e) {
                 // 通信断で運営担当をメンバーに落とさない: 同じ人の前の値を残す。初めてなら分からないまま (端末の記憶どおり)
                 console.warn('[ops role] 読めませんでした:', e?.message || e);

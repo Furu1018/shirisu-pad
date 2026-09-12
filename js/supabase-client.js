@@ -353,11 +353,12 @@ window.supabaseLoadAllPlayers = async function (includeArchived = false) {
 // 役割は players.ops_role。判定は js/domain/opsRole.js が唯一。未適用環境は「役割なし」に静かに劣化する
 const OPS_ROLE_SQL_HINT = '運営担当の任命には supabase/46_ops_roles.sql を SQL Editor で適用してください';
 const _isMissingOpsRoleCol = (error) => _isMissingColumnErr(error, 'ops_role');
-// 名乗っている人の役割。列が無い (46 未適用) / 見つからない → null。通信失敗は throw (呼び出し側が前の値を残す)
+// 名乗っている人の役割。見つからない → null (メンバー)。★ 列が無い (46 未適用) → **undefined** (分からない = 全員が従来どおり 🛠 トグル。
+//   null にすると未適用のまま配ったときに全員のトグルが消える: Codex指摘 2026-09-12)。通信失敗は throw (呼び出し側が前の値を残す)
 window.supabaseLoadOpsRole = async function (playerId) {
     if (!playerId) return null;
     const { data, error } = await supabase.from('players').select('id, ops_role').eq('id', playerId).maybeSingle();
-    if (error) { if (_isMissingOpsRoleCol(error)) return null; throw error; }
+    if (error) { if (_isMissingOpsRoleCol(error)) return undefined; throw error; }
     return data ? (data.ops_role || null) : null;
 };
 // 運営あての通知の宛先 (master + ops)。46 未適用なら [] (誰にも送らない = 従来どおり)
