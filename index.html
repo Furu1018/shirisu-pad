@@ -5487,7 +5487,7 @@
             </div>
 
             <!-- ② メンバーの通知状況 (運営) -->
-            <!-- 👑 運営担当の任命 (2026-09-12): マスター運営 (ふるり) にだけ出る (data-master-only)。_initOpsEtc が「その他 › メンテナンス」へ移す。
+            <!-- 👑 運営担当の任命 (2026-09-12): マスター運営 (ふるり) にだけ出る (data-master-only)。_initOpsEtc が運営タブの一番下「その他 ▾」› メンテナンス へ移す。
                  任命された人は名乗った時点で運営画面になり、運営あての通知 (申請・返事) を受け取る。判定は opsRoleDomain -->
             <div class="dc-card" data-span="6" data-ops-only data-master-only>
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
@@ -26479,7 +26479,7 @@
         function _resvRowJp(r) {
             return _resvDraftJp({ bossNumber: r?.boss_number, timeSlot: r?.time_slot, flex: r?.time_mode === 'flex', loadoutSlot: r?.loadout_slot });
         }
-        // 👑 任命パネル (設定 → その他 › メンテナンス)。master にだけ見える (body.ops-master)
+        // 👑 任命パネル (運営タブの一番下「その他 ▾」› メンテナンス。HTML は設定タブにあり _initOpsEtc が移す)。master にだけ見える (body.ops-master)
         async function renderSettingsRoles() {
             const body = document.getElementById('settingsRolesBody'), cnt = document.getElementById('settingsRolesCount');
             if (!body) return;
