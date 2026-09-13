@@ -24542,15 +24542,18 @@
         const SIM_KILL_KEY = 'shirisuko_sim_kill_v1';
         let _simMockCache = {};   // 名前 → { 属性キー: raw } (模擬の代表値・属性ごとの最大)。null = 読めなかった
         let _simKillSeq = 0;
-        function _simKillMap() { try { const o = JSON.parse(localStorage.getItem(SIM_KILL_KEY) || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch { return {}; } }
+        let _simKillMem = null;   // ★ メモリが正、localStorage は写し (使えない端末でもセッション中は効く: Codex指摘)
+        function _simKillMap() {
+            if (_simKillMem) return _simKillMem;
+            try { const o = JSON.parse(localStorage.getItem(SIM_KILL_KEY) || '{}'); _simKillMem = o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch { _simKillMem = {}; }
+            return _simKillMem;
+        }
         function _simKillKey(name, bossCode) { return `${currentMonthKey || ''}|${name}|${bossCode}`; }
         function _simKillGet(name, bossCode) { const e = _simKillMap()[_simKillKey(name, bossCode)]; return e && Number.isFinite(e.b) && e.b > 0 ? e : null; }
         function _simKillSet(name, bossCode, b, src) {
-            try {
-                const m = _simKillMap();
-                if (b > 0) m[_simKillKey(name, bossCode)] = { b, src, at: new Date().toISOString() }; else delete m[_simKillKey(name, bossCode)];
-                localStorage.setItem(SIM_KILL_KEY, JSON.stringify(m));
-            } catch { /* 覚えられなくても、セッション中は入力欄の値で成立する */ }
+            const m = _simKillMap();
+            if (b > 0) m[_simKillKey(name, bossCode)] = { b, src, at: new Date().toISOString() }; else delete m[_simKillKey(name, bossCode)];
+            try { localStorage.setItem(SIM_KILL_KEY, JSON.stringify(m)); } catch { /* 写しが取れなくてもメモリで成立する */ }
         }
         // その人の模擬 (player_damages) を属性ごとの最大で。名前 → id は名簿で引く。読めなければ null
         async function _simLoadMocks(name) {
@@ -24558,7 +24561,9 @@
             let out = null;
             try {
                 const players = await ensureAllPlayersLoaded();
-                const me = (players || []).find(p => p.name === name);
+                let me = (players || []).find(p => p.name === name);
+                // 名簿 (書庫を除く) に居なければ書庫込みで引き直す — 過去回の人は書庫に居ることがある (Codex指摘)。改名した人は引けない (手入力で)
+                if (!me && typeof window.supabaseLoadAllPlayers === 'function') me = ((await window.supabaseLoadAllPlayers(true)) || []).find(p => p.name === name) || null;
                 if (me && typeof window.supabaseLoadPlayerDamages === 'function') {
                     const rows = await window.supabaseLoadPlayerDamages(me.id);
                     out = {};
@@ -24584,11 +24589,12 @@
         async function _renderSimKillBox(player) {
             const box = document.getElementById('simKillBox');
             if (!box) return;
+            const seq = ++_simKillSeq;   // ★ 早戻りの前に進める — 締め凸の無い人へ切り替えても、前の人の読み込みを無効にする (Codex指摘)
             const kills = (player?.attacks || []).filter(a => _attackIsKill(a));
             if (!player || !kills.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-            const seq = ++_simKillSeq;
             const mocks = await _simLoadMocks(player.player);
             if (seq !== _simKillSeq) return;   // 待っている間に人が変わった
+            if ((document.getElementById('simPlayerSelect')?.value ?? '') !== player.player) return;   // 念のため: 選択中の人でなければ描かない
             // 模擬があって記憶が無い締め凸は、模擬を覚える (src: mock)。手入力は上書きしない
             let filled = false;
             for (const a of kills) {
@@ -24600,19 +24606,24 @@
                 const info = BOSS_ATTRIBUTES[a.bossCode] || {}; const key = String(info.attribute || '').toLowerCase();
                 const cur = _simKillGet(player.player, a.bossCode);
                 const mock = mocks && mocks[key] > 0 ? mocks[key] : null;
+                // 出どころを必ず見せる: 手入力 / 模擬から自動 (いまの提出を最初に開いたときに覚える。当時の模擬とは限らない: Codex指摘)
+                const savedAt = cur?.at ? new Date(cur.at) : null;
+                const srcLabel = cur?.src === 'manual' ? ' <span style="font-size:10px;font-weight:900;color:var(--ops);">手入力</span>'
+                    : cur?.src === 'mock' ? ` <span style="font-size:10px;font-weight:900;color:var(--warn-deep);">模擬から自動${savedAt && !Number.isNaN(savedAt.getTime()) ? ` (${savedAt.getMonth() + 1}/${savedAt.getDate()} に保存)` : ''}</span>` : '';
                 return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;margin-top:6px;">
-                    <div style="font-size:11.5px;color:var(--t-body);min-width:0;line-height:1.4;"><b style="color:var(--t-ink);">${esc(info.nameJP || a.bossCode || '?')}</b> 締 ${esc(formatDamage(a.damage))}${mock ? ` <span style="color:var(--t-muted);">· 模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${cur?.src === 'manual' ? ' <span style="font-size:10px;font-weight:900;color:var(--ops);">手入力</span>' : ''}</div>
-                    <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" oninput="_simKillInput('${esc(String(a.bossCode || ''))}', this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-family:inherit;box-sizing:border-box;text-align:right;">
+                    <div style="font-size:11.5px;color:var(--t-body);min-width:0;line-height:1.4;"><b style="color:var(--t-ink);">${esc(info.nameJP || a.bossCode || '?')}</b> 締 ${esc(formatDamage(a.damage))}${mock ? ` <span style="color:var(--t-muted);">· いまの模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${srcLabel}</div>
+                    <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" oninput="_simKillInput('${esc(player.player)}', '${esc(String(a.bossCode || ''))}', this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-family:inherit;box-sizing:border-box;text-align:right;">
                 </div>`;
             }).join('');
             box.innerHTML = `<div style="font-size:12px;font-weight:900;color:var(--warn-deep);">締め凸の置き換え</div>
-                <div style="font-size:11px;color:var(--t-muted);line-height:1.5;margin-top:2px;">撃破した凸は残HP分しか記録されません。その凸だけ「3分間戦闘した結果」(模擬の提出、または手入力の B) に置き換えて予測します。入力した値はこの端末に残ります。</div>${rows}`;
+                <div style="font-size:11px;color:var(--t-muted);line-height:1.5;margin-top:2px;">撃破した凸は残HP分しか記録されません。その凸だけ「3分間戦闘した結果」(模擬の提出、または手入力の B) に置き換えて予測します。模擬は<b>いまの提出</b>を最初に開いたときに覚え、以後はこの端末に残ります (手入力で上書きできます)。</div>${rows}`;
             box.style.display = '';
             if (filled) _simRefresh();
         }
-        function _simKillInput(bossCode, value) {
-            const select = document.getElementById('simPlayerSelect'); const name = select ? select.value : '';
-            if (!name) return;
+        // 入力欄は描いたときの人の名前を持つ。選択中の人と違えば (競合で古い箱が残っていたら) 保存しない (Codex指摘)
+        function _simKillInput(name, bossCode, value) {
+            const select = document.getElementById('simPlayerSelect');
+            if (!name || (select && select.value !== name)) return;
             const b = parseFloat(value);
             _simKillSet(name, bossCode, Number.isFinite(b) && b > 0 ? b : 0, 'manual');
             _simRefresh();

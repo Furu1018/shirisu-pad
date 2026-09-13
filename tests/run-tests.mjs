@@ -8364,12 +8364,22 @@ console.log('\ngrowthDomain:');
         const box = html.match(/async function _renderSimKillBox\(player\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/if \(!_simKillGet\(player\.player, a\.bossCode\) && mocks && mocks\[key\] > 0\) \{ _simKillSet\(player\.player, a\.bossCode, mocks\[key\] \/ 1e9, 'mock'\); filled = true; \}/.test(box), '模擬を自動で覚えていない / 手入力を上書きしている');
         assert.ok(/if \(seq !== _simKillSeq\) return;/.test(box), '待っている間に人が変わったのに描いている');
+        // ★ 世代は早戻りの前に進める (締め凸の無い人へ切り替えても前の人の読み込みを無効にする) + 描く前に選択中の人か確かめる (Codex指摘)
+        assert.ok(box.indexOf('const seq = ++_simKillSeq;') < box.indexOf("if (!player || !kills.length) { box.style.display = 'none'; box.innerHTML = ''; return; }"), '世代を早戻りの後で進めている');
+        assert.ok(/if \(\(document\.getElementById\('simPlayerSelect'\)\?\.value \?\? ''\) !== player\.player\) return;/.test(box), '選択中の人でないのに描いている');
+        // ★ 入力欄は人の名前を持ち、保存は選択中の人と一致するときだけ。出どころ (手入力 / 模擬から自動 + 保存日) を見せる
+        assert.ok(/oninput="_simKillInput\('\$\{esc\(player\.player\)\}', '\$\{esc\(String\(a\.bossCode \|\| ''\)\)\}', this\.value\)"/.test(box), '入力欄が人の名前を持っていない');
+        assert.ok(/模擬から自動\$\{savedAt/.test(box) && /いまの模擬 \$\{esc\(formatDamage\(mock\)\)\}/.test(box), '模擬から自動で覚えた値の出どころを見せていない');
+        // ★ メモリが正、localStorage は写し (使えない端末でもセッション中は効く)。書庫の人も名前 → id を引く
+        assert.ok(/let _simKillMem = null;/.test(html) && /if \(_simKillMem\) return _simKillMem;/.test(html), '記憶がメモリを正にしていない');
         assert.ok(/const key = String\(BOSS_ATTRIBUTES\[a\.bossCode\]\?\.attribute \|\| ''\)\.toLowerCase\(\);/.test(box), '模擬の属性キーの引き方が違う (BOSS_ATTRIBUTES の attribute = 持っていく PT 属性)');
-        const ki = html.match(/function _simKillInput\(bossCode, value\)[\s\S]*?\n        \}/)?.[0] || '';
+        const ki = html.match(/function _simKillInput\(name, bossCode, value\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/_simKillSet\(name, bossCode, Number\.isFinite\(b\) && b > 0 \? b : 0, 'manual'\);\s*_simRefresh\(\);/.test(ki), '手入力を覚えて予測し直していない');
+        assert.ok(/function _simKillInput\(name, bossCode, value\)/.test(ki) && /if \(!name \|\| \(select && select\.value !== name\)\) return;/.test(ki), '別人の箱の入力を選択中の人に保存できる');
         // 模擬の読み出しは名簿で id を引き、属性ごとの最大 (代表値 mockDamageOf)
         const lm = html.match(/async function _simLoadMocks\(name\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/await window\.supabaseLoadPlayerDamages\(me\.id\)/.test(lm) && /const b = mockDamageOf\(r\);/.test(lm) && /Math\.max\(out\[k\] \|\| 0, b \* 1e9\)/.test(lm), '模擬の代表値を属性ごとの最大で取っていない');
+        assert.ok(/if \(!me && typeof window\.supabaseLoadAllPlayers === 'function'\) me = \(\(await window\.supabaseLoadAllPlayers\(true\)\) \|\| \[\]\)\.find\(p => p\.name === name\) \|\| null;/.test(lm), '書庫の人の模擬を引けない');
         // ふるり値試算: B でも桁でも
         assert.ok(/<input id="fsimDamage" type="number" min="0" step="any" inputmode="decimal" oninput="onFsimDamageInput\(\)" placeholder="例: 32\.5 \(B単位。桁で入れても可\)"/.test(html), 'ふるり値試算の入力が B を受けない');
         assert.ok(/const damage = formatDomain\.parseDamageInput\(dmgInput \? dmgInput\.value : ''\);/.test(html) && /const v = formatDomain\.parseDamageInput\(dmgInput\.value\);/.test(html), 'ふるり値試算の読み方が formatDomain.parseDamageInput でない');

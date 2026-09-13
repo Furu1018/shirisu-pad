@@ -285,7 +285,10 @@ rm -f .claude/hooks/.codex-on      # OFF
   (`shirisuko_sim_kill_v1`、鍵は 月|名前|ボスコード): 模擬の提出 (`supabaseLoadPlayerDamages` → `mockDamageOf` の属性ごとの最大) があれば
   記憶が無いときだけ自動で覚え (src mock、次のシーズンで模擬が変わっても残る)、手入力 (src manual) が上書きする。模擬の属性キーは
   `BOSS_ATTRIBUTES[code].attribute` (持っていく PT 属性) の小文字。箱 `#simKillBox` は人が決まったとき (`_simPlayerChanged`) に描き、
-  入力中は描き直さない (焦点が飛ぶ)
+  入力中は描き直さない (焦点が飛ぶ)。★ 世代 (`_simKillSeq`) は関数の頭で進める (締め凸の無い人へ切り替えても前の人の読み込みを無効にする) と、
+  入力欄は描いたときの人の名前を持ち、選択中の人と違えば保存しない (Codex指摘)。記憶はメモリ (`_simKillMem`) が正で localStorage は写し。
+  書庫の人は `supabaseLoadAllPlayers(true)` で引き直す (改名した人は引けない → 手入力)。模擬から自動で覚えた値は「模擬から自動 (M/D に保存)」と出す
+  (いまの提出を最初に開いたときに覚える = 当時の模擬とは限らない)
   ★ ふるり値試算のダメージ入力は **B 単位でも桁でも** (`formatDomain.parseDamageInput`: 1,000,000 未満は B)。OCR は桁のまま入れる
 - **🌏 GB比較の凍結エクスポート** (`data/gb-export/<month>.json`) は GB リポ (`~/Desktop/shirisu-pad-global`) で `node scripts/export-season.mjs`
   → 本家へコピー。**取り込んだら `tests/run-tests.mjs` が本家の `BOSS_ATTRIBUTES` と突合する** (dropped 無し・5属性)。2026-08 / 2026-09 取り込み済み
