@@ -280,6 +280,13 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **js/domain/slvSim.js** — 分析タブ › シミュレーター (2026-09-13)。`predictDamage` (SLv → 予測) と **`requiredSlv` (目標ダメージ → 届く最小の SLv、二分探索)**。
   画面は `runSimReverse` が B×1e9 で渡し、届く SLv を目標 SLv に写して予測と順位表も動かす。目標 SLv を手で変えたら逆引きの入力は消す (`onSimTargetSlvInput`)。
   ★ 既定の選択はいま名乗っている人 (`_simDefaultPlayer`: 分析データにその名前があれば)。ダメージ予測とふるり値試算の両方
+  ★ **締め凸の置き換え** (2026-09-13 ユーザー要望): 撃破した凸は残HP分しか記録されないので、その凸だけ「3分間戦闘した結果」に置き換えた合計
+  (`_simBaseOf` = 記録の合計 + `slvSimDomain.totalWithKillSubs` の差分) を予測と逆引きの基準にする。値は端末に覚える
+  (`shirisuko_sim_kill_v1`、鍵は 月|名前|ボスコード): 模擬の提出 (`supabaseLoadPlayerDamages` → `mockDamageOf` の属性ごとの最大) があれば
+  記憶が無いときだけ自動で覚え (src mock、次のシーズンで模擬が変わっても残る)、手入力 (src manual) が上書きする。模擬の属性キーは
+  `BOSS_ATTRIBUTES[code].attribute` (持っていく PT 属性) の小文字。箱 `#simKillBox` は人が決まったとき (`_simPlayerChanged`) に描き、
+  入力中は描き直さない (焦点が飛ぶ)
+  ★ ふるり値試算のダメージ入力は **B 単位でも桁でも** (`formatDomain.parseDamageInput`: 1,000,000 未満は B)。OCR は桁のまま入れる
 - **🌏 GB比較の凍結エクスポート** (`data/gb-export/<month>.json`) は GB リポ (`~/Desktop/shirisu-pad-global`) で `node scripts/export-season.mjs`
   → 本家へコピー。**取り込んだら `tests/run-tests.mjs` が本家の `BOSS_ATTRIBUTES` と突合する** (dropped 無し・5属性)。2026-08 / 2026-09 取り込み済み
   ★ メンバー一覧の**締め凸** (2026-09-13 ユーザー要望): `_attackIsKill` の凸は 締 を付けて薄くし (title に KILL_NOTE)、**平均には入れない**

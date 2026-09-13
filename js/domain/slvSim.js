@@ -45,5 +45,30 @@
         const slv = keys[lo];
         return { ok: true, slv, delta: slv - Number(curSlv), predicted: pred(slv) };
     }
-    root.slvSimDomain = { predictDamage, requiredSlv };
+    /**
+     * 締め凸の置き換え (2026-09-13 ユーザー要望): 撃破した凸 (isKill) は残HP分しか記録されないので、その凸だけ
+     * 「3分間戦闘した結果」(模擬の提出 / 手入力) に置き換えた合計を出す。
+     * @param {Object} a
+     * @param {Object[]} a.attacks            その人の凸 ({damage, bossCode, isKill})
+     * @param {(attack:Object)=>number|null} a.valueFor  置き換える raw ダメージ (無ければ null = 記録のまま)
+     * @param {(attack:Object)=>boolean=} a.isKill 締め凸の判定 (既定: isKill === true)
+     * @returns {{ delta:number, kills:number, replaced:number, subs:[{index:number, bossCode:*, recorded:number, used:number, replaced:boolean}] }}
+     *   delta = Σ(置き換えた値 − 記録) — 合計 (totalDamage) に足すぶん。締め凸でない凸は触らない
+     */
+    function totalWithKillSubs({ attacks, valueFor, isKill } = {}) {
+        const kill = typeof isKill === 'function' ? isKill : (a) => !!(a && a.isKill === true);
+        const val = typeof valueFor === 'function' ? valueFor : () => null;
+        const subs = []; let delta = 0, kills = 0, replaced = 0;
+        (Array.isArray(attacks) ? attacks : []).forEach((a, index) => {
+            if (!a || !kill(a)) return;
+            kills += 1;
+            const recorded = Number(a.damage) || 0;
+            const v = val(a);
+            const ok = Number.isFinite(v) && v > 0;
+            if (ok) { replaced += 1; delta += v - recorded; }
+            subs.push({ index, bossCode: a.bossCode, recorded, used: ok ? v : recorded, replaced: ok });
+        });
+        return { delta, kills, replaced, subs };
+    }
+    root.slvSimDomain = { predictDamage, requiredSlv, totalWithKillSubs };
 })(typeof window !== 'undefined' ? window : globalThis);

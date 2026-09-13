@@ -30,5 +30,14 @@
         return Number(b).toFixed(2).replace(/\.?0+$/, '');
     }
 
-    root.formatDomain = { rawToB, formatDamageRaw, trimZeroB };
+    /**
+     * ダメージの入力を raw に (2026-09-13 ユーザー要望「25B とか 32B とか 0 をたくさん入れなくても」)。
+     *   1,000,000 未満は B 単位 (32.5 → 32.5B)、それ以上は桁のまま (OCR が入れる生の値)。0 以下・数字でない → null
+     */
+    function parseDamageInput(v) {
+        const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/[,\s]/g, ''));
+        if (!Number.isFinite(n) || n <= 0) return null;
+        return n < 1e6 ? n * 1e9 : n;
+    }
+    root.formatDomain = { rawToB, formatDamageRaw, trimZeroB, parseDamageInput };
 })(typeof window !== 'undefined' ? window : globalThis);

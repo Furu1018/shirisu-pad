@@ -8317,17 +8317,62 @@ console.log('\ngrowthDomain:');
         assert.ok(/currentData\.some\(p => p\.player === me\.name\)\) \? me\.name : ''/.test(def), '分析データにいない人を選んでいる');
         assert.ok(/<input id="simTargetDmgB" type="number" min="0" step="0\.1" inputmode="decimal"[^>]*oninput="runSimReverse\(\)"/.test(html), '逆引きの入力が無い');
         // ★ 人を変えたら逆引きもその人でやり直す (前の人の結果を残さない: Codex指摘)
-        assert.ok(/<select id="simPlayerSelect" onchange="_simRefresh\(\)"/.test(html), '人を変えたとき逆引きが前の人のまま残る');
+        assert.ok(/<select id="simPlayerSelect" onchange="_simPlayerChanged\(\)"/.test(html), '人を変えたとき逆引きが前の人のまま残る');
+        const pc = html.match(/function _simPlayerChanged\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/_renderSimKillBox\(player \|\| null\)/.test(pc) && /_simRefresh\(\);/.test(pc), '人が決まったとき締め凸の箱を描いてから予測していない');
         const rf = html.match(/function _simRefresh\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/Number\.isFinite\(parseFloat\(inp\.value\)\)\) runSimReverse\(\); else runSimulator\(\);/.test(rf), '逆引きの目標があるときに逆引きし直していない');
-        assert.ok(/else select\.value = _simDefaultPlayer\(\);[^\n]*\n\s*_simRefresh\(\);/.test(upd), 'データを読み直したときに逆引きし直していない');
+        assert.ok(/else select\.value = _simDefaultPlayer\(\);[^\n]*\n\s*_simPlayerChanged\(\);/.test(upd), 'データを読み直したときに箱と逆引きをやり直していない');
         assert.ok(/<input id="simTargetSlv" type="number" min="1" max="1183" oninput="onSimTargetSlvInput\(\)"/.test(html), '目標 SLv の入力が逆引きを消す道を通っていない');
         const on = html.match(/function onSimTargetSlvInput\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/getElementById\('simTargetDmgB'\); if \(r\) r\.value = '';/.test(on) && /runSimulator\(\);/.test(on), '目標 SLv を変えたとき逆引きが残る');
         const rev = html.match(/function runSimReverse\(\)[\s\S]*?\n        \}/)?.[0] || '';
-        assert.ok(/window\.slvSimDomain\.requiredSlv\(\{ damage: player\.damage, curSlv: player\.syncLevel, targetDamage: b \* 1e9, table: slvRatioTable, maxSlv: _slvMax \}\)/.test(rev), '逆引きを slvSimDomain に任せていない (B → raw は ×1e9)');
+        assert.ok(/window\.slvSimDomain\.requiredSlv\(\{ damage: _simBaseOf\(player\)\.total, curSlv: player\.syncLevel, targetDamage: b \* 1e9, table: slvRatioTable, maxSlv: _slvMax \}\)/.test(rev), '逆引きを slvSimDomain に任せていない (B → raw は ×1e9・基準は締め凸を置き換えた合計)');
         assert.ok(/if \(slvInput\) \{ slvInput\.value = String\(r\.slv\); runSimulator\(\); \}/.test(rev), '届く SLv を目標 SLv に写して予測を動かしていない');
         assert.ok(/SLv \$\{r\.maxSlv\} まで上げても届きません/.test(rev), '届かないときの言い方が無い');
+    });
+    test('★ slvSim.totalWithKillSubs: 締め凸だけを置き換える (値が無ければ記録のまま) / formatDomain.parseDamageInput: B でも桁でも', () => {
+        const dom = globalThis.slvSimDomain;
+        const attacks = [{ bossCode: 'A', damage: 30e9, isKill: false }, { bossCode: 'B', damage: 12e9, isKill: true }, { bossCode: 'C', damage: 9e9, isKill: true }];
+        const r = dom.totalWithKillSubs({ attacks, valueFor: (a) => (a.bossCode === 'B' ? 35e9 : null) });
+        assert.deepEqual([r.kills, r.replaced, r.delta], [2, 1, 35e9 - 12e9]);
+        assert.deepEqual(r.subs.map(s => [s.bossCode, s.used, s.replaced]), [['B', 35e9, true], ['C', 9e9, false]], '値の無い締め凸は記録のまま・締め凸でない凸は触らない');
+        assert.deepEqual(dom.totalWithKillSubs({ attacks, valueFor: () => 0 }).delta, 0, '0 は置き換えない');
+        assert.deepEqual(dom.totalWithKillSubs({ attacks: attacks.map(a => ({ ...a, isKill: undefined })), valueFor: () => 50e9 }).kills, 0, 'isKill の無い過去回は何もしない');
+        assert.deepEqual(dom.totalWithKillSubs({}).delta, 0);
+        // 判定を差し替えられる (画面は _attackIsKill を渡す)
+        assert.equal(dom.totalWithKillSubs({ attacks, valueFor: () => 1e9, isKill: (a) => a.bossCode === 'A' }).replaced, 1);
+        const f = globalThis.formatDomain;
+        assert.equal(f.parseDamageInput('32.5'), 32.5e9, 'B 単位');
+        assert.equal(f.parseDamageInput('30000000000'), 30000000000, '桁のまま (OCR の生の値)');
+        assert.equal(f.parseDamageInput(25), 25e9); assert.equal(f.parseDamageInput('1,234'), 1234e9, 'カンマは無視');
+        assert.equal(f.parseDamageInput('0'), null); assert.equal(f.parseDamageInput(''), null); assert.equal(f.parseDamageInput('abc'), null); assert.equal(f.parseDamageInput(-3), null);
+        assert.equal(f.parseDamageInput(999999), 999999e9, '1,000,000 未満は B'); assert.equal(f.parseDamageInput(1000000), 1000000, '1,000,000 以上は桁');
+    });
+    test('★ 配線: ダメージ予測は締め凸を置き換えた合計が基準 (模擬は端末に記憶・手入力が上書き) / ふるり値試算のダメージは B でも桁でも', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(/<div id="simKillBox" style="display: none;/.test(html), '締め凸の置き換えの箱が無い');
+        const run = html.match(/function runSimulator\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/const base = _simBaseOf\(player\);\s*const predictedDamage = base\.total \* \(targetRatio \/ currentRatio\);/.test(run), '予測が置き換え後の合計を基準にしていない');
+        assert.ok(/締め凸 \$\{base\.replaced\} 本を置き換え・記録は \$\{formatDamage\(base\.recorded\)\}/.test(run), '置き換えたことを見せていない');
+        const rev = html.match(/function runSimReverse\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/requiredSlv\(\{ damage: _simBaseOf\(player\)\.total,/.test(rev), '逆引きが置き換え後の合計を基準にしていない');
+        const bo = html.match(/function _simBaseOf\(player\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/dom\.totalWithKillSubs\(\{ attacks: player\.attacks \|\| \[\], valueFor: _simKillValueFor\(player\.player\), isKill: _attackIsKill \}\)/.test(bo) && /total: rec \+ r\.delta/.test(bo), '判定を slvSimDomain に任せていない / 合計 = 記録 + 差分 でない');
+        // 記憶: 月|名前|ボス。模擬は記憶が無いときだけ自動で覚え (src mock)、手入力は上書き (src manual)
+        assert.ok(/const SIM_KILL_KEY = 'shirisuko_sim_kill_v1';/.test(html) && /return `\$\{currentMonthKey \|\| ''\}\|\$\{name\}\|\$\{bossCode\}`;/.test(html), '記憶の鍵が 月|名前|ボス でない');
+        const box = html.match(/async function _renderSimKillBox\(player\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(!_simKillGet\(player\.player, a\.bossCode\) && mocks && mocks\[key\] > 0\) \{ _simKillSet\(player\.player, a\.bossCode, mocks\[key\] \/ 1e9, 'mock'\); filled = true; \}/.test(box), '模擬を自動で覚えていない / 手入力を上書きしている');
+        assert.ok(/if \(seq !== _simKillSeq\) return;/.test(box), '待っている間に人が変わったのに描いている');
+        assert.ok(/const key = String\(BOSS_ATTRIBUTES\[a\.bossCode\]\?\.attribute \|\| ''\)\.toLowerCase\(\);/.test(box), '模擬の属性キーの引き方が違う (BOSS_ATTRIBUTES の attribute = 持っていく PT 属性)');
+        const ki = html.match(/function _simKillInput\(bossCode, value\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/_simKillSet\(name, bossCode, Number\.isFinite\(b\) && b > 0 \? b : 0, 'manual'\);\s*_simRefresh\(\);/.test(ki), '手入力を覚えて予測し直していない');
+        // 模擬の読み出しは名簿で id を引き、属性ごとの最大 (代表値 mockDamageOf)
+        const lm = html.match(/async function _simLoadMocks\(name\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/await window\.supabaseLoadPlayerDamages\(me\.id\)/.test(lm) && /const b = mockDamageOf\(r\);/.test(lm) && /Math\.max\(out\[k\] \|\| 0, b \* 1e9\)/.test(lm), '模擬の代表値を属性ごとの最大で取っていない');
+        // ふるり値試算: B でも桁でも
+        assert.ok(/<input id="fsimDamage" type="number" min="0" step="any" inputmode="decimal" oninput="onFsimDamageInput\(\)" placeholder="例: 32\.5 \(B単位。桁で入れても可\)"/.test(html), 'ふるり値試算の入力が B を受けない');
+        assert.ok(/const damage = formatDomain\.parseDamageInput\(dmgInput \? dmgInput\.value : ''\);/.test(html) && /const v = formatDomain\.parseDamageInput\(dmgInput\.value\);/.test(html), 'ふるり値試算の読み方が formatDomain.parseDamageInput でない');
     });
     // ===== 🌏 GB比較: 凍結エクスポートは本家のボスと突合できること (取り込むたびに確かめる) =====
     test('★ data/gb-export/*.json は本家の BOSS_ATTRIBUTES と突合できる (dropped 無し・5属性そろう)', () => {
