@@ -188,6 +188,8 @@ test('締め凸の凸は 締 を付けて薄くし、平均には入れない (�
     assert.ok(/100<small/.test(out), `平均に締め凸が混ざっている (100 のはず): ${out.match(/\d+<small/)?.[0]}`);
     assert.ok(/<span title="[^"]+" style="display:inline-flex[^"]*opacity:0\.65/.test(out), '締め凸のピルに説明 (title) が無い');
     assert.ok(/締 <\/span>|>締<\/span>/.test(out), '行に 締 の印が無い');
+    // ★ 名前だけを省略対象にし、締 / あなた のバッジは省略されない別要素 (flex:none) に置く (長い名前で切れない: Codex指摘)
+    assert.ok(/<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;[^"]*">A<\/span><span style="flex:none;display:inline-flex;align-items:center;">[^<]*<span title=/.test(out), '締 のバッジが名前と同じ省略される要素に入っている');
     assert.ok(out.includes('締 = 撃破した凸'), '注記が無い');
 });
 test('締め凸だけの人は「締のみ」で、平均のある人より下に並ぶ', () => {
