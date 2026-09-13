@@ -8374,7 +8374,8 @@ console.log('\ngrowthDomain:');
         // ★ 何属性の PT で・B何・どのボスに — 属性アイコン (PT とボスの両方) + ボス番号 (その月の本番シーズンから) + Lv
         assert.ok(/renderAttrIcon\(key, 14, \{ title: `\$\{info\.attributeJP \|\| ''\}PT` \}\)/.test(box) && /renderAttrIcon\(bossKey, 14, \{ title: info\.bossAttributeJP \|\| '' \}\)/.test(box), 'PT とボスの属性アイコンが無い');
         assert.ok(/const bossKey = typeof bossAttributeOf === 'function' \? bossAttributeOf\(\{ weakness: key \}\) : null;/.test(box), 'ボス属性の引き方が attributes.js でない');
-        assert.ok(/const bn = bossNums && bossNums\[a\.bossCode\] \? `B\$\{bossNums\[a\.bossCode\]\} ` : '';/.test(box) && /で凸 →/.test(box) && /\(Lv\$\{Number\(a\.level\)\}\)/.test(box), 'B何・Lv が無い');
+        assert.ok(/const bn = bossNums && bossNums\[a\.bossCode\] \? `B\$\{bossNums\[a\.bossCode\]\}` : \(info\.bossAttributeJP \|\| a\.bossCode \|\| '\?'\);/.test(box) && /で凸 →/.test(box) && /\(Lv\$\{Number\(a\.level\)\}\)/.test(box), 'B何・Lv が無い (番号が引けない月は属性名)');
+        assert.ok(!/info\.nameJP/.test(box), 'ボス名 (鉄甲デメテル 等) を出している (実機FB: 不要)');
         assert.ok(/const \[mocks, bossNums\] = await Promise\.all\(\[_simLoadMocks\(player\.player\), _simLoadBossNums\(currentMonthKey\)\]\);/.test(box), 'ボス番号をその月から引いていない');
         const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
         assert.ok(/window\.supabaseLoadBossNumbersByMonth = async function \(monthKey\)/.test(client) && /\.eq\('month_key', monthKey\)\s*\.or\('is_test\.is\.null,is_test\.eq\.false'\)/.test(client), 'ボス番号を本番シーズン (テスト回を除く) から引いていない');

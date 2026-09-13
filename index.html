@@ -24622,10 +24622,11 @@
                     : cur?.src === 'mock' ? ` <span style="font-size:10px;font-weight:900;color:var(--warn-deep);">模擬から自動${savedAt && !Number.isNaN(savedAt.getTime()) ? ` (${savedAt.getMonth() + 1}/${savedAt.getDate()} に保存)` : ''}</span>` : '';
                 // 何属性の PT で・B何・どのボスに (2026-09-13 ユーザー要望「属性アイコンで分かりやすく」)。ボス番号はその月の本番シーズンから (無ければ出さない)
                 const bossKey = typeof bossAttributeOf === 'function' ? bossAttributeOf({ weakness: key }) : null;
-                const bn = bossNums && bossNums[a.bossCode] ? `B${bossNums[a.bossCode]} ` : '';
+                // ボス名 (鉄甲デメテル 等) は出さない (実機FB 2026-09-13)。B番号が引けない月だけ属性名で補う
+                const bn = bossNums && bossNums[a.bossCode] ? `B${bossNums[a.bossCode]}` : (info.bossAttributeJP || a.bossCode || '?');
                 const lv = Number(a.level) > 0 ? ` <span style="color:var(--t-muted);">(Lv${Number(a.level)})</span>` : '';
                 const who = `<span style="display:inline-flex;align-items:center;gap:4px;font-weight:900;color:var(--t-ink);">${key ? renderAttrIcon(key, 14, { title: `${info.attributeJP || ''}PT` }) : ''}${esc(info.attributeJP || '')}PT</span> <span style="color:var(--t-muted);">で凸 →</span> `
-                    + `<span style="display:inline-flex;align-items:center;gap:4px;font-weight:900;color:var(--t-ink);">${bossKey ? renderAttrIcon(bossKey, 14, { title: info.bossAttributeJP || '' }) : ''}${esc(bn)}${esc(info.nameJP || a.bossCode || '?')}</span>${lv}`;
+                    + `<span style="display:inline-flex;align-items:center;gap:4px;font-weight:900;color:var(--t-ink);">${bossKey ? renderAttrIcon(bossKey, 14, { title: info.bossAttributeJP || '' }) : ''}${esc(bn)}</span>${lv}`;
                 return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;margin-top:8px;">
                     <div style="font-size:11.5px;color:var(--t-body);min-width:0;line-height:1.5;">${who}<br><span style="color:var(--t-muted);">記録 (締) ${esc(formatDamage(a.damage))}</span>${mock ? ` <span style="color:var(--t-muted);">· いまの模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${srcLabel}</div>
                     <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" data-name="${esc(player.player)}" data-boss="${esc(String(a.bossCode || ''))}" oninput="_simKillInput(this.dataset.name, this.dataset.boss, this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-family:inherit;box-sizing:border-box;text-align:right;">
