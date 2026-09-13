@@ -461,6 +461,8 @@
             gap: 12px;
         }
 
+        /* 上の帯の見出しは正式ロゴ (2026-09-13)。帯の高さを変えないよう 26px に収める。ロゴは白い縁取り付きなので暗い帯でも読める */
+        .header h1 img { display: block; height: 26px; width: auto; max-width: 60vw; }
         .header h1 {
             font-size: 22px;
             font-weight: 800;
@@ -3843,7 +3845,8 @@
                 <span></span><span></span><span></span>
             </button>
             <div>
-                <h1>しりすこPAD</h1>
+                <!-- 正式ロゴ (2026-09-13)。文字の「しりすこPAD」はやめてロゴ画像に。?v= はブラウザに古いロゴを捨てさせるための版 (サイドバーと同じ) -->
+                <h1><img src="./union-logo.png?v=2" alt="推しりすこれ部" decoding="async"></h1>
                 <div class="header-subtitle" id="headerSubtitle">データ読み込み中...</div>
             </div>
         </div>
@@ -3873,7 +3876,7 @@
     <!-- Tab Navigation (PC) -->
     <nav class="tab-navigation pc-only">
         <!-- サイドバーのときだけ出す見出し (横タブのときは CSS で隠す) -->
-        <div class="side-brand"><img src="./union-logo.png" alt="推しりすこれ部" decoding="async"></div>
+        <div class="side-brand"><img src="./union-logo.png?v=2" alt="推しりすこれ部" decoding="async"></div>
         <div class="tab-buttons-wrapper">
             <button class="tab-button active" data-tab="mypage" onclick="switchTab('mypage')" title="ホーム">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-5h-4v5H5a1 1 0 0 1-1-1z"/></svg>

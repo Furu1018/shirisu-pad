@@ -7684,7 +7684,13 @@ console.log('\ngrowthDomain:');
     test('★ サイドバーの見出しはユニオンのロゴ (絵文字ではない)', () => {
         // 2026-09-10 ユーザー要望「🎯しりすこPADが嫌だ」。GB と同じ 推しりすこれ部 のロゴ
         const html = _grRd('index.html');
-        assert.ok(/<div class="side-brand"><img src="\.\/union-logo\.png"/.test(html), 'ロゴを出していない');
+        assert.ok(/<div class="side-brand"><img src="\.\/union-logo\.png(\?v=\d+)?"/.test(html), 'ロゴを出していない');
+        // 2026-09-13 正式ロゴ: 上の帯 (スマホ) の見出しも文字ではなくロゴ画像。サイドバーと同じファイル・同じ版
+        assert.ok(/<h1><img src="\.\/union-logo\.png\?v=\d+" alt="推しりすこれ部" decoding="async"><\/h1>/.test(html), '上の帯の見出しがロゴ画像でない');
+        assert.ok(!/<h1>しりすこPAD<\/h1>/.test(html), '上の帯に文字の「しりすこPAD」が残っている');
+        const vers = [...html.matchAll(/union-logo\.png\?v=(\d+)/g)].map(m => m[1]);
+        assert.ok(vers.length === 2 && vers[0] === vers[1], 'ロゴの版 (?v=) が帯とサイドバーで違う');
+        assert.ok(/\.header h1 img \{ display: block; height: 26px; width: auto; max-width: 60vw; \}/.test(html), '帯のロゴの高さを決めていない (帯が太る)');
         assert.ok(/alt="推しりすこれ部"/.test(html), '代替テキストが無い');
         assert.ok(!/side-brand[^>]*>.*🎯/.test(html), '絵文字の見出しが残っている');
         assert.ok(_fsG.existsSync(new URL('../union-logo.png', import.meta.url)), 'ロゴの実体が無い');
