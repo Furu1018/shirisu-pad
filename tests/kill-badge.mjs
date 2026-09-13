@@ -153,5 +153,58 @@ test('締め凸は「ボス×レベルごとに1件」かつ「凸の合計==HP�
     }
 });
 
+// ---- 🌏 GB比較のメンバー一覧: 締め凸は印を付け、平均に入れない (2026-09-13 ユーザー要望) ----
+await import('../js/domain/gbCompare.js');
+const gbDom = globalThis.gbCompareDomain;
+const gbSrc = [
+    'let currentData = [];',
+    'const document = { getElementById: (id) => els.get(id) || null };',
+    'const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\'/g, "&#39;");',
+    "const slvRatioTable = { '500': 1000, '600': 1200 };",
+    "const BOSS_ATTRIBUTES = { 'A.N.M.I.': { attribute: 'FIRE' }, 'H.S.T.A.': { attribute: 'WATER' } };",
+    "const DC_ATTR_COLORS = { fire: '#FF3D44', water: '#3B82F6' };",
+    'const renderAttrIcon = () => "";',
+    "const getCurrentIdentity = () => ({ name: 'C' });",
+    grab('KILL_NOTE', 'const'),
+    grab('_attackIsKill'),
+    grab('_seasonHasKillFlags'),
+    grab('_killBadge'),
+    grab('_gbMembersHtml'),
+    'return { setData: (d) => { currentData = d; }, _gbMembersHtml };',
+].join('\n');
+const gb = new Function('els', 'gbCompareDomain', gbSrc)(els, gbDom);
+const ex = { schemaVersion: 1, season: '2026-09', base: { baseSlv: 500, attributes: { FIRE: { bossCode: 'A.N.M.I.', baseDamage: 10e9 }, WATER: { bossCode: 'H.S.T.A.', baseDamage: 10e9 } } },
+    attributes: { FIRE: { attackBenchmark: { n: 100, medianFururi: 1.0 }, compCohortN: 50, comps: [] }, WATER: { attackBenchmark: { n: 100, medianFururi: 1.0 }, compCohortN: 50, comps: [] } } };
+const idx = gbDom.buildIndex(ex, { FIRE: 'A.N.M.I.', WATER: 'H.S.T.A.' });
+assert.deepEqual(idx.dropped, [], 'テスト用のエクスポートが突合できない (前提が変わった)');
+
+console.log('\n🌏 GB比較のメンバー一覧:');
+test('締め凸の凸は 締 を付けて薄くし、平均には入れない (行には 締 ×N)', () => {
+    // A: 火 100% (普通) + 水 50% (締め凸) → 平均は 100 (締め凸を入れると 75 になってしまう)
+    gb.setData([{ player: 'A', syncLevel: 500, attacks: [{ bossCode: 'A.N.M.I.', damage: 10e9, isKill: false }, { bossCode: 'H.S.T.A.', damage: 5e9, isKill: true }] }]);
+    const out = gb._gbMembersHtml(ex, idx);
+    assert.ok(/締<\/span>[^<]*<\/span>|>締<\/span>/.test(out), '締め凸のピルに 締 が無い');
+    assert.ok(/opacity:0\.65;outline:1px dashed var\(--warn-solid\)/.test(out), '締め凸のピルが薄くない');
+    assert.ok(/100<small/.test(out), `平均に締め凸が混ざっている (100 のはず): ${out.match(/\d+<small/)?.[0]}`);
+    assert.ok(/<span title="[^"]+" style="display:inline-flex[^"]*opacity:0\.65/.test(out), '締め凸のピルに説明 (title) が無い');
+    assert.ok(/締 <\/span>|>締<\/span>/.test(out), '行に 締 の印が無い');
+    assert.ok(out.includes('締 = 撃破した凸'), '注記が無い');
+});
+test('締め凸だけの人は「締のみ」で、平均のある人より下に並ぶ', () => {
+    gb.setData([
+        { player: 'K', syncLevel: 500, attacks: [{ bossCode: 'A.N.M.I.', damage: 3e9, isKill: true }] },
+        { player: 'N', syncLevel: 500, attacks: [{ bossCode: 'A.N.M.I.', damage: 8e9, isKill: false }] },
+    ]);
+    const out = gb._gbMembersHtml(ex, idx);
+    assert.ok(out.includes('締のみ'), '「締のみ」が無い');
+    assert.ok(out.indexOf('>N<') < out.indexOf('>K<') || out.indexOf('N</div>') < out.indexOf('K</div>'), '締め凸だけの人が上に来ている');
+});
+test('isKill が無い過去シーズンは 締 も注記も出さない', () => {
+    gb.setData([{ player: 'A', syncLevel: 500, attacks: [{ bossCode: 'A.N.M.I.', damage: 10e9 }] }]);
+    const out = gb._gbMembersHtml(ex, idx);
+    // ★ 既存の注記「荒らし/締め凸除外済み」は常にあるので、印と注記だけを見る
+    assert.ok(!/>締<\/span>/.test(out) && !out.includes('締のみ') && !out.includes('締 = 撃破した凸') && !/締 \d?<\/span>/.test(out), '締 の印か注記が出ている');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

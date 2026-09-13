@@ -8913,26 +8913,29 @@
                     const attr = BOSS_ATTRIBUTES[a.bossCode]?.attribute;
                     const g = attr ? idx.attrs[attr] : null;
                     const normMed = g ? gbCompareDomain.normFromFururi(g.attackMedianFururi, g.baseDamage, ratioBase) : null;
-                    return { attr, pct: gbCompareDomain.memberPct(a.damage, ratioP, normMed) };
+                    // 締め凸 (撃破した凸) は残HPを超えた分が記録されないので数字が実力より小さい → 印を付け、平均には入れない (2026-09-13 ユーザー要望)
+                    return { attr, pct: gbCompareDomain.memberPct(a.damage, ratioP, normMed), isKill: _attackIsKill(a) };
                 }).filter(x => x.attr);
                 if (!atks.length) return null;
-                const pcts = atks.filter(x => x.pct != null).map(x => x.pct);
-                return { name: p.player, atks, avg: pcts.length ? pcts.reduce((s, x) => s + x, 0) / pcts.length : null };
+                const pcts = atks.filter(x => x.pct != null && !x.isKill).map(x => x.pct);
+                const kills = atks.filter(x => x.isKill).length;
+                return { name: p.player, atks, kills, avg: pcts.length ? pcts.reduce((s, x) => s + x, 0) / pcts.length : null };
             }).filter(Boolean).sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
 
             const rowHtml = rows.map((r, i) => {
                 const mine = myName != null && r.name === myName;
                 const pills = r.atks.map(x => {
                     const c = DC_ATTR_COLORS[x.attr.toLowerCase()] || '#7A7C81';
-                    return `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${c};background:${c}14;border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;">${renderAttrIcon(x.attr.toLowerCase(), 12)}${x.pct != null ? Math.round(x.pct) + '%' : '—'}</span>`;
+                    const kill = x.isKill ? '<span style="font-size:9px;font-weight:900;color:var(--warn-deep);">締</span>' : '';
+                    return `<span${x.isKill ? ` title="${escapeHtml(KILL_NOTE)}"` : ''} style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:900;color:${c};background:${c}14;border-radius:999px;padding:2px 8px;font-variant-numeric:tabular-nums;${x.isKill ? 'opacity:0.65;outline:1px dashed var(--warn-solid);' : ''}">${kill}${renderAttrIcon(x.attr.toLowerCase(), 12)}${x.pct != null ? Math.round(x.pct) + '%' : '—'}</span>`;
                 }).join('');
                 return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
                     <div style="font-size:11px;font-weight:900;color:var(--t-muted);text-align:center;font-variant-numeric:tabular-nums;">${i + 1}</div>
                     <div style="min-width:0;">
-                        <div style="font-size:12px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}</div>
+                        <div style="font-size:12px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.kills ? _killBadge(r.kills, { withCount: true }) : ''}${mine ? ' <span style="font-size:9px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}</div>
                         <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${pills}</div>
                     </div>
-                    <div style="font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${r.avg != null ? Math.round(r.avg) + '<small style="font-size:9px;color:var(--t-muted);">%</small>' : '—'}</div>
+                    <div style="font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${r.avg != null ? Math.round(r.avg) + '<small style="font-size:9px;color:var(--t-muted);">%</small>' : (r.kills ? '<span style="font-size:10px;font-weight:900;color:var(--warn-deep);">締のみ</span>' : '—')}</div>
                 </div>`;
             }).join('');
 
@@ -8942,6 +8945,7 @@
             ];
             if (!(ratioBase > 0)) return `<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">SLv補正テーブルを読み込めないため計算できません。</p>`;
             if (noSlv.length) notes.push(`SLv未登録のため対象外: ${noSlv.length}人`);
+            if (_seasonHasKillFlags()) notes.push('締 = 撃破した凸。残HPを超えた分は記録されないので数字は実力より小さい → 平均には入れません (締め凸だけの人は「締のみ」)。');
             return (rows.length ? rowHtml : '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">表示できる凸データがありません。</p>') +
                 `<div style="margin-top:10px;font-size:10px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:9px;padding:8px 10px;">${notes.map(escapeHtml).join('<br>')}</div>`;
         }

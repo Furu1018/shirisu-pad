@@ -282,6 +282,9 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ 既定の選択はいま名乗っている人 (`_simDefaultPlayer`: 分析データにその名前があれば)。ダメージ予測とふるり値試算の両方
 - **🌏 GB比較の凍結エクスポート** (`data/gb-export/<month>.json`) は GB リポ (`~/Desktop/shirisu-pad-global`) で `node scripts/export-season.mjs`
   → 本家へコピー。**取り込んだら `tests/run-tests.mjs` が本家の `BOSS_ATTRIBUTES` と突合する** (dropped 無し・5属性)。2026-08 / 2026-09 取り込み済み
+  ★ メンバー一覧の**締め凸** (2026-09-13 ユーザー要望): `_attackIsKill` の凸は 締 を付けて薄くし (title に KILL_NOTE)、**平均には入れない**
+  (残HP分しか記録されないので実力より小さい)。行に `_killBadge(kills, {withCount})`、締め凸だけの人は「締のみ」で平均のある人の下。isKill が無い過去回は印も注記も出さない。
+  実行テストは `tests/kill-badge.mjs` (GB の節)
 - **js/domain/** (fururi/ocr/finish/format/mockCompare) — ふるり値計算・OCR後処理・締め凸候補選別・
   ダメージ整形・ユニオン事前比較 (模擬タブ) の純ロジック。全て引数渡し・テストあり。
   該当領域の計算式を index.html に書き足さないこと。mockCompare のふるり値は
