@@ -8368,7 +8368,8 @@ console.log('\ngrowthDomain:');
         assert.ok(box.indexOf('const seq = ++_simKillSeq;') < box.indexOf("if (!player || !kills.length) { box.style.display = 'none'; box.innerHTML = ''; return; }"), '世代を早戻りの後で進めている');
         assert.ok(/if \(\(document\.getElementById\('simPlayerSelect'\)\?\.value \?\? ''\) !== player\.player\) return;/.test(box), '選択中の人でないのに描いている');
         // ★ 入力欄は人の名前を持ち、保存は選択中の人と一致するときだけ。出どころ (手入力 / 模擬から自動 + 保存日) を見せる
-        assert.ok(/oninput="_simKillInput\('\$\{esc\(player\.player\)\}', '\$\{esc\(String\(a\.bossCode \|\| ''\)\)\}', this\.value\)"/.test(box), '入力欄が人の名前を持っていない');
+        assert.ok(/data-name="\$\{esc\(player\.player\)\}" data-boss="\$\{esc\(String\(a\.bossCode \|\| ''\)\)\}" oninput="_simKillInput\(this\.dataset\.name, this\.dataset\.boss, this\.value\)"/.test(box), '入力欄が人の名前を data 属性で持っていない (onclick の文字列に埋めると \' で壊れる)');
+        assert.ok(!/_simKillInput\('\$\{/.test(box), '名前を onclick の文字列に埋めている');
         assert.ok(/模擬から自動\$\{savedAt/.test(box) && /いまの模擬 \$\{esc\(formatDamage\(mock\)\)\}/.test(box), '模擬から自動で覚えた値の出どころを見せていない');
         // ★ メモリが正、localStorage は写し (使えない端末でもセッション中は効く)。書庫の人も名前 → id を引く
         assert.ok(/let _simKillMem = null;/.test(html) && /if \(_simKillMem\) return _simKillMem;/.test(html), '記憶がメモリを正にしていない');

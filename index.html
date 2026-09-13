@@ -24612,7 +24612,7 @@
                     : cur?.src === 'mock' ? ` <span style="font-size:10px;font-weight:900;color:var(--warn-deep);">模擬から自動${savedAt && !Number.isNaN(savedAt.getTime()) ? ` (${savedAt.getMonth() + 1}/${savedAt.getDate()} に保存)` : ''}</span>` : '';
                 return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;margin-top:6px;">
                     <div style="font-size:11.5px;color:var(--t-body);min-width:0;line-height:1.4;"><b style="color:var(--t-ink);">${esc(info.nameJP || a.bossCode || '?')}</b> 締 ${esc(formatDamage(a.damage))}${mock ? ` <span style="color:var(--t-muted);">· いまの模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${srcLabel}</div>
-                    <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" oninput="_simKillInput('${esc(player.player)}', '${esc(String(a.bossCode || ''))}', this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-family:inherit;box-sizing:border-box;text-align:right;">
+                    <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" data-name="${esc(player.player)}" data-boss="${esc(String(a.bossCode || ''))}" oninput="_simKillInput(this.dataset.name, this.dataset.boss, this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-family:inherit;box-sizing:border-box;text-align:right;">
                 </div>`;
             }).join('');
             box.innerHTML = `<div style="font-size:12px;font-weight:900;color:var(--warn-deep);">締め凸の置き換え</div>
@@ -24620,7 +24620,7 @@
             box.style.display = '';
             if (filled) _simRefresh();
         }
-        // 入力欄は描いたときの人の名前を持つ。選択中の人と違えば (競合で古い箱が残っていたら) 保存しない (Codex指摘)
+        // 入力欄は描いたときの人の名前を data-name で持つ (★ 名前を onclick の文字列に埋めない — ' で壊れる)。選択中の人と違えば (競合で古い箱が残っていたら) 保存しない (Codex指摘)
         function _simKillInput(name, bossCode, value) {
             const select = document.getElementById('simPlayerSelect');
             if (!name || (select && select.value !== name)) return;
