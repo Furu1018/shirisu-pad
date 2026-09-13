@@ -24541,6 +24541,16 @@
         // 値は端末に覚える (月|名前|ボスコード): 模擬の提出があれば最初に自動で覚え (次のシーズンで模擬が変わっても、この回の値が残る)、手入力はそれを上書きする
         const SIM_KILL_KEY = 'shirisuko_sim_kill_v1';
         let _simMockCache = {};   // 名前 → { 属性キー: raw } (模擬の代表値・属性ごとの最大)。null = 読めなかった
+        let _simBossNums = {};    // 月 → { bossCode: bossNumber } (表示用・読めなければ {} = 番号を出さない)
+        async function _simLoadBossNums(month) {
+            if (!month) return {};
+            if (_simBossNums[month]) return _simBossNums[month];
+            let out = {};
+            try { out = typeof window.supabaseLoadBossNumbersByMonth === 'function' ? (await window.supabaseLoadBossNumbersByMonth(month)) || {} : {}; }
+            catch (e) { console.warn('[sim] ボス番号の読み込み:', e?.message || e); out = {}; }
+            _simBossNums[month] = out;
+            return out;
+        }
         let _simKillSeq = 0;
         let _simKillMem = null;   // ★ メモリが正、localStorage は写し (使えない端末でもセッション中は効く: Codex指摘)
         function _simKillMap() {
@@ -24592,7 +24602,7 @@
             const seq = ++_simKillSeq;   // ★ 早戻りの前に進める — 締め凸の無い人へ切り替えても、前の人の読み込みを無効にする (Codex指摘)
             const kills = (player?.attacks || []).filter(a => _attackIsKill(a));
             if (!player || !kills.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-            const mocks = await _simLoadMocks(player.player);
+            const [mocks, bossNums] = await Promise.all([_simLoadMocks(player.player), _simLoadBossNums(currentMonthKey)]);
             if (seq !== _simKillSeq) return;   // 待っている間に人が変わった
             if ((document.getElementById('simPlayerSelect')?.value ?? '') !== player.player) return;   // 念のため: 選択中の人でなければ描かない
             // 模擬があって記憶が無い締め凸は、模擬を覚える (src: mock)。手入力は上書きしない
@@ -24610,8 +24620,14 @@
                 const savedAt = cur?.at ? new Date(cur.at) : null;
                 const srcLabel = cur?.src === 'manual' ? ' <span style="font-size:10px;font-weight:900;color:var(--ops);">手入力</span>'
                     : cur?.src === 'mock' ? ` <span style="font-size:10px;font-weight:900;color:var(--warn-deep);">模擬から自動${savedAt && !Number.isNaN(savedAt.getTime()) ? ` (${savedAt.getMonth() + 1}/${savedAt.getDate()} に保存)` : ''}</span>` : '';
-                return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;margin-top:6px;">
-                    <div style="font-size:11.5px;color:var(--t-body);min-width:0;line-height:1.4;"><b style="color:var(--t-ink);">${esc(info.nameJP || a.bossCode || '?')}</b> 締 ${esc(formatDamage(a.damage))}${mock ? ` <span style="color:var(--t-muted);">· いまの模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${srcLabel}</div>
+                // 何属性の PT で・B何・どのボスに (2026-09-13 ユーザー要望「属性アイコンで分かりやすく」)。ボス番号はその月の本番シーズンから (無ければ出さない)
+                const bossKey = typeof bossAttributeOf === 'function' ? bossAttributeOf({ weakness: key }) : null;
+                const bn = bossNums && bossNums[a.bossCode] ? `B${bossNums[a.bossCode]} ` : '';
+                const lv = Number(a.level) > 0 ? ` <span style="color:var(--t-muted);">(Lv${Number(a.level)})</span>` : '';
+                const who = `<span style="display:inline-flex;align-items:center;gap:4px;font-weight:900;color:var(--t-ink);">${key ? renderAttrIcon(key, 14, { title: `${info.attributeJP || ''}PT` }) : ''}${esc(info.attributeJP || '')}PT</span> <span style="color:var(--t-muted);">で凸 →</span> `
+                    + `<span style="display:inline-flex;align-items:center;gap:4px;font-weight:900;color:var(--t-ink);">${bossKey ? renderAttrIcon(bossKey, 14, { title: info.bossAttributeJP || '' }) : ''}${esc(bn)}${esc(info.nameJP || a.bossCode || '?')}</span>${lv}`;
+                return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;margin-top:8px;">
+                    <div style="font-size:11.5px;color:var(--t-body);min-width:0;line-height:1.5;">${who}<br><span style="color:var(--t-muted);">記録 (締) ${esc(formatDamage(a.damage))}</span>${mock ? ` <span style="color:var(--t-muted);">· いまの模擬 ${esc(formatDamage(mock))}</span>` : ' <span style="color:var(--t-muted);">· 模擬の提出なし</span>'}${srcLabel}</div>
                     <input type="number" min="0" step="0.1" inputmode="decimal" value="${cur ? esc(String(cur.b)) : ''}" placeholder="B" data-name="${esc(player.player)}" data-boss="${esc(String(a.bossCode || ''))}" oninput="_simKillInput(this.dataset.name, this.dataset.boss, this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--t-ink);font-size:13px;font-family:inherit;box-sizing:border-box;text-align:right;">
                 </div>`;
             }).join('');

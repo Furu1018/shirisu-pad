@@ -381,6 +381,22 @@ window.supabaseSetOpsRole = async function (playerId, role, { by } = {}) {
     return data;
 };
 
+// その月 (month_key) の本番シーズンのボス番号 { bossCode: bossNumber } — シミュレーターの「B2 鉄甲デメテル」表示用 (2026-09-13)。
+// テスト回は除く。無ければ {} (番号は出さないだけ)
+window.supabaseLoadBossNumbersByMonth = async function (monthKey) {
+    if (!monthKey) return {};
+    const { data: seasons, error } = await supabase.from('seasons').select('id, month_key, is_test').eq('month_key', monthKey)
+        .or('is_test.is.null,is_test.eq.false').order('id', { ascending: false }).limit(1);
+    if (error) throw error;
+    const sid = seasons && seasons[0] ? seasons[0].id : null;
+    if (!sid) return {};
+    const { data: bosses, error: e2 } = await supabase.from('bosses').select('boss_number, boss_code').eq('season_id', sid);
+    if (e2) throw e2;
+    const out = {};
+    (bosses || []).forEach(b => { if (b.boss_code) out[b.boss_code] = Number(b.boss_number); });
+    return out;
+};
+
 // 得意属性を上書き更新
 window.supabaseUpdatePlayerStrongAttrs = async function (playerId, attrs) {
     if (!playerId) throw new Error('playerId 必須');

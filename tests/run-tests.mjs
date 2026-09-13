@@ -8371,6 +8371,13 @@ console.log('\ngrowthDomain:');
         assert.ok(/data-name="\$\{esc\(player\.player\)\}" data-boss="\$\{esc\(String\(a\.bossCode \|\| ''\)\)\}" oninput="_simKillInput\(this\.dataset\.name, this\.dataset\.boss, this\.value\)"/.test(box), '入力欄が人の名前を data 属性で持っていない (onclick の文字列に埋めると \' で壊れる)');
         assert.ok(!/_simKillInput\('\$\{/.test(box), '名前を onclick の文字列に埋めている');
         assert.ok(/模擬から自動\$\{savedAt/.test(box) && /いまの模擬 \$\{esc\(formatDamage\(mock\)\)\}/.test(box), '模擬から自動で覚えた値の出どころを見せていない');
+        // ★ 何属性の PT で・B何・どのボスに — 属性アイコン (PT とボスの両方) + ボス番号 (その月の本番シーズンから) + Lv
+        assert.ok(/renderAttrIcon\(key, 14, \{ title: `\$\{info\.attributeJP \|\| ''\}PT` \}\)/.test(box) && /renderAttrIcon\(bossKey, 14, \{ title: info\.bossAttributeJP \|\| '' \}\)/.test(box), 'PT とボスの属性アイコンが無い');
+        assert.ok(/const bossKey = typeof bossAttributeOf === 'function' \? bossAttributeOf\(\{ weakness: key \}\) : null;/.test(box), 'ボス属性の引き方が attributes.js でない');
+        assert.ok(/const bn = bossNums && bossNums\[a\.bossCode\] \? `B\$\{bossNums\[a\.bossCode\]\} ` : '';/.test(box) && /で凸 →/.test(box) && /\(Lv\$\{Number\(a\.level\)\}\)/.test(box), 'B何・Lv が無い');
+        assert.ok(/const \[mocks, bossNums\] = await Promise\.all\(\[_simLoadMocks\(player\.player\), _simLoadBossNums\(currentMonthKey\)\]\);/.test(box), 'ボス番号をその月から引いていない');
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        assert.ok(/window\.supabaseLoadBossNumbersByMonth = async function \(monthKey\)/.test(client) && /\.eq\('month_key', monthKey\)\s*\.or\('is_test\.is\.null,is_test\.eq\.false'\)/.test(client), 'ボス番号を本番シーズン (テスト回を除く) から引いていない');
         // ★ メモリが正、localStorage は写し (使えない端末でもセッション中は効く)。書庫の人も名前 → id を引く
         assert.ok(/let _simKillMem = null;/.test(html) && /if \(_simKillMem\) return _simKillMem;/.test(html), '記憶がメモリを正にしていない');
         assert.ok(/const key = String\(BOSS_ATTRIBUTES\[a\.bossCode\]\?\.attribute \|\| ''\)\.toLowerCase\(\);/.test(box), '模擬の属性キーの引き方が違う (BOSS_ATTRIBUTES の attribute = 持っていく PT 属性)');

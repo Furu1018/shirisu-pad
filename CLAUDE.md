@@ -289,6 +289,8 @@ rm -f .claude/hooks/.codex-on      # OFF
   入力欄は描いたときの人の名前を持ち、選択中の人と違えば保存しない (Codex指摘)。記憶はメモリ (`_simKillMem`) が正で localStorage は写し。
   書庫の人は `supabaseLoadAllPlayers(true)` で引き直す (改名した人は引けない → 手入力)。模擬から自動で覚えた値は「模擬から自動 (M/D に保存)」と出す
   (いまの提出を最初に開いたときに覚える = 当時の模擬とは限らない)
+  ★ 行は「[PT属性] 風圧PT で凸 → [ボス属性] B2 鉄甲デメテル (Lv3)」(2026-09-13 実機FB「何属性で B2 に凸か分かるように」)。ボス番号は
+  `supabaseLoadBossNumbersByMonth(currentMonthKey)` (その月の本番シーズン・テスト回は除く) から。引けなければ番号だけ出さない
   ★ ふるり値試算のダメージ入力は **B 単位でも桁でも** (`formatDomain.parseDamageInput`: 1,000,000 未満は B)。OCR は桁のまま入れる
 - **🌏 GB比較の凍結エクスポート** (`data/gb-export/<month>.json`) は GB リポ (`~/Desktop/shirisu-pad-global`) で `node scripts/export-season.mjs`
   → 本家へコピー。**取り込んだら `tests/run-tests.mjs` が本家の `BOSS_ATTRIBUTES` と突合する** (dropped 無し・5属性)。2026-08 / 2026-09 取り込み済み
