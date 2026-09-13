@@ -196,14 +196,15 @@ test('締め凸だけの人は「締のみ」で、平均のある人より下�
         { player: 'N', syncLevel: 500, attacks: [{ bossCode: 'A.N.M.I.', damage: 8e9, isKill: false }] },
     ]);
     const out = gb._gbMembersHtml(ex, idx);
-    assert.ok(out.includes('締のみ'), '「締のみ」が無い');
+    // ★ 注記の文にも「締のみ」があるので、平均セルの印 (>締のみ<) を見る (変異で穴)
+    assert.ok(/>締のみ<\/span>/.test(out), '平均セルの「締のみ」が無い');
     assert.ok(out.indexOf('>N<') < out.indexOf('>K<') || out.indexOf('N</div>') < out.indexOf('K</div>'), '締め凸だけの人が上に来ている');
 });
 test('isKill が無い過去シーズンは 締 も注記も出さない', () => {
     gb.setData([{ player: 'A', syncLevel: 500, attacks: [{ bossCode: 'A.N.M.I.', damage: 10e9 }] }]);
     const out = gb._gbMembersHtml(ex, idx);
     // ★ 既存の注記「荒らし/締め凸除外済み」は常にあるので、印と注記だけを見る
-    assert.ok(!/>締<\/span>/.test(out) && !out.includes('締のみ') && !out.includes('締 = 撃破した凸') && !/締 \d?<\/span>/.test(out), '締 の印か注記が出ている');
+    assert.ok(!/>締<\/span>/.test(out) && !/>締のみ<\/span>/.test(out) && !out.includes('締 = 撃破した凸') && !/締 \d?<\/span>/.test(out), '締 の印か注記が出ている');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
