@@ -7330,6 +7330,10 @@
 
         // ストレージ不可環境用のメモリ退避 (保存に失敗してもセッション中は選択が生きる — Codex監査)
         let _identityMem = null;
+        // ★ 名乗りの世代 (全体監査 2026-09-14 #10)。setCurrentIdentity のたびに進める。
+        //   「現在の id と同じか」だけの照合は A→B→A で破れる (最初の A 向けの遅い応答が、戻ってきた A に通る)。
+        //   非同期の処理は開始時に控えて完了時に**id と世代の両方**を見る (_syncOpsRole / renderMyReservations)
+        let _identityGen = 0;
         function getCurrentIdentity() {
             try {
                 const raw = localStorage.getItem(IDENTITY_KEY);
@@ -7338,6 +7342,7 @@
             return _identityMem;
         }
         function setCurrentIdentity(player) {
+            _identityGen++;   // ★ 先に進める (この下で呼ぶ _syncOpsRole が新しい世代を控えるように)
             // ストレージ不可 (プライベートモード/容量) でも選択操作自体は続行させる (Codex監査)
             _identityMem = player ? { id: player.id, name: player.name } : null;
             try {
@@ -9519,11 +9524,14 @@
             const rv = window.reservationsDomain;
             if (!card || !body || !rv) return;
             if (!identity?.id) { card.style.display = 'none'; return; }
+            const gen = _identityGen;   // 名乗りの世代 (A→B→A の後着よけ・全体監査 #10)
             let ctx = null;
             try { ctx = await ensureActiveSeasonLoaded(); } catch { /* 下で null 扱い */ }
+            if (gen !== _identityGen) return;
             if (!ctx?.season?.id) { card.style.display = 'none'; return; }
             let rows = null;
             try { rows = await window.supabaseLoadMyReservations?.(ctx.season.id, identity.id) ?? null; } catch { rows = null; }
+            if (gen !== _identityGen) return;   // A→B→A: id は同じでも世代が違う = 古い応答 (古い一覧で新しい一覧を上書きしない)
             // ★ 待っている間に名乗り直したら描かない (前の人の予約をホームに出さない: Codex指摘 2026-09-12)
             if (String(getCurrentIdentity()?.id) !== String(identity.id)) return;
             _myResvRows = rows;
@@ -20742,7 +20750,8 @@
                 const timeSlot = _hourKey(HOUR_ORDER[hourIdx]);
                 const existing = sel.pinned && sel.reservationId ? rows.find(r => Number(r.id) === Number(sel.reservationId) && r.status === 'pinned') : null;
                 if (existing) {
-                    await window.supabaseMovePin(existing.id, { bossNumber, timeSlot, loadoutSlot: sel.loadoutSlot, characters: lo.team, expectedDamageB: lo.dmgB });
+                    await window.supabaseMovePin(existing.id, { bossNumber, timeSlot, loadoutSlot: sel.loadoutSlot, characters: lo.team, expectedDamageB: lo.dmgB,
+                                                                expectUpdatedAt: existing.updated_at });   // 楽観ロック: 押した時点で読んだ行 (全体監査 #8)
                 } else {
                     const created = await window.supabaseCreateReservation({
                         seasonId: snap.season.id, playerId: player.id, raidLevel: null, bossNumber, timeSlot,
@@ -20851,7 +20860,7 @@
             if (!confirm(`📣 ${row.player_name || '#' + row.player_id} さんに「${what}」をお願いしますか？\n\n本人のホームに出て、引き受けると 🔒 (約束) になります。返事の期限は 15 分です。`)) return;
             const me = getCurrentIdentity();
             try {
-                await window.supabaseAskPin(row.id, { deadlineAt: new Date(Date.now() + 15 * 60000).toISOString() });
+                await window.supabaseAskPin(row.id, { deadlineAt: new Date(Date.now() + 15 * 60000).toISOString(), expectUpdatedAt: row.updated_at });   // 楽観ロック (全体監査 #8)
                 try {
                     await window.sendPushNotification({
                         title: '📣 運営から凸のお願い',
@@ -26702,6 +26711,7 @@
         }
         async function _syncOpsRole() {
             const me = getCurrentIdentity();
+            const gen = _identityGen;   // 名乗りの世代 (A→B→A の後着よけ・全体監査 #10)
             if (!me || me.id == null) { _opsRole = { playerId: null, role: undefined }; _applyOpsModeForIdentity(); return; }
             let role;
             try {
@@ -26714,6 +26724,7 @@
                 role = String(_opsRole.playerId) === String(me.id) ? _opsRole.role : undefined;
             }
             if (String(getCurrentIdentity()?.id) !== String(me.id)) return;   // 待っている間に名乗り直した
+            if (gen !== _identityGen) return;                                  // A→B→A: id は同じでも世代が違う = 古い応答
             const changed = _opsRole.role !== role || String(_opsRole.playerId) !== String(me.id);
             _opsRole = { playerId: me.id, role };
             _applyOpsModeForIdentity();

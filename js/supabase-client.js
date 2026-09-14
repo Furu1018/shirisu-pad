@@ -3526,7 +3526,7 @@ window.supabaseLoadReservations = async function (seasonId) {
     if (!seasonId) return [];
     const base = 'id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
               + 'characters_snapshot, expected_damage_b, source_type, source_plan_id, source_finish_request_id, '
-              + 'status, requested_by, requested_at, approved_by, approved_at, released_by, released_at, release_reason';
+              + 'status, requested_by, requested_at, approved_by, approved_at, released_by, released_at, release_reason, updated_at';   // updated_at = 📌 の置き直し・お願いの楽観ロックの鍵 (全体監査 2026-09-14 #8)
     const run = (withPins) => supabase.from('plan_reservations')
         .select(`${base}, ${withPins ? _RESV_PIN_COLS + ', ' : ''}players(name)`)
         .eq('season_id', seasonId)
@@ -3548,7 +3548,7 @@ window.supabaseLoadMyReservations = async function (seasonId, playerId) {
     if (!seasonId || !playerId) return [];
     const base = 'id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
               + 'characters_snapshot, expected_damage_b, source_type, status, '
-              + 'requested_at, approved_by, approved_at, released_by, release_reason';
+              + 'requested_at, approved_by, approved_at, released_by, release_reason, updated_at';
     const run = (withPins) => supabase.from('plan_reservations')
         .select(withPins ? `${base}, ${_RESV_PIN_COLS}` : base)
         .eq('season_id', seasonId).eq('player_id', playerId)
@@ -3622,6 +3622,9 @@ const PIN_SQL_HINT = '運営の固定 (📌) を使うには supabase/45_reserva
 // ★ status = 'pinned' の行だけ動かす — 別の運営がその間に「お願い」→ 本人が引き受けて approved になっていたら動かさない
 window.supabaseMovePin = async function (id, o = {}) {
     if (!id) throw new Error('固定が指定されていません');
+    // ★ 楽観ロック (全体監査 2026-09-14 #8): 画面で見ていた行の updated_at を必ず渡す。
+    //   id と status だけだと、別の運営が先に動かした 📌 を古い画面から黙って上書きする
+    if (!o.expectUpdatedAt) throw new Error('expectUpdatedAt (画面で見ていた行の updated_at) を渡してください');
     const flex = !!o.flex;
     const patch = { updated_at: new Date().toISOString() };
     if (o.bossNumber != null) patch.boss_number = Number(o.bossNumber);
@@ -3630,7 +3633,7 @@ window.supabaseMovePin = async function (id, o = {}) {
     if (Array.isArray(o.characters)) patch.characters_snapshot = o.characters.filter(Boolean);
     if (o.expectedDamageB != null) patch.expected_damage_b = Number(o.expectedDamageB) || null;
     const { data, error } = await supabase.from('plan_reservations').update(patch)
-        .eq('id', Number(id)).eq('status', 'pinned').select('*');
+        .eq('id', Number(id)).eq('updated_at', o.expectUpdatedAt).eq('status', 'pinned').select('*');
     if (error) {
         if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
         if (_isMissingPinCols(error)) throw new Error(PIN_SQL_HINT);
@@ -3643,15 +3646,18 @@ window.supabaseMovePin = async function (id, o = {}) {
 // 📣 お願いする: 下書きを本人に見せる (asked_at)。期限は表示だけ (過ぎても自動で外さない)
 window.supabaseAskPin = async function (id, o = {}) {
     if (!id) throw new Error('固定が指定されていません');
+    // ★ 楽観ロック (全体監査 2026-09-14 #8): updated_at が一致し、まだお願いしていない (asked_at IS NULL) 行だけ。
+    //   二人の運営が同時に押すと、以前は両方通って本人に 2 通届いた
+    if (!o.expectUpdatedAt) throw new Error('expectUpdatedAt (画面で見ていた行の updated_at) を渡してください');
     const { data, error } = await supabase.from('plan_reservations')
         .update({ asked_at: new Date().toISOString(), ask_deadline_at: o.deadlineAt || null, updated_at: new Date().toISOString() })
-        .eq('id', Number(id)).eq('status', 'pinned').select('*');
+        .eq('id', Number(id)).eq('updated_at', o.expectUpdatedAt).is('asked_at', null).eq('status', 'pinned').select('*');
     if (error) {
         if (_isMissingReservationTable(error)) throw new Error(RESERVATION_SQL_HINT);
         if (_isMissingPinCols(error)) throw new Error(PIN_SQL_HINT);
         throw error;
     }
-    if (!Array.isArray(data) || data.length === 0) throw new Error('この固定は別の運営が動かしました。画面を更新してから、もう一度お試しください');
+    if (!Array.isArray(data) || data.length === 0) throw new Error('この固定は別の運営が動かしたか、すでにお願い済みです。画面を更新してから、もう一度お試しください');
     return data[0];
 };
 

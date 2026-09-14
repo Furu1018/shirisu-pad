@@ -4245,6 +4245,107 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(/window\.supabaseAskPin = async function \(id, o = \{\}\)/.test(client), 'お願いの関数が無い');
         assert.ok(/この固定は別の運営が動かしました/.test(client), '0 行更新 (別の運営が動かした) を黙って通している');
     });
+    await testAsync('★ #8 📌 の置き直し・お願いは楽観ロック (updated_at) — 別の運営が先に動かした行を古い画面から上書きしない (実行)', async () => {
+        const fnOf = (name) => {
+            const body = _client.match(new RegExp(`window\\.${name} = async function[\\s\\S]*?\\n\\};\\n`))?.[0];
+            assert.ok(body, `${name} が見つからない`);
+            const helpers = ['_isMissingReservationTable', '_isMissingPinCols'].map(h => _client.match(new RegExp(`function ${h}\\(error\\) \\{[\\s\\S]*?\\n\\}\\n`))?.[0] || `function ${h}() { return false; }`).join('\n');
+            return (rowsAfter) => {
+                const conds = [];
+                const chain = { update() { return chain; }, eq(k, v) { conds.push(['eq', k, v]); return chain; }, is(k, v) { conds.push(['is', k, v]); return chain; }, select() { return Promise.resolve({ data: rowsAfter, error: null }); } };
+                const w = {};
+                new Function('supabase', 'window', 'RESERVATION_SQL_HINT', 'PIN_SQL_HINT', `${helpers}\n${body}`)({ from: () => chain }, w, 'hint39', 'hint45');
+                return { fn: w[name], conds };
+            };
+        };
+        const move = fnOf('supabaseMovePin'), ask = fnOf('supabaseAskPin');
+        // 置き直し: updated_at を渡さないと拒む / 渡すと条件に入る / 0 行なら「別の運営が動かした」
+        await assert.rejects(() => move([{ id: 1 }]).fn(1, { bossNumber: 2 }), /expectUpdatedAt/, 'updated_at 無しで動かせてしまう');
+        const m = move([{ id: 1 }]);
+        await m.fn(1, { bossNumber: 2, expectUpdatedAt: '2026-09-14T00:00:00+00:00' });
+        assert.ok(m.conds.some(c => c[0] === 'eq' && c[1] === 'updated_at' && c[2] === '2026-09-14T00:00:00+00:00'), '置き直しが updated_at を条件にしていない');
+        assert.ok(m.conds.some(c => c[1] === 'status' && c[2] === 'pinned'));
+        await assert.rejects(() => move([]).fn(1, { bossNumber: 2, expectUpdatedAt: 'x' }), /別の運営が動かしました/);
+        // お願い: updated_at + asked_at IS NULL。二人が同時に押しても片方だけ通る
+        await assert.rejects(() => ask([{ id: 1 }]).fn(1, { deadlineAt: 'd' }), /expectUpdatedAt/);
+        const a = ask([{ id: 1 }]);
+        await a.fn(1, { deadlineAt: 'd', expectUpdatedAt: 'u1' });
+        assert.ok(a.conds.some(c => c[0] === 'eq' && c[1] === 'updated_at' && c[2] === 'u1'), 'お願いが updated_at を条件にしていない');
+        assert.ok(a.conds.some(c => c[0] === 'is' && c[1] === 'asked_at' && c[2] === null), 'お願いが asked_at IS NULL を条件にしていない (二人が同時にお願いできる)');
+        await assert.rejects(() => ask([]).fn(1, { deadlineAt: 'd', expectUpdatedAt: 'u1' }), /すでにお願い済み/);
+        // 読み出しが鍵 (updated_at) を持って帰る / 呼び出し側が押した時点の行の updated_at を渡す
+        for (const name of ['supabaseLoadReservations', 'supabaseLoadMyReservations']) {
+            const body = _client.match(new RegExp(`window\\.${name} = async function[\\s\\S]*?\\n\\};\\n`))?.[0] || '';
+            assert.ok(/release_reason, updated_at'/.test(body), `${name} が updated_at を読んでいない (楽観ロックの鍵が無い)`);
+        }
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/supabaseMovePin\(existing\.id, \{[\s\S]{0,200}?expectUpdatedAt: existing\.updated_at/.test(src), '置き直しが押した時点の行の updated_at を渡していない');
+        assert.ok(/supabaseAskPin\(row\.id, \{[^}]*expectUpdatedAt: row\.updated_at/.test(src), 'お願いが行の updated_at を渡していない');
+    });
+    await testAsync('★ #10 名乗り直しの後着ガード (実行): A→B→A と戻しても、最初の A 向けの遅い応答が新しい結果を上書きしない', async () => {
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        // 世代は setCurrentIdentity の頭で進める (下で呼ぶ _syncOpsRole が新しい世代を控えるように)
+        const setId = src.match(/function setCurrentIdentity\(player\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/function setCurrentIdentity\(player\) \{\s*\n\s*_identityGen\+\+;/.test(setId), 'setCurrentIdentity の頭で世代を進めていない');
+        assert.ok(/let _identityGen = 0;/.test(src));
+        // ---- _syncOpsRole: A の役割取得が遅い間に B → A と戻す。古い応答 (member) が新しい応答 (ops) を上書きしない
+        {
+            const body = src.match(/async function _syncOpsRole\(\) \{[\s\S]*?\n        \}\n/)?.[0];
+            assert.ok(body, '_syncOpsRole が見つからない');
+            const st = { id: 7, gen: 0, opsRole: { playerId: null, role: undefined } };
+            let nth = 0, resolveFirst = null;
+            const w = {
+                opsRoleDomain: globalThis.opsRoleDomain,
+                supabaseLoadOpsRole: () => (++nth === 1 ? new Promise(res => { resolveFirst = res; }) : Promise.resolve('ops')),
+            };
+            const run = new Function('st', 'window', 'console', `
+                const getCurrentIdentity = () => ({ id: st.id, name: 'x' });
+                const _applyOpsModeForIdentity = () => {};
+                const renderSettingsTab = async () => {};
+                Object.defineProperty(globalThis, '_identityGen', { get: () => st.gen, configurable: true });
+                let _opsRole = st.opsRole;
+                ${body}
+                return { run: _syncOpsRole, get: () => _opsRole };`)(st, w, { warn() {} });
+            const pA = run.run();                 // A (gen 0) — 応答が遅い
+            await new Promise(r => setTimeout(r, 0));
+            st.gen = 1; st.id = 8;                // B へ名乗り直し
+            st.gen = 2; st.id = 7;                // A へ戻す
+            await run.run();                      // A (gen 2) — 新しい応答: ops
+            assert.equal(run.get().role, 'ops');
+            resolveFirst(null);                   // 最初の A 向けの遅い応答: member (null)
+            await pA;
+            assert.equal(run.get().role, 'ops', 'A→B→A で古い役割 (member) が新しい役割 (ops) を上書きした');
+            delete globalThis._identityGen;
+        }
+        // ---- renderMyReservations: 同じ形。古い一覧で _myResvRows を上書きしない
+        {
+            const body = src.match(/async function renderMyReservations\(identity\) \{[\s\S]*?\n        \}\n/)?.[0];
+            assert.ok(body, 'renderMyReservations が見つからない');
+            const st = { id: 7, gen: 0, writes: [] };
+            let nth = 0, resolveFirst = null;
+            const el = () => ({ style: {}, innerHTML: '', textContent: '' });
+            const w = {
+                reservationsDomain: globalThis.reservationsDomain,
+                supabaseLoadMyReservations: () => (++nth === 1 ? new Promise(res => { resolveFirst = res; }) : Promise.resolve(null)),
+            };
+            const run = new Function('st', 'window', 'document', `
+                const getCurrentIdentity = () => ({ id: st.id, name: 'x' });
+                const ensureActiveSeasonLoaded = async () => ({ season: { id: 1 }, bosses: [] });
+                Object.defineProperty(globalThis, '_identityGen', { get: () => st.gen, configurable: true });
+                Object.defineProperty(globalThis, '_myResvRows', { set: (v) => st.writes.push(v), get: () => null, configurable: true });
+                ${body}
+                return renderMyReservations;`)(st, w, { getElementById: el });
+            const pA = run({ id: 7 });            // A (gen 0) — 一覧の取得が遅い
+            await new Promise(r => setTimeout(r, 0));
+            st.gen = 1; st.id = 8; st.gen = 2; st.id = 7;   // B → A
+            await run({ id: 7 });                 // A (gen 2) — 新しい応答 (null = 39 未適用扱い) が 1 回書く
+            assert.equal(st.writes.length, 1);
+            resolveFirst(null);                   // 最初の A 向けの遅い応答
+            await pA;
+            assert.equal(st.writes.length, 1, 'A→B→A で古い一覧が新しい一覧を上書きした (id が同じなので通ってしまう)');
+            delete globalThis._identityGen; delete globalThis._myResvRows;
+        }
+    });
     test('予約: 遷移表は DB (reservation_set_status) と同じ', () => {
         assert.equal(rv.canTransition('requested', 'approved'), true);
         assert.equal(rv.canTransition('requested', 'fulfilled'), false, '承認を飛ばして実行済みにできてはいけない');
