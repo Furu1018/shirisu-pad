@@ -9610,7 +9610,14 @@
                 if (accept) {
                     // ★ 引き受ける = 約束を作る。「約束 + 📌 + 実凸 ≤ 3」を先に見る (全体監査 2026-09-14 #1)。正は DB (SQL 47)
                     if (window.reservationsDomain?.canApprove) {
-                        const chk = window.reservationsDomain.canApprove(_myResvRows || [], { playerId: me.id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot, doneAttacks: Number(_myPubState?.todayAttacks) || 0, excludeId: Number(id) });
+                        // 実凸は取り直す — 凸を消した直後は _myPubState.todayAttacks が古く、DB が通す引き受けを画面が拒否してしまう (修正後の Codex 指摘)
+                        let done = Number(_myPubState?.todayAttacks) || 0;
+                        try {
+                            const ctx = seasonStore.get();
+                            const atks = ctx?.season?.id ? await window.supabaseLoadMyAttacks?.(me.id, ctx.season.id, ctx.season.hard_date) : null;
+                            if (Array.isArray(atks)) done = atks.length;
+                        } catch { /* 取れなければ手元の値 (DB が正) */ }
+                        const chk = window.reservationsDomain.canApprove(_myResvRows || [], { playerId: me.id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot, doneAttacks: done, excludeId: Number(id) });
                         if (!chk.ok) { showNotification(`❌ 引き受けられません: ${chk.label}。運営に伝えてください`); return; }
                     }
                     await window.supabaseSetReservationStatus(Number(id), 'approved', { expectFrom: 'pinned', actor: me.name || '本人',
@@ -10157,8 +10164,16 @@
                 } catch (e) {
                     // 返答が届かなかった (返答済み・解除済み等) → 取った枠を返す (approved だけ残さない)
                     if (held.created?.id && typeof window.supabaseSetReservationStatus === 'function') {
-                        try { await window.supabaseSetReservationStatus(Number(held.created.id), 'released', { expectFrom: 'approved', actor: id.name || '本人', reason: 'finish_request_gone' }); }
-                        catch (e2) { console.warn('[finish→予約] 取り消しに失敗:', e2?.message || e2); }
+                        // 1 回だけやり直す。それでも返せなければ**黙らない** — 孤立した約束は運営が外すしかない (修正後の Codex 指摘)
+                        let returned = false;
+                        for (let i = 0; i < 2 && !returned; i++) {
+                            try { await window.supabaseSetReservationStatus(Number(held.created.id), 'released', { expectFrom: 'approved', actor: id.name || '本人', reason: 'finish_request_gone' }); returned = true; }
+                            catch (e2) { console.warn('[finish→予約] 取り消しに失敗:', e2?.message || e2); }
+                        }
+                        if (!returned) {
+                            showNotification(`⚠ 了承は届きませんでしたが、凸の固定 (#${held.created.id}) が残っています。運営に外してもらってください`);
+                            window.supabaseLogActivity?.('reservation', `締め凸の了承が届かず、固定 #${held.created.id} (B${Number(bossNumber)}) を返せませんでした — 運営が外してください`, { playerId: id.id, actorName: id.name || null });
+                        }
                     }
                     throw e;
                 }
@@ -13899,9 +13914,12 @@
         // ===== 締め凸依頼ステータス (finish_requests) =====
         let _finishReqCache = [];
         let _finishReqStaleSince = null;   // 取得に失敗してから前の内容を保っている (null = 最新)
+        let _finishReqGen = 0;             // 取得の世代。追い越された古い応答 (了承前の pending) で新しいキャッシュを上書きしない (修正後の Codex 指摘)
         async function _refreshFinishRequests() {
+            const gen = ++_finishReqGen;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
+                if (gen !== _finishReqGen) return;                       // 追い越された
                 if (!ctx?.season?.id) { _finishReqCache = []; return; }
                 // ★ 現在のレベルの依頼だけを見る。渡さないと、撃破済みレベルの
                 //   「依頼中」「了承済み」が残って次のレベルの依頼と混ざる (第44回の実害)
@@ -13909,6 +13927,7 @@
                     ctx.season.id, Number(ctx.season.current_level) || null);
                 // ★ null = 取得失敗 (分からない)。前の内容を保ち、いつから古いかだけ覚える。
                 //   [] で上書きすると未回答の依頼が本人のバナーからも運営の 🔁 からも消える (全体監査 2026-09-14 #3)
+                if (gen !== _finishReqGen) return;                       // 追い越された古い応答は捨てる (了承後に古い pending を戻さない)
                 if (Array.isArray(rows)) { _finishReqCache = rows; _finishReqStaleSince = null; }
                 else if (_finishReqStaleSince == null) _finishReqStaleSince = Date.now();
             } catch { /* noop (前の内容を保つ) */ }
@@ -16972,12 +16991,14 @@
                     `凸の予約: ${row ? (row.player_name || '#' + row.player_id) : '#' + rid} を ${window.reservationsDomain?.STATUS_JP[to] || to}`,
                     { actorName: me?.name || null });
                 showNotification(o.done || '更新しました');
-                // ★ 本人の申請を承認したら、同じカードの 📌 (運営の下書き) は役目を終える → 外す (二重の拘束にしない)
+                // ★ 本人の申請を承認したら、同じカードの 📌 (運営の下書き) は役目を終える → 外す (二重の拘束にしない)。
+                //   ★ 47 適用済みなら reservation_set_status が**同じトランザクションで**外している (画面が外すまでの間に 4 固定が
+                //     見える穴を塞ぐため: 修正後の Codex 指摘)。ここは 47 未適用の環境のための保険で、適用済みでは「状態が変わっています」で空振りする
                 if (to === 'approved' && row && window.reservationsDomain?.pinFor) {
                     const pin = window.reservationsDomain.pinFor(_resv.rows || [], { playerId: row.player_id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot });
                     if (pin && Number(pin.id) !== rid) {
                         try { await window.supabaseSetReservationStatus(Number(pin.id), 'released', { expectFrom: 'pinned', actor: me?.name || '運営', reason: 'superseded' }); }
-                        catch (e) { console.warn('[reservation] 同じカードの固定を外せませんでした:', e?.message || e); }
+                        catch (e) { console.warn('[reservation] 同じカードの固定を外せませんでした (47 適用済みなら RPC が先に外している):', e?.message || e); }
                     }
                 }
                 // 予約が変わるとプランの前提が変わる。盤面を捨てて読み直す
@@ -27133,6 +27154,8 @@
             let sent = 0, fail = 0;
             for (const g of groups) {
                 try {
+                    // ★ 時間帯フィルタは「戦闘可能時間」で絞るもので、前日の催促は戦闘時間と無関係 → 迂回する (2026-09-12 の通知監査の決め。
+                    //   2026-09-14 の全体監査で一度外したが、配線テストが落ちて誤指摘と分かった。夜中に届く問題は運営が押す時刻の話)
                     const res = await window.sendPushNotification({ title: g.title, body: g.body, url: g.url, playerIds: [g.recipients[0].id], ignoreAvailability: true });
                     sent += Number(res?.sent) || 0;
                 } catch { fail++; }

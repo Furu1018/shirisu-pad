@@ -31,7 +31,7 @@ const SRC = cut('_reserveForFinishRequest') + cut('handleMyFinishRequestRespond'
 
 // 依存を api で差し替えて実行する
 const build = (opts = {}) => {
-    const calls = { order: [], create: [], respond: [], setStatus: [], notif: [] };
+    const calls = { order: [], create: [], respond: [], setStatus: [], notif: [], log: [] };
     const mine = opts.mine === undefined ? [] : opts.mine;
     const api = {
         getCurrentIdentity: () => ({ id: 7, name: 'ふるり' }),
@@ -48,7 +48,8 @@ const build = (opts = {}) => {
             supabaseLoadMyAttacks: async () => opts.attacks || [],
             supabaseCreateReservation: async (o) => { calls.order.push('create'); calls.create.push(o); if (opts.createThrows) throw new Error(opts.createThrows); return { id: 99, ...o, status: 'approved' }; },
             supabaseRespondFinishRequest: async (...a) => { calls.order.push('respond'); calls.respond.push(a); if (opts.respondThrows) throw new Error(opts.respondThrows); return 1; },
-            supabaseSetReservationStatus: async (id, to, o) => { calls.order.push('setStatus'); calls.setStatus.push({ id, to, ...o }); return {}; },
+            supabaseSetReservationStatus: async (id, to, o) => { calls.order.push('setStatus'); calls.setStatus.push({ id, to, ...o }); if (opts.setStatusThrows) throw new Error('network'); return {}; },
+            supabaseLogActivity: async (...a) => { calls.order.push('log'); calls.log.push(a); },
         },
     };
     const fn = new Function('api', 'console', `
@@ -131,6 +132,22 @@ await test('「難しい」は予約を読みも作りもしない', async () =>
     await fn(3, 'declined', 55);
     assert.deepEqual(calls.order.filter(x => x === 'load' || x === 'create'), []);
     assert.equal(calls.respond.length, 1); assert.equal(calls.respond[0][3], 'declined');
+});
+
+await test('★ 枠を返せなかった (通信断が続く) → 1 回やり直し、それでもだめなら本人に予約 id を出し activity_log に残す (握りつぶさない)', async () => {
+    const { fn, calls } = build({ mine: [], respondThrows: 'すでに返答済み', setStatusThrows: true });
+    await fn(3, 'accepted', 55);
+    assert.equal(calls.setStatus.length, 2, `やり直していない (${calls.setStatus.length} 回)`);
+    assert.ok(calls.notif.some(m => /#99/.test(m) && /運営/.test(m)), `予約 id つきで本人に知らせていない: ${calls.notif.join(' / ')}`);
+    assert.equal(calls.log.length, 1, 'activity_log に残していない (運営が気づけない)');
+    assert.match(String(calls.log[0][1]), /#99/);
+});
+await test('枠を返せた (1 回目で成功) → やり直さない・警告しない', async () => {
+    const { fn, calls } = build({ mine: [], respondThrows: 'すでに返答済み' });
+    await fn(3, 'accepted', 55);
+    assert.equal(calls.setStatus.length, 1);
+    assert.equal(calls.log.length, 0);
+    assert.ok(!calls.notif.some(m => /運営に外して/.test(m)));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

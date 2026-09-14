@@ -3914,7 +3914,7 @@ console.log('\n運営除外の配線 (ソース突合):');
     await testAsync('★ 配線: _refreshFinishRequests は取得失敗 (null) で前の内容を保つ / 成功で置き換えて古さを消す', async () => {
         const src = html.match(/async function _refreshFinishRequests\(\) \{[\s\S]*?\n        \}\n/)?.[0];
         assert.ok(src, '_refreshFinishRequests が見つからない');
-        const run = new Function('window', 'seed', 'staleSeed', `let _finishReqCache = seed; let _finishReqStaleSince = staleSeed;
+        const run = new Function('window', 'seed', 'staleSeed', `let _finishReqCache = seed; let _finishReqStaleSince = staleSeed; let _finishReqGen = 0;
             const ensureActiveSeasonLoaded = async () => ({ season: { id: 1, current_level: 1 } });
             ${src}
             return async () => { await _refreshFinishRequests(); return { cache: _finishReqCache, stale: _finishReqStaleSince }; };`);
@@ -3929,6 +3929,17 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.equal(r3.stale, null, '成功したら古さを消す');
         const r4 = await run({ supabaseLoadFinishRequests: async () => { throw new Error('x'); } }, seed, null)();
         assert.deepEqual(r4.cache, seed, '例外でも前の内容を保つ');
+        // ★ 追い越し (修正後の Codex 指摘): 古い取得 A (了承前の pending) が、了承後の新しい取得 B の**後**に返っても B を上書きしない
+        let resolveA = null, nth = 0;
+        const stale = [{ id: 1, status: 'pending' }];
+        const inst = run({ supabaseLoadFinishRequests: () => (++nth === 1 ? new Promise(res => { resolveA = res; }) : Promise.resolve([])) }, seed, null);
+        const pA = inst();
+        await new Promise(r => setTimeout(r, 0));   // A がローダに到達してから B を始める (先に B が世代を進めると A はローダを呼ばずに戻る)
+        const pB = inst();
+        const rB = await pB;
+        assert.deepEqual(rB.cache, [], 'B (最新) が反映されていない');
+        resolveA(stale); const rA = await pA;
+        assert.deepEqual(rA.cache, [], '追い越された古い応答 (pending) が新しいキャッシュを上書きした (了承したのにバナーが戻る)');
     });
     test('★ supabaseLoadAvailabilityConfirmations は未適用環境で null を返す ([] にしない)', () => {
         const body = client.match(/window\.supabaseLoadAvailabilityConfirmations = async function[\s\S]*?\n};\n/)?.[0] || '';
@@ -5003,6 +5014,75 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(b.eqs.some(([k, v]) => k === 'status' && v === 'pending'), '人+ボス指定の更新が status=pending を条件にしていない');
         const c = mk([]);
         await assert.rejects(() => c.fn(1, 2, 7, 'declined', 1, 5), /返答済み|解除/, '0 件なのに成功扱い');
+    });
+    test('★ 47 (修正後の Codex 指摘): 早期 return は状態・人・シーズンが不変のときだけ / approved の瞬間に同じカードの 📌 を RPC が外す / RPC は 45 の写し', () => {
+        const sql47 = _fs.readFileSync(_path.join(_ROOT, 'supabase', '47_approval_counts_pins.sql'), 'utf8').replace(/\r\n/g, '\n');
+        const fn = sql47.match(/CREATE OR REPLACE FUNCTION plan_reservations_pin_check\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/)?.[0] || '';
+        // 高2: 状態だけを見る早期 return は、pinned 行を別の人・別のシーズンへ動かす更新を素通しにする
+        assert.ok(/IF TG_OP = 'UPDATE' AND OLD\.status = NEW\.status\s*\n\s*AND OLD\.player_id IS NOT DISTINCT FROM NEW\.player_id\s*\n\s*AND OLD\.season_id IS NOT DISTINCT FROM NEW\.season_id THEN/.test(fn),
+            '早期 return が人・シーズンの変更を見ていない (pinned 行を動かして 4 件目が入る)');
+        // 高1: 同じカードの 📌 は pin_check が数えない代わりに、RPC が approved の瞬間に同じトランザクションで外す
+        const rpc = sql47.match(/CREATE OR REPLACE FUNCTION reservation_set_status\([\s\S]*?\$\$ LANGUAGE plpgsql;/)?.[0] || '';
+        assert.ok(rpc, '47 に reservation_set_status が無い (同じカードの 📌 を外す前に 4 固定が見える)');
+        assert.ok(/IF p_to = 'approved' THEN[\s\S]*?status = 'pinned' AND id <> v_row\.id[\s\S]*?FOR UPDATE[\s\S]*?SET status = 'released'[^;]*release_reason = 'superseded'[\s\S]*?VALUES \(v_pin\.id, 'pinned', 'released', p_actor, 'superseded'\)/.test(rpc),
+            'approved の瞬間に同じカードの 📌 を superseded で外していない (履歴も残すこと)');
+        assert.ok(rpc.indexOf("IF p_to = 'approved' THEN") > rpc.indexOf('RETURNING * INTO v_row;'), '📌 を外す前に本体の更新 (RETURNING) が無い');
+        assert.ok(rpc.indexOf("IF p_to = 'approved' THEN") < rpc.lastIndexOf('RETURN v_row;'), '📌 を外すのが RETURN の後ろ (到達しない)');
+        // 45 の写し: [47-supersede] の印の間と v_pin の宣言を除けば 45 と一字一句同じ (遷移表・楽観ロック・履歴を落としていない)
+        const strip = (s) => s.replace(/    -- \[47-supersede-begin\][\s\S]*?    -- \[47-supersede-end\]\n/, '').replace(/    v_pin RECORD;.*\n/, '');
+        const rpc45 = _sqlPins.match(/CREATE OR REPLACE FUNCTION reservation_set_status\([\s\S]*?\$\$ LANGUAGE plpgsql;/)?.[0] || '';
+        assert.ok(rpc45, '45 の RPC が見つからない');
+        assert.equal(strip(rpc), rpc45, '47 の reservation_set_status が 45 の写しになっていない (遷移表や楽観ロックがずれる)');
+        // 画面側の supersede は残す (47 未適用の環境のため)。ただし 47 適用済みでは空振りする旨が書いてあること
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/reason: 'superseded'/.test(src) && /47 適用済みなら RPC が先に外している/.test(src), '画面側の supersede が消えている、または 47 との関係が書かれていない');
+        // 低6: 本人の 📌 引き受けも実凸を取り直す (凸を消した直後に DB より厳しく拒否しない)
+        const ap = src.match(/async function _answerPin\([^)]*\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/supabaseLoadMyAttacks\?\.\(me\.id, ctx\.season\.id, ctx\.season\.hard_date\)/.test(ap) && ap.indexOf('supabaseLoadMyAttacks') < ap.indexOf('canApprove('), '📌 の引き受けが古い todayAttacks で canApprove している');
+        // 中4: 締め凸一覧の取得に世代がある (振る舞いは上の配線テストが実行で見る)
+        assert.ok(/let _finishReqGen = 0;/.test(src) && /const gen = \+\+_finishReqGen;/.test(src), '締め凸一覧の取得に世代が無い');
+    });
+    await testAsync('★ _answerPin (実行): 📌 の引き受けは実凸を取り直して canApprove する — 手元の todayAttacks が古くても DB より厳しく拒否しない', async () => {
+        // ★ 「supabaseLoadMyAttacks が canApprove の前にある」という文字列の検査では、呼んだ結果を捨てる変異が通った (変異で発覚)
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const ap = src.match(/async function _answerPin\([^)]*\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(ap, '_answerPin が見つからない');
+        const P = (id, status, boss) => ({ id, player_id: 7, status, boss_number: boss, loadout_slot: 1, characters_snapshot: [], time_slot: 'h21', expected_damage_b: 1 });
+        const mk = ({ fresh, stale, rows }) => {
+            const calls = { set: [], notif: [] };
+            const api = {
+                getCurrentIdentity: () => ({ id: 7, name: 'x' }),
+                _myResvRows: rows, _myPubState: { todayAttacks: stale },
+                renderMyReservations: async () => {}, renderMyNextAction: () => {}, _notifyOps: () => {}, _resvRowJp: () => '',
+                showNotification: (m) => calls.notif.push(m),
+                seasonStore: { get: () => ({ season: { id: 1, hard_date: '2026-09-14' } }), invalidate() {} },
+                window: {
+                    reservationsDomain: globalThis.reservationsDomain,
+                    supabaseLoadMyAttacks: async () => fresh,
+                    supabaseSetReservationStatus: async (id, to, o) => { calls.set.push({ id, to, ...o }); return {}; },
+                    supabaseLogActivity: async () => {},
+                },
+            };
+            const fn = new Function('api', `const { getCurrentIdentity, _myResvRows, _myPubState, renderMyReservations, renderMyNextAction, _notifyOps, _resvRowJp, showNotification, seasonStore, window } = api;
+                ${ap}
+                return _answerPin;`)(api);
+            return { fn, calls };
+        };
+        // 他の 📌 2 件 + 自分の 📌 (id 3)。手元の todayAttacks は古くて 3、DB の実凸は 0 → 引き受けられる
+        const rows = [P(1, 'pinned', 1), P(2, 'pinned', 2), P(3, 'pinned', 3)];
+        const a = mk({ fresh: [], stale: 3, rows });
+        await a.fn(3, true);
+        assert.equal(a.calls.set.length, 1, `古い todayAttacks で拒否している: ${a.calls.notif.join(' / ')}`);
+        assert.equal(a.calls.set[0].to, 'approved'); assert.equal(a.calls.set[0].expectFrom, 'pinned');
+        // DB の実凸が 3 → 引き受けられない (手元が 0 でも)
+        const b = mk({ fresh: [{ id: 1 }, { id: 2 }, { id: 3 }], stale: 0, rows });
+        await b.fn(3, true);
+        assert.equal(b.calls.set.length, 0, '実凸 3 なのに引き受けている');
+        assert.ok(b.calls.notif.some(m => /引き受けられません/.test(m)));
+        // 取り直せなかった (配列でない) ら手元の値で判断する (DB が正・押せなくはしない)
+        const c = mk({ fresh: undefined, stale: 0, rows });
+        await c.fn(3, true);
+        assert.equal(c.calls.set.length, 1, '取り直せなかっただけで拒否している');
     });
     test('予約: 凸報告RPCが「採番・insert・残HP・消し込み」を1つでやる', () => {
         assert.ok(/CREATE OR REPLACE FUNCTION report_attack\(/.test(_sqlRpc));
