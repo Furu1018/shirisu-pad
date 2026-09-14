@@ -4441,6 +4441,32 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.match(n.simDiff.textContent, /\+33\.3%/);
         assert.ok(!/NaN/.test(text(n)));
     });
+    await testAsync('★ #11 の補い: ホーム / 運営タブに入った瞬間に締め凸依頼を取り直す / まとめて外すは失敗を alert で連発せず件数で知らせる', async () => {
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        // タブに入った瞬間: activate の中で mypage / ops のときだけ取り直す (別タブでは止めているので、戻った直後に古いバナーを残さない)
+        const act = src.match(/activate\(tabName, opts = \{\}\) \{[\s\S]*?\n            \},\n/)?.[0] || '';
+        assert.ok(act, 'TabController.activate が見つからない');
+        assert.ok(/if \(\(tabName === 'mypage' \|\| tabName === 'ops'\) && typeof _refreshFinishRequests === 'function'\) \{\s*\n\s*_refreshFinishRequests\(\)\.then\(/.test(act), 'タブに入った瞬間に締め凸依頼を取り直していない (別タブから戻ると最大 10 秒古いバナー)');
+        assert.ok(act.indexOf("target.classList.add('active')") < act.indexOf('_refreshFinishRequests()'), 'active にする前に取り直している (ポーリングの条件と食い違う)');
+        // 失敗側の quiet: _resvTransition は quiet なら alert を出さない
+        assert.ok(/if \(o\.quiet\) console\.warn\('\[reservation\] 失敗 \(quiet\):', e\?\.message \|\| e\); else alert\(/.test(src), 'quiet でも失敗を alert で出す (まとめて外すと連発する)');
+        // まとめて外す: 1 件失敗しても残りを続け、件数を 1 回で知らせる (実行)
+        const body = src.match(/async function _opsReleaseExpiredPins\(\) \{[\s\S]*?\n        \}\n/)?.[0];
+        const PAST = '2026-09-13T10:15:00Z';
+        const P = (id) => ({ id, player_id: 7, status: 'pinned', boss_number: 1, loadout_slot: 1, asked_at: '2026-09-13T10:00:00Z', ask_deadline_at: PAST });
+        const calls = { tr: [], notif: [] };
+        const api = {
+            _resv: { rows: [P(1), P(2), P(3)] }, confirm: () => true, showNotification: (m) => calls.notif.push(m),
+            _resvTransition: async (id) => { calls.tr.push(id); return id !== 2; },   // 2 件目だけ先に状態が変わっていた
+            computeAndRenderOptimalPlan: async () => {}, window: { reservationsDomain: rv },
+        };
+        const fn = new Function('api', `const { _resv, confirm, showNotification, _resvTransition, computeAndRenderOptimalPlan, window } = api; let _opsPlanSel = 1, _opsPlanFocus = 1;
+            ${body}
+            return _opsReleaseExpiredPins;`)(api);
+        await fn();
+        assert.deepEqual(calls.tr, [1, 2, 3], '1 件失敗したら残りを止めている');
+        assert.ok(calls.notif.some(m => /2 件外しました/.test(m) && /1 件は先に状態が変わって/.test(m)), `失敗の件数を知らせていない: ${calls.notif.join(' / ')}`);
+    });
     test('予約: 遷移表は DB (reservation_set_status) と同じ', () => {
         assert.equal(rv.canTransition('requested', 'approved'), true);
         assert.equal(rv.canTransition('requested', 'fulfilled'), false, '承認を飛ばして実行済みにできてはいけない');

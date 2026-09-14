@@ -7289,6 +7289,15 @@
                     btn.classList.toggle('active', btn.getAttribute('data-tab') === _navTabOf(tabName));
                 });
                 target.classList.add('active');
+                // ★ 表示のための取り直し (締め凸依頼・調整中一覧) は、ホーム / 運営タブを開いている間しか回らない (全体監査 #11)。
+                //   別タブに長くいたあと戻ると、次のティック (最大 10 秒) まで古いバナーが残るので、入った瞬間に 1 回取り直す
+                if ((tabName === 'mypage' || tabName === 'ops') && typeof _refreshFinishRequests === 'function') {
+                    _refreshFinishRequests().then(() => {
+                        const id = getCurrentIdentity();
+                        if (id?.id && typeof renderMyFinishRequestBanner === 'function') renderMyFinishRequestBanner(id);
+                        if (tabName === 'ops' && typeof renderOpsRecent === 'function' && typeof opsStore !== 'undefined' && opsStore.get()) renderOpsRecent();
+                    }).catch(() => { /* 次のティックで */ });
+                }
 
                 // 3) 同期 scrollTo: クラス変更と同じフレームで適用するためペイント前に確定させる
                 //    (rAF だと一瞬「先頭」が見えてしまう)
@@ -17021,7 +17030,8 @@
                 opsStore.invalidate();
                 ok = true;
             } catch (e) {
-                alert(`❌ ${e?.message || e}`);
+                // quiet (まとめて外す) のときは 1 件ごとに alert を出さない — 呼び出し側が件数をまとめて知らせる
+                if (o.quiet) console.warn('[reservation] 失敗 (quiet):', e?.message || e); else alert(`❌ ${e?.message || e}`);
             } finally {
                 _resv.busy.delete(rid);
             }
@@ -20858,7 +20868,8 @@
             if (!confirm(`⏰ 期限切れのお願い ${targets.length} 件を外しますか？ 本人の画面からも消えます (遅れて引き受けたい人がいれば、その人だけ残してください)`)) return;
             let n = 0;
             for (const r of targets) { if (await _resvTransition(Number(r.id), 'released', { expectFrom: 'pinned', reason: 'ask_expired', quiet: true })) n++; }
-            showNotification(`⏰ 期限切れの固定を ${n} 件外しました`);
+            const failed = targets.length - n;   // 別の運営が先に外した / 本人が引き受けた 等 (RPC が期待状態で弾く)
+            showNotification(failed ? `⏰ 期限切れの固定を ${n} 件外しました (${failed} 件は先に状態が変わっていました)` : `⏰ 期限切れの固定を ${n} 件外しました`);
             if (n) { _opsPlanSel = null; _opsPlanFocus = null; if (typeof computeAndRenderOptimalPlan === 'function') await computeAndRenderOptimalPlan(); }
         }
         // 📣 お願いする: 下書きを本人に見せる + Push。期限は 15 分 (表示だけ。過ぎても自動で外さない)
