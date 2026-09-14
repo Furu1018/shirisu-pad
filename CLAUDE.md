@@ -344,8 +344,9 @@ rm -f .claude/hooks/.codex-on      # OFF
   - ② 時間割 (運営だけ): チップをタップ (`data-member`、委譲) → その人の戦闘可能時間の行だけ残して他を沈める
     (`opts.focusWindow`) + 黒い帯に「出られる時間 / 動かせる幅」。チップには **硬い / 狭い** の札だけ出す (柔らかい人には出さない)。
     ホームの時間割には渡さない。算出し直したら選択は捨てる
-  - ★ 旧トグル `toggleOpsPlanSticky()` / `toggleOpsPlanStartMode()` は互換のため残す (テストが名前を固定)。
-    実体は `setOpsPlanSticky(on)` / `setOpsPlanStartMode(mode)` / `setOpsPlanWho(who)` → `_syncOpsPlanCondUi()`
+  - ★ 入口は `setOpsPlanSticky(on)` / `setOpsPlanStartMode(mode)` / `setOpsPlanWho(who)` → `_syncOpsPlanCondUi()`。
+    旧トグル `toggleOpsPlanSticky()` / `toggleOpsPlanStartMode()` は UI から呼ばれていなかったので**削除した** (2026-09-14 全体監査 #12。
+    テストが「宣言があるか」で守っていた = 死んだ関数を守るテストだった)
   - **③④ 📌 運営の固定 / 🧩 模擬ピース / 📣 お願い → 🔒** (2026-09-11・前提SQL `45_reservation_pins.sql`)。
     📌 = `plan_reservations.status = 'pinned'` の**運営の下書き** (レベル無し・`pinned_by/at`・`asked_at/ask_deadline_at`)。
     ★ **拘束にはなるが約束ではない**: `isFixed` (ソルバー・指紋) には入り、`ACTIVE` (残凸の枠・部分一意索引・凸報告 RPC) には**入れない**。

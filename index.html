@@ -13952,8 +13952,12 @@
             _stopCoordPolling();
             if (document.hidden) return;
             _coordPollingTimer = setInterval(() => {
+                // ★ 表示のためだけの取り直し (締め凸依頼・調整中一覧) は、ホームか運営タブを開いているときだけ (全体監査 2026-09-14 #11)。
+                //   模擬・分析・設定を開いている間も 10 秒ごとに 2 本走っていた (31 端末で毎分 300 超)。
+                //   撃破の検知・時間の通知・役割の再読・盤面の差し替え (30 秒ごと) はタブに関係なく従来どおり
+                const _onHomeOrOps = ['tab-mypage', 'tab-ops'].some(t => document.getElementById(t)?.classList.contains('active'));
                 // 締め凸依頼ステータスも同じ周期で更新 (ホーム応答UI / ops表示)
-                _refreshFinishRequests().then(() => {
+                if (_onHomeOrOps) _refreshFinishRequests().then(() => {
                     const myId = getCurrentIdentity();
                     if (myId?.id && typeof renderMyFinishRequestBanner === 'function') renderMyFinishRequestBanner(myId);
                     if (document.getElementById('tab-ops')?.classList.contains('active') && opsStore.get()) {
@@ -13977,7 +13981,7 @@
                 }
                 const id = getCurrentIdentity();
                 if (!id?.id) return;
-                _refreshCoordOnce(id);
+                if (_onHomeOrOps) _refreshCoordOnce(id);   // 調整中一覧も表示のためだけ (#11)
                 // 配信プランの取り下げ/再配信をホーム表示中の人にも追従させる (Codex指摘)。
                 // renderMyPublishedPlan は世代ガード付きなので多重呼び出しでも安全
                 if (document.getElementById('tab-mypage')?.classList.contains('active')
@@ -20366,9 +20370,6 @@
             _opsPlanStartMode = mode === 'day' ? 'day' : 'now';
             _syncOpsPlanCondUi();
         }
-        function toggleOpsPlanStartMode() {   // 旧トグル (互換)。条件パネルは setOpsPlanStartMode を使う
-            setOpsPlanStartMode(_opsPlanStartMode === 'now' ? 'day' : 'now');
-        }
         // snapshot を渡せば「そのロードで得た盤面」で算出する (並行ロード時に
         // opsStore が世代ガードで古い結果を保存しない契約のため、load() の戻り値を使う)
         function computeOptimalPlan(options = {}, snapshot = null) {
@@ -20405,9 +20406,6 @@
             _opsPlanSticky = !!on;
             try { localStorage.setItem(_OPS_PLAN_STICKY_KEY, _opsPlanSticky ? '1' : '0'); } catch (_) { /* 記憶できなくても動く */ }
             _syncOpsPlanStickyBtn();
-        }
-        function toggleOpsPlanSticky() {   // 旧トグル (互換)
-            setOpsPlanSticky(!_opsPlanSticky);
         }
         _syncOpsPlanStickyBtn();
 

@@ -6549,9 +6549,66 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/let _opsPlanSticky = true;/.test(html), '既定が尊重になっていない');
         assert.ok(/localStorage\.getItem\(_OPS_PLAN_STICKY_KEY\) !== '0'/.test(html), '既定OFFに倒れる読み方になっている');
         assert.ok(html.includes('id="opsPlanStickyBtn"'));
-        assert.ok(/function toggleOpsPlanSticky\(\)/.test(html));
+        // ★ 旧トグル (toggleOpsPlanSticky / toggleOpsPlanStartMode) は UI から呼ばれておらず削除した (全体監査 2026-09-14 #12)。
+        //   実体の setOpsPlanSticky / setOpsPlanStartMode があること。死んだ関数を「宣言があるか」で守らない
+        assert.ok(/function setOpsPlanSticky\(on\)/.test(html) && /function setOpsPlanStartMode\(mode\)/.test(html), '実体が無い');
+        assert.ok(!/toggleOpsPlanSticky|toggleOpsPlanStartMode/.test(html), '到達しない旧トグルが残っている (片方だけ直すと挙動がずれる)');
         // OFF のときは配信中プランを取りにいかない (無駄な取得をしない)
         assert.ok(/if \(_opsPlanSticky\) \{\s*\n\s*try \{/.test(html), 'OFF でも取得している');
+    });
+    test('★ #11 ポーリング (実行): 表示のためだけの取り直しはホーム / 運営タブのときだけ。撃破の検知・役割の再読はタブに関係なく回る', () => {
+        const body = html.match(/function _startCoordPolling\(\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(body, '_startCoordPolling が無い');
+        // 検知系 (撃破・予約の点検・時間の通知) は _onHomeOrOps で止めていない
+        const tail = body.slice(body.indexOf('_coordPollTick === 0 && (_opsSeasonLoaded'));
+        assert.ok(tail && !/_onHomeOrOps/.test(tail), '撃破の検知・盤面の差し替えまでタブで止めている (運営端末が別タブだと通知が止まる)');
+        const mk = (activeTabs) => {
+            const calls = { finish: 0, coord: 0, role: 0, hp: 0 };
+            let cb = null;
+            const api = {
+                document: { hidden: false, getElementById: (id) => ({ classList: { contains: (c) => c === 'active' && activeTabs.includes(id) } }) },
+                setInterval: (fn) => { cb = fn; return 1; },
+                _stopCoordPolling: () => {},
+                _refreshFinishRequests: async () => { calls.finish++; },
+                _refreshClientGateIfStale: async () => {},
+                _refreshCoordOnce: () => { calls.coord++; },
+                _syncOpsRole: () => { calls.role++; },
+                getCurrentIdentity: () => ({ id: 7 }),
+                renderMyFinishRequestBanner: () => {}, renderOpsBossSummary: () => {}, renderOpsRecent: () => {},
+                renderOpsReservations: async () => {}, renderMyPublishedPlan: () => {}, renderMyReservations: async () => {},
+                _checkRaidEvents: async () => {}, _releaseInfeasibleReservations: async () => {}, _checkAvailReminders: async () => {},
+                renderMyNextAttackBosses: async () => {}, renderMyBossStrip: () => {}, renderMyBossBoard: () => {},
+                opsStore: { get: () => ({ season: { id: 1 } }), patchBosses: () => false },
+                seasonStore: { get: () => ({ season: { id: 1 } }), patchBosses: () => false },
+                window: { supabaseLoadActiveSeasonWithBosses: async () => { calls.hp++; return null; } },
+                _opsMode: false, _resv: { unsupported: false, busy: new Set() }, _COORD_POLL_INTERVAL_MS: 10000,
+            };
+            // setInterval のスタブが test 側の cb にコールバックを預けるので、Function の中では開始だけする
+            new Function('api', `const { document, setInterval, _stopCoordPolling, _refreshFinishRequests, _refreshClientGateIfStale, _refreshCoordOnce, _syncOpsRole, getCurrentIdentity,
+                renderMyFinishRequestBanner, renderOpsBossSummary, renderOpsRecent, renderOpsReservations, renderMyPublishedPlan, renderMyReservations,
+                _checkRaidEvents, _releaseInfeasibleReservations, _checkAvailReminders, renderMyNextAttackBosses, renderMyBossStrip, renderMyBossBoard,
+                opsStore, seasonStore, window, _opsMode, _resv, _COORD_POLL_INTERVAL_MS } = api;
+                let _coordPollingTimer = null, _coordPollTick = 0;
+                ${body}
+                _startCoordPolling();`)(api);
+            assert.ok(typeof cb === 'function', 'setInterval にコールバックが渡っていない');
+            return { tick: () => cb(), calls };
+        };
+        // 模擬タブだけ開いている: 3 ティック回しても 締め凸依頼・調整中 は取りに行かない。役割 (tick 0) とボス HP (tick 0) は回る
+        const a = mk(['tab-mock']);
+        a.tick(); a.tick(); a.tick();
+        assert.equal(a.calls.finish, 0, '別タブなのに締め凸依頼を取りに行っている');
+        assert.equal(a.calls.coord, 0, '別タブなのに調整中一覧を取りに行っている');
+        assert.equal(a.calls.role, 1, '役割の再読 (30 秒ごと) が止まっている');
+        assert.equal(a.calls.hp, 1, 'ボス HP の取り直し (30 秒ごと) が止まっている');
+        // ホーム: 毎ティック取りに行く
+        const b = mk(['tab-mypage']);
+        b.tick(); b.tick(); b.tick();
+        assert.equal(b.calls.finish, 3); assert.equal(b.calls.coord, 3);
+        // 運営タブ: 同じ
+        const c = mk(['tab-ops']);
+        c.tick();
+        assert.equal(c.calls.finish, 1); assert.equal(c.calls.coord, 1);
     });
     test('L2 配線: 予約カードは運営ONのときだけ取得・描画する', () => {
         const fn = html.match(/async function renderOpsReservations\([\s\S]*?\n        \}\n/)?.[0] || '';
