@@ -4410,16 +4410,16 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.ok(body, 'runSimulator が無い');
         assert.ok(!/base\.total \* \(targetRatio \/ currentRatio\)/.test(body), '画面が比例計算を書き直している (ドメインと二重)');
         const TABLE = { '400': 900, '500': 1000, '600': 1200 };
-        const mk = (data, selected, target) => {
+        const mk = (data, selected, target, table = TABLE, domain = globalThis.slvSimDomain) => {
             const els = {};
             const el = (id) => (els[id] ||= { id, style: {}, textContent: '', innerHTML: '', value: '' });
             el('simPlayerSelect').value = selected; el('simTargetSlv').value = String(target);
             const api = {
                 document: { getElementById: el },
-                currentData: data, _slvMax: 1000, slvRatioTable: TABLE,
+                currentData: data, _slvMax: 1000, slvRatioTable: table,
                 _simBaseOf: (p) => ({ total: Number(p.damage) || 0, replaced: 0, recorded: Number(p.damage) || 0 }),
                 formatDamage: (v) => `${(v / 1e9).toFixed(2)}B`,
-                window: { slvSimDomain: globalThis.slvSimDomain },
+                window: { slvSimDomain: domain },
             };
             new Function('api', `const { document, currentData, _slvMax, slvRatioTable, _simBaseOf, formatDamage, window } = api;
                 ${body}
@@ -4440,6 +4440,16 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.equal(n.simPredictedDmg.textContent, `${(expected / 1e9).toFixed(2)}B`);
         assert.match(n.simDiff.textContent, /\+33\.3%/);
         assert.ok(!/NaN/.test(text(n)));
+        // 原因を分けて案内する (E/F/G/H の Codex 指摘): 補正値が負や Infinity (真偽値の検査では通る) → 補正データのエラー、実績のせいにしない
+        const badTable = { '400': 900, '500': 1000, '600': -1 };
+        const bt = mk(data, '普通', 600, badTable);
+        assert.equal(bt.simError.style.display, 'block'); assert.match(bt.simError.textContent, /補正データ/, '補正値 -1 を「実績ダメージが無い」と案内している');
+        assert.doesNotMatch(bt.simError.textContent, /実績ダメージ/);
+        const infTable = { '400': 900, '500': 1000, '600': Infinity };
+        assert.match(mk(data, '普通', 600, infTable).simError.textContent, /補正データ/, '補正値 Infinity を「実績ダメージが無い」と案内している');
+        // ドメインが読めていない → 部品のエラー
+        const nd = mk(data, '普通', 600, TABLE, null);
+        assert.equal(nd.simError.style.display, 'block'); assert.match(nd.simError.textContent, /slvSim\.js/, 'ドメイン未読込を実績のせいにしている');
     });
     await testAsync('★ #11 の補い: ホーム / 運営タブに入った瞬間に締め凸依頼を取り直す / まとめて外すは失敗を alert で連発せず件数で知らせる', async () => {
         const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');

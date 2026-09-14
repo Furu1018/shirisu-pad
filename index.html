@@ -24849,13 +24849,24 @@
                 return;
             }
 
-            const currentRatio = slvRatioTable[String(player.syncLevel)];
-            const targetRatio = slvRatioTable[String(targetSlv)];
-            if (!currentRatio || !targetRatio) {
+            // ★ 原因を分けて案内する (E/F/G/H の Codex 指摘): 部品が無い / 補正データが無い・不正 / 実績が無い を混ぜない。
+            //   補正値の検査は predictDamage と同じ厳しさ (正の有限数) にする — 真偽値だけだと 0 や NaN の補正値が通り、
+            //   下の null 判定で「実績ダメージが無い」と誤案内する
+            if (typeof window.slvSimDomain?.predictDamage !== 'function') {
                 resultEl.style.display = 'none';
                 tableWrapper.style.display = 'none';
                 errorEl.style.display = 'block';
-                errorEl.textContent = '指定されたSLvの補正データが見つかりません。';
+                errorEl.textContent = 'シミュレーターの計算部品 (slvSim.js) が読み込めていません。ページを再読み込みしてください。';
+                return;
+            }
+            const currentRatio = slvRatioTable[String(player.syncLevel)];
+            const targetRatio = slvRatioTable[String(targetSlv)];
+            const ratioOk = (v) => Number.isFinite(v) && v > 0;
+            if (!ratioOk(currentRatio) || !ratioOk(targetRatio)) {
+                resultEl.style.display = 'none';
+                tableWrapper.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = '指定されたSLvの補正データが見つかりません (または壊れています)。';
                 return;
             }
 
