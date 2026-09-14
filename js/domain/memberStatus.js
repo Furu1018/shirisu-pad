@@ -101,12 +101,21 @@
      * 1人1行の状態を組み立てる。
      * @param {Object} args
      * @param {Object[]} args.players  opsStore 盤面の players
-     * @param {{pushPlayerIds?:any, slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:({player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]|null)}=} args.extras (availConfirmations が配列でない = 37未適用)
+     * @param {{pushPlayerIds?:any, slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:({player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]|null)}=} args.extras
+     *   ★ 各項目は 配列 = 分かっている ([] は本当に誰もいない) / null・省略 = 取得できなかった (分からない)。
+     *     分からないものは理由に積まない・集計にも数えない (availConfirmations が先に採っていた契約。全体監査 2026-09-14 #4)
      * @param {'pre'|'day'} args.phase
      * @returns {Object[]} rows (未ソート)
      */
     function buildRows({ players, extras, phase } = {}) {
         const ex = extras || {};
+        // ★ null・省略 = 取得できなかった (分からない)。[] = 本当に誰もいない。
+        //   分からないものは「未登録」と言わない — [] に潰すと通信断のたびに全員が未登録・未返答 0 に化ける (全体監査 2026-09-14 #4)
+        const known = (v) => Array.isArray(v) || v instanceof Set;
+        const pushKnown = known(ex.pushPlayerIds);
+        const slvListKnown = known(ex.slvThisSeasonIds);
+        const finishKnown = Array.isArray(ex.finishRequests);
+        const proxyKnown = Array.isArray(ex.proxyEvents);
         const pushSet = toIdSet(ex.pushPlayerIds);
         const slvSet = toIdSet(ex.slvThisSeasonIds);
         const finishBy = new Map();
@@ -144,20 +153,21 @@
             const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
             const flex = !!p.flexTime;
             const slvKnown = !p.syncLevelEstimated && Number(p.syncLevel) > 0;
-            const slvNow = slvSet.has(id) && slvKnown ? Number(p.syncLevel) : null;
-            const slvPrev = slvNow == null && slvKnown ? Number(p.syncLevel) : null;
+            // 今季の登録リストが取れていないときは「今季」「前回」のどちらとも言えない (両方 null・理由も積まない)
+            const slvNow = slvListKnown && slvSet.has(id) && slvKnown ? Number(p.syncLevel) : null;
+            const slvPrev = slvListKnown && slvNow == null && slvKnown ? Number(p.syncLevel) : null;
             const attacks = (Array.isArray(p.attacks) ? p.attacks : []).map(a => ({
                 level: a?.level == null ? null : Number(a.level),
                 bossNumber: a?.boss_number == null ? null : Number(a.boss_number),
             }));
             const atkCount = Math.min(attacks.length, MAX_ATTACKS);
-            const push = pushSet.has(id);
-            const proxyCount = proxyBy.get(id) || 0;
-            const finish = finishBy.get(id) || null;
+            const push = pushKnown ? pushSet.has(id) : null;          // null = 分からない
+            const proxyCount = proxyKnown ? (proxyBy.get(id) || 0) : 0;
+            const finish = finishKnown ? (finishBy.get(id) || null) : null;
 
             const reasons = [];
             if (isDay && atkCount < MAX_ATTACKS) reasons.push({ key: 'attacks', label: `凸 残${MAX_ATTACKS - atkCount}` });
-            if (isDay && finish === 'pending') reasons.push({ key: 'finish', label: '締め凸 未返答' });
+            if (isDay && finishKnown && finish === 'pending') reasons.push({ key: 'finish', label: '締め凸 未返答' });
             if (!mockOk) {
                 reasons.push({
                     key: 'mock',
@@ -166,7 +176,7 @@
                         : `模擬 被りなし${mockUsable}/${MOCK_REQUIRED}`,
                 });
             }
-            if (slvNow == null) reasons.push({ key: 'slv', label: slvPrev ? `SLv未登録 (前回 ${slvPrev})` : 'SLv未登録' });
+            if (slvListKnown && slvNow == null) reasons.push({ key: 'slv', label: slvPrev ? `SLv未登録 (前回 ${slvPrev})` : 'SLv未登録' });
             // 時間帯の状態は3つ: 未登録 / 登録はあるが今期未確認 / 今期確認済み。
             // ★ 「今回は難しい」と申告した人は**確認済み**として扱う (催促の対象から外す) —
             //   出られないことが分かっているのは、分からないより運営にとって良い状態
@@ -195,7 +205,7 @@
                         : `時間帯を確認後に変更 (${before}→${slots.length}枠)`,
                 });
             }
-            if (!push) reasons.push({ key: 'push', label: '通知購読なし' });
+            if (pushKnown && !push) reasons.push({ key: 'push', label: '通知購読なし' });
 
             return {
                 id, name: String(p.name ?? ''),
@@ -209,6 +219,8 @@
                 availConfirmedAt: confirm ? (confirm.confirmed_at || null) : null,
                 push,
                 attacks, atkCount, proxyCount, finish,
+                // 取得できなかった項目 (画面は「?」を出し、集計は「—」にする)
+                pushUnknown: !pushKnown, slvUnknown: !slvListKnown, finishUnknown: !finishKnown, proxyUnknown: !proxyKnown,
                 reasons, todo: reasons.length > 0,
             };
         });
@@ -227,6 +239,9 @@
         const rs = Array.isArray(rows) ? rows : [];
         const n = rs.length;
         const cnt = (f) => rs.filter(f).length;
+        // ★ 取得できなかった欄は「—」+ 取得失敗 (0 と出すと「全員済み」に見える。全体監査 2026-09-14 #4)
+        const unknown = (k) => rs.some(r => r && r[k]);
+        const na = { value: '—', total: null, bad: false, sub: '取得失敗' };
         if (phase === 'day') {
             const done = cnt(r => r.atkCount >= MAX_ATTACKS);
             const remaining = rs.reduce((s, r) => s + (MAX_ATTACKS - r.atkCount), 0);
@@ -234,8 +249,8 @@
             return [
                 { key: 'done', label: '3凸 完了', value: done, total: n, bad: done < n },
                 { key: 'remaining', label: '残凸 合計', value: remaining, total: null, bad: remaining > 0 },
-                { key: 'proxy', label: '代理 登録', value: cnt(r => r.proxyCount > 0), total: null, bad: false },
-                { key: 'finish', label: '締め凸 未返答', value: pending, total: null, bad: pending > 0 },
+                { key: 'proxy', label: '代理 登録', ...(unknown('proxyUnknown') ? na : { value: cnt(r => r.proxyCount > 0), total: null, bad: false }) },
+                { key: 'finish', label: '締め凸 未返答', ...(unknown('finishUnknown') ? na : { value: pending, total: null, bad: pending > 0 }) },
             ];
         }
         const mock = cnt(r => r.mockOk);
@@ -249,11 +264,11 @@
         const push = cnt(r => r.push);
         return [
             { key: 'mock', label: '模擬 3属性 (被りなし)', value: mock, total: n, bad: mock < n, sub: `5属性 ${mockFull}` },
-            { key: 'slv', label: 'SLv 登録', value: slv, total: n, bad: slv < n },
+            { key: 'slv', label: 'SLv 登録', ...(unknown('slvUnknown') ? na : { value: slv, total: n, bad: slv < n }) },
             { key: 'slots', label: '時間帯 登録', value: slots, total: n, bad: slots < n },
             // 機能未適用の環境では欄ごと出さない (0/30 と出ると誤解を招く)
             ...(availSupported ? [{ key: 'availConfirm', label: '時間帯 今期確認', value: availOk, total: n, bad: availOk < n }] : []),
-            { key: 'push', label: '通知 購読', value: push, total: n, bad: push < n },
+            { key: 'push', label: '通知 購読', ...(unknown('pushUnknown') ? na : { value: push, total: n, bad: push < n }) },
         ];
     }
 

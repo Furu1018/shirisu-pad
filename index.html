@@ -13876,15 +13876,20 @@
         let _coordPollTick = 0;
         // ===== 締め凸依頼ステータス (finish_requests) =====
         let _finishReqCache = [];
+        let _finishReqStaleSince = null;   // 取得に失敗してから前の内容を保っている (null = 最新)
         async function _refreshFinishRequests() {
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) { _finishReqCache = []; return; }
                 // ★ 現在のレベルの依頼だけを見る。渡さないと、撃破済みレベルの
                 //   「依頼中」「了承済み」が残って次のレベルの依頼と混ざる (第44回の実害)
-                _finishReqCache = await window.supabaseLoadFinishRequests(
+                const rows = await window.supabaseLoadFinishRequests(
                     ctx.season.id, Number(ctx.season.current_level) || null);
-            } catch { /* noop */ }
+                // ★ null = 取得失敗 (分からない)。前の内容を保ち、いつから古いかだけ覚える。
+                //   [] で上書きすると未回答の依頼が本人のバナーからも運営の 🔁 からも消える (全体監査 2026-09-14 #3)
+                if (Array.isArray(rows)) { _finishReqCache = rows; _finishReqStaleSince = null; }
+                else if (_finishReqStaleSince == null) _finishReqStaleSince = Date.now();
+            } catch { /* noop (前の内容を保つ) */ }
         }
         const _FINISH_REQ_STATUS = {
             pending:  { label: '確認中',   color: 'var(--warn-deep)', bg: 'var(--warn-bg)' },
@@ -16513,7 +16518,11 @@
                 const c = DC_ATTR_COLORS[bossOf(n)?.attribute] || DC_ATTR_COLORS.iron;
                 return `<span class="b" style="background:${c}1f;">B${esc(String(n))}</span>`;
             };
-            if (meta) meta.textContent = m.asksTotal ? `返事待ち ${m.waiting}` : '';
+            if (meta) {
+                // 取得に失敗して前の内容を出しているときは、それを隠さない
+                const staleMin = (typeof _finishReqStaleSince === 'number') ? Math.max(1, Math.round((Date.now() - _finishReqStaleSince) / 60000)) : null;
+                meta.textContent = [m.asksTotal ? `返事待ち ${m.waiting}` : '', staleMin != null ? `⚠ 取得失敗 (${staleMin}分前の内容)` : ''].filter(Boolean).join(' · ');
+            }
             const STATE_JP = { waiting: '返事待ち', expired: '期限切れ', ready: 'そろった', dead: '不可あり' };
             const asks = m.asks.length
                 ? m.asks.map(a => {
@@ -16687,7 +16696,12 @@
                 _mb.season = snap.season;
                 _mbRebuild();
                 const upd = document.getElementById('opsMbUpdated');
-                if (upd) upd.textContent = `更新 ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`;
+                if (upd) {
+                    // ★ 一部だけ取得できなかったときは見出しでも知らせる (黙って全員未登録にしない。全体監査 2026-09-14 #4)
+                    const failed = [['pushPlayerIds', 'Push'], ['slvThisSeasonIds', 'SLv'], ['finishRequests', '締め凸'], ['proxyEvents', '代理凸']]
+                        .filter(([k]) => extras && extras[k] === null).map(([, jp]) => jp);
+                    upd.textContent = `更新 ${new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}${failed.length ? ` · ⚠ ${failed.join('・')} を取得できませんでした` : ''}`;
+                }
             } catch (e) {
                 // 成功側と同じ条件で古い失敗も捨てる (追い越し・盤面の書き換え・運営OFF)
                 if (gen !== _mb.gen || !opsStore.isCurrentGeneration(storeGen) || !_opsMode) return;
@@ -16744,14 +16758,18 @@
                 // 運営除外 (35) がある人は印を出す (模擬 n/5 からは外れて数えられている)
                 const exAttrs = Object.keys((_mb.players || []).find(p => Number(p.id) === Number(r.id))?.excludedByAttr || {});
                 const excl = exAttrs.length ? `<span class="dc-mb-c warn" title="運営が除外した模擬: ${escapeHtml(exAttrs.map(a => dom.ATTR_JP[a] || a).join('・'))} (本人が保存し直すと戻る)">除外${exAttrs.length}</span>` : '';
-                const slv = r.slvNow != null ? `<span class="dc-mb-c ok">SLv ${r.slvNow}</span>`
+                // 取得できなかった項目は「?」— 未登録 (err) と見分けがつく色にする
+                const slv = r.slvUnknown ? '<span class="dc-mb-c mute" title="SLv の登録状況を取得できませんでした (↻ で取り直し)">SLv ?</span>'
+                    : r.slvNow != null ? `<span class="dc-mb-c ok">SLv ${r.slvNow}</span>`
                     : r.slvPrev ? `<span class="dc-mb-c warn">SLv 前回${r.slvPrev}</span>`
                     : '<span class="dc-mb-c err">SLv —</span>';
-                const push = r.push ? '<span class="dc-mb-c mute" title="Push購読あり">🔔</span>' : '<span class="dc-mb-c err" title="Push未購読 — 催促が届きません">🔕</span>';
+                const push = r.pushUnknown ? '<span class="dc-mb-c mute" title="Push の購読状況を取得できませんでした (↻ で取り直し)">🔔?</span>'
+                    : r.push ? '<span class="dc-mb-c mute" title="Push購読あり">🔔</span>' : '<span class="dc-mb-c err" title="Push未購読 — 催促が届きません">🔕</span>';
                 const atk = `<span class="dc-mb-atk">${[0, 1, 2].map(i => i < r.atkCount
                     ? `<i class="d">${r.attacks[i]?.level ? 'L' + r.attacks[i].level : '✓'}</i>`
                     : '<i>·</i>').join('')}</span>${r.proxyCount > 0 ? `<span class="dc-mb-c acc" title="代理登録 ${r.proxyCount}件">代理${r.proxyCount > 1 ? r.proxyCount : ''}</span>` : ''}`;
-                const fin = r.finish === 'pending' ? '<span class="dc-mb-c warn">締め凸 未返答</span>'
+                const fin = r.finishUnknown ? '<span class="dc-mb-c mute" title="締め凸依頼を取得できませんでした (↻ で取り直し)">締め凸 ?</span>'
+                    : r.finish === 'pending' ? '<span class="dc-mb-c warn">締め凸 未返答</span>'
                     : r.finish === 'accepted' ? '<span class="dc-mb-c ok">締め凸 OK</span>'
                     : r.finish === 'declined' ? '<span class="dc-mb-c mute">締め凸 見送り</span>' : '';
                 const cols = isDay ? `${mock}${excl}${slv}${strip(r)}${atk}${fin}` : `${mock}${excl}${slv}${strip(r)}${push}`;
@@ -16762,6 +16780,7 @@
                 //   押せるボタンを出さない。押しても何も起きないボタンは運営を混乱させる (Codex指摘)
                 const canNudge = r.todo && r.push && !r.availUnavailable;
                 const nudgeTitle = r.availUnavailable ? '今回は難しいと申告しているため催促しません'
+                    : r.pushUnknown ? 'Push の購読状況を取得できていません (↻ で取り直し)'
                     : r.push ? 'この人だけに催促Push' : 'Push未購読のため届きません';
                 const acts = r.todo
                     ? `<button class="dc-mb-btn sub" onclick="handleOpsMemberNudge(${r.id})" ${canNudge ? '' : 'disabled'} title="${escapeHtml(nudgeTitle)}">催促</button>` +

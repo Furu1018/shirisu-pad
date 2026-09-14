@@ -1596,7 +1596,14 @@ window.supabaseLoadFinishRequests = async function (seasonId, currentLevel = nul
         //   (絞ると「依頼が1件も無い」ように見えて、締め凸の追跡が丸ごと消える)
         if (!rows.some(r => 'raid_level' in r)) return rows;
         return rows.filter(r => Number(r.raid_level) === lv);
-    } catch { return []; }   // テーブル未適用環境では空扱い
+    } catch (e) {
+        // ★ [] は「本当に 0 件」のときだけ。テーブル未適用 (22 未適用) だけ空扱いにし、
+        //   通信・DB の失敗は null (= 分からない) を返す。[] に潰すと 10 秒ポーリングがキャッシュを空で上書きし、
+        //   未回答の締め凸依頼が本人のバナーからも運営の 🔁 からも消える (全体監査 2026-09-14 #3)
+        if (_isMissingTableErr(e, 'finish_requests')) return [];
+        console.warn('[finish requests] 取得に失敗 (前の内容を保ちます):', e?.message || e);
+        return null;
+    }
 };
 // 依頼への返答 (メンバー本人)。レベルを渡せばそのレベルの依頼だけに答える
 window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, playerId, status, raidLevel = null, rowId = null) {
@@ -1826,16 +1833,19 @@ async function _loadFinishRequestsForStatus(seasonId, currentLevel) {
                 .select('player_id, status, requested_at, raid_level')
                 .eq('season_id', seasonId).eq('raid_level', lv);
             if (!r.error) return r.data || [];
-            if (!_isMissingColumnErr(r.error, 'raid_level')) return [];
+            if (!_isMissingColumnErr(r.error, 'raid_level')) return _isMissingTableErr(r.error, 'finish_requests') ? [] : null;
         }
         const r2 = await supabase.from('finish_requests')
             .select('player_id, status, requested_at').eq('season_id', seasonId);
-        return r2.error ? [] : (r2.data || []);
-    } catch { return []; }
+        if (r2.error) return _isMissingTableErr(r2.error, 'finish_requests') ? [] : null;
+        return r2.data || [];
+    } catch { return null; }   // ★ 失敗は「分からない」(null)。[] は本当に 0 件のときだけ (全体監査 2026-09-14 #4)
 }
 
 window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, currentLevel = null) {
-    const safe = async (p) => { try { const r = await p; return (r && !r.error && Array.isArray(r.data)) ? r.data : []; } catch { return []; } };
+    // ★ 失敗は null (= 分からない)。[] に潰すと「全員 Push 未登録」「全員 SLv 未登録」「未返答 0」を捏造する
+    //   (全体監査 2026-09-14 #4)。availConfirmations が先に採っていた契約 (null = 分からない) に揃える
+    const safe = async (p) => { try { const r = await p; return (r && !r.error && Array.isArray(r.data)) ? r.data : null; } catch { return null; } };
     const [subs, slv, fin, proxy, availConf] = await Promise.all([
         safe(supabase.from('push_subscriptions').select('player_id')),
         seasonId ? safe(supabase.from('player_sync_levels').select('player_id').eq('season_id', seasonId)) : [],
@@ -1854,10 +1864,10 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
         seasonId ? window.supabaseLoadAvailabilityConfirmations(seasonId) : [],
     ]);
     return {
-        pushPlayerIds: subs.map(s => s.player_id),
-        slvThisSeasonIds: slv.map(s => s.player_id),
-        finishRequests: fin,
-        proxyEvents: proxy,
+        pushPlayerIds: Array.isArray(subs) ? subs.map(s => s.player_id) : null,
+        slvThisSeasonIds: Array.isArray(slv) ? slv.map(s => s.player_id) : null,
+        finishRequests: Array.isArray(fin) ? fin : null,
+        proxyEvents: Array.isArray(proxy) ? proxy : null,
         // 今期の戦闘可能時間の確認 (37)。null = 機能未適用 (memberStatus 側が確認の理由も催促も出さない)
         availConfirmations: availConf,
     };

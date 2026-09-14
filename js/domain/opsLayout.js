@@ -135,7 +135,10 @@
         const capacity = Math.max(doneAttacks, ps.filter(p => !p.unavailableThisSeason).length * MAX_ATTACKS);
         // 🔁 返事待ち = 締め凸依頼で status が pending の行 (未ロードなら null)
         const askWaiting = Array.isArray(finishRequests) ? finishRequests.filter(r => r && r.status === 'pending').length : null;
-        const finPending = Array.isArray(mbRows) ? mbRows.filter(r => r.finish === 'pending').length : null;
+        // ★ 締め凸依頼を取得できなかったときは「未返答 0」ではなく「—」(全体監査 2026-09-14 #4)
+        const finPending = !Array.isArray(mbRows) ? null
+            : mbRows.some(r => r && r.finishUnknown) ? null
+            : mbRows.filter(r => r.finish === 'pending').length;
 
         const summaries = {
             opsSecBoss: season

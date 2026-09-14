@@ -3802,6 +3802,134 @@ console.log('\n運営除外の配線 (ソース突合):');
     });
 
     // ---- 37: 今期の戦闘可能時間の確認 ------------------------------------------
+    // ===== 全体監査 2026-09-14 #3 #4: 「取得失敗」を「無い」に潰さない (契約: null = 分からない / [] = 本当に 0 件) =====
+    // ★ 文字列の検査ではなく、supabase-client.js の関数を切り出して**偽の supabase で実行**する。
+    //   「catch { return null }」があるかを見るだけでは、2 か所のうち片方が [] のままでも通ってしまう
+    const _nfClientFn = (name, extra = '') => {
+        // window.X = async function ... \n}; の塊を切り出す
+        const re = new RegExp(`window\\.${name} = async function[\\s\\S]*?\\n\\};\\n`);
+        const body = client.match(re)?.[0];
+        assert.ok(body, `${name} が見つからない`);
+        const helpers = ['_isMissingColumnErr', '_isMissingTableErr'].map(h => client.match(new RegExp(`function ${h}\\(error, \\w+\\) \\{[\\s\\S]*?\\n\\}\\n`))?.[0] || '').join('\n');
+        return new Function('supabase', 'window', 'console', `${helpers}\n${extra}\n${body}\nreturn window.${name};`);
+    };
+    // 偽の supabase: from(table) → チェーン (select/eq/order/limit/gte は自分を返す) → await で results[table] を返す
+    const _nfFake = (results) => ({
+        from(table) {
+            const r = results[table];
+            const chain = {
+                select() { return chain; }, eq() { return chain; }, order() { return chain; }, limit() { return chain; }, gte() { return chain; },
+                then(onF, onR) { return (r instanceof Error ? Promise.reject(r) : Promise.resolve(r)).then(onF, onR); },
+            };
+            return chain;
+        },
+    });
+    const _nfQuiet = { warn() {}, log() {}, error() {} };
+    await testAsync('★ supabaseLoadFinishRequests: 通信・DB の失敗は null / テーブル未適用だけ [] / 0 件は []', async () => {
+        const w = {};
+        const fn = _nfClientFn('supabaseLoadFinishRequests')(_nfFake({ finish_requests: { data: null, error: { code: '', message: 'FetchError: network' } } }), w, _nfQuiet);
+        assert.equal(await fn(1, 1), null, '通信失敗を [] にしている (10秒ポーリングが未回答の依頼を消す)');
+        const fn2 = _nfClientFn('supabaseLoadFinishRequests')(_nfFake({ finish_requests: new Error('fetch failed') }), w, _nfQuiet);
+        assert.equal(await fn2(1, 1), null, 'fetch が投げたときも null');
+        const fn3 = _nfClientFn('supabaseLoadFinishRequests')(_nfFake({ finish_requests: { data: null, error: { code: '42P01', message: 'relation "finish_requests" does not exist' } } }), w, _nfQuiet);
+        assert.deepEqual(await fn3(1, 1), [], 'テーブル未適用は [] (従来どおり)');
+        const fn4 = _nfClientFn('supabaseLoadFinishRequests')(_nfFake({ finish_requests: { data: [], error: null } }), w, _nfQuiet);
+        assert.deepEqual(await fn4(1, 1), [], '本当に 0 件は []');
+        const fn5 = _nfClientFn('supabaseLoadFinishRequests')(_nfFake({ finish_requests: { data: [{ id: 9, player_id: 3, status: 'pending', raid_level: 1, players: { name: 'x' } }], error: null } }), w, _nfQuiet);
+        assert.equal((await fn5(1, 1)).length, 1, '成功時は行を返す');
+        assert.deepEqual(await fn(null, 1), [], 'シーズン無しは [] (分からないのではなく、無い)');
+    });
+    await testAsync('★ supabaseLoadMemberStatusExtras: 失敗した項目だけ null (他は配列のまま) — 全員未登録を捏造しない', async () => {
+        const w = { supabaseLoadAvailabilityConfirmations: async () => [] };
+        const helper = client.match(/async function _loadFinishRequestsForStatus\(seasonId, currentLevel\) \{[\s\S]*?\n\}\n/)?.[0];
+        assert.ok(helper, '_loadFinishRequestsForStatus が見つからない');
+        const mk = (results) => _nfClientFn('supabaseLoadMemberStatusExtras', helper)(_nfFake(results), w, _nfQuiet);
+        const ok = { data: [{ player_id: 1 }], error: null };
+        const bad = { data: null, error: { code: '', message: 'network' } };
+        const ex1 = await mk({ push_subscriptions: bad, player_sync_levels: ok, finish_requests: ok, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1);
+        assert.equal(ex1.pushPlayerIds, null, 'Push の取得失敗を [] にしている (全員「未購読」になる)');
+        assert.deepEqual(ex1.slvThisSeasonIds, [1], '失敗していない項目は配列のまま');
+        assert.deepEqual(ex1.proxyEvents, [{ player_id: 1 }]);
+        const ex2 = await mk({ push_subscriptions: ok, player_sync_levels: bad, finish_requests: bad, activity_log: new Error('boom') })(1, '2026-09-01T00:00:00Z', 1);
+        assert.equal(ex2.slvThisSeasonIds, null, 'SLv の取得失敗を [] にしている (全員「未登録」になる)');
+        assert.equal(ex2.finishRequests, null, '締め凸依頼の取得失敗を [] にしている (「未返答 0」になる)');
+        assert.equal(ex2.proxyEvents, null, 'activity_log が投げたときも null');
+        // ★ 締め凸だけ **fetch が投げる** 経路 (r.error ではなく catch に入る) — 変異で穴が見つかった
+        const ex2b = await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: new Error('fetch failed'), activity_log: ok })(1, '2026-09-01T00:00:00Z', 1);
+        assert.equal(ex2b.finishRequests, null, '締め凸依頼の fetch が投げたときも null (catch 経路)');
+        assert.deepEqual(ex2.pushPlayerIds, [1]);
+        const ex3 = await mk({ push_subscriptions: { data: [], error: null }, player_sync_levels: { data: [], error: null }, finish_requests: { data: [], error: null }, activity_log: { data: [], error: null } })(1, '2026-09-01T00:00:00Z', 1);
+        assert.deepEqual(ex3.pushPlayerIds, [], '本当に誰もいないときは []');
+        assert.deepEqual(ex3.finishRequests, []);
+        // 締め凸依頼だけテーブル未適用 (22 未適用) → [] (従来どおり)
+        const ex4 = await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: { data: null, error: { code: '42P01', message: 'relation "finish_requests" does not exist' } }, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1);
+        assert.deepEqual(ex4.finishRequests, [], 'テーブル未適用は [] のまま');
+    });
+    test('★ buildRows: 取得できなかった項目は「未登録」と言わない (null・省略 = 分からない / [] = 本当に誰もいない)', () => {
+        const ms = globalThis.memberStatusDomain;
+        const base = { damagesByAttr: { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 }, syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21'] };
+        const one = (extras, phase = 'pre') => ms.buildRows({ players: [{ id: 7, name: 'x', attacks: [], teamsByAttr: {}, ...base }], extras, phase })[0];
+        const keys = (r) => r.reasons.map(x => x.key);
+        // Push
+        const pNull = one({ pushPlayerIds: null, slvThisSeasonIds: [7], availConfirmations: [{ player_id: 7, confirmed_at: 'x', slot_count: 1 }] });
+        assert.ok(!keys(pNull).includes('push'), 'Push が分からないのに「通知購読なし」を積んでいる');
+        assert.equal(pNull.push, null); assert.equal(pNull.pushUnknown, true);
+        const pEmpty = one({ pushPlayerIds: [], slvThisSeasonIds: [7], availConfirmations: [{ player_id: 7, confirmed_at: 'x', slot_count: 1 }] });
+        assert.ok(keys(pEmpty).includes('push'), '[] (本当に誰も購読していない) なら理由に積む');
+        assert.equal(pEmpty.pushUnknown, false);
+        const pOmit = one({ slvThisSeasonIds: [7], availConfirmations: [] });
+        assert.ok(!keys(pOmit).includes('push'), '省略も「分からない」(availConfirmations と同じ契約)');
+        // SLv
+        const sNull = one({ pushPlayerIds: [7], slvThisSeasonIds: null, availConfirmations: [] });
+        assert.ok(!keys(sNull).includes('slv'), 'SLv の登録リストが分からないのに「SLv未登録」を積んでいる');
+        assert.equal(sNull.slvNow, null); assert.equal(sNull.slvPrev, null, '「前回 600」とも言わない (今季かどうか分からない)'); assert.equal(sNull.slvUnknown, true);
+        const sEmpty = one({ pushPlayerIds: [7], slvThisSeasonIds: [], availConfirmations: [] });
+        assert.ok(keys(sEmpty).includes('slv'), '[] なら未登録 (前回値つき)'); assert.equal(sEmpty.slvPrev, 600);
+        // 締め凸 (当日)
+        const fNull = one({ pushPlayerIds: [7], slvThisSeasonIds: [7], finishRequests: null, availConfirmations: [] }, 'day');
+        assert.ok(!keys(fNull).includes('finish')); assert.equal(fNull.finish, null); assert.equal(fNull.finishUnknown, true);
+        const fPend = one({ pushPlayerIds: [7], slvThisSeasonIds: [7], finishRequests: [{ player_id: 7, status: 'pending' }], availConfirmations: [] }, 'day');
+        assert.ok(keys(fPend).includes('finish')); assert.equal(fPend.finishUnknown, false);
+        // 集計: 分からない欄は「—」+ 取得失敗 (0 だと「全員済み」に見える)
+        const sumDay = ms.summarize([fNull], 'day');
+        assert.equal(sumDay.find(x => x.key === 'finish').value, '—');
+        assert.equal(sumDay.find(x => x.key === 'finish').sub, '取得失敗');
+        assert.equal(ms.summarize([fPend], 'day').find(x => x.key === 'finish').value, 1);
+        const sumPre = ms.summarize([pNull], 'pre');
+        assert.equal(sumPre.find(x => x.key === 'push').value, '—');
+        assert.equal(ms.summarize([pEmpty], 'pre').find(x => x.key === 'push').value, 0, '[] は 0 人 (数える)');
+        assert.equal(ms.summarize([sNull], 'pre').find(x => x.key === 'slv').value, '—');
+        // 催促: Push が分からない人には送らない (届くかどうか分からない)
+        assert.equal(ms.nudgeMessage(pNull, 'pre'), null);
+        assert.deepEqual(globalThis.opsStageDomain.nudgeTargets([pNull], 'mock'), []);
+    });
+    test('★ コックピット: 締め凸依頼が取れていないときの「締め凸 未返答」は — (0 にしない)', () => {
+        const lay = globalThis.opsLayoutDomain;
+        const rows = (u) => [{ todo: false, finish: null, finishUnknown: u }, { todo: true, finish: 'pending', finishUnknown: u }];
+        const tile = (r) => lay.summarize({ season: { id: 1, current_level: 1 }, bosses: [], players: [], mbRows: r }).cockpit.find(c => c.key === 'finish');
+        assert.equal(tile(rows(true)).value, '—', '取得失敗なのに数字を出している');
+        assert.equal(tile(rows(false)).value, 1);
+        assert.equal(tile(null).value, '—', '未ロードは従来どおり —');
+    });
+    await testAsync('★ 配線: _refreshFinishRequests は取得失敗 (null) で前の内容を保つ / 成功で置き換えて古さを消す', async () => {
+        const src = html.match(/async function _refreshFinishRequests\(\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(src, '_refreshFinishRequests が見つからない');
+        const run = new Function('window', 'seed', 'staleSeed', `let _finishReqCache = seed; let _finishReqStaleSince = staleSeed;
+            const ensureActiveSeasonLoaded = async () => ({ season: { id: 1, current_level: 1 } });
+            ${src}
+            return async () => { await _refreshFinishRequests(); return { cache: _finishReqCache, stale: _finishReqStaleSince }; };`);
+        const seed = [{ id: 1, status: 'pending' }];
+        const r1 = await run({ supabaseLoadFinishRequests: async () => null }, seed, null)();
+        assert.deepEqual(r1.cache, seed, '取得失敗で前の内容が消えている (未回答の依頼がバナーから消える)');
+        assert.equal(typeof r1.stale, 'number', 'いつから古いかを覚えていない');
+        const r2 = await run({ supabaseLoadFinishRequests: async () => null }, seed, 123)();
+        assert.equal(r2.stale, 123, '失敗が続いても最初の失敗時刻を保つ');
+        const r3 = await run({ supabaseLoadFinishRequests: async () => [] }, seed, 123)();
+        assert.deepEqual(r3.cache, [], '成功 (本当に 0 件) で置き換える');
+        assert.equal(r3.stale, null, '成功したら古さを消す');
+        const r4 = await run({ supabaseLoadFinishRequests: async () => { throw new Error('x'); } }, seed, null)();
+        assert.deepEqual(r4.cache, seed, '例外でも前の内容を保つ');
+    });
     test('★ supabaseLoadAvailabilityConfirmations は未適用環境で null を返す ([] にしない)', () => {
         const body = client.match(/window\.supabaseLoadAvailabilityConfirmations = async function[\s\S]*?\n};\n/)?.[0] || '';
         assert.ok(body, '関数が見つからない');

@@ -259,5 +259,40 @@ await testAsync('opsStore.load() が失敗したら「取得に失敗」を出�
     assert.equal(_mb.rows.length, 1, '既存の行が消されている');
 });
 
+// ---- 全体監査 2026-09-14 #4: 一部の取得に失敗しても「全員未登録」を描かず、「?」と見出しの警告を出す ----
+await testAsync('extras の一部が null (取得失敗) でも描画は壊れず、該当欄は「?」・見出しに「取得できませんでした」', async () => {
+    Object.assign(_mb, { phase: 'pre', filter: 'all', sort: 'name', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const snap = { season: { id: 30, hard_date: '2026-09-05', current_level: 1 }, players };
+    storeData = snap;
+    const origExtras = globalThis.supabaseLoadMemberStatusExtras;
+    globalThis.supabaseLoadMemberStatusExtras = async () => ({ pushPlayerIds: null, slvThisSeasonIds: null, finishRequests: null, proxyEvents: [], availConfirmations: [] });
+    await renderOpsMemberStatus(snap, true);
+    globalThis.supabaseLoadMemberStatusExtras = origExtras;
+    const rows = el('opsMbRows').innerHTML;
+    assert.ok(rows.includes('SLv ?'), 'SLv が分からないのに「SLv —」(未登録) を描いている');
+    assert.ok(rows.includes('🔔?'), 'Push が分からないのに 🔕 (未購読) を描いている');
+    assert.ok(!rows.includes('🔕'), '「未購読」の印が出ている');
+    assert.ok(!rows.includes('SLv —'), '「SLv —」(未登録) が出ている');
+    assert.ok(!rows.includes('undefined') && !rows.includes('NaN'));
+    assert.ok(el('opsMbUpdated').textContent.includes('取得できませんでした'), '見出しに警告が無い');
+    assert.ok(/Push・SLv・締め凸/.test(el('opsMbUpdated').textContent), '失敗した項目名が並んでいない');
+    assert.ok(el('opsMbSummary').innerHTML.includes('取得失敗'), '集計に「取得失敗」が無い (0/4 と出ると全員未登録に見える)');
+    // 当日も同じ (締め凸 ?)
+    _mb.phase = 'day'; _mbRebuild();
+    assert.ok(el('opsMbRows').innerHTML.includes('締め凸 ?'), '当日の締め凸の欄が「?」でない');
+});
+await testAsync('extras が全部そろっていれば従来どおり (未購読は 🔕・見出しに警告なし)', async () => {
+    Object.assign(_mb, { phase: 'pre', filter: 'all', sort: 'name', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const snap = { season: { id: 30, hard_date: '2026-09-05', current_level: 1 }, players };
+    storeData = snap;
+    const origExtras = globalThis.supabaseLoadMemberStatusExtras;
+    globalThis.supabaseLoadMemberStatusExtras = async () => ({ pushPlayerIds: [2], slvThisSeasonIds: [2, 3, 4], finishRequests: [], proxyEvents: [], availConfirmations: [] });
+    await renderOpsMemberStatus(snap, true);
+    globalThis.supabaseLoadMemberStatusExtras = origExtras;
+    assert.ok(el('opsMbRows').innerHTML.includes('🔕'), '本当に未購読の人に 🔕 が出ない');
+    assert.ok(!el('opsMbRows').innerHTML.includes('🔔?'));
+    assert.ok(!el('opsMbUpdated').textContent.includes('取得できませんでした'));
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
