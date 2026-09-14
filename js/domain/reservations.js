@@ -49,6 +49,7 @@
         infeasible: '実行できなくなった',
         member_declined: '本人が「難しい」と返事',
         superseded: '本人の申請・予約に置き換わった',
+        ask_expired: '📣 お願いの期限が過ぎた (運営が外した)',
     };
     // 許可する遷移。DB の reservation_set_status と**同じ表**にすること
     // (片方だけ変えると、画面では押せるのにサーバで弾かれる)
@@ -113,6 +114,14 @@
     const isApproved = (r) => !!r && r.status === 'approved';
     const isPin = (r) => !!r && r.status === 'pinned';
     const isAskedPin = (r) => isPin(r) && r.asked_at != null;   // 📣 本人に届いている下書き
+    // ⏰ 📣 お願いの期限 (ask_deadline_at) が過ぎたのに返事が無い 📌。過ぎても自動では外さない (本人が遅れて引き受けることもある) —
+    //   運営が見て外す。全体監査 2026-09-14 #7: 以前は目印も無く、raid_level 無しなので撃破・レベル進行の後片付けにも拾われず残り続けた
+    const isExpiredPin = (r, now = Date.now()) => {
+        if (!isAskedPin(r) || !r.ask_deadline_at) return false;
+        const t = new Date(r.ask_deadline_at).getTime();
+        return Number.isFinite(t) && t < now;
+    };
+    const expiredPins = (rows, now = Date.now()) => (Array.isArray(rows) ? rows : []).filter(r => isExpiredPin(r, now));
     const canTransition = (from, to) => (TRANSITIONS[from] || []).includes(to);
 
     /**
@@ -670,7 +679,7 @@
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP,
         unmetText, planRowsOf, homeSlots, pendingRepublish, slotIdxOf, rowHonorsTime,
-        isActive, isApproved, isFixed, isPromise, isPin, isAskedPin, pinFor, canPin, canApprove, fingerprint, canTransition,
+        isActive, isApproved, isFixed, isPromise, isPin, isAskedPin, isExpiredPin, expiredPins, pinFor, canPin, canApprove, fingerprint, canTransition,
         toSolverConstraints,
         findInfeasible,
         capacityLeft,

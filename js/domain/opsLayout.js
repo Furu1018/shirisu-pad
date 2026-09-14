@@ -149,7 +149,7 @@
             opsSecMembers: { text: todo == null ? '' : `未完 ${todo}${finPending ? ` · 締め凸未返答 ${finPending}` : ''}`, bad: (todo || 0) > 0 || (finPending || 0) > 0 },
             // 承認待ちは「運営が見ていないと予約が成立しない」状態なので bad 扱いにする
             opsSecReserve: reservations
-                ? { text: `承認待ち ${reservations.pending} · 固定中 ${reservations.approved}`, bad: (reservations.pending || 0) > 0 }
+                ? { text: `承認待ち ${reservations.pending} · 固定中 ${reservations.approved}${(reservations.expired || 0) > 0 ? ` · ⏰ 期限切れ ${reservations.expired}` : ''}`, bad: (reservations.pending || 0) > 0 || (reservations.expired || 0) > 0 }   // ⏰ = 返事の無い 📣 (全体監査 #7)
                 : { text: '', bad: false },
             opsSecFinish: { text: finishAttr ? `${ATTR_JP[finishAttr] || finishAttr} 締め凸を検索中` : '', bad: false },
             opsSecPace: { text: season ? `${doneAttacks} / ${capacity}凸` : '', bad: false },

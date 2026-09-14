@@ -16918,7 +16918,8 @@
             const approved = rows.filter(r => r.status === 'approved');
             const pins = rows.filter(r => r.status === 'pinned');   // 📌 運営の下書き (パズル盤 ③)
             const done = rows.filter(r => ['fulfilled', 'released', 'rejected'].includes(r.status));
-            if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 固定中 ${approved.length}${pins.length ? ` · 📌 ${pins.length}` : ''}`;
+            const expiredPins = rv.expiredPins ? rv.expiredPins(pins) : [];   // ⏰ 返事の無い 📣 (全体監査 #7)
+            if (cntEl) cntEl.textContent = `承認待ち ${pending.length + cancelReq.length} · 固定中 ${approved.length}${pins.length ? ` · 📌 ${pins.length}` : ''}${expiredPins.length ? ` · ⏰ 期限切れ ${expiredPins.length}` : ''}`;
 
             const who = (r) => escapeHtml(r.player_name || `#${r.player_id}`);
             const what = (r) => escapeHtml(rv.describe(r, bossName));
@@ -16960,9 +16961,10 @@
                     'approved')).join(''));
             }
             if (pins.length) {
-                sections.push(`<div class="dc-resv-head">📌 運営の固定 (${pins.length})</div>` + pins.map(r => card(r,
+                // ⏰ 期限が過ぎても返事の無い 📣 は目立たせ、まとめて外せる (全体監査 #7。自動では外さない — 本人が遅れて引き受けることもある)
+                sections.push(`<div class="dc-resv-head">📌 運営の固定 (${pins.length})${expiredPins.length ? ` <button type="button" class="dc-resv-btn" style="margin-left:8px;" onclick="_opsReleaseExpiredPins()">⏰ 期限切れ ${expiredPins.length} 件をまとめて外す</button>` : ''}</div>` + pins.map(r => card(r,
                     (r.asked_at
-                        ? `<span style="font-size:10px;font-weight:800;color:var(--warn-deep);align-self:center;">📣 お願い中${r.ask_deadline_at ? ` 〜${escapeHtml(_hhmm(r.ask_deadline_at))}` : ''}</span>`
+                        ? `<span style="font-size:10px;font-weight:800;color:${rv.isExpiredPin && rv.isExpiredPin(r) ? 'var(--bad-deep)' : 'var(--warn-deep)'};align-self:center;">${rv.isExpiredPin && rv.isExpiredPin(r) ? '⏰ 期限切れ' : '📣 お願い中'}${r.ask_deadline_at ? ` 〜${escapeHtml(_hhmm(r.ask_deadline_at))}` : ''}</span>`
                         : btn('📣 お願いする', `_opsPlanAsk(${Number(r.id)})`, 'primary', r.id))
                     + btn('外す', `_opsPlanUnpin(${Number(r.id)})`, '', r.id)
                     + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.pinned_by || '')}${r.pinned_by ? ' が固定' : ''}${r.asked_at ? '' : ' · 本人には見えていません'}</span>`,
@@ -17000,7 +17002,7 @@
                 window.supabaseLogActivity?.('ops',
                     `凸の予約: ${row ? (row.player_name || '#' + row.player_id) : '#' + rid} を ${window.reservationsDomain?.STATUS_JP[to] || to}`,
                     { actorName: me?.name || null });
-                showNotification(o.done || '更新しました');
+                if (!o.quiet) showNotification(o.done || '更新しました');   // quiet = まとめて外すとき 1 件ごとに出さない
                 // ★ 本人の申請を承認したら、同じカードの 📌 (運営の下書き) は役目を終える → 外す (二重の拘束にしない)。
                 //   ★ 47 適用済みなら reservation_set_status が**同じトランザクションで**外している (画面が外すまでの間に 4 固定が
                 //     見える穴を塞ぐため: 修正後の Codex 指摘)。ここは 47 未適用の環境のための保険で、適用済みでは「状態が変わっています」で空振りする
@@ -20848,6 +20850,18 @@
             if (row && row.asked_at && !confirm('本人にお願い済みの固定です。外すと本人の画面からも消えます。外しますか？')) return;
             const ok = await _resvTransition(Number(id), 'released', { expectFrom: 'pinned', reason: 'ops', done: '📌 固定を外しました' });
             if (ok) { _opsPlanSel = null; _opsPlanFocus = null; await computeAndRenderOptimalPlan(); }
+        }
+        // ⏰ 期限切れの 📣 お願い (返事の無い 📌) をまとめて外す (全体監査 2026-09-14 #7)。
+        //   期限が過ぎても自動では外さない (本人が遅れて引き受けることもある) — 運営が見て決める。1 件ずつ RPC (期待状態 pinned) で外す
+        async function _opsReleaseExpiredPins() {
+            const rv = window.reservationsDomain;
+            const targets = rv && rv.expiredPins ? rv.expiredPins(_resv.rows || []) : [];
+            if (!targets.length) { showNotification('期限切れの固定はありません'); return; }
+            if (!confirm(`⏰ 期限切れのお願い ${targets.length} 件を外しますか？ 本人の画面からも消えます (遅れて引き受けたい人がいれば、その人だけ残してください)`)) return;
+            let n = 0;
+            for (const r of targets) { if (await _resvTransition(Number(r.id), 'released', { expectFrom: 'pinned', reason: 'ask_expired', quiet: true })) n++; }
+            showNotification(`⏰ 期限切れの固定を ${n} 件外しました`);
+            if (n) { _opsPlanSel = null; _opsPlanFocus = null; if (typeof computeAndRenderOptimalPlan === 'function') await computeAndRenderOptimalPlan(); }
         }
         // 📣 お願いする: 下書きを本人に見せる + Push。期限は 15 分 (表示だけ。過ぎても自動で外さない)
         async function _opsPlanAsk(id) {
@@ -24829,6 +24843,8 @@
             const currentRatio = slvRatioTable[String(player.syncLevel)];
             const targetRatio = slvRatioTable[String(targetSlv)];
             if (!currentRatio || !targetRatio) {
+                resultEl.style.display = 'none';
+                tableWrapper.style.display = 'none';
                 errorEl.style.display = 'block';
                 errorEl.textContent = '指定されたSLvの補正データが見つかりません。';
                 return;
@@ -24836,7 +24852,16 @@
 
             // 締め凸を置き換えた合計を基準に (置き換えが無ければ記録の合計そのもの)
             const base = _simBaseOf(player);
-            const predictedDamage = base.total * (targetRatio / currentRatio);
+            // ★ 計算は slvSimDomain.predictDamage が唯一。画面で比例計算を書き直さない —
+            //   実績 0 の人で 0/0 を toFixed して「+0 (NaN%)」を出していた (全体監査 2026-09-14 #9)
+            const predictedDamage = window.slvSimDomain?.predictDamage?.({ damage: base.total, curSlv: player.syncLevel, targetSlv, table: slvRatioTable });
+            if (!(Number.isFinite(predictedDamage) && predictedDamage > 0)) {
+                resultEl.style.display = 'none';
+                tableWrapper.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = '実績ダメージが無いため予測できません (締め凸だけの人は上の箱で 3 分間戦闘した結果を入れてください)。';
+                return;
+            }
             const diff = predictedDamage - base.total;
             const pct = ((diff / base.total) * 100).toFixed(1);
 
@@ -26988,7 +27013,8 @@
             const bosses = snap ? (snap.bosses || []) : null, players = snap ? (snap.players || []) : null;
             const mbRows = (typeof _mb !== 'undefined' && _mb.players) ? _mb.rows : null;
             const reservations = (typeof _resv !== 'undefined' && Array.isArray(_resv.rows))
-                ? { pending: _resv.rows.filter(r => r.status === 'requested' || r.status === 'cancel_requested').length, approved: _resv.rows.filter(r => r.status === 'approved').length }
+                ? { pending: _resv.rows.filter(r => r.status === 'requested' || r.status === 'cancel_requested').length, approved: _resv.rows.filter(r => r.status === 'approved').length,
+                    expired: (window.reservationsDomain?.expiredPins?.(_resv.rows) || []).length }   // ⏰ 返事の無い 📣 (全体監査 #7)
                 : null;
             const pendingRepublish = _opsPendingRepublishCount();
             let backupSavedAt = null;
@@ -27230,6 +27256,7 @@
                     ? {
                         pending: _resv.rows.filter(r => r.status === 'requested' || r.status === 'cancel_requested').length,
                         approved: _resv.rows.filter(r => r.status === 'approved').length,
+                        expired: (window.reservationsDomain?.expiredPins?.(_resv.rows) || []).length,   // ⏰ 返事の無い 📣 (全体監査 #7)
                     }
                     : null,
             });

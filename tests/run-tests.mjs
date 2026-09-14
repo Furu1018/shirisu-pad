@@ -4346,6 +4346,101 @@ console.log('\nreservationsDomain (凸の予約):');
             delete globalThis._identityGen; delete globalThis._myResvRows;
         }
     });
+    await testAsync('★ #7 期限切れの 📣 お願い (返事の無い 📌) を目立たせ、まとめて外せる — 自動では外さない (実行)', async () => {
+        // 期限は絶対時刻で置く (実行時の Date.now() に対して 過去 = 期限切れ / 2099 = 期限内)
+        const PAST = '2026-09-13T10:15:00Z', FUTURE = '2099-01-01T00:00:00Z';
+        const P = (id, o = {}) => ({ id, player_id: 7, status: 'pinned', boss_number: 1, loadout_slot: 1, asked_at: '2026-09-13T10:00:00Z', ask_deadline_at: PAST, ...o });
+        const now = new Date('2026-09-14T10:20:00Z').getTime();
+        // 判定: お願い済み + 期限が過ぎた だけ。下書き (未お願い) / 期限内 / 期限なし / 約束になったもの は違う
+        assert.equal(rv.isExpiredPin(P(1), now), true);
+        assert.equal(rv.isExpiredPin(P(2, { asked_at: null }), now), false, 'お願いしていない下書きを期限切れにしている');
+        assert.equal(rv.isExpiredPin(P(3, { ask_deadline_at: FUTURE }), now), false, '期限内なのに期限切れ');
+        assert.equal(rv.isExpiredPin(P(4, { ask_deadline_at: null }), now), false, '期限なしを期限切れにしている');
+        assert.equal(rv.isExpiredPin(P(5, { status: 'approved' }), now), false, '引き受けた約束を期限切れにしている');
+        assert.equal(rv.isExpiredPin(null, now), false);
+        assert.deepEqual(rv.expiredPins([P(1), P(3, { ask_deadline_at: FUTURE }), P(6)], now).map(r => r.id), [1, 6]);
+        assert.deepEqual(rv.expiredPins(null, now), []);
+        assert.ok(rv.RELEASE_JP.ask_expired, '期限切れで外した理由の日本語が無い (終わったものの欄に英語が出る)');
+        // 集計 (畳んだカードの 1 行・コックピットと同じ材料): 期限切れがあれば注意色
+        const lay = globalThis.opsLayoutDomain;
+        const sum = (reservations) => lay.summarize({ season: { id: 1, current_level: 1 }, bosses: [], players: [], reservations }).summaries.opsSecReserve;
+        assert.match(sum({ pending: 0, approved: 1, expired: 2 }).text, /⏰ 期限切れ 2/);
+        assert.equal(sum({ pending: 0, approved: 1, expired: 2 }).bad, true);
+        assert.doesNotMatch(sum({ pending: 0, approved: 1, expired: 0 }).text, /期限切れ/);
+        assert.equal(sum({ pending: 0, approved: 1 }).bad, false, '期限切れ無し・承認待ち無しなら注意色にしない');
+        // 配線: 一覧の件数と行の印、段階とコックピットの材料に expired が入る、まとめて外す
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/const expiredPins = rv\.expiredPins \? rv\.expiredPins\(pins\) : \[\];/.test(src) && /⏰ 期限切れ \$\{expiredPins\.length\}/.test(src), '一覧の件数に期限切れが無い');
+        assert.ok(/rv\.isExpiredPin\(r\) \? '⏰ 期限切れ' : '📣 お願い中'/.test(src), '行に「⏰ 期限切れ」の印が無い');
+        assert.equal((src.match(/expired: \(window\.reservationsDomain\?\.expiredPins\?\.\(_resv\.rows\) \|\| \[\]\)\.length/g) || []).length, 2, '段階とコックピットの予約件数に expired を渡していない (2 か所)');
+        assert.ok(/if \(!o\.quiet\) showNotification\(o\.done \|\| '更新しました'\);/.test(src), '_resvTransition が quiet を見ない (まとめて外すと 1 件ごとに通知が出る)');
+        // 実行: 期限切れだけを 1 件ずつ RPC (期待状態 pinned・理由 ask_expired) で外す。確認で止められる
+        const body = src.match(/async function _opsReleaseExpiredPins\(\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(body, '_opsReleaseExpiredPins が無い');
+        const mk = (rows, yes) => {
+            const calls = { tr: [], notif: [], recompute: 0 };
+            const api = {
+                _resv: { rows }, confirm: () => yes,
+                showNotification: (m) => calls.notif.push(m),
+                _resvTransition: async (id, to, o) => { calls.tr.push({ id, to, ...o }); return true; },
+                computeAndRenderOptimalPlan: async () => { calls.recompute++; },
+                window: { reservationsDomain: rv },
+            };
+            const fn = new Function('api', `const { _resv, confirm, showNotification, _resvTransition, computeAndRenderOptimalPlan, window } = api; let _opsPlanSel = 1, _opsPlanFocus = 1;
+                ${body}
+                return _opsReleaseExpiredPins;`)(api);
+            return { fn, calls };
+        };
+        const rows = [P(1), P(3, { ask_deadline_at: FUTURE }), P(6), P(9, { asked_at: null })];
+        const a = mk(rows, true);
+        await a.fn();
+        assert.deepEqual(a.calls.tr.map(t => t.id), [1, 6], '期限切れ以外 (期限内・下書き) まで外している');
+        assert.ok(a.calls.tr.every(t => t.to === 'released' && t.expectFrom === 'pinned' && t.reason === 'ask_expired' && t.quiet === true), 'RPC の期待状態・理由・quiet が違う');
+        assert.equal(a.calls.recompute, 1, '外したあと算出し直していない');
+        const b = mk(rows, false);
+        await b.fn();
+        assert.equal(b.calls.tr.length, 0, '確認で止めたのに外している');
+        const c = mk([P(3, { ask_deadline_at: FUTURE })], true);
+        await c.fn();
+        assert.equal(c.calls.tr.length, 0); assert.ok(c.calls.notif.some(m => /ありません/.test(m)));
+    });
+    test('★ #9 シミュレーター (実行): 予測は slvSimDomain.predictDamage が唯一 — 実績 0 の人で NaN% を出さない', () => {
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const body = src.match(/function runSimulator\(\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(body, 'runSimulator が無い');
+        assert.ok(!/base\.total \* \(targetRatio \/ currentRatio\)/.test(body), '画面が比例計算を書き直している (ドメインと二重)');
+        const TABLE = { '400': 900, '500': 1000, '600': 1200 };
+        const mk = (data, selected, target) => {
+            const els = {};
+            const el = (id) => (els[id] ||= { id, style: {}, textContent: '', innerHTML: '', value: '' });
+            el('simPlayerSelect').value = selected; el('simTargetSlv').value = String(target);
+            const api = {
+                document: { getElementById: el },
+                currentData: data, _slvMax: 1000, slvRatioTable: TABLE,
+                _simBaseOf: (p) => ({ total: Number(p.damage) || 0, replaced: 0, recorded: Number(p.damage) || 0 }),
+                formatDamage: (v) => `${(v / 1e9).toFixed(2)}B`,
+                window: { slvSimDomain: globalThis.slvSimDomain },
+            };
+            new Function('api', `const { document, currentData, _slvMax, slvRatioTable, _simBaseOf, formatDamage, window } = api;
+                ${body}
+                runSimulator();`)(api);
+            return els;
+        };
+        const data = [{ player: 'ゼロ', syncLevel: 500, damage: 0, attacks: [] }, { player: '普通', syncLevel: 400, damage: 5e9, attacks: [] }];
+        const text = (els) => Object.values(els).map(e => `${e.textContent}${e.innerHTML}`).join('');
+        // 実績 0: 結果を出さず、理由を出す。NaN はどこにも出ない
+        const z = mk(data, 'ゼロ', 600);
+        assert.equal(z.simError.style.display, 'block'); assert.match(z.simError.textContent, /実績ダメージが無い/);
+        assert.equal(z.simResult.style.display, 'none'); assert.equal(z.simTableWrapper.style.display, 'none');
+        assert.ok(!/NaN/.test(text(z)), 'NaN が画面に出ている');
+        // 普通の人: 予測はドメインの値そのもの (5B × 1200/900)
+        const n = mk(data, '普通', 600);
+        assert.equal(n.simError.style.display, 'none'); assert.equal(n.simResult.style.display, 'block');
+        const expected = globalThis.slvSimDomain.predictDamage({ damage: 5e9, curSlv: 400, targetSlv: 600, table: TABLE });
+        assert.equal(n.simPredictedDmg.textContent, `${(expected / 1e9).toFixed(2)}B`);
+        assert.match(n.simDiff.textContent, /\+33\.3%/);
+        assert.ok(!/NaN/.test(text(n)));
+    });
     test('予約: 遷移表は DB (reservation_set_status) と同じ', () => {
         assert.equal(rv.canTransition('requested', 'approved'), true);
         assert.equal(rv.canTransition('requested', 'fulfilled'), false, '承認を飛ばして実行済みにできてはいけない');
@@ -8755,7 +8850,8 @@ console.log('\ngrowthDomain:');
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         assert.ok(/<div id="simKillBox" style="display: none;/.test(html), '締め凸の置き換えの箱が無い');
         const run = html.match(/function runSimulator\(\)[\s\S]*?\n        \}/)?.[0] || '';
-        assert.ok(/const base = _simBaseOf\(player\);\s*const predictedDamage = base\.total \* \(targetRatio \/ currentRatio\);/.test(run), '予測が置き換え後の合計を基準にしていない');
+        // ★ 予測はドメイン (slvSimDomain.predictDamage) 経由・基準は置き換え後の合計 (全体監査 2026-09-14 #9 で画面の比例計算をやめた)
+        assert.ok(/const base = _simBaseOf\(player\);[\s\S]{0,500}?predictDamage\?\.\(\{ damage: base\.total, curSlv: player\.syncLevel, targetSlv, table: slvRatioTable \}\)/.test(run), '予測が置き換え後の合計を基準にしていない (ドメイン経由)');
         assert.ok(/締め凸 \$\{base\.replaced\} 本を置き換え・記録は \$\{formatDamage\(base\.recorded\)\}/.test(run), '置き換えたことを見せていない');
         const rev = html.match(/function runSimReverse\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/requiredSlv\(\{ damage: _simBaseOf\(player\)\.total,/.test(rev), '逆引きが置き換え後の合計を基準にしていない');
