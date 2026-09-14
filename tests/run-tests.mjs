@@ -5048,10 +5048,11 @@ console.log('\nreservationsDomain (凸の予約):');
         const ap = src.match(/async function _answerPin\([^)]*\) \{[\s\S]*?\n        \}\n/)?.[0];
         assert.ok(ap, '_answerPin が見つからない');
         const P = (id, status, boss) => ({ id, player_id: 7, status, boss_number: boss, loadout_slot: 1, characters_snapshot: [], time_slot: 'h21', expected_damage_b: 1 });
-        const mk = ({ fresh, stale, rows }) => {
+        const mk = ({ fresh, stale, rows, switchIdentity = false }) => {
             const calls = { set: [], notif: [] };
+            let idn = 0;
             const api = {
-                getCurrentIdentity: () => ({ id: 7, name: 'x' }),
+                getCurrentIdentity: () => (switchIdentity && ++idn > 1 ? { id: 8, name: 'y' } : { id: 7, name: 'x' }),
                 _myResvRows: rows, _myPubState: { todayAttacks: stale },
                 renderMyReservations: async () => {}, renderMyNextAction: () => {}, _notifyOps: () => {}, _resvRowJp: () => '',
                 showNotification: (m) => calls.notif.push(m),
@@ -5083,6 +5084,11 @@ console.log('\nreservationsDomain (凸の予約):');
         const c = mk({ fresh: undefined, stale: 0, rows });
         await c.fn(3, true);
         assert.equal(c.calls.set.length, 1, '取り直せなかっただけで拒否している');
+        // 取り直しの await の間に名乗り直された → 中止 (別人の 📌 を承認しない: コミット C の Codex 指摘)
+        const d = mk({ fresh: [], stale: 0, rows, switchIdentity: true });
+        await d.fn(3, true);
+        assert.equal(d.calls.set.length, 0, '名乗り直したのに旧本人の 📌 を承認している');
+        assert.ok(d.calls.notif.some(m => /名乗り直/.test(m)));
     });
     test('予約: 凸報告RPCが「採番・insert・残HP・消し込み」を1つでやる', () => {
         assert.ok(/CREATE OR REPLACE FUNCTION report_attack\(/.test(_sqlRpc));

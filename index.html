@@ -9617,6 +9617,8 @@
                             const atks = ctx?.season?.id ? await window.supabaseLoadMyAttacks?.(me.id, ctx.season.id, ctx.season.hard_date) : null;
                             if (Array.isArray(atks)) done = atks.length;
                         } catch { /* 取れなければ手元の値 (DB が正) */ }
+                        // 取り直しの await の間に名乗り直されたら中止 (別人の 📌 を承認しない: コミット C の Codex 指摘)
+                        if (String(getCurrentIdentity()?.id) !== String(me.id)) { showNotification('名乗り直したので、お願いへの返事は中止しました'); await renderMyReservations(getCurrentIdentity()); return; }
                         const chk = window.reservationsDomain.canApprove(_myResvRows || [], { playerId: me.id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot, doneAttacks: done, excludeId: Number(id) });
                         if (!chk.ok) { showNotification(`❌ 引き受けられません: ${chk.label}。運営に伝えてください`); return; }
                     }
