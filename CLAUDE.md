@@ -579,6 +579,7 @@ node tests/growth-panel.mjs   # 育成データの取り込みパネルの描画
 node tests/growth-compare.mjs # 🧬 育成をくらべるシート (_gcRender) の実行テスト
 node tests/theme-switch.mjs   # 見た目 (ライト/ダーク) の切り替えの実行テスト
 node tests/finish-console.mjs # 🏁 締め凸コンソール (今 vs 待つ) + 複数案の同時打診 の実行テスト
+node tests/finish-accept.mjs  # 締め凸の了承 (枠を取ってから伝える / 枠が無ければ了承しない / 伝えられなければ枠を返す) の実行テスト
 node tests/ops-pace.mjs       # 📈 消化のペース / 🔁 直近の動き (運営ボード 当日) の描画の実行テスト
 node tests/home-glance.mjs    # ホームの一目: 横画面のボス状況カード / 状態ボタンの人数とタイル / HP鮮度ピル の実行テスト
 node tests/plan-cond.mjs      # 最適凸プランの条件: 焼き込みのスタンプ / 自動で効くもの / きっかけ / 動かせる幅 の実行テスト

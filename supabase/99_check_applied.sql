@@ -310,6 +310,12 @@ SELECT * FROM (
         AND EXISTS (SELECT 1 FROM players WHERE ops_role = 'master'),
         '👑 運営担当 (master = ふるり / ops = 任命された人)。未適用だと全員が従来どおり 🛠 トグルで切り替える'
 
+    UNION ALL SELECT '47_approval_counts_pins',
+        EXISTS (SELECT 1 FROM pg_proc
+                WHERE proname = 'plan_reservations_pin_check'
+                  AND pg_get_functiondef(oid) LIKE '%NOT IN (''pinned'', ''approved'')%'),
+        '約束 (approved) を作るときも 📌 を数える (未適用だと 📌 が 3 件ある人に締め凸の了承や承認で 4 件目の固定ができる。画面側の canApprove だけが守る)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

@@ -1610,12 +1610,14 @@ window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, play
     // ★ 行 id が分かるならそれだけを更新する (Codex指摘 2026-09-10)。
     //   人+ボスで更新すると、同じ人が2案に居るとき**片方に答えただけで両案が動く**
     if (rowId != null) {
+        // ★ pending の行だけ更新する (CAS)。無条件だと 2 タブで「了承」→「難しい」が通り、
+        //   画面は辞退なのに approved の予約だけ残る (全体監査 2026-09-14 #5)
         const { data, error } = await supabase.from('finish_requests')
             .update({ status, responded_at: new Date().toISOString() })
-            .eq('id', rowId).eq('player_id', playerId).select('id');
+            .eq('id', rowId).eq('player_id', playerId).eq('status', 'pending').select('id');
         if (error) throw error;
         if (!data || data.length === 0) {
-            throw new Error('この締め凸依頼はすでに解除されています (ボスが倒れたか、レベルが上がりました)');
+            throw new Error('この締め凸依頼はすでに返答済みか、解除されています (別の画面で答えたか、ボスが倒れたか、レベルが上がりました)');
         }
         return data.length;
     }
@@ -1624,7 +1626,8 @@ window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, play
     const build = (withLevel) => {
         let q = supabase.from('finish_requests')
             .update({ status, responded_at: new Date().toISOString() })
-            .eq('season_id', seasonId).eq('boss_number', bossNumber).eq('player_id', playerId);
+            .eq('season_id', seasonId).eq('boss_number', bossNumber).eq('player_id', playerId)
+            .eq('status', 'pending');   // ★ CAS (上と同じ理由)
         return withLevel ? q.eq('raid_level', lv) : q;
     };
     // ★ .select() で更新できた行を見る。0件 = その依頼はもう無い (撃破で解除された等)。
@@ -1632,7 +1635,7 @@ window.supabaseRespondFinishRequest = async function (seasonId, bossNumber, play
     let { data, error } = await build(hasLv).select('id');
     if (error && hasLv && _isMissingColumnErr(error, 'raid_level')) ({ data, error } = await build(false).select('id'));
     if (error) throw error;
-    if (!data || data.length === 0) throw new Error('この締め凸依頼はすでに解除されています (ボスが倒れたか、レベルが上がりました)');
+    if (!data || data.length === 0) throw new Error('この締め凸依頼はすでに返答済みか、解除されています (別の画面で答えたか、ボスが倒れたか、レベルが上がりました)');
 };
 // 撃破・レベル進行で不要になった依頼を消す。
 // ★ 履歴は残さない (ユーザー決定 2026-09-06) — 次のレベルの依頼と混同するため。
@@ -3600,6 +3603,7 @@ window.supabaseCreateReservation = async function (o = {}) {
         if (/uq_plan_reservations_pin_card/.test(String(error.message || ''))) throw new Error('同じカードの固定がすでにあります (別の運営が置きました)');
         // トリガー / 部分一意索引のエラーを、運営とメンバーに意味の分かる文言へ
         const msg = String(error.message || '');
+        if (/約束が残凸を超え/.test(msg)) throw new Error('残りの凸数を超える約束はできません (📌 の固定を外してから承認してください)');   // SQL 47
         if (/残凸を超える予約/.test(msg)) throw new Error('残りの凸数を超える予約はできません');
         if (/uq_plan_reservations_active|duplicate key/i.test(msg)) {
             throw new Error('同じボス・同じ編成の予約がすでにあります');

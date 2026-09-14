@@ -417,6 +417,26 @@
         return { ok: true, left: 3 - held - (Number(doneAttacks) || 0) };
     }
 
+    /**
+     * 約束を作ってよいか (運営の承認 / 本人の 📌 引き受け / 締め凸の了承)。SQL 47 の plan_reservations_pin_check と**同じ式**:
+     *   約束 (approved・承認済み起点の cancel_requested) + 📌 + 実凸 + 1 ≤ 3
+     *   ★ 自分自身 (excludeId) と、同じカード (同じボス・編成枠) の 📌 は数えない — この約束の下書きで、承認後に superseded で外れる
+     *   ★ 本人の申請 (requested) は数えない — 申請は 📌 に塞がれない (45 の設計判断) の裏返しで、承認の瞬間に初めて枠を取る
+     *   全体監査 2026-09-14 #1 #2: これが無く、📌 が 3 件ある人に締め凸の了承 (approved の直接 INSERT) や承認で 4 件目の固定ができていた。
+     *   正は DB (SQL 47) — ここは「押せてしまってからエラー」を避け、意味の分かる文言を出すため
+     */
+    function canApprove(rows, { playerId, bossNumber, loadoutSlot, doneAttacks, excludeId } = {}) {
+        const list = (Array.isArray(rows) ? rows : []).filter(r => r && String(r.player_id) === String(playerId)
+            && (excludeId == null || String(r.id) !== String(excludeId)));
+        const sameCard = (r) => Number(r.boss_number) === Number(bossNumber) && Number(r.loadout_slot) === Number(loadoutSlot);
+        const held = list.filter(r => isPromise(r) || (isPin(r) && !sameCard(r))).length;
+        const done = Number(doneAttacks) || 0;
+        if (held + done >= 3) {
+            return { ok: false, reason: 'no_capacity', held, done, label: `残りの凸数を超える約束はできません (約束・固定 ${held} + 実凸 ${done}) — 📌 の固定を外してから` };
+        }
+        return { ok: true, held, done, left: 3 - held - done };
+    }
+
     function canRequest(rows, { playerId, bossNumber, loadoutSlot, doneAttacks, characters }) {
         if (findActiveFor(rows, { playerId, bossNumber, loadoutSlot })) {
             return { ok: false, reason: 'already', label: '申請済み' };
@@ -650,7 +670,7 @@
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP,
         unmetText, planRowsOf, homeSlots, pendingRepublish, slotIdxOf, rowHonorsTime,
-        isActive, isApproved, isFixed, isPromise, isPin, isAskedPin, pinFor, canPin, fingerprint, canTransition,
+        isActive, isApproved, isFixed, isPromise, isPin, isAskedPin, pinFor, canPin, canApprove, fingerprint, canTransition,
         toSolverConstraints,
         findInfeasible,
         capacityLeft,

@@ -9608,6 +9608,11 @@
             if (String(row.player_id) !== String(me.id)) { showNotification('自分あてのお願いだけに返事できます'); return; }
             try {
                 if (accept) {
+                    // ★ 引き受ける = 約束を作る。「約束 + 📌 + 実凸 ≤ 3」を先に見る (全体監査 2026-09-14 #1)。正は DB (SQL 47)
+                    if (window.reservationsDomain?.canApprove) {
+                        const chk = window.reservationsDomain.canApprove(_myResvRows || [], { playerId: me.id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot, doneAttacks: Number(_myPubState?.todayAttacks) || 0, excludeId: Number(id) });
+                        if (!chk.ok) { showNotification(`❌ 引き受けられません: ${chk.label}。運営に伝えてください`); return; }
+                    }
                     await window.supabaseSetReservationStatus(Number(id), 'approved', { expectFrom: 'pinned', actor: me.name || '本人',
                         characters: Array.isArray(row.characters_snapshot) ? row.characters_snapshot : null, expectedDamageB: row.expected_damage_b });
                     window.supabaseLogActivity?.('reservation', `📣 お願いを引き受け: ${row.time_slot || '⏳'} B${row.boss_number} 編成${Number(row.loadout_slot) === 2 ? '②' : '①'}`, { playerId: me.id, actorName: me.name });
@@ -10134,24 +10139,30 @@
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブシーズンなし');
-                await window.supabaseRespondFinishRequest(ctx.season.id, bossNumber, id.id, status,
-                    Number(ctx.season.current_level) || null, rowId);
                 // ★ 締め凸の了承は **即予約** (ユーザー決定 2026-09-07)。
                 //   了承したのにソルバーが別のボスへ回すと、依頼した意味が無くなる。
                 //   ⏳時刻は約束しない (flex) — 締め凸は「いまから行く」ものなので、
                 //   特定の時刻を約束させると守れないほうが普通になる。
-                //   ★ 予約が作れなくても了承は成立させる (返答は既にサーバへ届いている)
+                // ★ 順序は **枠を取ってから伝える** (全体監査 2026-09-14 #2)。
+                //   以前は「伝えてから予約」で、予約が作れなくても accepted が残った。その accepted は予約の指紋にも
+                //   planDiff にも現れず、配信プランが了承を知らないまま 3 凸を配っていた。枠が取れなければ了承しない
+                let held = { created: null, why: 'skipped' };
                 if (status === 'accepted') {
-                    try {
-                        await _reserveForFinishRequest(ctx, id, bossNumber);
-                        renderMyReservations(id);
-                    } catch (e) {
-                        // ★ 了承はもうサーバへ届いているので、ここで失敗させない。
-                        //   ただし黙らない — 「了承済みなのに予約が無い」状態は運営が知る必要がある
-                        console.warn('[finish→予約]', e?.message || e);
-                        showNotification('⚠ 了承は伝わりましたが、凸の固定に失敗しました。運営に伝えてください');
-                    }
+                    try { held = await _reserveForFinishRequest(ctx, id, bossNumber, rowId); }
+                    catch (e) { showNotification(`❌ 了承できません: ${e?.message || e}`); return; }
                 }
+                try {
+                    await window.supabaseRespondFinishRequest(ctx.season.id, bossNumber, id.id, status,
+                        Number(ctx.season.current_level) || null, rowId);
+                } catch (e) {
+                    // 返答が届かなかった (返答済み・解除済み等) → 取った枠を返す (approved だけ残さない)
+                    if (held.created?.id && typeof window.supabaseSetReservationStatus === 'function') {
+                        try { await window.supabaseSetReservationStatus(Number(held.created.id), 'released', { expectFrom: 'approved', actor: id.name || '本人', reason: 'finish_request_gone' }); }
+                        catch (e2) { console.warn('[finish→予約] 取り消しに失敗:', e2?.message || e2); }
+                    }
+                    throw e;
+                }
+                if (held.created) renderMyReservations(id);
                 await _refreshFinishRequests();
                 _notifyOps({ title: status === 'accepted' ? '🗡 締め凸を了承' : '✕ 締め凸は難しい', body: `${id.name || '#' + id.id}: B${Number(bossNumber)}`, tag: 'ops-finish-answer', except: id.id });
                 renderMyFinishRequestBanner(id);
@@ -10166,15 +10177,16 @@
         // 締め凸の了承 → 予約を1件作る。
         // ★ status は 'approved' で作る — 依頼したのは運営なので、改めて承認を挟む意味がない
         //   (メンバー発の申請だけが 'requested' から始まる)
-        async function _reserveForFinishRequest(ctx, id, bossNumber) {
-            if (typeof window.supabaseCreateReservation !== 'function') return;
+        // 返り値: { created: 作った予約 | null, why: 'reserved' | 'exists' | 'unsupported' }。枠が無い・作れないときは throw (了承しない)
+        async function _reserveForFinishRequest(ctx, id, bossNumber, rowId = null) {
             const rv = window.reservationsDomain;
             const level = Number(ctx.season.current_level) || null;
-            if (!rv || !level) return;
+            if (typeof window.supabaseCreateReservation !== 'function' || !rv || !level) return { created: null, why: 'unsupported' };
             // 既に同じ枠の予約があれば作らない (了承を押し直しても増やさない)
             let mine = null;
-            try { mine = await window.supabaseLoadMyReservations(ctx.season.id, id.id); } catch { return; }
-            if (!Array.isArray(mine)) return;   // 39未適用 → 何もしない (了承だけ成立)
+            try { mine = await window.supabaseLoadMyReservations(ctx.season.id, id.id); }
+            catch (e) { throw new Error(`予約を確認できませんでした (${e?.message || e})。少し待ってからもう一度`); }
+            if (!Array.isArray(mine)) return { created: null, why: 'unsupported' };   // 39未適用 → 何もしない (了承だけ成立)
             const boss = (ctx.bosses || []).find(b => Number(b.boss_number) === Number(bossNumber));
             const lo = boss ? await _myBestLoadoutFor(id.id, boss.weakness) : null;
             const slot = lo?.slot || 1;
@@ -10184,17 +10196,27 @@
             //   レベルを見ると、本人がレベル無しで出した同じボスの予約 (raid_level NULL) を見落とし、
             //   一意索引 (誰が・ボス・編成枠) で insert が弾かれて「了承だけ成立して固定されない」になる。
             //   本人の予約が既にあるなら、その約束 (時刻・編成) の方を守る
-            if (mine.some(r => rv.isActive(r) && Number(r.boss_number) === Number(bossNumber))) return;
-            await window.supabaseCreateReservation({
+            if (mine.some(r => rv.isActive(r) && Number(r.boss_number) === Number(bossNumber))) return { created: null, why: 'exists' };
+            // ★ 約束を作る前に「約束 + 📌 + 実凸 ≤ 3」を見る (全体監査 2026-09-14 #2)。
+            //   これまで approved を直接 INSERT していて、📌 が 3 件ある人にも 4 件目の固定ができた。正は DB (SQL 47) — ここは意味の分かる文言のため
+            let done = 0;
+            try { const atks = await window.supabaseLoadMyAttacks?.(id.id, ctx.season.id, ctx.season.hard_date); done = Array.isArray(atks) ? atks.length : 0; } catch { done = 0; }
+            if (typeof rv.canApprove === 'function') {
+                const chk = rv.canApprove(mine, { playerId: id.id, bossNumber: Number(bossNumber), loadoutSlot: slot, doneAttacks: done });
+                if (!chk.ok) throw new Error(chk.label);
+            }
+            const created = await window.supabaseCreateReservation({
                 seasonId: ctx.season.id, playerId: id.id,
                 raidLevel: level, bossNumber: Number(bossNumber), loadoutSlot: slot,
                 flex: true, timeSlot: null,
                 characters: lo?.characters || [],
                 expectedDamageB: lo?.dmgB ?? null,
                 sourceType: 'finish_request',
+                sourceFinishRequestId: rowId ?? null,   // 辞退・取消のときに対応する予約を引けるように
                 status: 'approved',
                 requestedBy: id.name || null,
             });
+            return { created, why: 'reserved' };
         }
 
         // ========== SLv (シンクロレベル) 表示 + 手動更新 ==========
@@ -16936,6 +16958,13 @@
             let ok = false;
             try {
                 const me = getCurrentIdentity();
+                // ★ 約束を作る前に「約束 + 📌 + 実凸 ≤ 3」を見る (全体監査 2026-09-14 #1)。正は DB (SQL 47) — ここは意味の分かる文言のため
+                if (to === 'approved' && window.reservationsDomain?.canApprove) {
+                    const row0 = (_resv.rows || []).find(r => Number(r.id) === rid);
+                    const pl = row0 ? (opsStore.get()?.players || []).find(p => String(p.id) === String(row0.player_id)) : null;
+                    const chk = row0 ? window.reservationsDomain.canApprove(_resv.rows || [], { playerId: row0.player_id, bossNumber: row0.boss_number, loadoutSlot: row0.loadout_slot, doneAttacks: Number(pl?.attackCount) || 0, excludeId: rid }) : { ok: true };
+                    if (!chk.ok) { alert(`❌ ${chk.label}`); return false; }
+                }
                 await window.supabaseSetReservationStatus(rid, to, { ...o, actor: me?.name || '運営' });
                 // ★ 承認で内容を固定し直した場合があるので、盤面より先に一覧を取り直す
                 const row = (_resv.rows || []).find(r => Number(r.id) === rid);

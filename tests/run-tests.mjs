@@ -4576,33 +4576,31 @@ console.log('\nreservationsDomain (凸の予約):');
             'レベル開放時に bosses を渡している (新レベルの予約まで外す)');
     });
 
-    test('★ ⑧配線: 締め凸の了承は即予約 / 予約が作れなくても了承は成立させる', () => {
+    test('★ ⑧配線: 締め凸の了承は即予約 (承認を挟まない・時刻を約束しない・同じボスの重複を作らない)。枠が取れなければ了承しない', () => {
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         // ★ 同じボスに生きている予約があれば作らない — レベルも編成枠も見ない (Codex指摘 2026-09-08)。
         //   レベルを見ると、本人がレベル無しで出した予約 (raid_level NULL) を見落とし、
         //   一意索引 (誰が・ボス・編成枠) で insert が弾かれて「了承だけ成立して固定されない」になる
         const fr = html.match(/async function _reserveForFinishRequest\([\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(mine\.some\(r => rv\.isActive\(r\) && Number\(r\.boss_number\) === Number\(bossNumber\)\)\) return;/.test(fr), '同じボスの予約を見ていない');
+        assert.ok(fr, '締め凸→予約の関数が無い');
+        assert.ok(/if \(mine\.some\(r => rv\.isActive\(r\) && Number\(r\.boss_number\) === Number\(bossNumber\)\)\) return \{ created: null, why: 'exists' \};/.test(fr), '同じボスの予約を見ていない');
         assert.ok(!/Number\(r\.raid_level\) === Number\(level\)/.test(fr), 'レベルで絞っている (レベル無しの予約を見落とす)');
-        const fn = html.match(/async function _reserveForFinishRequest[\s\S]{0,1900}/)?.[0] || '';
-        assert.ok(fn, '締め凸→予約の関数が無い');
         // ★ 依頼したのは運営なので、改めて承認を挟まない
-        assert.ok(/status: 'approved'/.test(fn), '了承を承認待ちで作っている (運営がもう一度承認する羽目になる)');
-        assert.ok(/sourceType: 'finish_request'/.test(fn));
+        assert.ok(/status: 'approved'/.test(fr), '了承を承認待ちで作っている (運営がもう一度承認する羽目になる)');
+        assert.ok(/sourceType: 'finish_request'/.test(fr));
         // ★ 締め凸は「いまから行く」もの。時刻を約束させると守れないほうが普通になる
-        assert.ok(/flex: true, timeSlot: null/.test(fn), '締め凸に時刻を約束させている');
+        assert.ok(/flex: true, timeSlot: null/.test(fr), '締め凸に時刻を約束させている');
         // ★ 押し直しても増やさない。**編成枠は見ない** — 押し直す間に一番強い編成が
         //   ①→② に変わると、枠まで見る判定では別物になり同じ依頼から2件できる
-        assert.ok(/Number\(r\.boss_number\) === Number\(bossNumber\)\)\) return;/.test(fn), '同じボスの重複を見ていない');
-        assert.ok(!/rv\.findActiveFor\(mine, \{ playerId: id\.id, level, bossNumber, loadoutSlot: slot \}\)/.test(fn),
+        assert.ok(!/rv\.findActiveFor\(mine, \{ playerId: id\.id, level, bossNumber, loadoutSlot: slot \}\)/.test(fr),
             '編成枠まで見ている (押し直しで二重予約になる)');
-        // 39未適用なら何もしない (了承だけ成立)
-        assert.ok(/if \(!Array\.isArray\(mine\)\) return;/.test(fn));
-        // ★ 予約が作れなくても了承は成立させる (返答はもうサーバへ届いている)
-        const caller = html.match(/if \(status === 'accepted'\) \{[\s\S]{0,600}/)?.[0] || '';
-        assert.ok(/console\.warn\('\[finish→予約\]'/.test(caller), '予約の失敗で了承ごと失敗している');
-        // ★ ただし黙らない — 「了承済みなのに予約が無い」は運営が知る必要がある
-        assert.ok(/凸の固定に失敗しました/.test(html), '失敗を握り潰している');
+        // 39未適用なら作らない (了承だけ成立 — 従来どおり)
+        assert.ok(/if \(!Array\.isArray\(mine\)\) return \{ created: null, why: 'unsupported' \};/.test(fr));
+        // ★ 全体監査 2026-09-14 #2: 以前は「伝えてから予約」で、予約が作れなくても accepted が残った (指紋にも planDiff にも出ない)。
+        //   いまは「枠を取ってから伝える」。枠が無い (canApprove) ・作れない (DB が拒否) なら**了承しない**。
+        //   振る舞いは tests/finish-accept.mjs が実行して確かめる — ここでは旧文言が戻っていないことだけ
+        assert.ok(!/了承は伝わりましたが、凸の固定に失敗しました/.test(html), '旧契約の文言 (了承したのに固定が無いを許す) が戻っている');
+        assert.ok(!/console\.warn\('\[finish→予約\]', e\?\.message \|\| e\);\s*\n\s*showNotification\('⚠ 了承は伝わりましたが/.test(html));
     });
 
     test('★ ⑧配線: ホームの「引き受けた凸」/ 取り消しは希望を出すだけ', () => {
@@ -4923,6 +4921,89 @@ console.log('\nreservationsDomain (凸の予約):');
         assert.deepEqual([...rv.ACTIVE].sort(), ['approved', 'cancel_requested', 'requested']);
     });
 
+    test('★ 47: 約束を作るとき (approved) も「約束 + 📌 + 実凸 ≤ 3」を DB が守る (全体監査 2026-09-14 #1 #2)', () => {
+        const sql47 = _fs.readFileSync(_path.join(_ROOT, 'supabase', '47_approval_counts_pins.sql'), 'utf8').replace(/\r\n/g, '\n');
+        const fn = sql47.match(/CREATE OR REPLACE FUNCTION plan_reservations_pin_check\(\)[\s\S]*?\$\$ LANGUAGE plpgsql;/)?.[0] || '';
+        assert.ok(fn, '47 が 45 のトリガ関数を差し替えていない');
+        assert.ok(/IF NEW\.status NOT IN \('pinned', 'approved'\) THEN\s*\n\s*RETURN NEW;/.test(fn), 'approved のときに数えていない (締め凸の了承・承認で 4 件目ができる)');
+        // 本人の申請 (requested) と実凸は今までどおり 📌 に塞がれない: requested は見ない
+        assert.ok(!/'requested'/.test(fn), 'requested を見ている (本人の申請が 📌 に塞がれる = 45 の設計判断に反する)');
+        assert.ok(/hashtextextended\('attack:' \|\| NEW\.season_id \|\| ':' \|\| NEW\.player_id, 0\)/.test(fn), '鍵が 39 / 40 / 45 と違う');
+        assert.ok(/status IN \('approved', 'pinned'\) OR \(status = 'cancel_requested' AND approved_at IS NOT NULL\)/.test(fn), '数える集合が 45 / JS と違う');
+        // 同じカードの 📌 は数えない (この約束の下書き。承認後に superseded で外れる)
+        assert.ok(/AND NOT \(status = 'pinned' AND NEW\.status = 'approved'\s*\n?\s*AND boss_number = NEW\.boss_number AND loadout_slot = NEW\.loadout_slot\)/.test(fn), '同じカードの 📌 を数えている (承認できなくなる)');
+        assert.ok(/IF v_held \+ v_done \+ 1 > 3 THEN/.test(fn), '上限の式が違う');
+        assert.ok(/📌 の固定を外してから承認してください/.test(fn), '承認側の拒否文言が無い (画面で意味が分からない)');
+        // トリガ自体は 45 のまま (関数だけ差し替え) — 45 のトリガ定義を変えたら両方直すこと
+        assert.ok(!/CREATE TRIGGER/.test(sql47), '47 がトリガを張り直している (45 のトリガと二重になる)');
+        assert.ok(/NOTIFY pgrst, 'reload schema';/.test(sql47));
+        const check99 = _fs.readFileSync(_path.join(_ROOT, 'supabase', '99_check_applied.sql'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/'47_approval_counts_pins'[\s\S]*?pg_get_functiondef\(oid\) LIKE '%NOT IN \(''pinned'', ''approved''\)%'/.test(check99), '99 に 47 の判定行が無い');
+        const clientPins = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/約束が残凸を超え/.test(clientPins), 'DB の拒否 (約束) を日本語にしていない');
+    });
+    test('★ canApprove: 約束を作ってよいか = 約束 + 📌 + 実凸 + 1 ≤ 3 (SQL 47 と同じ式)。申請は数えない / 同じカードの 📌 は数えない', () => {
+        const P = (id, status, boss = 1, slot = 1, extra = {}) => ({ id, player_id: 7, status, boss_number: boss, loadout_slot: slot, ...extra });
+        const pins3 = [P(1, 'pinned', 1), P(2, 'pinned', 2), P(3, 'pinned', 3)];
+        // 締め凸の了承 (approved を新規に作る): 📌 が 3 件 → 4 件目は不可 (これが監査 #2)
+        const r1 = rv.canApprove(pins3, { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 });
+        assert.equal(r1.ok, false); assert.equal(r1.reason, 'no_capacity'); assert.match(r1.label, /📌/);
+        assert.equal(r1.held, 3);
+        // 同じカードの 📌 は数えない → 2 件 + 自分 = 3 で OK
+        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 1, doneAttacks: 0 }).ok, true, '同じカードの 📌 を数えている');
+        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 2, doneAttacks: 0 }).ok, false, '編成枠が違えば別カード');
+        // 本人が 📌 を引き受ける (pinned → approved): 自分は excludeId で外す → 他 2 件 + 自分 = 3 で OK
+        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 1, doneAttacks: 0, excludeId: 3 }).ok, true);
+        assert.equal(rv.canApprove(pins3, { playerId: 7, bossNumber: 3, loadoutSlot: 1, doneAttacks: 1, excludeId: 3 }).ok, false, '実凸を数えていない');
+        // 申請 (requested) は数えない (📌 に塞がれない、の裏返し: 承認の瞬間に初めて枠を取る)
+        const req3 = [P(1, 'requested', 1), P(2, 'requested', 2), P(3, 'requested', 3)];
+        assert.equal(rv.canApprove(req3, { playerId: 7, bossNumber: 1, loadoutSlot: 1, doneAttacks: 0, excludeId: 1 }).ok, true);
+        // 約束 (approved / 承認済み起点の cancel_requested) は数える。未承認起点の cancel_requested は数えない
+        const prom = [P(1, 'approved', 1), P(2, 'cancel_requested', 2, 1, { approved_at: 'x' }), P(3, 'cancel_requested', 3, 1, { approved_at: null })];
+        assert.equal(rv.canApprove(prom, { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 }).ok, true, '未承認起点の cancel_requested を数えている');
+        assert.equal(rv.canApprove(prom, { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 1 }).ok, false);
+        // 別人は影響しない / 終端は数えない
+        assert.equal(rv.canApprove([...pins3.map(r => ({ ...r, player_id: 8 })), P(9, 'released', 5), P(10, 'fulfilled', 6)], { playerId: 7, bossNumber: 4, loadoutSlot: 1, doneAttacks: 0 }).ok, true);
+        // 空・不正な入力で落ちない
+        assert.equal(rv.canApprove(null, { playerId: 7, bossNumber: 1, loadoutSlot: 1 }).ok, true);
+        assert.equal(rv.canApprove([null, undefined], { playerId: 7, bossNumber: 1, loadoutSlot: 1 }).ok, true);
+    });
+    test('★ 配線: 約束を作る 3 か所 (運営の承認 / 本人の 📌 引き受け / 締め凸の了承) が canApprove を通す。締め凸は枠を取ってから伝える', () => {
+        const src = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+        const fnOf = (name) => src.match(new RegExp(`async function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n        \\}\\n`))?.[0] || '';
+        const tr = fnOf('_resvTransition'), ap = fnOf('_answerPin'), rf = fnOf('_reserveForFinishRequest'), hr = fnOf('handleMyFinishRequestRespond');
+        for (const [n, s] of [['_resvTransition', tr], ['_answerPin', ap], ['_reserveForFinishRequest', rf], ['handleMyFinishRequestRespond', hr]]) assert.ok(s, `${n} が見つからない`);
+        assert.ok(/to === 'approved' && window\.reservationsDomain\?\.canApprove/.test(tr) && tr.indexOf('canApprove(') < tr.indexOf('supabaseSetReservationStatus(rid, to'), '運営の承認が canApprove を RPC の前に通していない');
+        assert.ok(/canApprove\(_myResvRows \|\| \[\]/.test(ap) && ap.indexOf('canApprove(') < ap.indexOf("'approved', { expectFrom: 'pinned'"), '📌 の引き受けが canApprove を通していない');
+        assert.ok(/rv\.canApprove\(mine,/.test(rf) && rf.indexOf('canApprove(') < rf.indexOf('supabaseCreateReservation('), '締め凸の了承が canApprove を INSERT の前に通していない');
+        assert.ok(/sourceFinishRequestId: rowId/.test(rf), '予約に依頼の id を残していない (辞退・取消で対応する予約が分からない)');
+        // 順序: 枠を取る (reserve) → 伝える (respond)。逆だと「accepted なのに固定が無い」が残る
+        assert.ok(hr.indexOf('_reserveForFinishRequest(ctx, id, bossNumber, rowId)') < hr.indexOf('supabaseRespondFinishRequest(ctx.season.id'), '了承を伝えてから枠を取っている');
+        assert.ok(/reason: 'finish_request_gone'/.test(hr), '返答が届かなかったときに取った枠を返していない');
+        assert.ok(!/了承は伝わりましたが、凸の固定に失敗しました/.test(hr), '「了承したのに固定が無い」を許す文言が残っている');
+        // 振る舞いは tests/finish-accept.mjs が実行して確かめる (順序・枠なし・補償)
+        assert.ok(_fs.existsSync(_path.join(_ROOT, 'tests', 'finish-accept.mjs')), '実行テスト finish-accept.mjs が無い');
+    });
+    await testAsync('★ supabaseRespondFinishRequest は pending の行だけ更新する (2 タブで了承→辞退が通り、approved 予約だけ残る穴。全体監査 #5)', async () => {
+        const clientSrc = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
+        const body = clientSrc.match(/window\.supabaseRespondFinishRequest = async function[\s\S]*?\n\};\n/)?.[0];
+        assert.ok(body, '関数が見つからない');
+        const helper = clientSrc.match(/function _isMissingColumnErr\(error, \w+\) \{[\s\S]*?\n\}\n/)?.[0] || '';
+        const mk = (rowsAfter) => {
+            const eqs = [];
+            const chain = { update() { return chain; }, eq(k, v) { eqs.push([k, v]); return chain; }, select() { return Promise.resolve({ data: rowsAfter, error: null }); } };
+            const fn = new Function('supabase', 'window', `${helper}\n${body}\nreturn window.supabaseRespondFinishRequest;`)({ from: () => chain }, {});
+            return { fn, eqs };
+        };
+        const a = mk([{ id: 5 }]);
+        await a.fn(1, 2, 7, 'accepted', 1, 5);
+        assert.ok(a.eqs.some(([k, v]) => k === 'status' && v === 'pending'), '行 id 指定の更新が status=pending を条件にしていない');
+        const b = mk([{ id: 5 }]);
+        await b.fn(1, 2, 7, 'declined', 1, null);
+        assert.ok(b.eqs.some(([k, v]) => k === 'status' && v === 'pending'), '人+ボス指定の更新が status=pending を条件にしていない');
+        const c = mk([]);
+        await assert.rejects(() => c.fn(1, 2, 7, 'declined', 1, 5), /返答済み|解除/, '0 件なのに成功扱い');
+    });
     test('予約: 凸報告RPCが「採番・insert・残HP・消し込み」を1つでやる', () => {
         assert.ok(/CREATE OR REPLACE FUNCTION report_attack\(/.test(_sqlRpc));
         // 同じ人の凸を直列化していないと attack_number が衝突する
