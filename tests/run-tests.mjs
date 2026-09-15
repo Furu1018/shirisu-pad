@@ -7690,6 +7690,14 @@ console.log('\ngrowthDomain:');
         });
         assert.ok(!runRosterSnippet.calls.some(c => c.name === 'GetGuildMembers'), '登録ロールが 212000 なのに一覧を投げている');
         assert.ok(/待ってから/.test(role));
+        // ★ リンクなどから一部取れていても、待ちの案内は出す (成功表示だけだと押し直して連打になる: Codex指摘)。名簿の行はそのまま
+        const partial = await runRosterSnippet({
+            anchors: [anchorEl(`/user?uid=${B64('29080-111111111111111111')}`, ' なかま ')],
+            api: { 'GetMyGuildInfo': { code: 212000 } },
+        });
+        assert.ok(/なかま\t111111111111111111/.test(partial) && partial.includes('名簿 1人'), '一部取れた名簿が出ていない');
+        assert.ok(/待ってから/.test(partial), '一部取れているときは待てと言っていない');
+        assert.ok(partial.indexOf('待ってから') < partial.indexOf('名簿 1人'), '待ちの案内が名簿より後ろ (見落とす)');
         // 通常の空振りには「待って」と言わない (押し直しの案内だけ)
         const plain = await runRosterSnippet({ api: { 'GetMyGuildInfo': { code: -1 } } });
         assert.ok(!/待ってから/.test(plain) && plain.includes('メンバー一覧を開いて'), '制限でないのに待てと言っている');

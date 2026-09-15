@@ -959,9 +959,10 @@
             '+"\\nnetwork: "+stat.net+" / captured "+S.bodies.length+" / rejected: "+stat.rejected+" / noname: "+noname',
             '+"\\nheard: "+S.routes.slice(0,24).join(" ");',
             'L.length=0;',
-            'box.value=(out.length?("\\u3057\\u308a\\u3059\\u3053PAD \\u540d\\u7c3f "+out.length+"\\u4eba\\n'
+            // ★ 連打の制限の案内は名簿の先頭に (一部取れていても出す: Codex指摘)。parseRoster は識別子の無い行を飛ばすので貼っても邪魔にならない
+            'box.value=(limited?"BlaBlaLINK \\u306e\\u9023\\u6253\\u306e\\u5236\\u9650\\u306b\\u5f53\\u305f\\u308a\\u307e\\u3057\\u305f\\u30021\\u301c2\\u5206\\u5f85\\u3063\\u3066\\u304b\\u3089\\u3001\\u3082\\u3046\\u4e00\\u5ea6\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\n\\n":"")+(out.length?("\\u3057\\u308a\\u3059\\u3053PAD \\u540d\\u7c3f "+out.length+"\\u4eba\\n'
                 + '\\u540d\\u524d\\u3068ID\\u3092\\u78ba\\u8a8d\\u3057\\u3066\\u3001\\u305d\\u306e\\u307e\\u307e\\u30b3\\u30d4\\u30fc\\u3057\\u3066PAD\\u306b\\u8cbc\\u3063\\u3066\\u304f\\u3060\\u3055\\u3044\\n\\n"+out.join("\\n"))',
-            ':((limited?"BlaBlaLINK \\u306e\\u9023\\u6253\\u306e\\u5236\\u9650\\u306b\\u5f53\\u305f\\u308a\\u307e\\u3057\\u305f\\u30021\\u301c2\\u5206\\u5f85\\u3063\\u3066\\u304b\\u3089\\u3001\\u3082\\u3046\\u4e00\\u5ea6\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\n":"")+"\\u30e1\\u30f3\\u30d0\\u30fc\\u304c\\u898b\\u3064\\u304b\\u308a\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002"'
+            ':("\\u30e1\\u30f3\\u30d0\\u30fc\\u304c\\u898b\\u3064\\u304b\\u308a\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002"'
                 + '+(noname?"\\n\\u540d\\u524d\\u306e\\u7121\\u3044\\u8b58\\u5225\\u5b50\\u306f "+noname+"\\u4ef6 \\u3042\\u308a\\u307e\\u3059\\u304c\\u3001\\u540d\\u524d\\u304c\\u7121\\u3044\\u3068\\u7a81\\u304d\\u5408\\u308f\\u305b\\u3089\\u308c\\u307e\\u305b\\u3093\\u3002":"")'
                 + '+"\\n\\nBlaBlaLINK \\u306b\\u30ed\\u30b0\\u30a4\\u30f3\\u3057\\u305f\\u72b6\\u614b\\u3067\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\u305d\\u308c\\u3067\\u3082\\u51fa\\u306a\\u3051\\u308c\\u3070\\u3001\\u3053\\u306e\\u307e\\u307e\\u30e6\\u30cb\\u30aa\\u30f3\\u306e\\u30e1\\u30f3\\u30d0\\u30fc\\u4e00\\u89a7\\u3092\\u958b\\u3044\\u3066\\u3001\\u3082\\u3046\\u4e00\\u5ea6\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\n\\u4e0a\\u306e guild: / api: / heard: \\u306e\\u884c\\u3092\\u904b\\u55b6\\u306b\\u898b\\u305b\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002"))+diag;',
             'box.focus();box.select();try{document.execCommand("copy");}catch(e){}};',
