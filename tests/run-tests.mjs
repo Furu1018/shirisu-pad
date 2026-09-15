@@ -9199,6 +9199,13 @@ console.log('\ngrowthDomain:');
         assert.deepEqual([fire.cls, fire.pct, fire.hp, fire.damage], [null, null, null, 40], 'クラス不明なのに率を出している');
         assert.deepEqual(dom.attributeProgress({ players, hpTable, attrOf, declaredClasses: { X: 'lord' } }).find(r => r.attr === 'fire').cls, 'lord', '宣言を使っていない');
         assert.deepEqual(dom.attributeProgress({}), []);
+        // ★ Lv1〜3 に入らない凸 (古い回は 11/21/31 等) があるボスは率を出さない — 分子だけ全部足すと嘘になる (Codex指摘 2026-09-15)
+        const oldFmt = [{ player: 'A', syncLevel: 600, attacks: [{ bossCode: 'T', level: 1, damage: 100 }, { bossCode: 'T', level: 2, damage: 200 }, { bossCode: 'T', level: 21, damage: 500 }] }];
+        const or_ = dom.attributeProgress({ players: oldFmt, hpTable, attrOf })[0];
+        assert.deepEqual([or_.cls, or_.pct, or_.hp, or_.noRate, or_.unknownLevel, or_.clearedLevels], ['tyrant', null, null, 'levels', 1, 0], '古い形のレベルで率を出している');
+        assert.equal(or_.damage, 800, '削った総量は全部の凸を足す');
+        assert.equal(dom.tally(oldFmt).byBoss.T.unknownLevel, 1, 'Lv が読めない凸を数えていない');
+        assert.equal(dom.attributeProgress({ players, hpTable, attrOf })[0].noRate, null, 'Lv が揃っている回まで率を止めている');
     });
     test('★ raidReview.attributeAptitude: 対GB中央値比 (SLv補正・締め凸を除く) / GB無しは SLv 揃え / SLv表無しは記録のまま', () => {
         const dom = globalThis.raidReviewDomain;
@@ -9259,6 +9266,13 @@ console.log('\ngrowthDomain:');
             && /dom\.attributeAptitude\(\{ players, ratioTable: slvRatioTable, gb, attrOf: _rrAttrOf \}\)/.test(fn)
             && /dom\.memberMatrix\(\{ players, attrOf: _rrAttrOf \}\)/.test(fn), '判定を raidReviewDomain に任せていない');
         assert.ok(/if \(seq !== _rrSeq\) return;/.test(fn), '待っている間にシーズンを切り替えても古い結果で描いてしまう');
+        // ★ 取得の間に図を切り替えても前の回を描き直さない / 名乗り直しで「自分」の行を直す (Codex指摘 2026-09-15)
+        assert.ok(/const seq = \+\+_rrSeq;\s*_rrLastApt = null;/.test(fn), '取得の間も前の回の図が残る');
+        assert.ok(/'tab-ranking' && typeof renderRaidReview === 'function'\) \{\s*renderRaidReview\(\)/.test(html), '名乗り直しで振り返りを描き直していない');
+        // ★ 軸が壊れる値なら横棒に倒す / 効かない sticky を残さない / color-mix が無い環境の受け皿
+        assert.ok(/if \(!\[x0, x1, y0, y1\]\.every\(Number\.isFinite\) \|\| !\(x1 > x0\) \|\| !\(y1 > y0\)\) return _rrAptBarsHtml\(apt\);/.test(html), '散布図の座標が壊れても描いてしまう');
+        assert.ok(!/\.rr-hm th \{[^}]*position: sticky/.test(html), '効かない sticky が残っている (縦は overflow:hidden)');
+        assert.ok(/\.rr-hm td\.c \{[^}]*background: var\(--s1\);/.test(html), 'color-mix が使えない環境の受け皿が無い');
         assert.ok(/cfg\.hardLevelHpOverrideByMonth\[month\]\) \|\| \(cfg && cfg\.hardLevelHp\)/.test(fn), '月ごとの HP 上書きを見ていない');
         assert.ok(/cfg\.bossClassByMonth\) \? cfg\.bossClassByMonth\[month\]/.test(fn), 'ボスのクラスの宣言を見ていない');
         // 図はトークンで描く (Chart.js を使わない = 見た目の切り替えに描き直し不要)

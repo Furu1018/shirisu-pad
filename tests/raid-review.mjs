@@ -43,6 +43,7 @@ const src = [
     'const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\'/g, "&#39;");',
     'const renderAttrIcon = (k, n) => `<img alt="${k}" width="${n}">`;',
     'const getCurrentIdentity = () => identity;',
+    'let _rrAptView = "scatter", _rrLastApt = null;',   // index.html ではモジュールの変数 (切り出しに入らないのでここで用意する)
     grab('_rrAttrJp', 'const'),
     grab('_rrAttrOf', 'const'),
     grab('_rrB', 'const'),
@@ -51,9 +52,15 @@ const src = [
     grab('_rrAptBarsHtml'),
     grab('_rrAptScatterHtml'),
     grab('_rrMembersHtml'),
-    'return { _rrProgressHtml, _rrAptBarsHtml, _rrAptScatterHtml, _rrMembersHtml, _rrAttrOf, _rrB };',
+    grab('_rrPaintAptitude'),
+    'return { _rrProgressHtml, _rrAptBarsHtml, _rrAptScatterHtml, _rrMembersHtml, _rrPaintAptitude, _rrAttrOf, _rrB };',
 ].join('\n');
-const api = new Function('BOSS_ATTRIBUTES', 'identity', 'window', src)(BOSS_ATTRIBUTES, identity, { planBoardDomain: undefined });
+// _rrPaintAptitude は DOM を触るので最小のスタブを当てる (注記の文言を実際に組ませる)
+const els = new Map([['raidReviewAptitude', null], ['raidReviewAptitudeNote', null], ['rrAptScatterBtn', null], ['rrAptBarsBtn', null]]
+    .map(([k]) => [k, { innerHTML: '', textContent: '', classList: { list: new Set(), toggle(c, on) { if (on) this.list.add(c); else this.list.delete(c); } } }]));
+const document = { getElementById: (id) => els.get(id) || null };
+const api = new Function('BOSS_ATTRIBUTES', 'identity', 'window', 'document', 'localStorage', src)
+    (BOSS_ATTRIBUTES, identity, { planBoardDomain: undefined }, document, { getItem: () => null, setItem: () => {} });
 
 const dom = globalThis.raidReviewDomain;
 const players = rd('data/2026-09.json').players;
@@ -175,6 +182,50 @@ test('締め凸は強さから外れ、削った量には残る (2026-09 の実�
         const w = withKill.rows.find(x => x.attr === r.attr);
         assert.ok(w.value < r.value, `${r.attr}: 締め凸を混ぜても値が下がらない (除けていない)`);
     }
+});
+
+test('① 進捗: 古い回 (レベルの記録の形が違う) は率を出さない — 分子と分母が揃わないため', () => {
+    // 2026-03〜07 は level が 11 / 21 / 31 等。分子だけ全部の凸を足すと率が嘘になる (Codex指摘 2026-09-15)
+    const old = rd('data/2026-05.json').players;
+    const rows = dom.attributeProgress({ players: old, hpTable: cfg.hardLevelHp, declaredClasses: cfg.bossClassByMonth['2026-05'], attrOf });
+    assert.equal(rows.length, 5, '5属性ぶん出ていない');
+    assert.ok(rows.every(r => r.pct == null && r.noRate === 'levels' && r.unknownLevel > 0), `古い回で率を出している: ${rows.map(r => r.attr + ':' + r.pct)}`);
+    assert.ok(rows.every(r => r.cls), 'クラスの宣言 (2026-05) が効いていない — 率を止めているのは別の理由かもしれない');
+    const out = api._rrProgressHtml(rows);
+    clean(out);
+    assert.ok(out.includes('この回はレベルの記録の形が違うため率は出しません'), `断りが無い: ${out.slice(0, 300)}`);
+    assert.ok(!/\d+\.\d%/.test(out), '率を出している');
+    assert.ok(!out.includes('まで踏破'), '踏破を数えている (レベルが読めないのに)');
+    // レベルが Lv1〜3 で揃っている回は今までどおり率が出る
+    const ok8 = dom.attributeProgress({ players: rd('data/2026-08.json').players, hpTable: cfg.hardLevelHp, attrOf });
+    assert.ok(ok8.every(r => r.pct > 0 && r.noRate === null), '2026-08 で率が出ない');
+    assert.ok(Math.abs(ok8[0].pct - 97.2) < 0.1, `2026-08 の先頭が 97.2% でない: ${ok8[0].pct}`);
+});
+
+test('② 注記: 締め凸を見分けられない回はそう言う / 基準 (GB・SLv揃え・記録のまま) を言い分ける', () => {
+    const note = els.get('raidReviewAptitudeNote');
+    api._rrPaintAptitude(dom.attributeAptitude({ players, ratioTable: ratio, gb, attrOf }));
+    assert.ok(note.textContent.includes('GB 利用者の中央値') && note.textContent.includes('締め凸は除く'), `2026-09 の注記が違う: ${note.textContent}`);
+    // 2026-08 は isKill が無い = 締め凸が混ざる
+    const old8 = dom.attributeAptitude({ players: rd('data/2026-08.json').players, ratioTable: ratio, gb, attrOf });
+    assert.equal(old8.killsExcluded, false, '2026-08 に締め凸の印がある (前提が変わった)');
+    api._rrPaintAptitude(old8);
+    assert.ok(note.textContent.includes('締め凸を見分けられない'), `締め凸が混ざることを言っていない: ${note.textContent}`);
+    api._rrPaintAptitude(dom.attributeAptitude({ players, ratioTable: ratio, attrOf }));
+    assert.ok(note.textContent.includes('SLv') && note.textContent.includes('揃えた'), `SLv 揃えの断りが無い: ${note.textContent}`);
+    api._rrPaintAptitude(dom.attributeAptitude({ players, attrOf }));
+    assert.ok(note.textContent.includes('記録のまま'), `記録のままの断りが無い: ${note.textContent}`);
+    assert.ok(!/undefined|NaN/.test(note.textContent));
+});
+
+test('② 散布図: 軸が壊れる値 (無限・幅0) なら横棒に倒す', () => {
+    const mk = (vals) => ({ basis: 'gb', killsExcluded: true, refSlv: null,
+        rows: vals.map((v, i) => ({ attr: ['iron', 'fire', 'wind'][i], attacks: 10 + i, value: v, avgB: 1e9, median: v, hi: v, lo: v })) });
+    assert.ok(api._rrAptScatterHtml(mk([Number.MAX_VALUE, 1, 2])).includes('class="rr-bar"'), '無限になる値で散布図を描いている');
+    const same = { basis: 'raw', killsExcluded: false, refSlv: null,
+        rows: ['iron', 'fire'].map(a => ({ attr: a, attacks: 10, value: 0, avgB: 0, median: 0, hi: 0, lo: 0 })) };
+    const out = api._rrAptScatterHtml(same);
+    assert.ok(!/NaN|Infinity/.test(out), `座標が壊れている: ${out.slice(0, 200)}`);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

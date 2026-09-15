@@ -2997,9 +2997,11 @@
         .rr-hm { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
         .rr-hm table { border-collapse: collapse; width: 100%; min-width: 420px; }
         .rr-hm th, .rr-hm td { padding: 4px 6px; font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
-        .rr-hm th { font-weight: 900; color: var(--t-muted); position: sticky; top: 0; background: var(--card); }
+        /* ★ 見出しは sticky にしない — 縦は overflow:hidden なので効かず、効いているつもりの指定が残るだけ (Codex指摘 2026-09-15) */
+        .rr-hm th { font-weight: 900; color: var(--t-muted); background: var(--card); }
         .rr-hm td.nm { text-align: left; font-weight: 800; color: var(--t-ink); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-        .rr-hm td.c { font-weight: 800; color: var(--t-ink); border-radius: 6px; }
+        /* 濃さは color-mix で出す。使えない環境では下の地だけが残る (濃淡は消えるが数字は読める) */
+        .rr-hm td.c { font-weight: 800; color: var(--t-ink); border-radius: 6px; background: var(--s1); }
         .rr-hm td.c.z { color: var(--dim); }
         .rr-hm tr.me td { background: rgba(var(--ink-rgb), 0.05); }
         .rr-note { margin: 10px 0 0; font-size: 10px; color: var(--t-muted); line-height: 1.7; background: var(--s1); border-radius: 9px; padding: 8px 10px; }
@@ -7569,6 +7571,10 @@
             if (document.querySelector('.tab-content.active')?.id === 'tab-mock') {
                 renderMockTab();
                 if (typeof _markTabRendered === 'function') _markTabRendered('mock');
+            }
+            // 分析タブを開いたまま名乗り直したら振り返りも描き直す (ヒートマップの「自分」の行が前の人のまま残る: Codex指摘 2026-09-15)
+            if (document.querySelector('.tab-content.active')?.id === 'tab-ranking' && typeof renderRaidReview === 'function') {
+                renderRaidReview().catch(() => { /* 次にタブを開いたときに描き直る */ });
             }
         }
 
@@ -24269,7 +24275,11 @@
                 const boss = (BOSS_ATTRIBUTES[r.bossCode] || {}).nameJP || r.bossCode;
                 const head = `<div class="rr-head">${renderAttrIcon(r.attr, 14, { title: `${jp}PT` })}${esc(jp)}PT<span class="n" title="${esc(boss)}">${r.attacks}凸${r.kills ? ` · 締${r.kills}` : ''}</span></div>`;
                 if (r.pct == null) {
-                    return `<div class="rr-row">${head}<div class="rr-foot"><span class="pct">${esc(_rrB(r.damage))}</span><span>ボスの総HPが分からないため率は出しません</span></div></div>`;
+                    // 率を出さない理由は分けて言う (母数をでっち上げない: Codex指摘 2026-09-15)
+                    const why = r.noRate === 'levels'
+                        ? `この回はレベルの記録の形が違うため率は出しません (Lv が読めない凸 ${r.unknownLevel} 本)`
+                        : 'ボスの総HPが分からないため率は出しません';
+                    return `<div class="rr-row">${head}<div class="rr-foot"><span class="pct">${esc(_rrB(r.damage))}</span><span>${esc(why)}</span></div></div>`;
                 }
                 const track = `<div class="rr-track">` + r.levels.map(L => {
                     const fill = L.hp ? Math.max(0, Math.min(1, L.damage / L.hp)) : 0;
@@ -24312,6 +24322,8 @@
             let y0 = Math.min(...ys), y1 = Math.max(...ys);
             if (apt.basis === 'gb') { y0 = Math.min(y0, 100); y1 = Math.max(y1, 100); }
             const yp = Math.max((y1 - y0) * 0.2, apt.basis === 'gb' ? 4 : (y1 || 1) * 0.05); y0 -= yp; y1 += yp;
+            // ★ 極端な値 (無限・幅0) で座標が NaN になるくらいなら横棒で出す (Codex指摘 2026-09-15)
+            if (![x0, x1, y0, y1].every(Number.isFinite) || !(x1 > x0) || !(y1 > y0)) return _rrAptBarsHtml(apt);
             const px = (v) => L + ((v - x0) / (x1 - x0)) * (W - L - R);
             const py = (v) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - Bm);
             const ticks = [y0 + (y1 - y0) * 0.1, (y0 + y1) / 2, y1 - (y1 - y0) * 0.1];
@@ -24345,11 +24357,13 @@
                 document.getElementById(id)?.classList.toggle('active', _rrAptView === v);
             }
             if (note) {
+                // ★ 締め凸を見分けられない回 (isKill が無い) は必ずそう言う — 除いたつもりの数字に見えてしまう (Codex指摘 2026-09-15)
+                const kn = apt.killsExcluded ? '・締め凸は除く' : '・この回は締め凸を見分けられないので混ざっています (低めに出ます)';
                 note.textContent = apt.basis === 'gb'
-                    ? `1凸あたりの力を「同じ属性に凸した GB 利用者の中央値 = 100%」に換算 (SLv補正済み${apt.killsExcluded ? '・締め凸は除く' : ''})。`
+                    ? `1凸あたりの力を「同じ属性に凸した GB 利用者の中央値 = 100%」に換算 (SLv補正済み${kn})。`
                     : apt.basis === 'slv'
-                        ? `GBのデータが無い回なので、SLv ${apt.refSlv} に揃えた 1凸平均で比べています${apt.killsExcluded ? ' (締め凸は除く)' : ''}。`
-                        : `SLv が分からないため記録のままの 1凸平均です${apt.killsExcluded ? ' (締め凸は除く)' : '（締め凸も含むため低めに出ます）'}。`;
+                        ? `GBのデータが無い回なので、SLv ${apt.refSlv} に揃えた 1凸平均で比べています (${kn.replace(/^・/, '')})。`
+                        : `SLv が分からないため記録のままの 1凸平均です (${kn.replace(/^・/, '')})。`;
             }
             if (!apt.rows.length) { el.innerHTML = '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">この回の凸データがありません。</p>'; return; }
             el.innerHTML = _rrAptView === 'bars' ? _rrAptBarsHtml(apt) : _rrAptScatterHtml(apt);
@@ -24385,6 +24399,7 @@
             const mEl = document.getElementById('raidReviewMembers');
             if (!dom || !pEl || !mEl) return;
             const seq = ++_rrSeq;
+            _rrLastApt = null;   // ★ 取得の間に 散布図/ランキング を押しても前の回の図を描き直さない (Codex指摘 2026-09-15)
             const players = Array.isArray(currentData) ? currentData : [];
             if (!players.some(p => (p.attacks || []).length)) {
                 const empty = '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:14px 0;">この回の凸データがありません。</p>';

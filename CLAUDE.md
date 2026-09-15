@@ -299,6 +299,10 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ 締め凸は**火力の指標から外し、削った総量には含める** (既存の 締 バッジと同じ方針)。isKill の無い過去回は `killsExcluded: false` で知らせる。
   ★ 図は **Chart.js を使わず HTML/CSS/SVG** — 色をトークンのまま書けるので見た目の切り替えに描き直しが要らない
   (Chart.js は CSS 変数を解決できないため `padthemechange` で描き直す必要がある)。実行テスト `tests/raid-review.mjs` (本番の 2026-09 のデータで実際に描く)
+  ★ **Lv1〜3 に入らない凸があるボスは率を出さない** (Codex指摘 2026-09-15)。2026-03〜07 は月次JSONの `level` が 11/21/31 等の別の形で、
+  数えると「分子は全部の凸・分母は Lv1〜3 の HP」になって率が嘘になる (`noRate: 'levels'` / `unknownLevel`)。`noRate: 'class'` はクラスが決まらない回。
+  ★ **締め凸を見分けられない回 (isKill が無い = 2026-08 以前) は必ずそう言う** — 除いたつもりの数字に見えてしまう。
+  ★ 取得の間は `_rrLastApt = null` (前の回の図を描き直さない)。名乗り直しで分析タブを開いていたら描き直す (ヒートマップの「自分」の行)
 - **js/domain/slvSim.js** — 分析タブ › シミュレーター (2026-09-13)。`predictDamage` (SLv → 予測) と **`requiredSlv` (目標ダメージ → 届く最小の SLv、二分探索)**。
   画面は `runSimReverse` が B×1e9 で渡し、届く SLv を目標 SLv に写して予測と順位表も動かす。目標 SLv を手で変えたら逆引きの入力は消す (`onSimTargetSlvInput`)。
   ★ 既定の選択はいま名乗っている人 (`_simDefaultPlayer`: 分析データにその名前があれば)。ダメージ予測とふるり値試算の両方

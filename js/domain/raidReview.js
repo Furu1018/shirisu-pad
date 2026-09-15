@@ -32,7 +32,9 @@
      * ボス・Lv ごとに記録を畳む。
      * @param {Object[]} players  {player, syncLevel, attacks:[{bossCode, level, damage, isKill}]}
      * @returns {{byBoss:Object, hasKillFlags:boolean}}
-     *   byBoss[bossCode] = { levels: {1:{damage,attacks,kills}, ...}, damage, attacks, kills }
+     *   byBoss[bossCode] = { levels: {1:{damage,attacks,kills}, ...}, damage, attacks, kills, unknownLevel }
+     * ★ unknownLevel = Lv1〜3 に入らない凸の本数。**古い回はレベルの記録が別の形** (2026-03〜07 は 11/21/31 等) で、
+     *   数えると「分子は全部の凸・分母は Lv1〜3 の HP」になって率が嘘になる (Codex指摘 2026-09-15)
      */
     function tally(players) {
         const byBoss = {};
@@ -43,11 +45,13 @@
                 if (a.isKill === true || a.isKill === false) hasKillFlags = true;
                 const d = num(a.damage) || 0;
                 const lv = num(a.level);
-                const b = byBoss[a.bossCode] ??= { levels: {}, damage: 0, attacks: 0, kills: 0 };
+                const b = byBoss[a.bossCode] ??= { levels: {}, damage: 0, attacks: 0, kills: 0, unknownLevel: 0 };
                 b.damage += d; b.attacks += 1; if (a.isKill === true) b.kills += 1;
                 if (lv != null && LEVELS.includes(lv)) {
                     const L = b.levels[lv] ??= { damage: 0, attacks: 0, kills: 0 };
                     L.damage += d; L.attacks += 1; if (a.isKill === true) L.kills += 1;
+                } else {
+                    b.unknownLevel += 1;
                 }
             }
         }
@@ -79,7 +83,8 @@
      * @param {(bossCode:string)=>(string|null)} a.attrOf  ボスコード → 持っていく PT 属性 (小文字)
      * @returns {Object[]} 進捗の高い順 (率の無いものは最後)。各行:
      *   { attr, bossCode, cls, estimated, levels:[{level, damage, hp, cleared, attacks, kills}],
-     *     damage, hp, pct, attacks, kills, clearedLevels }
+     *     damage, hp, pct, attacks, kills, clearedLevels, unknownLevel, noRate }
+     *   noRate: 'class' = クラスが決まらない / 'levels' = レベルの記録が古い形 (率を出さない理由)
      */
     function attributeProgress({ players, hpTable, declaredClasses, attrOf } = {}) {
         const fn = typeof attrOf === 'function' ? attrOf : () => null;
@@ -95,13 +100,17 @@
                 const hp = cls ? hpOf(hpTable, level, cls) : null;
                 return { level, damage: L.damage, attacks: L.attacks, kills: L.kills, hp, cleared: hp != null && L.damage >= hp };
             });
-            const hp = cls ? levels.reduce((s, L) => s + (L.hp || 0), 0) : null;
+            // ★ 率を出すのは「クラスが決まる」かつ「全部の凸が Lv1〜3 に入る」ときだけ。
+            //   古い回 (レベルの記録が別の形) は分子と分母が揃わないので率を出さない (Codex指摘 2026-09-15)
+            const noRate = !cls ? 'class' : (b.unknownLevel > 0 ? 'levels' : null);
+            const hp = noRate ? null : levels.reduce((s, L) => s + (L.hp || 0), 0);
             rows.push({
                 attr, bossCode, cls, estimated, levels,
                 damage: b.damage, attacks: b.attacks, kills: b.kills,
+                unknownLevel: b.unknownLevel, noRate,
                 hp: hp || null,
                 pct: hp ? (b.damage / hp) * 100 : null,
-                clearedLevels: levels.filter(L => L.cleared).length,
+                clearedLevels: noRate ? 0 : levels.filter(L => L.cleared).length,
             });
         }
         // 進捗の高い順 → 率の無いものは最後 (総量の多い順)
