@@ -4947,17 +4947,19 @@
                     <a href="#help-raid-rules">2. ユニオンレイドの基本</a>
                     <a href="#help-mypage">3. ホームの使い方</a>
                     <a href="#help-mock">4. 模擬戦データの提出</a>
-                    <a href="#help-real">5. 本番スコアの提出</a>
-                    <a href="#help-finisher">6. 締め凸を行った場合</a>
-                    <a href="#help-fururi">7. ふるり値の見方</a>
-                    <a href="#help-plan">8. 最適凸プラン算出</a>
-                    <a href="#help-remaining">9. 残凸状況一覧</a>
-                    <a href="#help-finish-call">10. 締め凸候補</a>
-                    <a href="#help-notify">11. 通知を受け取る</a>
-                    <a href="#help-sim">12. シミュレータ</a>
-                    <a href="#help-ops">13. 戦況（運営モード）</a>
-                    <a href="#help-data">14. データの流れ</a>
-                    <a href="#help-faq">15. よくある質問</a>
+                    <a href="#help-reserve">5. 凸の予約 🔒</a>
+                    <a href="#help-real">6. 本番の凸と報告</a>
+                    <a href="#help-finisher">7. 締め凸と依頼への返事</a>
+                    <a href="#help-fururi">8. ふるり値の見方</a>
+                    <a href="#help-plan">9. あなたの凸はこう決まる</a>
+                    <a href="#help-plan-ops">10. 最適凸プラン算出 (運営)</a>
+                    <a href="#help-remaining">11. 残り戦闘可能メンバー (運営)</a>
+                    <a href="#help-finish-call">12. 締め凸の依頼 (運営)</a>
+                    <a href="#help-notify">13. 通知を受け取る</a>
+                    <a href="#help-analysis">14. 分析タブ</a>
+                    <a href="#help-ops">15. 運営タブと運営担当</a>
+                    <a href="#help-data">16. データの流れ</a>
+                    <a href="#help-faq">17. よくある質問</a>
                 </aside>
 
                 <div>
@@ -4965,347 +4967,428 @@
                         <h2>📘 1. しりすこPAD とは</h2>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--s2);border-radius:8px;margin-bottom:14px;">
                             <span style="font-size:18px;">🎓</span>
-                            <span style="flex:1;font-size:13px;">主要機能の使い方を5〜10分で巡るインタラクティブガイドがあります</span>
+                            <span style="flex:1;font-size:13px;">主要機能の使い方を5〜10分で巡るインタラクティブガイドがあります (2026-09 の画面に合わせて更新)</span>
                             <button class="tour-guide-launcher" onclick="startTour()">ガイドを開始</button>
                         </div>
-                        <p>NIKKE のユニオンレイドを<strong>運営・参加</strong>の両面で支えるダッシュボード型 PWA です。
-                            各メンバーのダメージ出力・凸状況・最適な凸順を可視化し、ユニオン全体で最大の戦果を狙うことを目的としています。</p>
-                        <h3>主な機能</h3>
+                        <p>NIKKE のユニオンレイドを<strong>メンバーと運営の両方</strong>から支えるアプリ (PWA) です。
+                            狙いはひとつ、<strong>「計画した凸が計画どおりに消化され、いちど決めた約束があとから覆らない」</strong>こと。
+                            順位や総与ダメを最大化することより、約束を守ることを優先して作られています。</p>
+                        <h3>5つのタブ</h3>
                         <ul>
-                            <li><strong>ホーム</strong> — 凸報告、配信プランの確認、通知、個人設定</li>
-                            <li><strong>模擬</strong> — 属性別の模擬ダメージ提出 (画像OCR/手動)、模擬ふるり値レーダー、人気編成</li>
-                            <li><strong>運営</strong> — ボスHP管理、最適凸プラン算出、締め凸候補、メンバー管理</li>
-                            <li><strong>分析 (実績 / ふるり値)</strong> — ユニオン内の戦果ランキング</li>
-                            <li><strong>シミュレータ</strong> — 育成ダメージ予測・ふるり値試算</li>
+                            <li><strong>ホーム</strong> — 自分のこと全部: 次にやること、あなたの3凸、凸報告、予約、通知、MY設定</li>
+                            <li><strong>模擬</strong> — 属性ごとの模擬戦データ (編成 + ダメージ) の提出。ここから凸の予約もできます</li>
+                            <li><strong>戦況</strong> — ボスの残HP・戦闘中の人・残り戦闘可能メンバー。運営担当には<strong>運営</strong>タブになります</li>
+                            <li><strong>分析</strong> — 実績 / ふるり値 / 🧬育成 / 🧪シミュレータ / 🌏GB比較</li>
+                            <li><strong>設定</strong> — 見た目 (ライト / ダーク)、ガイド、通知、運営担当だけの管理項目</li>
+                        </ul>
+                        <h3>画面のつくり</h3>
+                        <ul>
+                            <li><strong>下のメニュー</strong> (スマホ縦): 白い帯に 模擬 / 戦況 / ホーム / 分析 / 設定。いま居るタブだけ黒い円で持ち上がります。下にスクロールすると隠れ、少し戻すと出ます</li>
+                            <li><strong>横画面・PC</strong>: 700px 以上でカードが2列に並びます。さらに広い画面やスマホ横では、上の帯が<strong>左のサイドバー</strong>になり、名前の切替と再読み込み (↻) はサイドバーの足元に移ります</li>
+                            <li><strong>名乗り</strong>: 上の帯 (サイドバーなら足元) の名前をタップして自分を選びます。端末ごとに記憶されます</li>
+                            <li><strong>見た目</strong>: 設定タブで ライト / ダーク / 端末に合わせる を選べます</li>
                         </ul>
                     </section>
 
                     <section id="help-raid-rules" class="help-section">
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> 2. ユニオンレイドの基本</h2>
-                        <p>当PADで前提とするユニオンレイドのルールは次のとおりです。</p>
+                        <p>PAD が前提にしているルールです。</p>
                         <ul>
-                            <li><strong>5体のボス</strong>がいて、それぞれ弱点属性を持っています（弱点で凸すると大ダメージ）。</li>
-                            <li>各レベル<strong>5体すべてを倒すと次のレベル</strong>に進み、ボスHPが上がります（Lv1→Lv2→Lv3）。</li>
-                            <li>1人あたり<strong>3凸</strong>。一度出撃したキャラは同じレイド期間中再使用できません（＝同じ属性のベスト火力は1回まで）。</li>
+                            <li><strong>5体のボス</strong>がいて、それぞれ弱点属性を持ちます (弱点の PT で凸すると大ダメージ)。ボス自身の属性と、持っていく PT の属性は別物です</li>
+                            <li>各レベルで<strong>5体すべてを倒すと次のレベル</strong>に進み、HP が上がります (Lv1 → Lv2 → Lv3)。<strong>Lv3 を踏破するとその日のうちに「Lv4 = ボス5だけ・HP無限」</strong>が開き、そこへの凸は全額スコアに入ります</li>
+                            <li>1人<strong>3凸</strong>。いちど出撃したキャラはそのレイド中は使えません (= 同じキャラを含む編成は1回だけ)</li>
+                            <li>レイドの1日は <strong>5時から翌4時まで</strong>。「翌2時」はまだ同じ日です</li>
                         </ul>
                         <div class="help-callout tip">
                             <span class="ico">💡</span>
-                            <p>このルールゆえに、<strong>同じ属性に3凸するより3属性に1凸ずつ</strong>の方がトータル火力が伸びます。PADの最適プラン算出はこれを前提に組まれています。</p>
+                            <p>だから<strong>同じ属性に3凸するより、キャラの被らない3編成で3属性</strong>のほうが総火力が伸びます。最適凸プランはこれを前提に組まれます。</p>
                         </div>
                     </section>
 
                     <section id="help-mypage" class="help-section">
-                        <h2><span data-sp-icon="user" data-sp-size="17"></span> 3. ホームの使い方</h2>
-                        <p>ホームはあなた自身のデータ入力ハブです。ここに正しい情報を入れるほど、全体の最適プランや締め凸候補の精度が上がります。</p>
-                        <h3>⓪ 📌 次にやること（自動案内）</h3>
-                        <p>ホーム上部のカードが、<strong>いまあなたがやるべきことを1つだけ</strong>教えてくれます — 通知が未設定なら通知設定、時間が未登録なら時間登録、模擬が足りなければ提出（最低ライン＝<strong>キャラ被りなしで3部隊</strong>）、レイド当日は残り凸数と戦闘への入口。<strong>黒いカードのときは「今やることがある」の合図</strong>、白ければ準備OKです。迷ったらこのカードに従えば大丈夫。</p>
-                        <p>また、ヘッダー右の <strong>🔔 ベル</strong> に未読通知の数が出ます。タップで通知一覧へ移動します。</p>
-                        <h3>① プレイヤーの選択</h3>
-                        <p>初回は自分の名前を選んでください。ブラウザに保存されるので、次回以降は自動で復元されます（端末/ブラウザを変えると再選択が必要）。</p>
-                        <h3>② 5属性のダメージ登録（→ 模擬タブに移動しました）</h3>
-                        <p>各PT属性で出せる「あなたのベストダメージ」を B（10億）単位で登録します。<span class="help-pill">手入力</span>または<span class="help-pill">📷 画像OCR</span>から登録できます。
-                            この値は、運営の<strong>残凸状況一覧</strong>・<strong>最適プラン</strong>・<strong>締め凸候補</strong>すべての基礎データです。</p>
-                        <h3>③ 5属性 模擬ふるり値レーダー（→ 模擬タブに移動しました）</h3>
-                        <p>あなたの<strong>今期の模擬戦データ</strong>を、基準者（ふるり）の<strong>今期模擬 + SLv換算</strong>と比べて5角形で表示します。1.00 = ふるりと同等。本戦は3凸までなので本戦ベースでは5属性が揃いませんが、模擬同士の比較なら<strong>5属性提出すれば誰でも形が完成</strong>します。属性別の得意・不得意が一目で分かります（確定ふるり値は <a href="#help-fururi">§7</a> のタブで）。</p>
-                        <h3>④ 次の凸 (ボスタップ起点)</h3>
-                        <p><strong>「🎯 次の凸 (ボスをタップ)」</strong> セクションで、これから凸るボスをタップすると <strong>戦闘準備</strong> 状態になり、他メンバーに「あなたが戦闘中」が共有されます。これで二重凸を防止できます。</p>
+                        <h2><span data-sp-icon="user" data-sp-size="17"></span> 3. ホームの使い方 <span class="help-pill">メンバー</span></h2>
+                        <p>ホームは「自分のことは全部ここ」の場所です。上から順に、いま必要なものが並びます。</p>
+                        <h3>⓪ 📌 次にやること</h3>
+                        <p>いちばん上のカードが、<strong>あなたがいまやるべきことを1つだけ</strong>案内します。通知が未設定なら通知、戦闘可能時間が未確認なら確認、模擬が足りなければ提出 (最低ライン = <strong>キャラ被りなしで3編成</strong>) — 順に片づけるとカードが消えます。</p>
+                        <h3>① 名乗る</h3>
+                        <p>上の帯 (PC のサイドバーなら左下の足元) の名前をタップして、自分を選びます。端末ごとに覚えるので、機種変更やブラウザ変更のときだけ選び直してください。</p>
+                        <h3>② MY設定</h3>
                         <ul>
-                            <li>空きボス → ⚔️ <strong>戦闘準備に入る</strong> ボタン (属性色)</li>
-                            <li>自分が戦闘中 → 📷 <strong>報告</strong> + ⏪ <strong>解除</strong> ボタン</li>
-                            <li>他人が戦闘中 → ⚠️ <strong>強行する場合</strong> ボタン (押すと相手に通知が飛ぶ)</li>
+                            <li><strong>⏰ 戦闘可能時間</strong> — 5時始まりの24マスを塗ります。これが 凸プランの時間割・締め凸候補・<strong>通知の受信時間</strong> の全部の元になります。
+                                当日いつ動けるか読めない人は <strong>⏳ 隙間時間型</strong>、時間外の通知も見たい人は <strong>🔔 いつでも受け取る</strong> を ON に</li>
+                            <li><strong>今期の確認</strong> — シーズンごとに <strong>「✅ 今回の参加時間を確認」</strong> か <strong>「今回は難しい」</strong> を押してください。前回のまま放置すると「未確認」扱いになり、運営から催促が届きます。「今回は難しい」の人はプラン・候補・催促のすべてから外れます</li>
+                            <li><strong>🔔 Push通知設定</strong> — 端末ごとに1回。手順は <a href="#help-notify">§13</a></li>
+                            <li><strong>得意属性</strong> — プロフィールに出る申告です (プランの計算には使いません)</li>
+                            <li><strong>アバター</strong> — NIKKE のキャラか自分の画像。全画面に反映されます</li>
                         </ul>
-                        <h3>⑤ 凸報告</h3>
-                        <p>戦闘準備ボタンから「📷 報告」、または「⚔️ 凸を報告」から入力します（OCR対応）。報告完了で 戦闘準備 が自動解除されます。</p>
-                        <h3>⑥ アバター</h3>
-                        <p>プロフィールカードのアバター枠をタップすると、NIKKE キャラから選ぶか自分の画像をアップロードできます。残凸状況/締め凸候補/調整中リストなど 全画面に反映されます。</p>
+                        <h3>③ 🎯 あなたの3凸</h3>
+                        <p>ヒーローに、あなたの3つの枠が <strong>🔒 予約で固定 → 配信の割当 → 空き枠</strong> の順で並びます。空き枠には「なぜ空いているか」が日本語で出て、タップすると予約の申請シートが開きます (<a href="#help-reserve">§5</a>)。
+                            配信されたプランがあれば「配信された凸プラン」カードにも同じ3枠と時間割が出ます。読んだら <strong>✅ 確認しました</strong> を押してください (運営が誰が読んだか分かります)。</p>
+                        <h3>④ ⏰ あなたの戦闘可能時間の帯</h3>
+                        <p>いま登録している時間帯を1行で見せます (例: 5〜9時・21〜翌2時)。当日その時刻になると「戦闘可能時間になりました」の通知が来ます (運営の端末が開いている間)。</p>
+                        <h3>⑤ 🎯 次の凸 (ボスをタップ)</h3>
+                        <ul>
+                            <li>空いているボス → ⚔️ <strong>戦闘準備に入る</strong>。周りに「戦闘中」が共有され、二重凸を防ぎます</li>
+                            <li>自分が戦闘中 → 📷 <strong>報告</strong> / ⏪ <strong>解除</strong></li>
+                            <li>他の人が戦闘中 → ⚠️ 強行すると相手に通知が飛びます</li>
+                        </ul>
+                        <p>横画面では、戦闘カードの隣に<strong>ボス状況カード</strong> (残HP% / 交戦者 / 撃破) と、プロフィール直下に オンライン / 模擬中 / 戦闘中 のタイルが出ます。スマホ縦では細いボス帯と状態ボタンの人数バッジです。</p>
+                        <h3>⑥ ⚔️ 凸を報告</h3>
+                        <p>戦闘準備から「📷 報告」、または「⚔️ 凸を報告」から。スクショの読み取り (OCR) に対応。報告するとボスの残HPが減り、予約があれば消し込まれ、戦闘準備は解除されます。</p>
+                        <h3>⑦ 運営からのお願い</h3>
+                        <ul>
+                            <li><strong>🙏 締め凸のお願い</strong> — 「B3 の締め凸をお願いできますか」が届くと、ホームにカードが出ます。<strong>了承 / 難しい</strong> で返してください。了承すると、その凸はあなたの枠に🔒で入ります (<a href="#help-finisher">§7</a>)</li>
+                            <li><strong>🔒 引き受けた凸</strong> — 運営がパズル盤で置いた「この時刻にこのボスへ」の 📣 お願いです。<strong>引き受ける</strong> と🔒の約束に、<strong>難しい</strong> なら運営が組み直します</li>
+                            <li><strong>🧬 育成データの公開のお願い</strong> — BlaBlaLINK のゲームカードが非公開だと育成くらべに載らないので、公開してほしいときに届きます</li>
+                        </ul>
+                        <h3>⑧ 📨 受け取った通知</h3>
+                        <p>自分あて・全員あての通知が新しい順に残ります。通知を消してしまっても本文を読み返せます。</p>
                     </section>
 
                     <section id="help-mock" class="help-section">
-                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 4. 模擬戦データの提出</h2>
-                        <p>模擬戦＝本戦と同じ編成・条件で出せる「あなたの最高ダメージ」のことです。<strong>模擬タブの属性別ダメージ欄に入力するだけ</strong>で提出完了です。提出済みの属性カードには <strong>✓</strong> が付き、未提出は<strong>点線の薄いカード</strong>で表示されるので、どこが空いているか一目で分かります。提出を取り消したいときは、カードをタップして開く編集画面の <strong>🗑 削除</strong> からどうぞ。</p>
+                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 4. 模擬戦データの提出 <span class="help-pill">メンバー</span></h2>
+                        <p>模擬戦 = 本戦と同じ条件で出せる「あなたの最高ダメージ」。<strong>1編成 = ダメージ1つ</strong>で、どのレベルにも使われます (測定レベルは問いません)。提出済みの属性カードには ✓ が付きます。</p>
                         <div class="help-flow-step">
                             <div class="help-flow-num">1</div>
-                            <div><strong>模擬戦を実施。</strong> 各PT属性で1回ずつ全力で殴ります（同属性2回出したら高い方を採用）。</div>
+                            <div><strong>模擬タブで属性カードをタップ</strong>すると提出シートが開きます。並びは ① 編成 → ② ダメージ → ③ キャラを選ぶ。</div>
                         </div>
                         <div class="help-flow-step">
                             <div class="help-flow-num">2</div>
-                            <div><strong>結果のスクショ</strong>を撮ります。ボス名とダメージが映っていればOK。</div>
+                            <div><strong>① 編成</strong>: 見出し横の小さな入口からスクショを読み取るか、③ のタイルからキャラを5人選びます (バースト B1/B2/B3 で絞れます。5人そろうと畳みます)。</div>
                         </div>
                         <div class="help-flow-step">
                             <div class="help-flow-num">3</div>
-                            <div>ホームの「📷 画像から自動登録」を押し、スクショを選ぶと AI が解析して該当属性に自動入力されます（手入力でもOK）。</div>
+                            <div><strong>② ダメージ</strong>: B (10億) 単位で入力。下の<strong>提出バー</strong>が 属性・編成・ダメージ を要約し、提出済みと違えば「33.1B → 35B」のように出ます。5人 + ダメージで黒く点灯。<strong>提出する</strong> で完了。</div>
                         </div>
                         <div class="help-flow-step">
                             <div class="help-flow-num">4</div>
-                            <div>入力欄からフォーカスを外せば自動保存。レーダーも即時に再描画されます。</div>
+                            <div><strong>1属性に2編成</strong>まで提出できます。キャラが被らない別編成なら、プランは同じ属性への2凸も提案します (ボス5にも2凸可)。</div>
                         </div>
                         <div class="help-callout">
                             <span class="ico">📝</span>
-                            <p>提出したダメージはあなたの「現在の最大出力」として扱われ、運営の最適プランで「あなたなら○○Bは出せるはず」という前提として使われます。</p>
+                            <p>提出したダメージは「あなたならこれだけ出せる」として、残り戦闘可能メンバー・最適凸プラン・締め凸候補のすべてで使われます。<strong>締め凸などで実力より低い値が入ったら、模擬で出た本来の値に書き直してください</strong>。</p>
                         </div>
+                        <h3>模擬タブでできること</h3>
+                        <ul>
+                            <li><strong>🔒 この編成で凸を予約する →</strong> — 提出バーの1行から予約の申請へ (<a href="#help-reserve">§5</a>)。予約中の編成には鍵の透かしが付き、削除できません (先に運営へ取り消しを希望してください)</li>
+                            <li><strong>⚠ 運営除外</strong> — 運営が「この提出は使わない」と印を付けた編成にはこの表示が出ます。<strong>保存し直すと自動で解除</strong>されます</li>
+                            <li><strong>よく使う編成 / 人気編成の参考</strong> — ③ の中の折りたたみ。ユニオンでよく使われる編成から選べます</li>
+                            <li><strong>模擬ふるり値レーダー / 人気編成</strong> — 自分の5属性を基準者 (ふるり) と比べる五角形と、みんなの編成の傾向</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-reserve" class="help-section">
+                        <h2>🔒 5. 凸の予約 <span class="help-pill">メンバー</span> <span class="help-pill">運営</span></h2>
+                        <p>予約は<strong>「この時刻に・この編成で凸します」という約束</strong>です。運営が承認すると 🔒 で固定され、プランを何度組み直しても<strong>動きません</strong>。「当日にプランが変わって振り回される」を無くすために入れました。</p>
+                        <h3>申請 (メンバー)</h3>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>ホームの<strong>空き枠</strong>をタップ、または模擬タブの <strong>🔒 この編成で凸を予約する →</strong>。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>どの編成で</strong> (提出済みの編成から) → <strong>何時に</strong> を選びます。<strong>ボスは選びません</strong> — 編成の属性で行くボスが決まり、「→ ボス3 に行きます」と出ます。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>申請すると運営に通知が飛び、ホームの枠が「承認待ち」になります。承認・却下は Push で届きます。</div></div>
+                        <ul>
+                            <li>予約は<strong>レベルを持ちません</strong>。約束の時刻にそのボスがいるレベルへ、算出が置きます</li>
+                            <li>すでに予約中の編成と<strong>キャラが被る編成</strong>は申請できません (同じキャラは1日1回)</li>
+                            <li>やめたいときは「取り消しを希望」→ 運営が解除します。承認済みの予約を本人だけで消すことはできません</li>
+                        </ul>
+                        <h3>承認 (運営)</h3>
+                        <ul>
+                            <li>運営タブ (前日) の<strong>凸の予約</strong>カードで 承認 / 却下。承認すると <strong>承認して組み直す → 差分 → 📤配信は明示の1タップ</strong> の流れ (自動配信はしません)</li>
+                            <li>1人の枠は <strong>約束 (🔒) + 固定 (📌) + 実凸 ≤ 3</strong>。超える承認は画面でも DB でも止まります</li>
+                            <li>承認すると壊れる約束 (キャラ被りなど) は「承認不可」、他の人の枠を押しのけるものは強い警告のうえ運営が判断</li>
+                            <li>約束の時刻を過ぎた予約・置けなくなった予約は<strong>未達</strong>として画面に出ます。運営が解除しないとその人の枠を押さえたままです</li>
+                        </ul>
                     </section>
 
                     <section id="help-real" class="help-section">
-                        <h2>🗡️ 5. 本番スコアの提出</h2>
-                        <p>本番の凸が終わったら、ホームの<strong>「⚔️ 凸を報告」</strong>から提出してください。
-                            運営はこれを見てボスの残HPを管理し、誰がいつ何属性で何B出したかを記録します。</p>
+                        <h2>🗡️ 6. 本番の凸と報告 <span class="help-pill">メンバー</span></h2>
+                        <p>本番の凸が終わったら、ホームの <strong>⚔️ 凸を報告</strong> から。運営はこれでボスの残HPと「誰が・いつ・何属性で・何B」を追います。</p>
                         <ul>
-                            <li>1日3凸（仕様による）。各凸でボス・ダメージ・使用キャラを記録できます。</li>
-                            <li>スクショから OCR で自動入力できます（ダメージ・ボス自動判定）。</li>
-                            <li>本番ダメージは翌月のあなたの<strong>初期登録ダメージ</strong>として自動シードされます。</li>
+                            <li>1日3凸。ボス・ダメージ・使用キャラを記録します (スクショの OCR でダメージとボスを自動判定)</li>
+                            <li>報告は<strong>1回の処理</strong>で 採番 → 記録 → 残HP減算 → 予約の消し込み まで行います。「3凸済み」などの拒否はそのまま画面に出ます</li>
+                            <li>撮り忘れたら、運営が BlaBlaLINK の3凸まとめ画像から<strong>代理凸</strong>で登録できます</li>
+                            <li>本番のダメージは翌月の初期値として引き継がれません — 期間中に模擬を提出してください</li>
                         </ul>
                     </section>
 
                     <section id="help-finisher" class="help-section">
-                        <h2><span data-sp-icon="flag" data-sp-size="17"></span> 6. 締め凸を行った場合の特例</h2>
-                        <p><strong>締め凸</strong>＝ボスを倒し切る最後の凸。ゲーム上、残HPを削り切った時点でダメージカウントが止まるため、
-                            あなたの本当の出力より<strong>低い値</strong>が記録されます。</p>
-                        <div class="help-callout warn">
-                            <span class="ico">⚠️</span>
-                            <p>この状態のまま放置すると、運営は「この人の○○属性は△△Bまでしか出せない」と過小評価してしまいます。</p>
+                        <h2><span data-sp-icon="flag" data-sp-size="17"></span> 7. 締め凸と、依頼への返事 <span class="help-pill">メンバー</span></h2>
+                        <p><strong>締め凸</strong> = ボスを倒し切る最後の凸。ゲームは残HPを超えたダメージを記録しないので、<strong>本来の出力より低い値</strong>が残ります。</p>
+                        <ul>
+                            <li>締め凸の記録には <strong>「締」バッジ</strong>が付き、平均や実績の比較には入れません (実力より小さいため)</li>
+                            <li>模擬タブの値は<strong>本来のベスト出力</strong>にしておいてください。締め凸の値で上書きしないこと</li>
+                            <li>分析 › 🧪シミュレータ では、締め凸を「3分間戦闘した結果」に置き換えた合計を予測の基準にできます</li>
+                        </ul>
+                        <h3>🙏 締め凸のお願いが届いたら</h3>
+                        <div class="help-callout">
+                            <span class="ico">🗡</span>
+                            <p>運営は残HPに対して<strong>「誰が・いつ倒せるか」</strong>を見て依頼します。ホームのカードで <strong>了承</strong> / <strong>難しい</strong> を押すだけ。
+                                了承すると<strong>先にあなたの枠を取ってから</strong>運営に伝わるので、あとから枠が無くなることはありません (枠が取れない場合は了承にならず、理由が出ます)。
+                                複数人に同時に打診されることもあり、運営が1案に確定すると、選ばれなかった人には「今回は見送り」が届きます。</p>
                         </div>
-                        <h3>対処：本来の出力を手動で上書き</h3>
-                        <p>模擬タブのダメージ欄を、模擬戦で出した<strong>本来のベスト出力</strong>に書き直してください。レーダー・最適プラン・残凸表すべてに正しく反映されます。
-                            締め凸の自動検知はしていないので、対象属性は本人で把握する必要があります。</p>
                     </section>
 
                     <section id="help-fururi" class="help-section">
-                        <h2>📐 7. ふるり値の見方</h2>
-                        <p>ふるり値は「同SLvに換算したとき、基準者（ふるり）と比べてどれくらいダメージを出せるか」を表す指標です。</p>
+                        <h2>📐 8. ふるり値の見方</h2>
+                        <p>ふるり値は「同じ SLv に換算したとき、基準者 (ふるり) と比べてどれくらいダメージを出せるか」の指標です。</p>
                         <ul>
-                            <li><strong>1.00</strong> = 同SLv換算で基準者と同等</li>
-                            <li><strong>1.20</strong> = 基準者より約20%高火力</li>
-                            <li><strong>0.80</strong> = 基準者より約20%低火力</li>
+                            <li><strong>1.00</strong> = 同 SLv 換算で基準者と同等 / <strong>1.20</strong> = 約20%高い / <strong>0.80</strong> = 約20%低い</li>
                         </ul>
-                        <h3>基準データはどこから？</h3>
-                        <p>直近完了月の本戦凸3つ＋本戦で凸しなかった2属性の模擬戦スコアを基準としています。
-                            次のレイドが終わるまで<strong>基準は固定</strong>されるため、月途中で他メンバーが模擬戦を更新しても比較が公平に保たれます。</p>
-                        <h3>属性別の使い分け</h3>
+                        <h3>基準データ</h3>
+                        <p>直近に終わった本戦の凸3つ + 本戦で凸しなかった2属性の模擬戦。次のレイドが終わるまで<strong>基準は固定</strong>なので、月の途中で誰かが模擬を更新しても比較は公平なままです。</p>
+                        <h3>3つの基準モード (分析 › ふるり値)</h3>
                         <ul>
-                            <li><strong>全体（3凸合計）</strong>: 1日のトータル火力比較</li>
-                            <li><strong>属性別</strong>: その属性1凸あたりの火力比較（同属性2凸は別行扱い）</li>
+                            <li><strong>対ふるり (既定)</strong>: 基準者本人の各属性と直接比較</li>
+                            <li><strong>均整 (ふるり平均)</strong>: 基準者の5属性平均を共通の基準に。育成バランスの指針に</li>
+                            <li><strong>上位10名平均 (ユニオン)</strong>: 各属性で SLv 正規化済みダメージの上位10名平均を基準に。現実的な到達点が分かります</li>
                         </ul>
-                        <h3>3つの基準モード（分析タブ ＞ ふるり値 で切替可）</h3>
-                        <ul>
-                            <li><strong>対ふるり（既定）</strong>: 基準者ふるり本人の各属性ダメージと直接比較。「ふるりとの相対力」。</li>
-                            <li><strong>均整（ふるり平均）</strong>: ふるりの5属性平均ダメージを全属性の共通基準に。<strong>ふるり自身の属性偏りを補正</strong>するので、育成バランスの指針として読みやすい。</li>
-                            <li><strong>上位10名平均（ユニオン）</strong>: 各属性で <strong>SLv正規化済みダメージの上位10名平均</strong> を基準にする（プレイヤーごとに同属性最大値を採用）。未熟な属性や締め凸の頭打ちダメを排除し、「<strong>現実的に目指せる上限</strong>」を基準にできる。月をまたぐ比較には不向き。</li>
-                        </ul></section>
+                        <div class="help-callout tip">
+                            <span class="ico">📏</span>
+                            <p>ふるり値は育成効率を見るための参考指標です。属性担当・締め凸・戦闘時間の差は考慮されません。過去の自分と比べるのに向いています。</p>
+                        </div>
+                    </section>
 
                     <section id="help-plan" class="help-section">
-                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 8. 最適凸プラン算出（運営）</h2>
-                        <p>現在の残りHPから、ユニオンの<strong>総与ダメージ（＝ランキングスコア）が最大になる</strong>凸順を提案します。倒せるボスへの凸は残りHPまでしかスコアに入らない（超過分＝オーバーキルは無駄になる）ため、「どう倒すか」だけでなく「どこに何Bを入れるか」まで含めて計算します。</p>
-                        <h3>計算ルール</h3>
+                        <h2><span data-sp-icon="target" data-sp-size="17"></span> 9. あなたの凸はこう決まる <span class="help-pill">メンバー</span></h2>
+                        <p>最適凸プランは AI ではなく<strong>決まった手順の計算</strong>です。押した時点の盤面から毎回組み直し、同じ盤面なら同じ答えになります。あなたに関係する材料は4つ:</p>
                         <ul>
-                            <li>各レベル5体撃破で次レベル。<strong>Lv3を踏破すると即日「Lv4＝ボス5のみ・HP無限」が開き、そこへの凸は全額スコアに入ります</strong>（オーバーキルが存在しない）。</li>
-                            <li>Lv3踏破が見えている場合、<strong>大火力の凸はなるべくボス5へ温存</strong>し、Lv1〜3の踏破は小さめの凸でまかないます。温存された凸には 🔒 マークが付き、増えたスコア想定はヒーローの「🔒温存で増加」チップに出ます。ただし<strong>ボス5開放時刻より前にしか出られない人は温存しません</strong>（出られない時間の凸は約束できないため）。</li>
-                            <li>火力が Lv3 まで届かない場合はそのレベルで停止しますが、<strong>止まったレベルでは撃破を狙わず</strong>、オーバーキルが出ない配り方（残HPの大きいボスへ全額入れる）でスコアを最大化します。</li>
-                            <li>登録ダメージは1編成につき1回のみ使用（キャラ使い回し不可の再現）。<strong>1属性に複数の編成を提出すれば、キャラが被らなければ同属性2凸</strong>も提案されます（ボス5にも2凸可）。残りHPの小さいボスには低火力側の編成を回すなど、編成の使い分けも自動です。</li>
-                            <li><strong>🔒 予約</strong>した凸はそのまま固定され、残りの枠を組み直します。「この時刻に・このボスへ・この編成で」を本人が申請し、運営が承認したものです。<strong>得意属性の申告はプランの計算には使いません</strong>（出たい属性は予約で伝えてください）。</li>
-                            <li>低レベルは低SLv、高レベルは高SLvを優先（高SLvを後半に温存）。</li>
-                            <li>SLv未登録の新メンバーは、登録ダメージが近い既知メンバーから推定。</li>
+                            <li><strong>模擬戦データ</strong> — 「この編成でこれだけ出せる」。1編成は1回しか使いません</li>
+                            <li><strong>⏰ 戦闘可能時間</strong> — 出られる時刻の枠にしか置きません。未登録は「いつでも可」とみなして仮置きするだけで、居られる保証はありません</li>
+                            <li><strong>🔒 予約</strong> — 約束はそのまま固定し、残りの枠だけ組みます (<a href="#help-reserve">§5</a>)</li>
+                            <li><strong>ボスの残HP・済んだ凸</strong> — 倒せるボスへの凸は残HPまでしかスコアに入らないので、無駄 (オーバーキル) が出ない配り方を探します</li>
                         </ul>
-                        <div class="help-callout tip">
-                            <span class="ico">♾️</span>
-                            <p><strong>ボス5(無限)がスコアの主戦場です。</strong>Lv1〜3で倒したボスのHP合計は誰が倒しても同じ固定点。差がつくのは「踏破後にボス5へ何Bを積めるか」なので、プランは踏破を最小コストで済ませてボス5への持ち込みを最大化する形になっています。ボス5の弱点属性の模擬提出（できれば複数編成・1属性2つまで）が多いほどスコアが伸びます。</p>
+                        <h3>計算の考え方</h3>
+                        <ul>
+                            <li>目的は<strong>ユニオンの総与ダメージ (= ランキングのスコア) の最大化</strong>。Lv1〜3 の撃破は誰が倒しても同じ固定点で、差がつくのは<strong>Lv3 踏破後のボス5 (無限) に何Bを積めるか</strong></li>
+                            <li>踏破が見えていれば大火力はボス5へ温存し、Lv1〜3 は小さめの凸でまかないます。届かないレベルでは撃破を狙わず、オーバーキルの出ない配り方に切り替えます</li>
+                            <li><strong>前回の配信を尊重</strong>します — 盤面が動いていなければ人の割当は動きません。動かすのは 5% か 30B 以上よくなるときだけ</li>
+                            <li>得意属性の申告は使いません (必要ならその属性の編成を予約してください)</li>
+                        </ul>
+                        <h3>ホームでの見え方</h3>
+                        <ul>
+                            <li><strong>🎯 あなたの3凸</strong>: 🔒 予約で固定 → 配信の割当 → 空き枠 (理由つき)。プランに無い凸を報告すると、その枠は「使い終わり」になります</li>
+                            <li><strong>配信された凸プラン</strong>: どのボスに・何時ごろ・何B想定。時間割には済んだ凸が ✓ で混ざります。読んだら <strong>✅ 確認しました</strong></li>
+                            <li>再配信であなたの割当が変わったときだけ通知が来ます (ボス・時刻・編成のどれかが変わったとき)</li>
+                            <li>「<strong>運営が組み直し中です</strong>」の帯 — 運営が配信を止めているあいだも前の割当は見えます。新しい配信が入ると自動で消えます</li>
+                            <li>「⚠ 置けていません」 — あなたの予約を守れる置き方が無いとき。運営が連絡します</li>
+                            <li><strong>⏱ 律速</strong> — そのレベルの中でいちばん遅い時刻に置かれた凸の目印。その凸が終わるまで次のレベルに進めません。もっと早く出られるなら時間帯を広げると全体が前倒しになります</li>
+                        </ul>
+                    </section>
+
+                    <section id="help-plan-ops" class="help-section">
+                        <h2>🧮 10. 最適凸プラン算出 <span class="help-pill">運営</span></h2>
+                        <p>運営タブ (前日・当日) の<strong>最適凸プラン算出</strong>カード。「いまの算出がどんな条件で出たものか」が分かるように、<strong>条件を選んで → 算出</strong>の形になっています。</p>
+                        <h3>① 条件を選ぶ</h3>
+                        <ul>
+                            <li><strong>対象</strong>: 全員 / ⏰ いま出られる人だけ (夜会・朝会など、その時間に向けた即時プラン)</li>
+                            <li><strong>起点</strong>: いま / 指定の時刻から</li>
+                            <li><strong>前回の配信</strong>: 🔗 尊重 (既定) / 🆕 ゼロから</li>
+                            <li>自動で効くもの (🔒 予約・🚫 除外・✋ 今回は難しい・📤 配信中) は読み取り専用のチップで見えます</li>
+                            <li><strong>🧮 この条件で算出</strong> が唯一の算出ボタン。結果の頭に「この条件で組んだ」のスタンプが焼き込まれ、配信にも残ります (交代した運営が読めます)</li>
+                            <li>「前回の算出のあとに模擬が N 件更新」の合図が出たら組み直しどき。締め凸コンソールが手詰まりのときも、ここから組み直します</li>
+                        </ul>
+                        <h3>② 時間割 (パズル盤)</h3>
+                        <ul>
+                            <li>横に5ボス・縦に時刻。チップをタップするとその人の<strong>出られる時間だけ</strong>が残り、黒い帯に「出られる時間 / 動かせる幅」。<strong>硬い / 狭い</strong> の札は動かしにくい人</li>
+                            <li>チップをタップ (PC はドラッグ) → 光ったマスへ <strong>📌 固定</strong>。🧩 <strong>模擬ピース</strong> (提出された編成) を盤の外から置くこともできます。置いたら算出し直しです</li>
+                            <li>📌 は<strong>運営の下書き</strong>で、算出は動かせませんが本人の約束ではありません。チップの <strong>📣 お願い</strong> で本人のホームに届き、引き受けると 🔒 になります。期限が切れた 📌 は ⏰ の印つきで、まとめて外せます</li>
+                            <li>3凸が埋まっている人にピースを置くと <strong>🔁 入れ替えの確認</strong>: 約束 (🔒) と固定 (📌) は外せず、同じキャラの凸は必ず外れ、残りから1つ選びます。「入れ替えて固定する」は残す凸も 📌 にします</li>
+                            <li>「表示: すべて / 🔒 約束 / 📌 固定 / 両方」で盤を絞れます。済んだ凸は ✓ で混ざります</li>
+                        </ul>
+                        <h3>③ 承認 → 組み直し → 📤 配信</h3>
+                        <ul>
+                            <li>予約を承認したら <strong>承認して組み直す → 差分を見る → 📤 配信</strong>。配信は明示の1タップだけ (自動では配りません)。押さないままだと運営ホームのヒーローが「配信後の予約があります」で促します</li>
+                            <li>配信は前の配信を消しません。誰の割当が変わったかを後から引けます。割当が変わった人にだけ更新通知が飛びます</li>
+                            <li>「配信中止」は削除ではなく<strong>凍結</strong> — メンバーには前の割当と「組み直し中」の帯が見え続けます。新しい配信で自動解除</li>
+                            <li>📸 共有画像は表示モード (📋 リスト / 🗓 時間割) に連動。これからの凸だけを載せた、Discord に貼る紙です</li>
+                        </ul>
+                        <div class="help-callout warn">
+                            <span class="ico">⚠️</span>
+                            <p>置けなかった予約 (<strong>未達</strong>) は必ず画面に出ます。運営が解除しないと、その人の枠を押さえたままになります。</p>
                         </div>
-                        <h3>2つのモード</h3>
-                        <ul>
-                            <li><strong>👥 全員で算出</strong> — 残凸あるメンバー全員を対象。</li>
-                            <li><strong>⏰ 現在凸可能のみ</strong> — ホームで「現在の時間帯」を ON にしている人だけで算出。<br>夜会・朝会など特定時間に向けた即時プランに便利です。</li>
-                        </ul>
-                        <h3>時間帯スケジュールの見方</h3>
-                        <p>各メンバーの<strong>戦闘可能時間</strong>をもとに、それぞれの凸を「何時ごろ打つ想定か」に割り当てて表示します。</p>
-                        <ul>
-                            <li><strong>🕐 時刻ラベル</strong> — その凸を打つ想定の時間帯。「翌2時」は日付をまたいだ深夜帯（リセット前）の意味です。</li>
-                            <li><strong>「未登録」バッジ</strong> — 戦闘可能時間が未登録のメンバー。「いつでも凸できる」とみなして開放後の最速枠に仮置きしているだけで、<strong>表示された時刻に居られる保証はありません</strong>。ホームで戦闘可能時間を登録すると精度が上がります (時間割の狭いマスでは ? マークで表現)。</li>
-                            <li><strong>⏱ 律速（りっそく）</strong> — そのレベルの中で<strong>一番遅い時間帯に割り当てられた凸</strong>に付く赤い目印です。「律速」はボトルネックという意味で、<strong>この凸が終わるまで次のレベルに進めない＝レベルのクリア時刻を決めている凸</strong>を指します。</li>
-                        </ul>
-                        <div class="help-callout tip">
-                            <span class="ico">⏱</span>
-                            <p><strong>律速と締め凸は別物です。</strong>締め凸は「残HPを削り切るトドメの凸（火力の話）」、律速は「進行を遅らせている凸（時間の話）」。律速マークの人がもっと早い時間に凸できると、そのレベルのクリアが前倒しになり、翌レベルの開放も早まります。</p>
-                        </div>
-                        <h3>表示モードとオプション</h3>
-                        <ul>
-                            <li><strong>📋 リスト</strong> — レベル→ボス→凸順の縦リスト。凸ごとの詳細（SLv・編成・オーバーキル）を確認するのに向いています。</li>
-                            <li><strong>🗓 時間割</strong> — 横に5ボス、縦に時間を並べた時間割形式。スマホでは表の中だけを横スクロールできます（時間列は固定）。凸のない時間帯は「⋯」で省略。</li>
-                            <li><strong>👥 編成</strong> — ONにすると時間割の各凸チップに編成5キャラのアイコンが付きます（共有画像にも反映）。OFFですっきり表示。</li>
-                            <li>どちらの表示でも<strong>自分の凸は青くハイライト</strong>されます（右上の 👤 で選択中のプレイヤーが「あなた」）。</li>
-                        </ul>
-                        <p>📸 共有画像は表示モードに連動します: <strong>🗓 時間割</strong>を選んでいるときは正方形に近い時間割レイアウト、📋 リストのときは従来の縦リストレイアウトで生成されます。</p>
-                        <h3>📤 プランの配信</h3>
-                        <p>算出したプランは「📤 配信」ボタンで保存でき、全メンバーの<strong>ホームに「配信された凸プラン」カード</strong>として表示されます（Push通知は飛びません）。各メンバーは自分の凸予定（どのボスに・何時ごろ・何B想定）と全体表を確認できます。配信時点のデータに基づくため、状況が大きく動いたら再算出→再配信してください。</p>
                     </section>
 
                     <section id="help-remaining" class="help-section">
-                        <h2><span data-sp-icon="chart" data-sp-size="17"></span> 9. 残凸状況一覧（運営）</h2>
-                        <p>残凸ある人を「3凸残 / 2凸残 / 1凸残」のグループ別に表示します。各属性の登録ダメージが縦の色別カラムで揃って表示されるので、声をかける順番を決めやすいです。</p>
+                        <h2><span data-sp-icon="chart" data-sp-size="17"></span> 11. 残り戦闘可能メンバー <span class="help-pill">運営</span></h2>
+                        <p>残凸のある人を「3凸残 / 2凸残 / 1凸残」に分け、属性ごとの提出ダメージを縦の色つきカラムで並べます。声をかける順番を決める表です。</p>
                         <ul>
-                            <li>カラム背景は属性色の薄いストライプ（灼熱=赤 / 水冷=青 / 電撃=紫 / 鉄甲=橙 / 風圧=緑）。</li>
-                            <li>未登録属性は「–」表示。</li>
-                            <li>グループ内は「登録した属性のダメージ平均」の降順。少ない属性しか登録していなくても、その火力が高ければ上位に出ます。</li>
+                            <li>並びは「提出した属性のダメージ平均」の降順。締め凸 (締) は薄く表示し、平均には入れません。締め凸だけの人は「締のみ」で下に</li>
+                            <li><strong>🧹 整理</strong> (運営): ON にすると各セルに ✕ (除外) / ↩ (解除) が出ます。除外した提出は プラン・締め凸候補・残凸表 のすべてから外れ、本人の模擬パネルに「⚠ 運営除外」と理由が出ます。本人が保存し直すと自動で解除</li>
+                            <li>名前をタップすると、その人を相手にした<strong>🧬 育成くらべ</strong>に飛びます</li>
+                            <li>「今回は難しい」の人はこの表に出ません</li>
                         </ul>
                     </section>
 
                     <section id="help-finish-call" class="help-section">
-                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> 10. 締め凸候補（運営）+ ソフトロック</h2>
-                        <p>ボスの残HPを指定すると、過剰ダメージを抑えつつ確実に削れる候補をリストアップします（同ダメージなら凸残数が多い人を優先）。結果は Push 通知で候補メンバーに直接依頼できます。</p>
-                        <h3>戦闘準備 (ソフトロック)</h3>
-                        <p>ホームの「🎯 次の凸」や戦況タブのボスカードからボスをタップすると、そのメンバーが <strong>戦闘準備</strong> 状態になります。同じボスを別メンバーが凸ろうとすると <strong>⚠️ 警告</strong> が出て、強行すると <strong>調整中の本人に Push 通知</strong> が飛びます。</p>
+                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> 12. 締め凸の依頼 <span class="help-pill">運営</span></h2>
+                        <p>運営タブ (当日) の<strong>締め凸候補検索</strong>カード = 🏁 <strong>締め凸コンソール</strong>。残HPに対して「<strong>今</strong>打てる手」と「<strong>待って</strong>打てる手」を並べます。</p>
                         <ul>
-                            <li>戦闘準備は <strong>30分で自動失効</strong>。凸報告で自動解除</li>
-                            <li>「⏪ 解除」 で手動キャンセル</li>
-                            <li>ボスカードは <strong>戦闘中アニメ</strong>（🔥 + ⚔️ スイング）で視覚的に共有</li>
-                            <li>ホーム/戦況タブどちらからでも同じフローでタップ可能</li>
+                            <li>候補はオーバーキルを抑えつつ確実に削れる順 (同じダメージなら残凸の多い人)。戦闘可能時間・今回は難しい・別ボスで了承済みの人 (残り0) は外れます</li>
+                            <li><strong>1案ずつ依頼</strong>、または<strong>複数案を同時に打診</strong> → 本人が 了承 / 難しい → 運営が「この案で確定」→ 選ばれなかった人に見送りが届きます</li>
+                            <li>了承は<strong>先に枠を取ってから</strong>成立します (枠が取れなければ了承になりません)。返事の状態は 🔁 <strong>直近の動き</strong> で追えます (返事待ち・期限切れが上)</li>
+                            <li>撃破・レベル進行でその依頼は自動で片づきます (履歴はアクティビティログに)</li>
+                            <li>手詰まり (今も待つも無い) なら「プランを組み直す ›」から算出へ</li>
                         </ul>
+                        <h3>戦闘準備 (ソフトロック)</h3>
+                        <p>ホームの「🎯 次の凸」や戦況のボスカードからボスをタップすると<strong>戦闘準備</strong>になり、同じボスへ別の人が行こうとすると ⚠️ が出ます。30分で自動失効、凸報告で自動解除、⏪ で手動解除。</p>
                     </section>
 
                     <section id="help-notify" class="help-section">
-                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> 11. 通知を受け取る — 全員むけ手順</h2>
-                        <p>運営からの「締め凸お願いします🙏」「レイド開始のお知らせ」などを、
-                            Discord通知のように<strong>スマホやPCに直接プッシュ</strong>できます。PADを開いていなくても届きます。
-                            セットアップは <strong>3ステップ</strong> です。</p>
+                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> 13. 通知を受け取る — 全員むけ手順</h2>
+                        <p>締め凸のお願い・予約の承認・配信の更新・戦闘可能時間の開始 などを、Discord のように<strong>スマホやPCへ直接プッシュ</strong>します。PAD を開いていなくても届きます。</p>
                         <div class="help-callout">
                             <span class="ico">📲</span>
-                            <p>通知は<strong>端末ごとに1回</strong>のセットアップが必要です。スマホとPC両方で受け取りたい場合は、それぞれの端末で設定してください。</p>
+                            <p>通知は<strong>端末ごとに1回</strong>のセットアップが必要です。スマホとPC両方で受け取るなら、それぞれで設定してください。</p>
                         </div>
-
-                        <h3>🍎 iPhoneの方は最初に「ホーム画面に追加」</h3>
-                        <p>iPhone (iOS) は仕様上、<strong>ホーム画面から開いたアプリ</strong>でないと通知を受け取れません。
-                            Safariのタブのままだと「通知を有効にする」ボタンを押しても何も起きないので、必ず最初にホーム画面追加を済ませてください。</p>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>Safari</strong> で PAD を開く（Chrome や LINE内ブラウザは不可）</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>画面下の<strong>共有ボタン</strong>（□から↑が出ているマーク）をタップ</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>「ホーム画面に追加」</strong> → 「追加」</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>以降は<strong>ホーム画面のPADアイコン</strong>から開いてください（ブラウザ経由ではなく）</div></div>
+                        <h3>🍎 iPhone は最初に「ホーム画面に追加」</h3>
+                        <p>iOS は<strong>ホーム画面から開いたアプリ</strong>でないと通知を受け取れません。Safari のタブのままだと「通知を有効にする」を押しても何も起きません。</p>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>Safari</strong> で PAD を開く (Chrome や LINE 内ブラウザは不可)</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>画面下の<strong>共有ボタン</strong> (□から↑) → <strong>「ホーム画面に追加」</strong> → 追加</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>以降は<strong>ホーム画面の PAD アイコン</strong>から開く</div></div>
                         <div class="help-callout tip">
                             <span class="ico">🤖</span>
-                            <p>Android（Chrome）/PC（Chrome / Edge / Firefox）は<strong>そのままでOK</strong>。ホーム画面追加は不要です。</p>
+                            <p>Android (Chrome) / PC (Chrome / Edge / Firefox) は<strong>そのままで OK</strong>。</p>
                         </div>
-
-                        <h3>① ホームで「通知を有効にする」</h3>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>画面右上の <span class="help-pill">👤</span> をタップして<strong>自分の名前</strong>を選ぶ</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>ホームの <strong>「🔔 Push通知設定」</strong> までスクロール</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>「🔔 通知を有効にする」</strong> ボタンをタップ</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>ブラウザが「<strong>通知を許可しますか?</strong>」と聞いてくるので <strong>「許可」</strong> をタップ</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">5</div><div>「<span style="color:var(--ok);font-weight:700;">✅ Push通知を有効化済み (この端末)</span>」と出れば登録完了</div></div>
+                        <h3>① MY設定 › 🔔 Push通知設定</h3>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div>上の帯の名前をタップして<strong>自分</strong>を選ぶ</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div>ホームの <strong>MY設定 › 🔔 Push通知設定</strong> → <strong>「🔔 通知を有効にする」</strong></div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>ブラウザの「通知を許可しますか?」に <strong>許可</strong></div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>「<span style="color:var(--ok);font-weight:700;">✅ Push通知を有効化済み (この端末)</span>」と出れば完了</div></div>
                         <div class="help-callout warn">
                             <span class="ico">⚠️</span>
-                            <p>もし「許可」を聞かれずに何も起こらない場合 → 以前に「不許可/ブロック」を押したまま記憶されています。<br>
-                                <strong>Chrome (PC)</strong>: アドレスバーの🔒アイコン → 通知 → 「許可」<br>
-                                <strong>iPhone (Safari)</strong>: 設定アプリ → 通知 → 「しりすこPAD」 → 通知を許可<br>
-                                <strong>Android (Chrome)</strong>: 設定 → サイト設定 → 通知 → 該当サイトを許可
-                            </p>
+                            <p>「許可」を聞かれずに何も起きない → 以前の「ブロック」が記憶されています。<br>
+                                <strong>Chrome (PC)</strong>: アドレスバーの🔒 → 通知 → 許可<br>
+                                <strong>iPhone (Safari)</strong>: 設定アプリ → 通知 → しりすこPAD → 許可<br>
+                                <strong>Android (Chrome)</strong>: 設定 → サイト設定 → 通知 → 該当サイトを許可</p>
                         </div>
-
-                        <h3>② 受信したい時間帯を選ぶ（とても重要）</h3>
-                        <p>初期設定は<strong>すべての時間帯がOFF</strong>になっています。<strong>最低1つはON</strong>にしないと通知は一切届きません。</p>
-                        <p>ホームの <strong>「🕐 戦闘可能時間」</strong>で、自分が通知を受けられる時間帯をタップして ON にしてください。</p>
+                        <h3>② 受信時間 = ⏰ 戦闘可能時間</h3>
+                        <p>通知の受信時間は <strong>MY設定 › ⏰ 戦闘可能時間</strong> と同じものです。全部 OFF だと、時間帯で絞る通知は一切届きません。</p>
                         <ul>
-                            <li>AM 5時〜翌 AM 5時の <strong>24時間ぶんを1時間単位</strong>で個別に ON/OFF できます (24スロット)</li>
-                            <li>橙色の縦線が日付の変わり目 (24時→0時)</li>
-                            <li>現在時刻のスロットには右上に橙色の ● マークがつきます</li>
+                            <li>5時〜翌5時の24時間を1時間単位で ON/OFF</li>
+                            <li><strong>あなた宛てで、返事や行動が要る通知</strong> (締め凸のお願い・📣 お願い・予約の承認/却下・催促・配信の更新・戦闘可能時間の開始) は<strong>時間帯に関係なく届きます</strong>。時間帯で絞られるのは「強行凸の警告」など周りへの通知だけ</li>
+                            <li>時間外も全部見たい人は <strong>🔔 いつでも受け取る</strong> を ON に</li>
                         </ul>
-                        <div class="help-callout">
-                            <span class="ico">⏰</span>
-                            <p>仕組み：通知が送信された時刻にちょうど<strong>その時間帯をONにしている人</strong>だけに届きます。
-                                夜会・朝会など、その時間に動ける人だけを呼び出せます。
-                                <br>※ 運営の「全員に送信」「緊急通知」はこの時間帯設定を無視して届きます。</p>
-                        </div>
-
-                        <h3>③ テストして動作確認</h3>
-                        <p><strong>「🧪 ローカル通知テスト」</strong> を押すと、その場でテスト通知が出ます。
-                            ここで通知が見えれば、運営からの本物の通知も受け取れる状態です。</p>
-
-                        <h3>📨 通知を後から確認する</h3>
-                        <p>スマホで通知を一度タップしてしまうと内容が消えてしまうことがあります。そんな時は
-                            ホームの <strong>「📨 受け取った通知」</strong> をご覧ください。
-                            自分宛・全員宛に送られた通知が新しい順に記録されており、本文も含めて読み返せます。</p>
-                        <div class="help-callout tip">
-                            <span class="ico">🎉</span>
-                            <p>これで設定完了！ Discord通知と同じ感覚で運営からのお知らせ・締め凸依頼が届きます。
-                                緊急の締め凸も逃しません。</p>
-                        </div>
-
-                        <h3>🚫 通知が来ない時のチェックリスト</h3>
+                        <h3>③ テスト</h3>
+                        <p><strong>「🧪 ローカル通知テスト」</strong> で通知が出れば、運営からの本物も届く状態です。</p>
+                        <h3>🚫 通知が来ないときのチェック</h3>
                         <ol>
-                            <li>ホームの <strong>「🕐 戦闘可能時間」</strong> に1つでもチェックが入っているか?（全OFFだと永久に届きません）</li>
-                            <li>「<span style="color:var(--ok);font-weight:700;">✅ Push通知を有効化済み</span>」と表示されているか?</li>
-                            <li>ブラウザがこのサイトの通知を<strong>ブロック</strong>していないか? (上のWarn参照)</li>
-                            <li><strong>iPhoneの場合</strong>: ホーム画面のPADアイコンから開いているか? Safariタブからだと通知が動きません</li>
-                            <li>端末が<strong>サイレント/おやすみモード/集中モード</strong>になっていないか?</li>
-                            <li>「🧪 ローカル通知テスト」も見えない場合 → OSの通知設定でブラウザ/PADの通知が許可されているか確認</li>
-                            <li>機種変更/ブラウザ変更後 → 新しい端末で再度「通知を有効にする」が必要</li>
+                            <li>「✅ Push通知を有効化済み」と出ているか</li>
+                            <li>iPhone: ホーム画面のアイコンから開いているか (Safari のタブでは動きません)</li>
+                            <li>ブラウザがこのサイトの通知をブロックしていないか (上の Warn)</li>
+                            <li>端末がサイレント / おやすみ / 集中モードになっていないか</li>
+                            <li>「🧪 ローカル通知テスト」も出ない → OS の通知設定でブラウザ / PAD が許可されているか</li>
+                            <li>機種変更・ブラウザ変更のあとは、新しい端末でもう一度「通知を有効にする」</li>
                         </ol>
+                        <p>届いた通知は ホームの <strong>📨 受け取った通知</strong> で読み返せます。</p>
                     </section>
 
-                    <section id="help-sim" class="help-section">
-                        <h2><span data-sp-icon="flask" data-sp-size="17"></span> 12. シミュレータ</h2>
-                        <h3>📈 ダメージ予測</h3>
-                        <p>プレイヤーと目標SLvを指定すると、SLv補正係数に基づき到達時の予測ダメージを算出します。育成投資の見当付けに便利です。</p>
-                        <h3>🎯 ふるり値試算</h3>
-                        <p>PT属性 と 想定ダメージを指定すると、その値で出した場合のふるり値を試算します（OCR対応）。「次やったら基準のどれくらいになる？」を確認できます。</p>
+                    <section id="help-analysis" class="help-section">
+                        <h2><span data-sp-icon="flask" data-sp-size="17"></span> 14. 分析タブ</h2>
+                        <p>上のセグメントで 📊 実績 / ⚡ ふるり値 / 🧬 育成 / 🧪 シミュレータ / 🌏 GB比較 を切り替えます。</p>
+                        <h3>📊 実績</h3>
+                        <p>終わったレイドの与ダメ・凸数のランキングとグラフ。締め凸 (締) は薄く出し、平均に入れません。</p>
+                        <h3>⚡ ふるり値</h3>
+                        <p><a href="#help-fururi">§8</a>。3つの基準モードで切り替えられます。</p>
+                        <h3>🧬 育成 (育成くらべ)</h3>
+                        <p>レイドのあとにスコアを詰める場所。「A さんのこの編成すごいな」→ その人の育成と自分の同じキャラを並べます。</p>
+                        <ul>
+                            <li><strong>どのレイドを見るか</strong>を上で選びます (既定は取り込みのある本番の最新回)。編成は<strong>その回の凸記録</strong>から作ります</li>
+                            <li><strong>相手</strong> = メンバー、または <strong>👥 ユニオン全体</strong> (同じ画面がそのまま順位表に) × <strong>見方</strong> = 使った編成で / キャラ別で</li>
+                            <li>読み方: 結論を先に (合計と差) → 差の大きい順 → 差のある項目だけチップに。全9項目とオーバーロードは畳んであります</li>
+                            <li><strong>⚡ 火力役</strong>: 火力はバースト3の火力役の「有利コード + 攻撃」でほぼ決まるので、その体だけの値を比べます。アイコンを押して手で足し引きできます</li>
+                            <li>持っていない人は 0 で最下位に並べません (「持っていない」と「育っていない」は別)</li>
+                            <li>載るのは BlaBlaLINK でゲームカードを公開している人だけ。取り込みは運営の作業です (<a href="#help-ops">§15</a>)</li>
+                        </ul>
+                        <h3>🧪 シミュレータ</h3>
+                        <ul>
+                            <li><strong>📈 ダメージ予測</strong>: 人と目標 SLv を指定 → SLv 補正で到達時のダメージ。既定はいま名乗っている人</li>
+                            <li><strong>逆引き: 目標ダメージ (B)</strong> → 届く最小の SLv が出て、予測と順位表も動きます</li>
+                            <li><strong>締め凸の置き換え</strong>: 締め凸は残HP分しか記録されないので、「3分間戦闘した結果」に置き換えた合計を基準にできます (端末に覚えます)</li>
+                            <li><strong>🎯 ふるり値試算</strong>: PT属性と想定ダメージ (B でも桁でも) → そのときのふるり値</li>
+                        </ul>
+                        <h3>🌏 GB比較</h3>
+                        <p>グローバル版のふるり値チェッカーに集まった同じ月・同じボスのデータと、うちのユニオンを属性ごとに比べます。</p>
                     </section>
 
                     <section id="help-ops" class="help-section">
-                        <h2><span data-sp-icon="wrench" data-sp-size="17"></span> 13. 戦況タブ（運営モード）</h2>
+                        <h2><span data-sp-icon="wrench" data-sp-size="17"></span> 15. 運営タブと運営担当 <span class="help-pill">運営</span></h2>
+                        <h3>👑 運営担当</h3>
                         <ul>
-                            <li><strong>ボス状況カード</strong> — 5体ボスの残HP/凸数/戦闘中メンバーを俯瞰。各ボスに <strong>「⚔️ このボスで凸する」</strong>（戦闘準備）、戦闘中なら <strong>「📷 結果を報告」/「⏪ 解除」</strong> も追加表示</li>
-                            <li><strong>ボスHP更新</strong> — 各ボスの残HPを直接編集。総HPを次LVの標準値にすると <code>current_level</code> も自動昇格</li>
-                            <li><strong>代理凸を報告</strong> — 本人不在の凸を運営が代理で記録。1件入力 or BlaBlaLINK 3凸一括取込から選択。同一ボスへの重複は警告/スキップされ、HP減算はチェックボックスで選択 (OFFなら別途ボスHP更新で同期)。入力者名がログに残る</li>
-                            <li><strong>🔍 提出漏れチェック</strong> — BlaBlaLINK のユニオン全体スクショから各メンバーの凸消化数を読み取り、PADの登録数と突き合わせ。未提出者には 📣 催促Push を一斉送信でき、✏️ からそのまま代理凸へ。全体画面にはボスが写らないため登録は個人スクショで行う役割分担</li>
-                            <li><strong>🪞 模擬提出チェック</strong> — 前日運用向け。今シーズンの模擬戦データ提出状況 (未提出/一部/5属性) を一覧し、未提出者へ催促Pushを一斉送信</li>
-                            <li><strong>🛠 運営モード</strong> — 戦況タブ上部のトグル。OFF (既定) では操作系カード (締め凸候補・プラン算出・運営アクション・一斉通知・シーズン制御) を非表示にし、メンバーはボス状況・オンライン/調整中・残り戦闘可能メンバーの3枚だけのすっきりした画面になる (折りたたみ無し)。ONは端末に記憶されない (起動のたびにOFFから — 誤操作防止)。運営ONでは運営アクション以外の各カードを見出しタップで折りたためる。当日はボス状況・残り戦闘可能メンバー・👥メンバー状況・運営アクションだけが既定で開き、開閉は前日/当日ごとに記憶される。最上部の 2×2 (HP更新・残凸・未完・締め凸未返答) をタップすると該当カードが開く</li>
-                            <li><strong>HP鮮度</strong> — ボス状況の見出しに「HP更新 ○分前」を表示 (30分以上で⚠️)。ボスHPは30秒毎に自動再取得される</li>
-                            <li><strong>シーズン作成</strong> — 次回シーズンを作成。<strong>前回ダメージ引継ぎは廃止</strong>、メンバーは期間中に模擬戦提出を行う運用。🧪テストシーズンのみ動作確認用に模擬戦データを自動シード (前回実績 + ランダム補完、終了時に復元)</li>
-                            <li><strong>✏️ シーズン確認・編集</strong> — シーズン制御カードに走っているシーズンのサマリー (月キー・ハード日・ボス構成) を表示。ハード日・月キー・<strong>属性 (ボスコード)</strong>・ボス名はここから修正できる (属性を直すと記録済みの凸も追随。配信済みプランは再算出・再配信が必要)。<strong>級 (HP規模) はHPと連動するため変更不可</strong> — その場合はシーズン作り直しで対応</li>
-                            <li><strong>🧪 テストシーズン</strong> — 実シーズンを汚さない検証用。作成時に現ダメージとキャラマスタをスナップショット、「削除して元に戻す」で完全復元 (テスト中に登録されたキャラマスタも自動削除)</li>
-                            <li><strong>🧪 クイックテストシーズン</strong> — ワンクリックでテストボス1〜5の独立環境を生成。OCR/スクショ不要</li>
-                            <li><strong>📣 オンライン / 調整中 メンバー</strong> — リアルタイム共有 (10秒毎ポーリング)。アバター付きで誰が何をしているか即把握</li>
-                            <li><strong>メンバー管理 (設定タブ)</strong> — 改名・脱退・復活・完全削除。アバター付きで判別しやすい (戦闘中の操作ではないため設定タブ側に集約)</li>
-                            <li><strong>Push通知 一斉送信</strong> — 購読者全員に通知（受信時間帯フィルタ適用）</li>
+                            <li><strong>マスター運営</strong> (ふるり) だけが、設定タブの <strong>👑 マスター運営</strong> 区画で<strong>運営担当</strong>を任命できます</li>
+                            <li>任命された人は名乗った時点で<strong>常に運営画面</strong> (戦況タブが「運営」+ レンチのアイコンに)。マスターだけ 🛠 トグルでメンバー画面と行き来できます</li>
+                            <li>メンバーの申請・返事は<strong>運営担当の全員</strong>に通知されます (押した本人を除く)</li>
+                            <li>これは誤操作防止と通知の宛先のための役割分けです (ログインの仕組みではありません)</li>
+                        </ul>
+                        <h3>段階で主語が変わる</h3>
+                        <p>運営タブは<strong>段階</strong> (自動判定・テスト用に手動で上書き可) で見せるカードが変わります。先頭に 段階ヘッダ → ヒーロー (いちばん急ぐ1つ) → チェックリスト (前日・終了) → コックピット (当日)。段階外のカードは末尾の「その他」へ。</p>
+                        <ul>
+                            <li><strong>準備</strong> (シーズン無し): シーズン制御 (作成 / テスト作成) ・ 一斉通知 ・ <strong>🧬 育成データの取り込み</strong> (新メンバーのぶんを前のレイドの記録として取り直す)</li>
+                            <li><strong>前日</strong>: 👥 メンバー状況 (模擬 / SLv / 時間帯 / 通知 の要対応と催促) ・ 🔒 凸の予約 (承認) ・ Discord 告知テンプレ ・ 最適凸プラン算出</li>
+                            <li><strong>当日</strong> (ハード日 5時〜翌4時): 戦闘中の運営アクション (ボスHP更新 / 代理凸 / 提出漏れチェック) ・ ボス状況 ・ 締め凸候補検索 ・ 📈 消化のペース ・ 🔁 直近の動き ・ 残り戦闘可能メンバー ・ 最適凸プラン算出</li>
+                            <li><strong>終了</strong> (翌日以降まだアクティブ): Discord 告知テンプレ ・ シーズン制御 (終了 / リセット・バックアップ保存へ) ・ 🧬 育成データの取り込み</li>
+                            <li><strong>その他 › メンテナンス</strong>: 通知状況 ・ アクティビティ ・ キャラマスタ ・ バックアップ保存</li>
+                        </ul>
+                        <h3>当日に見る2枚</h3>
+                        <ul>
+                            <li><strong>📈 消化のペース</strong>: どこまで消化したか、直近2時間のペースで使い切る見込み (翌5時を越えるなら赤)</li>
+                            <li><strong>🔁 直近の動き</strong>: 誰に何を頼んでいて誰の返事を待っているか。返事待ち・期限切れが上、直近の凸は添え</li>
+                        </ul>
+                        <h3>🧬 育成データの取り込み (準備・終了)</h3>
+                        <div class="help-flow-step"><div class="help-flow-num">0</div><div><strong>どのレイドの育成か</strong>を選ぶ (既定は凸記録のある最新)。レイドのあとに入った人のぶんも、そのレイドの記録として取り込めます。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>識別子のひも付け</strong>: BlaBlaLINK のリンク (?uid=…) をそのまま貼る。入れ替えが多いときは <strong>📋 名簿を読み取るブックマークレット</strong> — BlaBlaLINK にログインした状態で (BlaBlaLINK 内ならどのページでも) 実行し、出てきた「名前 と ID」を貼って名前で突き合わせます。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>相手を絞る</strong>: 全員 / 未取り込みの人だけ (準備段階の既定) / 選んだ人 → 取り込み用のブックマークレットをコピー → BlaBlaLINK で開発者ツールを閉じたまま実行。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div>出てきた <code>SPG1-</code> の文字列を貼って<strong>取り込む</strong>。保存は追加・更新だけ (消しません)。</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>取れなかった人と理由。非公開の人には <strong>📣 公開をお願いする</strong> で本人に届きます。</div></div>
+                        <h3>設定タブの 👑 マスター運営 区画</h3>
+                        <ul>
+                            <li><strong>アプリの版のしめ切り</strong> (互換ゲート) — 古い版のアプリに 凸プランの表示・凸の報告・配信 をさせない。全員に行き渡ってから締めます</li>
+                            <li><strong>👑 運営担当</strong> の任命 / <strong>メンバー管理</strong> (改名・脱退・復活) / <strong>復元 (巻き戻し)</strong> — 全員を巻き戻す最高危険操作</li>
                         </ul>
                         <h3>🗓 当日運用チェックリスト</h3>
                         <ul>
-                            <li><strong>開始前</strong> — 🪞模擬提出チェックで未提出ゼロを確認 → プラン算出 → 📤配信 + <strong>📸画像をDiscordにも貼っておく</strong>（サーバ障害時のバックアップになる）</li>
-                            <li><strong>進行中 (1〜2時間ごと)</strong> — 🔍提出漏れチェック → 催促Push or 代理凸。「HP更新 ○分前」が⚠️になっていたらボスHP更新</li>
-                            <li><strong>戦況が動いたら</strong> — プラン再算出 → 再配信（古い配信はメンバー側に⚠️が自動表示される）</li>
-                            <li><strong>障害時</strong> — Supabase/GitHub Pagesが落ちても、事前に貼った📸画像とDiscordで手動運用に切替。復旧後に代理凸でまとめて登録すればデータは追いつく</li>
-                            <li><strong>凍結</strong> — レイド当日はアプリの改修（mainへのpush）をしない。緊急修正のみ</li>
-                            <li><strong>禁止</strong> — 当日の「シーズン作成」ボタンは触らない（模擬戦データが全クリアされる。誤操作時は件数つき警告が出る）</li>
+                            <li><strong>前日</strong> — 👥 メンバー状況の要対応をゼロに (催促は1人ずつの文面で) → 予約の承認 → 🧮 算出 → 📤 配信 + 📸 画像を Discord にも貼る (障害時の紙)</li>
+                            <li><strong>当日 1〜2時間ごと</strong> — 🔍 提出漏れチェック → 催促 or 代理凸。「HP更新 ○分前」のピルが赤ければボスHP更新</li>
+                            <li><strong>約束は守る</strong> — 再算出しても 🔒 は動きません。動かすときは本人に 📣 で聞く。配信は差分を見てから</li>
+                            <li><strong>障害時</strong> — 事前の 📸 画像と Discord で手動運用へ。復旧後に代理凸でまとめて登録</li>
+                            <li><strong>凍結</strong> — レイド当日はアプリを改修しない。「シーズン作成」も当日は触らない</li>
                         </ul>
                     </section>
 
                     <section id="help-data" class="help-section">
-                        <h2><span data-sp-icon="refresh" data-sp-size="17"></span> 14. データの流れ</h2>
-                        <p>下記のように、入力されたデータは PAD 全体で連動して使われます。</p>
-                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>本番凸</strong> → <span class="help-pill">attacks</span> テーブルに記録（ホームの凸報告）</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>模擬戦データ</strong> → <span class="help-pill">player_damages</span> に記録（模擬タブのダメージ入力）</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>レイド終了時</strong> → 該当月の JSON にスナップショット。これが次月の<strong>ふるり値基準</strong>になる。JSON到着時には<strong>確定SLvが自動でホームに同期</strong>される (手動更新不要)</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">4</div><div><strong>次月シーズン作成</strong> → 前月実績ダメージを各メンバーの初期 <span class="help-pill">player_damages</span> として自動シード</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">5</div><div>個人の<strong>レーダー</strong>・運営の<strong>最適プラン</strong>・<strong>残凸表</strong>・<strong>ふるり値ランキング</strong>すべてに即時反映</div></div>
+                        <h2><span data-sp-icon="refresh" data-sp-size="17"></span> 16. データの流れ</h2>
+                        <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>模擬戦データ</strong> (模擬タブ) → 残り戦闘可能メンバー・最適凸プラン・締め凸候補・ふるり値レーダー</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>⏰ 戦闘可能時間 + 今期の確認</strong> (MY設定) → プランの時間割・締め凸候補・通知の受信時間・催促の対象</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>🔒 予約</strong> → 承認で固定 → 算出 → 📤 配信 → 各自のホームの3枠 (確認しました / 変更の通知)</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div><strong>凸報告</strong> → 残HP減算・予約の消し込み・戦闘準備の解除 → 撃破やレベル開放の通知・締め凸依頼の片づけ</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">5</div><div><strong>レイド終了</strong> → 月次の JSON にスナップショット (次のふるり値の基準・確定 SLv の同期) → 🧬 育成データの取り込み → 育成くらべ</div></div>
                         <div class="help-callout tip">
                             <span class="ico">🔒</span>
-                            <p>ふるり値の<strong>基準</strong>は月途中で変わりません。誰かが模擬戦データを更新しても、その人個人のふるり値だけ動き、他人との比較が歪まないようにしています。</p>
+                            <p>ふるり値の基準は月の途中で変わりません。誰かが模擬を更新しても、その人のふるり値だけ動きます。</p>
                         </div>
                     </section>
 
                     <section id="help-faq" class="help-section">
-                        <h2>❓ 15. よくある質問</h2>
+                        <h2>❓ 17. よくある質問</h2>
                         <h3>Q. 模擬戦で同じ属性に何度も挑戦しました。どれを提出？</h3>
-                        <p>一番高いダメージのものを提出してください（PAD側は最後に入れた値を保持します）。</p>
-                        <h3>Q. 締め凸でダメージが想定より低く記録されました</h3>
-                        <p>模擬タブのダメージ欄を本来のベスト出力に手動で上書きしてください（<a href="#help-finisher">§6</a>）。</p>
-                        <h3>Q. レーダーチャートに値が出ません</h3>
-                        <p>あなたの SLv が直近の実シーズンで未登録か、属性ダメージが未入力の可能性があります。
-                            未入力属性に値を入れる、または運営にユニオン参加時の SLv を登録してもらってください。</p>
+                        <p>いちばん高いダメージを。キャラの被らない別編成なら2つ目の編成として提出できます (<a href="#help-mock">§4</a>)。</p>
+                        <h3>Q. 締め凸でダメージが低く記録されました</h3>
+                        <p>本番の記録はそのままで構いません (「締」バッジが付き、平均から外れます)。模擬タブの値は本来のベスト出力にしておいてください (<a href="#help-finisher">§7</a>)。</p>
+                        <h3>Q. 予約したのにプランに載っていません</h3>
+                        <p>承認待ちか、置けなくなっている (⚠ 置けていません) かのどちらかです。ホームの枠に理由が出ます。約束の時刻を過ぎた予約は運営が解除します (<a href="#help-reserve">§5</a>)。</p>
+                        <h3>Q. 配信されたプランが「組み直し中」のままです</h3>
+                        <p>運営が配信を止めています。前の割当は見えたままで、新しい配信が入ると自動で置き換わります (<a href="#help-plan">§9</a>)。</p>
                         <h3>Q. 通知が来ません</h3>
-                        <p>初期設定では受信時間帯がすべてOFFのため、最低1つはONにする必要があります。詳細な手順とチェックリストは <a href="#help-notify">§11</a> をご覧ください。</p>
+                        <p>あなた宛ての通知は時間帯に関係なく届きます。届かないなら端末側の設定です。<a href="#help-notify">§13</a> のチェックリストを上から。</p>
+                        <h3>Q. 戦闘可能時間を毎回入れ直すのですか？</h3>
+                        <p>時間帯は残ります。シーズンごとに <strong>今期の確認</strong> (✅ 今回の参加時間を確認 / 今回は難しい) だけ押してください (<a href="#help-mypage">§3</a>)。</p>
                         <h3>Q. 最適プランで Lv3 まで届きません</h3>
-                        <p>現状の登録ダメージでは火力不足という想定です。各メンバーの育成 (SLv) や模擬戦スコアを最新化することで届く可能性があります。</p>
-                        <h3>Q. 凸プランの「⏱律速」ってなんですか？</h3>
-                        <p>「律速（りっそく）」はボトルネック＝<strong>全体のスピードを決めてしまっている一番遅い工程</strong>のことです。凸プランでは、そのレベルの中で一番遅い時間帯に割り当てられた凸に付きます。この凸が終わるまで次のレベルに進めないため、律速の人がもっと早い時間に凸できるとレベル攻略が前倒しになります。締め凸（トドメを刺す凸）とは別の概念です。詳しくは「<a href="#help-plan">8. 最適凸プラン算出</a>」を参照。</p>
+                        <p>いまの提出ダメージでは火力不足という判定です。届かないレベルではオーバーキルの出ない配り方に切り替わります。模擬や SLv を最新にすると届くことがあります。</p>
+                        <h3>Q. 「⏱ 律速」って？</h3>
+                        <p>そのレベルの中でいちばん遅い時刻に置かれた凸です。それが終わるまで次のレベルに進めません。時間帯を広げられる人がいれば全体が前倒しになります。</p>
+                        <h3>Q. 育成くらべに自分が出ません</h3>
+                        <p>BlaBlaLINK でゲームカードが非公開だと取れません。公開にしてから、運営に取り込みを頼んでください (<a href="#help-analysis">§14</a>)。</p>
                         <h3>Q. 新メンバーで SLv が分かりません</h3>
-                        <p>登録ダメージが近い既存メンバーの SLv を借りて推定計算します（最新月の値を使うのでパワークリープの影響を受けません）。</p>
+                        <p>提出ダメージの近い既存メンバーの SLv を借りて推定します (最新月の値を使うのでパワークリープの影響を受けません)。</p>
+                        <h3>Q. 画面が1列のままです / 上の帯が消えました</h3>
+                        <p>2列になるのは幅 700px 以上です。1180px 以上 (またはスマホ横) では上の帯が左のサイドバーになり、名前の切替と ↻ は足元にあります (<a href="#help-overview">§1</a>)。</p>
                     </section>
                 </div>
             </div>
@@ -6760,8 +6843,8 @@
                 chapterTag: 'はじめに',
                 stepLabel: 'CHAPTER 01',
                 title: 'しりすこPADへ\nようこそ',
-                body: 'これから数分で、メンバーが知っておきたい主要機能を <strong>7つのステップ</strong> でご紹介します。<br><br>途中で「スキップ」してもOK。後で <strong>設定タブ → ガイド</strong> からいつでも再生できます。',
-                tip: '画面下の黒い丸メニューが移動の起点です (中央の🏠=ホーム)。下にスクロールすると自動で隠れ、少し上に戻すと出てきます。',
+                body: 'これから数分で、メンバーが知っておきたいことを <strong>8つのステップ</strong> でご紹介します (2026-09 の画面に合わせて更新)。<br><br>途中で「スキップ」してもOK。後で <strong>設定タブ → ガイド / チュートリアル</strong> からいつでも見返せます。',
+                tip: '画面下の白い帯が移動の起点です (模擬 / 戦況 / ホーム / 分析 / 設定。いま居るタブだけ黒い円で持ち上がります)。PC や横画面ではカードが2列になり、広い画面では左のサイドバーに変わります。',
                 accentColor: '#7A5AF8', accentDark: '#6C42F0',
                 showMiniScreen: true,
             },
@@ -6770,57 +6853,85 @@
                 chapterTag: '① 最初に',
                 stepLabel: 'CHAPTER 02',
                 title: 'アプリ化と\nPush通知',
-                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>その後、通知が未設定ならホームの <strong>📌次にやること</strong> が「🔔通知を設定しよう」と案内してくれるので、そのボタンからONにするだけです。',
-                tip: 'iPhone はアプリ化しないと通知が届きません。必ず最初に。',
+                body: 'まず<strong>ホーム画面に追加</strong>してアプリ化してください。<br><br>📱 <strong>iPhone Safari</strong>: 共有 (□↑) → 「ホーム画面に追加」<br>📱 <strong>Android</strong>: ⋮ → 「アプリをインストール」<br><br>次に、上の帯の名前をタップして<strong>自分を選び</strong>、ホームの <strong>MY設定 → 🔔 Push通知設定</strong> で「通知を有効にする」。締め凸のお願い・予約の承認・配信の更新はここに届きます。',
+                tip: 'iPhone はアプリ化しないと通知が届きません。必ず最初に。あなた宛ての通知は時間帯に関係なく届きます。',
                 accentColor: '#9B4DFF', accentDark: '#7C3AED',
             },
             {
                 emoji: '⏰',
                 chapterTag: '② 戦闘可能時間',
                 stepLabel: 'CHAPTER 03',
-                title: '戦闘できる時間を\n教えてください',
-                body: 'ホームの <strong>⚙️ MY設定 → ⏰ 戦闘可能時間</strong> で、自分が動ける時間帯を塗ります (未登録なら 📌次にやること が案内します)。下のデモで実際に触ってみてください👇',
+                title: '戦闘できる時間と\n今期の確認',
+                body: 'ホームの <strong>MY設定 → ⏰ 戦闘可能時間</strong> で、自分が動ける時間帯を塗ります。凸プランの時間割・締め凸候補・通知の受信時間の全部がこれを元にします。下のデモで触ってみてください👇<br><br>シーズンごとに <strong>✅ 今回の参加時間を確認</strong> か <strong>今回は難しい</strong> を押すのも忘れずに。押していないと「未確認」として催促が届きます。',
                 demo: 'avail',
-                tip: '⏳ 当日いつ動けるか読めない人は「隙間時間型」、時間外でも通知を見たい人は「🔔 いつでも受け取る」をONに (設定画面にあります)。',
+                tip: '⏳ 当日いつ動けるか読めない人は「隙間時間型」、時間外の通知も見たい人は「🔔 いつでも受け取る」を ON に。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
             },
             {
                 emoji: '⚔️',
-                chapterTag: '③ データ提出',
+                chapterTag: '③ 模擬の提出',
                 stepLabel: 'CHAPTER 04',
                 title: '模擬戦データを\n提出する',
-                body: '<strong>模擬タブ</strong>で、各属性のPTで出せる<strong>ベストダメージ</strong>を登録します。この数値があなたの火力として最適凸プランの計算に使われます。下のデモで提出の流れを体験👇',
+                body: '<strong>模擬タブ</strong>で属性カードをタップすると提出シートが開きます。<strong>① 編成 → ② ダメージ → ③ キャラを選ぶ</strong> の順。下の提出バーが「5人 + ダメージ」で黒く点灯したら <strong>提出する</strong>。下のデモで流れを体験できます👇',
                 demo: 'mock',
-                tip: '📷 スクショからAIが自動入力 (ダメージ+編成5キャラ)。最低ラインは「キャラ被りなしで3部隊」— 足りない分は 📌次にやること が教えてくれます。',
+                tip: '📷 スクショの読み取りは ① の見出し横の小さな入口から。最低ラインは「キャラ被りなしで3編成」— 足りない分は 📌 次にやること が教えてくれます。キャラの被らない別編成なら1属性に2つ提出できます。',
                 accentColor: '#FF3D44', accentDark: '#D02830',
             },
             {
-                emoji: '🎯',
-                chapterTag: '④ 本番の凸',
+                emoji: '🔒',
+                chapterTag: '④ 凸の予約',
                 stepLabel: 'CHAPTER 05',
+                title: '「この時刻に\nこの編成で」を約束する',
+                body: '予約は<strong>あなたから運営への約束</strong>です。ホームの<strong>空き枠</strong>をタップするか、模擬タブの <strong>🔒 この編成で凸を予約する →</strong> から、<strong>どの編成で → 何時に</strong> を選ぶだけ。ボスは選びません (編成の属性で決まり「→ ボス3 に行きます」と出ます)。<br><br>運営が承認すると <strong>🔒</strong> で固定され、プランを何度組み直しても<strong>動きません</strong>。',
+                tip: '予約中の編成とキャラが被る編成は申請できません (同じキャラは1日1回)。やめたいときは「取り消しを希望」→ 運営が解除します。',
+                accentColor: 'var(--attr-water-solid)', accentDark: 'var(--attr-water-deep)',   // 色はトークン (直値の上限に数えない)
+            },
+            {
+                emoji: '🎯',
+                chapterTag: '⑤ 本番の凸',
+                stepLabel: 'CHAPTER 06',
                 title: '凸の流れを\n体験してみよう',
-                body: '本番の凸は <strong>①ボスを選ぶ → ②周りに自動で周知 → ③結果を報告</strong> の3ステップ。下のデモで最後まで体験してみてください👇',
+                body: '本番の凸は <strong>①ボスを選ぶ (戦闘準備) → ②周りに自動で周知 → ③結果を報告</strong> の3ステップ。報告するとボスの残HPが減り、予約は消し込まれます。下のデモで最後まで体験してみてください👇',
                 demo: 'battle',
-                tip: '撮り忘れたら BlaBlaLINK の3凸まとめ画像で一括登録もできます。',
+                tip: '運営から「🙏 締め凸のお願い」や「🔒 引き受けた凸 (📣 お願い)」が届いたら、ホームのカードで 了承 / 難しい を押すだけ。了承した凸は先に枠を取ってから運営に伝わります。',
                 accentColor: '#FF8A2B', accentDark: '#E0701F',
             },
             {
-                emoji: '📊',
-                chapterTag: '⑤ 運営機能',
-                stepLabel: 'CHAPTER 06',
-                title: '最適凸プラン &\nふるり値',
-                body: '<strong>戦況タブ</strong> では、ボスの残HP・交戦状況と、運営モードでは凸プランの算出・配信やボスHP更新が行えます。<br><br><strong>分析タブ</strong> では、メンバー間の火力比較 (実績) と SLv 補正済みの公平な指標 (ふるり値) が見られます。',
-                tip: 'キャラ衝突 (同じキャラを2回使えない) も自動で考慮されます。',
+                emoji: '🗺',
+                chapterTag: '⑥ あなたの3凸',
+                stepLabel: 'CHAPTER 07',
+                title: 'あなたの凸は\nこう決まる',
+                body: 'ホームのヒーローに <strong>🎯 あなたの3凸</strong> が並びます: <strong>🔒 予約で固定 → 配信の割当 → 空き枠 (理由つき)</strong>。<br><br>配信の割当は、みんなの模擬・戦闘可能時間・予約・ボスの残HPから<strong>決まった手順の計算</strong>で組まれ、<strong>前回の配信を尊重</strong>します (盤面が動いていなければ人の割当は動きません)。読んだら <strong>✅ 確認しました</strong>。あなたの割当が変わったときだけ通知が来ます。',
+                tip: '「運営が組み直し中です」の帯が出ている間も前の割当は見えます。「⚠ 置けていません」は予約を守れる置き方が無いとき — 運営が連絡します。',
                 accentColor: '#18C26B', accentDark: '#0EA055',
+                showMiniScreen: true,
+            },
+            {
+                emoji: '🧮',
+                chapterTag: '⑦ 運営のしごと',
+                stepLabel: 'CHAPTER 08',
+                title: '運営担当の\n1日の流れ',
+                body: '運営担当 (👑 マスターが任命) には戦況タブが <strong>運営</strong> タブになり、<strong>準備 → 前日 → 当日 → 終了</strong> の段階で見せるカードが変わります。<br><br><strong>前日</strong>: メンバー状況の要対応をゼロに → 予約の承認 → <strong>🧮 この条件で算出</strong> → 差分を見て <strong>📤 配信</strong>。<br><strong>当日</strong>: 📈 消化のペース / 🔁 直近の動き を見ながら、🏁 締め凸コンソールで「今」と「待つ」を打診。時間割では 📌 で固定 → 📣 で本人に聞く → 引き受けると 🔒。',
+                tip: '約束 (🔒) は算出で動きません。動かすときは本人に 📣 で聞く。配信は自動では出ません — 差分を見てから明示の1タップで。詳しくはヘルプ §10・§12・§15。',
+                accentColor: 'var(--grad-ops-a)', accentDark: 'var(--grad-ops-b)',
+            },
+            {
+                emoji: '🧬',
+                chapterTag: '⑧ 分析',
+                stepLabel: 'CHAPTER 09',
+                title: 'レイドのあとに\nスコアを詰める',
+                body: '<strong>分析タブ</strong>は 📊 実績 / ⚡ ふるり値 / 🧬 育成 / 🧪 シミュレータ / 🌏 GB比較。<br><br><strong>🧬 育成くらべ</strong>: 「A さんのこの編成すごいな」→ その人の育成と自分の同じキャラを並べます。相手をユニオン全体にすると自分の5体それぞれの順位に。<br><strong>🧪 シミュレータ</strong>: 目標ダメージから必要な SLv を逆引きできます。',
+                tip: '育成くらべに載るのは BlaBlaLINK でゲームカードを公開している人だけ。運営から「公開のお願い」が届いたら公開してください。',
+                accentColor: 'var(--ok-solid)', accentDark: 'var(--ok-deep)',
                 showMiniScreen: true,
             },
             {
                 emoji: '✨',
                 chapterTag: '完了',
-                stepLabel: 'CHAPTER 07',
+                stepLabel: 'CHAPTER 10',
                 title: 'おしまい！\n楽しんでください',
-                body: 'これでひととおり OK です。<br><br>困ったら <strong>設定タブ → ガイド/チュートリアル</strong> から各章の詳細解説に飛べます。<br><br>このガイドは <strong>設定タブ → ガイド → ▶ 再生</strong> からいつでも見返せます。',
-                tip: 'まずは ①アプリ化&通知 → ②戦闘可能時間 → ③模擬戦を1属性 の順で済ませるのがおすすめ。',
+                body: 'これでひととおり OK です。<br><br>困ったら <strong>設定タブ → ガイド / チュートリアル</strong> からヘルプの各章に飛べます (メンバー向けと運営向けの両方があります)。<br><br>このガイドは <strong>設定タブ → ガイド → ▶ 再生</strong> からいつでも見返せます。',
+                tip: 'まずは ①アプリ化&通知 → ②戦闘可能時間と今期の確認 → ③模擬をキャラ被りなしで3編成 の順で。出たい時刻が決まっていれば ④予約 も。',
                 accentColor: '#14161A', accentDark: '#000000',
             },
         ];
@@ -17969,6 +18080,8 @@
             if (on) ids.add(String(playerId)); else ids.delete(String(playerId));
             _growth.pickedIds = [...ids];
             _growthPaint();
+            // ★ 描き直すと focus が飛ぶ (Codex指摘) — キーボードで続けて選べるよう、同じ checkbox へ戻す
+            try { document.querySelector(`#opsGrowthBody input[type="checkbox"][data-pid="${Number(playerId)}"]`)?.focus(); } catch (e) { /* 無くても困らない */ }
         }
 
         function _growthNote(kind, text) { _growth.msg = { kind, text }; _growthPaint(); }
@@ -18051,7 +18164,7 @@
             const step2 = `
                 <div class="gr-step">
                     <div class="h"><span class="n">2</span>取り込み用のブックマークレットを作る</div>
-                    <div class="d">対象は <strong>${tg.targets.length}人</strong> (${esc(dom.IMPORT_SCOPE_JP[scope])}) / 今回使われた <strong>${wanted.codes.length}体</strong>。
+                    <div class="d">対象は <strong>${tg.targets.length}人</strong> (${esc(dom.IMPORT_SCOPE_JP[scope])})${scope === 'missing' && tg.counts.missingPrivate ? ` — うち非公開 ${tg.counts.missingPrivate}人は公開してもらうまで取れません` : ''} / 今回使われた <strong>${wanted.codes.length}体</strong>。
                         コピーしてブックマークを新規作成し、URL 欄に貼り付けます。
                         <strong>BlaBlaLINK を開いて、開発者ツールを閉じたまま</strong>そのブックマークを実行してください。</div>
                     <div class="gr-scope" style="margin:8px 0 0 26px;">
@@ -18059,7 +18172,7 @@
                     </div>
                     ${scope === 'picked' ? `<div class="gr-pick" style="margin:8px 0 0 26px;">${linked.map(p => {
                         const st = statusBy.get(String(p.id));
-                        return `<label class="gr-pick-row"><input type="checkbox" ${pickedSet.has(String(p.id)) ? 'checked' : ''} ${_growth.busy ? 'disabled' : ''} onchange="handleGrowthPick(${Number(p.id)}, this.checked)"><span class="nm">${esc(p.name)}</span><span class="st ${esc(st ? st.status : 'none')}">${esc(st ? (dom.STATUS_SHORT[st.status] || st.status) : '未取り込み')}</span></label>`;
+                        return `<label class="gr-pick-row"><input type="checkbox" ${pickedSet.has(String(p.id)) ? 'checked' : ''} ${_growth.busy ? 'disabled' : ''} data-pid="${Number(p.id)}" onchange="handleGrowthPick(${Number(p.id)}, this.checked)"><span class="nm">${esc(p.name)}</span><span class="st ${esc(st ? st.status : 'none')}">${esc(st ? (dom.STATUS_SHORT[st.status] || st.status) : '未取り込み')}</span></label>`;
                     }).join('')}</div>` : ''}
                     <div style="margin:9px 0 0 26px;">
                         <button type="button" class="gr-btn" onclick="handleGrowthCopySnippet()" ${canSnippet ? '' : 'disabled'}>📋 コピーする</button>

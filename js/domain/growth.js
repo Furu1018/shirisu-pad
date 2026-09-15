@@ -863,8 +863,10 @@
             'var digits=function(raw){if(!raw)return "";var t=String(raw);',
             'try{var g=atob(String(t).replace(/-/g,"+").replace(/_/g,"/"));if(g&&/^[\\x20-\\x7e]+$/.test(g)){t=g;}}catch(e){}',
             'var m=String(t).match(/(\\d{6,})\\s*$/);return m?m[1]:"";};',
-            'var found=new Map();var stat={anchors:0,sig:0,state:0,api:0,net:0,rejected:0,routes:[]};',
+            'var found=new Map();var apiNamed=0;var stat={anchors:0,sig:0,state:0,api:0,net:0,rejected:0,routes:[]};',
             'var put=function(id,name,src){if(!id)return;var n=String(name||"").replace(/\\s+/g," ").trim().slice(0,40);',
+            // ★ 「自分で取れた」= API の段で名前つきの識別子を拾った数。既に知っていた識別子に名前が付いた場合も数える (Codex指摘)
+            'if(src==="api"&&n)apiNamed++;',
             'if(!found.has(id)){found.set(id,n);if(src)stat[src]++;}else if(!found.get(id)&&n){found.set(id,n);}};',
             'var PFX="' + OPENID_B64_PREFIX + '";',
             'try{var H=document.documentElement.outerHTML;var re=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g");var mm;',
@@ -917,20 +919,19 @@
             //   メンバー一覧は GetGuildMembers → data.items[] = {member_id, nickname, icon_id, synchro_level, bind_area_id}
             'var ROUTES=["Game/GetGuildMembers","Game/GetGuildDetail","Game/GetUnionRaidData"];',
             'var run=async function(){',
-            // ここまでに名前つきで拾えた数 (リンク・埋め込み状態)。「自分で取れた」は API の段で増えたぶんで判定する
-            'var namedBefore=0;found.forEach(function(n){if(n)namedBefore++;});',
             'var mine=await call("Game/GetMyGuildInfo");',
-            'if(mine){stat.routes.push("GetMyGuildInfo:"+mine.code);walk(mine,0,"api");}',
+            // ★ 連打の制限 (212000) は最初の問い合わせでも打ち切る (Codex指摘: 一覧の周回だけ見ていた)
+            'var limited=false;',
+            'if(mine){stat.routes.push("GetMyGuildInfo:"+mine.code);walk(mine,0,"api");if(mine.code===212000)limited=true;}',
             // ★ 本体と同じく data.card から読む。guild_id と地域は**同じ物から**取る (応答のどこかにある別ユニオンの guild_id と
             //   組み合わせない: Codex指摘)。card が無い形なら応答全体から (以前どおり)
             'var card=(mine&&mine.data&&mine.data.card&&typeof mine.data.card==="object")?mine.data.card:mine;',
             'var gid=card?idOf(card):null;var aid=card?areaOf(card):null;',
             // 地域が card に無ければ自分の登録ロールから。どこにも無ければ地域なしで試す (診断に area: - と出る)
-            'if(gid&&!aid){var role=await call("Game/GetUserSavedRoleInfo");if(role){stat.routes.push("GetUserSavedRoleInfo:"+role.code);aid=areaOf(role);}}',
+            'if(gid&&!aid&&!limited){var role=await call("Game/GetUserSavedRoleInfo");if(role){stat.routes.push("GetUserSavedRoleInfo:"+role.code);aid=areaOf(role);if(role.code===212000)limited=true;}}',
             'var SHAPES=function(g,a){if(!g)return [{}];if(a===null||a===undefined)return [{guild_id:g},{}];',
             'return [{guild_id:g,nikke_area_id:String(a)},{guild_id:g,nikke_area_id:Number(a)}];};',
             // 通信は最大 16 回 (自分の情報 2 + 登録ロール 2 + 3 経路 × 2 通り × proxy/direct)。一覧が取れれば 2〜4 回で終わる
-            'var limited=false;',
             'for(var i2=0;i2<ROUTES.length&&!limited;i2++){var r3=ROUTES[i2];var sh=SHAPES(gid,aid);var got=null;var codes=[];',
             'for(var j2=0;j2<sh.length;j2++){var res=await call(r3,sh[j2]);if(!res)continue;if(codes.indexOf(res.code)<0)codes.push(res.code);',
             // ★ 連打の制限 (212000) が返ったら、それ以上は投げない (Codex指摘)。診断には応答コードを全部残す (最後のだけだと原因を取り違える)
@@ -943,9 +944,8 @@
             'var norm=S.bodies.map(function(b){return (b&&typeof b==="object")?{u:String(b.u||""),t:String(b.t||"")}:{u:"",t:String(b||"")};});',
             'var good=norm.filter(function(b){return OWN.test(b.u)&&!NOT.test(b.u);});',
             'var neutral=norm.filter(function(b){return !NOT.test(b.u);});',
-            // ★ 自分で取れた (名前つきの識別子がある) ときは、知らない経路の待ち受けを混ぜない (Codex指摘: 掲示板などの
+            // ★ 自分で取れた (API の段で名前つきの識別子を拾った) ときは、知らない経路の待ち受けを混ぜない (Codex指摘: 掲示板などの
             //   member_id + nickname が名簿に入る)。自分のユニオンの経路 (OWN) は常に使う。取れなかったときだけ知らない経路も使う
-            'var apiNamed=-namedBefore;found.forEach(function(n){if(n)apiNamed++;});',
             'var used=good.length?good:(apiNamed?[]:neutral);stat.rejected=norm.length-neutral.length;',
             'used.forEach(function(b){var t=b.t;try{var pj=parse(t);if(!pj)throw 0;walk(pj,0,"net");}catch(e){',
             'try{var r2=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g"),m2;while((m2=r2.exec(t))){put(digits(m2[0]),"","net");}}catch(e2){}}});',
@@ -961,7 +961,7 @@
             'L.length=0;',
             'box.value=(out.length?("\\u3057\\u308a\\u3059\\u3053PAD \\u540d\\u7c3f "+out.length+"\\u4eba\\n'
                 + '\\u540d\\u524d\\u3068ID\\u3092\\u78ba\\u8a8d\\u3057\\u3066\\u3001\\u305d\\u306e\\u307e\\u307e\\u30b3\\u30d4\\u30fc\\u3057\\u3066PAD\\u306b\\u8cbc\\u3063\\u3066\\u304f\\u3060\\u3055\\u3044\\n\\n"+out.join("\\n"))',
-            ':("\\u30e1\\u30f3\\u30d0\\u30fc\\u304c\\u898b\\u3064\\u304b\\u308a\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002"'
+            ':((limited?"BlaBlaLINK \\u306e\\u9023\\u6253\\u306e\\u5236\\u9650\\u306b\\u5f53\\u305f\\u308a\\u307e\\u3057\\u305f\\u30021\\u301c2\\u5206\\u5f85\\u3063\\u3066\\u304b\\u3089\\u3001\\u3082\\u3046\\u4e00\\u5ea6\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\n":"")+"\\u30e1\\u30f3\\u30d0\\u30fc\\u304c\\u898b\\u3064\\u304b\\u308a\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002"'
                 + '+(noname?"\\n\\u540d\\u524d\\u306e\\u7121\\u3044\\u8b58\\u5225\\u5b50\\u306f "+noname+"\\u4ef6 \\u3042\\u308a\\u307e\\u3059\\u304c\\u3001\\u540d\\u524d\\u304c\\u7121\\u3044\\u3068\\u7a81\\u304d\\u5408\\u308f\\u305b\\u3089\\u308c\\u307e\\u305b\\u3093\\u3002":"")'
                 + '+"\\n\\nBlaBlaLINK \\u306b\\u30ed\\u30b0\\u30a4\\u30f3\\u3057\\u305f\\u72b6\\u614b\\u3067\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\u305d\\u308c\\u3067\\u3082\\u51fa\\u306a\\u3051\\u308c\\u3070\\u3001\\u3053\\u306e\\u307e\\u307e\\u30e6\\u30cb\\u30aa\\u30f3\\u306e\\u30e1\\u30f3\\u30d0\\u30fc\\u4e00\\u89a7\\u3092\\u958b\\u3044\\u3066\\u3001\\u3082\\u3046\\u4e00\\u5ea6\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\n\\u4e0a\\u306e guild: / api: / heard: \\u306e\\u884c\\u3092\\u904b\\u55b6\\u306b\\u898b\\u305b\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002"))+diag;',
             'box.focus();box.select();try{document.execCommand("copy");}catch(e){}};',
@@ -1151,13 +1151,17 @@
     function importTargets(players, statusRows, o = {}) {
         const scope = IMPORT_SCOPES.includes(o && o.scope) ? o.scope : 'all';
         const linked = (Array.isArray(players) ? players : []).filter((p) => p && p.blabla_openid);
-        const ok = new Set((Array.isArray(statusRows) ? statusRows : [])
-            .filter((r) => r && r.status === 'ok').map((r) => String(r.player_id)));
+        const rows = (Array.isArray(statusRows) ? statusRows : []).filter((r) => r && r.player_id != null);
+        const ok = new Set(rows.filter((r) => r.status === 'ok').map((r) => String(r.player_id)));
         const missing = linked.filter((p) => !ok.has(String(p.id)));
+        // ★ 非公開の人も「未取り込み」に入れる (公開してもらったあと、絞り込みを変えずに取り直せるように)。
+        //   ただし取りに行っても 1301002 で取れないので、人数を別に返して画面が言う (Codex指摘 2026-09-15)
+        const priv = new Set(rows.filter((r) => r.status === 'private').map((r) => String(r.player_id)));
+        const missingPrivate = missing.filter((p) => priv.has(String(p.id))).length;
         const pickedSet = new Set((Array.isArray(o && o.pickedIds) ? o.pickedIds : []).map((x) => String(x)));
         const picked = linked.filter((p) => pickedSet.has(String(p.id)));
         const targets = scope === 'missing' ? missing : scope === 'picked' ? picked : linked;
-        return { scope, targets, counts: { all: linked.length, missing: missing.length, picked: picked.length } };
+        return { scope, targets, counts: { all: linked.length, missing: missing.length, picked: picked.length, missingPrivate } };
     }
 
     /** 本人へのお願い。押す先はホーム (どこを触ればよいかは本文で言う) */

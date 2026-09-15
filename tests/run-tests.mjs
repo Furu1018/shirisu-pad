@@ -7675,6 +7675,41 @@ console.log('\ngrowthDomain:');
         const miss = await runRosterSnippet({ api: { 'GetMyGuildInfo': { code: -1 } }, bodies: [friend] });
         assert.ok(/ともだち\t333333333333333333/.test(miss), '取れなかったときまで知らない経路を捨てている');
     });
+    await testAsync('★ 名簿のブックマークレット: 最初の問い合わせ (自分のユニオン / 登録ロール) が 212000 でも止まり、待ってから押し直すよう言う (Codex指摘)', async () => {
+        const out = await runRosterSnippet({
+            api: { 'GetMyGuildInfo': { code: 212000 }, 'GetGuildMembers': { code: 0, data: { items: [{ member_id: '111111111111111111', nickname: 'よばれない' }] } } },
+        });
+        const names = runRosterSnippet.calls.map(c => c.name);
+        assert.ok(!names.includes('GetGuildMembers') && !names.includes('GetUserSavedRoleInfo'), `制限のあとも投げている: ${names.join(' ')}`);
+        assert.ok(/GetMyGuildInfo:212000/.test(out), '診断に残っていない');
+        assert.ok(/待ってから/.test(out), `待つように言っていない: ${out.slice(0, 200)}`);
+        assert.ok(!out.includes('よばれない'));
+        // 登録ロールの問い合わせで 212000 → 一覧は投げない
+        const role = await runRosterSnippet({
+            api: { 'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9' } } }, 'GetUserSavedRoleInfo': { code: 212000 }, 'GetGuildMembers': { code: 0, data: { items: [] } } },
+        });
+        assert.ok(!runRosterSnippet.calls.some(c => c.name === 'GetGuildMembers'), '登録ロールが 212000 なのに一覧を投げている');
+        assert.ok(/待ってから/.test(role));
+        // 通常の空振りには「待って」と言わない (押し直しの案内だけ)
+        const plain = await runRosterSnippet({ api: { 'GetMyGuildInfo': { code: -1 } } });
+        assert.ok(!/待ってから/.test(plain) && plain.includes('メンバー一覧を開いて'), '制限でないのに待てと言っている');
+    });
+    await testAsync('★ 名簿のブックマークレット: 「自分で取れた」は既に知っていた識別子に API が名前を付けた場合も数える (Codex指摘)', async () => {
+        const id = '111111111111111111';
+        const body = (mid, name) => JSON.stringify({ data: { list: [{ member_id: mid, nickname: name }] } });
+        const friend = { u: 'https://api.blablalink.com/api/ugc/direct/standalonesite/Friend/GetFriendList', t: body('333333333333333333', 'ともだち') };
+        const out = await runRosterSnippet({
+            // リンクから先に「なかま」を拾っている → API が同じ人を返しても新しい識別子は増えない
+            anchors: [anchorEl(`/user?uid=${B64('29080-' + id)}`, ' なかま ')],
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9', nikke_area_id: 81 } } },
+                'GetGuildMembers': (b) => (b && b.nikke_area_id === '81') ? { code: 0, data: { items: [{ member_id: id, nickname: 'なかま' }] } } : { code: 220000 },
+            },
+            bodies: [friend],
+        });
+        assert.ok(/なかま\t111111111111111111/.test(out));
+        assert.ok(!out.includes('ともだち'), 'API で取れているのに、知らない経路の待ち受けを混ぜている (新しい識別子が増えたかで数えている)');
+    });
     await testAsync('★ 名簿のブックマークレット: ユニオン名を人の名前にしない (実機: 団長がユニオン名になった)', async () => {
         // ギルド情報は「ユニオン名 + 団長の識別子」を持つ。素直に組むと団長の名前がユニオン名になり、
         // しかも先に入った名前が勝つので、あとから来る本当の名前が入らない (2026-09-09 実機)
@@ -8121,7 +8156,8 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(ids(dom.importTargets(ps, rows, { scope: 'all' })), [1, 2, 4]);
         assert.deepEqual(ids(dom.importTargets(ps, rows, { scope: 'missing' })), [2, 4], '取り込み済み (ok) を外していない / 状態の無い人を未取り込みに数えていない');
         assert.deepEqual(ids(dom.importTargets(ps, rows, { scope: 'picked', pickedIds: ['4', 3, 99] })), [4], '選んだ人 (文字列の id) / ひも付けの無い人 / いない人');
-        assert.deepEqual(dom.importTargets(ps, rows, { scope: 'all' }).counts, { all: 3, missing: 2, picked: 0 });
+        assert.deepEqual(dom.importTargets(ps, rows, { scope: 'all' }).counts, { all: 3, missing: 2, picked: 0, missingPrivate: 1 }, '非公開の内訳が無い');
+        assert.equal(dom.importTargets(ps, [{ player_id: 1, status: 'ok' }], {}).counts.missingPrivate, 0);
         // 43 未適用 (null) は誰も ok でない = 全員が未取り込み。知らない scope / 省略 は全員
         assert.deepEqual(ids(dom.importTargets(ps, null, { scope: 'missing' })), [1, 2, 4]);
         assert.equal(dom.importTargets(ps, rows, { scope: 'なにか' }).scope, 'all');
@@ -10175,6 +10211,51 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(r.failed.map(x => x.name), ['c', 'd', 'e', 'f']);
         const none = dom.importSummary(null);
         assert.equal(none.ok, 0); assert.equal(none.characters, 0); assert.deepEqual(none.failed, []);
+    });
+
+    test('★ 案内 (ヘルプ・ツアー) が 2026-09 の画面に合っている: 目次と章が一致 / メンバー向けと運営向けの両方 / ツアー 10 ステップ', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        // 目次のリンク先が全部ある / 章のぶんだけ目次がある (章を足したら目次も足す)
+        const toc = html.match(/<aside class="help-toc" id="helpToc">[\s\S]*?<\/aside>/)?.[0] || '';
+        const links = [...toc.matchAll(/href="#(help-[a-z-]+)"/g)].map(m => m[1]);
+        const ids = [...html.matchAll(/<section id="(help-[a-z-]+)" class="help-section">/g)].map(m => m[1]);
+        assert.deepEqual(links, ids, '目次と章の並びが一致していない');
+        assert.equal(ids.length, 17, '章の数が 17 でない');
+        // 2026-09 に入ったものが章になっている (予約 / 本人向けのプランの読み方 / 運営向けの算出 / 分析)
+        for (const id of ['help-reserve', 'help-plan', 'help-plan-ops', 'help-analysis', 'help-ops']) assert.ok(ids.includes(id), id + ' が無い');
+        // 本文中の #help- リンクも切れていない (FAQ からの参照など)
+        const refs = [...html.matchAll(/href="#(help-[a-z-]+)"/g)].map(m => m[1]);
+        for (const r of refs) assert.ok(ids.includes(r), '切れたリンク: #' + r);
+        // メンバー向けと運営向けの両方 (ユーザー決定 2026-09-15)
+        const helpBody = html.slice(html.indexOf('<section id="help-overview"'), html.indexOf('<section id="help-faq"'));
+        assert.ok((helpBody.match(/<span class="help-pill">メンバー<\/span>/g) || []).length >= 5, 'メンバー向けの章が少ない');
+        assert.ok((helpBody.match(/<span class="help-pill">運営<\/span>/g) || []).length >= 5, '運営向けの章が少ない');
+        // 今の画面の言葉で書かれている (古い名前が残っていない)
+        for (const word of ['今期の確認', 'あなたの3凸', '🔒 この編成で凸を予約する', '🧮 この条件で算出', '締め凸コンソール', '📈 消化のペース', '🔁 直近の動き',
+            '👑 マスター運営', '育成くらべ', '逆引き', 'GB比較', '🧹 整理', 'サイドバー', 'ライト / ダーク', '未取り込みの人だけ', '✅ 確認しました', '組み直し中']) {
+            assert.ok(helpBody.includes(word), 'ヘルプに「' + word + '」が無い');
+        }
+        for (const old of ['現在凸可能のみ', '全員で算出', '画面右上の', '2つのモード', '模擬提出チェック', '前回ダメージ引継ぎは廃止']) {
+            assert.ok(!helpBody.includes(old), 'ヘルプに古い言葉「' + old + '」が残っている');
+        }
+        // ツアー: 配列を実際に評価する (文字列の検査ではなく、壊れた JS なら落ちる)
+        const src = html.match(/const TOUR_STEPS = \[[\s\S]*?\n        \];/)?.[0] || '';
+        assert.ok(src, 'TOUR_STEPS が無い');
+        const steps = new Function(src + '\nreturn TOUR_STEPS;')();
+        assert.equal(steps.length, 10, 'ツアーが 10 ステップでない');
+        for (const [i, st] of steps.entries()) {
+            for (const k of ['emoji', 'chapterTag', 'stepLabel', 'title', 'body', 'tip', 'accentColor', 'accentDark']) assert.ok(st[k], 'ステップ ' + (i + 1) + ' に ' + k + ' が無い');
+            assert.equal(st.stepLabel, 'CHAPTER ' + String(i + 1).padStart(2, '0'), 'CHAPTER の番号がずれている');
+            if (st.demo) assert.ok(['avail', 'mock', 'battle'].includes(st.demo), '知らないデモ: ' + st.demo);
+        }
+        assert.deepEqual(steps.filter(s => s.demo).map(s => s.demo), ['avail', 'mock', 'battle'], '体験デモの並び (時間 → 模擬 → 凸) が崩れている');
+        assert.ok(steps[0].body.includes('8つのステップ'), '冒頭の案内がステップ数と合っていない');
+        const head = (s) => s.chapterTag + ' ' + s.title;
+        assert.ok(steps.some(s => /予約/.test(head(s))) && steps.some(s => /運営担当/.test(head(s))) && steps.some(s => /こう決まる/.test(head(s))), '予約 / 運営 / 3凸 の章が無い');
+        // 足したステップの色はトークン (直値の上限に数えない)。既存 7 ステップの hex は上限の内訳に入っている
+        assert.ok([4, 7, 8].every(i => /^var\(--/.test(steps[i].accentColor) && /^var\(--/.test(steps[i].accentDark)), '足したステップ (予約 / 運営 / 分析) の色が直値');
+        // デモを使う関数がまだある (demo の名前を変えたらここも)
+        for (const fn of ['_tourDemoAvailBody', '_tourDemoMockBody', '_tourDemoBattleBody']) assert.ok(html.includes('function ' + fn + '('), fn + ' が無い');
     });
 
     test('★ 配線: 育成の取り込みパネル (段階「準備」と「終了」・upsert のみ・43未適用は止める)', () => {

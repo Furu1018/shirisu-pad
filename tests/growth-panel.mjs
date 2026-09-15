@@ -244,26 +244,26 @@ test('★ ② 選んだ人: ひも付け済みの人だけを一覧にして選�
     const none = run({ players, statusRows, scope: 'picked' }).html();
     assert.equal((none.match(/handleGrowthPick\(\d+, this\.checked\)/g) || []).length, 2, 'ひも付けの無い人まで一覧に出ている / 一覧が無い');
     assert.ok(!/handleGrowthPick\(3,/.test(none), 'ひも付けの無い う が選べる');
-    assert.ok(/<input type="checkbox"\s+onchange="handleGrowthPick\(1, this\.checked\)"/.test(none), '何も選んでいないのに checked');
+    assert.ok(/<input type="checkbox"\s+data-pid="1" onchange="handleGrowthPick\(1, this\.checked\)"/.test(none), '何も選んでいないのに checked / focus を戻すための data-pid が無い');
     assert.ok(/handleGrowthPick\(2, this\.checked\)"[^<]*<span class="nm">い<\/span><span class="st private">非公開<\/span>/.test(none), '一覧に取り込みの状態が無い');
     assert.ok(/<span class="st none">未取り込み<\/span>/.test(run({ players, statusRows: [], scope: 'picked' }).html()), '状態の無い人を「未取り込み」と出していない');
     const one = run({ players, statusRows, scope: 'picked', pickedIds: ['2'] }).html();
-    assert.ok(/<input type="checkbox" checked\s+onchange="handleGrowthPick\(2, this\.checked\)"/.test(one), '選んだ人に checked が無い (文字列の id)');
+    assert.ok(/<input type="checkbox" checked\s+data-pid="2" onchange="handleGrowthPick\(2, this\.checked\)"/.test(one), '選んだ人に checked が無い (文字列の id)');
     assert.ok(/対象は <strong>1人<\/strong> \(選んだ人\)/.test(one) && /handleGrowthCopySnippet\(\)"\s*>/.test(one), '選んだら押せること');
     assert.ok(/handleGrowthScope\('picked'\)[^>]*>選んだ人 <span class="c">1<\/span>/.test(one));
     // 一括のひも付け中は切り替えも選び直しもできない
     const busy = run({ players, statusRows, scope: 'picked', busy: true }).html();
-    assert.ok(/handleGrowthScope\('all'\)" disabled/.test(busy) && /<input type="checkbox"\s+disabled onchange="handleGrowthPick\(1, this\.checked\)"/.test(busy), '実行中に触れる');
+    assert.ok(/handleGrowthScope\('all'\)" disabled/.test(busy) && /<input type="checkbox"\s+disabled data-pid="1" onchange="handleGrowthPick\(1, this\.checked\)"/.test(busy), '実行中に触れる');
     noUndef(none); noUndef(one);
 });
 
 // ---- ② コピー (handleGrowthCopySnippet) を実際に走らせる: 絞り込みどおりの相手だけを渡すか ----
 const SRC_COPY = cut('        function _growthScope()') + '\n' + cut('        async function handleGrowthCopySnippet()');
-async function runCopy({ players = [], statusRows = [], scope = null, pickedIds = [], stage = null, wanted = { codes: [1007], missing: [] } } = {}) {
+async function runCopy({ players = [], statusRows = [], scope = null, pickedIds = [], stage = null, wanted = { codes: [1007], missing: [] }, throwBuild = null } = {}) {
     let built = null, copied = null, note = null;
     const env = {
         _growth: { gen: 0, players, statusRows, wanted, scope, pickedIds, busy: false, msg: null },
-        window: { growthDomain: { ...dom, buildImportSnippet: (a) => { built = a; return 'javascript:x'; } } },
+        window: { growthDomain: { ...dom, buildImportSnippet: (a) => { built = a; if (throwBuild) throw new Error(throwBuild); return 'javascript:x'; } } },
         _growthCopy: async (code, msg) => { copied = { code, msg }; },
         _growthNote: (kind, text) => { note = { kind, text }; },
         _opsCurrentStage: stage ? () => ({ stage }) : undefined,
@@ -288,6 +288,39 @@ await testAsync('★ ② コピーは絞り込みどおりの相手だけを渡�
     const zero = await runCopy({ players, statusRows: [{ player_id: 1, status: 'ok' }, { player_id: 2, status: 'ok' }], scope: 'missing' });
     assert.equal(zero.built, null, '相手がゼロなのにブックマークレットを作っている');
     assert.ok(zero.note && zero.note.kind === 'err', '理由を出していない');
+    // 本物の buildImportSnippet が投げたら、画面は理由を出してコピーしない (Codex指摘: 成功する stub だけだと catch 経路が見えない)
+    const boom = await runCopy({ players, statusRows, scope: 'all', throwBuild: '取りに行く相手がいません (識別子が未設定です)' });
+    assert.equal(boom.copied, null, '例外なのにコピーしている');
+    assert.ok(boom.note && boom.note.kind === 'err' && /識別子が未設定/.test(boom.note.text), '例外の理由を出していない');
+});
+
+test('★ ② 「未取り込み」に非公開の人が入るときは、その人数を言う (取りに行っても取れないので — Codex指摘)', () => {
+    const players = [P(1, 'あ', '1'), P(2, 'い', '2'), P(3, 'う', '3')];
+    const statusRows = [{ player_id: 1, status: 'ok' }, { player_id: 2, status: 'private' }];
+    const m = run({ players, statusRows, scope: 'missing' }).html();
+    assert.ok(/対象は <strong>2人<\/strong> \(未取り込みの人だけ\) — うち非公開 1人は公開してもらうまで取れません/.test(m), `非公開の内訳が無い: ${m.match(/対象は[^/]*/)?.[0]}`);
+    // 全員のときは言わない / 非公開がいなければ言わない
+    assert.ok(!/うち非公開/.test(run({ players, statusRows, scope: 'all' }).html()));
+    assert.ok(!/うち非公開/.test(run({ players, statusRows: [{ player_id: 1, status: 'ok' }], scope: 'missing' }).html()));
+});
+
+test('★ ② 選び直しは pickedIds を文字列で持ち、描き直したあと同じ checkbox へ focus を戻す (Codex指摘)', () => {
+    const SRC_PICK = cut('        function handleGrowthPick(');
+    let painted = 0; const sels = []; let focused = 0;
+    const env = {
+        _growth: { busy: false, pickedIds: ['2'] },
+        _growthPaint: () => { painted++; },
+        document: { querySelector: (sel) => { sels.push(sel); return { focus() { focused++; } }; } },
+    };
+    const keys = Object.keys(env);
+    const pick = new Function(...keys, SRC_PICK + '\nreturn handleGrowthPick;')(...keys.map(k => env[k]));
+    pick(1, true);
+    assert.deepEqual(env._growth.pickedIds, ['2', '1']); assert.equal(painted, 1);
+    assert.ok(sels[0] && sels[0].includes('data-pid="1"') && focused === 1, 'focus を同じ checkbox へ戻していない');
+    pick(2, false);
+    assert.deepEqual(env._growth.pickedIds, ['1']);
+    env._growth.busy = true; pick(3, true);
+    assert.deepEqual(env._growth.pickedIds, ['1'], '実行中に選べる'); assert.equal(painted, 2);
 });
 
 const SRC_IMPORT = cut('        async function handleGrowthImport()');

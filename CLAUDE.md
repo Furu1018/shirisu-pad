@@ -122,7 +122,9 @@ rm -f .claude/hooks/.codex-on      # OFF
   使われたキャラが確定するのはレイド後 (終了)。準備は**新メンバーが入ったとき**に、その人のぶんを前のレイドの記録として取り直すため
   (ユーザー要望 2026-09-15「シーズン直後以外でも」)。② の絞り込み (全員 / 未取り込みの人だけ / 選んだ人) は
   `growthDomain.importTargets` が唯一で、既定は `_growthScope()` が段階で決める (準備 = 未取り込みの人だけ / それ以外 = 全員)。
-  描画 (`_growthPaint`) とコピー (`handleGrowthCopySnippet`) の両方がそれを通る (配線テストが見張る)。4段: ① 識別子のひも付け (`parseOpenid` が `?uid=` のリンクをそのまま受ける。
+  描画 (`_growthPaint`) とコピー (`handleGrowthCopySnippet`) の両方がそれを通る (配線テストが見張る)。
+  非公開の人も「未取り込み」に入れる (公開してもらったあと、絞り込みを変えずに取り直せる) が、取りに行っても取れないので
+  「うち非公開 N人」と画面が言う (`counts.missingPrivate`)。選び直しは描き直したあと同じ checkbox へ focus を戻す。4段: ① 識別子のひも付け (`parseOpenid` が `?uid=` のリンクをそのまま受ける。
   関係ない数字は拾わない — 取り違えは他人の育成が別人に付く事故) → ② ブックマークレットを作る
   (`wantedCodesFor(usedCharacters(attacks), 対応表)`。対応表に無い名前は `missing` で名指し) →
   ③ 貼り付けて取り込む → ④ 取れなかった人。
