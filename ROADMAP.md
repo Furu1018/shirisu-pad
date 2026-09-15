@@ -10,7 +10,7 @@
 - **ダークで見にくい箇所は解消**した (2026-09-10 ユーザー確認)。
   測れる範囲は トークンの文字×地 88 組すべて 4.5:1 以上 (最悪 4.53:1) で、以後の見張りもある
 
-### 🆕 2026-09-15 に入れたもの (3 コミット・すべて Codex 監査を通して push 済み)
+### 🆕 2026-09-15 に入れたもの (4 コミット 1eeeb29 → de8cb67 → e0417f3 → ae3554a・すべて Codex 監査を通して push 済み)
 - **名簿ブックマークレットを本物の経路と引数に** (実機: ユニオン新体制で全経路 220000)。BlaBlaLINK 本体の JS を読んで
   `GetMyGuildInfo → data.card.{guild_id, nikke_area_id} → GetGuildMembers {guild_id, nikke_area_id: String} → data.items[] {member_id, nickname}`
   と確定。当てずっぽうの 7 経路は削除。識別子は 20 桁 (2^53 超) なので、JSON.parse の前に本文の数値を引用符で包んでから読む (丸めない)。Codex 2 周の指摘 (data.card から / 待ち受けの
