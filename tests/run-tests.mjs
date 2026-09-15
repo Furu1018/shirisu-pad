@@ -9303,8 +9303,12 @@ console.log('\ngrowthDomain:');
         const ps = html.match(/function _rrPickSlice\(attr, level, i\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/_rrPick = \(attr == null \|\| same\) \? null : \{ attr, level, i \};/.test(ps), '同じ凸をもう一度押しても閉じない');
         assert.ok(/el\.innerHTML = _rrProgressHtml\(_rrLastProgress, _rrPick\);/.test(ps), '選び直しで描き直していない');
+        assert.ok(/if \(_rrPick\) el\.querySelector\('\.rr-sl\.on'\)\?\.focus\(\{ preventScroll: true \}\);/.test(ps), '差し替えで焦点が飛んだまま (キーボードで辿れない)');
         // ★ 見た目の約束: 凸の区切り (inset の影 = 幅を食わない) / Lv の文字は下の凸を押せるように透過する
         assert.ok(/\.rr-sl \{[^}]*box-shadow: inset -1px 0 0 var\(--card\);/.test(html), '凸の区切りが無い (誰の凸か分からない)');
+        // ★ 縮ませない (割合どおりに描く) / 細い凸も見えて押せる (Codex指摘 2026-09-16)
+        assert.ok(/\.rr-sl \{[^}]*flex: 0 0 auto; min-width: 4px;/.test(html), '細い凸が潰れて押せない (縮む / 最小幅が無い)');
+        assert.ok(/\.rr-seg \{[^}]*overflow: hidden;/.test(html), 'はみ出したぶんを切っていない');
         assert.ok(!/\.rr-sl \{[^}]*border-(right|left): /.test(html), '区切りを border で描いている (幅を食って割合がずれる)');
         assert.ok(/\.rr-seg b \{[^}]*pointer-events: none;/.test(html), 'Lv の文字が下の凸を覆う (押せない)');
         // 図はトークンで描く (Chart.js を使わない = 見た目の切り替えに描き直し不要)

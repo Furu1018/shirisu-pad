@@ -2990,7 +2990,9 @@
         /* ★ 帯は凸ごとに区切る (2026-09-15 ユーザー要望「一人一人の凸がどれくらいの割合だったか視覚的に」)。
            区切りは inset の影 (幅を食わないので細い凸でも割合が正しいまま) */
         .rr-seg { position: relative; background: var(--track); border-radius: 4px; overflow: hidden; min-width: 2px; display: flex; }
-        .rr-sl { border: none; padding: 0; margin: 0; height: 100%; min-width: 0; cursor: pointer; box-shadow: inset -1px 0 0 var(--card); }
+        /* ★ flex:0 0 auto = 縮ませない (縮むと指定した割合どおりに描かれない) / min-width = 細い凸も見えて押せる (Codex指摘 2026-09-16)。
+           はみ出したぶんは .rr-seg の overflow:hidden が切る */
+        .rr-sl { border: none; padding: 0; margin: 0; height: 100%; flex: 0 0 auto; min-width: 4px; cursor: pointer; box-shadow: inset -1px 0 0 var(--card); }
         .rr-sl:hover { filter: brightness(1.12); }
         .rr-sl.on { box-shadow: inset 0 0 0 2px var(--t-ink); }
         .rr-seg b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: var(--t-body); font-style: normal; pointer-events: none; text-shadow: 0 0 2px var(--card); }
@@ -24328,12 +24330,15 @@
                 // ★ 帯は凸ごとに区切る (2026-09-15 ユーザー要望)。押すとその凸の詳細 (誰が・編成・割合) が下に出る
                 const track = `<div class="rr-track">` + r.levels.map(L => {
                     const segTitle = `Lv${L.level} ${_rrB(L.damage)} / ${_rrB(L.hp || 0)} · ${L.attacks}凸${L.cleared ? ' · 踏破' : ''}`;
+                    // ★ ダメージ 0 の凸も区切りとして出す (出さないと「区切りは凸1本」と凸数が合わない: Codex指摘 2026-09-16)。
+                    //   属性は onclick の文字列に埋めず data 属性で渡す (JS リテラルに文字列を埋めない決めごと)
                     const slices = (L.slices || []).map((x, i) => {
                         const w = L.hp ? Math.max(0, Math.min(100, (x.damage / L.hp) * 100)) : 0;
-                        if (!(w > 0)) return '';
                         const on = pick && pick.attr === r.attr && pick.level === L.level && pick.i === i;
                         const t = `${x.name} · Lv${L.level} ${_rrB(x.damage)}${x.isKill ? ' (締)' : ''} · このLvの ${(x.pctLevel ?? 0).toFixed(1)}% / ${jp}PT 全体の ${(x.pctTotal ?? 0).toFixed(1)}%`;
-                        return `<button type="button" class="rr-sl${on ? ' on' : ''}" style="width:${w.toFixed(2)}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.78;'}" title="${esc(t)}" aria-label="${esc(t)}" onclick="_rrPickSlice('${esc(r.attr)}',${L.level},${i})"></button>`;
+                        return `<button type="button" class="rr-sl${on ? ' on' : ''}" style="width:${w.toFixed(2)}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.78;'}"`
+                            + ` data-attr="${esc(r.attr)}" data-lv="${L.level}" data-i="${i}" title="${esc(t)}" aria-label="${esc(t)}"`
+                            + ` onclick="_rrPickSlice(this.dataset.attr, Number(this.dataset.lv), Number(this.dataset.i))"></button>`;
                     }).join('');
                     return `<div class="rr-seg" style="flex:${L.hp || 1} 1 0;" title="${esc(segTitle)}">${slices}<b>Lv${L.level}</b></div>`;
                 }).join('') + `</div>`;
@@ -24367,7 +24372,11 @@
             const same = _rrPick && attr != null && _rrPick.attr === attr && _rrPick.level === level && _rrPick.i === i;
             _rrPick = (attr == null || same) ? null : { attr, level, i };
             const el = document.getElementById('raidReviewProgress');
-            if (el && _rrLastProgress) el.innerHTML = _rrProgressHtml(_rrLastProgress, _rrPick);
+            if (!el || !_rrLastProgress) return;
+            el.innerHTML = _rrProgressHtml(_rrLastProgress, _rrPick);
+            // ★ innerHTML の差し替えで押した要素ごと消えるので、同じ凸へ焦点を戻す (キーボードで辿れなくなる: Codex指摘 2026-09-16)。
+            //   位置は変わらないので preventScroll。閉じたときは焦点を移さない
+            if (_rrPick) el.querySelector('.rr-sl.on')?.focus({ preventScroll: true });
         }
         // ② 得意・不得意: 散布図 (凸数 × 強さ) / ランキング (横棒)。主役の指標は basis が決める
         function _rrAptFmt(v, basis) {

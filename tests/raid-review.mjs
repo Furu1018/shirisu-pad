@@ -255,6 +255,16 @@ test('① 帯: 凸1本ずつに区切られ、幅の合計 = その Lv の進捗
     assert.equal((picked.match(/class="chr"/g) || []).length, 5, '編成の5キャラが出ていない');
     assert.ok((picked.match(/class="rr-sl on"/g) || []).length === 1, '選んだ凸の印が無い');
     assert.ok(picked.includes('onclick="_rrPickSlice(null)"'), '閉じるボタンが無い');
+    // ★ 属性は onclick の文字列に埋めず data 属性で渡す (Codex指摘 2026-09-16)
+    assert.ok(/data-attr="fire" data-lv="3" data-i="0"[^>]*onclick="_rrPickSlice\(this\.dataset\.attr, Number\(this\.dataset\.lv\), Number\(this\.dataset\.i\)\)"/.test(picked), '凸のボタンが data 属性で渡していない');
+    assert.ok(!/_rrPickSlice\('/.test(picked), '属性を JS の文字列に埋めている');
+    // ★ ダメージ 0 の凸も区切りとして出す (出さないと「区切りは凸1本」と凸数が合わない)
+    const zero = [{ player: 'Z', syncLevel: 600, attacks: [{ bossCode: 'Z.E.U.S.', level: 1, damage: 0 }, { bossCode: 'Z.E.U.S.', level: 1, damage: 99856279200 }] }];
+    const zr = dom.attributeProgress({ players: zero, hpTable: cfg.hardLevelHp, attrOf });
+    const zout = api._rrProgressHtml(zr);
+    clean(zout);
+    assert.equal((zout.match(/class="rr-sl/g) || []).length, 2, `ダメージ 0 の凸が区切りに出ていない: ${(zout.match(/class="rr-sl/g) || []).length}`);
+    assert.ok(/width:0\.00%/.test(zout), '0 の凸の幅が 0% でない');
     // 締め凸を選んだら断りが出る
     const killAt = rows.flatMap(r => r.levels.flatMap(L => L.slices.map((x, i) => ({ r, L, x, i })))).find(o => o.x.isKill);
     const kp = api._rrProgressHtml(rows, { attr: killAt.r.attr, level: killAt.L.level, i: killAt.i });
