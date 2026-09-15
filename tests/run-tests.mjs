@@ -9244,14 +9244,21 @@ console.log('\ngrowthDomain:');
         let w = dom.sliceWidths(mk([50, 30, 15, 5], 100));
         assert.ok(Math.abs(sum(w) - 100) < 1e-9, `合計が 100% でない: ${sum(w)}`);
         assert.ok(w.every((x, i, arr) => i === 0 || arr[i - 1] >= x), '入れた順 (大きい順) が崩れている');
+        // ★ 全部が下限より大きいときは**割合そのまま** (下限が大きすぎると大きい凸まで潰れて「誰がたくさん削ったか」が読めない)
+        assert.deepEqual(w.map(x => Number(x.toFixed(6))), [50, 30, 15, 5], `下限が大きすぎて割合が歪んでいる: ${w}`);
         // 未踏破: 合計は削った割合と一致 (超えない)
         w = dom.sliceWidths(mk([30, 20, 1], 100));
         assert.ok(Math.abs(sum(w) - 51) < 1e-9, `合計が 51% でない: ${sum(w)}`);
-        // ★ 極端に細い凸にも下限 (見えて押せる) — ただし合計は超えない
+        // ★ 極端に細い凸にも下限 (見えて押せる) — ただし合計は超えない・大きい凸は大きいまま
         w = dom.sliceWidths(mk([90, 0.2, 0.2, 0.2], 100));
-        assert.ok(Math.min(...w) >= 90.6 / 4 * 0.99 || Math.min(...w) >= 1, `細い凸に下限が無い: ${w}`);
+        assert.ok(Math.min(...w) > 0.2, `細い凸に下限が無い: ${w}`);
+        assert.ok(w[0] > 80, `大きい凸が潰れている: ${w}`);
         assert.ok(Math.abs(sum(w) - 90.6) < 1e-9, `合計がずれた: ${sum(w)}`);
         assert.ok(w.every(x => x >= 0), '負の幅がある');
+        // ★ 下限が効かないほど本数が多くても合計は守る (下限より合計が大事)
+        w = dom.sliceWidths(mk([27, 0.5, 0.5, 0.5, 0.5], 100));
+        assert.ok(Math.abs(sum(w) - 29) < 1e-9, `合計がずれた: ${sum(w)}`);
+        assert.ok(w[0] > 20, `大きい凸が下限に潰された: ${w}`);
         // 本数が多くても合計は超えない (px の下限だと親を超える: Codex指摘)
         w = dom.sliceWidths(mk(new Array(30).fill(1), 100));
         assert.ok(Math.abs(sum(w) - 30) < 1e-9 && w.every(x => Math.abs(x - 1) < 1e-9), `30本で崩れた: ${sum(w)}`);

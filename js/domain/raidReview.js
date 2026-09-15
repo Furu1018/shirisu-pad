@@ -242,8 +242,11 @@
     /**
      * 帯の中の凸の幅 (%) を出す。細い凸にも下限を与えつつ、**合計は必ず「その Lv で削った割合」に一致**させる
      * (Codex指摘 2026-09-16: CSS の min-width(px) だと本数が多いとき合計が親を超えて右端の凸が切れる)。
-     *   下限 = min(削った割合 / 本数, 8%) — 本数ぶん足しても削った割合を超えない。
+     *   下限 = min(削った割合 / 本数 × 0.35, 2%) — **1本あたりの取り分の 1/3 まで**に抑える。大きくすると大きい凸まで
+     *   下限に潰されて「誰がたくさん削ったか」が読めなくなる (2026-09-16 に自分で踏んだ)。
      *   はみ出したぶんは、下限より余裕のある凸から**その余裕に比例して**削る。
+     *   ★ 余裕は必ず足りる: はみ出し = Σ(下限 − 小さい凸) ≤ 本数 × 下限 ≤ 0.35 × 削った割合 < 削った割合 = Σ(凸)
+     *     なので「下限より大きい凸」の余裕の合計を超えない。下限の上限 (0.35 と 2%) を外すとこの保証が壊れる (テストが見張る)。
      * @param {{slices:Object[], hp:(number|null), damage:number}} level
      * @returns {number[]} 各凸の幅 (%)。hp が無ければ全部 0
      */
@@ -254,15 +257,15 @@
         if (!n || !(hp > 0)) return new Array(n).fill(0);
         const fill = Math.max(0, Math.min(100, ((num(level.damage) || 0) / hp) * 100));
         if (!(fill > 0)) return new Array(n).fill(0);
-        const floor = Math.min(fill / n, 8);
+        const floor = Math.min((fill / n) * 0.35, 2);
         const base = slices.map(s => Math.max(0, ((num(s.damage) || 0) / hp) * 100));
         const out = base.map(b => Math.max(b, floor));
-        let extra = out.reduce((a, b) => a + b, 0) - fill;
+        const extra = out.reduce((a, b) => a + b, 0) - fill;
         if (extra > 1e-9) {
             const room = out.map(w => Math.max(0, w - floor));
             const sum = room.reduce((a, b) => a + b, 0);
+            // sum が 0 になるのは「全部の凸が下限以下」= 削った割合 ≤ 本数 × 下限 のときだけで、上の保証によりあり得ない
             if (sum > 0) for (let i = 0; i < n; i++) out[i] -= extra * (room[i] / sum);
-            else for (let i = 0; i < n; i++) out[i] -= extra / n;   // 全部が下限 = 均等に削る
         }
         return out.map(w => Math.max(0, w));
     }
