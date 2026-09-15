@@ -9236,6 +9236,48 @@ console.log('\ngrowthDomain:');
         assert.deepEqual([dom.attributeAptitude({ players, attrOf }).basis, dom.attributeAptitude({ players, attrOf }).rows[0].value], ['raw', 24]);
         assert.equal(dom.attributeAptitude({ players, ratioTable, gb, attrOf, refSlv: 500 }).basis, 'gb', 'refSlv を渡しても GB が主役のまま');
     });
+    test('★ raidReview.sliceWidths: 細い凸にも下限を与えつつ、合計は必ず「削った割合」に一致する', () => {
+        const dom = globalThis.raidReviewDomain;
+        const mk = (dmgs, hp) => ({ hp, damage: dmgs.reduce((a, b) => a + b, 0), slices: dmgs.map(d => ({ damage: d })) });
+        const sum = (a) => a.reduce((x, y) => x + y, 0);
+        // 踏破した Lv: 合計はちょうど 100%
+        let w = dom.sliceWidths(mk([50, 30, 15, 5], 100));
+        assert.ok(Math.abs(sum(w) - 100) < 1e-9, `合計が 100% でない: ${sum(w)}`);
+        assert.ok(w.every((x, i, arr) => i === 0 || arr[i - 1] >= x), '入れた順 (大きい順) が崩れている');
+        // 未踏破: 合計は削った割合と一致 (超えない)
+        w = dom.sliceWidths(mk([30, 20, 1], 100));
+        assert.ok(Math.abs(sum(w) - 51) < 1e-9, `合計が 51% でない: ${sum(w)}`);
+        // ★ 極端に細い凸にも下限 (見えて押せる) — ただし合計は超えない
+        w = dom.sliceWidths(mk([90, 0.2, 0.2, 0.2], 100));
+        assert.ok(Math.min(...w) >= 90.6 / 4 * 0.99 || Math.min(...w) >= 1, `細い凸に下限が無い: ${w}`);
+        assert.ok(Math.abs(sum(w) - 90.6) < 1e-9, `合計がずれた: ${sum(w)}`);
+        assert.ok(w.every(x => x >= 0), '負の幅がある');
+        // 本数が多くても合計は超えない (px の下限だと親を超える: Codex指摘)
+        w = dom.sliceWidths(mk(new Array(30).fill(1), 100));
+        assert.ok(Math.abs(sum(w) - 30) < 1e-9 && w.every(x => Math.abs(x - 1) < 1e-9), `30本で崩れた: ${sum(w)}`);
+        // ダメージ 0 の凸が混ざっても合計は一致する
+        w = dom.sliceWidths(mk([60, 0, 0], 100));
+        assert.ok(Math.abs(sum(w) - 60) < 1e-9, `0 の凸で合計がずれた: ${sum(w)}`);
+        assert.ok(w[1] > 0 && w[2] > 0, 'ダメージ 0 の凸が幅 0 のまま (見えない)');
+        // 材料が無いとき
+        assert.deepEqual(dom.sliceWidths({ hp: null, damage: 5, slices: [{ damage: 5 }] }), [0], 'HP が無いのに幅を出している');
+        assert.deepEqual(dom.sliceWidths({ hp: 100, damage: 0, slices: [{ damage: 0 }] }), [0]);
+        assert.deepEqual(dom.sliceWidths({ hp: 100, damage: 0, slices: [] }), []);
+        assert.deepEqual(dom.sliceWidths(null), []);
+        // 本番のデータ: どの Lv でも合計が削った割合と一致する (右端が切れない)
+        const players = JSON.parse(_grRd('data/2026-09.json')).players;
+        const hpTable = JSON.parse(_grRd('data/raid-config.json')).hardLevelHp;
+        const PT = { 'H.S.T.A.': 'water', 'P.S.I.D.': 'electric', 'Z.E.U.S.': 'iron', 'D.M.T.R.': 'wind', 'A.N.M.I.': 'fire' };
+        for (const r of dom.attributeProgress({ players, hpTable, attrOf: (c) => PT[c] || null })) {
+            for (const L of r.levels) {
+                const ww = dom.sliceWidths(L);
+                if (!ww.length) continue;
+                assert.ok(Math.abs(sum(ww) - L.damage / L.hp * 100) < 1e-6, `${r.attr} Lv${L.level}: 合計が削った割合と違う`);
+                assert.ok(sum(ww) <= 100 + 1e-9, `${r.attr} Lv${L.level}: 100% を超えた (右端が切れる)`);
+                assert.ok(Math.min(...ww) >= 1, `${r.attr} Lv${L.level}: 見えない細さの凸がある (${Math.min(...ww)}%)`);
+            }
+        }
+    });
     test('★ raidReview.memberMatrix: 人 × 属性 (削った量の多い順・凸していない人は出さない)', () => {
         const dom = globalThis.raidReviewDomain;
         const attrOf = (c) => ({ I: 'iron', F: 'fire' }[c] || null);
@@ -9303,11 +9345,15 @@ console.log('\ngrowthDomain:');
         const ps = html.match(/function _rrPickSlice\(attr, level, i\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/_rrPick = \(attr == null \|\| same\) \? null : \{ attr, level, i \};/.test(ps), '同じ凸をもう一度押しても閉じない');
         assert.ok(/el\.innerHTML = _rrProgressHtml\(_rrLastProgress, _rrPick\);/.test(ps), '選び直しで描き直していない');
-        assert.ok(/if \(_rrPick\) el\.querySelector\('\.rr-sl\.on'\)\?\.focus\(\{ preventScroll: true \}\);/.test(ps), '差し替えで焦点が飛んだまま (キーボードで辿れない)');
+        // ★ 開いたときも閉じたときも「押した凸」へ焦点を戻す (✕ も同じ凸を指す)
+        assert.ok(/if \(attr == null\) return;\s*for \(const b of el\.querySelectorAll\('\.rr-sl'\)\) \{[\s\S]*?b\.focus\(\{ preventScroll: true \}\); break;/.test(ps), '差し替えで焦点が飛んだまま (キーボードで辿れない)');
         // ★ 見た目の約束: 凸の区切り (inset の影 = 幅を食わない) / Lv の文字は下の凸を押せるように透過する
         assert.ok(/\.rr-sl \{[^}]*box-shadow: inset -1px 0 0 var\(--card\);/.test(html), '凸の区切りが無い (誰の凸か分からない)');
         // ★ 縮ませない (割合どおりに描く) / 細い凸も見えて押せる (Codex指摘 2026-09-16)
-        assert.ok(/\.rr-sl \{[^}]*flex: 0 0 auto; min-width: 4px;/.test(html), '細い凸が潰れて押せない (縮む / 最小幅が無い)');
+        // ★ 幅はドメインが決める (CSS の min-width(px) だと本数が多いとき合計が親を超えて右端が切れる: Codex指摘 2026-09-16)
+        assert.ok(/\.rr-sl \{[^}]*flex: 0 0 auto; cursor: pointer;/.test(html), '凸が縮んで割合どおりに描かれない');
+        assert.ok(!/\.rr-sl \{[^}]*min-width: \d+px/.test(html), 'px の最小幅が残っている (合計が親を超える)');
+        assert.ok(/const ws = window\.raidReviewDomain \? window\.raidReviewDomain\.sliceWidths\(L\)/.test(html), '幅をドメインに決めさせていない');
         assert.ok(/\.rr-seg \{[^}]*overflow: hidden;/.test(html), 'はみ出したぶんを切っていない');
         assert.ok(!/\.rr-sl \{[^}]*border-(right|left): /.test(html), '区切りを border で描いている (幅を食って割合がずれる)');
         assert.ok(/\.rr-seg b \{[^}]*pointer-events: none;/.test(html), 'Lv の文字が下の凸を覆う (押せない)');

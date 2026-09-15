@@ -307,7 +307,10 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ 取得の間は `_rrLastApt = null` (前の回の図を描き直さない)。名乗り直しで分析タブを開いていたら描き直す (ヒートマップの「自分」の行)
   ★ **進捗の帯は凸1本ずつに区切る** (2026-09-15 ユーザー要望)。押すと詳細 (誰が・その凸の編成・そのレベルのボスHPの何% / その属性の総HPの何%)。
   凸は削った量の多い順 (同じなら名前順で決定的に)。選択は `_rrPick {attr, level, i}`、描き直しの材料は `_rrLastProgress` (回が変わったら両方捨てる)。
-  区切りは `box-shadow: inset` (幅を食わないので細い凸でも割合が正しいまま)、Lv の文字は `pointer-events: none` (下の凸を押せるように)
+  区切りは `box-shadow: inset` (幅を食わないので細い凸でも割合が正しいまま)、Lv の文字は `pointer-events: none` (下の凸を押せるように)。
+  ★ **幅は `raidReviewDomain.sliceWidths(L)` が決める** — 細い凸に下限を与えつつ**合計は必ず「その Lv で削った割合」に一致**させる
+  (CSS の `min-width: px` だと本数が多いとき合計が親を超えて右端の凸が切れる: Codex指摘)。凸のボタンは `data-attr/lv/i` を持ち、
+  ✕ も同じ凸を指す (差し替えのあと押した凸へ `focus({preventScroll:true})` を戻す)
 - **js/domain/slvSim.js** — 分析タブ › シミュレーター (2026-09-13)。`predictDamage` (SLv → 予測) と **`requiredSlv` (目標ダメージ → 届く最小の SLv、二分探索)**。
   画面は `runSimReverse` が B×1e9 で渡し、届く SLv を目標 SLv に写して予測と順位表も動かす。目標 SLv を手で変えたら逆引きの入力は消す (`onSimTargetSlvInput`)。
   ★ 既定の選択はいま名乗っている人 (`_simDefaultPlayer`: 分析データにその名前があれば)。ダメージ予測とふるり値試算の両方

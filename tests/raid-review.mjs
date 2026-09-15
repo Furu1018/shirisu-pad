@@ -254,7 +254,9 @@ test('① 帯: 凸1本ずつに区切られ、幅の合計 = その Lv の進捗
     assert.ok(picked.includes(`灼熱PT の総HP (Lv1〜3) の <b>${top.pctTotal.toFixed(1)}%</b>`), '属性全体に対する割合が無い');
     assert.equal((picked.match(/class="chr"/g) || []).length, 5, '編成の5キャラが出ていない');
     assert.ok((picked.match(/class="rr-sl on"/g) || []).length === 1, '選んだ凸の印が無い');
-    assert.ok(picked.includes('onclick="_rrPickSlice(null)"'), '閉じるボタンが無い');
+    // ★ ✕ も同じ凸を指す (押すと閉じて、焦点がその凸に戻る: Codex指摘 2026-09-16)
+    assert.ok(/data-attr="fire" data-lv="3" data-i="0"[^>]*aria-label="閉じる"/.test(picked), '閉じるボタンが同じ凸を指していない');
+    assert.ok(!picked.includes('_rrPickSlice(null)'), '閉じるボタンが凸を指さず null を渡している (焦点が戻らない)');
     // ★ 属性は onclick の文字列に埋めず data 属性で渡す (Codex指摘 2026-09-16)
     assert.ok(/data-attr="fire" data-lv="3" data-i="0"[^>]*onclick="_rrPickSlice\(this\.dataset\.attr, Number\(this\.dataset\.lv\), Number\(this\.dataset\.i\)\)"/.test(picked), '凸のボタンが data 属性で渡していない');
     assert.ok(!/_rrPickSlice\('/.test(picked), '属性を JS の文字列に埋めている');

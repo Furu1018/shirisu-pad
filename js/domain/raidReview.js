@@ -239,5 +239,33 @@
         return { rows, max, attrs: Array.isArray(attrs) ? attrs.slice() : [] };
     }
 
-    root.raidReviewDomain = { tally, bossClass, attributeProgress, attributeAptitude, memberMatrix, LEVELS, CLASSES };
+    /**
+     * 帯の中の凸の幅 (%) を出す。細い凸にも下限を与えつつ、**合計は必ず「その Lv で削った割合」に一致**させる
+     * (Codex指摘 2026-09-16: CSS の min-width(px) だと本数が多いとき合計が親を超えて右端の凸が切れる)。
+     *   下限 = min(削った割合 / 本数, 8%) — 本数ぶん足しても削った割合を超えない。
+     *   はみ出したぶんは、下限より余裕のある凸から**その余裕に比例して**削る。
+     * @param {{slices:Object[], hp:(number|null), damage:number}} level
+     * @returns {number[]} 各凸の幅 (%)。hp が無ければ全部 0
+     */
+    function sliceWidths(level) {
+        const slices = (level && Array.isArray(level.slices)) ? level.slices : [];
+        const hp = level ? num(level.hp) : null;
+        const n = slices.length;
+        if (!n || !(hp > 0)) return new Array(n).fill(0);
+        const fill = Math.max(0, Math.min(100, ((num(level.damage) || 0) / hp) * 100));
+        if (!(fill > 0)) return new Array(n).fill(0);
+        const floor = Math.min(fill / n, 8);
+        const base = slices.map(s => Math.max(0, ((num(s.damage) || 0) / hp) * 100));
+        const out = base.map(b => Math.max(b, floor));
+        let extra = out.reduce((a, b) => a + b, 0) - fill;
+        if (extra > 1e-9) {
+            const room = out.map(w => Math.max(0, w - floor));
+            const sum = room.reduce((a, b) => a + b, 0);
+            if (sum > 0) for (let i = 0; i < n; i++) out[i] -= extra * (room[i] / sum);
+            else for (let i = 0; i < n; i++) out[i] -= extra / n;   // 全部が下限 = 均等に削る
+        }
+        return out.map(w => Math.max(0, w));
+    }
+
+    root.raidReviewDomain = { tally, bossClass, attributeProgress, attributeAptitude, memberMatrix, sliceWidths, LEVELS, CLASSES };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -2990,9 +2990,9 @@
         /* ★ 帯は凸ごとに区切る (2026-09-15 ユーザー要望「一人一人の凸がどれくらいの割合だったか視覚的に」)。
            区切りは inset の影 (幅を食わないので細い凸でも割合が正しいまま) */
         .rr-seg { position: relative; background: var(--track); border-radius: 4px; overflow: hidden; min-width: 2px; display: flex; }
-        /* ★ flex:0 0 auto = 縮ませない (縮むと指定した割合どおりに描かれない) / min-width = 細い凸も見えて押せる (Codex指摘 2026-09-16)。
-           はみ出したぶんは .rr-seg の overflow:hidden が切る */
-        .rr-sl { border: none; padding: 0; margin: 0; height: 100%; flex: 0 0 auto; min-width: 4px; cursor: pointer; box-shadow: inset -1px 0 0 var(--card); }
+        /* ★ flex:0 0 auto = 縮ませない (縮むと指定した割合どおりに描かれない)。細い凸の下限は **JS が幅の中で** 与える
+           (raidReviewDomain.sliceWidths — CSS の min-width(px) だと本数が多いとき合計が親を超えて右端が切れる: Codex指摘 2026-09-16) */
+        .rr-sl { border: none; padding: 0; margin: 0; height: 100%; flex: 0 0 auto; cursor: pointer; box-shadow: inset -1px 0 0 var(--card); }
         .rr-sl:hover { filter: brightness(1.12); }
         .rr-sl.on { box-shadow: inset 0 0 0 2px var(--t-ink); }
         .rr-seg b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: var(--t-body); font-style: normal; pointer-events: none; text-shadow: 0 0 2px var(--card); }
@@ -24332,8 +24332,9 @@
                     const segTitle = `Lv${L.level} ${_rrB(L.damage)} / ${_rrB(L.hp || 0)} · ${L.attacks}凸${L.cleared ? ' · 踏破' : ''}`;
                     // ★ ダメージ 0 の凸も区切りとして出す (出さないと「区切りは凸1本」と凸数が合わない: Codex指摘 2026-09-16)。
                     //   属性は onclick の文字列に埋めず data 属性で渡す (JS リテラルに文字列を埋めない決めごと)
+                    const ws = window.raidReviewDomain ? window.raidReviewDomain.sliceWidths(L) : (L.slices || []).map(() => 0);
                     const slices = (L.slices || []).map((x, i) => {
-                        const w = L.hp ? Math.max(0, Math.min(100, (x.damage / L.hp) * 100)) : 0;
+                        const w = ws[i] || 0;
                         const on = pick && pick.attr === r.attr && pick.level === L.level && pick.i === i;
                         const t = `${x.name} · Lv${L.level} ${_rrB(x.damage)}${x.isKill ? ' (締)' : ''} · このLvの ${(x.pctLevel ?? 0).toFixed(1)}% / ${jp}PT 全体の ${(x.pctTotal ?? 0).toFixed(1)}%`;
                         return `<button type="button" class="rr-sl${on ? ' on' : ''}" style="width:${w.toFixed(2)}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.78;'}"`
@@ -24361,7 +24362,8 @@
                 : '<span style="font-size:11px;color:var(--t-muted);">この凸の編成は記録されていません</span>';
             return `<div class="rr-det"><div class="rr-det-h">${esc(x.name)}<span class="lv">Lv${L.level}</span><b>${esc(_rrB(x.damage))}</b>`
                 + (x.isKill ? '<span class="k">締</span>' : '')
-                + `<button type="button" onclick="_rrPickSlice(null)" aria-label="閉じる" title="閉じる">✕</button></div>`
+                + `<button type="button" data-attr="${esc(r.attr)}" data-lv="${L.level}" data-i="${pick.i}"`
+                + ` onclick="_rrPickSlice(this.dataset.attr, Number(this.dataset.lv), Number(this.dataset.i))" aria-label="閉じる" title="閉じる">✕</button></div>`
                 + `<div class="rr-det-t">${team}</div>`
                 + `<div class="rr-det-p">このレベルのボスHPの <b>${(x.pctLevel ?? 0).toFixed(1)}%</b> · ${esc(jp)}PT の総HP (Lv1〜3) の <b>${(x.pctTotal ?? 0).toFixed(1)}%</b>`
                 + (x.isKill ? '<br><span style="color:var(--warn-deep);">締め凸は残りHPぶんしか記録されないので、実際の火力より小さく出ます。</span>' : '')
@@ -24374,9 +24376,12 @@
             const el = document.getElementById('raidReviewProgress');
             if (!el || !_rrLastProgress) return;
             el.innerHTML = _rrProgressHtml(_rrLastProgress, _rrPick);
-            // ★ innerHTML の差し替えで押した要素ごと消えるので、同じ凸へ焦点を戻す (キーボードで辿れなくなる: Codex指摘 2026-09-16)。
-            //   位置は変わらないので preventScroll。閉じたときは焦点を移さない
-            if (_rrPick) el.querySelector('.rr-sl.on')?.focus({ preventScroll: true });
+            // ★ innerHTML の差し替えで押した要素ごと消えるので、**押した凸**へ焦点を戻す (開いたときも閉じたときも。
+            //   閉じる ✕ も同じ凸を指しているので、キーボードの位置を失わない: Codex指摘 2026-09-16)。位置は変わらないので preventScroll
+            if (attr == null) return;
+            for (const b of el.querySelectorAll('.rr-sl')) {
+                if (b.dataset.attr === attr && Number(b.dataset.lv) === level && Number(b.dataset.i) === i) { b.focus({ preventScroll: true }); break; }
+            }
         }
         // ② 得意・不得意: 散布図 (凸数 × 強さ) / ランキング (横棒)。主役の指標は basis が決める
         function _rrAptFmt(v, basis) {
