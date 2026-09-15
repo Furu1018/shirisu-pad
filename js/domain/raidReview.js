@@ -274,18 +274,21 @@
      * 表示用に幅を丸める。★ **積み上げで丸める** — 1本ずつ丸めると切り上げが積もって合計が元より増え、
      * 帯が親からはみ出して右端の凸が切れる (Codex指摘 2026-09-16)。
      * 積み上げた値を丸めて差を取ると、合計は必ず「元の合計を丸めた値」に一致する。
+     * ★ 負・数でない値は**積む前に 0 にする** — 積んだあとで切り落とすと合計が合わなくなる (Codex指摘 2026-09-16)。
+     *   積む値が 0 以上なので差は必ず 0 以上になり、あとから切り落とす必要がない。
      * @param {number[]} widths
-     * @param {number=} digits 小数の桁 (既定 2)
+     * @param {number=} digits 小数の桁 (既定 2・0〜6 まで。外れた値は 2 に倒す — 10^digits が Infinity になるのを防ぐ)
      */
     function roundWidths(widths, digits = 2) {
-        const k = Math.pow(10, Number.isInteger(digits) && digits >= 0 ? digits : 2);
+        const k = Math.pow(10, Number.isInteger(digits) && digits >= 0 && digits <= 6 ? digits : 2);
         let acc = 0, prev = 0;
         return (Array.isArray(widths) ? widths : []).map(w => {
-            acc += Number.isFinite(w) ? w : 0;
+            acc += (Number.isFinite(w) && w > 0) ? w : 0;
             const cur = Math.round(acc * k) / k;
             const v = cur - prev;
             prev = cur;
-            return Math.max(0, Math.round(v * k) / k);
+            // 差は必ず 1/k の倍数なので、丸めは浮動小数のゴミ (1.0099999…) を落とすだけ — 合計は変わらない
+            return Math.round(v * k) / k;
         });
     }
 

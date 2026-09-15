@@ -9282,6 +9282,11 @@ console.log('\ngrowthDomain:');
         assert.ok(r2.every(x => x >= 0), '負の幅がある');
         assert.deepEqual(dom.roundWidths([]), []); assert.deepEqual(dom.roundWidths(null), []);
         assert.deepEqual(dom.roundWidths([1.005, 1.005]), [1, 1.01], '積み上げで丸めていない (1本ずつだと [1.01, 1.01] = 合計が増える)');
+        // ★ 負・数でない値は積む前に 0 に (積んでから切り落とすと合計が合わない) / 桁が外れたら 2 に倒す (10^digits が Infinity)
+        assert.deepEqual(dom.roundWidths([5, -3, Number.NaN, 2]), [5, 0, 0, 2], '負や数でない値の扱いが違う');
+        assert.ok(dom.roundWidths([1.005, 1.005], 1e9).every(x => Number.isFinite(x)), '桁が大きすぎて壊れる');
+        assert.deepEqual(dom.roundWidths([1.005, 1.005], 1e9), [1, 1.01], '桁が外れたとき 2 に倒していない');
+        assert.deepEqual(dom.roundWidths([1.2345, 1.2345], 3), [1.235, 1.234], '桁の指定が効いていない');
         // 本番のデータ: どの Lv でも合計が削った割合と一致する (右端が切れない)
         const players = JSON.parse(_grRd('data/2026-09.json')).players;
         const hpTable = JSON.parse(_grRd('data/raid-config.json')).hardLevelHp;
