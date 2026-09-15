@@ -266,7 +266,7 @@ test('① 帯: 凸1本ずつに区切られ、幅の合計 = その Lv の進捗
     const zout = api._rrProgressHtml(zr);
     clean(zout);
     assert.equal((zout.match(/class="rr-sl/g) || []).length, 2, `ダメージ 0 の凸が区切りに出ていない: ${(zout.match(/class="rr-sl/g) || []).length}`);
-    assert.ok(/width:0\.00%/.test(zout), '0 の凸の幅が 0% でない');
+    assert.ok(/width:0%/.test(zout), '0 の凸の幅が 0% でない');
     // 締め凸を選んだら断りが出る
     const killAt = rows.flatMap(r => r.levels.flatMap(L => L.slices.map((x, i) => ({ r, L, x, i })))).find(o => o.x.isKill);
     const kp = api._rrProgressHtml(rows, { attr: killAt.r.attr, level: killAt.L.level, i: killAt.i });

@@ -270,5 +270,24 @@
         return out.map(w => Math.max(0, w));
     }
 
-    root.raidReviewDomain = { tally, bossClass, attributeProgress, attributeAptitude, memberMatrix, sliceWidths, LEVELS, CLASSES };
+    /**
+     * 表示用に幅を丸める。★ **積み上げで丸める** — 1本ずつ丸めると切り上げが積もって合計が元より増え、
+     * 帯が親からはみ出して右端の凸が切れる (Codex指摘 2026-09-16)。
+     * 積み上げた値を丸めて差を取ると、合計は必ず「元の合計を丸めた値」に一致する。
+     * @param {number[]} widths
+     * @param {number=} digits 小数の桁 (既定 2)
+     */
+    function roundWidths(widths, digits = 2) {
+        const k = Math.pow(10, Number.isInteger(digits) && digits >= 0 ? digits : 2);
+        let acc = 0, prev = 0;
+        return (Array.isArray(widths) ? widths : []).map(w => {
+            acc += Number.isFinite(w) ? w : 0;
+            const cur = Math.round(acc * k) / k;
+            const v = cur - prev;
+            prev = cur;
+            return Math.max(0, Math.round(v * k) / k);
+        });
+    }
+
+    root.raidReviewDomain = { tally, bossClass, attributeProgress, attributeAptitude, memberMatrix, sliceWidths, roundWidths, LEVELS, CLASSES };
 })(typeof window !== 'undefined' ? window : globalThis);

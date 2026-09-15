@@ -24332,12 +24332,13 @@
                     const segTitle = `Lv${L.level} ${_rrB(L.damage)} / ${_rrB(L.hp || 0)} · ${L.attacks}凸${L.cleared ? ' · 踏破' : ''}`;
                     // ★ ダメージ 0 の凸も区切りとして出す (出さないと「区切りは凸1本」と凸数が合わない: Codex指摘 2026-09-16)。
                     //   属性は onclick の文字列に埋めず data 属性で渡す (JS リテラルに文字列を埋めない決めごと)
-                    const ws = window.raidReviewDomain ? window.raidReviewDomain.sliceWidths(L) : (L.slices || []).map(() => 0);
+                    // ★ 丸めは積み上げで (1本ずつ丸めると合計が増えて右端の凸が切れる: Codex指摘 2026-09-16)
+                    const ws = window.raidReviewDomain ? window.raidReviewDomain.roundWidths(window.raidReviewDomain.sliceWidths(L)) : (L.slices || []).map(() => 0);
                     const slices = (L.slices || []).map((x, i) => {
                         const w = ws[i] || 0;
                         const on = pick && pick.attr === r.attr && pick.level === L.level && pick.i === i;
                         const t = `${x.name} · Lv${L.level} ${_rrB(x.damage)}${x.isKill ? ' (締)' : ''} · このLvの ${(x.pctLevel ?? 0).toFixed(1)}% / ${jp}PT 全体の ${(x.pctTotal ?? 0).toFixed(1)}%`;
-                        return `<button type="button" class="rr-sl${on ? ' on' : ''}" style="width:${w.toFixed(2)}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.78;'}"`
+                        return `<button type="button" class="rr-sl${on ? ' on' : ''}" style="width:${w}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.78;'}"`
                             + ` data-attr="${esc(r.attr)}" data-lv="${L.level}" data-i="${i}" title="${esc(t)}" aria-label="${esc(t)}"`
                             + ` onclick="_rrPickSlice(this.dataset.attr, Number(this.dataset.lv), Number(this.dataset.i))"></button>`;
                     }).join('');

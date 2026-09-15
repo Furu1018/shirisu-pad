@@ -9274,6 +9274,14 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(dom.sliceWidths({ hp: 100, damage: 0, slices: [{ damage: 0 }] }), [0]);
         assert.deepEqual(dom.sliceWidths({ hp: 100, damage: 0, slices: [] }), []);
         assert.deepEqual(dom.sliceWidths(null), []);
+        // ★ 表示の丸めは積み上げで — 1本ずつ丸めると切り上げが積もって合計が増え、右端の凸が切れる (Codex指摘 2026-09-16)
+        const many = new Array(20).fill(0).map((_, i) => 1 + i * 0.001);   // 丸めで切り上がる値を並べる
+        const r2 = dom.roundWidths(many);
+        assert.ok(Math.abs(sum(r2) - Number(sum(many).toFixed(2))) < 1e-9, `丸めで合計が変わった: ${sum(r2)} / ${sum(many)}`);
+        assert.ok(r2.every(x => Math.abs(x * 100 - Math.round(x * 100)) < 1e-9), '小数2桁に丸まっていない');
+        assert.ok(r2.every(x => x >= 0), '負の幅がある');
+        assert.deepEqual(dom.roundWidths([]), []); assert.deepEqual(dom.roundWidths(null), []);
+        assert.deepEqual(dom.roundWidths([1.005, 1.005]), [1, 1.01], '積み上げで丸めていない (1本ずつだと [1.01, 1.01] = 合計が増える)');
         // 本番のデータ: どの Lv でも合計が削った割合と一致する (右端が切れない)
         const players = JSON.parse(_grRd('data/2026-09.json')).players;
         const hpTable = JSON.parse(_grRd('data/raid-config.json')).hardLevelHp;
@@ -9283,6 +9291,7 @@ console.log('\ngrowthDomain:');
                 const ww = dom.sliceWidths(L);
                 if (!ww.length) continue;
                 assert.ok(Math.abs(sum(ww) - L.damage / L.hp * 100) < 1e-6, `${r.attr} Lv${L.level}: 合計が削った割合と違う`);
+                assert.ok(sum(dom.roundWidths(ww)) <= L.damage / L.hp * 100 + 0.005, `${r.attr} Lv${L.level}: 丸めた合計がはみ出す`);
                 assert.ok(sum(ww) <= 100 + 1e-9, `${r.attr} Lv${L.level}: 100% を超えた (右端が切れる)`);
                 assert.ok(Math.min(...ww) >= 1, `${r.attr} Lv${L.level}: 見えない細さの凸がある (${Math.min(...ww)}%)`);
             }
@@ -9363,7 +9372,7 @@ console.log('\ngrowthDomain:');
         // ★ 幅はドメインが決める (CSS の min-width(px) だと本数が多いとき合計が親を超えて右端が切れる: Codex指摘 2026-09-16)
         assert.ok(/\.rr-sl \{[^}]*flex: 0 0 auto; cursor: pointer;/.test(html), '凸が縮んで割合どおりに描かれない');
         assert.ok(!/\.rr-sl \{[^}]*min-width: \d+px/.test(html), 'px の最小幅が残っている (合計が親を超える)');
-        assert.ok(/const ws = window\.raidReviewDomain \? window\.raidReviewDomain\.sliceWidths\(L\)/.test(html), '幅をドメインに決めさせていない');
+        assert.ok(/const ws = window\.raidReviewDomain \? window\.raidReviewDomain\.roundWidths\(window\.raidReviewDomain\.sliceWidths\(L\)\)/.test(html), '幅をドメインに決めさせていない / 丸めが積み上げでない');
         assert.ok(/\.rr-seg \{[^}]*overflow: hidden;/.test(html), 'はみ出したぶんを切っていない');
         assert.ok(!/\.rr-sl \{[^}]*border-(right|left): /.test(html), '区切りを border で描いている (幅を食って割合がずれる)');
         assert.ok(/\.rr-seg b \{[^}]*pointer-events: none;/.test(html), 'Lv の文字が下の凸を覆う (押せない)');
