@@ -4558,6 +4558,7 @@
             <!-- 分析セグメント: 実績 (このタブ) / ふるり値・シミュレータ・GB比較 (tab-slv-ranking のビュー) -->
             <div class="ana-seg ana-seg-fill">
                 <button class="active" type="button"><span class="seg-ico">📊 </span>実績</button>
+                <button type="button" onclick="_gotoSlvView('review')"><span class="seg-ico">🛡 </span>全体分析</button>
                 <button type="button" onclick="_gotoSlvView('fururi')"><span class="seg-ico">⚡ </span>ふるり値</button>
                 <button type="button" onclick="_gotoSlvView('growth')"><span class="seg-ico">🧬 </span>育成</button>
                 <button type="button" onclick="_gotoSlvView('sim')"><span class="seg-ico">🧪 </span>シミュレータ</button>
@@ -4635,32 +4636,6 @@
                 <button id="rankingSeasonPrev" onclick="rankingSeasonNav(-1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;"><span style="font-size:13px;">‹</span> 過去シーズン</button>
                 <div id="rankingSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
                 <button id="rankingSeasonNext" onclick="rankingSeasonNav(1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;">次へ <span style="font-size:13px;">›</span></button>
-            </div>
-
-            <!-- ===== レイドの振り返り (2026-09-15 ユーザー要望・Codex と設計を合意) =====
-                 ① 属性別の進捗 = どこまで削れたか (実績) / ② 属性の得意・不得意 = 1凸あたりの強さ (SLv補正) / ③ 誰がどの属性で
-                 ★ 進捗率は達成度であって火力ではない (踏破で 100% 頭打ち・かけた凸数で決まる) ので、強さは別カードに分ける。
-                 判定は js/domain/raidReview.js が唯一。図は Chart.js を使わず HTML/CSS/SVG (トークンでテーマに自動追随する) -->
-            <div class="dc-card" id="raidReviewProgressCard" data-span="7">
-                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🛡 属性別の進捗</div>
-                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">各ボスの総HPをどこまで削れたか。凸がどの属性に偏ったかも一緒に読めます。</div>
-                <div id="raidReviewProgress" style="margin-top:12px;"></div>
-            </div>
-
-            <div class="dc-card" id="raidReviewAptitudeCard" data-span="5">
-                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">⚔ 属性の得意・不得意</div>
-                <div id="raidReviewAptitudeNote" style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;"></div>
-                <div class="ana-seg" style="margin:10px 0;">
-                    <button type="button" id="rrAptScatterBtn" onclick="setRrAptView('scatter')">散布図</button>
-                    <button type="button" id="rrAptBarsBtn" onclick="setRrAptView('bars')">ランキング</button>
-                </div>
-                <div id="raidReviewAptitude"></div>
-            </div>
-
-            <div class="dc-card" id="raidReviewMembersCard" data-span="12">
-                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">👥 誰がどの属性で削ったか</div>
-                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">色が濃いほど削った量が多い人。マス目に触れると 凸数 も出ます。</div>
-                <div id="raidReviewMembers" style="margin-top:12px;"></div>
             </div>
 
             <!-- ③ NIKKE編成 (折り畳み) -->
@@ -4741,6 +4716,7 @@
                  第3のビューに格上げ (_setSlvView が data-slv-view 要素の表示を切り替える) -->
             <div class="ana-seg ana-seg-fill">
                 <button type="button" onclick="switchTab('ranking')"><span class="seg-ico">📊 </span>実績</button>
+                <button type="button" data-view="review" onclick="_setSlvView('review')"><span class="seg-ico">🛡 </span>全体分析</button>
                 <button class="active" type="button" data-view="fururi" onclick="_setSlvView('fururi')"><span class="seg-ico">⚡ </span>ふるり値</button>
                 <button type="button" data-view="growth" onclick="_setSlvView('growth')"><span class="seg-ico">🧬 </span>育成</button>
                 <button type="button" data-view="sim" onclick="_setSlvView('sim')"><span class="seg-ico">🧪 </span>シミュレータ</button>
@@ -4813,6 +4789,55 @@
             <!-- ③ シミュレータ (シミュレータビュー — 旧折り畳みから格上げ。既定は非表示、_setSlvView('sim') で表示) -->
             <!-- GB比較 (しりすこPAD GB のシーズン凍結スナップショット — _setSlvView('gb') で表示) -->
             <!-- 🧬 育成 (D1・2026-09-09)。レイド後にスコアを詰めるための場所なので分析タブに置く -->
+            <!-- ===== 🛡 全体分析 (レイドの振り返り・2026-09-15 ユーザー要望「実績の隣に全体分析を / 何が分かるのかも説明を」) =====
+                 実績 (tab-ranking) は**個人**の成績、こちらは**ユニオン全体**。_setSlvView('review') で出す -->
+            <div class="dc-card" data-slv-view="review" data-span="12" hidden>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🛡 全体分析 — この画面で分かること</div>
+                <div style="display:grid;gap:8px;margin-top:10px;">
+                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:11.5px;line-height:1.6;color:var(--t-body);">
+                        <b style="color:var(--t-ink);white-space:nowrap;">🛡 属性別の進捗</b>
+                        <span>どの属性に凸が集まり、ボスの総HPを<b>どこまで削れたか</b>。<b>やり残したボス</b>と<b>凸の偏り</b>が一目で分かります。</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:11.5px;line-height:1.6;color:var(--t-body);">
+                        <b style="color:var(--t-ink);white-space:nowrap;">⚔ 得意・不得意</b>
+                        <span>SLv の差を補正した「<b>1凸あたりの力</b>」。ユニオンが<b>どの属性に強く / 弱いか</b>、次のレイドで<b>どの属性に凸を回すべきか</b>の判断に使えます。</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:11.5px;line-height:1.6;color:var(--t-body);">
+                        <b style="color:var(--t-ink);white-space:nowrap;">👥 誰がどの属性で</b>
+                        <span>誰がどの属性を担当したか。<b>その属性を任せられる人が何人いるか</b>、特定の人に偏っていないかが分かります。</span>
+                    </div>
+                </div>
+                <p style="margin:10px 0 0;font-size:10.5px;color:var(--t-muted);line-height:1.7;background:var(--s1);border-radius:9px;padding:8px 10px;">
+                    ★ <b>進捗率は「強さ」ではありません</b> — 弱い属性でも凸を集中させれば 100% になり、踏破すると頭打ちになります。
+                    ユニオンの得意・不得意は必ず <b>⚔</b> の方で見てください。
+                </p>
+            </div>
+            <!-- ===== レイドの振り返り (2026-09-15 ユーザー要望・Codex と設計を合意) =====
+                 ① 属性別の進捗 = どこまで削れたか (実績) / ② 属性の得意・不得意 = 1凸あたりの強さ (SLv補正) / ③ 誰がどの属性で
+                 ★ 進捗率は達成度であって火力ではない (踏破で 100% 頭打ち・かけた凸数で決まる) ので、強さは別カードに分ける。
+                 判定は js/domain/raidReview.js が唯一。図は Chart.js を使わず HTML/CSS/SVG (トークンでテーマに自動追随する) -->
+            <div class="dc-card" id="raidReviewProgressCard" data-slv-view="review" data-span="7" hidden>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🛡 属性別の進捗</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">各ボスの総HPをどこまで削れたか。凸がどの属性に偏ったかも一緒に読めます。</div>
+                <div id="raidReviewProgress" style="margin-top:12px;"></div>
+            </div>
+
+            <div class="dc-card" id="raidReviewAptitudeCard" data-slv-view="review" data-span="5" hidden>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">⚔ 属性の得意・不得意</div>
+                <div id="raidReviewAptitudeNote" style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;"></div>
+                <div class="ana-seg" style="margin:10px 0;">
+                    <button type="button" id="rrAptScatterBtn" onclick="setRrAptView('scatter')">散布図</button>
+                    <button type="button" id="rrAptBarsBtn" onclick="setRrAptView('bars')">ランキング</button>
+                </div>
+                <div id="raidReviewAptitude"></div>
+            </div>
+
+            <div class="dc-card" id="raidReviewMembersCard" data-slv-view="review" data-span="12" hidden>
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">👥 誰がどの属性で削ったか</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">色が濃いほど削った量が多い人。マス目に触れると 凸数 も出ます。</div>
+                <div id="raidReviewMembers" style="margin-top:12px;"></div>
+            </div>
+
             <div data-slv-view="growth" hidden>
                 <div id="growthAnaBody"><p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:10px 0;">読み込み中…</p></div>
             </div>
@@ -7572,8 +7597,8 @@
                 renderMockTab();
                 if (typeof _markTabRendered === 'function') _markTabRendered('mock');
             }
-            // 分析タブを開いたまま名乗り直したら振り返りも描き直す (ヒートマップの「自分」の行が前の人のまま残る: Codex指摘 2026-09-15)
-            if (document.querySelector('.tab-content.active')?.id === 'tab-ranking' && typeof renderRaidReview === 'function') {
+            // 全体分析を開いたまま名乗り直したら描き直す (ヒートマップの「自分」の行が前の人のまま残る: Codex指摘 2026-09-15)
+            if (document.querySelector('.tab-content.active')?.id === 'tab-slv-ranking' && _slvView === 'review' && typeof renderRaidReview === 'function') {
                 renderRaidReview().catch(() => { /* 次にタブを開いたときに描き直る */ });
             }
         }
@@ -16307,9 +16332,11 @@
         // 非表示中も従来どおり動く (表示を戻せばそのまま最新)
         let _slvView = 'fururi';
         function _setSlvView(view) {
-            _slvView = view === 'sim' ? 'sim' : view === 'gb' ? 'gb' : view === 'growth' ? 'growth' : 'fururi';
+            _slvView = view === 'sim' ? 'sim' : view === 'gb' ? 'gb' : view === 'growth' ? 'growth' : view === 'review' ? 'review' : 'fururi';
             if (_slvView === 'gb') renderGbCompare();   // GBビューは開いた時に描画 (非同期)
             if (_slvView === 'growth') renderGrowthAnalysis();
+            // 🛡 全体分析 (レイドの振り返り) も開いた時に描き直す — シーズンを切り替えたまま開いても最新になる
+            if (_slvView === 'review' && typeof renderRaidReview === 'function') renderRaidReview().catch(e => console.warn('[振り返り]', e?.message || e));
             document.querySelectorAll('#tab-slv-ranking [data-slv-view]').forEach(el => {
                 // hidden 属性で切替 (style.display だと inline の display:flex を壊す — Codex 指摘)
                 el.hidden = el.dataset.slvView !== _slvView;

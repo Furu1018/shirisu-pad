@@ -9252,12 +9252,27 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(mm.rows[0].total, 30);
         assert.deepEqual(dom.memberMatrix({}), { rows: [], max: 0, attrs: [] });
     });
-    test('★ 配線: 振り返りの3枚 (進捗7 / 適性5 / 誰が12) が分析タブにあり、renderAll から描かれる', () => {
+    test('★ 配線: 振り返りの3枚は「🛡 全体分析」のビュー (実績の隣)。説明カードつき / renderAll と ビューを開いたとき に描かれる', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         assert.ok(/<script defer src="\.\/js\/domain\/raidReview\.js"><\/script>/.test(html), 'raidReview.js を読んでいない');
+        // ★ 実績 (個人) と 全体分析 (ユニオン) は別のビュー。3枚 + 説明は data-slv-view="review" で、既定は hidden
         for (const [id, span] of [['raidReviewProgressCard', '7'], ['raidReviewAptitudeCard', '5'], ['raidReviewMembersCard', '12']]) {
-            assert.ok(new RegExp(`<div class="dc-card" id="${id}" data-span="${span}">`).test(html), `${id} が data-span="${span}" で無い (行の合計が 12 にならない)`);
+            assert.ok(new RegExp(`<div class="dc-card" id="${id}" data-slv-view="review" data-span="${span}" hidden>`).test(html), `${id} が 全体分析のビュー (data-span="${span}") で無い`);
         }
+        const slv = html.slice(html.indexOf('<div id="tab-slv-ranking"'), html.indexOf('<div id="tab-settings"'));
+        assert.ok(slv.includes('id="raidReviewProgressCard"'), '3枚が tab-slv-ranking に無い (実績タブに残っている)');
+        assert.ok(!html.slice(html.indexOf('<div id="tab-ranking"'), html.indexOf('<div id="tab-slv-ranking"')).includes('raidReview'), '実績タブに振り返りが残っている');
+        // 説明カード: 何が分かるのかと、進捗率を強さと読まない注意
+        assert.ok(/<div class="dc-card" data-slv-view="review" data-span="12" hidden>[\s\S]{0,200}🛡 全体分析 — この画面で分かること/.test(slv), '説明カードが無い');
+        for (const w of ['やり残したボス', '1凸あたりの力', '任せられる人が何人', '進捗率は「強さ」ではありません']) {
+            assert.ok(slv.includes(w), `説明に「${w}」が無い`);
+        }
+        // セグメント: 実績の**隣**に 全体分析 (両方のタブ)
+        assert.ok(/onclick="_gotoSlvView\('review'\)"><span class="seg-ico">🛡 <\/span>全体分析<\/button>\s*<button type="button" onclick="_gotoSlvView\('fururi'\)"/.test(html), '実績タブのセグメントで 全体分析 が 実績 の隣でない');
+        assert.ok(/data-view="review" onclick="_setSlvView\('review'\)"><span class="seg-ico">🛡 <\/span>全体分析<\/button>\s*<button class="active" type="button" data-view="fururi"/.test(html), '全体分析タブのセグメントで 全体分析 が 実績 の隣でない');
+        const svv = html.match(/function _setSlvView\(view\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/view === 'review' \? 'review'/.test(svv), 'ビューに review が無い (知らない値は fururi に倒れてしまう)');
+        assert.ok(/if \(_slvView === 'review' && typeof renderRaidReview === 'function'\) renderRaidReview\(\)/.test(svv), 'ビューを開いたときに描き直していない');
         const all = html.match(/function renderAll\(\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/renderRaidReview\(\)\.catch\(/.test(all), 'renderAll から描いていない / 失敗を握り潰していない');
         const fn = html.match(/async function renderRaidReview\(\)[\s\S]*?\n        \}/)?.[0] || '';
@@ -9268,7 +9283,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(seq !== _rrSeq\) return;/.test(fn), '待っている間にシーズンを切り替えても古い結果で描いてしまう');
         // ★ 取得の間に図を切り替えても前の回を描き直さない / 名乗り直しで「自分」の行を直す (Codex指摘 2026-09-15)
         assert.ok(/const seq = \+\+_rrSeq;\s*_rrLastApt = null;/.test(fn), '取得の間も前の回の図が残る');
-        assert.ok(/'tab-ranking' && typeof renderRaidReview === 'function'\) \{\s*renderRaidReview\(\)/.test(html), '名乗り直しで振り返りを描き直していない');
+        assert.ok(/'tab-slv-ranking' && _slvView === 'review' && typeof renderRaidReview === 'function'\) \{\s*renderRaidReview\(\)/.test(html), '名乗り直しで振り返りを描き直していない');
         // ★ 軸が壊れる値なら横棒に倒す / 効かない sticky を残さない / color-mix が無い環境の受け皿
         assert.ok(/if \(!\[x0, x1, y0, y1\]\.every\(Number\.isFinite\) \|\| !\(x1 > x0\) \|\| !\(y1 > y0\)\) return _rrAptBarsHtml\(apt\);/.test(html), '散布図の座標が壊れても描いてしまう');
         assert.ok(!/\.rr-hm th \{[^}]*position: sticky/.test(html), '効かない sticky が残っている (縦は overflow:hidden)');
