@@ -29,6 +29,7 @@ import '../js/domain/opsRole.js';       // globalThis.opsRoleDomain (👑 運営
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
+import '../js/domain/raidReview.js';   // globalThis.raidReviewDomain (レイドの振り返り: 属性別の進捗 / 得意・不得意 / 誰が)
 import '../js/state/opsStore.js';      // globalThis.opsStore (リアーキ ステップ3)
 import '../js/state/seasonStore.js';   // globalThis.seasonStore (リアーキ ステップ3宿題)
 
@@ -9156,6 +9157,119 @@ console.log('\ngrowthDomain:');
         // ふるり値試算: B でも桁でも
         assert.ok(/<input id="fsimDamage" type="number" min="0" step="any" inputmode="decimal" oninput="onFsimDamageInput\(\)" placeholder="例: 32\.5 \(B単位。桁で入れても可\)"/.test(html), 'ふるり値試算の入力が B を受けない');
         assert.ok(/const damage = formatDomain\.parseDamageInput\(dmgInput \? dmgInput\.value : ''\);/.test(html) && /const v = formatDomain\.parseDamageInput\(dmgInput\.value\);/.test(html), 'ふるり値試算の読み方が formatDomain.parseDamageInput でない');
+    });
+    // ===== レイドの振り返り (分析タブ・2026-09-15 ユーザー要望・Codex と設計を合意) =====
+    test('★ raidReview.bossClass: 宣言があればそれ / 無ければ「踏破した Lv の合計が設定HPと厳密に一致」から推定 / 決まらなければ推定しない', () => {
+        const dom = globalThis.raidReviewDomain;
+        assert.ok(dom, 'raidReviewDomain が無い');
+        const hpTable = { 1: { tyrant: 100, lord: 150 }, 2: { tyrant: 200, lord: 300 }, 3: { tyrant: 400, lord: 500 } };
+        // 宣言が最優先 (推定ではない)
+        assert.deepEqual(dom.bossClass({ levels: { 1: { damage: 100 } }, hpTable, declared: 'lord' }), { cls: 'lord', estimated: false });
+        assert.deepEqual(dom.bossClass({ levels: {}, hpTable, declared: 'heretic' }), { cls: null, estimated: false }, '知らない宣言は使わない');
+        // 踏破した Lv の合計が HP と厳密に一致 → 推定
+        assert.deepEqual(dom.bossClass({ levels: { 1: { damage: 100 }, 2: { damage: 200 }, 3: { damage: 137 } }, hpTable }), { cls: 'tyrant', estimated: true });
+        assert.deepEqual(dom.bossClass({ levels: { 1: { damage: 150 }, 2: { damage: 300 } }, hpTable }), { cls: 'lord', estimated: true });
+        // 1 でも足りなければ推定しない (99 は踏破ではない) / 両方に当たったら決めない
+        assert.deepEqual(dom.bossClass({ levels: { 1: { damage: 99 } }, hpTable }), { cls: null, estimated: false }, '未踏破から推定している');
+        assert.deepEqual(dom.bossClass({ levels: { 1: { damage: 100 }, 2: { damage: 300 } }, hpTable }), { cls: null, estimated: false }, '候補が2つなのに決めている');
+        assert.deepEqual(dom.bossClass({ levels: {}, hpTable }), { cls: null, estimated: false });
+        assert.deepEqual(dom.bossClass({}), { cls: null, estimated: false });
+    });
+    test('★ raidReview.attributeProgress: 削った量 / そのボスのHP。クラス不明は率を出さない・進捗の高い順', () => {
+        const dom = globalThis.raidReviewDomain;
+        const hpTable = { 1: { tyrant: 100, lord: 150 }, 2: { tyrant: 200, lord: 300 }, 3: { tyrant: 400, lord: 500 } };
+        const attrOf = (c) => ({ T: 'iron', L: 'wind', X: 'fire' }[c] || null);
+        const players = [
+            { player: 'A', syncLevel: 600, attacks: [{ bossCode: 'T', level: 1, damage: 100 }, { bossCode: 'T', level: 2, damage: 120, isKill: true }, { bossCode: 'L', level: 1, damage: 150 }] },
+            { player: 'B', syncLevel: 600, attacks: [{ bossCode: 'T', level: 2, damage: 80 }, { bossCode: 'X', level: 1, damage: 40 }] },
+            { player: 'C', syncLevel: 600, attacks: [{ bossCode: 'ZZZ', level: 1, damage: 999 }] },   // 対応の分からないボスは出さない
+        ];
+        const rows = dom.attributeProgress({ players, hpTable, attrOf });
+        assert.deepEqual(rows.map(r => r.attr), ['iron', 'wind', 'fire'], '進捗の高い順でない / 知らないボスを出している');
+        const iron = rows[0];
+        assert.deepEqual([iron.cls, iron.estimated, iron.attacks, iron.kills, iron.damage], ['tyrant', true, 3, 1, 300]);
+        assert.equal(iron.hp, 700, 'Lv1+2+3 の HP 合計でない');
+        assert.ok(Math.abs(iron.pct - 300 / 700 * 100) < 1e-9);
+        assert.deepEqual(iron.levels.map(L => [L.level, L.damage, L.hp, L.cleared]), [[1, 100, 100, true], [2, 200, 200, true], [3, 0, 400, false]]);
+        assert.equal(iron.clearedLevels, 2);
+        // クラスが決まらない (X は Lv1 で 40 しか削っていない) → 率なし・総量だけ
+        const fire = rows.find(r => r.attr === 'fire');
+        assert.deepEqual([fire.cls, fire.pct, fire.hp, fire.damage], [null, null, null, 40], 'クラス不明なのに率を出している');
+        assert.deepEqual(dom.attributeProgress({ players, hpTable, attrOf, declaredClasses: { X: 'lord' } }).find(r => r.attr === 'fire').cls, 'lord', '宣言を使っていない');
+        assert.deepEqual(dom.attributeProgress({}), []);
+    });
+    test('★ raidReview.attributeAptitude: 対GB中央値比 (SLv補正・締め凸を除く) / GB無しは SLv 揃え / SLv表無しは記録のまま', () => {
+        const dom = globalThis.raidReviewDomain;
+        const attrOf = (c) => ({ I: 'iron', F: 'fire' }[c] || null);
+        const ratioTable = { 500: 1000, 600: 1200, 700: 1400 };
+        const gb = { base: { baseSlv: 500, attributes: { IRON: { baseDamage: 10 }, FIRE: { baseDamage: 20 } } },
+                     attributes: { IRON: { attackBenchmark: { medianFururi: 1 } }, FIRE: { attackBenchmark: { medianFururi: 1 } } } };
+        const players = [
+            { player: 'A', syncLevel: 600, attacks: [{ bossCode: 'I', level: 3, damage: 12, isKill: false }, { bossCode: 'F', level: 3, damage: 24, isKill: false }] },
+            { player: 'B', syncLevel: 700, attacks: [{ bossCode: 'I', level: 3, damage: 999, isKill: true }] },   // 締め凸は火力から外す
+        ];
+        const r = dom.attributeAptitude({ players, ratioTable, gb, attrOf });
+        assert.deepEqual([r.basis, r.killsExcluded], ['gb', true]);
+        const iron = r.rows.find(x => x.attr === 'iron');
+        // 12 @SLv600 → (12/1200)*1000/10 = 1.0 → 中央値 1 に対して 100%
+        assert.equal(iron.value, 100); assert.deepEqual([iron.attacks, iron.scored, iron.avgB], [2, 1, 12], '締め凸を平均に入れている');
+        assert.equal(r.rows.find(x => x.attr === 'fire').value, 100, '属性ごとの基準ダメージで割っていない');
+        // 締め凸を除かなければ鉄甲は跳ね上がる = 除けている証拠
+        const noFlags = players.map(p => ({ ...p, attacks: p.attacks.map(({ isKill, ...a }) => a) }));
+        const r2 = dom.attributeAptitude({ players: noFlags, ratioTable, gb, attrOf });
+        assert.equal(r2.killsExcluded, false); assert.ok(r2.rows.find(x => x.attr === 'iron').value > 100, '締め凸が混ざっていない (前提が違う)');
+        // GB が無ければ SLv を揃えた 1凸平均 (基準は参加者の中央値) / SLv 表も無ければ記録のまま
+        const s = dom.attributeAptitude({ players, ratioTable, attrOf });
+        assert.deepEqual([s.basis, s.refSlv], ['slv', 700]);
+        assert.equal(s.rows.find(x => x.attr === 'iron').value, 12 / 1200 * 1400, 'SLv を揃えていない');
+        assert.deepEqual([dom.attributeAptitude({ players, attrOf }).basis, dom.attributeAptitude({ players, attrOf }).rows[0].value], ['raw', 24]);
+        assert.equal(dom.attributeAptitude({ players, ratioTable, gb, attrOf, refSlv: 500 }).basis, 'gb', 'refSlv を渡しても GB が主役のまま');
+    });
+    test('★ raidReview.memberMatrix: 人 × 属性 (削った量の多い順・凸していない人は出さない)', () => {
+        const dom = globalThis.raidReviewDomain;
+        const attrOf = (c) => ({ I: 'iron', F: 'fire' }[c] || null);
+        const players = [
+            { player: 'A', syncLevel: 600, attacks: [{ bossCode: 'I', damage: 10 }, { bossCode: 'I', damage: 5, isKill: true }] },
+            { player: 'B', syncLevel: 700, attacks: [{ bossCode: 'F', damage: 30 }] },
+            { player: 'C', syncLevel: 700, attacks: [] },
+            { player: 'D', syncLevel: 700, attacks: [{ bossCode: 'ZZZ', damage: 99 }] },
+        ];
+        const mm = dom.memberMatrix({ players, attrOf });
+        assert.deepEqual(mm.rows.map(r => r.name), ['B', 'A'], '削った量の多い順でない / 凸していない人を出している');
+        assert.deepEqual(mm.rows[1].cells.iron, { damage: 15, attacks: 2, kills: 1 });
+        assert.equal(mm.max, 30, '色の濃さの基準が最大のセルでない');
+        assert.deepEqual(mm.rows[0].total, 30);
+        assert.deepEqual(dom.memberMatrix({}), { rows: [], max: 0, attrs: [] });
+    });
+    test('★ 配線: 振り返りの3枚 (進捗7 / 適性5 / 誰が12) が分析タブにあり、renderAll から描かれる', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(/<script defer src="\.\/js\/domain\/raidReview\.js"><\/script>/.test(html), 'raidReview.js を読んでいない');
+        for (const [id, span] of [['raidReviewProgressCard', '7'], ['raidReviewAptitudeCard', '5'], ['raidReviewMembersCard', '12']]) {
+            assert.ok(new RegExp(`<div class="dc-card" id="${id}" data-span="${span}">`).test(html), `${id} が data-span="${span}" で無い (行の合計が 12 にならない)`);
+        }
+        const all = html.match(/function renderAll\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/renderRaidReview\(\)\.catch\(/.test(all), 'renderAll から描いていない / 失敗を握り潰していない');
+        const fn = html.match(/async function renderRaidReview\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        // 判定はドメインが唯一 (画面で率や強さを計算し直さない)
+        assert.ok(/dom\.attributeProgress\(\{ players, hpTable, declaredClasses, attrOf: _rrAttrOf \}\)/.test(fn)
+            && /dom\.attributeAptitude\(\{ players, ratioTable: slvRatioTable, gb, attrOf: _rrAttrOf \}\)/.test(fn)
+            && /dom\.memberMatrix\(\{ players, attrOf: _rrAttrOf \}\)/.test(fn), '判定を raidReviewDomain に任せていない');
+        assert.ok(/if \(seq !== _rrSeq\) return;/.test(fn), '待っている間にシーズンを切り替えても古い結果で描いてしまう');
+        assert.ok(/cfg\.hardLevelHpOverrideByMonth\[month\]\) \|\| \(cfg && cfg\.hardLevelHp\)/.test(fn), '月ごとの HP 上書きを見ていない');
+        assert.ok(/cfg\.bossClassByMonth\) \? cfg\.bossClassByMonth\[month\]/.test(fn), 'ボスのクラスの宣言を見ていない');
+        // 図はトークンで描く (Chart.js を使わない = 見た目の切り替えに描き直し不要)
+        assert.ok(!/raidReview[\s\S]{0,400}new Chart\(/.test(html), '振り返りで Chart.js を使っている');
+        for (const f of ['_rrProgressHtml', '_rrAptBarsHtml', '_rrAptScatterHtml', '_rrMembersHtml']) {
+            const body = html.match(new RegExp(`function ${f}\\([\\s\\S]*?\\n        \\}`))?.[0] || '';
+            assert.ok(body, `${f} が無い`);
+            assert.ok(!/var\(--attr-\$\{/.test(body), `${f}: トークン名を var() の中で組んでいる (走査が未定義と読む)`);
+        }
+        // 切り替えは覚える / 知らない値は散布図に倒す
+        const sv = html.match(/function setRrAptView\(v\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/_rrAptView = v === 'bars' \? 'bars' : 'scatter';/.test(sv) && /localStorage\.setItem\('shirisuko_rr_apt_v1'/.test(sv) && /_rrPaintAptitude\(_rrLastApt\)/.test(sv), '切り替えの作りが違う');
+        // HP表の読み込みは失敗を覚えない (次に再試行する)
+        const lc = html.match(/function _loadRaidConfig\(\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/if \(json == null\) _rrCfgCache = null;/.test(lc) && /catch \{ _rrCfgCache = null; return null; \}/.test(lc), '読み込みの失敗を覚えてしまう');
     });
     // ===== 🌏 GB比較: 凍結エクスポートは本家のボスと突合できること (取り込むたびに確かめる) =====
     test('★ data/gb-export/*.json は本家の BOSS_ATTRIBUTES と突合できる (dropped 無し・5属性そろう)', () => {

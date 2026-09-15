@@ -92,7 +92,8 @@
     <script defer src="./js/domain/pace.js"></script>
     <script defer src="./js/domain/opsRole.js"></script>     <!-- 👑 運営担当 (master / ops / メンバー) の判定 -->
     <script defer src="./js/domain/planBoard.js"></script>
-    <script defer src="./js/domain/slvSim.js"></script>      <!-- SLv シミュレーター (予測 / 目標ダメージ → 必要 SLv の逆引き) -->   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
+    <script defer src="./js/domain/slvSim.js"></script>
+    <script defer src="./js/domain/raidReview.js"></script>   <!-- レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) -->      <!-- SLv シミュレーター (予測 / 目標ダメージ → 必要 SLv の逆引き) -->   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
     <script defer src="./js/domain/opsStage.js"></script>       <!-- 運営モードの段階 (準備/前日/当日/終了) -->
     <script defer src="./js/domain/growth.js"></script>         <!-- ユニオンメンバーの育成データ (BlaBlaLINK 由来) -->
     <script defer src="./js/state/opsStore.js"></script>
@@ -2977,6 +2978,31 @@
         .ps-row.conflict .ps-st { color: var(--bad-deep); }
         .ps-row.pick .ps-st { color: var(--ops-deep); }
         .ps-note { margin: 0; font-size: 11.5px; font-weight: 700; color: var(--t-muted); line-height: 1.6; }
+        /* レイドの振り返り (分析タブ・2026-09-15)。色はトークンなのでテーマ切り替えに自動で追随する (Chart.js を使わない理由) */
+        .rr-row { margin-bottom: 11px; }
+        .rr-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 900; color: var(--t-ink); margin-bottom: 4px; }
+        .rr-head .n { margin-left: auto; font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .rr-track { display: flex; gap: 2px; height: 16px; }
+        .rr-seg { position: relative; background: var(--track); border-radius: 4px; overflow: hidden; min-width: 2px; }
+        .rr-seg i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 4px; }
+        .rr-seg b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: var(--t-body); font-style: normal; }
+        .rr-foot { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
+        .rr-foot .pct { color: var(--t-ink); font-size: 12px; }
+        .rr-foot .done { color: var(--ok-deep); }
+        .rr-bar { display: grid; grid-template-columns: 78px minmax(0, 1fr) 62px; gap: 8px; align-items: center; margin-bottom: 7px; font-size: 11.5px; }
+        .rr-bar .lb { display: flex; align-items: center; gap: 5px; font-weight: 900; color: var(--t-ink); white-space: nowrap; }
+        .rr-bar .tr { position: relative; height: 14px; background: var(--track); border-radius: 999px; overflow: hidden; }
+        .rr-bar .tr i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 999px; }
+        .rr-bar .vl { text-align: right; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .rr-hm { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+        .rr-hm table { border-collapse: collapse; width: 100%; min-width: 420px; }
+        .rr-hm th, .rr-hm td { padding: 4px 6px; font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+        .rr-hm th { font-weight: 900; color: var(--t-muted); position: sticky; top: 0; background: var(--card); }
+        .rr-hm td.nm { text-align: left; font-weight: 800; color: var(--t-ink); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+        .rr-hm td.c { font-weight: 800; color: var(--t-ink); border-radius: 6px; }
+        .rr-hm td.c.z { color: var(--dim); }
+        .rr-hm tr.me td { background: rgba(var(--ink-rgb), 0.05); }
+        .rr-note { margin: 10px 0 0; font-size: 10px; color: var(--t-muted); line-height: 1.7; background: var(--s1); border-radius: 9px; padding: 8px 10px; }
         /* 👑 運営担当の任命 (設定 → その他 › メンテナンス。master だけ) */
         .roles-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 9px; background: var(--s1); font-size: 12px; font-weight: 800; color: var(--t-ink); cursor: pointer; }
         .roles-row.on { background: var(--ops-bg); }
@@ -4607,6 +4633,32 @@
                 <button id="rankingSeasonPrev" onclick="rankingSeasonNav(-1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;"><span style="font-size:13px;">‹</span> 過去シーズン</button>
                 <div id="rankingSeasonCurrent" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">— <span style="font-size:10.5px;font-weight:700;color:var(--t-muted);">(最新)</span></div>
                 <button id="rankingSeasonNext" onclick="rankingSeasonNav(1)" disabled style="border:none;background:transparent;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--t-muted);cursor:not-allowed;padding:6px 8px;">次へ <span style="font-size:13px;">›</span></button>
+            </div>
+
+            <!-- ===== レイドの振り返り (2026-09-15 ユーザー要望・Codex と設計を合意) =====
+                 ① 属性別の進捗 = どこまで削れたか (実績) / ② 属性の得意・不得意 = 1凸あたりの強さ (SLv補正) / ③ 誰がどの属性で
+                 ★ 進捗率は達成度であって火力ではない (踏破で 100% 頭打ち・かけた凸数で決まる) ので、強さは別カードに分ける。
+                 判定は js/domain/raidReview.js が唯一。図は Chart.js を使わず HTML/CSS/SVG (トークンでテーマに自動追随する) -->
+            <div class="dc-card" id="raidReviewProgressCard" data-span="7">
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🛡 属性別の進捗</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">各ボスの総HPをどこまで削れたか。凸がどの属性に偏ったかも一緒に読めます。</div>
+                <div id="raidReviewProgress" style="margin-top:12px;"></div>
+            </div>
+
+            <div class="dc-card" id="raidReviewAptitudeCard" data-span="5">
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">⚔ 属性の得意・不得意</div>
+                <div id="raidReviewAptitudeNote" style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;"></div>
+                <div class="ana-seg" style="margin:10px 0;">
+                    <button type="button" id="rrAptScatterBtn" onclick="setRrAptView('scatter')">散布図</button>
+                    <button type="button" id="rrAptBarsBtn" onclick="setRrAptView('bars')">ランキング</button>
+                </div>
+                <div id="raidReviewAptitude"></div>
+            </div>
+
+            <div class="dc-card" id="raidReviewMembersCard" data-span="12">
+                <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">👥 誰がどの属性で削ったか</div>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:3px;line-height:1.5;">色が濃いほど削った量が多い人。マス目に触れると 凸数 も出ます。</div>
+                <div id="raidReviewMembers" style="margin-top:12px;"></div>
             </div>
 
             <!-- ③ NIKKE編成 (折り畳み) -->
@@ -24184,6 +24236,173 @@
             return processed;
         }
 
+        // ===== レイドの振り返り (分析タブ・2026-09-15 ユーザー要望) =====
+        // ① 属性別の進捗 (どこまで削れたか) / ② 得意・不得意 (1凸あたりの強さ) / ③ 誰がどの属性で。
+        // ★ 判定は raidReviewDomain が唯一。ここは材料集めと描画だけ (画面で率や強さを計算し直さない)。
+        // ★ 図は Chart.js を使わず HTML/CSS/SVG — 色をトークンのまま書けるので、見た目の切り替えに描き直しなしで追随する
+        let _rrAptView = 'scatter';
+        try { const v = localStorage.getItem('shirisuko_rr_apt_v1'); if (v === 'scatter' || v === 'bars') _rrAptView = v; } catch { /* 既定のまま */ }
+        let _rrSeq = 0, _rrLastApt = null, _rrCfgCache = null;
+        const _rrAttrJp = (attr) => (window.planBoardDomain?.ATTR_JP || { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' })[attr] || attr;
+        const _rrAttrOf = (bossCode) => ((BOSS_ATTRIBUTES[bossCode] || {}).attribute || '').toLowerCase() || null;
+        const _rrB = (v) => `${(Number(v) / 1e9).toFixed(1)}B`;
+        // raid-config.json (ボスのHP表) を読む。in-flight ごとキャッシュし、失敗は覚えない (_loadGbExport と同じ作り)
+        function _loadRaidConfig() {
+            if (_rrCfgCache) return _rrCfgCache;
+            _rrCfgCache = (async () => {
+                try {
+                    const resp = await fetch('./data/raid-config.json');
+                    const json = resp.ok ? await resp.json() : null;
+                    if (json == null) _rrCfgCache = null;
+                    return json;
+                } catch { _rrCfgCache = null; return null; }
+            })();
+            return _rrCfgCache;
+        }
+        // ① 属性別の進捗: ボス×Lv の積み上げ (Lv の幅 = その Lv の HP)。クラスが分からないボスは率を出さず総量だけ
+        function _rrProgressHtml(rows) {
+            const esc = escapeHtml;
+            if (!rows.length) return '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">この回の凸データがありません。</p>';
+            const body = rows.map(r => {
+                const tk = `--attr-${r.attr}`;   // トークン名は変数に組んでから var() に入れる (走査が動的な名前を未定義と読む)
+                const jp = _rrAttrJp(r.attr);
+                const boss = (BOSS_ATTRIBUTES[r.bossCode] || {}).nameJP || r.bossCode;
+                const head = `<div class="rr-head">${renderAttrIcon(r.attr, 14, { title: `${jp}PT` })}${esc(jp)}PT<span class="n" title="${esc(boss)}">${r.attacks}凸${r.kills ? ` · 締${r.kills}` : ''}</span></div>`;
+                if (r.pct == null) {
+                    return `<div class="rr-row">${head}<div class="rr-foot"><span class="pct">${esc(_rrB(r.damage))}</span><span>ボスの総HPが分からないため率は出しません</span></div></div>`;
+                }
+                const track = `<div class="rr-track">` + r.levels.map(L => {
+                    const fill = L.hp ? Math.max(0, Math.min(1, L.damage / L.hp)) : 0;
+                    const title = `Lv${L.level} ${_rrB(L.damage)} / ${_rrB(L.hp || 0)} · ${L.attacks}凸${L.cleared ? ' · 踏破' : ''}`;
+                    return `<div class="rr-seg" style="flex:${L.hp || 1} 1 0;" title="${esc(title)}"><i style="width:${(fill * 100).toFixed(1)}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.72;'}"></i><b>Lv${L.level}</b></div>`;
+                }).join('') + `</div>`;
+                const foot = `<div class="rr-foot"><span class="pct">${r.pct.toFixed(1)}%</span><span>${esc(_rrB(r.damage))} / ${esc(_rrB(r.hp))}</span>`
+                    + (r.clearedLevels ? `<span class="done">💀 Lv${r.clearedLevels} まで踏破</span>` : '')
+                    + (r.estimated ? '<span title="踏破したレベルの合計が設定のHPとぴったり一致することから推定しました">(HP推定)</span>' : '') + `</div>`;
+                return `<div class="rr-row">${head}${track}${foot}</div>`;
+            }).join('');
+            return body + '<p class="rr-note">削れた量は<b>かけた凸数</b>で決まります (踏破すると 100% で頭打ち)。属性の強さは「⚔ 得意・不得意」で見てください。</p>';
+        }
+        // ② 得意・不得意: 散布図 (凸数 × 強さ) / ランキング (横棒)。主役の指標は basis が決める
+        function _rrAptFmt(v, basis) {
+            if (v == null) return '—';
+            return basis === 'gb' ? `${Math.round(v)}%` : _rrB(v);
+        }
+        function _rrAptBarsHtml(apt) {
+            const esc = escapeHtml, rows = apt.rows;
+            const max = Math.max(...rows.map(r => r.value || 0), apt.basis === 'gb' ? 100 : 0) || 1;
+            return rows.map(r => {
+                const tk = `--attr-${r.attr}`;
+                const jp = _rrAttrJp(r.attr);
+                const w = r.value != null ? Math.max(1, (r.value / max) * 100) : 0;
+                const mark = apt.basis === 'gb' ? `<em style="position:absolute;left:${(100 / max * 100).toFixed(1)}%;top:0;bottom:0;width:1px;background:var(--t-muted);opacity:0.55;"></em>` : '';
+                const tip = `${jp}PT · ${r.attacks}凸 · 1凸平均 ${_rrB(r.avgB || 0)}${r.median != null ? ` · 中央 ${_rrAptFmt(r.median, apt.basis)}` : ''}`;
+                return `<div class="rr-bar" title="${esc(tip)}"><span class="lb">${renderAttrIcon(r.attr, 13, { title: `${jp}PT` })}${esc(jp)}PT</span>`
+                    + `<span class="tr"><i style="width:${w.toFixed(1)}%;background:var(${tk}-solid);"></i>${mark}</span>`
+                    + `<span class="vl">${esc(_rrAptFmt(r.value, apt.basis))}<small style="display:block;font-size:9.5px;font-weight:800;color:var(--t-muted);">${r.attacks}凸</small></span></div>`;
+            }).join('');
+        }
+        function _rrAptScatterHtml(apt) {
+            const esc = escapeHtml, rows = apt.rows.filter(r => r.value != null);
+            if (rows.length < 2) return _rrAptBarsHtml(apt);   // 点が1つでは散らばりを読めない
+            const W = 320, H = 210, L = 40, R = 12, T = 14, Bm = 30;
+            const xs = rows.map(r => r.attacks), ys = rows.map(r => r.value);
+            let x0 = Math.min(...xs), x1 = Math.max(...xs);
+            const xp = Math.max(1, (x1 - x0) * 0.25); x0 -= xp; x1 += xp;
+            let y0 = Math.min(...ys), y1 = Math.max(...ys);
+            if (apt.basis === 'gb') { y0 = Math.min(y0, 100); y1 = Math.max(y1, 100); }
+            const yp = Math.max((y1 - y0) * 0.2, apt.basis === 'gb' ? 4 : (y1 || 1) * 0.05); y0 -= yp; y1 += yp;
+            const px = (v) => L + ((v - x0) / (x1 - x0)) * (W - L - R);
+            const py = (v) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - Bm);
+            const ticks = [y0 + (y1 - y0) * 0.1, (y0 + y1) / 2, y1 - (y1 - y0) * 0.1];
+            const grid = ticks.map(t => `<line x1="${L}" y1="${py(t).toFixed(1)}" x2="${W - R}" y2="${py(t).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`
+                + `<text x="${L - 5}" y="${(py(t) + 3.5).toFixed(1)}" text-anchor="end" font-size="8.5" fill="var(--t-muted)">${esc(_rrAptFmt(t, apt.basis))}</text>`).join('');
+            const base = apt.basis === 'gb'
+                ? `<line x1="${L}" y1="${py(100).toFixed(1)}" x2="${W - R}" y2="${py(100).toFixed(1)}" stroke="var(--t-ink)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`
+                  + `<text x="${W - R}" y="${(py(100) - 4).toFixed(1)}" text-anchor="end" font-size="8.5" font-weight="700" fill="var(--t-body)">GB中央値 100%</text>` : '';
+            const pts = rows.map(r => {
+                const tk = `--attr-${r.attr}`;
+                const jp = _rrAttrJp(r.attr), x = px(r.attacks), y = py(r.value);
+                const right = x < (W - R - 56);
+                const tip = `${jp}PT · ${r.attacks}凸 · ${_rrAptFmt(r.value, apt.basis)} · 1凸平均 ${_rrB(r.avgB || 0)}`;
+                return `<g><title>${esc(tip)}</title><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6" fill="var(${tk}-solid)" stroke="var(--card)" stroke-width="1.5"/>`
+                    + `<text x="${(x + (right ? 10 : -10)).toFixed(1)}" y="${(y + 3.5).toFixed(1)}" text-anchor="${right ? 'start' : 'end'}" font-size="9.5" font-weight="900" fill="var(--t-ink)">${esc(jp)}</text></g>`;
+            }).join('');
+            return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="auto" role="img" aria-label="凸数と強さの散布図" style="display:block;max-width:100%;overflow:visible;">`
+                + grid + base
+                + `<line x1="${L}" y1="${T}" x2="${L}" y2="${H - Bm}" stroke="var(--line)" stroke-width="1"/>`
+                + `<line x1="${L}" y1="${H - Bm}" x2="${W - R}" y2="${H - Bm}" stroke="var(--line)" stroke-width="1"/>`
+                + `<text x="${L}" y="${H - Bm + 14}" font-size="8.5" fill="var(--t-muted)">${Math.ceil(x0)}凸</text>`
+                + `<text x="${W - R}" y="${H - Bm + 14}" text-anchor="end" font-size="8.5" fill="var(--t-muted)">凸数 ${Math.floor(x1)} →</text>`
+                + pts + `</svg>`
+                + '<p class="rr-note">右上ほど「たくさん任されて、しかも強い」。<b>左上</b>は強いのに凸が少ない (もっと回せる)、<b>右下</b>は凸をかけているのに伸びていない属性です。</p>';
+        }
+        function _rrPaintAptitude(apt) {
+            _rrLastApt = apt;
+            const el = document.getElementById('raidReviewAptitude'), note = document.getElementById('raidReviewAptitudeNote');
+            if (!el) return;
+            for (const [v, id] of [['scatter', 'rrAptScatterBtn'], ['bars', 'rrAptBarsBtn']]) {
+                document.getElementById(id)?.classList.toggle('active', _rrAptView === v);
+            }
+            if (note) {
+                note.textContent = apt.basis === 'gb'
+                    ? `1凸あたりの力を「同じ属性に凸した GB 利用者の中央値 = 100%」に換算 (SLv補正済み${apt.killsExcluded ? '・締め凸は除く' : ''})。`
+                    : apt.basis === 'slv'
+                        ? `GBのデータが無い回なので、SLv ${apt.refSlv} に揃えた 1凸平均で比べています${apt.killsExcluded ? ' (締め凸は除く)' : ''}。`
+                        : `SLv が分からないため記録のままの 1凸平均です${apt.killsExcluded ? ' (締め凸は除く)' : '（締め凸も含むため低めに出ます）'}。`;
+            }
+            if (!apt.rows.length) { el.innerHTML = '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">この回の凸データがありません。</p>'; return; }
+            el.innerHTML = _rrAptView === 'bars' ? _rrAptBarsHtml(apt) : _rrAptScatterHtml(apt);
+        }
+        function setRrAptView(v) {
+            _rrAptView = v === 'bars' ? 'bars' : 'scatter';
+            try { localStorage.setItem('shirisuko_rr_apt_v1', _rrAptView); } catch { /* 覚えられなくても表示は変わる */ }
+            if (_rrLastApt) _rrPaintAptitude(_rrLastApt);
+        }
+        // ③ 誰がどの属性で削ったか: 人 × 属性。色の濃さ = 削った量
+        function _rrMembersHtml(mm) {
+            const esc = escapeHtml, ATTRS = ['fire', 'water', 'electric', 'iron', 'wind'];
+            if (!mm.rows.length) return '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">この回の凸データがありません。</p>';
+            const me = (typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null)?.name ?? null;
+            const head = `<tr><th style="text-align:left;">メンバー</th>${ATTRS.map(a => `<th>${renderAttrIcon(a, 14, { title: `${_rrAttrJp(a)}PT` })}<div style="font-size:9.5px;">${esc(_rrAttrJp(a))}</div></th>`).join('')}<th>合計</th></tr>`;
+            const body = mm.rows.map(r => {
+                const cells = ATTRS.map(a => {
+                    const c = r.cells[a];
+                    if (!c || !(c.damage > 0)) return '<td class="c z">·</td>';
+                    const tk = `--attr-${a}`;
+                    const w = mm.max > 0 ? Math.max(0.08, c.damage / mm.max) : 0;
+                    const tip = `${r.name} · ${_rrAttrJp(a)}PT ${_rrB(c.damage)} / ${c.attacks}凸${c.kills ? ` (締${c.kills})` : ''}`;
+                    return `<td class="c" title="${esc(tip)}" style="background:color-mix(in srgb, var(${tk}-solid) ${(w * 55 + 8).toFixed(0)}%, transparent);">${esc((c.damage / 1e9).toFixed(1))}</td>`;
+                }).join('');
+                return `<tr${me != null && r.name === me ? ' class="me"' : ''}><td class="nm" title="${esc(r.name)}${r.syncLevel ? ` (SLv${r.syncLevel})` : ''}">${esc(r.name)}</td>${cells}<td style="font-weight:900;">${esc(_rrB(r.total))}</td></tr>`;
+            }).join('');
+            return `<div class="rr-hm" data-no-swipe><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`
+                + '<p class="rr-note">数字は削った量 (B)。締め凸は残HP分しか記録されないので小さく出ます (マス目に触れると 締 の本数が分かります)。</p>';
+        }
+        async function renderRaidReview() {
+            const dom = window.raidReviewDomain;
+            const pEl = document.getElementById('raidReviewProgress');
+            const mEl = document.getElementById('raidReviewMembers');
+            if (!dom || !pEl || !mEl) return;
+            const seq = ++_rrSeq;
+            const players = Array.isArray(currentData) ? currentData : [];
+            if (!players.some(p => (p.attacks || []).length)) {
+                const empty = '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:14px 0;">この回の凸データがありません。</p>';
+                pEl.innerHTML = empty; mEl.innerHTML = empty;
+                _rrPaintAptitude({ rows: [], basis: 'raw', killsExcluded: false, refSlv: null });
+                return;
+            }
+            const month = currentMonthKey;
+            // 材料は無くても描ける (HP表が無ければ率を出さない / GB が無ければ SLv 補正に劣化)
+            const [cfg, gb] = await Promise.all([_loadRaidConfig(), month ? _loadGbExport(month) : Promise.resolve(null)]);
+            if (seq !== _rrSeq) return;   // 待っている間にシーズンを切り替えた
+            const hpTable = (cfg && cfg.hardLevelHpOverrideByMonth && cfg.hardLevelHpOverrideByMonth[month]) || (cfg && cfg.hardLevelHp) || null;
+            const declaredClasses = (cfg && cfg.bossClassByMonth) ? cfg.bossClassByMonth[month] : null;
+            pEl.innerHTML = _rrProgressHtml(dom.attributeProgress({ players, hpTable, declaredClasses, attrOf: _rrAttrOf }));
+            _rrPaintAptitude(dom.attributeAptitude({ players, ratioTable: slvRatioTable, gb, attrOf: _rrAttrOf }));
+            mEl.innerHTML = _rrMembersHtml(dom.memberMatrix({ players, attrOf: _rrAttrOf }));
+        }
+
         function renderAll() {
             updateTable();
             buildFururiBaseMap();
@@ -24193,6 +24412,7 @@
             updateSimulatorPlayerList();
             updateFururiSimPlayerList();
             renderGbCompare();      // GB比較 (非同期・データが無い月はカード非表示のまま)
+            renderRaidReview().catch(e => console.warn('[振り返り] 描画に失敗:', e?.message || e));   // レイドの振り返り (非同期・材料が無くても劣化して描く)
         }
 
         // ========== Ranking Table ==========
