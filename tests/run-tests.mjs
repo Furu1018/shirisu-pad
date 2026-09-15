@@ -9251,14 +9251,17 @@ console.log('\ngrowthDomain:');
         assert.ok(Math.abs(sum(w) - 51) < 1e-9, `合計が 51% でない: ${sum(w)}`);
         // ★ 極端に細い凸にも下限 (見えて押せる) — ただし合計は超えない・大きい凸は大きいまま
         w = dom.sliceWidths(mk([90, 0.2, 0.2, 0.2], 100));
-        assert.ok(Math.min(...w) > 0.2, `細い凸に下限が無い: ${w}`);
-        assert.ok(w[0] > 80, `大きい凸が潰れている: ${w}`);
+        // ★ 細い凸はきっちり下限 (2%)、はみ出しは**余裕のある凸から**削る (均等に削ると細い凸が下限を割る)
+        assert.deepEqual(w.map(x => Number(x.toFixed(6))), [84.6, 2, 2, 2], `下限どおりに割り振っていない: ${w}`);
         assert.ok(Math.abs(sum(w) - 90.6) < 1e-9, `合計がずれた: ${sum(w)}`);
         assert.ok(w.every(x => x >= 0), '負の幅がある');
         // ★ 下限が効かないほど本数が多くても合計は守る (下限より合計が大事)
         w = dom.sliceWidths(mk([27, 0.5, 0.5, 0.5, 0.5], 100));
+        assert.deepEqual(w.map(x => Number(x.toFixed(6))), [21, 2, 2, 2, 2], `細い凸4本ぶんを大きい凸から削っていない: ${w}`);
         assert.ok(Math.abs(sum(w) - 29) < 1e-9, `合計がずれた: ${sum(w)}`);
-        assert.ok(w[0] > 20, `大きい凸が下限に潰された: ${w}`);
+        // ★ 余裕のある凸が複数あるときは**余裕に比例して**削る (先頭だけから削ると 2番目が実物より大きく見える)
+        w = dom.sliceWidths(mk([50, 30, 0.1, 0.1], 100));
+        assert.deepEqual(w.map(x => Number(x.toFixed(6))), [47.6, 28.6, 2, 2], `余裕に比例して削っていない: ${w}`);
         // 本数が多くても合計は超えない (px の下限だと親を超える: Codex指摘)
         w = dom.sliceWidths(mk(new Array(30).fill(1), 100));
         assert.ok(Math.abs(sum(w) - 30) < 1e-9 && w.every(x => Math.abs(x - 1) < 1e-9), `30本で崩れた: ${sum(w)}`);
