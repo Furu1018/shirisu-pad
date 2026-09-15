@@ -17981,8 +17981,9 @@
                     <div class="d">ユニオン一覧で名前を開いたときの URL (<code>?uid=…</code>) をそのまま貼れます。1人1回だけの作業です。</div>
                     <details class="gr-roster" ${_growth.rosterOpen ? 'open' : ''} ontoggle="_growth.rosterOpen = this.open;">
                         <summary>📋 メンバー一覧からまとめて読み取る (入れ替えが多いときはこちら)</summary>
-                        <div class="d" style="margin-left:0;">BlaBlaLINK の<strong>ユニオンのメンバー一覧</strong>を開き、
-                            <strong>開発者ツールを閉じたまま</strong>このブックマークレットを実行します。
+                        <div class="d" style="margin-left:0;">BlaBlaLINK に<strong>ログインした状態</strong>で (ページはどこでも構いません)、
+                            <strong>開発者ツールを閉じたまま</strong>このブックマークレットを実行します。いま所属しているユニオンの一覧を読むので、
+                            ユニオンが変わっても同じブックマークレットで構いません。
                             出てきた「名前 と ID」の行をそのまま貼ってください。名前が違っていれば手で直せます。</div>
                         <button type="button" class="gr-btn sub" style="margin-top:8px;" onclick="handleGrowthCopyRosterSnippet()">📋 名簿を読み取るブックマークレットをコピー</button>
                         <textarea id="opsGrowthRoster" class="gr-paste" style="margin-top:8px;" placeholder="なべりうす&#9;3273786220482814289&#10;…" ${_growth.busy ? 'disabled' : ''}></textarea>
@@ -18122,12 +18123,12 @@
             }
         }
 
-        // 名簿の読み取り (ユニオン一覧で動かすブックマークレット)。入れ替えが多い回のための一括ひも付け
+        // 名簿の読み取り (BlaBlaLINK にログインした状態で動かすブックマークレット。ページは問わない — 2026-09-15)。入れ替えが多い回のための一括ひも付け
         async function handleGrowthCopyRosterSnippet() {
             const dom = window.growthDomain;
             if (!dom) return;
             await _growthCopy(dom.buildRosterSnippet(),
-                'コピーしました。ブックマークを新規作成して URL 欄に貼り、BlaBlaLINK のメンバー一覧で実行してください。');
+                'コピーしました。ブックマークを新規作成して URL 欄に貼り、BlaBlaLINK にログインした状態で実行してください (ページはどこでも構いません)。');
         }
 
         // 名簿を名前で突き合わせて、識別子をまとめて保存する。

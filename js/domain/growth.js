@@ -851,7 +851,7 @@
             'var keep=function(u,t){try{if(!t)return;var nm=String(u||"").split("/").pop();',
             'if(nm&&S.routes.indexOf(nm)<0)S.routes.push(nm);',
             'if(S.bodies.length>40)return;',
-            'if(t.indexOf("29080-")>=0||t.indexOf(PFX0)>=0||/open_?id/i.test(t)){S.bodies.push({u:String(u||""),t:t});S.urls.push(String(u).slice(0,120));}}catch(e){}};',
+            'if(t.indexOf("29080-")>=0||t.indexOf(PFX0)>=0||/open_?id|member_id/i.test(t)){S.bodies.push({u:String(u||""),t:t});S.urls.push(String(u).slice(0,120));}}catch(e){}};',
             'var of=W.fetch;if(of){W.fetch=function(){var u=arguments[0];var p=of.apply(this,arguments);',
             'try{p.then(function(r){try{r.clone().text().then(function(t){keep((u&&u.url)||u,t);});}catch(e){}});}catch(e){}return p;};}',
             'var os=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.send=function(){var x=this;',
@@ -883,7 +883,9 @@
             // ★ ユニオン名を人の名前として拾わない (2026-09-09 実機: ギルド情報は
             //   「ユニオン名 + 団長の識別子」を持っているので、素直に組むと団長がユニオン名になる)
             'if(!Array.isArray(v)){var ik="",nk="",isG=false;',
-            'for(var k in v){if(!ik&&/(^|_)(open_?id|uid)$/i.test(k)&&v[k])ik=k;',
+            // ★ GetGuildMembers の一人ぶんは member_id + nickname (2026-09-15 に BlaBlaLINK の JS を読んで確認。
+            //   member_id は「29080-」を除いた識別子そのもの)
+            'for(var k in v){if(!ik&&/(^|_)(open_?id|uid|member_id)$/i.test(k)&&v[k])ik=k;',
             'if(/(guild|union|clan|team)_?id$/i.test(k)&&v[k])isG=true;',
             'if(!nk&&/(nick|user_?name|name)$/i.test(k)&&!/(guild|union|clan|team)/i.test(k)',
             '&&typeof v[k]==="string"&&v[k])nk=k;}',
@@ -893,22 +895,33 @@
             'try{[W.__NUXT__,W.__NEXT_DATA__,W.__INITIAL_STATE__].forEach(function(s2){walk(s2,0,"state");});}catch(e){}',
             'var HD={"Content-Type":"application/json","X-Channel-Type":"2","X-Language":"ja",',
             '"X-Common-Params":JSON.stringify({game_id:"29080",area_id:"global",source:"pc_web",intl_game_id:"29080",language:"ja",env:"prod"})};',
+            // ★ 識別子は 20 桁 (2^53 超) — JSON の数値のまま来ると r.json() で末尾が丸まる。文字列にしてから読む
+            'var fix=function(t){return String(t||"").replace(/("(?:[a-z_]*?)(?:open_?id|openid|uid|member_id)"\\s*:\\s*)(\\d{6,})(?=\\s*[,}\\]])/gi,function(m0,a,b){return a+JSON.stringify(b);});};',
+            'var parse=function(t){try{return JSON.parse(fix(t));}catch(e){return null;}};',
             'var call=function(route,body2){var one=function(kind){return fetch("https://api.blablalink.com/api/game/"+kind+"/"+route,',
-            '{method:"POST",credentials:"include",headers:HD,body:JSON.stringify(body2||{})}).then(function(r){return r.json();})',
+            '{method:"POST",credentials:"include",headers:HD,body:JSON.stringify(body2||{})}).then(function(r){return r.text();}).then(parse)',
             '.catch(function(){return null;});};',
             'return one("proxy").then(function(a){if(a&&a.code===0)return a;return one("direct");});};',
-            'var idOf=function(o){var hit=null;var w2=function(v,d){if(hit||!v||d>8||typeof v!=="object")return;',
-            'if(!Array.isArray(v)){for(var k in v){if(/(guild|union)_?id$/i.test(k)&&v[k]){hit=v[k];return;}}}',
+            'var pick=function(o,re){var hit=null;var w2=function(v,d){if(hit||!v||d>8||typeof v!=="object")return;',
+            'if(!Array.isArray(v)){for(var k in v){if(re.test(k)&&v[k]){hit=v[k];return;}}}',
             'for(var k3 in v){try{w2(v[k3],d+1);}catch(e){}}};w2(o,0);return hit;};',
-            'var ROUTES=["Game/GetGuildDetail","Game/GetUnionRaidData","Game/GetGuildMemberList","Game/GetGuildMembers",',
-            '"Game/GetUnionMemberList","Game/QueryGuildMemberList","Game/QueryGuildMembers","Game/GetGuildMemberInfo",',
-            '"Game/QueryGuildCardDetail","Game/GetGuildUserList"];',
+            'var idOf=function(o){return pick(o,/(guild|union)_?id$/i);};',
+            // ★ 引数は guild_id だけでは足りない — nikke_area_id (サーバー地域) が無いと 220000 で拒否される
+            //   (2026-09-09 と 2026-09-15 の実機はこれ。BlaBlaLINK 本体は GetMyGuildInfo の data.card から取っている)
+            'var areaOf=function(o){return pick(o,/(^|_)(nikke_)?area_id$/i);};',
+            // ★ 経路は BlaBlaLINK の JS (assets/v4-*.js) にある本物だけ (2026-09-15)。当てずっぽうの 7 経路は存在しない
+            //   (毎回 4 通り × 7 = 28 回の空振りで、連打の制限 212000 を招きかねない)。
+            //   メンバー一覧は GetGuildMembers → data.items[] = {member_id, nickname, icon_id, synchro_level, bind_area_id}
+            'var ROUTES=["Game/GetGuildMembers","Game/GetGuildDetail","Game/GetUnionRaidData"];',
             'var run=async function(){',
             'var mine=await call("Game/GetMyGuildInfo");',
             'if(mine){stat.routes.push("GetMyGuildInfo:"+mine.code);walk(mine,0,"api");}',
-            'var gid=mine?idOf(mine):null;',
-            'var SHAPES=function(g){return g?[{guild_id:g,union_id:g},{guild_id:g,page:1,page_size:100},{intl_guild_id:g},{}]:[{}];};',
-            'for(var i2=0;i2<ROUTES.length;i2++){var r3=ROUTES[i2];var sh=SHAPES(gid);var got=null;var last=null;',
+            'var gid=mine?idOf(mine):null;var aid=mine?areaOf(mine):null;',
+            // 地域が card に無ければ自分の登録ロールから。どこにも無ければ地域なしで試す (診断に area: - と出る)
+            'if(gid&&!aid){var role=await call("Game/GetUserSavedRoleInfo");if(role){stat.routes.push("GetUserSavedRoleInfo:"+role.code);aid=areaOf(role);}}',
+            'var SHAPES=function(g,a){if(!g)return [{}];if(a===null||a===undefined)return [{guild_id:g},{}];',
+            'return [{guild_id:g,nikke_area_id:String(a)},{guild_id:g,nikke_area_id:Number(a)}];};',
+            'for(var i2=0;i2<ROUTES.length;i2++){var r3=ROUTES[i2];var sh=SHAPES(gid,aid);var got=null;var last=null;',
             'for(var j2=0;j2<sh.length;j2++){var res=await call(r3,sh[j2]);if(!res)continue;last=res.code;',
             'if(res.code===0){got=res;break;}}',
             'stat.routes.push(r3.split("/")[1]+":"+(got?0:last));',
@@ -918,12 +931,13 @@
             'var good=norm.filter(function(b){return OWN.test(b.u)&&!NOT.test(b.u);});',
             'var neutral=norm.filter(function(b){return !NOT.test(b.u);});',
             'var used=good.length?good:neutral;stat.rejected=norm.length-neutral.length;',
-            'used.forEach(function(b){var t=b.t;try{walk(JSON.parse(t),0,"net");}catch(e){',
+            'used.forEach(function(b){var t=b.t;try{var pj=parse(t);if(!pj)throw 0;walk(pj,0,"net");}catch(e){',
             'try{var r2=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g"),m2;while((m2=r2.exec(t))){put(digits(m2[0]),"","net");}}catch(e2){}}});',
             'var out=[];var noname=0;',
             'found.forEach(function(n,id){if(n){out.push(n+"\\t"+id);}else{noname++;}});',
             'out.sort();',
             'var diag="\\n\\n---- \\u8a3a\\u65ad (\\u898b\\u3064\\u304b\\u3089\\u306a\\u3044\\u3068\\u304d\\u306f\\u3053\\u306e\\u4e0b\\u3054\\u3068\\u898b\\u305b\\u3066) ----\\naddress: "+location.href',
+            '+"\\nguild: "+(gid||"-")+" / area: "+((aid===null||aid===undefined)?"-":aid)',
             '+"\\napi: "+stat.api+" ["+stat.routes.join(" ")+"]"',
             '+"\\nsignature: "+stat.sig+" / anchors: "+stat.anchors+" / state: "+stat.state',
             '+"\\nnetwork: "+stat.net+" / captured "+S.bodies.length+" / rejected: "+stat.rejected+" / noname: "+noname',
@@ -933,7 +947,7 @@
                 + '\\u540d\\u524d\\u3068ID\\u3092\\u78ba\\u8a8d\\u3057\\u3066\\u3001\\u305d\\u306e\\u307e\\u307e\\u30b3\\u30d4\\u30fc\\u3057\\u3066PAD\\u306b\\u8cbc\\u3063\\u3066\\u304f\\u3060\\u3055\\u3044\\n\\n"+out.join("\\n"))',
             ':("\\u30e1\\u30f3\\u30d0\\u30fc\\u304c\\u898b\\u3064\\u304b\\u308a\\u307e\\u305b\\u3093\\u3067\\u3057\\u305f\\u3002"'
                 + '+(noname?"\\n\\u540d\\u524d\\u306e\\u7121\\u3044\\u8b58\\u5225\\u5b50\\u306f "+noname+"\\u4ef6 \\u3042\\u308a\\u307e\\u3059\\u304c\\u3001\\u540d\\u524d\\u304c\\u7121\\u3044\\u3068\\u7a81\\u304d\\u5408\\u308f\\u305b\\u3089\\u308c\\u307e\\u305b\\u3093\\u3002":"")'
-                + '+"\\n\\n\\u3053\\u306e\\u307e\\u307e\\u30e6\\u30cb\\u30aa\\u30f3\\u306e\\u30e1\\u30f3\\u30d0\\u30fc\\u4e00\\u89a7\\u3092\\u958b\\u3044\\u3066\\u3001\\u3082\\u3046\\u4e00\\u5ea6\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\n\\u4e0a\\u306e api: \\u3068 heard: \\u306e\\u884c\\u3092\\u904b\\u55b6\\u306b\\u898b\\u305b\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002"))+diag;',
+                + '+"\\n\\nBlaBlaLINK \\u306b\\u30ed\\u30b0\\u30a4\\u30f3\\u3057\\u305f\\u72b6\\u614b\\u3067\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\u305d\\u308c\\u3067\\u3082\\u51fa\\u306a\\u3051\\u308c\\u3070\\u3001\\u3053\\u306e\\u307e\\u307e\\u30e6\\u30cb\\u30aa\\u30f3\\u306e\\u30e1\\u30f3\\u30d0\\u30fc\\u4e00\\u89a7\\u3092\\u958b\\u3044\\u3066\\u3001\\u3082\\u3046\\u4e00\\u5ea6\\u62bc\\u3057\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002\\n\\u4e0a\\u306e guild: / api: / heard: \\u306e\\u884c\\u3092\\u904b\\u55b6\\u306b\\u898b\\u305b\\u3066\\u304f\\u3060\\u3055\\u3044\\u3002"))+diag;',
             'box.focus();box.select();try{document.execCommand("copy");}catch(e){}};',
             'run().catch(function(e){box.value="\\u9014\\u4e2d\\u3067\\u6b62\\u307e\\u308a\\u307e\\u3057\\u305f: "+(e&&e.message||e);});',
         ].join(''));

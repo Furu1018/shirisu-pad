@@ -130,7 +130,12 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ `parseImportPayload` は **非同期** (gzip 展開)。await を忘れると `box` が Promise になり取り込みが必ず失敗する —
   実行テスト `tests/growth-panel.mjs` (描画 + 取り込み本体) がここを固定している。
   ★ **名簿の一括読み取り** (`buildRosterSnippet`): ユニオンの情報を**自分から問い合わせる**
-  (GetMyGuildInfo → guild_id → GetGuildDetail / GetUnionRaidData / …)。待ち受け (fetch/XHR) は保険。
+  (GetMyGuildInfo → `data.card.{guild_id, nikke_area_id}` → **GetGuildMembers {guild_id, nikke_area_id: String}** → `data.items[]`
+  = {member_id, nickname, …})。待ち受け (fetch/XHR) は保険。★ **経路名と引数は当てずっぽうで探さない** — 2026-09-09 は 11 経路 × 4 通りを
+  投げて全部 220000 (引数に nikke_area_id が無かった) で、名簿は待ち受けが偶然拾っていた。2026-09-15 にユニオン新体制で空振りし、
+  BlaBlaLINK 本体の JS を読んで確定した (`curl https://www.blablalink.com/shiftyspad` → `assets/index-*.js` からチャンク一覧 →
+  `assets/v4-*.js` に API の経路名、`union-*.js` に引数と応答の形)。壊れたら同じ手順で読み直す (診断の guild: / api: / heard: を見る)。
+  識別子は 20 桁で 2^53 を超えるので、JSON の数値で来ても丸めないよう文字列にしてから読む。
   経路は自分のユニオンぶんだけ使い、他ユニオンの募集カード・掲示板 (CardList / Dynamics / Tourist) は捨てる。
   **ユニオン名を人の名前にしない** (ギルド情報は「ユニオン名 + 団長の識別子」を持つので、素直に組むと団長が化ける)。
   名前の無い識別子は出さない (名前でしか突き合わせられない)。空振りしたら**診断** (どのページ / 経路と応答コード /

@@ -7440,6 +7440,12 @@ console.log('\ngrowthDomain:');
         // ★ 待ち受けだけでは、ページを操作してもらう二度手間になる。自分から取りに行く (実機FB 2026-09-09)
         assert.ok(/Game\/GetMyGuildInfo/.test(code), '自分のユニオンを自分で問い合わせていない');
         assert.ok(/Game\/GetUnionRaidData/.test(code) && /Game\/GetGuildDetail/.test(code), '取りに行く経路が足りない');
+        // ★ メンバー一覧の本物の経路は GetGuildMembers で、引数は guild_id + nikke_area_id (2026-09-15 に BlaBlaLINK の JS で確認)。
+        //   当てずっぽうの経路 (GetGuildMemberList など) は存在しないので呼ばない (連打の制限を招くだけ)
+        assert.ok(/Game\/GetGuildMembers/.test(code) && /nikke_area_id/.test(code), 'メンバー一覧の本物の経路と引数を使っていない');
+        for (const dead of ['GetGuildMemberList', 'GetUnionMemberList', 'QueryGuildMemberList', 'QueryGuildMembers', 'GetGuildMemberInfo', 'QueryGuildCardDetail', 'GetGuildUserList']) {
+            assert.ok(!code.includes(dead), '存在しない経路 ' + dead + ' を呼んでいる');
+        }
         assert.ok(/credentials:"include"/.test(code), 'ログイン状態を使っていない');
         assert.ok(/__spgRoster/.test(code), '2回目の実行に持ち越す置き場が無い');
         // ★ 空振りしたら「何が見えたか」を報告する — 「見つかりません」だけでは手が打てない
@@ -7475,11 +7481,17 @@ console.log('\ngrowthDomain:');
         const location = { href: 'https://www.blablalink.com/union/members' };
         // 自分から取りに行く経路。渡されていない route は code=-1 (無い経路) として返す
         const calls = [];
-        const fetchStub = async (url) => {
+        const fetchStub = async (url, opt) => {
             const name = String(url).split('/').pop();
-            calls.push(name);
-            return { json: async () => (api[name] || { code: -1 }) };
+            let body = null; try { body = JSON.parse((opt && opt.body) || '{}'); } catch (e) { body = null; }
+            calls.push({ name, body });
+            // api[name] は 応答オブジェクト / 応答の生テキスト / (body) => 応答 のどれでも。無い経路は code=-1
+            let r = api[name]; if (typeof r === 'function') r = r(body);
+            if (r === undefined) r = { code: -1 };
+            const text = typeof r === 'string' ? r : JSON.stringify(r);
+            return { text: async () => text, json: async () => JSON.parse(text) };
         };
+        runRosterSnippet.calls = calls;
         new Function('window', 'document', 'location', 'atob', 'XMLHttpRequest', 'fetch', code)(
             win, document, location, (b) => Buffer.from(b, 'base64').toString('binary'), XHR, fetchStub);
         await new Promise((r) => setTimeout(r, 20));   // 自分で呼ぶぶんが片づくのを待つ
@@ -7564,7 +7576,68 @@ console.log('\ngrowthDomain:');
         assert.ok(/ふるり\t222222222222222222/.test(out));
         assert.ok(out.includes('名簿 2人'));
         // どの経路がどう答えたかを診断に残す (無い経路があっても止まらない)
-        assert.ok(/GetMyGuildInfo:0/.test(out) && /GetGuildMemberList:-1/.test(out), '経路ごとの結果を残していない');
+        assert.ok(/GetMyGuildInfo:0/.test(out) && /GetGuildMembers:-1/.test(out), '経路ごとの結果を残していない');
+    });
+    await testAsync('★ 名簿のブックマークレット: 本物の経路と引数で取る (2026-09-15 実機: ユニオン新体制で全経路 220000)', async () => {
+        // BlaBlaLINK 本体の JS (assets/v4-*.js / union-*.js) で確認した形:
+        //   GetMyGuildInfo → data.card {guild_id, nikke_area_id} → GetGuildMembers {guild_id, nikke_area_id: String}
+        //   → data.items[] {member_id, nickname, icon_id, synchro_level, bind_area_id}。nikke_area_id が無いと 220000
+        const members = (body) => (body && body.guild_id === 'g9' && body.nikke_area_id === '81')
+            ? { code: 0, data: { items: [
+                { member_id: '3273786220482814289', nickname: 'なべりうす', icon_id: 3, synchro_level: 420, bind_area_id: 81, level: 1 },
+                { member_id: '917612447388170156', nickname: 'DRアルカード', icon_id: 5, synchro_level: 400, bind_area_id: 81, level: 1 },
+            ] } }
+            : { code: 220000, msg: 'param error' };
+        const out = await runRosterSnippet({
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9', nikke_area_id: 81, guild_card_uuid: 'u1', guild_name: '推しりをすこれ部', master_openid: B64('29080-12244701007106264814') } } },
+                'GetGuildMembers': members,
+            },
+        });
+        assert.ok(/なべりうす\t3273786220482814289/.test(out), `member_id + nickname から取れていない: ${out.slice(0, 400)}`);
+        assert.ok(/DRアルカード\t917612447388170156/.test(out));
+        assert.ok(out.includes('名簿 2人'), out.slice(0, 200));
+        assert.ok(!out.includes('推しりをすこれ部'), 'ユニオン名を人の名前にしている');
+        const calls = runRosterSnippet.calls;
+        const gm = calls.filter(c => c.name === 'GetGuildMembers');
+        assert.ok(gm.length >= 1 && gm[0].body && gm[0].body.nikke_area_id === '81',
+            `最初の引数が {guild_id, nikke_area_id: "81"} でない: ${JSON.stringify(gm[0] && gm[0].body)}`);
+        // ★ 当てずっぽうの経路を何十回も叩かない (連打の制限 212000 を招く)。本物 3 経路 × 2 通り × proxy/direct + 自分の情報 2 = 14 回まで
+        assert.ok(calls.length <= 14, `通信が多すぎる: ${calls.length} 回 (${calls.map(c => c.name).join(' ')})`);
+        assert.ok(/guild: g9 \/ area: 81/.test(out), '診断に guild と area が無い');
+    });
+    await testAsync('★ 名簿のブックマークレット: 識別子が JSON の数値で来ても末尾を丸めない (20 桁は 2^53 を超える)', async () => {
+        const raw = '{"code":0,"data":{"items":[{"member_id":12244701007106264814,"nickname":"ふるり","icon_id":1}]}}';
+        const out = await runRosterSnippet({
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9', nikke_area_id: 81 } } },
+                'GetGuildMembers': (body) => (body && body.nikke_area_id === '81') ? raw : { code: 220000 },
+            },
+        });
+        assert.ok(/ふるり\t12244701007106264814/.test(out), `末尾が丸まっている: ${out.slice(0, 300)}`);
+    });
+    await testAsync('★ 名簿のブックマークレット: 地域が card に無ければ登録ロールから引く / どこにも無ければ地域なしで試す', async () => {
+        const out = await runRosterSnippet({
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9' } } },
+                'GetUserSavedRoleInfo': { code: 0, data: { role_info: { area_id: 81, role_id: 'r1' } } },
+                'GetGuildMembers': (body) => (body && body.guild_id === 'g9' && body.nikke_area_id === '81')
+                    ? { code: 0, data: { items: [{ member_id: '111111111111111111', nickname: 'ひと' }] } } : { code: 220000 },
+            },
+        });
+        assert.ok(/ひと\t111111111111111111/.test(out), `登録ロールの地域で取れていない: ${out.slice(0, 300)}`);
+        assert.ok(/GetUserSavedRoleInfo:0/.test(out), '登録ロールを引いたことを診断に残していない');
+        // 地域がどこにも無い → 地域なしで試し、診断に area: - と出る (次の手がかり)
+        const none = await runRosterSnippet({
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9' } } },
+                'GetUserSavedRoleInfo': { code: -1 },
+                'GetGuildMembers': (body) => (body && body.guild_id === 'g9' && !('nikke_area_id' in body))
+                    ? { code: 0, data: { items: [{ member_id: '222222222222222222', nickname: 'ふたり' }] } } : { code: 220000 },
+            },
+        });
+        assert.ok(/ふたり\t222222222222222222/.test(none), '地域なしの形を試していない');
+        assert.ok(/area: -/.test(none), '診断に地域が無いことを出していない');
     });
     await testAsync('★ 名簿のブックマークレット: ユニオン名を人の名前にしない (実機: 団長がユニオン名になった)', async () => {
         // ギルド情報は「ユニオン名 + 団長の識別子」を持つ。素直に組むと団長の名前がユニオン名になり、
