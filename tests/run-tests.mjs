@@ -9179,13 +9179,15 @@ console.log('\ngrowthDomain:');
         const dom = globalThis.raidReviewDomain;
         const hpTable = { 1: { tyrant: 100, lord: 150 }, 2: { tyrant: 200, lord: 300 }, 3: { tyrant: 400, lord: 500 } };
         const attrOf = (c) => ({ T: 'iron', L: 'wind', X: 'fire' }[c] || null);
+        // ★ 入れた順 (X → T → L) と並べ直した順 (iron → wind → fire) を**わざと違える** — 同じだと並べ直しを消しても通る
         const players = [
+            { player: 'B', syncLevel: 600, attacks: [{ bossCode: 'X', level: 1, damage: 40 }, { bossCode: 'T', level: 2, damage: 80 }] },
             { player: 'A', syncLevel: 600, attacks: [{ bossCode: 'T', level: 1, damage: 100 }, { bossCode: 'T', level: 2, damage: 120, isKill: true }, { bossCode: 'L', level: 1, damage: 150 }] },
-            { player: 'B', syncLevel: 600, attacks: [{ bossCode: 'T', level: 2, damage: 80 }, { bossCode: 'X', level: 1, damage: 40 }] },
             { player: 'C', syncLevel: 600, attacks: [{ bossCode: 'ZZZ', level: 1, damage: 999 }] },   // 対応の分からないボスは出さない
         ];
         const rows = dom.attributeProgress({ players, hpTable, attrOf });
         assert.deepEqual(rows.map(r => r.attr), ['iron', 'wind', 'fire'], '進捗の高い順でない / 知らないボスを出している');
+        assert.deepEqual(rows.map(r => Math.round(r.pct ?? -1)), [43, 16, -1], '率の高い順でない (率の無いものは最後)');
         const iron = rows[0];
         assert.deepEqual([iron.cls, iron.estimated, iron.attacks, iron.kills, iron.damage], ['tyrant', true, 3, 1, 300]);
         assert.equal(iron.hp, 700, 'Lv1+2+3 の HP 合計でない');
@@ -9213,6 +9215,8 @@ console.log('\ngrowthDomain:');
         const iron = r.rows.find(x => x.attr === 'iron');
         // 12 @SLv600 → (12/1200)*1000/10 = 1.0 → 中央値 1 に対して 100%
         assert.equal(iron.value, 100); assert.deepEqual([iron.attacks, iron.scored, iron.avgB], [2, 1, 12], '締め凸を平均に入れている');
+        assert.equal(iron.damage, 12 + 999, '削った総量からも締め凸を外している (実績としては実際に入った量が正しい)');
+        assert.equal(iron.players, 2, '凸した人数が合わない');
         assert.equal(r.rows.find(x => x.attr === 'fire').value, 100, '属性ごとの基準ダメージで割っていない');
         // 締め凸を除かなければ鉄甲は跳ね上がる = 除けている証拠
         const noFlags = players.map(p => ({ ...p, attacks: p.attacks.map(({ isKill, ...a }) => a) }));
