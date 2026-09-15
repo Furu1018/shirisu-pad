@@ -7698,6 +7698,9 @@ console.log('\ngrowthDomain:');
         assert.ok(/なかま\t111111111111111111/.test(partial) && partial.includes('名簿 1人'), '一部取れた名簿が出ていない');
         assert.ok(/待ってから/.test(partial), '一部取れているときは待てと言っていない');
         assert.ok(partial.indexOf('待ってから') < partial.indexOf('名簿 1人'), '待ちの案内が名簿より後ろ (見落とす)');
+        assert.ok(partial.startsWith('BlaBlaLINK の連打の制限'), '待ちの案内が出力の先頭にない');
+        // 出力をそのまま (案内行も診断も含めて) 貼っても、人として読まれるのは名簿の行だけ (parseRoster との契約 — Codex 提案)
+        assert.deepEqual(dom.parseRoster(partial), [{ name: 'なかま', openid: '111111111111111111' }], '案内行や診断が人として読まれている');
         // 通常の空振りには「待って」と言わない (押し直しの案内だけ)
         const plain = await runRosterSnippet({ api: { 'GetMyGuildInfo': { code: -1 } } });
         assert.ok(!/待ってから/.test(plain) && plain.includes('メンバー一覧を開いて'), '制限でないのに待てと言っている');
