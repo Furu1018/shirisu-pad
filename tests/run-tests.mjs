@@ -9297,9 +9297,15 @@ console.log('\ngrowthDomain:');
         assert.ok(/\.rr-hm td\.c \{[^}]*background: var\(--s1\);/.test(html), 'color-mix が使えない環境の受け皿が無い');
         assert.ok(/cfg\.hardLevelHpOverrideByMonth\[month\]\) \|\| \(cfg && cfg\.hardLevelHp\)/.test(fn), '月ごとの HP 上書きを見ていない');
         assert.ok(/cfg\.bossClassByMonth\) \? cfg\.bossClassByMonth\[month\]/.test(fn), 'ボスのクラスの宣言を見ていない');
+        // ★ 帯は凸ごとに区切り、押すと詳細 (2026-09-15 ユーザー要望)。選んだ凸は回ごとに捨てる
+        assert.ok(/_rrLastProgress = dom\.attributeProgress\(/.test(fn) && /_rrProgressHtml\(_rrLastProgress, _rrPick\)/.test(fn), '選び直しで描き直せるように行を覚えていない');
+        assert.ok(/_rrPick = null; _rrLastProgress = null;/.test(fn), '回が変わっても前の回で選んだ凸が残る');
+        const ps = html.match(/function _rrPickSlice\(attr, level, i\)[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/_rrPick = \(attr == null \|\| same\) \? null : \{ attr, level, i \};/.test(ps), '同じ凸をもう一度押しても閉じない');
+        assert.ok(/el\.innerHTML = _rrProgressHtml\(_rrLastProgress, _rrPick\);/.test(ps), '選び直しで描き直していない');
         // 図はトークンで描く (Chart.js を使わない = 見た目の切り替えに描き直し不要)
         assert.ok(!/raidReview[\s\S]{0,400}new Chart\(/.test(html), '振り返りで Chart.js を使っている');
-        for (const f of ['_rrProgressHtml', '_rrAptBarsHtml', '_rrAptScatterHtml', '_rrMembersHtml']) {
+        for (const f of ['_rrProgressHtml', '_rrDetailHtml', '_rrAptBarsHtml', '_rrAptScatterHtml', '_rrMembersHtml']) {
             const body = html.match(new RegExp(`function ${f}\\([\\s\\S]*?\\n        \\}`))?.[0] || '';
             assert.ok(body, `${f} が無い`);
             assert.ok(!/var\(--attr-\$\{/.test(body), `${f}: トークン名を var() の中で組んでいる (走査が未定義と読む)`);

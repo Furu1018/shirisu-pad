@@ -2986,10 +2986,22 @@
         .rr-row { margin-bottom: 11px; }
         .rr-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 900; color: var(--t-ink); margin-bottom: 4px; }
         .rr-head .n { margin-left: auto; font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .rr-track { display: flex; gap: 2px; height: 16px; }
-        .rr-seg { position: relative; background: var(--track); border-radius: 4px; overflow: hidden; min-width: 2px; }
-        .rr-seg i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 4px; }
-        .rr-seg b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: var(--t-body); font-style: normal; }
+        .rr-track { display: flex; gap: 2px; height: 18px; }
+        /* ★ 帯は凸ごとに区切る (2026-09-15 ユーザー要望「一人一人の凸がどれくらいの割合だったか視覚的に」)。
+           区切りは inset の影 (幅を食わないので細い凸でも割合が正しいまま) */
+        .rr-seg { position: relative; background: var(--track); border-radius: 4px; overflow: hidden; min-width: 2px; display: flex; }
+        .rr-sl { border: none; padding: 0; margin: 0; height: 100%; min-width: 0; cursor: pointer; box-shadow: inset -1px 0 0 var(--card); }
+        .rr-sl:hover { filter: brightness(1.12); }
+        .rr-sl.on { box-shadow: inset 0 0 0 2px var(--t-ink); }
+        .rr-seg b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: var(--t-body); font-style: normal; pointer-events: none; text-shadow: 0 0 2px var(--card); }
+        .rr-det { margin-top: 7px; padding: 9px 11px; border-radius: 11px; background: var(--s1); border: 1px solid var(--line); }
+        .rr-det-h { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 900; color: var(--t-ink); }
+        .rr-det-h .lv { font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .rr-det-h .k { font-size: 9.5px; font-weight: 900; color: var(--warn-deep); background: rgba(245,158,11,0.14); border-radius: 999px; padding: 1px 6px; }
+        .rr-det-h button { margin-left: auto; flex: none; border: none; background: var(--s2); color: var(--t-body); border-radius: 999px; width: 22px; height: 22px; font-size: 12px; cursor: pointer; font-family: inherit; }
+        .rr-det-t { display: flex; flex-wrap: wrap; gap: 2px; margin: 7px 0; }
+        .rr-det-p { font-size: 11px; color: var(--t-body); line-height: 1.7; }
+        .rr-det-p b { color: var(--t-ink); font-variant-numeric: tabular-nums; }
         .rr-foot { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 10.5px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
         .rr-foot .pct { color: var(--t-ink); font-size: 12px; }
         .rr-foot .done { color: var(--ok-deep); }
@@ -24280,6 +24292,7 @@
         let _rrAptView = 'scatter';
         try { const v = localStorage.getItem('shirisuko_rr_apt_v1'); if (v === 'scatter' || v === 'bars') _rrAptView = v; } catch { /* 既定のまま */ }
         let _rrSeq = 0, _rrLastApt = null, _rrCfgCache = null;
+        let _rrPick = null, _rrLastProgress = null;   // 帯で選んだ凸 {attr, level, i} と、その元になった行 (選び直しで描き直すため)
         const _rrAttrJp = (attr) => (window.planBoardDomain?.ATTR_JP || { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' })[attr] || attr;
         const _rrAttrOf = (bossCode) => ((BOSS_ATTRIBUTES[bossCode] || {}).attribute || '').toLowerCase() || null;
         const _rrB = (v) => `${(Number(v) / 1e9).toFixed(1)}B`;
@@ -24297,7 +24310,7 @@
             return _rrCfgCache;
         }
         // ① 属性別の進捗: ボス×Lv の積み上げ (Lv の幅 = その Lv の HP)。クラスが分からないボスは率を出さず総量だけ
-        function _rrProgressHtml(rows) {
+        function _rrProgressHtml(rows, pick = null) {
             const esc = escapeHtml;
             if (!rows.length) return '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:12px 0;">この回の凸データがありません。</p>';
             const body = rows.map(r => {
@@ -24312,17 +24325,49 @@
                         : 'ボスの総HPが分からないため率は出しません';
                     return `<div class="rr-row">${head}<div class="rr-foot"><span class="pct">${esc(_rrB(r.damage))}</span><span>${esc(why)}</span></div></div>`;
                 }
+                // ★ 帯は凸ごとに区切る (2026-09-15 ユーザー要望)。押すとその凸の詳細 (誰が・編成・割合) が下に出る
                 const track = `<div class="rr-track">` + r.levels.map(L => {
-                    const fill = L.hp ? Math.max(0, Math.min(1, L.damage / L.hp)) : 0;
-                    const title = `Lv${L.level} ${_rrB(L.damage)} / ${_rrB(L.hp || 0)} · ${L.attacks}凸${L.cleared ? ' · 踏破' : ''}`;
-                    return `<div class="rr-seg" style="flex:${L.hp || 1} 1 0;" title="${esc(title)}"><i style="width:${(fill * 100).toFixed(1)}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.72;'}"></i><b>Lv${L.level}</b></div>`;
+                    const segTitle = `Lv${L.level} ${_rrB(L.damage)} / ${_rrB(L.hp || 0)} · ${L.attacks}凸${L.cleared ? ' · 踏破' : ''}`;
+                    const slices = (L.slices || []).map((x, i) => {
+                        const w = L.hp ? Math.max(0, Math.min(100, (x.damage / L.hp) * 100)) : 0;
+                        if (!(w > 0)) return '';
+                        const on = pick && pick.attr === r.attr && pick.level === L.level && pick.i === i;
+                        const t = `${x.name} · Lv${L.level} ${_rrB(x.damage)}${x.isKill ? ' (締)' : ''} · このLvの ${(x.pctLevel ?? 0).toFixed(1)}% / ${jp}PT 全体の ${(x.pctTotal ?? 0).toFixed(1)}%`;
+                        return `<button type="button" class="rr-sl${on ? ' on' : ''}" style="width:${w.toFixed(2)}%;background:var(${tk}-solid);${L.cleared ? '' : 'opacity:0.78;'}" title="${esc(t)}" aria-label="${esc(t)}" onclick="_rrPickSlice('${esc(r.attr)}',${L.level},${i})"></button>`;
+                    }).join('');
+                    return `<div class="rr-seg" style="flex:${L.hp || 1} 1 0;" title="${esc(segTitle)}">${slices}<b>Lv${L.level}</b></div>`;
                 }).join('') + `</div>`;
                 const foot = `<div class="rr-foot"><span class="pct">${r.pct.toFixed(1)}%</span><span>${esc(_rrB(r.damage))} / ${esc(_rrB(r.hp))}</span>`
                     + (r.clearedLevels ? `<span class="done">💀 Lv${r.clearedLevels} まで踏破</span>` : '')
                     + (r.estimated ? '<span title="踏破したレベルの合計が設定のHPとぴったり一致することから推定しました">(HP推定)</span>' : '') + `</div>`;
-                return `<div class="rr-row">${head}${track}${foot}</div>`;
+                return `<div class="rr-row">${head}${track}${foot}${_rrDetailHtml(r, pick)}</div>`;
             }).join('');
-            return body + '<p class="rr-note">削れた量は<b>かけた凸数</b>で決まります (踏破すると 100% で頭打ち)。属性の強さは「⚔ 得意・不得意」で見てください。</p>';
+            return body + '<p class="rr-note">帯の区切りは<b>凸1本</b>です (押すと 誰が・どの編成で・どれだけ削ったか が出ます)。削れた量は<b>かけた凸数</b>で決まるので、属性の強さは「⚔ 得意・不得意」で見てください。</p>';
+        }
+        // 帯で選んだ凸の詳細: 誰が・どの編成で・そのレベルのボスHPの何% / その属性の総HPの何%
+        function _rrDetailHtml(r, pick) {
+            if (!pick || pick.attr !== r.attr) return '';
+            const L = (r.levels || []).find(x => x.level === pick.level);
+            const x = L && (L.slices || [])[pick.i];
+            if (!x) return '';
+            const esc = escapeHtml, jp = _rrAttrJp(r.attr);
+            const team = (Array.isArray(x.team) && x.team.length && typeof renderTeamSnippet === 'function')
+                ? renderTeamSnippet(x.team, { size: 26 })
+                : '<span style="font-size:11px;color:var(--t-muted);">この凸の編成は記録されていません</span>';
+            return `<div class="rr-det"><div class="rr-det-h">${esc(x.name)}<span class="lv">Lv${L.level}</span><b>${esc(_rrB(x.damage))}</b>`
+                + (x.isKill ? '<span class="k">締</span>' : '')
+                + `<button type="button" onclick="_rrPickSlice(null)" aria-label="閉じる" title="閉じる">✕</button></div>`
+                + `<div class="rr-det-t">${team}</div>`
+                + `<div class="rr-det-p">このレベルのボスHPの <b>${(x.pctLevel ?? 0).toFixed(1)}%</b> · ${esc(jp)}PT の総HP (Lv1〜3) の <b>${(x.pctTotal ?? 0).toFixed(1)}%</b>`
+                + (x.isKill ? '<br><span style="color:var(--warn-deep);">締め凸は残りHPぶんしか記録されないので、実際の火力より小さく出ます。</span>' : '')
+                + `</div></div>`;
+        }
+        // 帯の凸を選ぶ / 同じものをもう一度押したら閉じる (attr が null なら閉じる)
+        function _rrPickSlice(attr, level, i) {
+            const same = _rrPick && attr != null && _rrPick.attr === attr && _rrPick.level === level && _rrPick.i === i;
+            _rrPick = (attr == null || same) ? null : { attr, level, i };
+            const el = document.getElementById('raidReviewProgress');
+            if (el && _rrLastProgress) el.innerHTML = _rrProgressHtml(_rrLastProgress, _rrPick);
         }
         // ② 得意・不得意: 散布図 (凸数 × 強さ) / ランキング (横棒)。主役の指標は basis が決める
         function _rrAptFmt(v, basis) {
@@ -24431,6 +24476,7 @@
             if (!dom || !pEl || !mEl) return;
             const seq = ++_rrSeq;
             _rrLastApt = null;   // ★ 取得の間に 散布図/ランキング を押しても前の回の図を描き直さない (Codex指摘 2026-09-15)
+            _rrPick = null; _rrLastProgress = null;   // 帯で選んだ凸は回ごとに捨てる
             const players = Array.isArray(currentData) ? currentData : [];
             if (!players.some(p => (p.attacks || []).length)) {
                 const empty = '<p style="margin:0;font-size:12px;color:var(--t-muted);text-align:center;padding:14px 0;">この回の凸データがありません。</p>';
@@ -24444,7 +24490,8 @@
             if (seq !== _rrSeq) return;   // 待っている間にシーズンを切り替えた
             const hpTable = (cfg && cfg.hardLevelHpOverrideByMonth && cfg.hardLevelHpOverrideByMonth[month]) || (cfg && cfg.hardLevelHp) || null;
             const declaredClasses = (cfg && cfg.bossClassByMonth) ? cfg.bossClassByMonth[month] : null;
-            pEl.innerHTML = _rrProgressHtml(dom.attributeProgress({ players, hpTable, declaredClasses, attrOf: _rrAttrOf }));
+            _rrLastProgress = dom.attributeProgress({ players, hpTable, declaredClasses, attrOf: _rrAttrOf });
+            pEl.innerHTML = _rrProgressHtml(_rrLastProgress, _rrPick);
             _rrPaintAptitude(dom.attributeAptitude({ players, ratioTable: slvRatioTable, gb, attrOf: _rrAttrOf }));
             mEl.innerHTML = _rrMembersHtml(dom.memberMatrix({ players, attrOf: _rrAttrOf }));
         }

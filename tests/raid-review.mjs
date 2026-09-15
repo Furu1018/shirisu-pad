@@ -42,18 +42,20 @@ let identity = { id: 1, name: 'イオ' };
 const src = [
     'const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\'/g, "&#39;");',
     'const renderAttrIcon = (k, n) => `<img alt="${k}" width="${n}">`;',
+    'const renderTeamSnippet = (team, o) => team.map((c) => `<img class="chr" src="${c}" width="${o.size}">`).join("");',
     'const getCurrentIdentity = () => identity;',
     'let _rrAptView = "scatter", _rrLastApt = null;',   // index.html ではモジュールの変数 (切り出しに入らないのでここで用意する)
     grab('_rrAttrJp', 'const'),
     grab('_rrAttrOf', 'const'),
     grab('_rrB', 'const'),
     grab('_rrProgressHtml'),
+    grab('_rrDetailHtml'),
     grab('_rrAptFmt'),
     grab('_rrAptBarsHtml'),
     grab('_rrAptScatterHtml'),
     grab('_rrMembersHtml'),
     grab('_rrPaintAptitude'),
-    'return { _rrProgressHtml, _rrAptBarsHtml, _rrAptScatterHtml, _rrMembersHtml, _rrPaintAptitude, _rrAttrOf, _rrB };',
+    'return { _rrProgressHtml, _rrDetailHtml, _rrAptBarsHtml, _rrAptScatterHtml, _rrMembersHtml, _rrPaintAptitude, _rrAttrOf, _rrB };',
 ].join('\n');
 // _rrPaintAptitude は DOM を触るので最小のスタブを当てる (注記の文言を実際に組ませる)
 const els = new Map([['raidReviewAptitude', null], ['raidReviewAptitudeNote', null], ['rrAptScatterBtn', null], ['rrAptBarsBtn', null]]
@@ -85,6 +87,8 @@ test('① 進捗: 5属性ぶんの帯が出て、踏破した属性は 100% / �
     clean(out);
     assert.equal((out.match(/class="rr-row"/g) || []).length, 5, '5属性ぶん出ていない');
     assert.equal((out.match(/class="rr-seg"/g) || []).length, 15, 'Lv1〜3 × 5属性 の区間が無い');
+    // ★ 帯は凸ごとに区切る (90凸ぶん)。幅の合計はその Lv の削った割合と一致する
+    assert.equal((out.match(/class="rr-sl/g) || []).length, 90, `凸ごとの区切りが 90 本でない: ${(out.match(/class="rr-sl/g) || []).length}`);
     // 2026-09: 風圧と水冷だけ Lv3 まで踏破 / 灼熱は 89.0%
     assert.ok(out.includes('100.0%'), '踏破した属性の 100% が無い');
     assert.ok(out.includes('89.0%'), `灼熱の 89.0% が無い: ${out.match(/\d+\.\d%/g)}`);
@@ -226,6 +230,38 @@ test('② 散布図: 軸が壊れる値 (無限・幅0) なら横棒に倒す', 
         rows: ['iron', 'fire'].map(a => ({ attr: a, attacks: 10, value: 0, avgB: 0, median: 0, hi: 0, lo: 0 })) };
     const out = api._rrAptScatterHtml(same);
     assert.ok(!/NaN|Infinity/.test(out), `座標が壊れている: ${out.slice(0, 200)}`);
+});
+
+test('① 帯: 凸1本ずつに区切られ、幅の合計 = その Lv の進捗。押すと詳細 (誰が・編成・割合)', () => {
+    const rows = dom.attributeProgress({ players, hpTable: cfg.hardLevelHp, attrOf });
+    const fire = rows.find(r => r.attr === 'fire');
+    // 幅の合計 (Lv3・灼熱は 92.2% 削った)
+    const lv3 = fire.levels[2];
+    const sum = lv3.slices.reduce((a, x) => a + x.damage, 0);
+    assert.equal(sum, lv3.damage, '凸の合計がそのレベルの削った量と合わない');
+    assert.ok(Math.abs(lv3.slices.reduce((a, x) => a + x.pctLevel, 0) - lv3.damage / lv3.hp * 100) < 1e-9, '割合の合計が進捗と合わない');
+    assert.ok(lv3.slices.every((x, i, arr) => i === 0 || arr[i - 1].damage >= x.damage), '削った量の多い順でない');
+    // 選んでいないときは詳細を出さない / 選ぶとその行にだけ出る
+    const plain = api._rrProgressHtml(rows);
+    assert.ok(!plain.includes('class="rr-det"'), '選んでいないのに詳細が出ている');
+    const picked = api._rrProgressHtml(rows, { attr: 'fire', level: 3, i: 0 });
+    clean(picked);
+    assert.equal((picked.match(/class="rr-det"/g) || []).length, 1, '詳細が1つでない');
+    const top = lv3.slices[0];
+    assert.ok(picked.includes(`>${top.name}<`) || picked.includes(top.name), '誰の凸か出ていない');
+    assert.ok(picked.includes(`<b>${(top.damage / 1e9).toFixed(1)}B</b>`), 'ダメージが出ていない');
+    assert.ok(picked.includes(`このレベルのボスHPの <b>${top.pctLevel.toFixed(1)}%</b>`), 'そのLvに対する割合が無い');
+    assert.ok(picked.includes(`灼熱PT の総HP (Lv1〜3) の <b>${top.pctTotal.toFixed(1)}%</b>`), '属性全体に対する割合が無い');
+    assert.equal((picked.match(/class="chr"/g) || []).length, 5, '編成の5キャラが出ていない');
+    assert.ok((picked.match(/class="rr-sl on"/g) || []).length === 1, '選んだ凸の印が無い');
+    assert.ok(picked.includes('onclick="_rrPickSlice(null)"'), '閉じるボタンが無い');
+    // 締め凸を選んだら断りが出る
+    const killAt = rows.flatMap(r => r.levels.flatMap(L => L.slices.map((x, i) => ({ r, L, x, i })))).find(o => o.x.isKill);
+    const kp = api._rrProgressHtml(rows, { attr: killAt.r.attr, level: killAt.L.level, i: killAt.i });
+    assert.ok(kp.includes('<span class="k">締</span>') && kp.includes('実際の火力より小さく出ます'), '締め凸の断りが無い');
+    // 知らない凸を指しても壊れない
+    clean(api._rrProgressHtml(rows, { attr: 'fire', level: 3, i: 999 }));
+    assert.ok(!api._rrProgressHtml(rows, { attr: 'fire', level: 9, i: 0 }).includes('class="rr-det"'), '無いレベルで詳細を出している');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
