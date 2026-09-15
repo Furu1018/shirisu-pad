@@ -2481,8 +2481,12 @@
         .ana-seg button.active { background:var(--card); color:var(--t-ink); box-shadow:0 1px 3px rgba(20,22,26,0.12)}
         /* 4分割セグ (実績/ふるり値/シミュレータ/GB比較) は fit-content だと画面幅を超える —
            全幅+均等割りで収め、狭い端末では絵文字を落として文字を守る (実機FB 2026-08-05) */
-        .ana-seg-fill { width:auto; align-self:stretch; }
+        /* ★ 2026-09-15 に 6分割 (実績/全体分析/ふるり値/育成/シミュレータ/GB比較) になったので**折り返す** —
+           均等割り + nowrap のままだと狭い端末で「シミュレータ」がはみ出す (Codex指摘)。
+           560px 未満は 3つ×2行 (幅が同じで読みやすい)、389px 未満はさらに絵文字を落として文字を守る */
+        .ana-seg-fill { width:auto; align-self:stretch; flex-wrap:wrap; }
         .ana-seg-fill button { flex:1 1 0; min-width:0; padding:7px 2px; font-size:11px; text-align:center; }
+        @media (max-width:559px) { .ana-seg-fill button { flex:1 1 30%; } }
         @media (max-width:389px) { .ana-seg-fill .seg-ico { display:none; } }
         /* 分析タブのビュー切替は hidden 属性で行う — style.display の付け外しだと
            シーズン切替行などの inline display:flex を消してしまう (Codex 指摘) */

@@ -9270,6 +9270,13 @@ console.log('\ngrowthDomain:');
         // セグメント: 実績の**隣**に 全体分析 (両方のタブ)
         assert.ok(/onclick="_gotoSlvView\('review'\)"><span class="seg-ico">🛡 <\/span>全体分析<\/button>\s*<button type="button" onclick="_gotoSlvView\('fururi'\)"/.test(html), '実績タブのセグメントで 全体分析 が 実績 の隣でない');
         assert.ok(/data-view="review" onclick="_setSlvView\('review'\)"><span class="seg-ico">🛡 <\/span>全体分析<\/button>\s*<button class="active" type="button" data-view="fururi"/.test(html), '全体分析タブのセグメントで 全体分析 が 実績 の隣でない');
+        // ★ 6分割になったので狭い端末では折り返す (均等割り + nowrap だと「シミュレータ」がはみ出す: Codex指摘 2026-09-15)
+        assert.equal((html.match(/class="ana-seg ana-seg-fill"/g) || []).length, 2, 'セグメントの箱が2つでない');
+        for (const seg of html.match(/<div class="ana-seg ana-seg-fill">[\s\S]*?<\/div>/g) || []) {
+            assert.equal((seg.match(/<button/g) || []).length, 6, `セグメントのボタンが6つでない: ${seg.slice(0, 80)}`);
+        }
+        assert.ok(/\.ana-seg-fill \{ width:auto; align-self:stretch; flex-wrap:wrap; \}/.test(html), 'セグメントが折り返さない');
+        assert.ok(/@media \(max-width:559px\) \{ \.ana-seg-fill button \{ flex:1 1 30%; \} \}/.test(html), '狭い端末で 3つ×2行 にしていない');
         const svv = html.match(/function _setSlvView\(view\)[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/view === 'review' \? 'review'/.test(svv), 'ビューに review が無い (知らない値は fururi に倒れてしまう)');
         assert.ok(/if \(_slvView === 'review' && typeof renderRaidReview === 'function'\) renderRaidReview\(\)/.test(svv), 'ビューを開いたときに描き直していない');
