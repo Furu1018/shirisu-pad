@@ -736,6 +736,18 @@
         .gr-btn { font: inherit; font-size: 12px; font-weight: 900; border: none; border-radius: 999px; padding: 10px 14px; cursor: pointer; background: var(--t-ink); color: var(--card)}
         .gr-btn.sub { background: var(--s2); color: var(--t-ink)}
         .gr-btn[disabled] { opacity: .45; cursor: default; }
+        /* ② 取り込む相手の絞り込み (2026-09-15): セグメント + 「選んだ人」の一覧 */
+        .gr-scope { display: flex; gap: 6px; flex-wrap: wrap; }
+        .gr-seg { font: inherit; font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); cursor: pointer; }
+        .gr-seg.on { background: var(--t-ink); color: var(--card); border-color: transparent; }
+        .gr-seg .c { font-weight: 900; margin-left: 2px; }
+        .gr-seg[disabled] { opacity: .5; cursor: default; }
+        .gr-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 10px; }
+        .gr-pick-row { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--t-body); cursor: pointer; min-width: 0; }
+        .gr-pick-row .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .gr-pick-row .st { flex: none; font-size: 10px; font-weight: 900; border-radius: 999px; padding: 2px 7px; white-space: nowrap; background: var(--s2); color: var(--t-body); }
+        .gr-pick-row .st.ok { color: var(--ok-deep); background: var(--ok-bg); }
+        .gr-pick-row .st.private { color: var(--warn-deep); background: var(--warn-bg); }
         .gr-paste { width: 100%; box-sizing: border-box; min-height: 74px; font: inherit; font-size: 11px; font-weight: 700; border: 1px solid rgba(var(--ink-rgb), 0.12); border-radius: 10px; padding: 8px 9px; background: var(--card); color: var(--t-ink); resize: vertical}
         .gr-note { font-size: 10.5px; font-weight: 800; line-height: 1.6; border-radius: 9px; padding: 8px 10px; margin-top: 8px; }
         .gr-note.warn { color: var(--warn-deep); background: rgba(245,158,11,0.10)}
@@ -17862,7 +17874,8 @@
         //   流れは 4 段: ① 識別子の名寄せ → ② ブックマークレットを作る → ③ 貼り付けて取り込む → ④ 取れなかった人。
         //   ★ ブックマークレットにするのは blablalink.com の anti-debug 対策 (DevTools を開くと止まる)。
         //   ★ 対象は「今回のレイドで実際に使われたキャラ」だけ (usedCharacters) — 全キャラは要らない。
-        const _growth = { gen: 0, seasons: null, picked: null, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, sending: false, msg: null, rosterOpen: false };
+        // scope: ② の絞り込み (null = 段階で決める: 準備 = 未取り込みの人だけ / それ以外 = 全員)。pickedIds: 「選んだ人」の id
+        const _growth = { gen: 0, seasons: null, picked: null, seasonId: null, players: null, statusRows: null, used: [], wanted: null, busy: false, sending: false, msg: null, rosterOpen: false, scope: null, pickedIds: [] };
         let _growthNameMap = null;   // data/blabla-name-codes.json の data (name_code → {jp, pad})
 
         async function _growthLoadNameMap() {
@@ -17936,6 +17949,28 @@
             renderOpsGrowth(true);
         }
 
+        // ② の絞り込みの既定 (2026-09-15): 運営が選んでいなければ段階で決める — 準備 (新メンバーの加入時) は
+        // 「未取り込みの人だけ」、それ以外は「全員」。描画 (_growthPaint) とコピー (handleGrowthCopySnippet) の両方がこれを通る
+        function _growthScope() {
+            const dom = window.growthDomain;
+            if (_growth.scope && dom && dom.IMPORT_SCOPES.includes(_growth.scope)) return _growth.scope;
+            const st = (typeof _opsCurrentStage === 'function') ? _opsCurrentStage() : null;
+            return (st && st.stage === 'prep') ? 'missing' : 'all';
+        }
+        function handleGrowthScope(scope) {
+            const dom = window.growthDomain;
+            if (_growth.busy || !dom || !dom.IMPORT_SCOPES.includes(scope)) return;
+            _growth.scope = scope; _growth.msg = null;
+            _growthPaint();
+        }
+        function handleGrowthPick(playerId, on) {
+            if (_growth.busy) return;
+            const ids = new Set((_growth.pickedIds || []).map(String));
+            if (on) ids.add(String(playerId)); else ids.delete(String(playerId));
+            _growth.pickedIds = [...ids];
+            _growthPaint();
+        }
+
         function _growthNote(kind, text) { _growth.msg = { kind, text }; _growthPaint(); }
 
         function _growthPaint() {
@@ -17948,6 +17983,10 @@
             const wanted = _growth.wanted || { codes: [], missing: [] };
             const unsupported = _growth.statusRows === null || players.some(p => p.growthUnsupported);
             const statusBy = new Map((_growth.statusRows || []).map(r => [String(r.player_id), r]));
+            // ② 取り込む相手の絞り込み (2026-09-15)。判定は growthDomain.importTargets が唯一、既定は _growthScope (段階で決める)
+            const scope = _growthScope();
+            const pickedSet = new Set((_growth.pickedIds || []).map(String));
+            const tg = dom.importTargets(players, _growth.statusRows, { scope, pickedIds: [...pickedSet] });
 
             const cur = (_growth.seasons || []).find(s => Number(s.id) === Number(_growth.seasonId)) || null;
             const seasonJp = (s) => `${s.month_key || 'ID' + s.id}${s.hard_date ? ` (${String(s.hard_date).slice(5).replace('-', '/')})` : ''}${s.is_test ? ' 🧪テスト' : ''}`;
@@ -17963,7 +18002,8 @@
                             ${(_growth.seasons || []).map(s => `<option value="${Number(s.id)}" ${Number(s.id) === Number(_growth.seasonId) ? 'selected' : ''}>${esc(seasonJp(s))}</option>`).join('')}
                         </select>
                     </div>
-                    <div class="d">そのレイドで使われたキャラだけを取り込み、そのレイド時点の育成として残します。既定は<strong>凸記録のある最新のレイド</strong>です。</div>
+                    <div class="d">そのレイドで使われたキャラだけを取り込み、そのレイド時点の育成として残します。既定は<strong>凸記録のある最新のレイド</strong>です。
+                        レイドのあとに入った人のぶんも、このレイドの記録として取り込めます (② で「未取り込みの人だけ」)。</div>
                 </div>`;
 
             // ① 名寄せ — URL をそのまま貼れる (parseOpenid が ?uid= を拾う)
@@ -17981,7 +18021,7 @@
                     <div class="d">ユニオン一覧で名前を開いたときの URL (<code>?uid=…</code>) をそのまま貼れます。1人1回だけの作業です。</div>
                     <details class="gr-roster" ${_growth.rosterOpen ? 'open' : ''} ontoggle="_growth.rosterOpen = this.open;">
                         <summary>📋 メンバー一覧からまとめて読み取る (入れ替えが多いときはこちら)</summary>
-                        <div class="d" style="margin-left:0;">BlaBlaLINK に<strong>ログインした状態</strong>で (ページはどこでも構いません)、
+                        <div class="d" style="margin-left:0;">BlaBlaLINK に<strong>ログインした状態</strong>で (BlaBlaLINK 内ならどのページでも構いません)、
                             <strong>開発者ツールを閉じたまま</strong>このブックマークレットを実行します。いま所属しているユニオンの一覧を読むので、
                             ユニオンが変わっても同じブックマークレットで構いません。
                             出てきた「名前 と ID」の行をそのまま貼ってください。名前が違っていれば手で直せます。</div>
@@ -17996,18 +18036,31 @@
             const miss = wanted.missing.length
                 ? `<div class="gr-note warn">対応表に無いキャラが ${wanted.missing.length} 体あります (${esc(wanted.missing.slice(0, 6).join('・'))}${wanted.missing.length > 6 ? ' ほか' : ''})。このキャラだけ取り込めません。</div>`
                 : '';
-            const canSnippet = linked.length > 0 && wanted.codes.length > 0;
+            const canSnippet = tg.targets.length > 0 && wanted.codes.length > 0;
+            // ② の絞り込みで相手がゼロ (ひも付けも対象キャラもあるのに) — 理由は絞り込みの側にある
+            const whyScope = (linked.length > 0 && wanted.codes.length > 0 && !tg.targets.length)
+                ? (scope === 'missing'
+                    ? '<div class="gr-note warn">未取り込みの人がいません (ひも付け済みの人は全員取り込み済みです)。取り直すなら「全員」か「選んだ人」に切り替えてください。</div>'
+                    : '<div class="gr-note warn">取り込む相手を下の一覧から選んでください。</div>')
+                : '';
             // ★ 押せない理由を必ず言う (実機FB 2026-09-09: 押せないだけで理由が分からなかった)
-            const why = canSnippet ? ''
+            const why = (canSnippet || whyScope) ? whyScope
                 : linked.length === 0
                     ? '<div class="gr-note warn">まず ① で識別子をひも付けてください。</div>'
                     : `<div class="gr-note warn">選んだレイドに凸の記録が無いため、取りたいキャラが決まりません。⓪ でレイドを選び直してください${cur && cur.is_test ? ' (いまはテストシーズンを見ています)' : ''}。</div>`;
             const step2 = `
                 <div class="gr-step">
                     <div class="h"><span class="n">2</span>取り込み用のブックマークレットを作る</div>
-                    <div class="d">対象は <strong>${linked.length}人</strong> / 今回使われた <strong>${wanted.codes.length}体</strong>。
+                    <div class="d">対象は <strong>${tg.targets.length}人</strong> (${esc(dom.IMPORT_SCOPE_JP[scope])}) / 今回使われた <strong>${wanted.codes.length}体</strong>。
                         コピーしてブックマークを新規作成し、URL 欄に貼り付けます。
                         <strong>BlaBlaLINK を開いて、開発者ツールを閉じたまま</strong>そのブックマークを実行してください。</div>
+                    <div class="gr-scope" style="margin:8px 0 0 26px;">
+                        ${dom.IMPORT_SCOPES.map(s => `<button type="button" class="gr-seg ${s === scope ? 'on' : ''}" onclick="handleGrowthScope('${s}')" ${_growth.busy ? 'disabled' : ''}>${esc(dom.IMPORT_SCOPE_JP[s])} <span class="c">${tg.counts[s]}</span></button>`).join('')}
+                    </div>
+                    ${scope === 'picked' ? `<div class="gr-pick" style="margin:8px 0 0 26px;">${linked.map(p => {
+                        const st = statusBy.get(String(p.id));
+                        return `<label class="gr-pick-row"><input type="checkbox" ${pickedSet.has(String(p.id)) ? 'checked' : ''} ${_growth.busy ? 'disabled' : ''} onchange="handleGrowthPick(${Number(p.id)}, this.checked)"><span class="nm">${esc(p.name)}</span><span class="st ${esc(st ? st.status : 'none')}">${esc(st ? (dom.STATUS_SHORT[st.status] || st.status) : '未取り込み')}</span></label>`;
+                    }).join('')}</div>` : ''}
                     <div style="margin:9px 0 0 26px;">
                         <button type="button" class="gr-btn" onclick="handleGrowthCopySnippet()" ${canSnippet ? '' : 'disabled'}>📋 コピーする</button>
                     </div>
@@ -18123,12 +18176,12 @@
             }
         }
 
-        // 名簿の読み取り (BlaBlaLINK にログインした状態で動かすブックマークレット。ページは問わない — 2026-09-15)。入れ替えが多い回のための一括ひも付け
+        // 名簿の読み取り (BlaBlaLINK にログインした状態で動かすブックマークレット。BlaBlaLINK 内ならページは問わない — 2026-09-15)。入れ替えが多い回のための一括ひも付け
         async function handleGrowthCopyRosterSnippet() {
             const dom = window.growthDomain;
             if (!dom) return;
             await _growthCopy(dom.buildRosterSnippet(),
-                'コピーしました。ブックマークを新規作成して URL 欄に貼り、BlaBlaLINK にログインした状態で実行してください (ページはどこでも構いません)。');
+                'コピーしました。ブックマークを新規作成して URL 欄に貼り、BlaBlaLINK にログインした状態で実行してください (BlaBlaLINK 内ならどのページでも構いません)。');
         }
 
         // 名簿を名前で突き合わせて、識別子をまとめて保存する。
@@ -18203,13 +18256,16 @@
         async function handleGrowthCopySnippet() {
             const dom = window.growthDomain;
             if (!dom) return;
-            const targets = (_growth.players || []).filter(p => p.blabla_openid)
-                .map(p => ({ openid: String(p.blabla_openid), label: p.name }));
+            // ② の絞り込みに従う (2026-09-15)。判定は growthDomain.importTargets、既定は _growthScope (描画と同じ規則)
+            const scope = _growthScope();
+            const tg = dom.importTargets(_growth.players || [], _growth.statusRows, { scope, pickedIds: _growth.pickedIds || [] });
+            if (!tg.targets.length) { _growthNote('err', scope === 'picked' ? '取り込む相手を選んでください。' : '取り込む相手がいません。② の絞り込みを変えてください。'); return; }
+            const targets = tg.targets.map(p => ({ openid: String(p.blabla_openid), label: p.name }));
             let code;
             try {
                 code = dom.buildImportSnippet({ targets, wantedCodes: (_growth.wanted || {}).codes || [] });
             } catch (e) { _growthNote('err', e?.message || String(e)); return; }
-            await _growthCopy(code, `コピーしました (${targets.length}人ぶん)。ブックマークを新規作成して URL 欄に貼り付けてください。`);
+            await _growthCopy(code, `コピーしました (${dom.IMPORT_SCOPE_JP[scope]} ${targets.length}人ぶん)。ブックマークを新規作成して URL 欄に貼り付けてください。`);
         }
 
         // 貼り付け → 1人ずつ 判定 (prepareMember) → 保存 (upsert のみ) → 状態を残す

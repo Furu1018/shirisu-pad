@@ -896,41 +896,57 @@
             'var HD={"Content-Type":"application/json","X-Channel-Type":"2","X-Language":"ja",',
             '"X-Common-Params":JSON.stringify({game_id:"29080",area_id:"global",source:"pc_web",intl_game_id:"29080",language:"ja",env:"prod"})};',
             // ★ 識別子は 20 桁 (2^53 超) — JSON の数値のまま来ると r.json() で末尾が丸まる。文字列にしてから読む
-            'var fix=function(t){return String(t||"").replace(/("(?:[a-z_]*?)(?:open_?id|openid|uid|member_id)"\\s*:\\s*)(\\d{6,})(?=\\s*[,}\\]])/gi,function(m0,a,b){return a+JSON.stringify(b);});};',
+            //   キーは open_id / openid / uid / member_id とその前に「_」が付く形だけ (uuid / guid の末尾を uid と誤認しない: Codex指摘)
+            'var fix=function(t){return String(t||"").replace(/("(?:[a-z_]*_)?(?:open_?id|openid|uid|member_id)"\\s*:\\s*)(\\d{6,})(?=\\s*[,}\\]])/gi,function(m0,a,b){return a+JSON.stringify(b);});};',
             'var parse=function(t){try{return JSON.parse(fix(t));}catch(e){return null;}};',
             'var call=function(route,body2){var one=function(kind){return fetch("https://api.blablalink.com/api/game/"+kind+"/"+route,',
             '{method:"POST",credentials:"include",headers:HD,body:JSON.stringify(body2||{})}).then(function(r){return r.text();}).then(parse)',
             '.catch(function(){return null;});};',
-            'return one("proxy").then(function(a){if(a&&a.code===0)return a;return one("direct");});};',
+            // 212000 (連打の制限) は direct でも同じなので、そのまま返して上で打ち切る
+            'return one("proxy").then(function(a){if(a&&(a.code===0||a.code===212000))return a;return one("direct");});};',
             'var pick=function(o,re){var hit=null;var w2=function(v,d){if(hit||!v||d>8||typeof v!=="object")return;',
             'if(!Array.isArray(v)){for(var k in v){if(re.test(k)&&v[k]){hit=v[k];return;}}}',
             'for(var k3 in v){try{w2(v[k3],d+1);}catch(e){}}};w2(o,0);return hit;};',
             'var idOf=function(o){return pick(o,/(guild|union)_?id$/i);};',
             // ★ 引数は guild_id だけでは足りない — nikke_area_id (サーバー地域) が無いと 220000 で拒否される
             //   (2026-09-09 と 2026-09-15 の実機はこれ。BlaBlaLINK 本体は GetMyGuildInfo の data.card から取っている)
-            'var areaOf=function(o){return pick(o,/(^|_)(nikke_)?area_id$/i);};',
+            //   キーは nikke_area_id / area_id そのもの (bind_area_id = その人が縛られている地域 は違う: Codex指摘)
+            'var areaOf=function(o){return pick(o,/^(nikke_)?area_id$/i);};',
             // ★ 経路は BlaBlaLINK の JS (assets/v4-*.js) にある本物だけ (2026-09-15)。当てずっぽうの 7 経路は存在しない
             //   (毎回 4 通り × 7 = 28 回の空振りで、連打の制限 212000 を招きかねない)。
             //   メンバー一覧は GetGuildMembers → data.items[] = {member_id, nickname, icon_id, synchro_level, bind_area_id}
             'var ROUTES=["Game/GetGuildMembers","Game/GetGuildDetail","Game/GetUnionRaidData"];',
             'var run=async function(){',
+            // ここまでに名前つきで拾えた数 (リンク・埋め込み状態)。「自分で取れた」は API の段で増えたぶんで判定する
+            'var namedBefore=0;found.forEach(function(n){if(n)namedBefore++;});',
             'var mine=await call("Game/GetMyGuildInfo");',
             'if(mine){stat.routes.push("GetMyGuildInfo:"+mine.code);walk(mine,0,"api");}',
-            'var gid=mine?idOf(mine):null;var aid=mine?areaOf(mine):null;',
+            // ★ 本体と同じく data.card から読む。guild_id と地域は**同じ物から**取る (応答のどこかにある別ユニオンの guild_id と
+            //   組み合わせない: Codex指摘)。card が無い形なら応答全体から (以前どおり)
+            'var card=(mine&&mine.data&&mine.data.card&&typeof mine.data.card==="object")?mine.data.card:mine;',
+            'var gid=card?idOf(card):null;var aid=card?areaOf(card):null;',
             // 地域が card に無ければ自分の登録ロールから。どこにも無ければ地域なしで試す (診断に area: - と出る)
             'if(gid&&!aid){var role=await call("Game/GetUserSavedRoleInfo");if(role){stat.routes.push("GetUserSavedRoleInfo:"+role.code);aid=areaOf(role);}}',
             'var SHAPES=function(g,a){if(!g)return [{}];if(a===null||a===undefined)return [{guild_id:g},{}];',
             'return [{guild_id:g,nikke_area_id:String(a)},{guild_id:g,nikke_area_id:Number(a)}];};',
-            'for(var i2=0;i2<ROUTES.length;i2++){var r3=ROUTES[i2];var sh=SHAPES(gid,aid);var got=null;var last=null;',
-            'for(var j2=0;j2<sh.length;j2++){var res=await call(r3,sh[j2]);if(!res)continue;last=res.code;',
+            // 通信は最大 16 回 (自分の情報 2 + 登録ロール 2 + 3 経路 × 2 通り × proxy/direct)。一覧が取れれば 2〜4 回で終わる
+            'var limited=false;',
+            'for(var i2=0;i2<ROUTES.length&&!limited;i2++){var r3=ROUTES[i2];var sh=SHAPES(gid,aid);var got=null;var codes=[];',
+            'for(var j2=0;j2<sh.length;j2++){var res=await call(r3,sh[j2]);if(!res)continue;if(codes.indexOf(res.code)<0)codes.push(res.code);',
+            // ★ 連打の制限 (212000) が返ったら、それ以上は投げない (Codex指摘)。診断には応答コードを全部残す (最後のだけだと原因を取り違える)
+            'if(res.code===212000){limited=true;break;}',
             'if(res.code===0){got=res;break;}}',
-            'stat.routes.push(r3.split("/")[1]+":"+(got?0:last));',
-            'if(got)walk(got,0,"api");}',
+            'stat.routes.push(r3.split("/")[1]+":"+(got?0:(codes.length?codes.join("/"):"-")));',
+            // ★ メンバー一覧が取れたら、残りの経路 (詳細・レイド) は呼ばない — 名簿はそれで全部そろう (Codex指摘)
+            'if(got){walk(got,0,"api");if(/Members$/.test(r3))break;}}',
             'var OWN=/(GetMyGuildInfo|GetGuildDetail|GetUnionRaidData|Member)/i;var NOT=/(Dynamics|Post|CardList|Tourist|Supporters)/i;',
             'var norm=S.bodies.map(function(b){return (b&&typeof b==="object")?{u:String(b.u||""),t:String(b.t||"")}:{u:"",t:String(b||"")};});',
             'var good=norm.filter(function(b){return OWN.test(b.u)&&!NOT.test(b.u);});',
             'var neutral=norm.filter(function(b){return !NOT.test(b.u);});',
-            'var used=good.length?good:neutral;stat.rejected=norm.length-neutral.length;',
+            // ★ 自分で取れた (名前つきの識別子がある) ときは、知らない経路の待ち受けを混ぜない (Codex指摘: 掲示板などの
+            //   member_id + nickname が名簿に入る)。自分のユニオンの経路 (OWN) は常に使う。取れなかったときだけ知らない経路も使う
+            'var apiNamed=-namedBefore;found.forEach(function(n){if(n)apiNamed++;});',
+            'var used=good.length?good:(apiNamed?[]:neutral);stat.rejected=norm.length-neutral.length;',
             'used.forEach(function(b){var t=b.t;try{var pj=parse(t);if(!pj)throw 0;walk(pj,0,"net");}catch(e){',
             'try{var r2=new RegExp(PFX+"[A-Za-z0-9+/=_-]{8,}","g"),m2;while((m2=r2.exec(t))){put(digits(m2[0]),"","net");}}catch(e2){}}});',
             'var out=[];var noname=0;',
@@ -1117,6 +1133,31 @@
             .filter((r) => r && r.status === 'private').map((r) => String(r.player_id)));
         return (Array.isArray(players) ? players : [])
             .filter((p) => p && priv.has(String(p.id)) && p.blabla_openid);
+    }
+
+    /**
+     * 取り込む相手の絞り込み (2026-09-15 ユーザー決定: 全員 / 未取り込みの人だけ / 選んだ人)。
+     * ★ シーズン直後だけの作業にしない — 新メンバーが入ったとき (準備段階) に、その人のぶんだけ前のレイドの記録として取り直す。
+     * ★ 「未取り込み」= ひも付け済みで、選んだレイドの状態が ok でない人 (状態なし・private・error・no_openid)。
+     *   43 未適用 (statusRows が配列でない) は誰も ok でない = 全員が未取り込み。
+     * ★ ひも付けの無い人はどの絞り込みでも入らない (取りに行く識別子が無い)。知らない scope は全員。
+     * @param {{id:any, name:string, blabla_openid?:string|null}[]} players
+     * @param {{player_id:any, status:string}[]|null} statusRows
+     * @param {{scope?: 'all'|'missing'|'picked', pickedIds?: any[]}} [o]
+     * @returns {{scope:string, targets:Object[], counts:{all:number, missing:number, picked:number}}}
+     */
+    const IMPORT_SCOPES = ['all', 'missing', 'picked'];
+    const IMPORT_SCOPE_JP = { all: '全員', missing: '未取り込みの人だけ', picked: '選んだ人' };
+    function importTargets(players, statusRows, o = {}) {
+        const scope = IMPORT_SCOPES.includes(o && o.scope) ? o.scope : 'all';
+        const linked = (Array.isArray(players) ? players : []).filter((p) => p && p.blabla_openid);
+        const ok = new Set((Array.isArray(statusRows) ? statusRows : [])
+            .filter((r) => r && r.status === 'ok').map((r) => String(r.player_id)));
+        const missing = linked.filter((p) => !ok.has(String(p.id)));
+        const pickedSet = new Set((Array.isArray(o && o.pickedIds) ? o.pickedIds : []).map((x) => String(x)));
+        const picked = linked.filter((p) => pickedSet.has(String(p.id)));
+        const targets = scope === 'missing' ? missing : scope === 'picked' ? picked : linked;
+        return { scope, targets, counts: { all: linked.length, missing: missing.length, picked: picked.length } };
     }
 
     /** 本人へのお願い。押す先はホーム (どこを触ればよいかは本文で言う) */
@@ -1334,7 +1375,7 @@
         parseOpenid, wantedCodesFor, importSummary,
         IMPORT_PREFIX, AREAS, buildImportSnippet, parseImportPayload, prepareMember,
         buildRosterSnippet, parseRoster, matchRoster, normName, OPENID_B64_PREFIX,
-        rankSquad, fmtMan, fmtPct, privateTargets, PUBLISH_ASK,
+        rankSquad, fmtMan, fmtPct, privateTargets, PUBLISH_ASK, IMPORT_SCOPES, IMPORT_SCOPE_JP, importTargets,
         DPS_BURST, dpsOf, isDps, dpsScore, unionDpsRanking, QUICK_FIELDS, quickCells,
         defaultGrowthSeason, usedTeams, byPlayerCharacter, charactersIn,
         SORT_FIELDS, SORT_KEYS, normalizeSortKey, unionRanking, teamGaps,

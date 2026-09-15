@@ -3330,14 +3330,15 @@ console.log('\nopsStageDomain:');
         assert.deepEqual(dom.nudgeTargets(rows, 'avail').map(r => r.id), [4, 5]);
         assert.deepEqual(dom.nudgeTargets(rows, 'x'), []);
     });
-    test('opsLayout CARDS の段階と並び: 前日=メンバー状況・予約・Discord・プラン / 当日=運営アクション・ボス・締め凸・残り・プラン / 準備=シーズン制御・一斉通知 / 終了=Discord・シーズン制御・育成', () => {
+    test('opsLayout CARDS の段階と並び: 前日=メンバー状況・予約・Discord・プラン / 当日=運営アクション・ボス・締め凸・残り・プラン / 準備=シーズン制御・一斉通知・育成 / 終了=Discord・シーズン制御・育成', () => {
         const lay = globalThis.opsLayoutDomain;
         // ★ 順番も見る — 2列/12カラムでは並び順が行の組み方を決める (各行が 12 に揃うかは別のテスト)
         const vis = (s) => lay.CARDS.filter(c => dom.visibleIn(c, s)).map(c => c.id);
         assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan']);
         // ★ ボス7+締め凸5 の次に ペース7+直近5 (各行 12)。順を崩すと 7 が独りになる
         assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining', 'opsSecPlan']);
-        assert.deepEqual(vis('prep'), ['opsSecSeason', 'opsSecPush']);
+        // 準備にも育成の取り込み (新メンバーのぶんを取り直す・2026-09-15)。7+5 の次に 12
+        assert.deepEqual(vis('prep'), ['opsSecSeason', 'opsSecPush', 'opsSecGrowth']);
         assert.deepEqual(vis('end'), ['opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
@@ -7590,7 +7591,8 @@ console.log('\ngrowthDomain:');
             : { code: 220000, msg: 'param error' };
         const out = await runRosterSnippet({
             api: {
-                'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9', nikke_area_id: 81, guild_card_uuid: 'u1', guild_name: '推しりをすこれ部', master_openid: B64('29080-12244701007106264814') } } },
+                // ★ card より先に別ユニオンの guild_id / bind_area_id が並んでいても、本体と同じく data.card から取る (Codex指摘)
+                'GetMyGuildInfo': { code: 0, data: { others: [{ guild_id: 'gX', bind_area_id: 99 }], card: { guild_id: 'g9', nikke_area_id: 81, guild_card_uuid: 'u1', guild_name: '推しりをすこれ部', master_openid: B64('29080-12244701007106264814') } } },
                 'GetGuildMembers': members,
             },
         });
@@ -7602,8 +7604,10 @@ console.log('\ngrowthDomain:');
         const gm = calls.filter(c => c.name === 'GetGuildMembers');
         assert.ok(gm.length >= 1 && gm[0].body && gm[0].body.nikke_area_id === '81',
             `最初の引数が {guild_id, nikke_area_id: "81"} でない: ${JSON.stringify(gm[0] && gm[0].body)}`);
-        // ★ 当てずっぽうの経路を何十回も叩かない (連打の制限 212000 を招く)。本物 3 経路 × 2 通り × proxy/direct + 自分の情報 2 = 14 回まで
-        assert.ok(calls.length <= 14, `通信が多すぎる: ${calls.length} 回 (${calls.map(c => c.name).join(' ')})`);
+        // ★ メンバー一覧が取れたら残りの経路 (詳細・レイド) は呼ばない (Codex指摘)。ここでは 自分の情報 1 + 一覧 1 = 2 回
+        //   (取れないときの上限は 自分の情報 2 + 登録ロール 2 + 3 経路 × 2 通り × proxy/direct = 16 回)
+        assert.ok(calls.length <= 4 && !calls.some(c => c.name === 'GetGuildDetail' || c.name === 'GetUnionRaidData'),
+            '一覧が取れたのに通信を続けている: ' + calls.map(c => c.name).join(' '));
         assert.ok(/guild: g9 \/ area: 81/.test(out), '診断に guild と area が無い');
     });
     await testAsync('★ 名簿のブックマークレット: 識別子が JSON の数値で来ても末尾を丸めない (20 桁は 2^53 を超える)', async () => {
@@ -7638,6 +7642,38 @@ console.log('\ngrowthDomain:');
         });
         assert.ok(/ふたり\t222222222222222222/.test(none), '地域なしの形を試していない');
         assert.ok(/area: -/.test(none), '診断に地域が無いことを出していない');
+        assert.ok(runRosterSnippet.calls.length <= 16, '通信が多すぎる: ' + runRosterSnippet.calls.length + ' 回');
+    });
+    await testAsync('★ 名簿のブックマークレット: 連打の制限 (212000) が返ったら、それ以上は投げない / 応答コードは全部残す (Codex指摘)', async () => {
+        const out = await runRosterSnippet({
+            api: {
+                'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9', nikke_area_id: 81 } } },
+                'GetGuildMembers': (body) => (typeof body.nikke_area_id === 'string') ? { code: 220000 } : { code: 212000 },
+            },
+        });
+        const names = runRosterSnippet.calls.map(c => c.name);
+        assert.ok(!names.includes('GetGuildDetail') && !names.includes('GetUnionRaidData'), `制限のあとも投げている: ${names.join(' ')}`);
+        assert.ok(/GetGuildMembers:220000\/212000/.test(out), `応答コードを全部残していない: ${out.slice(-300)}`);
+        // 1 通り目: proxy 220000 → direct 220000 (2 回) / 2 通り目: proxy 212000 で打ち切り (direct は投げない)
+        assert.equal(names.filter(n => n === 'GetGuildMembers').length, 3, 'proxy が 212000 なのに direct も投げている / 形を試し切っていない');
+    });
+    await testAsync('★ 名簿のブックマークレット: 自分で取れたときは、知らない経路の待ち受けを名簿に混ぜない (掲示板などの member_id — Codex指摘)', async () => {
+        const body = (id, name) => JSON.stringify({ data: { list: [{ member_id: id, nickname: name }] } });
+        const api = {
+            'GetMyGuildInfo': { code: 0, data: { card: { guild_id: 'g9', nikke_area_id: 81 } } },
+            'GetGuildMembers': (b) => (b && b.nikke_area_id === '81') ? { code: 0, data: { items: [{ member_id: '111111111111111111', nickname: 'なかま' }] } } : { code: 220000 },
+        };
+        const own = { u: 'https://api.blablalink.com/api/game/proxy/Game/GetGuildMembers', t: body('222222222222222222', 'みみから') };
+        const friend = { u: 'https://api.blablalink.com/api/ugc/direct/standalonesite/Friend/GetFriendList', t: body('333333333333333333', 'ともだち') };
+        const only = await runRosterSnippet({ api, bodies: [friend] });
+        assert.ok(/なかま\t111111111111111111/.test(only), '自分で取ったぶんが出ていない');
+        assert.ok(!only.includes('ともだち'), '自分で取れたのに、知らない経路の待ち受けを名簿に混ぜている');
+        // 自分のユニオンの経路 (OWN) の待ち受けは常に使う
+        const both = await runRosterSnippet({ api, bodies: [own, friend] });
+        assert.ok(/みみから\t222222222222222222/.test(both) && !both.includes('ともだち'), '自分のユニオンの経路の待ち受けが出ていない / 知らない経路が混ざる');
+        // 取れなかったときは知らない経路も使う (取りこぼすほうが困る — 2026-09-09 の判断はそのまま)
+        const miss = await runRosterSnippet({ api: { 'GetMyGuildInfo': { code: -1 } }, bodies: [friend] });
+        assert.ok(/ともだち\t333333333333333333/.test(miss), '取れなかったときまで知らない経路を捨てている');
     });
     await testAsync('★ 名簿のブックマークレット: ユニオン名を人の名前にしない (実機: 団長がユニオン名になった)', async () => {
         // ギルド情報は「ユニオン名 + 団長の識別子」を持つ。素直に組むと団長の名前がユニオン名になり、
@@ -8075,6 +8111,23 @@ console.log('\ngrowthDomain:');
         assert.equal(g[1].hasBoth, false);
         assert.equal(g[2].gap, null);
         assert.deepEqual(dom.teamGaps(null, mine, theirs), []);
+    });
+
+    test('★ importTargets (2026-09-15): 全員 / 未取り込みの人だけ / 選んだ人 — ひも付けの無い人はどれにも入らない', () => {
+        const mk = (id, name, openid) => ({ id, name, blabla_openid: openid });
+        const ps = [mk(1, 'あ', '11'), mk(2, 'い', '22'), mk(3, 'う', null), mk(4, 'え', '44')];
+        const rows = [{ player_id: 1, status: 'ok' }, { player_id: 2, status: 'private' }, { player_id: 3, status: 'no_openid' }];
+        const ids = (r) => r.targets.map(p => p.id);
+        assert.deepEqual(ids(dom.importTargets(ps, rows, { scope: 'all' })), [1, 2, 4]);
+        assert.deepEqual(ids(dom.importTargets(ps, rows, { scope: 'missing' })), [2, 4], '取り込み済み (ok) を外していない / 状態の無い人を未取り込みに数えていない');
+        assert.deepEqual(ids(dom.importTargets(ps, rows, { scope: 'picked', pickedIds: ['4', 3, 99] })), [4], '選んだ人 (文字列の id) / ひも付けの無い人 / いない人');
+        assert.deepEqual(dom.importTargets(ps, rows, { scope: 'all' }).counts, { all: 3, missing: 2, picked: 0 });
+        // 43 未適用 (null) は誰も ok でない = 全員が未取り込み。知らない scope / 省略 は全員
+        assert.deepEqual(ids(dom.importTargets(ps, null, { scope: 'missing' })), [1, 2, 4]);
+        assert.equal(dom.importTargets(ps, rows, { scope: 'なにか' }).scope, 'all');
+        assert.deepEqual(ids(dom.importTargets(ps, rows)), [1, 2, 4]);
+        assert.deepEqual(dom.IMPORT_SCOPES, ['all', 'missing', 'picked']);
+        assert.equal(dom.IMPORT_SCOPE_JP.missing, '未取り込みの人だけ');
     });
 
     test('★ privateTargets: 声をかけるのは非公開の人だけ (未ひも付けには送らない)', () => {
@@ -10124,11 +10177,17 @@ console.log('\ngrowthDomain:');
         assert.equal(none.ok, 0); assert.equal(none.characters, 0); assert.deepEqual(none.failed, []);
     });
 
-    test('★ 配線: 育成の取り込みパネル (段階「終了」・upsert のみ・43未適用は止める)', () => {
+    test('★ 配線: 育成の取り込みパネル (段階「準備」と「終了」・upsert のみ・43未適用は止める)', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
         const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js');
-        // 置き場所は運営タブの段階「終了」— 使われたキャラが確定するのはレイド後
-        assert.ok(/id: 'opsSecGrowth',[^\n]*stages: \['end'\]/.test(layout), '取り込みカードが終了段階に無い');
+        // 置き場所は運営タブの段階「終了」と「準備」— 使われたキャラが確定するのはレイド後。準備は新メンバーのぶんを取り直す (2026-09-15)
+        assert.ok(/id: 'opsSecGrowth',[^\n]*stages: \['prep', 'end'\]/.test(layout), '取り込みカードが準備と終了の段階に無い');
+        // ② の絞り込み: 判定は growthDomain.importTargets だけ。描画とコピーの両方が _growthScope (段階で決まる既定) を通る
+        const gPaint = html.match(/function _growthPaint\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
+        const gCopy = html.match(/async function handleGrowthCopySnippet\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const scope = _growthScope\(\);/.test(gPaint) && /dom\.importTargets\(players, _growth\.statusRows, \{ scope, pickedIds:/.test(gPaint), '描画が絞り込みを通していない');
+        assert.ok(/const scope = _growthScope\(\);/.test(gCopy) && /dom\.importTargets\(_growth\.players \|\| \[\], _growth\.statusRows, \{ scope, pickedIds:/.test(gCopy), 'コピーが絞り込みを通していない');
+        assert.ok(!/filter\(p => p\.blabla_openid\)/.test(gCopy), 'コピーがひも付け済み全員を直に集めている (絞り込みを迂回)');
         assert.ok(/id="opsGrowthBody"/.test(html) && /id="opsGrowthCounts"/.test(html), 'カードの描画先が無い');
         assert.ok(/🧬 育成データの取り込み/.test(html), '見出しが CARDS の title と揃っていない');
         // 盤面の描画と一緒に更新する (運営ONのときだけ中で取得)

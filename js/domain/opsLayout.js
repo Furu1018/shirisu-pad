@@ -53,8 +53,9 @@
         { id: 'opsSecSeason',    title: 'シーズン制御',          group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 7 },
         // 一斉通知は準備段階の道具に (告知を出す段階。2026-09-11 ユーザー判断)
         { id: 'opsSecPush',      title: '一斉通知',              group: '実行',       opsOnly: true,  open: { pre: false, day: false }, stages: ['prep'], span: 5 },
-        // 使われたキャラが確定するのはレイド後なので、終了段階だけに出す (2026-09-09)
-        { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['end'], span: 12 },
+        // 使われたキャラが確定するのはレイド後 (終了・2026-09-09)。準備段階にも出す — 新メンバーが入ったとき、その人のぶんを
+        // 前のレイドの記録として取り直す (2026-09-15 ユーザー要望。相手は ② の絞り込みで決める)。準備の行は 7+5 / 12
+        { id: 'opsSecGrowth',    title: '育成データの取り込み',   group: '管理・終了', opsOnly: true,  open: { pre: false, day: false }, stages: ['prep', 'end'], span: 12 },
     ];
     const STORAGE_KEY = 'shirisuko_ops_card_open_v1';
 

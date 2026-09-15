@@ -118,8 +118,11 @@ rm -f .claude/hooks/.codex-on      # OFF
   鈴原サクラがニケ本編のサクラに化ける — 生成側の `OVERRIDES` とテストの両方で固定してある。
   ★ 取得は **DevTools を閉じてブックマークレット**で行う。blablalink.com は `debugger` を
   作り続ける anti-debug を入れており、開発者ツールを開いたままだと `setTimeout` も `fetch` も返らない。
-  ★ **取り込みパネルは運営タブの段階「終了」だけ** (`opsLayout.CARDS` の `stages: ['end']`) —
-  使われたキャラが確定するのはレイド後。4段: ① 識別子のひも付け (`parseOpenid` が `?uid=` のリンクをそのまま受ける。
+  ★ **取り込みパネルは運営タブの段階「準備」と「終了」** (`opsLayout.CARDS` の `stages: ['prep', 'end']`・2026-09-15 に準備を追加) —
+  使われたキャラが確定するのはレイド後 (終了)。準備は**新メンバーが入ったとき**に、その人のぶんを前のレイドの記録として取り直すため
+  (ユーザー要望 2026-09-15「シーズン直後以外でも」)。② の絞り込み (全員 / 未取り込みの人だけ / 選んだ人) は
+  `growthDomain.importTargets` が唯一で、既定は `_growthScope()` が段階で決める (準備 = 未取り込みの人だけ / それ以外 = 全員)。
+  描画 (`_growthPaint`) とコピー (`handleGrowthCopySnippet`) の両方がそれを通る (配線テストが見張る)。4段: ① 識別子のひも付け (`parseOpenid` が `?uid=` のリンクをそのまま受ける。
   関係ない数字は拾わない — 取り違えは他人の育成が別人に付く事故) → ② ブックマークレットを作る
   (`wantedCodesFor(usedCharacters(attacks), 対応表)`。対応表に無い名前は `missing` で名指し) →
   ③ 貼り付けて取り込む → ④ 取れなかった人。
@@ -131,12 +134,14 @@ rm -f .claude/hooks/.codex-on      # OFF
   実行テスト `tests/growth-panel.mjs` (描画 + 取り込み本体) がここを固定している。
   ★ **名簿の一括読み取り** (`buildRosterSnippet`): ユニオンの情報を**自分から問い合わせる**
   (GetMyGuildInfo → `data.card.{guild_id, nikke_area_id}` → **GetGuildMembers {guild_id, nikke_area_id: String}** → `data.items[]`
-  = {member_id, nickname, …})。待ち受け (fetch/XHR) は保険。★ **経路名と引数は当てずっぽうで探さない** — 2026-09-09 は 11 経路 × 4 通りを
+  = {member_id, nickname, …})。待ち受け (fetch/XHR) は保険。★ **経路名と引数は当てずっぽうで探さない** — 2026-09-09 は 10 経路 × 4 通り (+ GetMyGuildInfo) を
   投げて全部 220000 (引数に nikke_area_id が無かった) で、名簿は待ち受けが偶然拾っていた。2026-09-15 にユニオン新体制で空振りし、
   BlaBlaLINK 本体の JS を読んで確定した (`curl https://www.blablalink.com/shiftyspad` → `assets/index-*.js` からチャンク一覧 →
   `assets/v4-*.js` に API の経路名、`union-*.js` に引数と応答の形)。壊れたら同じ手順で読み直す (診断の guild: / api: / heard: を見る)。
   識別子は 20 桁で 2^53 を超えるので、JSON の数値で来ても丸めないよう文字列にしてから読む。
-  経路は自分のユニオンぶんだけ使い、他ユニオンの募集カード・掲示板 (CardList / Dynamics / Tourist) は捨てる。
+  経路は自分のユニオンぶん (OWN) を優先し、他ユニオンの募集カード・掲示板 (CardList / Dynamics / Tourist) は捨てる。
+  **自分で取れたときは知らない経路の待ち受けも使わない** (取れなかったときだけ使う — 掲示板の member_id が名簿に混ざる: Codex指摘 2026-09-15)。
+  一覧が取れたら残りの経路は呼ばず、連打の制限 212000 が返ったら打ち切る (通信は最大 16 回)。
   **ユニオン名を人の名前にしない** (ギルド情報は「ユニオン名 + 団長の識別子」を持つので、素直に組むと団長が化ける)。
   名前の無い識別子は出さない (名前でしか突き合わせられない)。空振りしたら**診断** (どのページ / 経路と応答コード /
   聞こえた通信) を出す。突き合わせは `parseRoster` → `matchRoster` (apply / same / unmatched / missing / conflicts /
