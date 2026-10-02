@@ -422,6 +422,13 @@ test('起動: 練習の時計は「レイド前日の 20 時」から始まり�
     P.clock.set('eve', 9);
     assert.equal(jst(D.now()), '2026-10-02T09:00');
     assert.equal(P.clock.RealDate.now(), realNow, '本物の時計を取り出せない');
+    // ずれを読む / 戻す (「〜したことにする」が途中で失敗したとき、時計も押す前へ戻す)
+    const was = P.clock.get();
+    P.clock.set('hard', 21);
+    P.clock.put(was);
+    assert.equal(jst(D.now()), '2026-10-02T09:00', '時計を押す前へ戻せない');
+    assert.equal(Number(win.sessionStorage.getItem('shirisuko_practice_v1:clock')), was, '戻した時計を控えていない');
+    P.clock.put('abc'); assert.equal(P.clock.get(), was, '数でない値で時計を壊せる');
     // 再読み込み (同じ sessionStorage でもう一度起動) しても レイド日 と 時計 は変わらない
     P.clock.set('hard', 21);
     const ss = win.sessionStorage;
@@ -658,6 +665,7 @@ test('見張り: 本番では練習のファイルを 1 つも読まない / 練
     assert.equal((HTML.match(/onclick="startPractice\('member'\)"/g) || []).length, 2, '入口は ヘルプ と 設定 › ガイド の 2 つ');
     // 練習中は端末の状態 (通知タップの行き先・キャッシュ) を本番と取り合わない
     assert.match(HTML, /async function _consumePendingNav\(\) \{\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE\) return;/, '練習中に本物の通知タップの行き先を消費している');
+    assert.match(HTML, /msgEl\.textContent = '';\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE\) \{\s*statusEl\.innerHTML = '[^']*練習モードでは通知の設定は変えられません[^']*';\s*actionsEl\.innerHTML = '';\s*return;/, '練習中の通知設定シートに、押しても断られるボタンが並ぶ');
     assert.match(HTML, /async function handleSettingsClearCache\(\) \{\s*if \(window\.PAD_PRACTICE\) \{ showNotification\('🎮 練習モードでは使えません[^']*'\); return; \}/, '練習中に端末のキャッシュを消せる');
     assert.match(rd('js/practice/boot.js'), /var KEY = 'shirisuko_practice_v1';/);
     // js/supabase-client.js: 練習では CDN から本物を読まず、偽のサーバを使う。失敗しても本物へ倒さない
@@ -729,7 +737,9 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.ok(!/ASSUME\[[^\]]+\]\(\)|ASSUME\.\w+\(\)/.test(code), '「〜したことにする」をボタン以外から呼んでいる');
     assert.match(code, /if \(k === 'assume' && !busy\) \{\s*var fn = ASSUME\[b\.getAttribute\('data-k'\)\];/);
     // ★ 途中で失敗したら押す前の盤面へ戻す (承認だけ済んで配信が無い、のような半端を残さない → 押し直せる)
-    assert.match(code, /var snap = P\.db\.dump\(\), feedWas = feedId;[\s\S]*?Promise\.resolve\(\)\.then\(fn\)\.catch\(function \(e\) \{[\s\S]*?P\.db\.restore\(snap\); if \(typeof P\.save === 'function'\) P\.save\(\);[\s\S]*?\}\)\.then\(refreshScreen\)/, '仮定が途中で失敗しても盤面を戻していない');
+    assert.match(code, /var snap = P\.db\.dump\(\), feedWas = feedId, clockWas = P\.clock\.get\(\);[\s\S]*?Promise\.resolve\(\)\.then\(fn\)\.catch\(function \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\); if \(typeof P\.save === 'function'\) P\.save\(\);[\s\S]*?\}\)\.then\(refreshScreen\)/, '仮定が途中で失敗しても盤面・時計を戻していない');
+    assert.match(code, /var snap = P\.db\.dump\(\), feedWas = feedId, clockWas = P\.clock\.get\(\);/);
+    assert.match(code, /saveFeed\(\);\s*P\.clock\.set\('hard', 21\);[^\n]*\n\s*if \(typeof P\.save === 'function'\) P\.save\(\);/, '当日に進めるとき、失敗し得る処理より先に時計を動かしている');
     // どの仮定も「練習だけの仮定」と出す。★ 関数ごとに切り出して見る (まとめて探すと、ほかの仮定の note で通ってしまう)
     for (const key of P.assumeKeys) {
         const body = GUIDE.match(new RegExp(`\\n        ${key}: async function \\(\\) \\{([\\s\\S]*?)\\n        \\},`))?.[1] || '';

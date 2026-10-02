@@ -142,9 +142,9 @@
             var c = context();
             var pub = await window.supabaseGetPublishedPlan().catch(function () { return null; });
             advanceWorld(c, pub && pub.plan, 21);
-            P.clock.set('hard', 21);
             note('assume', '当日の 21 時になった、と仮定しました', 'その間にほかのメンバーが凸を進めています');
             saveFeed();
+            P.clock.set('hard', 21);   // 時計を動かすのは、失敗し得ることが全部済んでから (失敗したら盤面も時計も押す前へ戻す)
             if (typeof P.save === 'function') P.save();   // ★ 読み込み直す前に、いま入れた凸を待たずに控える (控えは少し遅れて書かれる)
             location.reload();
             await new Promise(function () { /* 読み込み直しを待つ */ });
@@ -449,11 +449,11 @@
             if (!fn) return;
             // ★ 途中で失敗したら、押す前の盤面へ戻す (Codex指摘 2026-10-02)。「承認だけ済んで配信が無い」のような半端が残ると、
             //   課題は済んだ扱いになって押し直せず、このあとの当日の画面が合わなくなる
-            var snap = P.db.dump(), feedWas = feedId;
+            var snap = P.db.dump(), feedWas = feedId, clockWas = P.clock.get();
             busy = true; lastSig = ''; update();
             Promise.resolve().then(fn).catch(function (e) {
                 console.error('[練習] 仮定を進められませんでした:', e);
-                try { P.db.restore(snap); if (typeof P.save === 'function') P.save(); } catch (_) { /* 戻せなくても知らせる */ }
+                try { P.db.restore(snap); P.clock.put(clockWas); if (typeof P.save === 'function') P.save(); } catch (_) { /* 戻せなくても知らせる */ }
                 feed = feed.filter(function (x) { return x.id <= feedWas; });
                 note('assume', 'うまく進められませんでした (押す前の状態に戻しました)', 'もう一度押してみてください: ' + String((e && e.message) || e));
             }).then(refreshScreen).then(function () { busy = false; lastSig = ''; update(); });

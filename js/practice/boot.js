@@ -81,6 +81,13 @@
                 offset = atJst(ymd, hour) - RealDate.now();
                 try { store.set('clock', offset); } catch (_) { /* 控えられなくても、この画面の間は進んだまま */ }
             },
+            /** いまのずれ (ms) を読む / 戻す。「〜したことにする」が途中で失敗したとき、時計も押す前へ戻すため */
+            get: function () { return offset; },
+            put: function (v) {
+                if (!isFinite(Number(v))) return;
+                offset = Number(v);
+                try { store.set('clock', offset); } catch (_) { /* noop */ }
+            },
             RealDate: RealDate,
         },
         /** 練習をやめて本番へ戻る (練習の記憶をすべて捨てて読み込み直す) */

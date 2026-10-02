@@ -14332,6 +14332,12 @@
             if (!statusEl || !actionsEl) return;
             msgEl.textContent = '';
 
+            // 🎮 練習モードでは通知の設定を出さない (端末の購読は本番のもの。押しても断られるボタンを並べない)
+            if (window.PAD_PRACTICE) {
+                statusEl.innerHTML = '<span style="color:var(--t-body);">🎮 練習モードでは通知の設定は変えられません (本番の設定はそのままです)</span>';
+                actionsEl.innerHTML = '';
+                return;
+            }
             if (!window.isPushSupported || !window.isPushSupported()) {
                 statusEl.innerHTML = '<span style="color:var(--t-body);">❌ この端末/ブラウザは Push 通知に非対応です</span>';
                 actionsEl.innerHTML = '';
