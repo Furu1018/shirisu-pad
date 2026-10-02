@@ -90,6 +90,9 @@ test('select: 埋め込み players(name)・無い列は null・返した行を�
     r.data.strong_attributes.push('fire');
     const again = await sb.from('players').select('strong_attributes').eq('id', 10).single();
     assert.deepEqual(again.data.strong_attributes, [], '返した配列が DB の中身とつながっている');
+    const all = await sb.from('players').select('*').eq('id', 10).single();          // 列を選ばない (*) ときも同じ
+    all.data.strong_attributes.push('water');
+    assert.deepEqual((await sb.from('players').select('*').eq('id', 10).single()).data.strong_attributes, [], 'select(*) で返した配列が DB の中身とつながっている');
     r = await sb.from('nikke_characters').insert({ canonical_name: 'X', icon_paths: ['a.webp', 'b.webp'] });
     r = await sb.from('nikke_characters').select('canonical_name').contains('icon_paths', ['b.webp']);
     assert.equal(r.data.length, 1);
@@ -685,7 +688,12 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.deepEqual((code.match(/set(?:Timeout|Interval)\(([A-Za-z_.]+)/g) || []).sort(), ['setInterval(update', 'setTimeout(update'], '時間で勝手に進む処理が増えた');
     assert.ok(!/ASSUME\[[^\]]+\]\(\)|ASSUME\.\w+\(\)/.test(code), '「〜したことにする」をボタン以外から呼んでいる');
     assert.match(code, /if \(k === 'assume' && !busy\) \{\s*var fn = ASSUME\[b\.getAttribute\('data-k'\)\];/);
-    for (const key of P.assumeKeys) assert.match(GUIDE, new RegExp(`${key}: async function \\(\\) \\{[\\s\\S]*?note\\('assume',`), `${key}: 「練習だけの仮定」と出していない`);
+    // どの仮定も「練習だけの仮定」と出す。★ 関数ごとに切り出して見る (まとめて探すと、ほかの仮定の note で通ってしまう)
+    for (const key of P.assumeKeys) {
+        const body = GUIDE.match(new RegExp(`\\n        ${key}: async function \\(\\) \\{([\\s\\S]*?)\\n        \\},`))?.[1] || '';
+        assert.ok(body.length > 50, `${key} の中身を切り出せない`);
+        assert.ok(/note\('assume', '[^']*仮定しました/.test(body) || /note\('assume', 'ボス' \+/.test(body), `${key}: 「練習だけの仮定」と出していない`);
+    }
     assert.equal((GUIDE.match(/real: '/g) || []).length, 3, '待つ場面の「本番では」の断りが 3 つでない');
     // 相手役が送る通知は、本番の文面と同じ (本番の文面を変えたら練習も直す) / 本物の送り方で送る
     for (const w of ['🔒 予約が承認されました', '固定されました。プランは運営が組み直して配信します', 'PT 締め凸候補', '凸お願いできる方いますか🙏', './?tab=mypage&focus=finishreq']) {
