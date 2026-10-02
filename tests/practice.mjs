@@ -694,6 +694,17 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/, '相手役の通知を本物の送り方で送っていない (受け取った通知の一覧に残らない)');
     assert.ok(!/note\('push'/.test(code.replace(/function note[\s\S]*?\n    \}/, '').replace(/note\('push', d\.item\.title/, '')), '通知の見本を手書きで出している (本物の文面とずれる)');
     assert.match(GUIDE, /<b>本番とのちがい<\/b>/, '最後のまとめに本番との違いが無い');
+    // 案内の要所 (どれもブラウザの通し確認で踏んだ穴)
+    assert.deepEqual(Array.from(P.selectors.mockTile), ['#myTeamEditModal .te-tile:not(.used):not(.dup)'], '選んだキャラをもう一度指している (押すと外れて、いつまでも 5 人にならない)');
+    assert.match(code, /var hit = document\.elementFromPoint\(cx, cy\);\s*return !!hit && \(hit === el \|\| el\.contains\(hit\) \|\| hit\.contains\(el\)\);/, '固定の帯の裏にあるボタンにも枠を出している (押すと別のボタンに当たる)');
+    assert.match(code, /if \(typeof P\.save === 'function'\) P\.save\(\);\s*location\.reload\(\);/, '当日に進めるとき、読み込み直す前に控えていない (入れた凸が消える)');
+    assert.match(code, /if \(pid == null \|\| eq\(pid, c\.me\) \|\| a\.flex\) return;/, 'ほかのメンバーの凸に、自分のぶんを混ぜている');
+    assert.match(code, /if \(!\(dmg > 0\) \|\| Number\(boss\.remaining_hp_raw\) - dmg < keep\) return;/, '練習の世界でボスを倒し切る (レベルが進むと案内が合わなくなる)');
+    assert.match(code, /P\.db\.rpc\('reservation_set_status', \{ p_id: row\.id, p_to: 'approved', p_expect_from: 'requested', p_actor: P\.ops\.name \}\);\s*await opsPublish\(/, '承認したことにする が 承認 → 組み直して配信 の順でない');
+    assert.match(code, /plan = computeOptimalPlan\(\{ reservations: rows, previousPlan: [^}]*\}, snapshot\);/, '運営役の組み直しが本物のソルバーでない');
+    assert.match(code, /return window\.supabasePublishPlan\(plan, P\.ops\.id, P\.ops\.name, c\.season\.id, schema\);/, '運営役の配信が本物の関数でない');
+    assert.match(GUIDE, /html\[data-practice\] \.player-select-modal > \*:not\(#_\):not\(#_\)[^{]*\{max-height:calc\(100vh - var\(--pm-top,0px\) - 8px\) !important\}/, 'シートを案内の下に収めていない (「閉じる」が帯に隠れる)');
+    assert.match(GUIDE, /#pmRing\{position:fixed;[^}]*pointer-events:none;/, '枠が本物のボタンへのタップを奪う');
     // 案内の文が「」で引いている画面の言葉は、画面に実在する (ボタンの名前を変えたら案内も直す)
     const quoted = new Set([...GUIDE.matchAll(/text: '([^']*)'/g)].flatMap(m => [...m[1].matchAll(/「([^」]+)」/g)].map(x => x[1])));
     const NOT_ON_SCREEN = ['申請中'];   // 状態の呼び名 (画面では「承認待ち」などの文で出る)
