@@ -15,6 +15,15 @@
     <meta name="theme-color" content="#F1F3F6">
     <!-- ★ 見た目 (ライト/ダーク) は**描画の前**に決める。あとから足すと一瞬ライトが見える。
          保存値は 'light' | 'dark' | 'auto' の3つ。auto は端末の設定に従う。 -->
+    <!-- 🎮 練習モード (ヘルプ ›「練習する」)。印があるときだけ js/practice/boot.js を**ほかのどのスクリプトより先に**読む。
+         本番では印が無いので何も読まない (この数行が走るだけ)。?practice=member のリンクでも入れる -->
+    <script>
+        try {
+            var _pmQ = new URLSearchParams(location.search).get('practice');
+            if (_pmQ === 'member') sessionStorage.setItem('shirisuko_practice_v1', _pmQ);
+            if (sessionStorage.getItem('shirisuko_practice_v1')) document.write('<script src="./js/practice/boot.js"><\/script>');
+        } catch (_) { /* sessionStorage が使えない環境では練習モードに入らない */ }
+    </script>
     <script>
         (function () {
             var KEY = 'shirisuko_theme_v1';
@@ -5067,6 +5076,13 @@
                             <span style="flex:1;font-size:13px;">主要機能の使い方を5〜10分で巡るインタラクティブガイドがあります (2026-09 の画面に合わせて更新)</span>
                             <button class="tour-guide-launcher" onclick="startTour()">ガイドを開始</button>
                         </div>
+                        <!-- 🎮 練習モード (2026-10-02 ユーザー要望「実際に試しに触れることが大事・本番の動きやボタンと一致していること」)。
+                             本番の画面のまま、通信だけ端末の中の偽のサーバに差し替える (js/practice/)。入口はここ -->
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--s2);border-radius:8px;margin-bottom:14px;">
+                            <span style="font-size:18px;">🎮</span>
+                            <span style="flex:1;min-width:200px;font-size:13px;"><strong>練習する</strong> — 本番と同じ画面を、練習用のデータで実際に触れます (レイド前日 → 当日・約5分)。ここでの操作は本番に反映されません</span>
+                            <button class="tour-guide-launcher" onclick="startPractice('member')">メンバー編を始める</button>
+                        </div>
                         <p>NIKKE のユニオンレイドを<strong>メンバーと運営の両方</strong>から支えるアプリ (PWA) です。
                             狙いはひとつ、<strong>「計画した凸が計画どおりに消化され、いちど決めた約束があとから覆らない」</strong>こと。
                             順位や総与ダメを最大化することより、約束を守ることを優先して作られています。</p>
@@ -7211,6 +7227,18 @@
             if (!_tourDemo || _tourDemo.kind !== 'battle') return;
             _tourDemo.phase = 'reported';
             _tourDemoRefresh();
+        }
+
+        // 🎮 練習モードに入る。印 (sessionStorage) を立てて読み込み直すだけ — 通信・時計・端末の記憶の差し替えは
+        //   起動のいちばん最初に js/practice/boot.js が行う (途中から切り替えると、本番のデータを抱えた画面が残る)。
+        //   印は sessionStorage なので、タブ (アプリ) を閉じれば本番に戻る
+        function startPractice(role) {
+            const r = role === 'ops' ? 'ops' : 'member';
+            if (window.PAD_PRACTICE) { window.PAD_PRACTICE.restart(r); return; }
+            if (!confirm('練習を始めます。\n\n本番と同じ画面を、練習用のデータで触れます。\nここでの操作は本番には反映されません。上の「やめる」でいつでも戻れます。')) return;
+            try { sessionStorage.setItem('shirisuko_practice_v1', r); }
+            catch (_) { alert('この端末では練習モードを使えません (プライベートブラウズなど)'); return; }
+            location.reload();
         }
 
         function startTour() {

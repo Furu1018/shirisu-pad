@@ -13,18 +13,36 @@
 // CDN 二段フォールバック: 一部の回線/端末で esm.sh がブロック・失敗すると
 // モジュール全体が死んで「supabaseXxx is not a function」になるため、
 // 失敗時は jsDelivr から読み直す (top-level await はモジュールなので使用可)。
+// ★ 練習モード (ヘルプ ›「🎮 練習する」・js/practice/boot.js が window.PAD_PRACTICE を立てる) では
+//   **本物のクライアントを作らない**。下の関数はどれも同じコードのまま、端末の中の偽のサーバ
+//   (js/practice/server.js) を相手に動く = 練習の操作は本番の DB へ 1 行も届かない。
+const PRACTICE = (typeof window !== 'undefined' && window.PAD_PRACTICE) || null;
 let createClient;
-try {
-    ({ createClient } = await import('https://esm.sh/@supabase/supabase-js@2'));
-} catch (e) {
-    console.warn('[supabase] esm.sh 読み込み失敗 → jsDelivr にフォールバック:', e?.message || e);
-    ({ createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'));
+if (!PRACTICE) {
+    try {
+        ({ createClient } = await import('https://esm.sh/@supabase/supabase-js@2'));
+    } catch (e) {
+        console.warn('[supabase] esm.sh 読み込み失敗 → jsDelivr にフォールバック:', e?.message || e);
+        ({ createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'));
+    }
 }
 
 const SUPABASE_URL = 'https://djahnbzwupxcekneydid.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_UHIiSKofk_9Ck56Jrhi7fA__YjZS3pJ';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+async function _practiceClient() {
+    try {
+        const { createPracticeSupabase } = await import('./practice/session.js');
+        return await createPracticeSupabase(PRACTICE, { url: SUPABASE_URL, key: SUPABASE_PUBLISHABLE_KEY });
+    } catch (e) {
+        // ★ 練習の準備に失敗しても**本物のクライアントへは倒さない** (練習のつもりの操作が本番に入る)。
+        //   練習をやめて読み込み直す = 本番の画面に戻る
+        console.error('[練習] 準備に失敗しました。本番の画面に戻ります:', e?.message || e);
+        PRACTICE.exit();
+        await new Promise(() => { /* 読み込み直しを待つ (この先へ進ませない) */ });
+    }
+}
+export const supabase = PRACTICE ? await _practiceClient() : createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
         persistSession: false,  // 認証未使用のため
         autoRefreshToken: false,
@@ -84,6 +102,8 @@ window.getPushSubscriptionStatus = async function () {
 // Push通知を購読 (Notification許可も同時に取得)
 // 購読情報を push_subscriptions テーブルに保存
 window.subscribeToPush = async function (playerId) {
+    // ★ 練習モードでは端末の通知設定に触れない (購読・解除はブラウザに残る = 偽のサーバでは受け止められない)
+    if (PRACTICE) throw new Error('練習モードでは通知の設定は変えられません (本番の設定はそのままです)');
     if (!window.isPushSupported()) throw new Error('この端末は Push 通知に非対応です');
     if (!window.SHIRISU_VAPID_PUBLIC_KEY) throw new Error('VAPID公開鍵が未設定です (運営にお問い合わせ)');
     if (!playerId) throw new Error('プレイヤー未選択です');
@@ -126,6 +146,8 @@ window.subscribeToPush = async function (playerId) {
 
 // Push購読を解除 (端末側 + DB側両方)。playerId は任意 (ログ記録用)
 window.unsubscribeFromPush = async function (playerId = null) {
+    // ★ 練習モードで解除すると、本番の通知が届かなくなる (ブラウザの購読が消える) ので止める
+    if (PRACTICE) throw new Error('練習モードでは通知の設定は変えられません (本番の設定はそのままです)');
     if (!window.isPushSupported()) return;
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
