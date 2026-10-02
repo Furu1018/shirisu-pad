@@ -722,6 +722,8 @@ test('見張り: 案内が指す「押す場所」が、本物の画面 (index.h
     assert.match(HTML, /class="te-tile\$\{isUsed \? ' used' : ''\}\$\{isDup \? ' dup' : ''\}"/, '選んだキャラの印 (.used / .dup) が変わった');
     assert.match(HTML, /id="myTeamEditFields"/, '編成の 5 つの入力欄 (#myTeamEditFields) が無い');
     assert.match(HTML, /id="myAttackManualForm"/);
+    assert.match(HTML, /handleMyFinishRequestRespond\(\$\{r\.boss_number\}, 'accepted'/, "了承ボタンの onclick の形が変わった ('accepted' で指している)");
+    assert.match(HTML, /handleMyFinishRequestRespond\(\$\{r\.boss_number\}, 'declined'/, "「今回は難しい」の onclick の形が変わった ('declined' で指している)");
 });
 test('見張り: 課題の形 / 「〜したことにする」は自動では起きない / 案内の文が引く画面の言葉が実在する', () => {
     const P = loadGuide();
@@ -765,6 +767,18 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.match(code, /return window\.supabasePublishPlan\(plan, P\.ops\.id, P\.ops\.name, c\.season\.id, schema\);/, '運営役の配信が本物の関数でない');
     assert.match(GUIDE, /html\[data-practice\] \.player-select-modal > \*:not\(#_\):not\(#_\)[^{]*\{max-height:calc\(100vh - var\(--pm-top,0px\) - 8px\) !important\}/, 'シートを案内の下に収めていない (「閉じる」が帯に隠れる)');
     assert.match(GUIDE, /#pmRing\{position:fixed;[^}]*pointer-events:none;/, '枠が本物のボタンへのタップを奪う');
+    // ★ アプリの知らせ (トースト・更新の帯・互換ゲートの帯) は案内の裏に隠れない (実機 2026-10-03: 断られた理由が見えなかった)
+    assert.match(GUIDE, /html\[data-practice\] \.notification\{top:calc\(env\(safe-area-inset-top,0px\) \+ 12px \+ var\(--pm-top,0px\)\) !important\}/, 'トーストが案内の裏に隠れる');
+    assert.match(GUIDE, /html\[data-practice\] #appUpdateBanner,html\[data-practice\] #clientGateBanner\{top:calc\(env\(safe-area-inset-top,8px\) \+ 8px \+ var\(--pm-top,0px\)\) !important\}/, '更新・互換ゲートの帯が案内の裏に隠れる');
+    assert.match(HTML, /b\.id = 'clientGateBanner'/); assert.match(HTML, /getElementById\('appUpdateBanner'\)/);
+    assert.match(HTML, /\.notification \{\s*position: fixed;\s*top: calc\(env\(safe-area-inset-top, 0px\) \+ 12px\);/, 'トーストの位置の決め方が変わった (練習の上書きが効かない)');
+    // 残り凸が無いときは「今回は難しい」を指す (了承は断られる)
+    assert.match(code, /if \(held \+ c\.mine\('attacks'\)\.length >= 3\) \{[\s\S]*?target: pick\('finishDecline'\)/, '残り凸が無いのに了承を指している');
+    // ↩ 1つ前に戻る: 課題の区切りごとに控え、戻すときは 盤面・時計・知らせ を戻して読み込み直す。戻った先より後の控えは捨てる
+    assert.match(code, /function trackStep\(i\) \{\s*if \(i === stepIdx\) return;\s*if \(i > stepIdx && !hasSnap\(i\)\) saveSnap\(i\);/, '課題が進んだ瞬間に控えていない');
+    assert.match(code, /function goBack\(toIdx\) \{[\s\S]*?if \(!P\.db\.restore\(snap\.db\)\) return false;\s*P\.clock\.put\(snap\.clock\);\s*feed = [^\n]*\n\s*saveFeed\(\);\s*for \(var i = toIdx \+ 1; i < 20; i\+\+\) store\.del\('snap:' \+ i\);[\s\S]*?P\.closed = true;[\s\S]*?location\.reload\(\);/, '戻るときに 盤面・時計・知らせ を戻して読み込み直していない');
+    assert.match(code, /if \(k === 'back'\) \{[\s\S]*?if \(!window\.confirm\('課題 ' \+ \(to \+ 1\) \+ '「' \+ st\.title \+ '」の最初に戻りますか？/, '戻る前に確かめていない');
+    assert.match(code, /if \(c\.finish\.some\(function \(r\) \{ return r\.status === 'pending'; \}\)\) return;/, '締め凸のお願いを二重に出せる');
     // 案内の文が「」で引いている画面の言葉は、画面に実在する (ボタンの名前を変えたら案内も直す)
     const quoted = new Set([...GUIDE.matchAll(/text: '([^']*)'/g)].flatMap(m => [...m[1].matchAll(/「([^」]+)」/g)].map(x => x[1])));
     const NOT_ON_SCREEN = ['申請中'];   // 状態の呼び名 (画面では「承認待ち」などの文で出る)

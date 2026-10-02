@@ -59,7 +59,8 @@
         attackManual: ['#myAttackManualToggle'],
         attackDamage: ['#myAttackDamageInput'],
         attackSave: ['#myAttackSaveBtn'],
-        finishAccept: ['button[onclick^="handleMyFinishRequestRespond("]'],
+        finishAccept: ['button[onclick^="handleMyFinishRequestRespond("][onclick*="\'accepted\'"]'],
+        finishDecline: ['button[onclick^="handleMyFinishRequestRespond("][onclick*="\'declined\'"]'],
         modalClose: ['button[onclick^="close"]', '[onclick^="close"]'],   // 「閉じる」ボタン。凸報告は div の ✕
     };
     P.selectors = SEL;
@@ -152,6 +153,7 @@
         // 運営から締め凸のお願いが来た
         finishRequest: async function () {
             var c = context();
+            if (c.finish.some(function (r) { return r.status === 'pending'; })) return;   // もう届いている (二重に出さない)
             var boss = finishTarget(c);
             if (!boss) { note('assume', '締め凸をお願いできるボスがありません', 'この練習ではここまでです'); return; }
             // 締め凸 = 残りが少ないボスにとどめを刺す凸。練習では、あなたの編成で倒し切れる残り HP になったことにする
@@ -270,8 +272,14 @@
                     if (!c.finish.length) return stray(c, []) || { text: '凸のあと、運営から締め凸 (ボスにとどめを刺す凸) を頼まれることがあります。',
                         real: 'いつ来るかは分かりません。来ないこともあります。来たときは通知が届きます。',
                         assume: ['finishRequest', '⏩ 運営からお願いが来たことにする'] };
-                    return stray(c, []) || (c.tab !== 'mypage' ? nav('navHome', 'ホーム')
-                        : { text: 'ホームに届いた「締め凸のお願い」に返事をします。出られないときは断って構いません (運営にすぐ伝わります)。', target: pick('finishAccept') });
+                    if (c.tab !== 'mypage') return stray(c, []) || nav('navHome', 'ホーム');
+                    // 残り凸が無い (約束・固定 + 実凸 が 3) と了承は断られる → 「今回は難しい」で返事をする
+                    var rvd = window.reservationsDomain;
+                    var held = c.resv.filter(function (r) { return rvd && (rvd.isPromise(r) || rvd.isPin(r)); }).length;
+                    if (held + c.mine('attacks').length >= 3) {
+                        return stray(c, []) || { text: '残り凸が無いので引き受けられません。「今回は難しい」で返事をします (運営にすぐ伝わります)。', target: pick('finishDecline') };
+                    }
+                    return stray(c, []) || { text: 'ホームに届いた「締め凸のお願い」に返事をします。出られないときは「今回は難しい」で構いません (運営にすぐ伝わります)。', target: pick('finishAccept') };
                 } },
         ],
         ops: [],
@@ -298,6 +306,39 @@
         schedule();
     });
 
+    // ---------- 課題の区切りごとの控え (「↩ 1つ前に戻る」用) ----------
+    // 課題 i の**最初**の状態 (盤面・時計・知らせ) を snap:i に控える。戻る = その控えを戻して読み込み直す
+    // (ユーザー要望 2026-10-03「操作したあとによく分からなかったときのために、1 つ前のステップに戻れるように」)
+    var stepIdx = Number(store.get('stepIdx'));
+    if (!Number.isInteger(stepIdx)) stepIdx = -1;
+    function saveSnap(i) {
+        try { store.set('snap:' + i, JSON.stringify({ db: P.db.dump(), clock: P.clock.get(), feed: feed })); }
+        catch (e) { console.warn('[練習] 控えを置けませんでした (戻れなくなるだけ):', e && e.message || e); }
+    }
+    function hasSnap(i) { return i >= 0 && !!store.get('snap:' + i); }
+    function trackStep(i) {
+        if (i === stepIdx) return;
+        if (i > stepIdx && !hasSnap(i)) saveSnap(i);   // 課題が進んだ瞬間 = 次の課題の最初
+        stepIdx = i;
+        try { store.set('stepIdx', String(i)); } catch (_) { /* noop */ }
+    }
+    function goBack(toIdx) {
+        var raw = store.get('snap:' + toIdx);
+        if (!raw) return false;
+        var snap;
+        try { snap = JSON.parse(raw); } catch (_) { return false; }
+        if (!P.db.restore(snap.db)) return false;
+        P.clock.put(snap.clock);
+        feed = Array.isArray(snap.feed) ? snap.feed : [];
+        saveFeed();
+        for (var i = toIdx + 1; i < 20; i++) store.del('snap:' + i);   // 戻った先より後の控えは捨てる (また進めば新しく控える)
+        try { store.set('stepIdx', String(toIdx)); } catch (_) { /* noop */ }
+        P.closed = true;   // 画面を離れるときの控えで、戻したばかりの盤面を上書きしない
+        try { store.set('db', P.db.dump()); } catch (_) { /* noop */ }
+        location.reload();
+        return true;
+    }
+
     // ---------- 画面 (帯 + 課題カード) ----------
     var CSS = ''
         + 'html[data-practice] body{padding-top:var(--pm-top,0px)}'
@@ -309,6 +350,10 @@
         + 'html[data-practice] .player-select-modal > *:not(#_):not(#_),html[data-practice] .player-modal > *:not(#_):not(#_),html[data-practice] .fururi-help-modal > *:not(#_):not(#_){max-height:calc(100vh - var(--pm-top,0px) - 8px) !important}'
         + '@supports (height:100dvh){html[data-practice] .player-select-modal > *:not(#_):not(#_),html[data-practice] .player-modal > *:not(#_):not(#_),html[data-practice] .fururi-help-modal > *:not(#_):not(#_){max-height:calc(100dvh - var(--pm-top,0px) - 8px) !important}}'
         + '@media (min-width:1180px),(min-width:768px) and (max-height:559px){html[data-practice] .tab-navigation{top:var(--pm-top,0px)}}'
+        // ★ アプリの知らせ (トースト・更新の帯・互換ゲートの帯) は画面の上に出る → 案内の裏に隠れないよう、案内の下へずらす
+        //   (実機 2026-10-03: 了承が断られたときの知らせが見えず「押せなかった」に見えた)
+        + 'html[data-practice] .notification{top:calc(env(safe-area-inset-top,0px) + 12px + var(--pm-top,0px)) !important}'
+        + 'html[data-practice] #appUpdateBanner,html[data-practice] #clientGateBanner{top:calc(env(safe-area-inset-top,8px) + 8px + var(--pm-top,0px)) !important}'
         + '#pmDock{position:fixed;left:0;right:0;top:0;z-index:2147483000;font-family:inherit;color:var(--t-body);box-shadow:0 6px 18px rgba(var(--ink-rgb),.16)}'
         + '#pmDock button{font-family:inherit;cursor:pointer}'
         + '#pmDock .pm-band{background:var(--t-ink);color:var(--card);display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 6px;font-size:11.5px;font-weight:800}'
@@ -328,6 +373,8 @@
         + '#pmDock .pm-dots{display:flex;gap:4px;margin-top:8px}'
         + '#pmDock .pm-dots i{height:4px;flex:1;border-radius:2px;background:var(--track)}'
         + '#pmDock .pm-dots i.on{background:var(--t-ink)}'
+        + '#pmDock .pm-foot{display:flex;justify-content:flex-end;margin-top:6px}'
+        + '#pmDock .pm-back{border:none;background:transparent;color:var(--t-muted);font-size:11px;font-weight:800;padding:3px 6px;text-decoration:underline;text-underline-offset:2px}'
         + '#pmDock .pm-feed{margin-top:7px;background:var(--s1);border:1.5px dashed var(--t-muted);border-radius:11px;padding:7px 9px;font-size:11.5px;line-height:1.55;display:flex;gap:8px;align-items:flex-start}'
         + '#pmDock .pm-feed.as{border:2px dashed var(--t-ink);background:var(--card)}'
         + '#pmDock .pm-feed .k{font-size:10px;font-weight:900;color:var(--t-muted)}'
@@ -379,6 +426,8 @@
         var c = context();
         if (!c || !c.season) { render('<div class="pm-band"><span class="t">🎮 練習の準備をしています…</span></div>', 'wait'); target = null; return; }
         var cur = current(c), g = cur.step ? (cur.step.guide(c) || {}) : {};
+        trackStep(cur.i);
+        var backBtn = (cur.i >= 1 && hasSnap(cur.i - 1)) ? '<button class="pm-back" data-pm="back" data-to="' + (cur.i - 1) + '">↩ 1つ前に戻る</button>' : '';
         target = (g.target && vis(g.target)) ? g.target : null;
         // ★ 押す場所が変わったら、見える所まで自動で動かす (横に並ぶカードの外・画面の下など)。
         //   同じ場所を指している間は動かさない (自分でスクロールして読んでいるのを邪魔しない)
@@ -400,7 +449,7 @@
             body = cur.n ? '<div class="pm-done"><b style="font-size:14px;font-weight:900;color:var(--t-ink)">🎉 メンバー編 おしまい</b>'
                     + '<p>本番でも同じ場所・同じボタンです。このまま自由に触ることもできます。</p>'
                     + '<div class="pm-real" style="text-align:left"><b>本番とのちがい</b>練習では運営の返事や時間を「〜したことにする」で進めました。本番では運営が確認するまで待ちます (承認されると通知が届きます)。</div>'
-                    + '<div class="pm-row"><button class="pm-btn sub" data-pm="restart">もう一度</button><button class="pm-btn" data-pm="quit">練習をやめる</button></div>' + dots + '</div>'
+                    + '<div class="pm-row"><button class="pm-btn sub" data-pm="restart">もう一度</button>' + (backBtn ? '<button class="pm-btn sub" data-pm="back" data-to="' + (cur.i - 1) + '">↩ 1つ前に戻る</button>' : '') + '<button class="pm-btn" data-pm="quit">練習をやめる</button></div>' + dots + '</div>'
                 : '<p>この役の練習はまだ用意されていません。画面は自由に触れます。</p>';
         } else {
             body = '<div class="pm-top"><span class="pm-cnt">課題 ' + (cur.i + 1) + '/' + cur.n + '</span><b>' + esc(cur.step.title) + '</b>'
@@ -408,10 +457,10 @@
                 + (folded ? '' : '<p>' + esc(g.text || '') + '</p>'
                     + (g.real ? '<div class="pm-real"><b>本番では</b>' + esc(g.real) + '</div>' : '')
                     + (g.assume ? '<button class="pm-ev" data-pm="assume" data-k="' + esc(g.assume[0]) + '"' + (busy ? ' disabled' : '') + '>' + esc(g.assume[1]) + '</button>' : '')
-                    + dots);
+                    + dots + (backBtn ? '<div class="pm-foot">' + backBtn + '</div>' : ''));
         }
         render(band + '<div class="pm-body"><div class="pm-in">' + body + fd + '</div></div>',
-            [cur.i, folded, busy, g.text, g.real, g.assume && g.assume[0], !!target, feed.map(function (x) { return x.id; }).join(',')].join('|'));
+            [cur.i, folded, busy, g.text, g.real, g.assume && g.assume[0], !!target, !!backBtn, feed.map(function (x) { return x.id; }).join(',')].join('|'));
     }
     function render(html, sig) {
         if (sig === lastSig) return;
@@ -437,6 +486,14 @@
         var k = b.getAttribute('data-pm');
         if (k === 'quit') { if (window.confirm('練習をやめて、本番の画面に戻りますか？\n(練習でやったことは残りません)')) P.exit(); return; }
         if (k === 'restart') { P.restart(P.role); return; }
+        if (k === 'back') {
+            var to = Number(b.getAttribute('data-to')), st = (STEPS[P.role] || [])[to];
+            if (!st) return;
+            if (!window.confirm('課題 ' + (to + 1) + '「' + st.title + '」の最初に戻りますか？\n(そのあとにやったことは消えます)')) return;
+            if (!goBack(to)) note('assume', '戻れませんでした', '控えが無いか、壊れています');
+            lastSig = ''; update();
+            return;
+        }
         if (k === 'fold') { folded = !folded; try { store.set('fold', folded ? '1' : '0'); } catch (_) { /* 覚えられなくても畳める */ } lastSig = ''; update(); return; }
         if (k === 'dismiss') { feed = feed.filter(function (x) { return !eq(x.id, b.getAttribute('data-id')); }); saveFeed(); lastSig = ''; update(); return; }
         if (k === 'where' && target) {

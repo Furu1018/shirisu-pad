@@ -127,6 +127,32 @@ async function run(label, size) {
         trail.push(`${s.cnt} ${s.title} | ${s.text.slice(0, 40)} | ${act}`);
     }
     if (!done && !problems.length) problems.push('80 手で終わらなかった');
+    // アプリの知らせ (トースト) は案内の裏に隠れない: 最後の返事のあとに出る「了承を運営に伝えました」が、案内の下に見えている
+    const toast = JSON.parse(await p.eval(`JSON.stringify((() => { const n = document.getElementById('notification'), d = document.getElementById('pmDock');
+        const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })())`));
+    if (done && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
+    // ↩ 1つ前に戻る: おしまいから戻ると、課題 5 の最初 (締め凸のお願いが来る前・時計は当日) に戻る。そこからまた最後まで行ける
+    if (done) {
+        await p.eval(`document.querySelector('#pmDock [data-pm=back]').click()`);   // confirm は「はい」
+        await wait(6500);
+        const back = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables; const d = document.getElementById('pmDock');
+            return { cnt: d.querySelector('.pm-cnt')?.innerText || '-', assume: d.querySelector('[data-pm=assume]')?.innerText || null, finish: T.finish_requests.length,
+                mine: T.attacks.filter(a => a.player_id === 9101).length, hard: new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10) === window.PAD_PRACTICE.hardDate }; })())`));
+        if (back.cnt !== '課題 5/5' || !/お願いが来たことにする/.test(back.assume || '') || back.finish !== 0 || back.mine !== 1 || !back.hard) problems.push(`1つ前に戻れていない: ${JSON.stringify(back)}`);
+        else {
+            let again = false;
+            for (let i = 0; i < 12 && !again; i++) {
+                const s = JSON.parse(await p.eval(`JSON.stringify(${STATE})`) || 'null');
+                if (!s) { await wait(1000); continue; }
+                if (s.cnt === 'DONE') { again = true; break; }
+                if (s.assume) { await p.eval(`document.querySelector('#pmDock [data-pm=assume]').click()`); await wait(4000); }
+                else if (s.ring) { await p.eval(PRESS); await wait(1200); }
+                else if (s.where) { await p.eval(`document.querySelector('#pmDock [data-pm=where]').click()`); await wait(900); }
+                else await wait(900);
+            }
+            if (!again) problems.push('戻ったあと、もう一度最後まで行けない');
+        }
+    }
     // 当日に進めたとき、ほかのメンバーの凸が入っている (ボスは倒し切らない = レベルは進めない) / 自分は 1 凸・予約は実行済み・締め凸に返事済み
     const world = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables, me = 9101;
         return { others: T.attacks.filter(a => a.player_id !== me).length, mine: T.attacks.filter(a => a.player_id === me).length, level: T.seasons[0].current_level,
