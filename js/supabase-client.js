@@ -73,6 +73,7 @@ window.isPushSupported = function () {
 
 // SW登録 (idempotent)
 window.registerPushServiceWorker = async function () {
+    if (PRACTICE) throw new Error('練習モードでは通知の設定は変えられません (本番の設定はそのままです)');
     if (!window.isPushSupported()) throw new Error('この端末は Push 通知に非対応です');
     const reg = await navigator.serviceWorker.register('./sw.js');
     return reg;
@@ -80,6 +81,9 @@ window.registerPushServiceWorker = async function () {
 
 // 現在の購読状態を取得
 window.getPushSubscriptionStatus = async function () {
+    // ★ 練習モードでは Service Worker を登録しない・購読を読まない (端末の状態に触れない)。「非対応」と同じ答えにするので、
+    //   ホームは通知の設定を促さず、通知の設定シートは変更を受け付けない
+    if (PRACTICE) return { supported: false, practice: true };
     if (!window.isPushSupported()) return { supported: false };
     const perm = Notification.permission;  // 'default' | 'granted' | 'denied'
     if (!navigator.serviceWorker.controller) {
@@ -208,6 +212,7 @@ window.supabaseLoadRecentNotifications = async function (limit = 30, playerId = 
 // 自身宛のテスト通知を直接表示 (Push経由ではないローカル通知)
 // VAPID鍵未設定でも動作確認に使える
 window.showLocalTestNotification = async function (title = 'しりすこPAD', body = 'テスト通知です') {
+    if (PRACTICE) throw new Error('練習モードでは通知の設定は変えられません (本番の設定はそのままです)');
     if (!('Notification' in window)) throw new Error('Notification 非対応');
     if (Notification.permission !== 'granted') {
         const p = await Notification.requestPermission();

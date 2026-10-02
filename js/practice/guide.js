@@ -437,7 +437,7 @@
         var k = b.getAttribute('data-pm');
         if (k === 'quit') { if (window.confirm('練習をやめて、本番の画面に戻りますか？\n(練習でやったことは残りません)')) P.exit(); return; }
         if (k === 'restart') { P.restart(P.role); return; }
-        if (k === 'fold') { folded = !folded; store.set('fold', folded ? '1' : '0'); lastSig = ''; update(); return; }
+        if (k === 'fold') { folded = !folded; try { store.set('fold', folded ? '1' : '0'); } catch (_) { /* 覚えられなくても畳める */ } lastSig = ''; update(); return; }
         if (k === 'dismiss') { feed = feed.filter(function (x) { return !eq(x.id, b.getAttribute('data-id')); }); saveFeed(); lastSig = ''; update(); return; }
         if (k === 'where' && target) {
             bring(target);
@@ -447,11 +447,16 @@
         if (k === 'assume' && !busy) {
             var fn = ASSUME[b.getAttribute('data-k')];
             if (!fn) return;
+            // ★ 途中で失敗したら、押す前の盤面へ戻す (Codex指摘 2026-10-02)。「承認だけ済んで配信が無い」のような半端が残ると、
+            //   課題は済んだ扱いになって押し直せず、このあとの当日の画面が合わなくなる
+            var snap = P.db.dump(), feedWas = feedId;
             busy = true; lastSig = ''; update();
-            Promise.resolve().then(fn).then(refreshScreen).catch(function (e) {
+            Promise.resolve().then(fn).catch(function (e) {
                 console.error('[練習] 仮定を進められませんでした:', e);
-                note('assume', 'うまく進められませんでした', String((e && e.message) || e));
-            }).then(function () { busy = false; lastSig = ''; update(); });
+                try { P.db.restore(snap); if (typeof P.save === 'function') P.save(); } catch (_) { /* 戻せなくても知らせる */ }
+                feed = feed.filter(function (x) { return x.id <= feedWas; });
+                note('assume', 'うまく進められませんでした (押す前の状態に戻しました)', 'もう一度押してみてください: ' + String((e && e.message) || e));
+            }).then(refreshScreen).then(function () { busy = false; lastSig = ''; update(); });
         }
     }
 

@@ -328,11 +328,12 @@ test('種データ: 架空の 31 人・何度作っても同じ・自分は灼�
 });
 
 // ============================== 4. 起動 (boot.js) ==============================
-function bootEnv({ flag = null, realNow = Date.UTC(2026, 9, 2, 3, 0, 0), search = '' } = {}) {   // 2026-10-02 12:00 JST
+function bootEnv({ flag = null, realNow = Date.UTC(2026, 9, 2, 3, 0, 0), search = '', fullAt = null } = {}) {   // 2026-10-02 12:00 JST
     class Storage {
         constructor() { this._m = new Map(); }
         getItem(k) { return this._m.has(k) ? this._m.get(k) : null; }
-        setItem(k, v) { this._m.set(k, String(v)); }
+        // fullAt: この文字列を含む鍵への書き込みで「置き場が一杯」(QuotaExceededError) を起こす
+        setItem(k, v) { if (fullAt && String(k).includes(fullAt)) throw new Error('QuotaExceededError'); this._m.set(k, String(v)); }
         removeItem(k) { this._m.delete(k); }
         key(i) { return [...this._m.keys()][i] ?? null; }
         get length() { return this._m.size; }
@@ -343,12 +344,13 @@ function bootEnv({ flag = null, realNow = Date.UTC(2026, 9, 2, 3, 0, 0), search 
         location: { href: 'https://example.test/app/index.html' + search, search, replace: (u) => navigated.push(['replace', u]), reload: () => navigated.push(['reload']) },
         document: { documentElement: { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } }, write: (h) => written.push(h) } };
     win.window = win;
-    if (flag) win.sessionStorage.setItem('shirisuko_practice_v1', flag);
-    win.localStorage.setItem('shirisuPad.currentPlayer', JSON.stringify({ id: 24, name: '本物の人' }));
-    win.localStorage.setItem('shirisuko_theme_v1', 'dark');
+    if (flag) win.sessionStorage._m.set('shirisuko_practice_v1', flag);
+    win.localStorage._m.set('shirisuPad.currentPlayer', JSON.stringify({ id: 24, name: '本物の人' }));
+    win.localStorage._m.set('shirisuko_theme_v1', 'dark');
+    const orig = { get: Storage.prototype.getItem, set: Storage.prototype.setItem, del: Storage.prototype.removeItem };
     vm.createContext(win);
     vm.runInContext(rd('js/practice/boot.js'), win);
-    return { win, written, navigated, RealDate, realNow };
+    return { win, written, navigated, RealDate, realNow, Storage, orig };
 }
 test('起動: 印が無ければ何もしない (本番は 1 つも差し替えない)', () => {
     for (const flag of [null, 'yes', '1']) {
@@ -359,6 +361,25 @@ test('起動: 印が無ければ何もしない (本番は 1 つも差し替え�
         assert.deepEqual(written, []);
         assert.equal(win.document.documentElement.attrs['data-practice'], undefined);
     }
+});
+test('起動: 置き場が一杯などで準備に失敗したら、**何も差し替えずに**印を消して終わる (半端な差し替えで本物に繋がない)', () => {
+    // ★ 途中で止まると「記憶は差し替わったのに PAD_PRACTICE が無い」→ js/supabase-client.js が本物のクライアントを作る (Codex指摘 2026-10-02)
+    for (const fullAt of ['shirisuko_practice_v1:hard', 'shirisuko_practice_v1:clock', 'pm::shirisuPad.currentPlayer', 'pm::shirisuPad.tourCompleted']) {
+        const { win, written, RealDate, Storage, orig } = bootEnv({ flag: 'member', fullAt });
+        assert.equal(win.PAD_PRACTICE, undefined, `${fullAt} で失敗したのに練習モードになっている`);
+        assert.equal(win.Date, RealDate, `${fullAt}: 時計だけ差し替わっている`);
+        assert.deepEqual([Storage.prototype.getItem, Storage.prototype.setItem, Storage.prototype.removeItem], [orig.get, orig.set, orig.del], `${fullAt}: 端末の記憶だけ差し替わっている`);
+        assert.equal(win.sessionStorage._m.has('shirisuko_practice_v1'), false, `${fullAt}: 印が残っている (次に開いても同じ失敗を繰り返す)`);
+        assert.equal(JSON.parse(win.localStorage.getItem('shirisuPad.currentPlayer')).id, 24, `${fullAt}: 本物の名乗りが読めない`);
+        assert.deepEqual(written, [], `${fullAt}: 案内を読み込んでいる`);
+        assert.equal(win.document.documentElement.attrs['data-practice'], undefined);
+    }
+    // 時計を進めるときの控えに失敗しても、進めること自体は成功する
+    const { win } = bootEnv({ flag: 'member' });
+    const SS = win.sessionStorage; const set0 = SS._m.set.bind(SS._m);
+    SS._m.set = (k, v) => { if (String(k).endsWith(':clock')) throw new Error('QuotaExceededError'); return set0(k, v); };
+    win.PAD_PRACTICE.clock.set('hard', 21);
+    assert.equal(new Date(win.Date.now() + 9 * 3600000).toISOString().slice(0, 13), '2026-10-03T21');
 });
 test('起動: 端末の記憶を分ける (本番の名乗り・設定に触れない) / 見た目だけは共有 / 練習の人で名乗る', () => {
     const { win, written } = bootEnv({ flag: 'member' });
@@ -533,7 +554,11 @@ test('本物のクライアント: 練習中は端末の通知設定に触れな
     globalThis.PushManager = function () { }; globalThis.Notification = { permission: 'granted', requestPermission: async () => { touched++; return 'granted'; } };
     await assert.rejects(() => W.subscribeToPush(IDS.me), /練習モードでは通知の設定は変えられません/);
     await assert.rejects(() => W.unsubscribeFromPush(IDS.me), /練習モードでは通知の設定は変えられません/);
-    assert.equal(touched, 0, '断る前に端末の通知に触れている');
+    await assert.rejects(() => W.showLocalTestNotification(), /練習モードでは通知の設定は変えられません/, 'テスト通知で端末の通知許可を求めている');
+    await assert.rejects(() => W.registerPushServiceWorker(), /練習モードでは通知の設定は変えられません/, '練習中に Service Worker を登録している');
+    // ホームが毎回読む「通知の状態」も、端末に触れずに「非対応」と同じ答えを返す (Service Worker を登録しない)
+    assert.deepEqual(await W.getPushSubscriptionStatus(), { supported: false, practice: true });
+    assert.equal(touched, 0, '断る前に端末の通知・Service Worker に触れている');
 });
 
 // ============================== 6. 本番とのずれを見張る (ソースの突き合わせ) ==============================
@@ -615,7 +640,12 @@ test('見張り: 本番では練習のファイルを 1 つも読まない / 練
     // index.html: <head> のいちばん先頭のスクリプトが印を見て、あるときだけ boot.js を読む
     const first = HTML.match(/<script>([\s\S]*?)<\/script>/);
     assert.ok(HTML.indexOf('<script') === first.index, '練習の印を見るスクリプトが、いちばん先頭でない (差し替えより先に動くスクリプトがある)');
-    assert.match(first[1], /if \(sessionStorage\.getItem\('shirisuko_practice_v1'\)\) document\.write\('<script src="\.\/js\/practice\/boot\.js"><\\\/script>'\);/);
+    assert.match(first[1], /if \(sessionStorage\.getItem\('shirisuko_practice_v1'\)\) \{ window\.__padPracticeWanted = true; document\.write\('<script src="\.\/js\/practice\/boot\.js"><\\\/script>'\); \}/);
+    // ★ 2 つ目のスクリプト: 練習を始めたつもりなのに練習モードになっていないとき (boot.js を読めない・置き場が一杯) は、印を消して必ず知らせる
+    const second = HTML.slice(first.index + first[0].length).match(/<script>([\s\S]*?)<\/script>/);
+    assert.match(second[1], /if \(window\.__padPracticeWanted && !window\.PAD_PRACTICE\) \{\s*try \{ sessionStorage\.removeItem\('shirisuko_practice_v1'\); \}/, '始められなかったときに印を消していない');
+    assert.match(second[1], /alert\('練習モードを始められませんでした。[^']*いま開いているのは「本番」の画面です/, '始められなかったことを知らせていない (練習のつもりで本番を触る)');
+    assert.ok(HTML.indexOf(second[0]) < HTML.indexOf("var KEY = 'shirisuko_theme_v1';"), '知らせるスクリプトが 2 番目でない');
     assert.match(first[1], /if \(_pmQ === 'member'\) sessionStorage\.setItem\('shirisuko_practice_v1', _pmQ\);/, 'URL から入れる役がメンバー編だけでない');
     assert.match(first[1], /^\s*try \{[\s\S]*\} catch \(_\) \{/, 'sessionStorage が使えない環境で起動が止まる');
     assert.ok(!/<script[^>]*src="[^"]*practice\//.test(HTML.replace(first[0], '')), '練習のファイルを本番でも読み込んでいる (印を見るスクリプト以外から)');
@@ -623,8 +653,12 @@ test('見張り: 本番では練習のファイルを 1 つも読まない / 練
     // 入口: 同じ印を立てて読み込み直す
     const sp = HTML.match(/function startPractice\(role\) \{[\s\S]*?\n        \}/)[0];
     assert.match(sp, /sessionStorage\.setItem\('shirisuko_practice_v1', r\);[\s\S]*location\.reload\(\);/);
-    assert.match(sp, /if \(window\.PAD_PRACTICE\) \{ window\.PAD_PRACTICE\.restart\(r\); return; \}/, '練習中にもう一度入ると、練習の中で印を立て直すだけになる');
+    assert.match(sp, /if \(window\.PAD_PRACTICE\) \{\s*if \(confirm\('練習を最初からやり直しますか？[^']*'\)\) window\.PAD_PRACTICE\.restart\(r\);\s*return;\s*\}/, '練習中にもう一度入ると、確かめずにやり直す / 練習の中で印を立て直すだけになる');
     assert.match(HTML, /onclick="startPractice\('member'\)">メンバー編を始める<\/button>/, 'ヘルプに入口が無い');
+    assert.equal((HTML.match(/onclick="startPractice\('member'\)"/g) || []).length, 2, '入口は ヘルプ と 設定 › ガイド の 2 つ');
+    // 練習中は端末の状態 (通知タップの行き先・キャッシュ) を本番と取り合わない
+    assert.match(HTML, /async function _consumePendingNav\(\) \{\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE\) return;/, '練習中に本物の通知タップの行き先を消費している');
+    assert.match(HTML, /async function handleSettingsClearCache\(\) \{\s*if \(window\.PAD_PRACTICE\) \{ showNotification\('🎮 練習モードでは使えません[^']*'\); return; \}/, '練習中に端末のキャッシュを消せる');
     assert.match(rd('js/practice/boot.js'), /var KEY = 'shirisuko_practice_v1';/);
     // js/supabase-client.js: 練習では CDN から本物を読まず、偽のサーバを使う。失敗しても本物へ倒さない
     assert.match(CLIENT, /const PRACTICE = \(typeof window !== 'undefined' && window\.PAD_PRACTICE\) \|\| null;/);
@@ -634,7 +668,13 @@ test('見張り: 本番では練習のファイルを 1 つも読まない / 練
     assert.match(pc, /catch \(e\) \{[\s\S]*PRACTICE\.exit\(\);\s*await new Promise\(\(\) => \{/, '練習の準備に失敗したとき、やめて読み込み直していない');
     assert.ok(!/createClient\(/.test(pc), '練習の準備に失敗したら本物のクライアントへ倒している (練習の操作が本番に入る)');
     assert.equal((CLIENT.match(/createClient\(/g) || []).length, 1, 'createClient の呼び出しが増えた');
-    assert.equal((CLIENT.match(/if \(PRACTICE\) throw new Error\('練習モードでは通知の設定は変えられません/g) || []).length, 2, '通知の購読・解除の両方で止めていない');
+    assert.equal((CLIENT.match(/if \(PRACTICE\) throw new Error\('練習モードでは通知の設定は変えられません/g) || []).length, 4, '通知の 購読・解除・テスト通知・Service Worker の登録 の 4 つで止めていない');
+    // navigator.serviceWorker / Notification / pushManager に触れる関数は、どれも先頭で練習モードを見る
+    for (const m of CLIENT.matchAll(/\nwindow\.(\w+) = async function \([^)]*\) \{\n([\s\S]*?)\n\};/g)) {
+        if (!/navigator\.serviceWorker|Notification\.|pushManager/.test(m[2])) continue;
+        const head = m[2].split('\n').filter(l => l.trim() && !l.trim().startsWith('//'))[0];
+        assert.match(head, /^\s*if \(PRACTICE\) (throw new Error|return \{ supported: false, practice: true \})/, `${m[1]} が練習中に端末の通知・Service Worker に触れ得る`);
+    }
     // 練習のファイル: 本物のクライアントを作らない / 本物への通信はキャラ表の GET 1 つだけ
     for (const f of ['boot.js', 'guide.js', 'server.js', 'seed.js', 'session.js']) {
         const src = rd('js/practice/' + f).replace(/\/\/[^\n]*/g, '');
@@ -688,6 +728,8 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.deepEqual((code.match(/set(?:Timeout|Interval)\(([A-Za-z_.]+)/g) || []).sort(), ['setInterval(update', 'setTimeout(update'], '時間で勝手に進む処理が増えた');
     assert.ok(!/ASSUME\[[^\]]+\]\(\)|ASSUME\.\w+\(\)/.test(code), '「〜したことにする」をボタン以外から呼んでいる');
     assert.match(code, /if \(k === 'assume' && !busy\) \{\s*var fn = ASSUME\[b\.getAttribute\('data-k'\)\];/);
+    // ★ 途中で失敗したら押す前の盤面へ戻す (承認だけ済んで配信が無い、のような半端を残さない → 押し直せる)
+    assert.match(code, /var snap = P\.db\.dump\(\), feedWas = feedId;[\s\S]*?Promise\.resolve\(\)\.then\(fn\)\.catch\(function \(e\) \{[\s\S]*?P\.db\.restore\(snap\); if \(typeof P\.save === 'function'\) P\.save\(\);[\s\S]*?\}\)\.then\(refreshScreen\)/, '仮定が途中で失敗しても盤面を戻していない');
     // どの仮定も「練習だけの仮定」と出す。★ 関数ごとに切り出して見る (まとめて探すと、ほかの仮定の note で通ってしまう)
     for (const key of P.assumeKeys) {
         const body = GUIDE.match(new RegExp(`\\n        ${key}: async function \\(\\) \\{([\\s\\S]*?)\\n        \\},`))?.[1] || '';

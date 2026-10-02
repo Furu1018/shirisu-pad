@@ -25,40 +25,51 @@
         del: function (k) { try { rawDel.call(SS, KEY + ':' + k); } catch (_) { /* noop */ } },
     };
 
-    // ---- ① 端末の記憶を分ける ----
+    // ---- 準備: 差し替える**前に**、失敗し得ること (置き場への書き込み) を全部済ませる ----
+    // ★ 途中で例外が出ると「記憶は差し替わったのに window.PAD_PRACTICE が無い」半端な状態になり、
+    //   js/supabase-client.js が本物のクライアントを作る = 練習のつもりの操作が本番に入る (Codex指摘 2026-10-02)。
+    //   だから: ここで失敗したら**何も差し替えずに**印を消して終わる (本番の画面になる。<head> の 2 つ目のスクリプトが知らせる)
     var NS = 'pm::';
     var PASS = { 'shirisuko_theme_v1': true };   // 見た目 (ライト/ダーク) だけは本番と共有する
+    var RealDate = Date;
+    var DAY = 86400000, JST = 9 * 3600000;
+    var ymdJst = function (ms) { return new RealDate(ms + JST).toISOString().slice(0, 10); };
+    var atJst = function (ymd, hour) { return RealDate.parse(ymd + 'T' + String(hour).padStart(2, '0') + ':00:00+09:00'); };
+    var ME = { id: 9101, name: 'あなた (練習)' };       // js/practice/seed.js の IDS.me / ME_NAME と同じ (テストが突き合わせる)
+    var OPS = { id: 9102, name: '運営役 (練習)' };
+    var hardDate, offset;
+    try {
+        // 練習のレイド日 = 始めた日の翌日 (前日から体験する)。再読み込みしても変えない
+        hardDate = store.get('hard');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(hardDate || '')) { hardDate = ymdJst(RealDate.now() + DAY); store.set('hard', hardDate); }
+        offset = Number(store.get('clock'));
+        if (!isFinite(offset) || store.get('clock') == null) {
+            offset = atJst(ymdJst(atJst(hardDate, 12) - DAY), 20) - RealDate.now();   // はじめは 前日の 20 時
+            store.set('clock', offset);
+        }
+        // 名乗り・初回だけ出るもの (練習の置き場へ直接書く)
+        if (rawGet.call(SS, NS + 'shirisuPad.currentPlayer') == null) {
+            rawSet.call(SS, NS + 'shirisuPad.currentPlayer', JSON.stringify(role === 'ops' ? OPS : ME));
+            rawSet.call(SS, NS + 'shirisuPad.tourCompleted', '1');   // 使い方ツアーは自動で始めない
+        }
+    } catch (e) {
+        try { rawDel.call(SS, KEY); } catch (_) { /* noop */ }
+        return;
+    }
+
+    // ---- ここから先は失敗しない ----
+    // ① 端末の記憶を分ける
     proto.getItem = function (k) { return (this === LS && !PASS[k]) ? rawGet.call(SS, NS + k) : rawGet.call(this, k); };
     proto.setItem = function (k, v) { return (this === LS && !PASS[k]) ? rawSet.call(SS, NS + k, v) : rawSet.call(this, k, v); };
     proto.removeItem = function (k) { return (this === LS && !PASS[k]) ? rawDel.call(SS, NS + k) : rawDel.call(this, k); };
 
-    // ---- ② 練習の時計 ----
-    var RealDate = Date;
-    var DAY = 86400000, JST = 9 * 3600000;
-    var ymdJst = function (ms) { return new RealDate(ms + JST).toISOString().slice(0, 10); };
-    // 練習のレイド日 = 始めた日の翌日 (前日から体験する)。再読み込みしても変えない
-    var hardDate = store.get('hard');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(hardDate || '')) { hardDate = ymdJst(RealDate.now() + DAY); store.set('hard', hardDate); }
-    var atJst = function (ymd, hour) { return RealDate.parse(ymd + 'T' + String(hour).padStart(2, '0') + ':00:00+09:00'); };
-    var offset = Number(store.get('clock'));
-    if (!isFinite(offset) || store.get('clock') == null) {
-        offset = atJst(ymdJst(atJst(hardDate, 12) - DAY), 20) - RealDate.now();   // はじめは 前日の 20 時
-        store.set('clock', offset);
-    }
+    // ② 練習の時計
     // 引数なしの new Date() と Date.now() だけが練習の時計を読む。日時を指定した new Date(...) は本物と同じ
     class PracticeDate extends RealDate {
         constructor(...a) { if (a.length) super(...a); else super(RealDate.now() + offset); }
         static now() { return RealDate.now() + offset; }
     }
     window.Date = PracticeDate;
-
-    // ---- 名乗り・初回だけ出るもの ----
-    var ME = { id: 9101, name: 'あなた (練習)' };       // js/practice/seed.js の IDS.me / ME_NAME と同じ (テストが突き合わせる)
-    var OPS = { id: 9102, name: '運営役 (練習)' };
-    if (proto.getItem.call(LS, 'shirisuPad.currentPlayer') == null) {
-        proto.setItem.call(LS, 'shirisuPad.currentPlayer', JSON.stringify(role === 'ops' ? OPS : ME));
-        proto.setItem.call(LS, 'shirisuPad.tourCompleted', '1');   // 使い方ツアーは自動で始めない
-    }
 
     window.PAD_PRACTICE = {
         role: role, hardDate: hardDate, store: store, db: null, me: ME, ops: OPS, closed: false,
@@ -68,7 +79,7 @@
             set: function (day, hour) {
                 var ymd = day === 'eve' ? ymdJst(atJst(hardDate, 12) - DAY) : hardDate;
                 offset = atJst(ymd, hour) - RealDate.now();
-                store.set('clock', offset);
+                try { store.set('clock', offset); } catch (_) { /* 控えられなくても、この画面の間は進んだまま */ }
             },
             RealDate: RealDate,
         },

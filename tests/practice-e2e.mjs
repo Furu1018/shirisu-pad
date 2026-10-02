@@ -136,6 +136,10 @@ async function run(label, size) {
     if (!(world.others >= 10)) problems.push(`当日に進めても、ほかのメンバーの凸が入っていない (${world.others} 件)`);
     if (world.level !== 1 || world.dead) problems.push(`練習の世界がレベルを進めた / ボスを倒し切った: ${JSON.stringify(world)}`);
     if (world.mine !== 1 || !world.resv.includes('fulfilled') || !world.finish.every(s => s !== 'pending') || !world.finish.length) problems.push(`自分の凸・予約・締め凸の返事が入っていない: ${JSON.stringify(world)}`);
+    // 練習中は端末の状態に触れない: Service Worker を登録しない・通知の許可を求めない
+    const device = JSON.parse(await p.eval(`(async () => JSON.stringify({ sw: ('serviceWorker' in navigator) ? (await navigator.serviceWorker.getRegistrations()).length : 0,
+        perm: ('Notification' in window) ? Notification.permission : 'none' }))()`));
+    if (device.sw !== 0 || !['default', 'none'].includes(device.perm)) problems.push(`練習中に端末の通知・Service Worker に触れた: ${JSON.stringify(device)}`);
     if (!world.conf || !world.fire || !(world.plans >= 1) || !(world.pushes >= 1)) problems.push(`時間の確認・模擬 (5人)・配信・通知の見本 のどれかが欠けている: ${JSON.stringify(world)}`);
     if (p.errors.length) problems.push(`画面でエラー: ${p.errors.slice(0, 4).join(' / ').slice(0, 600)}`);
     const real = p.net.filter(n => /supabase\.co/.test(n.url));

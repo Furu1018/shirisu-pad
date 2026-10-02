@@ -21,8 +21,18 @@
         try {
             var _pmQ = new URLSearchParams(location.search).get('practice');
             if (_pmQ === 'member') sessionStorage.setItem('shirisuko_practice_v1', _pmQ);
-            if (sessionStorage.getItem('shirisuko_practice_v1')) document.write('<script src="./js/practice/boot.js"><\/script>');
+            if (sessionStorage.getItem('shirisuko_practice_v1')) { window.__padPracticeWanted = true; document.write('<script src="./js/practice/boot.js"><\/script>'); }
         } catch (_) { /* sessionStorage が使えない環境では練習モードに入らない */ }
+    </script>
+    <!-- ★ 練習を始めたつもりなのに練習モードになっていない (boot.js を読めなかった・置き場が一杯) ときは、印を消して**必ず知らせる**。
+         黙って本番の画面を出すと「練習のつもりで本番を触る」が起きる (Codex指摘 2026-10-02)。boot.js はこのスクリプトより先に走る -->
+    <script>
+        if (window.__padPracticeWanted && !window.PAD_PRACTICE) {
+            try { sessionStorage.removeItem('shirisuko_practice_v1'); } catch (_) { /* noop */ }
+            window.addEventListener('load', function () {
+                alert('練習モードを始められませんでした。\n\nいま開いているのは「本番」の画面です。ここでの操作は本番に反映されます。');
+            });
+        }
     </script>
     <script>
         (function () {
@@ -5650,6 +5660,11 @@
                         <div style="position:absolute;bottom:8px;left:10px;font-family:ui-monospace,monospace;font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:0.5px;">7 CHAPTERS · 6 min</div>
                         <div style="position:absolute;bottom:8px;right:10px;background:rgba(20,22,26,0.75);color:var(--on-fill);font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">▶ 再生</div>
                     </button>
+                    <!-- 🎮 練習モードの入口 (ヘルプの冒頭にも同じものがある) -->
+                    <button onclick="startPractice('member')" style="width:100%;margin-top:10px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
+                        🎮 練習する (メンバー編)
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 前日 → 当日・約5分</span>
+                    </button>
                     <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
                         <button onclick="openHelpFromSettings('help-overview')" class="dc-guide-row">
@@ -7234,7 +7249,10 @@
         //   印は sessionStorage なので、タブ (アプリ) を閉じれば本番に戻る
         function startPractice(role) {
             const r = role === 'ops' ? 'ops' : 'member';
-            if (window.PAD_PRACTICE) { window.PAD_PRACTICE.restart(r); return; }
+            if (window.PAD_PRACTICE) {
+                if (confirm('練習を最初からやり直しますか？\n(ここまでの練習は消えます)')) window.PAD_PRACTICE.restart(r);
+                return;
+            }
             if (!confirm('練習を始めます。\n\n本番と同じ画面を、練習用のデータで触れます。\nここでの操作は本番には反映されません。上の「やめる」でいつでも戻れます。')) return;
             try { sessionStorage.setItem('shirisuko_practice_v1', r); }
             catch (_) { alert('この端末では練習モードを使えません (プライベートブラウズなど)'); return; }
@@ -16492,6 +16510,7 @@
         }
 
         async function handleSettingsClearCache() {
+            if (window.PAD_PRACTICE) { showNotification('🎮 練習モードでは使えません (端末のキャッシュは本番と共有です)'); return; }
             if (!confirm('Service Worker のキャッシュをクリアします。次回再読み込みで再取得されます。続行しますか？')) return;
             try {
                 if ('caches' in window) {
@@ -26398,6 +26417,8 @@
         // アプリが前面化・起動したタイミングで読み取って消費する。
         // iOS は凍結中の postMessage を取り落とすため、こちらが本命。
         async function _consumePendingNav() {
+            // 練習モードでは本物の通知タップの行き先を使わない (練習の時計と比べて「古い」と捨ててしまう。本番に戻ってから使う)
+            if (window.PAD_PRACTICE) return;
             try {
                 const c = await caches.open('sp-nav');
                 const res = await c.match('pending-nav');
