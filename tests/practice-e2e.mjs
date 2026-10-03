@@ -95,11 +95,13 @@ const STATE = `(() => {
   return { cnt: d.querySelector('.pm-cnt')?.innerText || (d.querySelector('.pm-done') ? 'DONE' : '-'), title: d.querySelector('.pm-top b')?.innerText || '',
     text: d.querySelector('.pm-in p')?.innerText || '', assume: d.querySelector('[data-pm=assume]')?.innerText || null, where: !!d.querySelector('[data-pm=where]'), ring: shown, under, tag };
 })()`;
-// 案内の枠の真ん中にあるものを押す (入力欄なら数字を入れる)。枠は pointer-events:none なので、拾うのは本物の画面の要素
-const PRESS = `(() => { const r = document.getElementById('pmRing').getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+// 案内の枠の真ん中にあるものを押す (入力欄なら、案内の文が言う数字を入れる)。枠は pointer-events:none なので、拾うのは本物の画面の要素
+const PRESS = (value) => `(() => { const r = document.getElementById('pmRing').getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
   if (!el) return 'none';
-  if (el.tagName === 'INPUT') { el.focus(); el.value = '33.1'; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return '入力'; }
+  if (el.tagName === 'INPUT') { el.focus(); el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return '入力'; }
   (el.closest('button,[onclick],a,label') || el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window })); return '押す'; })()`;
+// 案内の文の「〜を 40 にします」「(例: 33.1)」から入れる数字を読む
+const valueOf = (text) => (String(text || '').match(/(\d+(?:\.\d+)?)\s*(?:にします|と入れ)|例: (\d+(?:\.\d+)?)/) || []).slice(1).find(Boolean) || '33.1';
 
 async function run(label, size, scenario = 'member', startAt = '') {
     const problems = [], trail = [];
@@ -107,7 +109,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
     // 本番の名乗りを置いておく (練習が書き換えないことを最後に見る)
     await p.goto(`${ORIGIN}/__blank`, 500);
     await p.eval(`localStorage.setItem('shirisuPad.currentPlayer', JSON.stringify({ id: 24, name: '本物の人' })); localStorage.setItem('shirisuPad.tourCompleted', '1');`);
-    await p.goto(`${ORIGIN}/index.html?practice=${scenario}${startAt ? '&start=' + startAt : ''}`, startAt ? 16000 : 6500);
+    await p.goto(`${ORIGIN}/index.html?practice=${scenario}${startAt ? '&start=' + startAt : ''}`, (startAt || scenario === 'ops-day') ? 16000 : 6500);   // 途中から・当日の運営編は、手前の課題 / 開始の盤面を作ってから読み込み直す
     if (startAt) {   // 途中の課題から: 手前が済んだ状態で、その課題から始まっている
         const at = JSON.parse(await p.eval(`JSON.stringify({ cnt: document.querySelector('#pmDock .pm-cnt')?.innerText || '-', title: document.querySelector('#pmDock .pm-top b')?.innerText || '' })`));
         const idx = ['avail', 'mock', 'resv', 'ack', 'attack', 'finish'].indexOf(startAt) + 1;
@@ -127,7 +129,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
         if (same >= 5) { problems.push(`案内どおりに押しても進まない: ${JSON.stringify(s)}`); break; }
         let act;
         if (s.assume) { act = '仮定 ' + s.assume; await p.eval(`document.querySelector('#pmDock [data-pm=assume]').click()`); await wait(4500); }
-        else if (s.ring) { act = (await p.eval(PRESS)) + ' ' + JSON.stringify(s.under); await wait(scenario.startsWith('ops') ? 2500 : 1100); }
+        else if (s.ring) { act = (await p.eval(PRESS(valueOf(s.text)))) + ' ' + JSON.stringify(s.under); await wait(scenario.startsWith('ops') ? 2500 : 1100); }
         else if (s.where) { act = 'どこ？'; await p.eval(`document.querySelector('#pmDock [data-pm=where]').click()`); await wait(900); }
         else { act = '(待つ)'; await wait(900); }
         trail.push(`${s.cnt} ${s.title} | ${s.text.slice(0, 40)} | ${act}`);
@@ -136,7 +138,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
     // アプリの知らせ (トースト) は案内の裏に隠れない: 最後の返事のあとに出る「了承を運営に伝えました」が、案内の下に見えている
     const toast = JSON.parse(await p.eval(`JSON.stringify((() => { const n = document.getElementById('notification'), d = document.getElementById('pmDock');
         const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })())`));
-    if (done && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
+    if (done && scenario !== 'ops-day' && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
     // ↩ 1つ前に戻る: おしまいから戻ると、課題 5 の最初 (締め凸のお願いが来る前・時計は当日) に戻る。そこからまた最後まで行ける
     if (scenario === 'member') {
         // 当日に進めたとき、ほかのメンバーの凸が入っている (ボスは倒し切らない = レベルは進めない) / 自分は 1 凸・予約は実行済み・締め凸に返事済み
@@ -156,6 +158,17 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 approved: T.plan_reservations.filter(r => r.status === 'approved').length, requested: T.plan_reservations.filter(r => r.status === 'requested').length,
                 plans: T.published_plans.length, resvInPlan: pub ? Number(pub.plan.reservationCount) : -1, by: pub ? pub.published_by_name : null, level: T.seasons[0].current_level }; })())`));
         if (!(w.nudged >= 1) || !(w.pinned >= 1) || w.approved !== 1 || w.requested !== 0 || !(w.plans >= 1) || !(w.resvInPlan >= 1) || w.by !== '運営役 (練習)') problems.push(`運営編・前日の結果が欠けている: ${JSON.stringify(w)}`);
+    } else if (scenario === 'ops-day') {
+        // HP を直した (B1 = 40B から締めた) → 2 案を同時に打診 → 案1 が了承して確定 (もう片方は見送り) → 締め凸の報告で B1 だけ倒れ、撃破を検知して通知した
+        const w = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables; const titles = T.push_notifications_log.map(r => r.title || '');
+            return { plans: T.published_plans.length, others: T.attacks.filter(a => a.player_id !== 9102).length, dead: T.bosses.filter(b => !(b.remaining_hp_raw > 0)).map(b => b.boss_number),
+                level: T.seasons[0].current_level, offers: titles.filter(t => /締め凸 \\(案\\d\\)/.test(t)).length, accepted: titles.filter(t => t === '🗡 締め凸を了承').length,
+                passed: titles.filter(t => /今回は見送り/.test(t)).length, defeated: titles.filter(t => /撃破!/.test(t)).length, hpSavedAt: T.bosses.find(b => b.boss_number === 1)?.updated_at,
+                fulfilled: T.plan_reservations.filter(r => r.source_type === 'finish_request' && r.status === 'fulfilled').length, finish: T.finish_requests.length,
+                notice: T.raid_event_notices.filter(r => r.kind === 'boss_defeated' && r.sent).map(r => r.ref) }; })())`));
+        if (!(w.plans >= 1) || !(w.others >= 15)) problems.push(`当日の盤面 (配信と 20 時までの凸) ができていない: ${JSON.stringify(w)}`);
+        if (w.offers !== 2 || !(w.accepted >= 1) || !(w.fulfilled >= 1)) problems.push(`同時打診 → 了承 → 締め凸 のどれかが欠けている: ${JSON.stringify(w)}`);
+        if (JSON.stringify(w.dead) !== '[1]' || w.level !== 1 || JSON.stringify(w.notice) !== '["L1B1"]' || w.defeated !== 1 || w.finish !== 0) problems.push(`B1 だけを倒して撃破を検知・通知し、依頼を片付けた形になっていない: ${JSON.stringify(w)}`);
     }
     if (done && scenario === 'member' && !startAt) {
         await p.eval(`document.querySelector('#pmDock [data-pm=back]').click()`);   // confirm は「はい」
@@ -171,7 +184,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 if (!s) { await wait(1000); continue; }
                 if (s.cnt === 'DONE') { again = true; break; }
                 if (s.assume) { await p.eval(`document.querySelector('#pmDock [data-pm=assume]').click()`); await wait(4000); }
-                else if (s.ring) { await p.eval(PRESS); await wait(1200); }
+                else if (s.ring) { await p.eval(PRESS(valueOf(s.text))); await wait(1200); }
                 else if (s.where) { await p.eval(`document.querySelector('#pmDock [data-pm=where]').click()`); await wait(900); }
                 else await wait(900);
             }
@@ -206,14 +219,18 @@ async function run(label, size, scenario = 'member', startAt = '') {
     return problems.length === 0;
 }
 
+const ONLY = process.env.ONLY || '';   // ONLY=ops-day のように 1 本だけ流す (作っている最中に)
 let ok = true;
 try {
-    ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }, 'member') && ok;
-    ok = await run('スマホ幅: 運営編・前日 (催促 → 算出 → 📌 → 申請の承認 → 配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
-    ok = await run('スマホ幅: ツアーから「当日: 凸を報告する」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'attack') && ok;
-    ok = await run('スマホ幅: 「締め凸のお願いに返事をする」から入る (凸報告まで済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'finish') && ok;
-    if (process.env.PC) ok = await run('PC 幅 (1280×800): メンバー編', { width: 1280, height: 800, mobile: false }, 'member') && ok;
-    if (process.env.PC) ok = await run('PC 幅 (1280×800): 運営編・前日', { width: 1280, height: 800, mobile: false }, 'ops-eve') && ok;
+    const want = (sc, at = '') => !ONLY || ONLY === sc + (at ? ':' + at : '');
+    if (want('member')) ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }, 'member') && ok;
+    if (want('ops-eve')) ok = await run('スマホ幅: 運営編・前日 (催促 → 算出 → 📌 → 申請の承認 → 配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
+    if (want('ops-day')) ok = await run('スマホ幅: 運営編・当日 (HP更新 → 締凸検索 → 2 案の同時打診 → 確定 → 撃破の検知) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-day') && ok;
+    if (want('member', 'attack')) ok = await run('スマホ幅: ツアーから「当日: 凸を報告する」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'attack') && ok;
+    if (want('member', 'finish')) ok = await run('スマホ幅: 「締め凸のお願いに返事をする」から入る (凸報告まで済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'finish') && ok;
+    if (process.env.PC && want('member')) ok = await run('PC 幅 (1280×800): メンバー編', { width: 1280, height: 800, mobile: false }, 'member') && ok;
+    if (process.env.PC && want('ops-eve')) ok = await run('PC 幅 (1280×800): 運営編・前日', { width: 1280, height: 800, mobile: false }, 'ops-eve') && ok;
+    if (process.env.PC && want('ops-day')) ok = await run('PC 幅 (1280×800): 運営編・当日', { width: 1280, height: 800, mobile: false }, 'ops-day') && ok;
 } catch (e) { ok = false; console.log('  ❌ 実行できませんでした: ' + (e && e.stack || e)); }
 cleanup();
 console.log(ok ? '\nOK' : '\nNG');

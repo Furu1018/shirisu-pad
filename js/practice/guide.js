@@ -75,6 +75,17 @@
         resvApprove: ['button[onclick^="handleReservationApprove("]'],
         planPublish: ['#opsPlanPublishBtn'],
         swapAuto: ['#planSwapAutoBtn'],
+        // 運営編・当日 (締め凸)
+        bossHpOpen: ['[onclick="_opsStageAct(\'hp\')"]', '[onclick="openOpsBossHpModal()"]'],   // 先頭のヒーロー「🎯 ボス HP を更新する」が出ていればそれ
+        bossHpInput: ['#opsBossHpModal [data-boss-num="1"] input.ops-hp-rem'],
+        bossHpSave: ['#opsBossHpModal [data-boss-num="1"] button[onclick^="handleOpsBossHpSave("]'],
+        finishPick: ['.dc-boss-card[data-boss-card="1"] .js-finish[data-action="finish-pick"]:not([disabled])'],
+        finishWindow4: ['#opsFinishList button[onclick="handleOpsFinishOpt(\'hours\', 4)"]'],
+        offerPickNow: ['#opsFinishList button[onclick="handleOpsFinishPick(\'now\')"]'],
+        offerPickH4: ['#opsFinishList button[onclick="handleOpsFinishPick(\'h4\')"]'],
+        offerPickAny: ['#opsFinishList button[onclick^="handleOpsFinishPick("]'],   // 「今すぐ」「4時間以内」が無い盤面なら、どれでも
+        offerSend: ['#opsFinishList button[onclick="handleOpsFinishOfferSend()"]:not([disabled])'],
+        offerConfirm: ['#opsFinishList button[onclick^="handleOpsFinishOfferConfirm("]'],
     };
     P.selectors = SEL;
     var pick = function (name) { return q.apply(null, SEL[name]); };
@@ -95,6 +106,10 @@
             resv: mine('plan_reservations').filter(function (r) { return r.source_type !== 'finish_request'; }),
             finish: mine('finish_requests'),
             allResv: allResv,
+            // 運営編・当日: 同時打診の行 (撃破で消えるので、消えたあとの判定は 撃破の通知・実行済みの約束 で見る)
+            offer: season ? T.finish_requests.filter(function (r) { return eq(r.season_id, season.id) && r.offer_id; }) : [],
+            notices: season ? T.raid_event_notices.filter(function (r) { return eq(r.season_id, season.id); }) : [],
+            pushLog: T.push_notifications_log,
             pub: season ? T.published_plans.filter(function (r) { return eq(r.season_id, season.id); }).sort(function (a, b) { return Number(b.id) - Number(a.id); })[0] || null : null,
         };
     }
@@ -248,9 +263,54 @@
                 url: './?tab=mypage&focus=finishreq', playerIds: [c.me], ignoreAvailability: true });
             note('assume', 'ボス' + boss.boss_number + ' の残りが ' + (left / 1e9).toFixed(1) + 'B になり、運営から締め凸のお願いが来た、と仮定しました', '本番ではいつ来るか分かりません (来ないこともあります)');
         },
+        // (運営編・当日) 同時に打診した案のうち、案1 の全員が了承した。メンバー側の本物の手順 (枠を取ってから伝える) と運営あての本番の通知で
+        finishAnswers: async function () {
+            var c = context();
+            if (!c.offer.length || c.offer.some(function (r) { return r.status === 'accepted'; })) return;
+            var pr = window.finishDomain.offerProgress(c.offer);   // 案の並び (案1 = 先頭) は本物の判定と同じ
+            var win = pr.plans[0];
+            if (!win) return;
+            var ctx = await ensureActiveSeasonLoaded();
+            var bn = Number(c.offer[0].boss_number), level = Number(c.season.current_level) || null, names = [];
+            for (var i = 0; i < win.members.length; i++) {
+                var m = win.members[i];
+                var pl = c.T.players.filter(function (x) { return eq(x.id, m.id); })[0];
+                var who = { id: m.id, name: pl ? pl.name : String(m.id) };
+                // 本番の handleMyFinishRequestRespond と同じ順: 枠 (approved・flex の約束) を取ってから、了承を伝える
+                await _reserveForFinishRequest(ctx, who, bn, m.rowId);
+                await window.supabaseRespondFinishRequest(c.season.id, bn, m.id, 'accepted', level, m.rowId);
+                await _notifyOps({ title: '🗡 締め凸を了承', body: who.name + ': B' + bn, tag: 'ops-finish-answer', except: m.id });
+                names.push(who.name);
+            }
+            if (typeof _refreshFinishRequests === 'function') await _refreshFinishRequests();
+            note('assume', '案1 の ' + names.join('・') + ' が了承した、と仮定しました', 'ほかの案はまだ返事がありません。本番では返事はばらばらに届き、期限までに揃わないこともあります');
+        },
+        // (運営編・当日) 確定した人がゲームで締め凸をして報告した → 運営の端末が撃破を検知する (どちらも本物の関数)
+        finishKill: async function () {
+            var c = context();
+            var rows = c.allResv.filter(function (r) { return r.source_type === 'finish_request' && r.status === 'approved'; })
+                .sort(function (a, b) { return (Number(b.expected_damage_b) || 0) - (Number(a.expected_damage_b) || 0); });
+            if (!rows.length) { note('assume', '締め凸の約束がありません', 'この練習ではここまでです'); return; }
+            var bn = Number(rows[0].boss_number), names = [];
+            var boss = c.T.bosses.filter(function (x) { return eq(x.season_id, c.season.id) && eq(x.boss_number, bn); })[0];
+            if (!boss) return;
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i], left = Number(boss.remaining_hp_raw);
+                if (!(left > 0)) break;   // 先の人で倒れたら、あとの人は凸しない
+                var pl = c.T.players.filter(function (x) { return eq(x.id, r.player_id); })[0];
+                // ゲームは残HPを超えるダメージを記録しない (締め凸の数値は実力より小さい)。最後の人はとどめ
+                var dmg = i === rows.length - 1 ? left : Math.min(Math.round((Number(r.expected_damage_b) || 30) * 1e9), left);
+                await window.supabaseAddAttack({ seasonId: c.season.id, playerId: r.player_id, attackDate: c.season.hard_date, bossNumber: bn, bossCode: boss.boss_code,
+                    damageRaw: dmg, level: c.season.current_level || 1, characters: r.characters_snapshot || [] }, { reservationId: r.id, actorName: pl ? pl.name : null });
+                names.push(pl ? pl.name : String(r.player_id));
+            }
+            note('assume', names.join('・') + ' が締め凸を報告して B' + bn + ' を倒した、と仮定しました', '本番では本人のホームから報告します。運営の端末が 30 秒ごとの見直しで撃破を検知し、割当のある人へ通知します');
+            // 運営の端末の定期チェックと同じ関数で検知 (撃破の通知・そのボスの依頼と約束の片付け)
+            await _checkRaidEvents();
+        },
     };
-    /** 配信プランのうち hour 時より前のぶんを、ほかのメンバーが凸したことにする (ボスは倒し切らない) */
-    function advanceWorld(c, plan, hour) {
+    /** 配信プランのうち hour 時より前のぶんを、ほかのメンバーが凸したことにする (ボスは倒し切らない)。keepRatio = ボス番号 → 残す割合 (既定 0.12) */
+    function advanceWorld(c, plan, hour, keepRatio) {
         var lv = plan && plan.levels && plan.levels[0];
         if (!lv) return;
         var order = ['h05', 'h06', 'h07', 'h08', 'h09', 'h10', 'h11', 'h12', 'h13', 'h14', 'h15', 'h16', 'h17', 'h18', 'h19', 'h20', 'h21', 'h22', 'h23', 'h00', 'h01', 'h02', 'h03', 'h04'];
@@ -261,7 +321,8 @@
         (lv.bosses || []).forEach(function (b) {
             var boss = c.T.bosses.filter(function (x) { return eq(x.season_id, c.season.id) && eq(x.boss_number, b.bossNumber); })[0];
             if (!boss) return;
-            var keep = Math.max(Number(boss.total_hp_raw) * 0.12, mineB[b.bossNumber] || 0);
+            var ratio = (keepRatio && keepRatio[b.bossNumber] != null) ? keepRatio[b.bossNumber] : 0.12;
+            var keep = Math.max(Number(boss.total_hp_raw) * ratio, mineB[b.bossNumber] || 0);
             (b.attacks || []).forEach(function (a) {
                 // 割当の形は js/optimal-plan.js の出力: { memberId, hourIdx (5時始まりの番号), dmgB, usedB, team, flex, … }
                 var pid = a.memberId;
@@ -420,13 +481,90 @@
                     return stray(c, []) || { text: '「📤 このプランを配信」を押します。確認が出たら OK。押すまでメンバーには届きません。', real: '配信するとメンバー全員に通知が届き、ホームの「あなたの3凸」に割当が出ます。配信のあとに申請が来たら、承認 → 組み直し → もう一度配信です。', target: pick('planPublish') };
                 } },
         ],
-        'ops-day': [],
+        // 当日 20 時・運営役。盤面は SETUP['ops-day'] が作る (朝 5 時からのプランを配信済み・20 時までの凸が入っている・B1 の残HPがゲームとずれている)
+        'ops-day': [
+            { key: 'hp', title: 'ゲームの画面を見てボスの残HPを直す',
+                done: function (c) { var at = store.get('ops-day:setupAt') || ''; return c.T.bosses.some(function (b) { return eq(b.season_id, c.season.id) && eq(b.boss_number, 1) && String(b.updated_at || '') > at; }); },
+                guide: function (c) {
+                    if (c.modalId === 'opsBossHpModal') {
+                        var inp = pick('bossHpInput');
+                        if (!inp) return { text: 'ボスの一覧を読み込んでいます…' };
+                        if (Math.abs(Number(inp.value) - 40) > 0.001) return { text: 'ゲームの画面では B1 の残りが 40B でした (練習の設定)。B1 の「残HP」を 40 にします。', target: inp };
+                        return { text: 'B1 の「保存」を押します。', real: '残HPが 0 になる保存は撃破として検知されます (通知が飛びます)。数字を確かめてから押します。', target: pick('bossHpSave') };
+                    }
+                    var b1 = c.T.bosses.filter(function (b) { return eq(b.season_id, c.season.id) && eq(b.boss_number, 1); })[0];
+                    return stray(c, []) || (c.tab !== 'ops' ? nav('navOps', '運営')
+                        : { text: '当日の運営はまずボスの残HPをゲームと合わせます。ここでは B1 が ' + (b1 ? (Number(b1.remaining_hp_raw) / 1e9).toFixed(1) : '?') + 'B のままです。先頭の「🎯 ボス HP を更新する」(無ければ「ボスHP更新」) を押します。',
+                            real: '報告がまだの凸や報告のずれで、ここの残HPはゲームと食い違います。30 分以上古いと運営タブの先頭に「HP 更新が古い」と出ます。古い HP で締め凸を出すと無駄凸や取りこぼしが出ます。', target: pick('bossHpOpen') });
+                } },
+            { key: 'console', title: '締凸検索で「いま打つか、待つか」を読む',
+                done: function () { return store.get('ops-day:console') === '1'; },
+                guide: function (c) {
+                    if (consoleFor('water') && typeof _opsFinish !== 'undefined' && _opsFinish.hours === 4) { try { store.set('ops-day:console', '1'); } catch (_) { /* noop */ } }
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (!consoleFor('water')) return stray(c, []) || { text: '「ボス状況」の B1 のカードで「締凸検索」を押します。締め凸 = 残りが少ないボスにとどめを刺す凸です。', target: pick('finishPick') };
+                    return stray(c, []) || { text: '「🏁 いま打つか、待つか」が出ました。いちばん上の 1 行が結論です。「4時間以内」の行を押すと、下の候補がその時間に出られる人で絞られます。',
+                        real: '「待つほうがきれい」でも、待つ間に状況は変わります (別のボスの依頼で凸が埋まる・返事が来ない)。迷ったら早いほうを採ります。', target: pick('finishWindow4') };
+                } },
+            { key: 'offer', title: '2 つの案を同時に打診する',
+                done: function (c) { return c.offer.length > 0 || c.pushLog.some(function (r) { return /締め凸 \(案/.test(r.title || ''); }); },
+                guide: function (c) {
+                    if (c.modalId === 'pushPreviewModal') return { text: '宛先と文面を確かめて「送信する」を押します。文面には「ほかの案と同時にお願いしています」と期限が入っています。', real: '同時に頼んでいることを伏せると、落ちた人が不信になります。期限は 15 分のままで構いません。', target: pick('pushSend') };
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (!consoleFor('water')) return stray(c, []) || { text: 'B1 の「締凸検索」を押してコンソールを出します。', target: pick('finishPick') };
+                    var picked = typeof _opsFinish !== 'undefined' ? _opsFinish.pick.size : 0;
+                    if (picked < 2) {
+                        var btn = unpicked('offerPickNow') || unpicked('offerPickH4') || unpicked('offerPickAny');
+                        return stray(c, []) || { text: '1 案ずつ順に聞くと返事待ちが積み上がります。「今すぐ」の案と「4時間以内」の案の「同時打診に選ぶ」を押します (あと ' + (2 - picked) + ' 案)。',
+                            real: '案は 2 つまで。先に全員がそろった案で確定し、もう片方には「今回は見送り」を伝えます。', target: btn };
+                    }
+                    return stray(c, []) || { text: '「📣 同時に打診」を押します。プレビューが出ます。', real: '両方の案の全員に通知が届きます。返事が無いまま期限が過ぎたら、返事の無い人を外して組み直すか、もう少し待つかを決めます。', target: pick('offerSend') };
+                } },
+            { key: 'confirm', title: '先にそろった案で確定する',
+                done: function (c) {
+                    var settled = c.offer.length > 0 && c.offer.every(function (r) { return r.status !== 'pending'; }) && c.offer.some(function (r) { return r.status === 'accepted'; });
+                    return settled || c.allResv.some(function (r) { return r.source_type === 'finish_request' && r.status === 'fulfilled'; }) || c.notices.some(function (r) { return r.kind === 'boss_defeated'; });
+                },
+                guide: function (c) {
+                    if (!c.offer.some(function (r) { return r.status === 'accepted'; })) return stray(c, []) || { text: '打診しました。返事を待ちます。了承した人のホームには「引き受けた凸」として固定 (🔒) が入ります。',
+                        real: '返事はばらばらに届き、期限までにそろわないこともあります。返事が来ると運営あての通知が鳴り、「🔁 直近の動き」にも出ます。', assume: ['finishAnswers', '⏩ 案1 の全員が了承したことにする'] };
+                    if (c.modalId === 'pushPreviewModal') return { text: '見送りの文面を確かめて「送信する」を押します。', real: '黙って流さないのが決めごとです (黙ると、次から返事が来なくなります)。', target: pick('pushSend') };
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (!consoleFor('water')) return stray(c, []) || { text: 'B1 の「締凸検索」を押して、打診の進み具合を出します。', target: pick('finishPick') };
+                    var btn = pick('offerConfirm');
+                    if (!btn) return stray(c, []) || { text: '「📣 打診中」の箱に「全員そろいました」が出るのを待ちます (少し遅れて描き直されます)。' };
+                    return stray(c, []) || { text: '案1 がそろいました。「この案で確定」を押します。確認が出たら OK。', real: '確定すると、もう片方の案の人に「今回は見送り」の通知が届きます。先にそろった案で進めるのが同時打診の約束です。', target: btn };
+                } },
+            { key: 'kill', title: '締め凸の報告と撃破の検知',
+                done: function (c) { return c.notices.some(function (r) { return r.kind === 'boss_defeated' && r.sent; }); },
+                guide: function (c) {
+                    return stray(c, []) || { text: '確定した人がゲームで凸をして、自分のホームから報告します。運営はそれを待ちます。',
+                        real: '運営の端末は 30 秒ごとに盤面を見直し、残HPが 0 になったら撃破を検知して、そのボスに割当のある人へ「撃破」の通知を送り、そのボスの依頼と約束を片付けます。運営の端末が 1 台も開いていない間は検知されません。',
+                        assume: ['finishKill', '⏩ 了承した人が締め凸を報告したことにする'] };
+                } },
+        ],
     };
     var SCENARIOS = {
-        'member': { title: 'メンバー編', sub: '前日の準備から当日の凸まで', next: 'ops-eve' },
-        'ops-eve': { title: '運営編・前日', sub: '催促 → 算出 → 📌 → 承認 → 配信', next: 'member' },
-        'ops-day': { title: '運営編・当日', sub: '(準備中)', next: 'member' },
+        'member': { title: 'メンバー編', sub: '前日の準備から当日の凸まで', next: 'ops-eve',
+            diff: '練習では運営の返事や時間を「〜したことにする」で進めました。本番では運営が確認するまで待ちます (承認されると通知が届きます)。' },
+        'ops-eve': { title: '運営編・前日', sub: '催促 → 算出 → 📌 → 承認 → 配信', next: 'ops-day',
+            diff: '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に全員へ届きます。' },
+        'ops-day': { title: '運営編・当日', sub: 'HP更新 → 締め凸の打診 → 確定 → 撃破', next: 'member',
+            diff: '練習では返事と締め凸の報告を「したことにする」で進めました。本番では返事はばらばらに届き、期限までにそろわないこともあります。撃破の検知は運営の端末が 30 秒ごとに行うので、運営の端末が開いていない間は通知が出ません。' },
     };
+    /** 締め凸コンソールが、その属性 (= そのボス) で出ているか */
+    function consoleFor(attr) {
+        var list = document.getElementById('opsFinishList');
+        return !!(list && vis(list) && typeof _opsCurrentAttr !== 'undefined' && _opsCurrentAttr === attr && typeof _opsFinishCompare !== 'undefined' && _opsFinishCompare && list.querySelector('button[onclick^="handleOpsFinishPick("]'));
+    }
+    /** まだ選んでいない (☐ の) 「同時打診に選ぶ」ボタン */
+    function unpicked(name) {
+        for (var i = 0; i < SEL[name].length; i++) {
+            var list = document.querySelectorAll(SEL[name][i]);
+            for (var j = 0; j < list.length; j++) if (vis(list[j]) && /^☐/.test(String(list[j].textContent || '').trim())) return list[j];
+        }
+        return null;
+    }
     P.steps = STEPS;
     P.scenarios = SCENARIOS;
     P.assumeKeys = Object.keys(ASSUME);
@@ -488,6 +626,33 @@
                 damageRaw: Math.round((Number(res.expected_damage_b) || 30) * 1e9), level: c2.season.current_level || 1, characters: res.characters_snapshot || [] }, { reservationId: res.id, actorName: P.me.name });
         },
     };
+    // ---------- 編の開始状態 (一回きり。種データだけでは足りない編は、本物の関数で盤面を作ってから始める) ----------
+    var SETUP = {
+        // 運営編・当日 (20 時): 朝 5 時からのプランを配信済み・20 時までの割当は凸したことにする・B1 だけ残りを多めに残し (報告がまだの凸)、
+        // HP の更新を 2 時間前にする (運営タブの先頭に「HP 更新が古い」が出る = 最初の課題)
+        'ops-day': async function (c) {
+            await opsPublish('day');
+            var pub = await window.supabaseGetPublishedPlan().catch(function () { return null; });
+            advanceWorld(context(), pub && pub.plan, 20, { 1: 0.45 });
+            var stale = new Date(Date.now() - 2 * 3600000).toISOString();
+            P.db.tx(function () { c.T.bosses.forEach(function (b) { if (eq(b.season_id, c.season.id)) b.updated_at = stale; }); });
+            store.set('ops-day:setupAt', new Date().toISOString());
+        },
+    };
+    async function runSetup() {
+        var c = context();
+        var snap = P.db.dump(), clockWas = P.clock.get();
+        try {
+            await SETUP[SC](c);
+            store.set('setup:done', '1');
+            return true;
+        } catch (e) {
+            console.warn('[練習] 開始の盤面を作れませんでした:', e && e.message || e);
+            try { P.db.restore(snap); P.clock.put(clockWas); } catch (_) { /* noop */ }
+            try { store.set('setup:err', String((e && e.message) || e)); } catch (_) { /* noop */ }
+            return false;
+        }
+    }
     var ffBusy = false;
     /** 手前の課題を順に済ませる。★ 途中で失敗したら**全部戻す** (半端に済んだ状態で始めない — Codex指摘 2026-10-03)。戻したら最初から始める */
     async function fastForward(startKey) {
@@ -635,6 +800,20 @@
     function update() {
         var c = context();
         if (!c || !c.season) { render('<div class="pm-band"><span class="t">🎮 練習の準備をしています…</span></div>', 'wait'); target = null; return; }
+        // 編の開始状態を作る (一回だけ)。作れなかったら知らせて「もう一度」(半端な盤面で始めない)
+        if (SETUP[SC] && store.get('setup:done') !== '1') {
+            var err = store.get('setup:err');
+            if (err) {
+                render('<div class="pm-band"><span class="t">🎮 練習中 — 本番には反映されません</span><button data-pm="quit">やめる</button></div><div class="pm-body"><div class="pm-in"><p>開始の盤面を作れませんでした: ' + esc(err) + '</p>'
+                    + '<div class="pm-row"><button class="pm-btn" data-pm="restart">もう一度</button><button class="pm-btn sub" data-pm="quit">練習をやめる</button></div></div></div>', 'setup-err:' + err);
+                target = null; return;
+            }
+            if (!ffBusy) {
+                ffBusy = true;
+                runSetup().then(function () { if (typeof P.save === 'function') P.save(); location.reload(); });
+            }
+            render('<div class="pm-band"><span class="t">🎮 当日の盤面を作っています… (配信と 20 時までの凸)</span></div>', 'setup'); target = null; return;
+        }
         // 途中の課題から始める指定があれば、手前を済ませてから読み込み直す (1 回だけ)
         var startAt = store.get('start');
         if (startAt && !store.get('ff:done')) {
@@ -675,9 +854,7 @@
             var nextSc = SCENARIOS[scn.next];
             body = cur.n ? '<div class="pm-done"><b style="font-size:14px;font-weight:900;color:var(--t-ink)">🎉 ' + esc(scn.title) + ' おしまい</b>'
                     + '<p>本番でも同じ場所・同じボタンです。このまま自由に触ることもできます。</p>'
-                    + '<div class="pm-real" style="text-align:left"><b>本番とのちがい</b>' + (SC === 'member'
-                        ? '練習では運営の返事や時間を「〜したことにする」で進めました。本番では運営が確認するまで待ちます (承認されると通知が届きます)。'
-                        : '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に全員へ届きます。') + '</div>'
+                    + '<div class="pm-real" style="text-align:left"><b>本番とのちがい</b>' + esc(scn.diff || '') + '</div>'
                     + '<div class="pm-row"><button class="pm-btn sub" data-pm="restart">もう一度</button>' + (backBtn ? '<button class="pm-btn sub" data-pm="back" data-to="' + (cur.i - 1) + '">↩ 1つ前に戻る</button>' : '')
                     + (nextSc ? '<button class="pm-btn" data-pm="goto" data-sc="' + esc(scn.next) + '">次は ' + esc(nextSc.title) + ' →</button>' : '') + '<button class="pm-btn sub" data-pm="quit">練習をやめる</button></div>' + dots + '</div>'
                 : '<p>この編はまだ用意されていません。画面は自由に触れます。</p><div class="pm-row"><button class="pm-btn" data-pm="goto" data-sc="member">メンバー編へ</button><button class="pm-btn sub" data-pm="quit">練習をやめる</button></div>';

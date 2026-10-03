@@ -686,6 +686,7 @@ test('見張り: 本番では練習のファイルを 1 つも読まない / 練
     assert.match(HTML, /onclick="startPractice\('member'\)">メンバー編<\/button>\s*<button class="tour-guide-launcher" onclick="startPractice\('ops-eve'\)">運営編・前日<\/button>/, 'ヘルプに入口 (メンバー編・運営編・前日) が無い');
     assert.equal((HTML.match(/onclick="startPractice\('member'\)"/g) || []).length, 2, 'メンバー編の入口は ヘルプ と 設定 › ガイド の 2 つ');
     assert.equal((HTML.match(/onclick="startPractice\('ops-eve'\)"/g) || []).length, 2, '運営編・前日の入口は ヘルプ と 設定 › ガイド の 2 つ');
+    assert.equal((HTML.match(/onclick="startPractice\('ops-day'\)"/g) || []).length, 2, '運営編・当日の入口は ヘルプ と 設定 › ガイド の 2 つ');
     // 練習中は端末の状態 (通知タップの行き先・キャッシュ) を本番と取り合わない
     assert.match(HTML, /async function _consumePendingNav\(\) \{\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE\) return;/, '練習中に本物の通知タップの行き先を消費している');
     assert.match(HTML, /msgEl\.textContent = '';\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE\) \{\s*statusEl\.innerHTML = '[^']*練習モードでは通知の設定は変えられません[^']*';\s*actionsEl\.innerHTML = '';\s*return;/, '練習中の通知設定シートに、押しても断られるボタンが並ぶ');
@@ -754,6 +755,10 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     const steps = P.steps.member;
     assert.deepEqual(Array.from(steps, s => s.key), ['avail', 'mock', 'resv', 'ack', 'attack', 'finish']);   // (別の実行環境の配列なので写してから比べる)
     assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['nudge', 'compute', 'pin', 'request', 'publish']);
+    assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'console', 'offer', 'confirm', 'kill'], '運営編・当日は HP更新 → コンソール → 同時打診 → 確定 → 撃破');
+    // 編の並び (次は ○○ →): メンバー → 運営・前日 → 運営・当日 → メンバー
+    assert.deepEqual(['member', 'ops-eve', 'ops-day'].map(k => P.scenarios[k].next), ['ops-eve', 'ops-day', 'member']);
+    for (const k of Object.keys(P.scenarios)) assert.ok(P.scenarios[k].diff && P.scenarios[k].diff.length > 30, `${k} の「本番とのちがい」が無い`);
     for (const sc of Object.keys(P.steps)) for (const s of P.steps[sc]) assert.ok(s.title && typeof s.done === 'function' && typeof s.guide === 'function', `${sc}/${s.key} の形が違う`);
     // 編の一覧は boot.js / guide.js / index.html (URL と入口) で同じ
     const ids = Object.keys(P.scenarios).sort();
@@ -770,6 +775,17 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     assert.match(GUIDE, /async function fastForward\(startKey\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?if \(!list\[i\]\.done\(context\(\)\)\) throw new Error[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);[\s\S]*?return false;/, '途中の課題から始める処理が、失敗しても途中まで書いた盤面を残す');
     assert.match(GUIDE, /fastForward\(startAt\)\.then\(function \(ok\) \{[\s\S]*?if \(ok\) store\.set\('ff:done', '1'\); else store\.del\('start'\);/, '失敗しても「済んだ」印を付けている / 「途中から」をやめていない');
     for (const fn of ['supabaseConfirmAvailability', 'supabaseSaveMockSubmission', 'supabaseCreateReservation', 'supabaseAckPlan']) assert.ok(new RegExp(`var FF = \\{[\\s\\S]*?window\\.${fn}\\(`).test(GUIDE), `手前を済ませるのに本物の ${fn} を使っていない`);
+    // 編の開始状態 (SETUP): 運営編・当日だけ。本物の配信 (opsPublish) + 20 時までの凸 (advanceWorld) で作り、失敗したら全部戻して知らせる (半端な盤面で始めない)
+    assert.deepEqual([...GUIDE.matchAll(/\n        '([a-z-]+)': async function \(c\) \{/g)].map(m => m[1]), ['ops-day'], '開始の盤面を作る編が増えた/減った');
+    assert.match(GUIDE, /var SETUP = \{[\s\S]*?await opsPublish\('day'\);[\s\S]*?advanceWorld\(context\(\), pub && pub\.plan, 20, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面の作り方が変わった (配信 → 20 時までの凸 → HP 更新の時刻)');
+    assert.match(GUIDE, /async function runSetup\(\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?store\.set\('setup:done', '1'\);[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);[\s\S]*?store\.set\('setup:err'/, '開始の盤面を作れなかったとき、戻して知らせていない');
+    assert.match(GUIDE, /if \(SETUP\[SC\] && store\.get\('setup:done'\) !== '1'\) \{[\s\S]*?runSetup\(\)\.then\(function \(\) \{ if \(typeof P\.save === 'function'\) P\.save\(\); location\.reload\(\); \}\);/, '盤面を作ったあと、控えてから読み込み直していない');
+    // 当日の仮定: 了承は本物のメンバー側の手順 (枠を取ってから伝える) / 締め凸の報告は本物の凸報告 → 本物の検知
+    assert.match(GUIDE, /finishAnswers: async function \(\) \{[\s\S]*?await _reserveForFinishRequest\(ctx, who, bn, m\.rowId\);\s*await window\.supabaseRespondFinishRequest\(c\.season\.id, bn, m\.id, 'accepted', level, m\.rowId\);\s*await _notifyOps\(\{ title: '🗡 締め凸を了承'/, '了承の仮定が本物の手順 (枠 → 返事 → 運営あての通知) でない');
+    assert.match(GUIDE, /finishKill: async function \(\) \{[\s\S]*?await window\.supabaseAddAttack\(\{[^}]*\}, \{ reservationId: r\.id, actorName: [^}]*\}\);[\s\S]*?await _checkRaidEvents\(\);/, '締め凸の報告の仮定が 本物の凸報告 (予約つき) → 本物の撃破の検知 でない');
+    // 当日の課題の判定は、撃破で依頼の行が消えたあとも「済んだ」のまま (撃破の通知・実行済みの約束で見る)
+    assert.match(GUIDE, /key: 'confirm'[\s\S]*?return settled \|\| c\.allResv\.some\(function \(r\) \{ return r\.source_type === 'finish_request' && r\.status === 'fulfilled'; \}\) \|\| c\.notices\.some\(function \(r\) \{ return r\.kind === 'boss_defeated'; \}\);/, '確定の判定が、撃破で依頼が消えると「まだ」に戻る');
+    assert.match(GUIDE, /key: 'offer'[\s\S]*?done: function \(c\) \{ return c\.offer\.length > 0 \|\| c\.pushLog\.some\(/, '同時打診の判定が、撃破で依頼が消えると「まだ」に戻る');
     assert.match(GUIDE, /fastForward\(startAt\)\.then\([\s\S]*?location\.reload\(\)/, '手前を済ませたあと読み込み直していない (画面が古いまま)');
     const used = [...GUIDE.matchAll(/assume: \['(\w+)'/g)].map(m => m[1]);
     assert.deepEqual([...new Set(used)].sort(), [...P.assumeKeys].sort(), '「〜したことにする」の顔ぶれが課題と合わない');
@@ -797,7 +813,7 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
         assert.ok(/real: '/.test(around), `${m[1]} の仮定に「本番では」の断りが付いていない`);
     }
     // 相手役が送る通知は、本番の文面と同じ (本番の文面を変えたら練習も直す) / 本物の送り方で送る
-    for (const w of ['🔒 予約が承認されました', '固定されました。プランは運営が組み直して配信します', 'PT 締め凸候補', '凸お願いできる方いますか🙏', './?tab=mypage&focus=finishreq']) {
+    for (const w of ['🔒 予約が承認されました', '固定されました。プランは運営が組み直して配信します', 'PT 締め凸候補', '凸お願いできる方いますか🙏', './?tab=mypage&focus=finishreq', '🗡 締め凸を了承', "tag: 'ops-finish-answer'"]) {
         assert.ok(GUIDE.includes(w) && HTML.includes(w), `通知の文面「${w}」が 本番 と 練習 でそろっていない`);
     }
     assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/, '相手役の通知を本物の送り方で送っていない (受け取った通知の一覧に残らない)');
