@@ -10572,8 +10572,13 @@ console.log('\ngrowthDomain:');
         assert.ok(steps.some(s => /予約/.test(head(s))) && steps.some(s => /運営担当/.test(head(s))) && steps.some(s => /こう決まる/.test(head(s))), '予約 / 運営 / 3凸 の章が無い');
         // 足したステップの色はトークン (直値の上限に数えない)。既存 7 ステップの hex は上限の内訳に入っている
         assert.ok([4, 7, 8].every(i => /^var\(--/.test(steps[i].accentColor) && /^var\(--/.test(steps[i].accentDark)), '足したステップ (予約 / 運営 / 分析) の色が直値');
-        // デモを使う関数がまだある (demo の名前を変えたらここも)
-        for (const fn of ['_tourDemoAvailBody', '_tourDemoMockBody', '_tourDemoBattleBody']) assert.ok(html.includes('function ' + fn + '('), fn + ' が無い');
+        // ★ 体験デモは手描きの見本ではなく、練習モード (本物の画面) の該当する課題への入口 (2026-10-03)。demo の名前 → 練習の課題の key
+        assert.ok(!/function _tourDemo(Avail|Mock|Battle)Body\(/.test(html), '手描きの体験デモが残っている (本番の画面を直すたびにずれる)');
+        const map = new Function(html.match(/const TOUR_DEMO_START = (\{[^}]*\});/)[1].replace(/^/, 'return ') )();
+        assert.deepEqual(Object.keys(map), ['avail', 'mock', 'battle']);
+        assert.deepEqual(Object.values(map).map(v => v[0]), ['avail', 'mock', 'attack'], 'ツアーのデモから入る練習の課題がずれている');
+        assert.match(html, /function _tourDemoHtml\(kind\)[\s\S]*?onclick="startPractice\('member', '\$\{d\[0\]\}'\)"/, '体験デモが練習モードへの入口でない');
+        assert.match(html, /\$\{step\.demo \? _tourDemoHtml\(step\.demo\) : ''\}/, 'ツアーがデモの種類を渡していない');
     });
 
     test('★ 配線: 育成の取り込みパネル (段階「準備」と「終了」・upsert のみ・43未適用は止める)', () => {

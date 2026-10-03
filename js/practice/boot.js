@@ -14,14 +14,22 @@
     var SS = window.sessionStorage, LS = window.localStorage;
     var proto = Storage.prototype;
     var rawGet = proto.getItem, rawSet = proto.setItem, rawDel = proto.removeItem;
-    var role = null;
-    try { role = rawGet.call(SS, KEY); } catch (_) { role = null; }
-    if (role !== 'member' && role !== 'ops') return;
+    // 印の中身 = 編 (シナリオ) の id。役と開始時刻は編から決める (js/practice/guide.js の SCENARIOS と同じ一覧。テストが突き合わせる)
+    var SCENARIOS = { 'member': { role: 'member', day: 'eve', hour: 20 }, 'ops-eve': { role: 'ops', day: 'eve', hour: 20 }, 'ops-day': { role: 'ops', day: 'hard', hour: 20 } };
+    var scenario = null;
+    try { scenario = rawGet.call(SS, KEY); } catch (_) { scenario = null; }
+    if (scenario === 'ops') scenario = 'ops-eve';   // 古い印 (役だけ) は 前日の運営編 と読む
+    if (!SCENARIOS[scenario]) return;
+    var role = SCENARIOS[scenario].role;
 
     // 練習の層だけが使う置き場 (差し替えの影響を受けない)
     var store = {
         get: function (k) { try { return rawGet.call(SS, KEY + ':' + k); } catch (_) { return null; } },
-        set: function (k, v) { rawSet.call(SS, KEY + ':' + k, String(v)); },
+        set: function (k, v) {
+            // やめた・やり直したあと (closed) は書かない — 読み込み直しの直前に案内が書く 進み具合 の鍵が、消した置き場に残る
+            if (window.PAD_PRACTICE && window.PAD_PRACTICE.closed) return;
+            rawSet.call(SS, KEY + ':' + k, String(v));
+        },
         del: function (k) { try { rawDel.call(SS, KEY + ':' + k); } catch (_) { /* noop */ } },
     };
 
@@ -44,7 +52,9 @@
         if (!/^\d{4}-\d{2}-\d{2}$/.test(hardDate || '')) { hardDate = ymdJst(RealDate.now() + DAY); store.set('hard', hardDate); }
         offset = Number(store.get('clock'));
         if (!isFinite(offset) || store.get('clock') == null) {
-            offset = atJst(ymdJst(atJst(hardDate, 12) - DAY), 20) - RealDate.now();   // はじめは 前日の 20 時
+            // はじめの時刻は編ごと (メンバー編・前日の運営編 = 前日 20 時 / 当日の運営編 = 当日 20 時)
+            var sc = SCENARIOS[scenario];
+            offset = atJst(sc.day === 'eve' ? ymdJst(atJst(hardDate, 12) - DAY) : hardDate, sc.hour) - RealDate.now();
             store.set('clock', offset);
         }
         // 名乗り・初回だけ出るもの (練習の置き場へ直接書く)
@@ -72,7 +82,7 @@
     window.Date = PracticeDate;
 
     window.PAD_PRACTICE = {
-        role: role, hardDate: hardDate, store: store, db: null, me: ME, ops: OPS, closed: false,
+        role: role, scenario: scenario, hardDate: hardDate, store: store, db: null, me: ME, ops: OPS, closed: false,
         clock: {
             now: function () { return RealDate.now() + offset; },
             /** 練習の時計を「その日の hour 時 (日本時間)」に合わせる。day: 'eve' = 前日 / 'hard' = 当日 */
@@ -101,14 +111,15 @@
             var u = new URL(location.href); u.searchParams.delete('practice');
             location.replace(u.pathname + (u.search || '') + (u.hash || ''));
         },
-        /** 練習を最初からやり直す (役を変えるときもこれ) */
-        restart: function (nextRole) {
+        /** 練習を最初からやり直す (別の編に移るときもこれ) */
+        restart: function (nextScenario, startAt) {
             this.closed = true;
             try {
                 var gone = [];
                 for (var i = 0; i < SS.length; i++) { var k = SS.key(i); if (k && (k.indexOf(KEY + ':') === 0 || k.indexOf(NS) === 0)) gone.push(k); }
                 gone.forEach(function (k) { rawDel.call(SS, k); });
-                rawSet.call(SS, KEY, nextRole === 'ops' ? 'ops' : nextRole === 'member' ? 'member' : role);
+                rawSet.call(SS, KEY, SCENARIOS[nextScenario] ? nextScenario : scenario);
+                if (startAt) rawSet.call(SS, KEY + ':start', String(startAt));   // この課題から始める (手前は済んだ状態にする: guide.js の fastForward)
             } catch (_) { /* noop */ }
             location.reload();
         },

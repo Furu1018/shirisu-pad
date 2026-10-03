@@ -62,6 +62,19 @@
         finishAccept: ['button[onclick^="handleMyFinishRequestRespond("][onclick*="\'accepted\'"]'],
         finishDecline: ['button[onclick^="handleMyFinishRequestRespond("][onclick*="\'declined\'"]'],
         modalClose: ['button[onclick^="close"]', '[onclick^="close"]'],   // 「閉じる」ボタン。凸報告は div の ✕
+        planAck: ['button[onclick="handleAckPlan(this)"]'],
+        // 運営編
+        navOps: ['.bottom-nav-btn[data-tab="ops"]', '.tab-button[data-tab="ops"]'],
+        nudgeMock: ['[onclick="_opsStageAct(\'nudge:mock\')"]'],
+        pushSend: ['#pushPreviewSendBtn'],
+        planStartDay: ['[onclick="setOpsPlanStartMode(\'day\')"]'],
+        planCompute: ['[onclick="computeAndRenderOptimalPlan()"]'],
+        planTimetable: ['[onclick="setOpsPlanViewMode(\'timetable\')"]'],
+        planPiece: ['#opsOptimalPlan .plan-piece[data-piece]:not(.placed):not(.dim)'],
+        planCell: ['#opsOptimalPlan [data-boss][data-h]'],   // どのマスを指すかは placeableCell() が本物の判定で決める
+        resvApprove: ['button[onclick^="handleReservationApprove("]'],
+        planPublish: ['#opsPlanPublishBtn'],
+        swapAuto: ['#planSwapAutoBtn'],
     };
     P.selectors = SEL;
     var pick = function (name) { return q.apply(null, SEL[name]); };
@@ -72,6 +85,7 @@
         if (!T) return null;
         var season = T.seasons.filter(function (s) { return s.is_active; })[0] || null;
         var meId = P.role === 'ops' ? P.ops.id : P.me.id;
+        var allResv = season ? T.plan_reservations.filter(function (r) { return eq(r.season_id, season.id); }) : [];
         var modal = topModal();
         var mine = function (table) { return T[table].filter(function (r) { return eq(r.player_id, meId) && (r.season_id == null || !season || eq(r.season_id, season.id)); }); };
         return {
@@ -80,6 +94,8 @@
             mine: mine,
             resv: mine('plan_reservations').filter(function (r) { return r.source_type !== 'finish_request'; }),
             finish: mine('finish_requests'),
+            allResv: allResv,
+            pub: season ? T.published_plans.filter(function (r) { return eq(r.season_id, season.id); }).sort(function (a, b) { return Number(b.id) - Number(a.id); })[0] || null : null,
         };
     }
     var nav = function (name, label) { return { text: 'メニューの「' + label + '」を開きます。', target: pick(name) }; };
@@ -126,6 +142,61 @@
     function pushAsOps(payload) {
         return window.sendPushNotification(payload, { senderPlayerId: P.ops.id }).catch(function (e) { console.warn('[練習] 通知の見本を出せませんでした:', e && e.message || e); });
     }
+    /** 運営役の練習で「メンバーから申請が来た」: 21 時に出られて、その時刻のボスに合う編成を持つ人を 1 人選んで本物の関数で申請する */
+    function pickRequester(c) {
+        var T = c.T;
+        var taken = {};
+        c.allResv.forEach(function (r) { if (['requested', 'approved', 'cancel_requested', 'pinned'].indexOf(r.status) >= 0) taken[r.player_id] = true; });
+        var players = T.players.filter(function (p) { return !eq(p.id, P.me.id) && !eq(p.id, P.ops.id) && !p.archived && !taken[p.id]; });
+        for (var i = 0; i < players.length; i++) {
+            var pl = players[i];
+            if (!T.availability.some(function (a) { return eq(a.player_id, pl.id) && a.time_slot === 'h21'; })) continue;
+            var dmg = T.player_damages.filter(function (d) { return eq(d.player_id, pl.id) && Number(d.damage_b) > 0 && Array.isArray(d.characters) && d.characters.length === 5; })
+                .sort(function (a, b) { return Number(b.damage_b) - Number(a.damage_b); })[0];
+            if (!dmg) continue;
+            var boss = T.bosses.filter(function (b) { return eq(b.season_id, c.season.id) && b.weakness === dmg.attribute; })[0];
+            if (!boss) continue;
+            return { player: pl, dmg: dmg, boss: boss };
+        }
+        return null;
+    }
+    /** 時間割で「置ける場所が 1 つ以上ある」模擬ピース (本物の判定 planBoardDomain.canPlace で見る)。いま選んでいる人がそうならそれ */
+    function placeablePiece() {
+        var dom = window.planBoardDomain, snap = (typeof opsStore !== 'undefined' && opsStore) ? opsStore.get() : null, hours = typeof HOUR_ORDER !== 'undefined' ? HOUR_ORDER : null;
+        var pieces = Array.prototype.filter.call(document.querySelectorAll('#opsOptimalPlan .plan-piece[data-piece]:not(.placed)'), vis);
+        if (!dom || !snap || !hours || !pieces.length) return null;
+        var cells = Array.prototype.slice.call(document.querySelectorAll('#opsOptimalPlan [data-boss][data-h]'));
+        var okFor = function (pc) {
+            var pl = (snap.players || []).filter(function (x) { return eq(x.id, pc.dataset.piece); })[0];
+            if (!pl) return false;
+            return cells.some(function (cell) {
+                var boss = (snap.bosses || []).filter(function (b) { return eq(b.boss_number, cell.dataset.boss); })[0];
+                var h = cell.dataset.h === '' ? null : Number(cell.dataset.h);
+                return !!boss && h != null && dom.canPlace({ player: pl, attr: pc.dataset.attr, boss: boss, hourIdx: h, hourOrder: hours }).ok;
+            });
+        };
+        var sel = typeof _opsPlanSel !== 'undefined' ? _opsPlanSel : null;
+        var cur = sel && sel.kind === 'piece' ? pieces.filter(function (pc) { return eq(pc.dataset.piece, sel.memberId) && pc.dataset.attr === sel.attr; })[0] : null;
+        if (cur && okFor(cur)) return { el: cur, selected: true };
+        for (var i = 0; i < pieces.length; i++) if (okFor(pieces[i])) return { el: pieces[i], selected: false };
+        return null;
+    }
+    /** 選んでいるピースを置けるマス (タップ操作では画面に印が出ないので、本物の判定で探して枠を出す) */
+    function placeableCell() {
+        var dom = window.planBoardDomain, snap = (typeof opsStore !== 'undefined' && opsStore) ? opsStore.get() : null, hours = typeof HOUR_ORDER !== 'undefined' ? HOUR_ORDER : null;
+        var sel = typeof _opsPlanSel !== 'undefined' ? _opsPlanSel : null;
+        if (!dom || !snap || !hours || !sel) return null;
+        var pl = (snap.players || []).filter(function (x) { return eq(x.id, sel.memberId); })[0];
+        if (!pl) return null;
+        var cells = Array.prototype.filter.call(document.querySelectorAll('#opsOptimalPlan [data-boss][data-h]'), vis);
+        for (var i = 0; i < cells.length; i++) {
+            var cell = cells[i];
+            var boss = (snap.bosses || []).filter(function (b) { return eq(b.boss_number, cell.dataset.boss); })[0];
+            var h = cell.dataset.h === '' ? null : Number(cell.dataset.h);
+            if (boss && h != null && dom.canPlace({ player: pl, attr: sel.attr, boss: boss, hourIdx: h, hourOrder: hours }).ok) return cell;
+        }
+        return null;
+    }
     var ASSUME = {
         // 運営が申請を承認して、組み直して配信した
         approve: async function () {
@@ -149,6 +220,18 @@
             if (typeof P.save === 'function') P.save();   // ★ 読み込み直す前に、いま入れた凸を待たずに控える (控えは少し遅れて書かれる)
             location.reload();
             await new Promise(function () { /* 読み込み直しを待つ */ });
+        },
+        // (運営編) メンバーから予約の申請が来た — 本物の申請の関数と通知の文面で
+        memberRequest: async function () {
+            var c = context();
+            if (c.allResv.some(function (r) { return r.status === 'requested'; })) return;
+            var q = pickRequester(c);
+            if (!q) { note('assume', '申請できる人が見つかりません', 'この練習ではここまでです'); return; }
+            await window.supabaseCreateReservation({ seasonId: c.season.id, playerId: q.player.id, bossNumber: q.boss.boss_number, timeSlot: 'h21', loadoutSlot: Number(q.dmg.slot) || 1,
+                characters: q.dmg.characters, expectedDamageB: Number(q.dmg.damage_b), requestedBy: q.player.name });
+            await window.sendPushNotification({ title: '🔒 予約の申請', body: q.player.name + ': B' + q.boss.boss_number + ' 21時 編成' + (Number(q.dmg.slot) === 2 ? '②' : '①') + ' (承認待ち)',
+                tag: 'ops-resv-request', playerIds: [P.ops.id], ignoreAvailability: true, requireInteraction: true }, { senderPlayerId: q.player.id });
+            note('assume', q.player.name + 'さんから「B' + q.boss.boss_number + ' 21時」の申請が来た、と仮定しました', '本番ではいつ・何件来るか分かりません');
         },
         // 運営から締め凸のお願いが来た
         finishRequest: async function () {
@@ -212,7 +295,8 @@
             .sort(function (x, y) { return Number(x.remaining_hp_raw) - Number(y.remaining_hp_raw); })[0] || null;
     }
 
-    // ---------- 課題 (メンバー編) ----------
+    // ---------- 編 (シナリオ) と課題 ----------
+    // ★ id は js/practice/boot.js の SCENARIOS と同じ一覧 (テストが突き合わせる)。役と開始時刻は boot.js が決める
     var STEPS = {
         member: [
             { key: 'avail', title: '戦闘できる時間を確認する',
@@ -251,6 +335,12 @@
                     return stray(c, []) || (c.tab !== 'mypage' ? nav('navHome', 'ホーム')
                         : { text: '「あなたの3凸」の空き枠にある「＋ 自分から申請する」を押します。', target: pick('resvOpen') });
                 } },
+            { key: 'ack', title: '配信された凸プランを確かめる',
+                done: function (c) { return c.pub && c.mine('plan_acks').some(function (a) { return eq(a.plan_id, c.pub.id); }); },
+                guide: function (c) {
+                    return stray(c, []) || (c.tab !== 'mypage' ? nav('navHome', 'ホーム')
+                        : { text: 'ホームの「配信された凸プラン」で自分の割当を読み、下の「✅ 確認しました」を押します。', real: '配信が更新されると通知が届き、確認はもう一度押します。運営は「誰が確認したか」を見て催促します。', target: pick('planAck') });
+                } },
             { key: 'attack', title: '当日: 凸を報告する',
                 done: function (c) { return c.mine('attacks').length > 0; },
                 guide: function (c) {
@@ -282,9 +372,63 @@
                     return stray(c, []) || { text: 'ホームに届いた「締め凸のお願い」に返事をします。出られないときは「今回は難しい」で構いません (運営にすぐ伝わります)。', target: pick('finishAccept') };
                 } },
         ],
-        ops: [],
+        'ops-eve': [
+            { key: 'nudge', title: '模擬がまだの人に催促する',
+                done: function (c) { return c.T.push_notifications_log.some(function (r) { return /登録のお願い/.test(r.title || ''); }); },
+                guide: function (c) {
+                    if (c.modalId === 'pushPreviewModal') return { text: '宛先と文面を確かめてから「送信する」を押します。', real: '送っても、相手がいつ提出するかは分かりません。前日の夜にもう一度見ます。', target: pick('pushSend') };
+                    return stray(c, []) || (c.tab !== 'ops' ? nav('navOps', '運営')
+                        : { text: '運営タブの先頭には、いちばん急ぐ 1 つが出ます。「📣 未提出の人に催促する」を押します。', target: pick('nudgeMock') });
+                } },
+            { key: 'compute', title: '条件を選んでプランを算出する',
+                done: function () { return store.get('ops-eve:computed') === '1'; },
+                guide: function (c) {
+                    if (typeof _opsLastPlan !== 'undefined' && _opsLastPlan && _opsLastPlan.conditions) { try { store.set('ops-eve:computed', '1'); } catch (_) { /* noop */ } }
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (typeof _opsPlanStartMode !== 'undefined' && _opsPlanStartMode !== 'day') return stray(c, []) || { text: '条件は 3 つだけです。前日に組むので「起点」を「朝5時から」にします。', target: pick('planStartDay') };
+                    return stray(c, []) || { text: '「🧮 この条件で算出」を押します。本物のソルバーが 31 人の 3 凸を組みます (数秒かかります)。', target: pick('planCompute') };
+                } },
+            { key: 'pin', title: '📌 で 1 つ固定する',
+                done: function (c) { return c.allResv.some(function (r) { return r.status === 'pinned'; }); },
+                guide: function (c) {
+                    // 3 凸ぶん割当のある人にピースを置くと「どれと入れ替えるか」の確認が出る → 練習では「算出に任せる」で固定だけ置く
+                    if (c.modalId === 'planSwapModal') return { text: 'この人はもう 3 凸ぶんの割当があります。どれと入れ替えるかを選べますが、ここでは「外す凸は算出に任せる」を押します。', real: '「入れ替えて固定する」は、残す凸も 📌 で固定して算出で動かないようにします。', target: pick('swapAuto') };
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します。', target: pick('planCompute') };
+                    if (typeof _opsPlanViewMode !== 'undefined' && _opsPlanViewMode !== 'timetable') return stray(c, []) || { text: '「🗓 時間割」に切り替えます。📌 の固定は時間割で置きます。', target: pick('planTimetable') };
+                    // ★ ピースは「置ける場所がある人」を指す (夜しか出られない人のピースは、昼で終わる時間割には置けない)
+                    var pp = placeablePiece();
+                    if (!pp) return stray(c, []) || { text: 'いまの時間割に置ける模擬ピースがありません。「🧮 この条件で算出」をもう一度押してから試します。', target: pick('planCompute') };
+                    if (!pp.selected) return stray(c, []) || { text: '下の「🧩 模擬ピース」(まだ盤に無い人の編成) から、枠の付いた 1 つを押します。', real: '📌 は運営の下書きで、本人への約束ではありません。約束にするには 📣 でお願いして引き受けてもらいます。', target: pp.el };
+                    return stray(c, []) || { text: '枠の付いたマス (その人が出られる時間 × 合う属性のボス) を押します。📌 として固定され、算出し直されます。', target: placeableCell() };
+                } },
+            { key: 'request', title: 'メンバーからの申請を承認して組み直す',
+                done: function (c) { return c.allResv.some(function (r) { return r.status === 'approved' && r.source_type !== 'finish_request'; }); },
+                guide: function (c) {
+                    var req = c.allResv.filter(function (r) { return r.status === 'requested'; })[0];
+                    if (!req) return stray(c, []) || { text: '前日の夜、メンバーから「この時刻に・この編成で」の申請が届きます。', real: 'いつ・何件来るかは分かりません。届くと運営あての通知が鳴り、運営タブの先頭に出ます。', assume: ['memberRequest', '⏩ メンバーから申請が来たことにする'] };
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    var btn = pick('resvApprove');
+                    if (!btn) return stray(c, []) || { text: '申請が届いています。運営タブの「🔒 予約」のカードを開きます。', target: q('[onclick="_opsStageAct(\'reserve\')"]', '#opsSecReserve [onclick]') };
+                    return stray(c, []) || { text: '「承認する」を押します。確認が出たら OK → 承認した予約を固定して組み直し、差分 (誰の割当が変わるか) が出ます。', real: '承認は本人への約束です。見送るなら理由を添えます。約束を後から動かさないのがこのアプリの目的です。', target: btn };
+                } },
+            { key: 'publish', title: 'プランを配信する',
+                done: function (c) { return !!(c.pub && c.pub.plan && Number(c.pub.plan.reservationCount) >= 1); },
+                guide: function (c) {
+                    if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
+                    if (!(typeof _opsLastPlan !== 'undefined' && _opsLastPlan)) return stray(c, []) || { text: 'まず「🧮 この条件で算出」を押します (承認した予約が入ります)。', target: pick('planCompute') };
+                    return stray(c, []) || { text: '「📤 このプランを配信」を押します。確認が出たら OK。押すまでメンバーには届きません。', real: '配信するとメンバー全員に通知が届き、ホームの「あなたの3凸」に割当が出ます。配信のあとに申請が来たら、承認 → 組み直し → もう一度配信です。', target: pick('planPublish') };
+                } },
+        ],
+        'ops-day': [],
+    };
+    var SCENARIOS = {
+        'member': { title: 'メンバー編', sub: '前日の準備から当日の凸まで', next: 'ops-eve' },
+        'ops-eve': { title: '運営編・前日', sub: '催促 → 算出 → 📌 → 承認 → 配信', next: 'member' },
+        'ops-day': { title: '運営編・当日', sub: '(準備中)', next: 'member' },
     };
     P.steps = STEPS;
+    P.scenarios = SCENARIOS;
     P.assumeKeys = Object.keys(ASSUME);
 
     // ---------- 相手の動き・通知の見本 (最新の 2 件を課題カードの下に出す) ----------
@@ -305,6 +449,51 @@
         }
         schedule();
     });
+
+    // ---------- 途中の課題から始める (ツアーの「この操作をやってみる」から入ったとき) ----------
+    // 手前の課題を**本物の関数で**済ませてから読み込み直す。相手の動き (承認・時間) も同じ仮定の関数で起こす
+    var FF = {
+        avail: async function (c) {
+            var slots = c.T.availability.filter(function (a) { return eq(a.player_id, c.me); }).map(function (a) { return a.time_slot; });
+            await window.supabaseConfirmAvailability(c.season.id, c.me, { slotCount: slots.length, slots: slots });
+        },
+        mock: async function (c) {
+            // 灼熱PT の模擬 = ダメージ + 編成 5 人 (まだ使っていないキャラから)。本物の提出と同じ関数
+            var used = {};
+            c.T.player_damages.forEach(function (d) { if (eq(d.player_id, c.me)) (d.characters || []).forEach(function (n) { used[n] = true; }); });
+            var pick = function (burst, n) { return c.T.nikke_characters.filter(function (x) { return x.burst === burst && !used[x.canonical_name]; }).slice(0, n).map(function (x) { return x.canonical_name; }); };
+            var team = pick('B1', 1).concat(pick('B2', 1), pick('B3', 3));
+            await window.supabaseSaveMockSubmission(c.me, 'fire', { damageB: 33.1, slot: 1, characters: team.length === 5 ? team : null });
+        },
+        resv: async function (c) {
+            var dmg = c.T.player_damages.filter(function (d) { return eq(d.player_id, c.me) && Array.isArray(d.characters) && d.characters.length === 5; })
+                .sort(function (a, b) { return Number(b.damage_b) - Number(a.damage_b); })[0];
+            var boss = dmg && c.T.bosses.filter(function (b) { return eq(b.season_id, c.season.id) && b.weakness === dmg.attribute; })[0];
+            if (!boss) return;
+            await window.supabaseCreateReservation({ seasonId: c.season.id, playerId: c.me, bossNumber: boss.boss_number, timeSlot: 'h21', loadoutSlot: Number(dmg.slot) || 1,
+                characters: dmg.characters, expectedDamageB: Number(dmg.damage_b), requestedBy: P.me.name });
+            await ASSUME.approve();
+        },
+        ack: async function (c) { var pub = context().pub; if (pub) await window.supabaseAckPlan(c.me, c.season.id, pub.id); },
+        attack: async function (c) {
+            var pub = await window.supabaseGetPublishedPlan().catch(function () { return null; });
+            advanceWorld(context(), pub && pub.plan, 21);
+            P.clock.set('hard', 21);
+        },
+    };
+    var ffBusy = false;
+    async function fastForward(startKey) {
+        var list = STEPS[SC] || [];
+        var until = list.findIndex(function (s) { return s.key === startKey; });
+        if (until < 0) return;
+        for (var i = 0; i < until; i++) {
+            var c = context();
+            if (!c || !c.season) break;
+            if (list[i].done(c)) continue;
+            var fn = FF[list[i].key];
+            if (fn) await fn(c);
+        }
+    }
 
     // ---------- 課題の区切りごとの控え (「↩ 1つ前に戻る」用) ----------
     // 課題 i の**最初**の状態 (盤面・時計・知らせ) を snap:i に控える。戻る = その控えを戻して読み込み直す
@@ -333,8 +522,8 @@
         saveFeed();
         for (var i = toIdx + 1; i < 20; i++) store.del('snap:' + i);   // 戻った先より後の控えは捨てる (また進めば新しく控える)
         try { store.set('stepIdx', String(toIdx)); } catch (_) { /* noop */ }
-        P.closed = true;   // 画面を離れるときの控えで、戻したばかりの盤面を上書きしない
         try { store.set('db', P.db.dump()); } catch (_) { /* noop */ }
+        P.closed = true;   // ★ 控えたあとに閉じる (閉じると置き場に書けなくなる)。画面を離れるときの控えで、戻したばかりの盤面を上書きしない
         location.reload();
         return true;
     }
@@ -342,7 +531,9 @@
     // ---------- 画面 (帯 + 課題カード) ----------
     var CSS = ''
         + 'html[data-practice] body{padding-top:var(--pm-top,0px)}'
-        + 'html[data-practice] .header{top:calc(env(safe-area-inset-top,0px) + 10px + var(--pm-top,0px))}'
+        // 上の帯 (ロゴ・名乗り・再読み込み) は練習中は出さない — 案内の直下に貼り付いて、指したマスやボタンと重なる (2026-10-03)。
+        //   名乗りは練習の人で固定、再読み込みは引っぱって更新で足りる
+        + 'html[data-practice] .header{display:none !important}'
         + 'html[data-practice] .player-select-modal,html[data-practice] .player-modal,html[data-practice] .fururi-help-modal{top:var(--pm-top,0px)}'
         // シートは案内の下に収める (中身が上へはみ出すと「閉じる」が案内に隠れる)。
         // ★ 画面ごとに `#myAvailModal .player-select-content{max-height:92vh !important}` のような指定があるので、
@@ -417,14 +608,25 @@
     function syncTop() { document.documentElement.style.setProperty('--pm-top', dock.offsetHeight + 'px'); }
     function schedule() { clearTimeout(timer); timer = setTimeout(update, 60); }
 
+    var SC = P.scenario || 'member';
     function current(c) {
-        var list = STEPS[P.role] || [];
+        var list = STEPS[SC] || [];
         for (var i = 0; i < list.length; i++) if (!list[i].done(c)) return { i: i, step: list[i], n: list.length };
         return { i: list.length, step: null, n: list.length };
     }
     function update() {
         var c = context();
         if (!c || !c.season) { render('<div class="pm-band"><span class="t">🎮 練習の準備をしています…</span></div>', 'wait'); target = null; return; }
+        // 途中の課題から始める指定があれば、手前を済ませてから読み込み直す (1 回だけ)
+        var startAt = store.get('start');
+        if (startAt && !store.get('ff:done')) {
+            if (!ffBusy) {
+                ffBusy = true;
+                fastForward(startAt).catch(function (e) { console.warn('[練習] 手前の課題を済ませられませんでした:', e && e.message || e); })
+                    .then(function () { try { store.set('ff:done', '1'); } catch (_) { /* noop */ } if (typeof P.save === 'function') P.save(); location.reload(); });
+            }
+            render('<div class="pm-band"><span class="t">🎮 手前の課題を済ませています…</span></div>', 'ff'); target = null; return;
+        }
         var cur = current(c), g = cur.step ? (cur.step.guide(c) || {}) : {};
         trackStep(cur.i);
         var backBtn = (cur.i >= 1 && hasSnap(cur.i - 1)) ? '<button class="pm-back" data-pm="back" data-to="' + (cur.i - 1) + '">↩ 1つ前に戻る</button>' : '';
@@ -434,7 +636,7 @@
         var aim = cur.i + '|' + (g.text || '');
         if (target && aim !== lastAim && !inView(target)) bring(target);
         if (target) lastAim = aim;
-        var dots = '<div class="pm-dots">' + (STEPS[P.role] || []).map(function (_, i) { return '<i class="' + (i < cur.i ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+        var dots = '<div class="pm-dots">' + (STEPS[SC] || []).map(function (_, i) { return '<i class="' + (i < cur.i ? 'on' : '') + '"></i>'; }).join('') + '</div>';
         // 最新の 1 件だけ出す (閉じると次が出る)。全部並べると案内が画面の半分を取る
         var fd = folded ? '' : feed.slice(0, 1).map(function (x) {
             return '<div class="pm-feed' + (x.kind === 'assume' ? ' as' : '') + '"><div class="tx"><div class="k">'
@@ -442,15 +644,20 @@
                 + (feed.length > 1 ? ' · ほか ' + (feed.length - 1) + ' 件' : '') + '</div><b>' + esc(x.title) + '</b>' + esc(x.body)
                 + '</div><button data-pm="dismiss" data-id="' + x.id + '" aria-label="閉じる">✕</button></div>';
         }).join('');
-        var band = '<div class="pm-band"><span class="t">🎮 練習中 — 本番には反映されません</span>'
+        var scn = SCENARIOS[SC] || { title: '練習', next: 'member' };
+        var band = '<div class="pm-band"><span class="t">🎮 練習中 (' + esc(scn.title) + ') — 本番には反映されません</span>'
             + '<button data-pm="fold" aria-expanded="' + (!folded) + '">' + (folded ? '案内を開く' : '畳む') + '</button><button data-pm="quit">やめる</button></div>';
         var body;
         if (!cur.step) {
-            body = cur.n ? '<div class="pm-done"><b style="font-size:14px;font-weight:900;color:var(--t-ink)">🎉 メンバー編 おしまい</b>'
+            var nextSc = SCENARIOS[scn.next];
+            body = cur.n ? '<div class="pm-done"><b style="font-size:14px;font-weight:900;color:var(--t-ink)">🎉 ' + esc(scn.title) + ' おしまい</b>'
                     + '<p>本番でも同じ場所・同じボタンです。このまま自由に触ることもできます。</p>'
-                    + '<div class="pm-real" style="text-align:left"><b>本番とのちがい</b>練習では運営の返事や時間を「〜したことにする」で進めました。本番では運営が確認するまで待ちます (承認されると通知が届きます)。</div>'
-                    + '<div class="pm-row"><button class="pm-btn sub" data-pm="restart">もう一度</button>' + (backBtn ? '<button class="pm-btn sub" data-pm="back" data-to="' + (cur.i - 1) + '">↩ 1つ前に戻る</button>' : '') + '<button class="pm-btn" data-pm="quit">練習をやめる</button></div>' + dots + '</div>'
-                : '<p>この役の練習はまだ用意されていません。画面は自由に触れます。</p>';
+                    + '<div class="pm-real" style="text-align:left"><b>本番とのちがい</b>' + (SC === 'member'
+                        ? '練習では運営の返事や時間を「〜したことにする」で進めました。本番では運営が確認するまで待ちます (承認されると通知が届きます)。'
+                        : '練習ではメンバーの申請を「来たことにする」で進めました。本番ではいつ・何件来るか分かりません。配信は押した瞬間に全員へ届きます。') + '</div>'
+                    + '<div class="pm-row"><button class="pm-btn sub" data-pm="restart">もう一度</button>' + (backBtn ? '<button class="pm-btn sub" data-pm="back" data-to="' + (cur.i - 1) + '">↩ 1つ前に戻る</button>' : '')
+                    + (nextSc ? '<button class="pm-btn" data-pm="goto" data-sc="' + esc(scn.next) + '">次は ' + esc(nextSc.title) + ' →</button>' : '') + '<button class="pm-btn sub" data-pm="quit">練習をやめる</button></div>' + dots + '</div>'
+                : '<p>この編はまだ用意されていません。画面は自由に触れます。</p><div class="pm-row"><button class="pm-btn" data-pm="goto" data-sc="member">メンバー編へ</button><button class="pm-btn sub" data-pm="quit">練習をやめる</button></div>';
         } else {
             body = '<div class="pm-top"><span class="pm-cnt">課題 ' + (cur.i + 1) + '/' + cur.n + '</span><b>' + esc(cur.step.title) + '</b>'
                 + (target ? '<button class="pm-where" data-pm="where">どこ？</button>' : '') + '</div>'
@@ -485,9 +692,10 @@
         if (!b) return;
         var k = b.getAttribute('data-pm');
         if (k === 'quit') { if (window.confirm('練習をやめて、本番の画面に戻りますか？\n(練習でやったことは残りません)')) P.exit(); return; }
-        if (k === 'restart') { P.restart(P.role); return; }
+        if (k === 'restart') { P.restart(SC); return; }
+        if (k === 'goto') { P.restart(b.getAttribute('data-sc')); return; }
         if (k === 'back') {
-            var to = Number(b.getAttribute('data-to')), st = (STEPS[P.role] || [])[to];
+            var to = Number(b.getAttribute('data-to')), st = (STEPS[SC] || [])[to];
             if (!st) return;
             if (!window.confirm('課題 ' + (to + 1) + '「' + st.title + '」の最初に戻りますか？\n(そのあとにやったことは消えます)')) return;
             if (!goBack(to)) note('assume', '戻れませんでした', '控えが無いか、壊れています');

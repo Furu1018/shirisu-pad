@@ -20,7 +20,11 @@
     <script>
         try {
             var _pmQ = new URLSearchParams(location.search).get('practice');
-            if (_pmQ === 'member') sessionStorage.setItem('shirisuko_practice_v1', _pmQ);
+            if (/^(member|ops-eve|ops-day)$/.test(_pmQ || '')) {
+                sessionStorage.setItem('shirisuko_practice_v1', _pmQ);
+                var _pmS = new URLSearchParams(location.search).get('start');   // この課題から (手前は済んだ状態)
+                if (/^[a-z]+$/.test(_pmS || '')) sessionStorage.setItem('shirisuko_practice_v1:start', _pmS);
+            }
             if (sessionStorage.getItem('shirisuko_practice_v1')) { window.__padPracticeWanted = true; document.write('<script src="./js/practice/boot.js"><\/script>'); }
         } catch (_) { /* sessionStorage が使えない環境では練習モードに入らない */ }
     </script>
@@ -5096,8 +5100,11 @@
                              本番の画面のまま、通信だけ端末の中の偽のサーバに差し替える (js/practice/)。入口はここ -->
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--s2);border-radius:8px;margin-bottom:14px;">
                             <span style="font-size:18px;">🎮</span>
-                            <span style="flex:1;min-width:200px;font-size:13px;"><strong>練習する</strong> — 本番と同じ画面を、練習用のデータで実際に触れます (レイド前日 → 当日・約5分)。ここでの操作は本番に反映されません</span>
-                            <button class="tour-guide-launcher" onclick="startPractice('member')">メンバー編を始める</button>
+                            <span style="flex:1;min-width:200px;font-size:13px;"><strong>練習する</strong> — 本番と同じ画面を、練習用のデータで実際に触れます (各 5 分ほど)。ここでの操作は本番に反映されません</span>
+                            <span style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button class="tour-guide-launcher" onclick="startPractice('member')">メンバー編</button>
+                                <button class="tour-guide-launcher" onclick="startPractice('ops-eve')">運営編・前日</button>
+                            </span>
                         </div>
                         <p>NIKKE のユニオンレイドを<strong>メンバーと運営の両方</strong>から支えるアプリ (PWA) です。
                             狙いはひとつ、<strong>「計画した凸が計画どおりに消化され、いちど決めた約束があとから覆らない」</strong>こと。
@@ -5669,7 +5676,11 @@
                     <!-- 🎮 練習モードの入口 (ヘルプの冒頭にも同じものがある) -->
                     <button onclick="startPractice('member')" style="width:100%;margin-top:10px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (メンバー編)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 前日 → 当日・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 時間の確認 → 模擬 → 予約 → 当日の凸 → 締め凸の返事・約5分</span>
+                    </button>
+                    <button onclick="startPractice('ops-eve')" style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
+                        🎮 練習する (運営編・前日)
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → 条件を選んで算出 → 📌 固定 → 申請の承認 → 配信・約5分</span>
                     </button>
                     <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
@@ -7071,197 +7082,37 @@
         ];
         let _tourCurrentIdx = 0;
 
-        // ========== 体験デモ: 実UIのモックアップを触って学ぶ ==========
-        // 実データには一切触れないサンドボックス。ステップ表示のたびに初期化される。
-        let _tourDemo = null;
-        const _TOUR_DEMO_BOSSES = [
-            { n: 1, attr: 'wind' }, { n: 2, attr: 'iron' }, { n: 3, attr: 'fire' },
-            { n: 4, attr: 'water' }, { n: 5, attr: 'electric' },
-        ];
-        const _TOUR_DEMO_DMG = { fire: '22.5', water: '18.0', electric: '15.2', iron: '19.8', wind: '21.1' };
-
-        function _tourDemoInit(kind) {
-            if (kind === 'avail') _tourDemo = { kind, on: [false, false, false, false, false, false, true, true, true, false, false, false] };
-            else if (kind === 'mock') _tourDemo = { kind, picked: null, submitted: [] };
-            else if (kind === 'battle') _tourDemo = { kind, phase: 'pick', boss: null };
-            else _tourDemo = null;
-        }
-        function _tourDemoRefresh() {
-            const zone = document.getElementById('tourDemoZone');
-            if (zone && _tourDemo) zone.innerHTML = _tourDemoBody();
-        }
-        function _tourDemoHtml() {
-            return `<div class="tour-demo">
-                <div class="tour-demo-tag">👇 触ってみる — 本物と同じ操作 (データには保存されません)</div>
-                <div id="tourDemoZone">${_tourDemoBody()}</div>
-            </div>`;
-        }
-        function _tourDemoBody() {
-            const d = _tourDemo;
+        // ========== 体験デモ → 🎮 練習モードへの入口 (2026-10-03) ==========
+        // 以前は手描きの見本 (戦闘可能時間 / 模擬提出 / 凸の流れ) をここに描いていたが、本番の画面を直すたびにずれるので廃止。
+        // 練習モード (本物の画面 + 練習用のデータ) の該当する課題から始める入口だけを置く
+        const TOUR_DEMO_START = { avail: ['avail', '戦闘できる時間を確認する'], mock: ['mock', '模擬戦のダメージを提出する'], battle: ['attack', '当日: 凸を報告する'] };
+        function _tourDemoHtml(kind) {
+            const d = TOUR_DEMO_START[kind];
             if (!d) return '';
-            if (d.kind === 'avail') return _tourDemoAvailBody(d);
-            if (d.kind === 'mock') return _tourDemoMockBody(d);
-            if (d.kind === 'battle') return _tourDemoBattleBody(d);
-            return '';
-        }
-
-        // --- デモA: 戦闘可能時間 (2時間刻み12マスをタップでON/OFF) ---
-        const _TOUR_AVAIL_HOURS = [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 1, 3];
-        function _tourDemoAvailBody(d) {
-            const cells = d.on.map((on, i) => `
-                <div onclick="_tourDemoAvailTap(${i})" style="flex:1;height:34px;border-radius:7px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;
-                    ${on ? 'background:linear-gradient(180deg,var(--grad-ops-a),var(--grad-ops-b));color:var(--on-fill);box-shadow:0 2px 6px rgba(108,66,240,0.4);' : 'background:var(--s2);color:var(--t-muted);'}">${_TOUR_AVAIL_HOURS[i]}</div>`).join('');
-            const ranges = [];
-            const fmtStart = (idx) => { const h = _TOUR_AVAIL_HOURS[idx]; return h < 5 ? `翌${h}` : `${h}`; };
-            const fmtEnd = (idx) => {
-                const h = _TOUR_AVAIL_HOURS[idx];
-                const eh = h + 2;
-                if (h < 5) return `翌${eh}`;         // 翌1時マス→翌3, 翌3時マス→翌5
-                if (eh >= 24) return `翌${eh - 24}`; // 23時マス→翌1
-                return `${eh}`;
-            };
-            let start = null;
-            for (let i = 0; i <= d.on.length; i++) {
-                if (d.on[i] && start === null) start = i;
-                if ((!d.on[i] || i === d.on.length) && start !== null) {
-                    ranges.push(`${fmtStart(start)}〜${fmtEnd(i - 1)}時`);
-                    start = null;
-                }
-            }
-            const totalOn = d.on.filter(Boolean).length * 2;
-            return `<div class="tour-demo-card">
-                    <div style="font-size:11px;font-weight:900;color:var(--t-ink);margin-bottom:8px;">⚔️ 戦闘可能時間 <span style="font-weight:700;color:var(--t-muted);">マスをタップ</span></div>
-                    <div style="display:flex;gap:3px;">${cells}</div>
-                </div>
-                <div class="tour-demo-note">${totalOn > 0
-                    ? `✅ <strong style="color:var(--ops);">${ranges.join(' / ')}</strong> が戦闘可能に。凸プランはこの時間帯に割当てられ、通知もこの間だけ届きます (計${totalOn}時間)`
-                    : '⚠️ 全部OFFだと通知が届かず、プランにも時間が付きません'}</div>`;
-        }
-        function _tourDemoAvailTap(i) {
-            if (!_tourDemo || _tourDemo.kind !== 'avail') return;
-            _tourDemo.on[i] = !_tourDemo.on[i];
-            _tourDemoRefresh();
-        }
-
-        // --- デモB: 模擬戦データ提出 (属性を選ぶ → 提出) ---
-        function _tourDemoMockBody(d) {
-            const chips = PT_ATTRS.map(a => {
-                const done = d.submitted.includes(a.key);
-                const active = d.picked === a.key;
-                return `<div onclick="_tourDemoMockPick('${a.key}')" style="flex:1;min-width:52px;padding:7px 2px;border-radius:10px;cursor:pointer;text-align:center;transition:all .15s;border:1.5px solid ${active ? DC_ATTR_COLORS[a.key] : 'transparent'};
-                    background:${done ? DC_ATTR_COLORS[a.key] : 'var(--s2)'};">
-                    <img loading="lazy" decoding="async" src="${a.icon}" style="width:18px;height:18px;display:block;margin:0 auto 2px;">
-                    <span style="font-size:10px;font-weight:900;color:${done ? _burstInk(DC_ATTR_COLORS[a.key]) : 'var(--t-body)'};">${done ? '✓提出済' : a.name}</span>
-                </div>`;
-            }).join('');
-            let detail = '';
-            if (d.picked && !d.submitted.includes(d.picked)) {
-                const a = PT_ATTRS.find(x => x.key === d.picked);
-                detail = `<div class="tour-demo-card" style="margin-top:8px;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <div style="flex:1;">
-                            <div style="font-size:10px;font-weight:800;color:var(--t-muted);letter-spacing:0.5px;">${a.name}PT ベストダメージ</div>
-                            <div style="font-size:20px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${_TOUR_DEMO_DMG[d.picked]}<span style="font-size:11px;color:var(--t-muted);"> B</span></div>
-                        </div>
-                        <button onclick="_tourDemoMockSubmit()" style="padding:10px 16px;border-radius:11px;border:none;background:var(--t-ink);color:var(--card);font-size:12px;font-weight:900;cursor:pointer;">提出</button>
-                    </div>
-                    <div style="font-size:10px;color:var(--t-muted);margin-top:6px;">実物は 📷 スクショから AI が自動入力します (手入力もOK)</div>
-                </div>`;
-            }
-            const doneN = d.submitted.length;
-            return `<div class="tour-demo-card">
-                    <div style="font-size:11px;font-weight:900;color:var(--t-ink);margin-bottom:8px;">⚔️ 属性をタップして提出してみる</div>
-                    <div style="display:flex;gap:4px;">${chips}</div>
-                </div>${detail}
-                <div class="tour-demo-note">${doneN === 0 ? 'この数値が「あなたの出せる火力」として最適凸プランの計算に使われます'
-                    : doneN >= 5 ? '🎉 全属性そろうとプランの精度が最大に!'
-                    : `✅ ${doneN}/5 属性 提出済み。レーダーと最適プランに即反映されます`}</div>`;
-        }
-        function _tourDemoMockPick(key) {
-            if (!_tourDemo || _tourDemo.kind !== 'mock') return;
-            if (_tourDemo.submitted.includes(key)) return;
-            _tourDemo.picked = key;
-            _tourDemoRefresh();
-        }
-        function _tourDemoMockSubmit() {
-            if (!_tourDemo || _tourDemo.kind !== 'mock' || !_tourDemo.picked) return;
-            _tourDemo.submitted.push(_tourDemo.picked);
-            _tourDemo.picked = null;
-            _tourDemoRefresh();
-        }
-
-        // --- デモC: 戦闘フロー (ボスを選ぶ → みんなに周知 → 結果報告) ---
-        function _tourDemoBattleBody(d) {
-            const tiles = _TOUR_DEMO_BOSSES.map(b => {
-                const c = DC_ATTR_COLORS[b.attr];
-                const mine = d.boss === b.n && d.phase !== 'pick';
-                return `<div onclick="_tourDemoBattleTap(${b.n})" style="flex:1;padding:9px 2px;border-radius:11px;cursor:pointer;text-align:center;transition:all .15s;position:relative;
-                    border:1.5px solid ${mine ? c : 'rgba(var(--ink-rgb), 0.06)'};background:${mine ? `${c}14` : 'var(--card)'};${mine ? `animation:tour-demo-ping 1.2s ease-out infinite;` : ''}">
-                    ${mine ? '<span style="position:absolute;top:-7px;right:-3px;font-size:12px;">🔥</span>' : ''}
-                    <img loading="lazy" decoding="async" src="${DC_ATTR_ICONS[b.attr] || ''}" style="width:16px;height:16px;display:block;margin:0 auto 2px;">
-                    <span style="font-size:11px;font-weight:900;color:${mine ? c : 'var(--t-ink)'};">B${b.n}</span>
-                </div>`;
-            }).join('');
-            let stage = '';
-            if (d.phase === 'pick') {
-                stage = `<div class="tour-demo-note">1️⃣ 凸したいボスをタップ → <strong>戦闘準備</strong> に入ります</div>`;
-            } else if (d.phase === 'prep') {
-                const c = DC_ATTR_COLORS[_TOUR_DEMO_BOSSES[d.boss - 1].attr];
-                stage = `
-                    <div class="tour-demo-card" style="margin-top:8px;border-left:3px solid ${c};">
-                        <div style="font-size:10px;font-weight:800;color:var(--t-muted);letter-spacing:0.5px;margin-bottom:5px;">📱 他のメンバーの画面 (自動で共有されます)</div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span style="width:26px;height:26px;flex:none;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%,var(--fill-muted),var(--t-ink));color:var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;">あ</span>
-                            <span style="flex:1;font-size:12px;font-weight:800;color:var(--t-ink);">あなたが <strong style="color:${c};">B${d.boss}</strong> と交戦中 🔥</span>
-                        </div>
-                        <div style="font-size:10px;color:var(--warn-deep);background:rgba(245,158,11,0.10);border-radius:8px;padding:6px 9px;margin-top:7px;">⚠️ 他の人が同じボスを選ぼうとすると警告が出ます (二重凸防止)</div>
-                    </div>
-                    <button onclick="_tourDemoBattleReport()" style="width:100%;margin-top:8px;padding:12px;border-radius:12px;border:none;background:var(--t-ink);color:var(--card);font-size:12.5px;font-weight:900;cursor:pointer;">⚔️ 戦闘した → 📷 結果を報告する</button>
-                    <div class="tour-demo-note">2️⃣ ゲームで戦闘したら、結果画像で報告します</div>`;
-            } else {
-                stage = `
-                    <div class="tour-demo-card" style="margin-top:8px;">
-                        <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
-                            <span style="width:24px;height:24px;flex:none;border-radius:8px;background:var(--ok-solid);color:var(--ok-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;">✓</span>
-                            <span style="font-size:12.5px;font-weight:900;color:var(--ok);">凸報告 完了! ボスのHPに反映されました</span>
-                        </div>
-                        <div style="height:7px;border-radius:99px;background:var(--s2);overflow:hidden;">
-                            <div style="height:100%;border-radius:99px;background:linear-gradient(90deg,var(--bad-solid),var(--attr-fire-solid));--hp-from:100%;--hp-to:78%;animation:tour-demo-hp 1s ease-out forwards;"></div>
-                        </div>
-                        <div style="font-size:10px;color:var(--t-muted);margin-top:6px;">実物は 結果画像+戦闘履歴 の2枚から AI が自動入力。戦闘準備も自動解除されます</div>
-                    </div>
-                    <button onclick="_tourDemoInit('battle');_tourDemoRefresh()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--card);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">🔄 もう一度試す</button>`;
-            }
-            return `<div class="tour-demo-card">
-                    <div style="font-size:11px;font-weight:900;color:var(--t-ink);margin-bottom:8px;">🎯 本番の凸の流れ</div>
-                    <div style="display:flex;gap:5px;">${tiles}</div>
-                </div>${stage}`;
-        }
-        function _tourDemoBattleTap(n) {
-            if (!_tourDemo || _tourDemo.kind !== 'battle') return;
-            if (_tourDemo.phase === 'reported') return;
-            _tourDemo.boss = n;
-            _tourDemo.phase = 'prep';
-            _tourDemoRefresh();
-        }
-        function _tourDemoBattleReport() {
-            if (!_tourDemo || _tourDemo.kind !== 'battle') return;
-            _tourDemo.phase = 'reported';
-            _tourDemoRefresh();
+            return `<div class="tour-demo">
+                <div class="tour-demo-tag">🎮 本物の画面を、練習用のデータのまま触れます (本番には残りません)</div>
+                <button type="button" class="tour-guide-launcher" style="width:100%;margin-top:8px;" onclick="startPractice('member', '${d[0]}')">練習モードで「${escapeHtml(d[1])}」をやってみる →</button>
+                <div style="font-size:11px;color:var(--t-muted);margin-top:6px;line-height:1.5;">ツアーはここで閉じ、練習の課題「${escapeHtml(d[1])}」から始まります (その前の課題は済んだ状態)。</div>
+            </div>`;
         }
 
         // 🎮 練習モードに入る。印 (sessionStorage) を立てて読み込み直すだけ — 通信・時計・端末の記憶の差し替えは
         //   起動のいちばん最初に js/practice/boot.js が行う (途中から切り替えると、本番のデータを抱えた画面が残る)。
         //   印は sessionStorage なので、タブ (アプリ) を閉じれば本番に戻る
-        function startPractice(role) {
-            const r = role === 'ops' ? 'ops' : 'member';
+        function startPractice(scenario, startAt) {
+            // 編の id (js/practice/guide.js の SCENARIOS と同じ一覧)。知らない値はメンバー編に倒す。
+            // startAt = その編の課題の key (ツアーから入るとき。手前の課題は済んだ状態で始まる — js/practice/guide.js の fastForward)
+            const r = /^(member|ops-eve|ops-day)$/.test(scenario || '') ? scenario : 'member';
+            const at = /^[a-z]+$/.test(startAt || '') ? startAt : '';
             if (window.PAD_PRACTICE) {
-                if (confirm('練習を最初からやり直しますか？\n(ここまでの練習は消えます)')) window.PAD_PRACTICE.restart(r);
+                if (confirm('練習を最初からやり直しますか？\n(ここまでの練習は消えます)')) window.PAD_PRACTICE.restart(r, at);
                 return;
             }
             if (!confirm('練習を始めます。\n\n本番と同じ画面を、練習用のデータで触れます。\nここでの操作は本番には反映されません。上の「やめる」でいつでも戻れます。')) return;
-            try { sessionStorage.setItem('shirisuko_practice_v1', r); }
-            catch (_) { alert('この端末では練習モードを使えません (プライベートブラウズなど)'); return; }
+            try {
+                sessionStorage.setItem('shirisuko_practice_v1', r);
+                if (at) sessionStorage.setItem('shirisuko_practice_v1:start', at); else sessionStorage.removeItem('shirisuko_practice_v1:start');
+            } catch (_) { alert('この端末では練習モードを使えません (プライベートブラウズなど)'); return; }
             location.reload();
         }
 
@@ -7274,7 +7125,6 @@
             if (old) old.remove();
             const step = TOUR_STEPS[_tourCurrentIdx];
             if (!step) { _finishTour(); return; }
-            _tourDemoInit(step.demo || null);   // 体験デモの状態をステップごとに初期化
             const total = TOUR_STEPS.length;
             const isLast = _tourCurrentIdx === total - 1;
             const accent = step.accentColor || '#7A5AF8';
@@ -7360,7 +7210,7 @@
                     </div>
                     <div class="tour-body-scroll">
                         <div>${step.body}</div>
-                        ${step.demo ? _tourDemoHtml() : ''}
+                        ${step.demo ? _tourDemoHtml(step.demo) : ''}
                         ${flowHtml}
                         ${tipHtml}
                         ${jumpHtml}

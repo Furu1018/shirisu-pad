@@ -79,7 +79,8 @@ export function buildSeed({ hardDate, characters } = {}) {
         const notYet = !isMe && p.id !== IDS.ops && idx < NOT_SUBMITTED;
         // 今期の確認: 自分 (これから練習で押す) と 模擬がまだの人 以外は済み
         if (!isMe && !notYet) confirms.push({ season_id: IDS.season, player_id: p.id, unavailable: false, slot_count: hours.length, slots_snapshot: hours });
-        if (!notYet) subs.push({ player_id: p.id, endpoint: `practice://push/${p.id}`, p256dh: 'practice', auth: 'practice' });
+        // 通知の購読は全員 (催促は購読者にしか送れない。未提出の人が購読していないと、運営編の催促が押せない)
+        subs.push({ player_id: p.id, endpoint: `practice://push/${p.id}`, p256dh: 'practice', auth: 'practice' });
         if (notYet) return;
         // 模擬: 自分は 灼熱PT だけ未提出 (練習で出す)。ほかの人は 3〜5 属性
         ATTRS.forEach((attr, k) => {

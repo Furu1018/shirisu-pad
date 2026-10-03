@@ -101,16 +101,22 @@ const PRESS = `(() => { const r = document.getElementById('pmRing').getBoundingC
   if (el.tagName === 'INPUT') { el.focus(); el.value = '33.1'; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return '入力'; }
   (el.closest('button,[onclick],a,label') || el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window })); return '押す'; })()`;
 
-async function run(label, size) {
+async function run(label, size, scenario = 'member', startAt = '') {
     const problems = [], trail = [];
     const p = await openPage(size);
     // 本番の名乗りを置いておく (練習が書き換えないことを最後に見る)
     await p.goto(`${ORIGIN}/__blank`, 500);
     await p.eval(`localStorage.setItem('shirisuPad.currentPlayer', JSON.stringify({ id: 24, name: '本物の人' })); localStorage.setItem('shirisuPad.tourCompleted', '1');`);
-    await p.goto(`${ORIGIN}/index.html?practice=member`, 6500);
+    await p.goto(`${ORIGIN}/index.html?practice=${scenario}${startAt ? '&start=' + startAt : ''}`, startAt ? 16000 : 6500);
+    if (startAt) {   // 途中の課題から: 手前が済んだ状態で、その課題から始まっている
+        const at = JSON.parse(await p.eval(`JSON.stringify({ cnt: document.querySelector('#pmDock .pm-cnt')?.innerText || '-', title: document.querySelector('#pmDock .pm-top b')?.innerText || '' })`));
+        const idx = ['avail', 'mock', 'resv', 'ack', 'attack', 'finish'].indexOf(startAt) + 1;
+        if (at.cnt !== `課題 ${idx}/6`) problems.push(`「${startAt}」から始まっていない: ${JSON.stringify(at)}`);
+    }
+    const expectMe = scenario.startsWith('ops') ? 9102 : 9101;
     const boot = JSON.parse(await p.eval(`JSON.stringify({ practice: !!window.PAD_PRACTICE, players: window.PAD_PRACTICE?.db?.tables?.players?.length || 0,
-        me: (typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null), dock: !!document.getElementById('pmDock') })`));
-    if (!boot.practice || boot.players !== 31 || boot.me?.id !== 9101 || !boot.dock) problems.push(`練習モードで起動していない: ${JSON.stringify(boot)}`);
+        me: (typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null), dock: !!document.getElementById('pmDock'), scenario: window.PAD_PRACTICE?.scenario })`));
+    if (!boot.practice || boot.players !== 31 || boot.me?.id !== expectMe || !boot.dock || boot.scenario !== scenario) problems.push(`練習モードで起動していない: ${JSON.stringify(boot)}`);
     let last = '', same = 0, done = false;
     for (let i = 0; i < 80 && !done && !problems.length; i++) {
         const s = JSON.parse(await p.eval(`JSON.stringify(${STATE})`) || 'null');
@@ -121,7 +127,7 @@ async function run(label, size) {
         if (same >= 5) { problems.push(`案内どおりに押しても進まない: ${JSON.stringify(s)}`); break; }
         let act;
         if (s.assume) { act = '仮定 ' + s.assume; await p.eval(`document.querySelector('#pmDock [data-pm=assume]').click()`); await wait(4500); }
-        else if (s.ring) { act = (await p.eval(PRESS)) + ' ' + JSON.stringify(s.under); await wait(1100); }
+        else if (s.ring) { act = (await p.eval(PRESS)) + ' ' + JSON.stringify(s.under); await wait(scenario.startsWith('ops') ? 2500 : 1100); }
         else if (s.where) { act = 'どこ？'; await p.eval(`document.querySelector('#pmDock [data-pm=where]').click()`); await wait(900); }
         else { act = '(待つ)'; await wait(900); }
         trail.push(`${s.cnt} ${s.title} | ${s.text.slice(0, 40)} | ${act}`);
@@ -132,13 +138,32 @@ async function run(label, size) {
         const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })())`));
     if (done && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
     // ↩ 1つ前に戻る: おしまいから戻ると、課題 5 の最初 (締め凸のお願いが来る前・時計は当日) に戻る。そこからまた最後まで行ける
-    if (done) {
+    if (scenario === 'member') {
+        // 当日に進めたとき、ほかのメンバーの凸が入っている (ボスは倒し切らない = レベルは進めない) / 自分は 1 凸・予約は実行済み・締め凸に返事済み
+        const world = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables, me = 9101;
+            return { others: T.attacks.filter(a => a.player_id !== me).length, mine: T.attacks.filter(a => a.player_id === me).length, level: T.seasons[0].current_level,
+                dead: T.bosses.filter(b => !(b.remaining_hp_raw > 0)).length, resv: T.plan_reservations.filter(r => r.player_id === me).map(r => r.status).sort(),
+                finish: T.finish_requests.filter(r => r.player_id === me).map(r => r.status), plans: T.published_plans.length, pushes: window.PAD_PRACTICE.db.outbox.length,
+                conf: T.availability_confirmations.some(r => r.player_id === me), fire: T.player_damages.some(d => d.player_id === me && d.attribute === 'fire' && d.characters.length === 5) }; })())`));
+        if (!(world.others >= 10)) problems.push(`当日に進めても、ほかのメンバーの凸が入っていない (${world.others} 件)`);
+        if (world.level !== 1 || world.dead) problems.push(`練習の世界がレベルを進めた / ボスを倒し切った: ${JSON.stringify(world)}`);
+        if (world.mine !== 1 || !world.resv.includes('fulfilled') || !world.finish.every(s => s !== 'pending') || !world.finish.length) problems.push(`自分の凸・予約・締め凸の返事が入っていない: ${JSON.stringify(world)}`);
+        if (!world.conf || !world.fire || !(world.plans >= 1) || !(world.pushes >= 1)) problems.push(`時間の確認・模擬 (5人)・配信・通知の見本 のどれかが欠けている: ${JSON.stringify(world)}`);
+    } else if (scenario === 'ops-eve') {
+        const w = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables;
+            const pub = T.published_plans.slice().sort((a, b) => b.id - a.id)[0];
+            return { nudged: T.push_notifications_log.filter(r => /登録のお願い/.test(r.title)).length, pinned: T.plan_reservations.filter(r => r.status === 'pinned').length,
+                approved: T.plan_reservations.filter(r => r.status === 'approved').length, requested: T.plan_reservations.filter(r => r.status === 'requested').length,
+                plans: T.published_plans.length, resvInPlan: pub ? Number(pub.plan.reservationCount) : -1, by: pub ? pub.published_by_name : null, level: T.seasons[0].current_level }; })())`));
+        if (!(w.nudged >= 1) || !(w.pinned >= 1) || w.approved !== 1 || w.requested !== 0 || !(w.plans >= 1) || !(w.resvInPlan >= 1) || w.by !== '運営役 (練習)') problems.push(`運営編・前日の結果が欠けている: ${JSON.stringify(w)}`);
+    }
+    if (done && scenario === 'member' && !startAt) {
         await p.eval(`document.querySelector('#pmDock [data-pm=back]').click()`);   // confirm は「はい」
         await wait(6500);
         const back = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables; const d = document.getElementById('pmDock');
             return { cnt: d.querySelector('.pm-cnt')?.innerText || '-', assume: d.querySelector('[data-pm=assume]')?.innerText || null, finish: T.finish_requests.length,
                 mine: T.attacks.filter(a => a.player_id === 9101).length, hard: new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10) === window.PAD_PRACTICE.hardDate }; })())`));
-        if (back.cnt !== '課題 5/5' || !/お願いが来たことにする/.test(back.assume || '') || back.finish !== 0 || back.mine !== 1 || !back.hard) problems.push(`1つ前に戻れていない: ${JSON.stringify(back)}`);
+        if (back.cnt !== '課題 6/6' || !/お願いが来たことにする/.test(back.assume || '') || back.finish !== 0 || back.mine !== 1 || !back.hard) problems.push(`1つ前に戻れていない: ${JSON.stringify(back)}`);
         else {
             let again = false;
             for (let i = 0; i < 12 && !again; i++) {
@@ -153,20 +178,10 @@ async function run(label, size) {
             if (!again) problems.push('戻ったあと、もう一度最後まで行けない');
         }
     }
-    // 当日に進めたとき、ほかのメンバーの凸が入っている (ボスは倒し切らない = レベルは進めない) / 自分は 1 凸・予約は実行済み・締め凸に返事済み
-    const world = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables, me = 9101;
-        return { others: T.attacks.filter(a => a.player_id !== me).length, mine: T.attacks.filter(a => a.player_id === me).length, level: T.seasons[0].current_level,
-            dead: T.bosses.filter(b => !(b.remaining_hp_raw > 0)).length, resv: T.plan_reservations.filter(r => r.player_id === me).map(r => r.status).sort(),
-            finish: T.finish_requests.filter(r => r.player_id === me).map(r => r.status), plans: T.published_plans.length, pushes: window.PAD_PRACTICE.db.outbox.length,
-            conf: T.availability_confirmations.some(r => r.player_id === me), fire: T.player_damages.some(d => d.player_id === me && d.attribute === 'fire' && d.characters.length === 5) }; })())`));
-    if (!(world.others >= 10)) problems.push(`当日に進めても、ほかのメンバーの凸が入っていない (${world.others} 件)`);
-    if (world.level !== 1 || world.dead) problems.push(`練習の世界がレベルを進めた / ボスを倒し切った: ${JSON.stringify(world)}`);
-    if (world.mine !== 1 || !world.resv.includes('fulfilled') || !world.finish.every(s => s !== 'pending') || !world.finish.length) problems.push(`自分の凸・予約・締め凸の返事が入っていない: ${JSON.stringify(world)}`);
     // 練習中は端末の状態に触れない: Service Worker を登録しない・通知の許可を求めない
     const device = JSON.parse(await p.eval(`(async () => JSON.stringify({ sw: ('serviceWorker' in navigator) ? (await navigator.serviceWorker.getRegistrations()).length : 0,
         perm: ('Notification' in window) ? Notification.permission : 'none' }))()`));
     if (device.sw !== 0 || !['default', 'none'].includes(device.perm)) problems.push(`練習中に端末の通知・Service Worker に触れた: ${JSON.stringify(device)}`);
-    if (!world.conf || !world.fire || !(world.plans >= 1) || !(world.pushes >= 1)) problems.push(`時間の確認・模擬 (5人)・配信・通知の見本 のどれかが欠けている: ${JSON.stringify(world)}`);
     if (p.errors.length) problems.push(`画面でエラー: ${p.errors.slice(0, 4).join(' / ').slice(0, 600)}`);
     const real = p.net.filter(n => /supabase\.co/.test(n.url));
     const writes = real.filter(n => !['GET', 'OPTIONS'].includes(n.method));
@@ -193,8 +208,11 @@ async function run(label, size) {
 
 let ok = true;
 try {
-    ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }) && ok;
-    if (process.env.PC) ok = await run('PC 幅 (1280×800): 同上', { width: 1280, height: 800, mobile: false }) && ok;
+    ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }, 'member') && ok;
+    ok = await run('スマホ幅: 運営編・前日 (催促 → 算出 → 📌 → 申請の承認 → 配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
+    ok = await run('スマホ幅: ツアーから「当日: 凸を報告する」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'attack') && ok;
+    if (process.env.PC) ok = await run('PC 幅 (1280×800): メンバー編', { width: 1280, height: 800, mobile: false }, 'member') && ok;
+    if (process.env.PC) ok = await run('PC 幅 (1280×800): 運営編・前日', { width: 1280, height: 800, mobile: false }, 'ops-eve') && ok;
 } catch (e) { ok = false; console.log('  ❌ 実行できませんでした: ' + (e && e.stack || e)); }
 cleanup();
 console.log(ok ? '\nOK' : '\nNG');
