@@ -8758,7 +8758,7 @@ console.log('\ngrowthDomain:');
         //   var(--on-fill)・rgba(255,255,255,…)・#fff・white・var(--t-muted) は両テーマで同じ色 → 白地に白 (または薄灰) になる
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const INK_FILL = /background(?:-color|-image)?\s*:\s*[^;"']*var\(--t-ink\)/;
-        const WHITE_FIXED = /var\(--on-fill\)|rgba\(\s*255\s*,\s*255\s*,\s*255|#fff\b|#ffffff\b|color\s*:\s*white\b|var\(--t-muted\)/i;
+        const WHITE_FIXED = /var\(--on-fill\)|rgba\(\s*255\s*,\s*255\s*,\s*255|#fff\b|#ffffff\b|color\s*:\s*white\b|var\(--t-(?:muted|body|strong)\)/i;
         const bad = [];
         // ① <style> のルール (トークンの定義ブロックは除く)
         const s0 = html.indexOf('<style'), s1 = html.lastIndexOf('</style>');
@@ -8771,8 +8771,11 @@ console.log('\ngrowthDomain:');
         }
         // ② インラインの style 属性 / テンプレート文字列の style (同じ 1 つの style の中に 塗り と 文字 が同居するもの)
         for (const m of html.matchAll(/style="([^"]*)"/g)) {
-            const st = m[1];
-            if (INK_FILL.test(st) && WHITE_FIXED.test(st)) bad.push(`inline (${html.slice(0, m.index).split('\n').length}行目) → ${st.match(WHITE_FIXED)[0]} on ${st.slice(0, 60)}`);
+            // テンプレートの中の三項 (`${on ? 'background:var(--t-ink);color:var(--card);' : 'background:var(--s2);color:var(--t-strong);'}`) は
+            // 枝ごとに別の塗りなので、' で区切った断片ごとに見る (断片の中で 塗り と 文字 が同居するものだけ)
+            for (const st of m[1].split("'")) {
+                if (INK_FILL.test(st) && WHITE_FIXED.test(st)) bad.push(`inline (${html.slice(0, m.index).split('\n').length}行目) → ${st.match(WHITE_FIXED)[0]} on ${st.slice(0, 60)}`);
+            }
         }
         // ③ 親が黒 (--t-ink) で、中の文字を別の要素・別の文字列で入れる箱: 中身に白固定が無いこと
         //   (テンプレート文字列全体を見ると、黒いボタンと無関係な添え字が同居するだけで引っかかるので、箱を名指しで見る)
@@ -8802,12 +8805,20 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(Object.keys(dark).sort(), Object.keys(light).sort(), 'ダークに無いヒーローのトークンがある');
         const lum = (hex) => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
         const contrast = (x, y) => { const [h, l] = [Math.max(lum(x), lum(y)), Math.min(lum(x), lum(y))]; return (h + 0.05) / (l + 0.05); };
+        // ★ 文字が実際に載るのは、ヒーローの地そのものではなく 3 枠カードの半透明の地 (Codex指摘 2026-10-03):
+        //   素の地 / 通常 (paper 0.07 のベール) / 🔒 固定 (紫 0.22) / 置けていない (橙 0.22) のすべてで 4.5:1 以上
+        const mix = (base, rgb, a) => '#' + [0, 1, 2].map(i => Math.round(parseInt(base.slice(1 + 2 * i, 3 + 2 * i), 16) * (1 - a) + rgb[i] * a).toString(16).padStart(2, '0')).join('').toUpperCase();
+        const surfaces = (hero, paper) => ({ 素: hero, 通常: mix(hero, paper, 0.07), 固定: mix(hero, [108, 66, 240], 0.22), 未達: mix(hero, [245, 158, 11], 0.22) });
+        const onLight = surfaces('#14161A', [255, 255, 255]), onDark = surfaces('#F2F4F6', [23, 25, 29]);
+        assert.deepEqual(Object.keys(onDark), ['素', '通常', '固定', '未達'], '合成の地 4 つすべてで測る (素の地だけだと半透明の地で届かない値を通す)');
+        assert.match(html, /\.dc-plan-card\.on-hero\.fixed \{ border-color: var\(--hero-line-ops\); background: rgba\(108,66,240,0\.22\)\}/, '固定の枠のベールが変わった (テストの合成と合わせる)');
+        assert.match(html, /\.dc-plan-card\.on-hero\.fixed\.unmet \{ border-color: var\(--hero-line-warn\); background: rgba\(245,158,11,0\.22\)\}/, '未達の枠のベールが変わった');
+        assert.match(html, /\.dc-plan-card\.on-hero \{\s*background: rgba\(var\(--paper-rgb\), 0\.07\);/, '通常の枠のベールが変わった');
         for (const k of Object.keys(light)) {
             assert.notEqual(light[k], dark[k], `${k} が両テーマで同じ値 (ダークの白いカードの上で淡いまま)`);
-            if (k.startsWith('hero-text')) {
-                assert.ok(contrast(light[k], '#14161A') >= 4.5, `${k} (ライト) が黒の上で読めない: ${contrast(light[k], '#14161A').toFixed(1)}`);
-                assert.ok(contrast(dark[k], '#F2F4F6') >= 4.5, `${k} (ダーク) が白の上で読めない: ${contrast(dark[k], '#F2F4F6').toFixed(1)}`);
-            }
+            if (!k.startsWith('hero-text')) continue;
+            for (const [name, bg] of Object.entries(onLight)) assert.ok(contrast(light[k], bg) >= 4.5, `${k} (ライト) が黒いヒーローの「${name}」の地で読めない: ${contrast(light[k], bg).toFixed(2)} on ${bg}`);
+            for (const [name, bg] of Object.entries(onDark)) assert.ok(contrast(dark[k], bg) >= 4.5, `${k} (ダーク) が白いヒーローの「${name}」の地で読めない: ${contrast(dark[k], bg).toFixed(2)} on ${bg}`);
         }
     });
     test('★ PC版: カードの幅は opsLayout.CARDS が決め、CSS に受け皿がある', () => {
