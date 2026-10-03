@@ -244,6 +244,7 @@
             --hero-line-warn: #FFC46B;
             --hero-text-ops: #C3B2FF;
             --hero-text-warn: #FFD28A;
+            --hero-text-ok: #7EE2AE;
             /* そのほかの塗り */
             --fill-muted: #5A6068;
             --toast-bg: #151A26;
@@ -364,10 +365,13 @@
             --grad-btn-b: #D8DCE1;
             --grad-btn-ink: #14161A;
             /* 濃いヒーローの上のアクセント。ヒーローは両テーマとも濃いので、これも同じ */
-            --hero-line-ops: #A99CFF;
-            --hero-line-warn: #FFC46B;
-            --hero-text-ops: #C3B2FF;
-            --hero-text-warn: #FFD28A;
+            /* ★ 黒いカード (.dc-hero / 交戦中) はダークでは --t-ink が白に反転して**白いカード**になる。
+               その上の紫・橙の文字と線は濃い側に (ライトの淡い値のままだと白地に淡色で読めない — 2026-10-03 実機報告) */
+            --hero-line-ops: #6C42F0;
+            --hero-line-warn: #996206;
+            --hero-text-ops: #5B2BE0;
+            --hero-text-warn: #724905;
+            --hero-text-ok: #107e45;
             /* そのほかの塗り */
             --fill-muted: #8A9198;
             --toast-bg: #2A3040;
@@ -2586,9 +2590,9 @@
         .dc-boss-card.has-combat .js-bnum { color: var(--card) !important}
         .dc-boss-card.has-combat .js-name { color: var(--on-ink-soft) !important; }
         .dc-boss-card.has-combat .js-pct { color: var(--card) !important}
-        .dc-boss-card.has-combat .js-hptext { color: rgba(255,255,255,0.55) !important; }
-        .dc-boss-card.has-combat .js-bartrack { background: rgba(255,255,255,0.16) !important; }
-        .dc-boss-card.has-combat [data-action="boss-edit"] { background: var(--t-ink) !important; color: var(--t-muted) !important}
+        .dc-boss-card.has-combat .js-hptext { color: var(--on-ink-soft) !important; }
+        .dc-boss-card.has-combat .js-bartrack { background: rgba(var(--paper-rgb), 0.16) !important; }
+        .dc-boss-card.has-combat [data-action="boss-edit"] { background: var(--t-ink) !important; color: var(--on-ink-soft) !important}
         .dc-boss-chip {
             width: 34px; height: 34px; flex: none; border-radius: 9px;
             display: flex; align-items: center; justify-content: center;
@@ -3344,9 +3348,11 @@
             transition: transform 0.12s ease, box-shadow 0.15s ease}
         .dc-plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20,22,26,0.06); }
         .dc-plan-card:active { transform: translateY(0); }
+        /* ★ 黒いカードの上の色は**反転する**ものだけを使う: 文字は var(--card)、ベールは rgba(var(--paper-rgb), …)。
+           rgba(255,255,255,…) と var(--on-fill) は両テーマで白なので、ダーク (カードが白) では消える (2026-10-03 実機報告) */
         .dc-plan-card.on-hero {
-            background: rgba(255,255,255,0.07);
-            border-color: rgba(255,255,255,0.10);
+            background: rgba(var(--paper-rgb), 0.07);
+            border-color: rgba(var(--paper-rgb), 0.10);
         }
         /* 報告済み。
            ★ opacity は子テキストにも掛かるので、カード全体を薄くすると
@@ -3360,7 +3366,7 @@
         /* 減光は画像だけに掛ける。コンテナに掛けると、アイコン未解決時の
            代替文字 (キャラ名の頭文字) まで薄くなり 2.7:1 まで落ちる (Codex指摘) */
         .dc-plan-card.done .dc-plan-char img { opacity: 0.72; }
-        .dc-plan-card.on-hero.done { background: rgba(255,255,255,0.045); }
+        .dc-plan-card.on-hero.done { background: rgba(var(--paper-rgb), 0.045); }
         /* 🔒 予約で固定 (ホーム3枠・2026-09-08): 紫の枠と錠前で「動かない」を示す */
         .dc-plan-card.fixed { border: 1.5px solid var(--ops-solid); background: rgba(108,66,240,0.06)}
         .dc-plan-card.on-hero.fixed { border-color: var(--hero-line-ops); background: rgba(108,66,240,0.22)}
@@ -3377,21 +3383,21 @@
         .dc-plan-card.on-hero .dc-plan-warn { color: var(--hero-text-warn)}
         /* 空き枠: 破線。理由を日本語で。タップで申請シート */
         .dc-plan-card.empty { border: 1.5px dashed var(--track); background: transparent}
-        .dc-plan-card.on-hero.empty { border-color: rgba(255,255,255,0.28); }
+        .dc-plan-card.on-hero.empty { border-color: rgba(var(--paper-rgb), 0.28); }
         .dc-plan-empty-title { font-size: 11px; font-weight: 900; color: var(--t-body)}
-        .dc-plan-card.on-hero .dc-plan-empty-title { color: rgba(255,255,255,0.8); }
+        .dc-plan-card.on-hero .dc-plan-empty-title { color: rgba(var(--paper-rgb), 0.8); }
         .dc-plan-empty-why { margin-top: 6px; font-size: 10px; font-weight: 700; color: var(--t-body); line-height: 1.5}
-        .dc-plan-card.on-hero .dc-plan-empty-why { color: rgba(255,255,255,0.66); }
+        .dc-plan-card.on-hero .dc-plan-empty-why { color: rgba(var(--paper-rgb), 0.66); }
         .dc-plan-empty-cta { margin-top: 9px; font-size: 10.5px; font-weight: 900; color: var(--ops)}
         .dc-plan-card.on-hero .dc-plan-empty-cta { color: var(--hero-text-ops)}
         .dc-plan-time {
             font-size: 15px; font-weight: 900; color: var(--t-ink);
             font-variant-numeric: tabular-nums; letter-spacing: -0.3px; line-height: 1}
-        .dc-plan-card.on-hero .dc-plan-time { color: var(--on-fill)}
+        .dc-plan-card.on-hero .dc-plan-time { color: var(--card)}
         /* 「B3 · 水冷PT」は意味のある情報なので薄文字 (#A4AAB0 = 2.2:1) ではなく
            ClaudeDesign のサブ色 #6B7178 を使う (Codex コントラスト指摘) */
         .dc-plan-sub { font-size: 10px; font-weight: 800; color: var(--t-body); letter-spacing: 0.2px}
-        .dc-plan-card.on-hero .dc-plan-sub { color: rgba(255,255,255,0.72); }
+        .dc-plan-card.on-hero .dc-plan-sub { color: rgba(var(--paper-rgb), 0.72); }
         /* 「どのレベルのボスか」(ユーザー要望 2026-08-09)。
            ★ 時刻と同じ行に「Lv3 · B5 · 電撃PT」を並べると、時刻が「⏳隙間」のとき
               138.6px 必要で幅156pxのカード (内寸128px) からあふれる (headless Chrome 実測)。
@@ -3400,17 +3406,17 @@
             display: inline-block; font-size: 9px; font-weight: 900; letter-spacing: 0;
             padding: 1px 5px; border-radius: 999px; margin-right: 4px;
             background: var(--line); color: var(--t-strong)}
-        .dc-plan-card.on-hero .dc-plan-lv { background: rgba(255,255,255,0.18); color: var(--on-fill)}
+        .dc-plan-card.on-hero .dc-plan-lv { background: rgba(var(--paper-rgb), 0.18); color: var(--card)}
         .dc-plan-card.done .dc-plan-lv { background: var(--line); color: var(--t-strong)}
         /* ★ .done は .on-hero より後に来るので、黒カードの報告済みで白ピルに戻ってしまう。
               明示的に打ち消す (実機ではヒーロー上の3枚目だけ浮いて見えた) */
-        .dc-plan-card.on-hero.done .dc-plan-lv { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.82); }
+        .dc-plan-card.on-hero.done .dc-plan-lv { background: rgba(var(--paper-rgb), 0.12); color: rgba(var(--paper-rgb), 0.82); }
         .dc-plan-value {
             font-size: 17px; font-weight: 900; color: var(--t-ink);
             font-variant-numeric: tabular-nums; letter-spacing: -0.4px; line-height: 1}
-        .dc-plan-card.on-hero .dc-plan-value { color: var(--on-fill)}
+        .dc-plan-card.on-hero .dc-plan-value { color: var(--card)}
         .dc-plan-unit { font-size: 10px; color: var(--t-muted); font-weight: 800; margin-left: 1px}
-        .dc-plan-card.on-hero .dc-plan-unit { color: rgba(255,255,255,0.72); }
+        .dc-plan-card.on-hero .dc-plan-unit { color: rgba(var(--paper-rgb), 0.72); }
         /* 編成5人 (模擬パネルの .dc-dmg-char と同寸) */
         .dc-plan-chars { display: flex; gap: 4px; margin-top: 11px; }
         .dc-plan-char {
@@ -3420,9 +3426,9 @@
             font-size: 10px; font-weight: 800; color: var(--t-body);
             box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.08)}
         .dc-plan-card.on-hero .dc-plan-char {
-            background: rgba(255,255,255,0.10);
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14);
-            color: rgba(255,255,255,0.6);
+            background: rgba(var(--paper-rgb), 0.10);
+            box-shadow: inset 0 0 0 1px rgba(var(--paper-rgb), 0.14);
+            color: rgba(var(--paper-rgb), 0.6);
         }
         .dc-plan-char img { width: 100%; height: 100%; object-fit: cover; display: block; }
         /* 編成①② と 報告済み。
@@ -3431,7 +3437,7 @@
         .dc-plan-slot { font-size: 10px; font-weight: 900; color: var(--ops-deep); letter-spacing: 0.2px}
         .dc-plan-card.on-hero .dc-plan-slot { color: var(--hero-text-ops)}
         .dc-plan-done { font-size: 10px; font-weight: 900; color: var(--ok-deep); letter-spacing: 0.2px}
-        .dc-plan-card.on-hero .dc-plan-done { color: var(--ok)}
+        .dc-plan-card.on-hero .dc-plan-done { color: var(--hero-text-ok)}
 
         /* ステータス切替 3ボタン (soft-fill) */
         .dc-status-btn {
@@ -4264,9 +4270,9 @@
 
                 <!-- OCR 解析中バナー (display:none で初期化、解析時に表示) -->
                 <div id="mypageDmgAnalyzing" style="display:none;align-items:center;gap:10px;background:var(--t-ink);border-radius:12px;padding:11px 13px;margin-bottom:12px;animation:dcFadeIn 0.2s ease;">
-                    <div style="width:16px;height:16px;border:2.5px solid rgba(255,255,255,0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
+                    <div style="width:16px;height:16px;border:2.5px solid rgba(var(--paper-rgb), 0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
                     <div style="font-size:11px;font-weight:900;color:var(--card);letter-spacing:0.2px;flex:none;"><span data-sp-icon="camera" data-sp-size="12"></span> 解析中…</div>
-                    <div id="mypageDmgAnalyzedNames" style="flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--t-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">&nbsp;</div>
+                    <div id="mypageDmgAnalyzedNames" style="flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--on-ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">&nbsp;</div>
                 </div>
 
                 <!-- 5属性パネル (横スクロール + scroll-snap) -->
@@ -4532,7 +4538,7 @@
                         <div style="font-size:11px;color:var(--t-muted);margin-top:2px;">メンバー全員へPushを送信</div>
                     </div>
                 </div>
-                <button onclick="openOpsPushSendModal()" style="margin-top:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:13px;background:linear-gradient(180deg,var(--t-ink),var(--t-ink));color:var(--on-fill);font-size:15px;font-weight:800;letter-spacing:0.4px;cursor:pointer;border:none;box-shadow:0 8px 18px rgba(20,22,26,0.2);">通知を作成</button>
+                <button onclick="openOpsPushSendModal()" style="margin-top:13px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:13px;background:linear-gradient(180deg,var(--t-ink),var(--t-ink));color:var(--card);font-size:15px;font-weight:800;letter-spacing:0.4px;cursor:pointer;border:none;box-shadow:0 8px 18px rgba(20,22,26,0.2);">通知を作成</button>
             </div>
 
             <!-- シーズン制御 -->
@@ -5865,7 +5871,7 @@
                 <!-- 現在プレイヤー カード -->
                 <div id="settingsLocalInfo" style="display:flex;align-items:center;gap:11px;margin-top:14px;padding:11px 13px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.04);border-radius:12px;">
                     <div style="width:34px;height:34px;flex:none;border-radius:50%;padding:2px;box-sizing:border-box;background:linear-gradient(140deg,var(--card),var(--track) 50%,var(--s2));">
-                        <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, var(--fill-muted), var(--t-ink));display:flex;align-items:center;justify-content:center;color:var(--on-fill);font-size:12px;font-weight:900;">—</div>
+                        <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, var(--fill-muted), var(--t-ink));display:flex;align-items:center;justify-content:center;color:var(--card);font-size:12px;font-weight:900;">—</div>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:10px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>
@@ -6774,7 +6780,7 @@
             <!-- 保存ボタン -->
             <div style="display:flex;gap:9px;margin-top:14px;">
                 <div onclick="closeMyAttackModal()" style="padding:13px 16px;border-radius:12px;border:1px solid rgba(var(--ink-rgb), 0.08);background:var(--card);color:var(--t-body);font-size:13px;font-weight:800;cursor:pointer;">キャンセル</div>
-                <button id="myAttackSaveBtn" onclick="handleMyAttackSave()" style="flex:1;padding:13px 16px;border-radius:12px;border:none;background:linear-gradient(180deg, var(--t-ink), var(--t-ink));color:var(--on-fill);font-size:14px;font-weight:900;letter-spacing:0.3px;cursor:pointer;text-align:center;opacity:0.55;box-shadow:0 6px 16px rgba(20,22,26,0.25);">保存</button>
+                <button id="myAttackSaveBtn" onclick="handleMyAttackSave()" style="flex:1;padding:13px 16px;border-radius:12px;border:none;background:linear-gradient(180deg, var(--t-ink), var(--t-ink));color:var(--card);font-size:14px;font-weight:900;letter-spacing:0.3px;cursor:pointer;text-align:center;opacity:0.55;box-shadow:0 6px 16px rgba(20,22,26,0.25);">保存</button>
             </div>
         </div>
     </div>
@@ -7205,7 +7211,7 @@
                     <div class="tour-demo-card" style="margin-top:8px;border-left:3px solid ${c};">
                         <div style="font-size:10px;font-weight:800;color:var(--t-muted);letter-spacing:0.5px;margin-bottom:5px;">📱 他のメンバーの画面 (自動で共有されます)</div>
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <span style="width:26px;height:26px;flex:none;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%,var(--fill-muted),var(--t-ink));color:var(--on-fill);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;">あ</span>
+                            <span style="width:26px;height:26px;flex:none;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%,var(--fill-muted),var(--t-ink));color:var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;">あ</span>
                             <span style="flex:1;font-size:12px;font-weight:800;color:var(--t-ink);">あなたが <strong style="color:${c};">B${d.boss}</strong> と交戦中 🔥</span>
                         </div>
                         <div style="font-size:10px;color:var(--warn-deep);background:rgba(245,158,11,0.10);border-radius:8px;padding:6px 9px;margin-top:7px;">⚠️ 他の人が同じボスを選ぼうとすると警告が出ます (二重凸防止)</div>
@@ -8050,7 +8056,7 @@
             // 黒 (hero) = 行動要求は常に1件だけ。CTA部品:
             const heroBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:14px;font:inherit;font-size:13.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 5px 16px rgba(108,66,240,0.4);">${label}</button>`;
             const softBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:var(--t-ink);cursor:pointer;background:var(--s2);">${label}</button>`;
-            const heroSub = (onclick, label) => `<button onclick="${onclick}" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:11.5px;font-weight:800;color:var(--hero-text-ops);cursor:pointer;background:rgba(255,255,255,0.08);">${label}</button>`;
+            const heroSub = (onclick, label) => `<button onclick="${onclick}" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:11.5px;font-weight:800;color:var(--hero-text-ops);cursor:pointer;background:rgba(var(--paper-rgb), 0.08);">${label}</button>`;
 
             const maxPick = _maxDisjointSquads(squads);
             const canForm3 = maxPick >= 3;
@@ -8198,8 +8204,9 @@
             card.style.display = '';
             card.classList.toggle('dc-hero', hero);
             card.style.borderLeft = hero ? 'none' : '4px solid var(--ops-solid)';   // 白バリアントだけ紫の左帯
-            const ink = hero ? 'var(--on-fill)' : 'var(--t-ink)';
-            const sub = hero ? 'rgba(255,255,255,0.62)' : 'var(--t-body)';
+            // ★ 黒いカード (hero) の上の文字は var(--card) と rgba(var(--paper-rgb), …) — ダークではカードが白に反転するので、白固定だと消える
+            const ink = hero ? 'var(--card)' : 'var(--t-ink)';
+            const sub = hero ? 'rgba(var(--paper-rgb), 0.62)' : 'var(--t-body)';
             const label = hero ? 'var(--hero-text-ops)' : 'var(--ops)';
             card.innerHTML = `
                 <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:${label};margin-bottom:6px;">📌 次にやること</div>
@@ -8347,7 +8354,7 @@
             const st = _myPubState;
             if (!Array.isArray(_myResvRows) && !(st && st.plan && st.viewerId === identity?.id)) { _heroPlanKey = ''; return ''; }
             _heroPlanKey = _homeSlotsKey(h);
-            const sub = hero ? 'rgba(255,255,255,0.55)' : 'var(--t-muted)';
+            const sub = hero ? 'rgba(var(--paper-rgb), 0.55)' : 'var(--t-muted)';
             const cards = h.slots.map((slot, i) => _homeSlotCardHtml(slot, i, hero)).join('');
             return `
                 <div id="heroPlanStrip" style="margin:2px 0 4px;">
@@ -15207,12 +15214,15 @@
             const canSave = hasBoss && hasDmg;
             btn.style.opacity = canSave ? '1' : '0.55';
             btn.style.cursor = canSave ? 'pointer' : 'not-allowed';
+            // ★ 塗りと一緒に文字色も決める: 黒 (--t-ink) の上は var(--card) (ダークで反転する)、明るい緑の上は黒 (--ok-ink。白だと 2.3:1)
             if (view === 'imported') {
                 btn.style.background = 'linear-gradient(180deg,#1FC36E,#16A85D)';
+                btn.style.color = 'var(--ok-ink)';
                 btn.style.boxShadow = '0 6px 16px rgba(24,194,107,0.32)';
                 btn.textContent = '✓ 内容を確認して保存';
             } else {
                 btn.style.background = 'linear-gradient(180deg,var(--t-ink),var(--t-ink))';
+                btn.style.color = 'var(--card)';
                 btn.style.boxShadow = '0 6px 16px rgba(20,22,26,0.25)';
                 btn.textContent = '保存';
             }
@@ -16474,7 +16484,7 @@
                 const name = id?.name || '未選択';
                 localInfoEl.innerHTML = `
                     <div style="width:34px;height:34px;flex:none;border-radius:50%;padding:2px;box-sizing:border-box;background:linear-gradient(140deg,var(--card),var(--track) 50%,var(--s2));">
-                        <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, var(--fill-muted), var(--t-ink));display:flex;align-items:center;justify-content:center;color:var(--on-fill);font-size:12px;font-weight:900;">${escapeHtml(initial)}</div>
+                        <div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(120% 120% at 32% 26%, var(--fill-muted), var(--t-ink));display:flex;align-items:center;justify-content:center;color:var(--card);font-size:12px;font-weight:900;">${escapeHtml(initial)}</div>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:10px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">現在のプレイヤー</div>
@@ -26149,10 +26159,10 @@
             o.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(20,22,26,0.45);display:flex;align-items:center;justify-content:center;animation:dcFadeIn .15s ease;';
             o.innerHTML = `
                 <div style="display:flex;align-items:center;gap:12px;background:var(--t-ink);border-radius:16px;padding:16px 20px;box-shadow:0 12px 36px rgba(0,0,0,0.4);">
-                    <div style="width:22px;height:22px;border:3px solid rgba(255,255,255,0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
+                    <div style="width:22px;height:22px;border:3px solid rgba(var(--paper-rgb), 0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
                     <div>
                         <div style="font-size:13px;font-weight:900;color:var(--card);letter-spacing:0.2px;">${spIcon('camera', 13)} AI解析中…</div>
-                        <div style="font-size:10.5px;font-weight:700;color:var(--t-muted);margin-top:2px;">1枚あたり10〜20秒かかります</div>
+                        <div style="font-size:10.5px;font-weight:700;color:var(--on-ink-soft);margin-top:2px;">1枚あたり10〜20秒かかります</div>
                     </div>
                 </div>`;
             document.body.appendChild(o);
@@ -26361,7 +26371,7 @@
                     const b = document.createElement('div');
                     b.id = 'sbLoadErrorBanner';
                     b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom, 8px) + 74px);z-index:9998;background:var(--t-ink);color:var(--card);border-radius:14px;padding:13px 15px;font-size:12px;font-weight:700;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,0.35);display:flex;align-items:center;gap:10px;';
-                    b.innerHTML = `<span style="flex:1;">⚠️ サーバー接続の読み込みに失敗しました。電波の良い場所か Wi-Fi で再読み込みしてください。<br><span style="font-weight:700;color:rgba(255,255,255,0.7);">(コンテンツブロッカーをお使いの場合は、このサイトで無効にしてみてください)</span></span><button onclick="location.reload()" style="flex:none;padding:9px 14px;border-radius:10px;border:none;background:var(--card);color:var(--t-ink);font-size:12px;font-weight:900;cursor:pointer;">再読み込み</button>`;
+                    b.innerHTML = `<span style="flex:1;">⚠️ サーバー接続の読み込みに失敗しました。電波の良い場所か Wi-Fi で再読み込みしてください。<br><span style="font-weight:700;color:var(--on-ink-soft);">(コンテンツブロッカーをお使いの場合は、このサイトで無効にしてみてください)</span></span><button onclick="location.reload()" style="flex:none;padding:9px 14px;border-radius:10px;border:none;background:var(--card);color:var(--t-ink);font-size:12px;font-weight:900;cursor:pointer;">再読み込み</button>`;
                     document.body.appendChild(b);
                 }
             }, 1000);

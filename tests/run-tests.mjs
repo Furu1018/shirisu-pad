@@ -8737,7 +8737,7 @@ console.log('\ngrowthDomain:');
         const rgba = (css.match(/rgba?\([0-9]/g) || []).length;
         // 2026-09-10 段階1 完了: 727 → 14。残り14はコメントと、インラインの style を拾う
         // 属性セレクタ (button[style*="background:#14161A"]) — 段階2でインラインを直すまで動かせない
-        const LIMIT_HEX = 14, LIMIT_RGBA = 211;   // 段階3a: 線・輪郭のベールを --ink-rgb へ
+        const LIMIT_HEX = 14, LIMIT_RGBA = 196;   // 段階3a: 線・輪郭のベールを --ink-rgb へ / 2026-10-03: 黒いカードの上の白ベールを --paper-rgb へ
         assert.ok(raw <= LIMIT_HEX, `<style> の直値が増えている: ${raw} (上限 ${LIMIT_HEX})`);
         assert.ok(rgba <= LIMIT_RGBA, `<style> の rgba() が増えている: ${rgba} (上限 ${LIMIT_RGBA})`);
         if (raw < LIMIT_HEX - 20 || rgba < LIMIT_RGBA - 20) {
@@ -8751,6 +8751,53 @@ console.log('\ngrowthDomain:');
         const LIMIT_INLINE = 281;   // 段階3d: 式の中の色もトークンへ (Codex指摘への対応)
         assert.ok(rawOut <= LIMIT_INLINE, `インラインの直値が増えている: ${rawOut} (上限 ${LIMIT_INLINE})`);
         if (rawOut < LIMIT_INLINE - 40) assert.fail(`置き換えが進んだので上限を下げてください: インライン ${rawOut}`);
+    });
+    test('★ --t-ink の塗りの上に、白固定の文字を置かない (ダークでは塗りが白に反転して消える — 2026-10-03 実機報告)', () => {
+        // ★ --t-ink は「いちばん濃い文字色」だが塗り (黒いカード・主ボタン) にも使う。ダークでは白 (#F2F4F6) に反転するので、
+        //   その上の文字は var(--card) / 薄い文字は var(--on-ink-soft) / ベールは rgba(var(--paper-rgb), …) でなければならない。
+        //   var(--on-fill)・rgba(255,255,255,…)・#fff・white・var(--t-muted) は両テーマで同じ色 → 白地に白 (または薄灰) になる
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const INK_FILL = /background(?:-color|-image)?\s*:\s*[^;"']*var\(--t-ink\)/;
+        const WHITE_FIXED = /var\(--on-fill\)|rgba\(\s*255\s*,\s*255\s*,\s*255|#fff\b|#ffffff\b|color\s*:\s*white\b|var\(--t-muted\)/i;
+        const bad = [];
+        // ① <style> のルール (トークンの定義ブロックは除く)
+        const s0 = html.indexOf('<style'), s1 = html.lastIndexOf('</style>');
+        let css = html.slice(s0, s1);
+        const a = css.indexOf(':root, :root[data-theme="light"]'), b = css.indexOf('/* === マーブル');
+        css = css.slice(0, a) + css.slice(b);
+        for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+            const sel = m[1].trim().replace(/\s+/g, ' ').slice(-70), body = m[2];
+            if ((INK_FILL.test(body) || /\.on-hero|\.dc-hero|\.has-combat/.test(sel)) && WHITE_FIXED.test(body)) bad.push(`CSS ${sel} → ${body.match(WHITE_FIXED)[0]}`);
+        }
+        // ② インラインの style 属性 / テンプレート文字列の style (同じ 1 つの style の中に 塗り と 文字 が同居するもの)
+        for (const m of html.matchAll(/style="([^"]*)"/g)) {
+            const st = m[1];
+            if (INK_FILL.test(st) && WHITE_FIXED.test(st)) bad.push(`inline (${html.slice(0, m.index).split('\n').length}行目) → ${st.match(WHITE_FIXED)[0]} on ${st.slice(0, 60)}`);
+        }
+        assert.deepEqual(bad, [], `--t-ink の塗りの上に白固定の文字がある (ダークで消える):\n  ${bad.join('\n  ')}`);
+        // ③ ヒーロー (黒いカード) の JS 側: 文字は var(--card)、ベールは rgba(var(--paper-rgb), …)
+        assert.match(html, /const ink = hero \? 'var\(--card\)' : 'var\(--t-ink\)';/, 'ヒーローの見出しが白固定');
+        assert.match(html, /const sub = hero \? 'rgba\(var\(--paper-rgb\), 0\.62\)' : 'var\(--t-body\)';/, 'ヒーローの説明が白固定');
+        assert.match(html, /const sub = hero \? 'rgba\(var\(--paper-rgb\), 0\.55\)' : 'var\(--t-muted\)';/, 'ヒーローの 3 枠の添え字が白固定');
+        assert.match(html, /color:var\(--hero-text-ops\);cursor:pointer;background:rgba\(var\(--paper-rgb\), 0\.08\);/, 'ヒーローの小ボタンの地が白固定');
+        // 凸報告の「保存」: 塗りと一緒に文字色も決める (黒の上は --card / 緑の上は --ok-ink)
+        assert.match(html, /btn\.style\.background = 'linear-gradient\(180deg,#1FC36E,#16A85D\)';\s*btn\.style\.color = 'var\(--ok-ink\)';/, '緑の保存ボタンの文字色を決めていない');
+        assert.match(html, /btn\.style\.background = 'linear-gradient\(180deg,var\(--t-ink\),var\(--t-ink\)\)';\s*btn\.style\.color = 'var\(--card\)';/, '黒の保存ボタンの文字色を決めていない');
+        // ④ 黒いカード用のトークン (ヒーローの紫・橙・緑の文字と線) は、テーマごとに違う値 (ライト = 黒の上の淡色 / ダーク = 白の上の濃色)
+        const tokens = (block) => Object.fromEntries([...block.matchAll(/--(hero-(?:text|line)-\w+):\s*(#[0-9A-Fa-f]{6})/g)].map(x => [x[1], x[2].toUpperCase()]));
+        const light = tokens(html.slice(html.indexOf(':root, :root[data-theme="light"]'), html.indexOf(':root[data-theme="dark"]')));
+        const dark = tokens(html.slice(html.indexOf(':root[data-theme="dark"]'), html.indexOf('/* === マーブル')));
+        assert.deepEqual(Object.keys(light).sort(), ['hero-line-ops', 'hero-line-warn', 'hero-text-ok', 'hero-text-ops', 'hero-text-warn']);
+        assert.deepEqual(Object.keys(dark).sort(), Object.keys(light).sort(), 'ダークに無いヒーローのトークンがある');
+        const lum = (hex) => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+        const contrast = (x, y) => { const [h, l] = [Math.max(lum(x), lum(y)), Math.min(lum(x), lum(y))]; return (h + 0.05) / (l + 0.05); };
+        for (const k of Object.keys(light)) {
+            assert.notEqual(light[k], dark[k], `${k} が両テーマで同じ値 (ダークの白いカードの上で淡いまま)`);
+            if (k.startsWith('hero-text')) {
+                assert.ok(contrast(light[k], '#14161A') >= 4.5, `${k} (ライト) が黒の上で読めない: ${contrast(light[k], '#14161A').toFixed(1)}`);
+                assert.ok(contrast(dark[k], '#F2F4F6') >= 4.5, `${k} (ダーク) が白の上で読めない: ${contrast(dark[k], '#F2F4F6').toFixed(1)}`);
+            }
+        }
     });
     test('★ PC版: カードの幅は opsLayout.CARDS が決め、CSS に受け皿がある', () => {
         // ★ 幅を index.html 側に書き足さない (カードを足すたびに2箇所直すことになる)。
