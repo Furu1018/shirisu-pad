@@ -252,6 +252,22 @@ test('★ 進み具合: id を失っていても (読み込み直し・別の端
     const after = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'declined')].map(r => ({ ...r, boss_number: 3 }));
     assert.equal(runOffer({ rows: after, offerId: null, boss: { boss_number: 3 } }), '', '確定したあとも出している');
 });
+test('★ 進み具合: 別の端末が確定したら (落ちた案が全部 declined)、持っていた id を捨てて箱を畳む。全員が断った打診は出したまま', () => {
+    const boss = { boss_number: 3 };
+    const confirmedRows = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'declined'), OR('B', 3, 'う', 'declined')].map(r => ({ ...r, boss_number: 3 }));
+    const env = {};
+    assert.equal(runOffer({ rows: confirmedRows, offerId: 'o1', boss, env }), '', '別の端末が確定したのに「この案で確定」を出し続ける');
+    assert.equal(env._opsFinish.offerId, null, '確定済みの id を持ち続ける (次の描き直しでまた出る)');
+    const deadRows = [OR('A', 1, 'あ', 'declined'), OR('B', 2, 'い', 'declined')].map(r => ({ ...r, boss_number: 3 }));
+    assert.ok(runOffer({ rows: deadRows, offerId: 'o1', boss }).includes('どちらの案も見送り'), '送った端末で「全滅」が読めない');
+    assert.equal(runOffer({ rows: deadRows, offerId: null, boss }), '', '全滅した打診を読み込み直しで復活させている');
+    // 成立不能な案に pending が残っていても (A = declined + pending / B = declined) 復活させない
+    const deadPending = [OR('A', 1, 'あ', 'declined'), OR('A', 2, 'い', 'pending'), OR('B', 3, 'う', 'declined')].map(r => ({ ...r, boss_number: 3 }));
+    assert.equal(runOffer({ rows: deadPending, offerId: null, boss }), '', '成立不能な打診を復活させている');
+    // そろった案があり、ほかの案に accepted が残る = まだ確定していない → 出す
+    const notYet = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'accepted'), OR('B', 3, 'う', 'declined')].map(r => ({ ...r, boss_number: 3 }));
+    assert.ok(runOffer({ rows: notYet, offerId: 'o1', boss }).includes('この案で確定'), '確定できるべきなのに畳んでいる');
+});
 test('★ 進み具合: 「閉じる」はその打診を覚えて、行から拾い直さない', () => {
     const env = { _opsFinish: { offerId: 'o1', closed: new Set() }, _opsCurrentAttr: null, renderOpsFinishList: () => { } };
     const keys = Object.keys(env);

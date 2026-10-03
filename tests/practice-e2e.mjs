@@ -165,9 +165,12 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 level: T.seasons[0].current_level, offers: titles.filter(t => /締め凸 \\(案\\d\\)/.test(t)).length, accepted: titles.filter(t => t === '🗡 締め凸を了承').length,
                 passed: titles.filter(t => /今回は見送り/.test(t)).length, defeated: titles.filter(t => /撃破!/.test(t)).length, hpSavedAt: T.bosses.find(b => b.boss_number === 1)?.updated_at,
                 fulfilled: T.plan_reservations.filter(r => r.source_type === 'finish_request' && r.status === 'fulfilled').length, finish: T.finish_requests.length,
+                killers: T.attacks.filter(a => a.boss_number === 1 && a.reservation_id != null).length, setupAt: sessionStorage.getItem('shirisuko_practice_v1:ops-day:setupAt'),
                 notice: T.raid_event_notices.filter(r => r.kind === 'boss_defeated' && r.sent).map(r => r.ref) }; })())`));
         if (!(w.plans >= 1) || !(w.others >= 15)) problems.push(`当日の盤面 (配信と 20 時までの凸) ができていない: ${JSON.stringify(w)}`);
-        if (w.offers !== 2 || !(w.accepted >= 1) || !(w.fulfilled >= 1)) problems.push(`同時打診 → 了承 → 締め凸 のどれかが欠けている: ${JSON.stringify(w)}`);
+        if (!(w.setupAt && w.hpSavedAt && w.hpSavedAt > w.setupAt)) problems.push(`B1 の HP を保存していない: ${JSON.stringify(w)}`);
+        // 2 案 (今すぐ こむぎ+おはぎ / 4時間以内 クロ+おはぎ) → 案1 が了承 → 確定で、もう片方だけに居る 1 人へ「見送り」→ 了承した人の締め凸 (予約つき) が B1 に入る
+        if (w.offers !== 2 || w.accepted !== 2 || w.passed !== 1 || w.fulfilled !== 2 || w.killers !== 2) problems.push(`同時打診 → 了承 → 確定 (見送り) → 締め凸 のどれかが欠けている: ${JSON.stringify(w)}`);
         if (JSON.stringify(w.dead) !== '[1]' || w.level !== 1 || JSON.stringify(w.notice) !== '["L1B1"]' || w.defeated !== 1 || w.finish !== 0) problems.push(`B1 だけを倒して撃破を検知・通知し、依頼を片付けた形になっていない: ${JSON.stringify(w)}`);
     }
     if (done && scenario === 'member' && !startAt) {

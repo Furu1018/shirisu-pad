@@ -283,6 +283,15 @@ test('途中経過: 書き込みのたびに知らせる / dump → restore で�
     assert.equal(sb2.__db.restore(sb.__db.dump()), true);
     assert.equal((await sb2.from('players').insert({ name: 'う' }).select('id').single()).data.id, 12);
     assert.equal(sb2.__db.restore('{"v":2}'), false, '形の違う控えを受け入れている');
+    // ★ 送ったことにした通知 (outbox) も控えに入る (Codex指摘 2026-10-03): 「〜したことにする」が途中で失敗して戻したとき、送ったはずの通知だけ残らない
+    await sb.functions.invoke('send-push', { body: { title: '控えの前' } });
+    const snap = sb.__db.dump();
+    await sb.functions.invoke('send-push', { body: { title: '控えのあと' } });
+    assert.equal(sb.__db.outbox.length, 2);
+    assert.equal(sb.__db.restore(snap), true);
+    assert.deepEqual(sb.__db.outbox.map(x => x.title), ['控えの前'], '戻しても送ったはずの通知が残る');
+    assert.equal(sb.__db.restore(JSON.stringify({ v: 1, T: {}, SEQ: {} })), true);
+    assert.equal(sb.__db.outbox.length, 0, 'outbox の無い古い控えで空に戻らない');
 });
 
 // ============================== 3. 種データ ==============================

@@ -416,14 +416,30 @@
     }
 
     /**
-     * そのボスで**まだ決着していない**いちばん新しい打診の id。無ければ null。
+     * 打診 1 回ぶんの行から、その打診がいまどの状態かを返す (判定は offerProgress と同じ材料で)。
+     *   'none'      行が無い (撃破で消えた・まだ出していない)
+     *   'dead'      どの案も成立しない (1 人でも断った案しか無い)
+     *   'confirmed' 先にそろった案があり、ほかの案の行が全部 declined = 「この案で確定」を押したあと (1 案だけの打診がそろったときも)
+     *   'open'      それ以外 (返事待ちがある / そろった案があるがまだ確定していない)
+     * ★ 「成立不能な案に pending が残る」(A = declined + pending / B = declined) は dead — open にすると読み込み直しで
+     *   「どちらの案も見送り」の箱が復活する (Codex指摘 2026-10-03)
+     */
+    function offerState(rows) {
+        const pr = offerProgress(rows);
+        if (!pr.plans.length) return 'none';
+        if (pr.allDead) return 'dead';
+        if (pr.winner && pr.plans.every(p => p.key === pr.winner || p.members.every(m => m.status === 'declined'))) return 'confirmed';
+        return 'open';
+    }
+
+    /**
+     * そのボスで**まだ決着していない** (offerState が 'open') いちばん新しい打診の id。無ければ null。
      *
      * ★ なぜ要るか: 打診の id は送った端末のメモリにしか無かった。読み込み直す (iOS は裏に回ると落ちる) と
      *   「📣 打診中」の箱ごと消えて**「この案で確定」が押せなくなる**し、2 人目の運営の端末にはそもそも出ない
      *   (練習モード「運営編・当日」を作っていて発覚 2026-10-03)。行には offer_id が残っているので、そこから拾い直す。
-     * ★ 「決着していない」= 返事待ちの行がある、または 生きている (全員が断っていない) 案が 2 つ以上ある。
-     *   確定すると落ちた案の行は全部 declined になるので、生きている案は 1 つになる = もう出さない
-     *   (出すと「この案で確定」が確定のあとも並ぶ)。全員が断った打診も出さない (🔁 直近の動き に残る)。
+     * ★ 確定すると落ちた案の行は全部 declined になる ('confirmed') ので拾わない (拾うと「この案で確定」が確定のあとも並ぶ)。
+     *   全員が断った打診 ('dead') も拾わない (🔁 直近の動き に残る)。
      * ★ closed = この端末で「閉じる」を押した打診 (また出さない)
      *
      * @param {{offer_id?:string, boss_number:any, status:string, id?:any}[]} rows その回の依頼の行
@@ -443,12 +459,10 @@
         }
         let best = null;
         for (const [k, rs] of byOffer) {
-            const open = rs.some(r => r.status === 'pending')
-                || new Set(rs.filter(r => r.status !== 'declined').map(r => String(r.plan_key))).size >= 2;
-            if (!open) continue;
-            // いちばん新しい = 行 id の最大 (採番は増えるだけ)。id が無ければ並び順の後ろ
+            if (offerState(rs) !== 'open') continue;
+            // いちばん新しい = 行 id の最大 (採番は増えるだけ)。id が無ければ (同点なら) 行の並びの後ろ
             const top = rs.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0);
-            if (!best || top > best.top) best = { k, top };
+            if (!best || top >= best.top) best = { k, top };
         }
         return best ? best.k : null;
     }
@@ -456,6 +470,6 @@
     root.finishDomain = {
         computeFinishPlans, buildFinishLeaderTimeline, filterByWindow,
         FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere, filterByCommitments,
-        offerProgress, offerLosers, latestOpenOffer,
+        offerProgress, offerLosers, offerState, latestOpenOffer,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

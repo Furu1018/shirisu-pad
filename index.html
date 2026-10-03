@@ -19680,6 +19680,9 @@
             if (!dom || !dom.offerProgress || !offerId) return '';
             const rows = (_finishReqCache || []).filter(r => String(r.offer_id || '') === String(offerId));
             if (rows.length === 0) return '';
+            // ★ 別の端末 (2 人目の運営) が確定したら、こちらの箱も畳む (Codex指摘 2026-10-03)。持ったままだと落ちた案が全部 declined になっても
+            //   「先にそろった案があります → この案で確定」を出し続ける。全員が断った打診 (dead) は送った端末には出したまま (「別の組み合わせを」を読ませる)
+            if (dom.offerState && dom.offerState(rows) === 'confirmed') { _opsFinish.offerId = null; return ''; }
             const pr = dom.offerProgress(rows);
             _opsFinishOffer = pr;
             const esc = escapeHtml;

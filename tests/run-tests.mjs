@@ -3105,6 +3105,17 @@ console.log('\n複数案の同時打診:');
         // 1 案だけ残って全員了承 (旧い形) も決着
         assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'accepted')], 3), null);
     });
+    test('★ 打診の状態 (offerState): none / dead / confirmed / open — 成立不能な案に pending が残っても dead (Codex指摘 2026-10-03)', () => {
+        assert.equal(F.offerState([]), 'none');
+        assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'pending'), O(2, 'o1', 'B', 3, 'pending')]), 'open');
+        assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'pending')]), 'open', 'そろった案があるのに未確定 = open');
+        assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'accepted'), O(3, 'o1', 'B', 3, 'declined')]), 'open', 'B に accepted が残る = まだ確定していない');
+        assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'declined'), O(3, 'o1', 'B', 3, 'declined')]), 'confirmed');
+        assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'accepted')]), 'confirmed', '1 案だけの打診がそろったら決着');
+        assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'A', 3, 'pending'), O(3, 'o1', 'B', 3, 'declined')]), 'dead', '成立不能な案に pending が残るだけなら dead');
+        assert.equal(F.offerState([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'B', 3, 'declined')]), 'dead');
+        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'A', 3, 'pending'), O(3, 'o1', 'B', 3, 'declined')], 3), null, '成立不能な打診を拾っている');
+    });
     test('★ 打診の拾い直し: 同じボスに打診が 2 回あれば、行 id の大きい (新しい) ほう', () => {
         const rows = [O(1, 'old', 'A', 3, 'pending'), O(2, 'old', 'B', 3, 'pending'), O(7, 'new', 'A', 3, 'pending'), O(8, 'new', 'B', 3, 'pending')];
         assert.equal(F.latestOpenOffer(rows, 3), 'new');
@@ -3112,6 +3123,9 @@ console.log('\n複数案の同時打診:');
         assert.equal(F.latestOpenOffer(rows, 3, ['new']), 'old', '新しいほうを閉じたら古いほう (まだ返事待ち) を出す');
         // offer_id の無い行 (1 案ずつの依頼) は打診ではない
         assert.equal(F.latestOpenOffer([{ id: 1, boss_number: 3, player_id: 1, status: 'pending' }], 3), null);
+        // id の無い行 (同点) なら行の並びの後ろ
+        const noId = (offer, plan) => ({ offer_id: offer, plan_key: plan, boss_number: 3, player_id: offer + plan, status: 'pending' });
+        assert.equal(F.latestOpenOffer([noId('p', 'A'), noId('p', 'B'), noId('q', 'A'), noId('q', 'B')], 3), 'q', 'id が無いとき並びの後ろを採っていない');
         assert.doesNotThrow(() => F.latestOpenOffer(null, 3));
         assert.equal(F.latestOpenOffer(null, 3), null);
     });

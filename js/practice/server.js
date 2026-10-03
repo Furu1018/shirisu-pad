@@ -507,12 +507,15 @@ export function createPracticeClient(opts = {}) {
                     for (const r of rows || []) T[name].push(withDefaults(name, r));
                 }
             },
-            dump() { return JSON.stringify({ v: 1, T, SEQ }); },
+            // ★ 送ったことにした通知 (outbox) も控えに入れる (Codex指摘 2026-10-03)。入れないと「〜したことにする」が途中で失敗して
+            //   盤面を戻したあとも、送ったはずの通知だけ残り、押し直すと二重になる。古い控え (outbox 無し) は空に戻す
+            dump() { return JSON.stringify({ v: 1, T, SEQ, outbox }); },
             restore(json) {
                 const d = typeof json === 'string' ? JSON.parse(json) : json;
                 if (!d || d.v !== 1 || !d.T) return false;
                 for (const k of Object.keys(T)) T[k] = Array.isArray(d.T[k]) ? d.T[k] : [];
                 Object.assign(SEQ, d.SEQ || {});
+                outbox.splice(0, outbox.length, ...(Array.isArray(d.outbox) ? d.outbox : []));
                 return true;
             },
             /** 練習の層 (相手役の動き) が直接書くとき用。失敗したら巻き戻す */
