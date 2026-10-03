@@ -211,6 +211,7 @@ try {
     ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }, 'member') && ok;
     ok = await run('スマホ幅: 運営編・前日 (催促 → 算出 → 📌 → 申請の承認 → 配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
     ok = await run('スマホ幅: ツアーから「当日: 凸を報告する」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'attack') && ok;
+    ok = await run('スマホ幅: 「締め凸のお願いに返事をする」から入る (凸報告まで済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'finish') && ok;
     if (process.env.PC) ok = await run('PC 幅 (1280×800): メンバー編', { width: 1280, height: 800, mobile: false }, 'member') && ok;
     if (process.env.PC) ok = await run('PC 幅 (1280×800): 運営編・前日', { width: 1280, height: 800, mobile: false }, 'ops-eve') && ok;
 } catch (e) { ok = false; console.log('  ❌ 実行できませんでした: ' + (e && e.stack || e)); }

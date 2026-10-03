@@ -764,9 +764,13 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     for (const id of ids) assert.ok(P.scenarios[id].title && P.scenarios[P.scenarios[id].next], `${id} の名前か「次の編」が無い`);
     // 途中の課題から: 手前を**本物の関数**で済ませる (FF の鍵は課題の鍵)
     const ffKeys = [...GUIDE.matchAll(/\n        (\w+): async function \(c\) \{/g)].map(m => m[1]);
-    assert.deepEqual(ffKeys, ['avail', 'mock', 'resv', 'ack', 'attack'], '手前を済ませる手順が課題と合わない');
+    assert.deepEqual(ffKeys, ['avail', 'mock', 'resv', 'ack', 'attack'], '手前を済ませる手順が課題と合わない (finish は最後なので手順が要らない)');
+    assert.match(GUIDE, /attack: async function \(c\) \{[\s\S]*?await window\.supabaseAddAttack\(\{[^}]*\}, \{ reservationId: res\.id, actorName: P\.me\.name \}\);/, '手前の「凸報告」を本物の関数で済ませていない (start=finish が attack から始まる)');
+    // ★ 途中で失敗したら全部戻して最初から (半端に済んだ状態で始めない: Codex指摘 2026-10-03)
+    assert.match(GUIDE, /async function fastForward\(startKey\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?if \(!list\[i\]\.done\(context\(\)\)\) throw new Error[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);[\s\S]*?return false;/, '途中の課題から始める処理が、失敗しても途中まで書いた盤面を残す');
+    assert.match(GUIDE, /fastForward\(startAt\)\.then\(function \(ok\) \{[\s\S]*?if \(ok\) store\.set\('ff:done', '1'\); else store\.del\('start'\);/, '失敗しても「済んだ」印を付けている / 「途中から」をやめていない');
     for (const fn of ['supabaseConfirmAvailability', 'supabaseSaveMockSubmission', 'supabaseCreateReservation', 'supabaseAckPlan']) assert.ok(new RegExp(`var FF = \\{[\\s\\S]*?window\\.${fn}\\(`).test(GUIDE), `手前を済ませるのに本物の ${fn} を使っていない`);
-    assert.match(GUIDE, /fastForward\(startAt\)[\s\S]*?store\.set\('ff:done', '1'\)[\s\S]*?location\.reload\(\)/, '手前を済ませたあと読み込み直していない (画面が古いまま)');
+    assert.match(GUIDE, /fastForward\(startAt\)\.then\([\s\S]*?location\.reload\(\)/, '手前を済ませたあと読み込み直していない (画面が古いまま)');
     const used = [...GUIDE.matchAll(/assume: \['(\w+)'/g)].map(m => m[1]);
     assert.deepEqual([...new Set(used)].sort(), [...P.assumeKeys].sort(), '「〜したことにする」の顔ぶれが課題と合わない');
     // ★ 相手の動き (承認・時間・お願い) を自動で起こさない (ユーザー要望 2026-10-02: 本番で「練習ではすぐ返事が来たのに」とならないように)。

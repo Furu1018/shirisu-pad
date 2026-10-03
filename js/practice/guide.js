@@ -476,22 +476,40 @@
         },
         ack: async function (c) { var pub = context().pub; if (pub) await window.supabaseAckPlan(c.me, c.season.id, pub.id); },
         attack: async function (c) {
+            // 当日 21 時に進めて (ほかの人の凸も入れて)、自分の予約した凸を本物の関数で報告する
             var pub = await window.supabaseGetPublishedPlan().catch(function () { return null; });
             advanceWorld(context(), pub && pub.plan, 21);
             P.clock.set('hard', 21);
+            var c2 = context();
+            var res = c2.resv.filter(function (r) { return r.status === 'approved'; })[0];
+            if (!res) throw new Error('予約が無いので凸を報告できません');
+            var boss = c2.T.bosses.filter(function (b) { return eq(b.season_id, c2.season.id) && eq(b.boss_number, res.boss_number); })[0];
+            await window.supabaseAddAttack({ seasonId: c2.season.id, playerId: c2.me, attackDate: c2.season.hard_date, bossNumber: res.boss_number, bossCode: boss ? boss.boss_code : null,
+                damageRaw: Math.round((Number(res.expected_damage_b) || 30) * 1e9), level: c2.season.current_level || 1, characters: res.characters_snapshot || [] }, { reservationId: res.id, actorName: P.me.name });
         },
     };
     var ffBusy = false;
+    /** 手前の課題を順に済ませる。★ 途中で失敗したら**全部戻す** (半端に済んだ状態で始めない — Codex指摘 2026-10-03)。戻したら最初から始める */
     async function fastForward(startKey) {
         var list = STEPS[SC] || [];
         var until = list.findIndex(function (s) { return s.key === startKey; });
-        if (until < 0) return;
-        for (var i = 0; i < until; i++) {
-            var c = context();
-            if (!c || !c.season) break;
-            if (list[i].done(c)) continue;
-            var fn = FF[list[i].key];
-            if (fn) await fn(c);
+        if (until < 0) return false;
+        var snap = P.db.dump(), clockWas = P.clock.get();
+        try {
+            for (var i = 0; i < until; i++) {
+                var c = context();
+                if (!c || !c.season) throw new Error('盤面がまだありません');
+                if (list[i].done(c)) continue;
+                var fn = FF[list[i].key];
+                if (!fn) throw new Error('課題 ' + list[i].key + ' を済ませる手順がありません');
+                await fn(c);
+                if (!list[i].done(context())) throw new Error('課題 ' + list[i].key + ' が済んだ形になりません');
+            }
+            return true;
+        } catch (e) {
+            console.warn('[練習] 手前の課題を済ませられませんでした (最初から始めます):', e && e.message || e);
+            try { P.db.restore(snap); P.clock.put(clockWas); } catch (_) { /* 戻せなくても最初から */ }
+            return false;
         }
     }
 
@@ -622,8 +640,13 @@
         if (startAt && !store.get('ff:done')) {
             if (!ffBusy) {
                 ffBusy = true;
-                fastForward(startAt).catch(function (e) { console.warn('[練習] 手前の課題を済ませられませんでした:', e && e.message || e); })
-                    .then(function () { try { store.set('ff:done', '1'); } catch (_) { /* noop */ } if (typeof P.save === 'function') P.save(); location.reload(); });
+                fastForward(startAt).then(function (ok) {
+                    // 済ませられたら印を付けて読み込み直す。済ませられなかったら「途中から」をやめて最初から (印を消す)
+                    try { if (ok) store.set('ff:done', '1'); else store.del('start'); } catch (_) { /* noop */ }
+                    if (!ok) note('assume', '途中の課題から始められませんでした', '最初の課題から始めます');
+                    if (typeof P.save === 'function') P.save();
+                    location.reload();
+                });
             }
             render('<div class="pm-band"><span class="t">🎮 手前の課題を済ませています…</span></div>', 'ff'); target = null; return;
         }
