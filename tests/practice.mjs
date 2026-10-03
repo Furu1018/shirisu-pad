@@ -302,6 +302,9 @@ test('種データ: 架空の 31 人・何度作っても同じ・自分は灼�
     const none = a.players.filter(p => p.id >= IDS.firstMember && !a.player_damages.some(d => d.player_id === p.id));
     assert.deepEqual(none.map(p => p.name), ['ミケ', 'ハチ', 'コトラ', 'シロ']);
     assert.equal(none.length, NOT_SUBMITTED);
+    // 通知の購読は全員 (未提出の人が購読していないと、運営編の催促が押せない)
+    assert.equal(a.push_subscriptions.length, 31, '通知を購読していない人がいる (運営編の催促の相手にならない)');
+    assert.ok(none.every(p => a.push_subscriptions.some(s => s.player_id === p.id)), '模擬がまだの人が通知を購読していない');
     for (const p of a.players) {
         const teams = a.player_damages.filter(d => d.player_id === p.id);
         for (const t of teams) assert.equal(new Set(t.characters).size, 5, `${p.name} の ${t.attribute} が 5 人でない`);
