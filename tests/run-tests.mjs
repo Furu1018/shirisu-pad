@@ -8774,6 +8774,17 @@ console.log('\ngrowthDomain:');
             const st = m[1];
             if (INK_FILL.test(st) && WHITE_FIXED.test(st)) bad.push(`inline (${html.slice(0, m.index).split('\n').length}行目) → ${st.match(WHITE_FIXED)[0]} on ${st.slice(0, 60)}`);
         }
+        // ③ 親が黒 (--t-ink) で、中の文字を別の要素・別の文字列で入れる箱: 中身に白固定が無いこと
+        //   (テンプレート文字列全体を見ると、黒いボタンと無関係な添え字が同居するだけで引っかかるので、箱を名指しで見る)
+        for (const [name, re] of [
+            ['sbLoadErrorBanner', /b\.id = 'sbLoadErrorBanner';\s*b\.style\.cssText = '[^']*background:var\(--t-ink\)[^']*';\s*b\.innerHTML = `([^`]*)`/],
+            ['mypageDmgAnalyzing', /id="mypageDmgAnalyzing" style="[^"]*background:var\(--t-ink\)[^"]*">([\s\S]*?)\n                <\/div>/],
+            ['aiSpinOverlay', /o\.id = 'aiSpinOverlay';[\s\S]*?<div style="[^"]*background:var\(--t-ink\)[^"]*">([\s\S]*?)<\/div>`;/],
+        ]) {
+            const mm = html.match(re);
+            assert.ok(mm, `${name} の箱を切り出せない (作りが変わったらこのテストも直す)`);
+            if (WHITE_FIXED.test(mm[1])) bad.push(`${name} の中身 → ${mm[1].match(WHITE_FIXED)[0]}`);
+        }
         assert.deepEqual(bad, [], `--t-ink の塗りの上に白固定の文字がある (ダークで消える):\n  ${bad.join('\n  ')}`);
         // ③ ヒーロー (黒いカード) の JS 側: 文字は var(--card)、ベールは rgba(var(--paper-rgb), …)
         assert.match(html, /const ink = hero \? 'var\(--card\)' : 'var\(--t-ink\)';/, 'ヒーローの見出しが白固定');
