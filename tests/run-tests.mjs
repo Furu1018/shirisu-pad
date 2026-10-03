@@ -3085,6 +3085,36 @@ console.log('\n複数案の同時打診:');
         assert.deepEqual(F.offerProgress([]).plans, []);
         assert.equal(F.offerProgress([]).allDead, false, '案が無いのに全滅と言っている');
     });
+
+    // ★ 打診の id を行から拾い直す (読み込み直し・2 人目の運営の端末でも「この案で確定」が押せる — 2026-10-03)
+    const O = (id, offer, plan, boss, status) => ({ id, offer_id: offer, plan_key: plan, boss_number: boss, player_id: id, status });
+    test('★ 打診の拾い直し: 返事待ちがあれば、そのボスの打診を拾う。別のボス・閉じた打診は拾わない', () => {
+        const rows = [O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'pending'), O(3, 'o9', 'A', 2, 'pending')];
+        assert.equal(F.latestOpenOffer(rows, 3), 'o1');
+        assert.equal(F.latestOpenOffer(rows, 2), 'o9', '別のボスの打診を混ぜている / 拾えていない');
+        assert.equal(F.latestOpenOffer(rows, 3, new Set(['o1'])), null, 'この端末で閉じた打診を拾っている');
+        assert.equal(F.latestOpenOffer(rows, 3, ['o1']), null, '閉じた一覧が配列でも効くこと');
+        assert.equal(F.latestOpenOffer(rows, 5), null, '打診の無いボスで拾っている');
+    });
+    test('★ 打診の拾い直し: 確定したあと (落ちた案が全部 declined) は拾わない。全員が断った打診も拾わない', () => {
+        // 確定前: A が全員了承・B は落ちていない (accepted が残る) → 生きている案が 2 つ = まだ確定していない
+        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'accepted'), O(3, 'o1', 'B', 3, 'declined')], 3), 'o1', '確定前なのに拾っていない (「確定」が押せない)');
+        // 確定後: B の行は全部 declined → 生きている案は A だけ
+        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'accepted'), O(2, 'o1', 'B', 3, 'declined'), O(3, 'o1', 'B', 3, 'declined')], 3), null, '確定したあとも拾っている (「この案で確定」が並び続ける)');
+        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'declined'), O(2, 'o1', 'B', 3, 'declined')], 3), null, '全員が断った打診を拾っている');
+        // 1 案だけ残って全員了承 (旧い形) も決着
+        assert.equal(F.latestOpenOffer([O(1, 'o1', 'A', 3, 'accepted')], 3), null);
+    });
+    test('★ 打診の拾い直し: 同じボスに打診が 2 回あれば、行 id の大きい (新しい) ほう', () => {
+        const rows = [O(1, 'old', 'A', 3, 'pending'), O(2, 'old', 'B', 3, 'pending'), O(7, 'new', 'A', 3, 'pending'), O(8, 'new', 'B', 3, 'pending')];
+        assert.equal(F.latestOpenOffer(rows, 3), 'new');
+        assert.equal(F.latestOpenOffer([...rows].reverse(), 3), 'new', '行の並びで答えが変わる');
+        assert.equal(F.latestOpenOffer(rows, 3, ['new']), 'old', '新しいほうを閉じたら古いほう (まだ返事待ち) を出す');
+        // offer_id の無い行 (1 案ずつの依頼) は打診ではない
+        assert.equal(F.latestOpenOffer([{ id: 1, boss_number: 3, player_id: 1, status: 'pending' }], 3), null);
+        assert.doesNotThrow(() => F.latestOpenOffer(null, 3));
+        assert.equal(F.latestOpenOffer(null, 3), null);
+    });
 }
 
 // ---- opsLayoutDomain (戦況タブの折りたたみ + コックピット) ----------------------

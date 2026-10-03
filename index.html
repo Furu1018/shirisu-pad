@@ -16640,7 +16640,7 @@
         // 直接代入・部分書き換えは禁止 — get/load/isStale/invalidate/patchBosses/patchPlayer を使う
         let _opsCurrentAttr = null;
         // 締め凸検索の条件 (2026-09-08 ユーザー要望): 何人で締めるか / 今から何時間の範囲で探すか。端末内だけの状態
-        const _opsFinish = { shots: null, hours: null, pick: new Set(), deadlineMin: 15, offerId: null };
+        const _opsFinish = { shots: null, hours: null, pick: new Set(), deadlineMin: 15, offerId: null, closed: new Set() };   // closed = この端末で「閉じる」を押した打診の id
         function handleOpsFinishOpt(kind, val) {
             if (kind === 'shots') _opsFinish.shots = (val == null) ? null : Number(val);
             else if (kind === 'hours') _opsFinish.hours = (val == null) ? null : Number(val);
@@ -19369,6 +19369,7 @@
             // 何も見えず「押したのに動かない」に見える。ボタン自体もOFF時は隠しているが、
             // 別経路で呼ばれた場合に無言で終わらないよう案内を出す
             if (!_opsMode) { showNotification('🛠 締め凸検索は運営モードON中に使えます (右上の 🛠運営)'); return; }
+            if (_opsCurrentAttr !== attrKey) _opsFinish.offerId = null;   // 別のボスへ切り替えたら、そのボスの打診を行から拾い直す (前のボスの打診を出さない)
             _opsCurrentAttr = attrKey;
             renderOpsBossSummary();
             renderOpsFinishList(attrKey);
@@ -19664,8 +19665,12 @@
         }
 
         // 打診の進み具合。★ 判断はドメイン、ここは並べるだけ
-        function _opsFinishOfferHtml() {
+        function _opsFinishOfferHtml(boss) {
             const dom = window.finishDomain;
+            // ★ 打診の id は送った端末のメモリにしか無い → 読み込み直す (iOS は裏に回ると落ちる) と箱ごと消えて「この案で確定」が押せず、
+            //   2 人目の運営の端末には出なかった (練習モード「運営編・当日」を作っていて発覚 2026-10-03)。
+            //   いま見ているボスの**まだ決着していない**打診を行から拾い直す (判定は finishDomain.latestOpenOffer。「閉じる」で畳んだものは拾わない)
+            if (!_opsFinish.offerId && boss && dom && dom.latestOpenOffer) _opsFinish.offerId = dom.latestOpenOffer(_finishReqCache || [], boss.boss_number, _opsFinish.closed);
             const offerId = _opsFinish.offerId;
             if (!dom || !dom.offerProgress || !offerId) return '';
             const rows = (_finishReqCache || []).filter(r => String(r.offer_id || '') === String(offerId));
@@ -19708,6 +19713,7 @@
         let _opsFinishOffer = null;
 
         function handleOpsFinishOfferClose() {
+            if (_opsFinish.offerId && _opsFinish.closed) _opsFinish.closed.add(String(_opsFinish.offerId));   // 行から拾い直さない (この端末で畳んだ)
             _opsFinish.offerId = null;
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
         }
@@ -19854,7 +19860,7 @@
                 ${picked.size < 2 ? '<div style="font-size:10.5px;font-weight:700;color:var(--t-muted);margin-top:4px;">もう1案選ぶと、両方に同時にお願いできます (先に揃ったほうで確定)</div>' : ''}
             </div>` : '';
             return `<div style="margin-bottom:12px;">
-                ${_opsFinishOfferHtml()}
+                ${_opsFinishOfferHtml(boss)}
                 <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap;">
                     <span style="font-size:12.5px;font-weight:900;color:var(--t-ink);">🏁 いま打つか、待つか</span>
                     <span style="font-size:10.5px;font-weight:800;color:var(--t-muted);">押すと下の候補がその時間で絞られます</span>

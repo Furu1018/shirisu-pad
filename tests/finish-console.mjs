@@ -30,20 +30,22 @@ function cut(marker) {
     console.error(`NG: ${marker} の終端を判定できません`); process.exit(2);
 }
 const SRC = cut('        function _opsFinishConsoleHtml(boss, candidatesAll, remHpB, commitments)');
-const OFFER_SRC = cut('        function _opsFinishOfferHtml()');
+const OFFER_SRC = cut('        function _opsFinishOfferHtml(boss)');
+const CLOSE_SRC = cut('        function handleOpsFinishOfferClose()');
 
-// 打診の進み具合 (_opsFinishOfferHtml) を、本物のドメインで走らせる
-function runOffer({ rows = [], offerId = 'o1' } = {}) {
+// 打診の進み具合 (_opsFinishOfferHtml) を、本物のドメインで走らせる。boss を渡すと「行からの拾い直し」も動く
+function runOffer({ rows = [], offerId = 'o1', boss = null, closed = new Set(), env: envOut = null } = {}) {
     const env = {
         window: { finishDomain: globalThis.finishDomain },
         _finishReqCache: rows,
-        _opsFinish: { offerId },
+        _opsFinish: { offerId, closed },
         _opsFinishOffer: null,
         escapeHtml: (x) => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
     };
+    if (envOut) Object.assign(envOut, env);
     const keys = Object.keys(env);
     const fn = new Function(...keys, `${OFFER_SRC}\nreturn _opsFinishOfferHtml;`)(...keys.map(k => env[k]));
-    return fn();
+    return fn(boss);
 }
 const OR = (plan, id, name, status, extra = {}) => ({
     id: id * 10 + (plan === 'A' ? 1 : 2), offer_id: 'o1', plan_key: plan,
@@ -234,6 +236,33 @@ test('★ 進み具合: 打診していなければ何も出さない', () => {
     assert.equal(runOffer({ rows: [], offerId: null }), '', '打診が無いのに出している');
     assert.equal(runOffer({ rows: [OR('A', 1, 'あ', 'pending')], offerId: 'ほかの回' }), '',
         '別の回の行を拾っている');
+});
+
+// ★ 打診の id は端末のメモリにしか無い → 読み込み直した端末・2 人目の運営の端末でも、行から拾い直して「この案で確定」を出す (2026-10-03)
+test('★ 進み具合: id を失っていても (読み込み直し・別の端末)、そのボスの決着していない打診を行から拾い直す', () => {
+    const rows = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'pending')].map(r => ({ ...r, boss_number: 3 }));
+    const env = {};
+    const out = runOffer({ rows, offerId: null, boss: { boss_number: 3 }, env });
+    assert.ok(out.includes('📣 打診中') && out.includes('い 待ち'), `拾い直していない: ${out.slice(0, 120)}`);
+    assert.equal(env._opsFinish.offerId, 'o1', '拾った id を状態に戻していない (確定のときに使う)');
+    assert.equal(runOffer({ rows, offerId: null, boss: { boss_number: 2 } }), '', '別のボスの打診を出している');
+    assert.equal(runOffer({ rows, offerId: null, boss: null }), '', 'ボスが分からないのに拾っている');
+    assert.equal(runOffer({ rows, offerId: null, boss: { boss_number: 3 }, closed: new Set(['o1']) }), '', 'この端末で閉じた打診をまた出している');
+    // 確定のあと (落ちた案が全部 declined) は拾わない = 「この案で確定」が並び続けない
+    const after = [OR('A', 1, 'あ', 'accepted'), OR('B', 2, 'い', 'declined')].map(r => ({ ...r, boss_number: 3 }));
+    assert.equal(runOffer({ rows: after, offerId: null, boss: { boss_number: 3 } }), '', '確定したあとも出している');
+});
+test('★ 進み具合: 「閉じる」はその打診を覚えて、行から拾い直さない', () => {
+    const env = { _opsFinish: { offerId: 'o1', closed: new Set() }, _opsCurrentAttr: null, renderOpsFinishList: () => { } };
+    const keys = Object.keys(env);
+    const fn = new Function(...keys, `${CLOSE_SRC}\nreturn handleOpsFinishOfferClose;`)(...keys.map(k => env[k]));
+    fn();
+    assert.equal(env._opsFinish.offerId, null);
+    assert.ok(env._opsFinish.closed.has('o1'), '閉じた打診を覚えていない (次の描き直しで行から拾い直して、また出る)');
+    // 本物の状態にも closed がある
+    assert.match(html, /const _opsFinish = \{ shots: null, hours: null, pick: new Set\(\), deadlineMin: 15, offerId: null, closed: new Set\(\) \};/, '閉じた打診を覚える置き場が無い');
+    assert.match(html, /\$\{_opsFinishOfferHtml\(boss\)\}/, 'コンソールがボスを渡していない (拾い直せない)');
+    assert.match(html, /if \(_opsCurrentAttr !== attrKey\) _opsFinish\.offerId = null;/, '別のボスへ切り替えても前のボスの打診を出し続ける');
 });
 
 test('★ 進み具合: 名前をエスケープする', () => {

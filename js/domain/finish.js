@@ -415,9 +415,47 @@
         return { rowIds, notify: [...out.values()], missingRowIds };
     }
 
+    /**
+     * そのボスで**まだ決着していない**いちばん新しい打診の id。無ければ null。
+     *
+     * ★ なぜ要るか: 打診の id は送った端末のメモリにしか無かった。読み込み直す (iOS は裏に回ると落ちる) と
+     *   「📣 打診中」の箱ごと消えて**「この案で確定」が押せなくなる**し、2 人目の運営の端末にはそもそも出ない
+     *   (練習モード「運営編・当日」を作っていて発覚 2026-10-03)。行には offer_id が残っているので、そこから拾い直す。
+     * ★ 「決着していない」= 返事待ちの行がある、または 生きている (全員が断っていない) 案が 2 つ以上ある。
+     *   確定すると落ちた案の行は全部 declined になるので、生きている案は 1 つになる = もう出さない
+     *   (出すと「この案で確定」が確定のあとも並ぶ)。全員が断った打診も出さない (🔁 直近の動き に残る)。
+     * ★ closed = この端末で「閉じる」を押した打診 (また出さない)
+     *
+     * @param {{offer_id?:string, boss_number:any, status:string, id?:any}[]} rows その回の依頼の行
+     * @param {number} bossNumber
+     * @param {Iterable<string>} [closed]
+     * @returns {string|null}
+     */
+    function latestOpenOffer(rows, bossNumber, closed) {
+        const skip = new Set([...(closed || [])].map(String));
+        const byOffer = new Map();
+        for (const r of (Array.isArray(rows) ? rows : [])) {
+            if (!r || !r.offer_id || Number(r.boss_number) !== Number(bossNumber)) continue;
+            const k = String(r.offer_id);
+            if (skip.has(k)) continue;
+            if (!byOffer.has(k)) byOffer.set(k, []);
+            byOffer.get(k).push(r);
+        }
+        let best = null;
+        for (const [k, rs] of byOffer) {
+            const open = rs.some(r => r.status === 'pending')
+                || new Set(rs.filter(r => r.status !== 'declined').map(r => String(r.plan_key))).size >= 2;
+            if (!open) continue;
+            // いちばん新しい = 行 id の最大 (採番は増えるだけ)。id が無ければ並び順の後ろ
+            const top = rs.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0);
+            if (!best || top > best.top) best = { k, top };
+        }
+        return best ? best.k : null;
+    }
+
     root.finishDomain = {
         computeFinishPlans, buildFinishLeaderTimeline, filterByWindow,
         FINISH_WINDOWS, compareFinishWindows, commitmentsElsewhere, filterByCommitments,
-        offerProgress, offerLosers,
+        offerProgress, offerLosers, latestOpenOffer,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
