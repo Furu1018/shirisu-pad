@@ -666,9 +666,10 @@ test('本物のクライアント: 通知の疎通確認 — 送った印・届�
     // メンバー状況の材料にも入る
     const ex = await W.supabaseLoadMemberStatusExtras(S, '2026-10-01T00:00:00Z', 1);
     assert.equal(ex.pushCheck.confirmed.length, 2);
-    // 撃破・Lv 開放の二重送信よけ (同じ表) と混ざらない
+    // 撃破・Lv 開放の二重送信よけ (同じ表) と混ざらない — 種類 (kind) で見分ける (参照が数字に見える別の種類の印を「届いた」に数えない)
     assert.equal(await W.supabaseClaimRaidNotice(S, 'boss_defeated', 'L1B1', ME), 'claimed');
-    assert.equal((await W.supabaseLoadPushCheck(S)).confirmed.length, 2);
+    assert.equal(await W.supabaseClaimRaidNotice(S, 'something_else', String(IDS.firstMember + 5), ME), 'claimed');
+    assert.deepEqual((await W.supabaseLoadPushCheck(S)).confirmed.map(x => x.player_id).sort(), [ME, M1].sort(), '別の種類の印を「届いた」に数えている');
     DB().raid_event_notices.length = 0;
 });
 test('本物のクライアント: 練習中は端末の通知設定に触れない (解除すると本番の通知が届かなくなる)', async () => {
