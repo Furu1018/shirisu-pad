@@ -174,7 +174,9 @@ let _pushAudienceCache = null;   // { at, value } — 名簿とシーズンの�
 window.supabaseInvalidatePushAudience = function () { _pushAudienceCache = null; };
 async function _pushAudience() {
     if (_pushAudienceCache && (Date.now() - _pushAudienceCache.at) < 30000) return _pushAudienceCache.value;
-    // ★ 取れなかったものは null (= 分からない)。notifyPolicy は分からないとき絞らない (fail-open)
+    // ★ 取れなかったものは null (= 分からない)。名簿が分からなければ notifyPolicy は絞らない (fail-open)、
+    //   シーズンが分からなければ全員あてだけテストと同じ絞り込み (テスト回かもしれない通知を全員に流さない)。
+    //   シーズンは小さな問い合わせなので、失敗したら 1 回だけ読み直す
     let players = null, season = null;
     try {
         const cols = ['id, archived, ops_role, notify_test', 'id, archived, ops_role', 'id, archived'];
@@ -186,12 +188,14 @@ async function _pushAudience() {
         }
         if (r && !r.error && Array.isArray(r.data)) players = r.data;
     } catch { players = null; }
-    try {
-        const r = await supabase.from('seasons').select('id, is_test, hard_date').eq('is_active', true)
-            .order('hard_date', { ascending: false }).limit(1);
-        // アクティブなシーズンが無い = テスト回ではない ({} を返す。null は「取れなかった」)
-        if (!r.error && Array.isArray(r.data)) season = r.data[0] || {};
-    } catch { season = null; }
+    for (let attempt = 0; attempt < 2 && season == null; attempt++) {
+        try {
+            const r = await supabase.from('seasons').select('id, is_test, hard_date').eq('is_active', true)
+                .order('hard_date', { ascending: false }).limit(1);
+            // アクティブなシーズンが無い = テスト回ではない ({} を返す。null は「取れなかった」)
+            if (!r.error && Array.isArray(r.data)) season = r.data[0] || {};
+        } catch { season = null; }
+    }
     const value = { players, season };
     // 両方取れたときだけ覚える (片方でも取れなかった写しを 30 秒使い回さない)
     if (players && season) _pushAudienceCache = { at: Date.now(), value };
@@ -205,9 +209,15 @@ async function _pushAudience() {
 window.sendPushNotification = async function (payload, opts = {}) {
     const slug = opts.functionName || 'send-push';
     const pol = (typeof window !== 'undefined' && window.notifyPolicyDomain) || null;
-    // ★ 判定のモジュールが読めていないときも送る (絞らない)。連絡が消えるほうが害が大きい
+    const named = Array.isArray(payload.playerIds) && payload.playerIds.length > 0;
+    // ★ 判定のモジュールが読めていないとき (読み込み順・取得失敗): 名指しはそのまま送る (本人の連絡が消えるほうが害が大きい) が、
+    //   全員あて・テストは**送らない** — playerIds 無しで Edge Function へ渡すと全購読者に飛ぶ (Codex指摘 2026-10-07)
+    if (!pol && (!named || payload.kind === 'test')) {
+        console.warn('[push] 宛先の判定 (notifyPolicy) が読めていないので、全員あて・テストの通知は送りません:', payload.title);
+        return { ok: true, sent: 0, target: 0, skipped: true, tier: payload.kind === 'test' ? 'test' : 'team', playerIds: [] };
+    }
     const res = pol ? pol.resolve({ kind: payload.kind, playerIds: payload.playerIds }, await _pushAudience())
-        : { playerIds: (Array.isArray(payload.playerIds) && payload.playerIds.length) ? payload.playerIds : null, tier: 'direct', broadcast: !(Array.isArray(payload.playerIds) && payload.playerIds.length), restricted: false };
+        : { playerIds: payload.playerIds, tier: 'direct', broadcast: false, restricted: false };
     if (Array.isArray(res.playerIds) && res.playerIds.length === 0) {
         // 送る相手が居ない (テスト回で協力者が居ない・全員が書庫)。全員あてに化けさせない — 空の playerIds は Edge Function では「全員」になる
         return { ok: true, sent: 0, target: 0, skipped: true, tier: res.tier, playerIds: [] };

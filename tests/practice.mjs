@@ -634,6 +634,17 @@ test('本物のクライアント: 通知の宛先 — 全員あては在籍の�
         assert.deepEqual(last().playerIds, [OPS], '「受け取らない」にしたのに届く');
         assert.equal(await W.supabaseLoadNotifyTest(ME), false);
         assert.equal(await W.supabaseLoadNotifyTest(null), undefined);
+        // ⑥ 判定のモジュールが読めていない: 名指しはそのまま送る / 全員あて・テストは送らない (Edge Function では全購読者になる — Codex指摘 2026-10-07)
+        const polWas = W.notifyPolicyDomain; W.notifyPolicyDomain = null;
+        try {
+            const n3 = invoked.length;
+            let r2 = await W.sendPushNotification({ kind: 'team', title: '判定なしの全員あて' });
+            assert.deepEqual([invoked.length, r2.skipped], [n3, true], '判定なしで全員あてを送っている');
+            r2 = await W.sendPushNotification({ kind: 'test', title: '判定なしのテスト', playerIds: [ME] });
+            assert.deepEqual([invoked.length, r2.skipped], [n3, true], '判定なしでテストを送っている');
+            r2 = await W.sendPushNotification({ title: '判定なしの名指し', playerIds: [ME] });
+            assert.deepEqual([invoked.length, last().playerIds, last().ignoreAvailability], [n3 + 1, [ME], true], '判定なしで名指しが届かない');
+        } finally { W.notifyPolicyDomain = polWas; }
     } finally {
         sb.functions.invoke = origInvoke;
         season.is_test = false; T.players.find(p => p.id === M2).archived = archivedWas; T.players.find(p => p.id === M1).notify_test = false; fresh();

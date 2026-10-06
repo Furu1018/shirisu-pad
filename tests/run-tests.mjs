@@ -9171,6 +9171,10 @@ console.log('\ngrowthDomain:');
         const spn = cl.match(/window\.sendPushNotification = async function \(payload, opts = \{\}\) \{[\s\S]*?\n\};/)?.[0] || '';
         assert.ok(/const body = \{ \.\.\.payload, ignoreAvailability: true \};/.test(spn), '送る関数が時間帯フィルタを外していない (呼び出し側の付け忘れで届かなくなる)');
         assert.ok(/pol\.resolve\(\{ kind: payload\.kind, playerIds: payload\.playerIds \}, await _pushAudience\(\)\)/.test(spn), '宛先の判定 (notifyPolicy) を通していない');
+        // ★ 判定が読めていないとき、全員あて・テストは送らない (playerIds 無しは Edge Function では全購読者 — Codex指摘 2026-10-07)。名指しはそのまま
+        assert.ok(/if \(!pol && \(!named \|\| payload\.kind === 'test'\)\) \{[\s\S]*?return \{ ok: true, sent: 0, target: 0, skipped: true/.test(spn), '判定なしの全員あてを送っている');
+        assert.ok(/: \{ playerIds: payload\.playerIds, tier: 'direct', broadcast: false, restricted: false \};/.test(spn), '判定なしのときに playerIds を null にする経路が残っている');
+        assert.ok(/for \(let attempt = 0; attempt < 2 && season == null; attempt\+\+\)/.test(cl), 'シーズンの読み直しが無い');
         assert.ok(/if \(Array\.isArray\(res\.playerIds\) && res\.playerIds\.length === 0\) \{[\s\S]*?return \{ ok: true, sent: 0, target: 0, skipped: true/.test(spn), '送る相手が居ないときに送っている (空の playerIds は Edge Function では全員になる)');
         assert.equal((cl.match(/functions\.invoke\(slug, \{ body \}\)/g) || []).length, 1, 'send-push を呼ぶ口が 1 つでない (判定を通らない送り方がある)');
         assert.ok(!/functions\.invoke\(/.test(html), 'index.html から Edge Function を直接呼んでいる');
@@ -11063,10 +11067,16 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         // 46 未適用 (ops_role が無い) / 48 未適用 (notify_test が無い) → テストは誰にも届かない (全員に届くより安全)
         assert.deepEqual(NP.resolve({}, { players: [{ id: 1 }, { id: 2 }], season: { is_test: true } }).playerIds, []);
     });
-    test('★ 宛先: 名簿が取れなかった (null) ときは絞らない (本人あての連絡を通信の不調で消さない) / シーズンが分からなければテスト回と見なさない', () => {
+    test('★ 宛先: 名簿が取れなかった (null) ときは絞らない (本人あての連絡を通信の不調で消さない) / シーズンが分からなければ全員あてだけテストと同じ絞り込み', () => {
         assert.deepEqual([NP.resolve({}, { players: null, season: { is_test: false } }).playerIds, NP.resolve({ playerIds: [4, 9, 4] }, { players: null, season: null }).playerIds], [null, [4, 9]]);
         assert.deepEqual(NP.resolve({ playerIds: [4] }, { players: null, season: { is_test: true } }).playerIds, [4], '名簿が無いテスト回は絞れない (fail-open)');
-        assert.equal(NP.resolve({ playerIds: [4] }, { players, season: null }).tier, 'direct');
+        // ★ シーズンが読めない (null) → 名指しはそのまま、全員あて・チームの状況は運営担当と協力者だけ (テスト回かもしれない通知を全員に流さない — Codex指摘 2026-10-07)
+        const d = NP.resolve({ playerIds: [4, 5] }, { players, season: null });
+        assert.deepEqual([ids(d), d.tier, d.restricted], [[4, 5], 'direct', false], 'シーズンが分からないだけで本人あてを絞っている');
+        const t = NP.resolve({}, { players, season: null });
+        assert.deepEqual([ids(t), t.tier, t.restricted], [[1, 2, 3], 'team', true], 'シーズンが分からない全員あてを全員に送っている');
+        assert.deepEqual(ids(NP.resolve({ kind: 'team', playerIds: [4, 3] }, { players, season: undefined })), [3]);
+        assert.deepEqual(ids(NP.resolve({}, { players, season: {} })), [1, 2, 3, 4, 5], 'アクティブなシーズンが無い ({}) を「分からない」と混同している');
         assert.doesNotThrow(() => NP.resolve(null, null)); assert.equal(NP.resolve(null, null).playerIds, null);
         assert.deepEqual([NP.tierLabel('team'), NP.tierLabel('test'), NP.tierLabel('?')], ['チームの状況', '🧪 テスト', 'あなた宛']);
     });
@@ -11149,7 +11159,8 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         assert.ok(/kind: 'team',\s*title: `🎉 Lv\$\{levelUp\.to\} 開放!`/.test(lv) && !/playerIds/.test(lv), 'Lv 開放を一部の人だけに送っている');
         assert.ok(!/supabaseLevelOpenNotifyTargets/.test(html) && !/^window\.supabaseLevelOpenNotifyTargets/m.test(cl), '使わなくなった宛先の関数が残っている');
         const ce = html.match(/async function _checkRaidEvents\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(ev\.lastBoss != null\) \{[\s\S]*?supabaseClaimRaidNotice\(cur\.seasonId, 'last_boss', lref, me\?\.id\)\) === 'claimed'\) \{\s*if \(await _notifyLastBoss\(cur\.seasonId, lb, level\)\) await window\.supabaseMarkRaidNoticeSent\(cur\.seasonId, 'last_boss', lref\);\s*else await window\.supabaseReleaseRaidNotice\(cur\.seasonId, 'last_boss', lref\);/.test(ce), '残り 1 体の通知が 確保 → 送信 → 完了 / 失敗で戻す の形でない');
+        assert.ok(/if \(ev\.lastBoss != null\) \{[\s\S]*?const lst = lb \? await window\.supabaseClaimRaidNotice\(cur\.seasonId, 'last_boss', lref, me\?\.id\) : 'done';[\s\S]*?if \(lst === 'claimed'\) \{\s*lsent = await _notifyLastBoss\(cur\.seasonId, lb, level\);\s*if \(lsent\) await window\.supabaseMarkRaidNoticeSent\(cur\.seasonId, 'last_boss', lref\);\s*else await window\.supabaseReleaseRaidNotice\(cur\.seasonId, 'last_boss', lref\);/.test(ce), '残り 1 体の通知が 確保 → 送信 → 完了 / 失敗で戻す の形でない');
+        assert.ok(/if \(!lsent && ev\.defeated\.length\) cur\.dead\.delete\(ev\.defeated\[0\]\);/.test(ce), '送れなかった・確保中のとき手元の記録を戻していない (次の検知でやり直せない — Codex指摘)');
         assert.ok(/async function _notifyLastBoss\(seasonId, boss, level\) \{[\s\S]*?kind: 'team',/.test(html));
         const dg = html.match(/async function _checkRaidDigest\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(SD\.raidDayKey\(Date\.now\(\)\) !== String\(season\.hard_date \|\| ''\)\.slice\(0, 10\)\) return;/.test(dg), '定時まとめがレイド当日 (翌 4 時まで) 以外にも出る');
@@ -11162,12 +11173,14 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         assert.ok(/if \(_pushCheck\.sending\) return;/.test(send) && /finally \{\s*_pushCheck\.sending = false;/.test(send), '二重押しで 2 回飛ぶ / 送信中のまま固まる');
         assert.ok(/const targets = g\.wait;/.test(send), '届いた人にも送り直している');
         assert.ok(/const ok = await showPushPreview\(\[\{[^\n]*\}\]\);\s*if \(!ok\) return;\s*_pushCheck\.sending = true;/.test(send), 'プレビューの前に送信中にしている (キャンセルで固まる)');
-        assert.ok(/await window\.supabaseMarkPushCheckSent\(seasonId, [^\n]*\);\s*let res = null;\s*try \{\s*res = await window\.sendPushNotification\(\{ kind: 'team', \.\.\.PUSH_CHECK_MSG, playerIds: targets\.map\(r => r\.id\), requireInteraction: true \}/.test(send), '記録より先に送っている / チームの状況として送っていない');
-        assert.ok(/url: '\.\/\?tab=mypage&focus=pushcheck'/.test(html) && /if \(params\.get\('focus'\) === 'pushcheck'\) \{ handleMyPushCheckConfirm\('tap'\); \}/.test(html), '通知をタップしても伝わらない');
+        assert.ok(/await window\.supabaseMarkPushCheckSent\(seasonId, [^\n]*\);\s*let res = null;\s*try \{\s*res = await window\.sendPushNotification\(\{ kind: 'team', \.\.\.PUSH_CHECK_MSG, url: _pushCheckUrl\(seasonId\), tag: `push-check-\$\{seasonId\}`, playerIds: targets\.map\(r => r\.id\), requireInteraction: true \}/.test(send), '記録より先に送っている / チームの状況として送っていない');
+        assert.ok(/const _pushCheckUrl = \(seasonId\) => `\.\/\?tab=mypage&focus=pushcheck&season=\$\{encodeURIComponent\(String\(seasonId\)\)\}`;/.test(html) && /url: _pushCheckUrl\(seasonId\), tag: `push-check-\$\{seasonId\}`/.test(send), '通知の行き先にシーズンが入っていない (古い回の通知で今の回に「届いた」が付く)');
+        assert.ok(/if \(params\.get\('focus'\) === 'pushcheck'\) \{ handleMyPushCheckConfirm\('tap', params\.get\('season'\)\); \}/.test(html), '通知をタップしても伝わらない / 回を渡していない');
         const grp = html.match(/function _pushCheckGroups\(\) \{[\s\S]*?\n        \}/)?.[0] || '';
         assert.ok(/wait: rows\.filter\(r => r\.pushCheck !== 'ok' && r\.push !== false\),/.test(grp) && /off: rows\.filter\(r => r\.pushCheck !== 'ok' && r\.push === false\),/.test(grp), '届いた人・通知が無効な人の分け方が違う');
-        const cf = html.match(/async function handleMyPushCheckConfirm\(via\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(via === 'tap'\) \{\s*const check = await window\.supabaseLoadPushCheck\(season\.id\);\s*if \(!check \|\| !check\.sentAt\) return;/.test(cf), '古い通知をあとから開いて、送っていない回に「届いた」と付く');
+        const cf = html.match(/async function handleMyPushCheckConfirm\(via, seasonFromUrl = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(cf.length > 200, 'handleMyPushCheckConfirm を切り出せない');
+        assert.ok(/if \(via === 'tap'\) \{\s*if \(seasonFromUrl != null && String\(seasonFromUrl\) !== String\(season\.id\)\) return;\s*const check = await window\.supabaseLoadPushCheck\(season\.id\);\s*if \(!check \|\| !check\.sentAt\) return;/.test(cf.replace(/\/\/[^\n]*/g, '')), '古い回の通知をあとから開いて、今の回に「届いた」と付く / 送っていない回に付く');
         assert.ok(/if \(via !== 'tap'\) showNotification\(/.test(cf));
         const card = html.match(/async function renderMyPushCheckCard\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(seq !== _pushCheckCardSeq\) return;/.test(card) && /if \(!me\?\.id \|\| String\(me\.id\) !== String\(identity\.id\)\) return;/.test(card), '追い越し・名乗り直しの守りが無い');

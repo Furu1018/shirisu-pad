@@ -19,6 +19,8 @@
 //   - 書庫に入った人 (archived) には何も送らない (プレイヤー一覧から消えても購読は残る = PAD にいない人に届いていた)
 //   - 名簿が取れなかった (players: null) ときは**絞らない** (fail-open)。絞ると通信の不調で本人あての連絡が消える。
 //     テスト回で名簿が取れないと全員に届き得るが、うるさいだけで実害は無い — 逆 (本番で届かない) を避ける
+//   - シーズンが分からない (season: null) ときは、**全員あて・チームの状況だけ**テストと同じ絞り込みにする (Codex指摘 2026-10-07)。
+//     テスト回かもしれない通知を全員に流さない。あなた宛 (名指し) は絞らない — 本人の連絡を通信の不調で消さない
 //   - 名簿に居ない id は落とさない (登録したばかりの人。名簿の写しは少し古いことがある)。落とすのは「書庫と分かっている id」だけ。
 //     ただしテストは「協力者と分かっている id」だけに送る
 // ============================================================================
@@ -39,7 +41,7 @@
      * @returns {{playerIds:number[]|null, tier:'direct'|'team'|'test', broadcast:boolean, restricted:boolean,
      *            dropped:{archived:number, notTester:number}}}
      *   playerIds: null = 絞れなかった (名簿なし・全員あて) → 送る側は全購読者へ / [] = 送る相手が居ない (送らない)
-     *   restricted: テストの絞り込みをしたか (true のとき「全員あて」と記録しない)
+     *   restricted: テストの絞り込みをしたか (true のとき「全員あて」と記録しない)。シーズンが分からない全員あても true
      */
     function resolve(req, aud) {
         const r = req || {}, a = aud || {};
@@ -47,6 +49,9 @@
         const broadcast = asked.length === 0;
         const isTest = r.kind === 'test' || !!(a.season && a.season.is_test);
         const tier = isTest ? 'test' : ((broadcast || r.kind === 'team') ? 'team' : 'direct');
+        // シーズンが読めなかった (null / undefined) → チームの状況はテストと同じ絞り込み (テスト回かもしれない通知を全員に流さない)
+        const seasonUnknown = a.season == null;
+        const restrict = isTest || (seasonUnknown && tier === 'team');
         const dropped = { archived: 0, notTester: 0 };
         const roster = Array.isArray(a.players) ? a.players : null;
         if (!roster) {
@@ -65,14 +70,14 @@
             if (archived.has(id)) { dropped.archived++; return false; }
             return true;
         });
-        if (isTest) {
+        if (restrict) {
             ids = ids.filter(id => {
                 if (testers.has(id)) return true;
                 dropped.notTester++;
                 return false;
             });
         }
-        return { playerIds: ids, tier, broadcast, restricted: isTest, dropped };
+        return { playerIds: ids, tier, broadcast, restricted: restrict, dropped };
     }
 
     /** プレビューや記録に出す、その通知の種類の名前 */

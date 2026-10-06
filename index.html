@@ -8710,10 +8710,16 @@
                 if (ev.lastBoss != null) {
                     const lb = bosses.find(x => Number(x.boss_number) === Number(ev.lastBoss));
                     const lref = `L${level}`;
-                    if (lb && (await window.supabaseClaimRaidNotice(cur.seasonId, 'last_boss', lref, me?.id)) === 'claimed') {
-                        if (await _notifyLastBoss(cur.seasonId, lb, level)) await window.supabaseMarkRaidNoticeSent(cur.seasonId, 'last_boss', lref);
+                    const lst = lb ? await window.supabaseClaimRaidNotice(cur.seasonId, 'last_boss', lref, me?.id) : 'done';
+                    let lsent = lst === 'done';
+                    if (lst === 'claimed') {
+                        lsent = await _notifyLastBoss(cur.seasonId, lb, level);
+                        if (lsent) await window.supabaseMarkRaidNoticeSent(cur.seasonId, 'last_boss', lref);
                         else await window.supabaseReleaseRaidNotice(cur.seasonId, 'last_boss', lref);
                     }
+                    // ★ 送れなかった / 誰かが確保中 (held) → 手元の記録を 1 体ぶん戻して、次の検知で「いま倒した」をやり直す (Codex指摘 2026-10-07)。
+                    //   戻さないと次は差分が無く lastBoss が出ず、リースが切れても誰も取り直せない (撃破通知の cur.dead.delete と同じ)
+                    if (!lsent && ev.defeated.length) cur.dead.delete(ev.defeated[0]);
                 }
                 // ①-2 倒れたボスの予約を外す (締め凸依頼と同じく、レベル開放と同時のときは下でまとめて)
                 if (ev.defeated.length > 0 && !levelJustOpened) {
@@ -14422,7 +14428,7 @@
             card.style.display = '';
         }
         let _pushCheckTapAt = 0;
-        async function handleMyPushCheckConfirm(via) {
+        async function handleMyPushCheckConfirm(via, seasonFromUrl = null) {
             if (window.PAD_PRACTICE) return;
             const id = getCurrentIdentity();
             if (!id?.id) return;
@@ -14434,8 +14440,10 @@
             try {
                 const season = (await seasonStore.ensure())?.season || null;
                 if (!season?.id) return;
-                // ★ 通知をタップして来たときは、運営が送ったあとだけ記録する (古い通知をあとから開いて、送っていない回に「届いた」と付けない)
+                // ★ 通知をタップして来たときは、その通知の回 (URL の season) と今の回が同じで、運営が送ったあとだけ記録する
+                //   (古い回の通知をあとから開いて、今の回に「届いた」と付けない)
                 if (via === 'tap') {
+                    if (seasonFromUrl != null && String(seasonFromUrl) !== String(season.id)) return;
                     const check = await window.supabaseLoadPushCheck(season.id);
                     if (!check || !check.sentAt) return;
                 }
@@ -23172,7 +23180,10 @@
         // ===== 🔔 通知の疎通確認: 運営の側 (2026-10-07 ユーザー決定「2 日前から。確認できない人に事前に連絡」) =====
         // 判定は memberStatusDomain (行の pushCheck: ok / wait / none) と opsStageDomain (前日のチェックリストの行)。
         // ここは 送る・並べる・名前を写す だけ。記録の置き場は raid_event_notices (supabaseLoadPushCheck の説明)
-        const PUSH_CHECK_MSG = { title: '🔔 通知の確認 (レイド前のテスト)', body: 'この通知をタップしてください。届いたことが運営に伝わります🙏', url: './?tab=mypage&focus=pushcheck', tag: 'push-check' };
+        // ★ 通知の行き先にシーズンの id を入れる (古い回の通知をあとからタップしても、今の回に「届いた」と付けない — Codex指摘 2026-10-07)。
+        //   相手 (誰あてか) は入れない — 1 回の送信で全員に同じ文面を送るため。別の人で名乗っている端末でタップすると、その人の記録になる (共用端末は稀)
+        const PUSH_CHECK_MSG = { title: '🔔 通知の確認 (レイド前のテスト)', body: 'この通知をタップしてください。届いたことが運営に伝わります🙏', tag: 'push-check' };
+        const _pushCheckUrl = (seasonId) => `./?tab=mypage&focus=pushcheck&season=${encodeURIComponent(String(seasonId))}`;
         const _pushCheck = { sending: false };
         function _pushCheckGroups() {
             const rows = (typeof _mb !== 'undefined' && Array.isArray(_mb.rows)) ? _mb.rows : [];
@@ -23238,7 +23249,7 @@
                 await window.supabaseMarkPushCheckSent(seasonId, getCurrentIdentity()?.id || null);
                 let res = null;
                 try {
-                    res = await window.sendPushNotification({ kind: 'team', ...PUSH_CHECK_MSG, playerIds: targets.map(r => r.id), requireInteraction: true },
+                    res = await window.sendPushNotification({ kind: 'team', ...PUSH_CHECK_MSG, url: _pushCheckUrl(seasonId), tag: `push-check-${seasonId}`, playerIds: targets.map(r => r.id), requireInteraction: true },
                         { senderPlayerId: getCurrentIdentity()?.id || null });
                 } catch (pushErr) {
                     say(`⚠ 記録はしましたが、通知を送れませんでした。もう一度押してください (${pushErr?.message || pushErr})`, true);
@@ -26559,7 +26570,7 @@
                 try { switchTab(tab); } catch { /* noop */ }
             }
             // 🔔 疎通確認の通知をタップして開いた = 届いた。そのまま運営に伝える
-            if (params.get('focus') === 'pushcheck') { handleMyPushCheckConfirm('tap'); }
+            if (params.get('focus') === 'pushcheck') { handleMyPushCheckConfirm('tap', params.get('season')); }
             if (params.get('focus') === 'finishreq') {
                 // バナーは依頼データの取得後に描画されるため、出現を最大6秒待って誘導
                 const t0 = Date.now();
