@@ -578,7 +578,9 @@
         var d = ev.detail || {};
         if (d.type === 'push' && d.item) {
             var T = P.db && P.db.tables, ids = d.item.playerIds;
-            var names = !ids ? '全員あて' : ids.map(function (id) {
+            // 全員あては「在籍の全員を名指し」で渡る (宛先は js/domain/notifyPolicy.js が決める) → 人数で見分ける
+            var everyone = T ? T.players.filter(function (x) { return !x.archived; }).length : 0;
+            var names = (!ids || (everyone > 0 && ids.length >= everyone)) ? '全員あて' : ids.map(function (id) {
                 if (eq(id, P.me.id)) return 'あなた';
                 var p = T && T.players.filter(function (x) { return eq(x.id, id); })[0];
                 return p ? p.name : '?';

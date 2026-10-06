@@ -26,6 +26,7 @@ import '../js/domain/opsLayout.js';     // globalThis.opsLayoutDomain (戦況タ
 import '../js/domain/pace.js';          // globalThis.paceDomain (📈消化のペース / 🔁直近の動き — 運営ボード 当日・段階4)
 import '../js/domain/planBoard.js';     // globalThis.planBoardDomain (最適凸プランの条件と盤の読みやすさ — パズル盤 ①②)
 import '../js/domain/opsRole.js';       // globalThis.opsRoleDomain (👑 運営担当: master / ops / メンバー)
+import '../js/domain/notifyPolicy.js';  // globalThis.notifyPolicyDomain (🔔 通知の宛先: あなた宛 / チームの状況 / テスト)
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
@@ -3304,26 +3305,44 @@ console.log('\nopsStageDomain:');
         assert.equal(dom.visibleIn({ id: 'x', stages: ['day'] }, 'day'), true);
         assert.equal(dom.visibleIn({ id: 'x', stages: [] }, 'day'), false);
     });
-    test('checklist(前日): ボス設定 / 提出 / 時間帯の確認 / 通知OFF / 予約 / 配信 — 未ロードは pending (0 と混同しない)', () => {
+    test('checklist(前日): ボス設定 / 提出 / 時間帯の確認 / 通知の疎通確認 / 予約 / 配信 — 未ロードは pending (0 と混同しない)', () => {
         const bosses = [1, 2, 3, 4, 5].map(n => ({ boss_number: n, attribute: 'fire', weakness: 'water', total_hp_raw: n <= 4 ? 100 : 0 }));
+        // pushCheck: 'ok' 届いた / 'wait' 送ったがまだ / 'none' まだ送っていない / null 分からない (memberStatusDomain が付ける)
         const mbRows = [
-            { mockOk: true, availSupported: true, availConfirmed: true, push: true, reasons: [] },
-            { mockOk: false, availSupported: true, availConfirmed: false, push: false, reasons: [{ key: 'mock' }, { key: 'availConfirm' }, { key: 'push' }] },
-            { mockOk: true, availSupported: true, availConfirmed: false, push: true, reasons: [{ key: 'availConfirm' }] },
+            { mockOk: true, availSupported: true, availConfirmed: true, push: true, pushCheck: 'ok', reasons: [] },
+            { mockOk: false, availSupported: true, availConfirmed: false, push: false, pushCheck: 'wait', reasons: [{ key: 'mock' }, { key: 'availConfirm' }, { key: 'push' }] },
+            { mockOk: true, availSupported: true, availConfirmed: false, push: true, pushCheck: 'wait', reasons: [{ key: 'availConfirm' }] },
         ];
         const rows = dom.checklist({ stage: 'pre', season, bosses, mbRows, reservations: { pending: 2, approved: 1 }, published: false, pendingRepublish: 0 });
         const by = Object.fromEntries(rows.map(r => [r.key, r]));
-        assert.deepEqual(rows.map(r => r.key), ['bosses', 'mock', 'avail', 'push', 'resv', 'publish']);
+        assert.deepEqual(rows.map(r => r.key), ['bosses', 'mock', 'avail', 'pushcheck', 'resv', 'publish']);
         assert.equal(by.bosses.value, 4); assert.equal(by.bosses.done, false);
         assert.equal(by.mock.value, 2); assert.equal(by.mock.total, 3); assert.equal(by.mock.nudge, 'mock');
         assert.equal(by.avail.value, 1); assert.equal(by.avail.label, '戦闘可能時間の確認');
-        assert.equal(by.push.value, 1); assert.equal(by.push.done, false);
+        // 送ったあと: 届いた人数 / 全員。全員に届くまでは「相手待ち」(waiting) で、done ではない
+        assert.deepEqual([by.pushcheck.value, by.pushcheck.total, by.pushcheck.done, by.pushcheck.waiting, by.pushcheck.action], [1, 3, false, true, 'pushcheck']);
         assert.equal(by.resv.value, '承認待ち 2'); assert.equal(by.resv.done, false);
         assert.equal(by.publish.value, '未'); assert.equal(by.publish.done, false);
         const p = Object.fromEntries(dom.checklist({ stage: 'pre', season, bosses, mbRows: null, reservations: null, published: null }).map(r => [r.key, r]));
         assert.equal(p.mock.pending, true); assert.equal(p.resv.pending, true); assert.equal(p.publish.pending, true);
+        assert.equal(p.pushcheck.pending, true, 'メンバー状況が未ロードなのに疎通確認を数えている');
         const ok = dom.checklist({ stage: 'pre', season, bosses: bosses.map(b => ({ ...b, total_hp_raw: 100 })), mbRows: [mbRows[0]], reservations: { pending: 0 }, published: true });
         assert.ok(ok.every(r => r.done), `残っている: ${ok.filter(r => !r.done).map(r => r.key)}`);
+        // ★ 疎通確認: まだ送っていない → 2 日前までは任意 (促さない)、2 日前からは「やること」。購読なしの人数も出す
+        const J = (iso) => Date.parse(iso + '+09:00');
+        const notSent = mbRows.map(r => ({ ...r, pushCheck: 'none' }));
+        const pcAt = (now, rs = notSent) => dom.checklist({ stage: 'pre', season, bosses, mbRows: rs, reservations: { pending: 0 }, published: true, now }).find(r => r.key === 'pushcheck');
+        assert.deepEqual([pcAt(J('2026-09-08T12:00:00')).optional, pcAt(J('2026-09-08T12:00:00')).value], [true, '未送信 · 購読なし 1'], '3 日前なのに促している');
+        assert.match(pcAt(J('2026-09-08T12:00:00')).label, /2日前から/);
+        assert.equal(pcAt(J('2026-09-09T12:00:00')).optional, false, '2 日前になっても任意のまま');
+        assert.equal(pcAt(J('2026-09-10T23:00:00')).optional, false);
+        assert.equal(pcAt(J('2026-09-09T04:00:00')).optional, true, '朝 5 時より前は前のレイド日 (まだ 3 日前)');
+        assert.equal(pcAt(undefined, notSent.map(r => ({ ...r, push: true }))).value, '未送信', '購読なしが居ないのに人数を出している');
+        // 送ったかどうかが読めない (全員 null) は pending — 「未送信」と言い切らない
+        assert.equal(pcAt(J('2026-09-10T12:00:00'), mbRows.map(r => ({ ...r, pushCheck: null }))).pending, true);
+        // 届いた記録が 1 件でもあれば「送った」(送った印が読めなくても、届いた事実から分かる)
+        assert.equal(pcAt(J('2026-09-10T12:00:00'), [{ ...mbRows[0], pushCheck: 'ok' }, { ...mbRows[2], pushCheck: 'none' }]).total, 2);
+        assert.deepEqual([dom.daysToRaid(season, J('2026-09-09T12:00:00')), dom.daysToRaid(season, J('2026-09-11T03:00:00')), dom.daysToRaid({}, 0)], [2, 1, null]);
         const rp = dom.checklist({ stage: 'pre', season, bosses, mbRows: [mbRows[0]], reservations: { pending: 0 }, published: true, pendingRepublish: 1 }).find(r => r.key === 'publish');
         assert.equal(rp.done, false); assert.equal(rp.action, 'republish');
         const legacy = dom.checklist({ stage: 'pre', season, bosses, mbRows: [{ mockOk: true, availSupported: false, slots: ['h05'], flex: false, push: true }], reservations: { pending: 0 }, published: true }).find(r => r.key === 'avail');
@@ -3343,8 +3362,20 @@ console.log('\nopsStageDomain:');
         assert.equal(dom.hero({ stage: 'pre', rows, reservations: { pending: 0 } }).action, 'season-edit', 'ボス未設定が最初');
         const m = dom.hero({ stage: 'pre', rows: rows.filter(r => r.key !== 'bosses'), reservations: { pending: 0 } });
         assert.equal(m.action, 'nudge:mock'); assert.match(m.lead, /模擬の提出が残り 1 人/);
-        assert.match(dom.hero({ stage: 'pre', rows: rows.map(r => ({ ...r, done: true })), reservations: { pending: 0 } }).lead, /配信済み/);
+        assert.match(dom.hero({ stage: 'pre', rows: rows.map(r => ({ ...r, done: true, pending: false })), reservations: { pending: 0 } }).lead, /配信済み/);
         assert.equal(dom.hero({ stage: 'pre', rows: [{ key: 'mock', pending: true }], reservations: null }).action, 'members');
+        // ★ 通知の疎通確認 (2026-10-07): 2 日前からは「送りましょう」。送ったあとの「まだ届いていない人」は相手待ちなので、
+        //   予約・配信より先にヒーローを止めない。ほかが全部済んだら出す
+        const R = (o) => ({ total: null, done: false, pending: false, optional: false, waiting: false, ...o });
+        const send = dom.hero({ stage: 'pre', rows: [R({ key: 'mock', done: true }), R({ key: 'pushcheck', value: '未送信', action: 'pushcheck' }), R({ key: 'publish', value: '未', action: 'plan' })], reservations: { pending: 0 } });
+        assert.equal(send.action, 'pushcheck'); assert.match(send.lead, /疎通確認を送りましょう/);
+        const early = dom.hero({ stage: 'pre', rows: [R({ key: 'pushcheck', value: '未送信', optional: true, action: 'pushcheck' }), R({ key: 'publish', value: '未', action: 'plan' })], reservations: { pending: 0 } });
+        assert.equal(early.action, 'plan', '2 日前より早いのに疎通確認を促している');
+        const waitRow = R({ key: 'pushcheck', value: 26, total: 31, waiting: true, action: 'pushcheck' });
+        assert.equal(dom.hero({ stage: 'pre', rows: [waitRow, R({ key: 'publish', value: '未', action: 'plan' })], reservations: { pending: 0 } }).action, 'plan', '届いていない人が居るだけで、配信の案内が出ない');
+        const chase = dom.hero({ stage: 'pre', rows: [waitRow, R({ key: 'publish', done: true })], reservations: { pending: 0 } });
+        assert.equal(chase.action, 'pushcheck'); assert.match(chase.lead, /届いていない人が 5 人/);
+        assert.match(dom.hero({ stage: 'pre', rows: [{ ...waitRow, value: 31, done: true, waiting: false }, R({ key: 'publish', done: true })], reservations: { pending: 0 } }).lead, /配信済み/);
     });
     test('hero(当日): HP更新30分以上 > 締め凸未返答 > 承認待ち > 配信後の予約 > 残凸 > 全員完了 / 準備・終了', () => {
         assert.equal(dom.hero({ stage: 'day', freshMin: 38, finPending: 2, remainingTotal: 10 }).action, 'hp');
@@ -3886,7 +3917,8 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.deepEqual(await fn(null, 1), [], 'シーズン無しは [] (分からないのではなく、無い)');
     });
     await testAsync('★ supabaseLoadMemberStatusExtras: 失敗した項目だけ null (他は配列のまま) — 全員未登録を捏造しない', async () => {
-        const w = { supabaseLoadAvailabilityConfirmations: async () => [] };
+        let pushCheckAns = { sentAt: null, confirmed: [] };
+        const w = { supabaseLoadAvailabilityConfirmations: async () => [], supabaseLoadPushCheck: async () => pushCheckAns };
         const helper = client.match(/async function _loadFinishRequestsForStatus\(seasonId, currentLevel\) \{[\s\S]*?\n\}\n/)?.[0];
         assert.ok(helper, '_loadFinishRequestsForStatus が見つからない');
         const mk = (results) => _nfClientFn('supabaseLoadMemberStatusExtras', helper)(_nfFake(results), w, _nfQuiet);
@@ -3906,6 +3938,12 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.deepEqual(ex2.pushPlayerIds, [1]);
         const ex3 = await mk({ push_subscriptions: { data: [], error: null }, player_sync_levels: { data: [], error: null }, finish_requests: { data: [], error: null }, activity_log: { data: [], error: null } })(1, '2026-09-01T00:00:00Z', 1);
         assert.deepEqual(ex3.pushPlayerIds, [], '本当に誰もいないときは []');
+        // 🔔 疎通確認: 取れたものはそのまま / 取れなかった (null) は null のまま渡す (「まだ送っていない」に化けさせない)
+        assert.deepEqual(ex3.pushCheck, { sentAt: null, confirmed: [] });
+        pushCheckAns = null;
+        assert.equal((await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: ok, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1)).pushCheck, null, '疎通確認の取得失敗を「未送信」にしている');
+        pushCheckAns = { sentAt: '2026-10-08T03:00:00Z', confirmed: [{ player_id: 1, at: '2026-10-08T03:05:00Z' }] };
+        assert.equal((await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: ok, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1)).pushCheck.confirmed.length, 1);
         assert.deepEqual(ex3.finishRequests, []);
         // 締め凸依頼だけテーブル未適用 (22 未適用) → [] (従来どおり)
         const ex4 = await mk({ push_subscriptions: ok, player_sync_levels: ok, finish_requests: { data: null, error: { code: '42P01', message: 'relation "finish_requests" does not exist' } }, activity_log: ok })(1, '2026-09-01T00:00:00Z', 1);
@@ -9108,7 +9146,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/WHERE name = 'ふるり' AND ops_role IS NULL/.test(sql) && /CREATE UNIQUE INDEX IF NOT EXISTS uq_players_ops_master ON players\(\(true\)\) WHERE ops_role = 'master'/.test(sql), 'master = ふるり 1 人 になっていない');
         assert.ok(/UNION ALL SELECT '46_ops_roles',/.test(_grRd('supabase/99_check_applied.sql')), '99 に判定行が無い');
     });
-    test('★ 配線: 通知の配管 — 運営あては master + 運営担当へ (本人は除く・時間帯フィルタ無視) / 本人あての承認・却下 / 緊急通知はフィルタを通さない / ホームが追従する', () => {
+    test('★ 配線: 通知の配管 — 運営あては master + 運営担当へ (本人は除く) / 本人あての承認・却下 / 送る関数が時間帯フィルタを外し宛先の判定を通す / ホームが追従する', () => {
         // 監査 2026-09-12 (A1〜A4): 届くべき通知が届かない・受け取った側が気づけない
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const no = html.match(/async function _notifyOps\(\{[\s\S]*?\n        \}/)?.[0] || '';
@@ -9127,15 +9165,15 @@ console.log('\ngrowthDomain:');
         assert.ok(/playerIds: \[row\.player_id\], ignoreAvailability: true, requireInteraction: true/.test(nm), '本人あての通知がフィルタを通る');
         for (const t of ['🔒 予約が承認されました', '予約は見送りになりました', '予約が取り下げられました', '予約は続行になりました']) assert.ok(html.includes(`_notifyMemberResv(`) && html.includes(`'${t}'`), `本人あての通知が無い: ${t}`);
         assert.ok(/const ok = await _resvTransition\(id, 'rejected', \{ expectFrom: 'requested', reason, done: '見送りました' \}\);\s*if \(ok\) _notifyMemberResv\(row,/.test(html), '却下の通知が結果を見ていない');
-        // 緊急・本人あての通知は時間帯フィルタを通さない (11 か所)。情報の一斉 (撃破・Lv開放) だけがフィルタを通る
-        const calls = html.match(/sendPushNotification\(\{[\s\S]*?\}\)/g) || [];
-        const withFlag = calls.filter(c => /ignoreAvailability: true/.test(c)).length;
-        assert.ok(withFlag >= 17, `時間帯フィルタを通さない通知が足りない (${withFlag} / 呼び出し ${calls.length})`);
-        for (const key of ["tag: 'pin-ask', ignoreAvailability: true", "playerIds: ids, ignoreAvailability: true", "playerIds, ignoreAvailability: true", "playerIds: msgs[i].playerIds, ignoreAvailability: true",
-                           "playerIds: [r.player_id], ignoreAvailability: true, requireInteraction: true", "playerIds: notify, ignoreAvailability: true", "playerIds: notify.map(m => m.id), ignoreAvailability: true",
-                           "playerIds: [row.id], ignoreAvailability: true", "playerIds: [g.recipients[0].id], ignoreAvailability: true", "playerIds: targets.map(r => r.playerId), ignoreAvailability: true", "playerIds: targets.map(r => r.id), ignoreAvailability: true"]) {
-            assert.ok(html.includes(key), `フィルタを通してしまう通知がある: ${key}`);
-        }
+        // ★ 2026-10-07: 時間帯フィルタは廃止 (届かない原因だった)。呼び出し側が付け忘れても届くよう、**送る関数が必ず外す**。
+        //   宛先は js/domain/notifyPolicy.js が決め、Edge Function には決まった相手だけを渡す
+        const cl = _grRd('js/supabase-client.js');
+        const spn = cl.match(/window\.sendPushNotification = async function \(payload, opts = \{\}\) \{[\s\S]*?\n\};/)?.[0] || '';
+        assert.ok(/const body = \{ \.\.\.payload, ignoreAvailability: true \};/.test(spn), '送る関数が時間帯フィルタを外していない (呼び出し側の付け忘れで届かなくなる)');
+        assert.ok(/pol\.resolve\(\{ kind: payload\.kind, playerIds: payload\.playerIds \}, await _pushAudience\(\)\)/.test(spn), '宛先の判定 (notifyPolicy) を通していない');
+        assert.ok(/if \(Array\.isArray\(res\.playerIds\) && res\.playerIds\.length === 0\) \{[\s\S]*?return \{ ok: true, sent: 0, target: 0, skipped: true/.test(spn), '送る相手が居ないときに送っている (空の playerIds は Edge Function では全員になる)');
+        assert.equal((cl.match(/functions\.invoke\(slug, \{ body \}\)/g) || []).length, 1, 'send-push を呼ぶ口が 1 つでない (判定を通らない送り方がある)');
+        assert.ok(!/functions\.invoke\(/.test(html), 'index.html から Edge Function を直接呼んでいる');
         // ホームを開きっぱなしでも承認・📣 に追従する (30 秒ティック)
         assert.ok(/if \(_coordPollTick === 1 && document\.getElementById\('tab-mypage'\)\?\.classList\.contains\('active'\)\s*&& typeof renderMyReservations === 'function'\) Promise\.resolve\(renderMyReservations\(id\)\)\.catch/.test(html), 'ホームのティックで予約を取り直していない (or 10 秒ごとに取り直している)');
         // 名乗り直しの後着ガード: 前の人の予約をホームに出さない
@@ -10990,6 +11028,154 @@ console.log('\nswipeGuards:');
         // 内側のスクロールを殺さないための touch-action も対で要る
         assert.ok(/\[data-no-swipe\]\s*\{[^}]*touch-action:\s*auto/.test(html),
             'data-no-swipe の中で touch-action:auto を戻していない');
+    });
+}
+
+const _fsLate = await import('node:fs');
+// ---- 🔔 通知の落とし所 (2026-10-07 ユーザー決定): 宛先の判定 / チームの節目 / 疎通確認 / 設定画面 -----------------
+console.log('\n通知 (宛先・節目・疎通確認):');
+{
+    const NP = globalThis.notifyPolicyDomain, RE = globalThis.raidEventsDomain, MS = globalThis.memberStatusDomain;
+    const html = _fsLate.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    const cl = _fsLate.readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    const players = [
+        { id: 1, ops_role: 'master' }, { id: 2, ops_role: 'ops' }, { id: 3, notify_test: true }, { id: 4 }, { id: 5 },
+        { id: 9, archived: true, ops_role: 'ops', notify_test: true },   // 書庫の運営担当 (送らない)
+    ];
+    const real = { players, season: { is_test: false } }, testS = { players, season: { is_test: true } };
+    const ids = (r) => r.playerIds == null ? null : r.playerIds.slice().sort((a, b) => a - b);
+
+    test('★ 宛先: 全員あて = 在籍の全員 (書庫を除く)・チームの状況 / 名指し = あなた宛 (書庫だけ落とす・名簿に無い id は落とさない)', () => {
+        const all = NP.resolve({}, real);
+        assert.deepEqual([ids(all), all.tier, all.broadcast, all.restricted], [[1, 2, 3, 4, 5], 'team', true, false]);
+        assert.deepEqual(ids(NP.resolve({ playerIds: [] }, real)), [1, 2, 3, 4, 5], '空の配列は全員あて');
+        const d = NP.resolve({ playerIds: [4, '5', 9, 77, 4] }, real);
+        assert.deepEqual([ids(d), d.tier, d.dropped.archived], [[4, 5, 77], 'direct', 1], '書庫の人を落としていない / 登録したばかりの人 (名簿の写しに居ない) を落としている / 重複を残している');
+        assert.equal(NP.resolve({ kind: 'team', playerIds: [4] }, real).tier, 'team', '名指しでも kind: team はチームの状況');
+    });
+    test('★ 宛先: テスト回 (is_test) と kind:test は、運営担当 (master / ops) と「テスト通知を受け取る」の人だけ。書庫の運営担当には送らない', () => {
+        const t = NP.resolve({}, testS);
+        assert.deepEqual([ids(t), t.tier, t.restricted], [[1, 2, 3], 'test', true]);
+        assert.deepEqual(ids(NP.resolve({ playerIds: [3, 4, 5, 9, 77] }, testS)), [3], 'テスト回の名指しが、協力者でない人・名簿に無い人・書庫の人に届く');
+        assert.deepEqual(NP.resolve({ playerIds: [4, 5] }, testS).playerIds, [], '協力者が居ないのに送る相手が残っている');
+        assert.deepEqual(ids(NP.resolve({ kind: 'test' }, real)), [1, 2, 3], '本番の回の「テストとして送る」が全員に届く');
+        assert.equal(NP.resolve({ kind: 'test', playerIds: [4] }, real).dropped.notTester, 1);
+        // 46 未適用 (ops_role が無い) / 48 未適用 (notify_test が無い) → テストは誰にも届かない (全員に届くより安全)
+        assert.deepEqual(NP.resolve({}, { players: [{ id: 1 }, { id: 2 }], season: { is_test: true } }).playerIds, []);
+    });
+    test('★ 宛先: 名簿が取れなかった (null) ときは絞らない (本人あての連絡を通信の不調で消さない) / シーズンが分からなければテスト回と見なさない', () => {
+        assert.deepEqual([NP.resolve({}, { players: null, season: { is_test: false } }).playerIds, NP.resolve({ playerIds: [4, 9, 4] }, { players: null, season: null }).playerIds], [null, [4, 9]]);
+        assert.deepEqual(NP.resolve({ playerIds: [4] }, { players: null, season: { is_test: true } }).playerIds, [4], '名簿が無いテスト回は絞れない (fail-open)');
+        assert.equal(NP.resolve({ playerIds: [4] }, { players, season: null }).tier, 'direct');
+        assert.doesNotThrow(() => NP.resolve(null, null)); assert.equal(NP.resolve(null, null).playerIds, null);
+        assert.deepEqual([NP.tierLabel('team'), NP.tierLabel('test'), NP.tierLabel('?')], ['チームの状況', '🧪 テスト', 'あなた宛']);
+    });
+
+    const B = (n, t, r) => ({ boss_number: n, total_hp_raw: t, remaining_hp_raw: r });
+    const snap = (lv, bs) => RE.snapshotBoard({ id: 1, current_level: lv }, bs);
+    test('★ 節目: このレベルは残り 1 体 — いま倒した結果として 1 体になったときだけ (HP を入れている途中・Lv 開放・Lv4 では出さない)', () => {
+        const before = snap(2, [B(1, 100, 0), B(2, 100, 0), B(3, 100, 0), B(4, 100, 30), B(5, 100, 50)]);
+        const after = snap(2, [B(1, 100, 0), B(2, 100, 0), B(3, 100, 0), B(4, 100, 0), B(5, 100, 50)]);
+        assert.deepEqual([RE.diffRaidEvents(before, after).defeated, RE.diffRaidEvents(before, after).lastBoss], [[4], 5]);
+        assert.equal(RE.diffRaidEvents(after, after).lastBoss, null, '何も倒れていないのに毎回言う');
+        // 2 体いっぺんに倒れて 1 体残った
+        assert.equal(RE.diffRaidEvents(snap(1, [B(1, 100, 5), B(2, 100, 5), B(3, 100, 5)]), snap(1, [B(1, 100, 0), B(2, 100, 0), B(3, 100, 5)])).lastBoss, 3);
+        // まだ 2 体残っている
+        assert.equal(RE.diffRaidEvents(snap(1, [B(1, 100, 5), B(2, 100, 5), B(3, 100, 5)]), snap(1, [B(1, 100, 0), B(2, 100, 5), B(3, 100, 5)])).lastBoss, null);
+        // ★ Lv が開いた直後、運営がボスHPを 1 体ずつ入れている途中 (生きているのが 1 体) は「残り 1 体」ではない
+        assert.equal(RE.diffRaidEvents(snap(2, [B(1, 100, 0), B(2, 100, 0), B(3, 100, 0)]), snap(2, [B(1, 200, 200), B(2, 100, 0), B(3, 100, 0)])).lastBoss, null);
+        // レベルが上がった差分では出さない
+        assert.equal(RE.diffRaidEvents(snap(1, [B(1, 100, 5), B(2, 100, 5)]), snap(2, [B(1, 100, 0), B(2, 100, 5)])).lastBoss, null);
+        // 総HPが入っていないボスは数えない / もともと 1 体のレベルでは出さない
+        assert.equal(RE.diffRaidEvents(snap(4, [B(5, 100, 50)]), snap(4, [B(5, 100, 50)])).lastBoss, null);
+        assert.deepEqual(RE.aliveBossNumbers([B(3, 100, 1), B(1, 0, 0), B(2, 100, 0), B(5, 50, 50)]), [3, 5]);
+        assert.equal(RE.diffRaidEvents(null, after).lastBoss, null);
+    });
+    test('★ 節目: 定時の戦況まとめは 12・18・21・24 時だけ / 文面は盤面の数字 (撃破・残り %・未設定・Lv4・全員完了)', () => {
+        assert.deepEqual([12, 18, 21, 0].map(RE.digestSlot), ['h12', 'h18', 'h21', 'h00']);
+        assert.deepEqual([5, 13, 23, 24, null, 'x'].map(RE.digestSlot), [null, null, null, null, null, null]);
+        const m = RE.digestText({ hourJst: 21, level: 2, bosses: [B(3, 100, 18.2), B(1, 100, 0), B(2, 100, 62), B(4, 0, 0), B(5, 1000, 1)], done: 52, capacity: 93 });
+        assert.equal(m.title, '📊 戦況まとめ (21時) — Lv2・残り 41 凸');
+        assert.equal(m.body, '凸 52/93\nB1 撃破 · B2 残62% · B3 残18% · B4 — · B5 残1%', '番号順でない / 0% に丸めて撃破に見える');
+        assert.match(RE.digestText({ hourJst: 0, level: 1, bosses: [], done: 0, capacity: 93 }).title, /24時/);
+        const l4 = RE.digestText({ hourJst: 18, level: 4, bosses: [B(5, 100, 100)], done: 90, capacity: 90 });
+        assert.match(l4.body, /全員完了/); assert.match(l4.body, /Lv4/); assert.ok(!/残\d+%/.test(l4.body), 'HP 無限のボスに割合を出している');
+        assert.match(RE.digestText({ hourJst: 12, level: 1, bosses: [], done: 95, capacity: 93 }).title, /残り 0 凸/, '凸が定員を超えたとき負の数を出す');
+    });
+
+    const P = (o) => ({ id: 1, name: 'A', damagesByAttr: { fire: 1, water: 1, electric: 1 }, attacks: [], syncLevel: 600, syncLevelEstimated: false, availableSlots: ['h21'], flexTime: false, ...o });
+    const ex = (o) => ({ pushPlayerIds: [1, 2], slvThisSeasonIds: [1, 2, 3], finishRequests: [], proxyEvents: [], availConfirmations: [1, 2, 3].map(id => ({ player_id: id })), ...o });
+    test('★ 疎通確認 (メンバー状況): 届いた = ok / 送ったがまだ = wait (理由に積む) / 未送信 = none / 取れなかった = null。購読なしの人に「未確認」を重ねない', () => {
+        const ps = [P({ id: 1, name: 'あ' }), P({ id: 2, name: 'い' }), P({ id: 3, name: 'う' })];
+        const sent = MS.buildRows({ players: ps, phase: 'pre', extras: ex({ pushCheck: { sentAt: '2026-10-08T03:00:00Z', confirmed: [{ player_id: 1, at: '2026-10-08T03:05:00Z' }] } }) });
+        assert.deepEqual(sent.map(r => r.pushCheck), ['ok', 'wait', 'wait']);
+        assert.equal(sent[0].pushCheckAt, '2026-10-08T03:05:00Z');
+        assert.deepEqual(sent.map(r => r.reasons.map(x => x.key)), [[], ['pushcheck'], ['push']], '購読なしの人に「通知 未確認」まで付けている / 届いた人を要対応にしている');
+        const none = MS.buildRows({ players: ps, phase: 'pre', extras: ex({ pushCheck: { sentAt: null, confirmed: [] } }) });
+        assert.deepEqual(none.map(r => r.pushCheck), ['none', 'none', 'none']);
+        assert.ok(none.every(r => !r.reasons.some(x => x.key === 'pushcheck')), 'まだ送っていないのに未確認と言っている');
+        const unk = MS.buildRows({ players: ps, phase: 'pre', extras: ex({ pushCheck: null }) });
+        assert.deepEqual(unk.map(r => r.pushCheck), [null, null, null], '取れなかったのに「未送信」と言い切っている');
+        // 届いた記録だけ読めて、送った印が無い (読めなかった) → 届いた人は ok のまま
+        assert.deepEqual(MS.buildRows({ players: ps, phase: 'pre', extras: ex({ pushCheck: { sentAt: null, confirmed: [{ player_id: 2 }] } }) }).map(r => r.pushCheck), ['none', 'ok', 'none']);
+        // 集計: 送ったあとだけ「通知 届いた」を出す (送る前に 0/31 と出さない)
+        assert.deepEqual(MS.summarize(sent, 'pre').find(x => x.key === 'pushcheck'), { key: 'pushcheck', label: '通知 届いた', value: 1, total: 3, bad: true });
+        assert.equal(MS.summarize(none, 'pre').find(x => x.key === 'pushcheck'), undefined);
+    });
+
+    test('★ 配線: アプリの中の通知 OFF は無い — 設定シートは「テスト通知を受け取るか」だけ / 「いつでも通知」は外した', () => {
+        assert.ok(!/handleMyPushUnsubscribe|>通知を解除</.test(html), '通知を解除するボタン・ハンドラが残っている');
+        const st = html.match(/async function renderMyPushSettings\(identity\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/testOn = identity\?\.id \? await window\.supabaseLoadNotifyTest\(identity\.id\) : undefined;/.test(st) && /const testRow = testOn === undefined \? '' :/.test(st), '48 未適用 (分からない) のときにスイッチを出している / 読んでいない');
+        assert.ok(/id="myNotifyTest" \$\{testOn \? 'checked' : ''\} onchange="handleMyNotifyTestToggle\(this\)"/.test(st));
+        assert.ok(/if \(getCurrentIdentity\(\)\?\.id !== identity\?\.id\) return;/.test(st), '待っている間に名乗り直した人のスイッチを描く');
+        const tg = html.match(/async function handleMyNotifyTestToggle\(box\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/await window\.supabaseSetNotifyTest\(id\.id, want\);/.test(tg) && /catch \(e\) \{\s*if \(box\) box\.checked = !want;/.test(tg), '保存に失敗しても ON のままに見える');
+        assert.ok(!/myAvailNotifyAll|いつでも受け取る|通知の受信時間/.test(html), '「いつでも通知」・「通知の受信時間」の名残がある (通知は時間帯で絞らない)');
+        assert.ok(/await window\.supabaseUpdateAvailabilityPrefs\(id\.id, \{ flexTime \}\);/.test(html), '外した「いつでも通知」を保存し続けている');
+        // 一斉送信: 既定は本番 (チームの状況)、「テストとして送る」は開くたびに外す
+        const send = html.match(/async function handleOpsPushSend\(\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/kind: asTest \? 'test' : 'team',/.test(send));
+        assert.ok(/if \(asTest\) asTest\.checked = false;/.test(html), '前のテストの印を持ち越す (本番の連絡がテスト扱いになる)');
+        // SQL 48 と、適用済みの判定
+        const sql = _fsLate.readFileSync(new URL('../supabase/48_notify_test.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.match(sql, /ALTER TABLE players ADD COLUMN IF NOT EXISTS notify_test BOOLEAN NOT NULL DEFAULT FALSE;/);
+        assert.match(sql, /NOTIFY pgrst, 'reload schema';/);
+        assert.match(_fsLate.readFileSync(new URL('../supabase/99_check_applied.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n'), /'48_notify_test',[\s\S]*?column_name = 'notify_test'/);
+        assert.ok(/if \(_isMissingColumnErr\(error, 'notify_test'\)\) return undefined;/.test(cl) && /48_notify_test\.sql を SQL Editor で適用してください/.test(cl));
+    });
+    test('★ 配線: チームの節目 — Lv 開放は全員へ / 残り 1 体 / 定時まとめ (当日だけ・確保 → 取り直し → 送信 → 完了、失敗で確保を戻す)', () => {
+        const lv = html.match(/async function _notifyLevelOpened\(seasonId, levelUp\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/kind: 'team',\s*title: `🎉 Lv\$\{levelUp\.to\} 開放!`/.test(lv) && !/playerIds/.test(lv), 'Lv 開放を一部の人だけに送っている');
+        assert.ok(!/supabaseLevelOpenNotifyTargets/.test(html) && !/^window\.supabaseLevelOpenNotifyTargets/m.test(cl), '使わなくなった宛先の関数が残っている');
+        const ce = html.match(/async function _checkRaidEvents\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(ev\.lastBoss != null\) \{[\s\S]*?supabaseClaimRaidNotice\(cur\.seasonId, 'last_boss', lref, me\?\.id\)\) === 'claimed'\) \{\s*if \(await _notifyLastBoss\(cur\.seasonId, lb, level\)\) await window\.supabaseMarkRaidNoticeSent\(cur\.seasonId, 'last_boss', lref\);\s*else await window\.supabaseReleaseRaidNotice\(cur\.seasonId, 'last_boss', lref\);/.test(ce), '残り 1 体の通知が 確保 → 送信 → 完了 / 失敗で戻す の形でない');
+        assert.ok(/async function _notifyLastBoss\(seasonId, boss, level\) \{[\s\S]*?kind: 'team',/.test(html));
+        const dg = html.match(/async function _checkRaidDigest\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(SD\.raidDayKey\(Date\.now\(\)\) !== String\(season\.hard_date \|\| ''\)\.slice\(0, 10\)\) return;/.test(dg), '定時まとめがレイド当日 (翌 4 時まで) 以外にも出る');
+        assert.ok(/const st = await window\.supabaseClaimRaidNotice\(season\.id, 'digest', slot, me\?\.id\);\s*if \(st !== 'claimed'\) return;/.test(dg), '二重送信よけが無い');
+        assert.ok(/const snap = await opsStore\.load\(\);[\s\S]*?kind: 'team', title: msg\.title, body: msg\.body[\s\S]*?await window\.supabaseMarkRaidNoticeSent\(season\.id, 'digest', slot\);\s*\} catch \(e\) \{[\s\S]*?await window\.supabaseReleaseRaidNotice\(season\.id, 'digest', slot\);/.test(dg), '盤面を取り直してから送っていない / 失敗で確保を戻していない');
+        assert.ok(/if \(_opsMode && r\?\.season\?\.id && typeof _checkRaidDigest === 'function'\) \{\s*_checkRaidDigest\(r\.season\)\.catch/.test(html), '定期チェックから呼んでいない');
+    });
+    test('★ 配線: 疎通確認 — 運営は 記録 → 送信 (二重押しよけ・届いた人には送り直さない) / 本人はタップで伝わる・この端末で通知が無効なら「届きました」を出さない', () => {
+        const send = html.match(/async function handleOpsPushCheckSend\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(_pushCheck\.sending\) return;/.test(send) && /finally \{\s*_pushCheck\.sending = false;/.test(send), '二重押しで 2 回飛ぶ / 送信中のまま固まる');
+        assert.ok(/const targets = g\.wait;/.test(send), '届いた人にも送り直している');
+        assert.ok(/const ok = await showPushPreview\(\[\{[^\n]*\}\]\);\s*if \(!ok\) return;\s*_pushCheck\.sending = true;/.test(send), 'プレビューの前に送信中にしている (キャンセルで固まる)');
+        assert.ok(/await window\.supabaseMarkPushCheckSent\(seasonId, [^\n]*\);\s*let res = null;\s*try \{\s*res = await window\.sendPushNotification\(\{ kind: 'team', \.\.\.PUSH_CHECK_MSG, playerIds: targets\.map\(r => r\.id\), requireInteraction: true \}/.test(send), '記録より先に送っている / チームの状況として送っていない');
+        assert.ok(/url: '\.\/\?tab=mypage&focus=pushcheck'/.test(html) && /if \(params\.get\('focus'\) === 'pushcheck'\) \{ handleMyPushCheckConfirm\('tap'\); \}/.test(html), '通知をタップしても伝わらない');
+        const grp = html.match(/function _pushCheckGroups\(\) \{[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/wait: rows\.filter\(r => r\.pushCheck !== 'ok' && r\.push !== false\),/.test(grp) && /off: rows\.filter\(r => r\.pushCheck !== 'ok' && r\.push === false\),/.test(grp), '届いた人・通知が無効な人の分け方が違う');
+        const cf = html.match(/async function handleMyPushCheckConfirm\(via\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(via === 'tap'\) \{\s*const check = await window\.supabaseLoadPushCheck\(season\.id\);\s*if \(!check \|\| !check\.sentAt\) return;/.test(cf), '古い通知をあとから開いて、送っていない回に「届いた」と付く');
+        assert.ok(/if \(via !== 'tap'\) showNotification\(/.test(cf));
+        const card = html.match(/async function renderMyPushCheckCard\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(seq !== _pushCheckCardSeq\) return;/.test(card) && /if \(!me\?\.id \|\| String\(me\.id\) !== String\(identity\.id\)\) return;/.test(card), '追い越し・名乗り直しの守りが無い');
+        assert.ok(/if \(!check \|\| !check\.sentAt \|\| check\.confirmed\.some\(c => String\(c\.player_id\) === String\(identity\.id\)\)\) \{ hide\(\); return; \}/.test(card), '送っていない・もう伝えた・取れなかった のにカードを出す');
+        assert.ok(/if \(sub && sub\.supported && sub\.subscribed\) \{[\s\S]*?handleMyPushCheckConfirm\('button'\)[\s\S]*?\} else \{[\s\S]*?openMyPushModal\(\)/.test(card), '通知が無効な端末に「届きました」を出している');
+        assert.ok(/if \(!identity\?\.id \|\| window\.PAD_PRACTICE\) \{ hide\(\); return; \}/.test(card), '練習中に端末の通知の状態を読んでいる');
+        assert.ok(/renderMyPushCheckCard\(id\);       \/\/ 🔔 通知の疎通確認/.test(html) && /case 'pushcheck': openOpsPushCheckModal\(\); break;/.test(html));
+        assert.ok(/id="myPushCheckCard" style="display:none;"/.test(html) && /data-span="6" id="myPushCheckCard"/.test(html), 'ホームのカードに幅 (data-span) が無い');
     });
 }
 

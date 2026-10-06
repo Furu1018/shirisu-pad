@@ -316,6 +316,11 @@ SELECT * FROM (
                   AND pg_get_functiondef(oid) LIKE '%NOT IN (''pinned'', ''approved'')%'),
         '約束 (approved) を作るときも 📌 を数える (未適用だと 📌 が 3 件ある人に締め凸の了承や承認で 4 件目の固定ができる。画面側の canApprove だけが守る)'
 
+    UNION ALL SELECT '48_notify_test',
+        EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'players' AND column_name = 'notify_test'),
+        '🧪 テスト通知を受け取るか (未適用だとテスト通知は運営担当だけに届き、設定画面にスイッチが出ない)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

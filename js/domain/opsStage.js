@@ -113,8 +113,9 @@
      * @param {string|null=} a.backupSavedAt     最後にバックアップを保存した時刻 (ISO・端末の記憶)
      * @returns {{key:string,label:string,value:any,total:number|null,done:boolean,pending:boolean,action:string|null,nudge:string|null,optional:boolean}[]}
      */
-    function checklist({ stage, season, bosses, mbRows, reservations, published, pendingRepublish, backupSavedAt } = {}) {
-        const row = (o) => ({ total: null, done: false, pending: false, action: null, nudge: null, optional: false, ...o });
+    function checklist({ stage, season, bosses, mbRows, reservations, published, pendingRepublish, backupSavedAt, now } = {}) {
+        // waiting = 手は打った・相手待ち (ヒーローはこの行で止まらず、次の行へ進む)
+        const row = (o) => ({ total: null, done: false, pending: false, action: null, nudge: null, optional: false, waiting: false, ...o });
         if (stage === 'pre') {
             // ★ bosses が null = 盤面が未ロード。[] に潰すと「0/5」と出て、運営が設定し直しに走る (Codex指摘 2026-09-08)
             const rows = [];
@@ -132,12 +133,11 @@
                 const supported = rs.some(r => r.availSupported);
                 const avail = supported ? rs.filter(r => r.availConfirmed).length : rs.filter(r => (r.slots && r.slots.length > 0) || r.flex).length;
                 rows.push(row({ key: 'avail', label: supported ? '戦闘可能時間の確認' : '戦闘可能時間の登録', value: avail, total: n, done: avail >= n, nudge: 'avail', action: 'members' }));
-                const off = rs.filter(r => !r.push).length;
-                rows.push(row({ key: 'push', label: '通知 OFF の人', value: off, total: null, done: off === 0, action: 'notify' }));
+                rows.push(pushCheckRow(rs, season, now, row));
             } else {
                 rows.push(row({ key: 'mock', label: '模擬の提出 (3属性・被りなし)', value: null, pending: true, nudge: 'mock', action: 'members' }));
                 rows.push(row({ key: 'avail', label: '戦闘可能時間の確認', value: null, pending: true, nudge: 'avail', action: 'members' }));
-                rows.push(row({ key: 'push', label: '通知 OFF の人', value: null, pending: true, action: 'notify' }));
+                rows.push(row({ key: 'pushcheck', label: '通知の疎通確認', value: null, pending: true, action: 'pushcheck' }));
             }
             if (reservations) {
                 const p = Number(reservations.pending) || 0;
@@ -161,6 +161,37 @@
             ];
         }
         return [];
+    }
+
+    /** ハード日まであと何日か (レイド日のキーで数える。0 = 当日 / 分からなければ null) */
+    function daysToRaid(season, now) {
+        const hd = season && season.hard_date ? String(season.hard_date).slice(0, 10) : null;
+        if (!hd) return null;
+        const a = Date.parse(`${raidDayKey(now)}T00:00:00Z`), b = Date.parse(`${hd}T00:00:00Z`);
+        return (Number.isFinite(a) && Number.isFinite(b)) ? Math.round((b - a) / 86400000) : null;
+    }
+    const PUSH_CHECK_FROM_DAYS = 2;   // 疎通確認はレイドの 2 日前から (2026-10-07 ユーザー決定)
+
+    /**
+     * 🔔 通知の疎通確認の行 (前日のチェックリスト)。以前の「通知 OFF の人」を置き換えた (2026-10-07)。
+     *   まだ送っていない: 2 日前までは任意 (ヒーローは促さない)、2 日前からは「送りましょう」
+     *   送った: 届いた人数 / 全員。全員に届くまでは waiting (相手待ち — ヒーローを予約・配信より先に止めない)
+     *   送ったかどうかが読めない (pushCheck が全員 null): pending
+     */
+    function pushCheckRow(rs, season, now, row) {
+        const n = rs.length;
+        const known = rs.some(r => r.pushCheck != null);
+        if (!known) return row({ key: 'pushcheck', label: '通知の疎通確認', value: null, pending: true, action: 'pushcheck' });
+        const sent = rs.some(r => r.pushCheck === 'ok' || r.pushCheck === 'wait');
+        const off = rs.filter(r => r.push === false).length;   // 購読なし (分かっている人だけ数える)
+        if (!sent) {
+            const d = daysToRaid(season, now);
+            const due = d != null && d <= PUSH_CHECK_FROM_DAYS;
+            return row({ key: 'pushcheck', label: due ? '通知の疎通確認' : `通知の疎通確認 (${PUSH_CHECK_FROM_DAYS}日前から)`,
+                value: off > 0 ? `未送信 · 購読なし ${off}` : '未送信', done: false, optional: !due, action: 'pushcheck' });
+        }
+        const ok = rs.filter(r => r.pushCheck === 'ok').length;
+        return row({ key: 'pushcheck', label: '通知の疎通確認 (届いた人)', value: ok, total: n, done: ok >= n, waiting: ok < n, action: 'pushcheck' });
     }
 
     // ---- ヒーロー (いちばん急ぐ1つ) ----------------------------------------------
@@ -190,19 +221,24 @@
             if (rvP > 0) return { lead: `🔒 承認待ちの予約が ${rvP} 件あります`, why: '承認するとその凸は固定され、プランを組み直します。最後の 1 件で配信へ進みます', action: 'reserve', label: '🔒 予約を見る' };
             if (rp > 0) return { lead: '🔒 配信後の予約があります、確認して下さい', why: `承認した予約 ${rp} 件がいまの配信に入っていません。固定して組み直し、配信し直してください`, action: 'republish', label: '🧮 固定して組み直す → 配信' };
             const rs = Array.isArray(rows) ? rows : [];
-            const next = rs.find(r => !r.done && !r.pending && !r.optional);
+            const next = rs.find(r => !r.done && !r.pending && !r.optional && !r.waiting);
             if (!next) {
                 const anyPending = rs.some(r => r.pending);
-                return anyPending
-                    ? { lead: '状況を読み込んでいます', why: 'メンバー状況と予約が読めると、ここに次にやることが出ます', action: 'members', label: '👥 メンバー状況を見る' }
-                    : { lead: '✅ 配信済み。あとは当日を待つだけです', why: '提出・時間帯・通知がそろい、プランも配信しています。変更があればここに出ます', action: 'plan', label: '📤 配信を見る' };
+                if (anyPending) return { lead: '状況を読み込んでいます', why: 'メンバー状況と予約が読めると、ここに次にやることが出ます', action: 'members', label: '👥 メンバー状況を見る' };
+                // ほかが全部済んだら、相手待ちの行 (疎通確認でまだ届いていない人) を出す
+                const wait = rs.find(r => r.waiting && !r.done);
+                if (wait && wait.key === 'pushcheck') {
+                    const n = (wait.total != null && typeof wait.value === 'number') ? wait.total - wait.value : null;
+                    return { lead: n == null ? '🔔 通知がまだ届いていない人がいます' : `🔔 通知がまだ届いていない人が ${n} 人います`, why: '確認の通知をタップしていない人です。届かない人には Discord で声をかけ、当日までに通知を有効にしてもらいます', action: 'pushcheck', label: '🔔 誰が未確認か見る' };
+                }
+                return { lead: '✅ 配信済み。あとは当日を待つだけです', why: '提出・時間帯・通知がそろい、プランも配信しています。変更があればここに出ます', action: 'plan', label: '📤 配信を見る' };
             }
             const left = (next.total != null && typeof next.value === 'number') ? next.total - next.value : null;
             switch (next.key) {
                 case 'bosses': return { lead: `ボスの属性と HP が未設定です (${next.value}/5)`, why: '5 体そろわないとプランを算出できません', action: 'season-edit', label: '✏️ シーズンを編集する' };
                 case 'mock': return { lead: `模擬の提出が残り ${left} 人`, why: '3 属性・キャラ被りなしの提出がプランの材料です。催促は通知を購読している人にだけ届きます', action: 'nudge:mock', label: '📣 未提出の人に催促する' };
                 case 'avail': return { lead: `戦闘可能時間の確認が残り ${left} 人`, why: '前回のままの人は確認ボタン 1 つで終わります。時間が分からないとプランに乗りません', action: 'nudge:avail', label: '📣 未確認の人に催促する' };
-                case 'push': return { lead: `通知 OFF の人が ${next.value} 人います`, why: '通知が無いと配信・締め凸依頼・時間帯の開始が届きません。Discord で声をかけてください', action: 'notify', label: '🔔 誰が OFF か見る' };
+                case 'pushcheck': return { lead: '🔔 通知の疎通確認を送りましょう', why: 'レイドの 2 日前からです。確認の通知を全員に送り、届いた人がタップすると記録されます。届かない人に前もって連絡できます', action: 'pushcheck', label: '🔔 確認の通知を送る' };
                 case 'resv': return { lead: `🔒 承認待ちの予約が ${next.value}`, why: '承認するとその凸は固定されます', action: 'reserve', label: '🔒 予約を見る' };
                 case 'publish': return { lead: '📤 プランを配信しましょう', why: '算出 → 差分の確認 → 配信 → Discord テンプレの順に進みます', action: 'plan', label: '🧮 算出して配信する' };
                 default: return { lead: next.label, why: '', action: next.action || 'members', label: '開く' };
@@ -242,6 +278,6 @@
     root.opsStageDomain = {
         STAGES, STAGE_JP, STAGE_SUB, STORAGE_KEY, RAID_DAY_START_HOUR, MAX_ATTACKS,
         jstDate, jstDateNoIntl, raidDayKey, detect, parseOverride, serializeOverride, nextOf, prevOf,
-        visibleIn, bossReady, checklist, hero, nudgeTargets,
+        visibleIn, bossReady, checklist, hero, nudgeTargets, daysToRaid, PUSH_CHECK_FROM_DAYS,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

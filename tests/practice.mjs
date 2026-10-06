@@ -501,6 +501,7 @@ globalThis.addEventListener = (type, fn) => { listeners[type] = fn; };
 globalThis.CustomEvent = class { constructor(t, o) { this.type = t; this.detail = o?.detail; } };
 globalThis.fetch = async (url, o) => { fetched.push({ url: String(url), o }); return { ok: true, status: 200, json: async () => FALLBACK_CHARACTERS.map(c => ({ ...c, icon_paths: ['./i.webp'] })) }; };
 const origLog = console.log; console.log = () => { };   // 接続確認の 1 行を黙らせる
+await import(pathToFileURL(path.join(ROOT, 'js/domain/notifyPolicy.js')).href);   // 🔔 通知の宛先の判定 (本番では index.html が読む)。sendPushNotification が必ず通す
 await imp('js/supabase-client.js');
 console.log = origLog;
 const W = globalThis;
@@ -583,6 +584,81 @@ test('本物のクライアント: 時間の確認 → 模擬 → 予約 → 承
     assert.equal(mem.get('db'), undefined, 'やめたあとに途中経過を書き戻している');
     W.PAD_PRACTICE.closed = false;
     assert.equal(fetched.length, 1, '途中で本物へ通信している');
+});
+// ★ 2026-10-07: 通知の宛先は js/domain/notifyPolicy.js が決め、送る関数 (sendPushNotification) が必ず通す。
+//   本物の関数を偽のサーバ相手に動かして、**実際に誰へ送ったか** (Edge Function に渡した playerIds) を見る
+test('本物のクライアント: 通知の宛先 — 全員あては在籍の全員 (書庫を除く) / テスト回は運営担当と協力者だけ / 時間帯で絞らない / 相手が居なければ送らない', async () => {
+    const T = DB(), ME = IDS.me, OPS = IDS.ops, M1 = IDS.firstMember, M2 = IDS.firstMember + 1;
+    const sb = (await imp('js/supabase-client.js')).supabase;
+    const invoked = [];
+    const origInvoke = sb.functions.invoke;
+    sb.functions.invoke = (name, o) => { invoked.push({ name, body: JSON.parse(JSON.stringify(o.body)) }); return origInvoke.call(sb.functions, name, o); };
+    const last = () => invoked[invoked.length - 1].body;
+    const fresh = () => W.supabaseInvalidatePushAudience();
+    const season = T.seasons.find(x => x.is_active), archivedWas = T.players.find(p => p.id === M2).archived;
+    try {
+        fresh();
+        // ① 全員あて (playerIds なし) = 在籍の全員を名指しで。時間帯フィルタは必ず外す。kind はサーバへ送らない
+        let r = await W.sendPushNotification({ kind: 'team', title: '全員へ', body: '' });
+        assert.equal(last().playerIds.length, 31);
+        assert.equal(last().ignoreAvailability, true, '時間帯フィルタを通している (前回のレイドで半分にしか届かなかった原因)');
+        assert.ok(!('kind' in last()));
+        assert.deepEqual([r.tier, T.push_notifications_log.at(-1).target_kind, T.push_notifications_log.at(-1).target_player_ids], ['team', 'all', null]);
+        // ② 書庫の人には送らない (全員あて・名指しのどちらも)
+        T.players.find(p => p.id === M2).archived = true; fresh();
+        await W.sendPushNotification({ title: '全員へ 2' });
+        assert.ok(last().playerIds.length === 30 && !last().playerIds.includes(M2), '書庫の人に全員あてが届く');
+        r = await W.sendPushNotification({ title: 'あなた宛', playerIds: [M1, M2] });
+        assert.deepEqual([last().playerIds, r.tier, last().ignoreAvailability], [[M1], 'direct', true]);
+        assert.equal(T.push_notifications_log.at(-1).target_kind, 'specific');
+        // 送る相手が居ない (書庫の人だけ) → 送らない。空の playerIds を渡すと Edge Function では「全員」になる
+        const n = invoked.length;
+        r = await W.sendPushNotification({ title: '誰もいない', playerIds: [M2] });
+        assert.deepEqual([invoked.length, r.skipped, r.sent], [n, true, 0], '相手が居ないのに送っている (全員あてに化ける)');
+        // ③ テスト回: 運営担当 (ops_role) と「テスト通知を受け取る」(notify_test) の人だけ。全員あては「全員」と記録しない
+        season.is_test = true; T.players.find(p => p.id === M1).notify_test = true; fresh();
+        r = await W.sendPushNotification({ kind: 'team', title: 'テスト回の全員あて' });
+        assert.deepEqual([last().playerIds.slice().sort(), r.tier], [[OPS, M1].sort(), 'test']);
+        assert.deepEqual([T.push_notifications_log.at(-1).target_kind, T.push_notifications_log.at(-1).target_player_ids.slice().sort()], ['specific', [OPS, M1].sort()], 'テストを全員あてと記録している (届いていない人の「受け取った通知」に並ぶ)');
+        const n2 = invoked.length;
+        r = await W.sendPushNotification({ title: 'テスト回の本人あて', playerIds: [ME] });
+        assert.deepEqual([invoked.length, r.skipped, r.tier], [n2, true, 'test'], 'テスト回の通知が、協力者でないメンバーに届く');
+        // ④ 本番の回でも、運営が「テストとして送る」(kind: 'test') を選べば同じ絞り込み
+        season.is_test = false; fresh();
+        await W.sendPushNotification({ kind: 'test', title: 'テストとして送る' });
+        assert.deepEqual(last().playerIds.slice().sort(), [OPS, M1].sort());
+        // ⑤ 設定の保存は次の送信から効く (写しを捨てる) / 48 未適用は undefined (= 分からない)
+        assert.equal(await W.supabaseLoadNotifyTest(M1), true);
+        await W.supabaseSetNotifyTest(M1, false);
+        await W.sendPushNotification({ kind: 'test', title: 'テストとして送る 2' });
+        assert.deepEqual(last().playerIds, [OPS], '「受け取らない」にしたのに届く');
+        assert.equal(await W.supabaseLoadNotifyTest(ME), false);
+        assert.equal(await W.supabaseLoadNotifyTest(null), undefined);
+    } finally {
+        sb.functions.invoke = origInvoke;
+        season.is_test = false; T.players.find(p => p.id === M2).archived = archivedWas; T.players.find(p => p.id === M1).notify_test = false; fresh();
+    }
+});
+test('本物のクライアント: 通知の疎通確認 — 送った印・届いた人 (2 回押しても 1 件)・送り直しで届いた記録を消さない', async () => {
+    const S = IDS.season, ME = IDS.me, M1 = IDS.firstMember;
+    assert.deepEqual(await W.supabaseLoadPushCheck(S), { sentAt: null, confirmed: [] });
+    assert.deepEqual(await W.supabaseLoadPushCheck(null), { sentAt: null, confirmed: [] });
+    const at1 = await W.supabaseMarkPushCheckSent(S, IDS.ops);
+    assert.equal((await W.supabaseLoadPushCheck(S)).sentAt, at1);
+    assert.equal(await W.supabaseConfirmPushCheck(S, ME), 'confirmed');
+    assert.equal(await W.supabaseConfirmPushCheck(S, ME), 'already');
+    assert.equal(await W.supabaseConfirmPushCheck(S, M1), 'confirmed');
+    await W.supabaseMarkPushCheckSent(S, IDS.ops);   // 送り直し (印は 1 行のまま・時刻だけ更新)
+    const c = await W.supabaseLoadPushCheck(S);
+    assert.deepEqual(c.confirmed.map(x => x.player_id).sort(), [ME, M1].sort(), '送り直すと届いた人の記録が消える');
+    assert.equal(DB().raid_event_notices.filter(r => r.kind === 'push_check_sent').length, 1);
+    // メンバー状況の材料にも入る
+    const ex = await W.supabaseLoadMemberStatusExtras(S, '2026-10-01T00:00:00Z', 1);
+    assert.equal(ex.pushCheck.confirmed.length, 2);
+    // 撃破・Lv 開放の二重送信よけ (同じ表) と混ざらない
+    assert.equal(await W.supabaseClaimRaidNotice(S, 'boss_defeated', 'L1B1', ME), 'claimed');
+    assert.equal((await W.supabaseLoadPushCheck(S)).confirmed.length, 2);
+    DB().raid_event_notices.length = 0;
 });
 test('本物のクライアント: 練習中は端末の通知設定に触れない (解除すると本番の通知が届かなくなる)', async () => {
     let touched = 0;

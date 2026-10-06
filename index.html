@@ -114,6 +114,7 @@
     <script defer src="./js/domain/opsLayout.js"></script>
     <script defer src="./js/domain/pace.js"></script>
     <script defer src="./js/domain/opsRole.js"></script>     <!-- 👑 運営担当 (master / ops / メンバー) の判定 -->
+    <script defer src="./js/domain/notifyPolicy.js"></script> <!-- 🔔 通知の宛先 (あなた宛 / チームの状況 / テスト) の判定 -->
     <script defer src="./js/domain/planBoard.js"></script>
     <script defer src="./js/domain/slvSim.js"></script>
     <script defer src="./js/domain/raidReview.js"></script>   <!-- レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) -->      <!-- SLv シミュレーター (予測 / 目標ダメージ → 必要 SLv の逆引き) -->   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
@@ -4167,6 +4168,10 @@
                 <div id="myPublishedPlanBody"></div>
             </div>
 
+            <!-- 🔔 通知の疎通確認 (2026-10-07)。運営が確認の通知を送ったあと、まだ「届いた」と伝えていない人にだけ出る。
+                 中身は renderMyPushCheckCard が描く (この端末の通知が有効か / 無効かで出すものが違う) -->
+            <div class="dc-card" data-span="6" id="myPushCheckCard" style="display:none;"></div>
+
             <!-- 🧬 育成データが未公開のお知らせ (B3・2026-09-09)。未公開のときだけ出る -->
             <div class="dc-card" data-span="6" id="myGrowthNoticeCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
@@ -4211,7 +4216,7 @@
                 <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;padding:9px 8px 11px;">MY設定</div>
                 <div onclick="openMyAvailModal()" class="dc-setting-row">
                     <div class="dc-setting-icon" data-sp-icon="swords" data-sp-size="17"></div>
-                    <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--t-ink);">戦闘可能時間 <span style="font-size:10px;color:var(--t-muted);font-weight:700;">(通知の受信時間)</span></div>
+                    <div style="flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--t-ink);">戦闘可能時間 <span style="font-size:10px;color:var(--t-muted);font-weight:700;">(凸プランと締め凸の候補に使う)</span></div>
                     <span id="myAvailConfirmBadge" style="display:none;flex:none;font-size:9.5px;font-weight:900;padding:3px 9px;border-radius:999px;white-space:nowrap;"></span>
                     <div style="color:var(--t-muted);font-size:20px;font-weight:300;">›</div>
                 </div>
@@ -5151,8 +5156,8 @@
                         <p>上の帯 (PC のサイドバーなら左下の足元) の名前をタップして、自分を選びます。端末ごとに覚えるので、機種変更やブラウザ変更のときだけ選び直してください。</p>
                         <h3>② MY設定</h3>
                         <ul>
-                            <li><strong>⏰ 戦闘可能時間</strong> — 5時始まりの24マスを塗ります。これが 凸プランの時間割・締め凸候補・<strong>通知の受信時間</strong> の全部の元になります。
-                                当日いつ動けるか読めない人は <strong>⏳ 隙間時間型</strong>、時間外の通知も見たい人は <strong>🔔 いつでも受け取る</strong> を ON に</li>
+                            <li><strong>⏰ 戦闘可能時間</strong> — 5時始まりの24マスを塗ります。これが 凸プランの時間割・締め凸候補 の元になります (通知は時間帯で絞られません)。
+                                当日いつ動けるか読めない人は <strong>⏳ 隙間時間型</strong> を ON に</li>
                             <li><strong>今期の確認</strong> — シーズンごとに <strong>「✅ 今回の参加時間を確認」</strong> か <strong>「今回は難しい」</strong> を押してください。前回のまま放置すると「未確認」扱いになり、運営から催促が届きます。「今回は難しい」の人はプラン・候補・催促のすべてから外れます</li>
                             <li><strong>🔔 Push通知設定</strong> — 端末ごとに1回。手順は <a href="#help-notify">§13</a></li>
                             <li><strong>得意属性</strong> — プロフィールに出る申告です (プランの計算には使いません)</li>
@@ -5388,7 +5393,7 @@
                         <div class="help-flow-step"><div class="help-flow-num">1</div><div>上の帯の名前をタップして<strong>自分</strong>を選ぶ</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">2</div><div>ホームの <strong>MY設定 › 🔔 Push通知設定</strong> → <strong>「🔔 通知を有効にする」</strong></div></div>
                         <div class="help-flow-step"><div class="help-flow-num">3</div><div>ブラウザの「通知を許可しますか?」に <strong>許可</strong></div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>「<span style="color:var(--ok);font-weight:700;">✅ Push通知を有効化済み (この端末)</span>」と出れば完了</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">4</div><div>「<span style="color:var(--ok);font-weight:700;">✅ この端末で通知が有効です</span>」と出れば完了</div></div>
                         <div class="help-callout warn">
                             <span class="ico">⚠️</span>
                             <p>「許可」を聞かれずに何も起きない → 以前の「ブロック」が記憶されています。<br>
@@ -5396,18 +5401,20 @@
                                 <strong>iPhone (Safari)</strong>: 設定アプリ → 通知 → しりすこPAD → 許可<br>
                                 <strong>Android (Chrome)</strong>: 設定 → サイト設定 → 通知 → 該当サイトを許可</p>
                         </div>
-                        <h3>② 受信時間 = ⏰ 戦闘可能時間</h3>
-                        <p>通知の受信時間は <strong>MY設定 › ⏰ 戦闘可能時間</strong> と同じものです。全部 OFF だと、時間帯で絞る通知は一切届きません。</p>
+                        <h3>② 届く通知は 3 種類</h3>
                         <ul>
-                            <li>5時〜翌5時の24時間を1時間単位で ON/OFF</li>
-                            <li><strong>あなた宛てで、返事や行動が要る通知</strong> (締め凸のお願い・📣 お願い・予約の承認/却下・催促・配信の更新・戦闘可能時間の開始) は<strong>時間帯に関係なく届きます</strong>。時間帯で絞られるのは「強行凸の警告」だけです</li>
-                            <li>時間外も全部見たい人は <strong>🔔 いつでも受け取る</strong> を ON に</li>
+                            <li><strong>あなた宛</strong> — 締め凸のお願い・📣 お願い・予約の承認/却下・割当の変更・催促・戦闘可能時間の開始。<strong>時間帯に関係なく必ず届きます</strong></li>
+                            <li><strong>チームの状況</strong> — レイド当日に全員へ: 🎉 Lv 開放・🔥 残り 1 体・📊 定時の戦況まとめ (12・18・21・24 時)。1 日に 10 通ほどです</li>
+                            <li><strong>🧪 テスト</strong> — テスト回の通知や運営の動作確認。<strong>運営担当だけ</strong>に届きます。協力してくれる人は、通知の設定で「開発中のテスト通知も受け取る」を ON に</li>
                         </ul>
-                        <h3>③ テスト</h3>
-                        <p><strong>「🧪 ローカル通知テスト」</strong> で通知が出れば、運営からの本物も届く状態です。</p>
+                        <p>アプリの中に通知の OFF はありません (テストの通知が来なくなったので、切る理由が無くなりました)。端末で止めたいときは、端末 (ブラウザ) の通知設定から行えます。</p>
+                        <h3>③ レイド前の「通知の確認」</h3>
+                        <p>レイドの 2 日前から、運営が<strong>「🔔 通知の確認」</strong>という通知を送ります。<strong>タップするだけ</strong>で「届いた」と運営に伝わります (通知は見たけれどアプリを直接開いた人は、ホームの「✅ 届きました」を押してください)。
+                            届かなかった人には、当日までに運営から声がかかります。</p>
+                        <p><strong>「🔔 この端末で鳴るか試す」</strong> で通知が出れば、端末の設定は合っています。</p>
                         <h3>🚫 通知が来ないときのチェック</h3>
                         <ol>
-                            <li>「✅ Push通知を有効化済み」と出ているか</li>
+                            <li>「✅ この端末で通知が有効です」と出ているか</li>
                             <li>iPhone: ホーム画面のアイコンから開いているか (Safari のタブでは動きません)</li>
                             <li>ブラウザがこのサイトの通知をブロックしていないか (上の Warn)</li>
                             <li>端末がサイレント / おやすみ / 集中モードになっていないか</li>
@@ -5492,7 +5499,7 @@
                     <section id="help-data" class="help-section">
                         <h2><span data-sp-icon="refresh" data-sp-size="17"></span> 16. データの流れ</h2>
                         <div class="help-flow-step"><div class="help-flow-num">1</div><div><strong>模擬戦データ</strong> (模擬タブ) → 残り戦闘可能メンバー・最適凸プラン・締め凸候補・ふるり値レーダー</div></div>
-                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>⏰ 戦闘可能時間 + 今期の確認</strong> (MY設定) → プランの時間割・締め凸候補・通知の受信時間・催促の対象</div></div>
+                        <div class="help-flow-step"><div class="help-flow-num">2</div><div><strong>⏰ 戦闘可能時間 + 今期の確認</strong> (MY設定) → プランの時間割・締め凸候補・催促の対象</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">3</div><div><strong>🔒 予約</strong> → 承認で固定 → 算出 → 📤 配信 → 各自のホームの3枠 (確認しました / 変更の通知)</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">4</div><div><strong>凸報告</strong> → 残HP減算・予約の消し込み・戦闘準備の解除 → 撃破やレベル開放の通知・締め凸依頼の片づけ</div></div>
                         <div class="help-flow-step"><div class="help-flow-num">5</div><div><strong>レイド終了</strong> → 月次の JSON にスナップショット (次のふるり値の基準・確定 SLv の同期) → 🧬 育成データの取り込み → 育成くらべ</div></div>
@@ -5941,6 +5948,19 @@
         </div>
     </div>
 
+    <!-- ========== 運営: 🔔 通知の疎通確認 (2026-10-07・レイドの 2 日前から) ========== -->
+    <div class="player-select-modal" id="opsPushCheckModal">
+        <div class="player-select-content" style="max-width:560px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <h2><span data-sp-icon="bell" data-sp-size="17"></span> 通知の疎通確認</h2>
+                <button onclick="closeOpsPushCheckModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
+            </div>
+            <p class="subtitle">レイドの 2 日前から。確認の通知を送り、届いた人がタップすると記録されます。届かない人には、当日までに Discord で声をかけられます。</p>
+            <div id="opsPushCheckBody"></div>
+            <p id="opsPushCheckMessage" style="margin:8px 0 0;min-height:16px;font-size:12px;font-weight:700;"></p>
+        </div>
+    </div>
+
     <!-- ========== 運営: ボスHP更新モーダル ========== -->
     <div class="player-select-modal" id="opsBossHpModal">
         <div class="player-select-content" style="max-width:560px;">
@@ -6132,7 +6152,7 @@
                 <h2><span data-sp-icon="megaphone" data-sp-size="17"></span> Push通知 送信</h2>
                 <button onclick="closeOpsPushSendModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
             </div>
-            <p class="subtitle">購読者全員に Push 通知を一斉配信します。</p>
+            <p class="subtitle">在籍の全員に Push 通知を送ります (時間帯に関係なく届きます)。</p>
 
             <div>
                 <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;">タイトル</label>
@@ -6142,6 +6162,11 @@
                 <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;">本文</label>
                 <textarea id="opsPushBody" rows="3" maxlength="200" placeholder="例: ヘビーメタル 残3.5B です" style="width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:14px;resize:vertical;"></textarea>
             </div>
+
+            <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:12px;background:var(--s1);cursor:pointer;">
+                <input type="checkbox" id="opsPushAsTest" style="margin-top:2px;width:16px;height:16px;accent-color:var(--ops-solid);flex:none;">
+                <span style="flex:1;font-size:12px;font-weight:700;color:var(--t-body);line-height:1.6;"><b style="color:var(--t-ink);">🧪 テストとして送る</b><br>運営担当と、「テスト通知を受け取る」を ON にしている人だけに届きます (開発中の確認用)</span>
+            </label>
 
             <p id="opsPushMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
 
@@ -6426,7 +6451,7 @@
                         <h2><span data-sp-icon="swords" data-sp-size="17"></span> 戦闘可能時間</h2>
                         <button onclick="closeMyAvailModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
-                    <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸候補などの狙い撃ち通知</strong> に使われます。戦闘可能時間の外には通知が届きません (下の「いつでも受け取る」でも変更可)。<br>※運営の「全員に送信」「緊急通知」はこの設定に関係なく届きます。</p>
+                    <p class="subtitle">なぞって選択 · 24時間タイムライン。塗った時間帯は <strong>①凸プランの時間割当 ②締め凸の候補 (その時間に出られる人)</strong> に使われます。<br>※通知は時間帯で絞られません (あなた宛の連絡と、レイド当日のチームの状況が届きます)。</p>
                     <div id="mypageAvailGroup" style="display:flex;flex-direction:column;gap:14px;"></div>
                     <!-- 今期の確認 (37_availability_confirmations)。前月の設定が残ったままを防ぐ -->
                     <div id="myAvailConfirmBox" style="display:none;margin-top:14px;padding:13px 15px;border-radius:13px;"></div>
@@ -6436,14 +6461,7 @@
                             <input type="checkbox" id="myAvailFlexTime" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:var(--warn-solid);flex:none;">
                             <span style="flex:1;">
                                 <span style="display:block;font-size:13px;font-weight:800;color:var(--t-ink);">⏳ 隙間時間型 (時間の約束はできないが3凸はする)</span>
-                                <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">当日多忙で時間が読めない人向け。凸プランではボスの割当だけ受け取り、時間帯の指示は付きません (律速にもなりません)。通知は時間帯に関係なく届きます。<br>💡 上の時間も塗っておくと「その時間は確約・それ以外は隙間で対応」のハイブリッドになります。</span>
-                            </span>
-                        </label>
-                        <label style="display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
-                            <input type="checkbox" id="myAvailNotifyAll" onchange="handleAvailPrefChange()" style="margin-top:2px;width:16px;height:16px;accent-color:var(--ops-solid);flex:none;">
-                            <span style="flex:1;">
-                                <span style="display:block;font-size:13px;font-weight:800;color:var(--t-ink);"><span data-sp-icon="bell" data-sp-size="13"></span> 通知はいつでも受け取る</span>
-                                <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">戦闘可能時間の外でも締め凸候補などの通知が届きます (情報として見たい人向け)。</span>
+                                <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">当日多忙で時間が読めない人向け。凸プランではボスの割当だけ受け取り、時間帯の指示は付きません (律速にもなりません)。<br>💡 上の時間も塗っておくと「その時間は確約・それ以外は隙間で対応」のハイブリッドになります。</span>
                             </span>
                         </label>
                     </div>
@@ -6454,10 +6472,10 @@
     <div class="player-select-modal" id="myPushModal">
                 <div class="player-select-content" style="max-width:520px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> Push通知設定</h2>
+                        <h2><span data-sp-icon="bell" data-sp-size="17"></span> 通知</h2>
                         <button onclick="closeMyPushModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">閉じる</button>
                     </div>
-                    <p class="subtitle">締め凸候補や運営からのお知らせをスマホに通知。<strong>iPhone</strong>の場合は Safari で「ホーム画面に追加」してから設定が必要です。</p>
+                    <p class="subtitle"><strong>あなた宛の連絡</strong> (締め凸のお願い・割当の変更・予約の返事) と、<strong>レイド当日のチームの状況</strong> (Lv 開放・残り 1 体・定時のまとめ) が届きます。<strong>iPhone</strong> は Safari で「ホーム画面に追加」してから設定してください。</p>
                     <div id="mypagePushStatus" style="font-size:13px;margin-bottom:10px;">読み込み中...</div>
                     <div id="mypagePushActions" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
                     <p id="mypagePushMessage" style="margin:8px 0 0 0;font-size:12px;min-height:14px;"></p>
@@ -7012,9 +7030,9 @@
                 chapterTag: '② 戦闘可能時間',
                 stepLabel: 'CHAPTER 03',
                 title: '戦闘できる時間と\n今期の確認',
-                body: 'ホームの <strong>MY設定 → ⏰ 戦闘可能時間</strong> で、自分が動ける時間帯を塗ります。凸プランの時間割・締め凸候補・通知の受信時間の全部がこれを元にします。下のデモで触ってみてください👇<br><br>シーズンごとに <strong>✅ 今回の参加時間を確認</strong> か <strong>今回は難しい</strong> を押すのも忘れずに。押していないと「未確認」として催促が届きます。',
+                body: 'ホームの <strong>MY設定 → ⏰ 戦闘可能時間</strong> で、自分が動ける時間帯を塗ります。凸プランの時間割と締め凸候補がこれを元にします。下のデモで触ってみてください👇<br><br>シーズンごとに <strong>✅ 今回の参加時間を確認</strong> か <strong>今回は難しい</strong> を押すのも忘れずに。押していないと「未確認」として催促が届きます。',
                 demo: 'avail',
-                tip: '⏳ 当日いつ動けるか読めない人は「隙間時間型」、時間外の通知も見たい人は「🔔 いつでも受け取る」を ON に。',
+                tip: '⏳ 当日いつ動けるか読めない人は「隙間時間型」を ON に。通知は時間帯に関係なく届きます。',
                 accentColor: '#F59E0B', accentDark: '#D97706',
             },
             {
@@ -8032,7 +8050,7 @@
                     // S2: 戦闘可能時間 未登録
                     hero = true;
                     lead = '⏰ 戦闘できる時間帯を教えてください';
-                    why = 'レイド当日にあなたが動ける時間帯です。凸プランの割当と通知のタイミングに使われます。読めない人は「⏳隙間時間型」を選べばOK。';
+                    why = 'レイド当日にあなたが動ける時間帯です。凸プランの割当と締め凸の候補に使われます。読めない人は「⏳隙間時間型」を選べばOK。';
                     cta = heroBtn('openMyAvailModal()', '⏰ 時間帯を登録する');
                 } else if (season && season.hard_date === tomorrowStr) {
                     // B2: 前日・準備OK
@@ -8687,6 +8705,16 @@
                         cur.dead.delete(bn);
                     }
                 }
+                // ①-1b このレベルは残り 1 体 (チームの状況 → 全員へ)。撃破の通知 (割当のある人あて) とは別に 1 回だけ。
+                //   送れなかったら確保を戻すだけ (同じ差分は二度来ないので送り直しはしない — 節目の共有で、行動が止まる通知ではない)
+                if (ev.lastBoss != null) {
+                    const lb = bosses.find(x => Number(x.boss_number) === Number(ev.lastBoss));
+                    const lref = `L${level}`;
+                    if (lb && (await window.supabaseClaimRaidNotice(cur.seasonId, 'last_boss', lref, me?.id)) === 'claimed') {
+                        if (await _notifyLastBoss(cur.seasonId, lb, level)) await window.supabaseMarkRaidNoticeSent(cur.seasonId, 'last_boss', lref);
+                        else await window.supabaseReleaseRaidNotice(cur.seasonId, 'last_boss', lref);
+                    }
+                }
                 // ①-2 倒れたボスの予約を外す (締め凸依頼と同じく、レベル開放と同時のときは下でまとめて)
                 if (ev.defeated.length > 0 && !levelJustOpened) {
                     await _releaseInfeasibleReservations(cur.seasonId, { currentLevel: level, bosses }, `Lv${level} 撃破`);
@@ -8813,18 +8841,16 @@
 
         async function _notifyLevelOpened(seasonId, levelUp) {
             try {
-                const ids = await window.supabaseLevelOpenNotifyTargets(seasonId);
-                if (!ids.length) return true;   // 宛先ゼロは成功扱い
-                await window.sendPushNotification({
+                // ★ チームの状況 = 在籍の全員へ (2026-10-07 ユーザー決定)。以前は残り凸のある人だけだった。
+                //   宛先は notifyPolicy が決める (書庫の人は除く・テスト回は運営担当と協力者だけ)
+                const res = await window.sendPushNotification({
+                    kind: 'team',
                     title: `🎉 Lv${levelUp.to} 開放!`,
-                    body: `Lv${levelUp.from} を踏破し、Lv${levelUp.to} のボスが出現しました。残っている凸を進めてください。`,
+                    body: `Lv${levelUp.from} を踏破し、Lv${levelUp.to} のボスが出現しました。凸が残っている人は進めてください。`,
                     url: './?tab=ops',
                     tag: `level-open-${seasonId}-${levelUp.to}`,
-                    // 「いま動ける人に今すぐ知らせる」意味があるので時間帯を問わない
-                    ignoreAvailability: true,
-                    playerIds: ids,
-                });
-                console.log(`[notify] Lv${levelUp.to} 開放を ${ids.length} 名へ通知`);
+                }, { senderPlayerId: getCurrentIdentity()?.id || null });
+                console.log(`[notify] Lv${levelUp.to} 開放を全員へ通知 (${res?.sent ?? '?'} 端末)`);
                 return true;
             } catch (e) {
                 console.warn('[notify] レベル開放通知の送信失敗:', e?.message || e);
@@ -8839,6 +8865,57 @@
             const id = getCurrentIdentity();
             renderMyDamagePanels(id?.name ? id : null);
             renderMockCompare();
+        }
+
+        // 🔥 このレベルは残り 1 体 (チームの状況 → 全員へ)。検知は raidEventsDomain.diffRaidEvents の lastBoss
+        async function _notifyLastBoss(seasonId, boss, level) {
+            try {
+                const label = `B${boss.boss_number}${boss.name ? ' ' + boss.name : ''}`;
+                const remB = (Number(boss.remaining_hp_raw) || 0) / 1e9;
+                await window.sendPushNotification({
+                    kind: 'team',
+                    title: `🔥 Lv${level} は残り 1 体 — ${label}`,
+                    body: `残HP ${remB.toFixed(1)}B。倒すと ${Number(level) >= 3 ? 'Lv4 (ボス5・HP無限)' : `Lv${Number(level) + 1}`} が開きます。`,
+                    url: './?tab=ops',
+                    tag: `last-boss-${seasonId}-${level}`,
+                }, { senderPlayerId: getCurrentIdentity()?.id || null });
+                return true;
+            } catch (e) {
+                console.warn('[notify] 残り 1 体の通知の送信失敗:', e?.message || e);
+                return false;
+            }
+        }
+
+        // 📊 定時の戦況まとめ (レイド当日の 12・18・21・24 時に 1 通ずつ・全員へ — 2026-10-07 ユーザー決定「節目だけ」)。
+        // 送り手は運営端末の定期チェック (30 秒ごと)。二重送信は raid_event_notices の一意制約 (kind 'digest' / ref 'h12' など) で防ぐ。
+        // ★ その時刻の 1 時間のうちに運営端末が 1 台も開いていなければ、その回は送らない (遅れて古いまとめを流さない)。
+        // ★ 数字は盤面を取り直してから (開きっぱなしの端末の古い凸数で流さない)
+        async function _checkRaidDigest(season) {
+            try {
+                const D = window.raidEventsDomain, SD = window.opsStageDomain;
+                if (!season?.id || !D?.digestSlot || !SD?.raidDayKey || typeof window.supabaseClaimRaidNotice !== 'function') return;
+                if (SD.raidDayKey(Date.now()) !== String(season.hard_date || '').slice(0, 10)) return;   // レイド当日だけ (翌 4 時までが同じ日)
+                const hour = Number(String(getCurrentSlotJST()).slice(1));
+                const slot = D.digestSlot(hour);
+                if (!slot) return;
+                const me = getCurrentIdentity();
+                const st = await window.supabaseClaimRaidNotice(season.id, 'digest', slot, me?.id);
+                if (st !== 'claimed') return;
+                try {
+                    const snap = await opsStore.load();
+                    if (!snap?.season || Number(snap.season.id) !== Number(season.id) || !Array.isArray(snap.players)) throw new Error('盤面を読めませんでした');
+                    const done = snap.players.reduce((n, p) => n + (Number(p.attackCount) || 0), 0);
+                    const capacity = snap.players.filter(p => !p.unavailableThisSeason).length * 3;
+                    const msg = D.digestText({ hourJst: hour, level: Number(snap.season.current_level) || 1, bosses: snap.bosses || [], done, capacity });
+                    await window.sendPushNotification({ kind: 'team', title: msg.title, body: msg.body, url: './?tab=ops', tag: `digest-${season.id}-${slot}` },
+                        { senderPlayerId: me?.id || null });
+                    await window.supabaseMarkRaidNoticeSent(season.id, 'digest', slot);
+                } catch (e) {
+                    // 送れなかったら確保を戻す (同じ 1 時間のうちに、次の周期か別の運営端末がやり直せる)
+                    console.warn('[digest] 送信失敗 (確保を戻す):', e?.message || e);
+                    await window.supabaseReleaseRaidNotice(season.id, 'digest', slot);
+                }
+            } catch (e) { console.warn('[digest] skip:', e?.message || e); }
         }
 
         // ---- ユニオン事前比較 (Stage2 新機能) ----
@@ -9235,6 +9312,7 @@
             renderMyReservations(id);        // 🔒 引き受けた凸 (L2 ⑧)
             renderMyAvailStrip(id);          // ⏰ あなたの戦闘可能時間 (2026-09-08)
             renderMyGrowthNotice(id);        // 🧬 育成データが未公開です (B3・2026-09-09)
+            renderMyPushCheckCard(id);       // 🔔 通知の疎通確認 (2026-10-07)
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
         }
@@ -10860,24 +10938,23 @@
             }
         }
 
-        // 運用オプション (⏳隙間時間型 / 🔔いつでも通知) の読み込みと即時保存
+        // 運用オプション (⏳隙間時間型) の読み込みと即時保存。
+        // ★ 🔔 の「いつでも通知」の設定は 2026-10-07 に外した — 通知は戦闘可能時間で絞らなくなった (宛先は js/domain/notifyPolicy.js)。
+        //   列 players.notify_all_hours は残っているが、もう読まない・書かない
         async function _loadAvailPrefsUI(playerId) {
             try {
                 const prefs = await window.supabaseLoadAvailabilityPrefs(playerId);
                 const flexEl = document.getElementById('myAvailFlexTime');
-                const allEl = document.getElementById('myAvailNotifyAll');
                 if (flexEl) flexEl.checked = prefs.flexTime;
-                if (allEl) allEl.checked = prefs.notifyAllHours;
-            } catch { /* 未適用環境では両方 OFF のまま */ }
+            } catch { /* 未適用環境では OFF のまま */ }
         }
         async function handleAvailPrefChange() {
             const id = getCurrentIdentity();
             if (!id?.id) return;
             const msg = document.getElementById('mypageAvailMessage');
             const flexTime = !!document.getElementById('myAvailFlexTime')?.checked;
-            const notifyAllHours = !!document.getElementById('myAvailNotifyAll')?.checked;
             try {
-                await window.supabaseUpdateAvailabilityPrefs(id.id, { flexTime, notifyAllHours });
+                await window.supabaseUpdateAvailabilityPrefs(id.id, { flexTime });
                 opsStore.invalidate();   // プラン算出に即反映
                 _invalidateSetupNeeds(); renderMyNextAction(id);   // ⏳隙間型ONでS2解除に追随
                 if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = '✅ 設定を保存しました'; }
@@ -14160,6 +14237,10 @@
                             if (_opsMode && r?.season?.id && typeof _checkAvailReminders === 'function') {
                                 _checkAvailReminders(r.season).catch(() => { /* 次の周期で */ });
                             }
+                            // 📊 定時の戦況まとめ (当日の 12・18・21・24 時・全員へ・運営端末が送り手・二重送信は一意制約で防ぐ)
+                            if (_opsMode && r?.season?.id && typeof _checkRaidDigest === 'function') {
+                                _checkRaidDigest(r.season).catch(() => { /* 次の周期で */ });
+                            }
                             // patchBosses はシーズン一致時のみ差し替える (不一致なら false で何もしない)。
                             // 全量ロードの時刻 (プランTTL) は進めない — 不変条件は opsStore.js 冒頭を参照
                         }
@@ -14222,10 +14303,28 @@
             }
 
             if (s.subscribed) {
-                statusEl.innerHTML = '<span style="color:var(--ok);font-weight:700;">✅ Push通知を有効化済み (この端末)</span>';
-                actionsEl.innerHTML = `
-                    <button onclick="handleMyPushUnsubscribe()" style="padding:8px 14px;border-radius:8px;border:1.5px solid rgba(255,61,68,0.45);background:var(--card);color:var(--bad);font-size:13px;cursor:pointer;">通知を解除</button>
-                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">🧪 ローカル通知テスト</button>
+                // ★ アプリの中の「通知 OFF」は置かない (2026-10-07 ユーザー決定)。うるさかったのはテスト回の通知で、それは運営担当だけに届くようにした。
+                //   本人が選ぶのは「開発中のテスト通知を受け取るか」だけ (players.notify_test・SQL 48。未適用ならスイッチを出さない)。
+                //   端末で止めたいときは OS / ブラウザの通知設定から (それは本人のもの — アプリからは塞がない)
+                statusEl.innerHTML = '<span style="color:var(--ok);font-weight:700;">✅ この端末で通知が有効です</span>';
+                let testOn;   // true / false / undefined (48 未適用・取得失敗 = 分からない)
+                try { testOn = identity?.id ? await window.supabaseLoadNotifyTest(identity.id) : undefined; } catch { testOn = undefined; }
+                if (getCurrentIdentity()?.id !== identity?.id) return;   // 待っている間に名乗り直した
+                // 運営担当 (master / ops) にはテスト通知が常に届く (js/domain/notifyPolicy.js)。効かないスイッチを出さず、そう言う
+                const alwaysTest = String(_opsRole?.playerId) === String(identity?.id) && (_opsRole.role === 'master' || _opsRole.role === 'ops');
+                const testRow = testOn === undefined ? '' : alwaysTest
+                    ? '<p style="width:100%;margin:0;padding:10px 13px;border-radius:12px;background:var(--s1);font-size:11.5px;font-weight:700;color:var(--t-body);line-height:1.6;">🧪 運営担当には、開発中のテスト通知も届きます。</p>'
+                    : `
+                    <label style="display:flex;align-items:flex-start;gap:10px;width:100%;padding:11px 13px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
+                        <input type="checkbox" id="myNotifyTest" ${testOn ? 'checked' : ''} onchange="handleMyNotifyTestToggle(this)" style="margin-top:2px;width:16px;height:16px;accent-color:var(--ops-solid);flex:none;">
+                        <span style="flex:1;">
+                            <span style="display:block;font-size:13px;font-weight:800;color:var(--t-ink);">🧪 開発中のテスト通知も受け取る</span>
+                            <span style="display:block;font-size:11px;color:var(--t-muted);line-height:1.55;margin-top:2px;">テスト回の通知や、運営の動作確認の通知です。OFF でも、あなた宛の連絡とレイド当日のチームの状況は届きます。</span>
+                        </span>
+                    </label>`;
+                actionsEl.innerHTML = `${testRow}
+                    <button onclick="handleMyLocalTestNotification()" style="padding:8px 14px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">🔔 この端末で鳴るか試す</button>
+                    <p style="width:100%;margin:2px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.6;">この端末で通知を止めるときは、端末 (ブラウザ) の通知設定から行ってください。</p>
                 `;
             } else {
                 statusEl.innerHTML = '<span style="color:var(--t-body);">未購読</span>';
@@ -14261,23 +14360,94 @@
                 msg.style.color = 'var(--ok)';
                 await renderMyPushSettings(id);
                 _invalidateSetupNeeds(); renderMyNextAction(id);   // 📌次にやることのS1を即解除
+                renderMyPushCheckCard(id);                         // 🔔 確認カードを「届きましたか？」に切り替える
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
                 msg.style.color = 'var(--bad)';
             }
         }
 
-        async function handleMyPushUnsubscribe() {
+        // 🧪 開発中のテスト通知を受け取るか (アプリの中の通知 OFF の代わり・2026-10-07)
+        async function handleMyNotifyTestToggle(box) {
             const msg = document.getElementById('mypagePushMessage');
             const id = getCurrentIdentity();
+            if (!id?.id) { if (box) box.checked = !box.checked; return; }
+            const want = !!box?.checked;
             try {
-                await window.unsubscribeFromPush(id?.id || null);
-                msg.textContent = '🛑 Push通知を解除しました';
-                msg.style.color = 'var(--ok)';
-                if (id) await renderMyPushSettings(id);
+                await window.supabaseSetNotifyTest(id.id, want);
+                if (msg) { msg.style.color = 'var(--ok)'; msg.textContent = want ? '✅ テスト通知も受け取ります' : '✅ テスト通知は受け取りません (本番の連絡は届きます)'; }
             } catch (e) {
-                msg.textContent = `❌ ${e?.message || e}`;
-                msg.style.color = 'var(--bad)';
+                if (box) box.checked = !want;   // 保存できなかったら見た目を戻す (ON に見えて届かない、を作らない)
+                if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = `❌ ${e?.message || e}`; }
+            }
+        }
+
+        // ===== 🔔 通知の疎通確認: 本人の側 (2026-10-07) =====
+        // 運営が確認の通知を送ったあと、まだ「届いた」と伝えていない人のホームにカードを出す。
+        //   通知をタップして開いた (focus=pushcheck) → その場で伝える / 通知は見たがアプリを直接開いた → 「届きました」を押す /
+        //   この端末で通知が有効でない → 「届きました」は出さず、設定へ案内する (届くはずがないので)
+        let _pushCheckCardSeq = 0;
+        async function renderMyPushCheckCard(identity) {
+            const card = document.getElementById('myPushCheckCard');
+            if (!card) return;
+            const seq = ++_pushCheckCardSeq;
+            const hide = () => { card.style.display = 'none'; card.innerHTML = ''; };
+            if (!identity?.id || window.PAD_PRACTICE) { hide(); return; }   // 練習中は端末の通知の状態を読まない
+            let check = null, sub = null, season = null;
+            try {
+                season = (await seasonStore.ensure())?.season || null;
+                if (!season?.id) { if (seq === _pushCheckCardSeq) hide(); return; }
+                [check, sub] = await Promise.all([
+                    window.supabaseLoadPushCheck(season.id),
+                    window.getPushSubscriptionStatus ? window.getPushSubscriptionStatus().catch(() => null) : null,
+                ]);
+            } catch { check = null; }
+            if (seq !== _pushCheckCardSeq) return;                              // 追い越された古い応答
+            const me = getCurrentIdentity();
+            if (!me?.id || String(me.id) !== String(identity.id)) return;       // 待っている間に名乗り直した
+            // 分からない (取れなかった)・まだ送っていない・もう伝えた → 出さない
+            if (!check || !check.sentAt || check.confirmed.some(c => String(c.player_id) === String(identity.id))) { hide(); return; }
+            const head = (t) => `<div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;margin-bottom:4px;">${t}</div>`;
+            const note = (t) => `<p style="margin:0 0 10px;font-size:11.5px;font-weight:700;color:var(--t-muted);line-height:1.7;">${t}</p>`;
+            const btn = (onclick, label, main) => `<button type="button" onclick="${onclick}" style="flex:1;min-width:130px;border:none;border-radius:999px;padding:11px;font:inherit;font-size:12.5px;font-weight:900;cursor:pointer;color:${main ? 'var(--card)' : 'var(--t-ink)'};background:${main ? 'var(--t-ink)' : 'var(--s2)'};">${label}</button>`;
+            if (sub && sub.supported && sub.subscribed) {
+                card.innerHTML = head('🔔 確認の通知は届きましたか？')
+                    + note('レイドの前に、通知がちゃんと届くかを運営が確かめています。「通知の確認」という通知が届いていたら、下のボタンで伝えてください。')
+                    + `<div style="display:flex;gap:8px;flex-wrap:wrap;">${btn("handleMyPushCheckConfirm('button')", '✅ 届きました', true)}${btn('openMyPushModal()', '届いていない', false)}</div>`;
+            } else {
+                card.innerHTML = head('🔔 この端末は通知がまだ有効ではありません')
+                    + note('このままだと、レイド当日の締め凸のお願いやチームの状況が届きません。iPhone は先に「ホーム画面に追加」でアプリにしてから、通知を有効にしてください。')
+                    + `<div style="display:flex;gap:8px;flex-wrap:wrap;">${btn('openMyPushModal()', '🔔 通知を設定する', true)}</div>`;
+            }
+            card.style.display = '';
+        }
+        let _pushCheckTapAt = 0;
+        async function handleMyPushCheckConfirm(via) {
+            if (window.PAD_PRACTICE) return;
+            const id = getCurrentIdentity();
+            if (!id?.id) return;
+            // 通知タップは 2 つの経路 (起動の URL と、Service Worker が置いた行き先) からほぼ同時に来る → 続けて 2 回は伝えない
+            if (via === 'tap') {
+                if (Date.now() - _pushCheckTapAt < 5000) return;
+                _pushCheckTapAt = Date.now();
+            }
+            try {
+                const season = (await seasonStore.ensure())?.season || null;
+                if (!season?.id) return;
+                // ★ 通知をタップして来たときは、運営が送ったあとだけ記録する (古い通知をあとから開いて、送っていない回に「届いた」と付けない)
+                if (via === 'tap') {
+                    const check = await window.supabaseLoadPushCheck(season.id);
+                    if (!check || !check.sentAt) return;
+                }
+                const r = await window.supabaseConfirmPushCheck(season.id, id.id);
+                if (getCurrentIdentity()?.id !== id.id) return;
+                // タップで来て「もう伝えてある」ときは黙る (通知から開いた画面を読み込み直すたびに知らせない)
+                if (r !== 'already') showNotification('✅ 通知が届くことを運営に伝えました');
+                else if (via !== 'tap') showNotification('✅ 通知が届くことは、もう運営に伝わっています');
+                renderMyPushCheckCard(id);
+            } catch (e) {
+                // 通知をタップしただけの人に赤いエラーを見せない (カードの「届きました」でやり直せる)
+                if (via !== 'tap') showNotification(`❌ 伝えられませんでした: ${e?.message || e}`);
             }
         }
 
@@ -16442,7 +16612,7 @@
                     <div style="display:flex;align-items:center;height:46px;border-bottom:1px solid var(--s2);padding:0 6px;margin:0 -6px;background:${flagged ? 'rgba(255,138,43,0.06)' : 'transparent'};">
                         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;">
                             <div style="flex:none;">${renderAvatarHtml(r.id, r.name, 28)}</div>
-                            <span style="font-size:12.5px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:var(--t-muted);">×${r.deviceCount}</span>` : ''}${r.notifyAllHours ? ' <span title="通知はいつでも受け取る設定" style="font-size:10px;">🔔</span>' : ''}</span>
+                            <span style="font-size:12.5px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:var(--t-muted);">×${r.deviceCount}</span>` : ''}</span>
                         </div>
                         <div style="width:40px;flex:none;display:flex;justify-content:center;">
                             <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:${pushIconBg};${r.subscribed ? '' : 'filter:grayscale(1);opacity:0.7;'}">${pushIcon}</div>
@@ -16954,7 +17124,7 @@
                 for (let i = 0; i < 24; i++) cells += `<i class="${on.has(i) ? 'on' : ''}${isDay && i === nowH ? ' now' : ''}" title="${i}時"></i>`;
                 const hrs = [...on].sort((a, b) => a - b);
                 const label = hrs.length ? `${hrs[0]}-${hrs[hrs.length - 1] + 1}時` : '';
-                return `<div><div class="dc-mb-strip">${cells}</div><div class="dc-mb-tz">${label}${r.allHours ? ' · 🔔いつでも' : ''}</div></div>`;
+                return `<div><div class="dc-mb-strip">${cells}</div><div class="dc-mb-tz">${label}</div></div>`;
             };
             rowsEl.innerHTML = shown.length ? shown.map(r => {
                 // 必要範囲は「キャラ被りなしで3属性」。5属性は運営が助かる加点 (★)。判定は domain (mockOk / mockUsable)
@@ -16972,7 +17142,11 @@
                     : r.slvPrev ? `<span class="dc-mb-c warn">SLv 前回${r.slvPrev}</span>`
                     : '<span class="dc-mb-c err">SLv —</span>';
                 const push = r.pushUnknown ? '<span class="dc-mb-c mute" title="Push の購読状況を取得できませんでした (↻ で取り直し)">🔔?</span>'
-                    : r.push ? '<span class="dc-mb-c mute" title="Push購読あり">🔔</span>' : '<span class="dc-mb-c err" title="Push未購読 — 催促が届きません">🔕</span>';
+                    : !r.push ? '<span class="dc-mb-c err" title="通知が有効になっていません — 何も届きません">🔕</span>'
+                    // 疎通確認 (2026-10-07): 届いた = ✓ / 送ったがまだタップしていない = 未確認 / まだ送っていない = これまでどおり
+                    : r.pushCheck === 'ok' ? '<span class="dc-mb-c ok" title="確認の通知が届いています">🔔✓</span>'
+                    : r.pushCheck === 'wait' ? '<span class="dc-mb-c warn" title="確認の通知を送りましたが、まだタップされていません">🔔 未確認</span>'
+                    : '<span class="dc-mb-c mute" title="通知は有効 (疎通確認はまだ)">🔔</span>';
                 const atk = `<span class="dc-mb-atk">${[0, 1, 2].map(i => i < r.atkCount
                     ? `<i class="d">${r.attacks[i]?.level ? 'L' + r.attacks[i].level : '✓'}</i>`
                     : '<i>·</i>').join('')}</span>${r.proxyCount > 0 ? `<span class="dc-mb-c acc" title="代理登録 ${r.proxyCount}件">代理${r.proxyCount > 1 ? r.proxyCount : ''}</span>` : ''}`;
@@ -19957,7 +20131,7 @@
                 // 従来の「まとめて送る」と同じ挙動
                 bodyEl.innerHTML = list.map((g, i) => {
                     const recList = g.allSubscribers
-                        ? '<span style="color:var(--t-body);">購読中の全メンバー（時間帯フィルタ無視）</span>'
+                        ? '<span style="color:var(--t-body);">在籍の全員 (通知が有効な人。時間帯に関係なく届きます)</span>'
                         : (g.recipients && g.recipients.length > 0
                             ? `<strong>${g.recipients.length}名</strong>: ${g.recipients.map(r => escapeHtml(r.name)).join('、')}`
                             : '<span style="color:var(--bad);">受信者なし</span>');
@@ -19976,6 +20150,12 @@
                             <div style="font-size:11px;color:var(--t-ink);"><span style="color:var(--t-body);">受信者: </span>${recList}</div>
                         </div>`;
                 }).join('') || '<p style="color:var(--t-body);font-size:12px;">送信対象がありません</p>';
+                // 🧪 テスト回の通知は、運営担当とテスト協力者だけに届く (js/domain/notifyPolicy.js)。下の受信者の全員には届かないことを先に言う
+                //   (言わないと「送ったのに届いていない」を調べることになる)
+                const testSeason = !!((typeof opsStore !== 'undefined' && opsStore.get()?.season) || (typeof seasonStore !== 'undefined' && seasonStore.get()?.season) || {}).is_test;
+                if (testSeason && list.length) {
+                    bodyEl.insertAdjacentHTML('afterbegin', '<div id="pushPreviewTestNote" style="padding:9px 12px;border-radius:10px;background:var(--warn-bg);color:var(--warn-on);font-size:11.5px;font-weight:800;line-height:1.6;">🧪 テスト回です。実際に届くのは<b>運営担当</b>と、「開発中のテスト通知も受け取る」を ON にしている人だけです (下の受信者のうち、それ以外の人には届きません)。</div>');
+                }
                 document.getElementById('pushPreviewModal').classList.add('open');
             });
         }
@@ -22989,12 +23169,120 @@
             }
         }
 
+        // ===== 🔔 通知の疎通確認: 運営の側 (2026-10-07 ユーザー決定「2 日前から。確認できない人に事前に連絡」) =====
+        // 判定は memberStatusDomain (行の pushCheck: ok / wait / none) と opsStageDomain (前日のチェックリストの行)。
+        // ここは 送る・並べる・名前を写す だけ。記録の置き場は raid_event_notices (supabaseLoadPushCheck の説明)
+        const PUSH_CHECK_MSG = { title: '🔔 通知の確認 (レイド前のテスト)', body: 'この通知をタップしてください。届いたことが運営に伝わります🙏', url: './?tab=mypage&focus=pushcheck', tag: 'push-check' };
+        const _pushCheck = { sending: false };
+        function _pushCheckGroups() {
+            const rows = (typeof _mb !== 'undefined' && Array.isArray(_mb.rows)) ? _mb.rows : [];
+            return {
+                rows,
+                known: rows.some(r => r.pushCheck != null),
+                sent: rows.some(r => r.pushCheck === 'ok' || r.pushCheck === 'wait'),
+                ok: rows.filter(r => r.pushCheck === 'ok'),
+                wait: rows.filter(r => r.pushCheck !== 'ok' && r.push !== false),   // 通知は有効 (か不明) だが、届いた記録がまだ無い
+                off: rows.filter(r => r.pushCheck !== 'ok' && r.push === false),    // 通知が有効でない (届かない)
+            };
+        }
+        async function openOpsPushCheckModal() {
+            document.getElementById('opsPushCheckModal').classList.add('open');
+            document.getElementById('opsPushCheckMessage').textContent = '';
+            document.getElementById('opsPushCheckBody').innerHTML = '<p style="color:var(--t-muted);font-size:12px;margin:0;">読み込み中...</p>';
+            try { await renderOpsMemberStatus(null, true); } catch { /* 下で「読めませんでした」を出す */ }
+            renderOpsPushCheck();
+        }
+        function closeOpsPushCheckModal() { document.getElementById('opsPushCheckModal').classList.remove('open'); }
+        function renderOpsPushCheck() {
+            const el = document.getElementById('opsPushCheckBody');
+            if (!el) return;
+            const g = _pushCheckGroups(), esc = escapeHtml;
+            if (!g.rows.length || !g.known) {
+                el.innerHTML = '<p style="color:var(--bad);font-size:12px;font-weight:700;margin:0;">メンバーの状況を読めませんでした。少し待ってから開き直してください。</p>';
+                return;
+            }
+            const days = window.opsStageDomain?.daysToRaid?.(opsStore.get()?.season || null, Date.now());
+            const tile = (k, v, cls) => `<div style="flex:1;min-width:0;border-radius:12px;padding:9px 10px;background:var(--s1);"><div style="font-size:10px;font-weight:800;color:var(--t-muted);">${k}</div><div style="font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;color:${cls};">${v}</div></div>`;
+            const names = (list, cls) => list.map(r => `<span class="dc-mb-c ${cls}">${esc(r.name)}</span>`).join('');
+            const sec = (title, sub, list, cls) => !list.length ? '' : `<div style="margin-top:12px;"><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${title} <span style="font-weight:800;color:var(--t-muted);">${list.length}人</span></div>`
+                + (sub ? `<div style="font-size:11px;font-weight:700;color:var(--t-muted);line-height:1.6;margin:2px 0 6px;">${sub}</div>` : '<div style="height:6px;"></div>')
+                + `<div style="display:flex;flex-wrap:wrap;gap:5px;">${names(list, cls)}</div></div>`;
+            const lead = g.sent ? '' : `<p style="margin:0 0 10px;font-size:12px;font-weight:800;color:var(--t-body);line-height:1.7;">まだ送っていません。${days != null && days > 2 ? `レイドは ${days} 日後です (2 日前からがおすすめですが、早めに送っても構いません)。` : ''}</p>`;
+            const sendLabel = !g.sent ? `🔔 確認の通知を送る (${g.wait.length}人)` : `🔔 まだの ${g.wait.length} 人にもう一度送る`;
+            const missing = g.wait.length + g.off.length;
+            el.innerHTML = lead
+                + `<div style="display:flex;gap:6px;">${tile('届いた', `${g.ok.length}/${g.rows.length}`, 'var(--ok-deep)')}${tile('まだ', g.sent ? g.wait.length : '—', 'var(--warn-deep)')}${tile('通知が無効', g.off.length, g.off.length ? 'var(--bad-deep)' : 'var(--t-ink)')}</div>`
+                + (g.sent ? sec('⏳ まだ届いたと分からない', '通知は有効ですが、確認の通知をタップしていません (見ていない・端末側で止めている・届いていない のどれかです)。', g.wait, 'warn') : '')
+                + sec('🔕 通知が有効でない', 'この人たちには何も届きません。ホームの「通知を設定する」から有効にしてもらいます (iPhone は先に「ホーム画面に追加」)。', g.off, 'err')
+                + sec('✅ 届いた', '', g.ok, 'ok')
+                + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+                    <button type="button" id="opsPushCheckSendBtn" onclick="handleOpsPushCheckSend()" ${g.wait.length ? '' : 'disabled'} style="flex:1;min-width:190px;border:none;border-radius:999px;padding:11px 14px;font:inherit;font-size:12.5px;font-weight:900;cursor:${g.wait.length ? 'pointer' : 'default'};color:${g.wait.length ? 'var(--card)' : 'var(--t-muted)'};background:${g.wait.length ? 'var(--t-ink)' : 'var(--s2)'};">${g.wait.length ? sendLabel : (g.sent ? '通知が有効な人には全員届きました' : '送れる相手がいません')}</button>
+                    ${missing ? `<button type="button" onclick="handleOpsPushCheckCopy()" style="flex:1;min-width:190px;border:none;border-radius:999px;padding:11px 14px;font:inherit;font-size:12.5px;font-weight:900;cursor:pointer;color:var(--t-ink);background:var(--s2);">📋 届いていない ${missing} 人を Discord 用にコピー</button>` : ''}
+                </div>`;
+        }
+        async function handleOpsPushCheckSend() {
+            if (_pushCheck.sending) return;   // 二重押しよけ (押すたびに全員へ通知が飛ぶ)
+            const msg = document.getElementById('opsPushCheckMessage');
+            const say = (t, bad) => { if (msg) { msg.textContent = t; msg.style.color = bad ? 'var(--bad)' : 'var(--ok-deep)'; } };
+            const g = _pushCheckGroups();
+            const seasonId = opsStore.get()?.season?.id || _mb.season?.id;
+            if (!seasonId) { say('❌ アクティブなシーズンがありません', true); return; }
+            // 1 回目も 2 回目以降も「通知が有効で、まだ届いた記録が無い人」に送る (届いた人には送り直さない)
+            const targets = g.wait;
+            if (!targets.length) { say('送る相手がいません', true); return; }
+            const ok = await showPushPreview([{ title: PUSH_CHECK_MSG.title, body: PUSH_CHECK_MSG.body, recipients: targets.map(r => ({ id: r.id, name: r.name })) }]);
+            if (!ok) return;
+            _pushCheck.sending = true;
+            try {
+                // ★ 先に「送った」を記録してから送る (記録が無いと、本人のホームに確認のカードが出ず、届いた人も「未送信」のまま数えられない)
+                await window.supabaseMarkPushCheckSent(seasonId, getCurrentIdentity()?.id || null);
+                let res = null;
+                try {
+                    res = await window.sendPushNotification({ kind: 'team', ...PUSH_CHECK_MSG, playerIds: targets.map(r => r.id), requireInteraction: true },
+                        { senderPlayerId: getCurrentIdentity()?.id || null });
+                } catch (pushErr) {
+                    say(`⚠ 記録はしましたが、通知を送れませんでした。もう一度押してください (${pushErr?.message || pushErr})`, true);
+                }
+                if (res) {
+                    say(res.tier === 'test'
+                        ? `✅ 🧪 テスト回のため、運営担当とテスト協力者の ${res.playerIds?.length ?? 0} 人に送りました (${res.sent ?? '?'} 端末)`
+                        : `✅ ${targets.length} 人に送りました (${res.sent ?? '?'} 端末)。届いた人がタップすると、ここに出ます`);
+                    window.supabaseLogActivity?.('ops', `🔔 通知の疎通確認を ${targets.length} 人に送信`, { actorName: getCurrentIdentity()?.name || null });
+                }
+            } catch (e) {
+                say(`❌ ${e?.message || e}`, true);
+            } finally {
+                _pushCheck.sending = false;
+            }
+            try { await renderOpsMemberStatus(null, true); } catch { /* noop */ }
+            renderOpsPushCheck();
+            _renderOpsCockpitSoon();
+        }
+        async function handleOpsPushCheckCopy() {
+            const msg = document.getElementById('opsPushCheckMessage');
+            const g = _pushCheckGroups();
+            const lines = [];
+            if (g.wait.length) lines.push(`🔔 通知の確認がまだの方 (${g.wait.length}人): ${g.wait.map(r => r.name).join('、')}`,
+                '→ PAD から届いた「通知の確認」をタップするか、ホームの「届きました」を押してください。届いていないときは教えてください🙏');
+            if (g.off.length) lines.push(`🔕 通知がまだ有効でない方 (${g.off.length}人): ${g.off.map(r => r.name).join('、')}`,
+                '→ PAD のホーム「🔔 通知を設定する」から有効にしてください (iPhone は先に「ホーム画面に追加」)。このままだとレイド当日の連絡が届きません🙏');
+            if (!lines.length) return;
+            try {
+                await navigator.clipboard.writeText(lines.join('\n'));
+                if (msg) { msg.style.color = 'var(--ok-deep)'; msg.textContent = '📋 コピーしました。Discord に貼ってください'; }
+            } catch (e) {
+                if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = `❌ コピーできませんでした: ${e?.message || e}`; }
+            }
+        }
+
         // ========== 運営: Push一斉送信 (Phase 6b) ==========
         function openOpsPushSendModal() {
             document.getElementById('opsPushSendModal').classList.add('open');
             document.getElementById('opsPushMessage').textContent = '';
             document.getElementById('opsPushTitle').value = '';
             document.getElementById('opsPushBody').value = '';
+            const asTest = document.getElementById('opsPushAsTest');
+            if (asTest) asTest.checked = false;   // 既定は本番 (前のテストの印を持ち越さない)
             setTimeout(() => document.getElementById('opsPushTitle').focus(), 100);
         }
         function closeOpsPushSendModal() {
@@ -23007,18 +23295,22 @@
             const set = (t, err = false) => { msg.textContent = t; msg.style.color = err ? 'var(--bad)' : 'var(--ok)'; };
             if (!titleRaw && !bodyText) { set('❌ タイトルまたは本文を入力してください', true); return; }
             const title = titleRaw || 'しりすこPAD';
-            const ok = await showPushPreview([{ title, body: bodyText, allSubscribers: true }]);
+            const asTest = !!document.getElementById('opsPushAsTest')?.checked;
+            const ok = await showPushPreview([{ title: asTest ? `🧪 ${title}` : title, body: bodyText, allSubscribers: true }]);
             if (!ok) return;
             try {
                 set('🔔 送信中...');
                 msg.style.color = 'var(--t-body)';
+                // 宛先は notifyPolicy が決める: 全員あて = 在籍の全員 (チームの状況) / テスト = 運営担当とテスト協力者だけ
                 const res = await window.sendPushNotification({
-                    title,
+                    kind: asTest ? 'test' : 'team',
+                    title: asTest ? `🧪 ${title}` : title,
                     body: bodyText,
                     url: './',
-                    ignoreAvailability: true,  // 運営による全員配信は時間帯設定を無視
-                });
-                const parts = [`✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`];
+                }, { senderPlayerId: getCurrentIdentity()?.id || null });
+                const parts = [res.tier === 'test'
+                    ? `✅ 🧪 テストとして ${Array.isArray(res.playerIds) ? res.playerIds.length + ' 人 · ' : ''}${res.sent}/${res.target} 端末に送信 (運営担当とテスト協力者だけ)`
+                    : `✅ ${res.sent}/${res.target} 端末に送信 (1人で複数端末購読があると人数より多くなります)`];
                 if (res.removed) parts.push(`(期限切れ${res.removed}件削除)`);
                 set(parts.join(' '));
             } catch (e) {
@@ -26266,6 +26558,8 @@
             if (tab && document.getElementById(`tab-${tab}`)) {
                 try { switchTab(tab); } catch { /* noop */ }
             }
+            // 🔔 疎通確認の通知をタップして開いた = 届いた。そのまま運営に伝える
+            if (params.get('focus') === 'pushcheck') { handleMyPushCheckConfirm('tap'); }
             if (params.get('focus') === 'finishreq') {
                 // バナーは依頼データの取得後に描画されるため、出現を最大6秒待って誘導
                 const t0 = Date.now();
@@ -27467,7 +27761,7 @@
             let backupSavedAt = null;
             try { backupSavedAt = localStorage.getItem(_OPS_BACKUP_AT_KEY); } catch { /* noop */ }
             const published = _opsPublishedFor(season);
-            const rows = dom.checklist({ stage: st.stage, season, bosses, mbRows, reservations, published, pendingRepublish, backupSavedAt });
+            const rows = dom.checklist({ stage: st.stage, season, bosses, mbRows, reservations, published, pendingRepublish, backupSavedAt, now: Date.now() });
             const attacksDone = players ? players.reduce((s, p) => s + (Number(p.attackCount) || 0), 0) : null;
             const attackCap = players ? players.length * dom.MAX_ATTACKS : null;
             const h = dom.hero({
@@ -27614,6 +27908,7 @@
                 case 'republish': _opsGotoRepublish(); break;
                 case 'members': _opsJump('opsSecMembers'); break;
                 case 'notify': _opsJumpEtc('opsMaintNotify'); break;
+                case 'pushcheck': openOpsPushCheckModal(); break;
                 case 'plan': _opsJump('opsSecPlan'); break;
                 case 'hp': openOpsBossHpModal(); break;
                 case 'remaining': _opsJump('opsSecRemaining'); break;

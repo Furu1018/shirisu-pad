@@ -164,31 +164,145 @@ window.unsubscribeFromPush = async function (playerId = null) {
     window.supabaseLogActivity?.('notify_off', '通知を解除', { playerId });
 };
 
+// ===== 🔔 通知の宛先 (2026-10-07 ユーザー決定)。判定は js/domain/notifyPolicy.js が唯一 =====
+// 通知は 3 種類: あなた宛 (direct) / チームの状況 (team) / テスト (test)。
+//   - 時間帯フィルタ (戦闘可能時間) は使わない — 届かない原因だった (前回レイドで強行凸の警告が 17 人中 8 人にしか届かなかった)
+//   - テスト回 (seasons.is_test) の通知と kind:'test' は、運営担当と「テスト通知を受け取る」を ON にした人だけ
+//   - 書庫の人には送らない
+// ★ 送り方はここ 1 箇所。呼び出し側は「誰に・何を」を渡すだけで、絞り込みを自分で書かない
+let _pushAudienceCache = null;   // { at, value } — 名簿とシーズンの写し (30 秒)
+window.supabaseInvalidatePushAudience = function () { _pushAudienceCache = null; };
+async function _pushAudience() {
+    if (_pushAudienceCache && (Date.now() - _pushAudienceCache.at) < 30000) return _pushAudienceCache.value;
+    // ★ 取れなかったものは null (= 分からない)。notifyPolicy は分からないとき絞らない (fail-open)
+    let players = null, season = null;
+    try {
+        const cols = ['id, archived, ops_role, notify_test', 'id, archived, ops_role', 'id, archived'];
+        let r = null;
+        for (const c of cols) {   // 48 (notify_test) → 46 (ops_role) の順に、未適用の列を外して読み直す
+            r = await supabase.from('players').select(c);
+            if (!r.error) break;
+            if (!(_isMissingColumnErr(r.error, 'notify_test') || _isMissingColumnErr(r.error, 'ops_role'))) break;
+        }
+        if (r && !r.error && Array.isArray(r.data)) players = r.data;
+    } catch { players = null; }
+    try {
+        const r = await supabase.from('seasons').select('id, is_test, hard_date').eq('is_active', true)
+            .order('hard_date', { ascending: false }).limit(1);
+        // アクティブなシーズンが無い = テスト回ではない ({} を返す。null は「取れなかった」)
+        if (!r.error && Array.isArray(r.data)) season = r.data[0] || {};
+    } catch { season = null; }
+    const value = { players, season };
+    // 両方取れたときだけ覚える (片方でも取れなかった写しを 30 秒使い回さない)
+    if (players && season) _pushAudienceCache = { at: Date.now(), value };
+    return value;
+}
+
 // Edge Function 'send-push' (slug は実デプロイ先に合わせる) で Push送信
-// 引数: { title, body, url?, tag?, playerIds?, requireInteraction? }
-// playerIds 未指定なら全購読者へ配信
+// 引数: { title, body, url?, tag?, playerIds?, requireInteraction?, kind? }
+//   playerIds 未指定 = 全員あて (在籍の全員。書庫の人は除く) / kind: 'team' | 'test' (省略時は宛先から決まる)
+// 戻り値: Edge Function の応答 + { tier, playerIds (実際に送った相手) }。送る相手が居なければ送らず { sent: 0, target: 0, skipped: true }
 window.sendPushNotification = async function (payload, opts = {}) {
     const slug = opts.functionName || 'send-push';
-    const { data, error } = await supabase.functions.invoke(slug, { body: payload });
+    const pol = (typeof window !== 'undefined' && window.notifyPolicyDomain) || null;
+    // ★ 判定のモジュールが読めていないときも送る (絞らない)。連絡が消えるほうが害が大きい
+    const res = pol ? pol.resolve({ kind: payload.kind, playerIds: payload.playerIds }, await _pushAudience())
+        : { playerIds: (Array.isArray(payload.playerIds) && payload.playerIds.length) ? payload.playerIds : null, tier: 'direct', broadcast: !(Array.isArray(payload.playerIds) && payload.playerIds.length), restricted: false };
+    if (Array.isArray(res.playerIds) && res.playerIds.length === 0) {
+        // 送る相手が居ない (テスト回で協力者が居ない・全員が書庫)。全員あてに化けさせない — 空の playerIds は Edge Function では「全員」になる
+        return { ok: true, sent: 0, target: 0, skipped: true, tier: res.tier, playerIds: [] };
+    }
+    const body = { ...payload, ignoreAvailability: true };   // ★ 時間帯フィルタは使わない (宛先はここで決めた)
+    delete body.kind;
+    if (Array.isArray(res.playerIds)) body.playerIds = res.playerIds; else delete body.playerIds;
+    const { data, error } = await supabase.functions.invoke(slug, { body });
     if (error) throw new Error(`Push送信失敗: ${error.message || error}`);
     if (!data?.ok) throw new Error(data?.error || 'Push送信エラー');
 
     // 履歴記録 (失敗してもメイン送信処理は止めない)
+    // ★ 「全員あて」と記録するのは、絞らずに全員へ送ったときだけ。テストを全員あてと記録すると、
+    //   届いていないメンバーの「受け取った通知」にテストが並ぶ
     try {
-        const isSpecific = Array.isArray(payload.playerIds) && payload.playerIds.length > 0;
+        const asAll = res.broadcast && !res.restricted;
         await supabase.from('push_notifications_log').insert({
             title: payload.title || '',
             body: payload.body || '',
             url: payload.url || null,
-            target_kind: isSpecific ? 'specific' : 'all',
-            target_player_ids: isSpecific ? payload.playerIds : null,
+            target_kind: asAll ? 'all' : 'specific',
+            target_player_ids: asAll ? null : (res.playerIds || payload.playerIds || null),
             sender_player_id: opts.senderPlayerId || null,
             sent_count: Number(data.sent) || 0,
-            target_count: Number(data.target) || (isSpecific ? payload.playerIds.length : 0),
+            target_count: Number(data.target) || (Array.isArray(res.playerIds) ? res.playerIds.length : 0),
         });
     } catch (e) { console.warn('[push log] insert skipped:', e?.message || e); }
 
-    return data;
+    return { ...data, tier: res.tier, playerIds: res.playerIds };
+};
+
+// ===== 🧪 テスト通知を受け取るか (48_notify_test.sql) =====
+// アプリの中の「通知 OFF」は置かない (2026-10-07 ユーザー決定)。本人が選ぶのは「開発中のテスト通知を受け取るか」だけ。
+// 戻り値: true / false、48 未適用は undefined (= 分からない。画面はスイッチを出さない)
+window.supabaseLoadNotifyTest = async function (playerId) {
+    if (!playerId) return undefined;
+    const { data, error } = await supabase.from('players').select('notify_test').eq('id', playerId).maybeSingle();
+    if (error) { if (_isMissingColumnErr(error, 'notify_test')) return undefined; throw error; }
+    return !!(data && data.notify_test);
+};
+window.supabaseSetNotifyTest = async function (playerId, on) {
+    if (!playerId) throw new Error('playerId 必須');
+    const { data, error } = await supabase.from('players').update({ notify_test: !!on }).eq('id', playerId).select('id');
+    if (error) {
+        if (_isMissingColumnErr(error, 'notify_test')) throw new Error('supabase/48_notify_test.sql を SQL Editor で適用してください');
+        throw error;
+    }
+    if (!data || data.length === 0) throw new Error('プレイヤーが見つかりません');
+    _pushAudienceCache = null;   // 次の送信から効かせる
+    return !!on;
+};
+
+// ===== 🔔 通知の疎通確認 (レイドの 2 日前から・2026-10-07 ユーザー決定) =====
+// 運営が「確認の通知」を送り、届いた人がタップすると記録される → 届かない人に前もって連絡できる。
+// ★ 置き場は raid_event_notices (29・適用済み) = (シーズン, 種類, 参照) の一意の印。新しい表を作らない (レイド直前に SQL を増やさない)。
+//   kind 'push_check_sent' / ref 'v1'      … 運営が送った (claimed_at = 最後に送った時刻)
+//   kind 'push_check'      / ref <人の id>  … その人に届いた (claimed_at = 確認した時刻)
+// 戻り値: { sentAt: ISO|null, confirmed: [{ player_id, at }] }。取れなければ null (= 分からない。[] と混ぜない)
+window.supabaseLoadPushCheck = async function (seasonId) {
+    if (!seasonId) return { sentAt: null, confirmed: [] };
+    try {
+        const { data, error } = await supabase.from('raid_event_notices').select('kind, ref, claimed_at')
+            .eq('season_id', seasonId).in('kind', ['push_check_sent', 'push_check']);
+        if (error) throw error;
+        const rows = data || [];
+        const sent = rows.filter(r => r.kind === 'push_check_sent').map(r => r.claimed_at).sort().pop() || null;
+        const confirmed = rows.filter(r => r.kind === 'push_check' && Number.isFinite(Number(r.ref)))
+            .map(r => ({ player_id: Number(r.ref), at: r.claimed_at }));
+        return { sentAt: sent, confirmed };
+    } catch (e) {
+        console.warn('[push check] 取得に失敗:', e?.message || e);
+        return null;
+    }
+};
+// 運営が確認の通知を送った印。送り直しは時刻だけ更新する (届いた人の記録は消さない)
+window.supabaseMarkPushCheckSent = async function (seasonId, byPlayerId = null) {
+    if (!seasonId) throw new Error('アクティブなシーズンがありません');
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('raid_event_notices')
+        .insert({ season_id: seasonId, kind: 'push_check_sent', ref: 'v1', sent: true, notified_by: byPlayerId || null, claimed_at: now });
+    if (!error) return now;
+    if (error.code !== '23505') throw error;
+    const up = await supabase.from('raid_event_notices').update({ claimed_at: now, notified_by: byPlayerId || null })
+        .eq('season_id', seasonId).eq('kind', 'push_check_sent').eq('ref', 'v1');
+    if (up.error) throw up.error;
+    return now;
+};
+// 届いた (本人)。2 回押しても 1 件 (一意制約)。戻り値: 'confirmed' = いま記録した / 'already' = 記録済み
+window.supabaseConfirmPushCheck = async function (seasonId, playerId) {
+    if (!seasonId || !playerId) throw new Error('seasonId / playerId 必須');
+    const { error } = await supabase.from('raid_event_notices')
+        .insert({ season_id: seasonId, kind: 'push_check', ref: String(playerId), sent: true, notified_by: playerId });
+    if (!error) return 'confirmed';
+    if (error.code === '23505') return 'already';
+    throw error;
 };
 
 // 通知履歴をロード。playerId 指定時は自分宛 (broadcast or 含まれる) のみ。
@@ -1893,7 +2007,10 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
         // 今期の戦闘可能時間の確認 (37)。★ 未適用環境は **null** が返る (「全員未確認」ではない)
         seasonId ? window.supabaseLoadAvailabilityConfirmations(seasonId) : [],
     ]);
+    // 🔔 通知の疎通確認 (運営が送ったか・誰に届いたか)。null = 取れなかった (分からない)
+    const pushCheck = seasonId ? await window.supabaseLoadPushCheck(seasonId) : { sentAt: null, confirmed: [] };
     return {
+        pushCheck,
         pushPlayerIds: Array.isArray(subs) ? subs.map(s => s.player_id) : null,
         slvThisSeasonIds: Array.isArray(slv) ? slv.map(s => s.player_id) : null,
         finishRequests: Array.isArray(fin) ? fin : null,
@@ -3446,25 +3563,7 @@ window.supabaseBossDefeatNotifyTargets = async function (seasonId, bossNumber, e
     return [...targets];
 };
 
-// レベル開放の通知先: まだ凸が残っている人 (動ける人だけに知らせる)
-window.supabaseLevelOpenNotifyTargets = async function (seasonId) {
-    try {
-        const [pRes, aRes] = await Promise.all([
-            supabase.from('players').select('id').or('archived.is.null,archived.eq.false'),
-            supabase.from('attacks').select('player_id').eq('season_id', seasonId),
-        ]);
-        if (pRes.error) throw pRes.error;
-        // ★ attacks の取得失敗を握り潰すと、全員を「0凸」とみなして全員に通知してしまう
-        if (aRes.error) throw aRes.error;
-        const used = new Map();
-        (aRes.data || []).forEach(a => used.set(a.player_id, (used.get(a.player_id) || 0) + 1));
-        return (pRes.data || []).map(p => p.id).filter(id => (used.get(id) || 0) < 3);
-    } catch (e) {
-        // ここも握り潰さない — 宛先ゼロと取得失敗を混同すると通知が消える
-        console.warn('[levelup notify] 対象の取得に失敗:', e?.message || e);
-        throw e;
-    }
-};
+// (レベル開放の通知先を絞る supabaseLevelOpenNotifyTargets は 2026-10-07 に廃止 — チームの状況は在籍の全員へ。宛先は js/domain/notifyPolicy.js が決める)
 
 // ============ 配信プランの「確認しました」 (28_plan_acks.sql) ============
 // メンバーが「確認しました」を押した時点の published_plans.id を記録する。

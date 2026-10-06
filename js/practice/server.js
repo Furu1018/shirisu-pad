@@ -28,7 +28,7 @@ export const SCHEMA = {
     players: { pk: ['id'], required: ['name'], serial: 'id', touch: 'updated_at', uniques: [{ cols: ['name'] }, { cols: ['blabla_openid'] }],
         defaults: { finish_alert: true, is_temp: false, notes: null, auth_user_id: null, created_at: NOW, updated_at: NOW, archived: false,
             avatar_url: null, avatar_character: null, strong_attributes: () => [], flex_time: false, notify_all_hours: false,
-            blabla_openid: null, ops_role: null, ops_appointed_by: null, ops_appointed_at: null } },
+            blabla_openid: null, ops_role: null, ops_appointed_by: null, ops_appointed_at: null, notify_test: false } },
     player_damages: { pk: ['player_id', 'attribute', 'slot'], required: ['player_id', 'attribute'], touch: 'updated_at',
         defaults: { damage_b: 0, updated_at: NOW, characters: () => [], slot: 1, boss_level: null, levels: null,
             excluded_at: null, excluded_by: null, excluded_reason: null } },

@@ -101,7 +101,7 @@
      * 1人1行の状態を組み立てる。
      * @param {Object} args
      * @param {Object[]} args.players  opsStore 盤面の players
-     * @param {{pushPlayerIds?:any, slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:({player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]|null)}=} args.extras
+     * @param {{pushPlayerIds?:any, pushCheck?:({sentAt:string|null, confirmed:{player_id:number, at?:string}[]}|null), slvThisSeasonIds?:any, finishRequests?:{player_id:number,status:string,requested_at?:string}[], proxyEvents?:{player_id:number}[], availConfirmations?:({player_id:number,confirmed_at?:string,unavailable?:boolean,slot_count?:number}[]|null)}=} args.extras
      *   ★ 各項目は 配列 = 分かっている ([] は本当に誰もいない) / null・省略 = 取得できなかった (分からない)。
      *     分からないものは理由に積まない・集計にも数えない (availConfirmations が先に採っていた契約。全体監査 2026-09-14 #4)
      * @param {'pre'|'day'} args.phase
@@ -135,6 +135,15 @@
         for (const c of (availSupported ? ex.availConfirmations : [])) {
             const pid = Number(c?.player_id);
             if (Number.isFinite(pid)) availBy.set(pid, c);
+        }
+        // 🔔 通知の疎通確認 (2026-10-07): 運営が確認の通知を送り、届いた人がタップすると記録される。
+        //   pushCheck: { sentAt, confirmed:[{player_id, at}] } / null・省略 = 取れなかった (分からない)
+        const checkKnown = !!ex.pushCheck && Array.isArray(ex.pushCheck.confirmed);
+        const checkSent = checkKnown && !!ex.pushCheck.sentAt;
+        const checkBy = new Map();
+        for (const c of (checkKnown ? ex.pushCheck.confirmed : [])) {
+            const pid = Number(c?.player_id);
+            if (Number.isFinite(pid)) checkBy.set(pid, c.at || null);
         }
         const proxyBy = new Map();
         for (const e of (Array.isArray(ex.proxyEvents) ? ex.proxyEvents : [])) {
@@ -206,6 +215,11 @@
                 });
             }
             if (pushKnown && !push) reasons.push({ key: 'push', label: '通知購読なし' });
+            // 疎通確認: 'ok' = 届いた / 'wait' = 送ったがまだ / 'none' = まだ送っていない / null = 分からない。
+            // ★ 届いた記録があれば 'ok' (送った印が読めなくても、届いた事実は変わらない)。
+            // ★ 購読なしの人は「通知購読なし」が理由 (届くはずがないので「未確認」を重ねて言わない)
+            const pushCheck = !checkKnown ? null : checkBy.has(id) ? 'ok' : checkSent ? 'wait' : 'none';
+            if (pushCheck === 'wait' && push !== false) reasons.push({ key: 'pushcheck', label: '通知 未確認' });
 
             return {
                 id, name: String(p.name ?? ''),
@@ -217,7 +231,7 @@
                 slots, flex, allHours: !!p.notifyAllHours,
                 availSupported, availConfirmed, availUnavailable, availChanged,
                 availConfirmedAt: confirm ? (confirm.confirmed_at || null) : null,
-                push,
+                push, pushCheck, pushCheckAt: checkBy.get(id) || null,
                 attacks, atkCount, proxyCount, finish,
                 // 取得できなかった項目 (画面は「?」を出し、集計は「—」にする)
                 pushUnknown: !pushKnown, slvUnknown: !slvListKnown, finishUnknown: !finishKnown, proxyUnknown: !proxyKnown,
@@ -269,6 +283,9 @@
             // 機能未適用の環境では欄ごと出さない (0/30 と出ると誤解を招く)
             ...(availSupported ? [{ key: 'availConfirm', label: '時間帯 今期確認', value: availOk, total: n, bad: availOk < n }] : []),
             { key: 'push', label: '通知 購読', ...(unknown('pushUnknown') ? na : { value: push, total: n, bad: push < n }) },
+            // 疎通確認を送ったあとだけ出す (送る前に 0/31 と出すと「誰にも届いていない」に見える)
+            ...(rs.some(r => r.pushCheck === 'ok' || r.pushCheck === 'wait')
+                ? [{ key: 'pushcheck', label: '通知 届いた', value: cnt(r => r.pushCheck === 'ok'), total: n, bad: cnt(r => r.pushCheck === 'ok') < n }] : []),
         ];
     }
 

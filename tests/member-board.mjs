@@ -294,5 +294,28 @@ await testAsync('extras が全部そろっていれば従来どおり (未購読
     assert.ok(!el('opsMbUpdated').textContent.includes('取得できませんでした'));
 });
 
+// 🔔 通知の疎通確認 (2026-10-07): 届いた = 🔔✓ / 送ったがまだ = 🔔 未確認 / 送る前 = 🔔 のまま / 購読なし = 🔕 (未確認とは言わない)
+await testAsync('疎通確認: 通知のセルに 届いた・未確認 が出る / 集計に「通知 届いた」/ 送る前はこれまでどおり', async () => {
+    Object.assign(_mb, { phase: 'pre', filter: 'all', sort: 'name', rows: [], players: null, extras: null, season: null, gen: 0 });
+    const snap = { season: { id: 30, hard_date: '2026-09-05', current_level: 1 }, players };
+    storeData = snap;
+    const origExtras = globalThis.supabaseLoadMemberStatusExtras;
+    const base = { pushPlayerIds: [2, 3], slvThisSeasonIds: [2, 3, 4], finishRequests: [], proxyEvents: [], availConfirmations: [] };
+    globalThis.supabaseLoadMemberStatusExtras = async () => ({ ...base, pushCheck: { sentAt: '2026-09-03T03:00:00Z', confirmed: [{ player_id: 2, at: '2026-09-03T03:05:00Z' }] } });
+    await renderOpsMemberStatus(snap, true);
+    let rows = el('opsMbRows').innerHTML;
+    assert.equal((rows.match(/🔔✓/g) || []).length, 1, '届いた人に ✓ が出ない');
+    assert.equal((rows.match(/🔔 未確認/g) || []).length, 1, '送ったがまだの人が「未確認」にならない (購読なしの人まで数えていないか)');
+    assert.ok(rows.includes('🔕'), '購読なしの人が 🔕 でない');
+    assert.ok(el('opsMbSummary').innerHTML.includes('通知 届いた'), '集計に疎通確認が出ない');
+    // 送る前: 印は増えない・集計にも出さない (0/n と出すと「誰にも届いていない」に見える)
+    globalThis.supabaseLoadMemberStatusExtras = async () => ({ ...base, pushCheck: { sentAt: null, confirmed: [] } });
+    await renderOpsMemberStatus(snap, true);
+    rows = el('opsMbRows').innerHTML;
+    assert.ok(!rows.includes('🔔✓') && !rows.includes('🔔 未確認') && !rows.includes('通知 未確認'), '送る前から 届いた・未確認 を出している');
+    assert.ok(!el('opsMbSummary').innerHTML.includes('通知 届いた'));
+    globalThis.supabaseLoadMemberStatusExtras = origExtras;
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
