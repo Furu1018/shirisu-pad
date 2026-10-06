@@ -14443,7 +14443,8 @@
                 // ★ 通知をタップして来たときは、その通知の回 (URL の season) と今の回が同じで、運営が送ったあとだけ記録する
                 //   (古い回の通知をあとから開いて、今の回に「届いた」と付けない)
                 if (via === 'tap') {
-                    if (seasonFromUrl != null && String(seasonFromUrl) !== String(season.id)) return;
+                    // 回の無い URL は受けない (この通知は最初から回つきで送っている。無ければ古い・別の通知)
+                    if (seasonFromUrl == null || String(seasonFromUrl) !== String(season.id)) return;
                     const check = await window.supabaseLoadPushCheck(season.id);
                     if (!check || !check.sentAt) return;
                 }

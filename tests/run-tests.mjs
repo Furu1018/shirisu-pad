@@ -11180,7 +11180,7 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         assert.ok(/wait: rows\.filter\(r => r\.pushCheck !== 'ok' && r\.push !== false\),/.test(grp) && /off: rows\.filter\(r => r\.pushCheck !== 'ok' && r\.push === false\),/.test(grp), '届いた人・通知が無効な人の分け方が違う');
         const cf = html.match(/async function handleMyPushCheckConfirm\(via, seasonFromUrl = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(cf.length > 200, 'handleMyPushCheckConfirm を切り出せない');
-        assert.ok(/if \(via === 'tap'\) \{\s*if \(seasonFromUrl != null && String\(seasonFromUrl\) !== String\(season\.id\)\) return;\s*const check = await window\.supabaseLoadPushCheck\(season\.id\);\s*if \(!check \|\| !check\.sentAt\) return;/.test(cf.replace(/\/\/[^\n]*/g, '')), '古い回の通知をあとから開いて、今の回に「届いた」と付く / 送っていない回に付く');
+        assert.ok(/if \(via === 'tap'\) \{\s*if \(seasonFromUrl == null \|\| String\(seasonFromUrl\) !== String\(season\.id\)\) return;\s*const check = await window\.supabaseLoadPushCheck\(season\.id\);\s*if \(!check \|\| !check\.sentAt\) return;/.test(cf.replace(/\/\/[^\n]*/g, '')), '古い回の通知・回の無い通知をあとから開いて、今の回に「届いた」と付く / 送っていない回に付く');
         assert.ok(/if \(via !== 'tap'\) showNotification\(/.test(cf));
         const card = html.match(/async function renderMyPushCheckCard\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(seq !== _pushCheckCardSeq\) return;/.test(card) && /if \(!me\?\.id \|\| String\(me\.id\) !== String\(identity\.id\)\) return;/.test(card), '追い越し・名乗り直しの守りが無い');
