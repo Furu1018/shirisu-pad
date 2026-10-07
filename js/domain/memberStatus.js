@@ -294,7 +294,7 @@
             ...(availSupported ? [{ key: 'availConfirm', label: '時間帯 今期確認', value: availOk, total: n, bad: availOk < n }] : []),
             { key: 'push', label: '通知 購読', ...(unknown('pushUnknown') ? na : { value: push, total: n, bad: push < n }) },
             // 📱 最後に開いた端末で通知が「拒否」の人数 (49)。分からない (未適用) ときは欄ごと出さない
-            ...(rs.length && rs.every(r => r.deviceUnknown) ? [] : [{ key: 'pushDenied', label: '通知 端末で拒否', value: cnt(r => r.pushDenied), total: n, bad: cnt(r => r.pushDenied) > 0 }]),
+            ...(!rs.length || rs.every(r => r.deviceUnknown) ? [] : [{ key: 'pushDenied', label: '通知 端末で拒否', value: cnt(r => r.pushDenied), total: n, bad: cnt(r => r.pushDenied) > 0 }]),
             // 疎通確認を送ったあとだけ出す (送る前に 0/31 と出すと「誰にも届いていない」に見える)
             ...(rs.some(r => r.pushCheck === 'ok' || r.pushCheck === 'wait')
                 ? [{ key: 'pushcheck', label: '通知 届いた', value: cnt(r => r.pushCheck === 'ok'), total: n, bad: cnt(r => r.pushCheck === 'ok') < n }] : []),
@@ -313,11 +313,13 @@
     /** 📱 人ごとに最後に開いた端末 (last_seen_at が最大の行)。配列以外は空の Map */
     function latestDeviceByPlayer(devices) {
         const by = new Map();
+        // 時刻で比べる (文字列の辞書順だと +09:00 などのオフセット表記で逆転する: Codex指摘)。読めない時刻は最も古い扱い
+        const ts = (v) => { const t = Date.parse(String(v || '')); return Number.isFinite(t) ? t : -Infinity; };
         for (const d of (Array.isArray(devices) ? devices : [])) {
             const pid = Number(d && d.player_id);
             if (!Number.isFinite(pid)) continue;
             const cur = by.get(pid);
-            if (!cur || String(d.last_seen_at || '') > String(cur.last_seen_at || '')) by.set(pid, d);
+            if (!cur || ts(d.last_seen_at) > ts(cur.last_seen_at)) by.set(pid, d);
         }
         return by;
     }

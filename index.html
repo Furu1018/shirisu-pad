@@ -14419,9 +14419,12 @@
                 return id;
             } catch { return null; }
         }
-        let _deviceReporting = false;
+        let _deviceReporting = false, _deviceReportAgain = null;
         async function _reportMemberDevice(reason) {
-            if (window.PAD_PRACTICE || _deviceReporting) return;
+            if (window.PAD_PRACTICE) return;
+            // ★ 走っている間に来た要求は捨てない — 終わってから最新の状態で 1 回だけ流す (force は force のまま: Codex指摘 2026-10-08)。
+            //   捨てると「通知を有効にした直後」の報告が起動時の報告に食われ、次回起動まで古いままになる
+            if (_deviceReporting) { _deviceReportAgain = (reason === 'force' || _deviceReportAgain === 'force') ? 'force' : (reason || 'again'); return; }
             const me = getCurrentIdentity();
             const deviceId = _deviceId();
             if (!me?.id || !deviceId || typeof window.supabaseReportMemberDevice !== 'function') return;
@@ -14445,6 +14448,8 @@
                 console.warn('[device] 端末の状態を報告できませんでした:', e?.message || e);
             } finally {
                 _deviceReporting = false;
+                const again = _deviceReportAgain; _deviceReportAgain = null;
+                if (again) _reportMemberDevice(again);
             }
         }
         // 裏から戻ってきたとき (OS の設定で通知を許可 / 拒否して戻ってくるのはこのとき)
@@ -17292,7 +17297,7 @@
                 //   「未着」とは言わない (記録が無い = 分からない)。🔔 は「購読の登録あり (届くかは未検証)」
                 const push = r.pushUnknown ? '<span class="dc-mb-c mute" title="Push の購読状況を取得できませんでした (↻ で取り直し)">🔔?</span>'
                     : !r.push ? `<span class="dc-mb-c err" title="通知の購読がありません — 何も届きません${r.pushDenied ? ' (最後に開いた端末では通知が拒否されています)' : ''}${devTip}">🔕</span>`
-                    : r.pushDenied ? `<span class="dc-mb-c warn" title="最後に開いた端末では通知が「拒否」です。別の端末の購読は残っていますが、この端末には出ません${devTip}">🔔⚠</span>`
+                    : r.pushDenied ? `<span class="dc-mb-c warn" title="最後に開いた端末では通知が「拒否」です。購読の登録は残っていますが、この端末には出ません${devTip}">🔔⚠</span>`
                     : r.pushCheck === 'ok' ? `<span class="dc-mb-c ok" title="確認の通知が届いたと本人が伝えました${devTip}">🔔✓</span>`
                     : r.pushCheck === 'wait' ? `<span class="dc-mb-c warn" title="確認の通知を送りましたが、本人の確認がまだです (見ていない・端末側で止めている・届いていない のどれかは分かりません)${devTip}">🔔 未確認</span>`
                     : `<span class="dc-mb-c mute" title="購読の登録あり (届くかは未検証。疎通確認はまだ)${devTip}">🔔</span>`;

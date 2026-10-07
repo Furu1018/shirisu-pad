@@ -13,10 +13,16 @@
 
     const FRESH_DAYS = 30;
     const FRESH_MAX = 3;
-    const DAY_MS = 24 * 60 * 60 * 1000;
 
     const isId = (v) => Number.isInteger(v) && v >= 2026010100 && v <= 2099123199;
-    const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) && Number.isFinite(Date.parse(String(v) + 'T00:00:00Z'));
+    // 存在する日付だけ (2026-02-30 は Date.parse が繰り上げて通すので、往復して同じ文字列になるかで見る: Codex指摘)
+    const isDate = (v) => {
+        const s = String(v);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+        const t = Date.parse(s + 'T00:00:00Z');
+        return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === s;
+    };
+    const toId = (v) => (typeof v === 'string' && /^\d+$/.test(v)) ? Number(v) : v;
 
     /**
      * JSON を読める形に整える。壊れた項目 (id / date / title / lines のどれかが無い) は捨てる。
@@ -33,6 +39,8 @@
             const title = String(n.title ?? '').trim();
             const lines = (Array.isArray(n.lines) ? n.lines : []).map(l => String(l ?? '').trim()).filter(Boolean);
             if (!title || !lines.length || !isDate(n.date)) continue;
+            // id の日付部分 (YYYYMMDD) と date は一致させる (id は不変の鍵なので、ずれたまま入ると直せない)
+            if (String(n.id).slice(0, 8) !== String(n.date).replace(/-/g, '')) continue;
             seen.add(n.id);
             out.push({ id: n.id, date: String(n.date), title, lines });
         }
@@ -54,10 +62,12 @@
      */
     function unseen(notes, lastSeenId, now) {
         const list = (Array.isArray(notes) ? notes : []).filter(n => n && isId(n.id)).slice().sort((a, b) => b.id - a.id);
-        if (isId(lastSeenId)) return list.filter(n => n.id > lastSeenId);
-        const t = Number.isFinite(now) ? now : Date.now();
-        const since = t - FRESH_DAYS * DAY_MS;
-        return list.filter(n => Date.parse(String(n.date) + 'T00:00:00Z') >= since).slice(0, FRESH_MAX);
+        const seen = toId(lastSeenId);   // localStorage の値 (数字の文字列) をそのまま渡されても読む
+        if (isId(seen)) return list.filter(n => n.id > seen);
+        // 「直近 30 日」は日付で数える (時刻差だと、その日の 0 時を過ぎた時点で 30 日前の項目が外れる: Codex指摘)
+        const t = new Date(Number.isFinite(now) ? now : Date.now());
+        const sinceDay = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - FRESH_DAYS);
+        return list.filter(n => Date.parse(String(n.date) + 'T00:00:00Z') >= sinceDay).slice(0, FRESH_MAX);
     }
 
     root.releaseNotesDomain = { FRESH_DAYS, FRESH_MAX, normalize, latestId, unseen, isId };

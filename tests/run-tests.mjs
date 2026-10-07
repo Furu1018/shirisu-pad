@@ -10753,7 +10753,7 @@ console.log('\ngrowthDomain:');
             const client = _grRd('js', 'supabase-client.js').split(String.fromCharCode(13)).join('');
             const fn = html.match(/async function _reportMemberDevice\(reason\)[\s\S]*?\n        \}\n/)?.[0] || '';
             assert.ok(fn, '_reportMemberDevice が無い');
-            assert.ok(/if \(window\.PAD_PRACTICE \|\| _deviceReporting\) return;/.test(fn), '練習中に報告している');
+            assert.ok(/if \(window\.PAD_PRACTICE\) return;\s*\n[\s\S]{0,400}?if \(_deviceReporting\) \{ _deviceReportAgain =/.test(fn), '練習中に報告している / 走っている間の要求を捨てている');
             assert.ok(/now - Number\(prev\.at \|\| 0\) < _DEVICE_REPORT_MS\) return;/.test(fn) && /_DEVICE_REPORT_MS = 60 \* 60 \* 1000/.test(html), '1 時間の抑制が無い');
             assert.ok(/const sig = \[String\(me\.id\), permission, endpoint \|\| '', appBuild \|\| ''\]\.join\('\|'\);/.test(fn), '内容が変わったら即報告する鍵 (名乗り・許可・購読・版) が違う');
             assert.ok(/renderMyPushCheckCard\(id\);\s*\/\/ 🔔 通知の疎通確認[^\n]*\n\s*_reportMemberDevice\('identity'\);/.test(html), '名乗ったときに報告していない');
@@ -10764,6 +10764,84 @@ console.log('\ngrowthDomain:');
             assert.ok(/memberDevices: Array\.isArray\(devices\) \? devices : null/.test(client), 'メンバー状況の材料に端末が無い / 取れなかったときを [] にしている');
             assert.ok(/'member_devices'/.test(client.match(/const _BACKUP_TABLES = \[[\s\S]*?\n\];/)?.[0] || '') && /\['member_devices', 'device_id', 'str'\]/.test(client), 'バックアップ / 復元に無い');
             assert.ok(/'49_member_devices'/.test(_grRd('supabase', '99_check_applied.sql')), '99 に 49 の行が無い');
+        });
+        await testAsync('★ _reportMemberDevice を実際に走らせる: 1 時間の抑制 / 内容が変われば即 / force / 走っている間の要求は終わってから 1 回流す / 失敗しても覚えない / 練習中は何もしない (Codex指摘)', async () => {
+            const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+            const a = html.indexOf('        const _DEVICE_ID_KEY = '), b = html.indexOf('        // 裏から戻ってきたとき', a);
+            assert.ok(a > 0 && b > a, '端末の報告の塊を切り出せない');
+            const src = html.slice(a, b);
+            const mk = (opts = {}) => {
+                const store = new Map();
+                const calls = [];
+                let pending = [];
+                const status = { supported: true, permission: 'granted', endpoint: 'ep1', ...(opts.status || {}) };
+                const env = {
+                    window: {
+                        PAD_PRACTICE: !!opts.practice,
+                        getPushSubscriptionStatus: () => opts.hold ? new Promise(r => pending.push(() => r({ ...status }))) : Promise.resolve({ ...status }),
+                        supabaseReportMemberDevice: async (row) => { calls.push(row); if (opts.fail) throw new Error('boom'); return { ok: true }; },
+                    },
+                    document: { querySelector: () => ({ content: opts.build || 'b1' }) },
+                    navigator: { userAgent: 'UA' },
+                    localStorage: { getItem: (k) => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v)) },
+                    getCurrentIdentity: () => opts.me === undefined ? { id: 7 } : opts.me,
+                    crypto: { getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = (i * 37 + 11) % 256; return arr; } },
+                    console: { warn() {} },
+                };
+                const keys = Object.keys(env);
+                const api = new Function(...keys, src + '\nreturn { report: _reportMemberDevice, deviceId: _deviceId };')(...keys.map(k => env[k]));
+                const tick = () => new Promise(r => setTimeout(r, 0));
+                return { api, calls, store, status, tick, release: () => { const p = pending; pending = []; p.forEach(f => f()); } };
+            };
+            // 1) 初回は報告。同じ内容の 2 回目は 1 時間以内なら報告しない。force は報告する
+            let t = mk();
+            await t.api.report('identity'); assert.equal(t.calls.length, 1); assert.equal(t.calls[0].playerId, 7); assert.equal(t.calls[0].permission, 'granted'); assert.equal(t.calls[0].endpoint, 'ep1');
+            await t.api.report('visible'); assert.equal(t.calls.length, 1, '同じ内容を 1 時間以内に二重に報告している');
+            await t.api.report('force'); assert.equal(t.calls.length, 2, 'force で報告していない');
+            // 2) 内容 (許可) が変われば即
+            t.status.permission = 'denied'; await t.api.report('visible'); assert.equal(t.calls.length, 3, '許可が変わったのに報告していない'); assert.equal(t.calls[2].permission, 'denied');
+            // 3) 1 時間を過ぎれば同じ内容でも報告する
+            const rec = JSON.parse(t.store.get('shirisuko_device_report_v1')); rec.at -= 61 * 60 * 1000; t.store.set('shirisuko_device_report_v1', JSON.stringify(rec));
+            await t.api.report('identity'); assert.equal(t.calls.length, 4, '1 時間を過ぎたのに報告していない');
+            // 4) 走っている間に来た force は捨てず、終わってから最新の状態で 1 回だけ流す
+            t = mk({ hold: true });
+            const p1 = t.api.report('identity');
+            t.status.permission = 'denied';
+            await t.api.report('force'); await t.api.report('visible');
+            assert.equal(t.calls.length, 0, '止まっているのに報告が走った');
+            t.release(); await p1; await t.tick(); t.release(); await t.tick(); await t.tick();
+            assert.equal(t.calls.length, 2, `走っている間の要求を流していない / 2 回以上流している (${t.calls.length})`);
+            assert.equal(t.calls[1].permission, 'denied', '2 回目が古い状態で報告している');
+            // 5) 失敗しても覚えない (次も報告する) / 練習中は何もしない / 名乗っていなければ何もしない
+            t = mk({ fail: true }); await t.api.report('identity'); assert.equal(t.calls.length, 1); assert.equal(t.store.has('shirisuko_device_report_v1'), false, '失敗したのに覚えている');
+            t = mk({ practice: true }); await t.api.report('identity'); assert.equal(t.calls.length, 0, '練習中に報告している');
+            t = mk({ me: null }); await t.api.report('identity'); assert.equal(t.calls.length, 0, '名乗っていないのに報告している');
+            // 6) 非対応の端末は 'unsupported'、端末の id は覚えて使い回す
+            t = mk({ status: { supported: false } }); await t.api.report('identity'); assert.equal(t.calls[0].permission, 'unsupported');
+            assert.equal(t.api.deviceId(), t.api.deviceId()); assert.ok(/^[a-z0-9]{12,}$/.test(t.api.deviceId()));
+        });
+        test('★ Codex指摘 (a94ef90): 名簿が空なら「端末で拒否」を集計に出さない / 最後に開いた端末はオフセット表記でも時刻で比べる', () => {
+            assert.equal(dom.summarize([], 'pre').find(s => s.key === 'pushDenied'), undefined, '空の名簿で 0/0 を出している');
+            const by = dom.latestDeviceByPlayer([
+                { player_id: 1, push_permission: 'granted', last_seen_at: '2026-10-07T09:00:00+09:00' },   // = 00:00Z
+                { player_id: 1, push_permission: 'denied', last_seen_at: '2026-10-07T01:00:00Z' },        // こちらが後
+            ]);
+            assert.equal(by.get(1).push_permission, 'denied', '文字列の辞書順で比べている (オフセット表記で逆転する)');
+            assert.equal(dom.latestDeviceByPlayer([{ player_id: 2, last_seen_at: 'x' }, { player_id: 2, last_seen_at: '2026-10-01T00:00:00Z' }]).get(2).last_seen_at, '2026-10-01T00:00:00Z', '読めない時刻を最新にしている');
+        });
+        test('★ Codex指摘 (a94ef90): releaseNotes は id と date のずれ・存在しない日付を捨てる / 30 日は日付で数える / 読んだ id は数字の文字列でも受ける', () => {
+            const rn = globalThis.releaseNotesDomain;
+            const out = rn.normalize({ notes: [
+                { id: 2026100801, date: '2026-10-07', title: 'ずれ', lines: ['a'] },        // id と date が違う
+                { id: 2026023001, date: '2026-02-30', title: '無い日', lines: ['a'] },      // 2/30 は存在しない
+                { id: 2026100701, date: '2026-10-07', title: 'ok', lines: ['a'] },
+            ] });
+            assert.deepEqual(out.map(n => n.id), [2026100701], 'ずれた項目や存在しない日付を通している');
+            const notes = rn.normalize({ notes: [{ id: 2026100801, date: '2026-10-08', title: 't', lines: ['a'] }, { id: 2026090801, date: '2026-09-08', title: 't', lines: ['a'] }] });
+            // 10/8 のうちは 9/8 を含める (時刻差で数えると 10/8 の 0 時を過ぎた時点で外れる)
+            assert.deepEqual(rn.unseen(notes, null, Date.parse('2026-10-08T23:59:00Z')).map(n => n.id), [2026100801, 2026090801], '30 日の境界を日付で数えていない');
+            assert.deepEqual(rn.unseen(notes, null, Date.parse('2026-10-09T00:00:00Z')).map(n => n.id), [2026100801]);
+            assert.deepEqual(rn.unseen(notes, '2026090801').map(n => n.id), [2026100801], '読んだ id を数字の文字列で渡すと「初めて」扱いになる');
         });
     }
 
