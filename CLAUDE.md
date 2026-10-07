@@ -670,6 +670,21 @@ rm -f .claude/hooks/.codex-on      # OFF
   実行テスト: `tests/practice.mjs` (本物の送る関数を偽のサーバ相手に動かして、実際に渡した宛先を見る)・`tests/member-board.mjs`・`tests/run-tests.mjs` の「通知」の節
   ★ 運営あては `_notifyOps({title, body, tag, except})` = master + 運営担当の全員 (押した本人は除く)。メンバーの 予約の申請 (2経路)・取消希望・📣 の返事・締め凸の返事 で送る。
   ★ 本人あては `_notifyMemberResv(row, title, body)` = 承認・却下・取り下げ・続行。ホームの 30 秒ティックは配信プランだけでなく `renderMyReservations` も取り直す。
+- **📱 メンバーの端末の状態** (`49_member_devices.sql`・通知の見える化 D・2026-10-08 ユーザー決定 Q1/Q2/Q4「今入れる」。設計の正本は
+  `docs/通知の見える化_設計案_2026-10-08.md`、Codex レビュー済み)。「端末で通知を設定できているか」はサーバから見えないので、
+  本人の端末がアプリを開いたときに `_reportMemberDevice` が報告する (`device_id` = 端末の localStorage の乱数 = 主キー。名乗り直しは同じ行を上書き。
+  書き込みは 1 時間に 1 回・名乗り / 許可 / 購読 / 版 が変わればすぐ。きっかけは 名乗ったとき・通知を有効にしたあと・裏から戻ったとき)。
+  ★ **練習中は報告しない** (端末の状態に触れない)。49 未適用は `supabaseReportMemberDevice` が黙って捨て、`supabaseLoadMemberDevices` は null (= 分からない)。
+  運営は メンバー状況 の 🔔 と「メンバーの通知状況」の 端末 列で見る。★ **🔔 の優先順位** (ユーザー決定 Q2): 🔕 購読なし → 🔔⚠ 最後に開いた端末で「拒否」
+  (別の端末の購読が残っていても、その端末には出ない) → 🔔✓ 本人が疎通確認を確認した → 🔔 未確認 (送ったが本人の確認なし) → 🔔 購読の登録あり (届くかは未検証)。
+  **「未着」とは言わない** (記録が無い = 分からない: Codex指摘)。判定は `memberStatusDomain.buildRows` の `device` / `pushDenied` / `deviceUnknown` と
+  `latestDeviceByPlayer` / `deviceKind` が唯一。`app_build` は移行の進み具合の観測値で、互換ゲートを締める証明にはならない。
+  次の段 (未着手): 通知に `nid` を付けて送信対象の端末を残す → Service Worker の受信記録 → 通知ごとの内訳。実行テスト `tests/member-board.mjs`
+- **🆕 新しくなったこと (更新履歴)** (通知の見える化 F・2026-10-08 ユーザー決定 Q3「更新内容は Claude が書く」)。`data/release-notes.json` を
+  **画面が変わる commit ごとに 1 項目**足す (メンバー向けの言葉で。`id` は YYYYMMDDnn の整数で**不変** — 端末は読んだ id を覚えるので、日付や文言を直しても再表示されない。
+  `date` は id の日付と一致させる。テストが見張る)。ホームの `#myReleaseNotesCard` (`renderMyReleaseNotes`、「読んだ」で最新の id を端末に覚える) と
+  ヘルプ「更新履歴」(`renderHelpReleaseNotes`) に出る。判定は `js/domain/releaseNotes.js` が唯一 (初めての端末には直近 30 日・3 件まで)。練習中は出さない。
+  DB も Edge Function も使わない (運営が自由文で書く欄は第二段)
 - **運営モード (`_opsMode` / `body.ops-mode` / `data-ops-only`)**: `🛠運営` スイッチで運営向けUIを
   出し入れする仕組み。戦況タブ (旧ユニレ管理) と設定タブで共有 (localStorage `shirisuko_ops_mode`)。
   CSS は `body:not(.ops-mode) [data-ops-only]{display:none}` のグローバル1行なので、
@@ -1023,3 +1038,5 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
 - ★ **push したら `gh run list --limit 1` で success を確かめる** (2026-10-02 に deploy-pages が「artifact が見つからない」で落ち、公開サイトが前の版のままだった。
   アップロードは成功していたので GitHub 側の一時的な不調。`gh run rerun <id>` で直る)。公開の版は `curl -s <公開URL>/index.html | grep app-build` で分かる
 - ローカルでは Supabase データが無いと大半のタブが空になる → 実機確認はユーザーに依頼する
+- ★ **画面が変わる commit には `data/release-notes.json` に 1 項目足す** (2026-10-08 ユーザー決定)。上の「🆕 新しくなったこと」を参照。
+  コードだけの変更 (テスト・監査対応・文言の微修正) には足さない

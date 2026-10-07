@@ -145,6 +145,9 @@
             const pid = Number(c?.player_id);
             if (Number.isFinite(pid)) checkBy.set(pid, c.at || null);
         }
+        // 📱 端末の状態 (49・2026-10-08): 本人の端末が報告した 許可 / 拒否 と最後に開いた日時。配列 = 分かっている / null = 未適用・取れなかった
+        const devKnown = Array.isArray(ex.memberDevices);
+        const devBy = latestDeviceByPlayer(devKnown ? ex.memberDevices : []);
         const proxyBy = new Map();
         for (const e of (Array.isArray(ex.proxyEvents) ? ex.proxyEvents : [])) {
             const pid = Number(e?.player_id);
@@ -215,6 +218,12 @@
                 });
             }
             if (pushKnown && !push) reasons.push({ key: 'push', label: '通知購読なし' });
+            // 📱 最後に開いた端末で通知が「拒否」。購読が (別の端末や古い行で) 残っていても、その端末には出ない。
+            //   購読なしの人は「通知購読なし」が理由 (重ねて言わない)。49 未適用 (devKnown=false) は何も言わない (分からない)
+            const dev = devBy.get(id) || null;
+            const device = dev ? { permission: String(dev.push_permission || 'unknown'), kind: deviceKind(dev.ua), lastSeenAt: dev.last_seen_at || null, appBuild: dev.app_build || null, endpoint: dev.push_endpoint || null } : null;
+            const pushDenied = !!device && device.permission === 'denied';
+            if (pushDenied && push) reasons.push({ key: 'pushDenied', label: '通知 端末で拒否' });
             // 疎通確認: 'ok' = 届いた / 'wait' = 送ったがまだ / 'none' = まだ送っていない / null = 分からない。
             // ★ 届いた記録があれば 'ok' (送った印が読めなくても、届いた事実は変わらない)。
             // ★ 購読なしの人は「通知購読なし」が理由 (届くはずがないので「未確認」を重ねて言わない)
@@ -232,6 +241,7 @@
                 availSupported, availConfirmed, availUnavailable, availChanged,
                 availConfirmedAt: confirm ? (confirm.confirmed_at || null) : null,
                 push, pushCheck, pushCheckAt: checkBy.get(id) || null,
+                device, pushDenied, deviceUnknown: !devKnown,
                 attacks, atkCount, proxyCount, finish,
                 // 取得できなかった項目 (画面は「?」を出し、集計は「—」にする)
                 pushUnknown: !pushKnown, slvUnknown: !slvListKnown, finishUnknown: !finishKnown, proxyUnknown: !proxyKnown,
@@ -283,10 +293,33 @@
             // 機能未適用の環境では欄ごと出さない (0/30 と出ると誤解を招く)
             ...(availSupported ? [{ key: 'availConfirm', label: '時間帯 今期確認', value: availOk, total: n, bad: availOk < n }] : []),
             { key: 'push', label: '通知 購読', ...(unknown('pushUnknown') ? na : { value: push, total: n, bad: push < n }) },
+            // 📱 最後に開いた端末で通知が「拒否」の人数 (49)。分からない (未適用) ときは欄ごと出さない
+            ...(rs.length && rs.every(r => r.deviceUnknown) ? [] : [{ key: 'pushDenied', label: '通知 端末で拒否', value: cnt(r => r.pushDenied), total: n, bad: cnt(r => r.pushDenied) > 0 }]),
             // 疎通確認を送ったあとだけ出す (送る前に 0/31 と出すと「誰にも届いていない」に見える)
             ...(rs.some(r => r.pushCheck === 'ok' || r.pushCheck === 'wait')
                 ? [{ key: 'pushcheck', label: '通知 届いた', value: cnt(r => r.pushCheck === 'ok'), total: n, bad: cnt(r => r.pushCheck === 'ok') < n }] : []),
         ];
+    }
+
+    /** 📱 UA から端末の種類 (運営が「どの端末か」を読むためだけ。判定はここが唯一) */
+    function deviceKind(ua) {
+        const s = String(ua || '');
+        if (/iPhone|iPod/.test(s)) return 'iPhone';
+        if (/iPad/.test(s)) return 'iPad';
+        if (/Android/.test(s)) return 'Android';
+        if (/Windows|Macintosh|CrOS|Linux/.test(s)) return 'PC';
+        return '?';
+    }
+    /** 📱 人ごとに最後に開いた端末 (last_seen_at が最大の行)。配列以外は空の Map */
+    function latestDeviceByPlayer(devices) {
+        const by = new Map();
+        for (const d of (Array.isArray(devices) ? devices : [])) {
+            const pid = Number(d && d.player_id);
+            if (!Number.isFinite(pid)) continue;
+            const cur = by.get(pid);
+            if (!cur || String(d.last_seen_at || '') > String(cur.last_seen_at || '')) by.set(pid, d);
+        }
+        return by;
     }
 
     /**
@@ -335,5 +368,5 @@
         return { title: '🪞 レイド前の登録のお願い', body: `${parts.join(' / ')} が未登録です。ホーム・模擬タブから登録お願いします🙏`, url: './?tab=mypage' };
     }
 
-    root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, MOCK_REQUIRED, phaseFor, buildRows, sortRows, summarize, nudgeMessage, localDateStr, maxDisjointAttrs };
+    root.memberStatusDomain = { ATTR_KEYS, ATTR_JP, MAX_ATTACKS, MOCK_REQUIRED, phaseFor, buildRows, sortRows, summarize, nudgeMessage, localDateStr, maxDisjointAttrs, deviceKind, latestDeviceByPlayer };
 })(typeof window !== 'undefined' ? window : globalThis);

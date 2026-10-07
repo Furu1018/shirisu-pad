@@ -75,13 +75,15 @@ export const SCHEMA = {
         defaults: { name_code: null, grade: null, core: null, lv: null, skill1_lv: null, skill2_lv: null, ulti_skill_lv: null, combat: null, attractive_lv: null,
             harmony_cube_tid: null, harmony_cube_lv: null, favorite_item_tid: null, favorite_item_lv: null, equip: null, overload: null, fetched_at: NOW } },
     member_growth_status: { pk: ['season_id', 'player_id'], required: ['season_id', 'player_id', 'status'], defaults: { detail: null, character_count: null, checked_at: NOW } },
+    // 📱 端末の状態 (49・2026-10-08)。練習では報告しない (端末の状態に触れない) が、表の写しは持つ (SQL との突き合わせ)
+    member_devices: { pk: ['device_id'], required: ['device_id', 'player_id'], defaults: { ua: null, push_permission: 'unknown', push_endpoint: null, app_build: null, last_seen_at: NOW, reported_at: NOW, created_at: NOW } },
 };
 // ON DELETE CASCADE (親の行を消したら子も消す)。{ 親: [[子, 列], ...] }
 const CASCADE = {
     seasons: Object.keys(SCHEMA).filter(t => ['bosses', 'player_sync_levels', 'attacks', 'finish_claims', 'fururi_simulation_scores', 'published_plans',
         'finish_requests', 'plan_acks', 'raid_event_notices', 'availability_confirmations', 'plan_reservations', 'member_growth', 'member_growth_status'].includes(t)).map(t => [t, 'season_id']),
     players: ['player_damages', 'player_sync_levels', 'attacks', 'day_offs', 'availability', 'push_subscriptions', 'finish_coordinations', 'finish_requests',
-        'plan_acks', 'availability_confirmations', 'plan_reservations', 'member_growth', 'member_growth_status'].map(t => [t, 'player_id']),
+        'plan_acks', 'availability_confirmations', 'plan_reservations', 'member_growth', 'member_growth_status', 'member_devices'].map(t => [t, 'player_id']),
     plan_reservations: [['plan_reservation_events', 'reservation_id']],
 };
 // 埋め込み (select の `players(name)`)。{ 埋め込む表: 自分の側の列 }

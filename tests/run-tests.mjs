@@ -27,6 +27,7 @@ import '../js/domain/pace.js';          // globalThis.paceDomain (📈消化の�
 import '../js/domain/planBoard.js';     // globalThis.planBoardDomain (最適凸プランの条件と盤の読みやすさ — パズル盤 ①②)
 import '../js/domain/opsRole.js';       // globalThis.opsRoleDomain (👑 運営担当: master / ops / メンバー)
 import '../js/domain/notifyPolicy.js';  // globalThis.notifyPolicyDomain (🔔 通知の宛先: あなた宛 / チームの状況 / テスト)
+import '../js/domain/releaseNotes.js';  // globalThis.releaseNotesDomain (🆕 新しくなったこと / 更新履歴)
 import '../js/domain/opsStage.js';      // globalThis.opsStageDomain (運営モードの段階: 準備/前日/当日/終了)
 import '../js/domain/growth.js';       // globalThis.growthDomain (ユニオンメンバーの育成データ — BlaBlaLINK 由来)
 import '../js/domain/slvSim.js';       // globalThis.slvSimDomain (SLv シミュレーター: 予測 / 逆引き)
@@ -10624,7 +10625,7 @@ console.log('\ngrowthDomain:');
         const links = [...toc.matchAll(/href="#(help-[a-z-]+)"/g)].map(m => m[1]);
         const ids = [...html.matchAll(/<section id="(help-[a-z-]+)" class="help-section">/g)].map(m => m[1]);
         assert.deepEqual(links, ids, '目次と章の並びが一致していない');
-        assert.equal(ids.length, 17, '章の数が 17 でない');
+        assert.equal(ids.length, 18, '章の数が 18 でない');
         // 2026-09 に入ったものが章になっている (予約 / 本人向けのプランの読み方 / 運営向けの算出 / 分析)
         for (const id of ['help-reserve', 'help-plan', 'help-plan-ops', 'help-analysis', 'help-ops']) assert.ok(ids.includes(id), id + ' が無い');
         // 本文中の #help- リンクも切れていない (FAQ からの参照など)
@@ -10666,6 +10667,105 @@ console.log('\ngrowthDomain:');
         assert.match(html, /function _tourDemoHtml\(kind\)[\s\S]*?onclick="startPractice\('member', '\$\{d\[0\]\}'\)"/, '体験デモが練習モードへの入口でない');
         assert.match(html, /\$\{step\.demo \? _tourDemoHtml\(step\.demo\) : ''\}/, 'ツアーがデモの種類を渡していない');
     });
+
+    // ---- 🆕 新しくなったこと (releaseNotesDomain・2026-10-08) ------------------------------
+    {
+        const rn = globalThis.releaseNotesDomain;
+        const N = (id, date, title = 't', lines = ['a']) => ({ id, date, title, lines });
+        test('releaseNotes.normalize: 壊れた項目を捨て、同じ id は先勝ち、新しい順に並べ直す (入力の並びに頼らない)', () => {
+            const out = rn.normalize({ notes: [N(2026090801, '2026-09-08'), N(2026100701, '2026-10-07'), { id: 'x', date: '2026-10-01', title: 't', lines: ['a'] },
+                N(2026100301, '2026-10-03', '', ['a']), N(2026100302, '2026-10-03', 't', []), N(2026100303, '2026-13-03'), N(2026100701, '2026-10-07', 'dup')] });
+            assert.deepEqual(out.map(n => n.id), [2026100701, 2026090801]);
+            assert.equal(out[0].title, 't', '同じ id の後の項目で上書きしている');
+            assert.deepEqual(rn.normalize(null), []); assert.equal(rn.normalize([N(2026100101, '2026-10-01')]).length, 1);
+            assert.deepEqual(rn.normalize({ notes: [{ id: 2026100101, date: '2026-10-01', title: ' t ', lines: [' a ', '', null, 'b'] }] })[0], { id: 2026100101, date: '2026-10-01', title: 't', lines: ['a', 'b'] });
+        });
+        test('releaseNotes.unseen: 読んだ id より新しいものだけ / 初めての端末は直近 30 日・3 件まで / latestId は最大', () => {
+            const notes = rn.normalize({ notes: [N(2026100801, '2026-10-08'), N(2026100701, '2026-10-07'), N(2026100301, '2026-10-03'), N(2026091601, '2026-09-16'), N(2026090801, '2026-09-08')] });
+            assert.deepEqual(rn.unseen(notes, 2026100301).map(n => n.id), [2026100801, 2026100701]);
+            assert.deepEqual(rn.unseen(notes, 2026100801), [], '全部読んだのに出る');
+            const now = Date.parse('2026-10-08T12:00:00Z');
+            assert.deepEqual(rn.unseen(notes, null, now).map(n => n.id), [2026100801, 2026100701, 2026100301], '初めての端末に 30 日より古いものや 4 件目を出している');
+            assert.deepEqual(rn.unseen(notes, null, Date.parse('2026-12-01T00:00:00Z')), [], '古い項目しか無いのに初めての端末に出している');
+            assert.equal(rn.latestId(notes), 2026100801); assert.equal(rn.latestId([]), null);
+            assert.deepEqual(rn.unseen(notes.slice().reverse(), 2026100301).map(n => n.id), [2026100801, 2026100701], '並びに頼っている');
+        });
+        test('★ data/release-notes.json が読める形で、id が不変の規則 (YYYYMMDDnn・重複なし・新しい順・date と一致) に従っている', () => {
+            const raw = JSON.parse(_grRd('data', 'release-notes.json'));
+            const notes = rn.normalize(raw);
+            assert.ok(notes.length >= 5, '項目が少ない');
+            assert.equal(notes.length, raw.notes.length, '壊れた項目がある (normalize で落ちた)');
+            assert.deepEqual(raw.notes.map(n => n.id), notes.map(n => n.id), 'ファイルの並びが新しい順でない');
+            for (const n of notes) assert.equal(n.date.replace(/-/g, ''), String(n.id).slice(0, 8), `id と date がずれている: ${n.id} ${n.date}`);
+        });
+        test('★ 配線: ホームの「🆕 新しくなったこと」とヘルプ「更新履歴」(判定はドメイン / 読んだ id を端末に覚える / 練習中は出さない / 名乗ったときに描く)', () => {
+            const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+            assert.ok(/<script defer src="\.\/js\/domain\/releaseNotes\.js"><\/script>/.test(html), 'releaseNotes.js を読んでいない');
+            assert.ok(/id="myReleaseNotesCard"/.test(html) && /id="helpReleaseNotes"/.test(html) && /<section id="help-updates"/.test(html), '描画先が無い');
+            const fn = html.match(/async function renderMyReleaseNotes\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
+            assert.ok(/dom\.unseen\(notes, _releaseSeenId\(\), Date\.now\(\)\)/.test(fn), '判定をドメインに任せていない');
+            assert.ok(/if \(window\.PAD_PRACTICE\) \{ hide\(\); return; \}/.test(fn), '練習中に出る');
+            const dis = html.match(/function handleReleaseNotesDismiss\(\)[\s\S]*?\n        \}\n/)?.[0] || '';
+            assert.ok(/localStorage\.setItem\(_RELEASE_SEEN_KEY, String\(latest\)\)/.test(dis) && /dom\.latestId\(_releaseNotes\)/.test(dis), '読んだ id を端末に覚えていない');
+            const hook = html.match(/renderMyPushCheckCard\(id\);\s*\/\/ 🔔 通知の疎通確認[^\n]*\n[\s\S]{0,400}/)?.[0] || '';
+            assert.ok(/renderMyReleaseNotes\(\);/.test(hook) && /renderHelpReleaseNotes\(\);/.test(hook), '名乗ったときに描いていない');
+        });
+    }
+
+    // ---- 📱 端末の状態 (49_member_devices・2026-10-08) ------------------------------
+    {
+        const dom = globalThis.memberStatusDomain;
+        const P = (id, name) => ({ id, name, damagesByAttr: { fire: 1, water: 1, wind: 1 }, teamsByAttr: { fire: ['a'], water: ['b'], wind: ['c'] }, attacks: [], syncLevel: 600, availableSlots: ['h21'], strong_attributes: [] });
+        const D = (player_id, push_permission, last_seen_at, ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', extra = {}) => ({ device_id: 'd' + player_id + last_seen_at, player_id, push_permission, last_seen_at, ua, app_build: 'abc1234', ...extra });
+        test('deviceKind / latestDeviceByPlayer: UA から端末の種類、人ごとに最後に開いた端末', () => {
+            assert.equal(dom.deviceKind('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit'), 'iPhone');
+            assert.equal(dom.deviceKind('Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/128'), 'Android');
+            assert.equal(dom.deviceKind('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128'), 'PC');
+            assert.equal(dom.deviceKind('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Safari'), 'PC');
+            assert.equal(dom.deviceKind('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)'), 'iPad');
+            assert.equal(dom.deviceKind(''), '?'); assert.equal(dom.deviceKind(null), '?');
+            const by = dom.latestDeviceByPlayer([D(1, 'granted', '2026-10-01T00:00:00Z'), D(1, 'denied', '2026-10-07T00:00:00Z'), D(2, 'default', '2026-10-05T00:00:00Z'), { player_id: 'x' }]);
+            assert.equal(by.get(1).push_permission, 'denied', '最後に開いた端末でない');
+            assert.equal(by.get(2).push_permission, 'default'); assert.equal(by.size, 2);
+            assert.equal(dom.latestDeviceByPlayer(null).size, 0);
+        });
+        test('★ buildRows: 最後に開いた端末が「拒否」→ pushDenied と理由「通知 端末で拒否」(購読がある人だけ) / 未適用 (null) は分からない', () => {
+            const players = [P(1, 'A'), P(2, 'B'), P(3, 'C')];
+            const extras = { pushPlayerIds: [1, 2], slvThisSeasonIds: [1, 2, 3], finishRequests: [], proxyEvents: [], availConfirmations: [],
+                memberDevices: [D(1, 'granted', '2026-10-01T00:00:00Z'), D(1, 'denied', '2026-10-07T00:00:00Z'), D(3, 'denied', '2026-10-07T00:00:00Z')] };
+            const rows = dom.buildRows({ players, extras, phase: 'pre' });
+            const a = rows.find(r => r.id === 1), b = rows.find(r => r.id === 2), c = rows.find(r => r.id === 3);
+            assert.equal(a.pushDenied, true);
+            assert.deepEqual(a.device, { permission: 'denied', kind: 'iPhone', lastSeenAt: '2026-10-07T00:00:00Z', appBuild: 'abc1234', endpoint: null });
+            assert.ok(a.reasons.some(r => r.key === 'pushDenied' && r.label === '通知 端末で拒否'), 'A に理由が無い');
+            assert.equal(b.pushDenied, false); assert.equal(b.device, null); assert.ok(!b.reasons.some(r => r.key === 'pushDenied'));
+            assert.equal(c.pushDenied, true, 'C は端末が拒否'); assert.ok(c.reasons.some(r => r.key === 'push'), '購読なしの理由');
+            assert.ok(!c.reasons.some(r => r.key === 'pushDenied'), '購読なしの人に「端末で拒否」を重ねて言っている');
+            assert.ok(rows.every(r => r.deviceUnknown === false));
+            const sum = dom.summarize(rows, 'pre');
+            assert.deepEqual(sum.find(s => s.key === 'pushDenied'), { key: 'pushDenied', label: '通知 端末で拒否', value: 2, total: 3, bad: true });
+            const unknown = dom.buildRows({ players, extras: { ...extras, memberDevices: null }, phase: 'pre' });
+            assert.ok(unknown.every(r => r.device === null && r.pushDenied === false && r.deviceUnknown === true && !r.reasons.some(x => x.key === 'pushDenied')));
+            assert.equal(dom.summarize(unknown, 'pre').find(s => s.key === 'pushDenied'), undefined, '分からないのに集計に出している');
+        });
+        test('★ 配線: 端末の報告は 名乗ったとき・通知を有効にしたあと・裏から戻ったとき / 練習中はしない / 1 時間に 1 回 / 49 未適用は捨てる / 練習の写しと復元の一覧にある', () => {
+            const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+            const client = _grRd('js', 'supabase-client.js').split(String.fromCharCode(13)).join('');
+            const fn = html.match(/async function _reportMemberDevice\(reason\)[\s\S]*?\n        \}\n/)?.[0] || '';
+            assert.ok(fn, '_reportMemberDevice が無い');
+            assert.ok(/if \(window\.PAD_PRACTICE \|\| _deviceReporting\) return;/.test(fn), '練習中に報告している');
+            assert.ok(/now - Number\(prev\.at \|\| 0\) < _DEVICE_REPORT_MS\) return;/.test(fn) && /_DEVICE_REPORT_MS = 60 \* 60 \* 1000/.test(html), '1 時間の抑制が無い');
+            assert.ok(/const sig = \[String\(me\.id\), permission, endpoint \|\| '', appBuild \|\| ''\]\.join\('\|'\);/.test(fn), '内容が変わったら即報告する鍵 (名乗り・許可・購読・版) が違う');
+            assert.ok(/renderMyPushCheckCard\(id\);\s*\/\/ 🔔 通知の疎通確認[^\n]*\n\s*_reportMemberDevice\('identity'\);/.test(html), '名乗ったときに報告していない');
+            assert.ok(/renderMyPushCheckCard\(id\);\s*\/\/ 🔔 確認カードを[^\n]*\n\s*_reportMemberDevice\('force'\);/.test(html), '通知を有効にしたあとに報告していない');
+            assert.ok(/visibilitychange[^\n]*_reportMemberDevice\('visible'\)/.test(html), '裏から戻ったときに報告していない');
+            assert.ok(/window\.supabaseReportMemberDevice = async function/.test(client) && /window\.supabaseLoadMemberDevices = async function/.test(client));
+            assert.ok(/\.from\('member_devices'\)\.upsert\(r, \{ onConflict: 'device_id' \}\)/.test(client), 'device_id で上書きしていない (名乗り直しで旧行が残る)');
+            assert.ok(/memberDevices: Array\.isArray\(devices\) \? devices : null/.test(client), 'メンバー状況の材料に端末が無い / 取れなかったときを [] にしている');
+            assert.ok(/'member_devices'/.test(client.match(/const _BACKUP_TABLES = \[[\s\S]*?\n\];/)?.[0] || '') && /\['member_devices', 'device_id', 'str'\]/.test(client), 'バックアップ / 復元に無い');
+            assert.ok(/'49_member_devices'/.test(_grRd('supabase', '99_check_applied.sql')), '99 に 49 の行が無い');
+        });
+    }
 
     test('★ 配線: 育成の取り込みパネル (段階「準備」と「終了」・upsert のみ・43未適用は止める)', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');

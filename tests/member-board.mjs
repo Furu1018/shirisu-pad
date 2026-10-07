@@ -68,6 +68,26 @@ function test(name, fn) {
 }
 console.log('member-board (_mbPaint):');
 
+test('📱 端末の状態 (2026-10-08): 最後に開いた端末が拒否 → 🔔⚠ (購読あり) / 🔕 の title に拒否を添える / 端末が分からなければ従来どおり・「未着」と言わない', () => {
+    _mb.filter = 'all'; _mb.sort = 'why';
+    const devs = [{ device_id: 'd2', player_id: 2, push_permission: 'denied', last_seen_at: '2026-10-07T01:02:03Z', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', app_build: 'abcdef0123' },
+        { device_id: 'd1', player_id: 1, push_permission: 'denied', last_seen_at: '2026-10-06T00:00:00Z', ua: 'Mozilla/5.0 (Linux; Android 14)', app_build: null },
+        { device_id: 'd4', player_id: 4, push_permission: 'granted', last_seen_at: '2026-10-05T00:00:00Z', ua: 'Mozilla/5.0 (Windows NT 10.0)', app_build: 'abc' }];
+    _mb.rows = dom.buildRows({ players, extras: { ...extras, memberDevices: devs }, phase: 'pre' });
+    _mbPaint('pre');
+    const out = el('opsMbRows').innerHTML;
+    assert.ok(/title="最後に開いた端末では通知が「拒否」です[^"]*iPhone 10\/07 · 版 abcdef0"[^>]*>🔔⚠</.test(out), `購読ありで端末が拒否の人に 🔔⚠ が出ていない: ${(out.match(/<span class="dc-mb-c[^>]*>🔔[^<]*</g) || []).join(' | ')}`);
+    assert.ok(/title="通知の購読がありません — 何も届きません \(最後に開いた端末では通知が拒否されています\)[^"]*Android 10\/06"[^>]*>🔕</.test(out), '購読なし + 端末が拒否の title が無い');
+    assert.ok(/title="購読の登録あり \(届くかは未検証。疎通確認はまだ\) \/ 最後に開いた端末: PC 10\/05 · 版 abc"[^>]*>🔔</.test(out), '登録ありの title が変わっている / 端末が添えられていない');
+    assert.ok(!/未着/.test(out), '「未着」と断定している');
+    assert.ok(!/undefined|NaN|\[object/.test(out), `描画に undefined/NaN が混ざっている: ${out.slice(0, 200)}`);
+    _mb.rows = dom.buildRows({ players, extras: { ...extras, memberDevices: null }, phase: 'pre' });
+    _mbPaint('pre');
+    const plain = el('opsMbRows').innerHTML;
+    assert.ok(/title="購読の登録あり \(届くかは未検証。疎通確認はまだ\)"[^>]*>🔔</.test(plain) && !/🔔⚠/.test(plain), '端末が分からないのに ⚠ を出している / title に余計な端末');
+});
+
+
 test('前日・未完のみ: 未完の行だけ描画され、名前はエスケープ、Push未購読の催促は disabled', () => {
     _mb.filter = 'todo'; _mb.sort = 'why';
     _mb.rows = dom.buildRows({ players, extras, phase: 'pre' });

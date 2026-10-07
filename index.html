@@ -115,6 +115,7 @@
     <script defer src="./js/domain/pace.js"></script>
     <script defer src="./js/domain/opsRole.js"></script>     <!-- 👑 運営担当 (master / ops / メンバー) の判定 -->
     <script defer src="./js/domain/notifyPolicy.js"></script> <!-- 🔔 通知の宛先 (あなた宛 / チームの状況 / テスト) の判定 -->
+    <script defer src="./js/domain/releaseNotes.js"></script> <!-- 🆕 新しくなったこと (更新履歴) の判定 -->
     <script defer src="./js/domain/planBoard.js"></script>
     <script defer src="./js/domain/slvSim.js"></script>
     <script defer src="./js/domain/raidReview.js"></script>   <!-- レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) -->      <!-- SLv シミュレーター (予測 / 目標ダメージ → 必要 SLv の逆引き) -->   <!-- 最適凸プランの条件と盤の読みやすさ (パズル盤 ①②) -->   <!-- 📈消化のペース / 🔁直近の動き (段階4) -->
@@ -4172,6 +4173,10 @@
                  中身は renderMyPushCheckCard が描く (この端末の通知が有効か / 無効かで出すものが違う) -->
             <div class="dc-card" data-span="6" id="myPushCheckCard" style="display:none;"></div>
 
+            <!-- 🆕 新しくなったこと (通知の見える化 F・2026-10-08)。data/release-notes.json の、この端末がまだ読んでいない項目だけ出す。
+                 中身は renderMyReleaseNotes が描く。「読んだ」で最新の id を端末に覚える (判定は js/domain/releaseNotes.js) -->
+            <div class="dc-card" data-span="6" id="myReleaseNotesCard" style="display:none;"></div>
+
             <!-- 🧬 育成データが未公開のお知らせ (B3・2026-09-09)。未公開のときだけ出る -->
             <div class="dc-card" data-span="6" id="myGrowthNoticeCard" style="display:none;">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
@@ -5090,7 +5095,8 @@
                     <a href="#help-analysis">14. 分析タブ</a>
                     <a href="#help-ops">15. 運営タブと運営担当</a>
                     <a href="#help-data">16. データの流れ</a>
-                    <a href="#help-faq">17. よくある質問</a>
+                    <a href="#help-updates">17. 更新履歴</a>
+                    <a href="#help-faq">18. よくある質問</a>
                 </aside>
 
                 <div>
@@ -5509,8 +5515,14 @@
                         </div>
                     </section>
 
+                    <section id="help-updates" class="help-section">
+                        <h2>🆕 17. 更新履歴</h2>
+                        <p>画面や仕組みが変わったときの記録です (新しい順)。新しい項目があるときは、ホームに「🆕 新しくなったこと」として出ます。</p>
+                        <div id="helpReleaseNotes"><p>読み込み中…</p></div>
+                    </section>
+
                     <section id="help-faq" class="help-section">
-                        <h2>❓ 17. よくある質問</h2>
+                        <h2>❓ 18. よくある質問</h2>
                         <h3>Q. 模擬戦で同じ属性に何度も挑戦しました。どれを提出？</h3>
                         <p>いちばん高いダメージを。キャラの被らない別編成なら2つ目の編成として提出できます (<a href="#help-mock">§4</a>)。</p>
                         <h3>Q. 締め凸でダメージが低く記録されました</h3>
@@ -9319,6 +9331,8 @@
             renderMyAvailStrip(id);          // ⏰ あなたの戦闘可能時間 (2026-09-08)
             renderMyGrowthNotice(id);        // 🧬 育成データが未公開です (B3・2026-09-09)
             renderMyPushCheckCard(id);       // 🔔 通知の疎通確認 (2026-10-07)
+            _reportMemberDevice('identity');   // 📱 端末の状態 (2026-10-08)
+            renderMyReleaseNotes(); renderHelpReleaseNotes();   // 🆕 新しくなったこと (2026-10-08)
             applyMyAvatarToHeader(id.id);
             _startCoordPolling();
         }
@@ -14367,6 +14381,7 @@
                 await renderMyPushSettings(id);
                 _invalidateSetupNeeds(); renderMyNextAction(id);   // 📌次にやることのS1を即解除
                 renderMyPushCheckCard(id);                         // 🔔 確認カードを「届きましたか？」に切り替える
+                _reportMemberDevice('force');                      // 📱 端末の状態を更新 (許可になった・2026-10-08)
             } catch (e) {
                 msg.textContent = `❌ ${e?.message || e}`;
                 msg.style.color = 'var(--bad)';
@@ -14386,6 +14401,112 @@
                 if (box) box.checked = !want;   // 保存できなかったら見た目を戻す (ON に見えて届かない、を作らない)
                 if (msg) { msg.style.color = 'var(--bad)'; msg.textContent = `❌ ${e?.message || e}`; }
             }
+        }
+
+        // ===== 📱 端末の状態の報告 (通知の見える化 D・2026-10-08 ユーザー決定 Q1/Q2/Q4・設計は docs/通知の見える化_設計案_2026-10-08.md) =====
+        // 「端末で通知を設定できているか」はサーバから見えない → 本人の端末が開いたときに報告する (49_member_devices.sql)。
+        // ★ device_id は端末の localStorage の乱数 = 主キー。名乗り直しは同じ行を上書き (いまの名乗りだけが残る)
+        // ★ 書き込みは 1 時間に 1 回まで (内容 = 名乗り・許可・購読・版 が同じなら)。変わったらすぐ。last_seen_at は報告の時刻 = 最大 1 時間古い
+        // ★ 練習中は報告しない (端末の状態に触れない・偽のサーバに本番の形を残さない)。49 未適用は黙って捨てる (運営の参考情報で、無くても何も止まらない)
+        const _DEVICE_ID_KEY = 'shirisuko_device_id_v1', _DEVICE_REPORT_KEY = 'shirisuko_device_report_v1', _DEVICE_REPORT_MS = 60 * 60 * 1000;
+        function _deviceId() {
+            try {
+                let id = localStorage.getItem(_DEVICE_ID_KEY);
+                if (!id || !/^[a-z0-9]{12,}$/.test(id)) {
+                    id = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => (b % 36).toString(36)).join('');
+                    localStorage.setItem(_DEVICE_ID_KEY, id);
+                }
+                return id;
+            } catch { return null; }
+        }
+        let _deviceReporting = false;
+        async function _reportMemberDevice(reason) {
+            if (window.PAD_PRACTICE || _deviceReporting) return;
+            const me = getCurrentIdentity();
+            const deviceId = _deviceId();
+            if (!me?.id || !deviceId || typeof window.supabaseReportMemberDevice !== 'function') return;
+            _deviceReporting = true;
+            try {
+                const st = window.getPushSubscriptionStatus ? await window.getPushSubscriptionStatus().catch(() => null) : null;
+                const permission = !st ? 'unknown' : !st.supported ? 'unsupported' : (st.permission || 'unknown');
+                const endpoint = st?.endpoint || null;
+                const appBuild = document.querySelector('meta[name="app-build"]')?.content || null;
+                const sig = [String(me.id), permission, endpoint || '', appBuild || ''].join('|');
+                let prev = null;
+                try { prev = JSON.parse(localStorage.getItem(_DEVICE_REPORT_KEY) || 'null'); } catch { prev = null; }
+                const now = Date.now();
+                if (reason !== 'force' && prev && prev.sig === sig && now - Number(prev.at || 0) < _DEVICE_REPORT_MS) return;
+                const res = await window.supabaseReportMemberDevice({
+                    deviceId, playerId: me.id, ua: String(navigator.userAgent || '').slice(0, 200), permission, endpoint, appBuild,
+                    lastSeenAt: new Date(now).toISOString(),
+                });
+                if (res?.ok) { try { localStorage.setItem(_DEVICE_REPORT_KEY, JSON.stringify({ sig, at: now })); } catch { /* 覚えられないだけ (次も報告する) */ } }
+            } catch (e) {
+                console.warn('[device] 端末の状態を報告できませんでした:', e?.message || e);
+            } finally {
+                _deviceReporting = false;
+            }
+        }
+        // 裏から戻ってきたとき (OS の設定で通知を許可 / 拒否して戻ってくるのはこのとき)
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _reportMemberDevice('visible'); });
+
+        // ===== 🆕 新しくなったこと (通知の見える化 F・2026-10-08 ユーザー決定 Q3「更新内容は Claude が書く」) =====
+        // data/release-notes.json (リリースごとに 1 項目。id は YYYYMMDDnn で不変) → ホームのカードとヘルプ「更新履歴」。判定は releaseNotesDomain が唯一
+        const _RELEASE_SEEN_KEY = 'shirisuko_release_seen_v1';
+        let _releaseNotes = null;   // null = まだ読んでいない / [] = 読めなかった (次の描画で読み直す)
+        async function _loadReleaseNotes() {
+            if (Array.isArray(_releaseNotes) && _releaseNotes.length) return _releaseNotes;
+            const dom = window.releaseNotesDomain;
+            try {
+                const res = await fetch('./data/release-notes.json', { cache: 'no-cache' });
+                if (!res.ok) throw new Error(String(res.status));
+                _releaseNotes = dom ? dom.normalize(await res.json()) : [];
+            } catch (e) {
+                console.warn('[release-notes] 読めませんでした:', e?.message || e);
+                _releaseNotes = [];
+            }
+            return _releaseNotes;
+        }
+        function _releaseSeenId() {
+            try { const v = Number(localStorage.getItem(_RELEASE_SEEN_KEY)); return Number.isInteger(v) && v > 0 ? v : null; } catch { return null; }
+        }
+        let _releaseNotesSeq = 0;
+        async function renderMyReleaseNotes() {
+            const card = document.getElementById('myReleaseNotesCard');
+            const dom = window.releaseNotesDomain;
+            if (!card || !dom) return;
+            const seq = ++_releaseNotesSeq;
+            const hide = () => { card.style.display = 'none'; card.innerHTML = ''; };
+            if (window.PAD_PRACTICE) { hide(); return; }
+            const notes = await _loadReleaseNotes();
+            if (seq !== _releaseNotesSeq) return;
+            const show = dom.unseen(notes, _releaseSeenId(), Date.now());
+            if (!show.length) { hide(); return; }
+            const esc = escapeHtml;
+            const item = (n) => `<div style="margin-top:9px;"><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);line-height:1.4;">${esc(n.title)} <span style="font-weight:700;color:var(--t-muted);font-size:10.5px;white-space:nowrap;">${esc(n.date)}</span></div>`
+                + `<ul style="margin:4px 0 0;padding-left:18px;font-size:11.5px;font-weight:700;color:var(--t-body);line-height:1.65;">${n.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+            card.innerHTML = `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">🆕 新しくなったこと</div>
+                    <button type="button" onclick="handleReleaseNotesDismiss()" style="border:none;border-radius:999px;padding:6px 12px;font:inherit;font-size:11px;font-weight:800;background:var(--s2);color:var(--t-ink);cursor:pointer;">読んだ</button>
+                </div>${show.map(item).join('')}
+                <p style="margin:10px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);">これまでの更新は <a href="#help-updates" onclick="switchTab('help'); setTimeout(() => document.getElementById('help-updates')?.scrollIntoView({ behavior: 'smooth' }), 80); return false;" style="color:var(--ops);font-weight:800;">ヘルプ › 更新履歴</a> に。</p>`;
+            card.style.display = '';
+        }
+        function handleReleaseNotesDismiss() {
+            const dom = window.releaseNotesDomain;
+            const latest = dom && Array.isArray(_releaseNotes) ? dom.latestId(_releaseNotes) : null;
+            if (latest) { try { localStorage.setItem(_RELEASE_SEEN_KEY, String(latest)); } catch { /* 覚えられないだけ (次も出る) */ } }
+            const card = document.getElementById('myReleaseNotesCard');
+            if (card) { card.style.display = 'none'; card.innerHTML = ''; }
+        }
+        async function renderHelpReleaseNotes() {
+            const el = document.getElementById('helpReleaseNotes');
+            if (!el) return;
+            const notes = await _loadReleaseNotes();
+            const esc = escapeHtml;
+            el.innerHTML = notes.length
+                ? notes.map(n => `<h3>${esc(n.date)} — ${esc(n.title)}</h3><ul>${n.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>`).join('')
+                : '<p>更新履歴を読み込めませんでした。再読み込みしてください。</p>';
         }
 
         // ===== 🔔 通知の疎通確認: 本人の側 (2026-10-07) =====
@@ -16579,9 +16700,14 @@
             const summary = document.getElementById('settingsNotifySummary');
             if (!el) return;
             el.innerHTML = '<p style="color:var(--t-body);font-size:12px;">読み込み中…</p>';
-            let rows;
+            let rows, devBy = null;
             try {
                 rows = await window.supabaseLoadMemberNotificationStatus();
+                // 📱 最後に開いた端末 (49・2026-10-08)。null = 未適用・取れなかった (端末の列は「—」)
+                try {
+                    const devs = typeof window.supabaseLoadMemberDevices === 'function' ? await window.supabaseLoadMemberDevices() : null;
+                    devBy = Array.isArray(devs) ? (window.memberStatusDomain?.latestDeviceByPlayer?.(devs) || null) : null;
+                } catch { devBy = null; }
                 // アバター解決用のキャッシュを準備:
                 //   プレイヤー (avatar_url/avatar_character) + キャラマスタ (キャラ名→アイコン画像)
                 try {
@@ -16605,11 +16731,20 @@
             const head = `
                 <div style="position:sticky;top:0;z-index:10;display:flex;align-items:center;background:var(--card);padding:8px 2px 7px;border-bottom:1px solid var(--s2);font-size:10px;font-weight:800;letter-spacing:0.5px;color:var(--t-muted);">
                     <div style="flex:1;min-width:0;">メンバー</div>
+                    <div style="width:76px;flex:none;text-align:center;" title="最後に開いた端末の通知の許可 (本人の端末が報告・49)">端末</div>
                     <div style="width:40px;flex:none;text-align:center;">Push</div>
                     <div style="width:74px;flex:none;text-align:center;">時間帯ON</div>
                     <div style="width:52px;flex:none;text-align:right;">最終更新</div>
                 </div>`;
             const body = rows.map(r => {
+                // 📱 最後に開いた端末 (49): ✅ 許可 / ⛔ 拒否 / ❔ 未設定 / — 報告なし。未適用 (devBy が null) は列ごと「—」
+                const dev = devBy ? devBy.get(r.id) : null;
+                const devIcon = !dev ? '' : dev.push_permission === 'granted' ? '✅' : dev.push_permission === 'denied' ? '⛔' : '❔';
+                const devKind = dev ? (window.memberStatusDomain?.deviceKind?.(dev.ua) || '?') : '';
+                const devDate = dev && dev.last_seen_at ? String(dev.last_seen_at).slice(5, 10).replace('-', '/') : '';
+                const devTitle = !dev ? '端末の報告はまだありません (49 適用後、本人がアプリを開くと報告されます)'
+                    : `最後に開いた端末: ${devKind} · 通知 ${dev.push_permission === 'granted' ? '許可' : dev.push_permission === 'denied' ? '拒否' : dev.push_permission === 'unsupported' ? '非対応' : '未設定'} · ${String(dev.last_seen_at || '').slice(0, 16).replace('T', ' ')}${dev.app_build ? ' · 版 ' + String(dev.app_build).slice(0, 7) : ''}`;
+                const devCell = `<div style="width:76px;flex:none;text-align:center;font-size:10px;font-weight:800;line-height:1.3;color:${dev && dev.push_permission === 'denied' ? 'var(--bad-deep)' : 'var(--t-body)'};" title="${escapeHtml(devTitle)}">${dev ? `${devIcon} ${escapeHtml(devKind)}<br><span style="font-weight:700;color:var(--t-muted);">${escapeHtml(devDate)}</span>` : '<span style="color:var(--t-muted);">—</span>'}</div>`;
                 const lowWindow = r.subscribed && r.slotsOn <= 6 && !r.flexTime;   // ⏳隙間時間型は時間帯0でも意図的
                 const flagged = !r.subscribed || lowWindow;
                 const pushIconBg = r.subscribed ? 'rgba(24,194,107,0.14)' : 'var(--s2)';
@@ -16623,6 +16758,7 @@
                             <div style="flex:none;">${renderAvatarHtml(r.id, r.name, 28)}</div>
                             <span style="font-size:12.5px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${r.deviceCount > 1 ? ` <span style="font-size:10px;color:var(--t-muted);">×${r.deviceCount}</span>` : ''}</span>
                         </div>
+                        ${devCell}
                         <div style="width:40px;flex:none;display:flex;justify-content:center;">
                             <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;background:${pushIconBg};${r.subscribed ? '' : 'filter:grayscale(1);opacity:0.7;'}">${pushIcon}</div>
                         </div>
@@ -17150,12 +17286,16 @@
                     : r.slvNow != null ? `<span class="dc-mb-c ok">SLv ${r.slvNow}</span>`
                     : r.slvPrev ? `<span class="dc-mb-c warn">SLv 前回${r.slvPrev}</span>`
                     : '<span class="dc-mb-c err">SLv —</span>';
+                // 📱 最後に開いた端末 (49・2026-10-08): title に添える。無ければ空
+                const devTip = r.device ? ` / 最後に開いた端末: ${escapeHtml(r.device.kind)} ${escapeHtml(String(r.device.lastSeenAt || '').slice(5, 10).replace('-', '/'))}${r.device.appBuild ? ' · 版 ' + escapeHtml(String(r.device.appBuild).slice(0, 7)) : ''}` : '';
+                // ★ 優先順位 (2026-10-08 ユーザー決定 Q2): 🔕 購読なし → 🔔⚠ 最後に開いた端末で拒否 → 🔔✓ 本人確認 → 🔔 未確認 → 🔔 登録あり。
+                //   「未着」とは言わない (記録が無い = 分からない)。🔔 は「購読の登録あり (届くかは未検証)」
                 const push = r.pushUnknown ? '<span class="dc-mb-c mute" title="Push の購読状況を取得できませんでした (↻ で取り直し)">🔔?</span>'
-                    : !r.push ? '<span class="dc-mb-c err" title="通知が有効になっていません — 何も届きません">🔕</span>'
-                    // 疎通確認 (2026-10-07): 届いた = ✓ / 送ったがまだタップしていない = 未確認 / まだ送っていない = これまでどおり
-                    : r.pushCheck === 'ok' ? '<span class="dc-mb-c ok" title="確認の通知が届いています">🔔✓</span>'
-                    : r.pushCheck === 'wait' ? '<span class="dc-mb-c warn" title="確認の通知を送りましたが、まだタップされていません">🔔 未確認</span>'
-                    : '<span class="dc-mb-c mute" title="通知は有効 (疎通確認はまだ)">🔔</span>';
+                    : !r.push ? `<span class="dc-mb-c err" title="通知の購読がありません — 何も届きません${r.pushDenied ? ' (最後に開いた端末では通知が拒否されています)' : ''}${devTip}">🔕</span>`
+                    : r.pushDenied ? `<span class="dc-mb-c warn" title="最後に開いた端末では通知が「拒否」です。別の端末の購読は残っていますが、この端末には出ません${devTip}">🔔⚠</span>`
+                    : r.pushCheck === 'ok' ? `<span class="dc-mb-c ok" title="確認の通知が届いたと本人が伝えました${devTip}">🔔✓</span>`
+                    : r.pushCheck === 'wait' ? `<span class="dc-mb-c warn" title="確認の通知を送りましたが、本人の確認がまだです (見ていない・端末側で止めている・届いていない のどれかは分かりません)${devTip}">🔔 未確認</span>`
+                    : `<span class="dc-mb-c mute" title="購読の登録あり (届くかは未検証。疎通確認はまだ)${devTip}">🔔</span>`;
                 const atk = `<span class="dc-mb-atk">${[0, 1, 2].map(i => i < r.atkCount
                     ? `<i class="d">${r.attacks[i]?.level ? 'L' + r.attacks[i].level : '✓'}</i>`
                     : '<i>·</i>').join('')}</span>${r.proxyCount > 0 ? `<span class="dc-mb-c acc" title="代理登録 ${r.proxyCount}件">代理${r.proxyCount > 1 ? r.proxyCount : ''}</span>` : ''}`;

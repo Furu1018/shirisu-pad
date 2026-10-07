@@ -321,6 +321,11 @@ SELECT * FROM (
                 WHERE table_schema = 'public' AND table_name = 'players' AND column_name = 'notify_test'),
         '🧪 テスト通知を受け取るか (未適用だとテスト通知は運営担当だけに届き、設定画面にスイッチが出ない)'
 
+    UNION ALL SELECT '49_member_devices',
+        EXISTS (SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'member_devices'),
+        '📱 メンバーの端末の状態 (未適用だと端末の報告は捨てられ、運営は 許可/拒否・最後に開いた日時・版 を見られない)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

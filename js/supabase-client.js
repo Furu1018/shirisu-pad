@@ -2019,8 +2019,12 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
     ]);
     // 🔔 通知の疎通確認 (運営が送ったか・誰に届いたか)。null = 取れなかった (分からない)
     const pushCheck = seasonId ? await window.supabaseLoadPushCheck(seasonId) : { sentAt: null, confirmed: [] };
+    // 📱 端末の状態 (49・2026-10-08)。null = 未適用・取れなかった (分からない)
+    let devices = null;
+    try { devices = await window.supabaseLoadMemberDevices(); } catch { devices = null; }
     return {
         pushCheck,
+        memberDevices: Array.isArray(devices) ? devices : null,
         pushPlayerIds: Array.isArray(subs) ? subs.map(s => s.player_id) : null,
         slvThisSeasonIds: Array.isArray(slv) ? slv.map(s => s.player_id) : null,
         finishRequests: Array.isArray(fin) ? fin : null,
@@ -2028,6 +2032,36 @@ window.supabaseLoadMemberStatusExtras = async function (seasonId, sinceIso, curr
         // 今期の戦闘可能時間の確認 (37)。null = 機能未適用 (memberStatus 側が確認の理由も催促も出さない)
         availConfirmations: availConf,
     };
+};
+
+// ===== 📱 メンバーの端末の状態 (49_member_devices.sql・通知の見える化 D・2026-10-08) =====
+// 本人の端末が開いたときに報告する (index.html の _reportMemberDevice)。device_id が主キーなので、名乗り直しは同じ行を上書きする。
+// ★ 未適用 (42P01) は黙って捨てる — 運営の参考情報で、無くても何も止まらない。読む側は null = 分からない (理由も列も出さない)
+window.supabaseReportMemberDevice = async function (o) {
+    if (PRACTICE) return { ok: false, practice: true };   // 練習中は端末の状態に触れない (index.html 側でも止めている)
+    const deviceId = String(o && o.deviceId || '').trim();
+    const playerId = Number(o && o.playerId);
+    if (!deviceId || !Number.isFinite(playerId)) return { ok: false };
+    const PERMS = ['granted', 'denied', 'default', 'unsupported', 'unknown'];
+    const r = {
+        device_id: deviceId, player_id: playerId,
+        ua: o.ua ? String(o.ua).slice(0, 200) : null,
+        push_permission: PERMS.includes(o.permission) ? o.permission : 'unknown',
+        push_endpoint: o.endpoint ? String(o.endpoint) : null,
+        app_build: o.appBuild ? String(o.appBuild).slice(0, 64) : null,
+        last_seen_at: o.lastSeenAt || new Date().toISOString(),
+        reported_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('member_devices').upsert(r, { onConflict: 'device_id' });
+    if (error) { if (_isMissingTableErr(error, 'member_devices')) return { ok: false, unsupported: true }; throw error; }
+    return { ok: true };
+};
+window.supabaseLoadMemberDevices = async function () {
+    const { data, error } = await supabase
+        .from('member_devices')
+        .select('device_id, player_id, ua, push_permission, push_endpoint, app_build, last_seen_at, reported_at');
+    if (error) { if (_isMissingTableErr(error, 'member_devices')) return null; throw error; }   // null = 分からない (未適用)
+    return Array.isArray(data) ? data : [];
 };
 
 // ===== 互換ゲート (41_client_gate.sql / L2 ⑦) =====
@@ -2362,6 +2396,8 @@ const _BACKUP_TABLES = [
     // 育成は BlaBlaLINK から取り直せるが**当時の値は二度と取れない** (C1 の意味が消える)。
     // status も戻さないと「非公開の人」の一覧が空になり、催促の相手が分からなくなる
     'member_growth', 'member_growth_status',
+    // 2026-10-08 追加 (📱 端末の状態・49): 本人の端末が報告した 許可/拒否・最後に開いた日時・版。device_id (TEXT) が主キー
+    'member_devices',
 ];
 window.supabaseExportAllData = async function (onProgress) {
     const PAGE = 1000;
@@ -2429,6 +2465,8 @@ const _RESTORE_TABLES = [
     //   どちらも他から参照されないので順序は最後でよい
     ['member_growth', 'season_id', 'num'],
     ['member_growth_status', 'season_id', 'num'],
+    //   member_devices = 📱 端末の状態 (player_id → CASCADE)。主キーは TEXT なので 'str'。他から参照されないので最後でよい
+    ['member_devices', 'device_id', 'str'],
 ];
 window.supabaseRestoreAllData = async function (dump, onProgress) {
     if (!dump || typeof dump.tables !== 'object') throw new Error('バックアップ形式が不正です');
