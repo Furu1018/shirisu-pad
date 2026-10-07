@@ -64,10 +64,12 @@
         const list = (Array.isArray(notes) ? notes : []).filter(n => n && isId(n.id)).slice().sort((a, b) => b.id - a.id);
         const seen = toId(lastSeenId);   // localStorage の値 (数字の文字列) をそのまま渡されても読む
         if (isId(seen)) return list.filter(n => n.id > seen);
-        // 「直近 30 日」は日付で数える (時刻差だと、その日の 0 時を過ぎた時点で 30 日前の項目が外れる: Codex指摘)
+        // 「直近 30 日」は**端末のローカル日付**で数える (時刻差だと、その日の 0 時を過ぎた時点で 30 日前の項目が外れる。
+        //   UTC の日だと日本の 0〜9 時が前日になる: Codex指摘)。項目の date も同じローカル日付の 0 時として読む
         const t = new Date(Number.isFinite(now) ? now : Date.now());
-        const sinceDay = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - FRESH_DAYS);
-        return list.filter(n => Date.parse(String(n.date) + 'T00:00:00Z') >= sinceDay).slice(0, FRESH_MAX);
+        const sinceDay = new Date(t.getFullYear(), t.getMonth(), t.getDate() - FRESH_DAYS).getTime();
+        const dayOf = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+        return list.filter(n => dayOf(n.date) >= sinceDay).slice(0, FRESH_MAX);
     }
 
     root.releaseNotesDomain = { FRESH_DAYS, FRESH_MAX, normalize, latestId, unseen, isId };

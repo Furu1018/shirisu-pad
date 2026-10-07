@@ -10778,7 +10778,8 @@ console.log('\ngrowthDomain:');
                 const env = {
                     window: {
                         PAD_PRACTICE: !!opts.practice,
-                        getPushSubscriptionStatus: () => opts.hold ? new Promise(r => pending.push(() => r({ ...status }))) : Promise.resolve({ ...status }),
+                        // ★ 呼ばれた時点の状態を写す (解除時に読むと、止めている間に変えた状態が 1 回目にも入り、2 回目が最新かを確かめられない: Codex指摘)
+                        getPushSubscriptionStatus: () => { const snap = { ...status }; return opts.hold ? new Promise(r => pending.push(() => r(snap))) : Promise.resolve(snap); },
                         supabaseReportMemberDevice: async (row) => { calls.push(row); if (opts.fail) throw new Error('boom'); return { ok: true }; },
                     },
                     document: { querySelector: () => ({ content: opts.build || 'b1' }) },
@@ -10811,7 +10812,13 @@ console.log('\ngrowthDomain:');
             assert.equal(t.calls.length, 0, '止まっているのに報告が走った');
             t.release(); await p1; await t.tick(); t.release(); await t.tick(); await t.tick();
             assert.equal(t.calls.length, 2, `走っている間の要求を流していない / 2 回以上流している (${t.calls.length})`);
+            assert.equal(t.calls[0].permission, 'granted', '1 回目が止めている間に変えた状態になっている (写しが無い)');
             assert.equal(t.calls[1].permission, 'denied', '2 回目が古い状態で報告している');
+            // 止めている間に失敗しても、保留した要求は流れる
+            t = mk({ hold: true, fail: true });
+            const q1 = t.api.report('identity'); await t.api.report('force');
+            t.release(); await q1; await t.tick(); t.release(); await t.tick(); await t.tick();
+            assert.equal(t.calls.length, 2, '失敗したあとに保留した要求を流していない');
             // 5) 失敗しても覚えない (次も報告する) / 練習中は何もしない / 名乗っていなければ何もしない
             t = mk({ fail: true }); await t.api.report('identity'); assert.equal(t.calls.length, 1); assert.equal(t.store.has('shirisuko_device_report_v1'), false, '失敗したのに覚えている');
             t = mk({ practice: true }); await t.api.report('identity'); assert.equal(t.calls.length, 0, '練習中に報告している');
@@ -10838,9 +10845,10 @@ console.log('\ngrowthDomain:');
             ] });
             assert.deepEqual(out.map(n => n.id), [2026100701], 'ずれた項目や存在しない日付を通している');
             const notes = rn.normalize({ notes: [{ id: 2026100801, date: '2026-10-08', title: 't', lines: ['a'] }, { id: 2026090801, date: '2026-09-08', title: 't', lines: ['a'] }] });
-            // 10/8 のうちは 9/8 を含める (時刻差で数えると 10/8 の 0 時を過ぎた時点で外れる)
-            assert.deepEqual(rn.unseen(notes, null, Date.parse('2026-10-08T23:59:00Z')).map(n => n.id), [2026100801, 2026090801], '30 日の境界を日付で数えていない');
-            assert.deepEqual(rn.unseen(notes, null, Date.parse('2026-10-09T00:00:00Z')).map(n => n.id), [2026100801]);
+            // 10/8 のうちは 9/8 を含める (時刻差で数えると 10/8 の 0 時を過ぎた時点で外れる)。端末のローカル日付で数える (UTC だと日本の 0〜9 時が前日)
+            assert.deepEqual(rn.unseen(notes, null, new Date(2026, 9, 8, 23, 59).getTime()).map(n => n.id), [2026100801, 2026090801], '30 日の境界を日付で数えていない');
+            assert.deepEqual(rn.unseen(notes, null, new Date(2026, 9, 8, 0, 30).getTime()).map(n => n.id), [2026100801, 2026090801], '日付の始まりで 30 日前が外れている (UTC で数えている)');
+            assert.deepEqual(rn.unseen(notes, null, new Date(2026, 9, 9, 0, 0).getTime()).map(n => n.id), [2026100801]);
             assert.deepEqual(rn.unseen(notes, '2026090801').map(n => n.id), [2026100801], '読んだ id を数字の文字列で渡すと「初めて」扱いになる');
         });
     }
