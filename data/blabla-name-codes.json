@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generated": "2026-09-09T11:19:26.786Z",
+  "generated": "2026-10-08T01:13:31.263Z",
   "source": "blablalink CDN: /character/character_id_map.json + /roledata/{resource_id}-v2-ja.json",
   "note": "name_code → { jp: CDNの日本語名, resource_id, element/elementJp: 属性, pad: PADのcanonical_name (一致したものだけ) }。再生成は node scripts/build-blabla-name-codes.mjs --apply",
   "counts": {
-    "name_codes": 200,
-    "matched_pad": 200,
-    "pad_total": 203,
-    "with_element": 200
+    "name_codes": 202,
+    "matched_pad": 202,
+    "pad_total": 205,
+    "with_element": 202
   },
   "data": {
     "1007": {
@@ -1426,6 +1426,20 @@
       "element": "wind",
       "elementJp": "風圧",
       "pad": "ドレイク：グレイトヴィラン"
+    },
+    "5182": {
+      "jp": "ギルティ：マイティバニー",
+      "resource_id": 404,
+      "element": "water",
+      "elementJp": "水冷",
+      "pad": "ギルティ：マイティバニー"
+    },
+    "5183": {
+      "jp": "シン：スウィフトバニー",
+      "resource_id": 405,
+      "element": "water",
+      "elementJp": "水冷",
+      "pad": "シン：スウィフトバニー"
     }
   }
 }
