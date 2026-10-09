@@ -4512,7 +4512,7 @@
                         <span class="hint">残り凸のあるメンバー全員 / いま戦闘可能時間の人だけ (締め凸の相談向け)</span></div>
                     <div class="row"><span class="k">起点</span>
                         <div class="plan-seg" role="group" aria-label="起点"><button type="button" data-k="now" onclick="setOpsPlanStartMode('now')">今から</button><button type="button" data-k="day" onclick="setOpsPlanStartMode('day')">朝5時から</button></div>
-                        <span class="hint">当日は「今から」。前日の準備は「朝5時から」でレイド日いちにちぶんを組む</span></div>
+                        <span class="hint">前日まではどちらも朝5時からレイド日いちにちぶんを組む。当日は「今から」で残りの時間だけ</span></div>
                     <div class="row"><span class="k">前回の配信</span>
                         <div class="plan-seg" role="group" aria-label="前回の配信"><button type="button" id="opsPlanStickyBtn" data-k="keep" onclick="setOpsPlanSticky(true)">尊重する</button><button type="button" data-k="fresh" onclick="setOpsPlanSticky(false)">ゼロから</button></div>
                         <span class="hint">尊重 = 実現不能か、変えると明確に得なとき以外は前回どおり (メンバーを振り回さない)。ゼロから = まっさらに組み直す</span></div>
@@ -13478,6 +13478,16 @@
             const h = parseInt(hStr, 10) % 24;
             return _hourKey(h);
         }
+        // ソルバーに渡す「いま」の時間帯。★ レイド日 (ハード日の 5時〜翌4時) より前は時計を見ない (2026-10-09 実機):
+        //   前日 13時に承認の影響を解くと、翌日 10時の約束が「約束の時刻を過ぎています」になって承認できなかった。
+        //   時間割は常にレイド日の 24 時間なので、前日までは先頭 (h05) を「いま」にする。レイド日とそのあとは時計どおり。
+        //   ハード日が無い (テスト回・未設定) ときも時計どおり = 従来の動き。承認の影響と算出の両方がこれを通す (時計を直に渡さない)
+        function _planNowSlot(season, nowMs = Date.now()) {
+            const st = window.opsStageDomain;
+            const hd = season && season.hard_date ? String(season.hard_date).slice(0, 10) : '';
+            if (st && typeof st.raidDayKey === 'function' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(hd) && st.raidDayKey(nowMs) < hd) return 'h05';
+            return getCurrentSlotJST();
+        }
 
         // ===== 戦闘可能時間: タイムライン型 (なぞって選択) =====
         // state: HOUR_ORDER と同じ並び順の 24 個 bool 配列
@@ -17605,14 +17615,26 @@
                 alert(`❌ 承認できません。\n\n${impact.breaksText}\n\n同じ人が同じキャラを1日2回使うことになります。どちらかを見送るか、本人に取り下げてもらってください。`);
                 return;
             }
-            let msg = `🔒 ${row.player_name || '#' + row.player_id} の「${rv.describe(row, bossName)}」を承認して、プランを組み直しますか？\n\n`
-                + '承認した凸は固定され、残りの人とHPで組み直します。組み直したプランは次の画面で配信できます。';
+            // ★ 「何が起きるか / 起きないか」を先に言う (2026-10-09 運営チーム「承認を押すのが怖い」)。
+            //   影響の数字は、いま提出されている模擬だけで仮に組んだ 2 つのプランの差 — 配信は別に押すまでされず、ほかのメンバーには何も届かない。
+            //   配信の確認は最後の 1 件を承認したときだけ出る (下の remaining と同じ数え方)
+            const othersWaiting = (_resv.rows || []).filter(r => r.status === 'requested' && Number(r.id) !== Number(id)).length;
+            let msg = `🔒 ${row.player_name || '#' + row.player_id} の「${rv.describe(row, bossName)}」を承認しますか？\n\n`
+                + '承認すると起きること\n'
+                + '・本人に「承認されました」の通知が届き、ホームに 🔒 で出ます\n'
+                + '・この画面のプランを組み直します (運営の手元だけ)\n\n'
+                + '承認しても起きないこと\n'
+                + (othersWaiting > 0
+                    ? `・配信はされません。残り ${othersWaiting} 件を承認したあと、差分を見てから別に押します\n`
+                    : '・配信はされません。このあと差分と配信の確認が出ます (キャンセルしても承認は残ります)\n')
+                + '・ほかのメンバーには何も届きません\n'
+                + '・取り消したくなったら「取り下げる」で外せます (本人に通知が届きます)';
             if (impact) {
-                msg += `\n\n【固定した場合の影響】\n`
+                msg += `\n\n【固定した場合の影響 — いまの提出 (${impact.mockCount != null ? impact.mockCount + ' 人分' : '模擬だけ'}) で仮に組んだ参考値】\n`
                     + `・Lv${impact.clearBefore} 完全攻略の見込み → ${impact.clearAfter >= impact.clearBefore ? '変わりません' : `Lv${impact.clearAfter} に下がります`}\n`
                     + `・未消化の凸 ${impact.unusedBefore} → ${impact.unusedAfter}\n`
                     + `・総与ダメ ${impact.creditedDiffB >= 0 ? '+' : ''}${impact.creditedDiffB.toFixed(1)}B`
-                    + (impact.movedCount != null ? `\n・ほかに割当が変わる人: ${impact.movedCount}名` : '');
+                    + (impact.movedCount != null ? `\n・仮のプランの中で割当が動く人: ${impact.movedCount} 名 (本人たちには見えません)` : '');
                 if (impact.warnings.length) msg += `\n\n⚠️ ${impact.warnings.join('\n⚠️ ')}`;
                 if (impact.clearAfter < impact.clearBefore) msg += '\n\n※ 攻略の見込みが下がります。それでも承認しますか？';
                 if (impact.breaks && impact.breaks.length) msg += '\n\n※ 固定済みの予約が置けなくなります (上の ⚠️)。それでも承認しますか？';
@@ -17625,7 +17647,7 @@
             if (changed) {
                 msg += `\n\n【申請後に本人が編成を変えています】\n`
                     + `・申請時 ${Number(row.expected_damage_b || 0).toFixed(1)}B → いま ${Number(snap.expectedDamageB).toFixed(1)}B\n`
-                    + '承認すると **いまの内容** で固定されます。';
+                    + '承認すると、いまの内容で固定されます。';
             }
             if (!confirm(msg)) return;
             const ok = await _resvTransition(id, 'approved', {
@@ -17696,12 +17718,15 @@
             const base = (_resv.rows || []).filter(r => rv.isFixed(r) && !(samePin && Number(r.id) === Number(samePin.id)));
             const solve = (rows) => window.computeOptimalPlanCore({
                 season: snap.season, bosses: snap.bosses, players: snap.players,
-                currentSlot: getCurrentSlotJST(), timeAware: true, onlyAvailableNow: false,
+                currentSlot: _planNowSlot(snap.season), timeAware: true, onlyAvailableNow: false,
                 reservations: rv.toSolverConstraints(rows),
             });
             // 候補は「承認済みとして」解く (approved にしないと拘束にならない)。
             // 候補の ID を渡すと、置けなかったときに最初の警告として返り、承認を止められる
-            return rv.approvalImpact(solve(base), solve([...base, { ...row, status: 'approved' }]), window.planDiffDomain, row.id, row.player_id);
+            const impact = rv.approvalImpact(solve(base), solve([...base, { ...row, status: 'approved' }]), window.planDiffDomain, row.id, row.player_id);
+            // ダイアログの注記用: いま模擬を提出している人数 (影響の数字は、この人たちだけで仮に組んだ 2 つのプランの差)
+            if (impact) impact.mockCount = (snap.players || []).filter(p => Object.values(p.loadoutsByAttr || {}).some(a => Array.isArray(a) && a.length > 0)).length;
+            return impact;
         }
 
         function handleOpsMemberPhase(p) { _mb.phase = p; _mbRebuild(); }
@@ -20929,8 +20954,8 @@
             return window.computeOptimalPlanCore({
                 season, bosses, players,
                 reservations: (rv && resvRows) ? rv.toSolverConstraints(resvRows) : [],
-                // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン
-                currentSlot: _opsPlanStartMode === 'day' ? 'h05' : getCurrentSlotJST(),
+                // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン。'now' も前日までは h05 (_planNowSlot)
+                currentSlot: _opsPlanStartMode === 'day' ? 'h05' : _planNowSlot(season),
                 onlyAvailableNow: !!options.onlyAvailableNow,
                 timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
                 // ★ L1 安定化 (2026-09-07): **いま配信中のプラン** をソルバーに渡す。
@@ -21110,7 +21135,7 @@
             //   交代した運営が「どんな状態で算出されたものか」を読める。判定は planBoardDomain が唯一
             plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
                 who: onlyNow ? 'now' : 'all',
-                from: _opsPlanStartMode,
+                from: plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode,   // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む
                 prev: _opsPlanSticky ? 'keep' : 'fresh',
                 reservations: (Array.isArray(reservations) && window.reservationsDomain)
                     ? reservations.filter(r => window.reservationsDomain.isFixed(r)).length : 0,

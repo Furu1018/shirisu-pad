@@ -6754,11 +6754,54 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/_reservationImpact\(rowNow\)/.test(fn), '影響を出していない (いまの写しで解く)');
         assert.ok(fn.includes('完全攻略の見込み'));
         assert.ok(fn.includes('未消化の凸'));
-        assert.ok(fn.includes('ほかに割当が変わる人'));
+        assert.ok(fn.includes('仮のプランの中で割当が動く人'));
+        // ★ 2026-10-09 運営チーム「承認を押すのが怖い」: 何が起きるか / 起きないかを先に言う。配信は別に押すまでされない
+        assert.ok(fn.includes('を承認しますか？') && !fn.includes('承認して、プランを組み直しますか？'), '「プランを組み直しますか」は承認 = 配信に読める');
+        assert.ok(fn.includes('承認すると起きること') && fn.includes('承認しても起きないこと'), '起きること / 起きないこと が無い');
+        assert.ok(fn.includes('・本人に「承認されました」の通知が届き、ホームに 🔒 で出ます') && fn.includes('・この画面のプランを組み直します (運営の手元だけ)'));
+        assert.ok(fn.includes('・配信はされません。残り ${othersWaiting} 件を承認したあと、差分を見てから別に押します')
+            && fn.includes('・配信はされません。このあと差分と配信の確認が出ます (キャンセルしても承認は残ります)'), '配信が別であることを言っていない');
+        assert.ok(/const othersWaiting = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested' && Number\(r\.id\) !== Number\(id\)\)\.length;/.test(fn),
+            '残りの件数を remaining と同じ数え方で出していない');
+        assert.ok(fn.includes('・ほかのメンバーには何も届きません') && fn.includes('・取り消したくなったら「取り下げる」で外せます (本人に通知が届きます)'));
+        assert.ok(fn.includes('で仮に組んだ参考値】') && fn.includes('(本人たちには見えません)'), '影響の数字が参考値であることを言っていない');
+        assert.ok(!fn.split('\n').filter(l => !l.trim().startsWith('//')).some(l => l.includes('**')), 'confirm() に markdown の記号が出る (以前は「**いまの内容**」がそのまま表示されていた)');
+        assert.ok(/if \(impact\) impact\.mockCount = \(snap\.players \|\| \[\]\)\.filter\(p => Object\.values\(p\.loadoutsByAttr \|\| \{\}\)\.some\(a => Array\.isArray\(a\) && a\.length > 0\)\)\.length;/.test(
+            html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || ''), '提出人数を添えていない');
         // 影響の算出は「承認済みだけ」と「+候補」の2解を比べる
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/solve\(base\), solve\(\[\.\.\.base, \{ \.\.\.row, status: 'approved' \}\]\)/.test(im));
         assert.ok(/rv\.toSolverConstraints\(rows\)/.test(im), 'ソルバーへ拘束として渡していない');
+    });
+    test('★ 前日の承認 (2026-10-09 実機): ソルバーの「いま」はレイド日より前なら h05 — 翌日 10時の約束を「過ぎています」にしない', () => {
+        const src = html.match(/        function _planNowSlot\(season, nowMs = Date\.now\(\)\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(src, '_planNowSlot が無い');
+        // 本物の opsStageDomain.raidDayKey (5時より前は前日のレイド日) で、時計だけ差し替えて実行する
+        const mk = (clock) => new Function('window', 'getCurrentSlotJST', `${src}\nreturn _planNowSlot;`)({ opsStageDomain: globalThis.opsStageDomain }, () => clock);
+        const season = { id: 45, hard_date: '2026-10-10' };
+        const T = (iso) => Date.parse(iso);
+        assert.equal(mk('h13')(season, T('2026-10-09T04:00:00Z')), 'h05', '前日 13時 JST は先頭 (h05) のはず');
+        assert.equal(mk('h03')(season, T('2026-10-09T18:30:00Z')), 'h05', 'レイド日の 3時半 JST はまだ前日のレイド日 = 先頭');
+        assert.equal(mk('h13')(season, T('2026-10-10T04:00:00Z')), 'h13', 'レイド日 13時は時計どおり');
+        assert.equal(mk('h04')(season, T('2026-10-10T19:30:00Z')), 'h04', '翌 4時半はまだレイド日 = 時計どおり');
+        assert.equal(mk('h13')(season, T('2026-10-11T04:00:00Z')), 'h13', '終わったあとは時計どおり');
+        assert.equal(mk('h13')({ id: 1, hard_date: null }, T('2026-10-09T04:00:00Z')), 'h13', 'ハード日が無ければ従来どおり');
+        assert.equal(mk('h13')(null, T('2026-10-09T04:00:00Z')), 'h13', 'シーズンが無ければ従来どおり');
+        assert.equal(mk('h13')({ hard_date: '2026-10-10T00:00:00+09:00' }, T('2026-10-09T04:00:00Z')), 'h05', '時刻つきのハード日でも日付で比べる');
+        assert.equal(mk('h13')({ hard_date: 'x' }, T('2026-10-09T04:00:00Z')), 'h13', '壊れたハード日は時計どおり (例外にしない)');
+        // 配線: 承認の影響と算出の両方がこれを通す。ソルバーに時計を直に渡す箇所を残さない
+        const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/currentSlot: _planNowSlot\(snap\.season\), timeAware: true/.test(im), '承認の影響が時計を直に渡している');
+        const cp = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/currentSlot: _opsPlanStartMode === 'day' \? 'h05' : _planNowSlot\(season\),/.test(cp), '算出が時計を直に渡している');
+        for (const m of html.matchAll(/computeOptimalPlanCore\(\{[\s\S]*?\n            \}\);/g)) {
+            assert.ok(!/getCurrentSlotJST\(\)/.test(m[0]), `ソルバーに時計を直に渡している: ${m[0].slice(0, 80)}`);
+            assert.ok(/_planNowSlot\(/.test(m[0]), `ソルバーの呼び出しが _planNowSlot を通していない: ${m[0].slice(0, 80)}`);
+        }
+        assert.equal([...html.matchAll(/computeOptimalPlanCore\(\{/g)].length, 2, 'ソルバーの呼び出し口が増えた (時計の渡し方を確かめること)');
+        // 焼き込みの起点は実際に使った時間帯 (前日に「今から」で組んでも朝5時から)
+        assert.ok(/from: plan\.currentSlot === 'h05' \? 'day' : _opsPlanStartMode,/.test(html), '焼き込みの起点が選んだモードのまま (前日は朝5時から組んでいるのに「今から」と出る)');
+        assert.ok(html.includes('前日まではどちらも朝5時からレイド日いちにちぶんを組む。当日は「今から」で残りの時間だけ'), '起点のヒントが古い');
     });
     test('L2 配線: 状態を進めたら盤面を捨てる / 二重押しを止める', () => {
         const fn = html.match(/async function _resvTransition\([\s\S]*?\n        \}\n/)?.[0] || '';
