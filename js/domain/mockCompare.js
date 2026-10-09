@@ -18,9 +18,10 @@
 
     /**
      * @typedef {{id:(string|number), name:string, slv?:(number|null)}} MockPlayer
-     * @typedef {{player_id:(string|number), attribute:string, slot?:number, damage_b:number, boss_level?:?number}} MockDamageRow
+     * @typedef {{player_id:(string|number), attribute:string, slot?:number, damage_b:number, boss_level?:?number, characters?:string[]}} MockDamageRow
      * @typedef {{slv:number, dmgByAttr:Object<string, number>}} MockBase  _loadMockRadarBase の形
-     * @typedef {{playerId:(string|number), name:string, value:number, damageB:number, slot:number, bossLevel:?number, rank:number}} MockCompareRow
+     * @typedef {{playerId:(string|number), name:string, value:number, damageB:number, slot:number, bossLevel:?number, team:string[], rank:number}} MockCompareRow
+     *   team = 採用した提出の編成 (2026-10-10 ユーザー要望「ダメージと、使ったキャラの構成がわかるように」。未登録なら [])
      */
 
     /**
@@ -59,6 +60,7 @@
                     damageB: v,
                     slot: Number(d.slot) || 1,
                     bossLevel: (Number.isInteger(lv) && lv >= 1 && lv <= 4) ? lv : null,
+                    team: Array.isArray(d.characters) ? d.characters.filter(c => typeof c === 'string' && c) : [],
                 });
             }
         });
@@ -78,7 +80,7 @@
             const best = bestByPlayer.get(p.id);
             if (!best) { missing.push({ playerId: p.id, name: p.name }); return; }
             if (!useFururi) {
-                rows.push({ playerId: p.id, name: p.name, value: best.damageB, damageB: best.damageB, slot: best.slot, bossLevel: best.bossLevel ?? null, rank: 0 });
+                rows.push({ playerId: p.id, name: p.name, value: best.damageB, damageB: best.damageB, slot: best.slot, bossLevel: best.bossLevel ?? null, team: best.team, rank: 0 });
                 return;
             }
             if (baseMissing) return;   // 基準なし: 提出者も並べられない (meta.baseMissing で通知)
@@ -88,7 +90,7 @@
                 mode: 'classic', maps, slvRatioTable,
             }) : null;
             if (val == null) { noSlv.push({ playerId: p.id, name: p.name }); return; }
-            rows.push({ playerId: p.id, name: p.name, value: val, damageB: best.damageB, slot: best.slot, bossLevel: best.bossLevel ?? null, rank: 0 });
+            rows.push({ playerId: p.id, name: p.name, value: val, damageB: best.damageB, slot: best.slot, bossLevel: best.bossLevel ?? null, team: best.team, rank: 0 });
         });
 
         // 降順 + 同値同順位 (1,2,2,4)。同値の並びは名前で安定させる

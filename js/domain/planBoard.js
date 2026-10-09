@@ -16,6 +16,7 @@
     const WHO = { all: '全員', now: '今動ける人だけ' };
     const FROM = { now: '今から', day: '朝5時から' };
     const PREV = { keep: '前回を尊重', fresh: 'ゼロから' };
+    const TIME = { strict: '⏰時間厳守', damage: '⚡ダメージ優先' };
 
     const n0 = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; };
     const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
@@ -39,6 +40,8 @@
             who: a.who === 'now' ? 'now' : 'all',
             from: a.from === 'day' ? 'day' : 'now',
             prev: a.prev === 'fresh' ? 'fresh' : 'keep',
+            // ⏰ 時間: 厳守 (宣言した時間に合わない凸を組まない) / ダメージ優先 (時間外も最寄りで組む)。古い焼き込み (無印) はダメージ優先として読む
+            time: a.time === 'strict' ? 'strict' : 'damage',
             reservations: n0(a.reservations),
             excluded: n0(a.excluded),
             unavailable: n0(a.unavailable),
@@ -52,7 +55,7 @@
     /** 「全員 · 今から · 前回を尊重 · 🔒予約 3 · 🚫除外 1 · ✋難しい 2」。数が 0 のものは省く (予約だけは常に出す) */
     function conditionSummary(c) {
         const x = conditionsOf(c || {});
-        const parts = [WHO[x.who], FROM[x.from], PREV[x.prev], `🔒予約 ${x.reservations}`];
+        const parts = [WHO[x.who], FROM[x.from], TIME[x.time], PREV[x.prev], `🔒予約 ${x.reservations}`];
         if (x.excluded > 0) parts.push(`🚫除外 ${x.excluded}`);
         if (x.unavailable > 0) parts.push(`✋難しい ${x.unavailable}`);
         return parts.join(' · ');

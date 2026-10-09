@@ -313,6 +313,32 @@ test('レベル依存: 時間外の人も ⏳ミスマッチとして組み込�
     }
 });
 
+test('⏰ 時間厳守 (timeStrict): 時間が合わない人を最寄りで組み込まない (未割当 time) / 既定は従来どおり (指紋が変わらない)', () => {
+    // 現在14時。朝だけの人 (h09) は時間を過ぎている。ダメージ優先 = ⚠時間外で組み込む / 厳守 = 組み込まず、夜の人だけで削る
+    const mk = (strict) => compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 15 })],
+        [
+            player('夜の人', { fire: 10 }, { availableSlots: ['h21'] }),
+            player('朝だけの人', { fire: 300 }, { availableSlots: ['h09'] }),
+        ],
+        { currentSlot: 'h14' },
+    ), timeStrict: strict });
+    const loose = mk(false), strict = mk(true);
+    const names = (plan) => plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.map(a => a.memberName)));
+    assert.ok(names(loose).includes('朝だけの人'), 'ダメージ優先で時間外の人を組み込んでいない (従来の動き)');
+    assert.equal(loose.timeStrict, false);
+    assert.ok(!names(strict).includes('朝だけの人'), '厳守なのに時間外の人を組み込んでいる');
+    assert.equal(strict.timeStrict, true);
+    assert.deepEqual(strict.unassigned.filter(u => u.memberName === '朝だけの人').map(u => u.reason), ['time'], '厳守で外れた人の理由が「時間」でない');
+    assert.equal(strict.levels[0].bosses[0].timeConstrained, true, '時間で外した人が居たことを timeConstrained で伝えていない');
+    assert.ok(strict.levels[0].bosses[0].attacks.every(a => !a.timeMismatch), '厳守なのに ⚠時間外の凸がある');
+    // ⏳ 隙間型・ハイブリッド (時間外は隙間でやる) は厳守でも組み込む (本人が「約束しない」を選んでいる)
+    const hybrid = compute({ ...timeInput([boss(1, 'fire', { remainingB: 15 })], [player('隙間の人', { fire: 300 }, { availableSlots: ['h09'], flexTime: true })], { currentSlot: 'h14' }), timeStrict: true });
+    assert.deepEqual(names(hybrid), ['隙間の人']); assert.equal(hybrid.levels[0].bosses[0].attacks[0].flex, true);
+    // timeAware でなければ厳守は効かない (時間を見ないモードに時間の縛りを足さない)
+    assert.equal(compute({ ...makeInput([boss(1, 'fire', { remainingB: 15 })], [player('朝だけの人', { fire: 300 }, { availableSlots: ['h09'] })], { currentSlot: 'h14' }), timeStrict: true }).timeStrict, false);
+});
+
 test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 20 })],
@@ -1555,6 +1581,20 @@ console.log('\ndomain/mockCompare:');
         const asahi = r.rows.find(x => x.playerId === 1);
         assert.equal(asahi.value, 9, '高い方 (slot2=9B) を採用');
         assert.equal(asahi.slot, 2, '採用した slot=2 を返す');
+    });
+    test('★ mockCompare: 採用した提出の編成 (characters) を team で返す — 2 編成なら採用した方の編成・未登録は [] (2026-10-10 ユーザー要望)', () => {
+        const dmgs = [
+            { player_id: 1, attribute: 'fire', slot: 1, damage_b: 8, characters: ['a', 'b', 'c', 'd', 'e'] },
+            { player_id: 1, attribute: 'fire', slot: 2, damage_b: 9, characters: ['f', 'g', 'h', 'i', 'j'] },
+            { player_id: 2, attribute: 'fire', slot: 1, damage_b: 9 },                                     // 編成未登録
+            { player_id: 3, attribute: 'fire', slot: 1, damage_b: 6, characters: ['k', null, '', 'l'] },  // 壊れた値は落とす
+        ];
+        const r = buildMockComparison({ attribute: 'fire', mode: 'damage', players: mcPlayers, damages: dmgs, base: null, slvRatioTable: null });
+        assert.deepEqual(r.rows.find(x => x.playerId === 1).team, ['f', 'g', 'h', 'i', 'j'], '採用した編成②でなく①の編成を返している');
+        assert.deepEqual(r.rows.find(x => x.playerId === 2).team, []);
+        assert.deepEqual(r.rows.find(x => x.playerId === 3).team, ['k', 'l']);
+        const f = buildMockComparison({ attribute: 'fire', mode: 'fururi', players: mcPlayers, damages: dmgs, base: MC_BASE, slvRatioTable: MC_RATIO });
+        assert.deepEqual(f.rows.find(x => x.playerId === 1).team, ['f', 'g', 'h', 'i', 'j'], 'ふるり値モードで編成が落ちる');
     });
 
     test('mockCompare: 採用した提出の測定レベルを bossLevel で返す', () => {
@@ -9928,11 +9968,13 @@ console.log('\ngrowthDomain:');
         const d = globalThis.planBoardDomain;
         assert.equal(typeof d?.conditionsOf, 'function', 'planBoardDomain が無い');
         const c = d.conditionsOf({ who: 'now', from: 'day', prev: 'fresh', reservations: 3, excluded: '2', unavailable: -1, publishedBy: ' A ', publishedAt: 'x', computedBy: '', computedAt: '2026-09-11T12:04:00Z' });
-        assert.deepEqual(c, { who: 'now', from: 'day', prev: 'fresh', reservations: 3, excluded: 2, unavailable: 0, publishedBy: 'A', publishedAt: 'x', computedBy: null, computedAt: '2026-09-11T12:04:00Z' });
-        assert.deepEqual(d.conditionsOf({ who: 'x', from: null, prev: undefined }), { who: 'all', from: 'now', prev: 'keep', reservations: 0, excluded: 0, unavailable: 0, publishedBy: null, publishedAt: null, computedBy: null, computedAt: null });
-        assert.equal(d.conditionSummary(c), '今動ける人だけ · 朝5時から · ゼロから · 🔒予約 3 · 🚫除外 2');
-        assert.equal(d.conditionSummary({ who: 'all', reservations: 0, excluded: 0, unavailable: 2 }), '全員 · 今から · 前回を尊重 · 🔒予約 0 · ✋難しい 2');
-        assert.equal(d.conditionSummary(null), '全員 · 今から · 前回を尊重 · 🔒予約 0');
+        assert.deepEqual(c, { who: 'now', from: 'day', prev: 'fresh', time: 'damage', reservations: 3, excluded: 2, unavailable: 0, publishedBy: 'A', publishedAt: 'x', computedBy: null, computedAt: '2026-09-11T12:04:00Z' });
+        // ★ 時間 (2026-10-10): 古い焼き込み (無印) と壊れた値は「ダメージ優先」(= それまでの動き) として読む
+        assert.deepEqual(d.conditionsOf({ who: 'x', from: null, prev: undefined }), { who: 'all', from: 'now', prev: 'keep', time: 'damage', reservations: 0, excluded: 0, unavailable: 0, publishedBy: null, publishedAt: null, computedBy: null, computedAt: null });
+        assert.equal(d.conditionsOf({ time: 'strict' }).time, 'strict');
+        assert.equal(d.conditionSummary(c), '今動ける人だけ · 朝5時から · ⚡ダメージ優先 · ゼロから · 🔒予約 3 · 🚫除外 2');
+        assert.equal(d.conditionSummary({ who: 'all', time: 'strict', reservations: 0, excluded: 0, unavailable: 2 }), '全員 · 今から · ⏰時間厳守 · 前回を尊重 · 🔒予約 0 · ✋難しい 2');
+        assert.equal(d.conditionSummary(null), '全員 · 今から · ⚡ダメージ優先 · 前回を尊重 · 🔒予約 0');
     });
     test('★ planBoard: 戦闘可能時間 → 行番号 / 動かせる幅 (硬い・狭い・柔らかい) / 模擬の更新数', () => {
         const d = globalThis.planBoardDomain;
@@ -11445,6 +11487,67 @@ console.log('\n通知 (宛先・節目・疎通確認):');
         assert.ok(/if \(!identity\?\.id \|\| window\.PAD_PRACTICE\) \{ hide\(\); return; \}/.test(card), '練習中に端末の通知の状態を読んでいる');
         assert.ok(/renderMyPushCheckCard\(id\);       \/\/ 🔔 通知の疎通確認/.test(html) && /case 'pushcheck': openOpsPushCheckModal\(\); break;/.test(html));
         assert.ok(/id="myPushCheckCard" style="display:none;"/.test(html) && /data-span="6" id="myPushCheckCard"/.test(html), 'ホームのカードに幅 (data-span) が無い');
+    });
+}
+
+// ---- 🛠 運営チームの要望 2026-10-10 (時間厳守 / 📌→🔒 確定 / 握った人の時間 / 編成つきの比較 / PC の D&D) の配線 ----
+console.log('\n運営チームの要望 2026-10-10:');
+{
+    const html = _fsLate.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    test('★ 配線: ⏰ 時間 (厳守 / ダメージ優先) — 条件パネルの 4 行目・端末に記憶 (既定は厳守)・算出と承認の影響の両方に渡す・焼き込む', () => {
+        assert.ok(/<div class="plan-seg" role="group" aria-label="時間"><button type="button" data-k="strict" onclick="setOpsPlanTimeMode\('strict'\)">⏰ 厳守<\/button><button type="button" data-k="damage" onclick="setOpsPlanTimeMode\('damage'\)">⚡ ダメージ優先<\/button><\/div>/.test(html), '条件パネルに時間の行が無い');
+        assert.ok(/let _opsPlanTimeMode = 'strict';\s*\n\s*try \{ _opsPlanTimeMode = localStorage\.getItem\(_OPS_PLAN_TIME_KEY\) === 'damage' \? 'damage' : 'strict'; \}/.test(html), '既定が厳守でない / 端末に記憶していない');
+        assert.ok(/set\('時間', _opsPlanTimeMode\);/.test(html), 'セグメントを状態に合わせていない');
+        const cp = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/timeStrict: _opsPlanTimeMode === 'strict',/.test(cp), '算出に時間の扱いを渡していない');
+        const imp = html.match(/async function _reservationImpact\(row\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/timeStrict: _opsPlanTimeMode === 'strict',/.test(imp), '承認の影響を画面の算出と違う時間の扱いで解いている');
+        assert.ok(/time: plan\.timeStrict \? 'strict' : 'damage',/.test(html), '使った時間の扱いを焼き込んでいない');
+        // ソルバーを呼ぶ口 (computeOptimalPlanCore) の数 = 時間の扱いを渡している数 (口を増やしたら渡し忘れに気づく)
+        assert.equal((html.match(/timeStrict: _opsPlanTimeMode === 'strict',/g) || []).length, (html.match(/window\.computeOptimalPlanCore\(\{/g) || []).length, 'ソルバーを呼ぶ口に時間の扱いを渡していないものがある');
+    });
+    test('★ 配線: 📌 → 🔒 確定 — 本人の返事を待たずに約束にする (pinned → approved・確認・本人に通知・組み直し)。焦点の帯と予約カードの両方から', () => {
+        const fn = html.match(/async function _opsPlanConfirmPin\(id\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn.length > 300, '_opsPlanConfirmPin が無い');
+        assert.ok(/if \(!row \|\| row\.status !== 'pinned'\) \{ showNotification/.test(fn), '下書きでないものを確定できる');
+        assert.ok(/if \(!confirm\(`🔒 \$\{who\} さんの「\$\{what\}」を、本人の返事を待たずに確定しますか？/.test(fn) && /確定すると起きること/.test(fn) && /確定しても起きないこと/.test(fn), '確定の前に「起きること / 起きないこと」を言っていない');
+        assert.ok(/_resvTransition\(Number\(id\), 'approved', \{ expectFrom: 'pinned', reason: 'ops_confirmed'/.test(fn), 'pinned → approved の遷移でない (期待状態が無い)');
+        assert.ok(/_notifyMemberResv\(after, '🔒 運営が凸を確定しました'/.test(fn) && /await computeAndRenderOptimalPlan\(\);/.test(fn), '本人に知らせていない / 組み直していない');
+        assert.ok(/onclick="_opsPlanConfirmPin\(\$\{Number\(sel\.reservationId\)\}\)"[^>]*>🔒 確定する<\/button>/.test(html), '焦点の帯に「確定する」が無い');
+        assert.ok(/btn\('🔒 確定', `_opsPlanConfirmPin\(\$\{Number\(r\.id\)\}\)`, 'primary', r\.id\)/.test(html), '予約カードの 📌 の行に「確定」が無い');
+        // SQL の遷移表に pinned → approved がある (運営が起こす遷移も同じ RPC)
+        const sql = _fsLate.readFileSync(new URL('../supabase/47_approval_counts_pins.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/\(v_from = 'pinned'\s+AND p_to IN \('approved', 'released'\)\)/.test(sql), 'SQL の遷移表に pinned → approved が無い');
+    });
+    test('★ 配線: 握った人の出られる時間 — ピースの見出しに時間 / PC はつかんだ瞬間に行の見出しを光らせ帯を差し替える (描き直さない)', () => {
+        const tray = html.match(/function _opsPlanTrayHtml\(plan\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const hoursOf = \(memberId\) => \{[\s\S]*?if \(p\.flexTime\) return `⏳ \$\{label \|\| 'いつでも'\}`;[\s\S]*?return label \|\| '時間 未登録';/.test(tray), 'ピースの見出しに出られる時間を出していない (⏳ 隙間型でも塗った時間は出す)');
+        assert.ok(/<span class="hrs" title="出られる時間">\$\{esc\(hoursOf\(g\.memberId\)\)\}<\/span>/.test(tray));
+        const paint = html.match(/function _opsPlanPaintTargets\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/el\.querySelectorAll\('\[data-h\]:not\(\[data-boss\]\)'\)\.forEach\(cell => \{/.test(paint) && /cell\.style\.color = inWin \? 'var\(--ops\)' : '';/.test(paint), 'つかんだ瞬間に行の見出し (時刻) を光らせていない');
+        assert.ok(/const bar = document\.getElementById\('opsPlanFocusBar'\);\s*if \(bar\) bar\.innerHTML = _opsPlanFocusBarHtml\(_opsLastPlan\);/.test(paint), 'つかんだ瞬間に帯 (出られる時間) を差し替えていない');
+        assert.ok(/`<div id="opsPlanFocusBar">\$\{_opsPlanFocusBarHtml\(plan\)\}<\/div><\/div>`/.test(html), '帯の置き場 (#opsPlanFocusBar) が無い');
+        assert.ok(!/renderOpsPlanView\(\)/.test(paint), 'ドラッグ中に描き直している (掴んだ要素が消えてドラッグが切れる)');
+    });
+    test('★ 配線: 模擬タブのユニオン事前比較に、採用した編成 (アイコン) と 編成② の印 / 編成未登録の注記', () => {
+        const fn = html.match(/async function renderMockCompare\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/characters: Array\.isArray\(lo\.team\) \? lo\.team : \[\]/.test(fn), '提出の編成を比較の材料に渡していない');
+        assert.ok(/renderTeamSnippet\(r\.team, \{ size: 18 \}\)/.test(fn) && /r\.slot === 2 \? '<span[^>]*>編成②<\/span>'/.test(fn) && /編成未登録/.test(fn), '編成を描いていない');
+        assert.ok(/\$\{teamHtml\}\s*<\/div>\s*<div style="font-size:12px;font-weight:900;color:var\(--t-ink\);font-variant-numeric:tabular-nums;">\$\{fmtVal\(r\)\}/.test(fn), '編成の行が名前の下に無い');
+    });
+    test('★ 配線: PC の D&D — 凸報告・模擬の提出・BlaBlaLINK 3凸 のシートに画像を落とすと、ファイルを選んだときと同じ関数に同じ形で渡す', () => {
+        const drops = html.match(/const _FILE_DROPS = \[[\s\S]*?\n        \];/)?.[0].replace(/\/\/[^\n]*/g, '') || '';
+        assert.ok(/\['myAttackModal', 'myAttackOcrInput', \(ev\) => handleMyAttackOcrUpload\(ev\)\],\s*\['myTeamEditModal', 'myTeamEditOcrInput', \(ev\) => handleMyTeamEditOcr\(ev\)\],\s*\['myBulkAttackModal', 'myBulkAttackOcrInput', \(ev\) => handleMyBulkAttackOcrUpload\(ev\)\],\s*\];/.test(drops), '受け口の一覧が違う');
+        const fn = html.match(/function _enableFileDrop\(modalId, inputId, handler\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const files = Array\.from\(ev\.dataTransfer\.files \|\| \[\]\)\.filter\(f => \/\^image\\\/\/\.test\(f\.type\)\);/.test(fn), '画像以外を通している');
+        assert.ok(/handler\(\{ target: \{ files, value: '' \} \}\);/.test(fn), 'ファイルを選んだときと違う形で渡している (読み取りの経路が増える)');
+        assert.ok(/if \(!_dropHasFiles\(ev\)\) return;/.test(fn), '盤面のドラッグ (text\/plain) まで受け口にしている');
+        for (const [modalId, inputId] of [['myAttackModal', 'myAttackOcrInput'], ['myTeamEditModal', 'myTeamEditOcrInput'], ['myBulkAttackModal', 'myBulkAttackOcrInput']]) {
+            assert.ok(html.includes(`id="${modalId}"`) && html.includes(`id="${inputId}"`), `${modalId} / ${inputId} が画面に無い`);
+        }
+        assert.ok(/_initSheetSwipeDismiss\(\) \{\s*_SHEET_DISMISS\.forEach[^\n]*\n\s*_initFileDrops\(\);/.test(html), '起動時に受け口を付けていない');
+        assert.ok(/document\.addEventListener\('drop', \(ev\) => \{ if \(_dropHasFiles\(ev\)\) ev\.preventDefault\(\); \}\);/.test(html), '受け口の外に落としたとき画像がそのまま開く');
+        assert.ok(/\.player-select-content\.drop-over::after \{ content: '📷 ここに落として読み取る';/.test(html), '落とせる案内が無い');
     });
 }
 

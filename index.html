@@ -3070,6 +3070,11 @@
         .plan-tray.closed .filt, .plan-tray.closed .list, .plan-tray.closed .hint { display: none; }
         .plan-tray .mem { font-size: 10px; font-weight: 900; color: var(--t-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
         .plan-tray .mem .rem { padding: 1px 6px; border-radius: 999px; background: var(--s2); color: var(--t-strong); font-variant-numeric: tabular-nums; }
+        .plan-tray .mem .hrs { margin-left: auto; font-weight: 800; color: var(--t-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        /* PC: スクショをシートに落として読み取る (2026-10-10)。落とせる間だけ点線と案内を重ねる */
+        .player-select-content.drop-over { outline: 3px dashed var(--ops-solid); outline-offset: -6px; }
+        .player-select-content.drop-over::after { content: '📷 ここに落として読み取る'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(var(--paper-rgb), 0.84); color: var(--ops); font-size: 15px; font-weight: 900; border-radius: inherit; pointer-events: none; z-index: 2; }
         .plan-tray .hint { margin: 8px 0 0; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
         .plan-piece { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 9px; background: var(--card); border: 1px solid var(--line); box-shadow: inset 3px 0 0 var(--pc, var(--ops-solid)); cursor: pointer; user-select: none; -webkit-user-select: none; min-width: 0; }
         .plan-piece .pt { font-size: 9.5px; font-weight: 900; color: var(--pt, var(--t-strong)); white-space: nowrap; }
@@ -4505,7 +4510,7 @@
                 </div>
                 <!-- きっかけ: 前回の算出のあとに模擬が更新された / 締め凸コンソールの手詰まり (renderOpsPlanCue が描く) -->
                 <div id="opsPlanCue" class="plan-cue" style="display:none;"></div>
-                <!-- 条件: 3つだけ選ぶ。自動で効くものは見せるだけ -->
+                <!-- 条件: 4 つ選ぶ (対象 / 起点 / 時間 / 前回の配信)。自動で効くものは見せるだけ -->
                 <div class="plan-cond" id="opsPlanCond">
                     <div class="row"><span class="k">対象</span>
                         <div class="plan-seg" role="group" aria-label="対象"><button type="button" data-k="all" onclick="setOpsPlanWho('all')">全員</button><button type="button" data-k="now" onclick="setOpsPlanWho('now')">今動ける人だけ</button></div>
@@ -4513,6 +4518,9 @@
                     <div class="row"><span class="k">起点</span>
                         <div class="plan-seg" role="group" aria-label="起点"><button type="button" data-k="now" onclick="setOpsPlanStartMode('now')">今から</button><button type="button" data-k="day" onclick="setOpsPlanStartMode('day')">朝5時から</button></div>
                         <span class="hint">前日まではどちらも朝5時からレイド日いちにちぶんを組む。当日は「今から」で残りの時間だけ</span></div>
+                    <div class="row"><span class="k">時間</span>
+                        <div class="plan-seg" role="group" aria-label="時間"><button type="button" data-k="strict" onclick="setOpsPlanTimeMode('strict')">⏰ 厳守</button><button type="button" data-k="damage" onclick="setOpsPlanTimeMode('damage')">⚡ ダメージ優先</button></div>
+                        <span class="hint">厳守 = 本人が出せる時間に合わない凸は組まない (出番の無い人は理由つきで残る)。ダメージ優先 = 時間外でも最寄りの時刻で組み込む (⚠時間外・本人と調整が要る)</span></div>
                     <div class="row"><span class="k">前回の配信</span>
                         <div class="plan-seg" role="group" aria-label="前回の配信"><button type="button" id="opsPlanStickyBtn" data-k="keep" onclick="setOpsPlanSticky(true)">尊重する</button><button type="button" data-k="fresh" onclick="setOpsPlanSticky(false)">ゼロから</button></div>
                         <span class="hint">尊重 = 実現不能か、変えると明確に得なとき以外は前回どおり (メンバーを振り回さない)。ゼロから = まっさらに組み直す</span></div>
@@ -8966,7 +8974,7 @@
             const damages = [];
             (data?.players || []).forEach(p => {
                 Object.entries(p.loadoutsByAttr || {}).forEach(([attr, arr]) => {
-                    (arr || []).forEach(lo => damages.push({ player_id: p.id, attribute: attr, slot: lo.slot || 1, damage_b: Number(lo.dmgB) || 0, boss_level: lo.level ?? null }));
+                    (arr || []).forEach(lo => damages.push({ player_id: p.id, attribute: attr, slot: lo.slot || 1, damage_b: Number(lo.dmgB) || 0, boss_level: lo.level ?? null, characters: Array.isArray(lo.team) ? lo.team : [] }));
                 });
                 // loadouts が無い旧データは damagesByAttr (ベスト値のみ) でフォールバック
                 if (!p.loadoutsByAttr || Object.keys(p.loadoutsByAttr).length === 0) {
@@ -8995,11 +9003,16 @@
                 const est = !isDmg && estimatedIds.has(String(r.playerId));
                 if (est) estShown++;
                 const w = maxVal > 0 ? Math.max(4, Math.round(r.value / maxVal * 100)) : 0;
+                // 採用した提出の編成 (2026-10-10 ユーザー要望)。アイコンは renderTeamSnippet (キャラマスタから解決)。未登録なら注記
+                const teamHtml = (Array.isArray(r.team) && r.team.length && typeof renderTeamSnippet === 'function')
+                    ? `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-top:4px;">${renderTeamSnippet(r.team, { size: 18 })}${r.slot === 2 ? '<span style="font-size:9px;font-weight:900;color:var(--t-muted);margin-left:3px;">編成②</span>' : ''}</div>`
+                    : '<div style="margin-top:3px;font-size:9.5px;font-weight:800;color:var(--t-muted);">編成未登録</div>';
                 return `<div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px ${mine ? '8px' : '0'};${mine ? 'background:rgba(108,66,240,0.06);border-radius:10px;margin:0 -8px;' : ''}">
                     <div style="font-size:11px;font-weight:900;color:var(--t-muted);text-align:center;font-variant-numeric:tabular-nums;">${r.rank}</div>
                     <div style="min-width:0;">
                         <div style="font-size:12px;font-weight:800;color:var(--t-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r.name)}${mine ? ' <span style="font-size:9px;font-weight:900;color:var(--ops);background:rgba(108,66,240,0.12);border-radius:999px;padding:1px 6px;">あなた</span>' : ''}${r.slot >= 2 ? ` <span style="font-size:9px;font-weight:800;color:var(--t-muted);">編成${SLOT_JP[r.slot] || r.slot}</span>` : ''}${est ? ' <span style="font-size:9px;font-weight:800;color:var(--warn-deep);background:rgba(245,158,11,0.12);border-radius:999px;padding:1px 6px;">SLv推定</span>' : ''}</div>
                         <div style="height:6px;border-radius:4px;margin-top:4px;width:${w}%;background:${color};"></div>
+                        ${teamHtml}
                     </div>
                     <div style="font-size:12px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;">${fmtVal(r)}</div>
                 </div>`;
@@ -17461,6 +17474,7 @@
                     (r.asked_at
                         ? `<span style="font-size:10px;font-weight:800;color:${rv.isExpiredPin && rv.isExpiredPin(r) ? 'var(--bad-deep)' : 'var(--warn-deep)'};align-self:center;">${rv.isExpiredPin && rv.isExpiredPin(r) ? '⏰ 期限切れ' : '📣 お願い中'}${r.ask_deadline_at ? ` 〜${escapeHtml(_hhmm(r.ask_deadline_at))}` : ''}</span>`
                         : btn('📣 お願いする', `_opsPlanAsk(${Number(r.id)})`, 'primary', r.id))
+                    + btn('🔒 確定', `_opsPlanConfirmPin(${Number(r.id)})`, 'primary', r.id)
                     + btn('外す', `_opsPlanUnpin(${Number(r.id)})`, '', r.id)
                     + `<span style="font-size:10px;font-weight:700;color:var(--t-muted);align-self:center;">${escapeHtml(r.pinned_by || '')}${r.pinned_by ? ' が固定' : ''}${r.asked_at ? '' : ' · 本人には見えていません'}</span>`,
                     'pending')).join(''));
@@ -17719,6 +17733,7 @@
             const solve = (rows) => window.computeOptimalPlanCore({
                 season: snap.season, bosses: snap.bosses, players: snap.players,
                 currentSlot: _planNowSlot(snap.season), timeAware: true, onlyAvailableNow: false,
+                timeStrict: _opsPlanTimeMode === 'strict',   // 画面の算出と同じ時間の扱い
                 reservations: rv.toSolverConstraints(rows),
             });
             // 候補は「承認済みとして」解く (approved にしないと拘束にならない)。
@@ -20918,6 +20933,15 @@
         //   'now' = 現在時刻から (当日運用)
         //   'day' = 朝5時(リセット直後)から — 前日の夜に翌日フルのプランを準備できる
         let _opsPlanStartMode = 'now';
+        // ⏰ 時間: 厳守 / ダメージ優先 (端末ごとに記憶。既定は厳守 — 2026-10-10 運営チーム「ダメージ優先で凸可能時間を無視し過ぎる」)
+        const _OPS_PLAN_TIME_KEY = 'shirisuko_ops_plan_time';
+        let _opsPlanTimeMode = 'strict';
+        try { _opsPlanTimeMode = localStorage.getItem(_OPS_PLAN_TIME_KEY) === 'damage' ? 'damage' : 'strict'; } catch (_) { /* 記憶できなくても動く */ }
+        function setOpsPlanTimeMode(mode) {
+            _opsPlanTimeMode = mode === 'damage' ? 'damage' : 'strict';
+            try { localStorage.setItem(_OPS_PLAN_TIME_KEY, _opsPlanTimeMode); } catch (_) { /* noop */ }
+            _syncOpsPlanCondUi();
+        }
         // 対象 (全員 / 今動ける人だけ)。以前は「全員」「⏰凸可能のみ」という2つの算出ボタンが条件を兼ねていた (パズル盤 ①)
         const _OPS_PLAN_WHO_KEY = 'shirisuko_ops_plan_who';
         let _opsPlanWho = 'all';
@@ -20928,6 +20952,7 @@
                 .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === cur)));
             set('対象', _opsPlanWho);
             set('起点', _opsPlanStartMode);
+            set('時間', _opsPlanTimeMode);
             set('前回の配信', _opsPlanSticky ? 'keep' : 'fresh');
         }
         function setOpsPlanWho(who) {
@@ -20960,6 +20985,7 @@
                 availableAtSlot: getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
                 timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
+                timeStrict: _opsPlanTimeMode === 'strict',   // ⏰ 時間厳守: 時間外のベストエフォート組み込みをしない
                 // ★ L1 安定化 (2026-09-07): **いま配信中のプラン** をソルバーに渡す。
                 //   メンバーへの約束は「配信したもの」なので、手元で何度算出し直しても基準は動かない。
                 //   渡すと「変えないと明確に損」でない限り前回どおりの割当になる
@@ -21139,6 +21165,7 @@
                 who: onlyNow ? 'now' : 'all',
                 from: plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode,   // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む
                 prev: _opsPlanSticky ? 'keep' : 'fresh',
+                time: plan.timeStrict ? 'strict' : 'damage',   // 実際に使った時間の扱いを焼き込む
                 reservations: (Array.isArray(reservations) && window.reservationsDomain)
                     ? reservations.filter(r => window.reservationsDomain.isFixed(r)).length : 0,
                 excluded: (snapshot?.players || []).reduce((n, p) => n + Object.keys(p.excludedByAttr || {}).length, 0),
@@ -21259,12 +21286,22 @@
             if (!o.silent) renderOpsPlanView();
         }
         function _opsPlanClearSel() { _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false; renderOpsPlanView(); }
-        // ドラッグ中: 描き直さずに、置けるマスに印を付ける (描き直すと掴んだ要素が消えてドラッグが切れる)
+        // ドラッグ中: 描き直さずに、置けるマスに印を付ける (描き直すと掴んだ要素が消えてドラッグが切れる)。
+        // ★ 握った人の出られる時間も同時に見せる (2026-10-10 運営チーム): 行の見出し (時刻) を光らせ、下の帯 (#opsPlanFocusBar) を差し替える
         function _opsPlanPaintTargets() {
             const el = document.getElementById('opsOptimalPlan');
             const sel = _opsPlanSel, dom = window.planBoardDomain, snap = opsStore.get();
             if (!el || !sel || !dom || !snap) return;
             const p = (snap.players || []).find(x => String(x.id) === String(sel.memberId));
+            const win = p ? dom.windowOf(p, HOUR_ORDER) : null;
+            el.querySelectorAll('[data-h]:not([data-boss])').forEach(cell => {   // 行の見出し (時刻)
+                const h = cell.dataset.h === '' ? null : Number(cell.dataset.h);
+                const inWin = !!win && h != null && win.has(h);
+                cell.style.color = inWin ? 'var(--ops)' : '';
+                cell.style.opacity = (win && h != null && !inWin) ? '0.45' : '';
+            });
+            const bar = document.getElementById('opsPlanFocusBar');
+            if (bar) bar.innerHTML = _opsPlanFocusBarHtml(_opsLastPlan);
             el.querySelectorAll('[data-boss][data-h]').forEach(cell => {
                 const boss = (snap.bosses || []).find(b => Number(b.boss_number) === Number(cell.dataset.boss));
                 const h = cell.dataset.h === '' ? null : Number(cell.dataset.h);
@@ -21433,6 +21470,26 @@
             showNotification(failed ? `⏰ 期限切れの固定を ${n} 件外しました (${failed} 件は先に状態が変わっていました)` : `⏰ 期限切れの固定を ${n} 件外しました`);
             if (n) { _opsPlanSel = null; _opsPlanFocus = null; if (typeof computeAndRenderOptimalPlan === 'function') await computeAndRenderOptimalPlan(); }
         }
+        // 🔒 確定: 📌 (運営の下書き) を本人の返事を待たずに約束 (approved) にする (2026-10-10 運営チーム「お互いの締結なしで仮置きを確定したい」)。
+        //   遷移は pinned → approved (SQL 45/47 の表にある。本人が引き受けるのと同じ遷移を運営が起こす)。
+        //   本人には通知が届き、ホームの「あなたの3凸」に 🔒 として出る。配信は別に押すまでされない。外したいときは「凸の予約」カードから
+        async function _opsPlanConfirmPin(id) {
+            const rv = window.reservationsDomain;
+            const row = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || null;
+            if (!row || row.status !== 'pinned') { showNotification('この固定はもう下書きではありません (本人が引き受けた / 外れた)'); return; }
+            const bossName = new Map((opsStore.get()?.bosses || []).map(b => [Number(b.boss_number), b.name || b.boss_code]));
+            const what = rv.describe(row, bossName);
+            const who = row.player_name || '#' + row.player_id;
+            if (!confirm(`🔒 ${who} さんの「${what}」を、本人の返事を待たずに確定しますか？\n\n`
+                + '確定すると起きること:\n・本人に通知が届き、ホームの「あなたの3凸」に 🔒 (約束) として出ます\n・算出で動かない約束になります (📌 の下書きではなくなります)\n\n'
+                + '確定しても起きないこと:\n・配信はされません (配信は別に押します)\n\n外したいときは「凸の予約」カードの「取り下げる」で外せます')) return;
+            const ok = await _resvTransition(Number(id), 'approved', { expectFrom: 'pinned', reason: 'ops_confirmed', done: `🔒 ${who} の凸を確定しました (本人に通知)` });
+            if (!ok) return;
+            const after = (_resv.rows || []).find(r => Number(r.id) === Number(id)) || row;
+            _notifyMemberResv(after, '🔒 運営が凸を確定しました', `${what} — ホームの「あなたの3凸」に出ます。都合が悪ければ運営に伝えてください`);
+            _opsPlanSel = null; _opsPlanFocus = null; _opsPlanPromiseNote = false;
+            await computeAndRenderOptimalPlan();
+        }
         // 📣 お願いする: 下書きを本人に見せる + Push。期限は 15 分 (表示だけ。過ぎても自動で外さない)
         async function _opsPlanAsk(id) {
             const rv = window.reservationsDomain;
@@ -21472,8 +21529,18 @@
             const list = all.filter(x => !_opsPlanTrayAttr || x.attr === _opsPlanTrayAttr).filter(x => !_opsPlanTrayUnusedOnly || !x.placed);
             const drag = _opsPlanDragOk();
             const groups = []; const seen = new Map();
-            for (const x of list) { const k = String(x.memberId); if (!seen.has(k)) { seen.set(k, { name: x.name, remaining: x.remaining, items: [] }); groups.push(seen.get(k)); } seen.get(k).items.push(x); }
-            const body = groups.map(g => `<div class="mem">${esc(g.name)}<span class="rem${g.remaining <= 0 ? ' zero' : ''}">残${g.remaining}</span></div>`
+            for (const x of list) { const k = String(x.memberId); if (!seen.has(k)) { seen.set(k, { name: x.name, remaining: x.remaining, items: [], memberId: x.memberId }); groups.push(seen.get(k)); } seen.get(k).items.push(x); }
+            // 出られる時間を見出しに添える (握る前から分かる・2026-10-10 運営チーム「握った人の凸可能時間がわかるように」)
+            const av = window.availabilityDomain;
+            const hoursOf = (memberId) => {
+                const p = (snap.players || []).find(x => String(x.id) === String(memberId));
+                if (!p) return '';
+                // ⏳ 隙間型でも時間を塗っていれば (ハイブリッド) その時間を出す (焦点の帯と同じ読み方)。塗っていなければ「いつでも」
+                const label = av && typeof av.labelOf === 'function' ? av.labelOf(p.availableSlots || []) : '';
+                if (p.flexTime) return `⏳ ${label || 'いつでも'}`;
+                return label || '時間 未登録';
+            };
+            const body = groups.map(g => `<div class="mem">${esc(g.name)}<span class="rem${g.remaining <= 0 ? ' zero' : ''}">残${g.remaining}</span><span class="hrs" title="出られる時間">${esc(hoursOf(g.memberId))}</span></div>`
                 + g.items.map(x => {
                     const v = ATTR_VISUAL[x.attr] || null;
                     const cls = ['plan-piece']; if (x.placed) cls.push('placed');
@@ -21514,6 +21581,7 @@
                     const asked = !!(row && row.asked_at);
                     acts = `<small>📌 運営の固定${asked ? ` · 📣 お願い中${row.ask_deadline_at ? ` 〜${esc(_hhmm(row.ask_deadline_at))}` : ''}` : ' (本人にはまだ見えていません)'} · 別のマスをタップで置き直し</small>`
                         + (asked ? '' : `<button type="button" class="act ask" onclick="_opsPlanAsk(${Number(sel.reservationId)})">📣 お願いする</button>`)
+                        + `<button type="button" class="act ask" onclick="_opsPlanConfirmPin(${Number(sel.reservationId)})" title="本人の返事を待たずに約束 (🔒) にする">🔒 確定する</button>`
                         + `<button type="button" class="act" onclick="_opsPlanUnpin(${Number(sel.reservationId)})">固定を外す</button>`;
                 } else {
                     acts = `<small>${sel.kind === 'piece' ? '🧩 模擬ピース' : 'プランの割当'} · 光っている<b>マスをタップ</b>すると 📌 固定して組み直します (レベルは算出が決めます)</small>`;
@@ -21872,7 +21940,7 @@
                 ? `<div class="plan-board${_opsPlanTrayOpen ? ' with-tray' : ''}" data-chipfilter="${_opsPlanChipFilter}"><div>`
                     + _planTimetableHtml(plan, { season: opsStore.get()?.season ?? null, highlightPlayerId: _myId, showTeams: _opsPlanShowTeams, filterKey: 'ops',
                         focusMemberId: _opsPlanFocus, focusWindow, stiffOf, placeAttr: sel ? sel.attr : null, draggable: _opsPlanDragOk() })
-                    + _opsPlanFocusBarHtml(plan) + '</div>' + _opsPlanTrayHtml(plan) + '</div>'
+                    + `<div id="opsPlanFocusBar">${_opsPlanFocusBarHtml(plan)}</div></div>` + _opsPlanTrayHtml(plan) + '</div>'
                 : levelSections;
             // ★ L1 の結果を運営に見せる。何も出さないと「なぜこの割当なのか」が分からず、
             //   安定化が効いているのか壊れているのかを運営が判断できない
@@ -26518,6 +26586,40 @@
         }
         function _initSheetSwipeDismiss() {
             _SHEET_DISMISS.forEach(([id, fn]) => _enableSheetSwipeDismiss(id, fn));
+            _initFileDrops();
+        }
+
+        // ========== PC: スクショをシートに落として読み取る (2026-10-10 運営チーム「画像での戦闘結果・模擬の提出を D&D で」) ==========
+        // ★ ファイルを選んだときと**同じ関数に同じ形** ({ target: { files, value } }) で渡す — 読み取りの経路を増やさない (OCR・プレビュー・状態遷移は 1 本のまま)
+        const _FILE_DROPS = [
+            ['myAttackModal', 'myAttackOcrInput', (ev) => handleMyAttackOcrUpload(ev)],          // ⚔️ 凸報告 (TOTAL DAMAGE + 戦闘履歴)
+            ['myTeamEditModal', 'myTeamEditOcrInput', (ev) => handleMyTeamEditOcr(ev)],           // 📸 模擬の提出 (戦闘履歴)
+            ['myBulkAttackModal', 'myBulkAttackOcrInput', (ev) => handleMyBulkAttackOcrUpload(ev)],   // BlaBlaLINK 3凸
+        ];
+        const _dropHasFiles = (ev) => Array.from(ev.dataTransfer?.types || []).includes('Files');
+        function _enableFileDrop(modalId, inputId, handler) {
+            const modal = document.getElementById(modalId);
+            const content = modal ? modal.querySelector('.player-select-content') : null;
+            if (!content) return;
+            let depth = 0;   // 子要素を出入りしても dragleave が飛ぶので、深さで数える
+            content.addEventListener('dragenter', (ev) => { if (!_dropHasFiles(ev)) return; ev.preventDefault(); depth++; content.classList.add('drop-over'); });
+            content.addEventListener('dragover', (ev) => { if (!_dropHasFiles(ev)) return; ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; });
+            content.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (depth === 0) content.classList.remove('drop-over'); });
+            content.addEventListener('drop', (ev) => {
+                if (!_dropHasFiles(ev)) return;
+                ev.preventDefault(); depth = 0; content.classList.remove('drop-over');
+                const files = Array.from(ev.dataTransfer.files || []).filter(f => /^image\//.test(f.type));
+                if (!files.length) { showNotification('画像ファイル (png / jpg) を落としてください'); return; }
+                const input = document.getElementById(inputId);
+                if (input && input.disabled) return;
+                handler({ target: { files, value: '' } });
+            });
+        }
+        function _initFileDrops() {
+            _FILE_DROPS.forEach(([modalId, inputId, handler]) => _enableFileDrop(modalId, inputId, handler));
+            // 受け口の外に落としたとき、ブラウザが画像をそのまま開いて画面が置き換わるのを防ぐ (盤面のドラッグは text/plain なので影響しない)
+            document.addEventListener('dragover', (ev) => { if (_dropHasFiles(ev)) ev.preventDefault(); });
+            document.addEventListener('drop', (ev) => { if (_dropHasFiles(ev)) ev.preventDefault(); });
         }
 
         // ========== 共通 AI解析スピナー ==========

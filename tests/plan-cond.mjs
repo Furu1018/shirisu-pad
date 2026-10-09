@@ -95,7 +95,8 @@ await test('★ 焼き込みのスタンプ: 条件の要約 · 誰がいつ算�
         publishedBy: 'なべ<b>', publishedAt: '2026-09-11T04:02:00Z', computedBy: 'ふるり', computedAt: '2026-09-11T12:04:00Z' });
     const out = t._planCondStampHtml(c);
     noUndef(out);
-    assert.ok(out.includes('<b>全員 · 今から · 前回を尊重 · 🔒予約 3 · 🚫除外 1</b>'), `要約が違う: ${out}`);
+    // 時間 (2026-10-10): 焼き込みに無い古いプランは「ダメージ優先」(それまでの動き) と読む
+    assert.ok(out.includes('<b>全員 · 今から · ⚡ダメージ優先 · 前回を尊重 · 🔒予約 3 · 🚫除外 1</b>'), `要約が違う: ${out}`);
     assert.ok(out.includes('· 21:04 に ふるり が算出'), '誰がいつ算出したかが無い');
     assert.ok(out.includes('(基準: なべ&lt;b&gt; 13:02 の配信)'), '尊重した配信 (エスケープ込み) が無い');
     assert.ok(out.includes('onclick="_opsPlanShowCond()">条件を変える'), '条件パネルへ戻る導線が無い');

@@ -402,6 +402,12 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ メンバー一覧の**締め凸** (2026-09-13 ユーザー要望): `_attackIsKill` の凸は 締 を付けて薄くし (title に KILL_NOTE)、**平均には入れない**
   (残HP分しか記録されないので実力より小さい)。行に `_killBadge(kills, {withCount})`、締め凸だけの人は「締のみ」で平均のある人の下。isKill が無い過去回は印も注記も出さない。
   実行テストは `tests/kill-badge.mjs` (GB の節)
+- **模擬タブ › ユニオン事前比較** (`renderMockCompare` / `mockCompareDomain.buildMockComparison`): 行に**採用した提出の編成** (`row.team`・`renderTeamSnippet`・
+  2 編成なら採用した方・編成②の印・未登録は注記) を出す (2026-10-10 ユーザー要望「ダメージと使ったキャラの構成がわかるように」)
+- **PC: スクショをシートに落として読み取る** (`_FILE_DROPS` / `_enableFileDrop`・2026-10-10 運営チーム): ⚔️ 凸報告 (`myAttackModal`)・📸 模擬の提出 (`myTeamEditModal`)・
+  BlaBlaLINK 3凸 (`myBulkAttackModal`)。★ ファイルを選んだときと**同じ関数に同じ形** `{ target: { files, value } }` で渡す (読み取りの経路を増やさない)。
+  画像以外は断る。受け口の外に落としても画像が開かないよう document で preventDefault (盤面のドラッグは text/plain なので影響なし)。
+  落とせる間は `.player-select-content.drop-over` の点線と「📷 ここに落として読み取る」
 - **js/domain/** (fururi/ocr/finish/format/mockCompare) — ふるり値計算・OCR後処理・締め凸候補選別・
   ダメージ整形・ユニオン事前比較 (模擬タブ) の純ロジック。全て引数渡し・テストあり。
   該当領域の計算式を index.html に書き足さないこと。mockCompare のふるり値は
@@ -435,7 +441,7 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **最適凸プランの「条件を選んで → 算出」(パズル盤 ①②・2026-09-11)**。ユーザーの言葉「今の算出がどのような状態で
   算出されたものか分かりにくかった」。純ロジックは `js/domain/planBoard.js` (`conditionsOf` / `conditionSummary` /
   `windowOf` / `stiffness` / `mockUpdatesSince`) が唯一。モックは `docs/最適凸プラン_パズル盤モック.html`。
-  - 条件は **3つだけ** (対象 `_opsPlanWho` / 起点 `_opsPlanStartMode` / 前回の配信 `_opsPlanSticky`) をセグメントで選び、
+  - 条件は **4 つ** (対象 `_opsPlanWho` / 起点 `_opsPlanStartMode` / **時間 `_opsPlanTimeMode`** / 前回の配信 `_opsPlanSticky`) をセグメントで選び、
     `🧮 この条件で算出` が**唯一の算出ボタン**。以前は「全員」「⏰凸可能のみ」という2つの算出ボタンが条件を兼ね、
     状態トグルと同じ列に並んでいた。自動で効くもの (🔒予約・🚫除外・✋難しい・📤配信中) は読み取り専用のチップ
     (`_renderOpsPlanAutoChips`、コックピットと同じ材料で描く。未ロードは 0 でなく —)
@@ -465,6 +471,16 @@ rm -f .claude/hooks/.codex-on      # OFF
     🔒 (約束) は掴めない。🧩 模擬ピース = `planBoardDomain.piecesOf` (残凸が多い人 → 強い順、placed とどこにあるか)。
     📣 お願い = `supabaseAskPin` + Push → 本人のホーム「引き受けた凸」に出て `handleAcceptPin` (→ approved) / `handleDeclinePin`
     (→ released・member_declined)。本人の申請を承認したら同じカードの 📌 は `superseded` で外す (`_resvTransition`)。
+    ★ **🔒 確定 `_opsPlanConfirmPin`** (2026-10-10 運営チーム「お互いの締結なしで、仮置きを確定したい」): 運営が本人の返事を待たずに
+    📌 → approved にする (SQL 45/47 の遷移表にある pinned → approved を運営が起こす。理由 `ops_confirmed`)。確認ダイアログは
+    「起きること (本人に通知・ホームに 🔒・算出で動かない) / 起きないこと (配信はされない)」を先に言う。本人には `_notifyMemberResv`。
+    入口は 焦点の帯 (`_opsPlanFocusBarHtml`) と 凸の予約カードの 📌 の行 の 2 つ。
+    ★ **握った人の出られる時間** (2026-10-10): 🧩 ピースの見出しに `availabilityDomain.labelOf` の時間 (⏳ はハイブリッドでも塗った時間を出す)。
+    PC でつかんだ瞬間は描き直せない (ドラッグが切れる) ので、`_opsPlanPaintTargets` が行の見出し (時刻・`[data-h]:not([data-boss])`) を光らせ、
+    帯の置き場 `#opsPlanFocusBar` の中身だけ差し替える。
+    ★ **🗓 時間割の「あと」の行** (2026-10-10 運営チーム「時間割だと各レベルのボスがあといくつか見えず、ピースがはめづらい」): `_planTimetableModel` の
+    `section.summary` (ソルバーの targetHpB / remainingHpB) を、レベルの帯の直下に 1 行 (`あと X B` + `割当/目標`。撃破見込み ✅ / 撃破済 / ♾️)。
+    セルは `data-h` を持たない (タップ・ドロップの置き先にならない)。スマホの 5 列に収めるため数字だけ・100 以上は整数
     実行テスト `tests/plan-cond.mjs` (操作帯)
   - **⑤ 🔁 入れ替えの確認** (2026-09-12 実機FB「3凸が埋まっている人にピースを置くと、どれが外れるのか分からない」)。
     判定は `planBoardDomain.swapOptions({plan, memberId, team, doneAttacks})` が唯一: その人のプランの凸を
@@ -1012,7 +1028,12 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   上振れを固定する) が唯一の実装で、画面側は `mockDamageOf(row)` 経由。**`damage_b` は廃止前の
   互換ミラー (=最大値) なので直接読まない**。`bestAtLevel` はバックアップ復元など廃止前データを
   そのまま読む箇所のためだけに `@deprecated` で残してある
-- 時間: 凸可能時間内でレベル開放以降の最速枠に割当。⏳隙間型は時刻を約束しない flex 扱い
+- 時間: 凸可能時間内でレベル開放以降の最速枠に割当。⏳隙間型は時刻を約束しない flex 扱い。
+  ★ **⏰ 時間厳守 `input.timeStrict`** (2026-10-10 運営チーム「ダメージ優先で凸可能時間を無視し過ぎる」): true なら、宣言した時間がレベルの開放に
+  合わない人を **⚠時間外 (mismatch) で組み込まない** (そのレベルの候補から外れ、どこにも合わなければ未割当 `time`)。false (既定) = 従来の
+  「最寄りの時間でベストエフォート」= ダメージ優先。⏳隙間型・ハイブリッドの時間外は両方とも隙間扱いのまま。**ソルバーの既定は false** (指紋 120 盤面は不変)、
+  **画面の既定は 厳守** (`_opsPlanTimeMode`・端末に記憶・条件パネル 3 行目・`conditions.time` に焼き込み。古い焼き込みは damage と読む)。
+  承認の影響 (`_reservationImpact`) も同じ時間の扱いで解く (テストが `computeOptimalPlanCore` の口の数と突き合わせる)
   (律速にしない)。ハイブリッド=登録時間内は確約・時間外は flex
 - **ボス横断の限定分岐 (フェーズ2)**: 貪欲は「そのボスで最良」を選ぶので、別ボスでしか
   使えない人材を先に消費してしまう。僅差の決定点で2番手を採るシナリオを解き直し、

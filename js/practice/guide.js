@@ -446,7 +446,7 @@
                 guide: function (c) {
                     if (typeof _opsLastPlan !== 'undefined' && _opsLastPlan && _opsLastPlan.conditions) { try { store.set('ops-eve:computed', '1'); } catch (_) { /* noop */ } }
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
-                    if (typeof _opsPlanStartMode !== 'undefined' && _opsPlanStartMode !== 'day') return stray(c, []) || { text: '条件は 3 つだけです。前日に組むので「起点」を「朝5時から」にします。', target: pick('planStartDay') };
+                    if (typeof _opsPlanStartMode !== 'undefined' && _opsPlanStartMode !== 'day') return stray(c, []) || { text: '条件を選びます。前日に組むので「起点」を「朝5時から」にします (時間は「⏰ 厳守」のまま = 出られる時間に合わない凸は組みません)。', target: pick('planStartDay') };
                     return stray(c, []) || { text: '「🧮 この条件で算出」を押します。本物のソルバーが 31 人の 3 凸を組みます (数秒かかります)。', target: pick('planCompute') };
                 } },
             { key: 'pin', title: '📌 で 1 つ固定する',

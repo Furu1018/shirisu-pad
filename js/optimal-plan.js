@@ -44,6 +44,10 @@
  *                                          前日は起点が h05 になる (画面の _planNowSlot) ので、壁時計を別に渡す (Codex指摘 2026-10-09)
  * @property {boolean=} onlyAvailableNow
  * @property {boolean=} timeAware
+ * @property {boolean=} timeStrict          ⏰ 時間厳守 (2026-10-10 運営チーム「ダメージ優先で凸可能時間を無視し過ぎる」)。
+ *                                          true = 宣言した戦闘可能時間がレベルの開放に合わない人を、時間外 (⚠ mismatch) で組み込まない
+ *                                          (その人はそのレベルの候補から外れ、どのレベルにも合わなければ未割当 'time')。
+ *                                          false (既定) = 従来どおり最寄りの時間で組み込む (ダメージ優先)。⏳隙間型・ハイブリッドの時間外は両方とも隙間扱い
  *
  * @typedef {Object} PlanAttack             プラン内の1凸 (出力)
  * @property {*} memberId
@@ -164,6 +168,7 @@
         const onlyAvailableNow = !!input.onlyAvailableNow;
         const availableAtSlot = input.availableAtSlot || currentSlot;   // 「いま出られる人」の時間帯 (起点と分けられる)
         const timeAware = !!input.timeAware;
+        const timeStrict = timeAware && !!input.timeStrict;   // ⏰ 時間厳守 (時間外のベストエフォート組み込みをしない)
         const startLevel = season.current_level || 1;
 
         // 時間軸: 現在時刻 (currentSlot) からリセット (HOUR_ORDER 末尾) まで
@@ -265,6 +270,8 @@
             if (m.hourIdxs === null) return { idx: openIdx, flex: m.flexTime };   // 時間不明/純隙間型
             for (const i of m.hourIdxs) if (i >= openIdx) return { idx: i, flex: false };   // 登録時間内 = 確約
             if (m.flexTime) return { idx: openIdx, flex: true };   // ハイブリッド: 時間外は隙間でやる
+            // ⏰ 時間厳守: 宣言した時間に合わないレベルには組み込まない (本人が出られない時刻の凸を計画に乗せない)
+            if (timeStrict) return null;
             // 戦闘可能時間がレベル開放と合わない人も除外はせず、
             // 「希望時間に一番近い形 (ベストエフォート)」として必ず計画に組み込む。
             // 時刻は確約できないので ⏳扱い + mismatch マーク。ペナルティで正規の時間の人を優先。
@@ -1790,6 +1797,7 @@
         return {
             startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste,
             unusedAttacks, unusedSummary, membersNoData, onlyAvailableNow, currentSlot, candidateCount,
+            timeStrict,
             timeAware,
             nowHourLabel: timeAware ? hourLabelOf(nowIdx) : null,
             finalClearHourLabel: (timeAware && lastFinite?.levelCleared) ? lastFinite.clearHourLabel : null,
