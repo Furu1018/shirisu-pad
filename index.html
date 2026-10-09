@@ -21263,10 +21263,10 @@
         let _opsPlanPlacing = false;
         const _opsPlanDragOk = () => typeof window.matchMedia === 'function' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
         function _opsPlanSelectChip(ds, o = {}) {
-            if (ds.promise === '1') {   // 約束は選べる (時間を見る) が、置き直せない
+            if (ds.promise === '1' || ds.done) {   // 約束 / 済んだ計画 は選べる (時間を見る) が、置き直せない
                 _opsPlanSel = null;
                 _opsPlanFocus = (_opsPlanFocus != null && String(_opsPlanFocus) === String(ds.member)) ? null : ds.member;
-                _opsPlanPromiseNote = _opsPlanFocus != null;
+                _opsPlanPromiseNote = _opsPlanFocus != null ? (ds.done ? ds.done : true) : false;   // 'done' / 'spent' = 済んだ計画の案内
                 if (!o.silent) renderOpsPlanView();
                 return;
             }
@@ -21587,6 +21587,10 @@
                 } else {
                     acts = `<small>${sel.kind === 'piece' ? '🧩 模擬ピース' : 'プランの割当'} · 光っている<b>マスをタップ</b>すると 📌 固定して組み直します (レベルは算出が決めます)</small>`;
                 }
+            } else if (_opsPlanPromiseNote === 'done') {
+                acts = '<small>✓ 報告済みの計画 — もう凸権限は残っていないので動かしません (実際の凸は ✓ の札で同じ表に出ています)</small>';
+            } else if (_opsPlanPromiseNote === 'spent') {
+                acts = '<small>✗ 3凸を使い切った人の計画 — 別のボスに凸したので、この計画は実行されません (置き直す相手は他の人から)</small>';
             } else if (_opsPlanPromiseNote) {
                 acts = '<small>🔒 本人が引き受けた約束 — 運営の手では動かしません (取り下げは「凸の予約」カードから)</small>';
             }
@@ -22021,9 +22025,23 @@
             return (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`;
         }
         // 凸チップ (時間割用)。opts.highlightPlayerId の凸は青ハイライト、opts.showTeams で編成5キャラを表示
+        // ✓ 報告済み / ✗ 使い切り のチップの説明 (title)。done = planDoneMarks の印 ({ kind, row })
+        function _planDoneTip(a, done) {
+            const base = `${a.memberName} ${a.dmgB.toFixed(2)}B`;
+            if (done.kind === 'spent') return `${base} · ✗ 3凸を使い切り (別のボスに凸したので、この計画は実行されません)`;
+            const r = done.row || {};
+            const h = typeof r.reported_at === 'string' ? _planJstHour(r.reported_at) : null;
+            const idx = h == null ? -1 : HOUR_ORDER.indexOf(h);
+            const at = idx >= 0 ? `${_planHourHeadLabel(idx)}に` : '';
+            const dmg = Number(r.damage_raw) > 0 ? `${(Number(r.damage_raw) / 1e9).toFixed(2)}B` : '';
+            const detail = (at && dmg) ? `${at} ${dmg}` : (at ? `${at}凸` : dmg);
+            return `${base} · ✓ 報告済み${detail ? ` (${detail})` : ''} — この計画の凸権限はもう残っていません`;
+        }
         function _planChipHtml(a, color, opts = {}) {
             const esc = escapeHtml;
             const hl = opts.highlightPlayerId != null && a.memberId === opts.highlightPlayerId;
+            // ✓ 報告済み / ✗ 使い切り (2026-10-10): 灰色・取り消し線にして「もう数えていない」と読めるように。あなた (青) より優先
+            const done = (opts.done && (opts.done.kind === 'done' || opts.done.kind === 'spent')) ? opts.done : null;
             // 色分け: あなた=青ベタ / 律速=赤枠 / 時間未確定(隙間・時間外・未登録)=グレー地+破線 / 通常=薄PT色
             // 未確定を「橙の塗り」にすると鉄甲PT列 (#FF8A2B) の薄橙と見分けがつかないため、
             // 色ではなくパターン (グレー地 + 破線枠 + ⏳⚠?マーク) で表現する — どの属性列でも衝突しない
@@ -22036,29 +22054,31 @@
             else if (a.flex || a.timeMismatch || a.timeUnknown) { bg = 'var(--s2)'; border = '1px dashed var(--dim)'; dmgColor = 'var(--warn-deep)'; }
             // 律速の赤枠は最優先 (あなたの律速凸でも赤枠を残す — 凡例の「赤枠=律速」と一致させる)
             if (a.isBottleneck) { border = '1.5px solid var(--attr-fire-solid)'; if (!hl) dmgColor = 'var(--attr-fire)'; }
+            // 済んだ計画は色を全部落とす (律速の赤枠も。もう時刻を決める凸ではない)。トークンなのでダークでも読める
+            if (done) { bg = 'rgba(var(--ink-rgb), 0.05)'; border = '1px solid rgba(var(--ink-rgb), 0.14)'; nameColor = 'var(--t-muted)'; dmgColor = 'var(--t-muted)'; }
             // 📌 運営の固定 (下書き) / 🔒 本人が引き受けた約束 — 予約で置いた凸の印を先頭に (パズル盤 ③)
             const resvMark = a.pinned ? '📌' : (a.fromReservation ? '🔒' : '');
-            const rawMark = resvMark + (a.isBottleneck ? '⏱'
+            const rawMark = done ? (done.kind === 'done' ? '✓' : '✗') : resvMark + (a.isBottleneck ? '⏱'
                 : (a.timeMismatch ? '⚠' : (a.flex ? '⏳' : (a.timeUnknown ? '?' : (a.reserved ? '🔒' : '')))));
             // マークに状態色を付ける ('?' は素の文字なのでグレー地に沈む。あなた=青ベタ時は白のまま)
-            const markColor = hl ? nameColor : (a.isBottleneck ? 'var(--bad-deep)' : 'var(--warn-deep)');
+            const markColor = done ? (done.kind === 'done' ? 'var(--t-muted)' : 'var(--warn-deep)') : hl ? nameColor : (a.isBottleneck ? 'var(--bad-deep)' : 'var(--warn-deep)');
             const mark = rawMark ? `<span style="color:${markColor};">${rawMark}</span>` : '';
             const label = opts.label || esc(a.memberName);
             const teamRow = (opts.showTeams && Array.isArray(a.team) && a.team.length > 0)
                 ? `<div style="display:flex;flex-wrap:wrap;justify-content:center;row-gap:2px;margin-top:2px;">${renderTeamSnippet(a.team, { size: 12 })}</div>` : '';
-            const tip = `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeMismatch ? ` (時間外·希望${a.nearestHourLabel || '?'})` : ''}${a.flex ? ' (隙間時間型)' : ''}${a.timeUnknown ? ' (戦闘可能時間 未登録)' : ''}${a.reserved ? ' (🔒踏破に使わずボス5温存)' : ''}`;
+            const tip = done ? _planDoneTip(a, done) : `${a.memberName} ${a.dmgB.toFixed(2)}B${a.isBottleneck ? ' (律速: このレベルのクリア時刻を決める凸)' : ''}${a.timeMismatch ? ` (時間外·希望${a.nearestHourLabel || '?'})` : ''}${a.flex ? ' (隙間時間型)' : ''}${a.timeUnknown ? ' (戦闘可能時間 未登録)' : ''}${a.reserved ? ' (🔒踏破に使わずボス5温存)' : ''}`;
             // ② 動かせる幅 (運営の時間割だけ): 硬い / 狭い の人にだけ小さく書く (パズル盤・2026-09-11)
             const stiff = typeof opts.stiffOf === 'function' ? opts.stiffOf(a.memberId) : null;
             const stiffRow = stiff ? `<div style="font-size:8px;font-weight:900;color:${hl ? nameColor : 'var(--warn-deep)'};text-align:center;line-height:1.1;">${esc(stiff)}</div>` : '';
             const focused = opts.focusMemberId != null && String(a.memberId) === String(opts.focusMemberId);
             // 盤の上で選ぶ・つかむための札 (運営だけ)。約束 (🔒) は掴めない
             const promise = !!a.fromReservation && !a.pinned;
-            const dragOk = !!opts.draggable && !promise;
+            const dragOk = !!opts.draggable && !promise && !done;   // 済んだ計画は掴めない
             const dataAttrs = opts.filterKey === 'ops'
                 ? ` data-slot="${Number(a.loadoutSlot) || 1}" data-attr="${esc(String(opts.cellAttr || ''))}" data-resv="${esc(String(a.reservationId ?? ''))}" data-pinned="${a.pinned ? 1 : 0}" data-promise="${promise ? 1 : 0}" draggable="${dragOk ? 'true' : 'false'}"`
                 : '';
-            return `<div data-member="${esc(String(a.memberId ?? ''))}"${dataAttrs} title="${esc(tip)}" style="background:${bg};border:${border};border-radius:6px;padding:2px 3px;overflow:hidden;${focused ? 'box-shadow:0 0 0 2px var(--ops-solid);' : ''}${opts.filterKey === 'ops' ? (dragOk ? 'cursor:grab;' : 'cursor:pointer;') : ''}">
-                <div style="font-size:9px;font-weight:800;color:${nameColor};line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${mark ? mark + ' ' : ''}${label}</div>
+            return `<div data-member="${esc(String(a.memberId ?? ''))}"${done ? ` data-done="${done.kind}"` : ''}${dataAttrs} title="${esc(tip)}" style="background:${bg};border:${border};border-radius:6px;padding:2px 3px;overflow:hidden;${focused ? 'box-shadow:0 0 0 2px var(--ops-solid);' : ''}${opts.filterKey === 'ops' ? (dragOk ? 'cursor:grab;' : 'cursor:pointer;') : ''}">
+                <div style="font-size:9px;font-weight:800;color:${nameColor};${done ? 'text-decoration:line-through;' : ''}line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;">${mark ? mark + ' ' : ''}${label}</div>
                 <div style="font-size:9px;font-weight:900;color:${dmgColor};text-align:center;font-variant-numeric:tabular-nums;line-height:1.15;">${a.dmgB.toFixed(1)}</div>
                 ${stiffRow}${teamRow}
             </div>`;
@@ -22072,14 +22092,14 @@
         //     描くたびに、いまの凸記録から作り直す。
         //   ★ 取れなくても時間割は出す (済みが出ないだけ)。ここで throw すると
         //     「プランが丸ごと出ない」になり、本来の用が果たせない
-        let _planDone = { key: null, byHourBoss: new Map(), unknownTime: [], total: 0 };
+        let _planDone = { key: null, rows: [], byHourBoss: new Map(), unknownTime: [], total: 0 };
         const _planJstHour = (iso) => {
             const d = new Date(iso);
             if (Number.isNaN(d.getTime())) return null;
             return Number(new Intl.DateTimeFormat('en-US',
                 { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d));
         };
-        const _PLAN_DONE_EMPTY = { key: null, byHourBoss: new Map(), unknownTime: [], total: 0 };
+        const _PLAN_DONE_EMPTY = { key: null, rows: [], byHourBoss: new Map(), unknownTime: [], total: 0 };
         // ★ 持ち主は「シーズン + そのレイド日」(Codex指摘 2026-09-11)。読み出しは season_id と
         //   attack_date の両方で絞っているので、id だけを鍵にすると運営が ✏️ で hard_date を
         //   直したときに「前の日の凸」を同じ文脈として使ってしまう
@@ -22090,10 +22110,11 @@
             if (!key) { _planDone = _PLAN_DONE_EMPTY; return; }
             try {
                 const rows = await window.supabaseLoadAllAttacksForSeason?.(season.id, season.hard_date);
-                _planDone = { key, ...doneAttacksByHour(rows || [], HOUR_ORDER, _planJstHour) };
+                // rows = 生の記録も持つ: 計画のチップと突き合わせて「報告済み」の印を付けるため (planDoneMarks)
+                _planDone = { key, rows: Array.isArray(rows) ? rows : [], ...doneAttacksByHour(rows || [], HOUR_ORDER, _planJstHour) };
             } catch (e) {
                 console.warn('[plan] 済んだ凸を読めませんでした (時間割には出ません):', e);
-                _planDone = { key, byHourBoss: new Map(), unknownTime: [], total: 0 };
+                _planDone = { key, rows: [], byHourBoss: new Map(), unknownTime: [], total: 0 };
             }
         }
         /**
@@ -22181,7 +22202,12 @@
                     rows,
                 };
             });
-            return { bosses, sections };
+            // ✓ 計画した凸のうち報告済みのもの (2026-10-10 運営チーム「予約通りに凸が終わっても時間割のチップが
+            //   残りっぱなしで、まだ凸権限を残して計算されているのか分からない」)。
+            //   ★ プランは変えない (配信済みの中身はそのまま)。描くたびに、いまの凸記録と突き合わせて印だけ付ける。
+            //   鍵はプランの attack オブジェクトそのもの (rows[].cells[].attacks と同じ参照)
+            const dm = (typeof planDoneMarks === 'function') ? planDoneMarks(plan, done.rows || []) : { marks: new Map(), done: 0, spent: 0 };
+            return { bosses, sections, doneMarks: dm.marks, doneCount: dm.done, spentCount: dm.spent };
         }
 
         // ===== 時間割のボス絞り込み (画面ごとに独立: ops=戦況 / my=ホーム) =====
@@ -22304,7 +22330,8 @@
                                 + `background:rgba(var(--ink-rgb), 0.06);color:var(--t-muted);border:1px dashed rgba(var(--ink-rgb), 0.18);`
                                 + `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">✓ ${esc(nm)}</span>`;
                         }).join('');
-                        const chips = doneChips + cell.attacks.map(a => _planChipHtml(a, c, { ...opts, cellAttr: bm.weakness })).join('');
+                        // ✓ 報告済み / ✗ 使い切り の印 (model.doneMarks)。印のあるチップは灰色・取り消し線で、掴めない
+                        const chips = doneChips + cell.attacks.map(a => _planChipHtml(a, c, { ...opts, cellAttr: bm.weakness, done: model.doneMarks?.get(a) || null })).join('');
                         const clearMark = cell.clears ? '<div style="font-size:10px;font-weight:900;color:var(--ok);text-align:center;">💀撃破</div>' : '';
                         // ③ 置く先を選んでいるとき: 有利属性の列 × 出られる時間の行 だけ点線で光らせ、他は沈める
                         const attrOk = opts.placeAttr ? (bm.weakness === opts.placeAttr) : null;
@@ -22327,10 +22354,14 @@
             const unknownNote = unknownDone
                 ? `<span style="color:var(--t-muted);font-weight:800;"> · ✓時刻の分からない済んだ凸 ${unknownDone}件は表に出ません</span>`
                 : '';
+            // ✓ 報告済みの計画はグレー (取り消し線)。✗ は 3凸を使い切った人の残りの計画 (もう実行されない)
+            const doneNote = (model.doneCount || model.spentCount)
+                ? `<span style="color:var(--t-muted);font-weight:800;"> · <s>✓グレー取り消し線</s>=報告済みの計画 ${model.doneCount}件 (もう凸権限は残っていません)${model.spentCount ? ` · ✗=3凸を使い切った人の残りの計画 ${model.spentCount}件 (実行されません)` : ''}</span>`
+                : '';
             return `${filterRow}<div data-no-swipe style="border:1px solid rgba(var(--ink-rgb), 0.06);border-radius:12px;padding:8px 5px;background:var(--card);overflow-x:auto;-webkit-overflow-scrolling:touch;">
                     <div style="display:grid;grid-template-columns:36px repeat(${nCols},minmax(${colMin},1fr));gap:2px;">${cells.join('')}</div>
                 </div>
-                <p style="margin:7px 0 0 0;font-size:10.5px;color:var(--t-muted);">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替)。' : ''}<span style="color:var(--ops);font-weight:800;">青</span>=あなた · <span style="color:var(--attr-fire);font-weight:800;">赤枠</span>=律速 · <span style="color:var(--warn-deep);font-weight:800;">グレー破線</span>=時間未確定 (⏳隙間/⚠時間外/?未登録) · <span style="color:var(--t-muted);font-weight:800;">✓グレー</span>=済んだ凸 · ▼=現在時刻 · ⋯=凸のない時間を省略。📸共有画像はこれからの凸だけ。${unknownNote}</p>`;
+                <p style="margin:7px 0 0 0;font-size:10.5px;color:var(--t-muted);">${filterKey ? '上のボスボタンで絞り込み (タップで単独表示⇄切替)。' : ''}<span style="color:var(--ops);font-weight:800;">青</span>=あなた · <span style="color:var(--attr-fire);font-weight:800;">赤枠</span>=律速 · <span style="color:var(--warn-deep);font-weight:800;">グレー破線</span>=時間未確定 (⏳隙間/⚠時間外/?未登録) · <span style="color:var(--t-muted);font-weight:800;">✓グレー</span>=済んだ凸 · ▼=現在時刻 · ⋯=凸のない時間を省略。📸共有画像はこれからの凸だけ。${unknownNote}${doneNote}</p>`;
         }
 
         // 📤 凸プラン配信: 算出済みプランを保存し全メンバーのホームに表示。

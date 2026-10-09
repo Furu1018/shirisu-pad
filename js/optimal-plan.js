@@ -1876,6 +1876,105 @@
         return { byHourBoss, unknownTime, total };
     }
 
+    /**
+     * ✓ 計画した凸のうち「もう報告された」ものに印を付ける (2026-10-10 運営チーム要望)
+     *   「予約通りに凸が終わっても時間割のチップが残りっぱなしで、まだ凸権限を残して
+     *    計算されているのか分からない。済んだところはグレーアウトして欲しい」
+     *
+     * ★ プランそのものは変えない (配信済みの中身・算出結果はそのまま)。描くたびに、
+     *   いまの凸記録と突き合わせて**印だけ**返す。呼び出し側は印のあるチップを灰色にする
+     *
+     * 結び方 (上から順。1 つの凸記録は 1 つのチップにしか結ばない):
+     *   ① 予約の id    チップの reservationId = 記録の reservation_id (本人が予約から凸報告した)。
+     *                  ボスやレベルが違っていても、その予約のぶん
+     *   ② 人×レベル×ボス 予約なしの凸報告。同じ人が同じレベルの同じボスに凸したなら、その計画は済んだ。
+     *                  同じ人×ボスにチップが 2 つあれば時間の早いほうから消す
+     *   ③ 使い切り     3凸を使い切った人の残りのチップ (別のボスに凸した = この計画はもう実行されない)。
+     *                  kind: 'spent' で返す (済んだのではなく「来ない」)
+     *   ♾️ 無限レベルの節には、そのレベル以上で報告された凸をすべて属させる (Lv4 開放後は Lv5, 6 … と報告されうる)
+     *
+     * @param {Object} plan     ソルバー出力 (levels[].bosses[].attacks[] に memberId / reservationId / hourIdx / flex)
+     * @param {Object[]} rows   その日の凸記録 (player_id / boss_number / level / reservation_id / reported_at / damage_raw)
+     * @param {{maxAttacks?:number}} [opts] 1 人の 1 日の凸数 (既定 3)
+     * @returns {{marks: Map<Object, {kind:'done'|'spent', row:Object|null}>, done:number, spent:number}}
+     *   marks の鍵はプランの attack オブジェクトそのもの (描く側は同じオブジェクトを持っている)
+     */
+    function planDoneMarks(plan, rows, opts = {}) {
+        const marks = new Map();
+        const out = { marks, done: 0, spent: 0 };
+        const levels = Array.isArray(plan && plan.levels) ? plan.levels : [];
+        if (levels.length === 0) return out;
+        const maxAttacks = (Number.isInteger(opts.maxAttacks) && opts.maxAttacks > 0) ? opts.maxAttacks : 3;
+        // ★ null / '' を 0 にしない (Number(null) は 0)
+        const idOf = (v) => (v == null || v === '') ? null : (Number.isFinite(Number(v)) ? Number(v) : null);
+        const infLevel = levels.filter(lv => lv && lv.infinite).map(lv => Number(lv.level)).find(Number.isInteger);
+        const levelOf = (lv) => (infLevel != null && lv >= infLevel) ? infLevel : lv;
+        const byResv = new Map(), pool = new Map(), countBy = new Map();
+        for (const r of Array.isArray(rows) ? rows : []) {
+            const pid = idOf(r && r.player_id);
+            if (pid == null) continue;
+            countBy.set(pid, (countBy.get(pid) || 0) + 1);
+            const rid = idOf(r.reservation_id);
+            if (rid != null && !byResv.has(rid)) byResv.set(rid, r);
+            const lv = Number(r.level), boss = Number(r.boss_number);
+            if (!Number.isInteger(lv) || lv <= 0 || r.boss_number == null || !Number.isFinite(boss)) continue;
+            const k = `${levelOf(lv)}:${boss}:${pid}`;
+            if (!pool.has(k)) pool.set(k, []);
+            pool.get(k).push(r);
+        }
+        const used = new Set();
+        const take = (k) => {
+            const list = pool.get(k);
+            const r = list ? list.find(x => !used.has(x)) : null;
+            if (r) used.add(r);
+            return r || null;
+        };
+        const planned = [];
+        levels.forEach((lv, li) => {
+            const level = Number(lv && lv.level);
+            for (const b of (Array.isArray(lv && lv.bosses) ? lv.bosses : [])) {
+                for (const a of (Array.isArray(b && b.attacks) ? b.attacks : [])) {
+                    if (!a || typeof a !== 'object') continue;
+                    planned.push({ a, level, boss: Number(b.bossNumber), li });
+                }
+            }
+        });
+        // 同じ人×ボスにチップが 2 つあるとき、時間の早いほうから消す (⏳ 隙間・時刻なしは最後)
+        const when = (a) => a.flex ? 1e9 : (Number.isFinite(Number(a.hourIdx)) && a.hourIdx != null ? Number(a.hourIdx) : 1e8);
+        planned.sort((x, y) => (x.li - y.li) || (when(x.a) - when(y.a)));
+        // ① 予約の id
+        for (const p of planned) {
+            const rid = idOf(p.a.reservationId);
+            if (rid == null) continue;
+            const r = byResv.get(rid);
+            if (!r || used.has(r)) continue;
+            used.add(r);
+            marks.set(p.a, { kind: 'done', row: r });
+            out.done++;
+        }
+        // ② 人 × レベル × ボス
+        for (const p of planned) {
+            if (marks.has(p.a)) continue;
+            const pid = idOf(p.a.memberId);
+            if (pid == null || !Number.isInteger(p.level) || !Number.isFinite(p.boss)) continue;
+            const r = take(`${levelOf(p.level)}:${p.boss}:${pid}`);
+            if (!r) continue;
+            marks.set(p.a, { kind: 'done', row: r });
+            out.done++;
+        }
+        // ③ 使い切り
+        for (const p of planned) {
+            if (marks.has(p.a)) continue;
+            const pid = idOf(p.a.memberId);
+            if (pid != null && (countBy.get(pid) || 0) >= maxAttacks) {
+                marks.set(p.a, { kind: 'spent', row: null });
+                out.spent++;
+            }
+        }
+        return out;
+    }
+
     root.doneAttacksByHour = doneAttacksByHour;
+    root.planDoneMarks = planDoneMarks;
     root.computeOptimalPlanCore = computeOptimalPlanCore;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -2610,13 +2610,18 @@ window.supabaseUpsertSyncLevel = async function (seasonId, playerId, syncLevel) 
 };
 
 // 指定シーズン・日付の全凸を取得（プレイヤー名・ボス名つき）
+// ★ reservation_id (SQL 39) も読む: 時間割で「予約から報告した凸」を計画のチップに結ぶため (2026-10-10)。
+//   39 未適用 (列が無い) なら、その列抜きで読み直す (予約の結び付けができないだけで、時間割は出る)
 window.supabaseLoadAllAttacksForSeason = async function (seasonId, attackDate) {
-    const { data, error } = await supabase
+    const base = 'id, attack_number, boss_number, boss_code, damage_raw, level, reported_at, player_id, players(name)';
+    const load = (cols) => supabase
         .from('attacks')
-        .select('id, attack_number, boss_number, boss_code, damage_raw, level, reported_at, player_id, players(name)')
+        .select(cols)
         .eq('season_id', seasonId)
         .eq('attack_date', attackDate)
         .order('reported_at', { ascending: false });
+    let { data, error } = await load(`${base}, reservation_id`);
+    if (error && /reservation_id/.test(String(error.message || ''))) ({ data, error } = await load(base));
     if (error) throw error;
     return data || [];
 };

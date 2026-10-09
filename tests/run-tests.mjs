@@ -8524,6 +8524,120 @@ console.log('\ngrowthDomain:');
         assert.ok(/unknownTime \|\| \[\]\)\.length/.test(html), '時刻の分からない済み凸を画面に出していない');
     });
 
+    test('★ 済んだ計画に印 (planDoneMarks): 予約 id → 人×レベル×ボス → 3凸使い切り。プランは変えない', () => {
+        // 2026-10-10 運営チーム「予約通りに凸が終わっても時間割のチップが残りっぱなしで、
+        // まだ凸権限を残して計算されているのか分からない。済んだところはグレーアウトして欲しい」
+        const f = globalThis.planDoneMarks;
+        assert.equal(typeof f, 'function', 'planDoneMarks が無い');
+        const A = (memberId, extra = {}) => ({ memberId, memberName: 'm' + memberId, dmgB: 20, hourIdx: 3, ...extra });
+        const a1 = A(1, { reservationId: 10 }), a2 = A(2), a3 = A(2, { hourIdx: 9 }), a4 = A(3), a5 = A(4, { flex: true, hourIdx: null });
+        const plan = { levels: [
+            { level: 1, bosses: [{ bossNumber: 1, attacks: [a1, a2] }, { bossNumber: 3, attacks: [a3, a4] }] },
+            { level: 2, bosses: [{ bossNumber: 1, attacks: [a5] }] },
+        ] };
+        const snap = JSON.stringify(plan);
+        const r = f(plan, [
+            { player_id: 1, boss_number: 5, level: 1, reservation_id: 10, reported_at: '2026-10-10T11:00:00Z', damage_raw: 22.1e9 },   // ① 予約で結ぶ (ボスが違っても、その予約のぶん)
+            { player_id: 2, boss_number: 1, level: 1 },      // ② 人×レベル×ボス
+            { player_id: 3, boss_number: 3, level: 2 },      // レベル違い → 結ばない
+            { player_id: 4, boss_number: 1, level: 2 },      // ⏳ 隙間のチップにも結ぶ
+        ]);
+        assert.equal(JSON.stringify(plan), snap, 'プランを書き換えている (配信済みの中身は変えない)');
+        assert.equal(r.marks.get(a1)?.kind, 'done', '予約 id で結んでいない');
+        assert.equal(Number(r.marks.get(a1).row.reservation_id), 10, '結んだ記録を返していない');
+        assert.equal(r.marks.get(a2)?.kind, 'done', '人×レベル×ボス で結んでいない');
+        assert.ok(!r.marks.has(a3), '同じ人の別ボスのチップにまで印を付けている');
+        assert.ok(!r.marks.has(a4), 'レベルの違う凸で印を付けている');
+        assert.equal(r.marks.get(a5)?.kind, 'done', '⏳ 隙間のチップに結んでいない');
+        assert.equal(r.done, 3); assert.equal(r.spent, 0);
+        // 1 つの記録は 1 つのチップにしか結ばない: 同じ人×ボスに 2 チップ・記録 1 → 時間の早いほうだけ
+        const b1 = A(5, { hourIdx: 9 }), b2 = A(5, { hourIdx: 2 });
+        const p2 = { levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [b1, b2] }] }] };
+        const r2 = f(p2, [{ player_id: 5, boss_number: 2, level: 1 }]);
+        assert.ok(r2.marks.has(b2) && !r2.marks.has(b1), '時間の早いほうから消していない / 1 つの記録で 2 つ消している');
+        assert.equal(f(p2, [{ player_id: 5, boss_number: 2, level: 1 }, { player_id: 5, boss_number: 2, level: 1 }]).done, 2, '記録 2 つで両方に印が付かない');
+        // 予約で結んだ記録は ② で使い回さない
+        const b3 = A(5, { reservationId: 77 }), b4 = A(5, { hourIdx: 8 });
+        const r2b = f({ levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [b3, b4] }] }] }, [{ player_id: 5, boss_number: 2, level: 1, reservation_id: 77 }]);
+        assert.ok(r2b.marks.has(b3) && !r2b.marks.has(b4), '予約で結んだ記録を人×ボスでも使っている');
+        // ③ 3凸を使い切った人の残りのチップは 'spent' (別のボスに凸した = 実行されない)
+        const c1 = A(6), c2 = A(6, { hourIdx: 7 });
+        const p3 = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [c1] }, { bossNumber: 4, attacks: [c2] }] }] };
+        const r3 = f(p3, [{ player_id: 6, boss_number: 1, level: 1 }, { player_id: 6, boss_number: 2, level: 1 }, { player_id: 6, boss_number: 3, level: 1 }]);
+        assert.equal(r3.marks.get(c1)?.kind, 'done'); assert.equal(r3.marks.get(c2)?.kind, 'spent', '使い切った人の残りに ✗ が無い');
+        assert.equal(r3.done, 1); assert.equal(r3.spent, 1);
+        assert.ok(!f(p3, [{ player_id: 6, boss_number: 2, level: 1 }, { player_id: 6, boss_number: 3, level: 1 }]).marks.has(c2), '使い切っていない人に ✗ を付けている');
+        assert.equal(f(p3, [{ player_id: 6, boss_number: 2, level: 1 }, { player_id: 6, boss_number: 3, level: 1 }], { maxAttacks: 2 }).marks.get(c2)?.kind, 'spent', 'maxAttacks が効いていない');
+        // ♾️ 無限レベルの節: それ以上のレベルで報告された凸も属する (Lv4 開放後は Lv5, 6 … と報告されうる)
+        const d1 = A(7);
+        const p4 = { levels: [{ level: 3, bosses: [{ bossNumber: 5, attacks: [] }] }, { level: 4, infinite: true, bosses: [{ bossNumber: 5, attacks: [d1] }] }] };
+        assert.equal(f(p4, [{ player_id: 7, boss_number: 5, level: 6 }]).marks.get(d1)?.kind, 'done', '無限レベルに Lv6 の凸を結んでいない');
+        assert.ok(!f(p4, [{ player_id: 7, boss_number: 5, level: 3 }]).marks.has(d1), '無限より前のレベルの凸を無限に結んでいる');
+        // 文字列の id でも結ぶ / null を 0 と混同しない / 壊れた入力で落ちない
+        const e1 = A('8'), e0 = A(null);
+        const p5 = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [e1, e0, null] }] }] };
+        const r5 = f(p5, [{ player_id: '8', boss_number: 1, level: 1 }, { player_id: null, boss_number: 1, level: 1 }, { boss_number: 1, level: 1 }, null]);
+        assert.equal(r5.marks.get(e1)?.kind, 'done', '文字列の id で結べない');
+        assert.ok(!r5.marks.has(e0), 'memberId null のチップに印を付けている (null を 0 と混同)');
+        assert.equal(f(null, null).done, 0); assert.equal(f({ levels: [null, {}] }, [null, {}]).done, 0); assert.equal(f(plan, undefined).done, 0);
+        // レベル不明 / ボス不明の記録は人×ボスでは結ばないが、数 (使い切り) には入れる
+        const g1 = A(9);
+        const r6 = f({ levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [g1] }] }] }, [{ player_id: 9 }, { player_id: 9, level: 1 }, { player_id: 9, boss_number: 2, level: 1 }]);
+        assert.equal(r6.marks.get(g1)?.kind, 'spent', 'ボス不明の記録を凸数に数えていない');
+    });
+
+    test('★ 配線: 時間割で報告済みの計画をグレーアウト (2026-10-10 運営チーム)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        // 読み出し: 生の記録 (rows) を持つ / 予約 id を読む (無い環境ではその列抜きで読み直す)
+        assert.ok(/_planDone = \{ key, rows: Array\.isArray\(rows\) \? rows : \[\], \.\.\.doneAttacksByHour\(/.test(html), '済み凸の生の記録を持っていない');
+        assert.ok(/const _PLAN_DONE_EMPTY = \{ key: null, rows: \[\],/.test(html), '空の持ち方に rows が無い');
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        const loader = client.match(/window\.supabaseLoadAllAttacksForSeason = async function[\s\S]*?\n\};/)?.[0] || '';
+        assert.ok(/`\$\{base\}, reservation_id`/.test(loader), '予約 id を読んでいない');
+        assert.ok(/\/reservation_id\/\.test\(String\(error\.message/.test(loader) && /await load\(base\)/.test(loader), '列の無い環境で読み直していない');
+        // モデル: プランは変えず、印だけ (planDoneMarks)。引数の done.rows だけを見る
+        const model = html.match(/function _planTimetableModel\(plan, done[\s\S]*?\n        \}/)?.[0] || '';
+        assert.ok(/planDoneMarks\(plan, done\.rows \|\| \[\]\)/.test(model), 'モデルが planDoneMarks を呼んでいない');
+        assert.ok(/doneMarks: dm\.marks, doneCount: dm\.done, spentCount: dm\.spent/.test(model), 'モデルが印を返していない');
+        // 時間割: チップに印を渡す / 脚注
+        assert.ok(/_planChipHtml\(a, c, \{ \.\.\.opts, cellAttr: bm\.weakness, done: model\.doneMarks\?\.get\(a\) \|\| null \}\)/.test(html), 'チップに印を渡していない');
+        assert.ok(/\$\{unknownNote\}\$\{doneNote\}<\/p>/.test(html), '脚注に出していない');
+        // チップ: 灰色・取り消し線・✓/✗・掴めない・data-done。あなた (青) より優先
+        const chip = html.match(/function _planChipHtml\(a, color, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(done\) \{ bg = 'rgba\(var\(--ink-rgb\), 0\.05\)'/.test(chip), '済んだ計画を灰色にしていない');
+        assert.ok(chip.indexOf("if (done) { bg =") > chip.indexOf("if (hl) { bg ="), 'あなた (青) を済みより後で塗っている');
+        assert.ok(/const rawMark = done \? \(done\.kind === 'done' \? '✓' : '✗'\)/.test(chip), '✓ / ✗ の印が無い');
+        assert.ok(/const dragOk = !!opts\.draggable && !promise && !done;/.test(chip), '済んだ計画を掴めなくしていない');
+        assert.ok(/\$\{done \? ` data-done="\$\{done\.kind\}"` : ''\}/.test(chip), 'data-done が無い');
+        assert.ok(/\$\{done \? 'text-decoration:line-through;' : ''\}/.test(chip), '取り消し線が無い');
+        assert.ok(/const tip = done \? _planDoneTip\(a, done\) :/.test(chip), 'title が報告済みを言っていない');
+        // 運営の盤: 済んだチップは選んでも動かさない (案内を出す)
+        assert.ok(/if \(ds\.promise === '1' \|\| ds\.done\) \{/.test(html), '運営の盤で済んだチップを掴めている');
+        assert.ok(/_opsPlanPromiseNote === 'done'/.test(html) && /_opsPlanPromiseNote === 'spent'/.test(html), '済んだチップの案内が無い');
+        // 実際に描く: 印のあるチップは灰色・取り消し線・✓・掴めない。印が無ければ従来どおり
+        const tipFn = html.match(/function _planDoneTip\(a, done\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(tipFn, '_planDoneTip が無い');
+        const HO = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
+        const render = new Function('escapeHtml', 'renderTeamSnippet', 'HOUR_ORDER', '_planJstHour', '_planHourHeadLabel',
+            `${tipFn}\n${chip}\nreturn _planChipHtml;`)(
+            (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
+            () => '', HO, (iso) => (new Date(iso).getUTCHours() + 9) % 24, (idx) => `${HO[idx]}時`);
+        const a = { memberId: 3, memberName: 'ふるり', dmgB: 22.1, hourIdx: 3, isBottleneck: true, reservationId: 5, loadoutSlot: 1 };
+        const row = { reported_at: '2026-10-09T20:10:00Z', damage_raw: 21.5e9, reservation_id: 5 };   // JST 5時
+        const plain = render(a, '#6C42F0', { filterKey: 'ops', draggable: true, cellAttr: 'electric', highlightPlayerId: 3 });
+        const done = render(a, '#6C42F0', { filterKey: 'ops', draggable: true, cellAttr: 'electric', highlightPlayerId: 3, done: { kind: 'done', row } });
+        const spent = render(a, '#6C42F0', { filterKey: 'ops', draggable: true, cellAttr: 'electric', done: { kind: 'spent', row: null } });
+        assert.ok(/draggable="true"/.test(plain) && !/data-done/.test(plain) && /var\(--ops-solid\)/.test(plain), '印の無いチップが従来どおりでない');
+        assert.ok(/data-done="done"/.test(done) && /draggable="false"/.test(done), '済んだチップが掴める / data-done が無い');
+        assert.ok(/text-decoration:line-through/.test(done) && /rgba\(var\(--ink-rgb\), 0\.05\)/.test(done) && !/var\(--ops-solid\)/.test(done), '済んだチップが灰色・取り消し線になっていない (あなたの青が残る)');
+        assert.ok(/>✓<\/span> ふるり/.test(done) && !/⏱/.test(done) && !/🔒/.test(done), '✓ だけの印になっていない (律速・予約の印が残る)');
+        assert.ok(/title="ふるり 22\.10B · ✓ 報告済み \(5時に 21\.50B\) — この計画の凸権限はもう残っていません"/.test(done), `title が違う: ${done.match(/title="[^"]*"/)?.[0]}`);
+        assert.ok(/data-done="spent"/.test(spent) && />✗<\/span> ふるり/.test(spent) && /3凸を使い切り/.test(spent), '✗ (使い切り) の見た目が無い');
+        // ホーム (ops 以外) でも印は付く (掴む属性は無いまま)
+        const home = render(a, '#6C42F0', { filterKey: 'my', done: { kind: 'done', row: {} } });
+        assert.ok(/data-done="done"/.test(home) && !/draggable=/.test(home) && /✓ 報告済み — /.test(home), 'ホームの時間割で印が付かない');
+    });
+
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
         // 2026-09-11 ユーザー要望「戦況のボス一覧ほどの情報量じゃないが、属性アイコン、
         // ちゃんとボスの並び順で、戦闘中かどうかだけぱっと見でわかるように」
@@ -10256,11 +10370,11 @@ console.log('\ngrowthDomain:');
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
         const chip = html.match(/function _planChipHtml\(a, color, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const resvMark = a\.pinned \? '📌' : \(a\.fromReservation \? '🔒' : ''\);/.test(chip), '📌 / 🔒 の印が無い');
-        assert.ok(/const promise = !!a\.fromReservation && !a\.pinned;\s*\n\s*const dragOk = !!opts\.draggable && !promise;/.test(chip), '約束 (🔒) を掴めなくしていない');
+        assert.ok(/const promise = !!a\.fromReservation && !a\.pinned;\s*\n\s*const dragOk = !!opts\.draggable && !promise && !done;/.test(chip), '約束 (🔒) を掴めなくしていない');
         assert.ok(/data-slot="\$\{Number\(a\.loadoutSlot\) \|\| 1\}" data-attr="\$\{esc\(String\(opts\.cellAttr \|\| ''\)\)\}" data-resv=/.test(chip), 'チップに 編成枠 / 属性 / 予約id の札が無い');
         const tt = html.match(/function _planTimetableHtml\(plan, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const attrOk = opts\.placeAttr \? \(bm\.weakness === opts\.placeAttr\) : null;/.test(tt) && /data-boss="\$\{bm\.bossNumber\}"/.test(tt), '置ける先 (有利属性 × 時間) を光らせていない / セルにボス番号が無い');
-        assert.ok(/_planChipHtml\(a, c, \{ \.\.\.opts, cellAttr: bm\.weakness \}\)/.test(tt), 'チップに列の属性を渡していない');
+        assert.ok(/_planChipHtml\(a, c, \{ \.\.\.opts, cellAttr: bm\.weakness, done: model\.doneMarks\?\.get\(a\) \|\| null \}\)/.test(tt), 'チップに列の属性を渡していない');
         const view = html.match(/function renderOpsPlanView\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/placeAttr: sel \? sel\.attr : null, draggable: _opsPlanDragOk\(\)/.test(view), '選んだ駒の属性 / ドラッグ可否を時間割に渡していない');
         assert.ok(/_opsPlanTrayHtml\(plan\)/.test(view), '模擬ピースを描いていない');

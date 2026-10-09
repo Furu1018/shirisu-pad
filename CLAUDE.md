@@ -481,6 +481,14 @@ rm -f .claude/hooks/.codex-on      # OFF
     ★ **🗓 時間割の「あと」の行** (2026-10-10 運営チーム「時間割だと各レベルのボスがあといくつか見えず、ピースがはめづらい」): `_planTimetableModel` の
     `section.summary` (ソルバーの targetHpB / remainingHpB) を、レベルの帯の直下に 1 行 (`あと X B` + `割当/目標`。撃破見込み ✅ / 撃破済 / ♾️)。
     セルは `data-h` を持たない (タップ・ドロップの置き先にならない)。スマホの 5 列に収めるため数字だけ・100 以上は整数
+    ★ **✓ 報告済みの計画をグレーアウト** (2026-10-10 運営チーム「予約通りに凸が終わっても時間割のチップが残りっぱなしで、まだ凸権限を残して
+    計算されているのか分からない」): `planDoneMarks(plan, rows)` (js/optimal-plan.js・純ロジック) が、その日の凸記録 (`_planDone.rows` =
+    `supabaseLoadAllAttacksForSeason` の生の行・`reservation_id` 込み) と計画のチップを突き合わせて印だけ返す (**プランは変えない**)。
+    結び方は ① 予約 id → ② 人×レベル×ボス (同じ人×ボスに 2 つなら時間の早いほう) → ③ 3凸を使い切った人の残りは `spent`。
+    ♾️ 無限の節にはそれ以上のレベルの記録も属する。`_planTimetableModel` が `doneMarks` (鍵は attack オブジェクト) を返し、
+    `_planChipHtml(a, c, { done })` が 灰色・取り消し線・✓ (spent は ✗)・`data-done`・掴めない (`dragOk`) にする。運営の盤で押すと
+    その人の時間を見るだけ (`_opsPlanPromiseNote = 'done' | 'spent'` の案内)。実際の凸は従来どおり ✓ の札 (`.plan-done`) で実時刻に出る。
+    ホーム (配信カード) と運営の時間割の両方に効く。共有画像 (`_renderPlanToImageTimetable`) は未対応 (これからの凸だけ)
     実行テスト `tests/plan-cond.mjs` (操作帯)
   - **⑤ 🔁 入れ替えの確認** (2026-09-12 実機FB「3凸が埋まっている人にピースを置くと、どれが外れるのか分からない」)。
     判定は `planBoardDomain.swapOptions({plan, memberId, team, doneAttacks})` が唯一: その人のプランの凸を
