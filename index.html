@@ -17617,7 +17617,7 @@
             }
             // ★ 「何が起きるか / 起きないか」を先に言う (2026-10-09 運営チーム「承認を押すのが怖い」)。
             //   影響の数字は、いま提出されている模擬だけで仮に組んだ 2 つのプランの差 — 配信は別に押すまでされず、ほかのメンバーには何も届かない。
-            //   配信の確認は最後の 1 件を承認したときだけ出る (下の remaining と同じ数え方)
+            //   配信の確認は最後の 1 件を承認したときだけ出る (下の remaining と同じ数え方。ただしこちらは押す前の写し = 「いま N 件」と書く)
             const othersWaiting = (_resv.rows || []).filter(r => r.status === 'requested' && Number(r.id) !== Number(id)).length;
             let msg = `🔒 ${row.player_name || '#' + row.player_id} の「${rv.describe(row, bossName)}」を承認しますか？\n\n`
                 + '承認すると起きること\n'
@@ -17625,7 +17625,7 @@
                 + '・この画面のプランを組み直します (運営の手元だけ)\n\n'
                 + '承認しても起きないこと\n'
                 + (othersWaiting > 0
-                    ? `・配信はされません。残り ${othersWaiting} 件を承認したあと、差分を見てから別に押します\n`
+                    ? `・配信はされません。ほかの承認待ち (いま ${othersWaiting} 件) を承認し終えたとき、差分を見てから別に押します\n`
                     : '・配信はされません。このあと差分と配信の確認が出ます (キャンセルしても承認は残ります)\n')
                 + '・ほかのメンバーには何も届きません\n'
                 + '・取り消したくなったら「取り下げる」で外せます (本人に通知が届きます)';
@@ -20956,6 +20956,8 @@
                 reservations: (rv && resvRows) ? rv.toSolverConstraints(resvRows) : [],
                 // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン。'now' も前日までは h05 (_planNowSlot)
                 currentSlot: _opsPlanStartMode === 'day' ? 'h05' : _planNowSlot(season),
+                // ★ 「今動ける人だけ」は壁時計の時間帯で絞る — 起点が前日に h05 になっても「h05 に出られる人」にしない (Codex指摘 2026-10-09)
+                availableAtSlot: getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
                 timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
                 // ★ L1 安定化 (2026-09-07): **いま配信中のプラン** をソルバーに渡す。

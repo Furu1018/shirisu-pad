@@ -6759,7 +6759,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(fn.includes('を承認しますか？') && !fn.includes('承認して、プランを組み直しますか？'), '「プランを組み直しますか」は承認 = 配信に読める');
         assert.ok(fn.includes('承認すると起きること') && fn.includes('承認しても起きないこと'), '起きること / 起きないこと が無い');
         assert.ok(fn.includes('・本人に「承認されました」の通知が届き、ホームに 🔒 で出ます') && fn.includes('・この画面のプランを組み直します (運営の手元だけ)'));
-        assert.ok(fn.includes('・配信はされません。残り ${othersWaiting} 件を承認したあと、差分を見てから別に押します')
+        assert.ok(fn.includes('・配信はされません。ほかの承認待ち (いま ${othersWaiting} 件) を承認し終えたとき、差分を見てから別に押します')
             && fn.includes('・配信はされません。このあと差分と配信の確認が出ます (キャンセルしても承認は残ります)'), '配信が別であることを言っていない');
         assert.ok(/const othersWaiting = \(_resv\.rows \|\| \[\]\)\.filter\(r => r\.status === 'requested' && Number\(r\.id\) !== Number\(id\)\)\.length;/.test(fn),
             '残りの件数を remaining と同じ数え方で出していない');
@@ -6789,19 +6789,46 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.equal(mk('h13')(null, T('2026-10-09T04:00:00Z')), 'h13', 'シーズンが無ければ従来どおり');
         assert.equal(mk('h13')({ hard_date: '2026-10-10T00:00:00+09:00' }, T('2026-10-09T04:00:00Z')), 'h05', '時刻つきのハード日でも日付で比べる');
         assert.equal(mk('h13')({ hard_date: 'x' }, T('2026-10-09T04:00:00Z')), 'h13', '壊れたハード日は時計どおり (例外にしない)');
+        // Codex指摘 (fc5286c): 段階のドメインが未ロードなら時計どおり / 当日 5:00 JST ちょうどが境 / 引数なし (Date.now) の経路
+        const bare = new Function('window', 'getCurrentSlotJST', `${src}\nreturn _planNowSlot;`)({}, () => 'hXX');
+        assert.equal(bare(season, T('2026-10-09T04:00:00Z')), 'hXX', 'opsStageDomain が無いのに h05 を返している');
+        assert.equal(mk('hXX')(season, T('2026-10-09T19:59:59Z')), 'h05', '当日 4:59:59 JST はまだ前日のレイド日 = 先頭');
+        assert.equal(mk('hXX')(season, T('2026-10-09T20:00:00Z')), 'hXX', '当日 5:00:00 JST からは時計どおり');
+        const clocked = new Function('window', 'getCurrentSlotJST', 'Date', `${src}\nreturn _planNowSlot;`)(
+            { opsStageDomain: globalThis.opsStageDomain }, () => 'hXX', { now: () => T('2026-10-09T04:00:00Z') });
+        assert.equal(clocked(season), 'h05', '引数なし (Date.now = 練習の時計も通る経路) で前日を判定できていない');
         // 配線: 承認の影響と算出の両方がこれを通す。ソルバーに時計を直に渡す箇所を残さない
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/currentSlot: _planNowSlot\(snap\.season\), timeAware: true/.test(im), '承認の影響が時計を直に渡している');
         const cp = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/currentSlot: _opsPlanStartMode === 'day' \? 'h05' : _planNowSlot\(season\),/.test(cp), '算出が時計を直に渡している');
         for (const m of html.matchAll(/computeOptimalPlanCore\(\{[\s\S]*?\n            \}\);/g)) {
-            assert.ok(!/getCurrentSlotJST\(\)/.test(m[0]), `ソルバーに時計を直に渡している: ${m[0].slice(0, 80)}`);
-            assert.ok(/_planNowSlot\(/.test(m[0]), `ソルバーの呼び出しが _planNowSlot を通していない: ${m[0].slice(0, 80)}`);
+            assert.ok(!/currentSlot: getCurrentSlotJST\(\)/.test(m[0]), `ソルバーの起点に時計を直に渡している: ${m[0].slice(0, 80)}`);
+            assert.ok(/currentSlot: [^\n]*_planNowSlot\(/.test(m[0]), `ソルバーの起点が _planNowSlot を通していない: ${m[0].slice(0, 80)}`);
         }
+        // ★ Codex指摘 (fc5286c): 「今動ける人だけ」の絞り込みは壁時計のまま — 起点が前日に h05 になっても「h05 に出られる人」にしない
+        assert.ok(/availableAtSlot: getCurrentSlotJST\(\),/.test(cp), '「今動ける人だけ」の時間帯を起点と分けていない');
         assert.equal([...html.matchAll(/computeOptimalPlanCore\(\{/g)].length, 2, 'ソルバーの呼び出し口が増えた (時計の渡し方を確かめること)');
         // 焼き込みの起点は実際に使った時間帯 (前日に「今から」で組んでも朝5時から)
         assert.ok(/from: plan\.currentSlot === 'h05' \? 'day' : _opsPlanStartMode,/.test(html), '焼き込みの起点が選んだモードのまま (前日は朝5時から組んでいるのに「今から」と出る)');
         assert.ok(html.includes('前日まではどちらも朝5時からレイド日いちにちぶんを組む。当日は「今から」で残りの時間だけ'), '起点のヒントが古い');
+    });
+    test('★ Codex指摘 (fc5286c): 「今動ける人だけ」は availableAtSlot (壁時計) で絞る — 起点 currentSlot が前日に h05 でも「h05 に出られる人」にしない', () => {
+        const lo = (dmgB, team) => ({ dmgB, team, slot: 1, level: null, levels: null });
+        const mk = (id, slots) => ({ id, name: 'P' + id, attackCount: 0, syncLevel: 500, syncLevelEstimated: false,
+            damagesByAttr: { water: 20 }, teamsByAttr: {}, loadoutsByAttr: { water: [lo(20, ['a' + id, 'b' + id, 'c' + id, 'd' + id, 'e' + id])] },
+            attacks: [], availableSlots: slots, flexTime: false, notifyAllHours: false, strong_attributes: [] });
+        const boss = { boss_number: 1, boss_code: 'B1', name: 'ボス1', attribute: 'x', weakness: 'water', tier: 'lord', total_hp_raw: 100e9, remaining_hp_raw: 100e9 };
+        const base = { season: { id: 1, current_level: 1 }, bosses: [boss], timeAware: true, onlyAvailableNow: true, crossBoss: false,
+            players: [mk(1, ['h05', 'h06']), mk(2, ['h13', 'h14'])] };
+        const who = (p) => (p.levels || []).flatMap(l => (l.bosses || []).flatMap(b => (b.attacks || []).map(a => Number(a.memberId)))).sort();
+        // 既定は従来どおり currentSlot で絞る (指紋テストが守る側)
+        assert.deepEqual(who(globalThis.computeOptimalPlanCore({ ...base, currentSlot: 'h05' })), [1]);
+        assert.deepEqual(who(globalThis.computeOptimalPlanCore({ ...base, currentSlot: 'h13' })), [2]);
+        // 前日: 起点は h05 (時間割は先頭から) だが「今動ける人」は壁時計 h13 に出られる人
+        assert.deepEqual(who(globalThis.computeOptimalPlanCore({ ...base, currentSlot: 'h05', availableAtSlot: 'h13' })), [2]);
+        // 絞らないときは availableAtSlot を渡しても誰も落ちない
+        assert.deepEqual(who(globalThis.computeOptimalPlanCore({ ...base, onlyAvailableNow: false, currentSlot: 'h05', availableAtSlot: 'h13' })), [1, 2]);
     });
     test('L2 配線: 状態を進めたら盤面を捨てる / 二重押しを止める', () => {
         const fn = html.match(/async function _resvTransition\([\s\S]*?\n        \}\n/)?.[0] || '';

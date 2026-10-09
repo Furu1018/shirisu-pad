@@ -39,7 +39,9 @@
  * @property {{current_level:number}} season
  * @property {BossRow[]} bosses
  * @property {PlayerInput[]} players
- * @property {string=} currentSlot          'h21' など (時間起点 / onlyAvailableNow のフィルタ)
+ * @property {string=} currentSlot          'h21' など (時間起点。availableAtSlot が無ければ onlyAvailableNow のフィルタにも)
+ * @property {string=} availableAtSlot      onlyAvailableNow で「いま出られる人」を決める時間帯 (既定 = currentSlot)。
+ *                                          前日は起点が h05 になる (画面の _planNowSlot) ので、壁時計を別に渡す (Codex指摘 2026-10-09)
  * @property {boolean=} onlyAvailableNow
  * @property {boolean=} timeAware
  *
@@ -160,6 +162,7 @@
         const { season, bosses, players, currentSlot } = input || {};
         if (!season || !Array.isArray(bosses) || bosses.length === 0) return null;
         const onlyAvailableNow = !!input.onlyAvailableNow;
+        const availableAtSlot = input.availableAtSlot || currentSlot;   // 「いま出られる人」の時間帯 (起点と分けられる)
         const timeAware = !!input.timeAware;
         const startLevel = season.current_level || 1;
 
@@ -282,7 +285,7 @@
             //   時間帯を空にするだけだと timeUnknown = 「いつでも可」として扱われ、
             //   かえって全時間帯の候補になってしまう (2026-09-07)
             .filter(p => !p.unavailableThisSeason)
-            .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(currentSlot))
+            .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(availableAtSlot))
             .map(p => {
                 const usedCount = usedCountFor(p);
                 // 完了凸で消費済みのキャラ (属性をまたいで効く。空 = 未記録 or 凸なし)
