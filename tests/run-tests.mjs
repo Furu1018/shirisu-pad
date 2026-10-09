@@ -11448,6 +11448,59 @@ console.log('\n通知 (宛先・節目・疎通確認):');
     });
 }
 
+// ---- 🗓 時間割の「あと」(レベル × ボスの撃破まで・2026-10-10 運営チーム「時間割だと各レベルのボスがあといくつか見えず、ピースがはめづらい」) ----
+console.log('\n時間割の「あと」:');
+{
+    const html = _fsLate.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    const modelSrc = html.match(/function _planTimetableModel\(plan, done = _PLAN_DONE_EMPTY\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+    test('★ モデル: レベル × ボスの summary — あと = ソルバーの残り / 割当 = 目標 − あと / 撃破見込み・撃破済・無限 を区別', () => {
+        assert.ok(modelSrc.length > 500, '_planTimetableModel を切り出せない');
+        const env = { _PLAN_DONE_EMPTY: { byHourBoss: new Map(), unknownTime: [] }, _planHourHeadLabel: (h) => `${h}時` };
+        const fn = new Function(...Object.keys(env), `${modelSrc}\nreturn _planTimetableModel;`)(...Object.values(env));
+        const B = (n, o) => ({ bossNumber: n, attribute: 'fire', weakness: 'water', name: 'B' + n, attacks: [], ...o });
+        const plan = { timeAware: true, frontierLevel: 2, levels: [
+            { level: 1, levelCleared: true, bosses: [
+                B(1, { targetHpB: 99.9, remainingHpB: 0, cleared: true, clearHourLabel: '21時', attacks: [{ hourIdx: 16, dmgB: 50 }, { hourIdx: 16, dmgB: 60 }] }),
+                B(2, { targetHpB: 0, remainingHpB: 0, cleared: true }),            // もう倒れている
+                B(3, { targetHpB: 150.8, remainingHpB: 0.00001, cleared: true }),  // 丸めで 0
+            ] },
+            { level: 2, levelCleared: false, bosses: [
+                B(1, { targetHpB: 99.9, remainingHpB: 12.34, cleared: false, attacks: [{ hourIdx: 20, dmgB: 40 }], timeConstrained: true }),
+                B(2, { targetHpB: 99.9, remainingHpB: 99.9, cleared: false }),
+                B(3, { targetHpB: 150.8, remainingHpB: -3, cleared: true }),       // 負は 0 に
+            ] },
+            { level: 4, infinite: true, levelCleared: true, bosses: [B(5, { infinite: true, targetHpB: 0, remainingHpB: 0, cleared: true, creditedB: 80 })] },
+        ] };
+        const m = fn(plan);
+        const s1 = m.sections[0].summary, s2 = m.sections[1].summary;
+        assert.deepEqual(m.bosses.map(b => b.bossNumber), [1, 2, 3], 'ボスの並びは 1 レベル目のボス番号順');
+        assert.deepEqual([s1[0].remainingB, s1[0].assignedB, s1[0].cleared, s1[0].clearHourLabel, s1[0].attacks], [0, 99.9, true, '21時', 2]);
+        assert.deepEqual([s1[1].targetB, s1[1].remainingB, s1[1].cleared], [0, 0, true], '撃破済 (目標 0) を区別できない');
+        assert.deepEqual([s2[0].remainingB, Math.round(s2[0].assignedB * 100) / 100, s2[0].cleared, s2[0].timeConstrained, s2[0].attacks], [12.34, 87.56, false, true, 1], 'あと・割当の数字が違う');
+        assert.deepEqual([s2[1].remainingB, s2[1].assignedB, s2[1].attacks], [99.9, 0, 0], '割当なしのボスで あと = 目標 にならない');
+        assert.deepEqual([s2[2].remainingB, s2[2].assignedB], [0, 150.8], '負の残りを 0 に丸めていない');
+        // Lv4 (ボス 5 だけ): 1 レベル目に無いボスは列が無い → summary は列の並び (1,2,3) に合わせて null
+        assert.deepEqual(m.sections[2].summary, [null, null, null], '列に無いボスの summary が列とずれる');
+        // ボス 5 が最初から居る盤面なら infinite が付く
+        const plan5 = { timeAware: true, levels: [{ level: 1, bosses: [B(5, { targetHpB: 150, remainingHpB: 10 })] }, { level: 4, infinite: true, bosses: [B(5, { infinite: true, targetHpB: 0, remainingHpB: 0, cleared: true })] }] };
+        assert.deepEqual(fn(plan5).sections[1].summary.map(x => x.infinite), [true]);
+    });
+    test('★ 配線: 時間割の帯の直下に「あと」の行 — 置ける列だけ色を残す / data-h を持たない (タップ・ドロップの置き先にならない) / リストと同じ数字', () => {
+        const tt = html.match(/function _planTimetableHtml\(plan, opts = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/撃破まであと \(レベル × ボス\)/.test(tt), '「あと」の行が無い');
+        const row = tt.match(/\/\/ 撃破まであと \(レベル × ボス\)[\s\S]*?for \(const r of sec\.rows\) \{/)?.[0] || '';
+        assert.ok(/const sm = sec\.summary \? sec\.summary\[ci\] : null;/.test(row), 'モデルの summary を列の添字で引いていない (絞り込みで列がずれる)');
+        assert.ok(/const placing = opts\.placeAttr \? \(bm\.weakness === opts\.placeAttr\) : null;/.test(row) && /placing === false \? 'opacity:0\.35;'/.test(row), '置く先を選んでいるとき、合わない列を沈めていない');
+        assert.ok(/class="plan-left" data-boss="\$\{bm\.bossNumber\}"/.test(row) && !/data-h=/.test(row), '「あと」のセルに data-h がある (タップで置けてしまう) / 印が無い');
+        assert.ok(/main = `\$\{fmt\(sm\.remainingB\)\}B`; sub = `\$\{short\(sm\.assignedB\)\}\/\$\{short\(sm\.targetB\)\}B`;/.test(row), '「あと X B」と「割当/目標」を出していない');
+        assert.ok(/title="このレベルで、割当を全部こなしたあとに残る HP">あと<\/div>/.test(row), '行の見出し「あと」が無い (セルの数字だけでは何か分からない)');
+        assert.ok(/const short = \(v\) => v >= 100 \? String\(Math\.round\(v\)\) : fmt\(v\);/.test(row), '5 列に収める丸めが無い (Lv3 の 300B 台で切れる)');
+        assert.ok(/sm\.infinite\) \{ main = '♾️ 無限'/.test(row) && /sm\.targetB <= 0\) \{ main = '撃破済'/.test(row) && /sm\.cleared\) \{ main = `✅ \$\{sm\.clearHourLabel \|\| '撃破'\}`/.test(row), '無限・撃破済・撃破見込み を区別していない');
+        // 置く先 (タップ・ドロップ) は data-h のあるセルだけ (「あと」のセルに data-boss があっても拾わない)
+        assert.ok((html.match(/closest\('\[data-boss\]\[data-h\]'\)/g) || []).length >= 3 && !/closest\('\[data-boss\]'\)/.test(html), '置き先の判定が data-boss だけで拾っている');
+    });
+}
+
 // ---- 結果 --------------------------------------------------------------------
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

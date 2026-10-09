@@ -22086,6 +22086,19 @@
                     });
                     prev = h;
                 }
+                // ★ レベル × ボス の「撃破まであと何 B か」(2026-10-10 運営チーム「時間割だと各レベルのボスがあといくつか見えず、ピースがはめづらい」)。
+                //   リストのボスカードと同じ材料 (targetHpB / remainingHpB = ソルバーの出力) で、時間割にも 1 行出す。
+                //   割当 = 目標 − あと (ソルバーが計上した分。オーバーキルは数えない)
+                const summary = bosses.map(bm => {
+                    const b = byBoss.get(bm.bossNumber);
+                    if (!b) return null;
+                    const target = Number(b.targetHpB) || 0, rem = Math.max(0, Number(b.remainingHpB) || 0);
+                    return {
+                        bossNumber: bm.bossNumber, infinite: !!b.infinite, targetB: target, remainingB: rem,
+                        assignedB: Math.max(0, target - rem), cleared: !!b.cleared, clearHourLabel: b.clearHourLabel || null,
+                        timeConstrained: !!b.timeConstrained, attacks: (b.attacks || []).length,
+                    };
+                });
                 return {
                     level: lv.level, cleared: lv.levelCleared,
                     infinite: !!lv.infinite,
@@ -22095,6 +22108,7 @@
                     openHourLabel: lv.openHourLabel, clearHourLabel: lv.clearHourLabel,
                     hasFlex: !!lv.hasFlex,
                     timeConstrained: lv.bosses.some(b => b.timeConstrained),
+                    summary,
                     rows,
                 };
             });
@@ -22173,6 +22187,28 @@
                 const bandBg = sec.infinite ? 'rgba(108,66,240,0.08)' : (sec.cleared ? 'rgba(24,194,107,0.10)' : (sec.frontier ? 'rgba(245,158,11,0.10)' : 'rgba(255,61,68,0.08)'));
                 const bandCol = sec.infinite ? 'var(--ops)' : (sec.cleared ? 'var(--ok-deep)' : (sec.frontier ? 'var(--warn-deep)' : 'var(--bad-deep)'));
                 cells.push(`<div style="grid-column:1/-1;margin-top:8px;padding:5px 9px;border-radius:8px;background:${bandBg};color:${bandCol};font-size:10px;font-weight:900;letter-spacing:0.2px;line-height:1.35;">${bandText}</div>`);
+                // 撃破まであと (レベル × ボス)。ピースを置くときに「どのボスがあといくつか」を時間割の中で読めるように
+                cells.push('<div style="font-size:8.5px;font-weight:900;color:var(--t-muted);line-height:1.2;align-self:center;text-align:center;" title="このレベルで、割当を全部こなしたあとに残る HP">あと</div>');
+                for (const { bm, ci } of visible) {
+                    const sm = sec.summary ? sec.summary[ci] : null;
+                    const placing = opts.placeAttr ? (bm.weakness === opts.placeAttr) : null;   // 置く先を選んでいるとき、合う列だけ色を保つ
+                    const dim = placing === false ? 'opacity:0.35;' : '';
+                    const fmt = (v) => (Math.round(v * 10) / 10).toFixed(1);
+                    // 下の段 (割当/目標) は 5 列に収めるため、100 以上は小数を落とす (精密な値は上の段と title にある)
+                    const short = (v) => v >= 100 ? String(Math.round(v)) : fmt(v);
+                    let main, sub = '', color, title;
+                    if (!sm) { main = '—'; color = 'var(--t-muted)'; title = ''; }
+                    else if (sm.infinite) { main = '♾️ 無限'; color = 'var(--ops)'; title = 'HP 無限 — 入れた与ダメが全額スコアに入る'; }
+                    else if (sm.targetB <= 0) { main = '撃破済'; color = 'var(--t-muted)'; title = 'もう倒れている'; }
+                    else if (sm.cleared) { main = `✅ ${sm.clearHourLabel || '撃破'}`; sub = `${fmt(sm.targetB)}B`; color = 'var(--ok-deep)'; title = `割当で倒し切る見込み (割当 ${fmt(sm.assignedB)}B / 目標 ${fmt(sm.targetB)}B)`; }
+                    // 「あと」は行の見出しが言う (セルに書くとスマホの 5 列で数字が切れる)
+                    else { main = `${fmt(sm.remainingB)}B`; sub = `${short(sm.assignedB)}/${short(sm.targetB)}B`; color = sm.timeConstrained ? 'var(--warn-deep)' : 'var(--bad-deep)';
+                        title = `${sm.attacks ? `割当 ${sm.attacks} 凸 (${fmt(sm.assignedB)}B)` : '割当なし'} / 目標 ${fmt(sm.targetB)}B → あと ${fmt(sm.remainingB)}B${sm.timeConstrained ? ' (時間内に出られる人が足りない)' : ''}`; }
+                    cells.push(`<div class="plan-left" data-boss="${bm.bossNumber}" title="${esc(title)}" style="min-width:0;overflow:hidden;text-align:center;padding:2px 1px 3px;border-radius:0 0 6px 6px;background:rgba(var(--ink-rgb), 0.03);${dim}">`
+                        + `<div style="font-size:9.5px;font-weight:900;color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;line-height:1.25;">${esc(main)}</div>`
+                        + (sub ? `<div style="font-size:8px;font-weight:800;color:var(--t-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;line-height:1.2;">${esc(sub)}</div>` : '')
+                        + '</div>');
+                }
                 for (const r of sec.rows) {
                     if (r.gap) {
                         cells.push('<div style="grid-column:1/-1;text-align:center;color:var(--t-muted);font-size:10px;font-weight:900;line-height:1;padding:2px 0;">⋯</div>');
