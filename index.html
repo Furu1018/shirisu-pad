@@ -3072,7 +3072,7 @@
         .plan-tray .mem .rem { padding: 1px 6px; border-radius: 999px; background: var(--s2); color: var(--t-strong); font-variant-numeric: tabular-nums; }
         .plan-tray .mem .hrs { margin-left: auto; font-weight: 800; color: var(--t-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         /* PC: スクショをシートに落として読み取る (2026-10-10)。落とせる間だけ点線と案内を重ねる */
-        .player-select-content.drop-over { outline: 3px dashed var(--ops-solid); outline-offset: -6px; }
+        .player-select-content.drop-over { outline: 3px dashed var(--ops-solid); outline-offset: -6px; position: relative; }   /* ::after をシートの中に収める (無いと fixed のモーダル全体に広がる) */
         .player-select-content.drop-over::after { content: '📷 ここに落として読み取る'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
             background: rgba(var(--paper-rgb), 0.84); color: var(--ops); font-size: 15px; font-weight: 900; border-radius: inherit; pointer-events: none; z-index: 2; }
         .plan-tray .hint { margin: 8px 0 0; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
@@ -17503,7 +17503,8 @@
                     const row0 = (_resv.rows || []).find(r => Number(r.id) === rid);
                     const pl = row0 ? (opsStore.get()?.players || []).find(p => String(p.id) === String(row0.player_id)) : null;
                     const chk = row0 ? window.reservationsDomain.canApprove(_resv.rows || [], { playerId: row0.player_id, bossNumber: row0.boss_number, loadoutSlot: row0.loadout_slot, doneAttacks: Number(pl?.attackCount) || 0, excludeId: rid }) : { ok: true };
-                    if (!chk.ok) { alert(`❌ ${chk.label}`); return false; }
+                    // ★ 断ったときも busy を外して描き直す (finally は外すだけで描き直さないので、ボタンが押せないまま残っていた — Codex指摘 2026-10-10)
+                    if (!chk.ok) { alert(`❌ ${chk.label}`); _resv.busy.delete(rid); _paintOpsReservations(); return false; }
                 }
                 await window.supabaseSetReservationStatus(rid, to, { ...o, actor: me?.name || '運営' });
                 // ★ 承認で内容を固定し直した場合があるので、盤面より先に一覧を取り直す

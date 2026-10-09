@@ -337,6 +337,30 @@ test('⏰ 時間厳守 (timeStrict): 時間が合わない人を最寄りで組�
     assert.deepEqual(names(hybrid), ['隙間の人']); assert.equal(hybrid.levels[0].bosses[0].attacks[0].flex, true);
     // timeAware でなければ厳守は効かない (時間を見ないモードに時間の縛りを足さない)
     assert.equal(compute({ ...makeInput([boss(1, 'fire', { remainingB: 15 })], [player('朝だけの人', { fire: 300 }, { availableSlots: ['h09'] })], { currentSlot: 'h14' }), timeStrict: true }).timeStrict, false);
+    // ★ Lv3 を踏破して Lv4 (ボス5・無限) が開いたあと、開放前にしか出られない人が残っていても落ちない (Codex指摘 2026-10-10: null.idx)。その人はボス5 にも置かない
+    const lv4 = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 5 }), boss(5, 'water', { remainingB: 5 })],
+        [
+            player('夜の人', { fire: 500, water: 500 }, { availableSlots: ['h21', 'h22', 'h23'] }),
+            player('朝だけの人', { water: 300 }, { availableSlots: ['h06'] }),
+        ],
+        { currentSlot: 'h14', currentLevel: 3 },
+    ), timeStrict: true });
+    assert.ok(lv4 && lv4.levels.some(lv => lv.infinite), 'Lv4 まで進んでいない (前提)');
+    const lv4Names = lv4.levels.filter(lv => lv.infinite).flatMap(lv => lv.bosses.flatMap(b => b.attacks.map(a => a.memberName)));
+    assert.ok(!lv4Names.includes('朝だけの人'), '厳守なのに開放のあとに出られない人をボス5 に置いている');
+    assert.deepEqual(lv4.unassigned.filter(u => u.memberName === '朝だけの人').map(u => u.reason), ['time']);
+    // ★ ハイブリッド (⏳ + 塗った時間) は、塗った時間がレベルの開放より前でも「時間外は隙間」で組み込む — 厳守でも外さない
+    //   (隙間の人の塗った時間 15時 は未来だが、Lv2 は 夜の人 が 21時 に Lv1 を倒してから開く)
+    const hyb2 = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 5 })],
+        [player('夜の人', { fire: 10 }, { availableSlots: ['h21'] }), player('隙間の人', { fire: 300 }, { availableSlots: ['h15'], flexTime: true })],
+        { currentSlot: 'h14' },
+    ), timeStrict: true });
+    const hybLv2 = hyb2.levels.find(lv => Number(lv.level) === 2);
+    assert.ok(hybLv2, 'Lv2 まで進んでいない (前提)');
+    const hybAt2 = hybLv2.bosses.flatMap(b => b.attacks).filter(a => a.memberName === '隙間の人');
+    assert.ok(hybAt2.length > 0 && hybAt2.every(a => a.flex && !a.timeMismatch), '厳守でハイブリッドの人を Lv2 (塗った時間より後に開く) から外している');
 });
 
 test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
@@ -11515,6 +11539,8 @@ console.log('\n運営チームの要望 2026-10-10:');
         assert.ok(/_notifyMemberResv\(after, '🔒 運営が凸を確定しました'/.test(fn) && /await computeAndRenderOptimalPlan\(\);/.test(fn), '本人に知らせていない / 組み直していない');
         assert.ok(/onclick="_opsPlanConfirmPin\(\$\{Number\(sel\.reservationId\)\}\)"[^>]*>🔒 確定する<\/button>/.test(html), '焦点の帯に「確定する」が無い');
         assert.ok(/btn\('🔒 確定', `_opsPlanConfirmPin\(\$\{Number\(r\.id\)\}\)`, 'primary', r\.id\)/.test(html), '予約カードの 📌 の行に「確定」が無い');
+        // 残り凸が無くて断ったときも、busy を外して描き直す (ボタンが押せないまま残らない — Codex指摘 2026-10-10)
+        assert.ok(/if \(!chk\.ok\) \{ alert\(`❌ \$\{chk\.label\}`\); _resv\.busy\.delete\(rid\); _paintOpsReservations\(\); return false; \}/.test(html), '断ったあとボタンが押せないまま残る');
         // SQL の遷移表に pinned → approved がある (運営が起こす遷移も同じ RPC)
         const sql = _fsLate.readFileSync(new URL('../supabase/47_approval_counts_pins.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/\(v_from = 'pinned'\s+AND p_to IN \('approved', 'released'\)\)/.test(sql), 'SQL の遷移表に pinned → approved が無い');
@@ -11548,6 +11574,7 @@ console.log('\n運営チームの要望 2026-10-10:');
         assert.ok(/_initSheetSwipeDismiss\(\) \{\s*_SHEET_DISMISS\.forEach[^\n]*\n\s*_initFileDrops\(\);/.test(html), '起動時に受け口を付けていない');
         assert.ok(/document\.addEventListener\('drop', \(ev\) => \{ if \(_dropHasFiles\(ev\)\) ev\.preventDefault\(\); \}\);/.test(html), '受け口の外に落としたとき画像がそのまま開く');
         assert.ok(/\.player-select-content\.drop-over::after \{ content: '📷 ここに落として読み取る';/.test(html), '落とせる案内が無い');
+        assert.ok(/\.player-select-content\.drop-over \{[^}]*position: relative;/.test(html), '案内がシートの外 (モーダル全体) に広がる (位置の基準が無い)');
     });
 }
 

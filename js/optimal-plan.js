@@ -1032,8 +1032,10 @@
                         if (!lo || dmg > loDmg) { lo = cand; loDmg = dmg; }
                     }
                     if (!lo) break;   // キャラ被りで出せる編成なし
-                    // 開放時刻に出られない人も除外せずベストエフォート ⏳ で組み込む (有限ボスと同じ哲学)
+                    // 開放時刻に出られない人も除外せずベストエフォート ⏳ で組み込む (有限ボスと同じ哲学)。
+                    // ★ ⏰ 時間厳守では null が返る (開放のあとに出られない) → その人はボス5 にも置かない (Codex指摘 2026-10-10: null.idx で落ちていた)
                     const slot = earliestHourFor(m, lv4OpenIdx);
+                    if (!slot) break;
                     const teamRegistered = lo.team.length > 0;
                     lv4Attacks.push({
                         memberId: m.id, memberName: m.name,
