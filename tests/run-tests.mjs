@@ -8638,6 +8638,42 @@ console.log('\ngrowthDomain:');
         assert.ok(/data-done="done"/.test(home) && !/draggable=/.test(home) && /✓ 報告済み — /.test(home), 'ホームの時間割で印が付かない');
     });
 
+    await testAsync('★ 実行: その日の凸の読み出し — 列が無ければ reservation_id 抜きで読み直す / 別のエラーは読み直さず投げる (Codex提案 2026-10-10)', async () => {
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        const loader = client.match(/window\.supabaseLoadAllAttacksForSeason = async function[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(loader, '読み出しが無い');
+        // 偽の supabase: select(cols) を記録し、await で answer(cols) を返す
+        const mk = (answer) => {
+            const calls = [];
+            const chain = (cols) => { const o = { eq: () => o, order: () => o, then: (ok, ng) => Promise.resolve().then(() => answer(cols)).then(ok, ng) }; return o; };
+            const w = {};
+            new Function('supabase', 'window', loader)({ from: () => ({ select: (cols) => { calls.push(cols); return chain(cols); } }) }, w);
+            return { fn: w.supabaseLoadAllAttacksForSeason, calls };
+        };
+        // 列が無い (PostgREST の列不在エラー) → その列抜きで読み直して返す
+        const a = mk((cols) => /reservation_id/.test(cols)
+            ? { data: null, error: { code: '42703', message: 'column attacks.reservation_id does not exist' } }
+            : { data: [{ id: 1, player_id: 2 }], error: null });
+        assert.deepEqual(await a.fn(9, '2026-10-10'), [{ id: 1, player_id: 2 }], '列抜きで読み直した結果を返していない');
+        assert.equal(a.calls.length, 2, '読み直していない');
+        assert.ok(/reservation_id/.test(a.calls[0]) && !/reservation_id/.test(a.calls[1]), '1 回目に予約 id を読んでいない / 2 回目に列が残っている');
+        // 列がある → 1 回で返す (予約 id 込み)
+        const b = mk(() => ({ data: [{ id: 1, reservation_id: 5 }], error: null }));
+        assert.deepEqual(await b.fn(9, '2026-10-10'), [{ id: 1, reservation_id: 5 }]);
+        assert.equal(b.calls.length, 1, '列があるのに読み直している');
+        // 別のエラー (通信など) は読み直さず投げる (黙って空にしない — 空にすると「済んだ凸なし」に見える)
+        const c = mk(() => ({ data: null, error: { message: 'TypeError: Failed to fetch' } }));
+        // ★ supabase の error は素のオブジェクト (Error ではない) なので message で見る
+        await assert.rejects(() => c.fn(9, '2026-10-10'), (e) => /Failed to fetch/.test(e?.message), '通信エラーを投げていない');
+        assert.equal(c.calls.length, 1, '通信エラーで読み直している');
+        // 列抜きでも失敗 → そのエラーを投げる
+        const d = mk(() => ({ data: null, error: { message: 'relation attacks ... reservation_id' } }));
+        await assert.rejects(() => d.fn(9, '2026-10-10'), (e) => /reservation_id/.test(e?.message));
+        assert.equal(d.calls.length, 2);
+        // data が null なら []
+        assert.deepEqual(await mk(() => ({ data: null, error: null })).fn(9, '2026-10-10'), []);
+    });
+
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
         // 2026-09-11 ユーザー要望「戦況のボス一覧ほどの情報量じゃないが、属性アイコン、
         // ちゃんとボスの並び順で、戦闘中かどうかだけぱっと見でわかるように」
