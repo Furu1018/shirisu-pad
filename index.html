@@ -8819,17 +8819,22 @@
                 if (!dom) return;
                 // ★ レイド日は「朝5時〜翌4時」(暦の日付ではない)。暦で見ると、翌0時・1時の枠の人に
                 //   レイド前夜の 0 時に届き、本当の翌0時には届かなかった (第45回 2026-10-10 に本番で踏んだ)
-                const raidDay = window.opsStageDomain?.raidDayKey?.(Date.now());
+                // ★ 「いま」は 1 回だけ取る (Codex指摘 2026-10-11): 日・時・分を別々に取ると、翌5:00 をまたいだ瞬間に
+                //   「前のレイド日 + 5時の枠」になり得る
+                const now = Date.now();
+                const raidDay = window.opsStageDomain?.raidDayKey?.(now);
                 if (!raidDay || season.hard_date !== raidDay) return;   // レイド当日 (5時〜翌4時) だけ
                 const players = opsStore.get()?.players;
                 if (!Array.isArray(players)) return;
-                const curSlot = getCurrentSlotJST();
-                const hour = Number(String(curSlot).slice(1));
+                const hm = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(now));
+                const hour = Number(hm.find(x => x.type === 'hour')?.value) % 24;
+                const minute = Number(hm.find(x => x.type === 'minute')?.value) || 0;
+                if (!Number.isInteger(hour)) return;
+                const curSlot = `h${String(hour).padStart(2, '0')}`;
                 const targets = dom.reminderTargets(players, hour);
                 if (targets.length === 0) return;
                 // ★ 時刻の始まりから30分を過ぎていたら送らない (Codex指摘): 運営端末を 13:40 に開いて
                 //   「13時になりました」が届くのは変。次の区間の始まりは別の ref なので取りこぼしはそこまで
-                const minute = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo', minute: '2-digit' })) || 0;
                 if (minute >= 30) return;
                 const me = getCurrentIdentity();
                 for (const t of targets) {

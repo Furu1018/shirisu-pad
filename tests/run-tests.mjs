@@ -6350,7 +6350,7 @@ console.log('\nfinishDomain (人数・時間範囲):');
         assert.ok(fn, '通知の関数が無い');
         assert.ok(/if \(!raidDay \|\| season\.hard_date !== raidDay\) return;/.test(fn), '当日以外にも送る');
         // ★ 暦の日付で判定しない (翌0時・1時の枠の人に前夜の 0 時に届いていた・第45回)
-        assert.ok(/const raidDay = window\.opsStageDomain\?\.raidDayKey\?\.\(Date\.now\(\)\);/.test(fn) && !/todayJst/.test(fn), 'レイド日を暦の日付で見ている');
+        assert.ok(/const now = Date\.now\(\);\s*\n\s*const raidDay = window\.opsStageDomain\?\.raidDayKey\?\.\(now\);/.test(fn) && !/todayJst/.test(fn), 'レイド日を暦の日付で見ている');
         const rk = globalThis.opsStageDomain?.raidDayKey;
         if (typeof rk === 'function') {
             assert.equal(rk(Date.parse('2026-10-10T15:30:00Z')), '2026-10-10', '翌0時半 (10/11 0:30 JST) がレイド日 10/10 に入らない');
@@ -8680,6 +8680,36 @@ console.log('\ngrowthDomain:');
         assert.equal(d.calls.length, 2);
         // data が null なら []
         assert.deepEqual(await mk(() => ({ data: null, error: null })).fn(9, '2026-10-10'), []);
+    });
+
+    await testAsync('★ 実行: ⏰ 戦闘可能時間の通知はレイド日 (5時〜翌4時) だけ・前夜 0 時台は送らない (第45回で踏んだ)', async () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const fn = html.match(/async function _checkAvailReminders\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn, '_checkAvailReminders が無い');
+        const runAt = async (isoJst, { stage = globalThis.opsStageDomain } = {}) => {
+            const t = Date.parse(isoJst);
+            const R = Date;
+            const FD = class extends R { constructor(...a) { if (a.length) super(...a); else super(t); } static now() { return t; } };
+            const sent = [];
+            const w = {
+                opsStageDomain: stage,
+                availabilityDomain: { reminderTargets: (ps, h) => ps.filter(p => p.hours.includes(h)).map(p => ({ id: p.id, name: p.name, remaining: 3, window: null })), rangeLabel: () => '' },
+                supabaseClaimRaidNotice: async () => 'claimed', supabaseMarkRaidNoticeSent: async () => {}, supabaseReleaseRaidNotice: async () => {},
+                supabaseLoadMyAttacks: async () => [],
+                sendPushNotification: async (m) => { sent.push(m.tag); },
+            };
+            const players = [{ id: 19, name: '翌1時の人', hours: [1] }, { id: 24, name: '5時の人', hours: [5] }];
+            const f = new Function('window', 'opsStore', 'getCurrentIdentity', 'Date', 'console', `${fn}\nreturn _checkAvailReminders;`)(
+                w, { get: () => ({ players }) }, () => ({ id: 1 }), FD, { warn() {}, log() {} });
+            await f({ id: 36, hard_date: '2026-10-10' });
+            return sent;
+        };
+        assert.deepEqual(await runAt('2026-10-10T01:05:00+09:00'), [], '前夜 1 時 (レイド日の前) に送っている');
+        assert.deepEqual(await runAt('2026-10-11T01:05:00+09:00'), ['avail-start-36-19-h01'], '本当の翌1時に送っていない');
+        assert.deepEqual(await runAt('2026-10-10T05:10:00+09:00'), ['avail-start-36-24-h05'], '当日 5 時に送っていない');
+        assert.deepEqual(await runAt('2026-10-11T05:05:00+09:00'), [], '翌5時 (次の日) に送っている');
+        assert.deepEqual(await runAt('2026-10-11T01:40:00+09:00'), [], '30 分を過ぎて送っている');
+        assert.deepEqual(await runAt('2026-10-11T01:05:00+09:00', { stage: null }), [], 'opsStageDomain が無いのに送っている (安全側に倒れていない)');
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
