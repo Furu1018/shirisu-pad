@@ -49,9 +49,16 @@ const jstHour = (iso) => {
     if (Number.isNaN(d.getTime())) return null;
     return Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(d));
 };
-// レイド日 = いまの 5 時間前の JST 日付 (5時〜翌4時59分が1日)。終わり (翌5時) が必ず未来になる
-const raidDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() - 5 * 3600e3));
-const iso = (dMin) => new Date(Date.now() + dMin * 60e3).toISOString();
+// ★ 「いま」は固定する (レイド日 2026-10-10 の 20:00 JST)。壁時計を使うと、翌4時台に走らせたとき
+//   「翌5時まで残り 1 時間弱」になって「使い切る見込み」のテストが落ちていた (2026-10-10 に踏んだ)。
+//   描画の関数には Date を差し替えて渡す (Date.now() / new Date() が固定の時刻を返す)
+const FIXED_NOW = Date.parse('2026-10-10T20:00:00+09:00');
+class FixedDate extends Date {
+    constructor(...a) { if (a.length) super(...a); else super(FIXED_NOW); }
+    static now() { return FIXED_NOW; }
+}
+const raidDate = '2026-10-10';
+const iso = (dMin) => new Date(FIXED_NOW + dMin * 60e3).toISOString();
 
 function run({ snap, finishReqs = [] } = {}) {
     const els = {
@@ -71,6 +78,7 @@ function run({ snap, finishReqs = [] } = {}) {
             declined: { label: '不可', color: 'var(--t-muted)', bg: 'var(--s2)' },
         },
         _finishReqCache: finishReqs,
+        Date: FixedDate,
         console,
     };
     const keys = Object.keys(env);

@@ -6348,7 +6348,15 @@ console.log('\nfinishDomain (人数・時間範囲):');
         const html = _fs.readFileSync(_path.join(_ROOT, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
         const fn = html.match(/async function _checkAvailReminders\(season\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(fn, '通知の関数が無い');
-        assert.ok(/if \(season\.hard_date !== todayJst\) return;/.test(fn), '当日以外にも送る');
+        assert.ok(/if \(!raidDay \|\| season\.hard_date !== raidDay\) return;/.test(fn), '当日以外にも送る');
+        // ★ 暦の日付で判定しない (翌0時・1時の枠の人に前夜の 0 時に届いていた・第45回)
+        assert.ok(/const raidDay = window\.opsStageDomain\?\.raidDayKey\?\.\(Date\.now\(\)\);/.test(fn) && !/todayJst/.test(fn), 'レイド日を暦の日付で見ている');
+        const rk = globalThis.opsStageDomain?.raidDayKey;
+        if (typeof rk === 'function') {
+            assert.equal(rk(Date.parse('2026-10-10T15:30:00Z')), '2026-10-10', '翌0時半 (10/11 0:30 JST) がレイド日 10/10 に入らない');
+            assert.equal(rk(Date.parse('2026-10-09T15:30:00Z')), '2026-10-09', '前夜 0時半 (10/10 0:30 JST) がレイド日に入っている');
+            assert.equal(rk(Date.parse('2026-10-09T20:00:00Z')), '2026-10-10', '当日 5時がレイド日でない');
+        }
         assert.ok(/dom\.reminderTargets\(players, hour\)/.test(fn), '相手の判定をドメインでやっていない');
         assert.ok(/supabaseClaimRaidNotice\(season\.id, 'avail_start', ref, me\?\.id\)/.test(fn), '二重送信よけ (確保) が無い');
         assert.ok(/supabaseMarkRaidNoticeSent\(season\.id, 'avail_start', ref\)/.test(fn), '送信済みを記録していない');

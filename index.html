@@ -8817,8 +8817,10 @@
                 if (!season?.id || typeof window.supabaseClaimRaidNotice !== 'function') return;
                 const dom = window.availabilityDomain;
                 if (!dom) return;
-                const todayJst = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
-                if (season.hard_date !== todayJst) return;              // レイド当日だけ
+                // ★ レイド日は「朝5時〜翌4時」(暦の日付ではない)。暦で見ると、翌0時・1時の枠の人に
+                //   レイド前夜の 0 時に届き、本当の翌0時には届かなかった (第45回 2026-10-10 に本番で踏んだ)
+                const raidDay = window.opsStageDomain?.raidDayKey?.(Date.now());
+                if (!raidDay || season.hard_date !== raidDay) return;   // レイド当日 (5時〜翌4時) だけ
                 const players = opsStore.get()?.players;
                 if (!Array.isArray(players)) return;
                 const curSlot = getCurrentSlotJST();
