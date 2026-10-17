@@ -29,6 +29,13 @@
     const MIN_BLOCKS = 2, MAX_BLOCKS = 12, MAX_NAME = 6;
 
     const wrap = (h) => (h >= 0 && h <= 4) ? `翌${h}` : String(h);
+    /** 「時」として読めるものだけ数にする: 整数 0〜23、または数字だけの文字列。それ以外は null */
+    function toHour(v) {
+        let n = null;
+        if (typeof v === 'number' && Number.isInteger(v)) n = v;
+        else if (typeof v === 'string' && /^\s*\d{1,2}\s*$/.test(v)) n = Number(v.trim());
+        return (n !== null && n >= 0 && n <= 23) ? n : null;
+    }
     /** 「朝 5〜8時」「深夜 翌0〜翌4時」「13時」 */
     function labelOf(b) {
         if (!b) return '';
@@ -63,8 +70,9 @@
             if (name.length > MAX_NAME) return err(`「${name}」は長すぎます (${MAX_NAME} 文字まで)`);
             if (names.has(name)) return err(`「${name}」が 2 つあります`);
             names.add(name);
-            const from = Number(raw?.from), to = Number(raw?.to);
-            if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || from > 23 || to < 0 || to > 23) return err(`「${name}」の時刻が読めません`);
+            // ★ 時刻は整数か数字の文字列だけ (Number() は null / '' / true を 0 や 1 に数値化してしまう — Codex指摘 2026-10-18)
+            const from = toHour(raw?.from), to = toHour(raw?.to);
+            if (from === null || to === null) return err(`「${name}」の時刻が読めません`);
             const hours = hoursBetween(from, to);
             if (!hours) return err(`「${name}」は終わりが始まりより前です`);
             if (idxOfHour(from) !== cursor) {
@@ -123,9 +131,40 @@
         return out;
     }
 
+    /**
+     * ブロックを 1 つ増やす: **後ろから見て最初に 2 時間以上あるブロック**の最後の 1 時間を切り出し、その直後に名前の無い
+     * 1 時間のブロックを置く。切れるブロックが無い (全部 1 時間) か MAX に達していれば null。
+     * (以前は常に末尾のブロックを切っていたので、2 回目から末尾の 1 時間ブロックを `4〜4` と重複させていた — Codex指摘 2026-10-18)
+     * @param {{name:string, from:number, to:number}[]} config
+     */
+    function addSplit(config) {
+        const cfg = (Array.isArray(config) ? config : []).map(b => ({ name: b.name, from: toHour(b.from), to: toHour(b.to) }));
+        if (cfg.length >= MAX_BLOCKS) return null;
+        for (let i = cfg.length - 1; i >= 0; i--) {
+            const b = cfg[i];
+            if (b.from === null || b.to === null) continue;
+            const a = idxOfHour(b.from), z = idxOfHour(b.to);
+            if (z - a < 1) continue;   // 1 時間しかない
+            const nb = { name: '', from: HOUR_ORDER[z], to: HOUR_ORDER[z] };
+            b.to = HOUR_ORDER[z - 1];
+            cfg.splice(i + 1, 0, nb);
+            return cfg;
+        }
+        return null;
+    }
+    /** ブロックを 1 つ消す。消した時間は前のブロック (無ければ次) に吸わせる。MIN 未満になるなら null */
+    function removeAt(config, i) {
+        const cfg = (Array.isArray(config) ? config : []).map(b => ({ ...b }));
+        if (cfg.length <= MIN_BLOCKS || !cfg[i]) return null;
+        const gone = cfg.splice(i, 1)[0];
+        if (cfg[i - 1]) cfg[i - 1].to = gone.to;
+        else if (cfg[i]) cfg[i].from = gone.from;
+        return cfg;
+    }
+
     root.raidBlocksDomain = {
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
-        normalize, blocksOfSeason, toConfig, sameConfig, labelOf,
+        normalize, blocksOfSeason, toConfig, sameConfig, labelOf, toHour, addSplit, removeAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

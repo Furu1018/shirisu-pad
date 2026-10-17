@@ -386,6 +386,23 @@ export function createPracticeClient(opts = {}) {
 
     // ---- RPC (supabase/40 と 47 の写し) ----
     const RPC = {
+        // 🧱 ブロックの区切りをシーズンに保存 (50_season_blocks_rpc.sql と同じ動き: metadata の他の鍵は残す・null で鍵を消す・アクティブのときだけ)
+        ops_set_season_blocks(a) {
+            const row = T.seasons.find(s => eqv(s.id, a.p_season_id) && s.is_active === true);
+            if (!row) throw new PgError('P0001', '対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+            const blocks = a.p_blocks;
+            const clear = !Array.isArray(blocks) || blocks.length === 0;
+            if (!clear) {
+                if (blocks.length > 12) throw new PgError('P0001', 'ブロックは 12 個までです');
+                for (const e of blocks) {
+                    if (!e || typeof e !== 'object' || typeof e.name !== 'string' || typeof e.from !== 'number' || typeof e.to !== 'number') throw new PgError('P0001', 'ブロックの形が違います (name / from / to)');
+                }
+            }
+            const metadata = { ...(row.metadata && typeof row.metadata === 'object' ? row.metadata : {}) };
+            if (clear) delete metadata.blocks; else metadata.blocks = clone(blocks);
+            updateRow('seasons', row, { metadata }, { rpc: true });
+            return clone(metadata);
+        },
         reservation_set_status(a) {
             const row = T.plan_reservations.find(r => eqv(r.id, a.p_id));
             if (!row) throw new PgError('P0002', `予約が見つかりません (id=${a.p_id})`);

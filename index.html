@@ -20997,7 +20997,8 @@
                 const dom = window.raidBlocksDomain;
                 const nowHour = Number(String(getCurrentSlotJST()).slice(1));
                 const cur = dom ? dom.blockIndexOfHour(blocks, nowHour) : -1;
-                sel.innerHTML = blocks.map((b, i) => `<option value="${i}" ${picked && picked.idx === i ? 'selected' : ''}>${escapeHtml(b.label)}${i === cur ? ' (いま)' : (i === cur + 1 ? ' (次)' : '')}</option>`).join('');
+                const html = blocks.map((b, i) => `<option value="${i}" ${picked && picked.idx === i ? 'selected' : ''}>${escapeHtml(b.label)}${i === cur ? ' (いま)' : (i === cur + 1 ? ' (次)' : '')}</option>`).join('');
+                if (sel.innerHTML !== html) sel.innerHTML = html;   // 変わっていなければ描き直さない (開いている選択・フォーカスを落とさない)
                 sel.style.display = _opsPlanWho === 'block' ? '' : 'none';
             }
             set('起点', _opsPlanStartMode);
@@ -23911,27 +23912,18 @@
                 to: Number(row.querySelector('.ops-se-blk-to')?.value),
             }));
         }
+        // 足す・消す の中身はドメイン (raidBlocksDomain.addSplit / removeAt)。常に 5時〜翌4時 が埋まった状態を保つ
         function _opsSeasonEditAddBlock() {
-            const cur = _opsSeasonEditReadBlocks();
-            // 最後のブロックの終わりを 1 時間手前に縮め、空いた所に新しい 1 時間のブロックを置く (常に 5時〜翌4時 が埋まった状態を保つ)
-            const last = cur[cur.length - 1];
-            if (last && last.from !== last.to) {
-                const toIdx = HOUR_ORDER.indexOf(Number(last.to));
-                const nb = { name: '', from: HOUR_ORDER[toIdx], to: HOUR_ORDER[toIdx] };
-                last.to = HOUR_ORDER[toIdx - 1];
-                cur.push(nb);
-            } else {
-                cur.push({ name: '', from: 4, to: 4 });
-            }
-            _opsSeasonEditRenderBlocks(cur);
+            const dom = window.raidBlocksDomain;
+            const next = dom ? dom.addSplit(_opsSeasonEditReadBlocks()) : null;
+            if (!next) { showNotification(`これ以上は分けられません (${dom?.MAX_BLOCKS || 12} 個まで・2 時間以上のブロックが要る)`); return; }
+            _opsSeasonEditRenderBlocks(next);
         }
         function _opsSeasonEditRemoveBlock(i) {
-            const cur = _opsSeasonEditReadBlocks();
-            if (cur.length <= (window.raidBlocksDomain?.MIN_BLOCKS || 2)) { showNotification(`ブロックは ${window.raidBlocksDomain?.MIN_BLOCKS || 2} つ以上です`); return; }
-            const gone = cur.splice(i, 1)[0];
-            // 消した時間は隣 (前があれば前、無ければ次) に吸わせる
-            if (gone) { if (cur[i - 1]) cur[i - 1].to = gone.to; else if (cur[i]) cur[i].from = gone.from; }
-            _opsSeasonEditRenderBlocks(cur);
+            const dom = window.raidBlocksDomain;
+            const next = dom ? dom.removeAt(_opsSeasonEditReadBlocks(), i) : null;
+            if (!next) { showNotification(`ブロックは ${dom?.MIN_BLOCKS || 2} つ以上です`); return; }
+            _opsSeasonEditRenderBlocks(next);
         }
         function _opsSeasonEditResetBlocks() {
             _opsSeasonEditRenderBlocks(window.raidBlocksDomain ? window.raidBlocksDomain.DEFAULT_BLOCKS : []);
@@ -24004,7 +23996,10 @@
                 if (metaChanged || nameEdits.length || codeEdits.length) {
                     await window.supabaseSaveSeasonEdits(ctx.seasonId, { monthKey, hardDate, bossNames: nameEdits, bossCodes: codeEdits });
                 }
-                if (blocksChanged) await window.supabaseUpdateSeasonBlocks(ctx.seasonId, blocksToSave);
+                if (blocksChanged) {
+                    await window.supabaseUpdateSeasonBlocks(ctx.seasonId, blocksToSave);
+                    _opsPlanBlockIdx = null;   // 区切りが変わったので、条件パネルで選んでいたブロックの添字は意味を失う → いまの時刻のブロックに戻す (Codex指摘)
+                }
                 set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length + (blocksChanged ? 1 : 0)}件)`);
                 opsStore.invalidate();
                 renderOpsDashboard();   // サマリー・盤面とも新データで再描画

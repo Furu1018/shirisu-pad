@@ -326,6 +326,10 @@ SELECT * FROM (
                 WHERE table_schema = 'public' AND table_name = 'member_devices'),
         '📱 メンバーの端末の状態 (未適用だと端末の報告は捨てられ、運営は 許可/拒否・最後に開いた日時・版 を見られない)'
 
+    UNION ALL SELECT '50_season_blocks_rpc',
+        to_regproc('public.ops_set_season_blocks') IS NOT NULL,
+        '🧱 レイド日のブロック (時間帯の区切り) をシーズンに原子的に保存する RPC (未適用でも「読んで混ぜて書く」で動く・同時編集に弱いだけ)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

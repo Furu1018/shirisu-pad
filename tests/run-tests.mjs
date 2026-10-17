@@ -559,6 +559,27 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.deepEqual(d.blocksOfSlots(B, ['h20', 'h21', 'h22', 'h03']), [4, 5, 6]);
     assert.deepEqual(d.slotsOfBlocks(B, [0, 6]), ['h05', 'h06', 'h07', 'h08', 'h00', 'h01', 'h02', 'h03', 'h04']);
     assert.deepEqual(d.slotsOfBlocks(B, [99]), []);
+    // ★ 時刻は整数か数字の文字列だけ (Number() は null / '' / true を数値化してしまう — Codex指摘 2026-10-18)
+    for (const bad of [null, '', true, 1.5, '5時', {}]) {
+        assert.ok(/時刻が読めません/.test(d.normalize([{ name: '朝', from: bad, to: 8 }, { name: '夜', from: 9, to: 4 }]).error), `from=${JSON.stringify(bad)} を時刻として通している`);
+    }
+    assert.equal(d.normalize([{ name: '朝', from: '5', to: ' 8 ' }, { name: '夜', from: 9, to: 4 }]).error, null, '数字の文字列は読める');
+    assert.deepEqual([d.toHour(24), d.toHour(-1), d.toHour('07'), d.toHour(NaN)], [null, null, 7, null]);
+    // 足す: 後ろから 2 時間以上のブロックを割る (7 → 12 まで割れる・12 で止まる・末尾を重複させない)
+    let cfg = d.DEFAULT_BLOCKS;
+    for (let n = 8; n <= 12; n++) {
+        cfg = d.addSplit(cfg);
+        assert.ok(cfg && cfg.length === n, `${n} 個目を足せない`);
+        assert.equal(d.normalize(cfg.map((b, i) => ({ ...b, name: b.name || `x${i}` }))).error, null, `${n} 個で隙間か重なりができている`);
+    }
+    assert.equal(d.addSplit(cfg), null, '12 個を超えて足している');
+    assert.equal(d.addSplit([{ name: 'a', from: 5, to: 3 }, { name: 'b', from: 4, to: 4 }]).length, 3, '末尾が 1 時間でも手前を割れる');
+    assert.equal(d.addSplit([{ name: 'a', from: 5, to: 5 }, { name: 'b', from: 6, to: 6 }]), null, '全部 1 時間なら足せない');
+    // 消す: 消した時間は前に (先頭なら次に) 吸わせる。2 つを割らない
+    assert.deepEqual(d.removeAt(d.DEFAULT_BLOCKS, 1).slice(0, 2), [{ name: '朝', from: 5, to: 11 }, { name: '昼', from: 12, to: 14 }]);
+    assert.deepEqual(d.removeAt(d.DEFAULT_BLOCKS, 0)[0], { name: '午前', from: 5, to: 11 });
+    assert.equal(d.removeAt([{ name: 'a', from: 5, to: 14 }, { name: 'b', from: 15, to: 4 }], 0), null, '2 つを割っている');
+    assert.equal(d.removeAt(d.DEFAULT_BLOCKS, 99), null);
     // 保存の形と同一判定
     assert.deepEqual(d.toConfig(two.blocks), [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
     assert.equal(d.sameConfig(def.blocks, d.normalize(d.toConfig(def.blocks)).blocks), true);
@@ -8942,20 +8963,75 @@ console.log('\ngrowthDomain:');
         const save = html.match(/async function handleOpsSeasonEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const r = rbd\.normalize\(blockCfg\);\s*\n\s*if \(!r\.blocks\) \{ set\(`❌ ブロック: \$\{r\.error\}`, true\); return; \}/.test(save), '保存前に検査していない');
         assert.ok(/blocksToSave = isDefault \? null : rbd\.toConfig\(r\.blocks\);/.test(save), '既定と同じなら null (= metadata.blocks を消す) にしていない');
-        assert.ok(/if \(blocksChanged\) await window\.supabaseUpdateSeasonBlocks\(ctx\.seasonId, blocksToSave\);/.test(save), '保存していない');
+        assert.ok(/if \(blocksChanged\) \{\s*\n\s*await window\.supabaseUpdateSeasonBlocks\(ctx\.seasonId, blocksToSave\);/.test(save), '保存していない');
         assert.ok(/&& !blocksChanged\) \{ set\('変更はありません'\); return; \}/.test(save), 'ブロックだけ変えたとき「変更はありません」で止まる');
-        // 消したブロックの時間は隣に吸わせる (常に 5時〜翌4時 が埋まる)
-        assert.ok(/if \(cur\[i - 1\]\) cur\[i - 1\]\.to = gone\.to; else if \(cur\[i\]\) cur\[i\]\.from = gone\.from;/.test(html), '消した時間が宙に浮く');
-        // クライアント: アクティブシーズンの読み出しに metadata / ブロックの保存は他の鍵を残し is_active のときだけ
+        // 足す・消す はドメイン (addSplit / removeAt)。画面に独自の計算を持たない (以前は末尾を重複させていた — Codex指摘)
+        assert.ok(/dom\.addSplit\(_opsSeasonEditReadBlocks\(\)\)/.test(html) && /dom\.removeAt\(_opsSeasonEditReadBlocks\(\), i\)/.test(html), '足す・消す をドメインに任せていない');
+        assert.ok(!/cur\[i - 1\]\.to = gone\.to/.test(html), '画面に独自の吸わせる計算が残っている');
+        // 区切りを保存したら、条件パネルで選んでいたブロックの添字を戻す / select は変わったときだけ描き直す
+        assert.ok(/await window\.supabaseUpdateSeasonBlocks\(ctx\.seasonId, blocksToSave\);\s*\n\s*_opsPlanBlockIdx = null;/.test(html), '保存後に選択中のブロックを戻していない');
+        assert.ok(/if \(sel\.innerHTML !== html\) sel\.innerHTML = html;/.test(html), 'select を毎回描き直している');
+        // クライアント: アクティブシーズンの読み出しに metadata / 保存は 入口で normalize → RPC (50) → 無ければ読んで混ぜて書く
         assert.ok(/\.select\('id, month_key, hard_date, current_level, union_rank, is_active, is_test, metadata'\)/.test(client), 'アクティブシーズンの metadata を読んでいない');
         const upd = client.match(/window\.supabaseUpdateSeasonBlocks = async function[\s\S]*?\n\};\n/)?.[0] || '';
         assert.ok(upd, 'supabaseUpdateSeasonBlocks が無い');
-        assert.ok(/const metadata = \{ \.\.\.\(cur\.metadata && typeof cur\.metadata === 'object' \? cur\.metadata : \{\}\) \};/.test(upd), '他の鍵 (damages_snapshot 等) を消している');
+        assert.ok(/const r = dom\.normalize\(blocks\);\s*\n\s*if \(!r\.blocks\) throw new Error/.test(upd), '入口で検査していない');
+        assert.ok(/supabase\.rpc\('ops_set_season_blocks', \{ p_season_id: seasonId, p_blocks: cfg \}\)/.test(upd), 'RPC を呼んでいない');
+        assert.ok(/error\.code === 'PGRST202'/.test(upd), '50 未適用のフォールバックが無い');
+        assert.ok(/const metadata = \{ \.\.\.\(cur\.metadata && typeof cur\.metadata === 'object' \? cur\.metadata : \{\}\) \};/.test(upd), 'フォールバックで他の鍵 (damages_snapshot 等) を消している');
         assert.ok(/else delete metadata\.blocks;/.test(upd), 'null で既定に戻せない');
         assert.equal((upd.match(/\.eq\('is_active', true\)/g) || []).length, 2, '終了済みシーズンに書けてしまう');
+        // SQL 50 と 99 の判定行、練習の偽サーバにも同じ RPC
+        const sql50 = _grRd('supabase', '50_season_blocks_rpc.sql');
+        assert.ok(/CREATE FUNCTION ops_set_season_blocks\(/.test(sql50) && /GRANT EXECUTE ON FUNCTION ops_set_season_blocks\(BIGINT, JSONB\) TO anon, authenticated;/.test(sql50) && /NOTIFY pgrst, 'reload schema';/.test(sql50), '50 の形が違う');
+        assert.ok(/WHERE id = p_season_id AND is_active = TRUE/.test(sql50) && /- 'blocks'/.test(sql50) && /jsonb_build_object\('blocks', p_blocks\)/.test(sql50), '50 が他の鍵を残す 1 文になっていない');
+        assert.ok(_grRd('supabase', '99_check_applied.sql').includes("'50_season_blocks_rpc'"), '99 に 50 の判定行が無い');
+        assert.ok(/ops_set_season_blocks\(a\) \{/.test(_grRd('js', 'practice', 'server.js')), '練習の偽サーバに RPC が無い');
         // ベンチは区切りをドメインから取る (二重定義しない)
         const bench = _grRd('tests', 'bench-block.mjs').split(String.fromCharCode(13)).join('');
         assert.ok(/const BLOCKS = raidBlocks\.normalize\(null\)\.blocks\.map/.test(bench), 'ベンチが区切りを別に持っている');
+    });
+
+    await testAsync('★ 実行: ブロックの保存 — 入口で検査 / RPC が本線 / 50 未適用だけ読んで混ぜて書く / RPC の別エラーは投げる (Codex指摘 2026-10-18)', async () => {
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        const body = client.match(/window\.supabaseUpdateSeasonBlocks = async function[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(body, '保存の関数が無い');
+        const mk = (rpcAnswer, meta = { damages_snapshot: [1], blocks: [{ name: 'x', from: 5, to: 4 }] }) => {
+            const calls = { rpc: [], select: 0, update: [] };
+            const supabase = {
+                rpc: async (name, args) => { calls.rpc.push({ name, args }); return rpcAnswer(args); },
+                from: () => ({
+                    select: () => { calls.select++; return { eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { metadata: meta }, error: null }) }) }) }; },
+                    update: (patch) => { calls.update.push(patch); return { eq: () => ({ eq: () => ({ select: async () => ({ data: [{ id: 1 }], error: null }) }) }) }; },
+                }),
+            };
+            const w = {};
+            new Function('supabase', 'window', body)(supabase, w);
+            return { fn: w.supabaseUpdateSeasonBlocks, calls };
+        };
+        const two = [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }];
+        // 入口で検査: 壊れた区切りはどこにも書かない
+        const bad = mk(async () => ({ error: null }));
+        await assert.rejects(() => bad.fn(36, [{ name: '朝', from: 6, to: 8 }, { name: '夜', from: 9, to: 4 }]), /ブロックの区切りが正しくありません/);
+        assert.equal(bad.calls.rpc.length + bad.calls.select + bad.calls.update.length, 0, '壊れた区切りで DB に触っている');
+        // RPC が通れば表は触らない。既定と同じ内容は null (鍵を消す)
+        const ok = mk(async () => ({ error: null }));
+        assert.deepEqual(await ok.fn(36, two), two);
+        assert.deepEqual(ok.calls.rpc, [{ name: 'ops_set_season_blocks', args: { p_season_id: 36, p_blocks: two } }]);
+        assert.equal(ok.calls.select + ok.calls.update.length, 0, 'RPC が通ったのに表を触っている');
+        assert.equal(await ok.fn(36, globalThis.raidBlocksDomain.DEFAULT_BLOCKS), null);
+        assert.equal(ok.calls.rpc[1].args.p_blocks, null, '既定と同じ内容を鍵として書いている');
+        // 50 未適用 (PGRST202) → 読んで混ぜて書く。他の鍵 (damages_snapshot) は残す
+        const fb = mk(async () => ({ error: { code: 'PGRST202', message: 'Could not find the function public.ops_set_season_blocks' } }));
+        assert.deepEqual(await fb.fn(36, two), two);
+        assert.equal(fb.calls.select, 1); assert.equal(fb.calls.update.length, 1);
+        assert.deepEqual(fb.calls.update[0], { metadata: { damages_snapshot: [1], blocks: two } }, 'フォールバックで他の鍵を消している / blocks を書いていない');
+        await fb.fn(36, null);
+        assert.deepEqual(fb.calls.update[1], { metadata: { damages_snapshot: [1] } }, 'null で鍵を消していない');
+        // RPC の別のエラー (終了済みシーズン等) はそのまま投げ、フォールバックしない
+        const other = mk(async () => ({ error: { code: 'P0001', message: '対象シーズンは既にアクティブではありません' } }));
+        await assert.rejects(() => other.fn(36, two), (e) => /アクティブではありません/.test(e?.message));
+        assert.equal(other.calls.select + other.calls.update.length, 0, 'RPC が断ったのに読んで書いている');
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {

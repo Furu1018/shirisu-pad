@@ -704,6 +704,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   実行テスト: `tests/practice.mjs` (本物の送る関数を偽のサーバ相手に動かして、実際に渡した宛先を見る)・`tests/member-board.mjs`・`tests/run-tests.mjs` の「通知」の節
   ★ 運営あては `_notifyOps({title, body, tag, except})` = master + 運営担当の全員 (押した本人は除く)。メンバーの 予約の申請 (2経路)・取消希望・📣 の返事・締め凸の返事 で送る。
   ★ 本人あては `_notifyMemberResv(row, title, body)` = 承認・却下・取り下げ・続行。ホームの 30 秒ティックは配信プランだけでなく `renderMyReservations` も取り直す。
+- **🧱 ブロックの区切りの保存 RPC** (`50_season_blocks_rpc.sql`・2026-10-18): `ops_set_season_blocks(p_season_id, p_blocks)`。未適用でも動く (同時編集に弱いだけ)。99 に判定行あり
 - **📱 メンバーの端末の状態** (`49_member_devices.sql`・通知の見える化 D・2026-10-08 ユーザー決定 Q1/Q2/Q4「今入れる」。設計の正本は
   `docs/通知の見える化_設計案_2026-10-08.md`、Codex レビュー済み)。「端末で通知を設定できているか」はサーバから見えないので、
   本人の端末がアプリを開いたときに `_reportMemberDevice` が報告する (`device_id` = ブラウザごとの localStorage の乱数 = 主キー。名乗り直しは同じ行を上書き。
@@ -1050,7 +1051,8 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ **🧱 ブロック制 ② (2026-10-18)**: レイド日 (5時〜翌4時) をブロック (時間帯の区切り) に分け、運営は**次のブロックだけ**を約束する
   (`docs/第45期_ブロック制の検討_2026-10-17.md`)。区切りは **`js/domain/raidBlocks.js`** が唯一 (`normalize` が検査: 5時〜翌4時を隙間も重なりも無く・2〜12 個・名前 6 文字まで)。
   シーズンごとに `seasons.metadata.blocks` = `[{ name, from, to }]` (無ければ既定 7 つ: 朝/午前/昼/午後/夕方/夜/深夜)。✏️ シーズン編集で行を足す・消す・既定に戻す
-  (`supabaseUpdateSeasonBlocks`: metadata の他の鍵を残す・is_active のときだけ。既定と同じなら鍵を消す)。**内部の時間は 1 時間刻み `hXX` のまま**。
+  (`supabaseUpdateSeasonBlocks`: 入口で normalize・本線は RPC `ops_set_season_blocks` (**`50_season_blocks_rpc.sql`**・DB 側で `metadata || {blocks}` の 1 文 = 同時編集でも他の鍵を消さない)・
+  50 未適用は「読んで混ぜて書く」にフォールバック・既定と同じなら鍵を消す。行の足し引きは `addSplit` (後ろから 2 時間以上のブロックを割る) / `removeAt` (隣に吸わせる))。**内部の時間は 1 時間刻み `hXX` のまま**。
   条件パネルの対象に 3 つ目「🧱 ブロックの人」+ ブロックの選択肢 (`_opsPlanBlock()`: 既定はいまの時刻のブロック・「(いま)」「(次)」の印)。
   算出は `computeOptimalPlanCore({ onlyAvailableNow: true, availableAtSlots: block.slots, availableAtLabel })` — その時間帯のどれかに出られる人 + ⏳隙間型 + 未登録 (= いつでも)
   に絞る (ベンチ H と同じ読み方)。1 時間の「今動ける人だけ」(`availableAtSlot`) は従来どおり。出力に `availableAtSlots` / `availableAtLabel` が載るのはブロックのときだけ (指紋を保つ)。

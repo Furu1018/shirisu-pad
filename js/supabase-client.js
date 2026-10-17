@@ -1849,21 +1849,35 @@ window.seasonBossMetaFromCode = function (code) {
 };
 
 // 🧱 レイド日のブロック (時間帯の区切り) をシーズンに保存する (2026-10-18・ブロック制)。
-// seasons.metadata.blocks = [{ name, from, to }]。null で既定 (7 つ) に戻す。
-// 読み方・検査は js/domain/raidBlocks.js (normalize) が唯一 — ここは渡された形をそのまま書く (呼び出し側で検査済み)。
-// ★ metadata は丸ごと上書きになるので、直前に読んで他の鍵 (damages_snapshot 等) を残す
+// seasons.metadata.blocks = [{ name, from, to }]。null / 既定と同じ → 鍵を消す (= 既定の 7 つ)。
+// ★ 入口で必ず検査する (js/domain/raidBlocks.js の normalize が唯一)。画面を通らない呼び出しでも壊れた区切りを本番に書かない (Codex指摘 2026-10-18)
+// ★ 書き込みは RPC ops_set_season_blocks (50) が本線 = DB 側で metadata || {blocks} の 1 文 (同時編集で他の人の区切りや他の鍵を消さない)。
+//   50 未適用 (PGRST202) のときだけ「読んで・混ぜて・書く」にフォールバック (劣化動作: 同時編集に弱いだけ)
 window.supabaseUpdateSeasonBlocks = async function (seasonId, blocks) {
     if (!seasonId) throw new Error('seasonId が必要です');
+    const dom = (typeof window !== 'undefined' && window.raidBlocksDomain) || (typeof globalThis !== 'undefined' && globalThis.raidBlocksDomain) || null;
+    if (!dom) throw new Error('ブロックの検査 (raidBlocksDomain) が読み込まれていません');
+    let cfg = null;
+    if (Array.isArray(blocks) && blocks.length > 0) {
+        const r = dom.normalize(blocks);
+        if (!r.blocks) throw new Error(`ブロックの区切りが正しくありません: ${r.error}`);
+        cfg = dom.sameConfig(r.blocks, dom.normalize(null).blocks) ? null : dom.toConfig(r.blocks);
+    }
+    const { error } = await supabase.rpc('ops_set_season_blocks', { p_season_id: seasonId, p_blocks: cfg });
+    if (!error) return cfg;
+    // PGRST202 = 関数がスキーマに無い (50 未適用)。それ以外 (RPC 内の RAISE = 終了済みシーズン等) はそのまま投げる
+    const missing = error.code === 'PGRST202' || /Could not find the function/i.test(error.message || '');
+    if (!missing) throw error;
     const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
     if (rErr) throw rErr;
     if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
     const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' ? cur.metadata : {}) };
-    if (Array.isArray(blocks) && blocks.length > 0) metadata.blocks = blocks.map(b => ({ name: String(b.name), from: Number(b.from), to: Number(b.to) }));
+    if (cfg) metadata.blocks = cfg;
     else delete metadata.blocks;
-    const { data, error } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
-    if (error) throw error;
+    const { data, error: uErr } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
+    if (uErr) throw uErr;
     if (!data || data.length === 0) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
-    return metadata.blocks || null;
+    return cfg;
 };
 
 // シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。
