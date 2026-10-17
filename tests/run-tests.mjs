@@ -363,6 +363,75 @@ test('⏰ 時間厳守 (timeStrict): 時間が合わない人を最寄りで組�
     assert.ok(hybAt2.length > 0 && hybAt2.every(a => a.flex && !a.timeMismatch), '厳守でハイブリッドの人を Lv2 (塗った時間より後に開く) から外している');
 });
 
+test('⏰ 厳守: 取り残される人で律速の凸を置き換えて踏破を前倒しする (昼の人を使い残さない・2026-10-17)', () => {
+    // 第44回の実データで見つけた弱点 (tests/bench-block.mjs): 残り 22B を「22時の人の 22B ぴったり」で埋め、
+    // 昼にしか出られない人 (30B) を使わない → 踏破が 22時まで遅れ、次のレベルが開くのは夜 → 昼の人はまるごと未使用
+    const noon = ['h12', 'h13', 'h14', 'h15', 'h16', 'h17'];
+    const board = (strict, extra = {}) => compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 22 })],
+        [
+            player('夜の人', { fire: 22 }, { availableSlots: ['h22'] }),
+            player('昼の人', { fire: 30 }, { availableSlots: noon }),
+        ],
+        { currentSlot: 'h05' },
+    ), timeStrict: strict, ...extra });
+    const names = (lv) => (lv?.bosses || []).flatMap(b => b.attacks.map(a => a.memberName));
+    // 従来 (ダメージ優先): オーバーキル 0 の 22時の人を選ぶ → Lv1 は 22時踏破。この動きは変えない (指紋)
+    const loose = board(false);
+    assert.deepEqual(names(loose.levels[0]), ['夜の人']);
+    assert.equal(loose.levels[0].clearHourLabel, '22時');
+    // ⏰ 厳守: 昼の人は Lv1 の踏破 (22時) より前に時間が終わる = 取り残される → 律速の凸を昼の人で置き換える
+    const strict = board(true);
+    assert.deepEqual(names(strict.levels[0]), ['昼の人'], '取り残される昼の人で律速の凸を置き換えていない');
+    assert.equal(strict.levels[0].clearHourLabel, '12時', '踏破が前倒しされていない');
+    assert.equal(strict.levels[0].bosses[0].attacks[0].hourLabel, '12時');
+    // 置き換えられた夜の人は次のレベル (22時以降に開く) で使われる。昼の人の残り 2 凸も Lv2 に入る
+    assert.ok(names(strict.levels[1]).includes('夜の人'), '置き換えられた遅い時間の人が次のレベルで使われていない');
+    // 残る未使用は「出せる属性なし」(この盤面は属性ごとに編成 1 つ) だけ。「時間帯なし」は消える
+    const keys = (plan) => (plan.unusedSummary || []).map(u => u.key);
+    assert.ok(!keys(strict).includes('time'), `「時間帯なし」の未使用が残っている: ${JSON.stringify(strict.unusedSummary)}`);
+    assert.ok(keys(loose).every(k => k === 'attrsExhausted'));
+
+    // 🔒 約束 (予約) は動かさない: 夜の人の 22時 が承認済みの予約なら、昼の人は取り残されたまま
+    const promised = board(true, { reservations: [{ reservationId: 9, memberId: '夜の人', level: 1, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h22', team: [], expectedB: 22 }] });
+    assert.deepEqual(names(promised.levels[0]), ['夜の人'], '予約の凸を置き換えている');
+    assert.equal(promised.levels[0].clearHourLabel, '22時');
+    const timeUnused = (promised.unusedSummary || []).find(u => u.key === 'time');
+    assert.equal(timeUnused?.attacks, 3, '昼の人 3 凸が「時間帯なし」で残るはず (約束を守った代償)');
+
+    // 取り残される人では倒し切れない → 戻す (元の凸がそのまま・二重にならない)
+    const weak = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 22 })],
+        [player('夜の人', { fire: 22 }, { availableSlots: ['h22'] }), player('昼の弱い人', { fire: 10 }, { availableSlots: noon })],
+        { currentSlot: 'h05' },
+    ), timeStrict: true });
+    assert.deepEqual(names(weak.levels[0]), ['夜の人'], '倒し切れないのに置き換えている / 戻せていない');
+    const back = weak.levels[0].bosses[0].attacks[0];
+    assert.equal(back.dmgB, 22); assert.equal(back.hourLabel, '22時'); assert.equal(back.flex, false);
+    assert.equal(weak.levels[0].clearHourLabel, '22時');
+
+    // 取り残される人 2 人で倒し切る (1 人では足りない)
+    const two = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 22 })],
+        [player('夜の人', { fire: 22 }, { availableSlots: ['h22'] }),
+         player('昼A', { fire: 12 }, { availableSlots: noon }), player('昼B', { fire: 12 }, { availableSlots: noon })],
+        { currentSlot: 'h05' },
+    ), timeStrict: true });
+    assert.deepEqual(names(two.levels[0]).sort(), ['昼A', '昼B'], '2 人で倒し切る置き換えができていない');
+    assert.equal(two.levels[0].clearHourLabel, '12時');
+
+    // 取り残される人が居なければ何もしない (夜の人しか居ない盤面は従来どおり)
+    const alone = compute({ ...timeInput([boss(1, 'fire', { remainingB: 22 })], [player('夜の人', { fire: 22 }, { availableSlots: ['h22'] })], { currentSlot: 'h05' }), timeStrict: true });
+    assert.deepEqual(names(alone.levels[0]), ['夜の人']);
+    // ⏳隙間型・時間未登録の人は「取り残される」に数えない (踏破時刻のあとでも出られる)
+    const flex = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 22 })],
+        [player('夜の人', { fire: 22 }, { availableSlots: ['h22'] }), player('隙間の人', { fire: 30 }, { flexTime: true }), player('未登録の人', { fire: 30 })],
+        { currentSlot: 'h05' },
+    ), timeStrict: true });
+    assert.deepEqual(names(flex.levels[0]), ['夜の人'], '隙間型・未登録の人で置き換えている');
+});
+
 test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 20 })],

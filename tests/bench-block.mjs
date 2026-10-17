@@ -243,7 +243,17 @@ for (let s = 1; s <= N; s++) {
         diag[k].push({ mm: r.w.levelMismatch, sh: r.w.shifted, dead: r.w.lost.dead, char: r.w.lost.char, unused: r.unused });
         if (s === 1) first[k] = r;
     }
-    if (s === 1 && process.env.VERBOSE) console.log(first.A);
+    if (s === 1 && process.env.VERBOSE) {
+        // 盤面 1 の A (1日ぶんを1回) を読む: レベルごとの開放→踏破と、未使用の理由
+        const plan = compute(solverInput(newWorld(avail, avail), 0, () => true));
+        for (const lv of plan.levels) {
+            const n = lv.bosses.reduce((t, b) => t + b.attacks.length, 0);
+            const bottleneck = lv.bosses.flatMap(b => b.attacks.filter(a => a.isBottleneck).map(a => `${a.memberName} ${a.dmgB}B→B${b.bossNumber}`));
+            console.log(`  Lv${lv.level} ${lv.openHourLabel ?? '-'}開始 → ${lv.levelCleared ? `${lv.clearHourLabel} 踏破` : (lv.infinite ? '無限' : '踏破できず')} · ${n}凸` + (bottleneck.length ? ` · 律速: ${bottleneck.join(' / ')}` : ''));
+        }
+        console.log(`  未使用 ${plan.unusedAttacks}凸: ` + (plan.unusedSummary || []).map(u => `${u.label} ${u.attacks} (${u.members.map(m => `${m.name}×${m.remaining}`).join(' ')})`).join(' / '));
+        console.log(`  時間帯: ` + plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks)).length + '凸を配置 / credited ' + plan.totalCreditedB.toFixed(1) + 'B');
+    }
 }
 const ceilingOf = () => (MEMBERS_SYNTH || MEMBERS_REAL).reduce((t, m) => t + Object.values(m.loadouts).flat().sort((a, b) => b.dmgB - a.dmgB).slice(0, 3).reduce((x, lo) => x + lo.dmgB, 0), 0);
 const q = (arr, p) => { const a = [...arr].sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * p))]; };

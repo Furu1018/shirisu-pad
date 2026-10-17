@@ -743,6 +743,71 @@
                     }
                     t.rem = rem;
                 };
+                // ===== ⏰ 早く踏破して多くの人を参加させる (時間厳守・2026-10-17) =====
+                // 貪欲はオーバーキルの小ささを優先するので、残り 22B を「22時の人の 22B ぴったり」で埋め、
+                // 昼にしか出られない人 (30B) を使わない。すると踏破が 22時まで遅れ、次のレベルが開くのは夜 —
+                // 昼の人は「停止レベルの開放時刻以降に戦闘可能時間がない」でまるごと未使用になる
+                // (第44回の実データで 30 人中 5 人 14 凸・tests/bench-block.mjs)。
+                // 時間厳守 OFF ではその人たちが ⚠時間外のベストエフォートで組み込まれるので表に出ない。
+                // 厳守 ON のときだけ、削り切ったあとに次を繰り返す:
+                //   取り残される人 = 宣言時間がこのレベルの踏破時刻より前に終わる人 (次のレベル以降に出番が無い)
+                //   が居るあいだ、律速のボス (踏破時刻を決めている凸) のその時刻の凸を、取り残される人の凸で
+                //   置き換える。倒し切れなければ戻す。置き換えた人 (遅い時間の人) は次のレベルで使える。
+                // ★ 約束 (🔒予約・前回どおりの sticky) は動かさない。⏳隙間の凸は踏破時刻を決めていないので対象外
+                const lastHourOf = (m) => (Array.isArray(m.hourIdxs) && m.hourIdxs.length) ? m.hourIdxs[m.hourIdxs.length - 1] : null;
+                const levelClearIdxNow = () => {
+                    let idx = openIdx;
+                    for (const t of targets) {
+                        if (t.rem > 0.0001) return null;   // 削り切れていないボスがある = 踏破時刻は無い
+                        for (const a of t.attacks) if (!a.flex && a.hourIdx > idx) idx = a.hourIdx;
+                    }
+                    return idx;
+                };
+                const pullForwardForStranded = () => {
+                    if (!timeAware || !timeStrict) return 0;
+                    let moved = 0;
+                    for (let guard = 0; guard < 60; guard++) {
+                        const clearIdx = levelClearIdxNow();
+                        if (clearIdx == null || clearIdx <= openIdx) break;
+                        const stranded = new Set(memberState.filter(m => (m.remainingAttacks - (m.reservedLater || 0)) > 0
+                            && m.hourIdxs !== null && !m.flexTime && Object.keys(m.avail).length > 0
+                            && lastHourOf(m) != null && lastHourOf(m) < clearIdx && lastHourOf(m) >= openIdx));
+                        if (stranded.size === 0) break;
+                        let replaced = false;
+                        for (const t of targets) {
+                            const late = t.attacks.filter(a => !a.flex && a.hourIdx === clearIdx && !stickyPlaced.has(a));
+                            for (const atk of late) {
+                                const m0 = memberState.find(x => x.id === atk.memberId);
+                                const meta = loMeta.get(atk);
+                                if (!m0 || !undoPick(t, atk)) continue;
+                                const picked = [];
+                                while (t.rem > 0.0001) {
+                                    const list = listCandidatesFor(t).filter(c => stranded.has(c.pick) && !c.pickFlex && c.pickHour < clearIdx);
+                                    if (list.length === 0) break;
+                                    applyPick(t, list[0]);
+                                    picked.push(t.attacks[t.attacks.length - 1]);
+                                }
+                                if (t.rem > 0.0001) {
+                                    // 取り残される人では倒し切れない → 元に戻す (undoPick が avail へ戻した編成をそのまま使う)
+                                    for (const pk of picked.reverse()) undoPick(t, pk);
+                                    const w = t.b.weakness;
+                                    const lo0 = (m0.avail[w] || []).find(l => l === meta)
+                                        || (m0.avail[w] || []).find(l => (l.slot ?? 1) === (atk.loadoutSlot ?? 1) && l.dmg === atk.dmgB);
+                                    if (lo0) applyPick(t, { pick: m0, pickScore: 0, pickHour: atk.hourIdx, pickFlex: false,
+                                        pickLo: lo0, pickDmg: atk.dmgB, pickSlot: { idx: atk.hourIdx, flex: false } });
+                                    continue;
+                                }
+                                trimOverkill(t);
+                                moved++;
+                                replaced = true;
+                                break;
+                            }
+                            if (replaced) break;
+                        }
+                        if (!replaced) break;
+                    }
+                    return moved;
+                };
                 // ===== L2: 承認済みの予約を**いちばん先に**置く =====
                 // 予約は「運営が承認した約束」なので、L1 の sticky (前回の割当) より強い。
                 // 置き方は sticky と同じ (applyPick を通す) が、違いが3つある:
@@ -868,6 +933,7 @@
                         }
                         trimOverkill(t);   // 撃破を保ったまま不要な凸を外す (損失圧縮・凸を浮かせる)
                     }
+                    pullForwardForStranded();   // ⏰ 厳守: 取り残される人で律速の凸を置き換え、踏破を前倒し
                 } else {
                     // 吸収モード: 生きている全ボスを横断して、常に全体スコア最小の凸を選ぶ
                     while (true) {
