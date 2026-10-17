@@ -13,7 +13,7 @@
 (function (root) {
     'use strict';
 
-    const WHO = { all: '全員', now: '今動ける人だけ' };
+    const WHO = { all: '全員', now: '今動ける人だけ', block: '🧱 ブロックに出られる人' };
     const FROM = { now: '今から', day: '朝5時から' };
     const PREV = { keep: '前回を尊重', fresh: 'ゼロから' };
     const TIME = { strict: '⏰時間厳守', damage: '⚡ダメージ優先' };
@@ -24,7 +24,8 @@
     /**
      * 算出に効いた条件を1つの形に正規化する (プランに焼き込む形)。
      * @param {Object} a
-     * @param {'all'|'now'} a.who           対象 (全員 / 今動ける人だけ)
+     * @param {'all'|'now'|'block'} a.who   対象 (全員 / 今動ける人だけ / 🧱 そのブロックに出られる人)
+     * @param {string|null=} a.block        🧱 のときのブロックの表示名 (「夕方 18〜20時」)
      * @param {'now'|'day'} a.from          起点 (今から / 朝5時から)
      * @param {'keep'|'fresh'} a.prev       前回の配信 (尊重 / ゼロから)
      * @param {number=} a.reservations      拘束になった予約の数 (isFixed)
@@ -37,7 +38,8 @@
      */
     function conditionsOf(a = {}) {
         return {
-            who: a.who === 'now' ? 'now' : 'all',
+            who: a.who === 'now' ? 'now' : (a.who === 'block' ? 'block' : 'all'),
+            block: a.who === 'block' ? str(a.block) : null,
             from: a.from === 'day' ? 'day' : 'now',
             prev: a.prev === 'fresh' ? 'fresh' : 'keep',
             // ⏰ 時間: 厳守 (宣言した時間に合わない凸を組まない) / ダメージ優先 (時間外も最寄りで組む)。古い焼き込み (無印) はダメージ優先として読む
@@ -55,7 +57,8 @@
     /** 「全員 · 今から · 前回を尊重 · 🔒予約 3 · 🚫除外 1 · ✋難しい 2」。数が 0 のものは省く (予約だけは常に出す) */
     function conditionSummary(c) {
         const x = conditionsOf(c || {});
-        const parts = [WHO[x.who], FROM[x.from], TIME[x.time], PREV[x.prev], `🔒予約 ${x.reservations}`];
+        const who = (x.who === 'block' && x.block) ? `🧱 ${x.block} に出られる人` : WHO[x.who];
+        const parts = [who, FROM[x.from], TIME[x.time], PREV[x.prev], `🔒予約 ${x.reservations}`];
         if (x.excluded > 0) parts.push(`🚫除外 ${x.excluded}`);
         if (x.unavailable > 0) parts.push(`✋難しい ${x.unavailable}`);
         return parts.join(' · ');

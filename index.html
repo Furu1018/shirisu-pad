@@ -105,6 +105,7 @@
     <script defer src="./js/domain/mockExclusion.js"></script>   <!-- 運営による模擬提出の除外 (35) -->
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
+    <script defer src="./js/domain/raidBlocks.js"></script>      <!-- 🧱 レイド日のブロック (時間帯の区切り・ブロック制 2026-10-17) -->
     <script defer src="./js/domain/availability.js"></script>    <!-- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) -->
     <script defer src="./js/domain/clientGate.js"></script>      <!-- 互換ゲート (L2 ⑦) -->
     <script defer src="./js/domain/popularTeams.js"></script>
@@ -4513,8 +4514,9 @@
                 <!-- 条件: 4 つ選ぶ (対象 / 起点 / 時間 / 前回の配信)。自動で効くものは見せるだけ -->
                 <div class="plan-cond" id="opsPlanCond">
                     <div class="row"><span class="k">対象</span>
-                        <div class="plan-seg" role="group" aria-label="対象"><button type="button" data-k="all" onclick="setOpsPlanWho('all')">全員</button><button type="button" data-k="now" onclick="setOpsPlanWho('now')">今動ける人だけ</button></div>
-                        <span class="hint">残り凸のあるメンバー全員 / いま戦闘可能時間の人だけ (締め凸の相談向け)</span></div>
+                        <div class="plan-seg" role="group" aria-label="対象"><button type="button" data-k="all" onclick="setOpsPlanWho('all')">全員</button><button type="button" data-k="now" onclick="setOpsPlanWho('now')">今動ける人だけ</button><button type="button" data-k="block" onclick="setOpsPlanWho('block')">🧱 ブロックの人</button></div>
+                        <select id="opsPlanBlockSel" aria-label="ブロック" onchange="setOpsPlanBlock(this.value)" style="display:none;max-width:100%;padding:5px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12px;font-weight:700;"></select>
+                        <span class="hint">残り凸のあるメンバー全員 / いま戦闘可能時間の人だけ (締め凸の相談向け) / 🧱 そのブロック (時間帯の区切り) に出られる人だけで、次のブロックぶんを組む。区切りは ✏️ シーズン編集で</span></div>
                     <div class="row"><span class="k">起点</span>
                         <div class="plan-seg" role="group" aria-label="起点"><button type="button" data-k="now" onclick="setOpsPlanStartMode('now')">今から</button><button type="button" data-k="day" onclick="setOpsPlanStartMode('day')">朝5時から</button></div>
                         <span class="hint">前日まではどちらも朝5時からレイド日いちにちぶんを組む。当日は「今から」で残りの時間だけ</span></div>
@@ -6309,6 +6311,16 @@
             <div>
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--t-body);margin-bottom:6px;">ボス構成 — 属性はセレクトで修正 / ボス名は空欄なら変更しません</label>
                 <div id="opsSeasonEditBossRows"></div>
+            </div>
+
+            <div>
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--t-body);margin-bottom:4px;">🧱 時間のブロック — レイド日 (5時〜翌4時) をいくつに区切るか。運営は次のブロックだけを約束する</label>
+                <p style="margin:0 0 6px;font-size:11px;color:var(--t-muted);">区切りはそのときのメンバー次第。隙間も重なりも無く 5時 から 翌4時 まで並べる (2〜12 個)。時間の登録・「🧱 ブロックの人」で組む条件・配信の単位がこの区切りになります</p>
+                <div id="opsSeasonEditBlockRows"></div>
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                    <button type="button" onclick="_opsSeasonEditAddBlock()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12px;cursor:pointer;">＋ ブロックを足す</button>
+                    <button type="button" onclick="_opsSeasonEditResetBlocks()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12px;cursor:pointer;">既定 (7 つ) に戻す</button>
+                </div>
             </div>
 
             <p id="opsSeasonEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
@@ -20546,7 +20558,7 @@
                 plan.lv4Open ? `Lv3踏破 → B5♾️ 突入想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}`
                     : reached ? `Lv${plan.fullyClearedThrough} まで完全攻略想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}` : `Lv${plan.startLevel} 攻略に届かない想定`,
                 px, y, '#fff', reached ? COL.green : COL.red, 16) + 10;
-            px += pillDraw(plan.onlyAvailableNow ? `⏰ 現在凸可能のみ ${plan.candidateCount}名` : `👥 全員対象 ${plan.candidateCount}名`, px, y, COL.sub, '#F1F2F4', 15) + 10;
+            px += pillDraw(plan.availableAtLabel ? `🧱 ${plan.availableAtLabel} に出られる人 ${plan.candidateCount}名` : plan.onlyAvailableNow ? `⏰ 現在凸可能のみ ${plan.candidateCount}名` : `👥 全員対象 ${plan.candidateCount}名`, px, y, COL.sub, '#F1F2F4', 15) + 10;
             px += pillDraw(`総凸数 ${plan.totalAttacks} · 未消化 ${plan.unusedAttacks}`, px, y, COL.sub, '#F1F2F4', 15) + 10;
             if (plan.totalCreditedB != null) {
                 px += pillDraw(`総与ダメ想定 ${plan.totalCreditedB.toFixed(1)}B`, px, y, COL.blue, 'rgba(108,66,240,0.10)', 15) + 10;
@@ -20847,7 +20859,7 @@
                 plan.lv4Open ? `Lv3踏破 → B5♾️ 突入想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}`
                     : reached ? `Lv${plan.fullyClearedThrough} まで完全攻略想定${plan.finalClearHourLabel ? ` · ⏱${plan.finalClearHourLabel}` : ''}` : `Lv${plan.startLevel} 攻略に届かない想定`,
                 px, y, '#fff', reached ? COL.green : COL.red, 16) + 10;
-            px += pillDraw(plan.onlyAvailableNow ? `⏰ 現在凸可能のみ ${plan.candidateCount}名` : `👥 全員対象 ${plan.candidateCount}名`, px, y, COL.sub, '#F1F2F4', 15) + 10;
+            px += pillDraw(plan.availableAtLabel ? `🧱 ${plan.availableAtLabel} に出られる人 ${plan.candidateCount}名` : plan.onlyAvailableNow ? `⏰ 現在凸可能のみ ${plan.candidateCount}名` : `👥 全員対象 ${plan.candidateCount}名`, px, y, COL.sub, '#F1F2F4', 15) + 10;
             px += pillDraw(`総凸数 ${plan.totalAttacks} · 未消化 ${plan.unusedAttacks}`, px, y, COL.sub, '#F1F2F4', 15) + 10;
             if (plan.totalCreditedB != null) {
                 px += pillDraw(`総与ダメ想定 ${plan.totalCreditedB.toFixed(1)}B`, px, y, COL.blue, 'rgba(108,66,240,0.10)', 15) + 10;
@@ -20952,19 +20964,48 @@
         }
         // 対象 (全員 / 今動ける人だけ)。以前は「全員」「⏰凸可能のみ」という2つの算出ボタンが条件を兼ねていた (パズル盤 ①)
         const _OPS_PLAN_WHO_KEY = 'shirisuko_ops_plan_who';
+        const _OPS_PLAN_WHO_VALUES = ['all', 'now', 'block'];
         let _opsPlanWho = 'all';
-        try { _opsPlanWho = localStorage.getItem(_OPS_PLAN_WHO_KEY) === 'now' ? 'now' : 'all'; } catch (_) { /* 記憶できなくても動く */ }
+        try { const v = localStorage.getItem(_OPS_PLAN_WHO_KEY); _opsPlanWho = _OPS_PLAN_WHO_VALUES.includes(v) ? v : 'all'; } catch (_) { /* 記憶できなくても動く */ }
+        // 🧱 ブロック制 (2026-10-18): 「ブロックに出られる人」で組むときのブロック。null = いまの時刻が入るブロック (選び直すまで)
+        let _opsPlanBlockIdx = null;
+        const _opsBlocks = () => window.raidBlocksDomain ? window.raidBlocksDomain.blocksOfSeason(opsStore.get()?.season || null) : [];
+        // いま選ばれているブロック (区切りが変わって添字が溢れたら、いまの時刻のブロックに戻す)
+        function _opsPlanBlock() {
+            const blocks = _opsBlocks();
+            if (!blocks.length) return null;
+            const dom = window.raidBlocksDomain;
+            const nowHour = Number(String(getCurrentSlotJST()).slice(1));
+            const cur = dom.blockIndexOfHour(blocks, nowHour);
+            const idx = (_opsPlanBlockIdx != null && blocks[_opsPlanBlockIdx]) ? _opsPlanBlockIdx : (cur >= 0 ? cur : 0);
+            return { ...blocks[idx], idx, isNow: idx === cur };
+        }
+        function setOpsPlanBlock(v) {
+            const n = Number(v);
+            _opsPlanBlockIdx = Number.isInteger(n) && n >= 0 ? n : null;
+            _syncOpsPlanCondUi();
+        }
         // 条件パネルの3つのセグメントを状態に合わせる (どれを押しても、ここが唯一の描き直し)
         function _syncOpsPlanCondUi() {
             const set = (label, cur) => document.querySelectorAll(`#opsPlanCond .plan-seg[aria-label="${label}"] button`)
                 .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === cur)));
             set('対象', _opsPlanWho);
+            // 🧱 ブロックの選択肢 (対象が「ブロックの人」のときだけ出す)。いまの時刻のブロックに (いま) と付ける
+            const sel = document.getElementById('opsPlanBlockSel');
+            if (sel) {
+                const blocks = _opsBlocks(), picked = _opsPlanBlock();
+                const dom = window.raidBlocksDomain;
+                const nowHour = Number(String(getCurrentSlotJST()).slice(1));
+                const cur = dom ? dom.blockIndexOfHour(blocks, nowHour) : -1;
+                sel.innerHTML = blocks.map((b, i) => `<option value="${i}" ${picked && picked.idx === i ? 'selected' : ''}>${escapeHtml(b.label)}${i === cur ? ' (いま)' : (i === cur + 1 ? ' (次)' : '')}</option>`).join('');
+                sel.style.display = _opsPlanWho === 'block' ? '' : 'none';
+            }
             set('起点', _opsPlanStartMode);
             set('時間', _opsPlanTimeMode);
             set('前回の配信', _opsPlanSticky ? 'keep' : 'fresh');
         }
         function setOpsPlanWho(who) {
-            _opsPlanWho = who === 'now' ? 'now' : 'all';
+            _opsPlanWho = _OPS_PLAN_WHO_VALUES.includes(who) ? who : 'all';
             try { localStorage.setItem(_OPS_PLAN_WHO_KEY, _opsPlanWho); } catch (_) { /* noop */ }
             _syncOpsPlanCondUi();
         }
@@ -20992,6 +21033,9 @@
                 // ★ 「今動ける人だけ」は壁時計の時間帯で絞る — 起点が前日に h05 になっても「h05 に出られる人」にしない (Codex指摘 2026-10-09)
                 availableAtSlot: getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
+                // 🧱 ブロックの人だけ (2026-10-18): その時間帯のどれかに出られる人 (⏳隙間・未登録はいつでも) に絞る
+                availableAtSlots: Array.isArray(options.availableAtSlots) && options.availableAtSlots.length ? options.availableAtSlots : undefined,
+                availableAtLabel: options.availableAtLabel || undefined,
                 timeAware: true,   // 戦闘可能時間からレベル進行の実現可能性をスケジュール
                 timeStrict: _opsPlanTimeMode === 'strict',   // ⏰ 時間厳守: 時間外のベストエフォート組み込みをしない
                 // ★ L1 安定化 (2026-09-07): **いま配信中のプラン** をソルバーに渡す。
@@ -21145,8 +21189,10 @@
             //   見ないと、待っている間に押し直された新しい算出を古い結果が上書きする
             if (seq !== _opsPlanSeq) return;
             // 対象は条件パネル (_opsPlanWho)。承認後の組み直しなど、呼び出し側が明示したときはそちら (画面の選択は変えない)
-            const onlyNow = options.onlyAvailableNow != null ? !!options.onlyAvailableNow : _opsPlanWho === 'now';
-            options = { ...options, onlyAvailableNow: onlyNow };
+            const who = options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho;
+            const blk = who === 'block' ? _opsPlanBlock() : null;
+            const onlyNow = who !== 'all';
+            options = { ...options, onlyAvailableNow: onlyNow, availableAtSlots: blk ? blk.slots : null, availableAtLabel: blk ? blk.label : null };
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:var(--bad);">プラン算出に失敗しました。</p>';
@@ -21170,7 +21216,8 @@
             // ★ 「この条件で組んだ」を焼き込む (パズル盤 ①・2026-09-11)。配信されたプランにも残るので、
             //   交代した運営が「どんな状態で算出されたものか」を読める。判定は planBoardDomain が唯一
             plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
-                who: onlyNow ? 'now' : 'all',
+                who: plan.availableAtLabel ? 'block' : (onlyNow ? 'now' : 'all'),
+                block: plan.availableAtLabel || null,   // 🧱 どのブロックで組んだか (「夕方 18〜20時」)
                 from: plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode,   // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む
                 prev: _opsPlanSticky ? 'keep' : 'fresh',
                 time: plan.timeStrict ? 'strict' : 'damage',   // 実際に使った時間の扱いを焼き込む
@@ -21720,7 +21767,9 @@
                   + `<span title="ボス5はHP無限 — 与えたダメージが全額スコアに入る" style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:11px;font-weight:900;letter-spacing:0.3px;background:var(--ops-solid);color:var(--ops-ink);line-height:1.2;">Lv4 ♾️<div style="font-size:10px;font-weight:800;opacity:0.85;margin-top:1px;">B5 無限</div></span>`
                 : '');
 
-            const modePill = plan.onlyAvailableNow
+            const modePill = plan.availableAtLabel
+                ? pill(`🧱 ${esc(plan.availableAtLabel)} に出られる人 · ${plan.candidateCount}名`, 'var(--ops)', 'var(--ops-bg)')   // 色はトークン (直値を増やさない)
+                : plan.onlyAvailableNow
                 ? pill(`⏰ 現在凸可能のみ · ${esc(slotLabel)} · ${plan.candidateCount}名`, '#6C42F0', 'rgba(108,66,240,0.10)')
                 : pill(`👥 全員対象 · ${plan.candidateCount}名`, '#5A6068', '#F1F2F4');
             const timePill = plan.timeAware
@@ -23831,8 +23880,61 @@
                     <input class="ops-season-edit-name" type="text" placeholder="${b.name ? '' : 'ボス名 (任意)'}" value="${escapeHtml(b.name || '')}" style="grid-column:2/-1;${field}">
                 </div>`;
             }).join('');
+            // 🧱 ブロック (時間帯の区切り): いまの設定 (無ければ既定) を行にして出す。保存時に normalize で検査する
+            _opsSeasonEditCtx.blocks = window.raidBlocksDomain ? window.raidBlocksDomain.toConfig(window.raidBlocksDomain.blocksOfSeason(season)) : [];
+            _opsSeasonEditCtx.blocksIsDefault = !(Array.isArray(season.metadata?.blocks) && season.metadata.blocks.length > 0);
+            _opsSeasonEditRenderBlocks(_opsSeasonEditCtx.blocks);
             document.getElementById('opsSeasonEditMessage').textContent = '';
             document.getElementById('opsSeasonEditModal').classList.add('open');
+        }
+        // 🧱 ブロックの行: 名前 / 始まり / 終わり / ✕。時刻の選択肢は 5時始まり (翌0〜翌4 は「翌」付き)
+        function _opsSeasonEditRenderBlocks(config) {
+            const host = document.getElementById('opsSeasonEditBlockRows');
+            if (!host) return;
+            const wrap = (h) => (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`;
+            const hourOpts = (cur) => HOUR_ORDER.map(h => `<option value="${h}" ${h === cur ? 'selected' : ''}>${wrap(h)}</option>`).join('');
+            const field = 'min-width:0;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--s1);color:var(--t-ink);font-size:12.5px;';
+            host.innerHTML = (config || []).map((b, i) => `
+                <div data-blk="${i}" style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 14px minmax(0,1fr) 30px;gap:6px;align-items:center;padding:4px 0;">
+                    <input class="ops-se-blk-name" type="text" maxlength="6" value="${escapeHtml(b.name || '')}" placeholder="名前" style="${field}font-weight:700;">
+                    <select class="ops-se-blk-from" style="${field}">${hourOpts(Number(b.from))}</select>
+                    <span style="text-align:center;color:var(--t-muted);font-size:12px;">〜</span>
+                    <select class="ops-se-blk-to" style="${field}">${hourOpts(Number(b.to))}</select>
+                    <button type="button" onclick="_opsSeasonEditRemoveBlock(${i})" title="このブロックを消す" style="padding:4px 0;border-radius:8px;border:none;background:var(--s2);color:var(--t-muted);font-size:12px;cursor:pointer;">✕</button>
+                </div>`).join('');
+        }
+        // 画面の行 → 設定 ([{ name, from, to }])。検査は保存時 (normalize)
+        function _opsSeasonEditReadBlocks() {
+            return Array.from(document.querySelectorAll('#opsSeasonEditBlockRows > div[data-blk]')).map(row => ({
+                name: row.querySelector('.ops-se-blk-name')?.value.trim() || '',
+                from: Number(row.querySelector('.ops-se-blk-from')?.value),
+                to: Number(row.querySelector('.ops-se-blk-to')?.value),
+            }));
+        }
+        function _opsSeasonEditAddBlock() {
+            const cur = _opsSeasonEditReadBlocks();
+            // 最後のブロックの終わりを 1 時間手前に縮め、空いた所に新しい 1 時間のブロックを置く (常に 5時〜翌4時 が埋まった状態を保つ)
+            const last = cur[cur.length - 1];
+            if (last && last.from !== last.to) {
+                const toIdx = HOUR_ORDER.indexOf(Number(last.to));
+                const nb = { name: '', from: HOUR_ORDER[toIdx], to: HOUR_ORDER[toIdx] };
+                last.to = HOUR_ORDER[toIdx - 1];
+                cur.push(nb);
+            } else {
+                cur.push({ name: '', from: 4, to: 4 });
+            }
+            _opsSeasonEditRenderBlocks(cur);
+        }
+        function _opsSeasonEditRemoveBlock(i) {
+            const cur = _opsSeasonEditReadBlocks();
+            if (cur.length <= (window.raidBlocksDomain?.MIN_BLOCKS || 2)) { showNotification(`ブロックは ${window.raidBlocksDomain?.MIN_BLOCKS || 2} つ以上です`); return; }
+            const gone = cur.splice(i, 1)[0];
+            // 消した時間は隣 (前があれば前、無ければ次) に吸わせる
+            if (gone) { if (cur[i - 1]) cur[i - 1].to = gone.to; else if (cur[i]) cur[i].from = gone.from; }
+            _opsSeasonEditRenderBlocks(cur);
+        }
+        function _opsSeasonEditResetBlocks() {
+            _opsSeasonEditRenderBlocks(window.raidBlocksDomain ? window.raidBlocksDomain.DEFAULT_BLOCKS : []);
         }
         function closeOpsSeasonEditModal() {
             document.getElementById('opsSeasonEditModal').classList.remove('open');
@@ -23875,8 +23977,19 @@
             if (new Set(finalCodes).size !== finalCodes.length) {
                 set('❌ 同じボスコードを複数のボスに割り当てられません (入替は両方のボスを変更)', true); return;
             }
+            // 🧱 ブロック: 検査して通ったものだけ保存。既定と同じなら metadata.blocks を消す (= 既定)
+            const rbd = window.raidBlocksDomain;
+            const blockCfg = rbd ? _opsSeasonEditReadBlocks() : null;
+            let blocksToSave = null, blocksChanged = false;
+            if (rbd && blockCfg) {
+                const r = rbd.normalize(blockCfg);
+                if (!r.blocks) { set(`❌ ブロック: ${r.error}`, true); return; }
+                const isDefault = rbd.sameConfig(r.blocks, rbd.normalize(null).blocks);
+                blocksToSave = isDefault ? null : rbd.toConfig(r.blocks);
+                blocksChanged = !rbd.sameConfig(r.blocks, ctx.blocks) || (isDefault !== !!ctx.blocksIsDefault);
+            }
             const metaChanged = hardDate !== ctx.hardDate || monthKey !== ctx.monthKey;
-            if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0) { set('変更はありません'); return; }
+            if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0 && !blocksChanged) { set('変更はありません'); return; }
             if (codeEdits.length > 0) {
                 const lines = codeEdits.map(e => {
                     const an = ATTR_VISUAL[e.attribute]?.name || e.attribute;
@@ -23888,8 +24001,11 @@
             try {
                 // アクティブ確認・メタ更新・凸日付移行・属性修正・ボス名更新を一括保存
                 // (26/27 RPC 適用済みなら原子的、未適用ならガード付き逐次にフォールバック)
-                await window.supabaseSaveSeasonEdits(ctx.seasonId, { monthKey, hardDate, bossNames: nameEdits, bossCodes: codeEdits });
-                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length}件)`);
+                if (metaChanged || nameEdits.length || codeEdits.length) {
+                    await window.supabaseSaveSeasonEdits(ctx.seasonId, { monthKey, hardDate, bossNames: nameEdits, bossCodes: codeEdits });
+                }
+                if (blocksChanged) await window.supabaseUpdateSeasonBlocks(ctx.seasonId, blocksToSave);
+                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length + (blocksChanged ? 1 : 0)}件)`);
                 opsStore.invalidate();
                 renderOpsDashboard();   // サマリー・盤面とも新データで再描画
                 setTimeout(closeOpsSeasonEditModal, 700);

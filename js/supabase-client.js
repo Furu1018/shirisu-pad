@@ -1246,7 +1246,7 @@ window.supabaseDeletePlayerDamage = async function (playerId, attribute) {
 window.supabaseLoadActiveSeasonWithBosses = async function () {
     const { data: season, error: sErr } = await supabase
         .from('seasons')
-        .select('id, month_key, hard_date, current_level, union_rank, is_active, is_test')
+        .select('id, month_key, hard_date, current_level, union_rank, is_active, is_test, metadata')   // metadata = 🧱 ブロックの設定 (blocks) など
         .eq('is_active', true)
         .order('hard_date', { ascending: false })
         .limit(1)
@@ -1846,6 +1846,24 @@ window.seasonBossMetaFromCode = function (code) {
     const attribute = SEASON_ATTR_FROM_CODE[code];
     if (!attribute) return null;
     return { attribute, weakness: SEASON_WEAKNESS_BY_ATTR[attribute] };
+};
+
+// 🧱 レイド日のブロック (時間帯の区切り) をシーズンに保存する (2026-10-18・ブロック制)。
+// seasons.metadata.blocks = [{ name, from, to }]。null で既定 (7 つ) に戻す。
+// 読み方・検査は js/domain/raidBlocks.js (normalize) が唯一 — ここは渡された形をそのまま書く (呼び出し側で検査済み)。
+// ★ metadata は丸ごと上書きになるので、直前に読んで他の鍵 (damages_snapshot 等) を残す
+window.supabaseUpdateSeasonBlocks = async function (seasonId, blocks) {
+    if (!seasonId) throw new Error('seasonId が必要です');
+    const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
+    if (rErr) throw rErr;
+    if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' ? cur.metadata : {}) };
+    if (Array.isArray(blocks) && blocks.length > 0) metadata.blocks = blocks.map(b => ({ name: String(b.name), from: Number(b.from), to: Number(b.to) }));
+    else delete metadata.blocks;
+    const { data, error } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+    return metadata.blocks || null;
 };
 
 // シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。

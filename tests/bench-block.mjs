@@ -23,7 +23,9 @@ const ctx = { window: {}, globalThis: null, console };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(REPO, 'js', 'optimal-plan.js'), 'utf8'), ctx);
+vm.runInContext(fs.readFileSync(path.join(REPO, 'js', 'domain', 'raidBlocks.js'), 'utf8'), ctx);
 const compute = ctx.computeOptimalPlanCore || ctx.window.computeOptimalPlanCore;
+const raidBlocks = ctx.raidBlocksDomain || ctx.window.raidBlocksDomain;
 
 const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
 const hourKey = (h) => `h${String(h).padStart(2, '0')}`;
@@ -44,11 +46,9 @@ const BOSSES = [
 ].map(b => ({ ...b, weakness: COUNTER[b.attribute] }));
 const bossByCode = new Map(BOSSES.map(b => [b.boss_code, b]));
 
-// ブロック (5時始まりの番号): 朝 5-8 / 午前 9-11 / 昼 12-14 / 午後 15-17 / 夕方 18-20 / 夜 21-23 / 深夜 0-4
-const BLOCKS = [
-    { name: '朝', from: 0, to: 4 }, { name: '午前', from: 4, to: 7 }, { name: '昼', from: 7, to: 10 },
-    { name: '午後', from: 10, to: 13 }, { name: '夕方', from: 13, to: 16 }, { name: '夜', from: 16, to: 19 }, { name: '深夜', from: 19, to: 24 },
-];
+// ブロック (5時始まりの番号・半開区間 [from, to)): js/domain/raidBlocks.js の既定 7 つが唯一の定義 (区切りを変えるならそちら)
+//   朝 5-8 / 午前 9-11 / 昼 12-14 / 午後 15-17 / 夕方 18-20 / 夜 21-23 / 深夜 0-4
+const BLOCKS = raidBlocks.normalize(null).blocks.map(b => ({ name: b.name, from: b.fromIdx, to: b.toIdx + 1 }));
 const blockOf = (idx) => BLOCKS.findIndex(b => idx >= b.from && idx < b.to);
 
 // ---- 実データ → メンバー (模擬 = 実際の凸) ----------------------------------

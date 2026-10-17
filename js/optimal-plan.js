@@ -41,6 +41,9 @@
  * @property {PlayerInput[]} players
  * @property {string=} currentSlot          'h21' など (時間起点。availableAtSlot が無ければ onlyAvailableNow のフィルタにも)
  * @property {string=} availableAtSlot      onlyAvailableNow で「いま出られる人」を決める時間帯 (既定 = currentSlot)。
+ * @property {string[]=} availableAtSlots   🧱 ブロック: onlyAvailableNow のとき、この時間帯のどれかに出られる人 (⏳隙間型・未登録 = いつでも も含む) に絞る
+ *                                          (2026-10-18 ブロック制「そのブロックに出られる人だけで組む」)。渡すと availableAtSlot は見ない
+ * @property {string=} availableAtLabel     そのブロックの表示名 (出力にそのまま載せる)
  *                                          前日は起点が h05 になる (画面の _planNowSlot) ので、壁時計を別に渡す (Codex指摘 2026-10-09)
  * @property {boolean=} onlyAvailableNow
  * @property {boolean=} timeAware
@@ -167,6 +170,19 @@
         if (!season || !Array.isArray(bosses) || bosses.length === 0) return null;
         const onlyAvailableNow = !!input.onlyAvailableNow;
         const availableAtSlot = input.availableAtSlot || currentSlot;   // 「いま出られる人」の時間帯 (起点と分けられる)
+        // 🧱 ブロック (2026-10-18): 時間帯の集合で絞る。⏳隙間型と時間未登録はいつでも出られる扱い
+        //   (ベンチ tests/bench-block.mjs の H と同じ読み方)。1 時間の「今動ける人だけ」は従来どおり availableSlots に含むかだけ
+        const availableAtSlots = (Array.isArray(input.availableAtSlots) && input.availableAtSlots.length > 0)
+            ? new Set(input.availableAtSlots.map(String)) : null;
+        const inScope = (p) => {
+            if (!onlyAvailableNow) return true;
+            if (availableAtSlots) {
+                if (p.flexTime) return true;
+                const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
+                return slots.length === 0 || slots.some(s => availableAtSlots.has(String(s)));
+            }
+            return (p.availableSlots || []).includes(availableAtSlot);
+        };
         const timeAware = !!input.timeAware;
         const timeStrict = timeAware && !!input.timeStrict;   // ⏰ 時間厳守 (時間外のベストエフォート組み込みをしない)
         const startLevel = season.current_level || 1;
@@ -292,7 +308,7 @@
             //   時間帯を空にするだけだと timeUnknown = 「いつでも可」として扱われ、
             //   かえって全時間帯の候補になってしまう (2026-09-07)
             .filter(p => !p.unavailableThisSeason)
-            .filter(p => !onlyAvailableNow || (p.availableSlots || []).includes(availableAtSlot))
+            .filter(inScope)
             .map(p => {
                 const usedCount = usedCountFor(p);
                 // 完了凸で消費済みのキャラ (属性をまたいで効く。空 = 未記録 or 凸なし)
@@ -1876,6 +1892,8 @@
         return {
             startLevel, fullyClearedThrough, levels, totalAttacks, totalWaste,
             unusedAttacks, unusedSummary, membersNoData, onlyAvailableNow, currentSlot, candidateCount,
+            // 🧱 ブロックで絞ったときだけ載せる (渡していない従来の出力は変えない = 指紋を保つ)
+            ...(availableAtSlots ? { availableAtSlots: [...availableAtSlots], availableAtLabel: (typeof input.availableAtLabel === 'string' && input.availableAtLabel) ? input.availableAtLabel : null } : {}),
             timeStrict,
             timeAware,
             nowHourLabel: timeAware ? hourLabelOf(nowIdx) : null,

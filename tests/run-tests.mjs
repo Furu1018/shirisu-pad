@@ -17,6 +17,7 @@ import '../js/domain/mockExclusion.js';   // globalThis.mockExclusionDomain (運
 import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信プランの差分 — L4 通知抑制 / L5 運営ガード)
 import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
 import '../js/domain/availability.js';    // globalThis.availabilityDomain (戦闘可能時間の読み方)
+import '../js/domain/raidBlocks.js';      // globalThis.raidBlocksDomain (🧱 レイド日のブロック — ブロック制 2026-10-17)
 import '../js/domain/clientGate.js';      // globalThis.clientGateDomain (互換ゲート — L2 ⑦)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
@@ -484,6 +485,84 @@ test('⏰ 厳守の修復: 置き換え・復元のあとも usedB/overflowB は
     assert.equal(scope.levels[0].clearHourLabel, '22時');
     assert.equal(scope.levels[0].bosses[0].absorbedB, undefined);
     assert.ok(names(scope.levels[1]).includes('夕方の人'), '夕方の人が次のレベルに居ない');
+});
+
+test('🧱 ブロックに出られる人だけで組む (availableAtSlots): その時間帯のどれかに出られる人 + ⏳隙間型 + 未登録。1 時間の「今動ける人」は従来どおり', () => {
+    // ブロック制 (2026-10-18・tests/bench-block.mjs の H): 夕方 18〜20時 のブロックに出られる人だけで組む
+    const evening = ['h18', 'h19', 'h20'];
+    const players = [
+        player('夕方の人', { fire: 10 }, { availableSlots: ['h19', 'h20'] }),
+        player('夜の人', { fire: 10 }, { availableSlots: ['h21', 'h22'] }),
+        player('隙間の人', { fire: 10 }, { flexTime: true }),
+        player('未登録の人', { fire: 10 }),
+        player('一瞬の人', { fire: 10 }, { availableSlots: ['h20'] }),   // 1 時間でも入っていれば出られる
+    ];
+    const run = (extra) => compute({ ...timeInput([boss(1, 'fire', { remainingB: 100 })], players, { currentSlot: 'h18', onlyAvailableNow: true }), ...extra });
+    const block = run({ availableAtSlots: evening, availableAtLabel: '夕方 18〜20時' });
+    const names = (plan) => plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.map(a => a.memberName))).sort();
+    assert.deepEqual(names(block), ['一瞬の人', '夕方の人', '未登録の人', '隙間の人'], '夜の人が混ざる / いつでもの人が落ちる');
+    assert.equal(block.candidateCount, 4);
+    assert.deepEqual(block.availableAtSlots, evening);
+    assert.equal(block.availableAtLabel, '夕方 18〜20時');
+    assert.equal(block.onlyAvailableNow, true);
+    // 1 時間の「今動ける人だけ」(availableAtSlot) は従来どおり: その時刻を登録している人だけ (隙間・未登録は含まない)
+    const now = run({ availableAtSlot: 'h20' });
+    assert.deepEqual(names(now), ['一瞬の人', '夕方の人']);
+    assert.ok(!('availableAtSlots' in now) && !('availableAtLabel' in now), 'ブロックを渡していないのに出力に鍵が増えている (指紋が変わる)');
+    // 全員 (onlyAvailableNow=false) ではブロックを渡しても絞らない
+    const all = compute({ ...timeInput([boss(1, 'fire', { remainingB: 100 })], players, { currentSlot: 'h18' }), availableAtSlots: evening });
+    assert.equal(all.candidateCount, 5);
+    // 空配列は「渡していない」扱い (1 時間のフィルタに落ちる)
+    assert.deepEqual(names(run({ availableAtSlot: 'h20', availableAtSlots: [] })), ['一瞬の人', '夕方の人']);
+});
+
+test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順・名前・個数) / どのブロックか / 出られるか / ブロック⇄時間の変換', () => {
+    const d = globalThis.raidBlocksDomain;
+    assert.equal(typeof d?.normalize, 'function', 'raidBlocksDomain が無い');
+    const def = d.normalize(null);
+    assert.equal(def.error, null); assert.equal(def.isDefault, true);
+    assert.deepEqual(def.blocks.map(b => b.label), ['朝 5〜8時', '午前 9〜11時', '昼 12〜14時', '午後 15〜17時', '夕方 18〜20時', '夜 21〜23時', '深夜 翌0〜翌4時']);
+    assert.equal(def.blocks.reduce((t, b) => t + b.hours.length, 0), 24, '24 時間を埋めていない');
+    assert.deepEqual(def.blocks[6].slots, ['h00', 'h01', 'h02', 'h03', 'h04']);
+    assert.deepEqual(d.normalize([]).blocks.map(b => b.name), def.blocks.map(b => b.name), '空は既定');
+    // 区切りはメンバー次第 (ふるりの判断 2026-10-17): 2 つでも 12 個でも
+    const two = d.normalize([{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
+    assert.equal(two.error, null); assert.equal(two.isDefault, false); assert.deepEqual(two.blocks.map(b => b.label), ['前半 5〜14時', '後半 15〜翌4時']);
+    assert.equal(d.normalize([{ name: '一日', from: 5, to: 4 }]).error, 'ブロックは 2 つ以上にしてください');
+    assert.ok(/隙間か重なり/.test(d.normalize([{ name: '朝', from: 5, to: 8 }, { name: '夜', from: 10, to: 4 }]).error), '隙間を見逃している');
+    assert.ok(/隙間か重なり/.test(d.normalize([{ name: '朝', from: 5, to: 9 }, { name: '夜', from: 9, to: 4 }]).error), '重なりを見逃している');
+    assert.ok(/5時 から/.test(d.normalize([{ name: '朝', from: 6, to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
+    assert.ok(/翌4時 で/.test(d.normalize([{ name: '朝', from: 5, to: 8 }, { name: '夜', from: 9, to: 3 }]).error));
+    assert.ok(/終わりが始まりより前/.test(d.normalize([{ name: '朝', from: 8, to: 5 }, { name: '夜', from: 9, to: 4 }]).error));
+    assert.ok(/名前の無い/.test(d.normalize([{ name: ' ', from: 5, to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
+    assert.ok(/2 つあります/.test(d.normalize([{ name: '朝', from: 5, to: 8 }, { name: '朝', from: 9, to: 4 }]).error));
+    assert.ok(/長すぎます/.test(d.normalize([{ name: 'とてもながいなまえ', from: 5, to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
+    assert.ok(/時刻が読めません/.test(d.normalize([{ name: '朝', from: 'x', to: 8 }, { name: '夜', from: 9, to: 4 }]).error));
+    // 壊れた設定でも画面を止めない: blocksOfSeason は既定に落ちる
+    assert.equal(d.blocksOfSeason({ metadata: { blocks: [{ name: '朝', from: 6, to: 8 }] } }).length, 7);
+    assert.equal(d.blocksOfSeason({ metadata: { blocks: two.blocks.map(b => ({ name: b.name, from: b.from, to: b.to })) } }).length, 2);
+    assert.equal(d.blocksOfSeason(null).length, 7);
+    // どのブロックか (時 / 'hXX')
+    const B = def.blocks;
+    assert.equal(d.blockIndexOfHour(B, 5), 0); assert.equal(d.blockIndexOfHour(B, 20), 4); assert.equal(d.blockIndexOfHour(B, 0), 6); assert.equal(d.blockIndexOfHour(B, 4), 6);
+    assert.equal(d.blockIndexOfHour(B, 24), 6, '24 時は 0 時 (深夜) として読む'); assert.equal(d.blockIndexOfHour(B, 'x'), -1);
+    assert.equal(d.blockIndexOfSlot(B, 'h21'), 5); assert.equal(d.blockAt(B, 13).name, '昼'); assert.equal(d.blockAt(B, NaN), null);
+    // 出られるか: どれか 1 時間でも入っていれば ○。⏳隙間型・未登録はいつでも
+    const ev = B[4];
+    assert.equal(d.canAttackInBlock({ availableSlots: ['h20', 'h21'] }, ev), true);
+    assert.equal(d.canAttackInBlock({ availableSlots: ['h21', 'h22'] }, ev), false);
+    assert.equal(d.canAttackInBlock({ availableSlots: [], flexTime: true }, ev), true);
+    assert.equal(d.canAttackInBlock({ availableSlots: [] }, ev), true);
+    assert.equal(d.canAttackInBlock(null, ev), false);
+    assert.deepEqual(d.membersInBlock([{ id: 1, availableSlots: ['h18'] }, { id: 2, availableSlots: ['h09'] }], ev).map(p => p.id), [1]);
+    // ブロック ⇄ 時間 (アンケートをブロックで聞く・内部は 1 時間刻みのまま)
+    assert.deepEqual(d.blocksOfSlots(B, ['h20', 'h21', 'h22', 'h03']), [4, 5, 6]);
+    assert.deepEqual(d.slotsOfBlocks(B, [0, 6]), ['h05', 'h06', 'h07', 'h08', 'h00', 'h01', 'h02', 'h03', 'h04']);
+    assert.deepEqual(d.slotsOfBlocks(B, [99]), []);
+    // 保存の形と同一判定
+    assert.deepEqual(d.toConfig(two.blocks), [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
+    assert.equal(d.sameConfig(def.blocks, d.normalize(d.toConfig(def.blocks)).blocks), true);
+    assert.equal(d.sameConfig(def.blocks, two.blocks), false);
 });
 
 test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
@@ -8835,6 +8914,50 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(await runAt('2026-10-11T01:05:00+09:00', { stage: null }), [], 'opsStageDomain が無いのに送っている (安全側に倒れていない)');
     });
 
+    test('★ 配線: 🧱 ブロック制 ② — 条件「ブロックの人」/ ブロックの選択 / 算出に渡す / 焼き込み / ピル / シーズン編集で区切りを保存 (2026-10-18)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        // ドメインを読む (index.html と run-tests の両方)
+        assert.ok(/<script defer src="\.\/js\/domain\/raidBlocks\.js"><\/script>/.test(html), 'raidBlocks.js を読んでいない');
+        assert.ok(/import '\.\.\/js\/domain\/raidBlocks\.js';/.test(_grRd('tests', 'run-tests.mjs')), 'テストが raidBlocks.js を読んでいない');
+        // 条件パネル: 対象に 3 つ目 + ブロックの選択肢 (対象が「ブロックの人」のときだけ)
+        assert.ok(/data-k="block" onclick="setOpsPlanWho\('block'\)">🧱 ブロックの人<\/button>/.test(html), '対象に「ブロックの人」が無い');
+        assert.ok(/<select id="opsPlanBlockSel" aria-label="ブロック" onclick="|<select id="opsPlanBlockSel" aria-label="ブロック" onchange="setOpsPlanBlock\(this\.value\)"/.test(html), 'ブロックの選択肢が無い');
+        assert.ok(/sel\.style\.display = _opsPlanWho === 'block' \? '' : 'none';/.test(html), '選択肢の出し分けが無い');
+        assert.ok(/const _OPS_PLAN_WHO_VALUES = \['all', 'now', 'block'\];/.test(html) && /_opsPlanWho = _OPS_PLAN_WHO_VALUES\.includes\(who\) \? who : 'all';/.test(html), '対象の値に block が無い');
+        // いまの時刻のブロックが既定・区切りが変わって添字が溢れたら戻す
+        const pb = html.match(/function _opsPlanBlock\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/dom\.blockIndexOfHour\(blocks, nowHour\)/.test(pb) && /\(_opsPlanBlockIdx != null && blocks\[_opsPlanBlockIdx\]\) \? _opsPlanBlockIdx : \(cur >= 0 \? cur : 0\)/.test(pb), 'いまの時刻のブロックに落ちない');
+        assert.ok(/blocksOfSeason\(opsStore\.get\(\)\?\.season \|\| null\)/.test(html), 'ブロックをシーズンから読んでいない');
+        // 算出: ブロックの時間帯を availableAtSlots で渡す。承認後の組み直し (onlyAvailableNow 明示) は従来どおり
+        assert.ok(/availableAtSlots: Array\.isArray\(options\.availableAtSlots\) && options\.availableAtSlots\.length \? options\.availableAtSlots : undefined,/.test(html), '算出にブロックの時間帯を渡していない');
+        assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null \};/.test(html), 'ブロックの時間帯を options に乗せていない');
+        // 焼き込み: who='block' + ブロック名
+        assert.ok(/who: plan\.availableAtLabel \? 'block' : \(onlyNow \? 'now' : 'all'\),\s*\n\s*block: plan\.availableAtLabel \|\| null,/.test(html), '条件に block を焼き込んでいない');
+        // ピル (画面・共有画像)
+        assert.ok(/pill\(`🧱 \$\{esc\(plan\.availableAtLabel\)\} に出られる人 · \$\{plan\.candidateCount\}名`, 'var\(--ops\)', 'var\(--ops-bg\)'\)/.test(html), '画面のピルが無い (色はトークンで)');
+        assert.equal((html.match(/plan\.availableAtLabel \? `🧱 \$\{plan\.availableAtLabel\} に出られる人 \$\{plan\.candidateCount\}名`/g) || []).length, 2, '共有画像のピル (2 か所) が無い');
+        // シーズン編集: 行 / 足す / 消す / 既定に戻す / 保存時に normalize で検査 → supabaseUpdateSeasonBlocks (既定なら null)
+        assert.ok(/id="opsSeasonEditBlockRows"/.test(html) && /onclick="_opsSeasonEditAddBlock\(\)"/.test(html) && /onclick="_opsSeasonEditResetBlocks\(\)"/.test(html), 'ブロックの編集 UI が無い');
+        const save = html.match(/async function handleOpsSeasonEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const r = rbd\.normalize\(blockCfg\);\s*\n\s*if \(!r\.blocks\) \{ set\(`❌ ブロック: \$\{r\.error\}`, true\); return; \}/.test(save), '保存前に検査していない');
+        assert.ok(/blocksToSave = isDefault \? null : rbd\.toConfig\(r\.blocks\);/.test(save), '既定と同じなら null (= metadata.blocks を消す) にしていない');
+        assert.ok(/if \(blocksChanged\) await window\.supabaseUpdateSeasonBlocks\(ctx\.seasonId, blocksToSave\);/.test(save), '保存していない');
+        assert.ok(/&& !blocksChanged\) \{ set\('変更はありません'\); return; \}/.test(save), 'ブロックだけ変えたとき「変更はありません」で止まる');
+        // 消したブロックの時間は隣に吸わせる (常に 5時〜翌4時 が埋まる)
+        assert.ok(/if \(cur\[i - 1\]\) cur\[i - 1\]\.to = gone\.to; else if \(cur\[i\]\) cur\[i\]\.from = gone\.from;/.test(html), '消した時間が宙に浮く');
+        // クライアント: アクティブシーズンの読み出しに metadata / ブロックの保存は他の鍵を残し is_active のときだけ
+        assert.ok(/\.select\('id, month_key, hard_date, current_level, union_rank, is_active, is_test, metadata'\)/.test(client), 'アクティブシーズンの metadata を読んでいない');
+        const upd = client.match(/window\.supabaseUpdateSeasonBlocks = async function[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(upd, 'supabaseUpdateSeasonBlocks が無い');
+        assert.ok(/const metadata = \{ \.\.\.\(cur\.metadata && typeof cur\.metadata === 'object' \? cur\.metadata : \{\}\) \};/.test(upd), '他の鍵 (damages_snapshot 等) を消している');
+        assert.ok(/else delete metadata\.blocks;/.test(upd), 'null で既定に戻せない');
+        assert.equal((upd.match(/\.eq\('is_active', true\)/g) || []).length, 2, '終了済みシーズンに書けてしまう');
+        // ベンチは区切りをドメインから取る (二重定義しない)
+        const bench = _grRd('tests', 'bench-block.mjs').split(String.fromCharCode(13)).join('');
+        assert.ok(/const BLOCKS = raidBlocks\.normalize\(null\)\.blocks\.map/.test(bench), 'ベンチが区切りを別に持っている');
+    });
+
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
         // 2026-09-11 ユーザー要望「戦況のボス一覧ほどの情報量じゃないが、属性アイコン、
         // ちゃんとボスの並び順で、戦闘中かどうかだけぱっと見でわかるように」
@@ -10303,9 +10426,15 @@ console.log('\ngrowthDomain:');
         const d = globalThis.planBoardDomain;
         assert.equal(typeof d?.conditionsOf, 'function', 'planBoardDomain が無い');
         const c = d.conditionsOf({ who: 'now', from: 'day', prev: 'fresh', reservations: 3, excluded: '2', unavailable: -1, publishedBy: ' A ', publishedAt: 'x', computedBy: '', computedAt: '2026-09-11T12:04:00Z' });
-        assert.deepEqual(c, { who: 'now', from: 'day', prev: 'fresh', time: 'damage', reservations: 3, excluded: 2, unavailable: 0, publishedBy: 'A', publishedAt: 'x', computedBy: null, computedAt: '2026-09-11T12:04:00Z' });
+        assert.deepEqual(c, { who: 'now', block: null, from: 'day', prev: 'fresh', time: 'damage', reservations: 3, excluded: 2, unavailable: 0, publishedBy: 'A', publishedAt: 'x', computedBy: null, computedAt: '2026-09-11T12:04:00Z' });
         // ★ 時間 (2026-10-10): 古い焼き込み (無印) と壊れた値は「ダメージ優先」(= それまでの動き) として読む
-        assert.deepEqual(d.conditionsOf({ who: 'x', from: null, prev: undefined }), { who: 'all', from: 'now', prev: 'keep', time: 'damage', reservations: 0, excluded: 0, unavailable: 0, publishedBy: null, publishedAt: null, computedBy: null, computedAt: null });
+        assert.deepEqual(d.conditionsOf({ who: 'x', from: null, prev: undefined }), { who: 'all', block: null, from: 'now', prev: 'keep', time: 'damage', reservations: 0, excluded: 0, unavailable: 0, publishedBy: null, publishedAt: null, computedBy: null, computedAt: null });
+        // 🧱 ブロック (2026-10-18): who='block' のときだけブロック名を持つ。他の who では捨てる
+        assert.deepEqual(d.conditionsOf({ who: 'block', block: ' 夕方 18〜20時 ' }).block, '夕方 18〜20時');
+        assert.equal(d.conditionsOf({ who: 'now', block: '夕方' }).block, null, 'ブロック以外の対象にブロック名が残っている');
+        assert.equal(d.conditionsOf({ who: 'block' }).who, 'block');
+        assert.equal(d.conditionSummary({ who: 'block', block: '夕方 18〜20時', time: 'strict', reservations: 0 }), '🧱 夕方 18〜20時 に出られる人 · 今から · ⏰時間厳守 · 前回を尊重 · 🔒予約 0');
+        assert.ok(d.conditionSummary({ who: 'block', reservations: 0 }).startsWith('🧱 ブロックに出られる人 ·'), 'ブロック名が無いときの言い方');
         assert.equal(d.conditionsOf({ time: 'strict' }).time, 'strict');
         assert.equal(d.conditionSummary(c), '今動ける人だけ · 朝5時から · ⚡ダメージ優先 · ゼロから · 🔒予約 3 · 🚫除外 2');
         assert.equal(d.conditionSummary({ who: 'all', time: 'strict', reservations: 0, excluded: 0, unavailable: 2 }), '全員 · 今から · ⏰時間厳守 · 前回を尊重 · 🔒予約 0 · ✋難しい 2');
@@ -10346,17 +10475,20 @@ console.log('\ngrowthDomain:');
         assert.ok(/id="opsPlanNext" class="plan-next"[\s\S]*?id="opsPlanPublishBtn"[\s\S]*?id="opsPlanShareBtn"/.test(card), '配信 / 共有画像 が結果の下にない');
         // 対象は状態 (_opsPlanWho)。呼び出し側が明示したときはそちら (承認後の組み直しは「全員」)
         const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/const onlyNow = options\.onlyAvailableNow != null \? !!options\.onlyAvailableNow : _opsPlanWho === 'now';/.test(fn), '対象を条件パネルから取っていない');
+        assert.ok(/const who = options\.onlyAvailableNow != null \? \(options\.onlyAvailableNow \? 'now' : 'all'\) : _opsPlanWho;\s*\n\s*const blk = who === 'block' \? _opsPlanBlock\(\) : null;\s*\n\s*const onlyNow = who !== 'all';/.test(fn), '対象を条件パネルから取っていない');
         // ★ 決めた対象を options に畳んでから、固定された呼び出し行に渡す (Codex指摘 2026-09-11: 畳む行を見ていなかった)
-        assert.ok(/const onlyNow = [^\n]*\n\s*options = \{ \.\.\.options, onlyAvailableNow: onlyNow \};\s*\n\s*const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations:/.test(fn),
+        assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null \};\s*\n\s*const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations/.test(fn),
             '対象を options に畳んでから算出に渡していない (画面の選択が効かない / 明示した対象が上書きされる)');
         // 優先順位を式で固定: 明示 (null でない) が勝ち、無ければ画面の選択。ここを実行で確かめる
-        const pick = new Function('options', '_opsPlanWho', "return options.onlyAvailableNow != null ? !!options.onlyAvailableNow : _opsPlanWho === 'now';");
-        assert.equal(pick({}, 'now'), true, '画面で「今動ける人だけ」を選んでいるのに全員になる');
-        assert.equal(pick({}, 'all'), false);
-        assert.equal(pick({ onlyAvailableNow: false }, 'now'), false, '承認後の組み直し (全員を明示) が画面の選択に負けている');
-        assert.equal(pick({ onlyAvailableNow: true }, 'all'), true);
-        assert.ok(fn.includes("return options.onlyAvailableNow != null ? !!options.onlyAvailableNow : _opsPlanWho === 'now';".replace('return ', 'const onlyNow = ')), '上の式が本体と同じでない');
+        const WHO_EXPR = "options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho;";
+        const pick = new Function('options', '_opsPlanWho', `const who = ${WHO_EXPR} return { who, onlyNow: who !== 'all' };`);
+        assert.deepEqual(pick({}, 'now'), { who: 'now', onlyNow: true }, '画面で「今動ける人だけ」を選んでいるのに全員になる');
+        assert.deepEqual(pick({}, 'all'), { who: 'all', onlyNow: false });
+        assert.deepEqual(pick({}, 'block'), { who: 'block', onlyNow: true }, '画面で「🧱 ブロックの人」を選んでいるのに絞られない');
+        assert.deepEqual(pick({ onlyAvailableNow: false }, 'now'), { who: 'all', onlyNow: false }, '承認後の組み直し (全員を明示) が画面の選択に負けている');
+        assert.deepEqual(pick({ onlyAvailableNow: false }, 'block'), { who: 'all', onlyNow: false }, '明示した全員がブロックに負けている');
+        assert.deepEqual(pick({ onlyAvailableNow: true }, 'all'), { who: 'now', onlyNow: true });
+        assert.ok(fn.includes(`const who = ${WHO_EXPR}`), '上の式が本体と同じでない');
         // 焼き込み: planBoardDomain.conditionsOf で作り、_opsLastPlan に入れる前に付ける
         assert.ok(/plan\.conditions = window\.planBoardDomain \? window\.planBoardDomain\.conditionsOf\(\{[\s\S]*?computedAt: new Date\(\)\.toISOString\(\),[\s\S]*?\}\) : null;\s*\n\s*_opsLastPlan = plan;/.test(fn), '条件を焼き込んでいない (または _opsLastPlan の後)');
         assert.ok(/reservations\.filter\(r => window\.reservationsDomain\.isFixed\(r\)\)\.length/.test(fn), '予約は拘束 (isFixed) だけを数える');
