@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>しりすこPAD ブロック制モック (2026-10-17)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap">
+<style>
+body{margin:0;background:#e9ebee;font-family:"Noto Sans JP",system-ui,sans-serif;color:#1d2024;padding:24px}
+h1{font-size:22px;font-weight:900;margin:0 0 4px}
+.lead{font-size:13px;color:#3a3f46;max-width:900px;margin:0 0 20px}
+h2{font-size:13px;font-weight:900;color:#6a717b;margin:0 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-bottom:40px}
+.phone .frame{width:390px;height:844px;border-radius:36px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.18);background:#f3f4f6}
+.page{width:100%}.page .frame{border-radius:14px;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.12);background:#f3f4f6;max-width:1280px}
+.note{background:#fbeedc;color:#5c3a0e;border-radius:10px;padding:10px 14px;font-size:13px;max-width:900px;margin-bottom:20px}
+a{color:#1d2024}
+</style></head><body>
+<h1>しりすこPAD ブロック制モック</h1>
+<p class="lead">2026-10-17。場面は「第45回ハード日 18:10・夕方のブロックを組むところ」で統一。上がメンバー (スマホ)、下が運営 (PC)。議論の内容は <a href="第45期_ブロック制の検討_2026-10-17.md">docs/第45期_ブロック制の検討_2026-10-17.md</a>。</p>
+<div class="note">モックで仮に置いた未決のこと: 模擬タブ・予約の申請・凸報告はメンバー画面から外している (模擬は Discord にスクショ、凸はスクショで運営が確認)。時間のアンケートは PAD 側で描いた (Discord でやるなら 2枚目は要らない)。</div>
+<div class="row"><section id="Main" class="phone"><h2>メンバー: ホーム (当日 18:10)</h2><div class="frame">
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f4f6; display: flex; flex-direction: column; overflow: hidden; position: relative">
+  <div style="padding: 18px 20px 10px; display: flex; justify-content: space-between; align-items: center">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第45回 ハード日 · 10/31 (土)</div>
+      <div style="font-size: 20px; font-weight: 900">ふるり</div>
+    </div>
+    <div style="font-size: 13px; font-weight: 700; background: #1d2024; color: #fff; border-radius: 999px; padding: 6px 12px">いま 18:10 · 夕方</div>
+  </div>
+
+  <div style="padding: 0 20px 14px; display: flex; flex-direction: column; gap: 6px">
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px">
+      <div style="background: #dfe3ea; color: #6a717b; border-radius: 8px; padding: 6px 0; text-align: center; font-size: 11px; font-weight: 700">朝<br>✓</div>
+      <div style="background: #dfe3ea; color: #6a717b; border-radius: 8px; padding: 6px 0; text-align: center; font-size: 11px; font-weight: 700">午前<br>✓</div>
+      <div style="background: #dfe3ea; color: #6a717b; border-radius: 8px; padding: 6px 0; text-align: center; font-size: 11px; font-weight: 700">昼<br>Lv1</div>
+      <div style="background: #dfe3ea; color: #6a717b; border-radius: 8px; padding: 6px 0; text-align: center; font-size: 11px; font-weight: 700">午後<br>Lv2</div>
+      <div style="background: #1d2024; color: #fff; border-radius: 8px; padding: 6px 0; text-align: center; font-size: 11px; font-weight: 900">夕方<br>いま</div>
+      <div style="background: #fff; color: #9aa1aa; border: 1px dashed #c9cdd3; border-radius: 8px; padding: 5px 0; text-align: center; font-size: 11px; font-weight: 700">夜<br>未定</div>
+      <div style="background: #fff; color: #9aa1aa; border: 1px dashed #c9cdd3; border-radius: 8px; padding: 5px 0; text-align: center; font-size: 11px; font-weight: 700">深夜<br>未定</div>
+    </div>
+    <div style="font-size: 11px; color: #6a717b; font-weight: 500">昼に Lv1、午後に Lv2 を踏破。いまは Lv3 (残り 57%)</div>
+  </div>
+
+  <div style="padding: 0 16px; display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; overflow: hidden">
+    <div style="background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 10px rgba(29,32,36,.06); display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">このブロックのあなたの凸</div>
+        <div style="font-size: 11px; font-weight: 700; color: #2f7a4a; background: #e2f1e7; border-radius: 999px; padding: 2px 9px">18:05 配信</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center">
+        <div style="width: 52px; height: 52px; border-radius: 14px; background: #34C759; color: #fff; font-weight: 900; font-size: 20px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto">B3</div>
+        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+          <div style="font-size: 18px; font-weight: 900">モダニア Lv3 に 風圧PT</div>
+          <div style="font-size: 13px; color: #3a3f46; font-weight: 500">編成① (ラピ:レッドフード / 紅蓮 / リバーレリオ / クラウン / ナガ)</div>
+          <div style="font-size: 13px; color: #3a3f46; font-weight: 700">18〜20時のあいだに · 想定 42.3B</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button style="flex: 1 1 auto; height: 46px; border: 0; border-radius: 12px; background: #1d2024; color: #fff; font-family: inherit; font-size: 15px; font-weight: 900">✅ 確認しました</button>
+        <button style="flex: 0 0 auto; height: 46px; padding: 0 14px; border: 0; border-radius: 12px; background: #eef0f3; color: #1d2024; font-family: inherit; font-size: 13px; font-weight: 700">出られない</button>
+      </div>
+      <div style="font-size: 12px; color: #6a717b">凸したらスクショを Discord の #凸報告 へ。運営が記録します</div>
+    </div>
+
+    <div style="background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 2px 10px rgba(29,32,36,.06); display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">次のブロック · 夜 (21〜23時)</div>
+      <div style="font-size: 14px; font-weight: 700">まだ決まっていません</div>
+      <div style="font-size: 12px; color: #6a717b">運営が 20:30 ごろに夜のぶんを配信します。あなたの残り凸は 1 (電撃PT が使えます)</div>
+    </div>
+
+    <div style="background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 2px 10px rgba(29,32,36,.06); display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">運営が登録したあなたの模擬</div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap">
+        <div style="font-size: 12px; font-weight: 700; color: #fff; background: #34C759; border-radius: 999px; padding: 3px 10px">風圧 42.3B</div>
+        <div style="font-size: 12px; font-weight: 700; color: #fff; background: #8E44AD; border-radius: 999px; padding: 3px 10px">電撃 31.0B</div>
+        <div style="font-size: 12px; font-weight: 700; color: #6a717b; background: #eef0f3; border-radius: 999px; padding: 3px 10px">鉄甲 (使用済)</div>
+      </div>
+      <div style="font-size: 12px; color: #6a717b">違っていたら Discord で運営へ。夜の凸に使う模擬は 20時までに #模擬提出 へ</div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; background: #fff; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; padding-bottom: 14px">
+    <a href="#Main" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 900; position: relative">
+      <div style="width: 52px; height: 52px; border-radius: 50%; background: #1d2024; border: 5px solid #f3f4f6; position: absolute; top: -40px; display: flex; align-items: center; justify-content: center">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      </div>
+      <div style="height: 18px"></div>ホーム</a>
+    <a href="#MemberTime" style="text-decoration: none; color: #9aa1aa; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa1aa" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>時間</a>
+    <a href="#MemberPlan" style="text-decoration: none; color: #9aa1aa; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa1aa" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>きょうの凸</a>
+  </div>
+</div>
+</div></section><section id="MemberTime" class="phone"><h2>メンバー: 出られる時間 (前日)</h2><div class="frame">
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f4f6; display: flex; flex-direction: column; overflow: hidden; position: relative">
+  <div style="padding: 18px 20px 10px; display: flex; flex-direction: column; gap: 2px">
+    <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第45回 ハード日 · 10/31 (土) · 前日</div>
+    <div style="font-size: 22px; font-weight: 900">出られる時間</div>
+    <div style="font-size: 13px; color: #3a3f46">ざっくりでいいです。出られるブロックを押してください (ブロックの中のいつでも)</div>
+  </div>
+
+  <div style="padding: 6px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto">
+    <label style="display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid transparent">
+      <input id="b-asa" type="checkbox" style="width: 22px; height: 22px; accent-color: #1d2024">
+      <div style="flex: 1 1 auto"><div style="font-size: 16px; font-weight: 900">朝</div><div style="font-size: 12px; color: #6a717b">5〜8時 · Lv1 を削る</div></div>
+    </label>
+    <label style="display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid #1d2024">
+      <input id="b-gozen" type="checkbox" checked style="width: 22px; height: 22px; accent-color: #1d2024">
+      <div style="flex: 1 1 auto"><div style="font-size: 16px; font-weight: 900">午前</div><div style="font-size: 12px; color: #6a717b">9〜11時 · 昼までに Lv1 踏破が目安</div></div>
+    </label>
+    <label style="display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid transparent">
+      <input id="b-hiru" type="checkbox" style="width: 22px; height: 22px; accent-color: #1d2024">
+      <div style="flex: 1 1 auto"><div style="font-size: 16px; font-weight: 900">昼</div><div style="font-size: 12px; color: #6a717b">12〜14時</div></div>
+    </label>
+    <label style="display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid transparent">
+      <input id="b-gogo" type="checkbox" style="width: 22px; height: 22px; accent-color: #1d2024">
+      <div style="flex: 1 1 auto"><div style="font-size: 16px; font-weight: 900">午後</div><div style="font-size: 12px; color: #6a717b">15〜17時 · Lv2</div></div>
+    </label>
+    <label style="display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid #1d2024">
+      <input id="b-yugata" type="checkbox" checked style="width: 22px; height: 22px; accent-color: #1d2024">
+      <div style="flex: 1 1 auto"><div style="font-size: 16px; font-weight: 900">夕方</div><div style="font-size: 12px; color: #6a717b">18〜20時 · Lv3 が開く目安</div></div>
+    </label>
+    <label style="display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid #1d2024">
+      <input id="b-yoru" type="checkbox" checked style="width: 22px; height: 22px; accent-color: #1d2024">
+      <div style="flex: 1 1 auto"><div style="font-size: 16px; font-weight: 900">夜</div><div style="font-size: 12px; color: #6a717b">21〜23時 · いちばん凸が多い</div></div>
+    </label>
+    <label style="display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid transparent">
+      <input id="b-shinya" type="checkbox" style="width: 22px; height: 22px; accent-color: #1d2024">
+      <div style="flex: 1 1 auto"><div style="font-size: 16px; font-weight: 900">深夜</div><div style="font-size: 12px; color: #6a717b">0〜4時 · 翌4時でリセット</div></div>
+    </label>
+    <label style="display: flex; align-items: center; gap: 10px; padding: 6px 14px 0; font-size: 13px; color: #6a717b">
+      <input id="b-ng" type="checkbox" style="width: 18px; height: 18px; accent-color: #1d2024">今回は参加が難しい
+    </label>
+  </div>
+
+  <div style="padding: 0 16px 90px; display: flex; flex-direction: column; gap: 8px">
+    <button style="height: 50px; border: 0; border-radius: 14px; background: #1d2024; color: #fff; font-family: inherit; font-size: 16px; font-weight: 900">この内容で確認 (午前 · 夕方 · 夜)</button>
+    <div style="font-size: 12px; color: #6a717b; text-align: center">当日に変わったら、そのブロックが始まる前に押し直せます</div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; background: #fff; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; padding-bottom: 14px">
+    <a href="#Main" style="text-decoration: none; color: #9aa1aa; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</a>
+    <a href="#MemberTime" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 900; position: relative">
+      <div style="width: 52px; height: 52px; border-radius: 50%; background: #1d2024; border: 5px solid #f3f4f6; position: absolute; top: -40px; display: flex; align-items: center; justify-content: center">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </div>
+      <div style="height: 18px"></div>時間</a>
+    <a href="#MemberPlan" style="text-decoration: none; color: #9aa1aa; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa1aa" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>きょうの凸</a>
+  </div>
+</div>
+</div></section><section id="MemberPlan" class="phone"><h2>メンバー: きょうの凸 (1日ぶん)</h2><div class="frame">
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f4f6; display: flex; flex-direction: column; overflow: hidden; position: relative">
+  <div style="padding: 18px 20px 10px; display: flex; flex-direction: column; gap: 2px">
+    <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第45回 ハード日 · 10/31 (土) · 18:10</div>
+    <div style="font-size: 22px; font-weight: 900">きょうの凸 · 残り 1</div>
+    <div style="font-size: 13px; color: #3a3f46">決まるのはブロックごと。先のブロックは「未定」のまま</div>
+  </div>
+
+  <div style="padding: 6px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto">
+    <div style="display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px; opacity: .7">
+      <div style="width: 44px; font-size: 13px; font-weight: 900; color: #6a717b">朝</div>
+      <div style="flex: 1 1 auto; font-size: 13px; color: #6a717b">出られない時間</div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px">
+      <div style="width: 44px; font-size: 13px; font-weight: 900; color: #6a717b">午前</div>
+      <div style="width: 36px; height: 36px; border-radius: 10px; background: #FF9500; color: #fff; font-weight: 900; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto">B1</div>
+      <div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 900; text-decoration: line-through; color: #6a717b">レイタンス Lv1 · 鉄甲PT</div><div style="font-size: 12px; color: #2f7a4a; font-weight: 700">✓ 10:42 に凸 · 28.9B (運営が記録)</div></div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px; opacity: .7">
+      <div style="width: 44px; font-size: 13px; font-weight: 900; color: #6a717b">昼</div>
+      <div style="flex: 1 1 auto; font-size: 13px; color: #6a717b">出られない時間 · Lv1 踏破 (13:20)</div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px; opacity: .7">
+      <div style="width: 44px; font-size: 13px; font-weight: 900; color: #6a717b">午後</div>
+      <div style="flex: 1 1 auto; font-size: 13px; color: #6a717b">出られない時間 · Lv2 踏破 (17:05)</div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid #1d2024">
+      <div style="width: 44px; font-size: 13px; font-weight: 900">夕方</div>
+      <div style="width: 36px; height: 36px; border-radius: 10px; background: #34C759; color: #fff; font-weight: 900; font-size: 14px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto">B3</div>
+      <div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 900">モダニア Lv3 · 風圧PT 編成①</div><div style="font-size: 12px; color: #3a3f46; font-weight: 700">18〜20時のあいだに · 想定 42.3B</div></div>
+      <div style="font-size: 11px; font-weight: 700; color: #2f7a4a; background: #e2f1e7; border-radius: 999px; padding: 2px 8px; flex: 0 0 auto">確認済</div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px; border: 1px dashed #c9cdd3">
+      <div style="width: 44px; font-size: 13px; font-weight: 900; color: #6a717b">夜</div>
+      <div style="flex: 1 1 auto; min-width: 0"><div style="font-size: 14px; font-weight: 700; color: #6a717b">未定 · 20:30 ごろ配信</div><div style="font-size: 12px; color: #9aa1aa">残り 1 凸 (電撃PT 31.0B が使えます)</div></div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px; opacity: .7">
+      <div style="width: 44px; font-size: 13px; font-weight: 900; color: #6a717b">深夜</div>
+      <div style="flex: 1 1 auto; font-size: 13px; color: #6a717b">出られない時間</div>
+    </div>
+
+    <div style="margin-top: 6px; background: #1d2024; color: #fff; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #b9c0c9; letter-spacing: .06em">ユニオンの進み (18:10)</div>
+      <div style="font-size: 14px; font-weight: 900">Lv3 · 残り 57% · 使った凸 61 / 93</div>
+      <div style="font-size: 12px; color: #b9c0c9">夕方のブロックで 14 凸の予定。夜のぶんは夕方の結果を見て組みます</div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; background: #fff; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; padding-bottom: 14px">
+    <a href="#Main" style="text-decoration: none; color: #9aa1aa; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</a>
+    <a href="#MemberTime" style="text-decoration: none; color: #9aa1aa; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa1aa" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>時間</a>
+    <a href="#MemberPlan" style="text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 900; position: relative">
+      <div style="width: 52px; height: 52px; border-radius: 50%; background: #1d2024; border: 5px solid #f3f4f6; position: absolute; top: -40px; display: flex; align-items: center; justify-content: center">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+      </div>
+      <div style="height: 18px"></div>きょうの凸</a>
+  </div>
+</div>
+</div></section></div>
+<div class="row"><section id="OpsBoard" class="page"><h2>運営: ブロック盤 (夕方を組む)</h2><div class="frame">
+<div style="min-height: 900px; box-sizing: border-box; background: #f3f4f6; padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 16px">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第45回 ハード日 · 10/31 (土) · 運営 · 18:02</div>
+      <div style="font-size: 24px; font-weight: 900">夕方 (18〜20時) を組む</div>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+      <div style="font-size: 13px; font-weight: 700; color: #3a3f46; background: #fff; border-radius: 999px; padding: 6px 12px">Lv3 · 残り 57% (898B)</div>
+      <div style="font-size: 13px; font-weight: 700; color: #3a3f46; background: #fff; border-radius: 999px; padding: 6px 12px">使った凸 61 / 93</div>
+      <div style="font-size: 13px; font-weight: 700; color: #a65a12; background: #fbeedc; border-radius: 999px; padding: 6px 12px">HP 更新 3分前</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+    <a href="#asa" style="text-decoration: none; background: #dfe3ea; color: #6a717b; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 700">朝<div style="font-size: 11px; font-weight: 500">9 凸 ✓</div></a>
+    <a href="#gozen" style="text-decoration: none; background: #dfe3ea; color: #6a717b; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 700">午前<div style="font-size: 11px; font-weight: 500">14 凸 ✓</div></a>
+    <a href="#hiru" style="text-decoration: none; background: #dfe3ea; color: #6a717b; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 700">昼<div style="font-size: 11px; font-weight: 500">11 凸 · Lv1 踏破 13:20</div></a>
+    <a href="#gogo" style="text-decoration: none; background: #dfe3ea; color: #6a717b; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 700">午後<div style="font-size: 11px; font-weight: 500">27 凸 · Lv2 踏破 17:05</div></a>
+    <a href="#yugata" style="text-decoration: none; background: #1d2024; color: #fff; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 900">夕方 · いま<div style="font-size: 11px; font-weight: 500; color: #b9c0c9">組み中 · 未配信</div></a>
+    <a href="#yoru" style="text-decoration: none; background: #fff; color: #9aa1aa; border: 1px dashed #c9cdd3; border-radius: 10px; padding: 7px 10px; font-size: 13px; font-weight: 700">夜<div style="font-size: 11px; font-weight: 500">出られる 19 人</div></a>
+    <a href="#shinya" style="text-decoration: none; background: #fff; color: #9aa1aa; border: 1px dashed #c9cdd3; border-radius: 10px; padding: 7px 10px; font-size: 13px; font-weight: 700">深夜<div style="font-size: 11px; font-weight: 500">出られる 6 人</div></a>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #fff; border-radius: 14px; padding: 12px 16px">
+    <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">条件</div>
+    <div style="display: flex; gap: 4px; background: #eef0f3; border-radius: 999px; padding: 3px">
+      <button style="border: 0; border-radius: 999px; padding: 6px 12px; font-family: inherit; font-size: 13px; font-weight: 900; background: #1d2024; color: #fff">このブロックに出られる 12 人</button>
+      <button style="border: 0; border-radius: 999px; padding: 6px 12px; font-family: inherit; font-size: 13px; font-weight: 700; background: transparent; color: #6a717b">全員 (1日ぶんの参考案)</button>
+    </div>
+    <div style="display: flex; gap: 4px; background: #eef0f3; border-radius: 999px; padding: 3px">
+      <button style="border: 0; border-radius: 999px; padding: 6px 12px; font-family: inherit; font-size: 13px; font-weight: 900; background: #1d2024; color: #fff">置いた駒を動かさない</button>
+      <button style="border: 0; border-radius: 999px; padding: 6px 12px; font-family: inherit; font-size: 13px; font-weight: 700; background: transparent; color: #6a717b">全部任せる</button>
+    </div>
+    <div style="flex: 1 1 auto"></div>
+    <button style="height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: #eef0f3; color: #1d2024; font-family: inherit; font-size: 14px; font-weight: 900">🧮 空きを埋める</button>
+    <button style="height: 40px; padding: 0 18px; border: 0; border-radius: 12px; background: #3d5a99; color: #fff; font-family: inherit; font-size: 14px; font-weight: 900">📤 夕方のぶんを配信 (14 凸)</button>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+    <div style="flex: 999 1 640px; min-width: 0; background: #fff; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: grid; grid-template-columns: 200px repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 12px; font-weight: 900; color: #6a717b">
+        <div>ボス · Lv3 残り</div><div>18時</div><div>19時</div><div>20時</div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 200px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch">
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; align-items: center; gap: 8px"><div style="width: 28px; height: 28px; border-radius: 8px; background: #FF9500; color: #fff; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center">B1</div><div style="font-size: 14px; font-weight: 900">レイタンス</div></div>
+          <div style="font-size: 12px; color: #3a3f46">鉄甲PT · 残り 118 / 292B</div>
+          <div style="height: 6px; border-radius: 3px; background: #dfe3ea"><div style="width: 40%; height: 100%; border-radius: 3px; background: #FF9500"></div></div>
+          <div style="font-size: 12px; font-weight: 900; color: #2f7a4a">置いた 3 凸 = 121B → 踏破見込み ✅</div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #fff3e0; border: 1px solid #FF9500; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">🔒 TAC <span style="color: #6a717b">64.2B</span></div>
+          <div style="background: #fff3e0; border: 1px solid #FF9500; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">📌 フブキ <span style="color: #6a717b">45.1B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #fff3e0; border: 1px solid #FF9500; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">銀狐リン <span style="color: #6a717b">33.0B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; min-height: 44px"></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 200px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch">
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; align-items: center; gap: 8px"><div style="width: 28px; height: 28px; border-radius: 8px; background: #007AFF; color: #fff; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center">B2</div><div style="font-size: 14px; font-weight: 900">トゥームストーン</div></div>
+          <div style="font-size: 12px; color: #3a3f46">水冷PT · 残り 79 / 292B</div>
+          <div style="height: 6px; border-radius: 3px; background: #dfe3ea"><div style="width: 27%; height: 100%; border-radius: 3px; background: #007AFF"></div></div>
+          <div style="font-size: 12px; font-weight: 900; color: #2f7a4a">置いた 2 凸 = 93B → 踏破見込み ✅</div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #e6f0ff; border: 1px solid #007AFF; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">イオ <span style="color: #6a717b">55.0B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #e6f0ff; border: 1px solid #007AFF; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">なべりうす <span style="color: #6a717b">38.2B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; min-height: 44px"></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 200px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch">
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; align-items: center; gap: 8px"><div style="width: 28px; height: 28px; border-radius: 8px; background: #34C759; color: #fff; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center">B3</div><div style="font-size: 14px; font-weight: 900">モダニア</div></div>
+          <div style="font-size: 12px; color: #3a3f46">風圧PT · 残り 182 / 349B</div>
+          <div style="height: 6px; border-radius: 3px; background: #dfe3ea"><div style="width: 52%; height: 100%; border-radius: 3px; background: #34C759"></div></div>
+          <div style="font-size: 12px; font-weight: 900; color: #a65a12">置いた 3 凸 = 148B → あと 34B (夜へ)</div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #e5f8ea; border: 1px solid #34C759; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">ふるり <span style="color: #6a717b">42.3B</span></div>
+          <div style="background: #e5f8ea; border: 1px solid #34C759; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">ENTER95 <span style="color: #6a717b">43.1B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #e5f8ea; border: 1px solid #34C759; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">ねむねこ <span style="color: #6a717b">62.9B</span></div>
+        </div>
+        <div style="border: 2px solid #3d5a99; background: #e6ebf7; border-radius: 12px; padding: 6px; min-height: 44px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #3d5a99">ここに置く</div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 200px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch">
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; align-items: center; gap: 8px"><div style="width: 28px; height: 28px; border-radius: 8px; background: #8E44AD; color: #fff; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center">B4</div><div style="font-size: 14px; font-weight: 900">リビルドビッグトルソー</div></div>
+          <div style="font-size: 12px; color: #3a3f46">電撃PT · 残り 58 / 292B</div>
+          <div style="height: 6px; border-radius: 3px; background: #dfe3ea"><div style="width: 20%; height: 100%; border-radius: 3px; background: #8E44AD"></div></div>
+          <div style="font-size: 12px; font-weight: 900; color: #2f7a4a">置いた 2 凸 = 95B → 踏破見込み ✅</div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #f3e8f8; border: 1px solid #8E44AD; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">ゆき <span style="color: #6a717b">55.4B</span></div>
+          <div style="background: #f3e8f8; border: 1px solid #8E44AD; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">みに <span style="color: #6a717b">40.0B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; min-height: 44px"></div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; min-height: 44px"></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 200px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch">
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+          <div style="display: flex; align-items: center; gap: 8px"><div style="width: 28px; height: 28px; border-radius: 8px; background: #FF3B30; color: #fff; font-weight: 900; font-size: 12px; display: flex; align-items: center; justify-content: center">B5</div><div style="font-size: 14px; font-weight: 900">アニヒリオ</div></div>
+          <div style="font-size: 12px; color: #3a3f46">灼熱PT · 残り 124 / 349B</div>
+          <div style="height: 6px; border-radius: 3px; background: #dfe3ea"><div style="width: 36%; height: 100%; border-radius: 3px; background: #FF3B30"></div></div>
+          <div style="font-size: 12px; font-weight: 900; color: #a65a12">置いた 2 凸 = 112B → あと 12B (夜へ)</div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #ffe9e7; border: 1px solid #FF3B30; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">DRアルカード <span style="color: #6a717b">52.0B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 4px">
+          <div style="background: #ffe9e7; border: 1px solid #FF3B30; border-radius: 8px; padding: 6px 8px; font-size: 12px; font-weight: 700">翠秋めぐる <span style="color: #6a717b">60.5B</span></div>
+        </div>
+        <div style="border: 1px dashed #dfe3ea; border-radius: 12px; padding: 6px; min-height: 44px"></div>
+      </div>
+
+      <div style="margin-top: 4px; background: #1d2024; color: #fff; border-radius: 12px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center">
+        <div style="font-size: 14px; font-weight: 900">夕方: 14 凸 · 569B · B1 B2 B4 は踏破見込み</div>
+        <div style="font-size: 13px; color: #b9c0c9">B3 と B5 の残り 46B は夜のブロックで (夜に出られる 19 人・残り凸 22)</div>
+      </div>
+    </div>
+
+    <div style="flex: 1 1 300px; min-width: 0; background: #fff; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">🧩 まだ置いていない人 (夕方)</div>
+        <div style="font-size: 11px; font-weight: 700; color: #6a717b">3 人 · 5 凸</div>
+      </div>
+      <div style="font-size: 12px; color: #6a717b">このブロックに出られて残り凸がある人だけ。つかんで盤に落とす</div>
+
+      <div style="border: 1px solid #dfe3ea; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; align-items: center"><div style="font-size: 14px; font-weight: 900">こーへい</div><div style="font-size: 11px; color: #6a717b; font-weight: 700">残り 2 · 18〜20時</div></div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+          <div style="font-size: 12px; font-weight: 700; color: #fff; background: #34C759; border-radius: 999px; padding: 3px 10px">風圧 36.0B</div>
+          <div style="font-size: 12px; font-weight: 700; color: #fff; background: #FF3B30; border-radius: 999px; padding: 3px 10px">灼熱 29.4B</div>
+        </div>
+      </div>
+      <div style="border: 1px solid #dfe3ea; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; align-items: center"><div style="font-size: 14px; font-weight: 900">にま</div><div style="font-size: 11px; color: #6a717b; font-weight: 700">残り 2 · 18〜20時</div></div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+          <div style="font-size: 12px; font-weight: 700; color: #fff; background: #FF3B30; border-radius: 999px; padding: 3px 10px">灼熱 24.8B</div>
+          <div style="font-size: 12px; font-weight: 700; color: #6a717b; background: #eef0f3; border-radius: 999px; padding: 3px 10px">模擬なし (鉄甲・水冷)</div>
+        </div>
+      </div>
+      <div style="border: 1px solid #dfe3ea; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; opacity: .75">
+        <div style="display: flex; justify-content: space-between; align-items: center"><div style="font-size: 14px; font-weight: 900">せもぽぬめ</div><div style="font-size: 11px; color: #a65a12; font-weight: 700">残り 1 · 模擬が届いていない</div></div>
+        <div style="font-size: 12px; color: #6a717b">Discord で催促 → スクショが来たら「模擬の取り込み」へ</div>
+      </div>
+
+      <div style="margin-top: 6px; border-top: 1px solid #dfe3ea; padding-top: 10px; display: flex; flex-direction: column; gap: 6px">
+        <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">夜に回す人 (まだ組まない)</div>
+        <div style="font-size: 13px; color: #3a3f46">出られる 19 人 · 残り凸 22 · 模擬が届いている 15 人</div>
+        <div style="font-size: 12px; color: #6a717b">夜のぶんは 20:30 ごろ、夕方の結果 (実HP) を見てから組む</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></section><section id="OpsImport" class="page"><h2>運営: 模擬の取り込み (Discord のスクショから)</h2><div class="frame">
+<div style="min-height: 900px; box-sizing: border-box; background: #f3f4f6; padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 16px">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第45回 · 運営 · 模擬の取り込み</div>
+      <div style="font-size: 24px; font-weight: 900">Discord のスクショを PAD に入れる</div>
+      <div style="font-size: 13px; color: #3a3f46">#模擬提出 に貼られたスクショを落とす → 読み取り → 誰の模擬かを選んで登録。登録したら Discord に ✅ を付ける</div>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+      <div style="font-size: 13px; font-weight: 700; color: #3a3f46; background: #fff; border-radius: 999px; padding: 6px 12px">登録済 19 人 · 47 編成</div>
+      <div style="font-size: 13px; font-weight: 700; color: #a65a12; background: #fbeedc; border-radius: 999px; padding: 6px 12px">届いていない 4 人</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+    <div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <div style="background: #fff; border: 2px dashed #3d5a99; border-radius: 16px; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+        <svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3d5a99" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 15l-5-5-8 8"/></svg>
+        <div style="font-size: 16px; font-weight: 900; color: #3d5a99">スクショをここに落とす (複数可)</div>
+        <div style="font-size: 12px; color: #6a717b">Discord からドラッグ、または Ctrl+V で貼り付け</div>
+        <label for="pick" style="margin-top: 6px; font-size: 13px; font-weight: 700; color: #1d2024; background: #eef0f3; border-radius: 10px; padding: 8px 14px">ファイルを選ぶ</label>
+        <input id="pick" type="file" multiple style="display: none">
+      </div>
+
+      <div style="background: #fff; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">読み取り待ち · 2 枚</div>
+        <div style="display: flex; gap: 12px; align-items: center; border: 1px solid #dfe3ea; border-radius: 12px; padding: 10px 12px">
+          <div style="width: 56px; height: 100px; border-radius: 8px; background: #2b2f36; flex: 0 0 auto"></div>
+          <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+            <div style="font-size: 13px; font-weight: 900">にま · #模擬提出 18:31</div>
+            <div style="font-size: 12px; color: #6a717b">読み取り中…</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center; border: 1px solid #dfe3ea; border-radius: 12px; padding: 10px 12px">
+          <div style="width: 56px; height: 100px; border-radius: 8px; background: #2b2f36; flex: 0 0 auto"></div>
+          <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+            <div style="font-size: 13px; font-weight: 900">せもぽぬめ · #模擬提出 18:40</div>
+            <div style="font-size: 12px; color: #6a717b">順番待ち</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1 1 480px; min-width: 0; background: #fff; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">読み取り結果 · 確認して登録</div>
+      <div style="display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap">
+        <div style="width: 150px; height: 266px; border-radius: 10px; background: #2b2f36; flex: 0 0 auto; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px; box-sizing: border-box; color: #b9c0c9; font-size: 11px">スクショ (ふるり)</div>
+        <div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <label for="who" style="font-size: 12px; font-weight: 900; color: #6a717b">誰の模擬か</label>
+            <select id="who" style="height: 42px; border: 1px solid #c9cdd3; border-radius: 10px; padding: 0 10px; font-family: inherit; font-size: 14px; font-weight: 700; background: #fff; color: #1d2024">
+              <option>ふるり (Discord の投稿者から推定)</option>
+              <option>ねむねこ</option>
+              <option>ENTER95</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <div style="flex: 1 1 100px; display: flex; flex-direction: column; gap: 4px">
+              <label for="attr" style="font-size: 12px; font-weight: 900; color: #6a717b">属性</label>
+              <select id="attr" style="height: 42px; border: 1px solid #c9cdd3; border-radius: 10px; padding: 0 10px; font-family: inherit; font-size: 14px; font-weight: 700; background: #fff; color: #1d2024">
+                <option>風圧PT → B3 モダニア</option>
+                <option>電撃PT → B4</option>
+              </select>
+            </div>
+            <div style="flex: 1 1 100px; display: flex; flex-direction: column; gap: 4px">
+              <label for="dmg" style="font-size: 12px; font-weight: 900; color: #6a717b">ダメージ (B)</label>
+              <input id="dmg" type="text" value="42.3" style="height: 42px; border: 1px solid #c9cdd3; border-radius: 10px; padding: 0 10px; font-family: inherit; font-size: 16px; font-weight: 900; color: #1d2024; box-sizing: border-box; width: 100%">
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <div style="font-size: 12px; font-weight: 900; color: #6a717b">編成 (読み取り 5 / 5)</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              <div style="font-size: 12px; font-weight: 700; background: #eef0f3; border-radius: 999px; padding: 4px 10px">ラピ:レッドフード</div>
+              <div style="font-size: 12px; font-weight: 700; background: #eef0f3; border-radius: 999px; padding: 4px 10px">紅蓮</div>
+              <div style="font-size: 12px; font-weight: 700; background: #eef0f3; border-radius: 999px; padding: 4px 10px">リバーレリオ</div>
+              <div style="font-size: 12px; font-weight: 700; background: #eef0f3; border-radius: 999px; padding: 4px 10px">クラウン</div>
+              <div style="font-size: 12px; font-weight: 700; background: #eef0f3; border-radius: 999px; padding: 4px 10px">ナガ</div>
+            </div>
+          </div>
+          <div style="font-size: 12px; color: #a65a12; background: #fbeedc; border-radius: 10px; padding: 8px 10px">⚠ ふるり の電撃PT (31.0B) と「クラウン」が被っています。同じ日には片方しか使えません</div>
+          <div style="display: flex; gap: 8px">
+            <button style="height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #1d2024; color: #fff; font-family: inherit; font-size: 14px; font-weight: 900">登録して次へ</button>
+            <button style="height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: #eef0f3; color: #1d2024; font-family: inherit; font-size: 13px; font-weight: 700">読み取り直す</button>
+            <button style="height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: transparent; color: #6a717b; font-family: inherit; font-size: 13px; font-weight: 700">飛ばす</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid #dfe3ea; padding-top: 12px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <div style="font-size: 12px; font-weight: 900; color: #6a717b; letter-spacing: .06em">届いていない人 · 4</div>
+          <button style="height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: #eef0f3; color: #1d2024; font-family: inherit; font-size: 12px; font-weight: 700">Discord 用にコピー</button>
+        </div>
+        <div style="overflow-x: auto">
+          <table style="border-collapse: collapse; width: 100%; font-size: 13px; min-width: 420px">
+            <tr style="color: #6a717b; font-size: 11px; font-weight: 700"><th style="text-align: left; padding: 4px 8px; border-bottom: 1px solid #dfe3ea">名前</th><th style="text-align: left; padding: 4px 8px; border-bottom: 1px solid #dfe3ea">出られる</th><th style="text-align: left; padding: 4px 8px; border-bottom: 1px solid #dfe3ea">期限 (そのブロックの前)</th><th style="text-align: left; padding: 4px 8px; border-bottom: 1px solid #dfe3ea">状態</th></tr>
+            <tr><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3; font-weight: 700">せもぽぬめ</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3">夕方 · 夜</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3">18:00</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3; color: #2f7a4a; font-weight: 700">スクショ届いた (読み取り待ち)</td></tr>
+            <tr><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3; font-weight: 700">NOB</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3">夜</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3">21:00</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3; color: #a65a12; font-weight: 700">まだ · 20:00 に催促</td></tr>
+            <tr><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3; font-weight: 700">MIRIN</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3">夜 · 深夜</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3">21:00</td><td style="padding: 6px 8px; border-bottom: 1px solid #eef0f3; color: #a65a12; font-weight: 700">まだ</td></tr>
+            <tr><td style="padding: 6px 8px; font-weight: 700">あんず</td><td style="padding: 6px 8px">深夜</td><td style="padding: 6px 8px">0:00</td><td style="padding: 6px 8px; color: #6a717b; font-weight: 700">まだ (期限まで余裕)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></section></div>
+</body></html>
