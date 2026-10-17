@@ -7,7 +7,7 @@
 -- DB 側で `metadata || jsonb_build_object('blocks', …)` (null なら `metadata - 'blocks'` = 既定に戻す) にすれば
 -- 1 文で済み、競合しない。未適用の環境では従来の方法にフォールバックする (劣化動作)。
 -- 検査 (5時〜翌4時を隙間も重なりも無く・2〜12 個) はクライアントの js/domain/raidBlocks.js が唯一。
--- ここでは形 (配列・要素がオブジェクト・name/from/to がある) だけを見る。
+-- ここでは形 (null か 配列・要素がオブジェクト・name/from/to がある・12 個まで) だけを見る。
 -- ============================================================================
 -- 適用: Supabase Dashboard → SQL Editor でこのファイルを実行
 -- ============================================================================
@@ -28,8 +28,12 @@ DECLARE
     v_clear BOOLEAN;
     e JSONB;
 BEGIN
-    v_clear := p_blocks IS NULL OR jsonb_typeof(p_blocks) <> 'array' OR jsonb_array_length(p_blocks) = 0;
+    -- ★ 既定に戻せるのは null だけ。配列でない・空の配列は壊れた入力として断る (黙って鍵を消さない)
+    v_clear := p_blocks IS NULL OR jsonb_typeof(p_blocks) = 'null';
     IF NOT v_clear THEN
+        IF jsonb_typeof(p_blocks) <> 'array' OR jsonb_array_length(p_blocks) = 0 THEN
+            RAISE EXCEPTION 'ブロックは配列で渡してください (既定に戻すなら null)' USING ERRCODE = 'P0001';
+        END IF;
         IF jsonb_array_length(p_blocks) > 12 THEN
             RAISE EXCEPTION 'ブロックは 12 個までです' USING ERRCODE = 'P0001';
         END IF;

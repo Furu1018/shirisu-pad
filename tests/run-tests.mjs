@@ -8977,7 +8977,9 @@ console.log('\ngrowthDomain:');
         assert.ok(upd, 'supabaseUpdateSeasonBlocks が無い');
         assert.ok(/const r = dom\.normalize\(blocks\);\s*\n\s*if \(!r\.blocks\) throw new Error/.test(upd), '入口で検査していない');
         assert.ok(/supabase\.rpc\('ops_set_season_blocks', \{ p_season_id: seasonId, p_blocks: cfg \}\)/.test(upd), 'RPC を呼んでいない');
-        assert.ok(/error\.code === 'PGRST202'/.test(upd), '50 未適用のフォールバックが無い');
+        assert.ok(/if \(error\.code !== 'PGRST202'\) throw error;/.test(upd) && !/Could not find the function/.test(upd), '50 未適用の判定がコードだけになっていない');
+        assert.ok(/if \(!Array\.isArray\(blocks\) \|\| blocks\.length === 0\) throw new Error/.test(upd), '配列でない入力を断っていない');
+        assert.ok(/jsonb_typeof\(p_blocks\) = 'null';/.test(_grRd('supabase', '50_season_blocks_rpc.sql')) && /RAISE EXCEPTION 'ブロックは配列で渡してください/.test(_grRd('supabase', '50_season_blocks_rpc.sql')), '50 が配列でない入力を断っていない');
         assert.ok(/const metadata = \{ \.\.\.\(cur\.metadata && typeof cur\.metadata === 'object' \? cur\.metadata : \{\}\) \};/.test(upd), 'フォールバックで他の鍵 (damages_snapshot 等) を消している');
         assert.ok(/else delete metadata\.blocks;/.test(upd), 'null で既定に戻せない');
         assert.equal((upd.match(/\.eq\('is_active', true\)/g) || []).length, 2, '終了済みシーズンに書けてしまう');
@@ -9028,10 +9030,21 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(fb.calls.update[0], { metadata: { damages_snapshot: [1], blocks: two } }, 'フォールバックで他の鍵を消している / blocks を書いていない');
         await fb.fn(36, null);
         assert.deepEqual(fb.calls.update[1], { metadata: { damages_snapshot: [1] } }, 'null で鍵を消していない');
-        // RPC の別のエラー (終了済みシーズン等) はそのまま投げ、フォールバックしない
+        // RPC の別のエラー (終了済みシーズン等) はそのまま投げ、フォールバックしない。文言が似ていてもコードが違えば同じ
         const other = mk(async () => ({ error: { code: 'P0001', message: '対象シーズンは既にアクティブではありません' } }));
         await assert.rejects(() => other.fn(36, two), (e) => /アクティブではありません/.test(e?.message));
         assert.equal(other.calls.select + other.calls.update.length, 0, 'RPC が断ったのに読んで書いている');
+        const lookalike = mk(async () => ({ error: { code: '42883', message: 'Could not find the function public.ops_set_season_blocks' } }));
+        await assert.rejects(() => lookalike.fn(36, two));
+        assert.equal(lookalike.calls.select + lookalike.calls.update.length, 0, '文言の一致でフォールバックしている');
+        // 既定に戻せるのは null だけ。[] / オブジェクト / 文字列 は断る (黙って鍵を消さない)
+        const strict = mk(async () => ({ error: null }));
+        for (const bad of [[], {}, 'x', 0]) {
+            await assert.rejects(() => strict.fn(36, bad), /配列で渡してください/, `${JSON.stringify(bad)} を通している`);
+        }
+        assert.equal(strict.calls.rpc.length, 0, '壊れた入力で RPC を呼んでいる');
+        assert.equal(await strict.fn(36, undefined), null); assert.equal(await strict.fn(36, null), null);
+        assert.ok(strict.calls.rpc.every(c => c.args.p_blocks === null));
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {

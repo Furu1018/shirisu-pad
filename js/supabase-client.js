@@ -1857,17 +1857,19 @@ window.supabaseUpdateSeasonBlocks = async function (seasonId, blocks) {
     if (!seasonId) throw new Error('seasonId が必要です');
     const dom = (typeof window !== 'undefined' && window.raidBlocksDomain) || (typeof globalThis !== 'undefined' && globalThis.raidBlocksDomain) || null;
     if (!dom) throw new Error('ブロックの検査 (raidBlocksDomain) が読み込まれていません');
+    // ★ 既定に戻せるのは null (undefined) だけ。[] / オブジェクト / 文字列 は壊れた入力として拒否する (黙って鍵を消さない — Codex指摘)
     let cfg = null;
-    if (Array.isArray(blocks) && blocks.length > 0) {
+    if (blocks != null) {
+        if (!Array.isArray(blocks) || blocks.length === 0) throw new Error('ブロックの区切りが正しくありません: 配列で渡してください (既定に戻すなら null)');
         const r = dom.normalize(blocks);
         if (!r.blocks) throw new Error(`ブロックの区切りが正しくありません: ${r.error}`);
         cfg = dom.sameConfig(r.blocks, dom.normalize(null).blocks) ? null : dom.toConfig(r.blocks);
     }
     const { error } = await supabase.rpc('ops_set_season_blocks', { p_season_id: seasonId, p_blocks: cfg });
     if (!error) return cfg;
-    // PGRST202 = 関数がスキーマに無い (50 未適用)。それ以外 (RPC 内の RAISE = 終了済みシーズン等) はそのまま投げる
-    const missing = error.code === 'PGRST202' || /Could not find the function/i.test(error.message || '');
-    if (!missing) throw error;
+    // PGRST202 = 関数がスキーマに無い (50 未適用) — **コードだけ**で判定する (文言の一致で別のエラーをフォールバックに流さない: Codex指摘)。
+    // それ以外 (RPC 内の RAISE = 終了済みシーズン・形が違う 等) はそのまま投げる
+    if (error.code !== 'PGRST202') throw error;
     const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
     if (rErr) throw rErr;
     if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
