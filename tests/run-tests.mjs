@@ -432,6 +432,60 @@ test('⏰ 厳守: 取り残される人で律速の凸を置き換えて踏破�
     assert.deepEqual(names(flex.levels[0]), ['夜の人'], '隙間型・未登録の人で置き換えている');
 });
 
+test('⏰ 厳守の修復: 置き換え・復元のあとも usedB/overflowB は投入順で整合 / 復元は元の位置 / 取り残される人以外は使わない (Codex指摘 2026-10-18)', () => {
+    const noon = ['h12', 'h13', 'h14', 'h15', 'h16', 'h17'];
+    const names = (lv) => (lv?.bosses || []).flatMap(b => b.attacks.map(a => a.memberName));
+    const sum = (arr, k) => arr.reduce((t, a) => t + a[k], 0);
+    // 律速の凸が投入順の**先頭**にある盤面: 夜 80 → 昼A 30 の順に置かれる (昼A は水冷 200 を持つので火力順位が高く後回し)
+    // 置き換え後は [昼A 30, 昼B 80] になり、昼A の usedB は 20 → 30 に変わらなければならない (合計 = HP 100)
+    const ok = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 100 })],
+        [
+            player('夜の人', { fire: 80 }, { availableSlots: ['h22'] }),
+            player('昼A', { fire: 30, water: 200 }, { availableSlots: noon }),
+            player('昼B', { fire: 80 }, { availableSlots: noon }),
+        ],
+        { currentSlot: 'h05' },
+    ), timeStrict: true });
+    const b1 = ok.levels[0].bosses[0];
+    assert.deepEqual(names(ok.levels[0]), ['昼A', '昼B'], '取り残される昼B で夜の人を置き換えていない');
+    assert.equal(ok.levels[0].clearHourLabel, '12時');
+    assert.equal(sum(b1.attacks, 'usedB'), 100, `usedB の合計が HP と合わない: ${JSON.stringify(b1.attacks.map(a => [a.memberName, a.usedB, a.overflowB]))}`);
+    assert.equal(sum(b1.attacks, 'overflowB'), 10, 'overflowB が投入順で数え直されていない');
+    assert.deepEqual(b1.attacks.map(a => a.usedB), [30, 70]);
+    assert.ok(names(ok.levels[1]).includes('夜の人'), '置き換えられた夜の人が次のレベルに居ない');
+    // 倒し切れず復元する盤面: 元の並び [夜 80, 昼A 30] と usedB [80, 20] に戻る (末尾に足し直さない)
+    const back = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 100 })],
+        [
+            player('夜の人', { fire: 80 }, { availableSlots: ['h22'] }),
+            player('昼A', { fire: 30, water: 200 }, { availableSlots: noon }),
+            player('昼弱', { fire: 10 }, { availableSlots: noon }),
+        ],
+        { currentSlot: 'h05' },
+    ), timeStrict: true });
+    const b2 = back.levels[0].bosses[0];
+    assert.deepEqual(names(back.levels[0]), ['夜の人', '昼A'], '復元が元の位置に戻っていない');
+    assert.deepEqual(b2.attacks.map(a => a.usedB), [80, 20]);
+    assert.deepEqual(b2.attacks.map(a => a.overflowB), [0, 10]);
+    assert.equal(back.levels[0].clearHourLabel, '22時');
+    assert.equal(b2.absorbedB, undefined, '倒し切れないのに戻さず、吸収モードに落ちている');
+    // 取り残される人以外 (夕方の人・踏破のあとも出られる) は置き換えに使わない。取り残される人だけでは倒し切れないので元のまま
+    const scope = compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 22 })],
+        [
+            player('夜の人', { fire: 22 }, { availableSlots: ['h22'] }),
+            player('昼弱', { fire: 10 }, { availableSlots: noon }),
+            player('夕方の人', { fire: 23 }, { availableSlots: ['h18', 'h19', 'h20', 'h21', 'h22', 'h23'] }),
+        ],
+        { currentSlot: 'h05' },
+    ), timeStrict: true });
+    assert.deepEqual(names(scope.levels[0]), ['夜の人'], '取り残される人以外で置き換えている');
+    assert.equal(scope.levels[0].clearHourLabel, '22時');
+    assert.equal(scope.levels[0].bosses[0].absorbedB, undefined);
+    assert.ok(names(scope.levels[1]).includes('夕方の人'), '夕方の人が次のレベルに居ない');
+});
+
 test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 20 })],

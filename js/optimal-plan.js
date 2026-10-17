@@ -731,10 +731,14 @@
                         }
                     }
                     if (!removed) return;
-                    // 凸を外したら usedB/overflowB を投入順に再計算する。
-                    // 放置すると「外す前の残HP」で計算された値が残り、totalWaste・totalCreditedB・
-                    // 温存パスの採否判定・画面の超過表示がすべて誤る (例: 5.5Bを外しても
-                    // 最後の凸が usedB=6.7/overflow=8.4 のままで、実際は usedB=12.2/overflow=2.9)
+                    recomputeUsage(t);
+                };
+                // 凸の usedB/overflowB を**投入順**に数え直す (凸を外した / 入れ替えたあとに必ず呼ぶ)。
+                // 放置すると「その時点の残HP」で計算された値が残り、totalWaste・totalCreditedB・
+                // 温存パスの採否判定・画面の超過表示がすべて誤る (例: 5.5Bを外しても
+                // 最後の凸が usedB=6.7/overflow=8.4 のままで、実際は usedB=12.2/overflow=2.9。
+                // 置き換えでも同じ: 途中の凸を外して末尾に足すと、残った凸の usedB が古いまま — Codex指摘 2026-10-18)
+                const recomputeUsage = (t) => {
                     let rem = t.targetHpB;
                     for (const a of t.attacks) {
                         a.usedB = Math.min(a.dmgB, Math.max(0, rem));
@@ -779,6 +783,7 @@
                             for (const atk of late) {
                                 const m0 = memberState.find(x => x.id === atk.memberId);
                                 const meta = loMeta.get(atk);
+                                const idx0 = t.attacks.indexOf(atk);   // 復元は元の位置へ (出力の並びと前回との差分を安定させる)
                                 if (!m0 || !undoPick(t, atk)) continue;
                                 const picked = [];
                                 while (t.rem > 0.0001) {
@@ -793,11 +798,17 @@
                                     const w = t.b.weakness;
                                     const lo0 = (m0.avail[w] || []).find(l => l === meta)
                                         || (m0.avail[w] || []).find(l => (l.slot ?? 1) === (atk.loadoutSlot ?? 1) && l.dmg === atk.dmgB);
-                                    if (lo0) applyPick(t, { pick: m0, pickScore: 0, pickHour: atk.hourIdx, pickFlex: false,
-                                        pickLo: lo0, pickDmg: atk.dmgB, pickSlot: { idx: atk.hourIdx, flex: false } });
+                                    if (lo0) {
+                                        applyPick(t, { pick: m0, pickScore: 0, pickHour: atk.hourIdx, pickFlex: false,
+                                            pickLo: lo0, pickDmg: atk.dmgB, pickSlot: { idx: atk.hourIdx, flex: false } });
+                                        const back = t.attacks.pop();
+                                        t.attacks.splice(Math.min(idx0, t.attacks.length), 0, back);
+                                    }
+                                    recomputeUsage(t);   // 外して戻した以上、途中の凸の usedB/overflowB は古い
                                     continue;
                                 }
                                 trimOverkill(t);
+                                recomputeUsage(t);   // trimOverkill は凸を外したときしか数え直さない。置き換えだけでも並びが変わっている
                                 moved++;
                                 replaced = true;
                                 break;
