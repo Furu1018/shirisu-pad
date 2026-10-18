@@ -1057,7 +1057,12 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   算出は `computeOptimalPlanCore({ onlyAvailableNow: true, availableAtSlots: block.slots, availableAtLabel })` — その時間帯のどれかに出られる人 + ⏳隙間型 + 未登録 (= いつでも)
   に絞る (ベンチ H と同じ読み方)。1 時間の「今動ける人だけ」(`availableAtSlot`) は従来どおり。出力に `availableAtSlots` / `availableAtLabel` が載るのはブロックのときだけ (指紋を保つ)。
   焼き込みは `conditions.who = 'block'` + `conditions.block` (ブロック名)、スタンプは「🧱 夕方 18〜20時 に出られる人」。ベンチの区切りもドメインから取る。
-  残り (③): メンバー画面 (時間アンケートをブロックで・ホームを次のブロックだけ・きょうの凸)・配信をブロック単位に・運営の模擬取り込み・模擬シートを設定で隠す・凸報告の確認欄
+  ★ **③-a 配信をブロックのぶんだけに** (2026-10-18): 「🧱 ブロックの人」で組んだプランには `plan.blockScope` (`{ idx, name, label, from, to, slots }`) を焼き込む。
+  配信 JSON は 1 日ぶんのまま。**メンバーの画面だけ** `raidBlocksDomain.scopePlan(plan, scope)` でその範囲 (hourIdx が from〜to) の凸に絞る
+  (`renderMyPublishedPlan` の入口で絞るので、わたしの凸 / 全体 / 時間割 / ヒーロー がみな同じ範囲を見る)。凸が残らないレベルは落とす。
+  カードに「🧱 夜 21〜23時 のぶんの配信です。次のブロックの割当はまだ決まっていません」。配信ボタンは「📤 夜のぶんを配信 (47凸)」、
+  確認の文言にも範囲。差分 (L5 の提示・L4 の通知) も `scopePlan` で両方を同じ範囲に絞ってから比べる (後ろのブロックは約束ではない)
+  残り (③): 時間アンケートをブロックで・きょうの凸 (ブロックごとに 1 行)・運営の模擬取り込み・模擬シートを設定で隠す・凸報告の確認欄
   (律速にしない)。ハイブリッド=登録時間内は確約・時間外は flex
 - **ボス横断の限定分岐 (フェーズ2)**: 貪欲は「そのボスで最良」を選ぶので、別ボスでしか
   使えない人材を先に消費してしまう。僅差の決定点で2番手を採るシナリオを解き直し、

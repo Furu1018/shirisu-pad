@@ -9494,7 +9494,8 @@
                 }
                 return;
             }
-            const plan = pub.plan;
+            // 🧱 ブロックのぶんだけの配信 (2026-10-18): メンバーの画面はそのブロックの割当だけを見る。後ろのブロックはまだ約束していない
+            const plan = (pub.plan?.blockScope && window.raidBlocksDomain) ? window.raidBlocksDomain.scopePlan(pub.plan, pub.plan.blockScope) : pub.plan;
 
             // 「報告済み ✓」判定用に、自分がこのシーズンで既に凸したボス番号ごとの件数を集める。
             // (プランは配信時点の残り凸の想定 → 実際に報告した回数ぶんだけ予定行を消し込む。
@@ -9644,6 +9645,10 @@
             }
             // 🔄 自分が確認したあとに運営が組み直した → 割当が変わっている可能性がある
             // 「この条件で組んだ」(パズル盤 ①): 運営が焼き込んだ条件を本人にも1行で見せる (無い古いプランは何も出さない)
+            // 🧱 ブロックのぶんだけの配信: どのブロックか・次はまだ決まっていないこと
+            const scopeLine = plan?.blockScope
+                ? `<p style="margin:0 0 8px 0;padding:8px 12px;border-radius:10px;background:var(--ops-bg);font-size:11.5px;font-weight:800;color:var(--ops-deep);line-height:1.6;">🧱 <b>${escapeHtml(plan.blockScope.label)}</b> のぶんの配信です。次のブロックの割当はまだ決まっていません (運営がそのブロックの前に配信します)</p>`
+                : '';
             const condLine = (plan?.conditions && window.planBoardDomain)
                 ? `<p style="margin:0 0 8px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.5;">🧮 ${escapeHtml(window.planBoardDomain.conditionSummary(plan.conditions))}${plan.conditions.computedBy ? ` · ${escapeHtml(plan.conditions.computedBy)} が算出` : ''}</p>`
                 : '';
@@ -9670,7 +9675,7 @@
                     : '<p style="margin:0 0 8px 0;padding:7px 11px;border-radius:9px;background:rgba(24,194,107,0.10);font-size:11.5px;font-weight:800;color:var(--ok-deep);">✅ 前回の配信から、あなたの割当は変わっていません</p>';
             body.innerHTML = `
                 ${resvStaleBanner}${frozenBanner}${changeBanner}
-                ${condLine}
+                ${scopeLine}${condLine}
                 ${updatedBanner}
                 ${stale ? '<p style="margin:0 0 8px 0;padding:7px 10px;border-radius:9px;background:rgba(245,158,11,0.10);font-size:11px;font-weight:700;color:var(--warn-deep);">⚠️ 配信後に戦況 (凸・ボスHP) が更新されています。目安として見つつ、最新は運営の再配信をお待ちください。</p>' : ''}
                 ${tabs}
@@ -10230,7 +10235,7 @@
             const h = rv ? rv.homeSlots({ plan, viewerId,
                 reservations: Array.isArray(_myResvRows) ? _myResvRows.filter(r => String(r.player_id) === String(viewerId)) : [],
                 doneCounts, todayAttacks: Number(_myPubState?.todayAttacks) || 0 }) : null;
-            if (!h) return '<p style="margin:0;font-size:12px;font-weight:700;color:var(--t-muted);">このプランであなたへの凸割当はありません。</p>';
+            if (!h) return `<p style="margin:0;font-size:12px;font-weight:700;color:var(--t-muted);">${plan?.blockScope ? `このブロック (${escapeHtml(plan.blockScope.label)}) にあなたの凸はありません。次のブロックの配信を待ってください。` : 'このプランであなたへの凸割当はありません。'}</p>`;
             const bosses = _seasonBossesForResv() || [];
             let doneCount = 0;
             const rows = h.slots.map((a, i) => {
@@ -21231,6 +21236,8 @@
                 computedBy: getCurrentIdentity()?.name ?? null,
                 computedAt: new Date().toISOString(),
             }) : null;
+            // 🧱 ブロックのぶんだけ配信する印 (2026-10-18)。配信 JSON は 1 日ぶんのまま、メンバーの画面はこの範囲だけを見る
+            if (blk) plan.blockScope = { idx: blk.idx, name: blk.name, label: blk.label, from: blk.from, to: blk.to, slots: blk.slots.slice() };
             _opsLastPlan = plan;   // 📸 共有画像 / 📤 配信用に保持
             _setOpsPlanPicks(plan, 'local');   // 残凸表の「採用PT」枠取りに反映
             _opsPlanFocus = null;              // 前の算出で選んでいたチップは新しい盤には無いかもしれない
@@ -22033,6 +22040,10 @@
             // 算出したあとの操作 (配信 / 共有画像) は結果の下に
             const next = document.getElementById('opsPlanNext');
             if (next) next.style.display = '';
+            // 🧱 ブロックのぶんだけ配信するときは、ボタンに何を配信するかを書く
+            const pubBtn = document.getElementById('opsPlanPublishBtn');
+            if (pubBtn) pubBtn.textContent = plan.blockScope && window.raidBlocksDomain
+                ? `📤 ${plan.blockScope.name}のぶんを配信 (${window.raidBlocksDomain.attackCountIn(plan, plan.blockScope)}凸)` : '📤 このプランを配信';
             // チップのタップで「その人の時間」を光らせる (委譲。innerHTML で描き直しても生きる)
             if (!el.dataset.focusDelegated) {
                 el.dataset.focusDelegated = '1';
@@ -22495,7 +22506,11 @@
                 const sameSeason = prevPub && Number(prevPub.season_id) === Number(seasonId);
                 const prevPlan = sameSeason ? prevPub.plan : null;
                 if (sameSeason) prevPlanId = prevPub.id;
-                if (window.planDiffDomain) publishDiff = window.planDiffDomain.diffPlans(prevPlan, _opsLastPlan);
+                // 🧱 ブロックのぶんだけ配信するときは、差分 (L5 の提示・L4 の通知) もその範囲で見る。
+                //   前の配信の後ろのブロックは約束ではないので「変わった」に数えない
+                const scopeNow = _opsLastPlan?.blockScope || null;
+                const sc = (p) => (scopeNow && window.raidBlocksDomain && p) ? window.raidBlocksDomain.scopePlan(p, scopeNow) : p;
+                if (window.planDiffDomain) publishDiff = window.planDiffDomain.diffPlans(sc(prevPlan), sc(_opsLastPlan));
                 // ★ 基準がずれていたら配信させない (Codex指摘 2026-09-07)。
                 //   算出時に尊重した配信と、いま生きている配信が違う = 別の運営が間に配信している。
                 //   そのまま出すと相手の約束を知らないまま壊す。安定化 OFF のときは元から
@@ -22520,7 +22535,10 @@
                 ? `\n\n「確認しました」を押している ${ackedPreview.length} 名のうち、**割当が変わった人にだけ**\n` +
                   `「プランが更新されました」の通知を送ります (変わらない人には送りません)。`
                 : '';
-            const msg = '📤 現在表示中のプランを全メンバーに配信しますか？'
+            const scopeMsg = (_opsLastPlan?.blockScope && window.raidBlocksDomain)
+                ? `🧱 ${_opsLastPlan.blockScope.label} のぶん (${window.raidBlocksDomain.attackCountIn(_opsLastPlan, _opsLastPlan.blockScope)}凸) を配信します。\nメンバーのホームにはこのブロックの割当だけが出ます (後ろのブロックはまだ約束しません)。\n\n`
+                : '';
+            const msg = scopeMsg + '📤 現在表示中のプランを全メンバーに配信しますか？'
                 + (ackedPreview.length > 0 ? '' : '\n各メンバーのホームに「配信された凸プラン」として表示されます (Push通知は送りません)。')
                 + diffMsg + ackMsg;
             if (!confirm(msg)) return;

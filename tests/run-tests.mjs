@@ -580,6 +580,19 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.deepEqual(d.removeAt(d.DEFAULT_BLOCKS, 0)[0], { name: '午前', from: 5, to: 11 });
     assert.equal(d.removeAt([{ name: 'a', from: 5, to: 14 }, { name: 'b', from: 15, to: 4 }], 0), null, '2 つを割っている');
     assert.equal(d.removeAt(d.DEFAULT_BLOCKS, 99), null);
+    // 🧱 配信をブロックのぶんだけに: hourIdx が from〜to の行番号の凸だけ残す。凸が残らないレベルは落とす。元は変えない
+    const plan = { startLevel: 1, fullyClearedThrough: 2, levels: [
+        { level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 1, hourIdx: 13 }, { memberId: 2, hourIdx: 16 }] }, { bossNumber: 2, attacks: [{ memberId: 3, hourIdx: 15, flex: true }] }] },
+        { level: 2, bosses: [{ bossNumber: 1, attacks: [{ memberId: 4, hourIdx: 17 }, { memberId: 5, hourIdx: null }] }] },
+    ] };
+    const ev2 = { name: '夕方', from: 18, to: 20 };   // 行番号 13〜15
+    const sp = d.scopePlan(plan, ev2);
+    assert.deepEqual(sp.levels.map(lv => lv.bosses.map(b => b.attacks.map(a => a.memberId))), [[[1], [3]]], '範囲外の凸・空のレベルが残っている');
+    assert.equal(sp.fullyClearedThrough, 2, '他の鍵が落ちている'); assert.deepEqual(sp.blockScope, ev2);
+    assert.equal(plan.levels[0].bosses[0].attacks.length, 2, '元のプランを変えている');
+    assert.equal(d.attackCountIn(plan, ev2), 2); assert.equal(d.attackCountIn(plan, { from: 0, to: 4 }), 0);
+    assert.equal(d.scopePlan(plan, null), plan); assert.equal(d.scopePlan(null, ev2), null);
+    assert.equal(d.scopePlan(plan, { from: 8, to: 5 }), plan, '逆順の範囲で壊している');
     // 保存の形と同一判定
     assert.deepEqual(d.toConfig(two.blocks), [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
     assert.equal(d.sameConfig(def.blocks, d.normalize(d.toConfig(def.blocks)).blocks), true);
@@ -6877,7 +6890,8 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(iRead >= 0 && iClose > iRead, '閉じてから読むと選択が取れない');
     });
     test('L5: 配信前に前回との差分を出し、同じ差分を通知の絞り込みに使い回す', () => {
-        assert.ok(/publishDiff = window\.planDiffDomain\.diffPlans\(prevPlan, _opsLastPlan\)/.test(html));
+        // 🧱 ブロックのぶんだけ配信するときは差分もその範囲 (sc = scopePlan)。範囲が無ければ sc はそのまま返す
+        assert.ok(/publishDiff = window\.planDiffDomain\.diffPlans\(sc\(prevPlan\), sc\(_opsLastPlan\)\)/.test(html));
         assert.ok(/Number\(prevPub\.season_id\) === Number\(seasonId\)/.test(html), '別シーズンの配信を前回扱いにしない');
         assert.ok(html.includes('window.planDiffDomain.summaryText(publishDiff)'));
     });
@@ -9047,6 +9061,26 @@ console.log('\ngrowthDomain:');
         assert.ok(strict.calls.rpc.every(c => c.args.p_blocks === null));
     });
 
+    test('★ 配線: 🧱 ブロックのぶんだけ配信 — 焼き込み / ボタンの文言 / ホームはその範囲だけ + 案内 / 差分もその範囲 (2026-10-18)', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        // 算出時に印を焼き込む (ブロックで組んだときだけ)
+        assert.ok(/if \(blk\) plan\.blockScope = \{ idx: blk\.idx, name: blk\.name, label: blk\.label, from: blk\.from, to: blk\.to, slots: blk\.slots\.slice\(\) \};/.test(html), 'blockScope を焼き込んでいない');
+        // 配信ボタンに何を配信するかを書く
+        assert.ok(/pubBtn\.textContent = plan\.blockScope && window\.raidBlocksDomain\s*\n\s*\? `📤 \$\{plan\.blockScope\.name\}のぶんを配信 \(\$\{window\.raidBlocksDomain\.attackCountIn\(plan, plan\.blockScope\)\}凸\)` : '📤 このプランを配信';/.test(html), '配信ボタンの文言が無い');
+        // ホーム: 配信を読んだ直後にその範囲だけに絞る (以後の 3 つの表示・ヒーローはみな絞ったプランを見る)
+        const home = html.match(/async function renderMyPublishedPlan\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const plan = \(pub\.plan\?\.blockScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(pub\.plan, pub\.plan\.blockScope\) : pub\.plan;/.test(home), 'ホームで範囲に絞っていない');
+        assert.ok(/🧱 <b>\$\{escapeHtml\(plan\.blockScope\.label\)\}<\/b> のぶんの配信です。次のブロックの割当はまだ決まっていません/.test(html), 'どのブロックの配信かの案内が無い');
+        assert.ok(/\$\{scopeLine\}\$\{condLine\}/.test(html), '案内を出していない');
+        assert.ok(/このブロック \(\$\{escapeHtml\(plan\.blockScope\.label\)\}\) にあなたの凸はありません。次のブロックの配信を待ってください。/.test(html), '割当なしの文言がブロックを知らない');
+        // 配信: 差分 (L5 の提示・L4 の通知) は範囲で見る / 確認の文言
+        const pub = html.match(/async function handleOpsPublishPlan\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/publishDiff = window\.planDiffDomain\.diffPlans\(sc\(prevPlan\), sc\(_opsLastPlan\)\);/.test(pub), '差分を範囲で見ていない');
+        assert.ok(/const sc = \(p\) => \(scopeNow && window\.raidBlocksDomain && p\) \? window\.raidBlocksDomain\.scopePlan\(p, scopeNow\) : p;/.test(pub), '絞る関数が無い');
+        assert.ok(/のぶん \(\$\{window\.raidBlocksDomain\.attackCountIn\(_opsLastPlan, _opsLastPlan\.blockScope\)\}凸\) を配信します。/.test(pub), '確認の文言が無い');
+        assert.ok(/const msg = scopeMsg \+ '📤 現在表示中のプランを全メンバーに配信しますか？'/.test(pub), '確認の文言に足していない');
+    });
+
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
         // 2026-09-11 ユーザー要望「戦況のボス一覧ほどの情報量じゃないが、属性アイコン、
         // ちゃんとボスの並び順で、戦闘中かどうかだけぱっと見でわかるように」
@@ -10579,7 +10613,7 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(pick({ onlyAvailableNow: true }, 'all'), { who: 'now', onlyNow: true });
         assert.ok(fn.includes(`const who = ${WHO_EXPR}`), '上の式が本体と同じでない');
         // 焼き込み: planBoardDomain.conditionsOf で作り、_opsLastPlan に入れる前に付ける
-        assert.ok(/plan\.conditions = window\.planBoardDomain \? window\.planBoardDomain\.conditionsOf\(\{[\s\S]*?computedAt: new Date\(\)\.toISOString\(\),[\s\S]*?\}\) : null;\s*\n\s*_opsLastPlan = plan;/.test(fn), '条件を焼き込んでいない (または _opsLastPlan の後)');
+        assert.ok(/plan\.conditions = window\.planBoardDomain \? window\.planBoardDomain\.conditionsOf\(\{[\s\S]*?computedAt: new Date\(\)\.toISOString\(\),[\s\S]*?\}\) : null;\s*\n(\s*\/\/[^\n]*\n)*\s*if \(blk\) plan\.blockScope = [^\n]*\n\s*_opsLastPlan = plan;/.test(fn), '条件を焼き込んでいない (または _opsLastPlan の後)');
         assert.ok(/reservations\.filter\(r => window\.reservationsDomain\.isFixed\(r\)\)\.length/.test(fn), '予約は拘束 (isFixed) だけを数える');
         // 結果の頭にスタンプ。ホームの配信カードにも1行
         assert.ok(/summary = _planCondStampHtml\(plan\.conditions\) \+ summary;/.test(html), '結果にスタンプを出していない');

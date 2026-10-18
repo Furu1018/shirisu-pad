@@ -162,9 +162,30 @@
         return cfg;
     }
 
+    /**
+     * 🧱 配信を「そのブロックのぶんだけ」に絞る (2026-10-18)。プランは浅く写し、各ボスの attacks を
+     * ブロックの時間帯 (hourIdx が from〜to の行番号) のものだけにする。凸が 1 つも残らないレベルは落とす。
+     * ★ 元のプランは変えない (運営の手元・配信 JSON は 1 日ぶんのまま。メンバーの画面だけがこれを見る)
+     * @param {Object} plan   ソルバー出力 (levels[].bosses[].attacks[].hourIdx)
+     * @param {{from:number, to:number}} scope  ブロック (blockScope)
+     */
+    function scopePlan(plan, scope) {
+        if (!plan || !scope) return plan;
+        const a0 = idxOfHour(scope.from), a1 = idxOfHour(scope.to);
+        if (a0 < 0 || a1 < 0 || a1 < a0) return plan;
+        const keep = (a) => a && Number.isInteger(a.hourIdx) && a.hourIdx >= a0 && a.hourIdx <= a1;
+        const levels = (Array.isArray(plan.levels) ? plan.levels : [])
+            .map(lv => ({ ...lv, bosses: (Array.isArray(lv.bosses) ? lv.bosses : []).map(b => ({ ...b, attacks: (Array.isArray(b.attacks) ? b.attacks : []).filter(keep) })) }))
+            .filter(lv => lv.bosses.some(b => b.attacks.length > 0));
+        return { ...plan, levels, blockScope: plan.blockScope || scope };
+    }
+    /** そのブロックに入る凸の数 */
+    const attackCountIn = (plan, scope) => (scopePlan(plan, scope)?.levels || []).reduce((t, lv) => t + lv.bosses.reduce((u, b) => u + b.attacks.length, 0), 0);
+
     root.raidBlocksDomain = {
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
         normalize, blocksOfSeason, toConfig, sameConfig, labelOf, toHour, addSplit, removeAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
+        scopePlan, attackCountIn,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
