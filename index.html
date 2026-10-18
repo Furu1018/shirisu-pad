@@ -9450,17 +9450,20 @@
             const meta = document.getElementById('myTodayBlocksMeta');
             if (!card || !body) return;
             const rbd = window.raidBlocksDomain;
-            if (!identity?.id || !rbd) { card.style.display = 'none'; return; }
+            // ★ 名乗りなし / 消す経路でも世代を進める — 進めないと、直前の人の遅れて着いた描画が世代照合を通って出る (Codex指摘 2026-10-18)
             const seq = ++_todayBlocksSeq;
+            if (!identity?.id || !rbd) { card.style.display = 'none'; return; }
             let season = null, rows = null;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
+                if (seq !== _todayBlocksSeq) return;
                 season = ctx?.season || null;
                 if (!season?.id) { card.style.display = 'none'; return; }
                 const st = (_myPubState && String(_myPubState.viewerId) === String(identity.id) && String(_myPubState.seasonId) === String(season.id)) ? _myPubState : null;
                 rows = Array.isArray(st?.myAttackRows) ? st.myAttackRows
                     : (typeof window.supabaseLoadMyAttacks === 'function' ? await window.supabaseLoadMyAttacks(identity.id, season.id, season.hard_date) : []);
-                if (seq !== _todayBlocksSeq) return;
+                // 世代と、いま名乗っている人の両方を見る (待っている間に名乗り直されたら捨てる)
+                if (seq !== _todayBlocksSeq || String(getCurrentIdentity()?.id ?? '') !== String(identity.id)) return;
                 const blocks = rbd.blocksOfSeason(season);
                 const nowHour = Number(String(getCurrentSlotJST()).slice(1));
                 const t = rbd.todayRows({ blocks, nowHour, plan: st ? st.plan : null, viewerId: identity.id, attacks: rows || [], hourOfIso: _planJstHour });
@@ -9530,6 +9533,7 @@
                     _heroPlanKey = '';
                     renderMyNextAction(identity);
                 }
+                renderMyTodayBlocks(null);   // 📅 古い指示を残さない (ゲートが閉じた配信の割当をきょうの凸にも出さない)
                 card.style.display = 'block';
                 if (metaEl) metaEl.textContent = '';
                 if (body) {

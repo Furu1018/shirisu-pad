@@ -632,6 +632,10 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.deepEqual(t.rows[5].planned.map(x => [x.bossNumber, x.flex]), [[1, true]], '夜の ⏳隙間の割当が居ない');
     assert.deepEqual(t.rows.map(r => r.covered), [false, false, false, false, true, false, false], 'ブロックのぶんの配信は、そのブロックだけ「決まっている」');
     assert.equal(t.unknownTime.length, 1); assert.equal(t.total, 2); assert.equal(t.nowIdx, 4);
+    // 深夜 (JST 0時・4時) の凸は深夜ブロックに (UTC 前日の 15時・19時)
+    const mid = d.todayRows({ blocks: B, nowHour: 3, plan: null, viewerId: 7, attacks: [{ boss_number: 1, reported_at: '2026-10-10T15:05:00Z' }, { boss_number: 2, reported_at: '2026-10-10T19:30:00Z' }, { boss_number: 3, reported_at: '2026-10-10T20:10:00Z' }], hourOfIso: jst });
+    assert.deepEqual(mid.rows[6].done.map(x => x.bossNumber), [1, 2], '深夜 0時・4時の凸が深夜ブロックに居ない');
+    assert.deepEqual(mid.rows[0].done.map(x => x.bossNumber), [3], '翌5時の凸は朝 (次の日の始まり) に');
     // 1 日ぶんの配信 (blockScope 無し) は全部「決まっている」。配信が無ければどれも決まっていない。数の id と文字列の id を同じ人と見る
     const full = d.todayRows({ blocks: B, nowHour: 5, plan: { levels: myPlan.levels }, viewerId: 7, attacks: [], hourOfIso: jst });
     assert.ok(full.rows.every(r => r.covered) && full.rows[0].state === 'now' && full.rows[6].state === 'later');
@@ -9219,6 +9223,10 @@ console.log('\ngrowthDomain:');
         assert.ok(/String\(_myPubState\.viewerId\) === String\(identity\.id\) && String\(_myPubState\.seasonId\) === String\(season\.id\)/.test(fn), '別人・別シーズンの配信を使ってしまう');
         assert.ok(/Array\.isArray\(st\?\.myAttackRows\) \? st\.myAttackRows\s*\n\s*: \(typeof window\.supabaseLoadMyAttacks === 'function' \? await window\.supabaseLoadMyAttacks\(identity\.id, season\.id, season\.hard_date\) : \[\]\);/.test(fn), '配信カードの凸の行を使い回さず二度読む / 無いときに読まない');
         assert.ok(/if \(seq !== _todayBlocksSeq\) return;/.test(fn), '世代ガードが無い');
+        // Codex指摘: 消す経路でも世代を進める / 完了時に名乗っている人も照合 / 互換ゲートで読めない配信のときも消す
+        assert.ok(/const seq = \+\+_todayBlocksSeq;\s*\n\s*if \(!identity\?\.id \|\| !rbd\) \{ card\.style\.display = 'none'; return; \}/.test(fn), '名乗りなしの経路で世代を進めていない (前の人の遅れた描画が出る)');
+        assert.ok(/if \(seq !== _todayBlocksSeq \|\| String\(getCurrentIdentity\(\)\?\.id \?\? ''\) !== String\(identity\.id\)\) return;/.test(fn), '完了時に名乗っている人を照合していない');
+        assert.ok(/renderMyNextAction\(identity\);\s*\n\s*\}\s*\n\s*renderMyTodayBlocks\(null\);   \/\/ 📅 古い指示を残さない/.test(pub), '互換ゲートで読めない配信のときに消していない');
         assert.ok(/まだ決まっていません \(運営がこのブロックの前に配信します\)/.test(fn) && /このブロックに割当はありません/.test(fn) && /凸なし/.test(fn), '3 つの空の言い方が無い');
         assert.ok(/outline:2px solid var\(--ops-solid\)/.test(fn), 'いまのブロックの枠が無い');
         assert.ok(/時刻の分からない凸 \$\{t\.unknownTime\.length\} 件は行に出ません/.test(fn), '時刻の分からない凸を黙って消している');
