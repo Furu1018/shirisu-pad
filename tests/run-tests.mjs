@@ -604,6 +604,17 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.equal(d.scopeReservations(resv, null), resv); assert.equal(d.scopeReservations(null, ev2), null);
     assert.deepEqual(d.scopeReservations(resv, { from: 0, to: 4 }).map(r => r.id), [3, 4, 6], '深夜ブロックの範囲が壊れている');
     assert.deepEqual(d.scopeReservations([{ id: 5, time_mode: 'fixed', time_slot: 'h02' }], { from: 0, to: 4 }).map(r => r.id), [5], '深夜ブロックに翌2時の約束が入らない');
+    // 🧱 時間アンケートをブロックで (③-b): ON の具合 / 丸ごと ON・OFF / 名前の要約。内部は 'hXX' のまま
+    const keys = ['h05', 'h06', 'h07', 'h08', 'h12', 'h21'];
+    const st = d.blockStates(B, keys);
+    assert.deepEqual(st.map(x => x.state), ['on', 'off', 'partial', 'off', 'off', 'partial', 'off']);
+    assert.deepEqual([st[0].on, st[0].hours, st[2].on, st[2].hours], [4, 4, 1, 3]);
+    assert.deepEqual(d.toggleBlock(keys, B[2], true), ['h05', 'h06', 'h07', 'h08', 'h12', 'h13', 'h14', 'h21'], '丸ごと ON になっていない / 並びが 5時始まりでない');
+    assert.deepEqual(d.toggleBlock(keys, B[0], false), ['h12', 'h21'], '丸ごと OFF になっていない');
+    assert.deepEqual(d.toggleBlock(['h23', 'h00'], B[6], true), ['h23', 'h00', 'h01', 'h02', 'h03', 'h04'], '深夜ブロックの ON が壊れている');
+    assert.deepEqual(d.toggleBlock(null, B[0], true), ['h05', 'h06', 'h07', 'h08']); assert.deepEqual(d.toggleBlock(keys, null, true), keys);
+    assert.equal(d.blocksLabel(B, keys), '朝・昼 (一部)・夜 (一部)'); assert.equal(d.blocksLabel(B, []), '未登録');
+    assert.deepEqual(d.blockStates([], keys), []);
     // 保存の形と同一判定
     assert.deepEqual(d.toConfig(two.blocks), [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
     assert.equal(d.sameConfig(def.blocks, d.normalize(d.toConfig(def.blocks)).blocks), true);
@@ -9117,6 +9128,35 @@ console.log('\ngrowthDomain:');
         const cg = globalThis.clientGateDomain;
         assert.equal(cg.planReadable({ planSchema: 3, supportedSchema: 2 }).readable, false, '古い端末が blockScope の配信を読めてしまう');
         assert.equal(cg.planReadable({ planSchema: 2, supportedSchema: 3 }).readable, true, '新しい端末が前の版の配信を読めない');
+    });
+
+    test('★ 配線: 🧱 時間アンケートをブロックで (③-b) — 戦闘可能時間はブロックのチップで選ぶ / 押すと丸ごと ON・OFF / 保存は時間帯のまま / ホームの帯にブロック名', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const ui = html.match(/function _renderAvailUI\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(ui, '_renderAvailUI が無い');
+        // 区切りはシーズンのもの (無ければ既定) / 状態はドメイン / 1 時間刻みの登録は「一部」
+        assert.ok(/const blocks = rbd \? rbd\.blocksOfSeason\(\(typeof seasonStore !== 'undefined' && seasonStore\.get\(\)\?\.season\) \|\| null\) : \[\];/.test(ui), 'ブロックをシーズンから読んでいない');
+        assert.ok(/const states = rbd \? rbd\.blockStates\(blocks, slotKeys\) : \[\];/.test(ui), 'ON の具合をドメインで出していない');
+        assert.ok(/class="avail-blk" data-state="\$\{st\.state\}"/.test(ui) && /onclick="_availToggleBlock\(\$\{st\.idx\}\)"/.test(ui), 'ブロックのチップが無い');
+        assert.ok(/`一部 \$\{st\.on\}\/\$\{st\.hours\}時間`/.test(ui), '一部の見せ方が無い');
+        assert.ok(/data-now="1"/.test(ui), 'いまのブロックの印が無い');
+        // タイムライン (24 セルのなぞり) は無くなった。プリセットは 2 つ
+        assert.ok(!/availCells|avail-cell\b|_availAttachInteraction|labelIndices/.test(html), 'タイムラインの名残がある');
+        assert.ok(!/'awake'|'except-late'/.test(html), '古いプリセットが残っている');
+        assert.ok(/🧱 ブロックで選びます。1 時間でも出られるブロックを ON に。/.test(html), 'モーダルの説明が古い');
+        // 押す: 全部 ON なら OFF、それ以外は丸ごと ON。保存は従来の _availScheduleSave (時間帯 'hXX')
+        const tg = html.match(/function _availToggleBlock\(i\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const next = new Set\(rbd\.toggleBlock\(keys, b, st\.state !== 'on'\)\);/.test(tg), '押したときの反転が違う');
+        assert.ok(/_availUI\.slots = HOUR_ORDER\.map\(h => next\.has\(_hourKey\(h\)\)\);\s*\n\s*_renderAvailUI\(\);\s*\n\s*_availScheduleSave\(\);/.test(tg), '24 個の bool に戻して保存していない');
+        // 描く前にシーズンを読む (区切りを合わせる)。取れなくても描く
+        assert.ok(/try \{ await ensureActiveSeasonLoaded\(\); \} catch \(_\) \{ \/\* 既定の区切りで描く \*\/ \}\s*\n\s*_renderAvailUI\(\);/.test(html), '描く前にシーズンを読んでいない');
+        // ホームの帯: 下のラベルはブロック名 (ドメインが無ければ時刻)
+        const strip = html.match(/async function renderMyAvailStrip\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/blocks\.map\(b => `<span title="\$\{escapeHtml\(b\.label\)\}" style="flex:\$\{b\.slots\.length\};/.test(strip), '帯のラベルがブロック名になっていない');
+        assert.ok(/: \[5, 9, 13, 17, 21, 0\]\.map\(h =>/.test(strip), 'ドメインが無いときの時刻ラベルが無い');
+        // CSS: チップの状態はトークンで
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/\.avail-blk\[data-state="on"\] \{ background: var\(--ok-bg\); border-color: var\(--ok-solid\); \}/.test(css) && /\.avail-blk\[data-state="partial"\] \{ border-style: dashed;/.test(css), 'チップの CSS が無い');
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {

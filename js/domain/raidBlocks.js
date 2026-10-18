@@ -204,6 +204,28 @@
             return i < 0 || (i >= a0 && i <= a1);
         });
     }
+    /**
+     * 時間アンケートをブロックで見せる・聞く (③-b・2026-10-18・ふるりの判断「時間アンケートは PAD で」)。
+     * 各ブロックの ON の具合: 'on' (全部の時間が ON) / 'partial' (一部) / 'off'。内部は 1 時間刻み 'hXX' のまま
+     */
+    function blockStates(blocks, slots) {
+        const set = new Set((Array.isArray(slots) ? slots : []).map(String));
+        return (Array.isArray(blocks) ? blocks : []).map((b, idx) => {
+            const on = b.slots.filter(k => set.has(k)).length;
+            return { idx, name: b.name, label: b.label, hours: b.slots.length, on, state: on === 0 ? 'off' : (on === b.slots.length ? 'on' : 'partial') };
+        });
+    }
+    /** ブロックを丸ごと ON / OFF にした時間帯 ('hXX' の配列・5時始まりの並び) */
+    function toggleBlock(slots, block, on) {
+        const set = new Set((Array.isArray(slots) ? slots : []).map(String));
+        for (const k of (block && Array.isArray(block.slots)) ? block.slots : []) { if (on) set.add(k); else set.delete(k); }
+        return HOUR_ORDER.map(keyOf).filter(k => set.has(k));
+    }
+    /** 「朝・昼・夜 (一部)」。何も無ければ '未登録' */
+    function blocksLabel(blocks, slots) {
+        const parts = blockStates(blocks, slots).filter(x => x.state !== 'off').map(x => x.state === 'partial' ? `${x.name} (一部)` : x.name);
+        return parts.length ? parts.join('・') : '未登録';
+    }
     /** そのブロックに入る凸の数 */
     const attackCountIn = (plan, scope) => (scopePlan(plan, scope)?.levels || []).reduce((t, lv) => t + lv.bosses.reduce((u, b) => u + b.attacks.length, 0), 0);
 
@@ -211,6 +233,6 @@
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
         normalize, blocksOfSeason, toConfig, sameConfig, labelOf, toHour, addSplit, removeAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
-        scopePlan, attackCountIn, laterSlot, scopeReservations,
+        scopePlan, attackCountIn, laterSlot, scopeReservations, blockStates, toggleBlock, blocksLabel,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
