@@ -5065,6 +5065,7 @@ window.supabaseLoadOpsDashboardData = async function () {
 
     // 3) アクティブシーズンの全凸を一括取得
     let attacksByPlayer = new Map();
+    let attackConfirm = true;   // ✅ 凸報告の確認 (52) の列が読めたか (if の外で返すので外で宣言)
     if (season) {
         // characters = その凸で実際に使った5キャラ。最適プランが「同キャラ1日1回」の
         // 被り判定に使う (朝に鉄甲でラピを使ったら灼熱のラピ入り編成は出せない)。
@@ -5073,15 +5074,27 @@ window.supabaseLoadOpsDashboardData = async function () {
         //   列エラーなら旧列構成で取り直す (被り判定だけ静かに劣化する)
         // reported_at は 📈消化のペース / 🔁直近の動き (2026-09-11) が読む。盤面と同じ鮮度でよいので別クエリにしない
         const ATK_COLS = 'id, player_id, attack_number, boss_number, boss_code, damage_raw, level, reported_at';
+        // ✅ 凸報告の確認 (52・③-f): 運営の ✓ (confirmed_at / confirmed_by)。列が無い (52 未適用) ときだけ落として取り直し、
+        //    attackConfirm=false を盤面に添える (一覧と印は出す・✓ だけ止める)
+        const ATK_CONFIRM = ', confirmed_at, confirmed_by';
         let { data: atks, error: aErr } = await supabase
             .from('attacks')
-            .select(`${ATK_COLS}, characters`)
+            .select(`${ATK_COLS}, characters${ATK_CONFIRM}`)
             .eq('season_id', season.id)
             .eq('attack_date', season.hard_date);
+        if (aErr && (_isMissingColumnErr(aErr, 'confirmed_at') || _isMissingColumnErr(aErr, 'confirmed_by'))) {
+            attackConfirm = false;
+            ({ data: atks, error: aErr } = await supabase
+                .from('attacks')
+                .select(`${ATK_COLS}, characters`)
+                .eq('season_id', season.id)
+                .eq('attack_date', season.hard_date));
+        }
         // 再試行は「characters 列が無い」ときだけ。通信断・RLS・タイムアウト等で
         // 無条件に再試行すると、障害時のリクエストと待ち時間が倍になり本来の原因も隠れる。
         // 判定は既存の _isMissingColumnErr (列名を必ず含むことを要求する) を再利用
         if (aErr && _isMissingColumnErr(aErr, 'characters')) {
+            attackConfirm = false;
             console.warn('[ops] attacks.characters 列が無いため旧列構成で再試行 (キャラ被り判定は劣化):', aErr.message);
             ({ data: atks, error: aErr } = await supabase
                 .from('attacks')
@@ -5208,7 +5221,22 @@ window.supabaseLoadOpsDashboardData = async function () {
             notifyAllHours: !!p.notify_all_hours,   // 🔔 通知はいつでも受け取る
         };
     });
-    return { season, bosses, players: result };
+    return { season, bosses, players: result, attackConfirm };   // attackConfirm: ✅ 凸報告の確認の列 (52) が読めたか
+};
+
+// ✅ 凸報告の確認 (🧱 ブロック制 ③-f・2026-10-18): 運営が本人の凸報告を確認した印。on=false で外す。
+//    52 未適用なら案内して投げる (一覧と印は盤面だけで出せるので、止まるのは ✓ だけ)
+window.supabaseSetAttackConfirmed = async function (attackId, on, byName) {
+    if (!attackId) throw new Error('attackId が必要です');
+    const patch = on ? { confirmed_at: new Date().toISOString(), confirmed_by: String(byName || '運営') } : { confirmed_at: null, confirmed_by: null };
+    const { data, error } = await supabase.from('attacks').update(patch).eq('id', attackId).select('id, player_id, boss_number');
+    if (error) {
+        if (_isMissingColumnErr(error, 'confirmed_at') || _isMissingColumnErr(error, 'confirmed_by')) throw new Error('凸報告の確認 (✓) には supabase/52_attacks_confirmed.sql を SQL Editor で実行してください');
+        throw error;
+    }
+    if (!data || data.length === 0) throw new Error('その凸報告は見つかりません (消された可能性)。画面を更新してください');
+    window.supabaseLogActivity?.('attack_confirm', `${on ? '✓ 凸報告を確認' : '凸報告の確認を外す'}: B${data[0].boss_number}`, { playerId: data[0].player_id, actorName: byName || null });
+    return patch;
 };
 
 // 戦闘可能時間の運用オプション (⏳隙間時間型 / 🔔いつでも通知) を保存

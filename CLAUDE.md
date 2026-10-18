@@ -708,6 +708,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ 運営あては `_notifyOps({title, body, tag, except})` = master + 運営担当の全員 (押した本人は除く)。メンバーの 予約の申請 (2経路)・取消希望・📣 の返事・締め凸の返事 で送る。
   ★ 本人あては `_notifyMemberResv(row, title, body)` = 承認・却下・取り下げ・続行。ホームの 30 秒ティックは配信プランだけでなく `renderMyReservations` も取り直す。
 - **🧱 ブロックの区切りの保存 RPC** (`50_season_blocks_rpc.sql`・2026-10-18): `ops_set_season_blocks(p_season_id, p_blocks)`。未適用でも動く (同時編集に弱いだけ)。99 に判定行あり
+- **✅ 凸報告の確認** (`52_attacks_confirmed.sql`・2026-10-18): `attacks.confirmed_at / confirmed_by`。未適用でも一覧と印は出る (✓ だけ「52 を実行」と案内して止まる)。99 に判定行
 - **🧱 メンバーの入力を出すかの保存 RPC** (`51_season_member_input_rpc.sql`・2026-10-18): `ops_set_season_meta_key(p_season_id, 'member_input', '"full"' | null)`。未適用でも動く。99 に判定行あり
 - **📱 メンバーの端末の状態** (`49_member_devices.sql`・通知の見える化 D・2026-10-08 ユーザー決定 Q1/Q2/Q4「今入れる」。設計の正本は
   `docs/通知の見える化_設計案_2026-10-08.md`、Codex レビュー済み)。「端末で通知を設定できているか」はサーバから見えないので、
@@ -1090,7 +1091,11 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   保存後に戻る先 (このカード・`opsStore.invalidate()` → 届いていない人とメンバー状況を描き直す) だけ。活動ログは `actorName` で「(運営が代理で登録)」。
   「届いていない人」= 5 属性そろっていない人 (書庫・今回は難しい を除く)、〆 = その人が最初に出られるブロック (⏳隙間・未登録は いつでも)。
   純ロジックは `js/domain/mockIntake.js` (`missingRows` / `summary`)。名前を押すとその人を選んでスクショ選択が開く。
-  残り (③): 凸報告の確認欄 (③-f)
+  ★ **③-f 凸報告の確認** (2026-10-18): 戦況タブ「✅ 凸報告の確認」(`opsSecAttackCheck`・当日と終了・幅 12・当日は開く)。盤面の凸 (`players[].attacks`) を
+  配信プラン (`_opsPublishedPlan.plan`・`_syncOpsUnpublishBtn` の取り直しの最後に描く = 別クエリを増やさない) と突き合わせ、印 = 計画にない / 予定よりかなり低い (70% 未満) /
+  予定の時刻とずれ (3 時間以上)。予定の時刻を過ぎた未報告 (報告漏れの候補) も並べる。✓ → `supabaseSetAttackConfirmed` → `attacks.confirmed_at / confirmed_by`
+  (**`52_attacks_confirmed.sql`**。未適用なら盤面の `attackConfirm=false` で ✓ だけ止める・一覧と印は出る)。✓ の結果は次の盤面の取り直しまで local で上書き。
+  純ロジックは `js/domain/attackCheck.js` (`buildRows` / `summary`・時刻は JST の 5 時起点 hourIdx)。最後は BlaBlaLINK の一括読み取りと突き合わせる (未実装・任意)。
   (律速にしない)。ハイブリッド=登録時間内は確約・時間外は flex
 - **ボス横断の限定分岐 (フェーズ2)**: 貪欲は「そのボスで最良」を選ぶので、別ボスでしか
   使えない人材を先に消費してしまう。僅差の決定点で2番手を採るシナリオを解き直し、

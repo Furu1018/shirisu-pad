@@ -19,6 +19,7 @@ import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸�
 import '../js/domain/availability.js';    // globalThis.availabilityDomain (戦闘可能時間の読み方)
 import '../js/domain/raidBlocks.js';      // globalThis.raidBlocksDomain (🧱 レイド日のブロック — ブロック制 2026-10-17)
 import '../js/domain/mockIntake.js';      // globalThis.mockIntakeDomain (📸 運営の模擬取り込み — ブロック制 ③-e 2026-10-18)
+import '../js/domain/attackCheck.js';     // globalThis.attackCheckDomain (✅ 凸報告の確認 — ブロック制 ③-f 2026-10-18)
 import '../js/domain/clientGate.js';      // globalThis.clientGateDomain (互換ゲート — L2 ⑦)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
@@ -3530,7 +3531,7 @@ console.log('\nopsLayoutDomain:');
         // (順番は別のテストが見る — ここは「どれが開くか」だけ)
         const openDay = ids.filter(id => dom.resolveOpen(id, 'day', null, true)).sort();
         // 段階4 (2026-09-11): 📈ペース / 🔁直近 は当日に開く (交代した運営が最初に読む2枚)
-        assert.deepEqual(openDay, ['opsSecActions', 'opsSecBoss', 'opsSecMembers', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining']);
+        assert.deepEqual(openDay, ['opsSecActions', 'opsSecAttackCheck', 'opsSecBoss', 'opsSecMembers', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining']);   // ✅ 凸報告の確認 (③-f) は当日の主作業 → 開く
         const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true)).sort();
         assert.deepEqual(openPre, ['opsSecActions', 'opsSecMembers', 'opsSecMockIntake', 'opsSecPlan', 'opsSecReserve']);   // 📸 模擬の取り込み (③-e) は前日に開く・当日は畳む
         assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
@@ -3802,10 +3803,11 @@ console.log('\nopsStageDomain:');
         // 📸 模擬の取り込み (③-e) は 12 で単独の行: 前日は メンバー状況12 の次、当日は 残り12 の次、準備は先頭
         assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan']);
         // ★ ボス7+締め凸5 の次に ペース7+直近5 (各行 12)。順を崩すと 7 が独りになる
-        assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining', 'opsSecMockIntake', 'opsSecPlan']);
+        // ✅ 凸報告の確認 (③-f) も 12 で単独の行: 当日は 残り12 の次 (取り込みの前)、終了は先頭
+        assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining', 'opsSecAttackCheck', 'opsSecMockIntake', 'opsSecPlan']);
         // 準備にも育成の取り込み (新メンバーのぶんを取り直す・2026-09-15)。7+5 の次に 12
         assert.deepEqual(vis('prep'), ['opsSecMockIntake', 'opsSecSeason', 'opsSecPush', 'opsSecGrowth']);
-        assert.deepEqual(vis('end'), ['opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
+        assert.deepEqual(vis('end'), ['opsSecAttackCheck', 'opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
     const html = (await import('node:fs')).readFileSync(new URL('../index.html', import.meta.url), 'utf8').split(String.fromCharCode(13)).join('');
@@ -4266,6 +4268,9 @@ console.log('\n運営除外の配線 (ソース突合):');
     });
     test('99_check_applied.sql に 35 の判定行がある', () => {
         assert.ok(check.includes("'35_player_damages_exclusion'"));
+    });
+    test('99_check_applied.sql に 52 (✅ 凸報告の確認) の判定行がある', () => {
+        assert.ok(/UNION ALL SELECT '52_attacks_confirmed',\s*\n\s*EXISTS \(SELECT 1 FROM information_schema\.columns WHERE table_schema = 'public' AND table_name = 'attacks' AND column_name = 'confirmed_at'\)/.test(check), '52 の判定行が無い / 列の存在で判定していない');
     });
 
     // ---- 37: 今期の戦闘可能時間の確認 ------------------------------------------
@@ -11824,6 +11829,86 @@ console.log('\ngrowthDomain:');
             assert.deepEqual(rn.unseen(notes, '2026090801').map(n => n.id), [2026100801], '読んだ id を数字の文字列で渡すと「初めて」扱いになる');
         });
     }
+
+    test('★ ✅ attackCheck: 時刻は JST の 5 時起点 / 報告は同じ人・同じボスの割当へ近い時刻から当てる / 印 = 計画にない・予定よりかなり低い・予定の時刻とずれ / 予定を過ぎた未報告 / 配信なしは印なし', () => {
+        const dom = globalThis.attackCheckDomain;
+        // JST: 21:00 = idx 16 / 05:30 = idx 0 / 04:59 = idx 23
+        assert.equal(dom.hourIdxOfMs(Date.parse('2026-10-19T12:00:00Z')), 16); assert.equal(dom.hourIdxOfMs(Date.parse('2026-10-18T20:30:00Z')), 0); assert.equal(dom.hourIdxOfMs(Date.parse('2026-10-19T19:59:00Z')), 23);
+        assert.equal(dom.hourIdxOfMs(null), null); assert.equal(dom.hourIdxOfMs('そんな時刻'), null);
+        assert.equal(dom.hourLabelOfIdx(0), '5時'); assert.equal(dom.hourLabelOfIdx(16), '21時'); assert.equal(dom.hourLabelOfIdx(19), '翌0時'); assert.equal(dom.hourLabelOfIdx(23), '翌4時'); assert.equal(dom.hourLabelOfIdx(24), '');
+        const plan = { levels: [{ level: 1, bosses: [
+            { bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 16, dmgB: 30 }] },
+            { bossNumber: 2, attacks: [{ memberId: 'A', hourIdx: 18, dmgB: 20 }] },
+            { bossNumber: 3, attacks: [{ memberId: 'B', hourIdx: 10, dmgB: 25 }] },
+            { bossNumber: 5, attacks: [{ memberId: 'D', hourIdx: 8, dmgB: 40 }, { memberId: 'E', hourIdx: 3, dmgB: 10, flex: true }, { memberId: 'F', hourIdx: 20, dmgB: 10 }] },
+        ] }] };
+        const at = (h, m = 0) => new Date(Date.UTC(2026, 9, 19, h - 9, m)).toISOString();   // JST の時刻で書く
+        const attacks = [
+            { id: 1, player_id: 'A', name: 'A', boss_number: 1, damage_raw: 28e9, reported_at: at(21, 10) },                 // 予定どおり
+            { id: 2, player_id: 'A', name: 'A', boss_number: 2, damage_raw: 10e9, reported_at: at(23, 5) },                  // 予定 20B → 10B (低い)
+            { id: 3, player_id: 'B', name: 'B', boss_number: 3, damage_raw: 24e9, reported_at: at(19, 0), confirmed_at: at(19, 30), confirmed_by: 'ふるり' },   // 予定 15 時 → 報告 19 時 (ずれ)・確認済み
+            { id: 4, player_id: 'C', name: 'C', boss_number: 1, damage_raw: 20e9, reported_at: at(20, 0) },                  // 配信に割当なし
+            { id: 5, player_id: 'A', name: 'A', boss_number: 4, damage_raw: 9e9, reported_at: at(22, 0) },                   // A の計画に B4 は無い (この時点で残る計画は B2)
+        ];
+        const r = dom.buildRows({ attacks, plan, nowMs: Date.parse(at(22, 0)) });
+        assert.equal(r.hasPlan, true);
+        assert.deepEqual(r.rows.map(x => x.id), [2, 5, 1, 4, 3], '新しい順');
+        const flagsOf = (id) => r.rows.find(x => x.id === id).flags.map(f => `${f.key}:${f.text}`);
+        assert.deepEqual(flagsOf(1), []);
+        assert.deepEqual(flagsOf(2), ['low:予定 20.0B → 10.0B']);
+        assert.deepEqual(flagsOf(3), ['time:予定 15時 → 報告 19時']);
+        assert.deepEqual(flagsOf(4), ['unplanned:配信に割当なし']);
+        assert.deepEqual(flagsOf(5), ['unplanned:計画は B2']);
+        const row3 = r.rows.find(x => x.id === 3);
+        assert.equal(row3.confirmedBy, 'ふるり'); assert.equal(row3.confirmedAt, Date.parse(at(19, 30))); assert.deepEqual(row3.planned, { bossNumber: 3, hourIdx: 10, dmgB: 25 });
+        assert.equal(r.rows.find(x => x.id === 1).damageB, 28); assert.equal(r.rows.find(x => x.id === 1).hourIdx, 16);
+        // 未報告: D (13 時の予定・いまは 22 時) だけ。E は ⏳隙間 (数えない)、F は 翌1時 でまだ先
+        assert.deepEqual(r.missing, [{ memberId: 'D', bossNumber: 5, hourIdx: 8, hourLabel: '13時', dmgB: 40, level: 1 }]);
+        assert.deepEqual(r.counts, { total: 5, confirmed: 1, flagged: 4, missing: 1 });
+        assert.equal(dom.summary(r), '確認 1 / 5 · 要確認 4 · 未報告 1');
+        // 同じ人・同じボスに 2 つの割当: 近い時刻の割当へ当てる (1 つの割当に 1 つの報告)
+        const plan2 = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 2, dmgB: 30 }, { memberId: 'A', hourIdx: 16, dmgB: 30 }] }] }] };
+        const r2 = dom.buildRows({ attacks: [{ id: 1, player_id: 'A', boss_number: 1, damage_raw: 30e9, reported_at: at(21, 0) }], plan: plan2, nowMs: Date.parse(at(22, 0)) });
+        assert.equal(r2.rows[0].planned.hourIdx, 16); assert.deepEqual(r2.missing.map(m => m.hourIdx), [2], '7 時の割当が未報告として残る');
+        // 配信なし: 印は付けない・未報告も無い
+        const r0 = dom.buildRows({ attacks: attacks.slice(0, 2), plan: null, nowMs: Date.parse(at(22, 0)) });
+        assert.equal(r0.hasPlan, false); assert.ok(r0.rows.every(x => x.flags.length === 0)); assert.deepEqual(r0.missing, []);
+        assert.equal(dom.summary(dom.buildRows({ attacks: [], plan: null, nowMs: Date.now() })), 'まだ報告はありません');
+        assert.deepEqual(dom.buildRows({}).rows, []);
+    });
+
+    test('★ 配線: ✅ 凸報告の確認 (③-f) — 戦況タブのカード / 盤面の凸に confirmed_* (52 未適用は落として attackConfirm=false) / 配信の取り直しの最後に描く / ✓ は supabaseSetAttackConfirmed → local で上書き', () => {
+        const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
+        const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js'), sql = rd('supabase', '52_attacks_confirmed.sql');
+        assert.ok(html.includes('<script defer src="./js/domain/attackCheck.js"></script>'), 'attackCheck.js を読み込んでいない');
+        assert.ok(/id: 'opsSecAttackCheck', title: '凸報告の確認',[^\n]*opsOnly: true,[^\n]*open: \{ pre: false, day: true \},[^\n]*stages: \['day', 'end'\], span: 12/.test(layout), 'CARDS に無い / 段階・幅・開閉が違う');
+        assert.ok(/<div class="dc-card" data-ops-only id="opsSecAttackCheck">\s*\n[\s\S]{0,400}✅ 凸報告の確認</.test(html), 'カードが無い');
+        assert.ok(/<div id="opsAtkCheckFilters" class="ops-atk-f">[\s\S]*?data-f="all"[\s\S]*?data-f="flagged"[\s\S]*?data-f="todo"/.test(html), '絞り込み (全部 / 要確認 / 未確認) が無い');
+        // SQL 52: 2 列を冪等に足す。99 の判定行は別テスト
+        assert.ok(/ALTER TABLE attacks ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ;/.test(sql) && /ALTER TABLE attacks ADD COLUMN IF NOT EXISTS confirmed_by TEXT;/.test(sql) && /NOTIFY pgrst, 'reload schema';/.test(sql), '52 の SQL が違う');
+        // 盤面: confirmed_* を一緒に読む。列が無いときだけ落として取り直し、attackConfirm=false を添える
+        const board = client.match(/window\.supabaseLoadOpsDashboardData = async function \(\) \{[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/const ATK_CONFIRM = ', confirmed_at, confirmed_by';/.test(board) && /\.select\(`\$\{ATK_COLS\}, characters\$\{ATK_CONFIRM\}`\)/.test(board), '凸の取得に confirmed_* が無い');
+        assert.ok(/if \(aErr && \(_isMissingColumnErr\(aErr, 'confirmed_at'\) \|\| _isMissingColumnErr\(aErr, 'confirmed_by'\)\)\) \{\s*\n\s*attackConfirm = false;/.test(board), '52 未適用で落として取り直していない');
+        assert.ok(/return \{ season, bosses, players: result, attackConfirm \};/.test(board), '盤面に attackConfirm を添えていない');
+        // ✓ の保存: 52 未適用は案内して投げる / 消えた凸は投げる / 活動ログに actor
+        const setFn = client.match(/window\.supabaseSetAttackConfirmed = async function \(attackId, on, byName\) \{[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/const patch = on \? \{ confirmed_at: new Date\(\)\.toISOString\(\), confirmed_by: String\(byName \|\| '運営'\) \} : \{ confirmed_at: null, confirmed_by: null \};/.test(setFn), '✓ / 外す の patch が違う');
+        assert.ok(/supabase\/52_attacks_confirmed\.sql を SQL Editor で実行してください/.test(setFn) && /その凸報告は見つかりません/.test(setFn), '52 未適用・消えた凸の案内が無い');
+        assert.ok(/supabaseLogActivity\?\.\('attack_confirm',[^\n]*\{ playerId: data\[0\]\.player_id, actorName: byName \|\| null \}\)/.test(setFn), '活動ログに actor が無い');
+        // 描画: 運営OFF は何もしない / 配信の取り直しの最後に描く / ↻ は盤面と配信を取り直す / 52 未適用は ✓ を押せなくする
+        const render = html.match(/async function renderOpsAttackCheck\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!_opsMode\) return;/.test(render) && /const res = dom\.buildRows\(\{ attacks, plan, nowMs: Date\.now\(\) \}\);/.test(render), '運営OFF / ドメインで決めていない');
+        assert.ok(/const plan = _opsPublishedPlan\?\.plan \|\| null;/.test(render), '配信プランは _opsPublishedPlan を使う (別クエリを増やさない)');
+        assert.ok(/const canConfirm = snap\.attackConfirm !== false;/.test(render) && /disabled title="supabase\/52_attacks_confirmed\.sql を SQL Editor で実行すると押せます"/.test(render), '52 未適用で ✓ を止めていない');
+        assert.ok(/if \(g !== _atkCheck\.localGen\) \{ _atkCheck\.local\.clear\(\); _atkCheck\.localGen = g; \}/.test(render), '盤面を取り直したら ✓ の上書きを捨てていない');
+        assert.ok(/_opsPublishedKnown = !failed;\s*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(\);/.test(html), '配信の取り直しの最後に描いていない');
+        assert.ok(/if \(force\) \{[\s\S]{0,400}await opsStore\.load\(\);[\s\S]{0,700}await _syncOpsUnpublishBtn\(\);\s*\n\s*return;/.test(render), '↻ が盤面と配信を取り直していない');
+        const handler = html.match(/async function handleOpsAttackConfirm\(attackId, on\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!_opsMode \|\| !id \|\| _atkCheck\.busy\.has\(id\)\) return;/.test(handler) && /await window\.supabaseSetAttackConfirmed\(id, !!on, me\?\.name \|\| '運営'\);/.test(handler), '✓ が二重押し・運営OFF を止めていない');
+        assert.ok(/_atkCheck\.localGen = opsStore\.generation\(\);[^\n]*\n\s*_atkCheck\.local\.set\(id, patch\);\s*\n\s*renderOpsAttackCheck\(\);/.test(handler), '✓ の結果を local で上書きして描き直していない');
+        assert.ok(/handleOpsAttackConfirm\(\$\{Number\(r\.id\)\}, \$\{r\.confirmedAt == null\}\)/.test(render), '✓ ボタンが id と向きを渡していない');
+    });
 
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {
         const dom = globalThis.mockIntakeDomain, rb = globalThis.raidBlocksDomain;

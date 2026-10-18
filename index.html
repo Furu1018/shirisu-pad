@@ -107,6 +107,7 @@
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
     <script defer src="./js/domain/raidBlocks.js"></script>      <!-- 🧱 レイド日のブロック (時間帯の区切り・ブロック制 2026-10-17) -->
     <script defer src="./js/domain/mockIntake.js"></script>      <!-- 📸 運営の模擬取り込み (届いていない人・期限ブロック・ブロック制 ③-e 2026-10-18) -->
+    <script defer src="./js/domain/attackCheck.js"></script>     <!-- ✅ 凸報告の確認 (配信プランとの突き合わせ・未報告・ブロック制 ③-f 2026-10-18) -->
     <script defer src="./js/domain/availability.js"></script>    <!-- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) -->
     <script defer src="./js/domain/clientGate.js"></script>      <!-- 互換ゲート (L2 ⑦) -->
     <script defer src="./js/domain/popularTeams.js"></script>
@@ -3116,6 +3117,21 @@
         .ops-recent-row .n { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--t-strong); }
         .ops-recent-row .n .st { font-size: 9.5px; font-weight: 900; padding: 1px 5px; border-radius: 999px; margin-left: 2px; }
         .ops-recent-row .d { flex: none; font-size: 10px; font-weight: 800; color: var(--t-muted); font-variant-numeric: tabular-nums; }
+        /* ✅ 凸報告の確認 (🧱 ブロック制 ③-f): 絞り込みのピルと 1 行 (時刻 · ボス · 名前 · ダメージ · 印 · ✓) */
+        .ops-atk-f { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        .ops-atk-f button { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--s1); color: var(--t-body); font-size: 11px; font-weight: 800; cursor: pointer; }
+        .ops-atk-f button[aria-pressed="true"] { background: var(--t-ink); color: var(--card); border-color: var(--t-ink); }
+        .ops-atk-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.4; flex-wrap: wrap; }
+        .ops-atk-row:first-child { border-top: none; }
+        .ops-atk-row .t { flex: none; width: 38px; font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 800; color: var(--t-muted); }
+        .ops-atk-row .b { flex: none; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 900; color: var(--t-ink); }
+        .ops-atk-row .n { flex: 1 1 110px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--t-strong); }
+        .ops-atk-row .v { flex: none; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
+        .ops-atk-row .fl { flex: none; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 800; background: rgba(245, 158, 11, 0.14); color: var(--warn-deep); }
+        .ops-atk-row .ok { flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--t-body); font-size: 11px; font-weight: 800; cursor: pointer; }
+        .ops-atk-row .ok[aria-pressed="true"] { background: rgba(24, 194, 107, 0.14); color: var(--ok); border-color: transparent; }
+        .ops-atk-row .ok:disabled { opacity: 0.55; cursor: not-allowed; }
+        .ops-atk-row.done .n, .ops-atk-row.done .v { color: var(--t-muted); }
         .ops-recent-row .d.bad { color: var(--bad-deep); }
         .ops-recent-row .v { flex: none; font-size: 11px; font-weight: 900; color: var(--t-ink); font-variant-numeric: tabular-nums; }
         .ops-recent-empty { margin: 0; font-size: 11.5px; color: var(--t-muted); }
@@ -4465,6 +4481,26 @@
                 <div id="opsRemainingList" style="margin-top:12px;">
                     <p style="color:var(--t-muted);font-size:12px;">読み込み中...</p>
                 </div>
+            </div>
+
+            <!-- ✅ 凸報告の確認 (🧱 ブロック制 ③-f・2026-10-18・運営ONのみ)。本人の凸報告 (盤面の players[].attacks) を配信プランと突き合わせて印
+                 (計画にない / 予定よりかなり低い / 予定の時刻とずれ) を付け、✓ で確認した印を attacks.confirmed_at / confirmed_by に残す (supabase/52)。
+                 予定の時刻を過ぎた未報告 (報告漏れの候補) も並べる。純ロジックは js/domain/attackCheck.js -->
+            <div class="dc-card" data-ops-only id="opsSecAttackCheck">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">✅ 凸報告の確認</div>
+                    <span id="opsAtkCheckCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <button onclick="renderOpsAttackCheck(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
+                </div>
+                <p style="margin:0 0 8px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
+                    本人の凸報告を配信プランと突き合わせます。食い違いには印が付きます。見て問題なければ ✓ を押してください (最後は BlaBlaLINK の一括読み取りと突き合わせ)。
+                </p>
+                <div id="opsAtkCheckFilters" class="ops-atk-f">
+                    <button type="button" data-f="all" aria-pressed="true" onclick="_opsAtkCheckFilter('all')">全部</button>
+                    <button type="button" data-f="flagged" aria-pressed="false" onclick="_opsAtkCheckFilter('flagged')">要確認</button>
+                    <button type="button" data-f="todo" aria-pressed="false" onclick="_opsAtkCheckFilter('todo')">未確認</button>
+                </div>
+                <div id="opsAtkCheckBody"><p class="ops-recent-empty">運営ONで読み込みます…</p></div>
             </div>
 
             <!-- 📸 模擬の取り込み (🧱 ブロック制 ③-e・2026-10-18・運営ONのみ)。Discord に貼られた模擬のスクショを運営が本人の代わりに登録する。
@@ -17334,6 +17370,79 @@
             _renderOpsCockpitSoon();
         }
 
+        // ========== ✅ 凸報告の確認 (🧱 ブロック制 ③-f・運営ONのみ・2026-10-18) ==========
+        // 本人の凸報告 (盤面の players[].attacks) を配信プランと突き合わせて印を付け、✓ で確認した印を保存する。
+        // 純ロジックは js/domain/attackCheck.js。配信プランは _syncOpsUnpublishBtn が盤面と同じ周期で取り直す _opsPublishedPlan を使い
+        // (別クエリを増やさない)、その取り直しの最後にここを描く。✓ の結果は次の盤面の取り直しまで local で上書きする
+        const _atkCheck = { filter: 'all', local: new Map(), localGen: null, gen: 0, busy: new Set() };
+        function _opsAtkCheckFilter(f) { _atkCheck.filter = ['all', 'flagged', 'todo'].includes(f) ? f : 'all'; renderOpsAttackCheck(); }
+        async function renderOpsAttackCheck(force = false) {
+            const body = document.getElementById('opsAtkCheckBody'), cnt = document.getElementById('opsAtkCheckCounts');
+            if (!body) return;
+            if (!_opsMode) return;                       // 運営OFF: 取得も描画もしない
+            const dom = window.attackCheckDomain;
+            if (!dom) { body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">凸報告の確認の機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
+            const gen = ++_atkCheck.gen;
+            if (force) {
+                // ↻: 盤面と配信プランを取り直す。配信の取り直し (_syncOpsUnpublishBtn) の最後がここを描き直すので、ここでは描かない
+                try { await opsStore.load(); } catch (e) {
+                    if (gen !== _atkCheck.gen) return;
+                    body.innerHTML = `<p class="ops-recent-empty" style="color:var(--bad);">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
+                    return;
+                }
+                if (gen !== _atkCheck.gen) return;
+                await _syncOpsUnpublishBtn();
+                return;
+            }
+            const snap = opsStore.get();
+            if (!snap?.season) { body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
+            // 盤面が取り直されたら ✓ の上書きは捨てる (DB の値が最新)
+            const g = opsStore.generation();
+            if (g !== _atkCheck.localGen) { _atkCheck.local.clear(); _atkCheck.localGen = g; }
+            const plan = _opsPublishedPlan?.plan || null;
+            const attacks = _opsFlatAttacks(snap).map(a => { const l = _atkCheck.local.get(Number(a.id)); return l ? { ...a, ...l } : a; });
+            const res = dom.buildRows({ attacks, plan, nowMs: Date.now() });
+            if (cnt) cnt.textContent = dom.summary(res) + (res.hasPlan || !res.rows.length ? '' : ' · 配信プランなし (食い違いは見られません)');
+            const canConfirm = snap.attackConfirm !== false;
+            const f = _atkCheck.filter;
+            document.querySelectorAll('#opsAtkCheckFilters button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === f)));
+            const rows = res.rows.filter(r => f === 'all' || (f === 'flagged' && r.flags.length > 0) || (f === 'todo' && r.confirmedAt == null));
+            const bossOf = (n) => (snap.bosses || []).find(b => Number(b.boss_number) === Number(n)) || null;
+            const chip = (n) => { const c = DC_ATTR_COLORS[bossOf(n)?.attribute] || DC_ATTR_COLORS.iron; return `<span class="b" style="background:${c}1f;">B${escapeHtml(String(n))}</span>`; };
+            const nameOf = new Map((snap.players || []).map(p => [String(p.id), p.name]));
+            const list = rows.length ? rows.map(r => `
+                <div class="ops-atk-row${r.confirmedAt != null ? ' done' : ''}" data-id="${Number(r.id)}">
+                    <span class="t">${escapeHtml(r.atMs != null ? _opsHm(r.atMs) : '—')}</span>${chip(r.bossNumber)}
+                    <span class="n">${escapeHtml(r.name)}${r.level ? ` <span style="font-size:10px;color:var(--t-muted);font-weight:700;">Lv${r.level}</span>` : ''}</span>
+                    <span class="v">${r.damageB.toFixed(1)}B</span>
+                    ${r.flags.map(fl => `<span class="fl" title="${escapeHtml(dom.FLAG_JP[fl.key] || fl.key)}">${escapeHtml(fl.text)}</span>`).join('')}
+                    <button type="button" class="ok" aria-pressed="${r.confirmedAt != null}"${canConfirm ? '' : ' disabled title="supabase/52_attacks_confirmed.sql を SQL Editor で実行すると押せます"'} onclick="handleOpsAttackConfirm(${Number(r.id)}, ${r.confirmedAt == null})">${r.confirmedAt != null ? `✓ ${escapeHtml(r.confirmedBy || '確認済み')}` : '✓ 確認'}</button>
+                </div>`).join('')
+                : `<p class="ops-recent-empty">${res.rows.length ? 'この絞り込みに当たる報告はありません。' : 'まだ凸の報告がありません。'}</p>`;
+            const miss = res.missing.length
+                ? `<p class="ops-recent-h" style="margin-top:10px;">⏰ 予定の時刻を過ぎた未報告 (報告漏れの候補 — 本人に声をかける)</p>` + res.missing.map(m => `
+                <div class="ops-atk-row"><span class="t">${escapeHtml(m.hourLabel)}</span>${chip(m.bossNumber)}<span class="n">${escapeHtml(nameOf.get(String(m.memberId)) || String(m.memberId))}</span><span class="v" style="color:var(--t-muted);">予定 ${m.dmgB.toFixed(1)}B</span></div>`).join('')
+                : '';
+            const note = canConfirm ? '' : '<p class="ops-recent-empty" style="margin-top:8px;">✓ の保存には supabase/52_attacks_confirmed.sql の適用が必要です (一覧と印はそのまま使えます)。</p>';
+            body.innerHTML = list + miss + note;
+        }
+        async function handleOpsAttackConfirm(attackId, on) {
+            const id = Number(attackId);
+            if (!_opsMode || !id || _atkCheck.busy.has(id)) return;
+            const me = getCurrentIdentity();
+            const btn = document.querySelector(`#opsAtkCheckBody .ops-atk-row[data-id="${id}"] .ok`);
+            _atkCheck.busy.add(id); if (btn) btn.disabled = true;
+            try {
+                const patch = await window.supabaseSetAttackConfirmed(id, !!on, me?.name || '運営');
+                _atkCheck.localGen = opsStore.generation();   // いまの盤面に対する上書き (取り直したら DB の値に戻る)
+                _atkCheck.local.set(id, patch);
+                renderOpsAttackCheck();
+            } catch (e) {
+                showNotification(`❌ ${e?.message || e}`);
+                if (btn) btn.disabled = false;
+            } finally { _atkCheck.busy.delete(id); }
+        }
+
         // ========== 📸 模擬の取り込み (🧱 ブロック制 ③-e・運営ONのみ・2026-10-18) ==========
         // Discord に貼られた模擬のスクショを運営が本人の代わりに登録する。読み取り〜保存は本人の「画像で提出」と**同じ関数**
         // (_ocrAttackMultiAndMerge → myDmgPreviewModal → supabaseSaveMockSubmission)。違うのは「誰の模擬か」(_myDmgPreviewData.forPlayer) と
@@ -22929,6 +23038,7 @@
             _opsPublishedFlag = !!published;
             _opsPublishedPlan = published || null;   // 段階のチェックリスト (配信後の予約の数) に使う
             _opsPublishedKnown = !failed;
+            if (typeof renderOpsAttackCheck === 'function') renderOpsAttackCheck();   // ✅ 凸報告の確認 (③-f) は配信プランと突き合わせる — 取り直したら描き直す
             _renderOpsPubStatus(published, failed);
             _renderOpsCockpitSoon();
         }

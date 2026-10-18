@@ -38,7 +38,7 @@ export const SCHEMA = {
         defaults: { name: null, total_hp_raw: 0, remaining_hp_raw: 0, updated_at: NOW } },
     player_sync_levels: { pk: ['season_id', 'player_id'], required: ['season_id', 'player_id'], defaults: { sync_level: 0 } },
     attacks: { pk: ['id'], required: ['season_id', 'player_id', 'attack_date', 'attack_number'], serial: 'id', uniques: [{ cols: ['reservation_id'] }],
-        defaults: { boss_number: null, boss_code: null, damage_raw: 0, level: 1, characters: () => [], reported_at: NOW, reservation_id: null } },
+        defaults: { boss_number: null, boss_code: null, damage_raw: 0, level: 1, characters: () => [], reported_at: NOW, reservation_id: null, confirmed_at: null, confirmed_by: null } },   // confirmed_*: ✅ 凸報告の確認 (52・③-f)
     day_offs: { pk: ['player_id', 'date'], required: ['player_id', 'date'], defaults: {} },
     availability: { pk: ['player_id', 'time_slot'], required: ['player_id', 'time_slot'], defaults: {} },
     finish_claims: { pk: ['season_id', 'level', 'boss_number', 'date'], required: ['season_id', 'level', 'boss_number', 'date'], defaults: { claimed_by: null, claimed_at: null } },
