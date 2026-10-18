@@ -9285,7 +9285,9 @@ console.log('\ngrowthDomain:');
         assert.equal((html.slice(html.lastIndexOf('</style>')).match(/data-tab="mock"/g) || []).length, 3, '模擬タブの入口 (上のタブ・下のナビ・ドロワー) が 3 つでない');
         // 入口でも止める (模擬タブを開こうとしたらホームへ)
         assert.ok(/if \(tabName === 'mock' && typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*showNotification\('模擬は Discord にスクショを貼ってください。運営が PAD に登録します'\);\s*\n\s*tabName = 'mypage';/.test(html), 'TabController で止めていない');
-        assert.ok(/if \(tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore\.get\(\)\?\.season && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\)\.then\(\(\) => \{ try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \} \}\);/.test(html), '?tab=mock をシーズンを読む前に判定している (未ロード = 隠すに倒れて full の人もホームへ戻される — Codex指摘 b8f9d94)');
+        const nav = html.match(/\n        function _handleNavParams\(search\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const seq = \+\+_navSeq;/.test(nav) && /let _navSeq = 0;/.test(html), '画面誘導の世代が無い');
+        assert.ok(/if \(tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore\.get\(\)\?\.season && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*const activeAtStart = document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null;\s*\n\s*ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\)\.then\(\(\) => \{[\s\S]*?if \(seq !== _navSeq \|\| \(document\.querySelector\('\.tab-content\.active'\)\?\.id \|\| null\) !== activeAtStart\) return;\s*\n\s*try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \}/.test(nav), '?tab=mock をシーズンを読む前に判定している / 待っている間の別の遷移・タブ操作を上書きする (Codex指摘 b8f9d94・02867c5)');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         assert.ok(/if \(lite && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\('mypage'\);/.test(html), '開いたまま隠されたときにホームへ戻していない');
         // 申請の導線: 引き受けた凸カードの CTA に印 + 隠しているときの一文 / ヒーローの空き枠は「運営の配信を待つ」

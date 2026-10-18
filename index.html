@@ -27137,15 +27137,22 @@
         // 通知タップからの画面誘導: ?tab=xxx でタブ切替、&focus=finishreq で
         // 締め凸依頼の応答バナーへスクロール+ハイライト。
         // コールド起動 (URLクエリ) と、起動中のアプリへの SW postMessage の両方から呼ばれる。
+        let _navSeq = 0;   // 画面誘導の世代 (?tab=mock のシーズン待ちが、後から来た遷移や本人のタブ操作を上書きしないため)
         function _handleNavParams(search) {
             let params;
             try { params = new URLSearchParams(search || ''); } catch { return; }
+            const seq = ++_navSeq;
             const tab = params.get('tab');
             if (tab && document.getElementById(`tab-${tab}`)) {
                 // 🧱 ③-d: ?tab=mock は シーズンの member_input を読んでから判定する。起動直後は seasonStore が未ロード = 既定の「隠す」に倒れ、
                 //   full の設定でも通知やブックマークからの ?tab=mock がホームへ戻されていた (Codex指摘 b8f9d94)。運営モードの人は待たない
                 if (tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore.get()?.season && typeof ensureActiveSeasonLoaded === 'function') {
-                    ensureActiveSeasonLoaded().catch(() => null).then(() => { try { switchTab('mock'); } catch { /* noop */ } });
+                    const activeAtStart = document.querySelector('.tab-content.active')?.id || null;
+                    ensureActiveSeasonLoaded().catch(() => null).then(() => {
+                        // 待っている間に別の誘導 (後着の通知・pending-nav・URL と SW の二重到着) や本人のタブ操作があれば、古い待ちは何もしない (Codex指摘 02867c5)
+                        if (seq !== _navSeq || (document.querySelector('.tab-content.active')?.id || null) !== activeAtStart) return;
+                        try { switchTab('mock'); } catch { /* noop */ }
+                    });
                 } else {
                     try { switchTab(tab); } catch { /* noop */ }
                 }
