@@ -11939,9 +11939,13 @@ console.log('\ngrowthDomain:');
         const after = html.match(/function _afterOpsModeChanged\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/_invalidateTabRenderCache\('ops'\);/.test(after), '戦況タブの描画キャッシュを捨てていない');
         assert.ok(/if \(!_opsMode\) \{\s*\n\s*if \(typeof _atkCheck !== 'undefined'\) _atkCheck\.gen\+\+;\s*\n\s*if \(typeof _mockIntake !== 'undefined'\) _mockIntake\.gen\+\+;/.test(after), 'OFF で待機中の描画を無効化していない');
-        assert.ok(/\} else if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) \{[\s\S]{0,400}try \{ await opsStore\.load\(\); \} catch \{[^}]*\}\s*\n\s*if \(!_opsMode\) return;\s*\n\s*if \(typeof _syncOpsUnpublishBtn === 'function'\) await _syncOpsUnpublishBtn\(\);\s*\n\s*if \(_opsMode && typeof renderOpsMockIntake === 'function'\) renderOpsMockIntake\(\);/.test(after), 'ON で戦況タブを開いたままのとき、盤面を 1 回だけ取り直して 配信 → 凸報告の確認 → 模擬の取り込み の順に描いていない (同時に 2 回 load すると前の結果が捨てられる — Codex指摘 c0fa346)');
+        assert.ok(/const modeSeq = \+\+_opsModeSeq;/.test(after) && /let _opsModeSeq = 0;/.test(html), '切替の世代が無い (素早い OFF→ON→OFF で古い取り直しが先へ進む)');
+        assert.ok(/\} else if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) \{[\s\S]{0,500}let snap = null;\s*\n\s*try \{ snap = await opsStore\.load\(\); \} catch \{[^}]*\}\s*\n\s*if \(modeSeq !== _opsModeSeq \|\| !_opsMode\) return;\s*\n\s*snap = opsStore\.get\(\) \|\| snap;[^\n]*\n\s*if \(typeof renderOpsMemberStatus === 'function'\) renderOpsMemberStatus\(snap\);\s*\n\s*if \(typeof _syncOpsUnpublishBtn === 'function'\) await _syncOpsUnpublishBtn\(\);\s*\n\s*if \(modeSeq !== _opsModeSeq \|\| !_opsMode\) return;\s*\n\s*if \(typeof renderOpsMockIntake === 'function'\) renderOpsMockIntake\(\);/.test(after), 'ON で戦況タブを開いたままのとき、盤面を中央で 1 回だけ取り直して メンバー状況 → 配信 (凸報告の確認) → 模擬の取り込み の順に渡していない (Codex指摘 c0fa346・1857fd6)');
+        assert.equal((after.match(/opsStore\.load\(\)/g) || []).length, 1, 'OFF→ON の経路で盤面を 2 回以上取り直している');
+        assert.ok(!/renderOpsMemberStatus\(\);/.test(after), 'メンバー状況が別に (中央のロードと競合して) 取り直している');
         assert.ok(!/renderOpsAttackCheck\(true\)/.test(after) && !/renderOpsMockIntake\(true\)/.test(after), 'OFF→ON で各カードが別々に盤面を取り直している');
-        assert.ok(/let snap = opsStore\.get\(\);\s*\n\s*if \(!snap\) \{[\s\S]{0,400}snap = await opsStore\.load\(\);/.test(render), '盤面が無いとき (invalidate 直後・別の取り直しの最中) に待たずに「シーズン無し」と出す');
+        assert.ok(/let snap = opsStore\.get\(\);[\s\S]{0,700}for \(let tries = 0; !snap && tries < 3; tries\+\+\) \{\s*\n\s*try \{ await opsStore\.load\(\); \}[\s\S]{0,400}snap = opsStore\.get\(\);\s*\n\s*\}\s*\n\s*if \(!snap\) return;/.test(render), '盤面が無いとき、store に残った最新の盤面だけを使って待っていない (load の戻り値を使うと追い越されたとき古い盤面を描く — Codex指摘 1857fd6)');
+        assert.ok(!/snap = await opsStore\.load\(\)/.test(render), '凸報告の確認が load の戻り値をそのまま描いている');
     });
 
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {

@@ -17395,15 +17395,19 @@
                 return;
             }
             let snap = opsStore.get();
-            if (!snap) {
-                // 書き込み直後 (invalidate 後) や別の取り直しの最中は get() が null — 盤面を待ってから描く (null を「シーズン無し」と誤認しない。メンバー状況と同じ)
-                try { snap = await opsStore.load(); } catch (e) {
+            // 書き込み直後 (invalidate 後) や別の取り直しの最中は get() が null — 盤面を待ってから描く (null を「シーズン無し」と誤認しない。メンバー状況と同じ)。
+            // ★ 使うのは **store に残った盤面だけ** (load の戻り値ではない): 待っている間に別の load (↻ など) に追い越されると自分の応答は store に保存されず
+            //   古い盤面になる (Codex指摘 1857fd6)。追い越されたら (get() がまだ null) もう一度待つ。それでも駄目なら描かない — 最後の取り直しの完了が描き直す
+            for (let tries = 0; !snap && tries < 3; tries++) {
+                try { await opsStore.load(); } catch (e) {
                     if (gen !== _atkCheck.gen) return;
                     body.innerHTML = `<p class="ops-recent-empty" style="color:var(--bad);">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
                     return;
                 }
                 if (gen !== _atkCheck.gen) return;
+                snap = opsStore.get();
             }
+            if (!snap) return;
             if (!snap?.season) { body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
             // 盤面が取り直されたら ✓ の上書きは捨てる (DB の値が最新)
             const g = opsStore.generation();
@@ -28319,6 +28323,7 @@
             } catch { /* 保存できなくてもセッション中は _opsMode で成立する */ }
         }
         let _opsMode = false;
+        let _opsModeSeq = 0;   // 運営モード切替の世代 (OFF→ON の取り直しを素早い切替で中断するため — Codex指摘 1857fd6)
         // ===== 👑 運営担当 (2026-09-12 ユーザー決定) =====
         // 判定は opsRoleDomain が唯一。master = ふるり (🛠 で運営/メンバーを行き来) / ops = 任命された人 (常に運営画面) / null = メンバー。
         // 役割は players.ops_role (46)。名乗った人ごとに DB から読む (_syncOpsRole)。読めるまで (undefined) は端末の記憶どおり (ちらつき防止)
@@ -28511,26 +28516,26 @@
                 && typeof renderSettingsTab === 'function') {
                 renderSettingsTab();
             }
-            // 👥 メンバー状況は運営ONのときだけ取得する (OFF のメンバーに余計なクエリを走らせない)
-            if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active')
-                && typeof renderOpsMemberStatus === 'function') {
-                renderOpsMemberStatus();
-            }
-            // ✅ 凸報告の確認 / 📸 模擬の取り込み (③-e・③-f): 描くきっかけが配信の取り直しと盤面の描画なので、運営 OFF→ON を戦況タブで切り替えた
-            //   ときは取り直して描き直す (Codex指摘 ccfff3e: 以前の一覧・✓ が残る)。隠れているときは戦況タブの描画キャッシュを捨て、次に開いたとき描かせる。
-            //   OFF にしたら待機中の描画を無効化する (古い応答で描かない)
+            // 👥 メンバー状況 / ✅ 凸報告の確認 / 📸 模擬の取り込み は運営ONのときだけ取得する (OFF のメンバーに余計なクエリを走らせない)。
+            //   描くきっかけが盤面の描画と配信の取り直しなので、運営 OFF→ON を戦況タブで切り替えたときは取り直して描き直す (Codex指摘 ccfff3e)。
+            //   隠れているときは戦況タブの描画キャッシュを捨て、次に開いたとき描かせる。OFF にしたら待機中の描画を無効化する (古い応答で描かない)
             if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache('ops');
+            const modeSeq = ++_opsModeSeq;   // 素早く OFF→ON→OFF… と切り替えたとき、古い取り直しは先へ進まない (Codex指摘 1857fd6)
             if (!_opsMode) {
                 if (typeof _atkCheck !== 'undefined') _atkCheck.gen++;
                 if (typeof _mockIntake !== 'undefined') _mockIntake.gen++;
             } else if (document.getElementById('tab-ops')?.classList.contains('active')) {
-                // 盤面の取り直しは 1 回だけ (2 つが同時に load すると後の世代が勝って前の結果が捨てられる — Codex指摘 c0fa346)。
-                // そのあと 配信の取り直し (最後に凸報告の確認を描く) → 模擬の取り込み (取り直した盤面で描く) の順
+                // 盤面の取り直しは**中央で 1 回だけ** (カードごとに load すると後の世代が勝って前の結果が捨てられる — Codex指摘 c0fa346・1857fd6)。
+                // 取れた盤面を メンバー状況 → 配信の取り直し (最後に凸報告の確認を描く) → 模擬の取り込み の順に渡す
                 (async () => {
-                    try { await opsStore.load(); } catch { /* 各カードが取得失敗を出す */ }
-                    if (!_opsMode) return;
+                    let snap = null;
+                    try { snap = await opsStore.load(); } catch { /* 各カードが取得失敗を出す */ }
+                    if (modeSeq !== _opsModeSeq || !_opsMode) return;
+                    snap = opsStore.get() || snap;   // 追い越されていれば store の最新を使う
+                    if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snap);
                     if (typeof _syncOpsUnpublishBtn === 'function') await _syncOpsUnpublishBtn();
-                    if (_opsMode && typeof renderOpsMockIntake === 'function') renderOpsMockIntake();
+                    if (modeSeq !== _opsModeSeq || !_opsMode) return;
+                    if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();
                 })();
             }
         }
