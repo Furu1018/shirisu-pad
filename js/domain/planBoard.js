@@ -14,7 +14,7 @@
     'use strict';
 
     const WHO = { all: '全員', now: '今動ける人だけ', block: '🧱 ブロックに出られる人' };
-    const FROM = { now: '今から', day: '朝5時から' };
+    const FROM = { now: '今から', day: '朝5時から', block: 'ブロックの頭から' };
     const PREV = { keep: '前回を尊重', fresh: 'ゼロから' };
     const TIME = { strict: '⏰時間厳守', damage: '⚡ダメージ優先' };
 
@@ -26,7 +26,7 @@
      * @param {Object} a
      * @param {'all'|'now'|'block'} a.who   対象 (全員 / 今動ける人だけ / 🧱 そのブロックに出られる人)
      * @param {string|null=} a.block        🧱 のときのブロックの表示名 (「夕方 18〜20時」)
-     * @param {'now'|'day'} a.from          起点 (今から / 朝5時から)
+     * @param {'now'|'day'|'block'} a.from  起点 (今から / 朝5時から / 🧱 ブロックの頭から = max(今, ブロックの始まり))
      * @param {'keep'|'fresh'} a.prev       前回の配信 (尊重 / ゼロから)
      * @param {number=} a.reservations      拘束になった予約の数 (isFixed)
      * @param {number=} a.excluded          運営が除外した模擬の数
@@ -40,7 +40,7 @@
         return {
             who: a.who === 'now' ? 'now' : (a.who === 'block' ? 'block' : 'all'),
             block: a.who === 'block' ? str(a.block) : null,
-            from: a.from === 'day' ? 'day' : 'now',
+            from: a.from === 'day' ? 'day' : (a.from === 'block' ? 'block' : 'now'),
             prev: a.prev === 'fresh' ? 'fresh' : 'keep',
             // ⏰ 時間: 厳守 (宣言した時間に合わない凸を組まない) / ダメージ優先 (時間外も最寄りで組む)。古い焼き込み (無印) はダメージ優先として読む
             time: a.time === 'strict' ? 'strict' : 'damage',

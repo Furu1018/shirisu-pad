@@ -546,6 +546,7 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     const B = def.blocks;
     assert.equal(d.blockIndexOfHour(B, 5), 0); assert.equal(d.blockIndexOfHour(B, 20), 4); assert.equal(d.blockIndexOfHour(B, 0), 6); assert.equal(d.blockIndexOfHour(B, 4), 6);
     assert.equal(d.blockIndexOfHour(B, 24), 6, '24 時は 0 時 (深夜) として読む'); assert.equal(d.blockIndexOfHour(B, 'x'), -1);
+    assert.equal(d.blockIndexOfHour(B, null), -1, 'null を 0 時 (深夜) と読んでいる'); assert.equal(d.blockIndexOfSlot(B, null), -1); assert.equal(d.blockIndexOfHour(B, ''), -1); assert.equal(d.blockIndexOfHour(B, true), -1);
     assert.equal(d.blockIndexOfSlot(B, 'h21'), 5); assert.equal(d.blockAt(B, 13).name, '昼'); assert.equal(d.blockAt(B, NaN), null);
     // 出られるか: どれか 1 時間でも入っていれば ○。⏳隙間型・未登録はいつでも
     const ev = B[4];
@@ -593,6 +594,15 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.equal(d.attackCountIn(plan, ev2), 2); assert.equal(d.attackCountIn(plan, { from: 0, to: 4 }), 0);
     assert.equal(d.scopePlan(plan, null), plan); assert.equal(d.scopePlan(null, ev2), null);
     assert.equal(d.scopePlan(plan, { from: 8, to: 5 }), plan, '逆順の範囲で壊している');
+    // 起点 = max(今, ブロックの頭): 5時始まりの並びで遅いほう (翌0時は 23時より後)
+    assert.equal(d.laterSlot('h13', 'h18'), 'h18'); assert.equal(d.laterSlot('h21', 'h18'), 'h21'); assert.equal(d.laterSlot('h23', 'h00'), 'h00');
+    assert.equal(d.laterSlot('h05', 'h00'), 'h00'); assert.equal(d.laterSlot('x', 'h18'), 'h18'); assert.equal(d.laterSlot('h18', null), 'h18'); assert.equal(d.laterSlot(null, null), null);
+    // 予約を範囲に絞る: 時刻のある約束は範囲内だけ・⏳隙間型と時刻の読めない行は残す
+    const resv = [{ id: 1, time_mode: 'fixed', time_slot: 'h19' }, { id: 2, time_mode: 'fixed', time_slot: 'h22' }, { id: 3, time_mode: 'flex', time_slot: null }, { id: 4, time_slot: null }];
+    assert.deepEqual(d.scopeReservations(resv, ev2).map(r => r.id), [1, 3, 4]);
+    assert.equal(d.scopeReservations(resv, null), resv); assert.equal(d.scopeReservations(null, ev2), null);
+    assert.deepEqual(d.scopeReservations(resv, { from: 0, to: 4 }).map(r => r.id), [3, 4], '深夜ブロックの範囲が壊れている');
+    assert.deepEqual(d.scopeReservations([{ id: 5, time_mode: 'fixed', time_slot: 'h02' }], { from: 0, to: 4 }).map(r => r.id), [5], '深夜ブロックに翌2時の約束が入らない');
     // 保存の形と同一判定
     assert.deepEqual(d.toConfig(two.blocks), [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
     assert.equal(d.sameConfig(def.blocks, d.normalize(d.toConfig(def.blocks)).blocks), true);
@@ -7110,7 +7120,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         const im = html.match(/async function _reservationImpact\([\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/currentSlot: _planNowSlot\(snap\.season\), timeAware: true/.test(im), '承認の影響が時計を直に渡している');
         const cp = html.match(/function computeOptimalPlan\(options = \{\}, snapshot = null\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/currentSlot: _opsPlanStartMode === 'day' \? 'h05' : _planNowSlot\(season\),/.test(cp), '算出が時計を直に渡している');
+        assert.ok(/currentSlot: _opsPlanStartSlot\(options, _opsPlanStartMode === 'day' \? 'h05' : _planNowSlot\(season\)\),/.test(cp), '算出が時計を直に渡している');
         for (const m of html.matchAll(/computeOptimalPlanCore\(\{[\s\S]*?\n            \}\);/g)) {
             assert.ok(!/currentSlot: getCurrentSlotJST\(\)/.test(m[0]), `ソルバーの起点に時計を直に渡している: ${m[0].slice(0, 80)}`);
             assert.ok(/currentSlot: [^\n]*_planNowSlot\(/.test(m[0]), `ソルバーの起点が _planNowSlot を通していない: ${m[0].slice(0, 80)}`);
@@ -7119,7 +7129,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         assert.ok(/availableAtSlot: getCurrentSlotJST\(\),/.test(cp), '「今動ける人だけ」の時間帯を起点と分けていない');
         assert.equal([...html.matchAll(/computeOptimalPlanCore\(\{/g)].length, 2, 'ソルバーの呼び出し口が増えた (時計の渡し方を確かめること)');
         // 焼き込みの起点は実際に使った時間帯 (前日に「今から」で組んでも朝5時から)
-        assert.ok(/from: plan\.currentSlot === 'h05' \? 'day' : _opsPlanStartMode,/.test(html), '焼き込みの起点が選んだモードのまま (前日は朝5時から組んでいるのに「今から」と出る)');
+        assert.ok(/from: blk \? 'block' : \(plan\.currentSlot === 'h05' \? 'day' : _opsPlanStartMode\),/.test(html), '焼き込みの起点が選んだモードのまま (前日は朝5時から組んでいるのに「今から」と出る)');
         assert.ok(html.includes('前日まではどちらも朝5時からレイド日いちにちぶんを組む。当日は「今から」で残りの時間だけ'), '起点のヒントが古い');
     });
     test('★ Codex指摘 (fc5286c): 「今動ける人だけ」は availableAtSlot (壁時計) で絞る — 起点 currentSlot が前日に h05 でも「h05 に出られる人」にしない', () => {
@@ -8966,7 +8976,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/blocksOfSeason\(opsStore\.get\(\)\?\.season \|\| null\)/.test(html), 'ブロックをシーズンから読んでいない');
         // 算出: ブロックの時間帯を availableAtSlots で渡す。承認後の組み直し (onlyAvailableNow 明示) は従来どおり
         assert.ok(/availableAtSlots: Array\.isArray\(options\.availableAtSlots\) && options\.availableAtSlots\.length \? options\.availableAtSlots : undefined,/.test(html), '算出にブロックの時間帯を渡していない');
-        assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null \};/.test(html), 'ブロックの時間帯を options に乗せていない');
+        assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null, blockStartSlot: blk \? _hourKey\(blk\.from\) : null \};/.test(html), 'ブロックの時間帯を options に乗せていない');
         // 焼き込み: who='block' + ブロック名
         assert.ok(/who: plan\.availableAtLabel \? 'block' : \(onlyNow \? 'now' : 'all'\),\s*\n\s*block: plan\.availableAtLabel \|\| null,/.test(html), '条件に block を焼き込んでいない');
         // ピル (画面・共有画像)
@@ -9079,6 +9089,18 @@ console.log('\ngrowthDomain:');
         assert.ok(/const sc = \(p\) => \(scopeNow && window\.raidBlocksDomain && p\) \? window\.raidBlocksDomain\.scopePlan\(p, scopeNow\) : p;/.test(pub), '絞る関数が無い');
         assert.ok(/のぶん \(\$\{window\.raidBlocksDomain\.attackCountIn\(_opsLastPlan, _opsLastPlan\.blockScope\)\}凸\) を配信します。/.test(pub), '確認の文言が無い');
         assert.ok(/const msg = scopeMsg \+ '📤 現在表示中のプランを全メンバーに配信しますか？'/.test(pub), '確認の文言に足していない');
+        // Codex指摘 (2104924): ① 起点はブロックの頭より前にしない ② 配信の版を上げる ③ 予約も範囲で ④ 自分の割当の変化 (L3) も前回を範囲で ⑤ 共有画像も範囲で
+        assert.ok(/function _opsPlanStartSlot\(options, base\) \{[\s\S]*?return window\.raidBlocksDomain\.laterSlot\(base, bs\) \|\| base;/.test(html) && /currentSlot: _opsPlanStartSlot\(options, /.test(html), '起点をブロックの頭と比べていない');
+        assert.ok(/blockStartSlot: blk \? _hourKey\(blk\.from\) : null \};/.test(html), 'ブロックの頭を渡していない');
+        assert.ok(/from: blk \? 'block' : \(plan\.currentSlot === 'h05' \? 'day' : _opsPlanStartMode\),/.test(html), '起点の焼き込みがブロックを知らない');
+        assert.ok(/const PLAN_SCHEMA = 3;/.test(html), '配信の版を 3 に上げていない (古い版が 1 日ぶんを見てしまう)');
+        assert.ok(/myResv = window\.raidBlocksDomain\.scopeReservations\(myResv, pub\.plan\.blockScope\);/.test(home), '予約を範囲に絞っていない');
+        assert.ok(/const scoped = \(pub\.plan\?\.blockScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(prev\.plan, pub\.plan\.blockScope\) : prev\.plan;\s*\n\s*const d = dd\.diffPlans\(scoped, plan\);/.test(home), 'L3 の前回を範囲に絞っていない');
+        assert.ok(/const imgPlan = \(_opsLastPlan\.blockScope && window\.raidBlocksDomain\) \? window\.raidBlocksDomain\.scopePlan\(_opsLastPlan, _opsLastPlan\.blockScope\) : _opsLastPlan;/.test(html) && /_renderPlanToImageTimetable\(imgPlan,/.test(html) && /_renderPlanToImage\(imgPlan\)/.test(html), '共有画像を範囲に絞っていない');
+        // 古い版 (2 を読む端末) は 3 の配信を読まない
+        const cg = globalThis.clientGateDomain;
+        assert.equal(cg.planReadable({ planSchema: 3, supportedSchema: 2 }).readable, false, '古い端末が blockScope の配信を読めてしまう');
+        assert.equal(cg.planReadable({ planSchema: 2, supportedSchema: 3 }).readable, true, '新しい端末が前の版の配信を読めない');
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
@@ -10556,6 +10578,8 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(d.conditionsOf({ who: 'block', block: ' 夕方 18〜20時 ' }).block, '夕方 18〜20時');
         assert.equal(d.conditionsOf({ who: 'now', block: '夕方' }).block, null, 'ブロック以外の対象にブロック名が残っている');
         assert.equal(d.conditionsOf({ who: 'block' }).who, 'block');
+        assert.equal(d.conditionsOf({ from: 'block' }).from, 'block'); assert.equal(d.conditionsOf({ from: 'x' }).from, 'now');
+        assert.ok(d.conditionSummary({ who: 'block', block: '夕方 18〜20時', from: 'block', reservations: 0 }).includes(' · ブロックの頭から · '), '起点「ブロックの頭から」が無い');
         assert.equal(d.conditionSummary({ who: 'block', block: '夕方 18〜20時', time: 'strict', reservations: 0 }), '🧱 夕方 18〜20時 に出られる人 · 今から · ⏰時間厳守 · 前回を尊重 · 🔒予約 0');
         assert.ok(d.conditionSummary({ who: 'block', reservations: 0 }).startsWith('🧱 ブロックに出られる人 ·'), 'ブロック名が無いときの言い方');
         assert.equal(d.conditionsOf({ time: 'strict' }).time, 'strict');
@@ -10600,7 +10624,7 @@ console.log('\ngrowthDomain:');
         const fn = html.match(/async function computeAndRenderOptimalPlan\(options = \{\}\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const who = options\.onlyAvailableNow != null \? \(options\.onlyAvailableNow \? 'now' : 'all'\) : _opsPlanWho;\s*\n\s*const blk = who === 'block' \? _opsPlanBlock\(\) : null;\s*\n\s*const onlyNow = who !== 'all';/.test(fn), '対象を条件パネルから取っていない');
         // ★ 決めた対象を options に畳んでから、固定された呼び出し行に渡す (Codex指摘 2026-09-11: 畳む行を見ていなかった)
-        assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null \};\s*\n\s*const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations/.test(fn),
+        assert.ok(/options = \{ \.\.\.options, onlyAvailableNow: onlyNow, availableAtSlots: blk \? blk\.slots : null, availableAtLabel: blk \? blk\.label : null, blockStartSlot: blk \? _hourKey\(blk\.from\) : null \};\s*\n\s*const plan = computeOptimalPlan\(\{ \.\.\.options, previousPlan, reservations/.test(fn),
             '対象を options に畳んでから算出に渡していない (画面の選択が効かない / 明示した対象が上書きされる)');
         // 優先順位を式で固定: 明示 (null でない) が勝ち、無ければ画面の選択。ここを実行で確かめる
         const WHO_EXPR = "options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho;";

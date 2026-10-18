@@ -18,7 +18,11 @@
     const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
     const norm24 = (h) => ((Number(h) % 24) + 24) % 24;
     const keyOf = (h) => `h${String(norm24(h)).padStart(2, '0')}`;
-    const idxOfHour = (h) => (Number.isInteger(Number(h)) ? HOUR_ORDER.indexOf(norm24(h)) : -1);
+    // ★ null / '' / true を 0 や 1 と読まない (Number(null) は 0 = 深夜ブロックに化ける)。整数か数字だけの文字列だけ
+    const idxOfHour = (h) => {
+        const n = (typeof h === 'number') ? h : ((typeof h === 'string' && /^\s*\d{1,2}\s*$/.test(h)) ? Number(h) : NaN);
+        return Number.isInteger(n) ? HOUR_ORDER.indexOf(norm24(n)) : -1;
+    };
     const hourOfKey = (key) => { const m = /^h(\d\d)$/.exec(String(key || '')); return m ? Number(m[1]) : null; };
 
     /** 既定の 7 ブロック (ふるりの案)。from / to は「時」(含む)。深夜は 0〜4 */
@@ -179,6 +183,27 @@
             .filter(lv => lv.bosses.some(b => b.attacks.length > 0));
         return { ...plan, levels, blockScope: plan.blockScope || scope };
     }
+    /** 2 つの時間帯 'hXX' の遅いほう (5時始まりの並びで)。読めないほうがあれば読めるほうを返す */
+    function laterSlot(a, b) {
+        const ia = idxOfHour(hourOfKey(a)), ib = idxOfHour(hourOfKey(b));
+        if (ia < 0) return ib < 0 ? null : b;
+        if (ib < 0) return a;
+        return ib > ia ? b : a;
+    }
+    /**
+     * 予約の行 (plan_reservations) をブロックの範囲に絞る。時刻の無い ⏳隙間型 (time_mode 'flex') と時刻の読めない行は残す。
+     * ホームに 1 日ぶんの予約を渡すと、後ろのブロックの約束が「配信に入っていない (組み直し中)」に見える (Codex指摘 2026-10-18)
+     */
+    function scopeReservations(rows, scope) {
+        if (!Array.isArray(rows) || !scope) return rows;
+        const a0 = idxOfHour(scope.from), a1 = idxOfHour(scope.to);
+        if (a0 < 0 || a1 < 0 || a1 < a0) return rows;
+        return rows.filter(r => {
+            if (!r || r.time_mode === 'flex') return true;
+            const i = idxOfHour(hourOfKey(r.time_slot));
+            return i < 0 || (i >= a0 && i <= a1);
+        });
+    }
     /** そのブロックに入る凸の数 */
     const attackCountIn = (plan, scope) => (scopePlan(plan, scope)?.levels || []).reduce((t, lv) => t + lv.bosses.reduce((u, b) => u + b.attacks.length, 0), 0);
 
@@ -186,6 +211,6 @@
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
         normalize, blocksOfSeason, toConfig, sameConfig, labelOf, toHour, addSplit, removeAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
-        scopePlan, attackCountIn,
+        scopePlan, attackCountIn, laterSlot, scopeReservations,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

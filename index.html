@@ -9563,7 +9563,9 @@
                 if (dd && pub.season_id && typeof window.supabaseGetPreviousPublishedPlan === 'function') {
                     const prev = await window.supabaseGetPreviousPublishedPlan(pub.season_id, pub.id);
                     if (prev && prev.plan) {
-                        const d = dd.diffPlans(prev.plan, plan);
+                        // 🧱 今回がブロックのぶんなら、前回も同じ範囲に絞ってから比べる (後ろのブロックは約束ではない — L4/L5 と同じ)
+                        const scoped = (pub.plan?.blockScope && window.raidBlocksDomain) ? window.raidBlocksDomain.scopePlan(prev.plan, pub.plan.blockScope) : prev.plan;
+                        const d = dd.diffPlans(scoped, plan);
                         const mine = d.changed.find(c => String(c.memberId) === String(identity.id));
                         myChange = mine
                             ? { changed: true, label: mine.kindLabel, before: mine.beforeText, after: mine.afterText }
@@ -9576,6 +9578,8 @@
             let myResv = null;
             try {
                 myResv = await window.supabaseLoadMyReservations?.(pub.season_id, identity.id) ?? null;
+                // 🧱 ブロックのぶんの配信では、後ろのブロックの約束を「配信に入っていない (組み直し中)」に見せない (⏳隙間型は残す)
+                if (Array.isArray(myResv) && pub.plan?.blockScope && window.raidBlocksDomain) myResv = window.raidBlocksDomain.scopeReservations(myResv, pub.plan.blockScope);
             } catch (e) { console.warn('[my plan] 予約の取得skip:', e?.message || e); myResv = null; }
             if (mySeq !== _myPubRenderSeq) return;
             // ★ 済み凸を混ぜてよいのは「配信中のプランと同じシーズン」のときだけ。
@@ -13519,6 +13523,12 @@
         //   前日 13時に承認の影響を解くと、翌日 10時の約束が「約束の時刻を過ぎています」になって承認できなかった。
         //   時間割は常にレイド日の 24 時間なので、前日までは先頭 (h05) を「いま」にする。レイド日とそのあとは時計どおり。
         //   ハード日が無い (テスト回・未設定) ときも時計どおり = 従来の動き。承認の影響と算出の両方がこれを通す (時計を直に渡さない)
+        // 🧱 ブロックのときの起点 = max(起点, ブロックの頭)。ブロック無し (blockStartSlot 無し) は起点そのまま
+        function _opsPlanStartSlot(options, base) {
+            const bs = options && options.blockStartSlot;
+            if (!bs || !window.raidBlocksDomain) return base;
+            return window.raidBlocksDomain.laterSlot(base, bs) || base;
+        }
         function _planNowSlot(season, nowMs = Date.now()) {
             const st = window.opsStageDomain;
             const hd = season && season.hard_date ? String(season.hard_date).slice(0, 10) : '';
@@ -20469,9 +20479,11 @@
             }
             try {
                 // 表示モードに連動: 時間割モードなら正方形寄りの時間割レイアウトで出力 (編成表示も反映)
+                // 🧱 ブロックのぶんの配信なら画像もその範囲 (メンバーに渡す画像で後ろのブロックを漏らさない — Codex指摘 2026-10-18)
+                const imgPlan = (_opsLastPlan.blockScope && window.raidBlocksDomain) ? window.raidBlocksDomain.scopePlan(_opsLastPlan, _opsLastPlan.blockScope) : _opsLastPlan;
                 const blob = await (_opsPlanViewMode === 'timetable'
-                    ? _renderPlanToImageTimetable(_opsLastPlan, { showTeams: _opsPlanShowTeams })
-                    : _renderPlanToImage(_opsLastPlan));
+                    ? _renderPlanToImageTimetable(imgPlan, { showTeams: _opsPlanShowTeams })
+                    : _renderPlanToImage(imgPlan));
                 const dateStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
                 const file = new File([blob], `shirisuko-plan-${dateStr}.png`, { type: 'image/png' });
                 // モバイルは共有シート (そのまま Discord へ)、不可なら DL
@@ -21034,8 +21046,10 @@
             return window.computeOptimalPlanCore({
                 season, bosses, players,
                 reservations: (rv && resvRows) ? rv.toSolverConstraints(resvRows) : [],
-                // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン。'now' も前日までは h05 (_planNowSlot)
-                currentSlot: _opsPlanStartMode === 'day' ? 'h05' : _planNowSlot(season),
+                // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン。'now' も前日までは h05 (_planNowSlot)。
+                // 🧱 ブロックのときは **ブロックの始まりより前には置かない** (max(起点, ブロックの頭))。「次」のブロックを先に組むとき、
+                //   今から置くと ブロックより前の凸が配信の範囲 (scopePlan) から消える (Codex指摘 2026-10-18)
+                currentSlot: _opsPlanStartSlot(options, _opsPlanStartMode === 'day' ? 'h05' : _planNowSlot(season)),
                 // ★ 「今動ける人だけ」は壁時計の時間帯で絞る — 起点が前日に h05 になっても「h05 に出られる人」にしない (Codex指摘 2026-10-09)
                 availableAtSlot: getCurrentSlotJST(),
                 onlyAvailableNow: !!options.onlyAvailableNow,
@@ -21198,7 +21212,7 @@
             const who = options.onlyAvailableNow != null ? (options.onlyAvailableNow ? 'now' : 'all') : _opsPlanWho;
             const blk = who === 'block' ? _opsPlanBlock() : null;
             const onlyNow = who !== 'all';
-            options = { ...options, onlyAvailableNow: onlyNow, availableAtSlots: blk ? blk.slots : null, availableAtLabel: blk ? blk.label : null };
+            options = { ...options, onlyAvailableNow: onlyNow, availableAtSlots: blk ? blk.slots : null, availableAtLabel: blk ? blk.label : null, blockStartSlot: blk ? _hourKey(blk.from) : null };
             const plan = computeOptimalPlan({ ...options, previousPlan, reservations: Array.isArray(reservations) ? reservations : [] }, snapshot);
             if (!plan) {
                 el.innerHTML = '<p style="font-size:13px;color:var(--bad);">プラン算出に失敗しました。</p>';
@@ -21224,7 +21238,7 @@
             plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
                 who: plan.availableAtLabel ? 'block' : (onlyNow ? 'now' : 'all'),
                 block: plan.availableAtLabel || null,   // 🧱 どのブロックで組んだか (「夕方 18〜20時」)
-                from: plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode,   // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む
+                from: blk ? 'block' : (plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode),   // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む。🧱 はブロックの頭
                 prev: _opsPlanSticky ? 'keep' : 'fresh',
                 time: plan.timeStrict ? 'strict' : 'damage',   // 実際に使った時間の扱いを焼き込む
                 reservations: (Array.isArray(reservations) && window.reservationsDomain)
@@ -26857,8 +26871,9 @@
         //   app-build (コミットSHA) は大小比較できないので別に持つ。
         //   予約まわりの契約を変えたときに上げ、行き渡ってから運営がゲートを締める
         const CLIENT_BUILD = 2026090801;   // 2026-09-08: 予約からレベルを外した (古い版はレベル無しの予約を拘束から落とす)
-        // このクライアントが読める配信プランの版。予約を含むプランは 2
-        const PLAN_SCHEMA = 2;
+        // このクライアントが読める配信プランの版。予約を含むプランは 2。
+        // 3 = 🧱 blockScope を持つ配信 (2026-10-18)。古い版はこの印を知らず 1 日ぶんを見せてしまうので、版を上げて読ませない (too_new → 更新を促す)
+        const PLAN_SCHEMA = 3;
         let _gateVerdict = null;   // clientGateDomain.evaluate の結果 (null = 制限なし)
         let _gateRaw = null;       // app_gate の行 (min_plan_schema を見るのに使う)
         let _gateSeq = 0;          // 要求の世代 (古い応答で新しい判定を上書きしない)
