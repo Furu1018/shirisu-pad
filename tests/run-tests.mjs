@@ -12040,6 +12040,42 @@ console.log('\ngrowthDomain:');
         assert.equal(logs.length, 2); assert.equal(logs[1].opts.actorName, null); assert.ok(!/代理/.test(logs[1].detail), '本人の提出に代理の印が付いている');
     });
 
+    await testAsync('★ 実行: 中央の取り直し (_opsReloadBoardCards) — 重なった呼び出しは最新だけが描く / 古い応答は描かない / 失敗の知らせは最新の 1 回だけ (Codex指摘 72efb1f)', async () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const src = html.match(/let _opsBoardReloadSeq = 0;\n[\s\S]*?async function _opsReloadBoardCards\(\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(src, '_opsReloadBoardCards が見つからない');
+        // 偽の opsStore: 本物と同じ世代の規則 (応答待ちの間に新しい load が始まったら、古い応答は store に保存しない)
+        const mkStore = () => { let data = null, g = 0; return {
+            get: () => data,
+            async load() { const gen = ++g; const job = this.next.shift(); const r = await job(); if (gen === g) data = r; return r; },
+            next: [],
+        }; };
+        const wait = (ms) => new Promise(r => setTimeout(r, ms));
+        const calls = [];
+        const api = { renderOpsMemberStatus: (snap) => calls.push(['member', snap && snap.tag]), _syncOpsUnpublishBtn: async () => { calls.push(['sync']); }, renderOpsMockIntake: () => calls.push(['intake']), showNotification: (m) => calls.push(['notify', m]) };
+        const build = (store) => new Function('opsStore', '_opsMode', 'renderOpsMemberStatus', '_syncOpsUnpublishBtn', 'renderOpsMockIntake', 'showNotification', `${src}\nreturn _opsReloadBoardCards;`)(store, true, api.renderOpsMemberStatus, api._syncOpsUnpublishBtn, api.renderOpsMockIntake, api.showNotification);
+        // ① 遅い取り直し → すぐ速い取り直し: 速い方 (最新) だけが描く。遅い方の応答は store に残らず、描かれない
+        const st = mkStore();
+        st.next.push(async () => { await wait(60); return { tag: 'old', season: {}, players: [] }; });
+        st.next.push(async () => { await wait(5); return { tag: 'new', season: {}, players: [] }; });
+        const reload = build(st);
+        const p1 = reload(); const p2 = reload();
+        await Promise.all([p1, p2]); await wait(80);
+        assert.deepEqual(calls, [['member', 'new'], ['sync'], ['intake']], `古い応答が描かれた / 二重に描いた: ${JSON.stringify(calls)}`);
+        // ② 失敗が重なっても知らせは最新の 1 回だけ
+        calls.length = 0;
+        const st2 = mkStore();
+        st2.next.push(async () => { await wait(40); throw new Error('遅い失敗'); });
+        st2.next.push(async () => { await wait(5); throw new Error('速い失敗'); });
+        const reload2 = build(st2);
+        await Promise.all([reload2(), reload2()]); await wait(60);
+        assert.deepEqual(calls, [['notify', '❌ 盤面の取得に失敗しました: 速い失敗']], `失敗の知らせが最新の 1 回でない: ${JSON.stringify(calls)}`);
+        // ③ 盤面の描画 (renderOpsDashboard) も store に残った盤面だけを描く (load の戻り値をそのまま描かない)
+        const dash = html.match(/async function renderOpsDashboard\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/for \(let tries = 0; !snapshot && tries < 2; tries\+\+\) \{\s*\n\s*await opsStore\.load\(\);\s*\n\s*snapshot = opsStore\.get\(\);\s*\n\s*\}/.test(dash) && /if \(!snapshot\) return;/.test(dash), 'ダッシュボードが load の戻り値をそのまま描いている (追い越された古い応答で最新を上書きする)');
+        assert.ok(!/snapshot = await opsStore\.load\(\)/.test(dash), 'ダッシュボードが load の戻り値を snapshot にしている');
+    });
+
     test('★ 配線: 育成の取り込みパネル (段階「準備」と「終了」・upsert のみ・43未適用は止める)', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
         const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js');

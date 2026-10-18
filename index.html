@@ -17297,16 +17297,21 @@
             labelEl.textContent = '読み込み中...';
             remListEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">読み込み中...</p>';
 
-            // load() の戻り値を使う (get() ではなく)。応答待ち中に invalidate が走った場合、
-            // ストアは結果を破棄する (get()=null) が、この描画自体はフェッチ結果で行ってよい
-            let snapshot;
+            // ★ 描くのは **store に残った盤面** (= 最新の世代) だけ。load() の戻り値をそのまま描くと、応答待ちの間に別の取り直し
+            //   (中央の ↻ = _opsReloadBoardCards や 書き込み後の invalidate) が完了していたとき、古い応答で最新の盤面を上書きする (Codex指摘 72efb1f)。
+            //   追い越されて get() が null (別の取り直しがまだ進行中) なら、もう一度だけ取り直す。それでも無ければこの回は描かない (次のポーリングが描く)
+            let snapshot = null;
             try {
-                snapshot = await opsStore.load();
+                for (let tries = 0; !snapshot && tries < 2; tries++) {
+                    await opsStore.load();
+                    snapshot = opsStore.get();
+                }
             } catch (e) {
                 labelEl.textContent = '取得失敗';
                 remListEl.innerHTML = `<p style="color:var(--bad);font-size:13px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
+            if (!snapshot) return;
 
             const { season, bosses, players } = snapshot;
             const testBanner = document.getElementById('opsTestBanner');

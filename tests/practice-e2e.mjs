@@ -94,7 +94,8 @@ const STATE = `(() => {
   if (shown) { const r = ring.getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     if (el) { under = String(el.innerText || el.value || el.placeholder || '').trim().replace(/\\s+/g, ' ').slice(0, 24); tag = el.tagName; } }
   return { cnt: d.querySelector('.pm-cnt')?.innerText || (d.querySelector('.pm-done') ? 'DONE' : '-'), title: d.querySelector('.pm-top b')?.innerText || '',
-    text: d.querySelector('.pm-in p')?.innerText || '', assume: d.querySelector('[data-pm=assume]')?.innerText || null, where: !!d.querySelector('[data-pm=where]'), ring: shown, under, tag };
+    text: d.querySelector('.pm-in p')?.innerText || '', assume: d.querySelector('[data-pm=assume]')?.innerText || null, where: !!d.querySelector('[data-pm=where]'), ring: shown, under, tag,
+    toast: (() => { const n = document.getElementById('notification'); if (!n) return null; const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })() };
 })()`;
 // 案内の枠の真ん中にあるものを押す (入力欄なら、案内の文が言う数字を入れる)。枠は pointer-events:none なので、拾うのは本物の画面の要素
 const PRESS = (value) => `(() => { const r = document.getElementById('pmRing').getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
@@ -135,10 +136,11 @@ async function run(label, size, scenario = 'member', startAt = '') {
     const boot = JSON.parse(await p.eval(`JSON.stringify({ practice: !!window.PAD_PRACTICE, players: window.PAD_PRACTICE?.db?.tables?.players?.length || 0,
         me: (typeof getCurrentIdentity === 'function' ? getCurrentIdentity() : null), dock: !!document.getElementById('pmDock'), scenario: window.PAD_PRACTICE?.scenario })`));
     if (!boot.practice || boot.players !== 31 || boot.me?.id !== expectMe || !boot.dock || boot.scenario !== scenario) problems.push(`練習モードで起動していない: ${JSON.stringify(boot)}`);
-    let last = '', same = 0, done = false;
+    let last = '', same = 0, done = false, lastToast = null;   // lastToast: 手順の途中で見えたアプリの知らせ (3 秒で消えるので、最後に確かめる前に消えていることがある)
     for (let i = 0; i < 80 && !done && !problems.length; i++) {
         const s = JSON.parse(await p.eval(`JSON.stringify(${STATE})`) || 'null');
         if (!s) { await wait(1200); continue; }
+        if (s.toast && s.toast.shown) lastToast = s.toast;
         const sig = JSON.stringify([s.cnt, s.text, s.under, s.assume]);
         same = sig === last ? same + 1 : 0; last = sig;
         if (s.cnt === 'DONE') { done = true; break; }
@@ -154,8 +156,9 @@ async function run(label, size, scenario = 'member', startAt = '') {
     if (done) await settle(p, 15000);   // おしまいの直後に読み込み直しが走っていても、落ち着いてから確かめる (走ったかは下の記録で見える)
     try {   // ★ 終わったあとの確認で画面が読み込み直し中だと eval が落ちる — 例外も problems に入れて、手順と読み込み直しの記録を出す
     // アプリの知らせ (トースト) は案内の裏に隠れない: 最後の返事のあとに出る「了承を運営に伝えました」が、案内の下に見えている
-    const toast = JSON.parse(await p.eval(`JSON.stringify((() => { const n = document.getElementById('notification'), d = document.getElementById('pmDock');
+    const toastNow = JSON.parse(await p.eval(`JSON.stringify((() => { const n = document.getElementById('notification'), d = document.getElementById('pmDock');
         const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })())`));
+    const toast = toastNow.shown ? toastNow : (lastToast || toastNow);   // いま消えていても、手順の途中で見えていればそれで判定 (負荷で 3 秒を過ぎることがある)
     if (done && scenario !== 'ops-day' && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
     // ↩ 1つ前に戻る: おしまいから戻ると、課題 5 の最初 (締め凸のお願いが来る前・時計は当日) に戻る。そこからまた最後まで行ける
     if (scenario === 'member') {
