@@ -1798,6 +1798,24 @@ await testAsync('ensure: 取得失敗は {season:null,bosses:[]} をキャッシ
     assert.equal(calls, 2, 'invalidate 後は再試行する');
 });
 
+await testAsync('lastLoadFailed: 「アクティブ無し」と「取れなかった」を分ける (時間のモーダルが古い区切りで保存しないため — Codex指摘 2026-10-18)', async () => {
+    seasonStore.configure({ load: async () => { throw new Error('network'); } });
+    seasonStore.invalidate();
+    assert.equal(seasonStore.lastLoadFailed(), false, '未ロードは false');
+    await seasonStore.ensure();
+    assert.equal(seasonStore.lastLoadFailed(), true, '取れなかったのに false');
+    seasonStore.configure({ load: async () => ({ season: null, bosses: [] }) });
+    seasonStore.invalidate();
+    await seasonStore.ensure();
+    assert.equal(seasonStore.lastLoadFailed(), false, 'アクティブ無し (正常) を失敗にしている');
+    seasonStore.configure({ load: async () => ({ season: { id: 7 }, bosses: [] }) });
+    seasonStore.invalidate();
+    await seasonStore.ensure();
+    assert.equal(seasonStore.lastLoadFailed(), false);
+    seasonStore.invalidate();
+    assert.equal(seasonStore.lastLoadFailed(), false, 'invalidate 後は未ロード = false');
+});
+
 await testAsync('ensure: ローダ未定義なら null を返しキャッシュしない (supabase未ロード時)', async () => {
     seasonStore.configure({});           // 既定に戻す (node 環境では supabase 関数が存在しない)
     seasonStore.invalidate();
@@ -9148,8 +9166,20 @@ console.log('\ngrowthDomain:');
         const tg = html.match(/function _availToggleBlock\(i\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const next = new Set\(rbd\.toggleBlock\(keys, b, st\.state !== 'on'\)\);/.test(tg), '押したときの反転が違う');
         assert.ok(/_availUI\.slots = HOUR_ORDER\.map\(h => next\.has\(_hourKey\(h\)\)\);\s*\n\s*_renderAvailUI\(\);\s*\n\s*_availScheduleSave\(\);/.test(tg), '24 個の bool に戻して保存していない');
-        // 描く前にシーズンを読む (区切りを合わせる)。取れなくても描く
-        assert.ok(/try \{ await ensureActiveSeasonLoaded\(\); \} catch \(_\) \{ \/\* 既定の区切りで描く \*\/ \}\s*\n\s*_renderAvailUI\(\);/.test(html), '描く前にシーズンを読んでいない');
+        // 開くたびにシーズンを取り直す (運営が区切りを変えたあとに古い区切りで保存しない)。取れなかったら押せない (Codex指摘)
+        assert.ok(/try \{ seasonStore\.invalidate\(\); await ensureActiveSeasonLoaded\(\); \} catch \(_\)/.test(html), '開くたびにシーズンを取り直していない');
+        assert.ok(/_availUI\.blocksReady = !\(typeof seasonStore !== 'undefined' && seasonStore\.lastLoadFailed && seasonStore\.lastLoadFailed\(\)\);\s*\n\s*_renderAvailUI\(\);/.test(html), '取れなかったことを見ていない');
+        assert.ok(/\$\{_availUI\.blocksReady \? '' : 'disabled'\}/.test(ui) && /if \(!_availUI\.blocksReady\) \{ showNotification\(/.test(tg), '区切りを読めていないのに押せる');
+        assert.ok(/onclick="renderMyAvailabilitySettings\(getCurrentIdentity\(\)\)"/.test(ui), '取り直すボタンが無い');
+        const preset = html.match(/function _availApplyPreset\(preset\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!_availUI\.blocksReady\) \{ showNotification\(/.test(preset), 'プリセットも止めていない');
+        // 「一部」を押すと全時間 ON になることを常に書く / aria-pressed (true / false / mixed) / プリセットは button
+        assert.ok(/押すとそのブロックの全時間が ON になります/.test(ui) && /押すとこのブロックの全時間が ON/.test(ui), '「一部」の説明が無い');
+        assert.ok(/aria-pressed="\$\{pressed\}"/.test(ui) && /st\.state === 'partial' \? 'mixed'/.test(ui), 'aria-pressed が無い');
+        assert.ok(/<button type="button" class="avail-preset-pill"/.test(ui) && !/<div class="avail-preset-pill"/.test(ui), 'プリセットが div のまま');
+        // 残骸なし / 運営が区切りを保存したらシーズンのキャッシュを捨てる
+        assert.ok(!/dragging: false|dragMode: null|availPulseDot|タイムライン \(なぞって選択\) =====\s*\*\/\s*\n\s*\}/.test(html), 'タイムラインの残骸がある');
+        assert.ok(/_opsPlanBlockIdx = null;[^\n]*\n\s*seasonStore\.invalidate\(\);/.test(html), '区切りを保存したあとシーズンのキャッシュを捨てていない');
         // ホームの帯: 下のラベルはブロック名 (ドメインが無ければ時刻)
         const strip = html.match(/async function renderMyAvailStrip\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/blocks\.map\(b => `<span title="\$\{escapeHtml\(b\.label\)\}" style="flex:\$\{b\.slots\.length\};/.test(strip), '帯のラベルがブロック名になっていない');
