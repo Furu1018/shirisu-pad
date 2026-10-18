@@ -13529,9 +13529,11 @@
         }
 
         // ===== 戦闘可能時間: 🧱 ブロックのチップで選ぶ (内部は 1 時間刻み) =====
-        // state: HOUR_ORDER と同じ並び順の 24 個 bool 配列。blocksReady = シーズン (区切り) を読めたか (読めていない間は押せない)
+        // state: HOUR_ORDER と同じ並び順の 24 個 bool 配列。season = モーダルを開いたときに**取り直した**シーズン (区切りの元・アクティブ無しは null)、
+        //   blocksReady = 取り直せたか (取れていない間は何も保存させない)
         const _availUI = {
             slots: new Array(24).fill(false),
+            season: null,
             blocksReady: false,
             saveTimer: null,
             saving: false,
@@ -13554,11 +13556,16 @@
             }
             const set = new Set(serverSlots);
             _availUI.slots = HOUR_ORDER.map(h => set.has(_hourKey(h)));
-            // 🧱 ブロックの区切りはシーズンのもの (アクティブ無しなら既定)。**開くたびに取り直す** — 運営が区切りを変えたあと、
+            // 🧱 ブロックの区切りはシーズンのもの (アクティブ無しなら既定)。**開くたびに DB から取り直す** — 運営が区切りを変えたあと、
             //   開きっぱなしのメンバーが古い区切りで押して保存するのを防ぐ (Codex指摘 2026-10-18)。
-            //   取れなかった (通信の不調) ときは既定の区切りで**見せるだけ**にして押せない (黙って違う時間帯を保存しない)
-            try { seasonStore.invalidate(); await ensureActiveSeasonLoaded(); } catch (_) { /* 下で lastLoadFailed を見る */ }
-            _availUI.blocksReady = !(typeof seasonStore !== 'undefined' && seasonStore.lastLoadFailed && seasonStore.lastLoadFailed());
+            //   seasonStore は触らない (invalidate すると全タブの描画キャッシュが飛び、連続すると ensure が null を返して fail-open になる — Codex指摘)。
+            //   取れなかった (通信の不調) ときは既定の区切りで**見せるだけ**にして何も保存させない (黙って違う時間帯を保存しない)
+            _availUI.season = null;
+            _availUI.blocksReady = false;
+            try {
+                const fresh = (typeof window.supabaseLoadActiveSeasonWithBosses === 'function') ? await window.supabaseLoadActiveSeasonWithBosses() : null;
+                if (fresh) { _availUI.season = fresh.season || null; _availUI.blocksReady = true; }
+            } catch (e) { console.warn('[avail] シーズン (区切り) を取り直せませんでした:', e?.message || e); }
             _renderAvailUI();
             if (isFirstTime) {
                 msgEl.textContent = 'ℹ️ 初期は全部 OFF。出られるブロック (1 時間でも) を ON にしてください。';
@@ -13583,7 +13590,7 @@
             //   1 時間でも出られるブロックを ON に。内部の時間は 1 時間刻みのまま (ON = そのブロックの全時間)。
             //   以前の 1 時間刻みの登録は「一部」として見え、押すとブロック丸ごと ON になる
             const rbd = window.raidBlocksDomain;
-            const blocks = rbd ? rbd.blocksOfSeason((typeof seasonStore !== 'undefined' && seasonStore.get()?.season) || null) : [];
+            const blocks = rbd ? rbd.blocksOfSeason(_availUI.season) : [];   // 開いたときに取り直したシーズンの区切り
             const slotKeys = HOUR_ORDER.map((h, i) => slots[i] ? _hourKey(h) : null).filter(Boolean);
             const states = rbd ? rbd.blockStates(blocks, slotKeys) : [];
             const curBlockIdx = rbd ? rbd.blockIndexOfHour(blocks, curHour) : -1;
@@ -13621,7 +13628,7 @@
                             <div style="font-size:15px;font-weight:900;color:var(--t-ink);font-variant-numeric:tabular-nums;letter-spacing:0.2px;">${r.fromH}:00 → ${r.toH}:00</div>
                             <div style="font-size:10.5px;color:var(--t-muted);margin-top:1px;">${r.len} 時間</div>
                         </div>
-                        <div onclick="_availRemoveRange(${r.fromIdx}, ${r.toIdx})" style="padding:6px 12px;border-radius:8px;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;border:1px solid rgba(var(--ink-rgb), 0.06);">解除</div>
+                        <button type="button" ${_availUI.blocksReady ? '' : 'disabled'} onclick="_availRemoveRange(${r.fromIdx}, ${r.toIdx})" style="padding:6px 12px;border-radius:8px;background:var(--s2);color:var(--t-body);font:inherit;font-size:11px;font-weight:800;cursor:${_availUI.blocksReady ? 'pointer' : 'not-allowed'};border:1px solid rgba(var(--ink-rgb), 0.06);">解除</button>
                     </div>`).join('');
 
             const groupEl_full = `
@@ -13673,7 +13680,7 @@
             const rbd = window.raidBlocksDomain;
             if (!rbd) return;
             if (!_availUI.blocksReady) { showNotification('シーズンの区切りを読めていません。「取り直す」を押してから変えてください'); return; }
-            const blocks = rbd.blocksOfSeason((typeof seasonStore !== 'undefined' && seasonStore.get()?.season) || null);
+            const blocks = rbd.blocksOfSeason(_availUI.season);
             const b = blocks[Number(i)];
             if (!b) return;
             const keys = HOUR_ORDER.map((h, k) => _availUI.slots[k] ? _hourKey(h) : null).filter(Boolean);
@@ -13759,6 +13766,7 @@
         }
 
         function _availRemoveRange(fromIdx, toIdx) {
+            if (!_availUI.blocksReady) { showNotification('シーズンの区切りを読めていません。「取り直す」を押してから変えてください'); return; }
             // HOUR_ORDER 内の連続区間 (fromIdx..toIdx inclusive、配列の境界を跨ぐ場合あり)
             const slots = _availUI.slots.slice();
             if (fromIdx <= toIdx) {

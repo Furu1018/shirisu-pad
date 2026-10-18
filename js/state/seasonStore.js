@@ -27,14 +27,11 @@
     let data = null;
     let loadFn = null;        // テスト用差し替え。既定は supabaseLoadActiveSeasonWithBosses (遅延解決)
     let generation = 0;       // 世代番号: invalidate で進む (進行中ロードの結果を破棄)
-    let loadFailed = false;   // 直前の読み込みが失敗したか (失敗も {season:null} でキャッシュするので、呼び出し側が「無い」と「取れなかった」を分けるために持つ)
     const listeners = [];     // invalidate のたびに呼ぶ (画面側の描画キャッシュ破棄など)
 
     const seasonStore = {
         /** 現在のキャッシュ (未ロード/無効化後は null。例外は投げない) */
         get() { return data; },
-        /** いまのキャッシュが「取れなかった」ものか (true のとき season:null は「アクティブ無し」ではない)。未ロードは false */
-        lastLoadFailed() { return !!data && loadFailed; },
 
         /**
          * キャッシュがあれば返し、無ければロードする (旧 ensureActiveSeasonLoaded と同一挙動)。
@@ -52,16 +49,14 @@
                 if (typeof fn !== 'function') return null;
                 const gen = generation;
                 let fresh;
-                let failed = false;
                 try {
                     fresh = await fn();
                 } catch (e) {
                     if (typeof console !== 'undefined') console.warn('[seasonStore] アクティブシーズン取得失敗:', e);
                     fresh = { season: null, bosses: [] };
-                    failed = true;
                 }
                 if (gen === generation) {
-                    if (!data) { data = fresh; loadFailed = failed; }
+                    if (!data) data = fresh;
                     return data;
                 }
                 // 世代が進んだ = 応答待ち中に書き込み操作があった → 古い結果は捨てて取り直し

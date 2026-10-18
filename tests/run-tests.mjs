@@ -1798,24 +1798,6 @@ await testAsync('ensure: 取得失敗は {season:null,bosses:[]} をキャッシ
     assert.equal(calls, 2, 'invalidate 後は再試行する');
 });
 
-await testAsync('lastLoadFailed: 「アクティブ無し」と「取れなかった」を分ける (時間のモーダルが古い区切りで保存しないため — Codex指摘 2026-10-18)', async () => {
-    seasonStore.configure({ load: async () => { throw new Error('network'); } });
-    seasonStore.invalidate();
-    assert.equal(seasonStore.lastLoadFailed(), false, '未ロードは false');
-    await seasonStore.ensure();
-    assert.equal(seasonStore.lastLoadFailed(), true, '取れなかったのに false');
-    seasonStore.configure({ load: async () => ({ season: null, bosses: [] }) });
-    seasonStore.invalidate();
-    await seasonStore.ensure();
-    assert.equal(seasonStore.lastLoadFailed(), false, 'アクティブ無し (正常) を失敗にしている');
-    seasonStore.configure({ load: async () => ({ season: { id: 7 }, bosses: [] }) });
-    seasonStore.invalidate();
-    await seasonStore.ensure();
-    assert.equal(seasonStore.lastLoadFailed(), false);
-    seasonStore.invalidate();
-    assert.equal(seasonStore.lastLoadFailed(), false, 'invalidate 後は未ロード = false');
-});
-
 await testAsync('ensure: ローダ未定義なら null を返しキャッシュしない (supabase未ロード時)', async () => {
     seasonStore.configure({});           // 既定に戻す (node 環境では supabase 関数が存在しない)
     seasonStore.invalidate();
@@ -9153,7 +9135,7 @@ console.log('\ngrowthDomain:');
         const ui = html.match(/function _renderAvailUI\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(ui, '_renderAvailUI が無い');
         // 区切りはシーズンのもの (無ければ既定) / 状態はドメイン / 1 時間刻みの登録は「一部」
-        assert.ok(/const blocks = rbd \? rbd\.blocksOfSeason\(\(typeof seasonStore !== 'undefined' && seasonStore\.get\(\)\?\.season\) \|\| null\) : \[\];/.test(ui), 'ブロックをシーズンから読んでいない');
+        assert.ok(/const blocks = rbd \? rbd\.blocksOfSeason\(_availUI\.season\) : \[\];/.test(ui), 'ブロックを (開いたときに取り直した) シーズンから読んでいない');
         assert.ok(/const states = rbd \? rbd\.blockStates\(blocks, slotKeys\) : \[\];/.test(ui), 'ON の具合をドメインで出していない');
         assert.ok(/class="avail-blk" data-state="\$\{st\.state\}"/.test(ui) && /onclick="_availToggleBlock\(\$\{st\.idx\}\)"/.test(ui), 'ブロックのチップが無い');
         assert.ok(/`一部 \$\{st\.on\}\/\$\{st\.hours\}時間`/.test(ui), '一部の見せ方が無い');
@@ -9166,10 +9148,18 @@ console.log('\ngrowthDomain:');
         const tg = html.match(/function _availToggleBlock\(i\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const next = new Set\(rbd\.toggleBlock\(keys, b, st\.state !== 'on'\)\);/.test(tg), '押したときの反転が違う');
         assert.ok(/_availUI\.slots = HOUR_ORDER\.map\(h => next\.has\(_hourKey\(h\)\)\);\s*\n\s*_renderAvailUI\(\);\s*\n\s*_availScheduleSave\(\);/.test(tg), '24 個の bool に戻して保存していない');
-        // 開くたびにシーズンを取り直す (運営が区切りを変えたあとに古い区切りで保存しない)。取れなかったら押せない (Codex指摘)
-        assert.ok(/try \{ seasonStore\.invalidate\(\); await ensureActiveSeasonLoaded\(\); \} catch \(_\)/.test(html), '開くたびにシーズンを取り直していない');
-        assert.ok(/_availUI\.blocksReady = !\(typeof seasonStore !== 'undefined' && seasonStore\.lastLoadFailed && seasonStore\.lastLoadFailed\(\)\);\s*\n\s*_renderAvailUI\(\);/.test(html), '取れなかったことを見ていない');
-        assert.ok(/\$\{_availUI\.blocksReady \? '' : 'disabled'\}/.test(ui) && /if \(!_availUI\.blocksReady\) \{ showNotification\(/.test(tg), '区切りを読めていないのに押せる');
+        // 開くたびに DB からシーズンを取り直す (運営が区切りを変えたあとに古い区切りで保存しない)。seasonStore は触らない (全タブのキャッシュを飛ばさない・fail-open しない)。
+        // 取れなかったら blocksReady=false のまま = チップ・プリセット・解除のどれも保存させない (Codex指摘)
+        const settings = html.match(/async function renderMyAvailabilitySettings\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_availUI\.season = null;\s*\n\s*_availUI\.blocksReady = false;/.test(settings), '開くたびに状態を戻していない');
+        assert.ok(/const fresh = \(typeof window\.supabaseLoadActiveSeasonWithBosses === 'function'\) \? await window\.supabaseLoadActiveSeasonWithBosses\(\) : null;\s*\n\s*if \(fresh\) \{ _availUI\.season = fresh\.season \|\| null; _availUI\.blocksReady = true; \}/.test(settings), 'DB から取り直していない / 取れたときだけ ready にしていない');
+        assert.ok(!/seasonStore\.invalidate\(\)/.test(settings) && !/lastLoadFailed/.test(html), 'モーダルが seasonStore を無効化している / 使わなくなった口が残っている');
+        assert.ok(/rbd\.blocksOfSeason\(_availUI\.season\)/.test(ui) && /rbd\.blocksOfSeason\(_availUI\.season\)/.test(tg), '取り直したシーズンの区切りを使っていない');
+        assert.equal((ui.match(/\$\{_availUI\.blocksReady \? '' : 'disabled'\}/g) || []).length, 3, 'チップ・プリセット・解除 の 3 つを disabled にしていない');
+        assert.ok(/if \(!_availUI\.blocksReady\) \{ showNotification\(/.test(tg), '区切りを読めていないのに押せる');
+        const rm = html.match(/function _availRemoveRange\(fromIdx, toIdx\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!_availUI\.blocksReady\) \{ showNotification\(/.test(rm), '解除は止めていない (見せるだけ、を破る)');
+        assert.ok(/<button type="button" \$\{_availUI\.blocksReady \? '' : 'disabled'\} onclick="_availRemoveRange/.test(ui), '解除が div のまま');
         assert.ok(/onclick="renderMyAvailabilitySettings\(getCurrentIdentity\(\)\)"/.test(ui), '取り直すボタンが無い');
         const preset = html.match(/function _availApplyPreset\(preset\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(!_availUI\.blocksReady\) \{ showNotification\(/.test(preset), 'プリセットも止めていない');
