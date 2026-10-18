@@ -1084,7 +1084,13 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `[data-member-input]` (引き受けた凸カードの「自分から凸を申請する」)。隠しているときだけ `[data-member-input-lite]` の一文。`TabController.activate('mock')` はホームへ。
   ヒーローの模擬タブへの導線は `mockCta` 経由 — 隠しているときは「模擬は Discord にスクショを貼ってください。運営が PAD に登録します」+ 「⏰ 出られる時間を確認する」。
   空き枠の札は「運営の配信を待つ」。**練習のシーズンは full** (メンバー編の課題「模擬の提出」「予約」が成り立つように・js/practice/seed.js)。
-  残り (③): 運営の模擬取り込み (Discord のスクショ → 誰の模擬か → 登録)・凸報告の確認欄
+  ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
+  「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
+  `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と
+  保存後に戻る先 (このカード・`opsStore.invalidate()` → 届いていない人とメンバー状況を描き直す) だけ。活動ログは `actorName` で「(運営が代理で登録)」。
+  「届いていない人」= 5 属性そろっていない人 (書庫・今回は難しい を除く)、〆 = その人が最初に出られるブロック (⏳隙間・未登録は いつでも)。
+  純ロジックは `js/domain/mockIntake.js` (`missingRows` / `summary`)。名前を押すとその人を選んでスクショ選択が開く。
+  残り (③): 凸報告の確認欄 (③-f)
   (律速にしない)。ハイブリッド=登録時間内は確約・時間外は flex
 - **ボス横断の限定分岐 (フェーズ2)**: 貪欲は「そのボスで最良」を選ぶので、別ボスでしか
   使えない人材を先に消費してしまう。僅差の決定点で2番手を採るシナリオを解き直し、

@@ -106,6 +106,7 @@
     <script defer src="./js/domain/planDiff.js"></script>        <!-- 配信プランの差分 (L4 通知抑制 / L5 運営ガード) -->
     <script defer src="./js/domain/reservations.js"></script>    <!-- 凸の予約 (L2 / 課題E) -->
     <script defer src="./js/domain/raidBlocks.js"></script>      <!-- 🧱 レイド日のブロック (時間帯の区切り・ブロック制 2026-10-17) -->
+    <script defer src="./js/domain/mockIntake.js"></script>      <!-- 📸 運営の模擬取り込み (届いていない人・期限ブロック・ブロック制 ③-e 2026-10-18) -->
     <script defer src="./js/domain/availability.js"></script>    <!-- 戦闘可能時間の読み方 (ホームの帯 / 開始の通知 / 締め凸の範囲) -->
     <script defer src="./js/domain/clientGate.js"></script>      <!-- 互換ゲート (L2 ⑦) -->
     <script defer src="./js/domain/popularTeams.js"></script>
@@ -3078,8 +3079,8 @@
         .plan-tray .mem .rem { padding: 1px 6px; border-radius: 999px; background: var(--s2); color: var(--t-strong); font-variant-numeric: tabular-nums; }
         .plan-tray .mem .hrs { margin-left: auto; font-weight: 800; color: var(--t-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         /* PC: スクショをシートに落として読み取る (2026-10-10)。落とせる間だけ点線と案内を重ねる */
-        .player-select-content.drop-over { outline: 3px dashed var(--ops-solid); outline-offset: -6px; position: relative; }   /* ::after をシートの中に収める (無いと fixed のモーダル全体に広がる) */
-        .player-select-content.drop-over::after { content: '📷 ここに落として読み取る'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        .player-select-content.drop-over, .dc-card.drop-over { outline: 3px dashed var(--ops-solid); outline-offset: -6px; position: relative; }   /* .dc-card: 📸 模擬の取り込み (運営) はカードそのものが受け口 */   /* ::after をシートの中に収める (無いと fixed のモーダル全体に広がる) */
+        .player-select-content.drop-over::after, .dc-card.drop-over::after { content: '📷 ここに落として読み取る'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
             background: rgba(var(--paper-rgb), 0.84); color: var(--ops); font-size: 15px; font-weight: 900; border-radius: inherit; pointer-events: none; z-index: 2; }
         .plan-tray .hint { margin: 8px 0 0; font-size: 10.5px; font-weight: 700; color: var(--t-muted); }
         .plan-piece { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 9px; background: var(--card); border: 1px solid var(--line); box-shadow: inset 3px 0 0 var(--pc, var(--ops-solid)); cursor: pointer; user-select: none; -webkit-user-select: none; min-width: 0; }
@@ -4464,6 +4465,39 @@
                 <div id="opsRemainingList" style="margin-top:12px;">
                     <p style="color:var(--t-muted);font-size:12px;">読み込み中...</p>
                 </div>
+            </div>
+
+            <!-- 📸 模擬の取り込み (🧱 ブロック制 ③-e・2026-10-18・運営ONのみ)。Discord に貼られた模擬のスクショを運営が本人の代わりに登録する。
+                 読み取り〜保存は本人の「画像で提出」と同じ関数 (_ocrAttackMultiAndMerge → myDmgPreviewModal → supabaseSaveMockSubmission)。
+                 違うのは「誰の模擬か」(forPlayer) と保存後に戻る先だけ。純ロジック (届いていない人・期限ブロック) は js/domain/mockIntake.js -->
+            <div class="dc-card" data-ops-only id="opsSecMockIntake">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📸 模擬の取り込み</div>
+                    <span id="opsMockIntakeCounts" style="font-size:10.5px;font-weight:800;color:var(--t-muted);"></span>
+                    <button onclick="renderOpsMockIntake(true)" title="再読み込み" style="margin-left:auto;flex:none;padding:5px 10px;border-radius:999px;border:none;background:var(--s2);color:var(--t-body);font-size:11px;font-weight:800;cursor:pointer;">↻</button>
+                </div>
+                <p style="margin:0 0 10px 0;font-size:11px;color:var(--t-muted);line-height:1.6;">
+                    Discord に貼られた<strong>模擬戦のスクショ</strong>を、本人の代わりに登録します。読み取った属性・ダメージ・5 キャラは保存前に直せます (PC はこのカードに落とすだけ)。
+                </p>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--t-body);">誰の模擬か
+                        <select id="opsMockIntakePlayer" onchange="_opsMockIntakePick(this.value)" style="min-width:160px;padding:7px 10px;border-radius:9px;border:1px solid rgba(var(--ink-rgb), 0.12);background:var(--card);color:var(--t-ink);font-size:13px;font-weight:700;"></select>
+                    </label>
+                    <label class="btn-nikke btn-nikke-blue" style="margin:0;flex:none;">
+                        <input type="file" id="opsMockIntakeInput" accept="image/*" multiple onchange="handleOpsMockIntakeUpload(event)" style="display:none;">
+                        <div class="btn-nikke-inner">
+                            <span class="btn-nikke-shimmer-wrap"><span class="btn-nikke-shimmer"></span></span>
+                            <span class="btn-nikke-title">📷 スクショを選ぶ</span>
+                        </div>
+                    </label>
+                </div>
+                <div id="opsMockIntakeAnalyzing" style="display:none;align-items:center;gap:10px;background:var(--t-ink);border-radius:12px;padding:11px 13px;margin-top:10px;">
+                    <div style="width:16px;height:16px;border:2.5px solid rgba(var(--paper-rgb), 0.22);border-top-color:var(--ops-solid);border-radius:50%;animation:spin 0.7s linear infinite;flex:none;"></div>
+                    <div id="opsMockIntakeAnalyzingText" style="flex:1;min-width:0;font-size:11px;font-weight:800;color:var(--card);"></div>
+                </div>
+                <p id="opsMockIntakeStatus" style="margin:8px 0 0 0;font-size:11.5px;font-weight:800;color:var(--t-muted);min-height:15px;"></p>
+                <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t-muted);letter-spacing:0.3px;">届いていない人 <span style="font-weight:700;">(〆 = 自分が最初に出られるブロックの前。名前を押すとその人として読み取ります)</span></div>
+                <div id="opsMockIntakeBody" style="margin-top:6px;"><p style="color:var(--t-muted);font-size:12px;margin:0;">運営ONで読み込みます…</p></div>
             </div>
 
             <!-- 👥 メンバー状況 (運営改修 #1・運営ONのみ)。判定は js/domain/memberStatus.js -->
@@ -6414,6 +6448,8 @@
                         <h2 style="margin:0;"><span data-sp-icon="camera" data-sp-size="17"></span> 解析結果</h2>
                         <button onclick="closeMyDmgPreviewModal()" style="padding:6px 12px;border-radius:8px;border:none;background:var(--s2);color:var(--t-body);font-size:13px;font-weight:700;cursor:pointer;">閉じる</button>
                     </div>
+                    <!-- 📸 運営の取り込み (③-e): 誰の模擬として登録するか (forPlayer のときだけ出す) -->
+                    <p id="myDmgPreviewFor" style="display:none;margin:-6px 0 10px 0;padding:8px 10px;border-radius:10px;background:var(--s1);color:var(--ops);font-size:12px;font-weight:800;"></p>
                     <!-- 認識した属性 + ダメージ -->
                     <div id="myDmgPreviewSummary" style="display:flex;align-items:center;gap:11px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:14px;padding:13px 14px;margin-bottom:14px;">
                         <p style="color:var(--t-muted);font-size:12px;">解析中...</p>
@@ -13375,6 +13411,8 @@
             const saveBtn = document.getElementById('myDmgPreviewSaveBtn');
             const msg = document.getElementById('myDmgPreviewMsg');
             if (msg) msg.textContent = '';
+            const forEl = document.getElementById('myDmgPreviewFor');   // 📸 運営の取り込み: 誰の模擬として登録するか
+            if (forEl) { forEl.style.display = d.forPlayer ? '' : 'none'; forEl.textContent = d.forPlayer ? `👑 運営の取り込み: ${d.forPlayer.name} さんの模擬として登録します` : ''; }
 
             // 属性 + ダメージ サマリ
             const attr = d.selectedAttr ? PT_ATTRS.find(a => a.key === d.selectedAttr) : null;
@@ -13474,19 +13512,22 @@
         }
 
         function handleMyDmgPreviewRetry() {
+            const forOps = !!_myDmgPreviewData?.forPlayer;   // 📸 運営の取り込みから来たなら、そのカードの入口を開き直す
             closeMyDmgPreviewModal();
             // ファイル選択を再度開く
-            const input = document.getElementById('mypageDmgOcrInput');
+            const input = document.getElementById(forOps ? 'opsMockIntakeInput' : 'mypageDmgOcrInput');
             if (input) input.click();
         }
 
         async function handleMyDmgPreviewSave() {
             const d = _myDmgPreviewData;
             if (!d) return;
-            const id = getCurrentIdentity();
+            // 📸 運営の取り込み (③-e): forPlayer があればその人の模擬として保存する (本人の「画像で提出」と同じ経路。違うのは誰のかと戻る先)
+            const forPlayer = d.forPlayer || null;
+            const id = forPlayer || getCurrentIdentity();
             if (!id?.id) return;
             const msg = document.getElementById('myDmgPreviewMsg');
-            const statusEl = document.getElementById('mypageDmgOcrStatus');
+            const statusEl = document.getElementById(forPlayer ? 'opsMockIntakeStatus' : 'mypageDmgOcrStatus');
             const attr = d.selectedAttr;
             if (!attr || d.totalDamage == null) {
                 if (msg) { msg.textContent = '❌ 属性とダメージの両方が必要です'; msg.style.color = 'var(--bad)'; }
@@ -13508,13 +13549,23 @@
                 const res = await window.supabaseSaveMockSubmission(id.id, attr, {
                     damageB, slot: 1,
                     characters: canon && canon.length > 0 ? canon : null,
+                    actorName: forPlayer ? ((getCurrentIdentity() || {}).name || '運営') : null,   // 代理登録の印 (活動ログ)
                 });
                 if (statusEl) {
                     const slotJp = res?.redirected ? ` — 同一編成のため編成${SLOT_JP[res.slot] || res.slot}に統合` : '';
-                    statusEl.textContent = `✅ ${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で保存しました${slotJp}`;
+                    statusEl.textContent = `✅ ${forPlayer ? forPlayer.name + ' さんの ' : ''}${PT_ATTRS.find(x => x.key === attr)?.name}PT を ${damageB.toFixed(2)} B で${forPlayer ? '登録' : '保存'}しました${slotJp}`;
                     statusEl.style.color = 'var(--ok)';
                 }
                 closeMyDmgPreviewModal();
+                if (forPlayer) {
+                    // 盤面に模擬が増えた: 届いていない人・メンバー状況・残凸表・プラン算出のきっかけ を描き直す。自分のぶんを取り込んだなら模擬タブも
+                    opsStore.invalidate();
+                    renderOpsMockIntake(true);
+                    renderOpsMemberStatus(null, true);
+                    const me = getCurrentIdentity();
+                    if (me?.id && Number(me.id) === Number(forPlayer.id)) await renderMyDamagePanels(me);
+                    return;
+                }
                 await renderMyDamagePanels(id);
                 // 該当パネルに保存パルスアニメ
                 requestAnimationFrame(() => {
@@ -17274,12 +17325,99 @@
             renderOpsMemberStatus(snapshot);       // 👥 メンバー状況 (運営ONのときだけ中で取得・描画)
             renderOpsReservations();               // 🔒 凸の予約 (同上)
             renderOpsGrowth();                     // 🧬 育成データの取り込み (同上)
+            renderOpsMockIntake();                 // 📸 模擬の取り込み (③-e・同上)
             _refreshOpsPlanPicksFromPublished();   // 残凸表の「採用PT」枠取り (配信中プラン由来)
             _syncOpsUnpublishBtn();
             if (_opsCurrentAttr) renderOpsFinishList(_opsCurrentAttr);
             else finishListEl.innerHTML = '<p style="color:var(--t-body);font-size:13px;">ボス状況カードから対象ボスをタップしてください。</p>';
             _applyOpsCardStates();     // フェーズ (前日/当日) が確定したので既定の開閉を反映
             _renderOpsCockpitSoon();
+        }
+
+        // ========== 📸 模擬の取り込み (🧱 ブロック制 ③-e・運営ONのみ・2026-10-18) ==========
+        // Discord に貼られた模擬のスクショを運営が本人の代わりに登録する。読み取り〜保存は本人の「画像で提出」と**同じ関数**
+        // (_ocrAttackMultiAndMerge → myDmgPreviewModal → supabaseSaveMockSubmission)。違うのは「誰の模擬か」(_myDmgPreviewData.forPlayer) と
+        // 保存後に戻る先 (このカード) だけ。純ロジック (届いていない人・期限ブロック) は js/domain/mockIntake.js
+        const _mockIntake = { gen: 0, picked: null, players: [] };
+        function _opsMockIntakePick(v) { _mockIntake.picked = v ? Number(v) : null; }
+        // 届いていない人の名前を押す = その人を選んでスクショを選ぶ
+        function _opsMockIntakePickFromList(id) {
+            _mockIntake.picked = Number(id);
+            const sel = document.getElementById('opsMockIntakePlayer');
+            if (sel) sel.value = String(Number(id));
+            document.getElementById('opsMockIntakeInput')?.click();
+        }
+        async function renderOpsMockIntake(force = false) {
+            const body = document.getElementById('opsMockIntakeBody'), sel = document.getElementById('opsMockIntakePlayer'), cnt = document.getElementById('opsMockIntakeCounts');
+            if (!body || !sel) return;
+            if (!_opsMode) return;                       // 運営OFF: 取得も描画もしない
+            const dom = window.mockIntakeDomain, rb = window.raidBlocksDomain;
+            if (!dom) { body.innerHTML = '<p style="color:var(--bad);font-size:12px;margin:0;">模擬の取り込みの機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
+            const gen = ++_mockIntake.gen;
+            let snap = force ? null : opsStore.get();
+            if (!snap) {
+                try { snap = await opsStore.load(); }
+                catch (e) {
+                    if (gen !== _mockIntake.gen) return;
+                    body.innerHTML = `<p style="color:var(--bad);font-size:12px;margin:0;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
+                    return;
+                }
+                if (gen !== _mockIntake.gen) return;
+            }
+            if (!snap?.season) {
+                _mockIntake.players = []; _mockIntake.picked = null;
+                sel.innerHTML = ''; if (cnt) cnt.textContent = '';
+                body.innerHTML = '<p style="color:var(--t-body);font-size:12px;margin:0;">アクティブシーズンがありません。</p>';
+                return;
+            }
+            const players = (snap.players || []).filter(p => p && !p.archived);
+            _mockIntake.players = players;
+            // 誰の模擬か: 名前順。前に選んだ人がまだ居ればそのまま
+            const picked = players.some(p => Number(p.id) === Number(_mockIntake.picked)) ? Number(_mockIntake.picked) : null;
+            _mockIntake.picked = picked;
+            sel.innerHTML = '<option value="">— 選んでください —</option>' + players.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja'))
+                .map(p => `<option value="${Number(p.id)}"${Number(p.id) === picked ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('');
+            const blocks = rb ? rb.blocksOfSeason(snap.season) : [];
+            const rows = dom.missingRows({ players, blocks });
+            if (cnt) cnt.textContent = dom.summary(rows, players.length);
+            if (!rows.length) { body.innerHTML = '<p style="color:var(--ok);font-size:12px;margin:0;font-weight:800;">全員の模擬が 5 属性そろっています 🎉</p>'; return; }
+            body.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + rows.map(r => `
+                <button type="button" onclick="_opsMockIntakePickFromList(${Number(r.id)})" title="この人の模擬として登録する (スクショを選ぶ)"
+                        style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(var(--ink-rgb), 0.10);background:var(--s1);color:var(--t-ink);font-size:11.5px;font-weight:800;cursor:pointer;">
+                    <span>${escapeHtml(r.name)}</span>
+                    <span style="color:var(--t-muted);font-weight:700;">${r.missing.length === 5 ? '未提出' : 'あと ' + escapeHtml(r.missingJp.join('・'))}</span>
+                    <span style="color:${r.deadline ? 'var(--warn-deep)' : 'var(--t-muted)'};font-weight:800;">${r.deadline ? '〆 ' + escapeHtml(r.deadline.name) + 'の前' : (r.noSlots ? '時間 未登録' : 'いつでも')}</span>
+                </button>`).join('') + '</div>';
+        }
+        async function handleOpsMockIntakeUpload(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            const statusEl = document.getElementById('opsMockIntakeStatus');
+            const banner = document.getElementById('opsMockIntakeAnalyzing'), bannerText = document.getElementById('opsMockIntakeAnalyzingText');
+            const fail = (text) => { if (statusEl) { statusEl.textContent = `❌ ${text}`; statusEl.style.color = 'var(--bad)'; } };
+            if (files.length === 0) return;
+            if (!_opsMode) { fail('運営モードで使います'); return; }
+            const target = _mockIntake.players.find(p => Number(p.id) === Number(_mockIntake.picked)) || null;
+            if (!target) { fail('先に「誰の模擬か」を選んでください'); return; }
+            if (banner) banner.style.display = 'flex';
+            if (bannerText) bannerText.textContent = `${target.name} さんの模擬として ${files.length} 枚を解析中… (1 枚あたり 10〜20 秒)`;
+            if (statusEl) { statusEl.textContent = ''; statusEl.style.color = 'var(--t-muted)'; }
+            try {
+                const r = await _ocrAttackMultiAndMerge(files);
+                if (r.totalDamage == null && (!r.characters || r.characters.length === 0)) throw new Error('ダメージも編成も読み取れませんでした');
+                const ptAttr = await detectPtAttrFromBossName(r.bossName);
+                _myDmgPreviewData = {
+                    files, totalDamage: r.totalDamage, bossName: r.bossName,
+                    characters: Array.isArray(r.characters) ? r.characters : [],
+                    ptAttr, selectedAttr: ptAttr,
+                    forPlayer: { id: Number(target.id), name: target.name },   // ★ 本人でなくこの人の模擬として保存する (handleMyDmgPreviewSave)
+                };
+                openMyDmgPreviewModal();
+            } catch (e) {
+                fail(e?.message || e);
+            } finally {
+                if (banner) banner.style.display = 'none';
+            }
         }
 
         // ========== 👥 メンバー状況ボード (運営改修 #1・運営ONのみ) ==========
@@ -26855,11 +26993,12 @@
             ['myAttackModal', 'myAttackOcrInput', (ev) => handleMyAttackOcrUpload(ev)],          // ⚔️ 凸報告 (TOTAL DAMAGE + 戦闘履歴)
             ['myTeamEditModal', 'myTeamEditOcrInput', (ev) => handleMyTeamEditOcr(ev)],           // 📸 模擬の提出 (戦闘履歴)
             ['myBulkAttackModal', 'myBulkAttackOcrInput', (ev) => handleMyBulkAttackOcrUpload(ev)],   // BlaBlaLINK 3凸
+            ['opsSecMockIntake', 'opsMockIntakeInput', (ev) => handleOpsMockIntakeUpload(ev)],      // 📸 運営の模擬取り込み (③-e・カードそのものが受け口)
         ];
         const _dropHasFiles = (ev) => Array.from(ev.dataTransfer?.types || []).includes('Files');
         function _enableFileDrop(modalId, inputId, handler) {
             const modal = document.getElementById(modalId);
-            const content = modal ? modal.querySelector('.player-select-content') : null;
+            const content = modal ? (modal.querySelector('.player-select-content') || (modal.classList.contains('dc-card') ? modal : null)) : null;   // カード (📸 運営の取り込み) はそのものが受け口
             if (!content) return;
             let depth = 0;   // 子要素を出入りしても dragleave が飛ぶので、深さで数える
             content.addEventListener('dragenter', (ev) => { if (!_dropHasFiles(ev)) return; ev.preventDefault(); depth++; content.classList.add('drop-over'); });

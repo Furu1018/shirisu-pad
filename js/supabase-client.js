@@ -964,7 +964,8 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
 // 戻り値: { slot, redirected, teamChanged, levels } — UI がフィードバック文言を組む用
 // entries を渡すと Lv1〜Lv4 をまとめて登録できる (フォームの内容がそのまま保存結果になる)。
 // 従来どおり damageB/level を渡せば1件だけの登録 (OCR・旧経路の互換)。
-window.supabaseSaveMockSubmission = async function (playerId, attribute, { damageB, level = null, slot = 1, characters = null, entries = null } = {}) {
+// actorName を渡すと「運営が代理で登録」の印を活動ログに残す (📸 運営の模擬取り込み・③-e)
+window.supabaseSaveMockSubmission = async function (playerId, attribute, { damageB, level = null, slot = 1, characters = null, entries = null, actorName = null } = {}) {
     const valid = ['fire','water','iron','electric','wind'];
     if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
     const multi = entries && typeof entries === 'object';
@@ -1040,7 +1041,7 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
     if (r1.error) throw r1.error;
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
     const slotJp = Number(targetSlot) >= 2 ? ` (${Number(targetSlot)}編成目)` : '';
-    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lv ? ` [Lv${lv}]` : ''}${slotJp}${redirected ? ' (同一編成のため統合)' : ''}`, { playerId });
+    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lv ? ` [Lv${lv}]` : ''}${slotJp}${redirected ? ' (同一編成のため統合)' : ''}` + (actorName ? ' (運営が代理で登録)' : ''), { playerId, actorName: actorName || null });
     return { slot: targetSlot, redirected, teamChanged: merged.teamChanged, levels: merged.levels };
 };
 

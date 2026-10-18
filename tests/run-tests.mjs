@@ -18,6 +18,7 @@ import '../js/domain/planDiff.js';        // globalThis.planDiffDomain (配信�
 import '../js/domain/reservations.js';    // globalThis.reservationsDomain (凸の予約 — L2 / 課題E)
 import '../js/domain/availability.js';    // globalThis.availabilityDomain (戦闘可能時間の読み方)
 import '../js/domain/raidBlocks.js';      // globalThis.raidBlocksDomain (🧱 レイド日のブロック — ブロック制 2026-10-17)
+import '../js/domain/mockIntake.js';      // globalThis.mockIntakeDomain (📸 運営の模擬取り込み — ブロック制 ③-e 2026-10-18)
 import '../js/domain/clientGate.js';      // globalThis.clientGateDomain (互換ゲート — L2 ⑦)
 import '../js/domain/popularTeams.js';  // globalThis.popularTeamsDomain (人気編成の合算集計)
 import '../js/domain/testSeason.js';    // globalThis.testSeasonDomain (テスト終了時のキャラ整理)
@@ -3531,7 +3532,7 @@ console.log('\nopsLayoutDomain:');
         // 段階4 (2026-09-11): 📈ペース / 🔁直近 は当日に開く (交代した運営が最初に読む2枚)
         assert.deepEqual(openDay, ['opsSecActions', 'opsSecBoss', 'opsSecMembers', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining']);
         const openPre = ids.filter(id => dom.resolveOpen(id, 'pre', null, true)).sort();
-        assert.deepEqual(openPre, ['opsSecActions', 'opsSecMembers', 'opsSecPlan', 'opsSecReserve']);
+        assert.deepEqual(openPre, ['opsSecActions', 'opsSecMembers', 'opsSecMockIntake', 'opsSecPlan', 'opsSecReserve']);   // 📸 模擬の取り込み (③-e) は前日に開く・当日は畳む
         assert.ok(ids.every(id => dom.resolveOpen(id, 'day', { day: Object.fromEntries(ids.map(i => [i, false])) }, false)), '運営OFFは記憶に関係なく全開');
         assert.equal(dom.resolveOpen('opsSecActions', 'day', { day: { opsSecActions: false } }, true), true, 'always は畳めない');
         assert.equal(dom.resolveOpen('unknown', 'day', null, true), true);
@@ -3798,11 +3799,12 @@ console.log('\nopsStageDomain:');
         const lay = globalThis.opsLayoutDomain;
         // ★ 順番も見る — 2列/12カラムでは並び順が行の組み方を決める (各行が 12 に揃うかは別のテスト)
         const vis = (s) => lay.CARDS.filter(c => dom.visibleIn(c, s)).map(c => c.id);
-        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan']);
+        // 📸 模擬の取り込み (③-e) は 12 で単独の行: 前日は メンバー状況12 の次、当日は 残り12 の次、準備は先頭
+        assert.deepEqual(vis('pre'), ['opsSecMembers', 'opsSecMockIntake', 'opsSecReserve', 'opsSecDiscord', 'opsSecPlan']);
         // ★ ボス7+締め凸5 の次に ペース7+直近5 (各行 12)。順を崩すと 7 が独りになる
-        assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining', 'opsSecPlan']);
+        assert.deepEqual(vis('day'), ['opsSecActions', 'opsSecBoss', 'opsSecFinish', 'opsSecPace', 'opsSecRecent', 'opsSecRemaining', 'opsSecMockIntake', 'opsSecPlan']);
         // 準備にも育成の取り込み (新メンバーのぶんを取り直す・2026-09-15)。7+5 の次に 12
-        assert.deepEqual(vis('prep'), ['opsSecSeason', 'opsSecPush', 'opsSecGrowth']);
+        assert.deepEqual(vis('prep'), ['opsSecMockIntake', 'opsSecSeason', 'opsSecPush', 'opsSecGrowth']);
         assert.deepEqual(vis('end'), ['opsSecDiscord', 'opsSecSeason', 'opsSecGrowth']);
         assert.ok(lay.CARDS.every(c => Array.isArray(c.stages)), 'stages の無いカードがある (全段階に出てしまう)');
     });
@@ -11823,6 +11825,71 @@ console.log('\ngrowthDomain:');
         });
     }
 
+    test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {
+        const dom = globalThis.mockIntakeDomain, rb = globalThis.raidBlocksDomain;
+        const blocks = rb.blocksOfSeason(null);   // 既定 7 ブロック (朝5-8 / 午前9-11 / 昼12-14 / 午後15-17 / 夕方18-20 / 夜21-23 / 深夜0-4)
+        const full = { fire: 1, water: 1, electric: 1, iron: 1, wind: 1 };
+        const rows = dom.missingRows({ players: [
+            { id: 1, name: 'よる', damagesByAttr: { fire: 10 }, availableSlots: ['h21', 'h22'] },
+            { id: 2, name: 'あさ', damagesByAttr: {}, availableSlots: ['h07', 'h20'] },
+            { id: 3, name: 'ぜんぶ', damagesByAttr: full, availableSlots: ['h07'] },
+            { id: 4, name: 'すきま', damagesByAttr: {}, flexTime: true, availableSlots: ['h05'] },
+            { id: 5, name: 'みとうろく', damagesByAttr: {}, availableSlots: [] },
+            { id: 6, name: 'しょこ', damagesByAttr: {}, archived: true, availableSlots: ['h05'] },
+            { id: 7, name: 'むり', damagesByAttr: {}, unavailableThisSeason: true, availableSlots: [] },
+            { id: 8, name: 'あさ2', damagesByAttr: { fire: 1, water: 1 }, availableSlots: ['h08'] },
+            { id: 9, name: 'あさ3', damagesByAttr: { fire: 1, water: 1 }, availableSlots: ['h06'] },
+        ], blocks });
+        assert.deepEqual(rows.map(r => r.name), ['あさ', 'あさ2', 'あさ3', 'よる', 'すきま', 'みとうろく'], '並び: 期限 (朝 → 夜) → 足りない数 (5 → 3) → 名前。いつでも は最後');
+        assert.deepEqual(rows[0].deadline, { idx: 0, name: '朝' }); assert.deepEqual(rows[3].deadline, { idx: 5, name: '夜' });
+        assert.equal(rows[4].deadline, null); assert.equal(rows[4].noSlots, false, '⏳隙間型は いつでも (時間未登録ではない)');
+        assert.equal(rows[5].deadline, null); assert.equal(rows[5].noSlots, true, '時間未登録');
+        assert.deepEqual(rows[3].missing, ['water', 'electric', 'iron', 'wind']); assert.deepEqual(rows[3].missingJp, ['水冷', '電撃', '鉄甲', '風圧']); assert.equal(rows[3].submitted, 1);
+        assert.deepEqual(rows[0].missing, dom.ATTR_KEYS, '未提出は 5 属性全部');
+        assert.equal(dom.summary(rows, 9), '届いていない人 6 / 9'); assert.equal(dom.summary([], 9), '全員そろっています'); assert.equal(dom.summary([], 0), '');
+        // ブロック無し (season 無し) でも落ちない = 期限なし
+        assert.equal(dom.missingRows({ players: [{ id: 1, name: 'a', damagesByAttr: {}, availableSlots: ['h07'] }], blocks: [] })[0].deadline, null);
+        assert.deepEqual(dom.missingRows({}), []);
+    });
+
+    test('★ 配線: 📸 模擬の取り込み (③-e) — 戦況タブのカード / カードが受け口 / 誰の模擬か (forPlayer) で本人と同じ経路に保存 / 代理の印 / 保存後に盤面を描き直す', () => {
+        const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
+        const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js');
+        assert.ok(html.includes('<script defer src="./js/domain/mockIntake.js"></script>'), 'mockIntake.js を読み込んでいない');
+        assert.ok(/id: 'opsSecMockIntake', title: '模擬の取り込み',[^\n]*opsOnly: true,[^\n]*stages: \['prep', 'pre', 'day'\], span: 12/.test(layout), 'CARDS に無い / 段階・幅が違う');
+        assert.ok(/<div class="dc-card" data-ops-only id="opsSecMockIntake">\s*\n[\s\S]{0,400}📸 模擬の取り込み</.test(html), 'カードが無い (id は CARDS と同じにして受け口に使う)');
+        assert.ok(/<select id="opsMockIntakePlayer" onchange="_opsMockIntakePick\(this\.value\)"/.test(html) && /<input type="file" id="opsMockIntakeInput" accept="image\/\*" multiple onchange="handleOpsMockIntakeUpload\(event\)"/.test(html), '誰の模擬か / スクショの入口が無い');
+        // 受け口: カードそのもの (モーダルの .player-select-content が無いので、.dc-card を受け口にする)
+        assert.ok(/\['opsSecMockIntake', 'opsMockIntakeInput', \(ev\) => handleOpsMockIntakeUpload\(ev\)\],/.test(html), '_FILE_DROPS に無い');
+        assert.ok(/const content = modal \? \(modal\.querySelector\('\.player-select-content'\) \|\| \(modal\.classList\.contains\('dc-card'\) \? modal : null\)\) : null;/.test(html), 'カードを受け口にできない');
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/\.player-select-content\.drop-over, \.dc-card\.drop-over \{/.test(css) && /\.player-select-content\.drop-over::after, \.dc-card\.drop-over::after \{/.test(css), 'カードに落とす見た目が無い');
+        // 読み取り → 本人と同じプレビュー (forPlayer 付き)
+        const up = html.match(/async function handleOpsMockIntakeUpload\(event\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!_opsMode\) \{ fail\('運営モードで使います'\); return; \}/.test(up), '運営OFF で動く');
+        assert.ok(/const target = _mockIntake\.players\.find\(p => Number\(p\.id\) === Number\(_mockIntake\.picked\)\) \|\| null;/.test(up) && /fail\('先に「誰の模擬か」を選んでください'\)/.test(up), '誰の模擬か を見ていない');
+        assert.ok(/const r = await _ocrAttackMultiAndMerge\(files\);/.test(up) && /const ptAttr = await detectPtAttrFromBossName\(r\.bossName\);/.test(up), '本人と同じ読み取りでない');
+        assert.ok(/forPlayer: \{ id: Number\(target\.id\), name: target\.name \},/.test(up) && /openMyDmgPreviewModal\(\);/.test(up), 'forPlayer 付きでプレビューを開いていない');
+        // 保存: forPlayer があればその人に・代理の印・盤面の描き直し。無ければ従来どおり本人
+        const save = html.match(/async function handleMyDmgPreviewSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const forPlayer = d\.forPlayer \|\| null;\s*\n\s*const id = forPlayer \|\| getCurrentIdentity\(\);/.test(save), '保存先が forPlayer でない');
+        assert.ok(/getElementById\(forPlayer \? 'opsMockIntakeStatus' : 'mypageDmgOcrStatus'\)/.test(save), '結果を出す場所が来た入口でない');
+        assert.ok(/actorName: forPlayer \? \(\(getCurrentIdentity\(\) \|\| \{\}\)\.name \|\| '運営'\) : null,/.test(save), '代理の印を渡していない');
+        assert.ok(/if \(forPlayer\) \{\s*\n[\s\S]{0,300}opsStore\.invalidate\(\);\s*\n\s*renderOpsMockIntake\(true\);\s*\n\s*renderOpsMemberStatus\(null, true\);/.test(save), '保存後に盤面 (届いていない人・メンバー状況) を描き直していない');
+        assert.ok(/if \(me\?\.id && Number\(me\.id\) === Number\(forPlayer\.id\)\) await renderMyDamagePanels\(me\);\s*\n\s*return;/.test(save), '自分のぶんを取り込んだときに模擬タブを描き直していない / 本人の経路へ流れている');
+        // プレビューに「誰の模擬として」/ 再撮影は来た入口へ
+        assert.ok(/<p id="myDmgPreviewFor"/.test(html) && /forEl\.textContent = d\.forPlayer \? `👑 運営の取り込み: \$\{d\.forPlayer\.name\} さんの模擬として登録します` : '';/.test(html), '誰の模擬として登録するかが出ない');
+        assert.ok(/const forOps = !!_myDmgPreviewData\?\.forPlayer;[\s\S]{0,200}getElementById\(forOps \? 'opsMockIntakeInput' : 'mypageDmgOcrInput'\)/.test(html), '再撮影が本人の入口に戻ってしまう');
+        // 活動ログの代理の印 (本人の保存では付かない)
+        assert.ok(/actorName = null \} = \{\}\) \{/.test(client) && /\+ \(actorName \? ' \(運営が代理で登録\)' : ''\), \{ playerId, actorName: actorName \|\| null \}\);/.test(client), '活動ログに代理の印が無い');
+        // 描画: ダッシュボードで呼ぶ / 運営OFF は何もしない / 世代ガード
+        assert.ok(/renderOpsGrowth\(\);[^\n]*\n\s*renderOpsMockIntake\(\);/.test(html), 'ダッシュボードで描いていない');
+        const render = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!_opsMode\) return;/.test(render) && /const gen = \+\+_mockIntake\.gen;/.test(render) && /if \(gen !== _mockIntake\.gen\) return;/.test(render), '運営OFF / 世代ガードが無い');
+        assert.ok(/const rows = dom\.missingRows\(\{ players, blocks \}\);/.test(render) && /const blocks = rb \? rb\.blocksOfSeason\(snap\.season\) : \[\];/.test(render), '届いていない人をドメインで決めていない');
+        assert.ok(/_opsMockIntakePickFromList\(\$\{Number\(r\.id\)\}\)/.test(render), '名前を押してその人を選べない');
+    });
+
     test('★ 配線: 育成の取り込みパネル (段階「準備」と「終了」・upsert のみ・43未適用は止める)', () => {
         const rd = (...p) => _grRd(...p).split(String.fromCharCode(13)).join('');
         const html = rd('index.html'), client = rd('js', 'supabase-client.js'), layout = rd('js', 'domain', 'opsLayout.js');
@@ -12404,18 +12471,18 @@ console.log('\n運営チームの要望 2026-10-10:');
     });
     test('★ 配線: PC の D&D — 凸報告・模擬の提出・BlaBlaLINK 3凸 のシートに画像を落とすと、ファイルを選んだときと同じ関数に同じ形で渡す', () => {
         const drops = html.match(/const _FILE_DROPS = \[[\s\S]*?\n        \];/)?.[0].replace(/\/\/[^\n]*/g, '') || '';
-        assert.ok(/\['myAttackModal', 'myAttackOcrInput', \(ev\) => handleMyAttackOcrUpload\(ev\)\],\s*\['myTeamEditModal', 'myTeamEditOcrInput', \(ev\) => handleMyTeamEditOcr\(ev\)\],\s*\['myBulkAttackModal', 'myBulkAttackOcrInput', \(ev\) => handleMyBulkAttackOcrUpload\(ev\)\],\s*\];/.test(drops), '受け口の一覧が違う');
+        assert.ok(/\['myAttackModal', 'myAttackOcrInput', \(ev\) => handleMyAttackOcrUpload\(ev\)\],\s*\['myTeamEditModal', 'myTeamEditOcrInput', \(ev\) => handleMyTeamEditOcr\(ev\)\],\s*\['myBulkAttackModal', 'myBulkAttackOcrInput', \(ev\) => handleMyBulkAttackOcrUpload\(ev\)\],\s*\['opsSecMockIntake', 'opsMockIntakeInput', \(ev\) => handleOpsMockIntakeUpload\(ev\)\],\s*\];/.test(drops), '受け口の一覧が違う');
         const fn = html.match(/function _enableFileDrop\(modalId, inputId, handler\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const files = Array\.from\(ev\.dataTransfer\.files \|\| \[\]\)\.filter\(f => \/\^image\\\/\/\.test\(f\.type\)\);/.test(fn), '画像以外を通している');
         assert.ok(/handler\(\{ target: \{ files, value: '' \} \}\);/.test(fn), 'ファイルを選んだときと違う形で渡している (読み取りの経路が増える)');
         assert.ok(/if \(!_dropHasFiles\(ev\)\) return;/.test(fn), '盤面のドラッグ (text\/plain) まで受け口にしている');
-        for (const [modalId, inputId] of [['myAttackModal', 'myAttackOcrInput'], ['myTeamEditModal', 'myTeamEditOcrInput'], ['myBulkAttackModal', 'myBulkAttackOcrInput']]) {
+        for (const [modalId, inputId] of [['myAttackModal', 'myAttackOcrInput'], ['myTeamEditModal', 'myTeamEditOcrInput'], ['myBulkAttackModal', 'myBulkAttackOcrInput'], ['opsSecMockIntake', 'opsMockIntakeInput']]) {
             assert.ok(html.includes(`id="${modalId}"`) && html.includes(`id="${inputId}"`), `${modalId} / ${inputId} が画面に無い`);
         }
         assert.ok(/_initSheetSwipeDismiss\(\) \{\s*_SHEET_DISMISS\.forEach[^\n]*\n\s*_initFileDrops\(\);/.test(html), '起動時に受け口を付けていない');
         assert.ok(/document\.addEventListener\('drop', \(ev\) => \{ if \(_dropHasFiles\(ev\)\) ev\.preventDefault\(\); \}\);/.test(html), '受け口の外に落としたとき画像がそのまま開く');
-        assert.ok(/\.player-select-content\.drop-over::after \{ content: '📷 ここに落として読み取る';/.test(html), '落とせる案内が無い');
-        assert.ok(/\.player-select-content\.drop-over \{[^}]*position: relative;/.test(html), '案内がシートの外 (モーダル全体) に広がる (位置の基準が無い)');
+        assert.ok(/\.player-select-content\.drop-over::after, \.dc-card\.drop-over::after \{ content: '📷 ここに落として読み取る';/.test(html), '落とせる案内が無い (📸 運営の取り込みのカードにも出す)');
+        assert.ok(/\.player-select-content\.drop-over, \.dc-card\.drop-over \{[^}]*position: relative;/.test(html), '案内がシートの外 (モーダル全体) に広がる (位置の基準が無い)');
     });
 }
 
