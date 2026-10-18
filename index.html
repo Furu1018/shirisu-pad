@@ -21238,7 +21238,8 @@
             plan.conditions = window.planBoardDomain ? window.planBoardDomain.conditionsOf({
                 who: plan.availableAtLabel ? 'block' : (onlyNow ? 'now' : 'all'),
                 block: plan.availableAtLabel || null,   // 🧱 どのブロックで組んだか (「夕方 18〜20時」)
-                from: blk ? 'block' : (plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode),   // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む。🧱 はブロックの頭
+                // 前日は「今から」でも朝5時から組む (_planNowSlot) — 使った起点を焼き込む。🧱 は起点がブロックの頭なら 'block'、ブロックの途中 (今 > 頭) なら 'now' (Codex指摘)
+                from: blk ? (plan.currentSlot === _hourKey(blk.from) ? 'block' : 'now') : (plan.currentSlot === 'h05' ? 'day' : _opsPlanStartMode),
                 prev: _opsPlanSticky ? 'keep' : 'fresh',
                 time: plan.timeStrict ? 'strict' : 'damage',   // 実際に使った時間の扱いを焼き込む
                 reservations: (Array.isArray(reservations) && window.reservationsDomain)
@@ -22572,7 +22573,7 @@
                 //   ※ 照合と INSERT の間の窓は残る。完全に閉じるにはサーバ側 RPC で照合と INSERT を一体化する
                 if (!(await _publishReservationGuard(seasonId))) return;
                 const me = getCurrentIdentity();
-                const pub = await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null, seasonId, PLAN_SCHEMA);
+                const pub = await window.supabasePublishPlan(_opsLastPlan, me?.id || null, me?.name || null, seasonId, _planSchemaOf(_opsLastPlan));
                 showNotification('✅ プランを配信しました');
                 // 通知対象は**配信後に**取り直す: 確認ダイアログを出している間に押した人も拾える。
                 // 新しい plan_id を確認済みの人は除外する (配信直後に確認した人へ更新通知は不要)。
@@ -26872,8 +26873,11 @@
         //   予約まわりの契約を変えたときに上げ、行き渡ってから運営がゲートを締める
         const CLIENT_BUILD = 2026090801;   // 2026-09-08: 予約からレベルを外した (古い版はレベル無しの予約を拘束から落とす)
         // このクライアントが読める配信プランの版。予約を含むプランは 2。
-        // 3 = 🧱 blockScope を持つ配信 (2026-10-18)。古い版はこの印を知らず 1 日ぶんを見せてしまうので、版を上げて読ませない (too_new → 更新を促す)
+        // 3 = 🧱 blockScope を持つ配信 (2026-10-18)。古い版はこの印を知らず 1 日ぶんを見せてしまうので、版を上げて読ませない (too_new → 更新を促す)。
+        // ★ 配信に付ける版は _planSchemaOf(plan): blockScope が無い従来どおりの配信は 2 のまま (古い端末の表示を無駄に止めない — Codex指摘)
         const PLAN_SCHEMA = 3;
+        const _planSchemaOf = (plan) => (plan && plan.blockScope) ? 3 : 2;
+        window._planSchemaOf = _planSchemaOf;   // 練習の案内 (js/practice/guide.js) も同じ版の付け方で配信する
         let _gateVerdict = null;   // clientGateDomain.evaluate の結果 (null = 制限なし)
         let _gateRaw = null;       // app_gate の行 (min_plan_schema を見るのに使う)
         let _gateSeq = 0;          // 要求の世代 (古い応答で新しい判定を上書きしない)

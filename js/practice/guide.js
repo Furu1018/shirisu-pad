@@ -149,7 +149,7 @@
         if (!plan) throw new Error('プランを組めませんでした');
         plan.conditions = { who: 'all', from: startMode === 'day' ? 'day' : 'now', prev: pub ? 'keep' : 'fresh', computedAt: new Date().toISOString(), computedBy: P.ops.name,
             reservations: rows.filter(function (r) { return r.status === 'approved'; }).length, excluded: 0, unavailable: 0 };
-        var schema = typeof PLAN_SCHEMA !== 'undefined' ? PLAN_SCHEMA : null;
+        var schema = (typeof window._planSchemaOf === 'function') ? window._planSchemaOf(plan) : (typeof PLAN_SCHEMA !== 'undefined' ? PLAN_SCHEMA : null);
         return window.supabasePublishPlan(plan, P.ops.id, P.ops.name, c.season.id, schema);
     }
     var ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
