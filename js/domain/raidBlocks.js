@@ -226,6 +226,47 @@
         const parts = blockStates(blocks, slots).filter(x => x.state !== 'off').map(x => x.state === 'partial' ? `${x.name} (一部)` : x.name);
         return parts.length ? parts.join('・') : '未登録';
     }
+    /**
+     * 📅 きょうの凸 (③-c・2026-10-18・モック 3): ブロックごとに 1 行。
+     *   state: past (もう過ぎた) / now (いま) / next (次) / later (その先)
+     *   done: このブロックの時刻に報告した自分の凸 / planned: 配信プランでこのブロックに置かれた自分の凸
+     *   covered: このブロックの割当は配信で決まっているか (1 日ぶんの配信なら全部・ブロックのぶんだけの配信ならそのブロックだけ・配信無しなら無し)
+     * @param {{blocks:Object[], nowHour:number, plan:Object|null, viewerId:any, attacks:Object[], hourOfIso:(iso:string)=>number|null}} a
+     */
+    function todayRows(a) {
+        const blocks = Array.isArray(a && a.blocks) ? a.blocks : [];
+        const nowIdx = blockIndexOfHour(blocks, a && a.nowHour);
+        const plan = a && a.plan ? a.plan : null;
+        const scope = plan && plan.blockScope ? plan.blockScope : null;
+        const sameId = (x, y) => x != null && y != null && String(x) === String(y);
+        const planned = [];
+        for (const lv of (plan && Array.isArray(plan.levels) ? plan.levels : [])) {
+            for (const b of (Array.isArray(lv.bosses) ? lv.bosses : [])) {
+                for (const at of (Array.isArray(b.attacks) ? b.attacks : [])) {
+                    if (!sameId(at.memberId, a.viewerId) || !Number.isInteger(at.hourIdx)) continue;
+                    const bi = blocks.findIndex(bk => at.hourIdx >= bk.fromIdx && at.hourIdx <= bk.toIdx);
+                    if (bi < 0) continue;
+                    planned.push({ block: bi, bossNumber: b.bossNumber, bossName: b.name || null, weakness: b.weakness || null, level: lv.level,
+                        dmgB: Number(at.dmgB) || 0, hourLabel: at.hourLabel || null, flex: !!at.flex, loadoutSlot: at.loadoutSlot || 1, team: Array.isArray(at.team) ? at.team : null });
+                }
+            }
+        }
+        const done = [];
+        for (const r of (Array.isArray(a && a.attacks) ? a.attacks : [])) {
+            if (!r) continue;
+            const h = (typeof r.reported_at === 'string' && typeof a.hourOfIso === 'function') ? a.hourOfIso(r.reported_at) : null;
+            const bi = h == null ? -1 : blockIndexOfHour(blocks, h);
+            done.push({ block: bi, bossNumber: r.boss_number ?? null, level: r.level ?? null, damageB: Number(r.damage_raw) > 0 ? Number(r.damage_raw) / 1e9 : 0, hour: h });
+        }
+        const rows = blocks.map((b, i) => ({
+            idx: i, name: b.name, label: b.label,
+            state: nowIdx < 0 ? 'later' : (i < nowIdx ? 'past' : (i === nowIdx ? 'now' : (i === nowIdx + 1 ? 'next' : 'later'))),
+            planned: planned.filter(x => x.block === i),
+            done: done.filter(x => x.block === i),
+            covered: plan ? (scope ? (b.from === scope.from && b.to === scope.to) : true) : false,
+        }));
+        return { rows, nowIdx, unknownTime: done.filter(x => x.block < 0), total: done.length };
+    }
     /** そのブロックに入る凸の数 */
     const attackCountIn = (plan, scope) => (scopePlan(plan, scope)?.levels || []).reduce((t, lv) => t + lv.bosses.reduce((u, b) => u + b.attacks.length, 0), 0);
 
@@ -233,6 +274,6 @@
         HOUR_ORDER, DEFAULT_BLOCKS, MIN_BLOCKS, MAX_BLOCKS, MAX_NAME,
         normalize, blocksOfSeason, toConfig, sameConfig, labelOf, toHour, addSplit, removeAt,
         blockIndexOfHour, blockIndexOfSlot, blockAt, canAttackInBlock, membersInBlock, blocksOfSlots, slotsOfBlocks,
-        scopePlan, attackCountIn, laterSlot, scopeReservations, blockStates, toggleBlock, blocksLabel,
+        scopePlan, attackCountIn, laterSlot, scopeReservations, blockStates, toggleBlock, blocksLabel, todayRows,
     };
 })(typeof window !== 'undefined' ? window : globalThis);

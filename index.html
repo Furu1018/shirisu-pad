@@ -4162,6 +4162,16 @@
                 <div id="myPublishedPlanBody"></div>
             </div>
 
+            <!-- 📅 きょうの凸 (🧱 ブロック制 ③-c・2026-10-18・モック 3): ブロックごとに 1 行。済んだ凸は ✓ と実績、いまのブロックは枠、
+                 先のブロックは「未定」。中身は renderMyTodayBlocks が描く (配信プランカードのあとに同じ材料で) -->
+            <div class="dc-card" data-span="6" id="myTodayBlocksCard" style="display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                    <div style="font-size:14px;font-weight:800;color:var(--t-ink);letter-spacing:0.2px;">📅 きょうの凸</div>
+                    <span id="myTodayBlocksMeta" style="font-size:10px;font-weight:700;color:var(--t-muted);"></span>
+                </div>
+                <div id="myTodayBlocksBody"></div>
+            </div>
+
             <!-- 🔔 通知の疎通確認 (2026-10-07)。運営が確認の通知を送ったあと、まだ「届いた」と伝えていない人にだけ出る。
                  中身は renderMyPushCheckCard が描く (この端末の通知が有効か / 無効かで出すものが違う) -->
             <div class="dc-card" data-span="6" id="myPushCheckCard" style="display:none;"></div>
@@ -9429,13 +9439,72 @@
 
         // ========== 📤 配信された凸プラン (ホーム) ==========
         // 運営が「📤 配信」したプランを表示。自分の凸予定を先頭に、全体はシフト/ガント表で。
+        // ===== 📅 きょうの凸 (🧱 ブロック制 ③-c・2026-10-18・モック 3) =====
+        // ブロックごとに 1 行。済んだ凸は ✓ と実績 (その時刻のブロックに)、いまのブロックは枠、配信で決まっていない先のブロックは「未定」。
+        // 材料: ブロック (シーズンの区切り)・配信プラン (_myPubState.plan = 範囲に絞ったもの)・その日の自分の凸 (_myPubState.myAttackRows・無ければ読む)。
+        // ★ 判定は raidBlocksDomain.todayRows が唯一。ここは描くだけ
+        let _todayBlocksSeq = 0;
+        async function renderMyTodayBlocks(identity) {
+            const card = document.getElementById('myTodayBlocksCard');
+            const body = document.getElementById('myTodayBlocksBody');
+            const meta = document.getElementById('myTodayBlocksMeta');
+            if (!card || !body) return;
+            const rbd = window.raidBlocksDomain;
+            if (!identity?.id || !rbd) { card.style.display = 'none'; return; }
+            const seq = ++_todayBlocksSeq;
+            let season = null, rows = null;
+            try {
+                const ctx = await ensureActiveSeasonLoaded();
+                season = ctx?.season || null;
+                if (!season?.id) { card.style.display = 'none'; return; }
+                const st = (_myPubState && String(_myPubState.viewerId) === String(identity.id) && String(_myPubState.seasonId) === String(season.id)) ? _myPubState : null;
+                rows = Array.isArray(st?.myAttackRows) ? st.myAttackRows
+                    : (typeof window.supabaseLoadMyAttacks === 'function' ? await window.supabaseLoadMyAttacks(identity.id, season.id, season.hard_date) : []);
+                if (seq !== _todayBlocksSeq) return;
+                const blocks = rbd.blocksOfSeason(season);
+                const nowHour = Number(String(getCurrentSlotJST()).slice(1));
+                const t = rbd.todayRows({ blocks, nowHour, plan: st ? st.plan : null, viewerId: identity.id, attacks: rows || [], hourOfIso: _planJstHour });
+                const esc = escapeHtml;
+                const bossName = (bn) => { const b = (ctx?.bosses || []).find(x => Number(x.boss_number) === Number(bn)); return b ? `B${bn} ${b.name || ''}`.trim() : `B${bn}`; };
+                const stateChip = (r) => r.state === 'now' ? '<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-solid);color:var(--ops-ink);">いま</span>'
+                    : r.state === 'next' ? '<span style="font-size:9.5px;font-weight:900;padding:1px 7px;border-radius:999px;background:var(--ops-bg);color:var(--ops-deep);">次</span>'
+                    : r.state === 'past' ? '<span style="font-size:9.5px;font-weight:900;color:var(--t-muted);">済</span>' : '';
+                const html = t.rows.map(r => {
+                    const doneHtml = r.done.map(d => `<div style="font-size:12px;font-weight:800;color:var(--ok-deep);">✓ ${esc(bossName(d.bossNumber))}${d.level ? ` Lv${d.level}` : ''}${d.damageB ? ` · ${d.damageB.toFixed(1)}B` : ''}</div>`).join('');
+                    const planHtml = r.planned.map(pz => {
+                        const c = DC_ATTR_COLORS[pz.weakness] || '#7A7C81';
+                        const pt = PT_ATTRS.find(x => x.key === pz.weakness)?.name || '';
+                        // ★ 本文は 1 つの span に (flex の子にテキストを直に並べると横に散って折り返す)
+                        return `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.45;"><span style="width:8px;height:8px;border-radius:50%;background:${c};flex:none;margin-top:5px;"></span><span style="flex:1;min-width:0;">${esc(bossName(pz.bossNumber))}${pt ? ` <span style="color:var(--t-muted);">${esc(pt)}PT</span>` : ''} · ${pz.dmgB.toFixed(1)}B${pz.flex ? ' <span style="color:var(--warn-deep);">⏳隙間</span>' : (pz.hourLabel ? ` <span style="color:var(--t-muted);">${esc(pz.hourLabel)}</span>` : '')}</span></div>`;
+                    }).join('');
+                    let bodyHtml = doneHtml + planHtml;
+                    if (!bodyHtml) {
+                        bodyHtml = r.state === 'past' ? '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">凸なし</div>'
+                            : r.covered ? '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">このブロックに割当はありません</div>'
+                            : '<div style="font-size:11.5px;font-weight:700;color:var(--t-muted);">まだ決まっていません (運営がこのブロックの前に配信します)</div>';
+                    }
+                    const frame = r.state === 'now' ? 'outline:2px solid var(--ops-solid);outline-offset:-2px;background:var(--ops-bg);' : (r.state === 'past' ? 'opacity:0.75;' : '');
+                    return `<div style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start;padding:8px 10px;border-radius:10px;${frame}border-bottom:1px solid rgba(var(--ink-rgb), 0.05);">
+                        <div><div style="font-size:12.5px;font-weight:900;color:var(--t-ink);">${esc(r.name)}</div><div style="font-size:9.5px;font-weight:800;color:var(--t-muted);font-variant-numeric:tabular-nums;">${esc(r.label.slice(r.name.length).trim())}</div><div style="margin-top:2px;">${stateChip(r)}</div></div>
+                        <div style="min-width:0;display:flex;flex-direction:column;gap:3px;">${bodyHtml}</div>
+                    </div>`;
+                }).join('');
+                body.innerHTML = html + (t.unknownTime.length ? `<p style="margin:6px 0 0;font-size:10.5px;color:var(--t-muted);font-weight:700;">✓ 時刻の分からない凸 ${t.unknownTime.length} 件は行に出ません</p>` : '');
+                if (meta) meta.textContent = `${t.total} / 3 凸 済み${st?.plan?.blockScope ? ` · 配信は ${st.plan.blockScope.name} のぶん` : ''}`;
+                card.style.display = '';
+            } catch (e) {
+                console.warn('[きょうの凸] 描画失敗:', e?.message || e);
+                if (seq === _todayBlocksSeq) card.style.display = 'none';
+            }
+        }
+
         async function renderMyPublishedPlan(identity) {
             const mySeq = ++_myPubRenderSeq;   // 早期 return より前で採番: 未ログイン呼び出し(カード非表示)でも in-flight の先行取得を無効化する
             const card = document.getElementById('myPublishedPlanCard');
             if (!card) return;
             const body = document.getElementById('myPublishedPlanBody');
             const metaEl = document.getElementById('myPublishedPlanMeta');
-            if (!identity?.id) { card.style.display = 'none'; return; }
+            if (!identity?.id) { card.style.display = 'none'; renderMyTodayBlocks(null); return; }
             let pub = null;
             try {
                 pub = await window.supabaseGetPublishedPlan();
@@ -9474,6 +9543,7 @@
             }
             if (!pub?.plan) {
                 card.style.display = 'none';
+                renderMyTodayBlocks(identity);   // 📅 配信が無くても、済んだ凸とブロックの並びは出す
                 // 配信が取り下げられた/シーズンが変わった → 提出カードの採用マークも消す
                 if (_setMyPlanPicks(null, identity.id) && typeof renderMyDamagePanels === 'function') {
                     renderMyDamagePanels(identity);
@@ -9497,11 +9567,13 @@
             const doneCounts = new Map();
             let liveLevel = Number(plan.startLevel) || 1;
             let todayAttacks = 0;   // その日の実凸総数 (予約の残凸検査に使う)
+            let myAttackRows = null;   // その日の自分の凸の行 (📅 きょうの凸)
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (ctx?.season?.current_level) liveLevel = Number(ctx.season.current_level) || liveLevel;
                 if (ctx?.season?.id && typeof window.supabaseLoadMyAttacks === 'function') {
                     const atks = await window.supabaseLoadMyAttacks(identity.id, ctx.season.id, ctx.season.hard_date);
+                    myAttackRows = Array.isArray(atks) ? atks : [];   // 📅 きょうの凸 に使い回す (二度読まない)
                     // ★ 残凸の検査は DB と同じ「当日の実凸**総数**」で数える (Codex指摘 2026-09-07)。
                     //   下の doneCounts は「配信後にプランの行を消し込んだ数」なので別物 —
                     //   プランに無いボスへ3凸済みでも 0 のままになり、申請できてしまう
@@ -9582,12 +9654,13 @@
             _myPubState = { plan, viewerId: identity.id, doneCounts, stale, liveLevel,
                             planId: pub.id, seasonId: pub.season_id, doneSeason, ack: ackState,
                             frozen: !!pub.frozen_at, frozenBy: pub.frozen_by || null, myChange,
-                            resv: myResv, todayAttacks };
+                            resv: myResv, todayAttacks, myAttackRows };
             // 済んだ凸を時間割に混ぜるため読む (2026-09-11)。失敗しても本体は描く
             await _ensurePlanDoneAttacks(seasonStore.get()?.season);
             if (mySeq !== _myPubRenderSeq) return;   // 取得中に新しい render が始まっていたら降りる
             _renderMyPubBody();
             card.style.display = '';
+            renderMyTodayBlocks(identity);   // 📅 きょうの凸 (配信・済んだ凸・ブロックの並びがそろった)
             // ヒーローの割当ストリップは _myPubState 依存。プランの取得はこのカードが先に走るので、
             // 内容が変わったときだけヒーローを描き直す (毎回だと二重フェッチになる)
             try {

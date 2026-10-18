@@ -615,6 +615,31 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.deepEqual(d.toggleBlock(null, B[0], true), ['h05', 'h06', 'h07', 'h08']); assert.deepEqual(d.toggleBlock(keys, null, true), keys);
     assert.equal(d.blocksLabel(B, keys), '朝・昼 (一部)・夜 (一部)'); assert.equal(d.blocksLabel(B, []), '未登録');
     assert.deepEqual(d.blockStates([], keys), []);
+    // 📅 きょうの凸 (③-c): ブロックごとに 1 行。済んだ凸はその時刻のブロックに / 配信の割当はそのブロックに / いま・次・済・未定 / 決まっているか
+    const jst = (iso) => { const dd = new Date(iso); return Number.isNaN(dd.getTime()) ? null : Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).format(dd)) % 24; };
+    const myPlan = { blockScope: { from: 18, to: 20 }, levels: [
+        { level: 2, bosses: [{ bossNumber: 3, name: 'C', weakness: 'fire', attacks: [{ memberId: 7, hourIdx: 13, dmgB: 22.1, hourLabel: '18時' }, { memberId: 8, hourIdx: 13, dmgB: 30 }] }] },
+        { level: 3, bosses: [{ bossNumber: 1, weakness: 'water', attacks: [{ memberId: 7, hourIdx: 17, dmgB: 25, flex: true }] }] },
+    ] };
+    const myAtks = [
+        { boss_number: 2, level: 1, damage_raw: 24.3e9, reported_at: '2026-10-10T01:10:00Z' },   // JST 10時 → 午前
+        { boss_number: 4, level: 1, damage_raw: 20e9, reported_at: null },                        // 時刻不明
+    ];
+    const t = d.todayRows({ blocks: B, nowHour: 19, plan: myPlan, viewerId: '7', attacks: myAtks, hourOfIso: jst });
+    assert.deepEqual(t.rows.map(r => r.state), ['past', 'past', 'past', 'past', 'now', 'next', 'later']);
+    assert.deepEqual(t.rows[1].done.map(x => [x.bossNumber, x.damageB]), [[2, 24.3]], '済んだ凸がその時刻のブロックに居ない');
+    assert.deepEqual(t.rows[4].planned.map(x => [x.bossNumber, x.level, x.dmgB, x.hourLabel]), [[3, 2, 22.1, '18時']], '配信の割当がそのブロックに居ない (他人の凸が混ざる)');
+    assert.deepEqual(t.rows[5].planned.map(x => [x.bossNumber, x.flex]), [[1, true]], '夜の ⏳隙間の割当が居ない');
+    assert.deepEqual(t.rows.map(r => r.covered), [false, false, false, false, true, false, false], 'ブロックのぶんの配信は、そのブロックだけ「決まっている」');
+    assert.equal(t.unknownTime.length, 1); assert.equal(t.total, 2); assert.equal(t.nowIdx, 4);
+    // 1 日ぶんの配信 (blockScope 無し) は全部「決まっている」。配信が無ければどれも決まっていない。数の id と文字列の id を同じ人と見る
+    const full = d.todayRows({ blocks: B, nowHour: 5, plan: { levels: myPlan.levels }, viewerId: 7, attacks: [], hourOfIso: jst });
+    assert.ok(full.rows.every(r => r.covered) && full.rows[0].state === 'now' && full.rows[6].state === 'later');
+    assert.equal(full.rows[4].planned.length, 1, '数の id で結べない');
+    const none = d.todayRows({ blocks: B, nowHour: 2, plan: null, viewerId: 7, attacks: myAtks, hourOfIso: jst });
+    assert.ok(none.rows.every(r => !r.covered) && none.rows[6].state === 'now' && none.rows[0].state === 'past');
+    assert.deepEqual(d.todayRows({ blocks: B, nowHour: 'x', plan: null, viewerId: 7, attacks: null, hourOfIso: null }).rows.map(r => r.state), new Array(7).fill('later'), '時刻が読めないときは全部 later');
+    assert.deepEqual(d.todayRows(null).rows, []);
     // 保存の形と同一判定
     assert.deepEqual(d.toConfig(two.blocks), [{ name: '前半', from: 5, to: 14 }, { name: '後半', from: 15, to: 4 }]);
     assert.equal(d.sameConfig(def.blocks, d.normalize(d.toConfig(def.blocks)).blocks), true);
@@ -9177,6 +9202,27 @@ console.log('\ngrowthDomain:');
         // CSS: チップの状態はトークンで
         const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
         assert.ok(/\.avail-blk\[data-state="on"\] \{ background: var\(--ok-bg\); border-color: var\(--ok-solid\); \}/.test(css) && /\.avail-blk\[data-state="partial"\] \{ border-style: dashed;/.test(css), 'チップの CSS が無い');
+    });
+
+    test('★ 配線: 📅 きょうの凸 (③-c) — カードは配信プランの直後 (data-span) / 配信あり・なし・名乗りなし の 3 経路で描く・消す / 材料は使い回す / 判定はドメイン', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        assert.ok(/<div class="dc-card" data-span="6" id="myTodayBlocksCard" style="display:none;">/.test(html), 'カードが無い (data-span 付き)');
+        assert.ok(html.indexOf('id="myPublishedPlanCard"') < html.indexOf('id="myTodayBlocksCard"') && html.indexOf('id="myTodayBlocksCard"') < html.indexOf('id="myPushCheckCard"'), 'カードの位置が配信プランの直後でない');
+        const pub = html.match(/async function renderMyPublishedPlan\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(!identity\?\.id\) \{ card\.style\.display = 'none'; renderMyTodayBlocks\(null\); return; \}/.test(pub), '名乗りなしで消していない');
+        assert.ok(/if \(!pub\?\.plan\) \{\s*\n\s*card\.style\.display = 'none';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信なしでも描いていない');
+        assert.ok(/_renderMyPubBody\(\);\s*\n\s*card\.style\.display = '';\s*\n\s*renderMyTodayBlocks\(identity\);/.test(pub), '配信ありで描いていない');
+        assert.ok(/myAttackRows = Array\.isArray\(atks\) \? atks : \[\];/.test(pub) && /resv: myResv, todayAttacks, myAttackRows \};/.test(pub), 'その日の凸の行を使い回していない');
+        const fn = html.match(/async function renderMyTodayBlocks\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(fn, 'renderMyTodayBlocks が無い');
+        assert.ok(/rbd\.todayRows\(\{ blocks, nowHour, plan: st \? st\.plan : null, viewerId: identity\.id, attacks: rows \|\| \[\], hourOfIso: _planJstHour \}\)/.test(fn), '判定をドメインに任せていない');
+        assert.ok(/String\(_myPubState\.viewerId\) === String\(identity\.id\) && String\(_myPubState\.seasonId\) === String\(season\.id\)/.test(fn), '別人・別シーズンの配信を使ってしまう');
+        assert.ok(/Array\.isArray\(st\?\.myAttackRows\) \? st\.myAttackRows\s*\n\s*: \(typeof window\.supabaseLoadMyAttacks === 'function' \? await window\.supabaseLoadMyAttacks\(identity\.id, season\.id, season\.hard_date\) : \[\]\);/.test(fn), '配信カードの凸の行を使い回さず二度読む / 無いときに読まない');
+        assert.ok(/if \(seq !== _todayBlocksSeq\) return;/.test(fn), '世代ガードが無い');
+        assert.ok(/まだ決まっていません \(運営がこのブロックの前に配信します\)/.test(fn) && /このブロックに割当はありません/.test(fn) && /凸なし/.test(fn), '3 つの空の言い方が無い');
+        assert.ok(/outline:2px solid var\(--ops-solid\)/.test(fn), 'いまのブロックの枠が無い');
+        assert.ok(/時刻の分からない凸 \$\{t\.unknownTime\.length\} 件は行に出ません/.test(fn), '時刻の分からない凸を黙って消している');
+        assert.ok(!/#[0-9A-Fa-f]{6}/.test(fn.replace(/'#7A7C81'/g, '')), '色の直値 (灰色の既定以外) がある');
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {
