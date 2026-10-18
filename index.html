@@ -1017,6 +1017,11 @@
         body:not(.ops-master) [data-master-only] { display: none !important; }
         /* 運営モードOFF のときだけ出す (運営項目が隠れていることの案内など) */
         body.ops-mode [data-ops-off-only] { display: none !important; }
+        /* 🧱 ③-d メンバーの入力を最低限に (既定): 模擬タブと申請の導線を CSS で隠す (消さない — 戻すのは ✏️ シーズン編集のスイッチ 1 つ)。
+           body.member-lite は _applyMemberLite が付ける (運営モードの人には付かない)。[data-member-input-lite] は隠しているときだけ出す案内 */
+        body.member-lite [data-tab="mock"] { display: none !important; }
+        body.member-lite [data-member-input] { display: none !important; }
+        body:not(.member-lite) [data-member-input-lite] { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
         .dc-dmg-panel.stacked {
             box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(var(--ink-rgb), 0.14)}
@@ -6320,6 +6325,14 @@
                 </div>
             </div>
 
+            <div>
+                <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:12px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);cursor:pointer;">
+                    <input type="checkbox" id="opsSeasonEditMemberInput" style="margin-top:2px;width:16px;height:16px;flex:none;">
+                    <span style="font-size:12px;font-weight:800;color:var(--t-ink);line-height:1.5;">メンバーに模擬の提出シートと凸の申請を出す
+                        <span style="display:block;font-size:11px;font-weight:700;color:var(--t-muted);">既定は出さない (メンバーの入力は最低限。模擬は Discord にスクショを貼り、運営が登録する)。出すときだけ ON。運営モードの人には常に見える</span></span>
+                </label>
+            </div>
+
             <p id="opsSeasonEditMessage" style="margin:0;min-height:18px;font-size:12px;"></p>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
                 <button onclick="closeOpsSeasonEditModal()" style="padding:10px 16px;border-radius:8px;border:none;background:var(--s2);color:var(--t-ink);font-size:13px;cursor:pointer;">キャンセル</button>
@@ -7440,6 +7453,11 @@
                 // 0) 存在確認は**一切の状態変更より前** (Codex レビュー指摘)。
                 //    active 解除後に return すると「表示中タブが消えて画面が空になる」壊れ方をする
                 //    (旧実装は途中で例外 = 同じ壊れた中間状態で止まっていた — ここで構造的に解消)
+                // 🧱 ③-d: メンバーの入力を最低限にしているとき、模擬タブは開かない (ホームへ)。運営モードの人は開ける
+                if (tabName === 'mock' && typeof _memberLite === 'function' && _memberLite()) {
+                    showNotification('模擬は Discord にスクショを貼ってください。運営が PAD に登録します');
+                    tabName = 'mypage';
+                }
                 const target = document.getElementById('tab-' + tabName);
                 if (!target) { console.warn('[TabController] 未知のタブ名:', tabName); return; }
 
@@ -7960,6 +7978,13 @@
             const softBtn = (onclick, label) => `<button onclick="${onclick}" style="width:100%;border:none;border-radius:999px;padding:12px;font:inherit;font-size:12.5px;font-weight:900;color:var(--t-ink);cursor:pointer;background:var(--s2);">${label}</button>`;
             const heroSub = (onclick, label) => `<button onclick="${onclick}" style="width:100%;margin-top:8px;border:none;border-radius:999px;padding:10px;font:inherit;font-size:11.5px;font-weight:800;color:var(--hero-text-ops);cursor:pointer;background:rgba(var(--paper-rgb), 0.08);">${label}</button>`;
 
+            // 🧱 ③-d: メンバーの入力を最低限にしているとき、模擬タブへの導線は出さない。
+            //   代わりに「Discord にスクショを貼る」を添え、押せる先は 出られる時間 (こちらは PAD で聞く)
+            const lite = typeof _memberLite === 'function' && _memberLite();
+            const liteNote = lite ? ' 模擬は Discord にスクショを貼ってください。運営が PAD に登録します。' : '';
+            const mockCta = (label, soft = false) => lite
+                ? (soft ? softBtn : heroBtn)('openMyAvailModal()', '⏰ 出られる時間を確認する')
+                : (soft ? softBtn : heroBtn)("switchTab('mock')", label);
             const maxPick = _maxDisjointSquads(squads);
             const canForm3 = maxPick >= 3;
             const lack = 3 - maxPick;   // 3凸に足りない部隊数
@@ -8051,19 +8076,22 @@
                 hero = true;
                 lead = `⏰ 明日が本番! 部隊があと${lack}つ足りません`;
                 why = `本番は3回凸でき、同じキャラは1日1回まで。いまの提出ではキャラ被りなしで${maxPick}部隊しか組めません。模擬をあと${lack}部隊ぶん提出しておきましょう。`;
-                cta = heroBtn("switchTab('mock')", '📸 模擬タブで提出する');
+                why += liteNote;
+                cta = mockCta('📸 模擬タブで提出する');
             } else if (season && squads.length === 0) {
                 // C0: 提出ゼロ
                 hero = true;
                 lead = '📸 模擬を提出しよう';
-                why = '模擬戦のスクショから30秒で提出できます。提出するとあなたの火力が凸プランの計算に反映され、当日の割当が正確になります。';
-                cta = heroBtn("switchTab('mock')", '📸 模擬タブで提出する');
+                why = (lite ? '模擬戦のスクショを Discord に貼ってください。運営が PAD に登録すると、あなたの火力が凸プランの計算に反映されます。'
+                    : '模擬戦のスクショから30秒で提出できます。提出するとあなたの火力が凸プランの計算に反映され、当日の割当が正確になります。');
+                cta = mockCta('📸 模擬タブで提出する');
             } else if (season && !canForm3) {
                 // C1: 部隊不足
                 hero = true;
                 lead = `📸 3凸ぶんの部隊があと${lack}つ`;
                 why = `本番は3回凸でき、同じキャラは1日1回まで。いまの提出ではキャラ被りなしで${maxPick}部隊 — 別のキャラで組んだ部隊をあと${lack}つ提出しましょう (同じ属性の別編成でもOK・1属性2つまで)。`;
-                cta = heroBtn("switchTab('mock')", '📸 模擬タブで提出する');
+                why += liteNote;
+                cta = mockCta('📸 模擬タブで提出する');
             } else {
                 // 模擬・当日の黒要求なし → セットアップ促進 (S1/S2) を挟む (新メンバー案内)
                 let setup = null;
@@ -8085,17 +8113,17 @@
                     // B2: 前日・準備OK
                     lead = '⏰ 明日が本番です';
                     why = `凸に使う部隊は揃っています (被りなし3部隊OK・${attrs}属性提出済み)。${attrs < 5 ? '属性を足すと当日プランの選択肢がさらに増えます。' : nudge2}`;
-                    cta = softBtn("switchTab('mock')", '🏆 模擬タブで最終確認');
+                    cta = mockCta('🏆 模擬タブで最終確認', true);
                 } else if (season && attrs >= 5) {
                     // C3: 5属性コンプ — 5属性が埋まった人への次の一手は「同属性の別編成」
                     lead = '✅ 模擬 5属性 提出済み!';
                     why = `レーダーが完成しています。${nudge2}`;
-                    cta = softBtn("switchTab('mock')", hasExtraSquad ? '🏆 みんなと見比べる' : '📸 別の編成を出す');
+                    cta = mockCta(hasExtraSquad ? '🏆 みんなと見比べる' : '📸 別の編成を出す', true);
                 } else if (season) {
                     // C2: 3部隊OK・5属性未満 — 要求は解除し、上乗せは軽い案内に留める
                     lead = '✅ 凸に必要な部隊は揃いました!';
                     why = `キャラ被りなしで3部隊組めるので本番の3凸はOKです (いま${attrs}属性)。属性を足すと凸プランの選択肢が増え、5属性提出でレーダーが完成します。`;
-                    cta = softBtn("switchTab('mock')", '🏆 模擬タブを見る');
+                    cta = mockCta('🏆 模擬タブを見る', true);
                 } else {
                     // D: シーズンなし
                     lead = '📊 シーズンはお休み中';
@@ -8172,6 +8200,15 @@
                               : `<div class="dc-dmg-chip" style="background:${ptc};"></div>`;
             const on = hero ? ' on-hero' : '';
             if (slot.kind === 'empty') {
+                // 🧱 ③-d: メンバーの入力を最低限にしているときは申請も模擬も案内せず、運営の配信を待つ札にする
+                if (typeof _memberLite === 'function' && _memberLite()) {
+                    return `
+                <div class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
+                    <div class="dc-plan-empty-title">空き枠 ${i + 1}</div>
+                    <div class="dc-plan-empty-why">${esc(slot.text || '')}</div>
+                    <div class="dc-plan-empty-cta">運営の配信を待つ</div>
+                </div>`;
+                }
                 const canAsk = Array.isArray(_myResvRows);   // 39未適用なら申請の導線は出さない
                 return `
                 <button type="button" onclick="${canAsk ? 'openMyResvRequest()' : "switchTab('mock')"}" class="dc-plan-card empty${on}" title="${esc(slot.text || '')}">
@@ -9458,6 +9495,7 @@
                 const ctx = await ensureActiveSeasonLoaded();
                 if (seq !== _todayBlocksSeq) return;
                 season = ctx?.season || null;
+                if (typeof _applyMemberLite === 'function') _applyMemberLite();   // 🧱 シーズンの member_input が読めたので見せ方を決め直す
                 if (!season?.id) { card.style.display = 'none'; return; }
                 const st = (_myPubState && String(_myPubState.viewerId) === String(identity.id) && String(_myPubState.seasonId) === String(season.id)) ? _myPubState : null;
                 rows = Array.isArray(st?.myAttackRows) ? st.myAttackRows
@@ -9922,10 +9960,11 @@
                     ${cancel}
                 </div>`;
             };
-            const cta = `<div style="margin-top:${_myResvRows.length ? 12 : 4}px;">
+            // 🧱 ③-d: 申請の導線は data-member-input (メンバーの入力を最低限にしているときは CSS で隠れる)。隠しているときは代わりの一文
+            const cta = `<div data-member-input style="margin-top:${_myResvRows.length ? 12 : 4}px;">
                     <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">自分から凸を申請する</button>
                     <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「この時間にこのボスを凸したい」を先に出しておけます。運営が承認すると予約になります。</p>
-                </div>`;
+                </div><p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸の割当は運営がブロックごとに配信で決めます。希望があれば Discord で運営に伝えてください。</p>`;
             // 📣 運営からのお願い: 引き受けると 🔒 (約束)、難しければ外れる。返事は本人だけができる (パズル盤 ④)
             const askRows = asks.map(r => {
                 const when = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定');
@@ -23945,6 +23984,10 @@
             _opsSeasonEditCtx.blocks = window.raidBlocksDomain ? window.raidBlocksDomain.toConfig(window.raidBlocksDomain.blocksOfSeason(season)) : [];
             _opsSeasonEditCtx.blocksIsDefault = !(Array.isArray(season.metadata?.blocks) && season.metadata.blocks.length > 0);
             _opsSeasonEditRenderBlocks(_opsSeasonEditCtx.blocks);
+            // 🧱 ③-d メンバーの入力 (既定は出さない)
+            _opsSeasonEditCtx.memberInputFull = season.metadata?.member_input === 'full';
+            const mi = document.getElementById('opsSeasonEditMemberInput');
+            if (mi) mi.checked = !!_opsSeasonEditCtx.memberInputFull;
             document.getElementById('opsSeasonEditMessage').textContent = '';
             document.getElementById('opsSeasonEditModal').classList.add('open');
         }
@@ -24040,8 +24083,10 @@
                 blocksToSave = isDefault ? null : rbd.toConfig(r.blocks);
                 blocksChanged = !rbd.sameConfig(r.blocks, ctx.blocks) || (isDefault !== !!ctx.blocksIsDefault);
             }
+            const memberInputFull = !!document.getElementById('opsSeasonEditMemberInput')?.checked;
+            const memberInputChanged = memberInputFull !== !!ctx.memberInputFull;
             const metaChanged = hardDate !== ctx.hardDate || monthKey !== ctx.monthKey;
-            if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0 && !blocksChanged) { set('変更はありません'); return; }
+            if (!metaChanged && nameEdits.length === 0 && codeEdits.length === 0 && !blocksChanged && !memberInputChanged) { set('変更はありません'); return; }
             if (codeEdits.length > 0) {
                 const lines = codeEdits.map(e => {
                     const an = ATTR_VISUAL[e.attribute]?.name || e.attribute;
@@ -24061,7 +24106,11 @@
                     _opsPlanBlockIdx = null;   // 区切りが変わったので、条件パネルで選んでいたブロックの添字は意味を失う → いまの時刻のブロックに戻す (Codex指摘)
                     seasonStore.invalidate();  // ホーム側 (時間のモーダル・帯) もこの端末では新しい区切りで描く
                 }
-                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length + (blocksChanged ? 1 : 0)}件)`);
+                if (memberInputChanged) {
+                    await window.supabaseUpdateSeasonMemberInput(ctx.seasonId, memberInputFull);
+                    seasonStore.invalidate();  // この端末のメンバー画面の見せ方も決め直す (_applyMemberLite はシーズンを読み直したときに走る)
+                }
+                set(`✅ 保存しました (${(metaChanged ? 1 : 0) + nameEdits.length + codeEdits.length + (blocksChanged ? 1 : 0) + (memberInputChanged ? 1 : 0)}件)`);
                 opsStore.invalidate();
                 renderOpsDashboard();   // サマリー・盤面とも新データで再描画
                 setTimeout(closeOpsSeasonEditModal, 700);
@@ -28096,8 +28145,22 @@
                 document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }));
         }
+        // ===== 🧱 ③-d メンバーの入力を最低限に (模擬の提出シート・凸の申請を隠す・2026-10-18) =====
+        // 既定は隠す (旗振り役詰所の合意「メンバーの入力は最低限・模擬は Discord にスクショ・PAD への入力は運営」/ ふるりの判断 2026-10-17 ③)。
+        // シーズンの metadata.member_input = 'full' のときだけ出す (✏️ シーズン編集・SQL 51)。運営モード (body.ops-mode) の人は常に見える。
+        // ★ 消すのではなく CSS で隠す (body.member-lite) — 戻すのはスイッチ 1 つ。コードと保存の形 (player_damages) は変えない。
+        //   編成編集モーダルと OCR は運営の「模擬の取り込み」で使い続けるので腐らない
+        const _memberInputFull = () => (typeof seasonStore !== 'undefined' && seasonStore.get()?.season?.metadata?.member_input === 'full');
+        const _memberLite = () => !_opsMode && !_memberInputFull();
+        function _applyMemberLite() {
+            const lite = _memberLite();
+            document.body.classList.toggle('member-lite', lite);
+            // 模擬タブを開いたまま隠されたらホームへ (TabController も入口で止める)
+            if (lite && document.getElementById('tab-mock')?.classList.contains('active')) TabController.activate('mypage');
+        }
         function _applyOpsMode() {
             document.body.classList.toggle('ops-mode', _opsMode);
+            _applyMemberLite();   // 🧱 運営モードの ON/OFF・名乗り直しで、メンバーの入力の見せ方も決め直す
             const b = document.getElementById('opsModeBtn');
             if (b) {
                 b.textContent = _opsMode ? '🛠 運営 ON' : '🛠 運営';

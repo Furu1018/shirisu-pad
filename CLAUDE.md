@@ -705,6 +705,7 @@ rm -f .claude/hooks/.codex-on      # OFF
   ★ 運営あては `_notifyOps({title, body, tag, except})` = master + 運営担当の全員 (押した本人は除く)。メンバーの 予約の申請 (2経路)・取消希望・📣 の返事・締め凸の返事 で送る。
   ★ 本人あては `_notifyMemberResv(row, title, body)` = 承認・却下・取り下げ・続行。ホームの 30 秒ティックは配信プランだけでなく `renderMyReservations` も取り直す。
 - **🧱 ブロックの区切りの保存 RPC** (`50_season_blocks_rpc.sql`・2026-10-18): `ops_set_season_blocks(p_season_id, p_blocks)`。未適用でも動く (同時編集に弱いだけ)。99 に判定行あり
+- **🧱 メンバーの入力を出すかの保存 RPC** (`51_season_member_input_rpc.sql`・2026-10-18): `ops_set_season_meta_key(p_season_id, 'member_input', '"full"' | null)`。未適用でも動く。99 に判定行あり
 - **📱 メンバーの端末の状態** (`49_member_devices.sql`・通知の見える化 D・2026-10-08 ユーザー決定 Q1/Q2/Q4「今入れる」。設計の正本は
   `docs/通知の見える化_設計案_2026-10-08.md`、Codex レビュー済み)。「端末で通知を設定できているか」はサーバから見えないので、
   本人の端末がアプリを開いたときに `_reportMemberDevice` が報告する (`device_id` = ブラウザごとの localStorage の乱数 = 主キー。名乗り直しは同じ行を上書き。
@@ -1073,7 +1074,14 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   (covered = 1 日ぶんの配信なら全部・ブロックのぶんだけの配信ならそのブロックだけ・配信無しなら無し)。
   描くのは `renderMyTodayBlocks(identity)` — `renderMyPublishedPlan` の 3 経路 (配信あり / 配信なし / 名乗りなし) の最後で呼ぶ。材料 (その日の自分の凸の行) は
   配信カードが読んだもの (`_myPubState.myAttackRows`) を使い回す。時刻の読めない凸は件数だけ添える
-  残り (③): 運営の模擬取り込み・模擬シートを設定で隠す・凸報告の確認欄
+  ★ **③-d メンバーの入力を最低限に** (2026-10-18・ふるりの判断 ③「模擬シートはメンバーから消す。戻すのは容易に」): **既定で隠す**。
+  シーズンの `metadata.member_input = 'full'` のときだけ出す (✏️ シーズン編集のスイッチ → `supabaseUpdateSeasonMemberInput` → RPC `ops_set_season_meta_key` (**`51_season_member_input_rpc.sql`**・鍵は白リスト・
+  未適用は読んで混ぜて書く))。判定は `_memberLite()` = 運営モードでない かつ full でない。`_applyMemberLite()` が `body.member-lite` を付け外し
+  (`_applyOpsMode` と、ホームがシーズンを読んだとき (`renderMyTodayBlocks`) に決め直す)。**消すのではなく CSS で隠す**: `body.member-lite [data-tab="mock"]` (上のタブ・下のナビ・ドロワー) と
+  `[data-member-input]` (引き受けた凸カードの「自分から凸を申請する」)。隠しているときだけ `[data-member-input-lite]` の一文。`TabController.activate('mock')` はホームへ。
+  ヒーローの模擬タブへの導線は `mockCta` 経由 — 隠しているときは「模擬は Discord にスクショを貼ってください。運営が PAD に登録します」+ 「⏰ 出られる時間を確認する」。
+  空き枠の札は「運営の配信を待つ」。**練習のシーズンは full** (メンバー編の課題「模擬の提出」「予約」が成り立つように・js/practice/seed.js)。
+  残り (③): 運営の模擬取り込み (Discord のスクショ → 誰の模擬か → 登録)・凸報告の確認欄
   (律速にしない)。ハイブリッド=登録時間内は確約・時間外は flex
 - **ボス横断の限定分岐 (フェーズ2)**: 貪欲は「そのボスで最良」を選ぶので、別ボスでしか
   使えない人材を先に消費してしまう。僅差の決定点で2番手を採るシナリオを解き直し、

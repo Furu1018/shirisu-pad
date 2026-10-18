@@ -9031,7 +9031,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/const r = rbd\.normalize\(blockCfg\);\s*\n\s*if \(!r\.blocks\) \{ set\(`❌ ブロック: \$\{r\.error\}`, true\); return; \}/.test(save), '保存前に検査していない');
         assert.ok(/blocksToSave = isDefault \? null : rbd\.toConfig\(r\.blocks\);/.test(save), '既定と同じなら null (= metadata.blocks を消す) にしていない');
         assert.ok(/if \(blocksChanged\) \{\s*\n\s*await window\.supabaseUpdateSeasonBlocks\(ctx\.seasonId, blocksToSave\);/.test(save), '保存していない');
-        assert.ok(/&& !blocksChanged\) \{ set\('変更はありません'\); return; \}/.test(save), 'ブロックだけ変えたとき「変更はありません」で止まる');
+        assert.ok(/&& !blocksChanged[^\n]*\) \{ set\('変更はありません'\); return; \}/.test(save), 'ブロックだけ変えたとき「変更はありません」で止まる');
         // 足す・消す はドメイン (addSplit / removeAt)。画面に独自の計算を持たない (以前は末尾を重複させていた — Codex指摘)
         assert.ok(/dom\.addSplit\(_opsSeasonEditReadBlocks\(\)\)/.test(html) && /dom\.removeAt\(_opsSeasonEditReadBlocks\(\), i\)/.test(html), '足す・消す をドメインに任せていない');
         assert.ok(!/cur\[i - 1\]\.to = gone\.to/.test(html), '画面に独自の吸わせる計算が残っている');
@@ -9231,6 +9231,80 @@ console.log('\ngrowthDomain:');
         assert.ok(/outline:2px solid var\(--ops-solid\)/.test(fn), 'いまのブロックの枠が無い');
         assert.ok(/時刻の分からない凸 \$\{t\.unknownTime\.length\} 件は行に出ません/.test(fn), '時刻の分からない凸を黙って消している');
         assert.ok(!/#[0-9A-Fa-f]{6}/.test(fn.replace(/'#7A7C81'/g, '')), '色の直値 (灰色の既定以外) がある');
+    });
+
+    test('★ 配線: 🧱 ③-d メンバーの入力を最低限に — 既定は模擬の提出シートと凸の申請を隠す (CSS で・消さない) / シーズンの member_input=full で出す / 運営モードは常に見える', () => {
+        const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        // 判定と body のクラス (運営モードの ON/OFF・名乗り直し・ホームの描画 で決め直す)
+        assert.ok(/const _memberInputFull = \(\) => \(typeof seasonStore !== 'undefined' && seasonStore\.get\(\)\?\.season\?\.metadata\?\.member_input === 'full'\);/.test(html), '判定が無い');
+        assert.ok(/const _memberLite = \(\) => !_opsMode && !_memberInputFull\(\);/.test(html), '運営モードの人を除いていない');
+        assert.ok(/document\.body\.classList\.toggle\('member-lite', lite\);/.test(html), 'body のクラスを付けていない');
+        assert.ok(/document\.body\.classList\.toggle\('ops-mode', _opsMode\);\s*\n\s*_applyMemberLite\(\);/.test(html), '運営モードの切替で決め直していない');
+        assert.ok(/if \(typeof _applyMemberLite === 'function'\) _applyMemberLite\(\);   \/\/ 🧱 シーズンの member_input が読めたので/.test(html), 'シーズンを読んだときに決め直していない');
+        // CSS: 隠す (消さない)。隠しているときだけ出す案内
+        const css = html.slice(html.indexOf('<style'), html.lastIndexOf('</style>'));
+        assert.ok(/body\.member-lite \[data-tab="mock"\] \{ display: none !important; \}/.test(css), '模擬タブを隠していない');
+        assert.ok(/body\.member-lite \[data-member-input\] \{ display: none !important; \}/.test(css) && /body:not\(\.member-lite\) \[data-member-input-lite\] \{ display: none !important; \}/.test(css), '申請の導線の出し分けが無い');
+        assert.equal((html.slice(html.lastIndexOf('</style>')).match(/data-tab="mock"/g) || []).length, 3, '模擬タブの入口 (上のタブ・下のナビ・ドロワー) が 3 つでない');
+        // 入口でも止める (模擬タブを開こうとしたらホームへ)
+        assert.ok(/if \(tabName === 'mock' && typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*showNotification\('模擬は Discord にスクショを貼ってください。運営が PAD に登録します'\);\s*\n\s*tabName = 'mypage';/.test(html), 'TabController で止めていない');
+        assert.ok(/if \(lite && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\('mypage'\);/.test(html), '開いたまま隠されたときにホームへ戻していない');
+        // 申請の導線: 引き受けた凸カードの CTA に印 + 隠しているときの一文 / ヒーローの空き枠は「運営の配信を待つ」
+        assert.ok(/<div data-member-input style="margin-top:\$\{_myResvRows\.length \? 12 : 4\}px;">\s*\n\s*<button type="button" onclick="openMyResvRequest\(\)"/.test(html), '申請ボタンに印が無い');
+        assert.ok(/<p data-member-input-lite [^>]*>凸の割当は運営がブロックごとに配信で決めます。/.test(html), '隠しているときの一文が無い');
+        assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');
+        // ヒーロー: 模擬タブへの導線は mockCta 経由 (隠しているときは 出られる時間 + Discord の案内)
+        const hero = html.match(/async function renderMyNextAction\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const mockCta = \(label, soft = false\) => lite\s*\n\s*\? \(soft \? softBtn : heroBtn\)\('openMyAvailModal\(\)', '⏰ 出られる時間を確認する'\)\s*\n\s*: \(soft \? softBtn : heroBtn\)\("switchTab\('mock'\)", label\);/.test(hero), 'mockCta が無い');
+        assert.ok(!/heroBtn\("switchTab\('mock'\)"/.test(hero) && !/softBtn\("switchTab\('mock'\)"/.test(hero), '模擬タブへの直の導線が残っている');
+        assert.equal((hero.match(/mockCta\(/g) || []).length, 6, 'mockCta を使う場所が 6 か所 (B1 / C0 / C1 / B2 / C3 / C2) でない');
+        assert.ok(/模擬戦のスクショを Discord に貼ってください。運営が PAD に登録すると/.test(hero) && /why \+= liteNote;/.test(hero), '隠しているときの文言が無い');
+        // ✏️ シーズン編集: スイッチ (既定 OFF) → supabaseUpdateSeasonMemberInput → seasonStore.invalidate
+        assert.ok(/<input type="checkbox" id="opsSeasonEditMemberInput"/.test(html) && /メンバーに模擬の提出シートと凸の申請を出す/.test(html), 'スイッチが無い');
+        assert.ok(/_opsSeasonEditCtx\.memberInputFull = season\.metadata\?\.member_input === 'full';/.test(html), '開いたときの値を読んでいない');
+        const save = html.match(/async function handleOpsSeasonEditSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const memberInputChanged = memberInputFull !== !!ctx\.memberInputFull;/.test(save) && /&& !memberInputChanged\) \{ set\('変更はありません'\); return; \}/.test(save), '変更の判定が無い');
+        assert.ok(/if \(memberInputChanged\) \{\s*\n\s*await window\.supabaseUpdateSeasonMemberInput\(ctx\.seasonId, memberInputFull\);\s*\n\s*seasonStore\.invalidate\(\);/.test(save), '保存していない / キャッシュを捨てていない');
+        // クライアント: RPC 51 → PGRST202 だけ読んで混ぜて書く / SQL 51 / 99 / 練習の偽サーバ / 練習のシーズンは full
+        const upd = client.match(/window\.supabaseUpdateSeasonMemberInput = async function[\s\S]*?\n\};\n/)?.[0] || '';
+        assert.ok(/supabase\.rpc\('ops_set_season_meta_key', \{ p_season_id: seasonId, p_key: 'member_input', p_value: value \}\)/.test(upd) && /if \(error\.code !== 'PGRST202'\) throw error;/.test(upd), 'RPC と判定が無い');
+        assert.ok(/if \(value\) metadata\.member_input = value; else delete metadata\.member_input;/.test(upd), 'フォールバックで鍵を消せない');
+        const sql = _grRd('supabase', '51_season_member_input_rpc.sql');
+        assert.ok(/CREATE FUNCTION ops_set_season_meta_key\(/.test(sql) && /p_key NOT IN \('member_input'\)/.test(sql) && /p_value <> '"full"'::jsonb/.test(sql) && /WHERE id = p_season_id AND is_active = TRUE/.test(sql) && /GRANT EXECUTE ON FUNCTION ops_set_season_meta_key\(BIGINT, TEXT, JSONB\) TO anon, authenticated;/.test(sql), '51 の形が違う');
+        assert.ok(_grRd('supabase', '99_check_applied.sql').includes("'51_season_member_input_rpc'"), '99 に 51 の判定行が無い');
+        assert.ok(/ops_set_season_meta_key\(a\) \{/.test(_grRd('js', 'practice', 'server.js')), '練習の偽サーバに RPC が無い');
+        assert.ok(/metadata: \{ member_input: 'full' \}/.test(_grRd('js', 'practice', 'seed.js')), '練習のシーズンがメンバーの入力を出していない (メンバー編の課題が成り立たない)');
+    });
+
+    await testAsync('★ 実行: メンバーの入力の保存 — RPC が本線 / 51 未適用だけ読んで混ぜて書く / 別エラーは投げる / null で鍵を消す', async () => {
+        const client = _grRd('js/supabase-client.js').split(String.fromCharCode(13)).join('');
+        const body = client.match(/window\.supabaseUpdateSeasonMemberInput = async function[\s\S]*?\n\};\n/)?.[0] || '';
+        const mk = (rpcAnswer, meta = { blocks: [1], member_input: 'full' }) => {
+            const calls = { rpc: [], select: 0, update: [] };
+            const supabase = {
+                rpc: async (name, args) => { calls.rpc.push({ name, args }); return rpcAnswer(args); },
+                from: () => ({
+                    select: () => { calls.select++; return { eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { metadata: meta }, error: null }) }) }) }; },
+                    update: (patch) => { calls.update.push(patch); return { eq: () => ({ eq: () => ({ select: async () => ({ data: [{ id: 1 }], error: null }) }) }) }; },
+                }),
+            };
+            const w = {};
+            new Function('supabase', 'window', body)(supabase, w);
+            return { fn: w.supabaseUpdateSeasonMemberInput, calls };
+        };
+        const ok = mk(async () => ({ error: null }));
+        assert.equal(await ok.fn(36, true), 'full'); assert.equal(await ok.fn(36, false), null);
+        assert.deepEqual(ok.calls.rpc.map(c => c.args.p_value), ['full', null]); assert.equal(ok.calls.select + ok.calls.update.length, 0);
+        const fb = mk(async () => ({ error: { code: 'PGRST202', message: 'Could not find the function' } }));
+        await fb.fn(36, false);
+        assert.deepEqual(fb.calls.update[0], { metadata: { blocks: [1] } }, 'フォールバックで他の鍵を消している / 鍵を消していない');
+        await fb.fn(36, true);
+        assert.deepEqual(fb.calls.update[1], { metadata: { blocks: [1], member_input: 'full' } });
+        const other = mk(async () => ({ error: { code: 'P0001', message: 'この鍵は書けません' } }));
+        await assert.rejects(() => other.fn(36, true), (e) => /書けません/.test(e?.message));
+        assert.equal(other.calls.select + other.calls.update.length, 0, '別のエラーで読んで書いている');
+        await assert.rejects(() => other.fn(null, true), /seasonId/);
     });
 
     test('★ ホームの細いボス帯: 属性と「戦闘中か」だけ / ボスの並び順', () => {

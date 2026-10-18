@@ -404,6 +404,18 @@ export function createPracticeClient(opts = {}) {
             updateRow('seasons', row, { metadata }, { rpc: true });
             return clone(metadata);
         },
+        // 🧱 メンバーの入力を出すか (51_season_member_input_rpc.sql と同じ動き: 鍵は member_input だけ・'full' か null・アクティブのときだけ)
+        ops_set_season_meta_key(a) {
+            if (a.p_key !== 'member_input') throw new PgError('P0001', `この鍵は書けません: ${a.p_key}`);
+            const clear = a.p_value == null;
+            if (!clear && a.p_value !== 'full') throw new PgError('P0001', "member_input は 'full' か null です");
+            const row = T.seasons.find(s => eqv(s.id, a.p_season_id) && s.is_active === true);
+            if (!row) throw new PgError('P0001', '対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+            const metadata = { ...(row.metadata && typeof row.metadata === 'object' ? row.metadata : {}) };
+            if (clear) delete metadata.member_input; else metadata.member_input = 'full';
+            updateRow('seasons', row, { metadata }, { rpc: true });
+            return clone(metadata);
+        },
         reservation_set_status(a) {
             const row = T.plan_reservations.find(r => eqv(r.id, a.p_id));
             if (!row) throw new PgError('P0002', `予約が見つかりません (id=${a.p_id})`);

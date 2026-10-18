@@ -1882,6 +1882,25 @@ window.supabaseUpdateSeasonBlocks = async function (seasonId, blocks) {
     return cfg;
 };
 
+// 🧱 メンバーの入力 (模擬の提出シート・凸の申請) を出すか (③-d・2026-10-18)。seasons.metadata.member_input = 'full' / 鍵なし (既定: 出さない)。
+// 本線は RPC ops_set_season_meta_key (51・DB 側の 1 文)。51 未適用 (PGRST202) だけ「読んで混ぜて書く」にフォールバック。別のエラーは投げる
+window.supabaseUpdateSeasonMemberInput = async function (seasonId, full) {
+    if (!seasonId) throw new Error('seasonId が必要です');
+    const value = full ? 'full' : null;
+    const { error } = await supabase.rpc('ops_set_season_meta_key', { p_season_id: seasonId, p_key: 'member_input', p_value: value });
+    if (!error) return value;
+    if (error.code !== 'PGRST202') throw error;
+    const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
+    if (rErr) throw rErr;
+    if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' ? cur.metadata : {}) };
+    if (value) metadata.member_input = value; else delete metadata.member_input;
+    const { data, error: uErr } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
+    if (uErr) throw uErr;
+    if (!data || data.length === 0) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
+    return value;
+};
+
 // シーズン基本情報の変更 (運営のシーズン確認・編集モーダルから)。
 // 編集対象はハード日と月キーのみ — ボス構成 (code/tier) は凸記録・ダメージと連動するため
 // このAPIでは触らない (間違えた場合はシーズン作り直しの運用)

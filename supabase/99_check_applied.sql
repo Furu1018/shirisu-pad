@@ -330,6 +330,10 @@ SELECT * FROM (
         to_regproc('public.ops_set_season_blocks') IS NOT NULL,
         '🧱 レイド日のブロック (時間帯の区切り) をシーズンに原子的に保存する RPC (未適用でも「読んで混ぜて書く」で動く・同時編集に弱いだけ)'
 
+    UNION ALL SELECT '51_season_member_input_rpc',
+        to_regproc('public.ops_set_season_meta_key') IS NOT NULL,
+        '🧱 メンバーの入力 (模擬の提出シート・凸の申請) を出すかをシーズンに保存する RPC (未適用でも「読んで混ぜて書く」で動く・同時編集に弱いだけ)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'
