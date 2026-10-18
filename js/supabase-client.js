@@ -901,7 +901,8 @@ async function _loadDamageRowsForAttr(playerId, attribute) {
 //                    古いレベルタグを引き継いだりしないため
 //   null           → 「レベル未設定」の測定として保存 (旧: 行のレベルをクリア)
 // 31未適用環境は従来の3値セマンティクス (undefined=列を送らない/null=クリア) に劣化
-window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1, bossLevel = undefined) {
+// opts.actorName: 運営の代理登録の印 (📸 模擬の取り込み・③-e) — 31 未適用の劣化経路でも活動ログに残す (Codex指摘 adae2da)
+window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, slot = 1, bossLevel = undefined, opts = {}) {
     const valid = ['fire','water','iron','electric','wind'];
     if (!valid.includes(attribute)) throw new Error(`invalid attribute: ${attribute}`);
     const value = Number(damageB);
@@ -954,7 +955,7 @@ window.supabaseSavePlayerDamage = async function (playerId, attribute, damageB, 
     }
     const ATTR_JP = { fire: '灼熱', water: '水冷', electric: '電撃', iron: '鉄甲', wind: '風圧' };
     const slotJp = Number(slot) >= 2 ? ` (${Number(slot)}編成目)` : '';
-    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lvForLog ? ` [Lv${lvForLog}]` : ''}${slotJp}`, { playerId });
+    window.supabaseLogActivity?.('mock_submit', `${ATTR_JP[attribute] || attribute}PT 模擬戦 ${value.toFixed(1)}B を提出${lvForLog ? ` [Lv${lvForLog}]` : ''}${slotJp}` + (opts && opts.actorName ? ' (運営が代理で登録)' : ''), { playerId, actorName: (opts && opts.actorName) || null });
 };
 
 // ===== 模擬提出の主経路 (31以降): 同一編成の自動マージつき保存 =====
@@ -991,7 +992,7 @@ window.supabaseSaveMockSubmission = async function (playerId, attribute, { damag
             const best = ml.maxEntry(ml.normLevels(entries, 0, null) || {});
             legacyLv = best && best.value > 0 ? best.level : lv;
         }
-        await window.supabaseSavePlayerDamage(playerId, attribute, value, slot, legacyLv);
+        await window.supabaseSavePlayerDamage(playerId, attribute, value, slot, legacyLv, { actorName });   // 代理の印も劣化経路へ (Codex指摘 adae2da)
         if (cleaned && cleaned.length > 0) await window.supabaseSaveTeamForAttribute(playerId, attribute, cleaned, slot);
         return { slot, redirected: false, teamChanged: false, levels: null };
     }

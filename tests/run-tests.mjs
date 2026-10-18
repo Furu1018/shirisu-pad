@@ -11844,6 +11844,9 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(rows[0].deadline, { idx: 0, name: '朝' }); assert.deepEqual(rows[3].deadline, { idx: 5, name: '夜' });
         assert.equal(rows[4].deadline, null); assert.equal(rows[4].noSlots, false, '⏳隙間型は いつでも (時間未登録ではない)');
         assert.equal(rows[5].deadline, null); assert.equal(rows[5].noSlots, true, '時間未登録');
+        // ⏳隙間型は時間帯が 0 でも「未登録」ではない (いつでも出られる人として扱う — 変異「noSlots が隙間型でも真」で発覚)
+        const flexNoSlots = dom.missingRows({ players: [{ id: 1, name: 'すきま0', damagesByAttr: {}, flexTime: true, availableSlots: [] }], blocks })[0];
+        assert.equal(flexNoSlots.noSlots, false); assert.equal(flexNoSlots.deadline, null);
         assert.deepEqual(rows[3].missing, ['water', 'electric', 'iron', 'wind']); assert.deepEqual(rows[3].missingJp, ['水冷', '電撃', '鉄甲', '風圧']); assert.equal(rows[3].submitted, 1);
         assert.deepEqual(rows[0].missing, dom.ATTR_KEYS, '未提出は 5 属性全部');
         assert.equal(dom.summary(rows, 9), '届いていない人 6 / 9'); assert.equal(dom.summary([], 9), '全員そろっています'); assert.equal(dom.summary([], 0), '');
@@ -11888,6 +11891,25 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!_opsMode\) return;/.test(render) && /const gen = \+\+_mockIntake\.gen;/.test(render) && /if \(gen !== _mockIntake\.gen\) return;/.test(render), '運営OFF / 世代ガードが無い');
         assert.ok(/const rows = dom\.missingRows\(\{ players, blocks \}\);/.test(render) && /const blocks = rb \? rb\.blocksOfSeason\(snap\.season\) : \[\];/.test(render), '届いていない人をドメインで決めていない');
         assert.ok(/_opsMockIntakePickFromList\(\$\{Number\(r\.id\)\}\)/.test(render), '名前を押してその人を選べない');
+    });
+
+    await testAsync('★ 実行: 代理登録の印 (actorName) は 31 未適用の劣化経路 (supabaseSavePlayerDamage) でも活動ログに残る / 本人の提出には付かない (Codex指摘 adae2da)', async () => {
+        const client = _grRd('js', 'supabase-client.js').split(String.fromCharCode(13)).join('');
+        const pick = (name) => { const m = client.match(new RegExp(`window\\.${name} = async function[\\s\\S]*?\\n\\};\\n`)); assert.ok(m, `${name} が見つからない`); return m[0]; };
+        const logs = [];
+        // 偽の window: mockLevelsDomain が無い = 31 未適用の劣化経路。upsert は成功、ログは控えるだけ
+        const w = { supabaseLogActivity: (type, detail, opts) => { logs.push({ type, detail, opts }); }, supabaseSaveTeamForAttribute: async () => {} };
+        const stubs = `const _normBossLevel = (v) => (v == null ? null : Number(v)); const _exclusionClear = () => ({}); const _upsertPlayerDamages = async () => ({ error: null });
+            const _loadDamageRowForMerge = async () => ({ legacy: true, failed: false, row: null }); const _loadDamageRowsForAttr = async () => ({ legacy: true, failed: false, rows: null });`;
+        new Function('window', `${stubs}\n${pick('supabaseSavePlayerDamage')}\n${pick('supabaseSaveMockSubmission')}`)(w);
+        const r = await w.supabaseSaveMockSubmission(7, 'fire', { damageB: 31.2, characters: ['a', 'b'], actorName: '運営役' });
+        assert.deepEqual(r, { slot: 1, redirected: false, teamChanged: false, levels: null }, '劣化経路の戻り値');
+        assert.equal(logs.length, 1, 'ログは 1 回 (下位関数で 1 回だけ)');
+        assert.equal(logs[0].type, 'mock_submit'); assert.equal(logs[0].opts.playerId, 7);
+        assert.equal(logs[0].opts.actorName, '運営役', '代理の印 (actor_name) が劣化経路で落ちている');
+        assert.ok(/ \(運営が代理で登録\)$/.test(logs[0].detail), `文末に代理の印が無い: ${logs[0].detail}`);
+        await w.supabaseSaveMockSubmission(7, 'fire', { damageB: 20 });
+        assert.equal(logs.length, 2); assert.equal(logs[1].opts.actorName, null); assert.ok(!/代理/.test(logs[1].detail), '本人の提出に代理の印が付いている');
     });
 
     test('★ 配線: 育成の取り込みパネル (段階「準備」と「終了」・upsert のみ・43未適用は止める)', () => {
