@@ -11939,7 +11939,9 @@ console.log('\ngrowthDomain:');
         const after = html.match(/function _afterOpsModeChanged\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/_invalidateTabRenderCache\('ops'\);/.test(after), '戦況タブの描画キャッシュを捨てていない');
         assert.ok(/if \(!_opsMode\) \{\s*\n\s*if \(typeof _atkCheck !== 'undefined'\) _atkCheck\.gen\+\+;\s*\n\s*if \(typeof _mockIntake !== 'undefined'\) _mockIntake\.gen\+\+;/.test(after), 'OFF で待機中の描画を無効化していない');
-        assert.ok(/\} else if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) \{\s*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(true\);\s*\n\s*if \(typeof renderOpsMockIntake === 'function'\) renderOpsMockIntake\(true\);/.test(after), 'ON で戦況タブを開いたままのとき取り直していない');
+        assert.ok(/\} else if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) \{[\s\S]{0,400}try \{ await opsStore\.load\(\); \} catch \{[^}]*\}\s*\n\s*if \(!_opsMode\) return;\s*\n\s*if \(typeof _syncOpsUnpublishBtn === 'function'\) await _syncOpsUnpublishBtn\(\);\s*\n\s*if \(_opsMode && typeof renderOpsMockIntake === 'function'\) renderOpsMockIntake\(\);/.test(after), 'ON で戦況タブを開いたままのとき、盤面を 1 回だけ取り直して 配信 → 凸報告の確認 → 模擬の取り込み の順に描いていない (同時に 2 回 load すると前の結果が捨てられる — Codex指摘 c0fa346)');
+        assert.ok(!/renderOpsAttackCheck\(true\)/.test(after) && !/renderOpsMockIntake\(true\)/.test(after), 'OFF→ON で各カードが別々に盤面を取り直している');
+        assert.ok(/let snap = opsStore\.get\(\);\s*\n\s*if \(!snap\) \{[\s\S]{0,400}snap = await opsStore\.load\(\);/.test(render), '盤面が無いとき (invalidate 直後・別の取り直しの最中) に待たずに「シーズン無し」と出す');
     });
 
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {

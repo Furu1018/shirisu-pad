@@ -17394,7 +17394,16 @@
                 await _syncOpsUnpublishBtn();
                 return;
             }
-            const snap = opsStore.get();
+            let snap = opsStore.get();
+            if (!snap) {
+                // 書き込み直後 (invalidate 後) や別の取り直しの最中は get() が null — 盤面を待ってから描く (null を「シーズン無し」と誤認しない。メンバー状況と同じ)
+                try { snap = await opsStore.load(); } catch (e) {
+                    if (gen !== _atkCheck.gen) return;
+                    body.innerHTML = `<p class="ops-recent-empty" style="color:var(--bad);">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
+                    return;
+                }
+                if (gen !== _atkCheck.gen) return;
+            }
             if (!snap?.season) { body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
             // 盤面が取り直されたら ✓ の上書きは捨てる (DB の値が最新)
             const g = opsStore.generation();
@@ -28515,8 +28524,14 @@
                 if (typeof _atkCheck !== 'undefined') _atkCheck.gen++;
                 if (typeof _mockIntake !== 'undefined') _mockIntake.gen++;
             } else if (document.getElementById('tab-ops')?.classList.contains('active')) {
-                if (typeof renderOpsAttackCheck === 'function') renderOpsAttackCheck(true);
-                if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake(true);
+                // 盤面の取り直しは 1 回だけ (2 つが同時に load すると後の世代が勝って前の結果が捨てられる — Codex指摘 c0fa346)。
+                // そのあと 配信の取り直し (最後に凸報告の確認を描く) → 模擬の取り込み (取り直した盤面で描く) の順
+                (async () => {
+                    try { await opsStore.load(); } catch { /* 各カードが取得失敗を出す */ }
+                    if (!_opsMode) return;
+                    if (typeof _syncOpsUnpublishBtn === 'function') await _syncOpsUnpublishBtn();
+                    if (_opsMode && typeof renderOpsMockIntake === 'function') renderOpsMockIntake();
+                })();
             }
         }
         // ---- 戦況タブの折りたたみ (前日/当日の既定 + 手動開閉の記憶) と最上部コックピット ----
