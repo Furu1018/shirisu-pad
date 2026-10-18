@@ -800,6 +800,10 @@
         return { i: list.length, step: null, n: list.length };
     }
     function update() {
+        // ★ やめた・やり直した あと (読み込み直しの直前) は何もしない。exit は印 (sessionStorage) を消してから location.replace するが、
+        //   新しい画面が来るまでの数秒に update が回ると、消えた setup:done を見て当日の盤面作りを始め、その reload が replace を
+        //   上書きして「やめたのに練習が最初から始まる」(運営編・当日で再現・2026-10-18。遅い端末ほど起きる)
+        if (P.closed) return;
         var c = context();
         if (!c || !c.season) { render('<div class="pm-band"><span class="t">🎮 練習の準備をしています…</span></div>', 'wait'); target = null; return; }
         // 編の開始状態を作る (一回だけ)。作れなかったら知らせて「もう一度」(半端な盤面で始めない)

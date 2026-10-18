@@ -56,13 +56,14 @@ async function openPage({ width, height, mobile }) {
     const ws = new WebSocket(ver.webSocketDebuggerUrl);
     await new Promise((ok, ng) => { ws.onopen = ok; ws.onerror = ng; });
     let id = 0; const waits = new Map();
-    const page = { errors: [], net: [], dialogs: [] };
+    const page = { errors: [], net: [], dialogs: [], navs: [] };   // navs: 画面の読み込み直し (いつ・どこへ) — 失敗の切り分け用
     ws.onmessage = (ev) => {
         const m = JSON.parse(ev.data);
         if (m.id && waits.has(m.id)) { const w = waits.get(m.id); waits.delete(m.id); m.error ? w.ng(new Error(m.error.message)) : w.ok(m.result); return; }
         if (m.method === 'Runtime.exceptionThrown') page.errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
         if (m.method === 'Runtime.consoleAPICalled' && m.params.type === 'error') page.errors.push('console.error: ' + m.params.args.map(a => a.value ?? a.description ?? '').join(' '));
         if (m.method === 'Network.requestWillBeSent') page.net.push({ method: m.params.request.method, url: m.params.request.url });
+        if (m.method === 'Page.frameNavigated' && !m.params.frame.parentId) page.navs.push(`${new Date().toISOString().slice(11, 23)} → ${m.params.frame.url.replace(/^https?:\/\/[^/]+/, '')}`);
         if (m.method === 'Page.javascriptDialogOpening') {   // 画面の confirm / alert は「はい」で進める (本物の画面が出す確認)
             page.dialogs.push(m.params.message);
             ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: true }, sessionId: m.sessionId }));
@@ -100,7 +101,20 @@ const PRESS = (value) => `(() => { const r = document.getElementById('pmRing').g
   if (!el) return 'none';
   if (el.tagName === 'INPUT') { el.focus(); el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return '入力'; }
   (el.closest('button,[onclick],a,label') || el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window })); return '押す'; })()`;
+// ★ 読み込みは時計でなく状態で待つ (この機では 6〜10 秒ぶれる・読み込み直しの最中は eval が落ちる): 練習の DB と案内が揃うまで最大 ms
+const settle = async (p, ms, extra = 'true') => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < ms) {
+        let ok = false;
+        try { ok = await p.eval(`!!(window.PAD_PRACTICE && window.PAD_PRACTICE.db && document.querySelector('#pmDock .pm-cnt, #pmDock .pm-done') && (${extra}))`); } catch (_) { ok = false; }
+        if (ok) return true;
+        await wait(500);
+    }
+    return false;
+};
 // 案内の文の「〜を 40 にします」「(例: 33.1)」から入れる数字を読む
+// 案内のボタン (仮定 / どこ？ / 戻る) を押す。状態を読んでから押すまでに描き直されて消えていたら false (押さずに次の状態を読む)
+const tap = (p, sel) => p.eval(`(() => { const b = document.querySelector(${JSON.stringify('#pmDock ' + sel)}); if (!b) return false; b.click(); return true; })()`);
 const valueOf = (text) => (String(text || '').match(/(\d+(?:\.\d+)?)\s*(?:にします|と入れ)|例: (\d+(?:\.\d+)?)/) || []).slice(1).find(Boolean) || '33.1';
 
 async function run(label, size, scenario = 'member', startAt = '') {
@@ -109,7 +123,9 @@ async function run(label, size, scenario = 'member', startAt = '') {
     // 本番の名乗りを置いておく (練習が書き換えないことを最後に見る)
     await p.goto(`${ORIGIN}/__blank`, 500);
     await p.eval(`localStorage.setItem('shirisuPad.currentPlayer', JSON.stringify({ id: 24, name: '本物の人' })); localStorage.setItem('shirisuPad.tourCompleted', '1');`);
-    await p.goto(`${ORIGIN}/index.html?practice=${scenario}${startAt ? '&start=' + startAt : ''}`, (startAt || scenario === 'ops-day') ? 16000 : 6500);   // 途中から・当日の運営編は、手前の課題 / 開始の盤面を作ってから読み込み直す
+    await p.goto(`${ORIGIN}/index.html?practice=${scenario}${startAt ? '&start=' + startAt : ''}`, 1500);
+    const idx0 = ['avail', 'mock', 'resv', 'ack', 'attack', 'finish'].indexOf(startAt) + 1;
+    if (!await settle(p, 45000, startAt ? `(document.querySelector('#pmDock .pm-cnt') || {}).innerText === '課題 ${idx0}/6'` : 'true')) problems.push('45 秒待っても練習が起動しない (DB と案内が揃わない)');
     if (startAt) {   // 途中の課題から: 手前が済んだ状態で、その課題から始まっている
         const at = JSON.parse(await p.eval(`JSON.stringify({ cnt: document.querySelector('#pmDock .pm-cnt')?.innerText || '-', title: document.querySelector('#pmDock .pm-top b')?.innerText || '' })`));
         const idx = ['avail', 'mock', 'resv', 'ack', 'attack', 'finish'].indexOf(startAt) + 1;
@@ -128,13 +144,15 @@ async function run(label, size, scenario = 'member', startAt = '') {
         if (s.cnt === 'DONE') { done = true; break; }
         if (same >= 5) { problems.push(`案内どおりに押しても進まない: ${JSON.stringify(s)}`); break; }
         let act;
-        if (s.assume) { act = '仮定 ' + s.assume; await p.eval(`document.querySelector('#pmDock [data-pm=assume]').click()`); await wait(4500); }
+        if (s.assume) { act = '仮定 ' + s.assume; await wait((await tap(p, '[data-pm=assume]')) ? 4500 : 600); }
         else if (s.ring) { act = (await p.eval(PRESS(valueOf(s.text)))) + ' ' + JSON.stringify(s.under); await wait(scenario.startsWith('ops') ? 2500 : 1100); }
-        else if (s.where) { act = 'どこ？'; await p.eval(`document.querySelector('#pmDock [data-pm=where]').click()`); await wait(900); }
+        else if (s.where) { act = 'どこ？'; await tap(p, '[data-pm=where]'); await wait(900); }
         else { act = '(待つ)'; await wait(900); }
         trail.push(`${s.cnt} ${s.title} | ${s.text.slice(0, 40)} | ${act}`);
     }
     if (!done && !problems.length) problems.push('80 手で終わらなかった');
+    if (done) await settle(p, 15000);   // おしまいの直後に読み込み直しが走っていても、落ち着いてから確かめる (走ったかは下の記録で見える)
+    try {   // ★ 終わったあとの確認で画面が読み込み直し中だと eval が落ちる — 例外も problems に入れて、手順と読み込み直しの記録を出す
     // アプリの知らせ (トースト) は案内の裏に隠れない: 最後の返事のあとに出る「了承を運営に伝えました」が、案内の下に見えている
     const toast = JSON.parse(await p.eval(`JSON.stringify((() => { const n = document.getElementById('notification'), d = document.getElementById('pmDock');
         const r = n.getBoundingClientRect(); return { text: n.textContent, shown: n.classList.contains('show'), top: r.top, dockBottom: d.getBoundingClientRect().bottom }; })())`));
@@ -174,8 +192,8 @@ async function run(label, size, scenario = 'member', startAt = '') {
         if (JSON.stringify(w.dead) !== '[1]' || w.level !== 1 || JSON.stringify(w.notice) !== '["L1B1"]' || w.defeated !== 1 || w.finish !== 0) problems.push(`B1 だけを倒して撃破を検知・通知し、依頼を片付けた形になっていない: ${JSON.stringify(w)}`);
     }
     if (done && scenario === 'member' && !startAt) {
-        await p.eval(`document.querySelector('#pmDock [data-pm=back]').click()`);   // confirm は「はい」
-        await wait(6500);
+        if (!await tap(p, '[data-pm=back]')) problems.push('おしまいに「↩ 1つ前に戻る」が無い');   // confirm は「はい」
+        await wait(1500); await settle(p, 45000);   // 戻るは読み込み直し
         const back = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables; const d = document.getElementById('pmDock');
             return { cnt: d.querySelector('.pm-cnt')?.innerText || '-', assume: d.querySelector('[data-pm=assume]')?.innerText || null, finish: T.finish_requests.length,
                 mine: T.attacks.filter(a => a.player_id === 9101).length, hard: new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10) === window.PAD_PRACTICE.hardDate }; })())`));
@@ -186,9 +204,9 @@ async function run(label, size, scenario = 'member', startAt = '') {
                 const s = JSON.parse(await p.eval(`JSON.stringify(${STATE})`) || 'null');
                 if (!s) { await wait(1000); continue; }
                 if (s.cnt === 'DONE') { again = true; break; }
-                if (s.assume) { await p.eval(`document.querySelector('#pmDock [data-pm=assume]').click()`); await wait(4000); }
+                if (s.assume) { await wait((await tap(p, '[data-pm=assume]')) ? 4000 : 600); }
                 else if (s.ring) { await p.eval(PRESS(valueOf(s.text))); await wait(1200); }
-                else if (s.where) { await p.eval(`document.querySelector('#pmDock [data-pm=where]').click()`); await wait(900); }
+                else if (s.where) { await tap(p, '[data-pm=where]'); await wait(900); }
                 else await wait(900);
             }
             if (!again) problems.push('戻ったあと、もう一度最後まで行けない');
@@ -207,8 +225,14 @@ async function run(label, size, scenario = 'member', startAt = '') {
     // やめる → 本番に戻る (ここから先は本物へ読みに行かせない)
     await p.S('Network.setBlockedURLs', { urls: ['*supabase.co*', '*esm.sh*', '*jsdelivr.net/npm/@supabase*'] });
     const before = p.net.length;
-    await p.eval(`document.querySelector('#pmDock [data-pm=quit]').click()`).catch(() => { });
-    await wait(3500);
+    await tap(p, '[data-pm=quit]').catch(() => { });
+    // 本番へ戻る読み込みも状態で待つ (読み込み中に eval すると「navigated」で落ちる)
+    for (let t0 = Date.now(); Date.now() - t0 < 45000;) {
+        let back = false;
+        try { back = await p.eval(`!/practice=/.test(location.search) && document.readyState === 'complete' && !!document.getElementById('notification')`); } catch (_) { back = false; }
+        if (back) break;
+        await wait(500);
+    }
     const after = JSON.parse(await p.eval(`JSON.stringify({ practice: !!window.PAD_PRACTICE, attr: document.documentElement.getAttribute('data-practice'), search: location.search,
         keys: Object.keys(sessionStorage).filter(k => k.indexOf('shirisuko_practice_v1') === 0 || k.indexOf('pm::') === 0), me: localStorage.getItem('shirisuPad.currentPlayer'),
         lsKeys: Object.keys(localStorage).sort() })`));
@@ -217,8 +241,9 @@ async function run(label, size, scenario = 'member', startAt = '') {
     if (after.lsKeys.some(k => !['shirisuPad.currentPlayer', 'shirisuPad.tourCompleted'].includes(k) && !/^shirisu/.test(k))) problems.push(`本番の記憶に見慣れない鍵: ${after.lsKeys}`);
     if (!p.dialogs.some(d => /練習をやめて、本番の画面に戻りますか/.test(d))) problems.push('やめる前に確かめていない');
     void before;
+    } catch (e) { problems.push(`確認の途中で例外: ${String(e && e.message || e).slice(0, 200)}`); }
     await p.close();
-    console.log(problems.length ? `  ❌ ${label}\n     ${problems.join('\n     ')}\n     --- ここまでの手順\n     ${trail.slice(-8).join('\n     ')}` : `  ✅ ${label} (${trail.length} 手で最後まで)`);
+    console.log(problems.length ? `  ❌ ${label}\n     ${problems.join('\n     ')}\n     --- ここまでの手順\n     ${trail.slice(-8).join('\n     ')}\n     --- 読み込み直し\n     ${p.navs.slice(-6).join('\n     ')}` : `  ✅ ${label} (${trail.length} 手で最後まで)`);
     return problems.length === 0;
 }
 

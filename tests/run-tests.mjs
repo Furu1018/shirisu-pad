@@ -650,6 +650,31 @@ test('🧱 raidBlocksDomain: 既定 7 つ / 検査 (隙間・重なり・逆順�
     assert.equal(d.sameConfig(def.blocks, two.blocks), false);
 });
 
+test('★ 予約のレベルは最終プランで決め直す: 試し解きで Lv2 に解決した 21 時の予約が、前回尊重で解いた最終プランでは Lv2 が 22 時開放 → 開放前で落とさず Lv1 に置く (2026-10-18・練習のメンバー編で発覚)', () => {
+    // 盤面: B1 (灼熱) 残り 60B。朝の人 W 50B@7時 / 夜の人 X 30B@19〜23時 (21 時に予約・レベル無し) / Y 20B@20時 / Z 25B@22時。
+    // 予約無しの試し解き: W + Y で 20 時に踏破 → Lv2 は 20 時開放 → 21 時の予約は Lv2 に解決される。
+    // 前回の配信 (sticky) で Z@22時 が Lv1 に約束されていると、最終プランは Lv1 の踏破が 22 時 → Lv2 は 22 時開放 → 「Lv2 の予約 (21 時) は開放前」で落ちていた
+    const prev = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'Z', loadoutSlot: 1, hourIdx: 17 }] }] }] };
+    const mk = (extra = {}) => compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 60 })],
+        [
+            player('W', { fire: 50 }, { availableSlots: ['h07'] }),
+            player('X', { fire: 30 }, { availableSlots: ['h19', 'h20', 'h21', 'h22', 'h23'] }),
+            player('Y', { fire: 20 }, { availableSlots: ['h20'] }),
+            player('Z', { fire: 25 }, { availableSlots: ['h22'] }),
+        ],
+        { currentSlot: 'h05' },
+    ), timeStrict: true, previousPlan: prev,
+       reservations: [{ reservationId: 41, memberId: 'X', level: null, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h21', team: [], expectedB: 30 }], ...extra });
+    const plan = mk();
+    const placed = plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.memberName === 'X').map(a => ({ lv: lv.level, h: a.hourLabel, resv: a.reservationId }))));
+    assert.deepEqual(plan.unmetReservations, [], `予約が落ちている: ${JSON.stringify(plan.unmetReservations)}`);
+    assert.ok(placed.some(a => a.lv === 1 && a.h === '21時' && a.resv === 41), `21 時の予約が Lv1 に置かれていない: ${JSON.stringify(placed)}`);
+    // 本当に置けない (時刻が全部のレベルの窓の外) ものは落としたまま (決め直しで無限に回らない)
+    const late = mk({ reservations: [{ reservationId: 42, memberId: 'X', level: null, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h04', team: [], expectedB: 30 }] });
+    assert.ok(Array.isArray(late.unmetReservations), '壊れている');
+});
+
 test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
     const plan = compute(timeInput(
         [boss(1, 'fire', { remainingB: 20 })],
@@ -12083,11 +12108,18 @@ console.log('\nswipeGuards:');
      * ★ セレクタの並記もある。末尾の1クラスだけ見ると `.new, .drawer { ... }` で
      *   新しいクラスを見逃す (Codex指摘 2026-09-09) — data-no-swipe の検査と同じ割り方をする
      */
+    // ★ scrollClasses と同じく「宣言を見つけて前後へ辿る」形 (線形)。ブロック全体を 1 つの正規表現
+    //   /([^{}]+)\{([^{}]*overflow-y…[^{}]*)\}/ で取ると、{ } の無い長い区間 (HTML の本文) で二次関数的に遅くなり、
+    //   index.html が育った 2026-10-18 に 1 テストで数分止まった (Codex指摘の 24 秒と同じ型)
     const overflowYOnly = (css) => {
         const hits = [];
-        for (const m of css.matchAll(/([^{}]+)\{([^{}]*overflow-y:\s*auto[^{}]*)\}/g)) {
-            if (/overflow-x:/.test(m[2])) continue;
-            for (const c of selectorClasses(m[1])) hits.push(c);
+        for (const m of css.matchAll(/overflow-y:\s*auto/g)) {
+            const open = css.lastIndexOf('{', m.index), close = css.indexOf('}', m.index);
+            if (open < 0 || close < 0) continue;
+            if (/overflow-x:/.test(css.slice(open + 1, close))) continue;   // 同じブロックに x の指定がある
+            const head = css.slice(Math.max(0, open - 400), open);
+            const sel = head.slice(Math.max(head.lastIndexOf('}'), head.lastIndexOf('{'), head.lastIndexOf(';')) + 1);
+            for (const c of selectorClasses(sel)) hits.push(c);
         }
         return [...new Set(hits)];
     };

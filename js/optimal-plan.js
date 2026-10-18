@@ -1305,10 +1305,12 @@
         //      収束を待つより、それでもずれたら未達として運営に見せる方が正直
         // ★ 「置けない」は黙らせない: レベルが決まらない予約は level=null のまま残し、unmetOf が理由つきで返す。
         //   コストは runPass 2回 (ボス横断分岐に比べれば小さい)。レベル無しの予約が無ければ何もしない
-        const resolveReservationLevels = (list) => {
-            const free = list.filter(r => r.level === null);
+        //   ⑤ relevel = { plan, pick } を渡すと「最終プラン plan の窓」で、時間からレベルを決めた予約 (fromTime) のうち pick(r) が真のものだけ
+        //      決め直す (試し解きはしない)。最終プランで「開放前」に落ちた予約の決め直しに使う (下の solveWithReservations の再解決)
+        const resolveReservationLevels = (list, relevel = null) => {
+            const free = relevel ? list.filter(r => r.fromTime && r.level !== null && relevel.pick(r)) : list.filter(r => r.level === null);
             if (free.length === 0) return list;
-            const leveled = list.filter(r => r.level !== null);
+            const leveled = list.filter(r => !free.includes(r));
             const idKey = (v) => String(v);
             const sortKey = (arr) => arr.slice().sort((x, y) => ((x.level ?? 0) - (y.level ?? 0)) || (x.bossNumber - y.bossNumber)
                 || (idKey(x.memberId) < idKey(y.memberId) ? -1 : idKey(x.memberId) > idKey(y.memberId) ? 1 : 0)
@@ -1352,8 +1354,10 @@
                     return out;
                 }
                 out.level = w.level;
+                out.fromTime = true;   // 時間の窓からレベルを決めた印 (最終プランで「開放前」になったら決め直す — 下の solveWithReservations の再解決)
                 return out;
             });
+            if (relevel) return sortKey([...leveled, ...assign(windowsOf(relevel.plan))]);   // ⑤ 最終プランの窓で決め直すだけ
             const usable = (rs) => sortKey(rs.filter(r => r.level !== null && r.level >= 1 && r.level <= 3));
             let pass = runPass(leveled.length ? { reservations: sortKey(leveled) } : {});
             let resolved = assign(windowsOf(pass));
@@ -1707,39 +1711,58 @@
         //   「前回の割当を尊重するか」だけを比べるものなので、予約は両方に入れる
         // ★ レベルの無い予約は先に時間軸からレベルを決める (2026-09-08)。決まらなかったものは level=null のまま
         //   unmetOf へ回り、拘束には入れない (Lv4 に解決したものも拘束にしない = ボス5は無限で全員入る)
-        const reservationList = resolveReservationLevels(normalizeReservations(input.reservations));
-        // Lv1〜3 は runLevel の先置き、Lv4 (ボス5) は assignLv4 の先置きで守る。
-        // ★ 取り置き (reservedLater) は Lv4 の予約ぶんも見るので、拘束リストには Lv4 も入れる
-        const constraintList = reservationList.filter(r => r.level !== null && r.level >= 1 && r.level <= 4);
-        lv4Reservations = reservationList.filter(r => r.level === 4);
-        const passBase = constraintList.length > 0 ? { reservations: constraintList } : null;
-
+        let reservationList = resolveReservationLevels(normalizeReservations(input.reservations));
         const stickyList = normalizeSticky(input.previousPlan);
-        const solvedNormal = solveWhole(passBase);
-        let scenario = solvedNormal.scenario;
-        let optimization = solvedNormal.optimization;
-        let stability = null;
-        if (stickyList.length > 0) {
-            let solvedSticky = null;
-            // 拘束解で例外が出ても通常解で配信できる方が安全 (安定化は「あれば嬉しい」もの)
-            try { solvedSticky = solveWhole({ ...(passBase || {}), sticky: stickyList }); } catch { solvedSticky = null; }
-            if (solvedSticky) {
-                const verdict = preferNormalOver(solvedSticky.scenario.chosen, scenario.chosen, stickyList);
-                stability = {
-                    applied: !verdict.normal,
-                    reason: verdict.reason,
-                    stickyCount: stickyList.length,
-                    creditedGapB: Math.round(verdict.gapB * 1000) / 1000,
-                    thresholdB: Math.round(verdict.thresholdB * 1000) / 1000,
-                };
-                if (!verdict.normal) {
-                    scenario = solvedSticky.scenario;
-                    optimization = solvedSticky.optimization;
+        // 予約の集合を決めて 1 回解く (通常解 + 前回を尊重する拘束解 → L1 の二者比較)
+        const solveWithReservations = (rlist) => {
+            // Lv1〜3 は runLevel の先置き、Lv4 (ボス5) は assignLv4 の先置きで守る。
+            // ★ 取り置き (reservedLater) は Lv4 の予約ぶんも見るので、拘束リストには Lv4 も入れる
+            const constraintList = rlist.filter(r => r.level !== null && r.level >= 1 && r.level <= 4);
+            lv4Reservations = rlist.filter(r => r.level === 4);
+            const passBase = constraintList.length > 0 ? { reservations: constraintList } : null;
+            const solvedNormal = solveWhole(passBase);
+            let scenario = solvedNormal.scenario;
+            let optimization = solvedNormal.optimization;
+            let stability = null;
+            if (stickyList.length > 0) {
+                let solvedSticky = null;
+                // 拘束解で例外が出ても通常解で配信できる方が安全 (安定化は「あれば嬉しい」もの)
+                try { solvedSticky = solveWhole({ ...(passBase || {}), sticky: stickyList }); } catch { solvedSticky = null; }
+                if (solvedSticky) {
+                    const verdict = preferNormalOver(solvedSticky.scenario.chosen, scenario.chosen, stickyList);
+                    stability = {
+                        applied: !verdict.normal,
+                        reason: verdict.reason,
+                        stickyCount: stickyList.length,
+                        creditedGapB: Math.round(verdict.gapB * 1000) / 1000,
+                        thresholdB: Math.round(verdict.thresholdB * 1000) / 1000,
+                    };
+                    if (!verdict.normal) {
+                        scenario = solvedSticky.scenario;
+                        optimization = solvedSticky.optimization;
+                    }
+                } else {
+                    stability = { applied: false, reason: 'error', stickyCount: stickyList.length, creditedGapB: 0, thresholdB: 0 };
                 }
-            } else {
-                stability = { applied: false, reason: 'error', stickyCount: stickyList.length, creditedGapB: 0, thresholdB: 0 };
             }
+            return { scenario, optimization, stability };
+        };
+        let solved = solveWithReservations(reservationList);
+        // ★ 再解決 (2026-10-18・練習のメンバー編で発覚): 時間からレベルを決めた予約 (fromTime) が、**最終プラン**では「そのレベルの開放前」
+        //   (before_open) になることがある — レベルの解決は予約無しの試し解きの窓で決めるが、予約込み・前回尊重・温存で解いた最終プランでは
+        //   手前のレベルの踏破が遅くなり (⏰厳守の修復パスで試し解きの踏破が早まると起きやすい)、21 時の予約が「Lv2 (22 時開放) の開放前」で落ちていた。
+        //   最終プランの窓で決め直して解き直す (最大 2 回。変わらなければそのまま = 本当に置けない)
+        const resvKey = (r) => [r.reservationId ?? '', r.memberId, r.bossNumber, r.loadoutSlot].map(String).join('|');
+        for (let round = 0; round < 2; round++) {
+            const stuck = new Set(unmetOf(solved.scenario.chosen, reservationList).filter(u => u.reason === 'before_open').map(resvKey));
+            if (stuck.size === 0) break;
+            const next = resolveReservationLevels(reservationList, { plan: solved.scenario.chosen, pick: (r) => stuck.has(resvKey(r)) });
+            const before = new Map(reservationList.map(r => [resvKey(r), r.level]));
+            if (!next.some(r => before.get(resvKey(r)) !== r.level)) break;   // レベルが変わらない = 本当に置けない (落としたまま運営に見せる)
+            reservationList = next;
+            solved = solveWithReservations(reservationList);
         }
+        const scenario = solved.scenario, optimization = solved.optimization, stability = solved.stability;
         const { probe, chosen, lv4Open, reservePassUsed } = scenario;
         const unmetReservations = unmetOf(chosen, reservationList);
         const baselineCreditedB = lv4Open ? sumCreditedOf(probe) : null;   // 温存なしの credited

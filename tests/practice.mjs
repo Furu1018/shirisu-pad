@@ -302,7 +302,7 @@ test('種データ: 架空の 31 人・何度作っても同じ・自分は灼�
     assert.equal(a.players.length, 31);
     assert.deepEqual(a.players.slice(0, 2).map(p => [p.id, p.name]), [[IDS.me, ME_NAME], [IDS.ops, OPS_NAME]]);
     assert.equal(new Set(a.players.map(p => p.name)).size, 31, '名前が重なっている');
-    assert.deepEqual(a.seasons[0], { id: IDS.season, month_key: '2026-10', hard_date: '2026-10-03', current_level: 1, is_active: true, is_test: false });
+    assert.deepEqual(a.seasons[0], { id: IDS.season, month_key: '2026-10', hard_date: '2026-10-03', current_level: 1, is_active: true, is_test: false, metadata: { member_input: 'full' } });   // ③-d: 練習は模擬タブ・申請が出る設定
     const mine = a.player_damages.filter(d => d.player_id === IDS.me);
     assert.deepEqual(mine.map(d => d.attribute).sort(), ['electric', 'iron', 'water', 'wind'], '自分の模擬 (灼熱だけ未提出) が違う');
     assert.ok(!a.availability_confirmations.some(r => r.player_id === IDS.me), '自分の今期の確認が最初から済んでいる');
@@ -950,6 +950,24 @@ test('見張り: 課題の形 / 「〜したことにする」は自動では起
     for (const w of quoted) {
         if (NOT_ON_SCREEN.includes(w)) continue;
         assert.ok(SCREEN.includes(w.replace(/^[＋⏰🔒] ?/, '').replace(/ ›$/, '')), `案内が引く「${w}」が画面に無い (ボタンの名前が変わった?)`);
+    }
+});
+
+test('見張り: やめた・やり直したあと (closed) の案内は何もしない — 消えた印を見て当日の盤面作り (reload) を始め、exit の replace を上書きしない (運営編・当日で再現 2026-10-18)', () => {
+    // exit は印 (sessionStorage) を消してから location.replace する。新しい画面が来るまでの数秒に update が回ると、ops-day では
+    // setup:done が無いので runSetup → location.reload が走り、「やめたのに練習が最初から始まる」になっていた (遅い端末ほど起きる)
+    const fn = GUIDE.match(/\n    function update\(\) \{[\s\S]*?\n    \}\n/)?.[0] || '';
+    assert.ok(fn.length > 0, 'update() が見つからない');
+    const firstStmt = fn.replace(/\n\s*\/\/[^\n]*/g, '').split('\n').map(l => l.trim()).filter(Boolean)[1];
+    assert.equal(firstStmt, 'if (P.closed) return;', `update() の最初の文が closed の守りでない: ${firstStmt}`);
+    const setupIdx = fn.indexOf('runSetup()'), guardIdx = fn.indexOf('if (P.closed) return;');
+    assert.ok(setupIdx > 0 && guardIdx > 0 && guardIdx < setupIdx, '盤面作り (runSetup) より前に closed を見ていない');
+    // exit / restart は closed を立ててから画面を離れる (boot.js)
+    const BOOT = rd('js/practice/boot.js');
+    for (const k of ['exit', 'restart']) {
+        const body = BOOT.match(new RegExp(k + ': function \\([^)]*\\) \\{[\\s\\S]*?\\n        \\}'))?.[0] || '';
+        assert.ok(/this\.closed = true;/.test(body), `${k} が closed を立てていない`);
+        assert.ok(body.indexOf('this.closed = true;') < Math.max(body.indexOf('location.replace'), body.indexOf('location.reload')), `${k}: 画面を離れる前に closed を立てていない`);
     }
 });
 
