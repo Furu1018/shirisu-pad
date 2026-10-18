@@ -41,20 +41,29 @@
      * @param {{ attacks: Array<Object>, plan: Object|null, nowMs: number, lowRatio?: number, timeGapH?: number }} a
      *   attacks = 盤面の凸 (id / player_id / name / boss_number / boss_code / damage_raw / reported_at / level / attack_number / confirmed_at / confirmed_by)
      *   plan = 配信プラン (computeOptimalPlanCore の出力)。無ければ印は付けない (hasPlan=false)
-     * @returns {{ rows: Array<Object>, missing: Array<Object>, hasPlan: boolean, counts: { total, confirmed, flagged, missing } }}
+     *   照合は 同じ人・同じボス・同じレベル。ボス未指定 (代理凸) と 配信に無いレベルの凸は unchecked (理由の文) で印を付けず、割当も食わない
+     * @returns {{ rows: Array<Object>, missing: Array<Object>, hasPlan: boolean, counts: { total, confirmed, flagged, unchecked, missing } }}
      */
     function buildRows({ attacks, plan, nowMs, lowRatio = 0.7, timeGapH = 3 } = {}) {
         const list = (Array.isArray(attacks) ? attacks : []).filter(a => a && a.id != null);
         const planned = plannedOf(plan).map(p => ({ ...p, used: false }));
         const hasPlan = planned.length > 0;
+        // 配信が持つレベル。別のレベルの凸 (レベルが進む前の古い凸) は、いまの配信では照合できない (Codex指摘 ccfff3e:
+        //   最新の配信だけで全報告を見ると、古い凸が新しいレベルの割当を食って 未報告 / 食い違い を誤表示する)
+        const planLevels = new Set(planned.map(p => p.level).filter(l => l != null));
         const nowIdx = hourIdxOfMs(nowMs);
-        // 報告は古い順に見て、同じ人・同じボスの割当のうち時刻の近いものへ当てる (1 つの割当に 1 つの報告)
+        // 報告は古い順に見て、同じ人・同じボス・同じレベルの割当のうち時刻の近いものへ当てる (1 つの割当に 1 つの報告)
         const sorted = list.slice().sort((a, b) => ((ms(a.reported_at) ?? 0) - (ms(b.reported_at) ?? 0)) || (Number(a.id) - Number(b.id)));
         const rows = sorted.map(a => {
             const atMs = ms(a.reported_at), hourIdx = hourIdxOfMs(atMs);
             const damageB = (Number(a.damage_raw) || 0) / 1e9;
-            const mine = planned.filter(p => String(p.memberId) === String(a.player_id));
-            const cands = mine.filter(p => !p.used && p.bossNumber === Number(a.boss_number));
+            const level = a.level == null ? null : Number(a.level);
+            const bossNumber = a.boss_number == null ? null : Number(a.boss_number);
+            // 照合できない凸: ボス未指定 (代理凸) / 配信に無いレベルの凸 (レベルが進む前のぶん)。印は付けず、割当も食わない
+            const unchecked = bossNumber == null ? 'ボス未指定 (照合できません)'
+                : (hasPlan && level != null && planLevels.size && !planLevels.has(level)) ? `Lv${level} の凸 (いまの配信は Lv${[...planLevels].sort((x, y) => x - y).join('・')})` : null;
+            const mine = unchecked ? [] : planned.filter(p => String(p.memberId) === String(a.player_id) && (level == null || p.level == null || p.level === level));
+            const cands = mine.filter(p => !p.used && p.bossNumber === bossNumber);
             let matched = null;
             if (cands.length) {
                 const dist = (p) => (p.hourIdx == null || hourIdx == null) ? 0 : Math.abs(p.hourIdx - hourIdx);
@@ -62,7 +71,7 @@
                 matched = cands[0]; matched.used = true;
             }
             const flags = [];
-            if (hasPlan) {
+            if (hasPlan && !unchecked) {
                 if (!matched) {
                     const rest = [...new Set(mine.filter(p => !p.used).map(p => `B${p.bossNumber}`))];
                     flags.push({ key: 'unplanned', text: mine.length === 0 ? '配信に割当なし' : (rest.length ? `計画は ${rest.join('・')}` : '計画より多い') });
@@ -75,10 +84,10 @@
             }
             return {
                 id: a.id, playerId: a.player_id, name: a.name || String(a.player_id),
-                bossNumber: Number(a.boss_number), bossCode: a.boss_code || null, damageB, atMs, hourIdx,
-                level: a.level == null ? null : Number(a.level), attackNumber: a.attack_number == null ? null : Number(a.attack_number),
-                confirmedAt: ms(a.confirmed_at), confirmedBy: a.confirmed_by || null, flags,
-                planned: matched ? { bossNumber: matched.bossNumber, hourIdx: matched.hourIdx, dmgB: matched.dmgB } : null,
+                bossNumber, bossCode: a.boss_code || null, damageB, atMs, hourIdx,
+                level, attackNumber: a.attack_number == null ? null : Number(a.attack_number),
+                confirmedAt: ms(a.confirmed_at), confirmedBy: a.confirmed_by || null, flags, unchecked,
+                planned: matched ? { bossNumber: matched.bossNumber, hourIdx: matched.hourIdx, dmgB: matched.dmgB, level: matched.level } : null,
             };
         });
         rows.sort((a, b) => ((b.atMs ?? 0) - (a.atMs ?? 0)) || (Number(b.id) - Number(a.id)));   // 新しい順
@@ -88,7 +97,8 @@
             .sort((a, b) => (a.hourIdx - b.hourIdx) || (a.bossNumber - b.bossNumber));
         return {
             rows, missing, hasPlan,
-            counts: { total: rows.length, confirmed: rows.filter(r => r.confirmedAt != null).length, flagged: rows.filter(r => r.flags.length > 0).length, missing: missing.length },
+            counts: { total: rows.length, confirmed: rows.filter(r => r.confirmedAt != null).length, flagged: rows.filter(r => r.flags.length > 0).length,
+                unchecked: rows.filter(r => !!r.unchecked).length, missing: missing.length },
         };
     }
     /** 見出しの一言: 「確認 3 / 12 · 要確認 2 · 未報告 1」。報告も未報告も無ければ「まだ報告はありません」 */
@@ -96,7 +106,7 @@
         const c = res && res.counts;
         if (!c) return '';
         if (!c.total && !c.missing) return 'まだ報告はありません';
-        return [`確認 ${c.confirmed} / ${c.total}`, c.flagged ? `要確認 ${c.flagged}` : '', c.missing ? `未報告 ${c.missing}` : ''].filter(Boolean).join(' · ');
+        return [`確認 ${c.confirmed} / ${c.total}`, c.flagged ? `要確認 ${c.flagged}` : '', c.unchecked ? `照合できない ${c.unchecked}` : '', c.missing ? `未報告 ${c.missing}` : ''].filter(Boolean).join(' · ');
     }
     root.attackCheckDomain = { HOUR_BASE, FLAG_JP, hourIdxOfMs, hourLabelOfIdx, plannedOf, buildRows, summary };
 })(typeof window !== 'undefined' ? window : globalThis);

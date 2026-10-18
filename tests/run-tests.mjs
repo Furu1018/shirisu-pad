@@ -4270,7 +4270,7 @@ console.log('\n運営除外の配線 (ソース突合):');
         assert.ok(check.includes("'35_player_damages_exclusion'"));
     });
     test('99_check_applied.sql に 52 (✅ 凸報告の確認) の判定行がある', () => {
-        assert.ok(/UNION ALL SELECT '52_attacks_confirmed',\s*\n\s*EXISTS \(SELECT 1 FROM information_schema\.columns WHERE table_schema = 'public' AND table_name = 'attacks' AND column_name = 'confirmed_at'\)/.test(check), '52 の判定行が無い / 列の存在で判定していない');
+        assert.ok(/UNION ALL SELECT '52_attacks_confirmed',\s*\n\s*\(SELECT COUNT\(\*\) = 2 FROM information_schema\.columns WHERE table_schema = 'public' AND table_name = 'attacks' AND column_name IN \('confirmed_at', 'confirmed_by'\)\)/.test(check), '52 の判定行が無い / 2 列そろっているかで判定していない (片方だけの部分適用を「済み」にしない — Codex指摘 ccfff3e)');
     });
 
     // ---- 37: 今期の戦闘可能時間の確認 ------------------------------------------
@@ -11860,11 +11860,11 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(flagsOf(4), ['unplanned:配信に割当なし']);
         assert.deepEqual(flagsOf(5), ['unplanned:計画は B2']);
         const row3 = r.rows.find(x => x.id === 3);
-        assert.equal(row3.confirmedBy, 'ふるり'); assert.equal(row3.confirmedAt, Date.parse(at(19, 30))); assert.deepEqual(row3.planned, { bossNumber: 3, hourIdx: 10, dmgB: 25 });
+        assert.equal(row3.confirmedBy, 'ふるり'); assert.equal(row3.confirmedAt, Date.parse(at(19, 30))); assert.deepEqual(row3.planned, { bossNumber: 3, hourIdx: 10, dmgB: 25, level: 1 });
         assert.equal(r.rows.find(x => x.id === 1).damageB, 28); assert.equal(r.rows.find(x => x.id === 1).hourIdx, 16);
         // 未報告: D (13 時の予定・いまは 22 時) だけ。E は ⏳隙間 (数えない)、F は 翌1時 でまだ先
         assert.deepEqual(r.missing, [{ memberId: 'D', bossNumber: 5, hourIdx: 8, hourLabel: '13時', dmgB: 40, level: 1 }]);
-        assert.deepEqual(r.counts, { total: 5, confirmed: 1, flagged: 4, missing: 1 });
+        assert.deepEqual(r.counts, { total: 5, confirmed: 1, flagged: 4, unchecked: 0, missing: 1 });
         assert.equal(dom.summary(r), '確認 1 / 5 · 要確認 4 · 未報告 1');
         // 同じ人・同じボスに 2 つの割当: 近い時刻の割当へ当てる (1 つの割当に 1 つの報告)
         const plan2 = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 2, dmgB: 30 }, { memberId: 'A', hourIdx: 16, dmgB: 30 }] }] }] };
@@ -11875,6 +11875,23 @@ console.log('\ngrowthDomain:');
         assert.equal(r0.hasPlan, false); assert.ok(r0.rows.every(x => x.flags.length === 0)); assert.deepEqual(r0.missing, []);
         assert.equal(dom.summary(dom.buildRows({ attacks: [], plan: null, nowMs: Date.now() })), 'まだ報告はありません');
         assert.deepEqual(dom.buildRows({}).rows, []);
+        // ★ レベルで照合する (Codex指摘 ccfff3e): 配信は Lv2 のぶん。Lv1 の古い凸は Lv2 の割当を食わず「照合できない」(印なし)。ボス未指定 (代理凸) も同じ
+        const planLv2 = { levels: [{ level: 2, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 16, dmgB: 30 }] }] }] };
+        const rl = dom.buildRows({ attacks: [
+            { id: 1, player_id: 'A', name: 'A', boss_number: 1, level: 1, damage_raw: 28e9, reported_at: at(12, 0) },     // レベルが進む前の凸
+            { id: 2, player_id: 'A', name: 'A', boss_number: 1, level: 2, damage_raw: 29e9, reported_at: at(21, 0) },     // いまの配信の割当どおり
+            { id: 3, player_id: 'B', name: 'B', boss_number: null, level: 2, damage_raw: 5e9, reported_at: at(20, 0) },   // 代理凸 (ボス未指定)
+        ], plan: planLv2, nowMs: Date.parse(at(22, 0)) });
+        const byId = (id) => rl.rows.find(x => x.id === id);
+        assert.equal(byId(1).unchecked, 'Lv1 の凸 (いまの配信は Lv2)'); assert.deepEqual(byId(1).flags, []); assert.equal(byId(1).planned, null);
+        assert.equal(byId(2).unchecked, null); assert.deepEqual(byId(2).flags, []); assert.equal(byId(2).planned.level, 2, 'Lv2 の報告が Lv2 の割当に当たる (古い Lv1 の凸に食われない)');
+        assert.equal(byId(3).unchecked, 'ボス未指定 (照合できません)'); assert.equal(byId(3).bossNumber, null); assert.deepEqual(byId(3).flags, []);
+        assert.deepEqual(rl.missing, [], '割当は Lv2 の報告で埋まっている (未報告の誤表示なし)');
+        assert.deepEqual(rl.counts, { total: 3, confirmed: 0, flagged: 0, unchecked: 2, missing: 0 });
+        assert.equal(dom.summary(rl), '確認 0 / 3 · 照合できない 2');
+        // 凸にレベルが無い (旧データ) ときはレベルを見ずに当てる
+        const rn = dom.buildRows({ attacks: [{ id: 9, player_id: 'A', boss_number: 1, level: null, damage_raw: 30e9, reported_at: at(21, 0) }], plan: planLv2, nowMs: Date.parse(at(22, 0)) });
+        assert.equal(rn.rows[0].unchecked, null); assert.equal(rn.rows[0].planned.level, 2);
     });
 
     test('★ 配線: ✅ 凸報告の確認 (③-f) — 戦況タブのカード / 盤面の凸に confirmed_* (52 未適用は落として attackConfirm=false) / 配信の取り直しの最後に描く / ✓ は supabaseSetAttackConfirmed → local で上書き', () => {
@@ -11908,6 +11925,12 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(!_opsMode \|\| !id \|\| _atkCheck\.busy\.has\(id\)\) return;/.test(handler) && /await window\.supabaseSetAttackConfirmed\(id, !!on, me\?\.name \|\| '運営'\);/.test(handler), '✓ が二重押し・運営OFF を止めていない');
         assert.ok(/_atkCheck\.localGen = opsStore\.generation\(\);[^\n]*\n\s*_atkCheck\.local\.set\(id, patch\);\s*\n\s*renderOpsAttackCheck\(\);/.test(handler), '✓ の結果を local で上書きして描き直していない');
         assert.ok(/handleOpsAttackConfirm\(\$\{Number\(r\.id\)\}, \$\{r\.confirmedAt == null\}\)/.test(render), '✓ ボタンが id と向きを渡していない');
+        assert.ok(/\$\{r\.unchecked \? `<span class="fl" style="background:var\(--s2\);color:var\(--t-muted\);"[^`]*\$\{escapeHtml\(r\.unchecked\)\}<\/span>` : ''\}/.test(render), '照合できない凸の注記を出していない');
+        // 運営 OFF→ON (Codex指摘 ccfff3e): 戦況タブを開いたままなら取り直して描く / 隠れていれば描画キャッシュを捨てる / OFF は待機中の描画を無効化
+        const after = html.match(/function _afterOpsModeChanged\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_invalidateTabRenderCache\('ops'\);/.test(after), '戦況タブの描画キャッシュを捨てていない');
+        assert.ok(/if \(!_opsMode\) \{\s*\n\s*if \(typeof _atkCheck !== 'undefined'\) _atkCheck\.gen\+\+;\s*\n\s*if \(typeof _mockIntake !== 'undefined'\) _mockIntake\.gen\+\+;/.test(after), 'OFF で待機中の描画を無効化していない');
+        assert.ok(/\} else if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) \{\s*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(true\);\s*\n\s*if \(typeof renderOpsMockIntake === 'function'\) renderOpsMockIntake\(true\);/.test(after), 'ON で戦況タブを開いたままのとき取り直していない');
     });
 
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {

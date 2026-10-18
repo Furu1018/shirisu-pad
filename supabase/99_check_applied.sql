@@ -335,7 +335,7 @@ SELECT * FROM (
         '🧱 メンバーの入力 (模擬の提出シート・凸の申請) を出すかをシーズンに保存する RPC (未適用でも「読んで混ぜて書く」で動く・同時編集に弱いだけ)'
 
     UNION ALL SELECT '52_attacks_confirmed',
-        EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'attacks' AND column_name = 'confirmed_at'),
+        (SELECT COUNT(*) = 2 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'attacks' AND column_name IN ('confirmed_at', 'confirmed_by')),
         '✅ 凸報告の確認 (運営の ✓・attacks.confirmed_at / confirmed_by)。未適用でも一覧と印は出る・✓ だけ止まる'
 
     UNION ALL SELECT '(storage bucket)',

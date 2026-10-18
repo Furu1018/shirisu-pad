@@ -17408,14 +17408,14 @@
             document.querySelectorAll('#opsAtkCheckFilters button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === f)));
             const rows = res.rows.filter(r => f === 'all' || (f === 'flagged' && r.flags.length > 0) || (f === 'todo' && r.confirmedAt == null));
             const bossOf = (n) => (snap.bosses || []).find(b => Number(b.boss_number) === Number(n)) || null;
-            const chip = (n) => { const c = DC_ATTR_COLORS[bossOf(n)?.attribute] || DC_ATTR_COLORS.iron; return `<span class="b" style="background:${c}1f;">B${escapeHtml(String(n))}</span>`; };
+            const chip = (n) => { if (n == null) return '<span class="b" style="background:var(--s2);color:var(--t-muted);">B?</span>'; const c = DC_ATTR_COLORS[bossOf(n)?.attribute] || DC_ATTR_COLORS.iron; return `<span class="b" style="background:${c}1f;">B${escapeHtml(String(n))}</span>`; };
             const nameOf = new Map((snap.players || []).map(p => [String(p.id), p.name]));
             const list = rows.length ? rows.map(r => `
                 <div class="ops-atk-row${r.confirmedAt != null ? ' done' : ''}" data-id="${Number(r.id)}">
                     <span class="t">${escapeHtml(r.atMs != null ? _opsHm(r.atMs) : '—')}</span>${chip(r.bossNumber)}
                     <span class="n">${escapeHtml(r.name)}${r.level ? ` <span style="font-size:10px;color:var(--t-muted);font-weight:700;">Lv${r.level}</span>` : ''}</span>
                     <span class="v">${r.damageB.toFixed(1)}B</span>
-                    ${r.flags.map(fl => `<span class="fl" title="${escapeHtml(dom.FLAG_JP[fl.key] || fl.key)}">${escapeHtml(fl.text)}</span>`).join('')}
+                    ${r.flags.map(fl => `<span class="fl" title="${escapeHtml(dom.FLAG_JP[fl.key] || fl.key)}">${escapeHtml(fl.text)}</span>`).join('')}${r.unchecked ? `<span class="fl" style="background:var(--s2);color:var(--t-muted);" title="配信プランと照合できない凸 (印は付けません)">${escapeHtml(r.unchecked)}</span>` : ''}
                     <button type="button" class="ok" aria-pressed="${r.confirmedAt != null}"${canConfirm ? '' : ' disabled title="supabase/52_attacks_confirmed.sql を SQL Editor で実行すると押せます"'} onclick="handleOpsAttackConfirm(${Number(r.id)}, ${r.confirmedAt == null})">${r.confirmedAt != null ? `✓ ${escapeHtml(r.confirmedBy || '確認済み')}` : '✓ 確認'}</button>
                 </div>`).join('')
                 : `<p class="ops-recent-empty">${res.rows.length ? 'この絞り込みに当たる報告はありません。' : 'まだ凸の報告がありません。'}</p>`;
@@ -28506,6 +28506,17 @@
             if (_opsMode && document.getElementById('tab-ops')?.classList.contains('active')
                 && typeof renderOpsMemberStatus === 'function') {
                 renderOpsMemberStatus();
+            }
+            // ✅ 凸報告の確認 / 📸 模擬の取り込み (③-e・③-f): 描くきっかけが配信の取り直しと盤面の描画なので、運営 OFF→ON を戦況タブで切り替えた
+            //   ときは取り直して描き直す (Codex指摘 ccfff3e: 以前の一覧・✓ が残る)。隠れているときは戦況タブの描画キャッシュを捨て、次に開いたとき描かせる。
+            //   OFF にしたら待機中の描画を無効化する (古い応答で描かない)
+            if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache('ops');
+            if (!_opsMode) {
+                if (typeof _atkCheck !== 'undefined') _atkCheck.gen++;
+                if (typeof _mockIntake !== 'undefined') _mockIntake.gen++;
+            } else if (document.getElementById('tab-ops')?.classList.contains('active')) {
+                if (typeof renderOpsAttackCheck === 'function') renderOpsAttackCheck(true);
+                if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake(true);
             }
         }
         // ---- 戦況タブの折りたたみ (前日/当日の既定 + 手動開閉の記憶) と最上部コックピット ----
