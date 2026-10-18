@@ -11889,6 +11889,15 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(rl.missing, [], '割当は Lv2 の報告で埋まっている (未報告の誤表示なし)');
         assert.deepEqual(rl.counts, { total: 3, confirmed: 0, flagged: 0, unchecked: 2, missing: 0 });
         assert.equal(dom.summary(rl), '確認 0 / 3 · 照合できない 2');
+        // 配信が複数レベルを持つとき: 同じ人・同じボスでもレベルの合う割当へ (時刻が近いだけの別レベルに当てない — 変異「レベルを見ずに当てる」で発覚)
+        const planLv12 = { levels: [
+            { level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 8, dmgB: 30 }] }] },
+            { level: 2, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'A', hourIdx: 16, dmgB: 30 }] }] },
+        ] };
+        const r12 = dom.buildRows({ attacks: [{ id: 1, player_id: 'A', name: 'A', boss_number: 1, level: 1, damage_raw: 30e9, reported_at: at(21, 0) }], plan: planLv12, nowMs: Date.parse(at(22, 0)) });
+        assert.equal(r12.rows[0].planned.level, 1, 'Lv1 の凸は Lv1 の割当へ (時刻が近い Lv2 の割当に当てない)');
+        assert.deepEqual(r12.rows[0].flags.map(f => f.key), ['time'], '遅れて報告した Lv1 の凸はずれの印');
+        assert.deepEqual(r12.missing.map(m => [m.level, m.hourIdx]), [[2, 16]], 'Lv2 の割当は未報告のまま');
         // 凸にレベルが無い (旧データ) ときはレベルを見ずに当てる
         const rn = dom.buildRows({ attacks: [{ id: 9, player_id: 'A', boss_number: 1, level: null, damage_raw: 30e9, reported_at: at(21, 0) }], plan: planLv2, nowMs: Date.parse(at(22, 0)) });
         assert.equal(rn.rows[0].unchecked, null); assert.equal(rn.rows[0].planned.level, 2);
