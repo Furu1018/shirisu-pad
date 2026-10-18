@@ -1873,7 +1873,7 @@ window.supabaseUpdateSeasonBlocks = async function (seasonId, blocks) {
     const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
     if (rErr) throw rErr;
     if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
-    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' ? cur.metadata : {}) };
+    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' && !Array.isArray(cur.metadata) ? cur.metadata : {}) };   // 配列・スカラーは {} から (Codex指摘 b8f9d94)
     if (cfg) metadata.blocks = cfg;
     else delete metadata.blocks;
     const { data, error: uErr } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
@@ -1893,7 +1893,7 @@ window.supabaseUpdateSeasonMemberInput = async function (seasonId, full) {
     const { data: cur, error: rErr } = await supabase.from('seasons').select('metadata').eq('id', seasonId).eq('is_active', true).maybeSingle();
     if (rErr) throw rErr;
     if (!cur) throw new Error('対象シーズンは既にアクティブではありません (終了済みの可能性)。画面を更新してください');
-    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' ? cur.metadata : {}) };
+    const metadata = { ...(cur.metadata && typeof cur.metadata === 'object' && !Array.isArray(cur.metadata) ? cur.metadata : {}) };   // 配列・スカラーは {} から (Codex指摘 b8f9d94)
     if (value) metadata.member_input = value; else delete metadata.member_input;
     const { data, error: uErr } = await supabase.from('seasons').update({ metadata }).eq('id', seasonId).eq('is_active', true).select('id');
     if (uErr) throw uErr;

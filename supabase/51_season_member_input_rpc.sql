@@ -34,8 +34,9 @@ BEGIN
     END IF;
 
     UPDATE seasons
-       SET metadata = CASE WHEN v_clear THEN COALESCE(metadata, '{}'::jsonb) - p_key
-                           ELSE COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(p_key, p_value) END
+       -- metadata が object 以外 (NULL・配列・スカラー) なら {} から作り直す (|| や - は配列に対して別の意味になる — Codex指摘 b8f9d94)
+       SET metadata = CASE WHEN v_clear THEN (CASE WHEN jsonb_typeof(metadata) = 'object' THEN metadata ELSE '{}'::jsonb END) - p_key
+                           ELSE (CASE WHEN jsonb_typeof(metadata) = 'object' THEN metadata ELSE '{}'::jsonb END) || jsonb_build_object(p_key, p_value) END
      WHERE id = p_season_id AND is_active = TRUE
      RETURNING metadata INTO v_meta;
     IF NOT FOUND THEN

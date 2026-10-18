@@ -27142,7 +27142,13 @@
             try { params = new URLSearchParams(search || ''); } catch { return; }
             const tab = params.get('tab');
             if (tab && document.getElementById(`tab-${tab}`)) {
-                try { switchTab(tab); } catch { /* noop */ }
+                // 🧱 ③-d: ?tab=mock は シーズンの member_input を読んでから判定する。起動直後は seasonStore が未ロード = 既定の「隠す」に倒れ、
+                //   full の設定でも通知やブックマークからの ?tab=mock がホームへ戻されていた (Codex指摘 b8f9d94)。運営モードの人は待たない
+                if (tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore.get()?.season && typeof ensureActiveSeasonLoaded === 'function') {
+                    ensureActiveSeasonLoaded().catch(() => null).then(() => { try { switchTab('mock'); } catch { /* noop */ } });
+                } else {
+                    try { switchTab(tab); } catch { /* noop */ }
+                }
             }
             // 🔔 疎通確認の通知をタップして開いた = 届いた。そのまま運営に伝える
             if (params.get('focus') === 'pushcheck') { handleMyPushCheckConfirm('tap', params.get('season')); }

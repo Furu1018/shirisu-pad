@@ -655,24 +655,35 @@ test('★ 予約のレベルは最終プランで決め直す: 試し解きで L
     // 予約無しの試し解き: W + Y で 20 時に踏破 → Lv2 は 20 時開放 → 21 時の予約は Lv2 に解決される。
     // 前回の配信 (sticky) で Z@22時 が Lv1 に約束されていると、最終プランは Lv1 の踏破が 22 時 → Lv2 は 22 時開放 → 「Lv2 の予約 (21 時) は開放前」で落ちていた
     const prev = { levels: [{ level: 1, bosses: [{ bossNumber: 1, attacks: [{ memberId: 'Z', loadoutSlot: 1, hourIdx: 17 }] }] }] };
-    const mk = (extra = {}) => compute({ ...timeInput(
-        [boss(1, 'fire', { remainingB: 60 })],
+    // B2 (水) は V@8 + U@9 で 9 時に倒れる (Lv1 の踏破は B1 で決まる)。V の予約 (8 時) は決め直しの巻き添えで落ちないこと
+    const resvV = { reservationId: 45, memberId: 'V', level: null, bossNumber: 2, loadoutSlot: 1, timeSlot: 'h08', team: [], expectedB: 20 };
+    const mk = (extra = {}, now = 'h05') => compute({ ...timeInput(
+        [boss(1, 'fire', { remainingB: 60 }), boss(2, 'water', { remainingB: 40 })],
         [
             player('W', { fire: 50 }, { availableSlots: ['h07'] }),
             player('X', { fire: 30 }, { availableSlots: ['h19', 'h20', 'h21', 'h22', 'h23'] }),
             player('Y', { fire: 20 }, { availableSlots: ['h20'] }),
             player('Z', { fire: 25 }, { availableSlots: ['h22'] }),
+            player('V', { water: 20 }, { availableSlots: ['h08'] }),
+            player('U', { water: 20 }, { availableSlots: ['h09'] }),
         ],
-        { currentSlot: 'h05' },
+        { currentSlot: now },
     ), timeStrict: true, previousPlan: prev,
-       reservations: [{ reservationId: 41, memberId: 'X', level: null, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h21', team: [], expectedB: 30 }], ...extra });
+       reservations: [{ reservationId: 41, memberId: 'X', level: null, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h21', team: [], expectedB: 30 }, resvV], ...extra });
+    const of = (plan, name) => plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.memberName === name).map(a => ({ lv: lv.level, boss: b.bossNumber, h: a.hourLabel, resv: a.reservationId }))));
     const plan = mk();
-    const placed = plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.memberName === 'X').map(a => ({ lv: lv.level, h: a.hourLabel, resv: a.reservationId }))));
+    const placed = of(plan, 'X');
     assert.deepEqual(plan.unmetReservations, [], `予約が落ちている: ${JSON.stringify(plan.unmetReservations)}`);
     assert.ok(placed.some(a => a.lv === 1 && a.h === '21時' && a.resv === 41), `21 時の予約が Lv1 に置かれていない: ${JSON.stringify(placed)}`);
-    // 本当に置けない (時刻が全部のレベルの窓の外) ものは落としたまま (決め直しで無限に回らない)
-    const late = mk({ reservations: [{ reservationId: 42, memberId: 'X', level: null, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h04', team: [], expectedB: 30 }] });
-    assert.ok(Array.isArray(late.unmetReservations), '壊れている');
+    assert.deepEqual(of(plan, 'V'), [{ lv: 1, boss: 2, h: '8時', resv: 45 }], '決め直しの対象でない予約 (V・B2) が巻き添えで落ちた / 予約の印が消えた');
+    // 運営がレベル付きで作った予約 (fromTime でない) は決め直さない: Lv2 が 22 時開放なら「開放前」のまま運営に見せる
+    const ops = mk({ reservations: [{ reservationId: 43, memberId: 'X', level: 2, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h21', team: [], expectedB: 30 }, resvV] });
+    assert.deepEqual(ops.unmetReservations.map(u => [u.reservationId, u.level, u.reason, u.detail && u.detail.openLabel]), [[43, 2, 'before_open', '22時']], `レベル付きの予約を動かした: ${JSON.stringify(ops.unmetReservations)}`);
+    assert.ok(!of(ops, 'X').some(a => a.resv === 43), `落ちた予約の印が凸に付いている: ${JSON.stringify(of(ops, 'X'))}`);
+    // 本当に置けない (約束の時刻を過ぎている) ものは落としたまま (before_open でないので決め直しの対象にならない・無限に回らない)
+    const late = mk({ reservations: [{ reservationId: 42, memberId: 'X', level: null, bossNumber: 1, loadoutSlot: 1, timeSlot: 'h07', team: [], expectedB: 30 }] }, 'h10');
+    assert.deepEqual(late.unmetReservations.map(u => [u.reservationId, u.reason]), [[42, 'time_passed']], `過ぎた予約の扱いが変わった: ${JSON.stringify(late.unmetReservations)}`);
+    assert.ok(!of(late, 'X').some(a => a.resv === 42), '過ぎた予約の印が凸に付いている');
 });
 
 test('律速マーク: レベルのクリア時刻を決める凸に isBottleneck が付く', () => {
@@ -9072,7 +9083,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/if \(error\.code !== 'PGRST202'\) throw error;/.test(upd) && !/Could not find the function/.test(upd), '50 未適用の判定がコードだけになっていない');
         assert.ok(/if \(!Array\.isArray\(blocks\) \|\| blocks\.length === 0\) throw new Error/.test(upd), '配列でない入力を断っていない');
         assert.ok(/jsonb_typeof\(p_blocks\) = 'null';/.test(_grRd('supabase', '50_season_blocks_rpc.sql')) && /RAISE EXCEPTION 'ブロックは配列で渡してください/.test(_grRd('supabase', '50_season_blocks_rpc.sql')), '50 が配列でない入力を断っていない');
-        assert.ok(/const metadata = \{ \.\.\.\(cur\.metadata && typeof cur\.metadata === 'object' \? cur\.metadata : \{\}\) \};/.test(upd), 'フォールバックで他の鍵 (damages_snapshot 等) を消している');
+        assert.ok(/const metadata = \{ \.\.\.\(cur\.metadata && typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\) \? cur\.metadata : \{\}\) \};/.test(upd), 'フォールバックで他の鍵 (damages_snapshot 等) を消している / 配列を {} に倒していない (Codex指摘 b8f9d94)');
         assert.ok(/else delete metadata\.blocks;/.test(upd), 'null で既定に戻せない');
         assert.equal((upd.match(/\.eq\('is_active', true\)/g) || []).length, 2, '終了済みシーズンに書けてしまう');
         // SQL 50 と 99 の判定行、練習の偽サーバにも同じ RPC
@@ -9274,6 +9285,8 @@ console.log('\ngrowthDomain:');
         assert.equal((html.slice(html.lastIndexOf('</style>')).match(/data-tab="mock"/g) || []).length, 3, '模擬タブの入口 (上のタブ・下のナビ・ドロワー) が 3 つでない');
         // 入口でも止める (模擬タブを開こうとしたらホームへ)
         assert.ok(/if \(tabName === 'mock' && typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*showNotification\('模擬は Discord にスクショを貼ってください。運営が PAD に登録します'\);\s*\n\s*tabName = 'mypage';/.test(html), 'TabController で止めていない');
+        assert.ok(/if \(tab === 'mock' && !_opsMode && typeof seasonStore !== 'undefined' && !seasonStore\.get\(\)\?\.season && typeof ensureActiveSeasonLoaded === 'function'\) \{\s*\n\s*ensureActiveSeasonLoaded\(\)\.catch\(\(\) => null\)\.then\(\(\) => \{ try \{ switchTab\('mock'\); \} catch \{ \/\* noop \*\/ \} \}\);/.test(html), '?tab=mock をシーズンを読む前に判定している (未ロード = 隠すに倒れて full の人もホームへ戻される — Codex指摘 b8f9d94)');
+        assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         assert.ok(/if \(lite && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\('mypage'\);/.test(html), '開いたまま隠されたときにホームへ戻していない');
         // 申請の導線: 引き受けた凸カードの CTA に印 + 隠しているときの一文 / ヒーローの空き枠は「運営の配信を待つ」
         assert.ok(/<div data-member-input style="margin-top:\$\{_myResvRows\.length \? 12 : 4\}px;">\s*\n\s*<button type="button" onclick="openMyResvRequest\(\)"/.test(html), '申請ボタンに印が無い');
