@@ -13596,8 +13596,7 @@
                 if (forPlayer) {
                     // 盤面に模擬が増えた: 届いていない人・メンバー状況・残凸表・プラン算出のきっかけ を描き直す。自分のぶんを取り込んだなら模擬タブも
                     opsStore.invalidate();
-                    renderOpsMockIntake(true);
-                    renderOpsMemberStatus(null, true);
+                    _opsReloadBoardCards();   // 盤面から描くカードをまとめて描き直す (届いていない人・メンバー状況・凸報告の確認)
                     const me = getCurrentIdentity();
                     if (me?.id && Number(me.id) === Number(forPlayer.id)) await renderMyDamagePanels(me);
                     return;
@@ -17375,6 +17374,25 @@
         // 純ロジックは js/domain/attackCheck.js。配信プランは _syncOpsUnpublishBtn が盤面と同じ周期で取り直す _opsPublishedPlan を使い
         // (別クエリを増やさない)、その取り直しの最後にここを描く。✓ の結果は次の盤面の取り直しまで local で上書きする
         const _atkCheck = { filter: 'all', local: new Map(), localGen: null, gen: 0, busy: new Set() };
+        // 盤面を取り直して、盤面から描くカード (👥 メンバー状況 / ✅ 凸報告の確認 / 📸 模擬の取り込み) をまとめて描き直す。
+        // ★ 取り直しはここ 1 か所 (カードごとに load すると後の世代が勝って前の結果が捨てられる — Codex指摘 c0fa346・1857fd6・5186ffc)。
+        //   使うのは store に残った盤面だけ (load の戻り値ではない)。追い越されたら何もしない — 最新の呼び出しが描く。
+        //   ↻ (凸報告の確認・模擬の取り込み)・運営 OFF→ON・運営の模擬登録のあと はすべてここを通る
+        let _opsBoardReloadSeq = 0;
+        async function _opsReloadBoardCards() {
+            const seq = ++_opsBoardReloadSeq;
+            try { await opsStore.load(); } catch (e) {
+                if (seq === _opsBoardReloadSeq) showNotification(`❌ 盤面の取得に失敗しました: ${e?.message || e}`);
+                return;
+            }
+            if (seq !== _opsBoardReloadSeq || !_opsMode) return;   // 追い越された / OFF になった
+            const snap = opsStore.get();
+            if (!snap) return;                                      // 別の取り直しが進行中 — その完了が描く
+            if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snap);
+            if (typeof _syncOpsUnpublishBtn === 'function') await _syncOpsUnpublishBtn();   // 最後に ✅ 凸報告の確認を描く
+            if (seq !== _opsBoardReloadSeq || !_opsMode) return;
+            if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();
+        }
         function _opsAtkCheckFilter(f) { _atkCheck.filter = ['all', 'flagged', 'todo'].includes(f) ? f : 'all'; renderOpsAttackCheck(); }
         async function renderOpsAttackCheck(force = false) {
             const body = document.getElementById('opsAtkCheckBody'), cnt = document.getElementById('opsAtkCheckCounts');
@@ -17382,31 +17400,11 @@
             if (!_opsMode) return;                       // 運営OFF: 取得も描画もしない
             const dom = window.attackCheckDomain;
             if (!dom) { body.innerHTML = '<p class="ops-recent-empty" style="color:var(--bad);">凸報告の確認の機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
-            const gen = ++_atkCheck.gen;
-            if (force) {
-                // ↻: 盤面と配信プランを取り直す。配信の取り直し (_syncOpsUnpublishBtn) の最後がここを描き直すので、ここでは描かない
-                try { await opsStore.load(); } catch (e) {
-                    if (gen !== _atkCheck.gen) return;
-                    body.innerHTML = `<p class="ops-recent-empty" style="color:var(--bad);">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
-                    return;
-                }
-                if (gen !== _atkCheck.gen) return;
-                await _syncOpsUnpublishBtn();
-                return;
-            }
-            let snap = opsStore.get();
-            // 書き込み直後 (invalidate 後) や別の取り直しの最中は get() が null — 盤面を待ってから描く (null を「シーズン無し」と誤認しない。メンバー状況と同じ)。
-            // ★ 使うのは **store に残った盤面だけ** (load の戻り値ではない): 待っている間に別の load (↻ など) に追い越されると自分の応答は store に保存されず
-            //   古い盤面になる (Codex指摘 1857fd6)。追い越されたら (get() がまだ null) もう一度待つ。それでも駄目なら描かない — 最後の取り直しの完了が描き直す
-            for (let tries = 0; !snap && tries < 3; tries++) {
-                try { await opsStore.load(); } catch (e) {
-                    if (gen !== _atkCheck.gen) return;
-                    body.innerHTML = `<p class="ops-recent-empty" style="color:var(--bad);">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
-                    return;
-                }
-                if (gen !== _atkCheck.gen) return;
-                snap = opsStore.get();
-            }
+            ++_atkCheck.gen;
+            if (force) return _opsReloadBoardCards();   // ↻: 盤面と配信を中央で取り直す (その最後がここを描く)
+            // 書き込み直後 (invalidate 後) や別の取り直しの最中は get() が null — ここでは描かない (null を「シーズン無し」と誤認しない)。
+            // ★ 自分では load しない: 取り直しは中央 (_opsReloadBoardCards / renderOpsDashboard) だけが行い、その完了が _syncOpsUnpublishBtn を通ってここを描く
+            const snap = opsStore.get();
             if (!snap) return;
             if (!snap?.season) { body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
             // 盤面が取り直されたら ✓ の上書きは捨てる (DB の値が最新)
@@ -17475,17 +17473,11 @@
             if (!_opsMode) return;                       // 運営OFF: 取得も描画もしない
             const dom = window.mockIntakeDomain, rb = window.raidBlocksDomain;
             if (!dom) { body.innerHTML = '<p style="color:var(--bad);font-size:12px;margin:0;">模擬の取り込みの機能を読み込めませんでした (再読み込みしてください)</p>'; return; }
-            const gen = ++_mockIntake.gen;
-            let snap = force ? null : opsStore.get();
-            if (!snap) {
-                try { snap = await opsStore.load(); }
-                catch (e) {
-                    if (gen !== _mockIntake.gen) return;
-                    body.innerHTML = `<p style="color:var(--bad);font-size:12px;margin:0;">盤面の取得に失敗しました: ${escapeHtml(e?.message || String(e))}</p>`;
-                    return;
-                }
-                if (gen !== _mockIntake.gen) return;
-            }
+            ++_mockIntake.gen;
+            if (force) return _opsReloadBoardCards();   // ↻: 盤面を中央で取り直す (その最後がここを描く)
+            // 自分では load しない (取り直しは中央だけ)。書き込み直後・別の取り直しの最中 (get() が null) は描かず、その完了に任せる
+            const snap = opsStore.get();
+            if (!snap) return;
             if (!snap?.season) {
                 _mockIntake.players = []; _mockIntake.picked = null;
                 sel.innerHTML = ''; if (cnt) cnt.textContent = '';
@@ -28323,7 +28315,6 @@
             } catch { /* 保存できなくてもセッション中は _opsMode で成立する */ }
         }
         let _opsMode = false;
-        let _opsModeSeq = 0;   // 運営モード切替の世代 (OFF→ON の取り直しを素早い切替で中断するため — Codex指摘 1857fd6)
         // ===== 👑 運営担当 (2026-09-12 ユーザー決定) =====
         // 判定は opsRoleDomain が唯一。master = ふるり (🛠 で運営/メンバーを行き来) / ops = 任命された人 (常に運営画面) / null = メンバー。
         // 役割は players.ops_role (46)。名乗った人ごとに DB から読む (_syncOpsRole)。読めるまで (undefined) は端末の記憶どおり (ちらつき防止)
@@ -28520,23 +28511,13 @@
             //   描くきっかけが盤面の描画と配信の取り直しなので、運営 OFF→ON を戦況タブで切り替えたときは取り直して描き直す (Codex指摘 ccfff3e)。
             //   隠れているときは戦況タブの描画キャッシュを捨て、次に開いたとき描かせる。OFF にしたら待機中の描画を無効化する (古い応答で描かない)
             if (typeof _invalidateTabRenderCache === 'function') _invalidateTabRenderCache('ops');
-            const modeSeq = ++_opsModeSeq;   // 素早く OFF→ON→OFF… と切り替えたとき、古い取り直しは先へ進まない (Codex指摘 1857fd6)
             if (!_opsMode) {
                 if (typeof _atkCheck !== 'undefined') _atkCheck.gen++;
                 if (typeof _mockIntake !== 'undefined') _mockIntake.gen++;
-            } else if (document.getElementById('tab-ops')?.classList.contains('active')) {
-                // 盤面の取り直しは**中央で 1 回だけ** (カードごとに load すると後の世代が勝って前の結果が捨てられる — Codex指摘 c0fa346・1857fd6)。
-                // 取れた盤面を メンバー状況 → 配信の取り直し (最後に凸報告の確認を描く) → 模擬の取り込み の順に渡す
-                (async () => {
-                    let snap = null;
-                    try { snap = await opsStore.load(); } catch { /* 各カードが取得失敗を出す */ }
-                    if (modeSeq !== _opsModeSeq || !_opsMode) return;
-                    snap = opsStore.get() || snap;   // 追い越されていれば store の最新を使う
-                    if (typeof renderOpsMemberStatus === 'function') renderOpsMemberStatus(snap);
-                    if (typeof _syncOpsUnpublishBtn === 'function') await _syncOpsUnpublishBtn();
-                    if (modeSeq !== _opsModeSeq || !_opsMode) return;
-                    if (typeof renderOpsMockIntake === 'function') renderOpsMockIntake();
-                })();
+            } else if (document.getElementById('tab-ops')?.classList.contains('active') && typeof _opsReloadBoardCards === 'function') {
+                // 盤面の取り直しは**中央で 1 回だけ** → メンバー状況 → 配信の取り直し (最後に凸報告の確認) → 模擬の取り込み。
+                // 素早い OFF→ON→OFF… は中央の世代 (_opsBoardReloadSeq) と OFF の確認で古い取り直しが先へ進まない (Codex指摘 c0fa346・1857fd6・5186ffc)
+                _opsReloadBoardCards();
             }
         }
         // ---- 戦況タブの折りたたみ (前日/当日の既定 + 手動開閉の記憶) と最上部コックピット ----

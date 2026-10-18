@@ -11929,7 +11929,15 @@ console.log('\ngrowthDomain:');
         assert.ok(/const canConfirm = snap\.attackConfirm !== false;/.test(render) && /disabled title="supabase\/52_attacks_confirmed\.sql を SQL Editor で実行すると押せます"/.test(render), '52 未適用で ✓ を止めていない');
         assert.ok(/if \(g !== _atkCheck\.localGen\) \{ _atkCheck\.local\.clear\(\); _atkCheck\.localGen = g; \}/.test(render), '盤面を取り直したら ✓ の上書きを捨てていない');
         assert.ok(/_opsPublishedKnown = !failed;\s*\n\s*if \(typeof renderOpsAttackCheck === 'function'\) renderOpsAttackCheck\(\);/.test(html), '配信の取り直しの最後に描いていない');
-        assert.ok(/if \(force\) \{[\s\S]{0,400}await opsStore\.load\(\);[\s\S]{0,700}await _syncOpsUnpublishBtn\(\);\s*\n\s*return;/.test(render), '↻ が盤面と配信を取り直していない');
+        assert.ok(/if \(force\) return _opsReloadBoardCards\(\);/.test(render), '↻ が中央の取り直しを通っていない');
+        assert.ok(!/opsStore\.load\(\)/.test(render), '凸報告の確認が自分で盤面を取り直している (取り直しは中央だけ)');
+        assert.ok(/const snap = opsStore\.get\(\);\s*\n\s*if \(!snap\) return;/.test(render), '盤面が無いとき (別の取り直しの最中) に描いている / 「シーズン無し」と誤認する');
+        // 中央の取り直し: 1 回 load → store に残った盤面だけ → メンバー状況 → 配信 (最後に凸報告の確認) → 模擬の取り込み。追い越し・OFF で中断
+        const reload = html.match(/async function _opsReloadBoardCards\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/const seq = \+\+_opsBoardReloadSeq;/.test(reload) && (reload.match(/opsStore\.load\(\)/g) || []).length === 1, '中央の取り直しに世代が無い / load が 1 回でない');
+        assert.ok(/if \(seq !== _opsBoardReloadSeq \|\| !_opsMode\) return;[^\n]*\n\s*const snap = opsStore\.get\(\);\s*\n\s*if \(!snap\) return;[^\n]*\n\s*if \(typeof renderOpsMemberStatus === 'function'\) renderOpsMemberStatus\(snap\);\s*\n\s*if \(typeof _syncOpsUnpublishBtn === 'function'\) await _syncOpsUnpublishBtn\(\);[^\n]*\n\s*if \(seq !== _opsBoardReloadSeq \|\| !_opsMode\) return;\s*\n\s*if \(typeof renderOpsMockIntake === 'function'\) renderOpsMockIntake\(\);/.test(reload), '中央の取り直しの順序・store だけを使う・中断 が違う');
+        const intake = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/if \(force\) return _opsReloadBoardCards\(\);/.test(intake) && !/opsStore\.load\(\)/.test(intake) && /const snap = opsStore\.get\(\);\s*\n\s*if \(!snap\) return;/.test(intake), '模擬の取り込みが自分で盤面を取り直している / 無いときに描いている');
         const handler = html.match(/async function handleOpsAttackConfirm\(attackId, on\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/if \(!_opsMode \|\| !id \|\| _atkCheck\.busy\.has\(id\)\) return;/.test(handler) && /await window\.supabaseSetAttackConfirmed\(id, !!on, me\?\.name \|\| '運営'\);/.test(handler), '✓ が二重押し・運営OFF を止めていない');
         assert.ok(/_atkCheck\.localGen = opsStore\.generation\(\);[^\n]*\n\s*_atkCheck\.local\.set\(id, patch\);\s*\n\s*renderOpsAttackCheck\(\);/.test(handler), '✓ の結果を local で上書きして描き直していない');
@@ -11939,13 +11947,10 @@ console.log('\ngrowthDomain:');
         const after = html.match(/function _afterOpsModeChanged\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/_invalidateTabRenderCache\('ops'\);/.test(after), '戦況タブの描画キャッシュを捨てていない');
         assert.ok(/if \(!_opsMode\) \{\s*\n\s*if \(typeof _atkCheck !== 'undefined'\) _atkCheck\.gen\+\+;\s*\n\s*if \(typeof _mockIntake !== 'undefined'\) _mockIntake\.gen\+\+;/.test(after), 'OFF で待機中の描画を無効化していない');
-        assert.ok(/const modeSeq = \+\+_opsModeSeq;/.test(after) && /let _opsModeSeq = 0;/.test(html), '切替の世代が無い (素早い OFF→ON→OFF で古い取り直しが先へ進む)');
-        assert.ok(/\} else if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) \{[\s\S]{0,500}let snap = null;\s*\n\s*try \{ snap = await opsStore\.load\(\); \} catch \{[^}]*\}\s*\n\s*if \(modeSeq !== _opsModeSeq \|\| !_opsMode\) return;\s*\n\s*snap = opsStore\.get\(\) \|\| snap;[^\n]*\n\s*if \(typeof renderOpsMemberStatus === 'function'\) renderOpsMemberStatus\(snap\);\s*\n\s*if \(typeof _syncOpsUnpublishBtn === 'function'\) await _syncOpsUnpublishBtn\(\);\s*\n\s*if \(modeSeq !== _opsModeSeq \|\| !_opsMode\) return;\s*\n\s*if \(typeof renderOpsMockIntake === 'function'\) renderOpsMockIntake\(\);/.test(after), 'ON で戦況タブを開いたままのとき、盤面を中央で 1 回だけ取り直して メンバー状況 → 配信 (凸報告の確認) → 模擬の取り込み の順に渡していない (Codex指摘 c0fa346・1857fd6)');
-        assert.equal((after.match(/opsStore\.load\(\)/g) || []).length, 1, 'OFF→ON の経路で盤面を 2 回以上取り直している');
-        assert.ok(!/renderOpsMemberStatus\(\);/.test(after), 'メンバー状況が別に (中央のロードと競合して) 取り直している');
+        assert.ok(/\} else if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\) && typeof _opsReloadBoardCards === 'function'\) \{[\s\S]{0,400}_opsReloadBoardCards\(\);\s*\n\s*\}/.test(after), 'ON で戦況タブを開いたままのとき、中央の取り直しを通していない (Codex指摘 c0fa346・1857fd6・5186ffc)');
+        assert.ok(!/opsStore\.load\(\)/.test(after) && !/renderOpsMemberStatus\(\);/.test(after), 'OFF→ON の経路で別に盤面を取り直している');
         assert.ok(!/renderOpsAttackCheck\(true\)/.test(after) && !/renderOpsMockIntake\(true\)/.test(after), 'OFF→ON で各カードが別々に盤面を取り直している');
-        assert.ok(/let snap = opsStore\.get\(\);[\s\S]{0,700}for \(let tries = 0; !snap && tries < 3; tries\+\+\) \{\s*\n\s*try \{ await opsStore\.load\(\); \}[\s\S]{0,400}snap = opsStore\.get\(\);\s*\n\s*\}\s*\n\s*if \(!snap\) return;/.test(render), '盤面が無いとき、store に残った最新の盤面だけを使って待っていない (load の戻り値を使うと追い越されたとき古い盤面を描く — Codex指摘 1857fd6)');
-        assert.ok(!/snap = await opsStore\.load\(\)/.test(render), '凸報告の確認が load の戻り値をそのまま描いている');
+
     });
 
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {
@@ -12001,7 +12006,7 @@ console.log('\ngrowthDomain:');
         assert.ok(/const forPlayer = d\.forPlayer \|\| null;\s*\n\s*const id = forPlayer \|\| getCurrentIdentity\(\);/.test(save), '保存先が forPlayer でない');
         assert.ok(/getElementById\(forPlayer \? 'opsMockIntakeStatus' : 'mypageDmgOcrStatus'\)/.test(save), '結果を出す場所が来た入口でない');
         assert.ok(/actorName: forPlayer \? \(\(getCurrentIdentity\(\) \|\| \{\}\)\.name \|\| '運営'\) : null,/.test(save), '代理の印を渡していない');
-        assert.ok(/if \(forPlayer\) \{\s*\n[\s\S]{0,300}opsStore\.invalidate\(\);\s*\n\s*renderOpsMockIntake\(true\);\s*\n\s*renderOpsMemberStatus\(null, true\);/.test(save), '保存後に盤面 (届いていない人・メンバー状況) を描き直していない');
+        assert.ok(/if \(forPlayer\) \{\s*\n[\s\S]{0,300}opsStore\.invalidate\(\);\s*\n\s*_opsReloadBoardCards\(\);/.test(save), '保存後に盤面を中央で取り直して描き直していない');
         assert.ok(/if \(me\?\.id && Number\(me\.id\) === Number\(forPlayer\.id\)\) await renderMyDamagePanels\(me\);\s*\n\s*return;/.test(save), '自分のぶんを取り込んだときに模擬タブを描き直していない / 本人の経路へ流れている');
         // プレビューに「誰の模擬として」/ 再撮影は来た入口へ
         assert.ok(/<p id="myDmgPreviewFor"/.test(html) && /forEl\.textContent = d\.forPlayer \? `👑 運営の取り込み: \$\{d\.forPlayer\.name\} さんの模擬として登録します` : '';/.test(html), '誰の模擬として登録するかが出ない');
@@ -12011,7 +12016,7 @@ console.log('\ngrowthDomain:');
         // 描画: ダッシュボードで呼ぶ / 運営OFF は何もしない / 世代ガード
         assert.ok(/renderOpsGrowth\(\);[^\n]*\n\s*renderOpsMockIntake\(\);/.test(html), 'ダッシュボードで描いていない');
         const render = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/if \(!_opsMode\) return;/.test(render) && /const gen = \+\+_mockIntake\.gen;/.test(render) && /if \(gen !== _mockIntake\.gen\) return;/.test(render), '運営OFF / 世代ガードが無い');
+        assert.ok(/if \(!_opsMode\) return;/.test(render) && /\+\+_mockIntake\.gen;/.test(render), '運営OFF / 世代を進めていない');
         assert.ok(/const rows = dom\.missingRows\(\{ players, blocks \}\);/.test(render) && /const blocks = rb \? rb\.blocksOfSeason\(snap\.season\) : \[\];/.test(render), '届いていない人をドメインで決めていない');
         assert.ok(/_opsMockIntakePickFromList\(\$\{Number\(r\.id\)\}\)/.test(render), '名前を押してその人を選べない');
     });
