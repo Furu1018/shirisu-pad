@@ -12072,7 +12072,8 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(calls, [['notify', '❌ 盤面の取得に失敗しました: 速い失敗']], `失敗の知らせが最新の 1 回でない: ${JSON.stringify(calls)}`);
         // ③ 盤面の描画 (renderOpsDashboard) も store に残った盤面だけを描く (load の戻り値をそのまま描かない)
         const dash = html.match(/async function renderOpsDashboard\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/for \(let tries = 0; !snapshot && tries < 2; tries\+\+\) \{\s*\n\s*await opsStore\.load\(\);\s*\n\s*snapshot = opsStore\.get\(\);\s*\n\s*\}/.test(dash) && /if \(!snapshot\) return;/.test(dash), 'ダッシュボードが load の戻り値をそのまま描いている (追い越された古い応答で最新を上書きする)');
+        assert.ok(/for \(let tries = 0; !snapshot && tries < 2; tries\+\+\) \{\s*\n\s*await opsStore\.load\(\);\s*\n\s*snapshot = opsStore\.get\(\);\s*\n\s*\}/.test(dash), 'ダッシュボードが load の戻り値をそのまま描いている (追い越された古い応答で最新を上書きする)');
+        assert.ok(/if \(!snapshot\) \{[\s\S]{0,400}clearTimeout\(_opsDashRetryTimer\);\s*\n\s*_opsDashRetryTimer = setTimeout\(\(\) => \{ _opsDashRetryTimer = null; if \(document\.getElementById\('tab-ops'\)\?\.classList\.contains\('active'\)\) renderOpsDashboard\(\); \}, 1500\);\s*\n\s*return;/.test(dash) && /let _opsDashRetryTimer = null;/.test(html), '追い越されて描けなかったとき、描き直しを予約せず「読み込み中...」のまま残る (Codex指摘 e6ccd65)');
         assert.ok(!/snapshot = await opsStore\.load\(\)/.test(dash), 'ダッシュボードが load の戻り値を snapshot にしている');
     });
 

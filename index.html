@@ -17283,6 +17283,7 @@
             el.innerHTML = `<p class="ops-recent-h">🏁 締め凸の打診</p>${asks}${more}<p class="ops-recent-h" style="margin-top:10px;">⚔️ 直近の凸</p>${atks}`;
         }
 
+        let _opsDashRetryTimer = null;   // 盤面の取り直しに追い越されたときの描き直しの予約 (1 つだけ)
         async function renderOpsDashboard() {
             const labelEl = document.getElementById('opsSeasonLabel');
             const remListEl = document.getElementById('opsRemainingList');
@@ -17311,7 +17312,13 @@
                 remListEl.innerHTML = `<p style="color:var(--bad);font-size:13px;">エラー: ${escapeHtml(e?.message || String(e))}</p>`;
                 return;
             }
-            if (!snapshot) return;
+            if (!snapshot) {
+                // 2 回とも追い越された (別の取り直しがまだ進行中)。「読み込み中...」のまま残さないよう、少し待って描き直しを 1 つだけ予約する
+                // (10 秒のポーリングはボス概要などの部分更新で、ここ全体は描き直さない — Codex指摘 e6ccd65)
+                clearTimeout(_opsDashRetryTimer);
+                _opsDashRetryTimer = setTimeout(() => { _opsDashRetryTimer = null; if (document.getElementById('tab-ops')?.classList.contains('active')) renderOpsDashboard(); }, 1500);
+                return;
+            }
 
             const { season, bosses, players } = snapshot;
             const testBanner = document.getElementById('opsTestBanner');
