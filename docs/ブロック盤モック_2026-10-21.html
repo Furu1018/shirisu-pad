@@ -1,0 +1,776 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>しりすこPAD ブロック盤モック (2026-10-21)</title>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+
+.wrap{max-width:1500px;margin:0 auto;padding:24px 16px 60px}
+h1.pg{font-size:26px;font-weight:900;color:#15171c;margin:0 0 6px}
+.lead{font-size:14px;color:#3a3f46;margin:0 0 22px;line-height:1.7}
+h2.sec{font-size:18px;font-weight:900;color:#15171c;margin:36px 0 8px;padding-top:8px;border-top:1px solid #e3e6eb}
+.cap{font-size:13.5px;line-height:1.75;color:#3a3f46;background:#fff;border:1px solid #e3e6eb;border-left:6px solid #6b3df5;border-radius:12px;padding:12px 14px;margin:0 0 14px}
+.frame{overflow-x:auto;border:1px solid #d7dbe3;border-radius:16px;background:#fff}
+.frame > div{margin:0 auto}
+.phones{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.phones .frame{border-radius:28px}
+</style></head><body><div class="wrap">
+<h1 class="pg">しりすこPAD ブロック盤モック</h1>
+<p class="lead">🧱 ブロック制の運営画面の案です。運営が「次のブロックのぶん」を組む盤 (ピースの幅 = ダメージ)、交代しやすい 5 手順、メンバーのホームと出られる時間。本物の画面ではなく、作る前の見本です。</p>
+<h2 class="sec" id="Main">1. 運営: ブロック盤 — 夜 (21〜23時) を組む</h2><p class="cap">見どころ: 各ボスの行は「残り HP の長さの枠」。置いた模擬ピースは幅 = ダメージ (実寸) で枠を埋め、埋まれば そのボス撃破 ✓ (余りはオーバーキル)。3 体そろって Lv2 踏破。盤は「量」を決め、時刻は各行の時刻レールと時間割で確かめる (2 層)。候補は押す前に 撃破 / 余り / 時刻 / 置き換え を見せる。ピースの縁: 無印 = 算出が置いた / 黒 = 📌 運営が固定 / 橙 = 🔒 本人の約束。</p>
+<div class="frame"><div style="width:1440px">
+<div style="box-sizing: border-box; min-height: 1180px; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 14px; max-width: 1440px; margin: 0 auto">
+
+  <!-- 見出し行 -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第46回 ハード日 · 戦況タブ · 運営 · 20:12</div>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 900; color: #15171c; letter-spacing: -.01em">夜 (21〜23時) を組む</h1>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap">
+      <div style="font-size: 12.5px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 7px 12px">Lv2 進行中 · B1 B2 撃破</div>
+      <div style="font-size: 12.5px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 7px 12px">使った凸 58 / 96</div>
+      <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 999px; padding: 7px 12px">HP 更新 2 分前</div>
+    </div>
+  </div>
+
+  <!-- ブロックの帯 -->
+  <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+    
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: #e5e8ee; color: #6a717b; border: 2px solid #e3e6eb">朝<div style="font-size: 11px; font-weight: 600; opacity: .9">✓ 9 凸</div></div>
+    
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: #e5e8ee; color: #6a717b; border: 2px solid #e3e6eb">午前<div style="font-size: 11px; font-weight: 600; opacity: .9">✓ 8 凸</div></div>
+    
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: #e5e8ee; color: #6a717b; border: 2px solid #e3e6eb">昼<div style="font-size: 11px; font-weight: 600; opacity: .9">✓ 11 凸</div></div>
+    
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: #e5e8ee; color: #6a717b; border: 2px solid #e3e6eb">午後<div style="font-size: 11px; font-weight: 600; opacity: .9">✓ 12 凸</div></div>
+    
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: #e9e3ff; color: #4f2bc4; border: 2px solid #c9b8ff">夕方 (いま)<div style="font-size: 11px; font-weight: 600; opacity: .9">配信済み 18 凸</div></div>
+    
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: #6b3df5; color: #fff; border: 2px solid #6b3df5">夜 (次)<div style="font-size: 11px; font-weight: 600; opacity: .9">いま組んでいる</div></div>
+    
+      <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: #fff; color: #3a3f46; border: 2px solid #e3e6eb">深夜<div style="font-size: 11px; font-weight: 600; opacity: .9">まだ</div></div>
+    
+  </div>
+
+  <!-- 運営の手順 (引き継ぎ用の帯) -->
+  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff; border: 1px solid #e3e6eb; border-radius: 14px; padding: 10px 12px">
+    <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .06em; flex: none; padding-right: 4px">このブロックの手順</div>
+    
+      <div style="display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; background: #dcfce7; color: #166534; border: 1.5px solid #bbf0cb">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 900; background: #166534; color: #fff">✓</span>HP を直す<span style="font-size: 11px; font-weight: 700; opacity: .8">20:03</span>
+      </div>
+    
+      <div style="display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; background: #dcfce7; color: #166534; border: 1.5px solid #bbf0cb">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 900; background: #166534; color: #fff">✓</span>前のブロックの凸報告を確認<span style="font-size: 11px; font-weight: 700; opacity: .8">14 / 14 ✓</span>
+      </div>
+    
+      <div style="display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; background: #dcfce7; color: #166534; border: 1.5px solid #bbf0cb">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 900; background: #166534; color: #fff">✓</span>🧮 算出<span style="font-size: 11px; font-weight: 700; opacity: .8">20:05</span>
+      </div>
+    
+      <div style="display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; background: #6b3df5; color: #fff; border: 1.5px solid #6b3df5">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 900; background: rgba(255,255,255,.25); color: #fff">4</span>ピースを調整<span style="font-size: 11px; font-weight: 700; opacity: .8">いまここ</span>
+      </div>
+    
+      <div style="display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; background: #fff; color: #3a3f46; border: 1.5px solid #e3e6eb">
+        <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 900; background: #e3e6eb; color: #3a3f46">5</span>📤 配信<span style="font-size: 11px; font-weight: 700; opacity: .8">20:30 までに</span>
+      </div>
+    
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+      <span style="font-size: 11.5px; font-weight: 800; color: #a65a12; background: #fff7e6; border-radius: 999px; padding: 5px 10px">未解決: B4 あと 16.4B · B5 あと 7.7B</span>
+      <span style="font-size: 11.5px; font-weight: 700; color: #6a717b">最終更新 20:12 · ふるり</span>
+      <a href="#OpsSteps" style="font-size: 12px; font-weight: 800; text-decoration: none">手順の説明 ›</a>
+    </div>
+  </div>
+
+  <!-- 条件 (読むだけ) -->
+  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; font-weight: 700; color: #3a3f46">
+    <span style="color: #6a717b">組んだ条件</span>
+    <span style="background: #e9e3ff; color: #4f2bc4; border-radius: 999px; padding: 5px 10px">🧱 夜 21〜23時 に出られる人 · 19 人</span>
+    <span style="background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">起点 今から</span>
+    <span style="background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">⏰ 時間厳守</span>
+    <span style="background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">前回の配信を尊重</span>
+    <span style="background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">🔒 予約 2 · 🚫 除外 1 · ✋ 難しい 3</span>
+    <a href="#cond" style="font-size: 12px; font-weight: 800">条件を変える</a>
+  </div>
+
+  <!-- 盤 + ピース箱 -->
+  <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start">
+
+    <!-- 盤 -->
+    <div style="flex: 999 1 720px; min-width: 0; background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+        <div style="font-size: 16px; font-weight: 900; color: #15171c">残 HP と模擬ピースの盤 — Lv2 の残り 3 体を 21〜23時で</div>
+        <a href="#timetable" style="font-size: 12px; font-weight: 800; text-decoration: none">時間割で時刻を確かめる ›</a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 11.5px; font-weight: 700; color: #6a717b">
+        <span>枠の長さ = 残り HP · ピースの幅 = この条件での<b style="color: #3a3f46">模擬ダメージの目安</b> (1B = 4px) · 角の数字 = 時刻 · 盤は組む時点の予想 (凸報告・HP 更新で変わる)</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 4px; background: #18C26B"></span>自動で置いた</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 4px; background: #18C26B; box-shadow: inset 0 0 0 2px #15171c"></span>📌 運営が固定</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 4px; background: #18C26B; box-shadow: inset 0 0 0 2px #f59e0b"></span>🔒 本人の約束</span>
+      </div>
+
+      
+        <div style="display: flex; gap: 14px; align-items: stretch; border-top: 1px solid #eef0f3; padding-top: 14px">
+          <!-- ボスの札 -->
+          <div style="flex: 0 0 150px; display: flex; flex-direction: column; gap: 4px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; font-size: 13px; font-weight: 900; color: #fff; background: #FF3D44">B3</span>
+              <span style="font-size: 14px; font-weight: 900; color: #15171c">ベヒモス</span>
+            </div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">弱点 風圧 → <span style="color: #18C26B; font-weight: 900">風圧PT</span></div>
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">残 71.4B</div>
+          </div>
+          <!-- 枠とピース -->
+          <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+            <div style="position: relative; height: 60px">
+              <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 286px; box-sizing: border-box; border: 2px dashed #c9cfd8; border-radius: 10px; background: #f7f8fa"></div>
+              <div style="position: relative; display: flex; gap: 4px; height: 60px; padding: 4px 0">
+                
+                  <div style="position: relative; flex: none; width: 112px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #18C26B; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 2.5px #15171c">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">21時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">📌 ハナ</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">28.1B</span>
+                  </div>
+                
+                  <div style="position: relative; flex: none; width: 96px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #18C26B; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">21時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">モモ</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">24.1B</span>
+                  </div>
+                
+                  <div style="position: relative; flex: none; width: 93px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #18C26B; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">22時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">ごま</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">23.2B</span>
+                  </div>
+                
+                
+              </div>
+            </div>
+            <!-- 時刻のレール: 同じ時刻に誰が並ぶかを確かめる (盤は量、レールは時刻) -->
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">21時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">ハナ・モモ</span></div>
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">22時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">ごま</span></div>
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">23時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">—</span></div>
+              
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; font-weight: 800">
+              <span style="border-radius: 999px; padding: 4px 10px; background: #dcfce7; color: #166534">撃破 ✓ 22時 · 余り 4.0B (記録されない)</span>
+            </div>
+            
+          </div>
+        </div>
+      
+        <div style="display: flex; gap: 14px; align-items: stretch; border-top: 1px solid #eef0f3; padding-top: 14px">
+          <!-- ボスの札 -->
+          <div style="flex: 0 0 150px; display: flex; flex-direction: column; gap: 4px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; font-size: 13px; font-weight: 900; color: #fff; background: #9B4DFF">B4</span>
+              <span style="font-size: 14px; font-weight: 900; color: #15171c">ストームブリンガー</span>
+            </div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">弱点 鉄甲 → <span style="color: #FF8A2B; font-weight: 900">鉄甲PT</span></div>
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">残 112.0B</div>
+          </div>
+          <!-- 枠とピース -->
+          <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+            <div style="position: relative; height: 60px">
+              <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 448px; box-sizing: border-box; border: 2px dashed #c9cfd8; border-radius: 10px; background: #f7f8fa"></div>
+              <div style="position: relative; display: flex; gap: 4px; height: 60px; padding: 4px 0">
+                
+                  <div style="position: relative; flex: none; width: 107px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF8A2B; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">21時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">マロン</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">26.8B</span>
+                  </div>
+                
+                  <div style="position: relative; flex: none; width: 100px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF8A2B; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">22時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">ユキ</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">25.0B</span>
+                  </div>
+                
+                  <div style="position: relative; flex: none; width: 90px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF8A2B; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">22時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">きなこ</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">22.6B</span>
+                  </div>
+                
+                  <div style="position: relative; flex: none; width: 85px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF8A2B; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">23時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">こむぎ</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">21.2B</span>
+                  </div>
+                
+                
+                  <div style="flex: none; width: 66px; box-sizing: border-box; border-radius: 9px; border: 2px dashed #f59e0b; background: #fff7e6; color: #a65a12; font-size: 11.5px; font-weight: 900; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px">あと 16.4B</div>
+                
+              </div>
+            </div>
+            <!-- 時刻のレール: 同じ時刻に誰が並ぶかを確かめる (盤は量、レールは時刻) -->
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">21時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">マロン</span></div>
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">22時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">ユキ・きなこ</span></div>
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">23時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">こむぎ</span></div>
+              
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; font-weight: 800">
+              <span style="border-radius: 999px; padding: 4px 10px; background: #fff7e6; color: #a65a12">あと 16.4B</span>
+            </div>
+            
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <div style="font-size: 11px; font-weight: 800; color: #6a717b">候補 (押すと置いて 📌 固定 — 置く前に影響を見る。押した瞬間に残凸・キャラ被り・🔒 約束をもう一度確かめる)</div>
+                
+                  <button type="button" style="font: inherit; display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; text-align: left; font-size: 12px; font-weight: 800; border-radius: 10px; padding: 6px 10px; border: 1.5px solid #FF8A2B; color: #15171c; background: #fff; cursor: pointer">
+                    <span style="flex: none; color: #FF8A2B">シロ 鉄甲 19.8B · 23時</span>
+                    <span style="flex: 1 1 0; min-width: 0; font-weight: 700; color: #3a3f46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">残凸 1 → B4 撃破 ✓ 23時 · 余り 3.4B · 置き換えなし</span>
+                  </button>
+                
+                  <button type="button" style="font: inherit; display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; text-align: left; font-size: 12px; font-weight: 800; border-radius: 10px; padding: 6px 10px; border: 1.5px solid #FF8A2B; color: #15171c; background: #fff; cursor: pointer">
+                    <span style="flex: none; color: #FF8A2B">あずき 鉄甲 18.9B · 22時</span>
+                    <span style="flex: 1 1 0; min-width: 0; font-weight: 700; color: #3a3f46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">残凸 3 → B4 撃破 ✓ 22時 · 余り 2.5B · あずきの B5 候補は消える</span>
+                  </button>
+                
+              </div>
+            
+          </div>
+        </div>
+      
+        <div style="display: flex; gap: 14px; align-items: stretch; border-top: 1px solid #eef0f3; padding-top: 14px">
+          <!-- ボスの札 -->
+          <div style="flex: 0 0 150px; display: flex; flex-direction: column; gap: 4px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; font-size: 13px; font-weight: 900; color: #fff; background: #FF3D44">B5</span>
+              <span style="font-size: 14px; font-weight: 900; color: #15171c">D.M.T.R.</span>
+            </div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">弱点 水冷 → <span style="color: #2E8BFF; font-weight: 900">水冷PT</span></div>
+            <div style="font-size: 12.5px; font-weight: 900; color: #15171c">残 98.2B</div>
+          </div>
+          <!-- 枠とピース -->
+          <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+            <div style="position: relative; height: 60px">
+              <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 393px; box-sizing: border-box; border: 2px dashed #c9cfd8; border-radius: 10px; background: #f7f8fa"></div>
+              <div style="position: relative; display: flex; gap: 4px; height: 60px; padding: 4px 0">
+                
+                  <div style="position: relative; flex: none; width: 137px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #2E8BFF; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 2.5px #f59e0b">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">21時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">🔒 しらたま</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">34.3B</span>
+                  </div>
+                
+                  <div style="position: relative; flex: none; width: 118px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #2E8BFF; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">22時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">モカ</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">29.5B</span>
+                  </div>
+                
+                  <div style="position: relative; flex: none; width: 107px; box-sizing: border-box; border-radius: 9px; padding: 6px 8px; color: #fff; background: #2E8BFF; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                    <span style="position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; background: rgba(0,0,0,.28); border-radius: 6px; padding: 1px 5px">23時</span>
+                    <span style="font-size: 12.5px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">よもぎ</span>
+                    <span style="font-size: 11px; font-weight: 800; opacity: .95; white-space: nowrap">26.7B</span>
+                  </div>
+                
+                
+                  <div style="flex: none; width: 31px; box-sizing: border-box; border-radius: 9px; border: 2px dashed #f59e0b; background: #fff7e6; color: #a65a12; font-size: 11.5px; font-weight: 900; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px">あと 7.7B</div>
+                
+              </div>
+            </div>
+            <!-- 時刻のレール: 同じ時刻に誰が並ぶかを確かめる (盤は量、レールは時刻) -->
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">21時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">しらたま</span></div>
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">22時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">モカ</span></div>
+              
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #6a717b; background: #f7f8fa; border-radius: 8px; padding: 4px 8px"><span style="flex: none">23時</span><span style="color: #15171c; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">よもぎ</span></div>
+              
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; font-weight: 800">
+              <span style="border-radius: 999px; padding: 4px 10px; background: #fff7e6; color: #a65a12">あと 7.7B</span>
+            </div>
+            
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <div style="font-size: 11px; font-weight: 800; color: #6a717b">候補 (押すと置いて 📌 固定 — 置く前に影響を見る。押した瞬間に残凸・キャラ被り・🔒 約束をもう一度確かめる)</div>
+                
+                  <button type="button" style="font: inherit; display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; text-align: left; font-size: 12px; font-weight: 800; border-radius: 10px; padding: 6px 10px; border: 1.5px solid #2E8BFF; color: #15171c; background: #fff; cursor: pointer">
+                    <span style="flex: none; color: #2E8BFF">あずき 水冷 12.4B · 23時</span>
+                    <span style="flex: 1 1 0; min-width: 0; font-weight: 700; color: #3a3f46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">残凸 3 → B5 撃破 ✓ 23時 · 余り 4.7B · 置き換えなし</span>
+                  </button>
+                
+                  <button type="button" style="font: inherit; display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; text-align: left; font-size: 12px; font-weight: 800; border-radius: 10px; padding: 6px 10px; border: 1.5px solid #2E8BFF; color: #15171c; background: #fff; cursor: pointer">
+                    <span style="flex: none; color: #2E8BFF">コトラ 水冷 30.0B · 21時</span>
+                    <span style="flex: 1 1 0; min-width: 0; font-weight: 700; color: #3a3f46; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">残凸 2 → B5 撃破 ✓ 21時 · 余り 22.3B (大きい) · 置き換えなし</span>
+                  </button>
+                
+              </div>
+            
+          </div>
+        </div>
+      
+
+      <!-- 下の帯: 見込みと配信 -->
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid #eef0f3; padding-top: 14px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <div style="font-size: 13px; font-weight: 900; color: #15171c">見込み: B3 撃破 22時 · B4 / B5 は「あと」を埋めれば 23時 → Lv2 踏破 (3 体撃破) → 深夜に Lv3 が開く</div>
+          <div style="font-size: 12px; font-weight: 700; color: #6a717b">未使用の人は 4 人 (右の箱)。📌 固定した駒は再算出でも動きません。スマホで開いたときは盤は横スクロールの参照で、操作は候補のリストから</div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <button type="button" style="font: inherit; font-size: 13.5px; font-weight: 900; border-radius: 12px; padding: 11px 16px; border: 2px solid #15171c; background: #fff; color: #15171c; cursor: pointer">🧮 置いた駒を残して再算出</button>
+          <button type="button" style="font: inherit; font-size: 13.5px; font-weight: 900; border-radius: 12px; padding: 11px 18px; border: none; background: #6b3df5; color: #fff; cursor: pointer; box-shadow: 0 6px 16px rgba(107,61,245,.28)">📤 夜のぶんを配信 (10凸)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模擬ピース箱 -->
+    <div style="flex: 1 1 380px; min-width: 0; background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 16px; font-weight: 900; color: #15171c">🧩 模擬ピース</div>
+        <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">夜に出られる 19 人の提出 · 未使用 7 · 幅 = ダメージ</div>
+      </div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap">
+        
+          <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 5px 11px; border: 1.5px solid #15171c; background: #15171c; color: #fff; cursor: pointer">全部</button>
+        
+          <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 5px 11px; border: 1.5px solid #18C26B; background: #fff; color: #18C26B; cursor: pointer">風圧</button>
+        
+          <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 5px 11px; border: 1.5px solid #FF8A2B; background: #fff; color: #FF8A2B; cursor: pointer">鉄甲</button>
+        
+          <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 5px 11px; border: 1.5px solid #2E8BFF; background: #fff; color: #2E8BFF; cursor: pointer">水冷</button>
+        
+          <button type="button" style="font: inherit; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 5px 11px; border: 1.5px solid #e3e6eb; background: #fff; color: #3a3f46; cursor: pointer">未使用だけ</button>
+        
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #eef0f3; padding-top: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 900; color: #15171c">
+              コトラ
+              <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 2px 8px">残2</span>
+              <span style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 2px 8px">夜 · 深夜</span>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              
+                <div style="box-sizing: border-box; width: 120px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #2E8BFF; opacity: 1; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">水冷PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">30.0B<span style="opacity: .85"> </span></span>
+                </div>
+              
+                <div style="box-sizing: border-box; width: 114px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF3D44; opacity: 0.38; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">灼熱PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">28.4B<span style="opacity: .85"> 合うボスなし</span></span>
+                </div>
+              
+            </div>
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #eef0f3; padding-top: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 900; color: #15171c">
+              シロ
+              <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 2px 8px">残1</span>
+              <span style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 2px 8px">夜</span>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              
+                <div style="box-sizing: border-box; width: 79px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF8A2B; opacity: 1; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">鉄甲PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">19.8B<span style="opacity: .85"> </span></span>
+                </div>
+              
+            </div>
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #eef0f3; padding-top: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 900; color: #15171c">
+              あずき
+              <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 2px 8px">残3</span>
+              <span style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 2px 8px">夜 · 深夜</span>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              
+                <div style="box-sizing: border-box; width: 76px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF8A2B; opacity: 1; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">鉄甲PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">18.9B<span style="opacity: .85"> </span></span>
+                </div>
+              
+                <div style="box-sizing: border-box; width: 72px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #2E8BFF; opacity: 1; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">水冷PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">12.4B<span style="opacity: .85"> </span></span>
+                </div>
+              
+            </div>
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #eef0f3; padding-top: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 900; color: #15171c">
+              ハチ
+              <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 2px 8px">残2</span>
+              <span style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 2px 8px">夜</span>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              
+                <div style="box-sizing: border-box; width: 82px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #9B4DFF; opacity: 0.38; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">電撃PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">20.5B<span style="opacity: .85"> 合うボスなし</span></span>
+                </div>
+              
+                <div style="box-sizing: border-box; width: 72px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #18C26B; opacity: 1; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">風圧PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">17.0B<span style="opacity: .85"> </span></span>
+                </div>
+              
+            </div>
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #eef0f3; padding-top: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 900; color: #15171c">
+              ハナ
+              <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 2px 8px">残0</span>
+              <span style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 2px 8px">夕方 · 夜</span>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              
+                <div style="box-sizing: border-box; width: 112px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #18C26B; opacity: 0.38; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">風圧PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">28.1B<span style="opacity: .85"> 盤: B3 21時 📌</span></span>
+                </div>
+              
+            </div>
+          </div>
+        
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #eef0f3; padding-top: 8px">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 900; color: #15171c">
+              しらたま
+              <span style="font-size: 11px; font-weight: 800; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 2px 8px">残1</span>
+              <span style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 2px 8px">夜 · 深夜</span>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              
+                <div style="box-sizing: border-box; width: 137px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #2E8BFF; opacity: 0.38; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">水冷PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">34.3B<span style="opacity: .85"> 盤: B5 21時 📌</span></span>
+                </div>
+              
+                <div style="box-sizing: border-box; width: 88px; min-height: 44px; border-radius: 9px; padding: 6px 8px; color: #fff; background: #FF8A2B; opacity: 0.38; display: flex; flex-direction: column; justify-content: center; gap: 1px; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.25)">
+                  <span style="font-size: 12px; font-weight: 900; white-space: nowrap">鉄甲PT</span>
+                  <span style="font-size: 11px; font-weight: 800; white-space: nowrap">22.0B<span style="opacity: .85"> 残凸 0</span></span>
+                </div>
+              
+            </div>
+          </div>
+        
+      </div>
+      <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.6">ピースを<b style="color: #15171c">つかんで</b>盤の枠へ (スマホはタップ → 光った枠をタップ)。置くと 📌 で固定され、再算出でも動きません。薄いピースは盤にある / この 3 体に合わない属性。</p>
+    </div>
+  </div>
+</div>
+</div></div>
+<h2 class="sec" id="OpsSteps">2. 運営: 1 ブロックの手順 (引き継ぎ用)</h2><p class="cap">運営の引き継ぎ: ブロックごとに同じ 5 手順を上から順に押すだけにする。いまの手順が光り、終わった手順に ✓、帯の右に 最終更新 (だれ・いつ) と 未解決の「あと ◯B」。誰が交代しても画面を見れば次に何をするか分かる。前のブロックの凸報告の確認 (印と ✓) を済ませてから次を組む。</p>
+<div class="frame"><div style="width:1440px">
+<div style="box-sizing: border-box; min-height: 620px; padding: 22px 24px 26px; display: flex; flex-direction: column; gap: 14px; max-width: 1440px; margin: 0 auto">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">運営の仕事 · 当日 · ブロックごとに同じ 5 手順</div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #15171c">ブロックの頭に、この順で押すだけ (誰が交代しても同じ)</h1>
+    </div>
+    <div style="font-size: 12.5px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 7px 12px">戦況タブの「このブロックの手順」の帯に、いまの手順が光って出ます</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px">
+    
+      <div style="box-sizing: border-box; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 300px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; font-size: 14px; font-weight: 900; color: #fff; background: #6b3df5">1</span>
+          <span style="font-size: 15px; font-weight: 900; color: #15171c; line-height: 1.25">ボスの残 HP を直す</span>
+        </div>
+        <div style="font-size: 11.5px; font-weight: 800; color: #4f2bc4">戦況タブ › ボス状況 › 🎯 ボス HP を更新する</div>
+        <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">ゲームのユニオン画面を見て、生きているボスの残 HP を入れる。凸報告が入っていれば自動で減っているので、ずれている分だけ直す。</p>
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .04em">終わりの目安</div>
+          <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 10px; padding: 7px 10px; line-height: 1.5">「HP 更新 ◯分前」が緑になる</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">ブロックの頭の 5 分で</div>
+        </div>
+      </div>
+    
+      <div style="box-sizing: border-box; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 300px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; font-size: 14px; font-weight: 900; color: #fff; background: #6b3df5">2</span>
+          <span style="font-size: 15px; font-weight: 900; color: #15171c; line-height: 1.25">前のブロックの凸報告を確認</span>
+        </div>
+        <div style="font-size: 11.5px; font-weight: 800; color: #4f2bc4">戦況タブ › ✅ 凸報告の確認</div>
+        <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">本人の報告と配信を突き合わせた一覧。印 (計画にない / 予定より低い / 時刻のずれ) と、予定を過ぎた未報告 (報告漏れの候補) を見る。問題なければ ✓。</p>
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .04em">終わりの目安</div>
+          <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 10px; padding: 7px 10px; line-height: 1.5">要確認 0 · 未報告の人に声をかけた</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">同じ 5 分で</div>
+        </div>
+      </div>
+    
+      <div style="box-sizing: border-box; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 300px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; font-size: 14px; font-weight: 900; color: #fff; background: #6b3df5">3</span>
+          <span style="font-size: 15px; font-weight: 900; color: #15171c; line-height: 1.25">🧮 算出</span>
+        </div>
+        <div style="font-size: 11.5px; font-weight: 800; color: #4f2bc4">戦況タブ › 最適凸プラン算出 › 対象「🧱 ブロックの人」</div>
+        <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">ブロックは既定で「次」。「🧮 この条件で算出」を押すと、そのブロックに出られる人の模擬ピースで盤が埋まる (前回の配信は尊重される)。</p>
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .04em">終わりの目安</div>
+          <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 10px; padding: 7px 10px; line-height: 1.5">盤に全ボスの行と踏破見込みが出る</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">1 分</div>
+        </div>
+      </div>
+    
+      <div style="box-sizing: border-box; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 300px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; font-size: 14px; font-weight: 900; color: #fff; background: #6b3df5">4</span>
+          <span style="font-size: 15px; font-weight: 900; color: #15171c; line-height: 1.25">ピースを調整</span>
+        </div>
+        <div style="font-size: 11.5px; font-weight: 800; color: #4f2bc4">盤 › 「あと ◯B」の枠と候補 › 時間割で時刻を確かめる</div>
+        <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">足りない枠に候補を置く (押す前に 撃破 / 余り / 時刻 / 置き換え が出る)。合わせたい人が居れば右の箱からつかんで置く。置いた駒は 📌 固定され、再算出でも動かない。</p>
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .04em">終わりの目安</div>
+          <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 10px; padding: 7px 10px; line-height: 1.5">全ボスが「撃破 ✓」か、納得した「あと」</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">5〜10 分</div>
+        </div>
+      </div>
+    
+      <div style="box-sizing: border-box; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 300px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; font-size: 14px; font-weight: 900; color: #fff; background: #6b3df5">5</span>
+          <span style="font-size: 15px; font-weight: 900; color: #15171c; line-height: 1.25">📤 そのブロックのぶんを配信</span>
+        </div>
+        <div style="font-size: 11.5px; font-weight: 800; color: #4f2bc4">盤の右下 › 📤 夜のぶんを配信 (◯凸)</div>
+        <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">メンバーのホームにそのブロックの割当だけが出る。前のブロックの割当は変わらない。配信したら Discord の運営スレに「夜 配信した」と 1 行。</p>
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .04em">終わりの目安</div>
+          <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 10px; padding: 7px 10px; line-height: 1.5">「配信済み」の印 · 次のブロックの頭まで待つ</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">ブロックの頭の 15 分までに</div>
+        </div>
+      </div>
+    
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 900; color: #15171c">交代するとき</div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.6">戦況タブを開く → 手順の帯で<b>光っている手順</b>から続ける。帯の右に<b>最終更新 (だれ・いつ) と 未解決の「あと ◯B」</b>が残るので、Discord のメモが無くても続けられる。</p>
+    </div>
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 900; color: #15171c">手で動かすのは「気になるところだけ」</div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.6">算出がまず埋める。足りない枠 (あと ◯B) と候補が出るので、候補を押して置く。置いた駒は 📌 固定。全部を手で組む必要はない。</p>
+    </div>
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 900; color: #15171c">模擬が届いたら (いつでも)</div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.6">「📸 模擬の取り込み」で誰の模擬かを選び、Discord のスクショを落とす。届いていない人は〆 (その人の最初のブロックの前) つきで並ぶ。</p>
+    </div>
+  </div>
+</div>
+</div></div>
+<h2 class="sec" id="MemberHome">3. メンバー: ホーム と 出られる時間 (スマホ)</h2><p class="cap">メンバーに見せる 2 画面: ホームは「いまの凸」が最優先 (何時にどのボスへどの編成で)。その下に「夜に出られる人の提出模擬を、残 HP に合うよう運営が組みました」の一文と「この割当の見方 ›」(希望者だけ、自分の行 + 簡略した盤)。きょうの凸は いま / 次 / あと の 3 行に畳む。盤そのものは常設しない。出られる時間はブロックをタップするだけ。模擬の提出・凸の申請はメンバー画面から消えている。</p>
+<div class="phones"><div class="frame"><div style="width:390px" id="MemberHomeFrame">
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f4f6; display: flex; flex-direction: column; overflow: hidden; border-radius: 28px">
+
+  <!-- 上の帯 -->
+  <div style="flex: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px">
+    <div style="font-size: 15px; font-weight: 900; color: #15171c">しりすこPAD</div>
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">ハナ<span style="color: #6a717b; font-weight: 700">· 切替</span></div>
+  </div>
+
+  <!-- 本文 (スクロール) -->
+  <div style="flex: 1 1 0; min-height: 0; overflow: hidden; padding: 4px 12px 0; display: flex; flex-direction: column; gap: 10px">
+
+    <!-- 🎯 あなたの3凸 (配信: 夜のぶん) -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">あなたの3凸 <span style="font-size: 11px; font-weight: 800; color: #6a717b">2 / 3 報告済み</span></div>
+        <div style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 4px 9px">夜 21〜23時 のぶん</div>
+      </div>
+      <!-- 配信された割当 -->
+      <div style="display: flex; gap: 10px; align-items: stretch; border: 2px solid #6b3df5; border-radius: 14px; padding: 10px 12px; background: #faf8ff">
+        <div style="flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 52px; border-radius: 10px; background: #18C26B; color: #fff">
+          <span style="font-size: 10px; font-weight: 800; opacity: .9">22時</span>
+          <span style="font-size: 15px; font-weight: 900">B3</span>
+        </div>
+        <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <div style="font-size: 13.5px; font-weight: 900; color: #15171c">ベヒモス · 風圧PT 編成①</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">模擬 28.1B · 運営の配信で決まった割当</div>
+          <div style="display: flex; gap: 4px; margin-top: 4px">
+            <span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span>
+          </div>
+        </div>
+        <button type="button" style="flex: none; align-self: center; font: inherit; font-size: 12.5px; font-weight: 900; border: none; border-radius: 10px; padding: 10px 12px; background: #15171c; color: #fff; cursor: pointer">報告する ▶</button>
+      </div>
+      <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.5">夜に出られる人の提出模擬を、残 HP に合うよう運営が組みました。深夜の割当はまだ決まっていません (運営がそのブロックの前に配信します)。 <a href="#how" style="font-weight: 800; text-decoration: none">この割当の見方 ›</a></p>
+    </div>
+
+    <!-- 📅 きょうの凸 -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 14px 14px 6px; display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">きょうの凸</div>
+        <div style="font-size: 11px; font-weight: 800; color: #6a717b">2 / 3 凸 済み</div>
+      </div>
+      
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 7px 8px; border-radius: 10px; border: 2px solid transparent; background: #fff">
+          <div style="flex: 0 0 64px; display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 13px; font-weight: 900; color: #15171c">朝〜午後</span>
+            <span style="font-size: 10.5px; font-weight: 700; color: #6a717b">済み</span>
+            <span style="font-size: 10px; font-weight: 900; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 1px 7px; align-self: flex-start; margin-top: 2px">済</span>
+          </div>
+          <div style="flex: 1 1 0; min-width: 0; font-size: 12px; font-weight: 700; color: #6a717b; line-height: 1.45; padding-top: 2px">✓ B1 ドリアン 25.0B (10:12) · ✓ B2 サイレン 22.4B (16:40)</div>
+        </div>
+      
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 7px 8px; border-radius: 10px; border: 2px solid #6b3df5; background: #f1edff">
+          <div style="flex: 0 0 64px; display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 13px; font-weight: 900; color: #15171c">夕方</span>
+            <span style="font-size: 10.5px; font-weight: 700; color: #6a717b">18〜20時</span>
+            <span style="font-size: 10px; font-weight: 900; color: #fff; background: #6b3df5; border-radius: 999px; padding: 1px 7px; align-self: flex-start; margin-top: 2px">いま</span>
+          </div>
+          <div style="flex: 1 1 0; min-width: 0; font-size: 12px; font-weight: 700; color: #15171c; line-height: 1.45; padding-top: 2px">凸なし (この時間は割当なし)</div>
+        </div>
+      
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 7px 8px; border-radius: 10px; border: 2px solid transparent; background: #fff">
+          <div style="flex: 0 0 64px; display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 13px; font-weight: 900; color: #15171c">夜</span>
+            <span style="font-size: 10.5px; font-weight: 700; color: #6a717b">21〜23時</span>
+            <span style="font-size: 10px; font-weight: 900; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 1px 7px; align-self: flex-start; margin-top: 2px">次</span>
+          </div>
+          <div style="flex: 1 1 0; min-width: 0; font-size: 12px; font-weight: 700; color: #15171c; line-height: 1.45; padding-top: 2px">22時 B3 ベヒモス · 風圧PT 編成① 28.1B — 配信済み</div>
+        </div>
+      
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 7px 8px; border-radius: 10px; border: 2px solid transparent; background: #fff">
+          <div style="flex: 0 0 64px; display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 13px; font-weight: 900; color: #15171c">深夜</span>
+            <span style="font-size: 10.5px; font-weight: 700; color: #6a717b">翌0〜4時</span>
+            <span style="font-size: 10px; font-weight: 900; color: #6a717b; background: #f3f4f6; border-radius: 999px; padding: 1px 7px; align-self: flex-start; margin-top: 2px">あと</span>
+          </div>
+          <div style="flex: 1 1 0; min-width: 0; font-size: 12px; font-weight: 700; color: #15171c; line-height: 1.45; padding-top: 2px">まだ決まっていません (運営がこのブロックの前に配信します)</div>
+        </div>
+      
+    </div>
+
+    <!-- ⏰ 戦闘可能時間 (帯) -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 13.5px; font-weight: 900; color: #15171c">あなたの戦闘可能時間</div>
+        <a href="#MemberTime" style="font-size: 12px; font-weight: 800; text-decoration: none">変更する ›</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px">
+        
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: #eef0f3; color: #9aa1ab">朝</div>
+        
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: #eef0f3; color: #9aa1ab">午前</div>
+        
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: #eef0f3; color: #9aa1ab">昼</div>
+        
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: #eef0f3; color: #9aa1ab">午後</div>
+        
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: #6b3df5; color: #fff">夕方</div>
+        
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: #6b3df5; color: #fff">夜</div>
+        
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: #6b3df5; color: #fff">深夜</div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- 下のナビ (模擬タブは隠れている) -->
+  <div style="flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #fff; border-top: 1px solid #e3e6eb; padding: 8px 10px 14px">
+    <a href="#home" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 900; color: #15171c">ホーム</a>
+    <a href="#stats" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">分析</a>
+    <a href="#settings" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">設定</a>
+  </div>
+</div>
+</div></div><div class="frame" id="MemberTime"><div style="width:390px">
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: rgba(21,23,28,.45); display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; border-radius: 28px">
+
+  <!-- 下から出るシート -->
+  <div style="background: #fff; border-radius: 22px 22px 0 0; padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 12px; max-height: 780px; overflow: hidden">
+    <div style="width: 40px; height: 4px; border-radius: 2px; background: #d7dbe3; align-self: center"></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+      <div style="font-size: 17px; font-weight: 900; color: #15171c">出られる時間</div>
+      <button type="button" aria-label="閉じる" style="font: inherit; font-size: 12px; font-weight: 800; border: none; border-radius: 9px; padding: 6px 12px; background: #eef0f3; color: #15171c; cursor: pointer">閉じる</button>
+    </div>
+    <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">第46回 ハード日 (10/31 土) に<b>出られるブロック</b>をタップして ON にしてください。<b>1 時間でも出られるブロックは ON</b>。運営はこの情報で、そのブロックに出られる人だけで凸プランを組みます。</p>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      
+        <button type="button" aria-pressed="false" style="font: inherit; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 10px 14px; cursor: pointer; text-align: left; border: 2px solid #e3e6eb; background: #fff; color: #15171c">
+          <span style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 15px; font-weight: 900">朝</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">5〜8時</span>
+          </span>
+          <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: #eef0f3; color: #6a717b">OFF</span>
+        </button>
+      
+        <button type="button" aria-pressed="false" style="font: inherit; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 10px 14px; cursor: pointer; text-align: left; border: 2px solid #e3e6eb; background: #fff; color: #15171c">
+          <span style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 15px; font-weight: 900">午前</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">9〜11時</span>
+          </span>
+          <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: #eef0f3; color: #6a717b">OFF</span>
+        </button>
+      
+        <button type="button" aria-pressed="false" style="font: inherit; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 10px 14px; cursor: pointer; text-align: left; border: 2px solid #e3e6eb; background: #fff; color: #15171c">
+          <span style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 15px; font-weight: 900">昼</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">12〜14時</span>
+          </span>
+          <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: #eef0f3; color: #6a717b">OFF</span>
+        </button>
+      
+        <button type="button" aria-pressed="false" style="font: inherit; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 10px 14px; cursor: pointer; text-align: left; border: 2px solid #e3e6eb; background: #fff; color: #15171c">
+          <span style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 15px; font-weight: 900">午後</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">15〜17時</span>
+          </span>
+          <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: #eef0f3; color: #6a717b">OFF</span>
+        </button>
+      
+        <button type="button" aria-pressed="true" style="font: inherit; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 10px 14px; cursor: pointer; text-align: left; border: 2px solid #6b3df5; background: #6b3df5; color: #fff">
+          <span style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 15px; font-weight: 900">夕方</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">18〜20時</span>
+          </span>
+          <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: rgba(255,255,255,.22); color: #fff">ON</span>
+        </button>
+      
+        <button type="button" aria-pressed="true" style="font: inherit; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 10px 14px; cursor: pointer; text-align: left; border: 2px solid #6b3df5; background: #6b3df5; color: #fff">
+          <span style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 15px; font-weight: 900">夜</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">21〜23時</span>
+          </span>
+          <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: rgba(255,255,255,.22); color: #fff">ON</span>
+        </button>
+      
+        <button type="button" aria-pressed="false" style="font: inherit; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; box-sizing: border-box; min-height: 52px; border-radius: 14px; padding: 10px 14px; cursor: pointer; text-align: left; border: 2px solid #c9b8ff; background: #f1edff; color: #15171c">
+          <span style="display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 15px; font-weight: 900">深夜</span>
+            <span style="font-size: 11px; font-weight: 700; opacity: .85">翌0〜4時</span>
+          </span>
+          <span style="font-size: 12px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: #e9e3ff; color: #4f2bc4">一部 (2/5 時間)</span>
+        </button>
+      
+    </div>
+
+    <div style="display: flex; gap: 8px">
+      <button type="button" style="font: inherit; flex: 1; font-size: 12.5px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 12px; padding: 10px; background: #fff; color: #3a3f46; cursor: pointer">すべて ON</button>
+      <button type="button" style="font: inherit; flex: 1; font-size: 12.5px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 12px; padding: 10px; background: #fff; color: #3a3f46; cursor: pointer">すべて OFF</button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; background: #f3f4f6; border-radius: 12px; padding: 10px 12px">
+      <input id="flex" type="checkbox" style="width: 18px; height: 18px; margin: 0">
+      <label for="flex" style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.5">隙間時間型 (どのブロックでも声がかかれば動ける)</label>
+    </div>
+
+    <button type="button" style="font: inherit; font-size: 15px; font-weight: 900; border: none; border-radius: 14px; padding: 15px; background: #6b3df5; color: #fff; cursor: pointer; box-shadow: 0 6px 16px rgba(107,61,245,.28)">この時間で参加します</button>
+    <button type="button" style="font: inherit; font-size: 13px; font-weight: 800; border: none; border-radius: 12px; padding: 11px; background: #fff; color: #6a717b; cursor: pointer">今回は難しい (計算から外す)</button>
+  </div>
+</div>
+</div></div></div>
+</div></body></html>
