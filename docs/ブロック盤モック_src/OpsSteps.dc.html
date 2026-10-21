@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>運営: 1 ブロックの手順 (引き継ぎ用)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+</style>
+</helmet>
+<div style="box-sizing: border-box; min-height: 620px; padding: 22px 24px 26px; display: flex; flex-direction: column; gap: 14px; max-width: 1440px; margin: 0 auto">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">運営の仕事 · 当日 · ブロックごとに同じ 5 手順</div>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #15171c">ブロックの頭に、この順で押すだけ (誰が交代しても同じ)</h1>
+    </div>
+    <div style="font-size: 12.5px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 7px 12px">戦況タブの「このブロックの手順」の帯に、いまの手順が光って出ます</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px">
+    <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+      <div style="box-sizing: border-box; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 300px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; font-size: 14px; font-weight: 900; color: #fff; background: #6b3df5">{{s.n}}</span>
+          <span style="font-size: 15px; font-weight: 900; color: #15171c; line-height: 1.25">{{s.title}}</span>
+        </div>
+        <div style="font-size: 11.5px; font-weight: 800; color: #4f2bc4">{{s.where}}</div>
+        <p style="margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #3a3f46">{{s.what}}</p>
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 11px; font-weight: 800; color: #6a717b; letter-spacing: .04em">終わりの目安</div>
+          <div style="font-size: 12.5px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 10px; padding: 7px 10px; line-height: 1.5">{{s.done}}</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">{{s.time}}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 900; color: #15171c">交代するとき</div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.6">戦況タブを開く → 手順の帯で<b>光っている手順</b>から続ける。帯の右に<b>最終更新 (だれ・いつ) と 未解決の「あと ◯B」</b>が残るので、Discord のメモが無くても続けられる。</p>
+    </div>
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 900; color: #15171c">手で動かすのは「気になるところだけ」</div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.6">算出がまず埋める。足りない枠 (あと ◯B) と候補が出るので、候補を押して置く。置いた駒は 📌 固定。全部を手で組む必要はない。</p>
+    </div>
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 900; color: #15171c">模擬が届いたら (いつでも)</div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.6">「📸 模擬の取り込み」で誰の模擬かを選び、Discord のスクショを落とす。届いていない人は〆 (その人の最初のブロックの前) つきで並ぶ。</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":620}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const steps = [
+      { n: '1', title: 'ボスの残 HP を直す', where: '戦況タブ › ボス状況 › 🎯 ボス HP を更新する', what: 'ゲームのユニオン画面を見て、生きているボスの残 HP を入れる。凸報告が入っていれば自動で減っているので、ずれている分だけ直す。', done: '「HP 更新 ◯分前」が緑になる', time: 'ブロックの頭の 5 分で' },
+      { n: '2', title: '前のブロックの凸報告を確認', where: '戦況タブ › ✅ 凸報告の確認', what: '本人の報告と配信を突き合わせた一覧。印 (計画にない / 予定より低い / 時刻のずれ) と、予定を過ぎた未報告 (報告漏れの候補) を見る。問題なければ ✓。', done: '要確認 0 · 未報告の人に声をかけた', time: '同じ 5 分で' },
+      { n: '3', title: '🧮 算出', where: '戦況タブ › 最適凸プラン算出 › 対象「🧱 ブロックの人」', what: 'ブロックは既定で「次」。「🧮 この条件で算出」を押すと、そのブロックに出られる人の模擬ピースで盤が埋まる (前回の配信は尊重される)。', done: '盤に全ボスの行と踏破見込みが出る', time: '1 分' },
+      { n: '4', title: 'ピースを調整', where: '盤 › 「あと ◯B」の枠と候補 › 時間割で時刻を確かめる', what: '足りない枠に候補を置く (押す前に 撃破 / 余り / 時刻 / 置き換え が出る)。合わせたい人が居れば右の箱からつかんで置く。置いた駒は 📌 固定され、再算出でも動かない。', done: '全ボスが「撃破 ✓」か、納得した「あと」', time: '5〜10 分' },
+      { n: '5', title: '📤 そのブロックのぶんを配信', where: '盤の右下 › 📤 夜のぶんを配信 (◯凸)', what: 'メンバーのホームにそのブロックの割当だけが出る。前のブロックの割当は変わらない。配信したら Discord の運営スレに「夜 配信した」と 1 行。', done: '「配信済み」の印 · 次のブロックの頭まで待つ', time: 'ブロックの頭の 15 分までに' },
+    ];
+    return { steps };
+  }
+}
+</script>
+</body>
+</html>

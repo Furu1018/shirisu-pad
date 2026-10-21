@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>メンバー: ホーム (夜のぶんが配信されたあと)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f4f6; display: flex; flex-direction: column; overflow: hidden; border-radius: 28px">
+
+  <!-- 上の帯 -->
+  <div style="flex: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px">
+    <div style="font-size: 15px; font-weight: 900; color: #15171c">しりすこPAD</div>
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">あるちゃ<span style="color: #6a717b; font-weight: 700">· 切替</span></div>
+  </div>
+
+  <!-- 本文 (スクロール) -->
+  <div style="flex: 1 1 0; min-height: 0; overflow: hidden; padding: 4px 12px 0; display: flex; flex-direction: column; gap: 10px">
+
+    <!-- 🎯 あなたの3凸 (配信: 夜のぶん) -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">あなたの3凸 <span style="font-size: 11px; font-weight: 800; color: #6a717b">2 / 3 報告済み</span></div>
+        <div style="font-size: 11px; font-weight: 800; color: #4f2bc4; background: #e9e3ff; border-radius: 999px; padding: 4px 9px">夜 21〜23時 のぶん</div>
+      </div>
+      <!-- 配信された割当 -->
+      <div style="display: flex; gap: 10px; align-items: stretch; border: 2px solid #6b3df5; border-radius: 14px; padding: 10px 12px; background: #faf8ff">
+        <div style="flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 52px; border-radius: 10px; background: #18C26B; color: #fff">
+          <span style="font-size: 10px; font-weight: 800; opacity: .9">21時</span>
+          <span style="font-size: 15px; font-weight: 900">B3</span>
+        </div>
+        <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <div style="font-size: 13.5px; font-weight: 900; color: #15171c">ベヒモス · 風圧PT 編成①</div>
+          <div style="font-size: 11.5px; font-weight: 700; color: #6a717b">模擬 28.1B · 運営の配信で決まった割当</div>
+          <div style="display: flex; gap: 4px; margin-top: 4px">
+            <span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span><span style="width: 22px; height: 22px; border-radius: 6px; background: #d7dbe3"></span>
+          </div>
+        </div>
+        <button type="button" style="flex: none; align-self: center; font: inherit; font-size: 12.5px; font-weight: 900; border: none; border-radius: 10px; padding: 10px 12px; background: #15171c; color: #fff; cursor: pointer">報告する ▶</button>
+      </div>
+      <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b; line-height: 1.5">夜に出られる人の提出模擬を、残 HP に合うよう運営が組みました。深夜の割当はまだ決まっていません (運営がそのブロックの前に配信します)。 <a href="#how" style="font-weight: 800; text-decoration: none">この割当の見方 ›</a></p>
+    </div>
+
+    <!-- 📅 きょうの凸 -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 14px 14px 6px; display: flex; flex-direction: column; gap: 4px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">きょうの凸</div>
+        <div style="font-size: 11px; font-weight: 800; color: #6a717b">2 / 3 凸 済み</div>
+      </div>
+      <sc-for list="{{today}}" as="t" hint-placeholder-count="7">
+        <div style="display: flex; gap: 10px; align-items: flex-start; padding: 7px 8px; border-radius: 10px; border: 2px solid {{t.border}}; background: {{t.bg}}">
+          <div style="flex: 0 0 64px; display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 13px; font-weight: 900; color: #15171c">{{t.name}}</span>
+            <span style="font-size: 10.5px; font-weight: 700; color: #6a717b">{{t.hours}}</span>
+            <span style="font-size: 10px; font-weight: 900; color: {{t.tagFg}}; background: {{t.tagBg}}; border-radius: 999px; padding: 1px 7px; align-self: flex-start; margin-top: 2px">{{t.tag}}</span>
+          </div>
+          <div style="flex: 1 1 0; min-width: 0; font-size: 12px; font-weight: 700; color: {{t.textFg}}; line-height: 1.45; padding-top: 2px">{{t.text}}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- ⏰ 戦闘可能時間 (帯) -->
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-size: 13.5px; font-weight: 900; color: #15171c">あなたの戦闘可能時間</div>
+        <a href="MemberTime.dc.html" style="font-size: 12px; font-weight: 800; text-decoration: none">変更する ›</a>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px">
+        <sc-for list="{{avail}}" as="a" hint-placeholder-count="7">
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; border-radius: 8px; padding: 6px 2px; background: {{a.bg}}; color: {{a.fg}}">{{a.name}}</div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下のナビ (模擬タブは隠れている) -->
+  <div style="flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #fff; border-top: 1px solid #e3e6eb; padding: 8px 10px 14px">
+    <a href="#home" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 900; color: #15171c">ホーム</a>
+    <a href="#stats" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">分析</a>
+    <a href="#settings" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">設定</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (name, hours, state, text) => {
+      const tag = state === 'now' ? 'いま' : state === 'next' ? '次' : state === 'done' ? '済' : 'あと';
+      return {
+        name, hours, text, tag,
+        border: state === 'now' ? '#6b3df5' : 'transparent', bg: state === 'now' ? '#f1edff' : '#fff',
+        tagFg: state === 'now' ? '#fff' : state === 'next' ? '#4f2bc4' : '#6a717b', tagBg: state === 'now' ? '#6b3df5' : state === 'next' ? '#e9e3ff' : '#f3f4f6',
+        textFg: state === 'done' ? '#6a717b' : '#15171c',
+      };
+    };
+    // ホームは「いまの凸」が最優先 — きょうの凸は いま/次/あと の 3 行に畳み、済んだ 4 ブロックは 1 行にまとめる
+    const today = [
+      row('朝〜午後', '済み', 'done', '✓ B1 ドリアン 25.0B (10:12) · ✓ B2 サイレン 22.4B (16:40)'),
+      row('夕方', '18〜20時', 'now', '凸なし (この時間は割当なし)'),
+      row('夜', '21〜23時', 'next', '21時 B3 ベヒモス · 風圧PT 編成① 28.1B — 配信済み'),
+      row('深夜', '翌0〜4時', 'later', 'まだ決まっていません (運営がこのブロックの前に配信します)'),
+    ];
+    const avail = ['朝', '午前', '昼', '午後', '夕方', '夜', '深夜'].map((name, i) => {
+      const on = i >= 4;
+      return { name, bg: on ? '#6b3df5' : '#eef0f3', fg: on ? '#fff' : '#9aa1ab' };
+    });
+    return { today, avail };
+  }
+}
+</script>
+</body>
+</html>
