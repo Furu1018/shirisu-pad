@@ -9414,13 +9414,16 @@ console.log('\ngrowthDomain:');
         assert.ok(/typeof cur\.metadata === 'object' && !Array\.isArray\(cur\.metadata\)/.test(client), 'フォールバックで metadata の配列を {} に倒していない');
         assert.ok(/if \(lite && document\.getElementById\('tab-mock'\)\?\.classList\.contains\('active'\)\) TabController\.activate\('mypage'\);/.test(html), '開いたまま隠されたときにホームへ戻していない');
         // 🧱 段階 1 (2026-10-22 決定 a/f): lite で ボスの状況・状態ボタン・戦闘ゲート・凸報告の入口 を隠す (消さない) / 読み取り専用の模擬カード
-        for (const sel of ['#mypageBossStrip', '#myBossBoardCard', '#mypageStatusSwitcher', '#mypageStatusHint', '#mypageStatusTiles', '#mypageBattleGate', '#mypageBattleInProgressBar', '#mypageBattleActions', '#mypageBattleCloseBar', '#myAttackAddBtn', '#myAttackListWrap .blabla-pill', '[data-member-report]']) {
+        for (const sel of ['#mypageBossStrip', '#myBossBoardCard', '#mypageStatusSwitcher', '#mypageStatusHint', '#mypageStatusTiles', '#mypageBattleGate', '#mypageBattleInProgressBar', '#mypageBattleActions',
+                           '#mypageBattleCloseBar', '#mypageBattleExpanded', '#mypageBattleLive', '#myAttackAddBtn', '#myAttackListWrap .blabla-pill', '[data-member-report]']) {   // Codex指摘: 展開部と交戦中の帯も (戦闘中のまま lite になると残る)
             assert.ok(new RegExp(`body\\.member-lite ${sel.replace(/[.[\]]/g, '\\$&')}[^{]*\\{ display: none !important; \\}`).test(css), `lite で隠していない: ${sel}`);
         }
         const dom = html.slice(html.lastIndexOf('</style>'));
         assert.equal((dom.match(/\bid="(mypageBossStrip|myBossBoardCard|mypageStatusSwitcher|mypageStatusTiles|mypageBattleGate|mypageBattleActions|myAttackAddBtn)"/g) || []).length, 7, '隠す要素の id が DOM から消えている (CSS で隠す約束 = 運営モードと full では出る)');
         assert.ok(/else if \(reportable\) right = `<button data-member-report onclick="_planReportBoss\(\$\{bn\}\)"/.test(html), '「報告する ▶」に印が無い');
         assert.ok(/<div class="dc-card" data-span="6" id="myMocksCard" style="display:none;">/.test(html), '登録された模擬のカードが無い (幅 6 できょうの凸と対)');
+        assert.ok(/body:not\(\.member-lite\) #myMocksCard \{ display: none !important; \}/.test(css), 'lite でなくなったときにカードが残る (CSS で消していない — Codex指摘)');
+        assert.ok(html.includes("? '🗡 了承を運営に伝えました。凸したら結果の画面のスクショを Discord へ'") && html.includes(": '🗡 了承を運営に伝えました。準備ができたらボスを選んで戦闘へ！')"), '締め凸の了承後の案内が lite で「ボスを選んで戦闘へ」のまま (ゲートは隠れている)');
         assert.ok(html.indexOf('id="myTodayBlocksCard"') < html.indexOf('id="myMocksCard"') && html.indexOf('id="myMocksCard"') < html.indexOf('id="myPushCheckCard"'), 'カードの並び (きょうの凸 → 登録された模擬 → 疎通確認) が違う');
         const rm = html.match(/\n        async function renderMyMocksReadonly\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(rm, 'renderMyMocksReadonly が無い');

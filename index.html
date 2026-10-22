@@ -1029,7 +1029,10 @@
            ★ 消さずに CSS で隠す (運営モードと member_input=full では出る)。DOM と描画はそのまま動く */
         body.member-lite #mypageBossStrip, body.member-lite #myBossBoardCard, body.member-lite #mypageStatusSwitcher, body.member-lite #mypageStatusHint,
         body.member-lite #mypageStatusTiles, body.member-lite #mypageBattleGate, body.member-lite #mypageBattleInProgressBar, body.member-lite #mypageBattleActions,
-        body.member-lite #mypageBattleCloseBar, body.member-lite #myAttackAddBtn, body.member-lite #myAttackListWrap .blabla-pill, body.member-lite [data-member-report] { display: none !important; }
+        body.member-lite #mypageBattleCloseBar, body.member-lite #mypageBattleExpanded, body.member-lite #mypageBattleLive,
+        body.member-lite #myAttackAddBtn, body.member-lite #myAttackListWrap .blabla-pill, body.member-lite [data-member-report] { display: none !important; }
+        /* 📘 登録された模擬は lite のときだけ (JS の描画が display='' にしたあと full / 運営モードへ切り替わっても CSS が消す — Codex指摘 2026-10-22) */
+        body:not(.member-lite) #myMocksCard { display: none !important; }
         /* 模擬パネル: 1属性2編成のカード重ね + 入れ替えアニメ */
         .dc-dmg-panel.stacked {
             box-shadow: 5px 6px 0 -2px var(--card), 5px 6px 0 -1px rgba(var(--ink-rgb), 0.14)}
@@ -10705,7 +10708,9 @@
                 _notifyOps({ title: status === 'accepted' ? '🗡 締め凸を了承' : '✕ 締め凸は難しい', body: `${id.name || '#' + id.id}: B${Number(bossNumber)}`, tag: 'ops-finish-answer', except: id.id });
                 renderMyFinishRequestBanner(id);
                 showNotification(status === 'accepted'
-                    ? '🗡 了承を運営に伝えました。準備ができたらボスを選んで戦闘へ！'
+                    ? ((typeof _memberLite === 'function' && _memberLite())
+                        ? '🗡 了承を運営に伝えました。凸したら結果の画面のスクショを Discord へ'   // lite: 戦闘ゲートは隠れている (段階 1)
+                        : '🗡 了承を運営に伝えました。準備ができたらボスを選んで戦闘へ！')
                     : '運営に「難しい」と伝えました');
             } catch (e) {
                 showNotification(`❌ 送信失敗: ${e?.message || e}`);
