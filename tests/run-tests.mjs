@@ -12699,6 +12699,16 @@ console.log('\ngrowthDomain:');
         const rows = d.missingRows({ players: [P('朝', ['h05'], 0), P('夕', ['h18'], 1), P('夜', ['h21'], 2)], blocks: [], b5Weakness: 'wind' });
         assert.deepEqual(rows.map(r => [r.name, r.missing.length, r.b5Short]), [['夕', 0, 1]], '5 属性そろった遅い時間の人の 2 編成目の不足を拾っていない / 朝の人を入れた');
         assert.deepEqual(d.missingRows({ players: [P('夕', ['h18'], 1)], blocks: [] }), [], 'b5Weakness を渡さないのに数えた (従来どおり)');
+        // 取り込みの保存先 (編成① / ②): 同じ編成 → その枠 / ①が空き → 1 / ②が空き → 2 / 両方 → ダメージの低いほう (Codex指摘 2c264a5)
+        const T1 = ['a', 'b', 'c', 'd', 'e'], T2 = ['f', 'g', 'h', 'i', 'j'];
+        assert.equal(d.defaultSlot({ existing: [], characters: T1 }), 1);
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }], characters: T2 }), 2, '別の編成なのに編成①を上書きする');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }], characters: ['a', 'b', 'c', 'x', 'y'] }), 1, '同じ編成 (3 人以上重なる) は同じ枠 (測定の更新)');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }], characters: ['a', 'b', 'x', 'y', 'z'] }), 2, '2 人しか重ならない別の編成を同じ編成とみなした');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 2, team: T2, dmgB: 20 }], characters: T1 }), 1, '①が空いているのに②');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 2, team: T2, dmgB: 20 }], characters: ['k', 'l', 'm', 'n', 'o'] }), 2, '両方埋まっていれば低いほう');
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 10 }, { slot: 2, team: T2, dmgB: 20 }], characters: [] }), 1);
+        assert.equal(d.defaultSlot({ existing: [{ slot: 1, team: T1, dmgB: 30 }, { slot: 2, team: T2, dmgB: 20 }], characters: ['f', 'g', 'h'] }), 2, '②と同じ編成なのに①');
     });
     test('★ 配線: 🧱 段階 5 — 算出と承認の影響の 2 か所で secondB5Lv4Only / 模擬の取り込みと 👥 メンバー状況に ボス 5 の 2 編成目', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
@@ -12707,6 +12717,11 @@ console.log('\ngrowthDomain:');
         const intake = html.match(/async function renderOpsMockIntake\(force = false\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/const b5Weak = \(snap\.bosses \|\| \[\]\)\.find\(b => Number\(b\.boss_number\) === 5\)\?\.weakness \|\| null;/.test(intake) && /r\.b5Short \?/.test(intake), '届いていない人に ボス 5 の 2 編成目が無い');
         assert.ok(/window\.mockIntakeDomain\.b5SecondOf\(p, _mbB5W\)/.test(html) && /\$\{mock\}\$\{excl\}\$\{b5\(r\)\}/.test(html), '👥 メンバー状況に ボス 5 の 2 編成目が無い');
+        // 運営の取り込みは保存先 (編成① / ②) を選べる。本人の提出は従来どおり編成① (同じ編成なら自動で寄る)
+        const save = html.match(/async function handleMyDmgPreviewSave\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/damageB, slot: forPlayer \? \(Number\(d\.slot\) === 2 \? 2 : 1\) : 1,/.test(save), '運営の取り込みが常に編成①に保存する (ボス 5 の 2 編成目を足せない)');
+        assert.ok(/_renderMyDmgPreviewSlot\(d\);/.test(html) && /if \(!d\.slotTouched\) d\.slot = window\.mockIntakeDomain\.defaultSlot\(\{ existing, characters: d\.characters \}\);/.test(html), '保存先の既定を出していない');
+        assert.ok(/_myDmgPreviewData\.selectedAttr = key;\s*\n\s*_myDmgPreviewData\.slotTouched = false;/.test(html), '属性を選び直しても保存先の既定を出し直さない');
     });
     test('★ 📸 mockIntake.missingRows: 5 属性そろった人・書庫・今回は難しい は出ない / 期限 = 最初に出られるブロック / ⏳隙間・未登録は「いつでも」で最後 / 並びは 期限 → 足りない数 → 名前', () => {
         const dom = globalThis.mockIntakeDomain, rb = globalThis.raidBlocksDomain;

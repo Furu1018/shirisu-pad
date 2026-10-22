@@ -94,5 +94,26 @@
         });
     }
 
-    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows, b5SecondOf };
+    /**
+     * 📸 運営の取り込みの保存先 (編成① / ②) の既定 (段階 5: ボス 5 の 2 編成目を取り込めるように — 常に編成①だと 1 つ目を上書きする: Codex指摘 2c264a5)。
+     *   ① 同じ編成 (キャラが 3 人以上重なる) がもうある → その枠 (測定の更新)
+     *   ② 編成①が空き → 1 / ③ 編成②が空き → 2 / ④ 両方埋まっている → ダメージの低いほう (同じなら 2)
+     * @param {{ existing: Array<{slot:number, team?:string[], dmgB?:number}>, characters?: string[] }} a  existing = その人のその属性の模擬
+     * @returns {1|2}
+     */
+    function defaultSlot({ existing, characters } = {}) {
+        const list = (Array.isArray(existing) ? existing : []).filter(Boolean).map(e => ({ slot: Number(e.slot) || 1, team: Array.isArray(e.team) ? e.team.filter(Boolean).map(String) : [], dmgB: Number(e.dmgB) || 0 }));
+        const mine = [...new Set((Array.isArray(characters) ? characters : []).filter(Boolean).map(String))];
+        if (mine.length) {
+            const same = list.filter(e => e.team.length && mine.filter(c => e.team.includes(c)).length >= 3);
+            if (same.length === 1) return same[0].slot === 2 ? 2 : 1;
+        }
+        const has = (n) => list.some(e => e.slot === n);
+        if (!has(1)) return 1;
+        if (!has(2)) return 2;
+        const s1 = list.find(e => e.slot === 1), s2 = list.find(e => e.slot === 2);
+        return (s1.dmgB < s2.dmgB) ? 1 : 2;
+    }
+
+    root.mockIntakeDomain = { ATTR_KEYS, ATTR_JP, missingRows, summary, readonlyRows, b5SecondOf, defaultSlot };
 })(typeof window !== 'undefined' ? window : globalThis);

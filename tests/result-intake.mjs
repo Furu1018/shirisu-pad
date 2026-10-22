@@ -354,6 +354,11 @@ await test('★ ブロックの配信の通知: 人ごと・中身ごとに 1 �
     assert.deepEqual([r4.covered.size, r4.sent, r4.failed], [0, 0, 2]);
     assert.deepEqual(bad.calls.filter(c => c[0] === 'release').map(c => c[3]), ['18-20|7|18時 B3 灼熱PT 編成②', '18-20|8|19時 B3 灼熱PT 編成①'], '送れなかった人の確保を戻していない');
     assert.ok(!bad.calls.some(c => c[0] === 'markSent'), '送れなかったのに送信済みにした');
+    // 相手が 0 人 (方針で外れた = skipped) は「送れた」に数えない (確保は送信済み)
+    const skip = makeEnv(); skip.window.sendPushNotification = async (payload) => { skip.calls.push(['push', payload]); return { sent: 0, skipped: true }; };
+    const r5 = await skip._notifyBlockPublish({ pub: { id: 506 }, plan: PUB.plan, seasonId: 45, me: { id: 1 } });
+    assert.deepEqual([r5.sent, r5.failed, r5.covered.size], [0, 0, 2], '相手 0 人を送れたに数えた');
+    assert.equal(skip.calls.filter(c => c[0] === 'markSent').length, 2);
     // ブロックで組んでいない配信は通知しない
     const whole = makeEnv();
     assert.equal((await whole._notifyBlockPublish({ pub: { id: 505 }, plan: { ...PUB.plan, blockScope: null }, seasonId: 45, me: { id: 1 } })).covered.size, 0);
@@ -376,6 +381,8 @@ await test('★ 登録中は下書きを動かさない: やめる・Lv の変�
     assert.ok(t.state().ri.draft, '登録中に「やめる」で下書きが消えた');
     t._opsResultManual();           // 「登録中です」
     assert.ok(/登録中です/.test(t.el('opsResultStatus').textContent));
+    t._opsResultPick('8');          // 登録中は選び直させない (Codex指摘 3792ddd)
+    assert.equal(t.state().ri.picked, 7, '登録中に「誰の凸か」が変わった');
     open(); await p;
     const add = t.calls.find(c => c[0] === 'addAttack');
     assert.ok(add, 'やめるで登録が止まった (登録中は受け付けないはず)');

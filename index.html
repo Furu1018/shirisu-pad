@@ -6574,6 +6574,8 @@
                     </div>
                     <!-- 📸 運営の取り込み (③-e): 誰の模擬として登録するか (forPlayer のときだけ出す) -->
                     <p id="myDmgPreviewFor" style="display:none;margin:-6px 0 10px 0;padding:8px 10px;border-radius:10px;background:var(--s1);color:var(--ops);font-size:12px;font-weight:800;"></p>
+                    <!-- 📸 運営の取り込み: 保存先 (編成① / ②)。既定は mockIntakeDomain.defaultSlot (ボス 5 の 2 編成目を取り込めるように・段階 5) -->
+                    <div id="myDmgPreviewSlot" style="display:none;margin:-4px 0 12px 0;"></div>
                     <!-- 認識した属性 + ダメージ -->
                     <div id="myDmgPreviewSummary" style="display:flex;align-items:center;gap:11px;background:var(--s1);border:1px solid rgba(var(--ink-rgb), 0.05);border-radius:14px;padding:13px 14px;margin-bottom:14px;">
                         <p style="color:var(--t-muted);font-size:12px;">解析中...</p>
@@ -13590,6 +13592,7 @@
             const msg = document.getElementById('myDmgPreviewMsg');
             if (msg) msg.textContent = '';
             const forEl = document.getElementById('myDmgPreviewFor');   // 📸 運営の取り込み: 誰の模擬として登録するか
+            _renderMyDmgPreviewSlot(d);
             if (forEl) { forEl.style.display = d.forPlayer ? '' : 'none'; forEl.textContent = d.forPlayer ? `👑 運営の取り込み: ${d.forPlayer.name} さんの模擬として登録します` : ''; }
 
             // 属性 + ダメージ サマリ
@@ -13675,9 +13678,34 @@
         }
 
 
+        // 📸 運営の取り込み: 保存先 (編成① / ②)。属性を選び直したら、手で選んでいなければ既定を出し直す
+        function _renderMyDmgPreviewSlot(d) {
+            const el = document.getElementById('myDmgPreviewSlot');
+            if (!el) return;
+            if (!d || !d.forPlayer || !d.selectedAttr || !window.mockIntakeDomain) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            const p = (opsStore.get()?.players || []).find(x => Number(x.id) === Number(d.forPlayer.id));
+            const existing = ((p && p.loadoutsByAttr) || {})[d.selectedAttr] || [];
+            if (!d.slotTouched) d.slot = window.mockIntakeDomain.defaultSlot({ existing, characters: d.characters });
+            const lo = (n) => existing.find(e => (Number(e.slot) || 1) === n) || null;
+            const btn = (n) => {
+                const cur = lo(n);
+                return `<button type="button" onclick="handleMyDmgPreviewPickSlot(${n})" aria-pressed="${Number(d.slot) === n}" style="flex:1;padding:8px 10px;border-radius:10px;border:1px solid var(--line);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;${Number(d.slot) === n ? 'background:var(--t-ink);color:var(--card);border-color:var(--t-ink);' : 'background:var(--card);color:var(--t-body);'}">編成${SLOT_JP[n]}<small style="display:block;font-weight:700;opacity:0.85;">${cur ? `登録あり ${(Number(cur.dmgB) || 0).toFixed(1)}B` : '空き'}</small></button>`;
+            };
+            const target = lo(Number(d.slot));
+            el.style.display = '';
+            el.innerHTML = `<div style="font-size:11px;font-weight:800;color:var(--t-muted);margin-bottom:6px;">保存先 (ボス 5 の 2 編成目は空いている編成②へ)</div><div style="display:flex;gap:6px;">${btn(1)}${btn(2)}</div>`
+                + (target ? `<p style="margin:6px 0 0;font-size:11px;font-weight:700;color:var(--warn-deep);">編成${SLOT_JP[Number(d.slot)]}の登録を、この模擬で上書きします (同じ編成なら測定の更新)</p>` : '');
+        }
+        function handleMyDmgPreviewPickSlot(n) {
+            if (!_myDmgPreviewData) return;
+            _myDmgPreviewData.slot = Number(n) === 2 ? 2 : 1;
+            _myDmgPreviewData.slotTouched = true;
+            openMyDmgPreviewModal();
+        }
         function handleMyDmgPreviewPickAttr(key) {
             if (!_myDmgPreviewData) return;
             _myDmgPreviewData.selectedAttr = key;
+            _myDmgPreviewData.slotTouched = false;   // 属性が変われば保存先の既定も変わる
             _myDmgPreviewData.pickerOpen = false;   // 選んだら畳む (チップのタップで再度開ける)
             openMyDmgPreviewModal();  // 再描画
         }
@@ -13725,7 +13753,7 @@
                 }
                 // 測定ボスレベルは廃止 (2026-09-06) — level は渡さない (= 未指定 '0' として保存される)
                 const res = await window.supabaseSaveMockSubmission(id.id, attr, {
-                    damageB, slot: 1,
+                    damageB, slot: forPlayer ? (Number(d.slot) === 2 ? 2 : 1) : 1,   // 📸 運営の取り込みは選んだ保存先 (段階 5: ボス 5 の 2 編成目)
                     characters: canon && canon.length > 0 ? canon : null,
                     actorName: forPlayer ? ((getCurrentIdentity() || {}).name || '運営') : null,   // 代理登録の印 (活動ログ)
                 });
@@ -17764,6 +17792,12 @@
         const _opsResultPlayer = (id) => _resultIntake.players.find(p => String(p.id) === String(id)) || null;
         const _opsResultBoss = (n) => _resultIntake.bosses.find(b => Number(b.boss_number) === Number(n)) || null;
         function _opsResultPick(v) {
+            if (_resultIntake.busy) {   // 登録中は選び直させない (画面の選択と登録の対象をずらさない: Codex指摘 3792ddd)
+                const sel = document.getElementById('opsResultPlayer');
+                if (sel) sel.value = _resultIntake.picked != null ? String(_resultIntake.picked) : '';
+                _opsResultStatus('登録中です。終わってから選び直してください', 'bad');
+                return;
+            }
             _resultIntake.picked = v ? Number(v) : null;
             ++_resultIntake.ocrSeq;   // 読み取りの途中で人を選び直した → その読み取りは使わない
             if (_resultIntake.hint && Number(_resultIntake.hint.memberId) !== Number(_resultIntake.picked)) _resultIntake.hint = null;
@@ -23482,7 +23516,9 @@
                     const res = await window.sendPushNotification({ title: n.title, body: n.body, url: './?tab=mypage&focus=plan', playerIds: [n.memberId] },
                         { senderPlayerId: me?.id || null });
                     await window.supabaseMarkRaidNoticeSent?.(seasonId, 'block_publish', ref);
-                    out.covered.add(Number(n.memberId)); out.sent++;
+                    out.covered.add(Number(n.memberId));
+                    // 相手が 0 人 (書庫・テスト回の方針で外れた = skipped) は「送れた」に数えない。確保は送信済みにする (送り直しても同じ結果: Codex指摘 3792ddd)
+                    if (!res?.skipped) out.sent++;
                     if (Number(res?.sent) > 0) reached++;
                 } catch (e) {
                     out.failed++;
