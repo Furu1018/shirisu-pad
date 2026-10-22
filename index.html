@@ -5817,15 +5817,15 @@
                     <!-- 🎮 練習モードの入口 (ヘルプの冒頭にも同じものがある) -->
                     <button onclick="startPractice('member')" style="width:100%;margin-top:10px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (メンバー編)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 時間の確認 → 模擬 → 予約 → 当日の凸 → 締め凸の返事・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">本番と同じ画面を練習用のデータで触れます — 出られる時間と凸数 → 配信を待つ → 割当を確かめる → 凸したら Discord へ・約3分</span>
                     </button>
                     <button onclick="startPractice('ops-eve')" style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・前日)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → 条件を選んで算出 → 📌 固定 → 申請の承認 → 配信・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">運営役として — 催促 → 🧱 朝のブロックを組む → 📌 固定 → 予約の承認 → 朝のぶんを配信・約5分</span>
                     </button>
                     <button onclick="startPractice('ops-day')" style="width:100%;margin-top:8px;padding:12px 14px;border:none;border-radius:13px;background:var(--t-ink);color:var(--card);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;text-align:left;line-height:1.5;">
                         🎮 練習する (運営編・当日)
-                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">当日 20 時の運営役として — ボスHP更新 → 締凸検索 (いま vs 待つ) → 2 案の同時打診 → 確定 → 撃破の検知・約5分</span>
+                        <span style="display:block;font-size:11px;font-weight:700;opacity:0.8;">当日 18 時 (夕方のブロックの頭) の運営役として — ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 夕方を組む → 配信 → 締凸検索・約5分</span>
                     </button>
                     <!-- チャプター一覧 (ヘルプタブの主要セクションへリンク) -->
                     <div style="display:flex;flex-direction:column;margin-top:6px;">
@@ -7184,7 +7184,7 @@
                 stepLabel: 'CHAPTER 04',
                 title: '模擬戦データを\n提出する',
                 body: '<strong>模擬タブ</strong>で属性カードをタップすると提出シートが開きます。<strong>① 編成 → ② ダメージ → ③ キャラを選ぶ</strong> の順。下の提出バーが「5人 + ダメージ」で黒く点灯したら <strong>提出する</strong>。下のデモで流れを体験できます👇',
-                demo: 'mock',
+                // demo: 'mock' — 2026-10-22: メンバーは模擬を Discord に貼るだけ (模擬の体験デモは外した)
                 tip: '📷 スクショの読み取りは ① の見出し横の小さな入口から。最低ラインは「キャラ被りなしで3編成」— 足りない分は 📌 次にやること が教えてくれます。キャラの被らない別編成なら1属性に2つ提出できます。',
                 accentColor: '#FF3D44', accentDark: '#D02830',
             },
@@ -7251,7 +7251,8 @@
         // ========== 体験デモ → 🎮 練習モードへの入口 (2026-10-03) ==========
         // 以前は手描きの見本 (戦闘可能時間 / 模擬提出 / 凸の流れ) をここに描いていたが、本番の画面を直すたびにずれるので廃止。
         // 練習モード (本物の画面 + 練習用のデータ) の該当する課題から始める入口だけを置く
-        const TOUR_DEMO_START = { avail: ['avail', '戦闘できる時間を確認する'], mock: ['mock', '模擬戦のダメージを提出する'], battle: ['attack', '当日: 凸を報告する'] };
+        // 2026-10-22 の作り直し: メンバーは模擬を Discord に貼るだけ・凸の報告は運営が登録する → 模擬の体験は「出られる時間」、戦闘は「凸したら Discord へ」
+        const TOUR_DEMO_START = { avail: ['avail', '出られる時間と「何凸するか」を伝える'], battle: ['report', '凸したら Discord へ'] };
         function _tourDemoHtml(kind) {
             const d = TOUR_DEMO_START[kind];
             if (!d) return '';
@@ -14484,8 +14485,7 @@
         // ===== 🏁 締め凸は「探す」だけ (2026-10-22 ユーザー決定) =====
         // 同時打診・候補への依頼 Push・メンバーの了承は画面から外す (コードは残す)。相手は運営が Discord で声をかけて決め、盤 (📌) に置く。
         // 本番では締め凸の依頼 (finish_requests) を**読まない** = DB に残った進行中の依頼でもホームの了承・運営の打診中は出ない (Codex指摘 b34536c)。
-        // ★ 練習の運営編・当日は同時打診を課題にしているので、練習を作り直すまでは練習の中だけ残す
-        function _finishAskOn() { return !!(typeof window !== 'undefined' && window.PAD_PRACTICE); }
+        function _finishAskOn() { return false; }   // 練習も 2026-10-22 の作り直しで本番どおりに (同時打診は使わない)。戻すときはここだけ
         // ===== 締め凸依頼ステータス (finish_requests) =====
         let _finishReqCache = [];
         let _finishReqStaleSince = null;   // 取得に失敗してから前の内容を保っている (null = 最新)
@@ -18188,7 +18188,10 @@
         // 承認のあとの組み直しの条件 (2026-10-22): 🧱 ブロックで運用中はそのブロックのまま組み直す —
         //   1 日ぶん (全員) で組み直すと「次のブロックだけを約束する」が崩れ、配信の確認も 1 日ぶんになる。
         //   それ以外は従来どおり全員を明示する (「今動ける人だけ」のまま承認の組み直しをしない・2026-09-08)
-        const _recomputeOptsAfterApproval = () => (_opsPlanWho === 'block' ? { who: 'block', block: _opsPlanBlock() } : { onlyAvailableNow: false });
+        // 🧱 承認の組み直しは**いま組んでいたプランのブロック**で (その場で既定を決め直すと、書き込み直後の読み直し中に前日の判定が外れて別のブロックになる: 練習の作り直しで発覚 2026-10-22)
+        const _recomputeOptsAfterApproval = () => (_opsPlanWho === 'block'
+            ? { who: 'block', block: (typeof _opsLastPlan !== 'undefined' && _opsLastPlan?.blockScope?.slots) ? _opsLastPlan.blockScope : _opsPlanBlock() }
+            : { onlyAvailableNow: false });
         // 承認のたびの組み直し (配信の確認は出さない)。失敗しても承認は成立している
         async function _recomputeOnly() {
             try { await computeAndRenderOptimalPlan(_recomputeOptsAfterApproval()); }
@@ -21476,7 +21479,11 @@
             if (!blocks.length) return null;
             const dom = window.raidBlocksDomain;
             const nowHour = Number(String(getCurrentSlotJST()).slice(1));
-            const cur = dom.blockIndexOfHour(blocks, nowHour);
+            // ★ レイド日より前 (前日・準備) は当日の最初のブロック (朝) が「次」。時計のブロック (前日の夕方など) を既定にしない (練習の作り直しで発覚・2026-10-22)
+            const st = window.opsStageDomain;
+            const hd = String((opsStore.get()?.season || (typeof seasonStore !== 'undefined' ? seasonStore.get()?.season : null))?.hard_date || '').slice(0, 10);   // 盤面の読み直し中でもシーズンから
+            const beforeDay = !!(st && typeof st.raidDayKey === 'function' && /^\d{4}-\d{2}-\d{2}$/.test(hd) && st.raidDayKey(Date.now()) < hd);
+            const cur = beforeDay ? -1 : dom.blockIndexOfHour(blocks, nowHour);
             const idx = (_opsPlanBlockIdx != null && blocks[_opsPlanBlockIdx]) ? _opsPlanBlockIdx : (cur >= 0 ? cur : 0);
             return { ...blocks[idx], idx, isNow: idx === cur };
         }

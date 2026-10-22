@@ -1142,6 +1142,12 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   「📋 名前と文面をコピー (Discord で声かけ)」(`handleOpsFinishPlanCopy`)。判定は `_finishAskOn()` = 練習中 (`window.PAD_PRACTICE`) だけ true — 練習の運営編・当日が同時打診を課題にしているので作り直すまで残す。
   設定タブの 👑 マスター運営 4 枚 (版のしめ切り・運営担当・復元・メンバー管理) も `_initOpsEtc` が 👑 マスターのタブ (メンテナンスの先頭) へ移す (data-master-only のまま)。
   設定タブには「移しました」の案内と `_opsGotoMasterTab()` (メンバーの見え方にしていたら運営の画面に戻して 👑 を開く)。描くのは `_setOpsEtcOpen` (マスターのときだけ 4 枚も)
+  ★ **🎮 練習モードの作り直し** (2026-10-22 ユーザー決定「メンバー側も運営側も・特に運営がブロックで実際に動かして練習」): 課題は `js/practice/guide.js` の STEPS。
+  メンバー編 (前日 20 時・lite) = avail (時間 + 夜 2 凸) → wait (⏩ 運営が「夜」のぶんを配信 = `publishNight`・本物のソルバーで 🧱 夜の人) → ack → report (⏩ 運営が凸を登録)。
+  運営編・前日 = nudge → compute (🧱 朝) → pin → request (⏩ 朝 7 時の申請 `REQ_SLOT`) → publish (朝のぶん)。運営編・当日 (**18 時** = 夕方の頭) = hp → check (✅ 凸報告を 1 件 ✓) → compute (🧱 夕方) → publish → finish (締凸検索の「📋 コピー」・本物の関数を包んで印)。
+  運営役の配信 `opsPublish(startMode, blockName)` は画面と同じ渡し方 (onlyAvailableNow + availableAtSlots + blockStartSlot) と blockScope の焼き込み。**本番がまだ送らない「ブロックの配信」の通知は練習も送らない**。
+  練習のシーズンは本番の既定 (`metadata: {}` = lite)。締め凸は練習でも探すだけ (`_finishAskOn()` は常に false)。ツアーの体験デモは avail / battle→report (模擬は無し)。
+  ついでに直した本番の不具合: 前日の 🧱 ブロックの既定が時計のブロック (前日の夕方) になっていた → レイド日より前は「朝」(`_opsPlanBlock`)。承認後の組み直しは直前のプランのブロック (`_recomputeOptsAfterApproval`)
   ★ **🧱 段階 2b: 凸数をソルバーの上限に + 時間未登録を候補にしない** (2026-10-22): 入力 `players[].blockCaps = [{ fromIdx, toIdx, max }]` と `excludeTimeUnknown`。
   **どちらも渡さなければ出力は 1 バイトも変わらない** (指紋 120 盤面・テストが JSON 比較で見張る)。画面は算出 (`computeOptimalPlan`) と承認の影響 (`_reservationImpact`) の 2 つの呼び出し口で
   `_playersWithBlockCaps(players, season)` (= `raidBlocksDomain.capsOf(blockCounts, 区切り, 済んだ凸の時)`。済んだ凸の時は `reported_at` を `attackCheckDomain.hourIdxOfMs` で JST にしたもの) と

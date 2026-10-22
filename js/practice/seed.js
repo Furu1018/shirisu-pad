@@ -93,8 +93,8 @@ export function buildSeed({ hardDate, characters } = {}) {
     });
 
     return {
-        // ★ 練習のシーズンは metadata.member_input = 'full' (メンバー編の課題「模擬の提出」「予約」が成り立つように。本番の既定は出さない — ③-d)
-        seasons: [{ id: IDS.season, month_key: hardDate.slice(0, 7), hard_date: hardDate, current_level: 1, is_active: true, is_test: false, metadata: { member_input: 'full' } }],
+        // ★ 練習のシーズンは本番の既定と同じ (metadata.member_input なし = メンバーの入力は最低限・模擬タブなし)。2026-10-22 の作り直しから
+        seasons: [{ id: IDS.season, month_key: hardDate.slice(0, 7), hard_date: hardDate, current_level: 1, is_active: true, is_test: false, metadata: {} }],
         bosses: BOSSES.map(b => ({ season_id: IDS.season, ...b, total_hp_raw: HARD_LV1_HP[b.tier], remaining_hp_raw: HARD_LV1_HP[b.tier] })),
         players,
         availability,

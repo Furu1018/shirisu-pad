@@ -7526,7 +7526,7 @@ console.log('\n通知抑制・運営ガードの配線 (ソース突合):');
         const ro = html.match(/async function _recomputeOnly\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/await computeAndRenderOptimalPlan\(_recomputeOptsAfterApproval\(\)\)/.test(ro), '組み直していない (承認後の条件を通していない)');
         // ★ 2026-10-22: 🧱 ブロックで運用中はそのブロックのまま組み直す (1 日ぶんで組み直すと「次のブロックだけ」が崩れる)。それ以外は従来どおり全員を明示
-        const optsSrc = html.match(/const _recomputeOptsAfterApproval = \(\) => \([^\n]*\);/)?.[0] || '';
+        const optsSrc = html.match(/const _recomputeOptsAfterApproval = \(\) => \([\s\S]*?\);\n/)?.[0] || '';   // 2026-10-22: いま組んでいたプランのブロックを使う (複数行)
         assert.ok(optsSrc, '_recomputeOptsAfterApproval が無い');
         const optsOf = (who) => new Function('_opsPlanWho', '_opsPlanBlock', `${optsSrc}\nreturn _recomputeOptsAfterApproval();`)(who, () => ({ idx: 2, name: '昼' }));
         assert.deepEqual(optsOf('block'), { who: 'block', block: { idx: 2, name: '昼' } }, 'ブロックで運用中なのに全員で組み直す / 承認時のブロックを固定していない');
@@ -9720,7 +9720,8 @@ console.log('\ngrowthDomain:');
         assert.ok(/CREATE FUNCTION ops_set_season_meta_key\(/.test(sql) && /p_key NOT IN \('member_input'\)/.test(sql) && /p_value <> '"full"'::jsonb/.test(sql) && /WHERE id = p_season_id AND is_active = TRUE/.test(sql) && /GRANT EXECUTE ON FUNCTION ops_set_season_meta_key\(BIGINT, TEXT, JSONB\) TO anon, authenticated;/.test(sql), '51 の形が違う');
         assert.ok(_grRd('supabase', '99_check_applied.sql').includes("'51_season_member_input_rpc'"), '99 に 51 の判定行が無い');
         assert.ok(/ops_set_season_meta_key\(a\) \{/.test(_grRd('js', 'practice', 'server.js')), '練習の偽サーバに RPC が無い');
-        assert.ok(/metadata: \{ member_input: 'full' \}/.test(_grRd('js', 'practice', 'seed.js')), '練習のシーズンがメンバーの入力を出していない (メンバー編の課題が成り立たない)');
+        // 2026-10-22 の練習の作り直し: 練習のシーズンも本番の既定 (メンバーの入力は最低限) — メンバー編は「出られる時間と凸数」だけを課題にする
+        assert.ok(/metadata: \{\} \}\]/.test(_grRd('js', 'practice', 'seed.js')) && !/member_input: 'full'/.test(_grRd('js', 'practice', 'seed.js')), '練習のシーズンが本番の既定 (メンバーの入力は最低限) になっていない');
     });
 
     await testAsync('★ 実行: メンバーの入力の保存 — RPC が本線 / 51 未適用だけ読んで混ぜて書く / 別エラーは投げる / null で鍵を消す', async () => {
@@ -12113,9 +12114,9 @@ console.log('\ngrowthDomain:');
         for (const [i, st] of steps.entries()) {
             for (const k of ['emoji', 'chapterTag', 'stepLabel', 'title', 'body', 'tip', 'accentColor', 'accentDark']) assert.ok(st[k], 'ステップ ' + (i + 1) + ' に ' + k + ' が無い');
             assert.equal(st.stepLabel, 'CHAPTER ' + String(i + 1).padStart(2, '0'), 'CHAPTER の番号がずれている');
-            if (st.demo) assert.ok(['avail', 'mock', 'battle'].includes(st.demo), '知らないデモ: ' + st.demo);
+            if (st.demo) assert.ok(['avail', 'battle'].includes(st.demo), '知らないデモ: ' + st.demo);
         }
-        assert.deepEqual(steps.filter(s => s.demo).map(s => s.demo), ['avail', 'mock', 'battle'], '体験デモの並び (時間 → 模擬 → 凸) が崩れている');
+        assert.deepEqual(steps.filter(s => s.demo).map(s => s.demo), ['avail', 'battle'], '体験デモの並び (時間 → 凸) が崩れている (2026-10-22: 模擬は Discord なのでデモなし)');
         assert.ok(steps[0].body.includes('8つのステップ'), '冒頭の案内がステップ数と合っていない');
         const head = (s) => s.chapterTag + ' ' + s.title;
         assert.ok(steps.some(s => /予約/.test(head(s))) && steps.some(s => /運営担当/.test(head(s))) && steps.some(s => /こう決まる/.test(head(s))), '予約 / 運営 / 3凸 の章が無い');
@@ -12124,8 +12125,8 @@ console.log('\ngrowthDomain:');
         // ★ 体験デモは手描きの見本ではなく、練習モード (本物の画面) の該当する課題への入口 (2026-10-03)。demo の名前 → 練習の課題の key
         assert.ok(!/function _tourDemo(Avail|Mock|Battle)Body\(/.test(html), '手描きの体験デモが残っている (本番の画面を直すたびにずれる)');
         const map = new Function(html.match(/const TOUR_DEMO_START = (\{[^}]*\});/)[1].replace(/^/, 'return ') )();
-        assert.deepEqual(Object.keys(map), ['avail', 'mock', 'battle']);
-        assert.deepEqual(Object.values(map).map(v => v[0]), ['avail', 'mock', 'attack'], 'ツアーのデモから入る練習の課題がずれている');
+        assert.deepEqual(Object.keys(map), ['avail', 'battle']);
+        assert.deepEqual(Object.values(map).map(v => v[0]), ['avail', 'report'], 'ツアーのデモから入る練習の課題がずれている (2026-10-22 の作り直し)');
         assert.match(html, /function _tourDemoHtml\(kind\)[\s\S]*?onclick="startPractice\('member', '\$\{d\[0\]\}'\)"/, '体験デモが練習モードへの入口でない');
         assert.match(html, /\$\{step\.demo \? _tourDemoHtml\(step\.demo\) : ''\}/, 'ツアーがデモの種類を渡していない');
     });

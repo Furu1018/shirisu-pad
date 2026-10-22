@@ -179,9 +179,9 @@ test('🏁 段階 2.5 (2026-10-22 ユーザー決定「探す機能だけ残す�
     const on = run({ candidates: cands, remHp: 60, askOn: true });
     assert.ok(on.includes('同時打診に選ぶ'), '練習では残す');
 });
-test('🏁 段階 2.5: プランのカードは本番では「📋 名前と文面をコピー」、練習では従来の 📣 依頼 (配線)', () => {
+test('🏁 段階 2.5: プランのカードは「📋 名前と文面をコピー」— 同時打診・依頼は本番も練習も使わない (2026-10-22 の練習の作り直しから) (配線)', () => {
     const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-    assert.ok(/function _finishAskOn\(\) \{ return !!\(typeof window !== 'undefined' && window\.PAD_PRACTICE\); \}/.test(html), '同時打診を練習だけに絞っていない');
+    assert.ok(/function _finishAskOn\(\) \{ return false; \}/.test(html), '同時打診・依頼が使えるようになっている (締め凸は探すだけ)');
     // Codex指摘 (b34536c): 本番は依頼を読まない・候補の Push・HP 更新後の Push・同時打診の送信を止める
     assert.ok(/if \(!_finishAskOn\(\)\) \{ _finishReqCache = \[\]; _finishReqStaleSince = null; return; \}/.test(html), 'DB に残った依頼を本番で読んでいる');
     for (const fn of [html.match(/async function handleMyFinishRequestRespond\([^)]*\) \{/)[0], 'async function handleOpsFinishPushSend() {', 'async function offerFinishPushAfterHpUpdate() {', 'async function handleOpsFinishOfferSend() {', 'async function handleOpsFinishPlanPush(kind) {']) {

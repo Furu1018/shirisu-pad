@@ -302,7 +302,7 @@ test('種データ: 架空の 31 人・何度作っても同じ・自分は灼�
     assert.equal(a.players.length, 31);
     assert.deepEqual(a.players.slice(0, 2).map(p => [p.id, p.name]), [[IDS.me, ME_NAME], [IDS.ops, OPS_NAME]]);
     assert.equal(new Set(a.players.map(p => p.name)).size, 31, '名前が重なっている');
-    assert.deepEqual(a.seasons[0], { id: IDS.season, month_key: '2026-10', hard_date: '2026-10-03', current_level: 1, is_active: true, is_test: false, metadata: { member_input: 'full' } });   // ③-d: 練習は模擬タブ・申請が出る設定
+    assert.deepEqual(a.seasons[0], { id: IDS.season, month_key: '2026-10', hard_date: '2026-10-03', current_level: 1, is_active: true, is_test: false, metadata: {} });   // ③-d: 練習は模擬タブ・申請が出る設定
     const mine = a.player_damages.filter(d => d.player_id === IDS.me);
     assert.deepEqual(mine.map(d => d.attribute).sort(), ['electric', 'iron', 'water', 'wind'], '自分の模擬 (灼熱だけ未提出) が違う');
     assert.ok(!a.availability_confirmations.some(r => r.player_id === IDS.me), '自分の今期の確認が最初から済んでいる');
@@ -458,7 +458,7 @@ test('起動: 印は編の id。役と開始時刻は編ごと (ops-eve = 運営
     assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario, jst(e.win.Date.now())], ['ops', 'ops-eve', '2026-10-02T20:00']);
     assert.deepEqual(JSON.parse(e.win.localStorage.getItem('shirisuPad.currentPlayer')), { id: IDS.ops, name: OPS_NAME });
     e = bootEnv({ flag: 'ops-day' });
-    assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario, jst(e.win.Date.now())], ['ops', 'ops-day', '2026-10-03T20:00'], '当日の運営編が当日の 20 時から始まらない');
+    assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario, jst(e.win.Date.now())], ['ops', 'ops-day', '2026-10-03T18:00'], '当日の運営編が当日の 18 時 (夕方のブロックの頭) から始まらない');
     e = bootEnv({ flag: 'ops' });
     assert.deepEqual([e.win.PAD_PRACTICE.role, e.win.PAD_PRACTICE.scenario], ['ops', 'ops-eve'], '古い印 (ops) を前日の運営編と読めない');
     e = bootEnv({ flag: 'member' });
@@ -849,107 +849,94 @@ test('見張り: 案内が指す「押す場所」が、本物の画面 (index.h
 });
 test('見張り: 課題の形 / 「〜したことにする」は自動では起きない / 案内の文が引く画面の言葉が実在する', () => {
     const P = loadGuide();
-    const steps = P.steps.member;
-    assert.deepEqual(Array.from(steps, s => s.key), ['avail', 'mock', 'resv', 'ack', 'attack', 'finish']);   // (別の実行環境の配列なので写してから比べる)
+    // ★ 2026-10-22 の作り直し (🧱 ブロック制・段階 2.5): メンバーは「出られる時間と凸数」と「いつ・どの PT で」だけ、運営はブロックの頭の手順
+    assert.deepEqual(Array.from(P.steps.member, s => s.key), ['avail', 'wait', 'ack', 'report']);   // (別の実行環境の配列なので写してから比べる)
     assert.deepEqual(Array.from(P.steps['ops-eve'], s => s.key), ['nudge', 'compute', 'pin', 'request', 'publish']);
-    assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'console', 'offer', 'confirm', 'kill'], '運営編・当日は HP更新 → コンソール → 同時打診 → 確定 → 撃破');
-    // 編の並び (次は ○○ →): メンバー → 運営・前日 → 運営・当日 → メンバー
+    assert.deepEqual(Array.from(P.steps['ops-day'], s => s.key), ['hp', 'check', 'compute', 'publish', 'finish'], '運営編・当日は ⚔️ HP → ⚔️ 凸報告の確認 → 🧱 組む → 配信 → 締凸検索');
     assert.deepEqual(['member', 'ops-eve', 'ops-day'].map(k => P.scenarios[k].next), ['ops-eve', 'ops-day', 'member']);
     for (const k of Object.keys(P.scenarios)) assert.ok(P.scenarios[k].diff && P.scenarios[k].diff.length > 30, `${k} の「本番とのちがい」が無い`);
     for (const sc of Object.keys(P.steps)) for (const s of P.steps[sc]) assert.ok(s.title && typeof s.done === 'function' && typeof s.guide === 'function', `${sc}/${s.key} の形が違う`);
-    // 編の一覧は boot.js / guide.js / index.html (URL と入口) で同じ
     const ids = Object.keys(P.scenarios).sort();
     const bootIds = [...rd('js/practice/boot.js').match(/var SCENARIOS = \{([^}]*\}[^}]*\}[^}]*\})/)[1].matchAll(/'([a-z-]+)': \{ role:/g)].map(m => m[1]).sort();
     assert.deepEqual(bootIds, ids, 'boot.js の編の一覧が guide.js と違う');
     assert.deepEqual(Object.keys(P.steps).sort(), ids, '課題の無い編 / 一覧に無い課題がある');
     assert.equal((HTML.match(/\^\(member\|ops-eve\|ops-day\)\$/g) || []).length, 2, 'index.html (URL の印 と 入口) の編の一覧が違う');
     for (const id of ids) assert.ok(P.scenarios[id].title && P.scenarios[P.scenarios[id].next], `${id} の名前か「次の編」が無い`);
-    // 途中の課題から: 手前を**本物の関数**で済ませる (FF の鍵は課題の鍵)
-    const ffKeys = [...GUIDE.matchAll(/\n        (\w+): async function \(c\) \{/g)].map(m => m[1]);
-    assert.deepEqual(ffKeys, ['avail', 'mock', 'resv', 'ack', 'attack'], '手前を済ませる手順が課題と合わない (finish は最後なので手順が要らない)');
-    assert.match(GUIDE, /attack: async function \(c\) \{[\s\S]*?await window\.supabaseAddAttack\(\{[^}]*\}, \{ reservationId: res\.id, actorName: P\.me\.name \}\);/, '手前の「凸報告」を本物の関数で済ませていない (start=finish が attack から始まる)');
-    // ★ 途中で失敗したら全部戻して最初から (半端に済んだ状態で始めない: Codex指摘 2026-10-03)
-    assert.match(GUIDE, /async function fastForward\(startKey\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?if \(!list\[i\]\.done\(context\(\)\)\) throw new Error[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);[\s\S]*?return false;/, '途中の課題から始める処理が、失敗しても途中まで書いた盤面を残す');
-    assert.match(GUIDE, /fastForward\(startAt\)\.then\(function \(ok\) \{[\s\S]*?if \(ok\) store\.set\('ff:done', '1'\); else store\.del\('start'\);/, '失敗しても「済んだ」印を付けている / 「途中から」をやめていない');
-    for (const fn of ['supabaseConfirmAvailability', 'supabaseSaveMockSubmission', 'supabaseCreateReservation', 'supabaseAckPlan']) assert.ok(new RegExp(`var FF = \\{[\\s\\S]*?window\\.${fn}\\(`).test(GUIDE), `手前を済ませるのに本物の ${fn} を使っていない`);
-    // 編の開始状態 (SETUP): 運営編・当日だけ。本物の配信 (opsPublish) + 20 時までの凸 (advanceWorld) で作り、失敗したら全部戻して知らせる (半端な盤面で始めない)
-    assert.deepEqual([...GUIDE.matchAll(/\n        '([a-z-]+)': async function \(c\) \{/g)].map(m => m[1]), ['ops-day'], '開始の盤面を作る編が増えた/減った');
-    assert.match(GUIDE, /var SETUP = \{[\s\S]*?await opsPublish\('day'\);[\s\S]*?advanceWorld\(context\(\), pub && pub\.plan, 20, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面の作り方が変わった (配信 → 20 時までの凸 → HP 更新の時刻)');
-    assert.match(GUIDE, /async function runSetup\(\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?store\.set\('setup:done', '1'\);[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);[\s\S]*?store\.set\('setup:err'/, '開始の盤面を作れなかったとき、戻して知らせていない');
-    assert.match(GUIDE, /if \(SETUP\[SC\] && store\.get\('setup:done'\) !== '1'\) \{[\s\S]*?runSetup\(\)\.then\(function \(\) \{ if \(typeof P\.save === 'function'\) P\.save\(\); location\.reload\(\); \}\);/, '盤面を作ったあと、控えてから読み込み直していない');
-    // 当日の仮定: 了承は本物のメンバー側の手順 (枠を取ってから伝える) / 締め凸の報告は本物の凸報告 → 本物の検知
-    assert.match(GUIDE, /finishAnswers: async function \(\) \{[\s\S]*?await _reserveForFinishRequest\(ctx, who, bn, m\.rowId\);\s*await window\.supabaseRespondFinishRequest\(c\.season\.id, bn, m\.id, 'accepted', level, m\.rowId\);\s*await _notifyOps\(\{ title: '🗡 締め凸を了承'/, '了承の仮定が本物の手順 (枠 → 返事 → 運営あての通知) でない');
-    assert.match(GUIDE, /finishKill: async function \(\) \{[\s\S]*?await window\.supabaseAddAttack\(\{[^}]*\}, \{ reservationId: r\.id, actorName: [^}]*\}\);[\s\S]*?await _checkRaidEvents\(\);/, '締め凸の報告の仮定が 本物の凸報告 (予約つき) → 本物の撃破の検知 でない');
-    // 当日の課題の判定は、撃破で依頼の行が消えたあとも「済んだ」のまま (撃破の通知・実行済みの約束で見る)
-    assert.match(GUIDE, /key: 'confirm'[\s\S]*?return settled \|\| c\.allResv\.some\(function \(r\) \{ return r\.source_type === 'finish_request' && r\.status === 'fulfilled'; \}\) \|\| c\.notices\.some\(function \(r\) \{ return r\.kind === 'boss_defeated'; \}\);/, '確定の判定が、撃破で依頼が消えると「まだ」に戻る');
-    assert.match(GUIDE, /key: 'offer'[\s\S]*?done: function \(c\) \{ return c\.offer\.length > 0 \|\| c\.pushLog\.some\(/, '同時打診の判定が、撃破で依頼が消えると「まだ」に戻る');
+    // 途中の課題から: 手前を**本物の関数**で済ませる (FF の鍵は課題の鍵・最後の report は手順が要らない)
+    const ff = GUIDE.match(/var FF = \{[\s\S]*?\n    \};/)?.[0] || '';
+    assert.deepEqual([...ff.matchAll(/\n        (\w+): async function/g)].map(m => m[1]), ['avail', 'wait', 'ack'], '手前を済ませる手順が課題と合わない');
+    assert.match(ff, /window\.supabaseConfirmAvailability\(c\.season\.id, c\.me, \{ slotCount: slots\.length, slots: slots, blockCounts: \{ '21-23': 2 \} \}\)/, '手前の「時間と凸数」を本物の関数で済ませていない');
+    assert.match(ff, /wait: async function \(\) \{ await publishNight\(\); \}/);
+    assert.match(ff, /window\.supabaseAckPlan\(/);
+    assert.match(GUIDE, /async function fastForward\(startKey\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?if \(!list\[i\]\.done\(context\(\)\)\) throw new Error[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/, '途中で失敗しても戻していない');
+    assert.match(GUIDE, /fastForward\(startAt\)\.then\(function \(ok\) \{[\s\S]*?if \(ok\) store\.set\('ff:done', '1'\); else store\.del\('start'\);/);
     assert.match(GUIDE, /fastForward\(startAt\)\.then\([\s\S]*?location\.reload\(\)/, '手前を済ませたあと読み込み直していない (画面が古いまま)');
+    // 編の開始状態 (SETUP): 運営編・当日だけ。本物の配信 + 18 時までの凸で作り、失敗したら全部戻す
+    assert.deepEqual([...GUIDE.matchAll(/\n        '([a-z-]+)': async function \(c\) \{/g)].map(m => m[1]), ['ops-day'], '開始の盤面を作る編が増えた/減った');
+    assert.match(GUIDE, /var SETUP = \{[\s\S]*?await opsPublish\('day'\);[\s\S]*?advanceWorld\(context\(\), pub && pub\.plan, 18, \{ 1: 0\.45 \}\);[\s\S]*?store\.set\('ops-day:setupAt', new Date\(\)\.toISOString\(\)\);/, '当日の盤面 (18 時まで) を作っていない');
+    assert.match(GUIDE, /async function runSetup\(\) \{[\s\S]*?var snap = P\.db\.dump\(\), clockWas = P\.clock\.get\(\);[\s\S]*?store\.set\('setup:done', '1'\);[\s\S]*?catch \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/);
+    assert.match(GUIDE, /if \(SETUP\[SC\] && store\.get\('setup:done'\) !== '1'\) \{[\s\S]*?runSetup\(\)\.then\(function \(\) \{ if \(typeof P\.save === 'function'\) P\.save\(\); location\.reload\(\); \}\);/);
+    // 運営役の配信は本物のソルバー・本物の配信。🧱 ブロックで組むときは画面と同じ渡し方 (ブロックの人 + ブロックの頭から) と blockScope の焼き込み
+    const code = GUIDE.replace(/\/\/[^\n]*/g, '');
+    assert.match(code, /plan = computeOptimalPlan\(opts, snapshot\);/, '運営役の組み直しが本物のソルバーでない');
+    assert.match(code, /opts\.onlyAvailableNow = true; opts\.availableAtSlots = blk\.slots; opts\.availableAtLabel = blk\.label; opts\.blockStartSlot = _hourKey\(blk\.from\);/, 'ブロックで組むときの渡し方が画面と違う');
+    assert.match(code, /if \(blk\) plan\.blockScope = \{ idx: blk\.idx, name: blk\.name, label: blk\.label, from: blk\.from, to: blk\.to, slots: blk\.slots\.slice\(\) \};/, 'ブロックのぶんだけ配信する印が無い');
+    assert.match(HTML, /if \(blk\) plan\.blockScope = \{ idx: blk\.idx, name: blk\.name, label: blk\.label, from: blk\.from, to: blk\.to, slots: blk\.slots\.slice\(\) \};/, '画面の焼き込みと練習の焼き込みがずれた');
+    assert.match(code, /return window\.supabasePublishPlan\(plan, P\.ops\.id, P\.ops\.name, c\.season\.id, schema\);/, '運営役の配信が本物の関数でない');
+    // 運営があなたの凸を登録した (本物の凸の登録・運営の名前で) / ボスは倒し切らない
+    assert.match(code, /opsRegister: async function \(\) \{[\s\S]*?await window\.supabaseAddAttack\(\{[^}]*\}, \{ actorName: P\.ops\.name \}\);/, '凸の登録の仮定が本物の関数でない');
+    assert.match(code, /var dmg = Math\.min\([^;]*Number\(boss\.remaining_hp_raw\) - 1\)\);/, '練習の世界でボスを倒し切る');
+    // ★ 本番はブロックの配信で通知をまだ送らない → 練習も送らない (本番とずらさない)
+    assert.ok(!/publishNight[\s\S]{0,400}pushAsOps\(/.test(code), '練習だけ配信の通知を送っている');
+    // 締凸検索は「探すだけ」: 本物のコピーの関数を呼んでから印を付ける (頼む操作は無い)
+    assert.match(code, /var _realCopy = window\.handleOpsFinishPlanCopy;\s*window\.handleOpsFinishPlanCopy = async function \(kind\) \{\s*var r = await _realCopy\(kind\);/, 'コピーを本物の関数で通していない');
+    assert.ok(!/supabaseSaveFinishRequests|supabaseRespondFinishRequest|finish_requests'/.test(code), '練習で締め凸を頼んでいる (本番は探すだけ)');
     const used = [...GUIDE.matchAll(/assume: \['(\w+)'/g)].map(m => m[1]);
     assert.deepEqual([...new Set(used)].sort(), [...P.assumeKeys].sort(), '「〜したことにする」の顔ぶれが課題と合わない');
-    // ★ 相手の動き (承認・時間・お願い) を自動で起こさない (ユーザー要望 2026-10-02: 本番で「練習ではすぐ返事が来たのに」とならないように)。
-    //   時間で動くのは 画面の見直し (setInterval(update)) と 入力のあとの見直し (schedule) だけ
-    const code = GUIDE.replace(/\/\/[^\n]*/g, '');
+    // ★ 相手の動きを自動で起こさない (ユーザー要望 2026-10-02)
     assert.deepEqual((code.match(/set(?:Timeout|Interval)\(([A-Za-z_.]+)/g) || []).sort(), ['setInterval(update', 'setTimeout(update'], '時間で勝手に進む処理が増えた');
-    // (途中の課題から始める fastForward だけは、利用者が指定した「手前を済ませる」ので仮定を呼んでよい)
     assert.ok(!/ASSUME\[[^\]]+\]\(\)|ASSUME\.\w+\(\)/.test(code.replace(/var FF = \{[\s\S]*?\n    \};/, '')), '「〜したことにする」をボタン以外から呼んでいる');
     assert.match(code, /if \(k === 'assume' && !busy\) \{\s*var fn = ASSUME\[b\.getAttribute\('data-k'\)\];/);
-    // ★ 途中で失敗したら押す前の盤面へ戻す (承認だけ済んで配信が無い、のような半端を残さない → 押し直せる)
-    assert.match(code, /var snap = P\.db\.dump\(\), feedWas = feedId, clockWas = P\.clock\.get\(\);[\s\S]*?Promise\.resolve\(\)\.then\(fn\)\.catch\(function \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\); if \(typeof P\.save === 'function'\) P\.save\(\);[\s\S]*?\}\)\.then\(refreshScreen\)/, '仮定が途中で失敗しても盤面・時計を戻していない');
-    assert.match(code, /var snap = P\.db\.dump\(\), feedWas = feedId, clockWas = P\.clock\.get\(\);/);
-    assert.match(code, /saveFeed\(\);\s*P\.clock\.set\('hard', 21\);[^\n]*\n\s*if \(typeof P\.save === 'function'\) P\.save\(\);/, '当日に進めるとき、失敗し得る処理より先に時計を動かしている');
-    // どの仮定も「練習だけの仮定」と出す。★ 関数ごとに切り出して見る (まとめて探すと、ほかの仮定の note で通ってしまう)
+    assert.match(code, /var snap = P\.db\.dump\(\), feedWas = feedId, clockWas = P\.clock\.get\(\);[\s\S]*?Promise\.resolve\(\)\.then\(fn\)\.catch\(function \(e\) \{[\s\S]*?P\.db\.restore\(snap\); P\.clock\.put\(clockWas\);/, '失敗したら押す前の盤面・時計へ戻していない');
+    assert.match(code, /if \(typeof P\.save === 'function'\) P\.save\(\);\s*location\.reload\(\);/, '読み込み直す前に控えていない');
     for (const key of P.assumeKeys) {
         const body = GUIDE.match(new RegExp(`\\n        ${key}: async function \\(\\) \\{([\\s\\S]*?)\\n        \\},`))?.[1] || '';
         assert.ok(body.length > 50, `${key} の中身を切り出せない`);
         assert.ok(/note\('assume', [^\n]*仮定しました/.test(body), `${key}: 「練習だけの仮定」と出していない`);
     }
     assert.ok((GUIDE.match(/real: '/g) || []).length >= 10, '「本番では」の断りが減っている');
-    // ⏩ 仮定のある場面には、必ず「本番では」の断りが付いている (同じ guide の中に real: と assume: が並ぶ)
     for (const m of GUIDE.matchAll(/assume: \['(\w+)'/g)) {
         const around = GUIDE.slice(Math.max(0, m.index - 400), m.index);
         assert.ok(/real: '/.test(around), `${m[1]} の仮定に「本番では」の断りが付いていない`);
     }
-    // 相手役が送る通知は、本番の文面と同じ (本番の文面を変えたら練習も直す) / 本物の送り方で送る
-    for (const w of ['🔒 予約が承認されました', '固定されました。プランは運営が組み直して配信します', 'PT 締め凸候補', '凸お願いできる方いますか🙏', './?tab=mypage&focus=finishreq', '🗡 締め凸を了承', "tag: 'ops-finish-answer'"]) {
-        assert.ok(GUIDE.includes(w) && HTML.includes(w), `通知の文面「${w}」が 本番 と 練習 でそろっていない`);
-    }
-    assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/, '相手役の通知を本物の送り方で送っていない (受け取った通知の一覧に残らない)');
-    assert.ok(!/note\('push'/.test(code.replace(/function note[\s\S]*?\n    \}/, '').replace(/note\('push', d\.item\.title/, '')), '通知の見本を手書きで出している (本物の文面とずれる)');
+    // 相手役が送る通知は本番と同じ文面・同じ送り方
+    for (const w of ['🔒 予約の申請', '(承認待ち)']) assert.ok(GUIDE.includes(w) && HTML.includes(w), `通知の文面「${w}」が 本番 と 練習 でそろっていない`);
+    assert.match(code, /function pushAsOps\(payload\) \{\s*return window\.sendPushNotification\(payload, \{ senderPlayerId: P\.ops\.id \}\)/);
     assert.match(GUIDE, /<b>本番とのちがい<\/b>/, '最後のまとめに本番との違いが無い');
-    // 案内の要所 (どれもブラウザの通し確認で踏んだ穴)
-    assert.deepEqual(Array.from(P.selectors.mockTile), ['#myTeamEditModal .te-tile:not(.used):not(.dup)'], '選んだキャラをもう一度指している (押すと外れて、いつまでも 5 人にならない)');
-    assert.match(code, /var hit = document\.elementFromPoint\(cx, cy\);\s*return !!hit && \(hit === el \|\| el\.contains\(hit\) \|\| hit\.contains\(el\)\);/, '固定の帯の裏にあるボタンにも枠を出している (押すと別のボタンに当たる)');
-    assert.match(code, /if \(typeof P\.save === 'function'\) P\.save\(\);\s*location\.reload\(\);/, '当日に進めるとき、読み込み直す前に控えていない (入れた凸が消える)');
+    // 案内の要所
+    assert.deepEqual(Array.from(P.selectors.availPlusNight), ['#myAvailModal button[onclick="_availStepCount(5, 1)"]'], '夜 (既定の 6 つ目のブロック) の「＋」を指していない');
+    assert.match(code, /var hit = document\.elementFromPoint\(cx, cy\);\s*return !!hit && \(hit === el \|\| el\.contains\(hit\) \|\| hit\.contains\(el\)\);/);
     assert.match(code, /if \(pid == null \|\| eq\(pid, c\.me\) \|\| a\.flex\) return;/, 'ほかのメンバーの凸に、自分のぶんを混ぜている');
-    assert.match(code, /if \(!\(dmg > 0\) \|\| Number\(boss\.remaining_hp_raw\) - dmg < keep\) return;/, '練習の世界でボスを倒し切る (レベルが進むと案内が合わなくなる)');
-    assert.match(code, /P\.db\.rpc\('reservation_set_status', \{ p_id: row\.id, p_to: 'approved', p_expect_from: 'requested', p_actor: P\.ops\.name \}\);\s*await opsPublish\(/, '承認したことにする が 承認 → 組み直して配信 の順でない');
-    assert.match(code, /plan = computeOptimalPlan\(\{ reservations: rows, previousPlan: [^}]*\}, snapshot\);/, '運営役の組み直しが本物のソルバーでない');
-    assert.match(code, /return window\.supabasePublishPlan\(plan, P\.ops\.id, P\.ops\.name, c\.season\.id, schema\);/, '運営役の配信が本物の関数でない');
-    assert.match(GUIDE, /html\[data-practice\] \.player-select-modal > \*:not\(#_\):not\(#_\)[^{]*\{max-height:calc\(100vh - var\(--pm-top,0px\) - 8px\) !important\}/, 'シートを案内の下に収めていない (「閉じる」が帯に隠れる)');
-    assert.match(GUIDE, /#pmRing\{position:fixed;[^}]*pointer-events:none;/, '枠が本物のボタンへのタップを奪う');
-    assert.match(GUIDE, /html\[data-practice\] \.header\{display:none !important\}/, '練習中も上の帯 (ロゴ・名乗り) が出て、案内の直下で指したマスと重なる');
-    // ★ アプリの知らせ (トースト・更新の帯・互換ゲートの帯) は案内の裏に隠れない (実機 2026-10-03: 断られた理由が見えなかった)
-    assert.match(GUIDE, /html\[data-practice\] \.notification\{top:calc\(env\(safe-area-inset-top,0px\) \+ 12px \+ var\(--pm-top,0px\)\) !important\}/, 'トーストが案内の裏に隠れる');
-    assert.match(GUIDE, /html\[data-practice\] #appUpdateBanner,html\[data-practice\] #clientGateBanner\{top:calc\(env\(safe-area-inset-top,8px\) \+ 8px \+ var\(--pm-top,0px\)\) !important\}/, '更新・互換ゲートの帯が案内の裏に隠れる');
-    assert.match(HTML, /b\.id = 'clientGateBanner'/); assert.match(HTML, /getElementById\('appUpdateBanner'\)/);
-    assert.match(HTML, /\.notification \{\s*position: fixed;\s*top: calc\(env\(safe-area-inset-top, 0px\) \+ 12px\);/, 'トーストの位置の決め方が変わった (練習の上書きが効かない)');
-    // 残り凸が無いときは「今回は難しい」を指す (了承は断られる)
-    assert.match(code, /if \(held \+ c\.mine\('attacks'\)\.length >= 3\) \{[\s\S]*?target: pick\('finishDecline'\)/, '残り凸が無いのに了承を指している');
-    // ↩ 1つ前に戻る: 課題の区切りごとに控え、戻すときは 盤面・時計・知らせ を戻して読み込み直す。戻った先より後の控えは捨てる
-    assert.match(code, /function trackStep\(i\) \{\s*if \(i === stepIdx\) return;\s*if \(i > stepIdx && !hasSnap\(i\)\) saveSnap\(i\);/, '課題が進んだ瞬間に控えていない');
-    assert.match(code, /function goBack\(toIdx\) \{[\s\S]*?if \(!P\.db\.restore\(snap\.db\)\) return false;\s*P\.clock\.put\(snap\.clock\);\s*feed = [^\n]*\n\s*saveFeed\(\);\s*for \(var i = toIdx \+ 1; i < 20; i\+\+\) store\.del\('snap:' \+ i\);[\s\S]*?store\.set\('db', P\.db\.dump\(\)\);[\s\S]*?P\.closed = true;[\s\S]*?location\.reload\(\);/, '戻るときに 盤面・時計・知らせ を戻して**控えてから**閉じて読み込み直していない (閉じると置き場に書けない)');
-    assert.match(rd('js/practice/boot.js'), /set: function \(k, v\) \{\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE && window\.PAD_PRACTICE\.closed\) return;/, 'やめたあとも置き場に書ける (進み具合の鍵が残る)');
-    assert.match(code, /if \(k === 'back'\) \{[\s\S]*?if \(!window\.confirm\('課題 ' \+ \(to \+ 1\) \+ '「' \+ st\.title \+ '」の最初に戻りますか？/, '戻る前に確かめていない');
-    assert.match(code, /if \(c\.finish\.some\(function \(r\) \{ return r\.status === 'pending'; \}\)\) return;/, '締め凸のお願いを二重に出せる');
-    // 案内の文が「」で引いている画面の言葉は、画面に実在する (ボタンの名前を変えたら案内も直す)
+    assert.match(code, /if \(!\(dmg > 0\) \|\| Number\(boss\.remaining_hp_raw\) - dmg < keep\) return;/, '練習の世界でボスを倒し切る');
+    assert.match(GUIDE, /html\[data-practice\] \.player-select-modal > \*:not\(#_\):not\(#_\)[^{]*\{max-height:calc\(100vh - var\(--pm-top,0px\) - 8px\) !important\}/);
+    assert.match(GUIDE, /#pmRing\{position:fixed;[^}]*pointer-events:none;/);
+    assert.match(GUIDE, /html\[data-practice\] \.header\{display:none !important\}/);
+    assert.match(GUIDE, /html\[data-practice\] \.notification\{top:calc\(env\(safe-area-inset-top,0px\) \+ 12px \+ var\(--pm-top,0px\)\) !important\}/);
+    assert.match(GUIDE, /html\[data-practice\] #appUpdateBanner,html\[data-practice\] #clientGateBanner\{top:calc\(env\(safe-area-inset-top,8px\) \+ 8px \+ var\(--pm-top,0px\)\) !important\}/);
+    assert.match(HTML, /\.notification \{\s*position: fixed;\s*top: calc\(env\(safe-area-inset-top, 0px\) \+ 12px\);/);
+    assert.match(code, /function trackStep\(i\) \{\s*if \(i === stepIdx\) return;\s*if \(i > stepIdx && !hasSnap\(i\)\) saveSnap\(i\);/);
+    assert.match(code, /if \(k === 'back'\) \{[\s\S]*?if \(!window\.confirm\('課題 ' \+ \(to \+ 1\) \+ '「' \+ st\.title \+ '」の最初に戻りますか？/);
+    assert.match(rd('js/practice/boot.js'), /set: function \(k, v\) \{\s*(?:\/\/[^\n]*\s*)*if \(window\.PAD_PRACTICE && window\.PAD_PRACTICE\.closed\) return;/);
+    // 案内の文が「」で引いている画面の言葉は、画面に実在する
     const quoted = new Set([...GUIDE.matchAll(/text: '([^']*)'/g)].flatMap(m => [...m[1].matchAll(/「([^」]+)」/g)].map(x => x[1])));
-    const NOT_ON_SCREEN = ['申請中'];   // 状態の呼び名 (画面では「承認待ち」などの文で出る)
+    // ブロックの名前と、ブロックの名前を差し込んで作るボタン (画面では区切りの設定から出る → 作り方のほうを見る)
+    const NOT_ON_SCREEN = ['夜 2', '夜', '朝', '夕方', '📤 朝のぶんを配信', '📤 夕方のぶんを配信'];
+    assert.match(HTML, /`📤 \$\{plan\.blockScope\.name\}のぶんを配信 \(/, 'ブロックの配信ボタンの名前の作り方が変わった (案内の「📤 ○○のぶんを配信」とずれる)');
     assert.ok(quoted.size >= 10, `案内の文から画面の言葉を読めていない (${quoted.size})`);
-    // 画面の言葉は index.html のほか、js/domain/*.js (運営タブの段階ヘッダなど) にもある
     const SCREEN = HTML + fs.readdirSync(path.join(ROOT, 'js/domain')).filter(f => f.endsWith('.js')).map(f => rd('js/domain/' + f)).join('\n');
     for (const w of quoted) {
         if (NOT_ON_SCREEN.includes(w)) continue;
-        assert.ok(SCREEN.includes(w.replace(/^[＋⏰🔒] ?/, '').replace(/ ›$/, '')), `案内が引く「${w}」が画面に無い (ボタンの名前が変わった?)`);
+        assert.ok(SCREEN.includes(w.replace(/^[＋⏰🔒⚔️🧱] ?/u, '').replace(/ ›$/, '')), `案内が引く「${w}」が画面に無い (ボタンの名前が変わった?)`);
     }
 });
 

@@ -118,6 +118,8 @@ const settle = async (p, ms, extra = 'true') => {
 const tap = (p, sel) => p.eval(`(() => { const b = document.querySelector(${JSON.stringify('#pmDock ' + sel)}); if (!b) return false; b.click(); return true; })()`);
 const valueOf = (text) => (String(text || '').match(/(\d+(?:\.\d+)?)\s*(?:にします|と入れ)|例: (\d+(?:\.\d+)?)/) || []).slice(1).find(Boolean) || '33.1';
 
+// メンバー編の課題 (2026-10-22 の作り直し: js/practice/guide.js の STEPS.member と同じ並び)
+const MEMBER_KEYS = ['avail', 'wait', 'ack', 'report'];
 async function run(label, size, scenario = 'member', startAt = '') {
     const problems = [], trail = [];
     const p = await openPage(size);
@@ -125,12 +127,12 @@ async function run(label, size, scenario = 'member', startAt = '') {
     await p.goto(`${ORIGIN}/__blank`, 500);
     await p.eval(`localStorage.setItem('shirisuPad.currentPlayer', JSON.stringify({ id: 24, name: '本物の人' })); localStorage.setItem('shirisuPad.tourCompleted', '1');`);
     await p.goto(`${ORIGIN}/index.html?practice=${scenario}${startAt ? '&start=' + startAt : ''}`, 1500);
-    const idx0 = ['avail', 'mock', 'resv', 'ack', 'attack', 'finish'].indexOf(startAt) + 1;
-    if (!await settle(p, 45000, startAt ? `(document.querySelector('#pmDock .pm-cnt') || {}).innerText === '課題 ${idx0}/6'` : 'true')) problems.push('45 秒待っても練習が起動しない (DB と案内が揃わない)');
+    const idx0 = MEMBER_KEYS.indexOf(startAt) + 1;
+    if (!await settle(p, 45000, startAt ? `(document.querySelector('#pmDock .pm-cnt') || {}).innerText === '課題 ${idx0}/${MEMBER_KEYS.length}'` : 'true')) problems.push('45 秒待っても練習が起動しない (DB と案内が揃わない)');
     if (startAt) {   // 途中の課題から: 手前が済んだ状態で、その課題から始まっている
         const at = JSON.parse(await p.eval(`JSON.stringify({ cnt: document.querySelector('#pmDock .pm-cnt')?.innerText || '-', title: document.querySelector('#pmDock .pm-top b')?.innerText || '' })`));
-        const idx = ['avail', 'mock', 'resv', 'ack', 'attack', 'finish'].indexOf(startAt) + 1;
-        if (at.cnt !== `課題 ${idx}/6`) problems.push(`「${startAt}」から始まっていない: ${JSON.stringify(at)}`);
+        const idx = MEMBER_KEYS.indexOf(startAt) + 1;
+        if (at.cnt !== `課題 ${idx}/${MEMBER_KEYS.length}`) problems.push(`「${startAt}」から始まっていない: ${JSON.stringify(at)}`);
     }
     const expectMe = scenario.startsWith('ops') ? 9102 : 9101;
     const boot = JSON.parse(await p.eval(`JSON.stringify({ practice: !!window.PAD_PRACTICE, players: window.PAD_PRACTICE?.db?.tables?.players?.length || 0,
@@ -162,37 +164,38 @@ async function run(label, size, scenario = 'member', startAt = '') {
     if (done && scenario !== 'ops-day' && !(toast.shown && toast.top >= toast.dockBottom - 1)) problems.push(`アプリの知らせが案内の裏に隠れている: ${JSON.stringify(toast)}`);
     // ↩ 1つ前に戻る: おしまいから戻ると、課題 5 の最初 (締め凸のお願いが来る前・時計は当日) に戻る。そこからまた最後まで行ける
     if (scenario === 'member') {
-        // 当日に進めたとき、ほかのメンバーの凸が入っている (ボスは倒し切らない = レベルは進めない) / 自分は 1 凸・予約は実行済み・締め凸に返事済み
+        // 出られる時間と凸数 (夜 2) を伝えた → 運営が「夜」のぶんを配信 (本人の凸数が上限) → 確認した → 運営が自分の凸を登録した (レベルは進めない)
         const world = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables, me = 9101;
-            return { others: T.attacks.filter(a => a.player_id !== me).length, mine: T.attacks.filter(a => a.player_id === me).length, level: T.seasons[0].current_level,
-                dead: T.bosses.filter(b => !(b.remaining_hp_raw > 0)).length, resv: T.plan_reservations.filter(r => r.player_id === me).map(r => r.status).sort(),
-                finish: T.finish_requests.filter(r => r.player_id === me).map(r => r.status), plans: T.published_plans.length, pushes: window.PAD_PRACTICE.db.outbox.length,
-                conf: T.availability_confirmations.some(r => r.player_id === me), fire: T.player_damages.some(d => d.player_id === me && d.attribute === 'fire' && d.characters.length === 5) }; })())`));
-        if (!(world.others >= 10)) problems.push(`当日に進めても、ほかのメンバーの凸が入っていない (${world.others} 件)`);
-        if (world.level !== 1 || world.dead) problems.push(`練習の世界がレベルを進めた / ボスを倒し切った: ${JSON.stringify(world)}`);
-        if (world.mine !== 1 || !world.resv.includes('fulfilled') || !world.finish.every(s => s !== 'pending') || !world.finish.length) problems.push(`自分の凸・予約・締め凸の返事が入っていない: ${JSON.stringify(world)}`);
-        if (!world.conf || !world.fire || !(world.plans >= 1) || !(world.pushes >= 1)) problems.push(`時間の確認・模擬 (5人)・配信・通知の見本 のどれかが欠けている: ${JSON.stringify(world)}`);
+            const pub = T.published_plans.slice().sort((a, b) => b.id - a.id)[0];
+            const conf = T.availability_confirmations.find(r => r.player_id === me);
+            return { mine: T.attacks.filter(a => a.player_id === me).length, level: T.seasons[0].current_level, dead: T.bosses.filter(b => !(b.remaining_hp_raw > 0)).length,
+                counts: conf ? conf.block_counts : null, scope: pub && pub.plan.blockScope ? pub.plan.blockScope.name : null, acked: T.plan_acks.some(a => a.player_id === me && pub && a.plan_id === pub.id),
+                pushes: window.PAD_PRACTICE.db.outbox.length, lite: !(T.seasons[0].metadata || {}).member_input,
+                byOps: T.attacks.filter(a => a.player_id === me).every(a => true) }; })())`));
+        if (JSON.stringify(world.counts) !== '{"21-23":2}') problems.push(`凸数 (夜 2) を伝えていない: ${JSON.stringify(world)}`);
+        if (world.scope !== '夜' || !world.acked) problems.push(`夜のぶんの配信・確認 のどちらかが欠けている: ${JSON.stringify(world)}`);
+        if (world.mine !== 1 || world.level !== 1 || world.dead) problems.push(`運営が自分の凸を 1 つ登録した形になっていない / レベルを進めた: ${JSON.stringify(world)}`);
+        if (!world.lite) problems.push(`練習のシーズンが本番の既定 (メンバーの入力は最低限) になっていない: ${JSON.stringify(world)}`);
     } else if (scenario === 'ops-eve') {
         const w = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables;
             const pub = T.published_plans.slice().sort((a, b) => b.id - a.id)[0];
             return { nudged: T.push_notifications_log.filter(r => /登録のお願い/.test(r.title)).length, pinned: T.plan_reservations.filter(r => r.status === 'pinned').length,
                 approved: T.plan_reservations.filter(r => r.status === 'approved').length, requested: T.plan_reservations.filter(r => r.status === 'requested').length,
-                plans: T.published_plans.length, resvInPlan: pub ? Number(pub.plan.reservationCount) : -1, by: pub ? pub.published_by_name : null, level: T.seasons[0].current_level }; })())`));
-        if (!(w.nudged >= 1) || !(w.pinned >= 1) || w.approved !== 1 || w.requested !== 0 || !(w.plans >= 1) || !(w.resvInPlan >= 1) || w.by !== '運営役 (練習)') problems.push(`運営編・前日の結果が欠けている: ${JSON.stringify(w)}`);
+                plans: T.published_plans.length, resvInPlan: pub ? Number(pub.plan.reservationCount) : -1, by: pub ? pub.published_by_name : null, level: T.seasons[0].current_level,
+                scope: pub && pub.plan.blockScope ? pub.plan.blockScope.name : null }; })())`));
+        if (!(w.nudged >= 1) || !(w.pinned >= 1) || w.approved !== 1 || w.requested !== 0 || !(w.plans >= 1) || !(w.resvInPlan >= 1) || w.by !== '運営役 (練習)' || w.scope !== '朝') problems.push(`運営編・前日の結果が欠けている: ${JSON.stringify(w)}`);
     } else if (scenario === 'ops-day') {
-        // HP を直した (B1 = 40B から締めた) → 2 案を同時に打診 → 案1 が了承して確定 (もう片方は見送り) → 締め凸の報告で B1 だけ倒れ、撃破を検知して通知した
+        // 夕方のブロックの頭: HP を直した (B1 = 40B) → 凸報告を 1 件 ✓ → 🧱 夕方を組んで配信 → 締凸検索で探してコピー (依頼・打診はしない)
         const w = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables; const titles = T.push_notifications_log.map(r => r.title || '');
-            return { plans: T.published_plans.length, others: T.attacks.filter(a => a.player_id !== 9102).length, dead: T.bosses.filter(b => !(b.remaining_hp_raw > 0)).map(b => b.boss_number),
-                level: T.seasons[0].current_level, offers: titles.filter(t => /締め凸 \\(案\\d\\)/.test(t)).length, accepted: titles.filter(t => t === '🗡 締め凸を了承').length,
-                passed: titles.filter(t => /今回は見送り/.test(t)).length, defeated: titles.filter(t => /撃破!/.test(t)).length, hpSavedAt: T.bosses.find(b => b.boss_number === 1)?.updated_at,
-                fulfilled: T.plan_reservations.filter(r => r.source_type === 'finish_request' && r.status === 'fulfilled').length, finish: T.finish_requests.length,
-                killers: T.attacks.filter(a => a.boss_number === 1 && a.reservation_id != null).length, setupAt: sessionStorage.getItem('shirisuko_practice_v1:ops-day:setupAt'),
-                notice: T.raid_event_notices.filter(r => r.kind === 'boss_defeated' && r.sent).map(r => r.ref) }; })())`));
-        if (!(w.plans >= 1) || !(w.others >= 15)) problems.push(`当日の盤面 (配信と 20 時までの凸) ができていない: ${JSON.stringify(w)}`);
+            const pub = T.published_plans.slice().sort((a, b) => b.id - a.id)[0];
+            return { plans: T.published_plans.length, others: T.attacks.filter(a => a.player_id !== 9102).length, hpSavedAt: T.bosses.find(b => b.boss_number === 1)?.updated_at,
+                setupAt: sessionStorage.getItem('shirisuko_practice_v1:ops-day:setupAt'), confirmed: T.attacks.filter(a => a.confirmed_at).length,
+                scope: pub && pub.plan.blockScope ? pub.plan.blockScope.name : null, copied: sessionStorage.getItem('shirisuko_practice_v1:ops-day:copied'),
+                finish: T.finish_requests.length, offers: titles.filter(t => /締め凸/.test(t)).length, level: T.seasons[0].current_level }; })())`));
+        if (!(w.plans >= 2) || !(w.others >= 10)) problems.push(`当日の盤面 (朝からの配信と 18 時までの凸) ができていない: ${JSON.stringify(w)}`);
         if (!(w.setupAt && w.hpSavedAt && w.hpSavedAt > w.setupAt)) problems.push(`B1 の HP を保存していない: ${JSON.stringify(w)}`);
-        // 2 案 (今すぐ こむぎ+おはぎ / 4時間以内 クロ+おはぎ) → 案1 が了承 → 確定で、もう片方だけに居る 1 人へ「見送り」→ 了承した人の締め凸 (予約つき) が B1 に入る
-        if (w.offers !== 2 || w.accepted !== 2 || w.passed !== 1 || w.fulfilled !== 2 || w.killers !== 2) problems.push(`同時打診 → 了承 → 確定 (見送り) → 締め凸 のどれかが欠けている: ${JSON.stringify(w)}`);
-        if (JSON.stringify(w.dead) !== '[1]' || w.level !== 1 || JSON.stringify(w.notice) !== '["L1B1"]' || w.defeated !== 1 || w.finish !== 0) problems.push(`B1 だけを倒して撃破を検知・通知し、依頼を片付けた形になっていない: ${JSON.stringify(w)}`);
+        if (!(w.confirmed >= 1) || w.scope !== '夕方' || w.copied !== '1') problems.push(`凸報告の確認・夕方のぶんの配信・締凸検索のコピー のどれかが欠けている: ${JSON.stringify(w)}`);
+        if (w.finish !== 0 || w.offers !== 0) problems.push(`締め凸を PAD から頼んだ (探すだけのはず): ${JSON.stringify(w)}`);
     }
     if (done && scenario === 'member' && !startAt) {
         if (!await tap(p, '[data-pm=back]')) problems.push('おしまいに「↩ 1つ前に戻る」が無い');   // confirm は「はい」
@@ -200,7 +203,7 @@ async function run(label, size, scenario = 'member', startAt = '') {
         const back = JSON.parse(await p.eval(`JSON.stringify((() => { const T = window.PAD_PRACTICE.db.tables; const d = document.getElementById('pmDock');
             return { cnt: d.querySelector('.pm-cnt')?.innerText || '-', assume: d.querySelector('[data-pm=assume]')?.innerText || null, finish: T.finish_requests.length,
                 mine: T.attacks.filter(a => a.player_id === 9101).length, hard: new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10) === window.PAD_PRACTICE.hardDate }; })())`));
-        if (back.cnt !== '課題 6/6' || !/お願いが来たことにする/.test(back.assume || '') || back.finish !== 0 || back.mine !== 1 || !back.hard) problems.push(`1つ前に戻れていない: ${JSON.stringify(back)}`);
+        if (back.cnt !== `課題 ${MEMBER_KEYS.length}/${MEMBER_KEYS.length}` || !/登録したことにする/.test(back.assume || '') || back.mine !== 0 || !back.hard) problems.push(`1つ前に戻れていない: ${JSON.stringify(back)}`);
         else {
             let again = false;
             for (let i = 0; i < 12 && !again; i++) {
@@ -255,10 +258,10 @@ let ok = true;
 try {
     const want = (sc, at = '') => !ONLY || ONLY === sc + (at ? ':' + at : '');
     if (want('member')) ok = await run('スマホ幅 (390×844): 案内の枠だけを押してメンバー編が最後まで進む / エラー 0 / 本物への書き込み 0 / やめると本番に戻る', { width: 390, height: 844, mobile: true }, 'member') && ok;
-    if (want('ops-eve')) ok = await run('スマホ幅: 運営編・前日 (催促 → 算出 → 📌 → 申請の承認 → 配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
-    if (want('ops-day')) ok = await run('スマホ幅: 運営編・当日 (HP更新 → 締凸検索 → 2 案の同時打診 → 確定 → 撃破の検知) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-day') && ok;
-    if (want('member', 'attack')) ok = await run('スマホ幅: ツアーから「当日: 凸を報告する」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'attack') && ok;
-    if (want('member', 'finish')) ok = await run('スマホ幅: 「締め凸のお願いに返事をする」から入る (凸報告まで済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'finish') && ok;
+    if (want('ops-eve')) ok = await run('スマホ幅: 運営編・前日 (催促 → 🧱 朝を組む → 📌 → 予約の承認 → 朝のぶんを配信) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-eve') && ok;
+    if (want('ops-day')) ok = await run('スマホ幅: 運営編・当日 (⚔️ HP → ⚔️ 凸報告の確認 → 🧱 夕方を組む → 配信 → 締凸検索で探してコピー) が最後まで進む', { width: 390, height: 844, mobile: true }, 'ops-day') && ok;
+    if (want('member', 'report')) ok = await run('スマホ幅: ツアーから「凸したら Discord へ」に入る (手前の課題は済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'report') && ok;
+    if (want('member', 'ack')) ok = await run('スマホ幅: 「「いつ・どの PT で凸するか」を確かめる」から入る (配信まで済んだ状態) → 最後まで', { width: 390, height: 844, mobile: true }, 'member', 'ack') && ok;
     if (process.env.PC && want('member')) ok = await run('PC 幅 (1280×800): メンバー編', { width: 1280, height: 800, mobile: false }, 'member') && ok;
     if (process.env.PC && want('ops-eve')) ok = await run('PC 幅 (1280×800): 運営編・前日', { width: 1280, height: 800, mobile: false }, 'ops-eve') && ok;
     if (process.env.PC && want('ops-day')) ok = await run('PC 幅 (1280×800): 運営編・当日', { width: 1280, height: 800, mobile: false }, 'ops-day') && ok;
