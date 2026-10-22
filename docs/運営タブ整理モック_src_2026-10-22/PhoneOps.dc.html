@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>運営 スマホ: 戦況</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; }
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #f3f4f6; display: flex; flex-direction: column; overflow: hidden; border-radius: 28px">
+
+  <div style="flex: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px">
+    <div style="font-size: 15px; font-weight: 900; color: #15171c">しりすこPAD</div>
+    <div style="font-size: 12px; font-weight: 800; color: #3a3f46; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 5px 10px">ふるり <span style="color: #6a717b; font-weight: 700">· 19:40</span></div>
+  </div>
+
+  <!-- 運営の中の 3 つの切替 -->
+  <div style="flex: none; margin: 0 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #e3e6eb; border-radius: 12px; padding: 4px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+      <button type="button" aria-pressed="{{t.pressed}}" style="font: inherit; display: flex; flex-direction: column; align-items: center; gap: 2px; border: none; border-radius: 9px; padding: 7px 2px; background: {{t.bg}}; color: {{t.fg}}; cursor: pointer">
+        <span style="font-size: 12.5px; font-weight: 900">{{t.label}}</span>
+        <span style="font-size: 10px; font-weight: 900; border-radius: 999px; padding: 1px 7px; background: {{t.badgeBg}}; color: {{t.badgeFg}}">{{t.badge}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <div style="flex: 1 1 0; min-height: 0; overflow: hidden; padding: 10px 12px 0; display: flex; flex-direction: column; gap: 10px">
+    <div style="background: #15171c; color: #fff; border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 10px">
+      <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 10.5px; font-weight: 800; color: #c9b8ff">いちばん急ぐこと</span>
+        <span style="font-size: 14px; font-weight: 900">結果の未登録 3 件</span>
+      </div>
+      <button type="button" style="font: inherit; flex: none; font-size: 12.5px; font-weight: 900; border: none; border-radius: 10px; padding: 10px 12px; background: #fff; color: #15171c; cursor: pointer">取り込む</button>
+    </div>
+
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 14px; font-weight: 900; color: #15171c">ボスの HP <span style="font-size: 11px; color: #6a717b">Lv2</span></span>
+        <span style="font-size: 11px; font-weight: 800; color: #166534; background: #dcfce7; border-radius: 999px; padding: 3px 8px">2 分前</span>
+      </div>
+      <sc-for list="{{bosses}}" as="b" hint-placeholder-count="3">
+        <div style="display: grid; grid-template-columns: 112px 1fr 64px; gap: 8px; align-items: center">
+          <span style="font-size: 12px; font-weight: 900; color: #15171c">{{b.label}}</span>
+          <span style="height: 8px; border-radius: 4px; background: #e9ecf0; overflow: hidden"><span style="display: block; height: 8px; background: #6b3df5; width: {{b.pct}}"></span></span>
+          <span style="font-size: 12px; font-weight: 900; color: #15171c; text-align: right; font-variant-numeric: tabular-nums">{{b.rem}}</span>
+        </div>
+      </sc-for>
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b">B1 · B2 撃破</div>
+      <button type="button" style="font: inherit; font-size: 12.5px; font-weight: 900; border: none; border-radius: 10px; padding: 10px; background: #15171c; color: #fff; cursor: pointer">スクショで HP を更新</button>
+    </div>
+
+    <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 14px; font-weight: 900; color: #15171c">結果の取り込み <span style="font-size: 11px; color: #a65a12">未登録 3</span></span>
+      <sc-for list="{{results}}" as="r" hint-placeholder-count="3">
+        <div style="display: flex; align-items: center; gap: 8px; border-top: 1px solid #eef0f3; padding-top: 8px">
+          <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+            <span style="font-size: 12.5px; font-weight: 900; color: #15171c">{{r.who}} · {{r.boss}} {{r.dmg}}</span>
+            <span style="font-size: 10.5px; font-weight: 700; color: {{r.noteFg}}">{{r.note}}</span>
+          </div>
+          <button type="button" style="font: inherit; flex: none; font-size: 12px; font-weight: 900; border: none; border-radius: 9px; padding: 9px 12px; background: #15171c; color: #fff; cursor: pointer">登録</button>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- 下のメニュー (運営は 4 つ) -->
+  <div style="flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #fff; border-top: 1px solid #e3e6eb; padding: 10px 10px 16px">
+    <a href="#home" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">ホーム</a>
+    <a href="#ops" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 900; color: #15171c">運営</a>
+    <a href="#stats" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">分析</a>
+    <a href="#settings" style="text-decoration: none; text-align: center; font-size: 11px; font-weight: 800; color: #6a717b">設定</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const tab = (label, badge, active, warn) => ({ label, badge, pressed: active ? 'true' : 'false',
+      bg: active ? '#fff' : 'transparent', fg: '#15171c',
+      badgeBg: warn ? '#fff7e6' : '#eef0f3', badgeFg: warn ? '#a65a12' : '#6a717b' });
+    const tabs = [tab('👥 メンバー', '0', false, false), tab('🧱 組む', '1', false, true), tab('⚔️ 戦況', '5', true, true)];
+    const bosses = [
+      { label: 'B3 ベヒモス', pct: '27%', rem: '61.3B' },
+      { label: 'B4 マザーホエール', pct: '69%', rem: '104.0B' },
+      { label: 'B5 グレイブディガー', pct: '80%', rem: '180.9B' },
+    ];
+    const results = [
+      { who: 'あるちゃ', boss: 'B3', dmg: '27.6B', note: '風圧PT ① (模擬から) · 予定どおり', noteFg: '#166534' },
+      { who: 'みかん', boss: 'B5', dmg: '31.2B', note: '鉄甲PT ① (模擬から) · 予定どおり', noteFg: '#166534' },
+      { who: 'こむぎ', boss: 'B3', dmg: '19.4B', note: '模擬より 22% 低い · 編成を選ぶ', noteFg: '#a65a12' },
+    ];
+    return { tabs, bosses, results };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>運営: 組む</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+a { color: #6b3df5; } a:hover { color: #4f2bc4; }
+</style>
+</helmet>
+<div style="box-sizing: border-box; min-height: 1180px; max-width: 1440px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: flex-start; background: #f3f4f6">
+
+  <nav aria-label="メニュー" style="flex: 1 1 220px; max-width: 232px; box-sizing: border-box; min-height: 1180px; background: #fff; border-right: 1px solid #e3e6eb; padding: 18px 12px; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-size: 17px; font-weight: 900; color: #15171c; padding: 4px 10px 14px">しりすこPAD</div>
+    <a href="#home" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">ホーム</a>
+    <div style="font-size: 10.5px; font-weight: 800; color: #6a717b; letter-spacing: .08em; padding: 12px 12px 4px">運営</div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="3">
+      <a href="{{n.href}}" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13.5px; font-weight: 900; border-radius: 10px; padding: 10px 12px; background: {{n.bg}}; color: {{n.fg}}">
+        <span>{{n.label}}</span>
+        <span style="font-size: 11px; font-weight: 900; border-radius: 999px; padding: 2px 8px; background: {{n.badgeBg}}; color: {{n.badgeFg}}">{{n.badge}}</span>
+      </a>
+    </sc-for>
+    <div style="height: 8px"></div>
+    <a href="#stats" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">分析</a>
+    <a href="#settings" style="text-decoration: none; font-size: 13.5px; font-weight: 800; color: #3a3f46; border-radius: 10px; padding: 10px 12px">設定</a>
+    <div style="margin-top: auto; border-top: 1px solid #e3e6eb; padding: 12px 10px 0; font-size: 12.5px; font-weight: 800; color: #15171c">ふるり <span style="font-size: 11px; color: #6a717b">👑 マスター</span></div>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 11px; font-weight: 700; color: #6a717b; letter-spacing: .06em">第46回 · 当日 10/31 (土) 20:05 · 運営</div>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 900; color: #15171c">🧱 組む <span style="font-size: 14px; font-weight: 800; color: #6a717b">次のブロック 夜 21〜23時 · 配信の目安 20:30</span></h1>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #15171c; color: #fff; border-radius: 16px; padding: 14px 18px">
+      <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <div style="font-size: 11px; font-weight: 800; color: #c9b8ff; letter-spacing: .06em">いちばん急ぐこと</div>
+        <div style="font-size: 16px; font-weight: 900">結果の未登録 3 件を片付けてから、夜を組む</div>
+        <div style="font-size: 12px; font-weight: 700; color: #d7dbe3">片付けると残り凸と HP が確定します · 夜の配信まで あと 25 分</div>
+      </div>
+      <a href="OpsLive.dc.html" style="flex: none; text-decoration: none; font-size: 13.5px; font-weight: 900; border-radius: 12px; padding: 12px 16px; background: #fff; color: #15171c">⚔️ 戦況で片付ける</a>
+    </div>
+
+    <!-- 先に片付けるもの -->
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff7e6; border: 1px solid #fde4c3; border-radius: 14px; padding: 10px 14px">
+      <span style="font-size: 12.5px; font-weight: 900; color: #a65a12">先に片付けるもの</span>
+      <span style="font-size: 12.5px; font-weight: 800; color: #3a3f46">結果の未登録 3 件 · 報告の無い凸 2 件 (おはぎ 18時 · クロ 19時)</span>
+      <a href="OpsLive.dc.html" style="margin-left: auto; font-size: 12.5px; font-weight: 900; text-decoration: none">戦況へ ›</a>
+    </div>
+
+    <!-- ブロック -->
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+      <sc-for list="{{blocks}}" as="b" hint-placeholder-count="7">
+        <button type="button" aria-pressed="{{b.pressed}}" style="font: inherit; text-align: left; box-sizing: border-box; border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; line-height: 1.3; background: {{b.bg}}; color: {{b.fg}}; border: 2px solid {{b.border}}; cursor: pointer">
+          <span style="display: flex; justify-content: space-between; gap: 6px"><span>{{b.name}}</span><span style="font-size: 11px; font-weight: 900; opacity: .85">{{b.tag}}</span></span>
+          <span style="display: block; font-size: 11px; font-weight: 700; opacity: .8">{{b.hours}}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start">
+      <!-- 盤 -->
+      <section style="grid-column: span 8; background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">夜 21〜23時 <span style="font-size: 12px; font-weight: 800; color: #6a717b">出られる 14 人 · 残り凸 23 · 置いた 17</span></h2>
+          <div style="display: flex; gap: 6px">
+            <button type="button" style="font: inherit; font-size: 12.5px; font-weight: 900; border: none; border-radius: 10px; padding: 9px 13px; background: #6b3df5; color: #fff; cursor: pointer">自動で組む (参考案)</button>
+            <button type="button" style="font: inherit; font-size: 12.5px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 10px; padding: 9px 13px; background: #fff; color: #3a3f46; cursor: pointer">置いた駒を残して組み直す</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px repeat(3, minmax(0, 1fr)) 120px; gap: 6px; align-items: stretch">
+          <div></div>
+          <div style="text-align: center; font-size: 12px; font-weight: 900; color: #6a717b">21時</div>
+          <div style="text-align: center; font-size: 12px; font-weight: 900; color: #6a717b">22時</div>
+          <div style="text-align: center; font-size: 12px; font-weight: 900; color: #6a717b">23時</div>
+          <div style="text-align: center; font-size: 12px; font-weight: 900; color: #6a717b">見込み</div>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+            <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; background: #f3f4f6; display: flex; flex-direction: column; gap: 4px">
+              <span style="font-size: 13px; font-weight: 900; color: #15171c">{{r.boss}}</span>
+              <span style="font-size: 11px; font-weight: 800; color: #6a717b">{{r.pt}} · 残り {{r.rem}}</span>
+              <span style="height: 6px; border-radius: 3px; background: #e3e6eb; overflow: hidden"><span style="display: block; height: 6px; background: #6b3df5; width: {{r.pct}}"></span></span>
+            </div>
+            <sc-for list="{{r.cells}}" as="c" hint-placeholder-count="3">
+              <div style="box-sizing: border-box; min-height: 64px; border-radius: 10px; padding: 7px; background: #faf8ff; border: 1.5px solid #eee9ff; display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start">
+                <sc-for list="{{c.chips}}" as="p" hint-placeholder-count="2"><span style="font-size: 11px; font-weight: 900; border-radius: 999px; padding: 3px 8px; background: {{p.bg}}; color: #4f2bc4; border: 1.5px solid {{p.border}}">{{p.label}}</span></sc-for>
+              </div>
+            </sc-for>
+            <div style="box-sizing: border-box; border-radius: 10px; padding: 8px 10px; display: flex; align-items: center; font-size: 12px; font-weight: 900; background: {{r.endBg}}; color: {{r.endFg}}">{{r.end}}</div>
+          </sc-for>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border-top: 1px solid #eef0f3; padding-top: 10px">
+          <span style="font-size: 12px; font-weight: 900; color: #15171c">置いていない人</span>
+          <sc-for list="{{pieces}}" as="p" hint-placeholder-count="4"><span style="font-size: 11.5px; font-weight: 900; border-radius: 999px; padding: 4px 10px; background: #fff; border: 1.5px dashed #c9b8ff; color: #4f2bc4">{{p}}</span></sc-for>
+        </div>
+        <p style="margin: 0; font-size: 11.5px; font-weight: 700; color: #6a717b">枠線つきは予約 (本人の希望)。数字は模擬のダメージ (B)。駒は押して置き場所を選ぶ / PC はドラッグでも置ける。</p>
+      </section>
+
+      <!-- 予約 -->
+      <section style="grid-column: span 4; display: flex; flex-direction: column; gap: 14px; min-width: 0">
+        <div style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 900; color: #15171c">凸の予約 <span style="font-size: 12px; font-weight: 800; color: #a65a12">承認待ち 1</span></h2>
+          <div style="border: 1.5px solid #c9b8ff; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #faf8ff">
+            <div style="font-size: 13px; font-weight: 900; color: #15171c">りんご · 夜 のどこか</div>
+            <div style="font-size: 12px; font-weight: 700; color: #3a3f46">水冷PT 編成① → B4 マザーホエール · 模擬 19.8B</div>
+            <div style="display: flex; gap: 6px">
+              <button type="button" style="font: inherit; flex: 1; font-size: 12.5px; font-weight: 900; border: none; border-radius: 10px; padding: 9px; background: #15171c; color: #fff; cursor: pointer">承認して盤に置く</button>
+              <button type="button" style="font: inherit; font-size: 12.5px; font-weight: 800; border: 1.5px solid #e3e6eb; border-radius: 10px; padding: 9px 12px; background: #fff; color: #3a3f46; cursor: pointer">見送る</button>
+            </div>
+          </div>
+          <div style="font-size: 12px; font-weight: 900; color: #15171c">承認済み 2</div>
+          <div style="font-size: 12px; font-weight: 700; color: #3a3f46; line-height: 1.7">ねむねこ · 夜 · 風圧PT ① → B3 (21時に置いた)<br>なべ · 夜 · 鉄甲PT ① → B5 (22時に置いた)</div>
+        </div>
+        <a href="#finish" style="background: #fff; border: 1px solid #e3e6eb; border-radius: 16px; padding: 12px 16px; text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 900; color: #15171c">🏁 締め凸候補を探す <span style="font-size: 12px; color: #6b3df5">開く ›</span></a>
+      </section>
+    </div>
+
+    <!-- 配信 -->
+    <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: #fff; border: 2px solid #6b3df5; border-radius: 16px; padding: 14px 18px">
+      <div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+        <div style="font-size: 15px; font-weight: 900; color: #15171c">夜のぶんを配信する (17 凸)</div>
+        <div style="font-size: 12px; font-weight: 700; color: #6a717b">夜に割当のある 12 人に通知が届きます · 夜の配信は初めて (前回との差はありません)</div>
+      </div>
+      <button type="button" style="font: inherit; flex: none; font-size: 14px; font-weight: 900; border: none; border-radius: 12px; padding: 13px 20px; background: #6b3df5; color: #fff; cursor: pointer">📤 差分を見て配信</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const navItem = (label, href, badge, active, warn) => ({ label, href, badge,
+      bg: active ? '#15171c' : 'transparent', fg: active ? '#fff' : '#15171c',
+      badgeBg: active ? 'rgba(255,255,255,.2)' : (warn ? '#fff7e6' : '#eef0f3'), badgeFg: active ? '#fff' : (warn ? '#a65a12' : '#6a717b') });
+    const nav = [navItem('👥 メンバー', 'Main.dc.html', '0', false, false), navItem('🧱 組む', '#build', '1', true, true), navItem('⚔️ 戦況', 'OpsLive.dc.html', '5', false, true)];
+    const blk = (name, hours, st) => ({ name, hours, tag: st === 'now' ? 'いま' : st === 'sel' ? '次 · 組む' : st === 'done' ? '済' : '',
+      pressed: st === 'sel' ? 'true' : 'false',
+      bg: st === 'sel' ? '#6b3df5' : st === 'now' ? '#f1edff' : st === 'done' ? '#f3f4f6' : '#fff',
+      fg: st === 'sel' ? '#fff' : st === 'done' ? '#6a717b' : '#15171c',
+      border: st === 'sel' ? '#6b3df5' : st === 'now' ? '#c9b8ff' : '#e3e6eb' });
+    const blocks = [blk('朝', '5〜8時', 'done'), blk('午前', '9〜11時', 'done'), blk('昼', '12〜14時', 'done'), blk('午後', '15〜17時', 'done'),
+      blk('夕方', '18〜20時', 'now'), blk('夜', '21〜23時', 'sel'), blk('深夜', '翌0〜4時', '')];
+    const chip = (label, resv) => ({ label, bg: resv ? '#fff' : '#e9e3ff', border: resv ? '#6b3df5' : '#e9e3ff' });
+    const row = (boss, pt, rem, pct, cells, end, ok) => ({ boss, pt, rem, pct, cells: cells.map(c => ({ chips: c })), end,
+      endBg: ok ? '#dcfce7' : '#fff7e6', endFg: ok ? '#166534' : '#a65a12' });
+    const rows = [
+      row('B3 ベヒモス', '風圧PT', '61.3B', '27%', [[chip('ねむねこ 27', true), chip('あるちゃ 28')], [chip('りんご 24')], []], '撃破 ✓ 22時', true),
+      row('B4 マザーホエール', '水冷PT', '104.0B', '69%', [[chip('クロ 19'), chip('みかん 22')], [chip('ゆず 31'), chip('しお 20')], [chip('あずき 26')]], '撃破 ✓ 23時', true),
+      row('B5 グレイブディガー', '鉄甲PT', '180.9B', '80%', [[chip('ぽん 34')], [chip('なべ 33', true), chip('てん 30')], [chip('ひよこ 29'), chip('まめ 28')]], 'あと 26.9B (深夜へ)', false),
+    ];
+    const pieces = ['こむぎ 風圧 25', 'おはぎ 鉄甲 22', 'きなこ 水冷 18', 'もち 鉄甲 17'];
+    return { nav, blocks, rows, pieces };
+  }
+}
+</script>
+</body>
+</html>

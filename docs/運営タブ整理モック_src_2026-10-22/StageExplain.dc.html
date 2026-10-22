@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>段階による出し入れをやめる</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif; color: #3a3f46; background: #f3f4f6; -webkit-font-smoothing: antialiased; }
+</style>
+</helmet>
+<div style="box-sizing: border-box; min-height: 760px; max-width: 1440px; margin: 0 auto; padding: 24px; display: flex; flex-wrap: wrap; gap: 20px; background: #f3f4f6">
+
+  <!-- いま -->
+  <section style="flex: 1 1 640px; min-width: 0; background: #fff; border: 1px solid #e3e6eb; border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 12px; font-weight: 900; color: #a65a12; letter-spacing: .06em">いま</div>
+      <h2 style="margin: 0; font-size: 20px; font-weight: 900; color: #15171c">日によって、カードが上と「その他」を行き来する</h2>
+      <p style="margin: 0; font-size: 13px; font-weight: 700; color: #3a3f46; line-height: 1.6">運営タブは 1 つ。レイドの日付 (準備 · 前日 · 当日 · 終了) で、上に並ぶカードが自動で入れ替わり、それ以外は一番下の「その他」に入ります。<b style="color: #a65a12">同じカードでも、日によって置き場所が変わります。</b></p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+      <sc-for list="{{stages}}" as="s" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+          <div style="font-size: 13px; font-weight: 900; color: #15171c; padding: 6px 8px; border-radius: 8px; background: #f3f4f6">{{s.name}} <span style="font-size: 10.5px; font-weight: 700; color: #6a717b">{{s.when}}</span></div>
+          <sc-for list="{{s.top}}" as="c" hint-placeholder-count="4">
+            <div style="font-size: 11.5px; font-weight: 800; border-radius: 8px; padding: 6px 8px; background: {{c.bg}}; color: {{c.fg}}; border: 1.5px solid {{c.border}}">{{c.t}}</div>
+          </sc-for>
+          <div style="font-size: 10.5px; font-weight: 900; color: #6a717b; padding: 6px 2px 0; border-top: 1px dashed #c2c7cf">その他 (下に畳まれる)</div>
+          <sc-for list="{{s.etc}}" as="c" hint-placeholder-count="3">
+            <div style="font-size: 11px; font-weight: 700; border-radius: 8px; padding: 5px 8px; background: {{c.bg}}; color: {{c.fg}}; border: 1.5px solid {{c.border}}">{{c.t}}</div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+    <p style="margin: 0; font-size: 12.5px; font-weight: 800; color: #a65a12; line-height: 1.6">例: 「凸の予約」と「メンバー状況」は前日だけ上にあり、当日は「その他」に入る。当日に予約を承認するには、下の「その他」を開いて探す必要がある。</p>
+  </section>
+
+  <!-- これから -->
+  <section style="flex: 1 1 560px; min-width: 0; background: #fff; border: 2px solid #6b3df5; border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 12px; font-weight: 900; color: #4f2bc4; letter-spacing: .06em">これから</div>
+      <h2 style="margin: 0; font-size: 20px; font-weight: 900; color: #15171c">3 つのタブ。カードはいつも同じ場所</h2>
+      <p style="margin: 0; font-size: 13px; font-weight: 700; color: #3a3f46; line-height: 1.6">何をする画面かでタブを分けます。日付でカードは動きません。</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+          <div style="font-size: 13.5px; font-weight: 900; color: #fff; padding: 7px 9px; border-radius: 8px; background: #15171c">{{t.name}}</div>
+          <div style="font-size: 10.5px; font-weight: 700; color: #6a717b; padding: 0 2px">{{t.what}}</div>
+          <sc-for list="{{t.cards}}" as="c" hint-placeholder-count="4">
+            <div style="font-size: 11.5px; font-weight: 800; border-radius: 8px; padding: 6px 8px; background: #f1edff; color: #4f2bc4; border: 1.5px solid #e9e3ff">{{c}}</div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+    <div style="border-radius: 12px; background: #f3f4f6; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 900; color: #15171c">日によって変わるのは 2 つだけ</div>
+      <div style="font-size: 12.5px; font-weight: 700; color: #3a3f46; line-height: 1.7">① 開いたときに最初に出るタブ — 前日まで 👥 メンバー / 当日 ⚔️ 戦況 (自分で選んだらそのまま)<br>② いちばん上の「いちばん急ぐこと」 — 押すとその作業のタブへ</div>
+    </div>
+    <div style="font-size: 12px; font-weight: 700; color: #6a717b; line-height: 1.6">運営タブから外すもの: シーズン制御 · 一斉通知 · Discord 告知テンプレ · 育成データ → 設定タブの運営の区画へ。戦闘中の運営アクション · オンライン / 調整中 → なくす。</div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const MOVE = new Set(['凸の予約', 'メンバー状況']);
+    const card = (t) => MOVE.has(t)
+      ? { t, bg: '#fff7e6', fg: '#a65a12', border: '#f5c27a' }
+      : { t, bg: '#f3f4f6', fg: '#3a3f46', border: '#f3f4f6' };
+    const etc = (t) => MOVE.has(t)
+      ? { t, bg: '#fff7e6', fg: '#a65a12', border: '#f5c27a' }
+      : { t, bg: '#fff', fg: '#9aa1ab', border: '#eef0f3' };
+    const stage = (name, when, top, rest) => ({ name, when, top: top.map(card), etc: rest.map(etc) });
+    const stages = [
+      stage('準備', 'シーズン前', ['模擬の取り込み', 'シーズン制御', '一斉通知', '育成データ'], ['メンバー状況', '凸の予約', 'ボス状況', 'ほか 8']),
+      stage('前日', 'ハード日の前', ['メンバー状況', '模擬の取り込み', '凸の予約', '最適凸プラン', 'Discord 告知'], ['ボス状況', '消化のペース', 'ほか 8']),
+      stage('当日', '5時〜翌4時', ['ボス状況', '残り戦闘可能', '消化のペース', '直近の動き', '凸報告の確認', '締め凸候補', '模擬の取り込み', '最適凸プラン'], ['メンバー状況', '凸の予約', 'ほか 5']),
+      stage('終了', '翌日から', ['凸報告の確認', 'Discord 告知', 'シーズン制御', '育成データ'], ['メンバー状況', '凸の予約', 'ほか 9']),
+    ];
+    const tabs = [
+      { name: '👥 メンバー', what: '人の準備 (前日まで)', cards: ['メンバー (時間と凸数 · 模擬 · 通知)', '模擬の取り込み', 'ユニオン事前比較'] },
+      { name: '🧱 組む', what: '次のブロックを組んで配信', cards: ['先に片付けるもの', 'ブロック盤 (凸プラン)', '凸の予約の承認', '締め凸候補', '配信'] },
+      { name: '⚔️ 戦況', what: '当日ずっと', cards: ['ボスの HP', '結果の取り込み', '報告の無い凸', '消化のペース · 直近の動き'] },
+    ];
+    return { stages, tabs };
+  }
+}
+</script>
+</body>
+</html>
