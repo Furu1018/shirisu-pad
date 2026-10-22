@@ -1067,6 +1067,21 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   (`renderMyPublishedPlan` の入口で絞るので、わたしの凸 / 全体 / 時間割 / ヒーロー がみな同じ範囲を見る)。凸が残らないレベルは落とす。
   カードに「🧱 夜 21〜23時 のぶんの配信です。次のブロックの割当はまだ決まっていません」。配信ボタンは「📤 夜のぶんを配信 (47凸)」、
   確認の文言にも範囲。差分 (L5 の提示・L4 の通知) も `scopePlan` で両方を同じ範囲に絞ってから比べる (後ろのブロックは約束ではない)
+  ★ **対象外の人の予約は「置けなかった」ではない** (2026-10-22 実機・致命的): 🧱 (/ 今動ける人) の条件で計算に居ない人の予約は、ソルバーが
+  `out_of_scope` にして `unmetReservations` から分け、`outOfScopeReservations` (時刻つき・あるときだけ載せる = 指紋不変) に出す。以前は置く処理が
+  memberState に居ない人を黙って飛ばし、理由は絞る前の名簿 (`playerById`) で引くので「キャラ被り」に落ちていた (運営のカードに赤い警告・本人の模擬カードに
+  「⚠ 置けていません」)。運営のカードは中立の案内「🧱 この条件の対象外の人の予約が N件 … その人が出られるブロックで組むときに置きます」。
+  `pendingRepublish` は対象外の予約と**ブロックの時間の外の予約**を「配信後の予約」に数えない (理由だけ直すとヒーローが運用中ずっと催促する)。
+  `homeSlots` は 1 日ぶんの予約を受けたまま `plan.blockScope` を見る: ブロックの時間の外の約束は `laterBlock`「🔒 予約 (あとのブロック)」、範囲の中で
+  `plan.outOfScopeReservations` と**中身 (人・ボス・編成枠・時刻) が一致**する予約は `outOfScope`「🔒 予約 (この配信の計算に入っていません)」— どちらも stale
+  (「運営が組み直し中」の帯) にしない (Codex指摘・高: 以前は 21時の約束が「組み直し待ち」+ 帯になっていた)。突き合わせは `matchesOutOfScope` /
+  `inBlockTime` が唯一 (id だけで見ると、同じ id のまま置き直した 📌 が対象外のままになる)。残り凸がある人の空き枠は `'later_block'`
+  「このブロック (朝) の割当はここまでです。残りの凸は次のブロック以降で組みます」にする
+  (1 日ぶんの見込みの理由「出番がありません」はブロックの人だけで組んだもので本人には誤解を生む。模擬に起因する no_loadout / cards_used_up だけ従来どおり)。
+  承認後の組み直し (`_recomputeOptsAfterApproval`) は 🧱 で運用中なら承認した時点の対象とブロックを `{ who: 'block', block }` で固定して渡す
+  (1 日ぶんで組み直すと「次のブロックだけを約束する」が崩れる。await の間に運営が条件を切り替えても承認時の条件で組む — Codex指摘)。
+  「今回は難しい」(unavailableThisSeason) の人の予約は memberState に居ないので `member_gone` (out_of_scope より先)。
+  ★ 絞る前の名簿で判定する箇所を増やさないこと — `inScope` を通した memberState が「この計算に居る人」の唯一の定義
   ★ **③-b 時間アンケートをブロックで** (2026-10-18・ふるりの判断「時間アンケートは PAD で」): 戦闘可能時間のモーダル (`_renderAvailUI`) は 24 コマのタイムラインをやめ、
   **シーズンのブロックのチップ** (`raidBlocksDomain.blocksOfSeason(seasonStore.get()?.season)`・描く前に `ensureActiveSeasonLoaded`)。
   状態は `blockStates` (on / partial / off)。押すと `toggleBlock` で**丸ごと ON・OFF** (`_availToggleBlock`)。1 時間刻みの古い登録は「一部 N/M時間」と見え、押すと丸ごと ON。
