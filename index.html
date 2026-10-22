@@ -28516,6 +28516,8 @@
         }
         // 戦況タブの「📸 模擬の取り込み」カードを開いて位置を合わせる (運営モードで模擬タブが隠れているときのヒーローの導線)
         function _gotoOpsMockIntake() {
+            // 運営 OFF (メンバーの見え方) で押されたら戦況へ飛ばない — 切替チップで OFF にしたあとの古い導線 (Codex指摘 2026-10-22)
+            if (!_opsMode) { showNotification('模擬の登録は運営の画面 (🛠 ON) で行います'); return; }
             if (typeof switchTab === 'function') switchTab('ops');
             const card = document.getElementById('opsSecMockIntake');
             // 段階外 (当日以外) は「その他」へ移されている — 親が閉じていると開いても見えない (Codex指摘 2026-10-22)
@@ -28591,6 +28593,8 @@
         /** 運営モードが変わったあとの後始末。★ toggle と身元切替で同じ道を通す */
         function _afterOpsModeChanged() {
             _applyOpsMode();
+            // ホームのヒーロー (導線が運営 / メンバーで違う) を描き直す — 切替チップで OFF にしたあとに運営向けの導線が残らないように (Codex指摘 2026-10-22)
+            if (typeof renderMyNextAction === 'function') { try { const p = renderMyNextAction(getCurrentIdentity()); if (p && typeof p.catch === 'function') p.catch(() => { /* 描けなくても切替は成立 */ }); } catch { /* noop */ } }
             if (typeof _opsEtcRendered !== 'undefined') _opsEtcRendered = false;  // 「その他 › メンテナンス」は次に開いたときに描き直す (切り出し実行テストでは未定義)
             _applyOpsCardStates();   // 運営OFF は全カード全開 / ON は前日・当日の既定 + 記憶
             _renderOpsCockpitSoon(); // 段階の UI もここで描き直す (OFF なら消してカードを元の並びへ)

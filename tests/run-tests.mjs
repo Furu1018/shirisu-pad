@@ -9425,6 +9425,9 @@ console.log('\ngrowthDomain:');
         assert.ok(/<button type="button" id="homeViewSwitch" data-master-only onclick="toggleOpsMode\(\)"/.test(html), 'ホームの切替チップが無い / マスターだけ (data-master-only) でない');
         assert.ok(/h\.textContent = _opsMode \? '👤 メンバーの見え方で見る' : '🛠 運営の画面に戻す';/.test(html), '切替チップの文字を合わせていない');
         assert.ok(/function _gotoOpsMockIntake\(\) \{[\s\S]*?switchTab\('ops'\)[\s\S]*?_setOpsCardOpen\(card, true\)[\s\S]*?_opsScrollSettled\('opsSecMockIntake'\)/.test(html), '📸 模擬の取り込みへ飛ぶ導線が無い');
+        // 運営 OFF で押された古い導線は戦況へ飛ばない / 運営モードの切替でヒーローを描き直す (Codex指摘 5eaf9d2)
+        assert.ok(/function _gotoOpsMockIntake\(\) \{\s*\n[^\n]*\n\s*if \(!_opsMode\) \{ showNotification\('模擬の登録は運営の画面 \(🛠 ON\) で行います'\); return; \}/.test(html), '運営 OFF の守りが無い');
+        assert.ok(/function _afterOpsModeChanged\(\) \{\s*\n\s*_applyOpsMode\(\);\s*\n[^\n]*\n\s*if \(typeof renderMyNextAction === 'function'\) \{ try \{ const p = renderMyNextAction\(getCurrentIdentity\(\)\);/.test(html), '運営モードの切替でホームのヒーローを描き直していない');
         // 🧱 段階 1 (2026-10-22 決定 a/f): lite で ボスの状況・状態ボタン・戦闘ゲート・凸報告の入口 を隠す (消さない) / 読み取り専用の模擬カード
         for (const sel of ['#mypageBossStrip', '#myBossBoardCard', '#mypageStatusSwitcher', '#mypageStatusHint', '#mypageStatusTiles', '#mypageBattleGate', '#mypageBattleInProgressBar', '#mypageBattleActions',
                            '#mypageBattleCloseBar', '#mypageBattleExpanded', '#mypageBattleLive', '#myAttackAddBtn', '#myAttackListWrap .blabla-pill', '[data-member-report]']) {   // Codex指摘: 展開部と交戦中の帯も (戦闘中のまま lite になると残る)
