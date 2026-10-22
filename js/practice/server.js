@@ -65,7 +65,7 @@ export const SCHEMA = {
             { cols: ['season_id', 'player_id', 'boss_number', 'loadout_slot'], where: (r) => ACTIVE.includes(r.status) },   // 42 uq_plan_reservations_active_card
             { cols: ['season_id', 'player_id', 'boss_number', 'loadout_slot'], where: (r) => r.status === 'pinned' },        // 45 uq_plan_reservations_pin_card
         ],
-        defaults: { raid_level: null, time_mode: 'fixed', time_slot: null, characters_snapshot: () => [], expected_damage_b: null,
+        defaults: { raid_level: null, time_mode: 'fixed', time_slot: null, block_from: null, block_to: null, characters_snapshot: () => [], expected_damage_b: null,   // block_* = 54
             source_type: 'self', source_plan_id: null, source_finish_request_id: null, status: 'requested', requested_by: null, requested_at: NOW,
             approved_by: null, approved_at: null, approved_plan_id: null, released_by: null, released_at: null, release_reason: null, updated_at: NOW,
             pinned_by: null, pinned_at: null, asked_at: null, ask_deadline_at: null } },
@@ -161,9 +161,14 @@ export function createPracticeClient(opts = {}) {
         return T.attacks.filter(a => eqv(a.season_id, seasonId) && eqv(a.player_id, playerId) && (hard == null || a.attack_date === hard)).length;
     }
     function resvBefore(op, NEW, OLD, ctx) {
-        if (NEW.time_mode === 'fixed' ? !HOLD_RE.test(String(NEW.time_slot || '')) : NEW.time_slot != null) {
-            throw check('時刻の形が違います (fixed は hXX / flex は時刻なし)');
-        }
+        // 54 chk_plan_reservations_time: fixed = 時刻だけ / flex = 何も / block = ブロックの時だけ (0〜23)
+        const hour = (v) => Number.isInteger(v) && v >= 0 && v <= 23;
+        const noBlock = NEW.block_from == null && NEW.block_to == null;
+        const okTime = NEW.time_mode === 'fixed' ? (HOLD_RE.test(String(NEW.time_slot || '')) && noBlock)
+            : NEW.time_mode === 'flex' ? (NEW.time_slot == null && noBlock)
+            : NEW.time_mode === 'block' ? (NEW.time_slot == null && hour(NEW.block_from) && hour(NEW.block_to))
+            : false;
+        if (!okTime) throw check('時刻の形が違います (fixed は hXX / flex は時刻なし / block はブロックの時だけ)');
         // 39 capacity (BEFORE INSERT OR UPDATE OF status, player_id, season_id)
         const touched = op === 'insert' || ctx.setCols.some(c => ['status', 'player_id', 'season_id'].includes(c));
         if (touched && ACTIVE.includes(NEW.status)) {
@@ -189,7 +194,7 @@ export function createPracticeClient(opts = {}) {
             if (NEW.status !== OLD.status && !ctx.rpc) throw check('予約の状態は reservation_set_status() 経由で変更してください (履歴が残らないため)');
             if (['approved', 'cancel_requested', 'fulfilled', 'released', 'rejected'].includes(OLD.status)
                 && !(ctx.rpc && ['requested', 'cancel_requested'].includes(OLD.status) && NEW.status === 'approved')) {
-                const frozen = ['player_id', 'raid_level', 'boss_number', 'time_mode', 'time_slot', 'loadout_slot', 'characters_snapshot', 'expected_damage_b'];
+                const frozen = ['player_id', 'raid_level', 'boss_number', 'time_mode', 'time_slot', 'block_from', 'block_to', 'loadout_slot', 'characters_snapshot', 'expected_damage_b'];   // block_* = 54
                 if (frozen.some(c => JSON.stringify(NEW[c] ?? null) !== JSON.stringify(OLD[c] ?? null))) {
                     throw check('承認済みの予約の内容 (誰が・レベル・ボス・時刻・編成) は変更できません');
                 }

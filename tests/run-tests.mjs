@@ -316,6 +316,84 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         const b = compute({ ...timeInput(three(), solo({ blockCaps: [] }), { currentSlot: 'h05' }), excludeTimeUnknown: false });
         assert.equal(JSON.stringify(a), JSON.stringify(b));
     });
+    // ===== 🧱 段階 3 (2026-10-22): 予約をブロックで (time_mode 'block' + block_from / block_to・SQL 54) =====
+    test('🧱 3: ソルバー — ブロックの予約は窓の中で、本人が出られる時刻を先に・そのボスがいるレベルの最も早い時刻に置く / 窓を過ぎたら time_passed', () => {
+        const ps = [player('P', { fire: 10 }, { availableSlots: ['h19', 'h20'] }), player('Q', { fire: 10 }, { availableSlots: ['h18', 'h19', 'h20'] })];
+        const r = { reservationId: 7, memberId: 'P', level: null, bossNumber: 1, loadoutSlot: 1, flex: false, timeSlot: null, window: { fromIdx: 13, toIdx: 15 }, team: [], expectedB: 0 };
+        const p = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), reservations: [r] });
+        const placed = p.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.reservationId === 7).map(a => a.hourLabel)));
+        assert.deepEqual(placed, ['19時'], '窓の中で本人が出られる最も早い時刻 (19時) に置いていない');
+        assert.deepEqual(p.unmetReservations, []);
+        // 窓 (18〜20時) を過ぎた 21時から組む → 置かず time_passed
+        const late = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h21' }), reservations: [r] });
+        assert.deepEqual(late.unmetReservations.map(u => u.reason), ['time_passed']);
+        // 本人の時間が窓の中に無ければ、窓の頭 (18時) に置く (約束は窓の中のどこか)
+        const r2 = { ...r, memberId: 'Q', reservationId: 8, window: { fromIdx: 13, toIdx: 15 } };
+        const ps2 = [player('Q', { fire: 10 }, { availableSlots: ['h22'] })];
+        const p2 = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps2, { currentSlot: 'h18' }), reservations: [r2] });
+        assert.deepEqual(p2.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.reservationId === 8).map(a => a.hourLabel))), ['18時']);
+        // 時間を見ないモードでは窓を見ない (従来どおり いま出てくる最初のレベル)
+        const nt = compute({ ...makeInput([boss(1, 'fire', { remainingB: 150 })], ps), reservations: [r] });
+        assert.equal(nt.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.reservationId === 7))).length, 1);
+        // 窓の形が壊れていれば窓なし (時刻なし) として扱う (落とさない)
+        const bad = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), reservations: [{ ...r, window: { fromIdx: 15, toIdx: 13 } }] });
+        assert.ok(bad, '壊れた窓で落ちた');
+    });
+    test('🧱 3: ドメイン — ブロックの予約の窓・言い方・解く形・時刻の突き合わせ・範囲・対象外・申請の下書き・ホームの枠', () => {
+        const rv = globalThis.reservationsDomain, rb = globalThis.raidBlocksDomain;
+        const blk = { id: 9, player_id: 3, raid_level: null, boss_number: 2, loadout_slot: 1, status: 'approved', time_mode: 'block', time_slot: null, block_from: 18, block_to: 20, characters_snapshot: ['a'], expected_damage_b: 30 };
+        assert.deepEqual(rv.blockWindowOf(blk), { fromIdx: 13, toIdx: 15 });
+        assert.equal(rv.blockLabelOf(blk), '18〜20時');
+        assert.equal(rv.whenOf(blk), '18〜20時のどこか');
+        assert.equal(rv.whenOf({ ...blk, block_from: 0, block_to: 4 }), '翌0〜翌4時のどこか');
+        assert.equal(rv.blockWindowOf({ ...blk, time_mode: 'fixed' }), null);
+        assert.equal(rv.blockWindowOf({ ...blk, block_from: 20, block_to: 18 }), null, '窓が逆なら読まない');
+        assert.match(rv.describe(blk), /B2 18〜20時のどこか 編成①/);
+        const sc = rv.toSolverConstraints([blk])[0];
+        assert.deepEqual([sc.timeSlot, sc.flex, sc.window], [null, false, { fromIdx: 13, toIdx: 15 }]);
+        assert.ok(!('window' in rv.toSolverConstraints([{ ...blk, time_mode: 'fixed', time_slot: 'h21', block_from: null, block_to: null }])[0]), '時刻の予約に窓を足した (指紋が変わる)');
+        // 古い配信との突き合わせ: 窓の中の行なら「入っている」
+        assert.equal(rv.rowHonorsTime({ hourIdx: 14, flex: false }, blk), true);
+        assert.equal(rv.rowHonorsTime({ hourIdx: 16, flex: false }, blk), false);
+        // ブロックのぶんの配信の範囲: 窓が重なれば中
+        assert.equal(rv.inBlockTime({ blockScope: { slots: ['h20', 'h21'] } }, blk), true);
+        assert.equal(rv.inBlockTime({ blockScope: { slots: ['h21', 'h22'] } }, blk), false);
+        assert.deepEqual(rb.scopeReservations([blk], { from: 21, to: 23 }), []);
+        assert.deepEqual(rb.scopeReservations([blk], { from: 20, to: 23 }).map(r => r.id), [9]);
+        // 対象外の突き合わせは窓で
+        const plan = { outOfScopeReservations: [{ reservationId: 9, memberId: 3, bossNumber: 2, loadoutSlot: 1, window: { fromIdx: 13, toIdx: 15 }, timeSlot: null, flex: false }] };
+        assert.equal(rv.matchesOutOfScope(plan, blk), true);
+        assert.equal(rv.matchesOutOfScope(plan, { ...blk, block_from: 21, block_to: 23 }), false, '窓が違うのに対象外のまま');
+        // 申請の下書き: ブロックなら時刻を持たない / ブロックも時刻も無ければ足りない
+        const bossRow = { boss_number: 2, remaining_hp_raw: 50e9 };
+        const lo = { attribute: 'water', slot: 1, characters: ['a'], dmgB: 30 };
+        const d = rv.buildRequestDraft({ boss: bossRow, loadout: lo, block: { from: 18, to: 20 } });
+        assert.deepEqual([d.ok, d.draft.timeSlot, d.draft.flex, d.draft.block], [true, null, false, { from: 18, to: 20 }]);
+        assert.deepEqual(rv.buildRequestDraft({ boss: bossRow, loadout: lo }).missing, ['time']);
+        // ホームの枠: ブロックの言い方と、配信で決まった時刻
+        const hs = rv.homeSlots({ plan: { levels: [{ level: 1, bosses: [{ bossNumber: 2, attacks: [{ memberId: 3, reservationId: 9, hourIdx: 14, loadoutSlot: 1, dmgB: 30 }] }] }] }, viewerId: 3, reservations: [blk] });
+        assert.deepEqual([hs.slots[0].kind, hs.slots[0].blockLabel, hs.slots[0].placedHourIdx, hs.slots[0].timeSlot], ['fixed', '18〜20時', 14, null]);
+    });
+    test('★ 配線 (3): SQL 54 と練習の偽サーバと クライアントが同じ形 (列・CHECK・凍結・未適用の案内) / 申請シートはブロック・lite でも入口', () => {
+        const sql = _fs2b.readFileSync(new URL('../supabase/54_reservation_blocks.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/ADD COLUMN IF NOT EXISTS block_from SMALLINT/.test(sql) && /ADD COLUMN IF NOT EXISTS block_to SMALLINT/.test(sql));
+        assert.ok(/CHECK \(time_mode IN \('fixed', 'flex', 'block'\)\)/.test(sql));
+        assert.ok(/time_mode = 'block' AND time_slot IS NULL AND block_from BETWEEN 0 AND 23 AND block_to BETWEEN 0 AND 23/.test(sql));
+        assert.ok(/OR NEW\.block_from IS DISTINCT FROM OLD\.block_from\s*\n\s*OR NEW\.block_to IS DISTINCT FROM OLD\.block_to/.test(sql), '承認後の凍結にブロックの時が無い');
+        const chk = _fs2b.readFileSync(new URL('../supabase/99_check_applied.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/UNION ALL SELECT '54_reservation_blocks',/.test(chk), '99 に 54 の判定が無い');
+        const server = _fs2b.readFileSync(new URL('../js/practice/server.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/block_from: null, block_to: null/.test(server) && /'time_slot', 'block_from', 'block_to', 'loadout_slot'/.test(server), '練習の偽サーバが 54 と違う');
+        assert.ok(/NEW\.time_mode === 'block' \? \(NEW\.time_slot == null && hour\(NEW\.block_from\) && hour\(NEW\.block_to\)\)/.test(server));
+        const client = _fs2b.readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/time_mode: blk \? 'block' : \(flex \? 'flex' : 'fixed'\),/.test(client) && /\.\.\.\(blk \? \{ block_from: blk\.from, block_to: blk\.to \} : \{\}\),/.test(client));
+        assert.ok(/if \(blk && \(_isMissingBlockCols\(error\) \|\| \/time_mode_check\|chk_plan_reservations_time\/\.test/.test(client), '54 未適用の申請で 54 を案内しない');
+        const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/rbd\.blockStates\(rbd\.blocksOfSeason\(st\.ctx\.season\), st\.slots\)\.filter\(b => b\.state !== 'off'\)\.map\(b =>\s*\n\s*chip\(!!st\.block && st\.block\.idx === b\.idx, `_resvReqPick\('block', \$\{b\.idx\}\)`, b\.name\)\)/.test(html), '申請シートがブロックで選ばせていない');
+        assert.ok(!/_resvReqPick\('flex'\)/.test(html), '⏳ 時刻は約束しない が残っている (隙間型は撤廃)');
+        assert.ok(/const _resvReqByBlock = \(\) => !\(typeof window\.supabaseReservationBlockColsMissing === 'function' && window\.supabaseReservationBlockColsMissing\(\) === true\);/.test(html), '54 未適用で「何時に」に戻らない');
+        assert.ok(/block: st\.block, loadout: st\.lo, currentLevel: cur \}\);/.test(html), '申請の下書きにブロックを渡していない');
+    });
     // ---- 変異テストで生き残った壊し方を捕まえる (2026-10-22) ----
     const LO = (list) => list.map((dmgB, j) => ({ dmgB, team: [`c${dmgB}_${j}`], slot: j + 1, level: null, levels: null }));
     const capPlayer = (id, lo, slots, caps) => ({ id, name: id, attackCount: 0, syncLevel: 500, syncLevelEstimated: false, teamsByAttr: {}, attacks: [], flexTime: false, strong_attributes: [],
@@ -4922,7 +5000,9 @@ console.log('\nreservationsDomain (凸の予約):');
         const client = _fs.readFileSync(_path.join(_ROOT, 'js', 'supabase-client.js'), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(/const _RESV_PIN_COLS = 'pinned_by, pinned_at, asked_at, ask_deadline_at';/.test(client), '固定の列が無い');
         // (2026-09-11 実機のあと) 読み直すときに「45 の列が無い」を覚える形になった
-        assert.ok((client.match(/if \(error && _isMissingPinCols\(error\)\) \{ _resvPinColsMissing = true; \(\{ data, error \} = await run\(false\)\); \}/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
+        // 🧱 段階 3 (54): 45 と 54 のどちらが欠けていても (両方でも) 読み直す形に (2 つの読み出しとも)
+        assert.ok((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; _resvPinColsMissing = true; \}/g) || []).length === 2, '45 未適用で列を落として読み直していない (両方の読み出し)');
+        assert.ok((client.match(/if \(withBlock && _isMissingBlockCols\(error\)\) \{ withBlock = false; _resvBlockColsMissing = true; \}/g) || []).length === 2, '54 未適用で列を落として読み直していない (両方の読み出し)');
         assert.ok(/if \(row\.status === 'pinned'\) \{\s*\n\s*row\.pinned_by = /.test(client), '固定のときだけ列を足す形になっていない (普通の申請が 45 未適用で壊れる)');
         assert.ok(/window\.supabaseMovePin = async function \(id, o = \{\}\)/.test(client) && /\.eq\('status', 'pinned'\)\.select\('\*'\)/.test(client), '置き直しが status = pinned の行に限られていない');
         assert.ok(/window\.supabaseAskPin = async function \(id, o = \{\}\)/.test(client), 'お願いの関数が無い');
@@ -5361,7 +5441,8 @@ console.log('\nreservationsDomain (凸の予約):');
             assert.ok(!/_resvReqPick\('level'/.test(render), 'レベルのチップが残っている');
             assert.ok(!render.includes("lbl('どのボスを')"), 'ボスを選ばせている (編成で決まる)');
             assert.ok(!/_resvReqPick\('boss'/.test(render), 'ボスのボタンが残っている');
-            assert.ok(render.indexOf("lbl('どの編成で')") < render.indexOf("lbl('何時に')"), '編成より先に時刻を聞いている');
+            // 🧱 段階 3: 「何時に」は 54 があれば「どのブロックで」(lbl(byBlock ? 'どのブロックで' : '何時に'))
+            assert.ok(render.indexOf("lbl('どの編成で')") < render.indexOf("lbl(byBlock ? 'どのブロックで' : '何時に')"), '編成より先に時刻を聞いている');
             // ★ 時刻のチップと注記がテンプレートに差し込まれていること (置換の取りこぼしで `$1` が残った — Codex指摘)
             assert.ok(render.includes("${timeChips.join('')}") && render.includes('${timeNote}'), '時刻の選択が描かれない');
             assert.ok(!/\$1\b/.test(render), 'テンプレートに置換の残骸 ($1) がある');
@@ -9696,8 +9777,11 @@ console.log('\ngrowthDomain:');
         assert.ok(html.includes('<p data-member-input-lite style="margin:8px 0 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸したら、結果の画面のスクショを Discord へ。'), 'きょうの凸にスクショの案内が無い');
         assert.ok(html.includes('<script defer src="./js/domain/mockIntake.js"></script>'), 'mockIntake.js を読んでいない');
         // 申請の導線: 引き受けた凸カードの CTA に印 + 隠しているときの一文 / ヒーローの空き枠は「運営の配信を待つ」
-        assert.ok(/<div data-member-input style="margin-top:\$\{_myResvRows\.length \? 12 : 4\}px;">\s*\n\s*<button type="button" onclick="openMyResvRequest\(\)"/.test(html), '申請ボタンに印が無い');
-        assert.ok(/<p data-member-input-lite [^>]*>凸の割当は運営がブロックごとに配信で決めます。/.test(html), '隠しているときの一文が無い');
+        // 🧱 段階 3 (2026-10-22): 申請の導線は lite でも出す (data-member-resv・模擬の入力とは別)
+        assert.ok(/<div data-member-resv style="margin-top:\$\{_myResvRows\.length \? 12 : 4\}px;">\s*\n\s*<button type="button" onclick="openMyResvRequest\(\)"/.test(html), '申請ボタンに印が無い');
+        assert.ok(!/body\.member-lite \[data-member-resv\]/.test(html), '申請の導線を lite で隠している (予約したい人だけ申請する決め)');
+        // 🧱 段階 3 (2026-10-22): 申請の導線を lite でも出すので、「隠しているときの一文」は無い (ブロックで申請できる案内に替えた)
+        assert.ok(/「このブロックに この PT で凸したい」を先に出しておけます。/.test(html), '申請の導線の案内がブロックの言い方になっていない');
         assert.ok(/if \(typeof _memberLite === 'function' && _memberLite\(\)\) \{\s*\n\s*return `\s*\n\s*<div class="dc-plan-card empty\$\{on\}"[\s\S]*?運営の配信を待つ/.test(html), 'ヒーローの空き枠が申請を案内している');
         // ヒーロー: 模擬タブへの導線は mockCta 経由 (隠しているときは 出られる時間 + Discord の案内)
         const hero = html.match(/async function renderMyNextAction\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
@@ -10494,7 +10578,7 @@ console.log('\ngrowthDomain:');
         const pgrst = { code: 'PGRST204', message: "Could not find the 'pinned_by' column of 'plan_reservations' in the schema cache" };
         assert.ok(isTbl(pgrst), '前提が変わった: このエラーが 39 未適用の判定に当たらなくなっている (順序のガードの理由を確かめること)');
         // ② 読み出しが列の有無を覚え、置く前に止める
-        assert.equal((client.match(/if \(error && _isMissingPinCols\(error\)\) \{ _resvPinColsMissing = true; \(\{ data, error \} = await run\(false\)\); \}\s*else if \(!error\) _resvPinColsMissing = false;/g) || []).length, 2,
+        assert.equal((client.match(/else if \(withPins && _isMissingPinCols\(error\)\) \{ withPins = false; _resvPinColsMissing = true; \}[\s\S]{0,260}if \(!error\) \{ if \(withPins\) _resvPinColsMissing = false; if \(withBlock\) _resvBlockColsMissing = false; \}/g) || []).length, 2,
             '両方の読み出しで 45 の列の有無を覚えていない');
         assert.ok(/window\.supabaseReservationPinColsMissing = \(\) => _resvPinColsMissing;/.test(client), '画面から読めない');
         const place = html.match(/async function _opsPlanPlace\(bossNumber, hourIdx\)[\s\S]*?\n        \}/)?.[0] || '';

@@ -187,9 +187,10 @@
                 level,
                 bossNumber,
                 loadoutSlot,
-                // flex は時刻を約束しない予約 (⏳隙間型)。fixed は 'hXX'
+                // flex は時刻を約束しない予約 (⏳隙間型)。fixed は 'hXX'。🧱 block は窓 (時刻はソルバーが窓の中で決める)
                 flex: r.time_mode === 'flex',
-                timeSlot: r.time_mode === 'flex' ? null : (r.time_slot || null),
+                timeSlot: (r.time_mode === 'flex' || r.time_mode === 'block') ? null : (r.time_slot || null),
+                ...(blockWindowOf(r) ? { window: blockWindowOf(r) } : {}),
                 team: Array.isArray(r.characters_snapshot) ? r.characters_snapshot.filter(Boolean) : [],
                 expectedB: Number(r.expected_damage_b) || 0,
                 pinned: isPin(r),   // 📌 画面で 🔒 (約束) と見分けるため。ソルバーの置き方は同じ
@@ -253,10 +254,31 @@
         return Math.max(0, 3 - active - (Number(doneAttacks) || 0));
     }
 
+    // ===== 🧱 段階 3 (2026-10-22 ユーザー決定「予約はブロックだけ選ぶ・時刻は運営がブロックの中で決める」) =====
+    // plan_reservations.time_mode = 'block' + block_from / block_to (時・含む・SQL 54)。時刻 (time_slot) は持たない
+    const idxOfHourB = (h) => { const n = Number(h); return (h != null && h !== '' && Number.isInteger(n) && n >= 0 && n <= 23) ? ((n - 5 + 24) % 24) : null; };
+    const wrapHour = (h) => (Number(h) >= 0 && Number(h) <= 4) ? `翌${Number(h)}` : String(Number(h));
+    /** ブロックの予約の窓 (時間帯インデックス・5時始まり)。ブロックの予約でなければ / 読めなければ null */
+    function blockWindowOf(r) {
+        if (!r || r.time_mode !== 'block') return null;
+        const f = idxOfHourB(r.block_from), t = idxOfHourB(r.block_to);
+        return (f == null || t == null || f > t) ? null : { fromIdx: f, toIdx: t };
+    }
+    /** 「18〜20時」 (ブロックの予約でなければ '') */
+    function blockLabelOf(r) {
+        return blockWindowOf(r) ? `${wrapHour(r.block_from)}〜${wrapHour(r.block_to)}時` : '';
+    }
+    /** 予約の時刻の言い方: 「21時」/「18〜20時のどこか」/「⏳隙間」/「時刻未定」 */
+    function whenOf(r) {
+        if (!r) return '';
+        if (r.time_mode === 'block') return blockLabelOf(r) ? `${blockLabelOf(r)}のどこか` : '時刻未定';
+        return r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).replace(/^h/, ''))}時` : '時刻未定');
+    }
+
     /** 1件を人が読める1行に。「Lv2 B3 21時 編成②」 */
     function describe(r, bossNameByNumber) {
         if (!r) return '';
-        const t = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${String(r.time_slot).replace(/^h/, '')}時` : '時刻未定');
+        const t = r.time_mode === 'block' ? whenOf(r) : r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${String(r.time_slot).replace(/^h/, '')}時` : '時刻未定');
         const name = bossNameByNumber && bossNameByNumber.get
             ? (bossNameByNumber.get(Number(r.boss_number)) || `B${r.boss_number}`)
             : `B${r.boss_number}`;
@@ -514,9 +536,12 @@
         const boss = f.boss || null;
         const bossNumber = Number(boss && boss.boss_number);
         if (!Number.isInteger(bossNumber) || bossNumber < 1 || bossNumber > 5) missing.push('boss');
-        const flex = !!f.flex;
-        const timeSlot = flex ? null : (f.timeSlot || null);
-        if (!flex && !/^h(0[0-9]|1[0-9]|2[0-3])$/.test(String(timeSlot || ''))) missing.push('time');
+        // 🧱 段階 3: ブロックで申請する (f.block = { from, to } の時)。ブロックのときは時刻を持たない
+        const blk = (f.block && idxOfHourB(f.block.from) != null && idxOfHourB(f.block.to) != null && idxOfHourB(f.block.from) <= idxOfHourB(f.block.to))
+            ? { from: Number(f.block.from), to: Number(f.block.to) } : null;
+        const flex = !blk && !!f.flex;
+        const timeSlot = (flex || blk) ? null : (f.timeSlot || null);
+        if (!flex && !blk && !/^h(0[0-9]|1[0-9]|2[0-3])$/.test(String(timeSlot || ''))) missing.push('time');
         const lo = f.loadout || null;
         const slot = Number(lo && lo.slot);
         if (!lo || (slot !== 1 && slot !== 2) || !(Number(lo.dmgB) > 0)) missing.push('loadout');
@@ -529,6 +554,7 @@
             draft: {
                 raidLevel: null, bossNumber, loadoutSlot: slot,
                 flex, timeSlot,
+                ...(blk ? { block: blk } : {}),
                 characters: Array.isArray(lo.characters) ? lo.characters.filter(Boolean) : [],
                 expectedDamageB: Number(lo.dmgB),
                 sourceType: 'self',
@@ -554,6 +580,8 @@
     function rowHonorsTime(a, r) {
         if (!a || !r) return false;
         if (r.time_mode === 'flex') return !!a.flex;
+        const win = blockWindowOf(r);
+        if (win) return !a.flex && a.hourIdx != null && Number(a.hourIdx) >= win.fromIdx && Number(a.hourIdx) <= win.toIdx;   // 🧱 窓の中ならよし
         const want = slotIdxOf(r.time_slot);
         if (want == null) return true;                 // 時刻が読めない旧データは編成枠まででよしとする
         return !a.flex && a.hourIdx != null && Number(a.hourIdx) === want;
@@ -597,8 +625,8 @@
         // 本人に見せるのは 約束 と、📣 お願いされた運営の固定 (asked_at あり)。まだ下書きの 📌 は出さない
         const fixed = (Array.isArray(reservations) ? reservations : []).filter(r => isPromise(r) || isAskedPin(r))
             .slice().sort((a, b) => {
-                const ta = a.time_mode === 'flex' ? 'zz' : String(a.time_slot || 'zz');
-                const tb = b.time_mode === 'flex' ? 'zz' : String(b.time_slot || 'zz');
+                const keyOf = (r) => r.time_mode === 'flex' ? 'zz' : r.time_mode === 'block' ? `h${String(Number(r.block_from)).padStart(2, '0')}` : String(r.time_slot || 'zz');
+                const ta = keyOf(a), tb = keyOf(b);
                 return ta < tb ? -1 : ta > tb ? 1 : (Number(a.id) - Number(b.id));
             });
         const rows = plan ? planRowsOf(plan, viewerId, doneCounts) : [];
@@ -628,7 +656,8 @@
                 bossNumber: Number(r.boss_number), loadoutSlot: Number(r.loadout_slot) || 1,
                 team: Array.isArray(r.characters_snapshot) ? r.characters_snapshot.filter(Boolean) : (a && a.team) || [],
                 dmgB: Number(r.expected_damage_b) || (a ? Number(a.dmgB) || 0 : 0),
-                flex: r.time_mode === 'flex', timeSlot: r.time_mode === 'flex' ? null : (r.time_slot || null),
+                flex: r.time_mode === 'flex', timeSlot: (r.time_mode === 'flex' || r.time_mode === 'block') ? null : (r.time_slot || null),
+                ...(blockWindowOf(r) ? { blockLabel: blockLabelOf(r), placedHourIdx: a && a.hourIdx != null ? Number(a.hourIdx) : null } : {}),   // 🧱 ブロックの予約: 「18〜20時のどこか」と、配信で決まった時刻
                 level: a ? a.level : null, inPlan: !!a, done: !!(a && a.done),
                 // 予約そのもののレベル (メンバー発は null = レベルを持たない約束) と、約束か (📣 お願い中の 📌 は約束でない)
                 raidLevel: r.raid_level != null ? Number(r.raid_level) : null, promise: isPromise(r),
@@ -686,12 +715,16 @@
             && String(u.memberId) === String(r.player_id)
             && Number(u.bossNumber) === Number(r.boss_number)
             && (Number(u.loadoutSlot) || 1) === (Number(r.loadout_slot) || 1)
-            && (u.flex ? r.time_mode === 'flex' : (r.time_mode !== 'flex' && String(u.timeSlot || '') === String(r.time_slot || ''))));
+            && (u.window ? (blockWindowOf(r) != null && blockWindowOf(r).fromIdx === u.window.fromIdx && blockWindowOf(r).toIdx === u.window.toIdx)
+                : u.flex ? r.time_mode === 'flex' : (r.time_mode !== 'flex' && r.time_mode !== 'block' && String(u.timeSlot || '') === String(r.time_slot || ''))));
     }
     /** 🧱 ブロックのぶんの配信 (plan.blockScope.slots) の時間の中か。⏳隙間型・時刻の読めない行は中 (raidBlocksDomain.scopeReservations と同じ読み方)。1 日ぶんの配信は全部中 */
     function inBlockTime(plan, r) {
         const slots = (plan && plan.blockScope && Array.isArray(plan.blockScope.slots)) ? plan.blockScope.slots : null;
-        if (!slots || !r || r.time_mode === 'flex' || !r.time_slot) return true;
+        if (!slots || !r || r.time_mode === 'flex') return true;
+        const win = blockWindowOf(r);
+        if (win) return slots.some(s => { const i = slotIdxOf(s); return i != null && i >= win.fromIdx && i <= win.toIdx; });   // 🧱 窓が重なれば中
+        if (!r.time_slot) return true;
         return slots.some(s => String(s) === String(r.time_slot));
     }
     function pendingRepublish(rows, plan) {
@@ -719,7 +752,7 @@
 
     root.reservationsDomain = {
         STATUS, ACTIVE, STATUS_JP, RELEASE_JP, TRANSITIONS, UNMET_JP, UNASSIGNED_JP, matchesOutOfScope, inBlockTime,
-        unmetText, planRowsOf, homeSlots, pendingRepublish, slotIdxOf, rowHonorsTime,
+        unmetText, planRowsOf, homeSlots, pendingRepublish, slotIdxOf, rowHonorsTime, blockWindowOf, blockLabelOf, whenOf,
         isActive, isApproved, isFixed, isPromise, isPin, isAskedPin, isExpiredPin, expiredPins, pinFor, canPin, canApprove, fingerprint, canTransition,
         toSolverConstraints,
         findInfeasible,

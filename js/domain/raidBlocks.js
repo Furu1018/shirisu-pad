@@ -200,6 +200,12 @@
         if (a0 < 0 || a1 < 0 || a1 < a0) return rows;
         return rows.filter(r => {
             if (!r || r.time_mode === 'flex') return true;
+            // 🧱 段階 3: ブロックで約束した予約 (block_from〜block_to) は、窓が範囲と重なれば中
+            if (r.time_mode === 'block') {
+                const f = idxOfHour(r.block_from), t = idxOfHour(r.block_to);
+                if (f < 0 || t < 0) return true;
+                return f <= a1 && t >= a0;
+            }
             const i = idxOfHour(hourOfKey(r.time_slot));
             return i < 0 || (i >= a0 && i <= a1);
         });

@@ -1142,6 +1142,13 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   「📋 名前と文面をコピー (Discord で声かけ)」(`handleOpsFinishPlanCopy`)。判定は `_finishAskOn()` = 練習中 (`window.PAD_PRACTICE`) だけ true — 練習の運営編・当日が同時打診を課題にしているので作り直すまで残す。
   設定タブの 👑 マスター運営 4 枚 (版のしめ切り・運営担当・復元・メンバー管理) も `_initOpsEtc` が 👑 マスターのタブ (メンテナンスの先頭) へ移す (data-master-only のまま)。
   設定タブには「移しました」の案内と `_opsGotoMasterTab()` (メンバーの見え方にしていたら運営の画面に戻して 👑 を開く)。描くのは `_setOpsEtcOpen` (マスターのときだけ 4 枚も)
+  ★ **🧱 段階 3: 予約をブロックで** (2026-10-22 ユーザー決定「予約はブロックだけ選ぶ・時刻は運営がブロックの中で決める」・**`54_reservation_blocks.sql`**):
+  `plan_reservations.time_mode = 'block'` + `block_from` / `block_to` (時・含む・time_slot は NULL)。CHECK と承認後の凍結 (status_via_rpc) にも足す。練習の偽サーバも同じ (`resvBefore`)。
+  解く形 `toSolverConstraints` は `window: { fromIdx, toIdx }` を足す (ブロックでない予約には足さない = 指紋は不変)。ソルバーは `resolveReservationLevels` の `pickInWindow` で
+  **窓の中で本人が出られる時刻を先に・そのボスがいるレベルが開いている最も早い時刻**を決めて timeSlot に入れ、あとは時刻つきの予約と同じに置く・突き合わせる (窓を過ぎたら time_passed)。
+  ドメイン `reservationsDomain` に `blockWindowOf` / `blockLabelOf` / `whenOf` (「18〜20時のどこか」)。`rowHonorsTime` / `inBlockTime` / `matchesOutOfScope` / `homeSlots` (blockLabel・placedHourIdx) / `buildRequestDraft` (block) / `raidBlocks.scopeReservations` が窓で読む。
+  申請シートは「どのブロックで」(出られるブロック = blockStates の on / partial)・⏳隙間は撤廃。**申請の入口は lite でも出す** (`[data-member-resv]`・予約したい人だけ申請)。
+  54 未適用は読み出しが列を落として読み直し (`_resvBlockColsMissing`)、申請シートは従来の「何時に」に戻る。ブロックで申請しようとしたら「54 を適用して」
   ★ **🎮 練習モードの作り直し** (2026-10-22 ユーザー決定「メンバー側も運営側も・特に運営がブロックで実際に動かして練習」): 課題は `js/practice/guide.js` の STEPS。
   メンバー編 (前日 20 時・lite) = avail (時間 + 夜 2 凸) → wait (⏩ 運営が「夜」のぶんを配信 = `publishNight`・本物のソルバーで 🧱 夜の人) → ack → report (⏩ 運営が凸を登録)。
   運営編・前日 = nudge → compute (🧱 朝) → pin → request (⏩ 朝 7 時の申請 `REQ_SLOT`) → publish (朝のぶん)。運営編・当日 (**18 時** = 夕方の頭) = hp → check (✅ 凸報告を 1 件 ✓) → compute (🧱 夕方) → publish → finish (締凸検索の「📋 コピー」・本物の関数を包んで印)。

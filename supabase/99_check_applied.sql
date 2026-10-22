@@ -342,6 +342,13 @@ SELECT * FROM (
         EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'availability_confirmations' AND column_name = 'block_counts'),
         '🧱 時間アンケートのブロックごとの凸数 (未適用だと凸数は保存されず、運営は希望を見られない・時間帯の確認は従来どおり)'
 
+    UNION ALL SELECT '54_reservation_blocks',
+        (SELECT COUNT(*) = 2 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'plan_reservations' AND column_name IN ('block_from', 'block_to'))
+        AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'plan_reservations_time_mode_check' AND pg_get_constraintdef(oid) LIKE '%block%')
+        AND EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_plan_reservations_time' AND pg_get_constraintdef(oid) LIKE '%block_from%')
+        AND position('block_from' IN pg_get_functiondef('public.plan_reservations_status_via_rpc'::regproc)) > 0,
+        '🧱 予約をブロックで (time_mode block + block_from / block_to・承認後の凍結)。未適用だとメンバーはブロックで申請できない (従来の時刻の予約は動く)'
+
     UNION ALL SELECT '(storage bucket)',
         EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'avatars'),
         'avatars バケット (Dashboard → Storage で手動作成)'

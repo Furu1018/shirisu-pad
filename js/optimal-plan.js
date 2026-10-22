@@ -1239,6 +1239,11 @@
                     pinned: !!r.pinned,   // 📌 運営の固定 (下書き)。置き方は約束と同じ
                     flex: !!r.flex,
                     timeSlot: r.flex ? null : (r.timeSlot || null),
+                    // 🧱 段階 3 (2026-10-22): ブロックで約束した予約 = 窓 [fromIdx, toIdx] (時間帯インデックス)。時刻は resolveReservationLevels が窓の中で決める。
+                    //   渡さなければ (window なし) 従来どおり — 指紋は変わらない
+                    ...((r.window && Number.isInteger(r.window.fromIdx) && Number.isInteger(r.window.toIdx)
+                        && r.window.fromIdx >= 0 && r.window.toIdx <= LAST_IDX && r.window.fromIdx <= r.window.toIdx && !r.flex)
+                        ? { window: { fromIdx: r.window.fromIdx, toIdx: r.window.toIdx }, timeSlot: null } : {}),
                     // ★ 承認時のスナップショット。**捨ててはいけない** (Codex指摘 2026-09-07)。
                     //   捨てて現在の模擬を見ると、予約後に本人が編成を変えたときに
                     //   「約束と違う編成で計画される」「編成を消したら予約が実行不能になる」が起きる。
@@ -1328,7 +1333,8 @@
                 out.push({ reservationId: r.reservationId, memberId: r.memberId, memberName: p ? p.name : null,
                            level: r.level, bossNumber: r.bossNumber, loadoutSlot: r.loadoutSlot, reason, detail,
                            // 対象外の予約だけ時刻を添える (運営のカードで「21時 B3」と読む。ほかの理由には足さない = 出力を変えない)
-                           ...(reason === 'out_of_scope' ? { timeSlot: r.timeSlot ?? null, flex: !!r.flex } : {}) });
+                           ...(reason === 'out_of_scope' ? { timeSlot: r.timeSlot ?? null, flex: !!r.flex } : {}),
+                           ...(r.window ? { window: { fromIdx: r.window.fromIdx, toIdx: r.window.toIdx } } : {}) });   // 🧱 ブロックの予約は窓を添える (渡したときだけ)
             }
             return out;
         };
@@ -1368,10 +1374,34 @@
                 clear: (timeAware && lv.levelCleared && lv.clearHourIdx != null) ? lv.clearHourIdx : (LAST_IDX + 1),
                 cleared: !!lv.levelCleared,
             }));
+            // 🧱 段階 3: ブロックの予約 (r.window) は、窓の中で「そのボスがいるレベルが開いている」最も早い時刻に具体的な時刻を決める。
+            //   本人が出られる時刻 (登録した時間帯) を先に見る。決めた時刻は timeSlot に入れ、あとは時刻つきの予約と同じに置く・突き合わせる
+            const hoursOf = (memberId) => {
+                const p = (players || []).find(x => String(x.id) === String(memberId));
+                return new Set((p && Array.isArray(p.availableSlots) ? p.availableSlots : []).map(k => IDX_BY_KEY.get(k)).filter(i => i != null));
+            };
+            const pickInWindow = (r, wins) => {
+                const from = Math.max(r.window.fromIdx, nowIdx), to = r.window.toIdx;
+                if (from > to) return { reason: 'time_passed' };
+                const mine = hoursOf(r.memberId);
+                const order = [];
+                for (let t = from; t <= to; t++) if (mine.has(t)) order.push(t);
+                for (let t = from; t <= to; t++) if (!mine.has(t)) order.push(t);
+                for (const t of order) {
+                    const w = wins.find(x => t >= x.open && t < x.clear) || null;
+                    if (w && !(w.level === startLevel && !bossAliveNow(r.bossNumber))) return { t };
+                }
+                return { reason: 'no_boss_at_time' };
+            };
             const assign = (wins) => free.map(r => {
                 const out = { ...r };
                 delete out.unresolvedReason; delete out.unresolvedDetail;
-                const T = (!r.flex && r.timeSlot != null) ? IDX_BY_KEY.get(r.timeSlot) : null;
+                if (r.window && timeAware) {
+                    const pk = pickInWindow(r, wins);
+                    if (pk.t == null) { out.level = null; out.timeSlot = null; out.unresolvedReason = pk.reason; return out; }
+                    out.timeSlot = hourKey(HOUR_ORDER[pk.t]);
+                }
+                const T = (!r.flex && out.timeSlot != null) ? IDX_BY_KEY.get(out.timeSlot) : null;
                 if (r.flex || T == null || !timeAware) {
                     // 時刻を約束しない (⏳) / 時刻が読めない / 時間を見ないモード: いま出てくる最初のレベルへ
                     const L = nextLevelFor(r.bossNumber);

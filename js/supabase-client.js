@@ -3760,18 +3760,30 @@ const _isMissingPinCols = (error) => ['pinned_by', 'pinned_at', 'asked_at', 'ask
 //   insert まで行くと PostgREST の「列が schema cache に無い」が plan_reservations の名を含み、39 未適用と誤読する (2026-09-11 実機)
 let _resvPinColsMissing = null;
 window.supabaseReservationPinColsMissing = () => _resvPinColsMissing;
+// 🧱 段階 3 (54): ブロックで約束した予約の列。未適用なら落として読み直す (ブロックの予約は存在しないので欠けても正しい)
+const _RESV_BLOCK_COLS = 'block_from, block_to';
+const _isMissingBlockCols = (error) => ['block_from', 'block_to'].some(c => _isMissingColumnErr(error, c));
+let _resvBlockColsMissing = null;   // null = まだ読んでいない / true = 54 未適用 (申請シートはブロックで申請できないと案内する)
+window.supabaseReservationBlockColsMissing = () => _resvBlockColsMissing;
+const RESV_BLOCK_SQL_HINT = 'ブロックで予約するには supabase/54_reservation_blocks.sql の適用が必要です (運営に伝えてください)';
 window.supabaseLoadReservations = async function (seasonId) {
     if (!seasonId) return [];
     const base = 'id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
               + 'characters_snapshot, expected_damage_b, source_type, source_plan_id, source_finish_request_id, '
               + 'status, requested_by, requested_at, approved_by, approved_at, released_by, released_at, release_reason, updated_at';   // updated_at = 📌 の置き直し・お願いの楽観ロックの鍵 (全体監査 2026-09-14 #8)
-    const run = (withPins) => supabase.from('plan_reservations')
-        .select(`${base}, ${withPins ? _RESV_PIN_COLS + ', ' : ''}players(name)`)
+    const run = (withPins, withBlock) => supabase.from('plan_reservations')
+        .select(`${base}, ${withPins ? _RESV_PIN_COLS + ', ' : ''}${withBlock ? _RESV_BLOCK_COLS + ', ' : ''}players(name)`)
         .eq('season_id', seasonId)
         .order('id', { ascending: true });
-    let { data, error } = await run(true);
-    if (error && _isMissingPinCols(error)) { _resvPinColsMissing = true; ({ data, error } = await run(false)); }
-    else if (!error) _resvPinColsMissing = false;
+    let withPins = true, withBlock = true;
+    let { data, error } = await run(withPins, withBlock);
+    for (let k = 0; k < 2 && error; k++) {   // ★ 45 と 54 のどちらが欠けていても (両方でも) 読める
+        if (withBlock && _isMissingBlockCols(error)) { withBlock = false; _resvBlockColsMissing = true; }
+        else if (withPins && _isMissingPinCols(error)) { withPins = false; _resvPinColsMissing = true; }
+        else break;
+        ({ data, error } = await run(withPins, withBlock));
+    }
+    if (!error) { if (withPins) _resvPinColsMissing = false; if (withBlock) _resvBlockColsMissing = false; }
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3787,13 +3799,19 @@ window.supabaseLoadMyReservations = async function (seasonId, playerId) {
     const base = 'id, season_id, player_id, raid_level, boss_number, time_mode, time_slot, loadout_slot, '
               + 'characters_snapshot, expected_damage_b, source_type, status, '
               + 'requested_at, approved_by, approved_at, released_by, release_reason, updated_at';
-    const run = (withPins) => supabase.from('plan_reservations')
-        .select(withPins ? `${base}, ${_RESV_PIN_COLS}` : base)
+    const run = (withPins, withBlock) => supabase.from('plan_reservations')
+        .select([base, withPins ? _RESV_PIN_COLS : '', withBlock ? _RESV_BLOCK_COLS : ''].filter(Boolean).join(', '))
         .eq('season_id', seasonId).eq('player_id', playerId)
         .order('id', { ascending: true });
-    let { data, error } = await run(true);
-    if (error && _isMissingPinCols(error)) { _resvPinColsMissing = true; ({ data, error } = await run(false)); }
-    else if (!error) _resvPinColsMissing = false;
+    let withPins = true, withBlock = true;
+    let { data, error } = await run(withPins, withBlock);
+    for (let k = 0; k < 2 && error; k++) {
+        if (withBlock && _isMissingBlockCols(error)) { withBlock = false; _resvBlockColsMissing = true; }
+        else if (withPins && _isMissingPinCols(error)) { withPins = false; _resvPinColsMissing = true; }
+        else break;
+        ({ data, error } = await run(withPins, withBlock));
+    }
+    if (!error) { if (withPins) _resvPinColsMissing = false; if (withBlock) _resvBlockColsMissing = false; }
     if (error) {
         if (_isMissingReservationTable(error)) return null;
         throw error;
@@ -3805,14 +3823,17 @@ window.supabaseLoadMyReservations = async function (seasonId, playerId) {
 // 残凸を超える予約は DB のトリガーが弾く — クライアントの検査だけだと複数端末で破れる
 // 残凸を超える予約は DB のトリガーが弾く — クライアントの検査だけだと複数端末で破れる
 window.supabaseCreateReservation = async function (o = {}) {
-    const flex = !!o.flex;
+    // 🧱 段階 3: ブロックで約束する (o.block = { from, to } の時)。ブロックのときは時刻を持たない
+    const blk = (o.block && Number.isInteger(Number(o.block.from)) && Number.isInteger(Number(o.block.to))) ? { from: Number(o.block.from), to: Number(o.block.to) } : null;
+    const flex = !blk && !!o.flex;
     const row = {
         season_id: o.seasonId, player_id: o.playerId,
         // ★ レベルは任意 (42・2026-09-08)。メンバー発は NULL、締め凸依頼の了承だけレベル付き
         raid_level: (o.raidLevel == null) ? null : Number(o.raidLevel),
         boss_number: o.bossNumber,
-        time_mode: flex ? 'flex' : 'fixed',
-        time_slot: flex ? null : (o.timeSlot || null),
+        time_mode: blk ? 'block' : (flex ? 'flex' : 'fixed'),
+        time_slot: (blk || flex) ? null : (o.timeSlot || null),
+        ...(blk ? { block_from: blk.from, block_to: blk.to } : {}),
         loadout_slot: Number(o.loadoutSlot) || 1,
         characters_snapshot: Array.isArray(o.characters) ? o.characters.filter(Boolean) : [],
         expected_damage_b: o.expectedDamageB ?? null,
@@ -3828,9 +3849,11 @@ window.supabaseCreateReservation = async function (o = {}) {
         row.pinned_at = new Date().toISOString();
     }
     if (!row.season_id || !row.player_id) throw new Error('シーズンとメンバーが必要です');
-    if (!flex && !row.time_slot) throw new Error('時刻を選んでください');
+    if (!flex && !blk && !row.time_slot) throw new Error('時刻を選んでください');
     const { data, error } = await supabase.from('plan_reservations').insert(row).select('*').single();
     if (error) {
+        // ★ ブロックの判定も 39 より先に (54 未適用: 列が無い / time_mode の CHECK で 'block' が弾かれる)
+        if (blk && (_isMissingBlockCols(error) || /time_mode_check|chk_plan_reservations_time/.test(String(error.message || '')))) throw new Error(RESV_BLOCK_SQL_HINT);
         // ★ 📌 の判定を 39 より**先**に。45 未適用の insert は「Could not find the 'pinned_by' column of 'plan_reservations' in the schema cache」で、
         //   _isMissingReservationTable も真になる (plan_reservations + schema cache) → 39 を適用しろと誤案内した (2026-09-11 実機)
         if (row.status === 'pinned' && (_isMissingPinCols(error) || /plan_reservations_status_check/.test(String(error.message || '')))) {

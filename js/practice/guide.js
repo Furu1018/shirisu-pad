@@ -251,11 +251,12 @@
             if (c.allResv.some(function (r) { return r.status === 'requested'; })) return;
             var q = pickRequester(c);
             if (!q) { note('assume', '申請できる人が見つかりません', 'この練習ではここまでです'); return; }
-            await window.supabaseCreateReservation({ seasonId: c.season.id, playerId: q.player.id, bossNumber: q.boss.boss_number, timeSlot: REQ_SLOT, loadoutSlot: Number(q.dmg.slot) || 1,
+            // 🧱 段階 3: メンバーはブロックで申請する (時刻は運営がブロックの中で決める)。本番の申請シートと同じ関数・同じ形
+            await window.supabaseCreateReservation({ seasonId: c.season.id, playerId: q.player.id, bossNumber: q.boss.boss_number, block: { from: 5, to: 8 }, loadoutSlot: Number(q.dmg.slot) || 1,
                 characters: q.dmg.characters, expectedDamageB: Number(q.dmg.damage_b), requestedBy: q.player.name });
-            await window.sendPushNotification({ title: '🔒 予約の申請', body: q.player.name + ': B' + q.boss.boss_number + ' 7時 編成' + (Number(q.dmg.slot) === 2 ? '②' : '①') + ' (承認待ち)',
+            await window.sendPushNotification({ title: '🔒 予約の申請', body: q.player.name + ': B' + q.boss.boss_number + ' 5〜8時のどこか 編成' + (Number(q.dmg.slot) === 2 ? '②' : '①') + ' (承認待ち)',
                 tag: 'ops-resv-request', playerIds: [P.ops.id], ignoreAvailability: true, requireInteraction: true }, { senderPlayerId: q.player.id });
-            note('assume', q.player.name + 'さんから「B' + q.boss.boss_number + ' 朝 7時」の申請が来た、と仮定しました', '本番ではいつ・何件来るか分かりません');
+            note('assume', q.player.name + 'さんから「B' + q.boss.boss_number + ' 朝 (5〜8時) のどこか」の申請が来た、と仮定しました', '本番ではいつ・何件来るか分かりません');
         },
     };
     /** 配信プランのうち hour 時より前のぶんを、ほかのメンバーが凸したことにする (ボスは倒し切らない)。keepRatio = ボス番号 → 残す割合 (既定 0.12) */
@@ -361,7 +362,7 @@
                 done: function (c) { return c.allResv.some(function (r) { return r.status === 'approved' && r.source_type !== 'finish_request'; }); },
                 guide: function (c) {
                     var req = c.allResv.filter(function (r) { return r.status === 'requested'; })[0];
-                    if (!req) return stray(c, []) || { text: '前日の夜、メンバーから「この時刻に・この編成で」の申請が届くことがあります。', real: 'いつ・何件来るかは分かりません。届くと運営あての通知が鳴ります。', assume: ['memberRequest', '⏩ メンバーから申請が来たことにする'] };
+                    if (!req) return stray(c, []) || { text: '前日の夜、メンバーから「このブロックに この PT で凸したい」の申請が届くことがあります。', real: 'いつ・何件来るかは分かりません。届くと運営あての通知が鳴ります。', assume: ['memberRequest', '⏩ メンバーから申請が来たことにする'] };
                     if (c.tab !== 'ops') return stray(c, []) || nav('navOps', '運営');
                     if (opsTab('build')) return stray(c, []) || opsTab('build');
                     var btn = pick('resvApprove');

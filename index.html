@@ -8329,7 +8329,9 @@
                     <div class="dc-plan-empty-why">プランにない凸を報告しました。この枠は使い終わっています。</div>
                 </div>`;
             }
+            // 🧱 段階 3: ブロックの予約は、配信で時刻が決まっていればその時刻、まだなら「18〜20時のどこか」
             const time = slot.flex ? '⏳隙間'
+                : (slot.kind === 'fixed' && slot.blockLabel) ? (slot.placedHourIdx != null && typeof HOUR_ORDER !== 'undefined' ? `${HOUR_ORDER[slot.placedHourIdx] <= 4 ? '翌' : ''}${HOUR_ORDER[slot.placedHourIdx]}時` : `${slot.blockLabel}のどこか`)
                 : (slot.kind === 'fixed' ? (slot.timeSlot ? `${Number(String(slot.timeSlot).slice(1))}時` : '時刻未定')
                                          : (slot.hourLabel ? String(slot.hourLabel) : '未定'));
             const lv = slot.level != null ? Number(slot.level) : null;
@@ -8673,6 +8675,7 @@
         // 予約の時刻を人向けに ('h23' → '23時' / flex → '⏳隙間')
         function _resvWhenJp(r) {
             if (!r) return '';
+            if (r.time_mode === 'block') return window.reservationsDomain?.whenOf(r) || '時刻未定';   // 🧱 段階 3
             if (r.time_mode === 'flex' || !r.time_slot) return '⏳隙間';
             const h = Number(String(r.time_slot).slice(1));
             return (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`;
@@ -10076,7 +10079,7 @@
                 const bg = r.status === 'approved' ? 'var(--ok-bg)'
                     : r.status === 'requested' ? 'var(--ops-bg)'
                     : r.status === 'cancel_requested' ? 'var(--warn-bg)' : 'var(--s2)';
-                const when = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定');
+                const when = window.reservationsDomain?.whenOf(r) || (r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定'));
                 const who = r.status === 'approved' && r.approved_by ? `${escapeHtml(String(r.approved_by))}が承認` : '';
                 const why = !rv.isActive(r) && r.release_reason
                     ? (r.release_reason === 'boss_defeated' ? 'ボスが倒れたため自動で外れました (新しいプランを確認してください)'
@@ -10097,14 +10100,14 @@
                     ${cancel}
                 </div>`;
             };
-            // 🧱 ③-d: 申請の導線は data-member-input (メンバーの入力を最低限にしているときは CSS で隠れる)。隠しているときは代わりの一文
-            const cta = `<div data-member-input style="margin-top:${_myResvRows.length ? 12 : 4}px;">
+            // 🧱 段階 3 (2026-10-22 ユーザー決定「予約したい人だけ申請」): 申請の導線は lite (模擬タブなし) でも出す (data-member-resv。模擬の入力 data-member-input とは別)
+            const cta = `<div data-member-resv style="margin-top:${_myResvRows.length ? 12 : 4}px;">
                     <button type="button" onclick="openMyResvRequest()" style="width:100%;border:none;border-radius:999px;padding:13px;font-family:inherit;font-size:12.5px;font-weight:900;color:var(--on-fill);cursor:pointer;background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));box-shadow:0 4px 13px rgba(108,66,240,0.32);">自分から凸を申請する</button>
-                    <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「この時間にこのボスを凸したい」を先に出しておけます。運営が承認すると予約になります。</p>
-                </div><p data-member-input-lite style="margin:${_myResvRows.length ? 12 : 4}px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">凸の割当は運営がブロックごとに配信で決めます。希望があれば Discord で運営に伝えてください。</p>`;
+                    <p style="margin:8px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">「このブロックに この PT で凸したい」を先に出しておけます。運営が承認すると予約になります (時刻は運営がブロックの中で決めます)。</p>
+                </div>`;
             // 📣 運営からのお願い: 引き受けると 🔒 (約束)、難しければ外れる。返事は本人だけができる (パズル盤 ④)
             const askRows = asks.map(r => {
-                const when = r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定');
+                const when = window.reservationsDomain?.whenOf(r) || (r.time_mode === 'flex' ? '⏳隙間' : (r.time_slot ? `${Number(String(r.time_slot).slice(1))}時` : '時刻未定'));
                 const team = Array.isArray(r.characters_snapshot) && r.characters_snapshot.length ? renderTeamSnippet(r.characters_snapshot, { size: 22 }) : '';
                 const dl = r.ask_deadline_at ? ` · 返事の期限 ${escapeHtml(_hhmm(r.ask_deadline_at))}` : '';
                 return `<div style="padding:11px 12px;border-radius:12px;background:var(--warn-bg);border:1px solid var(--warn-solid);margin-bottom:8px;">
@@ -10205,7 +10208,9 @@
         // ★ 画面はチップの選択状態しか持たない。足りないものの判定は
         //   reservationsDomain.buildRequestDraft に集める (散らすと「押せるのに弾かれる」が起きる)
         const _resvReq = { seq: 0, ctx: null, slots: [], loadouts: [], mine: null, done: 0,
-                           boss: null, level: null, time: null, flex: false, lo: null, busy: false };
+                           boss: null, level: null, time: null, flex: false, block: null, lo: null, busy: false };
+        // 🧱 段階 3: ブロックで申請する (54 適用済み)。54 が無い環境 (列の読み出しで分かる) だけ従来の「何時に」に戻す
+        const _resvReqByBlock = () => !(typeof window.supabaseReservationBlockColsMissing === 'function' && window.supabaseReservationBlockColsMissing() === true);
 
         async function openMyResvRequest(preset = {}) {
             const id = getCurrentIdentity();
@@ -10252,7 +10257,7 @@
             // 初期値: 編成を選べばボスは決まる (弱点属性のボスへ行く — ユーザー指摘 2026-09-08: ボスの選択は不要)。
             //   指定の属性・枠があればそれ、無ければ「まだ倒れていないボス」の中で一番強い編成
             _resvReq.level = Number(ctx.season.current_level) || 1;
-            _resvReq.time = null; _resvReq.flex = false;
+            _resvReq.time = null; _resvReq.flex = false; _resvReq.block = null;
             _resvReq.lo = null; _resvReq.boss = null;
             _resvReqPickDefaultLoadout(preset.slot, preset.attr);
             _resvReqRender();
@@ -10283,7 +10288,12 @@
             _resvReq.boss = _resvReqBossOf(lo);
         }
         function _resvReqPick(kind, val, val2) {
-            if (kind === 'time') { _resvReq.time = val; _resvReq.flex = false; }
+            if (kind === 'block') {
+                const b = (window.raidBlocksDomain?.blocksOfSeason(_resvReq.ctx?.season) || [])[Number(val)] || null;
+                _resvReq.block = b ? { idx: Number(val), from: b.from, to: b.to, name: b.name, label: b.label } : null;
+                _resvReq.time = null; _resvReq.flex = false;
+            }
+            else if (kind === 'time') { _resvReq.time = val; _resvReq.flex = false; }
             else if (kind === 'flex') { _resvReq.time = null; _resvReq.flex = true; }
             else if (kind === 'lo') {
                 _resvReq.lo = _resvReq.loadouts.find(l => l.attribute === val && l.slot === Number(val2)) || null;
@@ -10306,13 +10316,20 @@
             // ★ レベルは聞かない (2026-09-08): ボスは全レベル共通。どのレベルに置くかは運営の算出が時刻から決める
             // 何時に (自分の登録時間帯から)
             const slotSet = new Set(st.slots);
-            const timeChips = HOUR_ORDER.filter(h => slotSet.has(_hourKey(h))).map(h =>
-                chip(!st.flex && st.time === _hourKey(h), `_resvReqPick('time', '${_hourKey(h)}')`, (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`));
-            timeChips.push(chip(st.flex, `_resvReqPick('flex')`, '⏳ 時刻は約束しない'));
+            const byBlock = _resvReqByBlock();
+            const rbd = window.raidBlocksDomain;
+            // 🧱 段階 3: 出られるブロック (全部・一部 ON) から選ぶ。時刻は運営がブロックの中で決める。⏳隙間は撤廃 (2026-10-22)
+            const timeChips = byBlock && rbd
+                ? rbd.blockStates(rbd.blocksOfSeason(st.ctx.season), st.slots).filter(b => b.state !== 'off').map(b =>
+                    chip(!!st.block && st.block.idx === b.idx, `_resvReqPick('block', ${b.idx})`, b.name))
+                : HOUR_ORDER.filter(h => slotSet.has(_hourKey(h))).map(h =>
+                    chip(!st.flex && st.time === _hourKey(h), `_resvReqPick('time', '${_hourKey(h)}')`, (h >= 0 && h <= 4) ? `翌${h}時` : `${h}時`));
             const timeNote = st.slotsFailed
                 ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--bad-deep);line-height:1.55;">戦闘可能時間を取得できませんでした。シートを開き直してください。</p>'
                 : st.slots.length === 0
                 ? '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--warn-deep);line-height:1.55;">戦闘可能時間が未登録です。ホームで時間帯を登録すると選べます。</p>'
+                : byBlock
+                ? `<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">出られるブロックから選べます。${st.block ? `<b>${escapeHtml(st.block.label)}</b> のどこかで、運営が時刻を決めます。` : '時刻は運営がブロックの中で決めます。'}</p>`
                 : '<p style="margin:7px 2px 0;font-size:10.5px;font-weight:700;color:var(--t-muted);line-height:1.55;">戦闘可能時間に登録している中から選べます。</p>';
             // どの編成で (提出済みの全属性から。行き先のボスは属性で決まる)
             const los = st.loadouts.filter(l => bossOrder.has(l.attribute))
@@ -10342,7 +10359,7 @@
                 </p>`;
             })();
             // 申請できるか (足りないもの / 残凸 / 重複)
-            const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, loadout: st.lo, currentLevel: cur });
+            const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, block: st.block, loadout: st.lo, currentLevel: cur });
             let blocker = '';
             if (d.ok) {
                 const chk = rv.canRequest(st.mine, { playerId: getCurrentIdentity()?.id, level: st.level, bossNumber: Number(st.boss.boss_number), loadoutSlot: st.lo.slot, doneAttacks: st.done, characters: st.lo.characters });
@@ -10354,7 +10371,7 @@
             body.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:16px;">
                     <div>${lbl('どの編成で')}<div style="display:flex;flex-direction:column;gap:7px;">${loHtml}</div>${bossLine}</div>
-                    <div>${lbl('何時に')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">${timeChips.join('')}</div>${timeNote}</div>
+                    <div>${lbl(byBlock ? 'どのブロックで' : '何時に')}<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">${timeChips.join('')}</div>${timeNote}</div>
                 </div>
                 ${blocker ? `<p style="margin:14px 2px 0;font-size:11.5px;font-weight:800;color:var(--bad-deep);">${esc(blocker)}</p>` : ''}
                 <div style="margin-top:${blocker ? '10' : '22'}px;display:flex;flex-direction:column;gap:9px;">
@@ -10376,9 +10393,9 @@
                 return;
             }
             const cur = Number(st.ctx.season.current_level) || 1;
-            const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, loadout: st.lo, currentLevel: cur });
+            const d = rv.buildRequestDraft({ boss: st.boss, level: st.level, timeSlot: st.time, flex: st.flex, block: st.block, loadout: st.lo, currentLevel: cur });
             if (!d.ok) { _resvReqRender(); return; }
-            const when = d.draft.flex ? '⏳時刻は約束しない' : `${Number(d.draft.timeSlot.slice(1))}時`;
+            const when = d.draft.block ? `${st.block?.label || ''} のどこか (時刻は運営が決めます)` : d.draft.flex ? '⏳時刻は約束しない' : `${Number(d.draft.timeSlot.slice(1))}時`;
             if (!confirm(`この内容で申請します。\n\n${st.boss.name || 'B' + d.draft.bossNumber} / ${when} / 編成${SLOT_JP[d.draft.loadoutSlot] || '①'} (${d.draft.expectedDamageB.toFixed(1)}B)`
                 + (d.note ? `\n\n${d.note}` : '') + '\n\n運営が承認すると、この凸は固定されます。\n\n[OK] 申請する / [キャンセル] やめる')) return;
             st.busy = true;
@@ -28571,11 +28588,13 @@
         }
         // 通知用の言い方: B3 22時 編成② (申請の下書き / 予約の行のどちらからも)
         function _resvDraftJp(d) {
-            const t = d?.flex ? '⏳' : (d?.timeSlot ? `${Number(String(d.timeSlot).slice(1))}時` : '');
+            const wrapH = (h) => (Number(h) >= 0 && Number(h) <= 4) ? `翌${Number(h)}` : String(Number(h));
+            const t = d?.block ? `${wrapH(d.block.from)}〜${wrapH(d.block.to)}時のどこか` : d?.flex ? '⏳' : (d?.timeSlot ? `${Number(String(d.timeSlot).slice(1))}時` : '');   // 🧱 段階 3
             return `B${Number(d?.bossNumber)} ${t} 編成${Number(d?.loadoutSlot) === 2 ? '②' : '①'}`.replace(/\s+/g, ' ');
         }
         function _resvRowJp(r) {
-            return _resvDraftJp({ bossNumber: r?.boss_number, timeSlot: r?.time_slot, flex: r?.time_mode === 'flex', loadoutSlot: r?.loadout_slot });
+            return _resvDraftJp({ bossNumber: r?.boss_number, timeSlot: r?.time_slot, flex: r?.time_mode === 'flex', loadoutSlot: r?.loadout_slot,
+                block: r?.time_mode === 'block' ? { from: r.block_from, to: r.block_to } : null });
         }
         // 👑 任命パネル (運営タブの一番下「その他 ▾」› メンテナンス。HTML は設定タブにあり _initOpsEtc が移す)。master にだけ見える (body.ops-master)
         async function renderSettingsRoles() {
