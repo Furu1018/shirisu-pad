@@ -10293,6 +10293,45 @@ console.log('\ngrowthDomain:');
         assert.deepEqual(L.tabCounts({ mbRows: [{ todo: true }, { todo: false }, { todo: true }], reservations: { pending: 1, expired: 2 }, attackCounts: { total: 5, confirmed: 3, missing: 2 } }),
             { members: 2, build: 3, battle: 4, master: null });
     });
+    test('★ 実行 (2.5): _applyOpsTabCards — そのタブのカードだけ本文へ・ほかと外したカードは置き場へ / 👑 だけ「その他」を出す', () => {
+        const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        const src = html.match(/function _applyOpsTabCards\(tab\) \{[\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(src, '_applyOpsTabCards が無い');
+        const L = globalThis.opsLayoutDomain;
+        const mk = (id) => ({ id, where: 'start', classList: { set: new Set(), toggle(c, on) { on ? this.set.add(c) : this.set.delete(c); } }, style: {} });
+        const els = Object.fromEntries([...L.CARDS.map(c => c.id), 'opsTabHold', 'opsEtc', 'opsHomeCrosslink'].map(id => [id, mk(id)]));
+        const hold = els.opsTabHold, anchor = els.opsEtc;
+        hold.appendChild = (el) => { el.where = 'hold'; };
+        anchor.insertAdjacentElement = (_pos, el) => { el.where = 'body'; };
+        let etcOpened = 0;
+        const run = new Function('window', 'document', '_setOpsEtcOpen', `${src}\nreturn _applyOpsTabCards;`)(
+            { opsLayoutDomain: L }, { getElementById: (id) => els[id] || null }, () => { etcOpened++; });
+        for (const tab of L.TAB_KEYS) {
+            run(tab);
+            const body = L.CARDS.filter(c => els[c.id].where === 'body').map(c => c.id);
+            assert.deepEqual(body, L.CARDS.filter(c => c.tab === tab).map(c => c.id), `${tab}: 本文に出すカードが違う`);
+            assert.equal(anchor.style.display, tab === 'master' ? '' : 'none', `${tab}: 「その他」の出し方が違う`);
+            assert.equal(anchor.classList.set.has('as-master'), tab === 'master');
+            assert.equal(els.opsHomeCrosslink.where, 'hold', 'メンバー向けの導線を運営の画面に出した');
+        }
+        assert.equal(etcOpened, 1, '👑 のときだけ「その他」を開く');
+        assert.ok(L.CARDS.filter(c => c.tab === null).every(c => els[c.id].where === 'hold'), '外したカードが本文に出た');
+    });
+    test('★ Codex指摘 (9e81574): マスターの作業は運営担当では動かさない / 予約・配信し直しは 🧱 組むへ / lite に「戦況を見る」を出さない / 件数は今のシーズンだけ', () => {
+        const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        assert.ok(/const _OPS_MASTER_ACTS = new Set\(\['create', 'season-edit', 'end', 'backup', 'reset', 'notify'\]\);/.test(html));
+        assert.ok(/if \(_OPS_MASTER_ACTS\.has\(a\) && _opsMode && !_opsIsMasterNow\(\)\) \{ showNotification/.test(html), '運営担当がマスターの作業を押せる');
+        assert.ok(/function _opsJumpEtc\(elId\) \{[^]*?if \(_opsMode && !_opsIsMasterNow\(\)\) \{ showNotification\('これはマスター運営 \(👑\) の画面で行います'\); return; \}/.test(html), '運営担当を見えない 👑 へ飛ばす');
+        for (const fn of ['async function _recomputeAndOfferPublish(noteJp) {', 'async function _opsGotoReservations() {']) {
+            const i = html.indexOf(fn); assert.ok(i > 0, fn);
+            assert.ok(/switchTab\('ops'\);\s*\n\s*if \(typeof setOpsTab === 'function'\) setOpsTab\('build'\);/.test(html.slice(i, i + 400)), `${fn} が 🧱 組むへ切り替えない`);
+        }
+        assert.ok(/cta = lite \? '' : softBtn\("switchTab\('ops'\)", '👀 戦況を見る'\);/.test(html) && /: \(lite \? '' : heroSub\("switchTab\('ops'\)"/.test(html), 'lite のメンバーに「戦況を見る」が残る');
+        assert.ok(/attackCounts: \(typeof _atkCheck !== 'undefined' && _atkCheck\.counts && same\(_atkCheck\.counts\.seasonId\)\)/.test(html)
+            && /reservations: \(typeof _resv !== 'undefined' && same\(_resv\.seasonId\)\)/.test(html) && /mbRows: \(typeof _mb !== 'undefined' && same\(_mb\.season\?\.id\)\)/.test(html), '件数をシーズンで確かめていない');
+        assert.ok(/_resv\.rows = rows;\s*\n\s*_resv\.seasonId = season\.id;/.test(html) && /_resv\.rows = reservations;[^\n]*\n\s*_resv\.seasonId = snapshot\.season\.id;/.test(html), '予約にシーズンを持たせていない');
+        assert.ok(/if \(!snap\?\.season\) \{ _atkCheck\.counts = null;/.test(html), 'シーズンが無いときに凸報告の件数を消していない');
+    });
     test('★ 配線 (2.5): メンバー (lite) の戦況タブを隠す — 下メニュー・上のタブ・ドロワー (CSS) / 古い導線はホームへ / スワイプも飛ばす', () => {
         const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
         assert.ok(html.includes('body.member-lite [data-tab="ops"] { display: none !important; }'), '下メニューの戦況を隠していない');

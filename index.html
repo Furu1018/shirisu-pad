@@ -8159,7 +8159,7 @@
                     // A2: 全凸消化
                     lead = '✅ 3凸おつかれさまでした!';
                     why = 'きょうの凸はすべて消化済みです。結果はレイド終了後の集計で分析タブに反映されます。';
-                    cta = softBtn("switchTab('ops')", '👀 戦況を見る');
+                    cta = lite ? '' : softBtn("switchTab('ops')", '👀 戦況を見る');   // 段階 2.5: メンバー (lite) の戦況タブはなくした (Codex指摘 9e81574)
                 } else {
                     // A1: 残凸あり
                     hero = true;
@@ -8169,7 +8169,7 @@
                     // 運営の用事は本人の凸を隠さずサブリンクで (当日は自分の凸が先)
                     subLink = opsNotice
                         ? heroSub(opsNotice.onclick, `${opsNotice.lead} →`)
-                        : heroSub("switchTab('ops')", '👀 戦況を見る (ボス残HP・交戦状況)');
+                        : (lite ? '' : heroSub("switchTab('ops')", '👀 戦況を見る (ボス残HP・交戦状況)'));
                 }
             } else if (opsNotice) {
                 // 当日以外 (前日・準備期間) は運営の用事が最優先の1アクション
@@ -17530,14 +17530,14 @@
             // ★ 自分では load しない: 取り直しは中央 (_opsReloadBoardCards / renderOpsDashboard) だけが行い、その完了が _syncOpsUnpublishBtn を通ってここを描く
             const snap = opsStore.get();
             if (!snap) return;
-            if (!snap?.season) { body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
+            if (!snap?.season) { _atkCheck.counts = null; body.innerHTML = '<p class="ops-recent-empty">アクティブシーズンがありません。</p>'; if (cnt) cnt.textContent = ''; return; }
             // 盤面が取り直されたら ✓ の上書きは捨てる (DB の値が最新)
             const g = opsStore.generation();
             if (g !== _atkCheck.localGen) { _atkCheck.local.clear(); _atkCheck.localGen = g; }
             const plan = _opsPublishedPlan?.plan || null;
             const attacks = _opsFlatAttacks(snap).map(a => { const l = _atkCheck.local.get(Number(a.id)); return l ? { ...a, ...l } : a; });
             const res = dom.buildRows({ attacks, plan, nowMs: Date.now() });
-            _atkCheck.counts = res.counts ? { ...res.counts, missing: res.missing.length } : null;   // ⚔️ 戦況のタブの数 (段階 2.5)
+            _atkCheck.counts = res.counts ? { ...res.counts, missing: res.missing.length, seasonId: snap.season.id } : null;   // ⚔️ 戦況のタブの数 (段階 2.5)
             if (typeof _renderOpsCockpitSoon === 'function') _renderOpsCockpitSoon();
             if (cnt) cnt.textContent = dom.summary(res) + (res.hasPlan || !res.rows.length ? '' : ' · 配信プランなし (食い違いは見られません)');
             const canConfirm = snap.attackConfirm !== false;
@@ -17894,6 +17894,7 @@
             }
             _resv.unsupported = false;
             _resv.rows = rows;
+            _resv.seasonId = season.id;   // タブの件数は今のシーズンの予約だけ数える (段階 2.5・Codex指摘)
             _paintOpsReservations();
             _renderOpsCockpitSoon();
             // 配信の状況行に「配信後の予約 N件」を出すため、一覧が読めたら取り直す
@@ -18031,6 +18032,7 @@
         //   ここで配信を押さなかった場合は、運営ホームのヒーロー「配信後の予約があります」が促す (A)
         async function _recomputeAndOfferPublish(noteJp) {
             if (typeof switchTab === 'function') switchTab('ops');
+            if (typeof setOpsTab === 'function') setOpsTab('build');   // 段階 2.5: プランは 🧱 組む (Codex指摘 9e81574)
             const before = _opsLastPlan;
             await computeAndRenderOptimalPlan(_recomputeOptsAfterApproval());
             if (typeof _opsScrollSettled === 'function') _opsScrollSettled('opsSecPlan');   // 算出結果の位置へ合わせる
@@ -18067,6 +18069,7 @@
         // 運営ホームのヒーローから: 戦況タブの予約カードへ (承認待ち・取り消し希望)
         async function _opsGotoReservations() {
             if (typeof switchTab === 'function') switchTab('ops');
+            if (typeof setOpsTab === 'function') setOpsTab('build');   // 段階 2.5: 予約は 🧱 組む (Codex指摘 9e81574)
             expandOpsCard('opsSecReserve');
             try { if (typeof renderOpsReservations === 'function') await renderOpsReservations(true); }
             catch { /* 一覧が出ないだけ */ }
@@ -21671,6 +21674,7 @@
                 if (Array.isArray(reservations) && typeof _resv !== 'undefined') {
                     _resv.gen++;                 // 進行中の一覧取得が後から古い応答で上書きしないように
                     _resv.rows = reservations;   // 運営カードの表示も同じ鮮度に揃える
+                    _resv.seasonId = snapshot.season.id;
                     if (typeof _paintOpsReservations === 'function') _paintOpsReservations();
                 }
             }
@@ -28937,7 +28941,14 @@
             const lay = window.opsLayoutDomain;
             const el = document.getElementById('opsSubTabs'), line = document.getElementById('opsTabLine');
             if (!lay || !el) return;
-            const counts = lay.tabCounts({ mbRows, reservations, attackCounts: (typeof _atkCheck !== 'undefined' && _atkCheck.counts) ? _atkCheck.counts : null });
+            // ★ 件数は今のシーズンの材料だけ (シーズンの切り替え直後に前シーズンの数を出さない: Codex指摘 9e81574)。合わなければ出さない (null)
+            const sid = opsStore.get()?.season?.id ?? null;
+            const same = (id) => sid != null && id != null && String(id) === String(sid);
+            const counts = lay.tabCounts({
+                mbRows: (typeof _mb !== 'undefined' && same(_mb.season?.id)) ? mbRows : null,
+                reservations: (typeof _resv !== 'undefined' && same(_resv.seasonId)) ? reservations : null,
+                attackCounts: (typeof _atkCheck !== 'undefined' && _atkCheck.counts && same(_atkCheck.counts.seasonId)) ? _atkCheck.counts : null,
+            });
             const isMaster = _opsIsMasterNow();
             el.innerHTML = lay.TABS.filter(t => !t.masterOnly || isMaster).map(t => {
                 const n = counts[t.key];
@@ -29027,7 +29038,9 @@
             _setOpsEtcOpen(!body || body.style.display === 'none');
         }
         function _opsJumpEtc(elId) {
-            if (_opsMode && _opsIsMasterNow()) setOpsTab('master');   // 段階 2.5: メンテナンスは 👑 マスターのタブ
+            // 段階 2.5: メンテナンス (バックアップ・通知状況・キャラマスタ) は 👑 マスターのタブだけ。運営担当には見えないので飛ばずに伝える (Codex指摘 9e81574)
+            if (_opsMode && !_opsIsMasterNow()) { showNotification('これはマスター運営 (👑) の画面で行います'); return; }
+            if (_opsMode) setOpsTab('master');
             _setOpsEtcOpen(true);
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 const el = document.getElementById(elId);
@@ -29035,8 +29048,11 @@
             }));
         }
         // ヒーロー / チェックリストの行からの導線
+        // 段階 2.5: 👑 マスターの作業 (シーズンの作成・編集・終了・バックアップ・リセット)。運営担当が押しても動かさない (Codex指摘 9e81574)
+        const _OPS_MASTER_ACTS = new Set(['create', 'season-edit', 'end', 'backup', 'reset', 'notify']);
         function _opsStageAct(action) {
             const a = String(action || '');
+            if (_OPS_MASTER_ACTS.has(a) && _opsMode && !_opsIsMasterNow()) { showNotification('これはマスター運営 (👑) の作業です'); return; }
             if (a.startsWith('nudge:')) { _opsNudgeGroup(a.slice(6)); return; }
             switch (a) {
                 case 'create': openOpsSeasonCreateModal(); break;
