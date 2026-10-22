@@ -710,7 +710,7 @@ rm -f .claude/hooks/.codex-on      # OFF
 - **🧱 ブロックの区切りの保存 RPC** (`50_season_blocks_rpc.sql`・2026-10-18): `ops_set_season_blocks(p_season_id, p_blocks)`。未適用でも動く (同時編集に弱いだけ)。99 に判定行あり
 - **✅ 凸報告の確認** (`52_attacks_confirmed.sql`・2026-10-18): `attacks.confirmed_at / confirmed_by`。未適用でも一覧と印は出る (✓ だけ「52 を実行」と案内して止まる)。99 に判定行
 - **🧱 メンバーの入力を出すかの保存 RPC** (`51_season_member_input_rpc.sql`・2026-10-18): `ops_set_season_meta_key(p_season_id, 'member_input', '"full"' | null)`。未適用でも動く。99 に判定行あり
-- **🧱 ブロックごとの凸数** (`53_block_counts.sql`・2026-10-22): `availability_confirmations.block_counts` (JSONB)。未適用でも確認は通る (凸数だけ保存されず、本人に「凸数は Discord で」と出る)。99 に判定行あり
+- **🧱 ブロックごとの凸数** (`53_block_counts.sql`・2026-10-22・**10/22 適用済み**): `availability_confirmations.block_counts` (JSONB)。未適用でも確認は通る (凸数だけ保存されず、本人に「凸数は Discord で」と出る)。99 に判定行あり
 - **📱 メンバーの端末の状態** (`49_member_devices.sql`・通知の見える化 D・2026-10-08 ユーザー決定 Q1/Q2/Q4「今入れる」。設計の正本は
   `docs/通知の見える化_設計案_2026-10-08.md`、Codex レビュー済み)。「端末で通知を設定できているか」はサーバから見えないので、
   本人の端末がアプリを開いたときに `_reportMemberDevice` が報告する (`device_id` = ブラウザごとの localStorage の乱数 = 主キー。名乗り直しは同じ行を上書き。
@@ -766,6 +766,7 @@ node tests/plan-cond.mjs      # 最適凸プランの条件: 焼き込みのス�
 node tests/raid-review.mjs    # レイドの振り返り (属性別の進捗 / 得意・不得意 / 誰が) の実行テスト — 本番の 2026-09 のデータで描く
 node tests/practice.mjs       # 🎮 練習モード: 偽のサーバ (SQL の写し) / 本物の supabase-client.js を偽のサーバ相手に / 起動の差し替え / 本番とのずれの見張り
 node tests/practice-e2e.mjs   # 🎮 練習モードの通し確認 — 本物のブラウザで案内の枠だけを押して最後まで (Chrome が要る・1〜2分。PC=1 で PC 幅も)
+node tests/bench-blockflow/multi-block.mjs   # 🧱 ブロック制の流れの実験 (第44回の実データ)。ほかに carry-over / boss5-two-teams / boss5-why / left-attacks — 使い方と結論は同じフォルダの README (単体テストではない)
 ```
 **変異テスト (ガードが本当に効くかを確かめる)** — 新しいテストを足したら必ず1周する。
 わざと壊して、落ちなければそのテストは無意味。scratchpad にスクリプトを書いて回す。
