@@ -9419,11 +9419,13 @@ console.log('\ngrowthDomain:');
             assert.ok(new RegExp(`body\\.member-lite ${sel.replace(/[.[\]]/g, '\\$&')}[^{]*\\{ display: none !important; \\}`).test(css), `lite で隠していない: ${sel}`);
         }
         const dom = html.slice(html.lastIndexOf('</style>'));
-        assert.equal((dom.match(/\bid="(mypageBossStrip|myBossBoardCard|mypageStatusSwitcher|mypageStatusTiles|mypageBattleGate|mypageBattleActions|myAttackAddBtn)"/g) || []).length, 7, '隠す要素の id が DOM から消えている (CSS で隠す約束 = 運営モードと full では出る)');
+        assert.equal((dom.match(/\bid="(mypageBossStrip|myBossBoardCard|mypageStatusSwitcher|mypageStatusTiles|mypageBattleGate|mypageBattleActions|mypageBattleExpanded|mypageBattleLive|myAttackAddBtn)"/g) || []).length, 9, '隠す要素の id が DOM から消えている (CSS で隠す約束 = 運営モードと full では出る)');
         assert.ok(/else if \(reportable\) right = `<button data-member-report onclick="_planReportBoss\(\$\{bn\}\)"/.test(html), '「報告する ▶」に印が無い');
         assert.ok(/<div class="dc-card" data-span="6" id="myMocksCard" style="display:none;">/.test(html), '登録された模擬のカードが無い (幅 6 できょうの凸と対)');
         assert.ok(/body:not\(\.member-lite\) #myMocksCard \{ display: none !important; \}/.test(css), 'lite でなくなったときにカードが残る (CSS で消していない — Codex指摘)');
-        assert.ok(html.includes("? '🗡 了承を運営に伝えました。凸したら結果の画面のスクショを Discord へ'") && html.includes(": '🗡 了承を運営に伝えました。準備ができたらボスを選んで戦闘へ！')"), '締め凸の了承後の案内が lite で「ボスを選んで戦闘へ」のまま (ゲートは隠れている)');
+        // 了承後の案内: status === 'accepted' → _memberLite() で lite の文言 / そうでなければ従来 (構造で固定・文言だけの存在確認にしない — Codex指摘)
+        assert.ok(/showNotification\(status === 'accepted'\s*\n\s*\? \(\(typeof _memberLite === 'function' && _memberLite\(\)\)\s*\n\s*\? '🗡 了承を運営に伝えました。凸したら結果の画面のスクショを Discord へ'[^\n]*\n\s*: '🗡 了承を運営に伝えました。準備ができたらボスを選んで戦闘へ！'\)\s*\n\s*: '運営に「難しい」と伝えました'\);/.test(html),
+            '締め凸の了承後の案内が lite で分岐していない (ゲートは隠れているのに「ボスを選んで戦闘へ」)');
         assert.ok(html.indexOf('id="myTodayBlocksCard"') < html.indexOf('id="myMocksCard"') && html.indexOf('id="myMocksCard"') < html.indexOf('id="myPushCheckCard"'), 'カードの並び (きょうの凸 → 登録された模擬 → 疎通確認) が違う');
         const rm = html.match(/\n        async function renderMyMocksReadonly\(identity\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(rm, 'renderMyMocksReadonly が無い');
