@@ -1129,6 +1129,15 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   ★ **🔒 レベルを持たない約束は、プランの予想レベルとずれても「報告する ▶」** (`_planMineHtml` の `lvFree` = kind fixed かつ**配信に入っている** (`inPlan`) かつ `promise` かつ `raidLevel` null。`homeSlots` が予約の `raidLevel` / `promise` を渡す)。
   予想より踏破が遅れて Lv1 のまま約束の時刻が来ると「Lv2になったら」のまま報告できなかった (練習の通し確認で発覚)。消し込みの `matchForAttack` もレベルを持たない予約のレベルは見ない。
   レベル付きの約束 (締め凸の了承) と 📣 お願い中の 📌 は従来どおり。実行テスト `tests/avail-save.mjs` (凸数 4 本)・`tests/avail-strip.mjs`・`tests/home-slots.mjs`
+  ★ **🧱 段階 2b: 凸数をソルバーの上限に + 時間未登録を候補にしない** (2026-10-22): 入力 `players[].blockCaps = [{ fromIdx, toIdx, max }]` と `excludeTimeUnknown`。
+  **どちらも渡さなければ出力は 1 バイトも変わらない** (指紋 120 盤面・テストが JSON 比較で見張る)。画面は算出 (`computeOptimalPlan`) と承認の影響 (`_reservationImpact`) の 2 つの呼び出し口で
+  `_playersWithBlockCaps(players, season)` (= `raidBlocksDomain.capsOf(blockCounts, 区切り, 済んだ凸の時)`。済んだ凸の時は `reported_at` を `attackCheckDomain.hourIdxOfMs` で JST にしたもの) と
+  `excludeTimeUnknown: true` を渡す (配線テストが 2 か所とも見張る)。ソルバーの中身: 人ごとに `m.caps` (used = 置いた数)。判定は **`earliestHourFor` の 1 か所** — 上限に達したブロックの時刻を飛ばし、
+  出られる時間があるのに上限で埋まった人は `null` (時間外のベストエフォートにも回さない)。数えるのは `applyPick` (+1) / `undoPick` (−1) / `assignLv4` の 2 経路 (+1)、`restoreSnapshot` で戻す。
+  ★ **予約は上限より強い**: 時刻つきは指定どおり、時刻なしは `earliestHourFor(m, idx, { ignoreCaps: true })` で必ず置く。ただし置いた数は上限に数える (同じブロックにもう 1 凸置かない)。
+  ★ 時間未登録は `m.timeExcluded` → `earliestHourFor` が `null`・🧱 ブロックの対象 (`inScope`) にも数えない・`membersTimeUnknown` に名前・未消化の理由 `timeUnknown`。予約 (約束) は置く。
+  未消化の理由に `cap` (「凸数の希望どおり」= 上限をすべて使い切り、出られる時間がすべて上限つきのブロック)。運営の 👥 メンバー状況に「凸数 朝 1 · 夕方 2」(`counts(r)`)・時間未登録の札に「候補にしません」の説明。
+  確かめ: `tests/bench-blockflow/multi-block.mjs` の ⑥⑦ (朝+夕方の 4 人が 朝 1 → 夕方 2 になる)
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と

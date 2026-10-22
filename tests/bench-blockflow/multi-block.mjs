@@ -121,3 +121,23 @@ const resv = attrs.slice(0, 2).map((attr, i) => {
 });
 console.log(`\n(M4 の予約: ${resv.map(r => `18時 B${r.bossNumber}`).join(' / ')} — M4 が持っている属性: ${attrs.join(', ')})`);
 show('⑤ 🧱 朝 で組む + M4 の夕方の予約 2 つ (承認済み)', compute(asBlock(morning, { reservations: resv })), morning);
+
+// ⑥ 🧱 段階 2b (2026-10-22): 朝+夕方の人が時間のシートで「朝 1・夕方 2」と決めた → ソルバーの上限 (blockCaps)
+const COUNTS = { [RB.countKey(morning)]: 1, [RB.countKey(evening)]: 2 };
+const withCaps = (list, doneHoursById = new Map()) => list.map(p => SPLIT.has(p.id)
+    ? { ...p, blockCaps: RB.capsOf(COUNTS, BLOCKS, doneHoursById.get(p.id) || []) } : p);
+console.log(`\n(朝+夕方の人の凸数: 朝 1 · 夕方 2 → 上限 ${JSON.stringify(RB.capsOf(COUNTS, BLOCKS, []))})`);
+const pCap = compute({ ...asBlock(morning), players: withCaps(players()) });
+const allCap = show('⑥ 🧱 朝 で組む + 凸数 (朝 1 · 夕方 2)', pCap, morning);
+// ⑦ 朝のぶんを実行したあと 🧱 夕方 で組む (済んだ凸の時を渡す)
+const doneCap = new Map(), doneHours = new Map();
+for (const a of allCap.filter(a => a.hourIdx >= morning.fromIdx && a.hourIdx <= morning.toIdx)) {
+    if (!doneCap.has(a.memberId)) doneCap.set(a.memberId, []);
+    doneCap.get(a.memberId).push(a);
+    if (!doneHours.has(a.memberId)) doneHours.set(a.memberId, []);
+    doneHours.get(a.memberId).push(RB.HOUR_ORDER[a.hourIdx]);
+}
+show('⑦ 朝を実行 → 🧱 夕方 で組む + 凸数', compute({ ...asBlock(evening), players: withCaps(players(doneCap), doneHours) }), evening);
+// 確かめ: 朝に置かれた朝+夕方の人の凸は 1 つまで
+const bad = [...SPLIT].filter(id => allCap.filter(a => a.memberId === id && a.hourIdx >= morning.fromIdx && a.hourIdx <= morning.toIdx).length > 1);
+console.log(bad.length ? `\n✗ 朝に 2 凸以上: ${bad.map(id => 'M' + id).join(' ')}` : '\n✓ 朝+夕方の人は朝に 1 凸まで');

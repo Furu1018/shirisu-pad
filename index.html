@@ -17748,13 +17748,21 @@
             // 行
             const dot = (a) => `<span class="dc-mb-dot" style="background:${DC_ATTR_COLORS[a] || 'var(--ghost)'}" title="${escapeHtml(dom.ATTR_JP[a] || a)}"></span>`;
             const strip = (r) => {
-                if (!r.slots.length) return r.flex ? '<span class="dc-mb-c acc">⏳隙間型</span>' : '<span class="dc-mb-c err">時間帯 未登録</span>';
+                if (!r.slots.length) return r.flex ? '<span class="dc-mb-c acc">⏳隙間型</span>' : '<span class="dc-mb-c err" title="時間が未登録の人は最適凸プランの候補にしません (段階 2b)">時間帯 未登録</span>';
                 const on = new Set(r.slots.map(s => parseInt(String(s).slice(1), 10)).filter(Number.isFinite));
                 let cells = '';
                 for (let i = 0; i < 24; i++) cells += `<i class="${on.has(i) ? 'on' : ''}${isDay && i === nowH ? ' now' : ''}" title="${i}時"></i>`;
                 const hrs = [...on].sort((a, b) => a - b);
                 const label = hrs.length ? `${hrs[0]}-${hrs[hrs.length - 1] + 1}時` : '';
                 return `<div><div class="dc-mb-strip">${cells}</div><div class="dc-mb-tz">${label}</div></div>`;
+            };
+            // 🧱 段階 2b: 本人が決めたブロックごとの凸数 (算出の上限)。入れていない人は出さない (= おまかせ)
+            const _mbRb = window.raidBlocksDomain;
+            const _mbBlocks = _mbRb ? _mbRb.blocksOfSeason(_mb.season || null) : [];
+            const counts = (r) => {
+                const p = (_mb.players || []).find(x => Number(x.id) === Number(r.id));
+                const lbl = (_mbRb && p && p.blockCounts) ? _mbRb.countsLabel(p.blockCounts, _mbBlocks) : '';
+                return lbl ? `<span class="dc-mb-c acc" title="本人が決めたブロックごとの凸数 (最適凸プランはこの数を上限に置く)">凸数 ${escapeHtml(lbl)}</span>` : '';
             };
             rowsEl.innerHTML = shown.length ? shown.map(r => {
                 // 必要範囲は「キャラ被りなしで3属性」。5属性は運営が助かる加点 (★)。判定は domain (mockOk / mockUsable)
@@ -17788,7 +17796,7 @@
                     : r.finish === 'pending' ? '<span class="dc-mb-c warn">締め凸 未返答</span>'
                     : r.finish === 'accepted' ? '<span class="dc-mb-c ok">締め凸 OK</span>'
                     : r.finish === 'declined' ? '<span class="dc-mb-c mute">締め凸 見送り</span>' : '';
-                const cols = isDay ? `${mock}${excl}${slv}${strip(r)}${atk}${fin}` : `${mock}${excl}${slv}${strip(r)}${push}`;
+                const cols = isDay ? `${mock}${excl}${slv}${strip(r)}${counts(r)}${atk}${fin}` : `${mock}${excl}${slv}${strip(r)}${counts(r)}${push}`;
                 const why = r.reasons.length
                     ? r.reasons.map((w, i) => i === 0 ? `<b>${escapeHtml(w.label)}</b>` : escapeHtml(w.label)).join(' · ')
                     : '<span style="color:var(--t-muted);">完了</span>';
@@ -18193,7 +18201,8 @@
             const samePin = rv.pinFor(_resv.rows || [], { playerId: row.player_id, bossNumber: row.boss_number, loadoutSlot: row.loadout_slot });
             const base = (_resv.rows || []).filter(r => rv.isFixed(r) && !(samePin && Number(r.id) === Number(samePin.id)));
             const solve = (rows) => window.computeOptimalPlanCore({
-                season: snap.season, bosses: snap.bosses, players: snap.players,
+                season: snap.season, bosses: snap.bosses, players: _playersWithBlockCaps(snap.players, snap.season),
+                excludeTimeUnknown: true,   // 画面の算出と同じ (段階 2b)
                 currentSlot: _planNowSlot(snap.season), timeAware: true, onlyAvailableNow: false,
                 timeStrict: _opsPlanTimeMode === 'strict',   // 画面の算出と同じ時間の扱い
                 reservations: rv.toSolverConstraints(rows),
@@ -21460,6 +21469,24 @@
         }
         // snapshot を渡せば「そのロードで得た盤面」で算出する (並行ロード時に
         // opsStore が世代ガードで古い結果を保存しない契約のため、load() の戻り値を使う)
+        // 🧱 段階 2b (2026-10-22): 本人が時間のシートで決めた「ブロックごとの凸数」をソルバーの上限にする。
+        //   上限 = 凸数 − そのブロックで済んだ凸 (済んだ凸の時は報告時刻 = JST)。凸数を入れていない人・区切りが無いときはそのまま
+        function _playersWithBlockCaps(players, season) {
+            const rb = window.raidBlocksDomain, ac = window.attackCheckDomain;
+            if (!rb || !Array.isArray(players)) return players;
+            const blocks = rb.blocksOfSeason(season || null);
+            if (!Array.isArray(blocks) || blocks.length === 0) return players;
+            return players.map(p => {
+                if (!p || !p.blockCounts) return p;
+                const doneHours = (Array.isArray(p.attacks) ? p.attacks : [])
+                    .map(a => (ac ? ac.hourIdxOfMs(a && a.reported_at) : null))
+                    .filter(i => Number.isInteger(i))
+                    .map(i => (i + 5) % 24);
+                const caps = rb.capsOf(p.blockCounts, blocks, doneHours);
+                return caps.length > 0 ? { ...p, blockCaps: caps } : p;
+            });
+        }
+
         function computeOptimalPlan(options = {}, snapshot = null) {
             const src = snapshot || opsStore.get();
             if (!src) return null;
@@ -21471,7 +21498,8 @@
             const rv = window.reservationsDomain;
             const resvRows = Array.isArray(options.reservations) ? options.reservations : null;
             return window.computeOptimalPlanCore({
-                season, bosses, players,
+                season, bosses, players: _playersWithBlockCaps(players, season),
+                excludeTimeUnknown: true,   // 🧱 段階 2b: 時間未登録の人は「いつでも」にしない (⏳隙間型の撤廃とそろえる)
                 reservations: (rv && resvRows) ? rv.toSolverConstraints(resvRows) : [],
                 // 'day' はリセット直後 (h05) 起点 = レイド日24時間のフルプラン。'now' も前日までは h05 (_planNowSlot)。
                 // 🧱 ブロックのときは **ブロックの始まりより前には置かない** (max(起点, ブロックの頭))。「次」のブロックを先に組むとき、

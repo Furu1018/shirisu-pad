@@ -174,12 +174,14 @@
         //   (ベンチ tests/bench-block.mjs の H と同じ読み方)。1 時間の「今動ける人だけ」は従来どおり availableSlots に含むかだけ
         const availableAtSlots = (Array.isArray(input.availableAtSlots) && input.availableAtSlots.length > 0)
             ? new Set(input.availableAtSlots.map(String)) : null;
+        // 🧱 段階 2b (2026-10-22): 時間未登録の人を「いつでも出られる」にしない (渡さなければ従来どおり)
+        const excludeTimeUnknown = !!input.excludeTimeUnknown;
         const inScope = (p) => {
             if (!onlyAvailableNow) return true;
             if (availableAtSlots) {
                 if (p.flexTime) return true;
                 const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
-                return slots.length === 0 || slots.some(s => availableAtSlots.has(String(s)));
+                return (slots.length === 0 && !excludeTimeUnknown) || slots.some(s => availableAtSlots.has(String(s)));
             }
             return (p.availableSlots || []).includes(availableAtSlot);
         };
@@ -281,10 +283,26 @@
         // openIdx 以降でそのメンバーが凸できる最も早い時間帯を返す。
         // 戻り値: { idx, flex } / null = 時間的に不可。
         //   flex=true は「時刻を約束しない ⏳隙間 割当」(純粋な隙間型、またはハイブリッドの登録時間外)
-        const earliestHourFor = (m, openIdx) => {
+        // 🧱 段階 2b: ブロックごとの凸数の上限 (players[].blockCaps = [{ fromIdx, toIdx, max }])。
+        //   時刻 i がその人の上限つきブロックに入っていて、そのブロックに置いた数が max に達していたら、その時刻には置かない。
+        //   数えるのは applyPick / undoPick / assignLv4 (置いた時刻 hourIdx で)。予約は約束なので必ず置くが、数には入れる
+        const capAt = (m, i) => (m.caps && i != null) ? (m.caps.find(c => i >= c.fromIdx && i <= c.toIdx) || null) : null;
+        const capFull = (m, i) => { const c = capAt(m, i); return !!c && c.used >= c.max; };
+        const bumpCap = (m, i, d) => { const c = capAt(m, i); if (c) c.used += d; };
+        const earliestHourFor = (m, openIdx, opt) => {
+            if (m.timeExcluded) return null;   // 時間未登録 (excludeTimeUnknown) = 候補にしない
             if (!timeAware) return { idx: openIdx, flex: false };
             if (m.hourIdxs === null) return { idx: openIdx, flex: m.flexTime };   // 時間不明/純隙間型
-            for (const i of m.hourIdxs) if (i >= openIdx) return { idx: i, flex: false };   // 登録時間内 = 確約
+            const useCaps = !!m.caps && !(opt && opt.ignoreCaps);
+            let capped = false;
+            for (const i of m.hourIdxs) {
+                if (i < openIdx) continue;
+                if (useCaps && capFull(m, i)) { capped = true; continue; }
+                return { idx: i, flex: false };   // 登録時間内 = 確約
+            }
+            // ★ 出られる時間はあるが、凸数の希望ぶんを置き終えた = これ以上は置かない (時間外のベストエフォートにも回さない)
+            if (capped) return null;
+            if (useCaps && capFull(m, openIdx)) return null;
             if (m.flexTime) return { idx: openIdx, flex: true };   // ハイブリッド: 時間外は隙間でやる
             // ⏰ 時間厳守: 宣言した時間に合わないレベルには組み込まない (本人が出られない時刻の凸を計画に乗せない)
             if (timeStrict) return null;
@@ -434,6 +452,13 @@
                     allHourIdxs: allSlots,   // 未フィルタの宣言時間 (ミスマッチ時の「最寄り時刻」表示用)
                     timeUnknown,
                     flexTime,
+                    // 🧱 段階 2b: 時間未登録を候補にしない / ブロックごとの凸数の上限 (used は置いた数)。どちらも渡されたときだけ
+                    timeExcluded: excludeTimeUnknown && timeUnknown,
+                    caps: (timeAware && Array.isArray(p.blockCaps) && p.blockCaps.length > 0)
+                        ? p.blockCaps
+                            .filter(c => c && Number.isInteger(c.fromIdx) && Number.isInteger(c.toIdx) && Number.isFinite(Number(c.max)))
+                            .map(c => ({ fromIdx: c.fromIdx, toIdx: c.toIdx, max: Math.max(0, Math.floor(Number(c.max))), used: 0 }))
+                        : null,
                 };
             });
 
@@ -527,12 +552,14 @@
             // メンバー状態のスナップショット — 踏破モードで失敗したら吸収モードでやり直すため
             const snapshot = memberState.map(m => ({
                 remainingAttacks: m.remainingAttacks,
+                capsUsed: m.caps ? m.caps.map(c => c.used) : null,
                 avail: Object.fromEntries(Object.entries(m.avail).map(([k, v]) => [k, [...v]])),
                 usedChars: new Set(m.usedChars),
             }));
             const restoreSnapshot = () => memberState.forEach((m, i) => {
                 const s = snapshot[i];
                 m.remainingAttacks = s.remainingAttacks;
+                if (m.caps && s.capsUsed) m.caps.forEach((c, k) => { c.used = s.capsUsed[k]; });
                 m.avail = Object.fromEntries(Object.entries(s.avail).map(([k, v]) => [k, [...v]]));
                 m.usedChars = new Set(s.usedChars);
             });
@@ -679,6 +706,7 @@
                         if (loArr.length === 0) delete pick.avail[t.b.weakness];
                     }
                     pick.remainingAttacks--;
+                    if (timeAware) bumpCap(pick, pickHour, +1);   // 🧱 段階 2b: そのブロックに置いた数
                     // 得意属性の消化管理: 必須を消化したら予約も1つ解放
                     // (自由枠の消費は remainingAttacks の減少で自然に反映される)
                     const justPushed = t.attacks[t.attacks.length - 1];
@@ -697,6 +725,7 @@
                     t.attacks.splice(idx, 1);
                     t.rem += atk.dmgB;
                     m.remainingAttacks++;
+                    if (timeAware) bumpCap(m, atk.hourIdx, -1);   // applyPick の逆
                     // 編成を avail へ戻す (ダメージ降順を維持)
                     const w = t.b.weakness;
                     if (!m.avail[w]) m.avail[w] = [];
@@ -875,7 +904,7 @@
                         slot = { idx: openIdx, flex: true };
                     } else {
                         const want = (s.timeSlot != null) ? IDX_BY_KEY.get(s.timeSlot) : undefined;
-                        if (want == null) slot = earliestHourFor(m, openIdx);
+                        if (want == null) slot = earliestHourFor(m, openIdx, { ignoreCaps: true });   // 予約は約束 = 凸数の上限で落とさない
                         else if (want < openIdx) return;   // 開放より前 = 実行できない
                         else slot = { idx: want, flex: false };
                     }
@@ -1080,7 +1109,7 @@
                     else if (r.flex) slot = { idx: lv4OpenIdx, flex: true };
                     else {
                         const want = (r.timeSlot != null) ? IDX_BY_KEY.get(r.timeSlot) : undefined;
-                        if (want == null) slot = earliestHourFor(m, lv4OpenIdx);
+                        if (want == null) slot = earliestHourFor(m, lv4OpenIdx, { ignoreCaps: true });
                         else if (want < lv4OpenIdx) continue;   // 開放より前 = 置かない (unmetOf が before_open にする)
                         else slot = { idx: want, flex: false };
                     }
@@ -1110,6 +1139,7 @@
                         if (list.length === 0) delete m.avail[lv4Weak];
                     }
                     m.remainingAttacks--;
+                    if (timeAware) bumpCap(m, slot.idx, +1);
                 }
                 // 同一人物でも別編成 (loadout slot) なら同属性に複数凸できる — 残凸数まで dmg 降順で割当。
                 while (m.remainingAttacks > 0) {
@@ -1149,6 +1179,7 @@
                     if (loIdx >= 0) list.splice(loIdx, 1);
                     if (list.length === 0) delete m.avail[lv4Weak];
                     m.remainingAttacks--;
+                    if (timeAware) bumpCap(m, slot.idx, +1);
                 }
             }
             const lv4HasFlex = lv4Attacks.some(a => a.flex);
@@ -1832,6 +1863,8 @@
             level: '測定Lv不足',
             surplus: '余剰戦力',
             time: '時間帯なし',
+            timeUnknown: '時間未登録',
+            cap: '凸数の希望どおり',
             noAliveAttr: '生存ボスの属性が未提出',
             hpExhausted: 'ボスHP尽き',
         };
@@ -1848,6 +1881,13 @@
                 if (m.noSubmission) {
                     key = 'noSubmission';
                     reason = '模擬未提出 (提出があれば候補に入る)';
+                } else if (m.timeExcluded) {
+                    key = 'timeUnknown';
+                    reason = '戦闘可能時間が未登録 (登録があれば候補に入る)';
+                } else if (m.caps && m.caps.length > 0 && m.caps.every(c => c.used >= c.max)
+                    && Array.isArray(m.hourIdxs) && m.hourIdxs.every(i => capAt(m, i))) {
+                    key = 'cap';
+                    reason = '本人が決めたブロックごとの凸数をすべて置いた (残りは置かない)';
                 } else if (attrs.length === 0) {
                     key = lv4Open ? 'lv4NoLoadout' : 'attrsExhausted';
                     reason = lv4Open

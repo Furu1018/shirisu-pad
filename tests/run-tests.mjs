@@ -3,6 +3,7 @@
 //   node tests/run-tests.mjs
 // ============================================================================
 import assert from 'node:assert/strict';
+import _fs2b from 'node:fs';   // 🧱 段階 2b の配線テスト用 (上のほうのテストは _fsF がまだ無い)
 import '../js/optimal-plan.js';        // globalThis.computeOptimalPlanCore を定義する
 import '../js/domain/attributes.js';   // globalThis.weaknessPtOf 等 (リアーキ ステップ1)
 import '../js/domain/fururi.js';       // globalThis.fururiDomain (リアーキ ステップ2)
@@ -257,6 +258,84 @@ test('3凸済みメンバーは候補に含まれない', () => {
 console.log('\ntimeAware:');
 
 const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, players, opts), timeAware: true });
+
+// ===== 🧱 段階 2b (2026-10-22): ブロックごとの凸数の上限 (blockCaps) + 時間未登録を候補にしない (excludeTimeUnknown) =====
+{
+    const MORNING = ['h05', 'h06', 'h07', 'h08'], EVENING = ['h18', 'h19', 'h20'];
+    const CAPS = (m, e) => [{ fromIdx: 0, toIdx: 3, max: m }, { fromIdx: 13, toIdx: 15, max: e }];
+    const three = () => [boss(1, 'fire', { remainingB: 150 }), boss(2, 'water', { remainingB: 150 }), boss(3, 'iron', { remainingB: 150 })];
+    const hoursOf = (plan, name) => plan.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks.filter(a => a.memberName === name).map(a => a.hourLabel))).sort();
+    const solo = (extra = {}, popts = {}) => [player('朝夕の人', { fire: 10, water: 10, iron: 10 }, { availableSlots: [...MORNING, ...EVENING], ...popts })].map(p => ({ ...p, ...extra }));
+    test('🧱 2b: 凸数の上限 — 朝 1 · 夕方 2 なら朝に 1 凸・夕方に 2 凸 (上限が無ければ 3 凸とも朝)', () => {
+        const free = compute(timeInput(three(), solo(), { currentSlot: 'h05' }));
+        assert.deepEqual(hoursOf(free, '朝夕の人'), ['5時', '5時', '5時'], '前提: 上限なしは朝に 3 凸');
+        const capped = compute(timeInput(three(), solo({ blockCaps: CAPS(1, 2) }), { currentSlot: 'h05' }));
+        assert.deepEqual(hoursOf(capped, '朝夕の人'), ['18時', '18時', '5時']);
+        // 朝 0 (= 朝は済んだ) なら 3 凸目まで夕方の上限 2 で止まる
+        const m0 = compute(timeInput(three(), solo({ blockCaps: CAPS(0, 2) }), { currentSlot: 'h05' }));
+        assert.deepEqual(hoursOf(m0, '朝夕の人'), ['18時', '18時']);
+        assert.deepEqual(m0.unusedDetail.map(d => [d.name, d.remaining, d.key]), [['朝夕の人', 1, 'cap']], '上限で残った凸の理由が「凸数の希望どおり」でない');
+        // 時間厳守 OFF でも、上限で溢れたぶんを時間外のベストエフォートに回さない
+        const loose = compute({ ...timeInput(three(), solo({ blockCaps: CAPS(0, 2) }), { currentSlot: 'h05' }), timeStrict: false });
+        assert.deepEqual(hoursOf(loose, '朝夕の人'), ['18時', '18時'], '上限の外に ⚠時間外で置いている');
+        // timeAware でなければ上限は効かない (時刻が無い)
+        const nt = compute(makeInput(three(), solo({ blockCaps: CAPS(0, 0) }), { currentSlot: 'h05' }));
+        assert.equal(nt.levels.flatMap(lv => lv.bosses.flatMap(b => b.attacks)).length, 3);
+    });
+    test('🧱 2b: 予約は凸数の上限より強い (必ず置く) が、置いた数は上限に数える', () => {
+        const resv = [{ reservationId: 1, memberId: '朝夕の人', level: null, bossNumber: 2, loadoutSlot: 1, flex: false, timeSlot: 'h06', team: [], expectedB: 0 }];
+        const p = compute({ ...timeInput(three(), solo({ blockCaps: CAPS(1, 2) }), { currentSlot: 'h05' }), reservations: resv });
+        assert.deepEqual(hoursOf(p, '朝夕の人'), ['18時', '18時', '6時'], '予約で朝の 1 凸を使ったのに、もう 1 凸を朝に置いている');
+        assert.deepEqual(p.unmetReservations, []);
+        // 朝の上限 0 でも予約は置く
+        const p0 = compute({ ...timeInput(three(), solo({ blockCaps: CAPS(0, 2) }), { currentSlot: 'h05' }), reservations: resv });
+        assert.ok(hoursOf(p0, '朝夕の人').includes('6時'), '上限 0 のブロックの予約を落とした');
+        assert.deepEqual(p0.unmetReservations, []);
+    });
+    test('🧱 2b: excludeTimeUnknown — 時間未登録の人は候補にしない (渡さなければ従来どおり「いつでも」)', () => {
+        const ps = [player('未登録の人', { fire: 10 }), player('夕方の人', { fire: 10 }, { availableSlots: EVENING })];
+        const before = compute(timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }));
+        assert.deepEqual(hoursOf(before, '未登録の人').length, 1, '前提: 従来は未登録の人も置く');
+        const after = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), excludeTimeUnknown: true });
+        assert.deepEqual(hoursOf(after, '未登録の人'), []);
+        assert.deepEqual(hoursOf(after, '夕方の人'), ['18時']);
+        assert.deepEqual(after.membersTimeUnknown, ['未登録の人'], '未登録の人を運営に名指ししていない');
+        assert.equal(after.unusedDetail.find(d => d.name === '未登録の人')?.key, 'timeUnknown');
+        // 🧱 ブロックで組むときも対象に数えない
+        const blk = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18', onlyAvailableNow: true }), availableAtSlots: EVENING, excludeTimeUnknown: true });
+        assert.equal(blk.candidateCount, 1);
+        // 予約 (約束) は未登録でも置く
+        const resv = [{ reservationId: 3, memberId: '未登録の人', level: null, bossNumber: 1, loadoutSlot: 1, flex: false, timeSlot: 'h19', team: [], expectedB: 0 }];
+        const r = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), excludeTimeUnknown: true, reservations: resv });
+        assert.deepEqual(hoursOf(r, '未登録の人'), ['19時']);
+    });
+    test('🧱 2b: 上限も除外も渡さなければ出力に鍵が増えない (指紋が変わらない)', () => {
+        const a = compute(timeInput(three(), solo(), { currentSlot: 'h05' }));
+        const b = compute({ ...timeInput(three(), solo({ blockCaps: [] }), { currentSlot: 'h05' }), excludeTimeUnknown: false });
+        assert.equal(JSON.stringify(a), JSON.stringify(b));
+    });
+    test('★ 配線 (2b): 算出と承認の影響の両方が _playersWithBlockCaps + excludeTimeUnknown: true を渡す / 済んだ凸の時は報告時刻 (JST) / メンバー表に凸数', () => {
+        const html = _fs2b.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+        const calls = [...html.matchAll(/computeOptimalPlanCore\(\{[\s\S]*?\n            \}\);/g)].map(m => m[0]);
+        assert.equal(calls.length, 2);
+        for (const c of calls) {
+            assert.ok(/players: _playersWithBlockCaps\(/.test(c), `凸数の上限を渡していない: ${c.slice(0, 90)}`);
+            assert.ok(/excludeTimeUnknown: true,/.test(c), `時間未登録を外していない: ${c.slice(0, 90)}`);
+        }
+        const src = html.match(/function _playersWithBlockCaps\([\s\S]*?\n        \}\n/)?.[0];
+        assert.ok(src, '_playersWithBlockCaps が無い');
+        const fn = new Function('window', `${src}\nreturn _playersWithBlockCaps;`)({ raidBlocksDomain: globalThis.raidBlocksDomain, attackCheckDomain: globalThis.attackCheckDomain });
+        const ps = [
+            { id: 1, blockCounts: { '9-11': 1, '18-20': 2 }, attacks: [{ reported_at: '2026-10-10T00:30:00Z' }] },   // JST 9:30 = 午前で 1 凸済み
+            { id: 2, blockCounts: null, attacks: [] },
+        ];
+        const out = fn(ps, { metadata: {} });
+        assert.deepEqual(out[0].blockCaps, [{ fromIdx: 4, toIdx: 6, max: 0 }, { fromIdx: 13, toIdx: 15, max: 2 }]);
+        assert.equal(out[1], ps[1], '凸数の無い人を作り直している');
+        assert.ok(!('blockCaps' in ps[0]), '盤面の players を書き換えている (ストアを汚す)');
+        assert.ok(/凸数 \$\{escapeHtml\(lbl\)\}/.test(html) && /\$\{strip\(r\)\}\$\{counts\(r\)\}/.test(html), '運営のメンバー表に凸数の列が無い');
+    });
+}
 
 test('時間外(ミスマッチ)割当は MISMATCH_PENALTY で正規時間の人より後回しになる (Codex監査 #6)', () => {
     // X: 火力はやや上(オーバーキル小)だが凸可能時間が過去(h05)のみ → 現在h21ではミスマッチ。
