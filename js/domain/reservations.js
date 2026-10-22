@@ -630,6 +630,8 @@
                 dmgB: Number(r.expected_damage_b) || (a ? Number(a.dmgB) || 0 : 0),
                 flex: r.time_mode === 'flex', timeSlot: r.time_mode === 'flex' ? null : (r.time_slot || null),
                 level: a ? a.level : null, inPlan: !!a, done: !!(a && a.done),
+                // 予約そのもののレベル (メンバー発は null = レベルを持たない約束) と、約束か (📣 お願い中の 📌 は約束でない)
+                raidLevel: r.raid_level != null ? Number(r.raid_level) : null, promise: isPromise(r),
                 bossName: a ? a.bossName : null, weakness: a ? a.weakness : null, attribute: a ? a.attribute : null,
                 approvedBy: r.approved_by || null,
                 pinnedBy: r.pinned_by || null, askDeadlineAt: r.ask_deadline_at || null,   // 📣 運営からのお願い (status = 'pinned')

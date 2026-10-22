@@ -188,6 +188,17 @@ await test('取り消し希望中の予約は固定のまま、印だけ変わ�
     assert.ok(/dc-plan-card fixed pending/.test(out));
 });
 
+await test('★ レベルを持たない 🔒 予約は、プランの予想レベル (Lv2) とずれていても いまのレベル (Lv1) で「報告する ▶」が出る', () => {
+    // 2026-10-22 練習の通し確認で発覚: 予想より踏破が遅れて Lv1 のまま約束の 21 時が来ると、🔒 の行が「Lv2になったら」のまま報告できなかった
+    const p = plan([{ reservationId: 1, hourIdx: 16, hourLabel: '21時' }, { loadoutSlot: 2, team: ['f', 'g', 'h', 'i', 'j'] }]);   // どちらも Lv2 の予想
+    const count = (rows) => (run({ pub: p, rows }).mine(p, 7, new Map(), 1).match(/_planReportBoss\(3\)/g) || []).length;
+    assert.equal(count([resv({ id: 1 })]), 1, 'メンバーの予約 (レベルなし) で報告できない / 予約でない Lv2 の割当まで報告できる');
+    assert.equal(count([{ ...resv({ id: 1 }), raid_level: 2 }]), 0, 'レベル付きの約束 (締め凸の了承) を別のレベルで報告させている');
+    assert.equal(count([{ ...resv({ id: 1, status: 'pinned' }), asked_at: 'x', approved_at: null }]), 0, '📣 お願い中 (約束でない) の固定で報告させている');
+    const mine = run({ pub: p, rows: [resv({ id: 1 })] }).mine(p, 7, new Map(), 1);
+    assert.ok(/Lv2になったら/.test(mine), '予約でない Lv2 の割当は「Lv2になったら」のまま');
+});
+
 // ---- 📘 登録された模擬 (🧱 段階 1・2026-10-22): renderMyMocksReadonly を切り出して実際に走らせる ----
 const SRC_MOCKS = cut('        async function renderMyMocksReadonly(identity)');
 function runMocks({ lite = true, load = async () => [], who = { id: 7 } } = {}) {

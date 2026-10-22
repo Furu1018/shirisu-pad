@@ -328,10 +328,14 @@
         const done = new Map();
         (Array.isArray(doneHours) ? doneHours : []).forEach(h => { const i = blockIndexOfHour(list, h); if (i >= 0) done.set(i, (done.get(i) || 0) + 1); });
         const out = [];
+        let total = 0;   // ★ 合計 3 もブロックの順で守る (保存の時点で詰めてあっても、生の値を受けたときに 3 を超えて渡さない: Codex指摘)
         list.forEach((b, i) => {
             const n = Number(counts[countKey(b)]);
             if (!Number.isInteger(n) || n < 1) return;
-            out.push({ fromIdx: b.fromIdx, toIdx: b.toIdx, max: Math.max(0, Math.min(n, MAX_ATTACKS) - (done.get(i) || 0)) });
+            const take = Math.min(n, MAX_ATTACKS - total);
+            if (take <= 0) return;
+            total += take;
+            out.push({ fromIdx: b.fromIdx, toIdx: b.toIdx, max: Math.max(0, take - (done.get(i) || 0)) });
         });
         return out;
     }

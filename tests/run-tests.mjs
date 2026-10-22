@@ -9403,6 +9403,9 @@ console.log('\ngrowthDomain:');
         // capsOf: max = 凸数 − そのブロックで済んだ凸 (朝に 1 凸済み → 朝の残り 0 / 夕方は 2)
         assert.deepEqual(d.capsOf({ '5-8': 1, '18-20': 2 }, blocks, [7, 13]), [{ fromIdx: 0, toIdx: 3, max: 0 }, { fromIdx: 13, toIdx: 15, max: 2 }]);
         assert.deepEqual(d.capsOf(null, blocks, []), []); assert.deepEqual(d.capsOf({ '1-2': 1 }, blocks, []), [], '合わない鍵 (区切りが変わった) を上限にしている');
+        // 生の値でも合計 3 をブロックの順で守る (朝 3 + 午前 3 → 朝 3 だけ) (Codex指摘)
+        assert.deepEqual(d.capsOf({ '5-8': 3, '9-11': 3 }, blocks, []), [{ fromIdx: 0, toIdx: 3, max: 3 }], '合計 3 を超える上限を渡している');
+        assert.deepEqual(d.capsOf({ '5-8': 2, '18-20': 2 }, blocks, []), [{ fromIdx: 0, toIdx: 3, max: 2 }, { fromIdx: 13, toIdx: 15, max: 1 }]);
     });
     test('★ 配線: 🧱 段階 2 凸数の保存と読み込み (SQL 53) / ⏳隙間時間型の撤廃', () => {
         const html = _grRd('index.html').split(String.fromCharCode(13)).join('');
@@ -9418,15 +9421,20 @@ console.log('\ngrowthDomain:');
         assert.ok(/_one\('confirmed_at, unavailable, slot_count, slots_snapshot, block_counts'\)/.test(client) && /_all\('player_id, confirmed_at, unavailable, slot_count, slots_snapshot, block_counts'\)/.test(client), '確認の行から凸数を読んでいない');
         assert.ok(/if \(uErr && _isMissingColumnErr\(uErr, 'block_counts'\)\) \{ withCounts = false;/.test(client), '盤面ローダが 53 未適用で落ちる');
         assert.ok(/if \(c\.unavailable\) \{ unavailableIds\.add\(Number\(c\.player_id\)\); return; \}/.test(client), '「今回は難しい」の除外が壊れた (全部の行を読むようにしたので unavailable を見る)');
-        assert.ok(!/window\.supabaseUpdateAvailabilityPrefs/.test(client) && /return \{ flexTime: false, notifyAllHours/.test(client), '⏳隙間時間型を読む・書く経路が残っている');
+        assert.ok(!/supabaseUpdateAvailabilityPrefs|supabaseLoadAvailabilityPrefs/.test(client + html), '⏳隙間時間型を読む・書く経路が残っている');
+        // ⏳ flex_time の列はもう select しない (通知状況の一覧・盤面ローダ)。flexTime は常に false で返す (Codex指摘: 一覧に「+⏳」が残っていた)
+        assert.ok(!/'[^'\n]*flex_time[^'\n]*'/.test(client) && !/flexTime: !!p\.flex_time/.test(client), 'players.flex_time をまだ読んでいる (列の指定に残っている)');
         // シート: 凸数の欄・±・開いたときだけ確認の行から取り込む・確認で渡す・確認したあとに変えたら知らせる
         const ui = html.match(/\n        function _renderAvailUI\(\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
         assert.ok(/_availUI\.counts = rbd \? rbd\.normalizeCounts\(_availUI\.counts, blocks, slotKeys\) : null;/.test(ui) && /\$\{countsHtml\}/.test(ui), 'シートに凸数の欄が無い');
         assert.ok(/onclick="_availStepCount\(\$\{st\.idx\}, -1\)"/.test(ui) && /onclick="_availStepCount\(\$\{st\.idx\}, 1\)"/.test(ui) && /\$\{cTotal >= 3 \? 'disabled' : ''\}/.test(ui), '± / 合計 3 の上限が無い');
         assert.ok(/_availUI\.counts = rbd\.stepCount\(_availUI\.counts, blocks, keys, Number\(i\), Number\(delta\)\);/.test(html));
         assert.ok(/_availUI\.counts = null;\s*\n\s*_availUI\.countsPending = true;/.test(html) && /if \(_availUI\.countsPending\) \{/.test(html), '開いたときだけ確認の行から凸数を取り込む、ができていない');
+        // 本人が −/+ を押したら、遅れて届いた確認の行で上書きしない (Codex指摘)
+        const step = html.match(/function _availStepCount\(i, delta\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
+        assert.ok(/_availUI\.counts = rbd\.stepCount\([^\n]*\n\s*_availUI\.countsPending = false;/.test(step), '−/+ のあとも確認の行の取り込みを待っている (押した凸数が上書きされる)');
         const cfm = html.match(/\n        async function handleConfirmAvailability\(unavailable\) \{[\s\S]*?\n        \}\n/)?.[0] || '';
-        assert.ok(/counts = \(!unavailable && rbd\) \? rbd\.normalizeCounts\(_availUI\.counts, rbd\.blocksOfSeason\(_availUI\.season \|\| ctx\.season\), slots\) : null;/.test(cfm), '凸数を保存した時間帯で詰め直していない');
+        assert.ok(/counts = \(!unavailable && rbd\) \? rbd\.normalizeCounts\(countsAtPress, rbd\.blocksOfSeason\(_availUI\.season \|\| ctx\.season\), slots\) : null;/.test(cfm), '凸数を保存した時間帯で詰め直していない');
         assert.ok(/slots: unavailable \? null : slots, blockCounts: counts \}\);/.test(cfm) && /countsDropped = !!\(res && res\.blockCountsDropped\);/.test(cfm), '確認で凸数を渡していない / 落ちたことを見ていない');
         assert.ok(/\.\.\.\(countsDropped \? \{\} : \{ block_counts: counts \}\)/.test(cfm), '落ちたときに凸数を持つ (「凸数を変えました」が出続ける)');
         assert.ok(/const changedCounts = !!\(c && !c\.unavailable && 'block_counts' in c && _cKey\(c\.block_counts\) !== _cKey\(_availUI\.counts\)\);/.test(html), '確認したあとに凸数を変えたことを知らせていない');

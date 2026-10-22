@@ -54,7 +54,6 @@ function run({ slots = [], prefs = { flexTime: false, notifyAllHours: false }, n
             availabilityDomain: dom,
             ...(withBlocks ? { raidBlocksDomain: globalThis.raidBlocksDomain } : {}),
             supabaseLoadAvailability: async () => { if (fail) throw new Error('boom'); return slots; },
-            supabaseLoadAvailabilityPrefs: async () => prefs,
         },
         getCurrentSlotJST: () => nowSlot,
         HOUR_ORDER: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4],

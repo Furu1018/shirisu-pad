@@ -4726,12 +4726,12 @@ window.supabaseDeleteCharacterMasterEntry = async function (canonicalName) {
 // 戻り値: [{ id, name, subscribed, deviceCount, slotsOn, lastDmgUpdate }]
 // ============================================================================
 window.supabaseLoadMemberNotificationStatus = async function () {
-    // flex_time/notify_all_hours は 18_availability_prefs.sql 適用後のみ存在 → フォールバック
+    // notify_all_hours は 18_availability_prefs.sql 適用後のみ存在 → フォールバック (⏳ flex_time は撤廃したので読まない)
     let players;
     {
         let r = await supabase
             .from('players')
-            .select('id, name, archived, flex_time, notify_all_hours')
+            .select('id, name, archived, notify_all_hours')
             .or('archived.is.null,archived.eq.false')
             .order('name', { ascending: true });
         if (r.error) {
@@ -4774,7 +4774,7 @@ window.supabaseLoadMemberNotificationStatus = async function () {
         subscribed: (subsByPlayer.get(p.id) || 0) > 0,
         deviceCount: subsByPlayer.get(p.id) || 0,
         slotsOn: slotsByPlayer.get(p.id) || 0,
-        flexTime: !!p.flex_time,             // ⏳ 隙間時間型 (時間帯0でも意図的)
+        flexTime: false,                     // ⏳ 隙間時間型は撤廃 (2026-10-22)。列 flex_time は残るが読まない
         notifyAllHours: !!p.notify_all_hours,   // 🔔 通知はいつでも受け取る
         lastDmgUpdate: lastDmgByPlayer.get(p.id) || null,
     }));
@@ -4969,8 +4969,8 @@ window.supabaseLoadOpsDashboardData = async function () {
                 .or('archived.is.null,archived.eq.false')
                 .order('name', { ascending: true });
         };
-        let r = await tryQuery('id, name, archived, avatar_url, avatar_character, strong_attributes, flex_time, notify_all_hours');
-        if (r.error && /column .*(flex_time|notify_all_hours)/i.test(String(r.error?.message))) {
+        let r = await tryQuery('id, name, archived, avatar_url, avatar_character, strong_attributes, notify_all_hours');   // ⏳ flex_time は撤廃したので読まない
+        if (r.error && /column .*notify_all_hours/i.test(String(r.error?.message))) {
             // 18_availability_prefs.sql 未適用環境
             r = await tryQuery('id, name, archived, avatar_url, avatar_character, strong_attributes');
         }
@@ -5249,20 +5249,6 @@ window.supabaseSetAttackConfirmed = async function (attackId, on, byName) {
     if (!data || data.length === 0) throw new Error('その凸報告は見つかりません (消された可能性)。画面を更新してください');
     window.supabaseLogActivity?.('attack_confirm', `${on ? '✓ 凸報告を確認' : '凸報告の確認を外す'}: B${data[0].boss_number}`, { playerId: data[0].player_id, actorName: byName || null });
     return patch;
-};
-
-// 戦闘可能時間の運用オプション (⏳隙間時間型 / 🔔いつでも通知) を保存
-// 18_availability_prefs.sql 未適用環境ではエラーメッセージで適用を促す
-// 自分の運用オプションを取得 (未適用環境では両方 false)
-window.supabaseLoadAvailabilityPrefs = async function (playerId) {
-    if (!playerId) return { flexTime: false, notifyAllHours: false };
-    const { data, error } = await supabase
-        .from('players')
-        .select('flex_time, notify_all_hours')
-        .eq('id', playerId)
-        .maybeSingle();
-    if (error) return { flexTime: false, notifyAllHours: false };
-    return { flexTime: false, notifyAllHours: !!data?.notify_all_hours };   // ⏳ 隙間時間型は撤廃 (2026-10-22)。列は残るが読まない
 };
 
 // プレイヤーを ID で取得（存在チェック用）

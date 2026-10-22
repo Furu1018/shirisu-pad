@@ -7997,9 +7997,7 @@
             } catch { /* 判定不能なら促さない */ }
             try {
                 const slots = await window.supabaseLoadAvailability(playerId);
-                let flex = false;
-                try { flex = !!(await window.supabaseLoadAvailabilityPrefs(playerId))?.flexTime; } catch { /* 18未適用環境 */ }
-                needTime = (slots || []).length === 0 && !flex;
+                needTime = (slots || []).length === 0;   // ⏳ 隙間時間型は撤廃 (2026-10-22) — 時間が 0 なら未登録
             } catch { needTime = false; }
             const result = { pid: playerId, ts: now, needPush, needTime };
             if (gen === _setupNeedsGen) _setupNeedsCache = result;   // 取得中に無効化されたら保存しない (返り値は使い捨て)
@@ -10509,7 +10507,11 @@
                         <div style="flex:1;min-width:0;font-size:12px;font-weight:800;color:var(--t-ink);">報告済み <span style="font-size:10px;font-weight:700;color:var(--t-muted);">(プランにない凸)</span></div>
                     </div>`;
                 }
-                const reportable = !done && a.level != null && Number(a.level) === curLevel;   // 報告は現在開いているLvの割当だけ
+                // 報告は現在開いているLvの割当だけ。
+                // ★ ただしレベルを持たない約束 (メンバーの 🔒 予約 =「この時刻に・このボスへ・この編成で」) は、プランが予想したレベルとずれても報告できる
+                //   (予想より踏破が遅れて Lv1 のまま約束の時刻が来ると、「Lv2になったら」のまま報告できなかった。消し込みの matchForAttack もレベルを見ない)
+                const lvFree = a.kind === 'fixed' && a.promise && a.raidLevel == null;
+                const reportable = !done && (lvFree || (a.level != null && Number(a.level) === curLevel));
                 let right;
                 if (done) right = `<span style="flex:none;">${dmgHtml}</span>`;
                 else if (reportable) right = `<button data-member-report onclick="_planReportBoss(${bn})" style="flex:none;font-size:10.5px;font-weight:900;color:var(--on-fill);background:linear-gradient(135deg,var(--grad-ops-a),var(--grad-ops-b));border:none;border-radius:999px;padding:8px 12px;font-family:inherit;cursor:pointer;">報告する ▶</button>`;
@@ -11212,6 +11214,8 @@
             _availConfirmSetBusy(true);
             const msg = document.getElementById('mypageAvailMessage');
             let counts = null, countsDropped = false;
+            // 🧱 凸数は**押した時点**のものを控える (保存を待つ間に −/+ を押しても、この確認には混ぜない: Codex指摘)
+            const countsAtPress = (_availUI.counts && typeof _availUI.counts === 'object') ? { ..._availUI.counts } : null;
             try {
                 const ctx = await ensureActiveSeasonLoaded();
                 if (!ctx?.season?.id) throw new Error('アクティブなシーズンがありません');
@@ -11226,7 +11230,7 @@
                     if (!Array.isArray(slots)) throw new Error('時間帯を保存できませんでした');
                     // 🧱 凸数は実際に保存した時間帯で詰め直す (保存中に ON/OFF を変えた分を持ち込まない)
                     const rbd = window.raidBlocksDomain;
-                    counts = (!unavailable && rbd) ? rbd.normalizeCounts(_availUI.counts, rbd.blocksOfSeason(_availUI.season || ctx.season), slots) : null;
+                    counts = (!unavailable && rbd) ? rbd.normalizeCounts(countsAtPress, rbd.blocksOfSeason(_availUI.season || ctx.season), slots) : null;
                     const res = await window.supabaseConfirmAvailability(ctx.season.id, id.id,
                         { unavailable: !!unavailable, slotCount: unavailable ? null : slots.length, slots: unavailable ? null : slots, blockCounts: counts });
                     countsDropped = !!(res && res.blockCountsDropped);
@@ -13976,6 +13980,7 @@
             const blocks = rbd.blocksOfSeason(_availUI.season);
             const keys = HOUR_ORDER.map((h, k) => _availUI.slots[k] ? _hourKey(h) : null).filter(Boolean);
             _availUI.counts = rbd.stepCount(_availUI.counts, blocks, keys, Number(i), Number(delta));
+            _availUI.countsPending = false;   // 本人が触った凸数を、遅れて届いた確認の行で上書きしない (Codex指摘)
             _renderAvailUI();
             if (typeof _renderMyAvailConfirm === 'function') _renderMyAvailConfirm();
         }

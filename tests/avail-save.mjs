@@ -292,6 +292,20 @@ await test('★ 凸数は実際に保存した時間帯で詰め直して送る 
     assert.deepEqual(env._myAvailConfirmRef().block_counts, { '5-8': 1 });
 });
 
+await test('★ 確認の保存を待つ間に −/+ を押しても、この確認には押した時点の凸数が入る (Codex指摘)', async () => {
+    const env = makeEnv();
+    setSlots(env, [...ASA, ...YUU]);
+    env._availUI.counts = { '5-8': 1 };
+    const gate = defer(); saveGate = gate;
+    const p = env.handleConfirmAvailability(false);
+    await tick();                                      // 時間帯の保存が通信中
+    env._availUI.counts = { '5-8': 1, '18-20': 2 };   // 待っている間に夕方を +2
+    gate.resolve(); await p;
+    assert.deepEqual(confirmRows[0].blockCounts, { '5-8': 1 }, `押したあとの凸数が混ざった: ${JSON.stringify(confirmRows[0].blockCounts)}`);
+    env._renderMyAvailConfirm();
+    assert.ok(env.box._html().includes('確認したあとに凸数を変えました'), 'あとから変えた凸数を「確認しなおして」と言っていない');
+});
+
 await test('★ 確認したあとに凸数を変えたら「確認しなおして」と出す / 元に戻したら消える', async () => {
     const env = makeEnv();
     setSlots(env, [...ASA, ...YUU]);
