@@ -1107,7 +1107,13 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   📘 **登録された模擬** `#myMocksCard` (きょうの凸の直後・幅 6): 運営が登録した模擬を本人に読み取り専用で (`renderMyMocksReadonly`・きょうの凸と同じ 4 か所で描く / 隠す)。
   属性ごとの行は `mockIntakeDomain.readonlyRows(rows, { damageOf: mockDamageOf })` が唯一。lite でないとき (模擬タブがある) は出さない / 取れなかった (null) ときは隠す
   (「未登録」に偽装しない) / 世代 `_myMocksSeq` + いまの名乗り で遅れた描画を捨てる。直すのは Discord (本人の編集は無い)。実行テスト `tests/home-slots.mjs`
-  ★ 隠す対象を足すときは CSS の 1 行に足し、DOM は残す (run-tests が id の存在と CSS の両方を見る)  ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
+  ★ 隠す対象を足すときは CSS の 1 行に足し、DOM は残す (run-tests が id の存在と CSS の両方を見る)
+  ★ **模擬タブは運営モードでも隠す** (2026-10-22 ユーザー要望「運営画面にも模擬タブは要らない」): 出すのはシーズンの `member_input=full` のときだけ
+  (`_mockTabHidden = () => !_memberInputFull()` / `body.mock-tab-hidden [data-tab="mock"]`)。`_memberLite` (メンバーの入力と段階 1 の隠し) とは別の判定。
+  TabController の入口は 運営なら戦況へ (「📸 模擬の取り込みで登録します (自分のぶんも同じ)」)・メンバーはホームへ。`?tab=mock` は運営モードでもシーズンを読んでから判定。
+  ヒーローの `mockCta` は模擬タブが隠れていれば `_gotoOpsMockIntake()` (戦況へ → カードを開く → 位置を合わせる)。ユニオン事前比較 (`#mockCompareCard`) も一緒に隠れる (必要なら戦況へ移す)。
+  ★ **👑 マスター運営のデバッグ**: ホームのプロフィールに `#homeViewSwitch` (`data-master-only`・「👤 メンバーの見え方で見る」⇄「🛠 運営の画面に戻す」)。
+  🛠 と同じ `toggleOpsMode()` (端末ごとに記憶)。文字は `_applyOpsMode` が合わせる。マスター以外には出ない (運営担当は常に運営・メンバーは常にメンバー)  ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
   「誰の模擬か」を選んでスクショを選ぶ/カードに落とす → **本人の「画像で提出」と同じ関数** (`_ocrAttackMultiAndMerge` → `myDmgPreviewModal` →
   `supabaseSaveMockSubmission`) で保存。違うのは `_myDmgPreviewData.forPlayer` (誰のか・プレビューに「👑 運営の取り込み: ○○ さんの模擬として」) と
   保存後に戻る先 (このカード・`opsStore.invalidate()` → 届いていない人とメンバー状況を描き直す) だけ。活動ログは `actorName` で「(運営が代理で登録)」。
