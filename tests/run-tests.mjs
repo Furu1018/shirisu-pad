@@ -304,6 +304,8 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         // 🧱 ブロックで組むときも対象に数えない
         const blk = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18', onlyAvailableNow: true }), availableAtSlots: EVENING, excludeTimeUnknown: true });
         assert.equal(blk.candidateCount, 1);
+        assert.deepEqual(hoursOf(blk, '未登録の人'), []);
+        assert.deepEqual(blk.membersTimeUnknown, ['未登録の人'], 'ブロックで組むと時間未登録の人の名前が留意点に出ない');
         // 予約 (約束) は未登録でも置く
         const resv = [{ reservationId: 3, memberId: '未登録の人', level: null, bossNumber: 1, loadoutSlot: 1, flex: false, timeSlot: 'h19', team: [], expectedB: 0 }];
         const r = compute({ ...timeInput([boss(1, 'fire', { remainingB: 150 })], ps, { currentSlot: 'h18' }), excludeTimeUnknown: true, reservations: resv });
@@ -384,6 +386,16 @@ const timeInput = (bosses, players, opts = {}) => ({ ...makeInput(bosses, player
         const q = compute({ season: { current_level: 1 }, bosses: [boss(1, 'fire', { remainingB: 100 })],
             players: [capPlayer('Q', { fire: [10] }, ['h05', 'h09'], [{ fromIdx: 0, toIdx: 3, max: 0 }])], currentSlot: 'h18', timeAware: true, timeStrict: false });
         assert.equal((placedBy(q).Q || []).length, 1, 'おまかせのブロックがある人まで止めた');
+    });
+    test('🧱 2b: 境目 (変異で発覚) — 上限の外のおまかせの時間が過ぎていても、上限で埋まった人を時間外に回さない / 開放時刻が上限 0 のブロックなら置かない', () => {
+        // 朝 (おまかせ・もう過ぎた) + 夕方 (上限 1)。17時から与ダメ優先: 夕方に 1 凸置いたら、それ以上は 17時の ⚠時間外にも置かない
+        const a = compute({ season: { current_level: 1 }, bosses: [boss(1, 'fire', { remainingB: 100 }), boss(2, 'water', { remainingB: 100 })],
+            players: [capPlayer('P', { fire: [10], water: [9] }, ['h05', ...HRS(18, 20)], [{ fromIdx: 13, toIdx: 15, max: 1 }])], currentSlot: 'h17', timeAware: true, timeStrict: false });
+        assert.deepEqual((placedBy(a).P || []).map(x => x.hourLabel), ['18時'], '夕方の上限で埋まったのに時間外に置いた');
+        // 午前 (おまかせ・過ぎた) + 昼 (上限 0・過ぎた)。13時 (昼の中) から: 時間外のベストエフォートでも昼には置かない
+        const b = compute({ season: { current_level: 1 }, bosses: [boss(1, 'fire', { remainingB: 100 })],
+            players: [capPlayer('P', { fire: [10] }, ['h09', 'h12'], [{ fromIdx: 7, toIdx: 9, max: 0 }])], currentSlot: 'h13', timeAware: true, timeStrict: false });
+        assert.deepEqual(placedBy(b).P || [], [], '上限 0 のブロックの中に ⚠時間外で置いた');
     });
     test('★ Codex指摘 (6ffdb6d) 中: 時間未登録で外した人は 対象人数に数えない / 模擬が無くても名指し / 未消化の理由は時間未登録が先 / 留意点の文', () => {
         const ps = [player('未登録で模擬なし', {}), player('未登録で模擬あり', { fire: 10 }), player('夕方の人', { fire: 10 }, { availableSlots: ['h18'] })];

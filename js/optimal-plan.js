@@ -181,7 +181,9 @@
             if (availableAtSlots) {
                 if (p.flexTime) return true;
                 const slots = Array.isArray(p.availableSlots) ? p.availableSlots : [];
-                return (slots.length === 0 && !excludeTimeUnknown) || slots.some(s => availableAtSlots.has(String(s)));
+                // ★ 時間未登録の人は excludeTimeUnknown でも対象に残す (候補にはしない = earliestHourFor が null)。
+                //   残さないと留意点の「時間未登録」に名前が出ず、運営が依頼できない (対象人数 candidateCount からは外す)
+                return slots.length === 0 || slots.some(s => availableAtSlots.has(String(s)));
             }
             return (p.availableSlots || []).includes(availableAtSlot);
         };

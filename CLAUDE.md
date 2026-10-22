@@ -1135,7 +1135,8 @@ codex exec --sandbox read-only --skip-git-repo-check "$(cat prompt.txt)" < /dev/
   `excludeTimeUnknown: true` を渡す (配線テストが 2 か所とも見張る)。ソルバーの中身: 人ごとに `m.caps` (used = 置いた数)。判定は **`earliestHourFor` の 1 か所** — 上限に達したブロックの時刻を飛ばし、
   出られる時間があるのに上限で埋まった人は `null` (時間外のベストエフォートにも回さない)。数えるのは `applyPick` (+1) / `undoPick` (−1) / `assignLv4` の 2 経路 (+1)、`restoreSnapshot` で戻す。
   ★ **予約は上限より強い**: 時刻つきは指定どおり、時刻なしは `earliestHourFor(m, idx, { ignoreCaps: true })` で必ず置く。ただし置いた数は上限に数える (同じブロックにもう 1 凸置かない)。
-  ★ 時間未登録は `m.timeExcluded` → `earliestHourFor` が `null`・🧱 ブロックの対象 (`inScope`) にも数えない・`membersTimeUnknown` に名前・未消化の理由 `timeUnknown`。予約 (約束) は置く。
+  ★ 時間未登録は `m.timeExcluded` → `earliestHourFor` が `null`・対象人数 `candidateCount` に数えない・`membersTimeUnknown` に名前 (模擬が無くても・🧱 ブロックで組むときも — そのため `inScope` では外さない)・未消化の理由 `timeUnknown` (模擬未提出より先)。予約 (約束) は置く。
+  ★ 上限で埋まった人は時間外のベストエフォートにも回さない: ループで上限に当たった / 開放時刻が上限に達したブロック / 宣言した時間 (`allHourIdxs`) がすべて上限に達したブロック の 3 つで `null` (Codex指摘・変異テストで境目を固定)。
   未消化の理由に `cap` (「凸数の希望どおり」= 上限をすべて使い切り、出られる時間がすべて上限つきのブロック)。運営の 👥 メンバー状況に「凸数 朝 1 · 夕方 2」(`counts(r)`)・時間未登録の札に「候補にしません」の説明。
   確かめ: `tests/bench-blockflow/multi-block.mjs` の ⑥⑦ (朝+夕方の 4 人が 朝 1 → 夕方 2 になる)
   ★ **③-e 運営の模擬取り込み** (2026-10-18): 戦況タブ「📸 模擬の取り込み」(`opsSecMockIntake`・準備〜当日・幅 12・当日は畳む)。
